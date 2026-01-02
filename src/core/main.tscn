@@ -1,0 +1,27 @@
+[gd_scene load_steps=7 format=3 uid="uid://bpnl5pn3ydite"]
+
+[ext_resource type="Script" uid="uid://cb3gdybtwy0ry" path="res://src/core/main.gd" id="1_avv2o"]
+[ext_resource type="Resource" uid="uid://dv60bmaw1pdx6" path="res://settings.tres" id="2_ivtyw"]
+[ext_resource type="PackedScene" uid="uid://bt1la6s52krxe" path="res://src/ui/hud/hud.tscn" id="2_ukt3u"]
+[ext_resource type="PackedScene" uid="uid://diqnxd2kabxfk" path="res://src/core/audio_main.tscn" id="3_nlf45"]
+[ext_resource type="PackedScene" uid="uid://luccssf71n0" path="res://src/core/game_panel.tscn" id="3_x62ka"]
+[ext_resource type="PackedScene" uid="uid://dlvy2ayb4r382" path="res://src/core/screens_main.tscn" id="6_q2b63"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_avv2o")
+settings = ExtResource("2_ivtyw")
+
+[node name="AudioMain" parent="." instance=ExtResource("3_nlf45")]
+
+[node name="GamePanel" parent="." instance=ExtResource("3_x62ka")]
+position = Vector2(0, -7)
+
+[node name="Screens" type="CanvasLayer" parent="."]
+layer = 100
+
+[node name="ScreensMain" parent="Screens" instance=ExtResource("6_q2b63")]
+
+[node name="Hud" type="CanvasLayer" parent="."]
+layer = 200
+
+[node name="Hud" parent="Hud" instance=ExtResource("2_ukt3u")]

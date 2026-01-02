@@ -1,0 +1,118 @@
+[gd_scene load_steps=7 format=3 uid="uid://xnphyp5coh8m"]
+
+[ext_resource type="Texture2D" uid="uid://dl82fhnd0jit2" path="res://assets/images/gui/upgrade_level_indicator_full.png" id="2_bl1tw"]
+[ext_resource type="Texture2D" uid="uid://cu43macy57mtc" path="res://assets/images/gui/upgrade_level_indicator_empty.png" id="2_ia114"]
+
+[sub_resource type="GDScript" id="GDScript_iaf4o"]
+script/source = "class_name UpgradeLevels extends HBoxContainer
+
+enum UpgradeTypes {
+    SPEED,
+    BEAM,
+    CAPACITY,
+    STEALTH
+}
+
+@export var type := UpgradeTypes.SPEED
+@export var filled_style_box : StyleBoxTexture
+@export var empty_style_box : StyleBoxTexture
+
+func set_level(level: int) -> void:
+    G.session.ship_upgrade_levels[type] = level
+    var updated_ability_value = G.settings.SHIP_UPGRADE_VALUES[type][level]
+    match type:
+        UpgradeTypes.CAPACITY:
+            G.session.collection_capacity = updated_ability_value
+        UpgradeTypes.SPEED:
+            G.session.max_speed = updated_ability_value[0]
+            G.session.max_speed_beaming = updated_ability_value[1]
+            G.session.gravity_per_enemy = updated_ability_value[2]
+        UpgradeTypes.BEAM:
+            G.session.beam_scale = updated_ability_value
+            G.player.update_beam_scale()
+        UpgradeTypes.STEALTH:
+            G.session.alert_enemies_count_for_max_detection = updated_ability_value
+        _:
+            G.utils.ensure(false)
+
+func get_level() -> int:
+     return G.session.ship_upgrade_levels[type]
+
+func get_upgrade_cost() -> int:
+    var current_level = G.session.ship_upgrade_levels[type]
+    if current_level < 3:
+        return G.settings.SHIP_UPGRADE_COSTS[type][current_level + 1]
+    else:
+        return INF
+
+func update_levels_ui() -> void:
+    var level = get_level()
+    match level:
+        3:
+            %UpgradeL3.add_theme_stylebox_override(\"panel\", filled_style_box)
+            %UpgradeL2.add_theme_stylebox_override(\"panel\", filled_style_box)
+            %UpgradeL1.add_theme_stylebox_override(\"panel\", filled_style_box)
+        2:
+            %UpgradeL3.add_theme_stylebox_override(\"panel\", empty_style_box)
+            %UpgradeL2.add_theme_stylebox_override(\"panel\", filled_style_box)
+            %UpgradeL1.add_theme_stylebox_override(\"panel\", filled_style_box)
+        1:
+            %UpgradeL3.add_theme_stylebox_override(\"panel\", empty_style_box)
+            %UpgradeL2.add_theme_stylebox_override(\"panel\", empty_style_box)
+            %UpgradeL1.add_theme_stylebox_override(\"panel\", filled_style_box)
+        0:
+            %UpgradeL3.add_theme_stylebox_override(\"panel\", empty_style_box)
+            %UpgradeL2.add_theme_stylebox_override(\"panel\", empty_style_box)
+            %UpgradeL1.add_theme_stylebox_override(\"panel\", empty_style_box)
+        _:
+            G.utils.ensure(false)
+"
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_ia114"]
+texture = ExtResource("2_bl1tw")
+texture_margin_left = 6.0
+texture_margin_top = 6.0
+texture_margin_right = 6.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_2chkt"]
+texture = ExtResource("2_ia114")
+texture_margin_left = 6.0
+texture_margin_top = 6.0
+texture_margin_right = 6.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_bl1tw"]
+texture = ExtResource("2_ia114")
+texture_margin_left = 6.0
+texture_margin_top = 6.0
+texture_margin_right = 6.0
+texture_margin_bottom = 6.0
+
+[node name="UpgradeLevels" type="HBoxContainer"]
+custom_minimum_size = Vector2(0, 15)
+offset_right = 100.0
+offset_bottom = 20.0
+size_flags_vertical = 4
+alignment = 1
+script = SubResource("GDScript_iaf4o")
+filled_style_box = SubResource("StyleBoxTexture_ia114")
+empty_style_box = SubResource("StyleBoxTexture_2chkt")
+
+[node name="UpgradeL1" type="Panel" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(30, 10)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxTexture_bl1tw")
+
+[node name="UpgradeL2" type="Panel" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(30, 10)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxTexture_bl1tw")
+
+[node name="UpgradeL3" type="Panel" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(30, 10)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxTexture_bl1tw")

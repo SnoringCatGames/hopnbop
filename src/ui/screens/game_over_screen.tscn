@@ -1,0 +1,47 @@
+[gd_scene load_steps=4 format=3 uid="uid://hrkm0p3okgms"]
+
+[ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/core/main_theme.tres" id="1_bdo0u"]
+[ext_resource type="Script" uid="uid://dnb4jgmiq7u6c" path="res://src/ui/screens/game_over_screen.gd" id="1_wmw1d"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bdo0u"]
+bg_color = Color(0.09803922, 0.1764706, 0.3137255, 1)
+
+[node name="GameOverScreen" type="PanelContainer"]
+process_mode = 3
+theme = ExtResource("1_bdo0u")
+theme_override_styles/panel = SubResource("StyleBoxFlat_bdo0u")
+script = ExtResource("1_wmw1d")
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Game over"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Spacer" type="Control" parent="CenterContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer"]
+visible = false
+layout_mode = 2
+
+[node name="Spacer2" type="Control" parent="CenterContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+
+[node name="Button" type="Button" parent="CenterContainer/VBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Play again"
+
+[connection signal="pressed" from="CenterContainer/VBoxContainer/Button" to="." method="_on_button_pressed"]

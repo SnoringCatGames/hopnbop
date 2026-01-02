@@ -1,0 +1,43 @@
+[gd_scene load_steps=9 format=3 uid="uid://diqnxd2kabxfk"]
+
+[ext_resource type="Script" uid="uid://b5hrwox1n2lt0" path="res://src/core/audio_main.gd" id="1_tdp82"]
+[ext_resource type="AudioStream" uid="uid://dvhroq3jf64ma" path="res://assets/audio/Zookeeper_02.wav" id="2_o2pvq"]
+[ext_resource type="AudioStream" uid="uid://505pi6oqhfst" path="res://assets/audio/Click/Click-cm-02.wav" id="3_seawu"]
+[ext_resource type="AudioStream" uid="uid://dmh678v0gek8c" path="res://assets/audio/Click/Click-cm-04.wav" id="4_wywav"]
+[ext_resource type="AudioStream" uid="uid://b3achb3rytv11" path="res://assets/audio/Click/Click-cm-06.wav" id="5_wtepx"]
+[ext_resource type="AudioStream" uid="uid://qk2yfhofcotd" path="res://assets/audio/Click/Click-cm-07.wav" id="6_24bi3"]
+[ext_resource type="AudioStream" uid="uid://cehcojmxljntb" path="res://assets/audio/LD58_UFOOO_03.wav" id="7_q1bt0"]
+
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_2b2qe"]
+streams_count = 4
+stream_0/stream = ExtResource("3_seawu")
+stream_1/stream = ExtResource("4_wywav")
+stream_2/stream = ExtResource("5_wtepx")
+stream_3/stream = ExtResource("6_24bi3")
+
+[node name="AudioMain" type="Node2D"]
+script = ExtResource("1_tdp82")
+main_theme_volume = -8.0
+menu_theme_volume = 2.247
+
+[node name="MenuThemeStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+process_mode = 3
+stream = ExtResource("2_o2pvq")
+volume_db = 2.247
+autoplay = true
+bus = &"Music"
+
+[node name="MainThemeStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+process_mode = 3
+stream = ExtResource("7_q1bt0")
+volume_db = -8.0
+bus = &"Music"
+
+[node name="ClickStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+process_mode = 3
+stream = SubResource("AudioStreamRandomizer_2b2qe")
+volume_db = -2.919
+bus = &"SFX"

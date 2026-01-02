@@ -1,0 +1,15 @@
+[gd_scene load_steps=5 format=3 uid="uid://luccssf71n0"]
+
+[ext_resource type="Script" uid="uid://b0biq0wqtvk5e" path="res://src/core/game_panel.gd" id="1_lii62"]
+[ext_resource type="PackedScene" uid="uid://bo0yvrajk0ktn" path="res://src/level/background.tscn" id="2_v30hu"]
+[ext_resource type="PackedScene" uid="uid://cn6hdqmmufnvr" path="res://src/player/player.tscn" id="3_0qy1w"]
+[ext_resource type="PackedScene" uid="uid://bfl5qv8bb5apr" path="res://src/level/main_level.tscn" id="3_n7c0l"]
+
+[node name="GamePanel" type="Node2D"]
+script = ExtResource("1_lii62")
+
+[node name="Background" parent="." instance=ExtResource("2_v30hu")]
+
+[node name="MainLevel" parent="." instance=ExtResource("3_n7c0l")]
+
+[node name="Player" parent="." instance=ExtResource("3_0qy1w")]

@@ -1,0 +1,44 @@
+[gd_scene load_steps=6 format=3 uid="uid://dlvy2ayb4r382"]
+
+[ext_resource type="Script" uid="uid://cdurlt7srnaw2" path="res://src/core/screens_main.gd" id="1_r4bio"]
+[ext_resource type="PackedScene" uid="uid://dg8tvc66eq6c5" path="res://src/ui/screens/pause_screen.tscn" id="2_gihf7"]
+[ext_resource type="PackedScene" uid="uid://bqvcbt8m2jvy1" path="res://src/ui/screens/main_menu_screen.tscn" id="3_0eyfq"]
+[ext_resource type="PackedScene" uid="uid://hrkm0p3okgms" path="res://src/ui/screens/game_over_screen.tscn" id="4_3e1sw"]
+[ext_resource type="PackedScene" uid="uid://ddl2sry3xhy84" path="res://src/ui/screens/win_screen.tscn" id="5_47nlx"]
+
+[node name="ScreensMain" type="Node2D"]
+script = ExtResource("1_r4bio")
+
+[node name="PauseScreen" parent="." instance=ExtResource("2_gihf7")]
+unique_name_in_owner = true
+visible = false
+
+[node name="MainMenuScreen" parent="." instance=ExtResource("3_0eyfq")]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="GameOverScreen" parent="." instance=ExtResource("4_3e1sw")]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="WinScreen" parent="." instance=ExtResource("5_47nlx")]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
