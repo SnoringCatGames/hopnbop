@@ -3,6 +3,7 @@ extends Node
 
 # Add global state here for easy access.
 
+var time := ScaffolderTime.new()
 var utils := Utils.new()
 var geometry := Geometry.new()
 
@@ -20,3 +21,8 @@ var pause_screen: PauseScreen
 var game_panel: GamePanel
 var player: Player
 var session: Session
+
+func _enter_tree() -> void:
+    add_child(time)
+    add_child(utils)
+    add_child(geometry)
