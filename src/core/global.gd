@@ -19,7 +19,6 @@ var win_screen: WinScreen
 var pause_screen: PauseScreen
 
 var game_panel: GamePanel
-var player: Player
 var session: Session
 
 func _enter_tree() -> void:

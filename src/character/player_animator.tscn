@@ -1,0 +1,27 @@
+[gd_scene load_steps=5 format=3 uid="uid://br1b7cse0hxmt"]
+
+[ext_resource type="Texture2D" uid="uid://bsrqq2id8rpl8" path="res://assets/images/bunny.png" id="1_biyea"]
+[ext_resource type="Script" uid="uid://b50tfbt5wsthb" path="res://src/character/character_animator.gd" id="1_eeopx"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_mf2ua"]
+atlas = ExtResource("1_biyea")
+region = Rect2(0, 0, 16, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_eeopx"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_mf2ua")
+}],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]
+
+[node name="PlayerAnimator" type="Node2D"]
+script = ExtResource("1_eeopx")
+metadata/_custom_type_script = "uid://b50tfbt5wsthb"
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+unique_name_in_owner = true
+sprite_frames = SubResource("SpriteFrames_eeopx")

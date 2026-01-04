@@ -8,12 +8,12 @@ const USES_RUNTIME_PHYSICS := true
 const PRIORITY := 240
 
 
-func _init().(
+func _init() -> void:
+    super(
         NAME,
         TYPE,
         USES_RUNTIME_PHYSICS,
-        PRIORITY) -> void:
-    pass
+        PRIORITY)
 
 
 func process(character) -> bool:
@@ -23,7 +23,7 @@ func process(character) -> bool:
                 character.current_walk_acceleration * \
                 character.actions.delta_scaled * \
                 character.surface_state.horizontal_acceleration_sign
-        
+
         return true
     else:
         return false

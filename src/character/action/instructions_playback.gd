@@ -4,10 +4,11 @@ extends RefCounted
 
 const EXTRA_DELAY_TO_ALLOW_COLLISION_WITH_SURFACE := 0.25
 
-var edge: Edge
+var instructions: Array[Instruction] = []
+
 var is_additive: bool
 var next_index: int
-var _next_instruction: EdgeInstruction
+var _next_instruction: Instruction
 var start_time_scaled: float
 var previous_time_scaled: float
 var current_time_scaled: float
@@ -20,10 +21,10 @@ var _next_active_key_presses: Dictionary
 
 
 func _init(
-        edge: Edge,
-        is_additive: bool) -> void:
-    self.edge = edge
-    self.is_additive = is_additive
+        p_instructions: Array[Instruction],
+        p_is_additive: bool) -> void:
+    self.instructions = p_instructions
+    self.is_additive = p_is_additive
 
 
 func start(scaled_time: float) -> void:
@@ -32,8 +33,8 @@ func start(scaled_time: float) -> void:
     current_time_scaled = scaled_time
     next_index = 0
     _next_instruction = \
-            edge.instructions.instructions[next_index] if \
-            edge.instructions.instructions.size() > next_index else \
+            instructions[next_index] if \
+            instructions.size() > next_index else \
             null
     is_on_last_instruction = _next_instruction == null
     is_finished = is_on_last_instruction
@@ -97,8 +98,8 @@ func _increment() -> void:
 
     next_index += 1
     _next_instruction = \
-            edge.instructions.instructions[next_index] if \
-            edge.instructions.instructions.size() > next_index else \
+            instructions[next_index] if \
+            instructions.size() > next_index else \
             null
     is_on_last_instruction = _next_instruction == null
 
@@ -108,7 +109,7 @@ func get_previous_elapsed_time_scaled() -> float:
 
 
 func get_elapsed_time_scaled() -> float:
-    return Sc.time.get_scaled_play_time() - start_time_scaled
+    return G.time.get_scaled_play_time() - start_time_scaled
 
 
 func _get_start_time_scaled_for_next_instruction() -> float:
@@ -116,17 +117,7 @@ func _get_start_time_scaled_for_next_instruction() -> float:
 
     var duration_until_next_instruction: float
     if is_on_last_instruction:
-        duration_until_next_instruction = \
-                edge.instructions.duration if \
-                edge.instructions.stops_when_duration_elapses else \
-                INF
-        if edge.get_should_end_by_colliding_with_surface():
-            # With slight movement error it's possible for the edge duration to
-            # elapse before actually landing on the destination surface. So
-            # this should allow for a little extra time at the end in order to
-            # end by landing on the surface.
-            duration_until_next_instruction += \
-                    EXTRA_DELAY_TO_ALLOW_COLLISION_WITH_SURFACE
+        duration_until_next_instruction = INF
     else:
         duration_until_next_instruction = _next_instruction.time
 
@@ -134,8 +125,7 @@ func _get_start_time_scaled_for_next_instruction() -> float:
 
 
 func _ensure_facing_correct_direction_before_update(character) -> void:
-    if character.movement_params \
-            .always_tries_to_face_direction_of_motion and \
+    if character.movement_settings.always_tries_to_face_direction_of_motion and \
             next_index == 0 and \
             character.velocity.x != 0 and \
             (character.velocity.x < 0) != \
@@ -155,7 +145,7 @@ func _ensure_facing_correct_direction_after_update(
             _next_active_key_presses.has("fr") and \
             _next_active_key_presses["fr"]
 
-    if character.movement_params.always_tries_to_face_direction_of_motion and \
+    if character.movement_settings.always_tries_to_face_direction_of_motion and \
             just_released_move_sideways and \
             character.velocity.x != 0 and \
             (character.velocity.x < 0 and !is_pressing_face_left or \

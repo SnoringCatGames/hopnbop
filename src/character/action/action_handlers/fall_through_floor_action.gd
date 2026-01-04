@@ -1,19 +1,19 @@
-class_name FloorFallThroughAction
+class_name FallThroughFloorAction
 extends CharacterActionHandler
 
 
-const NAME := "FloorFallThroughAction"
+const NAME := "FallThroughFloorAction"
 const TYPE := SurfaceType.FLOOR
 const USES_RUNTIME_PHYSICS := true
 const PRIORITY := 220
 
 
-func _init().(
+func _init() -> void:
+    super(
         NAME,
         TYPE,
         USES_RUNTIME_PHYSICS,
-        PRIORITY) -> void:
-    pass
+        PRIORITY)
 
 
 func process(character) -> bool:
@@ -21,7 +21,7 @@ func process(character) -> bool:
         # If we were standing on a floor and just triggered a fall-through,
         # then give a little downward velocity boost.
         character.velocity.y = \
-                character.movement_params.fall_through_floor_velocity_boost
+                character.movement_settings.fall_through_floor_velocity_boost
         return true
     else:
         return false

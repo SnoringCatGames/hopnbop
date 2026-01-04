@@ -19,20 +19,20 @@ var is_additive: bool
 
 
 func _init(
-        source_type_prefix: String,
-        character,
-        is_additive: bool) -> void:
-    self.source_type_prefix = source_type_prefix
-    self.character = character
-    self.is_additive = is_additive
+        p_source_type_prefix: String,
+        p_character,
+        p_is_additive: bool) -> void:
+    self.source_type_prefix = p_source_type_prefix
+    self.character = p_character
+    self.is_additive = p_is_additive
 
 
 # Calculates actions for the current frame.
 func update(
-        actions: CharacterActionState,
-        previous_actions: CharacterActionState,
-        time_scaled: float,
-        delta_scaled: float) -> void:
+        _actions: CharacterActionState,
+        _previous_actions: CharacterActionState,
+        _time_scaled: float,
+        _delta_scaled: float) -> void:
     push_error("Abstract CharacterActionSource.update is not implemented")
 
 
@@ -41,8 +41,8 @@ static func update_for_explicit_key_event(
         previous_actions: CharacterActionState,
         input_key: String,
         is_pressed: bool,
-        time_scaled: float,
-        is_additive: bool) -> void:
+        _time_scaled: float,
+        p_is_additive: bool) -> void:
     var action_name: String = INPUT_KEY_TO_ACTION_NAME[input_key]
     var pressed_action_key := "pressed_" + action_name
     var just_pressed_action_key := "just_pressed_" + action_name
@@ -54,7 +54,7 @@ static func update_for_explicit_key_event(
             actions.get(pressed_action_key)
     var is_pressed_in_current_frame := \
             is_pressed or \
-            (is_additive and was_already_pressed_in_current_frame)
+            (p_is_additive and was_already_pressed_in_current_frame)
     var just_pressed := \
             !was_pressed_in_previous_frame and \
             is_pressed_in_current_frame

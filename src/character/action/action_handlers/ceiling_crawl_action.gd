@@ -8,12 +8,12 @@ const USES_RUNTIME_PHYSICS := true
 const PRIORITY := 340
 
 
-func _init().(
+func _init() -> void:
+    super(
         NAME,
         TYPE,
         USES_RUNTIME_PHYSICS,
-        PRIORITY) -> void:
-    pass
+        PRIORITY)
 
 
 func process(character) -> bool:
@@ -25,5 +25,5 @@ func process(character) -> bool:
         elif character.actions.pressed_right:
             character.velocity.x = character.current_ceiling_crawl_speed
             return true
-    
+
     return false

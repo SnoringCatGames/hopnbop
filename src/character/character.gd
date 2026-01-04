@@ -2,7 +2,7 @@ class_name Character
 extends CharacterBody2D
 
 
-# FIXME: ----------------------
+# FIXME: LEFT OFF HERE: ----------------------
 
 
 const _MAX_SLIDES_DEFAULT := 4
@@ -15,14 +15,14 @@ const _WALK_THROUGH_WALLS_COLLISION_MASK_BIT := 2
 
 @export var collision_shape: CollisionShape2D
 @export var animator: CharacterAnimator
+@export var movement_settings: MovementSettings
 
 var base_velocity := Vector2.ZERO
 var start_position := Vector2.INF
 var previous_position := Vector2.INF
-var did_move_last_frame := false
 var stationary_frames_count := 0
 
-var distance_travelled := INF
+var total_distance_traveled := INF
 
 var start_time := INF
 var previous_total_time := INF
@@ -38,9 +38,6 @@ var _current_max_horizontal_speed_multiplier := 1.0
 
 var surface_state := CharacterSurfaceState.new(self)
 
-# Array<KinematicCollision2DCopy>
-var collisions := []
-
 var _actions_from_previous_frame := CharacterActionState.new()
 var actions := CharacterActionState.new()
 
@@ -52,12 +49,17 @@ var _previous_actions_handlers_this_frame := {}
 var _character_action_source: CharacterActionSource
 
 
-func _enter_tree() -> void:
-    G.player = self
-
-
 func _ready() -> void:
-    distance_travelled = 0.0
+    if not collision_shape:
+        assert(false, "Character.collision_shape is not provided: %s" % name)
+    if not animator:
+        assert(false, "Character.animator is not provided: %s" % name)
+    if not movement_settings:
+        assert(false, "Character.movement_settings is not provided: %s" % name)
+
+    movement_settings.set_up()
+
+    total_distance_traveled = 0.0
     start_time = G.time.get_scaled_play_time()
     total_time = 0.0
 
@@ -106,10 +108,10 @@ func _physics_process(delta: float) -> void:
 
     previous_position = position
 
-    collisions.clear()
+    surface_state.collisions.clear()
     _apply_movement()
     _maintain_preexisting_collisions()
-    collisions.reverse()
+    surface_state.collisions.reverse()
 
     _update_actions(delta_scaled)
     surface_state.clear_just_changed_state()
@@ -129,21 +131,15 @@ func _physics_process(delta: float) -> void:
     _process_sounds()
     _update_collision_mask()
 
-    did_move_last_frame = !G.geometry.are_points_equal_with_epsilon(
-            previous_position, position, 0.00001)
-    if did_move_last_frame:
+    if surface_state.did_move_last_frame:
         stationary_frames_count = 0
     else:
         stationary_frames_count += 1
 
-    distance_travelled += position.distance_to(previous_position)
+    total_distance_traveled += position.distance_to(previous_position)
 
 
 func _apply_movement() -> void:
-    if G.settings.bypasses_runtime_physics or \
-            base_velocity == Vector2.ZERO:
-        return
-
     # Since move_and_slide automatically accounts for delta, we need to
     # compensate for that in order to support our modified framerate.
     var modified_velocity: Vector2 = base_velocity * G.time.get_combined_scale()
@@ -152,7 +148,7 @@ func _apply_movement() -> void:
     max_slides = _MAX_SLIDES_DEFAULT
     move_and_slide()
 
-    _record_collisions()
+    surface_state.record_collisions()
 
 
 # -   The move_and_slide system depends on some velocity always pushing the
@@ -160,8 +156,7 @@ func _apply_movement() -> void:
 # -   If we just zero this out, move_and_slide will produce false-negatives for
 #     collisions.
 func _maintain_preexisting_collisions() -> void:
-    if G.settings.bypasses_runtime_physics or \
-            !surface_state.is_grabbing_surface or \
+    if !surface_state.is_grabbing_surface or \
             (surface_state.is_triggering_wall_release and \
             surface_state.is_grabbing_wall) or \
             (surface_state.is_triggering_ceiling_release and \
@@ -171,9 +166,7 @@ func _maintain_preexisting_collisions() -> void:
             actions.just_pressed_jump:
         return
 
-    # TODO: We could use surface_state.grab_normal here, if we wanted to walk
-    #       more slowly down hills.
-    var normal := surface_state.grabbed_surface.normal
+    var normal := surface_state.attachment_normal
 
     var maintain_collision_velocity: Vector2 = \
             _STRONG_SPEED_TO_MAINTAIN_COLLISION * -normal
@@ -196,17 +189,7 @@ func _maintain_preexisting_collisions() -> void:
     velocity = maintain_collision_velocity
     move_and_slide()
 
-    _record_collisions()
-
-
-func _record_collisions() -> void:
-    var new_collision_count := get_slide_collision_count()
-    var old_collision_count := collisions.size()
-    collisions.resize(old_collision_count + new_collision_count)
-
-    for i in new_collision_count:
-        collisions[old_collision_count + i] = \
-                KinematicCollision2DCopy.new(get_slide_collision(i))
+    surface_state.record_collisions()
 
 
 func _update_actions(delta_scaled: float) -> void:
@@ -234,12 +217,11 @@ func _update_actions(delta_scaled: float) -> void:
 func _process_actions() -> void:
     _previous_actions_handlers_this_frame.clear()
 
-    for action_handler in G.settings.action_handlers:
+    for action_handler in movement_settings.action_handlers:
         var is_action_relevant_for_surface: bool = \
                 action_handler.type == surface_state.surface_type or \
                 action_handler.type == SurfaceType.OTHER
         var is_action_relevant_for_physics_mode: bool = \
-                !G.settings.bypasses_runtime_physics or \
                 !action_handler.uses_runtime_physics
         if is_action_relevant_for_surface and \
                 is_action_relevant_for_physics_mode:
@@ -263,7 +245,7 @@ func _process_actions() -> void:
 #                        CharacterLogType.ACTION,
 #                        true)
 
-    assert(!G.geometry.is_point_partial_inf(base_velocity))
+    assert(!Geometry.is_point_partial_inf(base_velocity))
 
 
 func _process_animation() -> void:
@@ -307,8 +289,8 @@ func _process_sounds() -> void:
         G.audio.play_sound("land")
 
 
-func processed_action(name: String) -> bool:
-    return _previous_actions_handlers_this_frame.get(name) == true
+func processed_action(p_name: String) -> bool:
+    return _previous_actions_handlers_this_frame.get(p_name) == true
 
 
 func _update_surface_state() -> void:
@@ -346,15 +328,15 @@ func _update_surface_state() -> void:
 # Update whether or not we should currently consider collisions with
 # fall-through floors and walk-through walls.
 func _update_collision_mask() -> void:
-    set_collision_mask_bit(
+    set_collision_mask_value(
             _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT,
             !surface_state.is_descending_through_floors and \
                     base_velocity.y > 0)
-    set_collision_mask_bit(
+    set_collision_mask_value(
             _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT,
             !surface_state.is_ascending_through_ceilings and \
                     base_velocity.y < 0)
-    set_collision_mask_bit(
+    set_collision_mask_value(
             _WALK_THROUGH_WALLS_COLLISION_MASK_BIT,
             surface_state.is_grabbing_walk_through_walls)
 
@@ -372,8 +354,8 @@ func force_boost(boost: Vector2) -> void:
 
 
 func _get_current_surface_max_horizontal_speed() -> float:
-    return G.settings.max_horizontal_speed_default * \
-            G.settings.surface_speed_multiplier * \
+    return movement_settings.max_horizontal_speed_default * \
+            movement_settings.surface_speed_multiplier * \
             _current_max_horizontal_speed_multiplier * \
             (surface_state.grabbed_surface.properties.speed_multiplier if \
             surface_state.is_grabbing_surface else \
@@ -381,34 +363,34 @@ func _get_current_surface_max_horizontal_speed() -> float:
 
 
 func _get_current_air_max_horizontal_speed() -> float:
-    return G.settings.max_horizontal_speed_default * \
-            G.settings.air_horizontal_speed_multiplier * \
+    return movement_settings.max_horizontal_speed_default * \
+            movement_settings.air_horizontal_speed_multiplier * \
             _current_max_horizontal_speed_multiplier
 
 
 func _get_current_walk_acceleration() -> float:
-    return G.settings.walk_acceleration * \
+    return movement_settings.walk_acceleration * \
             (surface_state.grabbed_surface.properties.speed_multiplier if \
             surface_state.is_grabbing_surface else \
             1.0)
 
 
 func _get_current_climb_up_speed() -> float:
-    return G.settings.climb_up_speed * \
+    return movement_settings.climb_up_speed * \
             (surface_state.grabbed_surface.properties.speed_multiplier if \
             surface_state.is_grabbing_surface else \
             1.0)
 
 
 func _get_current_climb_down_speed() -> float:
-    return G.settings.climb_down_speed * \
+    return movement_settings.climb_down_speed * \
             (surface_state.grabbed_surface.properties.speed_multiplier if \
             surface_state.is_grabbing_surface else \
             1.0)
 
 
 func _get_current_ceiling_crawl_speed() -> float:
-    return G.settings.ceiling_crawl_speed * \
+    return movement_settings.ceiling_crawl_speed * \
             (surface_state.grabbed_surface.properties.speed_multiplier if \
             surface_state.is_grabbing_surface else \
             1.0)
@@ -421,8 +403,8 @@ func get_next_position_prediction() -> Vector2:
     return position + modified_velocity * G.time.PHYSICS_TIME_STEP
 
 
-func set_is_sprite_visible(is_visible: bool) -> void:
-    animator.visible = is_visible
+func set_is_sprite_visible(p_is_visible: bool) -> void:
+    animator.visible = p_is_visible
 
 
 func get_is_sprite_visible() -> bool:

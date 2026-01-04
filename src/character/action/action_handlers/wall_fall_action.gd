@@ -8,28 +8,22 @@ const USES_RUNTIME_PHYSICS := true
 const PRIORITY := 130
 
 
-func _init().(
+func _init() -> void:
+    super(
         NAME,
         TYPE,
         USES_RUNTIME_PHYSICS,
-        PRIORITY) -> void:
-    pass
+        PRIORITY)
 
 
 func process(character) -> bool:
     if !character.processed_action(WallJumpAction.NAME) and \
             character.surface_state.is_triggering_wall_release:
-        character._log(
-                "Release wall",
-                "",
-                CharacterLogType.ACTION,
-                false)
-        
         # Cancel any velocity toward the wall.
         character.velocity.x = \
-                -character.surface_state.toward_wall_sign * \
-                character.movement_params.wall_fall_horizontal_boost
-        
+                - character.surface_state.toward_wall_sign * \
+                character.movement_settings.wall_fall_horizontal_boost
+
         return true
     else:
         return false

@@ -8,12 +8,12 @@ const USES_RUNTIME_PHYSICS := true
 const PRIORITY := 310
 
 
-func _init().(
+func _init() -> void:
+    super(
         NAME,
         TYPE,
         USES_RUNTIME_PHYSICS,
-        PRIORITY) -> void:
-    pass
+        PRIORITY)
 
 
 func process(character) -> bool:
@@ -21,5 +21,5 @@ func process(character) -> bool:
     character.is_rising_from_jump = false
     character.velocity.x = 0.0
     character.velocity.y = 0.0
-    
+
     return true

@@ -8,12 +8,12 @@ const USES_RUNTIME_PHYSICS := true
 const PRIORITY := 120
 
 
-func _init().(
+func _init() -> void:
+    super(
         NAME,
         TYPE,
         USES_RUNTIME_PHYSICS,
-        PRIORITY) -> void:
-    pass
+        PRIORITY)
 
 
 func process(character) -> bool:
@@ -21,16 +21,16 @@ func process(character) -> bool:
         character.jump_count = 1
         character.just_triggered_jump = true
         character.is_rising_from_jump = true
-        
-        character.velocity.y = character.movement_params.jump_boost
-        
+
+        character.velocity.y = character.movement_settings.jump_boost
+
         # Give a little boost to get the character away from the wall, so they
         # can still be pushing themselves into the wall when they start the
         # jump.
         character.velocity.x = \
-                -character.surface_state.toward_wall_sign * \
-                character.movement_params.wall_jump_horizontal_boost
-        
+                - character.surface_state.toward_wall_sign * \
+                character.movement_settings.wall_jump_horizontal_boost
+
         return true
     else:
         return false

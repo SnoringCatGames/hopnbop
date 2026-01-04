@@ -1,37 +1,24 @@
-[gd_scene load_steps=6 format=3 uid="uid://cn6hdqmmufnvr"]
+[gd_scene load_steps=5 format=3 uid="uid://cn6hdqmmufnvr"]
 
-[ext_resource type="Script" uid="uid://ctdjb8phvmc71" path="res://src/player/character.gd" id="1_rxibo"]
-[ext_resource type="Texture2D" uid="uid://bsrqq2id8rpl8" path="res://assets/images/bunny.png" id="2_rxibo"]
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_mf2ua"]
-atlas = ExtResource("2_rxibo")
-region = Rect2(0, 0, 16, 16)
-
-[sub_resource type="SpriteFrames" id="SpriteFrames_244u8"]
-animations = [{
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_mf2ua")
-}],
-"loop": true,
-"name": &"default",
-"speed": 5.0
-}]
+[ext_resource type="Script" uid="uid://ctdjb8phvmc71" path="res://src/character/character.gd" id="1_rxibo"]
+[ext_resource type="Resource" uid="uid://dq1d4nuh248j2" path="res://src/character/default_movement_settings.tres" id="2_ohd16"]
+[ext_resource type="PackedScene" uid="uid://br1b7cse0hxmt" path="res://src/character/player_animator.tscn" id="3_ohd16"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_rxibo"]
 radius = 6.0
 
-[node name="Player" type="CharacterBody2D"]
+[node name="Player" type="CharacterBody2D" node_paths=PackedStringArray("collision_shape", "animator")]
 collision_mask = 2
 script = ExtResource("1_rxibo")
+collision_shape = NodePath("PlayerBodyCollisionShape")
+animator = NodePath("PlayerAnimator")
+movement_settings = ExtResource("2_ohd16")
 
 [node name="CharacterCamera" type="Camera2D" parent="."]
 unique_name_in_owner = true
 zoom = Vector2(1.5, 1.5)
 
-[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
-unique_name_in_owner = true
-sprite_frames = SubResource("SpriteFrames_244u8")
+[node name="PlayerAnimator" parent="." instance=ExtResource("3_ohd16")]
 
 [node name="PlayerBodyCollisionShape" type="CollisionShape2D" parent="."]
 unique_name_in_owner = true

@@ -7,13 +7,9 @@ var _all_playback := []
 
 
 func _init(
-        character,
-        is_additive: bool) \
-        .(
-        "NPC",
-        character,
-        is_additive) -> void:
-    pass
+        p_character,
+        p_is_additive: bool):
+    super("NPC", p_character, p_is_additive)
 
 
 # Calculates actions for the current frame.
@@ -51,16 +47,16 @@ func update(
     var i := 0
     while i < _all_playback.size():
         if _all_playback[i].is_finished:
-            _all_playback.remove(i)
+            _all_playback.remove_at(i)
             i -= 1
         i += 1
 
 
 func start_instructions(
-        edge: Edge,
+        instructions: Array[Instruction],
         time_scaled: float) -> InstructionsPlayback:
     var playback := InstructionsPlayback.new(
-            edge,
+            instructions,
             is_additive)
     playback.start(time_scaled)
     _all_playback.push_back(playback)
@@ -69,13 +65,13 @@ func start_instructions(
 
 func cancel_playback(
         playback: InstructionsPlayback,
-        time_scaled: float) -> bool:
+        _time_scaled: float) -> bool:
     # Remove the playback.
     var index := _all_playback.find(playback)
     if index < 0:
         return false
     else:
-        _all_playback.remove(index)
+        _all_playback.remove_at(index)
         return true
 
 

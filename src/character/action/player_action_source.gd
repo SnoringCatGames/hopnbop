@@ -2,6 +2,7 @@ class_name PlayerActionSource
 extends CharacterActionSource
 
 
+# FIXME: Add a check to ensure these actions are configured in the project settings.
 const ACTIONS_TO_INPUT_KEYS := {
   "jump": "j",
   "move_up": "mu",
@@ -14,8 +15,8 @@ const ACTIONS_TO_INPUT_KEYS := {
 }
 
 
-func _init(character, is_additive: bool) -> void:
-    super("PLAYER", character, is_additive)
+func _init(p_character, p_is_additive: bool) -> void:
+    super("PLAYER", p_character, p_is_additive)
 
 
 # Calculates actions for the current frame.
@@ -28,8 +29,8 @@ func update(
         return
     for action in ACTIONS_TO_INPUT_KEYS:
         var input_key: String = ACTIONS_TO_INPUT_KEYS[action]
-        var is_pressed: bool = Sc.level_button_input.is_action_pressed(action)
-        if !Sc.level_button_input.is_key_pressed(KEY_CONTROL):
+        var is_pressed: bool = Input.is_action_pressed(action)
+        if !Input.is_key_pressed(KEY_CTRL):
             CharacterActionSource.update_for_explicit_key_event(
                     actions,
                     previous_actions,
@@ -41,6 +42,6 @@ func update(
 
 static func get_is_some_player_action_pressed() -> bool:
     for action in ACTIONS_TO_INPUT_KEYS:
-        if Sc.level_button_input.is_action_pressed(action):
+        if Input.is_action_pressed(action):
             return true
     return false

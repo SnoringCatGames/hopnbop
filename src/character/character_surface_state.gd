@@ -144,13 +144,16 @@ var horizontal_facing_sign := -1
 var horizontal_acceleration_sign := 0
 var toward_wall_sign := 0
 
-var surface_contacts: Array[KinematicCollision2DCopy] = []
+# Array<Collision>
+var collisions := []
 
-var attachment_contact: KinematicCollision2DCopy = null
-var floor_contact: KinematicCollision2DCopy = null
-var ceiling_contact: KinematicCollision2DCopy = null
-var left_wall_contact: KinematicCollision2DCopy = null
-var right_wall_contact: KinematicCollision2DCopy = null
+var surface_contacts: Array[Collision] = []
+
+var attachment_contact: Collision = null
+var floor_contact: Collision = null
+var ceiling_contact: Collision = null
+var left_wall_contact: Collision = null
+var right_wall_contact: Collision = null
 
 var contact_count: int:
     get: return surface_contacts.size()
@@ -160,6 +163,16 @@ var character: Character
 
 func _init(p_character: Character) -> void:
     self.character = p_character
+
+
+func record_collisions() -> void:
+    var new_collision_count := character.get_slide_collision_count()
+    var old_collision_count := collisions.size()
+    collisions.resize(old_collision_count + new_collision_count)
+
+    for i in new_collision_count:
+        collisions[old_collision_count + i] = \
+                Collision.new(character.get_slide_collision(i))
 
 
 # Updates surface-related state according to the character's recent movement
@@ -210,7 +223,7 @@ func _update_contacts() -> void:
     left_wall_contact = null
     right_wall_contact = null
     ceiling_contact = null
-    
+
     for collision in character.collisions:
         surface_contacts.append(collision)
         match collision.surface.side:
@@ -366,32 +379,32 @@ func _update_attachment_trigger_state() -> void:
     is_triggering_explicit_floor_attachment = \
         is_touching_floor and \
         is_pressing_floor_attachment_input and \
-        character.movement_params.can_attach_to_floors and \
+        character.movement_settings.can_attach_to_floors and \
         !just_pressed_jump
     is_triggering_explicit_ceiling_attachment = \
         is_touching_ceiling and \
         is_pressing_ceiling_attachment_input and \
-        character.movement_params.can_attach_to_ceilings and \
+        character.movement_settings.can_attach_to_ceilings and \
         !just_pressed_jump
     is_triggering_explicit_wall_attachment = \
         is_touching_wall and \
         is_pressing_wall_attachment_input and \
-        character.movement_params.can_attach_to_walls and \
+        character.movement_settings.can_attach_to_walls and \
         !just_pressed_jump
-    
+
     is_triggering_implicit_floor_attachment = \
         is_touching_floor and \
-        character.movement_params.can_attach_to_floors and \
+        character.movement_settings.can_attach_to_floors and \
         !just_pressed_jump
     is_triggering_implicit_ceiling_attachment = \
         is_touching_ceiling and \
         character.actions.pressed_attachment and \
-        character.movement_params.can_attach_to_ceilings and \
+        character.movement_settings.can_attach_to_ceilings and \
         !just_pressed_jump
     is_triggering_implicit_wall_attachment = \
         (is_touching_wall_and_pressing_up or \
         is_touching_wall_and_pressing_attachment) and \
-        character.movement_params.can_attach_to_walls and \
+        character.movement_settings.can_attach_to_walls and \
         !just_pressed_jump
 
     is_triggering_ceiling_release = \
@@ -579,12 +592,12 @@ func _update_attachment_state() -> void:
     # FIXME(OLD): ------- Add support for an ascend-through ceiling input.
     # Whether we should ascend-up through jump-through ceilings.
     is_ascending_through_ceilings = \
-        !character.movement_params.can_attach_to_ceilings or \
+        !character.movement_settings.can_attach_to_ceilings or \
         (!is_attaching_to_ceiling and true)
 
     # Whether we should fall through fall-through floors.
     is_attaching_to_walk_through_walls = \
-        character.movement_params.can_attach_to_walls and \
+        character.movement_settings.can_attach_to_walls and \
         (is_attaching_to_wall or \
                 character.actions.pressed_up)
 
@@ -595,7 +608,7 @@ func _update_attachment_contact() -> void:
     if is_attaching_to_surface:
         attachment_contact = _get_attachment_contact()
         assert(is_instance_valid(attachment_contact))
-        
+
         var next_attachment_position := attachment_contact.position
         var next_attachment_normal := attachment_contact.normal
 
@@ -627,7 +640,7 @@ func _update_attachment_contact() -> void:
         attachment_normal = Vector2.INF
 
 
-func _get_attachment_contact() -> KinematicCollision2DCopy:
+func _get_attachment_contact() -> Collision:
     for surface in surface_contacts:
         if surface.side == SurfaceSide.FLOOR and \
                 is_attaching_to_floor or \
@@ -700,7 +713,7 @@ func clear_current_state() -> void:
 
     surface_type = SurfaceType.AIR
 
-    did_move_last_frame = !G.geometry.are_points_equal_with_epsilon(
+    did_move_last_frame = !Geometry.are_points_equal_with_epsilon(
             previous_center_position,
             center_position,
             0.00001)
