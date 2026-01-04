@@ -4,9 +4,6 @@ extends RefCounted
 ## -   This is updated each physics frame.[br]
 
 
-# FIXME: LEFT OFF HERE: Adapt this (ditch most of the old state tracking, just rely on built-in is_on_foo(), and track input for grabs), then finish adapting character.gd, then test!
-
-
 var is_touching_floor: bool:
     get: return character.is_on_floor()
 var is_touching_ceiling: bool:
@@ -105,7 +102,7 @@ var is_triggering_fall_through := false
 var is_triggering_jump := false
 
 var is_descending_through_floors := false
-# FIXME: -------------------------------
+# FIXME(OLD): -------------------------------
 # - Add support for grabbing jump-through ceilings.
 #   - Not via a directional key.
 #   - Make this configurable for climb_adjacent_surfaces behavior.
@@ -579,7 +576,7 @@ func _update_attachment_state() -> void:
         _:
             push_error("CharacterSurfaceState._update_attachment_state")
 
-    # FIXME: ------- Add support for an ascend-through ceiling input.
+    # FIXME(OLD): ------- Add support for an ascend-through ceiling input.
     # Whether we should ascend-up through jump-through ceilings.
     is_ascending_through_ceilings = \
         !character.movement_params.can_attach_to_ceilings or \
