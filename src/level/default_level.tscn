@@ -1,9 +1,13 @@
-[gd_scene load_steps=3 format=3 uid="uid://bfl5qv8bb5apr"]
+[gd_scene load_steps=4 format=3 uid="uid://bfl5qv8bb5apr"]
 
 [ext_resource type="Script" uid="uid://bqj50lqds4nhs" path="res://src/level/level.gd" id="1_n1ky5"]
 [ext_resource type="PackedScene" uid="uid://bo0yvrajk0ktn" path="res://src/level/background.tscn" id="2_es1ad"]
+[ext_resource type="TileSet" uid="uid://mtwu14d78k40" path="res://src/level/default_tile_set.tres" id="3_es1ad"]
 
 [node name="DefaultLevel" type="Node2D"]
 script = ExtResource("1_n1ky5")
 
 [node name="Background" parent="." instance=ExtResource("2_es1ad")]
+
+[node name="TileMapLayer" type="TileMapLayer" parent="."]
+tile_set = ExtResource("3_es1ad")

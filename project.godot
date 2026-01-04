@@ -59,13 +59,13 @@ Beam={
 
 [layer_names]
 
-2d_physics/layer_1="player"
-2d_physics/layer_2="terrain"
-2d_physics/layer_3="enemy"
-2d_physics/layer_4="enemy_projectile"
-2d_physics/layer_5="enemy_light"
-2d_physics/layer_6="enemy_vision"
-2d_physics/layer_7="player_beam"
+2d_physics/layer_1="normal_surfaces"
+2d_physics/layer_2="fall_through_floors"
+2d_physics/layer_3="walk_through_walls"
+2d_physics/layer_4="player"
+2d_physics/layer_5="enemy"
+2d_physics/layer_6="player_projectile"
+2d_physics/layer_7="enemy_projectile"
 
 [rendering]
 
