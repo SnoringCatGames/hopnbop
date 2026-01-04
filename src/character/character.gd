@@ -6,6 +6,8 @@ extends CharacterBody2D
 
 
 const _MAX_SLIDES_DEFAULT := 4
+# 45 degrees
+const _MAX_FLOOR_ANGLE = PI / 4.0
 const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 const _WALLS_AND_FLOORS_COLLISION_MASK_BIT := 0
 const _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT := 1
@@ -198,7 +200,7 @@ func _maintain_preexisting_collisions() -> void:
 
 
 func _record_collisions() -> void:
-    var new_collision_count := get_slide_count()
+    var new_collision_count := get_slide_collision_count()
     var old_collision_count := collisions.size()
     collisions.resize(old_collision_count + new_collision_count)
 
