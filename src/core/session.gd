@@ -6,8 +6,8 @@ var is_game_ended := true
 
 
 func _init() -> void:
-	reset()
+    reset()
 
 
 func reset() -> void:
-	is_game_ended = true
+    is_game_ended = true

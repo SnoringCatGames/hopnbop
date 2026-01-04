@@ -2,6 +2,7 @@ class_name Character
 extends CharacterBody2D
 
 
+# FIXME: LEFT OFF HERE: Make sure this aligns with project settings (now, by hand, and add logic to check at runtime)
 const _WALLS_AND_FLOORS_COLLISION_MASK_BIT := 0
 const _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT := 1
 const _WALK_THROUGH_WALLS_COLLISION_MASK_BIT := 2
