@@ -39,11 +39,11 @@ func _init(original: KinematicCollision2D = null) -> void:
         self.is_tilemap_collision = collider is TileMapLayer
 
         if is_tilemap_collision:
-            if abs(normal.angle_to(Vector2.UP)) <= Character._MAX_FLOOR_ANGLE:
+            if abs(normal.angle_to(Vector2.UP)) <= MovementSettings._MAX_FLOOR_ANGLE:
                 side = SurfaceSide.FLOOR
-            elif abs(normal.angle_to(Vector2.DOWN)) <= Character._MAX_FLOOR_ANGLE:
+            elif abs(normal.angle_to(Vector2.DOWN)) <= MovementSettings._MAX_FLOOR_ANGLE:
                 side = SurfaceSide.CEILING
-            elif abs(normal.angle_to(Vector2.LEFT)) <= PI / 2 - Character._MAX_FLOOR_ANGLE:
+            elif abs(normal.angle_to(Vector2.LEFT)) <= PI / 2 - MovementSettings._MAX_FLOOR_ANGLE:
                 side = SurfaceSide.RIGHT_WALL
             else:
                 side = SurfaceSide.LEFT_WALL

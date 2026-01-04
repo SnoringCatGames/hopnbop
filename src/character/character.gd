@@ -2,13 +2,6 @@ class_name Character
 extends CharacterBody2D
 
 
-# FIXME: LEFT OFF HERE: ----------------------
-
-
-const _MAX_SLIDES_DEFAULT := 4
-# 45 degrees
-const _MAX_FLOOR_ANGLE = PI / 4.0
-const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 const _WALLS_AND_FLOORS_COLLISION_MASK_BIT := 0
 const _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT := 1
 const _WALK_THROUGH_WALLS_COLLISION_MASK_BIT := 2
@@ -78,7 +71,7 @@ func _ready() -> void:
     # For move_and_slide.
     up_direction = Vector2.UP
     floor_stop_on_slope = false
-    max_slides = _MAX_SLIDES_DEFAULT
+    max_slides = MovementSettings._MAX_SLIDES_DEFAULT
     floor_max_angle = G.geometry.FLOOR_MAX_ANGLE + G.geometry.WALL_ANGLE_EPSILON
 
 
@@ -145,7 +138,7 @@ func _apply_movement() -> void:
     var modified_velocity: Vector2 = base_velocity * G.time.get_combined_scale()
 
     velocity = modified_velocity
-    max_slides = _MAX_SLIDES_DEFAULT
+    max_slides = MovementSettings._MAX_SLIDES_DEFAULT
     move_and_slide()
 
     surface_state.record_collisions()
@@ -169,7 +162,7 @@ func _maintain_preexisting_collisions() -> void:
     var normal := surface_state.attachment_normal
 
     var maintain_collision_velocity: Vector2 = \
-            _STRONG_SPEED_TO_MAINTAIN_COLLISION * -normal
+            MovementSettings._STRONG_SPEED_TO_MAINTAIN_COLLISION * -normal
 
     max_slides = 1
 
@@ -179,7 +172,7 @@ func _maintain_preexisting_collisions() -> void:
             !surface_state.is_triggering_wall_release and \
             !surface_state.is_pressing_away_from_wall:
         maintain_collision_velocity.x = \
-                _STRONG_SPEED_TO_MAINTAIN_COLLISION * \
+                MovementSettings._STRONG_SPEED_TO_MAINTAIN_COLLISION * \
                 surface_state.toward_wall_sign
         max_slides = 2
 

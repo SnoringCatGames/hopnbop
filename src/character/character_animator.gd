@@ -2,7 +2,7 @@ class_name CharacterAnimator
 extends Node2D
 
 
-# FIXME
+# FIXME: LEFT OFF HERE: ----------------------
 
 
 func _destroy() -> void:
