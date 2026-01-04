@@ -1,8 +1,8 @@
 [gd_scene load_steps=5 format=3 uid="uid://cn6hdqmmufnvr"]
 
-[ext_resource type="Script" uid="uid://ctdjb8phvmc71" path="res://src/character/character.gd" id="1_rxibo"]
-[ext_resource type="Resource" uid="uid://dq1d4nuh248j2" path="res://src/character/default_movement_settings.tres" id="2_ohd16"]
-[ext_resource type="PackedScene" uid="uid://br1b7cse0hxmt" path="res://src/character/player_animator.tscn" id="3_ohd16"]
+[ext_resource type="Script" uid="uid://ctdjb8phvmc71" path="res://src/scaffolder/character/character.gd" id="1_rxibo"]
+[ext_resource type="Resource" uid="uid://dq1d4nuh248j2" path="res://src/player/default_movement_settings.tres" id="2_ohd16"]
+[ext_resource type="PackedScene" uid="uid://br1b7cse0hxmt" path="res://src/player/player_animator.tscn" id="3_ohd16"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_rxibo"]
 radius = 6.0

@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3 uid="uid://br1b7cse0hxmt"]
 
 [ext_resource type="Texture2D" uid="uid://bsrqq2id8rpl8" path="res://assets/images/bunny.png" id="1_biyea"]
-[ext_resource type="Script" uid="uid://b50tfbt5wsthb" path="res://src/character/character_animator.gd" id="1_eeopx"]
+[ext_resource type="Script" uid="uid://b50tfbt5wsthb" path="res://src/scaffolder/character/character_animator.gd" id="1_eeopx"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_mf2ua"]
 atlas = ExtResource("1_biyea")
