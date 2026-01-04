@@ -11,5 +11,5 @@ func on_open() -> void:
 
 
 func _on_button_pressed() -> void:
-    G.main.play_click_sound()
+    G.audio.play_click_sound()
     G.screens.open_screen(ScreensMain.ScreenType.MAIN_MENU)

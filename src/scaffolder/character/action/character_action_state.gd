@@ -24,9 +24,9 @@ var pressed_right := false
 var just_pressed_right := false
 var just_released_right := false
 
-var pressed_grab := false
-var just_pressed_grab := false
-var just_released_grab_wall := false
+var pressed_attach := false
+var just_pressed_attach := false
+var just_released_attach_to_wall := false
 
 var pressed_face_left := false
 var just_pressed_face_left := false
@@ -62,9 +62,9 @@ func clear() -> void:
     self.just_pressed_right = false
     self.just_released_right = false
 
-    self.pressed_grab = false
-    self.just_pressed_grab = false
-    self.just_released_grab_wall = false
+    self.pressed_attach = false
+    self.just_pressed_attach = false
+    self.just_released_attach_to_wall = false
 
     self.pressed_face_left = false
     self.just_pressed_face_left = false
@@ -100,9 +100,9 @@ func copy(other: CharacterActionState) -> void:
     self.just_pressed_right = other.just_pressed_right
     self.just_released_right = other.just_released_right
 
-    self.pressed_grab = other.pressed_grab
-    self.just_pressed_grab = other.just_pressed_grab
-    self.just_released_grab_wall = other.just_released_grab_wall
+    self.pressed_attach = other.pressed_attach
+    self.just_pressed_attach = other.just_pressed_attach
+    self.just_released_attach_to_wall = other.just_released_attach_to_wall
 
     self.pressed_face_left = other.pressed_face_left
     self.just_pressed_face_left = other.just_pressed_face_left
@@ -143,9 +143,9 @@ func log_new_presses_and_releases(character) -> void:
             just_released_right)
     _log_new_press_or_release(
             character,
-            "grab",
-            just_pressed_grab,
-            just_released_grab_wall)
+            "attach",
+            just_pressed_attach,
+            just_released_attach_to_wall)
     _log_new_press_or_release(
             character,
             "faceL",
@@ -179,7 +179,7 @@ func _log_new_press_or_release(
         current_presses_strs.push_back("L")
     if pressed_right:
         current_presses_strs.push_back("R")
-    if pressed_grab:
+    if pressed_attach:
         current_presses_strs.push_back("G")
     if pressed_face_left:
         current_presses_strs.push_back("FL")

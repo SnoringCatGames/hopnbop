@@ -35,6 +35,12 @@ func open_screen(screen_type: ScreenType) -> void:
     if ends_game:
         G.game_panel.end_game()
 
+    var starts_game := (
+        screen_type == ScreenType.GAME and
+        G.session.is_game_ended)
+    if starts_game:
+        G.game_panel.start_game()
+
     var plays_menu_theme := [
         ScreenType.MAIN_MENU,
         ScreenType.GAME_OVER,

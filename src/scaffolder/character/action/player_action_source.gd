@@ -9,7 +9,7 @@ const ACTIONS_TO_INPUT_KEYS := {
   "move_down": "md",
   "move_left": "ml",
   "move_right": "mr",
-  "grab": "g",
+  "attach": "g",
   "face_left": "fl",
   "face_right": "fr",
 }

@@ -28,10 +28,10 @@ func process(character) -> bool:
     # If we just fell off the bottom of a wall, cancel any velocity toward that
     # wall.
     if character.surface_state.just_entered_air and \
-            ((character.surface_state.previous_grabbed_surface.side == \
+            ((character.surface_state.previous_attachment_side == \
                     SurfaceSide.LEFT_WALL and \
                     character.velocity.x < 0.0) or \
-            (character.surface_state.previous_grabbed_surface.side == \
+            (character.surface_state.previous_attachment_side == \
                     SurfaceSide.RIGHT_WALL and \
                     character.velocity.x > 0.0)):
         character.velocity.x = 0.0
@@ -46,7 +46,7 @@ func process(character) -> bool:
 
     # Bouncing off ceiling.
     if character.surface_state.is_touching_ceiling and \
-            !character.surface_state.is_grabbing_ceiling:
+            !character.surface_state.is_attaching_to_ceiling:
         character.is_rising_from_jump = false
         character.velocity.y = BOUNCE_OFF_CEILING_VELOCITY
 

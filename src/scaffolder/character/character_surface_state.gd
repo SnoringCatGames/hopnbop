@@ -124,17 +124,15 @@ var is_attaching_to_walk_through_walls := false
 
 var surface_type := SurfaceType.AIR
 
-var center_position := Vector2.INF
-var previous_center_position := Vector2.INF
 var did_move_last_frame := false
 var did_move_frame_before_last := false
 
 var attachment_position := Vector2.INF
 var attachment_normal := Vector2.INF
+var attachment_side := SurfaceSide.NONE
 var previous_attachment_position := Vector2.INF
 var previous_attachment_normal := Vector2.INF
-
-var velocity := Vector2.ZERO
+var previous_attachment_side := SurfaceSide.NONE
 
 var just_changed_attachment_position := false
 var just_entered_air := false
@@ -143,6 +141,9 @@ var just_left_air := false
 var horizontal_facing_sign := -1
 var horizontal_acceleration_sign := 0
 var toward_wall_sign := 0
+
+# TODO: Do something with this.
+var surface_properties: SurfaceProperties = SurfaceProperties.new()
 
 # Array<Collision>
 var collisions := []
@@ -178,12 +179,9 @@ func record_collisions() -> void:
 # Updates surface-related state according to the character's recent movement
 # and the environment of the current frame.
 func update() -> void:
-    velocity = character.velocity
-    previous_center_position = center_position
-    center_position = character.position
     did_move_frame_before_last = did_move_last_frame
     did_move_last_frame = !Geometry.are_points_equal_with_epsilon(
-        previous_center_position, center_position, 0.00001)
+        character.previous_position, character.position, 0.00001)
 
     _update_contacts()
     _update_touch_state()
@@ -224,7 +222,7 @@ func _update_contacts() -> void:
     right_wall_contact = null
     ceiling_contact = null
 
-    for collision in character.collisions:
+    for collision in collisions:
         surface_contacts.append(collision)
         match collision.surface.side:
             SurfaceSide.FLOOR:
@@ -347,7 +345,7 @@ func _update_attachment_trigger_state() -> void:
         character.actions.pressed_up and \
         is_touching_wall
     var is_touching_wall_and_pressing_attachment: bool = \
-        character.actions.pressed_attachment and \
+        character.actions.pressed_attach and \
         is_touching_wall
 
     var just_pressed_jump: bool = \
@@ -366,7 +364,7 @@ func _update_attachment_trigger_state() -> void:
     var is_pressing_ceiling_release_input: bool = \
         character.actions.pressed_down and \
         !character.actions.pressed_up and \
-        !character.actions.pressed_attachment or \
+        !character.actions.pressed_attach or \
         just_pressed_jump
     var is_pressing_wall_release_input := \
         is_pressing_away_from_wall and \
@@ -398,7 +396,7 @@ func _update_attachment_trigger_state() -> void:
         !just_pressed_jump
     is_triggering_implicit_ceiling_attachment = \
         is_touching_ceiling and \
-        character.actions.pressed_attachment and \
+        character.actions.pressed_attach and \
         character.movement_settings.can_attach_to_ceilings and \
         !just_pressed_jump
     is_triggering_implicit_wall_attachment = \
@@ -611,6 +609,7 @@ func _update_attachment_contact() -> void:
 
         var next_attachment_position := attachment_contact.position
         var next_attachment_normal := attachment_contact.normal
+        var next_attachment_side := attachment_contact.side
 
         just_changed_attachment_position = \
             just_left_air or \
@@ -620,8 +619,10 @@ func _update_attachment_contact() -> void:
                 attachment_position != Vector2.INF:
             previous_attachment_position = attachment_position
             previous_attachment_normal = attachment_normal
+            previous_attachment_side = attachment_side
         attachment_position = next_attachment_position
         attachment_normal = next_attachment_normal
+        attachment_side = next_attachment_side
 
     else:
         if just_entered_air:
@@ -634,10 +635,15 @@ func _update_attachment_contact() -> void:
                     attachment_normal if \
                     attachment_normal != Vector2.INF else \
                     previous_attachment_normal
+            previous_attachment_side = \
+                    attachment_side if \
+                    attachment_side != SurfaceSide.NONE else \
+                    previous_attachment_side
 
         attachment_contact = null
         attachment_position = Vector2.INF
         attachment_normal = Vector2.INF
+        attachment_side = SurfaceSide.NONE
 
 
 func _get_attachment_contact() -> Collision:
@@ -656,10 +662,10 @@ func _get_attachment_contact() -> Collision:
 
 func clear_current_state() -> void:
     # Let these properties be updated in the normal way:
-    # -   previous_center_position
     # -   did_move_frame_before_last
     # -   previous_attachment_position
     # -   previous_attachment_normal
+    # -   previous_attachment_side
     is_touching_floor = false
     is_touching_ceiling = false
     is_touching_left_wall = false
@@ -714,11 +720,10 @@ func clear_current_state() -> void:
     surface_type = SurfaceType.AIR
 
     did_move_last_frame = !Geometry.are_points_equal_with_epsilon(
-            previous_center_position,
-            center_position,
-            0.00001)
+            character.previous_position, character.position, 0.00001)
     attachment_position = Vector2.INF
     attachment_normal = Vector2.INF
+    attachment_side = SurfaceSide.NONE
 
     just_changed_attachment_position = false
     just_entered_air = false
@@ -736,3 +741,38 @@ func clear_current_state() -> void:
     right_wall_contact = null
 
     contact_count = 0
+
+
+func force_boost() -> void:
+    var was_touching_floor := is_touching_floor
+    var was_touching_ceiling := is_touching_ceiling
+    var was_touching_left_wall := is_touching_left_wall
+    var was_touching_right_wall := is_touching_right_wall
+
+    var was_attaching_to_floor := is_attaching_to_floor
+    var was_attaching_to_ceiling := is_attaching_to_ceiling
+    var was_attaching_to_left_wall := is_attaching_to_left_wall
+    var was_attaching_to_right_wall := is_attaching_to_right_wall
+
+    var was_attaching_to_surface := is_attaching_to_surface
+    var previous_horizontal_facing_sign := horizontal_facing_sign
+
+    clear_current_state()
+
+    surface_type = SurfaceType.AIR
+
+    horizontal_facing_sign = previous_horizontal_facing_sign
+
+    just_stopped_touching_floor = was_touching_floor
+    just_stopped_touching_ceiling = was_touching_ceiling
+    just_stopped_touching_left_wall = was_touching_left_wall
+    just_stopped_touching_right_wall = was_touching_right_wall
+
+    just_stopped_attaching_to_floor = was_attaching_to_floor
+    just_stopped_attaching_to_ceiling = was_attaching_to_ceiling
+    just_stopped_attaching_to_left_wall = was_attaching_to_left_wall
+    just_stopped_attaching_to_right_wall = was_attaching_to_right_wall
+
+    if was_attaching_to_surface:
+        just_entered_air = true
+        just_changed_attachment_position = true

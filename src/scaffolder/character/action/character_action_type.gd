@@ -13,8 +13,8 @@ enum {
     RELEASED_LEFT,
     PRESSED_RIGHT,
     RELEASED_RIGHT,
-    PRESSED_GRAB_WALL,
-    RELEASED_GRAB_WALL,
+    PRESSED_ATTACHING_TO_WALL,
+    RELEASED_ATTACHING_TO_WALL,
     PRESSED_FACE_LEFT,
     RELEASED_FACE_LEFT,
     PRESSED_FACE_RIGHT,
@@ -46,10 +46,10 @@ static func get_string(type: int) -> String:
             return "PRESSED_RIGHT"
         RELEASED_RIGHT:
             return "RELEASED_RIGHT"
-        PRESSED_GRAB_WALL:
-            return "PRESSED_GRAB_WALL"
-        RELEASED_GRAB_WALL:
-            return "RELEASED_GRAB_WALL"
+        PRESSED_ATTACHING_TO_WALL:
+            return "PRESSED_ATTACHING_TO_WALL"
+        RELEASED_ATTACHING_TO_WALL:
+            return "RELEASED_ATTACHING_TO_WALL"
         PRESSED_FACE_LEFT:
             return "PRESSED_FACE_LEFT"
         RELEASED_FACE_LEFT:

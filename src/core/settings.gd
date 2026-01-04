@@ -18,3 +18,6 @@ extends Resource
 # --- Game-specific configuration ---
 
 @export var default_gravity_acceleration := 5000.0
+
+@export var player_scene: PackedScene
+@export var default_level_scene: PackedScene

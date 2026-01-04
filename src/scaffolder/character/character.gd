@@ -24,6 +24,8 @@ var total_time := INF
 
 var _is_destroyed := false
 
+var is_player_control_active := true
+
 var just_triggered_jump := false
 var is_rising_from_jump := false
 var jump_count := 0
@@ -58,9 +60,6 @@ func _ready() -> void:
     total_time = 0.0
 
     start_position = position
-
-    surface_state.previous_center_position = self.position
-    surface_state.center_position = self.position
 
     # Start facing right.
     surface_state.horizontal_facing_sign = 1
@@ -109,7 +108,7 @@ func _physics_process(delta: float) -> void:
 
     _update_actions(delta_scaled)
     surface_state.clear_just_changed_state()
-    _update_surface_state()
+    surface_state.update()
 
     actions.log_new_presses_and_releases(self)
 
@@ -150,13 +149,13 @@ func _apply_movement() -> void:
 # -   If we just zero this out, move_and_slide will produce false-negatives for
 #     collisions.
 func _maintain_preexisting_collisions() -> void:
-    if !surface_state.is_grabbing_surface or \
+    if !surface_state.is_attaching_to_surface or \
             (surface_state.is_triggering_wall_release and \
-            surface_state.is_grabbing_wall) or \
+            surface_state.is_attaching_to_wall) or \
             (surface_state.is_triggering_ceiling_release and \
-            surface_state.is_grabbing_ceiling) or \
+            surface_state.is_attaching_to_ceiling) or \
             (surface_state.is_triggering_fall_through and \
-            surface_state.is_grabbing_floor) or \
+            surface_state.is_attaching_to_floor) or \
             actions.just_pressed_jump:
         return
 
@@ -168,7 +167,7 @@ func _maintain_preexisting_collisions() -> void:
     max_slides = 1
 
     # Also maintain wall collisions.
-    if !surface_state.is_grabbing_wall and \
+    if !surface_state.is_attaching_to_wall and \
             surface_state.is_touching_wall and \
             !surface_state.is_triggering_wall_release and \
             !surface_state.is_pressing_away_from_wall:
@@ -287,38 +286,6 @@ func processed_action(p_name: String) -> bool:
     return _previous_actions_handlers_this_frame.get(p_name) == true
 
 
-func _update_surface_state() -> void:
-    surface_state.update()
-
-    #if surface_state.just_entered_air:
-        #print("Released",
-                #"grab_p=%s, %s" % [
-                    #G.utils.get_vector_string(surface_state.grab_position, 1),
-                    #surface_state.previous_grabbed_surface.to_string(false),
-                #],
-                #false)
-    #elif surface_state.just_changed_surface:
-        #print("Grabbed",
-                #"grab_p=%s, %s" % [
-                    #G.utils.get_vector_string(surface_state.grab_position, 1),
-                    #surface_state.grabbed_surface.to_string(false),
-                #],
-                #false)
-    #elif surface_state.just_touched_surface:
-        #var side_prefixes := []
-        #if surface_state.is_touching_floor:
-            #side_prefixes.push_back("F")
-        #elif surface_state.is_touching_ceiling:
-            #side_prefixes.push_back("C")
-        #elif surface_state.is_touching_left_wall:
-            #side_prefixes.push_back("LW")
-        #elif surface_state.is_touching_right_wall:
-            #side_prefixes.push_back("RW")
-        #print("Touched",
-                #"side=%s" % G.utils.join(side_prefixes),
-                #false)
-
-
 # Update whether or not we should currently consider collisions with
 # fall-through floors and walk-through walls.
 func _update_collision_mask() -> void:
@@ -332,27 +299,22 @@ func _update_collision_mask() -> void:
                     base_velocity.y < 0)
     set_collision_mask_value(
             _WALK_THROUGH_WALLS_COLLISION_MASK_BIT,
-            surface_state.is_grabbing_walk_through_walls)
+            surface_state.is_attaching_to_walk_through_walls)
 
 
 func force_boost(boost: Vector2) -> void:
-    surface_state.clear_current_state()
-
     base_velocity = boost
-    surface_state.velocity = base_velocity
 
     position += Vector2(0.0, -1.0)
-    surface_state.center_position = position
-    surface_state.center_position_along_surface \
-            .match_current_grab(null, position)
+    surface_state.force_boost()
 
 
 func _get_current_surface_max_horizontal_speed() -> float:
     return movement_settings.max_horizontal_speed_default * \
             movement_settings.surface_speed_multiplier * \
             _current_max_horizontal_speed_multiplier * \
-            (surface_state.grabbed_surface.properties.speed_multiplier if \
-            surface_state.is_grabbing_surface else \
+            (surface_state.surface_properties.speed_multiplier if \
+            surface_state.is_attaching_to_surface else \
             1.0)
 
 
@@ -364,29 +326,29 @@ func _get_current_air_max_horizontal_speed() -> float:
 
 func _get_current_walk_acceleration() -> float:
     return movement_settings.walk_acceleration * \
-            (surface_state.grabbed_surface.properties.speed_multiplier if \
-            surface_state.is_grabbing_surface else \
+            (surface_state.surface_properties.speed_multiplier if \
+            surface_state.is_attaching_to_surface else \
             1.0)
 
 
 func _get_current_climb_up_speed() -> float:
     return movement_settings.climb_up_speed * \
-            (surface_state.grabbed_surface.properties.speed_multiplier if \
-            surface_state.is_grabbing_surface else \
+            (surface_state.surface_properties.speed_multiplier if \
+            surface_state.is_attaching_to_surface else \
             1.0)
 
 
 func _get_current_climb_down_speed() -> float:
     return movement_settings.climb_down_speed * \
-            (surface_state.grabbed_surface.properties.speed_multiplier if \
-            surface_state.is_grabbing_surface else \
+            (surface_state.surface_properties.speed_multiplier if \
+            surface_state.is_attaching_to_surface else \
             1.0)
 
 
 func _get_current_ceiling_crawl_speed() -> float:
     return movement_settings.ceiling_crawl_speed * \
-            (surface_state.grabbed_surface.properties.speed_multiplier if \
-            surface_state.is_grabbing_surface else \
+            (surface_state.surface_properties.speed_multiplier if \
+            surface_state.is_attaching_to_surface else \
             1.0)
 
 

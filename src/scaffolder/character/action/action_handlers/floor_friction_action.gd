@@ -9,7 +9,7 @@ const PRIORITY := 250
 
 
 func _init() -> void:
-    super(
+    super (
         NAME,
         TYPE,
         USES_RUNTIME_PHYSICS,
@@ -24,9 +24,9 @@ func process(character) -> bool:
         var speed_sign := signf(character.velocity.x)
         var is_character_pressing_move := acceleration_sign != 0.0
         var friction_multiplier: float = \
-                character.surface_state.grabbed_surface.properties \
+                character.surface_state.surface_properties \
                     .friction_multiplier if \
-                character.surface_state.is_grabbing_surface else \
+                character.surface_state.is_attaching_to_surface else \
                 1.0
 
         if is_character_pressing_move:
