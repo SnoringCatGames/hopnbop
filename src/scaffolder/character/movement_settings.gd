@@ -128,3 +128,10 @@ func set_up() -> void:
     action_handlers.clear()
     for type in action_handler_types:
         action_handlers.append(DEFAULT_ACTION_HANDLER_CLASSES[type].new())
+    action_handlers.sort_custom(_compare_character_action_handler)
+
+
+static func _compare_character_action_handler(
+        a: CharacterActionHandler,
+        b: CharacterActionHandler) -> bool:
+    return a.priority < b.priority

@@ -18,10 +18,10 @@ animations = [{
 "speed": 5.0
 }]
 
-[node name="PlayerAnimator" type="Node2D"]
+[node name="PlayerAnimator" type="Node2D" node_paths=PackedStringArray("animated_sprite")]
 script = ExtResource("1_eeopx")
+animated_sprite = NodePath("AnimatedSprite2D")
 metadata/_custom_type_script = "uid://b50tfbt5wsthb"
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
-unique_name_in_owner = true
 sprite_frames = SubResource("SpriteFrames_eeopx")

@@ -2,20 +2,17 @@ class_name CharacterAnimator
 extends Node2D
 
 
-# FIXME: LEFT OFF HERE: ----------------------
-
-
-func _destroy() -> void:
-    pass
+@export var faces_right_by_default := true
+@export var animated_sprite: AnimatedSprite2D = null
 
 
 func face_left() -> void:
-    pass
+    animated_sprite.flip_h = faces_right_by_default
 
 
 func face_right() -> void:
-    pass
+    animated_sprite.flip_h = not faces_right_by_default
 
 
 func play(animation_name: String) -> void:
-    pass
+    animated_sprite.play(animation_name)

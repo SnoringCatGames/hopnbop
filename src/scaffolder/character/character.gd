@@ -2,10 +2,11 @@ class_name Character
 extends CharacterBody2D
 
 
-# FIXME: LEFT OFF HERE: In the middle of these bitmasks AND setting up the tileset physics
-
-
-# FIXME: LEFT OFF HERE: Make sure this aligns with project settings (now, by hand, and add logic to check at runtime)
+# FIXME: LEFT OFF HERE:
+# - Configure input actions with project settings.
+#   - Add runtime checks to ensure they are there.
+#   - Add runtime checks to ensure physics layers have the exact matching string names for the first three tilemap surface bits.
+# - Test and debug all movement.
 const _NORMAL_SURFACES_COLLISION_MASK_BIT := 0
 const _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT := 1
 const _WALK_THROUGH_WALLS_COLLISION_MASK_BIT := 2
@@ -24,8 +25,6 @@ var total_distance_traveled := INF
 var start_time := INF
 var previous_total_time := INF
 var total_time := INF
-
-var _is_destroyed := false
 
 var is_player_control_active := true
 
@@ -78,14 +77,6 @@ func _ready() -> void:
     floor_max_angle = G.geometry.FLOOR_MAX_ANGLE + G.geometry.WALL_ANGLE_EPSILON
 
 
-func _destroy() -> void:
-    _is_destroyed = true
-    if is_instance_valid(animator):
-        animator._destroy()
-    if !is_queued_for_deletion():
-        queue_free()
-
-
 func _init_player_controller_action_source() -> void:
     assert(!is_instance_valid(_character_action_source))
     self._character_action_source = PlayerActionSource.new(self, true)
@@ -93,10 +84,6 @@ func _init_player_controller_action_source() -> void:
 
 
 func _physics_process(delta: float) -> void:
-    if !is_node_ready() or \
-            _is_destroyed:
-        return
-
     var delta_scaled: float = G.time.scale_delta(delta)
 
     previous_total_time = total_time
