@@ -198,12 +198,6 @@ func _log_new_press_or_release(
     ]
 
     if just_pressed:
-        print(
-                "START %5s" % action_name,
-                details,
-                false)
+        G.log.print("START %5s: %s" % [action_name, details])
     if just_released:
-        print(
-                "STOP  %5s" % action_name,
-                details,
-                false)
+        G.log.print("STOP  %5s: %s" % [action_name, details])

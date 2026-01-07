@@ -20,7 +20,7 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
-    print("main._ready")
+    G.log.print("main._ready")
 
     randomize()
 
@@ -70,7 +70,7 @@ func _unhandled_input(event: InputEvent) -> void:
                 KEY_O:
                     if is_instance_valid(G.hud):
                         G.hud.visible = not G.hud.visible
-                        print(
+                        G.log.print(
                             "Toggled HUD visibility: %s" %
                             ("visible" if G.hud.visible else "hidden"))
                 KEY_ESCAPE:
@@ -83,5 +83,5 @@ func _unhandled_input(event: InputEvent) -> void:
 func close_app() -> void:
     if G.utils.were_screenshots_taken:
         G.utils.open_screenshot_folder()
-    print("Shell.close_app")
+    G.log.print("Shell.close_app")
     get_tree().call_deferred("quit")

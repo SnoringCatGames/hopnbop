@@ -1,9 +1,11 @@
 # class_name G
 extends Node
+## Add global state here for easy access.
 
-# Add global state here for easy access.
 
 var time := ScaffolderTime.new()
+@warning_ignore("shadowed_global_identifier")
+var log := ScaffolderLog.new()
 var utils := Utils.new()
 var geometry := Geometry.new()
 
@@ -21,7 +23,16 @@ var pause_screen: PauseScreen
 var game_panel: GamePanel
 var session: Session
 
+
 func _enter_tree() -> void:
+    time.name = "Time"
     add_child(time)
+    
+    log.name = "Log"
+    add_child(log)
+    
+    utils.name = "Utils"
     add_child(utils)
+    
+    geometry.name = "Geometry"
     add_child(geometry)

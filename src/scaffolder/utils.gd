@@ -454,13 +454,13 @@ func take_screenshot() -> void:
     if status != OK:
         G.utils.ensure(false, "Utils.take_screenshot")
     else:
-        print("Took a screenshot: %s" % path)
+        G.log.print("Took a screenshot: %s" % path)
         were_screenshots_taken = true
 
 
 func open_screenshot_folder() -> void:
     var path := OS.get_user_data_dir() + "/screenshots"
-    print("Opening screenshot folder: " + path)
+    G.log.print("Opening screenshot folder: " + path)
     OS.shell_open(path)
 
 

@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://bpnl5pn3ydite"]
+[gd_scene load_steps=8 format=3 uid="uid://bpnl5pn3ydite"]
 
 [ext_resource type="Script" uid="uid://cb3gdybtwy0ry" path="res://src/core/main.gd" id="1_avv2o"]
 [ext_resource type="Resource" uid="uid://dv60bmaw1pdx6" path="res://settings.tres" id="2_ivtyw"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://diqnxd2kabxfk" path="res://src/core/audio_main.tscn" id="3_nlf45"]
 [ext_resource type="PackedScene" uid="uid://luccssf71n0" path="res://src/core/game_panel.tscn" id="3_x62ka"]
 [ext_resource type="PackedScene" uid="uid://dlvy2ayb4r382" path="res://src/core/screens_main.tscn" id="6_q2b63"]
+[ext_resource type="PackedScene" uid="uid://bvkt5maj64yqm" path="res://src/ui/super_hud/super_hud.tscn" id="7_nxx65"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_avv2o")
@@ -27,4 +28,6 @@ layer = 200
 [node name="Hud" parent="Hud" instance=ExtResource("2_ukt3u")]
 
 [node name="SuperHud" type="CanvasLayer" parent="."]
-layer = 200
+layer = 300
+
+[node name="SuperHud" parent="SuperHud" instance=ExtResource("7_nxx65")]

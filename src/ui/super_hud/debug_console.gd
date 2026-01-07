@@ -2,11 +2,9 @@ class_name DebugConsole
 extends PanelContainer
 
 
-const FONT_COLOR := Color("c5ff5e")
-const CORNER_OFFSET := Vector2(0.0, 0.0)
-const MESSAGE_COUNT_LIMIT := 500
+@export var font_color := Color("c5ff5e")
+@export var message_count_limit := 500
 
-var _is_ready := false
 var text := ""
 var _message_count := 0
 
@@ -14,82 +12,54 @@ var _message_count := 0
 func _ready() -> void:
     _log_print_queue()
     
-    $PanelContainer/ScrollContainer/Label.add_color_override(
-            "font_color", FONT_COLOR)
-    $PanelContainer/ScaffolderTime.add_color_override("font_color", FONT_COLOR)
+    %ConcatenatedLogs.add_theme_color_override("font_color", font_color)
+    %Time.add_theme_color_override("font_color", font_color)
     
-    Sc.time.set_timeout(self, "_delayed_init", 0.8)
+    G.time.set_timeout(_delayed_init, 0.8)
     
-    Sc.device.connect(
-            "display_resized",
-            self,
-            "_on_resized")
-    _on_resized()
+    G.log.is_queuing_messages = false
 
 
 func _process(_delta: float) -> void:
-    if Engine.editor_hint:
-        return
-    
-    $PanelContainer/ScaffolderTime.text = Sc.utils.get_time_string_from_seconds(
-            Sc.time.get_app_time(),
+    %Time.text = Utils.get_time_string_from_seconds(
+            G.time.get_app_time(),
             false,
             false,
             true) + " "
 
 
-func _on_resized() -> void:
-    var viewport_size: Vector2 = Sc.device.get_viewport_size()
-    $PanelContainer/ScrollContainer.rect_min_size = viewport_size
-    $PanelContainer/ScrollContainer/Label.rect_min_size.x = viewport_size.x
-
-
 func _delayed_init() -> void:
-    $PanelContainer/ScrollContainer/Label.text = text
-    Sc.time.set_timeout(self, "_scroll_to_bottom", 0.2)
+    _set_concatenated_logs(text)
 
 
 func add_message(message: String) -> void:
     text += "> " + message + "\n"
     _message_count += 1
     _remove_surplus_message()
-    if _is_ready:
-        $PanelContainer/ScrollContainer/Label.text = text
-        Sc.time.set_timeout(self, "_scroll_to_bottom", 0.2)
+    _set_concatenated_logs(text + "> " + message + "\n")
+
+
+func _set_concatenated_logs(p_text: String) -> void:
+    text = p_text
+    if not is_node_ready():
+        return
+    %ConcatenatedLogs.text = text
+    G.time.set_timeout(_scroll_to_bottom, 0.2)
 
 
 func _remove_surplus_message() -> void:
     # Remove the oldest message.
-    if _message_count > MESSAGE_COUNT_LIMIT:
+    if _message_count > message_count_limit:
         var index := text.find("\n> ")
         text = text.substr(index + 1)
 
 
 func _scroll_to_bottom() -> void:
-    $PanelContainer/ScrollContainer.scroll_vertical = \
-            $PanelContainer/ScrollContainer.get_v_scrollbar().max_value
+    %ScrollContainer.scroll_vertical = \
+            %ScrollContainer.get_v_scrollbar().max_value
 
 
 func _log_print_queue() -> void:
-    for entry in Sc.logger._print_queue:
+    for entry in G.log._print_queue:
         add_message(entry)
-    Sc.logger._print_queue.clear()
-
-
-func _on_PanelContainer_gui_input(event: InputEvent) -> void:
-    var is_mouse_down: bool = \
-            event is InputEventMouseButton and \
-            event.pressed and \
-            event.button_index == BUTTON_LEFT
-    var is_touch_down: bool = \
-            (event is InputEventScreenTouch and \
-                    event.pressed) or \
-            event is InputEventScreenDrag
-    var is_scroll: bool = \
-            event is InputEventMouseButton and \
-            (event.button_index == BUTTON_WHEEL_UP or \
-            event.button_index == BUTTON_WHEEL_DOWN) \
-    
-#    if (is_mouse_down or is_touch_down or is_scroll) and \
-#            $PanelContainer.get_rect().has_point(event.position):
-#        $PanelContainer.accept_event()
+    G.log._print_queue.clear()
