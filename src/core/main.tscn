@@ -25,3 +25,6 @@ layer = 100
 layer = 200
 
 [node name="Hud" parent="Hud" instance=ExtResource("2_ukt3u")]
+
+[node name="SuperHud" type="CanvasLayer" parent="."]
+layer = 200

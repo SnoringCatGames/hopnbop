@@ -3,9 +3,6 @@ extends CharacterBody2D
 
 
 # FIXME: LEFT OFF HERE:
-# - Configure input actions with project settings.
-#   - Add runtime checks to ensure they are there.
-#   - Add runtime checks to ensure physics layers have the exact matching string names for the first three tilemap surface bits.
 # - Test and debug all movement.
 const _NORMAL_SURFACES_COLLISION_MASK_BIT := 0
 const _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT := 1
@@ -15,7 +12,6 @@ const _WALK_THROUGH_WALLS_COLLISION_MASK_BIT := 2
 @export var animator: CharacterAnimator
 @export var movement_settings: MovementSettings
 
-var base_velocity := Vector2.ZERO
 var start_position := Vector2.INF
 var previous_position := Vector2.INF
 var stationary_frames_count := 0
@@ -45,6 +41,52 @@ var _action_sources := []
 var _previous_actions_handlers_this_frame := {}
 
 var _character_action_source: CharacterActionSource
+
+
+var current_surface_max_horizontal_speed: float:
+    get: return movement_settings.max_ground_horizontal_speed * \
+            _current_max_horizontal_speed_multiplier * \
+            (surface_state.surface_properties.speed_multiplier if \
+            surface_state.is_attaching_to_surface else \
+            1.0)
+
+
+var current_air_max_horizontal_speed: float:
+    get: return movement_settings.max_air_horizontal_speed * \
+            _current_max_horizontal_speed_multiplier
+
+
+var current_walk_acceleration: float:
+    get: return movement_settings.walk_acceleration * \
+            (surface_state.surface_properties.speed_multiplier if \
+            surface_state.is_attaching_to_surface else \
+            1.0)
+
+
+var current_climb_up_speed: float:
+    get: return movement_settings.climb_up_speed * \
+            (surface_state.surface_properties.speed_multiplier if \
+            surface_state.is_attaching_to_surface else \
+            1.0)
+
+
+var current_climb_down_speed: float:
+    get: return movement_settings.climb_down_speed * \
+            (surface_state.surface_properties.speed_multiplier if \
+            surface_state.is_attaching_to_surface else \
+            1.0)
+
+
+var current_ceiling_crawl_speed: float:
+    get: return movement_settings.ceiling_crawl_speed * \
+            (surface_state.surface_properties.speed_multiplier if \
+            surface_state.is_attaching_to_surface else \
+            1.0)
+
+
+var is_sprite_visible: bool:
+    set(value): animator.visible = value
+    get: return animator.visible
 
 
 func _ready() -> void:
@@ -94,13 +136,12 @@ func _physics_process(delta: float) -> void:
     surface_state.collisions.clear()
     _apply_movement()
     _maintain_preexisting_collisions()
-    surface_state.collisions.reverse()
 
     _update_actions(delta_scaled)
     surface_state.clear_just_changed_state()
     surface_state.update()
 
-    actions.log_new_presses_and_releases(self)
+    #actions.log_new_presses_and_releases(self)
 
     # Flip the horizontal direction of the animation according to which way the
     # character is facing.
@@ -123,6 +164,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _apply_movement() -> void:
+    var base_velocity := velocity
     # Since move_and_slide automatically accounts for delta, we need to
     # compensate for that in order to support our modified framerate.
     var modified_velocity: Vector2 = base_velocity * G.time.get_combined_scale()
@@ -131,7 +173,7 @@ func _apply_movement() -> void:
     max_slides = MovementSettings._MAX_SLIDES_DEFAULT
     move_and_slide()
 
-    surface_state.record_collisions()
+    surface_state.record_collisions(false)
 
 
 # -   The move_and_slide system depends on some velocity always pushing the
@@ -165,14 +207,27 @@ func _maintain_preexisting_collisions() -> void:
                 MovementSettings._STRONG_SPEED_TO_MAINTAIN_COLLISION * \
                 surface_state.toward_wall_sign
         max_slides = 2
+    
+    # FIXME: LEFT OFF HERE:
+    # - Seeing intersection with floor
+    # - Seeing jitter
+    # - Seeing fall-through-floor disabling floor collision layer
+    # - Seeing jump not always triggering correctly
+    # - Seeing persistent collisions not detected correctly
 
+    var original_position := position
+    var original_velocity := velocity
+    
     # Trigger another move_and_slide.
     # -   This will maintain collision state within Godot's collision system.
     # -   This will also ensure the character snaps to the surface.
     velocity = maintain_collision_velocity
     move_and_slide()
+    
+    position = original_position
+    velocity = original_velocity
 
-    surface_state.record_collisions()
+    surface_state.record_collisions(true)
 
 
 func _update_actions(delta_scaled: float) -> void:
@@ -190,7 +245,7 @@ func _update_actions(delta_scaled: float) -> void:
                 _actions_from_previous_frame,
                 G.time.get_scaled_play_time(),
                 delta_scaled)
-
+    
     CharacterActionSource.update_for_implicit_key_events(
             actions,
             _actions_from_previous_frame)
@@ -203,32 +258,26 @@ func _process_actions() -> void:
     for action_handler in movement_settings.action_handlers:
         var is_action_relevant_for_surface: bool = \
                 action_handler.type == surface_state.surface_type or \
-                action_handler.type == SurfaceType.OTHER
+                action_handler.type == SurfaceType.OTHER or \
+                # Our surface-state logic considers the current actions, and
+                # surface-state is updated before we process actions here.
+                # Furthermore, we use action-handlers to actually apply the
+                # changes for things like jump impulses that are needed to
+                # actually transition the character from a surface. So we need
+                # to also consider the surface that we are currently leaving,
+                # and allow an action-handler of that departure-surface-type to
+                # handle this frame.
+                (action_handler.type == surface_state.just_left_surface_type and
+                surface_state.just_left_surface_type != SurfaceType.OTHER)
         var is_action_relevant_for_physics_mode: bool = \
-                !action_handler.uses_runtime_physics
+                action_handler.uses_runtime_physics
         if is_action_relevant_for_surface and \
                 is_action_relevant_for_physics_mode:
             var executed: bool = action_handler.process(self)
             _previous_actions_handlers_this_frame[action_handler.name] = \
                     executed
 
-            # TODO: This is sometimes useful for debugging.
-#            if executed and \
-#                    action_handler.name != AllDefaultAction.NAME and \
-#                    action_handler.name != CapVelocityAction.NAME and \
-#                    action_handler.name != FloorDefaultAction.NAME and \
-#                    action_handler.name != FloorFrictionAction.NAME and \
-#                    action_handler.name != FloorWalkAction.NAME and \
-#                    action_handler.name != AirDefaultAction.NAME:
-#                var name_str: String = G.utils.resize_string(
-#                        action_handler.name,
-#                        20)
-#                _log(name_str,
-#                        "",
-#                        CharacterLogType.ACTION,
-#                        true)
-
-    assert(!Geometry.is_point_partial_inf(base_velocity))
+    assert(!Geometry.is_point_partial_inf(velocity))
 
 
 func _process_animation() -> void:
@@ -254,7 +303,7 @@ func _process_animation() -> void:
             else:
                 animator.play("RestOnCeiling")
         SurfaceType.AIR:
-            if base_velocity.y > 0:
+            if velocity.y > 0:
                 animator.play("JumpFall")
             else:
                 animator.play("JumpRise")
@@ -264,13 +313,17 @@ func _process_animation() -> void:
 
 func _process_sounds() -> void:
     if just_triggered_jump:
-        G.audio.play_sound("jump")
+        play_sound("jump")
 
     if surface_state.just_left_air:
-        G.audio.play_sound("land")
+        play_sound("land")
     elif surface_state.just_touched_surface:
-        G.audio.play_sound("land")
+        play_sound("land")
 
+
+func play_sound(_sound_name: String) -> void:
+    push_error("Abstract CharacterActionSource.update is not implemented")
+    
 
 func processed_action(p_name: String) -> bool:
     return _previous_actions_handlers_this_frame.get(p_name) == true
@@ -281,80 +334,25 @@ func processed_action(p_name: String) -> bool:
 func _update_collision_mask() -> void:
     set_collision_mask_value(
             _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT,
-            !surface_state.is_descending_through_floors and \
-                    base_velocity.y > 0)
-    set_collision_mask_value(
-            _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT,
-            !surface_state.is_ascending_through_ceilings and \
-                    base_velocity.y < 0)
+            !surface_state.is_ascending_through_ceilings and velocity.y < 0 ||
+            !surface_state.is_descending_through_floors and velocity.y > 0)
     set_collision_mask_value(
             _WALK_THROUGH_WALLS_COLLISION_MASK_BIT,
             surface_state.is_attaching_to_walk_through_walls)
 
 
 func force_boost(boost: Vector2) -> void:
-    base_velocity = boost
+    velocity = boost
 
     position += Vector2(0.0, -1.0)
     surface_state.force_boost()
 
 
-func _get_current_surface_max_horizontal_speed() -> float:
-    return movement_settings.max_horizontal_speed_default * \
-            movement_settings.surface_speed_multiplier * \
-            _current_max_horizontal_speed_multiplier * \
-            (surface_state.surface_properties.speed_multiplier if \
-            surface_state.is_attaching_to_surface else \
-            1.0)
-
-
-func _get_current_air_max_horizontal_speed() -> float:
-    return movement_settings.max_horizontal_speed_default * \
-            movement_settings.air_horizontal_speed_multiplier * \
-            _current_max_horizontal_speed_multiplier
-
-
-func _get_current_walk_acceleration() -> float:
-    return movement_settings.walk_acceleration * \
-            (surface_state.surface_properties.speed_multiplier if \
-            surface_state.is_attaching_to_surface else \
-            1.0)
-
-
-func _get_current_climb_up_speed() -> float:
-    return movement_settings.climb_up_speed * \
-            (surface_state.surface_properties.speed_multiplier if \
-            surface_state.is_attaching_to_surface else \
-            1.0)
-
-
-func _get_current_climb_down_speed() -> float:
-    return movement_settings.climb_down_speed * \
-            (surface_state.surface_properties.speed_multiplier if \
-            surface_state.is_attaching_to_surface else \
-            1.0)
-
-
-func _get_current_ceiling_crawl_speed() -> float:
-    return movement_settings.ceiling_crawl_speed * \
-            (surface_state.surface_properties.speed_multiplier if \
-            surface_state.is_attaching_to_surface else \
-            1.0)
-
-
 func get_next_position_prediction() -> Vector2:
     # Since move_and_slide automatically accounts for delta, we need to
     # compensate for that in order to support our modified framerate.
-    var modified_velocity: Vector2 = base_velocity * G.time.get_combined_scale()
+    var modified_velocity: Vector2 = velocity * G.time.get_combined_scale()
     return position + modified_velocity * G.time.PHYSICS_TIME_STEP
-
-
-func set_is_sprite_visible(p_is_visible: bool) -> void:
-    animator.visible = p_is_visible
-
-
-func get_is_sprite_visible() -> bool:
-    return animator.visible
 
 
 func get_position_in_screen_space() -> Vector2:

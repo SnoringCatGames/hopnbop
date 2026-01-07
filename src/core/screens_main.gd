@@ -1,5 +1,5 @@
 class_name ScreensMain
-extends Node2D
+extends PanelContainer
 
 
 enum ScreenType {

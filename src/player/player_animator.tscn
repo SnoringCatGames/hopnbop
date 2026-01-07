@@ -20,6 +20,7 @@ animations = [{
 
 [node name="PlayerAnimator" type="Node2D" node_paths=PackedStringArray("animated_sprite")]
 script = ExtResource("1_eeopx")
+faces_right_by_default = false
 animated_sprite = NodePath("AnimatedSprite2D")
 metadata/_custom_type_script = "uid://b50tfbt5wsthb"
 

@@ -2,7 +2,6 @@ class_name PlayerActionSource
 extends CharacterActionSource
 
 
-# FIXME: Add a check to ensure these actions are configured in the project settings.
 const ACTIONS_TO_INPUT_KEYS := {
   "jump": "j",
   "move_up": "mu",
@@ -16,7 +15,7 @@ const ACTIONS_TO_INPUT_KEYS := {
 
 
 func _init(p_character, p_is_additive: bool) -> void:
-    super("PLAYER", p_character, p_is_additive)
+    super ("PLAYER", p_character, p_is_additive)
 
 
 # Calculates actions for the current frame.
@@ -45,3 +44,12 @@ static func get_is_some_player_action_pressed() -> bool:
         if Input.is_action_pressed(action):
             return true
     return false
+
+
+static func validate_project_settings_input_actions() -> void:
+    for action in ACTIONS_TO_INPUT_KEYS:
+        if !InputMap.has_action(action):
+            push_error(
+                "PlayerActionSource: Missing input action '" +
+                action +
+                "' in project settings.")

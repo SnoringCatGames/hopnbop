@@ -53,7 +53,7 @@ var DEFAULT_ACTION_HANDLER_CLASSES := {
 const _MAX_SLIDES_DEFAULT := 4
 # 45 degrees
 const _MAX_FLOOR_ANGLE = PI / 4.0
-const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
+const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 90.0
 
 # --- Movement parameters ---
 
@@ -62,13 +62,13 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 @export var can_attach_to_ceilings := true
 
 @export var always_tries_to_face_direction_of_motion := true
-@export var max_jump_chain := true
+@export var max_jump_chain := 1
 
 @export var jump_boost := -900.0
 @export var wall_jump_horizontal_boost := 200.0
 @export var wall_fall_horizontal_boost := 20.0
 
-@export var gravity_acceleration_multiplier := 5000.0
+@export var gravity_acceleration_multiplier := 1.0
 @export var gravity_slow_rise_multiplier := 0.38
 @export var gravity_double_jump_slow_rise_multiplier := 0.68
 
@@ -91,7 +91,8 @@ var gravity_double_jump_slow_rise_acceleration: float:
 @export var friction_coeff_with_sideways_input := 1.25
 @export var friction_coeff_without_sideways_input := 1.0
 
-@export var max_horizontal_speed := 320.0
+@export var max_ground_horizontal_speed := 320.0
+@export var max_air_horizontal_speed := 400.0
 @export var max_vertical_speed := 2800.0
 @export var min_horizontal_speed := 5.0
 @export var min_vertical_speed := 0.0

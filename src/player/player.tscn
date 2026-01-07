@@ -1,6 +1,6 @@
 [gd_scene load_steps=5 format=3 uid="uid://cn6hdqmmufnvr"]
 
-[ext_resource type="Script" uid="uid://ctdjb8phvmc71" path="res://src/scaffolder/character/character.gd" id="1_rxibo"]
+[ext_resource type="Script" uid="uid://c1qdd50ca4hst" path="res://src/player/player.gd" id="1_rxibo"]
 [ext_resource type="Resource" uid="uid://dq1d4nuh248j2" path="res://src/player/default_movement_settings.tres" id="2_ohd16"]
 [ext_resource type="PackedScene" uid="uid://br1b7cse0hxmt" path="res://src/player/player_animator.tscn" id="3_ohd16"]
 
@@ -8,7 +8,8 @@
 radius = 6.0
 
 [node name="Player" type="CharacterBody2D" node_paths=PackedStringArray("collision_shape", "animator")]
-collision_mask = 2
+collision_layer = 8
+collision_mask = 7
 script = ExtResource("1_rxibo")
 collision_shape = NodePath("PlayerBodyCollisionShape")
 animator = NodePath("PlayerAnimator")

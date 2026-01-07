@@ -123,6 +123,7 @@ var is_ascending_through_ceilings := false
 var is_attaching_to_walk_through_walls := false
 
 var surface_type := SurfaceType.AIR
+var just_left_surface_type := SurfaceType.OTHER
 
 var did_move_last_frame := false
 var did_move_frame_before_last := false
@@ -145,8 +146,8 @@ var toward_wall_sign := 0
 # TODO: Do something with this.
 var surface_properties: SurfaceProperties = SurfaceProperties.new()
 
-# Array<Collision>
-var collisions := []
+# Dictionary<String, Collision>
+var collisions := {}
 
 var surface_contacts: Array[Collision] = []
 
@@ -156,9 +157,6 @@ var ceiling_contact: Collision = null
 var left_wall_contact: Collision = null
 var right_wall_contact: Collision = null
 
-var contact_count: int:
-    get: return surface_contacts.size()
-
 var character: Character
 
 
@@ -166,14 +164,14 @@ func _init(p_character: Character) -> void:
     self.character = p_character
 
 
-func record_collisions() -> void:
+func record_collisions(is_forced_continuation_collision: bool) -> void:
     var new_collision_count := character.get_slide_collision_count()
-    var old_collision_count := collisions.size()
-    collisions.resize(old_collision_count + new_collision_count)
-
     for i in new_collision_count:
-        collisions[old_collision_count + i] = \
-                Collision.new(character.get_slide_collision(i))
+        var collision := Collision.new(
+            character.get_slide_collision(i),
+            i,
+            is_forced_continuation_collision)
+        collisions[collision.key] = collision
 
 
 # Updates surface-related state according to the character's recent movement
@@ -222,9 +220,13 @@ func _update_contacts() -> void:
     right_wall_contact = null
     ceiling_contact = null
 
-    for collision in collisions:
+    for key in collisions:
+        var collision: Collision = collisions[key]
+        if not collision.is_tilemap_collision:
+            continue
+            
         surface_contacts.append(collision)
-        match collision.surface.side:
+        match collision.side:
             SurfaceSide.FLOOR:
                 floor_contact = collision
             SurfaceSide.LEFT_WALL:
@@ -235,6 +237,24 @@ func _update_contacts() -> void:
                 ceiling_contact = collision
             _:
                 push_error("CharacterSurfaceState._update_contacts")
+    
+    surface_contacts.sort_custom(_compare_surface_contacts)
+
+
+static func _compare_surface_contacts(a: Collision, b: Collision) -> bool:
+    # - Non-forced-continuation collisions should be considered before
+    #   forced-continuation collisions.
+    # - Then, higher collision indices should be considered first.
+    if a.is_forced_continuation_collision:
+        if b.is_forced_continuation_collision:
+            return a.collision_index > b.collision_index
+        else:
+            return true
+    else:
+        if b.is_forced_continuation_collision:
+            return false
+        else:
+            return a.collision_index > b.collision_index
 
 
 func _update_touch_state() -> void:
@@ -564,6 +584,8 @@ func _update_attachment_state() -> void:
         just_left_air and \
         !next_just_entered_air
 
+    var previous_surface_type := surface_type
+
     if is_attaching_to_floor:
         surface_type = SurfaceType.FLOOR
     elif is_attaching_to_wall:
@@ -572,6 +594,11 @@ func _update_attachment_state() -> void:
         surface_type = SurfaceType.CEILING
     else:
         surface_type = SurfaceType.AIR
+        
+    just_left_surface_type = (
+        previous_surface_type if
+        previous_surface_type != surface_type else
+        SurfaceType.OTHER)
 
     # Whether we should fall through fall-through floors.
     match surface_type:
@@ -647,16 +674,16 @@ func _update_attachment_contact() -> void:
 
 
 func _get_attachment_contact() -> Collision:
-    for surface in surface_contacts:
-        if surface.side == SurfaceSide.FLOOR and \
+    for collision in surface_contacts:
+        if collision.side == SurfaceSide.FLOOR and \
                 is_attaching_to_floor or \
-            surface.side == SurfaceSide.LEFT_WALL and \
+            collision.side == SurfaceSide.LEFT_WALL and \
                 is_attaching_to_left_wall or \
-            surface.side == SurfaceSide.RIGHT_WALL and \
+            collision.side == SurfaceSide.RIGHT_WALL and \
                 is_attaching_to_right_wall or \
-            surface.side == SurfaceSide.CEILING and \
+            collision.side == SurfaceSide.CEILING and \
                 is_attaching_to_ceiling:
-            return surface_contacts[surface]
+            return collision
     return null
 
 
@@ -718,6 +745,7 @@ func clear_current_state() -> void:
     is_attaching_to_walk_through_walls = false
 
     surface_type = SurfaceType.AIR
+    just_left_surface_type = SurfaceType.OTHER
 
     did_move_last_frame = !Geometry.are_points_equal_with_epsilon(
             character.previous_position, character.position, 0.00001)
@@ -740,8 +768,6 @@ func clear_current_state() -> void:
     left_wall_contact = null
     right_wall_contact = null
 
-    contact_count = 0
-
 
 func force_boost() -> void:
     var was_touching_floor := is_touching_floor
@@ -759,7 +785,12 @@ func force_boost() -> void:
 
     clear_current_state()
 
+    var previous_surface_type := surface_type
     surface_type = SurfaceType.AIR
+    just_left_surface_type = (
+        previous_surface_type if
+        previous_surface_type != surface_type else
+        SurfaceType.OTHER)
 
     horizontal_facing_sign = previous_horizontal_facing_sign
 

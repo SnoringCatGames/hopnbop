@@ -66,7 +66,7 @@ func process(character) -> bool:
                     friction_multiplier
             var friction_magnitude: float = \
                     friction_factor * \
-                    character.movement_settings.gravity_fast_fall * \
+                    character.movement_settings.gravity_fast_fall_acceleration * \
                     character.actions.delta_scaled
             friction_magnitude = clamp(
                     friction_magnitude,
