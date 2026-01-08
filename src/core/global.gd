@@ -22,6 +22,7 @@ var pause_screen: PauseScreen
 
 var game_panel: GamePanel
 var session: Session
+var level: Level
 
 
 func _enter_tree() -> void:

@@ -11,13 +11,12 @@ var _message_count := 0
 
 func _ready() -> void:
     _log_print_queue()
+    G.log.is_queuing_messages = false
     
     %ConcatenatedLogs.add_theme_color_override("font_color", font_color)
     %Time.add_theme_color_override("font_color", font_color)
     
     G.time.set_timeout(_delayed_init, 0.8)
-    
-    G.log.is_queuing_messages = false
 
 
 func _process(_delta: float) -> void:
@@ -36,7 +35,7 @@ func add_message(message: String) -> void:
     text += "> " + message + "\n"
     _message_count += 1
     _remove_surplus_message()
-    _set_concatenated_logs(text + "> " + message + "\n")
+    _set_concatenated_logs(text)
 
 
 func _set_concatenated_logs(p_text: String) -> void:
@@ -56,7 +55,7 @@ func _remove_surplus_message() -> void:
 
 func _scroll_to_bottom() -> void:
     %ScrollContainer.scroll_vertical = \
-            %ScrollContainer.get_v_scrollbar().max_value
+            %ScrollContainer.get_v_scroll_bar().max_value
 
 
 func _log_print_queue() -> void:

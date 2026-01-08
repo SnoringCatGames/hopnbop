@@ -142,6 +142,8 @@ var just_left_air := false
 var horizontal_facing_sign := -1
 var horizontal_acceleration_sign := 0
 var toward_wall_sign := 0
+var is_facing_right: bool:
+    get: return horizontal_facing_sign > 0
 
 # TODO: Do something with this.
 var surface_properties: SurfaceProperties = SurfaceProperties.new()

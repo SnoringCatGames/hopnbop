@@ -208,7 +208,7 @@ func _maintain_preexisting_collisions() -> void:
                 surface_state.toward_wall_sign
         max_slides = 2
     
-    # FIXME: LEFT OFF HERE:
+    # FIXME: LEFT OFF HERE: ----
     # - Seeing intersection with floor
     # - Seeing jitter
     # - Seeing fall-through-floor disabling floor collision layer

@@ -1,8 +1,31 @@
-[gd_scene load_steps=5 format=3 uid="uid://cn6hdqmmufnvr"]
+[gd_scene load_steps=6 format=3 uid="uid://cn6hdqmmufnvr"]
 
 [ext_resource type="Script" uid="uid://c1qdd50ca4hst" path="res://src/player/player.gd" id="1_rxibo"]
 [ext_resource type="Resource" uid="uid://dq1d4nuh248j2" path="res://src/player/default_movement_settings.tres" id="2_ohd16"]
 [ext_resource type="PackedScene" uid="uid://br1b7cse0hxmt" path="res://src/player/player_animator.tscn" id="3_ohd16"]
+
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_mf2ua"]
+properties/0/path = NodePath(".:surface_state:attachment_position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath(".:surface_state:attachment_normal")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+properties/2/path = NodePath(".:surface_state:attachment_side")
+properties/2/spawn = true
+properties/2/replication_mode = 1
+properties/3/path = NodePath(".:surface_state:is_facing_right")
+properties/3/spawn = true
+properties/3/replication_mode = 1
+properties/4/path = NodePath(".:position")
+properties/4/spawn = true
+properties/4/replication_mode = 1
+properties/5/path = NodePath(".:velocity")
+properties/5/spawn = true
+properties/5/replication_mode = 1
+properties/6/path = NodePath(".:actions:current_actions_bitmask")
+properties/6/spawn = true
+properties/6/replication_mode = 1
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_rxibo"]
 radius = 6.0
@@ -14,6 +37,10 @@ script = ExtResource("1_rxibo")
 collision_shape = NodePath("PlayerBodyCollisionShape")
 animator = NodePath("PlayerAnimator")
 movement_settings = ExtResource("2_ohd16")
+metadata/_custom_type_script = "uid://c1qdd50ca4hst"
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_config = SubResource("SceneReplicationConfig_mf2ua")
 
 [node name="CharacterCamera" type="Camera2D" parent="."]
 unique_name_in_owner = true

@@ -2,6 +2,34 @@ class_name CharacterActionState
 extends RefCounted
 
 
+enum ActionFlags {
+    NONE = 0,
+    JUMP = 1 << 0,
+    PRESSED_UP = 1 << 1,
+    PRESSED_DOWN = 1 << 2,
+    PRESSED_LEFT = 1 << 3,
+    PRESSED_RIGHT = 1 << 4,
+    PRESSED_ATTACH = 1 << 5,
+}
+
+
+var current_actions_bitmask: int:
+    get:
+        var bitmask: int = ActionFlags.NONE
+        if pressed_jump:
+            bitmask |= ActionFlags.JUMP
+        if pressed_up:
+            bitmask |= ActionFlags.PRESSED_UP
+        if pressed_down:
+            bitmask |= ActionFlags.PRESSED_DOWN
+        if pressed_left:
+            bitmask |= ActionFlags.PRESSED_LEFT
+        if pressed_right:
+            bitmask |= ActionFlags.PRESSED_RIGHT
+        if pressed_attach:
+            bitmask |= ActionFlags.PRESSED_ATTACH
+        return bitmask
+
 var delta_scaled: float
 
 var pressed_jump := false
@@ -35,8 +63,6 @@ var just_released_face_left := false
 var pressed_face_right := false
 var just_pressed_face_right := false
 var just_released_face_right := false
-
-var start_dash := false
 
 
 func clear() -> void:
@@ -74,8 +100,6 @@ func clear() -> void:
     self.just_pressed_face_right = false
     self.just_released_face_right = false
 
-    self.start_dash = false
-
 
 func copy(other: CharacterActionState) -> void:
     self.delta_scaled = other.delta_scaled
@@ -111,8 +135,6 @@ func copy(other: CharacterActionState) -> void:
     self.pressed_face_right = other.pressed_face_right
     self.just_pressed_face_right = other.just_pressed_face_right
     self.just_released_face_right = other.just_released_face_right
-
-    self.start_dash = other.start_dash
 
 
 func log_new_presses_and_releases(character) -> void:
@@ -156,11 +178,6 @@ func log_new_presses_and_releases(character) -> void:
             "faceR",
             just_pressed_face_right,
             just_released_face_right)
-    _log_new_press_or_release(
-            character,
-            "dash",
-            start_dash,
-            false)
 
 
 func _log_new_press_or_release(
@@ -185,8 +202,6 @@ func _log_new_press_or_release(
         current_presses_strs.push_back("FL")
     if pressed_face_right:
         current_presses_strs.push_back("FR")
-    if start_dash:
-        current_presses_strs.push_back("DA")
     var current_presses_str: String = Utils.join(current_presses_strs)
 
     var velocity_string: String = \
@@ -201,3 +216,25 @@ func _log_new_press_or_release(
         G.log.print("START %5s: %s" % [action_name, details])
     if just_released:
         G.log.print("STOP  %5s: %s" % [action_name, details])
+
+
+const _ACTION_FLAG_DEBUG_LABEL_PAIRS := [
+    [ActionFlags.JUMP, "J"],
+    [ActionFlags.PRESSED_UP, "U"],
+    [ActionFlags.PRESSED_DOWN, "D"],
+    [ActionFlags.PRESSED_LEFT, "L"],
+    [ActionFlags.PRESSED_RIGHT, "R"],
+    [ActionFlags.PRESSED_ATTACH, "G"],
+]
+
+
+static func get_debug_label_from_actions_bitmask(actions_bitmask: int) -> String:
+    var action_strs := []
+    for pair in _ACTION_FLAG_DEBUG_LABEL_PAIRS:
+        var flag: int = pair[0]
+        var text: String = pair[1]
+        if actions_bitmask & flag:
+            action_strs.push_back(text)
+        else:
+            action_strs.push_back("-")
+    return Utils.join(action_strs)

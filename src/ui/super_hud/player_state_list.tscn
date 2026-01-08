@@ -1,0 +1,22 @@
+[gd_scene load_steps=4 format=3 uid="uid://e73j4d7tda7g"]
+
+[ext_resource type="Script" uid="uid://0tckejytuj7k" path="res://src/ui/super_hud/player_state_list.gd" id="1_r4pw4"]
+[ext_resource type="PackedScene" uid="uid://b68aet2v6aw72" path="res://src/ui/super_hud/player_state_panel.tscn" id="2_jr2s1"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_b1riu"]
+
+[node name="PlayerStateList" type="PanelContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_b1riu")
+script = ExtResource("1_r4pw4")
+
+[node name="HFlowContainer" type="HFlowContainer" parent="."]
+layout_mode = 2
+
+[node name="PlayerState" parent="HFlowContainer" instance=ExtResource("2_jr2s1")]
+layout_mode = 2

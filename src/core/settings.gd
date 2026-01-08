@@ -7,7 +7,7 @@ extends Resource
 @export var dev_mode := true
 @export var draw_annotations := false
 
-@export var start_in_game := false
+@export var start_in_game := true
 @export var full_screen := false
 @export var mute_music := false
 @export var pauses_on_focus_out := true

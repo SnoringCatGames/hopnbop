@@ -39,9 +39,9 @@ func print(message = "") -> void:
     message = _format_message(message)
     
     if is_queuing_messages:
-        on_message.emit(message)
-    else:
         _print_queue.push_back(message)
+    else:
+        on_message.emit(message)
     
     print(message)
 
