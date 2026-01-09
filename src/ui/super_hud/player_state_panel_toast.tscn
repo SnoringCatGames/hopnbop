@@ -1,0 +1,19 @@
+[gd_scene load_steps=3 format=3 uid="uid://b6ih7agfbjd6p"]
+
+[ext_resource type="Script" uid="uid://se7e5ptnuuwg" path="res://src/ui/super_hud/player_state_panel_toast.gd" id="1_ql3m0"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_opccd"]
+content_margin_left = 2.0
+content_margin_top = 2.0
+content_margin_right = 2.0
+content_margin_bottom = 2.0
+bg_color = Color(1, 1, 1, 0.07058824)
+
+[node name="PlayerStatePanelToast" type="PanelContainer"]
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_opccd")
+script = ExtResource("1_ql3m0")
+
+[node name="Label" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2

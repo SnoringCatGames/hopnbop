@@ -53,7 +53,7 @@ var DEFAULT_ACTION_HANDLER_CLASSES := {
 const _MAX_SLIDES_DEFAULT := 4
 # 45 degrees
 const _MAX_FLOOR_ANGLE = PI / 4.0
-const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 90.0
+const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 
 # --- Movement parameters ---
 

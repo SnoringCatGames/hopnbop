@@ -52,7 +52,7 @@ func process(character) -> bool:
 
         var is_ceiling_sloped_against_movement: bool = \
                 (character.surface_state.ceiling_contact \
-                        .contact_normal.x < 0.0) != \
+                        .normal.x < 0.0) != \
                 (character.velocity.x < 0.0)
         if is_ceiling_sloped_against_movement:
             character.velocity.x = 0.0

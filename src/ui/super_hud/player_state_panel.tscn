@@ -1,6 +1,7 @@
-[gd_scene load_steps=3 format=3 uid="uid://b68aet2v6aw72"]
+[gd_scene load_steps=4 format=3 uid="uid://b68aet2v6aw72"]
 
 [ext_resource type="Script" uid="uid://csrxaqk3fjr4l" path="res://src/ui/super_hud/player_state_panel.gd" id="1_dvbf3"]
+[ext_resource type="PackedScene" uid="uid://b6ih7agfbjd6p" path="res://src/ui/super_hud/player_state_panel_toast.tscn" id="2_7ocqd"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_h1md6"]
 bg_color = Color(0, 0, 0, 0)
@@ -17,6 +18,7 @@ offset_bottom = 25.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_h1md6")
 script = ExtResource("1_dvbf3")
+toast_scene = ExtResource("2_7ocqd")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 2
@@ -85,7 +87,6 @@ mouse_filter = 2
 [node name="Label" type="Label" parent="VBoxContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Att. Pos.: "
 
 [node name="AttachmentPosition" type="Label" parent="VBoxContainer/HBoxContainer"]
 unique_name_in_owner = true
@@ -99,9 +100,13 @@ mouse_filter = 2
 [node name="Label" type="Label" parent="VBoxContainer/HBoxContainer2"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Att. Nor.: "
+text = "Att. Nor: "
 
 [node name="AttachmentNormal" type="Label" parent="VBoxContainer/HBoxContainer2"]
 unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 2
+
+[node name="Toasts" type="VBoxContainer" parent="VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2

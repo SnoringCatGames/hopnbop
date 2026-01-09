@@ -5,8 +5,8 @@ enum {
     NONE,
     FLOOR,
     CEILING,
-    LEFT_WALL,
-    RIGHT_WALL,
+    LEFT_WALL, # Normal is rightward.
+    RIGHT_WALL, # Normal is leftward.
 }
 
 

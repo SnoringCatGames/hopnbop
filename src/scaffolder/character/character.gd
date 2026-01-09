@@ -2,11 +2,14 @@ class_name Character
 extends CharacterBody2D
 
 
+signal physics_processed
+
+
 # FIXME: LEFT OFF HERE:
 # - Test and debug all movement.
-const _NORMAL_SURFACES_COLLISION_MASK_BIT := 0
-const _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT := 1
-const _WALK_THROUGH_WALLS_COLLISION_MASK_BIT := 2
+const _NORMAL_SURFACES_COLLISION_MASK_BIT := 1
+const _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT := 2
+const _WALK_THROUGH_WALLS_COLLISION_MASK_BIT := 4
 
 @export var collision_shape: CollisionShape2D
 @export var animator: CharacterAnimator
@@ -161,6 +164,16 @@ func _physics_process(delta: float) -> void:
         stationary_frames_count += 1
 
     total_distance_traveled += position.distance_to(previous_position)
+    
+    physics_processed.emit()
+    
+    # FIXME: aoeutoau
+    # G.log.print("Actions: %s" % CharacterActionState.get_debug_label_from_actions_bitmask(actions.current_actions_bitmask))
+    # G.log.print("Position: %s" % G.utils.get_vector_string(position, 1))
+    # G.log.print("Velocity: %s" % G.utils.get_vector_string(velocity, 1))
+    G.log.print("AttachmentSide: %s" % SurfaceSide.get_string(surface_state.attachment_side))
+    G.log.print("AttachmentPosition: %s" % G.utils.get_vector_string(surface_state.attachment_position, 1))
+    G.log.print("AttachmentNormal: %s" % G.utils.get_vector_string(surface_state.attachment_normal, 1))
 
 
 func _apply_movement() -> void:
@@ -181,6 +194,7 @@ func _apply_movement() -> void:
 # -   If we just zero this out, move_and_slide will produce false-negatives for
 #     collisions.
 func _maintain_preexisting_collisions() -> void:
+    G.log.print(">>> _maintain_preexisting_collisions ------------")
     if !surface_state.is_attaching_to_surface or \
             (surface_state.is_triggering_wall_release and \
             surface_state.is_attaching_to_wall) or \
@@ -208,12 +222,15 @@ func _maintain_preexisting_collisions() -> void:
                 surface_state.toward_wall_sign
         max_slides = 2
     
-    # FIXME: LEFT OFF HERE: ----
-    # - Seeing intersection with floor
-    # - Seeing jitter
-    # - Seeing fall-through-floor disabling floor collision layer
-    # - Seeing jump not always triggering correctly
-    # - Seeing persistent collisions not detected correctly
+    # FIXME: LEFT OFF HERE: ---- ACTUALLY:
+    # - Seeing persistent collisions not detected correctly on fall-through floors
+    # - :/ Can I refactor the entire surface-state logic to rely on Godot's normal is_on_floor() and is_on_wall() APIs?
+    #   - Would need to:
+    #     - Prototype
+    #       - Test if chekcing it each frame works (WITHOUT the second move_and_slide call)
+    #       - Need to persist previous is_on_floor, is_on_wall, and collisions state.
+    #       - 
+    #     - Then, rename the old CharacterSurfaceState, create new CharcaterSurfaceState, and update usages.
 
     var original_position := position
     var original_velocity := velocity
@@ -226,6 +243,9 @@ func _maintain_preexisting_collisions() -> void:
     
     position = original_position
     velocity = original_velocity
+    
+    G.log.print(">>> _maintain_preexisting_collisions: %s | %s" % 
+        [surface_state.attachment_side, get_slide_collision_count()])
 
     surface_state.record_collisions(true)
 

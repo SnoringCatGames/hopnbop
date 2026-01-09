@@ -4,6 +4,15 @@ extends RefCounted
 ## -   This is updated each physics frame.[br]
 
 
+# FIXME: LEFT OFF HERE: Jump barely onto the right side of a platform.
+# - See an error.
+# - is_touching_floor should not be true.
+
+
+# FIXME: LEFT OFF HERE: Add support for tracking is_sliding
+# - When is_touching_wall and not is_attached_to_surface and not is_attached_to_floor.
+
+
 var is_touching_floor: bool:
     get: return character.is_on_floor()
 var is_touching_ceiling: bool:
@@ -135,6 +144,7 @@ var previous_attachment_position := Vector2.INF
 var previous_attachment_normal := Vector2.INF
 var previous_attachment_side := SurfaceSide.NONE
 
+var just_changed_attachment_side := false
 var just_changed_attachment_position := false
 var just_entered_air := false
 var just_left_air := false
@@ -212,6 +222,7 @@ func clear_just_changed_state() -> void:
     just_entered_air = false
     just_left_air = false
 
+    just_changed_attachment_side = false
     just_changed_attachment_position = false
 
 
@@ -640,6 +651,9 @@ func _update_attachment_contact() -> void:
         var next_attachment_normal := attachment_contact.normal
         var next_attachment_side := attachment_contact.side
 
+        just_changed_attachment_side = \
+            just_left_air or \
+            next_attachment_side != attachment_side
         just_changed_attachment_position = \
             just_left_air or \
             next_attachment_position != attachment_position
@@ -656,6 +670,7 @@ func _update_attachment_contact() -> void:
     else:
         if just_entered_air:
             just_changed_attachment_position = true
+            just_changed_attachment_side = true
             previous_attachment_position = \
                     attachment_position if \
                     attachment_position != Vector2.INF else \
@@ -755,6 +770,7 @@ func clear_current_state() -> void:
     attachment_normal = Vector2.INF
     attachment_side = SurfaceSide.NONE
 
+    just_changed_attachment_side = false
     just_changed_attachment_position = false
     just_entered_air = false
     just_left_air = false
@@ -808,4 +824,5 @@ func force_boost() -> void:
 
     if was_attaching_to_surface:
         just_entered_air = true
+        just_changed_attachment_side = true
         just_changed_attachment_position = true

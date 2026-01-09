@@ -50,15 +50,19 @@ func _init(original: KinematicCollision2D = null,
         self.is_tilemap_collision = collider is TileMapLayer
 
         if is_tilemap_collision:
-            if abs(normal.angle_to(Vector2.UP)) <= MovementSettings._MAX_FLOOR_ANGLE:
+            if angle_to_within_plus_minus_pi(normal, Vector2.UP) <= MovementSettings._MAX_FLOOR_ANGLE:
                 side = SurfaceSide.FLOOR
-            elif abs(normal.angle_to(Vector2.DOWN)) <= MovementSettings._MAX_FLOOR_ANGLE:
+            elif angle_to_within_plus_minus_pi(normal, Vector2.DOWN) <= MovementSettings._MAX_FLOOR_ANGLE:
                 side = SurfaceSide.CEILING
-            elif abs(normal.angle_to(Vector2.LEFT)) <= PI / 2 - MovementSettings._MAX_FLOOR_ANGLE:
+            elif angle_to_within_plus_minus_pi(normal, Vector2.LEFT) <= PI / 2 - MovementSettings._MAX_FLOOR_ANGLE:
                 side = SurfaceSide.RIGHT_WALL
             else:
                 side = SurfaceSide.LEFT_WALL
         else:
             side = SurfaceSide.NONE
 
-        key = "%s:%s" % [G.utils.get_vector_string(position,3), side]
+        key = "%s:%s" % [G.utils.get_vector_string(position, 3), side]
+
+
+static func angle_to_within_plus_minus_pi(a: Vector2, b: Vector2) -> float:
+    return abs(fmod(a.angle_to(b) + TAU + PI, TAU) - PI)
