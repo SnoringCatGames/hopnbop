@@ -2,7 +2,7 @@ class_name ScaffolderLog
 extends Node
 
 
-# FIXME: LEFT OFF HERE:
+# FIXME: Log categories:
 # - Introduce a new StringName parameter for enabling filtering logs by category.
 #   - Add support for listing expected StringName categories in Settings, mapped
 #     to a boolean for whether they're enabled.

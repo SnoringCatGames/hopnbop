@@ -14,23 +14,8 @@ enum ActionFlags {
 
 
 var current_actions_bitmask: int:
-    get:
-        var bitmask: int = ActionFlags.NONE
-        if pressed_jump:
-            bitmask |= ActionFlags.JUMP
-        if pressed_up:
-            bitmask |= ActionFlags.PRESSED_UP
-        if pressed_down:
-            bitmask |= ActionFlags.PRESSED_DOWN
-        if pressed_left:
-            bitmask |= ActionFlags.PRESSED_LEFT
-        if pressed_right:
-            bitmask |= ActionFlags.PRESSED_RIGHT
-        if pressed_attach:
-            bitmask |= ActionFlags.PRESSED_ATTACH
-        return bitmask
-
-var delta_scaled: float
+    get: return _get_current_actions_bitmask()
+    set(value): _set_current_actions_bitmask(value)
 
 var pressed_jump := false
 var just_pressed_jump := false
@@ -54,7 +39,7 @@ var just_released_right := false
 
 var pressed_attach := false
 var just_pressed_attach := false
-var just_released_attach_to_wall := false
+var just_released_attach := false
 
 var pressed_face_left := false
 var just_pressed_face_left := false
@@ -65,9 +50,56 @@ var just_pressed_face_right := false
 var just_released_face_right := false
 
 
-func clear() -> void:
-    self.delta_scaled = INF
+func _get_current_actions_bitmask() -> int:
+    var bitmask: int = ActionFlags.NONE
+    if pressed_jump:
+        bitmask |= ActionFlags.JUMP
+    if pressed_up:
+        bitmask |= ActionFlags.PRESSED_UP
+    if pressed_down:
+        bitmask |= ActionFlags.PRESSED_DOWN
+    if pressed_left:
+        bitmask |= ActionFlags.PRESSED_LEFT
+    if pressed_right:
+        bitmask |= ActionFlags.PRESSED_RIGHT
+    if pressed_attach:
+        bitmask |= ActionFlags.PRESSED_ATTACH
+    return bitmask
 
+
+func _set_current_actions_bitmask(value: int) -> void:
+    var was_pressing_jump: bool = pressed_jump
+    pressed_jump = (value & ActionFlags.JUMP) != 0
+    just_pressed_jump = pressed_jump and not was_pressing_jump
+    just_released_jump = not pressed_jump and was_pressing_jump
+    
+    var was_pressing_up: bool = pressed_up
+    pressed_up = (value & ActionFlags.PRESSED_UP) != 0
+    just_pressed_up = pressed_up and not was_pressing_up
+    just_released_up = not pressed_up and was_pressing_up
+
+    var was_pressing_down: bool = pressed_down
+    pressed_down = (value & ActionFlags.PRESSED_DOWN) != 0
+    just_pressed_down = pressed_down and not was_pressing_down
+    just_released_down = not pressed_down and was_pressing_down
+
+    var was_pressing_left: bool = pressed_left
+    pressed_left = (value & ActionFlags.PRESSED_LEFT) != 0
+    just_pressed_left = pressed_left and not was_pressing_left
+    just_released_left = not pressed_left and was_pressing_left
+
+    var was_pressing_right: bool = pressed_right
+    pressed_right = (value & ActionFlags.PRESSED_RIGHT) != 0
+    just_pressed_right = pressed_right and not was_pressing_right
+    just_released_right = not pressed_right and was_pressing_right
+
+    var was_pressing_attach: bool = pressed_attach
+    pressed_attach = (value & ActionFlags.PRESSED_ATTACH) != 0
+    just_pressed_attach = pressed_attach and not was_pressing_attach
+    just_released_attach = not pressed_attach and was_pressing_attach
+    
+
+func clear() -> void:
     self.pressed_jump = false
     self.just_pressed_jump = false
     self.just_released_jump = false
@@ -90,7 +122,7 @@ func clear() -> void:
 
     self.pressed_attach = false
     self.just_pressed_attach = false
-    self.just_released_attach_to_wall = false
+    self.just_released_attach = false
 
     self.pressed_face_left = false
     self.just_pressed_face_left = false
@@ -102,8 +134,6 @@ func clear() -> void:
 
 
 func copy(other: CharacterActionState) -> void:
-    self.delta_scaled = other.delta_scaled
-
     self.pressed_jump = other.pressed_jump
     self.just_pressed_jump = other.just_pressed_jump
     self.just_released_jump = other.just_released_jump
@@ -126,7 +156,7 @@ func copy(other: CharacterActionState) -> void:
 
     self.pressed_attach = other.pressed_attach
     self.just_pressed_attach = other.just_pressed_attach
-    self.just_released_attach_to_wall = other.just_released_attach_to_wall
+    self.just_released_attach = other.just_released_attach
 
     self.pressed_face_left = other.pressed_face_left
     self.just_pressed_face_left = other.just_pressed_face_left
@@ -167,7 +197,7 @@ func log_new_presses_and_releases(character) -> void:
             character,
             "attach",
             just_pressed_attach,
-            just_released_attach_to_wall)
+            just_released_attach)
     _log_new_press_or_release(
             character,
             "faceL",

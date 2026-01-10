@@ -17,7 +17,7 @@ func _exit_tree() -> void:
 
 
 func _ready() -> void:
-    # FIXME: Update this for the set of players that are matched to the game session.
+    # FIXME: LEFT OFF HERE: ACTUAL: Network player spawing: Update this for the set of players that are matched to the game session.
     var player: Character = G.settings.player_scene.instantiate()
     players_node.add_child(player)
     players.append(player)

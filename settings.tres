@@ -6,6 +6,7 @@
 
 [resource]
 script = ExtResource("1_krfic")
+show_debug_player_state = true
 full_screen = true
 pauses_on_focus_out = false
 player_scene = ExtResource("2_xmm7k")

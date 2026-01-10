@@ -58,8 +58,8 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 # --- Movement parameters ---
 
 @export var can_attach_to_floors := true
-@export var can_attach_to_walls := true
-@export var can_attach_to_ceilings := true
+@export var can_attach_to_walls := false
+@export var can_attach_to_ceilings := false
 
 @export var always_tries_to_face_direction_of_motion := true
 @export var max_jump_chain := 1
@@ -97,7 +97,6 @@ var gravity_double_jump_slow_rise_acceleration: float:
 @export var min_horizontal_speed := 5.0
 @export var min_vertical_speed := 0.0
 
-# FIXME: Update this after testing each handler.
 @export var action_handler_types: Array[ActionHandlerType] = [
     ActionHandlerType.FLOOR_DEFAULT,
     ActionHandlerType.AIR_DEFAULT,

@@ -5,8 +5,6 @@ extends CharacterBody2D
 signal physics_processed
 
 
-# FIXME: LEFT OFF HERE:
-# - Test and debug all movement.
 const _NORMAL_SURFACES_COLLISION_MASK_BIT := 1
 const _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT := 2
 const _WALK_THROUGH_WALLS_COLLISION_MASK_BIT := 4
@@ -24,6 +22,8 @@ var total_distance_traveled := INF
 var start_time := INF
 var previous_total_time := INF
 var total_time := INF
+
+var last_delta_scaled := ScaffolderTime.PHYSICS_TIME_STEP
 
 var is_player_control_active := true
 
@@ -129,20 +129,18 @@ func _init_player_controller_action_source() -> void:
 
 
 func _physics_process(delta: float) -> void:
-    var delta_scaled: float = G.time.scale_delta(delta)
+    last_delta_scaled = G.time.scale_delta(delta)
 
     previous_total_time = total_time
     total_time = G.time.get_scaled_play_time() - start_time
 
     previous_position = position
 
-    surface_state.collisions.clear()
     _apply_movement()
-    _maintain_preexisting_collisions()
 
-    _update_actions(delta_scaled)
+    _update_actions()
     surface_state.clear_just_changed_state()
-    surface_state.update()
+    surface_state.update_actions()
 
     #actions.log_new_presses_and_releases(self)
 
@@ -166,14 +164,6 @@ func _physics_process(delta: float) -> void:
     total_distance_traveled += position.distance_to(previous_position)
     
     physics_processed.emit()
-    
-    # FIXME: aoeutoau
-    # G.log.print("Actions: %s" % CharacterActionState.get_debug_label_from_actions_bitmask(actions.current_actions_bitmask))
-    # G.log.print("Position: %s" % G.utils.get_vector_string(position, 1))
-    # G.log.print("Velocity: %s" % G.utils.get_vector_string(velocity, 1))
-    G.log.print("AttachmentSide: %s" % SurfaceSide.get_string(surface_state.attachment_side))
-    G.log.print("AttachmentPosition: %s" % G.utils.get_vector_string(surface_state.attachment_position, 1))
-    G.log.print("AttachmentNormal: %s" % G.utils.get_vector_string(surface_state.attachment_normal, 1))
 
 
 func _apply_movement() -> void:
@@ -185,86 +175,22 @@ func _apply_movement() -> void:
     velocity = modified_velocity
     max_slides = MovementSettings._MAX_SLIDES_DEFAULT
     move_and_slide()
-
-    surface_state.record_collisions(false)
-
-
-# -   The move_and_slide system depends on some velocity always pushing the
-#     character into the floor (or other touched surface).
-# -   If we just zero this out, move_and_slide will produce false-negatives for
-#     collisions.
-func _maintain_preexisting_collisions() -> void:
-    G.log.print(">>> _maintain_preexisting_collisions ------------")
-    if !surface_state.is_attaching_to_surface or \
-            (surface_state.is_triggering_wall_release and \
-            surface_state.is_attaching_to_wall) or \
-            (surface_state.is_triggering_ceiling_release and \
-            surface_state.is_attaching_to_ceiling) or \
-            (surface_state.is_triggering_fall_through and \
-            surface_state.is_attaching_to_floor) or \
-            actions.just_pressed_jump:
-        return
-
-    var normal := surface_state.attachment_normal
-
-    var maintain_collision_velocity: Vector2 = \
-            MovementSettings._STRONG_SPEED_TO_MAINTAIN_COLLISION * -normal
-
-    max_slides = 1
-
-    # Also maintain wall collisions.
-    if !surface_state.is_attaching_to_wall and \
-            surface_state.is_touching_wall and \
-            !surface_state.is_triggering_wall_release and \
-            !surface_state.is_pressing_away_from_wall:
-        maintain_collision_velocity.x = \
-                MovementSettings._STRONG_SPEED_TO_MAINTAIN_COLLISION * \
-                surface_state.toward_wall_sign
-        max_slides = 2
     
-    # FIXME: LEFT OFF HERE: ---- ACTUALLY:
-    # - Seeing persistent collisions not detected correctly on fall-through floors
-    # - :/ Can I refactor the entire surface-state logic to rely on Godot's normal is_on_floor() and is_on_wall() APIs?
-    #   - Would need to:
-    #     - Prototype
-    #       - Test if chekcing it each frame works (WITHOUT the second move_and_slide call)
-    #       - Need to persist previous is_on_floor, is_on_wall, and collisions state.
-    #       - 
-    #     - Then, rename the old CharacterSurfaceState, create new CharcaterSurfaceState, and update usages.
-
-    var original_position := position
-    var original_velocity := velocity
-    
-    # Trigger another move_and_slide.
-    # -   This will maintain collision state within Godot's collision system.
-    # -   This will also ensure the character snaps to the surface.
-    velocity = maintain_collision_velocity
-    move_and_slide()
-    
-    position = original_position
-    velocity = original_velocity
-    
-    G.log.print(">>> _maintain_preexisting_collisions: %s | %s" % 
-        [surface_state.attachment_side, get_slide_collision_count()])
-
-    surface_state.record_collisions(true)
+    surface_state.update_collisions()
 
 
-func _update_actions(delta_scaled: float) -> void:
+func _update_actions() -> void:
     # Record actions for the previous frame.
     _actions_from_previous_frame.copy(actions)
     # Clear actions for the current frame.
     actions.clear()
-
-    actions.delta_scaled = delta_scaled
 
     # Update actions for the current frame.
     for action_source in _action_sources:
         action_source.update(
                 actions,
                 _actions_from_previous_frame,
-                G.time.get_scaled_play_time(),
-                delta_scaled)
+                G.time.get_scaled_play_time())
     
     CharacterActionSource.update_for_implicit_key_events(
             actions,
@@ -354,11 +280,10 @@ func processed_action(p_name: String) -> bool:
 func _update_collision_mask() -> void:
     set_collision_mask_value(
             _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT,
-            !surface_state.is_ascending_through_ceilings and velocity.y < 0 ||
-            !surface_state.is_descending_through_floors and velocity.y > 0)
-    set_collision_mask_value(
-            _WALK_THROUGH_WALLS_COLLISION_MASK_BIT,
-            surface_state.is_attaching_to_walk_through_walls)
+            not surface_state.is_descending_through_floors)
+    #set_collision_mask_value(
+            #_WALK_THROUGH_WALLS_COLLISION_MASK_BIT,
+            #surface_state.is_attaching_to_walk_through_walls)
 
 
 func force_boost(boost: Vector2) -> void:

@@ -31,8 +31,7 @@ func _init(
 func update(
         _actions: CharacterActionState,
         _previous_actions: CharacterActionState,
-        _time_scaled: float,
-        _delta_scaled: float) -> void:
+        _time_scaled: float) -> void:
     push_error("Abstract CharacterActionSource.update is not implemented")
 
 

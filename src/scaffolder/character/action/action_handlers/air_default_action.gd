@@ -38,7 +38,7 @@ func process(character) -> bool:
 
     character.velocity = update_velocity_in_air(
             character.velocity,
-            character.actions.delta_scaled,
+            character.last_delta_scaled,
             character.actions.pressed_jump,
             is_first_jump,
             character.surface_state.horizontal_acceleration_sign,

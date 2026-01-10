@@ -22,8 +22,7 @@ func _init(p_character, p_is_additive: bool) -> void:
 func update(
         actions: CharacterActionState,
         previous_actions: CharacterActionState,
-        time_scaled: float,
-        _delta_scaled: float) -> void:
+        time_scaled: float) -> void:
     if !character.is_player_control_active:
         return
     for action in ACTIONS_TO_INPUT_KEYS:

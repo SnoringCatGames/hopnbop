@@ -4,12 +4,7 @@ extends RefCounted
 ## -   This is updated each physics frame.[br]
 
 
-# FIXME: LEFT OFF HERE: Jump barely onto the right side of a platform.
-# - See an error.
-# - is_touching_floor should not be true.
-
-
-# FIXME: LEFT OFF HERE: Add support for tracking is_sliding
+# TODO: Add support for tracking is_sliding
 # - When is_touching_wall and not is_attached_to_surface and not is_attached_to_floor.
 
 
@@ -111,23 +106,22 @@ var is_triggering_fall_through := false
 var is_triggering_jump := false
 
 var is_descending_through_floors := false
-# FIXME(OLD): -------------------------------
-# - Add support for grabbing jump-through ceilings.
-#   - Not via a directional key.
-#   - Make this configurable for climb_adjacent_surfaces behavior.
-#     - Add a property that indicates probability of climbing through instead
-#       of onto.
-#     - Use the same probability for fall-through-floor.
-# TODO:
-# - Create support for a ceiling_jump_up_action.gd?
-#   - Might need a new surface state property called
-#     is_triggering_jump_up_through, which would be similar to
-#     is_triggering_fall_through.
+# TODO(OLD): Add support for grabbing jump-through ceilings.
+# - Not via a directional key.
+# - Make this configurable for climb_adjacent_surfaces behavior.
+#   - Add a property that indicates probability of climbing through instead of onto.
+#   - Use the same probability for fall-through-floor.
+
+# TODO: Create support for a ceiling_jump_up_action.gd?
+# - Might need a new surface state property called
+#   is_triggering_jump_up_through, which would be similar to
+#   is_triggering_fall_through.
 # - Also create support for transitioning from standing-on-fall-through-floor
 #   to clinging-to-it-from-underneath and vice versa?
 #   - This might require adding support for the concept of a multi-frame
 #     action?
 #   - And this might require adding new Edge sub-classes for either direction?
+
 var is_ascending_through_ceilings := false
 var is_attaching_to_walk_through_walls := false
 
@@ -161,7 +155,11 @@ var surface_properties: SurfaceProperties = SurfaceProperties.new()
 # Dictionary<String, Collision>
 var collisions := {}
 
-var surface_contacts: Array[Collision] = []
+# Dictionary<SurfaceSide, Collision>
+var previous_surface_contacts := {}
+
+# Dictionary<SurfaceSide, Collision>
+var surface_contacts := {}
 
 var attachment_contact: Collision = null
 var floor_contact: Collision = null
@@ -176,25 +174,27 @@ func _init(p_character: Character) -> void:
     self.character = p_character
 
 
-func record_collisions(is_forced_continuation_collision: bool) -> void:
+func update_collisions() -> void:
+    collisions.clear()
+    
     var new_collision_count := character.get_slide_collision_count()
     for i in new_collision_count:
         var collision := Collision.new(
             character.get_slide_collision(i),
-            i,
-            is_forced_continuation_collision)
+            i)
         collisions[collision.key] = collision
+    
+    _update_contacts()
+    _update_touch_state()
 
 
 # Updates surface-related state according to the character's recent movement
 # and the environment of the current frame.
-func update() -> void:
+func update_actions() -> void:
     did_move_frame_before_last = did_move_last_frame
     did_move_last_frame = !Geometry.are_points_equal_with_epsilon(
         character.previous_position, character.position, 0.00001)
 
-    _update_contacts()
-    _update_touch_state()
     _update_action_state()
 
 
@@ -227,47 +227,57 @@ func clear_just_changed_state() -> void:
 
 
 func _update_contacts() -> void:
+    previous_surface_contacts = surface_contacts.duplicate()
     surface_contacts.clear()
     floor_contact = null
     left_wall_contact = null
     right_wall_contact = null
     ceiling_contact = null
 
+    # Record the current surface contacts.
     for key in collisions:
         var collision: Collision = collisions[key]
         if not collision.is_tilemap_collision:
             continue
             
-        surface_contacts.append(collision)
-        match collision.side:
+        surface_contacts[collision.side] = collision
+    
+    # Re-use preexisting contacts if Godot's collision system isn't giving us
+    # the current collisions this frame.
+    if character.is_on_floor():
+        _reuse_previous_surface_contact_if_missing(SurfaceSide.FLOOR)
+    if character.is_on_ceiling():
+        _reuse_previous_surface_contact_if_missing(SurfaceSide.CEILING)
+    if character.is_on_wall():
+        if character.get_wall_normal().x > 0:
+            _reuse_previous_surface_contact_if_missing(SurfaceSide.LEFT_WALL)
+        else:
+            _reuse_previous_surface_contact_if_missing(SurfaceSide.RIGHT_WALL)
+    
+    # Record the official side contacts.
+    for side in surface_contacts:
+        var contact: Collision = surface_contacts[side]
+        match side:
             SurfaceSide.FLOOR:
-                floor_contact = collision
+                if not floor_contact:
+                    floor_contact = contact
             SurfaceSide.LEFT_WALL:
-                left_wall_contact = collision
+                if not left_wall_contact:
+                    left_wall_contact = contact
             SurfaceSide.RIGHT_WALL:
-                right_wall_contact = collision
+                if not right_wall_contact:
+                    right_wall_contact = contact
             SurfaceSide.CEILING:
-                ceiling_contact = collision
+                if not ceiling_contact:
+                    ceiling_contact = contact
             _:
                 push_error("CharacterSurfaceState._update_contacts")
-    
-    surface_contacts.sort_custom(_compare_surface_contacts)
 
 
-static func _compare_surface_contacts(a: Collision, b: Collision) -> bool:
-    # - Non-forced-continuation collisions should be considered before
-    #   forced-continuation collisions.
-    # - Then, higher collision indices should be considered first.
-    if a.is_forced_continuation_collision:
-        if b.is_forced_continuation_collision:
-            return a.collision_index > b.collision_index
-        else:
-            return true
-    else:
-        if b.is_forced_continuation_collision:
-            return false
-        else:
-            return a.collision_index > b.collision_index
+func _reuse_previous_surface_contact_if_missing(side: int) -> void:
+    if not surface_contacts.has(side):
+        assert(previous_surface_contacts.has(side))
+        surface_contacts[side] = previous_surface_contacts[side]
 
 
 func _update_touch_state() -> void:
@@ -276,8 +286,8 @@ func _update_touch_state() -> void:
     var next_is_touching_left_wall := false
     var next_is_touching_right_wall := false
 
-    for contact in surface_contacts:
-        match contact.side:
+    for side in surface_contacts:
+        match side:
             SurfaceSide.FLOOR:
                 next_is_touching_floor = true
             SurfaceSide.LEFT_WALL:
@@ -404,8 +414,10 @@ func _update_attachment_trigger_state() -> void:
         !is_pressing_into_wall or \
         just_pressed_jump
     var is_pressing_fall_through_input: bool = \
-        character.actions.pressed_down and \
-        character.actions.just_pressed_jump
+        character.actions.pressed_down
+    #var is_pressing_fall_through_input: bool = \
+        #character.actions.pressed_down and \
+        #character.actions.just_pressed_jump
 
     is_triggering_explicit_floor_attachment = \
         is_touching_floor and \
@@ -627,7 +639,7 @@ func _update_attachment_state() -> void:
         _:
             push_error("CharacterSurfaceState._update_attachment_state")
 
-    # FIXME(OLD): ------- Add support for an ascend-through ceiling input.
+    # TODO(OLD): ------- Add support for an ascend-through ceiling input.
     # Whether we should ascend-up through jump-through ceilings.
     is_ascending_through_ceilings = \
         !character.movement_settings.can_attach_to_ceilings or \
@@ -691,22 +703,23 @@ func _update_attachment_contact() -> void:
 
 
 func _get_attachment_contact() -> Collision:
-    for collision in surface_contacts:
-        if collision.side == SurfaceSide.FLOOR and \
+    for side in surface_contacts:
+        if side == SurfaceSide.FLOOR and \
                 is_attaching_to_floor or \
-            collision.side == SurfaceSide.LEFT_WALL and \
+            side == SurfaceSide.LEFT_WALL and \
                 is_attaching_to_left_wall or \
-            collision.side == SurfaceSide.RIGHT_WALL and \
+            side == SurfaceSide.RIGHT_WALL and \
                 is_attaching_to_right_wall or \
-            collision.side == SurfaceSide.CEILING and \
+            side == SurfaceSide.CEILING and \
                 is_attaching_to_ceiling:
-            return collision
+            return surface_contacts[side]
     return null
 
 
 func clear_current_state() -> void:
     # Let these properties be updated in the normal way:
     # -   did_move_frame_before_last
+    # -   previous_surface_contacts
     # -   previous_attachment_position
     # -   previous_attachment_normal
     # -   previous_attachment_side

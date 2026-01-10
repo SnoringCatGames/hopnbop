@@ -7,11 +7,6 @@ var side := SurfaceSide.NONE
 var key := ""
 var collision_index := -1
 
-# If true, then this collision was not initially detected by move_and_slide().
-# Instead, we forced an additional move_and_slide() into an expected nearby
-# surface that we expect to continue touching.
-var is_forced_continuation_collision := false
-
 var angle: float
 var collider: Object
 var collider_id: int
@@ -27,9 +22,7 @@ var remainder: Vector2
 var travel: Vector2
 
 
-func _init(original: KinematicCollision2D = null,
-        index := -1,
-        p_is_forced_continuation_collision := false) -> void:
+func _init(original: KinematicCollision2D = null, index := -1) -> void:
     if is_instance_valid(original):
         self.angle = original.get_angle()
         self.collider = original.get_collider()
@@ -45,7 +38,6 @@ func _init(original: KinematicCollision2D = null,
         self.remainder = original.get_remainder()
         self.travel = original.get_travel()
         self.collision_index = index
-        self.is_forced_continuation_collision = p_is_forced_continuation_collision
 
         self.is_tilemap_collision = collider is TileMapLayer
 

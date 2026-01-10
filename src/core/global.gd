@@ -8,6 +8,7 @@ var time := ScaffolderTime.new()
 var log := ScaffolderLog.new()
 var utils := Utils.new()
 var geometry := Geometry.new()
+var server_time_tracker := ServerTimeTracker.new()
 
 var main: Main
 var settings: Settings
@@ -37,3 +38,6 @@ func _enter_tree() -> void:
     
     geometry.name = "Geometry"
     add_child(geometry)
+    
+    server_time_tracker.name = "ServerTimeTracker"
+    add_child(server_time_tracker)

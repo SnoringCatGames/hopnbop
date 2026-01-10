@@ -21,7 +21,7 @@ func process(character) -> bool:
         # Horizontal movement.
         character.velocity.x += \
                 character.current_walk_acceleration * \
-                character.actions.delta_scaled * \
+                character.last_delta_scaled * \
                 character.surface_state.horizontal_acceleration_sign
 
         return true

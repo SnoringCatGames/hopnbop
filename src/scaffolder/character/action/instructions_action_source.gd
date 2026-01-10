@@ -16,8 +16,7 @@ func _init(
 func update(
         actions: CharacterActionState,
         previous_actions: CharacterActionState,
-        time_scaled: float,
-        _delta_scaled: float) -> void:
+        time_scaled: float) -> void:
     var non_pressed_keys := []
 
     for playback in _all_playback:

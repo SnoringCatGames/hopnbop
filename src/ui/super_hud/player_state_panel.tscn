@@ -87,6 +87,7 @@ mouse_filter = 2
 [node name="Label" type="Label" parent="VBoxContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+text = "Att. Pos.:"
 
 [node name="AttachmentPosition" type="Label" parent="VBoxContainer/HBoxContainer"]
 unique_name_in_owner = true
@@ -103,6 +104,96 @@ size_flags_horizontal = 3
 text = "Att. Nor: "
 
 [node name="AttachmentNormal" type="Label" parent="VBoxContainer/HBoxContainer2"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="IsDescendingThroughFloorsRow" type="HBoxContainer" parent="VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/IsDescendingThroughFloorsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "is_descending_through_floors: "
+
+[node name="IsDescendingThroughFloors" type="Label" parent="VBoxContainer/IsDescendingThroughFloorsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="IsAscendingThroughCeilingsRow" type="HBoxContainer" parent="VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/IsAscendingThroughCeilingsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "is_ascending_through_ceilings: "
+
+[node name="IsAscendingThroughCeilings" type="Label" parent="VBoxContainer/IsAscendingThroughCeilingsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="IsAttachingToWalkThroughWallsRow" type="HBoxContainer" parent="VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/IsAttachingToWalkThroughWallsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "is_attaching_to_walk_through_walls: "
+
+[node name="IsAttachingToWalkThroughWalls" type="Label" parent="VBoxContainer/IsAttachingToWalkThroughWallsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="IsOnFloorRow" type="HBoxContainer" parent="VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/IsOnFloorRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "is_on_floor: "
+
+[node name="IsOnFloor" type="Label" parent="VBoxContainer/IsOnFloorRow"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="IsOnCeilingRow" type="HBoxContainer" parent="VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/IsOnCeilingRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "is_on_ceiling: "
+
+[node name="IsOnCeiling" type="Label" parent="VBoxContainer/IsOnCeilingRow"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="IsOnWallRow" type="HBoxContainer" parent="VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/IsOnWallRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "is_on_wall: "
+
+[node name="IsOnWall" type="Label" parent="VBoxContainer/IsOnWallRow"]
 unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 2

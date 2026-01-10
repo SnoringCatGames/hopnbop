@@ -39,7 +39,7 @@ func process(character) -> bool:
             #     acceleration from being cancelled-out by the min-speed cutoff.
             var default_move_offset: float = \
                     character.current_walk_acceleration * \
-                    character.actions.delta_scaled
+                    character.last_delta_scaled
             var friction_factor: float = \
                     character.movement_settings.friction_coeff_with_sideways_input * \
                     friction_multiplier
@@ -67,7 +67,7 @@ func process(character) -> bool:
             var friction_magnitude: float = \
                     friction_factor * \
                     character.movement_settings.gravity_fast_fall_acceleration * \
-                    character.actions.delta_scaled
+                    character.last_delta_scaled
             friction_magnitude = clamp(
                     friction_magnitude,
                     0.0,
