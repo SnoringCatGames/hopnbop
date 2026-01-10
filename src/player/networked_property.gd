@@ -76,7 +76,7 @@ func _update_authoritative_timestamped_value(p_timestamped_value) -> void:
         _:
             G.log.error("NetworkedProperty._update_authoritative_timestamped_value")
             return
-    
+
     # FIXME: LEFT OFF HERE: ACTUALLY: Implement rollback. -------------
     # - THINK THROUGH HOW TO TEST THIS!!! Automatically and/or with print statements and/or by hand.
     #   - And list the different aspects that should be verified.
@@ -85,7 +85,7 @@ func _update_authoritative_timestamped_value(p_timestamped_value) -> void:
     #   - Discard frames older than the server data timestamp.
     #   - Apply the server data to the corresponding recorded frame in the buffer.
     #   - Extrapolate: Iteratively simulate each frame after that, recorded in the buffer, until reaching the current time.
-    #   - 
+    #   -
     # - What's this look like on the server side, for applying client actions?
     # - GO THROUGH AND REFACTOR CHARACTER AND SURFACE_STATE TO ACCOUNT FOR THIS NEW ROLL_BACK APPROACH.
     # - Ensure that all significant gameplay events are triggered as RPCs from the server.
@@ -98,7 +98,7 @@ func _update_authoritative_timestamped_value(p_timestamped_value) -> void:
 func update_local_value(value) -> void:
     local_value = value
     local_timestamp = G.server_time_tracker.get_server_time()
-    
+
     if has_authority:
         authoritative_value = local_value
         authoritative_timestamp = local_timestamp

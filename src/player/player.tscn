@@ -1,31 +1,34 @@
-[gd_scene load_steps=6 format=3 uid="uid://cn6hdqmmufnvr"]
+[gd_scene load_steps=8 format=3 uid="uid://cn6hdqmmufnvr"]
 
 [ext_resource type="Script" uid="uid://c1qdd50ca4hst" path="res://src/player/player.gd" id="1_rxibo"]
 [ext_resource type="Resource" uid="uid://dq1d4nuh248j2" path="res://src/player/default_movement_settings.tres" id="2_ohd16"]
+[ext_resource type="Script" uid="uid://cibybkn66xb8r" path="res://src/networking/multiplayer_reconciler.gd" id="3_244u8"]
 [ext_resource type="PackedScene" uid="uid://br1b7cse0hxmt" path="res://src/player/player_animator.tscn" id="3_ohd16"]
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_mf2ua"]
+properties/0/path = NodePath(".:networked_state:position:timestamped_value")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath(".:networked_state:velocity:timestamped_value")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+properties/2/path = NodePath(".:networked_state:is_facing_right:timestamped_value")
+properties/2/spawn = true
+properties/2/replication_mode = 1
+properties/3/path = NodePath(".:networked_state:attachment_side:timestamped_value")
+properties/3/spawn = true
+properties/3/replication_mode = 1
+properties/4/path = NodePath(".:networked_state:attachment_position:timestamped_value")
+properties/4/spawn = true
+properties/4/replication_mode = 1
+properties/5/path = NodePath(".:networked_state:attachment_normal:timestamped_value")
+properties/5/spawn = true
+properties/5/replication_mode = 1
+
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_244u8"]
 properties/0/path = NodePath(".:networked_state:actions:timestamped_value")
 properties/0/spawn = true
 properties/0/replication_mode = 1
-properties/1/path = NodePath(".:networked_state:position:timestamped_value")
-properties/1/spawn = true
-properties/1/replication_mode = 1
-properties/2/path = NodePath(".:networked_state:velocity:timestamped_value")
-properties/2/spawn = true
-properties/2/replication_mode = 1
-properties/3/path = NodePath(".:networked_state:is_facing_right:timestamped_value")
-properties/3/spawn = true
-properties/3/replication_mode = 1
-properties/4/path = NodePath(".:networked_state:attachment_side:timestamped_value")
-properties/4/spawn = true
-properties/4/replication_mode = 1
-properties/5/path = NodePath(".:networked_state:attachment_position:timestamped_value")
-properties/5/spawn = true
-properties/5/replication_mode = 1
-properties/6/path = NodePath(".:networked_state:attachment_normal:timestamped_value")
-properties/6/spawn = true
-properties/6/replication_mode = 1
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_rxibo"]
 radius = 6.0
@@ -37,16 +40,24 @@ script = ExtResource("1_rxibo")
 collision_shape = NodePath("PlayerBodyCollisionShape")
 animator = NodePath("PlayerAnimator")
 movement_settings = ExtResource("2_ohd16")
-metadata/_custom_type_script = "uid://c1qdd50ca4hst"
 
-[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+[node name="StateFromServerSynchronizer" type="MultiplayerSynchronizer" parent="."]
 replication_config = SubResource("SceneReplicationConfig_mf2ua")
+script = ExtResource("3_244u8")
+metadata/_custom_type_script = "uid://cibybkn66xb8r"
+
+[node name="InputFromClientSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_config = SubResource("SceneReplicationConfig_244u8")
+script = ExtResource("3_244u8")
+authority_mode = 1
+metadata/_custom_type_script = "uid://cibybkn66xb8r"
 
 [node name="CharacterCamera" type="Camera2D" parent="."]
 unique_name_in_owner = true
 zoom = Vector2(1.5, 1.5)
 
 [node name="PlayerAnimator" parent="." instance=ExtResource("3_ohd16")]
+faces_right_by_default = true
 
 [node name="PlayerBodyCollisionShape" type="CollisionShape2D" parent="."]
 unique_name_in_owner = true

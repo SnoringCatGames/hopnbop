@@ -2,9 +2,6 @@ class_name Player
 extends Character
 
 
-var has_authority: bool:
-    get: return get_multiplayer_authority() == multiplayer.get_unique_id()
-
 var networked_state := PlayerNetworkedState.new()
 
 
@@ -15,12 +12,12 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
     super._physics_process(delta)
-    
+
     networked_state.update(self)
 
 
 func _update_actions() -> void:
-    if has_authority:
+    if is_multiplayer_authority():
         super._update_actions()
     else:
         # Don't update actions per-frame. Instead, actions are updated when

@@ -618,3 +618,24 @@ func get_display_name(object: Variant) -> String:
         return path
 
     return result.get_string(1)
+
+
+static func get_property_value_from_node_path(base_node: Node, p_node_path: NodePath):
+    var result = base_node.get_node_and_resource(p_node_path)
+    var node: Node = result[0]
+    var resource: Resource = result[1]
+    var property_path: StringName = result[2]
+
+    if node:
+        @warning_ignore("incompatible_ternary")
+        var target_object: Object = resource if resource else node
+
+        if property_path:
+            var property_value = target_object.get(property_path)
+            return property_value
+        else:
+            # No property path was included, so let's return the resource or node.
+            return target_object
+
+    G.log.error("get_property_value: Node not found: %s" % p_node_path)
+    return null
