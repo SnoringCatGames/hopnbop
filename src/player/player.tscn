@@ -24,6 +24,9 @@ properties/4/replication_mode = 1
 properties/5/path = NodePath(".:networked_state:attachment_normal:timestamped_value")
 properties/5/spawn = true
 properties/5/replication_mode = 1
+properties/6/path = NodePath(".:multiplayer_id")
+properties/6/spawn = true
+properties/6/replication_mode = 0
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_244u8"]
 properties/0/path = NodePath(".:networked_state:actions:timestamped_value")

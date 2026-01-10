@@ -29,15 +29,15 @@ var level: Level
 func _enter_tree() -> void:
     time.name = "Time"
     add_child(time)
-    
+
     log.name = "Log"
     add_child(log)
-    
+
     utils.name = "Utils"
     add_child(utils)
-    
+
     geometry.name = "Geometry"
     add_child(geometry)
-    
+
     server_time_tracker.name = "ServerTimeTracker"
     add_child(server_time_tracker)

@@ -15,7 +15,7 @@ var is_paused := true:
 func _enter_tree() -> void:
     G.main = self
     G.settings = settings
-    
+
     Scaffolder.set_up()
 
 

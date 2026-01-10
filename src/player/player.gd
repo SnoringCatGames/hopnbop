@@ -4,6 +4,8 @@ extends Character
 
 var networked_state := PlayerNetworkedState.new()
 
+var multiplayer_id := 1
+
 
 func _ready() -> void:
     networked_state.name = "NetworkedState"

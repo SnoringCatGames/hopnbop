@@ -621,17 +621,40 @@ func get_display_name(object: Variant) -> String:
 
 
 static func get_property_value_from_node_path(base_node: Node, p_node_path: NodePath):
+    # FIXME
+    print("--- get_property_value_from_node_path -----------------")
+    print("base_node: %s" % base_node.get_path())
+    print("p_node_path: %s" % p_node_path)
+    print("p_node_path.get_name_count(): %s" % p_node_path.get_name_count())
+    print("p_node_path.get_name(0): %s" % p_node_path.get_name(0))
+
+    # If the path starts with ".", we need to handle it separately because
+    # get_node_and_resource expects at least one name in the path.
+    if p_node_path.get_name_count() == 1 and str(p_node_path.get_name(0)) == ".":
+        # The path is just "." with property subnames, so use base_node directly.
+        print("p_node_path.get_concatenated_subnames(): %s" % p_node_path.get_concatenated_subnames())
+        print("base_node.get(p_node_path.get_concatenated_subnames()): %s" % base_node.get(p_node_path.get_concatenated_subnames()))
+        #print("str(base_node.get_property_list()): %s" % str(base_node.get_property_list()))
+        return base_node.get(p_node_path.get_concatenated_subnames())
+
     var result = base_node.get_node_and_resource(p_node_path)
     var node: Node = result[0]
     var resource: Resource = result[1]
-    var property_path: StringName = result[2]
+    var property_path: NodePath = result[2]
+
+    print("node: %s" % node)
+    print("resource: %s" % resource)
+    print("property_path: %s" % property_path)
 
     if node:
         @warning_ignore("incompatible_ternary")
         var target_object: Object = resource if resource else node
+        print("target_object: %s" % target_object)
 
         if property_path:
-            var property_value = target_object.get(property_path)
+            print("property_path.get_concatenated_subnames(): %s" % property_path.get_concatenated_subnames())
+            var property_value = target_object.get(property_path.get_concatenated_subnames())
+            print("property_value: %s" % property_value)
             return property_value
         else:
             # No property path was included, so let's return the resource or node.

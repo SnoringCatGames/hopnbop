@@ -3,7 +3,7 @@ class_name MultiplayerReconciler
 extends MultiplayerSynchronizer
 
 
-# FIXME: LEFT OFF HERE:
+# FIXME: LEFT OFF HERE: ACTUALLY: Client prediction and rolback.
 # -
 
 
@@ -12,6 +12,8 @@ enum AuthorityMode {
     INPUT_FROM_CLIENT,
 }
 
+
+const _MULTIPLAYER_ID_PROPERTY_NAME := "multiplayer_id"
 
 @export var authority_mode := AuthorityMode.STATE_FROM_SERVER:
     set(value):
@@ -49,7 +51,7 @@ func _ready() -> void:
 
     # Only collect input from the authoritative client.
     if authority_mode == AuthorityMode.INPUT_FROM_CLIENT:
-        set_process(is_multiplayer_authority())
+        process_mode = Node.PROCESS_MODE_INHERIT if is_multiplayer_authority() else Node.PROCESS_MODE_DISABLED
 
     pass
     #multiplayer.get_unique_id()
@@ -65,6 +67,10 @@ func _physics_process(delta: float) -> void:
 
 
 func _update_partner_reconciler() -> void:
+    if not is_node_ready():
+        # Don't try parsing siblings until we're actually in the tree.
+        return
+
     _partner_reconciler = null
 
     # Collect all sibling reconcilers.
@@ -99,24 +105,32 @@ func _update_partner_reconciler() -> void:
         var multiplayer_id_path: NodePath = ""
         for property_path in state_from_server_config.get_properties():
             var last_subname := property_path.get_subname(property_path.get_subname_count() - 1)
-            if last_subname == "multiplayer_id":
+            if last_subname == _MULTIPLAYER_ID_PROPERTY_NAME:
                 multiplayer_id_path = property_path
 
         # Parse the property value from multiplayer_id_path.
         if not multiplayer_id_path.is_empty():
-            var multiplayer_id = Utils.get_property_value_from_node_path(
-                state_from_server_reconciler.root, multiplayer_id_path)
-            if multiplayer_id is int:
-                _multiplayer_id = multiplayer_id
-            elif multiplayer_id == null:
-                _partner_reconciler_configuration_warning = \
-                    "The `multiplayer_id` property defined in STATE_FROM_SERVER was not found."
-            else:
-                _partner_reconciler_configuration_warning = \
-                    "The `multiplayer_id` property replicated by STATE_FROM_SERVER must be an int."
+            # If the replication root is not a @tool script, then the
+            # multiplayer_id property may not be present on the root node in the
+            # editor runtime, since the script won't have run. So don't try to
+            # access it in the editor runtime.
+            if not Engine.is_editor_hint():
+                var multiplayer_id = Utils.get_property_value_from_node_path(
+                    state_from_server_reconciler.root, multiplayer_id_path)
+                if multiplayer_id is int:
+                    _multiplayer_id = multiplayer_id
+                elif multiplayer_id == null:
+                    _partner_reconciler_configuration_warning = \
+                        "The `%s` property defined in STATE_FROM_SERVER was not found." % \
+                        _MULTIPLAYER_ID_PROPERTY_NAME
+                else:
+                    _partner_reconciler_configuration_warning = \
+                        "The `%s` property replicated by STATE_FROM_SERVER must be an int." % \
+                        _MULTIPLAYER_ID_PROPERTY_NAME
         else:
             _partner_reconciler_configuration_warning = \
-                "STATE_FROM_SERVER reconciler must replicate a `multiplayer_id` property."
+                "STATE_FROM_SERVER reconciler must replicate a `%s` property." % \
+                _MULTIPLAYER_ID_PROPERTY_NAME
 
     update_configuration_warnings()
 
@@ -124,6 +138,10 @@ func _update_partner_reconciler() -> void:
             not _partner_reconciler_configuration_warning.is_empty():
         # Log and assert in game runtime environments.
         G.log.error("MultiplayerReconciler is misconfigured: %s" % _partner_reconciler_configuration_warning)
+
+    # Also refresh sibling reconciler warnings.
+    if is_instance_valid(_partner_reconciler):
+        _partner_reconciler.update_configuration_warnings()
 
 
 func _get_configuration_warnings() -> PackedStringArray:
