@@ -4,6 +4,16 @@ extends Resource
 
 # --- General configuration ---
 
+@export_group("Preview mode")
+# FIXME: Set up support to connect to a remote server.
+@export var connect_to_remote_server := false
+@export var remote_server_ip_address := ""
+@export var remote_server_port := 8000
+@export var run_multiple_clients := false
+@export_group("")
+
+@export var max_client_count := 8
+
 @export var dev_mode := true
 @export var draw_annotations := false
 @export var show_debug_console := false

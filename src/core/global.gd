@@ -3,12 +3,14 @@ extends Node
 ## Add global state here for easy access.
 
 
+var args: Dictionary
+
 var time := ScaffolderTime.new()
 @warning_ignore("shadowed_global_identifier")
 var log := ScaffolderLog.new()
 var utils := Utils.new()
 var geometry := Geometry.new()
-var server_time_tracker := ServerTimeTracker.new()
+var network := NetworkingMain.new()
 
 var main: Main
 var settings: Settings
@@ -27,6 +29,8 @@ var level: Level
 
 
 func _enter_tree() -> void:
+    args = Utils.parse_command_line_args()
+
     time.name = "Time"
     add_child(time)
 
@@ -39,5 +43,5 @@ func _enter_tree() -> void:
     geometry.name = "Geometry"
     add_child(geometry)
 
-    server_time_tracker.name = "ServerTimeTracker"
-    add_child(server_time_tracker)
+    network.name = "Network"
+    add_child(network)

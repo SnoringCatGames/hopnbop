@@ -662,3 +662,17 @@ static func get_property_value_from_node_path(base_node: Node, p_node_path: Node
 
     G.log.error("get_property_value: Node not found: %s" % p_node_path)
     return null
+
+
+static func parse_command_line_args() -> Dictionary:
+    var args := {}
+    for arg in OS.get_cmdline_args():
+        arg = arg.trim_prefix("--")
+        if arg.find("="):
+            var tokens := arg.split("=")
+            var key := tokens[0]
+            var value := tokens[1]
+            args[key] = value
+        else:
+            args[arg] = true
+    return args

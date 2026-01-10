@@ -51,11 +51,11 @@ func _ready() -> void:
 
     # Only collect input from the authoritative client.
     if authority_mode == AuthorityMode.INPUT_FROM_CLIENT:
+        set_multiplayer_authority(_multiplayer_id)
         process_mode = Node.PROCESS_MODE_INHERIT if is_multiplayer_authority() else Node.PROCESS_MODE_DISABLED
 
+    # FIXME
     pass
-    #multiplayer.get_unique_id()
-    #set_multiplayer_authority()
     #replication_config
 
 
@@ -63,6 +63,7 @@ func _physics_process(delta: float) -> void:
     if Engine.is_editor_hint():
         return
 
+    # FIXME
     pass
 
 
