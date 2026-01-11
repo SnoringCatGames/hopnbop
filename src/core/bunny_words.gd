@@ -3,6 +3,11 @@ extends RefCounted
 
 
 const NAMES := [
+    "Dott",
+    "Jiffy",
+    "Fizz",
+    "Mijji",
+    "Bunbun",
     "Biscuit",
     "Thumper",
     "Cinnabun",

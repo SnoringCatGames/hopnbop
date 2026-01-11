@@ -10,3 +10,6 @@ extends MultiplayerSynchronizer
 # - Refactor session:
 #   - Rename it to be LocalSession.
 #   - MatchState is then the networked session stuff.
+
+
+var player_stats :=

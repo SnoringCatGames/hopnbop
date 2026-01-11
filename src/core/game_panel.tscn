@@ -9,6 +9,7 @@
 script = ExtResource("1_lii62")
 
 [node name="MatchState" type="MultiplayerSynchronizer" parent="."]
+unique_name_in_owner = true
 replication_config = SubResource("SceneReplicationConfig_lii62")
 script = ExtResource("2_6i81m")
 
