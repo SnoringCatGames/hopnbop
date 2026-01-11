@@ -13,9 +13,15 @@ unique_name_in_owner = true
 replication_config = SubResource("SceneReplicationConfig_lii62")
 script = ExtResource("2_6i81m")
 
-[node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="."]
+[node name="LevelSpawner" type="MultiplayerSpawner" parent="."]
 unique_name_in_owner = true
 spawn_path = NodePath("../Levels")
 
 [node name="Levels" type="Node2D" parent="."]
+unique_name_in_owner = true
+
+[node name="PlayerStatsSpawner" type="MultiplayerSpawner" parent="."]
+spawn_path = NodePath("../PlayerStats")
+
+[node name="PlayerStats" type="Node2D" parent="."]
 unique_name_in_owner = true
