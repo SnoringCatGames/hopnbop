@@ -1,4 +1,4 @@
-class_name Session
+class_name LocalSession
 extends RefCounted
 
 

@@ -97,7 +97,7 @@ func _update_authoritative_timestamped_value(p_timestamped_value) -> void:
 
 func update_local_value(value) -> void:
     local_value = value
-    local_timestamp = G.network.server_time.get_server_time_usec()
+    local_timestamp = G.network.server_time_usec
 
     if has_authority:
         authoritative_value = local_value

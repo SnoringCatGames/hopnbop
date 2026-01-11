@@ -14,9 +14,7 @@ extends Node
 
 const SERVER_ID := 1
 
-var server_time := ServerTimeTracker.new()
-
-var _multiplayer_api: MultiplayerAPI
+var server_time_tracker := ServerTimeTracker.new()
 
 var is_preview := true
 var is_headless := true
@@ -26,12 +24,13 @@ var is_client: bool:
 var preview_client_number := 0
 var is_connected_to_server := false
 
+var server_time_usec: int:
+    get: return server_time_tracker.get_server_time_usec()
+
 
 func _enter_tree() -> void:
-    _multiplayer_api = get_multiplayer()
-
-    server_time.name = "ServerTime"
-    add_child(server_time)
+    server_time_tracker.name = "ServerTime"
+    add_child(server_time_tracker)
 
     is_headless = DisplayServer.get_name() == "headless"
     is_preview = G.args.has("preview")
@@ -39,13 +38,12 @@ func _enter_tree() -> void:
     preview_client_number = int(G.args.client) if G.args.has("client") else 0
 
     _update_is_connected_to_server()
-    _multiplayer_api.peer_connected.connect(_on_peer_connected)
-    _multiplayer_api.peer_disconnected.connect(_on_peer_disconnected)
+    multiplayer.peer_connected.connect(_on_peer_connected)
+    multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 
 
 func _on_peer_connected(_multiplayer_id: int) -> void:
     if is_server:
-        # FIXME: LEFT OFF HERE: ACTUALLY: GameState
         pass
     else:
         _update_is_connected_to_server()
@@ -53,7 +51,6 @@ func _on_peer_connected(_multiplayer_id: int) -> void:
 
 func _on_peer_disconnected(_multiplayer_id: int) -> void:
     if is_server:
-        # FIXME: LEFT OFF HERE: ACTUALLY: GameState
         pass
     else:
         _update_is_connected_to_server()
@@ -83,7 +80,7 @@ func _update_is_connected_to_server() -> void:
         is_connected_to_server = true
     else:
         is_connected_to_server = false
-        for peer_id in _multiplayer_api.peers:
+        for peer_id in multiplayer.peers:
             if peer_id == SERVER_ID:
                 is_connected_to_server = true
                 break

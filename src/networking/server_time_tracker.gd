@@ -47,8 +47,10 @@ func _ready() -> void:
     G.log.print("ServerTimeTracker._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
 
     # Connect to multiplayer signals to know when we're connected.
-    multiplayer.connected_to_server.connect(_client_on_connected_to_server)
-    multiplayer.peer_connected.connect(_server_on_peer_connected)
+    if G.network.is_client:
+        multiplayer.connected_to_server.connect(_client_on_connected_to_server)
+    if G.network.is_server:
+        multiplayer.peer_connected.connect(_server_on_peer_connected)
 
 
 func _process(delta: float) -> void:

@@ -25,7 +25,7 @@ var win_screen: WinScreen
 var pause_screen: PauseScreen
 
 var game_panel: GamePanel
-var session: Session
+var local_session: LocalSession
 var level: Level
 
 

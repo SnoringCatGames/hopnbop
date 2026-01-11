@@ -4,12 +4,22 @@
 [ext_resource type="Script" uid="uid://sb0waxlvl5ta" path="res://src/core/match_state.gd" id="2_6i81m"]
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_lii62"]
+properties/0/path = NodePath(".:players")
+properties/0/spawn = true
+properties/0/replication_mode = 2
+properties/1/path = NodePath(".:kills")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+properties/2/path = NodePath(".:bumps")
+properties/2/spawn = true
+properties/2/replication_mode = 1
 
 [node name="GamePanel" type="Node2D"]
 script = ExtResource("1_lii62")
 
 [node name="MatchState" type="MultiplayerSynchronizer" parent="."]
 unique_name_in_owner = true
+root_path = NodePath(".")
 replication_config = SubResource("SceneReplicationConfig_lii62")
 script = ExtResource("2_6i81m")
 
@@ -18,10 +28,4 @@ unique_name_in_owner = true
 spawn_path = NodePath("../Levels")
 
 [node name="Levels" type="Node2D" parent="."]
-unique_name_in_owner = true
-
-[node name="PlayerStatsSpawner" type="MultiplayerSpawner" parent="."]
-spawn_path = NodePath("../PlayerStats")
-
-[node name="PlayerStats" type="Node2D" parent="."]
 unique_name_in_owner = true

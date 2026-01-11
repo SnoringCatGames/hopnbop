@@ -26,8 +26,8 @@ func _enter_tree() -> void:
             _server_add_player(multiplayer_id)
 
         # Listen for added/removed client connections, to maintain player nodes.
-        get_multiplayer().peer_connected.connect(_server_add_player)
-        get_multiplayer().peer_disconnected.connect(_server_remove_player)
+        multiplayer.peer_connected.connect(_server_add_player)
+        multiplayer.peer_disconnected.connect(_server_remove_player)
 
 
 func _ready() -> void:
@@ -44,8 +44,8 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
     G.game_panel.on_level_removed(self)
-    get_multiplayer().peer_connected.disconnect(_server_add_player)
-    get_multiplayer().peer_disconnected.disconnect(_server_remove_player)
+    multiplayer.peer_connected.disconnect(_server_add_player)
+    multiplayer.peer_disconnected.disconnect(_server_remove_player)
 
 
 func _server_add_player(multiplayer_id: int) -> void:
