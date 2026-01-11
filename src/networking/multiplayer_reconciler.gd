@@ -3,7 +3,7 @@ class_name MultiplayerReconciler
 extends MultiplayerSynchronizer
 
 
-# FIXME: LEFT OFF HERE: ACTUALLY: Client prediction and rolback.
+# FIXME: LEFT OFF HERE: ACTUALLY: Client prediction and rollback.
 # -
 
 
@@ -138,7 +138,9 @@ func _update_partner_reconciler() -> void:
     if not Engine.is_editor_hint() and \
             not _partner_reconciler_configuration_warning.is_empty():
         # Log and assert in game runtime environments.
-        G.log.error("MultiplayerReconciler is misconfigured: %s" % _partner_reconciler_configuration_warning)
+        G.log.error("MultiplayerReconciler is misconfigured: %s" %
+            _partner_reconciler_configuration_warning,
+            ScaffolderLog.CATEGORY_CORE_SYSTEMS)
 
     # Also refresh sibling reconciler warnings.
     if is_instance_valid(_partner_reconciler):

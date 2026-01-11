@@ -4,8 +4,9 @@
 [ext_resource type="PackedScene" uid="uid://bo0yvrajk0ktn" path="res://src/level/background.tscn" id="2_es1ad"]
 [ext_resource type="TileSet" uid="uid://mtwu14d78k40" path="res://src/level/default_tile_set.tres" id="3_es1ad"]
 
-[node name="DefaultLevel" type="Node2D" node_paths=PackedStringArray("players_node")]
+[node name="DefaultLevel" type="Node2D" node_paths=PackedStringArray("player_spawner", "players_node")]
 script = ExtResource("1_n1ky5")
+player_spawner = NodePath("MultiplayerSpawner")
 players_node = NodePath("Players")
 
 [node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="."]

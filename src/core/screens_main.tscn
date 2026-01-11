@@ -1,8 +1,9 @@
-[gd_scene load_steps=7 format=3 uid="uid://dlvy2ayb4r382"]
+[gd_scene load_steps=8 format=3 uid="uid://dlvy2ayb4r382"]
 
 [ext_resource type="Script" uid="uid://cdurlt7srnaw2" path="res://src/core/screens_main.gd" id="1_r4bio"]
 [ext_resource type="PackedScene" uid="uid://dg8tvc66eq6c5" path="res://src/ui/screens/pause_screen.tscn" id="2_gihf7"]
 [ext_resource type="PackedScene" uid="uid://bqvcbt8m2jvy1" path="res://src/ui/screens/main_menu_screen.tscn" id="3_0eyfq"]
+[ext_resource type="PackedScene" uid="uid://cdp0hul2o5i0x" path="res://src/ui/screens/loading_screen.tscn" id="4_0eyfq"]
 [ext_resource type="PackedScene" uid="uid://hrkm0p3okgms" path="res://src/ui/screens/game_over_screen.tscn" id="4_3e1sw"]
 [ext_resource type="PackedScene" uid="uid://ddl2sry3xhy84" path="res://src/ui/screens/win_screen.tscn" id="5_47nlx"]
 
@@ -30,6 +31,10 @@ visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+
+[node name="LoadingScreen" parent="." instance=ExtResource("4_0eyfq")]
+visible = false
+layout_mode = 2
 
 [node name="GameOverScreen" parent="." instance=ExtResource("4_3e1sw")]
 visible = false

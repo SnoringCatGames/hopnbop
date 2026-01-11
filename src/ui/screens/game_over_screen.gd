@@ -1,8 +1,9 @@
 class_name GameOverScreen
-extends PanelContainer
+extends Screen
 
 
 func _enter_tree() -> void:
+    super._enter_tree()
     G.game_over_screen = self
 
 

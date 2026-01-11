@@ -4,12 +4,24 @@ extends Character
 
 var networked_state := PlayerNetworkedState.new()
 
-var multiplayer_id := 1
+var multiplayer_id := 1:
+    set(value):
+        if value != multiplayer_id:
+            multiplayer_id = value
+            _on_authority_changed()
+
+
+func _enter_tree() -> void:
+    G.level.on_player_added(self)
 
 
 func _ready() -> void:
     networked_state.name = "NetworkedState"
     add_child(networked_state)
+
+
+func _exit_tree() -> void:
+    G.level.on_player_removed(self)
 
 
 func _physics_process(delta: float) -> void:
@@ -27,9 +39,8 @@ func _update_actions() -> void:
         pass
 
 
-# FIXME: LEFT OFF HERE: CALL THIS
-func _on_has_authority_changed(has_authority: bool) -> void:
-    networked_state.set_has_authority(has_authority)
+func _on_authority_changed() -> void:
+    networked_state.set_has_authority(is_multiplayer_authority())
 
 
 func play_sound(sound_name: String) -> void:

@@ -9,4 +9,9 @@ extends PanelContainer
 
 
 func _enter_tree() -> void:
+    if G.network.is_server:
+        visible = false
+        process_mode = Node.PROCESS_MODE_DISABLED
+        return
+
     visible = G.settings.show_debug_player_state

@@ -6,7 +6,7 @@ extends Node
 ##
 ## This class provides an estimate of the current value of `Time.get_ticks_usec()`
 ## on the remote server machine.
-## 
+##
 ## It uses an NTP-like algorithm to calculate the clock offset between client and server,
 ## accounting for network latency.
 
@@ -44,6 +44,8 @@ var _client_rtt_samples: Array[int] = []
 
 
 func _ready() -> void:
+    G.log.print("ServerTimeTracker._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+
     # Connect to multiplayer signals to know when we're connected.
     multiplayer.connected_to_server.connect(_client_on_connected_to_server)
     multiplayer.peer_connected.connect(_server_on_peer_connected)
@@ -56,9 +58,9 @@ func _process(delta: float) -> void:
         return
     if not multiplayer.has_multiplayer_peer():
         return
-    
+
     _time_since_last_sync += delta
-    
+
     # Use faster sync interval until we have enough samples for a stable estimate.
     var current_interval := initial_sync_interval if _client_offset_samples.size() < sample_count else auto_sync_interval
     if _time_since_last_sync >= current_interval:
@@ -67,27 +69,27 @@ func _process(delta: float) -> void:
 
 
 ## Returns the estimated server time in microseconds.
-## 
+##
 ## This is an estimate of what `Time.get_ticks_usec()` would currently return on
 ## the remote server machine.
 func get_server_time_usec() -> int:
     if is_server:
         # We ARE the server, just return local time.
         return Time.get_ticks_usec()
-    
+
     # Return local time adjusted by the calculated offset.
     return Time.get_ticks_usec() + clock_offset_usec
 
 
 ## Manually request a time synchronization with the server.
-## 
+##
 ## On the server, this does nothing.
 func client_request_time_sync() -> void:
     if is_server:
         return
     if not multiplayer.has_multiplayer_peer():
         return
-    
+
     # T1: Client sends request with its local timestamp.
     _client_pending_sync_t1 = Time.get_ticks_usec()
     _server_rpc_request_time.rpc_id(1, _client_pending_sync_t1)
@@ -116,25 +118,25 @@ func _server_on_peer_connected(_peer_id: int) -> void:
 
 
 ## RPC called by client to request time from server.
-## 
+##
 ## t1_usec: The client's local time when the request was sent.
 @rpc("any_peer", "call_remote", "unreliable")
 func _server_rpc_request_time(t1_usec: int) -> void:
     if not is_server:
         return
-    
+
     # T2: Server receives the request.
     var t2_usec := Time.get_ticks_usec()
-    
+
     # T3: Server sends response (we send T2 and T3 together; T3 is "now").
     var t3_usec := Time.get_ticks_usec()
-    
+
     var sender_id := multiplayer.get_remote_sender_id()
     _client_rpc_respond_time.rpc_id(sender_id, t1_usec, t2_usec, t3_usec)
 
 
 ## RPC called by server to respond with time information.
-## 
+##
 ## t1_usec: Original client send time (echoed back).
 ## t2_usec: Server receive time.
 ## t3_usec: Server send time.
@@ -142,44 +144,44 @@ func _server_rpc_request_time(t1_usec: int) -> void:
 func _client_rpc_respond_time(t1_usec: int, t2_usec: int, t3_usec: int) -> void:
     if is_server:
         return
-    
+
     # T4: Client receives the response.
     var t4_usec := Time.get_ticks_usec()
-    
+
     # Verify this response matches our pending request.
     if t1_usec != _client_pending_sync_t1:
         # Stale response, ignore.
         return
-    
+
     # Calculate round-trip time: RTT = (T4 - T1) - (T3 - T2).
     # This is the total network delay (excluding server processing time).
     var rtt := (t4_usec - t1_usec) - (t3_usec - t2_usec)
-    
+
     # Calculate clock offset using NTP formula:
     # offset = ((T2 - T1) + (T3 - T4)) / 2
     # This gives us how much to add to local time to get server time.
     @warning_ignore("integer_division")
     var offset := ((t2_usec - t1_usec) + (t3_usec - t4_usec)) / 2
-    
+
     # Add to samples.
     _client_offset_samples.append(offset)
     _client_rtt_samples.append(rtt)
-    
+
     # Keep only the most recent samples.
     while _client_offset_samples.size() > sample_count:
         _client_offset_samples.pop_front()
     while _client_rtt_samples.size() > sample_count:
         _client_rtt_samples.pop_front()
-    
+
     # Calculate average offset (could also use median for more robustness).
     var total_offset: int = 0
     for sample in _client_offset_samples:
         total_offset += sample
     @warning_ignore("integer_division")
     clock_offset_usec = total_offset / _client_offset_samples.size()
-    
+
     # Store the latest RTT.
     rtt_usec = rtt
-    
+
     is_synced = true
     sync_completed.emit(clock_offset_usec, rtt_usec)

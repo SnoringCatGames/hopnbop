@@ -11,6 +11,10 @@ const WALL_ANGLE_EPSILON := 0.01
 const FLOAT_EPSILON := 0.00001
 
 
+func _ready() -> void:
+    G.log.print("Geometry._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+
+
 # Calculates the minimum squared distance between a line segment and a point.
 static func get_distance_squared_from_point_to_segment(
         point: Vector2,

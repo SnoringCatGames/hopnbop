@@ -1,0 +1,29 @@
+[gd_scene load_steps=4 format=3 uid="uid://cdp0hul2o5i0x"]
+
+[ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/core/default_theme.tres" id="1_y4sl0"]
+[ext_resource type="StyleBox" uid="uid://dc86ks0yqis4j" path="res://src/ui/screens/screen_style_box.tres" id="2_mpl2o"]
+[ext_resource type="Script" uid="uid://cfe8m22ryd4ye" path="res://src/ui/screens/loading_screen.gd" id="3_xu7rc"]
+
+[node name="LoadingScreen" type="PanelContainer"]
+process_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_y4sl0")
+theme_override_styles/panel = ExtResource("2_mpl2o")
+script = ExtResource("3_xu7rc")
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Connecting to server..."
+horizontal_alignment = 1
+vertical_alignment = 1

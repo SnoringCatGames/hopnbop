@@ -1,10 +1,8 @@
 [gd_scene load_steps=4 format=3 uid="uid://hrkm0p3okgms"]
 
-[ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/core/main_theme.tres" id="1_bdo0u"]
+[ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/core/default_theme.tres" id="1_bdo0u"]
 [ext_resource type="Script" uid="uid://dnb4jgmiq7u6c" path="res://src/ui/screens/game_over_screen.gd" id="1_wmw1d"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bdo0u"]
-bg_color = Color(0.09803922, 0.1764706, 0.3137255, 1)
+[ext_resource type="StyleBox" uid="uid://dc86ks0yqis4j" path="res://src/ui/screens/screen_style_box.tres" id="2_p4mol"]
 
 [node name="GameOverScreen" type="PanelContainer"]
 process_mode = 3
@@ -14,7 +12,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("1_bdo0u")
-theme_override_styles/panel = SubResource("StyleBoxFlat_bdo0u")
+theme_override_styles/panel = ExtResource("2_p4mol")
 script = ExtResource("1_wmw1d")
 
 [node name="CenterContainer" type="CenterContainer" parent="."]

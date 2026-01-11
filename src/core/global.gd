@@ -19,6 +19,7 @@ var hud: Hud
 var screens: ScreensMain
 
 var main_menu_screen: MainMenuScreen
+var loading_screen: LoadingScreen
 var game_over_screen: GameOverScreen
 var win_screen: WinScreen
 var pause_screen: PauseScreen
@@ -45,3 +46,7 @@ func _enter_tree() -> void:
 
     network.name = "Network"
     add_child(network)
+
+
+func _ready() -> void:
+    G.log.print("Global._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)

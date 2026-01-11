@@ -72,7 +72,7 @@ func _set_current_actions_bitmask(value: int) -> void:
     pressed_jump = (value & ActionFlags.JUMP) != 0
     just_pressed_jump = pressed_jump and not was_pressing_jump
     just_released_jump = not pressed_jump and was_pressing_jump
-    
+
     var was_pressing_up: bool = pressed_up
     pressed_up = (value & ActionFlags.PRESSED_UP) != 0
     just_pressed_up = pressed_up and not was_pressing_up
@@ -97,7 +97,7 @@ func _set_current_actions_bitmask(value: int) -> void:
     pressed_attach = (value & ActionFlags.PRESSED_ATTACH) != 0
     just_pressed_attach = pressed_attach and not was_pressing_attach
     just_released_attach = not pressed_attach and was_pressing_attach
-    
+
 
 func clear() -> void:
     self.pressed_jump = false
@@ -243,9 +243,9 @@ func _log_new_press_or_release(
     ]
 
     if just_pressed:
-        G.log.print("START %5s: %s" % [action_name, details])
+        G.log.print("START %5s: %s" % [action_name, details], ScaffolderLog.CATEGORY_PLAYER_MOVEMENT)
     if just_released:
-        G.log.print("STOP  %5s: %s" % [action_name, details])
+        G.log.print("STOP  %5s: %s" % [action_name, details], ScaffolderLog.CATEGORY_PLAYER_MOVEMENT)
 
 
 const _ACTION_FLAG_DEBUG_LABEL_PAIRS := [

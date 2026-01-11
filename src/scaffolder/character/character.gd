@@ -2,6 +2,9 @@ class_name Character
 extends CharacterBody2D
 
 
+# FIXME: Logs: Re-introduce some character, surface state, and action logs.
+
+
 signal physics_processed
 
 
@@ -162,7 +165,7 @@ func _physics_process(delta: float) -> void:
         stationary_frames_count += 1
 
     total_distance_traveled += position.distance_to(previous_position)
-    
+
     physics_processed.emit()
 
 
@@ -175,7 +178,7 @@ func _apply_movement() -> void:
     velocity = modified_velocity
     max_slides = MovementSettings._MAX_SLIDES_DEFAULT
     move_and_slide()
-    
+
     surface_state.update_collisions()
 
 
@@ -191,7 +194,7 @@ func _update_actions() -> void:
                 actions,
                 _actions_from_previous_frame,
                 G.time.get_scaled_play_time())
-    
+
     CharacterActionSource.update_for_implicit_key_events(
             actions,
             _actions_from_previous_frame)
@@ -269,7 +272,7 @@ func _process_sounds() -> void:
 
 func play_sound(_sound_name: String) -> void:
     push_error("Abstract CharacterActionSource.update is not implemented")
-    
+
 
 func processed_action(p_name: String) -> bool:
     return _previous_actions_handlers_this_frame.get(p_name) == true

@@ -11,35 +11,86 @@ extends Node
 ## - Change the "Launch Arguments" of each row to be one of the following:
 ##   --server, --client=1, --client=2.
 
+
+const SERVER_ID := 1
+
 var server_time := ServerTimeTracker.new()
 
+var _multiplayer_api: MultiplayerAPI
+
+var is_preview := true
+var is_headless := true
 var is_server := true
+var is_client: bool:
+    get: return not is_server
 var preview_client_number := 0
+var is_connected_to_server := false
 
 
 func _enter_tree() -> void:
+    _multiplayer_api = get_multiplayer()
+
     server_time.name = "ServerTime"
     add_child(server_time)
 
+    is_headless = DisplayServer.get_name() == "headless"
+    is_preview = G.args.has("preview")
+    is_server = is_headless or G.args.has("server")
+    preview_client_number = int(G.args.client) if G.args.has("client") else 0
+
+    _update_is_connected_to_server()
+    _multiplayer_api.peer_connected.connect(_on_peer_connected)
+    _multiplayer_api.peer_disconnected.connect(_on_peer_disconnected)
+
+
+func _on_peer_connected(_multiplayer_id: int) -> void:
+    if is_server:
+        # FIXME: LEFT OFF HERE: ACTUALLY: GameState
+        pass
+    else:
+        _update_is_connected_to_server()
+
+
+func _on_peer_disconnected(_multiplayer_id: int) -> void:
+    if is_server:
+        # FIXME: LEFT OFF HERE: ACTUALLY: GameState
+        pass
+    else:
+        _update_is_connected_to_server()
+
 
 func _ready() -> void:
-    # FIXME
-    pass
-    #multiplayer.has_multiplayer_peer()
-    #multiplayer.is_server()
+    G.log.print("NetworkingMain._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
 
-    is_server = DisplayServer.get_name() == "headless" or G.args.has("server")
-    preview_client_number = G.args.client if G.args.has("client") else 0
+    # FIXME: Also support websocket or webrtc as needed.
 
-    # FIXME
     var peer = ENetMultiplayerPeer.new()
     if is_server:
-        peer.create_server(G.settings.remote_server_port, G.settings.max_client_count)
+        peer.create_server(G.settings.server_port, G.settings.max_client_count)
     else:
-        peer.create_client(G.settings.remote_server_ip_address, G.settings.remote_server_port)
+        peer.create_client(G.settings.server_ip_address, G.settings.server_port)
+    if peer.get_connection_status() == MultiplayerPeer.CONNECTION_DISCONNECTED:
+        var message := "Failed to start multiplayer server."
+        if is_preview:
+            G.log.alert_user(message, ScaffolderLog.CATEGORY_CORE_SYSTEMS)
+        else:
+            G.log.error(message, ScaffolderLog.CATEGORY_CORE_SYSTEMS)
     multiplayer.multiplayer_peer = peer
 
 
+func _update_is_connected_to_server() -> void:
+    if is_server:
+        is_connected_to_server = true
+    else:
+        is_connected_to_server = false
+        for peer_id in _multiplayer_api.peers:
+            if peer_id == SERVER_ID:
+                is_connected_to_server = true
+                break
+
+
+
+
 # FIXME:
-# - Start level paused until all clients are connected.
+# - Start level paused until all clients are connected?
 # -

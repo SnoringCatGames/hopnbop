@@ -13,23 +13,47 @@ extends Node2D
 func _enter_tree() -> void:
     G.audio = self
 
+    if G.network.is_server:
+        visible = false
+        process_mode = Node.PROCESS_MODE_DISABLED
+        return
+
+
+func _ready() -> void:
+    G.log.print("AudioMain._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+
+    if G.network.is_server:
+        return
+
 
 func play_click_sound() -> void:
+    if G.network.is_server:
+        return
+
     if not %ClickStreamPlayer.playing:
         %ClickStreamPlayer.play()
 
 
 func fade_to_menu_theme() -> void:
+    if G.network.is_server:
+        return
+
     fade_out(%MainThemeStreamPlayer)
     fade_in(%MenuThemeStreamPlayer, menu_theme_volume)
 
 
 func fade_to_main_theme() -> void:
+    if G.network.is_server:
+        return
+
     fade_out(%MenuThemeStreamPlayer)
     fade_in(%MainThemeStreamPlayer, main_theme_volume)
 
 
 func fade_in(stream_player: AudioStreamPlayer, volume: float) -> void:
+    if G.network.is_server:
+        return
+
     if G.settings.mute_music:
         volume = mute_volume
 
@@ -49,6 +73,9 @@ func fade_in(stream_player: AudioStreamPlayer, volume: float) -> void:
 
 
 func fade_out(stream_player: AudioStreamPlayer) -> void:
+    if G.network.is_server:
+        return
+
     if not stream_player.playing:
         return
 

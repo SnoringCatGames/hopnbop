@@ -10,17 +10,27 @@ var _message_count := 0
 
 
 func _enter_tree() -> void:
+    if G.network.is_server:
+        visible = false
+        process_mode = Node.PROCESS_MODE_DISABLED
+        return
+
     visible = G.settings.show_debug_console
-    
+
 
 func _ready() -> void:
+    if G.network.is_server:
+        G.log._print_queue.clear()
+        G.log.is_queuing_messages = false
+        return
+
     _log_print_queue()
     G.log.is_queuing_messages = false
     G.log.on_message.connect(add_message)
-    
+
     %ConcatenatedLogs.add_theme_color_override("font_color", font_color)
     %Time.add_theme_color_override("font_color", font_color)
-    
+
     G.time.set_timeout(_delayed_init, 0.8)
 
 
@@ -35,14 +45,14 @@ func _process(_delta: float) -> void:
 func _delayed_init() -> void:
     if not G.settings.show_debug_console:
         return
-        
+
     _set_concatenated_logs(text)
 
 
 func add_message(message: String) -> void:
     if not G.settings.show_debug_console:
         return
-        
+
     text += "> " + message + "\n"
     _message_count += 1
     _remove_surplus_message()
@@ -72,7 +82,7 @@ func _scroll_to_bottom() -> void:
 func _log_print_queue() -> void:
     if not G.settings.show_debug_console:
         return
-        
+
     for entry in G.log._print_queue:
         add_message(entry)
     G.log._print_queue.clear()

@@ -1,10 +1,8 @@
 [gd_scene load_steps=4 format=3 uid="uid://bqvcbt8m2jvy1"]
 
 [ext_resource type="Script" uid="uid://bm2186dd3mm0j" path="res://src/ui/screens/main_menu_screen.gd" id="1_0ltyu"]
-[ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/core/main_theme.tres" id="1_acw1h"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_acw1h"]
-bg_color = Color(0.09803922, 0.1764706, 0.3137255, 1)
+[ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/core/default_theme.tres" id="1_acw1h"]
+[ext_resource type="StyleBox" uid="uid://dc86ks0yqis4j" path="res://src/ui/screens/screen_style_box.tres" id="2_i8m6y"]
 
 [node name="MainMenuScreen" type="PanelContainer"]
 process_mode = 3
@@ -14,7 +12,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("1_acw1h")
-theme_override_styles/panel = SubResource("StyleBoxFlat_acw1h")
+theme_override_styles/panel = ExtResource("2_i8m6y")
 script = ExtResource("1_0ltyu")
 
 [node name="CenterContainer" type="CenterContainer" parent="."]
