@@ -62,6 +62,8 @@ func server_enable_connections() -> void:
 
     multiplayer.multiplayer_peer = peer
 
+    G.log.print("Started multiplayer server.")
+
 
 func client_connect_to_server() -> void:
     G.check_is_client("NetworkingMain.client_connect_to_server")
@@ -81,17 +83,19 @@ func client_connect_to_server() -> void:
 
     multiplayer.multiplayer_peer = peer
 
+    G.log.print("Started multiplayer client.")
+
 
 func _on_peer_connected(_multiplayer_id: int) -> void:
     if is_server:
-        pass
+        G.log.print("Client connected: %d" % _multiplayer_id)
     else:
         _update_is_connected_to_server()
 
 
 func _on_peer_disconnected(_multiplayer_id: int) -> void:
     if is_server:
-        pass
+        G.log.print("Client disconnected: %d" % _multiplayer_id)
     else:
         _update_is_connected_to_server()
 
