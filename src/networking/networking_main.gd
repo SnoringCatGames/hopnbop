@@ -50,23 +50,35 @@ func _ready() -> void:
     G.log.log_system_ready("NetworkingMain")
 
 
-# FIXME: LEFT OFF HERE: ACTUALLY!! Just renamed to "client_"; NOT BEING CALLED ON SERVER
+func server_enable_connections() -> void:
+    G.check_is_server("NetworkingMain.server_enable_connections")
+
+    var peer = ENetMultiplayerPeer.new()
+    peer.create_server(G.settings.server_port, G.settings.max_client_count)
+
+    G.check(
+        peer.get_connection_status() != MultiplayerPeer.CONNECTION_DISCONNECTED,
+        "Failed to start multiplayer server.")
+
+    multiplayer.multiplayer_peer = peer
+
+
 func client_connect_to_server() -> void:
+    G.check_is_client("NetworkingMain.client_connect_to_server")
+
     # TODO: Also support websocket or webrtc as needed.
 
     # FIXME: [GameLift]: Support connecting to the remote server.
 
     var peer = ENetMultiplayerPeer.new()
-    if is_server:
-        peer.create_server(G.settings.server_port, G.settings.max_client_count)
-    else:
-        peer.create_client(G.settings.server_ip_address, G.settings.server_port)
+    peer.create_client(G.settings.server_ip_address, G.settings.server_port)
+
     if peer.get_connection_status() == MultiplayerPeer.CONNECTION_DISCONNECTED:
-        var message := "Failed to start multiplayer server."
-        if is_preview:
-            G.log.alert_user(message, ScaffolderLog.CATEGORY_CORE_SYSTEMS)
-        else:
-            G.error(message, ScaffolderLog.CATEGORY_CORE_SYSTEMS)
+        G.log.alert_user("Failed to start multiplayer client.",
+            ScaffolderLog.CATEGORY_CORE_SYSTEMS)
+        G.game_panel.client_exit_game()
+        return
+
     multiplayer.multiplayer_peer = peer
 
 

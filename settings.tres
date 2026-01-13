@@ -1,9 +1,10 @@
-[gd_resource type="Resource" script_class="Settings" load_steps=6 format=3 uid="uid://dv60bmaw1pdx6"]
+[gd_resource type="Resource" script_class="Settings" load_steps=7 format=3 uid="uid://dv60bmaw1pdx6"]
 
 [ext_resource type="Script" uid="uid://cqomr88ncj2d3" path="res://src/core/settings.gd" id="1_krfic"]
 [ext_resource type="PackedScene" uid="uid://bfl5qv8bb5apr" path="res://src/level/default_level.tscn" id="1_legvn"]
 [ext_resource type="ColorPalette" uid="uid://dlxwxma23mjon" path="res://src/core/default_palette.tres" id="2_yixrw"]
 [ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/core/default_theme.tres" id="3_r80nf"]
+[ext_resource type="PackedScene" uid="uid://cn6hdqmmufnvr" path="res://src/player/player.tscn" id="3_woca2"]
 [ext_resource type="StyleBox" uid="uid://dc86ks0yqis4j" path="res://src/ui/screens/screen_style_box.tres" id="5_r80nf"]
 
 [resource]
@@ -15,3 +16,5 @@ default_palette = ExtResource("2_yixrw")
 screen_style_box = ExtResource("5_r80nf")
 default_level_scene = ExtResource("1_legvn")
 level_scenes = Array[PackedScene]([ExtResource("1_legvn")])
+default_player_scene = ExtResource("3_woca2")
+player_scenes = Array[PackedScene]([ExtResource("3_woca2")])

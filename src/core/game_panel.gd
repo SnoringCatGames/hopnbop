@@ -232,6 +232,8 @@ func server_start_game() -> void:
 
     _server_spawn_level(G.settings.default_level_scene)
 
+    G.network.server_enable_connections()
+
 
 func server_end_game() -> void:
     G.check_is_server("NetworkingMain.server_end_game")

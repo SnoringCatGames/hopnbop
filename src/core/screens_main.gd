@@ -42,7 +42,7 @@ func client_open_screen(screen_type: ScreenType) -> void:
     var previous_screen_type := current_screen
     current_screen = screen_type
 
-    G.game_panel.paused = screen_type != ScreenType.GAME
+    get_tree().paused = screen_type != ScreenType.GAME
 
     G.main_menu_screen.visible = screen_type == ScreenType.MAIN_MENU
     G.loading_screen.visible = screen_type == ScreenType.LOADING
