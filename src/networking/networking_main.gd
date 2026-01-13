@@ -89,23 +89,23 @@ func client_connect_to_server() -> void:
         ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
 
-func _on_peer_connected(_multiplayer_id: int) -> void:
+func _on_peer_connected(multiplayer_id: int) -> void:
     if is_server:
-        G.print("Client connected: %d" % _multiplayer_id, 
+        G.print("Client connected: %d" % multiplayer_id, 
             ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
     else:
-        G.check(_multiplayer_id == SERVER_ID)
-        G.print("Connected to server",
+        G.check(multiplayer_id == SERVER_ID)
+        G.print("Connected to server: Local multiplayer_id=%s" % multiplayer_id,
             ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
         _client_update_is_connected_to_server()
 
 
-func _on_peer_disconnected(_multiplayer_id: int) -> void:
+func _on_peer_disconnected(multiplayer_id: int) -> void:
     if is_server:
-        G.print("Client disconnected: %d" % _multiplayer_id,
+        G.print("Client disconnected: %d" % multiplayer_id,
             ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
     else:
-        G.check(_multiplayer_id == SERVER_ID)
+        G.check(multiplayer_id == SERVER_ID)
         G.print("Disconnect from server",
             ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
         _client_update_is_connected_to_server()

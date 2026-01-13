@@ -42,16 +42,15 @@ func _format_message(message: String, category: StringName) -> String:
         ""
     
     var multiplayer_id_value: String
-    if G.settings.include_multiplayer_id_in_logs:
+    if G.settings.include_multiplayer_id_in_logs and G.network.is_preview:
         if G.network.is_client:
             if G.network.is_connected_to_server:
                 # Client, connected to server.
-                multiplayer_id_value = "C%s" % G.network.local_id
+                multiplayer_id_value = "C%d" % G.network.local_id
             else:
                 # Client, not yet connected to server.
                 if G.network.is_preview:
-                    multiplayer_id_value = "C%s" % (
-                        char(ord("A") + G.network.preview_client_number - 1))
+                    multiplayer_id_value = "C%d" % G.network.preview_client_number
                 else:
                     multiplayer_id_value = "C-"
         else:

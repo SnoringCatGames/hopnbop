@@ -2,12 +2,6 @@ class_name GamePanel
 extends Node2D
 
 
-# FIXME: LEFT OFF HERE: Debug game connections. -------------------------------
-# - Commit message: Continue implementing network connections.
-# - Make sure both clients can connect to the server and are spawned in the level.
-# - Replace obsolete broken Player networked state with the start of the new thing.
-
-
 # FIXME: [Rollback]: Buffer-state debug UI and rollback implementation:
 #
 # ### PART 1: Implement buffer-state history tracking

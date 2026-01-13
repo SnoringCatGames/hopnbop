@@ -2,6 +2,9 @@ class_name NetworkedProperty
 extends Node
 
 
+# FIXME: LEFT OFF HERE: Replace obsolete broken Player networked state with the start of the new thing.
+
+
 const _RESET_LOCAL_VALUE_DELAY := 0.2
 
 enum NetworkedDataType {
@@ -77,7 +80,7 @@ func _update_authoritative_timestamped_value(p_timestamped_value) -> void:
             G.error("NetworkedProperty._update_authoritative_timestamped_value")
             return
 
-    # FIXME: [Rollback]: Implement rollback. -------------
+    # FIXME: [Rollback]: Implement rollback.
     # - THINK THROUGH HOW TO TEST THIS!!! Automatically and/or with print statements and/or by hand.
     #   - And list the different aspects that should be verified.
     # - Add a circular buffer to track up to N frames of networked state.
