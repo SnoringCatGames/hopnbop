@@ -24,7 +24,7 @@ layout_mode = 2
 [node name="Label" type="Label" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 4
-text = "Jump 'n Blast"
+text = "Jump 'n Thump"
 horizontal_alignment = 1
 vertical_alignment = 1
 

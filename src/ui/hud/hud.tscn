@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://cvmchc2851mho" path="res://src/ui/hud/hud.gd" id="1_eqvli"]
 
 [node name="Hud" type="PanelContainer"]
+process_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0

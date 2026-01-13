@@ -34,7 +34,7 @@ func _ready() -> void:
 
 func client_open_screen(screen_type: ScreenType) -> void:
     G.check_is_client("ScreensMain.client_open_screen")
-    
+
     if screen_type == current_screen:
         # Already there!
         return
@@ -78,7 +78,7 @@ func client_open_screen(screen_type: ScreenType) -> void:
     else:
         var screen := get_screen_from_type(screen_type)
         screen.on_open()
-    
+
     if previous_screen_type == ScreenType.GAME:
         G.game_panel.on_left_to_screen()
     else:
@@ -105,4 +105,3 @@ func get_screen_from_type(screen_type: ScreenType) -> Screen:
         _:
             G.check(false, "ScreensMain.get_screen_from_type")
             return null
-    

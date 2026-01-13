@@ -16,6 +16,7 @@ stream_2/stream = ExtResource("5_wtepx")
 stream_3/stream = ExtResource("6_24bi3")
 
 [node name="AudioMain" type="Node2D"]
+process_mode = 3
 script = ExtResource("1_tdp82")
 main_theme_volume = -8.0
 menu_theme_volume = 2.247

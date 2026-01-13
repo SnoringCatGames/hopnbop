@@ -14,7 +14,7 @@ func _enter_tree() -> void:
 
     randomize()
 
-    G.game_panel.paused = true
+    get_tree().paused = true
 
     Scaffolder.set_up()
 
@@ -23,7 +23,7 @@ func _ready() -> void:
     G.log.log_system_ready("Main")
 
     await get_tree().process_frame
-    
+
     if G.network.preview_client_number > 1 and not G.settings.run_multiple_clients:
         G.print("Main._ready: Closing extra client process (--client=%s), because G.settings.run_multiple_clients is false." % G.network.preview_client_number)
         close_app()
@@ -36,7 +36,7 @@ func _ready() -> void:
 
 func _start_app() -> void:
     if G.network.is_server:
-        G.game_panel.paused = false
+        get_tree().paused = false
         G.game_panel.server_start_game()
     else:
         if G.settings.start_in_game:

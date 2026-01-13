@@ -153,7 +153,7 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
     G.log.log_system_ready("GamePanel")
-    
+
     G.match_state = match_state
 
     for level_scene in G.settings.level_scenes:
@@ -172,16 +172,16 @@ func _client_on_server_connected() -> void:
         "GamePanel._client_on_server_connected: Game load is not expected")
     G.check(not G.local_session.is_game_active,
         "GamePanel._client_on_server_connected: Game is already active")
-    
+
     G.local_session.is_game_loading = false
     G.local_session.is_game_active = true
-    
+
     G.screens.client_open_screen(ScreensMain.ScreenType.GAME)
 
 
 func _client_on_server_disconnected() -> void:
     G.check_is_client("NetworkingMain._client_on_server_disconnected")
-    
+
     client_exit_game()
 
 
@@ -199,13 +199,13 @@ func client_load_game() -> void:
     G.local_session.is_game_loading = true
 
     G.screens.client_open_screen(ScreensMain.ScreenType.LOADING)
-    
+
     G.network.client_connect_to_server()
 
 
 func client_exit_game() -> void:
     G.check_is_client("NetworkingMain.client_exit_game")
-    
+
     G.local_session.is_game_active = false
     G.local_session.is_game_loading = false
 
@@ -243,7 +243,7 @@ func server_end_game() -> void:
     G.local_session.is_game_active = false
 
     G.network.server_close_multiplayer_session()
-    
+
     # TODO: Add support for tracking game stats in a separate backend database.
 
     _server_destroy_level(G.level)
@@ -270,7 +270,7 @@ func _server_spawn_level(level_scene: PackedScene) -> void:
     G.check(G.settings.level_scenes.has(level_scene),
         "GamePanel._server_spawn_level: level_scene not registered in settings: %s" %
             level_scene)
-    
+
     var level: Level = level_scene.instantiate()
     levels.push_back(level)
     %Levels.add_child(level)

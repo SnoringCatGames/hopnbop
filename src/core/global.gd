@@ -54,7 +54,7 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
     G.log.log_system_ready("Global")
-    
+
     if G.network.is_preview:
         if G.network.is_client:
             preview_instance_label = "Client %s" % G.network.preview_client_number

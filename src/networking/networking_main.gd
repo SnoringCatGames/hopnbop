@@ -53,7 +53,7 @@ func _ready() -> void:
 # FIXME: LEFT OFF HERE: ACTUALLY!! Just renamed to "client_"; NOT BEING CALLED ON SERVER
 func client_connect_to_server() -> void:
     # TODO: Also support websocket or webrtc as needed.
-    
+
     # FIXME: [GameLift]: Support connecting to the remote server.
 
     var peer = ENetMultiplayerPeer.new()
@@ -97,7 +97,7 @@ func _update_is_connected_to_server() -> void:
 
 func server_close_multiplayer_session() -> void:
     G.check_is_server("NetworkingMain.server_close_multiplayer_session")
-        
+
     # FIXME: [GameLift]: End game: Look at GameLift example; disconnect players; disable joins
     for peer_id in multiplayer.get_peers():
         if peer_id != SERVER_ID:
@@ -106,7 +106,7 @@ func server_close_multiplayer_session() -> void:
 
 func client_disconnect() -> void:
     G.check_is_client("NetworkingMain.client_disconnect")
-    
+
     multiplayer.multiplayer_peer.disconnect_peer(SERVER_ID)
 
 # FIXME: [GameLift]: Start level paused until all clients are connected.

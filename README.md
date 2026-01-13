@@ -1,3 +1,3 @@
-# Jump 'n Blast
+# Jump 'n Thump
 
 TODO

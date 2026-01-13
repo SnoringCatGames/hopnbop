@@ -9,12 +9,14 @@
 [ext_resource type="PackedScene" uid="uid://bvkt5maj64yqm" path="res://src/ui/super_hud/super_hud.tscn" id="7_nxx65"]
 
 [node name="Main" type="Node2D"]
+process_mode = 3
 script = ExtResource("1_avv2o")
 settings = ExtResource("2_ivtyw")
 
 [node name="AudioMain" parent="." instance=ExtResource("3_nlf45")]
 
 [node name="GamePanel" parent="." instance=ExtResource("3_x62ka")]
+process_mode = 1
 position = Vector2(0, -7)
 
 [node name="Screens" type="CanvasLayer" parent="."]

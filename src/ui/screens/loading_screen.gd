@@ -5,7 +5,7 @@ extends Screen
 func _enter_tree() -> void:
     super._enter_tree()
     G.loading_screen = self
-    
+
 
 func on_open() -> void:
     super.on_open()
