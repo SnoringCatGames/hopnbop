@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3 uid="uid://luccssf71n0"]
 
 [ext_resource type="Script" uid="uid://b0biq0wqtvk5e" path="res://src/core/game_panel.gd" id="1_lii62"]
-[ext_resource type="Script" uid="uid://sb0waxlvl5ta" path="res://src/core/match_state.gd" id="2_6i81m"]
+[ext_resource type="Script" uid="uid://pbur8xyvsrtm" path="res://src/core/match_state_synchronizer.gd" id="2_6i81m"]
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_lii62"]
 properties/0/path = NodePath(".:players")
@@ -17,7 +17,7 @@ properties/2/replication_mode = 1
 [node name="GamePanel" type="Node2D"]
 script = ExtResource("1_lii62")
 
-[node name="MatchState" type="MultiplayerSynchronizer" parent="."]
+[node name="MatchStateSynchronizer" type="MultiplayerSynchronizer" parent="."]
 unique_name_in_owner = true
 root_path = NodePath(".")
 replication_config = SubResource("SceneReplicationConfig_lii62")

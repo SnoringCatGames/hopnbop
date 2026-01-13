@@ -3,7 +3,7 @@ class_name MultiplayerReconciler
 extends MultiplayerSynchronizer
 
 
-# FIXME: LEFT OFF HERE: ACTUALLY: Client prediction and rollback.
+# FIXME: [Rollback]: Client prediction and rollback.
 # -
 
 
@@ -54,7 +54,7 @@ func _ready() -> void:
         set_multiplayer_authority(_multiplayer_id)
         process_mode = Node.PROCESS_MODE_INHERIT if is_multiplayer_authority() else Node.PROCESS_MODE_DISABLED
 
-    # FIXME
+    # FIXME: [Rollback]: 
     pass
     #replication_config
 
@@ -63,7 +63,7 @@ func _physics_process(delta: float) -> void:
     if Engine.is_editor_hint():
         return
 
-    # FIXME
+    # FIXME: [Rollback]: 
     pass
 
 
@@ -138,7 +138,7 @@ func _update_partner_reconciler() -> void:
     if not Engine.is_editor_hint() and \
             not _partner_reconciler_configuration_warning.is_empty():
         # Log and assert in game runtime environments.
-        G.log.error("MultiplayerReconciler is misconfigured: %s" %
+        G.error("MultiplayerReconciler is misconfigured: %s" %
             _partner_reconciler_configuration_warning,
             ScaffolderLog.CATEGORY_CORE_SYSTEMS)
 

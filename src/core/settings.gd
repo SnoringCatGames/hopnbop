@@ -7,7 +7,7 @@ extends Resource
 @export_group("Preview mode")
 @export var connect_to_remote_server := false
 @export var run_multiple_clients := false
-# FIXME: Set up support to connect to a remote server.
+# FIXME: [GameLift]: Set up support to connect to a remote server.
 @export var remote_server_ip_address: StringName = "127.0.0.1"
 @export var remote_server_port := 4433
 @export var local_server_ip_address: StringName = "127.0.0.1"
@@ -38,12 +38,14 @@ var server_port: int:
 @export var excluded_log_categories: Array[StringName] = [
     #ScaffolderLog.CATEGORY_DEFAULT,
     #ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-    #ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION,
+    ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION,
     #ScaffolderLog.CATEGORY_PLAYER_MOVEMENT,
     #ScaffolderLog.CATEGORY_NETWORK_SYNC,
 ]
 ## If true, warning logs will be shown regardless of category filtering.
 @export var force_include_log_warnings := true
+@export var include_category_in_logs := true
+@export var include_multiplayer_id_in_logs := true
 @export_group("")
 
 @export var default_theme: Theme

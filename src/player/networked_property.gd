@@ -55,7 +55,7 @@ func _get_authoritative_timestamped_value() -> Variant:
         NetworkedDataType.VECTOR2:
             return Vector3(authoritative_value.x, authoritative_value.y, authoritative_timestamp)
         _:
-            G.log.error("NetworkedProperty._get_authoritative_timestamped_value")
+            G.error("NetworkedProperty._get_authoritative_timestamped_value")
             return null
 
 
@@ -74,10 +74,10 @@ func _update_authoritative_timestamped_value(p_timestamped_value) -> void:
             authoritative_value = Vector2(bundle.x, bundle.y)
             authoritative_timestamp = bundle.z as int
         _:
-            G.log.error("NetworkedProperty._update_authoritative_timestamped_value")
+            G.error("NetworkedProperty._update_authoritative_timestamped_value")
             return
 
-    # FIXME: LEFT OFF HERE: ACTUALLY: Implement rollback. -------------
+    # FIXME: [Rollback]: Implement rollback. -------------
     # - THINK THROUGH HOW TO TEST THIS!!! Automatically and/or with print statements and/or by hand.
     #   - And list the different aspects that should be verified.
     # - Add a circular buffer to track up to N frames of networked state.

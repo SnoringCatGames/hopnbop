@@ -2,7 +2,7 @@ class_name Character
 extends CharacterBody2D
 
 
-# FIXME: Logs: Re-introduce some character, surface state, and action logs.
+# FIXME: [Logs]: Re-introduce some character, surface state, and action logs.
 
 
 signal physics_processed

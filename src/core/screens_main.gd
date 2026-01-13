@@ -24,7 +24,7 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
-    G.log.print("AudioMain._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+    G.log.log_system_ready("AudioMain")
 
     if G.network.is_server:
         for child in get_children():
@@ -32,14 +32,17 @@ func _ready() -> void:
         return
 
 
-func open_screen(screen_type: ScreenType) -> void:
-    if G.network.is_server:
-        G.log.warning("ScreensMain.open_screen: is_server")
+func client_open_screen(screen_type: ScreenType) -> void:
+    G.check_is_client("ScreensMain.client_open_screen")
+    
+    if screen_type == current_screen:
+        # Already there!
         return
 
+    var previous_screen_type := current_screen
     current_screen = screen_type
 
-    get_tree().paused = screen_type != ScreenType.GAME
+    G.game_panel.paused = screen_type != ScreenType.GAME
 
     G.main_menu_screen.visible = screen_type == ScreenType.MAIN_MENU
     G.loading_screen.visible = screen_type == ScreenType.LOADING
@@ -53,12 +56,8 @@ func open_screen(screen_type: ScreenType) -> void:
         ScreenType.GAME_OVER,
         ScreenType.WIN,
     ].has(screen_type)
-    if ends_game:
-        G.game_panel.exit_game()
-
-    var loads_game := screen_type == ScreenType.LOADING
-    if loads_game:
-        G.game_panel.client_load_game()
+    if ends_game and G.local_session.is_game_active:
+        G.game_panel.client_exit_game()
 
     var plays_menu_theme := [
         ScreenType.MAIN_MENU,
@@ -74,18 +73,36 @@ func open_screen(screen_type: ScreenType) -> void:
     if plays_main_theme:
         G.audio.fade_to_main_theme()
 
-    match screen_type:
-        ScreenType.MAIN_MENU:
-            G.main_menu_screen.on_open()
-        ScreenType.LOADING:
-            G.loading_screen.on_open()
-        ScreenType.GAME_OVER:
-            G.game_over_screen.on_open()
-        ScreenType.WIN:
-            G.win_screen.on_open()
-        ScreenType.PAUSE:
-            G.pause_screen.on_open()
-        ScreenType.GAME:
-            G.game_panel.on_return_from_screen()
+    if screen_type == ScreenType.GAME:
+        G.game_panel.on_return_from_screen()
+    else:
+        var screen := get_screen_from_type(screen_type)
+        screen.on_open()
+    
+    if previous_screen_type == ScreenType.GAME:
+        G.game_panel.on_left_to_screen()
+    else:
+        var previous_screen := get_screen_from_type(previous_screen_type)
+        previous_screen.on_close()
 
     G.hud.update_visibility()
+
+
+func get_screen_from_type(screen_type: ScreenType) -> Screen:
+    match screen_type:
+        ScreenType.MAIN_MENU:
+            return G.main_menu_screen
+        ScreenType.LOADING:
+            return G.loading_screen
+        ScreenType.GAME_OVER:
+            return G.game_over_screen
+        ScreenType.WIN:
+            return G.win_screen
+        ScreenType.PAUSE:
+            return G.pause_screen
+        ScreenType.GAME:
+            return null
+        _:
+            G.check(false, "ScreensMain.get_screen_from_type")
+            return null
+    

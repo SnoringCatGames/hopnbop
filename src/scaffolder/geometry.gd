@@ -12,7 +12,7 @@ const FLOAT_EPSILON := 0.00001
 
 
 func _ready() -> void:
-    G.log.print("Geometry._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+    G.print("Geometry._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
 
 
 # Calculates the minimum squared distance between a line segment and a point.

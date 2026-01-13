@@ -17,7 +17,7 @@ func _init() -> void:
 
 
 func _ready() -> void:
-    G.log.print("Utils._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+    G.log.log_system_ready("Utils")
 
 
 func ensure(condition: bool, message := "") -> bool:
@@ -458,13 +458,13 @@ func take_screenshot() -> void:
     if status != OK:
         G.utils.ensure(false, "Utils.take_screenshot")
     else:
-        G.log.print("Took a screenshot: %s" % path, ScaffolderLog.CATEGORY_CORE_SYSTEMS)
+        G.print("Took a screenshot: %s" % path, ScaffolderLog.CATEGORY_CORE_SYSTEMS)
         were_screenshots_taken = true
 
 
 func open_screenshot_folder() -> void:
     var path := OS.get_user_data_dir() + "/screenshots"
-    G.log.print("Opening screenshot folder: " + path, ScaffolderLog.CATEGORY_CORE_SYSTEMS)
+    G.print("Opening screenshot folder: " + path, ScaffolderLog.CATEGORY_CORE_SYSTEMS)
     OS.shell_open(path)
 
 
@@ -647,7 +647,7 @@ static func get_property_value_from_node_path(base_node: Node, p_node_path: Node
             # No property path was included, so let's return the resource or node.
             return target_object
 
-    G.log.error("get_property_value: Node not found: %s" % p_node_path,
+    G.error("get_property_value: Node not found: %s" % p_node_path,
         ScaffolderLog.CATEGORY_CORE_SYSTEMS)
     return null
 

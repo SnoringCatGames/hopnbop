@@ -44,7 +44,7 @@ var _client_rtt_samples: Array[int] = []
 
 
 func _ready() -> void:
-    G.log.print("ServerTimeTracker._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+    G.log.log_system_ready("ServerTimeTracker")
 
     # Connect to multiplayer signals to know when we're connected.
     if G.network.is_client:
@@ -98,7 +98,7 @@ func client_request_time_sync() -> void:
 
 
 ## Clears all sync data and resets to unsynced state.
-func reset() -> void:
+func clear() -> void:
     clock_offset_usec = 0
     rtt_usec = 0
     is_synced = false
@@ -110,7 +110,7 @@ func reset() -> void:
 
 func _client_on_connected_to_server() -> void:
     # When we connect to a server, immediately request time sync.
-    reset()
+    clear()
     client_request_time_sync()
 
 

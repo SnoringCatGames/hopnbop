@@ -2,7 +2,13 @@ class_name GamePanel
 extends Node2D
 
 
-# FIXME: LEFT OFF HERE: Buffer-state debug UI and rollback implementation:
+# FIXME: LEFT OFF HERE: Debug game connections. -------------------------------
+# - Commit message: Continue implementing network connections.
+# - Make sure both clients can connect to the server and are spawned in the level.
+# - Replace obsolete broken Player networked state with the start of the new thing.
+
+
+# FIXME: [Rollback]: Buffer-state debug UI and rollback implementation:
 #
 # ### PART 1: Implement buffer-state history tracking
 # - TODO: See notes doc.
@@ -134,6 +140,11 @@ extends Node2D
 
 var levels: Array[Level] = []
 
+var match_state: MatchState:
+    get: return %MatchStateSynchronizer.state
+var match_state_synchronizer: MatchStateSynchronizer:
+    get: return %MatchStateSynchronizer
+
 
 func _enter_tree() -> void:
     G.game_panel = self
@@ -141,10 +152,12 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
-    G.log.print("GamePanel._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+    G.log.log_system_ready("GamePanel")
+    
+    G.match_state = match_state
 
     for level_scene in G.settings.level_scenes:
-        %MultiplayerSpawner.add_spawnable_scene(level_scene.resource_path)
+        %LevelSpawner.add_spawnable_scene(level_scene.resource_path)
 
     if G.network.is_client:
         if G.network.is_connected_to_server:
@@ -154,97 +167,110 @@ func _ready() -> void:
 
 
 func _client_on_server_connected() -> void:
-    if not G.local_session.is_game_loading:
-        G.log.error("GamePanel.client_on_connected: Game load is not expected")
-        return
-    if G.local_session.is_game_active:
-        G.log.error("GamePanel.client_on_connected: Game is already active")
-        return
+    G.check_is_client("NetworkingMain._client_on_server_connected")
+    G.check(G.local_session.is_game_loading,
+        "GamePanel._client_on_server_connected: Game load is not expected")
+    G.check(not G.local_session.is_game_active,
+        "GamePanel._client_on_server_connected: Game is already active")
+    
     G.local_session.is_game_loading = false
     G.local_session.is_game_active = true
+    
+    G.screens.client_open_screen(ScreensMain.ScreenType.GAME)
 
 
 func _client_on_server_disconnected() -> void:
-    # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY: -------------------------- Update local_session with aggregate stats from this latest match. Clear local game scene state and game match state. Go to the game-over screen, unless we're already there.
-    pass
+    G.check_is_client("NetworkingMain._client_on_server_disconnected")
+    
+    client_exit_game()
 
 
 func client_load_game() -> void:
-    if G.local_session.is_game_active:
-        G.log.error("GamePanel.client_load_game: Game is already active")
-        return
-    if G.local_session.is_game_loading:
-        G.log.error("GamePanel.client_load_game: Game is already loading")
-        return
-    if is_instance_valid(G.level):
-        G.log.error("GamePanel.client_on_connected: Level is already set")
-        return
+    G.check_is_client("NetworkingMain.client_load_game")
+    G.check(not G.local_session.is_game_active,
+        "GamePanel.client_load_game: Game is already active")
+    G.check(not G.local_session.is_game_loading,
+        "GamePanel.client_load_game: Game is already loading")
+    G.check(not is_instance_valid(G.level),
+        "GamePanel.client_load_game: Level is already set")
 
-    G.local_session.reset()
+    G.local_session.clear()
     G.local_session.is_game_active = false
     G.local_session.is_game_loading = true
 
-    # FIXME: LEFT OFF HERE: ACTUALLY: !!!!!!!!!!! Trigger connecting to the remote server. Trigger the loading screen (and make sure that instead of calling MainScreen.open(LOADING) from elsewhere, we call G.game_panel.client_load_game() instead). Add a check in LoadingScreen to ensure that GamePanel is currently marked as loading.
+    G.screens.client_open_screen(ScreensMain.ScreenType.LOADING)
+    
+    G.network.client_connect_to_server()
 
 
 func client_exit_game() -> void:
+    G.check_is_client("NetworkingMain.client_exit_game")
+    
     G.local_session.is_game_active = false
     G.local_session.is_game_loading = false
 
-    # FIXME: LEFT OFF HERE: ACTUALLY: !!!!!!!!!!! Trigger disconnecting from the server. Go to the game-over screen.
+    G.network.client_disconnect()
+    G.local_session.copy_match_state()
+    G.local_session.clear()
+    G.screens.client_open_screen(ScreensMain.ScreenType.GAME_OVER)
+    for level in levels:
+        levels.erase(level)
+        level.queue_free()
+    G.level = null
 
 
 func server_start_game() -> void:
-    if G.local_session.is_game_active:
-        G.log.error("GamePanel.server_end_game: Game is already active")
-        return
-    if is_instance_valid(G.level):
-        G.log.error("GamePanel.server_end_game: Level is already set")
-        return
+    G.check_is_server("NetworkingMain.server_start_game")
+    G.check(not G.local_session.is_game_active,
+        "GamePanel.server_start_game: Game is already active")
+    G.check(not is_instance_valid(G.level),
+        "GamePanel.server_start_game: Level is already set")
 
     G.local_session.is_game_active = true
 
-    # FIXME: Add in-game support for specifying which level to spawn on the server.
+    # TODO: Add in-game support for specifying which level to spawn on the server.
 
     _server_spawn_level(G.settings.default_level_scene)
 
 
 func server_end_game() -> void:
-    if not G.local_session.is_game_active:
-        G.log.error("GamePanel.server_end_game: Game is not active")
-        return
-    if not is_instance_valid(G.level):
-        G.log.error("GamePanel.server_end_game: Level is not valid")
-        return
+    G.check_is_server("NetworkingMain.server_end_game")
+    G.check(G.local_session.is_game_active,
+        "GamePanel.server_end_game: Game is not active")
+    G.check(is_instance_valid(G.level),
+        "GamePanel.server_end_game: Level is not valid")
 
     G.local_session.is_game_active = false
 
-    # FIXME: LEFT OFF HERE: ACTUALLY: !!!!!!!!!!! Force disconnect all players.
+    G.network.server_close_multiplayer_session()
+    
+    # TODO: Add support for tracking game stats in a separate backend database.
 
     _server_destroy_level(G.level)
 
 
-func reset() -> void:
+func clear() -> void:
     # TODO
     pass
 
 
 func on_return_from_screen() -> void:
-    if not G.local_session.is_game_active:
-        G.log.error("GamePanel.on_return_from_screen: Game is not active")
-        return
-    if G.local_session.is_game_loading:
-        G.log.error("GamePanel.on_return_from_screen: Game is still loading")
-        return
+    G.check(G.local_session.is_game_active,
+        "GamePanel.on_return_from_screen: Game is not active")
+    G.check(not G.local_session.is_game_loading,
+        "GamePanel.on_return_from_screen: Game is still loading")
+
+
+func on_left_to_screen() -> void:
+    pass
 
 
 func _server_spawn_level(level_scene: PackedScene) -> void:
-    if not G.settings.level_scenes.has(level_scene):
-        G.log.error(
-            "GamePanel._server_spawn_level: level_scene not registered in settings: %s" %
+    G.check_is_server("NetworkingMain._server_spawn_level")
+    G.check(G.settings.level_scenes.has(level_scene),
+        "GamePanel._server_spawn_level: level_scene not registered in settings: %s" %
             level_scene)
-        return
-
+    
     var level: Level = level_scene.instantiate()
     levels.push_back(level)
     %Levels.add_child(level)
@@ -252,11 +278,10 @@ func _server_spawn_level(level_scene: PackedScene) -> void:
 
 
 func _server_destroy_level(level: Level) -> void:
-    if not levels.has(level):
-        G.log.error(
-            "GamePanel._server_destroy_level: level not in current list: %s" %
+    G.check_is_server("NetworkingMain._server_destroy_level")
+    G.check(levels.has(level),
+        "GamePanel._server_destroy_level: level not in current list: %s" %
             level)
-        return
 
     if G.level == level:
         G.level = null

@@ -8,9 +8,10 @@ func _enter_tree() -> void:
 
 
 func on_open() -> void:
+    super.on_open()
     %Button.grab_focus.call_deferred()
 
 
 func _on_button_pressed() -> void:
     G.audio.play_click_sound()
-    G.screens.open_screen(ScreensMain.ScreenType.GAME)
+    G.game_panel.client_load_game()

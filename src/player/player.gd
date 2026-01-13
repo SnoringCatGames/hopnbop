@@ -44,7 +44,7 @@ func _on_authority_changed() -> void:
 
 
 func play_sound(sound_name: String) -> void:
-    # FIXME: Implement sounds.
+    # TODO: Implement sounds.
     match sound_name:
         "jump":
             pass

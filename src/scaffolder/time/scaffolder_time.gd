@@ -73,7 +73,7 @@ func _ready() -> void:
 
     set_interval(collect_garbage, _GARBAGE_COLLECTION_INTERVAL)
 
-    G.log.print("ScaffolderTime._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+    G.log.log_system_ready("ScaffolderTime")
 
 
 func _process(_delta: float) -> void:

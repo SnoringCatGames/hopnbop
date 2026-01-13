@@ -16,3 +16,11 @@ func _set_default_styling() -> void:
     set_anchors_preset(Control.PRESET_FULL_RECT)
     theme = G.settings.default_theme
     add_theme_stylebox_override("panel", G.settings.screen_style_box)
+
+
+func on_open() -> void:
+    pass
+
+
+func on_close() -> void:
+    pass

@@ -2,10 +2,7 @@ class_name PlayerStateList
 extends PanelContainer
 
 
-# FIXME: LEFT OFF HERE: List actual networked players:
-# - Remove the hard-coded player-state from the scene tree
-# - Update when players connect or disconnect
-# - Update each frame with current player state
+@export var player_state_panel_scene: PackedScene
 
 
 func _enter_tree() -> void:
@@ -15,3 +12,41 @@ func _enter_tree() -> void:
         return
 
     visible = G.settings.show_debug_player_state
+
+
+func _ready() -> void:
+    if G.network.is_server:
+        return
+    if not G.settings.show_debug_player_state:
+        return
+    
+    _on_players_updated()
+    G.game_panel.match_state_synchronizer.players_updated.connect(_on_players_updated)
+
+
+func _on_players_updated() -> void:
+    for child in %States.get_children():
+        child.queue_free()
+    
+    if G.match_state.players.is_empty():
+        # No player state to show.
+        return
+    
+    if not G.ensure(G.match_state.players_by_id.has(G.network.local_id),
+            "PlayerStateList._on_players_updated: No match_state for the local player"):
+        return
+    
+    # Add the local player state first.
+    _add_player_state(G.network.local_id)
+    
+    for player_state in G.match_state.players:
+        if player_state.multiplayer_id == G.network.local_id:
+            # We already added the local player state.
+            continue
+        _add_player_state(player_state.multiplayer_id)
+
+
+func _add_player_state(multiplayer_id: int) -> void:
+    var player_state_panel: PlayerStatePanel = player_state_panel_scene.instantiate()
+    player_state_panel.multiplayer_id = multiplayer_id
+    %States.add_child(player_state_panel)

@@ -14,7 +14,9 @@ extends Node2D
         players_node = value
         update_configuration_warnings()
 
-var players: Array[Character] = []
+var players: Array[Player] = []
+# Dictionary<int, Player
+var players_by_id := {}
 
 
 func _enter_tree() -> void:
@@ -31,11 +33,11 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
-    G.log.print("Level._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+    G.log.log_system_ready("Level")
 
     var warnings := _get_configuration_warnings()
     if not warnings.is_empty():
-        G.log.error("Level._ready: %s (%s)" % [warnings[0], get_scene_file_path()])
+        G.error("Level._ready: %s (%s)" % [warnings[0], get_scene_file_path()])
         return
 
     for player_scene in G.settings.player_scenes:
@@ -54,6 +56,7 @@ func _server_add_player(multiplayer_id: int) -> void:
     player.global_position = _get_player_spawn_position()
     player.name = "Player_%s" % multiplayer_id
     players.append(player)
+    players_by_id[multiplayer_id] = player
     players_node.add_child(player)
 
 
@@ -66,23 +69,26 @@ func _server_remove_player(multiplayer_id: int) -> void:
             break
 
     if not is_instance_valid(player):
-        G.log.warning("Level._remove_player: No valid player found for the given ID: %s" %
+        G.warning("Level._remove_player: No valid player found for the given ID: %s" %
             multiplayer_id,
             ScaffolderLog.CATEGORY_CORE_SYSTEMS)
         return
 
     players.erase(player)
+    players_by_id.erase(multiplayer_id)
     player.queue_free()
 
 
 func on_player_added(player: Player) -> void:
     if G.network.is_client:
         players.push_back(player)
+        players_by_id[player.multiplayer_id] = player
 
 
 func on_player_removed(player: Player) -> void:
     if G.network.is_client:
         players.erase(player)
+        players_by_id.erase(player.multiplayer_id)
 
 
 func _get_player_spawn_position() -> Vector2:

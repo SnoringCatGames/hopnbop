@@ -25,15 +25,50 @@ var _force_include_log_warnings := true
 func _ready() -> void:
     _print_front_matter()
 
-    G.log.print("ScaffolderLog._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+    self.print("ScaffolderLog._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
 
 
-static func _format_message(message: String, category: StringName) -> String:
+func _format_message(message: String, category: StringName) -> String:
     var play_time: float = \
             G.time.get_play_time() if \
             is_instance_valid(G) and is_instance_valid(G.time) else \
             -1.0
-    return "%8.3f [%s] %s" % [play_time, category, message]
+            
+    var category_token := \
+        "[%s]" % get_category_prefix(category) if \
+        G.settings.include_category_in_logs else \
+        ""
+    
+    var multiplayer_id_value: String
+    if G.settings.include_multiplayer_id_in_logs:
+        if G.network.is_client:
+            if G.network.is_connected_to_server:
+                # Client, connected to server.
+                multiplayer_id_value = "C%s" % G.network.local_id
+            else:
+                # Client, not yet connected to server.
+                if G.network.is_preview:
+                    multiplayer_id_value = "C%s" % (
+                        char(ord("A") + G.network.preview_client_number - 1))
+                else:
+                    multiplayer_id_value = "C-"
+        else:
+            # Server.
+            multiplayer_id_value = "S "
+    else:
+        # Omit token.
+        multiplayer_id_value = ""
+    var multiplayer_id_token = \
+        "[%s]" % multiplayer_id_value if \
+        G.settings.include_multiplayer_id_in_logs \
+        else ""
+    
+    return "[%8.3f]%s%s %s" % [
+        play_time,
+        category_token,
+        multiplayer_id_token,
+        message,
+    ]
 
 
 func print(message = "", category := CATEGORY_DEFAULT) -> void:
@@ -107,6 +142,22 @@ func alert_user(message: String, _category := CATEGORY_DEFAULT) -> void:
     OS.alert(message)
 
 
+func ensure(condition: bool, message: String) -> bool:
+    if not condition:
+        var formatted_message := "FAILED ENSURE: %s" % message
+        error(formatted_message, CATEGORY_CORE_SYSTEMS, false)
+        breakpoint
+    return condition
+
+
+func check(condition: bool, message: String) -> bool:
+    if not condition:
+        var formatted_message := "FATAL ERROR: %s" % message
+        error(formatted_message, CATEGORY_CORE_SYSTEMS)
+    assert(condition)
+    return condition
+
+
 func set_log_filtering(
         p_excluded_log_categories: Array[StringName],
         p_force_include_log_warnings: bool) -> void:
@@ -155,6 +206,10 @@ func _parse_category_prefix(category: StringName) -> StringName:
             prefix = "  "
 
     return prefix
+
+
+func log_system_ready(system_name: String) -> void:
+    self.print("%s ready" % system_name, ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
 
 
 func _print_front_matter() -> void:

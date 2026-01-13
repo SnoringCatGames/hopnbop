@@ -7,10 +7,15 @@ extends PanelContainer
 @export var toast_fade_delay := 1.5
 @export var show_extra_debug_info := false
 
+var multiplayer_id := 0
 var player: Player
+var player_match_state: PlayerMatchState
 
 
 func _ready() -> void:
+    if G.network.is_server:
+        return
+    
     %IsDescendingThroughFloorsRow.visible = show_extra_debug_info
     %IsAscendingThroughCeilingsRow.visible = show_extra_debug_info
     %IsAttachingToWalkThroughWallsRow.visible = show_extra_debug_info
@@ -29,16 +34,22 @@ func clear() -> void:
 
 
 func _process(_delta: float) -> void:
+    if G.network.is_server:
+        return
     if not G.settings.show_debug_player_state:
         return
+    
+    if not is_instance_valid(player):
+        player = G.get_player(multiplayer_id)
+        if is_instance_valid(player):
+            player.connect("physics_processed", _on_player_physics_processed)
+    
+    if not is_instance_valid(player_match_state):
+        player_match_state = G.get_player_match_state(multiplayer_id)
 
-    # FIXME: LEFT OFF HERE: Dynamic player assignment: Update this to use whichever player is relevant.
-    if not is_instance_valid(G.level) or G.level.players.is_empty():
+    if not is_instance_valid(player_match_state) or not is_instance_valid(player):
         clear()
         return
-    if not is_instance_valid(player):
-        player = G.level.players[0]
-        player.connect("physics_processed", _on_player_physics_processed)
 
     %Actions.text = CharacterActionState.get_debug_label_from_actions_bitmask(player.actions.current_actions_bitmask)
     %Position.text = G.utils.get_vector_string(player.position, 1)
@@ -58,8 +69,6 @@ func _process(_delta: float) -> void:
 
 
 func _on_player_physics_processed() -> void:
-    #if player.just_triggered_jump:
-        #add_toast("Jumped")
     if player.surface_state.just_changed_attachment_side:
         add_toast("Attached to %s" % SurfaceSide.get_string(player.surface_state.attachment_side))
 

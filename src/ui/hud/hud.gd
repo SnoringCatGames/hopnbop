@@ -12,7 +12,7 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
-    G.log.print("Hud._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+    G.log.log_system_ready("Hud")
 
     if G.network.is_server:
         return

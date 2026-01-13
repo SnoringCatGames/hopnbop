@@ -14,9 +14,8 @@ grow_vertical = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_b1riu")
 script = ExtResource("1_r4pw4")
+player_state_panel_scene = ExtResource("2_jr2s1")
 
-[node name="HFlowContainer" type="HFlowContainer" parent="."]
-layout_mode = 2
-
-[node name="PlayerState" parent="HFlowContainer" instance=ExtResource("2_jr2s1")]
+[node name="States" type="HFlowContainer" parent="."]
+unique_name_in_owner = true
 layout_mode = 2

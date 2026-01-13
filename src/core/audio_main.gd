@@ -20,7 +20,7 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
-    G.log.print("AudioMain._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+    G.log.log_system_ready("AudioMain")
 
     if G.network.is_server:
         return

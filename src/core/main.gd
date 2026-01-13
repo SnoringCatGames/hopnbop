@@ -14,31 +14,35 @@ func _enter_tree() -> void:
 
     randomize()
 
-    get_tree().paused = true
+    G.game_panel.paused = true
 
     Scaffolder.set_up()
 
 
 func _ready() -> void:
-    G.log.print("Main._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+    G.log.log_system_ready("Main")
 
     await get_tree().process_frame
-
-    # TODO: Open first screen/level based on manifest settings.
+    
+    if G.network.preview_client_number > 1 and not G.settings.run_multiple_clients:
+        G.print("Main._ready: Closing extra client process (--client=%s), because G.settings.run_multiple_clients is false." % G.network.preview_client_number)
+        close_app()
 
     if G.settings.full_screen and not G.network.is_server:
         DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
-    start_app()
+    _start_app()
 
 
-func start_app() -> void:
+func _start_app() -> void:
     if G.network.is_server:
-        get_tree().paused = false
+        G.game_panel.paused = false
         G.game_panel.server_start_game()
     else:
-        var screen_type := ScreensMain.ScreenType.LOADING if G.settings.start_in_game else ScreensMain.ScreenType.MAIN_MENU
-        G.screens.open_screen(screen_type)
+        if G.settings.start_in_game:
+            G.game_panel.client_load_game()
+        else:
+            G.screens.client_open_screen(ScreensMain.ScreenType.MAIN_MENU)
 
 
 func _notification(notification_type: int) -> void:
@@ -55,7 +59,7 @@ func _notification(notification_type: int) -> void:
             close_app()
         NOTIFICATION_WM_WINDOW_FOCUS_OUT:
             if G.settings.pauses_on_focus_out:
-                pause()
+                _client_local_pause()
         _:
             pass
 
@@ -70,28 +74,27 @@ func _unhandled_input(event: InputEvent) -> void:
                 KEY_O:
                     if is_instance_valid(G.hud):
                         G.hud.visible = not G.hud.visible
-                        G.log.print(
+                        G.print(
                             "Toggled HUD visibility: %s" %
                             ("visible" if G.hud.visible else "hidden"),
                             ScaffolderLog.CATEGORY_CORE_SYSTEMS)
                 KEY_ESCAPE:
                     if G.settings.pauses_on_focus_out:
-                        pause()
+                        _client_local_pause()
                 _:
                     pass
 
 
-func pause() -> void:
-    if G.network.is_client:
-        if G.screens.current_screen == ScreensMain.ScreenType.GAME:
-            G.screens.open_screen(ScreensMain.ScreenType.PAUSE)
-    else:
-        # TODO: Add optional networked support for pausing a game?
-        pass
+func _client_local_pause() -> void:
+    if G.network.is_server:
+        return
+
+    if G.screens.current_screen == ScreensMain.ScreenType.GAME:
+        G.screens.client_open_screen(ScreensMain.ScreenType.PAUSE)
 
 
 func close_app() -> void:
     if G.utils.were_screenshots_taken:
         G.utils.open_screenshot_folder()
-    G.log.print("Shell.close_app", ScaffolderLog.CATEGORY_CORE_SYSTEMS)
+    G.print("Shell.close_app", ScaffolderLog.CATEGORY_CORE_SYSTEMS)
     get_tree().call_deferred("quit")

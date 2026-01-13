@@ -243,9 +243,9 @@ func _log_new_press_or_release(
     ]
 
     if just_pressed:
-        G.log.print("START %5s: %s" % [action_name, details], ScaffolderLog.CATEGORY_PLAYER_MOVEMENT)
+        G.print("START %5s: %s" % [action_name, details], ScaffolderLog.CATEGORY_PLAYER_MOVEMENT)
     if just_released:
-        G.log.print("STOP  %5s: %s" % [action_name, details], ScaffolderLog.CATEGORY_PLAYER_MOVEMENT)
+        G.print("STOP  %5s: %s" % [action_name, details], ScaffolderLog.CATEGORY_PLAYER_MOVEMENT)
 
 
 const _ACTION_FLAG_DEBUG_LABEL_PAIRS := [
