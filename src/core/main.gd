@@ -96,5 +96,5 @@ func _client_local_pause() -> void:
 func close_app() -> void:
     if G.utils.were_screenshots_taken:
         G.utils.open_screenshot_folder()
-    G.print("Shell.close_app", ScaffolderLog.CATEGORY_CORE_SYSTEMS)
+    G.print("Main.close_app", ScaffolderLog.CATEGORY_CORE_SYSTEMS)
     get_tree().call_deferred("quit")

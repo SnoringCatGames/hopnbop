@@ -28,12 +28,13 @@ func _server_on_peer_connected(multiplayer_id: int) -> void:
     _server_recalculate_players()
 
     # Set connect time for this player.
-    for player in state.players:
-        if player.multiplayer_id == multiplayer_id:
-            player.connect_time_usec = G.network.server_time_usec
-            break
+    var player: PlayerMatchState = state.players_by_id[multiplayer_id]
+    player.connect_time_usec = G.network.server_time_usec
 
     _server_trigger_player_replication()
+    
+    G.print("Player joined game: %s" % player.get_string(),
+        ScaffolderLog.CATEGORY_GAME_STATE)
     
     player_joined.emit(multiplayer_id)
 
@@ -42,12 +43,13 @@ func _server_on_peer_disconnected(multiplayer_id: int) -> void:
     _server_recalculate_players()
 
     # Set disconnect time for this player.
-    for player in state.players:
-        if player.multiplayer_id == multiplayer_id:
-            player.disconnect_time_usec = G.network.server_time_usec
-            break
+    var player: PlayerMatchState = state.players_by_id[multiplayer_id]
+    player.connect_time_usec = G.network.disconnect_time_usec
 
     _server_trigger_player_replication()
+    
+    G.print("Player left game: %s" % player.get_string(),
+        ScaffolderLog.CATEGORY_GAME_STATE)
     
     player_left.emit(multiplayer_id)
 
@@ -89,6 +91,9 @@ func _client_on_players_updated() -> void:
 func server_add_kill(killer_id: int, killee_id: int) -> void:
     state.kills.append_array([killer_id, killee_id])
     state.kills = state.kills.duplicate()
+    
+    G.print("KILL: %s killed %s" % [killer_id, killee_id],
+        ScaffolderLog.CATEGORY_GAME_STATE)
 
     kills_updated.emit()
 
@@ -97,5 +102,8 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 func server_add_bump(player_1_id: int, player_2_id: int) -> void:
     state.bumps.append_array([player_1_id, player_2_id])
     state.bumps = state.bumps.duplicate()
+    
+    G.print("BUMP: %s bumped %s" % [player_1_id, player_2_id],
+        ScaffolderLog.CATEGORY_GAME_STATE)
 
     bumps_updated.emit()

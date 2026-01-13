@@ -40,7 +40,7 @@ var server_port: int:
     #ScaffolderLog.CATEGORY_CORE_SYSTEMS,
     ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION,
     #ScaffolderLog.CATEGORY_PLAYER_MOVEMENT,
-    #ScaffolderLog.CATEGORY_NETWORK_SYNC,
+    #ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
 ]
 ## If true, warning logs will be shown regardless of category filtering.
 @export var force_include_log_warnings := true

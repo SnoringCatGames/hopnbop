@@ -15,6 +15,9 @@ var is_soft := true
 var connect_time_usec := 0
 var disconnect_time_usec := 0
 
+var full_name: String:
+    get: return "%s %s" % [adjective, bunny_name]
+
 var is_connected_to_server: bool:
     get: return disconnect_time_usec > connect_time_usec
 
@@ -29,3 +32,10 @@ func set_up(p_multiplayer_id: int, p_is_soft: bool) -> void:
     var adjectives := \
         BunnyWords.SOFT_ADJECTIVES if is_soft else BunnyWords.HARD_ADJECTIVES
     adjective = adjectives.pick_random()
+
+
+func get_string() -> String:
+    return "%d:%s" % [
+        multiplayer_id,
+        full_name,
+    ]

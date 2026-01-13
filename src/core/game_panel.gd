@@ -251,11 +251,6 @@ func server_end_game() -> void:
     _server_destroy_level(G.level)
 
 
-func clear() -> void:
-    # TODO
-    pass
-
-
 func on_return_from_screen() -> void:
     G.check(G.local_session.is_game_active,
         "GamePanel.on_return_from_screen: Game is not active")

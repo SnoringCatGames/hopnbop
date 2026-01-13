@@ -41,7 +41,8 @@ func _enter_tree() -> void:
     is_server = is_headless or G.args.has("server")
     preview_client_number = int(G.args.client) if G.args.has("client") else 0
 
-    _update_is_connected_to_server()
+    if is_client:
+        _client_update_is_connected_to_server()
     multiplayer.peer_connected.connect(_on_peer_connected)
     multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 
@@ -62,7 +63,8 @@ func server_enable_connections() -> void:
 
     multiplayer.multiplayer_peer = peer
 
-    G.log.print("Started multiplayer server.")
+    G.print("Started multiplayer server.",
+        ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
 
 func client_connect_to_server() -> void:
@@ -83,24 +85,33 @@ func client_connect_to_server() -> void:
 
     multiplayer.multiplayer_peer = peer
 
-    G.log.print("Started multiplayer client.")
+    G.print("Started multiplayer client.",
+        ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
 
 func _on_peer_connected(_multiplayer_id: int) -> void:
     if is_server:
-        G.log.print("Client connected: %d" % _multiplayer_id)
+        G.print("Client connected: %d" % _multiplayer_id, 
+            ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
     else:
-        _update_is_connected_to_server()
+        G.check(_multiplayer_id == SERVER_ID)
+        G.print("Connected to server",
+            ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
+        _client_update_is_connected_to_server()
 
 
 func _on_peer_disconnected(_multiplayer_id: int) -> void:
     if is_server:
-        G.log.print("Client disconnected: %d" % _multiplayer_id)
+        G.print("Client disconnected: %d" % _multiplayer_id,
+            ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
     else:
-        _update_is_connected_to_server()
+        G.check(_multiplayer_id == SERVER_ID)
+        G.print("Disconnect from server",
+            ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
+        _client_update_is_connected_to_server()
 
 
-func _update_is_connected_to_server() -> void:
+func _client_update_is_connected_to_server() -> void:
     if is_server:
         is_connected_to_server = true
     else:
@@ -113,6 +124,11 @@ func _update_is_connected_to_server() -> void:
 
 func server_close_multiplayer_session() -> void:
     G.check_is_server("NetworkingMain.server_close_multiplayer_session")
+    
+    G.print("Ending network connections.",
+        ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
+    
+    multiplayer.multiplayer_peer.refuse_new_connections = true
 
     # FIXME: [GameLift]: End game: Look at GameLift example; disconnect players; disable joins
     for peer_id in multiplayer.get_peers():
@@ -122,6 +138,9 @@ func server_close_multiplayer_session() -> void:
 
 func client_disconnect() -> void:
     G.check_is_client("NetworkingMain.client_disconnect")
+    
+    G.print("Disconnecting from server",
+        ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
     multiplayer.multiplayer_peer.disconnect_peer(SERVER_ID)
 
