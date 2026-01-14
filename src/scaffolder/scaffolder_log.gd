@@ -101,6 +101,7 @@ func error(
         should_assert := true) -> void:
     message = "ERROR  : %s" % message
     push_error(message)
+    print_stack()
     self.print(message, _category)
     if should_assert:
          assert(false)
@@ -118,6 +119,7 @@ static func static_error(
         should_assert := true) -> void:
     message = "ERROR  : %s" % message
     push_error(message)
+    print_stack()
     if should_assert:
          assert(false)
 

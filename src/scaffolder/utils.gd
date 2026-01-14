@@ -132,7 +132,7 @@ static func subtract_nested_arrays(
                         result[key], other[key])
             elif expects_no_missing_matches:
                 G.utils.ensure(false,
-                        ("Utils.subtract_nested_arrays: Wrong-type match: " +
+                        ("Wrong-type match: " +
                         "(We currently don't support subtracting properties " +
                         "from a Dictionary. We only support subtracting " +
                         "elements from Arrays.)" +
@@ -140,7 +140,7 @@ static func subtract_nested_arrays(
                         [key, result, other])
         elif expects_no_missing_matches:
             G.utils.ensure(false,
-                    ("Utils.subtract_nested_arrays: Missing match: " +
+                    ("Missing match: " +
                     "\n    key=%s,\n    result=%s,\n    other=%s") % \
                     [key, result, other])
     return result
@@ -155,7 +155,7 @@ static func subtract_arrays(
             result.remove_at(result_index)
         else:
             G.utils.ensure(false,
-                    ("Utils.subtract_arrays: Missing match: " +
+                    ("Missing match: " +
                     "\n    element=%s,\n    result=%s,\n    other=%s") % \
                     [element, result, other])
     return result
@@ -239,7 +239,7 @@ static func ease_name_to_param(ease_name: String) -> float:
             return -1.8
 
         _:
-            G.utils.ensure(false, ".ease_name_to_param")
+            G.utils.ensure(false)
             return INF
 
 
@@ -285,7 +285,7 @@ static func mix(
     elif values[0] is Vector3:
         weighted_average = Vector3.ZERO
     else:
-        G.utils.ensure(false, ".mix")
+        G.utils.ensure(false)
 
     for i in count:
         var value = values[i]
@@ -454,7 +454,7 @@ func take_screenshot() -> void:
     var path := "user://screenshots/screenshot-%s.png" % get_datetime_string()
     var status := image.save_png(path)
     if status != OK:
-        G.utils.ensure(false, "Utils.take_screenshot")
+        G.utils.ensure(false)
     else:
         G.print("Took a screenshot: %s" % path, ScaffolderLog.CATEGORY_CORE_SYSTEMS)
         were_screenshots_taken = true
@@ -593,7 +593,7 @@ static func get_type_string(type: int) -> String:
         TYPE_MAX:
             return "TYPE_MAX"
         _:
-            G.utils.ensure(false, "Utils.get_type_string: %d" % type)
+            G.utils.ensure(false, "%d" % type)
             return ""
 
 

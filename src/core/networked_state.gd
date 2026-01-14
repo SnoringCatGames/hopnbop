@@ -41,7 +41,6 @@ const DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD := 0.5
 const DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHELD := 1.0
 const DEFAULT_NORMAL_DIFF_ROLLBACK_THRESHELD := 0.05
 
-
 ## The estimated server time, in microseconds, when this state occurred.
 var timestamp_usec := 0
 
@@ -142,6 +141,10 @@ func _pack_state() -> void:
 
 
 func _unpack_state() -> void:
+    if packed_state.is_empty():
+        # This happens for the initial sync, when there is no state to send yet.
+        return
+        
     if not G.ensure(packed_state.size() == _property_names_for_packing.size() + 1):
         return
 

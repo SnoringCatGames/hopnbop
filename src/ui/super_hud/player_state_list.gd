@@ -33,7 +33,7 @@ func _on_players_updated() -> void:
         return
     
     if not G.ensure(G.match_state.players_by_id.has(G.network.local_id),
-            "PlayerStateList._on_players_updated: No match_state for the local player"):
+            "No match_state for the local player"):
         return
     
     # Add the local player state first.

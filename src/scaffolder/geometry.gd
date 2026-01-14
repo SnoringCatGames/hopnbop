@@ -823,7 +823,7 @@ static func do_shapes_match(
                 a.extents == b.extents
     else:
         G.utils.ensure(false,
-                "Invalid Shape2D provided for do_shapes_match: %s. The " +
+                "Invalid Shape2D provided: %s. The " +
                 "supported shapes are: CircleShape2D, CapsuleShape2D, " +
                 "RectangleShape2D." % a)
         return false
@@ -846,7 +846,7 @@ static func calculate_half_width_height(
         half_width_height = shape.extents
     else:
         G.utils.ensure(false,
-                ("Invalid Shape2D provided to calculate_half_width_height: " +
+                ("Invalid Shape2D provided: " +
                 "%s. The upported shapes are: CircleShape2D, " +
                 "CapsuleShape2D, RectangleShape2D.") % str(shape))
 
