@@ -15,6 +15,16 @@ extends Node
 
 const SERVER_ID := 1
 
+## This determines the period we use between frames that we record in rollback
+## buffers.
+## 
+## Network state will presumably be slower than this in practice. When that
+## occurs, we fill-in empty frames by extrapolating from the most-recent filled
+## frame.
+const TARGET_NETWORK_FPS = ScaffolderTime.PHYSICS_FPS
+const TARGET_NETWORK_TIME_STEP_SEC := 1.0 / TARGET_NETWORK_FPS
+
+
 var server_time_tracker := ServerTimeTracker.new()
 
 var is_preview := true
@@ -30,6 +40,15 @@ var local_id: int:
 
 var server_time_usec: int:
     get: return server_time_tracker.get_server_time_usec()
+
+## If we bucket the current server_time_usec into discrete frames, this
+## canonical time would be the exact midpoint between the previous and next
+## frame.
+var server_canonical_frame_time_usec: int:
+    get:
+        var frame_start_time_sec := \
+            get_server_frame_index(server_time_usec) * TARGET_NETWORK_TIME_STEP_SEC
+        return floori(frame_start_time_sec + TARGET_NETWORK_TIME_STEP_SEC * 0.5)
 
 
 func _enter_tree() -> void:
@@ -93,6 +112,8 @@ func _on_peer_connected(multiplayer_id: int) -> void:
     if is_server:
         G.print("Client connected: %d" % multiplayer_id, 
             ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
+
+        # FIXME: [GameLift]: Start level paused until all clients are connected.
     else:
         G.check(multiplayer_id == SERVER_ID)
         G.print("Connected to server: Local multiplayer_id=%s" % multiplayer_id,
@@ -144,4 +165,9 @@ func client_disconnect() -> void:
 
     multiplayer.multiplayer_peer.disconnect_peer(SERVER_ID)
 
-# FIXME: [GameLift]: Start level paused until all clients are connected.
+
+## If we bucket server time into discrete frames, this would be the index of the
+## frame corresponding to the given time.
+func get_server_frame_index(p_server_time_usec: int) -> int:
+    var time_sec := p_server_time_usec / 1000000.0
+    return floori(fmod(time_sec, TARGET_NETWORK_TIME_STEP_SEC))

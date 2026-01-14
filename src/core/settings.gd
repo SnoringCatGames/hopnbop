@@ -4,7 +4,7 @@ extends Resource
 
 # --- General configuration ---
 
-@export_group("Preview mode")
+@export_group("Network connection")
 @export var connect_to_remote_server := false
 @export var run_multiple_clients := false
 # FIXME: [GameLift]: Set up support to connect to a remote server.
@@ -16,6 +16,11 @@ var server_ip_address: StringName:
     get: return remote_server_ip_address if connect_to_remote_server else local_server_ip_address
 var server_port: int:
     get: return remote_server_port if connect_to_remote_server else local_server_port
+@export_group("")
+
+@export_group("Network sync")
+## Presumably network process frames happen at 60 FPS--aligned with physics frames.
+@export var rollback_buffer_duration_sec := 1.5
 @export_group("")
 
 @export var max_client_count := 8

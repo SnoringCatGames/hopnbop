@@ -162,8 +162,7 @@ func check(condition: bool, message: String) -> bool:
 func set_log_filtering(
         p_excluded_log_categories: Array[StringName],
         p_force_include_log_warnings: bool) -> void:
-    for category in p_excluded_log_categories:
-        _excluded_log_categories[category] = true
+    _excluded_log_categories = Utils.array_to_set(p_excluded_log_categories)
     _force_include_log_warnings = p_force_include_log_warnings
 
 

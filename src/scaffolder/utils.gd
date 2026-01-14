@@ -69,9 +69,7 @@ static func splice(
 
 
 static func dedup(array: Array) -> Array:
-    var local_set := {}
-    for element in array:
-        local_set[element] = true
+    var local_set := array_to_set(array)
     var set_values := local_set.values()
     var deduped_size := set_values.size()
     array.resize(deduped_size)
@@ -532,7 +530,7 @@ func get_property_value_from_scene_state_node(
     assert(!expects_a_result)
 
 
-func check_whether_sub_classes_are_tools(object: Object) -> bool:
+static func check_whether_sub_classes_are_tools(object: Object) -> bool:
     var script: Script = object.get_script()
     while script != null:
         if !script.is_tool():
@@ -664,3 +662,17 @@ static func parse_command_line_args() -> Dictionary:
         else:
             args[arg] = true
     return args
+
+
+static func get_script_property_names(script: Script, exclusion_list := {}) -> Array[String]:
+    var script_properties = []
+    
+    var properties: Array = script.get_script_property_list()
+    var flags := PROPERTY_USAGE_SCRIPT_VARIABLE
+    
+    for property in properties:
+        if (property.usage & flags != 0 and
+                not exclusion_list.has(property.name)):
+            script_properties.push_back(property.name)
+            
+    return script_properties
