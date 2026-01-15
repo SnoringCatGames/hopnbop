@@ -1,9 +1,7 @@
 @tool
-class_name PlayerNetworkedState
+class_name PlayerStateFromServer
 extends NetworkedState
 
-
-var actions: int
 
 var position: Vector2
 var velocity: Vector2
@@ -14,10 +12,10 @@ var attachment_position: Vector2
 var attachment_normal: Vector2
 
 const _property_diff_rollback_thresholds := {
-    actions = 0,
     position = DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD,
     velocity = DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHELD,
     is_facing_right = 0,
+    
     attachment_side = 0,
     attachment_position = DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD,
     attachment_normal = DEFAULT_NORMAL_DIFF_ROLLBACK_THRESHELD,

@@ -1,77 +1,25 @@
-class_name NetworkingMain
+class_name NetworkConnector
 extends Node
-## Top-level controller logic for networking connectivity.
-##
-## Note: In order to support local testing with preview mode in the Godot
-##   editor, do the following:
-## - Open Debug > Customize Run Instances.
-## - Check "Enable Multiple Instances".
-## - Set the number of instances to 3.
-## - Check "Override Main Run Args" for each row.
-## - Change the "Launch Arguments" of each row to be one of the following:
-##   --server, --client=1, --client=2.
-## - Also, include --preview as an arg in each row.
 
 
 const SERVER_ID := 1
 
-## This determines the period we use between frames that we record in rollback
-## buffers.
-## 
-## Network state will presumably be slower than this in practice. When that
-## occurs, we fill-in empty frames by extrapolating from the most-recent filled
-## frame.
-const TARGET_NETWORK_FPS = ScaffolderTime.PHYSICS_FPS
-const TARGET_NETWORK_TIME_STEP_SEC := 1.0 / TARGET_NETWORK_FPS
-
-
-var server_time_tracker := ServerTimeTracker.new()
-
-var is_preview := true
-var is_headless := true
-var is_server := true
-var is_client: bool:
-    get: return not is_server
-var preview_client_number := 0
 var is_connected_to_server := false
-
-var local_id: int:
-    get: return multiplayer.get_unique_id()
-
-var server_time_usec: int:
-    get: return server_time_tracker.get_server_time_usec()
-
-## If we bucket the current server_time_usec into discrete frames, this
-## canonical time would be the exact midpoint between the previous and next
-## frame.
-var server_canonical_frame_time_usec: int:
-    get:
-        var frame_start_time_sec := \
-            get_server_frame_index(server_time_usec) * TARGET_NETWORK_TIME_STEP_SEC
-        return floori(frame_start_time_sec + TARGET_NETWORK_TIME_STEP_SEC * 0.5)
 
 
 func _enter_tree() -> void:
-    server_time_tracker.name = "ServerTime"
-    add_child(server_time_tracker)
-
-    is_headless = DisplayServer.get_name() == "headless"
-    is_preview = G.args.has("preview")
-    is_server = is_headless or G.args.has("server")
-    preview_client_number = int(G.args.client) if G.args.has("client") else 0
-
-    if is_client:
+    if G.network.is_client:
         _client_update_is_connected_to_server()
     multiplayer.peer_connected.connect(_on_peer_connected)
     multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 
 
 func _ready() -> void:
-    G.log.log_system_ready("NetworkingMain")
+    G.log.log_system_ready("NetworkConnector")
 
 
 func server_enable_connections() -> void:
-    G.check_is_server("NetworkingMain.server_enable_connections")
+    G.check_is_server("NetworkConnector.server_enable_connections")
 
     var peer = ENetMultiplayerPeer.new()
     peer.create_server(G.settings.server_port, G.settings.max_client_count)
@@ -87,7 +35,7 @@ func server_enable_connections() -> void:
 
 
 func client_connect_to_server() -> void:
-    G.check_is_client("NetworkingMain.client_connect_to_server")
+    G.check_is_client("NetworkConnector.client_connect_to_server")
 
     # TODO: Also support websocket or webrtc as needed.
 
@@ -109,7 +57,7 @@ func client_connect_to_server() -> void:
 
 
 func _on_peer_connected(multiplayer_id: int) -> void:
-    if is_server:
+    if G.network.is_server:
         G.print("Client connected: %d" % multiplayer_id, 
             ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
@@ -122,7 +70,7 @@ func _on_peer_connected(multiplayer_id: int) -> void:
 
 
 func _on_peer_disconnected(multiplayer_id: int) -> void:
-    if is_server:
+    if G.network.is_server:
         G.print("Client disconnected: %d" % multiplayer_id,
             ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
     else:
@@ -133,7 +81,7 @@ func _on_peer_disconnected(multiplayer_id: int) -> void:
 
 
 func _client_update_is_connected_to_server() -> void:
-    if is_server:
+    if G.network.is_server:
         is_connected_to_server = true
     else:
         is_connected_to_server = false
@@ -144,7 +92,7 @@ func _client_update_is_connected_to_server() -> void:
 
 
 func server_close_multiplayer_session() -> void:
-    G.check_is_server("NetworkingMain.server_close_multiplayer_session")
+    G.check_is_server("NetworkConnector.server_close_multiplayer_session")
     
     G.print("Ending network connections.",
         ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
@@ -158,16 +106,9 @@ func server_close_multiplayer_session() -> void:
 
 
 func client_disconnect() -> void:
-    G.check_is_client("NetworkingMain.client_disconnect")
+    G.check_is_client("NetworkConnector.client_disconnect")
     
     G.print("Disconnecting from server",
         ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
     multiplayer.multiplayer_peer.disconnect_peer(SERVER_ID)
-
-
-## If we bucket server time into discrete frames, this would be the index of the
-## frame corresponding to the given time.
-func get_server_frame_index(p_server_time_usec: int) -> int:
-    var time_sec := p_server_time_usec / 1000000.0
-    return floori(fmod(time_sec, TARGET_NETWORK_TIME_STEP_SEC))

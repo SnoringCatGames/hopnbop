@@ -2,7 +2,8 @@ class_name Utils
 extends Node
 
 
-const MAX_INT := 9223372036854775807
+const MIN_INT := -9223372036854775808
+const MAX_INT :=  9223372036854775807
 
 var _focus_releaser: Control
 
@@ -665,7 +666,7 @@ static func parse_command_line_args() -> Dictionary:
 
 
 static func get_script_property_names(script: Script, exclusion_list := {}) -> Array[String]:
-    var script_properties = []
+    var script_properties: Array[String] = []
     
     var properties: Array = script.get_script_property_list()
     var flags := PROPERTY_USAGE_SCRIPT_VARIABLE

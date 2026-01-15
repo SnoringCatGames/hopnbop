@@ -29,7 +29,7 @@ func _server_on_peer_connected(multiplayer_id: int) -> void:
 
     # Set connect time for this player.
     var player: PlayerMatchState = state.players_by_id[multiplayer_id]
-    player.connect_time_usec = G.network.server_time_usec
+    player.connect_time_usec = G.network.time.get_server_time_usec()
 
     _server_trigger_player_replication()
     

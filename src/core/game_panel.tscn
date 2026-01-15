@@ -1,7 +1,8 @@
-[gd_scene load_steps=4 format=3 uid="uid://luccssf71n0"]
+[gd_scene load_steps=5 format=3 uid="uid://luccssf71n0"]
 
 [ext_resource type="Script" uid="uid://b0biq0wqtvk5e" path="res://src/core/game_panel.gd" id="1_lii62"]
 [ext_resource type="Script" uid="uid://pbur8xyvsrtm" path="res://src/core/match_state_synchronizer.gd" id="2_6i81m"]
+[ext_resource type="Script" uid="uid://dwnmd135vx6u2" path="res://src/networking/network_frame_processor.gd" id="3_0qy1w"]
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_lii62"]
 properties/0/path = NodePath(".:players")
@@ -29,3 +30,8 @@ spawn_path = NodePath("../Levels")
 
 [node name="Levels" type="Node2D" parent="."]
 unique_name_in_owner = true
+
+[node name="NetworkFrameProcessor" type="Node" parent="."]
+script = ExtResource("3_0qy1w")
+root_path = NodePath("..")
+metadata/_custom_type_script = "uid://dwnmd135vx6u2"

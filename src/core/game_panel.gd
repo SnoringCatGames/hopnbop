@@ -160,8 +160,12 @@ func _ready() -> void:
         multiplayer.server_disconnected.connect(_client_on_server_disconnected)
 
 
+func _network_process() -> void:
+    pass
+
+
 func _client_on_server_connected() -> void:
-    G.check_is_client("NetworkingMain._client_on_server_connected")
+    G.check_is_client("NetworkMain._client_on_server_connected")
     G.check(G.local_session.is_game_loading,
         "GamePanel._client_on_server_connected: Game load is not expected")
     G.check(not G.local_session.is_game_active,
@@ -174,13 +178,13 @@ func _client_on_server_connected() -> void:
 
 
 func _client_on_server_disconnected() -> void:
-    G.check_is_client("NetworkingMain._client_on_server_disconnected")
+    G.check_is_client("NetworkMain._client_on_server_disconnected")
 
     client_exit_game()
 
 
 func client_load_game() -> void:
-    G.check_is_client("NetworkingMain.client_load_game")
+    G.check_is_client("NetworkMain.client_load_game")
     G.check(not G.local_session.is_game_active,
         "GamePanel.client_load_game: Game is already active")
     G.check(not G.local_session.is_game_loading,
@@ -194,16 +198,16 @@ func client_load_game() -> void:
 
     G.screens.client_open_screen(ScreensMain.ScreenType.LOADING)
 
-    G.network.client_connect_to_server()
+    G.network.connector.client_connect_to_server()
 
 
 func client_exit_game() -> void:
-    G.check_is_client("NetworkingMain.client_exit_game")
+    G.check_is_client("NetworkMain.client_exit_game")
 
     G.local_session.is_game_active = false
     G.local_session.is_game_loading = false
 
-    G.network.client_disconnect()
+    G.network.connector.client_disconnect()
     G.local_session.copy_match_state()
     G.local_session.clear()
     G.screens.client_open_screen(ScreensMain.ScreenType.GAME_OVER)
@@ -214,7 +218,7 @@ func client_exit_game() -> void:
 
 
 func server_start_game() -> void:
-    G.check_is_server("NetworkingMain.server_start_game")
+    G.check_is_server("NetworkMain.server_start_game")
     G.check(not G.local_session.is_game_active,
         "GamePanel.server_start_game: Game is already active")
     G.check(not is_instance_valid(G.level),
@@ -226,11 +230,11 @@ func server_start_game() -> void:
 
     _server_spawn_level(G.settings.default_level_scene)
 
-    G.network.server_enable_connections()
+    G.network.connector.server_enable_connections()
 
 
 func server_end_game() -> void:
-    G.check_is_server("NetworkingMain.server_end_game")
+    G.check_is_server("NetworkMain.server_end_game")
     G.check(G.local_session.is_game_active,
         "GamePanel.server_end_game: Game is not active")
     G.check(is_instance_valid(G.level),
@@ -238,7 +242,7 @@ func server_end_game() -> void:
 
     G.local_session.is_game_active = false
 
-    G.network.server_close_multiplayer_session()
+    G.network.connector.server_close_multiplayer_session()
 
     # TODO: Add support for tracking game stats in a separate backend database.
 
@@ -257,7 +261,7 @@ func on_left_to_screen() -> void:
 
 
 func _server_spawn_level(level_scene: PackedScene) -> void:
-    G.check_is_server("NetworkingMain._server_spawn_level")
+    G.check_is_server("NetworkMain._server_spawn_level")
     G.check(G.settings.level_scenes.has(level_scene),
         "GamePanel._server_spawn_level: level_scene not registered in settings: %s" %
             level_scene)
@@ -269,7 +273,7 @@ func _server_spawn_level(level_scene: PackedScene) -> void:
 
 
 func _server_destroy_level(level: Level) -> void:
-    G.check_is_server("NetworkingMain._server_destroy_level")
+    G.check_is_server("NetworkMain._server_destroy_level")
     G.check(levels.has(level),
         "GamePanel._server_destroy_level: level not in current list: %s" %
             level)

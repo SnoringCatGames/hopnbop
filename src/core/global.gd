@@ -13,7 +13,8 @@ var time := ScaffolderTime.new()
 var log := ScaffolderLog.new()
 var utils := Utils.new()
 var geometry := Geometry.new()
-var network := NetworkingMain.new()
+var network := NetworkMain.new()
+var process_sentinel := ProcessSentinel.new()
 
 var main: Main
 var settings: Settings
@@ -50,6 +51,9 @@ func _enter_tree() -> void:
 
     network.name = "Network"
     add_child(network)
+    
+    process_sentinel.name = "ProcessSentinel"
+    add_child(process_sentinel)
 
 
 func _ready() -> void:

@@ -17,7 +17,6 @@ func _enter_tree() -> void:
     get_tree().paused = true
 
     Scaffolder.set_up()
-    NetworkedState.set_up_static_state()
 
 
 func _ready() -> void:

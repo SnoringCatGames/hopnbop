@@ -1,0 +1,318 @@
+@tool
+class_name NetworkedState
+extends MultiplayerSynchronizer
+## FIXME: [Rollback] Write extensive docs for this class.
+## 
+## - In general, during rollback NetworkedState is responsible for updating the
+##   state of all properties directly specified in its replication_config, but
+##   also any state within the current scene that is derived from this state.
+##
+
+# FIXME: [Rollback] Add support here for maintaining the buffer.
+# - Use G.settings.rollback_buffer_duration_sec
+# - Use NetworkMain.TARGET_NETWORK_FPS
+# - var buffer_size := ceili(G.settings.rollback_buffer_duration_sec * NetworkMain.TARGET_NETWORK_FPS)
+
+
+# FIXME: [Pre-Rollback]: Add another super-hud debug display:
+# - Show the current Physics process, Render process, and Network process FPS.
+#   - Keep a running average over the latest 1 second (make that number
+#     configurable).
+#   - Keep a circular buffer for the start_times of the last 100 for each
+#     (also configurable).
+# - Toggleable in Settings.
+# - Check how network process compares to physics process (both are hopefully
+#   close to 60 FPS?).
+#   - If network is much slower, consider adjusting my rollback frame index
+#     bucketing.
+# - Log warnings when any of these three FPS dimensions drops below some
+#   threshold.
+#   - Separate threshold for each.
+# - And log a print message when they recover.
+
+
+enum Authority {
+    UNKNOWN,
+    AUTHORITATIVE,
+    PREDICTED,
+}
+
+
+# FIXME: [Rollback] Test these rollback diff threshold defaults.
+const DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD := 0.5
+const DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHELD := 1.0
+const DEFAULT_NORMAL_DIFF_ROLLBACK_THRESHELD := 0.05
+
+const _MULTIPLAYER_ID_PROPERTY_NAME := "multiplayer_id"
+
+## The estimated server time, in microseconds, when this state occurred.
+var timestamp_usec := 0
+
+## This identifies whether this data originated from an authoritative source.
+var data_source := Authority.UNKNOWN
+
+## If true, the server is the authoritative source of data for this state.
+## 
+## This likely should only be false for input from the client.
+@export var is_server_authoritative := true:
+    set(value):
+        is_server_authoritative = value
+        _update_partner_state()
+        update_configuration_warnings()
+
+var is_client_authoritative: bool:
+    get: return not is_server_authoritative
+
+## This should contain the values for all of the properties of this state
+## instance, packed (somewhat) efficiently for syncing across the network.
+var packed_state := []:
+    set(value):
+        packed_state = value
+        if not _is_packing_state_locally:
+            _unpack_state()
+
+var _is_packing_state_locally := false
+
+# Dictionary<String, bool>
+static var _excluded_property_names_for_packing := {}
+
+var _property_names_for_packing: Array[String] = []
+
+## Which machine this state is associated with.
+##
+## - This is used for making sure the right NetworkedNodes actually have
+##   authority for triggering the replication.
+## - This is the machine that would be given authority to client input.
+## - This should be assigned by the server machine when spawning new networked
+##   nodes.
+## - An ID of 1 represents the server.
+var multiplayer_id := 1:
+    set(value):
+        if value != multiplayer_id:
+            multiplayer_id = value
+            set_multiplayer_authority(multiplayer_id)
+            
+            # Assign multiplayer_id on the partner InputFromClient.
+            if is_server_authoritative and is_instance_valid(_partner_state):
+                _partner_state.multiplayer_id = multiplayer_id
+
+## Server-authoritative NetworkedState and client-authoritative NetworkedState
+## nodes are often used as a pair to send input state from a client machine to
+## the server and to then send all other networked state from the server to all
+## clients.
+##
+## In this scenario, _partner_state is the other node from this pair.
+var _partner_state: NetworkedState
+
+var _partner_state_configuration_warning := ""
+
+var root: Node:
+    get: return get_node_or_null(root_path)
+
+
+static func set_up_static_state() -> void:
+    var dummy := NetworkedState.new()
+    var names := Utils.get_script_property_names(dummy.get_script())
+    _excluded_property_names_for_packing = Utils.array_to_set(names)
+    # We also require child classes to include this propert, but we don't want
+    # to network it.
+    _excluded_property_names_for_packing._property_diff_rollback_thresholds = true
+
+
+func _init() -> void:
+    G.ensure(Utils.check_whether_sub_classes_are_tools(self),
+        "Subclasses of NetworkedState must be marked with @tool.")
+    _property_names_for_packing = Utils.get_script_property_names(
+        get_script(),
+        _excluded_property_names_for_packing)
+
+
+func _enter_tree() -> void:
+    G.network.frame_driver.add_networked_state(self)
+
+
+func _exit_tree() -> void:
+    G.network.frame_driver.remove_networked_state(self)
+
+
+func _ready() -> void:
+    process_mode = Node.PROCESS_MODE_ALWAYS
+    
+    # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY: This seems to stil result in empty in editor
+    if _excluded_property_names_for_packing.is_empty():
+        set_up_static_state()
+    
+    _update_replication_config()
+    _update_partner_state()
+    update_configuration_warnings()
+    
+    if Engine.is_editor_hint():
+        return
+
+    set_multiplayer_authority(multiplayer_id)
+
+
+func _network_process() -> void:
+    root._network_process()
+
+
+func _update_replication_config() -> void:
+    for property_path in replication_config.get_properties():
+        replication_config.remove_property(property_path)
+    
+    var packed_state_path := "%s:packed_state" % root.get_path_to(self)
+    replication_config.add_property(packed_state_path)
+
+
+## Records the current state on node properties and in the rollback buffer at
+## the current simulated frame index.
+##
+## This does _not_ record state in the packed_state array for syncing across the
+## network. That step is handled separately, after any rollback extrapolation
+## simulations are finished.
+func record_rollback_frame() -> void:
+    if G.ensure(data_source != Authority.AUTHORITATIVE,
+            "State is already authoritative, and cannot be overwritten."):
+        return
+    
+    timestamp_usec = G.network.server_frame_time_usec
+    
+    var is_authoritative_source := \
+        is_server_authoritative == G.network.is_server
+    
+    data_source = \
+        Authority.AUTHORITATIVE if \
+        is_authoritative_source else \
+        Authority.PREDICTED
+    
+    # FIXME: [Rollback] Fill previous empty frames.
+    # - Use G.network.server_frame_index
+    # - Extrapolate from the last-filled frame in order to populate any empty
+    #   frames preceding this frame.
+    # - Unless there is no last-filled frame, in which case use default values.
+
+
+func pack_state() -> void:
+    var state := []
+    state.resize(_property_names_for_packing.size() + 1)
+    state[0] = timestamp_usec
+    var i := 1
+    for property_name in _property_names_for_packing:
+        state[i] = get(property_name)
+        i += 1
+    _is_packing_state_locally = true
+    packed_state = state
+    _is_packing_state_locally = false
+
+
+func _unpack_state() -> void:
+    if packed_state.is_empty():
+        # This happens for the initial sync, when there is no state to send yet.
+        return
+        
+    if not G.ensure(packed_state.size() == _property_names_for_packing.size() + 1):
+        return
+
+    timestamp_usec = packed_state[0]
+    var i := 1
+    for property_name in _property_names_for_packing:
+        set(property_name, packed_state[i])
+        i += 1
+
+
+func _update_partner_state() -> void:
+    if not is_node_ready():
+        # Don't try parsing siblings until we're actually in the tree.
+        return
+
+    _partner_state = null
+
+    # Collect all sibling NetworkedState.
+    var sibling_states: Array[NetworkedState] = []
+    for child in get_parent().get_children():
+        if child is NetworkedState and child != self:
+            sibling_states.push_back(child)
+
+    # Record the sibling, and validate the node configuration.
+    if sibling_states.size() == 1:
+        if sibling_states[0].is_server_authoritative != is_server_authoritative:
+            _partner_state = sibling_states[0]
+        elif is_server_authoritative:
+            _partner_state_configuration_warning = \
+                "You should consolidate sibling server-authoritative NetworkedState nodes (or should one be client-authoritative?)."
+        else:
+            _partner_state_configuration_warning = \
+                "There should only be one client-authoritative NetworkedState node here (should one be server-authoritative?)."
+    elif sibling_states.size() > 1:
+        _partner_state_configuration_warning = \
+            "There should be no more than 2 NetworkedState nodes in a given place--one server-authoritative and one client-authoritative."
+    elif is_client_authoritative:
+        _partner_state_configuration_warning = \
+            "A client-authoritative NetworkedState node must be accompanied by a server-authoritative NetworkedState sibling node."
+
+    # Get the multiplayer_id from the parter StateFromServer node.
+    if is_instance_valid(_partner_state):
+        var state_from_server: NetworkedState = \
+            self if is_server_authoritative else _partner_state
+        if is_client_authoritative and is_instance_valid(state_from_server):
+            multiplayer_id = state_from_server.multiplayer_id
+
+    if not Engine.is_editor_hint() and \
+            not _partner_state_configuration_warning.is_empty():
+        # Log and assert in game runtime environments.
+        G.error("NetworkedState is misconfigured: %s" %
+            _partner_state_configuration_warning,
+            ScaffolderLog.CATEGORY_CORE_SYSTEMS)
+
+    # Also refresh sibling NetworkedState warnings.
+    if is_instance_valid(_partner_state):
+        _partner_state.update_configuration_warnings()
+
+
+func _get_configuration_warnings() -> PackedStringArray:
+    var warnings: PackedStringArray = []
+    
+    var thresholds = get("_property_diff_rollback_thresholds")
+    
+    if thresholds == null:
+        warnings.push_back(
+            "A _property_diff_rollback_thresholds property must be defined on subclasses of NetworkedState.")
+    elif not thresholds is Dictionary:
+        warnings.push_back(
+            "The _property_diff_rollback_thresholds property must be a Dictionary.")
+    else:
+        # Check if _property_diff_rollback_thresholds matches the other properties.
+        
+        # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY: :/ Seem to match. Bad check logic?
+        print("----------------------------------------------------")
+        print("_property_diff_rollback_thresholds")
+        for key in thresholds:
+            print("- %s" % key)
+        print("_property_names_for_packing")
+        for n in _property_names_for_packing:
+            print("- %s" % n)
+            
+        var properties_match := true
+        if thresholds.size() != \
+                _property_names_for_packing.size():
+            properties_match = false
+        else:
+            for property_name in _property_names_for_packing:
+                if not thresholds.has(property_name):
+                    properties_match = false
+                    break
+        if not properties_match:
+            warnings.push_back(
+                "The keys in _property_diff_rollback_thresholds must match the other properties defined on the subclass.")
+    
+    if root_path.is_empty():
+        warnings.push_back("root_path must be defined.")
+    elif not is_instance_valid(root):
+        warnings.push_back("root_path does not point to a valid node.")
+    elif not root.has_method("_network_process"):
+        warnings.push_back(
+            "The node at `Root Path` must have a `_network_process` method.")
+    elif not _partner_state_configuration_warning.is_empty():
+        warnings.append(_partner_state_configuration_warning)
+    
+    return warnings

@@ -2,22 +2,22 @@ class_name Player
 extends Character
 
 
-var networked_state := PlayerNetworkedState.new()
+@export var state_from_server: PlayerStateFromServer
+@export var input_from_client: PlayerStateFromClient
 
-var multiplayer_id := 1:
+# FIXME: LEFT OFF HERE: ACTUALLY: Input collection.
+# - Make sure we only collect input when
+#   input_from_client.is_multiplayer_authority().
+var multiplayer_id: int:
     set(value):
-        if value != multiplayer_id:
-            multiplayer_id = value
-            _on_authority_changed()
+        state_from_server.multiplayer_id = value
+        input_from_client.multiplayer_id = value
+    get:
+        return state_from_server.multiplayer_id
 
 
 func _enter_tree() -> void:
     G.level.on_player_added(self)
-
-
-func _ready() -> void:
-    networked_state.name = "NetworkedState"
-    add_child(networked_state)
 
 
 func _exit_tree() -> void:
@@ -27,7 +27,10 @@ func _exit_tree() -> void:
 func _physics_process(delta: float) -> void:
     super._physics_process(delta)
 
-    networked_state.update(self)
+
+func _network_process() -> void:
+    # FIXME: [Rollback]
+    pass
 
 
 func _update_actions() -> void:
@@ -37,10 +40,6 @@ func _update_actions() -> void:
         # Don't update actions per-frame. Instead, actions are updated when
         # networked state is replicated.
         pass
-
-
-func _on_authority_changed() -> void:
-    networked_state.set_has_authority(is_multiplayer_authority())
 
 
 func play_sound(sound_name: String) -> void:

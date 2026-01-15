@@ -134,6 +134,7 @@ func warning(message: String, category := CATEGORY_DEFAULT) -> void:
     if _is_category_enabled(category) or _force_include_log_warnings:
         message = "WARNING: %s" % message
         push_warning(message)
+        # FIXME: LEFT OFF HERE: print_rich("[color=yellow]%s[/color]" % message)
         self.print(message, category)
 
 
