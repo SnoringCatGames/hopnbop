@@ -23,7 +23,8 @@ func _enter_tree() -> void:
 
 func _exit_tree() -> void:
     super._exit_tree()
-    G.level.on_player_removed(self)
+    if is_instance_valid(G.level):
+        G.level.on_player_removed(self)
 
 
 func _ready() -> void:

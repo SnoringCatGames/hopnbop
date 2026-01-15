@@ -51,4 +51,4 @@ static func validate_project_settings_input_actions() -> void:
             push_error(
                 "PlayerActionSource: Missing input action '" +
                 action +
-                "' in project settings.")
+                "' in project settings")

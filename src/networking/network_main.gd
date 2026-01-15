@@ -42,13 +42,17 @@ var server_frame_index: int:
     get: return frame_driver.server_frame_index
 
 
+var server_time_usec_not_frame_aligned: int:
+    get: return time.get_server_time_usec()
+
+
 func _enter_tree() -> void:
     time.name = "ServerTime"
     add_child(time)
-    
+
     connector.name = "NetworkConnector"
     add_child(connector)
-    
+
     frame_driver.name = "NetworkFrameDriver"
     add_child(frame_driver)
 

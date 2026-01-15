@@ -94,11 +94,17 @@ var multiplayer_id := 1:
     set(value):
         if value != multiplayer_id:
             multiplayer_id = value
-            set_multiplayer_authority(multiplayer_id)
+            set_multiplayer_authority(authority_id)
 
             # Assign multiplayer_id on the partner InputFromClient.
             if is_server_authoritative and is_instance_valid(_partner_state):
                 _partner_state.multiplayer_id = multiplayer_id
+
+var authority_id: int:
+    get:
+        return NetworkConnector.SERVER_ID if \
+            is_server_authoritative else \
+            multiplayer_id
 
 ## Server-authoritative NetworkedState and client-authoritative NetworkedState
 ## nodes are often used as a pair to send input state from a client machine to
@@ -125,7 +131,7 @@ static func set_up_static_state() -> void:
 
 func _init() -> void:
     G.ensure(Utils.check_whether_sub_classes_are_tools(self),
-        "Subclasses of NetworkedState must be marked with @tool.")
+        "Subclasses of NetworkedState must be marked with @tool")
 
 
 func _enter_tree() -> void:
@@ -153,7 +159,7 @@ func _ready() -> void:
     if Engine.is_editor_hint():
         return
 
-    set_multiplayer_authority(multiplayer_id)
+    set_multiplayer_authority(authority_id)
 
 
 func _network_process() -> void:
@@ -176,7 +182,7 @@ func _update_replication_config() -> void:
 ## simulations are finished.
 func record_rollback_frame() -> void:
     if G.ensure(data_source != Authority.AUTHORITATIVE,
-            "State is already authoritative, and cannot be overwritten."):
+            "State is already authoritative, and cannot be overwritten"):
         return
 
     timestamp_usec = G.network.server_frame_time_usec
@@ -243,16 +249,16 @@ func _update_partner_state() -> void:
             _partner_state = sibling_states[0]
         elif is_server_authoritative:
             _partner_state_configuration_warning = \
-                "You should consolidate sibling server-authoritative NetworkedState nodes (or should one be client-authoritative?)."
+                "You should consolidate sibling server-authoritative NetworkedState nodes (or should one be client-authoritative?)"
         else:
             _partner_state_configuration_warning = \
-                "There should only be one client-authoritative NetworkedState node here (should one be server-authoritative?)."
+                "There should only be one client-authoritative NetworkedState node here (should one be server-authoritative?)"
     elif sibling_states.size() > 1:
         _partner_state_configuration_warning = \
-            "There should be no more than 2 NetworkedState nodes in a given place--one server-authoritative and one client-authoritative."
+            "There should be no more than 2 NetworkedState nodes in a given place--one server-authoritative and one client-authoritative"
     elif is_client_authoritative:
         _partner_state_configuration_warning = \
-            "A client-authoritative NetworkedState node must be accompanied by a server-authoritative NetworkedState sibling node."
+            "A client-authoritative NetworkedState node must be accompanied by a server-authoritative NetworkedState sibling node"
 
     # Get the multiplayer_id from the parter StateFromServer node.
     if is_instance_valid(_partner_state):
@@ -280,10 +286,10 @@ func _get_configuration_warnings() -> PackedStringArray:
 
     if thresholds == null:
         warnings.push_back(
-            "A _property_diff_rollback_thresholds property must be defined on subclasses of NetworkedState.")
+            "A _property_diff_rollback_thresholds property must be defined on subclasses of NetworkedState")
     elif not thresholds is Dictionary:
         warnings.push_back(
-            "The _property_diff_rollback_thresholds property must be a Dictionary.")
+            "The _property_diff_rollback_thresholds property must be a Dictionary")
     else:
         # Check if _property_diff_rollback_thresholds matches the other properties.
         var properties_match := true
@@ -296,12 +302,12 @@ func _get_configuration_warnings() -> PackedStringArray:
                     break
         if not properties_match:
             warnings.push_back(
-                "The keys in _property_diff_rollback_thresholds must match the other properties defined on the subclass.")
+                "The keys in _property_diff_rollback_thresholds must match the other properties defined on the subclass")
 
     if root_path.is_empty():
-        warnings.push_back("root_path must be defined.")
+        warnings.push_back("root_path must be defined")
     elif not is_instance_valid(root):
-        warnings.push_back("root_path does not point to a valid node.")
+        warnings.push_back("root_path does not point to a valid node")
     elif not _partner_state_configuration_warning.is_empty():
         warnings.append(_partner_state_configuration_warning)
 

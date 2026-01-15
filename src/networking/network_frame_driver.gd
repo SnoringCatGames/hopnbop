@@ -48,7 +48,7 @@ func get_server_frame_index(p_server_time_usec: int) -> int:
 
 
 func _update_server_frame_time() -> void:
-    var server_time_usec := G.network.time.get_server_time_usec()
+    var server_time_usec := G.network.server_time_usec_not_frame_aligned
     var frame_start_time_sec := \
         get_server_frame_index(server_time_usec) * TARGET_NETWORK_TIME_STEP_SEC
     server_frame_time_usec = floori(

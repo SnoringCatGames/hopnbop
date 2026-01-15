@@ -1,9 +1,5 @@
-@tool
-class_name MatchState
-extends NetworkedState
-
-
-# FIXME: LEFT OFF HERE: ACTUALLY: ----------------------- Need game match state to use networked state, for array packing
+class_name MatchStateOld
+extends RefCounted
 
 
 signal players_updated
@@ -46,3 +42,12 @@ func clear() -> void:
     players_by_id.clear()
     kills.clear()
     bumps.clear()
+
+
+func duplicate() -> MatchStateOld:
+    var copy := MatchStateOld.new()
+    copy.players = players.duplicate()
+    copy.players_by_id = players_by_id.duplicate()
+    copy.kills = kills.duplicate()
+    copy.bumps = bumps.duplicate()
+    return copy

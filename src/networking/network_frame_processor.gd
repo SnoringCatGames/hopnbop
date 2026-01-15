@@ -37,13 +37,13 @@ func _network_process() -> void:
 
 func _get_configuration_warnings() -> PackedStringArray:
     var warnings := []
-    
+
     if root_path.is_empty():
-        warnings.push_back("root_path must be defined.")
+        warnings.push_back("root_path must be defined")
     elif not is_instance_valid(root):
-        warnings.push_back("root_path does not point to a valid node.")
+        warnings.push_back("root_path does not point to a valid node")
     elif not root.has_method("_network_process"):
         warnings.push_back(
-            "The node at `Root Path` must have a `_network_process` method.")
-    
+            "The node at `Root Path` must have a `_network_process` method")
+
     return warnings

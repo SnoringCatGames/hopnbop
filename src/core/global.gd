@@ -29,7 +29,7 @@ var win_screen: WinScreen
 var pause_screen: PauseScreen
 
 var game_panel: GamePanel
-var match_state: MatchState
+var match_state: MatchStateOld
 var local_session: LocalSession
 var level: Level
 

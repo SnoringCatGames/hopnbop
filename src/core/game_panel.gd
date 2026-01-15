@@ -134,7 +134,7 @@ extends Node2D
 
 var levels: Array[Level] = []
 
-var match_state: MatchState:
+var match_state: MatchStateOld:
     get: return %MatchStateSynchronizer.state
 var match_state_synchronizer: MatchStateSynchronizer:
     get: return %MatchStateSynchronizer
@@ -150,6 +150,9 @@ func _ready() -> void:
 
     G.match_state = match_state
 
+    %MatchStateSynchronizer.set_multiplayer_authority(NetworkConnector.SERVER_ID)
+    %LevelSpawner.set_multiplayer_authority(NetworkConnector.SERVER_ID)
+
     for level_scene in G.settings.level_scenes:
         %LevelSpawner.add_spawnable_scene(level_scene.resource_path)
 
@@ -158,6 +161,51 @@ func _ready() -> void:
             _client_on_server_connected()
         multiplayer.connected_to_server.connect(_client_on_server_connected)
         multiplayer.server_disconnected.connect(_client_on_server_disconnected)
+
+        %LevelSpawner.connect("spawned", _client_on_level_spawned)
+        %LevelSpawner.connect("despawned", _client_on_level_despawned)
+
+    %MatchStateSynchronizer.connect("player_joined", _on_player_joined)
+    %MatchStateSynchronizer.connect("player_left", _on_player_left)
+    %MatchStateSynchronizer.connect("player_killed", _on_player_killed)
+    %MatchStateSynchronizer.connect("players_bumped", _on_players_bumped)
+
+
+func _on_player_joined(player: PlayerMatchState) -> void:
+    G.print("Player joined: %s" % player.get_string(),
+        ScaffolderLog.CATEGORY_GAME_STATE)
+
+
+func _on_player_left(player: PlayerMatchState) -> void:
+    G.print("Player left: %s" % player.get_string(),
+        ScaffolderLog.CATEGORY_GAME_STATE)
+
+
+func _on_player_killed(
+        killer: PlayerMatchState,
+        killee: PlayerMatchState) -> void:
+    G.print("Player killed: %s killed %s" %
+        [killer.get_string(), killee.get_string()],
+        ScaffolderLog.CATEGORY_GAME_STATE)
+
+
+func _on_players_bumped(a: PlayerMatchState, b: PlayerMatchState) -> void:
+    G.print("Players bumped: %s, %s" % [a.get_string(), b.get_string()],
+        ScaffolderLog.CATEGORY_GAME_STATE)
+
+
+func _client_on_level_spawned(p_level: Node) -> void:
+    G.ensure(p_level is Level)
+    var level: Level = p_level
+    G.print("Level spawned: %s" % level.get_string(),
+        ScaffolderLog.CATEGORY_GAME_STATE)
+
+
+func _client_on_level_despawned(p_level: Node) -> void:
+    G.ensure(p_level is Level)
+    var level: Level = p_level
+    G.print("Level despawned: %s" % level.get_string(),
+        ScaffolderLog.CATEGORY_GAME_STATE)
 
 
 func _network_process() -> void:
@@ -266,6 +314,9 @@ func _server_spawn_level(level_scene: PackedScene) -> void:
         "GamePanel._server_spawn_level: level_scene not registered in settings: %s" %
             level_scene)
 
+    G.print("Spawning level: %s" % Utils.get_display_name(level_scene),
+        ScaffolderLog.CATEGORY_GAME_STATE)
+
     var level: Level = level_scene.instantiate()
     levels.push_back(level)
     %Levels.add_child(level)
@@ -277,6 +328,9 @@ func _server_destroy_level(level: Level) -> void:
     G.check(levels.has(level),
         "GamePanel._server_destroy_level: level not in current list: %s" %
             level)
+
+    G.print("Destroying level: %s" % level.get_string(),
+        ScaffolderLog.CATEGORY_GAME_STATE)
 
     if G.level == level:
         G.level = null

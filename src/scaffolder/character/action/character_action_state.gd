@@ -235,7 +235,7 @@ func _log_new_press_or_release(
     var current_presses_str: String = Utils.join(current_presses_strs)
 
     var velocity_string: String = \
-            "%17s" % G.utils.get_vector_string(character.velocity, 1)
+            "%17s" % Utils.get_vector_string(character.velocity, 1)
 
     var details := "v=%s; [%s]" % [
         velocity_string,

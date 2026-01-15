@@ -25,7 +25,7 @@ func _ready() -> void:
     await get_tree().process_frame
 
     if G.network.preview_client_number > 1 and not G.settings.run_multiple_clients:
-        G.print("Main._ready: Closing extra client process (--client=%s), because G.settings.run_multiple_clients is false." % G.network.preview_client_number)
+        G.print("Main._ready: Closing extra client process (--client=%s), because G.settings.run_multiple_clients is false" % G.network.preview_client_number)
         close_app()
 
     if G.settings.full_screen and not G.network.is_server:
@@ -95,6 +95,6 @@ func _client_local_pause() -> void:
 
 func close_app() -> void:
     if G.utils.were_screenshots_taken:
-        G.utils.open_screenshot_folder()
+        Utils.open_screenshot_folder()
     G.print("Main.close_app", ScaffolderLog.CATEGORY_CORE_SYSTEMS)
     get_tree().call_deferred("quit")

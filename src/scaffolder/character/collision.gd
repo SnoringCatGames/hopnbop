@@ -53,7 +53,7 @@ func _init(original: KinematicCollision2D = null, index := -1) -> void:
         else:
             side = SurfaceSide.NONE
 
-        key = "%s:%s" % [G.utils.get_vector_string(position, 3), side]
+        key = "%s:%s" % [Utils.get_vector_string(position, 3), side]
 
 
 static func angle_to_within_plus_minus_pi(a: Vector2, b: Vector2) -> float:

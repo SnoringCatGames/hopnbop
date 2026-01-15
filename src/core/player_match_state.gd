@@ -21,6 +21,13 @@ var full_name: String:
 var is_connected_to_server: bool:
     get: return disconnect_time_usec > connect_time_usec
 
+var player: Player:
+    get:
+        if G.level.players_by_id.has(multiplayer_id):
+            return G.level.players_by_id[multiplayer_id]
+        else:
+            return null
+
 
 func set_up(p_multiplayer_id: int, p_is_soft: bool) -> void:
     multiplayer_id = p_multiplayer_id

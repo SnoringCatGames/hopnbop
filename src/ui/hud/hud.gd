@@ -37,4 +37,4 @@ func update_visibility() -> void:
         ScreensMain.ScreenType.GAME:
             pass
         _:
-            G.utils.ensure(false)
+            G.ensure(false)

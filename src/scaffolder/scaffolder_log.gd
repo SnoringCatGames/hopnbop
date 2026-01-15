@@ -105,30 +105,14 @@ func print(message = "", category := CATEGORY_DEFAULT) -> void:
 func error(
         message: String,
         _category := CATEGORY_DEFAULT,
-        should_assert := true) -> void:
+        should_crash := true) -> void:
     message = "ERROR  : %s" % message
     push_error(message)
     print_stack()
     self.print(message, _category)
-    if should_assert:
-         assert(false)
-
-
-# -   Using this function instead of `push_error` directly enables us to render
-#     the console output in environments like a mobile device.
-# -   This requires an explicit error message in order to disambiguate where
-#     the error actually happened.
-#     -   This is needed because stack traces are not available on non-main
-#         threads.
-static func static_error(
-        message: String,
-        _category := CATEGORY_DEFAULT,
-        should_assert := true) -> void:
-    message = "ERROR  : %s" % message
-    push_error(message)
-    print_stack()
-    if should_assert:
-         assert(false)
+    breakpoint
+    if should_crash:
+        get_tree().quit()
 
 
 # -   Using this function instead of `push_error` directly enables us to render
@@ -164,7 +148,7 @@ func check(condition: bool, message: String) -> bool:
     if not condition:
         var formatted_message := "FATAL ERROR: %s" % message
         error(formatted_message, CATEGORY_CORE_SYSTEMS)
-    assert(condition)
+        get_tree().quit()
     return condition
 
 

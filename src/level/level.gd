@@ -37,6 +37,8 @@ func _enter_tree() -> void:
 func _ready() -> void:
     G.log.log_system_ready("Level")
 
+    %PlayerSpawner.set_multiplayer_authority(NetworkConnector.SERVER_ID)
+
     var warnings := _get_configuration_warnings()
     if not warnings.is_empty():
         G.error("Level._ready: %s (%s)" % [warnings[0], get_scene_file_path()])
@@ -44,6 +46,24 @@ func _ready() -> void:
 
     for player_scene in G.settings.player_scenes:
         player_spawner.add_spawnable_scene(player_scene.resource_path)
+
+    if G.network.is_client:
+        %PlayerSpawner.connect("spawned", _client_on_player_spawned)
+        %PlayerSpawner.connect("despawned", _client_on_player_despawned)
+
+
+func _client_on_player_spawned(p_player: Node) -> void:
+    G.ensure(p_player is Player)
+    var player: Player = p_player
+    G.print("Player spawned: %s" % player.get_string(),
+        ScaffolderLog.CATEGORY_GAME_STATE)
+
+
+func _client_on_player_despawned(p_player: Node) -> void:
+    G.ensure(p_player is Player)
+    var player: Player = p_player
+    G.print("Player despawned: %s" % player.get_string(),
+        ScaffolderLog.CATEGORY_GAME_STATE)
 
 
 func _exit_tree() -> void:
@@ -117,3 +137,7 @@ func _get_configuration_warnings() -> PackedStringArray:
         warnings.push_back("players_node not set")
 
     return warnings
+
+
+func get_string() -> String:
+    return Utils.get_filename_from_path(scene_file_path)

@@ -6,10 +6,11 @@
 
 [node name="DefaultLevel" type="Node2D" node_paths=PackedStringArray("player_spawner", "players_node")]
 script = ExtResource("1_n1ky5")
-player_spawner = NodePath("MultiplayerSpawner")
+player_spawner = NodePath("PlayerSpawner")
 players_node = NodePath("Players")
 
-[node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="."]
+[node name="PlayerSpawner" type="MultiplayerSpawner" parent="."]
+unique_name_in_owner = true
 _spawnable_scenes = PackedStringArray("uid://cn6hdqmmufnvr")
 spawn_path = NodePath("../Players")
 

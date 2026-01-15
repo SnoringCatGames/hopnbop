@@ -21,11 +21,6 @@ func _ready() -> void:
     G.log.log_system_ready("Utils")
 
 
-func ensure(condition: bool, message := "") -> bool:
-    assert(condition, message)
-    return condition
-
-
 static func splice(
         result: Array,
         start: int,
@@ -119,20 +114,20 @@ static func merge(
     return result
 
 
-static func subtract_nested_arrays(
+static func subtract_and_mutate_nested_arrays(
         result: Dictionary,
         other: Dictionary,
         expects_no_missing_matches := false) -> Dictionary:
     for key in other:
         if result.has(key):
             if result[key] is Dictionary and other[key] is Dictionary:
-                subtract_nested_arrays(
+                subtract_and_mutate_nested_arrays(
                         result[key], other[key], expects_no_missing_matches)
             elif result[key] is Array and other[key] is Array:
-                subtract_arrays(
+                subtract_and_mutate_arrays(
                         result[key], other[key])
             elif expects_no_missing_matches:
-                G.utils.ensure(false,
+                G.ensure(false,
                         ("Wrong-type match: " +
                         "(We currently don't support subtracting properties " +
                         "from a Dictionary. We only support subtracting " +
@@ -140,14 +135,14 @@ static func subtract_nested_arrays(
                         "\n    key=%s,\n    result=%s,\n    other=%s") % \
                         [key, result, other])
         elif expects_no_missing_matches:
-            G.utils.ensure(false,
+            G.ensure(false,
                     ("Missing match: " +
                     "\n    key=%s,\n    result=%s,\n    other=%s") % \
                     [key, result, other])
     return result
 
 
-static func subtract_arrays(
+static func subtract_and_mutate_arrays(
         result: Array,
         other: Array) -> Array:
     for element in other:
@@ -155,11 +150,26 @@ static func subtract_arrays(
         if result_index >= 0:
             result.remove_at(result_index)
         else:
-            G.utils.ensure(false,
+            G.ensure(false,
                     ("Missing match: " +
                     "\n    element=%s,\n    result=%s,\n    other=%s") % \
                     [element, result, other])
     return result
+
+
+static func subtract_array(
+        a: Array,
+        b: Array) -> Array:
+    # Dictionary<Variant, bool>
+    var diff := {}
+
+    for element in a:
+        diff[element] = true
+
+    for element in b:
+        diff.erase(element)
+
+    return diff.keys()
 
 
 static func join(
@@ -182,7 +192,7 @@ static func array_to_set(array: Array) -> Dictionary:
     return local_set
 
 
-func cascade_sort(arr: Array) -> Array:
+static func cascade_sort(arr: Array) -> Array:
     arr.sort()
     return arr
 
@@ -198,7 +208,7 @@ static func translate_polyline(
     return result
 
 
-func clear_children(node: Node) -> void:
+static func clear_children(node: Node) -> void:
     for child in node.get_children():
         child.queue_free()
 
@@ -240,7 +250,7 @@ static func ease_name_to_param(ease_name: String) -> float:
             return -1.8
 
         _:
-            G.utils.ensure(false)
+            G.ensure(false)
             return INF
 
 
@@ -286,7 +296,7 @@ static func mix(
     elif values[0] is Vector3:
         weighted_average = Vector3.ZERO
     else:
-        G.utils.ensure(false)
+        G.ensure(false)
 
     for i in count:
         var value = values[i]
@@ -400,7 +410,7 @@ static func get_time_string_from_seconds(
     return time_str
 
 
-func get_vector_string(
+static func get_vector_string(
         vector: Vector2,
         decimal_place_count := 2) -> String:
     return "(%.*f,%.*f)" % [
@@ -411,13 +421,13 @@ func get_vector_string(
     ]
 
 
-func get_spaces(count: int) -> String:
+static func get_spaces(count: int) -> String:
     assert(count <= 60)
     return "                                                            " \
             .substr(0, count)
 
 
-func pad_string(
+static func pad_string(
         string: String,
         length: int,
         pads_on_right := true,
@@ -434,7 +444,7 @@ func pad_string(
             return "%s%s" % [padding, string]
 
 
-func resize_string(
+static func resize_string(
         string: String,
         length: int,
         pads_on_right := true) -> String:
@@ -455,19 +465,19 @@ func take_screenshot() -> void:
     var path := "user://screenshots/screenshot-%s.png" % get_datetime_string()
     var status := image.save_png(path)
     if status != OK:
-        G.utils.ensure(false)
+        G.ensure(false)
     else:
         G.print("Took a screenshot: %s" % path, ScaffolderLog.CATEGORY_CORE_SYSTEMS)
         were_screenshots_taken = true
 
 
-func open_screenshot_folder() -> void:
+static func open_screenshot_folder() -> void:
     var path := OS.get_user_data_dir() + "/screenshots"
     G.print("Opening screenshot folder: " + path, ScaffolderLog.CATEGORY_CORE_SYSTEMS)
     OS.shell_open(path)
 
 
-func set_mouse_filter_recursively(
+static func set_mouse_filter_recursively(
         node: Node,
         mouse_filter: int) -> void:
     for child in node.get_children():
@@ -478,7 +488,7 @@ func set_mouse_filter_recursively(
         set_mouse_filter_recursively(child, mouse_filter)
 
 
-func notify_on_screen_visible_recursively(node: CanvasItem) -> void:
+static func notify_on_screen_visible_recursively(node: CanvasItem) -> void:
     if node.has_method("_on_screen_visible"):
         node._on_screen_visible()
 
@@ -487,7 +497,7 @@ func notify_on_screen_visible_recursively(node: CanvasItem) -> void:
             notify_on_screen_visible_recursively(child)
 
 
-func get_node_vscroll_position(
+static func get_node_vscroll_position(
         scroll_container: ScrollContainer,
         control: Control,
         offset := 0) -> int:
@@ -503,7 +513,7 @@ func get_node_vscroll_position(
     return int(min(vscroll_position, max_vscroll_position))
 
 
-func get_instance_id_or_not(object: Object) -> int:
+static func get_instance_id_or_not(object: Object) -> int:
     return object.get_instance_id() if \
             object != null else \
             -1
@@ -519,7 +529,7 @@ func get_node_in_group(group_name: String) -> Node:
     return nodes[0]
 
 
-func get_property_value_from_scene_state_node(
+static func get_property_value_from_scene_state_node(
         state: SceneState,
         node_index: int,
         property_name: String,
@@ -594,16 +604,18 @@ static func get_type_string(type: int) -> String:
         TYPE_MAX:
             return "TYPE_MAX"
         _:
-            G.utils.ensure(false, "%d" % type)
+            G.ensure(false, "%d" % type)
             return ""
 
 
-func get_display_name(object: Variant) -> String:
+static func get_display_name(object: Variant) -> String:
     var path: String
     if object is String:
         path = object
     elif object is Object:
-        if "scene_file_path" in object and object.scene_file_path != "":
+        if object.has_method("get_string"):
+            path = object.get_string()
+        elif "scene_file_path" in object and object.scene_file_path != "":
             path = object.scene_file_path
         elif "resource_path" in object and object.resource_path != "":
             path = object.resource_path
@@ -613,6 +625,10 @@ func get_display_name(object: Variant) -> String:
     if path.is_empty():
         return "%s" % object
 
+    return get_filename_from_path(path)
+
+
+static func get_filename_from_path(path: String) -> String:
     var regex := RegEx.new()
     regex.compile(r'([a-zA-Z0-9_ \-]*)\.[a-zA-Z0-9_]*$')
     var result := regex.search(path)
@@ -667,13 +683,13 @@ static func parse_command_line_args() -> Dictionary:
 
 static func get_script_property_names(script: Script, exclusion_list := {}) -> Array[String]:
     var script_properties: Array[String] = []
-    
+
     var properties: Array = script.get_script_property_list()
     var flags := PROPERTY_USAGE_SCRIPT_VARIABLE
-    
+
     for property in properties:
         if (property.usage & flags != 0 and
                 not exclusion_list.has(property.name)):
             script_properties.push_back(property.name)
-            
+
     return script_properties
