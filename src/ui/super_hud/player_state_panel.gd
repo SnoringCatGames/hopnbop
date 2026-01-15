@@ -15,7 +15,7 @@ var player_match_state: PlayerMatchState
 func _ready() -> void:
     if G.network.is_server:
         return
-    
+
     %IsDescendingThroughFloorsRow.visible = show_extra_debug_info
     %IsAscendingThroughCeilingsRow.visible = show_extra_debug_info
     %IsAttachingToWalkThroughWallsRow.visible = show_extra_debug_info
@@ -38,12 +38,12 @@ func _process(_delta: float) -> void:
         return
     if not G.settings.show_debug_player_state:
         return
-    
+
     if not is_instance_valid(player):
         player = G.get_player(multiplayer_id)
         if is_instance_valid(player):
             player.connect("physics_processed", _on_player_physics_processed)
-    
+
     if not is_instance_valid(player_match_state):
         player_match_state = G.get_player_match_state(multiplayer_id)
 

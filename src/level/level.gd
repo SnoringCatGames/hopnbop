@@ -18,6 +18,8 @@ var players: Array[Player] = []
 # Dictionary<int, Player
 var players_by_id := {}
 
+var npcs: Array[NPC] = []
+
 
 func _enter_tree() -> void:
     G.game_panel.on_level_added(self)
@@ -89,6 +91,16 @@ func on_player_removed(player: Player) -> void:
     if G.network.is_client:
         players.erase(player)
         players_by_id.erase(player.multiplayer_id)
+
+
+func on_npc_added(npc: NPC) -> void:
+    if G.network.is_client:
+        npcs.push_back(npc)
+
+
+func on_npc_removed(npc: NPC) -> void:
+    if G.network.is_client:
+        npcs.erase(npc)
 
 
 func _get_player_spawn_position() -> Vector2:

@@ -18,19 +18,19 @@ var is_callback_scheduled := false
 
 
 func _init(
-        parent,
-        time_type: int,
-        callback: Callable,
-        interval: float,
-        invokes_at_end: bool) -> void:
-    self.parent = parent
-    self.time_type = time_type
-    self.time_tracker = G.time._get_time_tracker_for_time_type(time_type)
+        p_parent,
+        p_time_type: int,
+        p_callback: Callable,
+        p_interval: float,
+        p_invokes_at_end: bool) -> void:
+    self.parent = p_parent
+    self.time_type = p_time_type
+    self.time_tracker = G.time._get_time_tracker_for_time_type(p_time_type)
     self.elapsed_time_key = \
-            G.time._get_elapsed_time_key_for_time_type(time_type)
-    self.callback = callback
-    self.interval = interval
-    self.invokes_at_end = invokes_at_end
+            G.time._get_elapsed_time_key_for_time_type(p_time_type)
+    self.callback = p_callback
+    self.interval = p_interval
+    self.invokes_at_end = p_invokes_at_end
 
 
 func on_call() -> void:

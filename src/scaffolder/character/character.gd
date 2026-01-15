@@ -95,6 +95,14 @@ var is_sprite_visible: bool:
     get: return animator.visible
 
 
+func _enter_tree() -> void:
+    pass
+
+
+func _exit_tree() -> void:
+    pass
+
+
 func _ready() -> void:
     if not collision_shape:
         assert(false, "Character.collision_shape is not provided: %s" % name)
@@ -129,6 +137,11 @@ func _init_player_controller_action_source() -> void:
     assert(!is_instance_valid(_character_action_source))
     self._character_action_source = PlayerActionSource.new(self, true)
     _action_sources.push_back(_character_action_source)
+
+
+func _network_process() -> void:
+    # FIXME: LEFT OFF HERE: ACTUALLY
+    pass
 
 
 func _physics_process(delta: float) -> void:

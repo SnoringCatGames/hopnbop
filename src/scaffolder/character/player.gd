@@ -17,11 +17,19 @@ var multiplayer_id: int:
 
 
 func _enter_tree() -> void:
+    super._enter_tree()
     G.level.on_player_added(self)
 
 
 func _exit_tree() -> void:
+    super._exit_tree()
     G.level.on_player_removed(self)
+
+
+func _ready() -> void:
+    super._ready()
+    if is_instance_valid(state_from_server):
+        state_from_server.connect("network_processed", _network_process)
 
 
 func _physics_process(delta: float) -> void:
@@ -29,23 +37,14 @@ func _physics_process(delta: float) -> void:
 
 
 func _network_process() -> void:
-    # FIXME: [Rollback]
-    pass
+    super._network_process()
 
 
 func _update_actions() -> void:
+    # FIXME: LEFT OFF HERE:
     if is_multiplayer_authority():
         super._update_actions()
     else:
         # Don't update actions per-frame. Instead, actions are updated when
         # networked state is replicated.
         pass
-
-
-func play_sound(sound_name: String) -> void:
-    # TODO: Implement sounds.
-    match sound_name:
-        "jump":
-            pass
-        "land":
-            pass

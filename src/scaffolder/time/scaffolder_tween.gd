@@ -16,13 +16,13 @@ var _active_sub_tweens := []
 
 
 func _init(
-        parent,
-        adds_self_as_child_of_parent := true) -> void:
-    self.parent = parent
+        p_parent,
+        p_adds_self_as_child_of_parent := true) -> void:
+    self.parent = p_parent
     name = "ScaffolderTween"
     self.id = G.time.get_next_task_id()
-    if adds_self_as_child_of_parent:
-        parent.add_child(self)
+    if p_adds_self_as_child_of_parent:
+        p_parent.add_child(self)
 
 
 func _destroy() -> void:
@@ -109,7 +109,8 @@ func stop_all() -> bool:
 func trigger_completed() -> void:
     if _active_sub_tweens.is_empty():
         return
-    var sub_tween: _SubTween = _active_sub_tweens[0]
+    # TODO:
+    #var sub_tween: _SubTween = _active_sub_tweens[0]
 
     var connections := get_signal_connection_list("tween_all_completed")
     if connections.is_empty():
@@ -209,25 +210,25 @@ class _SubTween extends RefCounted:
 
 
     func _init(
-            object: Object,
-            key: String,
-            is_property: bool,
-            initial_val,
-            final_val,
-            duration: float,
-            ease_name: String,
-            delay: float,
-            time_type: int) -> void:
+            p_object: Object,
+            p_key: String,
+            p_is_property: bool,
+            p_initial_val,
+            p_final_val,
+            p_duration: float,
+            p_ease_name: String,
+            p_delay: float,
+            p_time_type: int) -> void:
         assert(duration > 0)
-        self.object = object
-        self.key = key
-        self.is_property = is_property
-        self.initial_val = initial_val
-        self.final_val = final_val
-        self.duration = duration
-        self.ease_name = ease_name
-        self.delay = delay
-        self.time_type = time_type
+        self.object = p_object
+        self.key = p_key
+        self.is_property = p_is_property
+        self.initial_val = p_initial_val
+        self.final_val = p_final_val
+        self.duration = p_duration
+        self.ease_name = p_ease_name
+        self.delay = p_delay
+        self.time_type = p_time_type
 
 
     func get_is_finished() -> bool:

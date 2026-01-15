@@ -4,7 +4,7 @@ extends Node
 
 ## This determines the period we use between frames that we record in rollback
 ## buffers.
-## 
+##
 ## Network state will presumably be slower than this in practice. When that
 ## occurs, we fill-in empty frames by extrapolating from the most-recent filled
 ## frame.
@@ -31,7 +31,7 @@ var _queued_rollback_frame_index := 0
 
 func _ready() -> void:
     G.log.log_system_ready("NetworkFrameDriver")
-    
+
     if not Engine.is_editor_hint():
         G.process_sentinel.connect("pre_physics_process", _pre_physics_process)
 
@@ -77,30 +77,30 @@ func remove_network_frame_processor(node: NetworkFrameProcessor) -> void:
 
 
 ## This will trigger a rollback to occur on the next _network_process.
-## 
+##
 ## At most one rollback will occur per _network_process loop, and the earliest
 ## server_frame_index will be used.
 # FIXME: [Rollback] Call this.
-func queue_rollback(server_frame_index: int) -> void:
+func queue_rollback(p_server_frame_index: int) -> void:
     if _queued_rollback_frame_index == 0:
-        _queued_rollback_frame_index = server_frame_index
+        _queued_rollback_frame_index = p_server_frame_index
     else:
         _queued_rollback_frame_index = mini(
-            _queued_rollback_frame_index, server_frame_index)
+            _queued_rollback_frame_index, p_server_frame_index)
 
 
 ## For most nodes in the scene, _network_process should happen before
 ## _physics_process.
 func _start_network_process() -> void:
     _update_server_frame_time()
-    
+
     if _queued_rollback_frame_index > 0:
         _start_rollback()
         _queued_rollback_frame_index = 0
     else:
         # Just handle this next frame normally, no rollback needed.
         _network_process()
-    
+
     # After simulating this frame, or extrapolating frames due to rollback, pack
     # the latest state for syncing across the network.
     for node in _networked_state_nodes:
@@ -110,7 +110,7 @@ func _start_network_process() -> void:
 func _start_rollback() -> void:
     var original_server_frame_time_usec := server_frame_time_usec
     var original_server_frame_index := server_frame_index
-    
+
     # FIMXE: [Rollback] Start the rollback.
     # - First, reset all registered nodes in _networked_state_nodes to
     #   _queued_rollback_frame_index.
@@ -119,7 +119,7 @@ func _start_rollback() -> void:
     # - Then, traverse _all_ nodes starting at _queued_rollback_frame_index + 1.
     # - Then, repeat for each index
     _network_process()
-    
+
     server_frame_time_usec = original_server_frame_time_usec
     server_frame_index = original_server_frame_index
 
@@ -131,7 +131,7 @@ func _network_process() -> void:
         node._network_process()
     for node in _network_frame_processor_nodes:
         node._network_process()
-    
+
     # Record the current rollback frame state.
     for node in _networked_state_nodes:
         node.record_rollback_frame()

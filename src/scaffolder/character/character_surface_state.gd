@@ -176,14 +176,14 @@ func _init(p_character: Character) -> void:
 
 func update_collisions() -> void:
     collisions.clear()
-    
+
     var new_collision_count := character.get_slide_collision_count()
     for i in new_collision_count:
         var collision := Collision.new(
             character.get_slide_collision(i),
             i)
         collisions[collision.key] = collision
-    
+
     _update_contacts()
     _update_touch_state()
 
@@ -239,9 +239,9 @@ func _update_contacts() -> void:
         var collision: Collision = collisions[key]
         if not collision.is_tilemap_collision:
             continue
-            
+
         surface_contacts[collision.side] = collision
-    
+
     # Re-use preexisting contacts if Godot's collision system isn't giving us
     # the current collisions this frame.
     if character.is_on_floor():
@@ -253,7 +253,7 @@ func _update_contacts() -> void:
             _reuse_previous_surface_contact_if_missing(SurfaceSide.LEFT_WALL)
         else:
             _reuse_previous_surface_contact_if_missing(SurfaceSide.RIGHT_WALL)
-    
+
     # Record the official side contacts.
     for side in surface_contacts:
         var contact: Collision = surface_contacts[side]
@@ -619,7 +619,7 @@ func _update_attachment_state() -> void:
         surface_type = SurfaceType.CEILING
     else:
         surface_type = SurfaceType.AIR
-        
+
     just_left_surface_type = (
         previous_surface_type if
         previous_surface_type != surface_type else

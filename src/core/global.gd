@@ -51,7 +51,7 @@ func _enter_tree() -> void:
 
     network.name = "Network"
     add_child(network)
-    
+
     process_sentinel.name = "ProcessSentinel"
     add_child(process_sentinel)
 

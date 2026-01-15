@@ -1,44 +1,46 @@
 [gd_scene load_steps=9 format=3 uid="uid://cn6hdqmmufnvr"]
 
-[ext_resource type="Script" uid="uid://c1qdd50ca4hst" path="res://src/player/player.gd" id="1_rxibo"]
-[ext_resource type="Resource" uid="uid://dq1d4nuh248j2" path="res://src/player/default_movement_settings.tres" id="2_ohd16"]
-[ext_resource type="Script" uid="uid://bglkea0vh5fw0" path="res://src/player/player_state_from_server.gd" id="3_5f2sf"]
-[ext_resource type="PackedScene" uid="uid://br1b7cse0hxmt" path="res://src/player/player_animator.tscn" id="3_ohd16"]
-[ext_resource type="Script" uid="uid://chp1athjwjq76" path="res://src/player/player_state_from_client.gd" id="4_jiejy"]
+[ext_resource type="Script" uid="uid://dwab2y7smxa" path="res://src/player/bunny.gd" id="1_j5lrb"]
+[ext_resource type="Resource" uid="uid://dq1d4nuh248j2" path="res://src/player/default_movement_settings.tres" id="2_4p26p"]
+[ext_resource type="Script" uid="uid://bglkea0vh5fw0" path="res://src/scaffolder/character/player_state_from_server.gd" id="3_o16et"]
+[ext_resource type="Script" uid="uid://chp1athjwjq76" path="res://src/scaffolder/character/player_state_from_client.gd" id="4_1rl0f"]
+[ext_resource type="PackedScene" uid="uid://br1b7cse0hxmt" path="res://src/player/player_animator.tscn" id="5_sc4xa"]
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_mf2ua"]
-properties/0/path = NodePath("StateFromServer:packed_state")
+properties/0/path = NodePath(".:packed_state")
 properties/0/spawn = true
 properties/0/replication_mode = 1
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_244u8"]
-properties/0/path = NodePath("InputFromClient:packed_state")
+properties/0/path = NodePath(".:packed_state")
 properties/0/spawn = true
 properties/0/replication_mode = 1
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_rxibo"]
 radius = 6.0
 
-[node name="Player" type="CharacterBody2D" node_paths=PackedStringArray("state_from_server", "input_from_client", "collision_shape", "animator")]
+[node name="Bunny" type="CharacterBody2D" node_paths=PackedStringArray("state_from_server", "input_from_client", "collision_shape", "animator")]
 collision_layer = 8
 collision_mask = 7
-script = ExtResource("1_rxibo")
+script = ExtResource("1_j5lrb")
 state_from_server = NodePath("StateFromServer")
 input_from_client = NodePath("InputFromClient")
 collision_shape = NodePath("PlayerBodyCollisionShape")
 animator = NodePath("PlayerAnimator")
-movement_settings = ExtResource("2_ohd16")
+movement_settings = ExtResource("2_4p26p")
 
 [node name="StateFromServer" type="MultiplayerSynchronizer" parent="."]
 process_mode = 3
+root_path = NodePath(".")
 replication_config = SubResource("SceneReplicationConfig_mf2ua")
-script = ExtResource("3_5f2sf")
+script = ExtResource("3_o16et")
 metadata/_custom_type_script = "uid://bglkea0vh5fw0"
 
 [node name="InputFromClient" type="MultiplayerSynchronizer" parent="."]
 process_mode = 3
+root_path = NodePath(".")
 replication_config = SubResource("SceneReplicationConfig_244u8")
-script = ExtResource("4_jiejy")
+script = ExtResource("4_1rl0f")
 is_server_authoritative = false
 metadata/_custom_type_script = "uid://chp1athjwjq76"
 
@@ -46,7 +48,7 @@ metadata/_custom_type_script = "uid://chp1athjwjq76"
 unique_name_in_owner = true
 zoom = Vector2(1.5, 1.5)
 
-[node name="PlayerAnimator" parent="." instance=ExtResource("3_ohd16")]
+[node name="PlayerAnimator" parent="." instance=ExtResource("5_sc4xa")]
 faces_right_by_default = true
 
 [node name="PlayerBodyCollisionShape" type="CollisionShape2D" parent="."]

@@ -57,4 +57,4 @@ static func get_type_from_side(side: int) -> int:
             return AIR
         _:
             push_error("SurfaceType.get_type_from_side")
-            return INF as int
+            return -1

@@ -8,6 +8,7 @@ extends MultiplayerSynchronizer
 ##   also any state within the current scene that is derived from this state.
 ##
 
+
 # FIXME: [Rollback] Add support here for maintaining the buffer.
 # - Use G.settings.rollback_buffer_duration_sec
 # - Use NetworkMain.TARGET_NETWORK_FPS
@@ -36,6 +37,9 @@ enum Authority {
     AUTHORITATIVE,
     PREDICTED,
 }
+
+
+signal network_processed
 
 
 # FIXME: [Rollback] Test these rollback diff threshold defaults.
@@ -153,7 +157,7 @@ func _ready() -> void:
 
 
 func _network_process() -> void:
-    root._network_process()
+    network_processed.emit()
 
 
 func _update_replication_config() -> void:
@@ -298,9 +302,6 @@ func _get_configuration_warnings() -> PackedStringArray:
         warnings.push_back("root_path must be defined.")
     elif not is_instance_valid(root):
         warnings.push_back("root_path does not point to a valid node.")
-    elif not root.has_method("_network_process"):
-        warnings.push_back(
-            "The node at `Root Path` must have a `_network_process` method.")
     elif not _partner_state_configuration_warning.is_empty():
         warnings.append(_partner_state_configuration_warning)
 

@@ -13,18 +13,18 @@ var parent
 
 
 func _init(
-        parent,
-        time_type: int,
-        callback: Callable,
-        delay: float,
-        arguments: Array) -> void:
-    self.parent = parent
-    self.time_tracker = G.time._get_time_tracker_for_time_type(time_type)
+        p_parent,
+        p_time_type: int,
+        p_callback: Callable,
+        p_delay: float,
+        p_arguments: Array) -> void:
+    self.parent = p_parent
+    self.time_tracker = G.time._get_time_tracker_for_time_type(p_time_type)
     self.elapsed_time_key = \
-            G.time._get_elapsed_time_key_for_time_type(time_type)
-    self.callback = callback
-    self.time = time_tracker.get(elapsed_time_key) + delay
-    self.arguments = arguments
+            G.time._get_elapsed_time_key_for_time_type(p_time_type)
+    self.callback = p_callback
+    self.time = time_tracker.get(elapsed_time_key) + p_delay
+    self.arguments = p_arguments
     self.id = G.time.get_next_task_id()
 
 
