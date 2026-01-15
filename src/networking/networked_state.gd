@@ -122,12 +122,16 @@ static func set_up_static_state() -> void:
 func _init() -> void:
     G.ensure(Utils.check_whether_sub_classes_are_tools(self),
         "Subclasses of NetworkedState must be marked with @tool.")
+
+
+func _enter_tree() -> void:
+    if _excluded_property_names_for_packing.is_empty():
+        set_up_static_state()
+
     _property_names_for_packing = Utils.get_script_property_names(
         get_script(),
         _excluded_property_names_for_packing)
 
-
-func _enter_tree() -> void:
     G.network.frame_driver.add_networked_state(self)
 
 
@@ -137,10 +141,6 @@ func _exit_tree() -> void:
 
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
-
-    # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY: This seems to stil result in empty in editor
-    if _excluded_property_names_for_packing.is_empty():
-        set_up_static_state()
 
     _update_replication_config()
     _update_partner_state()
@@ -282,19 +282,8 @@ func _get_configuration_warnings() -> PackedStringArray:
             "The _property_diff_rollback_thresholds property must be a Dictionary.")
     else:
         # Check if _property_diff_rollback_thresholds matches the other properties.
-
-        # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY: :/ Seem to match. Bad check logic?
-        print("----------------------------------------------------")
-        print("_property_diff_rollback_thresholds")
-        for key in thresholds:
-            print("- %s" % key)
-        print("_property_names_for_packing")
-        for n in _property_names_for_packing:
-            print("- %s" % n)
-
         var properties_match := true
-        if thresholds.size() != \
-                _property_names_for_packing.size():
+        if thresholds.size() != _property_names_for_packing.size():
             properties_match = false
         else:
             for property_name in _property_names_for_packing:
