@@ -12,6 +12,13 @@ const CATEGORY_NETWORK_CONNECTIONS := StringName("NetworkConnections")
 const CATEGORY_INTERACTION := StringName("PlayerInteraction")
 const CATEGORY_GAME_STATE := StringName("GameState")
 
+const _RAINBOW_BAR = \
+    "[color=red]=[/color][color=orange]=[/color][color=yellow]=[/color]" +\
+	"[color=green]=[/color][color=blue]=[/color][color=purple]=[/color]"
+const _REVERSE_RAINBOW_BAR = \
+    "[color=purple]=[/color][color=blue]=[/color][color=green]=[/color]" + \
+	"[color=yellow]=[/color][color=orange]=[/color][color=red]=[/color]"
+
 # Dictionary<StringName, StringName>
 var _parsed_category_prefixes := {}
 
@@ -35,12 +42,12 @@ func _format_message(message: String, category: StringName) -> String:
             G.time.get_play_time() if \
             is_instance_valid(G) and is_instance_valid(G.time) else \
             -1.0
-            
+
     var category_token := \
         "[%s]" % get_category_prefix(category) if \
         G.settings.include_category_in_logs else \
         ""
-    
+
     var multiplayer_id_value: String
     if G.settings.include_multiplayer_id_in_logs and G.network.is_preview:
         if G.network.is_client:
@@ -63,7 +70,7 @@ func _format_message(message: String, category: StringName) -> String:
         "[%s]" % multiplayer_id_value if \
         G.settings.include_multiplayer_id_in_logs \
         else ""
-    
+
     return "[%8.3f]%s%s %s" % [
         play_time,
         category_token,
@@ -134,7 +141,6 @@ func warning(message: String, category := CATEGORY_DEFAULT) -> void:
     if _is_category_enabled(category) or _force_include_log_warnings:
         message = "WARNING: %s" % message
         push_warning(message)
-        # FIXME: LEFT OFF HERE: print_rich("[color=yellow]%s[/color]" % message)
         self.print(message, category)
 
 
@@ -247,6 +253,9 @@ func _print_front_matter() -> void:
         get_viewport().get_visible_rect().size.x,
         get_viewport().get_visible_rect().size.y,
     ]
+
+    var app_name = ProjectSettings.get_setting("application/config/name")
+    print_rich("\n%s %s %s\n" % [_RAINBOW_BAR, app_name, _REVERSE_RAINBOW_BAR])
 
     self.print(local_datetime_string, CATEGORY_CORE_SYSTEMS)
     self.print(utc_datetime_string, CATEGORY_CORE_SYSTEMS)

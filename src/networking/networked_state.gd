@@ -2,7 +2,7 @@
 class_name NetworkedState
 extends MultiplayerSynchronizer
 ## FIXME: [Rollback] Write extensive docs for this class.
-## 
+##
 ## - In general, during rollback NetworkedState is responsible for updating the
 ##   state of all properties directly specified in its replication_config, but
 ##   also any state within the current scene that is derived from this state.
@@ -52,7 +52,7 @@ var timestamp_usec := 0
 var data_source := Authority.UNKNOWN
 
 ## If true, the server is the authoritative source of data for this state.
-## 
+##
 ## This likely should only be false for input from the client.
 @export var is_server_authoritative := true:
     set(value):
@@ -91,7 +91,7 @@ var multiplayer_id := 1:
         if value != multiplayer_id:
             multiplayer_id = value
             set_multiplayer_authority(multiplayer_id)
-            
+
             # Assign multiplayer_id on the partner InputFromClient.
             if is_server_authoritative and is_instance_valid(_partner_state):
                 _partner_state.multiplayer_id = multiplayer_id
@@ -137,15 +137,15 @@ func _exit_tree() -> void:
 
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
-    
+
     # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY: This seems to stil result in empty in editor
     if _excluded_property_names_for_packing.is_empty():
         set_up_static_state()
-    
+
     _update_replication_config()
     _update_partner_state()
     update_configuration_warnings()
-    
+
     if Engine.is_editor_hint():
         return
 
@@ -159,7 +159,7 @@ func _network_process() -> void:
 func _update_replication_config() -> void:
     for property_path in replication_config.get_properties():
         replication_config.remove_property(property_path)
-    
+
     var packed_state_path := "%s:packed_state" % root.get_path_to(self)
     replication_config.add_property(packed_state_path)
 
@@ -174,17 +174,17 @@ func record_rollback_frame() -> void:
     if G.ensure(data_source != Authority.AUTHORITATIVE,
             "State is already authoritative, and cannot be overwritten."):
         return
-    
+
     timestamp_usec = G.network.server_frame_time_usec
-    
+
     var is_authoritative_source := \
         is_server_authoritative == G.network.is_server
-    
+
     data_source = \
         Authority.AUTHORITATIVE if \
         is_authoritative_source else \
         Authority.PREDICTED
-    
+
     # FIXME: [Rollback] Fill previous empty frames.
     # - Use G.network.server_frame_index
     # - Extrapolate from the last-filled frame in order to populate any empty
@@ -209,7 +209,7 @@ func _unpack_state() -> void:
     if packed_state.is_empty():
         # This happens for the initial sync, when there is no state to send yet.
         return
-        
+
     if not G.ensure(packed_state.size() == _property_names_for_packing.size() + 1):
         return
 
@@ -271,9 +271,9 @@ func _update_partner_state() -> void:
 
 func _get_configuration_warnings() -> PackedStringArray:
     var warnings: PackedStringArray = []
-    
+
     var thresholds = get("_property_diff_rollback_thresholds")
-    
+
     if thresholds == null:
         warnings.push_back(
             "A _property_diff_rollback_thresholds property must be defined on subclasses of NetworkedState.")
@@ -282,7 +282,7 @@ func _get_configuration_warnings() -> PackedStringArray:
             "The _property_diff_rollback_thresholds property must be a Dictionary.")
     else:
         # Check if _property_diff_rollback_thresholds matches the other properties.
-        
+
         # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY: :/ Seem to match. Bad check logic?
         print("----------------------------------------------------")
         print("_property_diff_rollback_thresholds")
@@ -291,7 +291,7 @@ func _get_configuration_warnings() -> PackedStringArray:
         print("_property_names_for_packing")
         for n in _property_names_for_packing:
             print("- %s" % n)
-            
+
         var properties_match := true
         if thresholds.size() != \
                 _property_names_for_packing.size():
@@ -304,7 +304,7 @@ func _get_configuration_warnings() -> PackedStringArray:
         if not properties_match:
             warnings.push_back(
                 "The keys in _property_diff_rollback_thresholds must match the other properties defined on the subclass.")
-    
+
     if root_path.is_empty():
         warnings.push_back("root_path must be defined.")
     elif not is_instance_valid(root):
@@ -314,5 +314,5 @@ func _get_configuration_warnings() -> PackedStringArray:
             "The node at `Root Path` must have a `_network_process` method.")
     elif not _partner_state_configuration_warning.is_empty():
         warnings.append(_partner_state_configuration_warning)
-    
+
     return warnings
