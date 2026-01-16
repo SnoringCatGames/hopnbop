@@ -42,7 +42,7 @@ func _process(_delta: float) -> void:
     if not is_instance_valid(player):
         player = G.get_player(multiplayer_id)
         if is_instance_valid(player):
-            player.connect("physics_processed", _on_player_physics_processed)
+            player.physics_processed.connect(_on_player_physics_processed)
 
     if not is_instance_valid(player_match_state):
         player_match_state = G.get_player_match_state(multiplayer_id)

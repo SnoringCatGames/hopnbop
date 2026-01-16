@@ -1,6 +1,6 @@
 @tool
 class_name PlayerStateFromClient
-extends NetworkedState
+extends ReconcilableNetworkedState
 
 
 var actions: int

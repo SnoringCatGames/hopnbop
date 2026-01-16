@@ -62,7 +62,7 @@ func _format_message(message: String, category: StringName) -> String:
                     multiplayer_id_value = "C-"
         else:
             # Server.
-            multiplayer_id_value = "S "
+            multiplayer_id_value = "S"
     else:
         # Omit token.
         multiplayer_id_value = ""

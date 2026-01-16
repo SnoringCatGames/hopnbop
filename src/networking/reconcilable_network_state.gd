@@ -1,9 +1,9 @@
 @tool
-class_name NetworkedState
+class_name ReconcilableNetworkedState
 extends MultiplayerSynchronizer
 ## FIXME: [Rollback] Write extensive docs for this class.
 ##
-## - In general, during rollback NetworkedState is responsible for updating the
+## - In general, during rollback ReconcilableNetworkedState is responsible for updating the
 ##   state of all properties directly specified in its replication_config, but
 ##   also any state within the current scene that is derived from this state.
 ##
@@ -106,13 +106,13 @@ var authority_id: int:
             is_server_authoritative else \
             multiplayer_id
 
-## Server-authoritative NetworkedState and client-authoritative NetworkedState
-## nodes are often used as a pair to send input state from a client machine to
-## the server and to then send all other networked state from the server to all
-## clients.
+## Server-authoritative ReconcilableNetworkedState and client-authoritative
+## ReconcilableNetworkedState nodes are often used as a pair to send input state
+## from a client machine to the server and to then send all other networked
+## state from the server to all clients.
 ##
 ## In this scenario, _partner_state is the other node from this pair.
-var _partner_state: NetworkedState
+var _partner_state: ReconcilableNetworkedState
 
 var _partner_state_configuration_warning := ""
 
@@ -121,17 +121,18 @@ var root: Node:
 
 
 static func set_up_static_state() -> void:
-    var dummy := NetworkedState.new()
+    var dummy := ReconcilableNetworkedState.new()
     var names := Utils.get_script_property_names(dummy.get_script())
     _excluded_property_names_for_packing = Utils.array_to_set(names)
     # We also require child classes to include this propert, but we don't want
     # to network it.
-    _excluded_property_names_for_packing._property_diff_rollback_thresholds = true
+    _excluded_property_names_for_packing._property_diff_rollback_thresholds = \
+        true
 
 
 func _init() -> void:
     G.ensure(Utils.check_whether_sub_classes_are_tools(self),
-        "Subclasses of NetworkedState must be marked with @tool")
+        "Subclasses of ReconcilableNetworkedState must be marked with @tool")
 
 
 func _enter_tree() -> void:
@@ -220,7 +221,8 @@ func _unpack_state() -> void:
         # This happens for the initial sync, when there is no state to send yet.
         return
 
-    if not G.ensure(packed_state.size() == _property_names_for_packing.size() + 1):
+    if not G.ensure(
+            packed_state.size() == _property_names_for_packing.size() + 1):
         return
 
     timestamp_usec = packed_state[0]
@@ -237,10 +239,10 @@ func _update_partner_state() -> void:
 
     _partner_state = null
 
-    # Collect all sibling NetworkedState.
-    var sibling_states: Array[NetworkedState] = []
+    # Collect all sibling ReconcilableNetworkedState.
+    var sibling_states: Array[ReconcilableNetworkedState] = []
     for child in get_parent().get_children():
-        if child is NetworkedState and child != self:
+        if child is ReconcilableNetworkedState and child != self:
             sibling_states.push_back(child)
 
     # Record the sibling, and validate the node configuration.
@@ -249,20 +251,20 @@ func _update_partner_state() -> void:
             _partner_state = sibling_states[0]
         elif is_server_authoritative:
             _partner_state_configuration_warning = \
-                "You should consolidate sibling server-authoritative NetworkedState nodes (or should one be client-authoritative?)"
+                "You should consolidate sibling server-authoritative ReconcilableNetworkedState nodes (or should one be client-authoritative?)"
         else:
             _partner_state_configuration_warning = \
-                "There should only be one client-authoritative NetworkedState node here (should one be server-authoritative?)"
+                "There should only be one client-authoritative ReconcilableNetworkedState node here (should one be server-authoritative?)"
     elif sibling_states.size() > 1:
         _partner_state_configuration_warning = \
-            "There should be no more than 2 NetworkedState nodes in a given place--one server-authoritative and one client-authoritative"
+            "There should be no more than 2 ReconcilableNetworkedState nodes in a given place--one server-authoritative and one client-authoritative"
     elif is_client_authoritative:
         _partner_state_configuration_warning = \
-            "A client-authoritative NetworkedState node must be accompanied by a server-authoritative NetworkedState sibling node"
+            "A client-authoritative ReconcilableNetworkedState node must be accompanied by a server-authoritative ReconcilableNetworkedState sibling node"
 
     # Get the multiplayer_id from the parter StateFromServer node.
     if is_instance_valid(_partner_state):
-        var state_from_server: NetworkedState = \
+        var state_from_server: ReconcilableNetworkedState = \
             self if is_server_authoritative else _partner_state
         if is_client_authoritative and is_instance_valid(state_from_server):
             multiplayer_id = state_from_server.multiplayer_id
@@ -270,11 +272,11 @@ func _update_partner_state() -> void:
     if not Engine.is_editor_hint() and \
             not _partner_state_configuration_warning.is_empty():
         # Log and assert in game runtime environments.
-        G.error("NetworkedState is misconfigured: %s" %
+        G.error("ReconcilableNetworkedState is misconfigured: %s" %
             _partner_state_configuration_warning,
             ScaffolderLog.CATEGORY_CORE_SYSTEMS)
 
-    # Also refresh sibling NetworkedState warnings.
+    # Also refresh sibling ReconcilableNetworkedState warnings.
     if is_instance_valid(_partner_state):
         _partner_state.update_configuration_warnings()
 
@@ -286,7 +288,7 @@ func _get_configuration_warnings() -> PackedStringArray:
 
     if thresholds == null:
         warnings.push_back(
-            "A _property_diff_rollback_thresholds property must be defined on subclasses of NetworkedState")
+            "A _property_diff_rollback_thresholds property must be defined on subclasses of ReconcilableNetworkedState")
     elif not thresholds is Dictionary:
         warnings.push_back(
             "The _property_diff_rollback_thresholds property must be a Dictionary")

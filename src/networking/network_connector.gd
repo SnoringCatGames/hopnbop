@@ -33,6 +33,8 @@ func server_enable_connections() -> void:
     G.print("Started multiplayer server",
         ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
+    G.main.update_window_title()
+
 
 func client_connect_to_server() -> void:
     G.check_is_client("NetworkConnector.client_connect_to_server")
@@ -68,6 +70,7 @@ func _on_peer_connected(multiplayer_id: int) -> void:
             G.network.local_id,
             ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
         _client_update_is_connected_to_server()
+        G.main.update_window_title()
 
 
 func _on_peer_disconnected(multiplayer_id: int) -> void:
@@ -79,6 +82,7 @@ func _on_peer_disconnected(multiplayer_id: int) -> void:
         G.print("Disconnect from server",
             ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
         _client_update_is_connected_to_server()
+        G.main.update_window_title()
 
 
 func _client_update_is_connected_to_server() -> void:
@@ -112,4 +116,5 @@ func client_disconnect() -> void:
     G.print("Disconnecting from server",
         ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
-    multiplayer.multiplayer_peer.disconnect_peer(SERVER_ID)
+    if multiplayer.multiplayer_peer.is_connected:
+        multiplayer.multiplayer_peer.disconnect_peer(SERVER_ID)

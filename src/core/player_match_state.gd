@@ -19,7 +19,7 @@ var full_name: String:
     get: return "%s %s" % [adjective, bunny_name]
 
 var is_connected_to_server: bool:
-    get: return disconnect_time_usec > connect_time_usec
+    get: return connect_time_usec >= disconnect_time_usec
 
 var player: Player:
     get:
@@ -27,6 +27,35 @@ var player: Player:
             return G.level.players_by_id[multiplayer_id]
         else:
             return null
+
+const _PROPERTY_NAMES := [
+    "multiplayer_id",
+    "bunny_name",
+    "adjective",
+    "is_soft",
+    "connect_time_usec",
+    "disconnect_time_usec",
+]
+
+func get_packed_state() -> Array:
+    var packed_state := []
+    packed_state.resize(_PROPERTY_NAMES.size())
+    var i := 0
+    for property_name in _PROPERTY_NAMES:
+        packed_state[i] = get(property_name)
+        i += 1
+    return packed_state
+
+
+func populate_from_packed_state(packed_state: Array) -> void:
+    var i := 0
+    for property_name in _PROPERTY_NAMES:
+        set(property_name, packed_state[i])
+        i += 1
+
+
+static func get_multiplayer_id_from_packed_state(packed_state: Array) -> int:
+    return packed_state[0]
 
 
 func set_up(p_multiplayer_id: int, p_is_soft: bool) -> void:

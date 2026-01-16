@@ -29,7 +29,7 @@ var win_screen: WinScreen
 var pause_screen: PauseScreen
 
 var game_panel: GamePanel
-var match_state: MatchStateOld
+var match_state: MatchState
 var local_session: LocalSession
 var level: Level
 
@@ -69,9 +69,9 @@ func _ready() -> void:
 
 
 func get_player_match_state(multiplayer_id: int) -> PlayerMatchState:
-    if not match_state.players_by_id.has(multiplayer_id):
+    if not match_state.players.has(multiplayer_id):
         return null
-    return match_state.players_by_id[multiplayer_id]
+    return match_state.players[multiplayer_id]
 
 
 func get_player(multiplayer_id: int) -> Player:

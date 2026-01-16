@@ -2,7 +2,6 @@ class_name MatchStateSynchronizer
 extends MultiplayerSynchronizer
 
 
-# FIXME: LEFT OFF HERE: Listen for these signals and log.
 signal player_joined(player: PlayerMatchState)
 signal player_left(player: PlayerMatchState)
 signal player_killed(killer: PlayerMatchState, killee: PlayerMatchState)
@@ -13,8 +12,8 @@ signal kills_updated
 signal bumps_updated
 
 
-var state := MatchStateOld.new()
-var _previous_state := MatchStateOld.new()
+var state := MatchState.new()
+var _previous_state := MatchState.new()
 
 
 func _ready() -> void:
@@ -27,6 +26,9 @@ func _ready() -> void:
         multiplayer.peer_connected.connect(_server_on_peer_connected)
         multiplayer.peer_disconnected.connect(_server_on_peer_disconnected)
 
+    state.player_connected.connect(_on_underlying_player_state_connected)
+    state.player_disconnected.connect(_on_underlying_player_state_disconnected)
+
 
 func clear() -> void:
     state.clear()
@@ -34,80 +36,35 @@ func clear() -> void:
 
 
 func get_player(multiplayer_id: int) -> PlayerMatchState:
-    if state.players_by_id.has(multiplayer_id):
-        return state.players_by_id[multiplayer_id]
+    if state.players.has(multiplayer_id):
+        return state.players[multiplayer_id]
     else:
         return null
 
 
 func _server_on_peer_connected(multiplayer_id: int) -> void:
-    _server_recalculate_players()
+    G.ensure(not state.players.has(multiplayer_id))
 
-    # Set connect time for this player.
-    var player := get_player(multiplayer_id)
+    var player := PlayerMatchState.new()
+    player.set_up(multiplayer_id, true)
     player.connect_time_usec = G.network.server_time_usec_not_frame_aligned
+    state.server_add_player(player)
 
-    player_joined.emit(get_player(multiplayer_id))
-
-    _server_trigger_player_replication()
+    players_updated.emit()
 
 
 func _server_on_peer_disconnected(multiplayer_id: int) -> void:
-    _server_recalculate_players()
+    if G.ensure(state.players.has(multiplayer_id)):
+        # Set disconnect time for this player.
+        get_player(multiplayer_id).disconnect_time_usec = \
+            G.network.server_time_usec_not_frame_aligned
 
-    # Set disconnect time for this player.
-    var player := get_player(multiplayer_id)
-    player.disconnect_time_usec = G.network.server_time_usec_not_frame_aligned
-
-    player_left.emit(get_player(multiplayer_id))
-
-    _server_trigger_player_replication()
-
-
-func _server_recalculate_players() -> void:
-    _previous_state.players = state.players.duplicate()
-    _previous_state.players_by_id = state.players_by_id.duplicate()
-
-    for peer_id in multiplayer.get_peers():
-        if not state.players_by_id.has(peer_id):
-            var new_state := PlayerMatchState.new()
-            new_state.set_up(peer_id, true)
-
-            state.players.push_back(new_state)
-            state.players_by_id[peer_id] = new_state
-
-
-func _server_trigger_player_replication() -> void:
-    # Assign a new instance of the array in order to force replication of the
-    # mutated state (otherwise, Godot's networking logic won't detect that the
-    # array was changed).
-    state.players = state.players.duplicate()
-
+    state.server_on_player_disconnected(get_player(multiplayer_id))
     players_updated.emit()
 
 
 func _client_on_players_updated() -> void:
-    # Sync the Dictionary to match the Array.
-    state.players_by_id.clear()
-    for player in state.players:
-        state.players_by_id[player.multiplayer_id] = player
-
-    _client_report_added_and_removed_players()
-
-    _previous_state.players = state.players.duplicate()
-    _previous_state.players_by_id = state.players_by_id.duplicate()
-
     players_updated.emit()
-
-
-func _client_report_added_and_removed_players() -> void:
-    for player in state.players:
-        if not _previous_state.players_by_id.has(player.multiplayer_id):
-            player_joined.emit(player)
-
-    for player in _previous_state.players:
-        if not state.players_by_id.has(player.multiplayer_id):
-            player_left.emit(player)
 
 
 func _client_on_kills_updated() -> void:
@@ -142,6 +99,14 @@ func _client_on_bumps_updated() -> void:
     _previous_state.bumps = state.bumps.duplicate()
 
     bumps_updated.emit()
+
+
+func _on_underlying_player_state_connected(player: PlayerMatchState) -> void:
+    player_joined.emit(player)
+
+
+func _on_underlying_player_state_disconnected(player: PlayerMatchState) -> void:
+    player_left.emit(player)
 
 
 # TODO: Call server_add_kill.

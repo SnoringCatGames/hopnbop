@@ -16,19 +16,18 @@ const _WALK_THROUGH_WALLS_COLLISION_MASK_BIT := 4
 @export var animator: CharacterAnimator
 @export var movement_settings: MovementSettings
 
+@export var state_from_server: PlayerStateFromServer
+
+var multiplayer_id: int:
+    set(value):
+        state_from_server.multiplayer_id = value
+    get:
+        return state_from_server.multiplayer_id
+
 var start_position := Vector2.INF
 var previous_position := Vector2.INF
-var stationary_frames_count := 0
-
-var total_distance_traveled := INF
-
-var start_time := INF
-var previous_total_time := INF
-var total_time := INF
 
 var last_delta_scaled := ScaffolderTime.PHYSICS_TIME_STEP
-
-var is_player_control_active := true
 
 var just_triggered_jump := false
 var is_rising_from_jump := false
@@ -48,7 +47,6 @@ var _previous_actions_handlers_this_frame := {}
 
 var _character_action_source: CharacterActionSource
 
-
 var current_surface_max_horizontal_speed: float:
     get: return movement_settings.max_ground_horizontal_speed * \
             _current_max_horizontal_speed_multiplier * \
@@ -56,11 +54,9 @@ var current_surface_max_horizontal_speed: float:
             surface_state.is_attaching_to_surface else \
             1.0)
 
-
 var current_air_max_horizontal_speed: float:
     get: return movement_settings.max_air_horizontal_speed * \
             _current_max_horizontal_speed_multiplier
-
 
 var current_walk_acceleration: float:
     get: return movement_settings.walk_acceleration * \
@@ -68,13 +64,11 @@ var current_walk_acceleration: float:
             surface_state.is_attaching_to_surface else \
             1.0)
 
-
 var current_climb_up_speed: float:
     get: return movement_settings.climb_up_speed * \
             (surface_state.surface_properties.speed_multiplier if \
             surface_state.is_attaching_to_surface else \
             1.0)
-
 
 var current_climb_down_speed: float:
     get: return movement_settings.climb_down_speed * \
@@ -82,13 +76,11 @@ var current_climb_down_speed: float:
             surface_state.is_attaching_to_surface else \
             1.0)
 
-
 var current_ceiling_crawl_speed: float:
     get: return movement_settings.ceiling_crawl_speed * \
             (surface_state.surface_properties.speed_multiplier if \
             surface_state.is_attaching_to_surface else \
             1.0)
-
 
 var is_sprite_visible: bool:
     set(value): animator.visible = value
@@ -104,18 +96,17 @@ func _exit_tree() -> void:
 
 
 func _ready() -> void:
-    if not collision_shape:
-        assert(false, "Character.collision_shape is not provided: %s" % name)
-    if not animator:
-        assert(false, "Character.animator is not provided: %s" % name)
-    if not movement_settings:
-        assert(false, "Character.movement_settings is not provided: %s" % name)
+    # FIXME: Add configuration warnings for these as well.
+    G.check(is_instance_valid(collision_shape),
+        "collision_shape is not set: %s" % name)
+    G.check(is_instance_valid(animator),
+        "animator is not set: %s" % name)
+    G.check(is_instance_valid(movement_settings),
+        "movement_settings is not set: %s" % name)
+    G.check(is_instance_valid(state_from_server),
+        "state_from_server is not set: %s" % name)
 
     movement_settings.set_up()
-
-    total_distance_traveled = 0.0
-    start_time = G.time.get_scaled_play_time()
-    total_time = 0.0
 
     start_position = position
 
@@ -132,6 +123,9 @@ func _ready() -> void:
     max_slides = MovementSettings._MAX_SLIDES_DEFAULT
     floor_max_angle = G.geometry.FLOOR_MAX_ANGLE + G.geometry.WALL_ANGLE_EPSILON
 
+    if is_instance_valid(state_from_server):
+        state_from_server.network_processed.connect(_network_process)
+
 
 func _init_player_controller_action_source() -> void:
     assert(!is_instance_valid(_character_action_source))
@@ -140,15 +134,10 @@ func _init_player_controller_action_source() -> void:
 
 
 func _network_process() -> void:
-    # FIXME: LEFT OFF HERE: ACTUALLY
+    # FIXME: LEFT OFF HERE: ACTUALLY: Character process.
     pass
 
-
-func _physics_process(delta: float) -> void:
-    last_delta_scaled = G.time.scale_delta(delta)
-
-    previous_total_time = total_time
-    total_time = G.time.get_scaled_play_time() - start_time
+    last_delta_scaled = G.time.get_scaled_network_frame_delta()
 
     previous_position = position
 
@@ -171,13 +160,6 @@ func _physics_process(delta: float) -> void:
     _process_animation()
     _process_sounds()
     _update_collision_mask()
-
-    if surface_state.did_move_last_frame:
-        stationary_frames_count = 0
-    else:
-        stationary_frames_count += 1
-
-    total_distance_traveled += position.distance_to(previous_position)
 
     physics_processed.emit()
 
@@ -206,7 +188,7 @@ func _update_actions() -> void:
         action_source.update(
                 actions,
                 _actions_from_previous_frame,
-                G.time.get_scaled_play_time())
+                G.time.get_scaled_network_time())
 
     CharacterActionSource.update_for_implicit_key_events(
             actions,
@@ -313,8 +295,12 @@ func get_next_position_prediction() -> Vector2:
     # Since move_and_slide automatically accounts for delta, we need to
     # compensate for that in order to support our modified framerate.
     var modified_velocity: Vector2 = velocity * G.time.get_combined_scale()
-    return position + modified_velocity * G.time.PHYSICS_TIME_STEP
+    return position + modified_velocity * NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC
 
 
 func get_position_in_screen_space() -> Vector2:
     return G.utils.get_screen_position_of_node_in_level(self)
+
+
+func get_is_player_control_active() -> bool:
+    return false

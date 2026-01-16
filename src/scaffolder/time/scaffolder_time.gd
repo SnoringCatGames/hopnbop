@@ -143,6 +143,20 @@ func get_next_task_id() -> int:
     return _last_timeout_id
 
 
+func get_network_time() -> float:
+    return G.network.server_frame_time_usec * 1000000.0
+
+
+func get_scaled_network_time() -> float:
+    # TODO: Add support for scaling network time (need to replicate time scaling
+    #       in a rollbackable way).
+    return get_network_time()
+
+
+func get_scaled_network_frame_delta() -> float:
+    return scale_delta(NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC)
+
+
 func get_app_time() -> float:
     return get_elapsed_time(TimeType.APP_PHYSICS)
 

@@ -23,7 +23,7 @@ func update(
         actions: CharacterActionState,
         previous_actions: CharacterActionState,
         time_scaled: float) -> void:
-    if !character.is_player_control_active:
+    if !character.get_is_player_control_active():
         return
     for action in ACTIONS_TO_INPUT_KEYS:
         var input_key: String = ACTIONS_TO_INPUT_KEYS[action]

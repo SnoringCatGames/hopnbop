@@ -20,7 +20,7 @@ var server_frame_time_usec := 0
 ## would be index of the current frame.
 var server_frame_index := 0
 
-# Dictionary<NetworkedState, bool>
+# Dictionary<ReconcilableNetworkedState, bool>
 var _networked_state_nodes := {}
 
 # Dictionary<NetworkFrameProcessor, bool>
@@ -33,7 +33,7 @@ func _ready() -> void:
     G.log.log_system_ready("NetworkFrameDriver")
 
     if not Engine.is_editor_hint():
-        G.process_sentinel.connect("pre_physics_process", _pre_physics_process)
+        G.process_sentinel.pre_physics_process.connect(_pre_physics_process)
 
 
 func _pre_physics_process(_delta: float) -> void:
@@ -56,12 +56,12 @@ func _update_server_frame_time() -> void:
     server_frame_index = get_server_frame_index(server_frame_time_usec)
 
 
-func add_networked_state(node: NetworkedState) -> void:
+func add_networked_state(node: ReconcilableNetworkedState) -> void:
     G.ensure(not _networked_state_nodes.has(node))
     _networked_state_nodes[node] = true
 
 
-func remove_networked_state(node: NetworkedState) -> void:
+func remove_networked_state(node: ReconcilableNetworkedState) -> void:
     G.ensure(_networked_state_nodes.has(node))
     _networked_state_nodes.erase(node)
 
@@ -118,6 +118,11 @@ func _start_rollback() -> void:
     #     state.
     # - Then, traverse _all_ nodes starting at _queued_rollback_frame_index + 1.
     # - Then, repeat for each index
+    # - Only allow rolling back to the oldest frame + 1, so that we can
+    #   populate various previous_foo fields.
+    # - We should probably autopopulate the entire buffer with the default
+    #   state, so it's always safe to look at the previous frame (unless we know
+    #   we're at the oldest frame).
     _network_process()
 
     server_frame_time_usec = original_server_frame_time_usec

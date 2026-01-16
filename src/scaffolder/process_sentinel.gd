@@ -23,16 +23,16 @@ func _ready() -> void:
     _pre_process_sentinel = _ProcessSentinelHelper.new()
     _pre_process_sentinel.name = "PreProcessSentinel"
     _pre_process_sentinel.process_priority = Utils.MIN_INT
-    _pre_process_sentinel.connect("physics_processed", _pre_physics_process)
-    _pre_process_sentinel.connect("processed", _pre_process)
+    _pre_process_sentinel.physics_processed.connect(_pre_physics_process)
+    _pre_process_sentinel.processed.connect(_pre_process)
     root.add_child.call_deferred(_pre_process_sentinel)
     root.move_child.call_deferred(_pre_process_sentinel, 0)
 
     _post_process_sentinel = _ProcessSentinelHelper.new()
     _pre_process_sentinel.name = "PostProcessSentinel"
     _pre_process_sentinel.process_priority = Utils.MAX_INT
-    _post_process_sentinel.connect("physics_processed", _post_physics_process)
-    _post_process_sentinel.connect("processed", _post_process)
+    _post_process_sentinel.physics_processed.connect(_post_physics_process)
+    _post_process_sentinel.processed.connect(_post_process)
     root.add_child.call_deferred(_post_process_sentinel)
 
 

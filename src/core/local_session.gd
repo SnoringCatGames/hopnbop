@@ -5,7 +5,7 @@ extends RefCounted
 var is_game_active := false
 var is_game_loading := false
 
-var latest_match_state := MatchStateOld.new()
+var latest_match_state := MatchState.new()
 
 
 func _init() -> void:

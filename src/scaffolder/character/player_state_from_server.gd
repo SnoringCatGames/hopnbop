@@ -1,6 +1,6 @@
 @tool
 class_name PlayerStateFromServer
-extends NetworkedState
+extends ReconcilableNetworkedState
 
 
 var position: Vector2

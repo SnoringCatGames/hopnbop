@@ -48,8 +48,8 @@ func _ready() -> void:
         player_spawner.add_spawnable_scene(player_scene.resource_path)
 
     if G.network.is_client:
-        %PlayerSpawner.connect("spawned", _client_on_player_spawned)
-        %PlayerSpawner.connect("despawned", _client_on_player_despawned)
+        %PlayerSpawner.spawned.connect(_client_on_player_spawned)
+        %PlayerSpawner.despawned.connect(_client_on_player_despawned)
 
 
 func _client_on_player_spawned(p_player: Node) -> void:
@@ -68,8 +68,9 @@ func _client_on_player_despawned(p_player: Node) -> void:
 
 func _exit_tree() -> void:
     G.game_panel.on_level_removed(self)
-    multiplayer.peer_connected.disconnect(_server_add_player)
-    multiplayer.peer_disconnected.disconnect(_server_remove_player)
+    if G.network.is_server:
+        multiplayer.peer_connected.disconnect(_server_add_player)
+        multiplayer.peer_disconnected.disconnect(_server_remove_player)
 
 
 func _server_add_player(multiplayer_id: int) -> void:

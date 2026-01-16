@@ -98,3 +98,17 @@ func close_app() -> void:
         Utils.open_screenshot_folder()
     G.print("Main.close_app", ScaffolderLog.CATEGORY_CORE_SYSTEMS)
     get_tree().call_deferred("quit")
+
+
+func update_window_title() -> void:
+    if not G.network.is_preview:
+        return
+
+    var app_name = ProjectSettings.get_setting("application/config/name")
+    var device_prefix: String
+    if G.network.is_server:
+        device_prefix = "SERVER"
+    else:
+        device_prefix = "CLIENT %s" % G.network.local_id
+
+    DisplayServer.window_set_title("[%s] %s (DEBUG)" % [device_prefix, app_name])

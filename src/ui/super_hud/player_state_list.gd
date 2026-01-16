@@ -19,7 +19,7 @@ func _ready() -> void:
         return
     if not G.settings.show_debug_player_state:
         return
-    
+
     _on_players_updated()
     G.game_panel.match_state_synchronizer.players_updated.connect(_on_players_updated)
 
@@ -27,23 +27,23 @@ func _ready() -> void:
 func _on_players_updated() -> void:
     for child in %States.get_children():
         child.queue_free()
-    
+
     if G.match_state.players.is_empty():
         # No player state to show.
         return
-    
-    if not G.ensure(G.match_state.players_by_id.has(G.network.local_id),
+
+    if not G.ensure(G.match_state.players.has(G.network.local_id),
             "No match_state for the local player"):
         return
-    
+
     # Add the local player state first.
     _add_player_state(G.network.local_id)
-    
-    for player_state in G.match_state.players:
-        if player_state.multiplayer_id == G.network.local_id:
+
+    for multiplayer_id in G.match_state.players:
+        if multiplayer_id == G.network.local_id:
             # We already added the local player state.
             continue
-        _add_player_state(player_state.multiplayer_id)
+        _add_player_state(multiplayer_id)
 
 
 func _add_player_state(multiplayer_id: int) -> void:

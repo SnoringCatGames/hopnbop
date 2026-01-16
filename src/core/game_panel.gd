@@ -134,7 +134,7 @@ extends Node2D
 
 var levels: Array[Level] = []
 
-var match_state: MatchStateOld:
+var match_state: MatchState:
     get: return %MatchStateSynchronizer.state
 var match_state_synchronizer: MatchStateSynchronizer:
     get: return %MatchStateSynchronizer
@@ -162,13 +162,13 @@ func _ready() -> void:
         multiplayer.connected_to_server.connect(_client_on_server_connected)
         multiplayer.server_disconnected.connect(_client_on_server_disconnected)
 
-        %LevelSpawner.connect("spawned", _client_on_level_spawned)
-        %LevelSpawner.connect("despawned", _client_on_level_despawned)
+        %LevelSpawner.spawned.connect(_client_on_level_spawned)
+        %LevelSpawner.despawned.connect(_client_on_level_despawned)
 
-    %MatchStateSynchronizer.connect("player_joined", _on_player_joined)
-    %MatchStateSynchronizer.connect("player_left", _on_player_left)
-    %MatchStateSynchronizer.connect("player_killed", _on_player_killed)
-    %MatchStateSynchronizer.connect("players_bumped", _on_players_bumped)
+    %MatchStateSynchronizer.player_joined.connect(_on_player_joined)
+    %MatchStateSynchronizer.player_left.connect(_on_player_left)
+    %MatchStateSynchronizer.player_killed.connect(_on_player_killed)
+    %MatchStateSynchronizer.players_bumped.connect(_on_players_bumped)
 
 
 func _on_player_joined(player: PlayerMatchState) -> void:
