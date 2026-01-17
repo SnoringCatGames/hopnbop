@@ -117,8 +117,20 @@ func _ready() -> void:
     max_slides = MovementSettings._MAX_SLIDES_DEFAULT
     floor_max_angle = G.geometry.FLOOR_MAX_ANGLE + G.geometry.WALL_ANGLE_EPSILON
 
-    if is_instance_valid(state_from_server):
-        state_from_server.network_processed.connect(_network_process)
+
+## This gets called just before _network_process.
+func _update_actions() -> void:
+    # Clear actions for the current frame.
+    actions.clear()
+
+    # Update actions for the current frame.
+    for action_source in _action_sources:
+        action_source.update(
+            actions,
+            G.time.get_scaled_network_time())
+
+    surfaces.update_actions()
+    actions.log_new_presses_and_releases(self)
 
 
 func _network_process() -> void:
@@ -128,8 +140,6 @@ func _network_process() -> void:
     #   - I guess we shouldn't call _network_process for a frame if we already
     #     know what the authoritative state is for the frame.
     pass
-
-    _update_actions()
 
     _apply_movement()
 
@@ -151,21 +161,6 @@ func _apply_movement() -> void:
     move_and_slide()
 
     surfaces.update_touches()
-
-
-# FIXME: LEFT OFF HERE: ACTUALLY: Only collect input on owning client.
-func _update_actions() -> void:
-    # Clear actions for the current frame.
-    actions.clear()
-
-    # Update actions for the current frame.
-    for action_source in _action_sources:
-        action_source.update(
-            actions,
-            G.time.get_scaled_network_time())
-
-    surfaces.update_actions()
-    actions.log_new_presses_and_releases(self)
 
 
 func _process_facing_direction() -> void:

@@ -22,8 +22,9 @@ const _synced_properties_and_rollback_diff_thresholds := {
 
 
 func _network_process() -> void:
-    G.fatal(
-        "_network_process should only be called on CharacterStateFromServer, not on PlayerStateFromClient.")
+    # CharacterStateFromServer handles _network_process for itself and any
+    # corresponding PlayerStateFromClient.
+    pass
 
 
 func _sync_to_scene_state() -> void:

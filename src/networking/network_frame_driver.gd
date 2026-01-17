@@ -28,6 +28,18 @@ var _network_frame_processor_nodes := {}
 
 var _queued_rollback_frame_index := 0
 
+var rollback_buffer_size: int:
+    get: return ceili(
+        G.settings.rollback_buffer_duration_sec *
+        TARGET_NETWORK_FPS)
+
+var oldest_rollbackable_frame_index: int:
+    get:
+        # For a rollback, we must be able to consider both the target frame as
+        # well as the previous frame, so we can't rollback to the oldest
+        # recorded frame.
+        return max(G.network.server_frame_index - rollback_buffer_size + 2, 1)
+
 
 func _ready() -> void:
     G.log.log_system_ready("NetworkFrameDriver")
@@ -81,12 +93,23 @@ func remove_network_frame_processor(node: NetworkFrameProcessor) -> void:
 ## At most one rollback will occur per _network_process loop, and the earliest
 ## server_frame_index will be used.
 # FIXME: [Rollback] Call this.
-func queue_rollback(p_server_frame_index: int) -> void:
+func queue_rollback(p_server_frame_index: int) -> bool:
+    # FIXME: LEFT OFF HERE: Check if this check should happen earlier.
+    if p_server_frame_index < oldest_rollbackable_frame_index:
+        # TODO: We'll probably want to remove this log.
+        G.log.warn(
+            "Requested rollback to frame %d, but oldest rollbackable frame is %d",
+            p_server_frame_index,
+            oldest_rollbackable_frame_index)
+        return false
+
     if _queued_rollback_frame_index == 0:
         _queued_rollback_frame_index = p_server_frame_index
     else:
         _queued_rollback_frame_index = mini(
             _queued_rollback_frame_index, p_server_frame_index)
+
+    return true
 
 
 ## For most nodes in the scene, _network_process should happen before
@@ -138,30 +161,16 @@ func _network_process() -> void:
     #   - If the buffer state is authoritative, we don't overwrite it, and we overwrite the scene state.
     #   - But we still may need to simulate and overwrite frames preceding that, in order to have state for other nodes to check during that frame.
     #
-    # When iterating through _network_process, if for the given node, for the given frame:
+    # When iterating through _network_process, if for the given node, for the
+    # given frame:
     #
-    # - client: is authoritative for actions:
-    #   - if frame has authoritative state_from_server:
-    #      - don't call network process
-    #   - if frame doesn't have authoritative state_from_server:
-    #     - call network process
-    #   - if the actions buffer frame already has state recorder for this frame, don't change it. Else, record the current actions.
-    #     - we may actually need to make sure to capture these actions separately from network process!
-    #       - in case we somehow skipped network process for the CURRENT latest frame.
-    #       - but we should decouple these anyway.
-    #       - will add a separate record actions function, and call it separately (before?) network process.
-    #       - that means the networked state class will need to have getters for both state from server and state from client (which is allowed to return null)
-    #       - ???? Check: am I registering both state from server and state from client nodes for iterating in frame driver? Probably should only iterate over state from server...
-    #
-    # - client: not authoritative for actions:
+    # - client:
     #   - if frame has authoritative state_from_server:
     #     - don't call _network_process
     #   - doesn't have authoritative state_from_server:
     #     - call _network_process
-    #   - after possible _network_process, make sure action buffer frame is set or copy it over from the previous frame (label it predicted)
     #
     # - server:
-    #   - for actions: make sure we either have state for the current frame, or copy over state from the previous.
     #   - for state from server: call network process every time on all nodes.
     pass
 

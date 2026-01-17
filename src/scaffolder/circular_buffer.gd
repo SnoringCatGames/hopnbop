@@ -88,7 +88,7 @@ func get_oldest() -> Variant:
 ## - Gets an element by its absolute index (the index returned by push()).
 ## - Returns null if the index is out of the valid range.
 func get_at(index: int) -> Variant:
-    if not is_valid_at(index):
+    if not has_at(index):
         return null
     var internal_index := index % _capacity
     return _data[internal_index]
@@ -97,7 +97,7 @@ func get_at(index: int) -> Variant:
 ## - Sets an element at a specific index.
 ## - Returns true if successful, false if the index is out of valid range.
 func set_at(index: int, value: Variant) -> bool:
-    if not is_valid_at(index):
+    if not has_at(index):
         return false
     var internal_index := index % _capacity
     _data[internal_index] = value
@@ -105,9 +105,7 @@ func set_at(index: int, value: Variant) -> bool:
 
 
 ## Checks if an index is within the valid range of the buffer.
-func is_valid_at(index: int) -> bool:
-    if is_empty:
-        return false
+func has_at(index: int) -> bool:
     if index < 0:
         return false
     if index >= _total_pushed:

@@ -9,12 +9,6 @@ extends MultiplayerSynchronizer
 ##
 
 
-# FIXME: [Rollback] Add support here for maintaining the buffer.
-# - Use G.settings.rollback_buffer_duration_sec
-# - Use NetworkMain.TARGET_NETWORK_FPS
-# - var buffer_size := ceili(G.settings.rollback_buffer_duration_sec * NetworkMain.TARGET_NETWORK_FPS)
-
-
 # FIXME: [Pre-Rollback]: Add another super-hud debug display:
 # - Show the current Physics process, Render process, and Network process FPS.
 #   - Keep a running average over the latest 1 second (make that number
@@ -32,7 +26,7 @@ extends MultiplayerSynchronizer
 # - And log a print message when they recover.
 
 
-enum Authority {
+enum FrameAuthority {
     UNKNOWN,
     AUTHORITATIVE,
     PREDICTED,
@@ -53,7 +47,7 @@ const _MULTIPLAYER_ID_PROPERTY_NAME := "multiplayer_id"
 var timestamp_usec := 0
 
 ## This identifies whether this data originated from an authoritative source.
-var data_source := Authority.UNKNOWN
+var data_source := FrameAuthority.UNKNOWN
 
 ## If true, the server is the authoritative source of data for this state.
 ##
@@ -82,8 +76,8 @@ var _property_names_for_packing: Array[String] = []
 ## Which machine this state is associated with.
 ##
 ## - This is used for making sure the right NetworkedNodes actually have
-##   authority for triggering the replication.
-## - This is the machine that would be given authority to client input.
+##   FrameAuthority for triggering the replication.
+## - This is the machine that would be given FrameAuthority to client input.
 ## - This should be assigned by the server machine when spawning new networked
 ##   nodes.
 ## - An ID of 1 represents the server.
@@ -91,13 +85,13 @@ var multiplayer_id := 1:
     set(value):
         if value != multiplayer_id:
             multiplayer_id = value
-            set_multiplayer_authority(authority_id)
+            set_multiplayer_FrameAuthority(FrameAuthority_id)
 
             # Assign multiplayer_id on the partner InputFromClient.
             if is_server_authoritative and is_instance_valid(_partner_state):
                 _partner_state.multiplayer_id = multiplayer_id
 
-var authority_id: int:
+var FrameAuthority_id: int:
     get:
         return NetworkConnector.SERVER_ID if \
             is_server_authoritative else \
@@ -116,6 +110,9 @@ var _partner_state_configuration_warning := ""
 var root: Node:
     get: return get_node_or_null(root_path)
 
+# FIXME: [Rollback] Add support here for maintaining the buffer.
+var _rollback_buffer: CircularBuffer
+
 
 func _init() -> void:
     if Engine.is_editor_hint():
@@ -127,7 +124,6 @@ func _init() -> void:
 func _enter_tree() -> void:
     if Engine.is_editor_hint():
         return
-
     G.network.frame_driver.add_networked_state(self)
 
 
@@ -147,8 +143,10 @@ func _ready() -> void:
     if Engine.is_editor_hint():
         return
 
-    set_multiplayer_authority(authority_id)
+    set_multiplayer_FrameAuthority(FrameAuthority_id)
 
+    _set_up_rollback_buffer()
+    
 
 func _network_process() -> void:
     network_processed.emit()
@@ -161,7 +159,7 @@ func _pre_network_process() -> void:
 
 ## This is called after _network_process has been called on all relevant nodes.
 func _post_network_process() -> void:
-    if is_multiplayer_authority():
+    if is_multiplayer_FrameAuthority():
         _sync_from_scene_state()
     _record_rollback_frame()
 
@@ -186,6 +184,12 @@ func _update_replication_config() -> void:
     replication_config.add_property(packed_state_path)
 
 
+func _set_up_rollback_buffer() -> void:
+    _rollback_buffer = CircularBuffer.new(
+        G.network.frame_driver.rollback_buffer_size)
+    # FIXME: LEFT OFF HERE: Do I need to set the first frame?
+
+
 ## Records the current state in the rollback buffer at the current simulated
 ## frame index.
 ##
@@ -199,9 +203,9 @@ func _record_rollback_frame() -> void:
         is_server_authoritative == G.network.is_server
 
     data_source = \
-        Authority.AUTHORITATIVE if \
+        FrameAuthority.AUTHORITATIVE if \
         is_authoritative_source else \
-        Authority.PREDICTED
+        FrameAuthority.PREDICTED
 
     # FIXME: [Rollback]: Record frame in buffer.
     # - Call pack_state() and record that array?
@@ -211,6 +215,16 @@ func _record_rollback_frame() -> void:
     # - Extrapolate from the last-filled frame in order to populate any empty
     #   frames preceding this frame.
     # - Unless there is no last-filled frame, in which case use default values.
+
+
+func _has_authoritative_state_for_current_frame() -> bool:
+    if not _rollback_buffer.has_at(G.network.frame_driver.server_frame_index):
+        return false
+    var frame_data: Array = _rollback_buffer.get_at(
+        G.network.frame_driver.server_frame_index)
+    # FIXME: LEFT OFF HERE: ACTUALLY: Change the index that I check for this.
+    var frame_data_source: FrameAuthority = frame_data[1]
+    return frame_data_source == FrameAuthority.AUTHORITATIVE
 
 
 func pack_state() -> void:
