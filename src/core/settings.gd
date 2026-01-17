@@ -51,6 +51,7 @@ var server_port: int:
 @export var force_include_log_warnings := true
 @export var include_category_in_logs := true
 @export var include_multiplayer_id_in_logs := true
+@export var verbosity := ScaffolderLog.Verbosity.VERBOSE
 @export_group("")
 
 @export var default_theme: Theme

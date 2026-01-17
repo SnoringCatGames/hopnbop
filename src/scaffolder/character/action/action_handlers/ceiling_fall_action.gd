@@ -9,7 +9,7 @@ const PRIORITY := 330
 
 
 func _init() -> void:
-    super(
+    super (
         NAME,
         TYPE,
         USES_RUNTIME_PHYSICS,
@@ -18,7 +18,7 @@ func _init() -> void:
 
 func process(character) -> bool:
     if !character.processed_action(CeilingJumpDownAction.NAME) and \
-            character.surface_state.is_triggering_ceiling_release:
+            character.surfaces.is_triggering_ceiling_release:
         # Cancel any velocity toward the ceiling.
         character.velocity.y = \
                 character.movement_settings.ceiling_fall_velocity_boost

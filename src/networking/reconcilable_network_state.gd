@@ -121,13 +121,25 @@ var root: Node:
 
 
 static func set_up_static_state() -> void:
+    # FIXME: [Post-Rollback] Switch from property exclusion to inclusion.
+    # - Revisit this property-exclusion pattern.
+    # - Probably using an explicit inclusion list would be better
+    # - Could re-purpose _property_diff_rollback_thresholds for this?
+
     var dummy := ReconcilableNetworkedState.new()
     var names := Utils.get_script_property_names(dummy.get_script())
     _excluded_property_names_for_packing = Utils.array_to_set(names)
-    # We also require child classes to include this propert, but we don't want
-    # to network it.
-    _excluded_property_names_for_packing._property_diff_rollback_thresholds = \
-        true
+
+    # We also require child classes to include these properties, but we don't
+    # want to network them.
+    var excluded_properties := [
+            "_property_diff_rollback_thresholds",
+            "_excluded_properties",
+            ]
+    # We also let subclasses define custom property exclusions.
+    excluded_properties.append_array(_get_excluded_properties())
+    for property_name in excluded_properties:
+        _excluded_property_names_for_packing[property_name] = true
 
 
 func _init() -> void:
@@ -167,6 +179,36 @@ func _network_process() -> void:
     network_processed.emit()
 
 
+## This is called before _network_process is called on any nodes.
+func _pre_network_process() -> void:
+    _sync_to_scene_state()
+
+
+## This is called after _network_process has been called on all relevant nodes.
+func _post_network_process() -> void:
+    if is_multiplayer_authority():
+        _sync_from_scene_state()
+    _record_rollback_frame()
+
+
+## This will update the surrounding scene state to match the networked state.
+func _sync_to_scene_state() -> void:
+    push_error(
+        "Abstract ReconcilableNetworkState._sync_to_scene_state is not implemented")
+
+
+## This will update the networked state to match the surrounding scene state.
+func _sync_from_scene_state() -> void:
+    push_error(
+        "Abstract ReconcilableNetworkState._sync_from_scene_state is not implemented")
+
+
+static func _get_excluded_properties() -> Array[String]:
+    push_error(
+        "Abstract ReconcilableNetworkState._get_excluded_properties is not implemented")
+    return []
+
+
 func _update_replication_config() -> void:
     for property_path in replication_config.get_properties():
         replication_config.remove_property(property_path)
@@ -175,17 +217,13 @@ func _update_replication_config() -> void:
     replication_config.add_property(packed_state_path)
 
 
-## Records the current state on node properties and in the rollback buffer at
-## the current simulated frame index.
+## Records the current state in the rollback buffer at the current simulated
+## frame index.
 ##
 ## This does _not_ record state in the packed_state array for syncing across the
 ## network. That step is handled separately, after any rollback extrapolation
 ## simulations are finished.
-func record_rollback_frame() -> void:
-    if G.ensure(data_source != Authority.AUTHORITATIVE,
-            "State is already authoritative, and cannot be overwritten"):
-        return
-
+func _record_rollback_frame() -> void:
     timestamp_usec = G.network.server_frame_time_usec
 
     var is_authoritative_source := \
@@ -195,6 +233,9 @@ func record_rollback_frame() -> void:
         Authority.AUTHORITATIVE if \
         is_authoritative_source else \
         Authority.PREDICTED
+
+    # FIXME: [Rollback]: Record frame in buffer.
+    # - Call pack_state() and record that array?
 
     # FIXME: [Rollback] Fill previous empty frames.
     # - Use G.network.server_frame_index

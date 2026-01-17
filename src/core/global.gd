@@ -83,8 +83,10 @@ func get_player(multiplayer_id: int) -> Player:
 
 # --- Include some convenient access to logging/error utilities ---------------
 
-func print(message = "", category := ScaffolderLog.CATEGORY_DEFAULT) -> void:
-    log.print(message, category)
+func print(message = "",
+        category := ScaffolderLog.CATEGORY_DEFAULT,
+        verbosity := ScaffolderLog.Verbosity.NORMAL) -> void:
+    log.print(message, category, verbosity)
 
 
 func warning(message = "", category := ScaffolderLog.CATEGORY_DEFAULT) -> void:

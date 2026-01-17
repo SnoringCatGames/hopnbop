@@ -55,13 +55,13 @@ func _process(_delta: float) -> void:
     %Position.text = Utils.get_vector_string(player.position, 1)
     %Velocity.text = Utils.get_vector_string(player.velocity, 1)
 
-    %AttachmentSide.text = SurfaceSide.get_string(player.surface_state.attachment_side)
-    %AttachmentPosition.text = Utils.get_vector_string(player.surface_state.attachment_position, 1)
-    %AttachmentNormal.text = Utils.get_vector_string(player.surface_state.attachment_normal, 1)
+    %AttachmentSide.text = SurfaceSide.get_string(player.surfaces.attachment_side)
+    %AttachmentPosition.text = Utils.get_vector_string(player.surfaces.attachment_position, 1)
+    %AttachmentNormal.text = Utils.get_vector_string(player.surfaces.attachment_normal, 1)
 
-    %IsDescendingThroughFloors.text = str(player.surface_state.is_descending_through_floors)
-    %IsAscendingThroughCeilings.text = str(player.surface_state.is_ascending_through_ceilings)
-    %IsAttachingToWalkThroughWalls.text = str(player.surface_state.is_attaching_to_walk_through_walls)
+    %IsDescendingThroughFloors.text = str(player.surfaces.is_descending_through_floors)
+    %IsAscendingThroughCeilings.text = str(player.surfaces.is_ascending_through_ceilings)
+    %IsAttachingToWalkThroughWalls.text = str(player.surfaces.is_attaching_to_walk_through_walls)
 
     %IsOnFloor.text = str(player.is_on_floor())
     %IsOnCeiling.text = str(player.is_on_ceiling())
@@ -69,8 +69,8 @@ func _process(_delta: float) -> void:
 
 
 func _on_player_physics_processed() -> void:
-    if player.surface_state.just_changed_attachment_side:
-        add_toast("Attached to %s" % SurfaceSide.get_string(player.surface_state.attachment_side))
+    if player.surfaces.just_changed_attachment_side:
+        add_toast("Attached to %s" % SurfaceSide.get_string(player.surfaces.attachment_side))
 
 
 func add_toast(text: String) -> void:

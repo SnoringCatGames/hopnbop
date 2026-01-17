@@ -16,7 +16,7 @@ const _WALK_THROUGH_WALLS_COLLISION_MASK_BIT := 4
 @export var animator: CharacterAnimator
 @export var movement_settings: MovementSettings
 
-@export var state_from_server: PlayerStateFromServer
+@export var state_from_server: CharacterStateFromServer
 
 var multiplayer_id: int:
     set(value):
@@ -35,9 +35,8 @@ var jump_count := 0
 
 var _current_max_horizontal_speed_multiplier := 1.0
 
-var surface_state := CharacterSurfaceState.new(self)
+var surfaces := CharacterSurfaceState.new(self)
 
-var _actions_from_previous_frame := CharacterActionState.new()
 var actions := CharacterActionState.new()
 
 # Array<CharacterActionSource>
@@ -50,8 +49,8 @@ var _character_action_source: CharacterActionSource
 var current_surface_max_horizontal_speed: float:
     get: return movement_settings.max_ground_horizontal_speed * \
             _current_max_horizontal_speed_multiplier * \
-            (surface_state.surface_properties.speed_multiplier if \
-            surface_state.is_attaching_to_surface else \
+            (surfaces.surface_properties.speed_multiplier if \
+            surfaces.is_attaching_to_surface else \
             1.0)
 
 var current_air_max_horizontal_speed: float:
@@ -60,26 +59,26 @@ var current_air_max_horizontal_speed: float:
 
 var current_walk_acceleration: float:
     get: return movement_settings.walk_acceleration * \
-            (surface_state.surface_properties.speed_multiplier if \
-            surface_state.is_attaching_to_surface else \
+            (surfaces.surface_properties.speed_multiplier if \
+            surfaces.is_attaching_to_surface else \
             1.0)
 
 var current_climb_up_speed: float:
     get: return movement_settings.climb_up_speed * \
-            (surface_state.surface_properties.speed_multiplier if \
-            surface_state.is_attaching_to_surface else \
+            (surfaces.surface_properties.speed_multiplier if \
+            surfaces.is_attaching_to_surface else \
             1.0)
 
 var current_climb_down_speed: float:
     get: return movement_settings.climb_down_speed * \
-            (surface_state.surface_properties.speed_multiplier if \
-            surface_state.is_attaching_to_surface else \
+            (surfaces.surface_properties.speed_multiplier if \
+            surfaces.is_attaching_to_surface else \
             1.0)
 
 var current_ceiling_crawl_speed: float:
     get: return movement_settings.ceiling_crawl_speed * \
-            (surface_state.surface_properties.speed_multiplier if \
-            surface_state.is_attaching_to_surface else \
+            (surfaces.surface_properties.speed_multiplier if \
+            surfaces.is_attaching_to_surface else \
             1.0)
 
 var is_sprite_visible: bool:
@@ -108,11 +107,15 @@ func _ready() -> void:
 
     movement_settings.set_up()
 
+    # Start facing right.
+    surfaces.is_facing_right = true
+    animator.face_right()
+
     start_position = position
 
-    # Start facing right.
-    surface_state.horizontal_facing_sign = 1
-    animator.face_right()
+    state_from_server.position = position
+    state_from_server.velocity = velocity
+    state_from_server.is_facing_right = surfaces.is_facing_right
 
     if !is_instance_valid(_character_action_source):
         _init_player_controller_action_source()
@@ -139,23 +142,12 @@ func _network_process() -> void:
 
     last_delta_scaled = G.time.get_scaled_network_frame_delta()
 
-    previous_position = position
-
     _apply_movement()
 
     _update_actions()
-    surface_state.clear_just_changed_state()
-    surface_state.update_actions()
 
-    #actions.log_new_presses_and_releases(self)
-
-    # Flip the horizontal direction of the animation according to which way the
-    # character is facing.
-    if surface_state.horizontal_facing_sign == 1:
-        animator.face_right()
-    elif surface_state.horizontal_facing_sign == -1:
-        animator.face_left()
-
+    # update derived behaviors based on current movement and actions.
+    _process_facing_direction()
     _process_actions()
     _process_animation()
     _process_sounds()
@@ -174,25 +166,32 @@ func _apply_movement() -> void:
     max_slides = MovementSettings._MAX_SLIDES_DEFAULT
     move_and_slide()
 
-    surface_state.update_collisions()
+    surfaces.update_touches()
 
 
+# FIXME: LEFT OFF HERE: ACTUALLY: Only collect input on owning client.
 func _update_actions() -> void:
-    # Record actions for the previous frame.
-    _actions_from_previous_frame.copy(actions)
     # Clear actions for the current frame.
     actions.clear()
 
     # Update actions for the current frame.
     for action_source in _action_sources:
         action_source.update(
-                actions,
-                _actions_from_previous_frame,
-                G.time.get_scaled_network_time())
-
-    CharacterActionSource.update_for_implicit_key_events(
             actions,
-            _actions_from_previous_frame)
+            G.time.get_scaled_network_time())
+
+    surfaces.clear_just_changed_state()
+    surfaces.update_actions()
+    actions.log_new_presses_and_releases(self)
+
+
+func _process_facing_direction() -> void:
+    # Flip the horizontal direction of the animation according to which way the
+    # character is facing.
+    if surfaces.horizontal_facing_sign == 1:
+        animator.face_right()
+    elif surfaces.horizontal_facing_sign == -1:
+        animator.face_left()
 
 
 # Updates physics and character states in response to the current actions.
@@ -201,7 +200,7 @@ func _process_actions() -> void:
 
     for action_handler in movement_settings.action_handlers:
         var is_action_relevant_for_surface: bool = \
-                action_handler.type == surface_state.surface_type or \
+                action_handler.type == surfaces.surface_type or \
                 action_handler.type == SurfaceType.OTHER or \
                 # Our surface-state logic considers the current actions, and
                 # surface-state is updated before we process actions here.
@@ -211,8 +210,8 @@ func _process_actions() -> void:
                 # to also consider the surface that we are currently leaving,
                 # and allow an action-handler of that departure-surface-type to
                 # handle this frame.
-                (action_handler.type == surface_state.just_left_surface_type and
-                surface_state.just_left_surface_type != SurfaceType.OTHER)
+                (action_handler.type == surfaces.just_left_surface_type and
+                surfaces.just_left_surface_type != SurfaceType.OTHER)
         var is_action_relevant_for_physics_mode: bool = \
                 action_handler.uses_runtime_physics
         if is_action_relevant_for_surface and \
@@ -225,7 +224,7 @@ func _process_actions() -> void:
 
 
 func _process_animation() -> void:
-    match surface_state.surface_type:
+    match surfaces.surface_type:
         SurfaceType.FLOOR:
             if actions.pressed_left or actions.pressed_right:
                 animator.play("Walk")
@@ -259,9 +258,9 @@ func _process_sounds() -> void:
     if just_triggered_jump:
         play_sound("jump")
 
-    if surface_state.just_left_air:
+    if surfaces.just_left_air:
         play_sound("land")
-    elif surface_state.just_touched_surface:
+    elif surfaces.just_touched_surface:
         play_sound("land")
 
 
@@ -278,17 +277,17 @@ func processed_action(p_name: String) -> bool:
 func _update_collision_mask() -> void:
     set_collision_mask_value(
             _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT,
-            not surface_state.is_descending_through_floors)
+            not surfaces.is_descending_through_floors)
     #set_collision_mask_value(
             #_WALK_THROUGH_WALLS_COLLISION_MASK_BIT,
-            #surface_state.is_attaching_to_walk_through_walls)
+            #surfaces.is_attaching_to_walk_through_walls)
 
 
 func force_boost(boost: Vector2) -> void:
     velocity = boost
 
     position += Vector2(0.0, -1.0)
-    surface_state.force_boost()
+    surfaces.force_boost()
 
 
 func get_next_position_prediction() -> Vector2:

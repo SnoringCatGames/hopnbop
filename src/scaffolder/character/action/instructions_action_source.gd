@@ -9,13 +9,12 @@ var _all_playback := []
 func _init(
         p_character,
         p_is_additive: bool):
-    super("NPC", p_character, p_is_additive)
+    super ("NPC", p_character, p_is_additive)
 
 
 # Calculates actions for the current frame.
 func update(
         actions: CharacterActionState,
-        previous_actions: CharacterActionState,
         time_scaled: float) -> void:
     var non_pressed_keys := []
 
@@ -30,7 +29,6 @@ func update(
             var is_pressed: bool = playback.active_key_presses[input_key]
             CharacterActionSource.update_for_explicit_key_event(
                     actions,
-                    previous_actions,
                     input_key,
                     is_pressed,
                     time_scaled,

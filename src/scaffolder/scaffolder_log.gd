@@ -4,6 +4,11 @@ extends Node
 
 signal on_message(message: String)
 
+enum Verbosity {
+    NORMAL,
+    VERBOSE,
+}
+
 const CATEGORY_DEFAULT := StringName("Default")
 const CATEGORY_SYSTEM_INITIALIZATION := StringName("SysInit")
 const CATEGORY_CORE_SYSTEMS := StringName("CoreSystems")
@@ -34,7 +39,8 @@ var _force_include_log_warnings := true
 func _ready() -> void:
     _print_front_matter()
 
-    self.print("ScaffolderLog._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+    self.print("ScaffolderLog._ready",
+        ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
 
 
 func _format_message(message: String, category: StringName) -> String:
@@ -79,8 +85,13 @@ func _format_message(message: String, category: StringName) -> String:
     ]
 
 
-func print(message = "", category := CATEGORY_DEFAULT) -> void:
+func print(
+        message = "",
+        category := CATEGORY_DEFAULT,
+        verbosity := Verbosity.NORMAL) -> void:
     if not _is_category_enabled(category):
+        return
+    if verbosity > G.settings.verbosity:
         return
 
     if !(message is String):
@@ -202,7 +213,8 @@ func _parse_category_prefix(category: StringName) -> StringName:
 
 
 func log_system_ready(system_name: String) -> void:
-    self.print("%s ready" % system_name, ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+    self.print("%s ready" % system_name,
+        ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
 
 
 func _print_front_matter() -> void:

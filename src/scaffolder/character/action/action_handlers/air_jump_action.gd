@@ -9,7 +9,7 @@ const PRIORITY := 420
 
 
 func _init() -> void:
-    super(
+    super (
         NAME,
         TYPE,
         USES_RUNTIME_PHYSICS,
@@ -19,7 +19,7 @@ func _init() -> void:
 func process(character) -> bool:
     if character.actions.just_pressed_jump and \
             character.jump_count < character.movement_settings.max_jump_chain:
-        if character.surface_state.just_entered_air:
+        if character.surfaces.just_entered_air:
             character.jump_count = 1
         else:
             character.jump_count += 1

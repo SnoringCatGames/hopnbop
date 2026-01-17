@@ -9,7 +9,7 @@ const PRIORITY := 220
 
 
 func _init() -> void:
-    super(
+    super (
         NAME,
         TYPE,
         USES_RUNTIME_PHYSICS,
@@ -17,7 +17,7 @@ func _init() -> void:
 
 
 func process(character) -> bool:
-    if character.surface_state.is_triggering_fall_through:
+    if character.surfaces.is_triggering_fall_through:
         # If we were standing on a floor and just triggered a fall-through,
         # then give a little downward velocity boost.
         character.velocity.y = \

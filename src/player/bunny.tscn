@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dwab2y7smxa" path="res://src/player/bunny.gd" id="1_j5lrb"]
 [ext_resource type="Resource" uid="uid://dq1d4nuh248j2" path="res://src/player/default_movement_settings.tres" id="2_4p26p"]
-[ext_resource type="Script" uid="uid://bglkea0vh5fw0" path="res://src/scaffolder/character/player_state_from_server.gd" id="3_o16et"]
+[ext_resource type="Script" uid="uid://bglkea0vh5fw0" path="res://src/scaffolder/character/character_state_from_server.gd" id="3_o16et"]
 [ext_resource type="Script" uid="uid://chp1athjwjq76" path="res://src/scaffolder/character/player_state_from_client.gd" id="4_1rl0f"]
 [ext_resource type="PackedScene" uid="uid://br1b7cse0hxmt" path="res://src/player/player_animator.tscn" id="5_sc4xa"]
 
@@ -19,28 +19,30 @@ properties/0/replication_mode = 1
 [sub_resource type="CircleShape2D" id="CircleShape2D_rxibo"]
 radius = 6.0
 
-[node name="Bunny" type="CharacterBody2D" node_paths=PackedStringArray("state_from_server", "input_from_client", "collision_shape", "animator")]
+[node name="Bunny" type="CharacterBody2D" node_paths=PackedStringArray("input_from_client", "collision_shape", "animator", "state_from_server")]
 collision_layer = 8
 collision_mask = 7
 script = ExtResource("1_j5lrb")
-state_from_server = NodePath("StateFromServer")
 input_from_client = NodePath("InputFromClient")
 collision_shape = NodePath("PlayerBodyCollisionShape")
 animator = NodePath("PlayerAnimator")
 movement_settings = ExtResource("2_4p26p")
+state_from_server = NodePath("StateFromServer")
 
-[node name="StateFromServer" type="MultiplayerSynchronizer" parent="."]
+[node name="StateFromServer" type="MultiplayerSynchronizer" parent="." node_paths=PackedStringArray("character")]
 process_mode = 3
 root_path = NodePath(".")
 replication_config = SubResource("SceneReplicationConfig_mf2ua")
 script = ExtResource("3_o16et")
+character = NodePath("..")
 metadata/_custom_type_script = "uid://bglkea0vh5fw0"
 
-[node name="InputFromClient" type="MultiplayerSynchronizer" parent="."]
+[node name="InputFromClient" type="MultiplayerSynchronizer" parent="." node_paths=PackedStringArray("player")]
 process_mode = 3
 root_path = NodePath(".")
 replication_config = SubResource("SceneReplicationConfig_244u8")
 script = ExtResource("4_1rl0f")
+player = NodePath("..")
 is_server_authoritative = false
 metadata/_custom_type_script = "uid://chp1athjwjq76"
 

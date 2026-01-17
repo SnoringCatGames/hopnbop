@@ -9,7 +9,7 @@ const PRIORITY := 10020
 
 
 func _init() -> void:
-    super(
+    super (
         NAME,
         TYPE,
         USES_RUNTIME_PHYSICS,
@@ -19,7 +19,7 @@ func _init() -> void:
 func process(character) -> bool:
     var max_horizontal_speed: float = \
             character.current_surface_max_horizontal_speed if \
-            character.surface_state.is_attaching_to_surface else \
+            character.surfaces.is_attaching_to_surface else \
             character.current_air_max_horizontal_speed
 
     character.velocity = cap_velocity(

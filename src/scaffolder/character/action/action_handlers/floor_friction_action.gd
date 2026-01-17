@@ -20,13 +20,13 @@ func process(character) -> bool:
     if !character.processed_action(FloorJumpAction.NAME):
         # Friction.
         var acceleration_sign: int = \
-                character.surface_state.horizontal_acceleration_sign
+                character.surfaces.horizontal_acceleration_sign
         var speed_sign := signf(character.velocity.x)
         var is_character_pressing_move := acceleration_sign != 0.0
         var friction_multiplier: float = \
-                character.surface_state.surface_properties \
+                character.surfaces.surface_properties \
                     .friction_multiplier if \
-                character.surface_state.is_attaching_to_surface else \
+                character.surfaces.is_attaching_to_surface else \
                 1.0
 
         if is_character_pressing_move:

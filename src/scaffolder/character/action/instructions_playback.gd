@@ -129,7 +129,7 @@ func _ensure_facing_correct_direction_before_update(character) -> void:
             next_index == 0 and \
             character.velocity.x != 0 and \
             (character.velocity.x < 0) != \
-                    (character.surface_state.horizontal_facing_sign < 0):
+                    (character.surfaces.horizontal_facing_sign < 0):
         # At the start of edge playback, turn the character to face the
         # initial direction they're moving in.
         _add_instruction_to_face_direction_of_movement(character)

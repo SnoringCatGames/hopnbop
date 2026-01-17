@@ -11,7 +11,7 @@ const BOUNCE_OFF_CEILING_VELOCITY := 15.0
 
 
 func _init() -> void:
-    super(
+    super (
         NAME,
         TYPE,
         USES_RUNTIME_PHYSICS,
@@ -27,12 +27,10 @@ func process(character) -> bool:
 
     # If we just fell off the bottom of a wall, cancel any velocity toward that
     # wall.
-    if character.surface_state.just_entered_air and \
-            ((character.surface_state.previous_attachment_side == \
-                    SurfaceSide.LEFT_WALL and \
+    if character.surfaces.just_entered_air and \
+            ((character.surfaces.just_stopped_attaching_to_left_wall and \
                     character.velocity.x < 0.0) or \
-            (character.surface_state.previous_attachment_side == \
-                    SurfaceSide.RIGHT_WALL and \
+            (character.surfaces.just_stopped_attaching_to_right_wall and \
                     character.velocity.x > 0.0)):
         character.velocity.x = 0.0
 
@@ -41,17 +39,17 @@ func process(character) -> bool:
             character.last_delta_scaled,
             character.actions.pressed_jump,
             is_first_jump,
-            character.surface_state.horizontal_acceleration_sign,
+            character.surfaces.horizontal_acceleration_sign,
             character.movement_settings)
 
     # Bouncing off ceiling.
-    if character.surface_state.is_touching_ceiling and \
-            !character.surface_state.is_attaching_to_ceiling:
+    if character.surfaces.is_touching_ceiling and \
+            !character.surfaces.is_attaching_to_ceiling:
         character.is_rising_from_jump = false
         character.velocity.y = BOUNCE_OFF_CEILING_VELOCITY
 
         var is_ceiling_sloped_against_movement: bool = \
-                (character.surface_state.ceiling_contact \
+                (character.surfaces.ceiling_contact \
                         .normal.x < 0.0) != \
                 (character.velocity.x < 0.0)
         if is_ceiling_sloped_against_movement:

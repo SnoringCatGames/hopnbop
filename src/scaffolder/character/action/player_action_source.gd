@@ -21,7 +21,6 @@ func _init(p_character, p_is_additive: bool) -> void:
 # Calculates actions for the current frame.
 func update(
         actions: CharacterActionState,
-        previous_actions: CharacterActionState,
         time_scaled: float) -> void:
     if !character.get_is_player_control_active():
         return
@@ -31,7 +30,6 @@ func update(
         if !Input.is_key_pressed(KEY_CTRL):
             CharacterActionSource.update_for_explicit_key_event(
                     actions,
-                    previous_actions,
                     input_key,
                     is_pressed,
                     time_scaled,

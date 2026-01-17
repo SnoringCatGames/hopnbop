@@ -131,12 +131,16 @@ func _start_rollback() -> void:
 
 ## Simulate the current frame for all network-process-aware nodes.
 func _network_process() -> void:
+    # Sync other scene state from the current network state.
+    for node in _networked_state_nodes:
+        node._pre_network_process()
+
     # Let all network-process-aware nodes handle the frame.
     for node in _networked_state_nodes:
         node._network_process()
     for node in _network_frame_processor_nodes:
         node._network_process()
 
-    # Record the current rollback frame state.
+    # Sync the current network state from other scene state.
     for node in _networked_state_nodes:
-        node.record_rollback_frame()
+        node._post_network_process()
