@@ -161,17 +161,6 @@ func _network_process() -> void:
     #   - If the buffer state is authoritative, we don't overwrite it, and we overwrite the scene state.
     #   - But we still may need to simulate and overwrite frames preceding that, in order to have state for other nodes to check during that frame.
     #
-    # When iterating through _network_process, if for the given node, for the
-    # given frame:
-    #
-    # - client:
-    #   - if frame has authoritative state_from_server:
-    #     - don't call _network_process
-    #   - doesn't have authoritative state_from_server:
-    #     - call _network_process
-    #
-    # - server:
-    #   - for state from server: call network process every time on all nodes.
     pass
 
     # Sync other scene state from the current network state.

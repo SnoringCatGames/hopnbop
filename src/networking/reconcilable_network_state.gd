@@ -76,8 +76,8 @@ var _property_names_for_packing: Array[String] = []
 ## Which machine this state is associated with.
 ##
 ## - This is used for making sure the right NetworkedNodes actually have
-##   FrameAuthority for triggering the replication.
-## - This is the machine that would be given FrameAuthority to client input.
+##   authority for triggering the replication.
+## - This is the machine that would be given authority to client input.
 ## - This should be assigned by the server machine when spawning new networked
 ##   nodes.
 ## - An ID of 1 represents the server.
@@ -85,13 +85,13 @@ var multiplayer_id := 1:
     set(value):
         if value != multiplayer_id:
             multiplayer_id = value
-            set_multiplayer_FrameAuthority(FrameAuthority_id)
+            set_multiplayer_authority(authority_id)
 
             # Assign multiplayer_id on the partner InputFromClient.
             if is_server_authoritative and is_instance_valid(_partner_state):
                 _partner_state.multiplayer_id = multiplayer_id
 
-var FrameAuthority_id: int:
+var authority_id: int:
     get:
         return NetworkConnector.SERVER_ID if \
             is_server_authoritative else \
@@ -143,7 +143,7 @@ func _ready() -> void:
     if Engine.is_editor_hint():
         return
 
-    set_multiplayer_FrameAuthority(FrameAuthority_id)
+    set_multiplayer_authority(authority_id)
 
     _set_up_rollback_buffer()
     
@@ -159,7 +159,7 @@ func _pre_network_process() -> void:
 
 ## This is called after _network_process has been called on all relevant nodes.
 func _post_network_process() -> void:
-    if is_multiplayer_FrameAuthority():
+    if is_multiplayer_authority():
         _sync_from_scene_state()
     _record_rollback_frame()
 
