@@ -20,10 +20,10 @@ var is_authority_for_state_from_client: bool:
     get: return is_instance_valid(_state_from_client) and \
         _state_from_client.is_multiplayer_authority()
 
-var position: Vector2
-var velocity: Vector2
+var position := Vector2.ZERO
+var velocity := Vector2.ZERO
 ## A bitmask representing the player's surface state.
-var surfaces: int
+var surfaces := 0
 
 const _synced_properties_and_rollback_diff_thresholds := {
     position = DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD,
@@ -32,9 +32,23 @@ const _synced_properties_and_rollback_diff_thresholds := {
 }
 
 
+func _get_default_values() -> Array:
+    return [
+        Vector2.ZERO,
+        Vector2.ZERO,
+        0,
+    ]
+
+
 func _network_process() -> void:
     if not G.ensure_valid(character):
         return
+
+    # FIXME: LEFT OFF HERE: ACTUALLY: Set this.
+    frame_authority = \
+        FrameAuthority.AUTHORITATIVE if \
+        is_multiplayer_authority() else \
+        FrameAuthority.PREDICTED
 
     # Handle actions (from a client).
     if _state_from_client._has_authoritative_state_for_current_frame():
@@ -79,7 +93,8 @@ func _sync_to_scene_state() -> void:
     if not G.ensure_valid(character):
         return
 
-    # FIXME: LEFT OFF HERE: ACTUALLY: Character process.
+    # FIXME: LEFT OFF HERE: ACTUALLY: ----------------
+    # - NO! Update this to sync to the state from the _previous_ frame.
 
     character.position = position
     character.velocity = velocity
@@ -102,6 +117,6 @@ func _sync_from_scene_state() -> void:
     if not G.ensure_valid(character):
         return
 
-    # FIXME: LEFT OFF HERE: ACTUALLY: Character process.
-
-    pass
+    position = character.position
+    velocity = character.velocity
+    surfaces = character.surfaces.bitmask

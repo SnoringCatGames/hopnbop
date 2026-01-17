@@ -14,11 +14,17 @@ var _state_from_server: CharacterStateFromServer:
             return null
 
 ## A bitmask representing which of the player's actions are active.
-var actions: int
+var actions := 0
 
 const _synced_properties_and_rollback_diff_thresholds := {
     actions = 0,
 }
+
+
+func _get_default_values() -> Array:
+    return [
+        0,
+    ]
 
 
 func _network_process() -> void:

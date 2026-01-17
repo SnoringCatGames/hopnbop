@@ -90,24 +90,34 @@ func remove_network_frame_processor(node: NetworkFrameProcessor) -> void:
 
 ## This will trigger a rollback to occur on the next _network_process.
 ##
-## At most one rollback will occur per _network_process loop, and the earliest
-## server_frame_index will be used.
-# FIXME: [Rollback] Call this.
-func queue_rollback(p_server_frame_index: int) -> bool:
+## - At most one rollback will occur per _network_process loop, and the earliest
+##   server_frame_index will be used.
+## - The given frame index marks where the state mismatch occured that is
+##   triggering this rollback.
+## - The first processed frame of the rollback will be the frame _after_ the
+##   mismatch.
+##   - We already know that the local simulation at the mismatch resulting in
+##     the wrong state, so we don't re-simulate that frame.
+# FIXME: LEFT OFF HERE: ACTUALLY:
+# - Call this.
+# - This frame
+func queue_rollback(p_conflicting_frame_index: int) -> bool:
     # FIXME: LEFT OFF HERE: Check if this check should happen earlier.
-    if p_server_frame_index < oldest_rollbackable_frame_index:
+    # Rollback simulation would start on the proceding frame after the mismatch.
+    var target_rollback_frame := p_conflicting_frame_index + 1
+    if target_rollback_frame < oldest_rollbackable_frame_index:
         # TODO: We'll probably want to remove this log.
         G.log.warn(
             "Requested rollback to frame %d, but oldest rollbackable frame is %d",
-            p_server_frame_index,
+            target_rollback_frame,
             oldest_rollbackable_frame_index)
         return false
 
     if _queued_rollback_frame_index == 0:
-        _queued_rollback_frame_index = p_server_frame_index
+        _queued_rollback_frame_index = target_rollback_frame
     else:
         _queued_rollback_frame_index = mini(
-            _queued_rollback_frame_index, p_server_frame_index)
+            _queued_rollback_frame_index, target_rollback_frame)
 
     return true
 
@@ -124,15 +134,14 @@ func _start_network_process() -> void:
         # Just handle this next frame normally, no rollback needed.
         _network_process()
 
-    # After simulating this frame, or extrapolating frames due to rollback, pack
-    # the latest state for syncing across the network.
-    for node in _networked_state_nodes:
-        node.pack_state()
-
 
 func _start_rollback() -> void:
-    var original_server_frame_time_usec := server_frame_time_usec
     var original_server_frame_index := server_frame_index
+    var original_server_frame_time_usec := server_frame_time_usec
+
+    server_frame_index = _queued_rollback_frame_index
+    server_frame_time_usec = floori(
+        server_frame_index * TARGET_NETWORK_TIME_STEP_SEC)
 
     # FIMXE: [Rollback] Start the rollback.
     # - First, reset all registered nodes in _networked_state_nodes to
@@ -148,8 +157,8 @@ func _start_rollback() -> void:
     #   we're at the oldest frame).
     _network_process()
 
-    server_frame_time_usec = original_server_frame_time_usec
     server_frame_index = original_server_frame_index
+    server_frame_time_usec = original_server_frame_time_usec
 
 
 ## Simulate the current frame for all network-process-aware nodes.

@@ -31,21 +31,6 @@ var _total_pushed: int = 0
 var capacity: int:
     get: return _capacity
 
-## The current number of valid elements in the buffer.
-var size: int:
-    get:
-        if is_full:
-            return _capacity
-        return _next_index
-
-## True if the buffer contains no elements.
-var is_empty: bool:
-    get: return _total_pushed == 0
-
-## True if the buffer has reached its capacity.
-var is_full: bool:
-    get: return _total_pushed >= _capacity
-
 
 func _init(p_capacity: int) -> void:
     G.check(p_capacity > 0, "CircularBuffer capacity must be greater than 0")
@@ -53,6 +38,23 @@ func _init(p_capacity: int) -> void:
     _data.resize(p_capacity)
     for i in range(p_capacity):
         _data[i] = null
+
+
+## The current number of valid elements in the buffer.
+func size() -> int:
+    if is_full():
+        return _capacity
+    return _next_index
+
+
+## True if the buffer contains no elements.
+func is_empty() -> bool:
+    return _total_pushed == 0
+
+
+## True if the buffer has reached its capacity.
+func is_full() -> bool:
+    return _total_pushed >= _capacity
 
 
 ## - Adds a new element to the buffer. If the buffer is full, the oldest element
@@ -69,7 +71,7 @@ func push(value: Variant) -> int:
 ## - Gets the most recently pushed element.
 ## - Returns null if the buffer is empty.
 func get_latest() -> Variant:
-    if is_empty:
+    if is_empty():
         return null
     var index := (_next_index - 1 + _capacity) % _capacity
     return _data[index]
@@ -78,9 +80,9 @@ func get_latest() -> Variant:
 ## - Gets the oldest element still in the buffer.
 ## - Returns null if the buffer is empty.
 func get_oldest() -> Variant:
-    if is_empty:
+    if is_empty():
         return null
-    if is_full:
+    if is_full():
         return _data[_next_index]
     return _data[0]
 
@@ -97,6 +99,11 @@ func get_at(index: int) -> Variant:
 ## - Sets an element at a specific index.
 ## - Returns true if successful, false if the index is out of valid range.
 func set_at(index: int, value: Variant) -> bool:
+    if index == _total_pushed:
+        # Push a new item.
+        push(value)
+        return
+
     if not has_at(index):
         return false
     var internal_index := index % _capacity
@@ -117,7 +124,7 @@ func has_at(index: int) -> bool:
 ## - Returns the index of the most recently pushed element.
 ## - Returns -1 if the buffer is empty.
 func get_latest_index() -> int:
-    if is_empty:
+    if is_empty():
         return -1
     return _total_pushed - 1
 
@@ -125,9 +132,9 @@ func get_latest_index() -> int:
 ## - Returns the index of the oldest element still in the buffer.
 ## - Returns -1 if the buffer is empty.
 func get_oldest_index() -> int:
-    if is_empty:
+    if is_empty():
         return -1
-    if is_full:
+    if is_full():
         return _total_pushed - _capacity
     return 0
 
@@ -138,14 +145,13 @@ func clear() -> void:
         _data[i] = null
     _next_index = 0
     _total_pushed = 0
-    is_full = false
 
 
 ## Returns an array of all valid elements, from oldest to newest.
 func to_array() -> Array:
     var oldest_index := get_oldest_index()
     var result: Array = []
-    for i in range(size):
+    for i in range(size()):
         result.append(get_at(oldest_index + i))
     return result
 

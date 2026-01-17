@@ -47,7 +47,7 @@ const _MULTIPLAYER_ID_PROPERTY_NAME := "multiplayer_id"
 var timestamp_usec := 0
 
 ## This identifies whether this data originated from an authoritative source.
-var data_source := FrameAuthority.UNKNOWN
+var frame_authority := FrameAuthority.UNKNOWN
 
 ## If true, the server is the authoritative source of data for this state.
 ##
@@ -67,7 +67,7 @@ var packed_state := []:
     set(value):
         packed_state = value
         if not _is_packing_state_locally:
-            _unpack_state()
+            _unpack_networked_state()
 
 var _is_packing_state_locally := false
 
@@ -154,14 +154,21 @@ func _network_process() -> void:
 
 ## This is called before _network_process is called on any nodes.
 func _pre_network_process() -> void:
+    timestamp_usec = G.network.server_frame_time_usec
+    
     _sync_to_scene_state()
 
 
 ## This is called after _network_process has been called on all relevant nodes.
 func _post_network_process() -> void:
-    if is_multiplayer_authority():
-        _sync_from_scene_state()
+    _sync_from_scene_state()
     _record_rollback_frame()
+
+
+func _get_default_values() -> Array:
+    G.fatal(
+        "Abstract ReconcilableNetworkState._get_default_values is not implemented")
+    return []
 
 
 ## This will update the surrounding scene state to match the networked state.
@@ -197,24 +204,47 @@ func _set_up_rollback_buffer() -> void:
 ## network. That step is handled separately, after any rollback extrapolation
 ## simulations are finished.
 func _record_rollback_frame() -> void:
-    timestamp_usec = G.network.server_frame_time_usec
-
-    var is_authoritative_source := \
-        is_server_authoritative == G.network.is_server
-
-    data_source = \
-        FrameAuthority.AUTHORITATIVE if \
-        is_authoritative_source else \
-        FrameAuthority.PREDICTED
-
-    # FIXME: [Rollback]: Record frame in buffer.
-    # - Call pack_state() and record that array?
-
+    # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY, ACTUALLY, ACTUALLY, ACTUALLY, ACTUALLY: Check this...
+    # 
     # FIXME: [Rollback] Fill previous empty frames.
     # - Use G.network.server_frame_index
     # - Extrapolate from the last-filled frame in order to populate any empty
     #   frames preceding this frame.
     # - Unless there is no last-filled frame, in which case use default values.
+    pass
+    
+    _pack_networked_state()
+
+    # For the rollback buffer, we want to record the same state that we
+    # replicate across the network, except, we don't need the timestamp and we
+    # do need the frame_authority.
+    var rollback_frame_state := packed_state.duplicate()
+    rollback_frame_state[rollback_frame_state.size() - 1] = frame_authority
+
+    # Back-fill any missing frames in the buffer.
+    if _rollback_buffer.get_latest_index() < \
+            G.network.frame_driver.server_frame_index - 1:
+        # Determine the fill state.
+        var fill_state := []
+        if _rollback_buffer.is_empty():
+            # Use default values.
+            fill_state = _get_default_values()
+            fill_state.push_back(FrameAuthority.PREDICTED)
+        else:
+            # Get the last recorded state.
+            fill_state = _rollback_buffer.get_at(
+                _rollback_buffer.get_latest_index())
+
+        # Backfill.
+        while _rollback_buffer.get_latest_index() < \
+                G.network.frame_driver.server_frame_index - 1:
+            _rollback_buffer.set_at(
+                _rollback_buffer.get_latest_index() + 1,
+                fill_state.duplicate())
+
+    _rollback_buffer.set_at(
+        G.network.frame_driver.server_frame_index,
+        rollback_frame_state)
 
 
 func _has_authoritative_state_for_current_frame() -> bool:
@@ -223,28 +253,27 @@ func _has_authoritative_state_for_current_frame() -> bool:
     var frame_data: Array = _rollback_buffer.get_at(
         G.network.frame_driver.server_frame_index)
     # FIXME: LEFT OFF HERE: ACTUALLY: Change the index that I check for this.
-    var frame_data_source: FrameAuthority = frame_data[1]
-    return frame_data_source == FrameAuthority.AUTHORITATIVE
+    return frame_data[1] == FrameAuthority.AUTHORITATIVE
 
 
-func pack_state() -> void:
+func _pack_networked_state() -> void:
     var thresholds: Dictionary = \
         get("_synced_properties_and_rollback_diff_thresholds")
     G.check_valid(thresholds)
     var property_names := thresholds.keys()
     var state := []
     state.resize(property_names.size() + 1)
-    state[0] = timestamp_usec
-    var i := 1
+    var i := 0
     for property_name in property_names:
         state[i] = get(property_name)
         i += 1
+    state[i] = timestamp_usec
     _is_packing_state_locally = true
     packed_state = state
     _is_packing_state_locally = false
 
 
-func _unpack_state() -> void:
+func _unpack_networked_state() -> void:
     if packed_state.is_empty():
         # This happens for the initial sync, when there is no state to send yet.
         return
@@ -253,11 +282,11 @@ func _unpack_state() -> void:
             packed_state.size() == _property_names_for_packing.size() + 1):
         return
 
-    timestamp_usec = packed_state[0]
-    var i := 1
+    var i := 0
     for property_name in _property_names_for_packing:
         set(property_name, packed_state[i])
         i += 1
+    timestamp_usec = packed_state[i]
 
 
 func _update_partner_state() -> void:
