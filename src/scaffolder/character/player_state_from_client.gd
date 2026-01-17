@@ -27,6 +27,18 @@ func _get_default_values() -> Array:
     ]
 
 
+func _exit_tree() -> void:
+    if is_multiplayer_authority():
+        G.network.local_authority_removed.emit(self)
+
+
+func update_authority() -> void:
+    var was_multiplayer_authority := is_multiplayer_authority()
+    super.update_authority()
+    if is_multiplayer_authority() and not was_multiplayer_authority:
+        G.network.local_authority_added.emit(self)
+
+
 func _network_process() -> void:
     # CharacterStateFromServer handles _network_process for itself and any
     # corresponding PlayerStateFromClient.

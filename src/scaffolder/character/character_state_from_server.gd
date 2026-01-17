@@ -93,8 +93,10 @@ func _sync_to_scene_state() -> void:
     if not G.ensure_valid(character):
         return
 
-    # FIXME: LEFT OFF HERE: ACTUALLY: ----------------
+    # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY, ACTUALLY: ----------------
     # - NO! Update this to sync to the state from the _previous_ frame.
+    #   - Implement _get_previous_frame_state()
+    #     - Use G.network.frame_driver.server_frame_index
 
     character.position = position
     character.velocity = velocity

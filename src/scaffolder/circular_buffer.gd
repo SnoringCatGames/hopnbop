@@ -8,8 +8,8 @@ extends RefCounted
 ##
 ## Usage:
 ##   var buffer = CircularBuffer.new(10)
-##   buffer.push(value1)
-##   buffer.push(value2)
+##   buffer.append(value1)
+##   buffer.append(value2)
 ##   var latest = buffer.get_latest()
 ##   var oldest = buffer.get_oldest()
 ##   var at_index = buffer.get_at(index)
@@ -60,7 +60,7 @@ func is_full() -> bool:
 ## - Adds a new element to the buffer. If the buffer is full, the oldest element
 ##   is overwritten.
 ## - Returns the index of the pushed element.
-func push(value: Variant) -> int:
+func append(value: Variant) -> int:
     var index := _total_pushed
     _data[_next_index] = value
     _next_index = (_next_index + 1) % _capacity
@@ -87,7 +87,7 @@ func get_oldest() -> Variant:
     return _data[0]
 
 
-## - Gets an element by its absolute index (the index returned by push()).
+## - Gets an element by its absolute index (the index returned by append()).
 ## - Returns null if the index is out of the valid range.
 func get_at(index: int) -> Variant:
     if not has_at(index):
@@ -101,8 +101,8 @@ func get_at(index: int) -> Variant:
 func set_at(index: int, value: Variant) -> bool:
     if index == _total_pushed:
         # Push a new item.
-        push(value)
-        return
+        append(value)
+        return true
 
     if not has_at(index):
         return false

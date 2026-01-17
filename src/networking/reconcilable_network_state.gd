@@ -9,23 +9,6 @@ extends MultiplayerSynchronizer
 ##
 
 
-# FIXME: [Pre-Rollback]: Add another super-hud debug display:
-# - Show the current Physics process, Render process, and Network process FPS.
-#   - Keep a running average over the latest 1 second (make that number
-#     configurable).
-#   - Keep a circular buffer for the start_times of the last 100 for each
-#     (also configurable).
-# - Toggleable in Settings.
-# - Check how network process compares to physics process (both are hopefully
-#   close to 60 FPS?).
-#   - If network is much slower, consider adjusting my rollback frame index
-#     bucketing.
-# - Log warnings when any of these three FPS dimensions drops below some
-#   threshold.
-#   - Separate threshold for each.
-# - And log a print message when they recover.
-
-
 enum FrameAuthority {
     UNKNOWN,
     AUTHORITATIVE,
@@ -33,6 +16,7 @@ enum FrameAuthority {
 }
 
 
+signal received_network_state
 signal network_processed
 
 
@@ -85,7 +69,7 @@ var multiplayer_id := 1:
     set(value):
         if value != multiplayer_id:
             multiplayer_id = value
-            set_multiplayer_authority(authority_id)
+            update_authority()
 
             # Assign multiplayer_id on the partner InputFromClient.
             if is_server_authoritative and is_instance_valid(_partner_state):
@@ -111,14 +95,17 @@ var root: Node:
     get: return get_node_or_null(root_path)
 
 # FIXME: [Rollback] Add support here for maintaining the buffer.
-var _rollback_buffer: CircularBuffer
+var _rollback_buffer: RollbackBuffer
 
 
 func _init() -> void:
     if Engine.is_editor_hint():
         return
+
     G.ensure(Utils.check_whether_sub_classes_are_tools(self),
         "Subclasses of ReconcilableNetworkedState must be marked with @tool")
+
+    _set_up_rollback_buffer()
 
 
 func _enter_tree() -> void:
@@ -143,10 +130,12 @@ func _ready() -> void:
     if Engine.is_editor_hint():
         return
 
+    update_authority()
+
+
+func update_authority() -> void:
     set_multiplayer_authority(authority_id)
 
-    _set_up_rollback_buffer()
-    
 
 func _network_process() -> void:
     network_processed.emit()
@@ -155,7 +144,7 @@ func _network_process() -> void:
 ## This is called before _network_process is called on any nodes.
 func _pre_network_process() -> void:
     timestamp_usec = G.network.server_frame_time_usec
-    
+
     _sync_to_scene_state()
 
 
@@ -192,9 +181,12 @@ func _update_replication_config() -> void:
 
 
 func _set_up_rollback_buffer() -> void:
-    _rollback_buffer = CircularBuffer.new(
-        G.network.frame_driver.rollback_buffer_size)
-    # FIXME: LEFT OFF HERE: Do I need to set the first frame?
+    var default_values := _get_default_values().duplicate()
+    default_values.append(FrameAuthority.PREDICTED)
+    _rollback_buffer = RollbackBuffer.new(
+        G.network.frame_driver.rollback_buffer_size,
+        G.network.frame_driver.server_frame_index,
+        default_values)
 
 
 ## Records the current state in the rollback buffer at the current simulated
@@ -204,15 +196,9 @@ func _set_up_rollback_buffer() -> void:
 ## network. That step is handled separately, after any rollback extrapolation
 ## simulations are finished.
 func _record_rollback_frame() -> void:
-    # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY, ACTUALLY, ACTUALLY, ACTUALLY, ACTUALLY: Check this...
-    # 
-    # FIXME: [Rollback] Fill previous empty frames.
-    # - Use G.network.server_frame_index
-    # - Extrapolate from the last-filled frame in order to populate any empty
-    #   frames preceding this frame.
-    # - Unless there is no last-filled frame, in which case use default values.
+    # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY: Check this...
     pass
-    
+
     _pack_networked_state()
 
     # For the rollback buffer, we want to record the same state that we
@@ -221,26 +207,16 @@ func _record_rollback_frame() -> void:
     var rollback_frame_state := packed_state.duplicate()
     rollback_frame_state[rollback_frame_state.size() - 1] = frame_authority
 
-    # Back-fill any missing frames in the buffer.
-    if _rollback_buffer.get_latest_index() < \
-            G.network.frame_driver.server_frame_index - 1:
-        # Determine the fill state.
-        var fill_state := []
-        if _rollback_buffer.is_empty():
-            # Use default values.
-            fill_state = _get_default_values()
-            fill_state.push_back(FrameAuthority.PREDICTED)
-        else:
-            # Get the last recorded state.
-            fill_state = _rollback_buffer.get_at(
-                _rollback_buffer.get_latest_index())
+    # FIXME: LEFT OFF HERE: ACTUALLY: When updating frame buffer state later,
+    #   reference the preexisting frame array, rather than instantiating a new
+    #   one.
 
-        # Backfill.
-        while _rollback_buffer.get_latest_index() < \
-                G.network.frame_driver.server_frame_index - 1:
-            _rollback_buffer.set_at(
-                _rollback_buffer.get_latest_index() + 1,
-                fill_state.duplicate())
+    # FIXME: LEFT OFF HERE: ACTUALLY: When updating buffer frame with just-synced
+    #        packed_state from the server, make sure we backfill as needed there
+    #        too.
+
+    _rollback_buffer.backfill_to_with_last_state(
+        G.network.frame_driver.server_frame_index)
 
     _rollback_buffer.set_at(
         G.network.frame_driver.server_frame_index,
@@ -288,6 +264,8 @@ func _unpack_networked_state() -> void:
         i += 1
     timestamp_usec = packed_state[i]
 
+    received_network_state.emit()
+
 
 func _update_partner_state() -> void:
     if not is_node_ready():
@@ -300,7 +278,7 @@ func _update_partner_state() -> void:
     var sibling_states: Array[ReconcilableNetworkedState] = []
     for child in get_parent().get_children():
         if child is ReconcilableNetworkedState and child != self:
-            sibling_states.push_back(child)
+            sibling_states.append(child)
 
     # Record the sibling, and validate the node configuration.
     if sibling_states.size() == 1:
@@ -344,22 +322,22 @@ func _get_configuration_warnings() -> PackedStringArray:
     var thresholds = get("_synced_properties_and_rollback_diff_thresholds")
 
     if thresholds == null:
-        warnings.push_back(
+        warnings.append(
             "A _synced_properties_and_rollback_diff_thresholds property must be defined on subclasses of ReconcilableNetworkedState")
     elif not thresholds is Dictionary:
-        warnings.push_back(
+        warnings.append(
             "The _synced_properties_and_rollback_diff_thresholds property must be a Dictionary")
     else:
         # Check if _synced_properties_and_rollback_diff_thresholds matches the other properties.
         for property_name in thresholds.keys():
             if get(property_name) == null:
-                warnings.push_back(
+                warnings.append(
                     "Key %s in _synced_properties_and_rollback_diff_thresholds does not match any class property" % property_name)
 
     if root_path.is_empty():
-        warnings.push_back("root_path must be defined")
+        warnings.append("root_path must be defined")
     elif not is_instance_valid(root):
-        warnings.push_back("root_path does not point to a valid node")
+        warnings.append("root_path does not point to a valid node")
     elif not _partner_state_configuration_warning.is_empty():
         warnings.append(_partner_state_configuration_warning)
 
