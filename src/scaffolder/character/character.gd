@@ -109,7 +109,7 @@ func _ready() -> void:
 
     if _action_sources.is_empty():
         var player_action_source := PlayerActionSource.new(self, true)
-        _action_sources.push_back(player_action_source)
+        _action_sources.append(player_action_source)
 
     # For move_and_slide.
     up_direction = Vector2.UP

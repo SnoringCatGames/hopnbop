@@ -88,7 +88,7 @@ func _handle_tweens() -> void:
         var tween: ScaffolderTween = _tweens[id]
         tween.step()
         if !tween.is_active():
-            finished_tween_ids.push_back(id)
+            finished_tween_ids.append(id)
 
     for id in finished_tween_ids:
         _tweens.erase(id)

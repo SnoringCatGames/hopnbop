@@ -3,7 +3,7 @@ extends Node
 
 
 const MIN_INT := -9223372036854775808
-const MAX_INT :=  9223372036854775807
+const MAX_INT := 9223372036854775807
 
 var _focus_releaser: Control
 
@@ -690,6 +690,6 @@ static func get_script_property_names(script: Script, exclusion_list := {}) -> A
     for property in properties:
         if (property.usage & flags != 0 and
                 not exclusion_list.has(property.name)):
-            script_properties.push_back(property.name)
+            script_properties.append(property.name)
 
     return script_properties

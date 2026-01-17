@@ -112,7 +112,7 @@ func _server_remove_player(multiplayer_id: int) -> void:
 
 func on_player_added(player: Player) -> void:
     if G.network.is_client:
-        players.push_back(player)
+        players.append(player)
         players_by_id[player.multiplayer_id] = player
 
 
@@ -124,7 +124,7 @@ func on_player_removed(player: Player) -> void:
 
 func on_npc_added(npc: NPC) -> void:
     if G.network.is_client:
-        npcs.push_back(npc)
+        npcs.append(npc)
 
 
 func on_npc_removed(npc: NPC) -> void:
@@ -141,9 +141,9 @@ func _get_configuration_warnings() -> PackedStringArray:
     var warnings: PackedStringArray = []
 
     if not is_instance_valid(player_spawner):
-        warnings.push_back("player_spawner must be set")
+        warnings.append("player_spawner must be set")
     if not is_instance_valid(players_node):
-        warnings.push_back("players_node not set")
+        warnings.append("players_node not set")
 
     return warnings
 

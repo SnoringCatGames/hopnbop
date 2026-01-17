@@ -18,7 +18,7 @@ const CATEGORY_INTERACTION := StringName("PlayerInteraction")
 const CATEGORY_GAME_STATE := StringName("GameState")
 
 const _RAINBOW_BAR = \
-    "[color=red]=[/color][color=orange]=[/color][color=yellow]=[/color]" +\
+    "[color=red]=[/color][color=orange]=[/color][color=yellow]=[/color]" + \
 	"[color=green]=[/color][color=blue]=[/color][color=purple]=[/color]"
 const _REVERSE_RAINBOW_BAR = \
     "[color=purple]=[/color][color=blue]=[/color][color=green]=[/color]" + \
@@ -100,7 +100,7 @@ func print(
     message = _format_message(message, category)
 
     if is_queuing_messages:
-        _print_queue.push_back(message)
+        _print_queue.append(message)
     else:
         on_message.emit(message)
 

@@ -13,6 +13,9 @@ extends Node
 ## - Also, include --preview as an arg in each row.
 
 
+signal local_authority_added(state_from_client: PlayerStateFromClient)
+signal local_authority_removed(state_from_client: PlayerStateFromClient)
+
 var time := ServerTimeTracker.new()
 var connector := NetworkConnector.new()
 var frame_driver := NetworkFrameDriver.new()

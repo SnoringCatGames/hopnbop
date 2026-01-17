@@ -34,7 +34,7 @@ func update(
                     time_scaled,
                     is_additive)
             if !is_pressed:
-                non_pressed_keys.push_back(input_key)
+                non_pressed_keys.append(input_key)
 
         # Remove from the active set all keys that are no longer pressed.
         for input_key in non_pressed_keys:
@@ -56,7 +56,7 @@ func start_instructions(
             instructions,
             is_additive)
     playback.start(time_scaled)
-    _all_playback.push_back(playback)
+    _all_playback.append(playback)
     return playback
 
 

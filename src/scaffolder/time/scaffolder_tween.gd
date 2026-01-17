@@ -41,7 +41,7 @@ func step() -> void:
     var finished_sub_tweens := []
     for sub_tween in _active_sub_tweens:
         if sub_tween.get_is_finished():
-            finished_sub_tweens.push_back(sub_tween)
+            finished_sub_tweens.append(sub_tween)
     for sub_tween in finished_sub_tweens:
         sub_tween.end()
         _stop_sub_tween(sub_tween)
@@ -71,7 +71,7 @@ func start() -> bool:
 
     for sub_tween in _pending_sub_tweens:
         sub_tween.start()
-        _active_sub_tweens.push_back(sub_tween)
+        _active_sub_tweens.append(sub_tween)
     _pending_sub_tweens.clear()
 
     return true
@@ -176,7 +176,7 @@ func _interpolate(
         ease_name: String,
         delay: float,
         time_type: int) -> void:
-    _pending_sub_tweens.push_back(_SubTween.new(
+    _pending_sub_tweens.append(_SubTween.new(
             object,
             key,
             is_property,
@@ -189,8 +189,6 @@ func _interpolate(
 
 
 class _SubTween extends RefCounted:
-
-
     var object: Object
     var key: String
     var is_property: bool

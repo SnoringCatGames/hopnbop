@@ -156,21 +156,21 @@ func _log_new_press_or_release(
         just_released: bool) -> void:
     var current_presses_strs := []
     if pressed_jump:
-        current_presses_strs.push_back("J")
+        current_presses_strs.append("J")
     if pressed_up:
-        current_presses_strs.push_back("U")
+        current_presses_strs.append("U")
     if pressed_down:
-        current_presses_strs.push_back("D")
+        current_presses_strs.append("D")
     if pressed_left:
-        current_presses_strs.push_back("L")
+        current_presses_strs.append("L")
     if pressed_right:
-        current_presses_strs.push_back("R")
+        current_presses_strs.append("R")
     if pressed_attach:
-        current_presses_strs.push_back("G")
+        current_presses_strs.append("G")
     if pressed_face_left:
-        current_presses_strs.push_back("FL")
+        current_presses_strs.append("FL")
     if pressed_face_right:
-        current_presses_strs.push_back("FR")
+        current_presses_strs.append("FR")
     var current_presses_str: String = Utils.join(current_presses_strs)
 
     var velocity_string: String = \
@@ -207,7 +207,7 @@ static func get_debug_label_from_actions_bitmask(actions_bitmask: int) -> String
         var bit: int = pair[0]
         var text: String = pair[1]
         if actions_bitmask & (1 << bit):
-            action_strs.push_back(text)
+            action_strs.append(text)
         else:
-            action_strs.push_back("-")
+            action_strs.append("-")
     return Utils.join(action_strs)

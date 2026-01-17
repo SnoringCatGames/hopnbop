@@ -318,7 +318,7 @@ func _server_spawn_level(level_scene: PackedScene) -> void:
         ScaffolderLog.CATEGORY_GAME_STATE)
 
     var level: Level = level_scene.instantiate()
-    levels.push_back(level)
+    levels.append(level)
     %Levels.add_child(level)
     G.level = level
 
@@ -341,7 +341,7 @@ func _server_destroy_level(level: Level) -> void:
 func on_level_added(level: Level) -> void:
     if G.network.is_client:
         G.level = level
-        levels.push_back(level)
+        levels.append(level)
 
 
 func on_level_removed(level: Level) -> void:
