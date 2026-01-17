@@ -18,9 +18,8 @@ func _init() -> void:
 
 func process(character) -> bool:
     if character.actions.just_pressed_jump:
-        character.jump_count = 1
+        character.jump_sequence_count = 1
         character.just_triggered_jump = true
-        character.is_rising_from_jump = true
 
         character.velocity.y = character.movement_settings.jump_boost
 

@@ -41,8 +41,6 @@ func _process(_delta: float) -> void:
 
     if not is_instance_valid(player):
         player = G.get_player(multiplayer_id)
-        if is_instance_valid(player):
-            player.physics_processed.connect(_on_player_physics_processed)
 
     if not is_instance_valid(player_match_state):
         player_match_state = G.get_player_match_state(multiplayer_id)
@@ -68,7 +66,7 @@ func _process(_delta: float) -> void:
     %IsOnWall.text = str(player.is_on_wall())
 
 
-func _on_player_physics_processed() -> void:
+func _physics_process(_delta: float) -> void:
     if player.surfaces.just_changed_attachment_side:
         add_toast("Attached to %s" % SurfaceSide.get_string(player.surfaces.attachment_side))
 

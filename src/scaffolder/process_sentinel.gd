@@ -8,7 +8,6 @@ signal pre_process(delta: float)
 signal post_process(delta: float)
 
 
-
 var _pre_process_sentinel: _ProcessSentinelHelper
 var _post_process_sentinel: _ProcessSentinelHelper
 

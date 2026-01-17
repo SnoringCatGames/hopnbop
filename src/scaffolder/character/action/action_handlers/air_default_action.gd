@@ -21,9 +21,9 @@ func _init() -> void:
 func process(character) -> bool:
     # If the character falls off a wall or ledge, then that's considered the
     # first jump.
-    character.jump_count = max(character.jump_count, 1)
+    character.jump_sequence_count = max(character.jump_sequence_count, 1)
 
-    var is_first_jump: bool = character.jump_count == 1
+    var is_first_jump: bool = character.jump_sequence_count == 1
 
     # If we just fell off the bottom of a wall, cancel any velocity toward that
     # wall.
@@ -36,7 +36,7 @@ func process(character) -> bool:
 
     character.velocity = update_velocity_in_air(
             character.velocity,
-            character.last_delta_scaled,
+            G.time.get_scaled_network_frame_delta(),
             character.actions.pressed_jump,
             is_first_jump,
             character.surfaces.horizontal_acceleration_sign,
@@ -45,7 +45,6 @@ func process(character) -> bool:
     # Bouncing off ceiling.
     if character.surfaces.is_touching_ceiling and \
             !character.surfaces.is_attaching_to_ceiling:
-        character.is_rising_from_jump = false
         character.velocity.y = BOUNCE_OFF_CEILING_VELOCITY
 
         var is_ceiling_sloped_against_movement: bool = \

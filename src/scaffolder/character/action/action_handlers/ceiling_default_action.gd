@@ -9,7 +9,7 @@ const PRIORITY := 310
 
 
 func _init() -> void:
-    super(
+    super (
         NAME,
         TYPE,
         USES_RUNTIME_PHYSICS,
@@ -17,8 +17,7 @@ func _init() -> void:
 
 
 func process(character) -> bool:
-    character.jump_count = 0
-    character.is_rising_from_jump = false
+    character.jump_sequence_count = 0
     character.velocity.x = 0.0
     character.velocity.y = 0.0
 

@@ -5,9 +5,6 @@ extends CharacterBody2D
 # FIXME: [Logs]: Re-introduce some character, surface state, and action logs.
 
 
-signal physics_processed
-
-
 const _NORMAL_SURFACES_COLLISION_MASK_BIT := 1
 const _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT := 2
 const _WALK_THROUGH_WALLS_COLLISION_MASK_BIT := 4
@@ -25,26 +22,19 @@ var multiplayer_id: int:
         return state_from_server.multiplayer_id
 
 var start_position := Vector2.INF
-var previous_position := Vector2.INF
-
-var last_delta_scaled := ScaffolderTime.PHYSICS_TIME_STEP
 
 var just_triggered_jump := false
-var is_rising_from_jump := false
-var jump_count := 0
+var jump_sequence_count := 0
 
 var _current_max_horizontal_speed_multiplier := 1.0
 
 var surfaces := CharacterSurfaceState.new(self)
-
 var actions := CharacterActionState.new()
 
 # Array<CharacterActionSource>
 var _action_sources := []
 # Dictionary<String, bool>
 var _previous_actions_handlers_this_frame := {}
-
-var _character_action_source: CharacterActionSource
 
 var current_surface_max_horizontal_speed: float:
     get: return movement_settings.max_ground_horizontal_speed * \
@@ -107,18 +97,19 @@ func _ready() -> void:
 
     movement_settings.set_up()
 
+    start_position = position
+
     # Start facing right.
     surfaces.is_facing_right = true
     animator.face_right()
 
-    start_position = position
-
     state_from_server.position = position
     state_from_server.velocity = velocity
-    state_from_server.is_facing_right = surfaces.is_facing_right
+    state_from_server.surfaces = surfaces.bitmask
 
-    if !is_instance_valid(_character_action_source):
-        _init_player_controller_action_source()
+    if _action_sources.is_empty():
+        var player_action_source := PlayerActionSource.new(self, true)
+        _action_sources.push_back(player_action_source)
 
     # For move_and_slide.
     up_direction = Vector2.UP
@@ -130,17 +121,13 @@ func _ready() -> void:
         state_from_server.network_processed.connect(_network_process)
 
 
-func _init_player_controller_action_source() -> void:
-    assert(!is_instance_valid(_character_action_source))
-    self._character_action_source = PlayerActionSource.new(self, true)
-    _action_sources.push_back(_character_action_source)
-
-
 func _network_process() -> void:
     # FIXME: LEFT OFF HERE: ACTUALLY: Character process.
+    # - THINK ABOUT POSITION BEFORE/AFTER _network_process, and how that
+    #   corresponds to the networked state.
+    #   - I guess we shouldn't call _network_process for a frame if we already
+    #     know what the authoritative state is for the frame.
     pass
-
-    last_delta_scaled = G.time.get_scaled_network_frame_delta()
 
     _apply_movement()
 
@@ -153,17 +140,14 @@ func _network_process() -> void:
     _process_sounds()
     _update_collision_mask()
 
-    physics_processed.emit()
-
 
 func _apply_movement() -> void:
     var base_velocity := velocity
     # Since move_and_slide automatically accounts for delta, we need to
     # compensate for that in order to support our modified framerate.
-    var modified_velocity: Vector2 = base_velocity * G.time.get_combined_scale()
+    var scaled_velocity: Vector2 = base_velocity * G.time.get_combined_scale()
 
-    velocity = modified_velocity
-    max_slides = MovementSettings._MAX_SLIDES_DEFAULT
+    velocity = scaled_velocity
     move_and_slide()
 
     surfaces.update_touches()
@@ -255,6 +239,18 @@ func _process_animation() -> void:
 
 
 func _process_sounds() -> void:
+    # FIXME: LEFT OFF HERE: ACTUALLY: Refactor how instantaneous events are handled:
+    # - Instead of a just_triggered_jump like this, network
+    #   last_triggered_jump_time, and track locally the latest triggered jump
+    #   time that we've processed. If it's a new time (and less than some delay
+    #   threshold), then trigger the sound.
+    # - AND, I guess we should think of it the same way it terms of detecting
+    #   just-did-this for other behavior on non-authoritative sources.
+    #   - This will also be important for correctly handling, on the server,
+    #     when a player has pressed jump.
+    #     - The server could easily miss the just-pressed-jump frame and then
+    #       get a later jump-already-pressed frame, or EVEN WORSE, jump was only
+    #       pressed for one frame and the server missed it.
     if just_triggered_jump:
         play_sound("jump")
 
