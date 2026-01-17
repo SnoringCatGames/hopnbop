@@ -22,6 +22,9 @@ var npcs: Array[NPC] = []
 
 
 func _enter_tree() -> void:
+    if Engine.is_editor_hint():
+        return
+
     G.game_panel.on_level_added(self)
 
     if G.network.is_server:
@@ -35,14 +38,17 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
-    G.log.log_system_ready("Level")
-
-    %PlayerSpawner.set_multiplayer_authority(NetworkConnector.SERVER_ID)
-
     var warnings := _get_configuration_warnings()
     if not warnings.is_empty():
         G.error("Level._ready: %s (%s)" % [warnings[0], get_scene_file_path()])
         return
+
+    if Engine.is_editor_hint():
+        return
+
+    G.log.log_system_ready("Level")
+
+    %PlayerSpawner.set_multiplayer_authority(NetworkConnector.SERVER_ID)
 
     for player_scene in G.settings.player_scenes:
         player_spawner.add_spawnable_scene(player_scene.resource_path)
@@ -67,6 +73,8 @@ func _client_on_player_despawned(p_player: Node) -> void:
 
 
 func _exit_tree() -> void:
+    if Engine.is_editor_hint():
+        return
     G.game_panel.on_level_removed(self)
     if G.network.is_server:
         multiplayer.peer_connected.disconnect(_server_add_player)

@@ -77,9 +77,6 @@ var packed_state := []:
 
 var _is_packing_state_locally := false
 
-# Dictionary<String, bool>
-static var _excluded_property_names_for_packing := {}
-
 var _property_names_for_packing: Array[String] = []
 
 ## Which machine this state is associated with.
@@ -120,45 +117,23 @@ var root: Node:
     get: return get_node_or_null(root_path)
 
 
-static func set_up_static_state() -> void:
-    # FIXME: [Post-Rollback] Switch from property exclusion to inclusion.
-    # - Revisit this property-exclusion pattern.
-    # - Probably using an explicit inclusion list would be better
-    # - Could re-purpose _property_diff_rollback_thresholds for this?
-
-    var dummy := ReconcilableNetworkedState.new()
-    var names := Utils.get_script_property_names(dummy.get_script())
-    _excluded_property_names_for_packing = Utils.array_to_set(names)
-
-    # We also require child classes to include these properties, but we don't
-    # want to network them.
-    var excluded_properties := [
-            "_property_diff_rollback_thresholds",
-            "_excluded_properties",
-            ]
-    # We also let subclasses define custom property exclusions.
-    excluded_properties.append_array(_get_excluded_properties())
-    for property_name in excluded_properties:
-        _excluded_property_names_for_packing[property_name] = true
-
-
 func _init() -> void:
+    if Engine.is_editor_hint():
+        return
     G.ensure(Utils.check_whether_sub_classes_are_tools(self),
         "Subclasses of ReconcilableNetworkedState must be marked with @tool")
 
 
 func _enter_tree() -> void:
-    if _excluded_property_names_for_packing.is_empty():
-        set_up_static_state()
-
-    _property_names_for_packing = Utils.get_script_property_names(
-        get_script(),
-        _excluded_property_names_for_packing)
+    if Engine.is_editor_hint():
+        return
 
     G.network.frame_driver.add_networked_state(self)
 
 
 func _exit_tree() -> void:
+    if Engine.is_editor_hint():
+        return
     G.network.frame_driver.remove_networked_state(self)
 
 
@@ -203,12 +178,6 @@ func _sync_from_scene_state() -> void:
         "Abstract ReconcilableNetworkState._sync_from_scene_state is not implemented")
 
 
-static func _get_excluded_properties() -> Array[String]:
-    push_error(
-        "Abstract ReconcilableNetworkState._get_excluded_properties is not implemented")
-    return []
-
-
 func _update_replication_config() -> void:
     for property_path in replication_config.get_properties():
         replication_config.remove_property(property_path)
@@ -245,11 +214,15 @@ func _record_rollback_frame() -> void:
 
 
 func pack_state() -> void:
+    var thresholds: Dictionary = \
+        get("_synced_properties_and_rollback_diff_thresholds")
+    G.check(is_instance_valid(thresholds))
+    var property_names := thresholds.keys()
     var state := []
-    state.resize(_property_names_for_packing.size() + 1)
+    state.resize(property_names.size() + 1)
     state[0] = timestamp_usec
     var i := 1
-    for property_name in _property_names_for_packing:
+    for property_name in property_names:
         state[i] = get(property_name)
         i += 1
     _is_packing_state_locally = true
@@ -325,27 +298,20 @@ func _update_partner_state() -> void:
 func _get_configuration_warnings() -> PackedStringArray:
     var warnings: PackedStringArray = []
 
-    var thresholds = get("_property_diff_rollback_thresholds")
+    var thresholds = get("_synced_properties_and_rollback_diff_thresholds")
 
     if thresholds == null:
         warnings.push_back(
-            "A _property_diff_rollback_thresholds property must be defined on subclasses of ReconcilableNetworkedState")
+            "A _synced_properties_and_rollback_diff_thresholds property must be defined on subclasses of ReconcilableNetworkedState")
     elif not thresholds is Dictionary:
         warnings.push_back(
-            "The _property_diff_rollback_thresholds property must be a Dictionary")
+            "The _synced_properties_and_rollback_diff_thresholds property must be a Dictionary")
     else:
-        # Check if _property_diff_rollback_thresholds matches the other properties.
-        var properties_match := true
-        if thresholds.size() != _property_names_for_packing.size():
-            properties_match = false
-        else:
-            for property_name in _property_names_for_packing:
-                if not thresholds.has(property_name):
-                    properties_match = false
-                    break
-        if not properties_match:
-            warnings.push_back(
-                "The keys in _property_diff_rollback_thresholds must match the other properties defined on the subclass")
+        # Check if _synced_properties_and_rollback_diff_thresholds matches the other properties.
+        for property_name in thresholds.keys():
+            if get(property_name) == null:
+                warnings.push_back(
+                    "Key %s in _synced_properties_and_rollback_diff_thresholds does not match any class property" % property_name)
 
     if root_path.is_empty():
         warnings.push_back("root_path must be defined")

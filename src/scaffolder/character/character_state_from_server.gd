@@ -11,19 +11,11 @@ var velocity: Vector2
 ## A bitmask representing the player's surface state.
 var surfaces: int
 
-const _property_diff_rollback_thresholds := {
+const _synced_properties_and_rollback_diff_thresholds := {
     position = DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD,
     velocity = DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHELD,
     surfaces = 0,
 }
-
-const _excluded_properties := [
-    "character",
-]
-
-
-static func _get_excluded_properties() -> Array[String]:
-    return _excluded_properties
 
 
 func _sync_to_scene_state() -> void:
@@ -52,5 +44,5 @@ func _sync_from_scene_state() -> void:
     G.ensure(is_instance_valid(character))
 
     # FIXME: LEFT OFF HERE: ACTUALLY: Character process.
-    
+
     pass

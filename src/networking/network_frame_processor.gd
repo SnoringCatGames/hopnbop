@@ -17,10 +17,14 @@ var root: Node:
 
 
 func _enter_tree() -> void:
+    if Engine.is_editor_hint():
+        return
     G.network.frame_driver.add_network_frame_processor(self)
 
 
 func _exit_tree() -> void:
+    if Engine.is_editor_hint():
+        return
     G.network.frame_driver.remove_network_frame_processor(self)
 
 
