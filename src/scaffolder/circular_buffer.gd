@@ -1,0 +1,163 @@
+class_name CircularBuffer
+extends RefCounted
+## A fixed-size circular buffer (ring buffer) data structure.
+##
+## Elements are stored in a fixed-size array and wrap around when the buffer
+## is full. This is useful for rollback buffers, history tracking, and any
+## scenario where you need to maintain a sliding window of recent values.
+##
+## Usage:
+##   var buffer = CircularBuffer.new(10)
+##   buffer.push(value1)
+##   buffer.push(value2)
+##   var latest = buffer.get_latest()
+##   var oldest = buffer.get_oldest()
+##   var at_index = buffer.get_at(index)
+
+
+## The internal array storing buffer elements.
+var _data: Array = []
+
+## The maximum number of elements the buffer can hold.
+var _capacity: int = 0
+
+## The index in _data where the next element will be written.
+var _next_index: int = 0
+
+## The total number of elements that have been pushed (used for indexing).
+var _total_pushed: int = 0
+
+## The maximum number of elements the buffer can hold.
+var capacity: int:
+    get: return _capacity
+
+## The current number of valid elements in the buffer.
+var size: int:
+    get:
+        if is_full:
+            return _capacity
+        return _next_index
+
+## True if the buffer contains no elements.
+var is_empty: bool:
+    get: return _total_pushed == 0
+
+## True if the buffer has reached its capacity.
+var is_full: bool:
+    get: return _total_pushed >= _capacity
+
+
+func _init(p_capacity: int) -> void:
+    G.check(p_capacity > 0, "CircularBuffer capacity must be greater than 0")
+    _capacity = p_capacity
+    _data.resize(p_capacity)
+    for i in range(p_capacity):
+        _data[i] = null
+
+
+## - Adds a new element to the buffer. If the buffer is full, the oldest element
+##   is overwritten.
+## - Returns the index of the pushed element.
+func push(value: Variant) -> int:
+    var index := _total_pushed
+    _data[_next_index] = value
+    _next_index = (_next_index + 1) % _capacity
+    _total_pushed += 1
+    return index
+
+
+## - Gets the most recently pushed element.
+## - Returns null if the buffer is empty.
+func get_latest() -> Variant:
+    if is_empty:
+        return null
+    var index := (_next_index - 1 + _capacity) % _capacity
+    return _data[index]
+
+
+## - Gets the oldest element still in the buffer.
+## - Returns null if the buffer is empty.
+func get_oldest() -> Variant:
+    if is_empty:
+        return null
+    if is_full:
+        return _data[_next_index]
+    return _data[0]
+
+
+## - Gets an element by its absolute index (the index returned by push()).
+## - Returns null if the index is out of the valid range.
+func get_at(index: int) -> Variant:
+    if not is_valid_at(index):
+        return null
+    var internal_index := index % _capacity
+    return _data[internal_index]
+
+
+## - Sets an element at a specific index.
+## - Returns true if successful, false if the index is out of valid range.
+func set_at(index: int, value: Variant) -> bool:
+    if not is_valid_at(index):
+        return false
+    var internal_index := index % _capacity
+    _data[internal_index] = value
+    return true
+
+
+## Checks if an index is within the valid range of the buffer.
+func is_valid_at(index: int) -> bool:
+    if is_empty:
+        return false
+    if index < 0:
+        return false
+    if index >= _total_pushed:
+        return false
+    var oldest_valid_index := get_oldest_index()
+    return index >= oldest_valid_index
+
+
+## - Returns the index of the most recently pushed element.
+## - Returns -1 if the buffer is empty.
+func get_latest_index() -> int:
+    if is_empty:
+        return -1
+    return _total_pushed - 1
+
+
+## - Returns the index of the oldest element still in the buffer.
+## - Returns -1 if the buffer is empty.
+func get_oldest_index() -> int:
+    if is_empty:
+        return -1
+    if is_full:
+        return _total_pushed - _capacity
+    return 0
+
+
+## Clears all elements from the buffer.
+func clear() -> void:
+    for i in range(_capacity):
+        _data[i] = null
+    _next_index = 0
+    _total_pushed = 0
+    is_full = false
+
+
+## Returns an array of all valid elements, from oldest to newest.
+func to_array() -> Array:
+    var oldest_index := get_oldest_index()
+    var result: Array = []
+    for i in range(size):
+        result.append(get_at(oldest_index + i))
+    return result
+
+
+## - Iterates over all valid elements from oldest to newest.
+## - Calls the callback with (index, value) for each element.
+func for_each(callback: Callable) -> void:
+    var oldest_index := get_oldest_index()
+    var latest_index := get_latest_index()
+    if oldest_index < 0:
+        return
+    for index in range(oldest_index, latest_index + 1):
+        callback.call(index, get_at(index))
