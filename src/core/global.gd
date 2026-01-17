@@ -94,15 +94,27 @@ func warning(message = "", category := ScaffolderLog.CATEGORY_DEFAULT) -> void:
 
 
 func error(message = "", category := ScaffolderLog.CATEGORY_DEFAULT) -> void:
-    log.error(message, category)
+    log.error(message, category, false)
+
+
+func fatal(message = "", category := ScaffolderLog.CATEGORY_DEFAULT) -> void:
+    log.error(message, category, true)
 
 
 func ensure(condition: bool, message = "") -> bool:
     return log.ensure(condition, message)
 
 
+func ensure_valid(object, message = "") -> bool:
+    return log.ensure(is_instance_valid(object), message)
+
+
 func check(condition: bool, message = "") -> bool:
     return log.check(condition, message)
+
+
+func check_valid(object, message = "") -> bool:
+    return log.check(is_instance_valid(object), message)
 
 
 func check_is_server(method_name: String) -> bool:

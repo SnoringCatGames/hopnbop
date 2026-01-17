@@ -108,5 +108,5 @@ func get_screen_from_type(screen_type: ScreenType) -> Screen:
         ScreenType.GAME:
             return null
         _:
-            G.check(false, "ScreensMain.get_screen_from_type")
+            G.fatal("ScreensMain.get_screen_from_type")
             return null

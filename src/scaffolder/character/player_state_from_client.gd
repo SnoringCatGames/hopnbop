@@ -6,6 +6,13 @@ extends ReconcilableNetworkedState
 # FIXME: Override configuration warnings to check this is set.
 @export var player: Player
 
+var _state_from_server: CharacterStateFromServer:
+    get:
+        if is_instance_valid(_partner_state):
+            return _partner_state as CharacterStateFromServer
+        else:
+            return null
+
 ## A bitmask representing which of the player's actions are active.
 var actions: int
 
@@ -14,8 +21,14 @@ const _synced_properties_and_rollback_diff_thresholds := {
 }
 
 
+func _network_process() -> void:
+    G.fatal(
+        "_network_process should only be called on CharacterStateFromServer, not on PlayerStateFromClient.")
+
+
 func _sync_to_scene_state() -> void:
-    G.ensure(is_instance_valid(player))
+    if not G.ensure_valid(player):
+        return
 
     # FIXME: LEFT OFF HERE: ACTUALLY: Character process.
 
@@ -25,7 +38,8 @@ func _sync_to_scene_state() -> void:
 
 
 func _sync_from_scene_state() -> void:
-    G.ensure(is_instance_valid(player))
+    if not G.ensure_valid(player):
+        return
 
     # FIXME: LEFT OFF HERE: ACTUALLY: Character process.
 

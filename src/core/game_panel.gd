@@ -285,7 +285,7 @@ func server_end_game() -> void:
     G.check_is_server("NetworkMain.server_end_game")
     G.check(G.local_session.is_game_active,
         "GamePanel.server_end_game: Game is not active")
-    G.check(is_instance_valid(G.level),
+    G.check_valid(G.level,
         "GamePanel.server_end_game: Level is not valid")
 
     G.local_session.is_game_active = false

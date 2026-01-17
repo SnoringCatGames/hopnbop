@@ -6,6 +6,13 @@ extends ReconcilableNetworkedState
 # FIXME: Override configuration warnings to check this is set.
 @export var character: Character
 
+var _state_from_client: PlayerStateFromClient:
+    get:
+        if is_instance_valid(_partner_state):
+            return _partner_state as PlayerStateFromClient
+        else:
+            return null
+
 var position: Vector2
 var velocity: Vector2
 ## A bitmask representing the player's surface state.
@@ -18,8 +25,19 @@ const _synced_properties_and_rollback_diff_thresholds := {
 }
 
 
+func _network_process() -> void:
+    if not G.ensure_valid(character):
+        return
+
+    if:
+        pass
+    
+    super._network_process()
+
+
 func _sync_to_scene_state() -> void:
-    G.ensure(is_instance_valid(character))
+    if not G.ensure_valid(character):
+        return
 
     # FIXME: LEFT OFF HERE: ACTUALLY: Character process.
 
@@ -34,14 +52,15 @@ func _sync_to_scene_state() -> void:
     character.actions.previous_bitmask
     character.surfaces.previous_bitmask
 
-    # FIXME: LEFT OFF HERE: ACTUALLy: Add a utility for accessing previous frame
+    # FIXME: LEFT OFF HERE: ACTUALLY: Add a utility for accessing previous frame
     #        state (get_previous(property_name: String)).
 
     character.previous_position = position
 
 
 func _sync_from_scene_state() -> void:
-    G.ensure(is_instance_valid(character))
+    if not G.ensure_valid(character):
+        return
 
     # FIXME: LEFT OFF HERE: ACTUALLY: Character process.
 

@@ -31,7 +31,7 @@ func _init(
 func update(
         _actions: CharacterActionState,
         _time_scaled: float) -> void:
-    push_error("Abstract CharacterActionSource.update is not implemented")
+    G.fatal("Abstract CharacterActionSource.update is not implemented")
 
 
 static func update_for_explicit_key_event(

@@ -131,6 +131,40 @@ func _start_rollback() -> void:
 
 ## Simulate the current frame for all network-process-aware nodes.
 func _network_process() -> void:
+    # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY: --------------------
+    #
+    # ****
+    # - Need to conditionally resync scene state from buffer state before each call to _network_process.
+    #   - If the buffer state is authoritative, we don't overwrite it, and we overwrite the scene state.
+    #   - But we still may need to simulate and overwrite frames preceding that, in order to have state for other nodes to check during that frame.
+    #
+    # When iterating through _network_process, if for the given node, for the given frame:
+    #
+    # - client: is authoritative for actions:
+    #   - if frame has authoritative state_from_server:
+    #      - don't call network process
+    #   - if frame doesn't have authoritative state_from_server:
+    #     - call network process
+    #   - if the actions buffer frame already has state recorder for this frame, don't change it. Else, record the current actions.
+    #     - we may actually need to make sure to capture these actions separately from network process!
+    #       - in case we somehow skipped network process for the CURRENT latest frame.
+    #       - but we should decouple these anyway.
+    #       - will add a separate record actions function, and call it separately (before?) network process.
+    #       - that means the networked state class will need to have getters for both state from server and state from client (which is allowed to return null)
+    #       - ???? Check: am I registering both state from server and state from client nodes for iterating in frame driver? Probably should only iterate over state from server...
+    #
+    # - client: not authoritative for actions:
+    #   - if frame has authoritative state_from_server:
+    #     - don't call _network_process
+    #   - doesn't have authoritative state_from_server:
+    #     - call _network_process
+    #   - after possible _network_process, make sure action buffer frame is set or copy it over from the previous frame (label it predicted)
+    #
+    # - server:
+    #   - for actions: make sure we either have state for the current frame, or copy over state from the previous.
+    #   - for state from server: call network process every time on all nodes.
+    pass
+
     # Sync other scene state from the current network state.
     for node in _networked_state_nodes:
         node._pre_network_process()

@@ -25,6 +25,6 @@ func _init(
 
 
 func process(_character) -> bool:
-    push_error(
+    G.fatal(
             "Abstract CharacterActionHandler.process is not implemented")
     return false

@@ -168,13 +168,13 @@ func _post_network_process() -> void:
 
 ## This will update the surrounding scene state to match the networked state.
 func _sync_to_scene_state() -> void:
-    push_error(
+    G.fatal(
         "Abstract ReconcilableNetworkState._sync_to_scene_state is not implemented")
 
 
 ## This will update the networked state to match the surrounding scene state.
 func _sync_from_scene_state() -> void:
-    push_error(
+    G.fatal(
         "Abstract ReconcilableNetworkState._sync_from_scene_state is not implemented")
 
 
@@ -216,7 +216,7 @@ func _record_rollback_frame() -> void:
 func pack_state() -> void:
     var thresholds: Dictionary = \
         get("_synced_properties_and_rollback_diff_thresholds")
-    G.check(is_instance_valid(thresholds))
+    G.check_valid(thresholds)
     var property_names := thresholds.keys()
     var state := []
     state.resize(property_names.size() + 1)

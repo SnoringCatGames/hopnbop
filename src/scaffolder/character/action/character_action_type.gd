@@ -59,5 +59,5 @@ static func get_string(type: int) -> String:
         RELEASED_FACE_RIGHT:
             return "RELEASED_FACE_RIGHT"
         _:
-            push_error("CharacterActionType.get_string")
+            G.fatal("CharacterActionType.get_string")
             return "UNKNOWN"

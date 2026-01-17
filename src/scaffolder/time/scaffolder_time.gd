@@ -200,7 +200,7 @@ func _get_time_tracker_for_time_type(time_type: int) -> _TimeTracker:
         TimeType.PLAY_RENDER_FRAME_COUNT:
             return _play_time
         _:
-            push_error("Unrecognized time_type: %d" % time_type)
+            G.fatal("Unrecognized time_type: %d" % time_type)
             return null
 
 
@@ -227,7 +227,7 @@ func _get_elapsed_time_key_for_time_type(time_type: int) -> String:
         TimeType.PLAY_RENDER_FRAME_COUNT:
             return "render_frame_count"
         _:
-            push_error("Unrecognized time_type: %d" % time_type)
+            G.fatal("Unrecognized time_type: %d" % time_type)
             return ""
 
 

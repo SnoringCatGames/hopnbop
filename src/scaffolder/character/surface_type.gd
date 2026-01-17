@@ -23,7 +23,7 @@ static func get_string(type: int) -> String:
         OTHER:
             return "OTHER"
         _:
-            push_error("SurfaceType.get_string")
+            G.fatal("SurfaceType.get_string")
             return ""
 
 
@@ -40,7 +40,7 @@ static func get_prefix(type: int) -> String:
         OTHER:
             return "O"
         _:
-            push_error("SurfaceType.get_prefix")
+            G.fatal("SurfaceType.get_prefix")
             return ""
 
 
@@ -56,5 +56,5 @@ static func get_type_from_side(side: int) -> int:
         SurfaceSide.NONE:
             return AIR
         _:
-            push_error("SurfaceType.get_type_from_side")
+            G.fatal("SurfaceType.get_type_from_side")
             return -1

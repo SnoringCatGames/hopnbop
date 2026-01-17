@@ -490,7 +490,7 @@ func _update_attachment_state() -> void:
         SurfaceType.OTHER:
             is_descending_through_floors = character.actions.pressed_down
         _:
-            push_error("CharacterSurfaceState._update_attachment_state")
+            G.fatal("CharacterSurfaceState._update_attachment_state")
 
 
 func clear_current_state() -> void:

@@ -46,7 +46,7 @@ static func get_is_some_player_action_pressed() -> bool:
 static func validate_project_settings_input_actions() -> void:
     for action in ACTIONS_TO_INPUT_KEYS:
         if !InputMap.has_action(action):
-            push_error(
+            G.fatal(
                 "PlayerActionSource: Missing input action '" +
                 action +
                 "' in project settings")
