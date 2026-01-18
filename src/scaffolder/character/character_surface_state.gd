@@ -19,7 +19,7 @@ const BIT_ATTACHING_TO_RIGHT_WALL := 7
 const BIT_FACING_LEFT := 8
 
 ## The underlying state is stored as a bitmask.
-## 
+##
 ## Bit layout:
 ##   0: is_touching_floor
 ##   1: is_touching_ceiling
@@ -288,7 +288,7 @@ func _get_surface_type_from_mask(mask: int) -> int:
 func update_touches() -> void:
     is_touching_floor = character.is_on_floor()
     is_touching_ceiling = character.is_on_ceiling()
-    
+
     if character.is_on_wall():
         if character.get_wall_normal().x > 0:
             is_touching_left_wall = true
@@ -516,10 +516,10 @@ func clear_current_state() -> void:
 
 func force_boost() -> void:
     var previous_horizontal_facing_sign := horizontal_facing_sign
-    
+
     # Save current state as previous so just_* getters work correctly
     previous_bitmask = bitmask
-    
+
     # Clear current state
     bitmask = 0
     horizontal_facing_sign = previous_horizontal_facing_sign

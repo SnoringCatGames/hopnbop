@@ -52,10 +52,13 @@ var packed_state := []:
         packed_state = value
         if not _is_packing_state_locally:
             _unpack_networked_state()
+            frame_authority = FrameAuthority.AUTHORITATIVE
 
 var _is_packing_state_locally := false
 
 var _property_names_for_packing: Array[String] = []
+# Dictionary<String, int>
+var _property_name_to_pack_index := {}
 
 ## Which machine this state is associated with.
 ##
@@ -130,7 +133,16 @@ func _ready() -> void:
     if Engine.is_editor_hint():
         return
 
+    _parse_property_names()
     update_authority()
+
+
+func _parse_property_names() -> void:
+    _property_names_for_packing = \
+        get("_synced_properties_and_rollback_diff_thresholds").keys()
+    for i in range(_property_names_for_packing.size()):
+        var property_name := _property_names_for_packing[i]
+        _property_name_to_pack_index[property_name] = i
 
 
 func update_authority() -> void:
@@ -145,7 +157,23 @@ func _network_process() -> void:
 func _pre_network_process() -> void:
     timestamp_usec = G.network.server_frame_time_usec
 
-    _sync_to_scene_state()
+    # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY, ACTUALLY: ----------------
+    # - NO! Update this to sync to the state from the _previous_ frame.
+    #   - Implement _get_previous_frame_state()
+    #     - Use G.network.frame_driver.server_frame_index
+    #   - JUST ACCESSING get_previous is not sufficient! Need to backfill.
+    # - After finishing hooking up all the parts, walk through each bit and
+    #  double-check if we're setting and getting "latest" state from the buffer
+    #  at the correct times (before and after the simulation). Like, should we
+    #  actually access get_latest() instead of get_previous() from the buffer
+    #  here?
+
+    var frame_state: Array = _rollback_buffer.get_at(
+        G.network.frame_driver.server_frame_index - 1)
+    var previous_frame_state: Array = _rollback_buffer.get_at(
+        G.network.frame_driver.server_frame_index - 2)
+    _unpack_rollback_state(frame_state)
+    _sync_to_scene_state(previous_frame_state)
 
 
 ## This is called after _network_process has been called on all relevant nodes.
@@ -161,7 +189,7 @@ func _get_default_values() -> Array:
 
 
 ## This will update the surrounding scene state to match the networked state.
-func _sync_to_scene_state() -> void:
+func _sync_to_scene_state(previous_state: Array) -> void:
     G.fatal(
         "Abstract ReconcilableNetworkState._sync_to_scene_state is not implemented")
 
@@ -233,14 +261,10 @@ func _has_authoritative_state_for_current_frame() -> bool:
 
 
 func _pack_networked_state() -> void:
-    var thresholds: Dictionary = \
-        get("_synced_properties_and_rollback_diff_thresholds")
-    G.check_valid(thresholds)
-    var property_names := thresholds.keys()
     var state := []
-    state.resize(property_names.size() + 1)
+    state.resize(_property_names_for_packing.size() + 1)
     var i := 0
-    for property_name in property_names:
+    for property_name in _property_names_for_packing:
         state[i] = get(property_name)
         i += 1
     state[i] = timestamp_usec
@@ -265,6 +289,14 @@ func _unpack_networked_state() -> void:
     timestamp_usec = packed_state[i]
 
     received_network_state.emit()
+
+
+func _unpack_rollback_state(frame_state: Array) -> void:
+    var i := 0
+    for property_name in _property_names_for_packing:
+        set(property_name, frame_state[i])
+        i += 1
+    frame_authority = packed_state[i]
 
 
 func _update_partner_state() -> void:

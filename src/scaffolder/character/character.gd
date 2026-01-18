@@ -23,6 +23,9 @@ var multiplayer_id: int:
 
 var start_position := Vector2.INF
 
+var previous_position := Vector2.INF
+var previous_velocity := Vector2.INF
+
 var just_triggered_jump := false
 var jump_sequence_count := 0
 

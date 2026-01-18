@@ -42,7 +42,7 @@ func has_at(index: int) -> bool:
 
     # Calculate the oldest theoretically accessible index.
     # This is limited by the buffer capacity.
-    var oldest_accessible_index := maxi(-1, _total_pushed - _capacity)
+    var oldest_accessible_index := maxi(-2, _total_pushed - _capacity)
     return index >= oldest_accessible_index
 
 

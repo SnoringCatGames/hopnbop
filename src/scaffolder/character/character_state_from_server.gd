@@ -89,30 +89,20 @@ func _network_process() -> void:
     super._network_process()
 
 
-func _sync_to_scene_state() -> void:
+func _sync_to_scene_state(previous_state: Array) -> void:
     if not G.ensure_valid(character):
         return
-
-    # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY, ACTUALLY: ----------------
-    # - NO! Update this to sync to the state from the _previous_ frame.
-    #   - Implement _get_previous_frame_state()
-    #     - Use G.network.frame_driver.server_frame_index
 
     character.position = position
     character.velocity = velocity
     character.surfaces.bitmask = surfaces
 
-    # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY: ----------
-    # - Also sync surface state.
-    # - Also sync _previous_ state for all of these properties.
-    # - Also remove all previous logic that used to update previous state.
-    character.actions.previous_bitmask
-    character.surfaces.previous_bitmask
-
-    # FIXME: LEFT OFF HERE: ACTUALLY: Add a utility for accessing previous frame
-    #        state (get_previous(property_name: String)).
-
-    character.previous_position = position
+    character.previous_position = \
+        previous_state[_property_name_to_pack_index.position]
+    character.previous_velocity = \
+        previous_state[_property_name_to_pack_index.velocity]
+    character.surfaces.previous_bitmask = \
+        previous_state[_property_name_to_pack_index.surfaces]
 
 
 func _sync_from_scene_state() -> void:
