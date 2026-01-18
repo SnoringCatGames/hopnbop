@@ -59,6 +59,9 @@ func get_at(index: int) -> Variant:
 
 ## Back-fill missing frames using the last recorded state.
 func backfill_to_with_last_state(target_index: int) -> void:
+    if get_latest_index() >= target_index:
+        return
+
     var fill_state: Array = get_at(get_latest_index())
 
     # If the gap is larger than capacity, just reinitialize the entire array.

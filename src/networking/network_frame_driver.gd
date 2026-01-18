@@ -54,18 +54,34 @@ func _pre_physics_process(_delta: float) -> void:
 
 ## If we bucket server time into discrete frames, this would be the index of the
 ## frame corresponding to the given time.
-func get_server_frame_index(p_server_time_usec: int) -> int:
-    var time_sec := p_server_time_usec / 1000000.0
+func get_frame_index_from_time(p_time_usec: int) -> int:
+    var time_sec := p_time_usec / 1000000.0
     return floori(fmod(time_sec, TARGET_NETWORK_TIME_STEP_SEC))
+
+
+func get_time_from_frame_index(p_frame_index: int) -> int:
+    return floori(p_frame_index * TARGET_NETWORK_TIME_STEP_SEC + \
+        TARGET_NETWORK_TIME_STEP_SEC * 0.5)
 
 
 func _update_server_frame_time() -> void:
     var server_time_usec := G.network.server_time_usec_not_frame_aligned
     var frame_start_time_sec := \
-        get_server_frame_index(server_time_usec) * TARGET_NETWORK_TIME_STEP_SEC
-    server_frame_time_usec = floori(
+        get_frame_index_from_time(server_time_usec) * \
+        TARGET_NETWORK_TIME_STEP_SEC
+
+    var next_server_frame_time_usec := floori(
         frame_start_time_sec + TARGET_NETWORK_TIME_STEP_SEC * 0.5)
-    server_frame_index = get_server_frame_index(server_frame_time_usec)
+    var next_server_frame_index := \
+        get_frame_index_from_time(server_frame_time_usec)
+
+    # If our tracking of server time has skewed enough that we're skipping a
+    # frame, then we need to fast-forward the system.
+    if next_server_frame_index > server_frame_index + 1:
+        fast_forward(next_server_frame_index)
+
+    server_frame_time_usec = next_server_frame_time_usec
+    server_frame_index = next_server_frame_index
 
 
 func add_networked_state(node: ReconcilableNetworkedState) -> void:
@@ -185,3 +201,8 @@ func _network_process() -> void:
     # Sync the current network state from other scene state.
     for node in _networked_state_nodes:
         node._post_network_process()
+
+
+func fast_forward(new_frame_index: int) -> void:
+    # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY, ACTUALLY: Fast forward
+    pass

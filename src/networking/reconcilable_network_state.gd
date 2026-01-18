@@ -27,8 +27,8 @@ const DEFAULT_NORMAL_DIFF_ROLLBACK_THRESHELD := 0.05
 
 const _MULTIPLAYER_ID_PROPERTY_NAME := "multiplayer_id"
 
-## The estimated server time, in microseconds, when this state occurred.
-var timestamp_usec := 0
+## The estimated server frame, when this state occurred.
+var timestamp_index := 0
 
 ## This identifies whether this data originated from an authoritative source.
 var frame_authority := FrameAuthority.UNKNOWN
@@ -50,9 +50,20 @@ var is_client_authoritative: bool:
 var packed_state := []:
     set(value):
         packed_state = value
-        if not _is_packing_state_locally:
-            _unpack_networked_state()
-            frame_authority = FrameAuthority.AUTHORITATIVE
+        if _is_packing_state_locally:
+            return
+
+        _unpack_networked_state()
+        frame_authority = FrameAuthority.AUTHORITATIVE
+
+        # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY: Record in buffer.
+
+        if _rollback_buffer.get_latest_index() < timestamp_index - 1:
+            # If we have skipped frames, we need to force the entire system to
+            # fast-forward.
+            G.network.frame_driver.fast_forward(timestamp_index - 1)
+
+        received_network_state.emit()
 
 var _is_packing_state_locally := false
 
@@ -155,32 +166,36 @@ func _network_process() -> void:
 
 ## This is called before _network_process is called on any nodes.
 func _pre_network_process() -> void:
-    timestamp_usec = G.network.server_frame_time_usec
+    timestamp_index = G.network.server_frame_index
 
     # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY, ACTUALLY: ----------------
+    # - If we ever get a FUTURE frame from the server (something we haven't
+    #   actually have an index in the buffer for yet), then we need to tell the
+    #   driver to force every node to catch up to that time.
     # - After finishing hooking up all the parts, walk through each bit and
-    #  double-check if we're setting and getting "latest" state from the buffer
-    #  at the correct times (before and after the simulation). Like, should we
-    #  actually access get_latest() instead of get_previous() from the buffer
-    #  here?
+    #   double-check if we're setting and getting "latest" state from the buffer
+    #   at the correct times (before and after the simulation). Like, should we
+    #   actually access get_latest() instead of get_previous() from the buffer
+    #   here?
 
-    # If we have somehow skipped frames (e.g., if the server sent us state
-    # timestamped a couple frames in the future), we may need to backfill.
-    _rollback_buffer.backfill_to_with_last_state(
-        G.network.frame_driver.server_frame_index - 1)
+    # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY, ACTUALLY: ----------------
+    # - NOT G.network.frame_driver.server_frame_index, but incoming
+    #   authoritative frame state.
 
-    var frame_state: Array = _rollback_buffer.get_at(
-        G.network.frame_driver.server_frame_index - 1)
-    var previous_frame_state: Array = _rollback_buffer.get_at(
-        G.network.frame_driver.server_frame_index - 2)
-    _unpack_rollback_state(frame_state)
+    G.check(_rollback_buffer.get_latest_index() >= timestamp_index - 1,
+        "Rollback buffer does not have state for the expected frame index")
+
+    var frame_state: Array = _rollback_buffer.get_at(timestamp_index - 1)
+    var previous_frame_state: Array = \
+        _rollback_buffer.get_at(timestamp_index - 2)
+    _unpack_buffer_state(frame_state)
     _sync_to_scene_state(previous_frame_state)
 
 
 ## This is called after _network_process has been called on all relevant nodes.
 func _post_network_process() -> void:
     _sync_from_scene_state()
-    _record_rollback_frame()
+    _pack_buffer_state()
 
 
 func _get_default_values() -> Array:
@@ -224,8 +239,10 @@ func _set_up_rollback_buffer() -> void:
 ## This does _not_ record state in the packed_state array for syncing across the
 ## network. That step is handled separately, after any rollback extrapolation
 ## simulations are finished.
-func _record_rollback_frame() -> void:
-    # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY: Check this...
+func _pack_buffer_state() -> void:
+    # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY: HERE:
+    # - Check this...
+    # - CALL THIS FROM network-state setter.
     pass
 
     _pack_networked_state()
@@ -239,10 +256,6 @@ func _record_rollback_frame() -> void:
     # FIXME: LEFT OFF HERE: ACTUALLY: When updating frame buffer state later,
     #   reference the preexisting frame array, rather than instantiating a new
     #   one.
-
-    # FIXME: LEFT OFF HERE: ACTUALLY: When updating buffer frame with just-synced
-    #        packed_state from the server, make sure we backfill as needed there
-    #        too.
 
     _rollback_buffer.backfill_to_with_last_state(
         G.network.frame_driver.server_frame_index - 1)
@@ -268,7 +281,8 @@ func _pack_networked_state() -> void:
     for property_name in _property_names_for_packing:
         state[i] = get(property_name)
         i += 1
-    state[i] = timestamp_usec
+    # We send time values across the network, but we store indices.
+    state[i] = G.network.frame_driver.get_time_from_frame_index(timestamp_index)
     _is_packing_state_locally = true
     packed_state = state
     _is_packing_state_locally = false
@@ -287,17 +301,18 @@ func _unpack_networked_state() -> void:
     for property_name in _property_names_for_packing:
         set(property_name, packed_state[i])
         i += 1
-    timestamp_usec = packed_state[i]
+    # We send time values across the network, but we store indices.
+    var timestamp_usec: int = packed_state[i]
+    timestamp_index = \
+        G.network.frame_driver.get_frame_index_from_time(timestamp_usec)
 
-    received_network_state.emit()
 
-
-func _unpack_rollback_state(frame_state: Array) -> void:
+func _unpack_buffer_state(frame_state: Array) -> void:
     var i := 0
     for property_name in _property_names_for_packing:
         set(property_name, frame_state[i])
         i += 1
-    frame_authority = packed_state[i]
+    frame_authority = frame_state[i]
 
 
 func _update_partner_state() -> void:
