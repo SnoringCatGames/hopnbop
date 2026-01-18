@@ -158,15 +158,16 @@ func _pre_network_process() -> void:
     timestamp_usec = G.network.server_frame_time_usec
 
     # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY, ACTUALLY: ----------------
-    # - NO! Update this to sync to the state from the _previous_ frame.
-    #   - Implement _get_previous_frame_state()
-    #     - Use G.network.frame_driver.server_frame_index
-    #   - JUST ACCESSING get_previous is not sufficient! Need to backfill.
     # - After finishing hooking up all the parts, walk through each bit and
     #  double-check if we're setting and getting "latest" state from the buffer
     #  at the correct times (before and after the simulation). Like, should we
     #  actually access get_latest() instead of get_previous() from the buffer
     #  here?
+
+    # If we have somehow skipped frames (e.g., if the server sent us state
+    # timestamped a couple frames in the future), we may need to backfill.
+    _rollback_buffer.backfill_to_with_last_state(
+        G.network.frame_driver.server_frame_index - 1)
 
     var frame_state: Array = _rollback_buffer.get_at(
         G.network.frame_driver.server_frame_index - 1)
@@ -189,7 +190,7 @@ func _get_default_values() -> Array:
 
 
 ## This will update the surrounding scene state to match the networked state.
-func _sync_to_scene_state(previous_state: Array) -> void:
+func _sync_to_scene_state(_previous_state: Array) -> void:
     G.fatal(
         "Abstract ReconcilableNetworkState._sync_to_scene_state is not implemented")
 
@@ -244,7 +245,7 @@ func _record_rollback_frame() -> void:
     #        too.
 
     _rollback_buffer.backfill_to_with_last_state(
-        G.network.frame_driver.server_frame_index)
+        G.network.frame_driver.server_frame_index - 1)
 
     _rollback_buffer.set_at(
         G.network.frame_driver.server_frame_index,

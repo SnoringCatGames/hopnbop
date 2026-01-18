@@ -63,7 +63,7 @@ func backfill_to_with_last_state(target_index: int) -> void:
 
     # If the gap is larger than capacity, just reinitialize the entire array.
     if target_index - get_latest_index() > _capacity:
-        _reinitialize_data(fill_state, target_index - 1)
+        _reinitialize_data(fill_state, target_index)
     else:
         _backfill_to(target_index, fill_state)
 
@@ -71,6 +71,6 @@ func backfill_to_with_last_state(target_index: int) -> void:
 ## Back-fill any missing frames in the buffer up to (but not including)
 ## target_index.
 func _backfill_to(target_index: int, fill_state: Variant) -> void:
-    while get_latest_index() < target_index - 1:
+    while get_latest_index() < target_index:
         var next_index := get_latest_index() + 1
         set_at(next_index, fill_state.duplicate())
