@@ -195,7 +195,7 @@ func _handle_new_authoritative_state() -> void:
         else:
             G.warning("Fast-forwarding due to future state from server",
                 ScaffolderLog.CATEGORY_NETWORK_SYNC)
-            # FIXME: LEFT OFF HERE: Force-update the server time tracker.
+            # FIXME: LEFT OFF HERE: NOW: Force-update the server time tracker.
             #G.network.time.
             G.network.frame_driver.fast_forward(state_frame_index - 1)
 

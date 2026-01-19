@@ -2,7 +2,7 @@ class_name PerfTracker
 extends PanelContainer
 
 
-# FIMXE: LEFT OFF HERE: ACTUALLY, ACTUALLY: FPS visualization.
+# FIMXE: LEFT OFF HERE: NOW: FPS visualization.
 # - Log warnings when any metric drops below a threshold.
 
 # TODO: Check how network process compares to physics process (both are

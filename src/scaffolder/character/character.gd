@@ -241,7 +241,7 @@ func _process_animation() -> void:
 
 
 func _process_sounds() -> void:
-    # FIXME: LEFT OFF HERE: ACTUALLY: Refactor how instantaneous events are handled:
+    # FIXME: LEFT OFF HERE: NOW: Refactor how instantaneous events are handled:
     # - Instead of a just_triggered_jump like this, network
     #   last_triggered_jump_time, and track locally the latest triggered jump
     #   time that we've processed. If it's a new time (and less than some delay

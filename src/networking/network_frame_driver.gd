@@ -2,7 +2,7 @@ class_name NetworkFrameDriver
 extends Node
 
 
-# FIXME: LEFT OFF HERE: ACTUALLY: Review logic.
+# FIXME: LEFT OFF HERE: ACTUALLY: Review and debug.
 #
 # - Get things compiling and try to hand-test a tad before asking the AI.
 #   - Add if-statements, guarding on client/server, with a pass, everywhere, to
@@ -20,6 +20,8 @@ extends Node
 # - Also offer any feedback on potential design improvements or performance improvements.
 #
 # - Also ask Opus to research recommended test frameworks for Godot, and to then design some integration tests for my networking systems, in particular the client prediction and rollback reconciliation systems
+#
+# - Ask the AI to write a detailed markdown document explaining the overall architecture, enumerating the networking systems, and describing in detail how they work together to implement client prediction, prediction error detection, and reconciliation with rollback and re-process. Include a section at the end steps to implement networking in a new game using this framework.
 #
 # - Ask for tips to hand-verify correctness of the overall system, and any particularly important aspects to test.
 #
