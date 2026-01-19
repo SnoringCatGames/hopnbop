@@ -32,7 +32,7 @@ class TestInitialization:
 
         # All slots should be initialized with default_state.
         for i in range(5):
-            var state := buffer.get_at(i)
+            var state: Array = buffer.get_at(i)
             assert_not_null(state)
             assert_eq(state[0], 100)
             assert_eq(state[1], 200)
@@ -50,7 +50,7 @@ class TestInitialization:
 
         # Check that arrays were allocated from pool.
         for i in range(3):
-            var state := buffer.get_at(i)
+            var state: Array = buffer.get_at(i)
             assert_true(state is Array)
             assert_eq(state.size(), 3)
 
@@ -95,7 +95,7 @@ class TestNegativeIndices:
         var default_state := [100, 200, 0]
         var buffer := RollbackBuffer.new(5, 0, default_state)
 
-        var state := buffer.get_at(-1)
+        var state: Array = buffer.get_at(-1)
         assert_not_null(state)
         assert_eq(state[0], 100)
         assert_eq(state[1], 200)
@@ -104,7 +104,7 @@ class TestNegativeIndices:
         var default_state := [50, 75, 0]
         var buffer := RollbackBuffer.new(5, 0, default_state)
 
-        var state := buffer.get_at(-2)
+        var state: Array = buffer.get_at(-2)
         assert_not_null(state)
         assert_eq(state[0], 50)
         assert_eq(state[1], 75)
@@ -134,8 +134,8 @@ class TestBackfill:
         buffer.backfill_to_with_last_state(8)
 
         # Frames 6 and 7 should now exist with state from frame 5.
-        var state_6 := buffer.get_at(6)
-        var state_7 := buffer.get_at(7)
+        var state_6: Array = buffer.get_at(6)
+        var state_7: Array = buffer.get_at(7)
 
         assert_not_null(state_6)
         assert_not_null(state_7)
@@ -179,7 +179,7 @@ class TestBackfill:
         assert_eq(buffer.get_latest_index(), 100)
 
         # State at frame 100 should be based on frame 0.
-        var state_100 := buffer.get_at(100)
+        var state_100: Array = buffer.get_at(100)
         assert_eq(state_100[0], 999)
         assert_eq(state_100[1], 888)
         assert_eq(state_100[2], MockFrameAuthority.PREDICTED)
@@ -205,7 +205,7 @@ class TestSetAndGet:
 
         buffer.set_at(5, state)
 
-        var retrieved := buffer.get_at(5)
+        var retrieved: Array = buffer.get_at(5)
         assert_eq(retrieved[0], 42)
         assert_eq(retrieved[1], 84)
         assert_eq(retrieved[2], MockFrameAuthority.AUTHORITATIVE)
@@ -215,7 +215,7 @@ class TestSetAndGet:
         var buffer := RollbackBuffer.new(5, 10, default_state)
 
         # Frame 0 is way out of range (oldest accessible is 10 - 5 = 5).
-        var state := buffer.get_at(0)
+        var state: Array = buffer.get_at(0)
         assert_null(state)
 
     func test_has_at_respects_buffer_capacity():
@@ -253,7 +253,7 @@ class TestAppend:
 
         assert_eq(buffer.get_latest_index(), latest_before + 1)
 
-        var retrieved := buffer.get_latest()
+        var retrieved: Array = buffer.get_latest()
         assert_eq(retrieved[0], 123)
         assert_eq(retrieved[1], 456)
 
@@ -273,7 +273,7 @@ class TestAppend:
         # so 5 pushes + initial = 6 total, oldest = 6 - 3 = 3).
         assert_eq(buffer.get_oldest_index(), 3)
 
-        var oldest := buffer.get_oldest()
+        var oldest: Array = buffer.get_oldest()
         assert_eq(oldest[0], 30)
         assert_eq(oldest[1], 60)
 

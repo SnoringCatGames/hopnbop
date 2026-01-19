@@ -64,8 +64,8 @@ class TestClientPrediction:
 
         # States should match for overlapping frames.
         for i in range(6):
-            var client_state := client_buffer.get_at(i)
-            var server_state := server_buffer.get_at(i)
+            var client_state: Array = client_buffer.get_at(i)
+            var server_state: Array = server_buffer.get_at(i)
             assert_almost_eq(
                 client_state[0],
                 server_state[0],
@@ -86,7 +86,7 @@ class TestClientPrediction:
             state[4] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
             client_buffer.set_at(i, state)
 
-        var client_pos_10_before := client_buffer.get_at(10)[0]
+        var client_pos_10_before: Vector2 = client_buffer.get_at(10)[0]
 
         # Server sends correction for frame 5 with different velocity.
         var server_correction := ArrayPool.acquire(5)
@@ -102,7 +102,7 @@ class TestClientPrediction:
 
         # Re-simulate frames 6-10 with corrected velocity.
         for i in range(6, 11):
-            var prev_state := client_buffer.get_at(i - 1)
+            var prev_state: Array = client_buffer.get_at(i - 1)
             var new_state := ArrayPool.acquire(5)
             new_state[0] = prev_state[0] + prev_state[2] * delta
             new_state[1] = 0.0
@@ -111,7 +111,7 @@ class TestClientPrediction:
             new_state[4] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
             client_buffer.set_at(i, new_state)
 
-        var client_pos_10_after := client_buffer.get_at(10)[0]
+        var client_pos_10_after: Vector2 = client_buffer.get_at(10)[0]
 
         # Client's frame 10 position should have changed.
         assert_ne(
@@ -156,7 +156,7 @@ class TestOutOfOrderPackets:
         buffer.set_at(10, server_state_10)
 
         # Verify correction was applied.
-        var corrected := buffer.get_at(10)
+        var corrected: Array = buffer.get_at(10)
         assert_eq(corrected[0], 55.0)
         assert_eq(
             corrected[2],
@@ -245,9 +245,9 @@ class TestMultipleClientsScenario:
 
         # All should have consistent state for frames they share.
         for i in range(6):
-            var server_state := server_buffer.get_at(i)
-            var client1_state := client1_buffer.get_at(i)
-            var client2_state := client2_buffer.get_at(i)
+            var server_state: Array = server_buffer.get_at(i)
+            var client1_state: Array = client1_buffer.get_at(i)
+            var client2_state: Array = client2_buffer.get_at(i)
 
             assert_eq(server_state[0], client1_state[0])
             assert_eq(server_state[0], client2_state[0])
@@ -267,7 +267,7 @@ class TestStateDivergenceDetection:
         var server_state := [105.0, 50.0, 10.0]
 
         # Position difference of 5.0 should trigger mismatch (threshold 1.0).
-        var pos_diff := abs(client_state[0] - server_state[0])
+        var pos_diff := absf(client_state[0] - server_state[0])
         assert_gt(pos_diff, 1.0, "Should detect position divergence")
 
     func test_ignores_small_position_differences():
@@ -276,7 +276,7 @@ class TestStateDivergenceDetection:
 
         # Position difference of 0.5 should not trigger mismatch
         # (threshold 1.0).
-        var pos_diff := abs(client_state[0] - server_state[0])
+        var pos_diff := absf(client_state[0] - server_state[0])
         assert_lt(
             pos_diff,
             1.0,
@@ -289,7 +289,7 @@ class TestStateDivergenceDetection:
 
         # Velocity difference of 2.0 should trigger mismatch
         # (threshold 0.5).
-        var vel_diff := abs(client_state[2] - server_state[2])
+        var vel_diff := absf(client_state[2] - server_state[2])
         assert_gt(vel_diff, 0.5, "Should detect velocity divergence")
 
 
@@ -325,7 +325,7 @@ class TestFrameCatchup:
 
         # Backfilled frames should use last known state.
         for i in range(6, 21):
-            var state := buffer.get_at(i)
+            var state: Array = buffer.get_at(i)
             assert_not_null(state)
             # Should be marked as PREDICTED.
             assert_eq(
@@ -353,5 +353,5 @@ class TestFrameCatchup:
         # All frames should be present.
         for frame_idx in frames_to_update:
             assert_true(buffer.has_at(frame_idx))
-            var state := buffer.get_at(frame_idx)
+            var state: Array = buffer.get_at(frame_idx)
             assert_eq(state[0], float(frame_idx * 10))

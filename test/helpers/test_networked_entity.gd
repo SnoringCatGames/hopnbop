@@ -1,3 +1,4 @@
+@tool
 class_name TestNetworkedEntity
 extends ReconcilableNetworkedState
 ## A simple test entity for integration testing networked state and rollback.

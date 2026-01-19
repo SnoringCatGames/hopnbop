@@ -95,8 +95,8 @@ class TestFrameSynchronization:
         assert_eq(server_buffer.get_latest_index(), 9)
 
         # Frame indices should match.
-        var client_latest := client_buffer.get_latest()
-        var server_latest := server_buffer.get_latest()
+        var client_latest: Array = client_buffer.get_latest()
+        var server_latest: Array = server_buffer.get_latest()
         assert_eq(client_latest[2], server_latest[2])
 
     func test_handles_clock_offset():
@@ -198,7 +198,7 @@ class TestLatencyScenarios:
         # All frames should be present.
         for frame in packet_frames:
             assert_true(buffer.has_at(frame))
-            var state := buffer.get_at(frame)
+            var state: Array = buffer.get_at(frame)
             assert_eq(state[0], float(frame * 10))
 
 
@@ -247,7 +247,7 @@ class TestFrameSkipDetection:
         # Verify all frames 6-14 were backfilled.
         for i in range(6, 15):
             assert_true(buffer.has_at(i), "Frame %d should be backfilled" % i)
-            var state := buffer.get_at(i)
+            var state: Array = buffer.get_at(i)
             # Should have last known state.
             assert_eq(state[0], float(5 * 5))
             # Should be marked PREDICTED.

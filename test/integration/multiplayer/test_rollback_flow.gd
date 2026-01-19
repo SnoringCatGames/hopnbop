@@ -45,7 +45,7 @@ class TestFrameSimulation:
             frame_index += 1
 
         # Verify final state.
-        var final_state := buffer.get_at(29)
+        var final_state: Array = buffer.get_at(29)
         assert_not_null(final_state)
         assert_almost_eq(final_state[0], 29 * velocity * delta, 0.1)
 
@@ -66,7 +66,7 @@ class TestFrameSimulation:
 
         # Verify that frames 10-15 were backfilled.
         for i in range(10, 16):
-            var state := buffer.get_at(i)
+            var state: Array = buffer.get_at(i)
             assert_not_null(state, "Frame %d should be backfilled" % i)
             assert_eq(state[0], 90.0, "Backfilled position should match")
             assert_eq(
@@ -109,8 +109,8 @@ class TestRollbackReconciliation:
         server_state[2] = 5.0
         server_state[3] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
 
-        var client_state_5 := buffer.get_at(5)
-        var has_mismatch := abs(
+        var client_state_5: Array = buffer.get_at(5)
+        var has_mismatch := absf(
             client_state_5[0] - server_state[0]
         ) > 1.0
 
@@ -120,7 +120,7 @@ class TestRollbackReconciliation:
         buffer.set_at(5, server_state)
 
         # Verify correction was applied.
-        var corrected_state := buffer.get_at(5)
+        var corrected_state: Array = buffer.get_at(5)
         assert_eq(corrected_state[0], 30.0)
         assert_eq(
             corrected_state[3],
@@ -138,7 +138,7 @@ class TestRollbackReconciliation:
             buffer.set_at(i, state)
 
         # Record predicted position at frame 10.
-        var predicted_pos_10 := buffer.get_at(10)[0]
+        var predicted_pos_10: Vector2 = buffer.get_at(10)[0]
 
         # Server corrects frame 5 with slightly different velocity.
         var server_state_5 := ArrayPool.acquire(4)
@@ -152,7 +152,7 @@ class TestRollbackReconciliation:
         # Re-simulate frames 6-10 with corrected velocity.
         var delta := 1.0 / 60.0
         for i in range(6, 11):
-            var prev_state := buffer.get_at(i - 1)
+            var prev_state: Array = buffer.get_at(i - 1)
             var new_state := ArrayPool.acquire(4)
             new_state[0] = prev_state[0] + prev_state[2] * delta
             new_state[1] = 0.0
@@ -161,7 +161,7 @@ class TestRollbackReconciliation:
             buffer.set_at(i, new_state)
 
         # Verify that frame 10 position has changed.
-        var corrected_pos_10 := buffer.get_at(10)[0]
+        var corrected_pos_10: Vector2 = buffer.get_at(10)[0]
         assert_ne(
             predicted_pos_10,
             corrected_pos_10,
@@ -198,7 +198,7 @@ class TestBufferWraparound:
         assert_false(buffer.has_at(39))
 
         # Verify state values are correct.
-        var state_45 := buffer.get_at(45)
+        var state_45: Array = buffer.get_at(45)
         assert_eq(state_45[0], 45.0)
         assert_eq(state_45[1], 90.0)
 
@@ -222,7 +222,7 @@ class TestBufferWraparound:
         buffer.set_at(25, server_state)
 
         # Verify correction was applied.
-        var corrected := buffer.get_at(25)
+        var corrected: Array = buffer.get_at(25)
         assert_eq(corrected[0], 999.0)
         assert_eq(corrected[1], 888.0)
 
@@ -309,7 +309,7 @@ class TestLargeGapBackfill:
         assert_eq(buffer.get_latest_index(), 500)
 
         # State should be based on frame 0.
-        var state_500 := buffer.get_at(500)
+        var state_500: Array = buffer.get_at(500)
         assert_eq(state_500[0], 999.0)
         assert_eq(state_500[1], 888.0)
         # But should be marked as PREDICTED.
@@ -320,17 +320,17 @@ class TestLargeGapBackfill:
 
     func test_handles_negative_indices_correctly():
         # Access index -1 (previous frame for frame 0).
-        var state_minus_1 := buffer.get_at(-1)
+        var state_minus_1: Array = buffer.get_at(-1)
         assert_not_null(state_minus_1)
         assert_eq(state_minus_1[0], 100.0)
         assert_eq(state_minus_1[1], 200.0)
 
         # Access index -2.
-        var state_minus_2 := buffer.get_at(-2)
+        var state_minus_2: Array = buffer.get_at(-2)
         assert_not_null(state_minus_2)
         assert_eq(state_minus_2[0], 100.0)
         assert_eq(state_minus_2[1], 200.0)
 
         # Index -3 should not be accessible.
-        var state_minus_3 := buffer.get_at(-3)
+        var state_minus_3: Array = buffer.get_at(-3)
         assert_null(state_minus_3)
