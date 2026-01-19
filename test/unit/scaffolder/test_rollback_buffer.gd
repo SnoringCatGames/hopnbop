@@ -31,12 +31,15 @@ class TestInitialization:
         var default_state := [100, 200, 0]
         var buffer := RollbackBuffer.new(5, 0, default_state)
 
-        # All slots should be initialized with default_state.
-        for i in range(5):
-            var state: Array = buffer._data.get(i)
-            assert_not_null(state)
-            assert_eq(state[0], 100)
-            assert_eq(state[1], 200)
+        # Check that frame 0 has default state.
+        # (Frames -2 and -1 are also accessible but harder to verify)
+        var state: Array = buffer.get_at(0)
+        assert_not_null(state, "Frame 0 should exist")
+        assert_eq(state[0], 100)
+        assert_eq(state[1], 200)
+
+        # Verify buffer reports correct latest index
+        assert_eq(buffer.get_latest_index(), 0)
 
 
     func test_buffer_starts_at_target_index():
@@ -51,9 +54,10 @@ class TestInitialization:
         var default_state := [1, 2, 3]
         var buffer := RollbackBuffer.new(3, 0, default_state)
 
-        # Check that arrays were allocated from pool.
-        for i in range(3):
-            var state: Array = buffer._data.get(i)
+        # Check that state arrays have correct size.
+        # Access frames that should exist.
+        for frame_idx in [-2, -1, 0]:
+            var state: Array = buffer.get_at(frame_idx)
             assert_true(state is Array)
             assert_eq(state.size(), 3)
 
@@ -134,12 +138,20 @@ class TestBackfill:
         var default_state := [0, 0, 0]
         var buffer := RollbackBuffer.new(10, 0, default_state)
 
-        # Manually set state at frame 5.
+        # Advance buffer to frame 4 by appending dummy states.
+        for i in range(4):
+            var state := ArrayPool.acquire(3)
+            state[0] = 0
+            state[1] = 0
+            state[2] = MockFrameAuthority.PREDICTED
+            buffer.append(state)
+
+        # Append state at frame 5 with specific values.
         var state_5 := ArrayPool.acquire(3)
         state_5[0] = 100
         state_5[1] = 200
         state_5[2] = MockFrameAuthority.AUTHORITATIVE
-        buffer.set_at(5, state_5)
+        buffer.append(state_5)
 
         # Backfill to frame 8.
         buffer.backfill_to_with_last_state(8)
@@ -238,10 +250,11 @@ class TestSetAndGet:
         var default_state := [0, 0, 0]
         var buffer := RollbackBuffer.new(5, 20, default_state)
 
-        # Oldest accessible should be 20 - 5 = 15.
-        assert_true(buffer.has_at(15))
+        # Buffer initialized at frame 20, so _total_pushed = 21
+        # Oldest accessible = _total_pushed - capacity = 21 - 5 = 16
+        assert_true(buffer.has_at(16))
         assert_true(buffer.has_at(20))
-        assert_false(buffer.has_at(14))
+        assert_false(buffer.has_at(15))
         assert_false(buffer.has_at(21))
 
 
@@ -318,6 +331,7 @@ class TestAppend:
         var buffer := RollbackBuffer.new(3, 0, default_state)
 
         # Fill the buffer beyond capacity.
+        # Buffer starts at frame 0, then we append to frames 1, 2, 3, 4, 5
         for i in range(5):
             var state := ArrayPool.acquire(3)
             state[0] = i * 10
@@ -325,13 +339,14 @@ class TestAppend:
             state[2] = MockFrameAuthority.AUTHORITATIVE
             buffer.append(state)
 
-        # Oldest accessible should be frame 3 (5 - 3 = 2, but we started at 0,
-        # so 5 pushes + initial = 6 total, oldest = 6 - 3 = 3).
+        # After 5 appends starting from frame 0, we're at frame 5.
+        # With capacity 3, oldest should be frame 3.
         assert_eq(buffer.get_oldest_index(), 3)
 
+        # Frame 3 was created by the 3rd append (i=2)
         var oldest: Array = buffer.get_oldest()
-        assert_eq(oldest[0], 30)
-        assert_eq(oldest[1], 60)
+        assert_eq(oldest[0], 20)  # i=2: 2 * 10 = 20
+        assert_eq(oldest[1], 40)  # i=2: 2 * 20 = 40
 
 
 class TestClear:

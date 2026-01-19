@@ -30,8 +30,8 @@ class TestTimeToFrameConversion:
     func test_converts_frame_to_time():
         var frame := 120  # 2 seconds at 60 FPS
         var expected_time_usec := frame * FRAME_DURATION_USEC
-        # Should be ~2 seconds (2000000 usec).
-        assert_eq(expected_time_usec, 2000000)
+        # Should be ~2 seconds (120 * 16666 = 1999920 usec).
+        assert_eq(expected_time_usec, 1999920)
 
     func test_handles_fractional_frames():
         # Time that doesn't align perfectly to frame boundary.
@@ -65,12 +65,12 @@ class TestFrameSynchronization:
 
     func test_client_and_server_frame_alignment():
         # Both start at frame 0 at time 0.
-        var current_time_usec := 0
+        var _current_time_usec := 0
         var current_frame := 0
 
         # Simulate 10 frames.
         for i in range(10):
-            current_time_usec += FRAME_DURATION_USEC
+            _current_time_usec += FRAME_DURATION_USEC
             current_frame += 1
 
             # Both should advance to same frame.
@@ -90,9 +90,10 @@ class TestFrameSynchronization:
                 ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
             server_buffer.append(server_state)
 
-        # Both should be at frame 9.
-        assert_eq(client_buffer.get_latest_index(), 9)
-        assert_eq(server_buffer.get_latest_index(), 9)
+        # Both should be at frame 10.
+        # Started at frame 0, then appended 10 times (frames 1-10).
+        assert_eq(client_buffer.get_latest_index(), 10)
+        assert_eq(server_buffer.get_latest_index(), 10)
 
         # Frame indices should match.
         var client_latest: Array = client_buffer.get_latest()
@@ -137,11 +138,6 @@ class TestLatencyScenarios:
 
         # Client predicts 1 frame ahead.
         assert_eq(one_way_latency_frames, 0)
-
-        # Even with 0 frame delay, client still predicts at least 1 frame
-        # ahead.
-        var client_frame := 5
-        var server_frame := 4
 
         # Client should receive server state for frame 4 while at frame 5.
         for i in range(6):

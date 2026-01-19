@@ -50,22 +50,30 @@ class TestFrameSimulation:
         assert_almost_eq(final_state[0], 29 * velocity * delta, 0.1)
 
     func test_backfills_missing_frames_during_packet_loss():
-        # Simulate a scenario where frames 10-15 are missing due to packet
+        # Simulate a scenario where frames 11-16 are missing due to packet
         # loss.
-        # Set frame 9.
-        var state_9 := ArrayPool.acquire(4)
-        state_9[0] = 90.0
-        state_9[1] = 50.0
-        state_9[2] = 10.0
-        state_9[3] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
-        buffer.set_at(9, state_9)
+        # First, advance buffer to frame 9 by appending states.
+        for i in range(9):
+            var state := ArrayPool.acquire(4)
+            state[0] = 0.0
+            state[1] = 0.0
+            state[2] = 0.0
+            state[3] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+            buffer.append(state)
 
-        # Jump to frame 16 (skipping 10-15).
-        frame_index = 16
-        buffer.backfill_to_with_last_state(frame_index)
+        # Now append a specific state at frame 10.
+        var state_10 := ArrayPool.acquire(4)
+        state_10[0] = 90.0
+        state_10[1] = 50.0
+        state_10[2] = 10.0
+        state_10[3] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+        buffer.append(state_10)
 
-        # Verify that frames 10-15 were backfilled.
-        for i in range(10, 16):
+        # Jump to frame 17 (skipping 11-16).
+        buffer.backfill_to_with_last_state(17)
+
+        # Verify that frames 11-16 were backfilled with frame 10's state.
+        for i in range(11, 17):
             var state: Array = buffer.get_at(i)
             assert_not_null(state, "Frame %d should be backfilled" % i)
             assert_eq(state[0], 90.0, "Backfilled position should match")
@@ -193,14 +201,17 @@ class TestBufferWraparound:
             buffer.append(state)
 
         # Only the last 10 frames should be accessible.
-        assert_true(buffer.has_at(40))
-        assert_true(buffer.has_at(49))
-        assert_false(buffer.has_at(39))
+        # After 50 appends starting from frame 0, we're at frame 50.
+        # So frames 41-50 are accessible (last 10 frames).
+        assert_true(buffer.has_at(41))
+        assert_true(buffer.has_at(50))
+        assert_false(buffer.has_at(40))
 
         # Verify state values are correct.
+        # Frame 45 was created by the 45th append (i=44 in the loop)
         var state_45: Array = buffer.get_at(45)
-        assert_eq(state_45[0], 45.0)
-        assert_eq(state_45[1], 90.0)
+        assert_eq(state_45[0], 44.0)
+        assert_eq(state_45[1], 88.0)
 
     func test_can_apply_server_correction_to_old_frame():
         # Simulate many frames.

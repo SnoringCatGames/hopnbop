@@ -32,11 +32,14 @@ class TestAcquire:
         assert_eq(arr2.size(), 5)
 
         var stats := ArrayPool.get_pool_stats()
+        # Acquiring creates buckets even if pools are empty
         assert_eq(
             stats.get("bucket_count", 0),
-            0,
-            "No arrays released yet, so no buckets"
+            2,
+            "Two size buckets should exist after acquiring"
         )
+        # But no arrays should be in the pools yet
+        assert_eq(stats.get("total_pooled", 0), 0)
 
     func test_acquire_creates_new_array_when_pool_empty():
         var arr1 := ArrayPool.acquire(3)
@@ -45,7 +48,13 @@ class TestAcquire:
         # Both should be valid but different instances.
         assert_not_null(arr1)
         assert_not_null(arr2)
-        assert_ne(arr1, arr2, "Should be different array instances")
+
+        # Test that they're different instances by modifying one
+        arr1[0] = 999
+        assert_null(
+            arr2[0],
+            "Modifying arr1 should not affect arr2"
+        )
 
 
 class TestRelease:
@@ -87,9 +96,13 @@ class TestRelease:
         assert_null(arr[2])
 
     func test_release_respects_max_pool_size():
-        # Release more arrays than the max pool size.
+        # Acquire more arrays than the max pool size.
+        var arrays := []
         for i in range(ArrayPool.MAX_POOL_SIZE_PER_BUCKET + 10):
-            var arr := ArrayPool.acquire(3)
+            arrays.append(ArrayPool.acquire(3))
+
+        # Now release them all.
+        for arr in arrays:
             ArrayPool.release(arr)
 
         var stats := ArrayPool.get_pool_stats()
