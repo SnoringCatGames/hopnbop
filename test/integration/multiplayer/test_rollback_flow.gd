@@ -138,7 +138,7 @@ class TestRollbackReconciliation:
             buffer.set_at(i, state)
 
         # Record predicted position at frame 10.
-        var predicted_pos_10: Vector2 = buffer.get_at(10)[0]
+        var predicted_pos_10: float = buffer.get_at(10)[0]
 
         # Server corrects frame 5 with slightly different velocity.
         var server_state_5 := ArrayPool.acquire(4)
@@ -161,7 +161,7 @@ class TestRollbackReconciliation:
             buffer.set_at(i, new_state)
 
         # Verify that frame 10 position has changed.
-        var corrected_pos_10: Vector2 = buffer.get_at(10)[0]
+        var corrected_pos_10: float = buffer.get_at(10)[0]
         assert_ne(
             predicted_pos_10,
             corrected_pos_10,
@@ -332,5 +332,4 @@ class TestLargeGapBackfill:
         assert_eq(state_minus_2[1], 200.0)
 
         # Index -3 should not be accessible.
-        var state_minus_3: Array = buffer.get_at(-3)
-        assert_null(state_minus_3)
+        assert_null(buffer.get_at(-3))

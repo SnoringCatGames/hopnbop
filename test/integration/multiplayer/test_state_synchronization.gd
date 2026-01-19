@@ -86,7 +86,7 @@ class TestClientPrediction:
             state[4] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
             client_buffer.set_at(i, state)
 
-        var client_pos_10_before: Vector2 = client_buffer.get_at(10)[0]
+        var client_pos_10_before: float = client_buffer.get_at(10)[0]
 
         # Server sends correction for frame 5 with different velocity.
         var server_correction := ArrayPool.acquire(5)
@@ -111,7 +111,7 @@ class TestClientPrediction:
             new_state[4] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
             client_buffer.set_at(i, new_state)
 
-        var client_pos_10_after: Vector2 = client_buffer.get_at(10)[0]
+        var client_pos_10_after: float = client_buffer.get_at(10)[0]
 
         # Client's frame 10 position should have changed.
         assert_ne(
