@@ -20,7 +20,6 @@ func process(character) -> bool:
             character.jump_sequence_count = 1
         else:
             character.jump_sequence_count += 1
-        character.just_triggered_jump = true
         character.velocity.y = character.movement_settings.jump_boost
 
         return true

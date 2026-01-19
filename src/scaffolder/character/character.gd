@@ -39,7 +39,10 @@ var start_position := Vector2.INF
 var previous_position := Vector2.INF
 var previous_velocity := Vector2.INF
 
-var just_triggered_jump := false
+var last_triggered_jump_frame_index := 0
+var _last_processed_jump_frame_index := 0
+const _JUMP_EVENT_STALENESS_THRESHOLD_SEC := 0.5
+
 var jump_sequence_count := 0
 
 var _current_max_horizontal_speed_multiplier := 1.0
@@ -248,21 +251,16 @@ func _process_animation() -> void:
 
 
 func _process_sounds() -> void:
-    # FIXME: LEFT OFF HERE: NOW: Refactor how instantaneous events are handled:
-    # - Instead of a just_triggered_jump like this, network
-    #   last_triggered_jump_time_usec, and track locally the latest triggered jump
-    #   time that we've processed. If it's a new time (and less than some delay
-    #   threshold), then trigger the sound.
-    #   - Add a new property on PlayerStateFromClient for this: last_triggered_jump_time_usec
-    # - AND, I guess we should think of it the same way it terms of detecting
-    #   just-did-this for other behavior on non-authoritative sources.
-    #   - This will also be important for correctly handling, on the server,
-    #     when a player has pressed jump.
-    #     - The server could easily miss the just-pressed-jump frame and then
-    #       get a later jump-already-pressed frame, or EVEN WORSE, jump was only
-    #       pressed for one frame and the server missed it.
-    if just_triggered_jump:
-        play_sound("jump")
+    # Check for a new jump event.
+    if last_triggered_jump_frame_index > _last_processed_jump_frame_index:
+        var current_frame_index := G.network.server_frame_index
+        var event_age := (
+            (current_frame_index - last_triggered_jump_frame_index) *
+            NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC
+        )
+        if event_age <= _JUMP_EVENT_STALENESS_THRESHOLD_SEC:
+            play_sound("jump")
+        _last_processed_jump_frame_index = last_triggered_jump_frame_index
 
     if surfaces.just_left_air:
         play_sound("land")

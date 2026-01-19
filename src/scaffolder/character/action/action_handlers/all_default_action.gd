@@ -12,6 +12,4 @@ func _init() -> void:
 
 
 func process(character) -> bool:
-    character.just_triggered_jump = false
-
     return true
