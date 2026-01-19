@@ -203,21 +203,26 @@ func _handle_new_authoritative_state() -> void:
     # fast-forward.
     if should_trigger_fast_forward:
         if G.network.is_server:
-            (
-                G.warning(
-                    "Ignoring future state from client",
-                    ScaffolderLog.CATEGORY_NETWORK_SYNC,
-                )
+            G.warning(
+                "Ignoring future state from client",
+                ScaffolderLog.CATEGORY_NETWORK_SYNC,
             )
         else:
-            (
-                G.warning(
-                    "Fast-forwarding due to future state from server",
-                    ScaffolderLog.CATEGORY_NETWORK_SYNC,
-                )
+            G.warning(
+                "Fast-forwarding due to future state from server",
+                ScaffolderLog.CATEGORY_NETWORK_SYNC,
             )
-            # FIXME: LEFT OFF HERE: NOW: Force-update the server time tracker.
-            #G.network.time.
+
+            # Adjust the time tracker's clock offset to account for the drift.
+            # This prevents the NTP averaging from reverting the fast-forward.
+            var frames_behind := state_frame_index - 1 - G.network.server_frame_index
+            var time_delta_usec := floori(
+                frames_behind
+                * G.network.frame_driver.TARGET_NETWORK_TIME_STEP_SEC
+                * 1_000_000,
+            )
+            G.network.time.force_clock_offset(time_delta_usec)
+
             G.network.frame_driver.fast_forward(state_frame_index - 1)
 
 

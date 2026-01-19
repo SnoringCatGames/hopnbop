@@ -101,6 +101,30 @@ func client_request_time_sync() -> void:
     _server_rpc_request_time.rpc_id(1, _client_pending_sync_t1)
 
 
+## Manually adjusts the clock offset by the given delta.
+##
+## This is useful when authoritative network state indicates that our time
+## estimate has drifted. The adjustment is applied to all existing samples
+## to prevent the NTP averaging from reverting the correction.
+func force_clock_offset(delta_usec: int) -> void:
+    if is_server:
+        return
+
+    clock_offset_usec += delta_usec
+
+    # Also adjust all samples so the running average doesn't fight this correction.
+    for i in range(_client_offset_samples.size()):
+        _client_offset_samples[i] += delta_usec
+
+    (
+        G.log.log(
+            "Manually adjusted clock offset by %d usec (new offset: %d usec)"
+            % [delta_usec, clock_offset_usec],
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        )
+    )
+
+
 ## Clears all sync data and resets to unsynced state.
 func clear() -> void:
     clock_offset_usec = 0
