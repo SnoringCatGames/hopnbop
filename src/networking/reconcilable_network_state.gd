@@ -1,7 +1,7 @@
 @tool
 class_name ReconcilableNetworkedState
 extends MultiplayerSynchronizer
-## FIXME: LEFT OFF HERE: Write extensive docs for this class.
+## FIXME: Write extensive docs for this class.
 ##
 ## - In general, during rollback ReconcilableNetworkedState is responsible for updating the
 ##   state of all properties directly specified in its replication_config, but
@@ -17,7 +17,7 @@ enum FrameAuthority {
 signal received_network_state
 signal network_processed
 
-# FIXME: LEFT OFF HERE: Test these rollback diff threshold defaults.
+# FIXME: Test these rollback diff threshold defaults.
 const DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD := 0.5
 const DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHELD := 1.0
 const DEFAULT_NORMAL_DIFF_ROLLBACK_THRESHELD := 0.05

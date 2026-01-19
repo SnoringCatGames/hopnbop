@@ -182,7 +182,9 @@ Debug toggles in settings: `dev_mode`, `draw_annotations`, `perf_tracker_enabled
 
 ## Code Style
 
-GDScript formatter addon is installed (addons/gdscript_formatter). Format code before committing.
+- **Line length:** Keep lines within 80 characters
+- GDScript formatter addon is installed (addons/gdscript_formatter). Format
+  code before committing.
 
 ## References
 
