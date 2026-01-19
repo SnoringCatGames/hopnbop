@@ -1,8 +1,7 @@
 @tool
 extends Control
 
-
-var ScriptTextEditors = load('res://addons/gut/gui/script_text_editor_controls.gd')
+var ScriptTextEditors = load("res://addons/gut/gui/script_text_editor_controls.gd")
 
 @onready var _ctrls = {
 	btn_script = $HBox/BtnRunScript,
@@ -10,7 +9,7 @@ var ScriptTextEditors = load('res://addons/gut/gui/script_text_editor_controls.g
 	btn_method = $HBox/BtnRunMethod,
 	lbl_none = $HBox/LblNoneSelected,
 	arrow_1 = $HBox/Arrow1,
-	arrow_2 = $HBox/Arrow2
+	arrow_2 = $HBox/Arrow2,
 }
 
 var _editors = null
@@ -20,9 +19,8 @@ var _cur_script_path = null
 var _last_info = {
 	script = null,
 	inner_class = null,
-	test_method = null
+	test_method = null,
 }
-
 
 signal run_tests(what)
 
@@ -35,16 +33,17 @@ func _ready():
 	_ctrls.arrow_1.visible = false
 	_ctrls.arrow_2.visible = false
 
+
 # ----------------
 # Private
 # ----------------
 func _set_editor(which):
 	_last_line = -1
-	if(_cur_editor != null and _cur_editor.get_ref()):
+	if _cur_editor != null and _cur_editor.get_ref():
 		# _cur_editor.get_ref().disconnect('cursor_changed',Callable(self,'_on_cursor_changed'))
 		_cur_editor.get_ref().caret_changed.disconnect(_on_cursor_changed)
 
-	if(which != null):
+	if which != null:
 		_cur_editor = weakref(which)
 		which.caret_changed.connect(_on_cursor_changed.bind(which))
 		# which.connect('cursor_changed',Callable(self,'_on_cursor_changed'),[which])
@@ -73,14 +72,16 @@ func _update_buttons(info):
 	# first time.
 	call_deferred("_update_size")
 
+
 func _update_size():
 	custom_minimum_size.x = _ctrls.btn_method.size.x + _ctrls.btn_method.position.x
+
 
 # ----------------
 # Events
 # ----------------
 func _on_cursor_changed(which):
-	if(which.get_caret_line() != _last_line):
+	if which.get_caret_line() != _last_line:
 		_last_line = which.get_caret_line()
 		_last_info = _editors.get_line_info()
 		_update_buttons(_last_info)

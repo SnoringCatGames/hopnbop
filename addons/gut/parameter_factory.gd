@@ -38,16 +38,16 @@
 # those values will be ignored.
 #
 # Example:
-# 	create_named_parameters(['a', 'b'], [[1, 2], ['one', 'two']]) returns
-#		[{a:1, b:2}, {a:'one', b:'two'}]
+#     create_named_parameters(['a', 'b'], [[1, 2], ['one', 'two']]) returns
+#        [{a:1, b:2}, {a:'one', b:'two'}]
 #
-# 	This allows you to increase readability of your parameterized tests:
-#	var params = create_named_parameters(['a', 'b'], [[1, 2], ['one', 'two']])
-#	func test_foo(p = use_parameters(params)):
-#		assert_eq(p.a, p.b)
+#     This allows you to increase readability of your parameterized tests:
+#    var params = create_named_parameters(['a', 'b'], [[1, 2], ['one', 'two']])
+#    func test_foo(p = use_parameters(params)):
+#        assert_eq(p.a, p.b)
 #
 # Parameters:
-# 	names:  an array of names to be used as keys in the dictionaries
+#     names:  an array of names to be used as keys in the dictionaries
 #   values:  an array of arrays of values.
 # ------------------------------------------------------------------------------
 static func named_parameters(names, values):
@@ -56,11 +56,11 @@ static func named_parameters(names, values):
 		var entry = {}
 
 		var parray = values[i]
-		if(typeof(parray) != TYPE_ARRAY):
+		if typeof(parray) != TYPE_ARRAY:
 			parray = [values[i]]
 
 		for j in range(names.size()):
-			if(j >= parray.size()):
+			if j >= parray.size():
 				entry[names[j]] = null
 			else:
 				entry[names[j]] = parray[j]
