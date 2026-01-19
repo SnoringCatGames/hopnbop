@@ -229,6 +229,19 @@ godot --headless -s --path . addons/gut/gut_cmdln.gd \
 3. **Test order dependency**: Tests should be independent and not rely on
    execution order.
 
+4. **Directory discovery issues**: If tests aren't running with `-gdir`,
+   try running specific test files with `-gtest` instead.
+
+5. **Type hints required**: GDScript tests need explicit type hints for
+   arrays:
+   ```gdscript
+   var state: Array = buffer.get_at(5)  # Correct
+   var state = buffer.get_at(5)         # May cause issues
+   ```
+
+6. **Autoloads active during tests**: The `G` singleton and networking
+   subsystems are fully initialized when tests run.
+
 ## Resources
 
 - [GUT Documentation](https://gut.readthedocs.io/en/latest/)
