@@ -144,7 +144,7 @@ func get_next_task_id() -> int:
 
 
 func get_network_time() -> float:
-    return G.network.server_frame_time_usec * 1000000.0
+    return G.network.server_frame_time_usec / 1000000.0
 
 
 func get_scaled_network_time() -> float:

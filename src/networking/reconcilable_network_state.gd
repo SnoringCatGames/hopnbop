@@ -154,8 +154,9 @@ func _handle_new_authoritative_state() -> void:
         G.network.frame_driver.get_frame_index_from_time(state_time_usec)
 
     if G.network.frame_driver.is_frame_too_old_to_consider(state_frame_index):
-        G.warn("Received networked state that is too old to reconcile with the rollback buffer: state time: %d, local time: %d" %
-            [state_time_usec, G.network.server_frame_time_usec])
+        G.warning("Received networked state that is too old to reconcile with the rollback buffer: state time: %d, local time: %d" %
+            [state_time_usec, G.network.server_frame_time_usec],
+            ScaffolderLog.CATEGORY_NETWORK_SYNC)
         return
 
     var should_trigger_fast_forward := \
@@ -167,6 +168,9 @@ func _handle_new_authoritative_state() -> void:
 
     if should_check_for_prediction_mismatch:
         if _check_is_client_prediction_mismatch(packed_state, state_frame_index):
+            G.print("Client-prediction state mismatch: networked state: %s, local state: %s",
+                ScaffolderLog.CATEGORY_NETWORK_SYNC)
+
             G.network.frame_driver.queue_rollback(state_frame_index)
 
     # Record rollback buffer frame.
@@ -183,9 +187,11 @@ func _handle_new_authoritative_state() -> void:
     # fast-forward.
     if should_trigger_fast_forward:
         if G.network.is_server:
-            G.warning("Ignoring future state from client")
+            G.warning("Ignoring future state from client",
+                ScaffolderLog.CATEGORY_NETWORK_SYNC)
         else:
-            G.warning("Fast-forwarding due to future state from server")
+            G.warning("Fast-forwarding due to future state from server",
+                ScaffolderLog.CATEGORY_NETWORK_SYNC)
             # FIXME: LEFT OFF HERE: Force-update the server time tracker.
             #G.network.time.
             G.network.frame_driver.fast_forward(state_frame_index - 1)
@@ -462,3 +468,11 @@ func _get_configuration_warnings() -> PackedStringArray:
         warnings.append(_partner_state_configuration_warning)
 
     return warnings
+
+
+func get_string_for_packed_state(state: Array) -> String:
+    # FIXME: LEFT OFF HERE: ACTUALLY: -------------
+    # - Implement.
+    # - Call this from rollback mismatch.
+    # - Add useful logs in other places.
+    pass

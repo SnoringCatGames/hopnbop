@@ -14,6 +14,7 @@ const CATEGORY_SYSTEM_INITIALIZATION := StringName("SysInit")
 const CATEGORY_CORE_SYSTEMS := StringName("CoreSystems")
 const CATEGORY_PLAYER_MOVEMENT := StringName("PlayerMovement")
 const CATEGORY_NETWORK_CONNECTIONS := StringName("NetworkConnections")
+const CATEGORY_NETWORK_SYNC := StringName("NetworkSync")
 const CATEGORY_INTERACTION := StringName("PlayerInteraction")
 const CATEGORY_GAME_STATE := StringName("GameState")
 
