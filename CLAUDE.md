@@ -186,6 +186,325 @@ Debug toggles in settings: `dev_mode`, `draw_annotations`, `perf_tracker_enabled
 - GDScript formatter addon is installed (addons/gdscript_formatter). Format
   code before committing.
 
+## Testing with GUT
+
+This project uses GUT (Godot Unit Test) 9.x for testing. Tests are organized
+in `res://test/` with separate directories for unit and integration tests.
+
+### Test File Structure
+
+- Files must start with `test_` prefix (e.g., `test_rollback_buffer.gd`)
+- Extend `GutTest` base class
+- Use `func test_*()` naming for test methods
+- Configuration in `res://.gutconfig.json`
+
+### Common Assertions
+
+```gdscript
+# Equality
+assert_eq(actual, expected, "optional message")
+assert_ne(actual, expected)
+
+# Null checks
+assert_null(value)
+assert_not_null(value)
+
+# Boolean
+assert_true(condition, "message")
+assert_false(condition)
+
+# Numeric comparisons
+assert_gt(value, threshold)  # greater than
+assert_lt(value, threshold)  # less than
+assert_almost_eq(actual, expected, tolerance)
+
+# Godot types
+assert_almost_eq(vector1, vector2, tolerance)
+assert_has(array_or_dict, value)
+assert_does_not_have(array_or_dict, value)
+
+# Signals
+watch_signals(object)
+assert_signal_emitted(object, "signal_name")
+assert_signal_not_emitted(object, "signal_name")
+```
+
+### Test Lifecycle Methods
+
+```gdscript
+extends GutTest
+
+# Run once before any tests in this script
+func before_all():
+    pass
+
+# Run before each test
+func before_each():
+    pass
+
+# Run after each test
+func after_each():
+    pass
+
+# Run once after all tests
+func after_all():
+    pass
+```
+
+### Test Doubles (Mocking)
+
+**Creating Doubles:**
+```gdscript
+# Double a script
+var MyClass = preload("res://src/my_class.gd")
+var DoubledClass = double(MyClass)
+var instance = DoubledClass.new()
+
+# Double a scene
+var MyScene = load("res://scenes/my_scene.tscn")
+var DoubledScene = double(MyScene)
+var instance = DoubledScene.instantiate()
+```
+
+**Stubbing Methods:**
+```gdscript
+# Return a specific value
+stub(instance, 'method_name').to_return(42)
+
+# Call original implementation
+stub(instance, 'method_name').to_call_super()
+
+# Stub with parameters
+stub(instance, 'method_name').param_count(2).to_return(value)
+```
+
+**Spies (Verifying Calls):**
+```gdscript
+# Check if method was called
+assert_called(instance, 'method_name')
+assert_not_called(instance, 'method_name')
+
+# Check call count
+assert_call_count(instance, 'method_name', 3)
+
+# Check parameters
+assert_called_with(instance, 'method_name', [arg1, arg2])
+```
+
+**Important Notes:**
+- Inner classes need `register_inner_classes(ClassName)` before doubling
+- Doubles are freed automatically after each test
+- Don't create doubles in `before_all()` - use `before_each()`
+- Use `partial_double()` to keep some original functionality
+
+### Parameterized Tests
+
+Run the same test with different inputs:
+
+```gdscript
+var test_cases = [
+    [0, 0],        # input, expected
+    [5, 25],
+    [-3, 9],
+]
+
+func test_square(params=use_parameters(test_cases)):
+    var input = params[0]
+    var expected = params[1]
+    assert_eq(square(input), expected)
+```
+
+**Named Parameters (more readable):**
+```gdscript
+var test_cases = ParameterFactory.named_parameters(
+    ['input', 'expected'],
+    [
+        [0, 0],
+        [5, 25],
+    ]
+)
+
+func test_square(p=use_parameters(test_cases)):
+    assert_eq(square(p.input), p.expected)
+```
+
+### Inner Test Classes
+
+Organize related tests with shared setup:
+
+```gdscript
+extends GutTest
+
+class TestWhenEmpty:
+    extends GutTest
+
+    var buffer
+
+    func before_each():
+        buffer = Buffer.new()
+
+    func test_size_is_zero():
+        assert_eq(buffer.size(), 0)
+
+    func test_pop_returns_null():
+        assert_null(buffer.pop())
+
+class TestWhenFull:
+    extends GutTest
+
+    var buffer
+
+    func before_each():
+        buffer = Buffer.new(capacity=3)
+        buffer.push(1)
+        buffer.push(2)
+        buffer.push(3)
+
+    func test_size_is_capacity():
+        assert_eq(buffer.size(), 3)
+```
+
+### Async Testing
+
+For testing signals and coroutines:
+
+```gdscript
+func test_async_operation():
+    var obj = MyClass.new()
+    add_child_autofree(obj)
+
+    watch_signals(obj)
+    obj.start_async_operation()
+
+    # Wait for signal
+    await wait_for_signal(obj.completed, 2.0)  # 2 second timeout
+
+    assert_signal_emitted(obj, "completed")
+
+func test_with_frames():
+    var obj = MyClass.new()
+    add_child_autofree(obj)
+
+    obj.start()
+
+    # Wait for next frame
+    await wait_frames(1)
+
+    assert_true(obj.is_running)
+```
+
+### Scene Testing
+
+```gdscript
+func test_scene_interaction():
+    var scene = load(
+        "res://test/fixtures/test_scene.tscn"
+    ).instantiate()
+    add_child_autofree(scene)
+
+    # Scene is now in tree and can be tested
+    var button = scene.get_node("Button")
+    button.pressed.emit()
+
+    # Cleanup happens automatically via autofree
+```
+
+### Common Patterns for This Project
+
+**Testing Networking Code:**
+```gdscript
+# Mock NetworkMain
+var MockNetworkMain = double(NetworkMain)
+stub(MockNetworkMain, 'is_server').to_return(true)
+stub(MockNetworkMain, 'get_current_tick').to_return(100)
+
+# Mock multiplayer API
+var MockMultiplayer = double(MultiplayerAPI)
+stub(MockMultiplayer, 'get_unique_id').to_return(1)
+```
+
+**Testing Rollback Logic:**
+```gdscript
+# Create fixture states
+var state_frame_10 = {"x": 100, "y": 200}
+var state_frame_20 = {"x": 150, "y": 250}
+
+buffer.store_state(10, state_frame_10)
+buffer.store_state(20, state_frame_20)
+
+# Test rollback
+var retrieved = buffer.get_state(10)
+assert_eq(retrieved.x, state_frame_10.x)
+```
+
+**Testing Character Actions:**
+```gdscript
+# Create test character with mocked dependencies
+var character = partial_double(Character)
+character.velocity = Vector2.ZERO
+character.surface_state = create_floor_surface_state()
+
+# Test action handler
+var action = FloorWalkAction.new()
+action.process(character, delta, instructions)
+
+assert_gt(character.velocity.x, 0, "Should move right")
+```
+
+### Running Tests
+
+**Editor:**
+- Open GUT panel (bottom dock)
+- Select test file or directory
+- Click "Run All" or specific test
+
+**Command Line:**
+```bash
+# Run all tests
+godot --headless -s --path . addons/gut/gut_cmdln.gd -gexit
+
+# Run unit tests only
+godot --headless -s --path . addons/gut/gut_cmdln.gd \
+  -gdir=res://test/unit -gexit
+
+# Run specific test
+godot --headless -s --path . addons/gut/gut_cmdln.gd \
+  -gtest=res://test/unit/networking/test_rollback_buffer.gd -gexit
+
+# Export results
+godot --headless -s --path . addons/gut/gut_cmdln.gd \
+  -gexit -gjunit_xml_file=results.xml
+```
+
+**Exit codes:** 0 = success, 1 = failures
+
+### Best Practices
+
+1. **One concept per test** - Test one behavior in each test method
+2. **Descriptive names** -
+   `test_rollback_triggers_on_mismatch_above_threshold` not
+   `test_rollback`
+3. **AAA pattern** - Arrange (setup), Act (execute), Assert (verify)
+4. **Use fixtures** - Create reusable test data in `before_each`
+5. **Mock external dependencies** - Don't rely on file I/O, network, etc.
+6. **Test edge cases** - Empty, null, boundary values, error conditions
+7. **Keep tests fast** - Unit tests should run in milliseconds
+8. **Deterministic tests** - No randomness, no timing dependencies
+   (in unit tests)
+9. **Clean up** - Use `add_child_autofree()` for nodes, GUT handles
+   the rest
+
+### Common Pitfalls
+
+- **Forgetting to extend GutTest** - Tests won't be discovered
+- **Missing `test_` prefix** - Method won't run as a test
+- **Creating doubles in before_all()** - Use before_each() instead
+- **Not registering inner classes** - Call `register_inner_classes()`
+  first
+- **Assuming execution order** - Tests can run in any order
+- **Testing implementation details** - Test behavior, not internals
+- **Integration tests in unit test dir** - Keep them separated
+
 ## References
 
 Networking concepts and patterns:
