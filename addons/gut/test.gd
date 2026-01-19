@@ -114,7 +114,13 @@ func _str_precision(value, precision):
         to_return = str("VECTOR2(", format % value.x, ", ", format % value.y, ")")
     elif typeof(value) == TYPE_VECTOR3:
         to_return = str(
-            "VECTOR3(", format % value.x, ", ", format % value.y, ", ", format % value.z, ")"
+            "VECTOR3(",
+            format % value.x,
+            ", ",
+            format % value.y,
+            ", ",
+            format % value.z,
+            ")",
         )
 
     return to_return
@@ -160,8 +166,7 @@ func _do_datatypes_match__fail_if_not(got, expected, text):
             # print out a warning but do not fail.
             if [2, 3].has(got_type) and [2, 3].has(expect_type):
                 (
-                    _lgr
-                    . warn(
+                    _lgr.warn(
                         str(
                             "Warn:  Float/Int comparison.  Got ",
                             _strutils.types[got_type],
@@ -178,7 +183,7 @@ func _do_datatypes_match__fail_if_not(got, expected, text):
             else:
                 _fail(
                     (
-						"Cannot compare "
+                        "Cannot compare "
                         + _strutils.types[got_type]
                         + "["
                         + _str(got)
@@ -318,7 +323,6 @@ func _create_obj_from_type(type):
         obj = type.new()
     return obj
 
-
 # #######################
 # Virtual Methods
 # #######################
@@ -343,7 +347,6 @@ func after_all():
 func after_each():
     pass
 
-
 # #######################
 # Public
 # #######################
@@ -355,7 +358,6 @@ func get_logger():
 
 func set_logger(logger):
     _lgr = logger
-
 
 # #######################
 # Asserts
@@ -375,9 +377,8 @@ func assert_eq(got, expected, text = ""):
         if typeof(got) in [TYPE_ARRAY, TYPE_DICTIONARY]:
             disp = str(result.summary, "  ", text)
             (
-                _lgr
-                . info(
-					"Array/Dictionary compared by value.  Use assert_same to compare references.  Use assert_eq_deep to see diff when failing."
+                _lgr.info(
+                    "Array/Dictionary compared by value.  Use assert_same to compare references.  Use assert_eq_deep to see diff when failing.",
                 )
             )
 
@@ -402,9 +403,8 @@ func assert_ne(got, not_expected, text = ""):
         if typeof(got) in [TYPE_ARRAY, TYPE_DICTIONARY]:
             disp = str(result.summary, "  ", text)
             (
-                _lgr
-                . info(
-					"Array/Dictionary compared by value.  Use assert_not_same to compare references.  Use assert_ne_deep to see diff."
+                _lgr.info(
+                    "Array/Dictionary compared by value.  Use assert_not_same to compare references.  Use assert_ne_deep to see diff.",
                 )
             )
 
@@ -419,7 +419,7 @@ func assert_ne(got, not_expected, text = ""):
 # ------------------------------------------------------------------------------
 func assert_almost_eq(got, expected, error_interval, text = ""):
     var disp = (
-		"["
+        "["
         + _str_precision(got, 20)
         + "] expected to equal ["
         + _str(expected)
@@ -443,7 +443,7 @@ func assert_almost_eq(got, expected, error_interval, text = ""):
 # ------------------------------------------------------------------------------
 func assert_almost_ne(got, not_expected, error_interval, text = ""):
     var disp = (
-		"["
+        "["
         + _str_precision(got, 20)
         + "] expected to not equal ["
         + _str(not_expected)
@@ -569,7 +569,7 @@ func assert_false(got, text = ""):
 # ------------------------------------------------------------------------------
 func assert_between(got, expect_low, expect_high, text = ""):
     var disp = (
-		"["
+        "["
         + _str_precision(got, 20)
         + "] expected to be between ["
         + _str(expect_low)
@@ -585,7 +585,7 @@ func assert_between(got, expect_low, expect_high, text = ""):
     ):
         if expect_low > expect_high:
             disp = (
-				"INVALID range.  ["
+                "INVALID range.  ["
                 + str(expect_low)
                 + "] is not less than ["
                 + str(expect_high)
@@ -604,7 +604,7 @@ func assert_between(got, expect_low, expect_high, text = ""):
 # ------------------------------------------------------------------------------
 func assert_not_between(got, expect_low, expect_high, text = ""):
     var disp = (
-		"["
+        "["
         + _str_precision(got, 20)
         + "] expected not to be between ["
         + _str(expect_low)
@@ -620,7 +620,7 @@ func assert_not_between(got, expect_low, expect_high, text = ""):
     ):
         if expect_low > expect_high:
             disp = (
-				"INVALID range.  ["
+                "INVALID range.  ["
                 + str(expect_low)
                 + "] is not less than ["
                 + str(expect_high)
@@ -650,7 +650,12 @@ func assert_has(obj, element, text = ""):
 # ------------------------------------------------------------------------------
 func assert_does_not_have(obj, element, text = ""):
     var disp = str(
-        "Expected [", _str(obj), "] to NOT contain value:  [", _str(element), "]:  ", text
+        "Expected [",
+        _str(obj),
+        "] to NOT contain value:  [",
+        _str(element),
+        "]:  ",
+        text,
     )
     if obj.has(element):
         _fail(disp)
@@ -767,7 +772,7 @@ func assert_exports(obj, property_name, type):
     var property = _find_object_property(obj, property_name, EDITOR_PROPERTY)
     if property != null:
         disp += (
-			" of type [%s]. Got type [%s]."
+            " of type [%s]. Got type [%s]."
             % [_strutils.types[type], _strutils.types[property["type"]]]
         )
         if property["type"] == type:
@@ -874,7 +879,12 @@ func assert_not_connected(signaler_obj, connect_to_obj, signal_name, method_name
 # ------------------------------------------------------------------------------
 func assert_signal_emitted(object, signal_name, text = ""):
     var disp = str(
-        "Expected object ", _str(object), " to have emitted signal [", signal_name, "]:  ", text
+        "Expected object ",
+        _str(object),
+        " to have emitted signal [",
+        signal_name,
+        "]:  ",
+        text,
     )
     if _can_make_signal_assertions(object, signal_name):
         if _signal_watcher.did_emit(object, signal_name):
@@ -891,7 +901,12 @@ func assert_signal_emitted(object, signal_name, text = ""):
 # ------------------------------------------------------------------------------
 func assert_signal_not_emitted(object, signal_name, text = ""):
     var disp = str(
-        "Expected object ", _str(object), " to NOT emit signal [", signal_name, "]:  ", text
+        "Expected object ",
+        _str(object),
+        " to NOT emit signal [",
+        signal_name,
+        "]:  ",
+        text,
     )
     if _can_make_signal_assertions(object, signal_name):
         if _signal_watcher.did_emit(object, signal_name):
@@ -912,7 +927,7 @@ func assert_signal_not_emitted(object, signal_name, text = ""):
 func assert_signal_emitted_with_parameters(object, signal_name, parameters, index = -1):
     if typeof(parameters) != TYPE_ARRAY:
         _lgr.error(
-            "The expected parameters must be wrapped in an array, you passed:  " + _str(parameters)
+            "The expected parameters must be wrapped in an array, you passed:  " + _str(parameters),
         )
         _fail("Bad Parameters")
         return
@@ -924,7 +939,7 @@ func assert_signal_emitted_with_parameters(object, signal_name, parameters, inde
         signal_name,
         "] with parameters ",
         parameters,
-		", got "
+        ", got ",
     )
     if _can_make_signal_assertions(object, signal_name):
         if _signal_watcher.did_emit(object, signal_name):
@@ -940,8 +955,8 @@ func assert_signal_emitted_with_parameters(object, signal_name, parameters, inde
                         " to emit signal [",
                         signal_name,
                         "] with parameters ",
-                        diff_result.summarize()
-                    )
+                        diff_result.summarize(),
+                    ),
                 )
         else:
             var text = str("Object ", object, " did not emit signal [", signal_name, "]")
@@ -965,7 +980,7 @@ func assert_signal_emit_count(object, signal_name, times, text = ""):
             "] to equal [",
             times,
             "]: ",
-            text
+            text,
         )
         if count == times:
             _pass(disp)
@@ -1033,7 +1048,7 @@ func get_call_count(object, method_name, parameters = null):
 # Assert that object is an instance of a_class
 # ------------------------------------------------------------------------------
 func assert_is(object, a_class, text = ""):
-    var disp = ""  #var disp = str('Expected [', _str(object), '] to be type of [', a_class, ']: ', text)
+    var disp = "" #var disp = str('Expected [', _str(object), '] to be type of [', a_class, ']: ', text)
     var NATIVE_CLASS = "GDScriptNativeClass"
     var GDSCRIPT_CLASS = "GDScript"
     var bad_param_2 = "Parameter 2 must be a Class (like Node2D or Label).  You passed "
@@ -1294,7 +1309,7 @@ func _validate_singleton_name(singleton_name):
     var is_valid = true
     if typeof(singleton_name) != TYPE_STRING:
         _lgr.error(
-            "double_singleton requires a Godot singleton name, you passed " + _str(singleton_name)
+            "double_singleton requires a Godot singleton name, you passed " + _str(singleton_name),
         )
         is_valid = false
     # Sometimes they have underscores in front of them, sometimes they do not.
@@ -1315,14 +1330,14 @@ func _validate_singleton_name(singleton_name):
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 func assert_setget(
-    instance,
-    name_property,
-    const_or_setter = null,
-    getter = "__not_set__",
+        instance,
+        name_property,
+        const_or_setter = null,
+        getter = "__not_set__",
 ):
     _lgr.deprecated("assert_setget")
     _fail(
-		"assert_setget has been removed.  Use assert_property, assert_set_property, assert_readonly_property instead."
+        "assert_setget has been removed.  Use assert_property, assert_set_property, assert_readonly_property instead.",
     )
 
 
@@ -1369,7 +1384,11 @@ func _warn_for_public_accessors(obj, property_name):
 # and set the backing variable and check the getter.
 # ------------------------------------------------------------------------------
 func assert_property_with_backing_variable(
-    obj, property_name, default_value, new_value, backed_by_name = null
+        obj,
+        property_name,
+        default_value,
+        new_value,
+        backed_by_name = null,
 ):
     var setter_name = str("@", property_name, "_setter")
     var getter_name = str("@", property_name, "_getter")
@@ -1394,7 +1413,7 @@ func assert_property_with_backing_variable(
         assert_eq(
             obj.get(backing_name),
             default_value,
-            str("Variable ", backing_name, " has default value.")
+            str("Variable ", backing_name, " has default value."),
         )
         assert_eq(call_getter.call(), default_value, "Getter returns default value.")
         call_setter.call(new_value)
@@ -1466,7 +1485,7 @@ func yield_for(time, msg = ""):
 func wait_for_signal(sig: Signal, max_wait, msg = ""):
     watch_signals(sig.get_object())
     _lgr.yield_msg(
-        str('-- Awaiting signal "', sig.get_name(), '" or for ', max_wait, " second(s) -- ", msg)
+        str('-- Awaiting signal "', sig.get_name(), '" or for ', max_wait, " second(s) -- ", msg),
     )
     _awaiter.wait_for_signal(sig, max_wait)
     await _awaiter.timeout
@@ -1485,7 +1504,9 @@ func yield_to(obj, signal_name, max_wait, msg = ""):
 func wait_frames(frames, msg = ""):
     if frames <= 0:
         var text = str(
-            "yeild_frames:  frames must be > 0, you passed  ", frames, ".  0 frames waited."
+            "yeild_frames:  frames must be > 0, you passed  ",
+            frames,
+            ".  0 frames waited.",
         )
         _lgr.error(text)
         frames = 1
@@ -1568,7 +1589,6 @@ func get_summary_text():
     if _summary.failed > 0:
         to_return += str("\n  ", _summary.failed, " failed.")
     return to_return
-
 
 # ------------------------------------------------------------------------------
 # Double a script, inner class, or scene using a path or a loaded script/scene.
@@ -1693,7 +1713,8 @@ func double_script(path, strategy = null):
 # ------------------------------------------------------------------------------
 func double_inner(path, subpath, strategy = null):
     _lgr.deprecated(
-        "double_inner should not be used.  Use register_inner_classes and double instead.", "double"
+        "double_inner should not be used.  Use register_inner_classes and double instead.",
+        "double",
     )
     return null
 
@@ -1708,9 +1729,8 @@ func double_inner(path, subpath, strategy = null):
 func ignore_method_when_doubling(thing, method_name):
     if typeof(thing) == TYPE_STRING:
         (
-            _lgr
-            . error(
-				"ignore_method_when_doubling no longer supports paths to scripts or scenes.  Load them and pass them instead."
+            _lgr.error(
+                "ignore_method_when_doubling no longer supports paths to scripts or scenes.  Load them and pass them instead.",
             )
         )
         return
@@ -1840,8 +1860,7 @@ func run_x_times(x):
     var ph = gut.parameter_handler
     if ph == null:
         (
-            _lgr
-            . warn(
+            _lgr.warn(
                 str(
                     "This test uses run_x_times and you really should not be ",
                     "using it.  I don't think it's a good thing, but I did find it ",
@@ -1965,7 +1984,7 @@ func compare_deep(v1, v2, max_differences = null):
 func compare_shallow(v1, v2, max_differences = null):
     _fail("compare_shallow has been removed.  Use compare_deep or just compare using == instead.")
     _lgr.error(
-		"compare_shallow has been removed.  Use compare_deep or just compare using == instead."
+        "compare_shallow has been removed.  Use compare_deep or just compare using == instead.",
     )
     return null
 

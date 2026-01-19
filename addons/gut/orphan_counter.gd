@@ -9,41 +9,41 @@
 # the test GUT uses get_orphans_since("test") to find out how many orphans
 # were created by the test.
 # ------------------------------------------------------------------------------
-var _counters = {}
+var _counters = { }
 
 
 func orphan_count():
-	return Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)
+    return Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)
 
 
 func add_counter(name):
-	_counters[name] = orphan_count()
+    _counters[name] = orphan_count()
 
 
 # Returns the number of orphans created since add_counter was last called for
 # the name.  Returns -1 to avoid blowing up with an invalid name but still
 # be somewhat visible that we've done something wrong.
 func get_orphans_since(name):
-	return orphan_count() - _counters[name] if _counters.has(name) else -1
+    return orphan_count() - _counters[name] if _counters.has(name) else -1
 
 
 func get_count(name):
-	return _counters.get(name, -1)
+    return _counters.get(name, -1)
 
 
 func print_orphans(name, lgr):
-	var count = get_orphans_since(name)
+    var count = get_orphans_since(name)
 
-	if count > 0:
-		var o = "orphan"
-		if count > 1:
-			o = "orphans"
-		lgr.orphan(str(count, " new ", o, " in ", name, "."))
+    if count > 0:
+        var o = "orphan"
+        if count > 1:
+            o = "orphans"
+        lgr.orphan(str(count, " new ", o, " in ", name, "."))
 
 
 func print_all():
-	var msg = str("Total Orphans ", orphan_count(), "\n", JSON.stringify(_counters, "    "))
-	print(msg)
+    var msg = str("Total Orphans ", orphan_count(), "\n", JSON.stringify(_counters, "    "))
+    print(msg)
 
 # ##############################################################################
 #(G)odot (U)nit (T)est class

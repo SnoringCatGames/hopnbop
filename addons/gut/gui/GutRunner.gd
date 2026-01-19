@@ -35,12 +35,12 @@ var gut_config = null
 var _hid_gut = null
 # Lazy loaded gut instance.  Settable for testing purposes.
 var gut = _hid_gut:
-	get:
-		if _hid_gut == null:
-			_hid_gut = Gut.new()
-		return _hid_gut
-	set(val):
-		_hid_gut = val
+    get:
+        if _hid_gut == null:
+            _hid_gut = Gut.new()
+        return _hid_gut
+    set(val):
+        _hid_gut = val
 var _wrote_results = false
 
 # The editor runs this scene using play_custom_scene, which means we cannot
@@ -54,175 +54,174 @@ var ran_from_editor = true
 
 
 func _ready():
-	(
-		GutUtils
-		. WarningsManager
-		. apply_warnings_dictionary(
-			GutUtils.warnings_at_start,
-		)
-	)
-	GutUtils.LazyLoader.load_all()
+    (
+        GutUtils.WarningsManager.apply_warnings_dictionary(
+            GutUtils.warnings_at_start,
+        )
+    )
+    GutUtils.LazyLoader.load_all()
 
-	# When used from the panel we have to kick off the tests ourselves b/c
-	# there's no way I know of to interact with the scene that was run via
-	# play_custom_scene.
-	if ran_from_editor:
-		_run_from_editor()
+    # When used from the panel we have to kick off the tests ourselves b/c
+    # there's no way I know of to interact with the scene that was run via
+    # play_custom_scene.
+    if ran_from_editor:
+        _run_from_editor()
 
 
 func _exit_tree():
-	if !_wrote_results and ran_from_editor:
-		_write_results_for_gut_panel()
+    if !_wrote_results and ran_from_editor:
+        _write_results_for_gut_panel()
 
 
 func _run_from_editor():
-	var GutEditorGlobals = load("res://addons/gut/gui/editor_globals.gd")
-	runner_json_path = GutUtils.nvl(runner_json_path, GutEditorGlobals.editor_run_gut_config_path)
-	result_bbcode_path = GutUtils.nvl(
-		result_bbcode_path, GutEditorGlobals.editor_run_bbcode_results_path
-	)
-	result_json_path = GutUtils.nvl(result_json_path, GutEditorGlobals.editor_run_json_results_path)
+    var GutEditorGlobals = load("res://addons/gut/gui/editor_globals.gd")
+    runner_json_path = GutUtils.nvl(runner_json_path, GutEditorGlobals.editor_run_gut_config_path)
+    result_bbcode_path = GutUtils.nvl(
+        result_bbcode_path,
+        GutEditorGlobals.editor_run_bbcode_results_path,
+    )
+    result_json_path = GutUtils.nvl(result_json_path, GutEditorGlobals.editor_run_json_results_path)
 
-	if gut_config == null:
-		gut_config = GutConfig.new()
-		gut_config.load_options(runner_json_path)
+    if gut_config == null:
+        gut_config = GutConfig.new()
+        gut_config.load_options(runner_json_path)
 
-	call_deferred("run_tests")
+    call_deferred("run_tests")
 
 
 func _setup_gui(show_gui):
-	if show_gui:
-		_gui.gut = gut
-		var printer = gut.logger.get_printer("gui")
-		printer.set_textbox(_gui.get_textbox())
-	else:
-		gut.logger.disable_printer("gui", true)
-		_gui.visible = false
+    if show_gui:
+        _gui.gut = gut
+        var printer = gut.logger.get_printer("gui")
+        printer.set_textbox(_gui.get_textbox())
+    else:
+        gut.logger.disable_printer("gui", true)
+        _gui.visible = false
 
-	var opts = gut_config.options
-	_gui.set_font_size(opts.font_size)
-	_gui.set_font(opts.font_name)
-	if opts.font_color != null and opts.font_color.is_valid_html_color():
-		_gui.set_default_font_color(Color(opts.font_color))
-	if opts.background_color != null and opts.background_color.is_valid_html_color():
-		_gui.set_background_color(Color(opts.background_color))
+    var opts = gut_config.options
+    _gui.set_font_size(opts.font_size)
+    _gui.set_font(opts.font_name)
+    if opts.font_color != null and opts.font_color.is_valid_html_color():
+        _gui.set_default_font_color(Color(opts.font_color))
+    if opts.background_color != null and opts.background_color.is_valid_html_color():
+        _gui.set_background_color(Color(opts.background_color))
 
-	_gui.set_opacity(min(1.0, float(opts.opacity) / 100))
-	_gui.use_compact_mode(opts.compact_mode)
+    _gui.set_opacity(min(1.0, float(opts.opacity) / 100))
+    _gui.use_compact_mode(opts.compact_mode)
 
 
 func _write_results_for_gut_panel():
-	var content = _gui.get_textbox().get_parsed_text()  #_gut.logger.get_gui_bbcode()
-	var f = FileAccess.open(result_bbcode_path, FileAccess.WRITE)
-	if f != null:
-		f.store_string(content)
-		f = null  # closes file
-	else:
-		push_error("Could not save bbcode, result = ", FileAccess.get_open_error())
+    var content = _gui.get_textbox().get_parsed_text() #_gut.logger.get_gui_bbcode()
+    var f = FileAccess.open(result_bbcode_path, FileAccess.WRITE)
+    if f != null:
+        f.store_string(content)
+        f = null # closes file
+    else:
+        push_error("Could not save bbcode, result = ", FileAccess.get_open_error())
 
-	var exporter = ResultExporter.new()
-	# TODO this should be checked and _wrote_results should maybe not be set, or
-	# maybe we do not care.  Whichever, it should be clear.
-	var _f_result = exporter.write_json_file(gut, result_json_path)
-	_wrote_results = true
+    var exporter = ResultExporter.new()
+    # TODO this should be checked and _wrote_results should maybe not be set, or
+    # maybe we do not care.  Whichever, it should be clear.
+    var _f_result = exporter.write_json_file(gut, result_json_path)
+    _wrote_results = true
 
 
 func _handle_quit(should_exit, should_exit_on_success, override_exit_code = EXIT_OK):
-	var quitting_time = should_exit or (should_exit_on_success and gut.get_fail_count() == 0)
+    var quitting_time = should_exit or (should_exit_on_success and gut.get_fail_count() == 0)
 
-	if !quitting_time:
-		if should_exit_on_success:
-			lgr.log("There are failing tests, exit manually.")
-		_gui.use_compact_mode(false)
-		return
+    if !quitting_time:
+        if should_exit_on_success:
+            lgr.log("There are failing tests, exit manually.")
+        _gui.use_compact_mode(false)
+        return
 
-	# For some reason, tests fail asserting that quit was called with 0 if we
-	# do not do this, but everything is defaulted so I don't know why it gets
-	# null.
-	var exit_code = GutUtils.nvl(override_exit_code, EXIT_OK)
+    # For some reason, tests fail asserting that quit was called with 0 if we
+    # do not do this, but everything is defaulted so I don't know why it gets
+    # null.
+    var exit_code = GutUtils.nvl(override_exit_code, EXIT_OK)
 
-	if gut.get_fail_count() > 0:
-		exit_code = EXIT_ERROR
+    if gut.get_fail_count() > 0:
+        exit_code = EXIT_ERROR
 
-	# Overwrite the exit code with the post_script's exit code if it is set
-	var post_hook_inst = gut.get_post_run_script_instance()
-	if post_hook_inst != null and post_hook_inst.get_exit_code() != null:
-		exit_code = post_hook_inst.get_exit_code()
+    # Overwrite the exit code with the post_script's exit code if it is set
+    var post_hook_inst = gut.get_post_run_script_instance()
+    if post_hook_inst != null and post_hook_inst.get_exit_code() != null:
+        exit_code = post_hook_inst.get_exit_code()
 
-	quit(exit_code)
+    quit(exit_code)
 
 
 func _end_run(override_exit_code = EXIT_OK):
-	if ran_from_editor:
-		_write_results_for_gut_panel()
+    if ran_from_editor:
+        _write_results_for_gut_panel()
 
-	_handle_quit(
-		gut_config.options.should_exit,
-		gut_config.options.should_exit_on_success,
-		override_exit_code,
-	)
+    _handle_quit(
+        gut_config.options.should_exit,
+        gut_config.options.should_exit_on_success,
+        override_exit_code,
+    )
 
 
 # -------------
 # Events
 # -------------
 func _on_tests_finished():
-	_end_run()
+    _end_run()
 
 
 # -------------
 # Public
 # -------------
 func run_tests(show_gui = true):
-	_setup_gui(show_gui)
+    _setup_gui(show_gui)
 
-	if gut_config.options.dirs.size() + gut_config.options.tests.size() == 0:
-		var err_text = "You do not have any directories configrued, so GUT doesn't know where to find the tests.  Tell GUT where to find the tests and GUT shall run the tests."
-		lgr.error(err_text)
-		push_error(err_text)
-		_end_run(EXIT_ERROR)
-		return
+    if gut_config.options.dirs.size() + gut_config.options.tests.size() == 0:
+        var err_text = "You do not have any directories configrued, so GUT doesn't know where to find the tests.  Tell GUT where to find the tests and GUT shall run the tests."
+        lgr.error(err_text)
+        push_error(err_text)
+        _end_run(EXIT_ERROR)
+        return
 
-	var install_check_text = GutUtils.make_install_check_text()
-	if install_check_text != GutUtils.INSTALL_OK_TEXT:
-		print("\n\n", GutUtils.version_numbers.get_version_text())
-		lgr.error(install_check_text)
-		push_error(install_check_text)
-		_end_run(EXIT_ERROR)
-		return
+    var install_check_text = GutUtils.make_install_check_text()
+    if install_check_text != GutUtils.INSTALL_OK_TEXT:
+        print("\n\n", GutUtils.version_numbers.get_version_text())
+        lgr.error(install_check_text)
+        push_error(install_check_text)
+        _end_run(EXIT_ERROR)
+        return
 
-	gut.add_children_to = self
-	if gut.get_parent() == null:
-		if gut_config.options.gut_on_top:
-			_gut_layer.add_child(gut)
-		else:
-			add_child(gut)
+    gut.add_children_to = self
+    if gut.get_parent() == null:
+        if gut_config.options.gut_on_top:
+            _gut_layer.add_child(gut)
+        else:
+            add_child(gut)
 
-	gut.end_run.connect(_on_tests_finished)
+    gut.end_run.connect(_on_tests_finished)
 
-	gut_config.apply_options(gut)
-	var run_rest_of_scripts = gut_config.options.unit_test_name == ""
+    gut_config.apply_options(gut)
+    var run_rest_of_scripts = gut_config.options.unit_test_name == ""
 
-	gut.test_scripts(run_rest_of_scripts)
+    gut.test_scripts(run_rest_of_scripts)
 
 
 func set_gut_config(which):
-	gut_config = which
+    gut_config = which
 
 
 # for backwards compatibility
 func get_gut():
-	return gut
+    return gut
 
 
 func quit(exit_code):
-	# Sometimes quitting takes a few seconds.  This gives some indicator
-	# of what is going on.
-	_gui.set_title("Exiting")
-	await get_tree().process_frame
+    # Sometimes quitting takes a few seconds.  This gives some indicator
+    # of what is going on.
+    _gui.set_title("Exiting")
+    await get_tree().process_frame
 
-	lgr.info(str("Exiting with code ", exit_code))
-	get_tree().quit(exit_code)
+    lgr.info(str("Exiting with code ", exit_code))
+    get_tree().quit(exit_code)
 
 # ##############################################################################
 # The MIT License (MIT)
