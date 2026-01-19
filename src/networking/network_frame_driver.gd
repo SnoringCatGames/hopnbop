@@ -2,72 +2,6 @@ class_name NetworkFrameDriver
 extends Node
 
 # FIXME: LEFT OFF HERE: Code review:
-#
-# Design Improvements
-
-# 19. Time representation inconsistency
-
-# The codebase frequently converts between:
-# - Microseconds (int)
-# - Seconds (float)
-# - Frame indices (int)
-
-# This creates many conversion opportunities for bugs (as seen above).
-
-# Recommendation: Create a FrameTime wrapper class:
-# class_name FrameTime
-
-# var frame_index: int
-# var time_usec: int
-
-# static func from_frame_index(index: int) -> FrameTime:
-#     # ...
-
-# static func from_time_usec(usec: int) -> FrameTime:
-#     # ...
-
-# 20. ReconcilableNetworkedState has too many responsibilities
-
-# This 519-line class handles:
-# - Buffer management
-# - Network replication
-# - Prediction mismatch detection
-# - Scene state synchronization
-# - Partner state tracking
-# - Configuration validation
-
-# Recommendation: Extract into focused classes:
-# - NetworkStateReplicator - handles packed_state and sync
-# - RollbackStateManager - handles buffer operations
-# - PredictionReconciler - handles mismatch detection
-
-# 21. State synchronization logic is duplicated
-
-# CharacterStateFromServer._network_process has complex conditional logic for determining
-# what state to use. Similar patterns appear in other places.
-
-# Recommendation: Extract into helper methods:
-# func should_use_authoritative_state() -> bool:
-#     return _has_authoritative_state_for_current_frame()
-
-# func should_predict_state() -> bool:
-#     return not is_multiplayer_authority() and not should_use_authoritative_state()
-
-# 22. No frame skip detection on server
-
-# If the server's _physics_process skips a frame (high load), the networking system doesn't
-# detect this.
-
-# Recommendation: Add frame skip detection:
-# func _pre_physics_process(delta: float) -> void:
-#     var expected_frame_delta := 1
-#     var actual_delta := delta / NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC
-#     if actual_delta > 1.5:
-#         G.warning(
-#             "Physics frame skip detected: delta=%f, expected=%f"
-#             % [actual_delta, expected_frame_delta],
-#             ScaffolderLog.CATEGORY_NETWORK_SYNC,
-#         )
 
 # Performance Improvements
 
@@ -156,24 +90,13 @@ extends Node
 # ---
 # Priority Summary
 
-# Fix Immediately (Blocking Bugs):
-# - Issues #1-5: Frame index math, time conversions, dictionary iteration
-
-# Fix Before Testing:
-# - Issues #6-13: Sequencing, off-by-one, rollback logic
-
-# Fix Before Production:
-# - Issues #14-18: Edge cases and error handling
-
 # Consider for Refactoring:
 # - Issues #19-22: Design improvements
 
 # Optimize When Profiling Shows Need:
 # - Issues #23-26: Performance improvements
 
-# The most critical issues are the frame index calculations (#1-3), which will cause complete
-# failure of the networking system. Fix those first, then work through the sequencing
-# issues.
+# ------------------------------------------------------------------------------
 
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug.
 #
@@ -504,7 +427,13 @@ func _ready() -> void:
         G.process_sentinel.pre_physics_process.connect(_pre_physics_process)
 
 
-func _pre_physics_process(_delta: float) -> void:
+func _pre_physics_process(delta: float) -> void:
+    if delta / NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC > 1.5:
+        G.warning(
+            "Physics frame skip detected: delta=%fs"
+            % [delta],
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        )
     _run_network_process()
 
 
