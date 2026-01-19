@@ -168,7 +168,10 @@ func _handle_new_authoritative_state() -> void:
 
     if should_check_for_prediction_mismatch:
         if _check_is_client_prediction_mismatch(packed_state, state_frame_index):
-            G.print("Client-prediction state mismatch: networked state: %s, local state: %s",
+            var buffer_state: Array = _rollback_buffer.get_at(state_frame_index)
+            G.print("Client-prediction state mismatch: networked state: %s, local state: %s" %
+                [get_string_for_packed_state(packed_state),
+                get_string_for_packed_state(buffer_state)],
                 ScaffolderLog.CATEGORY_NETWORK_SYNC)
 
             G.network.frame_driver.queue_rollback(state_frame_index)
@@ -381,9 +384,7 @@ func _check_do_values_mismatch(
         TYPE_FLOAT:
             return abs(buffer_value - networked_value) >= threshold
         TYPE_VECTOR2, \
-        TYPE_VECTOR2I, \
-        TYPE_VECTOR3, \
-        TYPE_VECTOR3I:
+        TYPE_VECTOR2I:
             return buffer_value.distance_squared_to(networked_value) >= \
                 threshold * threshold
         _:
@@ -471,8 +472,28 @@ func _get_configuration_warnings() -> PackedStringArray:
 
 
 func get_string_for_packed_state(state: Array) -> String:
-    # FIXME: LEFT OFF HERE: ACTUALLY: -------------
-    # - Implement.
-    # - Call this from rollback mismatch.
-    # - Add useful logs in other places.
-    pass
+    var tokens: Array[String] = []
+    tokens.resize(state.size())
+    var i := 0
+    for value in state:
+        tokens[i] = _get_string_for_value(value)
+
+    return "[%s]" % ",".join(tokens)
+
+
+func _get_string_for_value(value) -> String:
+    match typeof(value):
+        TYPE_BOOL, \
+        TYPE_STRING, \
+        TYPE_INT:
+            return str(value)
+        TYPE_FLOAT:
+            return "%.1f" % value
+        TYPE_VECTOR2, \
+        TYPE_VECTOR2I:
+            return Utils.get_vector_string(value, 1)
+        _:
+            G.fatal(
+                "Type not yet supported for rollback buffer: %s" %
+                type_string(value))
+            return ""

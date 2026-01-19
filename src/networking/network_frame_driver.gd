@@ -27,8 +27,10 @@ extends Node
 
 # FIXME: [Rollback debug visualization]: Notes:
 #
-# ### PART 1: Implement buffer-state history tracking
-# - TODO: See notes doc.
+# ### PART 1: Hand test
+# - Add if-statements, guarding on client/server, with a pass, everywhere, to
+#   set breakpoints on easily as needed.
+# - Print statements.
 #
 # ### PART 2: Buffer-state debug UI
 # - Add two settings flags:

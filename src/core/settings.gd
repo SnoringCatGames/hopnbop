@@ -29,6 +29,7 @@ var server_port: int:
 @export var draw_annotations := false
 @export var show_debug_console := false
 @export var show_debug_player_state := false
+@export var show_perf_tracker := false
 
 @export var start_in_game := true
 @export var full_screen := false
