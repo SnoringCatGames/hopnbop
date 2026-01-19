@@ -150,14 +150,19 @@ func update_authority() -> void:
 
 
 func _handle_new_authoritative_state() -> void:
-    # FIXME: LEFT OFF HERE: ACTUALLY: G.network.frame_driver.queue_rollback(...)
-
     var state_time_usec: int = packed_state[packed_state.size() - 1]
     var state_frame_index := \
         G.network.frame_driver.get_frame_index_from_time(state_time_usec)
     var should_trigger_fast_forward := \
         G.network.server_frame_index < state_frame_index - 1
     var should_unpack_state := state_frame_index >= G.network.server_frame_index
+    var should_check_for_prediction_mismatch := \
+        state_frame_index < G.network.server_frame_index and \
+        _rollback_buffer.has_at(state_frame_index)
+
+    if should_check_for_prediction_mismatch:
+        if _check_is_client_prediction_mismatch(packed_state, state_frame_index):
+            G.network.frame_driver.queue_rollback(state_frame_index)
 
     # Record rollback buffer frame.
     _pack_buffer_state_from_network_state(packed_state)
@@ -334,6 +339,47 @@ func _unpack_buffer_state(frame_index: int) -> void:
         set(property_name, frame_state[i])
         i += 1
     frame_authority = frame_state[i]
+
+
+func _check_is_client_prediction_mismatch(
+        networked_state: Array, frame_index: int) -> bool:
+    var buffer_data: Array = _rollback_buffer.get_at(frame_index)
+    var thresholds: Dictionary = \
+        get("_synced_properties_and_rollback_diff_thresholds")
+
+    for property_name in thresholds:
+        var threshold = thresholds[property_name]
+        var pack_index: int = _property_name_to_pack_index[property_name]
+        var networked_value = networked_state[pack_index]
+        var buffer_value = buffer_data[pack_index]
+        if _check_do_values_mismatch(buffer_value, networked_value, threshold):
+            return true
+
+    return false
+
+
+func _check_do_values_mismatch(
+        buffer_value: Variant,
+        networked_value: Variant,
+        threshold: Variant) -> bool:
+    match typeof(buffer_value):
+        TYPE_BOOL, \
+        TYPE_STRING:
+            return buffer_value != networked_value
+        TYPE_INT, \
+        TYPE_FLOAT:
+            return abs(buffer_value - networked_value) >= threshold
+        TYPE_VECTOR2, \
+        TYPE_VECTOR2I, \
+        TYPE_VECTOR3, \
+        TYPE_VECTOR3I:
+            return buffer_value.distance_squared_to(networked_value) >= \
+                threshold * threshold
+        _:
+            G.fatal(
+                "Type not yet supported for client-prediction mismatch threshold calculations: %s" %
+                type_string(buffer_value))
+            return true
 
 
 func _update_partner_state() -> void:
