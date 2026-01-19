@@ -505,6 +505,61 @@ godot --headless -s --path . addons/gut/gut_cmdln.gd \
 - **Testing implementation details** - Test behavior, not internals
 - **Integration tests in unit test dir** - Keep them separated
 
+### Project-Specific Testing Notes
+
+**Running Tests Successfully:**
+- Run specific test files rather than directories for reliability:
+  ```bash
+  godot --headless -s --path . addons/gut/gut_cmdln.gd \
+    -gtest=res://test/unit/scaffolder/test_circular_buffer.gd -gexit
+  ```
+- Directory-based runs (`-gdir=res://test/unit`) sometimes fail to
+  discover tests
+- Always use `-gexit` flag for CI/CD to get proper exit codes
+
+**Critical Test Setup Patterns:**
+- **ArrayPool management is mandatory** - Every test that uses ArrayPool
+  (directly or indirectly through CircularBuffer/RollbackBuffer) MUST call
+  `ArrayPool.clear_all_pools()` in both `before_each()` and `after_each()`
+- **Type hints for Arrays** - GDScript tests require explicit type hints
+  when retrieving arrays:
+  ```gdscript
+  var state: Array = buffer.get_at(5)  # Correct
+  var state = buffer.get_at(5)         # May fail type checking
+  ```
+
+**Testing Networking Components:**
+- The `G` singleton (Global) is auto-loaded and initializes networking
+  subsystems
+- Tests run with full autoload context - NetworkMain, NetworkFrameDriver,
+  etc. are active
+- Frame-based simulation uses `NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC`
+  (1/60 = 0.01666... seconds)
+- Use `ReconcilableNetworkedState.FrameAuthority` enum values (UNKNOWN=0,
+  AUTHORITATIVE=1, PREDICTED=2)
+
+**Accessing Internal State:**
+- Avoid accessing private members like `buffer._data[i]` in tests when
+  possible
+- Use public API methods (`get_at()`, `set_at()`) for better encapsulation
+- If internal access is necessary, understand it couples tests to
+  implementation
+
+**Known Test Failures:**
+- A few tests check array instance equality which fails due to GDScript's
+  array semantics
+- Some tests access RollbackBuffer internal state for validation - these
+  may break if implementation changes
+- Type coercion in assertions: use explicit types to avoid GDScript type
+  inference issues
+
+**Test Coverage:**
+- Unit tests: CircularBuffer (47 tests), ArrayPool (13 tests),
+  RollbackBuffer (20 tests), ServerTimeTracker (12 tests)
+- Integration tests: Rollback flow (10 tests), state synchronization
+  (10+ tests), frame timing (14+ tests)
+- Total: 90+ tests covering core networking infrastructure
+
 ## References
 
 Networking concepts and patterns:
