@@ -250,9 +250,10 @@ func _process_animation() -> void:
 func _process_sounds() -> void:
     # FIXME: LEFT OFF HERE: NOW: Refactor how instantaneous events are handled:
     # - Instead of a just_triggered_jump like this, network
-    #   last_triggered_jump_time, and track locally the latest triggered jump
+    #   last_triggered_jump_time_usec, and track locally the latest triggered jump
     #   time that we've processed. If it's a new time (and less than some delay
     #   threshold), then trigger the sound.
+    #   - Add a new property on PlayerStateFromClient for this: last_triggered_jump_time_usec
     # - AND, I guess we should think of it the same way it terms of detecting
     #   just-did-this for other behavior on non-authoritative sources.
     #   - This will also be important for correctly handling, on the server,

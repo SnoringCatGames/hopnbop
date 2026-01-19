@@ -10,7 +10,7 @@ extends Node
 #
 # Research how to train Claude Code:
 # - Special context for Godot, client prediction and networking, and other game development patterns?
-# - Is that's anything I can do to help out understand my codebase in a way that's reusable context across queries?
+# - /init, /plan, /review
 #
 # - Ask AI to analyze all networking logic (everything under the networking/ folder) and generate file-level doc comments for each class.
 #
@@ -469,6 +469,11 @@ func _rollback_and_reprocess() -> void:
 
 ## Simulate the current frame for all network-process-aware nodes.
 func _network_process() -> void:
+    for node in _networked_state_nodes.keys():
+        # TODO: This should be possible, so try to figure out the underlying problem.
+        if not is_instance_valid(node):
+            _networked_state_nodes.erase(node)
+
     # Sync other scene state from the current network state.
     for node in _networked_state_nodes:
         node._pre_network_process()

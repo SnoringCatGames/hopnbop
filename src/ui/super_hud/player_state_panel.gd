@@ -68,6 +68,9 @@ func _process(_delta: float) -> void:
 
 
 func _physics_process(_delta: float) -> void:
+    if not is_instance_valid(player_match_state) or not is_instance_valid(player):
+        return
+
     if player.surfaces.just_changed_attachment_side:
         add_toast("Attached to %s" % SurfaceSide.get_string(player.surfaces.attachment_side))
 

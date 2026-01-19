@@ -136,7 +136,7 @@ func _ready() -> void:
 
 
 func _parse_property_names() -> void:
-    _property_names_for_packing = get("_synced_properties_and_rollback_diff_thresholds").keys()
+    _property_names_for_packing.assign(get("_synced_properties_and_rollback_diff_thresholds").keys())
     for i in range(_property_names_for_packing.size()):
         var property_name := _property_names_for_packing[i]
         _property_name_to_pack_index[property_name] = i
