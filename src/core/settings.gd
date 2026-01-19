@@ -57,7 +57,7 @@ var server_port: int:
 @export_group("")
 
 @export var default_theme: Theme
-@export var default_palette: ColorPalette
+@export var default_palette: ScaffolderColorPalette
 @export var screen_style_box: StyleBox
 
 # --- Game-specific configuration ---
