@@ -1,12 +1,7 @@
 class_name NetworkFrameDriver
 extends Node
 
-# FIXME: LEFT OFF HERE: Code review:
-
-# Testing Recommendations
-
-# Given the complexity of this system, I strongly recommend adding:
-
+# FIXME: LEFT OFF HERE: Testing Recommendations
 # 1. Unit tests for time conversion functions
 # 2. Integration tests for:
 # - Rollback with various frame gaps
@@ -18,17 +13,6 @@ extends Node
 # - Frame skip/stutter scenarios
 # - Many simultaneous rollbacks
 # 4. Determinism verification: Run same inputs on client and server, verify states match
-
-# ---
-# Priority Summary
-
-# Consider for Refactoring:
-# - Issues #19-22: Design improvements
-
-# Optimize When Profiling Shows Need:
-# - Issues #23-26: Performance improvements
-
-# ------------------------------------------------------------------------------
 
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug.
 #
@@ -51,7 +35,9 @@ extends Node
 
 # FIXME: Rollback debug visualization and networking improvements:
 #
-# Prompt: Review my notes and to create a plan for implementing them. Please flag any aspects that seem like a mistake or that don't make sense.
+# Prompt:
+# Review my notes and to create a plan for implementing them.
+# Please flag any aspects that seem like a mistake or that don't make sense.
 #
 # ### PART 0: Add benchmarking
 # - Track how often rollbacks occur.

@@ -1,0 +1,36 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Godot
+        run: |
+          wget https://github.com/godotengine/godot/releases/download/4.5-beta1/Godot_v4.5-beta1_linux.x86_64.zip
+          unzip Godot_v4.5-beta1_linux.x86_64.zip
+          chmod +x Godot_v4.5-beta1_linux.x86_64
+
+      - name: Run Unit Tests
+        run: |
+          ./Godot_v4.5-beta1_linux.x86_64 --headless -d -s --path . \
+            addons/gut/gut_cmdln.gd \
+            -gdir=res://test/unit \
+            -gexit \
+            -gjunit_xml_file=unit_test_results.xml
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: |
+            unit_test_results.xml
