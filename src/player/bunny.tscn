@@ -4,7 +4,7 @@
 [ext_resource type="Resource" uid="uid://dq1d4nuh248j2" path="res://src/player/default_movement_settings.tres" id="2_4p26p"]
 [ext_resource type="Script" uid="uid://bglkea0vh5fw0" path="res://src/scaffolder/character/character_state_from_server.gd" id="3_o16et"]
 [ext_resource type="Script" uid="uid://chp1athjwjq76" path="res://src/scaffolder/character/player_state_from_client.gd" id="4_1rl0f"]
-[ext_resource type="PackedScene" uid="uid://br1b7cse0hxmt" path="res://src/player/player_animator.tscn" id="5_sc4xa"]
+[ext_resource type="PackedScene" uid="uid://br1b7cse0hxmt" path="res://src/player/bunny_animator.tscn" id="5_sc4xa"]
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_mf2ua"]
 properties/0/path = NodePath(".:packed_state")

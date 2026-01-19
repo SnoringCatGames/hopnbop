@@ -1,22 +1,22 @@
 [gd_scene load_steps=8 format=3 uid="uid://br1b7cse0hxmt"]
 
-[ext_resource type="Texture2D" uid="uid://bsrqq2id8rpl8" path="res://assets/images/bunny.png" id="1_biyea"]
-[ext_resource type="Script" uid="uid://b50tfbt5wsthb" path="res://src/scaffolder/character/character_animator.gd" id="1_eeopx"]
+[ext_resource type="Script" uid="uid://b50tfbt5wsthb" path="res://src/scaffolder/character/character_animator.gd" id="1_ehlwh"]
+[ext_resource type="Texture2D" uid="uid://bsrqq2id8rpl8" path="res://assets/images/bunny.png" id="2_6bee0"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ufhta"]
-atlas = ExtResource("1_biyea")
+atlas = ExtResource("2_6bee0")
 region = Rect2(0, 0, 16, 16)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_4vwoo"]
-atlas = ExtResource("1_biyea")
+atlas = ExtResource("2_6bee0")
 region = Rect2(0, 0, 16, 16)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_mf2ua"]
-atlas = ExtResource("1_biyea")
+atlas = ExtResource("2_6bee0")
 region = Rect2(0, 0, 16, 16)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_qkkjt"]
-atlas = ExtResource("1_biyea")
+atlas = ExtResource("2_6bee0")
 region = Rect2(0, 0, 16, 16)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_eeopx"]
@@ -54,8 +54,8 @@ animations = [{
 "speed": 5.0
 }]
 
-[node name="PlayerAnimator" type="Node2D" node_paths=PackedStringArray("animated_sprite")]
-script = ExtResource("1_eeopx")
+[node name="BunnyAnimator" type="Node2D" node_paths=PackedStringArray("animated_sprite")]
+script = ExtResource("1_ehlwh")
 faces_right_by_default = false
 animated_sprite = NodePath("AnimatedSprite2D")
 metadata/_custom_type_script = "uid://b50tfbt5wsthb"
