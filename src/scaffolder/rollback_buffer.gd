@@ -36,6 +36,14 @@ func _reinitialize_data(fill_state: Array, target_index: int) -> void:
     _total_pushed = target_index + 1
 
 
+## Calculate the oldest theoretically accessible index in the buffer.
+## - This is limited by the buffer capacity.
+## - Returns the oldest valid index, accounting for special negative indices
+##   (-1, -2).
+func _get_oldest_accessible_index() -> int:
+    return maxi(-2, _total_pushed - _capacity)
+
+
 ## Override to allow access to previous frames that haven't been explicitly set,
 ## as long as they wouldn't wrap around to currently-set frames.
 ##
@@ -47,10 +55,7 @@ func has_at(index: int) -> bool:
     if index >= _total_pushed:
         return false
 
-    # Calculate the oldest theoretically accessible index.
-    # This is limited by the buffer capacity.
-    var oldest_accessible_index := maxi(-2, _total_pushed - _capacity)
-    return index >= oldest_accessible_index
+    return index >= _get_oldest_accessible_index()
 
 
 ## Override to allow access to the same indices as has_at, including index -1.
@@ -62,6 +67,45 @@ func get_at(index: int) -> Variant:
     if internal_index < 0:
         internal_index += _capacity
     return _data[internal_index]
+
+
+## Override set_at to support setting values at arbitrary indices within the
+## buffer's range, allowing gaps between the current latest index and the new
+## index.
+##
+## This is needed for rollback buffers where we may receive states for
+## non-sequential frames.
+func set_at(index: int, value: Variant) -> bool:
+    # Don't allow setting values that are too far back in time.
+    if index < _get_oldest_accessible_index():
+        return false
+
+    var internal_index := index % _capacity
+
+    # Update _total_pushed if we're setting beyond the current latest index.
+    if index >= _total_pushed:
+        _total_pushed = index + 1
+        _next_index = (index + 1) % _capacity
+
+    # Optimization: If both old and new values are arrays of the same size,
+    # copy values into the existing array to avoid allocation.
+    var existing_value = _data[internal_index]
+    if existing_value is Array and value is Array:
+        var existing_arr := existing_value as Array
+        var new_arr := value as Array
+        if existing_arr.size() == new_arr.size():
+            for i in range(new_arr.size()):
+                existing_arr[i] = new_arr[i]
+            # Release the new array back to pool since we reused the existing one.
+            ArrayPool.release(new_arr)
+            return true
+
+    # Release old array to pool if we're replacing it.
+    if existing_value is Array:
+        ArrayPool.release(existing_value)
+
+    _data[internal_index] = value
+    return true
 
 
 ## Back-fill missing frames using the last recorded state.
