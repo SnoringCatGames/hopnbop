@@ -41,20 +41,48 @@ var _force_include_log_warnings := true
 func _ready() -> void:
     _print_front_matter()
 
-    self.print("ScaffolderLog._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+    self.print(
+        "ScaffolderLog._ready",
+        ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+
+
+func _get_includes_category_in_logs() -> bool:
+    return (
+        not is_instance_valid(G.settings) or
+        G.settings.include_category_in_logs
+    )
+
+
+func _get_includes_multiplayer_id_in_logs() -> bool:
+    return (
+        not is_instance_valid(G.settings) or
+        G.settings.include_multiplayer_id_in_logs
+    )
+
+
+func _get_logging_verbosity() -> Verbosity:
+    return (
+        G.settings.verbosity if
+        is_instance_valid(G.settings) else
+        ScaffolderLog.Verbosity.VERBOSE
+    )
 
 
 func _format_message(message: String, category: StringName) -> String:
     var play_time: float = (
-        G.time.get_play_time() if is_instance_valid(G) and is_instance_valid(G.time) else -1.0
+        G.time.get_play_time() if
+        is_instance_valid(G) and is_instance_valid(G.time) else
+        -1.0
     )
 
     var category_token := (
-        "[%s]" % get_category_prefix(category) if G.settings.include_category_in_logs else ""
+        "[%s]" % get_category_prefix(category) if
+        _get_includes_category_in_logs() else
+        ""
     )
 
     var multiplayer_id_value: String
-    if G.settings.include_multiplayer_id_in_logs and G.network.is_preview:
+    if _get_includes_multiplayer_id_in_logs() and G.network.is_preview:
         if G.network.is_client:
             if G.network.is_connected_to_server:
                 # Client, connected to server.
@@ -72,7 +100,9 @@ func _format_message(message: String, category: StringName) -> String:
         # Omit token.
         multiplayer_id_value = ""
     var multiplayer_id_token = (
-        "[%s]" % multiplayer_id_value if G.settings.include_multiplayer_id_in_logs else ""
+        "[%s]" % multiplayer_id_value if
+        _get_includes_multiplayer_id_in_logs() else
+        ""
     )
 
     return (
@@ -86,10 +116,14 @@ func _format_message(message: String, category: StringName) -> String:
     )
 
 
-func print(message = "", category := CATEGORY_DEFAULT, verbosity := Verbosity.NORMAL) -> void:
+func print(
+        message = "",
+        category := CATEGORY_DEFAULT,
+        verbosity := Verbosity.NORMAL,
+    ) -> void:
     if not _is_category_enabled(category):
         return
-    if verbosity > G.settings.verbosity:
+    if verbosity > _get_logging_verbosity():
         return
 
     if !(message is String):
@@ -111,7 +145,11 @@ func print(message = "", category := CATEGORY_DEFAULT, verbosity := Verbosity.NO
 #     the error actually happened.
 #     -   This is needed because stack traces are not available on non-main
 #         threads.
-func error(message: String, _category := CATEGORY_DEFAULT, should_crash := true) -> void:
+func error(
+        message: String,
+        _category := CATEGORY_DEFAULT,
+        should_crash := true,
+    ) -> void:
     message = "ERROR  : %s" % message
     push_error(message)
     print_stack()
@@ -127,7 +165,10 @@ func error(message: String, _category := CATEGORY_DEFAULT, should_crash := true)
 #     the error actually happened.
 #     -   This is needed because stack traces are not available on non-main
 #         threads.
-func warning(message: String, category := CATEGORY_DEFAULT) -> void:
+func warning(
+        message: String,
+        category := CATEGORY_DEFAULT,
+    ) -> void:
     if _is_category_enabled(category) or _force_include_log_warnings:
         message = "WARNING: %s" % message
         push_warning(message)
