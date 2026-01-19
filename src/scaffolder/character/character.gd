@@ -1,3 +1,4 @@
+@tool
 class_name Character
 extends CharacterBody2D
 
@@ -9,11 +10,25 @@ const _NORMAL_SURFACES_COLLISION_MASK_BIT := 1
 const _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT := 2
 const _WALK_THROUGH_WALLS_COLLISION_MASK_BIT := 4
 
-@export var collision_shape: CollisionShape2D
-@export var animator: CharacterAnimator
-@export var movement_settings: MovementSettings
+@export var collision_shape: CollisionShape2D:
+    set(value):
+        collision_shape = value
+        update_configuration_warnings()
 
-@export var state_from_server: CharacterStateFromServer
+@export var animator: CharacterAnimator:
+    set(value):
+        animator = value
+        update_configuration_warnings()
+
+@export var movement_settings: MovementSettings:
+    set(value):
+        movement_settings = value
+        update_configuration_warnings()
+
+@export var state_from_server: CharacterStateFromServer:
+    set(value):
+        state_from_server = value
+        update_configuration_warnings()
 
 var multiplayer_id: int:
     set(value):
@@ -88,15 +103,12 @@ func _exit_tree() -> void:
 
 
 func _ready() -> void:
-    # FIXME: Add configuration warnings for these as well.
-    G.check_valid(collision_shape,
-        "collision_shape is not set: %s" % name)
-    G.check_valid(animator,
-        "animator is not set: %s" % name)
-    G.check_valid(movement_settings,
-        "movement_settings is not set: %s" % name)
-    G.check_valid(state_from_server,
-        "state_from_server is not set: %s" % name)
+    update_configuration_warnings()
+
+    if Engine.is_editor_hint():
+        return
+
+    G.check(_get_configuration_warnings().is_empty())
 
     movement_settings.set_up()
 
@@ -137,13 +149,6 @@ func _update_actions() -> void:
 
 
 func _network_process() -> void:
-    # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY: Character process.
-    # - THINK ABOUT POSITION BEFORE/AFTER _network_process, and how that
-    #   corresponds to the networked state.
-    #   - I guess we shouldn't call _network_process for a frame if we already
-    #     know what the authoritative state is for the frame.
-    pass
-
     _apply_movement()
 
     # update derived behaviors based on current movement and actions.
@@ -296,3 +301,16 @@ func get_position_in_screen_space() -> Vector2:
 
 func get_is_player_control_active() -> bool:
     return false
+
+
+func _get_configuration_warnings() -> PackedStringArray:
+    var warnings := PackedStringArray()
+    if not is_instance_valid(collision_shape):
+        warnings.append("collision_shape is not set")
+    if not is_instance_valid(animator):
+        warnings.append("animator is not set")
+    if not is_instance_valid(movement_settings):
+        warnings.append("movement_settings is not set")
+    if not is_instance_valid(state_from_server):
+        warnings.append("state_from_server is not set")
+    return warnings

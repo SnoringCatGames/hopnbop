@@ -62,7 +62,10 @@ func backfill_to_with_last_state(target_index: int) -> void:
     if get_latest_index() >= target_index:
         return
 
-    var fill_state: Array = get_at(get_latest_index())
+    var fill_state: Array = get_at(get_latest_index()).duplicate()
+    # Backfilled state is not authoritative.
+    fill_state[fill_state.size() - 1] = \
+        ReconcilableNetworkedState.FrameAuthority.PREDICTED
 
     # If the gap is larger than capacity, just reinitialize the entire array.
     if target_index - get_latest_index() > _capacity:

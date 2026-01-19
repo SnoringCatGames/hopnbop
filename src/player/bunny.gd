@@ -1,3 +1,4 @@
+@tool
 class_name Bunny
 extends Player
 
@@ -12,6 +13,10 @@ func _enter_tree() -> void:
 
 func _exit_tree() -> void:
     super._exit_tree()
+
+
+func _ready() -> void:
+    super._ready()
 
 
 func _network_process() -> void:

@@ -6,7 +6,7 @@ extends ReconcilableNetworkedState
 # FIXME: Override configuration warnings to check this is set.
 @export var player: Player
 
-var _state_from_server: CharacterStateFromServer:
+var state_from_server: CharacterStateFromServer:
     get:
         if is_instance_valid(_partner_state):
             return _partner_state as CharacterStateFromServer
@@ -59,6 +59,4 @@ func _sync_from_scene_state() -> void:
     if not G.ensure_valid(player):
         return
 
-    # FIXME: LEFT OFF HERE: ACTUALLY: Character process.
-
-    pass
+    actions = player.actions.bitmask

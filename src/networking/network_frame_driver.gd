@@ -78,6 +78,7 @@ func _update_server_frame_time() -> void:
     # If our tracking of server time has skewed enough that we're skipping a
     # frame, then we need to fast-forward the system.
     if next_server_frame_index > server_frame_index + 1:
+        G.warning("Fast-forwarding due to _physics_process frame skew")
         fast_forward(next_server_frame_index)
 
     server_frame_time_usec = next_server_frame_time_usec
@@ -119,7 +120,7 @@ func remove_network_frame_processor(node: NetworkFrameProcessor) -> void:
 # - This frame
 func queue_rollback(p_conflicting_frame_index: int) -> bool:
     # FIXME: LEFT OFF HERE: Check if this check should happen earlier.
-    # Rollback simulation would start on the proceding frame after the mismatch.
+    # Rollback simulation would start on the next frame after the mismatch.
     var target_rollback_frame := p_conflicting_frame_index + 1
     if target_rollback_frame < oldest_rollbackable_frame_index:
         # TODO: We'll probably want to remove this log.
@@ -179,15 +180,6 @@ func _start_rollback() -> void:
 
 ## Simulate the current frame for all network-process-aware nodes.
 func _network_process() -> void:
-    # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY: --------------------
-    #
-    # ****
-    # - Need to conditionally resync scene state from buffer state before each call to _network_process.
-    #   - If the buffer state is authoritative, we don't overwrite it, and we overwrite the scene state.
-    #   - But we still may need to simulate and overwrite frames preceding that, in order to have state for other nodes to check during that frame.
-    #
-    pass
-
     # Sync other scene state from the current network state.
     for node in _networked_state_nodes:
         node._pre_network_process()
@@ -206,3 +198,9 @@ func _network_process() -> void:
 func fast_forward(new_frame_index: int) -> void:
     # FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY, ACTUALLY: Fast forward
     pass
+
+
+# FIXME: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY, ACTUALLY: ------------
+# - After finishing hooking up all the parts, walk through each bit and
+#   double-check if we're setting and getting "latest" state from the buffer
+#   at the correct times (before and after the simulation).
