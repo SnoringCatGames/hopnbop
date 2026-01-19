@@ -138,5 +138,8 @@ func backfill_to_with_last_state(target_index: int) -> void:
 func _backfill_to(target_index: int, fill_state: Variant) -> void:
     while get_latest_index() < target_index:
         var next_index := get_latest_index() + 1
-        # No need to duplicate, set_at() will reuse existing array slots.
-        set_at(next_index, fill_state)
+        # Acquire a fresh array for each frame since set_at() may release it.
+        var frame_state := ArrayPool.acquire(fill_state.size())
+        for i in range(fill_state.size()):
+            frame_state[i] = fill_state[i]
+        set_at(next_index, frame_state)
