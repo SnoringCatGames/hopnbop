@@ -25,7 +25,12 @@ signal sync_completed(offset_usec: int, rtt_usec: int)
 ## Whether this instance is running on the server.
 var is_server: bool:
     get:
-        return multiplayer.is_server() if multiplayer.has_multiplayer_peer() else true
+        return (
+            multiplayer.is_server() if
+            is_instance_valid(multiplayer) and
+                multiplayer.has_multiplayer_peer() else
+            true
+        )
 
 ## The estimated clock offset from local time to server time (in microseconds).
 ## server_time ≈ local_time + clock_offset_usec
