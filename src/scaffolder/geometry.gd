@@ -712,15 +712,11 @@ static func do_point_and_segment_intersect(
         epsilon := FLOAT_EPSILON,
 ) -> bool:
     return (
-        (
-            abs(
-                (
-                    (segment_a.x - point.x) * (segment_b.y - point.y)
-                    - (segment_b.x - point.x) * (segment_a.y - point.y)
-                ),
-            )
-            < epsilon
+        abs(
+            (segment_a.x - point.x) * (segment_b.y - point.y)
+            - (segment_b.x - point.x) * (segment_a.y - point.y),
         )
+        < epsilon
         and (
             (point.x <= segment_a.x + epsilon and point.x >= segment_b.x - epsilon)
             or (point.x >= segment_a.x - epsilon and point.x <= segment_b.x + epsilon)
@@ -777,11 +773,9 @@ static func do_shapes_match(a: Shape2D, b: Shape2D) -> bool:
     else:
         G.ensure(
             false,
-            (
-                "Invalid Shape2D provided: %s. The "
-                + "supported shapes are: CircleShape2D, CapsuleShape2D, "
-                + "RectangleShape2D." % a
-            ),
+            "Invalid Shape2D provided: %s. The "
+            + "supported shapes are: CircleShape2D, CapsuleShape2D, "
+            + "RectangleShape2D." % a,
         )
         return false
 
@@ -798,14 +792,10 @@ static func calculate_half_width_height(shape: Shape2D, is_rotated_90_degrees: b
     else:
         G.ensure(
             false,
-            (
-                (
-                    "Invalid Shape2D provided: %s. "
-                    + "The supported shapes are: CircleShape2D, "
-                    + "CapsuleShape2D, RectangleShape2D."
-                )
-                % str(shape)
-            ),
+            "Invalid Shape2D provided: %s. "
+            + "The supported shapes are: CircleShape2D, "
+            + "CapsuleShape2D, RectangleShape2D."
+            % str(shape),
         )
 
     if is_rotated_90_degrees:

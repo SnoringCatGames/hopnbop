@@ -370,11 +370,9 @@ func _update_server_frame_time() -> void:
     # If our tracking of server time has skewed enough that we're skipping a
     # frame, then we need to fast-forward the system.
     if next_server_frame_index > server_frame_index + 1:
-        (
-            G.warning(
-                "Fast-forwarding due to _physics_process frame skew",
-                ScaffolderLog.CATEGORY_NETWORK_SYNC,
-            )
+        G.warning(
+            "Fast-forwarding due to _physics_process frame skew",
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
         )
         fast_forward(next_server_frame_index - 1)
 
@@ -420,13 +418,9 @@ func is_frame_too_old_to_consider(p_frame_index: int) -> bool:
 func queue_rollback(p_conflicting_frame_index: int) -> bool:
     var target_rollback_frame := p_conflicting_frame_index + 1
     if is_frame_too_old_to_consider(p_conflicting_frame_index):
-        (
-            G.fatal(
-                (
-                    "Requested rollback to frame %d, but oldest rollbackable frame is %d"
-                    % [target_rollback_frame, oldest_rollbackable_frame_index]
-                ),
-            )
+        G.fatal(
+            "Requested rollback to frame %d, but oldest rollbackable frame is %d"
+            % [target_rollback_frame, oldest_rollbackable_frame_index],
         )
         return false
 

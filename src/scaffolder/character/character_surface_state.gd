@@ -423,11 +423,9 @@ func _update_attachment_trigger_state() -> void:
         is_pressing_into_wall and !is_pressing_away_from_wall and !just_pressed_jump
     )
     var is_pressing_ceiling_release_input: bool = (
-        (
-            character.actions.pressed_down
-            and !character.actions.pressed_up
-            and !character.actions.pressed_attach
-        )
+        character.actions.pressed_down
+        and !character.actions.pressed_up
+        and !character.actions.pressed_attach
         or just_pressed_jump
     )
     var is_pressing_wall_release_input := (

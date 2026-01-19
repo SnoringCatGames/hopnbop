@@ -101,11 +101,9 @@ func _init() -> void:
     if Engine.is_editor_hint():
         return
 
-    (
-        G.ensure(
-            Utils.check_whether_sub_classes_are_tools(self),
-            "Subclasses of ReconcilableNetworkedState must be marked with @tool",
-        )
+    G.ensure(
+        Utils.check_whether_sub_classes_are_tools(self),
+        "Subclasses of ReconcilableNetworkedState must be marked with @tool",
     )
 
     _set_up_rollback_buffer()
@@ -153,14 +151,10 @@ func _handle_new_authoritative_state() -> void:
     var state_frame_index := G.network.frame_driver.get_frame_index_from_time(state_time_usec)
 
     if G.network.frame_driver.is_frame_too_old_to_consider(state_frame_index):
-        (
-            G.warning(
-                (
-                    "Received networked state that is too old to reconcile with the rollback buffer: state time: %d, local time: %d"
-                    % [state_time_usec, G.network.server_frame_time_usec]
-                ),
-                ScaffolderLog.CATEGORY_NETWORK_SYNC,
-            )
+        G.warning(
+            "Received networked state that is too old to reconcile with the rollback buffer: state time: %d, local time: %d"
+            % [state_time_usec, G.network.server_frame_time_usec],
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
         )
         return
 
@@ -174,17 +168,13 @@ func _handle_new_authoritative_state() -> void:
     if should_check_for_prediction_mismatch:
         if _check_is_client_prediction_mismatch(packed_state, state_frame_index):
             var buffer_state: Array = _rollback_buffer.get_at(state_frame_index)
-            (
-                G.print(
-                    (
-                        "Client-prediction state mismatch: networked state: %s, local state: %s"
-                        % [
-                            get_string_for_packed_state(packed_state),
-                            get_string_for_packed_state(buffer_state),
-                        ]
-                    ),
-                    ScaffolderLog.CATEGORY_NETWORK_SYNC,
-                )
+            G.print(
+                "Client-prediction state mismatch: networked state: %s, local state: %s"
+                % [
+                    get_string_for_packed_state(packed_state),
+                    get_string_for_packed_state(buffer_state),
+                ],
+                ScaffolderLog.CATEGORY_NETWORK_SYNC,
             )
 
             G.network.frame_driver.queue_rollback(state_frame_index)
@@ -235,11 +225,9 @@ func _pre_network_process() -> void:
     timestamp_index = G.network.server_frame_index
     frame_authority = FrameAuthority.UNKNOWN
 
-    (
-        G.check(
-            _rollback_buffer.get_latest_index() >= timestamp_index - 1,
-            "Rollback buffer does not have state for the expected frame index",
-        )
+    G.check(
+        _rollback_buffer.get_latest_index() >= timestamp_index - 1,
+        "Rollback buffer does not have state for the expected frame index",
     )
 
     _unpack_buffer_state(timestamp_index - 1)
@@ -257,29 +245,23 @@ func _post_network_process() -> void:
 
 
 func _get_default_values() -> Array:
-    (
-        G.fatal(
-            "Abstract ReconcilableNetworkState._get_default_values is not implemented",
-        )
+    G.fatal(
+        "Abstract ReconcilableNetworkState._get_default_values is not implemented",
     )
     return []
 
 
 ## This will update the surrounding scene state to match the networked state.
 func _sync_to_scene_state(_previous_state: Array) -> void:
-    (
-        G.fatal(
-            "Abstract ReconcilableNetworkState._sync_to_scene_state is not implemented",
-        )
+    G.fatal(
+        "Abstract ReconcilableNetworkState._sync_to_scene_state is not implemented",
     )
 
 
 ## This will update the networked state to match the surrounding scene state.
 func _sync_from_scene_state() -> void:
-    (
-        G.fatal(
-            "Abstract ReconcilableNetworkState._sync_from_scene_state is not implemented",
-        )
+    G.fatal(
+        "Abstract ReconcilableNetworkState._sync_from_scene_state is not implemented",
     )
 
 
@@ -425,13 +407,9 @@ func _check_do_values_mismatch(
         TYPE_VECTOR2, TYPE_VECTOR2I:
             return buffer_value.distance_squared_to(networked_value) >= threshold * threshold
         _:
-            (
-                G.fatal(
-                    (
-                        "Type not yet supported for client-prediction mismatch threshold calculations: %s"
-                        % type_string(buffer_value)
-                    ),
-                )
+            G.fatal(
+                "Type not yet supported for client-prediction mismatch threshold calculations: %s"
+                % type_string(buffer_value),
             )
             return true
 
@@ -472,14 +450,10 @@ func _update_partner_state() -> void:
 
     if not Engine.is_editor_hint() and not _partner_state_configuration_warning.is_empty():
         # Log and assert in game runtime environments.
-        (
-            G.error(
-                (
-                    "ReconcilableNetworkedState is misconfigured: %s"
-                    % _partner_state_configuration_warning
-                ),
-                ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-            )
+        G.error(
+            "ReconcilableNetworkedState is misconfigured: %s"
+            % _partner_state_configuration_warning,
+            ScaffolderLog.CATEGORY_CORE_SYSTEMS,
         )
 
     # Also refresh sibling ReconcilableNetworkedState warnings.
@@ -493,28 +467,20 @@ func _get_configuration_warnings() -> PackedStringArray:
     var thresholds = get("_synced_properties_and_rollback_diff_thresholds")
 
     if thresholds == null:
-        (
-            warnings.append(
-                "A _synced_properties_and_rollback_diff_thresholds property must be defined on subclasses of ReconcilableNetworkedState",
-            )
+        warnings.append(
+            "A _synced_properties_and_rollback_diff_thresholds property must be defined on subclasses of ReconcilableNetworkedState",
         )
     elif not thresholds is Dictionary:
-        (
-            warnings.append(
-                "The _synced_properties_and_rollback_diff_thresholds property must be a Dictionary",
-            )
+        warnings.append(
+            "The _synced_properties_and_rollback_diff_thresholds property must be a Dictionary",
         )
     else:
         # Check if _synced_properties_and_rollback_diff_thresholds matches the other properties.
         for property_name in thresholds.keys():
             if get(property_name) == null:
-                (
-                    warnings.append(
-                        (
-                            "Key %s in _synced_properties_and_rollback_diff_thresholds does not match any class property"
-                            % property_name
-                        ),
-                    )
+                warnings.append(
+                    "Key %s in _synced_properties_and_rollback_diff_thresholds does not match any class property"
+                    % property_name,
                 )
 
     if root_path.is_empty():
@@ -546,9 +512,7 @@ func _get_string_for_value(value) -> String:
         TYPE_VECTOR2, TYPE_VECTOR2I:
             return Utils.get_vector_string(value, 1)
         _:
-            (
-                G.fatal(
-                    "Type not yet supported for rollback buffer: %s" % type_string(value),
-                )
+            G.fatal(
+                "Type not yet supported for rollback buffer: %s" % type_string(value),
             )
             return ""

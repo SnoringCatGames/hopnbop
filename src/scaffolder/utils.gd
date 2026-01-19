@@ -128,24 +128,18 @@ static func subtract_and_mutate_nested_arrays(
             elif expects_no_missing_matches:
                 G.ensure(
                     false,
-                    (
-                        (
-                            "Wrong-type match: "
-                            + "(We currently don't support subtracting properties "
-                            + "from a Dictionary. We only support subtracting "
-                            + "elements from Arrays.)"
-                            + "\n    key=%s,\n    result=%s,\n    other=%s"
-                        )
-                        % [key, result, other]
-                    ),
+                    "Wrong-type match: "
+                    + "(We currently don't support subtracting properties "
+                    + "from a Dictionary. We only support subtracting "
+                    + "elements from Arrays.)"
+                    + "\n    key=%s,\n    result=%s,\n    other=%s"
+                    % [key, result, other],
                 )
         elif expects_no_missing_matches:
             G.ensure(
                 false,
-                (
-                    ("Missing match: " + "\n    key=%s,\n    result=%s,\n    other=%s")
-                    % [key, result, other]
-                ),
+                ("Missing match: " + "\n    key=%s,\n    result=%s,\n    other=%s")
+                % [key, result, other],
             )
     return result
 
@@ -158,10 +152,8 @@ static func subtract_and_mutate_arrays(result: Array, other: Array) -> Array:
         else:
             G.ensure(
                 false,
-                (
-                    ("Missing match: " + "\n    element=%s,\n    result=%s,\n    other=%s")
-                    % [element, result, other]
-                ),
+                ("Missing match: " + "\n    element=%s,\n    result=%s,\n    other=%s")
+                % [element, result, other],
             )
     return result
 
@@ -502,12 +494,10 @@ static func get_node_vscroll_position(
     var scroll_container_global_position := scroll_container.global_position
     var control_global_position := control.global_position
     var vscroll_position: int = int(
-        (
-            control_global_position.y
-            - scroll_container_global_position.y
-            + scroll_container.scroll_vertical
-            + offset
-        ),
+        control_global_position.y
+        - scroll_container_global_position.y
+        + scroll_container.scroll_vertical
+        + offset,
     )
     var max_vscroll_position := scroll_container.get_v_scroll_bar().max_value
     return int(min(vscroll_position, max_vscroll_position))
