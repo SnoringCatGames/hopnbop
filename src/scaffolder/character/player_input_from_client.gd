@@ -1,5 +1,5 @@
 @tool
-class_name PlayerStateFromClient
+class_name PlayerInputFromClient
 extends ReconcilableNetworkedState
 
 @export var player: Player:
@@ -70,7 +70,7 @@ func update_authority() -> void:
 
 func _network_process() -> void:
     # CharacterStateFromServer handles _network_process for itself and any
-    # corresponding PlayerStateFromClient.
+    # corresponding PlayerInputFromClient.
     pass
 
 

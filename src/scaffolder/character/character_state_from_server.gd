@@ -7,10 +7,10 @@ extends ReconcilableNetworkedState
         character = value
         update_configuration_warnings()
 
-var state_from_client: PlayerStateFromClient:
+var state_from_client: PlayerInputFromClient:
     get:
         if is_instance_valid(_partner_state):
-            return _partner_state as PlayerStateFromClient
+            return _partner_state as PlayerInputFromClient
         else:
             return null
 

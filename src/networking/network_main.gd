@@ -12,8 +12,8 @@ extends Node
 ##   --server, --client=1, --client=2.
 ## - Also, include --preview as an arg in each row.
 
-signal local_authority_added(state_from_client: PlayerStateFromClient)
-signal local_authority_removed(state_from_client: PlayerStateFromClient)
+signal local_authority_added(state_from_client: PlayerInputFromClient)
+signal local_authority_removed(state_from_client: PlayerInputFromClient)
 
 var time := ServerTimeTracker.new()
 var connector := NetworkConnector.new()

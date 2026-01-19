@@ -2,7 +2,7 @@
 class_name Player
 extends Character
 
-@export var input_from_client: PlayerStateFromClient:
+@export var input_from_client: PlayerInputFromClient:
     set(value):
         input_from_client = value
         update_configuration_warnings()

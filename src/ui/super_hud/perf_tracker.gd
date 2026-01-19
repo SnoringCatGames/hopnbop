@@ -32,7 +32,7 @@ func _ready() -> void:
 
 
 func _on_local_authority_added(
-        state_from_client: PlayerStateFromClient,
+        state_from_client: PlayerInputFromClient,
 ) -> void:
     # Wait a tick to ensure state_from_server is populated
     await get_tree().process_frame
@@ -46,7 +46,7 @@ func _on_local_authority_added(
 
 
 func _on_local_authority_removed(
-        _state_from_client: PlayerStateFromClient,
+        _state_from_client: PlayerInputFromClient,
 ) -> void:
     # Do nothing.
     pass
