@@ -28,6 +28,14 @@ jobs:
             -gexit \
             -gjunit_xml_file=unit_test_results.xml
 
+      - name: Run Integration Tests
+        run: |
+          ./Godot_v4.5-beta1_linux.x86_64 --headless -d -s --path . \
+            addons/gut/gut_cmdln.gd \
+            -gdir=res://test/integration \
+            -gexit \
+            -gjunit_xml_file=integration_test_results.xml
+
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()

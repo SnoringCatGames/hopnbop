@@ -47,6 +47,13 @@ godot --headless -s --path . addons/gut/gut_cmdln.gd \
   -gdir=res://test/integration -gexit
 ```
 
+Run specific integration test suite:
+```bash
+godot --headless -s --path . addons/gut/gut_cmdln.gd \
+  -gtest=res://test/integration/multiplayer/test_rollback_flow.gd \
+  -gexit
+```
+
 Run specific test file:
 ```bash
 godot --headless -s --path . addons/gut/gut_cmdln.gd \
@@ -125,15 +132,54 @@ class TestWhenEmpty:
 - ✅ ServerTimeTracker - Time offset calculation and sample management
 
 **Integration Tests:**
-- ⏳ Multiplayer state synchronization (planned)
-- ⏳ Rollback reconciliation flow (planned)
-- ⏳ Character physics integration (planned)
+- ✅ Rollback Flow - Frame simulation, wraparound, large gaps, ArrayPool
+  efficiency
+- ✅ State Synchronization - Client prediction, server reconciliation,
+  out-of-order packets, multi-client scenarios
+- ✅ Frame Synchronization - Time/frame conversion, latency scenarios,
+  frame skip detection
+
+### Integration Test Details
+
+**test_rollback_flow.gd** - Tests rollback buffer behavior during gameplay
+- Frame simulation without rollback (30+ frames)
+- Backfilling missing frames during packet loss
+- Detecting mismatches and triggering rollback
+- Re-simulating frames after rollback point
+- Buffer wraparound with 50+ frame sequences
+- Applying server corrections to old frames
+- ArrayPool efficiency during frame updates
+- Large gap backfill triggering buffer reinitialization
+- Negative index handling (-1, -2)
+
+**test_state_synchronization.gd** - Tests multiplayer sync patterns
+- Client prediction ahead of server
+- Server corrections updating client prediction
+- Late packet arrival handling
+- Ignoring extremely old packets (beyond buffer)
+- Multiple clients with different latencies
+- State divergence detection (position, velocity)
+- Client catch-up to server
+- Burst of updates in quick succession
+
+**test_frame_synchronization.gd** - Tests timing and frame alignment
+- Time-to-frame and frame-to-time conversion
+- Client/server frame alignment
+- Clock offset handling (server ahead/behind)
+- Low latency scenarios (20ms RTT, ~1 frame)
+- High latency scenarios (200ms RTT, ~6 frames)
+- Variable latency jitter (out-of-order packets)
+- Frame skip detection
+- Backfilling skipped frames
+- Buffer size sufficiency for latency (1.5s = 90 frames)
+- Extreme latency handling (500ms RTT)
+- Packet loss extending effective latency
 
 ### Priority Areas for Future Tests
 
 1. **Networking Layer**
    - ReconcilableNetworkedState (requires extensive mocking)
-   - NetworkFrameDriver (integration test)
+   - NetworkFrameDriver (full system integration test)
    - NetworkConnector (integration test)
 
 2. **Character System**
