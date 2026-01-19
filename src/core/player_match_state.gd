@@ -5,7 +5,7 @@ extends RefCounted
 ## - This should contain state that doesn't need to sync very often (every few
 ##   seconds at the most).
 ## - State that needs to sync every frame should instead be tracked in
-##   [FIXME: [Rollback]: Reference player networked state script].
+##   [FIXME: LEFT OFF HERE: Reference player networked state script].
 
 
 var multiplayer_id := 0

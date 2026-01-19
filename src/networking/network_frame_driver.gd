@@ -35,10 +35,12 @@ var rollback_buffer_size: int:
 
 var oldest_rollbackable_frame_index: int:
     get:
-        # For a rollback, we must be able to consider both the target frame as
-        # well as the previous frame, so we can't rollback to the oldest
-        # recorded frame.
-        return max(G.network.server_frame_index - rollback_buffer_size + 2, 1)
+        # - When processing a frame, we must be able to consider both the target
+        #   frame as well as the previous frame, so we can't rollback to the
+        #   oldest recorded frame.
+        # - Also, some buffers could already contain networked state for the
+        #   next frame, so those buffers have one fewer past frames.
+        return max(G.network.server_frame_index - rollback_buffer_size + 3, 1)
 
 
 func _ready() -> void:
@@ -105,6 +107,11 @@ func remove_network_frame_processor(node: NetworkFrameProcessor) -> void:
     _network_frame_processor_nodes.erase(node)
 
 
+func is_frame_too_old_to_consider(p_frame_index: int) -> bool:
+    var target_rollback_frame := p_frame_index + 1
+    return target_rollback_frame < oldest_rollbackable_frame_index
+
+
 ## This will trigger a rollback to occur on the next _network_process.
 ##
 ## - At most one rollback will occur per _network_process loop, and the earliest
@@ -115,21 +122,14 @@ func remove_network_frame_processor(node: NetworkFrameProcessor) -> void:
 ##   mismatch.
 ##   - We already know that the local simulation at the mismatch resulting in
 ##     the wrong state, so we don't re-simulate that frame.
-# FIXME: LEFT OFF HERE: ACTUALLY:
-# - Call this.
-# - This frame
 func queue_rollback(p_conflicting_frame_index: int) -> bool:
-    # FIXME: LEFT OFF HERE: Check if this check should happen earlier.
-    # Rollback simulation would start on the next frame after the mismatch.
     var target_rollback_frame := p_conflicting_frame_index + 1
-    if target_rollback_frame < oldest_rollbackable_frame_index:
-        # TODO: We'll probably want to remove this log.
-        G.log.warn(
-            "Requested rollback to frame %d, but oldest rollbackable frame is %d",
-            target_rollback_frame,
-            oldest_rollbackable_frame_index)
+    if is_frame_too_old_to_consider(p_conflicting_frame_index):
+        G.fatal("Requested rollback to frame %d, but oldest rollbackable frame is %d" %
+            [target_rollback_frame, oldest_rollbackable_frame_index])
         return false
 
+    # Rollback simulation would start on the next frame after the mismatch.
     if _queued_rollback_frame_index == 0:
         _queued_rollback_frame_index = target_rollback_frame
     else:
@@ -160,7 +160,7 @@ func _start_rollback() -> void:
     server_frame_time_usec = floori(
         server_frame_index * TARGET_NETWORK_TIME_STEP_SEC)
 
-    # FIMXE: [Rollback] Start the rollback.
+    # FIMXE: LEFT OFF HERE: ACTUALLY, ACTUALLY, ACTUALLY: Start the rollback.
     # - First, reset all registered nodes in _networked_state_nodes to
     #   _queued_rollback_frame_index.
     #   - Add doc comments that this may need to also set indirect derived

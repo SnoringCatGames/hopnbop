@@ -2,7 +2,7 @@ class_name GamePanel
 extends Node2D
 
 
-# FIXME: [Rollback]: Buffer-state debug UI and rollback implementation:
+# FIXME: LEFT OFF HERE: Buffer-state debug UI and rollback implementation:
 #
 # ### PART 1: Implement buffer-state history tracking
 # - TODO: See notes doc.

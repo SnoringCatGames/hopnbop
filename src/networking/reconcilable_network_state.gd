@@ -1,7 +1,7 @@
 @tool
 class_name ReconcilableNetworkedState
 extends MultiplayerSynchronizer
-## FIXME: [Rollback] Write extensive docs for this class.
+## FIXME: LEFT OFF HERE: Write extensive docs for this class.
 ##
 ## - In general, during rollback ReconcilableNetworkedState is responsible for updating the
 ##   state of all properties directly specified in its replication_config, but
@@ -20,7 +20,7 @@ signal received_network_state
 signal network_processed
 
 
-# FIXME: [Rollback] Test these rollback diff threshold defaults.
+# FIXME: LEFT OFF HERE: Test these rollback diff threshold defaults.
 const DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD := 0.5
 const DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHELD := 1.0
 const DEFAULT_NORMAL_DIFF_ROLLBACK_THRESHELD := 0.05
@@ -97,7 +97,6 @@ var _partner_state_configuration_warning := ""
 var root: Node:
     get: return get_node_or_null(root_path)
 
-# FIXME: [Rollback] Add support here for maintaining the buffer.
 var _rollback_buffer: RollbackBuffer
 
 
@@ -153,6 +152,12 @@ func _handle_new_authoritative_state() -> void:
     var state_time_usec: int = packed_state[packed_state.size() - 1]
     var state_frame_index := \
         G.network.frame_driver.get_frame_index_from_time(state_time_usec)
+
+    if G.network.frame_driver.is_frame_too_old_to_consider(state_frame_index):
+        G.warn("Received networked state that is too old to reconcile with the rollback buffer: state time: %d, local time: %d" %
+            [state_time_usec, G.network.server_frame_time_usec])
+        return
+
     var should_trigger_fast_forward := \
         G.network.server_frame_index < state_frame_index - 1
     var should_unpack_state := state_frame_index >= G.network.server_frame_index
