@@ -31,8 +31,10 @@ func _reinitialize_data(fill_state: Array, target_index: int) -> void:
 ## Override to allow access to previous frames that haven't been explicitly set,
 ## as long as they wouldn't wrap around to currently-set frames.
 ##
-## This specifically supports access to -1, in order to calculate "previous"
-## (default) state for frame zero.
+## This supports access to -1 and -2:
+## - Index -1 is used for the "previous" (default) state for frame 0.
+## - Index -2 is used in _pre_network_process when accessing frame N-2 as
+##   "previous" state for frame N (where N=0, so N-2=-2).
 func has_at(index: int) -> bool:
     if index >= _total_pushed:
         return false

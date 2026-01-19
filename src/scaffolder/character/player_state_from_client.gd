@@ -22,12 +22,12 @@ var last_triggered_jump_time_usec := 0
 
 var last_triggered_jump_frame_index: int:
     get:
-        return G.network.frame_driver.get_frame_index_from_time(
+        return G.network.frame_driver.get_frame_index_from_time_usec(
             last_triggered_jump_time_usec,
         )
     set(value):
         last_triggered_jump_time_usec = \
-        G.network.frame_driver.get_time_from_frame_index(value)
+        G.network.frame_driver.get_time_usec_from_frame_index(value)
 
 var _last_reconciled_jump_frame_index := -1
 
@@ -130,10 +130,7 @@ func _reconcile_jump_event() -> void:
     var has_jump_bit := (current_actions & jump_bit_mask) != 0
 
     if not has_jump_bit:
-        var is_authoritative: int = (
-            frame_state[frame_state.size() - 1] == FrameAuthority.AUTHORITATIVE
-        )
-        if is_authoritative:
+        if frame_state[frame_state.size() - 1] == FrameAuthority.AUTHORITATIVE:
             G.warning(
                 "last_triggered_jump_time_usec corresponds to a frame that " +
                 "is already recorded as authoritative and without jump " +
@@ -146,23 +143,31 @@ func _reconcile_jump_event() -> void:
         frame_state[actions_idx] = current_actions | jump_bit_mask
         _rollback_buffer.set_at(jump_frame, frame_state)
 
-        # Ensure previous frame has no jump bit.
-        _clear_jump_bit_in_frame(jump_frame - 1)
+        # Only clear previous frame's jump bit if it wasn't already pressed.
+        # This ensures we don't incorrectly clear a held jump across multiple
+        # frames.
+        _clear_jump_bit_in_previous_frame_if_not_held(jump_frame - 1)
 
         G.network.frame_driver.queue_rollback(jump_frame)
 
     _last_reconciled_jump_frame_index = jump_frame
 
 
-func _clear_jump_bit_in_frame(frame_index: int) -> void:
+func _clear_jump_bit_in_previous_frame_if_not_held(frame_index: int) -> void:
     if frame_index < 0 or not _rollback_buffer.has_at(frame_index):
         return
 
     var frame_state: Array = _rollback_buffer.get_at(frame_index)
     var actions_idx: int = _property_name_to_pack_index.actions
     var current_actions: int = frame_state[actions_idx]
-    var jump_bit_mask := 1 << CharacterActionState.BIT_JUMP
+    var jump_bit_mask: int = 1 << CharacterActionState.BIT_JUMP
 
-    if (current_actions & jump_bit_mask) != 0:
+    # Only clear if the frame is predicted (not authoritative). If the previous
+    # frame was authoritative and had jump pressed, we should respect that - the
+    # jump may have been held across multiple frames.
+    var is_predicted: bool = (
+        frame_state[frame_state.size() - 1] == FrameAuthority.PREDICTED
+    )
+    if (current_actions & jump_bit_mask) != 0 and is_predicted:
         frame_state[actions_idx] = current_actions & ~jump_bit_mask
         _rollback_buffer.set_at(frame_index, frame_state)

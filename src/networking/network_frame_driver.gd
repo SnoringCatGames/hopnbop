@@ -1,6 +1,180 @@
 class_name NetworkFrameDriver
 extends Node
 
+# FIXME: LEFT OFF HERE: Code review:
+#
+# Design Improvements
+
+# 19. Time representation inconsistency
+
+# The codebase frequently converts between:
+# - Microseconds (int)
+# - Seconds (float)
+# - Frame indices (int)
+
+# This creates many conversion opportunities for bugs (as seen above).
+
+# Recommendation: Create a FrameTime wrapper class:
+# class_name FrameTime
+
+# var frame_index: int
+# var time_usec: int
+
+# static func from_frame_index(index: int) -> FrameTime:
+#     # ...
+
+# static func from_time_usec(usec: int) -> FrameTime:
+#     # ...
+
+# 20. ReconcilableNetworkedState has too many responsibilities
+
+# This 519-line class handles:
+# - Buffer management
+# - Network replication
+# - Prediction mismatch detection
+# - Scene state synchronization
+# - Partner state tracking
+# - Configuration validation
+
+# Recommendation: Extract into focused classes:
+# - NetworkStateReplicator - handles packed_state and sync
+# - RollbackStateManager - handles buffer operations
+# - PredictionReconciler - handles mismatch detection
+
+# 21. State synchronization logic is duplicated
+
+# CharacterStateFromServer._network_process has complex conditional logic for determining
+# what state to use. Similar patterns appear in other places.
+
+# Recommendation: Extract into helper methods:
+# func should_use_authoritative_state() -> bool:
+#     return _has_authoritative_state_for_current_frame()
+
+# func should_predict_state() -> bool:
+#     return not is_multiplayer_authority() and not should_use_authoritative_state()
+
+# 22. No frame skip detection on server
+
+# If the server's _physics_process skips a frame (high load), the networking system doesn't
+# detect this.
+
+# Recommendation: Add frame skip detection:
+# func _pre_physics_process(delta: float) -> void:
+#     var expected_frame_delta := 1
+#     var actual_delta := delta / NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC
+#     if actual_delta > 1.5:
+#         G.warning(
+#             "Physics frame skip detected: delta=%f, expected=%f"
+#             % [actual_delta, expected_frame_delta],
+#             ScaffolderLog.CATEGORY_NETWORK_SYNC,
+#         )
+
+# Performance Improvements
+
+# 23. Excessive array duplication
+
+# Arrays are duplicated frequently in hot paths:
+# - packed_state = state (line 306)
+# - rollback_frame_state := packed_network_state.duplicate() (line 354)
+# - fill_state.duplicate() (line 62 in rollback_buffer.gd)
+
+# Recommendation: Use object pooling for arrays:
+# class ArrayPool:
+#     var _pool: Array[Array] = []
+
+#     func acquire(size: int) -> Array:
+#         if _pool.is_empty():
+#             var arr := []
+#             arr.resize(size)
+#             return arr
+#         return _pool.pop_back()
+
+#     func release(arr: Array) -> void:
+#         _pool.append(arr)
+
+# 24. Dictionary iteration in hot path
+
+# _network_process iterates over _networked_state_nodes dictionary every frame:
+# for node in _networked_state_nodes:
+#     node._pre_network_process()
+
+# Recommendation: Use Array instead of Dictionary for better cache locality:
+# var _networked_state_nodes: Array[ReconcilableNetworkedState] = []
+
+# 25. String formatting in logging
+
+# Many log statements format strings even when logging is disabled:
+# G.print(
+#     "Client-prediction state mismatch: networked state: %s, local state: %s"
+#     % [
+#         get_string_for_packed_state(packed_state),
+#         get_string_for_packed_state(buffer_state),
+#     ],
+#     ScaffolderLog.CATEGORY_NETWORK_SYNC,
+# )
+
+# Recommendation: Guard expensive operations:
+# if G.log.should_log(ScaffolderLog.CATEGORY_NETWORK_SYNC):
+#     G.print(
+#         "Client-prediction state mismatch: networked state: %s, local state: %s"
+#         % [get_string_for_packed_state(packed_state),
+# get_string_for_packed_state(buffer_state)],
+#         ScaffolderLog.CATEGORY_NETWORK_SYNC,
+#     )
+
+# 26. Backfill creates many temporary arrays
+
+# func _backfill_to(target_index: int, fill_state: Variant) -> void:
+#     while get_latest_index() < target_index:
+#         var next_index := get_latest_index() + 1
+#         set_at(next_index, fill_state.duplicate())  # Duplicate every iteration!
+
+# Recommendation: Reuse array if possible, or batch allocate:
+# var frames_to_fill := target_index - get_latest_index()
+# var duplicates := []
+# for i in frames_to_fill:
+#     duplicates.append(fill_state.duplicate())
+# for i in frames_to_fill:
+#     set_at(get_latest_index() + 1, duplicates[i])
+
+# Testing Recommendations
+
+# Given the complexity of this system, I strongly recommend adding:
+
+# 1. Unit tests for time conversion functions
+# 2. Integration tests for:
+# - Rollback with various frame gaps
+# - Fast-forward scenarios
+# - State mismatch detection with different threshold types
+# - Jump event reconciliation
+# 3. Stress tests for:
+# - High packet loss scenarios
+# - Frame skip/stutter scenarios
+# - Many simultaneous rollbacks
+# 4. Determinism verification: Run same inputs on client and server, verify states match
+
+# ---
+# Priority Summary
+
+# Fix Immediately (Blocking Bugs):
+# - Issues #1-5: Frame index math, time conversions, dictionary iteration
+
+# Fix Before Testing:
+# - Issues #6-13: Sequencing, off-by-one, rollback logic
+
+# Fix Before Production:
+# - Issues #14-18: Edge cases and error handling
+
+# Consider for Refactoring:
+# - Issues #19-22: Design improvements
+
+# Optimize When Profiling Shows Need:
+# - Issues #23-26: Performance improvements
+
+# The most critical issues are the frame index calculations (#1-3), which will cause complete
+# failure of the networking system. Fix those first, then work through the sequencing
+# issues.
+
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug.
 #
 # - Get things compiling and try to hand-test a tad before asking the AI.
@@ -8,19 +182,9 @@ extends Node
 #     set breakpoints on easily as needed.
 #   - Print statements.
 #
-# Research how to train Claude Code:
-# - Special context for Godot, client prediction and networking, and other game development patterns?
 # - /init, /plan, /review
 #
 # - Ask AI to analyze all networking logic (everything under the networking/ folder) and generate file-level doc comments for each class.
-#
-# - Ask AI to do a thorough code review:
-#
-# I need to you to perform a thorough code review of all of my networking logic (everything under the networking/ folder), as well as how it integrates with character/player logic.
-# - I just finished writing the logic for all of these networking systems. They are still mostly untested, so there could be lots of problems.
-# - Give special focus on the client prediction and rollback reconciliation systems.
-# - Please pay careful attention to possible sequencing problems, edge cases, and off-by-one errors.
-# - Also offer any feedback on potential design improvements or performance improvements.
 #
 # - Also ask Opus to research recommended test frameworks for Godot, and to then design some integration tests for my networking systems, in particular the client prediction and rollback reconciliation systems
 #
@@ -298,6 +462,7 @@ extends Node
 ## frame.
 const TARGET_NETWORK_FPS = ScaffolderTime.PHYSICS_FPS
 const TARGET_NETWORK_TIME_STEP_SEC := 1.0 / TARGET_NETWORK_FPS
+const TARGET_NETWORK_TIME_STEP_USEC := floori(1_000_000 / TARGET_NETWORK_FPS)
 
 ## If we bucket the current server_time_usec into discrete frames, this
 ## canonical time would be the exact midpoint between the previous and next
@@ -345,27 +510,37 @@ func _pre_physics_process(_delta: float) -> void:
 
 ## If we bucket server time into discrete frames, this would be the index of the
 ## frame corresponding to the given time.
-func get_frame_index_from_time(p_time_usec: int) -> int:
-    var time_sec := p_time_usec / 1000000.0
-    return floori(fmod(time_sec, TARGET_NETWORK_TIME_STEP_SEC))
+func get_frame_index_from_time_usec(p_time_usec: int) -> int:
+    return floori(p_time_usec / TARGET_NETWORK_TIME_STEP_USEC)
 
 
-func get_time_from_frame_index(p_frame_index: int) -> int:
+func get_time_usec_from_frame_index(p_frame_index: int) -> int:
     return floori(
-        p_frame_index * TARGET_NETWORK_TIME_STEP_SEC + TARGET_NETWORK_TIME_STEP_SEC * 0.5,
+        p_frame_index * TARGET_NETWORK_TIME_STEP_USEC +
+        TARGET_NETWORK_TIME_STEP_USEC * 0.5,
     )
 
 
 func _update_server_frame_time() -> void:
     var server_time_usec := G.network.server_time_usec_not_frame_aligned
-    var frame_start_time_sec := (
-        get_frame_index_from_time(server_time_usec) * TARGET_NETWORK_TIME_STEP_SEC
+    var frame_start_time_usec := floori(
+        get_frame_index_from_time_usec(server_time_usec) *
+        TARGET_NETWORK_TIME_STEP_USEC,
     )
 
     var next_server_frame_time_usec := floori(
-        frame_start_time_sec + TARGET_NETWORK_TIME_STEP_SEC * 0.5,
+        frame_start_time_usec + TARGET_NETWORK_TIME_STEP_USEC * 0.5,
     )
-    var next_server_frame_index := get_frame_index_from_time(server_frame_time_usec)
+    var next_server_frame_index := get_frame_index_from_time_usec(
+        next_server_frame_time_usec,
+    )
+
+    if not G.ensure(
+        next_server_frame_index >= server_frame_index - 1,
+        "Server frame index went backwards: %d -> %d"
+        % [server_frame_index, next_server_frame_index],
+    ):
+        return
 
     # If our tracking of server time has skewed enough that we're skipping a
     # frame, then we need to fast-forward the system.
@@ -419,7 +594,8 @@ func queue_rollback(p_conflicting_frame_index: int) -> bool:
     var target_rollback_frame := p_conflicting_frame_index + 1
     if is_frame_too_old_to_consider(p_conflicting_frame_index):
         G.fatal(
-            "Requested rollback to frame %d, but oldest rollbackable frame is %d"
+            "Requested rollback to frame %d, " +
+            "but oldest rollbackable frame is %d"
             % [target_rollback_frame, oldest_rollbackable_frame_index],
         )
         return false
@@ -456,9 +632,13 @@ func _rollback_and_reprocess() -> void:
 
     server_frame_index = _queued_rollback_frame_index
     server_frame_time_usec = floori(
-        server_frame_index * TARGET_NETWORK_TIME_STEP_SEC,
+        server_frame_index * TARGET_NETWORK_TIME_STEP_USEC,
     )
 
+    # Re-simulate all frames between the mismatch and current frame (exclusive).
+    # The loop processes frames [rollback_frame, original_frame), but not the
+    # original frame itself. The current frame will be re-simulated afterward in
+    # the normal _run_network_process flow.
     while server_frame_index < original_server_frame_index:
         _network_process()
         server_frame_index += 1
@@ -470,8 +650,10 @@ func _rollback_and_reprocess() -> void:
 ## Simulate the current frame for all network-process-aware nodes.
 func _network_process() -> void:
     for node in _networked_state_nodes.keys():
-        # TODO: This should be possible, so try to figure out the underlying problem.
+        # TODO: This should not be possible, so try to figure out the underlying
+        #       problem.
         if not is_instance_valid(node):
+            # We're iterating over a copy of the keys, so it's safe to erase.
             _networked_state_nodes.erase(node)
 
     # Sync other scene state from the current network state.
@@ -491,6 +673,6 @@ func _network_process() -> void:
 
 func fast_forward(new_frame_index: int) -> void:
     while server_frame_index < new_frame_index:
-        server_frame_time_usec += floori(TARGET_NETWORK_TIME_STEP_SEC * 1000000)
+        server_frame_time_usec += TARGET_NETWORK_TIME_STEP_USEC
         server_frame_index += 1
         _network_process()

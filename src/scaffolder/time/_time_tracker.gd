@@ -20,7 +20,7 @@ var render_frame_count: int
 
 
 func _ready() -> void:
-    start_clock_time = Time.get_ticks_usec() / 1000000.0
+    start_clock_time = Time.get_ticks_usec() / 1_000_000.0
     elapsed_clock_time = 0.0
     elapsed_physics_time = 0.0
     elapsed_render_time = 0.0
@@ -45,7 +45,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _update_clock_time() -> void:
-    var next_elapsed_clock_time := Time.get_ticks_usec() / 1000000.0 - start_clock_time
+    var next_elapsed_clock_time := Time.get_ticks_usec() / 1_000_000.0 - start_clock_time
     var delta_clock_time := next_elapsed_clock_time - elapsed_clock_time
     elapsed_clock_time = next_elapsed_clock_time
     elapsed_clock_scaled_time += delta_clock_time * time_scale

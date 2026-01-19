@@ -60,17 +60,20 @@ func _network_process() -> void:
 
     # Handle actions (from a client).
     if state_from_client._has_authoritative_state_for_current_frame():
-        # We already recorded authoritative state for this frame, so we don't
-        # want to overwrite it.
+        # Authoritative input already received for this frame - use it.
+        # This happens when the client has sent input that arrived and was
+        # unpacked into the buffer during _handle_new_authoritative_state.
         state_from_client._unpack_buffer_state(timestamp_index)
     else:
         if is_authority_for_state_from_client:
-            # This is the client that controls actions for this player.
+            # This client controls input - capture it now as authoritative.
             character._update_actions()
             state_from_client.frame_authority = FrameAuthority.AUTHORITATIVE
         else:
-            # This machine only records actions that have been sent from the
-            # authoritative client.
+            # No new input yet - extrapolate from previous frame's input.
+            # This is intentional: predicted input uses the last known state
+            # (N-1) to simulate frame N, while authoritative input that arrives
+            # later will be at frame N.
             state_from_client._unpack_buffer_state(timestamp_index - 1)
             state_from_client.frame_authority = FrameAuthority.PREDICTED
 

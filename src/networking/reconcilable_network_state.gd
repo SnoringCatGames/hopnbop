@@ -106,8 +106,6 @@ func _init() -> void:
         "Subclasses of ReconcilableNetworkedState must be marked with @tool",
     )
 
-    _set_up_rollback_buffer()
-
 
 func _enter_tree() -> void:
     if Engine.is_editor_hint():
@@ -131,12 +129,17 @@ func _ready() -> void:
     if Engine.is_editor_hint():
         return
 
+    if _rollback_buffer == null:
+        _set_up_rollback_buffer()
+
     _parse_property_names()
     update_authority()
 
 
 func _parse_property_names() -> void:
-    _property_names_for_packing.assign(get("_synced_properties_and_rollback_diff_thresholds").keys())
+    _property_names_for_packing.assign(
+        get("_synced_properties_and_rollback_diff_thresholds").keys(),
+    )
     for i in range(_property_names_for_packing.size()):
         var property_name := _property_names_for_packing[i]
         _property_name_to_pack_index[property_name] = i
@@ -148,12 +151,20 @@ func update_authority() -> void:
 
 func _handle_new_authoritative_state() -> void:
     var state_time_usec: int = packed_state[packed_state.size() - 1]
-    var state_frame_index := G.network.frame_driver.get_frame_index_from_time(state_time_usec)
+    var state_frame_index := G.network.frame_driver.get_frame_index_from_time_usec(state_time_usec)
 
     if G.network.frame_driver.is_frame_too_old_to_consider(state_frame_index):
         G.warning(
-            "Received networked state that is too old to reconcile with the rollback buffer: state time: %d, local time: %d"
-            % [state_time_usec, G.network.server_frame_time_usec],
+            "Received networked state that is too old to reconcile - " +
+            "DISCARDING: state frame: %d, state time: %d, local frame: %d, " +
+            "local time: %d, oldest acceptable: %d"
+            % [
+                state_frame_index,
+                state_time_usec,
+                G.network.server_frame_index,
+                G.network.server_frame_time_usec,
+                G.network.frame_driver.oldest_rollbackable_frame_index,
+            ],
             ScaffolderLog.CATEGORY_NETWORK_SYNC,
         )
         return
@@ -204,12 +215,14 @@ func _handle_new_authoritative_state() -> void:
             )
 
             # Adjust the time tracker's clock offset to account for the drift.
-            # This prevents the NTP averaging from reverting the fast-forward.
+            # This prevents the NTP averaging from reverting the fast-forward by
+            # also adjusting all NTP samples. The force_clock_offset method
+            # updates both the current offset and all historical samples to
+            # maintain consistency.
             var frames_behind := state_frame_index - 1 - G.network.server_frame_index
             var time_delta_usec := floori(
                 frames_behind
-                * G.network.frame_driver.TARGET_NETWORK_TIME_STEP_SEC
-                * 1_000_000,
+                * G.network.frame_driver.TARGET_NETWORK_TIME_STEP_USEC,
             )
             G.network.time.force_clock_offset(time_delta_usec)
 
@@ -225,11 +238,15 @@ func _pre_network_process() -> void:
     timestamp_index = G.network.server_frame_index
     frame_authority = FrameAuthority.UNKNOWN
 
+    # FIXME: LEFT OFF HERE: What happens during the first calls to _pre_network_process?
     G.check(
-        _rollback_buffer.get_latest_index() >= timestamp_index - 1,
+        _rollback_buffer.get_latest_index() >= timestamp_index - 2,
         "Rollback buffer does not have state for the expected frame index",
     )
 
+    # We're about to simulate frame N. Start by loading frame N-1's final state
+    # as our starting point, and provide frame N-2 as "previous" for just_*
+    # comparisons (e.g., just_pressed, just_touched).
     _unpack_buffer_state(timestamp_index - 1)
 
     var previous_frame_state: Array = _rollback_buffer.get_at(timestamp_index - 2)
@@ -301,15 +318,17 @@ func _pack_networked_state() -> void:
         state[i] = get(property_name)
         i += 1
     # We send time values across the network, but we store indices.
-    state[i] = G.network.frame_driver.get_time_from_frame_index(timestamp_index)
+    state[i] = G.network.frame_driver.get_time_usec_from_frame_index(timestamp_index)
     _is_packing_state_locally = true
     packed_state = state
     _is_packing_state_locally = false
 
 
 func _unpack_networked_state() -> void:
+    # Empty packed_state is expected and normal during initial sync. When a
+    # ReconcilableNetworkedState is first created, MultiplayerSynchronizer may
+    # trigger a sync before we've packed any state.
     if packed_state.is_empty():
-        # This happens for the initial sync, when there is no state to send yet.
         return
 
     if not (
@@ -325,7 +344,7 @@ func _unpack_networked_state() -> void:
         i += 1
     # We send time values across the network, but we store indices.
     var timestamp_usec: int = packed_state[i]
-    timestamp_index = G.network.frame_driver.get_frame_index_from_time(timestamp_usec)
+    timestamp_index = G.network.frame_driver.get_frame_index_from_time_usec(timestamp_usec)
 
 
 func _pack_buffer_state_from_local_state() -> void:
@@ -346,7 +365,7 @@ func _pack_buffer_state_from_local_state() -> void:
 ## network.
 func _pack_buffer_state_from_network_state(packed_network_state: Array) -> void:
     var state_time_usec: int = packed_network_state[packed_network_state.size() - 1]
-    var frame_index := G.network.frame_driver.get_frame_index_from_time(state_time_usec)
+    var frame_index := G.network.frame_driver.get_frame_index_from_time_usec(state_time_usec)
 
     # For the rollback buffer, we want to record the same state that we
     # replicate across the network, except, we don't need the timestamp and we
