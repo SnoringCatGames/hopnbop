@@ -3,53 +3,6 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Code review:
 
-# Performance Improvements
-
-# 24. Dictionary iteration in hot path
-
-# _network_process iterates over _networked_state_nodes dictionary every frame:
-# for node in _networked_state_nodes:
-#     node._pre_network_process()
-
-# Recommendation: Use Array instead of Dictionary for better cache locality:
-# var _networked_state_nodes: Array[ReconcilableNetworkedState] = []
-
-# 25. String formatting in logging
-
-# Many log statements format strings even when logging is disabled:
-# G.print(
-#     "Client-prediction state mismatch: networked state: %s, local state: %s"
-#     % [
-#         get_string_for_packed_state(packed_state),
-#         get_string_for_packed_state(buffer_state),
-#     ],
-#     ScaffolderLog.CATEGORY_NETWORK_SYNC,
-# )
-
-# Recommendation: Guard expensive operations:
-# if G.log.should_log(ScaffolderLog.CATEGORY_NETWORK_SYNC):
-#     G.print(
-#         "Client-prediction state mismatch: networked state: %s, local state: %s"
-#         % [get_string_for_packed_state(packed_state),
-# get_string_for_packed_state(buffer_state)],
-#         ScaffolderLog.CATEGORY_NETWORK_SYNC,
-#     )
-
-# 26. Backfill creates many temporary arrays
-
-# func _backfill_to(target_index: int, fill_state: Variant) -> void:
-#     while get_latest_index() < target_index:
-#         var next_index := get_latest_index() + 1
-#         set_at(next_index, fill_state.duplicate())  # Duplicate every iteration!
-
-# Recommendation: Reuse array if possible, or batch allocate:
-# var frames_to_fill := target_index - get_latest_index()
-# var duplicates := []
-# for i in frames_to_fill:
-#     duplicates.append(fill_state.duplicate())
-# for i in frames_to_fill:
-#     set_at(get_latest_index() + 1, duplicates[i])
-
 # Testing Recommendations
 
 # Given the complexity of this system, I strongly recommend adding:
@@ -375,11 +328,9 @@ var server_frame_time_usec := 0
 ## would be index of the current frame.
 var server_frame_index := 0
 
-# Dictionary<ReconcilableNetworkedState, bool>
-var _networked_state_nodes := { }
+var _networked_state_nodes: Array[ReconcilableNetworkedState] = []
 
-# Dictionary<NetworkFrameProcessor, bool>
-var _network_frame_processor_nodes := { }
+var _network_frame_processor_nodes: Array[NetworkFrameProcessor] = []
 
 var _queued_rollback_frame_index := 0
 
@@ -465,22 +416,24 @@ func _update_server_frame_time() -> void:
 
 func add_networked_state(node: ReconcilableNetworkedState) -> void:
     G.ensure(not _networked_state_nodes.has(node))
-    _networked_state_nodes[node] = true
+    _networked_state_nodes.append(node)
 
 
 func remove_networked_state(node: ReconcilableNetworkedState) -> void:
-    G.ensure(_networked_state_nodes.has(node))
-    _networked_state_nodes.erase(node)
+    var index := _networked_state_nodes.find(node)
+    G.ensure(index >= 0)
+    _networked_state_nodes.remove_at(index)
 
 
 func add_network_frame_processor(node: NetworkFrameProcessor) -> void:
     G.ensure(not _network_frame_processor_nodes.has(node))
-    _network_frame_processor_nodes[node] = true
+    _network_frame_processor_nodes.append(node)
 
 
 func remove_network_frame_processor(node: NetworkFrameProcessor) -> void:
-    G.ensure(_network_frame_processor_nodes.has(node))
-    _network_frame_processor_nodes.erase(node)
+    var index := _network_frame_processor_nodes.find(node)
+    G.ensure(index >= 0)
+    _network_frame_processor_nodes.remove_at(index)
 
 
 func is_frame_too_old_to_consider(p_frame_index: int) -> bool:
@@ -557,12 +510,13 @@ func _rollback_and_reprocess() -> void:
 
 ## Simulate the current frame for all network-process-aware nodes.
 func _network_process() -> void:
-    for node in _networked_state_nodes.keys():
+    # Remove invalid nodes (iterate backwards to avoid issues when removing).
+    for i in range(_networked_state_nodes.size() - 1, -1, -1):
+        var node := _networked_state_nodes[i]
         # TODO: This should not be possible, so try to figure out the underlying
         #       problem.
         if not is_instance_valid(node):
-            # We're iterating over a copy of the keys, so it's safe to erase.
-            _networked_state_nodes.erase(node)
+            _networked_state_nodes.remove_at(i)
 
     # Sync other scene state from the current network state.
     for node in _networked_state_nodes:
