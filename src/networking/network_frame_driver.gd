@@ -1,37 +1,18 @@
 class_name NetworkFrameDriver
 extends Node
 
-# FIXME: LEFT OFF HERE: Testing Recommendations
-# 1. Unit tests for time conversion functions
-# 2. Integration tests for:
-# - Rollback with various frame gaps
-# - Fast-forward scenarios
-# - State mismatch detection with different threshold types
-# - Jump event reconciliation
-# 3. Stress tests for:
-# - High packet loss scenarios
-# - Frame skip/stutter scenarios
-# - Many simultaneous rollbacks
-# 4. Determinism verification: Run same inputs on client and server, verify states match
-
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug.
-#
-# - Get things compiling and try to hand-test a tad before asking the AI.
+# - Hand test and debug.
 #   - Add if-statements, guarding on client/server, with a pass, everywhere, to
 #     set breakpoints on easily as needed.
 #   - Print statements.
-#
-# - /init, /plan, /review
-#
-# - Ask AI to analyze all networking logic (everything under the networking/ folder) and generate file-level doc comments for each class.
-#
-# - Also ask Opus to research recommended test frameworks for Godot, and to then design some integration tests for my networking systems, in particular the client prediction and rollback reconciliation systems
-#
-# - Ask the AI to write a detailed markdown document explaining the overall architecture, enumerating the networking systems, and describing in detail how they work together to implement client prediction, prediction error detection, and reconciliation with rollback and re-process. Include a section at the end steps to implement networking in a new game using this framework.
-#
-# - Ask for tips to hand-verify correctness of the overall system, and any particularly important aspects to test.
-#
-# - Possibly ask for help integrating with GameLift...
+# - Ask AI:
+#   Analyze all networking logic (everything under the networking/ folder) and generate file-level doc comments for each class.
+# - Ask AI:
+#   Write a detailed markdown document explaining the overall architecture, enumerating the networking systems, and describing in detail how they work together to implement client prediction, prediction error detection, and reconciliation with rollback and re-process. Include a section at the end steps to implement networking in a new game using this framework.
+# - Ask AI:
+#   /plan
+#   Review all networking logic in this project. List any important unit and integration testing gaps. Plan implementations for those tests.
 
 # FIXME: Rollback debug visualization and networking improvements:
 #
@@ -192,6 +173,8 @@ extends Node
 #   from PART 5.
 
 # FIXME: After polishing networking from above:
+# - Implement GameLift!
+#   - Possibly ask AI for help integrating with GameLift?
 # - Implement player kills.
 #   - In this game players kill each other by jumping on each other's heads.
 #   - In order to detect when one player jumps onto another's head, use the following strategy (or let me know if there is some other industry standard way to implement this that wolud be better!):
@@ -356,7 +339,8 @@ func _pre_physics_process(delta: float) -> void:
 ## If we bucket server time into discrete frames, this would be the index of the
 ## frame corresponding to the given time.
 func get_frame_index_from_time_usec(p_time_usec: int) -> int:
-    return floori(p_time_usec / TARGET_NETWORK_TIME_STEP_USEC)
+    @warning_ignore("integer_division")
+    return p_time_usec / TARGET_NETWORK_TIME_STEP_USEC
 
 
 func get_time_usec_from_frame_index(p_frame_index: int) -> int:
