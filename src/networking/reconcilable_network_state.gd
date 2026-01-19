@@ -150,6 +150,10 @@ func update_authority() -> void:
 
 
 func _handle_new_authoritative_state() -> void:
+    if packed_state.is_empty():
+        # Ignore any initial empty state.
+        return
+
     var state_time_usec: int = packed_state[packed_state.size() - 1]
     var state_frame_index := G.network.frame_driver.get_frame_index_from_time_usec(state_time_usec)
 
