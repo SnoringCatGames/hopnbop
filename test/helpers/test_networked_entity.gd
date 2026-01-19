@@ -1,3 +1,4 @@
+class_name TestNetworkedEntity
 extends ReconcilableNetworkedState
 ## A simple test entity for integration testing networked state and rollback.
 ##
@@ -25,58 +26,50 @@ func _init() -> void:
     is_server_authoritative = true
 
 
-func _pre_network_process(delta: float) -> void:
+func _pre_network_process() -> void:
     # In a real implementation, this would sync state from rollback buffer.
     pass
 
 
-func _network_process(delta: float) -> void:
+func _network_process() -> void:
     network_process_count += 1
     last_processed_frame = timestamp_index
 
     # Simple physics: position += velocity * delta.
-    position += velocity * delta
+    position += velocity * NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC
 
 
-func _post_network_process(delta: float) -> void:
-    # Pack state for replication.
-    _pack_state()
+func _post_network_process() -> void:
+    # Note: In a real implementation, this would call the base class
+    # to pack state for replication. For this test helper, we keep it
+    # simple.
+    pass
 
 
-## Override to define what gets packed into network state.
-func _get_packed_state() -> Array:
-    return [
-        position.x,
-        position.y,
-        velocity.x,
-        velocity.y,
-        custom_data,
-        frame_authority,
-    ]
+## Implement required abstract methods from ReconcilableNetworkedState.
+func _get_default_values() -> Array:
+    return [0.0, 0.0, 0.0, 0.0, 0]
 
 
-## Override to apply packed state from network.
-func _apply_packed_state(state: Array) -> void:
-    if state.size() < 6:
-        return
-
-    position.x = state[0]
-    position.y = state[1]
-    velocity.x = state[2]
-    velocity.y = state[3]
-    custom_data = state[4]
-    frame_authority = state[5]
+func _sync_to_scene_state(_previous_state: Array) -> void:
+    # For test purposes, state is stored directly in member variables.
+    pass
 
 
-## Override to detect mismatches for rollback.
-func _has_state_mismatch(
+func _sync_from_scene_state() -> void:
+    # For test purposes, state is stored directly in member variables.
+    pass
+
+
+## Helper method to detect state mismatches for testing.
+func has_state_mismatch(
     client_state: Array,
     server_state: Array
 ) -> bool:
-    if client_state.size() < 6 or server_state.size() < 6:
+    if client_state.size() < 5 or server_state.size() < 5:
         return false
 
-    # Check position mismatch.
+    # Check position mismatch (x, y).
     var pos_diff := Vector2(
         abs(client_state[0] - server_state[0]),
         abs(client_state[1] - server_state[1])
@@ -97,11 +90,6 @@ func _has_state_mismatch(
         return true
 
     return false
-
-
-## Called when reconciliation occurs.
-func _on_reconciled() -> void:
-    was_reconciled = true
 
 
 ## Reset test state.

@@ -23,6 +23,10 @@ G="*res://src/core/global.gd"
 
 window/stretch/mode="canvas_items"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gut/plugin.cfg")
+
 [input]
 
 move_up={
