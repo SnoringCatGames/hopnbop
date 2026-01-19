@@ -18,9 +18,8 @@ signal received_network_state
 signal network_processed
 
 # FIXME: Test these rollback diff threshold defaults.
-const DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD := 0.5
-const DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHELD := 1.0
-const DEFAULT_NORMAL_DIFF_ROLLBACK_THRESHELD := 0.05
+const DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD := 1.0
+const DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHELD := 10.0
 
 const _MULTIPLAYER_ID_PROPERTY_NAME := "multiplayer_id"
 
@@ -437,9 +436,17 @@ func _check_do_values_mismatch(
         TYPE_BOOL, TYPE_STRING:
             return buffer_value != networked_value
         TYPE_INT, TYPE_FLOAT:
-            return abs(buffer_value - networked_value) >= threshold
+            if threshold == 0:
+                # Threshold of 0 means exact match required
+                return buffer_value != networked_value
+            else:
+                return abs(buffer_value - networked_value) >= threshold
         TYPE_VECTOR2, TYPE_VECTOR2I:
-            return buffer_value.distance_squared_to(networked_value) >= threshold * threshold
+            if threshold == 0:
+                # Threshold of 0 means exact match required
+                return buffer_value != networked_value
+            else:
+                return buffer_value.distance_squared_to(networked_value) >= threshold * threshold
         _:
             G.fatal(
                 "Type not yet supported for client-prediction mismatch threshold calculations: %s"
@@ -533,6 +540,7 @@ func get_string_for_packed_state(state: Array) -> String:
     var i := 0
     for value in state:
         tokens[i] = _get_string_for_value(value)
+        i += 1
 
     return "[%s]" % ",".join(tokens)
 
