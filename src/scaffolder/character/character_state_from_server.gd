@@ -2,8 +2,10 @@
 class_name CharacterStateFromServer
 extends ReconcilableNetworkedState
 
-# FIXME: Override configuration warnings to check this is set.
-@export var character: Character
+@export var character: Character:
+    set(value):
+        character = value
+        update_configuration_warnings()
 
 var state_from_client: PlayerStateFromClient:
     get:
@@ -38,6 +40,18 @@ func _get_default_values() -> Array:
         Vector2.ZERO,
         0,
     ]
+
+
+func _ready() -> void:
+    super._ready()
+    update_configuration_warnings()
+
+
+func _get_configuration_warnings() -> PackedStringArray:
+    var warnings := super._get_configuration_warnings()
+    if not is_instance_valid(character):
+        warnings.append("character is not set")
+    return warnings
 
 
 func _network_process() -> void:
