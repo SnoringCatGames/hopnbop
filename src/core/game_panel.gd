@@ -1,13 +1,14 @@
 class_name GamePanel
 extends Node2D
 
-
 var levels: Array[Level] = []
 
 var match_state: MatchState:
-    get: return %MatchStateSynchronizer.state
+    get:
+        return %MatchStateSynchronizer.state
 var match_state_synchronizer: MatchStateSynchronizer:
-    get: return %MatchStateSynchronizer
+    get:
+        return %MatchStateSynchronizer
 
 
 func _enter_tree() -> void:
@@ -42,40 +43,37 @@ func _ready() -> void:
 
 
 func _on_player_joined(player: PlayerMatchState) -> void:
-    G.print("Player joined: %s" % player.get_string(),
-        ScaffolderLog.CATEGORY_GAME_STATE)
+    G.print("Player joined: %s" % player.get_string(), ScaffolderLog.CATEGORY_GAME_STATE)
 
 
 func _on_player_left(player: PlayerMatchState) -> void:
-    G.print("Player left: %s" % player.get_string(),
-        ScaffolderLog.CATEGORY_GAME_STATE)
+    G.print("Player left: %s" % player.get_string(), ScaffolderLog.CATEGORY_GAME_STATE)
 
 
-func _on_player_killed(
-        killer: PlayerMatchState,
-        killee: PlayerMatchState) -> void:
-    G.print("Player killed: %s killed %s" %
-        [killer.get_string(), killee.get_string()],
-        ScaffolderLog.CATEGORY_GAME_STATE)
+func _on_player_killed(killer: PlayerMatchState, killee: PlayerMatchState) -> void:
+    G.print(
+        "Player killed: %s killed %s" % [killer.get_string(), killee.get_string()],
+        ScaffolderLog.CATEGORY_GAME_STATE,
+    )
 
 
 func _on_players_bumped(a: PlayerMatchState, b: PlayerMatchState) -> void:
-    G.print("Players bumped: %s, %s" % [a.get_string(), b.get_string()],
-        ScaffolderLog.CATEGORY_GAME_STATE)
+    G.print(
+        "Players bumped: %s, %s" % [a.get_string(), b.get_string()],
+        ScaffolderLog.CATEGORY_GAME_STATE,
+    )
 
 
 func _client_on_level_spawned(p_level: Node) -> void:
     G.ensure(p_level is Level)
     var level: Level = p_level
-    G.print("Level spawned: %s" % level.get_string(),
-        ScaffolderLog.CATEGORY_GAME_STATE)
+    G.print("Level spawned: %s" % level.get_string(), ScaffolderLog.CATEGORY_GAME_STATE)
 
 
 func _client_on_level_despawned(p_level: Node) -> void:
     G.ensure(p_level is Level)
     var level: Level = p_level
-    G.print("Level despawned: %s" % level.get_string(),
-        ScaffolderLog.CATEGORY_GAME_STATE)
+    G.print("Level despawned: %s" % level.get_string(), ScaffolderLog.CATEGORY_GAME_STATE)
 
 
 func _network_process() -> void:
@@ -84,10 +82,14 @@ func _network_process() -> void:
 
 func _client_on_server_connected() -> void:
     G.check_is_client("NetworkMain._client_on_server_connected")
-    G.check(G.local_session.is_game_loading,
-        "GamePanel._client_on_server_connected: Game load is not expected")
-    G.check(not G.local_session.is_game_active,
-        "GamePanel._client_on_server_connected: Game is already active")
+    G.check(
+        G.local_session.is_game_loading,
+        "GamePanel._client_on_server_connected: Game load is not expected",
+    )
+    G.check(
+        not G.local_session.is_game_active,
+        "GamePanel._client_on_server_connected: Game is already active",
+    )
 
     G.local_session.is_game_loading = false
     G.local_session.is_game_active = true
@@ -103,12 +105,15 @@ func _client_on_server_disconnected() -> void:
 
 func client_load_game() -> void:
     G.check_is_client("NetworkMain.client_load_game")
-    G.check(not G.local_session.is_game_active,
-        "GamePanel.client_load_game: Game is already active")
-    G.check(not G.local_session.is_game_loading,
-        "GamePanel.client_load_game: Game is already loading")
-    G.check(not is_instance_valid(G.level),
-        "GamePanel.client_load_game: Level is already set")
+    G.check(
+        not G.local_session.is_game_active,
+        "GamePanel.client_load_game: Game is already active",
+    )
+    G.check(
+        not G.local_session.is_game_loading,
+        "GamePanel.client_load_game: Game is already loading",
+    )
+    G.check(not is_instance_valid(G.level), "GamePanel.client_load_game: Level is already set")
 
     G.local_session.clear()
     G.local_session.is_game_active = false
@@ -137,10 +142,11 @@ func client_exit_game() -> void:
 
 func server_start_game() -> void:
     G.check_is_server("NetworkMain.server_start_game")
-    G.check(not G.local_session.is_game_active,
-        "GamePanel.server_start_game: Game is already active")
-    G.check(not is_instance_valid(G.level),
-        "GamePanel.server_start_game: Level is already set")
+    G.check(
+        not G.local_session.is_game_active,
+        "GamePanel.server_start_game: Game is already active",
+    )
+    G.check(not is_instance_valid(G.level), "GamePanel.server_start_game: Level is already set")
 
     G.local_session.is_game_active = true
 
@@ -153,10 +159,8 @@ func server_start_game() -> void:
 
 func server_end_game() -> void:
     G.check_is_server("NetworkMain.server_end_game")
-    G.check(G.local_session.is_game_active,
-        "GamePanel.server_end_game: Game is not active")
-    G.check_valid(G.level,
-        "GamePanel.server_end_game: Level is not valid")
+    G.check(G.local_session.is_game_active, "GamePanel.server_end_game: Game is not active")
+    G.check_valid(G.level, "GamePanel.server_end_game: Level is not valid")
 
     G.local_session.is_game_active = false
 
@@ -168,10 +172,11 @@ func server_end_game() -> void:
 
 
 func on_return_from_screen() -> void:
-    G.check(G.local_session.is_game_active,
-        "GamePanel.on_return_from_screen: Game is not active")
-    G.check(not G.local_session.is_game_loading,
-        "GamePanel.on_return_from_screen: Game is still loading")
+    G.check(G.local_session.is_game_active, "GamePanel.on_return_from_screen: Game is not active")
+    G.check(
+        not G.local_session.is_game_loading,
+        "GamePanel.on_return_from_screen: Game is still loading",
+    )
 
 
 func on_left_to_screen() -> void:
@@ -180,12 +185,15 @@ func on_left_to_screen() -> void:
 
 func _server_spawn_level(level_scene: PackedScene) -> void:
     G.check_is_server("NetworkMain._server_spawn_level")
-    G.check(G.settings.level_scenes.has(level_scene),
-        "GamePanel._server_spawn_level: level_scene not registered in settings: %s" %
-            level_scene)
+    G.check(
+        G.settings.level_scenes.has(level_scene),
+        "GamePanel._server_spawn_level: level_scene not registered in settings: %s" % level_scene,
+    )
 
-    G.print("Spawning level: %s" % Utils.get_display_name(level_scene),
-        ScaffolderLog.CATEGORY_GAME_STATE)
+    G.print(
+        "Spawning level: %s" % Utils.get_display_name(level_scene),
+        ScaffolderLog.CATEGORY_GAME_STATE,
+    )
 
     var level: Level = level_scene.instantiate()
     levels.append(level)
@@ -195,12 +203,12 @@ func _server_spawn_level(level_scene: PackedScene) -> void:
 
 func _server_destroy_level(level: Level) -> void:
     G.check_is_server("NetworkMain._server_destroy_level")
-    G.check(levels.has(level),
-        "GamePanel._server_destroy_level: level not in current list: %s" %
-            level)
+    G.check(
+        levels.has(level),
+        "GamePanel._server_destroy_level: level not in current list: %s" % level,
+    )
 
-    G.print("Destroying level: %s" % level.get_string(),
-        ScaffolderLog.CATEGORY_GAME_STATE)
+    G.print("Destroying level: %s" % level.get_string(), ScaffolderLog.CATEGORY_GAME_STATE)
 
     if G.level == level:
         G.level = null

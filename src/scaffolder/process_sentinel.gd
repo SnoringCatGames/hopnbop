@@ -1,12 +1,10 @@
 class_name ProcessSentinel
 extends Node
 
-
 signal pre_physics_process(delta: float)
 signal post_physics_process(delta: float)
 signal pre_process(delta: float)
 signal post_process(delta: float)
-
 
 var _pre_process_sentinel: _ProcessSentinelHelper
 var _post_process_sentinel: _ProcessSentinelHelper
@@ -51,13 +49,15 @@ func _post_process(delta: float) -> void:
     post_process.emit(delta)
 
 
-class _ProcessSentinelHelper extends Node:
+class _ProcessSentinelHelper:
+    extends Node
     signal physics_processed(delta: float)
     signal processed(delta: float)
 
 
     func _physics_process(delta: float) -> void:
         physics_processed.emit(delta)
+
 
     func _process(delta: float) -> void:
         processed.emit(delta)

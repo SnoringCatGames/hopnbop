@@ -1,7 +1,6 @@
 class_name BunnyWords
 extends RefCounted
 
-
 const NAMES := [
     "Dott",
     "Jiffy",

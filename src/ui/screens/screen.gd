@@ -1,7 +1,6 @@
 class_name Screen
 extends PanelContainer
 
-
 func _enter_tree() -> void:
     if G.network.is_server:
         visible = false

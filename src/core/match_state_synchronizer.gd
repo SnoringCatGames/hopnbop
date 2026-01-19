@@ -1,7 +1,6 @@
 class_name MatchStateSynchronizer
 extends MultiplayerSynchronizer
 
-
 signal player_joined(player: PlayerMatchState)
 signal player_left(player: PlayerMatchState)
 signal player_killed(killer: PlayerMatchState, killee: PlayerMatchState)
@@ -10,7 +9,6 @@ signal players_bumped(a: PlayerMatchState, b: PlayerMatchState)
 signal players_updated
 signal kills_updated
 signal bumps_updated
-
 
 var state := MatchState.new()
 var _previous_state := MatchState.new()
@@ -56,8 +54,9 @@ func _server_on_peer_connected(multiplayer_id: int) -> void:
 func _server_on_peer_disconnected(multiplayer_id: int) -> void:
     if G.ensure(state.players.has(multiplayer_id)):
         # Set disconnect time for this player.
-        get_player(multiplayer_id).disconnect_time_usec = \
+        get_player(multiplayer_id).disconnect_time_usec = (
             G.network.server_time_usec_not_frame_aligned
+        )
 
     state.server_on_player_disconnected(get_player(multiplayer_id))
     players_updated.emit()
@@ -68,15 +67,12 @@ func _client_on_players_updated() -> void:
 
 
 func _client_on_kills_updated() -> void:
-    G.ensure(state.kills.size() > _previous_state.kills.size() or
-        state.kills.is_empty())
+    G.ensure(state.kills.size() > _previous_state.kills.size() or state.kills.is_empty())
 
     var new_kills := state.kills.slice(_previous_state.kills.size())
     var i := 0
     while i < new_kills.size():
-        player_killed.emit(
-            get_player(new_kills[i]),
-            get_player(new_kills[i + 1]))
+        player_killed.emit(get_player(new_kills[i]), get_player(new_kills[i + 1]))
         i += 2
 
     _previous_state.kills = state.kills.duplicate()
@@ -85,15 +81,12 @@ func _client_on_kills_updated() -> void:
 
 
 func _client_on_bumps_updated() -> void:
-    G.ensure(state.bumps.size() > _previous_state.bumps.size() or
-        state.bumps.is_empty())
+    G.ensure(state.bumps.size() > _previous_state.bumps.size() or state.bumps.is_empty())
 
     var new_bumps := state.bumps.slice(_previous_state.bumps.size())
     var i := 0
     while i < new_bumps.size():
-        players_bumped.emit(
-            get_player(new_bumps[i]),
-            get_player(new_bumps[i + 1]))
+        players_bumped.emit(get_player(new_bumps[i]), get_player(new_bumps[i + 1]))
         i += 2
 
     _previous_state.bumps = state.bumps.duplicate()
@@ -116,8 +109,7 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
     state.kills.append_array([killer_id, killee_id])
     state.kills = state.kills.duplicate()
 
-    G.print("KILL: %s killed %s" % [killer_id, killee_id],
-        ScaffolderLog.CATEGORY_GAME_STATE)
+    G.print("KILL: %s killed %s" % [killer_id, killee_id], ScaffolderLog.CATEGORY_GAME_STATE)
 
     player_killed.emit(get_player(killer_id), get_player(killee_id))
     kills_updated.emit()
@@ -130,8 +122,7 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
     state.bumps.append_array([player_1_id, player_2_id])
     state.bumps = state.bumps.duplicate()
 
-    G.print("BUMP: %s bumped %s" % [player_1_id, player_2_id],
-        ScaffolderLog.CATEGORY_GAME_STATE)
+    G.print("BUMP: %s bumped %s" % [player_1_id, player_2_id], ScaffolderLog.CATEGORY_GAME_STATE)
 
     players_bumped.emit(get_player(player_1_id), get_player(player_2_id))
     bumps_updated.emit()

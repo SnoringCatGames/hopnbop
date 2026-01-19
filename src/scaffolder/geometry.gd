@@ -1,7 +1,6 @@
 class_name Geometry
 extends Node
 
-
 const UP := Vector2.UP
 const DOWN := Vector2.DOWN
 const LEFT := Vector2.LEFT
@@ -19,21 +18,18 @@ func _ready() -> void:
 static func get_distance_squared_from_point_to_segment(
         point: Vector2,
         segment_a: Vector2,
-        segment_b: Vector2) -> float:
-    var closest_point := get_closest_point_on_segment_to_point(
-            point,
-            segment_a,
-            segment_b)
+        segment_b: Vector2,
+) -> float:
+    var closest_point := get_closest_point_on_segment_to_point(point, segment_a, segment_b)
     return point.distance_squared_to(closest_point)
 
 
 # Calculates the minimum squared distance between a polyline and a point.
 static func get_distance_squared_from_point_to_polyline(
         point: Vector2,
-        polyline: PackedVector2Array) -> float:
-    var closest_point := get_closest_point_on_polyline_to_point(
-            point,
-            polyline)
+        polyline: PackedVector2Array,
+) -> float:
+    var closest_point := get_closest_point_on_polyline_to_point(point, polyline)
     return point.distance_squared_to(closest_point)
 
 
@@ -43,42 +39,41 @@ static func get_distance_squared_between_non_intersecting_segments(
         segment_1_a: Vector2,
         segment_1_b: Vector2,
         segment_2_a: Vector2,
-        segment_2_b: Vector2) -> float:
+        segment_2_b: Vector2,
+) -> float:
     var closest_on_2_to_1_a = get_closest_point_on_segment_to_point(
-            segment_1_a,
-            segment_2_a,
-            segment_2_b)
+        segment_1_a,
+        segment_2_a,
+        segment_2_b,
+    )
     var closest_on_2_to_1_b = get_closest_point_on_segment_to_point(
-            segment_1_b,
-            segment_2_a,
-            segment_2_b)
+        segment_1_b,
+        segment_2_a,
+        segment_2_b,
+    )
     var closest_on_1_to_2_a = get_closest_point_on_segment_to_point(
-            segment_2_a,
-            segment_1_a,
-            segment_1_b)
+        segment_2_a,
+        segment_1_a,
+        segment_1_b,
+    )
     var closest_on_1_to_2_b = get_closest_point_on_segment_to_point(
-            segment_2_a,
-            segment_1_a,
-            segment_1_b)
+        segment_2_a,
+        segment_1_a,
+        segment_1_b,
+    )
 
-    var distance_squared_from_2_to_1_a = \
-            closest_on_2_to_1_a.distance_squared_to(segment_1_a)
-    var distance_squared_from_2_to_1_b = \
-            closest_on_2_to_1_b.distance_squared_to(segment_1_b)
-    var distance_squared_from_1_to_2_a = \
-            closest_on_1_to_2_a.distance_squared_to(segment_2_a)
-    var distance_squared_from_1_to_2_b = \
-            closest_on_1_to_2_b.distance_squared_to(segment_2_b)
+    var distance_squared_from_2_to_1_a = closest_on_2_to_1_a.distance_squared_to(segment_1_a)
+    var distance_squared_from_2_to_1_b = closest_on_2_to_1_b.distance_squared_to(segment_1_b)
+    var distance_squared_from_1_to_2_a = closest_on_1_to_2_a.distance_squared_to(segment_2_a)
+    var distance_squared_from_1_to_2_b = closest_on_1_to_2_b.distance_squared_to(segment_2_b)
 
-    return min(min(distance_squared_from_2_to_1_a,
-                    distance_squared_from_2_to_1_b),
-            min(distance_squared_from_1_to_2_a,
-                    distance_squared_from_1_to_2_b))
+    return min(
+        min(distance_squared_from_2_to_1_a, distance_squared_from_2_to_1_b),
+        min(distance_squared_from_1_to_2_a, distance_squared_from_1_to_2_b),
+    )
 
 
-static func get_distance_squared_from_rect_to_rect(
-        a: Rect2,
-        b: Rect2) -> float:
+static func get_distance_squared_from_rect_to_rect(a: Rect2, b: Rect2) -> float:
     var min_x := minf(a.position.x, b.position.x)
     var min_y := minf(a.position.y, b.position.y)
     var max_x := maxf(a.end.x, b.end.x)
@@ -92,7 +87,8 @@ static func get_distance_squared_from_rect_to_rect(
 static func get_closest_point_on_segment_to_point(
         point: Vector2,
         segment_a: Vector2,
-        segment_b: Vector2) -> Vector2:
+        segment_b: Vector2,
+) -> Vector2:
     var v := segment_b - segment_a
     var u := point - segment_a
     var uv: float = u.dot(v)
@@ -113,23 +109,21 @@ static func get_closest_point_on_segment_to_point(
 
 static func get_closest_point_on_polyline_to_point(
         point: Vector2,
-        polyline: PackedVector2Array) -> Vector2:
+        polyline: PackedVector2Array,
+) -> Vector2:
     if polyline.size() == 1:
         return polyline[0]
 
-    var closest_point := get_closest_point_on_segment_to_point(
-            point,
-            polyline[0],
-            polyline[1])
+    var closest_point := get_closest_point_on_segment_to_point(point, polyline[0], polyline[1])
     var closest_distance_squared := point.distance_squared_to(closest_point)
 
     for i in range(1, polyline.size() - 1):
         var current_point := get_closest_point_on_segment_to_point(
-                point,
-                polyline[i],
-                polyline[i + 1])
-        var current_distance_squared := \
-                point.distance_squared_to(current_point)
+            point,
+            polyline[i],
+            polyline[i + 1],
+        )
+        var current_distance_squared := point.distance_squared_to(current_point)
         if current_distance_squared < closest_distance_squared:
             closest_distance_squared = current_distance_squared
             closest_point = current_point
@@ -139,7 +133,8 @@ static func get_closest_point_on_polyline_to_point(
 
 static func get_closest_point_on_polyline_to_polyline(
         a: PackedVector2Array,
-        b: PackedVector2Array) -> Vector2:
+        b: PackedVector2Array,
+) -> Vector2:
     if a.size() == 1:
         return a[0]
 
@@ -147,10 +142,8 @@ static func get_closest_point_on_polyline_to_polyline(
     var closest_distance_squared: float = INF
 
     for vertex_b in b:
-        var current_point := \
-                get_closest_point_on_polyline_to_point(vertex_b, a)
-        var current_distance_squared: float = \
-                vertex_b.distance_squared_to(current_point)
+        var current_point := get_closest_point_on_polyline_to_point(vertex_b, a)
+        var current_distance_squared: float = vertex_b.distance_squared_to(current_point)
         if current_distance_squared < closest_distance_squared:
             closest_distance_squared = current_distance_squared
             closest_point = current_point
@@ -164,7 +157,8 @@ static func get_intersection_of_segments(
         segment_1_a: Vector2,
         segment_1_b: Vector2,
         segment_2_a: Vector2,
-        segment_2_b: Vector2) -> Vector2:
+        segment_2_b: Vector2,
+) -> Vector2:
     var r := segment_1_b - segment_1_a
     var s := segment_2_b - segment_2_a
 
@@ -175,14 +169,16 @@ static func get_intersection_of_segments(
         # The segments are collinear.
         var t0_numerator := (segment_2_a - segment_1_a).dot(r)
         var t1_numerator := (segment_1_a - segment_2_a).dot(s)
-        if 0 <= t0_numerator and t0_numerator <= r.dot(r) or \
-                0 <= t1_numerator and t1_numerator <= s.dot(s):
+        if (
+            0 <= t0_numerator and t0_numerator <= r.dot(r)
+            or 0 <= t1_numerator and t1_numerator <= s.dot(s)
+        ):
             # The segments overlap. Return one of the segment endpoints that
             # lies within the overlap region.
-            if (segment_1_a.x >= segment_2_a.x and \
-                    segment_1_a.x <= segment_2_b.x) or \
-                    (segment_1_a.x <= segment_2_a.x and \
-                    segment_1_a.x >= segment_2_b.x):
+            if (
+                (segment_1_a.x >= segment_2_a.x and segment_1_a.x <= segment_2_b.x)
+                or (segment_1_a.x <= segment_2_a.x and segment_1_a.x >= segment_2_b.x)
+            ):
                 return segment_1_a
             else:
                 return segment_1_b
@@ -211,20 +207,19 @@ static func get_intersection_of_segments(
 static func get_intersection_of_segment_and_polyline(
         segment_a: Vector2,
         segment_b: Vector2,
-        vertices: PackedVector2Array) -> Vector2:
+        vertices: PackedVector2Array,
+) -> Vector2:
     if vertices.size() == 1:
-        if do_point_and_segment_intersect(
-                segment_a,
-                segment_b,
-                vertices[0]):
+        if do_point_and_segment_intersect(segment_a, segment_b, vertices[0]):
             return vertices[0]
     else:
         for i in vertices.size() - 1:
             var intersection := get_intersection_of_segments(
-                    segment_a,
-                    segment_b,
-                    vertices[i],
-                    vertices[i + 1])
+                segment_a,
+                segment_b,
+                vertices[i],
+                vertices[i + 1],
+            )
             if intersection != Vector2.INF:
                 return intersection
     return Vector2.INF
@@ -239,12 +234,13 @@ static func get_intersection_of_segment_and_circle(
         segment_b: Vector2,
         center: Vector2,
         radius: float,
-        uses_first_possible_intersection := true) -> Vector2:
+        uses_first_possible_intersection := true,
+) -> Vector2:
     var d := segment_b - segment_a
     var f := segment_a - center
-    var a := d.dot(d);
-    var b := 2.0 * f.dot(d);
-    var c := f.dot(f) - radius * radius;
+    var a := d.dot(d)
+    var b := 2.0 * f.dot(d)
+    var c := f.dot(f) - radius * radius
     var discriminant := b * b - 4.0 * a * c
 
     if discriminant < 0:
@@ -276,11 +272,7 @@ static func get_intersection_of_segment_and_circle(
         return Vector2.INF
 
 
-static func is_point_in_triangle(
-        point: Vector2,
-        a: Vector2,
-        b: Vector2,
-        c: Vector2) -> bool:
+static func is_point_in_triangle(point: Vector2, a: Vector2, b: Vector2, c: Vector2) -> bool:
     # Uses the barycentric approach.
     var ac := c - a
     var ab := b - a
@@ -293,12 +285,9 @@ static func is_point_in_triangle(
     var dot_ab_ap: float = ab.dot(ap)
 
     # The barycentric coordinates.
-    var inverse_denominator := \
-            1 / (dot_ac_ac * dot_ab_ab - dot_ac_ab * dot_ac_ab)
-    var u := (dot_ab_ab * dot_ac_ap - dot_ac_ab * dot_ab_ap) * \
-            inverse_denominator
-    var v := (dot_ac_ac * dot_ab_ap - dot_ac_ab * dot_ac_ap) * \
-            inverse_denominator
+    var inverse_denominator := 1 / (dot_ac_ac * dot_ab_ab - dot_ac_ab * dot_ac_ab)
+    var u := (dot_ab_ab * dot_ac_ap - dot_ac_ab * dot_ab_ap) * inverse_denominator
+    var v := (dot_ac_ac * dot_ab_ap - dot_ac_ab * dot_ac_ap) * inverse_denominator
 
     return u >= 0 and v >= 0 and u + v < 1
 
@@ -306,29 +295,31 @@ static func is_point_in_triangle(
 static func is_point_in_rectangle(
         point: Vector2,
         rectangle_min: Vector2,
-        rectangle_max: Vector2) -> bool:
-    return point.x > rectangle_min.x and \
-            point.y > rectangle_min.y and \
-            point.x < rectangle_max.x and \
-            point.y < rectangle_max.y
+        rectangle_max: Vector2,
+) -> bool:
+    return (
+        point.x > rectangle_min.x
+        and point.y > rectangle_min.y
+        and point.x < rectangle_max.x
+        and point.y < rectangle_max.y
+    )
 
 
 static func do_rectangles_intersect(
         a_min: Vector2,
         a_max: Vector2,
         b_min: Vector2,
-        b_max: Vector2) -> bool:
-    return a_min.x <= b_max.x and \
-            a_min.y <= b_max.y and \
-            a_max.x >= b_min.x and \
-            a_max.y >= b_min.y
+        b_max: Vector2,
+) -> bool:
+    return a_min.x <= b_max.x and a_min.y <= b_max.y and a_max.x >= b_min.x and a_max.y >= b_min.y
 
 
 static func does_rectangle_and_circle_intersect(
         rectangle_min: Vector2,
         rectangle_max: Vector2,
         circle_center: Vector2,
-        circle_radius: float) -> bool:
+        circle_radius: float,
+) -> bool:
     var rectangle_extents := (rectangle_max - rectangle_min) / 2.0
     var rectangle_center := rectangle_min + rectangle_extents
 
@@ -345,53 +336,56 @@ static func does_rectangle_and_circle_intersect(
     if centers_distance_y < rectangle_extents.y:
         return true
 
-    var rectangle_diagonal_extent_distance_squared := \
-            (centers_distance_x - rectangle_extents.x) * \
-            (centers_distance_x - rectangle_extents.x) + \
-            (centers_distance_y - rectangle_extents.y) * \
-            (centers_distance_y - rectangle_extents.y)
-    return rectangle_diagonal_extent_distance_squared < \
-            circle_radius * circle_radius
+    var rectangle_diagonal_extent_distance_squared := (
+        (centers_distance_x - rectangle_extents.x) * (centers_distance_x - rectangle_extents.x)
+        + (centers_distance_y - rectangle_extents.y) * (centers_distance_y - rectangle_extents.y)
+    )
+    return rectangle_diagonal_extent_distance_squared < circle_radius * circle_radius
 
 
 static func do_segment_and_rectangle_intersect(
         segment_a: Vector2,
         segment_b: Vector2,
         rectangle_min: Vector2,
-        rectangle_max: Vector2) -> bool:
+        rectangle_max: Vector2,
+) -> bool:
     # First, check line intersection.
-    var is_segment_left_of_corner_1 := \
-            (segment_b.y - segment_a.y) * rectangle_min.x + \
-            (segment_a.x - segment_b.x) * rectangle_min.y + \
-            (segment_b.x * segment_a.y - segment_a.x * segment_b.y)
-    var is_segment_left_of_corner_2 := \
-            (segment_b.y - segment_a.y) * rectangle_max.x + \
-            (segment_a.x - segment_b.x) * rectangle_min.y + \
-            (segment_b.x * segment_a.y - segment_a.x * segment_b.y)
-    var is_segment_left_of_corner_3 := \
-            (segment_b.y - segment_a.y) * rectangle_max.x + \
-            (segment_a.x - segment_b.x) * rectangle_max.y + \
-            (segment_b.x * segment_a.y - segment_a.x * segment_b.y)
-    var is_segment_left_of_corner_4 := \
-            (segment_b.y - segment_a.y) * rectangle_min.x + \
-            (segment_a.x - segment_b.x) * rectangle_max.y + \
-            (segment_b.x * segment_a.y - segment_a.x * segment_b.y)
-    if (is_segment_left_of_corner_1 == is_segment_left_of_corner_2) and \
-            (is_segment_left_of_corner_1 == is_segment_left_of_corner_3) and \
-            (is_segment_left_of_corner_1 == is_segment_left_of_corner_4):
+    var is_segment_left_of_corner_1 := (
+        (segment_b.y - segment_a.y) * rectangle_min.x
+        + (segment_a.x - segment_b.x) * rectangle_min.y
+        + (segment_b.x * segment_a.y - segment_a.x * segment_b.y)
+    )
+    var is_segment_left_of_corner_2 := (
+        (segment_b.y - segment_a.y) * rectangle_max.x
+        + (segment_a.x - segment_b.x) * rectangle_min.y
+        + (segment_b.x * segment_a.y - segment_a.x * segment_b.y)
+    )
+    var is_segment_left_of_corner_3 := (
+        (segment_b.y - segment_a.y) * rectangle_max.x
+        + (segment_a.x - segment_b.x) * rectangle_max.y
+        + (segment_b.x * segment_a.y - segment_a.x * segment_b.y)
+    )
+    var is_segment_left_of_corner_4 := (
+        (segment_b.y - segment_a.y) * rectangle_min.x
+        + (segment_a.x - segment_b.x) * rectangle_max.y
+        + (segment_b.x * segment_a.y - segment_a.x * segment_b.y)
+    )
+    if (
+        (is_segment_left_of_corner_1 == is_segment_left_of_corner_2)
+        and (is_segment_left_of_corner_1 == is_segment_left_of_corner_3)
+        and (is_segment_left_of_corner_1 == is_segment_left_of_corner_4)
+    ):
         # If all rectangle corners are on the same side of the line, then there
         # is no intersection.
         return false
 
     # Second, check line-segment projection.
-    return (segment_a.x <= rectangle_max.x or \
-                segment_b.x <= rectangle_max.x) and \
-            (segment_a.x >= rectangle_min.x or \
-                segment_b.x >= rectangle_min.x) and \
-            (segment_a.y <= rectangle_max.y or \
-                segment_b.y <= rectangle_max.y) and \
-            (segment_a.y >= rectangle_min.y or \
-                segment_b.y >= rectangle_min.y)
+    return (
+        (segment_a.x <= rectangle_max.x or segment_b.x <= rectangle_max.x)
+        and (segment_a.x >= rectangle_min.x or segment_b.x >= rectangle_min.x)
+        and (segment_a.y <= rectangle_max.y or segment_b.y <= rectangle_max.y)
+        and (segment_a.y >= rectangle_min.y or segment_b.y >= rectangle_min.y)
+    )
 
 
 static func do_segment_and_triangle_intersect(
@@ -399,28 +393,14 @@ static func do_segment_and_triangle_intersect(
         segment_b: Vector2,
         triangle_a: Vector2,
         triangle_b: Vector2,
-        triangle_c: Vector2) -> bool:
-    return \
-            get_intersection_of_segments(
-                    segment_a,
-                    segment_b,
-                    triangle_a,
-                    triangle_b) != Vector2.INF or \
-            get_intersection_of_segments(
-                    segment_a,
-                    segment_b,
-                    triangle_a,
-                    triangle_c) != Vector2.INF or \
-            get_intersection_of_segments(
-                    segment_a,
-                    segment_b,
-                    triangle_b,
-                    triangle_c) != Vector2.INF or \
-            is_point_in_triangle(
-                    segment_a,
-                    triangle_a,
-                    triangle_b,
-                    triangle_c)
+        triangle_c: Vector2,
+) -> bool:
+    return (
+        get_intersection_of_segments(segment_a, segment_b, triangle_a, triangle_b) != Vector2.INF
+        or get_intersection_of_segments(segment_a, segment_b, triangle_a, triangle_c) != Vector2.INF
+        or get_intersection_of_segments(segment_a, segment_b, triangle_b, triangle_c) != Vector2.INF
+        or is_point_in_triangle(segment_a, triangle_a, triangle_b, triangle_c)
+    )
 
 
 # - Assumes that the polygon's closing segment is implied;
@@ -442,7 +422,8 @@ static func do_segment_and_triangle_intersect(
 static func do_segment_and_polygon_intersect(
         segment_a: Vector2,
         segment_b: Vector2,
-        polygon: Array) -> bool:
+        polygon: Array,
+) -> bool:
     assert(polygon[0] == polygon[polygon.size() - 1])
 
     var segment_diff := segment_b - segment_a
@@ -453,8 +434,7 @@ static func do_segment_and_polygon_intersect(
         var polygon_segment: Vector2 = polygon[i + 1] - polygon[i]
         var p_to_a: Vector2 = segment_a - polygon[i]
         var n := polygon_segment.x * p_to_a.y - polygon_segment.y * p_to_a.x
-        var d := polygon_segment.y * segment_diff.x - \
-                polygon_segment.x * segment_diff.y
+        var d := polygon_segment.y * segment_diff.x - polygon_segment.x * segment_diff.y
 
         if abs(d) < FLOAT_EPSILON:
             if n < 0:
@@ -482,13 +462,15 @@ static func do_segment_and_polygon_intersect(
 static func do_polyline_and_rectangle_intersect(
         vertices: Array,
         rectangle_min: Vector2,
-        rectangle_max: Vector2) -> bool:
+        rectangle_max: Vector2,
+) -> bool:
     for i in vertices.size() - 1:
         if do_segment_and_rectangle_intersect(
-                vertices[i],
-                vertices[i + 1],
-                rectangle_min,
-                rectangle_max):
+            vertices[i],
+            vertices[i + 1],
+            rectangle_min,
+            rectangle_max,
+        ):
             return true
     return false
 
@@ -497,124 +479,103 @@ static func do_polyline_and_triangle_intersect(
         vertices: PackedVector2Array,
         triangle_a: Vector2,
         triangle_b: Vector2,
-        triangle_c: Vector2) -> bool:
+        triangle_c: Vector2,
+) -> bool:
     for i in vertices.size() - 1:
         var segment_a := vertices[i]
         var segment_b := vertices[i + 1]
         if do_segment_and_triangle_intersect(
-                segment_a,
-                segment_b,
-                triangle_a,
-                triangle_b,
-                triangle_c):
+            segment_a,
+            segment_b,
+            triangle_a,
+            triangle_b,
+            triangle_c,
+        ):
             return true
     return false
 
 
-static func do_polyline_and_polygon_intersect(
-        vertices: PackedVector2Array,
-        polygon: Array) -> bool:
+static func do_polyline_and_polygon_intersect(vertices: PackedVector2Array, polygon: Array) -> bool:
     for i in vertices.size() - 1:
         var segment_a := vertices[i]
         var segment_b := vertices[i + 1]
-        if do_segment_and_polygon_intersect(
-                segment_a,
-                segment_b,
-                polygon):
+        if do_segment_and_polygon_intersect(segment_a, segment_b, polygon):
             return true
     return false
 
 
-static func are_floats_equal_with_epsilon(
-        a: float,
-        b: float,
-        epsilon := FLOAT_EPSILON) -> bool:
+static func are_floats_equal_with_epsilon(a: float, b: float, epsilon := FLOAT_EPSILON) -> bool:
     var diff = b - a
     return -epsilon < diff and diff < epsilon
 
 
-static func are_points_equal_with_epsilon(
-        a: Vector2,
-        b: Vector2,
-        epsilon := FLOAT_EPSILON) -> bool:
+static func are_points_equal_with_epsilon(a: Vector2, b: Vector2, epsilon := FLOAT_EPSILON) -> bool:
     var x_diff = b.x - a.x
     var y_diff = b.y - a.y
-    return -epsilon < x_diff and x_diff < epsilon and \
-            - epsilon < y_diff and y_diff < epsilon
+    return -epsilon < x_diff and x_diff < epsilon and -epsilon < y_diff and y_diff < epsilon
 
 
-static func are_rects_equal_with_epsilon(
-        a: Rect2,
-        b: Rect2,
-        epsilon := FLOAT_EPSILON) -> bool:
+static func are_rects_equal_with_epsilon(a: Rect2, b: Rect2, epsilon := FLOAT_EPSILON) -> bool:
     var x_diff = b.position.x - a.position.x
     var y_diff = b.position.y - a.position.y
     var w_diff = b.size.x - a.size.x
     var h_diff = b.size.y - a.size.y
-    return -epsilon < x_diff and x_diff < epsilon and \
-            - epsilon < y_diff and y_diff < epsilon and \
-            - epsilon < w_diff and w_diff < epsilon and \
-            - epsilon < h_diff and h_diff < epsilon
+    return (
+        -epsilon < x_diff
+        and x_diff < epsilon
+        and -epsilon < y_diff
+        and y_diff < epsilon
+        and -epsilon < w_diff
+        and w_diff < epsilon
+        and -epsilon < h_diff
+        and h_diff < epsilon
+    )
 
 
-static func are_colors_equal_with_epsilon(
-        a: Color,
-        b: Color,
-        epsilon := FLOAT_EPSILON) -> bool:
+static func are_colors_equal_with_epsilon(a: Color, b: Color, epsilon := FLOAT_EPSILON) -> bool:
     var r_diff = b.r - a.r
     var g_diff = b.g - a.g
     var b_diff = b.b - a.b
     var a_diff = b.a - a.a
-    return -epsilon < r_diff and r_diff < epsilon and \
-            - epsilon < g_diff and g_diff < epsilon and \
-            - epsilon < b_diff and b_diff < epsilon and \
-            - epsilon < a_diff and a_diff < epsilon
+    return (
+        -epsilon < r_diff
+        and r_diff < epsilon
+        and -epsilon < g_diff
+        and g_diff < epsilon
+        and -epsilon < b_diff
+        and b_diff < epsilon
+        and -epsilon < a_diff
+        and a_diff < epsilon
+    )
 
 
-static func is_float_integer_aligned_with_epsilon(
-        number: float,
-        epsilon := FLOAT_EPSILON) -> bool:
+static func is_float_integer_aligned_with_epsilon(number: float, epsilon := FLOAT_EPSILON) -> bool:
     var remainder := fmod(number, 1.0)
     return remainder < epsilon or remainder > 1.0 - epsilon
 
 
-static func snap_float_to_integer(
-        number: float,
-        epsilon := FLOAT_EPSILON) -> float:
+static func snap_float_to_integer(number: float, epsilon := FLOAT_EPSILON) -> float:
     if is_float_integer_aligned_with_epsilon(number, epsilon):
         return round(number)
     else:
         return number
 
 
-static func snap_vector2_to_integers(
-        point: Vector2,
-        _epsilon := FLOAT_EPSILON) -> Vector2:
-    return Vector2(
-            snap_float_to_integer(point.x),
-            snap_float_to_integer(point.y))
+static func snap_vector2_to_integers(point: Vector2, _epsilon := FLOAT_EPSILON) -> Vector2:
+    return Vector2(snap_float_to_integer(point.x), snap_float_to_integer(point.y))
 
 
-static func is_float_gte_with_epsilon(
-        a: float,
-        b: float,
-        epsilon := FLOAT_EPSILON) -> bool:
+static func is_float_gte_with_epsilon(a: float, b: float, epsilon := FLOAT_EPSILON) -> bool:
     var diff = b - a
     return a >= b or (-epsilon < diff and diff < epsilon)
 
 
-static func is_float_lte_with_epsilon(
-        a: float,
-        b: float,
-        epsilon := FLOAT_EPSILON) -> bool:
+static func is_float_lte_with_epsilon(a: float, b: float, epsilon := FLOAT_EPSILON) -> bool:
     var diff = b - a
     return a <= b or (-epsilon < diff and diff < epsilon)
 
 
-static func clamp_vector_length(
-        vector: Vector2,
-        min_length: float,
-        max_length: float) -> Vector2:
+static func clamp_vector_length(vector: Vector2, min_length: float, max_length: float) -> Vector2:
     var length_squared := vector.length_squared()
     if length_squared > max_length * max_length:
         return vector.normalized() * max_length
@@ -639,17 +600,12 @@ static func is_polygon_clockwise(vertices: Array) -> bool:
     return sum < 0
 
 
-static func are_three_points_clockwise(
-        a: Vector2,
-        b: Vector2,
-        c: Vector2) -> bool:
+static func are_three_points_clockwise(a: Vector2, b: Vector2, c: Vector2) -> bool:
     var result := (a.y - b.y) * (c.x - a.x) - (a.x - b.x) * (c.y - a.y)
     return result > 0
 
 
-static func is_polygon_convex(
-        vertices: Array,
-        epsilon := 0.001) -> bool:
+static func is_polygon_convex(vertices: Array, epsilon := 0.001) -> bool:
     var vertex_count := vertices.size()
 
     assert(vertices[0] != vertices[vertex_count - 1])
@@ -719,26 +675,21 @@ static func is_polygon_convex(
             return false
 
         # Calculate the edge-pair orientation, and check whether it has changed.
-        var w := previous_diplacement.x * next_diplacement.y - \
-                next_diplacement.x * previous_diplacement.y
-        if w_sign == 0 and \
-                (w < -epsilon or epsilon > epsilon):
+        var w := (
+            previous_diplacement.x * next_diplacement.y
+            - next_diplacement.x * previous_diplacement.y
+        )
+        if w_sign == 0 and (w < -epsilon or epsilon > epsilon):
             w_sign = 0
-        elif w_sign > 0 and \
-                w < -epsilon:
+        elif w_sign > 0 and w < -epsilon:
             return false
-        elif w_sign < 0 and \
-                w > epsilon:
+        elif w_sign < 0 and w > epsilon:
             return false
 
     # Wrap-around sign flips (the fencepost problem).
-    if x_sign != 0 and \
-            x_first_sign != 0 and \
-            x_sign != x_first_sign:
+    if x_sign != 0 and x_first_sign != 0 and x_sign != x_first_sign:
         x_flips += 1
-    if y_sign != 0 and \
-            y_first_sign != 0 and \
-            y_sign != y_first_sign:
+    if y_sign != 0 and y_first_sign != 0 and y_sign != y_first_sign:
         y_flips += 1
 
     # Convex polygons have two sign flips along each axis.
@@ -749,22 +700,32 @@ static func are_points_collinear(
         p1: Vector2,
         p2: Vector2,
         p3: Vector2,
-        epsilon := FLOAT_EPSILON) -> bool:
-    return abs((p2.x - p1.x) * (p3.y - p1.y) - \
-            (p3.x - p1.x) * (p2.y - p1.y)) < epsilon
+        epsilon := FLOAT_EPSILON,
+) -> bool:
+    return abs((p2.x - p1.x) * (p3.y - p1.y) - (p3.x - p1.x) * (p2.y - p1.y)) < epsilon
 
 
 static func do_point_and_segment_intersect(
         point: Vector2,
         segment_a: Vector2,
         segment_b: Vector2,
-        epsilon := FLOAT_EPSILON) -> bool:
-    return abs((segment_a.x - point.x) * (segment_b.y - point.y) - \
-            (segment_b.x - point.x) * (segment_a.y - point.y)) < epsilon and \
-            ((point.x <= segment_a.x + epsilon and \
-                point.x >= segment_b.x - epsilon) or \
-            (point.x >= segment_a.x - epsilon and \
-                point.x <= segment_b.x + epsilon))
+        epsilon := FLOAT_EPSILON,
+) -> bool:
+    return (
+        (
+            abs(
+                (
+                    (segment_a.x - point.x) * (segment_b.y - point.y)
+                    - (segment_b.x - point.x) * (segment_a.y - point.y)
+                ),
+            )
+            < epsilon
+        )
+        and (
+            (point.x <= segment_a.x + epsilon and point.x >= segment_b.x - epsilon)
+            or (point.x >= segment_a.x - epsilon and point.x <= segment_b.x + epsilon)
+        )
+    )
 
 
 static func get_bounding_box_for_points(points: PackedVector2Array) -> Rect2:
@@ -775,9 +736,7 @@ static func get_bounding_box_for_points(points: PackedVector2Array) -> Rect2:
     return bounding_box
 
 
-static func distance_squared_from_point_to_rect(
-        point: Vector2,
-        rect: Rect2) -> float:
+static func distance_squared_from_point_to_rect(point: Vector2, rect: Rect2) -> float:
     var rect_min := rect.position
     var rect_max := rect.end
 
@@ -808,47 +767,46 @@ static func distance_squared_from_point_to_rect(
             return 0.0
 
 
-static func do_shapes_match(
-        a: Shape2D,
-        b: Shape2D) -> bool:
+static func do_shapes_match(a: Shape2D, b: Shape2D) -> bool:
     if a is CircleShape2D:
-        return b is CircleShape2D and \
-                a.radius == b.radius
+        return b is CircleShape2D and a.radius == b.radius
     elif a is CapsuleShape2D:
-        return b is CapsuleShape2D and \
-                a.radius == b.radius and \
-                a.height == b.height
+        return b is CapsuleShape2D and a.radius == b.radius and a.height == b.height
     elif a is RectangleShape2D:
-        return b is RectangleShape2D and \
-                a.extents == b.extents
+        return b is RectangleShape2D and a.extents == b.extents
     else:
-        G.ensure(false,
-                "Invalid Shape2D provided: %s. The " +
-                "supported shapes are: CircleShape2D, CapsuleShape2D, " +
-                "RectangleShape2D." % a)
+        G.ensure(
+            false,
+            (
+                "Invalid Shape2D provided: %s. The "
+                + "supported shapes are: CircleShape2D, CapsuleShape2D, "
+                + "RectangleShape2D." % a
+            ),
+        )
         return false
 
 
 # The given rotation must be either 0 or PI.
-static func calculate_half_width_height(
-        shape: Shape2D,
-        is_rotated_90_degrees: bool) -> Vector2:
+static func calculate_half_width_height(shape: Shape2D, is_rotated_90_degrees: bool) -> Vector2:
     var half_width_height: Vector2
     if shape is CircleShape2D:
-        half_width_height = Vector2(
-                shape.radius,
-                shape.radius)
+        half_width_height = Vector2(shape.radius, shape.radius)
     elif shape is CapsuleShape2D:
-        half_width_height = Vector2(
-                shape.radius,
-                shape.height / 2)
+        half_width_height = Vector2(shape.radius, shape.height / 2)
     elif shape is RectangleShape2D:
         half_width_height = shape.extents
     else:
-        G.ensure(false,
-                ("Invalid Shape2D provided: %s. " +
-                "The supported shapes are: CircleShape2D, " +
-                "CapsuleShape2D, RectangleShape2D.") % str(shape))
+        G.ensure(
+            false,
+            (
+                (
+                    "Invalid Shape2D provided: %s. "
+                    + "The supported shapes are: CircleShape2D, "
+                    + "CapsuleShape2D, RectangleShape2D."
+                )
+                % str(shape)
+            ),
+        )
 
     if is_rotated_90_degrees:
         var swap := half_width_height.x
@@ -858,9 +816,7 @@ static func calculate_half_width_height(
     return half_width_height
 
 
-static func calculate_manhattan_distance(
-        a: Vector2,
-        b: Vector2) -> float:
+static func calculate_manhattan_distance(a: Vector2, b: Vector2) -> float:
     return abs(b.x - a.x) + abs(b.y - a.y)
 
 

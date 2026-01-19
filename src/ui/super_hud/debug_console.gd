@@ -1,7 +1,6 @@
 class_name DebugConsole
 extends PanelContainer
 
-
 @export var font_color := Color("c5ff5e")
 @export var message_count_limit := 500
 
@@ -35,11 +34,7 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-    %Time.text = Utils.get_time_string_from_seconds(
-            G.time.get_app_time(),
-            false,
-            false,
-            true) + " "
+    %Time.text = Utils.get_time_string_from_seconds(G.time.get_app_time(), false, false, true) + " "
 
 
 func _delayed_init() -> void:
@@ -75,8 +70,7 @@ func _remove_surplus_message() -> void:
 
 
 func _scroll_to_bottom() -> void:
-    %ScrollContainer.scroll_vertical = \
-            %ScrollContainer.get_v_scroll_bar().max_value
+    %ScrollContainer.scroll_vertical = %ScrollContainer.get_v_scroll_bar().max_value
 
 
 func _log_print_queue() -> void:

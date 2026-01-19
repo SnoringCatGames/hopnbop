@@ -1,7 +1,6 @@
 class_name LocalSession
 extends RefCounted
 
-
 var is_game_active := false
 var is_game_loading := false
 

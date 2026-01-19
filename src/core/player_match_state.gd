@@ -7,7 +7,6 @@ extends RefCounted
 ## - State that needs to sync every frame should instead be tracked in
 ##   CharacterStateFromServer (or a subclass of it).
 
-
 var multiplayer_id := 0
 var bunny_name := ""
 var adjective := ""
@@ -16,10 +15,12 @@ var connect_time_usec := 0
 var disconnect_time_usec := 0
 
 var full_name: String:
-    get: return "%s %s" % [adjective, bunny_name]
+    get:
+        return "%s %s" % [adjective, bunny_name]
 
 var is_connected_to_server: bool:
-    get: return connect_time_usec >= disconnect_time_usec
+    get:
+        return connect_time_usec >= disconnect_time_usec
 
 var player: Player:
     get:
@@ -36,6 +37,7 @@ const _PROPERTY_NAMES := [
     "connect_time_usec",
     "disconnect_time_usec",
 ]
+
 
 func get_packed_state() -> Array:
     var packed_state := []
@@ -65,13 +67,15 @@ func set_up(p_multiplayer_id: int, p_is_soft: bool) -> void:
 
     bunny_name = BunnyWords.NAMES.pick_random()
 
-    var adjectives := \
-        BunnyWords.SOFT_ADJECTIVES if is_soft else BunnyWords.HARD_ADJECTIVES
+    var adjectives := BunnyWords.SOFT_ADJECTIVES if is_soft else BunnyWords.HARD_ADJECTIVES
     adjective = adjectives.pick_random()
 
 
 func get_string() -> String:
-    return "%d:%s" % [
-        multiplayer_id,
-        full_name,
-    ]
+    return (
+        "%d:%s"
+        % [
+            multiplayer_id,
+            full_name,
+        ]
+    )

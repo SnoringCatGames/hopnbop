@@ -1,7 +1,6 @@
 class_name ScreensMain
 extends PanelContainer
 
-
 enum ScreenType {
     MAIN_MENU,
     LOADING,
@@ -42,10 +41,18 @@ func client_open_screen(screen_type: ScreenType) -> void:
     var previous_screen_type := current_screen
     current_screen = screen_type
 
-    G.print("Switching screens: %s => %s" % [
-        ScreenType.keys()[previous_screen_type],
-        ScreenType.keys()[screen_type],
-    ], ScaffolderLog.CATEGORY_INTERACTION)
+    (
+        G.print(
+            (
+                "Switching screens: %s => %s"
+                % [
+                    ScreenType.keys()[previous_screen_type],
+                    ScreenType.keys()[screen_type],
+                ]
+            ),
+            ScaffolderLog.CATEGORY_INTERACTION,
+        )
+    )
 
     get_tree().paused = screen_type != ScreenType.GAME
 
@@ -55,22 +62,26 @@ func client_open_screen(screen_type: ScreenType) -> void:
     G.win_screen.visible = screen_type == ScreenType.WIN
     G.pause_screen.visible = screen_type == ScreenType.PAUSE
 
-    var ends_game := [
-        ScreenType.MAIN_MENU,
-        ScreenType.LOADING,
-        ScreenType.GAME_OVER,
-        ScreenType.WIN,
-    ].has(screen_type)
+    var ends_game := (
+        [
+            ScreenType.MAIN_MENU,
+            ScreenType.LOADING,
+            ScreenType.GAME_OVER,
+            ScreenType.WIN,
+        ].has(screen_type)
+    )
     if ends_game and G.local_session.is_game_active:
         G.game_panel.client_exit_game()
 
-    var plays_menu_theme := [
-        ScreenType.MAIN_MENU,
-        ScreenType.LOADING,
-        ScreenType.GAME_OVER,
-        ScreenType.WIN,
-        ScreenType.PAUSE,
-    ].has(screen_type)
+    var plays_menu_theme := (
+        [
+            ScreenType.MAIN_MENU,
+            ScreenType.LOADING,
+            ScreenType.GAME_OVER,
+            ScreenType.WIN,
+            ScreenType.PAUSE,
+        ].has(screen_type)
+    )
     if plays_menu_theme:
         G.audio.fade_to_menu_theme()
 

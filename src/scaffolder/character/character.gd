@@ -2,9 +2,7 @@
 class_name Character
 extends CharacterBody2D
 
-
 # FIXME: [Logs]: Re-introduce some character, surface state, and action logs.
-
 
 const _NORMAL_SURFACES_COLLISION_MASK_BIT := 1
 const _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT := 2
@@ -52,46 +50,54 @@ var actions := CharacterActionState.new()
 # Array<CharacterActionSource>
 var _action_sources := []
 # Dictionary<String, bool>
-var _previous_actions_handlers_this_frame := {}
+var _previous_actions_handlers_this_frame := { }
 
 var current_surface_max_horizontal_speed: float:
-    get: return movement_settings.max_ground_horizontal_speed * \
-            _current_max_horizontal_speed_multiplier * \
-            (surfaces.surface_properties.speed_multiplier if \
+    get:
+        return movement_settings.max_ground_horizontal_speed * \
+        _current_max_horizontal_speed_multiplier * \
+        (surfaces.surface_properties.speed_multiplier if \
             surfaces.is_attaching_to_surface else \
-            1.0)
+            1.0 )
 
 var current_air_max_horizontal_speed: float:
-    get: return movement_settings.max_air_horizontal_speed * \
-            _current_max_horizontal_speed_multiplier
+    get:
+        return movement_settings.max_air_horizontal_speed * \
+        _current_max_horizontal_speed_multiplier
 
 var current_walk_acceleration: float:
-    get: return movement_settings.walk_acceleration * \
-            (surfaces.surface_properties.speed_multiplier if \
+    get:
+        return movement_settings.walk_acceleration * \
+        (surfaces.surface_properties.speed_multiplier if \
             surfaces.is_attaching_to_surface else \
-            1.0)
+            1.0 )
 
 var current_climb_up_speed: float:
-    get: return movement_settings.climb_up_speed * \
-            (surfaces.surface_properties.speed_multiplier if \
+    get:
+        return movement_settings.climb_up_speed * \
+        (surfaces.surface_properties.speed_multiplier if \
             surfaces.is_attaching_to_surface else \
-            1.0)
+            1.0 )
 
 var current_climb_down_speed: float:
-    get: return movement_settings.climb_down_speed * \
-            (surfaces.surface_properties.speed_multiplier if \
+    get:
+        return movement_settings.climb_down_speed * \
+        (surfaces.surface_properties.speed_multiplier if \
             surfaces.is_attaching_to_surface else \
-            1.0)
+            1.0 )
 
 var current_ceiling_crawl_speed: float:
-    get: return movement_settings.ceiling_crawl_speed * \
-            (surfaces.surface_properties.speed_multiplier if \
+    get:
+        return movement_settings.ceiling_crawl_speed * \
+        (surfaces.surface_properties.speed_multiplier if \
             surfaces.is_attaching_to_surface else \
-            1.0)
+            1.0 )
 
 var is_sprite_visible: bool:
-    set(value): animator.visible = value
-    get: return animator.visible
+    set(value):
+        animator.visible = value
+    get:
+        return animator.visible
 
 
 func _enter_tree() -> void:
@@ -142,7 +148,8 @@ func _update_actions() -> void:
     for action_source in _action_sources:
         action_source.update(
             actions,
-            G.time.get_scaled_network_time())
+            G.time.get_scaled_network_time(),
+        )
 
     surfaces.update_actions()
     actions.log_new_presses_and_releases(self)
@@ -186,25 +193,25 @@ func _process_actions() -> void:
 
     for action_handler in movement_settings.action_handlers:
         var is_action_relevant_for_surface: bool = \
-                action_handler.type == surfaces.surface_type or \
-                action_handler.type == SurfaceType.OTHER or \
-                # Our surface-state logic considers the current actions, and
-                # surface-state is updated before we process actions here.
-                # Furthermore, we use action-handlers to actually apply the
-                # changes for things like jump impulses that are needed to
-                # actually transition the character from a surface. So we need
-                # to also consider the surface that we are currently leaving,
-                # and allow an action-handler of that departure-surface-type to
-                # handle this frame.
-                (action_handler.type == surfaces.just_left_surface_type and
-                surfaces.just_left_surface_type != SurfaceType.OTHER)
+        action_handler.type == surfaces.surface_type or \
+        action_handler.type == SurfaceType.OTHER or \
+        # Our surface-state logic considers the current actions, and
+        # surface-state is updated before we process actions here.
+        # Furthermore, we use action-handlers to actually apply the
+        # changes for things like jump impulses that are needed to
+        # actually transition the character from a surface. So we need
+        # to also consider the surface that we are currently leaving,
+        # and allow an action-handler of that departure-surface-type to
+        # handle this frame.
+        (action_handler.type == surfaces.just_left_surface_type and
+            surfaces.just_left_surface_type != SurfaceType.OTHER )
         var is_action_relevant_for_physics_mode: bool = \
-                action_handler.uses_runtime_physics
+        action_handler.uses_runtime_physics
         if is_action_relevant_for_surface and \
-                is_action_relevant_for_physics_mode:
+        is_action_relevant_for_physics_mode:
             var executed: bool = action_handler.process(self)
             _previous_actions_handlers_this_frame[action_handler.name] = \
-                    executed
+            executed
 
     assert(!Geometry.is_point_partial_inf(velocity))
 
@@ -274,11 +281,12 @@ func processed_action(p_name: String) -> bool:
 # fall-through floors and walk-through walls.
 func _update_collision_mask() -> void:
     set_collision_mask_value(
-            _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT,
-            not surfaces.is_descending_through_floors)
+        _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT,
+        not surfaces.is_descending_through_floors,
+    )
     #set_collision_mask_value(
-            #_WALK_THROUGH_WALLS_COLLISION_MASK_BIT,
-            #surfaces.is_attaching_to_walk_through_walls)
+    #_WALK_THROUGH_WALLS_COLLISION_MASK_BIT,
+    #surfaces.is_attaching_to_walk_through_walls)
 
 
 func force_boost(boost: Vector2) -> void:

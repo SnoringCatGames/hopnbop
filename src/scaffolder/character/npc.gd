@@ -1,7 +1,6 @@
 class_name NPC
 extends Character
 
-
 func _enter_tree() -> void:
     super._enter_tree()
     G.level.on_npc_added(self)

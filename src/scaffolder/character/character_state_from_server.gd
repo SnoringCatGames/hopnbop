@@ -2,7 +2,6 @@
 class_name CharacterStateFromServer
 extends ReconcilableNetworkedState
 
-
 # FIXME: Override configuration warnings to check this is set.
 @export var character: Character
 
@@ -14,11 +13,12 @@ var state_from_client: PlayerStateFromClient:
             return null
 
 var is_authority_for_state_from_server: bool:
-    get: return is_multiplayer_authority()
+    get:
+        return is_multiplayer_authority()
 
 var is_authority_for_state_from_client: bool:
-    get: return is_instance_valid(state_from_client) and \
-        state_from_client.is_multiplayer_authority()
+    get:
+        return is_instance_valid(state_from_client) and state_from_client.is_multiplayer_authority()
 
 var position := Vector2.ZERO
 var velocity := Vector2.ZERO
@@ -87,12 +87,9 @@ func _sync_to_scene_state(previous_state: Array) -> void:
     character.velocity = velocity
     character.surfaces.bitmask = surfaces
 
-    character.previous_position = \
-        previous_state[_property_name_to_pack_index.position]
-    character.previous_velocity = \
-        previous_state[_property_name_to_pack_index.velocity]
-    character.surfaces.previous_bitmask = \
-        previous_state[_property_name_to_pack_index.surfaces]
+    character.previous_position = previous_state[_property_name_to_pack_index.position]
+    character.previous_velocity = previous_state[_property_name_to_pack_index.velocity]
+    character.surfaces.previous_bitmask = previous_state[_property_name_to_pack_index.surfaces]
 
 
 func _sync_from_scene_state() -> void:

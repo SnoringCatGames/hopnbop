@@ -1,7 +1,6 @@
 class_name MatchState
 extends RefCounted
 
-
 signal player_connected(player: PlayerMatchState)
 signal player_disconnected(player: PlayerMatchState)
 
@@ -9,9 +8,8 @@ signal players_updated
 signal kills_updated
 signal bumps_updated
 
-
 # Dictionary<int, PlayerMatchState>
-var players: Dictionary = {}
+var players: Dictionary = { }
 
 ## - We maintain both a packed Array of player state as well as a redundant
 ##   Dictionary of player state.
@@ -28,7 +26,7 @@ var packed_players := []:
 var _is_packing_state_locally := false
 
 # Dictionary<int, bool>
-var _connected_players := {}
+var _connected_players := { }
 
 ## Every even index marks a 2-player pair.
 ##
@@ -94,8 +92,7 @@ func _client_unpack_players() -> void:
     players.clear()
 
     for packed_player in packed_players:
-        var multiplayer_id := \
-            PlayerMatchState.get_multiplayer_id_from_packed_state(packed_player)
+        var multiplayer_id := PlayerMatchState.get_multiplayer_id_from_packed_state(packed_player)
 
         if not players.has(multiplayer_id):
             players[multiplayer_id] = PlayerMatchState.new()
@@ -106,8 +103,7 @@ func _client_unpack_players() -> void:
     # Trigger connected/disconnected events.
     for multiplayer_id in players:
         var player: PlayerMatchState = players[multiplayer_id]
-        if player.is_connected_to_server != \
-                _connected_players.has(multiplayer_id):
+        if player.is_connected_to_server != _connected_players.has(multiplayer_id):
             if player.is_connected_to_server:
                 _connected_players[multiplayer_id] = true
                 player_connected.emit(player)

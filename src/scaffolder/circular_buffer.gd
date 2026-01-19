@@ -14,7 +14,6 @@ extends RefCounted
 ##   var oldest = buffer.get_oldest()
 ##   var at_index = buffer.get_at(index)
 
-
 ## The internal array storing buffer elements.
 var _data: Array = []
 
@@ -29,7 +28,8 @@ var _total_pushed: int = 0
 
 ## The maximum number of elements the buffer can hold.
 var capacity: int:
-    get: return _capacity
+    get:
+        return _capacity
 
 
 func _init(p_capacity: int) -> void:

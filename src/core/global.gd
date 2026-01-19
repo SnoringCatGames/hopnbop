@@ -2,15 +2,13 @@
 extends Node
 ## Add global state here for easy access.
 
-
 # Note: This is shown at the top to assist with local debugging.
 var preview_instance_label := ""
 
 var args: Dictionary
 
 var time := ScaffolderTime.new()
-@warning_ignore("shadowed_global_identifier")
-var log := ScaffolderLog.new()
+@warning_ignore("shadowed_global_identifier") var log := ScaffolderLog.new()
 var utils := Utils.new()
 var geometry := Geometry.new()
 var network := NetworkMain.new()
@@ -75,17 +73,18 @@ func get_player_match_state(multiplayer_id: int) -> PlayerMatchState:
 
 
 func get_player(multiplayer_id: int) -> Player:
-    if (not is_instance_valid(level) or
-            not level.players_by_id.has(multiplayer_id)):
+    if not is_instance_valid(level) or not level.players_by_id.has(multiplayer_id):
         return null
     return level.players_by_id[multiplayer_id]
 
-
 # --- Include some convenient access to logging/error utilities ---------------
 
-func print(message = "",
+
+func print(
+        message = "",
         category := ScaffolderLog.CATEGORY_DEFAULT,
-        verbosity := ScaffolderLog.Verbosity.NORMAL) -> void:
+        verbosity := ScaffolderLog.Verbosity.NORMAL,
+) -> void:
     log.print(message, category, verbosity)
 
 

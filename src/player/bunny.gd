@@ -2,9 +2,9 @@
 class_name Bunny
 extends Player
 
-
 var match_state: PlayerMatchState:
-    get: return G.get_player_match_state(multiplayer_id)
+    get:
+        return G.get_player_match_state(multiplayer_id)
 
 
 func _enter_tree() -> void:

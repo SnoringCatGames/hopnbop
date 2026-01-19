@@ -1,13 +1,16 @@
 class_name NetworkFrameDriver
 extends Node
 
-
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug.
 #
 # - Get things compiling and try to hand-test a tad before asking the AI.
 #   - Add if-statements, guarding on client/server, with a pass, everywhere, to
 #     set breakpoints on easily as needed.
 #   - Print statements.
+#
+# Research how to train Claude Code:
+# - Special context for Godot, client prediction and networking, and other game development patterns?
+# - Is that's anything I can do to help out understand my codebase in a way that's reusable context across queries?
 #
 # - Ask AI to analyze all networking logic (everything under the networking/ folder) and generate file-level doc comments for each class.
 #
@@ -26,12 +29,6 @@ extends Node
 # - Ask for tips to hand-verify correctness of the overall system, and any particularly important aspects to test.
 #
 # - Possibly ask for help integrating with GameLift...
-#
-#
-# Research how to train Claude:
-# - Special context for Godot, client prediction and networking, and other game development patterns?
-# - Is that's anything I can do to help out understand my codebase in a way that's reusable context across queries?
-
 
 # FIXME: Rollback debug visualization and networking improvements:
 #
@@ -189,7 +186,6 @@ extends Node
 # - F12 should continue to trigger auto-pause-on-rollback for the next rollback
 #   from PART 5.
 
-
 # FIXME: After polishing networking from above:
 # - Implement player kills.
 #   - In this game players kill each other by jumping on each other's heads.
@@ -294,7 +290,6 @@ extends Node
 #   - Bunny bump sound
 #   - Menu click sound
 
-
 ## This determines the period we use between frames that we record in rollback
 ## buffers.
 ##
@@ -314,17 +309,18 @@ var server_frame_time_usec := 0
 var server_frame_index := 0
 
 # Dictionary<ReconcilableNetworkedState, bool>
-var _networked_state_nodes := {}
+var _networked_state_nodes := { }
 
 # Dictionary<NetworkFrameProcessor, bool>
-var _network_frame_processor_nodes := {}
+var _network_frame_processor_nodes := { }
 
 var _queued_rollback_frame_index := 0
 
 var rollback_buffer_size: int:
-    get: return ceili(
-        G.settings.rollback_buffer_duration_sec *
-        TARGET_NETWORK_FPS)
+    get:
+        return ceili(
+            G.settings.rollback_buffer_duration_sec * TARGET_NETWORK_FPS,
+        )
 
 var oldest_rollbackable_frame_index: int:
     get:
@@ -355,26 +351,31 @@ func get_frame_index_from_time(p_time_usec: int) -> int:
 
 
 func get_time_from_frame_index(p_frame_index: int) -> int:
-    return floori(p_frame_index * TARGET_NETWORK_TIME_STEP_SEC + \
-        TARGET_NETWORK_TIME_STEP_SEC * 0.5)
+    return floori(
+        p_frame_index * TARGET_NETWORK_TIME_STEP_SEC + TARGET_NETWORK_TIME_STEP_SEC * 0.5,
+    )
 
 
 func _update_server_frame_time() -> void:
     var server_time_usec := G.network.server_time_usec_not_frame_aligned
-    var frame_start_time_sec := \
-        get_frame_index_from_time(server_time_usec) * \
-        TARGET_NETWORK_TIME_STEP_SEC
+    var frame_start_time_sec := (
+        get_frame_index_from_time(server_time_usec) * TARGET_NETWORK_TIME_STEP_SEC
+    )
 
     var next_server_frame_time_usec := floori(
-        frame_start_time_sec + TARGET_NETWORK_TIME_STEP_SEC * 0.5)
-    var next_server_frame_index := \
-        get_frame_index_from_time(server_frame_time_usec)
+        frame_start_time_sec + TARGET_NETWORK_TIME_STEP_SEC * 0.5,
+    )
+    var next_server_frame_index := get_frame_index_from_time(server_frame_time_usec)
 
     # If our tracking of server time has skewed enough that we're skipping a
     # frame, then we need to fast-forward the system.
     if next_server_frame_index > server_frame_index + 1:
-        G.warning("Fast-forwarding due to _physics_process frame skew",
-            ScaffolderLog.CATEGORY_NETWORK_SYNC)
+        (
+            G.warning(
+                "Fast-forwarding due to _physics_process frame skew",
+                ScaffolderLog.CATEGORY_NETWORK_SYNC,
+            )
+        )
         fast_forward(next_server_frame_index - 1)
 
     server_frame_time_usec = next_server_frame_time_usec
@@ -419,8 +420,14 @@ func is_frame_too_old_to_consider(p_frame_index: int) -> bool:
 func queue_rollback(p_conflicting_frame_index: int) -> bool:
     var target_rollback_frame := p_conflicting_frame_index + 1
     if is_frame_too_old_to_consider(p_conflicting_frame_index):
-        G.fatal("Requested rollback to frame %d, but oldest rollbackable frame is %d" %
-            [target_rollback_frame, oldest_rollbackable_frame_index])
+        (
+            G.fatal(
+                (
+                    "Requested rollback to frame %d, but oldest rollbackable frame is %d"
+                    % [target_rollback_frame, oldest_rollbackable_frame_index]
+                ),
+            )
+        )
         return false
 
     # Rollback simulation would start on the next frame after the mismatch.
@@ -428,7 +435,9 @@ func queue_rollback(p_conflicting_frame_index: int) -> bool:
         _queued_rollback_frame_index = target_rollback_frame
     else:
         _queued_rollback_frame_index = mini(
-            _queued_rollback_frame_index, target_rollback_frame)
+            _queued_rollback_frame_index,
+            target_rollback_frame,
+        )
 
     return true
 
@@ -453,7 +462,8 @@ func _rollback_and_reprocess() -> void:
 
     server_frame_index = _queued_rollback_frame_index
     server_frame_time_usec = floori(
-        server_frame_index * TARGET_NETWORK_TIME_STEP_SEC)
+        server_frame_index * TARGET_NETWORK_TIME_STEP_SEC,
+    )
 
     while server_frame_index < original_server_frame_index:
         _network_process()

@@ -2,7 +2,6 @@
 class_name Level
 extends Node2D
 
-
 @export var player_spawner: MultiplayerSpawner:
     set(value):
         player_spawner = value
@@ -16,7 +15,7 @@ extends Node2D
 
 var players: Array[Player] = []
 # Dictionary<int, Player
-var players_by_id := {}
+var players_by_id := { }
 
 var npcs: Array[NPC] = []
 
@@ -61,15 +60,13 @@ func _ready() -> void:
 func _client_on_player_spawned(p_player: Node) -> void:
     G.ensure(p_player is Player)
     var player: Player = p_player
-    G.print("Player spawned: %s" % player.get_string(),
-        ScaffolderLog.CATEGORY_GAME_STATE)
+    G.print("Player spawned: %s" % player.get_string(), ScaffolderLog.CATEGORY_GAME_STATE)
 
 
 func _client_on_player_despawned(p_player: Node) -> void:
     G.ensure(p_player is Player)
     var player: Player = p_player
-    G.print("Player despawned: %s" % player.get_string(),
-        ScaffolderLog.CATEGORY_GAME_STATE)
+    G.print("Player despawned: %s" % player.get_string(), ScaffolderLog.CATEGORY_GAME_STATE)
 
 
 func _exit_tree() -> void:
@@ -100,9 +97,10 @@ func _server_remove_player(multiplayer_id: int) -> void:
             break
 
     if not is_instance_valid(player):
-        G.warning("Level._remove_player: No valid player found for the given ID: %s" %
-            multiplayer_id,
-            ScaffolderLog.CATEGORY_CORE_SYSTEMS)
+        G.warning(
+            "Level._remove_player: No valid player found for the given ID: %s" % multiplayer_id,
+            ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+        )
         return
 
     players.erase(player)

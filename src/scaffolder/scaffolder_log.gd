@@ -1,7 +1,6 @@
 class_name ScaffolderLog
 extends Node
 
-
 signal on_message(message: String)
 
 enum Verbosity {
@@ -18,42 +17,41 @@ const CATEGORY_NETWORK_SYNC := StringName("NetworkSync")
 const CATEGORY_INTERACTION := StringName("PlayerInteraction")
 const CATEGORY_GAME_STATE := StringName("GameState")
 
-const _RAINBOW_BAR = \
-    "[color=red]=[/color][color=orange]=[/color][color=yellow]=[/color]" + \
-	"[color=green]=[/color][color=blue]=[/color][color=purple]=[/color]"
-const _REVERSE_RAINBOW_BAR = \
-    "[color=purple]=[/color][color=blue]=[/color][color=green]=[/color]" + \
-	"[color=yellow]=[/color][color=orange]=[/color][color=red]=[/color]"
+const _RAINBOW_BAR = (
+    "[color=red]=[/color][color=orange]=[/color][color=yellow]=[/color]"
+    + "[color=green]=[/color][color=blue]=[/color][color=purple]=[/color]"
+)
+const _REVERSE_RAINBOW_BAR = (
+    "[color=purple]=[/color][color=blue]=[/color][color=green]=[/color]"
+    + "[color=yellow]=[/color][color=orange]=[/color][color=red]=[/color]"
+)
 
 # Dictionary<StringName, StringName>
-var _parsed_category_prefixes := {}
+var _parsed_category_prefixes := { }
 
 var is_queuing_messages := true
 
 var _print_queue: Array[String] = []
 
 # Dictionary<StringName, bool>
-var _excluded_log_categories := {}
+var _excluded_log_categories := { }
 var _force_include_log_warnings := true
 
 
 func _ready() -> void:
     _print_front_matter()
 
-    self.print("ScaffolderLog._ready",
-        ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+    self.print("ScaffolderLog._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
 
 
 func _format_message(message: String, category: StringName) -> String:
-    var play_time: float = \
-            G.time.get_play_time() if \
-            is_instance_valid(G) and is_instance_valid(G.time) else \
-            -1.0
+    var play_time: float = (
+        G.time.get_play_time() if is_instance_valid(G) and is_instance_valid(G.time) else -1.0
+    )
 
-    var category_token := \
-        "[%s]" % get_category_prefix(category) if \
-        G.settings.include_category_in_logs else \
-        ""
+    var category_token := (
+        "[%s]" % get_category_prefix(category) if G.settings.include_category_in_logs else ""
+    )
 
     var multiplayer_id_value: String
     if G.settings.include_multiplayer_id_in_logs and G.network.is_preview:
@@ -73,23 +71,22 @@ func _format_message(message: String, category: StringName) -> String:
     else:
         # Omit token.
         multiplayer_id_value = ""
-    var multiplayer_id_token = \
-        "[%s]" % multiplayer_id_value if \
-        G.settings.include_multiplayer_id_in_logs \
-        else ""
+    var multiplayer_id_token = (
+        "[%s]" % multiplayer_id_value if G.settings.include_multiplayer_id_in_logs else ""
+    )
 
-    return "[%8.3f]%s%s %s" % [
-        play_time,
-        category_token,
-        multiplayer_id_token,
-        message,
-    ]
+    return (
+        "[%8.3f]%s%s %s"
+        % [
+            play_time,
+            category_token,
+            multiplayer_id_token,
+            message,
+        ]
+    )
 
 
-func print(
-        message = "",
-        category := CATEGORY_DEFAULT,
-        verbosity := Verbosity.NORMAL) -> void:
+func print(message = "", category := CATEGORY_DEFAULT, verbosity := Verbosity.NORMAL) -> void:
     if not _is_category_enabled(category):
         return
     if verbosity > G.settings.verbosity:
@@ -114,10 +111,7 @@ func print(
 #     the error actually happened.
 #     -   This is needed because stack traces are not available on non-main
 #         threads.
-func error(
-        message: String,
-        _category := CATEGORY_DEFAULT,
-        should_crash := true) -> void:
+func error(message: String, _category := CATEGORY_DEFAULT, should_crash := true) -> void:
     message = "ERROR  : %s" % message
     push_error(message)
     print_stack()
@@ -166,7 +160,8 @@ func check(condition: bool, message: String) -> bool:
 
 func set_log_filtering(
         p_excluded_log_categories: Array[StringName],
-        p_force_include_log_warnings: bool) -> void:
+        p_force_include_log_warnings: bool,
+) -> void:
     _excluded_log_categories = Utils.array_to_set(p_excluded_log_categories)
     _force_include_log_warnings = p_force_include_log_warnings
 
@@ -188,7 +183,7 @@ func _parse_category_prefix(category: StringName) -> StringName:
     # Extract all capital letters.
     for i in range(category_str.length()):
         var c := category_str[i]
-        if c >= 'A' and c <= 'Z':
+        if c >= "A" and c <= "Z":
             capitals += c
 
     var prefix: StringName
@@ -214,42 +209,45 @@ func _parse_category_prefix(category: StringName) -> StringName:
 
 
 func log_system_ready(system_name: String) -> void:
-    self.print("%s ready" % system_name,
-        ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+    self.print("%s ready" % system_name, ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
 
 
 func _print_front_matter() -> void:
     var local_datetime := Time.get_datetime_dict_from_system(false)
-    var local_datetime_string := "[Local] %s-%s-%s_%s.%s.%s" % [
-        local_datetime.year,
-        local_datetime.month,
-        local_datetime.day,
-        local_datetime.hour,
-        local_datetime.minute,
-        local_datetime.second,
-    ]
+    var local_datetime_string := (
+        "[Local] %s-%s-%s_%s.%s.%s"
+        % [
+            local_datetime.year,
+            local_datetime.month,
+            local_datetime.day,
+            local_datetime.hour,
+            local_datetime.minute,
+            local_datetime.second,
+        ]
+    )
 
     var utc_datetime := Time.get_datetime_dict_from_system(true)
-    var utc_datetime_string := "[UTC  ] %s-%s-%s_%s.%s.%s" % [
-        utc_datetime.year,
-        utc_datetime.month,
-        utc_datetime.day,
-        utc_datetime.hour,
-        utc_datetime.minute,
-        utc_datetime.second,
-    ]
+    var utc_datetime_string := (
+        "[UTC  ] %s-%s-%s_%s.%s.%s"
+        % [
+            utc_datetime.year,
+            utc_datetime.month,
+            utc_datetime.day,
+            utc_datetime.hour,
+            utc_datetime.minute,
+            utc_datetime.second,
+        ]
+    )
 
     var device_info_string := (
-        "%s " +
-        "%s " +
-        "(%4d,%4d) " +
-        ""
-    ) % [
-        OS.get_name(),
-        OS.get_model_name(),
-        get_viewport().get_visible_rect().size.x,
-        get_viewport().get_visible_rect().size.y,
-    ]
+        ("%s " + "%s " + "(%4d,%4d) " + "")
+        % [
+            OS.get_name(),
+            OS.get_model_name(),
+            get_viewport().get_visible_rect().size.x,
+            get_viewport().get_visible_rect().size.y,
+        ]
+    )
 
     var app_name = ProjectSettings.get_setting("application/config/name")
     print_rich("\n%s %s %s\n" % [_RAINBOW_BAR, app_name, _REVERSE_RAINBOW_BAR])

@@ -1,6 +1,5 @@
 class_name SurfaceSide
 
-
 enum {
     NONE,
     FLOOR,
@@ -85,5 +84,7 @@ const KEYS = [
     "LEFT_WALL",
     "RIGHT_WALL",
 ]
+
+
 static func keys() -> Array:
     return KEYS

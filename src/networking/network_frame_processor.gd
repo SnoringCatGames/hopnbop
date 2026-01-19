@@ -4,7 +4,6 @@ extends Node
 ## This controls whether the node at root_path will have its _network_process
 ## method called during network frame simulations.
 
-
 ## _network_process will be called on this node during network frame
 ##  simulations.
 @export var root_path: NodePath:
@@ -13,7 +12,8 @@ extends Node
         update_configuration_warnings()
 
 var root: Node:
-    get: return get_node_or_null(root_path)
+    get:
+        return get_node_or_null(root_path)
 
 
 func _enter_tree() -> void:
@@ -47,7 +47,6 @@ func _get_configuration_warnings() -> PackedStringArray:
     elif not is_instance_valid(root):
         warnings.append("root_path does not point to a valid node")
     elif not root.has_method("_network_process"):
-        warnings.append(
-            "The node at `Root Path` must have a `_network_process` method")
+        warnings.append("The node at `Root Path` must have a `_network_process` method")
 
     return warnings

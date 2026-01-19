@@ -2,7 +2,6 @@
 class_name Player
 extends Character
 
-
 @export var input_from_client: PlayerStateFromClient:
     set(value):
         input_from_client = value
@@ -34,8 +33,7 @@ func _network_process() -> void:
 
 
 func get_is_player_control_active() -> bool:
-    return is_instance_valid(input_from_client) and \
-        input_from_client.is_multiplayer_authority()
+    return is_instance_valid(input_from_client) and input_from_client.is_multiplayer_authority()
 
 
 func _get_configuration_warnings() -> PackedStringArray:

@@ -1,7 +1,6 @@
 class_name Collision
 extends RefCounted
 
-
 var is_tilemap_collision := false
 var side := SurfaceSide.NONE
 var key := ""
@@ -42,11 +41,20 @@ func _init(original: KinematicCollision2D = null, index := -1) -> void:
         self.is_tilemap_collision = collider is TileMapLayer
 
         if is_tilemap_collision:
-            if angle_to_within_plus_minus_pi(normal, Vector2.UP) <= MovementSettings._MAX_FLOOR_ANGLE:
+            if (
+                angle_to_within_plus_minus_pi(normal, Vector2.UP)
+                <= MovementSettings._MAX_FLOOR_ANGLE
+            ):
                 side = SurfaceSide.FLOOR
-            elif angle_to_within_plus_minus_pi(normal, Vector2.DOWN) <= MovementSettings._MAX_FLOOR_ANGLE:
+            elif (
+                angle_to_within_plus_minus_pi(normal, Vector2.DOWN)
+                <= MovementSettings._MAX_FLOOR_ANGLE
+            ):
                 side = SurfaceSide.CEILING
-            elif angle_to_within_plus_minus_pi(normal, Vector2.LEFT) <= PI / 2 - MovementSettings._MAX_FLOOR_ANGLE:
+            elif (
+                angle_to_within_plus_minus_pi(normal, Vector2.LEFT)
+                <= PI / 2 - MovementSettings._MAX_FLOOR_ANGLE
+            ):
                 side = SurfaceSide.RIGHT_WALL
             else:
                 side = SurfaceSide.LEFT_WALL

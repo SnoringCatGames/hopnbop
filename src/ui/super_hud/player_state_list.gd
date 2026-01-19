@@ -1,7 +1,6 @@
 class_name PlayerStateList
 extends PanelContainer
 
-
 @export var player_state_panel_scene: PackedScene
 
 
@@ -32,8 +31,10 @@ func _on_players_updated() -> void:
         # No player state to show.
         return
 
-    if not G.ensure(G.match_state.players.has(G.network.local_id),
-            "No match_state for the local player"):
+    if not G.ensure(
+        G.match_state.players.has(G.network.local_id),
+        "No match_state for the local player",
+    ):
         return
 
     # Add the local player state first.

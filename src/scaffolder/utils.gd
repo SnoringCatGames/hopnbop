@@ -1,7 +1,6 @@
 class_name Utils
 extends Node
 
-
 const MIN_INT := -9223372036854775808
 const MAX_INT := 9223372036854775807
 
@@ -21,11 +20,7 @@ func _ready() -> void:
     G.log.log_system_ready("Utils")
 
 
-static func splice(
-        result: Array,
-        start: int,
-        delete_count: int,
-        items_to_insert: Array) -> void:
+static func splice(result: Array, start: int, delete_count: int, items_to_insert: Array) -> void:
     var old_count := result.size()
     var items_to_insert_count := items_to_insert.size()
 
@@ -78,7 +73,8 @@ static func merge(
         result: Dictionary,
         other: Dictionary,
         overrides_preexisting_properties := true,
-        recursive := false) -> Dictionary:
+        recursive := false,
+) -> Dictionary:
     if recursive:
         if overrides_preexisting_properties:
             for key in other:
@@ -117,51 +113,62 @@ static func merge(
 static func subtract_and_mutate_nested_arrays(
         result: Dictionary,
         other: Dictionary,
-        expects_no_missing_matches := false) -> Dictionary:
+        expects_no_missing_matches := false,
+) -> Dictionary:
     for key in other:
         if result.has(key):
             if result[key] is Dictionary and other[key] is Dictionary:
                 subtract_and_mutate_nested_arrays(
-                        result[key], other[key], expects_no_missing_matches)
+                    result[key],
+                    other[key],
+                    expects_no_missing_matches,
+                )
             elif result[key] is Array and other[key] is Array:
-                subtract_and_mutate_arrays(
-                        result[key], other[key])
+                subtract_and_mutate_arrays(result[key], other[key])
             elif expects_no_missing_matches:
-                G.ensure(false,
-                        ("Wrong-type match: " +
-                        "(We currently don't support subtracting properties " +
-                        "from a Dictionary. We only support subtracting " +
-                        "elements from Arrays.)" +
-                        "\n    key=%s,\n    result=%s,\n    other=%s") % \
-                        [key, result, other])
+                G.ensure(
+                    false,
+                    (
+                        (
+                            "Wrong-type match: "
+                            + "(We currently don't support subtracting properties "
+                            + "from a Dictionary. We only support subtracting "
+                            + "elements from Arrays.)"
+                            + "\n    key=%s,\n    result=%s,\n    other=%s"
+                        )
+                        % [key, result, other]
+                    ),
+                )
         elif expects_no_missing_matches:
-            G.ensure(false,
-                    ("Missing match: " +
-                    "\n    key=%s,\n    result=%s,\n    other=%s") % \
-                    [key, result, other])
+            G.ensure(
+                false,
+                (
+                    ("Missing match: " + "\n    key=%s,\n    result=%s,\n    other=%s")
+                    % [key, result, other]
+                ),
+            )
     return result
 
 
-static func subtract_and_mutate_arrays(
-        result: Array,
-        other: Array) -> Array:
+static func subtract_and_mutate_arrays(result: Array, other: Array) -> Array:
     for element in other:
         var result_index := result.find(element)
         if result_index >= 0:
             result.remove_at(result_index)
         else:
-            G.ensure(false,
-                    ("Missing match: " +
-                    "\n    element=%s,\n    result=%s,\n    other=%s") % \
-                    [element, result, other])
+            G.ensure(
+                false,
+                (
+                    ("Missing match: " + "\n    element=%s,\n    result=%s,\n    other=%s")
+                    % [element, result, other]
+                ),
+            )
     return result
 
 
-static func subtract_array(
-        a: Array,
-        b: Array) -> Array:
+static func subtract_array(a: Array, b: Array) -> Array:
     # Dictionary<Variant, bool>
-    var diff := {}
+    var diff := { }
 
     for element in a:
         diff[element] = true
@@ -172,9 +179,7 @@ static func subtract_array(
     return diff.keys()
 
 
-static func join(
-        array: Variant,
-        delimiter := ",") -> String:
+static func join(array: Variant, delimiter := ",") -> String:
     assert(array is Array or array is PackedStringArray)
     var count: int = array.size()
     var result := ""
@@ -186,7 +191,7 @@ static func join(
 
 
 static func array_to_set(array: Array) -> Dictionary:
-    var local_set := {}
+    var local_set := { }
     for element in array:
         local_set[element] = element
     return local_set
@@ -199,8 +204,8 @@ static func cascade_sort(arr: Array) -> Array:
 
 static func translate_polyline(
         vertices: PackedVector2Array,
-        translation: Vector2) \
-        -> PackedVector2Array:
+        translation: Vector2,
+) -> PackedVector2Array:
     var result := PackedVector2Array()
     result.resize(vertices.size())
     for i in vertices.size():
@@ -221,7 +226,6 @@ static func ease_name_to_param(ease_name: String) -> float:
     match ease_name:
         "linear":
             return 1.0
-
         "ease_in":
             return 2.4
         "ease_in_strong":
@@ -230,7 +234,6 @@ static func ease_name_to_param(ease_name: String) -> float:
             return 9.6
         "ease_in_weak":
             return 1.6
-
         "ease_out":
             return 0.4
         "ease_out_strong":
@@ -239,7 +242,6 @@ static func ease_name_to_param(ease_name: String) -> float:
             return 0.1
         "ease_out_weak":
             return 0.6
-
         "ease_in_out":
             return -2.4
         "ease_in_out_strong":
@@ -248,15 +250,12 @@ static func ease_name_to_param(ease_name: String) -> float:
             return -9.6
         "ease_in_out_weak":
             return -1.8
-
         _:
             G.ensure(false)
             return INF
 
 
-static func ease_by_name(
-        progress: float,
-        ease_name: String) -> float:
+static func ease_by_name(progress: float, ease_name: String) -> float:
     return ease(progress, ease_name_to_param(ease_name))
 
 
@@ -276,9 +275,7 @@ static func round_vector(v: Vector2) -> Vector2:
     return Vector2(round(v.x), round(v.y))
 
 
-static func mix(
-        values: Array,
-        weights: Array):
+static func mix(values: Array, weights: Array):
     assert(values.size() == weights.size())
     assert(!values.is_empty())
 
@@ -301,18 +298,13 @@ static func mix(
     for i in count:
         var value = values[i]
         var weight: float = weights[i]
-        var normalized_weight := \
-                weight / weight_sum if \
-                weight_sum > 0.0 else \
-                1.0 / count
+        var normalized_weight := weight / weight_sum if weight_sum > 0.0 else 1.0 / count
         weighted_average += value * normalized_weight
 
     return weighted_average
 
 
-static func mix_colors(
-        colors: Array,
-        weights: Array) -> Color:
+static func mix_colors(colors: Array, weights: Array) -> Color:
     assert(colors.size() == weights.size())
     assert(!colors.is_empty())
 
@@ -328,10 +320,7 @@ static func mix_colors(
     for i in count:
         var color: Color = colors[i]
         var weight: float = weights[i]
-        var normalized_weight := \
-                weight / weight_sum if \
-                weight_sum > 0.0 else \
-                1.0 / count
+        var normalized_weight := weight / weight_sum if weight_sum > 0.0 else 1.0 / count
         h += color.h * normalized_weight
         s += color.s * normalized_weight
         v += color.v * normalized_weight
@@ -341,97 +330,111 @@ static func mix_colors(
 
 static func get_datetime_string() -> String:
     var datetime := Time.get_datetime_dict_from_system()
-    return "%s-%s-%s_%s.%s.%s" % [
-        datetime.year,
-        datetime.month,
-        datetime.day,
-        datetime.hour,
-        datetime.minute,
-        datetime.second,
-    ]
+    return (
+        "%s-%s-%s_%s.%s.%s"
+        % [
+            datetime.year,
+            datetime.month,
+            datetime.day,
+            datetime.hour,
+            datetime.minute,
+            datetime.second,
+        ]
+    )
 
 
 static func get_time_string_from_seconds(
         time: float,
         includes_ms := false,
         includes_empty_hours := true,
-        includes_empty_minutes := true) -> String:
+        includes_empty_minutes := true,
+) -> String:
     var is_undefined := is_inf(time)
     var time_str := ""
 
     # Hours.
     var hours := int(time / 3600.0)
     time = fmod(time, 3600.0)
-    if hours != 0 or \
-            includes_empty_hours:
+    if hours != 0 or includes_empty_hours:
         if !is_undefined:
-            time_str = "%s%02d:" % [
-                time_str,
-                hours,
-            ]
+            time_str = (
+                "%s%02d:"
+                % [
+                    time_str,
+                    hours,
+                ]
+            )
         else:
             time_str = "--:"
 
     # Minutes.
     var minutes := int(time / 60.0)
     time = fmod(time, 60.0)
-    if minutes != 0 or \
-            includes_empty_minutes:
+    if minutes != 0 or includes_empty_minutes:
         if !is_undefined:
-            time_str = "%s%02d:" % [
-                time_str,
-                minutes,
-            ]
+            time_str = (
+                "%s%02d:"
+                % [
+                    time_str,
+                    minutes,
+                ]
+            )
         else:
             time_str += "--:"
 
     # Seconds.
     var seconds := int(time)
     if !is_undefined:
-        time_str = "%s%02d" % [
-            time_str,
-            seconds,
-        ]
+        time_str = (
+            "%s%02d"
+            % [
+                time_str,
+                seconds,
+            ]
+        )
     else:
         time_str += "--"
 
     if includes_ms:
         # Milliseconds.
-        var milliseconds := \
-                int(fmod((time - seconds) * 1000.0, 1000.0))
+        var milliseconds := int(fmod((time - seconds) * 1000.0, 1000.0))
         if !is_undefined:
-            time_str = "%s.%03d" % [
-                time_str,
-                milliseconds,
-            ]
+            time_str = (
+                "%s.%03d"
+                % [
+                    time_str,
+                    milliseconds,
+                ]
+            )
         else:
             time_str += ".---"
 
     return time_str
 
 
-static func get_vector_string(
-        vector: Vector2,
-        decimal_place_count := 2) -> String:
-    return "(%.*f,%.*f)" % [
-        decimal_place_count,
-        vector.x,
-        decimal_place_count,
-        vector.y,
-    ]
+static func get_vector_string(vector: Vector2, decimal_place_count := 2) -> String:
+    return (
+        "(%.*f,%.*f)"
+        % [
+            decimal_place_count,
+            vector.x,
+            decimal_place_count,
+            vector.y,
+        ]
+    )
 
 
 static func get_spaces(count: int) -> String:
     assert(count <= 60)
-    return "                                                            " \
-            .substr(0, count)
+    return "                                                            ".substr(0, count)
 
 
 static func pad_string(
         string: String,
         length: int,
         pads_on_right := true,
-        allows_longer_strings := false) -> String:
+        allows_longer_strings := false,
+) -> String:
     assert(allows_longer_strings or string.length() <= length)
     var spaces_count := length - string.length()
     if spaces_count <= 0:
@@ -444,10 +447,7 @@ static func pad_string(
             return "%s%s" % [padding, string]
 
 
-static func resize_string(
-        string: String,
-        length: int,
-        pads_on_right := true) -> String:
+static func resize_string(string: String, length: int, pads_on_right := true) -> String:
     if string.length() > length:
         return string.substr(0, length)
     elif string.length() < length:
@@ -477,13 +477,10 @@ static func open_screenshot_folder() -> void:
     OS.shell_open(path)
 
 
-static func set_mouse_filter_recursively(
-        node: Node,
-        mouse_filter: int) -> void:
+static func set_mouse_filter_recursively(node: Node, mouse_filter: int) -> void:
     for child in node.get_children():
         if child is Control:
-            if !(child is Button or \
-                    child is Slider):
+            if !(child is Button or child is Slider):
                 child.mouse_filter = mouse_filter
         set_mouse_filter_recursively(child, mouse_filter)
 
@@ -500,23 +497,24 @@ static func notify_on_screen_visible_recursively(node: CanvasItem) -> void:
 static func get_node_vscroll_position(
         scroll_container: ScrollContainer,
         control: Control,
-        offset := 0) -> int:
-    var scroll_container_global_position := \
-            scroll_container.global_position
+        offset := 0,
+) -> int:
+    var scroll_container_global_position := scroll_container.global_position
     var control_global_position := control.global_position
-    var vscroll_position: int = \
-            int(control_global_position.y - \
-            scroll_container_global_position.y + \
-            scroll_container.scroll_vertical + \
-            offset)
+    var vscroll_position: int = int(
+        (
+            control_global_position.y
+            - scroll_container_global_position.y
+            + scroll_container.scroll_vertical
+            + offset
+        ),
+    )
     var max_vscroll_position := scroll_container.get_v_scroll_bar().max_value
     return int(min(vscroll_position, max_vscroll_position))
 
 
 static func get_instance_id_or_not(object: Object) -> int:
-    return object.get_instance_id() if \
-            object != null else \
-            -1
+    return object.get_instance_id() if object != null else -1
 
 
 func get_all_nodes_in_group(group_name: String) -> Array:
@@ -533,10 +531,10 @@ static func get_property_value_from_scene_state_node(
         state: SceneState,
         node_index: int,
         property_name: String,
-        expects_a_result := false):
+        expects_a_result := false,
+):
     for property_index in state.get_node_property_count(node_index):
-        if state.get_node_property_name(node_index, property_index) == \
-                property_name:
+        if state.get_node_property_name(node_index, property_index) == property_name:
             return state.get_node_property_value(node_index, property_index)
     assert(!expects_a_result)
 
@@ -630,7 +628,7 @@ static func get_display_name(object: Variant) -> String:
 
 static func get_filename_from_path(path: String) -> String:
     var regex := RegEx.new()
-    regex.compile(r'([a-zA-Z0-9_ \-]*)\.[a-zA-Z0-9_]*$')
+    regex.compile(r"([a-zA-Z0-9_ \-]*)\.[a-zA-Z0-9_]*$")
     var result := regex.search(path)
 
     if result == null:
@@ -662,13 +660,15 @@ static func get_property_value_from_node_path(base_node: Node, p_node_path: Node
             # No property path was included, so let's return the resource or node.
             return target_object
 
-    G.error("get_property_value: Node not found: %s" % p_node_path,
-        ScaffolderLog.CATEGORY_CORE_SYSTEMS)
+    G.error(
+        "get_property_value: Node not found: %s" % p_node_path,
+        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+    )
     return null
 
 
 static func parse_command_line_args() -> Dictionary:
-    var args := {}
+    var args := { }
     for arg in OS.get_cmdline_args():
         arg = arg.trim_prefix("--")
         if arg.contains("="):
@@ -681,15 +681,14 @@ static func parse_command_line_args() -> Dictionary:
     return args
 
 
-static func get_script_property_names(script: Script, exclusion_list := {}) -> Array[String]:
+static func get_script_property_names(script: Script, exclusion_list := { }) -> Array[String]:
     var script_properties: Array[String] = []
 
     var properties: Array = script.get_script_property_list()
     var flags := PROPERTY_USAGE_SCRIPT_VARIABLE
 
     for property in properties:
-        if (property.usage & flags != 0 and
-                not exclusion_list.has(property.name)):
+        if property.usage & flags != 0 and not exclusion_list.has(property.name):
             script_properties.append(property.name)
 
     return script_properties

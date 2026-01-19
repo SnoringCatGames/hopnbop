@@ -2,7 +2,6 @@
 class_name ScaffolderTween
 extends Node
 
-
 signal tween_all_completed
 # NOTE: Using this is almost never what you want.
 #       Use tween_all_completed instead.
@@ -15,9 +14,7 @@ var _pending_sub_tweens := []
 var _active_sub_tweens := []
 
 
-func _init(
-        p_parent,
-        p_adds_self_as_child_of_parent := true) -> void:
+func _init(p_parent, p_adds_self_as_child_of_parent := true) -> void:
     self.parent = p_parent
     name = "ScaffolderTween"
     self.id = G.time.get_next_task_id()
@@ -60,9 +57,7 @@ func is_active() -> bool:
 
 
 func get_progress() -> float:
-    return 0.0 if \
-            _active_sub_tweens.is_empty() else \
-            _active_sub_tweens[0].progress
+    return 0.0 if _active_sub_tweens.is_empty() else _active_sub_tweens[0].progress
 
 
 func start() -> bool:
@@ -81,9 +76,7 @@ func stop(object: Object, key := "") -> bool:
     var matching_index := -1
     for index in _active_sub_tweens.size():
         var sub_tween: _SubTween = _active_sub_tweens[index]
-        if sub_tween.object == object and \
-                (key == "" or \
-                sub_tween.key == key):
+        if sub_tween.object == object and (key == "" or sub_tween.key == key):
             matching_index = index
             break
 
@@ -117,7 +110,7 @@ func trigger_completed() -> void:
         return
     var connection: Dictionary = connections[0]
 
-#    var args := [sub_tween.object, sub_tween.key]
+    #    var args := [sub_tween.object, sub_tween.key]
     var args := []
     args.append_array(connection.binds)
 
@@ -132,17 +125,9 @@ func interpolate_method(
         duration: float,
         ease_name := "ease_in_out",
         delay := 0.0,
-        time_type := TimeType.APP_PHYSICS) -> void:
-    _interpolate(
-            object,
-            key,
-            false,
-            initial_val,
-            final_val,
-            duration,
-            ease_name,
-            delay,
-            time_type)
+        time_type := TimeType.APP_PHYSICS,
+) -> void:
+    _interpolate(object, key, false, initial_val, final_val, duration, ease_name, delay, time_type)
 
 
 func interpolate_property(
@@ -153,17 +138,9 @@ func interpolate_property(
         duration: float,
         ease_name := "ease_in_out",
         delay := 0.0,
-        time_type := TimeType.APP_PHYSICS) -> void:
-    _interpolate(
-            object,
-            key,
-            true,
-            initial_val,
-            final_val,
-            duration,
-            ease_name,
-            delay,
-            time_type)
+        time_type := TimeType.APP_PHYSICS,
+) -> void:
+    _interpolate(object, key, true, initial_val, final_val, duration, ease_name, delay, time_type)
 
 
 func _interpolate(
@@ -175,8 +152,10 @@ func _interpolate(
         duration: float,
         ease_name: String,
         delay: float,
-        time_type: int) -> void:
-    _pending_sub_tweens.append(_SubTween.new(
+        time_type: int,
+) -> void:
+    _pending_sub_tweens.append(
+        _SubTween.new(
             object,
             key,
             is_property,
@@ -185,10 +164,13 @@ func _interpolate(
             duration,
             ease_name,
             delay,
-            time_type))
+            time_type,
+        ),
+    )
 
 
-class _SubTween extends RefCounted:
+class _SubTween:
+    extends RefCounted
     var object: Object
     var key: String
     var is_property: bool
@@ -216,7 +198,8 @@ class _SubTween extends RefCounted:
             p_duration: float,
             p_ease_name: String,
             p_delay: float,
-            p_time_type: int) -> void:
+            p_time_type: int,
+    ) -> void:
         assert(duration > 0)
         self.object = p_object
         self.key = p_key
@@ -230,9 +213,10 @@ class _SubTween extends RefCounted:
 
 
     func get_is_finished() -> bool:
-        return G.time.get_elapsed_time(time_type) >= \
-                start_time + duration + delay or \
-                !is_instance_valid(object)
+        return (
+            G.time.get_elapsed_time(time_type) >= start_time + duration + delay
+            or !is_instance_valid(object)
+        )
 
 
     func start() -> void:
@@ -249,10 +233,7 @@ class _SubTween extends RefCounted:
         var elapsed_time := current_time - start_time
         if elapsed_time < delay:
             return
-        progress = clamp(
-                (elapsed_time - delay) / duration,
-                0,
-                1)
+        progress = clamp((elapsed_time - delay) / duration, 0, 1)
         progress = Utils.ease_by_name(progress, ease_name)
         _update_with_value(lerp(initial_val, final_val, progress))
 

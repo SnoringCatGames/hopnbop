@@ -10,7 +10,6 @@ extends Node
 ## It uses an NTP-like algorithm to calculate the clock offset between client and server,
 ## accounting for network latency.
 
-
 ## Emitted when a time sync completes successfully.
 signal sync_completed(offset_usec: int, rtt_usec: int)
 
@@ -25,7 +24,8 @@ signal sync_completed(offset_usec: int, rtt_usec: int)
 
 ## Whether this instance is running on the server.
 var is_server: bool:
-    get: return multiplayer.is_server() if multiplayer.has_multiplayer_peer() else true
+    get:
+        return multiplayer.is_server() if multiplayer.has_multiplayer_peer() else true
 
 ## The estimated clock offset from local time to server time (in microseconds).
 ## server_time ≈ local_time + clock_offset_usec
@@ -64,7 +64,11 @@ func _process(delta: float) -> void:
     _time_since_last_sync += delta
 
     # Use faster sync interval until we have enough samples for a stable estimate.
-    var current_interval := initial_sync_interval if _client_offset_samples.size() < sample_count else auto_sync_interval
+    var current_interval := (
+        initial_sync_interval
+        if _client_offset_samples.size() < sample_count
+        else auto_sync_interval
+    )
     if _time_since_last_sync >= current_interval:
         _time_since_last_sync = 0.0
         client_request_time_sync()

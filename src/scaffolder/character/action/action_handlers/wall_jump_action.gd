@@ -1,7 +1,6 @@
 class_name WallJumpAction
 extends CharacterActionHandler
 
-
 const NAME := "WallJumpAction"
 const TYPE := SurfaceType.WALL
 const USES_RUNTIME_PHYSICS := true
@@ -9,11 +8,7 @@ const PRIORITY := 120
 
 
 func _init() -> void:
-    super (
-        NAME,
-        TYPE,
-        USES_RUNTIME_PHYSICS,
-        PRIORITY)
+    super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
 
 
 func process(character) -> bool:
@@ -26,9 +21,10 @@ func process(character) -> bool:
         # Give a little boost to get the character away from the wall, so they
         # can still be pushing themselves into the wall when they start the
         # jump.
-        character.velocity.x = \
-                - character.surfaces.toward_wall_sign * \
-                character.movement_settings.wall_jump_horizontal_boost
+        character.velocity.x = (
+            -character.surfaces.toward_wall_sign
+            * character.movement_settings.wall_jump_horizontal_boost
+        )
 
         return true
     else:

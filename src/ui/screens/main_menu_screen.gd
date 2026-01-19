@@ -1,7 +1,6 @@
 class_name MainMenuScreen
 extends Screen
 
-
 func _enter_tree() -> void:
     super._enter_tree()
     G.main_menu_screen = self

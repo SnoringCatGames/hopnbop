@@ -1,15 +1,13 @@
 class_name Stopwatch
 extends RefCounted
 
-
 # Dictionary<String, int>
-var _start_times_msec := {}
+var _start_times_msec := { }
 
 
 func start(metric_key: String) -> void:
     var start_time := Time.get_ticks_usec()
-    assert(!_start_times_msec.has(metric_key) or \
-            _start_times_msec[metric_key] == -1)
+    assert(!_start_times_msec.has(metric_key) or _start_times_msec[metric_key] == -1)
     _start_times_msec[metric_key] = start_time
 
 

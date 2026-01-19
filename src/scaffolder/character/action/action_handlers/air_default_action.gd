@@ -1,7 +1,6 @@
 class_name AirDefaultAction
 extends CharacterActionHandler
 
-
 const NAME := "AirDefaultAction"
 const TYPE := SurfaceType.AIR
 const USES_RUNTIME_PHYSICS := true
@@ -11,11 +10,7 @@ const BOUNCE_OFF_CEILING_VELOCITY := 15.0
 
 
 func _init() -> void:
-    super (
-        NAME,
-        TYPE,
-        USES_RUNTIME_PHYSICS,
-        PRIORITY)
+    super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
 
 
 func process(character) -> bool:
@@ -27,30 +22,34 @@ func process(character) -> bool:
 
     # If we just fell off the bottom of a wall, cancel any velocity toward that
     # wall.
-    if character.surfaces.just_entered_air and \
-            ((character.surfaces.just_stopped_attaching_to_left_wall and \
-                    character.velocity.x < 0.0) or \
-            (character.surfaces.just_stopped_attaching_to_right_wall and \
-                    character.velocity.x > 0.0)):
+    if (
+        character.surfaces.just_entered_air
+        and (
+            (character.surfaces.just_stopped_attaching_to_left_wall and character.velocity.x < 0.0)
+            or (
+                character.surfaces.just_stopped_attaching_to_right_wall
+                and character.velocity.x > 0.0
+            )
+        )
+    ):
         character.velocity.x = 0.0
 
     character.velocity = update_velocity_in_air(
-            character.velocity,
-            G.time.get_scaled_network_frame_delta(),
-            character.actions.pressed_jump,
-            is_first_jump,
-            character.surfaces.horizontal_acceleration_sign,
-            character.movement_settings)
+        character.velocity,
+        G.time.get_scaled_network_frame_delta(),
+        character.actions.pressed_jump,
+        is_first_jump,
+        character.surfaces.horizontal_acceleration_sign,
+        character.movement_settings,
+    )
 
     # Bouncing off ceiling.
-    if character.surfaces.is_touching_ceiling and \
-            !character.surfaces.is_attaching_to_ceiling:
+    if character.surfaces.is_touching_ceiling and !character.surfaces.is_attaching_to_ceiling:
         character.velocity.y = BOUNCE_OFF_CEILING_VELOCITY
 
-        var is_ceiling_sloped_against_movement: bool = \
-                (character.surfaces.ceiling_contact \
-                        .normal.x < 0.0) != \
-                (character.velocity.x < 0.0)
+        var is_ceiling_sloped_against_movement: bool = (
+            (character.surfaces.ceiling_contact.normal.x < 0.0) != (character.velocity.x < 0.0)
+        )
         if is_ceiling_sloped_against_movement:
             character.velocity.x = 0.0
 
@@ -63,27 +62,28 @@ static func update_velocity_in_air(
         is_pressing_jump: bool,
         is_first_jump: bool,
         horizontal_acceleration_sign: int,
-        movement_settings: MovementSettings) -> Vector2:
+        movement_settings: MovementSettings,
+) -> Vector2:
     var is_rising_from_jump := velocity.y < 0 and is_pressing_jump
 
     # Make gravity stronger when falling. This creates a more satisfying jump.
     # Similarly, make gravity stronger for double jumps.
-    var gravity := \
-            movement_settings.gravity_fast_fall_acceleration if \
-            !is_rising_from_jump else \
-            (movement_settings.gravity_slow_rise_acceleration if \
-            is_first_jump else \
-            movement_settings.gravity_double_jump_slow_rise_acceleration)
+    var gravity := (
+        movement_settings.gravity_fast_fall_acceleration
+        if !is_rising_from_jump
+        else (
+            movement_settings.gravity_slow_rise_acceleration
+            if is_first_jump
+            else movement_settings.gravity_double_jump_slow_rise_acceleration
+        )
+    )
 
     # Vertical movement.
-    velocity.y += \
-            delta * \
-            gravity
+    velocity.y += delta * gravity
 
     # Horizontal movement.
-    velocity.x += \
-            delta * \
-            movement_settings.in_air_horizontal_acceleration * \
-            horizontal_acceleration_sign
+    velocity.x += (
+        delta * movement_settings.in_air_horizontal_acceleration * horizontal_acceleration_sign
+    )
 
     return velocity

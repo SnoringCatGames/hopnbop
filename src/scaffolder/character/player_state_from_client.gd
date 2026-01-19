@@ -2,7 +2,6 @@
 class_name PlayerStateFromClient
 extends ReconcilableNetworkedState
 
-
 # FIXME: Override configuration warnings to check this is set.
 @export var player: Player
 
@@ -51,8 +50,7 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 
     player.actions.bitmask = actions
 
-    player.actions.previous_bitmask = \
-        previous_state[_property_name_to_pack_index.actions]
+    player.actions.previous_bitmask = previous_state[_property_name_to_pack_index.actions]
 
 
 func _sync_from_scene_state() -> void:

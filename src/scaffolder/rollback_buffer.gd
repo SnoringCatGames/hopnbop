@@ -6,14 +6,11 @@ extends CircularBuffer
 ## "virtual" previous frames that haven't been explicitly set yet, as long as
 ## they don't wrap around to overwrite actually-set frames.
 
-
 ## The default state used to fill new/unset frames.
 var _default_frame_state: Array = []
 
 
-func _init(p_capacity: int,
-        p_current_frame_index: int,
-        p_default_frame_state: Array) -> void:
+func _init(p_capacity: int, p_current_frame_index: int, p_default_frame_state: Array) -> void:
     super._init(p_capacity)
 
     _default_frame_state = p_default_frame_state
@@ -64,8 +61,7 @@ func backfill_to_with_last_state(target_index: int) -> void:
 
     var fill_state: Array = get_at(get_latest_index()).duplicate()
     # Backfilled state is not authoritative.
-    fill_state[fill_state.size() - 1] = \
-        ReconcilableNetworkedState.FrameAuthority.PREDICTED
+    fill_state[fill_state.size() - 1] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
 
     # If the gap is larger than capacity, just reinitialize the entire array.
     if target_index - get_latest_index() > _capacity:

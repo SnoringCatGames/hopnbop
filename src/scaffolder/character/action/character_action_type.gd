@@ -1,6 +1,5 @@
 class_name CharacterActionType
 
-
 enum {
     NONE,
     PRESSED_JUMP,

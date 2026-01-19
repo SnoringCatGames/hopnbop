@@ -3,7 +3,6 @@ class_name _TimeTracker
 extends Node
 ## Keeps track of elapsed time.
 
-
 var time_scale: float = G.time._DEFAULT_TIME_SCALE
 
 var start_clock_time: float
@@ -46,9 +45,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _update_clock_time() -> void:
-    var next_elapsed_clock_time := \
-            Time.get_ticks_usec() / 1000000.0 - start_clock_time
-    var delta_clock_time := \
-            next_elapsed_clock_time - elapsed_clock_time
+    var next_elapsed_clock_time := Time.get_ticks_usec() / 1000000.0 - start_clock_time
+    var delta_clock_time := next_elapsed_clock_time - elapsed_clock_time
     elapsed_clock_time = next_elapsed_clock_time
     elapsed_clock_scaled_time += delta_clock_time * time_scale

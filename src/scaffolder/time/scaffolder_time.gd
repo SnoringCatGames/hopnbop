@@ -19,7 +19,6 @@ extends Node
 ## -   For an high-level description of this time-tracking, check-out this post:
 ## https://devlog.levi.dev/2021/05/wibbly-wobbly-timey-wimey-tracking-time.html
 
-
 const PHYSICS_FPS := 60.0
 const PHYSICS_TIME_STEP := 1.0 / PHYSICS_FPS
 
@@ -46,16 +45,16 @@ var _app_time: _TimeTracker
 var _play_time: _TimeTracker
 
 # Dictionary<int, _Timeout>
-var _timeouts := {}
+var _timeouts := { }
 # Dictionary<int, _Interval>
-var _intervals := {}
+var _intervals := { }
 # Dictionary<int, ScaffolderTween>
-var _tweens := {}
+var _tweens := { }
 var _last_timeout_id := -1
 # Dictionary<FuncRef, _Throttler>
-var _throttled_callbacks := {}
+var _throttled_callbacks := { }
 # Dictionary<FuncRef, _Debouncer>
-var _debounced_callbacks := {}
+var _debounced_callbacks := { }
 
 
 func _init() -> void:
@@ -185,19 +184,9 @@ func get_elapsed_time(time_type: int) -> float:
 
 func _get_time_tracker_for_time_type(time_type: int) -> _TimeTracker:
     match time_type:
-        TimeType.APP_PHYSICS, \
-        TimeType.APP_CLOCK, \
-        TimeType.APP_PHYSICS_SCALED, \
-        TimeType.APP_CLOCK_SCALED, \
-        TimeType.APP_PHYSICS_FRAME_COUNT, \
-        TimeType.APP_RENDER_FRAME_COUNT:
+        TimeType.APP_PHYSICS, TimeType.APP_CLOCK, TimeType.APP_PHYSICS_SCALED, TimeType.APP_CLOCK_SCALED, TimeType.APP_PHYSICS_FRAME_COUNT, TimeType.APP_RENDER_FRAME_COUNT:
             return _app_time
-        TimeType.PLAY_PHYSICS, \
-        TimeType.PLAY_RENDER, \
-        TimeType.PLAY_PHYSICS_SCALED, \
-        TimeType.PLAY_RENDER_SCALED, \
-        TimeType.PLAY_PHYSICS_FRAME_COUNT, \
-        TimeType.PLAY_RENDER_FRAME_COUNT:
+        TimeType.PLAY_PHYSICS, TimeType.PLAY_RENDER, TimeType.PLAY_PHYSICS_SCALED, TimeType.PLAY_RENDER_SCALED, TimeType.PLAY_PHYSICS_FRAME_COUNT, TimeType.PLAY_RENDER_FRAME_COUNT:
             return _play_time
         _:
             G.fatal("Unrecognized time_type: %d" % time_type)
@@ -206,11 +195,9 @@ func _get_time_tracker_for_time_type(time_type: int) -> _TimeTracker:
 
 func _get_elapsed_time_key_for_time_type(time_type: int) -> String:
     match time_type:
-        TimeType.APP_PHYSICS, \
-        TimeType.PLAY_PHYSICS:
+        TimeType.APP_PHYSICS, TimeType.PLAY_PHYSICS:
             return "elapsed_physics_time"
-        TimeType.APP_PHYSICS_SCALED, \
-        TimeType.PLAY_PHYSICS_SCALED:
+        TimeType.APP_PHYSICS_SCALED, TimeType.PLAY_PHYSICS_SCALED:
             return "elapsed_physics_scaled_time"
         TimeType.APP_CLOCK:
             return "elapsed_clock_time"
@@ -220,11 +207,9 @@ func _get_elapsed_time_key_for_time_type(time_type: int) -> String:
             return "elapsed_render_time"
         TimeType.PLAY_RENDER_SCALED:
             return "elapsed_render_scaled_time"
-        TimeType.APP_PHYSICS_FRAME_COUNT, \
-        TimeType.PLAY_PHYSICS_FRAME_COUNT:
+        TimeType.APP_PHYSICS_FRAME_COUNT, TimeType.PLAY_PHYSICS_FRAME_COUNT:
             return "physics_frame_count"
-        TimeType.APP_RENDER_FRAME_COUNT, \
-        TimeType.PLAY_RENDER_FRAME_COUNT:
+        TimeType.APP_RENDER_FRAME_COUNT, TimeType.PLAY_RENDER_FRAME_COUNT:
             return "render_frame_count"
         _:
             G.fatal("Unrecognized time_type: %d" % time_type)
@@ -253,19 +238,21 @@ func tween_method(
         delay := 0.0,
         time_type := TimeType.APP_PHYSICS,
         on_completed_callback: Callable = Callable(),
-        arguments := []) -> int:
+        arguments := [],
+) -> int:
     return _tween(
-            object,
-            key,
-            false,
-            initial_val,
-            final_val,
-            duration,
-            ease_name,
-            delay,
-            time_type,
-            on_completed_callback,
-            arguments)
+        object,
+        key,
+        false,
+        initial_val,
+        final_val,
+        duration,
+        ease_name,
+        delay,
+        time_type,
+        on_completed_callback,
+        arguments,
+    )
 
 
 func tween_property(
@@ -278,19 +265,21 @@ func tween_property(
         delay := 0.0,
         time_type := TimeType.APP_PHYSICS,
         on_completed_callback: Callable = Callable(),
-        arguments := []) -> int:
+        arguments := [],
+) -> int:
     return _tween(
-            object,
-            key,
-            true,
-            initial_val,
-            final_val,
-            duration,
-            ease_name,
-            delay,
-            time_type,
-            on_completed_callback,
-            arguments)
+        object,
+        key,
+        true,
+        initial_val,
+        final_val,
+        duration,
+        ease_name,
+        delay,
+        time_type,
+        on_completed_callback,
+        arguments,
+    )
 
 
 func _tween(
@@ -304,36 +293,35 @@ func _tween(
         delay: float,
         time_type := TimeType.APP_PHYSICS,
         on_completed_callback: Callable = Callable(),
-        arguments := []) -> int:
+        arguments := [],
+) -> int:
     var tween := ScaffolderTween.new(object, false)
     tween._interpolate(
-            object,
-            key,
-            is_property,
-            initial_val,
-            final_val,
-            duration,
-            ease_name,
-            delay,
-            time_type)
+        object,
+        key,
+        is_property,
+        initial_val,
+        final_val,
+        duration,
+        ease_name,
+        delay,
+        time_type,
+    )
     if on_completed_callback != null:
         tween.connect(
-                "tween_all_completed",
-                _call_tween_completed_callback.bindv([on_completed_callback, arguments]))
+            "tween_all_completed",
+            _call_tween_completed_callback.bindv([on_completed_callback, arguments]),
+        )
     tween.start()
     _tweens[tween.id] = tween
     return tween.id
 
 
-func _call_tween_completed_callback(
-        on_completed_callback: Callable,
-        arguments: Array) -> void:
+func _call_tween_completed_callback(on_completed_callback: Callable, arguments: Array) -> void:
     on_completed_callback.callv(arguments)
 
 
-func clear_tween(
-        tween_id: int,
-        triggers_completed := false) -> bool:
+func clear_tween(tween_id: int, triggers_completed := false) -> bool:
     if !_tweens.has(tween_id):
         return false
     if triggers_completed:
@@ -347,20 +335,14 @@ func set_timeout(
         callback: Callable,
         delay: float,
         arguments := [],
-        time_type := TimeType.APP_PHYSICS) -> int:
-    var timeout := _Timeout.new(
-            callback.get_object(),
-            time_type,
-            callback,
-            delay,
-            arguments)
+        time_type := TimeType.APP_PHYSICS,
+) -> int:
+    var timeout := _Timeout.new(callback.get_object(), time_type, callback, delay, arguments)
     _timeouts[timeout.id] = timeout
     return timeout.id
 
 
-func clear_timeout(
-        timeout_id: int,
-        triggers_timeout := false) -> bool:
+func clear_timeout(timeout_id: int, triggers_timeout := false) -> bool:
     if !_timeouts.has(timeout_id):
         return false
     if triggers_timeout:
@@ -373,20 +355,14 @@ func set_interval(
         callback: Callable,
         period: float,
         arguments := [],
-        time_type := TimeType.APP_PHYSICS) -> int:
-    var interval := _Interval.new(
-            callback.get_object(),
-            time_type,
-            callback,
-            period,
-            arguments)
+        time_type := TimeType.APP_PHYSICS,
+) -> int:
+    var interval := _Interval.new(callback.get_object(), time_type, callback, period, arguments)
     _intervals[interval.id] = interval
     return interval.id
 
 
-func clear_interval(
-        interval_id: int,
-        triggers_interval := false) -> bool:
+func clear_interval(interval_id: int, triggers_interval := false) -> bool:
     if !_intervals.has(interval_id):
         return false
     if triggers_interval:
@@ -399,16 +375,16 @@ func throttle(
         callback: Callable,
         interval: float,
         invokes_at_end := true,
-        time_type := TimeType.APP_PHYSICS) -> Callable:
+        time_type := TimeType.APP_PHYSICS,
+) -> Callable:
     var throttler := _Throttler.new(
-            callback.get_object(),
-            time_type,
-            callback,
-            interval,
-            invokes_at_end)
-    var throttled_callback := Callable(
-            throttler,
-            "on_call")
+        callback.get_object(),
+        time_type,
+        callback,
+        interval,
+        invokes_at_end,
+    )
+    var throttled_callback := Callable(throttler, "on_call")
     _throttled_callbacks[throttled_callback] = throttler
     return throttled_callback
 
@@ -424,16 +400,16 @@ func debounce(
         callback: Callable,
         interval: float,
         invokes_at_start := false,
-        time_type := TimeType.APP_PHYSICS) -> Callable:
+        time_type := TimeType.APP_PHYSICS,
+) -> Callable:
     var debouncer := _Debouncer.new(
-            callback.get_object(),
-            time_type,
-            callback,
-            interval,
-            invokes_at_start)
-    var debounced_callback := Callable(
-            debouncer,
-            "on_call")
+        callback.get_object(),
+        time_type,
+        callback,
+        interval,
+        invokes_at_start,
+    )
+    var debounced_callback := Callable(debouncer, "on_call")
     _debounced_callbacks[debounced_callback] = debouncer
     return debounced_callback
 

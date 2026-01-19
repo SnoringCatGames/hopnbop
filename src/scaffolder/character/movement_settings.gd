@@ -1,7 +1,6 @@
 class_name MovementSettings
 extends Resource
 
-
 enum ActionHandlerType {
     FLOOR_DEFAULT,
     AIR_DEFAULT,
@@ -9,18 +8,14 @@ enum ActionHandlerType {
     CEILING_DEFAULT,
     ALL_DEFAULT,
     CAP_VELOCITY,
-
     FLOOR_WALK,
     FLOOR_JUMP,
     FLOOR_FRICTION,
     FALL_THROUGH_FLOOR,
-
     AIR_JUMP,
-
     WALL_CLIMB,
     WALL_FALL,
     WALL_JUMP,
-
     CEILING_CRAWL,
     CEILING_FALL,
     CEILING_JUMP_DOWN,
@@ -33,18 +28,14 @@ var DEFAULT_ACTION_HANDLER_CLASSES := {
     ActionHandlerType.CEILING_DEFAULT: CeilingDefaultAction,
     ActionHandlerType.ALL_DEFAULT: AllDefaultAction,
     ActionHandlerType.CAP_VELOCITY: CapVelocityAction,
-
     ActionHandlerType.FLOOR_WALK: FloorWalkAction,
     ActionHandlerType.FLOOR_JUMP: FloorJumpAction,
     ActionHandlerType.FLOOR_FRICTION: FloorFrictionAction,
     ActionHandlerType.FALL_THROUGH_FLOOR: FallThroughFloorAction,
-
     ActionHandlerType.AIR_JUMP: AirJumpAction,
-
     ActionHandlerType.WALL_CLIMB: WallClimbAction,
     ActionHandlerType.WALL_FALL: WallFallAction,
     ActionHandlerType.WALL_JUMP: WallJumpAction,
-
     ActionHandlerType.CEILING_CRAWL: CeilingCrawlAction,
     ActionHandlerType.CEILING_FALL: CeilingFallAction,
     ActionHandlerType.CEILING_JUMP_DOWN: CeilingJumpDownAction,
@@ -73,11 +64,14 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 @export var gravity_double_jump_slow_rise_multiplier := 0.68
 
 var gravity_fast_fall_acceleration: float:
-    get: return gravity_acceleration_multiplier * G.settings.default_gravity_acceleration
+    get:
+        return gravity_acceleration_multiplier * G.settings.default_gravity_acceleration
 var gravity_slow_rise_acceleration: float:
-    get: return gravity_fast_fall_acceleration * gravity_slow_rise_multiplier
+    get:
+        return gravity_fast_fall_acceleration * gravity_slow_rise_multiplier
 var gravity_double_jump_slow_rise_acceleration: float:
-    get: return gravity_fast_fall_acceleration * gravity_double_jump_slow_rise_multiplier
+    get:
+        return gravity_fast_fall_acceleration * gravity_double_jump_slow_rise_multiplier
 
 @export var walk_acceleration := 8000.0
 @export var in_air_horizontal_acceleration := 2500.0
@@ -104,18 +98,14 @@ var gravity_double_jump_slow_rise_acceleration: float:
     ActionHandlerType.CEILING_DEFAULT,
     ActionHandlerType.ALL_DEFAULT,
     ActionHandlerType.CAP_VELOCITY,
-
     ActionHandlerType.FLOOR_WALK,
     ActionHandlerType.FLOOR_JUMP,
     ActionHandlerType.FLOOR_FRICTION,
     ActionHandlerType.FALL_THROUGH_FLOOR,
-
     ActionHandlerType.AIR_JUMP,
-
     ActionHandlerType.WALL_CLIMB,
     ActionHandlerType.WALL_FALL,
     ActionHandlerType.WALL_JUMP,
-
     ActionHandlerType.CEILING_CRAWL,
     ActionHandlerType.CEILING_FALL,
     ActionHandlerType.CEILING_JUMP_DOWN,
@@ -133,5 +123,6 @@ func set_up() -> void:
 
 static func _compare_character_action_handler(
         a: CharacterActionHandler,
-        b: CharacterActionHandler) -> bool:
+        b: CharacterActionHandler,
+) -> bool:
     return a.priority < b.priority

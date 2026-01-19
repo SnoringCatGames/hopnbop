@@ -1,7 +1,6 @@
 class_name Settings
 extends Resource
 
-
 # --- General configuration ---
 
 @export_group("Network connection")
@@ -13,9 +12,11 @@ extends Resource
 @export var local_server_ip_address: StringName = "127.0.0.1"
 @export var local_server_port := 4433
 var server_ip_address: StringName:
-    get: return remote_server_ip_address if connect_to_remote_server else local_server_ip_address
+    get:
+        return remote_server_ip_address if connect_to_remote_server else local_server_ip_address
 var server_port: int:
-    get: return remote_server_port if connect_to_remote_server else local_server_port
+    get:
+        return remote_server_port if connect_to_remote_server else local_server_port
 @export_group("")
 
 @export_group("Network sync")

@@ -1,7 +1,6 @@
 class_name CharacterAnimator
 extends Node2D
 
-
 @export var faces_right_by_default := true
 @export var animated_sprite: AnimatedSprite2D = null
 

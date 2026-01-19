@@ -1,7 +1,6 @@
 class_name FloorDefaultAction
 extends CharacterActionHandler
 
-
 const NAME := "FloorDefaultAction"
 const TYPE := SurfaceType.FLOOR
 const USES_RUNTIME_PHYSICS := true
@@ -9,11 +8,7 @@ const PRIORITY := 210
 
 
 func _init() -> void:
-    super (
-        NAME,
-        TYPE,
-        USES_RUNTIME_PHYSICS,
-        PRIORITY)
+    super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
 
 
 func process(character) -> bool:

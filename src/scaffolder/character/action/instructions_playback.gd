@@ -1,7 +1,6 @@
 class_name InstructionsPlayback
 extends RefCounted
 
-
 const EXTRA_DELAY_TO_ALLOW_COLLISION_WITH_SURFACE := 0.25
 
 var instructions: Array[Instruction] = []
@@ -20,9 +19,7 @@ var active_key_presses: Dictionary
 var _next_active_key_presses: Dictionary
 
 
-func _init(
-        p_instructions: Array[Instruction],
-        p_is_additive: bool) -> void:
+func _init(p_instructions: Array[Instruction], p_is_additive: bool) -> void:
     self.instructions = p_instructions
     self.is_additive = p_is_additive
 
@@ -32,49 +29,37 @@ func start(scaled_time: float) -> void:
     previous_time_scaled = scaled_time
     current_time_scaled = scaled_time
     next_index = 0
-    _next_instruction = \
-            instructions[next_index] if \
-            instructions.size() > next_index else \
-            null
+    _next_instruction = instructions[next_index] if instructions.size() > next_index else null
     is_on_last_instruction = _next_instruction == null
     is_finished = is_on_last_instruction
-    active_key_presses = {}
-    _next_active_key_presses = {}
+    active_key_presses = { }
+    _next_active_key_presses = { }
 
 
-func update(
-        scaled_time: float,
-        character) -> void:
+func update(scaled_time: float, character) -> void:
     previous_time_scaled = current_time_scaled
     current_time_scaled = scaled_time
 
     active_key_presses = _next_active_key_presses.duplicate()
 
-    var was_pressing_move_sideways: bool = \
-            _next_active_key_presses.has("ml") and \
-            _next_active_key_presses["ml"] or \
-            _next_active_key_presses.has("mr") and \
-            _next_active_key_presses["mr"]
+    var was_pressing_move_sideways: bool = (
+        _next_active_key_presses.has("ml") and _next_active_key_presses["ml"]
+        or _next_active_key_presses.has("mr") and _next_active_key_presses["mr"]
+    )
 
-    while !is_finished and \
-            _get_start_time_scaled_for_next_instruction() <= scaled_time:
+    while !is_finished and _get_start_time_scaled_for_next_instruction() <= scaled_time:
         if !is_on_last_instruction:
             _ensure_facing_correct_direction_before_update(character)
 
         _increment()
 
-    var is_pressing_move_sideways: bool = \
-            _next_active_key_presses.has("ml") and \
-            _next_active_key_presses["ml"] or \
-            _next_active_key_presses.has("mr") and \
-            _next_active_key_presses["mr"]
-    var just_released_move_sideways := \
-            was_pressing_move_sideways and \
-            !is_pressing_move_sideways
+    var is_pressing_move_sideways: bool = (
+        _next_active_key_presses.has("ml") and _next_active_key_presses["ml"]
+        or _next_active_key_presses.has("mr") and _next_active_key_presses["mr"]
+    )
+    var just_released_move_sideways := was_pressing_move_sideways and !is_pressing_move_sideways
 
-    _ensure_facing_correct_direction_after_update(
-            just_released_move_sideways,
-            character)
+    _ensure_facing_correct_direction_after_update(just_released_move_sideways, character)
 
 
 func _increment() -> void:
@@ -89,18 +74,18 @@ func _increment() -> void:
         _ensure_previous_face_input_is_released(_next_instruction.input_key)
     else:
         _next_active_key_presses[_next_instruction.input_key] = false
-        active_key_presses[_next_instruction.input_key] = \
-                true if \
-                is_additive and \
-                active_key_presses.has(_next_instruction.input_key) and \
-                active_key_presses[_next_instruction.input_key] else \
-                false
+        active_key_presses[_next_instruction.input_key] = (
+            true
+            if (
+                is_additive
+                and active_key_presses.has(_next_instruction.input_key)
+                and active_key_presses[_next_instruction.input_key]
+            )
+            else false
+        )
 
     next_index += 1
-    _next_instruction = \
-            instructions[next_index] if \
-            instructions.size() > next_index else \
-            null
+    _next_instruction = instructions[next_index] if instructions.size() > next_index else null
     is_on_last_instruction = _next_instruction == null
 
 
@@ -125,11 +110,12 @@ func _get_start_time_scaled_for_next_instruction() -> float:
 
 
 func _ensure_facing_correct_direction_before_update(character) -> void:
-    if character.movement_settings.always_tries_to_face_direction_of_motion and \
-            next_index == 0 and \
-            character.velocity.x != 0 and \
-            (character.velocity.x < 0) != \
-                    (character.surfaces.horizontal_facing_sign < 0):
+    if (
+        character.movement_settings.always_tries_to_face_direction_of_motion
+        and next_index == 0
+        and character.velocity.x != 0
+        and (character.velocity.x < 0) != (character.surfaces.horizontal_facing_sign < 0)
+    ):
         # At the start of edge playback, turn the character to face the
         # initial direction they're moving in.
         _add_instruction_to_face_direction_of_movement(character)
@@ -137,29 +123,31 @@ func _ensure_facing_correct_direction_before_update(character) -> void:
 
 func _ensure_facing_correct_direction_after_update(
         just_released_move_sideways: bool,
-        character) -> void:
-    var is_pressing_face_left: bool = \
-            _next_active_key_presses.has("fl") and \
-            _next_active_key_presses["fl"]
-    var is_pressing_face_right: bool = \
-            _next_active_key_presses.has("fr") and \
-            _next_active_key_presses["fr"]
+        character,
+) -> void:
+    var is_pressing_face_left: bool = (
+        _next_active_key_presses.has("fl") and _next_active_key_presses["fl"]
+    )
+    var is_pressing_face_right: bool = (
+        _next_active_key_presses.has("fr") and _next_active_key_presses["fr"]
+    )
 
-    if character.movement_settings.always_tries_to_face_direction_of_motion and \
-            just_released_move_sideways and \
-            character.velocity.x != 0 and \
-            (character.velocity.x < 0 and !is_pressing_face_left or \
-            character.velocity.x > 0 and !is_pressing_face_right):
+    if (
+        character.movement_settings.always_tries_to_face_direction_of_motion
+        and just_released_move_sideways
+        and character.velocity.x != 0
+        and (
+            character.velocity.x < 0 and !is_pressing_face_left
+            or character.velocity.x > 0 and !is_pressing_face_right
+        )
+    ):
         # Turn the character around, so they are facing the direction they're
         # moving in.
         _add_instruction_to_face_direction_of_movement(character)
 
 
 func _add_instruction_to_face_direction_of_movement(character) -> void:
-    var press_input_key := \
-            "fl" if \
-            character.velocity.x < 0 else \
-            "fr"
+    var press_input_key := "fl" if character.velocity.x < 0 else "fr"
     _next_active_key_presses[press_input_key] = true
     active_key_presses[press_input_key] = true
 
@@ -167,15 +155,10 @@ func _add_instruction_to_face_direction_of_movement(character) -> void:
 
 
 func _ensure_previous_face_input_is_released(new_input_key: String) -> void:
-    if new_input_key != "fl" and \
-            new_input_key != "fr":
+    if new_input_key != "fl" and new_input_key != "fr":
         return
 
-    var release_input_key := \
-            "fl" if \
-            new_input_key == "fr" else \
-            "fr"
-    if active_key_presses.has(release_input_key) and \
-            active_key_presses[release_input_key]:
+    var release_input_key := "fl" if new_input_key == "fr" else "fr"
+    if active_key_presses.has(release_input_key) and active_key_presses[release_input_key]:
         _next_active_key_presses[release_input_key] = false
         active_key_presses[release_input_key] = false

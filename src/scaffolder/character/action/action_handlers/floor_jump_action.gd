@@ -1,7 +1,6 @@
 class_name FloorJumpAction
 extends CharacterActionHandler
 
-
 const NAME := "FloorJumpAction"
 const TYPE := SurfaceType.FLOOR
 const USES_RUNTIME_PHYSICS := true
@@ -9,16 +8,14 @@ const PRIORITY := 230
 
 
 func _init() -> void:
-    super (
-        NAME,
-        TYPE,
-        USES_RUNTIME_PHYSICS,
-        PRIORITY)
+    super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
 
 
 func process(character) -> bool:
-    if !character.processed_action(FallThroughFloorAction.NAME) and \
-            character.actions.just_pressed_jump:
+    if (
+        !character.processed_action(FallThroughFloorAction.NAME)
+        and character.actions.just_pressed_jump
+    ):
         character.jump_sequence_count = 1
         character.just_triggered_jump = true
         character.velocity.y = character.movement_settings.jump_boost

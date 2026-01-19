@@ -1,21 +1,16 @@
 class_name InstructionsActionSource
 extends CharacterActionSource
 
-
 # Array<InstructionsPlayback>
 var _all_playback := []
 
 
-func _init(
-        p_character,
-        p_is_additive: bool):
-    super ("NPC", p_character, p_is_additive)
+func _init(p_character, p_is_additive: bool):
+    super("NPC", p_character, p_is_additive)
 
 
 # Calculates actions for the current frame.
-func update(
-        actions: CharacterActionState,
-        time_scaled: float) -> void:
+func update(actions: CharacterActionState, time_scaled: float) -> void:
     var non_pressed_keys := []
 
     for playback in _all_playback:
@@ -28,11 +23,12 @@ func update(
         for input_key in playback.active_key_presses:
             var is_pressed: bool = playback.active_key_presses[input_key]
             CharacterActionSource.update_for_explicit_key_event(
-                    actions,
-                    input_key,
-                    is_pressed,
-                    time_scaled,
-                    is_additive)
+                actions,
+                input_key,
+                is_pressed,
+                time_scaled,
+                is_additive,
+            )
             if !is_pressed:
                 non_pressed_keys.append(input_key)
 
@@ -51,18 +47,15 @@ func update(
 
 func start_instructions(
         instructions: Array[Instruction],
-        time_scaled: float) -> InstructionsPlayback:
-    var playback := InstructionsPlayback.new(
-            instructions,
-            is_additive)
+        time_scaled: float,
+) -> InstructionsPlayback:
+    var playback := InstructionsPlayback.new(instructions, is_additive)
     playback.start(time_scaled)
     _all_playback.append(playback)
     return playback
 
 
-func cancel_playback(
-        playback: InstructionsPlayback,
-        _time_scaled: float) -> bool:
+func cancel_playback(playback: InstructionsPlayback, _time_scaled: float) -> bool:
     # Remove the playback.
     var index := _all_playback.find(playback)
     if index < 0:

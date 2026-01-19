@@ -1,7 +1,6 @@
 class_name Hud
 extends PanelContainer
 
-
 func _enter_tree() -> void:
     G.hud = self
 
@@ -28,11 +27,7 @@ func update_visibility() -> void:
         return
 
     match G.screens.current_screen:
-        ScreensMain.ScreenType.MAIN_MENU, \
-        ScreensMain.ScreenType.LOADING, \
-        ScreensMain.ScreenType.GAME_OVER, \
-        ScreensMain.ScreenType.WIN, \
-        ScreensMain.ScreenType.PAUSE:
+        ScreensMain.ScreenType.MAIN_MENU, ScreensMain.ScreenType.LOADING, ScreensMain.ScreenType.GAME_OVER, ScreensMain.ScreenType.WIN, ScreensMain.ScreenType.PAUSE:
             pass
         ScreensMain.ScreenType.GAME:
             pass

@@ -1,7 +1,6 @@
 class_name Main
 extends Node2D
 
-
 @export var settings: Settings
 
 
@@ -10,7 +9,8 @@ func _enter_tree() -> void:
     G.settings = settings
     G.log.set_log_filtering(
         G.settings.excluded_log_categories,
-        G.settings.force_include_log_warnings)
+        G.settings.force_include_log_warnings,
+    )
 
     randomize()
 
@@ -25,7 +25,14 @@ func _ready() -> void:
     await get_tree().process_frame
 
     if G.network.preview_client_number > 1 and not G.settings.run_multiple_clients:
-        G.print("Main._ready: Closing extra client process (--client=%s), because G.settings.run_multiple_clients is false" % G.network.preview_client_number)
+        (
+            G.print(
+                (
+                    "Main._ready: Closing extra client process (--client=%s), because G.settings.run_multiple_clients is false"
+                    % G.network.preview_client_number
+                ),
+            )
+        )
         close_app()
 
     if G.settings.full_screen and not G.network.is_server:
@@ -75,9 +82,12 @@ func _unhandled_input(event: InputEvent) -> void:
                     if is_instance_valid(G.hud):
                         G.hud.visible = not G.hud.visible
                         G.print(
-                            "Toggled HUD visibility: %s" %
-                            ("visible" if G.hud.visible else "hidden"),
-                            ScaffolderLog.CATEGORY_CORE_SYSTEMS)
+                            (
+                                "Toggled HUD visibility: %s"
+                                % ("visible" if G.hud.visible else "hidden")
+                            ),
+                            ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+                        )
                 KEY_ESCAPE:
                     if G.settings.pauses_on_focus_out:
                         _client_local_pause()

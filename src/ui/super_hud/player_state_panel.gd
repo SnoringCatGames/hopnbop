@@ -1,7 +1,6 @@
 class_name PlayerStatePanel
 extends PanelContainer
 
-
 @export var toast_scene: PackedScene
 @export var toast_fade_duration := 0.5
 @export var toast_fade_delay := 1.5
@@ -49,7 +48,9 @@ func _process(_delta: float) -> void:
         clear()
         return
 
-    %Actions.text = CharacterActionState.get_debug_label_from_actions_bitmask(player.actions.current_actions_bitmask)
+    %Actions.text = CharacterActionState.get_debug_label_from_actions_bitmask(
+        player.actions.current_actions_bitmask,
+    )
     %Position.text = Utils.get_vector_string(player.position, 1)
     %Velocity.text = Utils.get_vector_string(player.velocity, 1)
 

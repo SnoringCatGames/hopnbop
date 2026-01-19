@@ -1,6 +1,5 @@
 class_name TimeType
 
-
 # The different types of time that are tracked.
 #
 # -   Fixed-interval/physics-based tracking vs clock and render-based tracking:
@@ -50,7 +49,6 @@ enum {
     # -   Total app run time; not affected by pausing.
     # -   Not affected by current time_scale or additional_debug_time_scale.
     APP_RENDER_FRAME_COUNT,
-
     # -   Elapsed time from deterministic fixed-interval _physics_process calls.
     # -   Total **un-paused** run time.
     # -   Not affected by current time_scale or additional_debug_time_scale.
