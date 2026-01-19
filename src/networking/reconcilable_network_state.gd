@@ -311,8 +311,8 @@ func _has_authoritative_state_for_current_frame() -> bool:
 
 
 func _pack_networked_state() -> void:
-    var state := []
-    state.resize(_property_names_for_packing.size() + 1)
+    var state := ArrayPool.acquire(_property_names_for_packing.size() + 1)
+
     var i := 0
     for property_name in _property_names_for_packing:
         state[i] = get(property_name)
@@ -320,6 +320,10 @@ func _pack_networked_state() -> void:
     # We send time values across the network, but we store indices.
     state[i] = G.network.frame_driver.get_time_usec_from_frame_index(timestamp_index)
     _is_packing_state_locally = true
+
+    if not packed_state.is_empty():
+        ArrayPool.release(packed_state)
+
     packed_state = state
     _is_packing_state_locally = false
 
@@ -348,13 +352,15 @@ func _unpack_networked_state() -> void:
 
 
 func _pack_buffer_state_from_local_state() -> void:
-    var state := []
-    state.resize(_property_names_for_packing.size() + 1)
+    var state := ArrayPool.acquire(_property_names_for_packing.size() + 1)
+
     var i := 0
     for property_name in _property_names_for_packing:
         state[i] = get(property_name)
         i += 1
     state[i] = frame_authority
+
+    # Note: state is now owned by the rollback buffer, don't release it here.
     _record_buffer_frame(timestamp_index, state)
 
 
@@ -370,9 +376,14 @@ func _pack_buffer_state_from_network_state(packed_network_state: Array) -> void:
     # For the rollback buffer, we want to record the same state that we
     # replicate across the network, except, we don't need the timestamp and we
     # do need the frame_authority.
-    var rollback_frame_state := packed_network_state.duplicate()
+    var rollback_frame_state := ArrayPool.acquire(packed_network_state.size())
+
+    for i in range(packed_network_state.size() - 1):
+        rollback_frame_state[i] = packed_network_state[i]
     rollback_frame_state[rollback_frame_state.size() - 1] = FrameAuthority.AUTHORITATIVE
 
+    # Note: rollback_frame_state is now owned by the rollback buffer, don't
+    #       release it here.
     _record_buffer_frame(frame_index, rollback_frame_state)
 
 

@@ -60,8 +60,14 @@ func is_full() -> bool:
 ## - Adds a new element to the buffer. If the buffer is full, the oldest element
 ##   is overwritten.
 ## - Returns the index of the pushed element.
+## - Releases old array to pool when overwriting.
 func append(value: Variant) -> int:
     var index := _total_pushed
+
+    # If overwriting and the old value is an array, release it to the pool.
+    if is_full() and _data[_next_index] is Array:
+        ArrayPool.release(_data[_next_index])
+
     _data[_next_index] = value
     _next_index = (_next_index + 1) % _capacity
     _total_pushed += 1
@@ -98,6 +104,7 @@ func get_at(index: int) -> Variant:
 
 ## - Sets an element at a specific index.
 ## - Returns true if successful, false if the index is out of valid range.
+## - For arrays, reuses existing array slot if same size to reduce allocations.
 func set_at(index: int, value: Variant) -> bool:
     if index == _total_pushed:
         # Push a new item.
@@ -107,6 +114,25 @@ func set_at(index: int, value: Variant) -> bool:
     if not has_at(index):
         return false
     var internal_index := index % _capacity
+
+    # Optimization: If both old and new values are arrays of the same size,
+    # copy values into the existing array to avoid allocation.
+    var existing_value = _data[internal_index]
+    if existing_value is Array and value is Array:
+        var existing_arr := existing_value as Array
+        var new_arr := value as Array
+        if existing_arr.size() == new_arr.size():
+            for i in range(new_arr.size()):
+                existing_arr[i] = new_arr[i]
+            # Release the new array back to pool since we reused the existing
+            # one.
+            ArrayPool.release(new_arr)
+            return true
+
+    # Release old array to pool if we're replacing it.
+    if existing_value is Array:
+        ArrayPool.release(existing_value)
+
     _data[internal_index] = value
     return true
 
@@ -140,8 +166,12 @@ func get_oldest_index() -> int:
 
 
 ## Clears all elements from the buffer.
+## Releases arrays back to pool.
 func clear() -> void:
     for i in range(_capacity):
+        # Release arrays back to pool before clearing.
+        if _data[i] is Array:
+            ArrayPool.release(_data[i])
         _data[i] = null
     _next_index = 0
     _total_pushed = 0

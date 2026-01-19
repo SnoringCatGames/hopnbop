@@ -20,9 +20,17 @@ func _init(p_capacity: int, p_current_frame_index: int, p_default_frame_state: A
 
 ## Reinitialize the entire _data array with duplicates of fill_state,
 ## and set buffer indices to point to target_index + 1.
+## Uses array pool to reduce allocations.
 func _reinitialize_data(fill_state: Array, target_index: int) -> void:
     for i in range(_capacity):
-        _data[i] = fill_state.duplicate()
+        # Release old array and acquire new one from pool.
+        if _data[i] is Array:
+            ArrayPool.release(_data[i])
+
+        var new_arr := ArrayPool.acquire(fill_state.size())
+        for j in range(fill_state.size()):
+            new_arr[j] = fill_state[j]
+        _data[i] = new_arr
 
     _next_index = (target_index + 1) % _capacity
     _total_pushed = target_index + 1
@@ -61,7 +69,13 @@ func backfill_to_with_last_state(target_index: int) -> void:
     if get_latest_index() >= target_index:
         return
 
-    var fill_state: Array = get_at(get_latest_index()).duplicate()
+    var latest_state: Array = get_at(get_latest_index())
+
+    # Use array pool for temporary fill_state to avoid allocation.
+    var fill_state := ArrayPool.acquire(latest_state.size())
+    for i in range(latest_state.size()):
+        fill_state[i] = latest_state[i]
+
     # Backfilled state is not authoritative.
     fill_state[fill_state.size() - 1] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
 
@@ -71,10 +85,14 @@ func backfill_to_with_last_state(target_index: int) -> void:
     else:
         _backfill_to(target_index, fill_state)
 
+    # Return temporary array to pool.
+    ArrayPool.release(fill_state)
+
 
 ## Back-fill any missing frames in the buffer up to (but not including)
 ## target_index.
 func _backfill_to(target_index: int, fill_state: Variant) -> void:
     while get_latest_index() < target_index:
         var next_index := get_latest_index() + 1
-        set_at(next_index, fill_state.duplicate())
+        # No need to duplicate, set_at() will reuse existing array slots.
+        set_at(next_index, fill_state)

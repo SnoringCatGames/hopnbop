@@ -5,27 +5,6 @@ extends Node
 
 # Performance Improvements
 
-# 23. Excessive array duplication
-
-# Arrays are duplicated frequently in hot paths:
-# - packed_state = state (line 306)
-# - rollback_frame_state := packed_network_state.duplicate() (line 354)
-# - fill_state.duplicate() (line 62 in rollback_buffer.gd)
-
-# Recommendation: Use object pooling for arrays:
-# class ArrayPool:
-#     var _pool: Array[Array] = []
-
-#     func acquire(size: int) -> Array:
-#         if _pool.is_empty():
-#             var arr := []
-#             arr.resize(size)
-#             return arr
-#         return _pool.pop_back()
-
-#     func release(arr: Array) -> void:
-#         _pool.append(arr)
-
 # 24. Dictionary iteration in hot path
 
 # _network_process iterates over _networked_state_nodes dictionary every frame:
