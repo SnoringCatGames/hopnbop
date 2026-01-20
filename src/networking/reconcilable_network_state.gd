@@ -641,13 +641,21 @@ func _update_partner_state() -> void:
         if sibling_states[0].is_server_authoritative != is_server_authoritative:
             _partner_state = sibling_states[0]
         elif is_server_authoritative:
-            _partner_state_configuration_warning = "You should consolidate sibling server-authoritative ReconcilableNetworkedState nodes (or should one be client-authoritative?)"
+            _partner_state_configuration_warning = (
+                "You should consolidate sibling server-authoritative ReconcilableNetworkedState nodes (or should one be client-authoritative?)"
+            )
         else:
-            _partner_state_configuration_warning = "There should only be one client-authoritative ReconcilableNetworkedState node here (should one be server-authoritative?)"
+            _partner_state_configuration_warning = (
+                "There should only be one client-authoritative ReconcilableNetworkedState node here (should one be server-authoritative?)"
+            )
     elif sibling_states.size() > 1:
-        _partner_state_configuration_warning = "There should be no more than 2 ReconcilableNetworkedState nodes in a given place--one server-authoritative and one client-authoritative"
+        _partner_state_configuration_warning = (
+            "There should be no more than 2 ReconcilableNetworkedState nodes in a given place--one server-authoritative and one client-authoritative"
+        )
     elif is_client_authoritative:
-        _partner_state_configuration_warning = "A client-authoritative ReconcilableNetworkedState node must be accompanied by a server-authoritative ReconcilableNetworkedState sibling node"
+        _partner_state_configuration_warning = (
+            "A client-authoritative ReconcilableNetworkedState node must be accompanied by a server-authoritative ReconcilableNetworkedState sibling node"
+        )
 
     # Get the multiplayer_id from the parter StateFromServer node.
     if is_instance_valid(_partner_state):
@@ -657,7 +665,8 @@ func _update_partner_state() -> void:
         if is_client_authoritative and is_instance_valid(state_from_server):
             multiplayer_id = state_from_server.multiplayer_id
 
-    if not Engine.is_editor_hint() and not _partner_state_configuration_warning.is_empty():
+    if (not Engine.is_editor_hint() and
+            not _partner_state_configuration_warning.is_empty()):
         # Log and assert in game runtime environments.
         G.error(
             "ReconcilableNetworkedState is misconfigured: %s"
