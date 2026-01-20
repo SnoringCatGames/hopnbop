@@ -13,14 +13,21 @@ const _SLOW_PHYSICS_FPS := ScaffolderTime.PHYSICS_FPS - 1
 const _SLOW_NETWORK_FPS := 30
 
 const _WARNING_THROTTLE_SEC := 5.0
+const _ROLLBACK_TRACKING_WINDOW_SEC := 60.0
+const _FPS_TRACKING_WINDOW_SEC := 1.0
 
-@export var sample_window_size := 60
+var _render_frame_count := 0
+var _render_window_start_time := 0.0
 
-@onready var _physics_deltas := CircularBuffer.new(sample_window_size)
-@onready var _render_deltas := CircularBuffer.new(sample_window_size)
-@onready var _network_deltas := CircularBuffer.new(sample_window_size)
+var _physics_frame_count := 0
+var _physics_window_start_time := 0.0
 
-var _last_network_update_time := -1.0
+var _network_frame_count := 0
+var _network_window_start_time := 0.0
+
+var _last_total_rollbacks := 0
+var _rollback_count_in_window := 0
+var _rollback_window_start_time := 0.0
 
 var _throttled_warn_render_fps: Callable
 var _throttled_warn_physics_fps: Callable
@@ -76,38 +83,73 @@ func _on_local_authority_removed(
     pass
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
     if not G.settings.show_perf_tracker:
         return
 
-    _render_deltas.append(delta)
-    var avg_fps := _calculate_average_fps(_render_deltas)
-    %RenderFPS.text = "%.1f" % avg_fps
+    var current_time: float = Time.get_ticks_msec() / 1000.0
 
-    if (
-        G.game_panel.is_level_fully_loaded
-        and avg_fps > 0.0
-        and avg_fps < _SLOW_RENDER_FPS
-    ):
-        _throttled_warn_render_fps.call(avg_fps)
+    # Initialize window on first call
+    if _render_window_start_time == 0.0:
+        _render_window_start_time = current_time
+
+    _render_frame_count += 1
+
+    # Calculate FPS over the tracking window
+    var window_duration: float = current_time - _render_window_start_time
+    if window_duration > 0.0:
+        var avg_fps: float = _render_frame_count / window_duration
+        %RenderFPS.text = "%.1f" % avg_fps
+
+        if (
+            G.game_panel.is_level_fully_loaded
+            and avg_fps > 0.0
+            and avg_fps < _SLOW_RENDER_FPS
+        ):
+            _throttled_warn_render_fps.call(avg_fps)
+    else:
+        %RenderFPS.text = "0.0"
+
+    # Reset window after full duration
+    if window_duration >= _FPS_TRACKING_WINDOW_SEC:
+        _render_frame_count = 0
+        _render_window_start_time = current_time
 
 
-func _physics_process(delta: float) -> void:
+func _physics_process(_delta: float) -> void:
     if not G.settings.show_perf_tracker:
         return
 
-    _physics_deltas.append(delta)
-    var avg_fps := _calculate_average_fps(_physics_deltas)
-    %PhysicsFPS.text = "%.1f" % avg_fps
+    var current_time: float = Time.get_ticks_msec() / 1000.0
 
-    if (
-        G.game_panel.is_level_fully_loaded
-        and avg_fps > 0.0
-        and avg_fps < _SLOW_PHYSICS_FPS
-    ):
-        _throttled_warn_physics_fps.call(avg_fps)
+    # Initialize window on first call
+    if _physics_window_start_time == 0.0:
+        _physics_window_start_time = current_time
+
+    _physics_frame_count += 1
+
+    # Calculate FPS over the tracking window
+    var window_duration: float = current_time - _physics_window_start_time
+    if window_duration > 0.0:
+        var avg_fps: float = _physics_frame_count / window_duration
+        %PhysicsFPS.text = "%.1f" % avg_fps
+
+        if (
+            G.game_panel.is_level_fully_loaded
+            and avg_fps > 0.0
+            and avg_fps < _SLOW_PHYSICS_FPS
+        ):
+            _throttled_warn_physics_fps.call(avg_fps)
+    else:
+        %PhysicsFPS.text = "0.0"
+
+    # Reset window after full duration
+    if window_duration >= _FPS_TRACKING_WINDOW_SEC:
+        _physics_frame_count = 0
+        _physics_window_start_time = current_time
 
     _update_network_ping()
+    _update_rollback_metrics()
 
 
 func _update_network_ping() -> void:
@@ -125,11 +167,18 @@ func _character_state_from_server_updated() -> void:
     if not G.settings.show_perf_tracker:
         return
 
-    var current_time := Time.get_ticks_msec() / 1000.0
-    if _last_network_update_time >= 0.0:
-        var delta := current_time - _last_network_update_time
-        _network_deltas.append(delta)
-        var avg_fps := _calculate_average_fps(_network_deltas)
+    var current_time: float = Time.get_ticks_msec() / 1000.0
+
+    # Initialize window on first call
+    if _network_window_start_time == 0.0:
+        _network_window_start_time = current_time
+
+    _network_frame_count += 1
+
+    # Calculate FPS over the tracking window
+    var window_duration: float = current_time - _network_window_start_time
+    if window_duration > 0.0:
+        var avg_fps: float = _network_frame_count / window_duration
         %NetworkFPS.text = "%.1f" % avg_fps
 
         if (
@@ -138,19 +187,13 @@ func _character_state_from_server_updated() -> void:
             and avg_fps < _SLOW_NETWORK_FPS
         ):
             _throttled_warn_network_fps.call(avg_fps)
-    _last_network_update_time = current_time
+    else:
+        %NetworkFPS.text = "0.0"
 
-
-func _calculate_average_fps(deltas: CircularBuffer) -> float:
-    if deltas.is_empty():
-        return 0.0
-    var total_delta := 0.0
-    var count := deltas.size()
-    for delta in deltas.to_array():
-        total_delta += delta
-    if total_delta <= 0.0:
-        return 0.0
-    return count / total_delta
+    # Reset window after full duration
+    if window_duration >= _FPS_TRACKING_WINDOW_SEC:
+        _network_frame_count = 0
+        _network_window_start_time = current_time
 
 
 func _log_render_fps_warning(avg_fps: float) -> void:
@@ -182,4 +225,45 @@ func _log_network_rtt_warning(rtt_msec: float) -> void:
         "SLOW NETWORK RTT: %.1fMS (THRESHOLD: %.0fMS)"
         % [rtt_msec, _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0],
         ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+    )
+
+
+func _update_rollback_metrics() -> void:
+    var current_total: int = G.network.frame_driver.total_rollbacks
+    var current_time: float = Time.get_ticks_msec() / 1000.0
+
+    # Initialize window on first call
+    if _rollback_window_start_time == 0.0:
+        _rollback_window_start_time = current_time
+        _last_total_rollbacks = current_total
+
+    # Update rollback count in current window
+    var new_rollbacks: int = current_total - _last_total_rollbacks
+    _rollback_count_in_window += new_rollbacks
+    _last_total_rollbacks = current_total
+
+    # Calculate rollbacks per second over the tracking window
+    var window_duration: float = current_time - _rollback_window_start_time
+    if window_duration > 0.0:
+        var rollbacks_per_sec: float = (
+            _rollback_count_in_window / window_duration
+        )
+        %RollbacksPerSec.text = "%.1f" % rollbacks_per_sec
+    else:
+        %RollbacksPerSec.text = "0.0"
+
+    # Reset window after full duration
+    if window_duration >= _ROLLBACK_TRACKING_WINDOW_SEC:
+        _rollback_count_in_window = 0
+        _rollback_window_start_time = current_time
+
+    # Display last rollback duration in milliseconds
+    var last_duration_msec: float = (
+        G.network.frame_driver.last_rollback_duration_usec / 1000.0
+    )
+    %LastRollbackDuration.text = "%.2f" % last_duration_msec
+
+    # Display last rollback frame count
+    %LastRollbackFrames.text = str(
+        G.network.frame_driver.last_rollback_frame_count,
     )

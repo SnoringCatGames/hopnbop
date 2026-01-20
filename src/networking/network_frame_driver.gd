@@ -59,12 +59,6 @@ extends Node
 # Review my notes and to create a plan for implementing them.
 # Please flag any aspects that seem like a mistake or that don't make sense.
 #
-# ### Pre-part: Add benchmarking
-# In the PerfTracker scene, let's track and display some benchmarking:
-# - Track how often rollbacks occur.
-# - Track how many frames are involved with each rollback.
-# - Track how long each rollback takes to process.
-#
 # ### PART 1: Add support for networked pause
 # - Add a new flag: Settings.is_server_pause_enabled
 # - First, the client sends an RPC to the server.
@@ -342,6 +336,11 @@ var _network_frame_processor_nodes: Array[NetworkFrameProcessor] = []
 
 var _queued_rollback_frame_index := 0
 
+## Rollback tracking metrics (for performance monitoring)
+var last_rollback_frame_count := 0
+var last_rollback_duration_usec := 0
+var total_rollbacks := 0
+
 var rollback_buffer_size: int:
     get:
         return ceili(
@@ -497,6 +496,8 @@ func _run_network_process() -> void:
 func _rollback_and_reprocess() -> void:
     G.print("Starting rollback", ScaffolderLog.CATEGORY_NETWORK_SYNC)
 
+    var rollback_start_time_usec := Time.get_ticks_usec()
+
     var original_server_frame_index := server_frame_index
     var original_server_frame_time_usec := server_frame_time_usec
 
@@ -509,12 +510,19 @@ func _rollback_and_reprocess() -> void:
     # The loop processes frames [rollback_frame, original_frame), but not the
     # original frame itself. The current frame will be re-simulated afterward in
     # the normal _run_network_process flow.
+    var frame_count := 0
     while server_frame_index < original_server_frame_index:
         _network_process()
         server_frame_index += 1
+        frame_count += 1
 
     server_frame_index = original_server_frame_index
     server_frame_time_usec = original_server_frame_time_usec
+
+    # Track rollback metrics
+    last_rollback_frame_count = frame_count
+    last_rollback_duration_usec = Time.get_ticks_usec() - rollback_start_time_usec
+    total_rollbacks += 1
 
 
 ## Simulate the current frame for all network-process-aware nodes.
