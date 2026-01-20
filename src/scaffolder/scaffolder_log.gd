@@ -46,28 +46,6 @@ func _ready() -> void:
         ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
 
 
-func _get_includes_category_in_logs() -> bool:
-    return (
-        not is_instance_valid(G.settings) or
-        G.settings.include_category_in_logs
-    )
-
-
-func _get_includes_multiplayer_id_in_logs() -> bool:
-    return (
-        not is_instance_valid(G.settings) or
-        G.settings.include_multiplayer_id_in_logs
-    )
-
-
-func _get_logging_verbosity() -> Verbosity:
-    return (
-        G.settings.verbosity if
-        is_instance_valid(G.settings) else
-        ScaffolderLog.Verbosity.VERBOSE
-    )
-
-
 func _format_message(message: String, category: StringName) -> String:
     var play_time: float = (
         G.time.get_play_time() if
@@ -77,12 +55,12 @@ func _format_message(message: String, category: StringName) -> String:
 
     var category_token := (
         "[%s]" % get_category_prefix(category) if
-        _get_includes_category_in_logs() else
+        G.settings.include_category_in_logs else
         ""
     )
 
     var multiplayer_id_value: String
-    if _get_includes_multiplayer_id_in_logs() and G.network.is_preview:
+    if G.settings.include_multiplayer_id_in_logs and G.network.is_preview:
         if G.network.is_client:
             if G.network.is_connected_to_server:
                 # Client, connected to server.
@@ -101,7 +79,7 @@ func _format_message(message: String, category: StringName) -> String:
         multiplayer_id_value = ""
     var multiplayer_id_token = (
         "[%s]" % multiplayer_id_value if
-        _get_includes_multiplayer_id_in_logs() else
+        G.settings.include_multiplayer_id_in_logs else
         ""
     )
 
@@ -123,7 +101,7 @@ func print(
     ) -> void:
     if not _is_category_enabled(category):
         return
-    if verbosity > _get_logging_verbosity():
+    if verbosity > G.settings.verbosity:
         return
 
     if !(message is String):

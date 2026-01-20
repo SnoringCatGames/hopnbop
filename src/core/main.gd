@@ -1,12 +1,9 @@
 class_name Main
 extends Node2D
 
-@export var settings: Settings
-
 
 func _enter_tree() -> void:
     G.main = self
-    G.settings = settings
     G.log.set_log_filtering(
         G.settings.excluded_log_categories,
         G.settings.force_include_log_warnings,
