@@ -43,7 +43,12 @@ func _ready() -> void:
 
 
 func _on_player_joined(player: PlayerMatchState) -> void:
-    G.print("Player joined: %s" % player.get_string(), ScaffolderLog.CATEGORY_GAME_STATE)
+    var is_self := G.network.is_client and player.multiplayer_id == G.network.local_id
+    var self_suffix := " (self)" if is_self else ""
+    G.print(
+        "Player joined: %s%s" % [player.get_string(), self_suffix],
+        ScaffolderLog.CATEGORY_GAME_STATE,
+    )
 
 
 func _on_player_left(player: PlayerMatchState) -> void:
