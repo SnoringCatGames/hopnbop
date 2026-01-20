@@ -22,6 +22,9 @@ class TestableNetworkedState extends ReconcilableNetworkedState:
     var test_is_active := true
     var test_name := "player"
 
+    # Allow tests to change authority
+    var _test_is_server_authoritative := true
+
     @warning_ignore("unused_private_class_variable") var _synced_properties_and_rollback_diff_thresholds := {
         "test_position": 1.0,
         "test_velocity": 10.0,
@@ -44,7 +47,7 @@ class TestableNetworkedState extends ReconcilableNetworkedState:
 
 
     func _get_is_server_authoritative() -> bool:
-        return true
+        return _test_is_server_authoritative
 
 
     func _sync_to_scene_state(_previous_state: Array) -> void:
@@ -323,6 +326,9 @@ class TestStatePacking:
 
     func before_each():
         ArrayPool.clear_all_pools()
+        # Reset global network state for test isolation
+        G.network.server_frame_index = 0
+
         # Create root node for entity
         root_node = Node.new()
         root_node.name = "Root"
@@ -562,7 +568,7 @@ class TestAuthorityHandling:
 
     func test_authority_id_returns_server_when_server_authoritative():
         # Server-authoritative entity should have authority_id = 1 (SERVER_ID)
-        entity.is_server_authoritative = true
+        entity._test_is_server_authoritative = true
 
         var authority_id := entity.authority_id
 
@@ -575,7 +581,7 @@ class TestAuthorityHandling:
 
     func test_authority_id_returns_multiplayer_id_when_client_authoritative():
         # Client-authoritative entity should have authority_id = multiplayer_id
-        entity.is_server_authoritative = false
+        entity._test_is_server_authoritative = false
         entity.multiplayer_id = 42
 
         var authority_id := entity.authority_id
@@ -600,14 +606,14 @@ class TestAuthorityHandling:
 
     func test_is_client_authoritative_property():
         # Test the computed is_client_authoritative property
-        entity.is_server_authoritative = false
+        entity._test_is_server_authoritative = false
 
         assert_true(
             entity.is_client_authoritative,
             "Should be client authoritative when not server authoritative",
         )
 
-        entity.is_server_authoritative = true
+        entity._test_is_server_authoritative = true
 
         assert_false(
             entity.is_client_authoritative,
@@ -617,7 +623,7 @@ class TestAuthorityHandling:
 
     func test_update_authority_calls_set_multiplayer_authority():
         # Verify that update_authority correctly sets multiplayer authority
-        entity.is_server_authoritative = true
+        entity._test_is_server_authoritative = true
         entity.multiplayer_id = 5
 
         entity.update_authority()
@@ -632,13 +638,13 @@ class TestAuthorityHandling:
 
     func test_authority_changes_when_is_server_authoritative_changes():
         # When is_server_authoritative changes, authority should update
-        entity.is_server_authoritative = false
+        entity._test_is_server_authoritative = false
         entity.multiplayer_id = 10
         entity.update_authority()
 
         var _initial_authority := entity.get_multiplayer_authority()
 
-        entity.is_server_authoritative = true
+        entity._test_is_server_authoritative = true
         # is_server_authoritative setter calls _update_partner_state which
         # may affect authority
 
@@ -656,6 +662,9 @@ class TestBufferStateRestoration:
 
     func before_each():
         ArrayPool.clear_all_pools()
+        # Reset global network state for test isolation
+        G.network.server_frame_index = 0
+
         root_node = Node.new()
         root_node.name = "Root"
         add_child_autofree(root_node)
@@ -780,21 +789,23 @@ class TestBufferStateRestoration:
 
     func test_timestamp_index_updates_during_pre_network_process():
         # Simulate frame processing
-        G.network.server_frame_index = 42
+        var expected_frame := 42
+        G.network.server_frame_index = expected_frame
 
         # Simulate _pre_network_process
-        entity.timestamp_index = G.network.server_frame_index
+        entity.timestamp_index = expected_frame
 
         assert_eq(
             entity.timestamp_index,
-            42,
+            expected_frame,
             "Timestamp index should match server frame index",
         )
 
 
     func test_has_authoritative_state_for_current_frame():
         # Store authoritative state for current frame
-        G.network.server_frame_index = 50
+        var test_frame := 50
+        G.network.server_frame_index = test_frame
         var state := ArrayPool.acquire(7)
         state[0] = Vector2.ZERO
         state[1] = Vector2.ZERO
@@ -804,9 +815,10 @@ class TestBufferStateRestoration:
         state[5] = "test"
         state[6] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
 
-        entity._rollback_buffer.set_at(50, state)
+        entity._rollback_buffer.set_at(test_frame, state)
 
-        # Check for authoritative state
+        # Check for authoritative state - ensure frame index is still correct
+        G.network.server_frame_index = test_frame
         var has_auth := entity._has_authoritative_state_for_current_frame()
 
         assert_true(
@@ -848,6 +860,9 @@ class TestPropertyConfiguration:
 
     func before_each():
         ArrayPool.clear_all_pools()
+        # Reset global network state for test isolation
+        G.network.server_frame_index = 0
+
         root_node = Node.new()
         root_node.name = "Root"
         add_child_autofree(root_node)
@@ -856,6 +871,12 @@ class TestPropertyConfiguration:
         entity.name = "TestEntity"
         entity.root_path = NodePath(".")
         root_node.add_child(entity)
+
+        # Initialize entity
+        entity._ready()
+        if entity._rollback_buffer == null:
+            entity._set_up_rollback_buffer()
+        entity._parse_property_names()
 
 
     func after_each():
@@ -1094,15 +1115,17 @@ class TestPropertyConfiguration:
         partner.test_position = Vector2(999.0, 999.0)
         partner._sync_from_scene_state()
 
+        # Capture the frame before recording
+        var test_frame := G.network.server_frame_index
+
         # Record initial state without partner
         entity.record_initial_state(false)
 
         # Partner's buffer should still be empty (no frames recorded)
-        var current_frame := G.network.server_frame_index
         var partner_has_frames := (
-            partner._rollback_buffer.has_at(current_frame - 2)
-            or partner._rollback_buffer.has_at(current_frame - 1)
-            or partner._rollback_buffer.has_at(current_frame)
+            partner._rollback_buffer.has_at(test_frame - 2)
+            or partner._rollback_buffer.has_at(test_frame - 1)
+            or partner._rollback_buffer.has_at(test_frame)
         )
 
         assert_false(

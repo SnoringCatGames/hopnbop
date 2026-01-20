@@ -11,6 +11,13 @@ var position := Vector2.ZERO
 var velocity := Vector2.ZERO
 var custom_data: int = 0
 
+@warning_ignore("unused_private_class_variable")
+var _synced_properties_and_rollback_diff_thresholds := {
+    "position": 1.0,
+    "velocity": 0.5,
+    "custom_data": 0,
+}
+
 ## Whether this entity has been reconciled.
 var was_reconciled := false
 
@@ -23,8 +30,13 @@ var last_processed_frame := -1
 
 func _init() -> void:
     super._init()
-    # Set up basic replication config.
-    is_server_authoritative = true
+    # Initialize replication config for programmatic instantiation.
+    if replication_config == null:
+        replication_config = SceneReplicationConfig.new()
+
+
+func _get_is_server_authoritative() -> bool:
+    return true
 
 
 func _pre_network_process() -> void:
@@ -49,7 +61,7 @@ func _post_network_process() -> void:
 
 ## Implement required abstract methods from ReconcilableNetworkedState.
 func _get_default_values() -> Array:
-    return [0.0, 0.0, 0.0, 0.0, 0]
+    return [Vector2.ZERO, Vector2.ZERO, 0]
 
 
 func _sync_to_scene_state(_previous_state: Array) -> void:
@@ -108,4 +120,7 @@ static func create_test_entity(
     var entity := TestNetworkedEntity.new()
     entity.position = initial_position
     entity.velocity = initial_velocity
+    # Initialize rollback buffer for testing
+    entity._set_up_rollback_buffer()
+    entity._parse_property_names()
     return entity

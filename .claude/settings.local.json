@@ -5,7 +5,16 @@
       "Bash(godot:*)",
       "Bash(find:*)",
       "WebSearch",
-      "Bash(where:*)"
+      "Bash(where:*)",
+      "Bash(Godot:*)",
+      "Bash(cmd /c godot --headless -s --path . addons/gut/gut_cmdln.gd -gexit)",
+      "Bash(cmd /c \"godot --headless -s --path . addons/gut/gut_cmdln.gd -gexit 2>&1\")",
+      "Bash(cmd /c \"godot --version\")",
+      "Bash(powershell -Command \"godot --version\")",
+      "Bash(\"C:\\\\Program Files\\\\Godot\\\\godot.exe\" --headless -s --path . addons/gut/gut_cmdln.gd -gexit)",
+      "Bash(Select-String -Pattern \"\\(passed|failed|Risky\\)\" -Context 0,2)",
+      "Bash(Select-Object -Last 50)",
+      "Bash(\"C:\\\\Program Files\\\\Godot\\\\godot.exe\" --headless -s --path . addons/gut/gut_cmdln.gd -gtest=res://test/unit/networking/test_reconcilable_networked_state.gd -gexit)"
     ]
   }
 }

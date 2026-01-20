@@ -444,6 +444,9 @@ class TestRollbackAndReprocess:
         # Verify that time conversions remain consistent
         # when frame_index changes during rollback
         frame_driver.server_frame_index = 100
+        frame_driver.server_frame_time_usec = (
+            frame_driver.get_time_usec_from_frame_index(100)
+        )
 
         var time_before := frame_driver.server_frame_time_usec
         var expected_time := frame_driver.get_time_usec_from_frame_index(100)
@@ -572,6 +575,9 @@ class TestFastForward:
     func test_fast_forward_updates_time_usec():
         # Fast forward should update both frame index and time
         frame_driver.server_frame_index = 10
+        frame_driver.server_frame_time_usec = (
+            frame_driver.get_time_usec_from_frame_index(10)
+        )
 
         frame_driver.fast_forward(20)
 

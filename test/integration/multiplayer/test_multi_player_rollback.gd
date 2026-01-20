@@ -24,6 +24,8 @@ class TestMultiPlayerRollback:
     func before_each():
         ArrayPool.clear_all_pools()
         frame_driver = G.network.frame_driver
+        # Clear any entities from previous tests
+        frame_driver._networked_state_nodes.clear()
 
 
     func after_each():

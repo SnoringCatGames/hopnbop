@@ -353,7 +353,7 @@ var oldest_rollbackable_frame_index: int:
         #   oldest recorded frame.
         # - Also, some buffers could already contain networked state for the
         #   next frame, so those buffers have one fewer past frames.
-        return max(G.network.server_frame_index - rollback_buffer_size + 3, 1)
+        return max(server_frame_index - rollback_buffer_size + 3, 1)
 
 
 func _ready() -> void:
@@ -462,9 +462,11 @@ func queue_rollback(p_conflicting_frame_index: int) -> bool:
     var target_rollback_frame := p_conflicting_frame_index + 1
     if is_frame_too_old_to_consider(p_conflicting_frame_index):
         G.fatal(
-            "Requested rollback to frame %d, " +
-            "but oldest rollbackable frame is %d"
-            % [target_rollback_frame, oldest_rollbackable_frame_index],
+            (
+                "Requested rollback to frame %d, " +
+                "but oldest rollbackable frame is %d"
+            )
+            % [target_rollback_frame, oldest_rollbackable_frame_index]
         )
         return false
 

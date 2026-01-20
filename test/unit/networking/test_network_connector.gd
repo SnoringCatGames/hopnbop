@@ -110,12 +110,12 @@ class TestConnectionLifecycle:
     func before_each():
         ArrayPool.clear_all_pools()
         connector = NetworkConnector.new()
+        # Add to scene tree so multiplayer property is available
+        add_child_autofree(connector)
 
 
     func after_each():
         ArrayPool.clear_all_pools()
-        if is_instance_valid(connector):
-            connector.free()
 
 
     func test_on_peer_connected_handler_exists():
