@@ -1,16 +1,60 @@
 class_name NetworkFrameDriver
 extends Node
+## Core frame-synchronous simulation engine for client-prediction rollback
+## networking.
+##
+## NetworkFrameDriver is the heart of the networking system, managing
+## deterministic frame-based simulation at a fixed FPS (independent of render
+## framerate). It coordinates all networked entities through a three-phase
+## processing cycle:
+##
+## 1. **_pre_network_process**: Restore state from rollback buffer for current
+##    frame
+## 2. **_network_process**: Execute game logic (movement, physics, input
+##    handling)
+## 3. **_post_network_process**: Pack and record new state to rollback buffer
+##
+## Key responsibilities:
+## - Maintains server_frame_index and server_frame_time_usec for frame-aligned
+##   simulation
+## - Manages the rollback buffer
+## - Detects state mismatches and triggers rollback reconciliation
+## - Coordinates re-simulation of frames during rollback
+## - Handles fast-forwarding when client falls behind server
+## - Registers and manages all ReconcilableNetworkedState and
+##   NetworkFrameProcessor nodes
+##
+## Networked entities must extend either ReconcilableNetworkedState or
+## NetworkFrameProcessor to participate in this frame-synchronous cycle.
+## - ReconcilableNetworkedState nodes support server-mismatch detection and
+##   rollback
+## - NetworkFrameProcessor nodes simply process each frame without rollback
+##   support.
+##
+## Accessed via G.network.frame_driver singleton.
+##
+## Frame timing:
+## - Target: 60 FPS (TARGET_NETWORK_TIME_STEP_SEC = 1/60 ≈ 0.01666 seconds)
+## - Frames are identified by server_frame_index
+## - Times are stored in microseconds for precision
+##
+## Rollback mechanism:
+## - queue_rollback() schedules rollback to a specific frame (conflict detection)
+## - _rollback_and_reprocess() restores state and re-simulates up to current
+##   frame
+## - Only one rollback occurs per _network_process, earliest frame takes priority
 
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug.
 # - Hand test and debug.
 #   - Add if-statements, guarding on client/server, with a pass, everywhere, to
 #     set breakpoints on easily as needed.
 #   - Print statements.
-# - Ask AI:
+#
+# /- Ask AI:
 #   Analyze all networking logic (everything under the networking/ folder) and generate file-level doc comments for each class.
-# - Ask AI:
+# /- Ask AI:
 #   Write a detailed markdown document explaining the overall architecture, enumerating the networking systems, and describing in detail how they work together to implement client prediction, prediction error detection, and reconciliation with rollback and re-process. Include a section at the end steps to implement networking in a new game using this framework.
-# - Ask AI:
+# /- Ask AI:
 #   /plan
 #   Review all networking logic in this project. List any important unit and integration testing gaps. Plan implementations for those tests.
 
