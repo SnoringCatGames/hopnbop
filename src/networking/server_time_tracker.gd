@@ -1,22 +1,64 @@
 class_name ServerTimeTracker
 extends Node
-## Tracks and estimates the current server time using NTP-like synchronization.
+## Tracks and estimates current server time using NTP-like clock synchronization.
 ##
-## https://en.wikipedia.org/wiki/Network_Time_Protocol
+## ServerTimeTracker provides clients with an accurate estimate of the server's
+## current time (Time.get_ticks_usec()) by calculating and maintaining a clock
+## offset that accounts for network latency.
 ##
-## This class provides an estimate of the current value of `Time.get_ticks_usec()`
-## on the remote server machine.
+## **NTP algorithm (Network Time Protocol):**
+## Reference: https://en.wikipedia.org/wiki/Network_Time_Protocol
 ##
-## It uses an NTP-like algorithm to calculate the clock offset between client and server,
-## accounting for network latency.
+## The synchronization process uses four timestamps:
+## - T1: Client sends request (client local time)
+## - T2: Server receives request (server time)
+## - T3: Server sends response (server time)
+## - T4: Client receives response (client local time)
+##
+## From these, we calculate:
+## - Round-trip time (RTT): (T4 - T1) - (T3 - T2)
+## - Clock offset: ((T2 - T1) + (T3 - T4)) / 2
+##
+## The offset tells us how much to add to local time to estimate server time:
+##   estimated_server_time = local_time + clock_offset
+##
+## **Smoothing and stability:**
+## - Maintains a sliding window of recent samples (default 5)
+## - Uses average offset across samples for stability
+## - Initial burst mode: syncs every 0.2s until enough samples collected
+## - Normal mode: syncs every 5.0s to handle clock drift
+##
+## **Key methods:**
+## - get_server_time_usec(): Returns estimated server time in microseconds
+## - client_request_time_sync(): Manually trigger a sync request
+## - force_clock_offset(delta): Adjust offset when authoritative state indicates
+##   drift
+##
+## **Automatic synchronization:**
+## - Starts automatically when client connects to server
+## - Runs continuously in _process() if auto_sync_interval > 0
+## - Emits sync_completed signal after each successful sync
+##
+## **Server behavior:**
+## - On server, get_server_time_usec() simply returns local time (no offset
+##   needed)
+## - Server responds to client sync requests via RPC
+##
+## Accessed via G.network.time singleton.
+##
+## This accurate time estimate is critical for frame-based networking, allowing
+## clients to correctly map network timestamps to local frame indices for
+## rollback reconciliation.
 
 ## Emitted when a time sync completes successfully.
 signal sync_completed(offset_usec: int, rtt_usec: int)
 
-## How often to automatically sync time (in seconds). Set to 0 to disable auto-sync.
+## How often to automatically sync time (in seconds). Set to 0 to disable
+## auto-sync.
 @export var auto_sync_interval: float = 5.0
 
-## How often to sync during initial burst (in seconds) until we have sample_count samples.
+## How often to sync during initial burst (in seconds) until we have
+## sample_count samples.
 @export var initial_sync_interval: float = 0.2
 
 ## Number of sync samples to average for a more stable offset estimate.
@@ -26,10 +68,8 @@ signal sync_completed(offset_usec: int, rtt_usec: int)
 var is_server: bool:
     get:
         return (
-            multiplayer.is_server() if
-            is_instance_valid(multiplayer) and
-                multiplayer.has_multiplayer_peer() else
-            true
+            multiplayer.is_server() if is_instance_valid(multiplayer) and
+            multiplayer.has_multiplayer_peer() else true
         )
 
 ## The estimated clock offset from local time to server time (in microseconds).
@@ -68,7 +108,8 @@ func _process(delta: float) -> void:
 
     _time_since_last_sync += delta
 
-    # Use faster sync interval until we have enough samples for a stable estimate.
+    # Use faster sync interval until we have enough samples for a stable
+    # estimate.
     var current_interval := (
         initial_sync_interval
         if _client_offset_samples.size() < sample_count
@@ -117,7 +158,8 @@ func force_clock_offset(delta_usec: int) -> void:
 
     clock_offset_usec += delta_usec
 
-    # Also adjust all samples so the running average doesn't fight this correction.
+    # Also adjust all samples so the running average doesn't fight this
+    # correction.
     for i in range(_client_offset_samples.size()):
         _client_offset_samples[i] += delta_usec
 
