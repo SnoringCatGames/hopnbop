@@ -340,8 +340,12 @@ class TestRollbackAndReprocess:
         frame_driver.queue_rollback(45)  # Target: 46 (earlier)
         frame_driver.queue_rollback(49)  # Target: 50 (later)
 
-        # Internal state should have frame 46 as the target
-        # This will be verified when rollback executes
+        # Internal state should have frame 46 as the target (earliest)
+        assert_eq(
+            frame_driver._queued_rollback_frame_index,
+            46,
+            "Should keep earliest rollback target (46)",
+        )
 
 
     func test_oldest_rollbackable_calculation_with_large_buffer():
@@ -403,10 +407,22 @@ class TestRollbackAndReprocess:
         # Queue a rollback
         frame_driver.queue_rollback(45)
 
+        # Verify the rollback was queued
+        assert_eq(
+            frame_driver._queued_rollback_frame_index,
+            46,
+            "Rollback should be queued at frame 46",
+        )
+
+        # Process the simulation, which should execute and clear the queue
+        frame_driver._run_network_process()
+
         # After _run_network_process, the queue should be cleared
-        # We can verify this by queueing another rollback and checking
-        # that it accepts a later frame without deduplication
-        # This is an indirect test of the clearing behavior
+        assert_eq(
+            frame_driver._queued_rollback_frame_index,
+            0,
+            "Rollback queue should be cleared after processing",
+        )
 
 
     func test_rollback_state_consistency():

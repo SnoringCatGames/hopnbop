@@ -15,7 +15,16 @@
       "Bash(Select-String -Pattern \"\\(passed|failed|Risky\\)\" -Context 0,2)",
       "Bash(Select-Object -Last 50)",
       "Bash(\"C:\\\\Program Files\\\\Godot\\\\godot.exe\" --headless -s --path . addons/gut/gut_cmdln.gd -gtest=res://test/unit/networking/test_reconcilable_networked_state.gd -gexit)",
-      "Bash(\"C:\\\\Program Files\\\\Godot\\\\godot.exe\" --headless -s --path . addons/gut/gut_cmdln.gd -gdir=res://test/unit/networking -gtest=test_reconcilable_networked_state.gd -ginner_class=TestBufferStateRestoration -gexit)"
+      "Bash(\"C:\\\\Program Files\\\\Godot\\\\godot.exe\" --headless -s --path . addons/gut/gut_cmdln.gd -gdir=res://test/unit/networking -gtest=test_reconcilable_networked_state.gd -ginner_class=TestBufferStateRestoration -gexit)",
+      "Bash(\"C:\\\\Program Files\\\\Godot\\\\Godot_v4.5-stable_win64.exe\" --headless -s --path . addons/gut/gut_cmdln.gd -gtest=res://test/unit/networking/test_network_frame_driver.gd -gexit)",
+      "Bash(\"C:\\\\Program Files\\\\Godot\\\\Godot_v4.5-stable_win64.exe\" --headless -s --path . addons/gut/gut_cmdln.gd -gtest=res://test/unit/networking/test_reconcilable_networked_state.gd -gexit)",
+      "Bash(\"C:\\\\Program Files\\\\Godot\\\\Godot_v4.5-stable_win64.exe\" --headless -s --path . addons/gut/gut_cmdln.gd -gdir=res://test/unit -gdir=res://test/integration -gexit)",
+      "Bash(\"C:\\\\Program Files\\\\Godot\\\\Godot_v4.5-stable_win64.exe\" --headless -s --path . addons/gut/gut_cmdln.gd -gtest=res://test/unit/networking/test_reconcilable_networked_state.gd -gunit_test_name=test_unpack_networked_state_restores_properties -gexit)",
+      "Bash(for i in {1..5})",
+      "Bash(do echo \"=== Run $i ===\")",
+      "Bash(done)",
+      "Bash(grep:*)",
+      "Bash(\"/c/Program Files/Godot/Godot_v4.5-stable_win64_console.exe\" --headless -s --path . addons/gut/gut_cmdln.gd -gtest=res://test/unit/networking/test_reconcilable_networked_state.gd -gexit)"
     ]
   }
 }

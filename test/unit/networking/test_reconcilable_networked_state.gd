@@ -25,7 +25,8 @@ class TestableNetworkedState extends ReconcilableNetworkedState:
     # Allow tests to change authority
     var _test_is_server_authoritative := true
 
-    @warning_ignore("unused_private_class_variable") var _synced_properties_and_rollback_diff_thresholds := {
+    @warning_ignore("unused_private_class_variable")
+    var _synced_properties_and_rollback_diff_thresholds := {
         "test_position": 1.0,
         "test_velocity": 10.0,
         "test_health": 5,
@@ -42,6 +43,17 @@ class TestableNetworkedState extends ReconcilableNetworkedState:
             replication_config = SceneReplicationConfig.new()
 
 
+    func _ready() -> void:
+        super._ready()
+        # In editor mode, base _ready() returns early before calling
+        # _parse_property_names(). For tests, we need to parse properties
+        # regardless of editor hint status.
+        if Engine.is_editor_hint():
+            if _rollback_buffer == null:
+                _set_up_rollback_buffer()
+            _parse_property_names()
+
+
     func _get_default_values() -> Array:
         return [Vector2.ZERO, Vector2.ZERO, 100, 10.0, true, "player"]
 
@@ -56,6 +68,32 @@ class TestableNetworkedState extends ReconcilableNetworkedState:
 
     func _sync_from_scene_state() -> void:
         pass
+
+
+    # Override _unpack_networked_state with lazy initialization for editor mode
+    func _unpack_networked_state() -> void:
+        # Lazy initialization: ensure properties are parsed if they haven't been yet
+        # This handles the case where _ready() returned early in editor mode
+        if _property_names_for_packing.is_empty():
+            _parse_property_names()
+
+        super._unpack_networked_state()
+
+    # Override _parse_property_names to work around @tool + inner class issues
+    func _parse_property_names() -> void:
+        # Directly access the var instead of using get() which may fail
+        # in @tool mode with inner classes
+        var keys = _synced_properties_and_rollback_diff_thresholds.keys()
+
+        # Clear and manually populate to ensure typed array works correctly
+        _property_names_for_packing.clear()
+        for key in keys:
+            _property_names_for_packing.append(key)
+
+        _property_name_to_pack_index.clear()
+        for i in range(_property_names_for_packing.size()):
+            var property_name := _property_names_for_packing[i]
+            _property_name_to_pack_index[property_name] = i
 
 
     # Expose protected methods for testing
@@ -340,9 +378,13 @@ class TestStatePacking:
 
         # Initialize entity
         entity._ready()
+        # Explicitly ensure rollback buffer and property names are initialized
+        # (in case _ready() was already called during @tool execution)
         if entity._rollback_buffer == null:
             entity._set_up_rollback_buffer()
+        # Always re-parse property names to ensure they're up to date
         entity._parse_property_names()
+
 
 
     func after_each():
@@ -428,6 +470,17 @@ class TestStatePacking:
         entity.pack_networked_state_public()
         var packed_state_to_restore := entity.packed_state
 
+        # Verify pack worked
+        assert_not_null(
+            packed_state_to_restore,
+            "Packed state should not be null"
+        )
+        assert_eq(
+            packed_state_to_restore.size(),
+            7,
+            "Packed state should have 7 elements"
+        )
+
         # Now reset properties to defaults
         entity.test_position = Vector2.ZERO
         entity.test_velocity = Vector2.ZERO
@@ -436,8 +489,20 @@ class TestStatePacking:
         entity.test_is_active = true
         entity.test_name = "player"
 
-        # Restore from packed state
+        # Set the _is_packing_state_locally flag to prevent the packed_state setter
+        # from triggering _handle_new_authoritative_state() which would unpack
+        # the state automatically before we can test the unpacking explicitly
+        entity._is_packing_state_locally = true
         entity.packed_state = packed_state_to_restore
+        entity._is_packing_state_locally = false
+
+        # Verify state is still valid before unpacking
+        assert_eq(
+            entity.packed_state.size(),
+            7,
+            "Packed state should still have 7 elements before unpack"
+        )
+
         entity.unpack_networked_state_public()
 
         # Verify properties were restored
@@ -528,6 +593,14 @@ class TestStatePacking:
         entity.pack_networked_state_public()
         var packed_copy := entity.packed_state.duplicate()
 
+        # Verify pack worked
+        assert_not_null(packed_copy, "Packed copy should not be null")
+        assert_eq(
+            packed_copy.size(),
+            7,
+            "Packed copy should have 7 elements"
+        )
+
         # Clear properties
         entity.test_position = Vector2.ZERO
         entity.test_velocity = Vector2.ZERO
@@ -536,8 +609,18 @@ class TestStatePacking:
         entity.test_is_active = true
         entity.test_name = ""
 
-        # Restore from packed state
+        # Set the _is_packing_state_locally flag to prevent automatic unpacking
+        entity._is_packing_state_locally = true
         entity.packed_state = packed_copy
+        entity._is_packing_state_locally = false
+
+        # Verify state is still valid before unpacking
+        assert_eq(
+            entity.packed_state.size(),
+            7,
+            "Packed state should still have 7 elements before unpack"
+        )
+
         entity.unpack_networked_state_public()
 
         # Verify all properties restored correctly
@@ -657,14 +740,23 @@ class TestAuthorityHandling:
         entity.multiplayer_id = 10
         entity.update_authority()
 
-        var _initial_authority := entity.get_multiplayer_authority()
+        var initial_authority := entity.get_multiplayer_authority()
+        assert_eq(
+            initial_authority,
+            10,
+            "Authority should be client ID when not server authoritative",
+        )
 
         entity._test_is_server_authoritative = true
-        # is_server_authoritative setter calls _update_partner_state which
-        # may affect authority
+        entity.update_authority()
 
-        # Authority should change when is_server_authoritative changes
-        # (exact behavior depends on update_authority being called)
+        # Authority should change to server when is_server_authoritative is true
+        var new_authority := entity.get_multiplayer_authority()
+        assert_eq(
+            new_authority,
+            1,
+            "Authority should be SERVER_ID when server authoritative",
+        )
 
 
 class TestBufferStateRestoration:
@@ -689,8 +781,11 @@ class TestBufferStateRestoration:
 
         # Initialize entity
         entity._ready()
+        # Explicitly ensure rollback buffer and property names are initialized
+        # (in case _ready() was already called during @tool execution)
         if entity._rollback_buffer == null:
             entity._set_up_rollback_buffer()
+        # Always re-parse property names to ensure they're up to date
         entity._parse_property_names()
 
 
@@ -905,8 +1000,11 @@ class TestPropertyConfiguration:
 
         # Initialize entity
         entity._ready()
+        # Explicitly ensure rollback buffer and property names are initialized
+        # (in case _ready() was already called during @tool execution)
         if entity._rollback_buffer == null:
             entity._set_up_rollback_buffer()
+        # Always re-parse property names to ensure they're up to date
         entity._parse_property_names()
 
 
