@@ -247,13 +247,23 @@ func _calculate_is_running_in_test_env() -> void:
     var root = tree.root if tree else null
     if root:
         for child in root.get_children():
-            if child.get_class() == "GutMain" or child.has_method("get_test_count"):
+            var child_class = child.get_class()
+            # Check for GutMain or RunFromEditor (editor test runner)
+            if (
+                child_class == "GutMain"
+                or child.has_method("get_test_count")
+                or child.name == "RunFromEditor"
+            ):
                 _is_test_env_cached = true
                 return
 
     # Method 3: Check command-line arguments for GUT-specific flags
+    # or if loading GUT scenes
     for arg in OS.get_cmdline_args():
-        if arg.begins_with("-g") and ("test" in arg or "dir" in arg or "exit" in arg):
+        if (
+            (arg.begins_with("-g") and ("test" in arg or "dir" in arg or "exit" in arg))
+            or "addons/gut" in arg
+        ):
             _is_test_env_cached = true
             return
 
