@@ -51,6 +51,7 @@ extends Node
 #   - Print statements.
 # - Review NETWORKING_ARCHITECTURE.md.
 # - Review tests.
+# - Fix GitHub CI.
 
 # FIXME: Rollback debug visualization and networking improvements:
 #
