@@ -12,6 +12,8 @@ const _SLOW_RENDER_FPS := 30
 const _SLOW_PHYSICS_FPS := ScaffolderTime.PHYSICS_FPS - 1
 const _SLOW_NETWORK_FPS := 30
 
+const _WARNING_THROTTLE_SEC := 5.0
+
 @export var sample_window_size := 60
 
 @onready var _physics_deltas := CircularBuffer.new(sample_window_size)
@@ -20,12 +22,34 @@ const _SLOW_NETWORK_FPS := 30
 
 var _last_network_update_time := -1.0
 
+var _throttled_warn_render_fps: Callable
+var _throttled_warn_physics_fps: Callable
+var _throttled_warn_network_fps: Callable
+var _throttled_warn_network_rtt: Callable
+
 
 func _ready() -> void:
     visible = G.settings.show_perf_tracker
 
     if not G.settings.show_perf_tracker:
         return
+
+    _throttled_warn_render_fps = G.time.throttle(
+        _log_render_fps_warning,
+        _WARNING_THROTTLE_SEC,
+    )
+    _throttled_warn_physics_fps = G.time.throttle(
+        _log_physics_fps_warning,
+        _WARNING_THROTTLE_SEC,
+    )
+    _throttled_warn_network_fps = G.time.throttle(
+        _log_network_fps_warning,
+        _WARNING_THROTTLE_SEC,
+    )
+    _throttled_warn_network_rtt = G.time.throttle(
+        _log_network_rtt_warning,
+        _WARNING_THROTTLE_SEC,
+    )
 
     G.network.local_authority_added.connect(_on_local_authority_added)
     G.network.local_authority_removed.connect(_on_local_authority_removed)
@@ -60,11 +84,12 @@ func _process(delta: float) -> void:
     var avg_fps := _calculate_average_fps(_render_deltas)
     %RenderFPS.text = "%.1f" % avg_fps
 
-    if avg_fps > 0.0 and avg_fps < _SLOW_RENDER_FPS:
-        G.warning(
-            "Slow render FPS: %.1f (threshold: %d)" % [avg_fps, _SLOW_RENDER_FPS],
-            ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-        )
+    if (
+        G.game_panel.is_level_fully_loaded
+        and avg_fps > 0.0
+        and avg_fps < _SLOW_RENDER_FPS
+    ):
+        _throttled_warn_render_fps.call(avg_fps)
 
 
 func _physics_process(delta: float) -> void:
@@ -75,11 +100,12 @@ func _physics_process(delta: float) -> void:
     var avg_fps := _calculate_average_fps(_physics_deltas)
     %PhysicsFPS.text = "%.1f" % avg_fps
 
-    if avg_fps > 0.0 and avg_fps < _SLOW_PHYSICS_FPS:
-        G.warning(
-            "Slow physics FPS: %.1f (threshold: %d)" % [avg_fps, _SLOW_PHYSICS_FPS],
-            ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-        )
+    if (
+        G.game_panel.is_level_fully_loaded
+        and avg_fps > 0.0
+        and avg_fps < _SLOW_PHYSICS_FPS
+    ):
+        _throttled_warn_physics_fps.call(avg_fps)
 
     _update_network_ping()
 
@@ -88,12 +114,11 @@ func _update_network_ping() -> void:
     var rtt_msec := G.network.time.rtt_usec / 1_000.0
     %NetworkPing.text = "%.1f" % rtt_msec
 
-    if rtt_msec > _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0:
-        G.warning(
-            "Slow network RTT: %.1fms (threshold: %.0fms)"
-            % [rtt_msec, _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0],
-            ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-        )
+    if (
+        G.game_panel.is_level_fully_loaded
+        and rtt_msec > _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0
+    ):
+        _throttled_warn_network_rtt.call(rtt_msec)
 
 
 func _character_state_from_server_updated() -> void:
@@ -107,11 +132,12 @@ func _character_state_from_server_updated() -> void:
         var avg_fps := _calculate_average_fps(_network_deltas)
         %NetworkFPS.text = "%.1f" % avg_fps
 
-        if avg_fps > 0.0 and avg_fps < _SLOW_NETWORK_FPS:
-            G.warning(
-                "Slow network FPS: %.1f (threshold: %d)" % [avg_fps, _SLOW_NETWORK_FPS],
-                ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-            )
+        if (
+            G.game_panel.is_level_fully_loaded
+            and avg_fps > 0.0
+            and avg_fps < _SLOW_NETWORK_FPS
+        ):
+            _throttled_warn_network_fps.call(avg_fps)
     _last_network_update_time = current_time
 
 
@@ -125,3 +151,35 @@ func _calculate_average_fps(deltas: CircularBuffer) -> float:
     if total_delta <= 0.0:
         return 0.0
     return count / total_delta
+
+
+func _log_render_fps_warning(avg_fps: float) -> void:
+    G.warning(
+        "SLOW RENDER FPS: %.1f (THRESHOLD: %d)"
+        % [avg_fps, _SLOW_RENDER_FPS],
+        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+    )
+
+
+func _log_physics_fps_warning(avg_fps: float) -> void:
+    G.warning(
+        "SLOW PHYSICS FPS: %.1f (THRESHOLD: %d)"
+        % [avg_fps, _SLOW_PHYSICS_FPS],
+        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+    )
+
+
+func _log_network_fps_warning(avg_fps: float) -> void:
+    G.warning(
+        "SLOW NETWORK FPS: %.1f (THRESHOLD: %d)"
+        % [avg_fps, _SLOW_NETWORK_FPS],
+        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+    )
+
+
+func _log_network_rtt_warning(rtt_msec: float) -> void:
+    G.warning(
+        "SLOW NETWORK RTT: %.1fMS (THRESHOLD: %.0fMS)"
+        % [rtt_msec, _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0],
+        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+    )

@@ -23,12 +23,6 @@ extends Node
 ## - server_frame_time_usec: Frame-aligned server time
 ## - server_time_usec_not_frame_aligned: Raw estimated server time
 ##
-## Signals:
-## - local_authority_added: Emitted when a new PlayerInputFromClient gains local
-##   authority
-## - local_authority_removed: Emitted when a PlayerInputFromClient loses local
-##   authority
-##
 ## Testing with multiple instances in Godot editor:
 ## - In order to support local testing with preview mode in the Godot
 ##   editor, do the following:
@@ -40,7 +34,15 @@ extends Node
 ##     --server, --client=1, --client=2.
 ##   - Also, include --preview as an arg in each row.
 
+## Emitted when a PlayerInputFromClient node gains local multiplayer
+## authority on this client. This occurs when the server spawns a player
+## character for this client and the MultiplayerSynchronizer assigns
+## authority. Use this signal to detect when the local player is ready.
 signal local_authority_added(state_from_client: PlayerInputFromClient)
+
+## Emitted when a PlayerInputFromClient node loses local multiplayer
+## authority on this client. This occurs when the player character is
+## despawned or authority is transferred away from this client.
 signal local_authority_removed(state_from_client: PlayerInputFromClient)
 
 var time := ServerTimeTracker.new()

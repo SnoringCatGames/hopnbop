@@ -60,10 +60,10 @@ extends Node
 # Please flag any aspects that seem like a mistake or that don't make sense.
 #
 # ### Pre-part: Add benchmarking
+# In the PerfTracker scene, let's track and display some benchmarking:
 # - Track how often rollbacks occur.
 # - Track how many frames are involved with each rollback.
 # - Track how long each rollback takes to process.
-# - Display all of these benchmarks in the PerfTracker scene.
 #
 # ### PART 1: Add support for networked pause
 # - Add a new flag: Settings.is_server_pause_enabled

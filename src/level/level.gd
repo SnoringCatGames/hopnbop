@@ -56,6 +56,9 @@ func _ready() -> void:
         %PlayerSpawner.spawned.connect(_client_on_player_spawned)
         %PlayerSpawner.despawned.connect(_client_on_player_despawned)
 
+    if G.network.is_server:
+        G.game_panel.is_level_fully_loaded = true
+
 
 func _client_on_player_spawned(p_player: Node) -> void:
     G.ensure(p_player is Player)
@@ -72,10 +75,11 @@ func _client_on_player_despawned(p_player: Node) -> void:
 func _exit_tree() -> void:
     if Engine.is_editor_hint():
         return
-    G.game_panel.on_level_removed(self)
     if G.network.is_server:
+        G.game_panel.is_level_fully_loaded = false
         multiplayer.peer_connected.disconnect(_server_add_player)
         multiplayer.peer_disconnected.disconnect(_server_remove_player)
+    G.game_panel.on_level_removed(self)
 
 
 func _server_add_player(multiplayer_id: int) -> void:

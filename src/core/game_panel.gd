@@ -3,6 +3,8 @@ extends Node2D
 
 var levels: Array[Level] = []
 
+var is_level_fully_loaded := false
+
 var match_state: MatchState:
     get:
         return %MatchStateSynchronizer.state
@@ -35,6 +37,10 @@ func _ready() -> void:
 
         %LevelSpawner.spawned.connect(_client_on_level_spawned)
         %LevelSpawner.despawned.connect(_client_on_level_despawned)
+
+        G.network.local_authority_added.connect(
+            _client_on_local_player_loaded,
+        )
 
     %MatchStateSynchronizer.player_joined.connect(_on_player_joined)
     %MatchStateSynchronizer.player_left.connect(_on_player_left)
@@ -79,6 +85,12 @@ func _client_on_level_despawned(p_level: Node) -> void:
     G.ensure(p_level is Level)
     var level: Level = p_level
     G.print("Level despawned: %s" % level.get_string(), ScaffolderLog.CATEGORY_GAME_STATE)
+
+
+func _client_on_local_player_loaded(
+        _state_from_client: PlayerInputFromClient,
+) -> void:
+    is_level_fully_loaded = true
 
 
 func _network_process() -> void:
@@ -229,6 +241,7 @@ func on_level_added(level: Level) -> void:
 
 func on_level_removed(level: Level) -> void:
     if G.network.is_client:
+        is_level_fully_loaded = false
         if G.level == level:
             G.level = null
         levels.erase(level)
