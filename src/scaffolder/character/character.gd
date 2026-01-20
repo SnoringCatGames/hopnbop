@@ -157,6 +157,10 @@ func _update_actions() -> void:
     surfaces.update_actions()
     actions.log_new_presses_and_releases(self)
 
+    # Record the frame when jump is triggered for network reconciliation.
+    if actions.just_pressed_jump:
+        last_triggered_jump_frame_index = G.network.server_frame_index
+
 
 func _network_process() -> void:
     _apply_movement()
