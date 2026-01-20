@@ -1,7 +1,8 @@
-[gd_scene load_steps=4 format=3 uid="uid://e73j4d7tda7g"]
+[gd_scene load_steps=5 format=3 uid="uid://e73j4d7tda7g"]
 
 [ext_resource type="Script" uid="uid://0tckejytuj7k" path="res://src/ui/super_hud/player_state_list.gd" id="1_r4pw4"]
 [ext_resource type="PackedScene" uid="uid://b68aet2v6aw72" path="res://src/ui/super_hud/player_state_panel.tscn" id="2_jr2s1"]
+[ext_resource type="Theme" uid="uid://curquyi35i5lq" path="res://src/core/debug_overlay_theme.tres" id="3_uy4hl"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_b1riu"]
 
@@ -19,6 +20,7 @@ player_state_panel_scene = ExtResource("2_jr2s1")
 [node name="MarginContainer" type="MarginContainer" parent="."]
 layout_mode = 2
 mouse_filter = 2
+theme = ExtResource("3_uy4hl")
 
 [node name="States" type="HFlowContainer" parent="MarginContainer"]
 unique_name_in_owner = true
