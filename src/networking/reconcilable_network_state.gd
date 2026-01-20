@@ -253,18 +253,25 @@ func _handle_new_authoritative_state() -> void:
     )
 
     if should_check_for_prediction_mismatch:
-        if _check_is_client_prediction_mismatch(packed_state, state_frame_index):
+        var mismatched_properties := _get_mismatched_properties(packed_state, state_frame_index)
+        if not mismatched_properties.is_empty():
             var buffer_state: Array = _rollback_buffer.get_at(state_frame_index)
+            var node_type := "state-from-server" if is_server_authoritative else "state-from-client"
+            var mismatch_details := _get_mismatch_details_string(
+                mismatched_properties,
+                packed_state,
+                buffer_state,
+            )
             G.print(
-                "Client-prediction state mismatch: networked state: %s, local state: %s"
-                % [
-                    get_string_for_packed_state(packed_state),
-                    get_string_for_packed_state(buffer_state),
-                ],
+                "Prediction state mismatch (%s): %s"
+                % [node_type, mismatch_details],
                 ScaffolderLog.CATEGORY_NETWORK_SYNC,
             )
 
             G.network.frame_driver.queue_rollback(state_frame_index)
+
+        # Release the array back to pool
+        ArrayPool.release(mismatched_properties)
 
     # Record rollback buffer frame.
     _pack_buffer_state_from_network_state(packed_state)
@@ -489,12 +496,21 @@ func _unpack_buffer_state(frame_index: int) -> void:
     frame_authority = frame_state[i]
 
 
-func _check_is_client_prediction_mismatch(
+## Returns an array of property names that have mismatched values between
+## networked state and local buffer state.
+##
+## Uses ArrayPool to reduce allocations since this is called frequently on the
+## network hot path. Caller is responsible for releasing the array.
+func _get_mismatched_properties(
         networked_state: Array,
         frame_index: int,
-) -> bool:
+) -> Array:
     var buffer_data: Array = _rollback_buffer.get_at(frame_index)
     var thresholds: Dictionary = get("_synced_properties_and_rollback_diff_thresholds")
+
+    # Pre-allocate for worst case (all properties mismatched)
+    var mismatched := ArrayPool.acquire(thresholds.size())
+    var mismatch_count := 0
 
     for property_name in thresholds:
         var threshold = thresholds[property_name]
@@ -502,9 +518,33 @@ func _check_is_client_prediction_mismatch(
         var networked_value = networked_state[pack_index]
         var buffer_value = buffer_data[pack_index]
         if _check_do_values_mismatch(buffer_value, networked_value, threshold):
-            return true
+            mismatched[mismatch_count] = property_name
+            mismatch_count += 1
 
-    return false
+    # Trim to actual size
+    mismatched.resize(mismatch_count)
+    return mismatched
+
+
+## Returns a formatted string showing only the mismatched properties and their
+## values from both networked and local buffer state.
+func _get_mismatch_details_string(
+        mismatched_properties: Array,
+        networked_state: Array,
+        buffer_state: Array,
+) -> String:
+    var details: Array[String] = []
+    for property_name in mismatched_properties:
+        var pack_index: int = _property_name_to_pack_index[property_name]
+        var networked_value = networked_state[pack_index]
+        var buffer_value = buffer_state[pack_index]
+        var networked_str := _get_string_for_value(networked_value)
+        var buffer_str := _get_string_for_value(buffer_value)
+        details.append(
+            "{%s: remote=%s, local=%s}" % [property_name, networked_str, buffer_str],
+        )
+
+    return ", ".join(details)
 
 
 func _check_do_values_mismatch(

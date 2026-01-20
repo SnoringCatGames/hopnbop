@@ -59,7 +59,19 @@ extends Node
 # Review my notes and to create a plan for implementing them.
 # Please flag any aspects that seem like a mistake or that don't make sense.
 #
-# ### PART 0: Add benchmarking
+# ### Pre-part:
+# If on a client, update the "player joined" log message (_on_player_joined) to indicate whether that player is "(self)".
+#
+# ### Pre-part: Disable warning at startup
+# In PerfTracker we log warnings when performance is below a threshold. I want to make a few changes:
+# - For each dimension, debounce the warning. Only print it once per 5 seconds (you could use G.time.debounce for this).
+# - Make the text of the message all caps.
+# - Disable logging any warnings when we haven't fully loaded the current level.
+#   - Track this as is_level_fully_loaded in game_panel.
+#     - On the client, this is set to true when the locally-owned player is loaded, and set to false in level _exit_tree.
+#     - On the server, this is set to true at the end of level _ready, and set to false at the start of level _exit_tree.
+#
+# ### Pre-part: Add benchmarking
 # - Track how often rollbacks occur.
 # - Track how many frames are involved with each rollback.
 # - Track how long each rollback takes to process.

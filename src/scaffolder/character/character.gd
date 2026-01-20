@@ -39,8 +39,8 @@ var start_position := Vector2.INF
 var previous_position := Vector2.INF
 var previous_velocity := Vector2.INF
 
-var last_triggered_jump_frame_index := 0
-var _last_processed_jump_frame_index := 0
+var last_triggered_jump_frame_index := -1
+var _last_processed_jump_frame_index := -1
 const _JUMP_EVENT_STALENESS_THRESHOLD_SEC := 0.5
 
 var jump_sequence_count := 0
@@ -127,9 +127,16 @@ func _ready() -> void:
     surfaces.is_facing_right = true
     animator.face_right()
 
+    # Initialize position/velocity in state_from_server, but leave surfaces at
+    # default (0) since it's only valid after first physics update
     state_from_server.position = position
     state_from_server.velocity = velocity
-    state_from_server.surfaces = surfaces.bitmask
+    # state_from_server.surfaces intentionally left at default 0
+
+    # Record the initial spawn state to the rollback buffer to prevent
+    # _pre_network_process from loading default zero position/velocity on the
+    # first frame. Deferred to ensure state_from_server._ready() has completed.
+    _record_initial_state_to_buffer.call_deferred()
 
     if _action_sources.is_empty():
         var player_action_source := PlayerActionSource.new(self, true)
@@ -312,6 +319,57 @@ func get_position_in_screen_space() -> Vector2:
 
 func get_is_player_control_active() -> bool:
     return false
+
+
+## Records the initial spawn state to the rollback buffer for the current frame
+## and previous frames.
+##
+## This prevents _pre_network_process from loading default zero values from the
+## buffer on the first frame, which would overwrite the spawn position/velocity
+## set in _ready().
+func _record_initial_state_to_buffer() -> void:
+    var current_frame := G.network.server_frame_index
+
+    # Sync the current scene state to the state_from_server properties
+    # (redundant here since we just set them, but ensures consistency)
+    state_from_server._sync_from_scene_state()
+
+    # Record the initial state for frame N-2, N-1, and N to ensure
+    # _pre_network_process can safely load any of these frames without
+    # encountering default zero values. Mark as PREDICTED so authoritative
+    # state from the server can overwrite it.
+    _record_state_range_to_buffer(state_from_server, current_frame)
+
+    # Also initialize the input buffer if present
+    if is_instance_valid(state_from_server.state_from_client):
+        state_from_server.state_from_client._sync_from_scene_state()
+        _record_state_range_to_buffer(
+            state_from_server.state_from_client, current_frame
+        )
+
+
+## Helper to record initial state for frames N-2, N-1, and N
+func _record_state_range_to_buffer(
+    networked_state: ReconcilableNetworkedState, current_frame: int
+) -> void:
+    var initial_state := ArrayPool.acquire(
+        networked_state._property_names_for_packing.size() + 1,
+    )
+    var i := 0
+    for property_name in networked_state._property_names_for_packing:
+        initial_state[i] = networked_state.get(property_name)
+        i += 1
+    initial_state[i] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+
+    # Record for N-2, N-1, and N
+    for frame_offset in range(-2, 1):
+        var target_frame := current_frame + frame_offset
+        var frame_state := ArrayPool.acquire(initial_state.size())
+        for j in range(initial_state.size()):
+            frame_state[j] = initial_state[j]
+        networked_state._record_buffer_frame(target_frame, frame_state)
+
+    ArrayPool.release(initial_state)
 
 
 func _get_configuration_warnings() -> PackedStringArray:

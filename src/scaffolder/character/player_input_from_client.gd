@@ -18,7 +18,8 @@ var state_from_server: CharacterStateFromServer:
 var actions := 0
 
 ## Timestamp of the last triggered jump, for network sync of instantaneous events.
-var last_triggered_jump_time_usec := 0
+## Use -1 (invalid time) to indicate no jump has been triggered yet.
+var last_triggered_jump_time_usec := -1
 
 var last_triggered_jump_frame_index: int:
     get:
@@ -39,8 +40,8 @@ const _synced_properties_and_rollback_diff_thresholds := {
 
 func _get_default_values() -> Array:
     return [
-        0,
-        0,
+        0,  # actions
+        -1,  # last_triggered_jump_time_usec (-1 = no jump yet)
     ]
 
 
@@ -108,7 +109,7 @@ func _reconcile_jump_event() -> void:
     # Skip if not a new jump event.
     if jump_frame <= _last_reconciled_jump_frame_index:
         return
-    if last_triggered_jump_time_usec == 0:
+    if last_triggered_jump_time_usec < 0:
         return
 
     # Check if frame is too old.
