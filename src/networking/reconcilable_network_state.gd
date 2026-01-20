@@ -619,16 +619,21 @@ func get_string_for_packed_state(state: Array) -> String:
     tokens.resize(state.size())
     var i := 0
     for value in state:
-        tokens[i] = _get_string_for_value(value)
+        tokens[i] = _get_string_for_value(value, i == state.size() - 1)
         i += 1
 
     return "[%s]" % ",".join(tokens)
 
 
-func _get_string_for_value(value) -> String:
+func _get_string_for_value(value, is_final_value := false) -> String:
     match typeof(value):
-        TYPE_BOOL, TYPE_STRING, TYPE_INT:
+        TYPE_BOOL, TYPE_STRING:
             return str(value)
+        TYPE_INT:
+            # By default, we display int values as bitmasks.
+            if is_final_value:
+                return str(value)
+            return _get_string_for_bitmask(value)
         TYPE_FLOAT:
             return "%.1f" % value
         TYPE_VECTOR2, TYPE_VECTOR2I:
@@ -638,3 +643,7 @@ func _get_string_for_value(value) -> String:
                 "Type not yet supported for rollback buffer: %s" % type_string(value),
             )
             return ""
+
+
+func _get_string_for_bitmask(value: int) -> String:
+    return String.num_int64(value, 2).lpad(8, "0")
