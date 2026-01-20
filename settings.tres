@@ -10,6 +10,7 @@
 [resource]
 script = ExtResource("1_krfic")
 show_debug_player_state = true
+show_perf_tracker = true
 pauses_on_focus_out = false
 default_theme = ExtResource("3_r80nf")
 default_palette = ExtResource("2_yixrw")
