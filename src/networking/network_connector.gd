@@ -1,5 +1,29 @@
 class_name NetworkConnector
 extends Node
+## Manages ENet multiplayer peer connections between server and clients.
+##
+## NetworkConnector manages peer lifecycle (connection, disconnection) and
+## provides connectivity status tracking. It is responsible for:
+##
+## - Creating and configuring ENet server peers (server-side)
+## - Creating and configuring ENet client peers that connect to a server
+##   (client-side)
+## - Tracking connection status (is_connected_to_server)
+## - Handling peer_connected and peer_disconnected signals
+## - Managing graceful disconnection and session cleanup
+##
+## This class is accessed via the G.network.connector singleton and works in
+## conjunction with NetworkMain, which coordinates all networking subsystems.
+##
+## Usage:
+## - Server: Call server_enable_connections() to start accepting client
+##   connections
+## - Client: Call client_connect_to_server() to connect to a remote server
+## - Both: Listen to peer_connected/peer_disconnected signals for connection
+##   events
+##
+## Configuration is read from G.settings (server_port, server_ip_address,
+## max_client_count).
 
 const SERVER_ID := 1
 
