@@ -5,7 +5,6 @@ extends GutTest
 ## Phase 1 tests focus on mismatch detection - the logic that determines when
 ## rollbacks should trigger.
 
-
 func before_each():
     ArrayPool.clear_all_pools()
 
@@ -23,7 +22,7 @@ class TestableNetworkedState extends ReconcilableNetworkedState:
     var test_is_active := true
     var test_name := "player"
 
-    var _synced_properties_and_rollback_diff_thresholds := {
+    @warning_ignore("unused_private_class_variable") var _synced_properties_and_rollback_diff_thresholds := {
         "test_position": 1.0,
         "test_velocity": 10.0,
         "test_health": 5,
@@ -31,6 +30,13 @@ class TestableNetworkedState extends ReconcilableNetworkedState:
         "test_is_active": 0,
         "test_name": 0,
     }
+
+
+    func _init() -> void:
+        super._init()
+        # Initialize replication_config for programmatic instantiation.
+        if replication_config == null:
+            replication_config = SceneReplicationConfig.new()
 
 
     func _get_default_values() -> Array:
@@ -247,7 +253,7 @@ class TestMismatchDetection:
         # Booleans must match exactly
         var buffer_value := true
         var network_value := false
-        var threshold := 0  # Threshold not used for booleans
+        var threshold := 0 # Threshold not used for booleans
 
         var result := entity.check_do_values_mismatch_public(
             buffer_value,
@@ -277,7 +283,7 @@ class TestMismatchDetection:
         # Strings must match exactly
         var buffer_value := "player1"
         var network_value := "player2"
-        var threshold := 0  # Threshold not used for strings
+        var threshold := 0 # Threshold not used for strings
 
         var result := entity.check_do_values_mismatch_public(
             buffer_value,
@@ -403,13 +409,13 @@ class TestStatePacking:
     func test_unpack_networked_state_restores_properties():
         # Create packed state manually
         var packed := ArrayPool.acquire(7)
-        packed[0] = Vector2(123.0, 456.0)  # test_position
-        packed[1] = Vector2(10.0, 20.0)    # test_velocity
-        packed[2] = 85                     # test_health
-        packed[3] = 15.5                   # test_speed
-        packed[4] = false                  # test_is_active
-        packed[5] = "test_player"          # test_name
-        packed[6] = 50_000                 # timestamp in usec
+        packed[0] = Vector2(123.0, 456.0) # test_position
+        packed[1] = Vector2(10.0, 20.0) # test_velocity
+        packed[2] = 85 # test_health
+        packed[3] = 15.5 # test_speed
+        packed[4] = false # test_is_active
+        packed[5] = "test_player" # test_name
+        packed[6] = 50_000 # timestamp in usec
 
         # Set packed_state and unpack
         entity.packed_state = packed
@@ -464,7 +470,7 @@ class TestStatePacking:
         network_state[3] = 12.0
         network_state[4] = true
         network_state[5] = "player"
-        network_state[6] = 100_000  # timestamp in usec
+        network_state[6] = 100_000 # timestamp in usec
 
         # Pack into buffer
         entity.pack_buffer_state_from_network_state_public(network_state)
@@ -626,7 +632,7 @@ class TestAuthorityHandling:
         entity.multiplayer_id = 10
         entity.update_authority()
 
-        var initial_authority := entity.get_multiplayer_authority()
+        var _initial_authority := entity.get_multiplayer_authority()
 
         entity.is_server_authoritative = true
         # is_server_authoritative setter calls _update_partner_state which
@@ -957,7 +963,7 @@ class TestPropertyConfiguration:
             12.5,
             true,
             "player",
-            100000
+            100000,
         ]
 
         # Get string representation
