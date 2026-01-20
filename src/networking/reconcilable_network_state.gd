@@ -231,9 +231,11 @@ func _handle_new_authoritative_state() -> void:
 
     if G.network.frame_driver.is_frame_too_old_to_consider(state_frame_index):
         G.warning(
-            "Received networked state that is too old to reconcile - " +
-            "DISCARDING: state frame: %d, state time: %d, local frame: %d, " +
-            "local time: %d, oldest acceptable: %d"
+            (
+                "Received networked state that is too old to reconcile - " +
+                "DISCARDING: state frame: %d, state time: %d, local frame: %d, " +
+                "local time: %d, oldest acceptable: %d"
+            )
             % [
                 state_frame_index,
                 state_time_usec,
