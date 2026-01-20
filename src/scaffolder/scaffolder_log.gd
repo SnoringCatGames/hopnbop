@@ -37,7 +37,8 @@ var _print_queue: Array[String] = []
 var _excluded_log_categories := { }
 var _force_include_log_warnings := true
 
-# Cache for test environment detection
+# Cache for test environment detection - only cache positive results
+# because GUT may not be in tree yet during early initialization
 var _is_test_env_cached: Variant = null
 
 
@@ -219,21 +220,42 @@ func _is_category_enabled(category: StringName) -> bool:
 
 
 func _is_running_in_test_env() -> bool:
-    # Cache the result since the test environment doesn't change during runtime
-    if _is_test_env_cached == null:
-        _calculate_is_running_in_test_env()
+    # Only cache positive results because GUT may not be in tree yet during
+    # early initialization (autoloads run before GUT is added)
+    if _is_test_env_cached == true:
+        return true
+
     _calculate_is_running_in_test_env()
     return bool(_is_test_env_cached)
 
 
 func _calculate_is_running_in_test_env() -> void:
-    # Check if GUT (Godot Unit Test) is running by looking for GutMain in tree
-    var root = get_tree().root if get_tree() else null
+    # Check multiple indicators that we're running in a test environment
+
+    # Method 1: Check if running with gut_cmdln.gd (command line tests)
+    # The SceneTree script will be gut_cmdln.gd when running tests
+    var tree = get_tree()
+    if tree:
+        var script = tree.get_script()
+        if script:
+            var script_path = script.resource_path
+            if "gut_cmdln" in script_path or "gut_cli" in script_path:
+                _is_test_env_cached = true
+                return
+
+    # Method 2: Check if GUT is in the scene tree
+    var root = tree.root if tree else null
     if root:
         for child in root.get_children():
             if child.get_class() == "GutMain" or child.has_method("get_test_count"):
                 _is_test_env_cached = true
                 return
+
+    # Method 3: Check command-line arguments for GUT-specific flags
+    for arg in OS.get_cmdline_args():
+        if arg.begins_with("-g") and ("test" in arg or "dir" in arg or "exit" in arg):
+            _is_test_env_cached = true
+            return
 
     _is_test_env_cached = false
 
