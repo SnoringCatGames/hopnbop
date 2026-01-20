@@ -1,8 +1,19 @@
 @tool
 class_name NetworkFrameProcessor
 extends Node
-## This controls whether the node at root_path will have its _network_process
-## method called during network frame simulations.
+## Helper node that enables any node to participate in frame-synchronous network
+## processing.
+##
+## NetworkFrameProcessor acts as a bridge between NetworkFrameDriver and game
+## logic nodes that need to run during network frame simulation but don't extend
+## ReconcilableNetworkedState (i.e., they don't need to support server-mismatch
+## detection and rollback).
+##
+## Usage pattern:
+## 1. Add NetworkFrameProcessor as a child of your networked node
+## 2. Set root_path to point to the node that implements _network_process()
+## 3. NetworkFrameDriver will automatically call root._network_process() during
+##    each network frame
 
 ## _network_process will be called on this node during network frame
 ##  simulations.
