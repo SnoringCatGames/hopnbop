@@ -1,10 +1,49 @@
 class_name RollbackBuffer
 extends CircularBuffer
-## A circular buffer specialized for rollback networking.
+## Circular buffer specialized for storing historical network state frames for
+## rollback reconciliation.
 ##
-## This buffer is pre-filled with default frame states and allows access to
-## "virtual" previous frames that haven't been explicitly set yet, as long as
-## they don't wrap around to overwrite actually-set frames.
+## RollbackBuffer extends CircularBuffer with networking-specific features:
+##
+## **Key capabilities:**
+## - Pre-filled with default frame states on initialization
+## - Supports negative indices (-1, -2) for accessing "previous" state before
+##   frame 0
+## - Allows setting frames at arbitrary (non-sequential) indices within buffer
+##   range
+## - Automatic back-filling of missing frames with last-known state
+## - Memory-efficient array reuse via ArrayPool
+##
+## **Usage in networking:**
+## Each ReconcilableNetworkedState maintains its own RollbackBuffer to store
+## historical state snapshots. When a client prediction mismatch is detected,
+## the buffer allows "time travel" back to the conflicting frame, followed by
+## re-simulation forward to the present.
+##
+## **Frame storage:**
+## - Frames are identified by server_frame_index (integer)
+## - Each frame stores an Array of property values plus FrameAuthority
+##   (AUTHORITATIVE or PREDICTED)
+## - Buffer size is configurable (default ~90 frames @ 60 FPS = 1.5 seconds)
+##
+## **Special index handling:**
+## - Index -1: Default "previous" state for frame 0
+## - Index -2: Used when accessing N-2 as "previous" for frame 0
+## - These enable consistent frame processing even at simulation start
+##
+## **Back-filling:**
+## When receiving non-sequential networked state (e.g., frame 10 then frame 15),
+## backfill_to_with_last_state() fills gaps (frames 11-14) by duplicating frame
+## 10's state marked as PREDICTED.
+##
+## **Memory management:**
+## Uses ArrayPool to acquire/release frame state arrays, reducing allocation
+## overhead during rollback's high-frequency state manipulation.
+##
+## Constructed with:
+## - capacity: Number of frames to store (circular wrap-around)
+## - current_frame_index: Starting frame number
+## - default_frame_state: Initial values for all properties
 
 ## The default state used to fill new/unset frames.
 var _default_frame_state: Array = []
