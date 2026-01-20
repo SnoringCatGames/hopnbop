@@ -44,32 +44,6 @@ extends Node
 ##   frame
 ## - Only one rollback occurs per _network_process, earliest frame takes priority
 
-# FIXME: LEFT OFF HERE: AI prompt:
-# I'm seeing some problems in console logs.
-# - I have pressed to input on the client.
-# - It looks like we're hallucinating pressed_jump state.
-# - It looks like we're hallucinating pressed_right state, but only on the client.
-# - It looks like the problem might start after we see this unexpected log message: "Jump event too old to reconcile: frame 0"
-#
-#[   0.000][PI][C1] Switching screens: MAIN_MENU => LOADING
-#[   0.000][NC][C1] Started multiplayer client
-#[   0.150][NC][S] Client connected: 547905352
-#[   0.150][GS][S] Player joined: 547905352:Wiggly Espresso
-#[   0.000][PI][C1] Switching screens: LOADING => GAME
-#[   0.000][NC][C1] Connected to server: Local multiplayer_id: 547905352
-#[   0.000][NS][C547905352] WARNING: Fast-forwarding due to _physics_process frame skew
-#[   0.017][GS][C547905352] Level spawned: default_level
-#[   0.033][GS][C547905352] Player spawned: {Player}
-#[   0.067][NS][C547905352] Client-prediction state mismatch: networked state: [(0.0,1.4),(0.0,166.7),00000000,6274749], local state: [(0.0,0.0),(0.0,83.3),00000000,2]
-#[   0.067][GS][C547905352] Player joined: 547905352:Wiggly Espresso
-#[   0.067][NS][C547905352] Starting rollback
-#[   0.233][NS][S] WARNING: Jump event too old to reconcile: frame 0
-#[   0.117][NS][C547905352] Client-prediction state mismatch: networked state: [(0.0,8.0),(0.0,83.3),00000001,6324747], local state: [(0.0,8.0),(0.0,83.3),00010001,2]
-#[   0.117][NS][C547905352] WARNING: Fast-forwarding due to _physics_process frame skew
-#[   0.117][NS][C547905352] Starting rollback
-#[   0.217][NS][C547905352] Client-prediction state mismatch: networked state: [(0.0,8.0),(0.0,83.3),00000001,6424743], local state: [(0.0,8.0),(0.0,83.3),00010001,2]
-
-
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug.
 # - Hand test and debug.
 #   - Add if-statements, guarding on client/server, with a pass, everywhere, to
