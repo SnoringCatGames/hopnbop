@@ -43,6 +43,10 @@ class TestableNetworkedState extends ReconcilableNetworkedState:
         return [Vector2.ZERO, Vector2.ZERO, 100, 10.0, true, "player"]
 
 
+    func _get_is_server_authoritative() -> bool:
+        return true
+
+
     func _sync_to_scene_state(_previous_state: Array) -> void:
         pass
 

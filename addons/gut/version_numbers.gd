@@ -104,8 +104,7 @@ func get_version_text():
 func get_bad_version_text():
     var info = Engine.get_version_info()
     var gd_version = str(info.major, '.', info.minor, '.', info.patch)
-    return 'GUT ' + gut_version + ' requires Godot ' + required_godot_version +
-    ' or greater.  Godot version is ' + gd_version
+    return ('GUT ' + gut_version + ' requires Godot ' + required_godot_version + ' or greater.  Godot version is ' + gd_version)
 
 
 # ------------------------------------------------------------------------------

@@ -4,7 +4,8 @@
       "Bash(godot --headless -s --path . addons/gut/gut_cmdln.gd -gtest=res://test/integration/multiplayer/test_rollback_flow.gd -gexit:*)",
       "Bash(godot:*)",
       "Bash(find:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(where:*)"
     ]
   }
 }

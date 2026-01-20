@@ -376,6 +376,9 @@ func _update_replication_config() -> void:
     for property_path in replication_config.get_properties():
         replication_config.remove_property(property_path)
 
+    if not is_instance_valid(root):
+        return
+
     var packed_state_path := "%s:packed_state" % root.get_path_to(self)
     replication_config.add_property(packed_state_path)
 
