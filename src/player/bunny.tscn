@@ -43,7 +43,6 @@ root_path = NodePath(".")
 replication_config = SubResource("SceneReplicationConfig_244u8")
 script = ExtResource("4_1rl0f")
 player = NodePath("..")
-is_server_authoritative = false
 metadata/_custom_type_script = "uid://chp1athjwjq76"
 
 [node name="CharacterCamera" type="Camera2D" parent="."]

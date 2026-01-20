@@ -44,6 +44,10 @@ func _get_default_values() -> Array:
     ]
 
 
+func _get_is_server_authoritative() -> bool:
+    return false
+
+
 func _ready() -> void:
     super._ready()
     update_configuration_warnings()

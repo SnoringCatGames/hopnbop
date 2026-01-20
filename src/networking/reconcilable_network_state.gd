@@ -107,15 +107,13 @@ var frame_authority := FrameAuthority.UNKNOWN
 ## If true, the server is the authoritative source of data for this state.
 ##
 ## This likely should only be false for input from the client.
-@export var is_server_authoritative := true:
-    set(value):
-        is_server_authoritative = value
-        _update_partner_state()
-        update_configuration_warnings()
+var is_server_authoritative: bool:
+    get:
+        return _get_is_server_authoritative()
 
 var is_client_authoritative: bool:
     get:
-        return not is_server_authoritative
+        return not _get_is_server_authoritative()
 
 ## This should contain the values for all of the properties of this state
 ## instance, packed (somewhat) efficiently for syncing across the network.
@@ -337,6 +335,13 @@ func _post_network_process() -> void:
     if is_multiplayer_authority():
         _pack_networked_state()
     _pack_buffer_state_from_local_state()
+
+
+func _get_is_server_authoritative() -> bool:
+    G.fatal(
+        "Abstract ReconcilableNetworkState._get_is_server_authoritative is not implemented",
+    )
+    return true
 
 
 func _get_default_values() -> Array:
