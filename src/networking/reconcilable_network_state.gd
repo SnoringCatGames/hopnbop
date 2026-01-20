@@ -1,12 +1,87 @@
 @tool
 class_name ReconcilableNetworkedState
 extends MultiplayerSynchronizer
-## FIXME: Write extensive docs for this class.
+## Base class for all networked entities that require client-side prediction
+## with server-mismatch reconciliation and rollback support.
 ##
-## - In general, during rollback ReconcilableNetworkedState is responsible for updating the
-##   state of all properties directly specified in its replication_config, but
-##   also any state within the current scene that is derived from this state.
+## ReconcilableNetworkedState is the foundation of the networking system,
+## providing automatic state replication, client prediction, mismatch detection,
+## and rollback reconciliation for any game entity. Subclasses define which
+## properties to sync and how to integrate with the scene hierarchy.
 ##
+## Architecture:
+## This class bridges three systems:
+## 1. **Godot MultiplayerSynchronizer**: Handles low-level replication of
+##    packed_state across network
+## 2. **RollbackBuffer**: Stores historical states for time-travel during
+##    rollback
+## 3. **NetworkFrameDriver**: Coordinates frame-synchronous simulation and
+##    rollback
+##
+## Server-authoritative vs client-authoritative:
+## - **Server-authoritative** (default): Server is source of truth for entity
+##   state (position, health, etc.)
+## - **Client-authoritative**: Client is source of truth (used for player input)
+##
+## Typically used as a pair: one client-authoritative node for input, one
+## server-authoritative node for all other state.
+##
+## Frame processing cycle (called by NetworkFrameDriver):
+## 1. **_pre_network_process()**: Restore state from rollback buffer (frame N-1)
+##    and sync to scene
+## 2. **_network_process()**: Game logic executes (implemented by subclass)
+## 3. **_post_network_process()**: Pack state from scene back to properties and
+##    buffer
+##
+## Subclass requirements:
+## - Define `_synced_properties_and_rollback_diff_thresholds` dictionary mapping
+##   property names to mismatch thresholds
+## - Implement `_get_default_values()` to return initial state
+## - Implement `_sync_to_scene_state(previous_state)` to update scene from
+##   networked properties
+## - Implement `_sync_from_scene_state()` to update networked properties from
+##   scene
+## - Must be marked with @tool annotation
+##
+## Rollback reconciliation:
+## When the server's authoritative state differs from client prediction beyond
+## the configured threshold, a rollback is triggered:
+## 1. State is restored to the mismatched frame
+## 2. All frames from mismatch to present are re-simulated
+## 3. Visual state smoothly interpolates (future: rollback visual interpolation)
+##
+## Thresholds (in _synced_properties_and_rollback_diff_thresholds):
+## - Position: typically 1.0 pixel
+## - Velocity: typically 10.0 pixels/sec
+## - Boolean/String: exact match required (threshold N/A)
+## - Numeric: absolute difference threshold
+## - Vector2: distance_squared threshold
+##
+## Usage example:
+## ```gdscript
+## @tool
+## class_name CharacterStateFromServer
+## extends ReconcilableNetworkedState
+##
+## var position := Vector2.ZERO
+## var velocity := Vector2.ZERO
+##
+## var _synced_properties_and_rollback_diff_thresholds := {
+##     "position": 1.0,
+##     "velocity": 10.0,
+## }
+##
+## func _get_default_values() -> Array:
+##     return [Vector2.ZERO, Vector2.ZERO]
+##
+## func _sync_to_scene_state(_previous_state: Array) -> void:
+##     root.position = position
+##     root.velocity = velocity
+##
+## func _sync_from_scene_state() -> void:
+##     position = root.position
+##     velocity = root.velocity
+## ```
 
 enum FrameAuthority {
     UNKNOWN,
