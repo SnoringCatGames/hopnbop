@@ -5,8 +5,8 @@ extends Node
 ## NetworkConnector manages peer lifecycle (connection, disconnection) and
 ## provides connectivity status tracking. It is responsible for:
 ##
-## - Creating and configuring ENet server peers (server-side)
-## - Creating and configuring ENet client peers that connect to a server
+## - Creating and configuring server peers (server-side)
+## - Creating and configuring client peers that connect to a server
 ##   (client-side)
 ## - Tracking connection status (is_connected_to_server)
 ## - Handling peer_connected and peer_disconnected signals
