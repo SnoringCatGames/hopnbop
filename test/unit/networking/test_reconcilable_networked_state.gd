@@ -976,3 +976,189 @@ class TestPropertyConfiguration:
             "Should start with '['",
         )
         assert_true(str_repr.ends_with("]"), "Should end with ']'")
+
+
+    func test_record_initial_state_populates_buffer_frames():
+        # Set properties to specific values
+        entity.test_position = Vector2(50.0, 100.0)
+        entity.test_velocity = Vector2(5.0, 10.0)
+        entity.test_health = 80
+        entity.test_speed = 15.0
+        entity.test_is_active = true
+        entity.test_name = "initialized"
+
+        # Record initial state
+        var current_frame := G.network.server_frame_index
+        entity.record_initial_state()
+
+        # Frames N-2, N-1, and N should all exist
+        assert_true(
+            entity._rollback_buffer.has_at(current_frame - 2),
+            "Frame N-2 should exist",
+        )
+        assert_true(
+            entity._rollback_buffer.has_at(current_frame - 1),
+            "Frame N-1 should exist",
+        )
+        assert_true(
+            entity._rollback_buffer.has_at(current_frame),
+            "Frame N should exist",
+        )
+
+
+    func test_record_initial_state_preserves_property_values():
+        # Set specific values
+        entity.test_position = Vector2(123.0, 456.0)
+        entity.test_velocity = Vector2(12.0, 34.0)
+        entity.test_health = 95
+
+        # Record initial state
+        var current_frame := G.network.server_frame_index
+        entity.record_initial_state()
+
+        # Retrieve state from frame N
+        var frame_state: Array = entity._rollback_buffer.get_at(current_frame)
+
+        # Verify property values are preserved (order depends on property
+        # packing)
+        var position_index: int = (
+            entity._property_name_to_pack_index["test_position"]
+        )
+        var velocity_index: int = (
+            entity._property_name_to_pack_index["test_velocity"]
+        )
+        var health_index: int = (
+            entity._property_name_to_pack_index["test_health"]
+        )
+
+        assert_eq(
+            frame_state[position_index],
+            Vector2(123.0, 456.0),
+            "Position should be preserved",
+        )
+        assert_eq(
+            frame_state[velocity_index],
+            Vector2(12.0, 34.0),
+            "Velocity should be preserved",
+        )
+        assert_eq(
+            frame_state[health_index],
+            95,
+            "Health should be preserved",
+        )
+
+
+    func test_record_initial_state_marks_frames_as_predicted():
+        # Record initial state
+        var current_frame := G.network.server_frame_index
+        entity.record_initial_state()
+
+        # All frames should be marked as PREDICTED
+        for frame_offset in range(-2, 1):
+            var target_frame := current_frame + frame_offset
+            var frame_state: Array = (
+                entity._rollback_buffer.get_at(target_frame)
+            )
+            var authority := (
+                frame_state[frame_state.size() - 1]
+                    as ReconcilableNetworkedState.FrameAuthority
+            )
+
+            assert_eq(
+                authority,
+                ReconcilableNetworkedState.FrameAuthority.PREDICTED,
+                "Frame %d should be marked as PREDICTED" % target_frame,
+            )
+
+
+    func test_record_initial_state_skips_partner_when_requested():
+        # Create a partner state
+        var partner := TestableNetworkedState.new()
+        partner.name = "Partner"
+        partner.root_path = NodePath(".")
+        entity.get_parent().add_child(partner)
+        partner._ready()
+        if partner._rollback_buffer == null:
+            partner._set_up_rollback_buffer()
+        partner._parse_property_names()
+
+        # Force partner assignment
+        entity._partner_state = partner
+        partner._partner_state = entity
+
+        # Set partner to different values
+        partner.test_position = Vector2(999.0, 999.0)
+        partner._sync_from_scene_state()
+
+        # Record initial state without partner
+        entity.record_initial_state(false)
+
+        # Partner's buffer should still be empty (no frames recorded)
+        var current_frame := G.network.server_frame_index
+        var partner_has_frames := (
+            partner._rollback_buffer.has_at(current_frame - 2)
+            or partner._rollback_buffer.has_at(current_frame - 1)
+            or partner._rollback_buffer.has_at(current_frame)
+        )
+
+        assert_false(
+            partner_has_frames,
+            "Partner should not have frames when include_partner=false",
+        )
+
+        partner.queue_free()
+
+
+    func test_record_initial_state_initializes_partner_by_default():
+        # Create a partner state
+        var partner := TestableNetworkedState.new()
+        partner.name = "Partner"
+        partner.root_path = NodePath(".")
+        entity.get_parent().add_child(partner)
+        partner._ready()
+        if partner._rollback_buffer == null:
+            partner._set_up_rollback_buffer()
+        partner._parse_property_names()
+
+        # Force partner assignment
+        entity._partner_state = partner
+        partner._partner_state = entity
+
+        # Set partner to specific values
+        partner.test_position = Vector2(300.0, 400.0)
+        partner.test_velocity = Vector2(30.0, 40.0)
+        partner._sync_from_scene_state()
+
+        # Record initial state with partner (default behavior)
+        var current_frame := G.network.server_frame_index
+        entity.record_initial_state()
+
+        # Partner's buffer should have frames
+        assert_true(
+            partner._rollback_buffer.has_at(current_frame - 2),
+            "Partner should have frame N-2",
+        )
+        assert_true(
+            partner._rollback_buffer.has_at(current_frame - 1),
+            "Partner should have frame N-1",
+        )
+        assert_true(
+            partner._rollback_buffer.has_at(current_frame),
+            "Partner should have frame N",
+        )
+
+        # Verify partner's values are preserved
+        var partner_frame_state: Array = (
+            partner._rollback_buffer.get_at(current_frame)
+        )
+        var position_index: int = (
+            partner._property_name_to_pack_index["test_position"]
+        )
+
+        assert_eq(
+            partner_frame_state[position_index],
+            Vector2(300.0, 400.0),
+            "Partner position should be preserved",
+        )
+
+        partner.queue_free()

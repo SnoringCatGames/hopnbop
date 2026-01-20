@@ -486,6 +486,51 @@ func _record_buffer_frame(frame_index: int, frame_state: Array) -> void:
     _rollback_buffer.set_at(frame_index, frame_state)
 
 
+## Records the initial spawn state to the rollback buffer for the current
+## frame and previous frames.
+##
+## This should be called (deferred) after _ready() completes to ensure the
+## ReconcilableNetworkedState's _ready() has finished setting up the buffer.
+## It prevents _pre_network_process from loading default zero values from the
+## buffer on the first frame by pre-populating frames N-2, N-1, and N.
+##
+## All frames are marked as PREDICTED so authoritative state from the server
+## can overwrite them.
+##
+## If include_partner is true (default), this will also record the initial
+## state for the partner node if one exists (e.g., the client-authoritative
+## input state paired with a server-authoritative character state).
+func record_initial_state(include_partner := true) -> void:
+    var current_frame := G.network.server_frame_index
+
+    # Sync the current scene state to the networked properties
+    _sync_from_scene_state()
+
+    # Create the initial state array with current property values
+    var initial_state := ArrayPool.acquire(
+        _property_names_for_packing.size() + 1,
+    )
+    var i := 0
+    for property_name in _property_names_for_packing:
+        initial_state[i] = get(property_name)
+        i += 1
+    initial_state[i] = FrameAuthority.PREDICTED
+
+    # Record for N-2, N-1, and N
+    for frame_offset in range(-2, 1):
+        var target_frame := current_frame + frame_offset
+        var frame_state := ArrayPool.acquire(initial_state.size())
+        for j in range(initial_state.size()):
+            frame_state[j] = initial_state[j]
+        _record_buffer_frame(target_frame, frame_state)
+
+    ArrayPool.release(initial_state)
+
+    # Also initialize the partner state if present
+    if include_partner and is_instance_valid(_partner_state):
+        _partner_state.record_initial_state(false)
+
+
 func _unpack_buffer_state(frame_index: int) -> void:
     var frame_state: Array = _rollback_buffer.get_at(frame_index)
 
