@@ -49,14 +49,8 @@ extends Node
 #   - Add if-statements, guarding on client/server, with a pass, everywhere, to
 #     set breakpoints on easily as needed.
 #   - Print statements.
-#
-# /- Ask AI:
-#   Analyze all networking logic (everything under the networking/ folder) and generate file-level doc comments for each class.
-# /- Ask AI:
-#   Write a detailed markdown document explaining the overall architecture, enumerating the networking systems, and describing in detail how they work together to implement client prediction, prediction error detection, and reconciliation with rollback and re-process. Include a section at the end steps to implement networking in a new game using this framework.
-# /- Ask AI:
-#   /plan
-#   Review all networking logic in this project. List any important unit and integration testing gaps. Plan implementations for those tests.
+# - Review NETWORKING_ARCHITECTURE.md.
+# - Review tests.
 
 # FIXME: Rollback debug visualization and networking improvements:
 #
