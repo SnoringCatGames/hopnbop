@@ -1,16 +1,44 @@
 class_name NetworkMain
 extends Node
-## Top-level controller logic for networking connectivity.
+## Top-level controller and coordinator for all networking subsystems.
 ##
-## Note: In order to support local testing with preview mode in the Godot
+## NetworkMain is the central orchestrator accessed via the G.network singleton.
+## It manages and provides access to three core networking subsystems:
+##
+## - **time** (ServerTimeTracker): NTP-like clock synchronization between client
+##   and server
+## - **connector** (NetworkConnector): ENet peer management and connection
+##   lifecycle
+## - **frame_driver** (NetworkFrameDriver): Frame-synchronous simulation and
+##   rollback coordination
+##
+## NetworkMain determines the local machine's role (server vs client) based on
+## command-line arguments or headless mode and provides convenient accessors for
+## common networking state:
+##
+## - is_server / is_client: Current machine's role
+## - is_connected_to_server: Connection status (always true on server)
+## - local_id: Local multiplayer peer ID
+## - server_frame_index: Current server frame number
+## - server_frame_time_usec: Frame-aligned server time
+## - server_time_usec_not_frame_aligned: Raw estimated server time
+##
+## Signals:
+## - local_authority_added: Emitted when a new PlayerInputFromClient gains local
+##   authority
+## - local_authority_removed: Emitted when a PlayerInputFromClient loses local
+##   authority
+##
+## Testing with multiple instances in Godot editor:
+## - In order to support local testing with preview mode in the Godot
 ##   editor, do the following:
-## - Open Debug > Customize Run Instances.
-## - Check "Enable Multiple Instances".
-## - Set the number of instances to 3.
-## - Check "Override Main Run Args" for each row.
-## - Change the "Launch Arguments" of each row to be one of the following:
-##   --server, --client=1, --client=2.
-## - Also, include --preview as an arg in each row.
+##   - Open Debug > Customize Run Instances.
+##   - Check "Enable Multiple Instances".
+##   - Set the number of instances to 3.
+##   - Check "Override Main Run Args" for each row.
+##   - Change the "Launch Arguments" of each row to be one of the following:
+##     --server, --client=1, --client=2.
+##   - Also, include --preview as an arg in each row.
 
 signal local_authority_added(state_from_client: PlayerInputFromClient)
 signal local_authority_removed(state_from_client: PlayerInputFromClient)
