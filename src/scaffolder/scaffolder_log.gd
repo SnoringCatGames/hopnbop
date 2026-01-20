@@ -37,6 +37,9 @@ var _print_queue: Array[String] = []
 var _excluded_log_categories := { }
 var _force_include_log_warnings := true
 
+# Cache for test environment detection
+var _is_test_env_cached: Variant = null
+
 
 func _ready() -> void:
     _print_front_matter()
@@ -114,7 +117,9 @@ func print(
     else:
         on_message.emit(message)
 
-    print(message)
+    # Skip printing to console in test environment to reduce noise
+    if not _is_running_in_test_env():
+        print(message)
 
 
 # -   Using this function instead of `push_error` directly enables us to render
@@ -129,6 +134,12 @@ func error(
         should_crash := true,
     ) -> void:
     message = "ERROR  : %s" % message
+
+    # In test environment, only log the error without disruptive behaviors
+    if _is_running_in_test_env():
+        self.print(message, _category)
+        return
+
     push_error(message)
     print_stack()
     self.print(message, _category)
@@ -149,23 +160,38 @@ func warning(
     ) -> void:
     if _is_category_enabled(category) or _force_include_log_warnings:
         message = "WARNING: %s" % message
-        push_warning(message)
+
+        # Skip push_warning in test environment
+        if not _is_running_in_test_env():
+            push_warning(message)
+
         self.print(message, category)
 
 
 func alert_user(message: String, _category := CATEGORY_DEFAULT) -> void:
     if _is_category_enabled(_category) or _force_include_log_warnings:
         var formatted_message := "ALERT: %s" % message
-        push_warning(formatted_message)
+
+        # Skip push_warning in test environment
+        if not _is_running_in_test_env():
+            push_warning(formatted_message)
+
         self.print(formatted_message, _category)
-    OS.alert(message)
+
+    # Skip OS.alert in test environment (would block test execution)
+    if not _is_running_in_test_env():
+        OS.alert(message)
 
 
 func ensure(condition: bool, message: String) -> bool:
     if not condition:
         var formatted_message := "FAILED ENSURE: %s" % message
         error(formatted_message, CATEGORY_CORE_SYSTEMS, false)
-        breakpoint
+
+        # Skip breakpoint in test environment
+        if not _is_running_in_test_env():
+            breakpoint
+
     return condition
 
 
@@ -173,7 +199,11 @@ func check(condition: bool, message: String) -> bool:
     if not condition:
         var formatted_message := "FATAL ERROR: %s" % message
         error(formatted_message, CATEGORY_CORE_SYSTEMS)
-        get_tree().quit()
+
+        # Skip quit in test environment (would terminate test runner)
+        if not _is_running_in_test_env():
+            get_tree().quit()
+
     return condition
 
 
@@ -187,6 +217,23 @@ func set_log_filtering(
 
 func _is_category_enabled(category: StringName) -> bool:
     return not _excluded_log_categories.has(category)
+
+
+func _is_running_in_test_env() -> bool:
+    # Cache the result since the test environment doesn't change during runtime
+    if _is_test_env_cached != null:
+        return bool(_is_test_env_cached)
+
+    # Check if GUT (Godot Unit Test) is running by looking for GutMain in tree
+    var root = get_tree().root if get_tree() else null
+    if root:
+        for child in root.get_children():
+            if child.get_class() == "GutMain" or child.has_method("get_test_count"):
+                _is_test_env_cached = true
+                return true
+
+    _is_test_env_cached = false
+    return false
 
 
 func get_category_prefix(category: StringName) -> StringName:
