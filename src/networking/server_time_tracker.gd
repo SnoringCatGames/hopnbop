@@ -163,7 +163,7 @@ func force_clock_offset(delta_usec: int) -> void:
     for i in range(_client_offset_samples.size()):
         _client_offset_samples[i] += delta_usec
 
-    G.log.log(
+    G.print(
         "Manually adjusted clock offset by %d usec (new offset: %d usec)"
         % [delta_usec, clock_offset_usec],
         ScaffolderLog.CATEGORY_NETWORK_SYNC,
