@@ -45,10 +45,9 @@ extends Node
 ## - Only one rollback occurs per _network_process, earliest frame takes priority
 
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug.
-# - Hand test and debug.
-#   - Add if-statements, guarding on client/server, with a pass, everywhere, to
-#     set breakpoints on easily as needed.
-#   - Print statements.
+# - Fix tests.
+# - Debug the game.
+# - Add rollback debug visualizations.
 # - Review NETWORKING_ARCHITECTURE.md.
 # - Review tests.
 # - Fix GitHub CI.
