@@ -35,7 +35,10 @@ extends Node
 ##
 ## Frame timing:
 ## - Target: 60 FPS (TARGET_NETWORK_TIME_STEP_SEC = 1/60 ≈ 0.01666 seconds)
-## - Frames are identified by server_frame_index
+## - Frames are identified by server_frame_index, which increments directly on
+##   each physics tick for perfect synchronization with Godot's physics loop
+## - Timestamps are calculated from frame indices, with periodic wall-clock
+##   re-sync every 30 seconds to maintain accurate logging timestamps
 ## - Times are stored in microseconds for precision
 ##
 ## Rollback mechanism:
@@ -44,17 +47,50 @@ extends Node
 ##   frame
 ## - Only one rollback occurs per _network_process, earliest frame takes priority
 
-# FIXME: LEFT OFF HERE: ACTUALLY: Review and debug.
-# - There's a large fast-forward happening on the server at startup. However, we don't actually need to simulate anything then, since whatever state the server has whenever it ends up starting, is the correct starting state. We can discount any already elapsed time.
-# - Does it seem like there are still any issues with slow physics ticks that we should look into?
+# FIXME: LEFT OFF HERE: ACTUALLY: Review and debug
 # - Does it seem like my rollback_buffers are a good size? Should they be less or more?
-# - Update ScaffolderTime.PHYSICS_FPS to use whatever value has been configured in project settings.
 #
+# REMAINING TASKS:
 # - Debug the game.
-# - Add rollback debug visualizations.
-# - Review NETWORKING_ARCHITECTURE.md.
+# - Ask to implement some additional tests that were identified previously: https://mail.google.com/mail/u/1/#all/QgrcJHrnvrPBjwhJCFrRSpCnrlpNDjVzqWg
 # - Review tests.
 # - Fix GitHub CI.
+# - Add support for networked pause
+#   - First, review my proposed plan, and let me know if anything doesn't make
+#     sense or should be done differently.
+#   - Add a new flag: Settings.is_server_pause_enabled
+#   - First, the client sends an RPC to the server.
+#   - Then, the server flips a custom paused flag, and records the pause_time.
+#     - Record this flag in match_state, and have it be synced On Change.
+#   - Then, have clients check when this flag changes and emit a local signal when
+#     it does.
+#     - When a pause occurs, on the client, revert any rollback buffer state from
+#       after the pause frame.
+#     - Also, revert frame-index tracking to the latest pause frame in other
+#       places.
+#     - Track the cumulative amount of time spent with the server paused. Use this
+#       to subtract from server time whenever calculating frame index.
+#   - Also set get_tree().paused locally when the server is paused.
+#   - While paused:
+#     - The server rejects any new client state stamped after pause_time.
+#     - The server continues to replicate state at the same rate as before and
+#       with the same on-changed conditions.
+#     - However, that state _mostly_ shouldn't ever change.
+#     - Instead, the server sends a special RPC whenever new client state has
+#       been received and processed, which was stamped with a pre-pause time,
+#       to indicate to clients that they can refresh the UI even though we're
+#       paused.
+#     - The client then, only updates the debug UI 0.2 seconds after first
+#       triggering pause, and when this special server RPC is received.
+# - Add some hotkeys for toggling each of the various super-hud debug UI:
+#   - F1 should toggle DebugConsole
+#   - F2 should toggle PlayerStateList
+#   - F3 should toggle PerfTracker
+# - GameLift
+#   - https://claude.ai/chat/c191d2ce-5457-4b81-bfb6-6b9dade6a939
+#   - Also ask AI to implement easy scripts for building and deploying and testing. Maybe can also add a hook for GitHub Actions when creating tags? Or ask for a better deployment with trigger solution
+# - Add rollback debug visualizations.
+# - Review NETWORKING_ARCHITECTURE.md.
 
 # FIXME: Rollback debug visualization and networking improvements:
 #
@@ -324,14 +360,25 @@ const TARGET_NETWORK_FPS = ScaffolderTime.PHYSICS_FPS
 const TARGET_NETWORK_TIME_STEP_SEC := 1.0 / TARGET_NETWORK_FPS
 const TARGET_NETWORK_TIME_STEP_USEC := floori(1_000_000 / TARGET_NETWORK_FPS)
 
-## If we bucket the current server_time_usec into discrete frames, this
-## canonical time would be the exact midpoint between the previous and next
-## frame.
+## Frame-aligned server time (microseconds). Calculated from server_frame_index
+## via get_time_usec_from_frame_index(), which returns the midpoint timestamp
+## of the current frame. Periodically re-synced to wall-clock time for accurate
+## logging.
 var server_frame_time_usec := 0
 
-## If we bucket the current server_time_usec into discrete frames, this
-## would be index of the current frame.
+## Current frame index. Incremented directly on each physics tick in
+## _pre_physics_process(). Drives all frame-synchronous simulation and rollback.
+## This is the single source of truth for frame progression.
 var server_frame_index := 0
+
+## Tracks whether frame tracking has been initialized. Initialization is
+## deferred until the first physics tick after ServerTimeTracker is ready,
+## preventing fast-forward at startup.
+var _is_frame_tracking_initialized := false
+
+## Interval for periodic wall-clock re-sync to maintain accurate timestamps for
+## logging. Re-sync is handled automatically via G.time.set_interval().
+const WALL_CLOCK_RESYNC_INTERVAL_SEC := 30.0
 
 var _networked_state_nodes: Array[ReconcilableNetworkedState] = []
 
@@ -373,13 +420,42 @@ func _ready() -> void:
 
 
 func _pre_physics_process(delta: float) -> void:
-    if delta / NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC > 1.5:
-        G.warning(
-            "Physics frame skip detected: delta=%fs"
-            % [delta],
-            ScaffolderLog.CATEGORY_NETWORK_SYNC,
-        )
+    if not _is_frame_tracking_initialized:
+        _initialize_frame_tracking()
+        return
+
+    # Increment frame index directly on each physics tick
+    server_frame_index += 1
+
     _run_network_process()
+
+
+func _initialize_frame_tracking() -> void:
+    # Wait for ServerTimeTracker to be ready before starting frame tracking
+    if not G.network.time.is_time_initialized:
+        return
+
+    _is_frame_tracking_initialized = true
+
+    # Initialize to frame 0
+    # The first physics tick will increment this to 1
+    server_frame_index = 0
+    server_frame_time_usec = get_time_usec_from_frame_index(0)
+
+    # Set up periodic wall-clock re-sync using ScaffolderTime's interval system
+    G.time.set_interval(
+        _resync_frame_time_to_wall_clock,
+        WALL_CLOCK_RESYNC_INTERVAL_SEC,
+        [],
+        TimeType.APP_CLOCK,
+    )
+
+    # Note: Clients sync to server's clock via NTP offset, but track their own
+    # frame indices locally starting from 0
+    G.print(
+        "Frame tracking initialized at frame 0",
+        ScaffolderLog.CATEGORY_NETWORK_SYNC,
+    )
 
 
 ## If we bucket server time into discrete frames, this would be the index of the
@@ -397,37 +473,32 @@ func get_time_usec_from_frame_index(p_frame_index: int) -> int:
 
 
 func _update_server_frame_time() -> void:
-    var server_time_usec := G.network.server_time_usec_not_frame_aligned
-    var frame_start_time_usec := floori(
-        get_frame_index_from_time_usec(server_time_usec) *
-        TARGET_NETWORK_TIME_STEP_USEC,
-    )
+    # Update frame timestamp based on current frame index
+    # Periodic wall-clock re-sync is handled by G.time.set_interval
+    server_frame_time_usec = get_time_usec_from_frame_index(server_frame_index)
 
-    var next_server_frame_time_usec := floori(
-        frame_start_time_usec + TARGET_NETWORK_TIME_STEP_USEC * 0.5,
-    )
-    var next_server_frame_index := get_frame_index_from_time_usec(
-        next_server_frame_time_usec,
-    )
 
-    if not G.ensure(
-        next_server_frame_index >= server_frame_index - 1,
-        "Server frame index went backwards: %d -> %d"
-        % [server_frame_index, next_server_frame_index],
-    ):
-        return
+func _resync_frame_time_to_wall_clock() -> void:
+    var actual_server_time_usec := G.network.server_time_usec_not_frame_aligned
+    var frame_based_time_usec := get_time_usec_from_frame_index(server_frame_index)
+    var drift_usec := actual_server_time_usec - frame_based_time_usec
 
-    # If our tracking of server time has skewed enough that we're skipping a
-    # frame, then we need to fast-forward the system.
-    if next_server_frame_index > server_frame_index + 1:
+    # Warn if drift exceeds 1 second (indicates potential timing issues)
+    if absf(drift_usec) > 1_000_000:
         G.warning(
-            "Fast-forwarding due to _physics_process frame skew",
+            "Large timestamp drift detected: %d ms at frame %d"
+            % [drift_usec / 1000, server_frame_index],
             ScaffolderLog.CATEGORY_NETWORK_SYNC,
         )
-        fast_forward(next_server_frame_index - 1)
 
-    server_frame_time_usec = next_server_frame_time_usec
-    server_frame_index = next_server_frame_index
+    # Sync frame time to wall-clock to maintain accurate timestamps for logging
+    server_frame_time_usec = actual_server_time_usec
+
+    G.print(
+        "Re-synced frame timestamp to wall-clock (drift: %d ms)"
+        % [drift_usec / 1000],
+        ScaffolderLog.CATEGORY_NETWORK_SYNC,
+    )
 
 
 func add_networked_state(node: ReconcilableNetworkedState) -> void:
