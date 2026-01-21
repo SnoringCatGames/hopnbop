@@ -87,9 +87,29 @@ var _client_pending_sync_t1: int = 0
 var _client_offset_samples: Array[int] = []
 var _client_rtt_samples: Array[int] = []
 
+## Start time offset (in microseconds). This is the Time.get_ticks_usec()
+## value when ServerTimeTracker initialized. Both server and client use this
+## offset so their time values start at zero instead of at the engine's
+## elapsed time. This prevents fast-forwarding through frames at startup.
+##
+## For clients, this starts at -1 (sentinel value indicating not yet initialized)
+## and gets set when the server sends the offset via RPC.
+var _start_time_offset_usec: int = -1
+
+## Returns true if the time tracker is ready to provide server time.
+## For servers, always true. For clients, true after receiving server's offset.
+var is_time_initialized: bool:
+    get:
+        return is_server or _start_time_offset_usec >= 0
+
 
 func _ready() -> void:
     G.log.log_system_ready("ServerTimeTracker")
+
+    # Only the server captures start time. Clients will receive the server's
+    # offset via RPC when they connect.
+    if is_server:
+        _start_time_offset_usec = Time.get_ticks_usec()
 
     # Connect to multiplayer signals to know when we're connected.
     if G.network.is_client:
@@ -122,15 +142,24 @@ func _process(delta: float) -> void:
 
 ## Returns the estimated server time in microseconds.
 ##
-## This is an estimate of what `Time.get_ticks_usec()` would currently return on
-## the remote server machine.
+## This is an estimate of what the server's offset time would currently be.
+## Both server and client apply the same start time offset so their frame
+## indices align correctly.
+##
+## Returns 0 for clients that haven't received the server's offset yet.
 func get_server_time_usec() -> int:
-    if is_server:
-        # We ARE the server, just return local time.
-        return Time.get_ticks_usec()
+    # Client hasn't received server offset yet, return 0.
+    if not is_time_initialized:
+        return 0
 
-    # Return local time adjusted by the calculated offset.
-    return Time.get_ticks_usec() + clock_offset_usec
+    var local_time_offset := Time.get_ticks_usec() - _start_time_offset_usec
+
+    if is_server:
+        # We ARE the server, return our offset local time.
+        return local_time_offset
+
+    # Client: return offset local time adjusted by the calculated clock offset.
+    return local_time_offset + clock_offset_usec
 
 
 ## Manually request a time synchronization with the server.
@@ -141,9 +170,12 @@ func client_request_time_sync() -> void:
         return
     if not multiplayer.has_multiplayer_peer():
         return
+    # Don't sync time until we have the server's start time offset.
+    if not is_time_initialized:
+        return
 
-    # T1: Client sends request with its local timestamp.
-    _client_pending_sync_t1 = Time.get_ticks_usec()
+    # T1: Client sends request with its offset local timestamp.
+    _client_pending_sync_t1 = Time.get_ticks_usec() - _start_time_offset_usec
     _server_rpc_request_time.rpc_id(1, _client_pending_sync_t1)
 
 
@@ -182,14 +214,39 @@ func clear() -> void:
 
 
 func _client_on_connected_to_server() -> void:
-    # When we connect to a server, immediately request time sync.
+    # When we connect to a server, clear sync data. The server will send us its
+    # start time offset, and then we'll proceed with time sync.
     clear()
+
+
+func _server_on_peer_connected(peer_id: int) -> void:
+    # Send our start time offset to the newly connected client so they use the
+    # same time reference point.
+    _client_rpc_receive_start_time_offset.rpc_id(
+        peer_id,
+        _start_time_offset_usec,
+    )
+
+
+## RPC called by server to send its start time offset to a client.
+##
+## server_offset_usec: The server's _start_time_offset_usec value.
+@rpc("authority", "call_remote", "reliable")
+func _client_rpc_receive_start_time_offset(server_offset_usec: int) -> void:
+    if is_server:
+        return
+
+    # Adopt the server's start time offset as our own so we're using the same
+    # time reference point.
+    _start_time_offset_usec = server_offset_usec
+
+    G.print(
+        "Adopted server start time offset: %d usec" % [server_offset_usec],
+        ScaffolderLog.CATEGORY_NETWORK_SYNC,
+    )
+
+    # Now request time sync to calculate clock offset.
     client_request_time_sync()
-
-
-func _server_on_peer_connected(_peer_id: int) -> void:
-    # Server doesn't need to do anything special when peers connect.
-    pass
 
 
 ## RPC called by client to request time from server.
@@ -200,11 +257,11 @@ func _server_rpc_request_time(t1_usec: int) -> void:
     if not is_server:
         return
 
-    # T2: Server receives the request.
-    var t2_usec := Time.get_ticks_usec()
+    # T2: Server receives the request (use offset server time).
+    var t2_usec := get_server_time_usec()
 
     # T3: Server sends response (we send T2 and T3 together; T3 is "now").
-    var t3_usec := Time.get_ticks_usec()
+    var t3_usec := get_server_time_usec()
 
     var sender_id := multiplayer.get_remote_sender_id()
     _client_rpc_respond_time.rpc_id(sender_id, t1_usec, t2_usec, t3_usec)
@@ -220,8 +277,12 @@ func _client_rpc_respond_time(t1_usec: int, t2_usec: int, t3_usec: int) -> void:
     if is_server:
         return
 
-    # T4: Client receives the response.
-    var t4_usec := Time.get_ticks_usec()
+    # Can't process time sync response until we have the server's offset.
+    if not is_time_initialized:
+        return
+
+    # T4: Client receives the response (use offset time).
+    var t4_usec := Time.get_ticks_usec() - _start_time_offset_usec
 
     # Verify this response matches our pending request.
     if t1_usec != _client_pending_sync_t1:
