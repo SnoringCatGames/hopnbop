@@ -294,7 +294,7 @@ func _handle_new_authoritative_state() -> void:
                 ScaffolderLog.CATEGORY_NETWORK_SYNC,
             )
         else:
-            G.warning(
+            G.print(
                 "Fast-forwarding due to future state from server",
                 ScaffolderLog.CATEGORY_NETWORK_SYNC,
             )
