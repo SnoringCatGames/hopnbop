@@ -4,8 +4,8 @@ extends Resource
 # --- General configuration ---
 
 @export_group("Network connection")
-@export var connect_to_remote_server := false
-@export var run_multiple_clients := false
+@export var preview_connect_to_remote_server := false
+@export var preview_run_multiple_clients := false
 # FIXME: [GameLift]: Set up support to connect to a remote server.
 @export var remote_server_ip_address: StringName = "127.0.0.1"
 @export var remote_server_port := 4433
@@ -13,10 +13,10 @@ extends Resource
 @export var local_server_port := 4433
 var server_ip_address: StringName:
     get:
-        return remote_server_ip_address if connect_to_remote_server else local_server_ip_address
+        return remote_server_ip_address if preview_connect_to_remote_server else local_server_ip_address
 var server_port: int:
     get:
-        return remote_server_port if connect_to_remote_server else local_server_port
+        return remote_server_port if preview_connect_to_remote_server else local_server_port
 @export_group("")
 
 @export_group("Network sync")
