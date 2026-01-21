@@ -492,7 +492,7 @@ func _log_metrics_periodically() -> void:
 
 func _log_render_fps_warning(avg_fps: float) -> void:
     G.warning(
-        "SLOW RENDER FPS: %.1f (THRESHOLD: %d)"
+        "Slow render FPS: %.1f (threshold: %d)"
         % [avg_fps, _SLOW_RENDER_FPS],
         ScaffolderLog.CATEGORY_CORE_SYSTEMS,
     )
@@ -500,7 +500,7 @@ func _log_render_fps_warning(avg_fps: float) -> void:
 
 func _log_physics_fps_warning(avg_fps: float) -> void:
     G.warning(
-        "SLOW PHYSICS FPS: %.1f (THRESHOLD: %d)"
+        "Slow physics FPS: %.1f (threshold: %d)"
         % [avg_fps, _SLOW_PHYSICS_FPS],
         ScaffolderLog.CATEGORY_CORE_SYSTEMS,
     )
@@ -508,7 +508,7 @@ func _log_physics_fps_warning(avg_fps: float) -> void:
 
 func _log_network_fps_warning(avg_fps: float) -> void:
     G.warning(
-        "SLOW NETWORK FPS: %.1f (THRESHOLD: %d)"
+        "Slow network FPS: %.1f (threshold: %d)"
         % [avg_fps, _SLOW_NETWORK_FPS],
         ScaffolderLog.CATEGORY_CORE_SYSTEMS,
     )
@@ -516,7 +516,7 @@ func _log_network_fps_warning(avg_fps: float) -> void:
 
 func _log_network_rtt_warning(rtt_msec: float) -> void:
     G.warning(
-        "SLOW NETWORK RTT: %.1fMS (THRESHOLD: %.0fMS)"
+        "Slow network RTT: %.1fms (threshold: %.0fms)"
         % [rtt_msec, _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0],
         ScaffolderLog.CATEGORY_CORE_SYSTEMS,
     )
@@ -524,7 +524,7 @@ func _log_network_rtt_warning(rtt_msec: float) -> void:
 
 func _log_large_fastforward_warning(frame_count: int) -> void:
     G.warning(
-        "LARGE FAST-FORWARD: %d frames (THRESHOLD: %d)"
+        "Large fast-forward: %d frames (threshold: %d)"
         % [frame_count, _LARGE_FASTFORWARD_THRESHOLD],
         ScaffolderLog.CATEGORY_CORE_SYSTEMS,
     )
@@ -532,7 +532,7 @@ func _log_large_fastforward_warning(frame_count: int) -> void:
 
 func _log_high_fastforward_rate_warning(rate: float) -> void:
     G.warning(
-        "HIGH FAST-FORWARD RATE: %.2f/sec (THRESHOLD: %.1f)"
+        "High fast-forward rate: %.2f/sec (threshold: %.1f)"
         % [rate, _HIGH_FASTFORWARD_RATE_THRESHOLD],
         ScaffolderLog.CATEGORY_CORE_SYSTEMS,
     )
