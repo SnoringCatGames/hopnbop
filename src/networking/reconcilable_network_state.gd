@@ -320,6 +320,14 @@ func _network_process() -> void:
 
 ## This is called before _network_process is called on any nodes.
 func _pre_network_process() -> void:
+    # Initialize rollback buffer on first frame processing if not already done.
+    # This happens on clients after time synchronization is complete.
+    if _rollback_buffer == null:
+        _set_up_rollback_buffer()
+        # If still null, time isn't initialized yet - skip this frame.
+        if _rollback_buffer == null:
+            return
+
     timestamp_index = G.network.server_frame_index
     frame_authority = FrameAuthority.UNKNOWN
 
@@ -340,6 +348,10 @@ func _pre_network_process() -> void:
 
 ## This is called after _network_process has been called on all relevant nodes.
 func _post_network_process() -> void:
+    # Skip if rollback buffer isn't initialized yet (client before time sync).
+    if _rollback_buffer == null:
+        return
+
     _sync_from_scene_state()
     if is_multiplayer_authority():
         _pack_networked_state()
@@ -386,6 +398,13 @@ func _update_replication_config() -> void:
 
 
 func _set_up_rollback_buffer() -> void:
+    # Don't initialize the rollback buffer until time is synchronized.
+    # On clients, server_frame_index will be 0 until we receive the server's
+    # time offset, which could cause the buffer to be initialized for the wrong
+    # frame range.
+    if not G.network.time.is_time_initialized:
+        return
+
     var default_values := _get_default_values().duplicate()
     default_values.append(FrameAuthority.PREDICTED)
 
