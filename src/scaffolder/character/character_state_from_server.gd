@@ -82,9 +82,12 @@ func _network_process() -> void:
         # This happens when the client has sent input that arrived and was
         # unpacked into the buffer during _handle_new_authoritative_state.
         state_from_client._unpack_buffer_state(timestamp_index)
+        # Update surface attachment state based on the input we just loaded.
+        character.surfaces.update_actions()
     else:
         if is_authority_for_state_from_client:
             # This client controls input - capture it now as authoritative.
+            # _update_actions() will call surfaces.update_actions() internally.
             character._update_actions()
             state_from_client.frame_authority = FrameAuthority.AUTHORITATIVE
         else:
@@ -94,6 +97,16 @@ func _network_process() -> void:
             # later will be at frame N.
             state_from_client._unpack_buffer_state(timestamp_index - 1)
             state_from_client.frame_authority = FrameAuthority.PREDICTED
+            # Update surface attachment state based on the input we just loaded.
+            character.surfaces.update_actions()
+
+    # FIXME: LEFT OFF HERE: Check if I need to call other _network_process subroutiens from branches below:
+    # # update derived behaviors based on current movement and actions.
+    # _process_facing_direction()
+    # _process_actions()
+    # _process_animation()
+    # _process_sounds()
+    # _update_collision_mask()
 
     # Handle scene state (from the server).
     if is_authority_for_state_from_server:
