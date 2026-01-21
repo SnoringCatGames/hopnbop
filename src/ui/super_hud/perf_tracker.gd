@@ -246,18 +246,19 @@ func _update_fastforward_metrics() -> void:
     %MaxLastFastforwardDuration.text = "%.2f" % _max_last_fastforward_duration_ms
     %MaxLastFastforwardFrames.text = str(_max_last_fastforward_frames)
 
+    # Update colors based on thresholds
+    var is_large_fastforward := _current_last_fastforward_frames >= _LARGE_FASTFORWARD_THRESHOLD
+    var is_high_rate := _current_fastforwards_per_sec > _HIGH_FASTFORWARD_RATE_THRESHOLD
+
+    _update_label_color(%LastFastforwardFrames, is_large_fastforward)
+    _update_label_color(%FastforwardsPerSec, is_high_rate)
+
     # Warn if we're fast-forwarding many frames at once
-    if (
-        _current_last_fastforward_frames >= _LARGE_FASTFORWARD_THRESHOLD and
-        G.game_panel.is_level_fully_loaded
-    ):
+    if is_large_fastforward and G.game_panel.is_level_fully_loaded:
         _throttled_warn_large_fastforward.call(_current_last_fastforward_frames)
 
     # Warn if fast-forwards are happening too frequently
-    if (
-        _current_fastforwards_per_sec > _HIGH_FASTFORWARD_RATE_THRESHOLD and
-        G.game_panel.is_level_fully_loaded
-    ):
+    if is_high_rate and G.game_panel.is_level_fully_loaded:
         _throttled_warn_high_fastforward_rate.call(_current_fastforwards_per_sec)
 
 # --- Metric calculation helpers ---
