@@ -1,4 +1,5 @@
 extends "res://addons/gut/gut_to_move.gd"
+
 class_name GutMain
 ## The GUT brains.
 ##
@@ -257,11 +258,10 @@ var _is_running = false
 func is_running():
     return _is_running
 
-
 # ---------------------------
 # Private
 # ---------------------------
-var _should_print_versions = true  # used to cut down on output in tests.
+var _should_print_versions = true # used to cut down on output in tests.
 var _should_print_summary = true
 
 var _file_prefix = "test_"
@@ -311,7 +311,7 @@ func _init(override_logger = null):
     if override_logger != null:
         logger = override_logger
     else:
-        logger = logger  # force setter logic
+        logger = logger # force setter logic
 
     _doubler.set_stubber(_stubber)
     _doubler.set_spy(_spy)
@@ -365,7 +365,6 @@ func _print_versions(send_all = true):
         p(info)
     else:
         _lgr.get_printer("gui").send(info + "\n")
-
 
 # ---------------------------
 #
@@ -429,7 +428,7 @@ func _log_test_children_warning(test_script):
             msg = str(
                 "Test script has ",
                 kids.size(),
-				" unfreed children.  Increase log level for more details."
+                " unfreed children.  Increase log level for more details.",
             )
 
         _lgr.warn(msg)
@@ -578,8 +577,7 @@ func _create_script_instance(collected_script):
     if !test_script._was_ready_called:
         test_script._do_ready_stuff()
         (
-            _lgr
-            . warn(
+            _lgr.warn(
                 str(
                     "!!! YOU HAVE UPSET YOUR GUT !!!\n",
                     "You have overridden _ready in [",
@@ -615,7 +613,7 @@ func _wait_for_continue_button():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 func _get_indexes_matching_script_name(script_name):
-    var indexes = []  # empty runs all
+    var indexes = [] # empty runs all
     for i in range(_test_collector.scripts.size()):
         if _test_collector.scripts[i].get_filename().find(script_name) != -1:
             indexes.append(i)
@@ -646,15 +644,15 @@ func _run_parameterized_test(test_script, test_name):
             str(
                 "Parameterized test ",
                 _current_test.name,
-				" did not call use_parameters for the default value of the parameter."
-            )
+                " did not call use_parameters for the default value of the parameter.",
+            ),
         )
         _fail(
             str(
                 "Parameterized test ",
                 _current_test.name,
-				" did not call use_parameters for the default value of the parameter."
-            )
+                " did not call use_parameters for the default value of the parameter.",
+            ),
         )
     else:
         var index = 1
@@ -687,7 +685,7 @@ func _run_test(script_inst, test_name, param_index = -1):
 
     if error_tracker.should_test_fail_from_errors(test_id):
         script_inst._fail(
-            str("Unexpected Errors:\n", error_tracker.get_fail_text_for_errors(test_id))
+            str("Unexpected Errors:\n", error_tracker.get_fail_text_for_errors(test_id)),
         )
 
     error_tracker.end_test()
@@ -710,8 +708,7 @@ func _run_test(script_inst, test_name, param_index = -1):
         await get_tree().create_timer(_auto_queue_free_delay).timeout
 
     (
-        _orphan_counter
-        . end_test(
+        _orphan_counter.end_test(
             script_inst.collected_script.get_filename_and_inner(),
             test_name,
             _log_level > 0,
@@ -788,9 +785,8 @@ func _should_skip_script(test_script, collected_script):
         skip_value = await test_script.should_skip_script()
     else:
         (
-            _lgr
-            . deprecated(
-				"Using the skip_script var has been deprecated.  Implement the new should_skip_script() method in your test instead."
+            _lgr.deprecated(
+                "Using the skip_script var has been deprecated.  Implement the new should_skip_script() method in your test instead.",
             )
         )
 
@@ -891,8 +887,7 @@ func _test_the_scripts(indexes = []):
 
                 if _current_test.arg_count > 1:
                     (
-                        _lgr
-                        . error(
+                        _lgr.error(
                             str(
                                 "Parameterized test ",
                                 _current_test.name,
@@ -934,8 +929,7 @@ func _test_the_scripts(indexes = []):
             await _call_after_all(test_script, coll_script)
 
         (
-            _orphan_counter
-            . end_script(
+            _orphan_counter.end_script(
                 coll_script.get_filename_and_inner(),
                 _log_level > 0,
             )
@@ -954,7 +948,7 @@ func _test_the_scripts(indexes = []):
                 coll_script.get_passing_test_count(),
                 "/",
                 coll_script.get_ran_test_count(),
-				" passed."
+                " passed.",
             )
             _lgr.log(script_sum, _lgr.fmts.bold)
 
@@ -1078,7 +1072,6 @@ func _get_files(path, prefix, suffix):
     files.sort()
     return files
 
-
 # ---------------------------
 #
 # public
@@ -1110,7 +1103,6 @@ func p(text, level = 0):
     if level <= GutUtils.nvl(_log_level, 0):
         _lgr.log(str_text)
 
-
 # ---------------------------
 #
 # RUN TESTS/ADD SCRIPTS
@@ -1126,8 +1118,7 @@ func test_scripts(_run_rest = false):
         var indexes = _get_indexes_matching_script_name(_script_name)
         if indexes == []:
             (
-                _lgr
-                . error(
+                _lgr.error(
                     str(
                         "Could not find script matching '",
                         _script_name,
@@ -1146,7 +1137,6 @@ func test_scripts(_run_rest = false):
 # alias
 func run_tests(run_rest = false):
     test_scripts(run_rest)
-
 
 # ------------------------------------------------------------------------------
 # Runs a single script passed in.
@@ -1243,7 +1233,6 @@ func import_tests_if_none_found():
 func export_if_tests_found():
     if _test_collector.scripts.size() > 0:
         export_tests()
-
 
 # ---------------------------
 #

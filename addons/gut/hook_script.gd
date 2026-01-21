@@ -30,29 +30,29 @@ var _should_abort = false
 ## Virtual method that will be called by GUT after instantiating this script.
 ## This is where you put all of your logic.
 func run():
-	gut.logger.error(
-		"Run method not overloaded.  Create a 'run()' method in your hook script to run your code."
-	)
+    gut.logger.error(
+        "Run method not overloaded.  Create a 'run()' method in your hook script to run your code.",
+    )
 
 
 ## Set the exit code when running from the command line.  If not set then the
 ## default exit code will be returned (0 when no tests fail, 1 when any tests
 ## fail).
 func set_exit_code(code: int):
-	_exit_code = code
+    _exit_code = code
 
 
 ## Returns the exit code set with [code skip-lint]set_exit_code[/code]
 func get_exit_code():
-	return _exit_code
+    return _exit_code
 
 
 ## Usable by pre-run script to cause the run to end AFTER the run() method
 ## finishes.  GUT will quit and post-run script will not be ran.
 func abort():
-	_should_abort = true
+    _should_abort = true
 
 
 ## Returns if [code skip-lint]abort[/code] was called.
 func should_abort():
-	return _should_abort
+    return _should_abort
