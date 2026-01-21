@@ -100,11 +100,27 @@ func _on_peer_disconnected(multiplayer_id: int) -> void:
             "Client disconnected: %d" % multiplayer_id,
             ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
         )
+
+        # In preview mode, close the server when all clients have disconnected
+        if G.network.is_preview and multiplayer.get_peers().size() == 0:
+            G.print(
+                "All clients disconnected in preview mode, closing server",
+                ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+            )
+            G.main.close_app()
     else:
         G.check(multiplayer_id == SERVER_ID)
         G.print("Disconnect from server", ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
         _client_update_is_connected_to_server()
         G.main.update_window_title()
+
+        # In preview mode, close the client when the server disconnects
+        if G.network.is_preview:
+            G.print(
+                "Server disconnected in preview mode, closing client",
+                ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+            )
+            G.main.close_app()
 
 
 func _client_update_is_connected_to_server() -> void:
