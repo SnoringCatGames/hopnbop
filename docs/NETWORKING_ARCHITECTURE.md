@@ -206,11 +206,16 @@ simulation at 60 FPS and coordinates rollback reconciliation.
 - **Time step**: ~16,666 microseconds (1/60 second)
 - **Frame alignment**: Each frame has a canonical timestamp at its midpoint
 
-**Frame Indices**: Server time is bucketed into discrete frames. The current
-frame index is calculated as:
+**Frame Indices**: The `server_frame_index` is incremented directly on each
+physics tick, ensuring perfect synchronization with Godot's physics loop. Frame
+timestamps are calculated from the index:
 ```gdscript
-frame_index = server_time_usec / TARGET_NETWORK_TIME_STEP_USEC
+frame_time_usec = get_time_usec_from_frame_index(server_frame_index)
 ```
+
+Wall-clock time is periodically re-synced (every 30 seconds) to maintain
+accurate timestamps for logging, but frame progression is driven purely by
+physics callbacks.
 
 **Registered Nodes**: Maintains arrays of:
 - `_networked_state_nodes`: All `ReconcilableNetworkedState` instances
@@ -225,8 +230,16 @@ Called from `_pre_physics_process()` every physics frame (which should match
 the 60 FPS target):
 
 ```gdscript
+func _pre_physics_process(delta: float):
+    if not _is_frame_tracking_initialized:
+        _initialize_frame_tracking()  # Defer until ServerTimeTracker ready
+        return
+
+    server_frame_index += 1  # Increment directly on each physics tick
+    _run_network_process()
+
 func _run_network_process():
-    _update_server_frame_time()  # Calculate current frame index
+    _update_server_frame_time()  # Update frame timestamp
 
     if _queued_rollback_frame_index > 0:
         _rollback_and_reprocess()  # Handle rollback if queued
