@@ -494,6 +494,11 @@ func queue_rollback(p_conflicting_frame_index: int) -> bool:
 ## For most nodes in the scene, _network_process should happen before
 ## _physics_process.
 func _run_network_process() -> void:
+    # Don't process frames on clients until they have received the server's
+    # start time offset and can calculate valid frame indices.
+    if not G.network.time.is_time_initialized:
+        return
+
     _update_server_frame_time()
 
     if _queued_rollback_frame_index > 0:
@@ -504,7 +509,11 @@ func _run_network_process() -> void:
 
 
 func _rollback_and_reprocess() -> void:
-    G.print("Starting rollback", ScaffolderLog.CATEGORY_NETWORK_SYNC)
+    G.print(
+        "Starting rollback from frame %d to frame %d"
+        % [server_frame_index, _queued_rollback_frame_index],
+        ScaffolderLog.CATEGORY_NETWORK_SYNC,
+    )
 
     var rollback_start_time_usec := Time.get_ticks_usec()
 
