@@ -37,6 +37,8 @@ extends Node
 ## - Target: 60 FPS (TARGET_NETWORK_TIME_STEP_SEC = 1/60 ≈ 0.01666 seconds)
 ## - Frames are identified by server_frame_index
 ## - Times are stored in microseconds for precision
+## - Server: Uses Engine.get_physics_frames() for authoritative frame counting
+## - Client: Estimates server frame from NTP-synchronized time, may fast-forward
 ##
 ## Rollback mechanism:
 ## - queue_rollback() schedules rollback to a specific frame (conflict detection)
@@ -45,6 +47,11 @@ extends Node
 ## - Only one rollback occurs per _network_process, earliest frame takes priority
 
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug.
+# - There's a large fast-forward happening on the server at startup. However, we don't actually need to simulate anything then, since whatever state the server has whenever it ends up starting, is the correct starting state. We can discount any already elapsed time.
+# - Does it seem like there are still any issues with slow physics ticks that we should look into?
+# - Does it seem like my rollback_buffers are a good size? Should they be less or more?
+# - Update ScaffolderTime.PHYSICS_FPS to use whatever value has been configured in project settings.
+#
 # - Debug the game.
 # - Add rollback debug visualizations.
 # - Review NETWORKING_ARCHITECTURE.md.
@@ -328,6 +335,10 @@ var server_frame_time_usec := 0
 ## would be index of the current frame.
 var server_frame_index := 0
 
+## Server only: Offset to convert Engine.get_physics_frames() to network frame
+## index. Set on first frame to make network frames start from 0.
+var _server_physics_frame_offset := -1
+
 var _networked_state_nodes: Array[ReconcilableNetworkedState] = []
 
 var _network_frame_processor_nodes: Array[NetworkFrameProcessor] = []
@@ -392,33 +403,54 @@ func get_time_usec_from_frame_index(p_frame_index: int) -> int:
 
 
 func _update_server_frame_time() -> void:
-    var server_time_usec := G.network.server_time_usec_not_frame_aligned
-    var frame_start_time_usec := floori(
-        get_frame_index_from_time_usec(server_time_usec) *
-        TARGET_NETWORK_TIME_STEP_USEC,
-    )
+    if G.network.is_server:
+        # Server uses Godot's authoritative physics frame counter.
+        # This is immune to slow physics - it counts actual ticks, not wall-clock
+        # time. Fast-forwards are eliminated on the server since we're counting
+        # frames directly.
+        var physics_frame_count := Engine.get_physics_frames()
 
-    var next_server_frame_time_usec := floori(
-        frame_start_time_usec + TARGET_NETWORK_TIME_STEP_USEC * 0.5,
-    )
-    var next_server_frame_index := get_frame_index_from_time_usec(
-        next_server_frame_time_usec,
-    )
+        # Initialize offset on first frame to make network frames start from 0
+        if _server_physics_frame_offset < 0:
+            _server_physics_frame_offset = physics_frame_count
 
-    if not G.ensure(
-        next_server_frame_index >= server_frame_index - 1,
-        "Server frame index went backwards: %d -> %d"
-        % [server_frame_index, next_server_frame_index],
-    ):
-        return
+        # Convert absolute physics frame count to network frame index
+        server_frame_index = physics_frame_count - _server_physics_frame_offset
+        server_frame_time_usec = floori(
+            server_frame_index * TARGET_NETWORK_TIME_STEP_USEC +
+            TARGET_NETWORK_TIME_STEP_USEC * 0.5,
+        )
+    else:
+        # Client estimates server time via NTP clock synchronization.
+        # Fast-forwards may occur here to stay aligned with the server's
+        # authoritative frame count.
+        var server_time_usec := G.network.server_time_usec_not_frame_aligned
+        var frame_start_time_usec := floori(
+            get_frame_index_from_time_usec(server_time_usec) *
+            TARGET_NETWORK_TIME_STEP_USEC,
+        )
 
-    # If our tracking of server time has skewed enough that we're skipping a
-    # frame, then we need to fast-forward the system.
-    if next_server_frame_index > server_frame_index + 1:
-        fast_forward(next_server_frame_index - 1)
+        var next_server_frame_time_usec := floori(
+            frame_start_time_usec + TARGET_NETWORK_TIME_STEP_USEC * 0.5,
+        )
+        var next_server_frame_index := get_frame_index_from_time_usec(
+            next_server_frame_time_usec,
+        )
 
-    server_frame_time_usec = next_server_frame_time_usec
-    server_frame_index = next_server_frame_index
+        if not G.ensure(
+            next_server_frame_index >= server_frame_index - 1,
+            "Server frame index went backwards: %d -> %d"
+            % [server_frame_index, next_server_frame_index],
+        ):
+            return
+
+        # If our tracking of server time has skewed enough that we're skipping a
+        # frame, then we need to fast-forward the system.
+        if next_server_frame_index > server_frame_index + 1:
+            fast_forward(next_server_frame_index - 1)
+
+        server_frame_time_usec = next_server_frame_time_usec
+        server_frame_index = next_server_frame_index
 
 
 func add_networked_state(node: ReconcilableNetworkedState) -> void:
