@@ -53,7 +53,7 @@ func _init(
         p_capacity: int,
         p_current_frame_index: int,
         p_default_frame_state: Array,
-    ) -> void:
+) -> void:
     super._init(p_capacity)
 
     _default_frame_state = p_default_frame_state
@@ -136,6 +136,9 @@ func set_at(index: int, value: Variant) -> bool:
     if existing_value is Array and value is Array:
         var existing_arr := existing_value as Array
         var new_arr := value as Array
+        # Check if they're the same reference - if so, no work needed!
+        if existing_arr == new_arr:
+            return true
         if existing_arr.size() == new_arr.size():
             for i in range(new_arr.size()):
                 existing_arr[i] = new_arr[i]
