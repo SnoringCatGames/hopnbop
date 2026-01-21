@@ -27,6 +27,7 @@ var server_port: int:
 @export var max_client_count := 8
 
 @export var dev_mode := true
+@export var auto_minimize_server_window := true
 @export var draw_annotations := false
 @export var show_debug_console := false
 @export var show_debug_player_state := false

@@ -1,7 +1,6 @@
 class_name Main
 extends Node2D
 
-
 func _enter_tree() -> void:
     G.main = self
     G.log.set_log_filtering(
@@ -30,6 +29,9 @@ func _ready() -> void:
 
     if G.settings.full_screen and not G.network.is_server:
         DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+    if G.settings.auto_minimize_server_window and G.network.is_server and G.network.is_preview:
+        DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MINIMIZED)
 
     _start_app()
 
