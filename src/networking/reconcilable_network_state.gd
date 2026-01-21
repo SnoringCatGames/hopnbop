@@ -247,7 +247,27 @@ func _handle_new_authoritative_state() -> void:
         )
         return
 
-    var should_trigger_fast_forward := G.network.server_frame_index < state_frame_index - 1
+    var should_trigger_fast_forward := (
+        G.network.server_frame_index < state_frame_index - 1 and
+        G.network.is_client
+    )
+    var is_more_than_one_frame_ahead := G.network.server_frame_index < state_frame_index - 2
+
+    # Server rejects client states that are too far in the future (2+ frames ahead).
+    # This likely indicates a bug or malicious client.
+    if G.network.is_server and is_more_than_one_frame_ahead:
+        G.warning(
+            (
+                "Rejecting too-distant-future state from client: " +
+                "state frame %d, server frame %d"
+            )
+            % [state_frame_index, G.network.server_frame_index],
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        )
+        return
+
+    # Unpack if state is for current frame, next frame, or past. State for the
+    # next frame is valid when received between physics ticks.
     var should_unpack_state := state_frame_index >= G.network.server_frame_index
     var should_check_for_prediction_mismatch := (
         state_frame_index < G.network.server_frame_index
@@ -288,30 +308,24 @@ func _handle_new_authoritative_state() -> void:
     # If we have skipped frames, we need to force the entire system to
     # fast-forward.
     if should_trigger_fast_forward:
-        if G.network.is_server:
-            G.warning(
-                "Ignoring future state from client",
-                ScaffolderLog.CATEGORY_NETWORK_SYNC,
-            )
-        else:
-            G.print(
-                "Fast-forwarding due to future state from server",
-                ScaffolderLog.CATEGORY_NETWORK_SYNC,
-            )
+        G.print(
+            "Fast-forwarding due to future state from server",
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        )
 
-            # Adjust the time tracker's clock offset to account for the drift.
-            # This prevents the NTP averaging from reverting the fast-forward by
-            # also adjusting all NTP samples. The force_clock_offset method
-            # updates both the current offset and all historical samples to
-            # maintain consistency.
-            var frames_behind := state_frame_index - 1 - G.network.server_frame_index
-            var time_delta_usec := floori(
-                frames_behind
-                * G.network.frame_driver.TARGET_NETWORK_TIME_STEP_USEC,
-            )
-            G.network.time.force_clock_offset(time_delta_usec)
+        # Adjust the time tracker's clock offset to account for the drift.
+        # This prevents the NTP averaging from reverting the fast-forward by
+        # also adjusting all NTP samples. The force_clock_offset method
+        # updates both the current offset and all historical samples to
+        # maintain consistency.
+        var frames_behind := state_frame_index - 1 - G.network.server_frame_index
+        var time_delta_usec := floori(
+            frames_behind
+            * G.network.frame_driver.TARGET_NETWORK_TIME_STEP_USEC,
+        )
+        G.network.time.force_clock_offset(time_delta_usec)
 
-            G.network.frame_driver.fast_forward(state_frame_index - 1)
+        G.network.frame_driver.fast_forward(state_frame_index - 1)
 
 
 func _network_process() -> void:
@@ -331,10 +345,17 @@ func _pre_network_process() -> void:
     timestamp_index = G.network.server_frame_index
     frame_authority = FrameAuthority.UNKNOWN
 
-    # FIXME: LEFT OFF HERE: What happens during the first calls to _pre_network_process?
     G.check(
         _rollback_buffer.get_latest_index() >= timestamp_index - 2,
-        "Rollback buffer does not have state for the expected frame index",
+        (
+            "Rollback buffer missing required frame: " +
+            "current=%d, needs=%d, latest=%d"
+        )
+        % [
+            timestamp_index,
+            timestamp_index - 2,
+            _rollback_buffer.get_latest_index(),
+        ],
     )
 
     # We're about to simulate frame N. Start by loading frame N-1's final state
