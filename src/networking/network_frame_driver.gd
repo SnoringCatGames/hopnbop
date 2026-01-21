@@ -52,9 +52,14 @@ extends Node
 #
 # REMAINING TASKS:
 # - Debug the game.
-# - Ask to implement some additional tests that were identified previously: https://mail.google.com/mail/u/1/#all/QgrcJHrnvrPBjwhJCFrRSpCnrlpNDjVzqWg
+#   - Fix jumps
+#   - Test with multiple clients, verify one sees the other move.
 # - Review tests.
 # - Fix GitHub CI.
+# - Add some hotkeys for toggling each of the various super-hud debug UI:
+#   - F1 should toggle DebugConsole
+#   - F2 should toggle PlayerStateList
+#   - F3 should toggle PerfTracker
 # - Add support for networked pause
 #   - First, review my proposed plan, and let me know if anything doesn't make
 #     sense or should be done differently.
@@ -82,10 +87,6 @@ extends Node
 #       paused.
 #     - The client then, only updates the debug UI 0.2 seconds after first
 #       triggering pause, and when this special server RPC is received.
-# - Add some hotkeys for toggling each of the various super-hud debug UI:
-#   - F1 should toggle DebugConsole
-#   - F2 should toggle PlayerStateList
-#   - F3 should toggle PerfTracker
 # - GameLift
 #   - https://claude.ai/chat/c191d2ce-5457-4b81-bfb6-6b9dade6a939
 #   - Also ask AI to implement easy scripts for building and deploying and testing. Maybe can also add a hook for GitHub Actions when creating tags? Or ask for a better deployment with trigger solution
