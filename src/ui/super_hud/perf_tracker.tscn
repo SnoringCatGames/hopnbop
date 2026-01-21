@@ -44,6 +44,19 @@ unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 2
 
+[node name="Label2" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "("
+
+[node name="MaxPhysicsFPS" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="Label3" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = ")"
+
 [node name="HBoxContainer2" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 mouse_filter = 2
@@ -57,6 +70,19 @@ text = "Render FPS: "
 unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 2
+
+[node name="Label2" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer2"]
+layout_mode = 2
+text = "("
+
+[node name="MaxRenderFPS" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer2"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="Label3" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer2"]
+layout_mode = 2
+text = ")"
 
 [node name="HBoxContainer3" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
@@ -72,6 +98,19 @@ unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 2
 
+[node name="Label2" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer3"]
+layout_mode = 2
+text = "("
+
+[node name="MaxNetworkFPS" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer3"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="Label3" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer3"]
+layout_mode = 2
+text = ")"
+
 [node name="HBoxContainer4" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 mouse_filter = 2
@@ -85,6 +124,19 @@ text = "Ping (ms): "
 unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 2
+
+[node name="Label2" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer4"]
+layout_mode = 2
+text = "("
+
+[node name="MaxNetworkPing" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer4"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="Label3" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer4"]
+layout_mode = 2
+text = ")"
 
 [node name="HBoxContainer5" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
@@ -100,6 +152,19 @@ unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 2
 
+[node name="Label2" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer5"]
+layout_mode = 2
+text = "("
+
+[node name="MaxRollbacksPerSec" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer5"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="Label3" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer5"]
+layout_mode = 2
+text = ")"
+
 [node name="HBoxContainer6" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 mouse_filter = 2
@@ -113,6 +178,19 @@ text = "Last rollback (ms): "
 unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 2
+
+[node name="Label2" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer6"]
+layout_mode = 2
+text = "("
+
+[node name="MaxLastRollbackDuration" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer6"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="Label3" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer6"]
+layout_mode = 2
+text = ")"
 
 [node name="HBoxContainer7" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
@@ -128,6 +206,19 @@ unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 2
 
+[node name="Label2" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer7"]
+layout_mode = 2
+text = "("
+
+[node name="MaxLastRollbackFrames" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer7"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="Label3" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer7"]
+layout_mode = 2
+text = ")"
+
 [node name="HBoxContainer8" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 mouse_filter = 2
@@ -141,6 +232,19 @@ text = "Fastforwards/sec: "
 unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 2
+
+[node name="Label2" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer8"]
+layout_mode = 2
+text = "("
+
+[node name="MaxFastforwardsPerSec" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer8"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="Label3" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer8"]
+layout_mode = 2
+text = ")"
 
 [node name="HBoxContainer9" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
@@ -156,6 +260,19 @@ unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 2
 
+[node name="Label2" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer9"]
+layout_mode = 2
+text = "("
+
+[node name="MaxLastFastforwardDuration" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer9"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="Label3" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer9"]
+layout_mode = 2
+text = ")"
+
 [node name="HBoxContainer10" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 mouse_filter = 2
@@ -169,3 +286,16 @@ text = "Last fastforward frames: "
 unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 2
+
+[node name="Label2" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer10"]
+layout_mode = 2
+text = "("
+
+[node name="MaxLastFastforwardFrames" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer10"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="Label3" type="Label" parent="MarginContainer/VBoxContainer/HBoxContainer10"]
+layout_mode = 2
+text = ")"

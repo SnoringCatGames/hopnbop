@@ -11,6 +11,7 @@ const _WARNING_THROTTLE_SEC := 5.0
 const _ROLLBACK_TRACKING_WINDOW_SEC := 60.0
 const _FASTFORWARD_TRACKING_WINDOW_SEC := 60.0
 const _FPS_TRACKING_WINDOW_SEC := 1.0
+const _METRICS_LOG_INTERVAL_SEC := 8.0
 
 # Tracking window state
 var _render_frame_count := 0
@@ -37,6 +38,18 @@ var _current_last_rollback_frames := 0
 var _current_fastforwards_per_sec := 0.0
 var _current_last_fastforward_duration_ms := 0.0
 var _current_last_fastforward_frames := 0
+
+# Max metric values (exposed via Performance monitors)
+var _max_render_fps := 0.0
+var _max_physics_fps := 0.0
+var _max_network_fps := 0.0
+var _max_network_ping_ms := 0.0
+var _max_rollbacks_per_sec := 0.0
+var _max_last_rollback_duration_ms := 0.0
+var _max_last_rollback_frames := 0
+var _max_fastforwards_per_sec := 0.0
+var _max_last_fastforward_duration_ms := 0.0
+var _max_last_fastforward_frames := 0
 
 # Throttled warning functions
 var _throttled_warn_render_fps: Callable
@@ -71,6 +84,11 @@ func _ready() -> void:
     G.network.local_authority_added.connect(_on_local_authority_added)
     G.network.local_authority_removed.connect(_on_local_authority_removed)
 
+    G.time.setInterval(
+        _log_metrics_periodically,
+        _METRICS_LOG_INTERVAL_SEC,
+    )
+
     # Register custom performance monitors
     Performance.add_custom_monitor("networking/render_fps", func(): return _current_render_fps)
     Performance.add_custom_monitor("networking/physics_fps", func(): return _current_physics_fps)
@@ -82,6 +100,16 @@ func _ready() -> void:
     Performance.add_custom_monitor("networking/fastforwards_per_sec", func(): return _current_fastforwards_per_sec)
     Performance.add_custom_monitor("networking/last_fastforward_duration_ms", func(): return _current_last_fastforward_duration_ms)
     Performance.add_custom_monitor("networking/last_fastforward_frames", func(): return _current_last_fastforward_frames)
+    Performance.add_custom_monitor("networking/max_render_fps", func(): return _max_render_fps)
+    Performance.add_custom_monitor("networking/max_physics_fps", func(): return _max_physics_fps)
+    Performance.add_custom_monitor("networking/max_network_fps", func(): return _max_network_fps)
+    Performance.add_custom_monitor("networking/max_network_ping_ms", func(): return _max_network_ping_ms)
+    Performance.add_custom_monitor("networking/max_rollbacks_per_sec", func(): return _max_rollbacks_per_sec)
+    Performance.add_custom_monitor("networking/max_last_rollback_duration_ms", func(): return _max_last_rollback_duration_ms)
+    Performance.add_custom_monitor("networking/max_last_rollback_frames", func(): return _max_last_rollback_frames)
+    Performance.add_custom_monitor("networking/max_fastforwards_per_sec", func(): return _max_fastforwards_per_sec)
+    Performance.add_custom_monitor("networking/max_last_fastforward_duration_ms", func(): return _max_last_fastforward_duration_ms)
+    Performance.add_custom_monitor("networking/max_last_fastforward_frames", func(): return _max_last_fastforward_frames)
 
 # --- Signal handlers ---
 
@@ -114,7 +142,14 @@ func _process(_delta: float) -> void:
         return
 
     _calculate_render_fps()
+    _max_render_fps = max(_max_render_fps, _current_render_fps)
     %RenderFPS.text = "%.1f" % _current_render_fps
+    %MaxRenderFPS.text = "%.1f" % _max_render_fps
+
+    if _current_render_fps > 0.0 and _current_render_fps < _SLOW_RENDER_FPS:
+        %RenderFPS.add_theme_color_override("font_color", Color.RED)
+    else:
+        %RenderFPS.remove_theme_color_override("font_color")
 
     if (
         G.game_panel.is_level_fully_loaded
@@ -129,7 +164,14 @@ func _physics_process(_delta: float) -> void:
         return
 
     _calculate_physics_fps()
+    _max_physics_fps = max(_max_physics_fps, _current_physics_fps)
     %PhysicsFPS.text = "%.1f" % _current_physics_fps
+    %MaxPhysicsFPS.text = "%.1f" % _max_physics_fps
+
+    if _current_physics_fps > 0.0 and _current_physics_fps < _SLOW_PHYSICS_FPS:
+        %PhysicsFPS.add_theme_color_override("font_color", Color.RED)
+    else:
+        %PhysicsFPS.remove_theme_color_override("font_color")
 
     if (
         G.game_panel.is_level_fully_loaded
@@ -150,7 +192,14 @@ func _character_state_from_server_updated() -> void:
         return
 
     _calculate_network_fps()
+    _max_network_fps = max(_max_network_fps, _current_network_fps)
     %NetworkFPS.text = "%.1f" % _current_network_fps
+    %MaxNetworkFPS.text = "%.1f" % _max_network_fps
+
+    if _current_network_fps > 0.0 and _current_network_fps < _SLOW_NETWORK_FPS:
+        %NetworkFPS.add_theme_color_override("font_color", Color.RED)
+    else:
+        %NetworkFPS.remove_theme_color_override("font_color")
 
     if (
         G.game_panel.is_level_fully_loaded
@@ -164,7 +213,14 @@ func _character_state_from_server_updated() -> void:
 
 func _update_network_ping() -> void:
     _calculate_network_ping()
+    _max_network_ping_ms = max(_max_network_ping_ms, _current_network_ping_ms)
     %NetworkPing.text = "%.1f" % _current_network_ping_ms
+    %MaxNetworkPing.text = "%.1f" % _max_network_ping_ms
+
+    if _current_network_ping_ms > _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0:
+        %NetworkPing.add_theme_color_override("font_color", Color.RED)
+    else:
+        %NetworkPing.remove_theme_color_override("font_color")
 
     if (
         G.game_panel.is_level_fully_loaded
@@ -175,16 +231,28 @@ func _update_network_ping() -> void:
 
 func _update_rollback_metrics() -> void:
     _calculate_rollback_metrics()
+    _max_rollbacks_per_sec = max(_max_rollbacks_per_sec, _current_rollbacks_per_sec)
+    _max_last_rollback_duration_ms = max(_max_last_rollback_duration_ms, _current_last_rollback_duration_ms)
+    _max_last_rollback_frames = max(_max_last_rollback_frames, _current_last_rollback_frames)
     %RollbacksPerSec.text = "%.1f" % _current_rollbacks_per_sec
     %LastRollbackDuration.text = "%.2f" % _current_last_rollback_duration_ms
     %LastRollbackFrames.text = str(_current_last_rollback_frames)
+    %MaxRollbacksPerSec.text = "%.1f" % _max_rollbacks_per_sec
+    %MaxLastRollbackDuration.text = "%.2f" % _max_last_rollback_duration_ms
+    %MaxLastRollbackFrames.text = str(_max_last_rollback_frames)
 
 
 func _update_fastforward_metrics() -> void:
     _calculate_fastforward_metrics()
+    _max_fastforwards_per_sec = max(_max_fastforwards_per_sec, _current_fastforwards_per_sec)
+    _max_last_fastforward_duration_ms = max(_max_last_fastforward_duration_ms, _current_last_fastforward_duration_ms)
+    _max_last_fastforward_frames = max(_max_last_fastforward_frames, _current_last_fastforward_frames)
     %FastforwardsPerSec.text = "%.1f" % _current_fastforwards_per_sec
     %LastFastforwardDuration.text = "%.2f" % _current_last_fastforward_duration_ms
     %LastFastforwardFrames.text = str(_current_last_fastforward_frames)
+    %MaxFastforwardsPerSec.text = "%.1f" % _max_fastforwards_per_sec
+    %MaxLastFastforwardDuration.text = "%.2f" % _max_last_fastforward_duration_ms
+    %MaxLastFastforwardFrames.text = str(_max_last_fastforward_frames)
 
 # --- Metric calculation helpers ---
 
@@ -338,6 +406,27 @@ func _calculate_events_per_sec(
         state.window_start_time = current_time
 
     return events_per_sec
+
+
+func _log_metrics_periodically() -> void:
+    if not G.settings.show_perf_tracker:
+        return
+
+    G.info(
+        "PERF: FPS[P:%.1f R:%.1f N:%.1f] PING:%.1fms RB[/s:%.1f last:%.2fms/%df] FF[/s:%.1f last:%.2fms/%df]" % [
+            _current_physics_fps,
+            _current_render_fps,
+            _current_network_fps,
+            _current_network_ping_ms,
+            _current_rollbacks_per_sec,
+            _current_last_rollback_duration_ms,
+            _current_last_rollback_frames,
+            _current_fastforwards_per_sec,
+            _current_last_fastforward_duration_ms,
+            _current_last_fastforward_frames,
+        ],
+        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+    )
 
 # --- Warning log methods ---
 
