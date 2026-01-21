@@ -522,7 +522,8 @@ func _rollback_and_reprocess() -> void:
 
     server_frame_index = _queued_rollback_frame_index
     server_frame_time_usec = floori(
-        server_frame_index * TARGET_NETWORK_TIME_STEP_USEC,
+        server_frame_index * TARGET_NETWORK_TIME_STEP_USEC +
+        TARGET_NETWORK_TIME_STEP_USEC * 0.5,
     )
 
     # Re-simulate all frames between the mismatch and current frame (exclusive).
@@ -532,6 +533,7 @@ func _rollback_and_reprocess() -> void:
     var frame_count := 0
     while server_frame_index < original_server_frame_index:
         _network_process()
+        server_frame_time_usec += TARGET_NETWORK_TIME_STEP_USEC
         server_frame_index += 1
         frame_count += 1
 

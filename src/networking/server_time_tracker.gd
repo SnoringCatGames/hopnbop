@@ -240,6 +240,11 @@ func _client_rpc_receive_start_time_offset(server_offset_usec: int) -> void:
     # time reference point.
     _start_time_offset_usec = server_offset_usec
 
+    # Reset the frame driver's frame index since any frames processed before
+    # receiving the offset were based on incorrect time calculations.
+    G.network.frame_driver.server_frame_index = 0
+    G.network.frame_driver.server_frame_time_usec = 0
+
     G.print(
         "Adopted server start time offset: %d usec" % [server_offset_usec],
         ScaffolderLog.CATEGORY_NETWORK_SYNC,
