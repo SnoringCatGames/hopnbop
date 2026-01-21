@@ -28,8 +28,8 @@ func _ready() -> void:
     update_configuration_warnings()
 
 
-func _network_process() -> void:
-    super._network_process()
+func _process_movement_and_actions() -> void:
+    super._process_movement_and_actions()
 
 
 func get_is_player_control_active() -> bool:

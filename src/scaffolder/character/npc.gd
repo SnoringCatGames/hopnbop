@@ -15,14 +15,14 @@ func _ready() -> void:
     super._ready()
 
 
-func _network_process() -> void:
-    super._network_process()
+func _process_movement_and_actions() -> void:
+    super._process_movement_and_actions()
 
 
-func _update_actions() -> void:
+func _collect_actions() -> void:
     if is_multiplayer_authority():
         # TODO: Add support for NPC actions.
-        #super._update_actions()
+        #super._collect_actions()
         pass
     else:
         # Don't update actions per-frame. Instead, actions are updated when

@@ -150,8 +150,8 @@ func _ready() -> void:
     floor_max_angle = G.geometry.FLOOR_MAX_ANGLE + G.geometry.WALL_ANGLE_EPSILON
 
 
-## This gets called just before _network_process.
-func _update_actions() -> void:
+## This gets called during _network_process, just before _apply_movement.
+func _collect_actions() -> void:
     # Clear actions for the current frame.
     actions.clear()
 
@@ -162,25 +162,16 @@ func _update_actions() -> void:
             G.time.get_scaled_network_time(),
         )
 
-    surfaces.update_actions()
     actions.log_new_presses_and_releases(self)
+
+    surfaces.update_actions()
 
     # Record the frame when jump is triggered for network reconciliation.
     if actions.just_pressed_jump:
         last_triggered_jump_frame_index = G.network.server_frame_index
 
 
-func _network_process() -> void:
-    _apply_movement()
-
-    # update derived behaviors based on current movement and actions.
-    _process_facing_direction()
-    _process_actions()
-    _process_animation()
-    _process_sounds()
-    _update_collision_mask()
-
-
+## This gets called during _network_process.
 func _apply_movement() -> void:
     var base_velocity := velocity
     # Since move_and_slide automatically accounts for delta, we need to
@@ -191,6 +182,16 @@ func _apply_movement() -> void:
     move_and_slide()
 
     surfaces.update_touches()
+
+
+## Update derived behaviors based on current movement and actions.
+## This gets called during _network_process, just after _apply_movement.
+func _process_movement_and_actions() -> void:
+    _process_facing_direction()
+    _process_actions()
+    _process_animation()
+    _process_sounds()
+    _update_collision_mask()
 
 
 func _process_facing_direction() -> void:

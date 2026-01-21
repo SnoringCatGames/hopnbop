@@ -19,8 +19,8 @@ func _ready() -> void:
     super._ready()
 
 
-func _network_process() -> void:
-    super._network_process()
+func _process_movement_and_actions() -> void:
+    super._process_movement_and_actions()
 
 
 func play_sound(sound_name: String) -> void:

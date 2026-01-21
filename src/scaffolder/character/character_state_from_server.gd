@@ -87,8 +87,8 @@ func _network_process() -> void:
     else:
         if is_authority_for_state_from_client:
             # This client controls input - capture it now as authoritative.
-            # _update_actions() will call surfaces.update_actions() internally.
-            character._update_actions()
+            # _collect_actions() will call surfaces.update_actions() internally.
+            character._collect_actions()
             state_from_client.frame_authority = FrameAuthority.AUTHORITATIVE
         else:
             # No new input yet - extrapolate from previous frame's input.
@@ -100,19 +100,11 @@ func _network_process() -> void:
             # Update surface attachment state based on the input we just loaded.
             character.surfaces.update_actions()
 
-    # FIXME: LEFT OFF HERE: Check if I need to call other _network_process subroutiens from branches below:
-    # # update derived behaviors based on current movement and actions.
-    # _process_facing_direction()
-    # _process_actions()
-    # _process_animation()
-    # _process_sounds()
-    # _update_collision_mask()
-
     # Handle scene state (from the server).
     if is_authority_for_state_from_server:
         # The server always processes each frame, and records the resulting
         # scene state as authoritative.
-        character._network_process()
+        character._apply_movement()
         frame_authority = FrameAuthority.AUTHORITATIVE
     else:
         if _has_authoritative_state_for_current_frame():
@@ -121,8 +113,10 @@ func _network_process() -> void:
             _unpack_buffer_state(timestamp_index)
         else:
             # Process the frame, and record the scene state as predicted.
-            character._network_process()
+            character._apply_movement()
             frame_authority = FrameAuthority.PREDICTED
+
+    character._process_movement_and_actions()
 
     super._network_process()
 
