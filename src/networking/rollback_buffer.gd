@@ -49,7 +49,11 @@ extends CircularBuffer
 var _default_frame_state: Array = []
 
 
-func _init(p_capacity: int, p_current_frame_index: int, p_default_frame_state: Array) -> void:
+func _init(
+        p_capacity: int,
+        p_current_frame_index: int,
+        p_default_frame_state: Array,
+    ) -> void:
     super._init(p_capacity)
 
     _default_frame_state = p_default_frame_state
