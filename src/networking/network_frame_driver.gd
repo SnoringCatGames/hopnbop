@@ -339,6 +339,11 @@ var last_rollback_frame_count := 0
 var last_rollback_duration_usec := 0
 var total_rollbacks := 0
 
+## Fast-forward tracking metrics (for performance monitoring)
+var last_fastforward_frame_count := 0
+var last_fastforward_duration_usec := 0
+var total_fastforwards := 0
+
 var rollback_buffer_size: int:
     get:
         return ceili(
@@ -465,7 +470,7 @@ func queue_rollback(p_conflicting_frame_index: int) -> bool:
                 "Requested rollback to frame %d, " +
                 "but oldest rollbackable frame is %d"
             )
-            % [target_rollback_frame, oldest_rollbackable_frame_index]
+            % [target_rollback_frame, oldest_rollbackable_frame_index],
         )
         return false
 
@@ -551,7 +556,16 @@ func _network_process() -> void:
 
 
 func fast_forward(new_frame_index: int) -> void:
+    var fastforward_start_time_usec := Time.get_ticks_usec()
+    var frame_count := 0
+
     while server_frame_index < new_frame_index:
         server_frame_time_usec += TARGET_NETWORK_TIME_STEP_USEC
         server_frame_index += 1
         _network_process()
+        frame_count += 1
+
+    # Track fast-forward metrics
+    last_fastforward_frame_count = frame_count
+    last_fastforward_duration_usec = Time.get_ticks_usec() - fastforward_start_time_usec
+    total_fastforwards += 1

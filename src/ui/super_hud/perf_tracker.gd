@@ -9,6 +9,7 @@ const _SLOW_NETWORK_FPS := 30
 
 const _WARNING_THROTTLE_SEC := 5.0
 const _ROLLBACK_TRACKING_WINDOW_SEC := 60.0
+const _FASTFORWARD_TRACKING_WINDOW_SEC := 60.0
 const _FPS_TRACKING_WINDOW_SEC := 1.0
 
 # Tracking window state
@@ -21,6 +22,9 @@ var _network_window_start_time := 0.0
 var _rollback_count_in_window := 0
 var _rollback_window_start_time := 0.0
 var _last_total_rollbacks := 0
+var _fastforward_count_in_window := 0
+var _fastforward_window_start_time := 0.0
+var _last_total_fastforwards := 0
 
 # Current metric values (exposed via Performance monitors)
 var _current_render_fps := 0.0
@@ -30,6 +34,9 @@ var _current_network_ping_ms := 0.0
 var _current_rollbacks_per_sec := 0.0
 var _current_last_rollback_duration_ms := 0.0
 var _current_last_rollback_frames := 0
+var _current_fastforwards_per_sec := 0.0
+var _current_last_fastforward_duration_ms := 0.0
+var _current_last_fastforward_frames := 0
 
 # Throttled warning functions
 var _throttled_warn_render_fps: Callable
@@ -72,6 +79,9 @@ func _ready() -> void:
     Performance.add_custom_monitor("networking/rollbacks_per_sec", func(): return _current_rollbacks_per_sec)
     Performance.add_custom_monitor("networking/last_rollback_duration_ms", func(): return _current_last_rollback_duration_ms)
     Performance.add_custom_monitor("networking/last_rollback_frames", func(): return _current_last_rollback_frames)
+    Performance.add_custom_monitor("networking/fastforwards_per_sec", func(): return _current_fastforwards_per_sec)
+    Performance.add_custom_monitor("networking/last_fastforward_duration_ms", func(): return _current_last_fastforward_duration_ms)
+    Performance.add_custom_monitor("networking/last_fastforward_frames", func(): return _current_last_fastforward_frames)
 
 # --- Signal handlers ---
 
@@ -130,6 +140,7 @@ func _physics_process(_delta: float) -> void:
 
     _update_network_ping()
     _update_rollback_metrics()
+    _update_fastforward_metrics()
 
 # --- Network state callback ---
 
@@ -167,6 +178,13 @@ func _update_rollback_metrics() -> void:
     %RollbacksPerSec.text = "%.1f" % _current_rollbacks_per_sec
     %LastRollbackDuration.text = "%.2f" % _current_last_rollback_duration_ms
     %LastRollbackFrames.text = str(_current_last_rollback_frames)
+
+
+func _update_fastforward_metrics() -> void:
+    _calculate_fastforward_metrics()
+    %FastforwardsPerSec.text = "%.1f" % _current_fastforwards_per_sec
+    %LastFastforwardDuration.text = "%.2f" % _current_last_fastforward_duration_ms
+    %LastFastforwardFrames.text = str(_current_last_fastforward_frames)
 
 # --- Metric calculation helpers ---
 
@@ -242,36 +260,84 @@ func _calculate_network_ping() -> void:
 
 
 func _calculate_rollback_metrics() -> void:
-    var current_total: int = G.network.frame_driver.total_rollbacks
-    var current_time: float = Time.get_ticks_msec() / 1000.0
+    var state := {
+        "window_start_time": _rollback_window_start_time,
+        "count_in_window": _rollback_count_in_window,
+        "last_total": _last_total_rollbacks,
+    }
 
-    # Initialize window on first call
-    if _rollback_window_start_time == 0.0:
-        _rollback_window_start_time = current_time
-        _last_total_rollbacks = current_total
+    _current_rollbacks_per_sec = _calculate_events_per_sec(
+        G.network.frame_driver.total_rollbacks,
+        state,
+        _ROLLBACK_TRACKING_WINDOW_SEC,
+    )
 
-    # Update rollback count in current window
-    var new_rollbacks: int = current_total - _last_total_rollbacks
-    _rollback_count_in_window += new_rollbacks
-    _last_total_rollbacks = current_total
-
-    # Calculate rollbacks per second over the tracking window
-    var window_duration: float = current_time - _rollback_window_start_time
-    if window_duration > 0.0:
-        _current_rollbacks_per_sec = _rollback_count_in_window / window_duration
-    else:
-        _current_rollbacks_per_sec = 0.0
-
-    # Reset window after full duration
-    if window_duration >= _ROLLBACK_TRACKING_WINDOW_SEC:
-        _rollback_count_in_window = 0
-        _rollback_window_start_time = current_time
+    _rollback_window_start_time = state.window_start_time
+    _rollback_count_in_window = state.count_in_window
+    _last_total_rollbacks = state.last_total
 
     # Calculate last rollback metrics
     _current_last_rollback_duration_ms = (
         G.network.frame_driver.last_rollback_duration_usec / 1000.0
     )
     _current_last_rollback_frames = G.network.frame_driver.last_rollback_frame_count
+
+
+func _calculate_fastforward_metrics() -> void:
+    var state := {
+        "window_start_time": _fastforward_window_start_time,
+        "count_in_window": _fastforward_count_in_window,
+        "last_total": _last_total_fastforwards,
+    }
+
+    _current_fastforwards_per_sec = _calculate_events_per_sec(
+        G.network.frame_driver.total_fastforwards,
+        state,
+        _FASTFORWARD_TRACKING_WINDOW_SEC,
+    )
+
+    _fastforward_window_start_time = state.window_start_time
+    _fastforward_count_in_window = state.count_in_window
+    _last_total_fastforwards = state.last_total
+
+    # Calculate last fastforward metrics
+    _current_last_fastforward_duration_ms = (
+        G.network.frame_driver.last_fastforward_duration_usec / 1000.0
+    )
+    _current_last_fastforward_frames = G.network.frame_driver.last_fastforward_frame_count
+
+
+func _calculate_events_per_sec(
+        current_total: int,
+        state: Dictionary,
+        tracking_window_sec: float,
+) -> float:
+    var current_time: float = Time.get_ticks_msec() / 1000.0
+
+    # Initialize window on first call
+    if state.window_start_time == 0.0:
+        state.window_start_time = current_time
+        state.last_total = current_total
+
+    # Update event count in current window
+    var new_events: int = current_total - state.last_total
+    state.count_in_window += new_events
+    state.last_total = current_total
+
+    # Calculate events per second over the tracking window
+    var window_duration: float = current_time - state.window_start_time
+    var events_per_sec: float
+    if window_duration > 0.0:
+        events_per_sec = state.count_in_window / window_duration
+    else:
+        events_per_sec = 0.0
+
+    # Reset window after full duration
+    if window_duration >= tracking_window_sec:
+        state.count_in_window = 0
+        state.window_start_time = current_time
+
+    return events_per_sec
 
 # --- Warning log methods ---
 
