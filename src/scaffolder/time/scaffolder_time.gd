@@ -62,6 +62,17 @@ func _init() -> void:
 
 
 func _ready() -> void:
+    # Validate physics tick rate matches networking assumptions
+    var configured_fps: float = ProjectSettings.get_setting(
+        "physics/common/physics_ticks_per_second",
+        60,
+    )
+    G.check(
+        configured_fps == PHYSICS_FPS,
+        "Physics tick rate must be 60 FPS for networking to work correctly. " +
+        "Current: %d" % configured_fps,
+    )
+
     _app_time = _TimeTracker.new()
     _app_time.process_mode = Node.PROCESS_MODE_ALWAYS
     add_child(_app_time)
