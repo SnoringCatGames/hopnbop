@@ -537,7 +537,7 @@ func record_initial_state(include_partner := true) -> void:
 
 
 func _unpack_buffer_state(frame_index: int) -> void:
-    var frame_state = _rollback_buffer.get_at(frame_index)
+    var frame_state := _rollback_buffer.get_at(frame_index)
 
     var i := 0
     for property_name in _property_names_for_packing:
