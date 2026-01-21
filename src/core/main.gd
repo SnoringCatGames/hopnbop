@@ -27,13 +27,45 @@ func _ready() -> void:
         )
         close_app()
 
-    if G.settings.full_screen and not G.network.is_server:
-        DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
-
-    if G.settings.auto_minimize_server_window and G.network.is_server and G.network.is_preview:
-        DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MINIMIZED)
-
     _start_app()
+
+    # FIXME: LEFT OFF HERE: REMOVE
+    await get_tree().process_frame
+    _update_window_mode()
+    await get_tree().process_frame
+    await get_tree().process_frame
+    await get_tree().process_frame
+    await get_tree().process_frame
+    await get_tree().process_frame
+    await get_tree().process_frame
+    await get_tree().process_frame
+    await get_tree().process_frame
+    await get_tree().process_frame
+    await get_tree().process_frame
+    await get_tree().process_frame
+    await get_tree().process_frame
+    _update_window_mode()
+
+
+func _update_window_mode() -> void:
+    if (
+            G.settings.auto_minimize_server_window and
+            G.network.is_server and
+            G.network.is_preview
+        ):
+        DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MINIMIZED)
+        get_window().mode = Window.MODE_MINIMIZED
+        G.warning(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        G.warning(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        G.warning(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        G.warning(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        G.warning(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        G.warning(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        G.warning(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        G.warning(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        G.warning(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    elif G.settings.full_screen and not G.network.is_server:
+        DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 
 func _start_app() -> void:
