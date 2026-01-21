@@ -65,6 +65,7 @@ func _notification(notification_type: int) -> void:
                 # TODO: Close the current screen/context.
                 pass
         NOTIFICATION_WM_CLOSE_REQUEST:
+            _disconnect_peers_in_preview_mode()
             close_app()
         NOTIFICATION_WM_WINDOW_FOCUS_OUT:
             if G.settings.pauses_on_focus_out:
@@ -107,6 +108,16 @@ func close_app() -> void:
     if G.utils.were_screenshots_taken:
         Utils.open_screenshot_folder()
     G.print("Main.close_app", ScaffolderLog.CATEGORY_CORE_SYSTEMS)
+
+    # Explicitly disconnect to notify peers immediately in preview mode
+    if G.network.is_preview:
+        if G.network.is_client and G.network.is_connected_to_server:
+            G.network.connector.client_disconnect()
+        elif G.network.is_server and multiplayer.get_peers().size() > 0:
+            # Disconnect all clients to notify them immediately
+            for peer_id in multiplayer.get_peers():
+                multiplayer.multiplayer_peer.disconnect_peer(peer_id)
+
     get_tree().call_deferred("quit")
 
 
@@ -122,3 +133,19 @@ func update_window_title() -> void:
         device_prefix = "CLIENT %s" % G.network.local_id
 
     DisplayServer.window_set_title("[%s] %s (DEBUG)" % [device_prefix, app_name])
+
+
+func _disconnect_peers_in_preview_mode() -> void:
+    # Explicitly disconnect to notify peers immediately in preview mode
+    if not G.network.is_preview:
+        return
+
+    if not is_instance_valid(multiplayer) or not is_instance_valid(multiplayer.multiplayer_peer):
+        return
+
+    if G.network.is_client and G.network.is_connected_to_server:
+        G.network.connector.client_disconnect()
+    elif G.network.is_server and multiplayer.get_peers().size() > 0:
+        # Disconnect all clients to notify them immediately
+        for peer_id in multiplayer.get_peers():
+            multiplayer.multiplayer_peer.disconnect_peer(peer_id)
