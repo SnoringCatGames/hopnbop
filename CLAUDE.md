@@ -27,9 +27,14 @@ Launch flags:
 The networking system is frame-based with rollback support:
 
 - **NetworkMain** - Top-level controller, accessed via `G.network` singleton
-- **NetworkFrameDriver** - Core frame simulation at 60 FPS, manages rollback buffer and reconciliation
-- **ReconcilableNetworkedState** - Base class for all networked entities; implements client prediction + server authoritative reconciliation
-- **ServerTimeTracker** - NTP-like clock sync between client and server
+- **NetworkFrameDriver** - Core frame simulation at 60 FPS. Increments
+  `server_frame_index` directly on each physics tick for deterministic frame
+  progression. Manages rollback buffer and reconciliation.
+- **ReconcilableNetworkedState** - Base class for all networked entities;
+  implements client prediction + server authoritative reconciliation
+- **ServerTimeTracker** - NTP-like clock sync between client and server. Server
+  frame timing is based on physics ticks, with periodic wall-clock re-sync for
+  accurate logging.
 - **NetworkConnector** - ENet peer management (default port 4433)
 
 **Frame Processing Flow:**

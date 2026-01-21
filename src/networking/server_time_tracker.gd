@@ -240,10 +240,8 @@ func _client_rpc_receive_start_time_offset(server_offset_usec: int) -> void:
     # time reference point.
     _start_time_offset_usec = server_offset_usec
 
-    # Reset the frame driver's frame indices AND counter since any frames
-    # processed before receiving the offset were based on incorrect time.
-    # Set counter to 0 so the next increment makes it 1, matching the pattern.
-    G.network.frame_driver._physics_process_call_count = 0
+    # Reset the frame driver's frame tracking since any frames processed before
+    # receiving the offset were based on incorrect time.
     G.network.frame_driver.server_frame_index = 0
     G.network.frame_driver.server_frame_time_usec = 0
 
