@@ -2,6 +2,8 @@ class_name PerfTracker
 extends PanelContainer
 
 const _SLOW_NETWORK_RTT_THRESHOLD_SEC := 0.1 # 100ms
+const _LARGE_FASTFORWARD_THRESHOLD := 2
+const _HIGH_FASTFORWARD_RATE_THRESHOLD := 0.2
 
 const _SLOW_RENDER_FPS := 30
 const _SLOW_PHYSICS_FPS := ScaffolderTime.PHYSICS_FPS - 1
@@ -57,6 +59,8 @@ var _throttled_warn_render_fps: Callable
 var _throttled_warn_physics_fps: Callable
 var _throttled_warn_network_fps: Callable
 var _throttled_warn_network_rtt: Callable
+var _throttled_warn_large_fastforward: Callable
+var _throttled_warn_high_fastforward_rate: Callable
 
 # Color fade tweens
 var _color_tweens := { }
@@ -82,6 +86,14 @@ func _ready() -> void:
     )
     _throttled_warn_network_rtt = G.time.throttle(
         _log_network_rtt_warning,
+        _WARNING_THROTTLE_SEC,
+    )
+    _throttled_warn_large_fastforward = G.time.throttle(
+        _log_large_fastforward_warning,
+        _WARNING_THROTTLE_SEC,
+    )
+    _throttled_warn_high_fastforward_rate = G.time.throttle(
+        _log_high_fastforward_rate_warning,
         _WARNING_THROTTLE_SEC,
     )
 
@@ -233,6 +245,20 @@ func _update_fastforward_metrics() -> void:
     %MaxFastforwardsPerSec.text = "%.1f" % _max_fastforwards_per_sec
     %MaxLastFastforwardDuration.text = "%.2f" % _max_last_fastforward_duration_ms
     %MaxLastFastforwardFrames.text = str(_max_last_fastforward_frames)
+
+    # Warn if we're fast-forwarding many frames at once
+    if (
+        _current_last_fastforward_frames >= _LARGE_FASTFORWARD_THRESHOLD and
+        G.game_panel.is_level_fully_loaded
+    ):
+        _throttled_warn_large_fastforward.call(_current_last_fastforward_frames)
+
+    # Warn if fast-forwards are happening too frequently
+    if (
+        _current_fastforwards_per_sec > _HIGH_FASTFORWARD_RATE_THRESHOLD and
+        G.game_panel.is_level_fully_loaded
+    ):
+        _throttled_warn_high_fastforward_rate.call(_current_fastforwards_per_sec)
 
 # --- Metric calculation helpers ---
 
@@ -467,5 +493,21 @@ func _log_network_rtt_warning(rtt_msec: float) -> void:
     G.warning(
         "SLOW NETWORK RTT: %.1fMS (THRESHOLD: %.0fMS)"
         % [rtt_msec, _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0],
+        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+    )
+
+
+func _log_large_fastforward_warning(frame_count: int) -> void:
+    G.warning(
+        "LARGE FAST-FORWARD: %d frames (THRESHOLD: %d)"
+        % [frame_count, _LARGE_FASTFORWARD_THRESHOLD],
+        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+    )
+
+
+func _log_high_fastforward_rate_warning(rate: float) -> void:
+    G.warning(
+        "HIGH FAST-FORWARD RATE: %.2f/sec (THRESHOLD: %.1f)"
+        % [rate, _HIGH_FASTFORWARD_RATE_THRESHOLD],
         ScaffolderLog.CATEGORY_CORE_SYSTEMS,
     )

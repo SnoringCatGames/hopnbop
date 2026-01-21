@@ -415,10 +415,6 @@ func _update_server_frame_time() -> void:
     # If our tracking of server time has skewed enough that we're skipping a
     # frame, then we need to fast-forward the system.
     if next_server_frame_index > server_frame_index + 1:
-        G.warning(
-            "Fast-forwarding due to _physics_process frame skew",
-            ScaffolderLog.CATEGORY_NETWORK_SYNC,
-        )
         fast_forward(next_server_frame_index - 1)
 
     server_frame_time_usec = next_server_frame_time_usec
