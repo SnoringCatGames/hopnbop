@@ -146,17 +146,13 @@ func _process(_delta: float) -> void:
     %RenderFPS.text = "%.1f" % _current_render_fps
     %MaxRenderFPS.text = "%.1f" % _max_render_fps
 
-    if _current_render_fps > 0.0 and _current_render_fps < _SLOW_RENDER_FPS:
+    var is_slow := _current_render_fps > 0.0 and _current_render_fps < _SLOW_RENDER_FPS
+    if is_slow:
         %RenderFPS.add_theme_color_override("font_color", Color.RED)
+        if G.game_panel.is_level_fully_loaded:
+            _throttled_warn_render_fps.call(_current_render_fps)
     else:
         %RenderFPS.remove_theme_color_override("font_color")
-
-    if (
-        G.game_panel.is_level_fully_loaded
-        and _current_render_fps > 0.0
-        and _current_render_fps < _SLOW_RENDER_FPS
-    ):
-        _throttled_warn_render_fps.call(_current_render_fps)
 
 
 func _physics_process(_delta: float) -> void:
@@ -168,17 +164,13 @@ func _physics_process(_delta: float) -> void:
     %PhysicsFPS.text = "%.1f" % _current_physics_fps
     %MaxPhysicsFPS.text = "%.1f" % _max_physics_fps
 
-    if _current_physics_fps > 0.0 and _current_physics_fps < _SLOW_PHYSICS_FPS:
+    var is_slow := _current_physics_fps > 0.0 and _current_physics_fps < _SLOW_PHYSICS_FPS
+    if is_slow:
         %PhysicsFPS.add_theme_color_override("font_color", Color.RED)
+        if G.game_panel.is_level_fully_loaded:
+            _throttled_warn_physics_fps.call(_current_physics_fps)
     else:
         %PhysicsFPS.remove_theme_color_override("font_color")
-
-    if (
-        G.game_panel.is_level_fully_loaded
-        and _current_physics_fps > 0.0
-        and _current_physics_fps < _SLOW_PHYSICS_FPS
-    ):
-        _throttled_warn_physics_fps.call(_current_physics_fps)
 
     _update_network_ping()
     _update_rollback_metrics()
@@ -196,17 +188,13 @@ func _character_state_from_server_updated() -> void:
     %NetworkFPS.text = "%.1f" % _current_network_fps
     %MaxNetworkFPS.text = "%.1f" % _max_network_fps
 
-    if _current_network_fps > 0.0 and _current_network_fps < _SLOW_NETWORK_FPS:
+    var is_slow := _current_network_fps > 0.0 and _current_network_fps < _SLOW_NETWORK_FPS
+    if is_slow:
         %NetworkFPS.add_theme_color_override("font_color", Color.RED)
+        if G.game_panel.is_level_fully_loaded:
+            _throttled_warn_network_fps.call(_current_network_fps)
     else:
         %NetworkFPS.remove_theme_color_override("font_color")
-
-    if (
-        G.game_panel.is_level_fully_loaded
-        and _current_network_fps > 0.0
-        and _current_network_fps < _SLOW_NETWORK_FPS
-    ):
-        _throttled_warn_network_fps.call(_current_network_fps)
 
 # --- Update methods ---
 
@@ -217,16 +205,13 @@ func _update_network_ping() -> void:
     %NetworkPing.text = "%.1f" % _current_network_ping_ms
     %MaxNetworkPing.text = "%.1f" % _max_network_ping_ms
 
-    if _current_network_ping_ms > _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0:
+    var is_slow := _current_network_ping_ms > _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0
+    if is_slow:
         %NetworkPing.add_theme_color_override("font_color", Color.RED)
+        if G.game_panel.is_level_fully_loaded:
+            _throttled_warn_network_rtt.call(_current_network_ping_ms)
     else:
         %NetworkPing.remove_theme_color_override("font_color")
-
-    if (
-        G.game_panel.is_level_fully_loaded
-        and _current_network_ping_ms > _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0
-    ):
-        _throttled_warn_network_rtt.call(_current_network_ping_ms)
 
 
 func _update_rollback_metrics() -> void:
