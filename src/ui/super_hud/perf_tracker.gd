@@ -1,11 +1,6 @@
 class_name PerfTracker
 extends PanelContainer
 
-# TODO: Check how network process compares to physics process (both are
-#       hopefully close to 60 FPS?).
-# - If network is much slower, consider adjusting my rollback frame index
-#   bucketing.
-
 const _SLOW_NETWORK_RTT_THRESHOLD_SEC := 0.1 # 100ms
 
 const _SLOW_RENDER_FPS := 30
