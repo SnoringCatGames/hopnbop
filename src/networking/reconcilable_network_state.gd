@@ -288,6 +288,7 @@ func _handle_new_authoritative_state() -> void:
                 "Prediction state mismatch (%s): %s"
                 % [node_type, mismatch_details],
                 ScaffolderLog.CATEGORY_NETWORK_SYNC,
+                ScaffolderLog.Verbosity.VERBOSE,
             )
 
             G.network.frame_driver.queue_rollback(state_frame_index)
