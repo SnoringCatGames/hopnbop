@@ -9,11 +9,12 @@ const _SLOW_RENDER_FPS := 30
 const _SLOW_PHYSICS_FPS := ScaffolderTime.PHYSICS_FPS - 1
 const _SLOW_NETWORK_FPS := 30
 
+const _METRICS_LOG_INTERVAL_SEC := 5.0
 const _WARNING_THROTTLE_SEC := 5.0
 const _ROLLBACK_TRACKING_WINDOW_SEC := 60.0
 const _FASTFORWARD_TRACKING_WINDOW_SEC := 60.0
+const _MAX_MIN_TRACKING_WINDOW_SEC := 10.0
 const _FPS_TRACKING_WINDOW_SEC := 1.0
-const _METRICS_LOG_INTERVAL_SEC := 8.0
 const _COLOR_FADE_DURATION_SEC := 0.5
 
 # Tracking window state
@@ -42,17 +43,18 @@ var _current_fastforwards_per_sec := 0.0
 var _current_last_fastforward_duration_ms := 0.0
 var _current_last_fastforward_frames := 0
 
-# Max metric values (exposed via Performance monitors)
-var _min_render_fps := INF
-var _min_physics_fps := INF
-var _min_network_fps := INF
-var _max_network_ping_ms := 0.0
-var _max_rollbacks_per_sec := 0.0
-var _max_last_rollback_duration_ms := 0.0
-var _max_last_rollback_frames := 0
-var _max_fastforwards_per_sec := 0.0
-var _max_last_fastforward_duration_ms := 0.0
-var _max_last_fastforward_frames := 0
+# Max/Min metric tracking (periodic window)
+var _max_min_window_start_time := 0.0
+var _min_render_fps_in_window := INF
+var _min_physics_fps_in_window := INF
+var _min_network_fps_in_window := INF
+var _max_network_ping_in_window := 0.0
+var _max_rollbacks_per_sec_in_window := 0.0
+var _max_last_rollback_duration_in_window := 0.0
+var _max_last_rollback_frames_in_window := 0
+var _max_fastforwards_per_sec_in_window := 0.0
+var _max_last_fastforward_duration_in_window := 0.0
+var _max_last_fastforward_frames_in_window := 0
 
 # Throttled warning functions
 var _throttled_warn_render_fps: Callable
@@ -116,16 +118,16 @@ func _ready() -> void:
     Performance.add_custom_monitor("networking/fastforwards_per_sec", func(): return _current_fastforwards_per_sec)
     Performance.add_custom_monitor("networking/last_fastforward_duration_ms", func(): return _current_last_fastforward_duration_ms)
     Performance.add_custom_monitor("networking/last_fastforward_frames", func(): return _current_last_fastforward_frames)
-    Performance.add_custom_monitor("networking/min_render_fps", func(): return _min_render_fps)
-    Performance.add_custom_monitor("networking/min_physics_fps", func(): return _min_physics_fps)
-    Performance.add_custom_monitor("networking/min_network_fps", func(): return _min_network_fps)
-    Performance.add_custom_monitor("networking/max_network_ping_ms", func(): return _max_network_ping_ms)
-    Performance.add_custom_monitor("networking/max_rollbacks_per_sec", func(): return _max_rollbacks_per_sec)
-    Performance.add_custom_monitor("networking/max_last_rollback_duration_ms", func(): return _max_last_rollback_duration_ms)
-    Performance.add_custom_monitor("networking/max_last_rollback_frames", func(): return _max_last_rollback_frames)
-    Performance.add_custom_monitor("networking/max_fastforwards_per_sec", func(): return _max_fastforwards_per_sec)
-    Performance.add_custom_monitor("networking/max_last_fastforward_duration_ms", func(): return _max_last_fastforward_duration_ms)
-    Performance.add_custom_monitor("networking/max_last_fastforward_frames", func(): return _max_last_fastforward_frames)
+    Performance.add_custom_monitor("networking/min_render_fps", func(): return _min_render_fps_in_window)
+    Performance.add_custom_monitor("networking/min_physics_fps", func(): return _min_physics_fps_in_window)
+    Performance.add_custom_monitor("networking/min_network_fps", func(): return _min_network_fps_in_window)
+    Performance.add_custom_monitor("networking/max_network_ping_ms", func(): return _max_network_ping_in_window)
+    Performance.add_custom_monitor("networking/max_rollbacks_per_sec", func(): return _max_rollbacks_per_sec_in_window)
+    Performance.add_custom_monitor("networking/max_last_rollback_duration_ms", func(): return _max_last_rollback_duration_in_window)
+    Performance.add_custom_monitor("networking/max_last_rollback_frames", func(): return _max_last_rollback_frames_in_window)
+    Performance.add_custom_monitor("networking/max_fastforwards_per_sec", func(): return _max_fastforwards_per_sec_in_window)
+    Performance.add_custom_monitor("networking/max_last_fastforward_duration_ms", func(): return _max_last_fastforward_duration_in_window)
+    Performance.add_custom_monitor("networking/max_last_fastforward_frames", func(): return _max_last_fastforward_frames_in_window)
 
 # --- Signal handlers ---
 
@@ -158,10 +160,11 @@ func _process(_delta: float) -> void:
         return
 
     _calculate_render_fps()
+    _check_and_reset_max_min_window()
     if _current_render_fps > 0.0:
-        _min_render_fps = min(_min_render_fps, _current_render_fps)
+        _min_render_fps_in_window = min(_min_render_fps_in_window, _current_render_fps)
     %RenderFPS.text = "%.1f" % _current_render_fps
-    %MinRenderFPS.text = "%.1f" % _min_render_fps if _min_render_fps != INF else "--"
+    %MinRenderFPS.text = "%.1f" % _min_render_fps_in_window if _min_render_fps_in_window != INF else "--"
 
     var is_slow := _current_render_fps > 0.0 and _current_render_fps < _SLOW_RENDER_FPS
     _update_label_color(%RenderFPS, is_slow)
@@ -175,9 +178,9 @@ func _physics_process(_delta: float) -> void:
 
     _calculate_physics_fps()
     if _current_physics_fps > 0.0:
-        _min_physics_fps = min(_min_physics_fps, _current_physics_fps)
+        _min_physics_fps_in_window = min(_min_physics_fps_in_window, _current_physics_fps)
     %PhysicsFPS.text = "%.1f" % _current_physics_fps
-    %MinPhysicsFPS.text = "%.1f" % _min_physics_fps if _min_physics_fps != INF else "--"
+    %MinPhysicsFPS.text = "%.1f" % _min_physics_fps_in_window if _min_physics_fps_in_window != INF else "--"
 
     var is_slow := _current_physics_fps > 0.0 and _current_physics_fps < _SLOW_PHYSICS_FPS
     _update_label_color(%PhysicsFPS, is_slow)
@@ -197,9 +200,9 @@ func _character_state_from_server_updated() -> void:
 
     _calculate_network_fps()
     if _current_network_fps > 0.0:
-        _min_network_fps = min(_min_network_fps, _current_network_fps)
+        _min_network_fps_in_window = min(_min_network_fps_in_window, _current_network_fps)
     %NetworkFPS.text = "%.1f" % _current_network_fps
-    %MinNetworkFPS.text = "%.1f" % _min_network_fps if _min_network_fps != INF else "--"
+    %MinNetworkFPS.text = "%.1f" % _min_network_fps_in_window if _min_network_fps_in_window != INF else "--"
 
     var is_slow := _current_network_fps > 0.0 and _current_network_fps < _SLOW_NETWORK_FPS
     _update_label_color(%NetworkFPS, is_slow)
@@ -211,9 +214,9 @@ func _character_state_from_server_updated() -> void:
 
 func _update_network_ping() -> void:
     _calculate_network_ping()
-    _max_network_ping_ms = max(_max_network_ping_ms, _current_network_ping_ms)
+    _max_network_ping_in_window = max(_max_network_ping_in_window, _current_network_ping_ms)
     %NetworkPing.text = "%.1f" % _current_network_ping_ms
-    %MaxNetworkPing.text = "%.1f" % _max_network_ping_ms
+    %MaxNetworkPing.text = "%.1f" % _max_network_ping_in_window
 
     var is_slow := _current_network_ping_ms > _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0
     _update_label_color(%NetworkPing, is_slow)
@@ -223,28 +226,28 @@ func _update_network_ping() -> void:
 
 func _update_rollback_metrics() -> void:
     _calculate_rollback_metrics()
-    _max_rollbacks_per_sec = max(_max_rollbacks_per_sec, _current_rollbacks_per_sec)
-    _max_last_rollback_duration_ms = max(_max_last_rollback_duration_ms, _current_last_rollback_duration_ms)
-    _max_last_rollback_frames = max(_max_last_rollback_frames, _current_last_rollback_frames)
+    _max_rollbacks_per_sec_in_window = max(_max_rollbacks_per_sec_in_window, _current_rollbacks_per_sec)
+    _max_last_rollback_duration_in_window = max(_max_last_rollback_duration_in_window, _current_last_rollback_duration_ms)
+    _max_last_rollback_frames_in_window = max(_max_last_rollback_frames_in_window, _current_last_rollback_frames)
     %RollbacksPerSec.text = "%.1f" % _current_rollbacks_per_sec
     %LastRollbackDuration.text = "%.2f" % _current_last_rollback_duration_ms
     %LastRollbackFrames.text = str(_current_last_rollback_frames)
-    %MaxRollbacksPerSec.text = "%.1f" % _max_rollbacks_per_sec
-    %MaxLastRollbackDuration.text = "%.2f" % _max_last_rollback_duration_ms
-    %MaxLastRollbackFrames.text = str(_max_last_rollback_frames)
+    %MaxRollbacksPerSec.text = "%.1f" % _max_rollbacks_per_sec_in_window
+    %MaxLastRollbackDuration.text = "%.2f" % _max_last_rollback_duration_in_window
+    %MaxLastRollbackFrames.text = str(_max_last_rollback_frames_in_window)
 
 
 func _update_fastforward_metrics() -> void:
     _calculate_fastforward_metrics()
-    _max_fastforwards_per_sec = max(_max_fastforwards_per_sec, _current_fastforwards_per_sec)
-    _max_last_fastforward_duration_ms = max(_max_last_fastforward_duration_ms, _current_last_fastforward_duration_ms)
-    _max_last_fastforward_frames = max(_max_last_fastforward_frames, _current_last_fastforward_frames)
+    _max_fastforwards_per_sec_in_window = max(_max_fastforwards_per_sec_in_window, _current_fastforwards_per_sec)
+    _max_last_fastforward_duration_in_window = max(_max_last_fastforward_duration_in_window, _current_last_fastforward_duration_ms)
+    _max_last_fastforward_frames_in_window = max(_max_last_fastforward_frames_in_window, _current_last_fastforward_frames)
     %FastforwardsPerSec.text = "%.1f" % _current_fastforwards_per_sec
     %LastFastforwardDuration.text = "%.2f" % _current_last_fastforward_duration_ms
     %LastFastforwardFrames.text = str(_current_last_fastforward_frames)
-    %MaxFastforwardsPerSec.text = "%.1f" % _max_fastforwards_per_sec
-    %MaxLastFastforwardDuration.text = "%.2f" % _max_last_fastforward_duration_ms
-    %MaxLastFastforwardFrames.text = str(_max_last_fastforward_frames)
+    %MaxFastforwardsPerSec.text = "%.1f" % _max_fastforwards_per_sec_in_window
+    %MaxLastFastforwardDuration.text = "%.2f" % _max_last_fastforward_duration_in_window
+    %MaxLastFastforwardFrames.text = str(_max_last_fastforward_frames_in_window)
 
     # Update colors based on thresholds
     var is_large_fastforward := _current_last_fastforward_frames >= _LARGE_FASTFORWARD_THRESHOLD
@@ -413,6 +416,27 @@ func _calculate_events_per_sec(
         state.window_start_time = current_time
 
     return events_per_sec
+
+
+func _check_and_reset_max_min_window() -> void:
+    var current_time := Time.get_ticks_msec() / 1000.0
+
+    if _max_min_window_start_time == 0.0:
+        _max_min_window_start_time = current_time
+
+    var window_duration := current_time - _max_min_window_start_time
+    if window_duration >= _MAX_MIN_TRACKING_WINDOW_SEC:
+        _min_render_fps_in_window = INF
+        _min_physics_fps_in_window = INF
+        _min_network_fps_in_window = INF
+        _max_network_ping_in_window = 0.0
+        _max_rollbacks_per_sec_in_window = 0.0
+        _max_last_rollback_duration_in_window = 0.0
+        _max_last_rollback_frames_in_window = 0
+        _max_fastforwards_per_sec_in_window = 0.0
+        _max_last_fastforward_duration_in_window = 0.0
+        _max_last_fastforward_frames_in_window = 0
+        _max_min_window_start_time = current_time
 
 
 func _update_label_color(label: Label, is_slow: bool) -> void:
