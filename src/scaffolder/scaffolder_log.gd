@@ -47,20 +47,17 @@ func _ready() -> void:
 
     self.print(
         "ScaffolderLog._ready",
-        ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+        ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION,
+    )
 
 
 func _format_message(message: String, category: StringName) -> String:
     var play_time: float = (
-        G.time.get_play_time() if
-        is_instance_valid(G) and is_instance_valid(G.time) else
-        -1.0
+        G.time.get_play_time() if is_instance_valid(G) and is_instance_valid(G.time) else -1.0
     )
 
     var category_token := (
-        "[%s]" % get_category_prefix(category) if
-        G.settings.include_category_in_logs else
-        ""
+        "[%s]" % get_category_prefix(category) if G.settings.include_category_in_logs else ""
     )
 
     var multiplayer_id_value: String
@@ -82,9 +79,7 @@ func _format_message(message: String, category: StringName) -> String:
         # Omit token.
         multiplayer_id_value = ""
     var multiplayer_id_token = (
-        "[%s]" % multiplayer_id_value if
-        G.settings.include_multiplayer_id_in_logs else
-        ""
+        "[%s]" % multiplayer_id_value if G.settings.include_multiplayer_id_in_logs else ""
     )
 
     return (
@@ -102,7 +97,7 @@ func print(
         message = "",
         category := CATEGORY_DEFAULT,
         verbosity := Verbosity.NORMAL,
-    ) -> void:
+) -> void:
     if _is_running_in_test_env():
         return
 
@@ -134,7 +129,7 @@ func error(
         message: String,
         _category := CATEGORY_DEFAULT,
         should_crash := true,
-    ) -> void:
+) -> void:
     if _is_running_in_test_env():
         return
 
@@ -157,7 +152,7 @@ func error(
 func warning(
         message: String,
         category := CATEGORY_DEFAULT,
-    ) -> void:
+) -> void:
     if _is_running_in_test_env():
         return
 
@@ -349,11 +344,58 @@ func _print_front_matter() -> void:
         ]
     )
 
-    var app_name = ProjectSettings.get_setting("application/config/name")
-    print_rich("\n%s %s %s\n" % [_RAINBOW_BAR, app_name, _REVERSE_RAINBOW_BAR])
+    # Only print the art when in preview mode, and only once then.
+    if G.network.is_preview and G.network.is_server:
+        #_print_cat()
+
+        var app_name = ProjectSettings.get_setting("application/config/name")
+        print_rich("%s %s %s\n" % [_RAINBOW_BAR, app_name, _REVERSE_RAINBOW_BAR])
 
     self.print(local_datetime_string, CATEGORY_CORE_SYSTEMS)
     self.print(utc_datetime_string, CATEGORY_CORE_SYSTEMS)
 
     self.print(device_info_string, CATEGORY_CORE_SYSTEMS)
     self.print("", CATEGORY_CORE_SYSTEMS)
+
+
+func _print_cat() -> void:
+    const ASCII_CAT := """
+               ######
+               ####  ##
+               #   #   ##
+               #    ##   ###############
+               #      ##                ##########
+               #       #                          ####
+            ### #######                               ##
+          ## ##                                         ##
+         #   #                                            #
+       ##   #                     #                        #
+     ##    #    ##               ##                         #
+    #     #    #                ##                           #
+   #      #   #                ##                             #
+  #      ##                ####                 ##            ##
+  #     #  ##            ##                    #               #
+ #     #     ############                    ##                #
+##     #                                   ##                  #
+#      ##                              ####                    #
+#     #  ###                ###########                        #
+#           ################    #                              #
+#                                #                             #
+##                               ##                            #
+ #                                #                           ##
+ ##                                #                          #
+  #                                #                         #
+   #                                #                       ##
+    #                               #                       #
+    ##                              #                      #
+     ##                                                   #
+       ##                                               ##
+         ##                                           ##
+           #                                         #
+            ####                                 ####
+                #####                        ####
+                     ########################
+"""
+    const PADDING := 8
+    var padded_cat := ASCII_CAT.replace("\n", "\n".rpad(PADDING + 1))
+    print(padded_cat)
