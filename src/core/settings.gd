@@ -20,8 +20,8 @@ var server_port: int:
 @export_group("")
 
 @export_group("Network sync")
-## Presumably network process frames happen at 60 FPS--aligned with physics frames.
-@export var rollback_buffer_duration_sec := 1.5
+## Network process frames happen at 60 FPS--aligned with physics frames.
+@export var rollback_buffer_duration_sec := 2.0
 @export_group("")
 
 @export var max_client_count := 8

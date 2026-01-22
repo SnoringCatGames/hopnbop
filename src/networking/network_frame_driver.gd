@@ -48,7 +48,6 @@ extends Node
 ## - Only one rollback occurs per _network_process, earliest frame takes priority
 
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug
-# - Does it seem like my rollback_buffers are a good size? Should they be less or more?
 #
 # REMAINING TASKS:
 # - Debug the game.
