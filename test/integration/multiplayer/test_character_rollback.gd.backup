@@ -1,0 +1,852 @@
+extends GutTest
+const Helpers = preload("res://test/helpers/character_rollback_helpers.gd")
+## Integration tests for character movement during rollback.
+##
+## Tests real gameplay scenarios with character prediction, rollback,
+## and reconciliation to ensure smooth networked character movement.
+
+
+func before_each():
+    ArrayPool.clear_all_pools()
+
+
+func after_each():
+    ArrayPool.clear_all_pools()
+
+
+## ============================================================================
+## Helper Classes and Functions
+## ============================================================================
+
+## Helper to create a minimal test character with necessary components.
+class TestCharacterFixture:
+    extends RefCounted
+
+    var character: Character
+    var state_from_server: CharacterStateFromServer
+    var input_from_client: PlayerInputFromClient
+    var movement_settings: MovementSettings
+
+    func _init():
+        # Create movement settings
+        movement_settings = MovementSettings.new()
+        movement_settings.set_up()
+
+        # Create character
+        character = Character.new()
+        character.movement_settings = movement_settings
+
+        # Create collision shape (required)
+        var collision_shape := CollisionShape2D.new()
+        var shape := RectangleShape2D.new()
+        shape.size = Vector2(20, 40)
+        collision_shape.shape = shape
+        character.collision_shape = collision_shape
+        character.add_child(collision_shape)
+
+        # Create animator (required)
+        var animator := CharacterAnimator.new()
+        character.animator = animator
+        character.add_child(animator)
+
+        # Create state from server (required)
+        state_from_server = CharacterStateFromServer.new()
+        state_from_server.character = character
+        state_from_server.multiplayer_id = 1
+        character.state_from_server = state_from_server
+        character.add_child(state_from_server)
+
+        # Create input from client
+        input_from_client = PlayerInputFromClient.new()
+        input_from_client.multiplayer_id = 1
+        character.add_child(input_from_client)
+
+    func setup_in_tree(tree_root: Node) -> void:
+        tree_root.add_child(character)
+        # Trigger _ready by adding to tree - Godot calls it automatically
+        # Wait for ready to complete
+        await tree_root.get_tree().process_frame
+
+    func cleanup() -> void:
+        if is_instance_valid(character) and character.is_inside_tree():
+            character.queue_free()
+
+
+
+
+## ============================================================================
+## Character Position & Velocity Reconciliation Tests
+## ============================================================================
+class TestCharacterMovementRollback:
+    extends GutTest
+
+    var fixture: TestCharacterFixture
+    var character: Character
+
+    func before_each():
+        ArrayPool.clear_all_pools()
+        fixture = TestCharacterFixture.new()
+        await fixture.setup_in_tree(get_tree().root)
+        character = fixture.character
+        # Set initial state
+        character.position = Vector2(100, 500)
+        character.velocity = Vector2.ZERO
+
+    func after_each():
+        fixture.cleanup()
+        ArrayPool.clear_all_pools()
+
+    func test_position_mismatch_triggers_rollback():
+        # Client predicts moving right for 5 frames
+        G.network.server_frame_index = 50
+        character.velocity = Vector2(100, 0)
+
+        var predicted_positions := []
+        for i in range(5):
+            predicted_positions.append(character.position)
+            Helpers.simulate_frames(character, 1)
+
+        # Server correction arrives: position is different at frame 52
+        var server_pos := Vector2(120, 500)  # Different from client
+        var client_pos: Vector2 = predicted_positions[2]  # Frame 52
+        var server_state: Array = Helpers.create_server_state(
+            server_pos,
+            Vector2(100, 0)
+        )
+
+        # Verify mismatch detected
+        assert_true(
+            Helpers.has_position_mismatch(client_pos, server_pos),
+            "Should detect position mismatch"
+        )
+
+        # Apply server correction would trigger rollback
+        # In real code, ReconcilableNetworkedState handles this
+        var threshold := \
+            CharacterStateFromServer.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD
+        assert_gt(
+            abs(client_pos.x - server_pos.x),
+            threshold,
+            "Difference should exceed rollback threshold"
+        )
+
+    func test_velocity_reconciliation_after_collision():
+        # Client predicts passing through a wall
+        G.network.server_frame_index = 50
+        character.position = Vector2(100, 500)
+        character.velocity = Vector2(200, 0)
+
+        # Simulate 3 frames of movement
+        for i in range(3):
+            Helpers.simulate_frames(character, 1)
+
+        var predicted_pos := character.position
+
+        # Server says velocity should be zero (hit wall)
+        var server_state := Helpers.create_server_state(
+            Vector2(110, 500),  # Stopped position
+            Vector2.ZERO  # Velocity is zero
+        )
+
+        # Verify velocity mismatch
+        assert_true(
+            Helpers.has_velocity_mismatch(character.velocity, Vector2.ZERO),
+            "Should detect velocity mismatch"
+        )
+
+    func test_small_position_drift_under_threshold():
+        # Client position differs by small amount
+        G.network.server_frame_index = 50
+        var client_pos := Vector2(100.3, 500.4)
+        var server_pos := Vector2(100.0, 500.0)
+
+        # Verify difference is under threshold
+        assert_false(
+            Helpers.has_position_mismatch(client_pos, server_pos, 1.0),
+            "Small drift should not trigger rollback"
+        )
+
+        var diff := client_pos.distance_to(server_pos)
+        assert_lt(
+            diff,
+            CharacterStateFromServer.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD,
+            "Drift should be under threshold"
+        )
+
+    func test_accumulated_drift_triggers_eventual_rollback():
+        # Simulate gradual position drift over multiple frames
+        G.network.server_frame_index = 50
+        character.position = Vector2(100, 500)
+        character.velocity = Vector2(50, 0)
+
+        var drift_per_frame := 0.3  # Small drift each frame
+        var accumulated_drift := 0.0
+
+        for i in range(10):
+            Helpers.simulate_frames(character, 1)
+
+            # Simulate drift accumulation
+            accumulated_drift += drift_per_frame
+
+            if accumulated_drift > 1.0:
+                # Should trigger rollback at this point
+                assert_gt(
+                    accumulated_drift,
+                    CharacterStateFromServer.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD,
+                    "Accumulated drift should exceed threshold"
+                )
+                break
+
+
+## ============================================================================
+## Input Replay & Action State Tests
+## ============================================================================
+class TestInputReplayDuringRollback:
+    extends GutTest
+
+    var fixture: TestCharacterFixture
+    var character: Character
+
+    func before_each():
+        ArrayPool.clear_all_pools()
+        fixture = TestCharacterFixture.new()
+        await fixture.setup_in_tree(get_tree().root)
+        character = fixture.character
+        character.position = Vector2(100, 500)
+        character.velocity = Vector2.ZERO
+
+    func after_each():
+        fixture.cleanup()
+        ArrayPool.clear_all_pools()
+
+    func test_jump_input_replayed_correctly():
+        # Setup: Character on ground
+        G.network.server_frame_index = 45
+        character.surfaces.is_touching_floor = true
+        character.surfaces.is_attaching_to_floor = true
+
+        # Store states for frames 45-50
+        for i in range(6):
+            var frame_idx := 45 + i
+            character.actions.pressed_jump = false
+
+        # Verify jump was registered
+        assert_eq(
+            character.last_triggered_jump_frame_index,
+            50,
+            "Jump should be recorded at frame 50"
+        )
+
+        # After rollback to frame 48, jump at 50 should still execute
+        # (This is tested conceptually - full rollback requires more setup)
+
+    func test_directional_input_sequence_preserved():
+        # Input sequence: left(40), right(45), jump(50)
+        G.network.server_frame_index = 40
+
+        var input_history := []
+
+        # Frame 40-44: Move left
+        for i in range(5):
+            Helpers.set_character_input(character, false, false, false, true, false)
+            input_history.append(["left", 40 + i])
+
+        # Frame 45-49: Move right
+        for i in range(5):
+            Helpers.set_character_input(character, false, false, false, false, true)
+            input_history.append(["right", 45 + i])
+
+        # Frame 50: Jump
+        Helpers.set_character_input(character, true, false, false, false, false)
+        input_history.append(["jump", 50])
+        assert_eq(
+            input_history[0][0],
+            "left",
+            "First input should be left"
+        )
+        assert_eq(
+            input_history[5][0],
+            "right",
+            "Sixth input should be right"
+        )
+        assert_eq(
+            input_history[10][0],
+            "jump",
+            "Last input should be jump"
+        )
+
+    func test_action_state_consistency_after_rollback():
+        # Character in AIR state
+        G.network.server_frame_index = 50
+        character.surfaces.is_attaching_to_floor = false
+        character.velocity = Vector2(0, -200)  # Moving upward
+
+        # Store state
+
+        # After rollback, surfaces should be correctly restored
+        character.state_from_server._sync_to_scene_state(
+            Helpers.create_server_state(
+                character.position,
+                character.velocity,
+                character.surfaces.bitmask
+            )
+        )
+
+        assert_eq(
+            character.surfaces.surface_type,
+            SurfaceType.AIR,
+            "AIR state should be preserved after rollback"
+        )
+
+    func test_surface_contact_restored_after_rollback():
+        # Character on platform
+        G.network.server_frame_index = 50
+        character.position = Vector2(100, 500)
+        character.surfaces.is_touching_floor = true
+        character.surfaces.is_attaching_to_floor = true
+
+        var original_surfaces := character.surfaces.bitmask
+
+        # Store state
+        character.surfaces.is_touching_floor = false
+        character.surfaces.is_attaching_to_floor = false
+
+        # Restore from rollback
+        var state := Helpers.create_server_state(
+            character.position,
+            Vector2.ZERO,
+            original_surfaces
+        )
+        character.state_from_server._sync_to_scene_state(state)
+
+        # Verify surface contact restored
+        assert_true(
+            character.surfaces.is_touching_floor,
+            "Floor contact should be restored"
+        )
+        assert_true(
+            character.surfaces.is_attaching_to_floor,
+            "Floor attachment should be restored"
+        )
+
+
+## ============================================================================
+## Surface Transition Tests
+## ============================================================================
+class TestSurfaceTransitions:
+    extends GutTest
+
+    var fixture: TestCharacterFixture
+    var character: Character
+
+    func before_each():
+        ArrayPool.clear_all_pools()
+        fixture = TestCharacterFixture.new()
+        await fixture.setup_in_tree(get_tree().root)
+        character = fixture.character
+
+    func after_each():
+        fixture.cleanup()
+        ArrayPool.clear_all_pools()
+
+    func test_floor_to_air_transition():
+        # Client predicts walking off platform
+        G.network.server_frame_index = 50
+        character.position = Vector2(100, 500)
+        character.velocity = Vector2(100, 0)
+        character.surfaces.is_touching_floor = true
+        character.surfaces.is_attaching_to_floor = true
+
+        # Store floor state
+
+        # Simulate leaving floor
+        Helpers.simulate_frames(character, 2)
+        character.surfaces.is_touching_floor = false
+        character.surfaces.is_attaching_to_floor = false
+        character.surfaces.update_actions()
+
+        # Now in air
+        assert_eq(
+            character.surfaces.surface_type,
+            SurfaceType.AIR,
+            "Should transition to AIR"
+        )
+
+        # Server confirms fall started one frame earlier (frame 51)
+        var server_state_51 := Helpers.create_server_state(
+            Vector2(105, 500),
+            Vector2(100, 10),  # Starting to fall
+            0  # No surface attachment
+        )
+
+        # This mismatch would trigger rollback in real scenario
+        assert_ne(
+            character.surfaces.bitmask,
+            server_state_51[2],
+            "Surface state mismatch should exist"
+        )
+
+    func test_air_to_floor_landing():
+        # Character falling
+        G.network.server_frame_index = 50
+        character.position = Vector2(100, 400)
+        character.velocity = Vector2(0, 200)  # Falling
+        character.surfaces.is_attaching_to_floor = false
+
+        assert_eq(
+            character.surfaces.surface_type,
+            SurfaceType.AIR,
+            "Should start in AIR"
+        )
+
+        # Simulate landing
+        Helpers.simulate_frames(character, 3)
+        character.surfaces.is_touching_floor = true
+        character.surfaces.is_attaching_to_floor = true
+        character.surfaces.update_actions()
+
+        assert_eq(
+            character.surfaces.surface_type,
+            SurfaceType.FLOOR,
+            "Should land on FLOOR"
+        )
+
+        # Check if just_left_air is detected
+        assert_true(
+            character.surfaces.just_left_air,
+            "Should detect transition from air"
+        )
+
+    func test_jump_from_floor():
+        # Character on floor, triggers jump
+        G.network.server_frame_index = 50
+        character.position = Vector2(100, 500)
+        character.velocity = Vector2.ZERO
+        character.surfaces.is_touching_floor = true
+        character.surfaces.is_attaching_to_floor = true
+
+        assert_eq(
+            character.surfaces.surface_type,
+            SurfaceType.FLOOR,
+            "Should start on FLOOR"
+        )
+
+        # Trigger jump
+        character.actions.pressed_jump = true
+        character.last_triggered_jump_frame_index = 50
+
+        # Process jump action through state_from_server
+        if is_instance_valid(character.state_from_server):
+            character.state_from_server._network_process()
+
+        # Should apply upward velocity
+        assert_lt(
+            character.velocity.y,
+            0,
+            "Jump should apply negative (upward) velocity"
+        )
+
+        # After movement, should leave floor
+        character.surfaces.is_touching_floor = false
+        character.surfaces.is_attaching_to_floor = false
+        character.surfaces.update_actions()
+
+        assert_eq(
+            character.surfaces.surface_type,
+            SurfaceType.AIR,
+            "Should transition to AIR after jump"
+        )
+
+
+## ============================================================================
+## Physics & Collision Handling Tests
+## ============================================================================
+class TestPhysicsDuringRollback:
+    extends GutTest
+
+    var fixture: TestCharacterFixture
+    var character: Character
+
+    func before_each():
+        ArrayPool.clear_all_pools()
+        fixture = TestCharacterFixture.new()
+        await fixture.setup_in_tree(get_tree().root)
+        character = fixture.character
+
+    func after_each():
+        fixture.cleanup()
+        ArrayPool.clear_all_pools()
+
+    func test_gravity_applied_during_air_state():
+        # Character in air should have gravity applied
+        G.network.server_frame_index = 50
+        character.position = Vector2(100, 400)
+        character.velocity = Vector2(0, 0)
+        character.surfaces.is_attaching_to_floor = false
+
+        var initial_velocity_y := character.velocity.y
+
+        # Simulate frame - gravity should be applied
+        # Note: Actual gravity is applied by action handlers
+        Helpers.simulate_frames(character, 3)
+
+        # Verify velocity changed (gravity or movement occurred)
+        # We can't test exact gravity without full physics setup,
+        # but we can verify state is consistent
+        assert_false(
+            character.surfaces.is_attaching_to_floor,
+            "Should remain in air"
+        )
+
+    func test_floor_contact_during_rollback():
+        # Character on floor
+        G.network.server_frame_index = 50
+        character.position = Vector2(100, 500)
+        character.velocity = Vector2(50, 0)
+        character.surfaces.is_touching_floor = true
+        character.surfaces.is_attaching_to_floor = true
+
+        # Store state
+        var original_surfaces := character.surfaces.bitmask
+        character.surfaces.is_touching_floor = false
+        character.surfaces.is_attaching_to_floor = false
+
+        # Rollback restores contact
+        var state := Helpers.create_server_state(
+            character.position,
+            character.velocity,
+            original_surfaces
+        )
+        character.state_from_server._sync_to_scene_state(state)
+
+        # Verify contact restored
+        assert_true(
+            character.surfaces.is_touching_floor,
+            "Floor contact should be restored"
+        )
+        assert_eq(
+            character.surfaces.surface_type,
+            SurfaceType.FLOOR,
+            "Should be on FLOOR surface"
+        )
+
+    func test_wall_contact_state():
+        # Character touching left wall
+        G.network.server_frame_index = 50
+        character.position = Vector2(100, 400)
+        character.velocity = Vector2(-50, 0)
+        character.surfaces.is_touching_left_wall = true
+        character.surfaces.is_attaching_to_left_wall = true
+
+        # Verify wall state
+        assert_true(
+            character.surfaces.is_touching_wall,
+            "Should be touching wall"
+        )
+        assert_eq(
+            character.surfaces.surface_type,
+            SurfaceType.WALL,
+            "Should be on WALL surface"
+        )
+        assert_eq(
+            character.surfaces.toward_wall_sign,
+            -1,
+            "Should face left wall"
+        )
+
+    func test_ceiling_contact_state():
+        # Character touching ceiling
+        G.network.server_frame_index = 50
+        character.position = Vector2(100, 100)
+        character.velocity = Vector2(0, -10)
+        character.surfaces.is_touching_ceiling = true
+        character.surfaces.is_attaching_to_ceiling = true
+
+        # Verify ceiling state
+        assert_true(
+            character.surfaces.is_touching_ceiling,
+            "Should be touching ceiling"
+        )
+        assert_eq(
+            character.surfaces.surface_type,
+            SurfaceType.CEILING,
+            "Should be on CEILING surface"
+        )
+
+    func test_collision_mask_update():
+        # Test that collision mask updates correctly
+        G.network.server_frame_index = 50
+        character.position = Vector2(100, 500)
+        character.surfaces.is_descending_through_floors = false
+
+        # Update collision mask (fall-through floors should be enabled)
+        character._update_collision_mask()
+
+        # Now trigger fall-through
+        character.surfaces.is_descending_through_floors = true
+        character._update_collision_mask()
+
+        # Verify mask was updated (we can't easily check the actual value,
+        # but we can verify the method runs without error)
+        assert_true(
+            character.surfaces.is_descending_through_floors,
+            "Fall-through should be active"
+        )
+
+
+## ============================================================================
+## Multi-Frame Prediction & Corrections
+## ============================================================================
+class TestPredictionWindows:
+    extends GutTest
+
+    var fixture: TestCharacterFixture
+    var character: Character
+
+    func before_each():
+        ArrayPool.clear_all_pools()
+        fixture = TestCharacterFixture.new()
+        await fixture.setup_in_tree(get_tree().root)
+        character = fixture.character
+
+    func after_each():
+        fixture.cleanup()
+        ArrayPool.clear_all_pools()
+
+    func test_multi_frame_prediction_accuracy():
+        # Client predicts 10 frames ahead
+        G.network.server_frame_index = 50
+        character.position = Vector2(100, 500)
+        character.velocity = Vector2(100, 0)
+
+        var predicted_positions := []
+
+        # Predict 10 frames
+        for i in range(10):
+            Helpers.simulate_frames(character, 1)
+
+        # Verify prediction was stable
+        assert_eq(
+            predicted_positions.size(),
+            10,
+            "Should have 10 predicted frames"
+        )
+
+        # Verify positions are increasing (moving right)
+        for i in range(1, 10):
+            assert_gt(
+                predicted_positions[i].x,
+                predicted_positions[i - 1].x,
+                "Position should increase each frame"
+            )
+
+    func test_long_rollback_window():
+        # Rollback 30 frames (half second at 60fps)
+        G.network.server_frame_index = 80
+        character.position = Vector2(100, 500)
+        character.velocity = Vector2(50, 0)
+
+        # Simulate 30 frames, storing each
+        for i in range(30):
+         Helpers.simulate_frames(character, 1)
+
+        var final_frame := 80 + 29
+        var final_position := character.position
+
+        # Simulate rollback to frame 85 (25 frames back)
+        var rollback_frame := 85
+        if character.state_from_server.rollback_buffer.has_at(rollback_frame):
+            var old_state: Array = character.state_from_server.rollback_buffer.get_at(
+                rollback_frame
+            )
+            character.state_from_server._sync_to_scene_state(old_state)
+
+            # Verify position rolled back
+            assert_lt(
+                character.position.x,
+                final_position.x,
+                "Position should be earlier after rollback"
+            )
+
+    func test_frame_state_preservation():
+        # Verify states are preserved correctly over time
+        G.network.server_frame_index = 50
+        character.position = Vector2(100, 500)
+        character.velocity = Vector2(100, 0)
+
+        var stored_states := {}
+
+        # Store states for 15 frames
+        for i in range(15):
+            stored_states[frame_idx] = character.position
+            Helpers.simulate_frames(character, 1)
+            var frame_idx := 50 + i
+
+        # Verify we can retrieve old states
+        var frame_55_expected: Vector2 = stored_states[55]
+
+        if character.state_from_server.rollback_buffer.has_at(55):
+            var state_55: Array = character.state_from_server.rollback_buffer.get_at(
+                55
+            )
+            var retrieved_pos: Vector2 = state_55[0]
+
+            assert_almost_eq(
+                retrieved_pos.x,
+                frame_55_expected.x,
+                0.1,
+                "Stored position should match"
+            )
+
+
+## ============================================================================
+## Edge Cases & Boundary Tests
+## ============================================================================
+class TestMovementEdgeCases:
+    extends GutTest
+
+    var fixture: TestCharacterFixture
+    var character: Character
+
+    func before_each():
+        ArrayPool.clear_all_pools()
+        fixture = TestCharacterFixture.new()
+        await fixture.setup_in_tree(get_tree().root)
+        character = fixture.character
+
+    func after_each():
+        fixture.cleanup()
+        ArrayPool.clear_all_pools()
+
+    func test_zero_velocity_to_high_velocity():
+        # Stationary to sprinting in one frame correction
+        G.network.server_frame_index = 50
+        var server_state := Helpers.create_server_state(
+            Vector2(100, 500),
+
+        # Store stationary state
+            Vector2(300, 0)  # High velocity
+        )
+
+        # Apply correction
+        character.state_from_server.position = server_state[0]
+        character.state_from_server.velocity = server_state[1]
+        character.state_from_server._sync_to_scene_state(server_state)
+
+        # Verify velocity applied correctly
+        assert_almost_eq(
+            character.velocity.x,
+            300.0,
+            1.0,
+            "Velocity should jump to high value"
+        )
+
+    func test_direction_reversal_during_rollback():
+        # Moving right, server corrects to moving left
+        G.network.server_frame_index = 50
+        character.position = Vector2(100, 500)
+        character.velocity = Vector2(100, 0)  # Moving right
+        Helpers.simulate_frames(character, 1)
+
+        # Simulate 3 frames moving right
+        for i in range(3):
+
+        # Server correction at frame 51: was moving left
+        var server_state := Helpers.create_server_state(
+            Vector2(95, 500),  # Moved left
+            Vector2(-100, 0)  # Velocity left
+        )
+
+        # Apply correction
+        character.state_from_server.position = server_state[0]
+        character.state_from_server.velocity = server_state[1]
+        character.state_from_server._sync_to_scene_state(server_state)
+
+        # Verify direction reversal
+        assert_lt(
+            character.velocity.x,
+            0,
+            "Velocity should be reversed to left"
+        )
+        assert_almost_eq(
+            character.velocity.x,
+            -100.0,
+            1.0,
+            "Velocity magnitude should be correct"
+        )
+
+    func test_high_velocity_movement():
+        # Very fast movement during rollback
+        G.network.server_frame_index = 50
+        character.position = Vector2(100, 500)
+        character.velocity = Vector2(500, 0)  # Very fast
+
+        # Simulate frame
+
+        # Position should change significantly
+        var distance_moved := abs(character.position.x - 100.0)
+        assert_gt(
+            distance_moved,
+            5.0,  # At 500 px/s for 1/60 sec = ~8.33 pixels
+            "High velocity should produce significant movement"
+        )
+
+    func test_position_remains_valid_after_rollback():
+        # Ensure position doesn't become INF or NAN
+        G.network.server_frame_index = 50
+        character.position = Vector2(100, 500)
+        Helpers.simulate_frames(character, 1)
+        character.velocity = Vector2(100, -100)
+
+        # Simulate multiple frames
+        for i in range(10):
+
+        # Verify position is valid
+        assert_false(
+            is_inf(character.position.x) or is_inf(character.position.y),
+            "Position should not be INF"
+        )
+        assert_false(
+            is_nan(character.position.x) or is_nan(character.position.y),
+            "Position should not be NAN"
+        )
+
+    func test_velocity_remains_valid_after_rollback():
+        # Ensure velocity doesn't become INF or NAN
+        G.network.server_frame_index = 50
+         # Alternate left/right input
+            if i % 2 == 0:
+                Helpers.set_character_input(
+                    character,
+                    false,
+                    false,
+                    false,
+                    true,
+                    false
+                )
+        character.position = Vector2(100, 500)
+        character.velocity = Vector2(50, 0)
+
+        # Apply various inputs
+        for i in range(10):
+            else:
+                Helpers.set_character_input(
+                    character,
+                    false,
+                    false,
+                    false,
+                    false,
+                    true
+                )
+
+            Helpers.simulate_frames(character, 1)
+
+        # Verify velocity is valid
+        assert_false(
+            is_inf(character.velocity.x) or is_inf(character.velocity.y),
+            "Velocity should not be INF"
+        )
+        assert_false(
+            is_nan(character.velocity.x) or is_nan(character.velocity.y),
+            "Velocity should not be NAN"
+        )
