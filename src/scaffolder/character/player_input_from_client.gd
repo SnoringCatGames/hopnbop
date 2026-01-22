@@ -40,8 +40,8 @@ const _synced_properties_and_rollback_diff_thresholds := {
 
 func _get_default_values() -> Array:
     return [
-        0,  # actions
-        -1,  # last_triggered_jump_time_usec (-1 = no jump yet)
+        0, # actions
+        -1, # last_triggered_jump_time_usec (-1 = no jump yet)
     ]
 
 
@@ -112,6 +112,15 @@ func _reconcile_jump_event() -> void:
     if last_triggered_jump_time_usec < 0:
         return
 
+    # FIXME: Remove after testing.
+    G.print(
+        "F:%d Reconciling jump event from frame %d" % [
+            G.network.server_frame_index,
+            jump_frame,
+        ],
+        ScaffolderLog.CATEGORY_NETWORK_SYNC,
+    )
+
     # Check if frame is too old.
     if G.network.frame_driver.is_frame_too_old_to_consider(jump_frame):
         G.warning(
@@ -156,6 +165,14 @@ func _reconcile_jump_event() -> void:
         # frames.
         _clear_jump_bit_in_previous_frame_if_not_held(jump_frame - 1)
 
+        # FIXME: Remove after testing.
+        G.print(
+            "F:%d Jump bit injected into frame %d, queuing rollback" % [
+                G.network.server_frame_index,
+                jump_frame,
+            ],
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        )
         G.network.frame_driver.queue_rollback(jump_frame)
 
     _last_reconciled_jump_frame_index = jump_frame
