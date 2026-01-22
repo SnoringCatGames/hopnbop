@@ -50,7 +50,7 @@ extends Node
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug
 #
 # REMAINING TASKS:
-# - CURRENT:
+# - CURRENT: Abandon the current line of prompting. Start over with this architecture re-design focus:
 #
 # Is Godot's MultiplayerSynchronizer not handling this broadcast-replication-from-client-peer-to-all-other-peers for us? Can we test this? Do we have to implement our own forwarding replication from the server to the other clients?
 # - Before implementing, do test this theory with print statements!
