@@ -85,7 +85,10 @@ func _on_peer_connected(multiplayer_id: int) -> void:
 
         # FIXME: [GameLift]: Start level paused until all clients are connected.
     else:
-        G.check(multiplayer_id == SERVER_ID)
+        # Clients only care about connecting to the server
+        if multiplayer_id != SERVER_ID:
+            return
+
         G.print(
             "Connected to server: Local multiplayer_id: %s" % G.network.local_id,
             ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
@@ -109,7 +112,10 @@ func _on_peer_disconnected(multiplayer_id: int) -> void:
             )
             G.main.close_app()
     else:
-        G.check(multiplayer_id == SERVER_ID)
+        # Clients only care about disconnecting from the server
+        if multiplayer_id != SERVER_ID:
+            return
+
         G.print("Disconnect from server", ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
         _client_update_is_connected_to_server()
         G.main.update_window_title()

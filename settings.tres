@@ -9,6 +9,7 @@
 
 [resource]
 script = ExtResource("1_krfic")
+preview_run_multiple_clients = true
 show_debug_player_state = true
 show_perf_tracker = true
 pauses_on_focus_out = false
