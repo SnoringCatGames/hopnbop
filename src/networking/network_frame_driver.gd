@@ -84,6 +84,9 @@ extends Node
 #       triggering pause, and when this special server RPC is received.
 # - GameLift
 # - Add rollback debug visualizations.
+# - Implement kills and other gameplay bits.
+# - Implement multiple players on a given client.
+# - Review these notes: https://docs.google.com/document/d/1qJcNUrE1y8UllVVCojp-IN3zCwml8VK7kjYhp1uJhV4
 # - Review NETWORKING_ARCHITECTURE.md.
 
 # FIXME: GameLift
@@ -249,8 +252,6 @@ extends Node
 #   from PART 5.
 
 # FIXME: After polishing networking from above:
-# - Implement GameLift!
-#   - Possibly ask AI for help integrating with GameLift?
 # - Implement player kills.
 #   - In this game players kill each other by jumping on each other's heads.
 #   - In order to detect when one player jumps onto another's head, use the following strategy (or let me know if there is some other industry standard way to implement this that wolud be better!):
