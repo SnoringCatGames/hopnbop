@@ -50,11 +50,12 @@ extends Node
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug
 #
 # REMAINING TASKS:
-# - CURRENT: Abandon the current line of prompting. Start over with this architecture re-design focus:
 #
-# Is Godot's MultiplayerSynchronizer not handling this broadcast-replication-from-client-peer-to-all-other-peers for us? Can we test this? Do we have to implement our own forwarding replication from the server to the other clients?
-# - Before implementing, do test this theory with print statements!
-# - If not working, add this player-input-from-server-to-all-clients state replication as an additional packed_state property on the state_from_server class.
+# Add a third ReconcilableNetworkState node to Bunny.
+# This one will be responsible for forwarding player input state from the server to all other players. The preexisting PlayerInputFromClient node only sends data from the owner client to the server--currently, there is no way for other clients to know what input the remote player has been pressing.
+# We can save a bit of bandwidth by setting the visibility config on the server for this node, in order to blocklist the original player this input state came from, since they already know about it.
+# We need to create a third subclass of ReconcilableNetworkState for this new node. Call this ForwardedPlayerInputFromServer.
+# We should update initialization and validation logic of the classes to now account for this third sibling. It should be present iff the input_from_client nodes is present.
 #
 # - Debug the game.
 #   - Fix jumps
