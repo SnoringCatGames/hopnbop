@@ -14,11 +14,22 @@ func _enter_tree() -> void:
 func _ready() -> void:
     if G.network.is_server:
         return
-    if not G.settings.show_debug_player_state:
-        return
 
+    visibility_changed.connect(_on_visibility_changed)
+
+    if visible:
+        _initialize()
+
+
+func _on_visibility_changed() -> void:
+    if visible and %States.get_child_count() == 0:
+        _initialize()
+
+
+func _initialize() -> void:
     _on_players_updated()
-    G.game_panel.match_state_synchronizer.players_updated.connect(_on_players_updated)
+    if not G.game_panel.match_state_synchronizer.players_updated.is_connected(_on_players_updated):
+        G.game_panel.match_state_synchronizer.players_updated.connect(_on_players_updated)
 
 
 func _on_players_updated() -> void:

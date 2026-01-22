@@ -37,6 +37,12 @@ func _ready() -> void:
 
     _update_window_mode()
 
+    if (G.network.is_preview and
+        G.network.is_client and
+        G.settings.preview_run_multiple_clients
+    ):
+        _position_client_window_in_preview_mode()
+
 
 func _update_window_mode() -> void:
     if (
@@ -148,6 +154,26 @@ func update_window_title() -> void:
         device_prefix = "CLIENT %s" % G.network.local_id
 
     DisplayServer.window_set_title("[%s] %s (DEBUG)" % [device_prefix, app_name])
+
+
+func _position_client_window_in_preview_mode() -> void:
+    # Get usable screen area (excluding taskbar and other system UI).
+    var usable_rect := DisplayServer.screen_get_usable_rect()
+    var half_width := usable_rect.size.x / 2
+
+    # Account for window title bar height.
+    const TITLE_BAR_HEIGHT := 48
+    var window_height := usable_rect.size.y - TITLE_BAR_HEIGHT
+
+    # Resize window to half the usable screen width.
+    DisplayServer.window_set_size(Vector2i(half_width, window_height))
+
+    # Position based on local_id.
+    var position_x := usable_rect.position.x
+    if G.network.preview_client_number != 1:
+        position_x += half_width
+    var position_y := usable_rect.position.y + TITLE_BAR_HEIGHT
+    DisplayServer.window_set_position(Vector2i(position_x, position_y))
 
 
 func _disconnect_peers_in_preview_mode() -> void:

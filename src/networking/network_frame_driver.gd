@@ -50,6 +50,7 @@ extends Node
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug
 #
 # REMAINING TASKS:
+# - SCG ASCII art? Log it?
 # - Debug the game.
 #   - Fix jumps
 #   - Test with multiple clients, verify one sees the other move.

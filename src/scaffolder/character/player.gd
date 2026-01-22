@@ -12,6 +12,19 @@ func _enter_tree() -> void:
     super._enter_tree()
     if Engine.is_editor_hint():
         return
+    if G.network.is_client:
+        # On clients, wait for multiplayer_id to be replicated before adding
+        # to level's players_by_id dictionary.
+        state_from_server.multiplayer_id_changed.connect(
+            _on_multiplayer_id_replicated,
+            CONNECT_ONE_SHOT
+        )
+    else:
+        # Server sets multiplayer_id before adding to tree, so add immediately.
+        G.level.on_player_added(self)
+
+
+func _on_multiplayer_id_replicated() -> void:
     G.level.on_player_added(self)
 
 

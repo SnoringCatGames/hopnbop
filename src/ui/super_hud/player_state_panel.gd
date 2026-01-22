@@ -35,7 +35,7 @@ func clear() -> void:
 func _process(_delta: float) -> void:
     if G.network.is_server:
         return
-    if not G.settings.show_debug_player_state:
+    if not is_visible_in_tree():
         return
 
     if not is_instance_valid(player):
@@ -55,12 +55,10 @@ func _process(_delta: float) -> void:
     %Velocity.text = Utils.get_vector_string(player.velocity, 1)
 
     %AttachmentSide.text = SurfaceSide.get_string(player.surfaces.attachment_side)
-    %AttachmentPosition.text = Utils.get_vector_string(player.surfaces.attachment_position, 1)
-    %AttachmentNormal.text = Utils.get_vector_string(player.surfaces.attachment_normal, 1)
 
     %IsDescendingThroughFloors.text = str(player.surfaces.is_descending_through_floors)
-    %IsAscendingThroughCeilings.text = str(player.surfaces.is_ascending_through_ceilings)
-    %IsAttachingToWalkThroughWalls.text = str(player.surfaces.is_attaching_to_walk_through_walls)
+    #%IsAscendingThroughCeilings.text = str(player.surfaces.is_ascending_through_ceilings)
+    #%IsAttachingToWalkThroughWalls.text = str(player.surfaces.is_attaching_to_walk_through_walls)
 
     %IsOnFloor.text = str(player.is_on_floor())
     %IsOnCeiling.text = str(player.is_on_ceiling())
@@ -68,17 +66,19 @@ func _process(_delta: float) -> void:
 
 
 func _physics_process(_delta: float) -> void:
+    if not is_visible_in_tree:
+        return
     if not is_instance_valid(player_match_state) or not is_instance_valid(player):
         return
 
     if player.surfaces.just_changed_attachment_side:
-        add_toast("Attached to %s" % SurfaceSide.get_string(player.surfaces.attachment_side))
+        add_toast(
+            "Attached to %s" %
+            SurfaceSide.get_string(player.surfaces.attachment_side),
+        )
 
 
 func add_toast(text: String) -> void:
-    if not G.settings.show_debug_player_state:
-        return
-
     var toast: PlayerStatePanelToast = toast_scene.instantiate()
     toast.text = text
     %Toasts.add_child(toast)
