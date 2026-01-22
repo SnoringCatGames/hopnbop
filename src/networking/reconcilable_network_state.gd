@@ -250,7 +250,7 @@ func _handle_new_authoritative_state() -> void:
     var new_frame_authority: int = packed_state[packed_state.size() - 2]
 
     # FIXME: Remove after testing.
-    var authority_string := FrameAuthority.keys()[new_frame_authority]
+    var authority_string: String = FrameAuthority.keys()[new_frame_authority]
     G.print(
         "%s F:%d Received %s state for frame %d" % [
             name,
@@ -521,7 +521,7 @@ func _pack_networked_state() -> void:
     _is_packing_state_locally = true
 
     # FIXME: Remove after testing.
-    var authority_string := FrameAuthority.keys()[frame_authority]
+    var authority_string: String = FrameAuthority.keys()[frame_authority]
     if not is_server_authoritative:
         G.print(
             "%s F:%d Packed client-auth state (%s)" % [
