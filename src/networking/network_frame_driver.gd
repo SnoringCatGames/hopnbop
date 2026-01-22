@@ -50,6 +50,12 @@ extends Node
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug
 #
 # REMAINING TASKS:
+# - CURRENT:
+#
+# Is Godot's MultiplayerSynchronizer not handling this broadcast-replication-from-client-peer-to-all-other-peers for us? Can we test this? Do we have to implement our own forwarding replication from the server to the other clients?
+# - Before implementing, do test this theory with print statements!
+# - If not working, add this player-input-from-server-to-all-clients state replication as an additional packed_state property on the state_from_server class.
+#
 # - Debug the game.
 #   - Fix jumps
 #   - Test with multiple clients, verify one sees the other move.
