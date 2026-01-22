@@ -20,12 +20,15 @@ func process(character) -> bool:
 
     var is_first_jump: bool = character.jump_sequence_count == 1
 
-    # If we just fell off the bottom of a wall, cancel any velocity toward that
-    # wall.
+    # If we just fell off the bottom of a wall, cancel any velocity toward
+    # that wall.
     if (
         character.surfaces.just_entered_air
         and (
-            (character.surfaces.just_stopped_attaching_to_left_wall and character.velocity.x < 0.0)
+            (
+                character.surfaces.just_stopped_attaching_to_left_wall
+                and character.velocity.x < 0.0
+            )
             or (
                 character.surfaces.just_stopped_attaching_to_right_wall
                 and character.velocity.x > 0.0
@@ -44,19 +47,27 @@ func process(character) -> bool:
     )
 
     # Bouncing off ceiling.
-    if character.surfaces.is_touching_ceiling and !character.surfaces.is_attaching_to_ceiling:
+    if (
+        character.surfaces.is_touching_ceiling
+        and !character.surfaces.is_attaching_to_ceiling
+    ):
         character.velocity.y = BOUNCE_OFF_CEILING_VELOCITY
 
-        var ceiling_collision := character.surfaces.get_collision_for_side(
-            SurfaceSide.CEILING
+        var ceiling_collision: KinematicCollision2D = (
+            character.surfaces.get_collision_for_side(SurfaceSide.CEILING)
         )
         if ceiling_collision != null:
             var normal := ceiling_collision.get_normal()
-            var is_ceiling_sloped_against_movement: bool = (
-                (normal.x < 0.0) != (character.velocity.x < 0.0)
-            )
-            if is_ceiling_sloped_against_movement:
-                character.velocity.x = 0.0
+            # Only cancel horizontal velocity if ceiling is sloped AND the
+            # slope opposes movement direction (not for horizontal ceilings)
+            var is_ceiling_sloped := absf(normal.x) > 0.1
+            if is_ceiling_sloped:
+                var is_sloped_against_movement: bool = (
+                    (normal.x < 0.0 and character.velocity.x < 0.0)
+                    or (normal.x > 0.0 and character.velocity.x > 0.0)
+                )
+                if is_sloped_against_movement:
+                    character.velocity.x = 0.0
 
     return true
 
@@ -88,7 +99,9 @@ static func update_velocity_in_air(
 
     # Horizontal movement.
     velocity.x += (
-        delta * movement_settings.in_air_horizontal_acceleration * horizontal_acceleration_sign
+        delta
+        * movement_settings.in_air_horizontal_acceleration
+        * horizontal_acceleration_sign
     )
 
     return velocity
