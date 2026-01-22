@@ -47,11 +47,16 @@ func process(character) -> bool:
     if character.surfaces.is_touching_ceiling and !character.surfaces.is_attaching_to_ceiling:
         character.velocity.y = BOUNCE_OFF_CEILING_VELOCITY
 
-        var is_ceiling_sloped_against_movement: bool = (
-            (character.surfaces.ceiling_contact.normal.x < 0.0) != (character.velocity.x < 0.0)
+        var ceiling_collision := character.surfaces.get_collision_for_side(
+            SurfaceSide.CEILING
         )
-        if is_ceiling_sloped_against_movement:
-            character.velocity.x = 0.0
+        if ceiling_collision != null:
+            var normal := ceiling_collision.get_normal()
+            var is_ceiling_sloped_against_movement: bool = (
+                (normal.x < 0.0) != (character.velocity.x < 0.0)
+            )
+            if is_ceiling_sloped_against_movement:
+                character.velocity.x = 0.0
 
     return true
 

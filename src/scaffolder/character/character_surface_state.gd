@@ -613,3 +613,35 @@ func force_boost() -> void:
     # Clear current state
     bitmask = 0
     horizontal_facing_sign = previous_horizontal_facing_sign
+
+
+## Gets the collision for a specific surface side from the character's
+## current slide collisions.
+## Returns null if no collision matches the given side.
+func get_collision_for_side(side: int) -> KinematicCollision2D:
+    if character.get_slide_collision_count() == 0:
+        return null
+
+    for i in range(character.get_slide_collision_count()):
+        var collision := character.get_slide_collision(i)
+        var normal := collision.get_normal()
+
+        match side:
+            SurfaceSide.FLOOR:
+                # Floor collision: normal points up (y < -0.5)
+                if normal.y < -0.5:
+                    return collision
+            SurfaceSide.CEILING:
+                # Ceiling collision: normal points down (y > 0.5)
+                if normal.y > 0.5:
+                    return collision
+            SurfaceSide.LEFT_WALL:
+                # Left wall collision: normal points right (x > 0.5)
+                if abs(normal.y) < 0.5 and normal.x > 0.5:
+                    return collision
+            SurfaceSide.RIGHT_WALL:
+                # Right wall collision: normal points left (x < -0.5)
+                if abs(normal.y) < 0.5 and normal.x < -0.5:
+                    return collision
+
+    return null
