@@ -16,8 +16,8 @@ func _ready() -> void:
         return
 
     %IsDescendingThroughFloorsRow.visible = show_extra_debug_info
-    %IsAscendingThroughCeilingsRow.visible = show_extra_debug_info
-    %IsAttachingToWalkThroughWallsRow.visible = show_extra_debug_info
+    #%IsAscendingThroughCeilingsRow.visible = show_extra_debug_info
+    #%IsAttachingToWalkThroughWallsRow.visible = show_extra_debug_info
     %IsOnFloorRow.visible = show_extra_debug_info
     %IsOnCeilingRow.visible = show_extra_debug_info
     %IsOnWallRow.visible = show_extra_debug_info
@@ -28,8 +28,6 @@ func clear() -> void:
     %Position.text = ""
     %Velocity.text = ""
     %AttachmentSide.text = ""
-    %AttachmentPosition.text = ""
-    %AttachmentNormal.text = ""
 
 
 func _process(_delta: float) -> void:
