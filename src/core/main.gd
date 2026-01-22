@@ -98,6 +98,15 @@ func _unhandled_input(event: InputEvent) -> void:
                 KEY_ESCAPE:
                     if G.settings.pauses_on_focus_out:
                         _client_local_pause()
+                KEY_F1:
+                    if is_instance_valid(G.super_hud):
+                        G.super_hud.toggle_debug_console()
+                KEY_F2:
+                    if is_instance_valid(G.super_hud):
+                        G.super_hud.toggle_player_state_list()
+                KEY_F3:
+                    if is_instance_valid(G.super_hud):
+                        G.super_hud.toggle_perf_tracker()
                 _:
                     pass
 

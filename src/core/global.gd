@@ -23,6 +23,7 @@ var process_sentinel := ProcessSentinel.new()
 var main: Main
 var audio: AudioMain
 var hud: Hud
+var super_hud: SuperHud
 var screens: ScreensMain
 
 var main_menu_screen: MainMenuScreen

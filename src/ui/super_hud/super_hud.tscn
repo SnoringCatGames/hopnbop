@@ -1,5 +1,6 @@
-[gd_scene load_steps=6 format=3 uid="uid://bvkt5maj64yqm"]
+[gd_scene load_steps=7 format=3 uid="uid://bvkt5maj64yqm"]
 
+[ext_resource type="Script" path="res://src/ui/super_hud/super_hud.gd" id="1_2olqw"]
 [ext_resource type="Theme" uid="uid://curquyi35i5lq" path="res://src/core/debug_overlay_theme.tres" id="1_eekom"]
 [ext_resource type="PackedScene" uid="uid://e73j4d7tda7g" path="res://src/ui/super_hud/player_state_list.tscn" id="2_2h2xo"]
 [ext_resource type="PackedScene" uid="uid://c2yul5us50jn4" path="res://src/ui/super_hud/debug_console.tscn" id="2_h1llh"]
@@ -8,6 +9,7 @@
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_kqj18"]
 
 [node name="SuperHud" type="PanelContainer"]
+script = ExtResource("1_2olqw")
 process_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -20,9 +22,12 @@ theme_override_styles/panel = SubResource("StyleBoxEmpty_kqj18")
 
 [node name="DebugConsole" parent="." instance=ExtResource("2_h1llh")]
 layout_mode = 2
+unique_name_in_owner = true
 
 [node name="PlayerStateList" parent="." instance=ExtResource("2_2h2xo")]
 layout_mode = 2
+unique_name_in_owner = true
 
 [node name="PerfTracker" parent="." instance=ExtResource("3_2h2xo")]
 layout_mode = 2
+unique_name_in_owner = true

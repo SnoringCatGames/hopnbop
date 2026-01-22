@@ -56,10 +56,6 @@ extends Node
 #   - Test with multiple clients, verify one sees the other move.
 # - Review tests.
 # - Fix GitHub CI.
-# - Add some hotkeys for toggling each of the various super-hud debug UI:
-#   - F1 should toggle DebugConsole
-#   - F2 should toggle PlayerStateList
-#   - F3 should toggle PerfTracker
 # - Add support for networked pause
 #   - First, review my proposed plan, and let me know if anything doesn't make
 #     sense or should be done differently.

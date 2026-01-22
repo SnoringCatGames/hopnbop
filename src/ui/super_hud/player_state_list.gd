@@ -10,8 +10,6 @@ func _enter_tree() -> void:
         process_mode = Node.PROCESS_MODE_DISABLED
         return
 
-    visible = G.settings.show_debug_player_state
-
 
 func _ready() -> void:
     if G.network.is_server:

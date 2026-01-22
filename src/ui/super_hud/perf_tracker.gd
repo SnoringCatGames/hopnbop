@@ -69,8 +69,6 @@ var _color_tweens := { }
 
 
 func _ready() -> void:
-    visible = G.settings.show_perf_tracker
-
     if not G.settings.show_perf_tracker:
         return
 
