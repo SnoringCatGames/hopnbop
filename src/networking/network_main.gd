@@ -38,11 +38,13 @@ extends Node
 ## authority on this client. This occurs when the server spawns a player
 ## character for this client and the MultiplayerSynchronizer assigns
 ## authority. Use this signal to detect when the local player is ready.
+@warning_ignore("unused_signal")
 signal local_authority_added(state_from_client: PlayerInputFromClient)
 
 ## Emitted when a PlayerInputFromClient node loses local multiplayer
 ## authority on this client. This occurs when the player character is
 ## despawned or authority is transferred away from this client.
+@warning_ignore("unused_signal")
 signal local_authority_removed(state_from_client: PlayerInputFromClient)
 
 var time := ServerTimeTracker.new()
