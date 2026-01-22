@@ -91,6 +91,7 @@ enum FrameAuthority {
 
 signal received_network_state
 signal network_processed
+signal multiplayer_id_changed
 
 # FIXME: Test these rollback diff threshold defaults.
 const DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD := 1.0
@@ -147,6 +148,8 @@ var multiplayer_id := 1:
             # Assign multiplayer_id on the partner InputFromClient.
             if is_server_authoritative and is_instance_valid(_partner_state):
                 _partner_state.multiplayer_id = multiplayer_id
+
+            multiplayer_id_changed.emit()
 
 var authority_id: int:
     get:
@@ -218,7 +221,21 @@ func _parse_property_names() -> void:
 
 
 func update_authority() -> void:
+    var previous_authority_id := get_multiplayer_authority()
     set_multiplayer_authority(authority_id)
+    if previous_authority_id != authority_id:
+        G.print(
+            "%s authority changed: %d -> %d " +
+            "(server_auth=%s, peer_id=%d, is_local_auth=%s)" % [
+                name,
+                previous_authority_id,
+                authority_id,
+                is_server_authoritative,
+                multiplayer_id,
+                is_multiplayer_authority(),
+            ],
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        )
 
 
 func _handle_new_authoritative_state() -> void:
@@ -228,6 +245,39 @@ func _handle_new_authoritative_state() -> void:
 
     var state_time_usec: int = packed_state[packed_state.size() - 1]
     var state_frame_index := G.network.frame_driver.get_frame_index_from_time_usec(state_time_usec)
+
+    # Extract the frame authority from the received state.
+    var new_frame_authority: int = packed_state[packed_state.size() - 2]
+
+    # FIXME: Remove after testing.
+    var authority_string := FrameAuthority.keys()[new_frame_authority]
+    G.print(
+        "%s F:%d Received %s state for frame %d" % [
+            name,
+            G.network.server_frame_index,
+            authority_string,
+            state_frame_index,
+        ],
+        ScaffolderLog.CATEGORY_NETWORK_SYNC,
+    )
+
+    # Clients should ignore PREDICTED state from server-authoritative nodes entirely.
+    # Only the server's AUTHORITATIVE state matters for reconciliation.
+    if (
+        is_server_authoritative and
+        G.network.is_client and
+        new_frame_authority == FrameAuthority.PREDICTED
+    ):
+        # FIXME: Remove after testing.
+        G.print(
+            "%s F:%d Ignoring PREDICTED server state for frame %d" % [
+                name,
+                G.network.server_frame_index,
+                state_frame_index,
+            ],
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        )
+        return
 
     if G.network.frame_driver.is_frame_too_old_to_consider(state_frame_index):
         G.warning(
@@ -272,6 +322,7 @@ func _handle_new_authoritative_state() -> void:
     var should_check_for_prediction_mismatch := (
         state_frame_index < G.network.server_frame_index
         and _rollback_buffer.has_at(state_frame_index)
+        and new_frame_authority == FrameAuthority.AUTHORITATIVE
     )
 
     if should_check_for_prediction_mismatch:
@@ -302,7 +353,7 @@ func _handle_new_authoritative_state() -> void:
     if should_unpack_state:
         # Record local class properties.
         _unpack_networked_state()
-        frame_authority = FrameAuthority.AUTHORITATIVE
+        frame_authority = new_frame_authority
 
     received_network_state.emit()
 
@@ -377,6 +428,16 @@ func _post_network_process() -> void:
     _sync_from_scene_state()
     if is_multiplayer_authority():
         _pack_networked_state()
+    else:
+        # FIXME: Remove after testing.
+        if not is_server_authoritative:
+            G.print(
+                "%s F:%d NOT authority - skipping pack" % [
+                    name,
+                    G.network.server_frame_index,
+                ],
+                ScaffolderLog.CATEGORY_NETWORK_SYNC,
+            )
     _pack_buffer_state_from_local_state()
 
 
@@ -447,15 +508,38 @@ func _has_authoritative_state_for_current_frame() -> bool:
 
 
 func _pack_networked_state() -> void:
-    var state := ArrayPool.acquire(_property_names_for_packing.size() + 1)
+    var state := ArrayPool.acquire(_property_names_for_packing.size() + 2)
 
     var i := 0
     for property_name in _property_names_for_packing:
         state[i] = get(property_name)
         i += 1
+    state[i] = frame_authority
+    i += 1
     # We send time values across the network, but we store indices.
     state[i] = G.network.frame_driver.get_time_usec_from_frame_index(timestamp_index)
     _is_packing_state_locally = true
+
+    # FIXME: Remove after testing.
+    var authority_string := FrameAuthority.keys()[frame_authority]
+    if not is_server_authoritative:
+        G.print(
+            "%s F:%d Packed client-auth state (%s)" % [
+                name,
+                G.network.server_frame_index,
+                authority_string,
+            ],
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        )
+    else:
+        G.print(
+            "%s F:%d Packed server-auth state (%s)" % [
+                name,
+                G.network.server_frame_index,
+                authority_string,
+            ],
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        )
 
     if not packed_state.is_empty():
         ArrayPool.release(packed_state)
@@ -473,7 +557,7 @@ func _unpack_networked_state() -> void:
 
     if not (
         G.ensure(
-            packed_state.size() == _property_names_for_packing.size() + 1,
+            packed_state.size() == _property_names_for_packing.size() + 2,
         )
     ):
         return
@@ -482,6 +566,8 @@ func _unpack_networked_state() -> void:
     for property_name in _property_names_for_packing:
         set(property_name, packed_state[i])
         i += 1
+    # Skip frame_authority (at index i) - we handle it separately in _handle_new_authoritative_state
+    i += 1
     # We send time values across the network, but we store indices.
     var timestamp_usec: int = packed_state[i]
     timestamp_index = G.network.frame_driver.get_frame_index_from_time_usec(timestamp_usec)
@@ -507,16 +593,16 @@ func _pack_buffer_state_from_local_state() -> void:
 ## network.
 func _pack_buffer_state_from_network_state(packed_network_state: Array) -> void:
     var state_time_usec: int = packed_network_state[packed_network_state.size() - 1]
+    var new_frame_authority: int = packed_network_state[packed_network_state.size() - 2]
     var frame_index := G.network.frame_driver.get_frame_index_from_time_usec(state_time_usec)
 
-    # For the rollback buffer, we want to record the same state that we
-    # replicate across the network, except, we don't need the timestamp and we
-    # do need the frame_authority.
-    var rollback_frame_state := ArrayPool.acquire(packed_network_state.size())
+    # For the rollback buffer, we use the same state layout as the network state,
+    # but we replace the timestamp with the frame_authority from the sender.
+    var rollback_frame_state := ArrayPool.acquire(packed_network_state.size() - 1)
 
-    for i in range(packed_network_state.size() - 1):
+    for i in range(packed_network_state.size() - 2):
         rollback_frame_state[i] = packed_network_state[i]
-    rollback_frame_state[rollback_frame_state.size() - 1] = FrameAuthority.AUTHORITATIVE
+    rollback_frame_state[rollback_frame_state.size() - 1] = new_frame_authority
 
     # Note: rollback_frame_state is now owned by the rollback buffer, don't
     #       release it here.

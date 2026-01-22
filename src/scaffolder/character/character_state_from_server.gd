@@ -84,6 +84,14 @@ func _network_process() -> void:
         state_from_client._unpack_buffer_state(timestamp_index)
         # Update surface attachment state based on the input we just loaded.
         character.surfaces.update_actions()
+        # FIXME: Remove after testing.
+        G.print(
+            "F:%d Using authoritative input (actions=%d)" % [
+                G.network.server_frame_index,
+                character.actions.bitmask,
+            ],
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        )
     else:
         if is_authority_for_state_from_client:
             # This client controls input - capture it now as authoritative.
@@ -99,13 +107,22 @@ func _network_process() -> void:
             state_from_client.frame_authority = FrameAuthority.PREDICTED
             # Update surface attachment state based on the input we just loaded.
             character.surfaces.update_actions()
+            # FIXME: Remove after testing.
+            G.print(
+                "F:%d Extrapolating input from prev frame (actions=%d)" % [
+                    G.network.server_frame_index,
+                    character.actions.bitmask,
+                ],
+                ScaffolderLog.CATEGORY_NETWORK_SYNC,
+            )
 
     # Handle scene state (from the server).
     if is_authority_for_state_from_server:
-        # The server always processes each frame, and records the resulting
-        # scene state as authoritative.
+        # The server processes movement. Mark as authoritative only if we have
+        # authoritative input, otherwise mark as predicted to avoid overriding
+        # client predictions with server extrapolations.
         character._apply_movement()
-        frame_authority = FrameAuthority.AUTHORITATIVE
+        frame_authority = state_from_client.frame_authority
     else:
         if _has_authoritative_state_for_current_frame():
             # We already recorded authoritative state for this frame, so we
