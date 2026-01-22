@@ -26,7 +26,8 @@
       "Bash(grep:*)",
       "Bash(\"/c/Program Files/Godot/Godot_v4.5-stable_win64_console.exe\" --headless -s --path . addons/gut/gut_cmdln.gd -gtest=res://test/unit/networking/test_reconcilable_networked_state.gd -gexit)",
       "Bash(python:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(ls:*)"
     ]
   }
 }
