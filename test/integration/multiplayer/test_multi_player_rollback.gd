@@ -146,13 +146,13 @@ class TestMultiPlayerRollback:
 
     func test_oldest_rollbackable_frame_applies_to_all_entities():
         # The oldest rollbackable frame is global, not per-entity
-        frame_driver.server_frame_index = 100
+        frame_driver.server_frame_index = 200
 
         var oldest := frame_driver.oldest_rollbackable_frame_index
 
         # This applies to all entities
         assert_eq(
             oldest,
-            13,
-            "Oldest rollbackable should be 13 for all entities",
+            83,
+            "Oldest rollbackable should be 83 for all entities",
         )

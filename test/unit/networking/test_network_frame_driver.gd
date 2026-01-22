@@ -153,13 +153,13 @@ class TestRollbackQueueing:
 
 
     func test_queue_rollback_rejects_too_old_frame():
-        # Set up: frame index at 100, buffer size 90
-        # oldest_rollbackable = max(100 - 90 + 3, 1) = 13
-        frame_driver.server_frame_index = 100
+        # Set up: frame index at 200, buffer size 120
+        # oldest_rollbackable = max(200 - 120 + 3, 1) = 83
+        frame_driver.server_frame_index = 200
 
-        # Try to queue rollback to frame 10 (too old)
-        # Target rollback would be 11, which is < 13
-        var result := frame_driver.queue_rollback(10)
+        # Try to queue rollback to frame 80 (too old)
+        # Target rollback would be 81, which is < 83
+        var result := frame_driver.queue_rollback(80)
 
         assert_false(
             result,
@@ -169,12 +169,12 @@ class TestRollbackQueueing:
 
     func test_queue_rollback_boundary_frame_accepted():
         # Test the boundary case: exactly at oldest_rollbackable
-        frame_driver.server_frame_index = 100
-        # oldest_rollbackable = max(100 - 90 + 3, 1) = 13
+        frame_driver.server_frame_index = 200
+        # oldest_rollbackable = max(200 - 120 + 3, 1) = 83
 
-        # Queue rollback to frame 12 (conflict)
-        # Target rollback = 13, which equals oldest_rollbackable
-        var result := frame_driver.queue_rollback(12)
+        # Queue rollback to frame 82 (conflict)
+        # Target rollback = 83, which equals oldest_rollbackable
+        var result := frame_driver.queue_rollback(82)
 
         assert_true(
             result,
@@ -184,12 +184,12 @@ class TestRollbackQueueing:
 
     func test_queue_rollback_boundary_frame_rejected():
         # Test one frame before the boundary
-        frame_driver.server_frame_index = 100
-        # oldest_rollbackable = 13
+        frame_driver.server_frame_index = 200
+        # oldest_rollbackable = 83
 
-        # Queue rollback to frame 11 (conflict)
-        # Target rollback = 12, which is < 13
-        var result := frame_driver.queue_rollback(11)
+        # Queue rollback to frame 81 (conflict)
+        # Target rollback = 82, which is < 83
+        var result := frame_driver.queue_rollback(81)
 
         assert_false(
             result,
@@ -217,19 +217,19 @@ class TestRollbackQueueing:
 
     func test_is_frame_too_old_at_boundary():
         # Test the boundary check for is_frame_too_old_to_consider
-        frame_driver.server_frame_index = 100
-        # oldest_rollbackable = 13
+        frame_driver.server_frame_index = 200
+        # oldest_rollbackable = 83
 
-        # Frame 12 (conflict), target 13 - should NOT be too old
-        var result_at_boundary := frame_driver.is_frame_too_old_to_consider(12)
+        # Frame 82 (conflict), target 83 - should NOT be too old
+        var result_at_boundary := frame_driver.is_frame_too_old_to_consider(82)
         assert_false(
             result_at_boundary,
             "Frame at boundary should not be too old",
         )
 
-        # Frame 11 (conflict), target 12 - should be too old
+        # Frame 81 (conflict), target 82 - should be too old
         var result_before_boundary := (
-            frame_driver.is_frame_too_old_to_consider(11)
+            frame_driver.is_frame_too_old_to_consider(81)
         )
         assert_true(
             result_before_boundary,
@@ -240,7 +240,7 @@ class TestRollbackQueueing:
     func test_oldest_rollbackable_never_negative():
         # Test early frames where buffer size exceeds frame index
         frame_driver.server_frame_index = 5
-        # Formula: max(5 - 90 + 3, 1) = max(-82, 1) = 1
+        # Formula: max(5 - 120 + 3, 1) = max(-112, 1) = 1
 
         var oldest := frame_driver.oldest_rollbackable_frame_index
 
@@ -253,7 +253,7 @@ class TestRollbackQueueing:
 
     func test_rollback_buffer_size_calculation():
         # Test that buffer size is calculated correctly
-        # Default: 1.5 seconds at 60 FPS = 90 frames
+        # Default: 2.0 seconds at 60 FPS = 120 frames
         var expected_size := ceili(
             G.settings.rollback_buffer_duration_sec *
             NetworkFrameDriver.TARGET_NETWORK_FPS,
@@ -349,13 +349,13 @@ class TestRollbackAndReprocess:
 
 
     func test_oldest_rollbackable_calculation_with_large_buffer():
-        # Buffer size 90, frame 100
-        # oldest = max(100 - 90 + 3, 1) = 13
-        frame_driver.server_frame_index = 100
+        # Buffer size 120, frame 200
+        # oldest = max(200 - 120 + 3, 1) = 83
+        frame_driver.server_frame_index = 200
 
         var oldest := frame_driver.oldest_rollbackable_frame_index
 
-        assert_eq(oldest, 13, "Oldest rollbackable frame should be 13")
+        assert_eq(oldest, 83, "Oldest rollbackable frame should be 83")
 
 
     func test_oldest_rollbackable_calculation_early_game():
@@ -374,8 +374,8 @@ class TestRollbackAndReprocess:
     func test_frame_boundary_calculations():
         # Test the +3 offset in oldest_rollbackable calculation
         # Formula: max(server_frame_index - buffer_size + 3, 1)
-        # At frame 93 with buffer 90: max(93 - 90 + 3, 1) = 6
-        frame_driver.server_frame_index = 93
+        # At frame 123 with buffer 120: max(123 - 120 + 3, 1) = 6
+        frame_driver.server_frame_index = 123
 
         var oldest := frame_driver.oldest_rollbackable_frame_index
 
@@ -495,16 +495,16 @@ class TestFrameIndexCalculation:
 
 
     func test_oldest_rollbackable_frame_index_with_buffer_size_90():
-        # Frame 100, buffer 90 -> oldest = max(100 - 90 + 3, 1) = 13
-        frame_driver.server_frame_index = 100
+        # Frame 200, buffer 120 -> oldest = max(200 - 120 + 3, 1) = 83
+        frame_driver.server_frame_index = 200
 
         var oldest := frame_driver.oldest_rollbackable_frame_index
 
-        assert_eq(oldest, 13, "Oldest frame should be 13 at frame 100")
+        assert_eq(oldest, 83, "Oldest frame should be 83 at frame 200")
 
 
     func test_oldest_rollbackable_never_negative_early_game():
-        # Frame 5, buffer 90 -> oldest = max(5 - 90 + 3, 1) = 1
+        # Frame 5, buffer 120 -> oldest = max(5 - 120 + 3, 1) = 1
         frame_driver.server_frame_index = 5
 
         var oldest := frame_driver.oldest_rollbackable_frame_index
@@ -513,27 +513,27 @@ class TestFrameIndexCalculation:
 
 
     func test_is_frame_too_old_to_consider_at_boundary():
-        # Frame 100, oldest = 13
-        # Conflict frame 12, target 13 -> not too old
-        frame_driver.server_frame_index = 100
+        # Frame 200, oldest = 83
+        # Conflict frame 82, target 83 -> not too old
+        frame_driver.server_frame_index = 200
 
-        var result := frame_driver.is_frame_too_old_to_consider(12)
+        var result := frame_driver.is_frame_too_old_to_consider(82)
 
-        assert_false(result, "Frame 12 (target 13) should not be too old")
+        assert_false(result, "Frame 82 (target 83) should not be too old")
 
 
     func test_is_frame_too_old_to_consider_before_boundary():
-        # Frame 100, oldest = 13
-        # Conflict frame 11, target 12 -> too old
-        frame_driver.server_frame_index = 100
+        # Frame 200, oldest = 83
+        # Conflict frame 81, target 82 -> too old
+        frame_driver.server_frame_index = 200
 
-        var result := frame_driver.is_frame_too_old_to_consider(11)
+        var result := frame_driver.is_frame_too_old_to_consider(81)
 
-        assert_true(result, "Frame 11 (target 12) should be too old")
+        assert_true(result, "Frame 81 (target 82) should be too old")
 
 
     func test_rollback_buffer_size_matches_settings():
-        # Default: 1.5 seconds at 60 FPS = 90 frames
+        # Default: 2.0 seconds at 60 FPS = 120 frames
         var expected := ceili(
             G.settings.rollback_buffer_duration_sec *
             NetworkFrameDriver.TARGET_NETWORK_FPS,
@@ -546,8 +546,8 @@ class TestFrameIndexCalculation:
 
     func test_oldest_rollbackable_with_plus_three_offset():
         # Verify the +3 offset in the formula
-        # At frame 93: max(93 - 90 + 3, 1) = 6
-        frame_driver.server_frame_index = 93
+        # At frame 123: max(123 - 120 + 3, 1) = 6
+        frame_driver.server_frame_index = 123
 
         var oldest := frame_driver.oldest_rollbackable_frame_index
 

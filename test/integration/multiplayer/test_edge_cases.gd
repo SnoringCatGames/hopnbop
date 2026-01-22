@@ -47,11 +47,11 @@ class TestEdgeCases:
 
     func test_rollback_to_buffer_capacity_limit():
         # Test rollback to the oldest accessible frame
-        frame_driver.server_frame_index = 100
-        # Oldest rollbackable = 13
+        frame_driver.server_frame_index = 200
+        # Oldest rollbackable = 83
 
-        # Rollback to frame 12 (conflict), target = 13
-        var result := frame_driver.queue_rollback(12)
+        # Rollback to frame 82 (conflict), target = 83
+        var result := frame_driver.queue_rollback(82)
 
         assert_true(
             result,
@@ -61,11 +61,11 @@ class TestEdgeCases:
 
     func test_rollback_just_beyond_capacity():
         # Test that rollback just beyond capacity is rejected
-        frame_driver.server_frame_index = 100
-        # Oldest rollbackable = 13
+        frame_driver.server_frame_index = 200
+        # Oldest rollbackable = 83
 
-        # Rollback to frame 11 (conflict), target = 12 (too old)
-        var result := frame_driver.queue_rollback(11)
+        # Rollback to frame 81 (conflict), target = 82 (too old)
+        var result := frame_driver.queue_rollback(81)
 
         assert_false(
             result,
