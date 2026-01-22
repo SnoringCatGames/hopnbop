@@ -83,10 +83,18 @@ extends Node
 #     - The client then, only updates the debug UI 0.2 seconds after first
 #       triggering pause, and when this special server RPC is received.
 # - GameLift
-#   - https://claude.ai/chat/c191d2ce-5457-4b81-bfb6-6b9dade6a939
-#   - Also ask AI to implement easy scripts for building and deploying and testing. Maybe can also add a hook for GitHub Actions when creating tags? Or ask for a better deployment with trigger solution
 # - Add rollback debug visualizations.
 # - Review NETWORKING_ARCHITECTURE.md.
+
+# FIXME: GameLift
+# - https://claude.ai/chat/c191d2ce-5457-4b81-bfb6-6b9dade6a939
+# - Also ask AI to:
+#   - Implement easy scripts for building and deploying and testing. Maybe can also add a hook for GitHub Actions when creating tags? Or ask for a better deployment with trigger solution
+#   - Implement logic for handling logins to the various auth providers.
+#   - Implement a database for recording some game data:
+#     - player data (id, bunny name and adjective, first play time, last play time, total time played, total wins, total kills, total deaths, login info for whichever auth providers they've connected to, ...)
+#     - a leaderboard
+#   - Implement a way to make friends and to join matches with friends
 
 # FIXME: Rollback debug visualization and networking improvements:
 #
@@ -345,6 +353,8 @@ extends Node
 #   - Walk sound
 #   - Bunny bump sound
 #   - Menu click sound
+#
+# - Review these notes: https://trello.com/c/i8peodBL
 
 ## This determines the period we use between frames that we record in rollback
 ## buffers.
