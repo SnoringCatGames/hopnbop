@@ -47,50 +47,31 @@ extends Node
 ##   frame
 ## - Only one rollback occurs per _network_process, earliest frame takes priority
 
-# FIXME: LEFT OFF HERE: ACTUALLY:
-# - Need to test the new 3-node replication pattern.
-#
-# - Implement some vscode tasks to help with all the development tasks of this project. I should be able to trigger these from VSCode in Windows, and they should run in WSL if needed.
-#   - Initial setup
-#   - Build
-#   - Run GameLift locally
-#   - Run tests
-#   - Deploy to GameLift
-#   - Etc.
-
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug
 # - Debug the game.
-#   - Fix jumps
-#   - Test with multiple clients, verify one sees the other move.
+#   -
 # - Review tests.
 # - Fix GitHub CI.
+#
 # - Add support for networked pause
-#   - First, review my proposed plan, and let me know if anything doesn't make
-#     sense or should be done differently.
-#   - Add a new flag: Settings.is_server_pause_enabled
-#   - First, the client sends an RPC to the server.
-#   - Then, the server flips a custom paused flag, and records the pause_time.
-#     - Record this flag in match_state, and have it be synced On Change.
-#   - Then, have clients check when this flag changes and emit a local signal when
-#     it does.
-#     - When a pause occurs, on the client, revert any rollback buffer state from
-#       after the pause frame.
-#     - Also, revert frame-index tracking to the latest pause frame in other
-#       places.
-#     - Track the cumulative amount of time spent with the server paused. Use this
-#       to subtract from server time whenever calculating frame index.
-#   - Also set get_tree().paused locally when the server is paused.
-#   - While paused:
-#     - The server rejects any new client state stamped after pause_time.
-#     - The server continues to replicate state at the same rate as before and
-#       with the same on-changed conditions.
-#     - However, that state _mostly_ shouldn't ever change.
-#     - Instead, the server sends a special RPC whenever new client state has
-#       been received and processed, which was stamped with a pre-pause time,
-#       to indicate to clients that they can refresh the UI even though we're
-#       paused.
-#     - The client then, only updates the debug UI 0.2 seconds after first
-#       triggering pause, and when this special server RPC is received.
+#   We just added set_paused() on NetworkFrameDriver while integrating some GameLift logic. However, I want to expand on that.
+#   - Please review my proposed plan, and let me know if anything doesn't make sense or should be done differently.
+#   - In general, I want to add support for dynamically pausing and unpausing the game on the server and all clients, and I want to support triggering this from a client.
+#   - Also, I want to ensure that all clients also start paused until the server is initially unpaused, after all expected clients connect.
+#   - Also, we need to carefully analyze our frame-tracking in this class and time-tracking in ServerTimeTracker to make sure they properly account for this new pause support.
+#   - Also, we need to update how replication handles incoming packed_state with pausing.
+#     - I think we should accept incoming state iff the state is from or before the time pause started (not after).
+#     - And similarly, we need to start accepting state again after unpausing.
+#   - We'll then need to adjust frame indices based on cumulative pause time, so we don't have gaps in frames.
+#   - We also need to revert any rollback buffer state from after a pause started.
+#   - We also probably need to revert frame-index tracking to the latest pause frame.
+#   - When triggering pause/unpause, use the time on the server when the RPC is received. Don't trust client time for this.
+#   - Also, add a new flag: Settings.is_server_pause_enabled
+#     - If this is false, then the server should reject any incoming pause request from clients, but the server should still support pausing itself during initialization.
+#   - We should use RPCs to communicate pause/unpause events.
+#   - Also set get_tree().paused locally when paused.
+
+
 # - GameLift
 # - Add rollback debug visualizations.
 # - Implement kills and other gameplay bits.
@@ -115,32 +96,6 @@ extends Node
 # Prompt:
 # Review my notes and to create a plan for implementing them.
 # Please flag any aspects that seem like a mistake or that don't make sense.
-#
-# ### PART 1: Add support for networked pause
-# - Add a new flag: Settings.is_server_pause_enabled
-# - First, the client sends an RPC to the server.
-# - Then, the server flips a custom paused flag, and records the pause_time.
-#   - Record this flag in match_state, and have it be synced On Change.
-# - Then, have clients check when this flag changes and emit a local signal when
-#   it does.
-#   - When a pause occurs, on the client, revert any rollback buffer state from
-#     after the pause frame.
-#   - Also, revert frame-index tracking to the latest pause frame in other
-#     places.
-#   - Track the cumulative amount of time spent with the server paused. Use this
-#     to subtract from server time whenever calculating frame index.
-# - Also set get_tree().paused locally when the server is paused.
-# - While paused:
-#   - The server rejects any new client state stamped after pause_time.
-#   - The server continues to replicate state at the same rate as before and
-#     with the same on-changed conditions.
-#   - However, that state _mostly_ shouldn't ever change.
-#   - Instead, the server sends a special RPC whenever new client state has
-#     been received and processed, which was stamped with a pre-pause time,
-#     to indicate to clients that they can refresh the UI even though we're
-#     paused.
-#   - The client then, only updates the debug UI 0.2 seconds after first
-#     triggering pause, and when this special server RPC is received.
 #
 # ### PART 2: Editor plugin buffer-state debug UI
 # - Add two Settings flags:
@@ -173,6 +128,10 @@ extends Node
 #     - Cells representing values that triggered rollback are red.
 #   - Also, color-code the frame index header cell for has-network-state (black),
 #     no-network-state (grey), and triggered-rollback (red).
+#
+#   - While paused:
+#     - The client then, only updates the debug UI 0.2 seconds after first
+#       triggering pause, and whenever any new packed_state is received.
 #
 # ### PART 3: In-game buffer-state debug UI
 # - Also, add a settings-toggleable in-game super-hud debug UI to render the
