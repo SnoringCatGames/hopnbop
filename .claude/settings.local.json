@@ -31,7 +31,9 @@
       "Bash(taskkill:*)",
       "Bash(tee:*)",
       "Bash(git checkout:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(./setup_and_build.sh:*)",
+      "Bash(cmake:*)"
     ]
   }
 }
