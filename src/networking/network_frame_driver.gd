@@ -90,12 +90,14 @@ extends Node
 # FIXME: GameLift
 # - https://claude.ai/chat/c191d2ce-5457-4b81-bfb6-6b9dade6a939
 # - Also ask AI to:
+#   - Want to make sure we can easily test GameLift locally.
 #   - Implement easy scripts for building and deploying and testing. Maybe can also add a hook for GitHub Actions when creating tags? Or ask for a better deployment with trigger solution
 #   - Implement logic for handling logins to the various auth providers.
 #   - Implement a database for recording some game data:
 #     - player data (id, bunny name and adjective, first play time, last play time, total time played, total wins, total kills, total deaths, login info for whichever auth providers they've connected to, ...)
 #     - a leaderboard
-#   - Implement a way to make friends and to join matches with friends
+#   - Implement a way to make friends and to join matches with friends.
+#
 
 # FIXME: Rollback debug visualization and networking improvements:
 #
@@ -381,6 +383,11 @@ var server_frame_index := 0
 ## preventing fast-forward at startup.
 var _is_frame_tracking_initialized := false
 
+## Pauses frame simulation. Used by GameLift to wait for all players to connect
+## before starting the game. When paused, _pre_physics_process returns early
+## without incrementing server_frame_index or running network processing.
+var _is_paused := false
+
 ## Interval for periodic wall-clock re-sync to maintain accurate timestamps for
 ## logging. Re-sync is handled automatically via G.time.set_interval().
 const WALL_CLOCK_RESYNC_INTERVAL_SEC := 30.0
@@ -424,7 +431,30 @@ func _ready() -> void:
         G.process_sentinel.pre_physics_process.connect(_pre_physics_process)
 
 
+## Pause or unpause frame simulation.
+##
+## When paused, frame processing stops completely - server_frame_index does not
+## increment and no network processing occurs. This is used by GameLift to wait
+## for all players to connect before starting the game.
+##
+## @param paused: true to pause, false to unpause.
+func set_paused(paused: bool) -> void:
+    if _is_paused == paused:
+        return
+
+    _is_paused = paused
+
+    var state_str := "paused" if paused else "unpaused"
+    G.print(
+        "[NetworkFrameDriver] Frame simulation %s" % state_str,
+        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+    )
+
+
 func _pre_physics_process(delta: float) -> void:
+    if _is_paused:
+        return
+
     if not _is_frame_tracking_initialized:
         _initialize_frame_tracking()
         return

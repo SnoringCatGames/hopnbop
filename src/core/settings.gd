@@ -26,6 +26,17 @@ var server_port: int:
 
 @export var max_client_count := 8
 
+# FIXME: Review this.
+@export_group("GameLift")
+@export var use_gamelift := false
+@export var gamelift_anywhere_mode := false
+@export var gamelift_anywhere_websocket := ""
+@export var gamelift_anywhere_auth_token := ""
+@export var gamelift_anywhere_fleet_id := ""
+@export var gamelift_anywhere_host_id := ""
+@export var gamelift_anywhere_process_id := ""
+@export_group("")
+
 @export var dev_mode := true
 @export var auto_minimize_server_window := true
 @export var draw_annotations := false

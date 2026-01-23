@@ -6,6 +6,9 @@ var is_game_loading := false
 
 var latest_match_state := MatchState.new()
 
+## GameLift player session ID from matchmaking (used for connection validation).
+var player_session_id := ""
+
 
 func _init() -> void:
     clear()
