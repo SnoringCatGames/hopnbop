@@ -1,0 +1,28 @@
+{
+    "recommendations": [
+        // Godot development
+        "geequlim.godot-tools",
+
+        // C++ for GDExtension development
+        "ms-vscode.cpptools",
+        "ms-vscode.cpptools-extension-pack",
+
+        // WSL integration
+        "ms-vscode-remote.remote-wsl",
+
+        // Git integration
+        "eamodio.gitlens",
+
+        // Python (for build scripts)
+        "ms-python.python",
+
+        // Markdown preview
+        "yzhang.markdown-all-in-one",
+
+        // TOML for project.godot
+        "tamasfe.even-better-toml",
+
+        // EditorConfig support
+        "editorconfig.editorconfig"
+    ]
+}

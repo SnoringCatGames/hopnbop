@@ -3,3 +3,107 @@
 /android/
 
 build/*
+
+# =============================================================================
+# GameLift GDExtension Build Artifacts
+# =============================================================================
+
+# Intermediate build artifacts (developers rebuild these)
+gamelift-gdextension/bin/
+gamelift-gdextension/.scons_cache/
+gamelift-gdextension/.sconsign.dblite
+
+# Dependencies (developers clone/build these)
+gamelift-gdextension/godot-cpp/
+gamelift-gdextension/gamelift-server-sdk/
+
+# Build logs
+gamelift-gdextension/*.log
+gamelift-gdextension/gamelift-server-sdk/*.log
+wsl_build.log
+build.log
+
+# Object files
+*.o
+*.os
+*.a
+
+# Keep the installed extension in addons/ (needed for game to run)
+# This is commented out to show these ARE committed:
+# !addons/gamelift/bin/*.so
+# !addons/gamelift/gamelift.gdextension
+
+# =============================================================================
+# Deployment Artifacts
+# =============================================================================
+
+gamelift-deploy/
+gamelift-deploy.tar.gz
+
+# =============================================================================
+# Test Results
+# =============================================================================
+
+test_results.xml
+test_results/
+
+# =============================================================================
+# IDE & Editor
+# =============================================================================
+
+# VSCode local settings (user-specific)
+.vscode/settings.local.json
+
+# Vim
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# =============================================================================
+# Python
+# =============================================================================
+
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# =============================================================================
+# C++ Build Artifacts
+# =============================================================================
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# BUT keep the GameLift extension libraries in addons/
+!addons/gamelift/bin/*.so
+!addons/gamelift/bin/*.dll
+!addons/gamelift/bin/*.dylib
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# CMake
+cmake-build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# BUT keep the script Makefiles
+!gamelift-gdextension/Makefile
+!gamelift-gdextension/*/Makefile

@@ -44,7 +44,11 @@
       "Bash(wsl bash -c \"journalctl -xe --no-pager | tail -20\")",
       "Bash(pkill -f \"apt-get update\")",
       "Bash(wsl bash:*)",
-      "Bash(wsl --shutdown)"
+      "Bash(wsl --shutdown)",
+      "Bash(\"C:\\\\Program Files\\\\Godot\\\\Godot_v4.4.dev4_win64.exe\\\\Godot_v4.4.dev4_win64.exe\" --headless -- --server --preview)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(git check-ignore:*)"
     ]
   }
 }

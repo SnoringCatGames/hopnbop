@@ -1,0 +1,45 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Godot: Debug Server (Preview Mode)",
+            "type": "godot",
+            "request": "launch",
+            "project": "${workspaceFolder}",
+            "port": 6007,
+            "address": "127.0.0.1",
+            "launch_game_instance": true,
+            "launch_scene": false,
+            "additional_options": "--server --preview"
+        },
+        {
+            "name": "Godot: Debug Server (GameLift Mode)",
+            "type": "godot",
+            "request": "launch",
+            "project": "${workspaceFolder}",
+            "port": 6007,
+            "address": "127.0.0.1",
+            "launch_game_instance": true,
+            "launch_scene": false,
+            "additional_options": "--server"
+        },
+        {
+            "name": "Godot: Debug Client 1",
+            "type": "godot",
+            "request": "launch",
+            "project": "${workspaceFolder}",
+            "port": 6008,
+            "address": "127.0.0.1",
+            "launch_game_instance": true,
+            "launch_scene": false,
+            "additional_options": "--client=1 --preview"
+        },
+        {
+            "name": "Godot: Attach to Running Instance",
+            "type": "godot",
+            "request": "attach",
+            "port": 6007,
+            "address": "127.0.0.1"
+        }
+    ]
+}

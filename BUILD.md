@@ -7,12 +7,15 @@ This document describes how to build the GameLift GDExtension for Jump 'n Thump.
 ## Prerequisites
 
 ### Required Tools
-- **SCons** - Build system (install via `pip install scons`)
+- **cmake** 3.16+ - Build system for GameLift SDK
+- **SCons** 4.0+ - Build system for GDExtension (install via `pip install scons`)
+- **make** - GNU Make
 - **C++ Compiler**:
   - Linux: GCC 9+ or Clang 10+
-  - Windows: MSVC 2019+ or MinGW-w64
+  - Windows: WSL with Ubuntu recommended (MSVC has compatibility issues)
   - macOS: Xcode Command Line Tools
 - **Git** - For cloning dependencies
+- **Python 3** - For SCons
 
 ### Required SDKs
 
@@ -71,6 +74,22 @@ brew install openssl@3
 
 ## Building the Extension
 
+### Automated Build (Recommended)
+
+The easiest way to build is using the automated setup script:
+
+```bash
+cd gamelift-gdextension
+./setup_and_build.sh --godot-version 4.5
+```
+
+This script will:
+1. Check prerequisites (cmake, make, scons, etc.)
+2. Clone and build godot-cpp
+3. Clone and build GameLift Server SDK (with `-DGAMELIFT_USE_STD=1`)
+4. Build the GDExtension
+5. Copy dependencies to bin/
+
 ### Quick Build (Linux Debug)
 ```bash
 cd gamelift-gdextension
@@ -79,6 +98,28 @@ cd gamelift-gdextension
 
 ### Platform-Specific Builds
 
+**Windows (using WSL):**
+
+The recommended approach for building on Windows is using WSL:
+
+1. Install WSL and Ubuntu:
+   ```powershell
+   wsl --install -d Ubuntu
+   ```
+
+2. Install prerequisites in WSL:
+   ```bash
+   sudo apt-get update
+   sudo apt-get install cmake make gcc g++ python3 libssl-dev
+   pip3 install --user scons
+   ```
+
+3. Build from WSL:
+   ```bash
+   cd /mnt/c/Users/YourUser/Repositories/jumpnthump/gamelift-gdextension
+   ./setup_and_build.sh --godot-version 4.5
+   ```
+
 **Linux (for GameLift deployment):**
 ```bash
 cd gamelift-gdextension
@@ -86,11 +127,25 @@ scons platform=linux target=template_release -j$(nproc)
 scons install  # Copies to ../addons/gamelift/
 ```
 
-**Windows (for local testing):**
+**Manual Build (if setup script fails):**
 ```bash
-cd gamelift-gdextension
-scons platform=windows target=template_debug
+# 1. Build GameLift SDK
+cd gamelift-server-sdk
+mkdir -p cmake-build && cd cmake-build
+cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DGAMELIFT_USE_STD=1 -DBUILD_FOR_UNREAL=ON -S .. -B .
+make -j4
+
+# 2. Build godot-cpp
+cd ../../godot-cpp
+scons platform=linux target=template_release -j4
+
+# 3. Build GDExtension
+cd ..
+GAMELIFT_SDK_PATH=gamelift-server-sdk/cmake-build/prefix scons platform=linux target=template_release -j4
+
+# 4. Install
 scons install
+cp gamelift-server-sdk/cmake-build/prefix/lib/libaws-cpp-sdk-gamelift-server.so ../addons/gamelift/bin/
 ```
 
 ### Environment Variables
@@ -186,9 +241,28 @@ Use AWS CLI or GameLift console to upload the deployment package.
 
 ## Troubleshooting
 
+### SCons version too old
+**Error:** `SCons 4.0 or greater required, but you have SCons 3.1.2`
+
+**Solution:**
+```bash
+pip3 install --user --upgrade scons
+# Add ~/.local/bin to PATH if needed
+export PATH=$HOME/.local/bin:$PATH
+```
+
+### "Text file busy" error during GameLift SDK build
+This occurs when building on Windows filesystem (NTFS) from WSL.
+
+**Solution:** Build with tests disabled:
+```bash
+cmake -DBUILD_FOR_UNREAL=ON  # This disables unit tests
+```
+
 ### "libaws-cpp-sdk-gamelift-server.so: cannot open shared object file"
 - Ensure GameLift SDK libraries are in LD_LIBRARY_PATH (Linux) or same directory as executable (Windows)
 - Verify library file exists at expected location
+- The library should be in `addons/gamelift/bin/`
 
 ### "undefined symbol" errors
 - Rebuild GameLift SDK with `-DGAMELIFT_USE_STD=1` flag
@@ -198,10 +272,18 @@ Use AWS CLI or GameLift console to upload the deployment package.
 - Check Godot version matches godot-cpp branch (4.5)
 - Verify gamelift.gdextension file is in addons/gamelift/
 - Check Output tab in Godot for detailed error messages
+- Ensure both `libgamelift.*.so` and `libaws-cpp-sdk-gamelift-server.so` are in `addons/gamelift/bin/`
 
 ### Build fails with "No such file or directory: godot-cpp"
 - Ensure godot-cpp is cloned into gamelift-gdextension/godot-cpp/
 - Run `git submodule update --init` inside godot-cpp directory
+
+### AttributeValue compilation errors
+**Error:** `'class Aws::GameLift::Server::Model::AttributeValue' has no member named 'SetN'`
+
+**Cause:** GameLift SDK API changed - AttributeValue uses constructors instead of setters.
+
+**Fixed in:** [gamelift_server.cpp:641](gamelift-gdextension/src/gamelift_server.cpp#L641)
 
 ## Development Workflow
 

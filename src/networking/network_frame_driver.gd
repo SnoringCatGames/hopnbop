@@ -51,6 +51,14 @@ extends Node
 # - Tests should be passing.
 # - Need to test the new 3-node replication pattern.
 # - Installing GDExtension dependencies.
+#
+# - Implement some vscode tasks to help with all the development tasks of this project. I should be able to trigger these from VSCode in Windows, and they should run in WSL if needed.
+#   - Initial setup
+#   - Build
+#   - Run GameLift locally
+#   - Run tests
+#   - Deploy to GameLift
+#   - Etc.
 
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug
 # - Debug the game.

@@ -2,6 +2,7 @@
 
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <ctime>
 
 using namespace godot;
 
@@ -638,13 +639,13 @@ Ref<GameLiftOutcome> GameLiftServer::start_match_backfill(
                 switch (value.get_type()) {
                     case Variant::FLOAT:
                     case Variant::INT:
-                        attr_value.SetN(static_cast<double>(value));
+                        attr_value = Aws::GameLift::Server::Model::AttributeValue(static_cast<double>(value));
                         break;
                     case Variant::STRING:
-                        attr_value.SetS(godot_string_to_aws(value));
+                        attr_value = Aws::GameLift::Server::Model::AttributeValue(godot_string_to_aws(value));
                         break;
                     default:
-                        attr_value.SetS(godot_string_to_aws(String(value)));
+                        attr_value = Aws::GameLift::Server::Model::AttributeValue(godot_string_to_aws(String(value)));
                         break;
                 }
 
@@ -764,7 +765,11 @@ Dictionary GameLiftServer::get_fleet_role_credentials(const String &role_arn) {
         result_dict["access_key_id"] = aws_string_to_godot(result.GetResult().GetAccessKeyId());
         result_dict["secret_access_key"] = aws_string_to_godot(result.GetResult().GetSecretAccessKey());
         result_dict["session_token"] = aws_string_to_godot(result.GetResult().GetSessionToken());
-        result_dict["expiration"] = static_cast<int64_t>(result.GetResult().GetExpiration());
+
+        // Convert tm struct to Unix timestamp.
+        tm expiration_tm = result.GetResult().GetExpiration();
+        time_t expiration_time = mktime(&expiration_tm);
+        result_dict["expiration"] = static_cast<int64_t>(expiration_time);
     } else {
         result_dict["success"] = false;
         result_dict["error"] = aws_string_to_godot(result.GetError().GetErrorMessage());

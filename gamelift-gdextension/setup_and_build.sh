@@ -136,6 +136,7 @@ if [ "$SKIP_DEPS" = false ]; then
     cmake -G "Unix Makefiles" \
         -DCMAKE_BUILD_TYPE=Release \
         -DGAMELIFT_USE_STD=1 \
+        -DBUILD_FOR_UNREAL=ON \
         -S .. -B .
     
     make -j$(nproc)
