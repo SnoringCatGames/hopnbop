@@ -1,9 +1,10 @@
-[gd_scene load_steps=9 format=3 uid="uid://cn6hdqmmufnvr"]
+[gd_scene load_steps=11 format=3 uid="uid://cn6hdqmmufnvr"]
 
 [ext_resource type="Script" uid="uid://dwab2y7smxa" path="res://src/player/bunny.gd" id="1_j5lrb"]
 [ext_resource type="Resource" uid="uid://dq1d4nuh248j2" path="res://src/player/default_movement_settings.tres" id="2_4p26p"]
 [ext_resource type="Script" uid="uid://bglkea0vh5fw0" path="res://src/scaffolder/character/character_state_from_server.gd" id="3_o16et"]
 [ext_resource type="Script" uid="uid://chp1athjwjq76" path="res://src/scaffolder/character/player_input_from_client.gd" id="4_1rl0f"]
+[ext_resource type="Script" uid="uid://cg16ocbfwgu5m" path="res://src/scaffolder/character/forwarded_player_input_from_server.gd" id="5_fwdpi"]
 [ext_resource type="PackedScene" uid="uid://br1b7cse0hxmt" path="res://src/player/bunny_animator.tscn" id="5_sc4xa"]
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_mf2ua"]
@@ -19,14 +20,20 @@ properties/0/path = NodePath(".:packed_state")
 properties/0/spawn = true
 properties/0/replication_mode = 1
 
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_forwarded"]
+properties/0/path = NodePath(".:packed_state")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+
 [sub_resource type="CircleShape2D" id="CircleShape2D_rxibo"]
 radius = 6.0
 
-[node name="Bunny" type="CharacterBody2D" node_paths=PackedStringArray("input_from_client", "collision_shape", "animator", "state_from_server")]
+[node name="Bunny" type="CharacterBody2D" node_paths=PackedStringArray("input_from_client", "forwarded_input_from_server", "collision_shape", "animator", "state_from_server")]
 collision_layer = 8
 collision_mask = 7
 script = ExtResource("1_j5lrb")
 input_from_client = NodePath("InputFromClient")
+forwarded_input_from_server = NodePath("ForwardedInputFromServer")
 collision_shape = NodePath("PlayerBodyCollisionShape")
 animator = NodePath("PlayerAnimator")
 movement_settings = ExtResource("2_4p26p")
@@ -47,6 +54,14 @@ replication_config = SubResource("SceneReplicationConfig_244u8")
 script = ExtResource("4_1rl0f")
 player = NodePath("..")
 metadata/_custom_type_script = "uid://chp1athjwjq76"
+
+[node name="ForwardedInputFromServer" type="MultiplayerSynchronizer" parent="." node_paths=PackedStringArray("player")]
+process_mode = 3
+root_path = NodePath(".")
+replication_config = SubResource("SceneReplicationConfig_forwarded")
+script = ExtResource("5_fwdpi")
+player = NodePath("..")
+metadata/_custom_type_script = "uid://cg16ocbfwgu5m"
 
 [node name="CharacterCamera" type="Camera2D" parent="."]
 unique_name_in_owner = true

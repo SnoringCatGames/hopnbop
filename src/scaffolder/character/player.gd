@@ -7,6 +7,11 @@ extends Character
         input_from_client = value
         update_configuration_warnings()
 
+@export var forwarded_input_from_server: ForwardedPlayerInputFromServer:
+    set(value):
+        forwarded_input_from_server = value
+        update_configuration_warnings()
+
 
 func _enter_tree() -> void:
     super._enter_tree()
@@ -17,7 +22,7 @@ func _enter_tree() -> void:
         # to level's players_by_id dictionary.
         state_from_server.multiplayer_id_changed.connect(
             _on_multiplayer_id_replicated,
-            CONNECT_ONE_SHOT
+            CONNECT_ONE_SHOT,
         )
     else:
         # Server sets multiplayer_id before adding to tree, so add immediately.
@@ -53,4 +58,6 @@ func _get_configuration_warnings() -> PackedStringArray:
     var warnings := PackedStringArray()
     if not is_instance_valid(input_from_client):
         warnings.append("input_from_client is not set")
+    if not is_instance_valid(forwarded_input_from_server):
+        warnings.append("forwarded_input_from_server is not set")
     return warnings

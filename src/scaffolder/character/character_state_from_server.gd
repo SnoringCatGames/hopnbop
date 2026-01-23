@@ -14,6 +14,8 @@ var state_from_client: PlayerInputFromClient:
         else:
             return null
 
+var forwarded_input: ForwardedPlayerInputFromServer = null
+
 var is_authority_for_state_from_server: bool:
     get:
         return is_multiplayer_authority()
@@ -49,6 +51,9 @@ func _get_is_server_authoritative() -> bool:
 func _ready() -> void:
     super._ready()
     update_configuration_warnings()
+    if Engine.is_editor_hint():
+        return
+    _cache_forwarded_input()
 
 
 func _update_replication_config() -> void:
@@ -116,6 +121,17 @@ func _network_process() -> void:
                 ScaffolderLog.CATEGORY_NETWORK_SYNC,
             )
 
+    # Forward input from PlayerInputFromClient to
+    # ForwardedPlayerInputFromServer.
+    if (
+        is_authority_for_state_from_server and
+        is_instance_valid(forwarded_input) and
+        is_instance_valid(state_from_client)
+    ):
+        forwarded_input.actions = state_from_client.actions
+        forwarded_input.last_triggered_jump_time_usec = state_from_client.last_triggered_jump_time_usec
+        forwarded_input.frame_authority = state_from_client.frame_authority
+
     # Handle scene state (from the server).
     if is_authority_for_state_from_server:
         # The server processes movement. Mark as authoritative only if we have
@@ -158,3 +174,11 @@ func _sync_from_scene_state() -> void:
     position = character.position
     velocity = character.velocity
     surfaces = character.surfaces.bitmask
+
+
+func _cache_forwarded_input() -> void:
+    # Find and cache ForwardedPlayerInputFromServer sibling.
+    for child in get_parent().get_children():
+        if child is ForwardedPlayerInputFromServer:
+            forwarded_input = child as ForwardedPlayerInputFromServer
+            return
