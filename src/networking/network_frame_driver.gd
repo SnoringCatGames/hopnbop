@@ -48,9 +48,7 @@ extends Node
 ## - Only one rollback occurs per _network_process, earliest frame takes priority
 
 # FIXME: LEFT OFF HERE: ACTUALLY:
-# - Tests should be passing.
 # - Need to test the new 3-node replication pattern.
-# - Installing GDExtension dependencies.
 #
 # - Implement some vscode tasks to help with all the development tasks of this project. I should be able to trigger these from VSCode in Windows, and they should run in WSL if needed.
 #   - Initial setup
