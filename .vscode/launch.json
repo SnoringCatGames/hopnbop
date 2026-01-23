@@ -35,11 +35,69 @@
             "additional_options": "--client=1 --preview"
         },
         {
+            "name": "Godot: Debug Client 2",
+            "type": "godot",
+            "request": "launch",
+            "project": "${workspaceFolder}",
+            "port": 6009,
+            "address": "127.0.0.1",
+            "launch_game_instance": true,
+            "launch_scene": false,
+            "additional_options": "--client=2 --preview"
+        },
+        {
+            "name": "Godot: 2 Clients + Server (Preview)",
+            "type": "godot",
+            "request": "launch",
+            "project": "${workspaceFolder}",
+            "port": 6007,
+            "address": "127.0.0.1",
+            "launch_game_instance": false,
+            "launch_scene": false,
+            "preLaunchTask": "Godot: Run Server (Preview Mode)"
+        },
+        {
             "name": "Godot: Attach to Running Instance",
             "type": "godot",
             "request": "attach",
             "port": 6007,
             "address": "127.0.0.1"
+        },
+        {
+            "name": "Build: GameLift GDExtension",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "echo 'Building GameLift GDExtension...'",
+            "preLaunchTask": "GameLift: Build GDExtension (Release)"
+        },
+        {
+            "name": "GameLift: Setup Anywhere Fleet",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "echo 'See task output for Anywhere fleet setup instructions'",
+            "preLaunchTask": "GameLift: Setup Anywhere Fleet"
+        },
+        {
+            "name": "GameLift: Deploy to Cloud",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "echo 'GameLift deployment complete. Check task output for build ID and fleet creation instructions.'",
+            "preLaunchTask": "GameLift: Upload Build"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Multi-Client: 2 Clients + Server",
+            "configurations": [
+                "Godot: Debug Server (Preview Mode)",
+                "Godot: Debug Client 1",
+                "Godot: Debug Client 2"
+            ],
+            "presentation": {
+                "hidden": false,
+                "group": "multiplayer",
+                "order": 1
+            }
         }
     ]
 }
