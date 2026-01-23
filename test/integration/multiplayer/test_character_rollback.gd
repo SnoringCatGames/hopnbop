@@ -1,4 +1,5 @@
 extends GutTest
+
 const Helpers = preload("res://test/helpers/character_rollback_helpers.gd")
 ## Integration tests for character movement during rollback.
 ##
@@ -13,10 +14,10 @@ func before_each():
 func after_each():
     ArrayPool.clear_all_pools()
 
-
 ## ============================================================================
 ## Helper Classes
 ## ============================================================================
+
 
 ## Helper to create a minimal test character with necessary components.
 class TestCharacterFixture:
@@ -26,6 +27,7 @@ class TestCharacterFixture:
     var state_from_server: CharacterStateFromServer
     var input_from_client: PlayerInputFromClient
     var movement_settings: MovementSettings
+
 
     func _init():
         # Create movement settings
@@ -81,11 +83,13 @@ class TestCharacterFixture:
         input_from_client.replication_config = SceneReplicationConfig.new()
         character.add_child(input_from_client)
 
+
     func setup_in_tree(tree_root: Node) -> void:
         tree_root.add_child(character)
         # Trigger _ready by adding to tree - Godot calls it automatically
         # Wait for ready to complete
         await tree_root.get_tree().process_frame
+
 
     func cleanup() -> void:
         if is_instance_valid(character) and character.is_inside_tree():
@@ -101,6 +105,7 @@ class TestCharacterMovementRollback:
     var fixture: TestCharacterFixture
     var character: Character
 
+
     func before_each():
         ArrayPool.clear_all_pools()
         fixture = TestCharacterFixture.new()
@@ -110,9 +115,11 @@ class TestCharacterMovementRollback:
         character.position = Vector2(100, 500)
         character.velocity = Vector2.ZERO
 
+
     func after_each():
         fixture.cleanup()
         ArrayPool.clear_all_pools()
+
 
     func test_position_mismatch_triggers_rollback():
         # Client predicts moving right for 5 frames
@@ -131,17 +138,18 @@ class TestCharacterMovementRollback:
         # Verify mismatch detected
         assert_true(
             Helpers.has_position_mismatch(client_pos, server_pos),
-			"Should detect position mismatch"
+            "Should detect position mismatch",
         )
 
         # Verify difference exceeds rollback threshold
         var threshold := \
-            CharacterStateFromServer.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD
+        CharacterStateFromServer.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD
         assert_gt(
             abs(client_pos.x - server_pos.x),
             threshold,
-			"Difference should exceed rollback threshold"
+            "Difference should exceed rollback threshold",
         )
+
 
     func test_velocity_reconciliation_after_collision():
         # Client predicts passing through a wall
@@ -156,8 +164,9 @@ class TestCharacterMovementRollback:
         # Verify velocity mismatch with zero (hit wall)
         assert_true(
             Helpers.has_velocity_mismatch(character.velocity, Vector2.ZERO),
-			"Should detect velocity mismatch"
+            "Should detect velocity mismatch",
         )
+
 
     func test_small_position_drift_under_threshold():
         # Client position differs by small amount
@@ -167,13 +176,14 @@ class TestCharacterMovementRollback:
         # Verify difference is under threshold
         assert_false(
             Helpers.has_position_mismatch(client_pos, server_pos, 1.0),
-			"Small drift should not trigger rollback"
+            "Small drift should not trigger rollback",
         )
 
         var diff := client_pos.distance_to(server_pos)
         var threshold := \
-            CharacterStateFromServer.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD
+        CharacterStateFromServer.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD
         assert_lt(diff, threshold, "Drift should be under threshold")
+
 
     func test_accumulated_drift_triggers_eventual_rollback():
         # Simulate gradual position drift over multiple frames
@@ -191,11 +201,11 @@ class TestCharacterMovementRollback:
             if accumulated_drift > 1.0:
                 # Should trigger rollback at this point
                 var threshold := CharacterStateFromServer \
-                    .DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD
+                .DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD
                 assert_gt(
                     accumulated_drift,
                     threshold,
-					"Accumulated drift should exceed threshold"
+                    "Accumulated drift should exceed threshold",
                 )
                 break
 
@@ -209,6 +219,7 @@ class TestInputReplayDuringRollback:
     var fixture: TestCharacterFixture
     var character: Character
 
+
     func before_each():
         ArrayPool.clear_all_pools()
         fixture = TestCharacterFixture.new()
@@ -217,9 +228,11 @@ class TestInputReplayDuringRollback:
         character.position = Vector2(100, 500)
         character.velocity = Vector2.ZERO
 
+
     func after_each():
         fixture.cleanup()
         ArrayPool.clear_all_pools()
+
 
     func test_jump_input_replayed_correctly():
         # Setup: Character on ground
@@ -234,8 +247,9 @@ class TestInputReplayDuringRollback:
         assert_eq(
             character.last_triggered_jump_frame_index,
             50,
-			"Jump should be recorded at frame 50"
+            "Jump should be recorded at frame 50",
         )
+
 
     func test_directional_input_sequence_preserved():
         # Input sequence: left(40), right(45), jump(50)
@@ -249,7 +263,7 @@ class TestInputReplayDuringRollback:
                 false,
                 false,
                 true,
-                false
+                false,
             )
             input_history.append(["left", 40 + i])
 
@@ -261,7 +275,7 @@ class TestInputReplayDuringRollback:
                 false,
                 false,
                 false,
-                true
+                true,
             )
             input_history.append(["right", 45 + i])
 
@@ -274,6 +288,7 @@ class TestInputReplayDuringRollback:
         assert_eq(input_history[5][0], "right", "Sixth input should be right")
         assert_eq(input_history[10][0], "jump", "Last input should be jump")
 
+
     func test_action_state_consistency_after_rollback():
         # Character in AIR state
         character.surfaces.is_attaching_to_floor = false
@@ -283,22 +298,23 @@ class TestInputReplayDuringRollback:
         assert_eq(
             character.surfaces.surface_type,
             SurfaceType.AIR,
-			"Should be in AIR state"
+            "Should be in AIR state",
         )
 
         # Restore from server state
         var state := Helpers.create_server_state(
             character.position,
             character.velocity,
-            character.surfaces.bitmask
+            character.surfaces.bitmask,
         )
         character.state_from_server._sync_to_scene_state(state)
 
         assert_eq(
             character.surfaces.surface_type,
             SurfaceType.AIR,
-			"AIR state should be preserved after rollback"
+            "AIR state should be preserved after rollback",
         )
+
 
     func test_surface_contact_restored_after_rollback():
         # Character on platform
@@ -310,7 +326,7 @@ class TestInputReplayDuringRollback:
         assert_eq(
             character.surfaces.surface_type,
             SurfaceType.FLOOR,
-			"Should start on floor"
+            "Should start on floor",
         )
 
         # Simulate losing contact
@@ -321,7 +337,7 @@ class TestInputReplayDuringRollback:
         assert_eq(
             character.surfaces.surface_type,
             SurfaceType.AIR,
-			"Should be in air after losing contact"
+            "Should be in air after losing contact",
         )
 
         # Manually restore floor contact (simulating rollback restoration)
@@ -333,7 +349,7 @@ class TestInputReplayDuringRollback:
         assert_eq(
             character.surfaces.surface_type,
             SurfaceType.FLOOR,
-			"Floor contact should be restored"
+            "Floor contact should be restored",
         )
 
 
@@ -346,15 +362,18 @@ class TestSurfaceTransitions:
     var fixture: TestCharacterFixture
     var character: Character
 
+
     func before_each():
         ArrayPool.clear_all_pools()
         fixture = TestCharacterFixture.new()
         await fixture.setup_in_tree(get_tree().root)
         character = fixture.character
 
+
     func after_each():
         fixture.cleanup()
         ArrayPool.clear_all_pools()
+
 
     func test_floor_to_air_transition():
         # Client predicts walking off platform
@@ -366,7 +385,7 @@ class TestSurfaceTransitions:
         assert_eq(
             character.surfaces.surface_type,
             SurfaceType.FLOOR,
-			"Should start on FLOOR"
+            "Should start on FLOOR",
         )
 
         # Simulate leaving floor
@@ -379,8 +398,9 @@ class TestSurfaceTransitions:
         assert_eq(
             character.surfaces.surface_type,
             SurfaceType.AIR,
-			"Should transition to AIR"
+            "Should transition to AIR",
         )
+
 
     func test_air_to_floor_landing():
         # Character falling
@@ -391,7 +411,7 @@ class TestSurfaceTransitions:
         assert_eq(
             character.surfaces.surface_type,
             SurfaceType.AIR,
-			"Should start in AIR"
+            "Should start in AIR",
         )
 
         # Simulate landing
@@ -403,14 +423,15 @@ class TestSurfaceTransitions:
         assert_eq(
             character.surfaces.surface_type,
             SurfaceType.FLOOR,
-			"Should land on FLOOR"
+            "Should land on FLOOR",
         )
 
         # Check transition detection
         assert_true(
             character.surfaces.just_left_air,
-			"Should detect transition from air"
+            "Should detect transition from air",
         )
+
 
     func test_jump_input_state():
         # Test that jump input state can be set and queried
@@ -422,7 +443,7 @@ class TestSurfaceTransitions:
         assert_eq(
             character.surfaces.surface_type,
             SurfaceType.FLOOR,
-			"Should start on FLOOR"
+            "Should start on FLOOR",
         )
 
         # Set up "just pressed" jump state:
@@ -433,13 +454,13 @@ class TestSurfaceTransitions:
         # Verify just_pressed_jump is true
         assert_true(
             character.actions.just_pressed_jump,
-			"Jump should be just pressed"
+            "Jump should be just pressed",
         )
 
         # Verify jump is pressed
         assert_true(
             character.actions.pressed_jump,
-			"Jump should be pressed"
+            "Jump should be pressed",
         )
 
         # Record jump frame
@@ -448,7 +469,7 @@ class TestSurfaceTransitions:
         assert_eq(
             character.last_triggered_jump_frame_index,
             G.network.server_frame_index,
-			"Jump frame should be recorded"
+            "Jump frame should be recorded",
         )
 
 
@@ -461,15 +482,18 @@ class TestPhysicsDuringRollback:
     var fixture: TestCharacterFixture
     var character: Character
 
+
     func before_each():
         ArrayPool.clear_all_pools()
         fixture = TestCharacterFixture.new()
         await fixture.setup_in_tree(get_tree().root)
         character = fixture.character
 
+
     func after_each():
         fixture.cleanup()
         ArrayPool.clear_all_pools()
+
 
     func test_gravity_applied_during_air_state():
         # Character in air
@@ -483,8 +507,9 @@ class TestPhysicsDuringRollback:
         # Verify still in air
         assert_false(
             character.surfaces.is_attaching_to_floor,
-			"Should remain in air"
+            "Should remain in air",
         )
+
 
     func test_floor_contact_state():
         # Character on floor
@@ -498,11 +523,11 @@ class TestPhysicsDuringRollback:
         assert_eq(
             character.surfaces.surface_type,
             SurfaceType.FLOOR,
-			"Should be on FLOOR surface"
+            "Should be on FLOOR surface",
         )
         assert_true(
             character.surfaces.is_touching_floor,
-			"Floor contact should be active"
+            "Floor contact should be active",
         )
 
         # Simulate losing contact
@@ -514,8 +539,9 @@ class TestPhysicsDuringRollback:
         assert_eq(
             character.surfaces.surface_type,
             SurfaceType.AIR,
-			"Should be in AIR after losing contact"
+            "Should be in AIR after losing contact",
         )
+
 
     func test_wall_contact_state():
         # Character touching left wall
@@ -527,13 +553,14 @@ class TestPhysicsDuringRollback:
         # Verify wall state
         assert_true(
             character.surfaces.is_touching_wall,
-			"Should be touching wall"
+            "Should be touching wall",
         )
         assert_eq(
             character.surfaces.surface_type,
             SurfaceType.WALL,
-			"Should be on WALL surface"
+            "Should be on WALL surface",
         )
+
 
     func test_ceiling_contact_state():
         # Character touching ceiling
@@ -545,13 +572,14 @@ class TestPhysicsDuringRollback:
         # Verify ceiling state
         assert_true(
             character.surfaces.is_touching_ceiling,
-			"Should be touching ceiling"
+            "Should be touching ceiling",
         )
         assert_eq(
             character.surfaces.surface_type,
             SurfaceType.CEILING,
-			"Should be on CEILING surface"
+            "Should be on CEILING surface",
         )
+
 
     func test_fall_through_floor_state():
         # Test fall-through state
@@ -561,7 +589,7 @@ class TestPhysicsDuringRollback:
         # Initial state
         assert_false(
             character.surfaces.is_descending_through_floors,
-			"Fall-through should be inactive"
+            "Fall-through should be inactive",
         )
 
         # Trigger fall-through
@@ -570,7 +598,7 @@ class TestPhysicsDuringRollback:
         # Verify state
         assert_true(
             character.surfaces.is_descending_through_floors,
-			"Fall-through should be active"
+            "Fall-through should be active",
         )
 
 
@@ -583,15 +611,18 @@ class TestPredictionWindows:
     var fixture: TestCharacterFixture
     var character: Character
 
+
     func before_each():
         ArrayPool.clear_all_pools()
         fixture = TestCharacterFixture.new()
         await fixture.setup_in_tree(get_tree().root)
         character = fixture.character
 
+
     func after_each():
         fixture.cleanup()
         ArrayPool.clear_all_pools()
+
 
     func test_multi_frame_prediction_accuracy():
         # Client predicts 10 frames ahead
@@ -609,7 +640,7 @@ class TestPredictionWindows:
         assert_eq(
             predicted_positions.size(),
             10,
-			"Should have 10 predicted frames"
+            "Should have 10 predicted frames",
         )
 
         # Verify positions are increasing (moving right)
@@ -617,8 +648,9 @@ class TestPredictionWindows:
             assert_gt(
                 predicted_positions[i].x,
                 predicted_positions[i - 1].x,
-				"Position should increase each frame"
+                "Position should increase each frame",
             )
+
 
     func test_long_prediction_window():
         # Predict 30 frames ahead (half second at 60fps)
@@ -638,7 +670,7 @@ class TestPredictionWindows:
         assert_gt(
             final_position.x,
             start_position.x,
-			"Character should have moved forward significantly"
+            "Character should have moved forward significantly",
         )
 
         # Verify we predicted 30 frames
@@ -646,8 +678,9 @@ class TestPredictionWindows:
         assert_gt(
             distance_moved,
             10.0,
-			"Should move noticeable distance in 30 frames"
+            "Should move noticeable distance in 30 frames",
         )
+
 
     func test_continuous_prediction_over_time():
         # Verify character can predict continuously over many frames
@@ -666,17 +699,17 @@ class TestPredictionWindows:
             assert_gt(
                 positions_over_time[i].x,
                 positions_over_time[i - 1].x,
-				"Position should increase each frame"
+                "Position should increase each frame",
             )
 
         # Verify significant total movement
         var total_distance: float = abs(
-            positions_over_time[14].x - positions_over_time[0].x
+            positions_over_time[14].x - positions_over_time[0].x,
         )
         assert_gt(
             total_distance,
             5.0,
-			"Should move significant distance over 15 frames"
+            "Should move significant distance over 15 frames",
         )
 
 
@@ -689,15 +722,18 @@ class TestMovementEdgeCases:
     var fixture: TestCharacterFixture
     var character: Character
 
+
     func before_each():
         ArrayPool.clear_all_pools()
         fixture = TestCharacterFixture.new()
         await fixture.setup_in_tree(get_tree().root)
         character = fixture.character
 
+
     func after_each():
         fixture.cleanup()
         ArrayPool.clear_all_pools()
+
 
     func test_zero_velocity_to_high_velocity():
         # Stationary to sprinting in one frame correction
@@ -707,7 +743,7 @@ class TestMovementEdgeCases:
         # Server correction: high velocity
         var server_state := Helpers.create_server_state(
             Vector2(100, 500),
-            Vector2(300, 0)
+            Vector2(300, 0),
         )
 
         # Apply correction
@@ -720,8 +756,9 @@ class TestMovementEdgeCases:
             character.velocity.x,
             300.0,
             1.0,
-			"Velocity should jump to high value"
+            "Velocity should jump to high value",
         )
+
 
     func test_direction_reversal_during_rollback():
         # Moving right, server corrects to moving left
@@ -735,7 +772,7 @@ class TestMovementEdgeCases:
         # Server correction: was moving left
         var server_state := Helpers.create_server_state(
             Vector2(95, 500),
-            Vector2(-100, 0)
+            Vector2(-100, 0),
         )
 
         # Apply correction
@@ -747,14 +784,15 @@ class TestMovementEdgeCases:
         assert_lt(
             character.velocity.x,
             0,
-			"Velocity should be reversed to left"
+            "Velocity should be reversed to left",
         )
         assert_almost_eq(
             character.velocity.x,
             -100.0,
             1.0,
-			"Velocity magnitude should be correct"
+            "Velocity magnitude should be correct",
         )
+
 
     func test_high_velocity_movement():
         # Very fast movement
@@ -769,8 +807,9 @@ class TestMovementEdgeCases:
         assert_gt(
             distance_moved,
             2.0,
-			"High velocity should produce significant movement"
+            "High velocity should produce significant movement",
         )
+
 
     func test_position_remains_valid_after_rollback():
         # Ensure position doesn't become INF or NAN
@@ -784,12 +823,13 @@ class TestMovementEdgeCases:
         # Verify position is valid
         assert_false(
             is_inf(character.position.x) or is_inf(character.position.y),
-			"Position should not be INF"
+            "Position should not be INF",
         )
         assert_false(
             is_nan(character.position.x) or is_nan(character.position.y),
-			"Position should not be NAN"
+            "Position should not be NAN",
         )
+
 
     func test_velocity_remains_valid_after_rollback():
         # Ensure velocity doesn't become INF or NAN
@@ -806,7 +846,7 @@ class TestMovementEdgeCases:
                     false,
                     false,
                     true,
-                    false
+                    false,
                 )
             else:
                 Helpers.set_character_input(
@@ -815,7 +855,7 @@ class TestMovementEdgeCases:
                     false,
                     false,
                     false,
-                    true
+                    true,
                 )
 
             Helpers.simulate_frames(character, 1)
@@ -823,9 +863,9 @@ class TestMovementEdgeCases:
         # Verify velocity is valid
         assert_false(
             is_inf(character.velocity.x) or is_inf(character.velocity.y),
-			"Velocity should not be INF"
+            "Velocity should not be INF",
         )
         assert_false(
             is_nan(character.velocity.x) or is_nan(character.velocity.y),
-			"Velocity should not be NAN"
+            "Velocity should not be NAN",
         )

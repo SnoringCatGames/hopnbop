@@ -1226,10 +1226,12 @@ class TestPropertyConfiguration:
 
 
     func test_record_initial_state_skips_partner_when_requested():
-        # Create a partner state
+        # Create a partner state (simulate 2-node setup).
+        # Entity is server-auth, partner is client-auth.
         var partner := TestableNetworkedState.new()
         partner.name = "Partner"
         partner.root_path = NodePath(".")
+        partner._test_is_server_authoritative = false  # Make it client-auth.
         entity.get_parent().add_child(partner)
         partner._ready()
         if partner._rollback_buffer == null:
@@ -1240,9 +1242,9 @@ class TestPropertyConfiguration:
         partner._rollback_buffer._total_pushed = 0
         partner._rollback_buffer._capacity = partner._rollback_buffer._data.size()
 
-        # Force partner assignment
-        entity._partner_state = partner
-        partner._partner_state = entity
+        # Simulate sibling discovery (2-node setup).
+        entity.input_from_client = partner
+        partner.state_from_server = entity
 
         # Set partner to different values
         partner.test_position = Vector2(999.0, 999.0)
@@ -1263,19 +1265,21 @@ class TestPropertyConfiguration:
 
 
     func test_record_initial_state_initializes_partner_by_default():
-        # Create a partner state
+        # Create a partner state (simulate 2-node setup).
+        # Entity is server-auth, partner is client-auth.
         var partner := TestableNetworkedState.new()
         partner.name = "Partner"
         partner.root_path = NodePath(".")
+        partner._test_is_server_authoritative = false  # Make it client-auth.
         entity.get_parent().add_child(partner)
         partner._ready()
         if partner._rollback_buffer == null:
             partner._set_up_rollback_buffer()
         partner._parse_property_names()
 
-        # Force partner assignment
-        entity._partner_state = partner
-        partner._partner_state = entity
+        # Simulate sibling discovery (2-node setup).
+        entity.input_from_client = partner
+        partner.state_from_server = entity
 
         # Set partner to specific values
         partner.test_position = Vector2(300.0, 400.0)
