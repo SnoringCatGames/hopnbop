@@ -37,7 +37,14 @@
       "Bash(scons:*)",
       "Bash(export PATH=\"/c/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin:$PATH\")",
       "Bash(wsl --list:*)",
-      "Bash(wsl cd /mnt/c/Users/lsl/Repositories/jumpnthump/gamelift-gdextension '&&' ./setup_and_build.sh --godot-version 4.5)"
+      "Bash(wsl cd /mnt/c/Users/lsl/Repositories/jumpnthump/gamelift-gdextension '&&' ./setup_and_build.sh --godot-version 4.5)",
+      "Bash(wsl bash -c \"sudo apt-get update && sudo apt-get install -y cmake build-essential libssl-dev python3-pip && pip3 install scons\")",
+      "Bash(wsl bash -c \"ps aux | grep apt\")",
+      "Bash(wsl bash -c \"curl -s -o /dev/null -w ''%{http_code}'' http://archive.ubuntu.com/ubuntu/ --connect-timeout 5\")",
+      "Bash(wsl bash -c \"journalctl -xe --no-pager | tail -20\")",
+      "Bash(pkill -f \"apt-get update\")",
+      "Bash(wsl bash:*)",
+      "Bash(wsl --shutdown)"
     ]
   }
 }
