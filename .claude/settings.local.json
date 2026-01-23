@@ -33,7 +33,11 @@
       "Bash(git checkout:*)",
       "Bash(chmod:*)",
       "Bash(./setup_and_build.sh:*)",
-      "Bash(cmake:*)"
+      "Bash(cmake:*)",
+      "Bash(scons:*)",
+      "Bash(export PATH=\"/c/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin:$PATH\")",
+      "Bash(wsl --list:*)",
+      "Bash(wsl cd /mnt/c/Users/lsl/Repositories/jumpnthump/gamelift-gdextension '&&' ./setup_and_build.sh --godot-version 4.5)"
     ]
   }
 }
