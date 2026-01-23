@@ -76,10 +76,16 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 
 
 func _sync_from_scene_state() -> void:
-    if not G.ensure_valid(player):
-        return
-
     # Don't sync from scene state. This node is server-authoritative and gets
     # its data from CharacterStateFromServer._network_process(), not from
     # the player's scene state.
     pass
+
+
+func _reconcile_jump_event() -> void:
+    # Only reconcile jumps for remote players. The local player uses
+    # PlayerInputFromClient for jump reconciliation.
+    if player.get_is_player_control_active():
+        return
+
+    super._reconcile_jump_event()
