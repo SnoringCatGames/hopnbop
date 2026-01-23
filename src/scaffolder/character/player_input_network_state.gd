@@ -49,15 +49,15 @@ func _reconcile_jump_event() -> void:
     if last_triggered_jump_time_usec < 0:
         return
 
-    # FIXME: Remove after testing.
-    G.print(
-        "F:%d Reconciling jump event from frame %d (%s)" % [
-            G.network.server_frame_index,
-            jump_frame,
-            name,
-        ],
-        ScaffolderLog.CATEGORY_NETWORK_SYNC,
-    )
+    if G.is_verbose:
+        G.print(
+            "F:%d Reconciling jump event from frame %d (%s)" % [
+                G.network.server_frame_index,
+                jump_frame,
+                name,
+            ],
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        )
 
     # Check if frame is too old.
     if G.network.frame_driver.is_frame_too_old_to_consider(jump_frame):
@@ -101,15 +101,15 @@ func _reconcile_jump_event() -> void:
         # Only clear previous frame's jump bit if it wasn't already pressed.
         _clear_jump_bit_in_previous_frame_if_not_held(jump_frame - 1)
 
-        # FIXME: Remove after testing.
-        G.print(
-            "F:%d Jump bit injected into frame %d, queuing rollback (%s)" % [
-                G.network.server_frame_index,
-                jump_frame,
-                name,
-            ],
-            ScaffolderLog.CATEGORY_NETWORK_SYNC,
-        )
+        if G.is_verbose:
+            G.print(
+                "F:%d Jump bit injected into frame %d, queuing rollback (%s)" % [
+                    G.network.server_frame_index,
+                    jump_frame,
+                    name,
+                ],
+                ScaffolderLog.CATEGORY_NETWORK_SYNC,
+            )
         G.network.frame_driver.queue_rollback(jump_frame)
 
     _last_reconciled_jump_frame_index = jump_frame

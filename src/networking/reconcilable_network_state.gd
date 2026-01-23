@@ -266,17 +266,17 @@ func _handle_new_authoritative_state() -> void:
     # Extract the frame authority from the received state.
     var new_frame_authority: int = packed_state[packed_state.size() - 2]
 
-    # FIXME: Remove after testing.
-    var authority_string: String = FrameAuthority.keys()[new_frame_authority]
-    G.print(
-        "%s F:%d Received %s state for frame %d" % [
-            name,
-            G.network.server_frame_index,
-            authority_string,
-            state_frame_index,
-        ],
-        ScaffolderLog.CATEGORY_NETWORK_SYNC,
-    )
+    if G.is_verbose:
+        var authority_string: String = FrameAuthority.keys()[new_frame_authority]
+        G.print(
+            "%s F:%d Received %s state for frame %d" % [
+                name,
+                G.network.server_frame_index,
+                authority_string,
+                state_frame_index,
+            ],
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        )
 
     # Clients should ignore PREDICTED state from server-authoritative nodes entirely.
     # Only the server's AUTHORITATIVE state matters for reconciliation.
@@ -288,15 +288,15 @@ func _handle_new_authoritative_state() -> void:
         new_frame_authority == FrameAuthority.PREDICTED and
         not _should_accept_predicted_states()
     ):
-        # FIXME: Remove after testing.
-        G.print(
-            "%s F:%d Ignoring PREDICTED server state for frame %d" % [
-                name,
-                G.network.server_frame_index,
-                state_frame_index,
-            ],
-            ScaffolderLog.CATEGORY_NETWORK_SYNC,
-        )
+        if G.is_verbose:
+            G.print(
+                "%s F:%d Ignoring PREDICTED server state for frame %d" % [
+                    name,
+                    G.network.server_frame_index,
+                    state_frame_index,
+                ],
+                ScaffolderLog.CATEGORY_NETWORK_SYNC,
+            )
         return
 
     if G.network.frame_driver.is_frame_too_old_to_consider(state_frame_index):
@@ -449,15 +449,15 @@ func _post_network_process() -> void:
     if is_multiplayer_authority():
         _pack_networked_state()
     else:
-        # FIXME: Remove after testing.
-        if not is_server_authoritative:
-            G.print(
-                "%s F:%d NOT authority - skipping pack" % [
-                    name,
-                    G.network.server_frame_index,
-                ],
-                ScaffolderLog.CATEGORY_NETWORK_SYNC,
-            )
+        if G.is_verbose:
+            if not is_server_authoritative:
+                G.print(
+                    "%s F:%d NOT authority - skipping pack" % [
+                        name,
+                        G.network.server_frame_index,
+                    ],
+                    ScaffolderLog.CATEGORY_NETWORK_SYNC,
+                )
     _pack_buffer_state_from_local_state()
 
 
@@ -548,26 +548,26 @@ func _pack_networked_state() -> void:
     state[i] = G.network.frame_driver.get_time_usec_from_frame_index(timestamp_index)
     _is_packing_state_locally = true
 
-    # FIXME: Remove after testing.
-    var authority_string: String = FrameAuthority.keys()[frame_authority]
-    if not is_server_authoritative:
-        G.print(
-            "%s F:%d Packed client-auth state (%s)" % [
-                name,
-                G.network.server_frame_index,
-                authority_string,
-            ],
-            ScaffolderLog.CATEGORY_NETWORK_SYNC,
-        )
-    else:
-        G.print(
-            "%s F:%d Packed server-auth state (%s)" % [
-                name,
-                G.network.server_frame_index,
-                authority_string,
-            ],
-            ScaffolderLog.CATEGORY_NETWORK_SYNC,
-        )
+    if G.is_verbose:
+        var authority_string: String = FrameAuthority.keys()[frame_authority]
+        if not is_server_authoritative:
+            G.print(
+                "%s F:%d Packed client-auth state (%s)" % [
+                    name,
+                    G.network.server_frame_index,
+                    authority_string,
+                ],
+                ScaffolderLog.CATEGORY_NETWORK_SYNC,
+            )
+        else:
+            G.print(
+                "%s F:%d Packed server-auth state (%s)" % [
+                    name,
+                    G.network.server_frame_index,
+                    authority_string,
+                ],
+                ScaffolderLog.CATEGORY_NETWORK_SYNC,
+            )
 
     if not packed_state.is_empty():
         ArrayPool.release(packed_state)
