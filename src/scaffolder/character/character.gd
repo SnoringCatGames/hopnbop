@@ -133,12 +133,6 @@ func _ready() -> void:
     state_from_server.velocity = velocity
     # state_from_server.surfaces intentionally left at default 0
 
-    # Record the initial spawn state to the rollback buffer to prevent
-    # _pre_network_process from loading default zero position/velocity on the
-    # first frame. Deferred to ensure state_from_server._ready() has completed.
-    # This also initializes the partner input_from_client if present.
-    state_from_server.record_initial_state.call_deferred()
-
     if _action_sources.is_empty():
         var player_action_source := PlayerActionSource.new(self, true)
         _action_sources.append(player_action_source)

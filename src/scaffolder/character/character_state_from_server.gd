@@ -47,6 +47,7 @@ func _ready() -> void:
     if Engine.is_editor_hint():
         return
     _cache_forwarded_input()
+    record_initial_state()
 
 
 func _update_replication_config() -> void:
