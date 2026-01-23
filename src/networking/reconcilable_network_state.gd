@@ -768,7 +768,11 @@ func _update_partner_state() -> void:
     # Record the sibling, and validate the node configuration.
     if sibling_states.size() == 1:
         if sibling_states[0].is_server_authoritative != is_server_authoritative:
-            _partner_state = sibling_states[0]
+            _partner_state_configuration_warning = (
+                "Non-server-authoritative ReconcilableNetworkedState nodes " +
+                "should come as a pair of PlayerInputFromClient and " +
+                "ForwardedCharacterStateFromServer."
+            )
         elif is_server_authoritative:
             _partner_state_configuration_warning = (
                 "You should consolidate sibling server-authoritative ReconcilableNetworkedState nodes (or should one be client-authoritative?)"
@@ -777,9 +781,54 @@ func _update_partner_state() -> void:
             _partner_state_configuration_warning = (
                 "There should only be one client-authoritative ReconcilableNetworkedState node here (should one be server-authoritative?)"
             )
-    elif sibling_states.size() > 1:
+    elif sibling_states.size() == 2:
+        # 3-node configuration: 1 client-auth + 2 server-auth.
+        var client_auth_count := 0
+        var server_auth_count := 0
+        var client_auth_node: ReconcilableNetworkedState = null
+        var server_auth_nodes: Array[ReconcilableNetworkedState] = []
+
+        for sibling in sibling_states:
+            if sibling.is_client_authoritative:
+                client_auth_count += 1
+                client_auth_node = sibling
+            else:
+                server_auth_count += 1
+                server_auth_nodes.append(sibling)
+
+        # Validate configuration: must be 1 client + 2 server.
+        if client_auth_count == 1 and server_auth_count == 2:
+            # Valid 3-node setup.
+            if is_client_authoritative:
+                # ClientAuth node partners with CharacterStateFromServer.
+                for node in server_auth_nodes:
+                    if node is CharacterStateFromServer:
+                        _partner_state = node
+                        break
+                if _partner_state == null:
+                    _partner_state_configuration_warning = (
+                        "Client-authoritative node requires a CharacterStateFromServer sibling"
+                    )
+            elif self is CharacterStateFromServer:
+                # CharacterStateFromServer partners with InputFromClient.
+                _partner_state = client_auth_node
+            elif self is ForwardedPlayerInputFromServer:
+                # ForwardedInput partners with CharacterStateFromServer.
+                for node in server_auth_nodes:
+                    if node is CharacterStateFromServer:
+                        _partner_state = node
+                        break
+                if _partner_state == null:
+                    _partner_state_configuration_warning = (
+                        "ForwardedPlayerInputFromServer requires a CharacterStateFromServer sibling"
+                    )
+        else:
+            _partner_state_configuration_warning = (
+                "3-node configuration requires exactly 1 client-authoritative and 2 server-authoritative nodes"
+            )
+    elif sibling_states.size() > 2:
         _partner_state_configuration_warning = (
-            "There should be no more than 2 ReconcilableNetworkedState nodes in a given place--one server-authoritative and one client-authoritative"
+            "There should be no more than 3 ReconcilableNetworkedState nodes (1 client-auth + 2 server-auth for Player, or 1 server-auth for NPC)"
         )
     elif is_client_authoritative:
         _partner_state_configuration_warning = (

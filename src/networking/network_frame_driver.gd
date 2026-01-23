@@ -51,6 +51,11 @@ extends Node
 #
 # REMAINING TASKS:
 #
+# Clean-up the _partner_state pattern in ReconcilableNetworkState. When we only had CharcaterStateFromServer and PlayerStateFromClient, it made sense. But now, with ForwardedPLayerInputFromServer, we have three.
+# - Lets now have three properties on ReconcilableNetworkState: state_from_server, input_from_client, and forwarded_input_from_server
+# - We should probably remove/consolidate some corresponding getters from the child classes.
+# - We should update all logic and comments that previously referenced _partner_state to use these new properties.
+#
 # Add a third ReconcilableNetworkState node to Bunny.
 # This one will be responsible for forwarding player input state from the server to all other players. The preexisting PlayerInputFromClient node only sends data from the owner client to the server--currently, there is no way for other clients to know what input the remote player has been pressing.
 # We can save a bit of bandwidth by setting the visibility config on the server for this node, in order to blocklist the original player this input state came from, since they already know about it.
