@@ -618,6 +618,13 @@ func _record_buffer_frame(frame_index: int, frame_state: Array) -> void:
     # TODO: When updating frame buffer state later, reference the preexisting
     #       frame array, rather than instantiating a new one.
 
+    # Guard against null rollback buffer (For tests: can occur if time isn't
+    # initialized yet when record_initial_state() is called during _ready()).
+    if _rollback_buffer == null:
+        # Release the frame_state array since we can't store it
+        ArrayPool.release(frame_state)
+        return
+
     _rollback_buffer.backfill_to_with_last_state(frame_index - 1)
 
     _rollback_buffer.set_at(frame_index, frame_state)

@@ -14,10 +14,20 @@ func after_each():
 
 
 ## Mock player class for testing without full Character/Player dependencies.
-class MockPlayer extends Node:
-    var input_from_client: PlayerInputFromClient = null
-    var actions = CharacterActionState.new()
-    var last_triggered_jump_frame_index := -1
+## Note: Must extend Player to satisfy type requirements in
+## ForwardedPlayerInputFromServer.
+class MockPlayer extends Player:
+    # Properties like actions and last_triggered_jump_frame_index are inherited
+    # from Character.
+
+    func _enter_tree() -> void:
+        # Override to prevent Player's _enter_tree logic which requires G.level
+        pass
+
+    func _ready() -> void:
+        # Override to prevent full Player initialization in tests which requires
+        # state_from_server, collision_shape, movement_settings, etc.
+        pass
 
 
 class TestConfigurationAndInitialization:
@@ -43,6 +53,7 @@ class TestConfigurationAndInitialization:
         forwarded_input = ForwardedPlayerInputFromServer.new()
         forwarded_input.name = "ForwardedInput"
         forwarded_input.root_path = NodePath(".")
+        forwarded_input.replication_config = SceneReplicationConfig.new()
         player_node.add_child(forwarded_input)
 
 
@@ -112,7 +123,7 @@ class TestConfigurationWarnings:
 
     func test_warning_when_player_not_set():
         # Create ForwardedInput without player export.
-        player_node = Node.new()
+        player_node = MockPlayer.new()
         player_node.name = "Player"
         root_node.add_child(player_node)
 
@@ -142,7 +153,7 @@ class TestConfigurationWarnings:
 
     func test_warning_when_input_from_client_sibling_missing():
         # Create ForwardedInput without PlayerInputFromClient sibling.
-        player_node = Node.new()
+        player_node = MockPlayer.new()
         player_node.name = "Player"
         root_node.add_child(player_node)
 
@@ -171,7 +182,7 @@ class TestConfigurationWarnings:
 
     func test_no_warnings_when_properly_configured():
         # Create full 3-node setup.
-        player_node = Node.new()
+        player_node = MockPlayer.new()
         player_node.name = "Player"
         root_node.add_child(player_node)
 
@@ -238,6 +249,7 @@ class TestVisibilityFilter:
         forwarded_input = ForwardedPlayerInputFromServer.new()
         forwarded_input.name = "ForwardedInput"
         forwarded_input.root_path = NodePath(".")
+        TestEnvironmentMock.init_replication_config(forwarded_input)
         player_node.add_child(forwarded_input)
 
 

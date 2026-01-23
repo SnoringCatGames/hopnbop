@@ -10,6 +10,9 @@ const TestEnvironmentMock = preload("res://test/helpers/test_environment_mock.gd
 
 func before_each():
     ArrayPool.clear_all_pools()
+    # Initialize network time for rollback buffer setup
+    if not G.network.time.is_time_initialized:
+        G.network.time._start_time_offset_usec = 0
 
 
 func after_each():
@@ -29,6 +32,9 @@ class TestForwardingLogic:
 
     func before_each():
         ArrayPool.clear_all_pools()
+        # Initialize network time for rollback buffer setup
+        if not G.network.time.is_time_initialized:
+            G.network.time._start_time_offset_usec = 0
 
         root_node = Node.new()
         root_node.name = "Root"
@@ -44,10 +50,8 @@ class TestForwardingLogic:
         input_from_client = setup.input_from_client
         forwarded_input = setup.forwarded_input
 
-        # Initialize all nodes.
-        state_from_server._ready()
-        input_from_client._ready()
-        forwarded_input._ready()
+        # Nodes are already initialized when added to tree in
+        # setup_player_with_networking, no need to call _ready() again.
 
 
     func after_each():

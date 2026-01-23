@@ -140,13 +140,16 @@ class TestVisibilityFilterIntegration:
         root_node.name = "Root"
         add_child_autofree(root_node)
 
-        var player = Player.new()
-        player.name = "Player"
-        root_node.add_child(player)
+        # Setup mock level to prevent Player._enter_tree crashes
+        TestEnvironmentMock.setup_mock_level(root_node)
+
+        # Use setup_test_player to get a properly initialized player
+        var player = TestEnvironmentMock.setup_test_player(root_node)
 
         forwarded_input = ForwardedPlayerInputFromServer.new()
         forwarded_input.name = "ForwardedInput"
         forwarded_input.root_path = NodePath(".")
+        TestEnvironmentMock.init_replication_config(forwarded_input)
         forwarded_input.player = player
         player.add_child(forwarded_input)
 
@@ -202,13 +205,16 @@ class TestRollbackIntegration:
         root_node.name = "Root"
         add_child_autofree(root_node)
 
-        player = Player.new()
-        player.name = "Player"
-        root_node.add_child(player)
+        # Setup mock level to prevent Player._enter_tree crashes
+        TestEnvironmentMock.setup_mock_level(root_node)
+
+        # Use setup_test_player to get a properly initialized player
+        player = TestEnvironmentMock.setup_test_player(root_node)
 
         forwarded_input = ForwardedPlayerInputFromServer.new()
         forwarded_input.name = "ForwardedInput"
         forwarded_input.root_path = NodePath(".")
+        TestEnvironmentMock.init_replication_config(forwarded_input)
         forwarded_input.player = player
         player.add_child(forwarded_input)
 
