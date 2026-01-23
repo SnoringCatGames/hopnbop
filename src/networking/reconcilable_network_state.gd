@@ -228,8 +228,10 @@ func update_authority() -> void:
     set_multiplayer_authority(authority_id)
     if previous_authority_id != authority_id:
         G.print(
-            "%s authority changed: %d -> %d " +
-            "(server_auth=%s, peer_id=%d, is_local_auth=%s)" % [
+            (
+                "%s authority changed: %d -> %d " +
+                "(server_auth=%s, peer_id=%d, is_local_auth=%s)"
+            ) % [
                 name,
                 previous_authority_id,
                 authority_id,
