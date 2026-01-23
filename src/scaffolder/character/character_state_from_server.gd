@@ -7,8 +7,6 @@ extends ReconcilableNetworkedState
         character = value
         update_configuration_warnings()
 
-var forwarded_input: ForwardedPlayerInputFromServer = null
-
 var is_authority_for_state_from_server: bool:
     get:
         return is_multiplayer_authority()
@@ -41,12 +39,20 @@ func _get_is_server_authoritative() -> bool:
     return true
 
 
+func _should_accept_predicted_states() -> bool:
+    # Accept PREDICTED server states on clients to stay synced with
+    # server's predicted trajectory. This reduces snap-back when
+    # AUTHORITATIVE states arrive, since the client's prediction is
+    # already close to the server's. Remote clients especially need this
+    # since they only see forwarded input.
+    return G.network.is_client
+
+
 func _ready() -> void:
     super._ready()
     update_configuration_warnings()
     if Engine.is_editor_hint():
         return
-    _cache_forwarded_input()
     record_initial_state()
 
 
@@ -78,34 +84,54 @@ func _network_process() -> void:
     # Determine which input source to use.
     # - Server and owning client: use PlayerInputFromClient (client-authoritative)
     # - Remote clients viewing other players: use ForwardedPlayerInputFromServer (server-authoritative)
-    var is_remote_player := (
+    var is_remote_player_on_client := (
         not is_authority_for_state_from_server and
         not is_authority_for_input_from_client
     )
     var input_source: ReconcilableNetworkedState
-    if is_remote_player:
-        input_source = forwarded_input
+    if is_remote_player_on_client:
+        input_source = forwarded_input_from_server
     else:
         input_source = input_from_client
 
+    if not G.ensure_valid(input_source):
+        if G.is_verbose:
+            G.print(
+                "F:%d input_source is null! (is_remote=%s, has_forwarded=%s, has_input=%s)" % [
+                    G.network.server_frame_index,
+                    is_remote_player_on_client,
+                    forwarded_input_from_server != null,
+                    input_from_client != null,
+                ],
+                ScaffolderLog.CATEGORY_NETWORK_SYNC,
+            )
+        return
+
     # Handle actions (from a client).
-    if input_source._has_authoritative_state_for_current_frame():
-        # Authoritative input already received for this frame - use it.
-        # This happens when the client has sent input that arrived and was
-        # unpacked into the buffer during _handle_new_authoritative_state.
+    var has_auth_input := input_source._has_authoritative_state_for_current_frame()
+    var has_predicted_forwarded_input := (
+        input_source is ForwardedPlayerInputFromServer and
+        input_source._rollback_buffer.has_at(timestamp_index)
+    )
+
+    if has_auth_input or has_predicted_forwarded_input:
+        # Use received input from buffer (either authoritative from
+        # PlayerInputFromClient, or predicted from ForwardedPlayerInputFromServer).
         input_source._unpack_buffer_state(timestamp_index)
         # Copy input from source to character.
         _apply_input_to_character(input_source)
         # Update surface attachment state based on the input we just loaded.
         character.surfaces.update_actions()
-        # FIXME: Remove after testing.
-        G.print(
-            "F:%d Using authoritative input (actions=%d)" % [
-                G.network.server_frame_index,
-                character.actions.bitmask,
-            ],
-            ScaffolderLog.CATEGORY_NETWORK_SYNC,
-        )
+        if G.is_verbose:
+            var authority_str := "PREDICTED" if has_predicted_forwarded_input else "AUTHORITATIVE"
+            G.print(
+                "F:%d Using %s input (actions=%d)" % [
+                    G.network.server_frame_index,
+                    authority_str,
+                    character.actions.bitmask,
+                ],
+                ScaffolderLog.CATEGORY_NETWORK_SYNC,
+            )
     else:
         if is_authority_for_input_from_client:
             # This client controls input - capture it now as authoritative.
@@ -123,25 +149,33 @@ func _network_process() -> void:
             input_source.frame_authority = FrameAuthority.PREDICTED
             # Update surface attachment state based on the input we just loaded.
             character.surfaces.update_actions()
-            # FIXME: Remove after testing.
-            G.print(
-                "F:%d Extrapolating input from prev frame (actions=%d)" % [
-                    G.network.server_frame_index,
-                    character.actions.bitmask,
-                ],
-                ScaffolderLog.CATEGORY_NETWORK_SYNC,
-            )
+            if G.is_verbose:
+                G.print(
+                    "F:%d Extrapolating input from prev frame (actions=%d)" % [
+                        G.network.server_frame_index,
+                        character.actions.bitmask,
+                    ],
+                    ScaffolderLog.CATEGORY_NETWORK_SYNC,
+                )
 
     # Forward input from PlayerInputFromClient to
     # ForwardedPlayerInputFromServer.
     if (
         is_authority_for_state_from_server and
-        is_instance_valid(forwarded_input) and
+        is_instance_valid(forwarded_input_from_server) and
         is_instance_valid(input_from_client)
     ):
-        forwarded_input.actions = input_from_client.actions
-        forwarded_input.last_triggered_jump_time_usec = input_from_client.last_triggered_jump_time_usec
-        forwarded_input.frame_authority = input_from_client.frame_authority
+        forwarded_input_from_server.actions = input_from_client.actions
+        forwarded_input_from_server.last_triggered_jump_time_usec = input_from_client.last_triggered_jump_time_usec
+        forwarded_input_from_server.frame_authority = input_from_client.frame_authority
+        if G.is_verbose and input_from_client.actions != 0:
+            G.print(
+                "F:%d Forwarding input to remote clients (actions=%d)" % [
+                    G.network.server_frame_index,
+                    forwarded_input_from_server.actions,
+                ],
+                ScaffolderLog.CATEGORY_NETWORK_SYNC,
+            )
 
     # Handle scene state (from the server).
     if is_authority_for_state_from_server:
@@ -151,14 +185,34 @@ func _network_process() -> void:
         character._apply_movement()
         frame_authority = input_from_client.frame_authority
     else:
-        if _has_authoritative_state_for_current_frame():
-            # We already recorded authoritative state for this frame, so we
-            # don't want to overwrite it.
-            _unpack_buffer_state(timestamp_index)
-        else:
-            # Process the frame, and record the scene state as predicted.
-            character._apply_movement()
-            frame_authority = FrameAuthority.PREDICTED
+        # Client: always re-simulate movement based on current input.
+        # Don't unpack authoritative state from buffer, because it may be
+        # stale if ForwardedPlayerInputFromServer reconciled input (e.g., jump)
+        # after the server computed this state. Re-simulation ensures the
+        # character's position matches the reconciled input.
+        var pos_before := character.position
+        var vel_before := character.velocity
+        character._apply_movement()
+        frame_authority = FrameAuthority.PREDICTED
+        if G.is_verbose and (
+            character.position.distance_to(pos_before) > 0.1 or
+            character.velocity.distance_to(vel_before) > 0.1
+        ):
+            G.print(
+                (
+                    "F:%d Remote simulation: pos %s->%s, vel %s->%s, " +
+                    "actions=%d"
+                )
+                % [
+                    G.network.server_frame_index,
+                    pos_before,
+                    character.position,
+                    vel_before,
+                    character.velocity,
+                    character.actions.bitmask,
+                ],
+                ScaffolderLog.CATEGORY_NETWORK_SYNC,
+            )
 
     character._process_movement_and_actions()
 
@@ -168,6 +222,19 @@ func _network_process() -> void:
 func _sync_to_scene_state(previous_state: Array) -> void:
     if not G.ensure_valid(character):
         return
+
+    if G.is_verbose and not is_authority_for_state_from_server:
+        var pos_before := character.position
+        var will_change := position.distance_to(pos_before) > 0.1
+        if will_change:
+            G.print(
+                "F:%d _sync_to_scene_state: char pos %s->%s (rollback)" % [
+                    G.network.server_frame_index,
+                    pos_before,
+                    position,
+                ],
+                ScaffolderLog.CATEGORY_NETWORK_SYNC,
+            )
 
     character.position = position
     character.velocity = velocity
@@ -185,14 +252,6 @@ func _sync_from_scene_state() -> void:
     position = character.position
     velocity = character.velocity
     surfaces = character.surfaces.bitmask
-
-
-func _cache_forwarded_input() -> void:
-    # Find and cache ForwardedPlayerInputFromServer sibling.
-    for child in get_parent().get_children():
-        if child is ForwardedPlayerInputFromServer:
-            forwarded_input = child as ForwardedPlayerInputFromServer
-            return
 
 
 func _apply_input_to_character(input_source: ReconcilableNetworkedState) -> void:

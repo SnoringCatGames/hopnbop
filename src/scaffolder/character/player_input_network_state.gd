@@ -13,12 +13,17 @@ var last_triggered_jump_time_usec := -1
 
 var last_triggered_jump_frame_index: int:
     get:
+        if last_triggered_jump_time_usec < 0:
+            return -1
         return G.network.frame_driver.get_frame_index_from_time_usec(
             last_triggered_jump_time_usec,
         )
     set(value):
-        last_triggered_jump_time_usec = \
-        G.network.frame_driver.get_time_usec_from_frame_index(value)
+        if value < 0:
+            last_triggered_jump_time_usec = -1
+        else:
+            last_triggered_jump_time_usec = \
+            G.network.frame_driver.get_time_usec_from_frame_index(value)
 
 var _last_reconciled_jump_frame_index := -1
 
