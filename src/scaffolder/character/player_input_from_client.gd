@@ -7,13 +7,6 @@ extends ReconcilableNetworkedState
         player = value
         update_configuration_warnings()
 
-var state_from_server: CharacterStateFromServer:
-    get:
-        if is_instance_valid(_partner_state):
-            return _partner_state as CharacterStateFromServer
-        else:
-            return null
-
 ## A bitmask representing which of the player's actions are active.
 var actions := 0
 

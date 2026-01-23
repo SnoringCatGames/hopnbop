@@ -131,21 +131,21 @@ func _ready() -> void:
 
 
 func _on_local_authority_added(
-        state_from_client: PlayerInputFromClient,
+        input_from_client: PlayerInputFromClient,
 ) -> void:
     # Wait a tick to ensure state_from_server is populated
     await get_tree().process_frame
 
-    G.check_valid(state_from_client)
-    G.check_valid(state_from_client.state_from_server)
+    G.check_valid(input_from_client)
+    G.check_valid(input_from_client.state_from_server)
 
-    state_from_client.state_from_server.received_network_state.connect(
+    input_from_client.state_from_server.received_network_state.connect(
         _character_state_from_server_updated,
     )
 
 
 func _on_local_authority_removed(
-        _state_from_client: PlayerInputFromClient,
+        _input_from_client: PlayerInputFromClient,
 ) -> void:
     # Do nothing.
     pass
