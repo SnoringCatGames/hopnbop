@@ -140,6 +140,8 @@ func copy(other: CharacterActionState) -> void:
 
 
 func log_new_presses_and_releases(character) -> void:
+    if not G.is_verbose:
+        return
     _log_new_press_or_release(character, "jump", just_pressed_jump, just_released_jump)
     _log_new_press_or_release(character, "up", just_pressed_up, just_released_up)
     _log_new_press_or_release(character, "down", just_pressed_down, just_released_down)
