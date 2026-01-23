@@ -165,9 +165,18 @@ var authority_id: int:
 ##
 ## For NPCs, only state_from_server is present.
 ## For 2-node players (legacy), only state_from_server and input_from_client are present.
-var state_from_server: CharacterStateFromServer = null
-var input_from_client: PlayerInputFromClient = null
-var forwarded_input_from_server: ForwardedPlayerInputFromServer = null
+var state_from_server: CharacterStateFromServer:
+    set(value):
+        state_from_server = value
+        _get_configuration_warnings()
+var input_from_client: PlayerInputFromClient:
+    set(value):
+        input_from_client = value
+        _get_configuration_warnings()
+var forwarded_input_from_server: ForwardedPlayerInputFromServer:
+    set(value):
+        forwarded_input_from_server = value
+        _get_configuration_warnings()
 
 var _partner_state_configuration_warning := ""
 
@@ -271,10 +280,13 @@ func _handle_new_authoritative_state() -> void:
 
     # Clients should ignore PREDICTED state from server-authoritative nodes entirely.
     # Only the server's AUTHORITATIVE state matters for reconciliation.
+    # Exception: Some nodes (like ForwardedPlayerInputFromServer) need PREDICTED
+    # states because they have no local prediction alternative.
     if (
         is_server_authoritative and
         G.network.is_client and
-        new_frame_authority == FrameAuthority.PREDICTED
+        new_frame_authority == FrameAuthority.PREDICTED and
+        not _should_accept_predicted_states()
     ):
         # FIXME: Remove after testing.
         G.print(
@@ -454,6 +466,14 @@ func _get_is_server_authoritative() -> bool:
         "Abstract ReconcilableNetworkState._get_is_server_authoritative is not implemented",
     )
     return true
+
+
+## Virtual method: whether this node should accept PREDICTED states from the
+## server. Defaults to false (only accept AUTHORITATIVE states).
+## Override to return true for nodes that need server predictions (like
+## ForwardedPlayerInputFromServer, which has no local prediction alternative).
+func _should_accept_predicted_states() -> bool:
+    return false
 
 
 func _get_default_values() -> Array:

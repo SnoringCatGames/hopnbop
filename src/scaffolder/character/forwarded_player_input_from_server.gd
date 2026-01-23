@@ -1,46 +1,25 @@
 @tool
 class_name ForwardedPlayerInputFromServer
-extends ReconcilableNetworkedState
+extends PlayerInputNetworkState
 
 @export var player: Player:
     set(value):
         player = value
         update_configuration_warnings()
 
-## A bitmask representing which of the player's actions are active.
-var actions := 0
-
-## Timestamp of the last triggered jump, for network sync of instantaneous
-## events. Use -1 (invalid time) to indicate no jump has been triggered yet.
-var last_triggered_jump_time_usec := -1
-
-var last_triggered_jump_frame_index: int:
-    get:
-        return G.network.frame_driver.get_frame_index_from_time_usec(
-            last_triggered_jump_time_usec,
-        )
-    set(value):
-        last_triggered_jump_time_usec = \
-        G.network.frame_driver.get_time_usec_from_frame_index(value)
-
 var is_authority_for_forwarded_input: bool:
     get:
         return is_multiplayer_authority()
 
-const _synced_properties_and_rollback_diff_thresholds := {
-    actions = 0,
-    last_triggered_jump_time_usec = 0,
-}
-
-
-func _get_default_values() -> Array:
-    return [
-        0, # actions
-        -1, # last_triggered_jump_time_usec (-1 = no jump yet)
-    ]
-
 
 func _get_is_server_authoritative() -> bool:
+    return true
+
+
+func _should_accept_predicted_states() -> bool:
+    # ForwardedPlayerInputFromServer must accept PREDICTED states because
+    # remote clients have no local input to predict with - the server's
+    # predicted input (based on extrapolation) is the only source available.
     return true
 
 
@@ -63,7 +42,6 @@ func _get_configuration_warnings() -> PackedStringArray:
         warnings.append("player is not set")
 
     # Validate that PlayerInputFromClient sibling is present.
-    var input_from_client: PlayerInputFromClient = _find_input_from_client_sibling()
     if input_from_client == null:
         warnings.append("ForwardedPlayerInputFromServer requires a PlayerInputFromClient sibling node")
     else:
@@ -102,15 +80,6 @@ func _sync_from_scene_state() -> void:
         return
 
     # Don't sync from scene state. This node is server-authoritative and gets
-    # its data from CharacterStateFromServer._post_network_process(), not from
+    # its data from CharacterStateFromServer._network_process(), not from
     # the player's scene state.
     pass
-
-
-func _find_input_from_client_sibling() -> PlayerInputFromClient:
-    if not is_node_ready():
-        return null
-    for child in get_parent().get_children():
-        if child is PlayerInputFromClient:
-            return child as PlayerInputFromClient
-    return null
