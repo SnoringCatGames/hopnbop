@@ -145,9 +145,12 @@ var multiplayer_id := 1:
             multiplayer_id = value
             update_authority()
 
-            # Assign multiplayer_id on the InputFromClient sibling.
-            if is_server_authoritative and is_instance_valid(input_from_client):
-                input_from_client.multiplayer_id = multiplayer_id
+            # Assign multiplayer_id on sibling nodes.
+            if is_server_authoritative:
+                if is_instance_valid(input_from_client):
+                    input_from_client.multiplayer_id = multiplayer_id
+                if is_instance_valid(forwarded_input_from_server):
+                    forwarded_input_from_server.multiplayer_id = multiplayer_id
 
             multiplayer_id_changed.emit()
 
@@ -815,28 +818,42 @@ func _update_partner_state() -> void:
         var client_auth_count := 0
         var server_auth_count := 0
 
+        # Count self.
+        if is_client_authoritative:
+            client_auth_count += 1
+        else:
+            server_auth_count += 1
+
+        # Count siblings.
         for sibling in sibling_states:
             if sibling.is_client_authoritative:
                 client_auth_count += 1
             else:
                 server_auth_count += 1
 
-        # Validate configuration: must be 1 client + 2 server.
+        # Validate configuration: must be 1 client + 2 server (including self).
         if client_auth_count == 1 and server_auth_count == 2:
             # Valid 3-node setup.
-            # Validate that we found all expected node types.
-            if state_from_server == null:
-                _partner_state_configuration_warning = (
-                    "3-node configuration requires a CharacterStateFromServer sibling"
-                )
-            elif input_from_client == null:
-                _partner_state_configuration_warning = (
-                    "3-node configuration requires a PlayerInputFromClient sibling"
-                )
-            elif forwarded_input_from_server == null:
-                _partner_state_configuration_warning = (
-                    "3-node configuration requires a ForwardedPlayerInputFromServer sibling"
-                )
+            # Validate that we found the two expected sibling types.
+            # (The third type is self, so it won't be in the sibling list.)
+            if self is CharacterStateFromServer:
+                # Self is CharacterStateFromServer, so we need the other two as siblings.
+                if input_from_client == null or forwarded_input_from_server == null:
+                    _partner_state_configuration_warning = (
+                        "CharacterStateFromServer requires PlayerInputFromClient and ForwardedPlayerInputFromServer siblings"
+                    )
+            elif self is PlayerInputFromClient:
+                # Self is PlayerInputFromClient, so we need the other two as siblings.
+                if state_from_server == null or forwarded_input_from_server == null:
+                    _partner_state_configuration_warning = (
+                        "PlayerInputFromClient requires CharacterStateFromServer and ForwardedPlayerInputFromServer siblings"
+                    )
+            elif self is ForwardedPlayerInputFromServer:
+                # Self is ForwardedPlayerInputFromServer, so we need the other two as siblings.
+                if state_from_server == null or input_from_client == null:
+                    _partner_state_configuration_warning = (
+                        "ForwardedPlayerInputFromServer requires CharacterStateFromServer and PlayerInputFromClient siblings"
+                    )
             else:
                 _partner_state_configuration_warning = "" # Valid 3-node setup.
         else:
