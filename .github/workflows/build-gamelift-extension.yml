@@ -1,0 +1,329 @@
+name: Build GameLift GDExtension
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'gamelift-gdextension/**'
+      - '.github/workflows/build-gamelift-extension.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'gamelift-gdextension/**'
+      - '.github/workflows/build-gamelift-extension.yml'
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            scons \
+            cmake \
+            libssl-dev \
+            python3 \
+            git
+
+      - name: Setup godot-cpp
+        working-directory: gamelift-gdextension
+        run: |
+          git clone --recurse-submodules https://github.com/godotengine/godot-cpp.git
+          cd godot-cpp
+          git checkout godot-4.2-stable
+
+      - name: Build godot-cpp
+        working-directory: gamelift-gdextension/godot-cpp
+        run: |
+          scons platform=linux target=template_release -j$(nproc)
+          scons platform=linux target=template_debug -j$(nproc)
+
+      - name: Clone GameLift Server SDK
+        working-directory: gamelift-gdextension
+        run: |
+          git clone https://github.com/amazon-gamelift/amazon-gamelift-servers-cpp-server-sdk.git gamelift-server-sdk
+
+      - name: Build GameLift Server SDK
+        working-directory: gamelift-gdextension/gamelift-server-sdk
+        run: |
+          mkdir -p cmake-build
+          cd cmake-build
+          cmake -G "Unix Makefiles" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DGAMELIFT_USE_STD=1 \
+            -DBUILD_FOR_UNREAL=ON \
+            -S .. -B .
+          make -j$(nproc)
+
+      - name: Build GDExtension (Release)
+        working-directory: gamelift-gdextension
+        env:
+          GODOT_CPP_PATH: godot-cpp
+          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build
+          OPENSSL_PATH: /usr
+        run: |
+          mkdir -p bin
+          scons platform=linux target=template_release -j$(nproc)
+
+      - name: Build GDExtension (Debug)
+        working-directory: gamelift-gdextension
+        env:
+          GODOT_CPP_PATH: godot-cpp
+          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build
+          OPENSSL_PATH: /usr
+        run: |
+          scons platform=linux target=template_debug -j$(nproc)
+
+      - name: Copy dependencies
+        working-directory: gamelift-gdextension
+        run: |
+          # Copy GameLift SDK library
+          cp gamelift-server-sdk/cmake-build/libaws-cpp-sdk-gamelift-server.so bin/
+
+          # Copy OpenSSL libraries
+          cp /usr/lib/x86_64-linux-gnu/libssl.so.3 bin/
+          cp /usr/lib/x86_64-linux-gnu/libcrypto.so.3 bin/
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamelift-gdextension-linux
+          path: gamelift-gdextension/bin/
+          retention-days: 30
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install SCons
+        run: pip install scons
+
+      - name: Setup MSVC
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup godot-cpp
+        working-directory: gamelift-gdextension
+        shell: bash
+        run: |
+          git clone --recurse-submodules https://github.com/godotengine/godot-cpp.git
+          cd godot-cpp
+          git checkout godot-4.2-stable
+
+      - name: Build godot-cpp
+        working-directory: gamelift-gdextension/godot-cpp
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          scons platform=windows target=template_release
+          scons platform=windows target=template_debug
+
+      - name: Install vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git
+          cd vcpkg
+          .\bootstrap-vcpkg.bat
+
+      - name: Install OpenSSL via vcpkg
+        run: |
+          .\vcpkg\vcpkg install openssl:x64-windows
+
+      - name: Clone GameLift Server SDK
+        working-directory: gamelift-gdextension
+        shell: bash
+        run: |
+          git clone https://github.com/amazon-gamelift/amazon-gamelift-servers-cpp-server-sdk.git gamelift-server-sdk
+
+      - name: Build GameLift Server SDK
+        working-directory: gamelift-gdextension/gamelift-server-sdk
+        shell: cmd
+        run: |
+          mkdir cmake-build
+          cd cmake-build
+          cmake -G "Visual Studio 17 2022" -A x64 ^
+            -DCMAKE_BUILD_TYPE=Release ^
+            -DGAMELIFT_USE_STD=1 ^
+            -DBUILD_FOR_UNREAL=ON ^
+            -DOPENSSL_ROOT_DIR=%GITHUB_WORKSPACE%\vcpkg\installed\x64-windows ^
+            -S .. -B .
+          cmake --build . --config Release -j
+
+      - name: Build GDExtension (Release)
+        working-directory: gamelift-gdextension
+        shell: cmd
+        env:
+          GODOT_CPP_PATH: godot-cpp
+          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build/Release
+          OPENSSL_PATH: ${{ github.workspace }}/vcpkg/installed/x64-windows
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          if not exist bin mkdir bin
+          scons platform=windows target=template_release
+
+      - name: Build GDExtension (Debug)
+        working-directory: gamelift-gdextension
+        shell: cmd
+        env:
+          GODOT_CPP_PATH: godot-cpp
+          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build/Debug
+          OPENSSL_PATH: ${{ github.workspace }}/vcpkg/installed/x64-windows
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          scons platform=windows target=template_debug
+
+      - name: Copy dependencies
+        working-directory: gamelift-gdextension
+        shell: bash
+        run: |
+          # Copy GameLift SDK DLL
+          cp gamelift-server-sdk/cmake-build/Release/aws-cpp-sdk-gamelift-server.dll bin/ || true
+
+          # Copy OpenSSL DLLs
+          cp $GITHUB_WORKSPACE/vcpkg/installed/x64-windows/bin/libssl-3-x64.dll bin/ || true
+          cp $GITHUB_WORKSPACE/vcpkg/installed/x64-windows/bin/libcrypto-3-x64.dll bin/ || true
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamelift-gdextension-windows
+          path: gamelift-gdextension/bin/
+          retention-days: 30
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          brew install scons cmake openssl@3
+
+      - name: Setup godot-cpp
+        working-directory: gamelift-gdextension
+        run: |
+          git clone --recurse-submodules https://github.com/godotengine/godot-cpp.git
+          cd godot-cpp
+          git checkout godot-4.2-stable
+
+      - name: Build godot-cpp
+        working-directory: gamelift-gdextension/godot-cpp
+        run: |
+          scons platform=macos target=template_release -j$(sysctl -n hw.ncpu)
+          scons platform=macos target=template_debug -j$(sysctl -n hw.ncpu)
+
+      - name: Clone GameLift Server SDK
+        working-directory: gamelift-gdextension
+        run: |
+          git clone https://github.com/amazon-gamelift/amazon-gamelift-servers-cpp-server-sdk.git gamelift-server-sdk
+
+      - name: Build GameLift Server SDK
+        working-directory: gamelift-gdextension/gamelift-server-sdk
+        run: |
+          mkdir -p cmake-build
+          cd cmake-build
+          cmake -G "Unix Makefiles" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DGAMELIFT_USE_STD=1 \
+            -DBUILD_FOR_UNREAL=ON \
+            -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3 \
+            -S .. -B .
+          make -j$(sysctl -n hw.ncpu)
+
+      - name: Build GDExtension (Release)
+        working-directory: gamelift-gdextension
+        env:
+          GODOT_CPP_PATH: godot-cpp
+          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build
+          OPENSSL_PATH: /usr/local/opt/openssl@3
+        run: |
+          mkdir -p bin
+          scons platform=macos target=template_release -j$(sysctl -n hw.ncpu)
+
+      - name: Build GDExtension (Debug)
+        working-directory: gamelift-gdextension
+        env:
+          GODOT_CPP_PATH: godot-cpp
+          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build
+          OPENSSL_PATH: /usr/local/opt/openssl@3
+        run: |
+          scons platform=macos target=template_debug -j$(sysctl -n hw.ncpu)
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamelift-gdextension-macos
+          path: gamelift-gdextension/bin/
+          retention-days: 30
+
+  combine-artifacts:
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Combine artifacts
+        run: |
+          mkdir -p addons/gamelift/bin
+
+          # Copy Linux binaries
+          cp artifacts/gamelift-gdextension-linux/* addons/gamelift/bin/ || true
+
+          # Copy Windows binaries
+          cp artifacts/gamelift-gdextension-windows/* addons/gamelift/bin/ || true
+
+          # Copy macOS binaries (frameworks)
+          cp -r artifacts/gamelift-gdextension-macos/* addons/gamelift/bin/ || true
+
+          # Copy gdextension file
+          cp gamelift-gdextension/gamelift.gdextension addons/gamelift/
+
+          # List what we have
+          echo "Built libraries:"
+          ls -lah addons/gamelift/bin/
+
+      - name: Upload combined artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamelift-gdextension-all-platforms
+          path: addons/gamelift/
+          retention-days: 30
+
+      - name: Create summary
+        run: |
+          echo "## GameLift GDExtension Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Built for the following platforms:" >> $GITHUB_STEP_SUMMARY
+          echo "- Linux (x86_64)" >> $GITHUB_STEP_SUMMARY
+          echo "- Windows (x86_64)" >> $GITHUB_STEP_SUMMARY
+          echo "- macOS (universal)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download the 'gamelift-gdextension-all-platforms' artifact and extract to your project's addons/ directory." >> $GITHUB_STEP_SUMMARY

@@ -18,6 +18,9 @@ func _exit_tree() -> void:
 func _ready() -> void:
     super._ready()
 
+    if Engine.is_editor_hint():
+        return
+
     if G.network.is_client:
         G.network.local_authority_added.connect(
             _on_local_authority_added,
