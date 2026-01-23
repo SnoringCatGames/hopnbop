@@ -75,12 +75,27 @@ func _network_process() -> void:
     if not G.ensure_valid(character):
         return
 
+    # Determine which input source to use.
+    # - Server and owning client: use PlayerInputFromClient (client-authoritative)
+    # - Remote clients viewing other players: use ForwardedPlayerInputFromServer (server-authoritative)
+    var is_remote_player := (
+        not is_authority_for_state_from_server and
+        not is_authority_for_input_from_client
+    )
+    var input_source: ReconcilableNetworkedState
+    if is_remote_player:
+        input_source = forwarded_input
+    else:
+        input_source = input_from_client
+
     # Handle actions (from a client).
-    if input_from_client._has_authoritative_state_for_current_frame():
+    if input_source._has_authoritative_state_for_current_frame():
         # Authoritative input already received for this frame - use it.
         # This happens when the client has sent input that arrived and was
         # unpacked into the buffer during _handle_new_authoritative_state.
-        input_from_client._unpack_buffer_state(timestamp_index)
+        input_source._unpack_buffer_state(timestamp_index)
+        # Copy input from source to character.
+        _apply_input_to_character(input_source)
         # Update surface attachment state based on the input we just loaded.
         character.surfaces.update_actions()
         # FIXME: Remove after testing.
@@ -102,8 +117,10 @@ func _network_process() -> void:
             # This is intentional: predicted input uses the last known state
             # (N-1) to simulate frame N, while authoritative input that arrives
             # later will be at frame N.
-            input_from_client._unpack_buffer_state(timestamp_index - 1)
-            input_from_client.frame_authority = FrameAuthority.PREDICTED
+            input_source._unpack_buffer_state(timestamp_index - 1)
+            # Copy input from source to character.
+            _apply_input_to_character(input_source)
+            input_source.frame_authority = FrameAuthority.PREDICTED
             # Update surface attachment state based on the input we just loaded.
             character.surfaces.update_actions()
             # FIXME: Remove after testing.
@@ -176,3 +193,16 @@ func _cache_forwarded_input() -> void:
         if child is ForwardedPlayerInputFromServer:
             forwarded_input = child as ForwardedPlayerInputFromServer
             return
+
+
+func _apply_input_to_character(input_source: ReconcilableNetworkedState) -> void:
+    # Copy input from PlayerInputFromClient or ForwardedPlayerInputFromServer
+    # to the character.
+    if input_source is PlayerInputFromClient:
+        var input := input_source as PlayerInputFromClient
+        character.actions.bitmask = input.actions
+        character.last_triggered_jump_frame_index = input.last_triggered_jump_frame_index
+    elif input_source is ForwardedPlayerInputFromServer:
+        var input := input_source as ForwardedPlayerInputFromServer
+        character.actions.bitmask = input.actions
+        character.last_triggered_jump_frame_index = input.last_triggered_jump_frame_index
