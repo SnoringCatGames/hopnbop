@@ -29,7 +29,8 @@
       "Bash(python3:*)",
       "Bash(ls:*)",
       "Bash(taskkill:*)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }
