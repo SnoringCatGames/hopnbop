@@ -85,16 +85,18 @@ jobs:
           cd cmake-build
           cmake -G "Unix Makefiles" \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=./prefix \
             -DGAMELIFT_USE_STD=1 \
             -DBUILD_FOR_UNREAL=ON \
             -S .. -B .
           make -j$(nproc)
+          make install
 
       - name: Build GDExtension (Release)
         working-directory: gamelift-gdextension
         env:
           GODOT_CPP_PATH: godot-cpp
-          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build
+          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build/prefix
           OPENSSL_PATH: /usr
         run: |
           mkdir -p bin
@@ -104,7 +106,7 @@ jobs:
         working-directory: gamelift-gdextension
         env:
           GODOT_CPP_PATH: godot-cpp
-          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build
+          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build/prefix
           OPENSSL_PATH: /usr
         run: |
           scons platform=linux target=template_debug -j$(nproc)
@@ -113,7 +115,7 @@ jobs:
         working-directory: gamelift-gdextension
         run: |
           # Copy GameLift SDK library
-          cp gamelift-server-sdk/cmake-build/libaws-cpp-sdk-gamelift-server.so bin/
+          cp gamelift-server-sdk/cmake-build/prefix/lib/libaws-cpp-sdk-gamelift-server.so bin/
 
           # Copy OpenSSL libraries
           cp /usr/lib/x86_64-linux-gnu/libssl.so.3 bin/
@@ -224,18 +226,20 @@ jobs:
           cd cmake-build
           cmake -G "Visual Studio 17 2022" -A x64 \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=./prefix \
             -DGAMELIFT_USE_STD=1 \
             -DBUILD_FOR_UNREAL=ON \
             -DOPENSSL_ROOT_DIR=$GITHUB_WORKSPACE/vcpkg/installed/x64-windows \
             -S .. -B .
           cmake --build . --config Release -j
+          cmake --install . --config Release
 
       - name: Build GDExtension (Release)
         working-directory: gamelift-gdextension
         shell: cmd
         env:
           GODOT_CPP_PATH: godot-cpp
-          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build/Release
+          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build/prefix
           OPENSSL_PATH: ${{ github.workspace }}/vcpkg/installed/x64-windows
         run: |
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
@@ -247,7 +251,7 @@ jobs:
         shell: cmd
         env:
           GODOT_CPP_PATH: godot-cpp
-          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build/Debug
+          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build/prefix
           OPENSSL_PATH: ${{ github.workspace }}/vcpkg/installed/x64-windows
         run: |
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
@@ -258,7 +262,7 @@ jobs:
         shell: bash
         run: |
           # Copy GameLift SDK DLL
-          cp gamelift-server-sdk/cmake-build/Release/aws-cpp-sdk-gamelift-server.dll bin/ || true
+          cp gamelift-server-sdk/cmake-build/prefix/bin/aws-cpp-sdk-gamelift-server.dll bin/ || true
 
           # Copy OpenSSL DLLs
           cp $GITHUB_WORKSPACE/vcpkg/installed/x64-windows/bin/libssl-3-x64.dll bin/ || true
@@ -335,17 +339,19 @@ jobs:
           cd cmake-build
           cmake -G "Unix Makefiles" \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=./prefix \
             -DGAMELIFT_USE_STD=1 \
             -DBUILD_FOR_UNREAL=ON \
             -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3 \
             -S .. -B .
           make -j$(sysctl -n hw.ncpu)
+          make install
 
       - name: Build GDExtension (Release)
         working-directory: gamelift-gdextension
         env:
           GODOT_CPP_PATH: godot-cpp
-          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build
+          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build/prefix
           OPENSSL_PATH: /usr/local/opt/openssl@3
         run: |
           mkdir -p bin
@@ -355,7 +361,7 @@ jobs:
         working-directory: gamelift-gdextension
         env:
           GODOT_CPP_PATH: godot-cpp
-          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build
+          GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build/prefix
           OPENSSL_PATH: /usr/local/opt/openssl@3
         run: |
           scons platform=macos target=template_debug -j$(sysctl -n hw.ncpu)
