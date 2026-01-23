@@ -30,7 +30,8 @@
       "Bash(ls:*)",
       "Bash(taskkill:*)",
       "Bash(tee:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(chmod:*)"
     ]
   }
 }
