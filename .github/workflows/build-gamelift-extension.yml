@@ -34,7 +34,18 @@ jobs:
             python3 \
             git
 
+      - name: Cache godot-cpp
+        id: cache-godot-cpp-linux
+        uses: actions/cache@v4
+        with:
+          path: |
+            gamelift-gdextension/godot-cpp
+          key: godot-cpp-linux-4.2-stable-${{ hashFiles('gamelift-gdextension/SConstruct') }}
+          restore-keys: |
+            godot-cpp-linux-4.2-stable-
+
       - name: Setup godot-cpp
+        if: steps.cache-godot-cpp-linux.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension
         run: |
           git clone --recurse-submodules https://github.com/godotengine/godot-cpp.git
@@ -42,17 +53,30 @@ jobs:
           git checkout godot-4.2-stable
 
       - name: Build godot-cpp
+        if: steps.cache-godot-cpp-linux.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension/godot-cpp
         run: |
           scons platform=linux target=template_release -j$(nproc)
           scons platform=linux target=template_debug -j$(nproc)
 
+      - name: Cache GameLift Server SDK
+        id: cache-gamelift-sdk-linux
+        uses: actions/cache@v4
+        with:
+          path: |
+            gamelift-gdextension/gamelift-server-sdk
+          key: gamelift-sdk-linux-${{ hashFiles('gamelift-gdextension/gamelift-server-sdk/.git/refs/heads/main', 'gamelift-gdextension/SConstruct') }}
+          restore-keys: |
+            gamelift-sdk-linux-
+
       - name: Clone GameLift Server SDK
+        if: steps.cache-gamelift-sdk-linux.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension
         run: |
           git clone https://github.com/amazon-gamelift/amazon-gamelift-servers-cpp-server-sdk.git gamelift-server-sdk
 
       - name: Build GameLift Server SDK
+        if: steps.cache-gamelift-sdk-linux.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension/gamelift-server-sdk
         run: |
           mkdir -p cmake-build
@@ -120,7 +144,18 @@ jobs:
       - name: Setup MSVC
         uses: microsoft/setup-msbuild@v2
 
+      - name: Cache godot-cpp
+        id: cache-godot-cpp-windows
+        uses: actions/cache@v4
+        with:
+          path: |
+            gamelift-gdextension/godot-cpp
+          key: godot-cpp-windows-4.2-stable-${{ hashFiles('gamelift-gdextension/SConstruct') }}
+          restore-keys: |
+            godot-cpp-windows-4.2-stable-
+
       - name: Setup godot-cpp
+        if: steps.cache-godot-cpp-windows.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension
         shell: bash
         run: |
@@ -129,6 +164,7 @@ jobs:
           git checkout godot-4.2-stable
 
       - name: Build godot-cpp
+        if: steps.cache-godot-cpp-windows.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension/godot-cpp
         shell: cmd
         run: |
@@ -136,23 +172,47 @@ jobs:
           scons platform=windows target=template_release
           scons platform=windows target=template_debug
 
+      - name: Cache vcpkg
+        id: cache-vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            vcpkg
+          key: vcpkg-windows-openssl-${{ runner.os }}
+          restore-keys: |
+            vcpkg-windows-openssl-
+
       - name: Install vcpkg
+        if: steps.cache-vcpkg.outputs.cache-hit != 'true'
         run: |
           git clone https://github.com/microsoft/vcpkg.git
           cd vcpkg
           .\bootstrap-vcpkg.bat
 
       - name: Install OpenSSL via vcpkg
+        if: steps.cache-vcpkg.outputs.cache-hit != 'true'
         run: |
           .\vcpkg\vcpkg install openssl:x64-windows
 
+      - name: Cache GameLift Server SDK
+        id: cache-gamelift-sdk-windows
+        uses: actions/cache@v4
+        with:
+          path: |
+            gamelift-gdextension/gamelift-server-sdk
+          key: gamelift-sdk-windows-${{ hashFiles('gamelift-gdextension/gamelift-server-sdk/.git/refs/heads/main', 'gamelift-gdextension/SConstruct') }}
+          restore-keys: |
+            gamelift-sdk-windows-
+
       - name: Clone GameLift Server SDK
+        if: steps.cache-gamelift-sdk-windows.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension
         shell: bash
         run: |
           git clone https://github.com/amazon-gamelift/amazon-gamelift-servers-cpp-server-sdk.git gamelift-server-sdk
 
       - name: Build GameLift Server SDK
+        if: steps.cache-gamelift-sdk-windows.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension/gamelift-server-sdk
         shell: cmd
         run: |
@@ -220,7 +280,18 @@ jobs:
         run: |
           brew install scons cmake openssl@3
 
+      - name: Cache godot-cpp
+        id: cache-godot-cpp-macos
+        uses: actions/cache@v4
+        with:
+          path: |
+            gamelift-gdextension/godot-cpp
+          key: godot-cpp-macos-4.2-stable-${{ hashFiles('gamelift-gdextension/SConstruct') }}
+          restore-keys: |
+            godot-cpp-macos-4.2-stable-
+
       - name: Setup godot-cpp
+        if: steps.cache-godot-cpp-macos.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension
         run: |
           git clone --recurse-submodules https://github.com/godotengine/godot-cpp.git
@@ -228,17 +299,30 @@ jobs:
           git checkout godot-4.2-stable
 
       - name: Build godot-cpp
+        if: steps.cache-godot-cpp-macos.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension/godot-cpp
         run: |
           scons platform=macos target=template_release -j$(sysctl -n hw.ncpu)
           scons platform=macos target=template_debug -j$(sysctl -n hw.ncpu)
 
+      - name: Cache GameLift Server SDK
+        id: cache-gamelift-sdk-macos
+        uses: actions/cache@v4
+        with:
+          path: |
+            gamelift-gdextension/gamelift-server-sdk
+          key: gamelift-sdk-macos-${{ hashFiles('gamelift-gdextension/gamelift-server-sdk/.git/refs/heads/main', 'gamelift-gdextension/SConstruct') }}
+          restore-keys: |
+            gamelift-sdk-macos-
+
       - name: Clone GameLift Server SDK
+        if: steps.cache-gamelift-sdk-macos.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension
         run: |
           git clone https://github.com/amazon-gamelift/amazon-gamelift-servers-cpp-server-sdk.git gamelift-server-sdk
 
       - name: Build GameLift Server SDK
+        if: steps.cache-gamelift-sdk-macos.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension/gamelift-server-sdk
         run: |
           mkdir -p cmake-build
