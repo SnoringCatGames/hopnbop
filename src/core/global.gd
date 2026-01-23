@@ -84,6 +84,10 @@ func get_player(multiplayer_id: int) -> Player:
 
 # --- Include some convenient access to logging/error utilities ---------------
 
+var is_verbose: bool:
+    get:
+        return log.is_verbose
+
 
 func print(
         message = "",

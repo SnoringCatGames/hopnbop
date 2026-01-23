@@ -41,6 +41,10 @@ var _force_include_log_warnings := true
 # because GUT may not be in tree yet during early initialization
 var _is_test_env_cached: Variant = null
 
+var is_verbose: bool:
+    get:
+        return G.settings.verbosity >= Verbosity.VERBOSE
+
 
 func _ready() -> void:
     _print_front_matter()
