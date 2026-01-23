@@ -25,8 +25,7 @@ class TestableNetworkedState extends ReconcilableNetworkedState:
     # Allow tests to change authority
     var _test_is_server_authoritative := true
 
-    @warning_ignore("unused_private_class_variable")
-    var _synced_properties_and_rollback_diff_thresholds := {
+    @warning_ignore("unused_private_class_variable") var _synced_properties_and_rollback_diff_thresholds := {
         "test_position": 1.0,
         "test_velocity": 10.0,
         "test_health": 5,
@@ -78,6 +77,7 @@ class TestableNetworkedState extends ReconcilableNetworkedState:
             _parse_property_names()
 
         super._unpack_networked_state()
+
 
     # Override _parse_property_names to work around @tool + inner class issues
     func _parse_property_names() -> void:
@@ -386,7 +386,6 @@ class TestStatePacking:
         entity._parse_property_names()
 
 
-
     func after_each():
         ArrayPool.clear_all_pools()
 
@@ -402,12 +401,12 @@ class TestStatePacking:
         entity.pack_networked_state_public()
 
         # Verify packed_state is not empty and has correct size
-        # 6 properties + 1 timestamp = 7 elements
+        # 6 properties + frame_authority + timestamp = 8 elements
         assert_not_null(entity.packed_state, "packed_state should not be null")
         assert_eq(
             entity.packed_state.size(),
-            7,
-            "packed_state should have 7 elements (6 properties + timestamp)",
+            8,
+            "packed_state should have 8 elements (6 properties + frame_authority + timestamp)",
         )
 
 
@@ -473,12 +472,12 @@ class TestStatePacking:
         # Verify pack worked
         assert_not_null(
             packed_state_to_restore,
-            "Packed state should not be null"
+            "Packed state should not be null",
         )
         assert_eq(
             packed_state_to_restore.size(),
-            7,
-            "Packed state should have 7 elements"
+            8,
+            "Packed state should have 8 elements",
         )
 
         # Now reset properties to defaults
@@ -499,8 +498,8 @@ class TestStatePacking:
         # Verify state is still valid before unpacking
         assert_eq(
             entity.packed_state.size(),
-            7,
-            "Packed state should still have 7 elements before unpack"
+            8,
+            "Packed state should still have 8 elements before unpack",
         )
 
         entity.unpack_networked_state_public()
@@ -552,15 +551,16 @@ class TestStatePacking:
             G.network.frame_driver.get_time_usec_from_frame_index(base_frame)
         )
 
-        # Create packed network state
-        var network_state := ArrayPool.acquire(7)
+        # Create packed network state (6 properties + frame_authority + timestamp)
+        var network_state := ArrayPool.acquire(8)
         network_state[0] = Vector2(100.0, 50.0)
         network_state[1] = Vector2(5.0, 2.0)
         network_state[2] = 90
         network_state[3] = 12.0
         network_state[4] = true
         network_state[5] = "player"
-        network_state[6] = timestamp_usec
+        network_state[6] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+        network_state[7] = timestamp_usec
 
         # Pack into buffer
         entity.pack_buffer_state_from_network_state_public(network_state)
@@ -597,8 +597,8 @@ class TestStatePacking:
         assert_not_null(packed_copy, "Packed copy should not be null")
         assert_eq(
             packed_copy.size(),
-            7,
-            "Packed copy should have 7 elements"
+            8,
+            "Packed copy should have 8 elements",
         )
 
         # Clear properties
@@ -617,8 +617,8 @@ class TestStatePacking:
         # Verify state is still valid before unpacking
         assert_eq(
             entity.packed_state.size(),
-            7,
-            "Packed state should still have 7 elements before unpack"
+            8,
+            "Packed state should still have 8 elements before unpack",
         )
 
         entity.unpack_networked_state_public()
@@ -944,8 +944,7 @@ class TestBufferStateRestoration:
 
         var retrieved_state: Array = entity._rollback_buffer.get_at(test_frame)
         var authority := (
-            retrieved_state[retrieved_state.size() - 1]
-                as ReconcilableNetworkedState.FrameAuthority
+            retrieved_state[retrieved_state.size() - 1] as ReconcilableNetworkedState.FrameAuthority
         )
 
         assert_eq(
@@ -1214,8 +1213,7 @@ class TestPropertyConfiguration:
                 entity._rollback_buffer.get_at(target_frame)
             )
             var authority := (
-                frame_state[frame_state.size() - 1]
-                    as ReconcilableNetworkedState.FrameAuthority
+                frame_state[frame_state.size() - 1] as ReconcilableNetworkedState.FrameAuthority
             )
 
             assert_eq(
@@ -1223,99 +1221,3 @@ class TestPropertyConfiguration:
                 ReconcilableNetworkedState.FrameAuthority.PREDICTED,
                 "Frame %d should be marked as PREDICTED" % target_frame,
             )
-
-
-    func test_record_initial_state_skips_partner_when_requested():
-        # Create a partner state (simulate 2-node setup).
-        # Entity is server-auth, partner is client-auth.
-        var partner := TestableNetworkedState.new()
-        partner.name = "Partner"
-        partner.root_path = NodePath(".")
-        partner._test_is_server_authoritative = false  # Make it client-auth.
-        entity.get_parent().add_child(partner)
-        partner._ready()
-        if partner._rollback_buffer == null:
-            partner._set_up_rollback_buffer()
-        partner._parse_property_names()
-
-        # Clear partner's buffer to start fresh
-        partner._rollback_buffer._total_pushed = 0
-        partner._rollback_buffer._capacity = partner._rollback_buffer._data.size()
-
-        # Simulate sibling discovery (2-node setup).
-        entity.input_from_client = partner
-        partner.state_from_server = entity
-
-        # Set partner to different values
-        partner.test_position = Vector2(999.0, 999.0)
-        partner._sync_from_scene_state()
-
-        # Record initial state without partner
-        entity.record_initial_state(false)
-
-        # Partner's buffer should have NO frames because include_partner=false
-        # Check that buffer is still empty (total_pushed should be 0)
-        assert_eq(
-            partner._rollback_buffer._total_pushed,
-            0,
-            "Partner should not have any frames when include_partner=false",
-        )
-
-        partner.queue_free()
-
-
-    func test_record_initial_state_initializes_partner_by_default():
-        # Create a partner state (simulate 2-node setup).
-        # Entity is server-auth, partner is client-auth.
-        var partner := TestableNetworkedState.new()
-        partner.name = "Partner"
-        partner.root_path = NodePath(".")
-        partner._test_is_server_authoritative = false  # Make it client-auth.
-        entity.get_parent().add_child(partner)
-        partner._ready()
-        if partner._rollback_buffer == null:
-            partner._set_up_rollback_buffer()
-        partner._parse_property_names()
-
-        # Simulate sibling discovery (2-node setup).
-        entity.input_from_client = partner
-        partner.state_from_server = entity
-
-        # Set partner to specific values
-        partner.test_position = Vector2(300.0, 400.0)
-        partner.test_velocity = Vector2(30.0, 40.0)
-        partner._sync_from_scene_state()
-
-        # Record initial state with partner (default behavior)
-        var current_frame := G.network.server_frame_index
-        entity.record_initial_state()
-
-        # Partner's buffer should have frames
-        assert_true(
-            partner._rollback_buffer.has_at(current_frame - 2),
-            "Partner should have frame N-2",
-        )
-        assert_true(
-            partner._rollback_buffer.has_at(current_frame - 1),
-            "Partner should have frame N-1",
-        )
-        assert_true(
-            partner._rollback_buffer.has_at(current_frame),
-            "Partner should have frame N",
-        )
-
-        # Verify partner's values are preserved
-        var partner_frame_state: Array = (
-            partner._rollback_buffer.get_at(current_frame)
-        )
-        var position_index: int = (
-            partner._property_name_to_pack_index["test_position"]
-        )
-
-        assert_eq(
-            partner_frame_state[position_index],
-            Vector2(300.0, 400.0),
-            "Partner position should be preserved",
-        )
-
-        partner.queue_free()

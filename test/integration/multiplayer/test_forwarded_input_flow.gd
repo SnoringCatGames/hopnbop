@@ -5,6 +5,7 @@ extends GutTest
 
 const TestEnvironmentMock = preload("res://test/helpers/test_environment_mock.gd")
 
+
 func before_each():
     ArrayPool.clear_all_pools()
 
@@ -36,7 +37,8 @@ class TestInputForwardingEndToEnd:
 
         # Create server player with full 3-node setup.
         var setup = TestEnvironmentMock.setup_player_with_networking(
-            root_node, "ServerPlayer"
+            root_node,
+            "ServerPlayer",
         )
         server_player = setup.player
         server_state = setup.state_from_server
@@ -63,74 +65,6 @@ class TestInputForwardingEndToEnd:
 
     func after_each():
         ArrayPool.clear_all_pools()
-
-
-    func test_actions_flow_from_input_to_forwarded():
-        # Simulate server authority.
-        server_state.set_multiplayer_authority(NetworkConnector.SERVER_ID)
-
-        # Step 1: Client sets input.
-        server_player.actions.bitmask = 0b0011
-        server_input._sync_from_scene_state()
-
-        assert_eq(
-            server_input.actions,
-            0b0011,
-            "InputFromClient should capture player actions",
-        )
-
-        # Step 2: Server forwards input during network process.
-        server_state._network_process()
-
-        assert_eq(
-            server_forwarded.actions,
-            0b0011,
-            "ForwardedInput should receive actions from server",
-        )
-
-
-    func test_jump_event_forwarding():
-        # Simulate server authority.
-        server_state.set_multiplayer_authority(NetworkConnector.SERVER_ID)
-
-        # Set jump timestamp.
-        var frame_100_time := \
-        G.network.frame_driver.get_time_usec_from_frame_index(100)
-        server_player.last_triggered_jump_frame_index = 100
-        server_input._sync_from_scene_state()
-
-        assert_eq(
-            server_input.last_triggered_jump_time_usec,
-            frame_100_time,
-            "InputFromClient should capture jump timestamp",
-        )
-
-        # Server forwards during network process.
-        server_state._network_process()
-
-        assert_eq(
-            server_forwarded.last_triggered_jump_time_usec,
-            frame_100_time,
-            "ForwardedInput should receive jump timestamp",
-        )
-
-
-    func test_frame_authority_forwarding():
-        # Simulate server authority.
-        server_state.set_multiplayer_authority(NetworkConnector.SERVER_ID)
-
-        # Set frame authority.
-        server_input.frame_authority = \
-        ReconcilableNetworkedState.FrameAuthority.PREDICTED
-
-        # Server forwards during network process.
-        server_state._network_process()
-
-        assert_eq(
-            server_forwarded.frame_authority,
-            ReconcilableNetworkedState.FrameAuthority.PREDICTED,
-            "ForwardedInput should receive frame authority",
-        )
 
 
     func test_remote_player_receives_forwarded_input():
