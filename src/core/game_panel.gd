@@ -88,7 +88,7 @@ func _client_on_level_despawned(p_level: Node) -> void:
 
 
 func _client_on_local_player_loaded(
-        _state_from_client: PlayerInputFromClient,
+        _input_from_client: PlayerInputFromClient,
 ) -> void:
     is_level_fully_loaded = true
 

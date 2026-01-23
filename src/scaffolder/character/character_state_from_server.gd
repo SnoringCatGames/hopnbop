@@ -7,22 +7,15 @@ extends ReconcilableNetworkedState
         character = value
         update_configuration_warnings()
 
-var state_from_client: PlayerInputFromClient:
-    get:
-        if is_instance_valid(_partner_state):
-            return _partner_state as PlayerInputFromClient
-        else:
-            return null
-
 var forwarded_input: ForwardedPlayerInputFromServer = null
 
 var is_authority_for_state_from_server: bool:
     get:
         return is_multiplayer_authority()
 
-var is_authority_for_state_from_client: bool:
+var is_authority_for_input_from_client: bool:
     get:
-        return is_instance_valid(state_from_client) and state_from_client.is_multiplayer_authority()
+        return is_instance_valid(input_from_client) and input_from_client.is_multiplayer_authority()
 
 var position := Vector2.ZERO
 var velocity := Vector2.ZERO
@@ -82,11 +75,11 @@ func _network_process() -> void:
         return
 
     # Handle actions (from a client).
-    if state_from_client._has_authoritative_state_for_current_frame():
+    if input_from_client._has_authoritative_state_for_current_frame():
         # Authoritative input already received for this frame - use it.
         # This happens when the client has sent input that arrived and was
         # unpacked into the buffer during _handle_new_authoritative_state.
-        state_from_client._unpack_buffer_state(timestamp_index)
+        input_from_client._unpack_buffer_state(timestamp_index)
         # Update surface attachment state based on the input we just loaded.
         character.surfaces.update_actions()
         # FIXME: Remove after testing.
@@ -98,18 +91,18 @@ func _network_process() -> void:
             ScaffolderLog.CATEGORY_NETWORK_SYNC,
         )
     else:
-        if is_authority_for_state_from_client:
+        if is_authority_for_input_from_client:
             # This client controls input - capture it now as authoritative.
             # _collect_actions() will call surfaces.update_actions() internally.
             character._collect_actions()
-            state_from_client.frame_authority = FrameAuthority.AUTHORITATIVE
+            input_from_client.frame_authority = FrameAuthority.AUTHORITATIVE
         else:
             # No new input yet - extrapolate from previous frame's input.
             # This is intentional: predicted input uses the last known state
             # (N-1) to simulate frame N, while authoritative input that arrives
             # later will be at frame N.
-            state_from_client._unpack_buffer_state(timestamp_index - 1)
-            state_from_client.frame_authority = FrameAuthority.PREDICTED
+            input_from_client._unpack_buffer_state(timestamp_index - 1)
+            input_from_client.frame_authority = FrameAuthority.PREDICTED
             # Update surface attachment state based on the input we just loaded.
             character.surfaces.update_actions()
             # FIXME: Remove after testing.
@@ -126,11 +119,11 @@ func _network_process() -> void:
     if (
         is_authority_for_state_from_server and
         is_instance_valid(forwarded_input) and
-        is_instance_valid(state_from_client)
+        is_instance_valid(input_from_client)
     ):
-        forwarded_input.actions = state_from_client.actions
-        forwarded_input.last_triggered_jump_time_usec = state_from_client.last_triggered_jump_time_usec
-        forwarded_input.frame_authority = state_from_client.frame_authority
+        forwarded_input.actions = input_from_client.actions
+        forwarded_input.last_triggered_jump_time_usec = input_from_client.last_triggered_jump_time_usec
+        forwarded_input.frame_authority = input_from_client.frame_authority
 
     # Handle scene state (from the server).
     if is_authority_for_state_from_server:
@@ -138,7 +131,7 @@ func _network_process() -> void:
         # authoritative input, otherwise mark as predicted to avoid overriding
         # client predictions with server extrapolations.
         character._apply_movement()
-        frame_authority = state_from_client.frame_authority
+        frame_authority = input_from_client.frame_authority
     else:
         if _has_authoritative_state_for_current_frame():
             # We already recorded authoritative state for this frame, so we
