@@ -2,15 +2,17 @@ class_name ScreensMain
 extends PanelContainer
 
 enum ScreenType {
-	MAIN_MENU,
+	GODOT_SPLASH,
+	SCG_SPLASH,
 	LOADING,
 	GAME_OVER,
 	WIN,
 	PAUSE,
+	LOBBY,
 	GAME,
 }
 
-var current_screen := ScreenType.MAIN_MENU
+var current_screen := ScreenType.GODOT_SPLASH
 
 
 func _enter_tree() -> void:
@@ -32,7 +34,7 @@ func _ready() -> void:
 
 
 func client_open_screen(screen_type: ScreenType) -> void:
-	G.check_is_client("ScreensMain.client_open_screen")
+	G.check_is_client()
 
 	if screen_type == current_screen:
 		# Already there!
@@ -50,9 +52,8 @@ func client_open_screen(screen_type: ScreenType) -> void:
 		ScaffolderLog.CATEGORY_INTERACTION,
 	)
 
-	get_tree().paused = screen_type != ScreenType.GAME
+	get_tree().paused = screen_type not in [ScreenType.GAME, ScreenType.LOBBY]
 
-	G.main_menu_screen.visible = screen_type == ScreenType.MAIN_MENU
 	G.loading_screen.visible = screen_type == ScreenType.LOADING
 	G.game_over_screen.visible = screen_type == ScreenType.GAME_OVER
 	G.win_screen.visible = screen_type == ScreenType.WIN
@@ -60,10 +61,12 @@ func client_open_screen(screen_type: ScreenType) -> void:
 
 	var ends_game := (
 		[
-			ScreenType.MAIN_MENU,
+			ScreenType.GODOT_SPLASH,
+			ScreenType.SCG_SPLASH,
 			ScreenType.LOADING,
 			ScreenType.GAME_OVER,
 			ScreenType.WIN,
+			ScreenType.LOBBY,
 		].has(screen_type)
 	)
 	if ends_game and G.local_session.is_game_active:
@@ -71,11 +74,11 @@ func client_open_screen(screen_type: ScreenType) -> void:
 
 	var plays_menu_theme := (
 		[
-			ScreenType.MAIN_MENU,
 			ScreenType.LOADING,
 			ScreenType.GAME_OVER,
 			ScreenType.WIN,
 			ScreenType.PAUSE,
+			ScreenType.LOBBY,
 		].has(screen_type)
 	)
 	if plays_menu_theme:
@@ -86,13 +89,17 @@ func client_open_screen(screen_type: ScreenType) -> void:
 		G.audio.fade_to_main_theme()
 
 	if screen_type == ScreenType.GAME:
-		G.game_panel.on_return_from_screen()
+		G.game_panel.on_return_to_game_from_screen(previous_screen_type)
+	elif screen_type == ScreenType.LOBBY:
+		G.game_panel.on_return_to_lobby_from_screen(previous_screen_type)
 	else:
 		var screen := get_screen_from_type(screen_type)
 		screen.on_open()
 
 	if previous_screen_type == ScreenType.GAME:
-		G.game_panel.on_left_to_screen()
+		G.game_panel.on_left_game_to_screen(screen_type)
+	elif previous_screen_type == ScreenType.LOBBY:
+		G.game_panel.on_left_lobby_to_screen(screen_type)
 	else:
 		var previous_screen := get_screen_from_type(previous_screen_type)
 		previous_screen.on_close()
@@ -102,8 +109,10 @@ func client_open_screen(screen_type: ScreenType) -> void:
 
 func get_screen_from_type(screen_type: ScreenType) -> Screen:
 	match screen_type:
-		ScreenType.MAIN_MENU:
-			return G.main_menu_screen
+		ScreenType.GODOT_SPLASH:
+			return G.godot_splash_screen
+		ScreenType.SCG_SPLASH:
+			return G.scg_splash_screen
 		ScreenType.LOADING:
 			return G.loading_screen
 		ScreenType.GAME_OVER:
@@ -112,6 +121,8 @@ func get_screen_from_type(screen_type: ScreenType) -> Screen:
 			return G.win_screen
 		ScreenType.PAUSE:
 			return G.pause_screen
+		ScreenType.LOBBY:
+			return null
 		ScreenType.GAME:
 			return null
 		_:

@@ -52,7 +52,8 @@ var server_port: int:
 @export var show_debug_player_state := false
 @export var show_perf_tracker := false
 
-@export var start_in_game := true
+@export var start_in_game := false
+@export var skip_splash := false
 @export var full_screen := false
 @export var mute_music := false
 @export var pauses_on_focus_out := true
@@ -60,13 +61,16 @@ var server_port: int:
 
 @export var show_hud := true
 
+@export var godot_splash_duration_sec := 0.9
+@export var scg_splash_duration_sec := 0.9
+
 @export_group("Logs")
 ## Logs with these categories won't be shown.
 @export var excluded_log_categories: Array[StringName] = [
 	#ScaffolderLog.CATEGORY_DEFAULT,
 	#ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 	ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION,
-	ScaffolderLog.CATEGORY_PLAYER_MOVEMENT,
+	ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
 	#ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
 	#ScaffolderLog.CATEGORY_NETWORK_SYNC,
 	#ScaffolderLog.CATEGORY_INTERACTION,
@@ -82,6 +86,11 @@ var server_port: int:
 @export var default_theme: Theme
 @export var default_palette: ScaffolderColorPalette
 @export var screen_style_box: StyleBox
+
+@export_group("Local Multiplayer")
+@export var local_player_max := 4
+@export var lobby_level_scene: PackedScene
+@export_group("")
 
 # --- Game-specific configuration ---
 

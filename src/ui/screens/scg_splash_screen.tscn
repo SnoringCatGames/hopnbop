@@ -1,0 +1,23 @@
+[gd_scene load_steps=4 format=3 uid="uid://36pbp6gkbedh"]
+
+[ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/core/default_theme.tres" id="1_qjt2k"]
+[ext_resource type="StyleBox" uid="uid://dc86ks0yqis4j" path="res://src/ui/screens/screen_style_box.tres" id="2_sda85"]
+[ext_resource type="Script" uid="uid://w1gpej2xgpu8" path="res://src/ui/screens/scg_splash_screen.gd" id="3_qjt2k"]
+
+[node name="SCGSplashScreen" type="PanelContainer"]
+process_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_qjt2k")
+theme_override_styles/panel = ExtResource("2_sda85")
+script = ExtResource("3_qjt2k")
+metadata/_custom_type_script = "uid://w1gpej2xgpu8"
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 2
+
+[node name="TextureRect" type="TextureRect" parent="CenterContainer"]
+layout_mode = 2

@@ -62,9 +62,10 @@ func _start_app() -> void:
 		G.game_panel.server_start_game()
 	else:
 		if G.settings.start_in_game:
+			# FIXME: Add support for auto-enabling one player with WASD.
 			G.game_panel.client_load_game()
 		else:
-			G.screens.client_open_screen(ScreensMain.ScreenType.MAIN_MENU)
+			G.screens.client_open_screen(ScreensMain.ScreenType.GODOT_SPLASH)
 
 
 func _notification(notification_type: int) -> void:

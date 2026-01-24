@@ -51,7 +51,7 @@ signal local_authority_removed(input_from_client: PlayerInputFromClient)
 var time := ServerTimeTracker.new()
 var connector := NetworkConnector.new()
 var frame_driver := NetworkFrameDriver.new()
-var gamelift_manager := GameLiftManager.new()
+var game_lift_manager := GameLiftManager.new()
 
 var is_preview := true
 var is_headless := true
@@ -97,8 +97,8 @@ func _enter_tree() -> void:
 	frame_driver.name = "NetworkFrameDriver"
 	add_child(frame_driver)
 
-	gamelift_manager.name = "GameLiftManager"
-	add_child(gamelift_manager)
+	game_lift_manager.name = "GameLiftManager"
+	add_child(game_lift_manager)
 
 	is_headless = DisplayServer.get_name() == "headless"
 	is_preview = OS.has_feature("editor")

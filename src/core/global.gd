@@ -18,6 +18,7 @@ var utils := Utils.new()
 var geometry := Geometry.new()
 var draw_utils := DrawUtils.new()
 var network := NetworkMain.new()
+var input_device_manager := InputDeviceManager.new()
 var process_sentinel := ProcessSentinel.new()
 
 var main: Main
@@ -26,7 +27,8 @@ var hud: Hud
 var super_hud: SuperHud
 var screens: ScreensMain
 
-var main_menu_screen: MainMenuScreen
+var godot_splash_screen: GodotSplashScreen
+var scg_splash_screen: SCGSplashScreen
 var loading_screen: LoadingScreen
 var game_over_screen: GameOverScreen
 var win_screen: WinScreen
@@ -35,7 +37,15 @@ var pause_screen: PauseScreen
 var game_panel: GamePanel
 var match_state: MatchState
 var local_session: LocalSession
+var player_overhead_labels: PlayerOverheadLabels
 var level: Level
+
+var is_lobby_active: bool:
+	get:
+		return is_instance_valid(level) and level is LobbyLevel
+var is_networked_level_active: bool:
+	get:
+		return is_instance_valid(level) and level is NetworkedLevel
 
 
 func _enter_tree() -> void:
@@ -61,6 +71,9 @@ func _enter_tree() -> void:
 	network.name = "Network"
 	add_child(network)
 
+	input_device_manager.name = "InputDeviceManager"
+	add_child(input_device_manager)
+
 	process_sentinel.name = "ProcessSentinel"
 	add_child(process_sentinel)
 
@@ -77,16 +90,19 @@ func _ready() -> void:
 		preview_instance_label = ""
 
 
-func get_player_match_state(multiplayer_id: int) -> PlayerMatchState:
-	if not match_state.players.has(multiplayer_id):
+func get_player_match_state(player_id: String) -> PlayerMatchState:
+	if not match_state.players.has(player_id):
 		return null
-	return match_state.players[multiplayer_id]
+	return match_state.players[player_id]
 
 
-func get_player(multiplayer_id: int) -> Player:
-	if not is_instance_valid(level) or not level.players_by_id.has(multiplayer_id):
+func get_player(player_id: String) -> Player:
+	if (
+		not is_instance_valid(level) or
+		not level.players_by_id.has(player_id)
+	):
 		return null
-	return level.players_by_id[multiplayer_id]
+	return level.players_by_id[player_id]
 
 # --- Include some convenient access to logging/error utilities ---------------
 
@@ -131,11 +147,13 @@ func check_valid(object, message = "") -> bool:
 	return log.check(is_instance_valid(object), message)
 
 
-func check_is_server(method_name: String) -> bool:
-	return log.check(G.network.is_server, "%s: is_client" % method_name)
+func check_is_server() -> bool:
+	return log.check(G.network.is_server,
+		"This logic assumes we should be a server, but we're a client")
 
 
-func check_is_client(method_name: String) -> bool:
-	return log.check(G.network.is_client, "%s: is_server" % method_name)
+func check_is_client() -> bool:
+	return log.check(G.network.is_client,
+		"This logic assumes we should be a client, but we're a server")
 
 # -----------------------------------------------------------------------------

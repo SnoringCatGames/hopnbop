@@ -34,14 +34,17 @@ var _game_session = null # GameLiftGameSession when active
 var _is_initialized := false
 var _is_process_ready := false
 
-# Maps peer_id <-> player_session_id (1:1)
-var _peer_to_session: Dictionary = { } # int -> String
-var _session_to_peer: Dictionary = { } # String -> int
+# Maps player_id <-> player_session_id (1:1 per player)
+# Dictionary<String, String>
+var _player_to_session: Dictionary = {}
+# Dictionary<String, String>
+var _session_to_player: Dictionary = {}
 
-# Pending connections awaiting validation
-var _pending_peers: Array[int] = []
+# Pending connections awaiting validation (peer_id -> player_count)
+# Dictionary<int, int>
+var _pending_peers := {}
 
-# Expected player count from matchmaking
+# Expected player count from matchmaking (total players across all peers)
 var _expected_player_count: int = 0
 var _validated_player_count: int = 0
 
@@ -84,53 +87,122 @@ func set_expected_player_count(count: int) -> void:
 	)
 
 
-## Validate a player session ID and map it to the peer_id.
-func validate_player_session(peer_id: int, session_id: String) -> void:
-	G.check_is_server("GameLiftManager.validate_player_session")
+## Validate multiple player sessions for a single peer.
+## This is called when a client declares how many players they have.
+## All session_ids must be valid or the entire peer will be disconnected.
+func validate_player_sessions(
+	peer_id: int,
+	player_count: int,
+	session_ids: Array
+) -> void:
+	G.check_is_server()
 
 	if not is_active():
-		# In preview mode, auto-accept without validation
+		# In preview mode, auto-accept without validation.
 		G.print(
-			"[GameLift] Preview mode: Auto-accepting peer %d" % peer_id,
+			"[GameLift] Preview: Auto-accepting %d player(s) for peer %d" % [
+				player_count,
+				peer_id,
+			],
 			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
 		)
-		_on_validation_success(peer_id, session_id)
+		for i in range(player_count):
+			var player_id := "%d:%d" % [peer_id, i]
+			var session_id: String = (
+				session_ids[i]
+				if i < session_ids.size()
+				else ""
+			)
+			_on_validation_success(player_id, session_id)
 		return
 
 	if _gamelift == null:
 		G.warning("[GameLift] SDK not initialized, auto-accepting")
-		_on_validation_success(peer_id, session_id)
+		for i in range(player_count):
+			var player_id := "%d:%d" % [peer_id, i]
+			var session_id: String = (
+				session_ids[i]
+				if i < session_ids.size()
+				else ""
+			)
+			_on_validation_success(player_id, session_id)
 		return
 
-	# Call GameLift SDK to validate the player session
-	var outcome = _gamelift.accept_player_session(session_id)
+	# Validate all session IDs for this peer.
+	var all_valid := true
+	for i in range(player_count):
+		if i >= session_ids.size():
+			G.warning(
+				(
+					"[GameLift] Missing session ID for player %d:%d"
+					% [peer_id, i]
+				),
+				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+			)
+			all_valid = false
+			break
 
-	if outcome.is_success():
-		G.print(
-			"[GameLift] Player session validated: %s" % session_id,
-			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-		)
-		_on_validation_success(peer_id, session_id)
-	else:
+		var session_id: String = session_ids[i]
+		var outcome = _gamelift.accept_player_session(session_id)
+
+		if outcome.is_success():
+			G.print(
+				(
+					"[GameLift] Player session validated: %s (peer %d, "
+					+ "local index %d)"
+				)
+				% [session_id, peer_id, i],
+				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+			)
+		else:
+			G.warning(
+				(
+					"[GameLift] Player session validation failed for %s: %s"
+					% [session_id, outcome.get_error_message()]
+				),
+				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+			)
+			all_valid = false
+			break
+
+	if not all_valid:
+		# Disconnect the entire peer if any validation fails.
 		G.warning(
-			(
-                "[GameLift] Player session validation failed: %s"
-				% outcome.get_error_message()
-			),
+			"[GameLift] Disconnecting peer %d due to validation failure"
+			% peer_id,
 			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
 		)
-		# Disconnect the peer
 		multiplayer.multiplayer_peer.disconnect_peer(peer_id)
+		return
+
+	# All sessions valid - record mappings.
+	for i in range(player_count):
+		var player_id := "%d:%d" % [peer_id, i]
+		var session_id: String = session_ids[i]
+		_on_validation_success(player_id, session_id)
 
 
-func _on_validation_success(peer_id: int, session_id: String) -> void:
-	_peer_to_session[peer_id] = session_id
-	_session_to_peer[session_id] = peer_id
+## Deprecated: Use validate_player_sessions() for multi-player support.
+func validate_player_session(peer_id: int, session_id: String) -> void:
+	# Redirect to new method with single player.
+	validate_player_sessions(peer_id, 1, [session_id])
+
+
+func _on_validation_success(player_id: String, session_id: String) -> void:
+	_player_to_session[player_id] = session_id
+	_session_to_player[session_id] = player_id
 	_validated_player_count += 1
 
+	# Extract peer_id for logging and signal.
+	var peer_id: int = 0
+	if not player_id.is_empty():
+		var parts := player_id.split(":")
+		if parts.size() >= 1:
+			peer_id = int(parts[0])
+
 	G.print(
-		"[GameLift] Player validated: peer=%d, session=%s (%d/%d)" % [
-			peer_id,
+		"[GameLift] Player validated: player_id=%s, session=%s (%d/%d)" % [
+			player_id,
 			session_id,
 			_validated_player_count,
 			_expected_player_count,
@@ -140,7 +212,7 @@ func _on_validation_success(peer_id: int, session_id: String) -> void:
 
 	player_session_validated.emit(peer_id, session_id)
 
-	# Check if all matched players connected
+	# Check if all matched players connected.
 	if _validated_player_count >= _expected_player_count:
 		_on_all_players_ready()
 
@@ -157,14 +229,31 @@ func _on_all_players_ready() -> void:
 	all_players_connected.emit()
 
 
-## Get the player_session_id for a given peer_id.
+## Get the player_session_id for a given player_id.
+func get_session_id_for_player(player_id: String) -> String:
+	return _player_to_session.get(player_id, "")
+
+
+## Get the player_id for a given player_session_id.
+func get_player_id_for_session(session_id: String) -> String:
+	return _session_to_player.get(session_id, "")
+
+
+## Deprecated: Use get_session_id_for_player() with player_id string.
 func get_session_id_for_peer(peer_id: int) -> String:
-	return _peer_to_session.get(peer_id, "")
+	var player_id := "%d:0" % peer_id
+	return get_session_id_for_player(player_id)
 
 
-## Get the peer_id for a given player_session_id.
+## Deprecated: Use get_player_id_for_session() which returns player_id.
 func get_peer_id_for_session(session_id: String) -> int:
-	return _session_to_peer.get(session_id, 0)
+	var player_id := get_player_id_for_session(session_id)
+	if player_id.is_empty():
+		return 0
+	var parts := player_id.split(":")
+	if parts.size() >= 1:
+		return int(parts[0])
+	return 0
 
 
 ## Remove a player session when a player disconnects.
