@@ -54,6 +54,14 @@ extends Node
 #   - Debug pause behavior.
 # - Review tests.
 # - Fix GitHub CI.
+# - Lingering FIXMEs.
+# - Implement multiple players per client support (as per below notes).
+# - Implement annotations:
+#   - Toggleable at run time.
+#   - Render shape to match the collision shape
+#   - Render a dot for every frame in the rollback buffer.
+#     - Color code these based on authority, and whether they caused a rollback or a fast-forward.
+# - Implement alternate starting level, non networked, with walk-off-screen to start match.
 
 # - GameLift
 # - Add rollback debug visualizations.

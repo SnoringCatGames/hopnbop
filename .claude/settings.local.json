@@ -53,7 +53,14 @@
       "Bash(winget install:*)",
       "Bash(export PATH=\"/c/Program Files/CMake/bin:$PATH\")",
       "Bash(git clone:*)",
-      "Bash(cmd //c '\"\"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Community\\\\VC\\\\Auxiliary\\\\Build\\\\vcvars64.bat\"\" && scons platform=windows target=template_release -j4')"
+      "Bash(cmd //c '\"\"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Community\\\\VC\\\\Auxiliary\\\\Build\\\\vcvars64.bat\"\" && scons platform=windows target=template_release -j4')",
+      "Bash(./bootstrap-vcpkg.bat)",
+      "Bash(./vcpkg install:*)",
+      "Bash(./build-godot-cpp.bat)",
+      "Bash(./build-godot-cpp-debug.bat)",
+      "Bash(export GODOT_CPP_PATH=\"godot-cpp\")",
+      "Bash(export GAMELIFT_SDK_PATH=\"gamelift-server-sdk/cmake-build/prefix\")",
+      "Bash(export OPENSSL_PATH=\"C:/Users/lsl/Repositories/jumpnthump/vcpkg/installed/x64-windows\")"
     ]
   }
 }
