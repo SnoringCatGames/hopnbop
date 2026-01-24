@@ -266,6 +266,23 @@ func _handle_new_authoritative_state() -> void:
     # Extract the frame authority from the received state.
     var new_frame_authority: int = packed_state[packed_state.size() - 2]
 
+    # PAUSE FILTERING: Reject states from after pause started.
+    if G.network.frame_driver.is_paused():
+        var pause_frame: int = G.network.frame_driver.get_pause_start_frame()
+        if state_frame_index > pause_frame:
+            if G.is_verbose:
+                G.print(
+                    "%s F:%d Rejecting state from frame %d (after pause at %d)" % [
+                        name,
+                        G.network.server_frame_index,
+                        state_frame_index,
+                        pause_frame,
+                    ],
+                    ScaffolderLog.CATEGORY_NETWORK_SYNC,
+                    ScaffolderLog.Verbosity.VERBOSE,
+                )
+            return
+
     if G.is_verbose:
         var authority_string: String = FrameAuthority.keys()[new_frame_authority]
         G.print(
@@ -651,6 +668,35 @@ func _record_buffer_frame(frame_index: int, frame_state: Array) -> void:
     _rollback_buffer.backfill_to_with_last_state(frame_index - 1)
 
     _rollback_buffer.set_at(frame_index, frame_state)
+
+
+## Clean up rollback buffer state after pause started.
+##
+## Back-fills all frames after the pause frame with the pause frame's state
+## marked as PREDICTED. This prevents mismatch detection from comparing
+## pre-pause server state with invalid post-pause client predictions.
+func _cleanup_buffer_after_pause(pause_frame: int) -> void:
+    # Get pause frame state.
+    if not _rollback_buffer.has_at(pause_frame):
+        return
+
+    var pause_state: Array = _rollback_buffer.get_at(pause_frame)
+
+    # Create a copy marked as PREDICTED for resetting.
+    var fill_state := ArrayPool.acquire(pause_state.size())
+    for i in range(pause_state.size() - 1):
+        fill_state[i] = pause_state[i]
+    fill_state[fill_state.size() - 1] = FrameAuthority.PREDICTED
+
+    # Reset from pause_frame+1 to current latest.
+    var latest := _rollback_buffer.get_latest_index()
+    for frame_idx in range(pause_frame + 1, latest + 1):
+        var frame_state := ArrayPool.acquire(fill_state.size())
+        for i in range(fill_state.size()):
+            frame_state[i] = fill_state[i]
+        _rollback_buffer.set_at(frame_idx, frame_state)
+
+    ArrayPool.release(fill_state)
 
 
 ## Records the initial spawn state to the rollback buffer for the current
