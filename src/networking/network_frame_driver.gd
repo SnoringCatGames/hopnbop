@@ -48,7 +48,6 @@ extends Node
 ## - Only one rollback occurs per _network_process, earliest frame takes priority
 
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug
-# - Rename setup_and_build to build.
 # - Debug the game.
 #   - Fix the GDExtension importing in Godot.
 #   - Debug pause behavior.

@@ -80,7 +80,7 @@ The easiest way to build is using the automated setup script:
 
 ```bash
 cd gamelift-gdextension
-./setup_and_build.sh --godot-version 4.5
+./build.sh --godot-version 4.5
 ```
 
 This script will:
@@ -93,7 +93,7 @@ This script will:
 ### Quick Build (Linux Debug)
 ```bash
 cd gamelift-gdextension
-./build_and_install.sh linux template_debug
+./build.sh --skip-deps --debug
 ```
 
 ### Platform-Specific Builds
@@ -117,7 +117,7 @@ The recommended approach for building on Windows is using WSL:
 3. Build from WSL:
    ```bash
    cd /mnt/c/Users/YourUser/Repositories/jumpnthump/gamelift-gdextension
-   ./setup_and_build.sh --godot-version 4.5
+   ./build.sh --godot-version 4.5
    ```
 
 **Linux (for GameLift deployment):**
@@ -199,7 +199,7 @@ Open Godot and check for errors in the Output tab. If the extension loads succes
 ### 1. Build for Linux Release
 ```bash
 cd gamelift-gdextension
-./build_and_install.sh linux template_release
+./build.sh --skip-deps --release
 ```
 
 ### 2. Export Godot Project
@@ -290,7 +290,7 @@ cmake -DBUILD_FOR_UNREAL=ON  # This disables unit tests
 For rapid iteration during development:
 
 1. Make C++ changes in gamelift-gdextension/src/
-2. Run `./build_and_install.sh linux template_debug`
+2. Run `./build.sh --skip-deps --debug`
 3. Restart Godot to reload the extension
 4. Test changes
 

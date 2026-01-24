@@ -57,12 +57,12 @@ If you prefer to build locally, follow the platform-specific instructions below.
 ```bash
 cd gamelift-gdextension
 
-# Run the automated setup script
-./setup_and_build.sh
+# Run the automated setup script (builds both debug and release)
+./build.sh --both
 
-# Or build manually for both debug and release
-./build_and_install.sh linux template_debug
-./build_and_install.sh linux template_release
+# Or build just one configuration
+./build.sh --debug    # Debug only
+./build.sh --release  # Release only
 ```
 
 The script will:
@@ -210,12 +210,12 @@ To build for a different Godot version:
 
 1. Update the Godot version in the workflow:
    ```yaml
-   git checkout godot-4.3-stable  # Change this line
+   git checkout godot-4.5-stable  # Change this line
    ```
 
 2. Update the version in `gamelift.gdextension`:
    ```
-   compatibility_minimum = "4.3"
+   compatibility_minimum = "4.5"
    ```
 
 3. Rebuild all platforms

@@ -11,7 +11,7 @@
             "args": [
                 "bash",
                 "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/setup_and_build.sh --both"
+                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --both"
             ],
             "problemMatcher": [],
             "presentation": {
@@ -48,7 +48,7 @@
             "args": [
                 "bash",
                 "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/setup_and_build.sh --skip-deps --release"
+                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --release"
             ],
             "problemMatcher": [],
             "presentation": {
@@ -60,7 +60,7 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "detail": "Build GameLift GDExtension (release, Linux) using setup_and_build.sh"
+            "detail": "Build GameLift GDExtension (release, Linux) using build.sh"
         },
         {
             "label": "GameLift: Build GDExtension (Debug)",
@@ -69,7 +69,7 @@
             "args": [
                 "bash",
                 "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/setup_and_build.sh --skip-deps --debug"
+                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --debug"
             ],
             "problemMatcher": [],
             "presentation": {
@@ -78,7 +78,7 @@
                 "clear": true
             },
             "group": "build",
-            "detail": "Build GameLift GDExtension (debug, Linux) using setup_and_build.sh"
+            "detail": "Build GameLift GDExtension (debug, Linux) using build.sh"
         },
         {
             "label": "GameLift: Build GDExtension (Both)",
@@ -87,7 +87,7 @@
             "args": [
                 "bash",
                 "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/setup_and_build.sh --skip-deps --both"
+                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --both"
             ],
             "problemMatcher": [],
             "presentation": {
@@ -96,7 +96,7 @@
                 "clear": true
             },
             "group": "build",
-            "detail": "Build GameLift GDExtension (debug + release, Linux) using setup_and_build.sh"
+            "detail": "Build GameLift GDExtension (debug + release, Linux) using build.sh"
         },
         {
             "label": "GameLift: Build All Platforms (Release)",
@@ -105,7 +105,7 @@
             "args": [
                 "bash",
                 "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/setup_and_build.sh --skip-deps --all-platforms --release"
+                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --all-platforms --release"
             ],
             "problemMatcher": [],
             "presentation": {
@@ -123,7 +123,7 @@
             "args": [
                 "bash",
                 "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/setup_and_build.sh --skip-deps --all-platforms --both"
+                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --all-platforms --both"
             ],
             "problemMatcher": [],
             "presentation": {
@@ -157,7 +157,7 @@
             "args": [
                 "bash",
                 "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump/gamelift-gdextension && rm -rf cmake-build godot-cpp gamelift-server-sdk bin .scons_cache .sconsign.dblite && cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/setup_and_build.sh --both"
+                "cd /mnt/c/Users/lsl/Repositories/jumpnthump/gamelift-gdextension && rm -rf cmake-build godot-cpp gamelift-server-sdk bin .scons_cache .sconsign.dblite && cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --both"
             ],
             "problemMatcher": [],
             "presentation": {

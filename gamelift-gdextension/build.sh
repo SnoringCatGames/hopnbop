@@ -1,8 +1,8 @@
 #!/bin/bash
-# setup_and_build.sh - Set up dependencies and build the GameLift GDExtension
+# build.sh - Set up dependencies and build the GameLift GDExtension
 #
 # Usage:
-#   ./setup_and_build.sh [options]
+#   ./build.sh [options]
 
 set -e
 
