@@ -48,6 +48,12 @@ extends Node
 ## - Only one rollback occurs per _network_process, earliest frame takes priority
 
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug
+#
+# LEFT OFF HERE: In the middle of Windows build on Windows; In the middle of AI planning for multiple players on a client.
+#
+# We will be regularly building in WSL for the Linux build and in Windows for the windows build. Is there a way we should update how CMakeCache.txt works to support this?
+#
+# - Install new PowerShell.
 # - Debug the game.
 #   - Fix the GDExtension importing in Godot.
 #   - Debug pause behavior.
@@ -88,6 +94,8 @@ extends Node
 #   - Support the following controls: WASD, IJKL, arrow keys, controllers.
 #   - Remove "space" as an input for the "jump" action.
 #   - Instead, have just_pressed of "move_up" trigger "jump".
+#   - Make sure we support controllers with our player action source logic.
+#
 # - Add a lobby level scene.
 #   - Load into this initially when opening the "game" screen.
 #   - Update the game/networking systems to support running the game in "local" (non-networked) mode.
