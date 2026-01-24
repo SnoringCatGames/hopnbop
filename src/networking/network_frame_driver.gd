@@ -63,6 +63,24 @@ extends Node
 #     - Color code these based on authority, and whether they caused a rollback or a fast-forward.
 # - Implement alternate starting level, non networked, with walk-off-screen to start match.
 
+# - GameLift
+# - Implement multiple players on a given client.
+# - Implement kills and other gameplay bits.
+# - Add rollback debug visualizations.
+# - Review these notes: https://docs.google.com/document/d/1qJcNUrE1y8UllVVCojp-IN3zCwml8VK7kjYhp1uJhV4
+# - Review NETWORKING_ARCHITECTURE.md.
+
+# FIXME: GameLift
+# - https://claude.ai/chat/c191d2ce-5457-4b81-bfb6-6b9dade6a939
+# - Also ask AI to:
+#   - Want to make sure we can easily test GameLift locally.
+#   - Implement easy scripts for building and deploying and testing. Maybe can also add a hook for GitHub Actions when creating tags? Or ask for a better deployment with trigger solution
+#   - Implement logic for handling logins to the various auth providers.
+#   - Implement a database for recording some game data:
+#     - player data (id, bunny name and adjective, first play time, last play time, total time played, total wins, total kills, total deaths, login info for whichever auth providers they've connected to, ...)
+#     - a leaderboard
+#   - Implement a way to make friends and to join matches with friends.
+
 # - Add support for multiple players on a single client.
 #   - Support the following controls: WASD, IJKL, arrow keys, controllers.
 #   - Remove "space" as an input for the "jump" action.
@@ -100,23 +118,10 @@ extends Node
 #     - Replace most preexisting references to multiplayer id with this new
 #       player_id, as appropriate.
 
-# - GameLift
-# - Add rollback debug visualizations.
-# - Implement kills and other gameplay bits.
-# - Implement multiple players on a given client.
-# - Review these notes: https://docs.google.com/document/d/1qJcNUrE1y8UllVVCojp-IN3zCwml8VK7kjYhp1uJhV4
-# - Review NETWORKING_ARCHITECTURE.md.
-
-# FIXME: GameLift
-# - https://claude.ai/chat/c191d2ce-5457-4b81-bfb6-6b9dade6a939
-# - Also ask AI to:
-#   - Want to make sure we can easily test GameLift locally.
-#   - Implement easy scripts for building and deploying and testing. Maybe can also add a hook for GitHub Actions when creating tags? Or ask for a better deployment with trigger solution
-#   - Implement logic for handling logins to the various auth providers.
-#   - Implement a database for recording some game data:
-#     - player data (id, bunny name and adjective, first play time, last play time, total time played, total wins, total kills, total deaths, login info for whichever auth providers they've connected to, ...)
-#     - a leaderboard
-#   - Implement a way to make friends and to join matches with friends.
+# - Add support for selecting player spawn positions.
+#   - We'll use this both at level start, and later when we add support for players dying and respawning.
+#   - So make sure we add support for checking for collisions and/or other nearby players before choosing a spot.
+#   - We probably want to support this by manually configuring spawn positions within a level.
 
 # - Implement player kills.
 #   - In this game players kill each other by jumping on each other's heads.

@@ -2,8 +2,6 @@ class_name NetworkMain
 extends Node
 ## Top-level controller and coordinator for all networking subsystems.
 
-# FIXME: Review this type work-around.
-const GameLiftManagerScript = preload("res://src/networking/gamelift_manager.gd")
 ##
 ## NetworkMain is the central orchestrator accessed via the G.network singleton.
 ## It manages and provides access to three core networking subsystems:
@@ -53,7 +51,7 @@ signal local_authority_removed(input_from_client: PlayerInputFromClient)
 var time := ServerTimeTracker.new()
 var connector := NetworkConnector.new()
 var frame_driver := NetworkFrameDriver.new()
-var gamelift_manager # GameLiftManager (untyped to avoid parse order issues)
+var gamelift_manager := GameLiftManager.new()
 
 var is_preview := true
 var is_headless := true
@@ -99,7 +97,6 @@ func _enter_tree() -> void:
 	frame_driver.name = "NetworkFrameDriver"
 	add_child(frame_driver)
 
-	gamelift_manager = GameLiftManagerScript.new()
 	gamelift_manager.name = "GameLiftManager"
 	add_child(gamelift_manager)
 

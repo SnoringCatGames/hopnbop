@@ -93,7 +93,6 @@ signal received_network_state
 signal network_processed
 signal multiplayer_id_changed
 
-# FIXME: Test these rollback diff threshold defaults.
 const DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD := 1.0
 const DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHELD := 10.0
 

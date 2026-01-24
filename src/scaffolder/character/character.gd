@@ -2,8 +2,6 @@
 class_name Character
 extends CharacterBody2D
 
-# FIXME: [Logs]: Re-introduce some character, surface state, and action logs.
-
 const _NORMAL_SURFACES_COLLISION_MASK_BIT := 1
 const _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT := 2
 const _WALK_THROUGH_WALLS_COLLISION_MASK_BIT := 4
