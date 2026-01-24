@@ -22,6 +22,9 @@ var server_port: int:
 @export_group("Network sync")
 ## Network process frames happen at 60 FPS--aligned with physics frames.
 @export var rollback_buffer_duration_sec := 2.0
+## Whether clients can request pause/unpause from the server. If false, only
+## the server can trigger pause (e.g., during GameLift initialization).
+@export var is_server_pause_enabled := false
 @export_group("")
 
 @export var max_client_count := 8
