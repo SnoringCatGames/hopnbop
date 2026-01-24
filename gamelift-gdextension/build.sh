@@ -197,6 +197,29 @@ if [ "$SKIP_DEPS" = false ]; then
 
     cd "$SCRIPT_DIR/gamelift-server-sdk"
 
+    # Patch CMakeLists.txt files to fix CMake version compatibility
+    echo "  Patching GameLift SDK CMakeLists.txt for CMake 3.5+ compatibility..."
+
+    # Patch root CMakeLists.txt for modern CMake version syntax
+    if ! grep -q "cmake_minimum_required(VERSION 3.10...3.30)" CMakeLists.txt; then
+        echo "  Patching root CMakeLists.txt..."
+        sed -i.bak 's/cmake_minimum_required(VERSION 3.10)/cmake_minimum_required(VERSION 3.10...3.30)/' CMakeLists.txt
+        rm -f CMakeLists.txt.bak
+        echo "  ✓ Root CMakeLists.txt patched"
+    else
+        echo "  ✓ Root CMakeLists.txt already patched"
+    fi
+
+    # Patch gamelift-server-sdk/CMakeLists.txt for modern CMake version syntax
+    if ! grep -q "CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)" gamelift-server-sdk/CMakeLists.txt; then
+        echo "  Patching gamelift-server-sdk/CMakeLists.txt..."
+        sed -i.bak 's/CMAKE_MINIMUM_REQUIRED(VERSION 3.5)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/' gamelift-server-sdk/CMakeLists.txt
+        rm -f gamelift-server-sdk/CMakeLists.txt.bak
+        echo "  ✓ gamelift-server-sdk/CMakeLists.txt patched"
+    else
+        echo "  ✓ gamelift-server-sdk/CMakeLists.txt already patched"
+    fi
+
     echo "  Building GameLift SDK..."
     mkdir -p cmake-build
     cd cmake-build

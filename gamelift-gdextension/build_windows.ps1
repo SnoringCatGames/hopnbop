@@ -178,11 +178,19 @@ if (-not (Test-Path "gamelift-server-sdk\cmake-build")) {
 
 Set-Location gamelift-server-sdk
 
-# Patch CMakeLists.txt files to enforce /MT runtime library (for CI/CD compatibility)
-Write-Info "Patching GameLift SDK CMakeLists.txt for /MT runtime..."
+# Patch CMakeLists.txt files for CMake version compatibility and /MT runtime
+Write-Info "Patching GameLift SDK CMakeLists.txt..."
+
+# Patch root CMakeLists.txt for modern CMake version syntax
 $rootCMake = Get-Content "CMakeLists.txt" -Raw
+$rootPatched = $false
+if ($rootCMake -notmatch "cmake_minimum_required\(VERSION 3\.10\.\.\.3\.30\)") {
+	Write-Info "  Patching root CMakeLists.txt for CMake version..."
+	$rootCMake = $rootCMake -replace 'cmake_minimum_required\(VERSION 3\.10\)', 'cmake_minimum_required(VERSION 3.10...3.30)'
+	$rootPatched = $true
+}
 if ($rootCMake -notmatch "CMAKE_MSVC_RUNTIME_LIBRARY") {
-	Write-Info "  Patching root CMakeLists.txt..."
+	Write-Info "  Patching root CMakeLists.txt for /MT runtime..."
 	$rootCMake = $rootCMake -replace '(set\(GameLiftServerSdk_DEFAULT_ARGS)', @'
 # Force /MT runtime library for Windows MSVC to match Godot GDExtension
 if(MSVC)
@@ -193,13 +201,26 @@ if(MSVC)
 endif()
 
 $1'@
+	$rootPatched = $true
+}
+if ($rootPatched) {
 	Set-Content "CMakeLists.txt" -Value $rootCMake -NoNewline
+	Write-Info "  ✓ Root CMakeLists.txt patched"
+} else {
+	Write-Info "  ✓ Root CMakeLists.txt already patched"
 }
 
+# Patch gamelift-server-sdk/CMakeLists.txt
 $sdkCMake = Get-Content "gamelift-server-sdk\CMakeLists.txt" -Raw
+$sdkPatched = $false
+if ($sdkCMake -notmatch "CMAKE_MINIMUM_REQUIRED\(VERSION 3\.5\.\.\.3\.30\)") {
+	Write-Info "  Patching gamelift-server-sdk/CMakeLists.txt for CMake version..."
+	$sdkCMake = $sdkCMake -replace 'CMAKE_MINIMUM_REQUIRED\(VERSION 3\.5\)', 'CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)'
+	$sdkPatched = $true
+}
 if ($sdkCMake -notmatch "CMAKE_MSVC_RUNTIME_LIBRARY") {
-	Write-Info "  Patching gamelift-server-sdk/CMakeLists.txt..."
-	$sdkCMake = $sdkCMake -replace '(if\(MSVC\)\s+# Unlock object file size limit\s+add_compile_options\(/bigobj\))',@'
+	Write-Info "  Patching gamelift-server-sdk/CMakeLists.txt for /MT runtime..."
+	$sdkCMake = $sdkCMake -replace '(if\(MSVC\)\s+# Unlock object file size limit\s+add_compile_options\(/bigobj\))', @'
 if(MSVC)
     # Unlock object file size limit
     add_compile_options(/bigobj)
@@ -209,7 +230,26 @@ if(MSVC)
     string(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
     string(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
     string(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")'@
+	$sdkPatched = $true
+}
+if ($sdkPatched) {
 	Set-Content "gamelift-server-sdk\CMakeLists.txt" -Value $sdkCMake -NoNewline
+	Write-Info "  ✓ gamelift-server-sdk/CMakeLists.txt patched"
+} else {
+	Write-Info "  ✓ gamelift-server-sdk/CMakeLists.txt already patched"
+}
+
+# Verify the patches by checking for key markers
+Write-Info "Verifying patches..."
+$rootCheck = Get-Content "CMakeLists.txt" -Raw
+$sdkCheck = Get-Content "gamelift-server-sdk\CMakeLists.txt" -Raw
+if ($rootCheck -match "CMAKE_MSVC_RUNTIME_LIBRARY" -and $sdkCheck -match "CMAKE_MSVC_RUNTIME_LIBRARY") {
+	Write-Success "  ✓ All patches verified"
+} else {
+	Write-Error "  ✗ Patch verification failed!"
+	Write-Host "Root has runtime lib setting: $($rootCheck -match 'CMAKE_MSVC_RUNTIME_LIBRARY')"
+	Write-Host "SDK has runtime lib setting: $($sdkCheck -match 'CMAKE_MSVC_RUNTIME_LIBRARY')"
+	exit 1
 }
 
 Set-Location cmake-build
