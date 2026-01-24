@@ -49,9 +49,28 @@ extends Node
 
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug
 #
-# LEFT OFF HERE: In the middle of Windows build on Windows; In the middle of AI planning for multiple players on a client.
+# LEFT OFF HERE:
+# - Test GDExtension Windows build.
+# - In the middle of AI planning for multiple players on a client.
+#   - Ask AI to consider whether we should add any new tests for this new multiple-players-per-client support.
+#
+#
+# >>>> LEFT-OFF MANUAL STEPS FROM LOBBY AND UI INTEGRATION:
+# - Scene files (lobby_level.tscn, player_list.tscn, player_display.tscn) may need minor adjustments in the Godot editor
+# - Currently, the lobby automatically transitions on calling start_match() - you may want to add a UI button for this
+#
 #
 # We will be regularly building in WSL for the Linux build and in Windows for the windows build. Is there a way we should update how CMakeCache.txt works to support this?
+#
+# Proceed with the "AWS GameLift Deployment Guide"
+# - Make sure we use Spot instances instead of On-Demand.
+#   - Make sure our server and client logic can handle sudden termination.
+#   - "This server instance is spinning down, so this game is ending early.
+#     Please just start another match! (The developer is stingey, and didn't
+#     want to pay for more reliable instances!)"
+# - Add player authentication and profile management.
+# - Set up CloudWatch alarms for monitoring.
+# - Configure auto-scaling policies based on load.
 #
 # - Install new PowerShell.
 # - Debug the game.
@@ -96,6 +115,54 @@ extends Node
 #   - Instead, have just_pressed of "move_up" trigger "jump".
 #   - Make sure we support controllers with our player action source logic.
 #
+# Let's go ahead and plan phase 6.
+# - I want to create a new lobby level scene for this.
+# - In the lobby:
+#     - The client is not connected to the server.
+#     - We'll have three available keyboard contol partitions: WASD, IJKL, UP/LEFT/DOWN/RIGHT.
+#     - We'll also support any controllers.
+#     - Whenever one of the possible "up" controls is pressed, we spawn a player for that input.
+#     - Whenever the corresponding "down" is pressed, we despawn that player.
+#     - Let's add a configurable local-player-max in Settings. Have it be 4 for now.
+#     - I'll add a custom gameplay trigger in the level to trigger connecting to the server and starting the match with the current player set, but please implement the function for me to call from that trigger.
+# - Also, let's implement a HUD list element that shows all players.
+#     - This will be shown horizontally along the bottom of the screen. Spread-out player displays along the space.
+#     - It will have no background color.
+#     - For each player, show their adjective and name and their score (I'll define that later).
+#     - Also show a name label over the head of each player, but only when they are not too close to any other players. Use a tween to fade this in-and-out.
+#
+#   - Have the player press any of the up options to join, and down to leave.
+#   - Assign name and adjective when joining locally in the lobby.
+#     - Also assign a random character-sprite/costume to each player.
+#     - Also assign a random color to each player.
+#       - Define an algorithm to calculate these colors. Simply divide the hue
+#         space into N, where N is the number of players in the match.
+#         - Do this for up to 4 players.
+#         - For 5-8, use a desaturation and lightening shift.
+#         - For 9-12, use a saturation and darkening shift.
+#         - For 13+, just randomly pick hue/saturation/lightness, and don't even
+#           bother trying to avoid collisions.
+#       - Use this to render an outline around the player sprite.
+#       - Also render an outline around the player's hud display.
+#       - Don't render the outline in the lobby though, and re-assign the color
+#         from the server when the player joins, so we can ensure all players
+#         have a different color.
+#     - Add an additional custom player_joined RPC step.
+#       - This is sent from the client after the client is connected.
+#       - The server then broadcasts a player_joined RPC to all clients, with
+#         the client's info (including the player that triggered it in the first
+#         place). This is an opportunity for the local client to incorporate any
+#         state corrections from the server.
+#   - Cap the local player count to 4 (from Settings).
+#   - Plan how to handle the camera.
+#     - Support two modes: global camera vs player camera.
+#       - This will be configured on the level.
+#       - For global camera, dynamically instantiate, configure (according to
+#         level bounds), attach, and activate a camera to the level.
+#       - For player camera, add support for split screen.
+#         - Add a TODO for this for now.
+# - Call MatchmakingClient.start_matchmaking() to start the match from the lobby.
+#
 # - Add a lobby level scene.
 #   - Load into this initially when opening the "game" screen.
 #   - Update the game/networking systems to support running the game in "local" (non-networked) mode.
@@ -136,6 +203,11 @@ extends Node
 #   - So make sure we add support for checking for collisions and/or other nearby players before choosing a spot.
 #   - We probably want to support this by manually configuring spawn positions within a level.
 
+# - Add support for dynamic level selection.
+#   - The server should choose the level for a match.
+#   - The client should be able to specific a three things: an inclusion list, an exclusion list, and a preferred level.
+#   - The server should try to accommodate these, but should be able to override all of these, depending on the combined client preferences of the match.
+
 # - Implement player kills.
 #   - In this game players kill each other by jumping on each other's heads.
 #   - In order to detect when one player jumps onto another's head, use the following strategy (or let me know if there is some other industry standard way to implement this that wolud be better!):
@@ -156,6 +228,29 @@ extends Node
 #     - But don't send an RPC for bumps.
 #   - Also implement bouncing for the killer when a kill occurs:
 #     - The killer should bounce upward a bit, while maintaining horizontal velocity.
+
+# - Add Godot and SCG images to the splash screens.
+# - Add snore sound to SCG splash screen.
+# - Should a ta-da sound play as the first possible thing, during the initial
+#   engine splash made-with-Godot screen? Or during my custom one? And/or get
+#   rid of my custom one?
+
+# - Add support for a slide-transition effect that slides a black panel over the lobby screen before showing the loading screen.
+#   - This panel slide will use a Tween.
+#   - We'll need to trigger this from client_load_game.
+#   - We'll need to then have a delay before despawning the lobby level.
+#   - We'll need to then prevent player modifications (spawn, despawn, triggering anything in lobby) during this transition.
+#   - We should also add another tween to every screen to transition it from transparent to opaque when it is opened.
+
+# - Add another F[N] shortcut for toggling hud, super_hud, and annotation visibility.
+# - Add another F[N] shortcut for toggling music.
+# - Update some "debug mode" checks (like for enabling screenshots) to consider
+#   whether we're running in preview mode in the editor.
+#   - Add this as a getter in settings.
+#   - Move some of the current G.network flag parsing and checks to settings.
+#   - We should also override various other settings if we're not in the editor.
+#     - Do this with getters on those properties.
+#     - Probably need to check Engine.is_editor_hint though also in the getters.
 
 # FIXME: Rollback debug visualization and networking improvements:
 #
@@ -659,7 +754,7 @@ func _server_execute_unpause() -> void:
 	G.network.time.unpause()
 
 	G.print(
-        "Server unpaused at frame %d (paused for %d frames, cumulative: %d)"
+		"Server unpaused at frame %d (paused for %d frames, cumulative: %d)"
 		% [server_frame_index, pause_duration_frames, _cumulative_paused_frames],
 		ScaffolderLog.CATEGORY_NETWORK_SYNC,
 	)
@@ -817,7 +912,7 @@ func _resync_frame_time_to_wall_clock() -> void:
 	if absf(drift_usec) > 1_000_000:
 		@warning_ignore("integer_division")
 		G.warning(
-            "Large timestamp drift detected: %d ms at frame %d"
+			"Large timestamp drift detected: %d ms at frame %d"
 			% [drift_usec / 1000, server_frame_index],
 			ScaffolderLog.CATEGORY_NETWORK_SYNC,
 		)
@@ -827,7 +922,7 @@ func _resync_frame_time_to_wall_clock() -> void:
 
 	@warning_ignore("integer_division")
 	G.print(
-        "Re-synced frame timestamp to wall-clock (drift: %d ms)"
+		"Re-synced frame timestamp to wall-clock (drift: %d ms)"
 		% [drift_usec / 1000],
 		ScaffolderLog.CATEGORY_NETWORK_SYNC,
 	)
@@ -876,7 +971,7 @@ func queue_rollback(p_conflicting_frame_index: int) -> bool:
 		G.fatal(
 			(
 				"Requested rollback to frame %d, " +
-                "but oldest rollbackable frame is %d"
+				"but oldest rollbackable frame is %d"
 			)
 			% [target_rollback_frame, oldest_rollbackable_frame_index],
 		)
@@ -913,7 +1008,7 @@ func _run_network_process() -> void:
 
 func _rollback_and_reprocess() -> void:
 	G.print(
-        "Starting rollback from frame %d to frame %d"
+		"Starting rollback from frame %d to frame %d"
 		% [server_frame_index, _queued_rollback_frame_index],
 		ScaffolderLog.CATEGORY_NETWORK_SYNC,
 		ScaffolderLog.Verbosity.VERBOSE,
