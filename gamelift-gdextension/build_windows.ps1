@@ -190,7 +190,7 @@ $cmakeArgs = @(
 	"-A", "x64",
 	"-DCMAKE_BUILD_TYPE=Release",
 	"-DGAMELIFT_USE_STD=1",
-	"-DBUILD_FOR_UNREAL=ON",
+	"-DBUILD_SHARED_LIBS=OFF",  # Build as static library for GDExtension
 	"-S", "..", "-B", "."
 )
 
@@ -217,10 +217,13 @@ Write-Info ""
 Write-Info "[5/6] Building GameLift GDExtension..."
 
 $env:GODOT_CPP_PATH = "godot-cpp"
-$env:GAMELIFT_SDK_PATH = "gamelift-server-sdk\cmake-build\Release"
+$env:GAMELIFT_SDK_PATH = "gamelift-server-sdk\cmake-build\prefix"
 if ($OPENSSL_PATH) {
 	$env:OPENSSL_PATH = $OPENSSL_PATH
 }
+Write-Host "  GODOT_CPP_PATH=$env:GODOT_CPP_PATH"
+Write-Host "  GAMELIFT_SDK_PATH=$env:GAMELIFT_SDK_PATH"
+Write-Host "  OPENSSL_PATH=$env:OPENSSL_PATH"
 
 if ($Release) {
 	Write-Info "Building GDExtension (Release)..."
@@ -243,7 +246,7 @@ if (-not (Test-Path "bin")) {
 }
 
 # Copy GameLift SDK DLL
-$gameliftDll = "gamelift-server-sdk\cmake-build\Release\aws-cpp-sdk-gamelift-server.dll"
+$gameliftDll = "gamelift-server-sdk\cmake-build\prefix\bin\aws-cpp-sdk-gamelift-server.dll"
 if (Test-Path $gameliftDll) {
 	Copy-Item $gameliftDll "bin\" -Force
 	Write-Success "✓ Copied aws-cpp-sdk-gamelift-server.dll"

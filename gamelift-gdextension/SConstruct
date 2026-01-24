@@ -90,6 +90,7 @@ elif env["platform"] == "windows":
 
     env.Append(
         LIBS=[
+            "spdlog",  # Must come BEFORE GameLift SDK (link dependency order)
             "aws-cpp-sdk-gamelift-server",
             "libssl",
             "libcrypto",
@@ -98,7 +99,8 @@ elif env["platform"] == "windows":
         ]
     )
 
-    env.Append(CPPDEFINES=["GAMELIFT_USE_STD=1"])
+    # Required defines
+    env.Append(CPPDEFINES=["GAMELIFT_USE_STD=1", "WIN32"])
 
 elif env["platform"] == "macos":
     # macOS-specific settings (for development/testing only - GameLift servers run on Linux/Windows)
