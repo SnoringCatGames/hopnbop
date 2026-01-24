@@ -16,6 +16,7 @@ var time := ScaffolderTime.new()
 @warning_ignore("shadowed_global_identifier") var log := ScaffolderLog.new()
 var utils := Utils.new()
 var geometry := Geometry.new()
+var draw_utils := DrawUtils.new()
 var network := NetworkMain.new()
 var process_sentinel := ProcessSentinel.new()
 
@@ -51,6 +52,9 @@ func _enter_tree() -> void:
 
     geometry.name = "Geometry"
     add_child(geometry)
+
+    draw_utils.name = "DrawUtils"
+    add_child(draw_utils)
 
     network.name = "Network"
     add_child(network)

@@ -452,7 +452,7 @@ func _pre_network_process() -> void:
     # comparisons (e.g., just_pressed, just_touched).
     _unpack_buffer_state(timestamp_index - 1)
 
-    var previous_frame_state: Array = _rollback_buffer.get_at(timestamp_index - 2)
+    var previous_frame_state = _rollback_buffer.get_at(timestamp_index - 2)
     _sync_to_scene_state(previous_frame_state)
 
 
@@ -751,7 +751,12 @@ func record_initial_state(include_partners := true) -> void:
 
 
 func _unpack_buffer_state(frame_index: int) -> void:
-    var frame_state: Array = _rollback_buffer.get_at(frame_index)
+    var frame_state = _rollback_buffer.get_at(frame_index)
+
+    # If no state exists for this frame (early in simulation or during
+    # fast-forward), return early. The current state will be used as-is.
+    if frame_state == null:
+        return
 
     var i := 0
     for property_name in _property_names_for_packing:

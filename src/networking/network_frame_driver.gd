@@ -63,6 +63,43 @@ extends Node
 #     - Color code these based on authority, and whether they caused a rollback or a fast-forward.
 # - Implement alternate starting level, non networked, with walk-off-screen to start match.
 
+# - Add support for multiple players on a single client.
+#   - Support the following controls: WASD, IJKL, arrow keys, controllers.
+#   - Remove "space" as an input for the "jump" action.
+#   - Instead, have just_pressed of "move_up" trigger "jump".
+# - Add a lobby level scene.
+#   - Load into this initially when opening the "game" screen.
+#   - Update the game/networking systems to support running the game in "local" (non-networked) mode.
+#   - Use this local mode for this match-selection level.
+#   - Add a special platform on the right side of the level. When the player lands on this platform, trigger load into the main level (and connection with the remote server).
+# - Remove the MainMenu screen, and go straight to the lobby level.
+# - Add support for using controllers as input.
+# - In the match-selection level support local players joining or leaving.
+#   - By default, have 0 local players.
+#   - Show a big message at the top of the screen, indicating to press up to join and down to leave.
+#     - It should also indicate the available controls (WASD, IJKL, arrow keys, controllers).
+#   - Add logic to spawn and destroy local players when up and down are pressed.
+#   - Add logic to map input source (WASD, IJKL, arrow keys, controllers) to player.
+#   - Update PlayerActionSource to only handle the specific input source
+#     associated with its corresponding player.
+#   - Update game connection logic to handle the new dynamic list of players
+#     from a client.
+#     - Instead of the server just automatically spawning a player for each
+#       newly-connected client, the server should wait until the client sends an
+#       RPC with its local-player count.
+#     - We now need to also introduce a concept of player_id.
+#     - When the server receives the RPC from the client indicating its number
+#       of local players, the server will generate player_ids for each of the
+#       new players, as well as the player name and adjective state that we were
+#       previously generating. The player_id now also gets replicated with
+#       PlayerMatchState.
+#     - The client then detects when a new player_id is represented in match
+#       state or on a Player node, picks an input source to map to this
+#       player_id, and records that.
+#     - Maintain a mapping from multiplayer_id to player_id.
+#     - Replace most preexisting references to multiplayer id with this new
+#       player_id, as appropriate.
+
 # - GameLift
 # - Add rollback debug visualizations.
 # - Implement kills and other gameplay bits.
@@ -80,7 +117,29 @@ extends Node
 #     - player data (id, bunny name and adjective, first play time, last play time, total time played, total wins, total kills, total deaths, login info for whichever auth providers they've connected to, ...)
 #     - a leaderboard
 #   - Implement a way to make friends and to join matches with friends.
-#
+
+
+# - Implement player kills.
+#   - In this game players kill each other by jumping on each other's heads.
+#   - In order to detect when one player jumps onto another's head, use the following strategy (or let me know if there is some other industry standard way to implement this that wolud be better!):
+#     - Add an additional pair of Area2D nodes to Bunny.tscn.
+#     - Have the collision shape be a long thin rectangle for both of these.
+#     - Have one area line up with the bottom of the main collision shape and the other line up with the top.
+#     - Listen for area-entered and exited events for both of these shapes, and use those listeners to track a list of currently-overlapping bunnies.
+#     - Then add logic to also detect when two bunny's collide with eachother with their main collision geometry (possibly handle this by checking current collisions after move_and_slide?).
+#     - When two bunnies collide:
+#       - Check their relative velocity.
+#       - If they are getting closer together vertically, and they are in the list of currently overlapping head/foot areas, then trigger the kill.
+#   - Only detect kills on the server. Then send an RPC from the server to all clients for a kill. Include killer, killee, position, and time in the RPC args.
+#   - Also for a kill, update game_panel.match_state.
+#   - Then handle destroying the killed player and respawning them after a short 1 second delay.
+#     - Check for any logic that depends of there being a local player node present, and update it to handle when the player is yet to respawn.
+#   - For any bunny-bunny collision that doesn't result in a kill, call this a "bump".
+#     - Also track bumps in match_state.
+#     - But don't send an RPC for bumps.
+#   - Also implement bouncing for the killer when a kill occurs:
+#     - The killer should bounce upward a bit, while maintaining horizontal velocity.
+
 
 # FIXME: Rollback debug visualization and networking improvements:
 #
@@ -213,27 +272,7 @@ extends Node
 #   from PART 5.
 
 # FIXME: After polishing networking from above:
-# - Implement player kills.
-#   - In this game players kill each other by jumping on each other's heads.
-#   - In order to detect when one player jumps onto another's head, use the following strategy (or let me know if there is some other industry standard way to implement this that wolud be better!):
-#     - Add an additional pair of Area2D nodes to Bunny.tscn.
-#     - Have the collision shape be a long thin rectangle for both of these.
-#     - Have one area line up with the bottom of the main collision shape and the other line up with the top.
-#     - Listen for area-entered and exited events for both of these shapes, and use those listeners to track a list of currently-overlapping bunnies.
-#     - Then add logic to also detect when two bunny's collide with eachother with their main collision geometry (possibly handle this by checking current collisions after move_and_slide?).
-#     - When two bunnies collide:
-#       - Check their relative velocity.
-#       - If they are getting closer together vertically, and they are in the list of currently overlapping head/foot areas, then trigger the kill.
-#   - Only detect kills on the server. Then send an RPC from the server to all clients for a kill. Include killer, killee, position, and time in the RPC args.
-#   - Also for a kill, update game_panel.match_state.
-#   - Then handle destroying the killed player and respawning them after a short 1 second delay.
-#     - Check for any logic that depends of there being a local player node present, and update it to handle when the player is yet to respawn.
-#   - For any bunny-bunny collision that doesn't result in a kill, call this a "bump".
-#     - Also track bumps in match_state.
-#     - But don't send an RPC for bumps.
-#   - Also implement bouncing for the killer when a kill occurs:
-#     - The killer should bounce upward a bit, while maintaining horizontal velocity.
-# - Use PixelLab for art creation:
+# - Use PixelLab for level art ideation?:
 #   - https://www.pixellab.ai/
 #   - Bunny
 #     - Create some mocks for a simple 16x16 bunny.
@@ -254,41 +293,6 @@ extends Node
 #   - Persist a copy of Settings to local user space.
 #   - Then, have the gore setting persist to this space when changed; add functions on Settings for triggering save and load, and trigger save from menus when toggling gore.
 #   - Have gore default to off.
-# - Add a match-selection "level" scene.
-#   - Load into this initially when opening the "game" screen.
-#   - Update the game/networking systems to support running the game in "local" (non-networked) mode.
-#   - Use this local mode for this match-selection level.
-#   - Add a special platform on the right side of the level. When the player lands on this platform, trigger load into the main level (and connection with the remote server).
-# - Add support for using controllers as input.
-# - Add support for multiple players on a single client.
-#   - Support the following controls: WASD, IJKL, arrow keys, controllers.
-#   - Remove "space" as an input for the "jump" action.
-#   - Instead, have just_pressed of "move_up" trigger "jump".
-# - In the match-selection level support local players joining or leaving.
-#   - By default, have 0 local players.
-#   - Show a big message at the top of the screen, indicating to press up to join and down to leave.
-#     - It should also indicate the available controls (WASD, IJKL, arrow keys, controllers).
-#   - Add logic to spawn and destroy local players when up and down are pressed.
-#   - Add logic to map input source (WASD, IJKL, arrow keys, controllers) to player.
-#   - Update PlayerActionSource to only handle the specific input source
-#     associated with its corresponding player.
-#   - Update game connection logic to handle the new dynamic list of players
-#     from a client.
-#     - Instead of the server just automatically spawning a player for each
-#       newly-connected client, the server should wait until the client sends an
-#       RPC with its local-player count.
-#     - We now need to also introduce a concept of player_id.
-#     - When the server receives the RPC from the client indicating its number
-#       of local players, the server will generate player_ids for each of the
-#       new players, as well as the player name and adjective state that we were
-#       previously generating. The player_id now also gets replicated with
-#       PlayerMatchState.
-#     - The client then detects when a new player_id is represented in match
-#       state or on a Player node, picks an input source to map to this
-#       player_id, and records that.
-#     - Maintain a mapping from multiplayer_id to player_id.
-#     - Replace most preexisting references to multiplayer id with this new
-#       player_id, as appropriate.
 # - Add support for accumulating gore (or flower) particles from bunny
 #   explosions.
 #   - Whenever an explosion happens, spawn a handful of custom particles that explode outward.

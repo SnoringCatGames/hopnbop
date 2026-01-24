@@ -61,11 +61,11 @@ class TestForwardingLogic:
     func test_caches_forwarded_input_on_ready():
         # _ready() was called in before_each, check if cached.
         assert_not_null(
-            state_from_server.forwarded_input,
-            "Should cache forwarded_input reference",
+            state_from_server.forwarded_input_from_server,
+            "Should cache forwarded_input_from_server reference",
         )
         assert_eq(
-            state_from_server.forwarded_input,
+            state_from_server.forwarded_input_from_server,
             forwarded_input,
             "Should reference the correct ForwardedInput node",
         )

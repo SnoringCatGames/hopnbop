@@ -1,27 +1,19 @@
 class_name DrawUtils
 extends Node
 
-# FIXME: LEFT OFF HERE
 
-const STRIKE_THROUGH_ANGLE := -PI / 3.0
-
-const EXCLAMATION_MARK_GAP_LENGTH_TO_WIDTH_RATIO := 0.5
-const EXCLAMATION_MARK_BODY_LOWER_END_WIDTH_RATIO := 0.5
-const EXCLAMATION_MARK_DOT_WIDTH_RATIO := 1.0
-
-
-func _init() -> void:
-    Sc.logger.on_global_init(self, "ScaffolderDrawUtils")
+func _ready() -> void:
+    G.print("DrawUtils._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
 
 
 func draw_shape_outline(
         canvas: CanvasItem,
         position: Vector2,
-        shape: RotatedShape,
+        shape: Shape2D,
         color: Color,
         thickness: float,
 ) -> void:
-    if shape.shape is CircleShape2D:
+    if shape is CircleShape2D:
         draw_circle_outline(
             canvas,
             position,
@@ -49,7 +41,7 @@ func draw_shape_outline(
             thickness,
         )
     else:
-        Sc.logger.error(
+        G.fatal(
             "Invalid Shape2D provided for draw_shape_outline: %s. The " +
             "supported shapes are: CircleShape2D, CapsuleShape2D, " +
             "RectangleShape2D." % shape.shape,
@@ -119,16 +111,16 @@ func compute_arc_points(
         start_angle: float,
         end_angle: float,
         sector_arc_length := 4.0,
-) -> PoolVector2Array:
+) -> PackedVector2Array:
     assert(sector_arc_length > 0.0)
 
     var angle_diff := end_angle - start_angle
-    var sector_count := floor(abs(angle_diff) * radius / sector_arc_length)
+    var sector_count := floorf(absf(angle_diff) * radius / sector_arc_length)
     var delta_theta := sector_arc_length / radius
     var theta := start_angle
 
     if angle_diff == 0:
-        return PoolVector2Array(
+        return PackedVector2Array(
             [
                 Vector2(cos(start_angle), sin(start_angle)) * radius + center,
             ],
@@ -137,12 +129,12 @@ func compute_arc_points(
         delta_theta = -delta_theta
 
     var should_include_partial_sector_at_end := \
-    abs(angle_diff) - sector_count * delta_theta > 0.01
+    absf(angle_diff) - sector_count * delta_theta > 0.01
     var vertex_count := sector_count + 1
     if should_include_partial_sector_at_end:
         vertex_count += 1
 
-    var points := PoolVector2Array()
+    var points := PackedVector2Array()
     points.resize(vertex_count)
 
     for i in sector_count + 1:
@@ -174,7 +166,7 @@ func draw_rectangle_outline(
     is_rotated_90_degrees else \
     half_width_height.y
 
-    var polyline := PoolVector2Array()
+    var polyline := PackedVector2Array()
     polyline.resize(6)
 
     polyline[1] = center + Vector2(-x_offset, -y_offset)
@@ -204,7 +196,7 @@ func draw_capsule_outline(
         thickness := 1.0,
         sector_arc_length := 4.0,
 ) -> void:
-    var sector_count := ceil((PI * radius / sector_arc_length) / 2.0) * 2.0
+    var sector_count := ceilf((PI * radius / sector_arc_length) / 2.0) * 2.0
     var delta_theta := PI / sector_count
     var theta := \
     PI / 2.0 if \
@@ -215,7 +207,7 @@ func draw_capsule_outline(
     is_rotated_90_degrees else \
     Vector2(0.0, height / 2.0)
     var end_center := center - capsule_end_offset
-    var vertices := PoolVector2Array()
+    var vertices := PackedVector2Array()
     var vertex_count := (sector_count + 1) * 2 + 2
     vertices.resize(vertex_count)
 

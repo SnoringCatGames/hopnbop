@@ -60,7 +60,9 @@
       "Bash(./build-godot-cpp-debug.bat)",
       "Bash(export GODOT_CPP_PATH=\"godot-cpp\")",
       "Bash(export GAMELIFT_SDK_PATH=\"gamelift-server-sdk/cmake-build/prefix\")",
-      "Bash(export OPENSSL_PATH=\"C:/Users/lsl/Repositories/jumpnthump/vcpkg/installed/x64-windows\")"
+      "Bash(export OPENSSL_PATH=\"C:/Users/lsl/Repositories/jumpnthump/vcpkg/installed/x64-windows\")",
+      "Bash(wsl sudo apt-get:*)",
+      "Bash(wsl tail:*)"
     ]
   }
 }
