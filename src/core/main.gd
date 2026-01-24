@@ -117,6 +117,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				_:
 					pass
 
+	if (
+		event.is_action_pressed("toggle_pause") and
+		G.settings.is_server_pause_enabled
+	):
+		G.network.frame_driver.client_request_toggle_pause()
+		get_viewport().set_input_as_handled()
+
 
 func _client_local_pause() -> void:
 	if G.network.is_server:

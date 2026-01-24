@@ -27,7 +27,7 @@ var server_port: int:
 @export var rollback_buffer_duration_sec := 2.0
 ## Whether clients can request pause/unpause from the server. If false, only
 ## the server can trigger pause (e.g., during GameLift initialization).
-@export var is_server_pause_enabled := false
+@export var is_server_pause_enabled := true
 ## Cooldown period between pause requests (in seconds). Prevents spam.
 @export var pause_request_cooldown_sec := 0.5
 @export_group("")

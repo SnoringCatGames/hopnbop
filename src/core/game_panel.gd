@@ -97,12 +97,6 @@ func _network_process() -> void:
 	pass
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("toggle_pause"):
-		G.network.frame_driver.client_request_toggle_pause()
-		get_viewport().set_input_as_handled()
-
-
 func _client_on_server_connected() -> void:
 	G.check_is_client("NetworkMain._client_on_server_connected")
 	G.check(
