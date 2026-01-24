@@ -5,6 +5,7 @@ extends GutTest
 ## and frame-based state management as it would occur during networked
 ## gameplay with rollback reconciliation.
 
+
 func before_each():
     ArrayPool.clear_all_pools()
 
@@ -19,27 +20,24 @@ class TestFrameSimulation:
     var buffer: RollbackBuffer
     var frame_index: int
 
-
     func before_each():
         ArrayPool.clear_all_pools()
         frame_index = 0
-        var default_state := [0.0, 0.0, 0.0, 0] # x, y, velocity, authority
+        var default_state := [0.0, 0.0, 0.0, 0]  # x, y, velocity, authority
         buffer = RollbackBuffer.new(90, frame_index, default_state)
-
 
     func after_each():
         ArrayPool.clear_all_pools()
 
-
     func test_simulates_multiple_frames_without_rollback():
         # Simulate 30 frames of movement with constant velocity.
         var velocity := 10.0
-        var delta := 1.0 / 60.0 # 60 FPS
+        var delta := 1.0 / 60.0  # 60 FPS
 
         for i in range(30):
             var state := ArrayPool.acquire(4)
-            state[0] = i * velocity * delta # x position
-            state[1] = 0.0 # y position
+            state[0] = i * velocity * delta  # x position
+            state[1] = 0.0  # y position
             state[2] = velocity
             state[3] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
 
@@ -50,7 +48,6 @@ class TestFrameSimulation:
         var final_state: Array = buffer.get_at(29)
         assert_not_null(final_state)
         assert_almost_eq(final_state[0], 29 * velocity * delta, 0.1)
-
 
     func test_backfills_missing_frames_during_packet_loss():
         # Simulate a scenario where frames 11-16 are missing due to packet
@@ -83,7 +80,7 @@ class TestFrameSimulation:
             assert_eq(
                 state[3],
                 ReconcilableNetworkedState.FrameAuthority.PREDICTED,
-                "Backfilled state should be PREDICTED",
+                "Backfilled state should be PREDICTED"
             )
 
 
@@ -93,23 +90,20 @@ class TestRollbackReconciliation:
     var buffer: RollbackBuffer
     var frame_index: int
 
-
     func before_each():
         ArrayPool.clear_all_pools()
         frame_index = 0
         var default_state := [0.0, 0.0, 0.0, 0]
         buffer = RollbackBuffer.new(90, frame_index, default_state)
 
-
     func after_each():
         ArrayPool.clear_all_pools()
-
 
     func test_detects_mismatch_and_triggers_rollback():
         # Simulate client prediction for frames 0-10.
         for i in range(11):
             var state := ArrayPool.acquire(4)
-            state[0] = i * 5.0 # Client predicted position
+            state[0] = i * 5.0  # Client predicted position
             state[1] = 0.0
             state[2] = 5.0
             state[3] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
@@ -118,14 +112,14 @@ class TestRollbackReconciliation:
         # Server sends authoritative correction for frame 5 with different
         # position.
         var server_state := ArrayPool.acquire(4)
-        server_state[0] = 30.0 # Server says position is different
+        server_state[0] = 30.0  # Server says position is different
         server_state[1] = 0.0
         server_state[2] = 5.0
         server_state[3] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
 
         var client_state_5: Array = buffer.get_at(5)
         var has_mismatch := absf(
-            client_state_5[0] - server_state[0],
+            client_state_5[0] - server_state[0]
         ) > 1.0
 
         assert_true(has_mismatch, "Should detect position mismatch")
@@ -138,9 +132,8 @@ class TestRollbackReconciliation:
         assert_eq(corrected_state[0], 30.0)
         assert_eq(
             corrected_state[3],
-            ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE,
+            ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
         )
-
 
     func test_re_simulates_frames_after_rollback_point():
         # Client predicts frames 0-10.
@@ -159,9 +152,9 @@ class TestRollbackReconciliation:
         var server_state_5 := ArrayPool.acquire(4)
         server_state_5[0] = 50.0
         server_state_5[1] = 0.0
-        server_state_5[2] = 8.0 # Different velocity
+        server_state_5[2] = 8.0  # Different velocity
         server_state_5[3] = \
-        ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+            ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
         buffer.set_at(5, server_state_5)
 
         # Re-simulate frames 6-10 with corrected velocity.
@@ -180,7 +173,7 @@ class TestRollbackReconciliation:
         assert_ne(
             predicted_pos_10,
             corrected_pos_10,
-            "Re-simulation should change future frames",
+            "Re-simulation should change future frames"
         )
 
 
@@ -189,17 +182,14 @@ class TestBufferWraparound:
 
     var buffer: RollbackBuffer
 
-
     func before_each():
         ArrayPool.clear_all_pools()
         var default_state := [0.0, 0.0, 0]
         # Small buffer to test wraparound quickly.
         buffer = RollbackBuffer.new(10, 0, default_state)
 
-
     func after_each():
         ArrayPool.clear_all_pools()
-
 
     func test_maintains_correct_state_after_wraparound():
         # Push enough frames to wrap around multiple times.
@@ -223,7 +213,6 @@ class TestBufferWraparound:
         assert_eq(state_45[0], 44.0)
         assert_eq(state_45[1], 88.0)
 
-
     func test_can_apply_server_correction_to_old_frame():
         # Simulate many frames.
         for i in range(30):
@@ -240,7 +229,7 @@ class TestBufferWraparound:
         server_state[0] = 999.0
         server_state[1] = 888.0
         server_state[2] = \
-        ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+            ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
         buffer.set_at(25, server_state)
 
         # Verify correction was applied.
@@ -254,16 +243,13 @@ class TestArrayPoolEfficiency:
 
     var buffer: RollbackBuffer
 
-
     func before_each():
         ArrayPool.clear_all_pools()
         var default_state := [0.0, 0.0, 0, 0, 0]
         buffer = RollbackBuffer.new(30, 0, default_state)
 
-
     func after_each():
         ArrayPool.clear_all_pools()
-
 
     func test_reuses_arrays_during_frame_updates():
         # Fill buffer with initial states.
@@ -286,9 +272,8 @@ class TestArrayPoolEfficiency:
         assert_gte(
             stats_after.get("total_pooled", 0),
             stats_before.get("total_pooled", 0),
-            "Arrays should be reused, not recreated",
+            "Arrays should be reused, not recreated"
         )
-
 
     func test_releases_arrays_when_overwriting_old_frames():
         # Fill buffer beyond capacity.
@@ -303,7 +288,7 @@ class TestArrayPoolEfficiency:
         assert_gt(
             stats.get("total_pooled", 0),
             0,
-            "Overwritten frames should release arrays to pool",
+            "Overwritten frames should release arrays to pool"
         )
 
 
@@ -312,16 +297,13 @@ class TestLargeGapBackfill:
 
     var buffer: RollbackBuffer
 
-
     func before_each():
         ArrayPool.clear_all_pools()
         var default_state := [100.0, 200.0, 0]
         buffer = RollbackBuffer.new(90, 0, default_state)
 
-
     func after_each():
         ArrayPool.clear_all_pools()
-
 
     func test_reinitializes_buffer_for_very_large_gap():
         # Set a state at frame 0.
@@ -344,9 +326,8 @@ class TestLargeGapBackfill:
         # But should be marked as PREDICTED.
         assert_eq(
             state_500[2],
-            ReconcilableNetworkedState.FrameAuthority.PREDICTED,
+            ReconcilableNetworkedState.FrameAuthority.PREDICTED
         )
-
 
     func test_handles_negative_indices_correctly():
         # Access index -1 (previous frame for frame 0).

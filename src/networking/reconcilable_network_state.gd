@@ -12,11 +12,11 @@ extends MultiplayerSynchronizer
 ## Architecture:
 ## This class bridges three systems:
 ## 1. **Godot MultiplayerSynchronizer**: Handles low-level replication of
-##	packed_state across network
+##    packed_state across network
 ## 2. **RollbackBuffer**: Stores historical states for time-travel during
-##	rollback
+##    rollback
 ## 3. **NetworkFrameDriver**: Coordinates frame-synchronous simulation and
-##	rollback
+##    rollback
 ##
 ## Server-authoritative vs client-authoritative:
 ## - **Server-authoritative** (default): Server is source of truth for entity
@@ -28,10 +28,10 @@ extends MultiplayerSynchronizer
 ##
 ## Frame processing cycle (called by NetworkFrameDriver):
 ## 1. **_pre_network_process()**: Restore state from rollback buffer (frame N-1)
-##	and sync to scene
+##    and sync to scene
 ## 2. **_network_process()**: Game logic executes (implemented by subclass)
 ## 3. **_post_network_process()**: Pack state from scene back to properties and
-##	buffer
+##    buffer
 ##
 ## Subclass requirements:
 ## - Define `_synced_properties_and_rollback_diff_thresholds` dictionary mapping
@@ -67,20 +67,20 @@ extends MultiplayerSynchronizer
 ## var velocity := Vector2.ZERO
 ##
 ## var _synced_properties_and_rollback_diff_thresholds := {
-##	 "position": 1.0,
-##	 "velocity": 10.0,
+##     "position": 1.0,
+##     "velocity": 10.0,
 ## }
 ##
 ## func _get_default_values() -> Array:
-##	 return [Vector2.ZERO, Vector2.ZERO]
+##     return [Vector2.ZERO, Vector2.ZERO]
 ##
 ## func _sync_to_scene_state(_previous_state: Array) -> void:
-##	 root.position = position
-##	 root.velocity = velocity
+##     root.position = position
+##     root.velocity = velocity
 ##
 ## func _sync_from_scene_state() -> void:
-##	 position = root.position
-##	 velocity = root.velocity
+##     position = root.position
+##     velocity = root.velocity
 ## ```
 
 enum FrameAuthority {
@@ -232,7 +232,7 @@ func _parse_property_names() -> void:
     )
     for i in range(_property_names_for_packing.size()):
         var property_name := _property_names_for_packing[i]
-    _property_name_to_pack_index[property_name] = i
+        _property_name_to_pack_index[property_name] = i
 
 
 func update_authority() -> void:
@@ -295,126 +295,127 @@ func _handle_new_authoritative_state() -> void:
             ScaffolderLog.CATEGORY_NETWORK_SYNC,
         )
 
-# Clients should ignore PREDICTED state from server-authoritative nodes entirely.
-# Only the server's AUTHORITATIVE state matters for reconciliation.
-# Exception: Some nodes (like ForwardedPlayerInputFromServer) need PREDICTED
-# states because they have no local prediction alternative.
-if (
-    is_server_authoritative and
-    G.network.is_client and
-    new_frame_authority == FrameAuthority.PREDICTED and
-    not _should_accept_predicted_states()
-):
-    if G.is_verbose:
-        G.print(
-            "%s F:%d Ignoring PREDICTED server state for frame %d" % [
-                name,
-                G.network.server_frame_index,
+    # Clients should ignore PREDICTED state from server-authoritative nodes entirely.
+    # Only the server's AUTHORITATIVE state matters for reconciliation.
+    # Exception: Some nodes (like ForwardedPlayerInputFromServer) need PREDICTED
+    # states because they have no local prediction alternative.
+    if (
+        is_server_authoritative and
+        G.network.is_client and
+        new_frame_authority == FrameAuthority.PREDICTED and
+        not _should_accept_predicted_states()
+    ):
+        if G.is_verbose:
+            G.print(
+                "%s F:%d Ignoring PREDICTED server state for frame %d" % [
+                    name,
+                    G.network.server_frame_index,
+                    state_frame_index,
+                ],
+                ScaffolderLog.CATEGORY_NETWORK_SYNC,
+            )
+        return
+
+    if G.network.frame_driver.is_frame_too_old_to_consider(state_frame_index):
+        G.warning(
+            (
+                "Received networked state that is too old to reconcile - " +
+                "DISCARDING: state frame: %d, state time: %d, local frame: %d, " +
+                "local time: %d, oldest acceptable: %d"
+            )
+            % [
                 state_frame_index,
+                state_time_usec,
+                G.network.server_frame_index,
+                G.network.server_frame_time_usec,
+                G.network.frame_driver.oldest_rollbackable_frame_index,
             ],
             ScaffolderLog.CATEGORY_NETWORK_SYNC,
         )
-    return
+        return
 
-if G.network.frame_driver.is_frame_too_old_to_consider(state_frame_index):
-    G.warning(
-        (
-            "Received networked state that is too old to reconcile - " +
-            "DISCARDING: state frame: %d, state time: %d, local frame: %d, " +
-            "local time: %d, oldest acceptable: %d"
-        )
-        % [
-            state_frame_index,
-            state_time_usec,
-            G.network.server_frame_index,
-            G.network.server_frame_time_usec,
-            G.network.frame_driver.oldest_rollbackable_frame_index,
-        ],
-        ScaffolderLog.CATEGORY_NETWORK_SYNC,
+    var should_trigger_fast_forward := (
+        G.network.server_frame_index < state_frame_index - 1 and
+        G.network.is_client
     )
-    return
+    var is_more_than_one_frame_ahead := G.network.server_frame_index < state_frame_index - 2
 
-var should_trigger_fast_forward := (
-    G.network.server_frame_index < state_frame_index - 1 and
-    G.network.is_client
-)
-var is_more_than_one_frame_ahead := G.network.server_frame_index < state_frame_index - 2
-
-# Server rejects client states that are too far in the future (2+ frames ahead).
-# This likely indicates a bug or malicious client.
-if G.network.is_server and is_more_than_one_frame_ahead:
-    G.warning(
-        (
-            "Rejecting too-distant-future state from client: " +
-            "state frame %d, server frame %d"
-        )
-        % [state_frame_index, G.network.server_frame_index],
-        ScaffolderLog.CATEGORY_NETWORK_SYNC,
-    )
-    return
-
-# Unpack if state is for current frame, next frame, or past. State for the
-# next frame is valid when received between physics ticks.
-var should_unpack_state := state_frame_index >= G.network.server_frame_index
-var should_check_for_prediction_mismatch := (
-    state_frame_index < G.network.server_frame_index
-    and _rollback_buffer.has_at(state_frame_index)
-    and new_frame_authority == FrameAuthority.AUTHORITATIVE
-)
-
-if should_check_for_prediction_mismatch:
-    var mismatched_properties := _get_mismatched_properties(packed_state, state_frame_index)
-    if not mismatched_properties.is_empty():
-        var buffer_state: Array = _rollback_buffer.get_at(state_frame_index)
-        var node_type := "state-from-server" if is_server_authoritative else "state-from-client"
-        var mismatch_details := _get_mismatch_details_string(
-            mismatched_properties,
-            packed_state,
-            buffer_state,
-        )
-        G.print(
-            "Prediction state mismatch (%s): %s"
-            % [node_type, mismatch_details],
+    # Server rejects client states that are too far in the future (2+ frames ahead).
+    # This likely indicates a bug or malicious client.
+    if G.network.is_server and is_more_than_one_frame_ahead:
+        G.warning(
+            (
+                "Rejecting too-distant-future state from client: " +
+                "state frame %d, server frame %d"
+            )
+            % [state_frame_index, G.network.server_frame_index],
             ScaffolderLog.CATEGORY_NETWORK_SYNC,
-            ScaffolderLog.Verbosity.VERBOSE,
         )
+        return
 
-        G.network.frame_driver.queue_rollback(state_frame_index)
-
-    # Release the array back to pool
-    ArrayPool.release(mismatched_properties)
-
-# Record rollback buffer frame.
-_pack_buffer_state_from_network_state(packed_state)
-
-if should_unpack_state:
-    # Record local class properties.
-    _unpack_networked_state()
-    frame_authority = new_frame_authority as FrameAuthority
-
-received_network_state.emit()
-
-# If we have skipped frames, we need to force the entire system to
-# fast-forward.
-if should_trigger_fast_forward:
-    G.print(
-        "Fast-forwarding due to future state from server",
-        ScaffolderLog.CATEGORY_NETWORK_SYNC,
+    # Unpack if state is for current frame, next frame, or past. State for the
+    # next frame is valid when received between physics ticks.
+    var should_unpack_state := state_frame_index >= G.network.server_frame_index
+    var should_check_for_prediction_mismatch := (
+        state_frame_index < G.network.server_frame_index
+        and _rollback_buffer.has_at(state_frame_index)
+        and new_frame_authority == FrameAuthority.AUTHORITATIVE
     )
 
-    # Adjust the time tracker's clock offset to account for the drift.
-    # This prevents the NTP averaging from reverting the fast-forward by
-    # also adjusting all NTP samples. The force_clock_offset method
-    # updates both the current offset and all historical samples to
-# maintain consistency.
-var frames_behind := state_frame_index - 1 - G.network.server_frame_index
-var time_delta_usec := floori(
-    frames_behind
-    * G.network.frame_driver.TARGET_NETWORK_TIME_STEP_USEC,
-)
-G.network.time.force_clock_offset(time_delta_usec)
+    if should_check_for_prediction_mismatch:
+        var mismatched_properties := _get_mismatched_properties(packed_state, state_frame_index)
+        if not mismatched_properties.is_empty():
+            var buffer_state: Array = _rollback_buffer.get_at(state_frame_index)
+            var node_type := "state-from-server" if is_server_authoritative else "state-from-client"
+            var mismatch_details := _get_mismatch_details_string(
+                mismatched_properties,
+                packed_state,
+                buffer_state,
+            )
+            G.print(
+                "Prediction state mismatch (%s): %s"
+                % [node_type, mismatch_details],
+                ScaffolderLog.CATEGORY_NETWORK_SYNC,
+                ScaffolderLog.Verbosity.VERBOSE,
+            )
 
-G.network.frame_driver.fast_forward(state_frame_index - 1)
+            G.network.frame_driver.queue_rollback(state_frame_index)
+
+        # Release the array back to pool
+        ArrayPool.release(mismatched_properties)
+
+    # Record rollback buffer frame.
+    _pack_buffer_state_from_network_state(packed_state)
+
+    if should_unpack_state:
+        # Record local class properties.
+        _unpack_networked_state()
+        frame_authority = new_frame_authority as FrameAuthority
+
+    received_network_state.emit()
+
+    # If we have skipped frames, we need to force the entire system to
+    # fast-forward.
+    if should_trigger_fast_forward:
+        G.print(
+            "Fast-forwarding due to future state from server",
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        )
+
+        # Adjust the time tracker's clock offset to account for the drift.
+        # This prevents the NTP averaging from reverting the fast-forward by
+        # also adjusting all NTP samples. The force_clock_offset method
+        # updates both the current offset and all historical samples to
+        # maintain consistency.
+        var frames_behind := state_frame_index - 1 - G.network.server_frame_index
+        var time_delta_usec := floori(
+            frames_behind
+            * G.network.frame_driver.TARGET_NETWORK_TIME_STEP_USEC,
+        )
+        G.network.time.force_clock_offset(time_delta_usec)
+
+        G.network.frame_driver.fast_forward(state_frame_index - 1)
+
 
 func _network_process() -> void:
     network_processed.emit()
@@ -649,13 +650,13 @@ func _pack_buffer_state_from_network_state(packed_network_state: Array) -> void:
     rollback_frame_state[rollback_frame_state.size() - 1] = new_frame_authority
 
     # Note: rollback_frame_state is now owned by the rollback buffer, don't
-    #	   release it here.
+    #       release it here.
     _record_buffer_frame(frame_index, rollback_frame_state)
 
 
 func _record_buffer_frame(frame_index: int, frame_state: Array) -> void:
     # TODO: When updating frame buffer state later, reference the preexisting
-    #	   frame array, rather than instantiating a new one.
+    #       frame array, rather than instantiating a new one.
 
     # Guard against null rollback buffer (For tests: can occur if time isn't
     # initialized yet when record_initial_state() is called during _ready()).
@@ -676,26 +677,27 @@ func _record_buffer_frame(frame_index: int, frame_state: Array) -> void:
 ## pre-pause server state with invalid post-pause client predictions.
 func _cleanup_buffer_after_pause(pause_frame: int) -> void:
     # Get pause frame state.
-if not _rollback_buffer.has_at(pause_frame):
-    return
+    if not _rollback_buffer.has_at(pause_frame):
+        return
 
-var pause_state: Array = _rollback_buffer.get_at(pause_frame)
+    var pause_state: Array = _rollback_buffer.get_at(pause_frame)
 
-# Create a copy marked as PREDICTED for resetting.
-var fill_state := ArrayPool.acquire(pause_state.size())
-for i in range(pause_state.size() - 1):
-    fill_state[i] = pause_state[i]
-fill_state[fill_state.size() - 1] = FrameAuthority.PREDICTED
+    # Create a copy marked as PREDICTED for resetting.
+    var fill_state := ArrayPool.acquire(pause_state.size())
+    for i in range(pause_state.size() - 1):
+        fill_state[i] = pause_state[i]
+    fill_state[fill_state.size() - 1] = FrameAuthority.PREDICTED
 
-# Reset from pause_frame+1 to current latest.
-var latest := _rollback_buffer.get_latest_index()
-for frame_idx in range(pause_frame + 1, latest + 1):
-    var frame_state := ArrayPool.acquire(fill_state.size())
-    for i in range(fill_state.size()):
-        frame_state[i] = fill_state[i]
-    _rollback_buffer.set_at(frame_idx, frame_state)
+    # Reset from pause_frame+1 to current latest.
+    var latest := _rollback_buffer.get_latest_index()
+    for frame_idx in range(pause_frame + 1, latest + 1):
+        var frame_state := ArrayPool.acquire(fill_state.size())
+        for i in range(fill_state.size()):
+            frame_state[i] = fill_state[i]
+        _rollback_buffer.set_at(frame_idx, frame_state)
 
-ArrayPool.release(fill_state)
+    ArrayPool.release(fill_state)
+
 
 ## Records the initial spawn state to the rollback buffer for the current
 ## frame and previous frames.
@@ -759,8 +761,9 @@ func _unpack_buffer_state(frame_index: int) -> void:
     var i := 0
     for property_name in _property_names_for_packing:
         set(property_name, frame_state[i])
-    i += 1
-frame_authority = frame_state[i]
+        i += 1
+    frame_authority = frame_state[i]
+
 
 ## Returns an array of property names that have mismatched values between
 ## networked state and local buffer state.

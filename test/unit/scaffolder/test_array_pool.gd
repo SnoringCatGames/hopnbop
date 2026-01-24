@@ -1,6 +1,7 @@
 extends GutTest
 ## Unit tests for ArrayPool.
 
+
 func before_each():
     ArrayPool.clear_all_pools()
 
@@ -15,16 +16,13 @@ class TestAcquire:
     func before_each():
         ArrayPool.clear_all_pools()
 
-
     func after_each():
         ArrayPool.clear_all_pools()
-
 
     func test_acquire_returns_array_of_correct_size():
         var arr := ArrayPool.acquire(5)
         assert_not_null(arr)
         assert_eq(arr.size(), 5)
-
 
     func test_acquire_different_sizes_creates_separate_pools():
         var arr1 := ArrayPool.acquire(3)
@@ -38,11 +36,10 @@ class TestAcquire:
         assert_eq(
             stats.get("bucket_count", 0),
             2,
-            "Two size buckets should exist after acquiring",
+            "Two size buckets should exist after acquiring"
         )
         # But no arrays should be in the pools yet
         assert_eq(stats.get("total_pooled", 0), 0)
-
 
     func test_acquire_creates_new_array_when_pool_empty():
         var arr1 := ArrayPool.acquire(3)
@@ -56,7 +53,7 @@ class TestAcquire:
         arr1[0] = 999
         assert_null(
             arr2[0],
-            "Modifying arr1 should not affect arr2",
+            "Modifying arr1 should not affect arr2"
         )
 
 
@@ -66,10 +63,8 @@ class TestRelease:
     func before_each():
         ArrayPool.clear_all_pools()
 
-
     func after_each():
         ArrayPool.clear_all_pools()
-
 
     func test_release_adds_array_to_pool():
         var arr := ArrayPool.acquire(3)
@@ -83,10 +78,9 @@ class TestRelease:
         assert_eq(
             stats.get(3, 0),
             1,
-            "Pool for size 3 should have 1 array",
+            "Pool for size 3 should have 1 array"
         )
         assert_eq(stats.get("total_pooled", 0), 1)
-
 
     func test_release_clears_array_contents():
         var arr := ArrayPool.acquire(3)
@@ -100,7 +94,6 @@ class TestRelease:
         assert_null(arr[0])
         assert_null(arr[1])
         assert_null(arr[2])
-
 
     func test_release_respects_max_pool_size():
         # Acquire more arrays than the max pool size.
@@ -117,7 +110,7 @@ class TestRelease:
         assert_eq(
             stats.get(3, 0),
             ArrayPool.MAX_POOL_SIZE_PER_BUCKET,
-            "Pool should not exceed max size",
+            "Pool should not exceed max size"
         )
 
 
@@ -127,10 +120,8 @@ class TestAcquireReleaseCycle:
     func before_each():
         ArrayPool.clear_all_pools()
 
-
     func after_each():
         ArrayPool.clear_all_pools()
-
 
     func test_acquire_reuses_released_arrays():
         var arr1 := ArrayPool.acquire(3)
@@ -149,7 +140,6 @@ class TestAcquireReleaseCycle:
             "Should reuse the same array instance",
         )
         assert_eq(arr1[0], arr2[0], "Should reuse the same array instance")
-
 
     func test_acquire_after_release_returns_cleared_array():
         var arr1 := ArrayPool.acquire(3)
@@ -173,10 +163,8 @@ class TestGetPoolStats:
     func before_each():
         ArrayPool.clear_all_pools()
 
-
     func after_each():
         ArrayPool.clear_all_pools()
-
 
     func test_stats_reflect_current_pool_state():
         var arr1 := ArrayPool.acquire(3)
@@ -194,7 +182,6 @@ class TestGetPoolStats:
         assert_eq(stats.get("total_pooled", 0), 3)
         assert_eq(stats.get("bucket_count", 0), 2)
 
-
     func test_stats_for_empty_pool():
         var stats := ArrayPool.get_pool_stats()
 
@@ -208,10 +195,8 @@ class TestClearAllPools:
     func before_each():
         ArrayPool.clear_all_pools()
 
-
     func after_each():
         ArrayPool.clear_all_pools()
-
 
     func test_clear_all_pools_removes_all_pooled_arrays():
         for i in range(10):
@@ -234,10 +219,8 @@ class TestMultipleSizes:
     func before_each():
         ArrayPool.clear_all_pools()
 
-
     func after_each():
         ArrayPool.clear_all_pools()
-
 
     func test_different_sizes_use_separate_pools():
         var arr3a := ArrayPool.acquire(3)
@@ -256,7 +239,6 @@ class TestMultipleSizes:
         assert_eq(stats.get(5, 0), 2)
         assert_eq(stats.get("bucket_count", 0), 2)
         assert_eq(stats.get("total_pooled", 0), 4)
-
 
     func test_acquiring_from_one_pool_does_not_affect_another():
         var arr3 := ArrayPool.acquire(3)

@@ -10,8 +10,7 @@ using namespace godot;
 // GameLiftOutcome Implementation
 // ============================================================================
 
-void GameLiftOutcome::_bind_methods()
-{
+void GameLiftOutcome::_bind_methods() {
     ClassDB::bind_method(D_METHOD("is_success"), &GameLiftOutcome::is_success);
     ClassDB::bind_method(D_METHOD("get_error_message"), &GameLiftOutcome::get_error_message);
     ClassDB::bind_method(D_METHOD("get_error_type"), &GameLiftOutcome::get_error_type);
@@ -37,8 +36,7 @@ int GameLiftOutcome::get_error_type() const { return m_error_type; }
 // GameLiftGameSession Implementation
 // ============================================================================
 
-void GameLiftGameSession::_bind_methods()
-{
+void GameLiftGameSession::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_game_session_id"), &GameLiftGameSession::get_game_session_id);
     ClassDB::bind_method(D_METHOD("get_name"), &GameLiftGameSession::get_name);
     ClassDB::bind_method(D_METHOD("get_fleet_id"), &GameLiftGameSession::get_fleet_id);
@@ -95,8 +93,7 @@ Dictionary GameLiftGameSession::get_game_properties() const { return m_game_prop
 // GameLiftPlayerSession Implementation
 // ============================================================================
 
-void GameLiftPlayerSession::_bind_methods()
-{
+void GameLiftPlayerSession::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_player_session_id"), &GameLiftPlayerSession::get_player_session_id);
     ClassDB::bind_method(D_METHOD("get_player_id"), &GameLiftPlayerSession::get_player_id);
     ClassDB::bind_method(D_METHOD("get_game_session_id"), &GameLiftPlayerSession::get_game_session_id);
@@ -122,7 +119,7 @@ void GameLiftPlayerSession::_bind_methods()
     ADD_PROPERTY(PropertyInfo(Variant::INT, "termination_time"), "", "get_termination_time");
 }
 
-GameLiftPlayerSession::GameLiftPlayerSession()
+GameLiftPlayerSession::GameLiftPlayerSession() 
     : m_port(0), m_status(0), m_creation_time(0), m_termination_time(0) {}
 GameLiftPlayerSession::~GameLiftPlayerSession() {}
 
@@ -156,8 +153,7 @@ int64_t GameLiftPlayerSession::get_termination_time() const { return m_terminati
 
 GameLiftServer *GameLiftServer::singleton = nullptr;
 
-void GameLiftServer::_bind_methods()
-{
+void GameLiftServer::_bind_methods() {
     // Core SDK methods
     ClassDB::bind_method(D_METHOD("init_sdk"), &GameLiftServer::init_sdk);
     ClassDB::bind_method(D_METHOD("init_sdk_anywhere", "websocket_url", "auth_token", "fleet_id", "host_id", "process_id"), &GameLiftServer::init_sdk_anywhere);
@@ -204,28 +200,22 @@ void GameLiftServer::_bind_methods()
     BIND_ENUM_CONSTANT(DENY_ALL);
 }
 
-GameLiftServer::GameLiftServer() : m_initialized(false), m_process_ready(false)
-{
-    if (singleton == nullptr)
-    {
+GameLiftServer::GameLiftServer() : m_initialized(false), m_process_ready(false) {
+    if (singleton == nullptr) {
         singleton = this;
     }
 }
 
-GameLiftServer::~GameLiftServer()
-{
-    if (m_initialized)
-    {
+GameLiftServer::~GameLiftServer() {
+    if (m_initialized) {
         destroy();
     }
-    if (singleton == this)
-    {
+    if (singleton == this) {
         singleton = nullptr;
     }
 }
 
-GameLiftServer *GameLiftServer::get_singleton()
-{
+GameLiftServer *GameLiftServer::get_singleton() {
     return singleton;
 }
 
@@ -233,18 +223,15 @@ GameLiftServer *GameLiftServer::get_singleton()
 // Helper Methods
 // ============================================================================
 
-String GameLiftServer::aws_string_to_godot(const std::string &str)
-{
+String GameLiftServer::aws_string_to_godot(const std::string &str) {
     return String(str.c_str());
 }
 
-std::string GameLiftServer::godot_string_to_aws(const String &str)
-{
+std::string GameLiftServer::godot_string_to_aws(const String &str) {
     return std::string(str.utf8().get_data());
 }
 
-Ref<GameLiftGameSession> GameLiftServer::convert_game_session(const Aws::GameLift::Server::Model::GameSession &session)
-{
+Ref<GameLiftGameSession> GameLiftServer::convert_game_session(const Aws::GameLift::Server::Model::GameSession &session) {
     Ref<GameLiftGameSession> gs;
     gs.instantiate();
 
@@ -260,8 +247,7 @@ Ref<GameLiftGameSession> GameLiftServer::convert_game_session(const Aws::GameLif
 
     // Convert game properties
     Dictionary props;
-    for (const auto &prop : session.GetGameProperties())
-    {
+    for (const auto &prop : session.GetGameProperties()) {
         props[aws_string_to_godot(prop.GetKey())] = aws_string_to_godot(prop.GetValue());
     }
     gs->set_game_properties(props);
@@ -269,8 +255,7 @@ Ref<GameLiftGameSession> GameLiftServer::convert_game_session(const Aws::GameLif
     return gs;
 }
 
-Ref<GameLiftPlayerSession> GameLiftServer::convert_player_session(const Aws::GameLift::Server::Model::PlayerSession &session)
-{
+Ref<GameLiftPlayerSession> GameLiftServer::convert_player_session(const Aws::GameLift::Server::Model::PlayerSession &session) {
     Ref<GameLiftPlayerSession> ps;
     ps.instantiate();
 
@@ -293,19 +278,15 @@ Ref<GameLiftPlayerSession> GameLiftServer::convert_player_session(const Aws::Gam
 // SDK Callbacks (Static)
 // ============================================================================
 
-void GameLiftServer::on_start_game_session_callback(Aws::GameLift::Server::Model::GameSession gameSession)
-{
-    if (singleton)
-    {
+void GameLiftServer::on_start_game_session_callback(Aws::GameLift::Server::Model::GameSession gameSession) {
+    if (singleton) {
         singleton->m_current_game_session = singleton->convert_game_session(gameSession);
         singleton->emit_signal("game_session_started", singleton->m_current_game_session);
     }
 }
 
-void GameLiftServer::on_update_game_session_callback(Aws::GameLift::Server::Model::UpdateGameSession updateGameSession)
-{
-    if (singleton)
-    {
+void GameLiftServer::on_update_game_session_callback(Aws::GameLift::Server::Model::UpdateGameSession updateGameSession) {
+    if (singleton) {
         Ref<GameLiftGameSession> gs = singleton->convert_game_session(updateGameSession.GetGameSession());
         singleton->m_current_game_session = gs;
 
@@ -316,18 +297,14 @@ void GameLiftServer::on_update_game_session_callback(Aws::GameLift::Server::Mode
     }
 }
 
-void GameLiftServer::on_process_terminate_callback()
-{
-    if (singleton)
-    {
+void GameLiftServer::on_process_terminate_callback() {
+    if (singleton) {
         singleton->emit_signal("process_terminate_requested");
     }
 }
 
-bool GameLiftServer::on_health_check_callback()
-{
-    if (singleton)
-    {
+bool GameLiftServer::on_health_check_callback() {
+    if (singleton) {
         singleton->emit_signal("health_check_requested");
     }
     // Return true to indicate healthy. In a real implementation, you might
@@ -339,21 +316,17 @@ bool GameLiftServer::on_health_check_callback()
 // Core SDK Methods
 // ============================================================================
 
-Ref<GameLiftOutcome> GameLiftServer::init_sdk()
-{
+Ref<GameLiftOutcome> GameLiftServer::init_sdk() {
     Ref<GameLiftOutcome> outcome;
     outcome.instantiate();
 
     auto result = Aws::GameLift::Server::InitSDK();
 
-    if (result.IsSuccess())
-    {
+    if (result.IsSuccess()) {
         outcome->set_success(true);
         m_initialized = true;
         UtilityFunctions::print("[GameLift] SDK initialized successfully for managed EC2 fleet");
-    }
-    else
-    {
+    } else {
         outcome->set_success(false);
         outcome->set_error_message(aws_string_to_godot(result.GetError().GetErrorMessage()));
         outcome->set_error_type(static_cast<int>(result.GetError().GetErrorType()));
@@ -368,8 +341,8 @@ Ref<GameLiftOutcome> GameLiftServer::init_sdk_anywhere(
     const String &auth_token,
     const String &fleet_id,
     const String &host_id,
-    const String &process_id)
-{
+    const String &process_id
+) {
     Ref<GameLiftOutcome> outcome;
     outcome.instantiate();
 
@@ -378,18 +351,16 @@ Ref<GameLiftOutcome> GameLiftServer::init_sdk_anywhere(
         godot_string_to_aws(auth_token),
         godot_string_to_aws(fleet_id),
         godot_string_to_aws(host_id),
-        godot_string_to_aws(process_id));
+        godot_string_to_aws(process_id)
+    );
 
     auto result = Aws::GameLift::Server::InitSDK(serverParameters);
 
-    if (result.IsSuccess())
-    {
+    if (result.IsSuccess()) {
         outcome->set_success(true);
         m_initialized = true;
         UtilityFunctions::print("[GameLift] SDK initialized successfully for Anywhere fleet");
-    }
-    else
-    {
+    } else {
         outcome->set_success(false);
         outcome->set_error_message(aws_string_to_godot(result.GetError().GetErrorMessage()));
         outcome->set_error_type(static_cast<int>(result.GetError().GetErrorType()));
@@ -399,13 +370,11 @@ Ref<GameLiftOutcome> GameLiftServer::init_sdk_anywhere(
     return outcome;
 }
 
-Ref<GameLiftOutcome> GameLiftServer::process_ready(int port, const PackedStringArray &log_paths)
-{
+Ref<GameLiftOutcome> GameLiftServer::process_ready(int port, const PackedStringArray &log_paths) {
     Ref<GameLiftOutcome> outcome;
     outcome.instantiate();
 
-    if (!m_initialized)
-    {
+    if (!m_initialized) {
         outcome->set_success(false);
         outcome->set_error_message("SDK not initialized. Call init_sdk() first.");
         return outcome;
@@ -413,8 +382,7 @@ Ref<GameLiftOutcome> GameLiftServer::process_ready(int port, const PackedStringA
 
     // Convert log paths
     std::vector<std::string> aws_log_paths;
-    for (int i = 0; i < log_paths.size(); i++)
-    {
+    for (int i = 0; i < log_paths.size(); i++) {
         aws_log_paths.push_back(godot_string_to_aws(log_paths[i]));
     }
 
@@ -425,18 +393,16 @@ Ref<GameLiftOutcome> GameLiftServer::process_ready(int port, const PackedStringA
         on_process_terminate_callback,
         on_health_check_callback,
         port,
-        Aws::GameLift::Server::LogParameters(aws_log_paths));
+        Aws::GameLift::Server::LogParameters(aws_log_paths)
+    );
 
     auto result = Aws::GameLift::Server::ProcessReady(processParams);
 
-    if (result.IsSuccess())
-    {
+    if (result.IsSuccess()) {
         outcome->set_success(true);
         m_process_ready = true;
         UtilityFunctions::print("[GameLift] Process ready on port ", port);
-    }
-    else
-    {
+    } else {
         outcome->set_success(false);
         outcome->set_error_message(aws_string_to_godot(result.GetError().GetErrorMessage()));
         outcome->set_error_type(static_cast<int>(result.GetError().GetErrorType()));
@@ -446,21 +412,17 @@ Ref<GameLiftOutcome> GameLiftServer::process_ready(int port, const PackedStringA
     return outcome;
 }
 
-Ref<GameLiftOutcome> GameLiftServer::process_ending()
-{
+Ref<GameLiftOutcome> GameLiftServer::process_ending() {
     Ref<GameLiftOutcome> outcome;
     outcome.instantiate();
 
     auto result = Aws::GameLift::Server::ProcessEnding();
 
-    if (result.IsSuccess())
-    {
+    if (result.IsSuccess()) {
         outcome->set_success(true);
         m_process_ready = false;
         UtilityFunctions::print("[GameLift] Process ending signaled");
-    }
-    else
-    {
+    } else {
         outcome->set_success(false);
         outcome->set_error_message(aws_string_to_godot(result.GetError().GetErrorMessage()));
         outcome->set_error_type(static_cast<int>(result.GetError().GetErrorType()));
@@ -469,20 +431,16 @@ Ref<GameLiftOutcome> GameLiftServer::process_ending()
     return outcome;
 }
 
-Ref<GameLiftOutcome> GameLiftServer::activate_game_session()
-{
+Ref<GameLiftOutcome> GameLiftServer::activate_game_session() {
     Ref<GameLiftOutcome> outcome;
     outcome.instantiate();
 
     auto result = Aws::GameLift::Server::ActivateGameSession();
 
-    if (result.IsSuccess())
-    {
+    if (result.IsSuccess()) {
         outcome->set_success(true);
         UtilityFunctions::print("[GameLift] Game session activated");
-    }
-    else
-    {
+    } else {
         outcome->set_success(false);
         outcome->set_error_message(aws_string_to_godot(result.GetError().GetErrorMessage()));
         outcome->set_error_type(static_cast<int>(result.GetError().GetErrorType()));
@@ -491,10 +449,8 @@ Ref<GameLiftOutcome> GameLiftServer::activate_game_session()
     return outcome;
 }
 
-void GameLiftServer::destroy()
-{
-    if (m_initialized)
-    {
+void GameLiftServer::destroy() {
+    if (m_initialized) {
         Aws::GameLift::Server::Destroy();
         m_initialized = false;
         m_process_ready = false;
@@ -506,20 +462,16 @@ void GameLiftServer::destroy()
 // Player Session Management
 // ============================================================================
 
-Ref<GameLiftOutcome> GameLiftServer::accept_player_session(const String &player_session_id)
-{
+Ref<GameLiftOutcome> GameLiftServer::accept_player_session(const String &player_session_id) {
     Ref<GameLiftOutcome> outcome;
     outcome.instantiate();
 
     auto result = Aws::GameLift::Server::AcceptPlayerSession(godot_string_to_aws(player_session_id));
 
-    if (result.IsSuccess())
-    {
+    if (result.IsSuccess()) {
         outcome->set_success(true);
         UtilityFunctions::print("[GameLift] Accepted player session: ", player_session_id);
-    }
-    else
-    {
+    } else {
         outcome->set_success(false);
         outcome->set_error_message(aws_string_to_godot(result.GetError().GetErrorMessage()));
         outcome->set_error_type(static_cast<int>(result.GetError().GetErrorType()));
@@ -528,20 +480,16 @@ Ref<GameLiftOutcome> GameLiftServer::accept_player_session(const String &player_
     return outcome;
 }
 
-Ref<GameLiftOutcome> GameLiftServer::remove_player_session(const String &player_session_id)
-{
+Ref<GameLiftOutcome> GameLiftServer::remove_player_session(const String &player_session_id) {
     Ref<GameLiftOutcome> outcome;
     outcome.instantiate();
 
     auto result = Aws::GameLift::Server::RemovePlayerSession(godot_string_to_aws(player_session_id));
 
-    if (result.IsSuccess())
-    {
+    if (result.IsSuccess()) {
         outcome->set_success(true);
         UtilityFunctions::print("[GameLift] Removed player session: ", player_session_id);
-    }
-    else
-    {
+    } else {
         outcome->set_success(false);
         outcome->set_error_message(aws_string_to_godot(result.GetError().GetErrorMessage()));
         outcome->set_error_type(static_cast<int>(result.GetError().GetErrorType()));
@@ -555,46 +503,37 @@ Array GameLiftServer::describe_player_sessions(
     const String &player_id,
     const String &player_session_id,
     const String &player_session_status_filter,
-    int limit)
-{
+    int limit
+) {
     Array sessions;
 
     Aws::GameLift::Server::Model::DescribePlayerSessionsRequest request;
 
-    if (!game_session_id.is_empty())
-    {
+    if (!game_session_id.is_empty()) {
         request.SetGameSessionId(godot_string_to_aws(game_session_id));
     }
-    if (!player_id.is_empty())
-    {
+    if (!player_id.is_empty()) {
         request.SetPlayerId(godot_string_to_aws(player_id));
     }
-    if (!player_session_id.is_empty())
-    {
+    if (!player_session_id.is_empty()) {
         request.SetPlayerSessionId(godot_string_to_aws(player_session_id));
     }
-    if (!player_session_status_filter.is_empty())
-    {
+    if (!player_session_status_filter.is_empty()) {
         request.SetPlayerSessionStatusFilter(godot_string_to_aws(player_session_status_filter));
     }
-    if (limit > 0)
-    {
+    if (limit > 0) {
         request.SetLimit(limit);
     }
 
     auto result = Aws::GameLift::Server::DescribePlayerSessions(request);
 
-    if (result.IsSuccess())
-    {
-        for (const auto &session : result.GetResult().GetPlayerSessions())
-        {
+    if (result.IsSuccess()) {
+        for (const auto &session : result.GetResult().GetPlayerSessions()) {
             sessions.append(convert_player_session(session));
         }
-    }
-    else
-    {
-        UtilityFunctions::printerr("[GameLift] DescribePlayerSessions failed: ",
-                                   aws_string_to_godot(result.GetError().GetErrorMessage()));
+    } else {
+        UtilityFunctions::printerr("[GameLift] DescribePlayerSessions failed: ", 
+            aws_string_to_godot(result.GetError().GetErrorMessage()));
     }
 
     return sessions;
@@ -604,52 +543,43 @@ Array GameLiftServer::describe_player_sessions(
 // Game Session Management
 // ============================================================================
 
-String GameLiftServer::get_game_session_id()
-{
+String GameLiftServer::get_game_session_id() {
     auto result = Aws::GameLift::Server::GetGameSessionId();
-    if (result.IsSuccess())
-    {
+    if (result.IsSuccess()) {
         return aws_string_to_godot(result.GetResult());
     }
     return "";
 }
 
-int64_t GameLiftServer::get_termination_time()
-{
+int64_t GameLiftServer::get_termination_time() {
     auto result = Aws::GameLift::Server::GetTerminationTime();
-    if (result.IsSuccess())
-    {
+    if (result.IsSuccess()) {
         return result.GetResult();
     }
     return -1;
 }
 
-Ref<GameLiftOutcome> GameLiftServer::update_player_session_creation_policy(PlayerSessionCreationPolicy policy)
-{
+Ref<GameLiftOutcome> GameLiftServer::update_player_session_creation_policy(PlayerSessionCreationPolicy policy) {
     Ref<GameLiftOutcome> outcome;
     outcome.instantiate();
 
     Aws::GameLift::Server::Model::PlayerSessionCreationPolicy aws_policy;
-    switch (policy)
-    {
-    case ACCEPT_ALL:
-        aws_policy = Aws::GameLift::Server::Model::PlayerSessionCreationPolicy::ACCEPT_ALL;
-        break;
-    case DENY_ALL:
-        aws_policy = Aws::GameLift::Server::Model::PlayerSessionCreationPolicy::DENY_ALL;
-        break;
-    default:
-        aws_policy = Aws::GameLift::Server::Model::PlayerSessionCreationPolicy::ACCEPT_ALL;
+    switch (policy) {
+        case ACCEPT_ALL:
+            aws_policy = Aws::GameLift::Server::Model::PlayerSessionCreationPolicy::ACCEPT_ALL;
+            break;
+        case DENY_ALL:
+            aws_policy = Aws::GameLift::Server::Model::PlayerSessionCreationPolicy::DENY_ALL;
+            break;
+        default:
+            aws_policy = Aws::GameLift::Server::Model::PlayerSessionCreationPolicy::ACCEPT_ALL;
     }
 
     auto result = Aws::GameLift::Server::UpdatePlayerSessionCreationPolicy(aws_policy);
 
-    if (result.IsSuccess())
-    {
+    if (result.IsSuccess()) {
         outcome->set_success(true);
-    }
-    else
-    {
+    } else {
         outcome->set_success(false);
         outcome->set_error_message(aws_string_to_godot(result.GetError().GetErrorMessage()));
         outcome->set_error_type(static_cast<int>(result.GetError().GetErrorType()));
@@ -665,8 +595,8 @@ Ref<GameLiftOutcome> GameLiftServer::update_player_session_creation_policy(Playe
 Ref<GameLiftOutcome> GameLiftServer::start_match_backfill(
     const String &ticket_id,
     const String &matchmaking_configuration_arn,
-    const Array &players)
-{
+    const Array &players
+) {
     Ref<GameLiftOutcome> outcome;
     outcome.instantiate();
 
@@ -676,54 +606,47 @@ Ref<GameLiftOutcome> GameLiftServer::start_match_backfill(
 
     // Get game session ARN from current session
     auto gsIdResult = Aws::GameLift::Server::GetGameSessionId();
-    if (gsIdResult.IsSuccess())
-    {
+    if (gsIdResult.IsSuccess()) {
         request.SetGameSessionArn(gsIdResult.GetResult());
     }
 
     // Convert players array to SDK format
     std::vector<Aws::GameLift::Server::Model::Player> aws_players;
-    for (int i = 0; i < players.size(); i++)
-    {
+    for (int i = 0; i < players.size(); i++) {
         Dictionary player_dict = players[i];
         Aws::GameLift::Server::Model::Player aws_player;
 
-        if (player_dict.has("player_id"))
-        {
+        if (player_dict.has("player_id")) {
             aws_player.SetPlayerId(godot_string_to_aws(player_dict["player_id"]));
         }
-        if (player_dict.has("team"))
-        {
+        if (player_dict.has("team")) {
             aws_player.SetTeam(godot_string_to_aws(player_dict["team"]));
         }
 
         // Handle player attributes
-        if (player_dict.has("attributes"))
-        {
+        if (player_dict.has("attributes")) {
             Dictionary attrs = player_dict["attributes"];
             std::map<std::string, Aws::GameLift::Server::Model::AttributeValue> aws_attrs;
 
             Array keys = attrs.keys();
-            for (int j = 0; j < keys.size(); j++)
-            {
+            for (int j = 0; j < keys.size(); j++) {
                 String key = keys[j];
                 Variant value = attrs[key];
 
                 Aws::GameLift::Server::Model::AttributeValue attr_value;
 
                 // Handle different attribute types
-                switch (value.get_type())
-                {
-                case Variant::FLOAT:
-                case Variant::INT:
-                    attr_value = Aws::GameLift::Server::Model::AttributeValue(static_cast<double>(value));
-                    break;
-                case Variant::STRING:
-                    attr_value = Aws::GameLift::Server::Model::AttributeValue(godot_string_to_aws(value));
-                    break;
-                default:
-                    attr_value = Aws::GameLift::Server::Model::AttributeValue(godot_string_to_aws(String(value)));
-                    break;
+                switch (value.get_type()) {
+                    case Variant::FLOAT:
+                    case Variant::INT:
+                        attr_value = Aws::GameLift::Server::Model::AttributeValue(static_cast<double>(value));
+                        break;
+                    case Variant::STRING:
+                        attr_value = Aws::GameLift::Server::Model::AttributeValue(godot_string_to_aws(value));
+                        break;
+                    default:
+                        attr_value = Aws::GameLift::Server::Model::AttributeValue(godot_string_to_aws(String(value)));
+                        break;
                 }
 
                 aws_attrs[godot_string_to_aws(key)] = attr_value;
@@ -732,13 +655,11 @@ Ref<GameLiftOutcome> GameLiftServer::start_match_backfill(
         }
 
         // Handle latency in ms
-        if (player_dict.has("latency_ms"))
-        {
+        if (player_dict.has("latency_ms")) {
             Dictionary latency_dict = player_dict["latency_ms"];
             std::map<std::string, int> latency_map;
             Array latency_keys = latency_dict.keys();
-            for (int j = 0; j < latency_keys.size(); j++)
-            {
+            for (int j = 0; j < latency_keys.size(); j++) {
                 String region = latency_keys[j];
                 latency_map[godot_string_to_aws(region)] = latency_dict[region];
             }
@@ -751,13 +672,10 @@ Ref<GameLiftOutcome> GameLiftServer::start_match_backfill(
 
     auto result = Aws::GameLift::Server::StartMatchBackfill(request);
 
-    if (result.IsSuccess())
-    {
+    if (result.IsSuccess()) {
         outcome->set_success(true);
         UtilityFunctions::print("[GameLift] Match backfill started with ticket: ", ticket_id);
-    }
-    else
-    {
+    } else {
         outcome->set_success(false);
         outcome->set_error_message(aws_string_to_godot(result.GetError().GetErrorMessage()));
         outcome->set_error_type(static_cast<int>(result.GetError().GetErrorType()));
@@ -769,8 +687,8 @@ Ref<GameLiftOutcome> GameLiftServer::start_match_backfill(
 Ref<GameLiftOutcome> GameLiftServer::stop_match_backfill(
     const String &ticket_id,
     const String &matchmaking_configuration_arn,
-    const String &game_session_arn)
-{
+    const String &game_session_arn
+) {
     Ref<GameLiftOutcome> outcome;
     outcome.instantiate();
 
@@ -781,13 +699,10 @@ Ref<GameLiftOutcome> GameLiftServer::stop_match_backfill(
 
     auto result = Aws::GameLift::Server::StopMatchBackfill(request);
 
-    if (result.IsSuccess())
-    {
+    if (result.IsSuccess()) {
         outcome->set_success(true);
         UtilityFunctions::print("[GameLift] Match backfill stopped for ticket: ", ticket_id);
-    }
-    else
-    {
+    } else {
         outcome->set_success(false);
         outcome->set_error_message(aws_string_to_godot(result.GetError().GetErrorMessage()));
         outcome->set_error_type(static_cast<int>(result.GetError().GetErrorType()));
@@ -800,45 +715,36 @@ Ref<GameLiftOutcome> GameLiftServer::stop_match_backfill(
 // Utility Methods
 // ============================================================================
 
-String GameLiftServer::get_sdk_version()
-{
+String GameLiftServer::get_sdk_version() {
     auto result = Aws::GameLift::Server::GetSdkVersion();
-    if (result.IsSuccess())
-    {
+    if (result.IsSuccess()) {
         return aws_string_to_godot(result.GetResult());
     }
     return "unknown";
 }
 
-bool GameLiftServer::is_initialized() const
-{
+bool GameLiftServer::is_initialized() const {
     return m_initialized;
 }
 
-bool GameLiftServer::is_process_ready() const
-{
+bool GameLiftServer::is_process_ready() const {
     return m_process_ready;
 }
 
-Ref<GameLiftGameSession> GameLiftServer::get_current_game_session() const
-{
+Ref<GameLiftGameSession> GameLiftServer::get_current_game_session() const {
     return m_current_game_session;
 }
 
-Dictionary GameLiftServer::get_compute_certificate()
-{
+Dictionary GameLiftServer::get_compute_certificate() {
     Dictionary result_dict;
 
     auto result = Aws::GameLift::Server::GetComputeCertificate();
 
-    if (result.IsSuccess())
-    {
+    if (result.IsSuccess()) {
         result_dict["success"] = true;
         result_dict["certificate_path"] = aws_string_to_godot(result.GetResult().GetCertificatePath());
         result_dict["compute_name"] = aws_string_to_godot(result.GetResult().GetComputeName());
-    }
-    else
-    {
+    } else {
         result_dict["success"] = false;
         result_dict["error"] = aws_string_to_godot(result.GetError().GetErrorMessage());
     }
@@ -846,8 +752,7 @@ Dictionary GameLiftServer::get_compute_certificate()
     return result_dict;
 }
 
-Dictionary GameLiftServer::get_fleet_role_credentials(const String &role_arn)
-{
+Dictionary GameLiftServer::get_fleet_role_credentials(const String &role_arn) {
     Dictionary result_dict;
 
     Aws::GameLift::Server::Model::GetFleetRoleCredentialsRequest request;
@@ -855,8 +760,7 @@ Dictionary GameLiftServer::get_fleet_role_credentials(const String &role_arn)
 
     auto result = Aws::GameLift::Server::GetFleetRoleCredentials(request);
 
-    if (result.IsSuccess())
-    {
+    if (result.IsSuccess()) {
         result_dict["success"] = true;
         result_dict["access_key_id"] = aws_string_to_godot(result.GetResult().GetAccessKeyId());
         result_dict["secret_access_key"] = aws_string_to_godot(result.GetResult().GetSecretAccessKey());
@@ -866,9 +770,7 @@ Dictionary GameLiftServer::get_fleet_role_credentials(const String &role_arn)
         tm expiration_tm = result.GetResult().GetExpiration();
         time_t expiration_time = mktime(&expiration_tm);
         result_dict["expiration"] = static_cast<int64_t>(expiration_time);
-    }
-    else
-    {
+    } else {
         result_dict["success"] = false;
         result_dict["error"] = aws_string_to_godot(result.GetError().GetErrorMessage());
     }

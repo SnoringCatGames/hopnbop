@@ -2,20 +2,20 @@
 class_name ScaffolderTime
 extends Node
 ## -   This supports tracking many different modes of time:
-##	 -   App time vs play (unpaused) time
-##	 -   Wall-clock time vs physics time vs render time
-##	 -   Scaled (e.g., slow-motion) time vs unscaled time
+##     -   App time vs play (unpaused) time
+##     -   Wall-clock time vs physics time vs render time
+##     -   Scaled (e.g., slow-motion) time vs unscaled time
 ## -   This also supports many different convenience methods for common
-##	 scheduling tasks:
-##	 -   set_timeout: One-shot callback scheduling (just like in JavaScript).
-##	 -   set_interval Repeated callback scheduling (just like in JavaScript).
-##	 -   tween_method / tween_property:
-##		 -   Less boilerplate than Godot's normal Tweens.
-##		 -   Support configuring which time modes are tracked.
-##	 -   throttle: Throttling a callback.
-##	 -   debounce: Debouncing a callback.
+##     scheduling tasks:
+##     -   set_timeout: One-shot callback scheduling (just like in JavaScript).
+##     -   set_interval Repeated callback scheduling (just like in JavaScript).
+##     -   tween_method / tween_property:
+##         -   Less boilerplate than Godot's normal Tweens.
+##         -   Support configuring which time modes are tracked.
+##     -   throttle: Throttling a callback.
+##     -   debounce: Debouncing a callback.
 ## -   This has a built-in garbage-collection mechanism, to clean-up stale
-##	 timeouts, intervals, tweens, throttles, and debounces.
+##     timeouts, intervals, tweens, throttles, and debounces.
 ## -   For an high-level description of this time-tracking, check-out this post:
 ## https://devlog.levi.dev/2021/05/wibbly-wobbly-timey-wimey-tracking-time.html
 
@@ -159,7 +159,7 @@ func get_network_time() -> float:
 
 func get_scaled_network_time() -> float:
     # TODO: Add support for scaling network time (need to replicate time scaling
-    #	   in a rollbackable way).
+    #       in a rollbackable way).
     return get_network_time()
 
 

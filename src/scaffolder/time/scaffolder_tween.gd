@@ -4,7 +4,7 @@ extends Node
 
 signal tween_all_completed
 # NOTE: Using this is almost never what you want.
-#	   Use tween_all_completed instead.
+#       Use tween_all_completed instead.
 signal _tween_completed(object, key)
 
 var parent
@@ -110,7 +110,7 @@ func trigger_completed() -> void:
         return
     var connection: Dictionary = connections[0]
 
-    #	var args := [sub_tween.object, sub_tween.key]
+    #    var args := [sub_tween.object, sub_tween.key]
     var args := []
     args.append_array(connection.binds)
 
@@ -178,8 +178,8 @@ class _SubTween:
     var final_val
     var duration: float
     # TODO: Replace this with better built-in EaseType/TransType easing support
-    #	   when it's ready
-    #	   (https://github.com/godotengine/godot-proposals/issues/36).
+    #       when it's ready
+    #       (https://github.com/godotengine/godot-proposals/issues/36).
     var ease_name: String
     var delay: float
     var time_type: int

@@ -34,7 +34,7 @@ const GameLiftManagerScript = preload("res://src/networking/gamelift_manager.gd"
 ##   - Set the number of instances to 3.
 ##   - Check "Override Main Run Args" for each row.
 ##   - Change the "Launch Arguments" of each row to be one of the following:
-##	 --server, --client=1, --client=2.
+##     --server, --client=1, --client=2.
 ##   - Also, include --preview as an arg in each row.
 
 ## Emitted when a PlayerInputFromClient node gains local multiplayer

@@ -28,4 +28,4 @@ func _collect_actions() -> void:
     else:
         # Don't update actions per-frame. Instead, actions are updated when
         # networked state is replicated.
-    pass
+        pass

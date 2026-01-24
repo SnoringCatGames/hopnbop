@@ -4,6 +4,7 @@ extends GutTest
 ## These tests verify system behavior under unusual or extreme conditions
 ## that could occur in real gameplay.
 
+
 func before_each():
     ArrayPool.clear_all_pools()
 

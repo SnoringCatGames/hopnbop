@@ -79,13 +79,14 @@ func _server_pack_players() -> void:
     var new_packed_players := []
     new_packed_players.resize(players.size())
     var i := 0
-for multiplayer_id in players:
-    new_packed_players[i] = players[multiplayer_id].get_packed_state()
-    i += 1
+    for multiplayer_id in players:
+        new_packed_players[i] = players[multiplayer_id].get_packed_state()
+        i += 1
 
-_is_packing_state_locally = true
-packed_players = new_packed_players
-_is_packing_state_locally = false
+    _is_packing_state_locally = true
+    packed_players = new_packed_players
+    _is_packing_state_locally = false
+
 
 func _client_unpack_players() -> void:
     players.clear()

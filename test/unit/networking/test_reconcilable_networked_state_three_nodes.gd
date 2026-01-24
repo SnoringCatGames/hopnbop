@@ -6,7 +6,7 @@ extends GutTest
 ## - 1-node: NPC with only CharacterStateFromServer
 ## - 2-node: Player with CharacterStateFromServer + PlayerInputFromClient
 ## - 3-node: Player with CharacterStateFromServer + PlayerInputFromClient +
-##		   ForwardedPlayerInputFromServer
+##           ForwardedPlayerInputFromServer
 
 func before_each():
     ArrayPool.clear_all_pools()

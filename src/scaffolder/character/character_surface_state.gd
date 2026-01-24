@@ -247,7 +247,7 @@ var is_descending_through_floors := false
 # - Also create support for transitioning from standing-on-fall-through-floor
 #   to clinging-to-it-from-underneath and vice versa?
 #   - This might require adding support for the concept of a multi-frame
-#	 action?
+#     action?
 #   - And this might require adding new Edge sub-classes for either direction?
 
 var is_ascending_through_ceilings: bool:

@@ -24,7 +24,6 @@ class MockPlayer extends Player:
         # Override to prevent Player's _enter_tree logic which requires G.level
         pass
 
-
     func _ready() -> void:
         # Override to prevent full Player initialization in tests which requires
         # state_from_server, collision_shape, movement_settings, etc.
@@ -218,7 +217,7 @@ class TestConfigurationWarnings:
         var forwarded_specific_warnings := PackedStringArray()
         for warning in warnings:
             if ("player" in warning or "sibling" in warning or
-                "properties" in warning ):
+                    "properties" in warning):
                 forwarded_specific_warnings.append(warning)
 
         assert_eq(

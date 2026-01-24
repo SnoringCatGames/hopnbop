@@ -1,6 +1,7 @@
 class_name Main
 extends Node2D
 
+
 func _enter_tree() -> void:
     G.main = self
     G.log.set_log_filtering(

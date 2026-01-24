@@ -6,6 +6,7 @@ extends ReconcilableNetworkedState
 ## This entity tracks position and velocity, which can be used to test
 ## rollback reconciliation logic.
 
+
 var position := Vector2.ZERO
 var velocity := Vector2.ZERO
 var custom_data: int = 0
@@ -75,8 +76,8 @@ func _sync_from_scene_state() -> void:
 
 ## Helper method to detect state mismatches for testing.
 func has_state_mismatch(
-        client_state: Array,
-        server_state: Array,
+    client_state: Array,
+    server_state: Array
 ) -> bool:
     if client_state.size() < 5 or server_state.size() < 5:
         return false
@@ -84,7 +85,7 @@ func has_state_mismatch(
     # Check position mismatch (x, y).
     var pos_diff := Vector2(
         abs(client_state[0] - server_state[0]),
-        abs(client_state[1] - server_state[1]),
+        abs(client_state[1] - server_state[1])
     )
     if pos_diff.length() > 1.0:
         return true
@@ -92,7 +93,7 @@ func has_state_mismatch(
     # Check velocity mismatch.
     var vel_diff := Vector2(
         abs(client_state[2] - server_state[2]),
-        abs(client_state[3] - server_state[3]),
+        abs(client_state[3] - server_state[3])
     )
     if vel_diff.length() > 0.5:
         return true
@@ -113,8 +114,8 @@ func reset_test_state() -> void:
 
 ## Create a simple test entity with given initial values.
 static func create_test_entity(
-        initial_position := Vector2.ZERO,
-        initial_velocity := Vector2.ZERO,
+    initial_position := Vector2.ZERO,
+    initial_velocity := Vector2.ZERO
 ) -> TestNetworkedEntity:
     var entity := TestNetworkedEntity.new()
     entity.position = initial_position

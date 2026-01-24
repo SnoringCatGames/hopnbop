@@ -124,11 +124,11 @@ func print(
 
 
 # -   Using this function instead of `push_error` directly enables us to render
-#	 the console output in environments like a mobile device.
+#     the console output in environments like a mobile device.
 # -   This requires an explicit error message in order to disambiguate where
-#	 the error actually happened.
-#	 -   This is needed because stack traces are not available on non-main
-#		 threads.
+#     the error actually happened.
+#     -   This is needed because stack traces are not available on non-main
+#         threads.
 func error(
         message: String,
         _category := CATEGORY_DEFAULT,
@@ -154,11 +154,11 @@ func error(
 
 
 # -   Using this function instead of `push_error` directly enables us to render
-#	 the console output in environments like a mobile device.
+#     the console output in environments like a mobile device.
 # -   This requires an explicit error message in order to disambiguate where
-#	 the error actually happened.
-#	 -   This is needed because stack traces are not available on non-main
-#		 threads.
+#     the error actually happened.
+#     -   This is needed because stack traces are not available on non-main
+#         threads.
 func warning(
         message: String,
         category := CATEGORY_DEFAULT,
@@ -369,41 +369,41 @@ func _print_front_matter() -> void:
 
 func _print_cat() -> void:
     const ASCII_CAT := """
-			   ######
-			   ####  ##
-			   #   #   ##
-			   #	##   ###############
-			   #	  ##				##########
-			   #	   #						  ####
-			### #######							   ##
-		  ## ##										 ##
-		 #   #											#
-	   ##   #					 #						#
-	 ##	#	##			   ##						 #
-	#	 #	#				##						   #
-   #	  #   #				##							 #
-  #	  ##				####				 ##			##
-  #	 #  ##			##					#			   #
- #	 #	 ############					##				#
-##	 #								   ##				  #
-#	  ##							  ####					#
-#	 #  ###				###########						#
-#		   ################	#							  #
-#								#							 #
-##							   ##							#
- #								#						   ##
- ##								#						  #
-  #								#						 #
-   #								#					   ##
-	#							   #					   #
-	##							  #					  #
-	 ##												   #
-	   ##											   ##
-		 ##										   ##
-		   #										 #
-			####								 ####
-				#####						####
-					 ########################
+               ######
+               ####  ##
+               #   #   ##
+               #    ##   ###############
+               #      ##                ##########
+               #       #                          ####
+            ### #######                               ##
+          ## ##                                         ##
+         #   #                                            #
+       ##   #                     #                        #
+     ##    #    ##               ##                         #
+    #     #    #                ##                           #
+   #      #   #                ##                             #
+  #      ##                ####                 ##            ##
+  #     #  ##            ##                    #               #
+ #     #     ############                    ##                #
+##     #                                   ##                  #
+#      ##                              ####                    #
+#     #  ###                ###########                        #
+#           ################    #                              #
+#                                #                             #
+##                               ##                            #
+ #                                #                           ##
+ ##                                #                          #
+  #                                #                         #
+   #                                #                       ##
+    #                               #                       #
+    ##                              #                      #
+     ##                                                   #
+       ##                                               ##
+         ##                                           ##
+           #                                         #
+            ####                                 ####
+                #####                        ####
+                     ########################
 """
     const PADDING := 8
     var padded_cat := ASCII_CAT.replace("\n", "\n".rpad(PADDING + 1))

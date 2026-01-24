@@ -88,7 +88,8 @@ func client_connect_to_server() -> void:
 
     multiplayer.multiplayer_peer = peer
 
-G.print("Started multiplayer client", ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
+    G.print("Started multiplayer client", ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
+
 
 func _on_peer_connected(multiplayer_id: int) -> void:
     if G.network.is_server:

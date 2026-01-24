@@ -1,6 +1,7 @@
 class_name DrawUtils
 extends Node
 
+
 func _ready() -> void:
     G.print("DrawUtils._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
 
@@ -267,7 +268,7 @@ func draw_ice_cream_cone(
         return
     elif distance_from_cone_end_point_to_circle_center <= circle_radius:
         # Degenerate case: A circle (the cone-end-point lies within the
-        #				  circle).
+        #                  circle).
         if is_filled:
             canvas.draw_circle(
                 circle_center,

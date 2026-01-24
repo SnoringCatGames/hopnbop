@@ -6,6 +6,7 @@ extends RefCounted
 ## Provides utilities to mock G.level and other dependencies that tests
 ## need without modifying production code.
 
+
 ## Mock Level class that implements the minimal interface tests need.
 ## Extends Level to satisfy G.level type constraint.
 class MockLevel extends Level:
@@ -14,16 +15,13 @@ class MockLevel extends Level:
         # Skip Level's _enter_tree which requires G.game_panel
         pass
 
-
     func _ready() -> void:
         # Skip Level's _ready which requires player_spawner and G.settings
         pass
 
-
     func _exit_tree() -> void:
         # Skip Level's _exit_tree which requires G.game_panel
         pass
-
 
     # Override on_player_added to work in test context
     func on_player_added(player: Player) -> void:
@@ -33,7 +31,6 @@ class MockLevel extends Level:
             return
         if player.multiplayer_id > 0:
             players_by_id[player.multiplayer_id] = player
-
 
     # Override on_player_removed to work in test context
     func on_player_removed(player: Player) -> void:
@@ -146,8 +143,8 @@ static func setup_test_player(parent_node: Node) -> Player:
 ## Setup 3-node player configuration with all networked components.
 ## Returns dict with all created nodes for test access.
 static func setup_player_with_networking(
-        parent_node: Node,
-        player_name: String = "Player",
+    parent_node: Node,
+    player_name: String = "Player"
 ) -> Dictionary:
     # Ensure network time is initialized BEFORE creating player nodes.
     # This must happen before any networked nodes are created, as their _ready()

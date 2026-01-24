@@ -39,88 +39,70 @@ env.Append(CPPPATH=["src/"])
 
 if env["platform"] == "linux":
     # Linux-specific settings
-    env.Append(
-        CPPPATH=[
-            os.path.join(GAMELIFT_SDK_PATH, "include"),
-            os.path.join(OPENSSL_PATH, "include"),
-        ]
-    )
-
-    env.Append(
-        LIBPATH=[
-            os.path.join(GAMELIFT_SDK_PATH, "lib"),
-            os.path.join(OPENSSL_PATH, "lib"),
-        ]
-    )
-
+    env.Append(CPPPATH=[
+        os.path.join(GAMELIFT_SDK_PATH, "include"),
+        os.path.join(OPENSSL_PATH, "include"),
+    ])
+    
+    env.Append(LIBPATH=[
+        os.path.join(GAMELIFT_SDK_PATH, "lib"),
+        os.path.join(OPENSSL_PATH, "lib"),
+    ])
+    
     # Link against GameLift SDK and dependencies
-    env.Append(
-        LIBS=[
-            "aws-cpp-sdk-gamelift-server",
-            "ssl",
-            "crypto",
-            "pthread",
-        ]
-    )
-
+    env.Append(LIBS=[
+        "aws-cpp-sdk-gamelift-server",
+        "ssl",
+        "crypto",
+        "pthread",
+    ])
+    
     # Required for std::string compatibility
     env.Append(CPPDEFINES=["GAMELIFT_USE_STD=1"])
-
+    
     # C++17 for GameLift SDK
     env.Append(CXXFLAGS=["-std=c++17"])
 
 elif env["platform"] == "windows":
     # Windows-specific settings
-    env.Append(
-        CPPPATH=[
-            os.path.join(GAMELIFT_SDK_PATH, "include"),
-            os.path.join(OPENSSL_PATH, "include"),
-        ]
-    )
-
-    env.Append(
-        LIBPATH=[
-            os.path.join(GAMELIFT_SDK_PATH, "lib"),
-            os.path.join(OPENSSL_PATH, "lib"),
-        ]
-    )
-
-    env.Append(
-        LIBS=[
-            "aws-cpp-sdk-gamelift-server",
-            "libssl",
-            "libcrypto",
-            "ws2_32",
-            "crypt32",
-        ]
-    )
-
+    env.Append(CPPPATH=[
+        os.path.join(GAMELIFT_SDK_PATH, "include"),
+        os.path.join(OPENSSL_PATH, "include"),
+    ])
+    
+    env.Append(LIBPATH=[
+        os.path.join(GAMELIFT_SDK_PATH, "lib"),
+        os.path.join(OPENSSL_PATH, "lib"),
+    ])
+    
+    env.Append(LIBS=[
+        "aws-cpp-sdk-gamelift-server",
+        "libssl",
+        "libcrypto",
+        "ws2_32",
+        "crypt32",
+    ])
+    
     env.Append(CPPDEFINES=["GAMELIFT_USE_STD=1"])
 
 elif env["platform"] == "macos":
     # macOS-specific settings (for development/testing only - GameLift servers run on Linux/Windows)
-    env.Append(
-        CPPPATH=[
-            os.path.join(GAMELIFT_SDK_PATH, "include"),
-            "/usr/local/opt/openssl/include",
-        ]
-    )
-
-    env.Append(
-        LIBPATH=[
-            os.path.join(GAMELIFT_SDK_PATH, "lib"),
-            "/usr/local/opt/openssl/lib",
-        ]
-    )
-
-    env.Append(
-        LIBS=[
-            "aws-cpp-sdk-gamelift-server",
-            "ssl",
-            "crypto",
-        ]
-    )
-
+    env.Append(CPPPATH=[
+        os.path.join(GAMELIFT_SDK_PATH, "include"),
+        "/usr/local/opt/openssl/include",
+    ])
+    
+    env.Append(LIBPATH=[
+        os.path.join(GAMELIFT_SDK_PATH, "lib"),
+        "/usr/local/opt/openssl/lib",
+    ])
+    
+    env.Append(LIBS=[
+        "aws-cpp-sdk-gamelift-server",
+        "ssl",
+        "crypto",
+    ])
+    
     env.Append(CPPDEFINES=["GAMELIFT_USE_STD=1"])
     env.Append(CXXFLAGS=["-std=c++17"])
 
@@ -137,11 +119,16 @@ sources = Glob("src/*.cpp")
 # Determine library suffix based on platform and build type
 if env["platform"] == "macos":
     library_suffix = ".{}.{}.framework/{}".format(
-        env["platform"], env["target"], EXTENSION_NAME
+        env["platform"],
+        env["target"],
+        EXTENSION_NAME
     )
 else:
     library_suffix = ".{}.{}.{}{}".format(
-        env["platform"], env["target"], env["arch"], env["SHLIBSUFFIX"]
+        env["platform"],
+        env["target"],
+        env["arch"],
+        env["SHLIBSUFFIX"]
     )
 
 library_path = "bin/lib{}{}".format(EXTENSION_NAME, library_suffix)
@@ -159,14 +146,13 @@ Default(library)
 
 install_path = os.path.join("..", "addons", "gamelift", "bin")
 install_target = env.Install(install_path, library)
-env.Alias("install", install_target)
+env.Alias('install', install_target)
 
 # ==============================================================================
 # Help Text
 # ==============================================================================
 
-Help(
-    """
+Help("""
 GameLift GDExtension Build Script
 =================================
 
@@ -196,5 +182,4 @@ Examples:
 
     # Build with custom SDK path
     GAMELIFT_SDK_PATH=/path/to/sdk scons platform=linux target=template_release
-"""
-)
+""")

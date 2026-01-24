@@ -16,22 +16,22 @@ macos.release = "res://addons/gamelift/bin/libgamelift.macos.template_release.fr
 [dependencies]
 
 linux.debug.x86_64 = {
-	"libaws-cpp-sdk-gamelift-server.so": "",
-	"libssl.so.3": "",
-	"libcrypto.so.3": ""
+    "libaws-cpp-sdk-gamelift-server.so": "",
+    "libssl.so.3": "",
+    "libcrypto.so.3": ""
 }
 linux.release.x86_64 = {
-	"libaws-cpp-sdk-gamelift-server.so": "",
-	"libssl.so.3": "",
-	"libcrypto.so.3": ""
+    "libaws-cpp-sdk-gamelift-server.so": "",
+    "libssl.so.3": "",
+    "libcrypto.so.3": ""
 }
 windows.debug.x86_64 = {
-	"aws-cpp-sdk-gamelift-server.dll": "",
-	"libssl-3-x64.dll": "",
-	"libcrypto-3-x64.dll": ""
+    "aws-cpp-sdk-gamelift-server.dll": "",
+    "libssl-3-x64.dll": "",
+    "libcrypto-3-x64.dll": ""
 }
 windows.release.x86_64 = {
-	"aws-cpp-sdk-gamelift-server.dll": "",
-	"libssl-3-x64.dll": "",
-	"libcrypto-3-x64.dll": ""
+    "aws-cpp-sdk-gamelift-server.dll": "",
+    "libssl-3-x64.dll": "",
+    "libcrypto-3-x64.dll": ""
 }

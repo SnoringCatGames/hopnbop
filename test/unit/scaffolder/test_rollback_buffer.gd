@@ -345,8 +345,8 @@ class TestAppend:
 
         # Frame 3 was created by the 3rd append (i=2)
         var oldest: Array = buffer.get_oldest()
-        assert_eq(oldest[0], 20) # i=2: 2 * 10 = 20
-        assert_eq(oldest[1], 40) # i=2: 2 * 20 = 40
+        assert_eq(oldest[0], 20)  # i=2: 2 * 10 = 20
+        assert_eq(oldest[1], 40)  # i=2: 2 * 20 = 40
 
 
 class TestClear:

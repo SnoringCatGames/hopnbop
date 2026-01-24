@@ -7,6 +7,7 @@ extends GutTest
 ## - Multiple clients with different latencies
 ## - State divergence detection and correction
 
+
 func before_each():
     ArrayPool.clear_all_pools()
 
@@ -21,7 +22,6 @@ class TestClientPrediction:
     var client_buffer: RollbackBuffer
     var server_buffer: RollbackBuffer
 
-
     func before_each():
         ArrayPool.clear_all_pools()
         var default_state := [0.0, 0.0, 0.0, 0.0, 0]
@@ -29,10 +29,8 @@ class TestClientPrediction:
         client_buffer = RollbackBuffer.new(90, 0, default_state)
         server_buffer = RollbackBuffer.new(90, 0, default_state)
 
-
     func after_each():
         ArrayPool.clear_all_pools()
-
 
     func test_client_predicts_ahead_of_server():
         var delta := 1.0 / 60.0
@@ -40,10 +38,10 @@ class TestClientPrediction:
         # Client is at frame 10, predicting with velocity.
         for i in range(11):
             var state := ArrayPool.acquire(5)
-            state[0] = i * 10.0 * delta # x position
-            state[1] = 0.0 # y position
-            state[2] = 10.0 # x velocity
-            state[3] = 0.0 # y velocity
+            state[0] = i * 10.0 * delta  # x position
+            state[1] = 0.0  # y position
+            state[2] = 10.0  # x velocity
+            state[3] = 0.0  # y velocity
             state[4] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
             client_buffer.set_at(i, state)
 
@@ -55,13 +53,13 @@ class TestClientPrediction:
             state[2] = 10.0
             state[3] = 0.0
             state[4] = \
-            ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+                ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
             server_buffer.set_at(i, state)
 
         # Client should be ahead.
         assert_gt(
             client_buffer.get_latest_index(),
-            server_buffer.get_latest_index(),
+            server_buffer.get_latest_index()
         )
 
         # States should match for overlapping frames.
@@ -72,9 +70,8 @@ class TestClientPrediction:
                 client_state[0],
                 server_state[0],
                 0.01,
-                "Frame %d position should match" % i,
+                "Frame %d position should match" % i
             )
-
 
     func test_server_correction_updates_client_prediction():
         var delta := 1.0 / 60.0
@@ -93,12 +90,12 @@ class TestClientPrediction:
 
         # Server sends correction for frame 5 with different velocity.
         var server_correction := ArrayPool.acquire(5)
-        server_correction[0] = 5 * 8.0 * delta # Different position
+        server_correction[0] = 5 * 8.0 * delta  # Different position
         server_correction[1] = 0.0
-        server_correction[2] = 8.0 # Different velocity
+        server_correction[2] = 8.0  # Different velocity
         server_correction[3] = 0.0
         server_correction[4] = \
-        ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+            ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
 
         # Apply server correction to client.
         client_buffer.set_at(5, server_correction)
@@ -120,7 +117,7 @@ class TestClientPrediction:
         assert_ne(
             client_pos_10_before,
             client_pos_10_after,
-            "Server correction should affect future frames",
+            "Server correction should affect future frames"
         )
 
 
@@ -129,16 +126,13 @@ class TestOutOfOrderPackets:
 
     var buffer: RollbackBuffer
 
-
     func before_each():
         ArrayPool.clear_all_pools()
         var default_state := [0.0, 0.0, 0]
         buffer = RollbackBuffer.new(90, 0, default_state)
 
-
     func after_each():
         ArrayPool.clear_all_pools()
-
 
     func test_handles_late_packet_arrival():
         # Client predicts frames 0-20.
@@ -152,10 +146,10 @@ class TestOutOfOrderPackets:
         # Server packet for frame 10 arrives late (client is already at
         # frame 20).
         var server_state_10 := ArrayPool.acquire(3)
-        server_state_10[0] = 55.0 # Different from predicted (50.0)
+        server_state_10[0] = 55.0  # Different from predicted (50.0)
         server_state_10[1] = 0.0
         server_state_10[2] = \
-        ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+            ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
 
         # Should still be able to apply it.
         assert_true(buffer.has_at(10))
@@ -166,9 +160,8 @@ class TestOutOfOrderPackets:
         assert_eq(corrected[0], 55.0)
         assert_eq(
             corrected[2],
-            ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE,
+            ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
         )
-
 
     func test_ignores_extremely_old_packets():
         # Client is at frame 100.
@@ -182,7 +175,7 @@ class TestOutOfOrderPackets:
         # Packet for frame 5 arrives (too old, beyond buffer capacity).
         assert_false(
             buffer.has_at(5),
-            "Frame 5 should be beyond buffer capacity",
+            "Frame 5 should be beyond buffer capacity"
         )
 
         # Attempting to set it should fail gracefully.
@@ -190,7 +183,7 @@ class TestOutOfOrderPackets:
         old_packet[0] = 999.0
         old_packet[1] = 0.0
         old_packet[2] = \
-        ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+            ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
 
         var result := buffer.set_at(5, old_packet)
         assert_false(result, "Should not be able to set too-old frame")
@@ -203,7 +196,6 @@ class TestMultipleClientsScenario:
     var client2_buffer: RollbackBuffer
     var server_buffer: RollbackBuffer
 
-
     func before_each():
         ArrayPool.clear_all_pools()
         var default_state := [0.0, 0.0, 0]
@@ -212,10 +204,8 @@ class TestMultipleClientsScenario:
         client2_buffer = RollbackBuffer.new(90, 0, default_state)
         server_buffer = RollbackBuffer.new(90, 0, default_state)
 
-
     func after_each():
         ArrayPool.clear_all_pools()
-
 
     func test_clients_with_different_latencies():
         # Client 1 has low latency (1 frame behind server).
@@ -227,7 +217,7 @@ class TestMultipleClientsScenario:
             state[0] = float(i * 10)
             state[1] = 0.0
             state[2] = \
-            ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+                ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
             server_buffer.set_at(i, state)
 
         # Client 1 has received up to frame 9.
@@ -236,7 +226,7 @@ class TestMultipleClientsScenario:
             state[0] = float(i * 10)
             state[1] = 0.0
             state[2] = \
-            ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+                ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
             client1_buffer.set_at(i, state)
 
         # Client 2 has only received up to frame 5.
@@ -245,7 +235,7 @@ class TestMultipleClientsScenario:
             state[0] = float(i * 10)
             state[1] = 0.0
             state[2] = \
-            ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+                ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
             client2_buffer.set_at(i, state)
 
         # Verify different latest indices.
@@ -269,10 +259,8 @@ class TestStateDivergenceDetection:
     func before_each():
         ArrayPool.clear_all_pools()
 
-
     func after_each():
         ArrayPool.clear_all_pools()
-
 
     func test_detects_position_divergence():
         var client_state := [100.0, 50.0, 10.0]
@@ -281,7 +269,6 @@ class TestStateDivergenceDetection:
         # Position difference of 5.0 should trigger mismatch (threshold 1.0).
         var pos_diff := absf(client_state[0] - server_state[0])
         assert_gt(pos_diff, 1.0, "Should detect position divergence")
-
 
     func test_ignores_small_position_differences():
         var client_state := [100.0, 50.0, 10.0]
@@ -293,9 +280,8 @@ class TestStateDivergenceDetection:
         assert_lt(
             pos_diff,
             1.0,
-            "Should ignore small position differences",
+            "Should ignore small position differences"
         )
-
 
     func test_detects_velocity_divergence():
         var client_state := [100.0, 50.0, 10.0, 5.0]
@@ -312,16 +298,13 @@ class TestFrameCatchup:
 
     var buffer: RollbackBuffer
 
-
     func before_each():
         ArrayPool.clear_all_pools()
         var default_state := [0.0, 0.0, 0]
         buffer = RollbackBuffer.new(90, 0, default_state)
 
-
     func after_each():
         ArrayPool.clear_all_pools()
-
 
     func test_client_catches_up_to_server():
         # Client is at frame 5.
@@ -347,9 +330,8 @@ class TestFrameCatchup:
             # Should be marked as PREDICTED.
             assert_eq(
                 state[2],
-                ReconcilableNetworkedState.FrameAuthority.PREDICTED,
+                ReconcilableNetworkedState.FrameAuthority.PREDICTED
             )
-
 
     func test_handles_burst_of_updates():
         # Simulate receiving multiple server updates in quick succession.
@@ -360,7 +342,7 @@ class TestFrameCatchup:
             state[0] = float(frame_idx * 10)
             state[1] = 0.0
             state[2] = \
-            ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+                ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
 
             # Backfill if needed.
             if frame_idx > buffer.get_latest_index():

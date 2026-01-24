@@ -27,8 +27,8 @@ custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 bbcode_enabled = true
 text = "Shortcuts for:
-	- Buttons in Panel
-	- Project->Tools->GUT menu items
+    - Buttons in Panel
+    - Project->Tools->GUT menu items
 Shortcuts that only apply to menus are labeled."
 fit_content = true
 scroll_active = false

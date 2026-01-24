@@ -47,29 +47,30 @@ func process(character) -> bool:
     )
 
     # Bouncing off ceiling.
-if (
-    character.surfaces.is_touching_ceiling
-    and !character.surfaces.is_attaching_to_ceiling
-):
-    character.velocity.y = BOUNCE_OFF_CEILING_VELOCITY
+    if (
+        character.surfaces.is_touching_ceiling
+        and !character.surfaces.is_attaching_to_ceiling
+    ):
+        character.velocity.y = BOUNCE_OFF_CEILING_VELOCITY
 
-    var ceiling_collision: KinematicCollision2D = (
-        character.surfaces.get_collision_for_side(SurfaceSide.CEILING)
-    )
-    if ceiling_collision != null:
-        var normal := ceiling_collision.get_normal()
-        # Only cancel horizontal velocity if ceiling is sloped AND the
-        # slope opposes movement direction (not for horizontal ceilings)
-        var is_ceiling_sloped := absf(normal.x) > 0.1
-        if is_ceiling_sloped:
-            var is_sloped_against_movement: bool = (
-                (normal.x < 0.0 and character.velocity.x < 0.0)
-                or (normal.x > 0.0 and character.velocity.x > 0.0)
-            )
-            if is_sloped_against_movement:
-                character.velocity.x = 0.0
+        var ceiling_collision: KinematicCollision2D = (
+            character.surfaces.get_collision_for_side(SurfaceSide.CEILING)
+        )
+        if ceiling_collision != null:
+            var normal := ceiling_collision.get_normal()
+            # Only cancel horizontal velocity if ceiling is sloped AND the
+            # slope opposes movement direction (not for horizontal ceilings)
+            var is_ceiling_sloped := absf(normal.x) > 0.1
+            if is_ceiling_sloped:
+                var is_sloped_against_movement: bool = (
+                    (normal.x < 0.0 and character.velocity.x < 0.0)
+                    or (normal.x > 0.0 and character.velocity.x > 0.0)
+                )
+                if is_sloped_against_movement:
+                    character.velocity.x = 0.0
 
-return true
+    return true
+
 
 static func update_velocity_in_air(
         velocity: Vector2,
@@ -93,14 +94,14 @@ static func update_velocity_in_air(
         )
     )
 
-# Vertical movement.
-velocity.y += delta * gravity
+    # Vertical movement.
+    velocity.y += delta * gravity
 
-# Horizontal movement.
-velocity.x += (
-    delta
-    * movement_settings.in_air_horizontal_acceleration
-    * horizontal_acceleration_sign
-)
+    # Horizontal movement.
+    velocity.x += (
+        delta
+        * movement_settings.in_air_horizontal_acceleration
+        * horizontal_acceleration_sign
+    )
 
-return velocity
+    return velocity

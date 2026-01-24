@@ -38,7 +38,7 @@ class TestTimeOffsetCalculation:
         # T1: Client sends at 1000 usec
         var t1 := 1000
         # T2: Server receives at 1150 usec (server is 100 usec ahead + 50
-        #	 usec latency)
+        #     usec latency)
         var t2 := 1150
         # T3: Server responds immediately
         var t3 := 1150
@@ -57,7 +57,7 @@ class TestTimeOffsetCalculation:
         # T1: Client sends at 1000 usec
         var t1 := 1000
         # T2: Server receives at 950 usec (server is 100 usec behind + 50
-        #	 usec latency)
+        #     usec latency)
         var t2 := 950
         # T3: Server responds immediately
         var t3 := 950
@@ -107,24 +107,24 @@ class TestSampleManagement:
     # To properly test these, we'd need to mock the multiplayer system.
 
     #func test_force_clock_offset_adjusts_offset():
-    #	tracker.clock_offset_usec = 100
+    #    tracker.clock_offset_usec = 100
     #
-    #	tracker.force_clock_offset(50)
+    #    tracker.force_clock_offset(50)
     #
-    #	assert_eq(tracker.clock_offset_usec, 150)
+    #    assert_eq(tracker.clock_offset_usec, 150)
     #
     #func test_force_clock_offset_adjusts_samples():
-    #	# Simulate having some samples by appending to the typed array.
-    #	tracker._client_offset_samples.append(100)
-    #	tracker._client_offset_samples.append(110)
-    #	tracker._client_offset_samples.append(120)
+    #    # Simulate having some samples by appending to the typed array.
+    #    tracker._client_offset_samples.append(100)
+    #    tracker._client_offset_samples.append(110)
+    #    tracker._client_offset_samples.append(120)
     #
-    #	tracker.force_clock_offset(50)
+    #    tracker.force_clock_offset(50)
     #
-    #	# All samples should be adjusted.
-    #	assert_eq(tracker._client_offset_samples[0], 150)
-    #	assert_eq(tracker._client_offset_samples[1], 160)
-    #	assert_eq(tracker._client_offset_samples[2], 170)
+    #    # All samples should be adjusted.
+    #    assert_eq(tracker._client_offset_samples[0], 150)
+    #    assert_eq(tracker._client_offset_samples[1], 160)
+    #    assert_eq(tracker._client_offset_samples[2], 170)
 
 
 class TestServerTimeEstimation:
