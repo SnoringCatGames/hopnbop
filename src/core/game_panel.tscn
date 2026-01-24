@@ -16,6 +16,7 @@ properties/2/spawn = true
 properties/2/replication_mode = 2
 
 [node name="GamePanel" type="Node2D"]
+process_mode = 1
 script = ExtResource("1_lii62")
 
 [node name="MatchStateSynchronizer" type="MultiplayerSynchronizer" parent="."]

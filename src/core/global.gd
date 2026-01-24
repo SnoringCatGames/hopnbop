@@ -39,6 +39,8 @@ var level: Level
 
 
 func _enter_tree() -> void:
+    process_mode = Node.PROCESS_MODE_ALWAYS
+
     args = Utils.parse_command_line_args()
 
     time.name = "Time"
