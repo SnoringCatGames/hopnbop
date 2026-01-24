@@ -67,6 +67,9 @@ extends Node
 # - Implement multiple players on a given client.
 # - Implement kills and other gameplay bits.
 # - Add rollback debug visualizations.
+# - Organize Settings.
+# - Hook-up pause UI.
+#   - Show a small panel in the center of the window with a lightly transparent screen.
 # - Review these notes: https://docs.google.com/document/d/1qJcNUrE1y8UllVVCojp-IN3zCwml8VK7kjYhp1uJhV4
 # - Review NETWORKING_ARCHITECTURE.md.
 
@@ -91,6 +94,8 @@ extends Node
 #   - Use this local mode for this match-selection level.
 #   - Add a special platform on the right side of the level. When the player lands on this platform, trigger load into the main level (and connection with the remote server).
 # - Remove the MainMenu screen, and go straight to the lobby level.
+#   - Embed the game title logo within the level.
+#   - Also embed some controls instruction.
 # - Add support for using controllers as input.
 # - In the match-selection level support local players joining or leaving.
 #   - By default, have 0 local players.
