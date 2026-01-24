@@ -208,9 +208,10 @@ if [ "$SKIP_DEPS" = false ]; then
         -S .. -B .
 
     make -j$(nproc)
+    make install
 
     cd "$SCRIPT_DIR"
-    echo "  ✓ GameLift SDK built"
+    echo "  ✓ GameLift SDK built and installed"
 else
     echo "[3/6] Skipping GameLift SDK setup (--skip-deps)"
 fi

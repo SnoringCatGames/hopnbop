@@ -179,19 +179,20 @@ if (-not (Test-Path "gamelift-server-sdk\cmake-build")) {
 Set-Location gamelift-server-sdk\cmake-build
 
 Write-Info "Configuring GameLift SDK with CMake 3.27..."
+# Set OPENSSL_ROOT_DIR environment variable so nested CMake projects can find it
+if ($OPENSSL_PATH) {
+	$env:OPENSSL_ROOT_DIR = $OPENSSL_PATH.Replace('\', '/')
+	Write-Host "  Set OPENSSL_ROOT_DIR=$env:OPENSSL_ROOT_DIR"
+}
+
 $cmakeArgs = @(
 	"-G", "Visual Studio 17 2022",
 	"-A", "x64",
 	"-DCMAKE_BUILD_TYPE=Release",
 	"-DGAMELIFT_USE_STD=1",
-	"-DBUILD_FOR_UNREAL=ON"
+	"-DBUILD_FOR_UNREAL=ON",
+	"-S", "..", "-B", "."
 )
-
-if ($OPENSSL_PATH) {
-	$cmakeArgs += "-DOPENSSL_ROOT_DIR=$OPENSSL_PATH"
-}
-
-$cmakeArgs += @("-S", "..", "-B", ".")
 
 & $CMAKE_FOR_GAMELIFT @cmakeArgs
 
