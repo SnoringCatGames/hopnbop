@@ -49,6 +49,8 @@ extends Node
 
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug
 # - Debug the game.
+#   - Fix the GDExtension importing in Godot.
+#   - Fix failing tests.
 #   - Debug pause behavior.
 # - Review tests.
 # - Fix GitHub CI.
