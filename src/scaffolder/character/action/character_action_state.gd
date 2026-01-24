@@ -1,4 +1,5 @@
 extends RefCounted
+
 class_name CharacterActionState
 
 const BIT_JUMP := 0

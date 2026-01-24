@@ -12,6 +12,9 @@
 ## [li]Random values within a range?[/li]
 ## [li]All int values in a range or add an optioanal step.[/li]
 
+
+
+
 ## Creates an array of dictionaries.  It pairs up the names array with each set
 ## of values in values.  If more names than values are specified then the missing
 ## values will be filled with nulls.  If more values than names are specified
@@ -35,22 +38,24 @@
 ##[li]names:  an array of names to be used as keys in the dictionaries[/li]
 ##[li]values:  an array of arrays of values.[/li]
 static func named_parameters(names, values):
-    var named = []
-    for i in range(values.size()):
-        var entry = { }
+	var named = []
+	for i in range(values.size()):
+		var entry = {}
 
-        var parray = values[i]
-        if typeof(parray) != TYPE_ARRAY:
-            parray = [values[i]]
+		var parray = values[i]
+		if(typeof(parray) != TYPE_ARRAY):
+			parray = [values[i]]
 
-        for j in range(names.size()):
-            if j >= parray.size():
-                entry[names[j]] = null
-            else:
-                entry[names[j]] = parray[j]
-        named.append(entry)
+		for j in range(names.size()):
+			if(j >= parray.size()):
+				entry[names[j]] = null
+			else:
+				entry[names[j]] = parray[j]
+		named.append(entry)
 
-    return named
+	return named
+
+
 
 # ##############################################################################
 #(G)odot (U)nit (T)est class

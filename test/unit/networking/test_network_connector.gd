@@ -4,7 +4,6 @@ extends GutTest
 ## NetworkConnector is a simple ENet wrapper, so these tests focus on
 ## configuration reading and connection lifecycle tracking.
 
-
 func before_each():
     ArrayPool.clear_all_pools()
 

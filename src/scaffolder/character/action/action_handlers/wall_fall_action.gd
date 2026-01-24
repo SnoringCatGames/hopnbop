@@ -17,11 +17,10 @@ func process(character) -> bool:
         and character.surfaces.is_triggering_wall_release
     ):
         # Cancel any velocity toward the wall.
-        character.velocity.x = (
-            -character.surfaces.toward_wall_sign
-            * character.movement_settings.wall_fall_horizontal_boost
-        )
+    character.velocity.x = (
+        -character.surfaces.toward_wall_sign
+        * character.movement_settings.wall_fall_horizontal_boost
+    )
 
-        return true
-    else:
-        return false
+    return true
+else:return false

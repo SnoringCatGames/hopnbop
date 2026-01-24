@@ -111,7 +111,7 @@ scons platform=linux target=template_debug
    ```bash
    # From GameLift SDK build
    cp gamelift-server-sdk/cmake-build/libaws-cpp-sdk-gamelift-server.so your_project/addons/gamelift/bin/
-   
+
    # OpenSSL libraries (check your system paths)
    cp /usr/lib/x86_64-linux-gnu/libssl.so.3 your_project/addons/gamelift/bin/
    cp /usr/lib/x86_64-linux-gnu/libcrypto.so.3 your_project/addons/gamelift/bin/
@@ -131,20 +131,20 @@ var gamelift: GameLiftServer
 func _ready():
     if not OS.has_feature("dedicated_server"):
         return
-    
+
     gamelift = GameLiftServer.new()
     add_child(gamelift)
-    
+
     # Connect signals
     gamelift.game_session_started.connect(_on_game_session_started)
     gamelift.process_terminate_requested.connect(_on_terminate)
-    
+
     # Initialize SDK (for managed EC2 fleet)
     var result = gamelift.init_sdk()
     if not result.is_success():
         push_error("Failed to init GameLift: " + result.get_error_message())
         return
-    
+
     # Tell GameLift we're ready
     result = gamelift.process_ready(7777, ["logs/server.log"])
     if result.is_success():
@@ -152,10 +152,10 @@ func _ready():
 
 func _on_game_session_started(session: GameLiftGameSession):
     print("Game session started: " + session.game_session_id)
-    
+
     # Set up your game based on session properties
     var props = session.game_properties
-    
+
     # Activate the session when ready
     gamelift.activate_game_session()
 
@@ -369,7 +369,7 @@ ldd your_project/addons/gamelift/bin/libgamelift.linux.template_release.x86_64.s
 
 ## License
 
-This GDExtension wrapper is provided under the MIT license. 
+This GDExtension wrapper is provided under the MIT license.
 
 The AWS GameLift Server SDK is subject to the AWS Customer Agreement and AWS Service Terms.
 

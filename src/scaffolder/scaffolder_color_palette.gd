@@ -3,7 +3,6 @@ class_name ScaffolderColorPalette
 extends Resource
 ## A palette of colors for theming.
 
-
 @export var colors: PackedColorArray = []
 
 

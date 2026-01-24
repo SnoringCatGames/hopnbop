@@ -176,8 +176,7 @@ func backfill_to_with_last_state(target_index: int) -> void:
         _backfill_to(target_index, fill_state)
 
     # Return temporary array to pool.
-    ArrayPool.release(fill_state)
-
+ArrayPool.release(fill_state)
 
 ## Back-fill any missing frames in the buffer up to (but not including)
 ## target_index.

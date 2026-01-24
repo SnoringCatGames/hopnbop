@@ -3,4 +3,4 @@
 # parser error when loaded outside of the editor.  The things we have to do in
 # order to test things is annoying.
 func get_it():
-    return EditorInterface
+	return EditorInterface

@@ -132,13 +132,13 @@ static func subtract_and_mutate_nested_arrays(
                     + "(We currently don't support subtracting properties "
                     + "from a Dictionary. We only support subtracting "
                     + "elements from Arrays.)"
-                    + "\n    key=%s,\n    result=%s,\n    other=%s"
+                    + "\n	key=%s,\n	result=%s,\n	other=%s"
                     % [key, result, other],
                 )
         elif expects_no_missing_matches:
             G.ensure(
                 false,
-                ("Missing match: " + "\n    key=%s,\n    result=%s,\n    other=%s")
+                ("Missing match: " + "\n	key=%s,\n	result=%s,\n	other=%s")
                 % [key, result, other],
             )
     return result
@@ -152,7 +152,7 @@ static func subtract_and_mutate_arrays(result: Array, other: Array) -> Array:
         else:
             G.ensure(
                 false,
-                ("Missing match: " + "\n    element=%s,\n    result=%s,\n    other=%s")
+                ("Missing match: " + "\n	element=%s,\n	result=%s,\n	other=%s")
                 % [element, result, other],
             )
     return result
@@ -418,7 +418,7 @@ static func get_vector_string(vector: Vector2, decimal_place_count := 2) -> Stri
 
 static func get_spaces(count: int) -> String:
     assert(count <= 60)
-    return "                                                            ".substr(0, count)
+    return "															".substr(0, count)
 
 
 static func pad_string(

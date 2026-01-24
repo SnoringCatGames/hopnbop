@@ -71,6 +71,6 @@ static func get_pool_stats() -> Dictionary:
         total_pooled += pool.size()
 
     stats["total_pooled"] = total_pooled
-    stats["bucket_count"] = _pools_by_size.size()
+stats["bucket_count"] = _pools_by_size.size()
 
-    return stats
+return stats

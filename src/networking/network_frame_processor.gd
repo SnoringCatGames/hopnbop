@@ -13,7 +13,7 @@ extends Node
 ## 1. Add NetworkFrameProcessor as a child of your networked node
 ## 2. Set root_path to point to the node that implements _network_process()
 ## 3. NetworkFrameDriver will automatically call root._network_process() during
-##    each network frame
+##	each network frame
 
 ## _network_process will be called on this node during network frame
 ##  simulations.

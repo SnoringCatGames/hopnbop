@@ -9,9 +9,9 @@ extends Node
 ## processing cycle:
 ##
 ## 1. **_pre_network_process**: Restore state from rollback buffer for current
-##    frame
+##	frame
 ## 2. **_network_process**: Execute game logic (movement, physics, input
-##    handling)
+##	handling)
 ## 3. **_post_network_process**: Pack and record new state to rollback buffer
 ##
 ## Key responsibilities:
@@ -60,7 +60,7 @@ extends Node
 #   - Toggleable at run time.
 #   - Render shape to match the collision shape
 #   - Render a dot for every frame in the rollback buffer.
-#     - Color code these based on authority, and whether they caused a rollback or a fast-forward.
+#	 - Color code these based on authority, and whether they caused a rollback or a fast-forward.
 # - Implement alternate starting level, non networked, with walk-off-screen to start match.
 
 # - Add support for multiple players on a single client.
@@ -77,28 +77,28 @@ extends Node
 # - In the match-selection level support local players joining or leaving.
 #   - By default, have 0 local players.
 #   - Show a big message at the top of the screen, indicating to press up to join and down to leave.
-#     - It should also indicate the available controls (WASD, IJKL, arrow keys, controllers).
+#	 - It should also indicate the available controls (WASD, IJKL, arrow keys, controllers).
 #   - Add logic to spawn and destroy local players when up and down are pressed.
 #   - Add logic to map input source (WASD, IJKL, arrow keys, controllers) to player.
 #   - Update PlayerActionSource to only handle the specific input source
-#     associated with its corresponding player.
+#	 associated with its corresponding player.
 #   - Update game connection logic to handle the new dynamic list of players
-#     from a client.
-#     - Instead of the server just automatically spawning a player for each
-#       newly-connected client, the server should wait until the client sends an
-#       RPC with its local-player count.
-#     - We now need to also introduce a concept of player_id.
-#     - When the server receives the RPC from the client indicating its number
-#       of local players, the server will generate player_ids for each of the
-#       new players, as well as the player name and adjective state that we were
-#       previously generating. The player_id now also gets replicated with
-#       PlayerMatchState.
-#     - The client then detects when a new player_id is represented in match
-#       state or on a Player node, picks an input source to map to this
-#       player_id, and records that.
-#     - Maintain a mapping from multiplayer_id to player_id.
-#     - Replace most preexisting references to multiplayer id with this new
-#       player_id, as appropriate.
+#	 from a client.
+#	 - Instead of the server just automatically spawning a player for each
+#	   newly-connected client, the server should wait until the client sends an
+#	   RPC with its local-player count.
+#	 - We now need to also introduce a concept of player_id.
+#	 - When the server receives the RPC from the client indicating its number
+#	   of local players, the server will generate player_ids for each of the
+#	   new players, as well as the player name and adjective state that we were
+#	   previously generating. The player_id now also gets replicated with
+#	   PlayerMatchState.
+#	 - The client then detects when a new player_id is represented in match
+#	   state or on a Player node, picks an input source to map to this
+#	   player_id, and records that.
+#	 - Maintain a mapping from multiplayer_id to player_id.
+#	 - Replace most preexisting references to multiplayer id with this new
+#	   player_id, as appropriate.
 
 # - GameLift
 # - Add rollback debug visualizations.
@@ -114,30 +114,30 @@ extends Node
 #   - Implement easy scripts for building and deploying and testing. Maybe can also add a hook for GitHub Actions when creating tags? Or ask for a better deployment with trigger solution
 #   - Implement logic for handling logins to the various auth providers.
 #   - Implement a database for recording some game data:
-#     - player data (id, bunny name and adjective, first play time, last play time, total time played, total wins, total kills, total deaths, login info for whichever auth providers they've connected to, ...)
-#     - a leaderboard
+#	 - player data (id, bunny name and adjective, first play time, last play time, total time played, total wins, total kills, total deaths, login info for whichever auth providers they've connected to, ...)
+#	 - a leaderboard
 #   - Implement a way to make friends and to join matches with friends.
 
 # - Implement player kills.
 #   - In this game players kill each other by jumping on each other's heads.
 #   - In order to detect when one player jumps onto another's head, use the following strategy (or let me know if there is some other industry standard way to implement this that wolud be better!):
-#     - Add an additional pair of Area2D nodes to Bunny.tscn.
-#     - Have the collision shape be a long thin rectangle for both of these.
-#     - Have one area line up with the bottom of the main collision shape and the other line up with the top.
-#     - Listen for area-entered and exited events for both of these shapes, and use those listeners to track a list of currently-overlapping bunnies.
-#     - Then add logic to also detect when two bunny's collide with eachother with their main collision geometry (possibly handle this by checking current collisions after move_and_slide?).
-#     - When two bunnies collide:
-#       - Check their relative velocity.
-#       - If they are getting closer together vertically, and they are in the list of currently overlapping head/foot areas, then trigger the kill.
+#	 - Add an additional pair of Area2D nodes to Bunny.tscn.
+#	 - Have the collision shape be a long thin rectangle for both of these.
+#	 - Have one area line up with the bottom of the main collision shape and the other line up with the top.
+#	 - Listen for area-entered and exited events for both of these shapes, and use those listeners to track a list of currently-overlapping bunnies.
+#	 - Then add logic to also detect when two bunny's collide with eachother with their main collision geometry (possibly handle this by checking current collisions after move_and_slide?).
+#	 - When two bunnies collide:
+#	   - Check their relative velocity.
+#	   - If they are getting closer together vertically, and they are in the list of currently overlapping head/foot areas, then trigger the kill.
 #   - Only detect kills on the server. Then send an RPC from the server to all clients for a kill. Include killer, killee, position, and time in the RPC args.
 #   - Also for a kill, update game_panel.match_state.
 #   - Then handle destroying the killed player and respawning them after a short 1 second delay.
-#     - Check for any logic that depends of there being a local player node present, and update it to handle when the player is yet to respawn.
+#	 - Check for any logic that depends of there being a local player node present, and update it to handle when the player is yet to respawn.
 #   - For any bunny-bunny collision that doesn't result in a kill, call this a "bump".
-#     - Also track bumps in match_state.
-#     - But don't send an RPC for bumps.
+#	 - Also track bumps in match_state.
+#	 - But don't send an RPC for bumps.
 #   - Also implement bouncing for the killer when a kill occurs:
-#     - The killer should bounce upward a bit, while maintaining horizontal velocity.
+#	 - The killer should bounce upward a bit, while maintaining horizontal velocity.
 
 # FIXME: Rollback debug visualization and networking improvements:
 #
@@ -149,7 +149,7 @@ extends Node
 # - Add two Settings flags:
 #   - is_network_pause_debug_shortcut_enabled
 #   - is_network_rollback_state_buffer_debug_ui_visible
-#     - If true, this will be automatically shown when the network is paused.
+#	 - If true, this will be automatically shown when the network is paused.
 # - Create a custom editor plugin for showing a custom tab panel in the bottom
 #   dock of the editor.
 # - This panel will show all recent network buffer state.
@@ -164,22 +164,22 @@ extends Node
 #   - List of players and their state along the vertical axis.
 #   - Each player should be collapsible, and is collapsed by default.
 #   - The local player is always the top row (regardless of multiplayer_id) and
-#     is expanded by default.
+#	 is expanded by default.
 #   - Each cell only renders a _DIFF_ from the previous cell!
 #   - Also, each cell only renders a prefix of the state.
 #   - However, each cell also includes a tooltip with complete details
-#     (property name, unabridged labels, the diff, and the full current value).
+#	 (property name, unabridged labels, the diff, and the full current value).
 #   - Each cell is also color-coded:
-#     - Unchanged values show a "-" and are black.
-#     - Changed values are blue.
-#     - Missing networked state are grey.
-#     - Cells representing values that triggered rollback are red.
+#	 - Unchanged values show a "-" and are black.
+#	 - Changed values are blue.
+#	 - Missing networked state are grey.
+#	 - Cells representing values that triggered rollback are red.
 #   - Also, color-code the frame index header cell for has-network-state (black),
-#     no-network-state (grey), and triggered-rollback (red).
+#	 no-network-state (grey), and triggered-rollback (red).
 #
 #   - While paused:
-#     - The client then, only updates the debug UI 0.2 seconds after first
-#       triggering pause, and whenever any new packed_state is received.
+#	 - The client then, only updates the debug UI 0.2 seconds after first
+#	   triggering pause, and whenever any new packed_state is received.
 #
 # ### PART 3: In-game buffer-state debug UI
 # - Also, add a settings-toggleable in-game super-hud debug UI to render the
@@ -200,7 +200,7 @@ extends Node
 # - Add a new hotkey (F12) for triggering auto-pause-on-rollback for the next
 #   rollback.
 #   - Don't auto-pause before the hotkey enables auto-pause, since there are
-#     probably a lot of small rollbacks, and it would be too noisy.
+#	 probably a lot of small rollbacks, and it would be too noisy.
 # - Add support for automatically triggering a network pause from the client
 #   when it triggers a rollback.
 # - Whenever ((Settings.is_network_pause_debug_shortcut_enabled and
@@ -237,7 +237,7 @@ extends Node
 #   RollbackVisualInterpolationOffset node.
 #   - This should be assigned in an @export var.
 #   - Make sure all visual state for the entity (sprites, animations, etc.) is
-#     contained under this node.
+#	 contained under this node.
 #   - But all physics state (colliders, etc.) should be outside this node.
 # - Use the duplicate pre-rollback buffer from the rollback-debug-ui feature.
 # - Whenever a rollback occurs, we copy all prerollback state from the orginal
@@ -245,10 +245,10 @@ extends Node
 #   following frames.
 #   - Note, we're now doing this regardless of which debug flags are enabled.
 #   - However, for this interpolation, we only need to copy the frames at and
-#     following the rollback.
+#	 following the rollback.
 #   - For the previous rollback debug visualization feature, we still need to
-#     copy the entire buffer (but only when the appropriate debug flags are
-#     enabled).
+#	 copy the entire buffer (but only when the appropriate debug flags are
+#	 enabled).
 # - Then, we also record the last-rollback-start-time.
 # - Then, in _physics_process, we adjust the RollbackVisualInterpolationOffset
 #   position, according to current tween lerp logic from the rollback start time
@@ -265,7 +265,7 @@ extends Node
 #   - showing server state
 #   - this should also toggle server pause
 #   - we should be able to switch back-and-forth between the client and server
-#     versions without unpausing
+#	 versions without unpausing
 # - F12 should continue to trigger auto-pause-on-rollback for the next rollback
 #   from PART 5.
 
@@ -273,12 +273,12 @@ extends Node
 # - Use PixelLab for level art ideation?:
 #   - https://www.pixellab.ai/
 #   - Bunny
-#     - Create some mocks for a simple 16x16 bunny.
-#     - [Choose one.]
-#     - Create a animation spritesheet for this bunny. I need eight frames for a "walk" animation (this is probably more of a hop, since it's a bunny). I need four frames for a jump-rise animation, and four frames for a jump-fall animation. I need eight frames for an idle animation.
+#	 - Create some mocks for a simple 16x16 bunny.
+#	 - [Choose one.]
+#	 - Create a animation spritesheet for this bunny. I need eight frames for a "walk" animation (this is probably more of a hop, since it's a bunny). I need four frames for a jump-rise animation, and four frames for a jump-fall animation. I need eight frames for an idle animation.
 #   - Explosion
-#     - I need to create animation frames for a gratuitously gorey bunny-explosion splatter effect.
-#     - I need to create an alternate bunny-explosion effect for when gore is disabled. This effect should spray flowers and maybe rainbows.
+#	 - I need to create animation frames for a gratuitously gorey bunny-explosion splatter effect.
+#	 - I need to create an alternate bunny-explosion effect for when gore is disabled. This effect should spray flowers and maybe rainbows.
 # - Hook-up animations:
 #   - Spritesheets are [here].
 #   - bunny_animator.tscn and bunny.tscn are [here].
@@ -302,16 +302,16 @@ extends Node
 #   - Each particle is assigned a random definition.
 #   - Each particle is assigned a random direction and a random speed (within a min-max range).
 #   - Actually, define two separate types of particles: fast and slow:
-#    - There should be four definitions for either type (still with a duplicate set for gore vs non-gore mode).
-#    - The fast particles should have a lot more speed when initially spawned, and should bounce more.
+#	- There should be four definitions for either type (still with a duplicate set for gore vs non-gore mode).
+#	- The fast particles should have a lot more speed when initially spawned, and should bounce more.
 #   - When the particle comes to rest (displacement for a frame is less than some threshold like 0.05), destroy the node, and record the particle's type and position in separate arrays.
 #   - Create a shader that accepts these arrays of particle types and positions, and renders them.
 #   - Alternatively, let me know if there is a better way to efficently render tens of thousands of particles like this!
 #
 # - Sounds
 #   - Kill
-#     - Splatter sound
-#     - Confetti party popper sound for non-gore mode
+#	 - Splatter sound
+#	 - Confetti party popper sound for non-gore mode
 #   - Jump sound
 #   - Land sound
 #   - Walk sound
@@ -823,7 +823,7 @@ func is_frame_too_old_to_consider(p_frame_index: int) -> bool:
 ## - The first processed frame of the rollback will be the frame _after_ the
 ##   mismatch.
 ##   - We already know that the local simulation at the mismatch resulting in
-##     the wrong state, so we don't re-simulate that frame.
+##	 the wrong state, so we don't re-simulate that frame.
 func queue_rollback(p_conflicting_frame_index: int) -> bool:
     var target_rollback_frame := p_conflicting_frame_index + 1
     if is_frame_too_old_to_consider(p_conflicting_frame_index):
@@ -910,7 +910,7 @@ func _network_process() -> void:
     for i in range(_networked_state_nodes.size() - 1, -1, -1):
         var node := _networked_state_nodes[i]
         # TODO: This should not be possible, so try to figure out the underlying
-        #       problem.
+        #	   problem.
         if not is_instance_valid(node):
             _networked_state_nodes.remove_at(i)
 

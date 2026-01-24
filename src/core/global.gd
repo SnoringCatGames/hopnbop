@@ -3,8 +3,8 @@ extends Node
 ## Add global state here for easy access.
 
 # Note: This would be better stored on Main as an export var, so we don't have
-#       to reference the path in code. But, this must be set for tests to run
-#       correctly, and Main isn't run during tests.
+#	   to reference the path in code. But, this must be set for tests to run
+#	   correctly, and Main isn't run during tests.
 var settings: Settings = preload("res://settings.tres")
 
 # Note: This is shown at the top to assist with local debugging.

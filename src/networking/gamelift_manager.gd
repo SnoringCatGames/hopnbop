@@ -364,36 +364,35 @@ func _on_process_terminate_requested() -> void:
 
     # Get termination time if available
     var termination_time = _gamelift.get_termination_time()
-    if termination_time > 0:
-        G.print(
-            "[GameLift] Termination scheduled for: %d" % termination_time,
-            ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-        )
+if termination_time > 0:
+    G.print(
+        "[GameLift] Termination scheduled for: %d" % termination_time,
+        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+    )
 
-    # Stop accepting new players
-    _gamelift.update_player_session_creation_policy(_gamelift.DENY_ALL)
+# Stop accepting new players
+_gamelift.update_player_session_creation_policy(_gamelift.DENY_ALL)
 
-    # Notify game panel to shut down gracefully
-    if is_instance_valid(G.game_panel):
-        G.game_panel.server_end_game()
+# Notify game panel to shut down gracefully
+if is_instance_valid(G.game_panel):
+    G.game_panel.server_end_game()
 
-    # Signal process ending
-    var outcome = _gamelift.process_ending()
-    if not outcome.is_success():
-        G.warning(
-            (
-                "[GameLift] ProcessEnding failed: %s"
-                % outcome.get_error_message()
-            ),
-        )
+# Signal process ending
+var outcome = _gamelift.process_ending()
+if not outcome.is_success():
+    G.warning(
+        (
+            "[GameLift] ProcessEnding failed: %s"
+            % outcome.get_error_message()
+        ),
+    )
 
-    # Destroy SDK
-    _gamelift.destroy()
+# Destroy SDK
+_gamelift.destroy()
 
-    # Exit after brief delay
-    await get_tree().create_timer(2.0).timeout
-    get_tree().quit()
-
+# Exit after brief delay
+await get_tree().create_timer(2.0).timeout
+get_tree().quit()
 
 func _on_health_check() -> void:
     # GameLift calls this every ~60 seconds
