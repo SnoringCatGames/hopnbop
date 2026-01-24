@@ -1,6 +1,9 @@
 class_name Hud
 extends PanelContainer
 
+@onready var player_list: PlayerList = %PlayerList
+
+
 func _enter_tree() -> void:
 	G.hud = self
 
@@ -26,8 +29,18 @@ func update_visibility() -> void:
 	if G.network.is_server:
 		return
 
+	visible = true
+
 	match G.screens.current_screen:
-		ScreensMain.ScreenType.MAIN_MENU, ScreensMain.ScreenType.LOADING, ScreensMain.ScreenType.GAME_OVER, ScreensMain.ScreenType.WIN, ScreensMain.ScreenType.PAUSE:
+		ScreensMain.ScreenType.GODOT_SPLASH, \
+		ScreensMain.ScreenType.SCG_SPLASH, \
+		ScreensMain.ScreenType.LOADING:
+			visible = false
+		ScreensMain.ScreenType.GAME_OVER, \
+		ScreensMain.ScreenType.WIN, \
+		ScreensMain.ScreenType.PAUSE:
+			pass
+		ScreensMain.ScreenType.LOBBY:
 			pass
 		ScreensMain.ScreenType.GAME:
 			pass

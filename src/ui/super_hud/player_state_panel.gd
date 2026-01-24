@@ -6,7 +6,7 @@ extends PanelContainer
 @export var toast_fade_delay := 1.5
 @export var show_extra_debug_info := false
 
-var multiplayer_id := 0
+var player_id: String = ""
 var player: Player
 var player_match_state: PlayerMatchState
 
@@ -37,10 +37,10 @@ func _process(_delta: float) -> void:
 		return
 
 	if not is_instance_valid(player):
-		player = G.get_player(multiplayer_id)
+		player = G.get_player(player_id)
 
 	if not is_instance_valid(player_match_state):
-		player_match_state = G.get_player_match_state(multiplayer_id)
+		player_match_state = G.get_player_match_state(player_id)
 
 	if not is_instance_valid(player_match_state) or not is_instance_valid(player):
 		clear()
