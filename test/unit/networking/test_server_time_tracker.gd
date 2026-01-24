@@ -201,7 +201,10 @@ class TestSampleAveraging:
 
 class TestPauseTracking:
     extends GutTest
-    ## Tests pause/unpause time tracking functionality.
+    ## Tests pause/unpause time tracking.
+    ##
+    ## Note: Pause state management is now handled by NetworkFrameDriver.
+    ## These tests focus on ServerTimeTracker's time accumulation logic.
 
     var tracker: ServerTimeTracker
 
@@ -218,42 +221,7 @@ class TestPauseTracking:
             tracker.free()
 
 
-    func test_starts_paused_by_default():
-        # Should start paused
-        assert_true(
-            tracker._is_paused,
-            "Should start paused by default",
-        )
-
-
-    func test_pause_sets_paused_flag():
-        # Start unpaused
-        tracker._is_paused = false
-
-        # Pause
-        tracker.pause()
-
-        assert_true(tracker._is_paused, "Should be paused after pause()")
-
-
-    func test_unpause_clears_paused_flag():
-        # Start paused
-        tracker._is_paused = true
-        tracker._pause_start_wall_time_usec = 2000000
-
-        # Unpause
-        tracker.unpause()
-
-        assert_false(
-            tracker._is_paused,
-            "Should be unpaused after unpause()",
-        )
-
-
     func test_pause_records_wall_time():
-        # Start unpaused
-        tracker._is_paused = false
-
         # Pause - should record current wall time
         tracker.pause()
 
@@ -265,17 +233,11 @@ class TestPauseTracking:
 
 
     func test_unpause_accumulates_pause_duration():
-        # Start paused at wall-clock 2000000
-        tracker._is_paused = true
+        # Set up pause start time
         tracker._pause_start_wall_time_usec = 2000000
         tracker._cumulative_pause_time_usec = 0
 
-        # Mock Time.get_ticks_usec() by calculating manually
-        # If current wall time is 3000000, pause duration = 1000000
-        # (We can't easily mock Time.get_ticks_usec(), but we can test the
-        #  logic)
-
-        # Just test that unpause() modifies cumulative time
+        # Unpause should accumulate time from pause start to now
         var cumulative_before := tracker._cumulative_pause_time_usec
         tracker.unpause()
 
@@ -287,89 +249,30 @@ class TestPauseTracking:
 
 
     func test_get_server_time_accounts_for_cumulative_pause():
-        # Set up: server started at 1000000, currently at 5000000
-        # Paused for 500000 total
+        # Set up: server started at 1000000, paused for 500000 total
         tracker._start_time_offset_usec = 1000000
         tracker._cumulative_pause_time_usec = 500000
-        tracker._is_paused = false
 
-        # Expected active time = (5000000 - 1000000) - 500000 = 3500000
-        # But we can't easily mock Time.get_ticks_usec()
-
-        # Test that the calculation includes cumulative pause time
-        # This is an implementation test - verify the formula is used
+        # get_server_time_usec should subtract cumulative pause time
+        # (Can't easily verify exact value without mocking Time.get_ticks_usec)
         var _server_time := tracker.get_server_time_usec()
 
-        # The time should be reduced by cumulative pause time
+        # Placeholder - actual time calculations verified in integration tests
         assert_true(
-            true,  # Placeholder - integration test will verify actual behavior
+            true,
             "get_server_time_usec should account for cumulative pause",
         )
 
 
-    func test_get_server_time_accounts_for_current_pause():
-        # Set up: paused
-        tracker._is_paused = true
-        tracker._pause_start_wall_time_usec = 4000000
-        tracker._cumulative_pause_time_usec = 500000
-
-        # Current wall time would be > 4000000
-        # Active time should subtract both cumulative and current pause
-
-        var _server_time := tracker.get_server_time_usec()
-
-        # Time should account for both cumulative and current pause
-        assert_true(
-            true,  # Placeholder - integration test will verify
-            "get_server_time_usec should account for current pause",
-        )
-
-
-    func test_idempotent_pause():
-        # Pause twice
-        tracker._is_paused = false
-        tracker.pause()
-
-        var pause_start_1 := tracker._pause_start_wall_time_usec
-
-        # Pause again (should be no-op)
-        tracker.pause()
-
-        assert_eq(
-            tracker._pause_start_wall_time_usec,
-            pause_start_1,
-            "Second pause should be no-op (idempotent)",
-        )
-
-
-    func test_idempotent_unpause():
-        # Unpause twice
-        tracker._is_paused = false
-
-        var cumulative_before := tracker._cumulative_pause_time_usec
-
-        # Unpause again (should be no-op)
-        tracker.unpause()
-
-        assert_eq(
-            tracker._cumulative_pause_time_usec,
-            cumulative_before,
-            "Second unpause should be no-op (idempotent)",
-        )
-
-
     func test_multiple_pause_cycles():
-        # Cycle 1: pause for 100000 usec
-        tracker._is_paused = false
+        # Cycle 1
         tracker.pause()
         tracker._pause_start_wall_time_usec = 2000000
-        # Simulate time passing
-        tracker._is_paused = true
         tracker.unpause()
 
         var cumulative_after_first := tracker._cumulative_pause_time_usec
 
-        # Cycle 2: pause again
+        # Cycle 2
         tracker.pause()
         tracker._pause_start_wall_time_usec = 3000000
         tracker.unpause()

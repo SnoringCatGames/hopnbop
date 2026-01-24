@@ -102,6 +102,14 @@ var is_time_initialized: bool:
     get:
         return is_server or _start_time_offset_usec >= 0
 
+## Total time spent paused (in microseconds). Used to adjust server time
+## calculations during pause.
+var _cumulative_pause_time_usec := 0
+
+## Wall-clock time when pause started (Time.get_ticks_usec()). Only valid while
+## paused. Initialized at startup since we start paused.
+var _pause_start_wall_time_usec := 0
+
 
 func _ready() -> void:
     G.log.log_system_ready("ServerTimeTracker")
@@ -110,6 +118,7 @@ func _ready() -> void:
     # offset via RPC when they connect.
     if is_server:
         _start_time_offset_usec = Time.get_ticks_usec()
+        _pause_start_wall_time_usec = _start_time_offset_usec
 
     # Connect to multiplayer signals to know when we're connected.
     if G.network.is_client:
@@ -144,7 +153,8 @@ func _process(delta: float) -> void:
 ##
 ## This is an estimate of what the server's offset time would currently be.
 ## Both server and client apply the same start time offset so their frame
-## indices align correctly.
+## indices align correctly. Accounts for pause time to return "game time"
+## instead of "wall-clock time".
 ##
 ## Returns 0 for clients that haven't received the server's offset yet.
 func get_server_time_usec() -> int:
@@ -152,14 +162,26 @@ func get_server_time_usec() -> int:
     if not is_time_initialized:
         return 0
 
-    var local_time_offset := Time.get_ticks_usec() - _start_time_offset_usec
+    var current_wall_time := Time.get_ticks_usec()
+    var elapsed_since_start := current_wall_time - _start_time_offset_usec
+
+    # Subtract paused time to get active "game time".
+    var active_time := elapsed_since_start - _cumulative_pause_time_usec
+
+    # If currently paused, also subtract elapsed pause time.
+    # Query NetworkFrameDriver for authoritative pause state.
+    if G.network.frame_driver.is_paused():
+        var current_pause_duration := (
+            current_wall_time - _pause_start_wall_time_usec
+        )
+        active_time -= current_pause_duration
 
     if is_server:
-        # We ARE the server, return our offset local time.
-        return local_time_offset
+        # We ARE the server, return our active game time.
+        return active_time
 
-    # Client: return offset local time adjusted by the calculated clock offset.
-    return local_time_offset + clock_offset_usec
+    # Client: return active game time adjusted by the calculated clock offset.
+    return active_time + clock_offset_usec
 
 
 ## Manually request a time synchronization with the server.
@@ -211,6 +233,48 @@ func clear() -> void:
     _client_pending_sync_t1 = 0
     _client_offset_samples.clear()
     _client_rtt_samples.clear()
+
+
+## Pause time tracking. Records current wall-clock time as pause start point.
+##
+## Called by NetworkFrameDriver during pause execution. Idempotency is handled
+## by NetworkFrameDriver, so this method just records the pause time.
+func pause() -> void:
+    _pause_start_wall_time_usec = Time.get_ticks_usec()
+
+    G.print(
+        "Time tracking paused at wall-clock %d usec" %
+        _pause_start_wall_time_usec,
+        ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        ScaffolderLog.Verbosity.VERBOSE,
+    )
+
+
+## Unpause time tracking. Calculates and accumulates pause duration.
+##
+## Called by NetworkFrameDriver during unpause execution. Idempotency is
+## handled by NetworkFrameDriver, so this method just accumulates pause time.
+func unpause() -> void:
+    var pause_end_wall_time_usec := Time.get_ticks_usec()
+    var pause_duration_usec := (
+        pause_end_wall_time_usec - _pause_start_wall_time_usec
+    )
+    _cumulative_pause_time_usec += pause_duration_usec
+    _pause_start_wall_time_usec = 0
+
+    @warning_ignore("integer_division")
+    var pause_duration_ms := pause_duration_usec / 1000
+    @warning_ignore("integer_division")
+    var cumulative_pause_ms := _cumulative_pause_time_usec / 1000
+
+    G.print(
+        "Time tracking unpaused after %d ms (total paused: %d ms)" % [
+            pause_duration_ms,
+            cumulative_pause_ms,
+        ],
+        ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        ScaffolderLog.Verbosity.VERBOSE,
+    )
 
 
 func _client_on_connected_to_server() -> void:
