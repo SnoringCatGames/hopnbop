@@ -170,7 +170,7 @@ func get_server_time_usec() -> int:
 
     # If currently paused, also subtract elapsed pause time.
     # Query NetworkFrameDriver for authoritative pause state.
-    if G.network.frame_driver.is_paused():
+    if G.network.frame_driver.is_paused:
         var current_pause_duration := (
             current_wall_time - _pause_start_wall_time_usec
         )

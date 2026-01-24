@@ -27,6 +27,10 @@ extends Node
 
 const SERVER_ID := 1
 
+## Transfer channel for pause/unpause RPCs. Using a dedicated channel ensures
+## pause coordination messages are not blocked by other network traffic.
+const RPC_CHANNEL_PAUSE := 1
+
 var is_connected_to_server := false
 
 

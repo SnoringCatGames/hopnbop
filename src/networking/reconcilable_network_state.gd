@@ -267,8 +267,8 @@ func _handle_new_authoritative_state() -> void:
     var new_frame_authority: int = packed_state[packed_state.size() - 2]
 
     # PAUSE FILTERING: Reject states from after pause started.
-    if G.network.frame_driver.is_paused():
-        var pause_frame: int = G.network.frame_driver.get_pause_start_frame()
+    if G.network.frame_driver.is_paused:
+        var pause_frame: int = G.network.frame_driver.pause_start_frame
         if state_frame_index > pause_frame:
             if G.is_verbose:
                 G.print(

@@ -5,7 +5,6 @@ extends GutTest
 ## Phase 1 tests focus on frame time conversion - the core math that underpins
 ## all rollback functionality.
 
-
 func before_each():
     ArrayPool.clear_all_pools()
 
@@ -202,9 +201,9 @@ class TestRollbackQueueing:
         frame_driver.server_frame_index = 50
 
         # Queue multiple rollbacks
-        var result1 := frame_driver.queue_rollback(45)  # Target: 46
-        var result2 := frame_driver.queue_rollback(47)  # Target: 48
-        var result3 := frame_driver.queue_rollback(40)  # Target: 41 (earliest)
+        var result1 := frame_driver.queue_rollback(45) # Target: 46
+        var result2 := frame_driver.queue_rollback(47) # Target: 48
+        var result3 := frame_driver.queue_rollback(40) # Target: 41 (earliest)
 
         assert_true(result1, "First queue should succeed")
         assert_true(result2, "Second queue should succeed")
@@ -336,9 +335,9 @@ class TestRollbackAndReprocess:
         # Test deduplication: multiple calls should keep earliest
         frame_driver.server_frame_index = 50
 
-        frame_driver.queue_rollback(47)  # Target: 48
-        frame_driver.queue_rollback(45)  # Target: 46 (earlier)
-        frame_driver.queue_rollback(49)  # Target: 50 (later)
+        frame_driver.queue_rollback(47) # Target: 48
+        frame_driver.queue_rollback(45) # Target: 46 (earlier)
+        frame_driver.queue_rollback(49) # Target: 50 (later)
 
         # Internal state should have frame 46 as the target (earliest)
         assert_eq(
@@ -787,34 +786,34 @@ class TestPauseUnpause:
     func test_starts_paused_by_default():
         # Game should start paused until server unpauses
         assert_true(
-            frame_driver.is_paused(),
+            frame_driver.is_paused,
             "Should start paused by default",
         )
 
 
-    func test_set_paused_true_pauses_simulation():
+    func test_server_set_is_paused_true_pauses_simulation():
         # Unpause first
         frame_driver._is_paused = false
 
-        # Then pause via set_paused
-        frame_driver.set_paused(true)
+        # Then pause via server_set_is_paused
+        frame_driver.server_set_is_paused(true)
 
         assert_true(
-            frame_driver.is_paused(),
-            "Should be paused after set_paused(true)",
+            frame_driver.is_paused,
+            "Should be paused after server_set_is_paused(true)",
         )
 
 
-    func test_set_paused_false_unpauses_simulation():
+    func test_server_set_is_paused_false_unpauses_simulation():
         # Start paused
         frame_driver._is_paused = true
 
-        # Unpause via set_paused
-        frame_driver.set_paused(false)
+        # Unpause via server_set_is_paused
+        frame_driver.server_set_is_paused(false)
 
         assert_false(
-            frame_driver.is_paused(),
-            "Should be unpaused after set_paused(false)",
+            frame_driver.is_paused,
+            "Should be unpaused after server_set_is_paused(false)",
         )
 
 
@@ -824,10 +823,10 @@ class TestPauseUnpause:
         frame_driver.server_frame_index = 100
 
         # Pause
-        frame_driver.set_paused(true)
+        frame_driver.server_set_is_paused(true)
 
         assert_eq(
-            frame_driver.get_pause_start_frame(),
+            frame_driver.pause_start_frame,
             100,
             "Should track pause start frame",
         )
@@ -837,16 +836,16 @@ class TestPauseUnpause:
         # Start at frame 100, pause
         frame_driver.server_frame_index = 100
         frame_driver._is_paused = false
-        frame_driver.set_paused(true)
+        frame_driver.server_set_is_paused(true)
 
         # Simulate time passing (advance frame index as if paused for 30 frames)
         frame_driver.server_frame_index = 130
 
         # Unpause
-        frame_driver.set_paused(false)
+        frame_driver.server_set_is_paused(false)
 
         assert_eq(
-            frame_driver.get_cumulative_paused_frames(),
+            frame_driver._cumulative_paused_frames,
             30,
             "Should accumulate 30 paused frames",
         )
@@ -856,18 +855,18 @@ class TestPauseUnpause:
         # Pause cycle 1: pause at 100, unpause at 120 (20 frames)
         frame_driver._is_paused = false
         frame_driver.server_frame_index = 100
-        frame_driver.set_paused(true)
+        frame_driver.server_set_is_paused(true)
         frame_driver.server_frame_index = 120
-        frame_driver.set_paused(false)
+        frame_driver.server_set_is_paused(false)
 
         # Pause cycle 2: pause at 150, unpause at 170 (20 frames)
         frame_driver.server_frame_index = 150
-        frame_driver.set_paused(true)
+        frame_driver.server_set_is_paused(true)
         frame_driver.server_frame_index = 170
-        frame_driver.set_paused(false)
+        frame_driver.server_set_is_paused(false)
 
         assert_eq(
-            frame_driver.get_cumulative_paused_frames(),
+            frame_driver._cumulative_paused_frames,
             40,
             "Should accumulate 40 paused frames across two cycles",
         )
@@ -877,11 +876,11 @@ class TestPauseUnpause:
         # Pause at 100, unpause at 120
         frame_driver._is_paused = false
         frame_driver.server_frame_index = 100
-        frame_driver.set_paused(true)
+        frame_driver.server_set_is_paused(true)
         frame_driver.server_frame_index = 120
-        frame_driver.set_paused(false)
+        frame_driver.server_set_is_paused(false)
 
-        var history := frame_driver.get_pause_history()
+        var history := frame_driver._pause_history
 
         assert_eq(history.size(), 1, "Should have 1 pause entry in history")
         assert_eq(
@@ -961,7 +960,7 @@ class TestPauseUnpause:
         frame_driver._is_paused = false
 
         assert_eq(
-            frame_driver.get_pause_start_frame(),
+            frame_driver.pause_start_frame,
             0,
             "Should return 0 when not paused",
         )
@@ -969,7 +968,7 @@ class TestPauseUnpause:
 
     func test_pause_clears_queued_rollback():
         # Start unpaused
-        frame_driver.set_paused(false)
+        frame_driver.server_set_is_paused(false)
 
         # Queue a rollback
         frame_driver.server_frame_index = 100
@@ -982,7 +981,7 @@ class TestPauseUnpause:
         )
 
         # Pause
-        frame_driver.set_paused(true)
+        frame_driver.server_set_is_paused(true)
 
         assert_eq(
             frame_driver._queued_rollback_frame_index,
@@ -995,18 +994,18 @@ class TestPauseUnpause:
         # Pause twice
         frame_driver._is_paused = false
         frame_driver.server_frame_index = 100
-        frame_driver.set_paused(true)
+        frame_driver.server_set_is_paused(true)
 
-        var pause_start_1 := frame_driver.get_pause_start_frame()
+        var pause_start_1 := frame_driver.pause_start_frame
 
         # Advance frame (shouldn't happen, but testing idempotency)
         frame_driver.server_frame_index = 110
 
         # Pause again (should be no-op)
-        frame_driver.set_paused(true)
+        frame_driver.server_set_is_paused(true)
 
         assert_eq(
-            frame_driver.get_pause_start_frame(),
+            frame_driver.pause_start_frame,
             pause_start_1,
             "Second pause should be no-op (idempotent)",
         )
@@ -1017,13 +1016,13 @@ class TestPauseUnpause:
         frame_driver._is_paused = false
         frame_driver.server_frame_index = 100
 
-        var cumulative_before := frame_driver.get_cumulative_paused_frames()
+        var cumulative_before := frame_driver._cumulative_paused_frames
 
         # Unpause again (should be no-op)
-        frame_driver.set_paused(false)
+        frame_driver.server_set_is_paused(false)
 
         assert_eq(
-            frame_driver.get_cumulative_paused_frames(),
+            frame_driver._cumulative_paused_frames,
             cumulative_before,
             "Second unpause should be no-op (idempotent)",
         )
@@ -1033,17 +1032,17 @@ class TestPauseUnpause:
         # Cycle 1
         frame_driver._is_paused = false
         frame_driver.server_frame_index = 50
-        frame_driver.set_paused(true)
+        frame_driver.server_set_is_paused(true)
         frame_driver.server_frame_index = 60
-        frame_driver.set_paused(false)
+        frame_driver.server_set_is_paused(false)
 
         # Cycle 2
         frame_driver.server_frame_index = 100
-        frame_driver.set_paused(true)
+        frame_driver.server_set_is_paused(true)
         frame_driver.server_frame_index = 130
-        frame_driver.set_paused(false)
+        frame_driver.server_set_is_paused(false)
 
-        var history := frame_driver.get_pause_history()
+        var history := frame_driver._pause_history
 
         assert_eq(history.size(), 2, "Should have 2 pause entries")
         assert_eq(history[0]["duration_frames"], 10, "First pause: 10 frames")

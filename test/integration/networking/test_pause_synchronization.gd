@@ -4,7 +4,6 @@ extends GutTest
 ## These tests verify pause coordination scenarios. Most detailed testing
 ## (state filtering, buffer cleanup) is covered in unit tests.
 
-
 func before_each():
     ArrayPool.clear_all_pools()
 
@@ -34,10 +33,10 @@ class TestFrameIndexContinuity:
     func test_frame_index_stays_constant_during_pause():
         # Start at frame 100, unpause
         frame_driver.server_frame_index = 100
-        frame_driver.set_paused(false)
+        frame_driver.server_set_is_paused(false)
 
         # Pause
-        frame_driver.set_paused(true)
+        frame_driver.server_set_is_paused(true)
 
         var frame_at_pause := frame_driver.server_frame_index
 
@@ -53,11 +52,11 @@ class TestFrameIndexContinuity:
     func test_frame_index_resumes_from_pause_frame():
         # Pause at frame 100
         frame_driver.server_frame_index = 100
-        frame_driver.set_paused(false)
-        frame_driver.set_paused(true)
+        frame_driver.server_set_is_paused(false)
+        frame_driver.server_set_is_paused(true)
 
         # Unpause
-        frame_driver.set_paused(false)
+        frame_driver.server_set_is_paused(false)
 
         # Frame should still be 100
         assert_eq(
@@ -70,9 +69,9 @@ class TestFrameIndexContinuity:
     func test_no_gaps_in_frame_sequence_after_unpause():
         # Pause at 100, unpause at 100, next frame should be 101
         frame_driver.server_frame_index = 100
-        frame_driver.set_paused(false)
-        frame_driver.set_paused(true)
-        frame_driver.set_paused(false)
+        frame_driver.server_set_is_paused(false)
+        frame_driver.server_set_is_paused(true)
+        frame_driver.server_set_is_paused(false)
 
         # Simulate next physics tick
         frame_driver.server_frame_index += 1
@@ -105,9 +104,9 @@ class TestPauseRollbackInteraction:
     func test_can_queue_rollback_after_unpause():
         # Pause and unpause
         frame_driver.server_frame_index = 100
-        frame_driver.set_paused(false)
-        frame_driver.set_paused(true)
-        frame_driver.set_paused(false)
+        frame_driver.server_set_is_paused(false)
+        frame_driver.server_set_is_paused(true)
+        frame_driver.server_set_is_paused(false)
 
         # Queue rollback after unpause
         var result := frame_driver.queue_rollback(95)

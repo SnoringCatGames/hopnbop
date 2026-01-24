@@ -428,6 +428,13 @@ func server_set_is_paused(paused: bool) -> void:
         _server_execute_unpause()
 
 
+func client_request_toggle_pause() -> void:
+    if G.network.frame_driver.is_paused:
+        G.network.frame_driver.client_request_unpause()
+    else:
+        G.network.frame_driver.client_request_pause()
+
+
 ## Request pause from client. Only works if Settings.is_server_pause_enabled.
 func client_request_pause() -> void:
     if G.network.is_server:
@@ -443,9 +450,10 @@ func client_request_unpause() -> void:
     elif is_inside_tree():
         _server_rpc_client_request_unpause.rpc_id(NetworkConnector.SERVER_ID)
 
-
 ## Client requests server to pause.
-@rpc("any_peer", "call_remote", "reliable")
+
+
+@rpc("any_peer", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _server_rpc_client_request_pause() -> void:
     if not G.network.is_server:
         return
@@ -467,9 +475,10 @@ func _server_rpc_client_request_pause() -> void:
     _last_pause_request_time_usec = current_time
     _server_execute_pause()
 
-
 ## Client requests server to unpause.
-@rpc("any_peer", "call_remote", "reliable")
+
+
+@rpc("any_peer", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _server_rpc_client_request_unpause() -> void:
     if not G.network.is_server:
         return
@@ -491,9 +500,10 @@ func _server_rpc_client_request_unpause() -> void:
     _last_pause_request_time_usec = current_time
     _server_execute_unpause()
 
-
 ## Server notifies all clients of pause.
-@rpc("authority", "call_remote", "reliable")
+
+
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _client_rpc_notify_pause(
         server_pause_frame: int,
         server_pause_time_usec: int,
@@ -503,9 +513,10 @@ func _client_rpc_notify_pause(
 
     _client_execute_pause_at_server_frame(server_pause_frame, server_pause_time_usec)
 
-
 ## Server notifies all clients of unpause.
-@rpc("authority", "call_remote", "reliable")
+
+
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _client_rpc_notify_unpause(
         server_unpause_frame: int,
         server_unpause_time_usec: int,

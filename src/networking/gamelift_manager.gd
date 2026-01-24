@@ -152,7 +152,7 @@ func _on_all_players_ready() -> void:
     )
 
     # Unpause frame simulation
-    G.network.frame_driver.set_paused(false)
+    G.network.frame_driver.server_set_is_paused(false)
 
     all_players_connected.emit()
 
@@ -222,13 +222,13 @@ func activate_game_session() -> void:
             (
                 "[GameLift] Failed to activate session: %s"
                 % outcome.get_error_message()
-            )
+            ),
         )
-
 
 # =============================================================================
 # SDK Initialization
 # =============================================================================
+
 
 func _initialize_sdk() -> void:
     # Try to load GameLift extension
@@ -239,12 +239,12 @@ func _initialize_sdk() -> void:
         # Connect signals
         _gamelift.game_session_started.connect(_on_game_session_started)
         _gamelift.process_terminate_requested.connect(
-            _on_process_terminate_requested
+            _on_process_terminate_requested,
         )
         _gamelift.health_check_requested.connect(_on_health_check)
     else:
         G.warning(
-            "[GameLift] GameLiftServer class not found (extension not loaded)"
+            "[GameLift] GameLiftServer class not found (extension not loaded)",
         )
         return
 
@@ -260,7 +260,7 @@ func _initialize_sdk() -> void:
             G.settings.gamelift_anywhere_auth_token,
             G.settings.gamelift_anywhere_fleet_id,
             G.settings.gamelift_anywhere_host_id,
-            G.settings.gamelift_anywhere_process_id
+            G.settings.gamelift_anywhere_process_id,
         )
     else:
         G.print(
@@ -315,10 +315,10 @@ func _call_process_ready() -> void:
         ScaffolderLog.CATEGORY_CORE_SYSTEMS,
     )
 
-
 # =============================================================================
 # GameLift Callback Handlers
 # =============================================================================
+
 
 func _on_game_session_started(session) -> void:
     _game_session = session
@@ -384,7 +384,7 @@ func _on_process_terminate_requested() -> void:
             (
                 "[GameLift] ProcessEnding failed: %s"
                 % outcome.get_error_message()
-            )
+            ),
         )
 
     # Destroy SDK
