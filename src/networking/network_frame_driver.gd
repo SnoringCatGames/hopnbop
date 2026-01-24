@@ -48,6 +48,7 @@ extends Node
 ## - Only one rollback occurs per _network_process, earliest frame takes priority
 
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug
+# - AI: Make sure that our vscode tasks and launch commands use WSL for any step involving building the GDExtension.
 # - Debug the game.
 #   - Fix the GDExtension importing in Godot.
 #   - Fix failing tests.
@@ -118,7 +119,6 @@ extends Node
 #     - a leaderboard
 #   - Implement a way to make friends and to join matches with friends.
 
-
 # - Implement player kills.
 #   - In this game players kill each other by jumping on each other's heads.
 #   - In order to detect when one player jumps onto another's head, use the following strategy (or let me know if there is some other industry standard way to implement this that wolud be better!):
@@ -139,7 +139,6 @@ extends Node
 #     - But don't send an RPC for bumps.
 #   - Also implement bouncing for the killer when a kill occurs:
 #     - The killer should bounce upward a bit, while maintaining horizontal velocity.
-
 
 # FIXME: Rollback debug visualization and networking improvements:
 #
