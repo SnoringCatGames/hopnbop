@@ -49,28 +49,9 @@ extends Node
 
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug
 # - Debug the game.
-#   -
+#   - Debug pause behavior.
 # - Review tests.
 # - Fix GitHub CI.
-#
-# - Add support for networked pause
-#   We just added set_paused() on NetworkFrameDriver while integrating some GameLift logic. However, I want to expand on that.
-#   - Please review my proposed plan, and let me know if anything doesn't make sense or should be done differently.
-#   - In general, I want to add support for dynamically pausing and unpausing the game on the server and all clients, and I want to support triggering this from a client.
-#   - Also, I want to ensure that all clients also start paused until the server is initially unpaused, after all expected clients connect.
-#   - Also, we need to carefully analyze our frame-tracking in this class and time-tracking in ServerTimeTracker to make sure they properly account for this new pause support.
-#   - Also, we need to update how replication handles incoming packed_state with pausing.
-#     - I think we should accept incoming state iff the state is from or before the time pause started (not after).
-#     - And similarly, we need to start accepting state again after unpausing.
-#   - We'll then need to adjust frame indices based on cumulative pause time, so we don't have gaps in frames.
-#   - We also need to revert any rollback buffer state from after a pause started.
-#   - We also probably need to revert frame-index tracking to the latest pause frame.
-#   - When triggering pause/unpause, use the time on the server when the RPC is received. Don't trust client time for this.
-#   - Also, add a new flag: Settings.is_server_pause_enabled
-#     - If this is false, then the server should reject any incoming pause request from clients, but the server should still support pausing itself during initialization.
-#   - We should use RPCs to communicate pause/unpause events.
-#   - Also set get_tree().paused locally when paused.
-
 
 # - GameLift
 # - Add rollback debug visualizations.
@@ -353,10 +334,27 @@ var server_frame_index := 0
 ## preventing fast-forward at startup.
 var _is_frame_tracking_initialized := false
 
-## Pauses frame simulation. Used by GameLift to wait for all players to connect
-## before starting the game. When paused, _pre_physics_process returns early
-## without incrementing server_frame_index or running network processing.
-var _is_paused := false
+## Pauses frame simulation. Starts paused by default - server unpauses when
+## ready (e.g., after all players connect in GameLift). When paused,
+## _pre_physics_process returns early without incrementing server_frame_index
+## or running network processing.
+var _is_paused := true
+
+## Frame index when pause started. Used to calculate cumulative pause duration,
+## filter incoming states during pause, and revert frame tracking after pause.
+var _pause_start_frame_index := 0
+
+## Total frames paused across all pause periods. This is subtracted from
+## time-based frame calculations to maintain continuous frame progression
+## without gaps.
+var _cumulative_paused_frames := 0
+
+## History of pause periods for debugging/logging.
+## Array of { start_frame: int, end_frame: int, duration_frames: int }
+var _pause_history: Array[Dictionary] = []
+
+## Tracks last pause request time for rate limiting (microseconds).
+var _last_pause_request_time_usec := 0
 
 ## Interval for periodic wall-clock re-sync to maintain accurate timestamps for
 ## logging. Re-sync is handled automatically via G.time.set_interval().
@@ -393,12 +391,27 @@ var oldest_rollbackable_frame_index: int:
         #   next frame, so those buffers have one fewer past frames.
         return max(server_frame_index - rollback_buffer_size + 3, 1)
 
+## Whether frame simulation is currently paused.
+var is_paused: bool:
+    get:
+        return _is_paused
+
+## Frame index when pause started. Returns 0 if not currently paused.
+var pause_start_frame: int:
+    get:
+        return _pause_start_frame_index if _is_paused else 0
+
 
 func _ready() -> void:
     G.log.log_system_ready("NetworkFrameDriver")
 
     if not Engine.is_editor_hint():
         G.process_sentinel.pre_physics_process.connect(_pre_physics_process)
+
+        # Start paused - server will unpause when ready (e.g., after all players
+        # connect in GameLift).
+        if is_inside_tree():
+            get_tree().paused = true
 
 
 ## Pause or unpause frame simulation.
@@ -408,17 +421,255 @@ func _ready() -> void:
 ## for all players to connect before starting the game.
 ##
 ## @param paused: true to pause, false to unpause.
-func set_paused(paused: bool) -> void:
-    if _is_paused == paused:
+func server_set_is_paused(paused: bool) -> void:
+    if paused:
+        _server_execute_pause()
+    else:
+        _server_execute_unpause()
+
+
+## Request pause from client. Only works if Settings.is_server_pause_enabled.
+func client_request_pause() -> void:
+    if G.network.is_server:
+        _server_execute_pause()
+    elif is_inside_tree():
+        _server_rpc_client_request_pause.rpc_id(NetworkConnector.SERVER_ID)
+
+
+## Request unpause from client. Only works if Settings.is_server_pause_enabled.
+func client_request_unpause() -> void:
+    if G.network.is_server:
+        _server_execute_unpause()
+    elif is_inside_tree():
+        _server_rpc_client_request_unpause.rpc_id(NetworkConnector.SERVER_ID)
+
+
+## Client requests server to pause.
+@rpc("any_peer", "call_remote", "reliable")
+func _server_rpc_client_request_pause() -> void:
+    if not G.network.is_server:
         return
 
-    _is_paused = paused
+    if not G.settings.is_server_pause_enabled:
+        var peer_id := multiplayer.get_remote_sender_id()
+        G.warning(
+            "Client %d requested pause, but server pause is disabled" % peer_id,
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        )
+        return
 
-    var state_str := "paused" if paused else "unpaused"
-    G.print(
-        "[NetworkFrameDriver] Frame simulation %s" % state_str,
-        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+    # Rate limit pause requests.
+    var current_time := Time.get_ticks_usec()
+    var cooldown_usec := int(G.settings.pause_request_cooldown_sec * 1_000_000)
+    if current_time - _last_pause_request_time_usec < cooldown_usec:
+        return
+
+    _last_pause_request_time_usec = current_time
+    _server_execute_pause()
+
+
+## Client requests server to unpause.
+@rpc("any_peer", "call_remote", "reliable")
+func _server_rpc_client_request_unpause() -> void:
+    if not G.network.is_server:
+        return
+
+    if not G.settings.is_server_pause_enabled:
+        var peer_id := multiplayer.get_remote_sender_id()
+        G.warning(
+            "Client %d requested unpause, but server pause is disabled" % peer_id,
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        )
+        return
+
+    # Rate limit pause requests.
+    var current_time := Time.get_ticks_usec()
+    var cooldown_usec := int(G.settings.pause_request_cooldown_sec * 1_000_000)
+    if current_time - _last_pause_request_time_usec < cooldown_usec:
+        return
+
+    _last_pause_request_time_usec = current_time
+    _server_execute_unpause()
+
+
+## Server notifies all clients of pause.
+@rpc("authority", "call_remote", "reliable")
+func _client_rpc_notify_pause(
+        server_pause_frame: int,
+        server_pause_time_usec: int,
+) -> void:
+    if G.network.is_server:
+        return
+
+    _client_execute_pause_at_server_frame(server_pause_frame, server_pause_time_usec)
+
+
+## Server notifies all clients of unpause.
+@rpc("authority", "call_remote", "reliable")
+func _client_rpc_notify_unpause(
+        server_unpause_frame: int,
+        server_unpause_time_usec: int,
+        server_cumulative_paused_frames: int,
+) -> void:
+    if G.network.is_server:
+        return
+
+    _client_server_execute_unpause_at_server_frame(
+        server_unpause_frame,
+        server_unpause_time_usec,
+        server_cumulative_paused_frames,
     )
+
+
+## Internal method to execute pause on server or client.
+func _server_execute_pause() -> void:
+    if _is_paused:
+        return
+
+    _is_paused = true
+    _pause_start_frame_index = server_frame_index
+
+    # Clean up buffer frames after pause started.
+    _cleanup_buffer_after_pause()
+
+    # Clear queued rollback - it's based on invalid post-pause state.
+    _queued_rollback_frame_index = 0
+
+    # Notify clients (if server and in tree for RPC).
+    if G.network.is_server and is_inside_tree():
+        _client_rpc_notify_pause.rpc(
+            server_frame_index,
+            server_frame_time_usec,
+        )
+
+    # Pause Godot scene tree.
+    if is_inside_tree():
+        get_tree().paused = true
+
+    # Pause time tracking.
+    G.network.time.pause()
+
+    G.print(
+        "Server paused at frame %d" % server_frame_index,
+        ScaffolderLog.CATEGORY_NETWORK_SYNC,
+    )
+
+
+## Internal method to execute unpause on server or client.
+func _server_execute_unpause() -> void:
+    if not _is_paused:
+        return
+
+    var pause_duration_frames := server_frame_index - _pause_start_frame_index
+    _cumulative_paused_frames += pause_duration_frames
+
+    # Record pause history.
+    _pause_history.append(
+        {
+            "start_frame": _pause_start_frame_index,
+            "end_frame": server_frame_index,
+            "duration_frames": pause_duration_frames,
+        },
+    )
+
+    _is_paused = false
+
+    # Notify clients (if server and in tree for RPC).
+    if G.network.is_server and is_inside_tree():
+        _client_rpc_notify_unpause.rpc(
+            server_frame_index,
+            server_frame_time_usec,
+            _cumulative_paused_frames,
+        )
+
+    # Unpause Godot scene tree.
+    if is_inside_tree():
+        get_tree().paused = false
+
+    # Unpause time tracking.
+    G.network.time.unpause()
+
+    G.print(
+        "Server unpaused at frame %d (paused for %d frames, cumulative: %d)"
+        % [server_frame_index, pause_duration_frames, _cumulative_paused_frames],
+        ScaffolderLog.CATEGORY_NETWORK_SYNC,
+    )
+
+
+## Execute pause on client at server-specified frame (client-side).
+func _client_execute_pause_at_server_frame(
+        server_pause_frame: int,
+        server_pause_time_usec: int,
+) -> void:
+    if _is_paused:
+        return
+
+    _is_paused = true
+
+    # Align with server's pause frame.
+    server_frame_index = server_pause_frame
+    server_frame_time_usec = server_pause_time_usec
+    _pause_start_frame_index = server_pause_frame
+
+    # Clean up buffer frames after pause started.
+    _cleanup_buffer_after_pause()
+
+    # Clear queued rollback.
+    _queued_rollback_frame_index = 0
+
+    # Pause Godot scene tree.
+    if is_inside_tree():
+        get_tree().paused = true
+
+    # Pause time tracking.
+    G.network.time.pause()
+
+    G.print(
+        "Client synchronized pause at frame %d" % server_frame_index,
+        ScaffolderLog.CATEGORY_NETWORK_SYNC,
+    )
+
+
+## Execute unpause on client at server-specified frame (client-side).
+func _client_server_execute_unpause_at_server_frame(
+        server_unpause_frame: int,
+        server_unpause_time_usec: int,
+        server_cumulative_paused_frames: int,
+) -> void:
+    if not _is_paused:
+        return
+
+    # Adopt server's pause accounting.
+    _cumulative_paused_frames = server_cumulative_paused_frames
+
+    # Align frame index with server.
+    server_frame_index = server_unpause_frame
+    server_frame_time_usec = server_unpause_time_usec
+
+    _is_paused = false
+    _pause_start_frame_index = 0
+
+    # Unpause Godot scene tree.
+    if is_inside_tree():
+        get_tree().paused = false
+
+    # Unpause time tracking.
+    G.network.time.unpause()
+
+    G.print(
+        "Client synchronized unpause at frame %d (cumulative paused: %d)" % [
+            server_frame_index,
+            _cumulative_paused_frames,
+        ],
+        ScaffolderLog.CATEGORY_NETWORK_SYNC,
+    )
+
+
+## Clean up rollback buffer state after pause.
+func _cleanup_buffer_after_pause() -> void:
+    for node in _networked_state_nodes:
+        if is_instance_valid(node):
+            node._cleanup_buffer_after_pause(_pause_start_frame_index)
 
 
 func _pre_physics_process(delta: float) -> void:
@@ -464,15 +715,20 @@ func _initialize_frame_tracking() -> void:
 
 
 ## If we bucket server time into discrete frames, this would be the index of the
-## frame corresponding to the given time.
+## frame corresponding to the given time. Accounts for cumulative pause time to
+## maintain continuous frame indices without gaps.
 func get_frame_index_from_time_usec(p_time_usec: int) -> int:
     @warning_ignore("integer_division")
-    return p_time_usec / TARGET_NETWORK_TIME_STEP_USEC
+    var raw_frame := p_time_usec / TARGET_NETWORK_TIME_STEP_USEC
+    return raw_frame - _cumulative_paused_frames
 
 
+## Convert frame index to time. Accounts for cumulative pause time by adding
+## paused frames back to the time calculation.
 func get_time_usec_from_frame_index(p_frame_index: int) -> int:
+    var adjusted_frame := p_frame_index + _cumulative_paused_frames
     return floori(
-        p_frame_index * TARGET_NETWORK_TIME_STEP_USEC +
+        adjusted_frame * TARGET_NETWORK_TIME_STEP_USEC +
         TARGET_NETWORK_TIME_STEP_USEC * 0.5,
     )
 
