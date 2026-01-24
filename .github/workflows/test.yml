@@ -87,6 +87,16 @@ jobs:
               echo "ERROR: Tests timed out after 300 seconds"
             fi
           }
+
+          echo "Checking for output file..."
+          ls -la unit_test_results.xml 2>&1 || echo "No unit test results file generated"
+
+      - name: Run Integration Tests
+        continue-on-error: true
+        id: integration-tests
+        timeout-minutes: 10
+        run: |
+          echo "Starting integration tests..."
           echo "Command: ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . addons/gut/gut_cmdln.gd -gdir=res://test/integration -gexit -gjunit_xml_file=integration_test_results.xml"
 
           timeout 300s ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . \
@@ -103,17 +113,7 @@ jobs:
           }
 
           echo "Checking for output file..."
-          ls -la integration_test_results.xml 2>&1 || echo "No integration test results file generated" integration-tests
-        timeout-minutes: 10
-        run: |
-          echo "Starting integration tests..."
-          timeout 300s ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . \
-            addons/gut/gut_cmdln.gd \
-            -gdir=res://test/integration \
-            -gexit \
-            -gjunit_xml_file=integration_test_results.xml 2>&1 | tee integration_test.log || {
-            echo "Integration tests completed with exit code $?"
-          }
+          ls -la integration_test_results.xml 2>&1 || echo "No integration test results file generated"
 
       - name: Display Test Results
         run: |

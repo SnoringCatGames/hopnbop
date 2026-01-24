@@ -23,7 +23,10 @@
 		"editor.defaultFormatter": "eddiedover.gdscript-formatter-linter",
 		"editor.codeActionsOnSave": {
 			"source.fixAll": "explicit"
-		}
+		},
+		"editor.rulers": [
+			80
+		]
 	},
 	// Godot Tools extension settings
 	"godot_tools.editor_path": "",
