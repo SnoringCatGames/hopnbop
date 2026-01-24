@@ -206,9 +206,11 @@ if [ "$SKIP_DEPS" = false ]; then
         -DGAMELIFT_USE_STD=1 \
         -DBUILD_SHARED_LIBS=OFF \
         -DRUN_UNIT_TESTS=OFF \
+        -DCMAKE_INSTALL_PREFIX="$SCRIPT_DIR/gamelift-server-sdk/cmake-build/prefix" \
         -S .. -B .
 
-    cmake --build . --config Release --target install -j$(nproc)
+    cmake --build . -j$(nproc)
+    cmake --build . --target install
 
     cd "$SCRIPT_DIR"
     echo "  ✓ GameLift SDK built and installed"

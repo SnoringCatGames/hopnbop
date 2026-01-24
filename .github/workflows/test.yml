@@ -32,6 +32,21 @@ jobs:
       - name: Ensure Godot is executable
         run: chmod +x Godot_v4.5.1-stable_linux.x86_64
 
+      - name: Verify Test Setup
+        run: |
+          echo "=== Checking Test Directories ==="
+          ls -la test/ || echo "No test directory"
+          ls -la test/unit/ || echo "No unit test directory"
+          ls -la test/integration/ || echo "No integration test directory"
+
+          echo ""
+          echo "=== Checking GUT Addon ==="
+          ls -la addons/gut/ || echo "No GUT addon found"
+
+          echo ""
+          echo "=== Test .gd Files ==="
+          find test -name "*.gd" -type f || echo "No test files found"
+
       - name: Setup Project Environment
         run: |
           # Create necessary directories
@@ -58,17 +73,37 @@ jobs:
         timeout-minutes: 10
         run: |
           echo "Starting unit tests..."
+          echo "Command: ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . addons/gut/gut_cmdln.gd -gdir=res://test/unit -gexit -gjunit_xml_file=unit_test_results.xml"
+
           timeout 300s ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . \
             addons/gut/gut_cmdln.gd \
             -gdir=res://test/unit \
             -gexit \
+            -gverbose \
             -gjunit_xml_file=unit_test_results.xml 2>&1 | tee unit_test.log || {
-            echo "Unit tests completed with exit code $?"
+            EXIT_CODE=$?
+            echo "Unit tests exited with code: $EXIT_CODE"
+            if [ $EXIT_CODE -eq 124 ]; then
+              echo "ERROR: Tests timed out after 300 seconds"
+            fi
+          }
+          echo "Command: ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . addons/gut/gut_cmdln.gd -gdir=res://test/integration -gexit -gjunit_xml_file=integration_test_results.xml"
+
+          timeout 300s ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . \
+            addons/gut/gut_cmdln.gd \
+            -gdir=res://test/integration \
+            -gexit \
+            -gverbose \
+            -gjunit_xml_file=integration_test_results.xml 2>&1 | tee integration_test.log || {
+            EXIT_CODE=$?
+            echo "Integration tests exited with code: $EXIT_CODE"
+            if [ $EXIT_CODE -eq 124 ]; then
+              echo "ERROR: Tests timed out after 300 seconds"
+            fi
           }
 
-      - name: Run Integration Tests
-        continue-on-error: true
-        id: integration-tests
+          echo "Checking for output file..."
+          ls -la integration_test_results.xml 2>&1 || echo "No integration test results file generated" integration-tests
         timeout-minutes: 10
         run: |
           echo "Starting integration tests..."
