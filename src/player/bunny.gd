@@ -4,7 +4,7 @@ extends Player
 
 var match_state: PlayerMatchState:
 	get:
-		return G.get_player_match_state(multiplayer_id)
+		return G.get_player_match_state(player_id)
 
 
 func _enter_tree() -> void:
@@ -49,11 +49,12 @@ func _on_local_authority_added(
 
 
 func _set_up_camera() -> void:
-	var is_local_player := multiplayer_id == G.network.local_id
+	var is_local_player := peer_id == G.network.local_id
 
 	G.print(
-		"Setting up camera for player %d (local=%d, is_local=%s)" % [
-			multiplayer_id,
+		"Setting up camera for player %s (peer=%d, local=%d, is_local=%s)" % [
+			player_id,
+			peer_id,
 			G.network.local_id,
 			is_local_player,
 		],

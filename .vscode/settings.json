@@ -1,61 +1,71 @@
 {
-    // Godot-specific settings
-    "files.associations": {
-        "*.gd": "gdscript",
-        "*.tscn": "godot-scene",
-        "*.tres": "godot-resource"
-    },
-    "files.exclude": {
-        "**/.git": true,
-        "**/.godot": true,
-        "**/bin": false,
-        "**/.scons_cache": true,
-        "**/__pycache__": true
-    },
-    // Editor settings for GDScript
-    "editor.detectIndentation": false,
-    "editor.insertSpaces": false,
-    "editor.tabSize": 4,
-    "[gdscript]": {
-        "editor.insertSpaces": false,
-        "editor.tabSize": 4
-    },
-    // File formatting
-    "files.trimTrailingWhitespace": true,
-    "files.insertFinalNewline": true,
-    // Git settings
-    "git.enableSmartCommit": true,
-    "git.confirmSync": false,
-    // Terminal settings
-    "terminal.integrated.defaultProfile.windows": "PowerShell",
-    "terminal.integrated.profiles.windows": {
-        "PowerShell": {
-            "source": "PowerShell",
-            "icon": "terminal-powershell"
-        },
-        "WSL": {
-            "path": "wsl.exe",
-            "icon": "terminal-linux"
-        }
-    },
-    // C++ settings for GDExtension development
-    "[cpp]": {
-        "editor.tabSize": 4,
-        "editor.insertSpaces": false
-    },
-    "C_Cpp.default.includePath": [
-        "${workspaceFolder}/gamelift-gdextension/src",
-        "${workspaceFolder}/gamelift-gdextension/godot-cpp/include",
-        "${workspaceFolder}/gamelift-gdextension/gamelift-server-sdk/cmake-build/prefix/include"
-    ],
-    "C_Cpp.default.compilerPath": "/usr/bin/g++",
-    "C_Cpp.default.cppStandard": "c++17",
-    // Search settings
-    "search.exclude": {
-        "**/.godot": true,
-        "**/bin": true,
-        "**/.scons_cache": true,
-        "**/godot-cpp/gen": true,
-        "**/cmake-build": true
-    }
+	// Godot-specific settings
+	"files.associations": {
+		"*.gd": "gdscript",
+		"*.tscn": "godot-scene",
+		"*.tres": "godot-resource"
+	},
+	"files.exclude": {
+		"**/.git": true,
+		"**/.godot": true,
+		"**/bin": false,
+		"**/.scons_cache": true,
+		"**/__pycache__": true
+	},
+	// Editor settings for GDScript
+	"editor.detectIndentation": false,
+	"editor.insertSpaces": false,
+	"editor.tabSize": 4,
+	"[gdscript]": {
+		"editor.insertSpaces": false,
+		"editor.tabSize": 4,
+		"editor.formatOnSave": true,
+		"editor.defaultFormatter": "eddiedover.gdscript-formatter-linter",
+		"editor.codeActionsOnSave": {
+			"source.fixAll": "explicit"
+		}
+	},
+	// Godot Tools extension settings
+	"godot_tools.editor_path": "",
+	"godot_tools.gdscript_lsp_server_port": 6005,
+	// GDScript Formatter settings
+	"gdscriptFormatter.indentType": "Tabs",
+	// File formatting
+	"files.trimTrailingWhitespace": true,
+	"files.insertFinalNewline": true,
+	// Git settings
+	"git.enableSmartCommit": true,
+	"git.confirmSync": false,
+	// Terminal settings
+	"terminal.integrated.defaultProfile.windows": "PowerShell",
+	"terminal.integrated.profiles.windows": {
+		"PowerShell": {
+			"source": "PowerShell",
+			"icon": "terminal-powershell"
+		},
+		"WSL": {
+			"path": "wsl.exe",
+			"icon": "terminal-linux"
+		}
+	},
+	// C++ settings for GDExtension development
+	"[cpp]": {
+		"editor.tabSize": 4,
+		"editor.insertSpaces": false
+	},
+	"C_Cpp.default.includePath": [
+		"${workspaceFolder}/gamelift-gdextension/src",
+		"${workspaceFolder}/gamelift-gdextension/godot-cpp/include",
+		"${workspaceFolder}/gamelift-gdextension/gamelift-server-sdk/cmake-build/prefix/include"
+	],
+	"C_Cpp.default.compilerPath": "/usr/bin/g++",
+	"C_Cpp.default.cppStandard": "c++17",
+	// Search settings
+	"search.exclude": {
+		"**/.godot": true,
+		"**/bin": true,
+		"**/.scons_cache": true,
+		"**/godot-cpp/gen": true,
+		"**/cmake-build": true
+	}
 }
