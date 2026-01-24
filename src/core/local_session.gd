@@ -11,13 +11,13 @@ var player_session_id := ""
 
 
 func _init() -> void:
-    clear()
+	clear()
 
 
 func clear() -> void:
-    is_game_active = false
-    is_game_loading = false
+	is_game_active = false
+	is_game_loading = false
 
 
 func copy_match_state() -> void:
-    latest_match_state = G.game_panel.match_state.duplicate()
+	latest_match_state = G.game_panel.match_state.duplicate()

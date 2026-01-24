@@ -6,12 +6,12 @@ extends Node2D
 
 
 func face_left() -> void:
-    animated_sprite.flip_h = faces_right_by_default
+	animated_sprite.flip_h = faces_right_by_default
 
 
 func face_right() -> void:
-    animated_sprite.flip_h = not faces_right_by_default
+	animated_sprite.flip_h = not faces_right_by_default
 
 
 func play(animation_name: String) -> void:
-    animated_sprite.play(animation_name)
+	animated_sprite.play(animation_name)

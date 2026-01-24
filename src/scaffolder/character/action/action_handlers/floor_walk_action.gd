@@ -8,18 +8,18 @@ const PRIORITY := 240
 
 
 func _init() -> void:
-    super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
+	super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
 
 
 func process(character) -> bool:
-    if !character.processed_action(FloorJumpAction.NAME):
-        # Horizontal movement.
-        character.velocity.x += (
-            character.current_walk_acceleration
-            * G.time.get_scaled_network_frame_delta()
-            * character.surfaces.horizontal_acceleration_sign
-        )
+	if !character.processed_action(FloorJumpAction.NAME):
+		# Horizontal movement.
+		character.velocity.x += (
+			character.current_walk_acceleration
+			* G.time.get_scaled_network_frame_delta()
+			* character.surfaces.horizontal_acceleration_sign
+		)
 
-        return true
-    else:
-        return false
+		return true
+	else:
+		return false

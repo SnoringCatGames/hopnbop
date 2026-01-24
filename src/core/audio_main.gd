@@ -10,79 +10,79 @@ extends Node2D
 
 
 func _enter_tree() -> void:
-    G.audio = self
+	G.audio = self
 
-    if G.network.is_server:
-        visible = false
-        process_mode = Node.PROCESS_MODE_DISABLED
-        return
+	if G.network.is_server:
+		visible = false
+		process_mode = Node.PROCESS_MODE_DISABLED
+		return
 
 
 func _ready() -> void:
-    G.log.log_system_ready("AudioMain")
+	G.log.log_system_ready("AudioMain")
 
-    if G.network.is_server:
-        return
+	if G.network.is_server:
+		return
 
 
 func play_click_sound() -> void:
-    if G.network.is_server:
-        return
+	if G.network.is_server:
+		return
 
-    if not %ClickStreamPlayer.playing:
-        %ClickStreamPlayer.play()
+	if not %ClickStreamPlayer.playing:
+		%ClickStreamPlayer.play()
 
 
 func fade_to_menu_theme() -> void:
-    if G.network.is_server:
-        return
+	if G.network.is_server:
+		return
 
-    fade_out(%MainThemeStreamPlayer)
-    fade_in(%MenuThemeStreamPlayer, menu_theme_volume)
+	fade_out(%MainThemeStreamPlayer)
+	fade_in(%MenuThemeStreamPlayer, menu_theme_volume)
 
 
 func fade_to_main_theme() -> void:
-    if G.network.is_server:
-        return
+	if G.network.is_server:
+		return
 
-    fade_out(%MenuThemeStreamPlayer)
-    fade_in(%MainThemeStreamPlayer, main_theme_volume)
+	fade_out(%MenuThemeStreamPlayer)
+	fade_in(%MainThemeStreamPlayer, main_theme_volume)
 
 
 func fade_in(stream_player: AudioStreamPlayer, volume: float) -> void:
-    if G.network.is_server:
-        return
+	if G.network.is_server:
+		return
 
-    if G.settings.mute_music:
-        volume = mute_volume
+	if G.settings.mute_music:
+		volume = mute_volume
 
-    if not stream_player.playing:
-        stream_player.volume_db = mute_volume
-        # This is similar to calling play(), except play() resets playback position to zero.
-        stream_player.stream_paused = false
+	if not stream_player.playing:
+		stream_player.volume_db = mute_volume
+		# This is similar to calling play(), except play() resets playback position to zero.
+		stream_player.stream_paused = false
 
-    var tween := create_tween()
-    tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-    tween.tween_property(stream_player, "volume_db", volume, theme_fade_duration_sec)
+	var tween := create_tween()
+	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tween.tween_property(stream_player, "volume_db", volume, theme_fade_duration_sec)
 
-    await tween.step_finished
-    # Ensure the stream is still playing, just in case we somehow end up with overlapping tweens
-    # (the latest tween should end up winning).
-    stream_player.stream_paused = false
+	await tween.step_finished
+	# Ensure the stream is still playing, just in case we somehow end up with overlapping tweens
+	# (the latest tween should end up winning).
+	stream_player.stream_paused = false
 
 
 func fade_out(stream_player: AudioStreamPlayer) -> void:
-    if G.network.is_server:
-        return
+	if G.network.is_server:
+		return
 
-    if not stream_player.playing:
-        return
+	if not stream_player.playing:
+		return
 
-    var tween := create_tween()
-    tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-    tween.tween_property(stream_player, "volume_db", mute_volume, theme_fade_duration_sec)
+	var tween := create_tween()
+	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tween.tween_property(stream_player, "volume_db", mute_volume, theme_fade_duration_sec)
 
-    await tween.step_finished
-    # Ensure the stream is still playing, just in case we somehow end up with overlapping tweens
-    # (the latest tween should end up winning).
-    stream_player.stream_paused = true
+	await tween.step_finished
+	# Ensure the stream is still playing, just in case we somehow end up with overlapping tweens
+	# (the latest tween should end up winning).
+	stream_player.stream_paused = true

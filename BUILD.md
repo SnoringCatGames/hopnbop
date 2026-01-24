@@ -54,7 +54,7 @@ gamelift-server-sdk/
 ├── include/
 │   └── aws/gamelift/server/...
 └── lib/
-    └── libaws-cpp-sdk-gamelift-server.so (or .dll on Windows)
+	└── libaws-cpp-sdk-gamelift-server.so (or .dll on Windows)
 ```
 
 #### 3. OpenSSL

@@ -389,41 +389,41 @@ var last_fastforward_duration_usec := 0
 var total_fastforwards := 0
 
 var rollback_buffer_size: int:
-    get:
-        return ceili(
-            G.settings.rollback_buffer_duration_sec * TARGET_NETWORK_FPS,
-        )
+	get:
+		return ceili(
+			G.settings.rollback_buffer_duration_sec * TARGET_NETWORK_FPS,
+		)
 
 var oldest_rollbackable_frame_index: int:
-    get:
-        # - When processing a frame, we must be able to consider both the target
-        #   frame as well as the previous frame, so we can't rollback to the
-        #   oldest recorded frame.
-        # - Also, some buffers could already contain networked state for the
-        #   next frame, so those buffers have one fewer past frames.
-        return max(server_frame_index - rollback_buffer_size + 3, 1)
+	get:
+		# - When processing a frame, we must be able to consider both the target
+		#   frame as well as the previous frame, so we can't rollback to the
+		#   oldest recorded frame.
+		# - Also, some buffers could already contain networked state for the
+		#   next frame, so those buffers have one fewer past frames.
+		return max(server_frame_index - rollback_buffer_size + 3, 1)
 
 ## Whether frame simulation is currently paused.
 var is_paused: bool:
-    get:
-        return _is_paused
+	get:
+		return _is_paused
 
 ## Frame index when pause started. Returns 0 if not currently paused.
 var pause_start_frame: int:
-    get:
-        return _pause_start_frame_index if _is_paused else 0
+	get:
+		return _pause_start_frame_index if _is_paused else 0
 
 
 func _ready() -> void:
-    G.log.log_system_ready("NetworkFrameDriver")
+	G.log.log_system_ready("NetworkFrameDriver")
 
-    if not Engine.is_editor_hint():
-        G.process_sentinel.pre_physics_process.connect(_pre_physics_process)
+	if not Engine.is_editor_hint():
+		G.process_sentinel.pre_physics_process.connect(_pre_physics_process)
 
-        # Start paused - server will unpause when ready (e.g., after all players
-        # connect in GameLift).
-        if is_inside_tree():
-            get_tree().paused = true
+		# Start paused - server will unpause when ready (e.g., after all players
+		# connect in GameLift).
+		if is_inside_tree():
+			get_tree().paused = true
 
 
 ## Pause or unpause frame simulation.
@@ -434,384 +434,384 @@ func _ready() -> void:
 ##
 ## @param paused: true to pause, false to unpause.
 func server_set_is_paused(paused: bool) -> void:
-    if paused:
-        _server_execute_pause()
-    else:
-        _server_execute_unpause()
+	if paused:
+		_server_execute_pause()
+	else:
+		_server_execute_unpause()
 
 
 func client_request_toggle_pause() -> void:
-    if G.network.frame_driver.is_paused:
-        G.network.frame_driver.client_request_unpause()
-    else:
-        G.network.frame_driver.client_request_pause()
+	if G.network.frame_driver.is_paused:
+		G.network.frame_driver.client_request_unpause()
+	else:
+		G.network.frame_driver.client_request_pause()
 
 
 ## Request pause from client. Only works if Settings.is_server_pause_enabled.
 func client_request_pause() -> void:
-    if G.network.is_server:
-        _server_execute_pause()
-    elif is_inside_tree():
-        _server_rpc_client_request_pause.rpc_id(NetworkConnector.SERVER_ID)
+	if G.network.is_server:
+		_server_execute_pause()
+	elif is_inside_tree():
+		_server_rpc_client_request_pause.rpc_id(NetworkConnector.SERVER_ID)
 
 
 ## Request unpause from client. Only works if Settings.is_server_pause_enabled.
 func client_request_unpause() -> void:
-    if G.network.is_server:
-        _server_execute_unpause()
-    elif is_inside_tree():
-        _server_rpc_client_request_unpause.rpc_id(NetworkConnector.SERVER_ID)
+	if G.network.is_server:
+		_server_execute_unpause()
+	elif is_inside_tree():
+		_server_rpc_client_request_unpause.rpc_id(NetworkConnector.SERVER_ID)
 
 ## Client requests server to pause.
 
 
 @rpc("any_peer", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _server_rpc_client_request_pause() -> void:
-    if not G.network.is_server:
-        return
+	if not G.network.is_server:
+		return
 
-    if not G.settings.is_server_pause_enabled:
-        var peer_id := multiplayer.get_remote_sender_id()
-        G.warning(
-            "Client %d requested pause, but server pause is disabled" % peer_id,
-            ScaffolderLog.CATEGORY_NETWORK_SYNC,
-        )
-        return
+	if not G.settings.is_server_pause_enabled:
+		var peer_id := multiplayer.get_remote_sender_id()
+		G.warning(
+			"Client %d requested pause, but server pause is disabled" % peer_id,
+			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+		)
+		return
 
-    # Rate limit pause requests.
-    var current_time := Time.get_ticks_usec()
-    var cooldown_usec := int(G.settings.pause_request_cooldown_sec * 1_000_000)
-    if current_time - _last_pause_request_time_usec < cooldown_usec:
-        return
+	# Rate limit pause requests.
+	var current_time := Time.get_ticks_usec()
+	var cooldown_usec := int(G.settings.pause_request_cooldown_sec * 1_000_000)
+	if current_time - _last_pause_request_time_usec < cooldown_usec:
+		return
 
-    _last_pause_request_time_usec = current_time
-    _server_execute_pause()
+	_last_pause_request_time_usec = current_time
+	_server_execute_pause()
 
 ## Client requests server to unpause.
 
 
 @rpc("any_peer", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _server_rpc_client_request_unpause() -> void:
-    if not G.network.is_server:
-        return
+	if not G.network.is_server:
+		return
 
-    if not G.settings.is_server_pause_enabled:
-        var peer_id := multiplayer.get_remote_sender_id()
-        G.warning(
-            "Client %d requested unpause, but server pause is disabled" % peer_id,
-            ScaffolderLog.CATEGORY_NETWORK_SYNC,
-        )
-        return
+	if not G.settings.is_server_pause_enabled:
+		var peer_id := multiplayer.get_remote_sender_id()
+		G.warning(
+			"Client %d requested unpause, but server pause is disabled" % peer_id,
+			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+		)
+		return
 
-    # Rate limit pause requests.
-    var current_time := Time.get_ticks_usec()
-    var cooldown_usec := int(G.settings.pause_request_cooldown_sec * 1_000_000)
-    if current_time - _last_pause_request_time_usec < cooldown_usec:
-        return
+	# Rate limit pause requests.
+	var current_time := Time.get_ticks_usec()
+	var cooldown_usec := int(G.settings.pause_request_cooldown_sec * 1_000_000)
+	if current_time - _last_pause_request_time_usec < cooldown_usec:
+		return
 
-    _last_pause_request_time_usec = current_time
-    _server_execute_unpause()
+	_last_pause_request_time_usec = current_time
+	_server_execute_unpause()
 
 ## Server notifies all clients of pause.
 
 
 @rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _client_rpc_notify_pause(
-        server_pause_frame: int,
-        server_pause_time_usec: int,
+		server_pause_frame: int,
+		server_pause_time_usec: int,
 ) -> void:
-    if G.network.is_server:
-        return
+	if G.network.is_server:
+		return
 
-    _client_execute_pause_at_server_frame(server_pause_frame, server_pause_time_usec)
+	_client_execute_pause_at_server_frame(server_pause_frame, server_pause_time_usec)
 
 ## Server notifies all clients of unpause.
 
 
 @rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _client_rpc_notify_unpause(
-        server_unpause_frame: int,
-        server_unpause_time_usec: int,
-        server_cumulative_paused_frames: int,
+		server_unpause_frame: int,
+		server_unpause_time_usec: int,
+		server_cumulative_paused_frames: int,
 ) -> void:
-    if G.network.is_server:
-        return
+	if G.network.is_server:
+		return
 
-    _client_server_execute_unpause_at_server_frame(
-        server_unpause_frame,
-        server_unpause_time_usec,
-        server_cumulative_paused_frames,
-    )
+	_client_server_execute_unpause_at_server_frame(
+		server_unpause_frame,
+		server_unpause_time_usec,
+		server_cumulative_paused_frames,
+	)
 
 
 ## Internal method to execute pause on server or client.
 func _server_execute_pause() -> void:
-    if _is_paused:
-        return
+	if _is_paused:
+		return
 
-    _is_paused = true
-    _pause_start_frame_index = server_frame_index
+	_is_paused = true
+	_pause_start_frame_index = server_frame_index
 
-    # Clean up buffer frames after pause started.
-    _cleanup_buffer_after_pause()
+	# Clean up buffer frames after pause started.
+	_cleanup_buffer_after_pause()
 
-    # Clear queued rollback - it's based on invalid post-pause state.
-    _queued_rollback_frame_index = 0
+	# Clear queued rollback - it's based on invalid post-pause state.
+	_queued_rollback_frame_index = 0
 
-    # Notify clients (if server and in tree for RPC).
-    if G.network.is_server and is_inside_tree():
-        _client_rpc_notify_pause.rpc(
-            server_frame_index,
-            server_frame_time_usec,
-        )
+	# Notify clients (if server and in tree for RPC).
+	if G.network.is_server and is_inside_tree():
+		_client_rpc_notify_pause.rpc(
+			server_frame_index,
+			server_frame_time_usec,
+		)
 
-    # Pause Godot scene tree.
-    if is_inside_tree():
-        get_tree().paused = true
+	# Pause Godot scene tree.
+	if is_inside_tree():
+		get_tree().paused = true
 
-    # Pause time tracking.
-    G.network.time.pause()
+	# Pause time tracking.
+	G.network.time.pause()
 
-    G.print(
-        "Server paused at frame %d" % server_frame_index,
-        ScaffolderLog.CATEGORY_NETWORK_SYNC,
-    )
+	G.print(
+		"Server paused at frame %d" % server_frame_index,
+		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+	)
 
 
 ## Internal method to execute unpause on server or client.
 func _server_execute_unpause() -> void:
-    if not _is_paused:
-        return
+	if not _is_paused:
+		return
 
-    var pause_duration_frames := server_frame_index - _pause_start_frame_index
-    _cumulative_paused_frames += pause_duration_frames
+	var pause_duration_frames := server_frame_index - _pause_start_frame_index
+	_cumulative_paused_frames += pause_duration_frames
 
-    # Record pause history.
-    _pause_history.append(
-        {
-            "start_frame": _pause_start_frame_index,
-            "end_frame": server_frame_index,
-            "duration_frames": pause_duration_frames,
-        },
-    )
+	# Record pause history.
+	_pause_history.append(
+		{
+			"start_frame": _pause_start_frame_index,
+			"end_frame": server_frame_index,
+			"duration_frames": pause_duration_frames,
+		},
+	)
 
-    _is_paused = false
+	_is_paused = false
 
-    # Notify clients (if server and in tree for RPC).
-    if G.network.is_server and is_inside_tree():
-        _client_rpc_notify_unpause.rpc(
-            server_frame_index,
-            server_frame_time_usec,
-            _cumulative_paused_frames,
-        )
+	# Notify clients (if server and in tree for RPC).
+	if G.network.is_server and is_inside_tree():
+		_client_rpc_notify_unpause.rpc(
+			server_frame_index,
+			server_frame_time_usec,
+			_cumulative_paused_frames,
+		)
 
-    # Unpause Godot scene tree.
-    if is_inside_tree():
-        get_tree().paused = false
+	# Unpause Godot scene tree.
+	if is_inside_tree():
+		get_tree().paused = false
 
-    # Unpause time tracking.
-    G.network.time.unpause()
+	# Unpause time tracking.
+	G.network.time.unpause()
 
-    G.print(
+	G.print(
         "Server unpaused at frame %d (paused for %d frames, cumulative: %d)"
-        % [server_frame_index, pause_duration_frames, _cumulative_paused_frames],
-        ScaffolderLog.CATEGORY_NETWORK_SYNC,
-    )
+		% [server_frame_index, pause_duration_frames, _cumulative_paused_frames],
+		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+	)
 
 
 ## Execute pause on client at server-specified frame (client-side).
 func _client_execute_pause_at_server_frame(
-        server_pause_frame: int,
-        server_pause_time_usec: int,
+		server_pause_frame: int,
+		server_pause_time_usec: int,
 ) -> void:
-    if _is_paused:
-        return
+	if _is_paused:
+		return
 
-    _is_paused = true
+	_is_paused = true
 
-    # Align with server's pause frame.
-    server_frame_index = server_pause_frame
-    server_frame_time_usec = server_pause_time_usec
-    _pause_start_frame_index = server_pause_frame
+	# Align with server's pause frame.
+	server_frame_index = server_pause_frame
+	server_frame_time_usec = server_pause_time_usec
+	_pause_start_frame_index = server_pause_frame
 
-    # Clean up buffer frames after pause started.
-    _cleanup_buffer_after_pause()
+	# Clean up buffer frames after pause started.
+	_cleanup_buffer_after_pause()
 
-    # Clear queued rollback.
-    _queued_rollback_frame_index = 0
+	# Clear queued rollback.
+	_queued_rollback_frame_index = 0
 
-    # Pause Godot scene tree.
-    if is_inside_tree():
-        get_tree().paused = true
+	# Pause Godot scene tree.
+	if is_inside_tree():
+		get_tree().paused = true
 
-    # Pause time tracking.
-    G.network.time.pause()
+	# Pause time tracking.
+	G.network.time.pause()
 
-    G.print(
-        "Client synchronized pause at frame %d" % server_frame_index,
-        ScaffolderLog.CATEGORY_NETWORK_SYNC,
-    )
+	G.print(
+		"Client synchronized pause at frame %d" % server_frame_index,
+		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+	)
 
 
 ## Execute unpause on client at server-specified frame (client-side).
 func _client_server_execute_unpause_at_server_frame(
-        server_unpause_frame: int,
-        server_unpause_time_usec: int,
-        server_cumulative_paused_frames: int,
+		server_unpause_frame: int,
+		server_unpause_time_usec: int,
+		server_cumulative_paused_frames: int,
 ) -> void:
-    if not _is_paused:
-        return
+	if not _is_paused:
+		return
 
-    # Adopt server's pause accounting.
-    _cumulative_paused_frames = server_cumulative_paused_frames
+	# Adopt server's pause accounting.
+	_cumulative_paused_frames = server_cumulative_paused_frames
 
-    # Align frame index with server.
-    server_frame_index = server_unpause_frame
-    server_frame_time_usec = server_unpause_time_usec
+	# Align frame index with server.
+	server_frame_index = server_unpause_frame
+	server_frame_time_usec = server_unpause_time_usec
 
-    _is_paused = false
-    _pause_start_frame_index = 0
+	_is_paused = false
+	_pause_start_frame_index = 0
 
-    # Unpause Godot scene tree.
-    if is_inside_tree():
-        get_tree().paused = false
+	# Unpause Godot scene tree.
+	if is_inside_tree():
+		get_tree().paused = false
 
-    # Unpause time tracking.
-    G.network.time.unpause()
+	# Unpause time tracking.
+	G.network.time.unpause()
 
-    G.print(
-        "Client synchronized unpause at frame %d (cumulative paused: %d)" % [
-            server_frame_index,
-            _cumulative_paused_frames,
-        ],
-        ScaffolderLog.CATEGORY_NETWORK_SYNC,
-    )
+	G.print(
+		"Client synchronized unpause at frame %d (cumulative paused: %d)" % [
+			server_frame_index,
+			_cumulative_paused_frames,
+		],
+		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+	)
 
 
 ## Clean up rollback buffer state after pause.
 func _cleanup_buffer_after_pause() -> void:
-    for node in _networked_state_nodes:
-        if is_instance_valid(node):
-            node._cleanup_buffer_after_pause(_pause_start_frame_index)
+	for node in _networked_state_nodes:
+		if is_instance_valid(node):
+			node._cleanup_buffer_after_pause(_pause_start_frame_index)
 
 
 func _pre_physics_process(_delta: float) -> void:
-    if _is_paused:
-        return
+	if _is_paused:
+		return
 
-    if not _is_frame_tracking_initialized:
-        _initialize_frame_tracking()
-        return
+	if not _is_frame_tracking_initialized:
+		_initialize_frame_tracking()
+		return
 
-    # Increment frame index directly on each physics tick
-    server_frame_index += 1
+	# Increment frame index directly on each physics tick
+	server_frame_index += 1
 
-    _run_network_process()
+	_run_network_process()
 
 
 func _initialize_frame_tracking() -> void:
-    # Wait for ServerTimeTracker to be ready before starting frame tracking
-    if not G.network.time.is_time_initialized:
-        return
+	# Wait for ServerTimeTracker to be ready before starting frame tracking
+	if not G.network.time.is_time_initialized:
+		return
 
-    _is_frame_tracking_initialized = true
+	_is_frame_tracking_initialized = true
 
-    # Initialize to frame 0
-    # The first physics tick will increment this to 1
-    server_frame_index = 0
-    server_frame_time_usec = get_time_usec_from_frame_index(0)
+	# Initialize to frame 0
+	# The first physics tick will increment this to 1
+	server_frame_index = 0
+	server_frame_time_usec = get_time_usec_from_frame_index(0)
 
-    # Set up periodic wall-clock re-sync using ScaffolderTime's interval system
-    G.time.set_interval(
-        _resync_frame_time_to_wall_clock,
-        WALL_CLOCK_RESYNC_INTERVAL_SEC,
-        [],
-        TimeType.APP_CLOCK,
-    )
+	# Set up periodic wall-clock re-sync using ScaffolderTime's interval system
+	G.time.set_interval(
+		_resync_frame_time_to_wall_clock,
+		WALL_CLOCK_RESYNC_INTERVAL_SEC,
+		[],
+		TimeType.APP_CLOCK,
+	)
 
-    # Note: Clients sync to server's clock via NTP offset, but track their own
-    # frame indices locally starting from 0
-    G.print(
-        "Frame tracking initialized at frame 0",
-        ScaffolderLog.CATEGORY_NETWORK_SYNC,
-    )
+	# Note: Clients sync to server's clock via NTP offset, but track their own
+	# frame indices locally starting from 0
+	G.print(
+		"Frame tracking initialized at frame 0",
+		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+	)
 
 
 ## If we bucket server time into discrete frames, this would be the index of the
 ## frame corresponding to the given time. Accounts for cumulative pause time to
 ## maintain continuous frame indices without gaps.
 func get_frame_index_from_time_usec(p_time_usec: int) -> int:
-    @warning_ignore("integer_division")
-    var raw_frame := p_time_usec / TARGET_NETWORK_TIME_STEP_USEC
-    return raw_frame - _cumulative_paused_frames
+	@warning_ignore("integer_division")
+	var raw_frame := p_time_usec / TARGET_NETWORK_TIME_STEP_USEC
+	return raw_frame - _cumulative_paused_frames
 
 
 ## Convert frame index to time. Accounts for cumulative pause time by adding
 ## paused frames back to the time calculation.
 func get_time_usec_from_frame_index(p_frame_index: int) -> int:
-    var adjusted_frame := p_frame_index + _cumulative_paused_frames
-    return floori(
-        adjusted_frame * TARGET_NETWORK_TIME_STEP_USEC +
-        TARGET_NETWORK_TIME_STEP_USEC * 0.5,
-    )
+	var adjusted_frame := p_frame_index + _cumulative_paused_frames
+	return floori(
+		adjusted_frame * TARGET_NETWORK_TIME_STEP_USEC +
+		TARGET_NETWORK_TIME_STEP_USEC * 0.5,
+	)
 
 
 func _update_server_frame_time() -> void:
-    # Update frame timestamp based on current frame index
-    # Periodic wall-clock re-sync is handled by G.time.set_interval
-    server_frame_time_usec = get_time_usec_from_frame_index(server_frame_index)
+	# Update frame timestamp based on current frame index
+	# Periodic wall-clock re-sync is handled by G.time.set_interval
+	server_frame_time_usec = get_time_usec_from_frame_index(server_frame_index)
 
 
 func _resync_frame_time_to_wall_clock() -> void:
-    var actual_server_time_usec := G.network.server_time_usec_not_frame_aligned
-    var frame_based_time_usec := get_time_usec_from_frame_index(server_frame_index)
-    var drift_usec := actual_server_time_usec - frame_based_time_usec
+	var actual_server_time_usec := G.network.server_time_usec_not_frame_aligned
+	var frame_based_time_usec := get_time_usec_from_frame_index(server_frame_index)
+	var drift_usec := actual_server_time_usec - frame_based_time_usec
 
-    # Warn if drift exceeds 1 second (indicates potential timing issues)
-    if absf(drift_usec) > 1_000_000:
-        @warning_ignore("integer_division")
-        G.warning(
+	# Warn if drift exceeds 1 second (indicates potential timing issues)
+	if absf(drift_usec) > 1_000_000:
+		@warning_ignore("integer_division")
+		G.warning(
             "Large timestamp drift detected: %d ms at frame %d"
-            % [drift_usec / 1000, server_frame_index],
-            ScaffolderLog.CATEGORY_NETWORK_SYNC,
-        )
+			% [drift_usec / 1000, server_frame_index],
+			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+		)
 
-    # Sync frame time to wall-clock to maintain accurate timestamps for logging
-    server_frame_time_usec = actual_server_time_usec
+	# Sync frame time to wall-clock to maintain accurate timestamps for logging
+	server_frame_time_usec = actual_server_time_usec
 
-    @warning_ignore("integer_division")
-    G.print(
+	@warning_ignore("integer_division")
+	G.print(
         "Re-synced frame timestamp to wall-clock (drift: %d ms)"
-        % [drift_usec / 1000],
-        ScaffolderLog.CATEGORY_NETWORK_SYNC,
-    )
+		% [drift_usec / 1000],
+		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+	)
 
 
 func add_networked_state(node: ReconcilableNetworkedState) -> void:
-    G.ensure(not _networked_state_nodes.has(node))
-    _networked_state_nodes.append(node)
+	G.ensure(not _networked_state_nodes.has(node))
+	_networked_state_nodes.append(node)
 
 
 func remove_networked_state(node: ReconcilableNetworkedState) -> void:
-    var index := _networked_state_nodes.find(node)
-    G.ensure(index >= 0)
-    _networked_state_nodes.remove_at(index)
+	var index := _networked_state_nodes.find(node)
+	G.ensure(index >= 0)
+	_networked_state_nodes.remove_at(index)
 
 
 func add_network_frame_processor(node: NetworkFrameProcessor) -> void:
-    G.ensure(not _network_frame_processor_nodes.has(node))
-    _network_frame_processor_nodes.append(node)
+	G.ensure(not _network_frame_processor_nodes.has(node))
+	_network_frame_processor_nodes.append(node)
 
 
 func remove_network_frame_processor(node: NetworkFrameProcessor) -> void:
-    var index := _network_frame_processor_nodes.find(node)
-    G.ensure(index >= 0)
-    _network_frame_processor_nodes.remove_at(index)
+	var index := _network_frame_processor_nodes.find(node)
+	G.ensure(index >= 0)
+	_network_frame_processor_nodes.remove_at(index)
 
 
 func is_frame_too_old_to_consider(p_frame_index: int) -> bool:
-    var target_rollback_frame := p_frame_index + 1
-    return target_rollback_frame < oldest_rollbackable_frame_index
+	var target_rollback_frame := p_frame_index + 1
+	return target_rollback_frame < oldest_rollbackable_frame_index
 
 
 ## This will trigger a rollback to occur on the next _network_process.
@@ -825,121 +825,121 @@ func is_frame_too_old_to_consider(p_frame_index: int) -> bool:
 ##   - We already know that the local simulation at the mismatch resulting in
 ##     the wrong state, so we don't re-simulate that frame.
 func queue_rollback(p_conflicting_frame_index: int) -> bool:
-    var target_rollback_frame := p_conflicting_frame_index + 1
-    if is_frame_too_old_to_consider(p_conflicting_frame_index):
-        G.fatal(
-            (
-                "Requested rollback to frame %d, " +
+	var target_rollback_frame := p_conflicting_frame_index + 1
+	if is_frame_too_old_to_consider(p_conflicting_frame_index):
+		G.fatal(
+			(
+				"Requested rollback to frame %d, " +
                 "but oldest rollbackable frame is %d"
-            )
-            % [target_rollback_frame, oldest_rollbackable_frame_index],
-        )
-        return false
+			)
+			% [target_rollback_frame, oldest_rollbackable_frame_index],
+		)
+		return false
 
-    # Rollback simulation would start on the next frame after the mismatch.
-    if _queued_rollback_frame_index == 0:
-        _queued_rollback_frame_index = target_rollback_frame
-    else:
-        _queued_rollback_frame_index = mini(
-            _queued_rollback_frame_index,
-            target_rollback_frame,
-        )
+	# Rollback simulation would start on the next frame after the mismatch.
+	if _queued_rollback_frame_index == 0:
+		_queued_rollback_frame_index = target_rollback_frame
+	else:
+		_queued_rollback_frame_index = mini(
+			_queued_rollback_frame_index,
+			target_rollback_frame,
+		)
 
-    return true
+	return true
 
 
 ## For most nodes in the scene, _network_process should happen before
 ## _physics_process.
 func _run_network_process() -> void:
-    # Don't process frames on clients until they have received the server's
-    # start time offset and can calculate valid frame indices.
-    if not G.network.time.is_time_initialized:
-        return
+	# Don't process frames on clients until they have received the server's
+	# start time offset and can calculate valid frame indices.
+	if not G.network.time.is_time_initialized:
+		return
 
-    _update_server_frame_time()
+	_update_server_frame_time()
 
-    if _queued_rollback_frame_index > 0:
-        _rollback_and_reprocess()
-        _queued_rollback_frame_index = 0
+	if _queued_rollback_frame_index > 0:
+		_rollback_and_reprocess()
+		_queued_rollback_frame_index = 0
 
-    _network_process()
+	_network_process()
 
 
 func _rollback_and_reprocess() -> void:
-    G.print(
+	G.print(
         "Starting rollback from frame %d to frame %d"
-        % [server_frame_index, _queued_rollback_frame_index],
-        ScaffolderLog.CATEGORY_NETWORK_SYNC,
-        ScaffolderLog.Verbosity.VERBOSE,
-    )
+		% [server_frame_index, _queued_rollback_frame_index],
+		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+		ScaffolderLog.Verbosity.VERBOSE,
+	)
 
-    var rollback_start_time_usec := Time.get_ticks_usec()
+	var rollback_start_time_usec := Time.get_ticks_usec()
 
-    var original_server_frame_index := server_frame_index
-    var original_server_frame_time_usec := server_frame_time_usec
+	var original_server_frame_index := server_frame_index
+	var original_server_frame_time_usec := server_frame_time_usec
 
-    server_frame_index = _queued_rollback_frame_index
-    server_frame_time_usec = floori(
-        server_frame_index * TARGET_NETWORK_TIME_STEP_USEC +
-        TARGET_NETWORK_TIME_STEP_USEC * 0.5,
-    )
+	server_frame_index = _queued_rollback_frame_index
+	server_frame_time_usec = floori(
+		server_frame_index * TARGET_NETWORK_TIME_STEP_USEC +
+		TARGET_NETWORK_TIME_STEP_USEC * 0.5,
+	)
 
-    # Re-simulate all frames between the mismatch and current frame (exclusive).
-    # The loop processes frames [rollback_frame, original_frame), but not the
-    # original frame itself. The current frame will be re-simulated afterward in
-    # the normal _run_network_process flow.
-    var frame_count := 0
-    while server_frame_index < original_server_frame_index:
-        _network_process()
-        server_frame_time_usec += TARGET_NETWORK_TIME_STEP_USEC
-        server_frame_index += 1
-        frame_count += 1
+	# Re-simulate all frames between the mismatch and current frame (exclusive).
+	# The loop processes frames [rollback_frame, original_frame), but not the
+	# original frame itself. The current frame will be re-simulated afterward in
+	# the normal _run_network_process flow.
+	var frame_count := 0
+	while server_frame_index < original_server_frame_index:
+		_network_process()
+		server_frame_time_usec += TARGET_NETWORK_TIME_STEP_USEC
+		server_frame_index += 1
+		frame_count += 1
 
-    server_frame_index = original_server_frame_index
-    server_frame_time_usec = original_server_frame_time_usec
+	server_frame_index = original_server_frame_index
+	server_frame_time_usec = original_server_frame_time_usec
 
-    # Track rollback metrics
-    last_rollback_frame_count = frame_count
-    last_rollback_duration_usec = Time.get_ticks_usec() - rollback_start_time_usec
-    total_rollbacks += 1
+	# Track rollback metrics
+	last_rollback_frame_count = frame_count
+	last_rollback_duration_usec = Time.get_ticks_usec() - rollback_start_time_usec
+	total_rollbacks += 1
 
 
 ## Simulate the current frame for all network-process-aware nodes.
 func _network_process() -> void:
-    # Remove invalid nodes (iterate backwards to avoid issues when removing).
-    for i in range(_networked_state_nodes.size() - 1, -1, -1):
-        var node := _networked_state_nodes[i]
-        # TODO: This should not be possible, so try to figure out the underlying
-        #       problem.
-        if not is_instance_valid(node):
-            _networked_state_nodes.remove_at(i)
+	# Remove invalid nodes (iterate backwards to avoid issues when removing).
+	for i in range(_networked_state_nodes.size() - 1, -1, -1):
+		var node := _networked_state_nodes[i]
+		# TODO: This should not be possible, so try to figure out the underlying
+		#       problem.
+		if not is_instance_valid(node):
+			_networked_state_nodes.remove_at(i)
 
-    # Sync other scene state from the current network state.
-    for node in _networked_state_nodes:
-        node._pre_network_process()
+	# Sync other scene state from the current network state.
+	for node in _networked_state_nodes:
+		node._pre_network_process()
 
-    # Let all network-process-aware nodes handle the frame.
-    for node in _networked_state_nodes:
-        node._network_process()
-    for node in _network_frame_processor_nodes:
-        node._network_process()
+	# Let all network-process-aware nodes handle the frame.
+	for node in _networked_state_nodes:
+		node._network_process()
+	for node in _network_frame_processor_nodes:
+		node._network_process()
 
-    # Sync the current network state from other scene state.
-    for node in _networked_state_nodes:
-        node._post_network_process()
+	# Sync the current network state from other scene state.
+	for node in _networked_state_nodes:
+		node._post_network_process()
 
 
 func fast_forward(new_frame_index: int) -> void:
-    var fastforward_start_time_usec := Time.get_ticks_usec()
-    var frame_count := 0
+	var fastforward_start_time_usec := Time.get_ticks_usec()
+	var frame_count := 0
 
-    while server_frame_index < new_frame_index:
-        server_frame_time_usec += TARGET_NETWORK_TIME_STEP_USEC
-        server_frame_index += 1
-        _network_process()
-        frame_count += 1
+	while server_frame_index < new_frame_index:
+		server_frame_time_usec += TARGET_NETWORK_TIME_STEP_USEC
+		server_frame_index += 1
+		_network_process()
+		frame_count += 1
 
-    # Track fast-forward metrics
-    last_fastforward_frame_count = frame_count
-    last_fastforward_duration_usec = Time.get_ticks_usec() - fastforward_start_time_usec
-    total_fastforwards += 1
+	# Track fast-forward metrics
+	last_fastforward_frame_count = frame_count
+	last_fastforward_duration_usec = Time.get_ticks_usec() - fastforward_start_time_usec
+	total_fastforwards += 1

@@ -8,19 +8,19 @@ const PRIORITY := 140
 
 
 func _init() -> void:
-    super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
+	super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
 
 
 func process(character) -> bool:
-    if (
-        !character.processed_action(WallJumpAction.NAME)
-        and !character.processed_action(WallFallAction.NAME)
-    ):
-        if character.actions.pressed_up:
-            character.velocity.y = character.current_climb_up_speed
-            return true
-        elif character.actions.pressed_down:
-            character.velocity.y = character.current_climb_down_speed
-            return true
+	if (
+		!character.processed_action(WallJumpAction.NAME)
+		and !character.processed_action(WallFallAction.NAME)
+	):
+		if character.actions.pressed_up:
+			character.velocity.y = character.current_climb_up_speed
+			return true
+		elif character.actions.pressed_down:
+			character.velocity.y = character.current_climb_down_speed
+			return true
 
-    return false
+	return false

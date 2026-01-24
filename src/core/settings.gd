@@ -12,11 +12,11 @@ extends Resource
 @export var local_server_ip_address: StringName = "127.0.0.1"
 @export var local_server_port := 4433
 var server_ip_address: StringName:
-    get:
-        return remote_server_ip_address if preview_connect_to_remote_server else local_server_ip_address
+	get:
+		return remote_server_ip_address if preview_connect_to_remote_server else local_server_ip_address
 var server_port: int:
-    get:
-        return remote_server_port if preview_connect_to_remote_server else local_server_port
+	get:
+		return remote_server_port if preview_connect_to_remote_server else local_server_port
 @export_group("")
 
 @export_group("Network sync")
@@ -60,14 +60,14 @@ var server_port: int:
 @export_group("Logs")
 ## Logs with these categories won't be shown.
 @export var excluded_log_categories: Array[StringName] = [
-    #ScaffolderLog.CATEGORY_DEFAULT,
-    #ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-    ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION,
-    ScaffolderLog.CATEGORY_PLAYER_MOVEMENT,
-    #ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-    #ScaffolderLog.CATEGORY_NETWORK_SYNC,
-    #ScaffolderLog.CATEGORY_INTERACTION,
-    #ScaffolderLog.CATEGORY_GAME_STATE,
+	#ScaffolderLog.CATEGORY_DEFAULT,
+	#ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+	ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION,
+	ScaffolderLog.CATEGORY_PLAYER_MOVEMENT,
+	#ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+	#ScaffolderLog.CATEGORY_NETWORK_SYNC,
+	#ScaffolderLog.CATEGORY_INTERACTION,
+	#ScaffolderLog.CATEGORY_GAME_STATE,
 ]
 ## If true, warning logs will be shown regardless of category filtering.
 @export var force_include_log_warnings := true

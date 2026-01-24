@@ -8,20 +8,20 @@ const PRIORITY := 420
 
 
 func _init() -> void:
-    super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
+	super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
 
 
 func process(character) -> bool:
-    if (
-        character.actions.just_pressed_jump
-        and character.jump_sequence_count < character.movement_settings.max_jump_chain
-    ):
-        if character.surfaces.just_entered_air:
-            character.jump_sequence_count = 1
-        else:
-            character.jump_sequence_count += 1
-        character.velocity.y = character.movement_settings.jump_boost
+	if (
+		character.actions.just_pressed_jump
+		and character.jump_sequence_count < character.movement_settings.max_jump_chain
+	):
+		if character.surfaces.just_entered_air:
+			character.jump_sequence_count = 1
+		else:
+			character.jump_sequence_count += 1
+		character.velocity.y = character.movement_settings.jump_boost
 
-        return true
-    else:
-        return false
+		return true
+	else:
+		return false

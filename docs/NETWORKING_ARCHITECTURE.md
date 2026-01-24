@@ -231,21 +231,21 @@ the 60 FPS target):
 
 ```gdscript
 func _pre_physics_process(delta: float):
-    if not _is_frame_tracking_initialized:
-        _initialize_frame_tracking()  # Defer until ServerTimeTracker ready
-        return
+	if not _is_frame_tracking_initialized:
+		_initialize_frame_tracking()  # Defer until ServerTimeTracker ready
+		return
 
-    server_frame_index += 1  # Increment directly on each physics tick
-    _run_network_process()
+	server_frame_index += 1  # Increment directly on each physics tick
+	_run_network_process()
 
 func _run_network_process():
-    _update_server_frame_time()  # Update frame timestamp
+	_update_server_frame_time()  # Update frame timestamp
 
-    if _queued_rollback_frame_index > 0:
-        _rollback_and_reprocess()  # Handle rollback if queued
-        _queued_rollback_frame_index = 0
+	if _queued_rollback_frame_index > 0:
+		_rollback_and_reprocess()  # Handle rollback if queued
+		_queued_rollback_frame_index = 0
 
-    _network_process()  # Simulate current frame
+	_network_process()  # Simulate current frame
 ```
 
 The `_network_process()` method coordinates all registered nodes through three
@@ -356,7 +356,7 @@ Player (Node2D)
 ├── CharacterStateFromServer (ReconcilableNetworkedState)
 │   └── is_server_authoritative = true
 └── PlayerInputFromClient (ReconcilableNetworkedState)
-    └── is_server_authoritative = false
+	└── is_server_authoritative = false
 ```
 
 **Subclass Requirements**:
@@ -374,29 +374,29 @@ Player (Node2D)
    var velocity := Vector2.ZERO
 
    var _synced_properties_and_rollback_diff_thresholds := {
-       "position": 1.0,      # 1 pixel difference triggers rollback
-       "velocity": 10.0,     # 10 pixels/sec difference triggers rollback
+	   "position": 1.0,      # 1 pixel difference triggers rollback
+	   "velocity": 10.0,     # 10 pixels/sec difference triggers rollback
    }
    ```
 
 3. **Implement `_get_default_values()`**:
    ```gdscript
    func _get_default_values() -> Array:
-       return [Vector2.ZERO, Vector2.ZERO]
+	   return [Vector2.ZERO, Vector2.ZERO]
    ```
 
 4. **Implement `_sync_to_scene_state(previous_state: Array)`**:
    ```gdscript
    func _sync_to_scene_state(_previous_state: Array) -> void:
-       root.position = position
-       root.velocity = velocity
+	   root.position = position
+	   root.velocity = velocity
    ```
 
 5. **Implement `_sync_from_scene_state()`**:
    ```gdscript
    func _sync_from_scene_state() -> void:
-       position = root.position
-       velocity = root.velocity
+	   position = root.position
+	   velocity = root.velocity
    ```
 
 **Frame Processing Lifecycle**:
@@ -408,7 +408,7 @@ Called by `NetworkFrameDriver` in sequence:
    - Resets `frame_authority = FrameAuthority.UNKNOWN`
    - Unpacks state from rollback buffer (frame N-1)
    - Calls `_sync_to_scene_state()` with previous frame (N-2) for
-     just_pressed/just_released detection
+	 just_pressed/just_released detection
 
 2. **`_network_process()`** (override in subclass if needed):
    - Default: Emits `network_processed` signal
@@ -622,7 +622,7 @@ var network_value = packed_state[property_index]
 var threshold = thresholds[property_name]
 
 if _check_do_values_mismatch(buffer_value, network_value, threshold):
-    return true  # Mismatch detected!
+	return true  # Mismatch detected!
 ```
 
 Threshold semantics:
@@ -648,11 +648,11 @@ Frame 103: Server simulates F100
 
 Frame 106: Client receives server F100 state
   Client compares:
-    - buffer[100].position.y = 200 (predicted)
-    - network[100].position.y = 201 (authoritative)
-    - difference = 1 pixel
-    - threshold = 1.0 pixel
-    - 1 >= 1.0 → MISMATCH DETECTED!
+	- buffer[100].position.y = 200 (predicted)
+	- network[100].position.y = 201 (authoritative)
+	- difference = 1 pixel
+	- threshold = 1.0 pixel
+	- 1 >= 1.0 → MISMATCH DETECTED!
 
   Client queues rollback to frame 100
 ```
@@ -690,23 +690,23 @@ errors.
 
 ```gdscript
 func _rollback_and_reprocess():
-    var original_frame_index = server_frame_index  # e.g., 106
-    var rollback_target = _queued_rollback_frame_index  # e.g., 101
+	var original_frame_index = server_frame_index  # e.g., 106
+	var rollback_target = _queued_rollback_frame_index  # e.g., 101
 
-    # Step 1: Rewind time
-    server_frame_index = rollback_target  # 101
-    server_frame_time_usec = (rollback_target * TIME_STEP_USEC)
+	# Step 1: Rewind time
+	server_frame_index = rollback_target  # 101
+	server_frame_time_usec = (rollback_target * TIME_STEP_USEC)
 
-    # Step 2: Re-simulate from rollback_target to (original - 1)
-    while server_frame_index < original_frame_index:
-        _network_process()  # Re-simulate frame
-        server_frame_index += 1
+	# Step 2: Re-simulate from rollback_target to (original - 1)
+	while server_frame_index < original_frame_index:
+		_network_process()  # Re-simulate frame
+		server_frame_index += 1
 
-    # Step 3: Restore current time
-    server_frame_index = original_frame_index  # 106
-    server_frame_time_usec = original_frame_time_usec
+	# Step 3: Restore current time
+	server_frame_index = original_frame_index  # 106
+	server_frame_time_usec = original_frame_time_usec
 
-    # Current frame will be simulated normally afterward
+	# Current frame will be simulated normally afterward
 ```
 
 ### What Happens During Re-simulation?
@@ -898,24 +898,24 @@ This ensures all entities remain in sync with the corrected timeline.
 │    - Restore server's rollback buffer state (N-1)            │
 │    - Sync to scene                                           │
 └────────────────┬────────────────────────────────────────────┘
-                 │
-                 ▼
+				 │
+				 ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 3. Network Process                                           │
 │    - Read input from PlayerInputFromClient (from client)     │
 │    - Apply same physics/game logic as client                 │
 │    - Calculate authoritative position                        │
 └────────────────┬────────────────────────────────────────────┘
-                 │
-                 ▼
+				 │
+				 ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 4. Post-Network Process                                      │
 │    - Sync from scene to state                                │
 │    - Pack state for network (server is authoritative)        │
 │    - Store in rollback buffer as AUTHORITATIVE               │
 └────────────────┬────────────────────────────────────────────┘
-                 │
-                 ▼
+				 │
+				 ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 5. Replication to All Clients                                │
 │    CharacterStateFromServer.packed_state sent to all clients │
@@ -929,8 +929,8 @@ This ensures all entities remain in sync with the corrected timeline.
 │ 1. Receive Server State                                      │
 │    CharacterStateFromServer.packed_state updated             │
 └────────────────┬────────────────────────────────────────────┘
-                 │
-                 ▼
+				 │
+				 ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 2. Handle New Authoritative State                            │
 │    _handle_new_authoritative_state()                         │
@@ -940,27 +940,27 @@ This ensures all entities remain in sync with the corrected timeline.
 │    │   YES: Check for mismatch           │                  │
 │    └─────────────┬───────────────────────┘                  │
 └──────────────────┼─────────────────────────────────────────┘
-                   │
-        ┌──────────┴──────────┐
-        │                     │
-        ▼                     ▼
+				   │
+		┌──────────┴──────────┐
+		│                     │
+		▼                     ▼
    NO MISMATCH           MISMATCH DETECTED!
-        │                     │
-        ▼                     ▼
+		│                     │
+		▼                     ▼
 ┌──────────────┐    ┌────────────────────────┐
 │ 3a. Store    │    │ 3b. Queue Rollback     │
 │ server state │    │ - Log mismatch details │
 │ in buffer as │    │ - Call queue_rollback()│
 │ AUTHORITATIVE│    │ - Store server state   │
 └──────────────┘    └────────┬───────────────┘
-                              │
-                              ▼
-                   ┌────────────────────────┐
-                   │ 4. Rollback Executes   │
-                   │ (Next Frame)           │
-                   │ - Rewind to conflict   │
-                   │ - Re-simulate to now   │
-                   └────────────────────────┘
+							  │
+							  ▼
+				   ┌────────────────────────┐
+				   │ 4. Rollback Executes   │
+				   │ (Next Frame)           │
+				   │ - Rewind to conflict   │
+				   │ - Re-simulate to now   │
+				   └────────────────────────┘
 ```
 
 ---
@@ -1014,37 +1014,37 @@ var is_grounded := false
 
 # Define which properties to sync and their mismatch thresholds
 var _synced_properties_and_rollback_diff_thresholds := {
-    "position": 1.0,           # 1 pixel tolerance
-    "velocity": 10.0,          # 10 px/s tolerance
-    "action_state": 0,         # Exact match required
-    "facing_direction": 0,     # Exact match required
-    "is_grounded": 0,          # Exact match required
+	"position": 1.0,           # 1 pixel tolerance
+	"velocity": 10.0,          # 10 px/s tolerance
+	"action_state": 0,         # Exact match required
+	"facing_direction": 0,     # Exact match required
+	"is_grounded": 0,          # Exact match required
 }
 
 func _get_default_values() -> Array:
-    return [
-        Vector2.ZERO,  # position
-        Vector2.ZERO,  # velocity
-        "idle",        # action_state
-        1,             # facing_direction
-        false,         # is_grounded
-    ]
+	return [
+		Vector2.ZERO,  # position
+		Vector2.ZERO,  # velocity
+		"idle",        # action_state
+		1,             # facing_direction
+		false,         # is_grounded
+	]
 
 func _sync_to_scene_state(_previous_state: Array) -> void:
-    # Update scene from network state
-    var character := root as CharacterBody2D
-    if character:
-        character.position = position
-        character.velocity = velocity
-        # Update other character properties...
+	# Update scene from network state
+	var character := root as CharacterBody2D
+	if character:
+		character.position = position
+		character.velocity = velocity
+		# Update other character properties...
 
 func _sync_from_scene_state() -> void:
-    # Update network state from scene
-    var character := root as CharacterBody2D
-    if character:
-        position = character.position
-        velocity = character.velocity
-        # Read other character properties...
+	# Update network state from scene
+	var character := root as CharacterBody2D
+	if character:
+		position = character.position
+		velocity = character.velocity
+		# Read other character properties...
 ```
 
 ### Step 3: Create Client-Authoritative Input Class
@@ -1062,20 +1062,20 @@ var jump_pressed := false
 var attack_pressed := false
 
 var _synced_properties_and_rollback_diff_thresholds := {
-    "move_direction": 0,  # Exact match
-    "jump_pressed": 0,    # Exact match
-    "attack_pressed": 0,  # Exact match
+	"move_direction": 0,  # Exact match
+	"jump_pressed": 0,    # Exact match
+	"attack_pressed": 0,  # Exact match
 }
 
 func _get_default_values() -> Array:
-    return [
-        Vector2.ZERO,  # move_direction
-        false,         # jump_pressed
-        false,         # attack_pressed
-    ]
+	return [
+		Vector2.ZERO,  # move_direction
+		false,         # jump_pressed
+		false,         # attack_pressed
+	]
 
 func _sync_to_scene_state(_previous_state: Array) -> void:
-    # Input doesn't usually drive scene directly
+	# Input doesn't usually drive scene directly
     # Character reads from this during _network_process
     pass
 
@@ -1182,17 +1182,17 @@ If you have game systems that need frame-sync but don't extend
 ```
 MatchController (Node)
 └── NetworkFrameProcessor
-    └── root_path: ".."
+	└── root_path: ".."
 ```
 
 Then implement `_network_process()` in MatchController:
 
 ```gdscript
 func _network_process() -> void:
-    # Frame-synchronous game logic
-    match_time += NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC
-    if match_time >= MATCH_DURATION:
-        end_match()
+	# Frame-synchronous game logic
+	match_time += NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC
+	if match_time >= MATCH_DURATION:
+		end_match()
 ```
 
 ### Step 8: Handle Spawning
@@ -1202,18 +1202,18 @@ func _network_process() -> void:
 ```gdscript
 # In Level or GameController
 func _on_peer_connected(peer_id: int):
-    if not G.network.is_server:
-        return
+	if not G.network.is_server:
+		return
 
-    var character_scene = preload("res://character.tscn")
-    var character = character_scene.instantiate()
-    character.name = "Character_%d" % peer_id
+	var character_scene = preload("res://character.tscn")
+	var character = character_scene.instantiate()
+	character.name = "Character_%d" % peer_id
 
-    # Set multiplayer_id before adding to tree
-    var state_from_server = character.get_node("StateFromServer")
-    state_from_server.multiplayer_id = peer_id
+	# Set multiplayer_id before adding to tree
+	var state_from_server = character.get_node("StateFromServer")
+	state_from_server.multiplayer_id = peer_id
 
-    add_child(character, true)  # true = force readability
+	add_child(character, true)  # true = force readability
 ```
 
 **Important**: Set `multiplayer_id` before adding to tree. This determines
@@ -1270,9 +1270,9 @@ Character (CharacterBody2D)  ← Physics state (synced)
 ├── StateFromServer
 ├── InputFromClient
 └── Visual (Node2D)          ← Visual state (client-only)
-    ├── Sprite2D
-    ├── AnimationPlayer
-    └── Particles
+	├── Sprite2D
+	├── AnimationPlayer
+	└── Particles
 ```
 
 This allows rollback to correct physics without creating visual artifacts.
@@ -1300,7 +1300,7 @@ network_frame_driver.gd):
 1. **Non-deterministic logic**: Using `randf()`, `Time.get_ticks_msec()`, or
    accessing non-networked state during `_network_process()`
    - **Solution**: Use seeded RNG, frame index for timing, only read networked
-     state
+	 state
 
 2. **Forgetting @tool annotation**: Subclasses of ReconcilableNetworkedState
    must be marked `@tool`
@@ -1318,7 +1318,7 @@ network_frame_driver.gd):
 
 6. **Not handling fast-forward**: Client falls behind and never catches up
    - **Solution**: Framework handles this automatically via
-     ServerTimeTracker.force_clock_offset
+	 ServerTimeTracker.force_clock_offset
 
 7. **Spawning without setting multiplayer_id**: Authority not assigned
    correctly

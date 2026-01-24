@@ -8,64 +8,64 @@ const PRIORITY := 250
 
 
 func _init() -> void:
-    super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
+	super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
 
 
 func process(character) -> bool:
-    if !character.processed_action(FloorJumpAction.NAME):
-        # Friction.
-        var acceleration_sign: int = character.surfaces.horizontal_acceleration_sign
-        var speed_sign := signf(character.velocity.x)
-        var is_character_pressing_move := acceleration_sign != 0.0
-        var friction_multiplier: float = (
-            character.surfaces.surface_properties.friction_multiplier
-            if character.surfaces.is_attaching_to_surface
-            else 1.0
-        )
+	if !character.processed_action(FloorJumpAction.NAME):
+		# Friction.
+		var acceleration_sign: int = character.surfaces.horizontal_acceleration_sign
+		var speed_sign := signf(character.velocity.x)
+		var is_character_pressing_move := acceleration_sign != 0.0
+		var friction_multiplier: float = (
+			character.surfaces.surface_properties.friction_multiplier
+			if character.surfaces.is_attaching_to_surface
+			else 1.0
+		)
 
-        if is_character_pressing_move:
-            # -   Apply a friction offset that counters the character's
-            #     acceleration.
-            # -   This friction offset will be _inversely_ proportional to the
-            #     coefficient of friction.
-            # -   This is what makes slippery ice difficult to build speed on.
-            # -   Force a minimum speed value, in order to prevent early
-            #     acceleration from being cancelled-out by the min-speed cutoff.
-            var default_move_offset: float = (
-                character.current_walk_acceleration * G.time.get_scaled_network_frame_delta()
-            )
-            var friction_factor: float = (
-                character.movement_settings.friction_coeff_with_sideways_input * friction_multiplier
-            )
-            var friction_offset: float = default_move_offset / (friction_factor + 1.0)
-            friction_offset = clamp(friction_offset, 0.0, default_move_offset)
-            friction_offset *= -acceleration_sign
-            character.velocity.x += friction_offset
+		if is_character_pressing_move:
+			# -   Apply a friction offset that counters the character's
+			#     acceleration.
+			# -   This friction offset will be _inversely_ proportional to the
+			#     coefficient of friction.
+			# -   This is what makes slippery ice difficult to build speed on.
+			# -   Force a minimum speed value, in order to prevent early
+			#     acceleration from being cancelled-out by the min-speed cutoff.
+			var default_move_offset: float = (
+				character.current_walk_acceleration * G.time.get_scaled_network_frame_delta()
+			)
+			var friction_factor: float = (
+				character.movement_settings.friction_coeff_with_sideways_input * friction_multiplier
+			)
+			var friction_offset: float = default_move_offset / (friction_factor + 1.0)
+			friction_offset = clamp(friction_offset, 0.0, default_move_offset)
+			friction_offset *= -acceleration_sign
+			character.velocity.x += friction_offset
 
-            if abs(character.velocity.x) < character.movement_settings.min_horizontal_speed:
-                # Force a minimum speed value, in order to prevent early
-                # acceleration from being cancelled-out by the min-speed cutoff.
-                character.velocity.x = (
-                    (character.movement_settings.min_horizontal_speed + 0.1) * acceleration_sign
-                )
+			if abs(character.velocity.x) < character.movement_settings.min_horizontal_speed:
+				# Force a minimum speed value, in order to prevent early
+				# acceleration from being cancelled-out by the min-speed cutoff.
+				character.velocity.x = (
+					(character.movement_settings.min_horizontal_speed + 0.1) * acceleration_sign
+				)
 
-        else:
-            # -   Apply a friction offset that counters the character's speed.
-            # -   This friction offset will be proportional to the coefficient
-            #     of friction.
-            var friction_factor: float = (
-                character.movement_settings.friction_coeff_without_sideways_input
-                * friction_multiplier
-            )
-            var friction_magnitude: float = (
-                friction_factor
-                * character.movement_settings.gravity_fast_fall_acceleration
-                * G.time.get_scaled_network_frame_delta()
-            )
-            friction_magnitude = clamp(friction_magnitude, 0.0, abs(character.velocity.x))
-            var friction_offset := friction_magnitude * -speed_sign
-            character.velocity.x += friction_offset
+		else:
+			# -   Apply a friction offset that counters the character's speed.
+			# -   This friction offset will be proportional to the coefficient
+			#     of friction.
+			var friction_factor: float = (
+				character.movement_settings.friction_coeff_without_sideways_input
+				* friction_multiplier
+			)
+			var friction_magnitude: float = (
+				friction_factor
+				* character.movement_settings.gravity_fast_fall_acceleration
+				* G.time.get_scaled_network_frame_delta()
+			)
+			friction_magnitude = clamp(friction_magnitude, 0.0, abs(character.velocity.x))
+			var friction_offset := friction_magnitude * -speed_sign
+			character.velocity.x += friction_offset
 
-        return true
-    else:
-        return false
+		return true
+	else:
+		return false

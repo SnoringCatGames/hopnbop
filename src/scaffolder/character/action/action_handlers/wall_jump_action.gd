@@ -8,23 +8,23 @@ const PRIORITY := 120
 
 
 func _init() -> void:
-    super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
+	super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
 
 
 func process(character) -> bool:
-    if character.actions.just_pressed_jump:
-        character.jump_sequence_count = 1
+	if character.actions.just_pressed_jump:
+		character.jump_sequence_count = 1
 
-        character.velocity.y = character.movement_settings.jump_boost
+		character.velocity.y = character.movement_settings.jump_boost
 
-        # Give a little boost to get the character away from the wall, so they
-        # can still be pushing themselves into the wall when they start the
-        # jump.
-        character.velocity.x = (
-            -character.surfaces.toward_wall_sign
-            * character.movement_settings.wall_jump_horizontal_boost
-        )
+		# Give a little boost to get the character away from the wall, so they
+		# can still be pushing themselves into the wall when they start the
+		# jump.
+		character.velocity.x = (
+			-character.surfaces.toward_wall_sign
+			* character.movement_settings.wall_jump_horizontal_boost
+		)
 
-        return true
-    else:
-        return false
+		return true
+	else:
+		return false

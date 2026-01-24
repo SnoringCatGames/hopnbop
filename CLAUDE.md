@@ -242,19 +242,19 @@ extends GutTest
 
 # Run once before any tests in this script
 func before_all():
-    pass
+	pass
 
 # Run before each test
 func before_each():
-    pass
+	pass
 
 # Run after each test
 func after_each():
-    pass
+	pass
 
 # Run once after all tests
 func after_all():
-    pass
+	pass
 ```
 
 ### Test Doubles (Mocking)
@@ -323,7 +323,7 @@ func test_square(params=use_parameters(test_cases)):
 **Named Parameters (more readable):**
 ```gdscript
 var test_cases = ParameterFactory.named_parameters(
-    ['input', 'expected'],
+	['input', 'expected'],
     [
         [0, 0],
         [5, 25],
@@ -517,7 +517,7 @@ godot --headless -s --path . addons/gut/gut_cmdln.gd \
 - Run specific test files rather than directories for reliability:
   ```bash
   godot --headless -s --path . addons/gut/gut_cmdln.gd \
-    -gtest=res://test/unit/scaffolder/test_circular_buffer.gd -gexit
+	-gtest=res://test/unit/scaffolder/test_circular_buffer.gd -gexit
   ```
 - Directory-based runs (`-gdir=res://test/unit`) sometimes fail to
   discover tests

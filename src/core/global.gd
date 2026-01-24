@@ -39,103 +39,103 @@ var level: Level
 
 
 func _enter_tree() -> void:
-    process_mode = Node.PROCESS_MODE_ALWAYS
+	process_mode = Node.PROCESS_MODE_ALWAYS
 
-    args = Utils.parse_command_line_args()
+	args = Utils.parse_command_line_args()
 
-    time.name = "Time"
-    add_child(time)
+	time.name = "Time"
+	add_child(time)
 
-    log.name = "Log"
-    add_child(log)
+	log.name = "Log"
+	add_child(log)
 
-    utils.name = "Utils"
-    add_child(utils)
+	utils.name = "Utils"
+	add_child(utils)
 
-    geometry.name = "Geometry"
-    add_child(geometry)
+	geometry.name = "Geometry"
+	add_child(geometry)
 
-    draw_utils.name = "DrawUtils"
-    add_child(draw_utils)
+	draw_utils.name = "DrawUtils"
+	add_child(draw_utils)
 
-    network.name = "Network"
-    add_child(network)
+	network.name = "Network"
+	add_child(network)
 
-    process_sentinel.name = "ProcessSentinel"
-    add_child(process_sentinel)
+	process_sentinel.name = "ProcessSentinel"
+	add_child(process_sentinel)
 
 
 func _ready() -> void:
-    G.log.log_system_ready("Global")
+	G.log.log_system_ready("Global")
 
-    if G.network.is_preview:
-        if G.network.is_client:
-            preview_instance_label = "Client %s" % G.network.preview_client_number
-        else:
-            preview_instance_label = "Server"
-    else:
-        preview_instance_label = ""
+	if G.network.is_preview:
+		if G.network.is_client:
+			preview_instance_label = "Client %s" % G.network.preview_client_number
+		else:
+			preview_instance_label = "Server"
+	else:
+		preview_instance_label = ""
 
 
 func get_player_match_state(multiplayer_id: int) -> PlayerMatchState:
-    if not match_state.players.has(multiplayer_id):
-        return null
-    return match_state.players[multiplayer_id]
+	if not match_state.players.has(multiplayer_id):
+		return null
+	return match_state.players[multiplayer_id]
 
 
 func get_player(multiplayer_id: int) -> Player:
-    if not is_instance_valid(level) or not level.players_by_id.has(multiplayer_id):
-        return null
-    return level.players_by_id[multiplayer_id]
+	if not is_instance_valid(level) or not level.players_by_id.has(multiplayer_id):
+		return null
+	return level.players_by_id[multiplayer_id]
 
 # --- Include some convenient access to logging/error utilities ---------------
 
 var is_verbose: bool:
-    get:
-        return log.is_verbose
+	get:
+		return log.is_verbose
 
 
 func print(
-        message = "",
-        category := ScaffolderLog.CATEGORY_DEFAULT,
-        verbosity := ScaffolderLog.Verbosity.NORMAL,
+		message = "",
+		category := ScaffolderLog.CATEGORY_DEFAULT,
+		verbosity := ScaffolderLog.Verbosity.NORMAL,
 ) -> void:
-    log.print(message, category, verbosity)
+	log.print(message, category, verbosity)
 
 
 func warning(message = "", category := ScaffolderLog.CATEGORY_DEFAULT) -> void:
-    log.warning(message, category)
+	log.warning(message, category)
 
 
 func error(message = "", category := ScaffolderLog.CATEGORY_DEFAULT) -> void:
-    log.error(message, category, false)
+	log.error(message, category, false)
 
 
 func fatal(message = "", category := ScaffolderLog.CATEGORY_DEFAULT) -> void:
-    log.error(message, category, true)
+	log.error(message, category, true)
 
 
 func ensure(condition: bool, message = "") -> bool:
-    return log.ensure(condition, message)
+	return log.ensure(condition, message)
 
 
 func ensure_valid(object, message = "") -> bool:
-    return log.ensure(is_instance_valid(object), message)
+	return log.ensure(is_instance_valid(object), message)
 
 
 func check(condition: bool, message = "") -> bool:
-    return log.check(condition, message)
+	return log.check(condition, message)
 
 
 func check_valid(object, message = "") -> bool:
-    return log.check(is_instance_valid(object), message)
+	return log.check(is_instance_valid(object), message)
 
 
 func check_is_server(method_name: String) -> bool:
-    return log.check(G.network.is_server, "%s: is_client" % method_name)
+	return log.check(G.network.is_server, "%s: is_client" % method_name)
 
 
 func check_is_client(method_name: String) -> bool:
-    return log.check(G.network.is_client, "%s: is_server" % method_name)
+	return log.check(G.network.is_client, "%s: is_server" % method_name)
 
 # -----------------------------------------------------------------------------

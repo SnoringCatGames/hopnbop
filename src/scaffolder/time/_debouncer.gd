@@ -18,65 +18,65 @@ var pending_args: Array = []
 
 
 func _init(
-        p_parent,
-        p_time_type: int,
-        p_callback: Callable,
-        p_interval: float,
-        p_invokes_at_start: bool,
+		p_parent,
+		p_time_type: int,
+		p_callback: Callable,
+		p_interval: float,
+		p_invokes_at_start: bool,
 ) -> void:
-    self.parent = p_parent
-    self.time_type = p_time_type
-    self.time_tracker = G.time._get_time_tracker_for_time_type(p_time_type)
-    self.elapsed_time_key = G.time._get_elapsed_time_key_for_time_type(p_time_type)
-    self.callback = p_callback
-    self.interval = p_interval
-    self.invokes_at_start = p_invokes_at_start
+	self.parent = p_parent
+	self.time_type = p_time_type
+	self.time_tracker = G.time._get_time_tracker_for_time_type(p_time_type)
+	self.elapsed_time_key = G.time._get_elapsed_time_key_for_time_type(p_time_type)
+	self.callback = p_callback
+	self.interval = p_interval
+	self.invokes_at_start = p_invokes_at_start
 
 
 func on_call(arg1 = null, arg2 = null, arg3 = null, arg4 = null) -> void:
-    # Collect non-null arguments
-    var args: Array = []
-    if arg1 != null:
-        args.append(arg1)
-    if arg2 != null:
-        args.append(arg2)
-    if arg3 != null:
-        args.append(arg3)
-    if arg4 != null:
-        args.append(arg4)
+	# Collect non-null arguments
+	var args: Array = []
+	if arg1 != null:
+		args.append(arg1)
+	if arg2 != null:
+		args.append(arg2)
+	if arg3 != null:
+		args.append(arg3)
+	if arg4 != null:
+		args.append(arg4)
 
-    var current_call_time: float = time_tracker.get(elapsed_time_key)
-    if (
-        invokes_at_start
-        and !is_callback_scheduled
-        and current_call_time > last_call_time + interval
-    ):
-        _trigger_callback(args)
+	var current_call_time: float = time_tracker.get(elapsed_time_key)
+	if (
+		invokes_at_start
+		and !is_callback_scheduled
+		and current_call_time > last_call_time + interval
+	):
+		_trigger_callback(args)
 
-    pending_args = args
-    G.time.clear_timeout(last_timeout_id)
-    last_timeout_id = G.time.set_timeout(
-        _trigger_callback_from_timeout,
-        interval,
-        [],
-        time_type,
-    )
-    is_callback_scheduled = true
+	pending_args = args
+	G.time.clear_timeout(last_timeout_id)
+	last_timeout_id = G.time.set_timeout(
+		_trigger_callback_from_timeout,
+		interval,
+		[],
+		time_type,
+	)
+	is_callback_scheduled = true
 
 
 func cancel() -> void:
-    G.time.clear_timeout(last_timeout_id)
-    is_callback_scheduled = false
-    pending_args = []
+	G.time.clear_timeout(last_timeout_id)
+	is_callback_scheduled = false
+	pending_args = []
 
 
 func _trigger_callback_from_timeout() -> void:
-    _trigger_callback(pending_args)
-    pending_args = []
+	_trigger_callback(pending_args)
+	pending_args = []
 
 
 func _trigger_callback(args: Array) -> void:
-    last_call_time = time_tracker.get(elapsed_time_key)
-    is_callback_scheduled = false
-    if callback.is_valid():
-        callback.callv(args)
+	last_call_time = time_tracker.get(elapsed_time_key)
+	is_callback_scheduled = false
+	if callback.is_valid():
+		callback.callv(args)

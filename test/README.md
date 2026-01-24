@@ -84,22 +84,22 @@ godot --headless -s --path . addons/gut/gut_cmdln.gd \
 extends GutTest
 
 func before_each():
-    # Setup code that runs before each test
-    pass
+	# Setup code that runs before each test
+	pass
 
 func after_each():
-    # Cleanup code that runs after each test
-    pass
+	# Cleanup code that runs after each test
+	pass
 
 func test_something_happens():
-    # Arrange
-    var buffer = CircularBuffer.new(5)
+	# Arrange
+	var buffer = CircularBuffer.new(5)
 
-    # Act
-    buffer.append("value")
+	# Act
+	buffer.append("value")
 
-    # Assert
-    assert_eq(buffer.size(), 1)
+	# Assert
+	assert_eq(buffer.size(), 1)
 ```
 
 ### Inner Test Classes
@@ -110,15 +110,15 @@ Organize related tests with shared setup:
 extends GutTest
 
 class TestWhenEmpty:
-    extends GutTest
+	extends GutTest
 
-    var buffer: CircularBuffer
+	var buffer: CircularBuffer
 
-    func before_each():
-        buffer = CircularBuffer.new(5)
+	func before_each():
+		buffer = CircularBuffer.new(5)
 
-    func test_size_is_zero():
-        assert_eq(buffer.size(), 0)
+	func test_size_is_zero():
+		assert_eq(buffer.size(), 0)
 ```
 
 ## Test Coverage

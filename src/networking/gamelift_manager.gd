@@ -47,183 +47,183 @@ var _validated_player_count: int = 0
 
 
 func _ready() -> void:
-    if not G.settings.use_gamelift:
-        G.print(
-            "[GameLift] Disabled via settings (use_gamelift = false)",
-            ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-        )
-        return
+	if not G.settings.use_gamelift:
+		G.print(
+			"[GameLift] Disabled via settings (use_gamelift = false)",
+			ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		)
+		return
 
-    if not G.network.is_server:
-        G.print(
-            "[GameLift] Client mode, skipping server SDK initialization",
-            ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-        )
-        return
+	if not G.network.is_server:
+		G.print(
+			"[GameLift] Client mode, skipping server SDK initialization",
+			ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		)
+		return
 
-    _initialize_sdk()
-    G.log.log_system_ready("GameLiftManager")
+	_initialize_sdk()
+	G.log.log_system_ready("GameLiftManager")
 
 
 ## Returns true if GameLift is active and initialized.
 func is_active() -> bool:
-    return G.settings.use_gamelift and _is_initialized
+	return G.settings.use_gamelift and _is_initialized
 
 
 ## Returns true if the server process is ready to host sessions.
 func is_process_ready() -> bool:
-    return _is_process_ready
+	return _is_process_ready
 
 
 ## Set the expected number of players for this game session.
 func set_expected_player_count(count: int) -> void:
-    _expected_player_count = count
-    G.print(
-        "[GameLift] Expected player count: %d" % count,
-        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-    )
+	_expected_player_count = count
+	G.print(
+		"[GameLift] Expected player count: %d" % count,
+		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+	)
 
 
 ## Validate a player session ID and map it to the peer_id.
 func validate_player_session(peer_id: int, session_id: String) -> void:
-    G.check_is_server("GameLiftManager.validate_player_session")
+	G.check_is_server("GameLiftManager.validate_player_session")
 
-    if not is_active():
-        # In preview mode, auto-accept without validation
-        G.print(
-            "[GameLift] Preview mode: Auto-accepting peer %d" % peer_id,
-            ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-        )
-        _on_validation_success(peer_id, session_id)
-        return
+	if not is_active():
+		# In preview mode, auto-accept without validation
+		G.print(
+			"[GameLift] Preview mode: Auto-accepting peer %d" % peer_id,
+			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+		)
+		_on_validation_success(peer_id, session_id)
+		return
 
-    if _gamelift == null:
-        G.warning("[GameLift] SDK not initialized, auto-accepting")
-        _on_validation_success(peer_id, session_id)
-        return
+	if _gamelift == null:
+		G.warning("[GameLift] SDK not initialized, auto-accepting")
+		_on_validation_success(peer_id, session_id)
+		return
 
-    # Call GameLift SDK to validate the player session
-    var outcome = _gamelift.accept_player_session(session_id)
+	# Call GameLift SDK to validate the player session
+	var outcome = _gamelift.accept_player_session(session_id)
 
-    if outcome.is_success():
-        G.print(
-            "[GameLift] Player session validated: %s" % session_id,
-            ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-        )
-        _on_validation_success(peer_id, session_id)
-    else:
-        G.warning(
-            (
+	if outcome.is_success():
+		G.print(
+			"[GameLift] Player session validated: %s" % session_id,
+			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+		)
+		_on_validation_success(peer_id, session_id)
+	else:
+		G.warning(
+			(
                 "[GameLift] Player session validation failed: %s"
-                % outcome.get_error_message()
-            ),
-            ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-        )
-        # Disconnect the peer
-        multiplayer.multiplayer_peer.disconnect_peer(peer_id)
+				% outcome.get_error_message()
+			),
+			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+		)
+		# Disconnect the peer
+		multiplayer.multiplayer_peer.disconnect_peer(peer_id)
 
 
 func _on_validation_success(peer_id: int, session_id: String) -> void:
-    _peer_to_session[peer_id] = session_id
-    _session_to_peer[session_id] = peer_id
-    _validated_player_count += 1
+	_peer_to_session[peer_id] = session_id
+	_session_to_peer[session_id] = peer_id
+	_validated_player_count += 1
 
-    G.print(
-        "[GameLift] Player validated: peer=%d, session=%s (%d/%d)" % [
-            peer_id,
-            session_id,
-            _validated_player_count,
-            _expected_player_count,
-        ],
-        ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-    )
+	G.print(
+		"[GameLift] Player validated: peer=%d, session=%s (%d/%d)" % [
+			peer_id,
+			session_id,
+			_validated_player_count,
+			_expected_player_count,
+		],
+		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+	)
 
-    player_session_validated.emit(peer_id, session_id)
+	player_session_validated.emit(peer_id, session_id)
 
-    # Check if all matched players connected
-    if _validated_player_count >= _expected_player_count:
-        _on_all_players_ready()
+	# Check if all matched players connected
+	if _validated_player_count >= _expected_player_count:
+		_on_all_players_ready()
 
 
 func _on_all_players_ready() -> void:
-    G.print(
-        "[GameLift] All players connected, starting game",
-        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-    )
+	G.print(
+		"[GameLift] All players connected, starting game",
+		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+	)
 
-    # Unpause frame simulation
-    G.network.frame_driver.server_set_is_paused(false)
+	# Unpause frame simulation
+	G.network.frame_driver.server_set_is_paused(false)
 
-    all_players_connected.emit()
+	all_players_connected.emit()
 
 
 ## Get the player_session_id for a given peer_id.
 func get_session_id_for_peer(peer_id: int) -> String:
-    return _peer_to_session.get(peer_id, "")
+	return _peer_to_session.get(peer_id, "")
 
 
 ## Get the peer_id for a given player_session_id.
 func get_peer_id_for_session(session_id: String) -> int:
-    return _session_to_peer.get(session_id, 0)
+	return _session_to_peer.get(session_id, 0)
 
 
 ## Remove a player session when a player disconnects.
 func remove_player_session(session_id: String) -> void:
-    if not is_active() or _gamelift == null:
-        return
+	if not is_active() or _gamelift == null:
+		return
 
-    var outcome = _gamelift.remove_player_session(session_id)
-    if outcome.is_success():
-        G.print(
-            "[GameLift] Player session removed: %s" % session_id,
-            ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-        )
-    else:
-        G.warning(
-            (
+	var outcome = _gamelift.remove_player_session(session_id)
+	if outcome.is_success():
+		G.print(
+			"[GameLift] Player session removed: %s" % session_id,
+			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+		)
+	else:
+		G.warning(
+			(
                 "[GameLift] Failed to remove player session: %s"
-                % outcome.get_error_message()
-            ),
-            ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-        )
+				% outcome.get_error_message()
+			),
+			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+		)
 
 
 ## End the game session (called on server shutdown).
 func end_game_session() -> void:
-    if not is_active() or _gamelift == null:
-        return
+	if not is_active() or _gamelift == null:
+		return
 
-    # Stop accepting new players
-    _gamelift.update_player_session_creation_policy(_gamelift.DENY_ALL)
+	# Stop accepting new players
+	_gamelift.update_player_session_creation_policy(_gamelift.DENY_ALL)
 
-    G.print(
-        "[GameLift] Game session ended, no longer accepting players",
-        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-    )
+	G.print(
+		"[GameLift] Game session ended, no longer accepting players",
+		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+	)
 
 
 ## Activate the game session after setup is complete.
 func activate_game_session() -> void:
-    if not is_active():
-        return
+	if not is_active():
+		return
 
-    if _gamelift == null:
-        G.warning("[GameLift] Cannot activate: SDK not initialized")
-        return
+	if _gamelift == null:
+		G.warning("[GameLift] Cannot activate: SDK not initialized")
+		return
 
-    var outcome = _gamelift.activate_game_session()
-    if outcome.is_success():
-        G.print(
-            "[GameLift] Game session activated, ready for players",
-            ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-        )
-    else:
-        G.warning(
-            (
+	var outcome = _gamelift.activate_game_session()
+	if outcome.is_success():
+		G.print(
+			"[GameLift] Game session activated, ready for players",
+			ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		)
+	else:
+		G.warning(
+			(
                 "[GameLift] Failed to activate session: %s"
-                % outcome.get_error_message()
-            ),
-        )
+				% outcome.get_error_message()
+			),
+		)
 
 # =============================================================================
 # SDK Initialization
@@ -231,89 +231,89 @@ func activate_game_session() -> void:
 
 
 func _initialize_sdk() -> void:
-    # Try to load GameLift extension
-    if ClassDB.class_exists("GameLiftServer"):
-        _gamelift = ClassDB.instantiate("GameLiftServer")
-        add_child(_gamelift)
+	# Try to load GameLift extension
+	if ClassDB.class_exists("GameLiftServer"):
+		_gamelift = ClassDB.instantiate("GameLiftServer")
+		add_child(_gamelift)
 
-        # Connect signals
-        _gamelift.game_session_started.connect(_on_game_session_started)
-        _gamelift.process_terminate_requested.connect(
-            _on_process_terminate_requested,
-        )
-        _gamelift.health_check_requested.connect(_on_health_check)
-    else:
-        G.warning(
-            "[GameLift] GameLiftServer class not found (extension not loaded)",
-        )
-        return
+		# Connect signals
+		_gamelift.game_session_started.connect(_on_game_session_started)
+		_gamelift.process_terminate_requested.connect(
+			_on_process_terminate_requested,
+		)
+		_gamelift.health_check_requested.connect(_on_health_check)
+	else:
+		G.warning(
+			"[GameLift] GameLiftServer class not found (extension not loaded)",
+		)
+		return
 
-    # Initialize SDK
-    var outcome
-    if G.settings.gamelift_anywhere_mode:
-        G.print(
-            "[GameLift] Initializing for Anywhere fleet",
-            ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-        )
-        outcome = _gamelift.init_sdk_anywhere(
-            G.settings.gamelift_anywhere_websocket,
-            G.settings.gamelift_anywhere_auth_token,
-            G.settings.gamelift_anywhere_fleet_id,
-            G.settings.gamelift_anywhere_host_id,
-            G.settings.gamelift_anywhere_process_id,
-        )
-    else:
-        G.print(
-            "[GameLift] Initializing for managed EC2 fleet",
-            ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-        )
-        outcome = _gamelift.init_sdk()
+	# Initialize SDK
+	var outcome
+	if G.settings.gamelift_anywhere_mode:
+		G.print(
+			"[GameLift] Initializing for Anywhere fleet",
+			ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		)
+		outcome = _gamelift.init_sdk_anywhere(
+			G.settings.gamelift_anywhere_websocket,
+			G.settings.gamelift_anywhere_auth_token,
+			G.settings.gamelift_anywhere_fleet_id,
+			G.settings.gamelift_anywhere_host_id,
+			G.settings.gamelift_anywhere_process_id,
+		)
+	else:
+		G.print(
+			"[GameLift] Initializing for managed EC2 fleet",
+			ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		)
+		outcome = _gamelift.init_sdk()
 
-    if not outcome.is_success():
-        G.error(
-            "[GameLift] Init failed: %s" % outcome.get_error_message(),
-            ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-        )
-        return
+	if not outcome.is_success():
+		G.error(
+			"[GameLift] Init failed: %s" % outcome.get_error_message(),
+			ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		)
+		return
 
-    _is_initialized = true
+	_is_initialized = true
 
-    var sdk_version = _gamelift.get_sdk_version()
-    G.print(
-        "[GameLift] SDK version: %s" % sdk_version,
-        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-    )
+	var sdk_version = _gamelift.get_sdk_version()
+	G.print(
+		"[GameLift] SDK version: %s" % sdk_version,
+		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+	)
 
-    # Signal process ready
-    _call_process_ready()
+	# Signal process ready
+	_call_process_ready()
 
 
 func _call_process_ready() -> void:
-    var port = G.settings.local_server_port
-    var log_paths = PackedStringArray(["logs/server.log"])
+	var port = G.settings.local_server_port
+	var log_paths = PackedStringArray(["logs/server.log"])
 
-    G.print(
-        "[GameLift] Calling ProcessReady on port %d" % port,
-        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-    )
+	G.print(
+		"[GameLift] Calling ProcessReady on port %d" % port,
+		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+	)
 
-    var outcome = _gamelift.process_ready(port, log_paths)
+	var outcome = _gamelift.process_ready(port, log_paths)
 
-    if not outcome.is_success():
-        G.error(
-            (
+	if not outcome.is_success():
+		G.error(
+			(
                 "[GameLift] ProcessReady failed: %s"
-                % outcome.get_error_message()
-            ),
-            ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-        )
-        return
+				% outcome.get_error_message()
+			),
+			ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		)
+		return
 
-    _is_process_ready = true
-    G.print(
-        "[GameLift] Server ready, waiting for game sessions",
-        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-    )
+	_is_process_ready = true
+	G.print(
+		"[GameLift] Server ready, waiting for game sessions",
+		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+	)
 
 # =============================================================================
 # GameLift Callback Handlers
@@ -321,88 +321,88 @@ func _call_process_ready() -> void:
 
 
 func _on_game_session_started(session) -> void:
-    _game_session = session
+	_game_session = session
 
-    G.print(
-        "[GameLift] Game session started: %s" % session.game_session_id,
-        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-    )
-    G.print(
-        "[GameLift] Max players: %d" % session.maximum_player_session_count,
-        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-    )
+	G.print(
+		"[GameLift] Game session started: %s" % session.game_session_id,
+		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+	)
+	G.print(
+		"[GameLift] Max players: %d" % session.maximum_player_session_count,
+		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+	)
 
-    # Parse expected player count from matchmaker data or session config
-    var expected_count = session.maximum_player_session_count
+	# Parse expected player count from matchmaker data or session config
+	var expected_count = session.maximum_player_session_count
 
-    if not session.matchmaker_data.is_empty():
-        var data = JSON.parse_string(session.matchmaker_data)
-        if data and data is Dictionary:
-            expected_count = _parse_player_count_from_matchmaker(data)
+	if not session.matchmaker_data.is_empty():
+		var data = JSON.parse_string(session.matchmaker_data)
+		if data and data is Dictionary:
+			expected_count = _parse_player_count_from_matchmaker(data)
 
-    set_expected_player_count(expected_count)
+	set_expected_player_count(expected_count)
 
-    # Emit signal for game_panel to handle
-    game_session_started.emit(session)
+	# Emit signal for game_panel to handle
+	game_session_started.emit(session)
 
 
 func _parse_player_count_from_matchmaker(data: Dictionary) -> int:
-    # Count players across all teams
-    var count = 0
-    if data.has("teams") and data.teams is Array:
-        for team in data.teams:
-            if team.has("players") and team.players is Array:
-                count += team.players.size()
-    return count if count > 0 else 2 # Default to 2 if parsing fails
+	# Count players across all teams
+	var count = 0
+	if data.has("teams") and data.teams is Array:
+		for team in data.teams:
+			if team.has("players") and team.players is Array:
+				count += team.players.size()
+	return count if count > 0 else 2 # Default to 2 if parsing fails
 
 
 func _on_process_terminate_requested() -> void:
-    G.print(
-        "[GameLift] Process termination requested",
-        ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-    )
+	G.print(
+		"[GameLift] Process termination requested",
+		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+	)
 
-    # Get termination time if available
-    var termination_time = _gamelift.get_termination_time()
-    if termination_time > 0:
-        G.print(
-            "[GameLift] Termination scheduled for: %d" % termination_time,
-            ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-        )
+	# Get termination time if available
+	var termination_time = _gamelift.get_termination_time()
+	if termination_time > 0:
+		G.print(
+			"[GameLift] Termination scheduled for: %d" % termination_time,
+			ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		)
 
-    # Stop accepting new players
-    _gamelift.update_player_session_creation_policy(_gamelift.DENY_ALL)
+	# Stop accepting new players
+	_gamelift.update_player_session_creation_policy(_gamelift.DENY_ALL)
 
-    # Notify game panel to shut down gracefully
-    if is_instance_valid(G.game_panel):
-        G.game_panel.server_end_game()
+	# Notify game panel to shut down gracefully
+	if is_instance_valid(G.game_panel):
+		G.game_panel.server_end_game()
 
-    # Signal process ending
-    var outcome = _gamelift.process_ending()
-    if not outcome.is_success():
-        G.warning(
-            (
+	# Signal process ending
+	var outcome = _gamelift.process_ending()
+	if not outcome.is_success():
+		G.warning(
+			(
                 "[GameLift] ProcessEnding failed: %s"
-                % outcome.get_error_message()
-            ),
-        )
+				% outcome.get_error_message()
+			),
+		)
 
-    # Destroy SDK
-    _gamelift.destroy()
+	# Destroy SDK
+	_gamelift.destroy()
 
-    # Exit after brief delay
-    await get_tree().create_timer(2.0).timeout
-    get_tree().quit()
+	# Exit after brief delay
+	await get_tree().create_timer(2.0).timeout
+	get_tree().quit()
 
 
 func _on_health_check() -> void:
-    # GameLift calls this every ~60 seconds
-    # Return true (healthy) by default
-    # TODO: Add custom health check logic if needed
-    pass
+	# GameLift calls this every ~60 seconds
+	# Return true (healthy) by default
+	# TODO: Add custom health check logic if needed
+	pass
 
 
 func _exit_tree() -> void:
-    if _gamelift and _is_initialized:
-        _gamelift.process_ending()
-        _gamelift.destroy()
+	if _gamelift and _is_initialized:
+		_gamelift.process_ending()
+		_gamelift.destroy()

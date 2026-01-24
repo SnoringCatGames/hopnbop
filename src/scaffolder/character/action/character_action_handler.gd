@@ -13,12 +13,12 @@ var priority: int
 
 
 func _init(p_name: String, p_type: int, p_uses_runtime_physics: bool, p_priority: int) -> void:
-    self.name = p_name
-    self.type = p_type
-    self.uses_runtime_physics = p_uses_runtime_physics
-    self.priority = p_priority
+	self.name = p_name
+	self.type = p_type
+	self.uses_runtime_physics = p_uses_runtime_physics
+	self.priority = p_priority
 
 
 func process(_character) -> bool:
-    G.fatal("Abstract CharacterActionHandler.process is not implemented")
-    return false
+	G.fatal("Abstract CharacterActionHandler.process is not implemented")
+	return false

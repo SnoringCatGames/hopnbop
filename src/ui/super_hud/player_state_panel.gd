@@ -12,77 +12,77 @@ var player_match_state: PlayerMatchState
 
 
 func _ready() -> void:
-    if G.network.is_server:
-        return
+	if G.network.is_server:
+		return
 
-    %IsDescendingThroughFloorsRow.visible = show_extra_debug_info
-    #%IsAscendingThroughCeilingsRow.visible = show_extra_debug_info
-    #%IsAttachingToWalkThroughWallsRow.visible = show_extra_debug_info
-    %IsOnFloorRow.visible = show_extra_debug_info
-    %IsOnCeilingRow.visible = show_extra_debug_info
-    %IsOnWallRow.visible = show_extra_debug_info
+	%IsDescendingThroughFloorsRow.visible = show_extra_debug_info
+	#%IsAscendingThroughCeilingsRow.visible = show_extra_debug_info
+	#%IsAttachingToWalkThroughWallsRow.visible = show_extra_debug_info
+	%IsOnFloorRow.visible = show_extra_debug_info
+	%IsOnCeilingRow.visible = show_extra_debug_info
+	%IsOnWallRow.visible = show_extra_debug_info
 
 
 func clear() -> void:
-    %Actions.text = ""
-    %Position.text = ""
-    %Velocity.text = ""
-    %AttachmentSide.text = ""
+	%Actions.text = ""
+	%Position.text = ""
+	%Velocity.text = ""
+	%AttachmentSide.text = ""
 
 
 func _process(_delta: float) -> void:
-    if G.network.is_server:
-        return
-    if not is_visible_in_tree():
-        return
+	if G.network.is_server:
+		return
+	if not is_visible_in_tree():
+		return
 
-    if not is_instance_valid(player):
-        player = G.get_player(multiplayer_id)
+	if not is_instance_valid(player):
+		player = G.get_player(multiplayer_id)
 
-    if not is_instance_valid(player_match_state):
-        player_match_state = G.get_player_match_state(multiplayer_id)
+	if not is_instance_valid(player_match_state):
+		player_match_state = G.get_player_match_state(multiplayer_id)
 
-    if not is_instance_valid(player_match_state) or not is_instance_valid(player):
-        clear()
-        return
+	if not is_instance_valid(player_match_state) or not is_instance_valid(player):
+		clear()
+		return
 
-    %Actions.text = CharacterActionState.get_debug_label_from_actions_bitmask(
-        player.actions.current_actions_bitmask,
-    )
-    %Position.text = Utils.get_vector_string(player.position, 1)
-    %Velocity.text = Utils.get_vector_string(player.velocity, 1)
+	%Actions.text = CharacterActionState.get_debug_label_from_actions_bitmask(
+		player.actions.current_actions_bitmask,
+	)
+	%Position.text = Utils.get_vector_string(player.position, 1)
+	%Velocity.text = Utils.get_vector_string(player.velocity, 1)
 
-    %AttachmentSide.text = SurfaceSide.get_string(player.surfaces.attachment_side)
+	%AttachmentSide.text = SurfaceSide.get_string(player.surfaces.attachment_side)
 
-    %IsDescendingThroughFloors.text = str(player.surfaces.is_descending_through_floors)
-    #%IsAscendingThroughCeilings.text = str(player.surfaces.is_ascending_through_ceilings)
-    #%IsAttachingToWalkThroughWalls.text = str(player.surfaces.is_attaching_to_walk_through_walls)
+	%IsDescendingThroughFloors.text = str(player.surfaces.is_descending_through_floors)
+	#%IsAscendingThroughCeilings.text = str(player.surfaces.is_ascending_through_ceilings)
+	#%IsAttachingToWalkThroughWalls.text = str(player.surfaces.is_attaching_to_walk_through_walls)
 
-    %IsOnFloor.text = str(player.is_on_floor())
-    %IsOnCeiling.text = str(player.is_on_ceiling())
-    %IsOnWall.text = str(player.is_on_wall())
+	%IsOnFloor.text = str(player.is_on_floor())
+	%IsOnCeiling.text = str(player.is_on_ceiling())
+	%IsOnWall.text = str(player.is_on_wall())
 
 
 func _physics_process(_delta: float) -> void:
-    if not is_visible_in_tree:
-        return
-    if not is_instance_valid(player_match_state) or not is_instance_valid(player):
-        return
+	if not is_visible_in_tree:
+		return
+	if not is_instance_valid(player_match_state) or not is_instance_valid(player):
+		return
 
-    if player.surfaces.just_changed_attachment_side:
-        add_toast(
-            "Attached to %s" %
-            SurfaceSide.get_string(player.surfaces.attachment_side),
-        )
+	if player.surfaces.just_changed_attachment_side:
+		add_toast(
+			"Attached to %s" %
+			SurfaceSide.get_string(player.surfaces.attachment_side),
+		)
 
 
 func add_toast(text: String) -> void:
-    var toast: PlayerStatePanelToast = toast_scene.instantiate()
-    toast.text = text
-    %Toasts.add_child(toast)
-    %Toasts.move_child(toast, 0)
+	var toast: PlayerStatePanelToast = toast_scene.instantiate()
+	toast.text = text
+	%Toasts.add_child(toast)
+	%Toasts.move_child(toast, 0)
 
-    var tween = get_tree().create_tween()
-    tween.tween_property(toast, "modulate:a", 0, toast_fade_duration).set_delay(toast_fade_delay)
-    await tween.step_finished
-    toast.queue_free()
+	var tween = get_tree().create_tween()
+	tween.tween_property(toast, "modulate:a", 0, toast_fade_duration).set_delay(toast_fade_delay)
+	await tween.step_finished
+	toast.queue_free()

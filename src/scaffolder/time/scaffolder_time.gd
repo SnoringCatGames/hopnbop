@@ -30,16 +30,16 @@ const _DEFAULT_ADDITIONAL_DEBUG_TIME_SCALE := 1.0
 const _GARBAGE_COLLECTION_INTERVAL := 30.0
 
 var time_scale := _DEFAULT_TIME_SCALE:
-    set(value):
-        time_scale = value
-        _app_time.time_scale = get_combined_scale()
-        _play_time.time_scale = get_combined_scale()
+	set(value):
+		time_scale = value
+		_app_time.time_scale = get_combined_scale()
+		_play_time.time_scale = get_combined_scale()
 
 var additional_debug_time_scale := _DEFAULT_ADDITIONAL_DEBUG_TIME_SCALE:
-    set(value):
-        additional_debug_time_scale = value
-        _app_time.time_scale = get_combined_scale()
-        _play_time.time_scale = get_combined_scale()
+	set(value):
+		additional_debug_time_scale = value
+		_app_time.time_scale = get_combined_scale()
+		_play_time.time_scale = get_combined_scale()
 
 var _app_time: _TimeTracker
 var _play_time: _TimeTracker
@@ -58,375 +58,375 @@ var _debounced_callbacks := { }
 
 
 func _init() -> void:
-    process_mode = Node.PROCESS_MODE_ALWAYS
+	process_mode = Node.PROCESS_MODE_ALWAYS
 
 
 func _ready() -> void:
-    # Validate physics tick rate matches networking assumptions
-    var configured_fps: float = ProjectSettings.get_setting(
-        "physics/common/physics_ticks_per_second",
-        60,
-    )
-    G.check(
-        configured_fps == PHYSICS_FPS,
-        "Physics tick rate must be 60 FPS for networking to work correctly. " +
-        "Current: %d" % configured_fps,
-    )
+	# Validate physics tick rate matches networking assumptions
+	var configured_fps: float = ProjectSettings.get_setting(
+		"physics/common/physics_ticks_per_second",
+		60,
+	)
+	G.check(
+		configured_fps == PHYSICS_FPS,
+		"Physics tick rate must be 60 FPS for networking to work correctly. " +
+		"Current: %d" % configured_fps,
+	)
 
-    _app_time = _TimeTracker.new()
-    _app_time.process_mode = Node.PROCESS_MODE_ALWAYS
-    add_child(_app_time)
+	_app_time = _TimeTracker.new()
+	_app_time.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(_app_time)
 
-    _play_time = _TimeTracker.new()
-    _play_time.process_mode = Node.PROCESS_MODE_PAUSABLE
-    add_child(_play_time)
+	_play_time = _TimeTracker.new()
+	_play_time.process_mode = Node.PROCESS_MODE_PAUSABLE
+	add_child(_play_time)
 
-    set_interval(collect_garbage, _GARBAGE_COLLECTION_INTERVAL)
+	set_interval(collect_garbage, _GARBAGE_COLLECTION_INTERVAL)
 
-    G.log.log_system_ready("ScaffolderTime")
+	G.log.log_system_ready("ScaffolderTime")
 
 
 func _process(_delta: float) -> void:
-    _handle_tweens()
-    _handle_timeouts()
-    _handle_intervals()
+	_handle_tweens()
+	_handle_timeouts()
+	_handle_intervals()
 
 
 func _handle_tweens() -> void:
-    var finished_tween_ids := []
-    for id in _tweens:
-        var tween: ScaffolderTween = _tweens[id]
-        tween.step()
-        if !tween.is_active():
-            finished_tween_ids.append(id)
+	var finished_tween_ids := []
+	for id in _tweens:
+		var tween: ScaffolderTween = _tweens[id]
+		tween.step()
+		if !tween.is_active():
+			finished_tween_ids.append(id)
 
-    for id in finished_tween_ids:
-        _tweens.erase(id)
+	for id in finished_tween_ids:
+		_tweens.erase(id)
 
 
 # This only ever triggers one expired timeout within a single frame, which
 # helps to balance load on the CPU.
 func _handle_timeouts() -> void:
-    var expired_timeout_id := -1
-    for id in _timeouts:
-        if _timeouts[id].get_has_expired():
-            expired_timeout_id = id
-            break
+	var expired_timeout_id := -1
+	for id in _timeouts:
+		if _timeouts[id].get_has_expired():
+			expired_timeout_id = id
+			break
 
-    if expired_timeout_id >= 0:
-        _timeouts[expired_timeout_id].trigger()
-        _timeouts.erase(expired_timeout_id)
+	if expired_timeout_id >= 0:
+		_timeouts[expired_timeout_id].trigger()
+		_timeouts.erase(expired_timeout_id)
 
 
 # This only ever triggers one interval within a single frame, which helps to
 # balance load on the CPU.
 func _handle_intervals() -> void:
-    var triggered_interval_id := -1
-    for id in _intervals:
-        if _intervals[id].get_has_reached_next_trigger_time():
-            triggered_interval_id = id
-            break
+	var triggered_interval_id := -1
+	for id in _intervals:
+		if _intervals[id].get_has_reached_next_trigger_time():
+			triggered_interval_id = id
+			break
 
-    if triggered_interval_id >= 0:
-        _intervals[triggered_interval_id].trigger()
+	if triggered_interval_id >= 0:
+		_intervals[triggered_interval_id].trigger()
 
 
 func collect_garbage() -> void:
-    for collection in [
-        _timeouts,
-        _intervals,
-        _tweens,
-        _throttled_callbacks,
-        _debounced_callbacks,
-    ]:
-        for key in collection.keys():
-            if !is_instance_valid(collection[key]):
-                collection.erase(key)
-            elif !is_instance_valid(collection[key].parent):
-                if !collection[key] is RefCounted:
-                    collection[key].free()
-                collection.erase(key)
+	for collection in [
+		_timeouts,
+		_intervals,
+		_tweens,
+		_throttled_callbacks,
+		_debounced_callbacks,
+	]:
+		for key in collection.keys():
+			if !is_instance_valid(collection[key]):
+				collection.erase(key)
+			elif !is_instance_valid(collection[key].parent):
+				if !collection[key] is RefCounted:
+					collection[key].free()
+				collection.erase(key)
 
 
 func get_next_task_id() -> int:
-    _last_timeout_id += 1
-    return _last_timeout_id
+	_last_timeout_id += 1
+	return _last_timeout_id
 
 
 func get_network_time() -> float:
-    return G.network.server_frame_time_usec / 1_000_000.0
+	return G.network.server_frame_time_usec / 1_000_000.0
 
 
 func get_scaled_network_time() -> float:
-    # TODO: Add support for scaling network time (need to replicate time scaling
-    #       in a rollbackable way).
-    return get_network_time()
+	# TODO: Add support for scaling network time (need to replicate time scaling
+	#       in a rollbackable way).
+	return get_network_time()
 
 
 func get_scaled_network_frame_delta() -> float:
-    return scale_delta(NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC)
+	return scale_delta(NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC)
 
 
 func get_app_time() -> float:
-    return get_elapsed_time(TimeType.APP_PHYSICS)
+	return get_elapsed_time(TimeType.APP_PHYSICS)
 
 
 func get_clock_time() -> float:
-    return get_elapsed_time(TimeType.APP_CLOCK)
+	return get_elapsed_time(TimeType.APP_CLOCK)
 
 
 func get_play_time() -> float:
-    return get_elapsed_time(TimeType.PLAY_PHYSICS)
+	return get_elapsed_time(TimeType.PLAY_PHYSICS)
 
 
 func get_scaled_play_time() -> float:
-    return get_elapsed_time(TimeType.PLAY_PHYSICS_SCALED)
+	return get_elapsed_time(TimeType.PLAY_PHYSICS_SCALED)
 
 
 func get_play_physics_frame_count() -> int:
-    return _play_time.physics_frame_count
+	return _play_time.physics_frame_count
 
 
 func get_elapsed_time(time_type: int) -> float:
-    var tracker := _get_time_tracker_for_time_type(time_type)
-    var key := _get_elapsed_time_key_for_time_type(time_type)
-    return tracker.get(key)
+	var tracker := _get_time_tracker_for_time_type(time_type)
+	var key := _get_elapsed_time_key_for_time_type(time_type)
+	return tracker.get(key)
 
 
 func _get_time_tracker_for_time_type(time_type: int) -> _TimeTracker:
-    match time_type:
-        TimeType.APP_PHYSICS, TimeType.APP_CLOCK, TimeType.APP_PHYSICS_SCALED, TimeType.APP_CLOCK_SCALED, TimeType.APP_PHYSICS_FRAME_COUNT, TimeType.APP_RENDER_FRAME_COUNT:
-            return _app_time
-        TimeType.PLAY_PHYSICS, TimeType.PLAY_RENDER, TimeType.PLAY_PHYSICS_SCALED, TimeType.PLAY_RENDER_SCALED, TimeType.PLAY_PHYSICS_FRAME_COUNT, TimeType.PLAY_RENDER_FRAME_COUNT:
-            return _play_time
-        _:
-            G.fatal("Unrecognized time_type: %d" % time_type)
-            return null
+	match time_type:
+		TimeType.APP_PHYSICS, TimeType.APP_CLOCK, TimeType.APP_PHYSICS_SCALED, TimeType.APP_CLOCK_SCALED, TimeType.APP_PHYSICS_FRAME_COUNT, TimeType.APP_RENDER_FRAME_COUNT:
+			return _app_time
+		TimeType.PLAY_PHYSICS, TimeType.PLAY_RENDER, TimeType.PLAY_PHYSICS_SCALED, TimeType.PLAY_RENDER_SCALED, TimeType.PLAY_PHYSICS_FRAME_COUNT, TimeType.PLAY_RENDER_FRAME_COUNT:
+			return _play_time
+		_:
+			G.fatal("Unrecognized time_type: %d" % time_type)
+			return null
 
 
 func _get_elapsed_time_key_for_time_type(time_type: int) -> String:
-    match time_type:
-        TimeType.APP_PHYSICS, TimeType.PLAY_PHYSICS:
-            return "elapsed_physics_time"
-        TimeType.APP_PHYSICS_SCALED, TimeType.PLAY_PHYSICS_SCALED:
-            return "elapsed_physics_scaled_time"
-        TimeType.APP_CLOCK:
-            return "elapsed_clock_time"
-        TimeType.APP_CLOCK_SCALED:
-            return "elapsed_clock_scaled_time"
-        TimeType.PLAY_RENDER:
-            return "elapsed_render_time"
-        TimeType.PLAY_RENDER_SCALED:
-            return "elapsed_render_scaled_time"
-        TimeType.APP_PHYSICS_FRAME_COUNT, TimeType.PLAY_PHYSICS_FRAME_COUNT:
-            return "physics_frame_count"
-        TimeType.APP_RENDER_FRAME_COUNT, TimeType.PLAY_RENDER_FRAME_COUNT:
-            return "render_frame_count"
-        _:
-            G.fatal("Unrecognized time_type: %d" % time_type)
-            return ""
+	match time_type:
+		TimeType.APP_PHYSICS, TimeType.PLAY_PHYSICS:
+			return "elapsed_physics_time"
+		TimeType.APP_PHYSICS_SCALED, TimeType.PLAY_PHYSICS_SCALED:
+			return "elapsed_physics_scaled_time"
+		TimeType.APP_CLOCK:
+			return "elapsed_clock_time"
+		TimeType.APP_CLOCK_SCALED:
+			return "elapsed_clock_scaled_time"
+		TimeType.PLAY_RENDER:
+			return "elapsed_render_time"
+		TimeType.PLAY_RENDER_SCALED:
+			return "elapsed_render_scaled_time"
+		TimeType.APP_PHYSICS_FRAME_COUNT, TimeType.PLAY_PHYSICS_FRAME_COUNT:
+			return "physics_frame_count"
+		TimeType.APP_RENDER_FRAME_COUNT, TimeType.PLAY_RENDER_FRAME_COUNT:
+			return "render_frame_count"
+		_:
+			G.fatal("Unrecognized time_type: %d" % time_type)
+			return ""
 
 
 func get_combined_scale() -> float:
-    return time_scale * additional_debug_time_scale
+	return time_scale * additional_debug_time_scale
 
 
 func scale_delta(duration: float) -> float:
-    return duration * get_combined_scale()
+	return duration * get_combined_scale()
 
 
 func get_scaled_time_step() -> float:
-    return PHYSICS_TIME_STEP * get_combined_scale()
+	return PHYSICS_TIME_STEP * get_combined_scale()
 
 
 func tween_method(
-        object: Object,
-        key: String,
-        initial_val,
-        final_val,
-        duration: float,
-        ease_name := "ease_in_out",
-        delay := 0.0,
-        time_type := TimeType.APP_PHYSICS,
-        on_completed_callback: Callable = Callable(),
-        arguments := [],
+		object: Object,
+		key: String,
+		initial_val,
+		final_val,
+		duration: float,
+		ease_name := "ease_in_out",
+		delay := 0.0,
+		time_type := TimeType.APP_PHYSICS,
+		on_completed_callback: Callable = Callable(),
+		arguments := [],
 ) -> int:
-    return _tween(
-        object,
-        key,
-        false,
-        initial_val,
-        final_val,
-        duration,
-        ease_name,
-        delay,
-        time_type,
-        on_completed_callback,
-        arguments,
-    )
+	return _tween(
+		object,
+		key,
+		false,
+		initial_val,
+		final_val,
+		duration,
+		ease_name,
+		delay,
+		time_type,
+		on_completed_callback,
+		arguments,
+	)
 
 
 func tween_property(
-        object: Object,
-        key: String,
-        initial_val,
-        final_val,
-        duration: float,
-        ease_name := "ease_in_out",
-        delay := 0.0,
-        time_type := TimeType.APP_PHYSICS,
-        on_completed_callback: Callable = Callable(),
-        arguments := [],
+		object: Object,
+		key: String,
+		initial_val,
+		final_val,
+		duration: float,
+		ease_name := "ease_in_out",
+		delay := 0.0,
+		time_type := TimeType.APP_PHYSICS,
+		on_completed_callback: Callable = Callable(),
+		arguments := [],
 ) -> int:
-    return _tween(
-        object,
-        key,
-        true,
-        initial_val,
-        final_val,
-        duration,
-        ease_name,
-        delay,
-        time_type,
-        on_completed_callback,
-        arguments,
-    )
+	return _tween(
+		object,
+		key,
+		true,
+		initial_val,
+		final_val,
+		duration,
+		ease_name,
+		delay,
+		time_type,
+		on_completed_callback,
+		arguments,
+	)
 
 
 func _tween(
-        object: Object,
-        key: String,
-        is_property: bool,
-        initial_val,
-        final_val,
-        duration: float,
-        ease_name: String,
-        delay: float,
-        time_type := TimeType.APP_PHYSICS,
-        on_completed_callback: Callable = Callable(),
-        arguments := [],
+		object: Object,
+		key: String,
+		is_property: bool,
+		initial_val,
+		final_val,
+		duration: float,
+		ease_name: String,
+		delay: float,
+		time_type := TimeType.APP_PHYSICS,
+		on_completed_callback: Callable = Callable(),
+		arguments := [],
 ) -> int:
-    var tween := ScaffolderTween.new(object, false)
-    tween._interpolate(
-        object,
-        key,
-        is_property,
-        initial_val,
-        final_val,
-        duration,
-        ease_name,
-        delay,
-        time_type,
-    )
-    if on_completed_callback != null:
-        tween.connect(
-            "tween_all_completed",
-            _call_tween_completed_callback.bindv([on_completed_callback, arguments]),
-        )
-    tween.start()
-    _tweens[tween.id] = tween
-    return tween.id
+	var tween := ScaffolderTween.new(object, false)
+	tween._interpolate(
+		object,
+		key,
+		is_property,
+		initial_val,
+		final_val,
+		duration,
+		ease_name,
+		delay,
+		time_type,
+	)
+	if on_completed_callback != null:
+		tween.connect(
+			"tween_all_completed",
+			_call_tween_completed_callback.bindv([on_completed_callback, arguments]),
+		)
+	tween.start()
+	_tweens[tween.id] = tween
+	return tween.id
 
 
 func _call_tween_completed_callback(on_completed_callback: Callable, arguments: Array) -> void:
-    on_completed_callback.callv(arguments)
+	on_completed_callback.callv(arguments)
 
 
 func clear_tween(tween_id: int, triggers_completed := false) -> bool:
-    if !_tweens.has(tween_id):
-        return false
-    if triggers_completed:
-        _tweens[tween_id].trigger_completed()
-    _tweens[tween_id].free()
-    _tweens.erase(tween_id)
-    return true
+	if !_tweens.has(tween_id):
+		return false
+	if triggers_completed:
+		_tweens[tween_id].trigger_completed()
+	_tweens[tween_id].free()
+	_tweens.erase(tween_id)
+	return true
 
 
 func set_timeout(
-        callback: Callable,
-        delay: float,
-        arguments := [],
-        time_type := TimeType.APP_PHYSICS,
+		callback: Callable,
+		delay: float,
+		arguments := [],
+		time_type := TimeType.APP_PHYSICS,
 ) -> int:
-    var timeout := _Timeout.new(callback.get_object(), time_type, callback, delay, arguments)
-    _timeouts[timeout.id] = timeout
-    return timeout.id
+	var timeout := _Timeout.new(callback.get_object(), time_type, callback, delay, arguments)
+	_timeouts[timeout.id] = timeout
+	return timeout.id
 
 
 func clear_timeout(timeout_id: int, triggers_timeout := false) -> bool:
-    if !_timeouts.has(timeout_id):
-        return false
-    if triggers_timeout:
-        _timeouts[timeout_id].trigger()
-    _timeouts.erase(timeout_id)
-    return true
+	if !_timeouts.has(timeout_id):
+		return false
+	if triggers_timeout:
+		_timeouts[timeout_id].trigger()
+	_timeouts.erase(timeout_id)
+	return true
 
 
 func set_interval(
-        callback: Callable,
-        period: float,
-        arguments := [],
-        time_type := TimeType.APP_PHYSICS,
+		callback: Callable,
+		period: float,
+		arguments := [],
+		time_type := TimeType.APP_PHYSICS,
 ) -> int:
-    var interval := _Interval.new(callback.get_object(), time_type, callback, period, arguments)
-    _intervals[interval.id] = interval
-    return interval.id
+	var interval := _Interval.new(callback.get_object(), time_type, callback, period, arguments)
+	_intervals[interval.id] = interval
+	return interval.id
 
 
 func clear_interval(interval_id: int, triggers_interval := false) -> bool:
-    if !_intervals.has(interval_id):
-        return false
-    if triggers_interval:
-        _intervals[interval_id].trigger()
-    _intervals.erase(interval_id)
-    return true
+	if !_intervals.has(interval_id):
+		return false
+	if triggers_interval:
+		_intervals[interval_id].trigger()
+	_intervals.erase(interval_id)
+	return true
 
 
 func throttle(
-        callback: Callable,
-        interval: float,
-        invokes_at_end := true,
-        time_type := TimeType.APP_PHYSICS,
+		callback: Callable,
+		interval: float,
+		invokes_at_end := true,
+		time_type := TimeType.APP_PHYSICS,
 ) -> Callable:
-    var throttler := _Throttler.new(
-        callback.get_object(),
-        time_type,
-        callback,
-        interval,
-        invokes_at_end,
-    )
-    var throttled_callback := Callable(throttler, "on_call")
-    _throttled_callbacks[throttled_callback] = throttler
-    return throttled_callback
+	var throttler := _Throttler.new(
+		callback.get_object(),
+		time_type,
+		callback,
+		interval,
+		invokes_at_end,
+	)
+	var throttled_callback := Callable(throttler, "on_call")
+	_throttled_callbacks[throttled_callback] = throttler
+	return throttled_callback
 
 
 func clear_throttle(throttled_callback: Callable) -> bool:
-    if !_throttled_callbacks.has(throttled_callback):
-        return false
-    _throttled_callbacks[throttled_callback].cancel()
-    return true
+	if !_throttled_callbacks.has(throttled_callback):
+		return false
+	_throttled_callbacks[throttled_callback].cancel()
+	return true
 
 
 func debounce(
-        callback: Callable,
-        interval: float,
-        invokes_at_start := false,
-        time_type := TimeType.APP_PHYSICS,
+		callback: Callable,
+		interval: float,
+		invokes_at_start := false,
+		time_type := TimeType.APP_PHYSICS,
 ) -> Callable:
-    var debouncer := _Debouncer.new(
-        callback.get_object(),
-        time_type,
-        callback,
-        interval,
-        invokes_at_start,
-    )
-    var debounced_callback := Callable(debouncer, "on_call")
-    _debounced_callbacks[debounced_callback] = debouncer
-    return debounced_callback
+	var debouncer := _Debouncer.new(
+		callback.get_object(),
+		time_type,
+		callback,
+		interval,
+		invokes_at_start,
+	)
+	var debounced_callback := Callable(debouncer, "on_call")
+	_debounced_callbacks[debounced_callback] = debouncer
+	return debounced_callback
 
 
 func clear_debounce(debounced_callback: Callable) -> bool:
-    if !_debounced_callbacks.has(debounced_callback):
-        return false
-    _debounced_callbacks[debounced_callback].cancel()
-    return true
+	if !_debounced_callbacks.has(debounced_callback):
+		return false
+	_debounced_callbacks[debounced_callback].cancel()
+	return true

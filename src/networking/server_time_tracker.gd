@@ -66,11 +66,11 @@ signal sync_completed(offset_usec: int, rtt_usec: int)
 
 ## Whether this instance is running on the server.
 var is_server: bool:
-    get:
-        return (
-            multiplayer.is_server() if is_instance_valid(multiplayer) and
-            multiplayer.has_multiplayer_peer() else true
-        )
+	get:
+		return (
+			multiplayer.is_server() if is_instance_valid(multiplayer) and
+			multiplayer.has_multiplayer_peer() else true
+		)
 
 ## The estimated clock offset from local time to server time (in microseconds).
 ## server_time ≈ local_time + clock_offset_usec
@@ -99,8 +99,8 @@ var _start_time_offset_usec: int = -1
 ## Returns true if the time tracker is ready to provide server time.
 ## For servers, always true. For clients, true after receiving server's offset.
 var is_time_initialized: bool:
-    get:
-        return is_server or _start_time_offset_usec >= 0
+	get:
+		return is_server or _start_time_offset_usec >= 0
 
 ## Total time spent paused (in microseconds). Used to adjust server time
 ## calculations during pause.
@@ -112,41 +112,41 @@ var _pause_start_wall_time_usec := 0
 
 
 func _ready() -> void:
-    G.log.log_system_ready("ServerTimeTracker")
+	G.log.log_system_ready("ServerTimeTracker")
 
-    # Only the server captures start time. Clients will receive the server's
-    # offset via RPC when they connect.
-    if is_server:
-        _start_time_offset_usec = Time.get_ticks_usec()
-        _pause_start_wall_time_usec = _start_time_offset_usec
+	# Only the server captures start time. Clients will receive the server's
+	# offset via RPC when they connect.
+	if is_server:
+		_start_time_offset_usec = Time.get_ticks_usec()
+		_pause_start_wall_time_usec = _start_time_offset_usec
 
-    # Connect to multiplayer signals to know when we're connected.
-    if G.network.is_client:
-        multiplayer.connected_to_server.connect(_client_on_connected_to_server)
-    if G.network.is_server:
-        multiplayer.peer_connected.connect(_server_on_peer_connected)
+	# Connect to multiplayer signals to know when we're connected.
+	if G.network.is_client:
+		multiplayer.connected_to_server.connect(_client_on_connected_to_server)
+	if G.network.is_server:
+		multiplayer.peer_connected.connect(_server_on_peer_connected)
 
 
 func _process(delta: float) -> void:
-    if auto_sync_interval <= 0.0:
-        return
-    if is_server:
-        return
-    if not multiplayer.has_multiplayer_peer():
-        return
+	if auto_sync_interval <= 0.0:
+		return
+	if is_server:
+		return
+	if not multiplayer.has_multiplayer_peer():
+		return
 
-    _time_since_last_sync += delta
+	_time_since_last_sync += delta
 
-    # Use faster sync interval until we have enough samples for a stable
-    # estimate.
-    var current_interval := (
-        initial_sync_interval
-        if _client_offset_samples.size() < sample_count
-        else auto_sync_interval
-    )
-    if _time_since_last_sync >= current_interval:
-        _time_since_last_sync = 0.0
-        client_request_time_sync()
+	# Use faster sync interval until we have enough samples for a stable
+	# estimate.
+	var current_interval := (
+		initial_sync_interval
+		if _client_offset_samples.size() < sample_count
+		else auto_sync_interval
+	)
+	if _time_since_last_sync >= current_interval:
+		_time_since_last_sync = 0.0
+		client_request_time_sync()
 
 
 ## Returns the estimated server time in microseconds.
@@ -158,47 +158,47 @@ func _process(delta: float) -> void:
 ##
 ## Returns 0 for clients that haven't received the server's offset yet.
 func get_server_time_usec() -> int:
-    # Client hasn't received server offset yet, return 0.
-    if not is_time_initialized:
-        return 0
+	# Client hasn't received server offset yet, return 0.
+	if not is_time_initialized:
+		return 0
 
-    var current_wall_time := Time.get_ticks_usec()
-    var elapsed_since_start := current_wall_time - _start_time_offset_usec
+	var current_wall_time := Time.get_ticks_usec()
+	var elapsed_since_start := current_wall_time - _start_time_offset_usec
 
-    # Subtract paused time to get active "game time".
-    var active_time := elapsed_since_start - _cumulative_pause_time_usec
+	# Subtract paused time to get active "game time".
+	var active_time := elapsed_since_start - _cumulative_pause_time_usec
 
-    # If currently paused, also subtract elapsed pause time.
-    # Query NetworkFrameDriver for authoritative pause state.
-    if G.network.frame_driver.is_paused:
-        var current_pause_duration := (
-            current_wall_time - _pause_start_wall_time_usec
-        )
-        active_time -= current_pause_duration
+	# If currently paused, also subtract elapsed pause time.
+	# Query NetworkFrameDriver for authoritative pause state.
+	if G.network.frame_driver.is_paused:
+		var current_pause_duration := (
+			current_wall_time - _pause_start_wall_time_usec
+		)
+		active_time -= current_pause_duration
 
-    if is_server:
-        # We ARE the server, return our active game time.
-        return active_time
+	if is_server:
+		# We ARE the server, return our active game time.
+		return active_time
 
-    # Client: return active game time adjusted by the calculated clock offset.
-    return active_time + clock_offset_usec
+	# Client: return active game time adjusted by the calculated clock offset.
+	return active_time + clock_offset_usec
 
 
 ## Manually request a time synchronization with the server.
 ##
 ## On the server, this does nothing.
 func client_request_time_sync() -> void:
-    if is_server:
-        return
-    if not multiplayer.has_multiplayer_peer():
-        return
-    # Don't sync time until we have the server's start time offset.
-    if not is_time_initialized:
-        return
+	if is_server:
+		return
+	if not multiplayer.has_multiplayer_peer():
+		return
+	# Don't sync time until we have the server's start time offset.
+	if not is_time_initialized:
+		return
 
-    # T1: Client sends request with its offset local timestamp.
-    _client_pending_sync_t1 = Time.get_ticks_usec() - _start_time_offset_usec
-    _server_rpc_request_time.rpc_id(1, _client_pending_sync_t1)
+	# T1: Client sends request with its offset local timestamp.
+	_client_pending_sync_t1 = Time.get_ticks_usec() - _start_time_offset_usec
+	_server_rpc_request_time.rpc_id(1, _client_pending_sync_t1)
 
 
 ## Manually adjusts the clock offset by the given delta.
@@ -207,32 +207,32 @@ func client_request_time_sync() -> void:
 ## estimate has drifted. The adjustment is applied to all existing samples
 ## to prevent the NTP averaging from reverting the correction.
 func force_clock_offset(delta_usec: int) -> void:
-    if is_server:
-        return
+	if is_server:
+		return
 
-    clock_offset_usec += delta_usec
+	clock_offset_usec += delta_usec
 
-    # Also adjust all samples so the running average doesn't fight this
-    # correction.
-    for i in range(_client_offset_samples.size()):
-        _client_offset_samples[i] += delta_usec
+	# Also adjust all samples so the running average doesn't fight this
+	# correction.
+	for i in range(_client_offset_samples.size()):
+		_client_offset_samples[i] += delta_usec
 
-    G.print(
+	G.print(
         "Manually adjusted clock offset by %d usec (new offset: %d usec)"
-        % [delta_usec, clock_offset_usec],
-        ScaffolderLog.CATEGORY_NETWORK_SYNC,
-    )
+		% [delta_usec, clock_offset_usec],
+		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+	)
 
 
 ## Clears all sync data and resets to unsynced state.
 func clear() -> void:
-    clock_offset_usec = 0
-    rtt_usec = 0
-    is_synced = false
-    _time_since_last_sync = 0.0
-    _client_pending_sync_t1 = 0
-    _client_offset_samples.clear()
-    _client_rtt_samples.clear()
+	clock_offset_usec = 0
+	rtt_usec = 0
+	is_synced = false
+	_time_since_last_sync = 0.0
+	_client_pending_sync_t1 = 0
+	_client_offset_samples.clear()
+	_client_rtt_samples.clear()
 
 
 ## Pause time tracking. Records current wall-clock time as pause start point.
@@ -240,14 +240,14 @@ func clear() -> void:
 ## Called by NetworkFrameDriver during pause execution. Idempotency is handled
 ## by NetworkFrameDriver, so this method just records the pause time.
 func pause() -> void:
-    _pause_start_wall_time_usec = Time.get_ticks_usec()
+	_pause_start_wall_time_usec = Time.get_ticks_usec()
 
-    G.print(
-        "Time tracking paused at wall-clock %d usec" %
-        _pause_start_wall_time_usec,
-        ScaffolderLog.CATEGORY_NETWORK_SYNC,
-        ScaffolderLog.Verbosity.VERBOSE,
-    )
+	G.print(
+		"Time tracking paused at wall-clock %d usec" %
+		_pause_start_wall_time_usec,
+		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+		ScaffolderLog.Verbosity.VERBOSE,
+	)
 
 
 ## Unpause time tracking. Calculates and accumulates pause duration.
@@ -255,41 +255,41 @@ func pause() -> void:
 ## Called by NetworkFrameDriver during unpause execution. Idempotency is
 ## handled by NetworkFrameDriver, so this method just accumulates pause time.
 func unpause() -> void:
-    var pause_end_wall_time_usec := Time.get_ticks_usec()
-    var pause_duration_usec := (
-        pause_end_wall_time_usec - _pause_start_wall_time_usec
-    )
-    _cumulative_pause_time_usec += pause_duration_usec
-    _pause_start_wall_time_usec = 0
+	var pause_end_wall_time_usec := Time.get_ticks_usec()
+	var pause_duration_usec := (
+		pause_end_wall_time_usec - _pause_start_wall_time_usec
+	)
+	_cumulative_pause_time_usec += pause_duration_usec
+	_pause_start_wall_time_usec = 0
 
-    @warning_ignore("integer_division")
-    var pause_duration_ms := pause_duration_usec / 1000
-    @warning_ignore("integer_division")
-    var cumulative_pause_ms := _cumulative_pause_time_usec / 1000
+	@warning_ignore("integer_division")
+	var pause_duration_ms := pause_duration_usec / 1000
+	@warning_ignore("integer_division")
+	var cumulative_pause_ms := _cumulative_pause_time_usec / 1000
 
-    G.print(
-        "Time tracking unpaused after %d ms (total paused: %d ms)" % [
-            pause_duration_ms,
-            cumulative_pause_ms,
-        ],
-        ScaffolderLog.CATEGORY_NETWORK_SYNC,
-        ScaffolderLog.Verbosity.VERBOSE,
-    )
+	G.print(
+		"Time tracking unpaused after %d ms (total paused: %d ms)" % [
+			pause_duration_ms,
+			cumulative_pause_ms,
+		],
+		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+		ScaffolderLog.Verbosity.VERBOSE,
+	)
 
 
 func _client_on_connected_to_server() -> void:
-    # When we connect to a server, clear sync data. The server will send us its
-    # start time offset, and then we'll proceed with time sync.
-    clear()
+	# When we connect to a server, clear sync data. The server will send us its
+	# start time offset, and then we'll proceed with time sync.
+	clear()
 
 
 func _server_on_peer_connected(peer_id: int) -> void:
-    # Send our start time offset to the newly connected client so they use the
-    # same time reference point.
-    _client_rpc_receive_start_time_offset.rpc_id(
-        peer_id,
-        _start_time_offset_usec,
-    )
+	# Send our start time offset to the newly connected client so they use the
+	# same time reference point.
+	_client_rpc_receive_start_time_offset.rpc_id(
+		peer_id,
+		_start_time_offset_usec,
+	)
 
 
 ## RPC called by server to send its start time offset to a client.
@@ -297,25 +297,25 @@ func _server_on_peer_connected(peer_id: int) -> void:
 ## server_offset_usec: The server's _start_time_offset_usec value.
 @rpc("authority", "call_remote", "reliable")
 func _client_rpc_receive_start_time_offset(server_offset_usec: int) -> void:
-    if is_server:
-        return
+	if is_server:
+		return
 
-    # Adopt the server's start time offset as our own so we're using the same
-    # time reference point.
-    _start_time_offset_usec = server_offset_usec
+	# Adopt the server's start time offset as our own so we're using the same
+	# time reference point.
+	_start_time_offset_usec = server_offset_usec
 
-    # Reset the frame driver's frame tracking since any frames processed before
-    # receiving the offset were based on incorrect time.
-    G.network.frame_driver.server_frame_index = 0
-    G.network.frame_driver.server_frame_time_usec = 0
+	# Reset the frame driver's frame tracking since any frames processed before
+	# receiving the offset were based on incorrect time.
+	G.network.frame_driver.server_frame_index = 0
+	G.network.frame_driver.server_frame_time_usec = 0
 
-    G.print(
-        "Adopted server start time offset: %d usec" % [server_offset_usec],
-        ScaffolderLog.CATEGORY_NETWORK_SYNC,
-    )
+	G.print(
+		"Adopted server start time offset: %d usec" % [server_offset_usec],
+		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+	)
 
-    # Now request time sync to calculate clock offset.
-    client_request_time_sync()
+	# Now request time sync to calculate clock offset.
+	client_request_time_sync()
 
 
 ## RPC called by client to request time from server.
@@ -323,17 +323,17 @@ func _client_rpc_receive_start_time_offset(server_offset_usec: int) -> void:
 ## t1_usec: The client's local time when the request was sent.
 @rpc("any_peer", "call_remote", "unreliable")
 func _server_rpc_request_time(t1_usec: int) -> void:
-    if not is_server:
-        return
+	if not is_server:
+		return
 
-    # T2: Server receives the request (use offset server time).
-    var t2_usec := get_server_time_usec()
+	# T2: Server receives the request (use offset server time).
+	var t2_usec := get_server_time_usec()
 
-    # T3: Server sends response (we send T2 and T3 together; T3 is "now").
-    var t3_usec := get_server_time_usec()
+	# T3: Server sends response (we send T2 and T3 together; T3 is "now").
+	var t3_usec := get_server_time_usec()
 
-    var sender_id := multiplayer.get_remote_sender_id()
-    _client_rpc_respond_time.rpc_id(sender_id, t1_usec, t2_usec, t3_usec)
+	var sender_id := multiplayer.get_remote_sender_id()
+	_client_rpc_respond_time.rpc_id(sender_id, t1_usec, t2_usec, t3_usec)
 
 
 ## RPC called by server to respond with time information.
@@ -343,50 +343,50 @@ func _server_rpc_request_time(t1_usec: int) -> void:
 ## t3_usec: Server send time.
 @rpc("authority", "call_remote", "unreliable")
 func _client_rpc_respond_time(t1_usec: int, t2_usec: int, t3_usec: int) -> void:
-    if is_server:
-        return
+	if is_server:
+		return
 
-    # Can't process time sync response until we have the server's offset.
-    if not is_time_initialized:
-        return
+	# Can't process time sync response until we have the server's offset.
+	if not is_time_initialized:
+		return
 
-    # T4: Client receives the response (use offset time).
-    var t4_usec := Time.get_ticks_usec() - _start_time_offset_usec
+	# T4: Client receives the response (use offset time).
+	var t4_usec := Time.get_ticks_usec() - _start_time_offset_usec
 
-    # Verify this response matches our pending request.
-    if t1_usec != _client_pending_sync_t1:
-        # Stale response, ignore.
-        return
+	# Verify this response matches our pending request.
+	if t1_usec != _client_pending_sync_t1:
+		# Stale response, ignore.
+		return
 
-    # Calculate round-trip time: RTT = (T4 - T1) - (T3 - T2).
-    # This is the total network delay (excluding server processing time).
-    var rtt := (t4_usec - t1_usec) - (t3_usec - t2_usec)
+	# Calculate round-trip time: RTT = (T4 - T1) - (T3 - T2).
+	# This is the total network delay (excluding server processing time).
+	var rtt := (t4_usec - t1_usec) - (t3_usec - t2_usec)
 
-    # Calculate clock offset using NTP formula:
-    # offset = ((T2 - T1) + (T3 - T4)) / 2
-    # This gives us how much to add to local time to get server time.
-    @warning_ignore("integer_division")
-    var offset := ((t2_usec - t1_usec) + (t3_usec - t4_usec)) / 2
+	# Calculate clock offset using NTP formula:
+	# offset = ((T2 - T1) + (T3 - T4)) / 2
+	# This gives us how much to add to local time to get server time.
+	@warning_ignore("integer_division")
+	var offset := ((t2_usec - t1_usec) + (t3_usec - t4_usec)) / 2
 
-    # Add to samples.
-    _client_offset_samples.append(offset)
-    _client_rtt_samples.append(rtt)
+	# Add to samples.
+	_client_offset_samples.append(offset)
+	_client_rtt_samples.append(rtt)
 
-    # Keep only the most recent samples.
-    while _client_offset_samples.size() > sample_count:
-        _client_offset_samples.pop_front()
-    while _client_rtt_samples.size() > sample_count:
-        _client_rtt_samples.pop_front()
+	# Keep only the most recent samples.
+	while _client_offset_samples.size() > sample_count:
+		_client_offset_samples.pop_front()
+	while _client_rtt_samples.size() > sample_count:
+		_client_rtt_samples.pop_front()
 
-    # Calculate average offset (could also use median for more robustness).
-    var total_offset: int = 0
-    for sample in _client_offset_samples:
-        total_offset += sample
-    @warning_ignore("integer_division")
-    clock_offset_usec = total_offset / _client_offset_samples.size()
+	# Calculate average offset (could also use median for more robustness).
+	var total_offset: int = 0
+	for sample in _client_offset_samples:
+		total_offset += sample
+	@warning_ignore("integer_division")
+	clock_offset_usec = total_offset / _client_offset_samples.size()
 
-    # Store the latest RTT.
-    rtt_usec = rtt
+	# Store the latest RTT.
+	rtt_usec = rtt
 
-    is_synced = true
-    sync_completed.emit(clock_offset_usec, rtt_usec)
+	is_synced = true
+	sync_completed.emit(clock_offset_usec, rtt_usec)
