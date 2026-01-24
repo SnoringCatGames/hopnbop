@@ -6,6 +6,9 @@ extends Resource
 @export_group("Network connection")
 @export var preview_connect_to_remote_server := false
 @export var preview_run_multiple_clients := false
+var preview_client_count: int:
+    get:
+        return 2 if preview_run_multiple_clients else 1
 # FIXME: [GameLift]: Set up support to connect to a remote server.
 @export var remote_server_ip_address: StringName = "127.0.0.1"
 @export var remote_server_port := 4433

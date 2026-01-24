@@ -425,6 +425,34 @@ func _ready() -> void:
 		if is_inside_tree():
 			get_tree().paused = true
 
+        # In preview mode (local multi-instance testing), track client
+        # connections and unpause when all expected clients have connected.
+        if G.network.is_preview and G.network.is_server:
+            multiplayer.peer_connected.connect(_on_preview_peer_connected)
+
+
+## Handles peer connections in preview mode to auto-unpause when ready.
+func _on_preview_peer_connected(_peer_id: int) -> void:
+    if not G.network.is_preview or not G.network.is_server:
+        return
+
+    var connected_count := multiplayer.get_peers().size()
+    var expected_count := G.settings.preview_client_count
+
+    G.print(
+        "Preview mode: %d/%d clients connected" % [connected_count, expected_count],
+        ScaffolderLog.CATEGORY_NETWORK_SYNC,
+    )
+
+    if connected_count >= expected_count:
+        G.print(
+            "All expected clients connected; Unpausing game",
+            ScaffolderLog.CATEGORY_NETWORK_SYNC,
+        )
+        # Disconnect signal to avoid re-checking.
+        multiplayer.peer_connected.disconnect(_on_preview_peer_connected)
+        server_set_is_paused(false)
+
 
 ## Pause or unpause frame simulation.
 ##
