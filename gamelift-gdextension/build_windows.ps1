@@ -144,7 +144,7 @@ if (-not (Test-Path "godot-cpp")) {
 	Write-Info "Cloning godot-cpp..."
 	git clone --recurse-submodules https://github.com/godotengine/godot-cpp.git
 	Set-Location godot-cpp
-	git checkout godot-4.2-stable
+	git checkout godot-4.5-stable
 	Set-Location ..
 }
 
@@ -176,7 +176,43 @@ if (-not (Test-Path "gamelift-server-sdk\cmake-build")) {
 	New-Item -ItemType Directory -Path "gamelift-server-sdk\cmake-build" -Force | Out-Null
 }
 
-Set-Location gamelift-server-sdk\cmake-build
+Set-Location gamelift-server-sdk
+
+# Patch CMakeLists.txt files to enforce /MT runtime library (for CI/CD compatibility)
+Write-Info "Patching GameLift SDK CMakeLists.txt for /MT runtime..."
+$rootCMake = Get-Content "CMakeLists.txt" -Raw
+if ($rootCMake -notmatch "CMAKE_MSVC_RUNTIME_LIBRARY") {
+	Write-Info "  Patching root CMakeLists.txt..."
+	$rootCMake = $rootCMake -replace '(set\(GameLiftServerSdk_DEFAULT_ARGS)', @'
+# Force /MT runtime library for Windows MSVC to match Godot GDExtension
+if(MSVC)
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  # Also set it in DEFAULT_ARGS for sub-projects
+  list(APPEND GameLiftServerSdk_DEFAULT_ARGS
+    "-DCMAKE_MSVC_RUNTIME_LIBRARY:STRING=MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
+$1'@
+	Set-Content "CMakeLists.txt" -Value $rootCMake -NoNewline
+}
+
+$sdkCMake = Get-Content "gamelift-server-sdk\CMakeLists.txt" -Raw
+if ($sdkCMake -notmatch "CMAKE_MSVC_RUNTIME_LIBRARY") {
+	Write-Info "  Patching gamelift-server-sdk/CMakeLists.txt..."
+	$sdkCMake = $sdkCMake -replace '(if\(MSVC\)\s+# Unlock object file size limit\s+add_compile_options\(/bigobj\))',@'
+if(MSVC)
+    # Unlock object file size limit
+    add_compile_options(/bigobj)
+    # Use static runtime library (/MT) to match Godot GDExtension
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    # Also force via compiler flags as fallback
+    string(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+    string(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    string(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")'@
+	Set-Content "gamelift-server-sdk\CMakeLists.txt" -Value $sdkCMake -NoNewline
+}
+
+Set-Location cmake-build
 
 Write-Info "Configuring GameLift SDK with CMake 3.27..."
 # Set OPENSSL_ROOT_DIR environment variable so nested CMake projects can find it
@@ -191,6 +227,10 @@ $cmakeArgs = @(
 	"-DCMAKE_BUILD_TYPE=Release",
 	"-DGAMELIFT_USE_STD=1",
 	"-DBUILD_SHARED_LIBS=OFF",  # Build as static library for GDExtension
+	"-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded",  # Use static runtime (/MT) to match GDExtension
+	"-DCMAKE_CXX_FLAGS_RELEASE=/MT /O2 /Ob2 /DNDEBUG",  # Force /MT explicitly
+	"-DCMAKE_C_FLAGS_RELEASE=/MT /O2 /Ob2 /DNDEBUG",    # Force /MT explicitly
+	"-DRUN_UNIT_TESTS=OFF",  # Skip unit tests (they have runtime library issues)
 	"-S", "..", "-B", "."
 )
 

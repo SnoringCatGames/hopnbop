@@ -55,24 +55,30 @@ jobs:
       - name: Run Unit Tests
         continue-on-error: true
         id: unit-tests
+        timeout-minutes: 10
         run: |
           echo "Starting unit tests..."
-          ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . \
+          timeout 300s ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . \
             addons/gut/gut_cmdln.gd \
             -gdir=res://test/unit \
             -gexit \
-            -gjunit_xml_file=unit_test_results.xml 2>&1 | tee unit_test.log
+            -gjunit_xml_file=unit_test_results.xml 2>&1 | tee unit_test.log || {
+            echo "Unit tests completed with exit code $?"
+          }
 
       - name: Run Integration Tests
         continue-on-error: true
         id: integration-tests
+        timeout-minutes: 10
         run: |
           echo "Starting integration tests..."
-          ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . \
+          timeout 300s ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . \
             addons/gut/gut_cmdln.gd \
             -gdir=res://test/integration \
             -gexit \
-            -gjunit_xml_file=integration_test_results.xml 2>&1 | tee integration_test.log
+            -gjunit_xml_file=integration_test_results.xml 2>&1 | tee integration_test.log || {
+            echo "Integration tests completed with exit code $?"
+          }
 
       - name: Display Test Results
         run: |

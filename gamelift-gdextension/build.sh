@@ -10,7 +10,7 @@ set -e
 # Configuration
 # =============================================================================
 
-GODOT_VERSION="4.2-stable"
+GODOT_VERSION="4.5-stable"
 BUILD_TYPE="template_release"
 SKIP_DEPS=false
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -204,11 +204,11 @@ if [ "$SKIP_DEPS" = false ]; then
     cmake -G "Unix Makefiles" \
         -DCMAKE_BUILD_TYPE=Release \
         -DGAMELIFT_USE_STD=1 \
-        -DBUILD_FOR_UNREAL=ON \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DRUN_UNIT_TESTS=OFF \
         -S .. -B .
 
-    make -j$(nproc)
-    make install
+    cmake --build . --config Release --target install -j$(nproc)
 
     cd "$SCRIPT_DIR"
     echo "  ✓ GameLift SDK built and installed"
