@@ -11,5 +11,5 @@ func _init() -> void:
     super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
 
 
-func process(character) -> bool:
+func process(_character) -> bool:
     return true

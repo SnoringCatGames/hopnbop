@@ -138,12 +138,18 @@ func error(
         return
 
     message = "ERROR  : %s" % message
+    if should_crash:
+        message = "FATAL %s" % message
 
     push_error(message)
     print_stack()
     self.print(message, _category)
     breakpoint
     if should_crash:
+        if not OS.has_feature("editor"):
+            # If we're not running in the editor in preview mode, let the player
+            # know why we're quitting.
+            OS.alert(message)
         get_tree().quit()
 
 
@@ -200,8 +206,7 @@ func check(condition: bool, message: String) -> bool:
 
     if not condition:
         var formatted_message := "FATAL ERROR: %s" % message
-        error(formatted_message, CATEGORY_CORE_SYSTEMS)
-        get_tree().quit()
+        error(formatted_message, CATEGORY_CORE_SYSTEMS, true)
 
     return condition
 

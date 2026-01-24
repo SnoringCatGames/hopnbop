@@ -390,7 +390,7 @@ func _handle_new_authoritative_state() -> void:
     if should_unpack_state:
         # Record local class properties.
         _unpack_networked_state()
-        frame_authority = new_frame_authority
+        frame_authority = new_frame_authority as FrameAuthority
 
     received_network_state.emit()
 

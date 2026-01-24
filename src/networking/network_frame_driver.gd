@@ -48,14 +48,18 @@ extends Node
 ## - Only one rollback occurs per _network_process, earliest frame takes priority
 
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug
-# - AI: Make sure that our vscode tasks and launch commands use WSL for any step involving building the GDExtension.
+# - AI: Make sure that our vscode tasks and launch commands use WSL for any step involving building the GDExtension. And, make sure the reuse our setup_and_build.sh script for building.
+# - AI: Update our GitHub Actions builds the GDExtension for all three OSes, not just Linux.
+# - Need to make sure our build process builds the GDExtension all three of Windos, Linux, and Mac (so we can develop on two, and deploy on the third).
+# - Why was vcpkg added, and can we delete it?
+# - Rename setup_and_build to build.
 # - Debug the game.
 #   - Fix the GDExtension importing in Godot.
-#   - Fix failing tests.
 #   - Debug pause behavior.
 # - Review tests.
 # - Fix GitHub CI.
 # - Lingering FIXMEs.
+# - Use is_instance_valid instead of null comparisons.
 # - Implement multiple players per client support (as per below notes).
 # - Implement annotations:
 #   - Toggleable at run time.
@@ -696,7 +700,7 @@ func _cleanup_buffer_after_pause() -> void:
             node._cleanup_buffer_after_pause(_pause_start_frame_index)
 
 
-func _pre_physics_process(delta: float) -> void:
+func _pre_physics_process(_delta: float) -> void:
     if _is_paused:
         return
 
@@ -770,6 +774,7 @@ func _resync_frame_time_to_wall_clock() -> void:
 
     # Warn if drift exceeds 1 second (indicates potential timing issues)
     if absf(drift_usec) > 1_000_000:
+        @warning_ignore("integer_division")
         G.warning(
             "Large timestamp drift detected: %d ms at frame %d"
             % [drift_usec / 1000, server_frame_index],
@@ -779,6 +784,7 @@ func _resync_frame_time_to_wall_clock() -> void:
     # Sync frame time to wall-clock to maintain accurate timestamps for logging
     server_frame_time_usec = actual_server_time_usec
 
+    @warning_ignore("integer_division")
     G.print(
         "Re-synced frame timestamp to wall-clock (drift: %d ms)"
         % [drift_usec / 1000],

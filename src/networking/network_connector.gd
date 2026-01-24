@@ -49,11 +49,15 @@ func server_enable_connections() -> void:
     G.check_is_server("NetworkConnector.server_enable_connections")
 
     var peer = ENetMultiplayerPeer.new()
-    peer.create_server(G.settings.server_port, G.settings.max_client_count)
+    var result := peer.create_server(G.settings.server_port, G.settings.max_client_count)
 
     G.check(
+        result == Error.OK,
+        "Failed to start multiplayer server: error=%d" % result,
+    )
+    G.check(
         peer.get_connection_status() != MultiplayerPeer.CONNECTION_DISCONNECTED,
-        "Failed to start multiplayer server",
+        "Failed to start multiplayer server: status=DISCONNECTED",
     )
 
     multiplayer.multiplayer_peer = peer
@@ -71,10 +75,14 @@ func client_connect_to_server() -> void:
     # FIXME: [GameLift]: Support connecting to the remote server.
 
     var peer = ENetMultiplayerPeer.new()
-    peer.create_client(G.settings.server_ip_address, G.settings.server_port)
+    var result := peer.create_client(G.settings.server_ip_address, G.settings.server_port)
 
+    G.check(
+        result == Error.OK,
+        "Failed to start multiplayer client: error=%d" % result,
+    )
     if peer.get_connection_status() == MultiplayerPeer.CONNECTION_DISCONNECTED:
-        G.log.alert_user("Failed to start multiplayer client", ScaffolderLog.CATEGORY_CORE_SYSTEMS)
+        G.log.alert_user("Failed to start multiplayer client: status=DISCONNECTED", ScaffolderLog.CATEGORY_CORE_SYSTEMS)
         G.game_panel.client_exit_game()
         return
 

@@ -115,7 +115,7 @@ func compute_arc_points(
     assert(sector_arc_length > 0.0)
 
     var angle_diff := end_angle - start_angle
-    var sector_count := floorf(absf(angle_diff) * radius / sector_arc_length)
+    var sector_count := floori(absf(angle_diff) * radius / sector_arc_length)
     var delta_theta := sector_arc_length / radius
     var theta := start_angle
 
@@ -196,7 +196,7 @@ func draw_capsule_outline(
         thickness := 1.0,
         sector_arc_length := 4.0,
 ) -> void:
-    var sector_count := ceilf((PI * radius / sector_arc_length) / 2.0) * 2.0
+    var sector_count := ceili((PI * radius / sector_arc_length) / 2.0) * 2
     var delta_theta := PI / sector_count
     var theta := \
     PI / 2.0 if \

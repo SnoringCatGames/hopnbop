@@ -160,6 +160,7 @@ func update_window_title() -> void:
 func _position_client_window_in_preview_mode() -> void:
     # Get usable screen area (excluding taskbar and other system UI).
     var usable_rect := DisplayServer.screen_get_usable_rect()
+    @warning_ignore("integer_division")
     var half_width := usable_rect.size.x / 2
 
     # Account for window title bar height.

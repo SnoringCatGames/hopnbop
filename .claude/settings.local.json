@@ -63,7 +63,9 @@
       "Bash(export OPENSSL_PATH=\"C:/Users/lsl/Repositories/jumpnthump/vcpkg/installed/x64-windows\")",
       "Bash(wsl sudo apt-get:*)",
       "Bash(wsl tail:*)",
-      "Bash(wsl find:*)"
+      "Bash(wsl find:*)",
+      "Bash(wsl ls:*)",
+      "Bash(powershell:*)"
     ]
   }
 }

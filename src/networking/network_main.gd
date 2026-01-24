@@ -104,7 +104,7 @@ func _enter_tree() -> void:
     add_child(gamelift_manager)
 
     is_headless = DisplayServer.get_name() == "headless"
-    is_preview = G.args.has("preview")
+    is_preview = OS.has_feature("editor")
     is_server = is_headless or G.args.has("server")
     preview_client_number = int(G.args.client) if G.args.has("client") else 0
 
