@@ -11,7 +11,7 @@
             "args": [
                 "bash",
                 "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/setup_and_build.sh --godot-version 4.5"
+                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/setup_and_build.sh --both"
             ],
             "problemMatcher": [],
             "presentation": {
@@ -20,7 +20,7 @@
                 "clear": true
             },
             "group": "build",
-            "detail": "Install dependencies and build GameLift GDExtension (first-time setup)"
+            "detail": "Install dependencies and build GameLift GDExtension (first-time setup, both debug+release)"
         },
         {
             "label": "GameLift: Install WSL Dependencies",
@@ -48,7 +48,7 @@
             "args": [
                 "bash",
                 "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump/gamelift-gdextension && GAMELIFT_SDK_PATH=gamelift-server-sdk/cmake-build/prefix /home/levi/.local/bin/scons platform=linux target=template_release -j4 && GAMELIFT_SDK_PATH=gamelift-server-sdk/cmake-build/prefix /home/levi/.local/bin/scons install && cp gamelift-server-sdk/cmake-build/prefix/lib/libaws-cpp-sdk-gamelift-server.so ../addons/gamelift/bin/"
+                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/setup_and_build.sh --skip-deps --release"
             ],
             "problemMatcher": [],
             "presentation": {
@@ -60,7 +60,7 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "detail": "Build GameLift GDExtension (release, Linux)"
+            "detail": "Build GameLift GDExtension (release, Linux) using setup_and_build.sh"
         },
         {
             "label": "GameLift: Build GDExtension (Debug)",
@@ -69,7 +69,7 @@
             "args": [
                 "bash",
                 "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump/gamelift-gdextension && GAMELIFT_SDK_PATH=gamelift-server-sdk/cmake-build/prefix /home/levi/.local/bin/scons platform=linux target=template_debug -j4 && GAMELIFT_SDK_PATH=gamelift-server-sdk/cmake-build/prefix /home/levi/.local/bin/scons install && cp gamelift-server-sdk/cmake-build/prefix/lib/libaws-cpp-sdk-gamelift-server.so ../addons/gamelift/bin/"
+                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/setup_and_build.sh --skip-deps --debug"
             ],
             "problemMatcher": [],
             "presentation": {
@@ -78,7 +78,61 @@
                 "clear": true
             },
             "group": "build",
-            "detail": "Build GameLift GDExtension (debug, Linux)"
+            "detail": "Build GameLift GDExtension (debug, Linux) using setup_and_build.sh"
+        },
+        {
+            "label": "GameLift: Build GDExtension (Both)",
+            "type": "shell",
+            "command": "wsl",
+            "args": [
+                "bash",
+                "-c",
+                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/setup_and_build.sh --skip-deps --both"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "group": "build",
+            "detail": "Build GameLift GDExtension (debug + release, Linux) using setup_and_build.sh"
+        },
+        {
+            "label": "GameLift: Build All Platforms (Release)",
+            "type": "shell",
+            "command": "wsl",
+            "args": [
+                "bash",
+                "-c",
+                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/setup_and_build.sh --skip-deps --all-platforms --release"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "group": "build",
+            "detail": "Build GDExtension for Linux, Windows, and macOS (release only)"
+        },
+        {
+            "label": "GameLift: Build All Platforms (Both)",
+            "type": "shell",
+            "command": "wsl",
+            "args": [
+                "bash",
+                "-c",
+                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/setup_and_build.sh --skip-deps --all-platforms --both"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "group": "build",
+            "detail": "Build GDExtension for Linux, Windows, and macOS (debug + release)"
         },
         {
             "label": "GameLift: Clean Build",
@@ -87,7 +141,7 @@
             "args": [
                 "bash",
                 "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump/gamelift-gdextension && rm -rf bin/ godot-cpp/bin/ .scons_cache/ && echo 'Build artifacts cleaned'"
+                "cd /mnt/c/Users/lsl/Repositories/jumpnthump/gamelift-gdextension && rm -rf bin/ godot-cpp/bin/ .scons_cache/ .sconsign.dblite && echo 'Build artifacts cleaned'"
             ],
             "problemMatcher": [],
             "presentation": {
@@ -97,13 +151,13 @@
             "detail": "Clean all build artifacts"
         },
         {
-            "label": "GameLift: Rebuild SDK",
+            "label": "GameLift: Full Rebuild (with dependencies)",
             "type": "shell",
             "command": "wsl",
             "args": [
                 "bash",
                 "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump/gamelift-gdextension/gamelift-server-sdk && rm -rf cmake-build && mkdir -p cmake-build && cd cmake-build && cmake -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE=Release -DGAMELIFT_USE_STD=1 -DBUILD_FOR_UNREAL=ON -S .. -B . && make -j4"
+                "cd /mnt/c/Users/lsl/Repositories/jumpnthump/gamelift-gdextension && rm -rf cmake-build godot-cpp gamelift-server-sdk bin .scons_cache .sconsign.dblite && cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/setup_and_build.sh --both"
             ],
             "problemMatcher": [],
             "presentation": {
@@ -111,7 +165,8 @@
                 "panel": "dedicated",
                 "clear": true
             },
-            "detail": "Rebuild GameLift Server SDK from scratch"
+            "group": "build",
+            "detail": "Clean everything and rebuild from scratch (includes downloading dependencies)"
         },
         // =====================================================================
         // Run Tasks

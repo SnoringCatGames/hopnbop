@@ -48,10 +48,6 @@ extends Node
 ## - Only one rollback occurs per _network_process, earliest frame takes priority
 
 # FIXME: LEFT OFF HERE: ACTUALLY: Review and debug
-# - AI: Make sure that our vscode tasks and launch commands use WSL for any step involving building the GDExtension. And, make sure the reuse our setup_and_build.sh script for building.
-# - AI: Update our GitHub Actions builds the GDExtension for all three OSes, not just Linux.
-# - Need to make sure our build process builds the GDExtension all three of Windos, Linux, and Mac (so we can develop on two, and deploy on the third).
-# - Why was vcpkg added, and can we delete it?
 # - Rename setup_and_build to build.
 # - Debug the game.
 #   - Fix the GDExtension importing in Godot.
