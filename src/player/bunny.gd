@@ -33,7 +33,7 @@ func _process_movement_and_actions() -> void:
 	super._process_movement_and_actions()
 
 
-func play_sound(sound_name: String) -> void:
+func play_sound(sound_name: StringName) -> void:
 	# TODO: Implement sounds.
 	match sound_name:
 		"jump":

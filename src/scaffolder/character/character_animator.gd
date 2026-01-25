@@ -13,5 +13,5 @@ func face_right() -> void:
 	animated_sprite.flip_h = not faces_right_by_default
 
 
-func play(animation_name: String) -> void:
+func play(animation_name: StringName) -> void:
 	animated_sprite.play(animation_name)
