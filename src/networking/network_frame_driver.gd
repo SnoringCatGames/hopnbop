@@ -60,6 +60,7 @@ extends Node
 #   - We should use ints to represent player_ids instead of strings.
 #   - To support this, we should
 # - Replace Array[String with packed array.
+# - Review PlayerList, PlayerDisplay, and PlayerOverheadLabels.
 #
 # >>>> LEFT-OFF MANUAL STEPS FROM LOBBY AND UI INTEGRATION:
 # - Scene files (lobby_level.tscn, player_list.tscn, player_display.tscn) may need minor adjustments in the Godot editor
