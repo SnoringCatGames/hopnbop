@@ -386,6 +386,26 @@ extends Node
 #   - Menu click sound
 #
 # - Review these notes: https://trello.com/c/i8peodBL
+#
+# ### TODO: After everything else:
+# - AI: I am considering creating a re-usable GDExtension that I can publish on
+#   the Godot Asset Library for anyone to use for common featurse when
+#   integrating with AWS GameLift.
+#   - Does this make sense? Is there any logic within the current C++
+#     GDExtension directory that is specific to this local game? Or are there
+#     any additional features that it would make sense to add?
+# - AI: I want to publish a plugin on the Godot Asset Library that provides
+#   support for client prediction and rollback networking. Please create a plan
+#   for implementing this plugin based on the current networking architecture in
+#   this project. The plugin should be easy to integrate into new Godot
+#   projects, and should include documentation and example scenes. In
+#   particular, analyze this codebase, and identify which systems need to be
+#   decoupled in order to separate-out the game-agnostic networking logic
+#   (connection, replication, prediction, rollback, driver, time-tracking,
+#   important not-game-specific local-session and match-state logic, etc). In
+#   particular, I think some of the current "local-session" vs "match-state" vs
+#   other state tracked in networking systems might be best to consolidate in a
+#   separate location.
 
 ## This determines the period we use between frames that we record in rollback
 ## buffers.
