@@ -2,10 +2,7 @@
 class_name Level
 extends Node2D
 
-@export var player_spawner: MultiplayerSpawner:
-	set(value):
-		player_spawner = value
-		update_configuration_warnings()
+## Abstract base class for all level types (lobby, networked gameplay).
 
 ## This is the location where all player nodes should be spawned.
 @export var players_node: Node2D:
@@ -14,141 +11,44 @@ extends Node2D
 		update_configuration_warnings()
 
 var players: Array[Player] = []
-# Dictionary<int, Player
-var players_by_id := { }
 
-var npcs: Array[NPC] = []
-
-
-func _enter_tree() -> void:
-	if Engine.is_editor_hint():
-		return
-
-	G.game_panel.on_level_added(self)
-
-	if G.network.is_server:
-		# Add players nodes for already-connected clients.
-		for multiplayer_id in multiplayer.get_peers():
-			_server_add_player(multiplayer_id)
-
-		# Listen for added/removed client connections, to maintain player nodes.
-		multiplayer.peer_connected.connect(_server_add_player)
-		multiplayer.peer_disconnected.connect(_server_remove_player)
+# Dictionary<String, Player>
+# Keys are player_id (String format varies by level type).
+var players_by_id := {}
 
 
 func _ready() -> void:
-	var warnings := _get_configuration_warnings()
-	if not warnings.is_empty():
-		G.error("Level._ready: %s (%s)" % [warnings[0], get_scene_file_path()])
-		return
-
-	if Engine.is_editor_hint():
-		return
-
-	G.log.log_system_ready("Level")
-
-	%PlayerSpawner.set_multiplayer_authority(NetworkConnector.SERVER_ID)
-
-	for player_scene in G.settings.player_scenes:
-		player_spawner.add_spawnable_scene(player_scene.resource_path)
-
-	if G.network.is_client:
-		%PlayerSpawner.spawned.connect(_client_on_player_spawned)
-		%PlayerSpawner.despawned.connect(_client_on_player_despawned)
-
-	if G.network.is_server:
-		G.game_panel.is_level_fully_loaded = true
+	pass
 
 
-func _client_on_player_spawned(p_player: Node) -> void:
-	G.ensure(p_player is Player)
-	var player: Player = p_player
-	G.print("Player spawned: %s" % player.get_string(), ScaffolderLog.CATEGORY_GAME_STATE)
-
-
-func _client_on_player_despawned(p_player: Node) -> void:
-	G.ensure(p_player is Player)
-	var player: Player = p_player
-	G.print("Player despawned: %s" % player.get_string(), ScaffolderLog.CATEGORY_GAME_STATE)
-
-
-func _exit_tree() -> void:
-	if Engine.is_editor_hint():
-		return
-	if G.network.is_server:
-		G.game_panel.is_level_fully_loaded = false
-		multiplayer.peer_connected.disconnect(_server_add_player)
-		multiplayer.peer_disconnected.disconnect(_server_remove_player)
-	G.game_panel.on_level_removed(self)
-
-
-func _server_add_player(multiplayer_id: int) -> void:
-	var player: Player = G.settings.default_player_scene.instantiate()
-	player.multiplayer_id = multiplayer_id
-	player.global_position = _get_player_spawn_position()
-	player.name = "Player_%s" % multiplayer_id
-	players.append(player)
-	players_by_id[multiplayer_id] = player
-	players_node.add_child(player)
-
-
-func _server_remove_player(multiplayer_id: int) -> void:
-	# Find the player instance.
-	var player: Player
-	for p in players:
-		if p.multiplayer_id == multiplayer_id:
-			player = p
-			break
-
-	if not is_instance_valid(player):
-		G.warning(
-			"Level._remove_player: No valid player found for the given ID: %s" % multiplayer_id,
-			ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-		)
-		return
-
-	players.erase(player)
-	players_by_id.erase(multiplayer_id)
-	player.queue_free()
-
-
-func on_player_added(player: Player) -> void:
-	if G.network.is_client:
-		players.append(player)
-		players_by_id[player.multiplayer_id] = player
-
-
-func on_player_removed(player: Player) -> void:
-	if G.network.is_client:
-		players.erase(player)
-		players_by_id.erase(player.multiplayer_id)
-
-
-func on_npc_added(npc: NPC) -> void:
-	if G.network.is_client:
-		npcs.append(npc)
-
-
-func on_npc_removed(npc: NPC) -> void:
-	if G.network.is_client:
-		npcs.erase(npc)
-
-
+## Virtual method - override in subclasses to provide spawn position logic.
 func _get_player_spawn_position() -> Vector2:
-	# FIXME: Calculate player spawn position.
 	return Vector2.ZERO
+
+
+## Called when a player is added to this level.
+## Maintains players array and players_by_id dictionary.
+func register_player(player: Player) -> void:
+	players.append(player)
+	players_by_id[player.player_id] = player
+
+
+## Called when a player is removed from this level.
+## Updates players array and players_by_id dictionary.
+func deregister_player(player: Player) -> void:
+	players.erase(player)
+	players_by_id.erase(player.player_id)
+
+
+## Returns a debug string identifying this level.
+func get_string() -> String:
+	return Utils.get_filename_from_path(scene_file_path)
 
 
 func _get_configuration_warnings() -> PackedStringArray:
 	var warnings: PackedStringArray = []
 
-	if not is_instance_valid(player_spawner):
-		warnings.append("player_spawner must be set")
 	if not is_instance_valid(players_node):
 		warnings.append("players_node not set")
 
 	return warnings
-
-
-func get_string() -> String:
-	return Utils.get_filename_from_path(scene_file_path)
