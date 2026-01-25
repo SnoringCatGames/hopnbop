@@ -140,12 +140,12 @@ func interpolate_property(
 		delay := 0.0,
 		time_type := TimeType.APP_PHYSICS,
 ) -> void:
-	_interpolate(object, key, true, initial_val, final_val, duration, ease_name, delay, time_type)
+	_interpolate(object, str(key), true, initial_val, final_val, duration, ease_name, delay, time_type)
 
 
 func _interpolate(
 		object: Object,
-		key: NodePath,
+		key: StringName,
 		is_property: bool,
 		initial_val,
 		final_val,
@@ -240,6 +240,6 @@ class _SubTween:
 
 	func _update_with_value(value) -> void:
 		if is_property:
-			object.set_indexed(key, value)
+			object.set_indexed(NodePath(key), value)
 		else:
 			object.call(key, value)
