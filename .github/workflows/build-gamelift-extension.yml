@@ -218,6 +218,14 @@ jobs:
             -DCMAKE_C_FLAGS_RELEASE="/MT /O2 /Ob2 /DNDEBUG" `
             -DRUN_UNIT_TESTS=OFF `
             -DCMAKE_POLICY_DEFAULT_CMP0000=OLD `
+            -DOPENSSL_ROOT_DIR="${{ github.workspace }}\vcpkg\installed\x64-windows" `
+            ..
+          cmake --build . --config Release
+
+      - name: Build GDExtension (Release)
+        working-directory: gamelift-gdextension
+        env:
+          GODOT_CPP_PATH: godot-cpp
           GAMELIFT_SDK_PATH: gamelift-server-sdk/cmake-build/prefix
           OPENSSL_PATH: ${{ github.workspace }}\vcpkg\installed\x64-windows
         run: |
