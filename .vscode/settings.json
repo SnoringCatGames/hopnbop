@@ -20,10 +20,8 @@
 		"editor.insertSpaces": false,
 		"editor.tabSize": 4,
 		"editor.formatOnSave": true,
-		"editor.defaultFormatter": "eddiedover.gdscript-formatter-linter",
-		"editor.codeActionsOnSave": {
-			"source.fixAll": "explicit"
-		},
+		// "editor.defaultFormatter": "eddiedover.gdscript-formatter-linter",
+		"editor.defaultFormatter": "geequlim.godot-tools",
 		"editor.rulers": [
 			80
 		]
@@ -31,6 +29,7 @@
 	// Godot Tools extension settings
 	"godot_tools.editor_path": "",
 	"godot_tools.gdscript_lsp_server_port": 6005,
+	"godot_tools.editor_server_port": 6007,
 	// GDScript Formatter settings
 	"gdscriptFormatter.indentType": "Tabs",
 	// File formatting

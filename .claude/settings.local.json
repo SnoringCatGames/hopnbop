@@ -68,7 +68,8 @@
       "Bash(powershell:*)",
       "Bash(wsl pwd:*)",
       "Bash(wsl ./gamelift-gdextension/build.sh:*)",
-      "Bash(wsl ps:*)"
+      "Bash(wsl ps:*)",
+      "Bash(wc:*)"
     ]
   }
 }
