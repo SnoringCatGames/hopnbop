@@ -133,10 +133,7 @@ func validate_player_sessions(
 	for i in range(player_count):
 		if i >= session_ids.size():
 			G.warning(
-				(
-					"[GameLift] Missing session ID for player %d:%d"
-					% [peer_id, i]
-				),
+				"[GameLift] Missing session ID for player %d:%d" % [peer_id, i],
 				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
 			)
 			all_valid = false
@@ -147,19 +144,14 @@ func validate_player_sessions(
 
 		if outcome.is_success():
 			G.print(
-				(
-					"[GameLift] Player session validated: %s (peer %d, "
-					+"local index %d)"
-				)
-				% [session_id, peer_id, i],
+				("[GameLift] Player session validated: %s (peer %d, " +
+				"local index %d)") % [session_id, peer_id, i],
 				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
 			)
 		else:
 			G.warning(
-				(
-					"[GameLift] Player session validation failed for %s: %s"
-					% [session_id, outcome.get_error_message()]
-				),
+				"[GameLift] Player session validation failed for %s: %s" %
+					[session_id, outcome.get_error_message()],
 				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
 			)
 			all_valid = false
@@ -168,8 +160,8 @@ func validate_player_sessions(
 	if not all_valid:
 		# Disconnect the entire peer if any validation fails.
 		G.warning(
-			"[GameLift] Disconnecting peer %d due to validation failure"
-			% peer_id,
+			"[GameLift] Disconnecting peer %d due to validation failure" %
+			peer_id,
 			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
 		)
 		multiplayer.multiplayer_peer.disconnect_peer(peer_id)
@@ -269,10 +261,8 @@ func remove_player_session(session_id: StringName) -> void:
 		)
 	else:
 		G.warning(
-			(
-                "[GameLift] Failed to remove player session: %s"
-				% outcome.get_error_message()
-			),
+			"[GameLift] Failed to remove player session: %s" %
+			outcome.get_error_message(),
 			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
 		)
 
@@ -308,10 +298,8 @@ func activate_game_session() -> void:
 		)
 	else:
 		G.warning(
-			(
-                "[GameLift] Failed to activate session: %s"
-				% outcome.get_error_message()
-			),
+			"[GameLift] Failed to activate session: %s" %
+			outcome.get_error_message(),
 		)
 
 # =============================================================================
@@ -390,10 +378,7 @@ func _call_process_ready() -> void:
 
 	if not outcome.is_success():
 		G.error(
-			(
-                "[GameLift] ProcessReady failed: %s"
-				% outcome.get_error_message()
-			),
+			"[GameLift] ProcessReady failed: %s" % outcome.get_error_message(),
 			ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 		)
 		return
@@ -470,10 +455,7 @@ func _on_process_terminate_requested() -> void:
 	var outcome = _gamelift.process_ending()
 	if not outcome.is_success():
 		G.warning(
-			(
-                "[GameLift] ProcessEnding failed: %s"
-				% outcome.get_error_message()
-			),
+			"[GameLift] ProcessEnding failed: %s" % outcome.get_error_message(),
 		)
 
 	# Destroy SDK
