@@ -139,6 +139,15 @@ jobs:
           echo "=== Results Files ==="
           ls -la *test_results.xml || echo "No XML result files found"
 
+      - name: Verify Test Results Exist
+        run: |
+          if ! ls *test_results.xml 1> /dev/null 2>&1; then
+            echo "ERROR: No test result XML files were generated!"
+            echo "Tests failed to run or produce output."
+            exit 1
+          fi
+          echo "✓ Test result files found"
+
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()

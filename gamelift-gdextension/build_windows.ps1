@@ -252,6 +252,18 @@ if ($rootCheck -match "CMAKE_MSVC_RUNTIME_LIBRARY" -and $sdkCheck -match "CMAKE_
 	exit 1
 }
 
+# Clean cmake-build if patches were applied (force reconfigure)
+if ($rootPatched -or $sdkPatched) {
+	Write-Info "Patches were applied - cleaning cmake-build directory to force reconfigure..."
+	if (Test-Path "cmake-build") {
+		Remove-Item -Recurse -Force "cmake-build"
+	}
+}
+
+if (-not (Test-Path "cmake-build")) {
+	New-Item -ItemType Directory -Path "cmake-build" -Force | Out-Null
+}
+
 Set-Location cmake-build
 
 Write-Info "Configuring GameLift SDK with CMake 3.27..."

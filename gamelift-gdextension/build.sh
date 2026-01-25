@@ -203,8 +203,12 @@ if [ "$SKIP_DEPS" = false ]; then
     # Patch root CMakeLists.txt for modern CMake version syntax
     if ! grep -q "cmake_minimum_required(VERSION 3.10...3.30)" CMakeLists.txt; then
         echo "  Patching root CMakeLists.txt..."
-        sed -i.bak 's/cmake_minimum_required(VERSION 3.10)/cmake_minimum_required(VERSION 3.10...3.30)/' CMakeLists.txt
-        rm -f CMakeLists.txt.bak
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS requires explicit backup extension
+            sed -i '' 's/cmake_minimum_required(VERSION 3.10)/cmake_minimum_required(VERSION 3.10...3.30)/' CMakeLists.txt
+        else
+            sed -i 's/cmake_minimum_required(VERSION 3.10)/cmake_minimum_required(VERSION 3.10...3.30)/' CMakeLists.txt
+        fi
         echo "  ✓ Root CMakeLists.txt patched"
     else
         echo "  ✓ Root CMakeLists.txt already patched"
@@ -213,8 +217,12 @@ if [ "$SKIP_DEPS" = false ]; then
     # Patch gamelift-server-sdk/CMakeLists.txt for modern CMake version syntax
     if ! grep -q "CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)" gamelift-server-sdk/CMakeLists.txt; then
         echo "  Patching gamelift-server-sdk/CMakeLists.txt..."
-        sed -i.bak 's/CMAKE_MINIMUM_REQUIRED(VERSION 3.5)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/' gamelift-server-sdk/CMakeLists.txt
-        rm -f gamelift-server-sdk/CMakeLists.txt.bak
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS requires explicit backup extension
+            sed -i '' 's/CMAKE_MINIMUM_REQUIRED(VERSION 3.5)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/' gamelift-server-sdk/CMakeLists.txt
+        else
+            sed -i 's/CMAKE_MINIMUM_REQUIRED(VERSION 3.5)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/' gamelift-server-sdk/CMakeLists.txt
+        fi
         echo "  ✓ gamelift-server-sdk/CMakeLists.txt patched"
     else
         echo "  ✓ gamelift-server-sdk/CMakeLists.txt already patched"
@@ -233,7 +241,7 @@ if [ "$SKIP_DEPS" = false ]; then
         -S .. -B .
 
     cmake --build . -j$(nproc)
-    cmake --build . --target install
+    # Note: ExternalProject builds automatically install to prefix directory
 
     cd "$SCRIPT_DIR"
     echo "  ✓ GameLift SDK built and installed"

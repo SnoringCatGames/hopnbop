@@ -64,8 +64,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            gamelift-gdextension/gamelift-server-sdk
-          key: gamelift-sdk-linux-${{ hashFiles('gamelift-gdextension/gamelift-server-sdk/.git/refs/heads/main', 'gamelift-gdextension/SConstruct') }}
+            gamelift-gdextension/gamelift-server-sdk/cmake-build/prefix
+          key: gamelift-sdk-linux-${{ hashFiles('gamelift-gdextension/build.sh', 'gamelift-gdextension/gamelift-server-sdk/.git/refs/heads/main') }}
           restore-keys: |
             gamelift-sdk-linux-
 
@@ -184,8 +184,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            gamelift-gdextension/gamelift-server-sdk
-          key: gamelift-sdk-windows-${{ hashFiles('gamelift-gdextension/gamelift-server-sdk/.git/refs/heads/main', 'gamelift-gdextension/SConstruct') }}
+            gamelift-gdextension/gamelift-server-sdk/cmake-build/prefix
+          key: gamelift-sdk-windows-${{ hashFiles('gamelift-gdextension/build_windows.ps1', 'gamelift-gdextension/gamelift-server-sdk/.git/refs/heads/main') }}
           restore-keys: |
             gamelift-sdk-windows-
 
@@ -290,8 +290,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            gamelift-gdextension/gamelift-server-sdk
-          key: gamelift-sdk-macos-${{ hashFiles('gamelift-gdextension/gamelift-server-sdk/.git/refs/heads/main', 'gamelift-gdextension/SConstruct') }}
+            gamelift-gdextension/gamelift-server-sdk/cmake-build/prefix
+          key: gamelift-sdk-macos-${{ hashFiles('gamelift-gdextension/build.sh', 'gamelift-gdextension/gamelift-server-sdk/.git/refs/heads/main') }}
           restore-keys: |
             gamelift-sdk-macos-
 
