@@ -52,12 +52,7 @@ extends Node
 # LEFT OFF HERE:
 # - Test GDExtension Windows build.
 # - How is session_ids in _client_send_player_declaration supposed to be populated?
-# - Add support for G.settings.does_up_also_trigger_jump.
-#   - Add a couple getters to CharacterActionSource for this: is_triggering_jump, just_triggered_jump.
-#   - Update relevant usages to use the new getters instead of directly checking action pressed.
 # - Replace multiplayer_id with peer_id in many places.
-# - I'm worried about the performance of replicating kills and bumps via match_state.
-#   - We should use ints to represent player_ids instead of strings.
 # - Replace Array[String with packed array.
 # - Review PlayerList, PlayerDisplay, and PlayerOverheadLabels.
 #
