@@ -97,6 +97,9 @@ func _register_player(device_config: DeviceConfig) -> void:
 		"Spawned lobby player %d" % local_player_index,
 		ScaffolderLog.CATEGORY_PLAYER_ACTIONS)
 
+	if is_instance_valid(G.game_panel):
+		G.game_panel.lobby_players_updated.emit()
+
 
 func _deregister_player(device_name: StringName) -> void:
 	if not _pending_device_configs_by_name.has(device_name):
@@ -112,7 +115,7 @@ func _deregister_player(device_name: StringName) -> void:
 
 	var player: Player = players_by_id[player_id]
 
-	_pending_device_configs_by_index.erase(local_player_index)
+	_pending_device_configs_by_index.remove_at(local_player_index)
 	_pending_device_configs_by_name.erase(device_name)
 	G.input_device_manager.unassign_device_from_player(local_player_index)
 
@@ -123,6 +126,9 @@ func _deregister_player(device_name: StringName) -> void:
 	G.print(
 		"Despawned lobby player %d" % local_player_index,
 		ScaffolderLog.CATEGORY_PLAYER_ACTIONS)
+
+	if is_instance_valid(G.game_panel):
+		G.game_panel.lobby_players_updated.emit()
 
 
 func _get_player_spawn_position() -> Vector2:

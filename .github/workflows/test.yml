@@ -79,7 +79,6 @@ jobs:
             --script addons/gut/gut_cmdln.gd \
             -gdir=res://test/unit \
             -gexit \
-            -gverbose \
             -gjunit_xml_file=unit_test_results.xml 2>&1 | tee unit_test.log || {
             EXIT_CODE=$?
             echo "Unit tests exited with code: $EXIT_CODE"
@@ -103,7 +102,6 @@ jobs:
             --script addons/gut/gut_cmdln.gd \
             -gdir=res://test/integration \
             -gexit \
-            -gverbose \
             -gjunit_xml_file=integration_test_results.xml 2>&1 | tee integration_test.log || {
             EXIT_CODE=$?
             echo "Integration tests exited with code: $EXIT_CODE"

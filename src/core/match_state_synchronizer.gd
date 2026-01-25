@@ -44,7 +44,7 @@ func get_player(player_id: int) -> PlayerMatchState:
 
 func _server_on_peer_players_declared(
 	peer_id: int,
-	assigned_ids: Array
+	assigned_ids: Array[int]
 ) -> void:
 	# Create PlayerMatchState objects for each assigned player ID.
 	for i in range(assigned_ids.size()):
@@ -117,7 +117,7 @@ func _on_underlying_player_state_connected(
 	var player := G.get_player(player_match_state.player_id)
 	if is_instance_valid(player):
 		player.on_match_state_ready(player_match_state)
-	G.network.connector._client_on_player_state_connected(
+	G.network.connector.client_on_player_state_connected(
 		player_match_state.player_id,
 		player_match_state.peer_id,
 		player_match_state.local_player_index)

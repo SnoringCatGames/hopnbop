@@ -96,25 +96,6 @@ class TestSessionIdReverseLookup:
         assert_eq(result, "")
 
 
-class TestDeprecatedSinglePlayerAPI:
-    extends GutTest
-
-    func test_deprecated_get_session_for_peer():
-        var manager := GameLiftManager.new()
-        manager.validate_player_sessions(1234, [1, 2], ["s1", "s2"])
-
-        # Should return first player's session (player_id 1).
-        var result := manager.get_session_id_for_peer(1234)
-        assert_eq(result, "s1")
-
-    func test_deprecated_get_peer_for_session():
-        var manager := GameLiftManager.new()
-        manager.validate_player_sessions(1234, [1], ["s1"])
-
-        var result := manager.get_peer_id_for_session("s1")
-        assert_eq(result, 1234)
-
-
 class TestSessionValidationEdgeCases:
     extends GutTest
 

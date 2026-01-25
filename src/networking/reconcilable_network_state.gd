@@ -148,15 +148,21 @@ var player_id: int = 0:
 
 			player_id_changed.emit(player_id)
 
+## Peer ID that owns this entity.
 var peer_id: int:
 	get:
 		return G.network.get_peer_id_from_player_id(player_id)
+
+## Local player index within the peer (0, 1, 2...).
+var local_player_index: int:
+	get:
+		return G.network.get_local_player_index_from_player_id(player_id)
 
 var authority_id: int:
 	get:
 		if is_server_authoritative:
 			return NetworkConnector.SERVER_ID
-		return G.network.get_peer_id_from_player_id(player_id)
+		return peer_id
 
 ## Sibling nodes in the 3-node architecture for players:
 ## - state_from_server: CharacterStateFromServer (server-authoritative physics/position)

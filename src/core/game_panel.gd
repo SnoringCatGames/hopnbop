@@ -1,6 +1,12 @@
 class_name GamePanel
 extends Node2D
 
+
+## This is triggered from LobbyLevel.
+@warning_ignore("unused_signal")
+signal lobby_players_updated
+
+
 var levels: Array[Level] = []
 
 var is_level_fully_loaded := false

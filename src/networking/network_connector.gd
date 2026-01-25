@@ -29,7 +29,7 @@ extends Node
 ## assigned_ids is an Array[int] of the player IDs assigned by the server.
 signal peer_players_declared(
 	peer_id: int,
-	assigned_ids: Array
+	assigned_ids: Array[int]
 )
 
 const SERVER_ID := 1
@@ -288,7 +288,7 @@ func _client_rpc_receive_player_ids(assigned_ids: Array[int]) -> void:
 	)
 
 
-func _client_on_player_state_connected(
+func client_on_player_state_connected(
 		p_player_id: int,
 		p_peer_id: int,
 		p_local_index: int) -> void:

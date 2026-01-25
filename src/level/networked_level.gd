@@ -78,20 +78,21 @@ func _exit_tree() -> void:
 
 func _server_on_peer_players_declared(
 	peer_id: int,
-	assigned_ids: Array
+	assigned_ids: Array[int]
 ) -> void:
 	_server_register_players_for_peer(peer_id, assigned_ids)
 
 
 func _server_register_players_for_peer(
 		peer_id: int,
-		assigned_ids: Array) -> void:
+		assigned_ids: Array[int]) -> void:
 	G.print(
 		"Spawning %d player(s) for peer %d" % [assigned_ids.size(), peer_id],
 		ScaffolderLog.CATEGORY_GAME_STATE,
 	)
 
-	for player_id in assigned_ids:
+	for local_index in range(assigned_ids.size()):
+		var player_id := assigned_ids[local_index]
 		var player: Player = G.settings.default_player_scene.instantiate()
 		player.player_id = player_id
 		player.global_position = _get_player_spawn_position()
@@ -118,8 +119,7 @@ func _server_deregister_players_for_peer(peer_id: int) -> void:
 	for player_id in player_ids_to_remove:
 		if players_by_id.has(player_id):
 			var player: Player = players_by_id[player_id]
-			players.erase(player)
-			players_by_id.erase(player_id)
+			deregister_player(player)
 			player.queue_free()
 		else:
 			G.warning(
@@ -132,9 +132,9 @@ func _server_deregister_players_for_peer(peer_id: int) -> void:
 
 
 func register_player(player: Player) -> void:
-	if G.network.is_client:
-		super.register_player(player)
+	super.register_player(player)
 
+	if G.network.is_client:
 		# Record peer to player_ids mapping on client side too.
 		var peer_id := player.peer_id
 		if not peer_to_player_ids.has(peer_id):
@@ -144,9 +144,9 @@ func register_player(player: Player) -> void:
 
 
 func deregister_player(player: Player) -> void:
-	if G.network.is_client:
-		super.deregister_player(player)
+	super.deregister_player(player)
 
+	if G.network.is_client:
 		# Update peer to player_ids mapping.
 		var peer_id := player.peer_id
 		if peer_to_player_ids.has(peer_id):

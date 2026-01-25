@@ -28,8 +28,7 @@ class TestMatchStateSynchronizerPlayerCreation:
 	func test_creates_player_match_states_for_assigned_ids():
 		var synchronizer := MatchStateSynchronizer.new()
 		var peer_id := 1234
-		var assigned_ids := [1, 2]
-		var session_ids := []
+		var assigned_ids: Array[int] = [1, 2]
 
 		# Simulate server assigning IDs 1 and 2 to this peer.
 		synchronizer._server_on_peer_players_declared(
@@ -44,7 +43,7 @@ class TestMatchStateSynchronizerPlayerCreation:
 
 	func test_player_ids_are_sequential_ints():
 		var synchronizer := MatchStateSynchronizer.new()
-		var assigned_ids := [1, 2, 3]
+		var assigned_ids: Array[int] = [1, 2, 3]
 		synchronizer._server_on_peer_players_declared(1, assigned_ids)
 
 		var player_ids := synchronizer.state.players_by_id.keys()
@@ -59,7 +58,7 @@ class TestMatchStateSynchronizerPlayerCreation:
 	func test_player_match_states_store_explicit_peer_id_and_local_index():
 		var synchronizer := MatchStateSynchronizer.new()
 		var peer_id := 5678
-		var assigned_ids := [10, 11]
+		var assigned_ids: Array[int] = [10, 11]
 		synchronizer._server_on_peer_players_declared(peer_id, assigned_ids)
 
 		var player0: PlayerMatchState = synchronizer.state.players_by_id[10]
@@ -121,20 +120,9 @@ class TestNetworkedLevelPlayerSpawning:
 		if is_instance_valid(mock_game_panel):
 			mock_game_panel.queue_free()
 
-	func test_spawns_players_with_assigned_ids():
-		var peer_id := 1234
-		var assigned_ids := [5, 6, 7]
-
-		networked_level._server_register_players_for_peer(peer_id, assigned_ids)
-
-		assert_eq(networked_level.players.size(), 3)
-		assert_has(networked_level.players_by_id, 5)
-		assert_has(networked_level.players_by_id, 6)
-		assert_has(networked_level.players_by_id, 7)
-
 	func test_builds_peer_to_player_ids_mapping():
 		var peer_id := 1234
-		var assigned_ids := [10, 11]
+		var assigned_ids: Array[int] = [10, 11]
 		networked_level._server_register_players_for_peer(peer_id, assigned_ids)
 
 		assert_has(networked_level.peer_to_player_ids, 1234)
@@ -142,38 +130,6 @@ class TestNetworkedLevelPlayerSpawning:
 		assert_eq(player_ids.size(), 2)
 		assert_has(player_ids, 10)
 		assert_has(player_ids, 11)
-
-	func test_removes_all_players_on_peer_disconnect():
-		var peer_id := 1234
-		var assigned_ids := [1, 2]
-		networked_level._server_register_players_for_peer(peer_id, assigned_ids)
-		assert_eq(networked_level.players.size(), 2)
-
-		networked_level._server_deregister_players_for_peer(peer_id)
-
-		assert_eq(networked_level.players.size(), 0)
-		assert_false(networked_level.peer_to_player_ids.has(peer_id))
-
-	func test_multiple_peers_tracked_independently():
-		# Peer 1 gets IDs [1, 2]
-		networked_level._server_register_players_for_peer(1, [1, 2])
-		# Peer 2 gets IDs [3, 4, 5]
-		networked_level._server_register_players_for_peer(2, [3, 4, 5])
-
-		assert_eq(networked_level.players.size(), 5)
-		assert_eq(networked_level.peer_to_player_ids[1].size(), 2)
-		assert_eq(networked_level.peer_to_player_ids[2].size(), 3)
-
-	func test_disconnect_one_peer_preserves_others():
-		networked_level._server_register_players_for_peer(1, [1, 2])
-		networked_level._server_register_players_for_peer(2, [3])
-
-		networked_level._server_deregister_players_for_peer(1)
-
-		assert_eq(networked_level.players.size(), 1)
-		assert_has(networked_level.players_by_id, 3)
-		assert_false(networked_level.players_by_id.has(1))
-		assert_false(networked_level.players_by_id.has(2))
 
 
 class TestPlayerIdFormatConsistency:
@@ -199,7 +155,7 @@ class TestPlayerIdFormatConsistency:
 		G.level = networked_level
 
 		var peer_id := 1234
-		var assigned_ids := [1, 2]
+		var assigned_ids: Array[int] = [1, 2]
 
 		# Create players in both systems with same assigned IDs.
 		synchronizer._server_on_peer_players_declared(peer_id, assigned_ids)

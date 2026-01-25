@@ -223,24 +223,6 @@ func get_player_id_for_session(session_id: StringName) -> int:
 	return _session_to_player.get(session_id, 0)
 
 
-## Deprecated: Use get_session_id_for_player() with player_id int.
-func get_session_id_for_peer(peer_id: int) -> StringName:
-	# For backward compatibility, find first player for this peer.
-	# This is fragile - callers should use player_id directly.
-	for player_id in _player_to_session.keys():
-		if G.network.get_peer_id_from_player_id(player_id) == peer_id:
-			return _player_to_session[player_id]
-	return ""
-
-
-## Deprecated: Use get_player_id_for_session() which returns player_id.
-func get_peer_id_for_session(session_id: StringName) -> int:
-	var player_id := get_player_id_for_session(session_id)
-	if player_id == 0:
-		return 0
-	return G.network.get_peer_id_from_player_id(player_id)
-
-
 ## Remove a player session when a player disconnects.
 func remove_player_session(session_id: StringName) -> void:
 	if not is_active() or _gamelift == null:
