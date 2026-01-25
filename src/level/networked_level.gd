@@ -134,8 +134,7 @@ func register_player(player: Player) -> void:
 		super.register_player(player)
 
 		# Record peer to player_ids mapping on client side too.
-		# Extract peer_id from player_id string.
-		var peer_id := G.network.get_peer_id_from_player_id(player.player_id)
+		var peer_id := player.peer_id
 		if not peer_to_player_ids.has(peer_id):
 			peer_to_player_ids[peer_id] = []
 		if not peer_to_player_ids[peer_id].has(player.player_id):
@@ -147,8 +146,7 @@ func deregister_player(player: Player) -> void:
 		super.deregister_player(player)
 
 		# Update peer to player_ids mapping.
-		# Extract peer_id from player_id string.
-		var peer_id := G.network.get_peer_id_from_player_id(player.player_id)
+		var peer_id := player.peer_id
 		if peer_to_player_ids.has(peer_id):
 			peer_to_player_ids[peer_id].erase(player.player_id)
 			if peer_to_player_ids[peer_id].is_empty():
