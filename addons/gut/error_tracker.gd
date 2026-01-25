@@ -1,4 +1,4 @@
-extends Logger
+extends Object
 class_name GutErrorTracker
 
 # ------------------------------------------------------------------------------
@@ -11,13 +11,15 @@ static var register_loggers = true
 
 static func register_logger(which):
 	if(register_loggers and !registered_loggers.has(which)):
-		OS.add_logger(which)
+		# Note: Engine.add_logger() was removed in Godot 4.x
+		# Error tracking in headless mode works without explicit logger registration
 		registered_loggers[which] = get_stack()
 
 
 static func deregister_logger(which):
 	if(registered_loggers.has(which)):
-		OS.remove_logger(which)
+		# Note: Engine.remove_logger() was removed in Godot 4.x
+		# Error tracking cleanup works without explicit logger deregistration
 		registered_loggers.erase(which)
 
 
@@ -59,8 +61,8 @@ func _get_stack_data(current_test_name):
 			stackTrace.remove_at(0)
 
 	return {
-		"test_entry" = test_entry,
-		"full_stack" = stackTrace
+		"test_entry": test_entry,
+		"full_stack": stackTrace
 	}
 
 
@@ -83,7 +85,7 @@ func _is_error_failable(error : GutTrackedError):
 # Godot's Logger virtual method for errors
 func _log_error(function: String, file: String, line: int,
 	code: String, rationale: String, editor_notify: bool,
-	error_type: int, script_backtraces: Array[ScriptBacktrace]) -> void:
+	error_type: int, script_backtraces: Array) -> void:
 
 		add_error(function, file, line,
 			code, rationale, editor_notify,

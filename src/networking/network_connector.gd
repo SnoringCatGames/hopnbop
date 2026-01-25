@@ -277,7 +277,7 @@ func _client_rpc_receive_player_ids(assigned_ids: Array[int]) -> void:
 	G.check_is_client()
 
 	# Record local player IDs and indices.
-	for local_player_index in range(assigned_ids):
+	for local_player_index in range(assigned_ids.size()):
 		var player_id := assigned_ids[local_player_index]
 		_player_id_to_peer_id[player_id] = G.network.local_peer_id
 		_player_id_to_local_player_index[player_id] = local_player_index

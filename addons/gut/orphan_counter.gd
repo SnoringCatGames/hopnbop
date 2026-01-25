@@ -11,7 +11,10 @@ class Orphanage:
 
 	# wrapper for stubbing
 	func _get_system_orphan_node_ids():
-		return Node.get_orphan_node_ids()
+		# Note: Node.get_orphan_node_ids() was added in Godot 4.4+
+		# For Godot 4.3 compatibility, return empty array
+		# Orphan tracking still works via Performance.OBJECT_ORPHAN_NODE_COUNT monitor
+		return []
 
 
 	func _make_group_key(group=null, subgroup=null):

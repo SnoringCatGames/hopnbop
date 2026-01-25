@@ -1,3 +1,5 @@
+class_name GutLogger
+
 var types = {
 	debug = 'debug',
 	deprecated = 'deprecated',
