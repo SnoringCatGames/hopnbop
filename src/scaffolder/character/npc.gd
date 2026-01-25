@@ -4,12 +4,12 @@ extends Character
 
 func _enter_tree() -> void:
 	super._enter_tree()
-	G.level.on_npc_added(self)
+	G.level.register_npc(self)
 
 
 func _exit_tree() -> void:
 	super._exit_tree()
-	G.level.on_npc_removed(self)
+	G.level.deregister_npc(self)
 
 
 func _ready() -> void:
