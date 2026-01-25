@@ -180,8 +180,7 @@ func _log_new_press_or_release(
 	var velocity_string: StringName = "%17s" % Utils.get_vector_string(character.velocity, 1)
 
 	var details := (
-        "v=%s; [%s]"
-		% [
+        "v=%s; [%s]" % [
 			velocity_string,
 			current_presses_str,
 		]

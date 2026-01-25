@@ -21,8 +21,8 @@ var velocity := Vector2.ZERO
 var surfaces := 0
 
 const _synced_properties_and_rollback_diff_thresholds := {
-	position = DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD,
-	velocity = DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHELD,
+	position = DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD,
+	velocity = DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHOLD,
 	surfaces = 0,
 }
 
@@ -199,11 +199,8 @@ func _network_process() -> void:
 			character.velocity.distance_to(vel_before) > 0.1
 		):
 			G.print(
-				(
-					"F:%d Remote simulation: pos %s->%s, vel %s->%s, " +
-                    "actions=%d"
-				)
-				% [
+				("F:%d Remote simulation: pos %s->%s, vel %s->%s, " +
+				"actions=%d") % [
 					G.network.server_frame_index,
 					pos_before,
 					character.position,

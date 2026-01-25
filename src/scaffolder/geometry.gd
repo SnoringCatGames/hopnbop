@@ -521,7 +521,7 @@ static func are_rects_equal_with_epsilon(a: Rect2, b: Rect2, epsilon := FLOAT_EP
 	var w_diff = b.size.x - a.size.x
 	var h_diff = b.size.y - a.size.y
 	return (
-		-epsilon < x_diff
+		- epsilon < x_diff
 		and x_diff < epsilon
 		and -epsilon < y_diff
 		and y_diff < epsilon
@@ -538,7 +538,7 @@ static func are_colors_equal_with_epsilon(a: Color, b: Color, epsilon := FLOAT_E
 	var b_diff = b.b - a.b
 	var a_diff = b.a - a.a
 	return (
-		-epsilon < r_diff
+		- epsilon < r_diff
 		and r_diff < epsilon
 		and -epsilon < g_diff
 		and g_diff < epsilon
@@ -774,8 +774,8 @@ static func do_shapes_match(a: Shape2D, b: Shape2D) -> bool:
 		G.ensure(
 			false,
             "Invalid Shape2D provided: %s. The "
-			+ "supported shapes are: CircleShape2D, CapsuleShape2D, "
-			+ "RectangleShape2D." % a,
+			+"supported shapes are: CircleShape2D, CapsuleShape2D, "
+			+"RectangleShape2D." % a,
 		)
 		return false
 
@@ -792,10 +792,9 @@ static func calculate_half_width_height(shape: Shape2D, is_rotated_90_degrees: b
 	else:
 		G.ensure(
 			false,
-            "Invalid Shape2D provided: %s. "
-			+ "The supported shapes are: CircleShape2D, "
-			+ "CapsuleShape2D, RectangleShape2D."
-			% str(shape),
+            ("Invalid Shape2D provided: %s. " +
+			"The supported shapes are: CircleShape2D, " +
+			"CapsuleShape2D, RectangleShape2D.") % str(shape),
 		)
 
 	if is_rotated_90_degrees:

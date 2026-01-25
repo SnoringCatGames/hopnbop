@@ -33,8 +33,8 @@ func toggle_debug_console() -> void:
 
 	%DebugConsole.visible = not %DebugConsole.visible
 	G.print(
-        "Toggled DebugConsole: %s"
-		% ("visible" if %DebugConsole.visible else "hidden"),
+        "Toggled DebugConsole: %s" %
+		("visible" if %DebugConsole.visible else "hidden"),
 		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 	)
 
@@ -45,8 +45,8 @@ func toggle_player_state_list() -> void:
 
 	%PlayerStateList.visible = not %PlayerStateList.visible
 	G.print(
-        "Toggled PlayerStateList: %s"
-		% ("visible" if %PlayerStateList.visible else "hidden"),
+        "Toggled PlayerStateList: %s" %
+		("visible" if %PlayerStateList.visible else "hidden"),
 		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 	)
 
@@ -57,7 +57,7 @@ func toggle_perf_tracker() -> void:
 
 	%PerfTracker.visible = not %PerfTracker.visible
 	G.print(
-        "Toggled PerfTracker: %s"
-		% ("visible" if %PerfTracker.visible else "hidden"),
+        "Toggled PerfTracker: %s" %
+		("visible" if %PerfTracker.visible else "hidden"),
 		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 	)

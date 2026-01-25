@@ -128,18 +128,18 @@ static func subtract_and_mutate_nested_arrays(
 			elif expects_no_missing_matches:
 				G.ensure(
 					false,
-                    "Wrong-type match: "
-					+"(We currently don't support subtracting properties "
-					+"from a Dictionary. We only support subtracting "
-					+"elements from Arrays.)"
-					+"\n    key=%s,\n    result=%s,\n    other=%s"
-					% [key, result, other],
+                    ("Wrong-type match: " +
+					"(We currently don't support subtracting properties " +
+					"from a Dictionary. We only support subtracting " +
+					"elements from Arrays.)" +
+					"\n    key=%s,\n    result=%s,\n    other=%s") %
+					[key, result, other],
 				)
 		elif expects_no_missing_matches:
 			G.ensure(
 				false,
-				("Missing match: " + "\n    key=%s,\n    result=%s,\n    other=%s")
-				% [key, result, other],
+				("Missing match: " + "\n    key=%s,\n    " +
+				"result=%s,\n    other=%s") % [key, result, other],
 			)
 	return result
 
@@ -152,8 +152,8 @@ static func subtract_and_mutate_arrays(result: Array, other: Array) -> Array:
 		else:
 			G.ensure(
 				false,
-				("Missing match: " + "\n    element=%s,\n    result=%s,\n    other=%s")
-				% [element, result, other],
+				("Missing match: " + "\n    element=%s,\n    " +
+				"result=%s,\n    other=%s") % [element, result, other],
 			)
 	return result
 
@@ -323,8 +323,7 @@ static func mix_colors(colors: Array, weights: Array) -> Color:
 static func get_datetime_string() -> String:
 	var datetime := Time.get_datetime_dict_from_system()
 	return (
-        "%s-%s-%s_%s.%s.%s"
-		% [
+        "%s-%s-%s_%s.%s.%s" % [
 			datetime.year,
 			datetime.month,
 			datetime.day,
@@ -350,8 +349,7 @@ static func get_time_string_from_seconds(
 	if hours != 0 or includes_empty_hours:
 		if !is_undefined:
 			time_str = (
-                "%s%02d:"
-				% [
+                "%s%02d:" % [
 					time_str,
 					hours,
 				]
@@ -365,8 +363,7 @@ static func get_time_string_from_seconds(
 	if minutes != 0 or includes_empty_minutes:
 		if !is_undefined:
 			time_str = (
-                "%s%02d:"
-				% [
+                "%s%02d:" % [
 					time_str,
 					minutes,
 				]
@@ -378,8 +375,7 @@ static func get_time_string_from_seconds(
 	var seconds := int(time)
 	if !is_undefined:
 		time_str = (
-            "%s%02d"
-			% [
+            "%s%02d" % [
 				time_str,
 				seconds,
 			]
@@ -392,8 +388,7 @@ static func get_time_string_from_seconds(
 		var milliseconds := int(fmod((time - seconds) * 1000.0, 1000.0))
 		if !is_undefined:
 			time_str = (
-                "%s.%03d"
-				% [
+                "%s.%03d" % [
 					time_str,
 					milliseconds,
 				]
@@ -406,8 +401,7 @@ static func get_time_string_from_seconds(
 
 static func get_vector_string(vector: Vector2, decimal_place_count := 2) -> String:
 	return (
-        "(%.*f,%.*f)"
-		% [
+        "(%.*f,%.*f)" % [
 			decimal_place_count,
 			vector.x,
 			decimal_place_count,

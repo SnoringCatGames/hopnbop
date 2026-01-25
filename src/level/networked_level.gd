@@ -76,10 +76,9 @@ func _exit_tree() -> void:
 
 func _server_on_peer_players_declared(
 	peer_id: int,
-	player_count: int,
-	_session_ids: Array
+	session_ids: Array
 ) -> void:
-	_server_register_players_for_peer(peer_id, player_count)
+	_server_register_players_for_peer(peer_id, session_ids.size())
 
 
 func _server_register_players_for_peer(peer_id: int, count: int) -> void:

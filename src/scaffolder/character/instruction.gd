@@ -29,6 +29,11 @@ func _init(
 
 func get_string() -> String:
 	return (
-        "EdgeInstruction{ %s, %.2f, %s%s }"
-		% [input_key, time, is_pressed, ", %s" % position if position != Vector2.INF else ""]
+        "EdgeInstruction{ %s, %.2f, %s%s }" %
+		[
+			input_key,
+			time,
+			is_pressed,
+			", %s" % position if position != Vector2.INF else "",
+		]
 	)

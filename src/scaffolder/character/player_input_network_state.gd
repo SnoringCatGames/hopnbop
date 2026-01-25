@@ -89,12 +89,9 @@ func _reconcile_jump_event() -> void:
 	if not has_jump_bit:
 		if frame_state[frame_state.size() - 1] == FrameAuthority.AUTHORITATIVE:
 			G.warning(
-				(
-					"last_triggered_jump_time_usec corresponds to a frame that " +
-					"is already recorded as authoritative and without jump " +
-                    "pressed: frame %d"
-				)
-				% jump_frame,
+				("last_triggered_jump_time_usec corresponds to a frame that " +
+				"is already recorded as authoritative and without jump " +
+				"pressed: frame %d") % jump_frame,
 				ScaffolderLog.CATEGORY_NETWORK_SYNC,
 			)
 			_last_reconciled_jump_frame_index = jump_frame

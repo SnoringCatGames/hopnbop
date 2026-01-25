@@ -45,7 +45,7 @@ var player: Player:
 
 var peer_id: int:
 	get:
-		return G.network.get_peer_id_from_player_id(player_id)
+		return NetworkConnector.get_peer_id_from_player_id(player_id)
 
 var local_player_index: int:
 	get:

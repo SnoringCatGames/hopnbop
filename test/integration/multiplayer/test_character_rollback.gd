@@ -143,7 +143,7 @@ class TestCharacterMovementRollback:
 
 		# Verify difference exceeds rollback threshold
 		var threshold := \
-		CharacterStateFromServer.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD
+		CharacterStateFromServer.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD
 		assert_gt(
 			abs(client_pos.x - server_pos.x),
 			threshold,
@@ -181,7 +181,7 @@ class TestCharacterMovementRollback:
 
 		var diff := client_pos.distance_to(server_pos)
 		var threshold := \
-		CharacterStateFromServer.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD
+		CharacterStateFromServer.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD
 		assert_lt(diff, threshold, "Drift should be under threshold")
 
 
@@ -201,7 +201,7 @@ class TestCharacterMovementRollback:
 			if accumulated_drift > 1.0:
 				# Should trigger rollback at this point
 				var threshold := CharacterStateFromServer \
-				.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD
+				.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD
 				assert_gt(
 					accumulated_drift,
 					threshold,

@@ -65,7 +65,7 @@ class TestMatchStateSynchronizerPlayerCreation:
 		var player_count := 2
 
 		# Simulate peer_players_declared signal.
-		synchronizer._server_on_peer_players_declared(peer_id, player_count, [])
+		synchronizer._server_on_peer_players_declared(peer_id, player_count)
 
 		# Verify 2 PlayerMatchState objects created.
 		assert_eq(synchronizer.state.players.size(), 2)
@@ -74,7 +74,7 @@ class TestMatchStateSynchronizerPlayerCreation:
 
 	func test_player_ids_have_correct_format():
 		var synchronizer := MatchStateSynchronizer.new()
-		synchronizer._server_on_peer_players_declared(1, 3, [])
+		synchronizer._server_on_peer_players_declared(1, 3)
 
 		var player_ids := synchronizer.state.players.keys()
 		assert_has(player_ids, "1:0")
@@ -84,7 +84,7 @@ class TestMatchStateSynchronizerPlayerCreation:
 	func test_player_match_states_have_correct_peer_id():
 		var synchronizer := MatchStateSynchronizer.new()
 		var peer_id := 5678
-		synchronizer._server_on_peer_players_declared(peer_id, 2, [])
+		synchronizer._server_on_peer_players_declared(peer_id, 2)
 
 		var player0: PlayerMatchState = synchronizer.state.players["5678:0"]
 		var player1: PlayerMatchState = synchronizer.state.players["5678:1"]
@@ -96,8 +96,8 @@ class TestMatchStateSynchronizerPlayerCreation:
 
 	func test_multiple_peers_create_separate_players():
 		var synchronizer := MatchStateSynchronizer.new()
-		synchronizer._server_on_peer_players_declared(1, 2, [])
-		synchronizer._server_on_peer_players_declared(2, 1, [])
+		synchronizer._server_on_peer_players_declared(1, 2)
+		synchronizer._server_on_peer_players_declared(2, 1)
 
 		assert_eq(synchronizer.state.players.size(), 3)
 		assert_has(synchronizer.state.players, "1:0")
@@ -196,7 +196,7 @@ class TestPlayerIdFormatConsistency:
 		var player_count := 2
 
 		# Create players in both systems.
-		synchronizer._server_on_peer_players_declared(peer_id, player_count, [])
+		synchronizer._server_on_peer_players_declared(peer_id, player_count)
 		networked_level._server_register_players_for_peer(peer_id, player_count)
 
 		# Verify IDs match.

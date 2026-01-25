@@ -44,8 +44,8 @@ func client_open_screen(screen_type: ScreenType) -> void:
 	current_screen = screen_type
 
 	G.print(
-        "Switching screens: %s => %s"
-		% [
+        "Switching screens: %s => %s" %
+		[
 			ScreenType.keys()[previous_screen_type],
 			ScreenType.keys()[screen_type],
 		],

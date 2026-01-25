@@ -19,22 +19,22 @@ const CATEGORY_GAME_STATE := StringName("GameState")
 
 const _RAINBOW_BAR = (
     "[color=red]=[/color][color=orange]=[/color][color=yellow]=[/color]"
-	+ "[color=green]=[/color][color=blue]=[/color][color=purple]=[/color]"
+	+"[color=green]=[/color][color=blue]=[/color][color=purple]=[/color]"
 )
 const _REVERSE_RAINBOW_BAR = (
     "[color=purple]=[/color][color=blue]=[/color][color=green]=[/color]"
-	+ "[color=yellow]=[/color][color=orange]=[/color][color=red]=[/color]"
+	+"[color=yellow]=[/color][color=orange]=[/color][color=red]=[/color]"
 )
 
 # Dictionary<StringName, StringName>
-var _parsed_category_prefixes := { }
+var _parsed_category_prefixes := {}
 
 var is_queuing_messages := true
 
 var _print_queue: Array[String] = []
 
 # Dictionary<StringName, bool>
-var _excluded_log_categories := { }
+var _excluded_log_categories := {}
 var _force_include_log_warnings := true
 
 # Cache for test environment detection - only cache positive results
@@ -87,8 +87,7 @@ func _format_message(message: String, category: StringName) -> String:
 	)
 
 	return (
-        "[%8.3f]%s%s %s"
-		% [
+        "[%8.3f]%s%s %s" % [
 			play_time,
 			category_token,
 			multiplayer_id_token,
@@ -235,7 +234,6 @@ func _is_running_in_test_env() -> bool:
 
 func _calculate_is_running_in_test_env() -> void:
 	# Check multiple indicators that we're running in a test environment
-
 	# Method 1: Check if running with gut_cmdln.gd (command line tests)
 	# The SceneTree script will be gut_cmdln.gd when running tests
 	var tree = get_tree()
@@ -319,8 +317,7 @@ func log_system_ready(system_name: String) -> void:
 func _print_front_matter() -> void:
 	var local_datetime := Time.get_datetime_dict_from_system(false)
 	var local_datetime_string := (
-        "[Local] %s-%s-%s_%s.%s.%s"
-		% [
+        "[Local] %s-%s-%s_%s.%s.%s" % [
 			local_datetime.year,
 			local_datetime.month,
 			local_datetime.day,
@@ -332,8 +329,7 @@ func _print_front_matter() -> void:
 
 	var utc_datetime := Time.get_datetime_dict_from_system(true)
 	var utc_datetime_string := (
-        "[UTC  ] %s-%s-%s_%s.%s.%s"
-		% [
+        "[UTC  ] %s-%s-%s_%s.%s.%s" % [
 			utc_datetime.year,
 			utc_datetime.month,
 			utc_datetime.day,
@@ -344,8 +340,7 @@ func _print_front_matter() -> void:
 	)
 
 	var device_info_string := (
-		("%s " + "%s " + "(%4d,%4d) " + "")
-		% [
+		("%s " + "%s " + "(%4d,%4d) " + "") % [
 			OS.get_name(),
 			OS.get_model_name(),
 			get_viewport().get_visible_rect().size.x,
@@ -356,7 +351,6 @@ func _print_front_matter() -> void:
 	# Only print the art when in preview mode, and only once then.
 	if G.network.is_preview and G.network.is_server:
 		#_print_cat()
-
 		var app_name = ProjectSettings.get_setting("application/config/name")
 		print_rich("%s %s %s\n" % [_RAINBOW_BAR, app_name, _REVERSE_RAINBOW_BAR])
 

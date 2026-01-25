@@ -26,11 +26,9 @@ func _ready() -> void:
 		not G.settings.preview_run_multiple_clients
 	):
 		G.print(
-			(
-				"Main._ready: Closing extra client process (--client=%s), " +
-                "because G.settings.preview_run_multiple_clients is false"
-			)
-			% G.network.preview_client_number,
+			("Main._ready: Closing extra client process (--client=%s), " +
+			"because G.settings.preview_run_multiple_clients is false") %
+			G.network.preview_client_number,
 		)
 		close_app()
 
@@ -99,8 +97,8 @@ func _unhandled_input(event: InputEvent) -> void:
 					if is_instance_valid(G.hud):
 						G.hud.visible = not G.hud.visible
 						G.print(
-                            "Toggled HUD visibility: %s"
-							% ("visible" if G.hud.visible else "hidden"),
+                            "Toggled HUD visibility: %s" %
+							("visible" if G.hud.visible else "hidden"),
 							ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 						)
 				KEY_ESCAPE:
