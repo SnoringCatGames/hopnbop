@@ -8,8 +8,9 @@ signal players_updated
 signal kills_updated
 signal bumps_updated
 
-# Dictionary<int, PlayerMatchState>
-var players: Dictionary = { }
+# Dictionary<StringName, PlayerMatchState>
+# Keys are player_id in format "peer_id:local_index" (e.g., "1234:0").
+var players: Dictionary = {}
 
 ## - We maintain both a packed Array of player state as well as a redundant
 ##   Dictionary of player state.
@@ -25,14 +26,17 @@ var packed_players := []:
 
 var _is_packing_state_locally := false
 
-# Dictionary<int, bool>
-var _connected_players := { }
+# Dictionary<StringName, bool>
+# Keys are player_id in format "peer_id:local_index".
+var _connected_players := {}
 
 ## Every even index marks a 2-player pair.
 ##
 ## Every even index is the killer, and every odd index is the killee for the
 ## prior index.
-var kills: PackedInt32Array = []:
+##
+## Array of StringName player_ids in format "peer_id:local_index".
+var kills: Array = []:
 	set(value):
 		kills = value
 		kills_updated.emit()
@@ -40,7 +44,9 @@ var kills: PackedInt32Array = []:
 ## A bump happens when two bunnies collide, but neither dies.
 ##
 ## Every even index marks a 2-player pair.
-var bumps: PackedInt32Array = []:
+##
+## Array of StringName player_ids in format "peer_id:local_index".
+var bumps: Array = []:
 	set(value):
 		bumps = value
 		bumps_updated.emit()
@@ -63,24 +69,33 @@ func duplicate() -> MatchState:
 
 
 func server_add_player(player: PlayerMatchState) -> void:
-	players[player.multiplayer_id] = player
+	players[player.player_id] = player
 	_server_pack_players()
-	_connected_players[player.multiplayer_id] = true
+	_connected_players[player.player_id] = true
 	player_connected.emit(player)
 	players_updated.emit()
 
 
 func server_on_player_disconnected(player: PlayerMatchState) -> void:
-	_connected_players.erase(player.multiplayer_id)
+	_connected_players.erase(player.player_id)
 	player_disconnected.emit(player)
+
+
+func get_players_for_peer(peer_id: int) -> Array[PlayerMatchState]:
+	var result: Array[PlayerMatchState] = []
+	for player_id in players:
+		var player: PlayerMatchState = players[player_id]
+		if player.peer_id == peer_id:
+			result.append(player)
+	return result
 
 
 func _server_pack_players() -> void:
 	var new_packed_players := []
 	new_packed_players.resize(players.size())
 	var i := 0
-	for multiplayer_id in players:
-		new_packed_players[i] = players[multiplayer_id].get_packed_state()
+	for player_id in players:
+		new_packed_players[i] = players[player_id].get_packed_state()
 		i += 1
 
 	_is_packing_state_locally = true
@@ -92,21 +107,21 @@ func _client_unpack_players() -> void:
 	players.clear()
 
 	for packed_player in packed_players:
-		var multiplayer_id := PlayerMatchState.get_multiplayer_id_from_packed_state(packed_player)
+		var player_id := PlayerMatchState.get_player_id_from_packed_state(packed_player)
 
-		if not players.has(multiplayer_id):
-			players[multiplayer_id] = PlayerMatchState.new()
+		if not players.has(player_id):
+			players[player_id] = PlayerMatchState.new()
 
-		var player: PlayerMatchState = players[multiplayer_id]
+		var player: PlayerMatchState = players[player_id]
 		player.populate_from_packed_state(packed_player)
 
 	# Trigger connected/disconnected events.
-	for multiplayer_id in players:
-		var player: PlayerMatchState = players[multiplayer_id]
-		if player.is_connected_to_server != _connected_players.has(multiplayer_id):
+	for player_id in players:
+		var player: PlayerMatchState = players[player_id]
+		if player.is_connected_to_server != _connected_players.has(player_id):
 			if player.is_connected_to_server:
-				_connected_players[multiplayer_id] = true
+				_connected_players[player_id] = true
 				player_connected.emit(player)
 			else:
-				_connected_players.erase(multiplayer_id)
+				_connected_players.erase(player_id)
 				player_disconnected.emit(player)

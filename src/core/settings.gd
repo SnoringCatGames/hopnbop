@@ -56,8 +56,10 @@ var server_port: int:
 @export var skip_splash := false
 @export var full_screen := false
 @export var mute_music := false
-@export var pauses_on_focus_out := true
+@export var pauses_on_focus_out := false
 @export var is_screenshot_hotkey_enabled := true
+
+@export var does_up_also_trigger_jump := true
 
 @export var show_hud := true
 

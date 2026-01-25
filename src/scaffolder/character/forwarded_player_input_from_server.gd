@@ -2,6 +2,10 @@
 class_name ForwardedPlayerInputFromServer
 extends PlayerInputNetworkState
 
+## Local player index on this peer (0-based).
+## Used to identify which local player this input belongs to.
+var local_player_index := 0
+
 @export var player: Player:
 	set(value):
 		player = value
@@ -33,7 +37,7 @@ func _ready() -> void:
 
 func _visibility_filter(peer_id: int) -> bool:
 	# Hide from the originating player (they already have local input).
-	return peer_id != multiplayer_id
+	return peer_id != self.peer_id
 
 
 func _get_configuration_warnings() -> PackedStringArray:

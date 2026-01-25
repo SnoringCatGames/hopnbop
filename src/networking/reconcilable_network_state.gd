@@ -12,11 +12,11 @@ extends MultiplayerSynchronizer
 ## Architecture:
 ## This class bridges three systems:
 ## 1. **Godot MultiplayerSynchronizer**: Handles low-level replication of
-##    packed_state across network
+##	packed_state across network
 ## 2. **RollbackBuffer**: Stores historical states for time-travel during
-##    rollback
+##	rollback
 ## 3. **NetworkFrameDriver**: Coordinates frame-synchronous simulation and
-##    rollback
+##	rollback
 ##
 ## Server-authoritative vs client-authoritative:
 ## - **Server-authoritative** (default): Server is source of truth for entity
@@ -28,10 +28,10 @@ extends MultiplayerSynchronizer
 ##
 ## Frame processing cycle (called by NetworkFrameDriver):
 ## 1. **_pre_network_process()**: Restore state from rollback buffer (frame N-1)
-##    and sync to scene
+##	and sync to scene
 ## 2. **_network_process()**: Game logic executes (implemented by subclass)
 ## 3. **_post_network_process()**: Pack state from scene back to properties and
-##    buffer
+##	buffer
 ##
 ## Subclass requirements:
 ## - Define `_synced_properties_and_rollback_diff_thresholds` dictionary mapping
@@ -67,20 +67,20 @@ extends MultiplayerSynchronizer
 ## var velocity := Vector2.ZERO
 ##
 ## var _synced_properties_and_rollback_diff_thresholds := {
-##     "position": 1.0,
-##     "velocity": 10.0,
+##	 "position": 1.0,
+##	 "velocity": 10.0,
 ## }
 ##
 ## func _get_default_values() -> Array:
-##     return [Vector2.ZERO, Vector2.ZERO]
+##	 return [Vector2.ZERO, Vector2.ZERO]
 ##
 ## func _sync_to_scene_state(_previous_state: Array) -> void:
-##     root.position = position
-##     root.velocity = velocity
+##	 root.position = position
+##	 root.velocity = velocity
 ##
 ## func _sync_from_scene_state() -> void:
-##     position = root.position
-##     velocity = root.velocity
+##	 position = root.position
+##	 velocity = root.velocity
 ## ```
 
 enum FrameAuthority {
@@ -91,7 +91,7 @@ enum FrameAuthority {
 
 signal received_network_state
 signal network_processed
-signal multiplayer_id_changed
+signal player_id_changed(new_player_id: StringName)
 
 const DEFAULT_POSITION_DIFF_ROLLBACK_THRESHELD := 1.0
 const DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHELD := 10.0
@@ -126,36 +126,49 @@ var packed_state := []:
 
 var _is_packing_state_locally := false
 
-var _property_names_for_packing: Array[String] = []
-# Dictionary<String, int>
-var _property_name_to_pack_index := { }
+var _property_names_for_packing: Array[StringName] = []
+# Dictionary<StringName, int>
+var _property_name_to_pack_index := {}
 
-## Which machine this state is associated with.
+## Composite player ID in format "peer_id:local_index" (e.g., "1234:0").
 ##
-## - This is used for making sure the right NetworkedNodes actually have
-##   authority for triggering the replication.
-## - This is the machine that would be given authority to client input.
-## - This should be assigned by the server machine when spawning new networked
-##   nodes.
-## - An ID of 1 represents the server.
-var multiplayer_id := 1:
+## - This identifies which client connection (peer) and which local player
+##   index on that client this state belongs to.
+## - This is assigned by the server machine when spawning new networked nodes.
+## - A player_id of "1:0" represents the server's first player.
+var player_id := "":
 	set(value):
-		if value != multiplayer_id:
-			multiplayer_id = value
+		if value != player_id:
+			player_id = value
 			update_authority()
 
-			# Assign multiplayer_id on sibling nodes.
+			# Assign player_id on sibling nodes.
 			if is_server_authoritative:
 				if is_instance_valid(input_from_client):
-					input_from_client.multiplayer_id = multiplayer_id
+					input_from_client.player_id = player_id
 				if is_instance_valid(forwarded_input_from_server):
-					forwarded_input_from_server.multiplayer_id = multiplayer_id
+					forwarded_input_from_server.player_id = player_id
 
-			multiplayer_id_changed.emit()
+			player_id_changed.emit(player_id)
+
+## Deprecated: Use peer_id or player_id instead. Kept for backward
+## compatibility.
+var multiplayer_id: int:
+	get:
+		return peer_id
+	set(value):
+		# Convert int peer_id to player_id format "peer_id:0".
+		player_id = "%d:0" % value
+
+## Network peer ID (extracted from player_id).
+var peer_id: int:
+	get:
+		# FIXME: Cache it separately? Same thing for local_index?
+		return NetworkConnector.get_peer_id_from_player_id(player_id)
 
 var authority_id: int:
 	get:
-		return NetworkConnector.SERVER_ID if is_server_authoritative else multiplayer_id
+		return NetworkConnector.SERVER_ID if is_server_authoritative else peer_id
 
 ## Sibling nodes in the 3-node architecture for players:
 ## - state_from_server: CharacterStateFromServer (server-authoritative physics/position)
@@ -192,8 +205,7 @@ func _init() -> void:
 
 	G.ensure(
 		Utils.check_whether_sub_classes_are_tools(self),
-		"Subclasses of ReconcilableNetworkedState must be marked with @tool",
-	)
+		"Subclasses of ReconcilableNetworkedState must be marked with @tool")
 
 
 func _enter_tree() -> void:
@@ -205,6 +217,7 @@ func _enter_tree() -> void:
 func _exit_tree() -> void:
 	if Engine.is_editor_hint():
 		return
+
 	G.network.frame_driver.remove_networked_state(self)
 
 
@@ -226,8 +239,11 @@ func _ready() -> void:
 
 
 func _parse_property_names() -> void:
-	_property_names_for_packing.assign(
-		get("_synced_properties_and_rollback_diff_thresholds").keys(),
+	(
+		_property_names_for_packing
+		.assign(
+			get("_synced_properties_and_rollback_diff_thresholds").keys(),
+		)
 	)
 	for i in range(_property_names_for_packing.size()):
 		var property_name := _property_names_for_packing[i]
@@ -240,8 +256,8 @@ func update_authority() -> void:
 	if previous_authority_id != authority_id:
 		G.print(
 			(
-				"%s authority changed: %d -> %d " +
-                "(server_auth=%s, peer_id=%d, is_local_auth=%s)"
+				"%s authority changed: %d -> %d "
+				+"(server_auth=%s, peer_id=%d, is_local_auth=%s)"
 			) % [
 				name,
 				previous_authority_id,
@@ -250,8 +266,7 @@ func update_authority() -> void:
 				multiplayer_id,
 				is_multiplayer_authority(),
 			],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
-		)
+			ScaffolderLog.CATEGORY_NETWORK_SYNC)
 
 
 func _handle_new_authoritative_state() -> void:
@@ -278,64 +293,59 @@ func _handle_new_authoritative_state() -> void:
 						pause_frame,
 					],
 					ScaffolderLog.CATEGORY_NETWORK_SYNC,
-					ScaffolderLog.Verbosity.VERBOSE,
-				)
+					ScaffolderLog.Verbosity.VERBOSE)
 			return
 
 	if G.is_verbose:
-		var authority_string: String = FrameAuthority.keys()[new_frame_authority]
-		G.print(
-			"%s F:%d Received %s state for frame %d" % [
+		var authority_string: StringName = FrameAuthority.keys()[new_frame_authority]
+		G.print("%s F:%d Received %s state for frame %d" %
+			[
 				name,
 				G.network.server_frame_index,
 				authority_string,
 				state_frame_index,
 			],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
-		)
+			ScaffolderLog.CATEGORY_NETWORK_SYNC)
 
 	# Clients should ignore PREDICTED state from server-authoritative nodes entirely.
 	# Only the server's AUTHORITATIVE state matters for reconciliation.
 	# Exception: Some nodes (like ForwardedPlayerInputFromServer) need PREDICTED
 	# states because they have no local prediction alternative.
 	if (
-		is_server_authoritative and
-		G.network.is_client and
-		new_frame_authority == FrameAuthority.PREDICTED and
-		not _should_accept_predicted_states()
+		is_server_authoritative
+		and G.network.is_client
+		and new_frame_authority == FrameAuthority.PREDICTED
+		and not _should_accept_predicted_states()
 	):
 		if G.is_verbose:
 			G.print(
-				"%s F:%d Ignoring PREDICTED server state for frame %d" % [
+				"%s F:%d Ignoring PREDICTED server state for frame %d" %
+				[
 					name,
 					G.network.server_frame_index,
 					state_frame_index,
 				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC,
-			)
+				ScaffolderLog.CATEGORY_NETWORK_SYNC)
 		return
 
 	if G.network.frame_driver.is_frame_too_old_to_consider(state_frame_index):
 		G.warning(
 			(
-				"Received networked state that is too old to reconcile - " +
-				"DISCARDING: state frame: %d, state time: %d, local frame: %d, " +
-                "local time: %d, oldest acceptable: %d"
-			)
-			% [
+				"Received networked state that is too old to reconcile - "
+				+"DISCARDING: state frame: %d, state time: %d, local frame: %d, "
+				+"local time: %d, oldest acceptable: %d"
+			) % [
 				state_frame_index,
 				state_time_usec,
 				G.network.server_frame_index,
 				G.network.server_frame_time_usec,
 				G.network.frame_driver.oldest_rollbackable_frame_index,
 			],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
-		)
+			ScaffolderLog.CATEGORY_NETWORK_SYNC)
 		return
 
 	var should_trigger_fast_forward := (
-		G.network.server_frame_index < state_frame_index - 1 and
-		G.network.is_client
+		G.network.server_frame_index < state_frame_index - 1 and G.network.is_client
 	)
 	var is_more_than_one_frame_ahead := G.network.server_frame_index < state_frame_index - 2
 
@@ -344,12 +354,10 @@ func _handle_new_authoritative_state() -> void:
 	if G.network.is_server and is_more_than_one_frame_ahead:
 		G.warning(
 			(
-				"Rejecting too-distant-future state from client: " +
-                "state frame %d, server frame %d"
-			)
-			% [state_frame_index, G.network.server_frame_index],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
-		)
+				"Rejecting too-distant-future state from client: "
+				+"state frame %d, server frame %d"
+			) % [state_frame_index, G.network.server_frame_index],
+			ScaffolderLog.CATEGORY_NETWORK_SYNC)
 		return
 
 	# Unpack if state is for current frame, next frame, or past. State for the
@@ -372,11 +380,10 @@ func _handle_new_authoritative_state() -> void:
 				buffer_state,
 			)
 			G.print(
-                "Prediction state mismatch (%s): %s"
-				% [node_type, mismatch_details],
+				"Prediction state mismatch (%s): %s" %
+				[node_type, mismatch_details],
 				ScaffolderLog.CATEGORY_NETWORK_SYNC,
-				ScaffolderLog.Verbosity.VERBOSE,
-			)
+				ScaffolderLog.Verbosity.VERBOSE)
 
 			G.network.frame_driver.queue_rollback(state_frame_index)
 
@@ -398,8 +405,7 @@ func _handle_new_authoritative_state() -> void:
 	if should_trigger_fast_forward:
 		G.print(
 			"Fast-forwarding due to future state from server",
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
-		)
+			ScaffolderLog.CATEGORY_NETWORK_SYNC)
 
 		# Adjust the time tracker's clock offset to account for the drift.
 		# This prevents the NTP averaging from reverting the fast-forward by
@@ -408,8 +414,7 @@ func _handle_new_authoritative_state() -> void:
 		# maintain consistency.
 		var frames_behind := state_frame_index - 1 - G.network.server_frame_index
 		var time_delta_usec := floori(
-			frames_behind
-			* G.network.frame_driver.TARGET_NETWORK_TIME_STEP_USEC,
+			frames_behind * G.network.frame_driver.TARGET_NETWORK_TIME_STEP_USEC,
 		)
 		G.network.time.force_clock_offset(time_delta_usec)
 
@@ -435,16 +440,13 @@ func _pre_network_process() -> void:
 
 	G.check(
 		_rollback_buffer.get_latest_index() >= timestamp_index - 2,
-		(
-			"Rollback buffer missing required frame: " +
-            "current=%d, needs=%d, latest=%d"
-		)
-		% [
+		("Rollback buffer missing required frame: " +
+		"current=%d, needs=%d, latest=%d") %
+		[
 			timestamp_index,
 			timestamp_index - 2,
 			_rollback_buffer.get_latest_index(),
-		],
-	)
+		])
 
 	# We're about to simulate frame N. Start by loading frame N-1's final state
 	# as our starting point, and provide frame N-2 as "previous" for just_*
@@ -468,19 +470,15 @@ func _post_network_process() -> void:
 		if G.is_verbose:
 			if not is_server_authoritative:
 				G.print(
-					"%s F:%d NOT authority - skipping pack" % [
-						name,
-						G.network.server_frame_index,
-					],
-					ScaffolderLog.CATEGORY_NETWORK_SYNC,
-				)
+					"%s F:%d NOT authority - skipping pack" %
+					[name, G.network.server_frame_index],
+					ScaffolderLog.CATEGORY_NETWORK_SYNC)
 	_pack_buffer_state_from_local_state()
 
 
 func _get_is_server_authoritative() -> bool:
 	G.fatal(
-		"Abstract ReconcilableNetworkState._get_is_server_authoritative is not implemented",
-	)
+		"Abstract ReconcilableNetworkState._get_is_server_authoritative is not implemented")
 	return true
 
 
@@ -494,22 +492,21 @@ func _should_accept_predicted_states() -> bool:
 
 func _get_default_values() -> Array:
 	G.fatal(
-		"Abstract ReconcilableNetworkState._get_default_values is not implemented",
-	)
+		"Abstract ReconcilableNetworkState._get_default_values is not implemented")
 	return []
 
 
 ## This will update the surrounding scene state to match the networked state.
 func _sync_to_scene_state(_previous_state: Array) -> void:
 	G.fatal(
-		"Abstract ReconcilableNetworkState._sync_to_scene_state is not implemented",
+		"Abstract ReconcilableNetworkState._sync_to_scene_state is not implemented"
 	)
 
 
 ## This will update the networked state to match the surrounding scene state.
 func _sync_from_scene_state() -> void:
 	G.fatal(
-		"Abstract ReconcilableNetworkState._sync_from_scene_state is not implemented",
+		"Abstract ReconcilableNetworkState._sync_from_scene_state is not implemented"
 	)
 
 
@@ -536,7 +533,8 @@ func _set_up_rollback_buffer() -> void:
 	default_values.append(FrameAuthority.PREDICTED)
 
 	_rollback_buffer = (
-		RollbackBuffer.new(
+		RollbackBuffer
+		.new(
 			G.network.frame_driver.rollback_buffer_size,
 			G.network.frame_driver.server_frame_index,
 			default_values,
@@ -565,25 +563,25 @@ func _pack_networked_state() -> void:
 	_is_packing_state_locally = true
 
 	if G.is_verbose:
-		var authority_string: String = FrameAuthority.keys()[frame_authority]
+		var authority_string: StringName = FrameAuthority.keys()[frame_authority]
 		if not is_server_authoritative:
-			G.print(
-				"%s F:%d Packed client-auth state (%s)" % [
-					name,
-					G.network.server_frame_index,
-					authority_string,
-				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC,
-			)
+				G.print(
+					"%s F:%d Packed client-auth state (%s)" %
+					[
+						name,
+						G.network.server_frame_index,
+						authority_string,
+					],
+					ScaffolderLog.CATEGORY_NETWORK_SYNC)
 		else:
 			G.print(
-				"%s F:%d Packed server-auth state (%s)" % [
+				"%s F:%d Packed server-auth state (%s)" %
+				[
 					name,
 					G.network.server_frame_index,
 					authority_string,
 				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC,
-			)
+				ScaffolderLog.CATEGORY_NETWORK_SYNC)
 
 	if not packed_state.is_empty():
 		ArrayPool.release(packed_state)
@@ -599,11 +597,8 @@ func _unpack_networked_state() -> void:
 	if packed_state.is_empty():
 		return
 
-	if not (
-		G.ensure(
-			packed_state.size() == _property_names_for_packing.size() + 2,
-		)
-	):
+	if not G.ensure(
+			packed_state.size() == _property_names_for_packing.size() + 2):
 		return
 
 	var i := 0
@@ -649,14 +644,13 @@ func _pack_buffer_state_from_network_state(packed_network_state: Array) -> void:
 	rollback_frame_state[rollback_frame_state.size() - 1] = new_frame_authority
 
 	# Note: rollback_frame_state is now owned by the rollback buffer, don't
-	#       release it here.
+	#	   release it here.
 	_record_buffer_frame(frame_index, rollback_frame_state)
 
 
 func _record_buffer_frame(frame_index: int, frame_state: Array) -> void:
 	# TODO: When updating frame buffer state later, reference the preexisting
-	#       frame array, rather than instantiating a new one.
-
+	#	   frame array, rather than instantiating a new one.
 	# Guard against null rollback buffer (For tests: can occur if time isn't
 	# initialized yet when record_initial_state() is called during _ready()).
 	if _rollback_buffer == null:
@@ -719,8 +713,11 @@ func record_initial_state(include_partners := true) -> void:
 	_sync_from_scene_state()
 
 	# Create the initial state array with current property values
-	var initial_state := ArrayPool.acquire(
-		_property_names_for_packing.size() + 1,
+	var initial_state := (
+		ArrayPool
+		.acquire(
+			_property_names_for_packing.size() + 1,
+		)
 	)
 	var i := 0
 	for property_name in _property_names_for_packing:
@@ -770,8 +767,8 @@ func _unpack_buffer_state(frame_index: int) -> void:
 ## Uses ArrayPool to reduce allocations since this is called frequently on the
 ## network hot path. Caller is responsible for releasing the array.
 func _get_mismatched_properties(
-		networked_state: Array,
-		frame_index: int,
+	networked_state: Array,
+	frame_index: int,
 ) -> Array:
 	var buffer_data: Array = _rollback_buffer.get_at(frame_index)
 	var thresholds: Dictionary = get("_synced_properties_and_rollback_diff_thresholds")
@@ -797,9 +794,9 @@ func _get_mismatched_properties(
 ## Returns a formatted string showing only the mismatched properties and their
 ## values from both networked and local buffer state.
 func _get_mismatch_details_string(
-		mismatched_properties: Array,
-		networked_state: Array,
-		buffer_state: Array,
+	mismatched_properties: Array,
+	networked_state: Array,
+	buffer_state: Array,
 ) -> String:
 	var details: Array[String] = []
 	for property_name in mismatched_properties:
@@ -808,17 +805,20 @@ func _get_mismatch_details_string(
 		var buffer_value = buffer_state[pack_index]
 		var networked_str := _get_string_for_value(networked_value)
 		var buffer_str := _get_string_for_value(buffer_value)
-		details.append(
-			"{%s: remote=%s, local=%s}" % [property_name, networked_str, buffer_str],
+		(
+			details
+			.append(
+				"{%s: remote=%s, local=%s}" % [property_name, networked_str, buffer_str],
+			)
 		)
 
 	return ", ".join(details)
 
 
 func _check_do_values_mismatch(
-		buffer_value: Variant,
-		networked_value: Variant,
-		threshold: Variant,
+	buffer_value: Variant,
+	networked_value: Variant,
+	threshold: Variant,
 ) -> bool:
 	match typeof(buffer_value):
 		TYPE_BOOL, TYPE_STRING:
@@ -837,9 +837,8 @@ func _check_do_values_mismatch(
 				return buffer_value.distance_squared_to(networked_value) >= threshold * threshold
 		_:
 			G.fatal(
-                "Type not yet supported for client-prediction mismatch threshold calculations: %s"
-				% type_string(buffer_value),
-			)
+				"Type not yet supported for client-prediction mismatch threshold calculations: %s" %
+				type_string(buffer_value))
 			return true
 
 
@@ -872,16 +871,14 @@ func _update_partner_state() -> void:
 	if sibling_states.size() == 0:
 		# Valid 1-node setup (NPC with only CharacterStateFromServer).
 		if is_client_authoritative:
-			_partner_state_configuration_warning = (
-                "A client-authoritative ReconcilableNetworkedState node must be accompanied by a server-authoritative ReconcilableNetworkedState sibling node"
-			)
+			_partner_state_configuration_warning = ("A client-authoritative ReconcilableNetworkedState node must be accompanied by a server-authoritative ReconcilableNetworkedState sibling node")
 	elif sibling_states.size() == 1:
 		# Invalid 2-node setup. Players now require the full 3-node setup.
 		_partner_state_configuration_warning = (
-			"Either CharacterStateFromServer must be by itself, or there " +
-			"must be three nodes (for client-controlled players): " +
-			"CharacterStateFromServer + PlayerInputFromClient + " +
-            "ForwardedPlayerInputFromServer"
+			"Either CharacterStateFromServer must be by itself, or there "
+			+"must be three nodes (for client-controlled players): "
+			+"CharacterStateFromServer + PlayerInputFromClient + "
+			+"ForwardedPlayerInputFromServer"
 		)
 	elif sibling_states.size() == 2:
 		# 3-node configuration: 1 client-auth + 2 server-auth.
@@ -909,47 +906,33 @@ func _update_partner_state() -> void:
 			if self is CharacterStateFromServer:
 				# Self is CharacterStateFromServer, so we need the other two as siblings.
 				if input_from_client == null or forwarded_input_from_server == null:
-					_partner_state_configuration_warning = (
-                        "CharacterStateFromServer requires PlayerInputFromClient and ForwardedPlayerInputFromServer siblings"
-					)
+					_partner_state_configuration_warning = ("CharacterStateFromServer requires PlayerInputFromClient and ForwardedPlayerInputFromServer siblings")
 			elif self is PlayerInputFromClient:
 				# Self is PlayerInputFromClient, so we need the other two as siblings.
 				if state_from_server == null or forwarded_input_from_server == null:
-					_partner_state_configuration_warning = (
-                        "PlayerInputFromClient requires CharacterStateFromServer and ForwardedPlayerInputFromServer siblings"
-					)
+					_partner_state_configuration_warning = ("PlayerInputFromClient requires CharacterStateFromServer and ForwardedPlayerInputFromServer siblings")
 			elif self is ForwardedPlayerInputFromServer:
 				# Self is ForwardedPlayerInputFromServer, so we need the other two as siblings.
 				if state_from_server == null or input_from_client == null:
-					_partner_state_configuration_warning = (
-                        "ForwardedPlayerInputFromServer requires CharacterStateFromServer and PlayerInputFromClient siblings"
-					)
+					_partner_state_configuration_warning = ("ForwardedPlayerInputFromServer requires CharacterStateFromServer and PlayerInputFromClient siblings")
 			else:
 				_partner_state_configuration_warning = "" # Valid 3-node setup.
 		else:
-			_partner_state_configuration_warning = (
-                "3-node configuration requires exactly 1 client-authoritative and 2 server-authoritative nodes"
-			)
+			_partner_state_configuration_warning = ("3-node configuration requires exactly 1 client-authoritative and 2 server-authoritative nodes")
 	elif sibling_states.size() > 2:
-		_partner_state_configuration_warning = (
-            "There should be no more than 3 ReconcilableNetworkedState nodes (1 client-auth + 2 server-auth for Player, or 1 server-auth for NPC)"
-		)
+		_partner_state_configuration_warning = ("There should be no more than 3 ReconcilableNetworkedState nodes (1 client-auth + 2 server-auth for Player, or 1 server-auth for NPC)")
 
 	# Get the multiplayer_id from the CharacterStateFromServer node.
 	if is_instance_valid(state_from_server):
 		if is_client_authoritative:
 			multiplayer_id = state_from_server.multiplayer_id
 
-	if (
-		not Engine.is_editor_hint() and
-		not _partner_state_configuration_warning.is_empty()
-	):
+	if not Engine.is_editor_hint() and not _partner_state_configuration_warning.is_empty():
 		# Log and assert in game runtime environments.
 		G.error(
-            "ReconcilableNetworkedState is misconfigured: %s"
-			% _partner_state_configuration_warning,
-			ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-		)
+			"ReconcilableNetworkedState is misconfigured: %s" %
+			_partner_state_configuration_warning,
+			ScaffolderLog.CATEGORY_CORE_SYSTEMS)
 
 	# Also refresh sibling ReconcilableNetworkedState warnings.
 	# Trigger configuration warning updates on all siblings.
@@ -967,20 +950,31 @@ func _get_configuration_warnings() -> PackedStringArray:
 	var thresholds = get("_synced_properties_and_rollback_diff_thresholds")
 
 	if thresholds == null:
-		warnings.append(
-			"A _synced_properties_and_rollback_diff_thresholds property must be defined on subclasses of ReconcilableNetworkedState",
+		(
+			warnings
+			.append(
+				"A _synced_properties_and_rollback_diff_thresholds property must be defined on subclasses of ReconcilableNetworkedState",
+			)
 		)
 	elif not thresholds is Dictionary:
-		warnings.append(
-			"The _synced_properties_and_rollback_diff_thresholds property must be a Dictionary",
+		(
+			warnings
+			.append(
+				"The _synced_properties_and_rollback_diff_thresholds property must be a Dictionary",
+			)
 		)
 	else:
 		# Check if _synced_properties_and_rollback_diff_thresholds matches the other properties.
 		for property_name in thresholds.keys():
 			if get(property_name) == null:
-				warnings.append(
-                    "Key %s in _synced_properties_and_rollback_diff_thresholds does not match any class property"
-					% property_name,
+				(
+					warnings
+					.append(
+						(
+							"Key %s in _synced_properties_and_rollback_diff_thresholds does not match any class property"
+							% property_name
+						),
+					)
 				)
 
 	if root_path.is_empty():
@@ -1019,8 +1013,8 @@ func _get_string_for_value(value, is_final_value := false) -> String:
 			return Utils.get_vector_string(value, 1)
 		_:
 			G.fatal(
-				"Type not yet supported for rollback buffer: %s" % type_string(value),
-			)
+				"Type not yet supported for rollback buffer: %s" %
+				type_string(value))
 			return ""
 
 

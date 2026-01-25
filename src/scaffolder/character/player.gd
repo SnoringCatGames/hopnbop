@@ -2,6 +2,23 @@
 class_name Player
 extends Character
 
+## Local player index on this peer (0-based).
+var local_player_index := 0
+
+## Composite player ID in format "peer_id:local_index" (e.g., "1234:0").
+## Delegates to state_from_server.player_id.
+var player_id: StringName:
+	set(value):
+		state_from_server.player_id = value
+	get:
+		return state_from_server.player_id
+
+## Network peer ID (extracted from player_id).
+## Delegates to state_from_server.peer_id.
+var peer_id: int:
+	get:
+		return state_from_server.peer_id
+
 @export var input_from_client: PlayerInputFromClient:
 	set(value):
 		input_from_client = value
@@ -18,19 +35,20 @@ func _enter_tree() -> void:
 	if Engine.is_editor_hint():
 		return
 	if G.network.is_client:
-		# On clients, wait for multiplayer_id to be replicated before adding
+		# On clients, wait for player_id to be replicated before adding
 		# to level's players_by_id dictionary.
-		state_from_server.multiplayer_id_changed.connect(
-			_on_multiplayer_id_replicated,
+		state_from_server.player_id_changed.connect(
+			_client_on_player_id_replicated,
 			CONNECT_ONE_SHOT,
 		)
 	else:
-		# Server sets multiplayer_id before adding to tree, so add immediately.
-		G.level.on_player_added(self)
+		# Server sets player_id before adding to tree, so add immediately.
+		G.level.register_player(self)
 
 
-func _on_multiplayer_id_replicated() -> void:
-	G.level.on_player_added(self)
+func _client_on_player_id_replicated(new_player_id: StringName) -> void:
+	player_id = new_player_id
+	G.level.register_player(self)
 
 
 func _exit_tree() -> void:
@@ -38,7 +56,7 @@ func _exit_tree() -> void:
 	if Engine.is_editor_hint():
 		return
 	if is_instance_valid(G.level):
-		G.level.on_player_removed(self)
+		G.level.deregister_player(self)
 
 
 func _ready() -> void:
@@ -51,7 +69,10 @@ func _process_movement_and_actions() -> void:
 
 
 func get_is_player_control_active() -> bool:
-	return is_instance_valid(input_from_client) and input_from_client.is_multiplayer_authority()
+	return (
+		is_instance_valid(input_from_client) and
+		input_from_client.is_multiplayer_authority()
+	)
 
 
 func _get_configuration_warnings() -> PackedStringArray:

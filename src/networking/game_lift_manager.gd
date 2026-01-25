@@ -27,7 +27,7 @@ signal all_players_connected()
 signal game_session_started(session)
 
 ## Emitted when a player session is successfully validated.
-signal player_session_validated(peer_id: int, session_id: String)
+signal player_session_validated(peer_id: int, session_id: StringName)
 
 var _gamelift = null # GameLiftServer when extension loaded
 var _game_session = null # GameLiftGameSession when active
@@ -35,9 +35,9 @@ var _is_initialized := false
 var _is_process_ready := false
 
 # Maps player_id <-> player_session_id (1:1 per player)
-# Dictionary<String, String>
+# Dictionary<StringName, StringName>
 var _player_to_session: Dictionary = {}
-# Dictionary<String, String>
+# Dictionary<StringName, StringName>
 var _session_to_player: Dictionary = {}
 
 # Pending connections awaiting validation (peer_id -> player_count)
@@ -107,8 +107,8 @@ func validate_player_sessions(
 			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
 		)
 		for i in range(player_count):
-			var player_id := "%d:%d" % [peer_id, i]
-			var session_id: String = (
+			var player_id := NetworkConnector.get_player_id(peer_id, i)
+			var session_id: StringName = (
 				session_ids[i]
 				if i < session_ids.size()
 				else ""
@@ -119,8 +119,8 @@ func validate_player_sessions(
 	if _gamelift == null:
 		G.warning("[GameLift] SDK not initialized, auto-accepting")
 		for i in range(player_count):
-			var player_id := "%d:%d" % [peer_id, i]
-			var session_id: String = (
+			var player_id := NetworkConnector.get_player_id(peer_id, i)
+			var session_id: StringName = (
 				session_ids[i]
 				if i < session_ids.size()
 				else ""
@@ -142,14 +142,14 @@ func validate_player_sessions(
 			all_valid = false
 			break
 
-		var session_id: String = session_ids[i]
+		var session_id: StringName = session_ids[i]
 		var outcome = _gamelift.accept_player_session(session_id)
 
 		if outcome.is_success():
 			G.print(
 				(
 					"[GameLift] Player session validated: %s (peer %d, "
-					+ "local index %d)"
+					+"local index %d)"
 				)
 				% [session_id, peer_id, i],
 				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
@@ -177,18 +177,18 @@ func validate_player_sessions(
 
 	# All sessions valid - record mappings.
 	for i in range(player_count):
-		var player_id := "%d:%d" % [peer_id, i]
-		var session_id: String = session_ids[i]
+		var player_id := NetworkConnector.get_player_id(peer_id, i)
+		var session_id: StringName = session_ids[i]
 		_on_validation_success(player_id, session_id)
 
 
 ## Deprecated: Use validate_player_sessions() for multi-player support.
-func validate_player_session(peer_id: int, session_id: String) -> void:
+func validate_player_session(peer_id: int, session_id: StringName) -> void:
 	# Redirect to new method with single player.
 	validate_player_sessions(peer_id, 1, [session_id])
 
 
-func _on_validation_success(player_id: String, session_id: String) -> void:
+func _on_validation_success(player_id: StringName, session_id: StringName) -> void:
 	_player_to_session[player_id] = session_id
 	_session_to_player[session_id] = player_id
 	_validated_player_count += 1
@@ -230,23 +230,23 @@ func _on_all_players_ready() -> void:
 
 
 ## Get the player_session_id for a given player_id.
-func get_session_id_for_player(player_id: String) -> String:
+func get_session_id_for_player(player_id: StringName) -> StringName:
 	return _player_to_session.get(player_id, "")
 
 
 ## Get the player_id for a given player_session_id.
-func get_player_id_for_session(session_id: String) -> String:
+func get_player_id_for_session(session_id: StringName) -> StringName:
 	return _session_to_player.get(session_id, "")
 
 
 ## Deprecated: Use get_session_id_for_player() with player_id string.
-func get_session_id_for_peer(peer_id: int) -> String:
+func get_session_id_for_peer(peer_id: int) -> StringName:
 	var player_id := "%d:0" % peer_id
 	return get_session_id_for_player(player_id)
 
 
 ## Deprecated: Use get_player_id_for_session() which returns player_id.
-func get_peer_id_for_session(session_id: String) -> int:
+func get_peer_id_for_session(session_id: StringName) -> int:
 	var player_id := get_player_id_for_session(session_id)
 	if player_id.is_empty():
 		return 0
@@ -257,7 +257,7 @@ func get_peer_id_for_session(session_id: String) -> int:
 
 
 ## Remove a player session when a player disconnects.
-func remove_player_session(session_id: String) -> void:
+func remove_player_session(session_id: StringName) -> void:
 	if not is_active() or _gamelift == null:
 		return
 
