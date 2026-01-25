@@ -31,6 +31,26 @@ var just_released_jump: bool:
 	get:
 		return not _get_bit(bitmask, BIT_JUMP) and _get_bit(previous_bitmask, BIT_JUMP)
 
+## Returns true if a jump is currently being triggered (held down).
+## Checks both explicit jump action and (if setting enabled) move_up action.
+var is_triggering_jump: bool:
+	get:
+		if pressed_jump:
+			return true
+		if G.settings.does_up_also_trigger_jump and pressed_up:
+			return true
+		return false
+
+## Returns true if a jump was just triggered this frame.
+## Checks both explicit jump action and (if setting enabled) move_up action.
+var just_triggered_jump: bool:
+	get:
+		if just_pressed_jump:
+			return true
+		if G.settings.does_up_also_trigger_jump and just_pressed_up:
+			return true
+		return false
+
 var pressed_up: bool:
 	set(value):
 		_set_bit(BIT_UP, value)

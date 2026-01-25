@@ -13,7 +13,7 @@ func _init() -> void:
 
 func process(character) -> bool:
 	if (
-		character.actions.just_pressed_jump
+		character.actions.just_triggered_jump
 		and character.jump_sequence_count < character.movement_settings.max_jump_chain
 	):
 		if character.surfaces.just_entered_air:

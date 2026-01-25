@@ -412,7 +412,7 @@ func _update_attachment_trigger_state() -> void:
 		character.actions.pressed_attach and is_touching_wall
 	)
 
-	var just_pressed_jump: bool = character.actions.just_pressed_jump
+	var just_pressed_jump: bool = character.actions.just_triggered_jump
 	var is_pressing_floor_attachment_input: bool = (
 		character.actions.pressed_down and !just_pressed_jump
 	)

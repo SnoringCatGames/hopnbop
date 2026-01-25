@@ -58,7 +58,6 @@ extends Node
 # - Replace multiplayer_id with peer_id in many places.
 # - I'm worried about the performance of replicating kills and bumps via match_state.
 #   - We should use ints to represent player_ids instead of strings.
-#   - To support this, we should
 # - Replace Array[String with packed array.
 # - Review PlayerList, PlayerDisplay, and PlayerOverheadLabels.
 #
