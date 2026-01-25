@@ -97,7 +97,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					if is_instance_valid(G.hud):
 						G.hud.visible = not G.hud.visible
 						G.print(
-                            "Toggled HUD visibility: %s" %
+							"Toggled HUD visibility: %s" %
 							("visible" if G.hud.visible else "hidden"),
 							ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 						)
