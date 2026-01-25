@@ -26,11 +26,9 @@ const _WALK_THROUGH_WALLS_COLLISION_MASK_BIT := 4
 		state_from_server = value
 		update_configuration_warnings()
 
-var multiplayer_id: int:
-	set(value):
-		state_from_server.multiplayer_id = value
+var peer_id: int:
 	get:
-		return state_from_server.multiplayer_id
+		return state_from_server.peer_id
 
 var start_position := Vector2.INF
 

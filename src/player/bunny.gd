@@ -49,13 +49,13 @@ func _on_local_authority_added(
 
 
 func _set_up_camera() -> void:
-	var is_local_player := peer_id == G.network.local_id
+	var is_local_player := peer_id == G.network.local_peer_id
 
 	G.print(
 		"Setting up camera for player %s (peer=%d, local=%d, is_local=%s)" % [
 			player_id,
 			peer_id,
-			G.network.local_id,
+			G.network.local_peer_id,
 			is_local_player,
 		],
 		ScaffolderLog.CATEGORY_CORE_SYSTEMS,

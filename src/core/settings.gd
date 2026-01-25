@@ -81,7 +81,7 @@ var server_port: int:
 ## If true, warning logs will be shown regardless of category filtering.
 @export var force_include_log_warnings := true
 @export var include_category_in_logs := true
-@export var include_multiplayer_id_in_logs := true
+@export var include_peer_id_in_logs := true
 @export var verbosity := ScaffolderLog.Verbosity.NORMAL
 @export_group("")
 

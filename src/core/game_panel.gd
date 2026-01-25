@@ -54,7 +54,7 @@ func _on_player_joined(player: PlayerMatchState) -> void:
 	# Check if this player belongs to the local peer.
 	var is_local_peer := (
 		G.network.is_client and
-		player.peer_id == G.network.local_id
+		player.peer_id == G.network.local_peer_id
 	)
 	var self_suffix := " (local)" if is_local_peer else ""
 	G.print(

@@ -96,8 +96,6 @@ signal player_id_changed(new_player_id: int)
 const DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD := 1.0
 const DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHOLD := 10.0
 
-const _MULTIPLAYER_ID_PROPERTY_NAME := "multiplayer_id"
-
 ## The estimated server frame, when this state occurred.
 var timestamp_index := 0
 
@@ -150,13 +148,9 @@ var player_id: int = 0:
 
 			player_id_changed.emit(player_id)
 
-## Deprecated: Use player_id instead. Kept for backward compatibility.
-var multiplayer_id: int:
+var peer_id: int:
 	get:
 		return G.network.get_peer_id_from_player_id(player_id)
-	set(value):
-		# This setter is deprecated and should not be used.
-		push_warning("multiplayer_id setter is deprecated")
 
 var authority_id: int:
 	get:
@@ -254,7 +248,7 @@ func update_authority() -> void:
 				previous_authority_id,
 				authority_id,
 				is_server_authoritative,
-				multiplayer_id,
+				peer_id,
 				is_multiplayer_authority(),
 			],
 			ScaffolderLog.CATEGORY_NETWORK_SYNC)
@@ -904,11 +898,6 @@ func _update_partner_state() -> void:
 			_partner_state_configuration_warning = ("3-node configuration requires exactly 1 client-authoritative and 2 server-authoritative nodes")
 	elif sibling_states.size() > 2:
 		_partner_state_configuration_warning = ("There should be no more than 3 ReconcilableNetworkedState nodes (1 client-auth + 2 server-auth for Player, or 1 server-auth for NPC)")
-
-	# Get the multiplayer_id from the CharacterStateFromServer node.
-	if is_instance_valid(state_from_server):
-		if is_client_authoritative:
-			multiplayer_id = state_from_server.multiplayer_id
 
 	if not Engine.is_editor_hint() and not _partner_state_configuration_warning.is_empty():
 		# Log and assert in game runtime environments.

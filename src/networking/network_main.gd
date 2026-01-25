@@ -19,7 +19,7 @@ extends Node
 ##
 ## - is_server / is_client: Current machine's role
 ## - is_connected_to_server: Connection status (always true on server)
-## - local_id: Local multiplayer peer ID
+## - local_peer_id: Local multiplayer peer ID
 ## - server_frame_index: Current server frame number
 ## - server_frame_time_usec: Frame-aligned server time
 ## - server_time_usec_not_frame_aligned: Raw estimated server time
@@ -65,7 +65,7 @@ var is_connected_to_server: bool:
 	get:
 		return connector.is_connected_to_server
 
-var local_id: int:
+var local_peer_id: int:
 	get:
 		return multiplayer.get_unique_id()
 

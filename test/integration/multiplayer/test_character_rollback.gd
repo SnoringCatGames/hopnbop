@@ -72,14 +72,14 @@ class TestCharacterFixture:
 		# Create state from server (required)
 		state_from_server = CharacterStateFromServer.new()
 		state_from_server.character = character
-		state_from_server.multiplayer_id = 1
+		state_from_server.peer_id = 1
 		state_from_server.replication_config = SceneReplicationConfig.new()
 		character.state_from_server = state_from_server
 		character.add_child(state_from_server)
 
 		# Create input from client
 		input_from_client = PlayerInputFromClient.new()
-		input_from_client.multiplayer_id = 1
+		input_from_client.peer_id = 1
 		input_from_client.replication_config = SceneReplicationConfig.new()
 		character.add_child(input_from_client)
 

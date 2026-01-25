@@ -53,7 +53,7 @@ func _refresh_displays() -> void:
 
 func _sort_displays() -> void:
 	# Get local peer ID.
-	var local_peer_id := G.network.local_id
+	var local_peer_id := G.network.local_peer_id
 
 	# Separate local and remote players.
 	var local_displays: Array[PlayerDisplay] = []

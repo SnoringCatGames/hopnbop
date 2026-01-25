@@ -162,7 +162,7 @@ class TestVisibilityFilterIntegration:
 
 	func test_visibility_filter_blocks_originating_client():
 		# Set originating player ID.
-		forwarded_input.multiplayer_id = 3
+		forwarded_input.peer_id = 3
 
 		# Visibility filter should block peer 3.
 		assert_false(
@@ -173,7 +173,7 @@ class TestVisibilityFilterIntegration:
 
 	func test_visibility_filter_allows_other_clients():
 		# Set originating player ID.
-		forwarded_input.multiplayer_id = 3
+		forwarded_input.peer_id = 3
 
 		# Other peers should be visible.
 		assert_true(

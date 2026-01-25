@@ -27,11 +27,6 @@ var is_soft := true
 var connect_time_usec := 0
 var disconnect_time_usec := 0
 
-## Deprecated: Use peer_id instead. Kept for backward compatibility.
-var multiplayer_id: int:
-	get:
-		return peer_id
-
 var full_name: StringName:
 	get:
 		return "%s %s" % [adjective, bunny_name]

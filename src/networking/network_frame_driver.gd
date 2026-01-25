@@ -52,9 +52,9 @@ extends Node
 # LEFT OFF HERE:
 # - Test GDExtension Windows build.
 # - How is session_ids in _client_send_player_declaration supposed to be populated?
-# - Replace multiplayer_id with peer_id in many places.
 # - Replace Array[String with packed array.
 # - Review PlayerList, PlayerDisplay, and PlayerOverheadLabels.
+#   - Make sure the local players are always listed at the left, in local_player_index order.
 #
 # >>>> LEFT-OFF MANUAL STEPS FROM LOBBY AND UI INTEGRATION:
 # - Scene files (lobby_level.tscn, player_list.tscn, player_display.tscn) may need minor adjustments in the Godot editor
@@ -179,31 +179,6 @@ extends Node
 #   - Embed the game title logo within the level.
 #   - Also embed some controls instruction.
 # - Add support for using controllers as input.
-# - In the match-selection level support local players joining or leaving.
-#   - By default, have 0 local players.
-#   - Show a big message at the top of the screen, indicating to press up to join and down to leave.
-#     - It should also indicate the available controls (WASD, IJKL, arrow keys, controllers).
-#   - Add logic to spawn and destroy local players when up and down are pressed.
-#   - Add logic to map input source (WASD, IJKL, arrow keys, controllers) to player.
-#   - Update PlayerActionSource to only handle the specific input source
-#     associated with its corresponding player.
-#   - Update game connection logic to handle the new dynamic list of players
-#     from a client.
-#     - Instead of the server just automatically spawning a player for each
-#       newly-connected client, the server should wait until the client sends an
-#       RPC with its local-player count.
-#     - We now need to also introduce a concept of player_id.
-#     - When the server receives the RPC from the client indicating its number
-#       of local players, the server will generate player_ids for each of the
-#       new players, as well as the player name and adjective state that we were
-#       previously generating. The player_id now also gets replicated with
-#       PlayerMatchState.
-#     - The client then detects when a new player_id is represented in match
-#       state or on a Player node, picks an input source to map to this
-#       player_id, and records that.
-#     - Maintain a mapping from multiplayer_id to player_id.
-#     - Replace most preexisting references to multiplayer id with this new
-#       player_id, as appropriate.
 
 # - Add support for selecting player spawn positions.
 #   - We'll use this both at level start, and later when we add support for players dying and respawning.
@@ -290,7 +265,7 @@ extends Node
 #   - Frame index on horizontal axis.
 #   - List of players and their state along the vertical axis.
 #   - Each player should be collapsible, and is collapsed by default.
-#   - The local player is always the top row (regardless of multiplayer_id) and
+#   - The local player is always the top row (regardless of peer_id) and
 #     is expanded by default.
 #   - Each cell only renders a _DIFF_ from the previous cell!
 #   - Also, each cell only renders a prefix of the state.

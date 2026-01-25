@@ -29,12 +29,12 @@ class MockLevel extends Level:
 		# setup)
 		if player.state_from_server == null:
 			return
-		if player.multiplayer_id > 0:
-			players_by_id[player.multiplayer_id] = player
+		if player.peer_id > 0:
+			players_by_id[player.peer_id] = player
 
 	# Override deregister_player to work in test context
 	func deregister_player(player: Player) -> void:
-		players_by_id.erase(player.multiplayer_id)
+		players_by_id.erase(player.peer_id)
 
 
 ## Set up mock level in G singleton.

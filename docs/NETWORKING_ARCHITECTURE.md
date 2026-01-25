@@ -106,7 +106,7 @@ subsystems.
 ```gdscript
 var is_server: bool              # True if this machine is the server
 var is_client: bool              # True if this machine is a client
-var local_id: int                # Multiplayer peer ID for this machine
+var local_peer_id: int                # Multiplayer peer ID for this machine
 var server_frame_index: int      # Current server frame number
 var server_frame_time_usec: int  # Frame-aligned server time
 ```
@@ -1209,14 +1209,14 @@ func _on_peer_connected(peer_id: int):
 	var character = character_scene.instantiate()
 	character.name = "Character_%d" % peer_id
 
-	# Set multiplayer_id before adding to tree
+	# Set peer_id before adding to tree
 	var state_from_server = character.get_node("StateFromServer")
-	state_from_server.multiplayer_id = peer_id
+	state_from_server.peer_id = peer_id
 
 	add_child(character, true)  # true = force readability
 ```
 
-**Important**: Set `multiplayer_id` before adding to tree. This determines
+**Important**: Set `peer_id` before adding to tree. This determines
 which client has input authority.
 
 ### Step 9: Testing
@@ -1320,9 +1320,9 @@ network_frame_driver.gd):
    - **Solution**: Framework handles this automatically via
 	 ServerTimeTracker.force_clock_offset
 
-7. **Spawning without setting multiplayer_id**: Authority not assigned
+7. **Spawning without setting peer_id**: Authority not assigned
    correctly
-   - **Solution**: Set `state_from_server.multiplayer_id` before adding to tree
+   - **Solution**: Set `state_from_server.peer_id` before adding to tree
 
 ---
 

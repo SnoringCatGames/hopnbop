@@ -158,7 +158,7 @@ func update_window_title() -> void:
 	if G.network.is_server:
 		device_prefix = "SERVER"
 	else:
-		device_prefix = "CLIENT %s" % G.network.local_id
+		device_prefix = "CLIENT %s" % G.network.local_peer_id
 
 	DisplayServer.window_set_title("[%s] %s (DEBUG)" % [device_prefix, app_name])
 
@@ -176,7 +176,7 @@ func _position_client_window_in_preview_mode() -> void:
 	# Resize window to half the usable screen width.
 	DisplayServer.window_set_size(Vector2i(half_width, window_height))
 
-	# Position based on local_id.
+	# Position based on local_peer_id.
 	var position_x := usable_rect.position.x
 	if G.network.preview_client_number != 1:
 		position_x += half_width

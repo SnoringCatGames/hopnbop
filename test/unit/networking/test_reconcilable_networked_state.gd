@@ -677,28 +677,28 @@ class TestAuthorityHandling:
 		)
 
 
-	func test_authority_id_returns_multiplayer_id_when_client_authoritative():
-		# Client-authoritative entity should have authority_id = multiplayer_id
+	func test_authority_id_returns_peer_id_when_client_authoritative():
+		# Client-authoritative entity should have authority_id = peer_id
 		entity._test_is_server_authoritative = false
-		entity.multiplayer_id = 42
+		entity.peer_id = 42
 
 		var authority_id := entity.authority_id
 
 		assert_eq(
 			authority_id,
 			42,
-			"Client-authoritative should return multiplayer_id",
+			"Client-authoritative should return peer_id",
 		)
 
 
-	func test_multiplayer_id_assignment():
-		# Test that multiplayer_id can be set and retrieved
-		entity.multiplayer_id = 123
+	func test_peer_id_assignment():
+		# Test that peer_id can be set and retrieved
+		entity.peer_id = 123
 
 		assert_eq(
-			entity.multiplayer_id,
+			entity.peer_id,
 			123,
-			"Should store multiplayer_id",
+			"Should store peer_id",
 		)
 
 
@@ -722,7 +722,7 @@ class TestAuthorityHandling:
 	func test_update_authority_calls_set_multiplayer_authority():
 		# Verify that update_authority correctly sets multiplayer authority
 		entity._test_is_server_authoritative = true
-		entity.multiplayer_id = 5
+		entity.peer_id = 5
 
 		entity.update_authority()
 
@@ -737,7 +737,7 @@ class TestAuthorityHandling:
 	func test_authority_changes_when_is_server_authoritative_changes():
 		# When is_server_authoritative changes, authority should update
 		entity._test_is_server_authoritative = false
-		entity.multiplayer_id = 10
+		entity.peer_id = 10
 		entity.update_authority()
 
 		var initial_authority := entity.get_multiplayer_authority()

@@ -64,33 +64,33 @@ func _format_message(message: String, category: StringName) -> String:
 		"[%s]" % get_category_prefix(category) if G.settings.include_category_in_logs else ""
 	)
 
-	var multiplayer_id_value: String
-	if G.settings.include_multiplayer_id_in_logs and G.network.is_preview:
+	var peer_id_value: String
+	if G.settings.include_peer_id_in_logs and G.network.is_preview:
 		if G.network.is_client:
 			if G.network.is_connected_to_server:
 				# Client, connected to server.
-				multiplayer_id_value = "C%d" % G.network.local_id
+				peer_id_value = "C%d" % G.network.local_peer_id
 			else:
 				# Client, not yet connected to server.
 				if G.network.is_preview:
-					multiplayer_id_value = "C%d" % G.network.preview_client_number
+					peer_id_value = "C%d" % G.network.preview_client_number
 				else:
-					multiplayer_id_value = "C-"
+					peer_id_value = "C-"
 		else:
 			# Server.
-			multiplayer_id_value = "S"
+			peer_id_value = "S"
 	else:
 		# Omit token.
-		multiplayer_id_value = ""
-	var multiplayer_id_token = (
-		"[%s]" % multiplayer_id_value if G.settings.include_multiplayer_id_in_logs else ""
+		peer_id_value = ""
+	var peer_id_token = (
+		"[%s]" % peer_id_value if G.settings.include_peer_id_in_logs else ""
 	)
 
 	return (
         "[%8.3f]%s%s %s" % [
 			play_time,
 			category_token,
-			multiplayer_id_token,
+			peer_id_token,
 			message,
 		]
 	)

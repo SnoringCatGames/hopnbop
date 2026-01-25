@@ -19,7 +19,6 @@ func after_each():
 class MockPlayer extends Player:
 	# Properties like actions and last_triggered_jump_frame_index are inherited
 	# from Character.
-
 	func _enter_tree() -> void:
 		# Override to prevent Player's _enter_tree logic which requires G.level
 		pass
@@ -258,8 +257,8 @@ class TestVisibilityFilter:
 
 
 	func test_visibility_filter_blocks_originating_player():
-		# Set multiplayer_id to 5.
-		forwarded_input.multiplayer_id = 5
+		# Set peer_id to 5.
+		forwarded_input.peer_id = 5
 
 		# Filter should return false for peer 5 (hide from originating player).
 		var visible := forwarded_input._visibility_filter(5)
@@ -271,8 +270,8 @@ class TestVisibilityFilter:
 
 
 	func test_visibility_filter_allows_other_players():
-		# Set multiplayer_id to 5.
-		forwarded_input.multiplayer_id = 5
+		# Set peer_id to 5.
+		forwarded_input.peer_id = 5
 
 		# Filter should return true for peer 3 (show to other players).
 		var visible := forwarded_input._visibility_filter(3)
@@ -281,8 +280,8 @@ class TestVisibilityFilter:
 
 
 	func test_visibility_filter_allows_server():
-		# Set multiplayer_id to 5.
-		forwarded_input.multiplayer_id = 5
+		# Set peer_id to 5.
+		forwarded_input.peer_id = 5
 
 		# Filter should return true for server (peer 1).
 		var visible := forwarded_input._visibility_filter(
@@ -293,7 +292,7 @@ class TestVisibilityFilter:
 
 
 	func test_visibility_filter_with_multiple_peers():
-		forwarded_input.multiplayer_id = 2
+		forwarded_input.peer_id = 2
 
 		# Test multiple peers.
 		assert_false(

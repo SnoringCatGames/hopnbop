@@ -41,22 +41,22 @@ func _on_players_updated() -> void:
 		return
 
 	if not G.ensure(
-		G.match_state.players.has(G.network.local_id),
+		G.match_state.players.has(G.network.local_peer_id),
 		"No match_state for the local player",
 	):
 		return
 
 	# Add the local player state first.
-	_add_player_state(G.network.local_id)
+	_add_player_state(G.network.local_peer_id)
 
-	for multiplayer_id in G.match_state.players:
-		if multiplayer_id == G.network.local_id:
+	for played_id in G.match_state.players:
+		if played_id == G.network.local_peer_id:
 			# We already added the local player state.
 			continue
-		_add_player_state(multiplayer_id)
+		_add_player_state(played_id)
 
 
-func _add_player_state(multiplayer_id: int) -> void:
+func _add_player_state(played_id: int) -> void:
 	var player_state_panel: PlayerStatePanel = player_state_panel_scene.instantiate()
-	player_state_panel.multiplayer_id = multiplayer_id
+	player_state_panel.played_id = played_id
 	%States.add_child(player_state_panel)
