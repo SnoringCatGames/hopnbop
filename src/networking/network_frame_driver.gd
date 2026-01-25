@@ -51,9 +51,10 @@ extends Node
 #
 # LEFT OFF HERE:
 # - Test GDExtension Windows build.
-# - In the middle of AI planning for multiple players on a client.
-#   - Ask AI to consider whether we should add any new tests for this new multiple-players-per-client support.
-#
+# - Add support for G.settings.does_up_also_trigger_jump.
+#   - Add a couple getters to CharacterActionSource for this: is_triggering_jump, just_triggered_jump.
+#   - Update relevant usages to use the new getters instead of directly checking action pressed.
+# - Replace multiplayer_id with peer_id in many places.
 #
 # >>>> LEFT-OFF MANUAL STEPS FROM LOBBY AND UI INTEGRATION:
 # - Scene files (lobby_level.tscn, player_list.tscn, player_display.tscn) may need minor adjustments in the Godot editor
@@ -72,7 +73,6 @@ extends Node
 # - Set up CloudWatch alarms for monitoring.
 # - Configure auto-scaling policies based on load.
 #
-# - Install new PowerShell.
 # - Debug the game.
 #   - Fix the GDExtension importing in Godot.
 #   - Debug pause behavior.
@@ -85,8 +85,15 @@ extends Node
 #   - Toggleable at run time.
 #   - Render shape to match the collision shape
 #   - Render a dot for every frame in the rollback buffer.
-#     - Color code these based on authority, and whether they caused a rollback or a fast-forward.
-# - Implement alternate starting level, non networked, with walk-off-screen to start match.
+#     - Color code these based on authority, and whether they caused a rollback
+#       or a fast-forward.
+# - Implement alternate starting level, non networked, with walk-off-screen to
+#   start match.
+
+# - Log the app version (from project settings).
+# - Check on the server that clients have the same version, and reject them if
+#   they don't.
+#   - Even better, try to do this check from GameLift matchmaking.
 
 # - GameLift
 # - Implement multiple players on a given client.
@@ -608,7 +615,7 @@ func client_request_unpause() -> void:
 
 @rpc("any_peer", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _server_rpc_client_request_pause() -> void:
-	if not G.network.is_server:
+	if G.network.is_client:
 		return
 
 	if not G.settings.is_server_pause_enabled:
@@ -633,7 +640,7 @@ func _server_rpc_client_request_pause() -> void:
 
 @rpc("any_peer", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _server_rpc_client_request_unpause() -> void:
-	if not G.network.is_server:
+	if G.network.is_client:
 		return
 
 	if not G.settings.is_server_pause_enabled:
