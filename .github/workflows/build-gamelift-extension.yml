@@ -1,20 +1,42 @@
 name: Build GameLift GDExtension
 
 on:
-  push:
-    branches: [ main, develop ]
-    paths:
-      - 'gamelift-gdextension/**'
-      - '.github/workflows/build-gamelift-extension.yml'
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'gamelift-gdextension/**'
-      - '.github/workflows/build-gamelift-extension.yml'
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC
   workflow_dispatch:
 
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for relevant changes
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "Manual trigger, running unconditionally"
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          CHANGES=$(git diff --name-only HEAD@{24.hours.ago} HEAD 2>/dev/null || echo "initial")
+          if echo "$CHANGES" | grep -qE '^(gamelift-gdextension/|\.github/workflows/build-gamelift-extension\.yml)'; then
+            echo "Relevant changes found in last 24 hours"
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "No relevant changes in last 24 hours, skipping build"
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          fi
+
   build-linux:
+    needs: check-changes
+    if: needs.check-changes.outputs.should_run == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -34,18 +56,7 @@ jobs:
             python3 \
             git
 
-      - name: Cache godot-cpp
-        id: cache-godot-cpp-linux
-        uses: actions/cache@v4
-        with:
-          path: |
-            gamelift-gdextension/godot-cpp
-          key: godot-cpp-linux-4.2-stable-${{ hashFiles('gamelift-gdextension/SConstruct') }}
-          restore-keys: |
-            godot-cpp-linux-4.2-stable-
-
       - name: Setup godot-cpp
-        if: steps.cache-godot-cpp-linux.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension
         run: |
           git clone --recurse-submodules https://github.com/godotengine/godot-cpp.git
@@ -53,30 +64,17 @@ jobs:
           git checkout godot-4.2-stable
 
       - name: Build godot-cpp
-        if: steps.cache-godot-cpp-linux.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension/godot-cpp
         run: |
           scons platform=linux target=template_release -j$(nproc)
           scons platform=linux target=template_debug -j$(nproc)
 
-      - name: Cache GameLift Server SDK
-        id: cache-gamelift-sdk-linux
-        uses: actions/cache@v4
-        with:
-          path: |
-            gamelift-gdextension/gamelift-server-sdk/cmake-build/prefix
-          key: gamelift-sdk-linux-${{ hashFiles('gamelift-gdextension/build.sh', 'gamelift-gdextension/gamelift-server-sdk/.git/refs/heads/main') }}
-          restore-keys: |
-            gamelift-sdk-linux-
-
       - name: Clone GameLift Server SDK
-        if: steps.cache-gamelift-sdk-linux.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension
         run: |
           git clone https://github.com/amazon-gamelift/amazon-gamelift-servers-cpp-server-sdk.git gamelift-server-sdk
 
       - name: Build GameLift Server SDK
-        if: steps.cache-gamelift-sdk-linux.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension/gamelift-server-sdk
         run: |
           # Patch CMake version requirements for modern CMake
@@ -132,6 +130,8 @@ jobs:
           retention-days: 30
 
   build-windows:
+    needs: check-changes
+    if: needs.check-changes.outputs.should_run == 'true'
     runs-on: windows-latest
 
     steps:
@@ -157,18 +157,7 @@ jobs:
           .\bootstrap-vcpkg.bat
           .\vcpkg install openssl:x64-windows
 
-      - name: Cache godot-cpp
-        id: cache-godot-cpp-windows
-        uses: actions/cache@v4
-        with:
-          path: |
-            gamelift-gdextension/godot-cpp
-          key: godot-cpp-windows-4.2-stable-${{ hashFiles('gamelift-gdextension/SConstruct') }}
-          restore-keys: |
-            godot-cpp-windows-4.2-stable-
-
       - name: Setup godot-cpp
-        if: steps.cache-godot-cpp-windows.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension
         run: |
           git clone --recurse-submodules https://github.com/godotengine/godot-cpp.git
@@ -176,30 +165,17 @@ jobs:
           git checkout godot-4.2-stable
 
       - name: Build godot-cpp
-        if: steps.cache-godot-cpp-windows.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension/godot-cpp
         run: |
           scons platform=windows target=template_release
           scons platform=windows target=template_debug
 
-      - name: Cache GameLift Server SDK
-        id: cache-gamelift-sdk-windows
-        uses: actions/cache@v4
-        with:
-          path: |
-            gamelift-gdextension/gamelift-server-sdk/cmake-build/prefix
-          key: gamelift-sdk-windows-${{ hashFiles('gamelift-gdextension/build_windows.ps1', 'gamelift-gdextension/gamelift-server-sdk/.git/refs/heads/main') }}
-          restore-keys: |
-            gamelift-sdk-windows-
-
       - name: Clone GameLift Server SDK
-        if: steps.cache-gamelift-sdk-windows.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension
         run: |
           git clone https://github.com/amazon-gamelift/amazon-gamelift-servers-cpp-server-sdk.git gamelift-server-sdk
 
       - name: Build GameLift Server SDK
-        if: steps.cache-gamelift-sdk-windows.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension/gamelift-server-sdk
         run: |
           # Patch CMake version requirements
@@ -265,6 +241,8 @@ jobs:
           retention-days: 30
 
   build-macos:
+    needs: check-changes
+    if: needs.check-changes.outputs.should_run == 'true'
     runs-on: macos-latest
 
     steps:
@@ -277,18 +255,7 @@ jobs:
         run: |
           brew install scons cmake openssl@3
 
-      - name: Cache godot-cpp
-        id: cache-godot-cpp-macos
-        uses: actions/cache@v4
-        with:
-          path: |
-            gamelift-gdextension/godot-cpp
-          key: godot-cpp-macos-4.2-stable-${{ hashFiles('gamelift-gdextension/SConstruct') }}
-          restore-keys: |
-            godot-cpp-macos-4.2-stable-
-
       - name: Setup godot-cpp
-        if: steps.cache-godot-cpp-macos.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension
         run: |
           git clone --recurse-submodules https://github.com/godotengine/godot-cpp.git
@@ -296,30 +263,17 @@ jobs:
           git checkout godot-4.2-stable
 
       - name: Build godot-cpp
-        if: steps.cache-godot-cpp-macos.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension/godot-cpp
         run: |
           scons platform=macos target=template_release
           scons platform=macos target=template_debug
 
-      - name: Cache GameLift Server SDK
-        id: cache-gamelift-sdk-macos
-        uses: actions/cache@v4
-        with:
-          path: |
-            gamelift-gdextension/gamelift-server-sdk/cmake-build/prefix
-          key: gamelift-sdk-macos-${{ hashFiles('gamelift-gdextension/build.sh', 'gamelift-gdextension/gamelift-server-sdk/.git/refs/heads/main') }}
-          restore-keys: |
-            gamelift-sdk-macos-
-
       - name: Clone GameLift Server SDK
-        if: steps.cache-gamelift-sdk-macos.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension
         run: |
           git clone https://github.com/amazon-gamelift/amazon-gamelift-servers-cpp-server-sdk.git gamelift-server-sdk
 
       - name: Build GameLift Server SDK
-        if: steps.cache-gamelift-sdk-macos.outputs.cache-hit != 'true'
         working-directory: gamelift-gdextension/gamelift-server-sdk
         run: |
           # Patch CMake version requirements for modern CMake (macOS BSD sed syntax)
@@ -375,6 +329,7 @@ jobs:
 
   package-artifacts:
     needs: [build-linux, build-windows, build-macos]
+    if: needs.check-changes.outputs.should_run == 'true'
     runs-on: ubuntu-latest
 
     steps:
