@@ -9,7 +9,7 @@ extends Level
 		player_spawner = value
 		update_configuration_warnings()
 
-# Dictionary<int, Array<String>>
+# Dictionary<int, Array<StringName>>
 # Maps peer_id to array of player_ids for that peer.
 var peer_to_player_ids := {}
 

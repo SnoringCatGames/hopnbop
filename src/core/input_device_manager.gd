@@ -69,7 +69,7 @@ func has_device_for_player(local_index: int) -> bool:
 
 
 ## Gets the input state for an action using device-specific polling.
-func get_is_action_pressed(action: String, device_config: DeviceConfig) -> bool:
+func get_is_action_pressed(action: StringName, device_config: DeviceConfig) -> bool:
 	match device_config.type:
 		DeviceConfig.DeviceType.KEYBOARD:
 			# Use physical key code from bindings.

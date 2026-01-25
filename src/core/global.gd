@@ -90,13 +90,13 @@ func _ready() -> void:
 		preview_instance_label = ""
 
 
-func get_player_match_state(player_id: String) -> PlayerMatchState:
+func get_player_match_state(player_id: StringName) -> PlayerMatchState:
 	if not match_state.players.has(player_id):
 		return null
 	return match_state.players[player_id]
 
 
-func get_player(player_id: String) -> Player:
+func get_player(player_id: StringName) -> Player:
 	if (
 		not is_instance_valid(level) or
 		not level.players_by_id.has(player_id)
