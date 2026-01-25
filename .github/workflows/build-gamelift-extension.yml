@@ -89,6 +89,8 @@ jobs:
             -DGAMELIFT_USE_STD=1 \
             -DBUILD_SHARED_LIBS=OFF \
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+            -DCMAKE_C_FLAGS="-fPIC" \
+            -DCMAKE_CXX_FLAGS="-fPIC" \
             -DRUN_UNIT_TESTS=OFF \
             ..
           cmake --build . -j$(nproc)
@@ -196,6 +198,14 @@ jobs:
             Set-Content gamelift-server-sdk/CMakeLists.txt -Value $sdkContent -NoNewline
           }
 
+          mkdir cmake-build
+          cd cmake-build
+          cmake -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_INSTALL_PREFIX="$PWD/prefix" `
+            -DGAMELIFT_USE_STD=1 `
+            -DBUILD_SHARED_LIBS=OFF `
+            -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
             -DCMAKE_CXX_FLAGS_RELEASE="/MT /O2 /Ob2 /DNDEBUG" `
             -DCMAKE_C_FLAGS_RELEASE="/MT /O2 /Ob2 /DNDEBUG" `
             -DRUN_UNIT_TESTS=OFF `
@@ -279,19 +289,27 @@ jobs:
           # Patch CMake version requirements for modern CMake (macOS BSD sed syntax)
           sed -i '' 's/cmake_minimum_required(VERSION 3\.1)/cmake_minimum_required(VERSION 3.1...3.30)/' CMakeLists.txt
           sed -i '' 's/CMAKE_MINIMUM_REQUIRED(VERSION 3\.1)/CMAKE_MINIMUM_REQUIRED(VERSION 3.1...3.30)/' gamelift-server-sdk/CMakeLists.txt
+
+          # Create CMake init file to set policies globally
           mkdir -p cmake-build
+          cat > cmake-build/init.cmake << 'EOF'
+          cmake_policy(SET CMP0000 OLD)
+          set(CMAKE_POLICY_DEFAULT_CMP0000 OLD CACHE STRING "")
+          EOF
+
           cd cmake-build
           OPENSSL_ROOT=$(brew --prefix openssl@3)
           cmake -G "Unix Makefiles" \
+            -C init.cmake \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="$PWD/prefix" \
             -DGAMELIFT_USE_STD=1 \
             -DBUILD_SHARED_LIBS=OFF \
             -DRUN_UNIT_TESTS=OFF \
-            -DCMAKE_POLICY_DEFAULT_CMP0000=OLD \
             -DOPENSSL_ROOT_DIR="$OPENSSL_ROOT" \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             ..
-          cmake --build . -j$(sysctl -n hw.ncpu)
+          cmake --build . -j$(sysctl -n hw.ncpu) --verbose
 
       - name: Build GDExtension (Release)
         working-directory: gamelift-gdextension
