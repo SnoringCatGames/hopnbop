@@ -333,6 +333,7 @@ jobs:
             -DGAMELIFT_USE_STD=1 \
             -DBUILD_SHARED_LIBS=OFF \
             -DRUN_UNIT_TESTS=OFF \
+            -DCMAKE_POLICY_DEFAULT_CMP0000=OLD \
             -DOPENSSL_ROOT_DIR="$OPENSSL_ROOT" \
             ..
           cmake --build . -j$(sysctl -n hw.ncpu)
