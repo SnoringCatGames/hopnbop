@@ -1,0 +1,188 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Jump 'n Thump GameLift Backend
+
+Globals:
+  Function:
+    Timeout: 120
+    Runtime: python3.12
+    MemorySize: 512
+    Environment:
+      Variables:
+        PLAYERS_TABLE: !Ref PlayersTable
+        MATCH_HISTORY_TABLE: !Ref MatchHistoryTable
+        JWT_SECRET: !Ref JWTSecret
+        STEAM_API_KEY: !Ref SteamAPIKey
+        STEAM_APP_ID: !Ref SteamAppID
+        MATCHMAKING_CONFIG: !Ref MatchmakingConfigName
+
+Parameters:
+  JWTSecret:
+    Type: String
+    NoEcho: true
+    Description: Secret key for JWT signing
+
+  SteamAPIKey:
+    Type: String
+    NoEcho: true
+    Description: Steam Web API key
+    Default: ''
+
+  SteamAppID:
+    Type: String
+    Description: Steam App ID
+    Default: ''
+
+  MatchmakingConfigName:
+    Type: String
+    Description: GameLift matchmaking configuration name
+    Default: 'jumpnthump-ffa-matchmaker'
+
+Resources:
+  # API Gateway
+  GameBackendAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+      Auth:
+        ApiKeyRequired: false
+
+  # Lambda Functions
+  AuthLoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.auth_handler.login
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+      Events:
+        Login:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /auth/login
+            Method: post
+
+  JoinMatchmakingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.matchmaking_handler.join_matchmaking
+      Timeout: 150
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - gamelift:StartMatchmaking
+                - gamelift:DescribeMatchmaking
+                - gamelift:StopMatchmaking
+              Resource: '*'
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+      Events:
+        Join:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /matchmaking/join
+            Method: post
+
+  StartMatchmakingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.matchmaking_handler.start_matchmaking
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - gamelift:StartMatchmaking
+              Resource: '*'
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+      Events:
+        StartMatch:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /matchmaking/start
+            Method: post
+
+  GetMatchStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.matchmaking_handler.get_matchmaking_status
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - gamelift:DescribeMatchmaking
+              Resource: '*'
+      Events:
+        GetStatus:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /matchmaking/status/{ticket_id}
+            Method: get
+
+  # DynamoDB Tables
+  PlayersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: jumpnthump-players
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: player_id
+          AttributeType: S
+        - AttributeName: auth_provider
+          AttributeType: S
+        - AttributeName: last_active
+          AttributeType: N
+      KeySchema:
+        - AttributeName: player_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: auth_provider-index
+          KeySchema:
+            - AttributeName: auth_provider
+              KeyType: HASH
+            - AttributeName: last_active
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  MatchHistoryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: jumpnthump-match-history
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: player_id
+          AttributeType: S
+        - AttributeName: match_timestamp
+          AttributeType: N
+      KeySchema:
+        - AttributeName: player_id
+          KeyType: HASH
+        - AttributeName: match_timestamp
+          KeyType: RANGE
+
+Outputs:
+  ApiEndpoint:
+    Description: 'API Gateway endpoint URL'
+    Value: !Sub 'https://${GameBackendAPI}.execute-api.${AWS::Region}.amazonaws.com/prod'
+
+  PlayersTableName:
+    Description: 'DynamoDB players table'
+    Value: !Ref PlayersTable
+
+  MatchHistoryTableName:
+    Description: 'DynamoDB match history table'
+    Value: !Ref MatchHistoryTable
