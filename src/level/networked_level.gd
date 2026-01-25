@@ -68,10 +68,12 @@ func _exit_tree() -> void:
 	if Engine.is_editor_hint():
 		return
 	if G.network.is_server:
-		G.game_panel.is_level_fully_loaded = false
+		if is_instance_valid(G.game_panel):
+			G.game_panel.is_level_fully_loaded = false
 		G.network.connector.peer_players_declared.disconnect(
 			_server_on_peer_players_declared)
-	G.game_panel.on_level_removed(self)
+	if is_instance_valid(G.game_panel):
+		G.game_panel.on_level_removed(self)
 
 
 func _server_on_peer_players_declared(

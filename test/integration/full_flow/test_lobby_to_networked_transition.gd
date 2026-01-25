@@ -1,21 +1,33 @@
 extends GutTest
 ## Integration tests for full lobby-to-networked flow with int-based player IDs.
 
+const LOBBY_LEVEL_SCENE := preload("res://src/level/lobby_level.tscn")
+const MockLevel := preload("res://test/helpers/mock_level.gd")
+
 
 class TestFullPlayerFlow:
 	extends GutTest
 	var lobby: LobbyLevel
 	var root_node: Node
+	var mock_level: Node
 
 	func before_each():
 		ArrayPool.clear_all_pools()
 		root_node = Node.new()
 		add_child_autofree(root_node)
-		lobby = preload("res://src/level/lobby_level.tscn").instantiate()
+
+		# Mock G.level to avoid null reference errors.
+		mock_level = MockLevel.new()
+		G.level = mock_level
+
+		lobby = LOBBY_LEVEL_SCENE.instantiate()
 		root_node.add_child(lobby)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
+		G.level = null
+		if is_instance_valid(mock_level):
+			mock_level.queue_free()
 
 	func test_lobby_device_configs_persist_to_local_session():
 		# Spawn players.
@@ -82,16 +94,25 @@ class TestDeviceConfigThreading:
 	extends GutTest
 	var lobby: LobbyLevel
 	var root_node: Node
+	var mock_level: Node
 
 	func before_each():
 		ArrayPool.clear_all_pools()
 		root_node = Node.new()
 		add_child_autofree(root_node)
-		lobby = preload("res://src/level/lobby_level.tscn").instantiate()
+
+		# Mock G.level to avoid null reference errors.
+		mock_level = MockLevel.new()
+		G.level = mock_level
+
+		lobby = LOBBY_LEVEL_SCENE.instantiate()
 		root_node.add_child(lobby)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
+		G.level = null
+		if is_instance_valid(mock_level):
+			mock_level.queue_free()
 
 	func test_device_configs_contain_correct_bindings():
 
@@ -120,16 +141,25 @@ class TestLocalSessionCleaning:
 	extends GutTest
 	var lobby: LobbyLevel
 	var root_node: Node
+	var mock_level: Node
 
 	func before_each():
 		ArrayPool.clear_all_pools()
 		root_node = Node.new()
 		add_child_autofree(root_node)
-		lobby = preload("res://src/level/lobby_level.tscn").instantiate()
+
+		# Mock G.level to avoid null reference errors.
+		mock_level = MockLevel.new()
+		G.level = mock_level
+
+		lobby = LOBBY_LEVEL_SCENE.instantiate()
 		root_node.add_child(lobby)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
+		G.level = null
+		if is_instance_valid(mock_level):
+			mock_level.queue_free()
 
 	func test_lobby_tracks_player_count():
 		lobby._try_register_keyboard_player(
@@ -156,16 +186,25 @@ class TestLobbyPlayerIsolation:
 	extends GutTest
 	var lobby: LobbyLevel
 	var root_node: Node
+	var mock_level: Node
 
 	func before_each():
 		ArrayPool.clear_all_pools()
 		root_node = Node.new()
 		add_child_autofree(root_node)
-		lobby = preload("res://src/level/lobby_level.tscn").instantiate()
+
+		# Mock G.level to avoid null reference errors.
+		mock_level = MockLevel.new()
+		G.level = mock_level
+
+		lobby = LOBBY_LEVEL_SCENE.instantiate()
 		root_node.add_child(lobby)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
+		G.level = null
+		if is_instance_valid(mock_level):
+			mock_level.queue_free()
 
 	func test_lobby_players_use_negative_ids():
 		lobby._try_register_keyboard_player(

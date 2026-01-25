@@ -31,6 +31,7 @@ class TestKeyboardPlayerSpawning:
 			"res://src/level/lobby_level.tscn"
 		).instantiate()
 		root_node.add_child(lobby_level)
+		G.level = lobby_level
 
 	func after_each():
 		ArrayPool.clear_all_pools()
@@ -106,6 +107,7 @@ class TestGamepadPlayerSpawning:
 			"res://src/level/lobby_level.tscn"
 		).instantiate()
 		root_node.add_child(lobby_level)
+		G.level = lobby_level
 
 	func after_each():
 		ArrayPool.clear_all_pools()
@@ -178,6 +180,7 @@ class TestPlayerDespawning:
 			"res://src/level/lobby_level.tscn"
 		).instantiate()
 		root_node.add_child(lobby_level)
+		G.level = lobby_level
 
 	func after_each():
 		ArrayPool.clear_all_pools()
@@ -228,6 +231,7 @@ class TestMatchStartTransition:
 			"res://src/level/lobby_level.tscn"
 		).instantiate()
 		root_node.add_child(lobby_level)
+		G.level = lobby_level
 
 	func after_each():
 		ArrayPool.clear_all_pools()
@@ -268,6 +272,7 @@ class TestLobbyLevelPlayerPositioning:
 			"res://src/level/lobby_level.tscn"
 		).instantiate()
 		root_node.add_child(lobby_level)
+		G.level = lobby_level
 
 	func after_each():
 		ArrayPool.clear_all_pools()

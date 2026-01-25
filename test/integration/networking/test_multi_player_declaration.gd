@@ -2,6 +2,7 @@ extends GutTest
 ## Integration tests for multi-player declaration with server-assigned sequential IDs.
 
 const DEFAULT_LEVEL_SCENE := preload("res://src/level/default_level.tscn")
+const MockGamePanel := preload("res://test/helpers/mock_game_panel.gd")
 
 
 func before_each():
@@ -98,18 +99,27 @@ class TestNetworkedLevelPlayerSpawning:
 	extends GutTest
 	var root_node: Node
 	var networked_level: NetworkedLevel
+	var mock_game_panel: Node
 
 	func before_each():
 		ArrayPool.clear_all_pools()
 		root_node = Node.new()
 		add_child_autofree(root_node)
 
+		# Mock G.game_panel to avoid null reference errors.
+		mock_game_panel = MockGamePanel.new()
+		G.game_panel = mock_game_panel
+
 		# Create networked level.
 		networked_level = DEFAULT_LEVEL_SCENE.instantiate()
 		root_node.add_child(networked_level)
+		G.level = networked_level
 
 	func after_each():
 		ArrayPool.clear_all_pools()
+		G.game_panel = null
+		if is_instance_valid(mock_game_panel):
+			mock_game_panel.queue_free()
 
 	func test_spawns_players_with_assigned_ids():
 		var peer_id := 1234
@@ -179,8 +189,14 @@ class TestPlayerIdFormatConsistency:
 		var synchronizer := MatchStateSynchronizer.new()
 		var root_node := Node.new()
 		add_child_autofree(root_node)
+
+		# Mock G.game_panel to avoid null reference errors.
+		var mock_game_panel := MockGamePanel.new()
+		G.game_panel = mock_game_panel
+
 		var networked_level := DEFAULT_LEVEL_SCENE.instantiate()
 		root_node.add_child(networked_level)
+		G.level = networked_level
 
 		var peer_id := 1234
 		var assigned_ids := [1, 2]
@@ -196,6 +212,10 @@ class TestPlayerIdFormatConsistency:
 		for player_id in match_state_ids:
 			assert_has(level_ids, player_id)
 			assert_typeof(player_id, TYPE_INT)
+
+		# Cleanup.
+		G.game_panel = null
+		mock_game_panel.queue_free()
 
 
 class TestServerIdAssignmentSimulation:
