@@ -92,10 +92,11 @@ func set_expected_player_count(count: int) -> void:
 ## All session_ids must be valid or the entire peer will be disconnected.
 func validate_player_sessions(
 	peer_id: int,
-	player_count: int,
 	session_ids: Array
 ) -> void:
 	G.check_is_server()
+
+	var player_count := session_ids.size()
 
 	if not is_active():
 		# In preview mode, auto-accept without validation.
@@ -172,12 +173,6 @@ func validate_player_sessions(
 		var player_id := NetworkConnector.get_player_id(peer_id, i)
 		var session_id: StringName = session_ids[i]
 		_on_validation_success(player_id, session_id)
-
-
-## Deprecated: Use validate_player_sessions() for multi-player support.
-func validate_player_session(peer_id: int, session_id: StringName) -> void:
-	# Redirect to new method with single player.
-	validate_player_sessions(peer_id, 1, [session_id])
 
 
 func _on_validation_success(player_id: StringName, session_id: StringName) -> void:
