@@ -8,14 +8,14 @@ const PRIORITY := 320
 
 
 func _init() -> void:
-	super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
+	super (NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
 
 
 func process(character) -> bool:
 	if character.actions.just_triggered_jump:
 		character.jump_sequence_count = 1
 
-		character.velocity.y = -character.movement_settings.jump_boost
+		character.velocity.y = - character.movement_settings.jump_boost
 
 		return true
 	else:

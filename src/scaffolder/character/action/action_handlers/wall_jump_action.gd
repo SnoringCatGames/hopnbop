@@ -8,7 +8,7 @@ const PRIORITY := 120
 
 
 func _init() -> void:
-	super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
+	super (NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
 
 
 func process(character) -> bool:
@@ -21,7 +21,7 @@ func process(character) -> bool:
 		# can still be pushing themselves into the wall when they start the
 		# jump.
 		character.velocity.x = (
-			-character.surfaces.toward_wall_sign
+			- character.surfaces.toward_wall_sign
 			* character.movement_settings.wall_jump_horizontal_boost
 		)
 

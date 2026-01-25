@@ -8,7 +8,7 @@ const PRIORITY := 420
 
 
 func _init() -> void:
-	super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
+	super (NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
 
 
 func process(character) -> bool:
