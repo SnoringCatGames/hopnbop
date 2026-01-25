@@ -56,6 +56,10 @@ extends Node
 #   - Add a couple getters to CharacterActionSource for this: is_triggering_jump, just_triggered_jump.
 #   - Update relevant usages to use the new getters instead of directly checking action pressed.
 # - Replace multiplayer_id with peer_id in many places.
+# - I'm worried about the performance of replicating kills and bumps via match_state.
+#   - We should use ints to represent player_ids instead of strings.
+#   - To support this, we should
+# - Replace Array[String with packed array.
 #
 # >>>> LEFT-OFF MANUAL STEPS FROM LOBBY AND UI INTEGRATION:
 # - Scene files (lobby_level.tscn, player_list.tscn, player_display.tscn) may need minor adjustments in the Godot editor
@@ -259,6 +263,12 @@ extends Node
 #   - We should also override various other settings if we're not in the editor.
 #     - Do this with getters on those properties.
 #     - Probably need to check Engine.is_editor_hint though also in the getters.
+
+# - [Copilot] Go through each file and fix formatting inconsistencies.
+#   - Make sure there are always two empty lines between functions and after the
+#     class `extends` line.
+#   - Fix inconsistent line-break. Lines should break at 80 characters.
+#   - Fix anything else that looks off.
 
 # FIXME: Rollback debug visualization and networking improvements:
 #
@@ -762,8 +772,8 @@ func _server_execute_unpause() -> void:
 	G.network.time.unpause()
 
 	G.print(
-		"Server unpaused at frame %d (paused for %d frames, cumulative: %d)"
-		% [server_frame_index, pause_duration_frames, _cumulative_paused_frames],
+		"Server unpaused at frame %d (paused for %d frames, cumulative: %d)" %
+		[server_frame_index, pause_duration_frames, _cumulative_paused_frames],
 		ScaffolderLog.CATEGORY_NETWORK_SYNC,
 	)
 
@@ -920,8 +930,8 @@ func _resync_frame_time_to_wall_clock() -> void:
 	if absf(drift_usec) > 1_000_000:
 		@warning_ignore("integer_division")
 		G.warning(
-			"Large timestamp drift detected: %d ms at frame %d"
-			% [drift_usec / 1000, server_frame_index],
+			"Large timestamp drift detected: %d ms at frame %d" %
+			[drift_usec / 1000, server_frame_index],
 			ScaffolderLog.CATEGORY_NETWORK_SYNC,
 		)
 
@@ -930,8 +940,8 @@ func _resync_frame_time_to_wall_clock() -> void:
 
 	@warning_ignore("integer_division")
 	G.print(
-		"Re-synced frame timestamp to wall-clock (drift: %d ms)"
-		% [drift_usec / 1000],
+		"Re-synced frame timestamp to wall-clock (drift: %d ms)" %
+		[drift_usec / 1000],
 		ScaffolderLog.CATEGORY_NETWORK_SYNC,
 	)
 
@@ -977,11 +987,9 @@ func queue_rollback(p_conflicting_frame_index: int) -> bool:
 	var target_rollback_frame := p_conflicting_frame_index + 1
 	if is_frame_too_old_to_consider(p_conflicting_frame_index):
 		G.fatal(
-			(
-				"Requested rollback to frame %d, " +
-				"but oldest rollbackable frame is %d"
-			)
-			% [target_rollback_frame, oldest_rollbackable_frame_index],
+			("Requested rollback to frame %d, " +
+			"but oldest rollbackable frame is %d") %
+			[target_rollback_frame, oldest_rollbackable_frame_index],
 		)
 		return false
 
@@ -1016,8 +1024,8 @@ func _run_network_process() -> void:
 
 func _rollback_and_reprocess() -> void:
 	G.print(
-		"Starting rollback from frame %d to frame %d"
-		% [server_frame_index, _queued_rollback_frame_index],
+		"Starting rollback from frame %d to frame %d" %
+		[server_frame_index, _queued_rollback_frame_index],
 		ScaffolderLog.CATEGORY_NETWORK_SYNC,
 		ScaffolderLog.Verbosity.VERBOSE,
 	)
