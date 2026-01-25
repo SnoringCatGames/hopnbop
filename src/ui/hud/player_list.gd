@@ -73,13 +73,15 @@ func _get_current_player_ids() -> Array[int]:
 
 	if local_player_ids.size() + current_player_ids.size() > _MAX_PLAYER_LIST_SIZE:
 		# Sort by score (highest first) and slice to fit remaining slots.
-		current_player_ids.sort_custom(func(a: int, b: int) -> bool:
-			var state_a := G.get_player_match_state(a)
-			var state_b := G.get_player_match_state(b)
-			var score_a := state_a.score if state_a else 0
-			var score_b := state_b.score if state_b else 0
-			return score_a > score_b
-		)
+		# FIXME: Add support for getting the current score of a player
+		#        (kills - deaths + a tiny bit for bumps).
+		#current_player_ids.sort_custom(func(a: int, b: int) -> bool:
+			#var state_a := G.get_player_match_state(a)
+			#var state_b := G.get_player_match_state(b)
+			#var score_a := state_a.score if state_a else 0
+			#var score_b := state_b.score if state_b else 0
+			#return score_a > score_b
+		#)
 		var max_remote_players := _MAX_PLAYER_LIST_SIZE - local_player_ids.size()
 		current_player_ids = current_player_ids.slice(0, max_remote_players)
 
