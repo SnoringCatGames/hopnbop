@@ -322,8 +322,17 @@ jobs:
         working-directory: gamelift-gdextension/gamelift-server-sdk
         run: |
           # Patch CMake version requirements for modern CMake (macOS BSD sed syntax)
+          echo "Patching root CMakeLists.txt..."
+          cat CMakeLists.txt | head -10
           sed -i '' 's/cmake_minimum_required(VERSION 3\.10)/cmake_minimum_required(VERSION 3.10...3.30)/' CMakeLists.txt
+          echo "After patch:"
+          cat CMakeLists.txt | head -10
+
+          echo "Patching gamelift-server-sdk/CMakeLists.txt..."
+          cat gamelift-server-sdk/CMakeLists.txt | head -5
           sed -i '' 's/CMAKE_MINIMUM_REQUIRED(VERSION 3\.5)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/' gamelift-server-sdk/CMakeLists.txt
+          echo "After patch:"
+          cat gamelift-server-sdk/CMakeLists.txt | head -5
 
           mkdir -p cmake-build
           cd cmake-build
