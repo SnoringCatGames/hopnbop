@@ -79,7 +79,7 @@ func _try_deregister_gamepad_player(device_id: int) -> void:
 
 
 func _register_player(device_config: DeviceConfig) -> void:
-	var local_index := _pending_device_configs_by_index.size() - 1
+	var local_index := _pending_device_configs_by_index.size()
 	var player: Player = G.settings.default_player_scene.instantiate()
 	player.player_id = get_local_player_id(local_index)
 	player.local_player_index = local_index
