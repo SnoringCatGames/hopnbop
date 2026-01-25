@@ -53,6 +53,7 @@ extends Node
 # - Test GDExtension Windows build.
 # - AI: How is session_ids in _client_send_player_declaration supposed to be populated?
 # - AI: /plan We need to update NETWORKING_ARCHITECTURE.md to account for the current design--including player_ids, multiple players per client, and GameLift.
+# - AI: In PlayerList, if there are more than 8 players, only list the local players, and then the 4 current top-scoring remote players.
 #
 #
 # Proceed with the "AWS GameLift Deployment Guide"
@@ -199,6 +200,8 @@ extends Node
 # - [Copilot] Go through each file and fix formatting inconsistencies.
 #   - Make sure there are always two empty lines between functions and after the
 #     class `extends` line.
+#     - But make sure that if a file-level doc comment is present, it is on the
+#       next line after the `extends` line
 #   - Fix inconsistent line-break. Lines should break at 80 characters.
 #   - Use tabs instead of spaces.
 #   - Fix anything else that looks off.

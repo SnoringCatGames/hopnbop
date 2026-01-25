@@ -1,5 +1,5 @@
 extends GutTest
-## Integration tests for full lobby-to-networked flow.
+## Integration tests for full lobby-to-networked flow with int-based player IDs.
 
 
 class TestFullPlayerFlow:
@@ -167,7 +167,7 @@ class TestLobbyPlayerIsolation:
 	func after_each():
 		ArrayPool.clear_all_pools()
 
-	func test_lobby_players_have_correct_local_index():
+	func test_lobby_players_use_negative_ids():
 		lobby._try_register_keyboard_player(
 			InputDeviceManager.KEYBOARD_PARTITION_BINDINGS[0]
 		)
@@ -175,9 +175,11 @@ class TestLobbyPlayerIsolation:
 			InputDeviceManager.KEYBOARD_PARTITION_BINDINGS[2]
 		)
 
-		# Players assigned sequential indices based on join order.
-		var player0: Player = lobby.players_by_id["lobby:0"]
-		var player1: Player = lobby.players_by_id["lobby:1"]
+		# Lobby players use negative IDs: -1, -2, -3, etc.
+		var player0: Player = lobby.players_by_id[-1]
+		var player1: Player = lobby.players_by_id[-2]
 
-		assert_eq(player0.local_player_index, 0)
-		assert_eq(player1.local_player_index, 1)
+		assert_not_null(player0)
+		assert_not_null(player1)
+		assert_eq(player0.player_id, -1)
+		assert_eq(player1.player_id, -2)

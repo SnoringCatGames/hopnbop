@@ -1,7 +1,7 @@
 class_name PlayerDisplay
 extends VBoxContainer
-
 ## Individual player info panel showing adjective, name, and score.
+
 
 var player_id: int = 0
 
