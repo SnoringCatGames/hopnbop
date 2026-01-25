@@ -146,7 +146,6 @@ func start_match() -> void:
 		return
 
 	# Update LocalSession.
-	G.local_session.local_player_count = get_player_count()
 	G.local_session.device_configs = _pending_device_configs_by_index.duplicate()
 	G.local_session.player_session_ids.clear()
 
