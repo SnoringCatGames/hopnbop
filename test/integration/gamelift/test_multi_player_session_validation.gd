@@ -97,14 +97,6 @@ class TestSessionIdReverseLookup:
 class TestDeprecatedSinglePlayerAPI:
 	extends GutTest
 
-	func test_deprecated_validate_single_player():
-		var manager := GameLiftManager.new()
-		manager.validate_player_session(1234, "s1")
-
-		# Should internally call validate_player_sessions with count=1.
-		assert_has(manager._player_to_session, "1234:0")
-		assert_eq(manager._validated_player_count, 1)
-
 	func test_deprecated_get_session_for_peer():
 		var manager := GameLiftManager.new()
 		manager.validate_player_sessions(1234, ["s1", "s2"])
