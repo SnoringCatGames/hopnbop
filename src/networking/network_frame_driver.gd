@@ -51,7 +51,6 @@ extends Node
 #
 # LEFT OFF HERE:
 # - Test GDExtension Windows build.
-# - AI: How is session_ids in _client_send_player_declaration supposed to be populated?
 # - AI: /plan We need to update NETWORKING_ARCHITECTURE.md to account for the current design--including player_ids, multiple players per client, and GameLift.
 # - AI: In PlayerList, if there are more than 8 players, only list the local players, and then the 4 current top-scoring remote players.
 #
@@ -388,6 +387,10 @@ extends Node
 # - Review these notes: https://trello.com/c/i8peodBL
 #
 # ### TODO: After everything else:
+# - Survey usage of G.check, G.ensure, G.error, G.fatal, and G.alert.
+#   - Check if there are places that I should be more gracefully showing the
+#     player a message, and/or redirecting back to the lobby, possibly with
+#     reset game state.
 # - AI: Scan through all logs, and consider whether we should add any additional
 #   categories, and re-group logs int whichever categories make the most sense.
 # - AI: I am considering creating a re-usable GDExtension that I can publish on

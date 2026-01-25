@@ -293,7 +293,6 @@ jobs:
           # Create CMake init file to set policies globally
           mkdir -p cmake-build
           cat > cmake-build/init.cmake << 'EOF'
-          cmake_policy(SET CMP0000 OLD)
           set(CMAKE_POLICY_DEFAULT_CMP0000 OLD CACHE STRING "")
           EOF
 
