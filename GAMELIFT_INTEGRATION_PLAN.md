@@ -1617,9 +1617,26 @@ This section provides step-by-step instructions for all manual AWS and third-par
      --build-id build-abc123... \
      --ec2-instance-type c5.large \
      --fleet-type ON_DEMAND \
-     --runtime-configuration "ServerProcesses=[{LaunchPath=/local/game/jumpnthump-server.x86_64,Parameters=--server,ConcurrentExecutions=1}]" \
+     --runtime-configuration "ServerProcesses=[{LaunchPath=/local/game/jumpnthump-server.x86_64,Parameters=--server --port=4433,ConcurrentExecutions=1}]" \
      --ec2-inbound-permissions "FromPort=4433,ToPort=4433,IpRange=0.0.0.0/0,Protocol=UDP" \
      --region us-west-2
+   ```
+
+   (FIXME: Check this. This is probably garbage, and not relevant info. Port should be set via command-line arg.)
+   **CRITICAL:** The `--port=4433` parameter must be included in the launch parameters. GameLift does NOT automatically set environment variables for the port. Instead, the port is passed via command-line arguments, which the server process reads from `G.args.port`. The same port must be configured in:
+   - Runtime configuration `Parameters` (tells server which port to bind to)
+   - EC2 inbound permissions `FromPort/ToPort` (opens firewall for that port)
+   - Both must match for clients to connect successfully
+
+   **Multiple Concurrent Processes (Optional):**
+   To run multiple game sessions per EC2 instance, use different ports:
+   ```bash
+   --runtime-configuration "ServerProcesses=[
+     {LaunchPath=/local/game/jumpnthump-server.x86_64,Parameters=--server --port=4433,ConcurrentExecutions=1},
+     {LaunchPath=/local/game/jumpnthump-server.x86_64,Parameters=--server --port=4434,ConcurrentExecutions=1},
+     {LaunchPath=/local/game/jumpnthump-server.x86_64,Parameters=--server --port=4435,ConcurrentExecutions=1}
+   ]" \
+   --ec2-inbound-permissions "FromPort=4433,ToPort=4435,IpRange=0.0.0.0/0,Protocol=UDP"
    ```
 
    **Option B: GameLift Anywhere (Development)**
@@ -2232,6 +2249,35 @@ aws gamelift describe-fleet-events --fleet-id fleet-abc123... --limit 10
 # Verify build uploaded correctly
 aws gamelift describe-build --build-id build-abc123...
 ```
+
+### Issue: Clients Can't Connect to GameLift Server
+
+**Symptoms:**
+- Clients receive "Failed to connect" errors
+- GameLift shows game session as ACTIVE but no players joining
+- Server logs show "Started multiplayer server" but no client connections
+
+**Solution:**
+1. **Verify Port Configuration Matches:**
+   - Runtime configuration `Parameters` must include `--port=4433`
+   - EC2 inbound permissions must allow that port (`FromPort=4433,ToPort=4433`)
+   - Both must use the same port number
+
+2. **Check Fleet Events:**
+   ```bash
+   aws gamelift describe-fleet-events --fleet-id fleet-abc123... --limit 10
+   ```
+   Look for port binding errors or permission issues
+
+3. **Test Server Locally:**
+   ```bash
+   # Test that server accepts --port argument
+   ./jumpnthump-server.x86_64 --server --port=4433
+   ```
+
+4. **Verify Game Session Connection Info:**
+   - Check that backend returns correct server IP and port
+   - Ensure clients use the port from GameLift response, not hardcoded values
 
 ### Issue: Lambda Can't Access Secrets
 

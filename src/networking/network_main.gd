@@ -64,8 +64,16 @@ var preview_client_number := 0
 
 var should_connect_to_remote_server: bool:
 	get:
-		return not G.network.is_preview or
-			G.settings.preview_connect_to_remote_server
+		return not is_preview or G.settings.preview_connect_to_remote_server
+
+## Server port to bind to.
+## When running under GameLift, reads from --port command-line argument.
+var server_port: int:
+	get:
+		# Check for --port command-line argument (set by GameLift fleet config).
+		if G.args.has("port"):
+			return int(G.args.port)
+		return -1
 
 var is_connected_to_server: bool:
 	get:
@@ -119,6 +127,10 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	G.log.log_system_ready("NetworkMain")
+
+	if is_server and should_connect_to_remote_server:
+		G.check(server_port > 0,
+			"Server port command-line argument not provided")
 
 
 # This is duplicated here for convenience when accessing.

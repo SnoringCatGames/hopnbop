@@ -340,7 +340,7 @@ func _initialize_sdk() -> void:
 
 
 func _call_process_ready() -> void:
-	var port = G.settings.local_preview_server_port
+	var port = G.network.server_port
 	var log_paths = PackedStringArray(["logs/server.log"])
 
 	G.print(
