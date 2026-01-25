@@ -155,5 +155,6 @@ func start_match() -> void:
 	G.game_panel.client_load_game()
 
 
-static func get_local_player_id(local_player_index: int) -> StringName:
-	return "lobby:%d" % local_player_index
+static func get_local_player_id(local_player_index: int) -> int:
+	# Lobby players use negative IDs: -1, -2, -3, etc.
+	return -(local_player_index + 1)

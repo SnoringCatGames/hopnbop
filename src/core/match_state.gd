@@ -8,7 +8,7 @@ signal players_updated
 signal kills_updated
 signal bumps_updated
 
-# Dictionary<StringName, PlayerMatchState>
+# Dictionary<int, PlayerMatchState>
 var players: Dictionary = {}
 
 ## - We maintain both a packed Array of player state as well as a redundant
@@ -23,16 +23,11 @@ var packed_players := []:
 			_client_unpack_players()
 			players_updated.emit()
 
-var _is_packing_state_locally := false
-
-# Dictionary<StringName, bool>
-var _connected_players := {}
-
 ## Every even index marks a 2-player pair.
 ##
 ## Every even index is the killer, and every odd index is the killee for the
 ## prior index.
-var kills: PackedStringArray = []:
+var kills: PackedInt32Array = []:
 	set(value):
 		kills = value
 		kills_updated.emit()
@@ -40,10 +35,15 @@ var kills: PackedStringArray = []:
 ## A bump happens when two bunnies collide, but neither dies.
 ##
 ## Every even index marks a 2-player pair.
-var bumps: PackedStringArray = []:
+var bumps: PackedInt32Array = []:
 	set(value):
 		bumps = value
 		bumps_updated.emit()
+
+var _is_packing_state_locally := false
+
+# Dictionary<int, bool>
+var _connected_players := {}
 
 
 func clear() -> void:

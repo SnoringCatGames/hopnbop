@@ -91,7 +91,7 @@ enum FrameAuthority {
 
 signal received_network_state
 signal network_processed
-signal player_id_changed(new_player_id: StringName)
+signal player_id_changed(new_player_id: int)
 
 const DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD := 1.0
 const DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHOLD := 10.0
@@ -130,12 +130,12 @@ var _property_names_for_packing: Array[StringName] = []
 # Dictionary<StringName, int>
 var _property_name_to_pack_index := {}
 
-## Composite player ID in format "peer_id:local_player_index" (e.g., "1234:0").
+## Server-assigned player ID (integer).
 ##
-## - This identifies which client connection (peer) and which local player
-##   index on that client this state belongs to.
-## - This is assigned by the server machine when spawning new networked nodes.
-var player_id := "":
+## - This uniquely identifies a player across the entire game session.
+## - Assigned by the server when spawning new networked nodes.
+## - Local-only lobby players use negative IDs (-1, -2, -3, etc.).
+var player_id: int = 0:
 	set(value):
 		if value != player_id:
 			player_id = value
@@ -150,26 +150,19 @@ var player_id := "":
 
 			player_id_changed.emit(player_id)
 
-## Deprecated: Use peer_id or player_id instead. Kept for backward
-## compatibility.
+## Deprecated: Use player_id instead. Kept for backward compatibility.
 var multiplayer_id: int:
 	get:
-		return peer_id
-	set(value):
-		# Convert int peer_id to player_id format "peer_id:0".
-		player_id = "%d:0" % value
-
-var peer_id: int:
-	get:
 		return G.network.get_peer_id_from_player_id(player_id)
-
-var local_player_index: int:
-	get:
-		return G.network.get_local_index_from_player_id(player_id)
+	set(value):
+		# This setter is deprecated and should not be used.
+		push_warning("multiplayer_id setter is deprecated")
 
 var authority_id: int:
 	get:
-		return NetworkConnector.SERVER_ID if is_server_authoritative else peer_id
+		if is_server_authoritative:
+			return NetworkConnector.SERVER_ID
+		return G.network.get_peer_id_from_player_id(player_id)
 
 ## Sibling nodes in the 3-node architecture for players:
 ## - state_from_server: CharacterStateFromServer (server-authoritative physics/position)

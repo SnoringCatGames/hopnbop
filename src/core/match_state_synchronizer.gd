@@ -36,24 +36,23 @@ func clear() -> void:
 	_previous_state.clear()
 
 
-func get_player(player_id: StringName) -> PlayerMatchState:
+func get_player(player_id: int) -> PlayerMatchState:
 	if state.players.has(player_id):
 		return state.players[player_id]
-	else:
-		return null
+	return null
 
 
 func _server_on_peer_players_declared(
 	peer_id: int,
-	session_ids: Array
+	assigned_ids: Array
 ) -> void:
-	# Create N PlayerMatchState objects for this peer.
-	for i in range(session_ids.size()):
-		var player_id := NetworkConnector.get_player_id(peer_id, i)
+	# Create PlayerMatchState objects for each assigned player ID.
+	for i in range(assigned_ids.size()):
+		var player_id: int = assigned_ids[i]
 		G.ensure(not state.players.has(player_id))
 
 		var player := PlayerMatchState.new()
-		player.set_up(player_id, true)
+		player.set_up(player_id, peer_id, i, true)
 		player.connect_time_usec = (
 			G.network.server_time_usec_not_frame_aligned
 		)

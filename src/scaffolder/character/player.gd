@@ -3,20 +3,6 @@ class_name Player
 extends Character
 
 
-var player_id: StringName:
-	set(value):
-		state_from_server.player_id = value
-	get:
-		return state_from_server.player_id
-
-var peer_id: int:
-	get:
-		return state_from_server.peer_id
-
-var local_player_index: int:
-	get:
-		return state_from_server.local_player_index
-
 @export var input_from_client: PlayerInputFromClient:
 	set(value):
 		input_from_client = value
@@ -26,6 +12,12 @@ var local_player_index: int:
 	set(value):
 		forwarded_input_from_server = value
 		update_configuration_warnings()
+
+var player_id: int:
+	set(value):
+		state_from_server.player_id = value
+	get:
+		return state_from_server.player_id
 
 
 func _enter_tree() -> void:
@@ -44,7 +36,7 @@ func _enter_tree() -> void:
 		G.level.register_player(self)
 
 
-func _client_on_player_id_replicated(new_player_id: StringName) -> void:
+func _client_on_player_id_replicated(new_player_id: int) -> void:
 	player_id = new_player_id
 	G.level.register_player(self)
 

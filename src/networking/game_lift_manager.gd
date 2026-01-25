@@ -35,9 +35,9 @@ var _is_initialized := false
 var _is_process_ready := false
 
 # Maps player_id <-> player_session_id (1:1 per player)
-# Dictionary<StringName, StringName>
+# Dictionary<int, StringName>
 var _player_to_session: Dictionary = {}
-# Dictionary<StringName, StringName>
+# Dictionary<StringName, int>
 var _session_to_player: Dictionary = {}
 
 # Pending connections awaiting validation (peer_id -> player_count)
@@ -92,6 +92,7 @@ func set_expected_player_count(count: int) -> void:
 ## All session_ids must be valid or the entire peer will be disconnected.
 func validate_player_sessions(
 	peer_id: int,
+	assigned_ids: Array,
 	session_ids: Array
 ) -> void:
 	G.check_is_server()
@@ -108,25 +109,25 @@ func validate_player_sessions(
 			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
 		)
 		for i in range(player_count):
-			var player_id := NetworkConnector.get_player_id(peer_id, i)
+			var player_id: int = assigned_ids[i]
 			var session_id: StringName = (
 				session_ids[i]
 				if i < session_ids.size()
 				else ""
 			)
-			_on_validation_success(player_id, session_id)
+			_on_validation_success(player_id, peer_id, session_id)
 		return
 
 	if _gamelift == null:
 		G.warning("[GameLift] SDK not initialized, auto-accepting")
 		for i in range(player_count):
-			var player_id := NetworkConnector.get_player_id(peer_id, i)
+			var player_id: int = assigned_ids[i]
 			var session_id: StringName = (
 				session_ids[i]
 				if i < session_ids.size()
 				else ""
 			)
-			_on_validation_success(player_id, session_id)
+			_on_validation_success(player_id, peer_id, session_id)
 		return
 
 	# Validate all session IDs for this peer.
@@ -134,7 +135,7 @@ func validate_player_sessions(
 	for i in range(player_count):
 		if i >= session_ids.size():
 			G.warning(
-				"[GameLift] Missing session ID for player %d:%d" % [peer_id, i],
+				"[GameLift] Missing session ID for player %d" % assigned_ids[i],
 				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
 			)
 			all_valid = false
@@ -170,25 +171,21 @@ func validate_player_sessions(
 
 	# All sessions valid - record mappings.
 	for i in range(player_count):
-		var player_id := NetworkConnector.get_player_id(peer_id, i)
+		var player_id: int = assigned_ids[i]
 		var session_id: StringName = session_ids[i]
-		_on_validation_success(player_id, session_id)
+		_on_validation_success(player_id, peer_id, session_id)
 
 
-func _on_validation_success(player_id: StringName, session_id: StringName) -> void:
+func _on_validation_success(
+		player_id: int,
+		peer_id: int,
+		session_id: StringName) -> void:
 	_player_to_session[player_id] = session_id
 	_session_to_player[session_id] = player_id
 	_validated_player_count += 1
 
-	# Extract peer_id for logging and signal.
-	var peer_id: int = 0
-	if not player_id.is_empty():
-		var parts := player_id.split(":")
-		if parts.size() >= 1:
-			peer_id = int(parts[0])
-
 	G.print(
-		"[GameLift] Player validated: player_id=%s, session=%s (%d/%d)" % [
+		"[GameLift] Player validated: player_id=%d, session=%s (%d/%d)" % [
 			player_id,
 			session_id,
 			_validated_player_count,
@@ -217,30 +214,31 @@ func _on_all_players_ready() -> void:
 
 
 ## Get the player_session_id for a given player_id.
-func get_session_id_for_player(player_id: StringName) -> StringName:
+func get_session_id_for_player(player_id: int) -> StringName:
 	return _player_to_session.get(player_id, "")
 
 
 ## Get the player_id for a given player_session_id.
-func get_player_id_for_session(session_id: StringName) -> StringName:
-	return _session_to_player.get(session_id, "")
+func get_player_id_for_session(session_id: StringName) -> int:
+	return _session_to_player.get(session_id, 0)
 
 
-## Deprecated: Use get_session_id_for_player() with player_id string.
+## Deprecated: Use get_session_id_for_player() with player_id int.
 func get_session_id_for_peer(peer_id: int) -> StringName:
-	var player_id := "%d:0" % peer_id
-	return get_session_id_for_player(player_id)
+	# For backward compatibility, find first player for this peer.
+	# This is fragile - callers should use player_id directly.
+	for player_id in _player_to_session.keys():
+		if G.network.get_peer_id_from_player_id(player_id) == peer_id:
+			return _player_to_session[player_id]
+	return ""
 
 
 ## Deprecated: Use get_player_id_for_session() which returns player_id.
 func get_peer_id_for_session(session_id: StringName) -> int:
 	var player_id := get_player_id_for_session(session_id)
-	if player_id.is_empty():
+	if player_id == 0:
 		return 0
-	var parts := player_id.split(":")
-	if parts.size() >= 1:
-		return int(parts[0])
-	return 0
+	return G.network.get_peer_id_from_player_id(player_id)
 
 
 ## Remove a player session when a player disconnects.

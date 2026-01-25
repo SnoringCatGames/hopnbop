@@ -12,8 +12,8 @@ extends Node2D
 
 var players: Array[Player] = []
 
-# Dictionary<StringName, Player>
-# Keys are player_id (String format varies by level type).
+# Dictionary<int, Player>
+# Keys are player_id (int assigned by server, or negative for lobby).
 var players_by_id := {}
 
 

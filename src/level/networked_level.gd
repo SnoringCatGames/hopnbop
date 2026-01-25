@@ -9,7 +9,7 @@ extends Level
 		player_spawner = value
 		update_configuration_warnings()
 
-# Dictionary<int, Array<StringName>>
+# Dictionary<int, Array[int]>
 # Maps peer_id to array of player_ids for that peer.
 var peer_to_player_ids := {}
 
@@ -76,23 +76,24 @@ func _exit_tree() -> void:
 
 func _server_on_peer_players_declared(
 	peer_id: int,
-	session_ids: Array
+	assigned_ids: Array
 ) -> void:
-	_server_register_players_for_peer(peer_id, session_ids.size())
+	_server_register_players_for_peer(peer_id, assigned_ids)
 
 
-func _server_register_players_for_peer(peer_id: int, count: int) -> void:
+func _server_register_players_for_peer(
+		peer_id: int,
+		assigned_ids: Array) -> void:
 	G.print(
-		"Spawning %d player(s) for peer %d" % [count, peer_id],
+		"Spawning %d player(s) for peer %d" % [assigned_ids.size(), peer_id],
 		ScaffolderLog.CATEGORY_GAME_STATE,
 	)
 
-	for i in range(count):
-		var player_id := NetworkConnector.get_player_id(peer_id, i)
+	for player_id in assigned_ids:
 		var player: Player = G.settings.default_player_scene.instantiate()
 		player.player_id = player_id
 		player.global_position = _get_player_spawn_position()
-		player.name = "Player_%s" % player_id.replace(":", "_")
+		player.name = "Player_%d" % player_id
 		players_by_id[player_id] = player
 
 		# Record peer to player_ids mapping.

@@ -6,7 +6,7 @@ extends PanelContainer
 @export var toast_fade_delay := 1.5
 @export var show_extra_debug_info := false
 
-var player_id: StringName = ""
+var player_id: int = 0
 var player: Player
 var player_match_state: PlayerMatchState
 

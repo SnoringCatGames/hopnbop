@@ -263,6 +263,7 @@ extends Node
 #   - Make sure there are always two empty lines between functions and after the
 #     class `extends` line.
 #   - Fix inconsistent line-break. Lines should break at 80 characters.
+#   - Use tabs instead of spaces.
 #   - Fix anything else that looks off.
 
 # FIXME: Rollback debug visualization and networking improvements:

@@ -7,21 +7,25 @@ extends RefCounted
 ## - State that needs to sync every frame should instead be tracked in
 ##   CharacterStateFromServer (or a subclass of it).
 
-var player_id: StringName = ""
-var bunny_name := ""
-var adjective := ""
-var is_soft := true
-var connect_time_usec := 0
-var disconnect_time_usec := 0
-
 const _PROPERTY_NAMES := [
 	"player_id",
+	"peer_id",
+	"local_index",
 	"bunny_name",
 	"adjective",
 	"is_soft",
 	"connect_time_usec",
 	"disconnect_time_usec",
 ]
+
+var player_id: int = 0
+var peer_id: int = 0
+var local_index: int = 0
+var bunny_name := ""
+var adjective := ""
+var is_soft := true
+var connect_time_usec := 0
+var disconnect_time_usec := 0
 
 ## Deprecated: Use peer_id instead. Kept for backward compatibility.
 var multiplayer_id: int:
@@ -40,16 +44,7 @@ var player: Player:
 	get:
 		if G.level.players_by_id.has(player_id):
 			return G.level.players_by_id[player_id]
-		else:
-			return null
-
-var peer_id: int:
-	get:
-		return G.network.get_peer_id_from_player_id(player_id)
-
-var local_player_index: int:
-	get:
-		return G.network.get_local_index_from_player_id(player_id)
+		return null
 
 
 func get_packed_state() -> Array:
@@ -69,13 +64,18 @@ func populate_from_packed_state(packed_state: Array) -> void:
 		i += 1
 
 
-static func get_player_id_from_packed_state(packed_state: Array) -> StringName:
+static func get_player_id_from_packed_state(packed_state: Array) -> int:
 	return packed_state[0]
 
 
-func set_up(p_player_id: StringName, p_is_soft: bool) -> void:
+func set_up(
+		p_player_id: int,
+		p_peer_id: int,
+		p_local_index: int,
+		p_is_soft: bool) -> void:
 	player_id = p_player_id
-
+	peer_id = p_peer_id
+	local_index = p_local_index
 	is_soft = p_is_soft
 
 	bunny_name = BunnyWords.NAMES.pick_random()
@@ -89,4 +89,9 @@ func set_up(p_player_id: StringName, p_is_soft: bool) -> void:
 
 
 func get_string() -> String:
-	return "%s:%s" % [player_id, full_name]
+	return "Player %d (%s) [peer:%d, local:%d]" % [
+		player_id,
+		full_name,
+		peer_id,
+		local_index
+	]

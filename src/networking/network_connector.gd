@@ -25,24 +25,26 @@ extends Node
 ## Configuration is read from G.settings (server_port, server_ip_address,
 ## max_client_count).
 
+## Signal emitted when a peer declares their player count.
+## assigned_ids is an Array[int] of the player IDs assigned by the server.
+signal peer_players_declared(
+	peer_id: int,
+	assigned_ids: Array
+)
+
 const SERVER_ID := 1
 
 ## Transfer channel for pause/unpause RPCs. Using a dedicated channel ensures
 ## pause coordination messages are not blocked by other network traffic.
 const RPC_CHANNEL_PAUSE := 1
 
-## Signal emitted when a peer declares their player count.
-signal peer_players_declared(peer_id: int, session_ids: Array)
-
 var is_connected_to_server := false
 
-# Cached mapping, so we don't have to parse player_id strings repeatedly.
-# Dictionary<StringName, int>
-var _player_id_to_peer_id := {}
+# Server-only: Counter for assigning sequential player IDs.
+var _next_player_id: int = 1
 
-# Cached mapping, so we don't have to parse player_id strings repeatedly.
-# Dictionary<StringName, int>
-var _player_id_to_local_index := {}
+# Dictionary<int, int>
+var _player_id_to_peer_id := {}
 
 func _enter_tree() -> void:
 	if G.network.is_client:
@@ -92,7 +94,10 @@ func client_connect_to_server() -> void:
 		"Failed to start multiplayer client: error=%d" % result,
 	)
 	if peer.get_connection_status() == MultiplayerPeer.CONNECTION_DISCONNECTED:
-		G.log.alert_user("Failed to start multiplayer client: status=DISCONNECTED", ScaffolderLog.CATEGORY_CORE_SYSTEMS)
+		G.log.alert_user(
+			"Failed to start multiplayer client: status=DISCONNECTED",
+			ScaffolderLog.CATEGORY_CORE_SYSTEMS
+		)
 		G.game_panel.client_exit_game()
 		return
 
@@ -210,7 +215,7 @@ func client_disconnect() -> void:
 ## This must be called before players are spawned on the server.
 @rpc("any_peer", "call_remote", "reliable")
 func _server_rpc_declare_players(session_ids: Array) -> void:
-	G.check_is_client()
+	G.check_is_server()
 
 	var peer_id := multiplayer.get_remote_sender_id()
 	var player_count := session_ids.size()
@@ -233,6 +238,21 @@ func _server_rpc_declare_players(session_ids: Array) -> void:
 		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
 	)
 
+	# Assign sequential player IDs.
+	var assigned_ids: Array[int] = []
+	for i in range(player_count):
+		assigned_ids.append(_next_player_id)
+		_player_id_to_peer_id[_next_player_id] = peer_id
+		_next_player_id += 1
+
+	# Send assigned IDs back to client.
+	_client_rpc_receive_player_ids.rpc_id(peer_id, assigned_ids)
+
+	G.print(
+		"Assigned IDs %s to peer %d" % [assigned_ids, peer_id],
+		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+	)
+
 	# If GameLift is enabled, validate sessions before spawning players.
 	if (
 		G.settings.use_gamelift and
@@ -240,44 +260,28 @@ func _server_rpc_declare_players(session_ids: Array) -> void:
 	):
 		G.network.game_lift_manager.validate_player_sessions(
 			peer_id,
+			assigned_ids,
 			session_ids
 		)
 
 	# Emit signal for Level and MatchStateSynchronizer to handle spawning.
-	peer_players_declared.emit(peer_id, session_ids)
+	peer_players_declared.emit(peer_id, assigned_ids)
 
 
-static func get_player_id(p_peer_id: int, p_player_index: int) -> StringName:
-	return "%d:%d" % [p_peer_id, p_player_index]
+## RPC called by server to send assigned player IDs to the client.
+@rpc("authority", "call_remote", "reliable")
+func _client_rpc_receive_player_ids(assigned_ids: Array[int]) -> void:
+	G.check_is_client()
+
+	G.print(
+		"Received assigned player IDs: %s" % [assigned_ids],
+		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+	)
 
 
-func get_peer_id_from_player_id(p_player_id: StringName) -> int:
-	# Check the cache first.
+## Gets the peer_id associated with a given player_id.
+## Returns 0 if the player_id is not found (e.g., lobby player).
+func get_peer_id_from_player_id(p_player_id: int) -> int:
 	if _player_id_to_peer_id.has(p_player_id):
 		return _player_id_to_peer_id[p_player_id]
-
-	# Parse the string.
-	var delimiter_index := p_player_id.find(":")
-	if delimiter_index < 0:
-		return 0
-	var peer_id := int(p_player_id.substr(0, delimiter_index))
-
-	# Cache it.
-	_player_id_to_peer_id[p_player_id] = peer_id
-	return peer_id
-
-
-func get_local_index_from_player_id(p_player_id: StringName) -> int:
-	# Check the cache first.
-	if _player_id_to_local_index.has(p_player_id):
-		return _player_id_to_local_index[p_player_id]
-
-	# Parse the string.
-	var delimiter_index := p_player_id.find(":")
-	if delimiter_index < 0:
-		return 0
-	var local_player_index := int(p_player_id.substr(delimiter_index + 1))
-
-	# Cache it.
-	_player_id_to_local_index[p_player_id] = local_player_index
-	return local_player_index
+	return 0

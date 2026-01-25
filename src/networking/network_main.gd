@@ -111,10 +111,5 @@ func _ready() -> void:
 
 
 # This is duplicated here for convenience when accessing.
-func get_peer_id_from_player_id(p_player_id: StringName) -> int:
+func get_peer_id_from_player_id(p_player_id: int) -> int:
 	return connector.get_peer_id_from_player_id(p_player_id)
-
-
-# This is duplicated here for convenience when accessing.
-func get_local_index_from_player_id(p_player_id: StringName) -> int:
-	return connector.get_local_index_from_player_id(p_player_id)
