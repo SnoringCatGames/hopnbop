@@ -51,8 +51,8 @@ class TestPlayerMatchStateWithInts:
 		var player := PlayerMatchState.new()
 		player.set_up(42, 1234, 2, true)
 
-		assert_eq(player.local_index, 2)
-		assert_typeof(player.local_index, TYPE_INT)
+		assert_eq(player.local_player_index, 2)
+		assert_typeof(player.local_player_index, TYPE_INT)
 
 	func test_player_match_state_with_negative_lobby_id():
 		var player := PlayerMatchState.new()
@@ -72,15 +72,15 @@ class TestPlayerMatchStateWithInts:
 
 		assert_eq(players[0].player_id, 1)
 		assert_eq(players[0].peer_id, 1234)
-		assert_eq(players[0].local_index, 0)
+		assert_eq(players[0].local_player_index, 0)
 
 		assert_eq(players[1].player_id, 2)
 		assert_eq(players[1].peer_id, 1234)
-		assert_eq(players[1].local_index, 1)
+		assert_eq(players[1].local_player_index, 1)
 
 		assert_eq(players[2].player_id, 3)
 		assert_eq(players[2].peer_id, 1234)
-		assert_eq(players[2].local_index, 2)
+		assert_eq(players[2].local_player_index, 2)
 
 
 class TestPlayerIdPacking:
@@ -107,7 +107,7 @@ class TestPlayerIdPacking:
 
 		assert_eq(restored.player_id, 42)
 		assert_eq(restored.peer_id, 1234)
-		assert_eq(restored.local_index, 2)
+		assert_eq(restored.local_player_index, 2)
 
 	func test_packed_state_with_negative_lobby_id():
 		var player := PlayerMatchState.new()

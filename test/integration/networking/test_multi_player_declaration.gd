@@ -69,11 +69,11 @@ class TestMatchStateSynchronizerPlayerCreation:
 		assert_eq(player0.player_id, 10)
 		assert_eq(player1.player_id, 11)
 
-		# Check explicit peer_id and local_index.
+		# Check explicit peer_id and local_player_index.
 		assert_eq(player0.peer_id, 5678)
 		assert_eq(player1.peer_id, 5678)
-		assert_eq(player0.local_index, 0)
-		assert_eq(player1.local_index, 1)
+		assert_eq(player0.local_player_index, 0)
+		assert_eq(player1.local_player_index, 1)
 
 	func test_multiple_peers_get_non_overlapping_ids():
 		var synchronizer := MatchStateSynchronizer.new()

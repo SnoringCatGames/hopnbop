@@ -1,13 +1,15 @@
 class_name PlayerList
 extends HBoxContainer
-
 ## Horizontal container for all player displays.
 
-# Dictionary<StringName, PlayerDisplay>
+
+# Dictionary<int, PlayerDisplay>
 var _player_displays := {}
 
 # Preload PlayerDisplay scene.
 const PLAYER_DISPLAY_SCENE := preload("res://src/ui/hud/player_display.tscn")
+
+const _MAX_PLAYER_LIST_SIZE := 8
 
 
 func _ready() -> void:
@@ -25,8 +27,7 @@ func _refresh_displays() -> void:
 	if not is_instance_valid(G.match_state):
 		return
 
-	# Get current player IDs from match state.
-	var current_player_ids: Array = G.match_state.players_by_id.keys()
+	var current_player_ids: Array[int] = _get_current_player_ids()
 
 	# Remove displays for players that no longer exist.
 	var player_ids_to_remove: Array = []
@@ -49,6 +50,43 @@ func _refresh_displays() -> void:
 
 	# Sort displays (local players first).
 	_sort_displays()
+
+
+func _get_current_player_ids() -> Array[int]:
+	# Get current player IDs from match state.
+	var current_player_ids: Array = G.match_state.players_by_id.keys()
+
+	# Sort and filter the player IDs.
+	# - The local player IDs should be listed first, sorted by
+	#   local_player_index.
+	# - If there are more than 8 players in the match, only the 4 other highest
+	#   scoring players should be listed.
+	var local_player_ids: Array[int] = G.level.players_by_id.keys()
+	local_player_ids.sort_custom(func(a: int, b: int) -> bool:
+		return (
+			G.network.get_local_player_index_from_player_id(a) <
+			G.network.get_local_player_index_from_player_id(b)
+		)
+	)
+	for local_player_id in local_player_ids:
+		current_player_ids.erase(local_player_id)
+
+	if local_player_ids.size() + current_player_ids.size() > _MAX_PLAYER_LIST_SIZE:
+		# Sort by score (highest first) and slice to fit remaining slots.
+		current_player_ids.sort_custom(func(a: int, b: int) -> bool:
+			var state_a := G.get_player_match_state(a)
+			var state_b := G.get_player_match_state(b)
+			var score_a := state_a.score if state_a else 0
+			var score_b := state_b.score if state_b else 0
+			return score_a > score_b
+		)
+		var max_remote_players := _MAX_PLAYER_LIST_SIZE - local_player_ids.size()
+		current_player_ids = current_player_ids.slice(0, max_remote_players)
+
+	local_player_ids.append_array(current_player_ids)
+	current_player_ids = local_player_ids
+
+	return current_player_ids
 
 
 func _sort_displays() -> void:

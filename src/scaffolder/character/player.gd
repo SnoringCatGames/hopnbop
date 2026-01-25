@@ -68,7 +68,7 @@ func _set_up_action_sources() -> void:
 		return
 
 	var device_config := G.input_device_manager.get_device_for_player(
-		player_match_state.local_index)
+		player_match_state.local_player_index)
 	if not G.ensure(is_instance_valid(device_config),
 			"DeviceConfig not registered for player"):
 		return

@@ -45,6 +45,8 @@ var _next_player_id: int = 1
 
 # Dictionary<int, int>
 var _player_id_to_peer_id := {}
+# Dictionary<int, int>
+var _player_id_to_local_player_index := {}
 
 func _enter_tree() -> void:
 	if G.network.is_client:
@@ -240,9 +242,10 @@ func _server_rpc_declare_players(session_ids: Array) -> void:
 
 	# Assign sequential player IDs.
 	var assigned_ids: Array[int] = []
-	for i in range(player_count):
+	for local_player_index in range(player_count):
 		assigned_ids.append(_next_player_id)
 		_player_id_to_peer_id[_next_player_id] = peer_id
+		_player_id_to_local_player_index[_next_player_id] = local_player_index
 		_next_player_id += 1
 
 	# Send assigned IDs back to client.
@@ -273,10 +276,24 @@ func _server_rpc_declare_players(session_ids: Array) -> void:
 func _client_rpc_receive_player_ids(assigned_ids: Array[int]) -> void:
 	G.check_is_client()
 
+	# Record local player IDs and indices.
+	for local_player_index in range(assigned_ids):
+		var player_id := assigned_ids[local_player_index]
+		_player_id_to_peer_id[player_id] = G.network.local_peer_id
+		_player_id_to_local_player_index[player_id] = local_player_index
+
 	G.print(
 		"Received assigned player IDs: %s" % [assigned_ids],
 		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
 	)
+
+
+func _client_on_player_state_connected(
+		p_player_id: int,
+		p_peer_id: int,
+		p_local_index: int) -> void:
+	_player_id_to_peer_id[p_player_id] = p_peer_id
+	_player_id_to_local_player_index[p_player_id] = p_local_index
 
 
 ## Gets the peer_id associated with a given player_id.
@@ -284,4 +301,12 @@ func _client_rpc_receive_player_ids(assigned_ids: Array[int]) -> void:
 func get_peer_id_from_player_id(p_player_id: int) -> int:
 	if _player_id_to_peer_id.has(p_player_id):
 		return _player_id_to_peer_id[p_player_id]
+	return 0
+
+
+## Gets the local_player_index associated with a given player_id.
+## Returns 0 if the player_id is not found (e.g., lobby player).
+func get_local_player_index_from_player_id(p_player_id: int) -> int:
+	if _player_id_to_local_player_index.has(p_player_id):
+		return _player_id_to_local_player_index[p_player_id]
 	return 0

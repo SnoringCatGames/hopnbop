@@ -10,7 +10,7 @@ extends RefCounted
 const _PROPERTY_NAMES := [
 	"player_id",
 	"peer_id",
-	"local_index",
+	"local_player_index",
 	"bunny_name",
 	"adjective",
 	"is_soft",
@@ -20,7 +20,7 @@ const _PROPERTY_NAMES := [
 
 var player_id: int = 0
 var peer_id: int = 0
-var local_index: int = 0
+var local_player_index: int = 0
 var bunny_name := ""
 var adjective := ""
 var is_soft := true
@@ -70,7 +70,7 @@ func set_up(
 		p_is_soft: bool) -> void:
 	player_id = p_player_id
 	peer_id = p_peer_id
-	local_index = p_local_index
+	local_player_index = p_local_index
 	is_soft = p_is_soft
 
 	bunny_name = BunnyWords.NAMES.pick_random()
@@ -88,5 +88,5 @@ func get_string() -> String:
 		player_id,
 		full_name,
 		peer_id,
-		local_index
+		local_player_index
 	]
