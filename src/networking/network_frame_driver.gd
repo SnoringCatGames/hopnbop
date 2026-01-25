@@ -51,10 +51,9 @@ extends Node
 #
 # LEFT OFF HERE:
 # - Test GDExtension Windows build.
-# - Add support for G.settings.does_up_also_trigger_jump.
-#   - Add a couple getters to CharacterActionSource for this: is_triggering_jump, just_triggered_jump.
-#   - Update relevant usages to use the new getters instead of directly checking action pressed.
-# - Replace multiplayer_id with peer_id in many places.
+# - In the middle of AI planning for multiple players on a client.
+#   - Ask AI to consider whether we should add any new tests for this new multiple-players-per-client support.
+#
 #
 # >>>> LEFT-OFF MANUAL STEPS FROM LOBBY AND UI INTEGRATION:
 # - Scene files (lobby_level.tscn, player_list.tscn, player_display.tscn) may need minor adjustments in the Godot editor
@@ -73,6 +72,7 @@ extends Node
 # - Set up CloudWatch alarms for monitoring.
 # - Configure auto-scaling policies based on load.
 #
+# - Install new PowerShell.
 # - Debug the game.
 #   - Fix the GDExtension importing in Godot.
 #   - Debug pause behavior.

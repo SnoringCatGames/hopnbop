@@ -23,8 +23,6 @@ func _ready() -> void:
 
 	G.match_state = match_state
 
-	%PlayerOverheadLabels.set_up()
-
 	%MatchStateSynchronizer.set_multiplayer_authority(NetworkConnector.SERVER_ID)
 	%LevelSpawner.set_multiplayer_authority(NetworkConnector.SERVER_ID)
 
@@ -51,12 +49,8 @@ func _ready() -> void:
 
 
 func _on_player_joined(player: PlayerMatchState) -> void:
-	# Check if this player belongs to the local peer.
-	var is_local_peer := (
-		G.network.is_client and
-		player.peer_id == G.network.local_id
-	)
-	var self_suffix := " (local)" if is_local_peer else ""
+	var is_self := G.network.is_client and player.multiplayer_id == G.network.local_id
+	var self_suffix := " (self)" if is_self else ""
 	G.print(
 		"Player joined: %s%s" % [player.get_string(), self_suffix],
 		ScaffolderLog.CATEGORY_GAME_STATE,
@@ -64,14 +58,12 @@ func _on_player_joined(player: PlayerMatchState) -> void:
 
 
 func _on_player_left(player: PlayerMatchState) -> void:
-	G.print("Player left: %s" % player.get_string(),
-		ScaffolderLog.CATEGORY_GAME_STATE)
+	G.print("Player left: %s" % player.get_string(), ScaffolderLog.CATEGORY_GAME_STATE)
 
 
 func _on_player_killed(killer: PlayerMatchState, killee: PlayerMatchState) -> void:
 	G.print(
-		"Player killed: %s killed %s" %
-		[killer.get_string(), killee.get_string()],
+		"Player killed: %s killed %s" % [killer.get_string(), killee.get_string()],
 		ScaffolderLog.CATEGORY_GAME_STATE,
 	)
 
@@ -86,15 +78,13 @@ func _on_players_bumped(a: PlayerMatchState, b: PlayerMatchState) -> void:
 func _client_on_level_spawned(p_level: Node) -> void:
 	G.ensure(p_level is Level)
 	var level: Level = p_level
-	G.print("Level spawned: %s" % level.get_string(),
-		ScaffolderLog.CATEGORY_GAME_STATE)
+	G.print("Level spawned: %s" % level.get_string(), ScaffolderLog.CATEGORY_GAME_STATE)
 
 
 func _client_on_level_despawned(p_level: Node) -> void:
 	G.ensure(p_level is Level)
 	var level: Level = p_level
-	G.print("Level despawned: %s" % level.get_string(),
-		ScaffolderLog.CATEGORY_GAME_STATE)
+	G.print("Level despawned: %s" % level.get_string(), ScaffolderLog.CATEGORY_GAME_STATE)
 
 
 func _client_on_local_player_loaded(
@@ -103,10 +93,20 @@ func _client_on_local_player_loaded(
 	is_level_fully_loaded = true
 
 
+func _network_process() -> void:
+	pass
+
+
 func _client_on_server_connected() -> void:
-	G.check_is_client()
-	G.check(G.local_session.is_game_loading, "Game load is not expected")
-	G.check(not G.local_session.is_game_active, "Game is already active")
+	G.check_is_client("NetworkMain._client_on_server_connected")
+	G.check(
+		G.local_session.is_game_loading,
+		"GamePanel._client_on_server_connected: Game load is not expected",
+	)
+	G.check(
+		not G.local_session.is_game_active,
+		"GamePanel._client_on_server_connected: Game is already active",
+	)
 
 	G.local_session.is_game_loading = false
 	G.local_session.is_game_active = true
@@ -115,47 +115,22 @@ func _client_on_server_connected() -> void:
 
 
 func _client_on_server_disconnected() -> void:
-	G.check_is_client()
+	G.check_is_client("NetworkMain._client_on_server_disconnected")
 
 	client_exit_game()
 
 
-## Spawn lobby level (client-only, no server connection).
-func _client_spawn_lobby() -> void:
-	G.check_is_client()
-
-	if G.is_lobby_active:
-		# Lobby is already ready.
-		return
-
-	G.print("Spawning lobby level", ScaffolderLog.CATEGORY_CORE_SYSTEMS)
-
-	var lobby_level: LobbyLevel = G.settings.lobby_level_scene.instantiate()
-	levels.append(lobby_level)
-	%Levels.add_child(lobby_level)
-	G.level = lobby_level
-
-
-## Despawn lobby level before connecting to server.
-func _client_despawn_lobby_if_present() -> void:
-	if not G.is_lobby_active:
-		return
-
-	G.print("Despawning lobby level", ScaffolderLog.CATEGORY_CORE_SYSTEMS)
-
-	var lobby_level: LobbyLevel = G.level
-	levels.erase(lobby_level)
-	lobby_level.queue_free()
-	G.level = null
-
-
 func client_load_game() -> void:
-	G.check_is_client()
-	G.check(not G.local_session.is_game_active, "Game is already active")
-	G.check(not G.local_session.is_game_loading, "Game is already loading")
-
-	# Despawn lobby if present.
-	_client_despawn_lobby_if_present()
+	G.check_is_client("NetworkMain.client_load_game")
+	G.check(
+		not G.local_session.is_game_active,
+		"GamePanel.client_load_game: Game is already active",
+	)
+	G.check(
+		not G.local_session.is_game_loading,
+		"GamePanel.client_load_game: Game is already loading",
+	)
+	G.check(not is_instance_valid(G.level), "GamePanel.client_load_game: Level is already set")
 
 	G.local_session.clear()
 	G.local_session.is_game_active = false
@@ -167,7 +142,7 @@ func client_load_game() -> void:
 
 
 func client_exit_game() -> void:
-	G.check_is_client()
+	G.check_is_client("NetworkMain.client_exit_game")
 
 	G.local_session.is_game_active = false
 	G.local_session.is_game_loading = false
@@ -183,9 +158,12 @@ func client_exit_game() -> void:
 
 
 func server_start_game() -> void:
-	G.check_is_server()
-	G.check(not G.local_session.is_game_active, "Game is already active")
-	G.check(not is_instance_valid(G.level), "Level is already set")
+	G.check_is_server("NetworkMain.server_start_game")
+	G.check(
+		not G.local_session.is_game_active,
+		"GamePanel.server_start_game: Game is already active",
+	)
+	G.check(not is_instance_valid(G.level), "GamePanel.server_start_game: Level is already set")
 
 	G.local_session.is_game_active = true
 
@@ -197,9 +175,9 @@ func server_start_game() -> void:
 
 
 func server_end_game() -> void:
-	G.check_is_server()
-	G.check(G.local_session.is_game_active, "Game is not active")
-	G.check_valid(G.level, "Level is not valid")
+	G.check_is_server("NetworkMain.server_end_game")
+	G.check(G.local_session.is_game_active, "GamePanel.server_end_game: Game is not active")
+	G.check_valid(G.level, "GamePanel.server_end_game: Level is not valid")
 
 	G.local_session.is_game_active = false
 
@@ -210,33 +188,23 @@ func server_end_game() -> void:
 	_server_destroy_level(G.level)
 
 
-func on_return_to_game_from_screen(
-		_previous_screen_type: ScreensMain.ScreenType) -> void:
-	G.check(G.local_session.is_game_active, "Game is not active")
+func on_return_from_screen() -> void:
+	G.check(G.local_session.is_game_active, "GamePanel.on_return_from_screen: Game is not active")
 	G.check(
 		not G.local_session.is_game_loading,
-		"Game is still loading",
+		"GamePanel.on_return_from_screen: Game is still loading",
 	)
 
 
-func on_left_game_to_screen(_next_screen_type: ScreensMain.ScreenType) -> void:
-	pass
-
-
-func on_return_to_lobby_from_screen(
-		_previous_screen_type: ScreensMain.ScreenType) -> void:
-	_client_spawn_lobby()
-
-
-func on_left_lobby_to_screen(_next_screen_type: ScreensMain.ScreenType) -> void:
+func on_left_to_screen() -> void:
 	pass
 
 
 func _server_spawn_level(level_scene: PackedScene) -> void:
-	G.check_is_server()
+	G.check_is_server("NetworkMain._server_spawn_level")
 	G.check(
 		G.settings.level_scenes.has(level_scene),
-		"level_scene not registered in settings: %s" % level_scene,
+		"GamePanel._server_spawn_level: level_scene not registered in settings: %s" % level_scene,
 	)
 
 	G.print(
@@ -251,14 +219,13 @@ func _server_spawn_level(level_scene: PackedScene) -> void:
 
 
 func _server_destroy_level(level: Level) -> void:
-	G.check_is_server()
+	G.check_is_server("NetworkMain._server_destroy_level")
 	G.check(
 		levels.has(level),
-		"level not in current list: %s" % level,
+		"GamePanel._server_destroy_level: level not in current list: %s" % level,
 	)
 
-	G.print("Destroying level: %s" % level.get_string(),
-		ScaffolderLog.CATEGORY_GAME_STATE)
+	G.print("Destroying level: %s" % level.get_string(), ScaffolderLog.CATEGORY_GAME_STATE)
 
 	if G.level == level:
 		G.level = null

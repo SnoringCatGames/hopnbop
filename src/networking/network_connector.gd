@@ -31,19 +31,7 @@ const SERVER_ID := 1
 ## pause coordination messages are not blocked by other network traffic.
 const RPC_CHANNEL_PAUSE := 1
 
-## Maximum number of players allowed per client connection.
-const MAX_PLAYERS_PER_PEER := 4
-
-## Signal emitted when a peer declares their player count.
-signal peer_players_declared(peer_id: int, player_count: int, session_ids: Array)
-
 var is_connected_to_server := false
-
-## Tracks pending player declarations from peers.
-## Dictionary<int, Dictionary> where value contains:
-##   - count: int (number of players)
-##   - session_ids: Array[StringName] (GameLift session IDs, one per player)
-var _pending_peer_declarations := {}
 
 
 func _enter_tree() -> void:
@@ -58,7 +46,7 @@ func _ready() -> void:
 
 
 func server_enable_connections() -> void:
-	G.check_is_server()
+	G.check_is_server("NetworkConnector.server_enable_connections")
 
 	var peer = ENetMultiplayerPeer.new()
 	var result := peer.create_server(G.settings.server_port, G.settings.max_client_count)
@@ -80,7 +68,7 @@ func server_enable_connections() -> void:
 
 
 func client_connect_to_server() -> void:
-	G.check_is_client()
+	G.check_is_client("NetworkConnector.client_connect_to_server")
 
 	# TODO: Also support websocket or webrtc as needed.
 
@@ -114,17 +102,11 @@ func _on_peer_connected(multiplayer_id: int) -> void:
 			return
 
 		G.print(
-			(
-				"Connected to server: Local multiplayer_id: %s"
-				% G.network.local_id
-			),
+			"Connected to server: Local multiplayer_id: %s" % G.network.local_id,
 			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
 		)
 		_client_update_is_connected_to_server()
 		G.main.update_window_title()
-
-		# Declare player count to server.
-		_client_send_player_declaration()
 
 
 func _on_peer_disconnected(multiplayer_id: int) -> void:
@@ -159,20 +141,6 @@ func _on_peer_disconnected(multiplayer_id: int) -> void:
 			G.main.close_app()
 
 
-func _client_send_player_declaration() -> void:
-	# Send player count and session IDs to server.
-	var player_count := G.local_session.local_player_count
-	var session_ids := G.local_session.player_session_ids.duplicate()
-
-	G.print(
-		"Declaring %d player(s) to server" % player_count,
-		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-	)
-
-	# Call RPC to declare players.
-	client_declare_players.rpc_id(SERVER_ID, player_count, session_ids)
-
-
 func _client_update_is_connected_to_server() -> void:
 	if G.network.is_server:
 		is_connected_to_server = true
@@ -185,7 +153,7 @@ func _client_update_is_connected_to_server() -> void:
 
 
 func server_close_multiplayer_session() -> void:
-	G.check_is_server()
+	G.check_is_server("NetworkConnector.server_close_multiplayer_session")
 
 	G.print("Ending network connections", ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
@@ -198,97 +166,9 @@ func server_close_multiplayer_session() -> void:
 
 
 func client_disconnect() -> void:
-	G.check_is_client()
+	G.check_is_client("NetworkConnector.client_disconnect")
 
 	G.print("Disconnecting from server", ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
 	if multiplayer.multiplayer_peer.is_connected:
 		multiplayer.multiplayer_peer.disconnect_peer(SERVER_ID)
-
-
-## RPC called by client to declare how many players they have.
-## This must be called before players are spawned on the server.
-##
-## Parameters:
-##   - player_count: Number of players on this client (1-4)
-##   - session_ids: Array of GameLift player_session_ids (one per player).
-##                  Empty array if not using GameLift.
-@rpc("any_peer", "call_remote", "reliable")
-func client_declare_players(player_count: int, session_ids: Array) -> void:
-	if not G.network.is_server:
-		G.warning(
-			"client_declare_players called on non-server",
-			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-		)
-		return
-
-	var peer_id := multiplayer.get_remote_sender_id()
-
-	# Validate player count.
-	if player_count < 1 or player_count > MAX_PLAYERS_PER_PEER:
-		G.warning(
-			"Invalid player count from peer %d: %d (min=1, max=%d)" % [
-				peer_id,
-				player_count,
-				MAX_PLAYERS_PER_PEER,
-			],
-			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-		)
-		multiplayer.multiplayer_peer.disconnect_peer(peer_id)
-		return
-
-	# Validate session_ids count matches player_count (if using GameLift).
-	if G.settings.use_gamelift and session_ids.size() != player_count:
-		G.warning(
-			"Session ID count mismatch from peer %d: %d IDs for %d players" % [
-				peer_id,
-				session_ids.size(),
-				player_count,
-			],
-			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-		)
-		multiplayer.multiplayer_peer.disconnect_peer(peer_id)
-		return
-
-	G.print(
-		"Peer %d declared %d player(s)" % [peer_id, player_count],
-		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-	)
-
-	# Store the declaration.
-	_pending_peer_declarations[peer_id] = {
-		"count": player_count,
-		"session_ids": session_ids,
-	}
-
-	# If GameLift is enabled, validate sessions before spawning players.
-	if (
-		G.settings.use_gamelift and
-		is_instance_valid(G.network.game_lift_manager)
-	):
-		G.network.game_lift_manager.validate_player_sessions(
-			peer_id,
-			player_count,
-			session_ids
-		)
-
-	# Emit signal for Level and MatchStateSynchronizer to handle spawning.
-	peer_players_declared.emit(peer_id, player_count, session_ids)
-
-
-static func get_player_id(p_peer_id: int, p_player_index: int) -> StringName:
-	return "%d:%d" % [p_peer_id, p_player_index]
-
-
-static func get_peer_id_from_player_id(p_player_id: StringName) -> int:
-	var delimiter_index := p_player_id.find(":")
-	if delimiter_index < 0:
-		return 0
-	return int(p_player_id.substr(0, delimiter_index))
-
-
-static func get_local_index_from_player_id(p_player_id: StringName) -> int:
-	var delimiter_index := p_player_id.find(":")
-	if delimiter_index < 0:
-		return 0
-	return int(p_player_id.substr(delimiter_index + 1))

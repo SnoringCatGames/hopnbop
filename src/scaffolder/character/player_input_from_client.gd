@@ -2,10 +2,6 @@
 class_name PlayerInputFromClient
 extends PlayerInputNetworkState
 
-## Local player index on this peer (0-based).
-## Used to identify which local player this input belongs to.
-var local_player_index := 0
-
 @export var player: Player:
 	set(value):
 		player = value

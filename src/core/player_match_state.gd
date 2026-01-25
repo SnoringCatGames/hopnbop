@@ -7,24 +7,14 @@ extends RefCounted
 ## - State that needs to sync every frame should instead be tracked in
 ##   CharacterStateFromServer (or a subclass of it).
 
-## Composite player ID in format "peer_id:local_index" (e.g., "1234:0").
-var player_id: StringName = ""
-## Network peer ID (extracted from player_id).
-var peer_id := 0
-## Local player index on this peer (extracted from player_id, 0-based).
-var local_index := 0
+var multiplayer_id := 0
 var bunny_name := ""
 var adjective := ""
 var is_soft := true
 var connect_time_usec := 0
 var disconnect_time_usec := 0
 
-## Deprecated: Use peer_id instead. Kept for backward compatibility.
-var multiplayer_id: int:
-	get:
-		return peer_id
-
-var full_name: StringName:
+var full_name: String:
 	get:
 		return "%s %s" % [adjective, bunny_name]
 
@@ -34,13 +24,13 @@ var is_connected_to_server: bool:
 
 var player: Player:
 	get:
-		if G.level.players_by_id.has(player_id):
-			return G.level.players_by_id[player_id]
+		if G.level.players_by_id.has(multiplayer_id):
+			return G.level.players_by_id[multiplayer_id]
 		else:
 			return null
 
 const _PROPERTY_NAMES := [
-	"player_id",
+	"multiplayer_id",
 	"bunny_name",
 	"adjective",
 	"is_soft",
@@ -65,28 +55,13 @@ func populate_from_packed_state(packed_state: Array) -> void:
 		set(property_name, packed_state[i])
 		i += 1
 
-	peer_id = NetworkConnector.get_peer_id_from_player_id(player_id)
-	local_index = NetworkConnector.get_local_index_from_player_id(player_id)
 
-
-static func get_player_id_from_packed_state(packed_state: Array) -> StringName:
+static func get_multiplayer_id_from_packed_state(packed_state: Array) -> int:
 	return packed_state[0]
 
 
-static func get_peer_id_from_packed_state(packed_state: Array) -> int:
-	var p_player_id: StringName = packed_state[0]
-	if p_player_id.is_empty():
-		return 0
-	var parts := p_player_id.split(":")
-	if parts.size() >= 1:
-		return int(parts[0])
-	return 0
-
-
-func set_up(p_player_id: StringName, p_is_soft: bool) -> void:
-	player_id = p_player_id
-	peer_id = NetworkConnector.get_peer_id_from_player_id(p_player_id)
-	local_index = NetworkConnector.get_local_index_from_player_id(p_player_id)
+func set_up(p_multiplayer_id: int, p_is_soft: bool) -> void:
+	multiplayer_id = p_multiplayer_id
 
 	is_soft = p_is_soft
 
@@ -97,4 +72,10 @@ func set_up(p_player_id: StringName, p_is_soft: bool) -> void:
 
 
 func get_string() -> String:
-	return "%s:%s" % [player_id, full_name]
+	return (
+        "%d:%s"
+		% [
+			multiplayer_id,
+			full_name,
+		]
+	)

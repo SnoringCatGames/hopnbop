@@ -59,15 +59,15 @@ func _ready() -> void:
 func _update_replication_config() -> void:
 	super._update_replication_config()
 
-	# Also sync the player_id, so the client can know which player has
+	# Also sync the multiplayer_id, so the client can know which player has
 	# authority.
-	var player_id_path := "%s:player_id" % root.get_path_to(self)
-	replication_config.add_property(player_id_path)
+	var multiplayer_id_path := "%s:multiplayer_id" % root.get_path_to(self)
+	replication_config.add_property(multiplayer_id_path)
 	replication_config.property_set_replication_mode(
-		player_id_path,
+		multiplayer_id_path,
 		SceneReplicationConfig.ReplicationMode.REPLICATION_MODE_ON_CHANGE,
 	)
-	replication_config.property_set_spawn(player_id_path, true)
+	replication_config.property_set_spawn(multiplayer_id_path, true)
 
 
 func _get_configuration_warnings() -> PackedStringArray:

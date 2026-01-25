@@ -21,10 +21,7 @@ func _ready() -> void:
 		state.bumps_updated.connect(_client_on_bumps_updated)
 
 	if G.network.is_server:
-		# Listen for player count declarations instead of raw peer connections.
-		G.network.connector.peer_players_declared.connect(
-			_server_on_peer_players_declared
-		)
+		multiplayer.peer_connected.connect(_server_on_peer_connected)
 		multiplayer.peer_disconnected.connect(_server_on_peer_disconnected)
 
 	state.player_connected.connect(_on_underlying_player_state_connected)
@@ -36,48 +33,32 @@ func clear() -> void:
 	_previous_state.clear()
 
 
-func get_player(player_id: StringName) -> PlayerMatchState:
-	if state.players.has(player_id):
-		return state.players[player_id]
+func get_player(multiplayer_id: int) -> PlayerMatchState:
+	if state.players.has(multiplayer_id):
+		return state.players[multiplayer_id]
 	else:
 		return null
 
 
-func _server_on_peer_players_declared(
-	peer_id: int,
-	player_count: int,
-	_session_ids: Array
-) -> void:
-	# Create N PlayerMatchState objects for this peer.
-	for i in range(player_count):
-		var player_id := NetworkConnector.get_player_id(peer_id, i)
-		G.ensure(not state.players.has(player_id))
+func _server_on_peer_connected(multiplayer_id: int) -> void:
+	G.ensure(not state.players.has(multiplayer_id))
 
-		var player := PlayerMatchState.new()
-		player.set_up(player_id, true)
-		player.connect_time_usec = (
-			G.network.server_time_usec_not_frame_aligned
-		)
-		state.server_add_player(player)
+	var player := PlayerMatchState.new()
+	player.set_up(multiplayer_id, true)
+	player.connect_time_usec = G.network.server_time_usec_not_frame_aligned
+	state.server_add_player(player)
 
 	players_updated.emit()
 
 
-func _server_on_peer_disconnected(peer_id: int) -> void:
-	# Handle all players for this peer.
-	var players_for_peer: Array[PlayerMatchState] = (
-		state.get_players_for_peer(peer_id)
-	)
+func _server_on_peer_disconnected(multiplayer_id: int) -> void:
+	if G.ensure(state.players.has(multiplayer_id)):
+		# Set disconnect time for this player.
+		get_player(multiplayer_id).disconnect_time_usec = (
+			G.network.server_time_usec_not_frame_aligned
+		)
 
-	for player in players_for_peer:
-		if G.ensure(state.players.has(player.player_id)):
-			# Set disconnect time for this player.
-			player.disconnect_time_usec = (
-				G.network.server_time_usec_not_frame_aligned
-			)
-
-		state.server_on_player_disconnected(player)
-
+	state.server_on_player_disconnected(get_player(multiplayer_id))
 	players_updated.emit()
 
 
@@ -122,32 +103,26 @@ func _on_underlying_player_state_disconnected(player: PlayerMatchState) -> void:
 
 
 # TODO: Call server_add_kill.
-func server_add_kill(killer_id: StringName, killee_id: StringName) -> void:
+func server_add_kill(killer_id: int, killee_id: int) -> void:
 	_previous_state.kills = state.kills.duplicate()
 
 	state.kills.append_array([killer_id, killee_id])
 	state.kills = state.kills.duplicate()
 
-	G.print(
-		"KILL: %s killed %s" % [killer_id, killee_id],
-		ScaffolderLog.CATEGORY_GAME_STATE
-	)
+	G.print("KILL: %s killed %s" % [killer_id, killee_id], ScaffolderLog.CATEGORY_GAME_STATE)
 
 	player_killed.emit(get_player(killer_id), get_player(killee_id))
 	kills_updated.emit()
 
 
 # TODO: Call server_add_bump.
-func server_add_bump(player_1_id: StringName, player_2_id: StringName) -> void:
+func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 	_previous_state.bumps = state.bumps.duplicate()
 
 	state.bumps.append_array([player_1_id, player_2_id])
 	state.bumps = state.bumps.duplicate()
 
-	G.print(
-		"BUMP: %s bumped %s" % [player_1_id, player_2_id],
-		ScaffolderLog.CATEGORY_GAME_STATE
-	)
+	G.print("BUMP: %s bumped %s" % [player_1_id, player_2_id], ScaffolderLog.CATEGORY_GAME_STATE)
 
 	players_bumped.emit(get_player(player_1_id), get_player(player_2_id))
 	bumps_updated.emit()
