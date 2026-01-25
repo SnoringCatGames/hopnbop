@@ -118,9 +118,9 @@ func _on_underlying_player_state_connected(
 	if is_instance_valid(player):
 		player.on_match_state_ready(player_match_state)
 	G.network.connector._client_on_player_state_connected(
-		p_player_id,
-		p_peer_id,
-		p_local_index)
+		player_match_state.player_id,
+		player_match_state.peer_id,
+		player_match_state.local_player_index)
 
 
 func _on_underlying_player_state_disconnected(
