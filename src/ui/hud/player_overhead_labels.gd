@@ -49,7 +49,7 @@ func _update_labels() -> void:
 		return
 
 	# Get current player IDs from match state.
-	var current_player_ids: Array = G.match_state.players.keys()
+	var current_player_ids: Array = G.match_state.players_by_id.keys()
 
 	# Remove labels for players that no longer exist.
 	var player_ids_to_remove: Array = []

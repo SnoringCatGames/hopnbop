@@ -37,8 +37,8 @@ func clear() -> void:
 
 
 func get_player(player_id: int) -> PlayerMatchState:
-	if state.players.has(player_id):
-		return state.players[player_id]
+	if state.players_by_id.has(player_id):
+		return state.players_by_id[player_id]
 	return null
 
 
@@ -49,7 +49,7 @@ func _server_on_peer_players_declared(
 	# Create PlayerMatchState objects for each assigned player ID.
 	for i in range(assigned_ids.size()):
 		var player_id: int = assigned_ids[i]
-		G.ensure(not state.players.has(player_id))
+		G.ensure(not state.players_by_id.has(player_id))
 
 		var player := PlayerMatchState.new()
 		player.set_up(player_id, peer_id, i, true)
@@ -68,7 +68,7 @@ func _server_on_peer_disconnected(peer_id: int) -> void:
 	)
 
 	for player in players_for_peer:
-		if G.ensure(state.players.has(player.player_id)):
+		if G.ensure(state.players_by_id.has(player.player_id)):
 			# Set disconnect time for this player.
 			player.disconnect_time_usec = (
 				G.network.server_time_usec_not_frame_aligned

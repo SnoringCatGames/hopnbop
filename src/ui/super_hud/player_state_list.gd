@@ -36,12 +36,12 @@ func _on_players_updated() -> void:
 	for child in %States.get_children():
 		child.queue_free()
 
-	if G.match_state.players.is_empty():
+	if G.match_state.players_by_id.is_empty():
 		# No player state to show.
 		return
 
 	if not G.ensure(
-		G.match_state.players.has(G.network.local_peer_id),
+		G.match_state.players_by_id.has(G.network.local_peer_id),
 		"No match_state for the local player",
 	):
 		return
@@ -49,7 +49,7 @@ func _on_players_updated() -> void:
 	# Add the local player state first.
 	_add_player_state(G.network.local_peer_id)
 
-	for played_id in G.match_state.players:
+	for played_id in G.match_state.players_by_id:
 		if played_id == G.network.local_peer_id:
 			# We already added the local player state.
 			continue

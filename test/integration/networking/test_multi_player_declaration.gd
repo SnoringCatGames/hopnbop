@@ -37,16 +37,16 @@ class TestMatchStateSynchronizerPlayerCreation:
 		)
 
 		# Verify 2 PlayerMatchState objects created with int keys.
-		assert_eq(synchronizer.state.players.size(), 2)
-		assert_has(synchronizer.state.players, 1)
-		assert_has(synchronizer.state.players, 2)
+		assert_eq(synchronizer.state.players_by_id.size(), 2)
+		assert_has(synchronizer.state.players_by_id, 1)
+		assert_has(synchronizer.state.players_by_id, 2)
 
 	func test_player_ids_are_sequential_ints():
 		var synchronizer := MatchStateSynchronizer.new()
 		var assigned_ids := [1, 2, 3]
 		synchronizer._server_on_peer_players_declared(1, assigned_ids)
 
-		var player_ids := synchronizer.state.players.keys()
+		var player_ids := synchronizer.state.players_by_id.keys()
 		assert_has(player_ids, 1)
 		assert_has(player_ids, 2)
 		assert_has(player_ids, 3)
@@ -61,8 +61,8 @@ class TestMatchStateSynchronizerPlayerCreation:
 		var assigned_ids := [10, 11]
 		synchronizer._server_on_peer_players_declared(peer_id, assigned_ids)
 
-		var player0: PlayerMatchState = synchronizer.state.players[10]
-		var player1: PlayerMatchState = synchronizer.state.players[11]
+		var player0: PlayerMatchState = synchronizer.state.players_by_id[10]
+		var player1: PlayerMatchState = synchronizer.state.players_by_id[11]
 
 		# Check player_ids are as assigned.
 		assert_eq(player0.player_id, 10)
@@ -83,15 +83,15 @@ class TestMatchStateSynchronizerPlayerCreation:
 		# Peer 2 gets IDs [3]
 		synchronizer._server_on_peer_players_declared(2, [3])
 
-		assert_eq(synchronizer.state.players.size(), 3)
-		assert_has(synchronizer.state.players, 1)
-		assert_has(synchronizer.state.players, 2)
-		assert_has(synchronizer.state.players, 3)
+		assert_eq(synchronizer.state.players_by_id.size(), 3)
+		assert_has(synchronizer.state.players_by_id, 1)
+		assert_has(synchronizer.state.players_by_id, 2)
+		assert_has(synchronizer.state.players_by_id, 3)
 
 		# Verify peer_ids are correct.
-		assert_eq(synchronizer.state.players[1].peer_id, 1)
-		assert_eq(synchronizer.state.players[2].peer_id, 1)
-		assert_eq(synchronizer.state.players[3].peer_id, 2)
+		assert_eq(synchronizer.state.players_by_id[1].peer_id, 1)
+		assert_eq(synchronizer.state.players_by_id[2].peer_id, 1)
+		assert_eq(synchronizer.state.players_by_id[3].peer_id, 2)
 
 
 class TestNetworkedLevelPlayerSpawning:
@@ -190,7 +190,7 @@ class TestPlayerIdFormatConsistency:
 		networked_level._server_register_players_for_peer(peer_id, assigned_ids)
 
 		# Verify IDs match (both use int keys now).
-		var match_state_ids := synchronizer.state.players.keys()
+		var match_state_ids := synchronizer.state.players_by_id.keys()
 		var level_ids: Array = networked_level.players_by_id.keys()
 
 		for player_id in match_state_ids:

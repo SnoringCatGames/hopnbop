@@ -91,9 +91,9 @@ func _ready() -> void:
 
 
 func get_player_match_state(player_id: int) -> PlayerMatchState:
-	if not is_instance_valid(match_state) or not match_state.players.has(player_id):
+	if not is_instance_valid(match_state) or not match_state.players_by_id.has(player_id):
 		return null
-	return match_state.players[player_id]
+	return match_state.players_by_id[player_id]
 
 
 func get_player(player_id: int) -> Player:

@@ -9,7 +9,7 @@ signal kills_updated
 signal bumps_updated
 
 # Dictionary<int, PlayerMatchState>
-var players: Dictionary = {}
+var players_by_id: Dictionary = {}
 
 ## - We maintain both a packed Array of player state as well as a redundant
 ##   Dictionary of player state.
@@ -47,7 +47,7 @@ var _connected_players := {}
 
 
 func clear() -> void:
-	players.clear()
+	players_by_id.clear()
 	packed_players.clear()
 	kills.clear()
 	bumps.clear()
@@ -55,7 +55,7 @@ func clear() -> void:
 
 func duplicate() -> MatchState:
 	var copy := MatchState.new()
-	copy.players = players.duplicate()
+	copy.players_by_id = players_by_id.duplicate()
 	copy.packed_players = packed_players.duplicate()
 	copy.kills = kills.duplicate()
 	copy.bumps = bumps.duplicate()
@@ -63,7 +63,7 @@ func duplicate() -> MatchState:
 
 
 func server_add_player(player: PlayerMatchState) -> void:
-	players[player.player_id] = player
+	players_by_id[player.player_id] = player
 	_server_pack_players()
 	_connected_players[player.player_id] = true
 	player_connected.emit(player)
@@ -77,8 +77,8 @@ func server_on_player_disconnected(player: PlayerMatchState) -> void:
 
 func get_players_for_peer(peer_id: int) -> Array[PlayerMatchState]:
 	var result: Array[PlayerMatchState] = []
-	for player_id in players:
-		var player: PlayerMatchState = players[player_id]
+	for player_id in players_by_id:
+		var player: PlayerMatchState = players_by_id[player_id]
 		if player.peer_id == peer_id:
 			result.append(player)
 	return result
@@ -86,10 +86,10 @@ func get_players_for_peer(peer_id: int) -> Array[PlayerMatchState]:
 
 func _server_pack_players() -> void:
 	var new_packed_players := []
-	new_packed_players.resize(players.size())
+	new_packed_players.resize(players_by_id.size())
 	var i := 0
-	for player_id in players:
-		new_packed_players[i] = players[player_id].get_packed_state()
+	for player_id in players_by_id:
+		new_packed_players[i] = players_by_id[player_id].get_packed_state()
 		i += 1
 
 	_is_packing_state_locally = true
@@ -98,20 +98,20 @@ func _server_pack_players() -> void:
 
 
 func _client_unpack_players() -> void:
-	players.clear()
+	players_by_id.clear()
 
 	for packed_player in packed_players:
 		var player_id := PlayerMatchState.get_player_id_from_packed_state(packed_player)
 
-		if not players.has(player_id):
-			players[player_id] = PlayerMatchState.new()
+		if not players_by_id.has(player_id):
+			players_by_id[player_id] = PlayerMatchState.new()
 
-		var player: PlayerMatchState = players[player_id]
+		var player: PlayerMatchState = players_by_id[player_id]
 		player.populate_from_packed_state(packed_player)
 
 	# Trigger connected/disconnected events.
-	for player_id in players:
-		var player: PlayerMatchState = players[player_id]
+	for player_id in players_by_id:
+		var player: PlayerMatchState = players_by_id[player_id]
 		if player.is_connected_to_server != _connected_players.has(player_id):
 			if player.is_connected_to_server:
 				_connected_players[player_id] = true
