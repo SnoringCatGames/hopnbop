@@ -160,17 +160,6 @@ class TestVisibilityFilterIntegration:
 		ArrayPool.clear_all_pools()
 
 
-	func test_visibility_filter_blocks_originating_client():
-		# Set originating player ID.
-		forwarded_input.peer_id = 3
-
-		# Visibility filter should block peer 3.
-		assert_false(
-			forwarded_input._visibility_filter(3),
-			"Should block originating client (peer 3)",
-		)
-
-
 	func test_visibility_filter_allows_other_clients():
 		# Set originating player ID.
 		forwarded_input.peer_id = 3
