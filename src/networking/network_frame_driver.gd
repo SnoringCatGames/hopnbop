@@ -52,7 +52,6 @@ extends Node
 # LEFT OFF HERE:
 # - Test GDExtension Windows build.
 # - How is session_ids in _client_send_player_declaration supposed to be populated?
-# - Replace Array[String with packed array.
 # - Review PlayerList, PlayerDisplay, and PlayerOverheadLabels.
 #   - Make sure the local players are always listed at the left, in local_player_index order.
 #

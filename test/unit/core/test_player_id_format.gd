@@ -13,7 +13,7 @@ class TestPlayerIdCreation:
 
 	func test_multiple_players_same_peer():
 		var peer_id := 1234
-		var player_ids: Array[StringName] = []
+		var player_ids: Array[int] = []
 		for i in range(3):
 			player_ids.append(NetworkConnector.get_player_id(peer_id, i))
 
