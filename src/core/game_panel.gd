@@ -50,6 +50,13 @@ func _ready() -> void:
 			_client_on_local_player_loaded,
 		)
 
+		G.network.session_manager.session_ids_received.connect(
+			_client_on_session_ids_received
+		)
+		G.network.session_manager.session_request_failed.connect(
+			_client_on_session_request_failed
+		)
+
 	%MatchStateSynchronizer.player_joined.connect(_on_player_joined)
 	%MatchStateSynchronizer.player_left.connect(_on_player_left)
 	%MatchStateSynchronizer.player_killed.connect(_on_player_killed)
@@ -169,7 +176,51 @@ func client_load_game() -> void:
 
 	G.screens.client_open_screen(ScreensMain.ScreenType.LOADING)
 
+	# Request session IDs from backend before connecting.
+	_client_request_session_ids()
+
+
+func _client_request_session_ids() -> void:
+	G.check_is_client()
+
+	var player_count := G.local_session.local_player_count
+
+	# Make request.
+	G.network.session_manager.request_session_ids(player_count)
+
+
+func _client_on_session_ids_received(
+		session_ids: Array,
+		server_ip: String,
+		server_port: int) -> void:
+	G.check_is_client()
+
+	# Store in LocalSession.
+	G.local_session.session_ids.clear()
+	for session_id in session_ids:
+		G.local_session.session_ids.append(str(session_id))
+
+	G.print(
+		"Received %d session ID(s)" % G.local_session.session_ids.size(),
+		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS
+	)
+
+	# Connect to server.
+	G.network.connector.server_ip_address = server_ip
+	G.network.connector.server_port = server_port
 	G.network.connector.client_connect_to_server()
+
+
+func _client_on_session_request_failed(error_message: String) -> void:
+	G.check_is_client()
+
+	G.log.alert_user(
+		":( Something's busted on the backend!\n\n" +
+		"Failed to obtain session IDs:\n%s" % error_message,
+		ScaffolderLog.CATEGORY_CORE_SYSTEMS
+	)
+
+	client_exit_game()
 
 
 func client_exit_game() -> void:

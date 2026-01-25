@@ -48,6 +48,10 @@ var _player_id_to_peer_id := {}
 # Dictionary<int, int>
 var _player_id_to_local_player_index := {}
 
+var server_ip_address := ""
+var server_port := 0
+
+
 func _enter_tree() -> void:
 	if G.network.is_client:
 		_client_update_is_connected_to_server()
@@ -63,7 +67,7 @@ func server_enable_connections() -> void:
 	G.check_is_server()
 
 	var peer = ENetMultiplayerPeer.new()
-	var result := peer.create_server(G.settings.server_port, G.settings.max_client_count)
+	var result := peer.create_server(server_port, G.settings.max_client_count)
 
 	G.check(
 		result == Error.OK,
@@ -86,10 +90,8 @@ func client_connect_to_server() -> void:
 
 	# TODO: Also support websocket or webrtc as needed.
 
-	# FIXME: [GameLift]: Support connecting to the remote server.
-
 	var peer = ENetMultiplayerPeer.new()
-	var result := peer.create_client(G.settings.server_ip_address, G.settings.server_port)
+	var result := peer.create_client(server_ip_address, server_port)
 
 	G.check(
 		result == Error.OK,
@@ -265,7 +267,7 @@ func _server_rpc_declare_players(session_ids: Array) -> void:
 
 	# If GameLift is enabled, validate sessions before spawning players.
 	if (
-		G.settings.use_gamelift and
+		G.network.should_connect_to_remote_server and
 		is_instance_valid(G.network.game_lift_manager)
 	):
 		G.network.game_lift_manager.validate_player_sessions(

@@ -8,9 +8,8 @@ extends Node
 ## - Player session validation and tracking
 ## - Health checks and process lifecycle callbacks
 ##
-## This manager is only active when G.settings.use_gamelift is true. In preview
-## mode (use_gamelift = false), all GameLift functionality is disabled and the
-## game uses standard ENet networking.
+## This manager is only active when G.network.should_connect_to_remote_server is
+## true. In preview mode, this may or may not be the case.
 ##
 ## Usage:
 ## - Server: GameLift calls on_start_game_session → activate → wait for players
@@ -50,9 +49,9 @@ var _validated_player_count: int = 0
 
 
 func _ready() -> void:
-	if not G.settings.use_gamelift:
+	if not G.network.should_connect_to_remote_server:
 		G.print(
-			"[GameLift] Disabled via settings (use_gamelift = false)",
+			"[GameLift] Disabled via settings (preview_connect_to_remote_server = false)",
 			ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 		)
 		return
@@ -70,7 +69,7 @@ func _ready() -> void:
 
 ## Returns true if GameLift is active and initialized.
 func is_active() -> bool:
-	return G.settings.use_gamelift and _is_initialized
+	return G.network.should_connect_to_remote_server and _is_initialized
 
 
 ## Returns true if the server process is ready to host sessions.
@@ -341,7 +340,7 @@ func _initialize_sdk() -> void:
 
 
 func _call_process_ready() -> void:
-	var port = G.settings.local_server_port
+	var port = G.settings.local_preview_server_port
 	var log_paths = PackedStringArray(["logs/server.log"])
 
 	G.print(

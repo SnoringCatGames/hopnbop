@@ -201,9 +201,7 @@ Set in `template.yaml`:
 
 ### Preview Mode
 
-For local testing without backend, the client generates debug session IDs automatically when:
-- `use_gamelift = false` in settings
-- `is_preview = true` (running in Godot editor)
+For local testing without backend, the client generates debug session IDs automatically when `should_connect_to_remote_server = false` and running in Godot editor.
 
 The backend also accepts `DEBUG_` prefixed tokens for testing.
 

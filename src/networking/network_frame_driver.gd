@@ -388,6 +388,8 @@ extends Node
 # - Review these notes: https://trello.com/c/i8peodBL
 #
 # ### TODO: After everything else:
+# - AI: Scan through all logs, and consider whether we should add any additional
+#   categories, and re-group logs int whichever categories make the most sense.
 # - AI: I am considering creating a re-usable GDExtension that I can publish on
 #   the Godot Asset Library for anyone to use for common featurse when
 #   integrating with AWS GameLift.

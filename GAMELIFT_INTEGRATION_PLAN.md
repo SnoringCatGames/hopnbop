@@ -75,7 +75,7 @@ Response: {
 - `session_ids_received(session_ids: Array, server_ip: String, server_port: int)`
 - `session_request_failed(error_message: String)`
 
-**Preview mode bypass:** When `use_gamelift = false` or `is_preview = true`, generate debug IDs immediately without HTTP request.
+**Preview mode bypass:** When `preview_connect_to_remote_server = true` and `is_preview = true`, generate debug IDs immediately without HTTP request.
 
 ### 3. Add Backend Configuration
 
@@ -140,9 +140,8 @@ func _client_on_session_ids_received(
 
     # Update connection settings if provided
     if not server_ip.is_empty():
-        G.settings.remote_server_ip_address = server_ip
-        G.settings.remote_server_port = server_port
-        G.settings.preview_connect_to_remote_server = true
+        G.network.connector.server_ip_address = server_ip
+        G.network.connector.server_port = server_port
 
     # Connect to server
     G.network.connector.client_connect_to_server()
@@ -194,13 +193,13 @@ Add status label to show "Requesting game session..." and "Connecting to server.
 
 ## Mode Handling
 
-**Preview Mode** (`use_gamelift = false` OR `is_preview = true`):
+**Preview Mode** (`is_preview = true` and `preview_connect_to_remote_server = false`):
 - Generate debug session IDs immediately: `["DEBUG_ID_0", "DEBUG_ID_1", ...]`
 - Use local server IP/port from settings
 - No HTTP request made
 - Server auto-accepts without GameLift validation
 
-**Production Mode** (`use_gamelift = true` AND `is_preview = false`):
+**Production Mode** (`is_preview = false`):
 - Make real HTTP request to backend API
 - Use returned session IDs and server connection info
 - Server validates via `_gamelift.accept_player_session()`
@@ -224,12 +223,11 @@ Add status label to show "Requesting game session..." and "Connecting to server.
 
 ### Production Mode Testing:
 1. Configure `gamelift_backend_api_url` in settings
-2. Set `use_gamelift = true`
-3. Launch client
-4. Verify HTTP request is made to backend
-5. Verify session IDs are received and stored
-6. Verify server validates via GameLift SDK
-7. Check GameLiftManager logs show successful validation
+2. Launch client
+3. Verify HTTP request is made to backend
+4. Verify session IDs are received and stored
+5. Verify server validates via GameLift SDK
+6. Check GameLiftManager logs show successful validation
 
 ### Multi-Player Testing:
 1. Configure 2 local players in lobby
@@ -2161,7 +2159,6 @@ Edit `settings.tres`:
 [resource]
 gamelift_backend_api_url = "https://api.jumpnthump.com"  # Or API Gateway URL
 gamelift_matchmaking_timeout_sec = 120.0
-use_gamelift = true
 ```
 
 ### Store Auth Tokens Locally

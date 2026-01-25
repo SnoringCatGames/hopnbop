@@ -9,17 +9,8 @@ extends Resource
 var preview_client_count: int:
 	get:
 		return 2 if preview_run_multiple_clients else 1
-# FIXME: [GameLift]: Set up support to connect to a remote server.
-@export var remote_server_ip_address: StringName = "127.0.0.1"
-@export var remote_server_port := 4433
-@export var local_server_ip_address: StringName = "127.0.0.1"
-@export var local_server_port := 4433
-var server_ip_address: StringName:
-	get:
-		return remote_server_ip_address if preview_connect_to_remote_server else local_server_ip_address
-var server_port: int:
-	get:
-		return remote_server_port if preview_connect_to_remote_server else local_server_port
+@export var local_preview_server_ip_address: StringName = "127.0.0.1"
+@export var local_preview_server_port := 4433
 @export_group("")
 
 @export_group("Network sync")
@@ -36,7 +27,6 @@ var server_port: int:
 
 # FIXME: Review this.
 @export_group("GameLift")
-@export var use_gamelift := false
 @export var gamelift_anywhere_mode := false
 @export var gamelift_anywhere_websocket := ""
 @export var gamelift_anywhere_auth_token := ""

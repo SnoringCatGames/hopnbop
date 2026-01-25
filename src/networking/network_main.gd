@@ -62,6 +62,11 @@ var is_client: bool:
 		return not is_server
 var preview_client_number := 0
 
+var should_connect_to_remote_server: bool:
+	get:
+		return not G.network.is_preview or
+			G.settings.preview_connect_to_remote_server
+
 var is_connected_to_server: bool:
 	get:
 		return connector.is_connected_to_server
