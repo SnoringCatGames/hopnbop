@@ -1,6 +1,7 @@
 class_name Hud
 extends PanelContainer
 
+
 @onready var player_list: PlayerList = %PlayerList
 
 
