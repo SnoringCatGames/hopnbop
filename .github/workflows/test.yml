@@ -73,10 +73,10 @@ jobs:
         timeout-minutes: 10
         run: |
           echo "Starting unit tests..."
-          echo "Command: ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . addons/gut/gut_cmdln.gd -gdir=res://test/unit -gexit -gjunit_xml_file=unit_test_results.xml"
+          echo "Command: ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . --script addons/gut/gut_cmdln.gd -gdir=res://test/unit -gexit -gjunit_xml_file=unit_test_results.xml"
 
           timeout 300s ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . \
-            addons/gut/gut_cmdln.gd \
+            --script addons/gut/gut_cmdln.gd \
             -gdir=res://test/unit \
             -gexit \
             -gverbose \
@@ -97,10 +97,10 @@ jobs:
         timeout-minutes: 10
         run: |
           echo "Starting integration tests..."
-          echo "Command: ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . addons/gut/gut_cmdln.gd -gdir=res://test/integration -gexit -gjunit_xml_file=integration_test_results.xml"
+          echo "Command: ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . --script addons/gut/gut_cmdln.gd -gdir=res://test/integration -gexit -gjunit_xml_file=integration_test_results.xml"
 
           timeout 300s ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . \
-            addons/gut/gut_cmdln.gd \
+            --script addons/gut/gut_cmdln.gd \
             -gdir=res://test/integration \
             -gexit \
             -gverbose \
