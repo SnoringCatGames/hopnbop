@@ -43,6 +43,8 @@ var server_port: int:
 @export var gamelift_anywhere_fleet_id := ""
 @export var gamelift_anywhere_host_id := ""
 @export var gamelift_anywhere_process_id := ""
+@export var gamelift_backend_api_url := "https://api.example.com"
+@export var gamelift_matchmaking_timeout_sec := 30.0
 @export_group("")
 
 @export var dev_mode := true

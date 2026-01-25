@@ -163,13 +163,20 @@ func _on_peer_disconnected(peer_id: int) -> void:
 
 
 func _client_send_player_declaration() -> void:
+	G.check(G.local_session.has_valid_session_ids(),
+		"Client has no session IDs.",
+	)
+
 	# Send player count and session IDs to server.
 	var player_count := G.local_session.local_player_count
 
-	# FIXME: Populate this properly.
-	var session_ids := []
-	for i in range(player_count):
-		session_ids.append(str("DEBUG_ID_%d" % i))
+	# Use stored session IDs from backend matchmaking.
+	var session_ids := G.local_session.session_ids
+
+	G.check(player_count == session_ids.size(),
+		"Player count %d does not match session IDs size %d." %
+			[player_count, session_ids.size()],
+	)
 
 	G.print(
 		"Declaring %d player(s) to server" % player_count,

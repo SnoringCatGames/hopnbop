@@ -52,6 +52,7 @@ var time := ServerTimeTracker.new()
 var connector := NetworkConnector.new()
 var frame_driver := NetworkFrameDriver.new()
 var game_lift_manager := GameLiftManager.new()
+var session_manager := GameLiftSessionManager.new()
 
 var is_preview := true
 var is_headless := true
@@ -99,6 +100,11 @@ func _enter_tree() -> void:
 
 	game_lift_manager.name = "GameLiftManager"
 	add_child(game_lift_manager)
+
+	session_manager.name = "GameLiftSessionManager"
+	session_manager.backend_api_url = G.settings.gamelift_backend_api_url
+	session_manager.request_timeout_sec = G.settings.gamelift_matchmaking_timeout_sec
+	add_child(session_manager)
 
 	is_headless = DisplayServer.get_name() == "headless"
 	is_preview = OS.has_feature("editor")
