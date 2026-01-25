@@ -23,8 +23,8 @@ class MockLevel extends Level:
 		# Skip Level's _exit_tree which requires G.game_panel
 		pass
 
-	# Override on_player_added to work in test context
-	func on_player_added(player: Player) -> void:
+	# Override register_player to work in test context
+	func register_player(player: Player) -> void:
 		# Check if state_from_server is set up (it might not be during test
 		# setup)
 		if player.state_from_server == null:
@@ -32,8 +32,8 @@ class MockLevel extends Level:
 		if player.multiplayer_id > 0:
 			players_by_id[player.multiplayer_id] = player
 
-	# Override on_player_removed to work in test context
-	func on_player_removed(player: Player) -> void:
+	# Override deregister_player to work in test context
+	func deregister_player(player: Player) -> void:
 		players_by_id.erase(player.multiplayer_id)
 
 
@@ -144,7 +144,7 @@ static func setup_test_player(parent_node: Node) -> Player:
 ## Returns dict with all created nodes for test access.
 static func setup_player_with_networking(
 	parent_node: Node,
-	player_name: String = "Player"
+	player_name: StringName = "Player"
 ) -> Dictionary:
 	# Ensure network time is initialized BEFORE creating player nodes.
 	# This must happen before any networked nodes are created, as their _ready()
