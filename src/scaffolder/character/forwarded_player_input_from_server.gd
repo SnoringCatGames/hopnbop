@@ -2,6 +2,7 @@
 class_name ForwardedPlayerInputFromServer
 extends PlayerInputNetworkState
 
+
 @export var player: Player:
 	set(value):
 		player = value
@@ -31,9 +32,9 @@ func _ready() -> void:
 	add_visibility_filter(_visibility_filter)
 
 
-func _visibility_filter(peer_id: int) -> bool:
+func _visibility_filter(p_peer_id: int) -> bool:
 	# Hide from the originating player (they already have local input).
-	return peer_id != multiplayer_id
+	return p_peer_id != peer_id
 
 
 func _get_configuration_warnings() -> PackedStringArray:

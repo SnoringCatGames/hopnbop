@@ -7,7 +7,6 @@ extends RefCounted
 ## - State that needs to sync every frame should instead be tracked in
 ##   CharacterStateFromServer (or a subclass of it).
 
-## Composite player ID in format "peer_id:local_index" (e.g., "1234:0").
 var player_id: StringName = ""
 var bunny_name := ""
 var adjective := ""
@@ -48,7 +47,7 @@ var peer_id: int:
 	get:
 		return NetworkConnector.get_peer_id_from_player_id(player_id)
 
-var local_index: int:
+var local_player_index: int:
 	get:
 		return NetworkConnector.get_local_index_from_player_id(player_id)
 

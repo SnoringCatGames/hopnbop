@@ -9,7 +9,6 @@ signal kills_updated
 signal bumps_updated
 
 # Dictionary<StringName, PlayerMatchState>
-# Keys are player_id in format "peer_id:local_index" (e.g., "1234:0").
 var players: Dictionary = {}
 
 ## - We maintain both a packed Array of player state as well as a redundant
@@ -33,8 +32,6 @@ var _connected_players := {}
 ##
 ## Every even index is the killer, and every odd index is the killee for the
 ## prior index.
-##
-## Array of StringName player_ids in format "peer_id:local_index".
 var kills: PackedStringArray = []:
 	set(value):
 		kills = value
@@ -43,8 +40,6 @@ var kills: PackedStringArray = []:
 ## A bump happens when two bunnies collide, but neither dies.
 ##
 ## Every even index marks a 2-player pair.
-##
-## Array of StringName player_ids in format "peer_id:local_index".
 var bumps: PackedStringArray = []:
 	set(value):
 		bumps = value

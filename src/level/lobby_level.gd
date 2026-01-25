@@ -79,23 +79,22 @@ func _try_deregister_gamepad_player(device_id: int) -> void:
 
 
 func _register_player(device_config: DeviceConfig) -> void:
-	var local_index := _pending_device_configs_by_index.size()
+	var local_player_index := _pending_device_configs_by_index.size()
 	var player: Player = G.settings.default_player_scene.instantiate()
-	player.player_id = get_local_player_id(local_index)
-	player.local_player_index = local_index
+	player.player_id = get_local_player_id(local_player_index)
 	player.global_position = _get_player_spawn_position()
-	player.name = "LobbyPlayer_%d" % local_index
+	player.name = "LobbyPlayer_%d" % local_player_index
 	players_node.add_child(player)
 
 	_pending_device_configs_by_index.append(device_config)
 	_pending_device_configs_by_name[device_config.name] = device_config
 
-	G.input_device_manager.assign_device_to_player(local_index, device_config)
+	G.input_device_manager.assign_device_to_player(local_player_index, device_config)
 
 	register_player(player)
 
 	G.print(
-		"Spawned lobby player %d" % local_index,
+		"Spawned lobby player %d" % local_player_index,
 		ScaffolderLog.CATEGORY_PLAYER_ACTIONS)
 
 
@@ -105,24 +104,24 @@ func _deregister_player(device_name: StringName) -> void:
 		return
 
 	var device_config: DeviceConfig = _pending_device_configs_by_name[device_name]
-	var local_index := _pending_device_configs_by_index.find(device_config)
+	var local_player_index := _pending_device_configs_by_index.find(device_config)
 
-	var player_id := get_local_player_id(local_index)
+	var player_id := get_local_player_id(local_player_index)
 	if not G.ensure(players_by_id.has(player_id)):
 		return
 
 	var player: Player = players_by_id[player_id]
 
-	_pending_device_configs_by_index.erase(local_index)
+	_pending_device_configs_by_index.erase(local_player_index)
 	_pending_device_configs_by_name.erase(device_name)
-	G.input_device_manager.unassign_device_from_player(local_index)
+	G.input_device_manager.unassign_device_from_player(local_player_index)
 
 	deregister_player(player)
 
 	player.queue_free()
 
 	G.print(
-		"Despawned lobby player %d" % local_index,
+		"Despawned lobby player %d" % local_player_index,
 		ScaffolderLog.CATEGORY_PLAYER_ACTIONS)
 
 
@@ -158,5 +157,5 @@ func start_match() -> void:
 	G.game_panel.client_load_game()
 
 
-static func get_local_player_id(local_index: int) -> StringName:
-	return "lobby:%d" % local_index
+static func get_local_player_id(local_player_index: int) -> StringName:
+	return "lobby:%d" % local_player_index

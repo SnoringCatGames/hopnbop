@@ -50,8 +50,8 @@ var actions := CharacterActionState.new()
 
 # Array<CharacterActionSource>
 var _action_sources := []
-# Dictionary<String, bool>
-var _previous_actions_handlers_this_frame := { }
+# Dictionary<StringName, bool>
+var _previous_actions_handlers_this_frame := {}
 
 var current_surface_max_horizontal_speed: float:
 	get:
@@ -59,7 +59,7 @@ var current_surface_max_horizontal_speed: float:
 		_current_max_horizontal_speed_multiplier * \
 		(surfaces.surface_properties.speed_multiplier if \
 			surfaces.is_attaching_to_surface else \
-			1.0 )
+			1.0)
 
 var current_air_max_horizontal_speed: float:
 	get:
@@ -71,28 +71,28 @@ var current_walk_acceleration: float:
 		return movement_settings.walk_acceleration * \
 		(surfaces.surface_properties.speed_multiplier if \
 			surfaces.is_attaching_to_surface else \
-			1.0 )
+			1.0)
 
 var current_climb_up_speed: float:
 	get:
 		return movement_settings.climb_up_speed * \
 		(surfaces.surface_properties.speed_multiplier if \
 			surfaces.is_attaching_to_surface else \
-			1.0 )
+			1.0)
 
 var current_climb_down_speed: float:
 	get:
 		return movement_settings.climb_down_speed * \
 		(surfaces.surface_properties.speed_multiplier if \
 			surfaces.is_attaching_to_surface else \
-			1.0 )
+			1.0)
 
 var current_ceiling_crawl_speed: float:
 	get:
 		return movement_settings.ceiling_crawl_speed * \
 		(surfaces.surface_properties.speed_multiplier if \
 			surfaces.is_attaching_to_surface else \
-			1.0 )
+			1.0)
 
 var is_sprite_visible: bool:
 	set(value):
@@ -132,7 +132,19 @@ func _ready() -> void:
 	# state_from_server.surfaces intentionally left at default 0
 
 	if _action_sources.is_empty():
-		var player_action_source := PlayerActionSource.new(self, true)
+		# Get device configuration if this is a Player with a local index.
+		var device_config: DeviceConfig = null
+		if self is Player:
+			var player := self as Player
+			var config := G.input_device_manager.get_device_for_player(
+				player.local_player_index)
+			if is_instance_valid(config):
+				device_config = config
+
+		var player_action_source := PlayerActionSource.new(
+			self,
+			true,
+			device_config)
 		_action_sources.append(player_action_source)
 
 	# For move_and_slide.
@@ -151,8 +163,7 @@ func _collect_actions() -> void:
 	for action_source in _action_sources:
 		action_source.update(
 			actions,
-			G.time.get_scaled_network_time(),
-		)
+			G.time.get_scaled_network_time())
 
 	actions.log_new_presses_and_releases(self)
 
@@ -212,7 +223,7 @@ func _process_actions() -> void:
 		# and allow an action-handler of that departure-surface-type to
 		# handle this frame.
 		(action_handler.type == surfaces.just_left_surface_type and
-			surfaces.just_left_surface_type != SurfaceType.OTHER )
+			surfaces.just_left_surface_type != SurfaceType.OTHER)
 		var is_action_relevant_for_physics_mode: bool = \
 		action_handler.uses_runtime_physics
 		if is_action_relevant_for_surface and \
@@ -273,11 +284,11 @@ func _process_sounds() -> void:
 		play_sound("land")
 
 
-func play_sound(_sound_name: String) -> void:
+func play_sound(_sound_name: StringName) -> void:
 	G.fatal("Abstract CharacterActionSource.update is not implemented")
 
 
-func processed_action(p_name: String) -> bool:
+func processed_action(p_name: StringName) -> bool:
 	return _previous_actions_handlers_this_frame.get(p_name) == true
 
 

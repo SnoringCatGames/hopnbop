@@ -178,7 +178,7 @@ class TestDeviceManagerEdgeCases:
 		assert_null(manager.get_device_for_player(999))
 
 	func test_can_assign_to_negative_index():
-		# BUG: No bounds checking on local_index
+		# BUG: No bounds checking on local_player_index
 		var config := DeviceConfig.new(
 			DeviceConfig.DeviceType.KEYBOARD, -1, {}
 		)
@@ -186,7 +186,7 @@ class TestDeviceManagerEdgeCases:
 		assert_true(manager.has_device_for_player(-1))
 
 	func test_can_assign_to_very_large_index():
-		# BUG: No bounds checking on local_index
+		# BUG: No bounds checking on local_player_index
 		var config := DeviceConfig.new(
 			DeviceConfig.DeviceType.KEYBOARD, -1, {}
 		)

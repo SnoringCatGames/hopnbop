@@ -7,8 +7,8 @@ class TestPlayerIdCreation:
 
 	func test_composite_format_creation():
 		var peer_id := 1234
-		var local_index := 0
-		var player_id := NetworkConnector.get_player_id(peer_id, local_index)
+		var local_player_index := 0
+		var player_id := NetworkConnector.get_player_id(peer_id, local_player_index)
 		assert_eq(player_id, "1234:0")
 
 	func test_multiple_players_same_peer():
@@ -22,8 +22,8 @@ class TestPlayerIdCreation:
 		assert_eq(player_ids[2], "1234:2")
 
 	func test_lobby_format_creation():
-		var local_index := 2
-		var player_id := "lobby:%d" % local_index
+		var local_player_index := 2
+		var player_id := "lobby:%d" % local_player_index
 		assert_eq(player_id, "lobby:2")
 
 	func test_different_peers_same_local_index():
@@ -47,8 +47,8 @@ class TestPlayerIdParsing:
 	func test_extract_local_index():
 		var player_id := "1234:2"
 		var parts := player_id.split(":")
-		var local_index := int(parts[1])
-		assert_eq(local_index, 2)
+		var local_player_index := int(parts[1])
+		assert_eq(local_player_index, 2)
 
 	func test_empty_player_id_parsing():
 		var player_id := ""
@@ -87,7 +87,7 @@ class TestPlayerMatchStateIdHandling:
 		player.set_up("1234:0", true)
 		assert_eq(player.player_id, "1234:0")
 		assert_eq(player.peer_id, 1234)
-		assert_eq(player.local_index, 0)
+		assert_eq(player.local_player_index, 0)
 
 	func test_player_match_state_handles_lobby_format():
 		var player := PlayerMatchState.new()
@@ -101,7 +101,7 @@ class TestPlayerMatchStateIdHandling:
 			var player := PlayerMatchState.new()
 			player.set_up("1234:%d" % i, true)
 			assert_eq(player.peer_id, 1234)
-			assert_eq(player.local_index, i)
+			assert_eq(player.local_player_index, i)
 
 	func test_player_match_state_extracts_peer_from_different_peers():
 		var peer_ids := [1, 1234, 5678, 999999]

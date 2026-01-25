@@ -2,6 +2,7 @@
 class_name PlayerInputFromClient
 extends PlayerInputNetworkState
 
+
 @export var player: Player:
 	set(value):
 		player = value

@@ -92,7 +92,6 @@ func _server_register_players_for_peer(peer_id: int, count: int) -> void:
 		var player_id := NetworkConnector.get_player_id(peer_id, i)
 		var player: Player = G.settings.default_player_scene.instantiate()
 		player.player_id = player_id
-		player.local_player_index = i
 		player.global_position = _get_player_spawn_position()
 		player.name = "Player_%s" % player_id.replace(":", "_")
 		players_by_id[player_id] = player

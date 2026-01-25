@@ -46,26 +46,26 @@ func _ready() -> void:
 
 ## Assigns a device configuration to a local player index.
 func assign_device_to_player(
-		local_index: int,
+		local_player_index: int,
 		device_config: DeviceConfig) -> void:
-	player_device_map[local_index] = device_config
+	player_device_map[local_player_index] = device_config
 	G.print("Assigned device to player %d: type=%s, device_id=%d" %
-		[local_index, device_config.name, device_config.device_id],
+		[local_player_index, device_config.name, device_config.device_id],
 		ScaffolderLog.CATEGORY_PLAYER_ACTIONS)
 
 
-func unassign_device_from_player(local_index: int) -> void:
-	player_device_map.erase(local_index)
+func unassign_device_from_player(local_player_index: int) -> void:
+	player_device_map.erase(local_player_index)
 
 
 ## Gets the device configuration for a local player.
-func get_device_for_player(local_index: int) -> DeviceConfig:
-	return player_device_map.get(local_index)
+func get_device_for_player(local_player_index: int) -> DeviceConfig:
+	return player_device_map.get(local_player_index)
 
 
 ## Checks if a device is assigned to a local player.
-func has_device_for_player(local_index: int) -> bool:
-	return player_device_map.has(local_index)
+func has_device_for_player(local_player_index: int) -> bool:
+	return player_device_map.has(local_player_index)
 
 
 ## Gets the input state for an action using device-specific polling.

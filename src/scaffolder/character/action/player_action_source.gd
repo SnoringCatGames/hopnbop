@@ -16,19 +16,14 @@ const ACTIONS_TO_INPUT_KEYS := {
 ## Determines whether to use keyboard/gamepad and which device.
 var device_config: DeviceConfig = null
 
-## Local player index on this peer (0-based).
-var local_player_index: int = 0
-
 
 func _init(
 	p_character,
 	p_is_additive: bool,
-	p_device_config: DeviceConfig = null,
-	p_local_player_index: int = 0
+	p_device_config: DeviceConfig = null
 ) -> void:
 	super ("PLAYER", p_character, p_is_additive)
 	device_config = p_device_config
-	local_player_index = p_local_player_index
 
 
 # Calculates actions for the current frame.
