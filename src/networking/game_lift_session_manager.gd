@@ -2,6 +2,9 @@ class_name GameLiftSessionManager
 extends Node
 
 
+# FIXME: LEFT OFF HERE: Review this.
+
+
 ## Emitted when session IDs are successfully received from backend.
 signal session_ids_received(
 	session_ids: Array,
