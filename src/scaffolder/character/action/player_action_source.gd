@@ -12,18 +12,43 @@ const ACTIONS_TO_INPUT_KEYS := {
 	"face_right": "fr",
 }
 
+## Device configuration for this player's input.
+## Determines whether to use keyboard/gamepad and which device.
+var device_config: DeviceConfig = null
 
-func _init(p_character, p_is_additive: bool) -> void:
-	super("PLAYER", p_character, p_is_additive)
+## Local player index on this peer (0-based).
+var local_player_index: int = 0
+
+
+func _init(
+	p_character,
+	p_is_additive: bool,
+	p_device_config: DeviceConfig = null,
+	p_local_player_index: int = 0
+) -> void:
+	super ("PLAYER", p_character, p_is_additive)
+	device_config = p_device_config
+	local_player_index = p_local_player_index
 
 
 # Calculates actions for the current frame.
 func update(actions: CharacterActionState, time_scaled: float) -> void:
 	if !character.get_is_player_control_active():
 		return
+
+	# Use device-specific input polling if device_config is set.
+	# Otherwise fall back to global input for backward compatibility.
 	for action in ACTIONS_TO_INPUT_KEYS:
-		var input_key: String = ACTIONS_TO_INPUT_KEYS[action]
-		var is_pressed: bool = Input.is_action_pressed(action)
+		var input_key: StringName = ACTIONS_TO_INPUT_KEYS[action]
+		var is_pressed: bool
+		if device_config != null:
+			is_pressed = G.input_device_manager.get_is_action_pressed(
+				action,
+				device_config
+			)
+		else:
+			is_pressed = Input.is_action_pressed(action)
+
 		if !Input.is_key_pressed(KEY_CTRL):
 			CharacterActionSource.update_for_explicit_key_event(
 				actions,

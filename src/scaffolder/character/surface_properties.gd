@@ -7,7 +7,7 @@ extends RefCounted
 
 const KEYS := ["can_attach", "friction_multiplier", "speed_multiplier", "clockwise_speed_offset"]
 
-var name: String
+var name: StringName
 
 var can_attach := true
 

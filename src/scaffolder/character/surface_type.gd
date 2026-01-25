@@ -9,7 +9,7 @@ enum {
 }
 
 
-static func get_string(type: int) -> String:
+static func get_string(type: int) -> StringName:
 	match type:
 		FLOOR:
 			return "FLOOR"
@@ -26,7 +26,7 @@ static func get_string(type: int) -> String:
 			return ""
 
 
-static func get_prefix(type: int) -> String:
+static func get_prefix(type: int) -> StringName:
 	match type:
 		FLOOR:
 			return "F"

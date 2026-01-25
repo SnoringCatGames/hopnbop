@@ -21,7 +21,7 @@ enum {
 }
 
 
-static func get_string(type: int) -> String:
+static func get_string(type: int) -> StringName:
 	match type:
 		NONE:
 			return "NONE"

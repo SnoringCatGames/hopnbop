@@ -119,7 +119,7 @@ func trigger_completed() -> void:
 
 func interpolate_method(
 		object: Object,
-		key: String,
+		key: StringName,
 		initial_val,
 		final_val,
 		duration: float,
@@ -150,7 +150,7 @@ func _interpolate(
 		initial_val,
 		final_val,
 		duration: float,
-		ease_name: String,
+		ease_name: StringName,
 		delay: float,
 		time_type: int,
 ) -> void:
@@ -172,7 +172,7 @@ func _interpolate(
 class _SubTween:
 	extends RefCounted
 	var object: Object
-	var key: String
+	var key: StringName
 	var is_property: bool
 	var initial_val
 	var final_val
@@ -180,7 +180,7 @@ class _SubTween:
 	# TODO: Replace this with better built-in EaseType/TransType easing support
 	#       when it's ready
 	#       (https://github.com/godotengine/godot-proposals/issues/36).
-	var ease_name: String
+	var ease_name: StringName
 	var delay: float
 	var time_type: int
 
@@ -191,12 +191,12 @@ class _SubTween:
 
 	func _init(
 			p_object: Object,
-			p_key: String,
+			p_key: StringName,
 			p_is_property: bool,
 			p_initial_val,
 			p_final_val,
 			p_duration: float,
-			p_ease_name: String,
+			p_ease_name: StringName,
 			p_delay: float,
 			p_time_type: int,
 	) -> void:

@@ -129,10 +129,10 @@ static func subtract_and_mutate_nested_arrays(
 				G.ensure(
 					false,
                     "Wrong-type match: "
-					+ "(We currently don't support subtracting properties "
-					+ "from a Dictionary. We only support subtracting "
-					+ "elements from Arrays.)"
-					+ "\n    key=%s,\n    result=%s,\n    other=%s"
+					+"(We currently don't support subtracting properties "
+					+"from a Dictionary. We only support subtracting "
+					+"elements from Arrays.)"
+					+"\n    key=%s,\n    result=%s,\n    other=%s"
 					% [key, result, other],
 				)
 		elif expects_no_missing_matches:
@@ -160,7 +160,7 @@ static func subtract_and_mutate_arrays(result: Array, other: Array) -> Array:
 
 static func subtract_array(a: Array, b: Array) -> Array:
 	# Dictionary<Variant, bool>
-	var diff := { }
+	var diff := {}
 
 	for element in a:
 		diff[element] = true
@@ -183,7 +183,7 @@ static func join(array: Variant, delimiter := ",") -> String:
 
 
 static func array_to_set(array: Array) -> Dictionary:
-	var local_set := { }
+	var local_set := {}
 	for element in array:
 		local_set[element] = element
 	return local_set
@@ -214,7 +214,7 @@ func add_overlay_to_current_scene(node: Node) -> void:
 	get_tree().get_current_scene().add_child(node)
 
 
-static func ease_name_to_param(ease_name: String) -> float:
+static func ease_name_to_param(ease_name: StringName) -> float:
 	match ease_name:
 		"linear":
 			return 1.0
@@ -247,7 +247,7 @@ static func ease_name_to_param(ease_name: String) -> float:
 			return INF
 
 
-static func ease_by_name(progress: float, ease_name: String) -> float:
+static func ease_by_name(progress: float, ease_name: StringName) -> float:
 	return ease(progress, ease_name_to_param(ease_name))
 
 
@@ -547,7 +547,7 @@ func is_running_in_isolated_scene_mode() -> bool:
 	return root_scene != main_scene_path
 
 
-static func get_type_string(type: int) -> String:
+static func get_type_string(type: int) -> StringName:
 	match type:
 		TYPE_NIL:
 			return "TYPE_NIL"
@@ -658,7 +658,7 @@ static func get_property_value_from_node_path(base_node: Node, p_node_path: Node
 
 
 static func parse_command_line_args() -> Dictionary:
-	var args := { }
+	var args := {}
 	for arg in OS.get_cmdline_args():
 		arg = arg.trim_prefix("--")
 		if arg.contains("="):
@@ -671,7 +671,7 @@ static func parse_command_line_args() -> Dictionary:
 	return args
 
 
-static func get_script_property_names(script: Script, exclusion_list := { }) -> Array[String]:
+static func get_script_property_names(script: Script, exclusion_list := {}) -> Array[String]:
 	var script_properties: Array[String] = []
 
 	var properties: Array = script.get_script_property_list()

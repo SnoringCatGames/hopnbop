@@ -16,7 +16,7 @@ const KEYBOARD_DEVICE_ID := -1
 ## Type of device (KEYBOARD or GAMEPAD).
 var type: DeviceType
 
-var name: String
+var name: StringName
 
 ## Device identifier.
 ## For KEYBOARD: -1 (keyboards don't have device IDs).
@@ -43,5 +43,5 @@ func _init(
 	key_bindings.erase("name")
 
 
-static func get_controller_device_name(p_device_id: int) -> String:
+static func get_controller_device_name(p_device_id: int) -> StringName:
 	return "GamePad_%d" % p_device_id

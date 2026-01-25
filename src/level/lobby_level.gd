@@ -8,7 +8,7 @@ extends Level
 ## Array of device configs (null = slot empty).
 var _pending_device_configs_by_index: Array[DeviceConfig] = []
 
-# Dictionary<String, DeviceConfig>
+# Dictionary<StringName, DeviceConfig>
 var _pending_device_configs_by_name := {}
 
 
@@ -44,7 +44,7 @@ func _try_register_keyboard_player(key_bindings: Dictionary) -> void:
 		# No available slots.
 		return
 
-	var device_name: String = key_bindings["name"]
+	var device_name: StringName = key_bindings["name"]
 	if _pending_device_configs_by_name.has(device_name):
 		# Already registered.
 		return
@@ -99,7 +99,7 @@ func _register_player(device_config: DeviceConfig) -> void:
 		ScaffolderLog.CATEGORY_PLAYER_ACTIONS)
 
 
-func _deregister_player(device_name: String) -> void:
+func _deregister_player(device_name: StringName) -> void:
 	if not _pending_device_configs_by_name.has(device_name):
 		# Not registered.
 		return
@@ -158,5 +158,5 @@ func start_match() -> void:
 	G.game_panel.client_load_game()
 
 
-static func get_local_player_id(local_index: int) -> String:
+static func get_local_player_id(local_index: int) -> StringName:
 	return "lobby:%d" % local_index

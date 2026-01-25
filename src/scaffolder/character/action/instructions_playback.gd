@@ -13,9 +13,9 @@ var previous_time_scaled: float
 var current_time_scaled: float
 var is_finished: bool
 var is_on_last_instruction: bool
-# Dictionary<String, boolean>
+# Dictionary<StringName, boolean>
 var active_key_presses: Dictionary
-# Dictionary<String, boolean>
+# Dictionary<StringName, boolean>
 var _next_active_key_presses: Dictionary
 
 
@@ -32,8 +32,8 @@ func start(scaled_time: float) -> void:
 	_next_instruction = instructions[next_index] if instructions.size() > next_index else null
 	is_on_last_instruction = _next_instruction == null
 	is_finished = is_on_last_instruction
-	active_key_presses = { }
-	_next_active_key_presses = { }
+	active_key_presses = {}
+	_next_active_key_presses = {}
 
 
 func update(scaled_time: float, character) -> void:

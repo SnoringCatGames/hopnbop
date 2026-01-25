@@ -1,18 +1,18 @@
 class_name Stopwatch
 extends RefCounted
 
-# Dictionary<String, int>
-var _start_times_msec := { }
+# Dictionary<StringName, int>
+var _start_times_msec := {}
 
 
-func start(metric_key: String) -> void:
+func start(metric_key: StringName) -> void:
 	var start_time := Time.get_ticks_usec()
 	assert(!_start_times_msec.has(metric_key) or _start_times_msec[metric_key] == -1)
 	_start_times_msec[metric_key] = start_time
 
 
 # Returns the elapsed time in milliseconds.
-func stop(metric_key: String) -> float:
+func stop(metric_key: StringName) -> float:
 	var stop_time := Time.get_ticks_usec()
 	var start_time: int = _start_times_msec[metric_key]
 	assert(start_time >= 0)

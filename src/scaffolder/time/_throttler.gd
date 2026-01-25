@@ -4,7 +4,7 @@ extends RefCounted
 
 var time_type: int
 var time_tracker
-var elapsed_time_key: String
+var elapsed_time_key: StringName
 var callback: Callable
 var interval: float
 var invokes_at_end: bool

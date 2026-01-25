@@ -154,7 +154,7 @@ func log_new_presses_and_releases(character) -> void:
 
 func _log_new_press_or_release(
 		character,
-		action_name: String,
+		action_name: StringName,
 		just_pressed: bool,
 		just_released: bool,
 ) -> void:
@@ -175,9 +175,9 @@ func _log_new_press_or_release(
 		current_presses_strs.append("FL")
 	if pressed_face_right:
 		current_presses_strs.append("FR")
-	var current_presses_str: String = Utils.join(current_presses_strs)
+	var current_presses_str: StringName = Utils.join(current_presses_strs)
 
-	var velocity_string: String = "%17s" % Utils.get_vector_string(character.velocity, 1)
+	var velocity_string: StringName = "%17s" % Utils.get_vector_string(character.velocity, 1)
 
 	var details := (
         "v=%s; [%s]"
@@ -190,13 +190,13 @@ func _log_new_press_or_release(
 	if just_pressed:
 		G.print(
 			"START %5s: %s" % [action_name, details],
-			ScaffolderLog.CATEGORY_PLAYER_MOVEMENT,
+			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
 			ScaffolderLog.Verbosity.VERBOSE,
 		)
 	if just_released:
 		G.print(
 			"STOP  %5s: %s" % [action_name, details],
-			ScaffolderLog.CATEGORY_PLAYER_MOVEMENT,
+			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
 			ScaffolderLog.Verbosity.VERBOSE,
 		)
 
@@ -215,7 +215,7 @@ static func get_debug_label_from_actions_bitmask(actions_bitmask: int) -> String
 	var action_strs := []
 	for pair in _ACTION_FLAG_DEBUG_LABEL_PAIRS:
 		var bit: int = pair[0]
-		var text: String = pair[1]
+		var text: StringName = pair[1]
 		if actions_bitmask & (1 << bit):
 			action_strs.append(text)
 		else:

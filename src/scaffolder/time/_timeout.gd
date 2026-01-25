@@ -3,7 +3,7 @@ class_name _Timeout
 extends RefCounted
 
 var time_tracker
-var elapsed_time_key: String
+var elapsed_time_key: StringName
 var callback: Callable
 var time: float
 var arguments: Array

@@ -12,7 +12,7 @@ extends Node2D
 
 var players: Array[Player] = []
 
-# Dictionary<String, Player>
+# Dictionary<StringName, Player>
 # Keys are player_id (String format varies by level type).
 var players_by_id := {}
 

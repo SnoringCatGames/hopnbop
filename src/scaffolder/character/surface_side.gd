@@ -9,7 +9,7 @@ enum {
 }
 
 
-static func get_string(side: int) -> String:
+static func get_string(side: int) -> StringName:
 	match side:
 		NONE:
 			return "NONE"
@@ -26,7 +26,7 @@ static func get_string(side: int) -> String:
 			return "???"
 
 
-static func get_type(string: String) -> int:
+static func get_type(string: StringName) -> int:
 	match string:
 		"NONE":
 			return NONE
@@ -43,7 +43,7 @@ static func get_type(string: String) -> int:
 			return NONE
 
 
-static func get_prefix(side: int) -> String:
+static func get_prefix(side: int) -> StringName:
 	match side:
 		NONE:
 			return "N"

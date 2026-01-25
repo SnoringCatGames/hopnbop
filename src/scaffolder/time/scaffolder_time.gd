@@ -45,16 +45,16 @@ var _app_time: _TimeTracker
 var _play_time: _TimeTracker
 
 # Dictionary<int, _Timeout>
-var _timeouts := { }
+var _timeouts := {}
 # Dictionary<int, _Interval>
-var _intervals := { }
+var _intervals := {}
 # Dictionary<int, ScaffolderTween>
-var _tweens := { }
+var _tweens := {}
 var _last_timeout_id := -1
 # Dictionary<FuncRef, _Throttler>
-var _throttled_callbacks := { }
+var _throttled_callbacks := {}
 # Dictionary<FuncRef, _Debouncer>
-var _debounced_callbacks := { }
+var _debounced_callbacks := {}
 
 
 func _init() -> void:
@@ -204,7 +204,7 @@ func _get_time_tracker_for_time_type(time_type: int) -> _TimeTracker:
 			return null
 
 
-func _get_elapsed_time_key_for_time_type(time_type: int) -> String:
+func _get_elapsed_time_key_for_time_type(time_type: int) -> StringName:
 	match time_type:
 		TimeType.APP_PHYSICS, TimeType.PLAY_PHYSICS:
 			return "elapsed_physics_time"
@@ -241,7 +241,7 @@ func get_scaled_time_step() -> float:
 
 func tween_method(
 		object: Object,
-		key: String,
+		key: StringName,
 		initial_val,
 		final_val,
 		duration: float,
@@ -268,7 +268,7 @@ func tween_method(
 
 func tween_property(
 		object: Object,
-		key: String,
+		key: StringName,
 		initial_val,
 		final_val,
 		duration: float,
@@ -295,12 +295,12 @@ func tween_property(
 
 func _tween(
 		object: Object,
-		key: String,
+		key: StringName,
 		is_property: bool,
 		initial_val,
 		final_val,
 		duration: float,
-		ease_name: String,
+		ease_name: StringName,
 		delay: float,
 		time_type := TimeType.APP_PHYSICS,
 		on_completed_callback: Callable = Callable(),
