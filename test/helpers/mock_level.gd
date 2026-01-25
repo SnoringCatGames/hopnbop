@@ -23,9 +23,12 @@ func register_player(player: Player) -> void:
 	# setup)
 	if player.state_from_server == null:
 		return
-	if player.peer_id > 0:
-		players_by_id[player.peer_id] = player
+	if player.player_id != 0:
+		players_by_id[player.player_id] = player
+		if not players.has(player):
+			players.append(player)
 
 # Override deregister_player to work in test context
 func deregister_player(player: Player) -> void:
-	players_by_id.erase(player.peer_id)
+	players_by_id.erase(player.player_id)
+	players.erase(player)
