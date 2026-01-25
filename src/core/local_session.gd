@@ -6,8 +6,14 @@ var is_game_loading := false
 
 var latest_match_state := MatchState.new()
 
-## GameLift player session ID from matchmaking (used for connection validation).
-var player_session_id := ""
+## Number of local players on this client.
+var local_player_count: int:
+	get:
+		return device_configs.size()
+
+## Device configurations for each local player.
+## Array index corresponds to local_player_index.
+var device_configs: Array[DeviceConfig] = []
 
 
 func _init() -> void:

@@ -51,6 +51,7 @@ extends Node
 #
 # LEFT OFF HERE:
 # - Test GDExtension Windows build.
+# - How is session_ids in _client_send_player_declaration supposed to be populated?
 # - Add support for G.settings.does_up_also_trigger_jump.
 #   - Add a couple getters to CharacterActionSource for this: is_triggering_jump, just_triggered_jump.
 #   - Update relevant usages to use the new getters instead of directly checking action pressed.
