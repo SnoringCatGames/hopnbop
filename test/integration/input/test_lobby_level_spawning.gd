@@ -89,8 +89,8 @@ class TestKeyboardPlayerSpawning:
 			InputDeviceManager.KEYBOARD_PARTITION_BINDINGS[1]
 		)
 
-		assert_has(lobby_level.players_by_id, "lobby:0")
-		assert_has(lobby_level.players_by_id, "lobby:1")
+		assert_has(lobby_level.players_by_id, -1)
+		assert_has(lobby_level.players_by_id, -2)
 
 
 class TestGamepadPlayerSpawning:
@@ -209,10 +209,10 @@ class TestPlayerDespawning:
 		lobby_level._try_register_keyboard_player(
 			InputDeviceManager.KEYBOARD_PARTITION_BINDINGS[0]
 		)
-		assert_has(lobby_level.players_by_id, "lobby:0")
+		assert_has(lobby_level.players_by_id, -1)
 
 		lobby_level._deregister_player("WASD")
-		assert_false(lobby_level.players_by_id.has("lobby:0"))
+		assert_false(lobby_level.players_by_id.has(-1))
 
 
 class TestMatchStartTransition:
@@ -280,8 +280,8 @@ class TestLobbyLevelPlayerPositioning:
 			InputDeviceManager.KEYBOARD_PARTITION_BINDINGS[1]
 		)
 
-		var player0: Player = lobby_level.players_by_id["lobby:0"]
-		var player1: Player = lobby_level.players_by_id["lobby:1"]
+		var player0: Player = lobby_level.players_by_id[-1]
+		var player1: Player = lobby_level.players_by_id[-2]
 
 		# Currently all lobby players spawn at Vector2.ZERO
 		assert_eq(player0.global_position, player1.global_position)

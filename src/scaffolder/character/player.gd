@@ -54,6 +54,32 @@ func _ready() -> void:
 	update_configuration_warnings()
 
 
+func on_match_state_ready(_player_match_state: PlayerMatchState) -> void:
+	_set_up_action_sources()
+
+
+func _set_up_action_sources() -> void:
+	if not _action_sources.is_empty():
+		return
+
+	var player_match_state := G.get_player_match_state(player_id)
+	if not is_instance_valid(player_match_state):
+		# Player state not replicated yet.
+		return
+
+	var device_config := G.input_device_manager.get_device_for_player(
+		player_match_state.local_index)
+	if not G.ensure(is_instance_valid(device_config),
+			"DeviceConfig not registered for player"):
+		return
+
+	var player_action_source := PlayerActionSource.new(
+		self,
+		true,
+		device_config)
+	_action_sources.append(player_action_source)
+
+
 func _process_movement_and_actions() -> void:
 	super._process_movement_and_actions()
 

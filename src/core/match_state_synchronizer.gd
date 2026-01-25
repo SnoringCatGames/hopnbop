@@ -111,12 +111,17 @@ func _client_on_bumps_updated() -> void:
 	bumps_updated.emit()
 
 
-func _on_underlying_player_state_connected(player: PlayerMatchState) -> void:
-	player_joined.emit(player)
+func _on_underlying_player_state_connected(
+		player_match_state: PlayerMatchState) -> void:
+	player_joined.emit(player_match_state)
+	var player := G.get_player(player_match_state.player_id)
+	if is_instance_valid(player):
+		player.on_match_state_ready(player_match_state)
 
 
-func _on_underlying_player_state_disconnected(player: PlayerMatchState) -> void:
-	player_left.emit(player)
+func _on_underlying_player_state_disconnected(
+		player_match_state: PlayerMatchState) -> void:
+	player_left.emit(player_match_state)
 
 
 # TODO: Call server_add_kill.

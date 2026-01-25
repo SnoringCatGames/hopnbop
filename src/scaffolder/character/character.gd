@@ -129,27 +129,17 @@ func _ready() -> void:
 	state_from_server.velocity = velocity
 	# state_from_server.surfaces intentionally left at default 0
 
-	if _action_sources.is_empty():
-		# Get device configuration if this is a Player with a local index.
-		var device_config: DeviceConfig = null
-		if self is Player:
-			var player := self as Player
-			var config := G.input_device_manager.get_device_for_player(
-				player.local_player_index)
-			if is_instance_valid(config):
-				device_config = config
-
-		var player_action_source := PlayerActionSource.new(
-			self,
-			true,
-			device_config)
-		_action_sources.append(player_action_source)
+	_set_up_action_sources()
 
 	# For move_and_slide.
 	up_direction = Vector2.UP
 	floor_stop_on_slope = false
 	max_slides = MovementSettings._MAX_SLIDES_DEFAULT
 	floor_max_angle = G.geometry.FLOOR_MAX_ANGLE + G.geometry.WALL_ANGLE_EPSILON
+
+
+func _set_up_action_sources() -> void:
+	pass
 
 
 ## This gets called during _network_process, just before _apply_movement.
