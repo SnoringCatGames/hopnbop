@@ -47,20 +47,13 @@ extends Node
 ##   frame
 ## - Only one rollback occurs per _network_process, earliest frame takes priority
 
-# FIXME: LEFT OFF HERE: ACTUALLY: Review and debug
+# FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 #
 # LEFT OFF HERE:
 # - Test GDExtension Windows build.
-# - How is session_ids in _client_send_player_declaration supposed to be populated?
-# - Review PlayerList, PlayerDisplay, and PlayerOverheadLabels.
-#   - Make sure the local players are always listed at the left, in local_player_index order.
+# - AI: How is session_ids in _client_send_player_declaration supposed to be populated?
+# - AI: /plan We need to update NETWORKING_ARCHITECTURE.md to account for the current design--including player_ids, multiple players per client, and GameLift.
 #
-# >>>> LEFT-OFF MANUAL STEPS FROM LOBBY AND UI INTEGRATION:
-# - Scene files (lobby_level.tscn, player_list.tscn, player_display.tscn) may need minor adjustments in the Godot editor
-# - Currently, the lobby automatically transitions on calling start_match() - you may want to add a UI button for this
-#
-#
-# We will be regularly building in WSL for the Linux build and in Windows for the windows build. Is there a way we should update how CMakeCache.txt works to support this?
 #
 # Proceed with the "AWS GameLift Deployment Guide"
 # - Make sure we use Spot instances instead of On-Demand.
@@ -74,20 +67,16 @@ extends Node
 #
 # - Debug the game.
 #   - Fix the GDExtension importing in Godot.
-#   - Debug pause behavior.
 # - Review tests.
 # - Fix GitHub CI.
 # - Lingering FIXMEs.
 # - Use is_instance_valid instead of null comparisons.
-# - Implement multiple players per client support (as per below notes).
 # - Implement annotations:
 #   - Toggleable at run time.
 #   - Render shape to match the collision shape
 #   - Render a dot for every frame in the rollback buffer.
 #     - Color code these based on authority, and whether they caused a rollback
 #       or a fast-forward.
-# - Implement alternate starting level, non networked, with walk-off-screen to
-#   start match.
 
 # - Log the app version (from project settings).
 # - Check on the server that clients have the same version, and reject them if
@@ -95,7 +84,6 @@ extends Node
 #   - Even better, try to do this check from GameLift matchmaking.
 
 # - GameLift
-# - Implement multiple players on a given client.
 # - Implement kills and other gameplay bits.
 # - Add rollback debug visualizations.
 # - Organize Settings.
@@ -115,69 +103,44 @@ extends Node
 #     - a leaderboard
 #   - Implement a way to make friends and to join matches with friends.
 
-# - Add support for multiple players on a single client.
-#   - Support the following controls: WASD, IJKL, arrow keys, controllers.
-#   - Remove "space" as an input for the "jump" action.
-#   - Instead, have just_pressed of "move_up" trigger "jump".
-#   - Make sure we support controllers with our player action source logic.
-#
-# Let's go ahead and plan phase 6.
-# - I want to create a new lobby level scene for this.
-# - In the lobby:
-#     - The client is not connected to the server.
-#     - We'll have three available keyboard contol partitions: WASD, IJKL, UP/LEFT/DOWN/RIGHT.
-#     - We'll also support any controllers.
-#     - Whenever one of the possible "up" controls is pressed, we spawn a player for that input.
-#     - Whenever the corresponding "down" is pressed, we despawn that player.
-#     - Let's add a configurable local-player-max in Settings. Have it be 4 for now.
-#     - I'll add a custom gameplay trigger in the level to trigger connecting to the server and starting the match with the current player set, but please implement the function for me to call from that trigger.
-# - Also, let's implement a HUD list element that shows all players.
-#     - This will be shown horizontally along the bottom of the screen. Spread-out player displays along the space.
-#     - It will have no background color.
-#     - For each player, show their adjective and name and their score (I'll define that later).
-#     - Also show a name label over the head of each player, but only when they are not too close to any other players. Use a tween to fade this in-and-out.
-#
-#   - Have the player press any of the up options to join, and down to leave.
-#   - Assign name and adjective when joining locally in the lobby.
-#     - Also assign a random character-sprite/costume to each player.
-#     - Also assign a random color to each player.
-#       - Define an algorithm to calculate these colors. Simply divide the hue
-#         space into N, where N is the number of players in the match.
-#         - Do this for up to 4 players.
-#         - For 5-8, use a desaturation and lightening shift.
-#         - For 9-12, use a saturation and darkening shift.
-#         - For 13+, just randomly pick hue/saturation/lightness, and don't even
-#           bother trying to avoid collisions.
-#       - Use this to render an outline around the player sprite.
-#       - Also render an outline around the player's hud display.
-#       - Don't render the outline in the lobby though, and re-assign the color
-#         from the server when the player joins, so we can ensure all players
-#         have a different color.
-#     - Add an additional custom player_joined RPC step.
-#       - This is sent from the client after the client is connected.
-#       - The server then broadcasts a player_joined RPC to all clients, with
-#         the client's info (including the player that triggered it in the first
-#         place). This is an opportunity for the local client to incorporate any
-#         state corrections from the server.
-#   - Cap the local player count to 4 (from Settings).
-#   - Plan how to handle the camera.
-#     - Support two modes: global camera vs player camera.
-#       - This will be configured on the level.
-#       - For global camera, dynamically instantiate, configure (according to
-#         level bounds), attach, and activate a camera to the level.
-#       - For player camera, add support for split screen.
-#         - Add a TODO for this for now.
-# - Call MatchmakingClient.start_matchmaking() to start the match from the lobby.
-#
-# - Add a lobby level scene.
-#   - Load into this initially when opening the "game" screen.
-#   - Update the game/networking systems to support running the game in "local" (non-networked) mode.
-#   - Use this local mode for this match-selection level.
-#   - Add a special platform on the right side of the level. When the player lands on this platform, trigger load into the main level (and connection with the remote server).
-# - Remove the MainMenu screen, and go straight to the lobby level.
+# - Assign name and adjective when joining locally in the lobby.
+#   - Also assign a random character-sprite/costume to each player.
+#   - Also assign a random color to each player.
+#     - Define an algorithm to calculate these colors. Simply divide the hue
+#       space into N, where N is the number of players in the match.
+#       - Do this for up to 4 players.
+#       - For 5-8, use a desaturation and lightening shift.
+#       - For 9-12, use a saturation and darkening shift.
+#       - For 13+, just randomly pick hue/saturation/lightness, and don't even
+#         bother trying to avoid collisions.
+#     - Use this to render an outline around the player sprite.
+#     - Also render an outline around the player's hud display.
+#     - Don't render the outline in the lobby though, and re-assign the color
+#       from the server when the player joins, so we can ensure all players
+#       have a different color.
+#   - Add an additional custom player_joined RPC step.
+#     - This is sent from the client after the client is connected.
+#     - The server then broadcasts a player_joined RPC to all clients, with
+#       the client's info (including the player that triggered it in the first
+#       place). This is an opportunity for the local client to incorporate any
+#       state corrections from the server.
+# - Plan how to handle the camera.
+#   - Support two modes: global camera vs player camera.
+#     - This will be configured on the level.
+#     - For global camera, dynamically instantiate, configure (according to
+#       level bounds), attach, and activate a camera to the level.
+#     - For player camera, add support for split screen.
+#       - Add a TODO for this for now.
+# - Adjust scene files: lobby_level.tscn, player_list.tscn, player_display.tscn.
+# - Lobby scene:
 #   - Embed the game title logo within the level.
 #   - Also embed some controls instruction.
-# - Add support for using controllers as input.
+#   - Also embed instructions to go down hole for starting match.
+#   - Call MatchmakingClient.start_matchmaking() when any player jumps down a
+#     rabbit hole on the right side of the level.
+# - Review PlayerList, PlayerDisplay, and PlayerOverheadLabels.
+#   - Make sure the local players are always listed at the left, in local_player_index order.
+# - Add support for rendering player outlines.
 
 # - Add support for selecting player spawn positions.
 #   - We'll use this both at level start, and later when we add support for players dying and respawning.

@@ -120,7 +120,7 @@ func _on_underlying_player_state_disconnected(player: PlayerMatchState) -> void:
 
 
 # TODO: Call server_add_kill.
-func server_add_kill(killer_id: StringName, killee_id: StringName) -> void:
+func server_add_kill(killer_id: int, killee_id: int) -> void:
 	_previous_state.kills = state.kills.duplicate()
 
 	state.kills.append_array([killer_id, killee_id])
@@ -136,7 +136,7 @@ func server_add_kill(killer_id: StringName, killee_id: StringName) -> void:
 
 
 # TODO: Call server_add_bump.
-func server_add_bump(player_1_id: StringName, player_2_id: StringName) -> void:
+func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 	_previous_state.bumps = state.bumps.duplicate()
 
 	state.bumps.append_array([player_1_id, player_2_id])

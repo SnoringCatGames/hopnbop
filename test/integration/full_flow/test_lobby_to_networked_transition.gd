@@ -167,14 +167,6 @@ class TestLobbyPlayerIsolation:
 	func after_each():
 		ArrayPool.clear_all_pools()
 
-	func test_lobby_players_use_lobby_id_format():
-		lobby._try_register_keyboard_player(
-			InputDeviceManager.KEYBOARD_PARTITION_BINDINGS[0]
-		)
-
-		var player_id := lobby.players[0].player_id
-		assert_true(player_id.begins_with("lobby:"))
-
 	func test_lobby_players_have_correct_local_index():
 		lobby._try_register_keyboard_player(
 			InputDeviceManager.KEYBOARD_PARTITION_BINDINGS[0]

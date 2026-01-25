@@ -1,152 +1,225 @@
 extends GutTest
-## Unit tests for player ID format handling.
+## Unit tests for int-based player ID handling with server-assigned sequential IDs.
 
 
-class TestPlayerIdCreation:
+class TestLobbyPlayerIds:
 	extends GutTest
 
-	func test_composite_format_creation():
-		var peer_id := 1234
-		var local_player_index := 0
-		var player_id := NetworkConnector.get_player_id(peer_id, local_player_index)
-		assert_eq(player_id, "1234:0")
+	func test_lobby_uses_negative_ids():
+		var player_id_0 := LobbyLevel.get_local_player_id(0)
+		var player_id_1 := LobbyLevel.get_local_player_id(1)
+		var player_id_2 := LobbyLevel.get_local_player_id(2)
 
-	func test_multiple_players_same_peer():
-		var peer_id := 1234
-		var player_ids: Array[int] = []
-		for i in range(3):
-			player_ids.append(NetworkConnector.get_player_id(peer_id, i))
+		assert_eq(player_id_0, -1)
+		assert_eq(player_id_1, -2)
+		assert_eq(player_id_2, -3)
 
-		assert_eq(player_ids[0], "1234:0")
-		assert_eq(player_ids[1], "1234:1")
-		assert_eq(player_ids[2], "1234:2")
+	func test_lobby_ids_are_sequential_negative():
+		for i in range(10):
+			var player_id := LobbyLevel.get_local_player_id(i)
+			assert_eq(player_id, -(i + 1))
 
-	func test_lobby_format_creation():
-		var local_player_index := 2
-		var player_id := "lobby:%d" % local_player_index
-		assert_eq(player_id, "lobby:2")
+	func test_lobby_ids_are_negative():
+		for i in range(5):
+			var player_id := LobbyLevel.get_local_player_id(i)
+			assert_lt(player_id, 0, "Lobby player_id should be negative")
 
-	func test_different_peers_same_local_index():
-		var player_id_1 := NetworkConnector.get_player_id(1234, 0)
-		var player_id_2 := NetworkConnector.get_player_id(5678, 0)
-		assert_ne(player_id_1, player_id_2)
-		assert_eq(player_id_1, "1234:0")
-		assert_eq(player_id_2, "5678:0")
+	func test_lobby_different_indices_different_ids():
+		var player_id_0 := LobbyLevel.get_local_player_id(0)
+		var player_id_1 := LobbyLevel.get_local_player_id(1)
+		assert_ne(player_id_0, player_id_1)
 
 
-class TestPlayerIdParsing:
+class TestPlayerMatchStateWithInts:
 	extends GutTest
 
-	func test_extract_peer_id_from_valid_format():
-		var player_id := "1234:0"
-		var parts := player_id.split(":")
-		assert_eq(parts.size(), 2)
-		assert_eq(int(parts[0]), 1234)
-		assert_eq(int(parts[1]), 0)
-
-	func test_extract_local_index():
-		var player_id := "1234:2"
-		var parts := player_id.split(":")
-		var local_player_index := int(parts[1])
-		assert_eq(local_player_index, 2)
-
-	func test_empty_player_id_parsing():
-		var player_id := ""
-		var parts := player_id.split(":")
-		# Should handle gracefully
-		assert_eq(parts.size(), 1)
-		assert_eq(parts[0], "")
-
-	func test_malformed_player_id_no_colon():
-		var player_id := "1234"
-		var parts := player_id.split(":")
-		assert_eq(parts.size(), 1)
-		# Only one part, extraction would fail
-
-	func test_malformed_player_id_extra_colons():
-		var player_id := "1234:0:extra"
-		var parts := player_id.split(":")
-		assert_eq(parts.size(), 3)
-		# Should use first two parts only
-		assert_eq(int(parts[0]), 1234)
-		assert_eq(int(parts[1]), 0)
-
-	func test_lobby_format_parsing():
-		var player_id := "lobby:1"
-		var parts := player_id.split(":")
-		assert_eq(parts.size(), 2)
-		assert_eq(parts[0], "lobby")
-		assert_eq(int(parts[1]), 1)
-
-
-class TestPlayerMatchStateIdHandling:
-	extends GutTest
-
-	func test_player_match_state_parses_composite_id():
+	func test_player_match_state_stores_int_player_id():
 		var player := PlayerMatchState.new()
-		player.set_up("1234:0", true)
-		assert_eq(player.player_id, "1234:0")
+		player.set_up(42, 1234, 0, true)
+
+		assert_eq(player.player_id, 42)
+		assert_typeof(player.player_id, TYPE_INT)
+
+	func test_player_match_state_stores_explicit_peer_id():
+		var player := PlayerMatchState.new()
+		player.set_up(42, 1234, 0, true)
+
 		assert_eq(player.peer_id, 1234)
-		assert_eq(player.local_player_index, 0)
+		assert_typeof(player.peer_id, TYPE_INT)
 
-	func test_player_match_state_handles_lobby_format():
+	func test_player_match_state_stores_explicit_local_index():
 		var player := PlayerMatchState.new()
-		player.set_up("lobby:1", true)
-		assert_eq(player.player_id, "lobby:1")
-		# peer_id extraction may fail for lobby format - check behavior
-		# The _parse_player_id function tries to parse "lobby" as int
+		player.set_up(42, 1234, 2, true)
 
-	func test_player_match_state_handles_multiple_indices():
-		for i in range(4):
-			var player := PlayerMatchState.new()
-			player.set_up("1234:%d" % i, true)
-			assert_eq(player.peer_id, 1234)
-			assert_eq(player.local_player_index, i)
+		assert_eq(player.local_index, 2)
+		assert_typeof(player.local_index, TYPE_INT)
 
-	func test_player_match_state_extracts_peer_from_different_peers():
-		var peer_ids := [1, 1234, 5678, 999999]
-		for peer_id in peer_ids:
+	func test_player_match_state_with_negative_lobby_id():
+		var player := PlayerMatchState.new()
+		player.set_up(-1, 0, 0, true)
+
+		assert_eq(player.player_id, -1)
+		assert_lt(player.player_id, 0)
+
+	func test_player_match_state_multiple_players_same_peer():
+		var players: Array[PlayerMatchState] = []
+
+		# Simulate server assigning IDs 1, 2, 3 to peer 1234
+		for i in range(3):
 			var player := PlayerMatchState.new()
-			player.set_up("%d:0" % peer_id, true)
-			assert_eq(player.peer_id, peer_id)
+			player.set_up(i + 1, 1234, i, true)
+			players.append(player)
+
+		assert_eq(players[0].player_id, 1)
+		assert_eq(players[0].peer_id, 1234)
+		assert_eq(players[0].local_index, 0)
+
+		assert_eq(players[1].player_id, 2)
+		assert_eq(players[1].peer_id, 1234)
+		assert_eq(players[1].local_index, 1)
+
+		assert_eq(players[2].player_id, 3)
+		assert_eq(players[2].peer_id, 1234)
+		assert_eq(players[2].local_index, 2)
+
+
+class TestPlayerIdPacking:
+	extends GutTest
+
+	func test_packed_state_preserves_int_player_id():
+		var player := PlayerMatchState.new()
+		player.set_up(42, 1234, 0, true)
+
+		var packed := player.get_packed_state()
+		var player_id_from_packed := PlayerMatchState.get_player_id_from_packed_state(packed)
+
+		assert_eq(player_id_from_packed, 42)
+		assert_typeof(player_id_from_packed, TYPE_INT)
+
+	func test_packed_state_preserves_peer_id_and_local_index():
+		var player := PlayerMatchState.new()
+		player.set_up(42, 1234, 2, true)
+
+		var packed := player.get_packed_state()
+
+		var restored := PlayerMatchState.new()
+		restored.populate_from_packed_state(packed)
+
+		assert_eq(restored.player_id, 42)
+		assert_eq(restored.peer_id, 1234)
+		assert_eq(restored.local_index, 2)
+
+	func test_packed_state_with_negative_lobby_id():
+		var player := PlayerMatchState.new()
+		player.set_up(-1, 0, 0, true)
+
+		var packed := player.get_packed_state()
+		var player_id_from_packed := PlayerMatchState.get_player_id_from_packed_state(packed)
+
+		assert_eq(player_id_from_packed, -1)
 
 
 class TestPlayerIdEdgeCases:
 	extends GutTest
 
-	func test_zero_peer_id():
-		var player_id := "0:0"
-		var parts := player_id.split(":")
-		assert_eq(int(parts[0]), 0)
+	func test_zero_player_id():
+		var player := PlayerMatchState.new()
+		assert_eq(player.player_id, 0, "Default player_id should be 0")
 
-	func test_very_large_peer_id():
-		var peer_id := 2147483647 # Max int32
-		var player_id := "%d:0" % peer_id
-		var parts := player_id.split(":")
-		assert_eq(int(parts[0]), peer_id)
+	func test_very_large_positive_player_id():
+		var player := PlayerMatchState.new()
+		var large_id := 2147483647 # Max int32
+		player.set_up(large_id, 1, 0, true)
 
-	func test_large_local_index():
-		var player_id := "1234:99"
-		var parts := player_id.split(":")
-		assert_eq(int(parts[1]), 99)
+		assert_eq(player.player_id, large_id)
 
-	func test_colon_only():
-		var player_id := ":"
-		var parts := player_id.split(":")
-		assert_eq(parts.size(), 2)
-		assert_eq(parts[0], "")
-		assert_eq(parts[1], "")
+	func test_sequential_id_assignment_simulation():
+		# Simulate server assigning sequential IDs
+		var next_player_id := 1
 
-	func test_leading_colon():
-		var player_id := ":0"
-		var parts := player_id.split(":")
-		assert_eq(parts.size(), 2)
-		assert_eq(parts[0], "")
-		assert_eq(parts[1], "0")
+		var player_ids: Array[int] = []
+		for i in range(10):
+			player_ids.append(next_player_id)
+			next_player_id += 1
 
-	func test_trailing_colon():
-		var player_id := "1234:"
-		var parts := player_id.split(":")
-		assert_eq(parts.size(), 2)
-		assert_eq(parts[0], "1234")
-		assert_eq(parts[1], "")
+		# Verify sequential
+		for i in range(10):
+			assert_eq(player_ids[i], i + 1)
+
+		# Verify no duplicates
+		var unique_ids := {}
+		for id in player_ids:
+			assert_false(unique_ids.has(id), "Should not have duplicate IDs")
+			unique_ids[id] = true
+
+	func test_negative_lobby_id_range():
+		# Test large range of lobby player indices
+		for i in range(100):
+			var player_id := LobbyLevel.get_local_player_id(i)
+			assert_lt(player_id, 0, "Lobby IDs must be negative")
+			assert_eq(player_id, -(i + 1))
+
+	func test_player_id_as_dictionary_key():
+		# Verify int player_ids work as dictionary keys
+		var players_by_id := {}
+
+		players_by_id[1] = "Player 1"
+		players_by_id[2] = "Player 2"
+		players_by_id[-1] = "Lobby Player 1"
+
+		assert_eq(players_by_id[1], "Player 1")
+		assert_eq(players_by_id[2], "Player 2")
+		assert_eq(players_by_id[-1], "Lobby Player 1")
+		assert_eq(players_by_id.size(), 3)
+
+
+class TestMatchStateKillsAndBumpsArrays:
+	extends GutTest
+
+	func test_kills_uses_packed_int32_array():
+		var match_state := MatchState.new()
+
+		# Server records kill: player 1 killed player 2
+		match_state.kills = PackedInt32Array([1, 2])
+
+		assert_typeof(match_state.kills, TYPE_PACKED_INT32_ARRAY)
+		assert_eq(match_state.kills.size(), 2)
+		assert_eq(match_state.kills[0], 1)
+		assert_eq(match_state.kills[1], 2)
+
+	func test_bumps_uses_packed_int32_array():
+		var match_state := MatchState.new()
+
+		# Server records bump: player 3 bumped player 4
+		match_state.bumps = PackedInt32Array([3, 4])
+
+		assert_typeof(match_state.bumps, TYPE_PACKED_INT32_ARRAY)
+		assert_eq(match_state.bumps.size(), 2)
+		assert_eq(match_state.bumps[0], 3)
+		assert_eq(match_state.bumps[1], 4)
+
+	func test_multiple_kills_sequential():
+		var match_state := MatchState.new()
+
+		# Multiple kills: 1->2, 3->4, 5->6
+		match_state.kills = PackedInt32Array([1, 2, 3, 4, 5, 6])
+
+		assert_eq(match_state.kills.size(), 6)
+		# First kill
+		assert_eq(match_state.kills[0], 1)
+		assert_eq(match_state.kills[1], 2)
+		# Second kill
+		assert_eq(match_state.kills[2], 3)
+		assert_eq(match_state.kills[3], 4)
+		# Third kill
+		assert_eq(match_state.kills[4], 5)
+		assert_eq(match_state.kills[5], 6)
+
+	func test_kills_with_negative_lobby_ids():
+		var match_state := MatchState.new()
+
+		# Lobby player -1 kills lobby player -2
+		match_state.kills = PackedInt32Array([-1, -2])
+
+		assert_eq(match_state.kills[0], -1)
+		assert_eq(match_state.kills[1], -2)
