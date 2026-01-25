@@ -200,8 +200,7 @@ class TestCharacterMovementRollback:
 
 			if accumulated_drift > 1.0:
 				# Should trigger rollback at this point
-				var threshold := CharacterStateFromServer \
-				.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD
+				var threshold := CharacterStateFromServer.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD
 				assert_gt(
 					accumulated_drift,
 					threshold,
