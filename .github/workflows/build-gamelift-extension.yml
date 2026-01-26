@@ -11,6 +11,11 @@ jobs:
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
     steps:
+            - name: Clean previous build (macOS)
+              if: runner.os == 'macOS'
+              working-directory: gamelift-gdextension/gamelift-server-sdk
+              run: |
+                rm -rf cmake-build
       - name: Checkout code
         uses: actions/checkout@v4
         with:
