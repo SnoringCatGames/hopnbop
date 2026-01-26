@@ -74,8 +74,7 @@ func _set_up_camera() -> void:
 func get_string() -> String:
 	if is_instance_valid(match_state):
 		return match_state.get_string()
-	else:
-		return "{Player}"
+	return "{Player}"
 
 
 func _on_any_player_joined(player: PlayerMatchState) -> void:

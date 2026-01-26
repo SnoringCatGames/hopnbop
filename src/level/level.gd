@@ -30,13 +30,18 @@ func _ready() -> void:
 
 
 func _get_player_spawn_position() -> Vector2:
+	if not is_instance_valid(spawn_points):
+		G.warning("spawn_points node not set in level: %s" %
+			Utils.get_display_name(self))
+		return Vector2.ZERO
+
 	var available_spawn_points: Array[SpawnPoint] = []
 	for child in spawn_points.get_children():
 		if G.ensure(child is SpawnPoint):
 			available_spawn_points.append(child)
 
 	if not G.ensure(not available_spawn_points.is_empty()):
-		G.warn("No spawn points available in level: %s" %
+		G.warning("No spawn points available in level: %s" %
 			Utils.get_display_name(self))
 		return Vector2.ZERO
 
@@ -112,7 +117,7 @@ func _find_collision_free_position(initial_position: Vector2) -> Vector2:
 		shift += _SPAWN_POSITION_COLLISION_CHECK_STEP
 
 	# No collision-free position found.
-	G.warn(
+	G.warning(
 		"Could not find collision-free spawn position near %s" % \
 			initial_position
 	)
