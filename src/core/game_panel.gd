@@ -213,6 +213,19 @@ func _client_on_session_ids_received(
 		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS
 	)
 
+	# Player attributes were already generated when players joined lobby.
+	# Verify they match the player count.
+	if (
+		G.local_session.local_player_attributes.size() !=
+		G.local_session.local_session_ids.size()
+	):
+		G.error(
+			"Attribute count mismatch: %d attributes, %d session IDs" % [
+				G.local_session.local_player_attributes.size(),
+				G.local_session.local_session_ids.size()
+			]
+		)
+
 	# Connect to server.
 	G.network.connector.server_ip_address = server_ip
 	G.network.connector.server_port = server_port

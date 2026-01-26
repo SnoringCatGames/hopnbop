@@ -27,9 +27,11 @@ extends Node
 
 ## Signal emitted when a peer declares their player count.
 ## assigned_ids is an Array[int] of the player IDs assigned by the server.
+## player_attributes is an Array[Dictionary] of client-provided attributes.
 signal peer_players_declared(
 	peer_id: int,
-	assigned_ids: Array[int]
+	assigned_ids: Array[int],
+	player_attributes: Array
 )
 
 ## Tracks the reason for client disconnection.
@@ -204,12 +206,18 @@ func _client_send_player_declaration() -> void:
 		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
 	)
 
-	# Call RPC to declare players.
 	var client_version: String = ProjectSettings.get_setting(
 		"application/config/version",
 		"unknown"
 	)
-	_server_rpc_declare_players.rpc_id(SERVER_ID, session_ids, client_version)
+
+	# Call RPC to declare players.
+	_server_rpc_declare_players.rpc_id(
+		SERVER_ID,
+		session_ids,
+		G.local_session.local_player_attributes,
+		client_version
+	)
 
 
 func _client_update_is_connected_to_server() -> void:
@@ -254,6 +262,7 @@ func client_disconnect() -> void:
 @rpc("any_peer", "call_remote", "reliable")
 func _server_rpc_declare_players(
 	session_ids: Array,
+	player_attributes: Array,
 	client_version: String
 ) -> void:
 	G.check_is_server()
@@ -331,8 +340,15 @@ func _server_rpc_declare_players(
 			session_ids
 		)
 
+	# Validate and sanitize player attributes.
+	var validated_attributes := _validate_player_attributes(
+		player_attributes,
+		player_count,
+		peer_id
+	)
+
 	# Emit signal for Level and MatchStateSynchronizer to handle spawning.
-	peer_players_declared.emit(peer_id, assigned_ids)
+	peer_players_declared.emit(peer_id, assigned_ids, validated_attributes)
 
 
 ## RPC called by server to send assigned player IDs to the client.
@@ -352,6 +368,130 @@ func _client_rpc_receive_player_ids(assigned_ids: Array[int]) -> void:
 		"Received assigned player IDs: %s" % [assigned_ids],
 		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
 	)
+
+
+## Validates player attributes received from client.
+## Returns validated/sanitized array of attribute dictionaries.
+func _validate_player_attributes(
+	player_attributes: Array,
+	expected_count: int,
+	peer_id: int
+) -> Array:
+	# Validate array size.
+	if player_attributes.size() != expected_count:
+		G.warning(
+			"Invalid attributes count from peer %d: got %d, expected %d" % [
+				peer_id,
+				player_attributes.size(),
+				expected_count,
+			],
+			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+		)
+		# Generate fallback attributes for all players.
+		var fallback: Array = []
+		for i in range(expected_count):
+			fallback.append(_get_fallback_attributes())
+		return fallback
+
+	var validated: Array = []
+	for i in range(player_attributes.size()):
+		var attributes = player_attributes[i]
+
+		# Ensure attributes is a dictionary.
+		if not (attributes is Dictionary):
+			G.warning(
+				"Peer %d sent non-dictionary attribute at index %d" % [
+					peer_id,
+					i
+				],
+				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+			)
+			validated.append(_get_fallback_attributes())
+			continue
+
+		# Validate required keys exist.
+		if not (
+			attributes.has("bunny_name") and
+			attributes.has("adjective") and
+			attributes.has("body_type_index") and
+			attributes.has("costume_index") and
+			attributes.has("is_soft")
+		):
+			G.warning(
+				"Peer %d sent incomplete attributes at index %d" % [peer_id, i],
+				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+			)
+			validated.append(_get_fallback_attributes())
+			continue
+
+		# Validate bunny_name.
+		if not BunnyWords.NAMES.has(attributes.bunny_name):
+			G.warning(
+				"Peer %d sent invalid bunny_name: %s" % [
+					peer_id,
+					attributes.bunny_name
+				],
+				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+			)
+			attributes.bunny_name = BunnyWords.NAMES.pick_random()
+
+		# Validate adjective based on is_soft flag.
+		var valid_adjectives := (
+			BunnyWords.SOFT_ADJECTIVES if attributes.is_soft
+			else BunnyWords.HARD_ADJECTIVES
+		)
+		if not valid_adjectives.has(attributes.adjective):
+			G.warning(
+				"Peer %d sent invalid adjective: %s" % [
+					peer_id,
+					attributes.adjective
+				],
+				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+			)
+			attributes.adjective = valid_adjectives.pick_random()
+
+		# Validate body_type_index.
+		if (
+			attributes.body_type_index < 0 or
+			attributes.body_type_index >= PlayerMatchState._BODY_TYPE_COUNT
+		):
+			G.warning(
+				"Peer %d sent invalid body_type_index: %d" % [
+					peer_id,
+					attributes.body_type_index
+				],
+				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+			)
+			attributes.body_type_index = 0
+
+		# Validate costume_index.
+		if (
+			attributes.costume_index < 0 or
+			attributes.costume_index >= PlayerMatchState._COSTUME_COUNT
+		):
+			G.warning(
+				"Peer %d sent invalid costume_index: %d" % [
+					peer_id,
+					attributes.costume_index
+				],
+				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+			)
+			attributes.costume_index = 0
+
+		validated.append(attributes)
+
+	return validated
+
+
+## Generates fallback attributes when client sends invalid data.
+static func _get_fallback_attributes() -> Dictionary:
+	return {
+		"bunny_name": BunnyWords.NAMES.pick_random(),
+		"adjective": BunnyWords.SOFT_ADJECTIVES.pick_random(),
+		"body_type_index": 0,
+		"costume_index": 0,
+		"is_soft": true
+	}
 
 
 func client_on_player_state_connected(

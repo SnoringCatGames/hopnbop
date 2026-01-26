@@ -22,9 +22,13 @@ func _update_display() -> void:
 	if not player_match_state:
 		return
 
-	# Update name.
+	# Update text content.
 	%Name.text = player_match_state.bunny_name
+	%Adjective.text = player_match_state.adjective
+	%Score.text = "Score: %d" % player_match_state.score
 
-	# Placeholder adjective and score (will be added to PlayerMatchState later).
-	%Adjective.text = "Brave"
-	%Score.text = "Score: 0"
+	# Apply outline color to all labels.
+	var outline_color := player_match_state.outline_color
+	%Name.add_theme_color_override("font_outline_color", outline_color)
+	%Adjective.add_theme_color_override("font_outline_color", outline_color)
+	%Score.add_theme_color_override("font_outline_color", outline_color)

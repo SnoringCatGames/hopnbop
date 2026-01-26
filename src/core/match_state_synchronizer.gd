@@ -46,7 +46,8 @@ func get_player(player_id: int) -> PlayerMatchState:
 
 func _server_on_peer_players_declared(
 	peer_id: int,
-	assigned_ids: Array[int]
+	assigned_ids: Array[int],
+	player_attributes: Array
 ) -> void:
 	# Create PlayerMatchState objects for each assigned player ID.
 	for i in range(assigned_ids.size()):
@@ -54,13 +55,32 @@ func _server_on_peer_players_declared(
 		G.ensure(not state.players_by_id.has(player_id))
 
 		var player := PlayerMatchState.new()
-		player.set_up(player_id, peer_id, i, true)
+		player.set_up(player_id, peer_id, i, player_attributes[i])
 		player.connect_time_usec = (
 			G.network.server_time_usec_not_frame_aligned
 		)
 		state.server_add_player(player)
 
+	# Assign outline colors based on total player count.
+	_server_assign_outline_colors()
+
 	state.update_scores()
+
+
+## Assigns outline colors to all players based on total player count.
+func _server_assign_outline_colors() -> void:
+	var player_count := state.players_by_id.size()
+	var colors := PlayerAttributeGenerator.calculate_outline_colors(player_count)
+
+	# Get sorted player IDs to ensure consistent color assignment.
+	var player_ids := state.players_by_id.keys()
+	player_ids.sort()
+
+	# Assign colors to each player.
+	for i in range(player_ids.size()):
+		var player_id: int = player_ids[i]
+		var player := state.players_by_id[player_id]
+		player.outline_color = colors[i]
 
 
 func _server_on_peer_disconnected(peer_id: int) -> void:

@@ -21,6 +21,9 @@ const _PROPERTY_NAMES := [
 	"bunny_name",
 	"adjective",
 	"is_soft",
+	"body_type_index",
+	"costume_index",
+	"outline_color",
 	"connect_time_usec",
 	"disconnect_time_usec",
 ]
@@ -30,10 +33,10 @@ var peer_id: int = 0
 var local_player_index: int = 0
 var bunny_name := ""
 var adjective := ""
+var is_soft := true
 var body_type_index := 0
 var costume_index := 0
 var outline_color := Color.WHITE
-var is_soft := true
 var connect_time_usec := 0
 var disconnect_time_usec := 0
 
@@ -93,25 +96,19 @@ func set_up(
 		p_player_id: int,
 		p_peer_id: int,
 		p_local_index: int,
-		p_is_soft: bool) -> void:
+		p_attributes: Dictionary) -> void:
 	player_id = p_player_id
 	peer_id = p_peer_id
 	local_player_index = p_local_index
-	is_soft = p_is_soft
 
-	bunny_name = BunnyWords.NAMES.pick_random()
+	# Apply client-provided attributes.
+	bunny_name = p_attributes.bunny_name
+	adjective = p_attributes.adjective
+	is_soft = p_attributes.is_soft
+	body_type_index = p_attributes.body_type_index
+	costume_index = p_attributes.costume_index
 
-	var adjectives := (
-		BunnyWords.SOFT_ADJECTIVES if
-		is_soft else
-		BunnyWords.HARD_ADJECTIVES
-	)
-	adjective = adjectives.pick_random()
-
-	body_type_index = randi_range(0, _BODY_TYPE_COUNT - 1)
-	costume_index = randi_range(0, _COSTUME_COUNT - 1)
-
-	# FIXME: Add support for assigning colors on the server.
+	# outline_color is assigned later by MatchStateSynchronizer.
 	outline_color = Color.WHITE
 
 

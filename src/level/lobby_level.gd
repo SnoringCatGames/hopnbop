@@ -89,9 +89,16 @@ func _register_player(device_config: DeviceConfig) -> void:
 	_pending_device_configs_by_index.append(device_config)
 	_pending_device_configs_by_name[device_config.name] = device_config
 
-	G.input_device_manager.assign_device_to_player(local_player_index, device_config)
+	G.input_device_manager.assign_device_to_player(
+		local_player_index,
+		device_config
+	)
 
 	register_player(player)
+
+	# Generate player attributes when they join the lobby.
+	var attributes := PlayerAttributeGenerator.generate_random_attributes()
+	G.local_session.local_player_attributes.append(attributes)
 
 	G.print(
 		"Spawned lobby player %d" % local_player_index,
@@ -118,6 +125,9 @@ func _deregister_player(device_name: StringName) -> void:
 	_pending_device_configs_by_index.remove_at(local_player_index)
 	_pending_device_configs_by_name.erase(device_name)
 	G.input_device_manager.unassign_device_from_player(local_player_index)
+
+	# Remove corresponding player attributes.
+	G.local_session.local_player_attributes.remove_at(local_player_index)
 
 	deregister_player(player)
 
@@ -158,7 +168,7 @@ func start_match() -> void:
 
 static func get_local_player_id(local_player_index: int) -> int:
 	# Lobby players use negative IDs: -1, -2, -3, etc.
-	return -(local_player_index + 1)
+	return - (local_player_index + 1)
 
 
 func _on_rabbit_hole_body_entered(body: Node2D) -> void:

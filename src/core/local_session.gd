@@ -23,6 +23,10 @@ var local_session_ids: Array[String] = []
 
 var local_player_ids: Array[int] = []
 
+## Client-generated player attributes to send to server during connection.
+## Array index corresponds to local_player_index.
+var local_player_attributes: Array[Dictionary] = []
+
 ## Message from server (e.g., shutdown notification) to display on game over
 ## screen.
 var latest_server_message := ""
@@ -50,6 +54,7 @@ func clear() -> void:
 	local_session_ids.clear()
 	local_device_configs.clear()
 	local_player_ids.clear()
+	local_player_attributes.clear()
 
 
 func clear_latest_state() -> void:

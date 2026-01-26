@@ -28,6 +28,12 @@ func _ready() -> void:
 		)
 	_set_up_camera.call_deferred()
 
+	# Set up outline color when match state becomes available.
+	if is_instance_valid(match_state):
+		_apply_outline_color()
+	else:
+		G.match_state.player_joined.connect(_on_any_player_joined)
+
 
 func _process_movement_and_actions() -> void:
 	super._process_movement_and_actions()
@@ -70,3 +76,28 @@ func get_string() -> String:
 		return match_state.get_string()
 	else:
 		return "{Player}"
+
+
+func _on_any_player_joined(player: PlayerMatchState) -> void:
+	if player.player_id == player_id:
+		_apply_outline_color()
+		G.match_state.player_joined.disconnect(_on_any_player_joined)
+
+
+func _apply_outline_color() -> void:
+	if not G.ensure(is_instance_valid(match_state)):
+		return
+
+	var sprite := animator.animated_sprite as AnimatedSprite2D
+	var shader_material := sprite.material as ShaderMaterial
+
+	if G.ensure(is_instance_valid(shader_material)):
+		shader_material.set_shader_parameter(
+			"outline_color",
+			match_state.outline_color
+		)
+
+		# Toggle outline based on whether we're in a networked match.
+		shader_material.set_shader_parameter(
+			"outline_enabled",
+			G.is_networked_level_active)
