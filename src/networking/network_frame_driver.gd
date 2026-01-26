@@ -725,7 +725,7 @@ func _client_rpc_notify_shutdown(shutdown_message: String) -> void:
 		NetworkConnector.DisconnectReason.SERVER_SHUTDOWN
 
 	# Store message in LocalSession for game over screen display.
-	G.local_session.last_server_message = shutdown_message
+	G.local_session.latest_server_message = shutdown_message
 
 
 ## Internal method to execute pause on server or client.

@@ -51,6 +51,14 @@ All networked entities must extend ReconcilableNetworkedState and participate in
 - **GamePanel** - Game lifecycle orchestrator, handles level spawning
 - **LocalSession** - Per-client session state
 
+#### Signal Architecture
+
+**MatchState is the single source of truth for all match events:**
+- Low-level state change signals: `players_updated`, `kills_updated`, `bumps_updated`
+- High-level game event signals: `player_joined`, `player_left`, `player_killed`, `players_bumped`
+- MatchStateSynchronizer acts as a replication coordinator that triggers these signals
+- All external code should connect to `G.match_state` signals for match events
+
 ### Character System (src/scaffolder/character/)
 
 Reusable character framework:

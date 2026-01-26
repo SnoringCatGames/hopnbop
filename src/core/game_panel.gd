@@ -50,17 +50,17 @@ func _ready() -> void:
 			_client_on_local_player_loaded,
 		)
 
-		G.network.session_manager.session_ids_received.connect(
+		G.network.session_manager.local_session_ids_received.connect(
 			_client_on_session_ids_received
 		)
 		G.network.session_manager.session_request_failed.connect(
 			_client_on_session_request_failed
 		)
 
-	%MatchStateSynchronizer.player_joined.connect(_on_player_joined)
-	%MatchStateSynchronizer.player_left.connect(_on_player_left)
-	%MatchStateSynchronizer.player_killed.connect(_on_player_killed)
-	%MatchStateSynchronizer.players_bumped.connect(_on_players_bumped)
+	G.match_state.player_joined.connect(_on_player_joined)
+	G.match_state.player_left.connect(_on_player_left)
+	G.match_state.player_killed.connect(_on_player_killed)
+	G.match_state.players_bumped.connect(_on_players_bumped)
 
 
 func _on_player_joined(player: PlayerMatchState) -> void:
@@ -178,6 +178,7 @@ func client_load_game() -> void:
 	_client_despawn_lobby_if_present()
 
 	G.local_session.clear()
+	G.local_session.clear_latest_state()
 	G.local_session.is_game_active = false
 	G.local_session.is_game_loading = true
 
@@ -203,12 +204,12 @@ func _client_on_session_ids_received(
 	G.check_is_client()
 
 	# Store in LocalSession.
-	G.local_session.session_ids.clear()
+	G.local_session.local_session_ids.clear()
 	for session_id in session_ids:
-		G.local_session.session_ids.append(str(session_id))
+		G.local_session.local_session_ids.append(str(session_id))
 
 	G.print(
-		"Received %d session ID(s)" % G.local_session.session_ids.size(),
+		"Received %d session ID(s)" % G.local_session.local_session_ids.size(),
 		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS
 	)
 
@@ -237,7 +238,7 @@ func client_exit_game() -> void:
 	G.local_session.is_game_loading = false
 
 	G.network.connector.client_disconnect()
-	G.local_session.copy_match_state()
+	G.local_session.copy_latest_state()
 	G.local_session.clear()
 	G.screens.client_open_screen(ScreensMain.ScreenType.GAME_OVER)
 	for level in levels:

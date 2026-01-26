@@ -28,8 +28,8 @@ func _on_visibility_changed() -> void:
 
 func _initialize() -> void:
 	_on_players_updated()
-	if not G.game_panel.match_state_synchronizer.players_updated.is_connected(_on_players_updated):
-		G.game_panel.match_state_synchronizer.players_updated.connect(_on_players_updated)
+	if not G.match_state.players_updated.is_connected(_on_players_updated):
+		G.match_state.players_updated.connect(_on_players_updated)
 
 
 func _on_players_updated() -> void:

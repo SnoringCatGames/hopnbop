@@ -10,8 +10,10 @@ const _RANK_BONUS_PER_DIFF := 5
 const _SELF_KILL_PENALTY := 45
 
 
-signal player_connected(player: PlayerMatchState)
-signal player_disconnected(player: PlayerMatchState)
+signal player_joined(player: PlayerMatchState)
+signal player_left(player: PlayerMatchState)
+signal player_killed(killer: PlayerMatchState, killee: PlayerMatchState)
+signal players_bumped(a: PlayerMatchState, b: PlayerMatchState)
 
 signal players_updated
 signal kills_updated
@@ -84,7 +86,7 @@ func server_add_player(player: PlayerMatchState) -> void:
 	players_by_id[player.player_id] = player
 	_server_pack_players()
 	_connected_players[player.player_id] = true
-	player_connected.emit(player)
+	player_joined.emit(player)
 	players_updated.emit()
 
 
@@ -103,6 +105,10 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 	kills_updated.emit()
 
 
+func emit_kill_event(killer: PlayerMatchState, killee: PlayerMatchState) -> void:
+	player_killed.emit(killer, killee)
+
+
 func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 	bumps.append_array([player_1_id, player_2_id])
 	bumps = bumps.duplicate()
@@ -118,9 +124,13 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 	bumps_updated.emit()
 
 
+func emit_bump_event(a: PlayerMatchState, b: PlayerMatchState) -> void:
+	players_bumped.emit(a, b)
+
+
 func server_on_player_disconnected(player: PlayerMatchState) -> void:
 	_connected_players.erase(player.player_id)
-	player_disconnected.emit(player)
+	player_left.emit(player)
 
 
 func get_players_for_peer(peer_id: int) -> Array[PlayerMatchState]:
@@ -163,10 +173,10 @@ func _client_unpack_players() -> void:
 		if player.is_connected_to_server != _connected_players.has(player_id):
 			if player.is_connected_to_server:
 				_connected_players[player_id] = true
-				player_connected.emit(player)
+				player_joined.emit(player)
 			else:
 				_connected_players.erase(player_id)
-				player_disconnected.emit(player)
+				player_left.emit(player)
 
 
 ## Calculates the score for each player based on kills, deaths, bumps, and rank

@@ -192,7 +192,7 @@ func _client_send_player_declaration() -> void:
 	var player_count := G.local_session.local_player_count
 
 	# Use stored session IDs from backend matchmaking.
-	var session_ids := G.local_session.session_ids
+	var session_ids := G.local_session.local_session_ids
 
 	G.check(player_count == session_ids.size(),
 		"Player count %d does not match session IDs size %d." %
@@ -314,6 +314,8 @@ func _client_rpc_receive_player_ids(assigned_ids: Array[int]) -> void:
 		_player_id_to_peer_id[player_id] = G.network.local_peer_id
 		_player_id_to_local_player_index[player_id] = local_player_index
 
+	G.local_session.local_player_ids = assigned_ids
+
 	G.print(
 		"Received assigned player IDs: %s" % [assigned_ids],
 		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
@@ -329,7 +331,7 @@ func client_on_player_state_connected(
 
 
 ## Gets the peer_id associated with a given player_id.
-## Returns 0 if the player_id is not found (e.g., lobby player).
+## Returns -1 if the player_id is not found (e.g., lobby player).
 func get_peer_id_from_player_id(p_player_id: int) -> int:
 	if _player_id_to_peer_id.has(p_player_id):
 		return _player_id_to_peer_id[p_player_id]
@@ -337,8 +339,8 @@ func get_peer_id_from_player_id(p_player_id: int) -> int:
 
 
 ## Gets the local_player_index associated with a given player_id.
-## Returns 0 if the player_id is not found (e.g., lobby player).
+## Returns -1 if the player_id is not found (e.g., lobby player).
 func get_local_player_index_from_player_id(p_player_id: int) -> int:
 	if _player_id_to_local_player_index.has(p_player_id):
 		return _player_id_to_local_player_index[p_player_id]
-	return 0
+	return -1

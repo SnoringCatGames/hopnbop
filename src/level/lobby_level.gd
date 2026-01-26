@@ -150,7 +150,7 @@ func start_match() -> void:
 	if not G.ensure(can_start_match()):
 		return
 
-	G.local_session.device_configs = _pending_device_configs_by_index.duplicate()
+	G.local_session.local_device_configs = _pending_device_configs_by_index.duplicate()
 
 	G.print(
 		"Starting match with %d player(s)" % G.local_session.local_player_count,

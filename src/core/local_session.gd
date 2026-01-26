@@ -5,23 +5,27 @@ var is_game_active := false
 var is_game_loading := false
 
 var latest_match_state := MatchState.new()
+var latest_local_device_configs: Array[DeviceConfig] = []
+var latest_local_player_ids: Array[int] = []
 
 ## Number of local players on this client.
 var local_player_count: int:
 	get:
-		return device_configs.size()
+		return local_device_configs.size()
 
 ## Device configurations for each local player.
 ## Array index corresponds to local_player_index.
-var device_configs: Array[DeviceConfig] = []
+var local_device_configs: Array[DeviceConfig] = []
 
 ## GameLift player session IDs from backend matchmaking.
 ## Array index corresponds to local_player_index.
-var session_ids: Array[String] = []
+var local_session_ids: Array[String] = []
+
+var local_player_ids: Array[int] = []
 
 ## Message from server (e.g., shutdown notification) to display on game over
 ## screen.
-var last_server_message := ""
+var latest_server_message := ""
 
 
 func _init() -> void:
@@ -29,12 +33,12 @@ func _init() -> void:
 
 
 ## Validates that session IDs are properly populated.
-## Returns true if session_ids array matches player count and contains no empty
+## Returns true if local_session_ids array matches player count and contains no empty
 ## strings.
-func has_valid_session_ids() -> bool:
-	if session_ids.size() != device_configs.size():
+func has_valid_local_session_ids() -> bool:
+	if local_session_ids.size() != local_device_configs.size():
 		return false
-	for session_id in session_ids:
+	for session_id in local_session_ids:
 		if session_id.is_empty():
 			return false
 	return true
@@ -43,10 +47,19 @@ func has_valid_session_ids() -> bool:
 func clear() -> void:
 	is_game_active = false
 	is_game_loading = false
-	session_ids.clear()
-	device_configs.clear()
-	last_server_message = ""
+	local_session_ids.clear()
+	local_device_configs.clear()
+	local_player_ids.clear()
 
 
-func copy_match_state() -> void:
+func clear_latest_state() -> void:
+	latest_match_state.clear()
+	latest_local_device_configs.clear()
+	latest_local_player_ids.clear()
+	latest_server_message = ""
+
+
+func copy_latest_state() -> void:
 	latest_match_state = G.game_panel.match_state.duplicate()
+	latest_local_device_configs = local_device_configs.duplicate()
+	latest_local_player_ids = local_player_ids.duplicate()

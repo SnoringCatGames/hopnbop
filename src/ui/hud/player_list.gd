@@ -50,14 +50,14 @@ func _get_current_player_ids() -> Array[int]:
 		return []
 
 	if G.is_lobby_active:
-		return _get_current_players_ids_from_lobby()
+		return _get_current_player_ids_from_lobby()
 	elif G.is_networked_level_active:
-		return _get_current_players_ids_from_match_level()
+		return _get_current_player_ids_from_match_level()
 	else:
 		return []
 
 
-func _get_current_players_ids_from_lobby() -> Array[int]:
+func _get_current_player_ids_from_lobby() -> Array[int]:
 	var lobby := G.level as LobbyLevel
 	var current_player_ids: Array[int] = []
 	current_player_ids.resize(lobby.get_player_count())
@@ -68,40 +68,25 @@ func _get_current_players_ids_from_lobby() -> Array[int]:
 	return current_player_ids
 
 
-func _get_current_players_ids_from_match_level() -> Array[int]:
-	# Get current player IDs from match state.
-	var current_player_ids: Array = G.match_state.players_by_id.keys()
+func _get_current_player_ids_from_match_level() -> Array[int]:
+	var all_player_ids: Array = G.match_state.players_by_id.keys()
+	var local_player_ids: Array[int] = G.local_session.local_player_ids
 
-	# Sort and filter the player IDs.
-	# - The local player IDs should be listed first, sorted by
-	#   local_player_index.
-	# - If there are more than 8 players in the match, only the 4 other highest
-	#   scoring players should be listed.
-	var local_player_ids: Array[int] = G.level.players_by_id.keys()
-	local_player_ids.sort_custom(func(a: int, b: int) -> bool:
-		return (
-			G.network.get_local_player_index_from_player_id(a) <
-			G.network.get_local_player_index_from_player_id(b)
-		)
-	)
-	for local_player_id in local_player_ids:
-		current_player_ids.erase(local_player_id)
+	var remote_player_ids: Array[int] = []
+	for player_id in all_player_ids:
+		if G.network.get_local_player_index_from_player_id(player_id) < 0:
+			remote_player_ids.append(player_id)
 
-	if local_player_ids.size() + current_player_ids.size() > _MAX_PLAYER_LIST_SIZE:
-		# Sort by score (highest first) and slice to fit remaining slots.
-		# FIXME: Add support for getting the current score of a player
-		#        (kills - deaths + a tiny bit for bumps).
-		#current_player_ids.sort_custom(func(a: int, b: int) -> bool:
-			#var state_a := G.get_player_match_state(a)
-			#var state_b := G.get_player_match_state(b)
-			#var score_a := state_a.score if state_a else 0
-			#var score_b := state_b.score if state_b else 0
-			#return score_a > score_b
-		#)
-		var max_remote_players := _MAX_PLAYER_LIST_SIZE - local_player_ids.size()
-		current_player_ids = current_player_ids.slice(0, max_remote_players)
+	# If there are more than 8 players in the match, only the local players
+	# will be listed.
+	if local_player_ids.size() + all_player_ids.size() > _MAX_PLAYER_LIST_SIZE:
+		# TODO: Add support for also showing the top-N other players in the
+		#       match.
+		#var max_remote_players := _MAX_PLAYER_LIST_SIZE - local_player_ids.size()
+		all_player_ids = local_player_ids
 
-	local_player_ids.append_array(current_player_ids)
-	current_player_ids = local_player_ids
+	# List local players first.
+	var sorted_ids := local_player_ids.duplicate()
+	sorted_ids.append_array(remote_player_ids)
 
-	return current_player_ids
+	return sorted_ids
