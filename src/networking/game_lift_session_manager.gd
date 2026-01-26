@@ -6,7 +6,7 @@ extends Node
 
 
 ## Emitted when session IDs are successfully received from backend.
-signal session_ids_received(
+signal local_session_ids_received(
 	session_ids: Array,
 	server_ip: String,
 	server_port: int
@@ -92,7 +92,7 @@ func _handle_preview_local_server_mode(player_count: int) -> void:
 	# Defer to next frame to maintain consistent async behavior.
 	await get_tree().process_frame
 
-	session_ids_received.emit(debug_ids, server_ip, server_port)
+	local_session_ids_received.emit(debug_ids, server_ip, server_port)
 
 
 ## Generates a unique client identifier for matchmaking requests.
@@ -185,7 +185,7 @@ func _on_request_completed(
 	)
 
 	# Emit success signal.
-	session_ids_received.emit(session_ids, server_ip, server_port)
+	local_session_ids_received.emit(session_ids, server_ip, server_port)
 
 
 func _on_request_timeout() -> void:

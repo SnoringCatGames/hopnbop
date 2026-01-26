@@ -1,8 +1,5 @@
 class_name NetworkMain
 extends Node
-## Top-level controller and coordinator for all networking subsystems.
-
-##
 ## NetworkMain is the central orchestrator accessed via the G.network singleton.
 ## It manages and provides access to three core networking subsystems:
 ##
