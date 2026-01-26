@@ -83,7 +83,7 @@ jobs:
           sed -i 's/CMAKE_MINIMUM_REQUIRED(VERSION 3\.1)/CMAKE_MINIMUM_REQUIRED(VERSION 3.1...3.30)/' gamelift-server-sdk/CMakeLists.txt
 
           # Recursively insert set(CMAKE_POSITION_INDEPENDENT_CODE ON) at the top of every CMakeLists.txt
-          find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i '1s;^;set(CMAKE_POSITION_INDEPENDENT_CODE ON)\n;'
+          find . -name 'CMakeLists.txt' -print0 | xargs -r -0 sed -i '1s;^;set(CMAKE_POSITION_INDEPENDENT_CODE ON)\n;'
 
           mkdir -p cmake-build
           cd cmake-build
@@ -98,12 +98,12 @@ jobs:
             -DRUN_UNIT_TESTS=OFF \
             ..
           # Patch CMakeLists.txt files in build tree (including ExternalProject sources)
-          find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i -E 's/cmake_minimum_required\(VERSION ([0-9]+(\.[0-9]+)?)\)/cmake_minimum_required(VERSION 3.5...3.30)/g'
-          find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i -E 's/CMAKE_MINIMUM_REQUIRED\(VERSION ([0-9]+(\.[0-9]+)?)\)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/g'
+          find . -name 'CMakeLists.txt' -print0 | xargs -r -0 sed -i -E 's/cmake_minimum_required(VERSION ([0-9]+(\.[0-9]+)?)\)/cmake_minimum_required(VERSION 3.5...3.30)/g'
+          find . -name 'CMakeLists.txt' -print0 | xargs -r -0 sed -i -E 's/CMAKE_MINIMUM_REQUIRED(VERSION ([0-9]+(\.[0-9]+)?)\)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/g'
 
           # Recursively patch all CMakeLists.txt files in cmake-build/thirdparty and subfolders to require CMake >= 3.5 (GNU sed syntax)
-          find cmake-build/thirdparty -name 'CMakeLists.txt' -print0 | xargs -0 sed -i -E 's/cmake_minimum_required\(VERSION ([0-9]+(\.[0-9]+)?)\)/cmake_minimum_required(VERSION 3.5...3.30)/g'
-          find cmake-build/thirdparty -name 'CMakeLists.txt' -print0 | xargs -0 sed -i -E 's/CMAKE_MINIMUM_REQUIRED\(VERSION ([0-9]+(\.[0-9]+)?)\)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/g'
+          find cmake-build/thirdparty -name 'CMakeLists.txt' -print0 | xargs -r -0 sed -i -E 's/cmake_minimum_required(VERSION ([0-9]+(\.[0-9]+)?)\)/cmake_minimum_required(VERSION 3.5...3.30)/g'
+          find cmake-build/thirdparty -name 'CMakeLists.txt' -print0 | xargs -r -0 sed -i -E 's/CMAKE_MINIMUM_REQUIRED(VERSION ([0-9]+(\.[0-9]+)?)\)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/g'
 
           cmake --build . -j$(nproc)
 
@@ -197,7 +197,9 @@ jobs:
           (Get-Content gamelift-server-sdk/CMakeLists.txt) -replace 'CMAKE_MINIMUM_REQUIRED\(VERSION 3\.1\)', 'CMAKE_MINIMUM_REQUIRED(VERSION 3.1...3.30)' | Set-Content gamelift-server-sdk/CMakeLists.txt
 
           # Recursively patch all CMakeLists.txt files for /MT runtime (use here-string for multiline)
-          $mtPatch = @"
+            $mtPatch = @"
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<${{ '<' }}CONFIG:Debug>:Debug>")
+      "@
 
           # Clean build directory
           if (Test-Path cmake-build) { Remove-Item -Recurse -Force cmake-build }
@@ -326,12 +328,14 @@ jobs:
             -DRUN_UNIT_TESTS=OFF \
             -DOPENSSL_ROOT_DIR="$OPENSSL_ROOT" \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DCMAKE_VERBOSE_MAKEFILE=ON \
+            -DEXTERNALPROJECT_LOG_OUTPUT_ON_FAILURE=ON \
             ..
           # Patch CMakeLists.txt files in build tree (including ExternalProject sources)
           find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i '' -E 's/cmake_minimum_required\(VERSION ([0-9]+(\.[0-9]+)?)\)/cmake_minimum_required(VERSION 3.5...3.30)/g'
           find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i '' -E 's/CMAKE_MINIMUM_REQUIRED\(VERSION ([0-9]+(\.[0-9]+)?)\)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/g'
 
-          cmake --build . -j$(sysctl -n hw.ncpu) --verbose
+          cmake --build . -j1 --verbose
 
       - name: Build GDExtension (Release)
         working-directory: gamelift-gdextension
