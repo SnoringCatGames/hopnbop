@@ -87,7 +87,7 @@ func _format_message(message: String, category: StringName) -> String:
 	)
 
 	return (
-        "[%8.3f]%s%s %s" % [
+		"[%8.3f]%s%s %s" % [
 			play_time,
 			category_token,
 			peer_id_token,
@@ -317,7 +317,7 @@ func log_system_ready(system_name: String) -> void:
 func _print_front_matter() -> void:
 	var local_datetime := Time.get_datetime_dict_from_system(false)
 	var local_datetime_string := (
-        "[Local] %s-%s-%s_%s.%s.%s" % [
+		"[Local] %s-%s-%s_%s.%s.%s" % [
 			local_datetime.year,
 			local_datetime.month,
 			local_datetime.day,
@@ -329,7 +329,7 @@ func _print_front_matter() -> void:
 
 	var utc_datetime := Time.get_datetime_dict_from_system(true)
 	var utc_datetime_string := (
-        "[UTC  ] %s-%s-%s_%s.%s.%s" % [
+		"[UTC  ] %s-%s-%s_%s.%s.%s" % [
 			utc_datetime.year,
 			utc_datetime.month,
 			utc_datetime.day,

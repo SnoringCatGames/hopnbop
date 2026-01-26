@@ -62,6 +62,8 @@ func _start_app() -> void:
 		if G.settings.start_in_game:
 			# FIXME: Add support for auto-enabling one player with WASD.
 			G.game_panel.client_load_game()
+		elif G.settings.skip_splash:
+			G.screens.client_open_screen(ScreensMain.ScreenType.LOBBY)
 		else:
 			G.screens.client_open_screen(ScreensMain.ScreenType.GODOT_SPLASH)
 

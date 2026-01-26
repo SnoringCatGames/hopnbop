@@ -40,12 +40,31 @@ func _process_movement_and_actions() -> void:
 
 
 func play_sound(sound_name: StringName) -> void:
-	# TODO: Implement sounds.
+	if not G.network.is_primary_client:
+		return
+
+	var stream_player := _get_audio_stream_player(sound_name)
+	if not stream_player.playing:
+		stream_player.play()
+
+
+# TODO: Make better sounds.
+func _get_audio_stream_player(sound_name: StringName) -> AudioStreamPlayer2D:
 	match sound_name:
 		"jump":
-			pass
+			return %JumpAudioStreamPlayer
 		"land":
-			pass
+			return %LandAudioStreamPlayer
+		"walk":
+			return %WalkAudioStreamPlayer
+		"die":
+			if G.settings.is_gore_enabled:
+				return %DieGoreAudioStreamPlayer
+			else:
+				return %DieFlowersAudioStreamPlayer
+		_:
+			G.fatal()
+			return null
 
 
 func _on_local_authority_added(

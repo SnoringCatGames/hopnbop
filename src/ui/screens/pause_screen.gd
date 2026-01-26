@@ -86,5 +86,5 @@ func _on_button_pressed() -> void:
 		# Could play error sound here.
 		return
 
-	G.audio.play_click_sound()
+	G.audio.play_sound("click")
 	G.network.frame_driver.client_request_unpause()

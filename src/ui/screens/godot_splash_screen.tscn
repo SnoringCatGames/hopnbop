@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3 uid="uid://cmn6locn3jq66"]
+[gd_scene load_steps=5 format=3 uid="uid://cmn6locn3jq66"]
 
 [ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/core/default_theme.tres" id="1_v373n"]
 [ext_resource type="StyleBox" uid="uid://dc86ks0yqis4j" path="res://src/ui/screens/screen_style_box.tres" id="2_rxuun"]
 [ext_resource type="Script" uid="uid://cnhxferacg2ql" path="res://src/ui/screens/godot_splash_screen.gd" id="3_v373n"]
+[ext_resource type="Texture2D" uid="uid://dx5ijewurabvl" path="res://assets/images/gui/godot_logo_splash.png" id="4_rxuun"]
 
 [node name="GodotSplashScreen" type="PanelContainer"]
 process_mode = 3
@@ -19,5 +20,13 @@ metadata/_custom_type_script = "uid://cnhxferacg2ql"
 [node name="CenterContainer" type="CenterContainer" parent="."]
 layout_mode = 2
 
-[node name="TextureRect" type="TextureRect" parent="CenterContainer"]
+[node name="Control" type="Control" parent="CenterContainer"]
 layout_mode = 2
+
+[node name="TextureRect" type="TextureRect" parent="CenterContainer/Control"]
+layout_mode = 0
+offset_right = 900.0
+offset_bottom = 835.0
+scale = Vector2(0.5, 0.5)
+pivot_offset = Vector2(-450, -417)
+texture = ExtResource("4_rxuun")

@@ -1,5 +1,5 @@
 class_name PlayerDisplay
-extends VBoxContainer
+extends PanelContainer
 ## Individual player info panel showing adjective, name, and score.
 
 

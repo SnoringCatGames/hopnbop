@@ -57,6 +57,15 @@ var is_server := true
 var is_client: bool:
 	get:
 		return not is_server
+## If in preview mode, this is only the first client.
+## If in published mode, this is any client.
+var is_primary_client: bool:
+	get:
+		if is_server:
+			return false
+		elif is_preview:
+			return preview_client_number == 1
+		return true
 var preview_client_number := 0
 
 var should_connect_to_remote_server: bool:
@@ -120,6 +129,11 @@ func _enter_tree() -> void:
 	is_preview = OS.has_feature("editor")
 	is_server = is_headless or G.args.has("server")
 	preview_client_number = int(G.args.client) if G.args.has("client") else 0
+
+	if is_preview and is_client:
+		G.check(
+			preview_client_number > 0,
+			"Preview args need to be set in Debug > Custom Run Instances...")
 
 
 func _ready() -> void:

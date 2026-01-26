@@ -172,7 +172,7 @@ static func get_local_player_id(local_player_index: int) -> int:
 
 
 func _on_rabbit_hole_body_entered(body: Node2D) -> void:
-	if not G.ensure(body is Player):
+	if not body is Player:
 		return
 
 	start_match()

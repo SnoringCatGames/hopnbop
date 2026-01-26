@@ -1,12 +1,16 @@
-[gd_scene load_steps=9 format=3 uid="uid://diqnxd2kabxfk"]
+[gd_scene load_steps=13 format=3 uid="uid://diqnxd2kabxfk"]
 
 [ext_resource type="Script" uid="uid://b5hrwox1n2lt0" path="res://src/core/audio_main.gd" id="1_tdp82"]
-[ext_resource type="AudioStream" uid="uid://dvhroq3jf64ma" path="res://assets/audio/Zookeeper_02.wav" id="2_o2pvq"]
+[ext_resource type="AudioStream" uid="uid://d3nqcobglu0sa" path="res://assets/audio/pause_menu.wav" id="2_0ukso"]
+[ext_resource type="AudioStream" uid="uid://bvt7ipmcwtm12" path="res://assets/audio/on_a_quest.wav" id="3_o2pvq"]
 [ext_resource type="AudioStream" uid="uid://505pi6oqhfst" path="res://assets/audio/Click/Click-cm-02.wav" id="3_seawu"]
 [ext_resource type="AudioStream" uid="uid://dmh678v0gek8c" path="res://assets/audio/Click/Click-cm-04.wav" id="4_wywav"]
 [ext_resource type="AudioStream" uid="uid://b3achb3rytv11" path="res://assets/audio/Click/Click-cm-06.wav" id="5_wtepx"]
 [ext_resource type="AudioStream" uid="uid://qk2yfhofcotd" path="res://assets/audio/Click/Click-cm-07.wav" id="6_24bi3"]
-[ext_resource type="AudioStream" uid="uid://cehcojmxljntb" path="res://assets/audio/LD58_UFOOO_03.wav" id="7_q1bt0"]
+[ext_resource type="AudioStream" uid="uid://b1dhtp12y2qox" path="res://assets/audio/single_cat_snore.wav" id="8_o2pvq"]
+[ext_resource type="AudioStream" uid="uid://byhc1v5pobgjj" path="res://assets/audio/cadence_win.wav" id="9_wtepx"]
+[ext_resource type="AudioStream" uid="uid://dngmn1trd45h2" path="res://assets/audio/cadence_lose.wav" id="10_24bi3"]
+[ext_resource type="AudioStream" uid="uid://cycmr81xwq5rj" path="res://assets/audio/achievement.wav" id="11_q1bt0"]
 
 [sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_2b2qe"]
 streams_count = 4
@@ -24,15 +28,14 @@ menu_theme_volume = 2.247
 [node name="MenuThemeStreamPlayer" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
 process_mode = 3
-stream = ExtResource("2_o2pvq")
+stream = ExtResource("2_0ukso")
 volume_db = 2.247
-autoplay = true
 bus = &"Music"
 
 [node name="MainThemeStreamPlayer" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
 process_mode = 3
-stream = ExtResource("7_q1bt0")
+stream = ExtResource("3_o2pvq")
 volume_db = -8.0
 bus = &"Music"
 
@@ -42,3 +45,19 @@ process_mode = 3
 stream = SubResource("AudioStreamRandomizer_2b2qe")
 volume_db = -2.919
 bus = &"SFX"
+
+[node name="SnoringCatStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = ExtResource("8_o2pvq")
+
+[node name="SuccessCadenceStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = ExtResource("9_wtepx")
+
+[node name="FailureCadenceStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = ExtResource("10_24bi3")
+
+[node name="AchievementStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = ExtResource("11_q1bt0")

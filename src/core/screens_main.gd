@@ -2,6 +2,7 @@ class_name ScreensMain
 extends PanelContainer
 
 enum ScreenType {
+	UNKNOWN,
 	GODOT_SPLASH,
 	SCG_SPLASH,
 	LOADING,
@@ -11,7 +12,7 @@ enum ScreenType {
 	GAME,
 }
 
-var current_screen := ScreenType.GODOT_SPLASH
+var current_screen := ScreenType.UNKNOWN
 
 
 func _enter_tree() -> void:
@@ -56,6 +57,8 @@ func client_open_screen(screen_type: ScreenType) -> void:
 	G.loading_screen.visible = screen_type == ScreenType.LOADING
 	G.game_over_screen.visible = screen_type == ScreenType.GAME_OVER
 	G.pause_screen.visible = screen_type == ScreenType.PAUSE
+	G.godot_splash_screen.visible = screen_type == ScreenType.GODOT_SPLASH
+	G.scg_splash_screen.visible = screen_type == ScreenType.SCG_SPLASH
 
 	var ends_game := (
 		[
@@ -96,7 +99,7 @@ func client_open_screen(screen_type: ScreenType) -> void:
 		G.game_panel.on_left_game_to_screen(screen_type)
 	elif previous_screen_type == ScreenType.LOBBY:
 		G.game_panel.on_left_lobby_to_screen(screen_type)
-	else:
+	elif previous_screen_type != ScreenType.UNKNOWN:
 		var previous_screen := get_screen_from_type(previous_screen_type)
 		previous_screen.on_close()
 

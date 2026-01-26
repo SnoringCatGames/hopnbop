@@ -65,6 +65,8 @@ var preview_client_count: int:
 
 @export var bunny_collision_shape: Shape2D
 
+@export var is_gore_enabled := false
+
 @export_group("Logs")
 ## Logs with these categories won't be shown.
 @export var excluded_log_categories: Array[StringName] = [
