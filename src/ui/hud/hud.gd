@@ -38,7 +38,6 @@ func update_visibility() -> void:
 		ScreensMain.ScreenType.LOADING:
 			visible = false
 		ScreensMain.ScreenType.GAME_OVER, \
-		ScreensMain.ScreenType.WIN, \
 		ScreensMain.ScreenType.PAUSE:
 			pass
 		ScreensMain.ScreenType.LOBBY:

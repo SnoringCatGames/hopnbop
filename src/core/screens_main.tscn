@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://dlvy2ayb4r382"]
+[gd_scene load_steps=8 format=3 uid="uid://dlvy2ayb4r382"]
 
 [ext_resource type="Script" uid="uid://cdurlt7srnaw2" path="res://src/core/screens_main.gd" id="1_r4bio"]
 [ext_resource type="PackedScene" uid="uid://cmn6locn3jq66" path="res://src/ui/screens/godot_splash_screen.tscn" id="2_47nlx"]
@@ -6,7 +6,6 @@
 [ext_resource type="PackedScene" uid="uid://36pbp6gkbedh" path="res://src/ui/screens/scg_splash_screen.tscn" id="3_l3qbb"]
 [ext_resource type="PackedScene" uid="uid://cdp0hul2o5i0x" path="res://src/ui/screens/loading_screen.tscn" id="4_0eyfq"]
 [ext_resource type="PackedScene" uid="uid://hrkm0p3okgms" path="res://src/ui/screens/game_over_screen.tscn" id="4_3e1sw"]
-[ext_resource type="PackedScene" uid="uid://ddl2sry3xhy84" path="res://src/ui/screens/win_screen.tscn" id="5_47nlx"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_gihf7"]
 
@@ -41,12 +40,6 @@ visible = false
 layout_mode = 2
 
 [node name="GameOverScreen" parent="." instance=ExtResource("4_3e1sw")]
-visible = false
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="WinScreen" parent="." instance=ExtResource("5_47nlx")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3

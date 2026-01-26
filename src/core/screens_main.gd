@@ -6,7 +6,6 @@ enum ScreenType {
 	SCG_SPLASH,
 	LOADING,
 	GAME_OVER,
-	WIN,
 	PAUSE,
 	LOBBY,
 	GAME,
@@ -44,7 +43,7 @@ func client_open_screen(screen_type: ScreenType) -> void:
 	current_screen = screen_type
 
 	G.print(
-        "Switching screens: %s => %s" %
+		"Switching screens: %s => %s" %
 		[
 			ScreenType.keys()[previous_screen_type],
 			ScreenType.keys()[screen_type],
@@ -56,7 +55,6 @@ func client_open_screen(screen_type: ScreenType) -> void:
 
 	G.loading_screen.visible = screen_type == ScreenType.LOADING
 	G.game_over_screen.visible = screen_type == ScreenType.GAME_OVER
-	G.win_screen.visible = screen_type == ScreenType.WIN
 	G.pause_screen.visible = screen_type == ScreenType.PAUSE
 
 	var ends_game := (
@@ -65,7 +63,6 @@ func client_open_screen(screen_type: ScreenType) -> void:
 			ScreenType.SCG_SPLASH,
 			ScreenType.LOADING,
 			ScreenType.GAME_OVER,
-			ScreenType.WIN,
 			ScreenType.LOBBY,
 		].has(screen_type)
 	)
@@ -76,7 +73,6 @@ func client_open_screen(screen_type: ScreenType) -> void:
 		[
 			ScreenType.LOADING,
 			ScreenType.GAME_OVER,
-			ScreenType.WIN,
 			ScreenType.PAUSE,
 			ScreenType.LOBBY,
 		].has(screen_type)
@@ -117,8 +113,6 @@ func get_screen_from_type(screen_type: ScreenType) -> Screen:
 			return G.loading_screen
 		ScreenType.GAME_OVER:
 			return G.game_over_screen
-		ScreenType.WIN:
-			return G.win_screen
 		ScreenType.PAUSE:
 			return G.pause_screen
 		ScreenType.LOBBY:

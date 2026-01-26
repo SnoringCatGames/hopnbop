@@ -31,7 +31,6 @@ var godot_splash_screen: GodotSplashScreen
 var scg_splash_screen: SCGSplashScreen
 var loading_screen: LoadingScreen
 var game_over_screen: GameOverScreen
-var win_screen: WinScreen
 var pause_screen: PauseScreen
 
 var game_panel: GamePanel

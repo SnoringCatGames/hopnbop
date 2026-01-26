@@ -56,11 +56,6 @@ extends Node
 #
 #
 # Proceed with the "AWS GameLift Deployment Guide"
-# - Make sure we use Spot instances instead of On-Demand.
-#   - Make sure our server and client logic can handle sudden termination.
-#   - "This server instance is spinning down, so this game is ending early.
-#     Please just start another match! (The developer is stingey, and didn't
-#     want to pay for more reliable instances!)"
 # - Add player authentication and profile management.
 # - Set up CloudWatch alarms for monitoring.
 # - Configure auto-scaling policies based on load.
