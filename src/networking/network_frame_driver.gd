@@ -51,9 +51,6 @@ extends Node
 #
 # LEFT OFF HERE:
 # - Test GDExtension Windows build.
-# - AI: /plan We need to update NETWORKING_ARCHITECTURE.md to account for the current design--including player_ids, multiple players per client, and GameLift.
-# - AI: It seems like signals are duplicated between MatchStateSynchronizer and MatchState. Let's consolidate them as appropriate.
-# - AI: In PlayerList, if there are more than 8 players, only list the local players, and then the 4 current top-scoring remote players.
 #
 #
 # Proceed with the "AWS GameLift Deployment Guide"
