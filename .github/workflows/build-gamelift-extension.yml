@@ -11,11 +11,10 @@ jobs:
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
     steps:
-            - name: Clean previous build (macOS)
-              if: runner.os == 'macOS'
-              working-directory: gamelift-gdextension/gamelift-server-sdk
-              run: |
-                rm -rf cmake-build
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -79,9 +78,7 @@ jobs:
         run: |
           git clone https://github.com/amazon-gamelift/amazon-gamelift-servers-cpp-server-sdk.git gamelift-server-sdk
 
-      # Linux: Patch all CMakeLists.txt for modern CMake (GNU sed syntax)
       - name: Patch all CMakeLists.txt for modern CMake (Linux)
-        if: runner.os == 'Linux'
         working-directory: gamelift-gdextension/gamelift-server-sdk
         run: |
           find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i -E 's/cmake_minimum_required\(VERSION ([0-9]+(\.[0-9]+)?)\)/cmake_minimum_required(VERSION 3.5...3.30)/g'
@@ -315,6 +312,10 @@ jobs:
           retention-days: 30
 
   build-macos:
+	- name: Clean previous build (macOS)
+	  working-directory: gamelift-gdextension/gamelift-server-sdk
+	  run: |
+		rm -rf cmake-build
     needs: check-changes
     if: needs.check-changes.outputs.should_run == 'true'
     runs-on: macos-latest
@@ -347,15 +348,14 @@ jobs:
         run: |
           git clone https://github.com/amazon-gamelift/amazon-gamelift-servers-cpp-server-sdk.git gamelift-server-sdk
 
-      - name: Build GameLift Server SDK
-        working-directory: gamelift-gdextension/gamelift-server-sdk
+      - name: Patch all CMakeLists.txt for modern CMake (macOS)
         run: |
-
-
-          # Recursively patch all CMakeLists.txt files to require CMake >= 3.5 (BSD sed syntax)
           find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i '' -E 's/cmake_minimum_required\(VERSION ([0-9]+(\.[0-9]+)?)\)/cmake_minimum_required(VERSION 3.5...3.30)/g'
           find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i '' -E 's/CMAKE_MINIMUM_REQUIRED\(VERSION ([0-9]+(\.[0-9]+)?)\)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/g'
 
+      - name: Build GameLift Server SDK
+        working-directory: gamelift-gdextension/gamelift-server-sdk
+        run: |
           # Create CMake init file to set policies globally
           mkdir -p cmake-build
           cat > cmake-build/init.cmake << 'EOF'
