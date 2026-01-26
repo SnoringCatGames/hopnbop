@@ -205,7 +205,11 @@ func _client_send_player_declaration() -> void:
 	)
 
 	# Call RPC to declare players.
-	_server_rpc_declare_players.rpc_id(SERVER_ID, session_ids)
+	var client_version: String = ProjectSettings.get_setting(
+		"application/config/version",
+		"unknown"
+	)
+	_server_rpc_declare_players.rpc_id(SERVER_ID, session_ids, client_version)
 
 
 func _client_update_is_connected_to_server() -> void:
@@ -248,10 +252,38 @@ func client_disconnect() -> void:
 ## RPC called by client to declare how many players they have.
 ## This must be called before players are spawned on the server.
 @rpc("any_peer", "call_remote", "reliable")
-func _server_rpc_declare_players(session_ids: Array) -> void:
+func _server_rpc_declare_players(
+	session_ids: Array,
+	client_version: String
+) -> void:
 	G.check_is_server()
 
 	var peer_id := multiplayer.get_remote_sender_id()
+
+	# Validate client version.
+	var server_version: String = ProjectSettings.get_setting(
+		"application/config/version",
+		"unknown"
+	)
+
+	if not SemanticVersion.compare(client_version, server_version):
+		G.warning(
+			"Version mismatch from peer %d: Client v%s, Server v%s - " +
+			"disconnecting" % [
+				peer_id,
+				client_version,
+				server_version,
+			],
+			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+		)
+		multiplayer.multiplayer_peer.disconnect_peer(peer_id)
+		return
+
+	G.print(
+		"Peer %d version validated: v%s" % [peer_id, client_version],
+		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+	)
+
 	var player_count := session_ids.size()
 
 	# Validate player count.

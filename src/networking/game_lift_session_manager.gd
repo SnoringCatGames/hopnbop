@@ -147,6 +147,34 @@ func _on_request_completed(
 	var server_ip: String = data.get("server_ip", "")
 	var server_port: int = data.get("server_port", 4433)
 
+	# Extract and validate server version.
+	var server_version: String = data.get("server_version", "")
+	var client_version: String = ProjectSettings.get_setting(
+		"application/config/version",
+		"unknown"
+	)
+
+	if server_version.is_empty():
+		session_request_failed.emit(
+			"Server did not provide version information"
+		)
+		return
+
+	if not SemanticVersion.compare(client_version, server_version):
+		session_request_failed.emit(
+			"Version mismatch: Client v%s, Server requires v%s. " +
+			"Please update your game client." % [client_version, server_version]
+		)
+		return
+
+	G.print(
+		"Version validated: Client v%s matches Server v%s" % [
+			client_version,
+			server_version
+		],
+		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS
+	)
+
 	if session_ids.is_empty():
 		session_request_failed.emit("No session IDs returned from backend")
 		return

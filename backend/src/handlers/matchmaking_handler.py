@@ -34,9 +34,7 @@ rate_limiter = RateLimiter()
 
 @tracer.capture_lambda_handler
 @logger.inject_lambda_context
-def join_matchmaking(
-    event: Dict[str, Any], context: LambdaContext
-) -> Dict:
+def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
     """
     POST /matchmaking/join
     Simplified endpoint that starts matchmaking and polls until complete.
@@ -45,9 +43,7 @@ def join_matchmaking(
         # Extract JWT from Authorization header.
         auth_header = event.get("headers", {}).get("Authorization", "")
         if not auth_header.startswith("Bearer "):
-            return error_response(
-                401, "MISSING_AUTH", "Missing authorization"
-            )
+            return error_response(401, "MISSING_AUTH", "Missing authorization")
 
         jwt_token = auth_header[7:]
         jwt_secret = os.environ.get("JWT_SECRET", "")
@@ -67,9 +63,7 @@ def join_matchmaking(
         player_id = auth_token.player_id
 
         # Rate limiting.
-        if not rate_limiter.check_limit(
-            player_id, "matchmaking", max_per_min=5
-        ):
+        if not rate_limiter.check_limit(player_id, "matchmaking", max_per_min=5):
             return error_response(
                 429, "RATE_LIMIT", "Too many requests", retry_after=60
             )
@@ -81,9 +75,7 @@ def join_matchmaking(
 
         # Validate input.
         if player_count < 1 or player_count > 4:
-            return error_response(
-                400, "INVALID_INPUT", "player_count must be 1-4"
-            )
+            return error_response(400, "INVALID_INPUT", "player_count must be 1-4")
 
         logger.info(
             f"Matchmaking request from {player_id}: "
@@ -111,13 +103,9 @@ def join_matchmaking(
         ]
 
         # Start matchmaking.
-        config_name = os.environ.get(
-            "MATCHMAKING_CONFIG", "jumpnthump-ffa-matchmaker"
-        )
+        config_name = os.environ.get("MATCHMAKING_CONFIG", "jumpnthump-ffa-matchmaker")
         ticket_id = asyncio.run(
-            gamelift.start_matchmaking(
-                config_name=config_name, players=players
-            )
+            gamelift.start_matchmaking(config_name=config_name, players=players)
         )
 
         logger.info(f"Started matchmaking: {ticket_id}")
@@ -126,9 +114,7 @@ def join_matchmaking(
         try:
             result = asyncio.run(gamelift.poll_matchmaking(ticket_id))
 
-            logger.info(
-                f"Matchmaking complete: {result.game_session_id}"
-            )
+            logger.info(f"Matchmaking complete: {result.game_session_id}")
 
             return {
                 "statusCode": 200,
@@ -136,6 +122,7 @@ def join_matchmaking(
                 "body": json.dumps(
                     {
                         "status": "success",
+                        "server_version": os.environ.get("GAME_VERSION", "0.1.0"),
                         "game_session_id": result.game_session_id,
                         "server_ip": result.server_ip,
                         "server_port": result.server_port,
@@ -146,25 +133,19 @@ def join_matchmaking(
 
         except TimeoutError as e:
             logger.warning(f"Matchmaking timeout: {ticket_id}")
-            return error_response(
-                408, "MATCHMAKING_TIMEOUT", str(e)
-            )
+            return error_response(408, "MATCHMAKING_TIMEOUT", str(e))
 
     except ValueError as e:
         logger.error(f"Validation error: {e}")
         return error_response(400, "VALIDATION_ERROR", str(e))
     except Exception as e:
         logger.exception("Matchmaking error")
-        return error_response(
-            500, "INTERNAL_ERROR", "Internal server error"
-        )
+        return error_response(500, "INTERNAL_ERROR", "Internal server error")
 
 
 @tracer.capture_lambda_handler
 @logger.inject_lambda_context
-def start_matchmaking(
-    event: Dict[str, Any], context: LambdaContext
-) -> Dict:
+def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
     """
     POST /matchmaking/start
     Start matchmaking and return ticket ID for polling.
@@ -173,9 +154,7 @@ def start_matchmaking(
         # Extract JWT.
         auth_header = event.get("headers", {}).get("Authorization", "")
         if not auth_header.startswith("Bearer "):
-            return error_response(
-                401, "MISSING_AUTH", "Missing authorization"
-            )
+            return error_response(401, "MISSING_AUTH", "Missing authorization")
 
         jwt_token = auth_header[7:]
         jwt_secret = os.environ.get("JWT_SECRET", "")
@@ -195,9 +174,7 @@ def start_matchmaking(
         player_id = auth_token.player_id
 
         # Rate limiting.
-        if not rate_limiter.check_limit(
-            player_id, "matchmaking", max_per_min=5
-        ):
+        if not rate_limiter.check_limit(player_id, "matchmaking", max_per_min=5):
             return error_response(
                 429, "RATE_LIMIT", "Too many requests", retry_after=60
             )
@@ -208,9 +185,7 @@ def start_matchmaking(
 
         # Validate input.
         if player_count < 1 or player_count > 4:
-            return error_response(
-                400, "INVALID_INPUT", "player_count must be 1-4"
-            )
+            return error_response(400, "INVALID_INPUT", "player_count must be 1-4")
 
         # Get player profile.
         player_profile = asyncio.run(
@@ -233,13 +208,9 @@ def start_matchmaking(
         ]
 
         # Start matchmaking.
-        config_name = os.environ.get(
-            "MATCHMAKING_CONFIG", "jumpnthump-ffa-matchmaker"
-        )
+        config_name = os.environ.get("MATCHMAKING_CONFIG", "jumpnthump-ffa-matchmaker")
         ticket_id = asyncio.run(
-            gamelift.start_matchmaking(
-                config_name=config_name, players=players
-            )
+            gamelift.start_matchmaking(config_name=config_name, players=players)
         )
 
         logger.info(f"Started matchmaking for {player_id}: {ticket_id}")
@@ -260,16 +231,12 @@ def start_matchmaking(
         return error_response(400, "VALIDATION_ERROR", str(e))
     except Exception as e:
         logger.exception("Matchmaking error")
-        return error_response(
-            500, "INTERNAL_ERROR", "Internal server error"
-        )
+        return error_response(500, "INTERNAL_ERROR", "Internal server error")
 
 
 @tracer.capture_lambda_handler
 @logger.inject_lambda_context
-def get_matchmaking_status(
-    event: Dict[str, Any], context: LambdaContext
-) -> Dict:
+def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dict:
     """
     GET /matchmaking/status/{ticket_id}
     Poll matchmaking ticket status.
@@ -287,9 +254,7 @@ def get_matchmaking_status(
         # Get ticket ID from path.
         ticket_id = event.get("pathParameters", {}).get("ticket_id")
         if not ticket_id:
-            return error_response(
-                400, "MISSING_TICKET", "Missing ticket_id"
-            )
+            return error_response(400, "MISSING_TICKET", "Missing ticket_id")
 
         # Try non-blocking status check first.
         status = asyncio.run(gamelift.get_ticket_status(ticket_id))
@@ -338,9 +303,7 @@ def get_matchmaking_status(
         return error_response(400, "VALIDATION_ERROR", str(e))
     except Exception as e:
         logger.exception("Status check error")
-        return error_response(
-            500, "INTERNAL_ERROR", "Internal server error"
-        )
+        return error_response(500, "INTERNAL_ERROR", "Internal server error")
 
 
 def error_response(

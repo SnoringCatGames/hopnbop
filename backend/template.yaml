@@ -9,6 +9,7 @@ Globals:
     MemorySize: 512
     Environment:
       Variables:
+        GAME_VERSION: "0.1.0"
         PLAYERS_TABLE: !Ref PlayersTable
         MATCH_HISTORY_TABLE: !Ref MatchHistoryTable
         JWT_SECRET: !Ref JWTSecret

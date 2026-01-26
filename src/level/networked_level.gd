@@ -165,11 +165,6 @@ func deregister_npc(npc: NPC) -> void:
 		npcs.erase(npc)
 
 
-func _get_player_spawn_position() -> Vector2:
-	# FIXME: Calculate player spawn position.
-	return Vector2.ZERO
-
-
 func _get_configuration_warnings() -> PackedStringArray:
 	var warnings: PackedStringArray = super._get_configuration_warnings()
 

@@ -6,7 +6,7 @@ func _ready() -> void:
 	G.print("DrawUtils._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
 
 
-func draw_shape_outline(
+static func draw_shape_outline(
 		canvas: CanvasItem,
 		position: Vector2,
 		shape: Shape2D,
@@ -48,7 +48,7 @@ func draw_shape_outline(
 		)
 
 
-func draw_circle_outline(
+static func draw_circle_outline(
 		canvas: CanvasItem,
 		center: Vector2,
 		radius: float,
@@ -80,7 +80,7 @@ func draw_circle_outline(
 	)
 
 
-func draw_arc(
+static func draw_arc(
 		canvas: CanvasItem,
 		center: Vector2,
 		radius: float,
@@ -105,7 +105,7 @@ func draw_arc(
 	)
 
 
-func compute_arc_points(
+static func compute_arc_points(
 		center: Vector2,
 		radius: float,
 		start_angle: float,
@@ -149,7 +149,7 @@ func compute_arc_points(
 	return points
 
 
-func draw_rectangle_outline(
+static func draw_rectangle_outline(
 		canvas: CanvasItem,
 		center: Vector2,
 		half_width_height: Vector2,
@@ -186,7 +186,7 @@ func draw_rectangle_outline(
 	)
 
 
-func draw_capsule_outline(
+static func draw_capsule_outline(
 		canvas: CanvasItem,
 		center: Vector2,
 		radius: float,
@@ -241,7 +241,7 @@ func draw_capsule_outline(
 # This applies Thales's theorem to find the points of tangency between the line
 # segments from the triangular portion and the circle:
 # https://en.wikipedia.org/wiki/Thales%27s_theorem
-func draw_ice_cream_cone(
+static func draw_ice_cream_cone(
 		canvas: CanvasItem,
 		cone_end_point: Vector2,
 		circle_center: Vector2,
@@ -290,13 +290,12 @@ func draw_ice_cream_cone(
 	var angle_from_circle_center_to_point_of_tangency := \
 	acos(circle_radius / distance_from_cone_end_point_to_circle_center)
 	var angle_from_circle_center_to_cone_end_point := \
-	cone_end_point.angle_to_point(circle_center)
+	circle_center.angle_to_point(cone_end_point)
 
 	var start_angle := angle_from_circle_center_to_cone_end_point + \
 	angle_from_circle_center_to_point_of_tangency
-	var end_angle := angle_from_circle_center_to_cone_end_point + \
-	2.0 * PI - \
-	angle_from_circle_center_to_point_of_tangency
+	var end_angle := angle_from_circle_center_to_cone_end_point - \
+	angle_from_circle_center_to_point_of_tangency + 2.0 * PI
 
 	var points := compute_arc_points(
 		circle_center,
@@ -306,26 +305,41 @@ func draw_ice_cream_cone(
 		sector_arc_length,
 	)
 
-	# These extra points prevent the stroke width from shrinking around the
-	# cone end point.
-	var extra_cone_end_point_1 := \
-	cone_end_point + \
-	(points[points.size() - 1] - cone_end_point) * 0.000001
-	var extra_cone_end_point_2 := \
-	cone_end_point + \
-	(points[0] - cone_end_point) * 0.000001
-
-	points.push_back(extra_cone_end_point_1)
-	points.push_back(cone_end_point)
-	points.push_back(extra_cone_end_point_2)
-	points.push_back(points[0])
-
 	if is_filled:
-		canvas.draw_colored_polygon(
-			points,
-			color,
-		)
+		# For filled polygons, manually draw triangles from the cone tip to
+		# each arc segment to avoid triangulation issues with narrow shapes.
+		for i in range(points.size() - 1):
+			var triangle := PackedVector2Array([
+				cone_end_point,
+				points[i],
+				points[i + 1],
+			])
+
+			# Skip degenerate triangles with zero area.
+			var area: float = abs(
+				(points[i].x - cone_end_point.x) * \
+				(points[i + 1].y - cone_end_point.y) - \
+				(points[i + 1].x - cone_end_point.x) * \
+				(points[i].y - cone_end_point.y)
+			) / 2.0
+
+			if area > 0.001:
+				canvas.draw_colored_polygon(triangle, color)
 	else:
+		# These extra points prevent the stroke width from shrinking around
+		# the cone end point when drawing outlines.
+		var extra_cone_end_point_1 := \
+		cone_end_point + \
+		(points[points.size() - 1] - cone_end_point) * 0.000001
+		var extra_cone_end_point_2 := \
+		cone_end_point + \
+		(points[0] - cone_end_point) * 0.000001
+
+		points.push_back(extra_cone_end_point_1)
+		points.push_back(cone_end_point)
+		points.push_back(extra_cone_end_point_2)
+		points.push_back(points[0])
+
 		canvas.draw_polyline(
 			points,
 			color,

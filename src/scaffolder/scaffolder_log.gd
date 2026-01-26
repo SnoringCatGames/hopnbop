@@ -352,7 +352,14 @@ func _print_front_matter() -> void:
 	if G.network.is_preview and G.network.is_server:
 		#_print_cat()
 		var app_name = ProjectSettings.get_setting("application/config/name")
-		print_rich("%s %s %s\n" % [_RAINBOW_BAR, app_name, _REVERSE_RAINBOW_BAR])
+		print_rich(
+			"%s %s v%s %s\n" % [_RAINBOW_BAR, app_name, _REVERSE_RAINBOW_BAR])
+
+	var app_version = ProjectSettings.get_setting(
+		"application/config/version",
+		"unknown"
+	)
+	self.print("Version: %s" % app_version, CATEGORY_CORE_SYSTEMS)
 
 	self.print(local_datetime_string, CATEGORY_CORE_SYSTEMS)
 	self.print(utc_datetime_string, CATEGORY_CORE_SYSTEMS)

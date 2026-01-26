@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Settings" load_steps=8 format=3 uid="uid://dv60bmaw1pdx6"]
+[gd_resource type="Resource" script_class="Settings" load_steps=9 format=3 uid="uid://dv60bmaw1pdx6"]
 
 [ext_resource type="Script" uid="uid://cqomr88ncj2d3" path="res://src/core/settings.gd" id="1_krfic"]
 [ext_resource type="PackedScene" uid="uid://bfl5qv8bb5apr" path="res://src/level/default_level.tscn" id="1_legvn"]
@@ -8,11 +8,15 @@
 [ext_resource type="PackedScene" uid="uid://cn6hdqmmufnvr" path="res://src/player/bunny.tscn" id="3_woca2"]
 [ext_resource type="StyleBox" uid="uid://dc86ks0yqis4j" path="res://src/ui/screens/screen_style_box.tres" id="5_r80nf"]
 
+[sub_resource type="CircleShape2D" id="CircleShape2D_woca2"]
+radius = 6.0
+
 [resource]
 script = ExtResource("1_krfic")
 preview_run_multiple_clients = true
 show_debug_player_state = true
 show_perf_tracker = true
+bunny_collision_shape = SubResource("CircleShape2D_woca2")
 default_theme = ExtResource("3_r80nf")
 default_palette = ExtResource("2_yixrw")
 screen_style_box = ExtResource("5_r80nf")

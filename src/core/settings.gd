@@ -63,6 +63,8 @@ var preview_client_count: int:
 @export var godot_splash_duration_sec := 0.9
 @export var scg_splash_duration_sec := 0.9
 
+@export var bunny_collision_shape: Shape2D
+
 @export_group("Logs")
 ## Logs with these categories won't be shown.
 @export var excluded_log_categories: Array[StringName] = [

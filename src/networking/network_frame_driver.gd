@@ -49,9 +49,10 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 #
-# - Implement Lobby.
 # - Also add text outline to player over-head name display that matches their
 #   assigned color.
+# - In the lobby, when spawning a player, briefly render over their head an indicator for which controls they're using.
+#   - A simple drawing of rectangles in the shape of WASD, IJKL, or Arrows, or a controller shape.
 #
 #
 # Proceed with the "AWS GameLift Deployment Guide"

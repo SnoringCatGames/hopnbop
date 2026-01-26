@@ -131,11 +131,6 @@ func _deregister_player(device_name: StringName) -> void:
 		G.game_panel.lobby_players_updated.emit()
 
 
-func _get_player_spawn_position() -> Vector2:
-	# FIXME: Calculate player spawn position.
-	return Vector2.ZERO
-
-
 ## Get number of active players.
 func get_player_count() -> int:
 	return _pending_device_configs_by_index.size()

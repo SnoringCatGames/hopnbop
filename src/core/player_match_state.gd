@@ -8,8 +8,11 @@ extends RefCounted
 ##   CharacterStateFromServer (or a subclass of it).
 
 
+# TODO: Add support for configuring body-type and costume animator scenes in
+#       Settings.
 const _BODY_TYPE_COUNT := 1
 const _COSTUME_COUNT := 1
+
 
 const _PROPERTY_NAMES := [
 	"player_id",
@@ -105,9 +108,8 @@ func set_up(
 	)
 	adjective = adjectives.pick_random()
 
-	# TODO: Add support for different body and costume types.
-	body_type_index = 0
-	costume_index = 0
+	body_type_index = randi_range(0, _BODY_TYPE_COUNT - 1)
+	costume_index = randi_range(0, _COSTUME_COUNT - 1)
 
 	# FIXME: Add support for assigning colors on the server.
 	outline_color = Color.WHITE
