@@ -1,6 +1,7 @@
 class_name MatchStateSynchronizer
 extends MultiplayerSynchronizer
 
+
 signal player_joined(player: PlayerMatchState)
 signal player_left(player: PlayerMatchState)
 signal player_killed(killer: PlayerMatchState, killee: PlayerMatchState)
@@ -84,12 +85,16 @@ func _client_on_players_updated() -> void:
 
 
 func _client_on_kills_updated() -> void:
-	G.ensure(state.kills.size() > _previous_state.kills.size() or state.kills.is_empty())
+	G.ensure(
+		state.kills.size() > _previous_state.kills.size() or
+		state.kills.is_empty())
 
 	var new_kills := state.kills.slice(_previous_state.kills.size())
 	var i := 0
 	while i < new_kills.size():
-		player_killed.emit(get_player(new_kills[i]), get_player(new_kills[i + 1]))
+		player_killed.emit(
+			get_player(new_kills[i]),
+			get_player(new_kills[i + 1]))
 		i += 2
 
 	_previous_state.kills = state.kills.duplicate()
@@ -98,12 +103,16 @@ func _client_on_kills_updated() -> void:
 
 
 func _client_on_bumps_updated() -> void:
-	G.ensure(state.bumps.size() > _previous_state.bumps.size() or state.bumps.is_empty())
+	G.ensure(
+		state.bumps.size() > _previous_state.bumps.size() or
+		state.bumps.is_empty())
 
 	var new_bumps := state.bumps.slice(_previous_state.bumps.size())
 	var i := 0
 	while i < new_bumps.size():
-		players_bumped.emit(get_player(new_bumps[i]), get_player(new_bumps[i + 1]))
+		players_bumped.emit(
+			get_player(new_bumps[i]),
+			get_player(new_bumps[i + 1]))
 		i += 2
 
 	_previous_state.bumps = state.bumps.duplicate()
@@ -132,8 +141,7 @@ func _on_underlying_player_state_disconnected(
 func server_add_kill(killer_id: int, killee_id: int) -> void:
 	_previous_state.kills = state.kills.duplicate()
 
-	state.kills.append_array([killer_id, killee_id])
-	state.kills = state.kills.duplicate()
+	state.server_add_kill(killer_id, killee_id)
 
 	G.print(
 		"KILL: %s killed %s" % [killer_id, killee_id],
@@ -148,8 +156,7 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 	_previous_state.bumps = state.bumps.duplicate()
 
-	state.bumps.append_array([player_1_id, player_2_id])
-	state.bumps = state.bumps.duplicate()
+	state.server_add_bump(player_1_id, player_2_id)
 
 	G.print(
 		"BUMP: %s bumped %s" % [player_1_id, player_2_id],

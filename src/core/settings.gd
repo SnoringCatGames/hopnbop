@@ -21,6 +21,11 @@ var preview_client_count: int:
 @export var is_server_pause_enabled := true
 ## Cooldown period between pause requests (in seconds). Prevents spam.
 @export var pause_request_cooldown_sec := 0.5
+## Maximum number of pauses per client per match.
+@export var max_pauses_per_client := 1
+## Maximum duration for a single pause (in seconds). After this time, the game
+## automatically unpauses.
+@export var max_pause_duration_sec := 60.0
 @export_group("")
 
 @export var max_client_count := 8

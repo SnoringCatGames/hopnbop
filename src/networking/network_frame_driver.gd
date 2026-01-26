@@ -50,8 +50,12 @@ extends Node
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 #
 # LEFT OFF HERE:
+# - macos next fix should be in.
+# - Review the AI refactor of pause.
+# - Add score calculation. Use _total_kills_by_player_id.
 # - Test GDExtension Windows build.
 # - AI: /plan We need to update NETWORKING_ARCHITECTURE.md to account for the current design--including player_ids, multiple players per client, and GameLift.
+# - AI: It seems like signals are duplicated between MatchStateSynchronizer and MatchState. Let's consolidate them as appropriate.
 # - AI: In PlayerList, if there are more than 8 players, only list the local players, and then the 4 current top-scoring remote players.
 #
 #
@@ -406,6 +410,13 @@ extends Node
 #   particular, I think some of the current "local-session" vs "match-state" vs
 #   other state tracked in networking systems might be best to consolidate in a
 #   separate location.
+#
+# ### Devlog post:
+# - AI helped a lot
+# - AI sucked at:
+#   - Fixing the GitHub Actions CI workflows.
+#     - Probably ~60 iterations.
+#
 
 ## This determines the period we use between frames that we record in rollback
 ## buffers.
@@ -454,6 +465,19 @@ var _pause_history: Array[Dictionary] = []
 
 ## Tracks last pause request time for rate limiting (microseconds).
 var _last_pause_request_time_usec := 0
+
+## Peer ID of the client that initiated the current pause.
+var _pause_initiator_peer_id: int = 0
+
+## Number of pauses used by the initiator at the time of pause.
+var _pause_initiator_pauses_used: int = 0
+
+## Time when the current pause will automatically unpause (microseconds).
+## This is replicated to clients for countdown display.
+var _pause_auto_unpause_time_usec: int = 0
+
+## Timeout ID for auto-unpause timer (server-only).
+var _pause_auto_unpause_timeout_id: int = 0
 
 ## Interval for periodic wall-clock re-sync to maintain accurate timestamps for
 ## logging. Re-sync is handled automatically via G.time.set_interval().
@@ -564,18 +588,14 @@ func client_request_toggle_pause() -> void:
 
 ## Request pause from client. Only works if Settings.is_server_pause_enabled.
 func client_request_pause() -> void:
-	if G.network.is_server:
-		_server_execute_pause()
-	elif is_inside_tree():
-		_server_rpc_client_request_pause.rpc_id(NetworkConnector.SERVER_ID)
+	G.check_is_client()
+	_server_rpc_client_request_pause.rpc_id(NetworkConnector.SERVER_ID)
 
 
 ## Request unpause from client. Only works if Settings.is_server_pause_enabled.
 func client_request_unpause() -> void:
-	if G.network.is_server:
-		_server_execute_unpause()
-	elif is_inside_tree():
-		_server_rpc_client_request_unpause.rpc_id(NetworkConnector.SERVER_ID)
+	G.check_is_client()
+	_server_rpc_request_unpause.rpc_id(NetworkConnector.SERVER_ID)
 
 ## Client requests server to pause.
 
@@ -584,9 +604,10 @@ func client_request_unpause() -> void:
 func _server_rpc_client_request_pause() -> void:
 	G.check_is_server()
 
+	var peer_id := multiplayer.get_remote_sender_id()
+
 	if not G.settings.is_server_pause_enabled:
-		var peer_id := multiplayer.get_remote_sender_id()
-		G.warning(
+		G.print(
 			"Client %d requested pause, but server pause is disabled" % peer_id,
 			ScaffolderLog.CATEGORY_NETWORK_SYNC,
 		)
@@ -598,20 +619,47 @@ func _server_rpc_client_request_pause() -> void:
 	if current_time - _last_pause_request_time_usec < cooldown_usec:
 		return
 
+	# Check pause limit for this peer.
+	var pauses_used := G.game_panel.match_state.pauses_used_by_peer.get(peer_id, 0)
+	if pauses_used >= G.settings.max_pauses_per_client:
+		G.print(
+			"Client %d requested pause, but has exhausted pause limit (%d/%d)" % [
+				peer_id,
+				pauses_used,
+				G.settings.max_pauses_per_client,
+			],
+			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+		)
+		return
+
+	# Increment pause count for this peer.
+	G.game_panel.match_state.pauses_used_by_peer[peer_id] = pauses_used + 1
+
 	_last_pause_request_time_usec = current_time
-	_server_execute_pause()
+	_server_execute_pause(peer_id, pauses_used + 1)
+
 
 ## Client requests server to unpause.
-
-
 @rpc("any_peer", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
-func _server_rpc_client_request_unpause() -> void:
+func _server_rpc_request_unpause() -> void:
 	G.check_is_server()
 
+	var peer_id := multiplayer.get_remote_sender_id()
+
 	if not G.settings.is_server_pause_enabled:
-		var peer_id := multiplayer.get_remote_sender_id()
-		G.warning(
+		G.print(
 			"Client %d requested unpause, but server pause is disabled" % peer_id,
+			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+		)
+		return
+
+	# Check if requesting peer is the pause initiator.
+	if peer_id != _pause_initiator_peer_id:
+		G.print(
+			"Client %d requested unpause, but only initiator (peer %d) can unpause" % [
+				peer_id,
+				_pause_initiator_peer_id,
+			],
 			ScaffolderLog.CATEGORY_NETWORK_SYNC,
 		)
 		return
@@ -630,12 +678,21 @@ func _server_rpc_client_request_unpause() -> void:
 
 @rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _client_rpc_notify_pause(
-		server_pause_frame: int,
-		server_pause_time_usec: int,
+	server_pause_frame: int,
+	server_pause_time_usec: int,
+	pause_initiator_peer_id: int,
+	pause_initiator_pauses_used: int,
+	pause_auto_unpause_time_usec: int,
 ) -> void:
 	G.check_is_client()
 
-	_client_execute_pause_at_server_frame(server_pause_frame, server_pause_time_usec)
+	_client_execute_pause_at_server_frame(
+		server_pause_frame,
+		server_pause_time_usec,
+		pause_initiator_peer_id,
+		pause_initiator_pauses_used,
+		pause_auto_unpause_time_usec,
+	)
 
 ## Server notifies all clients of unpause.
 
@@ -648,7 +705,7 @@ func _client_rpc_notify_unpause(
 ) -> void:
 	G.check_is_client()
 
-	_client_server_execute_unpause_at_server_frame(
+	_client_execute_unpause_at_server_frame(
 		server_unpause_frame,
 		server_unpause_time_usec,
 		server_cumulative_paused_frames,
@@ -675,12 +732,38 @@ func _client_rpc_notify_shutdown(shutdown_message: String) -> void:
 
 
 ## Internal method to execute pause on server or client.
-func _server_execute_pause() -> void:
+##
+## @param initiator_peer_id: Peer ID that initiated the pause (0 for system pause).
+## @param pauses_used: Number of pauses used by initiator after this pause.
+func _server_execute_pause(
+	initiator_peer_id: int = 0,
+	pauses_used: int = 0
+) -> void:
 	if _is_paused:
 		return
 
 	_is_paused = true
 	_pause_start_frame_index = server_frame_index
+	_pause_initiator_peer_id = initiator_peer_id
+	_pause_initiator_pauses_used = pauses_used
+
+	# Calculate auto-unpause time for replication to clients (for countdown).
+	_pause_auto_unpause_time_usec = (
+		Time.get_ticks_usec() +
+		int(G.settings.max_pause_duration_sec * 1_000_000)
+	)
+
+	# Schedule auto-unpause using timer system (server-only).
+	if G.network.is_server:
+		_pause_auto_unpause_timeout_id = G.time.set_timeout(
+			func():
+				G.print(
+					"Auto-unpausing after timeout",
+					ScaffolderLog.CATEGORY_NETWORK_SYNC,
+				)
+				_server_execute_unpause(),
+			G.settings.max_pause_duration_sec,
+		)
 
 	# Clean up buffer frames after pause started.
 	_cleanup_buffer_after_pause()
@@ -693,6 +776,9 @@ func _server_execute_pause() -> void:
 		_client_rpc_notify_pause.rpc(
 			server_frame_index,
 			server_frame_time_usec,
+			_pause_initiator_peer_id,
+			_pause_initiator_pauses_used,
+			_pause_auto_unpause_time_usec,
 		)
 
 	# Pause Godot scene tree.
@@ -703,7 +789,10 @@ func _server_execute_pause() -> void:
 	G.network.time.pause()
 
 	G.print(
-		"Server paused at frame %d" % server_frame_index,
+		"Server paused at frame %d by peer %d" % [
+			server_frame_index,
+			initiator_peer_id,
+		],
 		ScaffolderLog.CATEGORY_NETWORK_SYNC,
 	)
 
@@ -726,6 +815,16 @@ func _server_execute_unpause() -> void:
 	)
 
 	_is_paused = false
+
+	# Cancel auto-unpause timeout (server-only).
+	if G.network.is_server and _pause_auto_unpause_timeout_id != 0:
+		G.time.cancel_timeout(_pause_auto_unpause_timeout_id)
+		_pause_auto_unpause_timeout_id = 0
+
+	# Reset pause state variables.
+	_pause_initiator_peer_id = 0
+	_pause_initiator_pauses_used = 0
+	_pause_auto_unpause_time_usec = 0
 
 	# Notify clients (if server and in tree for RPC).
 	if G.network.is_server and is_inside_tree():
@@ -753,11 +852,17 @@ func _server_execute_unpause() -> void:
 func _client_execute_pause_at_server_frame(
 		server_pause_frame: int,
 		server_pause_time_usec: int,
+		pause_initiator_peer_id: int,
+		pause_initiator_pauses_used: int,
+		pause_auto_unpause_time_usec: int,
 ) -> void:
 	if _is_paused:
 		return
 
 	_is_paused = true
+	_pause_initiator_peer_id = pause_initiator_peer_id
+	_pause_initiator_pauses_used = pause_initiator_pauses_used
+	_pause_auto_unpause_time_usec = pause_auto_unpause_time_usec
 
 	# Align with server's pause frame.
 	server_frame_index = server_pause_frame
@@ -777,6 +882,11 @@ func _client_execute_pause_at_server_frame(
 	# Pause time tracking.
 	G.network.time.pause()
 
+	# Auto-open pause screen for all clients.
+	if is_instance_valid(G.screens):
+		if G.screens.current_screen == ScreensMain.ScreenType.GAME:
+			G.screens.client_open_screen(ScreensMain.ScreenType.PAUSE)
+
 	G.print(
 		"Client synchronized pause at frame %d" % server_frame_index,
 		ScaffolderLog.CATEGORY_NETWORK_SYNC,
@@ -784,7 +894,7 @@ func _client_execute_pause_at_server_frame(
 
 
 ## Execute unpause on client at server-specified frame (client-side).
-func _client_server_execute_unpause_at_server_frame(
+func _client_execute_unpause_at_server_frame(
 		server_unpause_frame: int,
 		server_unpause_time_usec: int,
 		server_cumulative_paused_frames: int,
@@ -802,12 +912,22 @@ func _client_server_execute_unpause_at_server_frame(
 	_is_paused = false
 	_pause_start_frame_index = 0
 
+	# Reset pause state variables.
+	_pause_initiator_peer_id = 0
+	_pause_initiator_pauses_used = 0
+	_pause_auto_unpause_time_usec = 0
+
 	# Unpause Godot scene tree.
 	if is_inside_tree():
 		get_tree().paused = false
 
 	# Unpause time tracking.
 	G.network.time.unpause()
+
+	# Auto-close pause screen and return to game.
+	if is_instance_valid(G.screens):
+		if G.screens.current_screen == ScreensMain.ScreenType.PAUSE:
+			G.screens.client_open_screen(ScreensMain.ScreenType.GAME)
 
 	G.print(
 		"Client synchronized unpause at frame %d (cumulative paused: %d)" % [

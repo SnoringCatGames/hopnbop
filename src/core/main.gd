@@ -80,8 +80,9 @@ func _notification(notification_type: int) -> void:
 			_disconnect_peers_in_preview_mode()
 			close_app()
 		NOTIFICATION_WM_WINDOW_FOCUS_OUT:
-			if G.settings.pauses_on_focus_out:
-				_client_local_pause()
+			if (G.settings.pauses_on_focus_out and
+					G.settings.is_server_pause_enabled):
+				G.network.frame_driver.client_request_pause()
 		_:
 			pass
 
@@ -102,8 +103,8 @@ func _unhandled_input(event: InputEvent) -> void:
 							ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 						)
 				KEY_ESCAPE:
-					if G.settings.pauses_on_focus_out:
-						_client_local_pause()
+					if G.settings.is_server_pause_enabled:
+						G.network.frame_driver.client_request_pause()
 				KEY_F1:
 					if is_instance_valid(G.super_hud):
 						G.super_hud.toggle_debug_console()
@@ -122,14 +123,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	):
 		G.network.frame_driver.client_request_toggle_pause()
 		get_viewport().set_input_as_handled()
-
-
-func _client_local_pause() -> void:
-	if G.network.is_server:
-		return
-
-	if G.screens.current_screen == ScreensMain.ScreenType.GAME:
-		G.screens.client_open_screen(ScreensMain.ScreenType.PAUSE)
 
 
 func close_app() -> void:

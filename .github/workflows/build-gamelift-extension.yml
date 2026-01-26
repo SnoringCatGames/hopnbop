@@ -101,6 +101,10 @@ jobs:
           find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i '' -E 's/cmake_minimum_required\(VERSION ([0-9]+(\.[0-9]+)?)\)/cmake_minimum_required(VERSION 3.5...3.30)/g'
           find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i '' -E 's/CMAKE_MINIMUM_REQUIRED\(VERSION ([0-9]+(\.[0-9]+)?)\)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/g'
 
+          # Recursively patch all CMakeLists.txt files in cmake-build/thirdparty and subfolders to require CMake >= 3.5 (BSD sed syntax)
+          find cmake-build/thirdparty -name 'CMakeLists.txt' -print0 | xargs -0 sed -i '' -E 's/cmake_minimum_required\(VERSION ([0-9]+(\.[0-9]+)?)\)/cmake_minimum_required(VERSION 3.5...3.30)/g'
+          find cmake-build/thirdparty -name 'CMakeLists.txt' -print0 | xargs -0 sed -i '' -E 's/CMAKE_MINIMUM_REQUIRED\(VERSION ([0-9]+(\.[0-9]+)?)\)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/g'
+
           cmake --build . -j$(nproc)
 
       - name: Build GDExtension (Release)

@@ -1,6 +1,7 @@
 class_name MatchState
 extends RefCounted
 
+
 signal player_connected(player: PlayerMatchState)
 signal player_disconnected(player: PlayerMatchState)
 
@@ -27,20 +28,25 @@ var packed_players := []:
 ##
 ## Every even index is the killer, and every odd index is the killee for the
 ## prior index.
-var kills: PackedInt32Array = []:
-	set(value):
-		kills = value
-		kills_updated.emit()
+var kills: PackedInt32Array = []
 
 ## A bump happens when two bunnies collide, but neither dies.
 ##
 ## Every even index marks a 2-player pair.
-var bumps: PackedInt32Array = []:
-	set(value):
-		bumps = value
-		bumps_updated.emit()
+var bumps: PackedInt32Array = []
+
+# Dictionary<int, int>
+var _total_kills_by_player_id := {}
+# Dictionary<int, int>
+var _total_deaths_by_player_id := {}
+# Dictionary<int, int>
+var _total_bumps_by_player_id := {}
 
 var _is_packing_state_locally := false
+
+# Dictionary<int, int> - Maps peer_id to number of pauses used.
+# Replicated from server to clients via MatchStateSynchronizer.
+var pauses_used_by_peer: Dictionary = {}
 
 # Dictionary<int, bool>
 var _connected_players := {}
@@ -51,6 +57,10 @@ func clear() -> void:
 	packed_players.clear()
 	kills.clear()
 	bumps.clear()
+	pauses_used_by_peer.clear()
+	_total_kills_by_player_id.clear()
+	_total_deaths_by_player_id.clear()
+	_total_bumps_by_player_id.clear()
 
 
 func duplicate() -> MatchState:
@@ -68,6 +78,36 @@ func server_add_player(player: PlayerMatchState) -> void:
 	_connected_players[player.player_id] = true
 	player_connected.emit(player)
 	players_updated.emit()
+
+
+func server_add_kill(killer_id: int, killee_id: int) -> void:
+	kills.append_array([killer_id, killee_id])
+	kills = kills.duplicate()
+
+	if not _total_kills_by_player_id.has(killer_id):
+		_total_kills_by_player_id[killer_id] = 0
+	_total_kills_by_player_id[killer_id] += 1
+
+	if not _total_deaths_by_player_id.has(killee_id):
+		_total_deaths_by_player_id[killee_id] = 0
+	_total_deaths_by_player_id[killee_id] += 1
+
+	kills_updated.emit()
+
+
+func server_add_bump(player_1_id: int, player_2_id: int) -> void:
+	bumps.append_array([player_1_id, player_2_id])
+	bumps = bumps.duplicate()
+
+	if not _total_bumps_by_player_id.has(player_1_id):
+		_total_bumps_by_player_id[player_1_id] = 0
+	_total_bumps_by_player_id[player_1_id] += 1
+
+	if not _total_bumps_by_player_id.has(player_2_id):
+		_total_bumps_by_player_id[player_2_id] = 0
+	_total_bumps_by_player_id[player_2_id] += 1
+
+	bumps_updated.emit()
 
 
 func server_on_player_disconnected(player: PlayerMatchState) -> void:
