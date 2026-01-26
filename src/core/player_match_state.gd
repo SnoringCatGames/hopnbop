@@ -7,6 +7,10 @@ extends RefCounted
 ## - State that needs to sync every frame should instead be tracked in
 ##   CharacterStateFromServer (or a subclass of it).
 
+
+const _BODY_TYPE_COUNT := 1
+const _COSTUME_COUNT := 1
+
 const _PROPERTY_NAMES := [
 	"player_id",
 	"peer_id",
@@ -23,6 +27,9 @@ var peer_id: int = 0
 var local_player_index: int = 0
 var bunny_name := ""
 var adjective := ""
+var body_type_index := 0
+var costume_index := 0
+var outline_color := Color.WHITE
 var is_soft := true
 var connect_time_usec := 0
 var disconnect_time_usec := 0
@@ -97,6 +104,13 @@ func set_up(
 		BunnyWords.HARD_ADJECTIVES
 	)
 	adjective = adjectives.pick_random()
+
+	# TODO: Add support for different body and costume types.
+	body_type_index = 0
+	costume_index = 0
+
+	# FIXME: Add support for assigning colors on the server.
+	outline_color = Color.WHITE
 
 
 func get_string() -> String:

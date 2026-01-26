@@ -49,8 +49,7 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 #
-# LEFT OFF HERE:
-# - Test GDExtension Windows build.
+#
 #
 #
 # Proceed with the "AWS GameLift Deployment Guide"
@@ -96,7 +95,7 @@ extends Node
 #     - a leaderboard
 #   - Implement a way to make friends and to join matches with friends.
 
-# - Assign name and adjective when joining locally in the lobby.
+# - Assign name and adjective when joining locally in the lobby. ---------------
 #   - Also assign a random character-sprite/costume to each player.
 #   - Also assign a random color to each player.
 #     - Define an algorithm to calculate these colors. Simply divide the hue
