@@ -21,6 +21,14 @@ static func setup_mock_level(parent_node: Node) -> MockLevel:
 		# Set start time offset to initialize time synchronization
 		G.network.time._start_time_offset_usec = 0
 
+	# Mock G.match_state for player initialization.
+	if not is_instance_valid(G.match_state):
+		G.match_state = MatchState.new()
+
+	# Mock G.local_session for lobby operations.
+	if not is_instance_valid(G.local_session):
+		G.local_session = LocalSession.new()
+
 	return mock_level
 
 
@@ -171,3 +179,5 @@ static func setup_player_with_networking(
 ## Cleanup mock level from G singleton.
 static func cleanup_mock_level() -> void:
 	G.level = null
+	G.match_state = null
+	G.local_session = null

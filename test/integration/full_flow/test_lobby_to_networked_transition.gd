@@ -20,12 +20,20 @@ class TestFullPlayerFlow:
 		mock_level = MockLevel.new()
 		G.level = mock_level
 
+		# Mock G.local_session.
+		G.local_session = LocalSession.new()
+
+		# Mock G.match_state.
+		G.match_state = MatchState.new()
+
 		lobby = LOBBY_LEVEL_SCENE.instantiate()
 		root_node.add_child(lobby)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
 		G.level = null
+		G.local_session = null
+		G.match_state = null
 		if is_instance_valid(mock_level):
 			mock_level.queue_free()
 
@@ -105,12 +113,20 @@ class TestDeviceConfigThreading:
 		mock_level = MockLevel.new()
 		G.level = mock_level
 
+		# Mock G.local_session.
+		G.local_session = LocalSession.new()
+
+		# Mock G.match_state.
+		G.match_state = MatchState.new()
+
 		lobby = LOBBY_LEVEL_SCENE.instantiate()
 		root_node.add_child(lobby)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
 		G.level = null
+		G.local_session = null
+		G.match_state = null
 		if is_instance_valid(mock_level):
 			mock_level.queue_free()
 
@@ -152,12 +168,20 @@ class TestLocalSessionCleaning:
 		mock_level = MockLevel.new()
 		G.level = mock_level
 
+		# Mock G.local_session.
+		G.local_session = LocalSession.new()
+
+		# Mock G.match_state.
+		G.match_state = MatchState.new()
+
 		lobby = LOBBY_LEVEL_SCENE.instantiate()
 		root_node.add_child(lobby)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
 		G.level = null
+		G.local_session = null
+		G.match_state = null
 		if is_instance_valid(mock_level):
 			mock_level.queue_free()
 
@@ -197,12 +221,20 @@ class TestLobbyPlayerIsolation:
 		mock_level = MockLevel.new()
 		G.level = mock_level
 
+		# Mock G.local_session.
+		G.local_session = LocalSession.new()
+
+		# Mock G.match_state.
+		G.match_state = MatchState.new()
+
 		lobby = LOBBY_LEVEL_SCENE.instantiate()
 		root_node.add_child(lobby)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
 		G.level = null
+		G.local_session = null
+		G.match_state = null
 		if is_instance_valid(mock_level):
 			mock_level.queue_free()
 

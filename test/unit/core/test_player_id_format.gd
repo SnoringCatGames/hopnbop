@@ -35,28 +35,28 @@ class TestPlayerMatchStateWithInts:
 
 	func test_player_match_state_stores_int_player_id():
 		var player := PlayerMatchState.new()
-		player.set_up(42, 1234, 0, true)
+		player.set_up(42, 1234, 0, NetworkConnector._get_fallback_attributes())
 
 		assert_eq(player.player_id, 42)
 		assert_typeof(player.player_id, TYPE_INT)
 
 	func test_player_match_state_stores_explicit_peer_id():
 		var player := PlayerMatchState.new()
-		player.set_up(42, 1234, 0, true)
+		player.set_up(42, 1234, 0, NetworkConnector._get_fallback_attributes())
 
 		assert_eq(player.peer_id, 1234)
 		assert_typeof(player.peer_id, TYPE_INT)
 
 	func test_player_match_state_stores_explicit_local_index():
 		var player := PlayerMatchState.new()
-		player.set_up(42, 1234, 2, true)
+		player.set_up(42, 1234, 2, NetworkConnector._get_fallback_attributes())
 
 		assert_eq(player.local_player_index, 2)
 		assert_typeof(player.local_player_index, TYPE_INT)
 
 	func test_player_match_state_with_negative_lobby_id():
 		var player := PlayerMatchState.new()
-		player.set_up(-1, 0, 0, true)
+		player.set_up(-1, 0, 0, NetworkConnector._get_fallback_attributes())
 
 		assert_eq(player.player_id, -1)
 		assert_lt(player.player_id, 0)
@@ -67,7 +67,7 @@ class TestPlayerMatchStateWithInts:
 		# Simulate server assigning IDs 1, 2, 3 to peer 1234
 		for i in range(3):
 			var player := PlayerMatchState.new()
-			player.set_up(i + 1, 1234, i, true)
+			player.set_up(i + 1, 1234, i, NetworkConnector._get_fallback_attributes())
 			players.append(player)
 
 		assert_eq(players[0].player_id, 1)
@@ -88,7 +88,7 @@ class TestPlayerIdPacking:
 
 	func test_packed_state_preserves_int_player_id():
 		var player := PlayerMatchState.new()
-		player.set_up(42, 1234, 0, true)
+		player.set_up(42, 1234, 0, NetworkConnector._get_fallback_attributes())
 
 		var packed := player.get_packed_state()
 		var player_id_from_packed := PlayerMatchState.get_player_id_from_packed_state(packed)
@@ -98,7 +98,7 @@ class TestPlayerIdPacking:
 
 	func test_packed_state_preserves_peer_id_and_local_index():
 		var player := PlayerMatchState.new()
-		player.set_up(42, 1234, 2, true)
+		player.set_up(42, 1234, 2, NetworkConnector._get_fallback_attributes())
 
 		var packed := player.get_packed_state()
 
@@ -111,7 +111,7 @@ class TestPlayerIdPacking:
 
 	func test_packed_state_with_negative_lobby_id():
 		var player := PlayerMatchState.new()
-		player.set_up(-1, 0, 0, true)
+		player.set_up(-1, 0, 0, NetworkConnector._get_fallback_attributes())
 
 		var packed := player.get_packed_state()
 		var player_id_from_packed := PlayerMatchState.get_player_id_from_packed_state(packed)
@@ -129,7 +129,7 @@ class TestPlayerIdEdgeCases:
 	func test_very_large_positive_player_id():
 		var player := PlayerMatchState.new()
 		var large_id := 2147483647 # Max int32
-		player.set_up(large_id, 1, 0, true)
+		player.set_up(large_id, 1, 0, NetworkConnector._get_fallback_attributes())
 
 		assert_eq(player.player_id, large_id)
 

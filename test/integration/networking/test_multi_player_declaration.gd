@@ -29,11 +29,16 @@ class TestMatchStateSynchronizerPlayerCreation:
 		var synchronizer := MatchStateSynchronizer.new()
 		var peer_id := 1234
 		var assigned_ids: Array[int] = [1, 2]
+		var attributes := [
+			NetworkConnector._get_fallback_attributes(),
+			NetworkConnector._get_fallback_attributes(),
+		]
 
 		# Simulate server assigning IDs 1 and 2 to this peer.
 		synchronizer._server_on_peer_players_declared(
 			peer_id,
-			assigned_ids
+			assigned_ids,
+			attributes
 		)
 
 		# Verify 2 PlayerMatchState objects created with int keys.
@@ -44,7 +49,12 @@ class TestMatchStateSynchronizerPlayerCreation:
 	func test_player_ids_are_sequential_ints():
 		var synchronizer := MatchStateSynchronizer.new()
 		var assigned_ids: Array[int] = [1, 2, 3]
-		synchronizer._server_on_peer_players_declared(1, assigned_ids)
+		var attributes := [
+			NetworkConnector._get_fallback_attributes(),
+			NetworkConnector._get_fallback_attributes(),
+			NetworkConnector._get_fallback_attributes(),
+		]
+		synchronizer._server_on_peer_players_declared(1, assigned_ids, attributes)
 
 		var player_ids := synchronizer.state.players_by_id.keys()
 		assert_has(player_ids, 1)
@@ -59,7 +69,12 @@ class TestMatchStateSynchronizerPlayerCreation:
 		var synchronizer := MatchStateSynchronizer.new()
 		var peer_id := 5678
 		var assigned_ids: Array[int] = [10, 11]
-		synchronizer._server_on_peer_players_declared(peer_id, assigned_ids)
+		var attributes := [
+			NetworkConnector._get_fallback_attributes(),
+			NetworkConnector._get_fallback_attributes(),
+		]
+		synchronizer._server_on_peer_players_declared(
+			peer_id, assigned_ids, attributes)
 
 		var player0: PlayerMatchState = synchronizer.state.players_by_id[10]
 		var player1: PlayerMatchState = synchronizer.state.players_by_id[11]
@@ -78,10 +93,17 @@ class TestMatchStateSynchronizerPlayerCreation:
 		var synchronizer := MatchStateSynchronizer.new()
 
 		# Peer 1 gets IDs [1, 2]
-		synchronizer._server_on_peer_players_declared(1, [1, 2])
+		synchronizer._server_on_peer_players_declared(1, [1, 2],
+		[
+			NetworkConnector._get_fallback_attributes(),
+			NetworkConnector._get_fallback_attributes(),
+		])
 
 		# Peer 2 gets IDs [3]
-		synchronizer._server_on_peer_players_declared(2, [3])
+		synchronizer._server_on_peer_players_declared(2, [3],
+		[
+			NetworkConnector._get_fallback_attributes()
+		])
 
 		assert_eq(synchronizer.state.players_by_id.size(), 3)
 		assert_has(synchronizer.state.players_by_id, 1)
@@ -109,6 +131,9 @@ class TestNetworkedLevelPlayerSpawning:
 		mock_game_panel = MockGamePanel.new()
 		G.game_panel = mock_game_panel
 
+		# Mock G.match_state.
+		G.match_state = MatchState.new()
+
 		# Create networked level.
 		networked_level = DEFAULT_LEVEL_SCENE.instantiate()
 		root_node.add_child(networked_level)
@@ -117,6 +142,7 @@ class TestNetworkedLevelPlayerSpawning:
 	func after_each():
 		ArrayPool.clear_all_pools()
 		G.game_panel = null
+		G.match_state = null
 		if is_instance_valid(mock_game_panel):
 			mock_game_panel.queue_free()
 
@@ -150,15 +176,23 @@ class TestPlayerIdFormatConsistency:
 		var mock_game_panel := MockGamePanel.new()
 		G.game_panel = mock_game_panel
 
+		# Mock G.match_state.
+		G.match_state = MatchState.new()
+
 		var networked_level := DEFAULT_LEVEL_SCENE.instantiate()
 		root_node.add_child(networked_level)
 		G.level = networked_level
 
 		var peer_id := 1234
 		var assigned_ids: Array[int] = [1, 2]
+		var attributes := [
+			NetworkConnector._get_fallback_attributes(),
+			NetworkConnector._get_fallback_attributes(),
+		]
 
 		# Create players in both systems with same assigned IDs.
-		synchronizer._server_on_peer_players_declared(peer_id, assigned_ids)
+		synchronizer._server_on_peer_players_declared(
+			peer_id, assigned_ids, attributes)
 		networked_level._server_register_players_for_peer(peer_id, assigned_ids)
 
 		# Verify IDs match (both use int keys now).
@@ -171,6 +205,7 @@ class TestPlayerIdFormatConsistency:
 
 		# Cleanup.
 		G.game_panel = null
+		G.match_state = null
 		mock_game_panel.queue_free()
 
 

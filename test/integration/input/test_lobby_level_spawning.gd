@@ -27,6 +27,13 @@ class TestKeyboardPlayerSpawning:
 		ArrayPool.clear_all_pools()
 		root_node = Node.new()
 		add_child_autofree(root_node)
+
+		# Mock G.local_session.
+		G.local_session = LocalSession.new()
+
+		# Mock G.match_state.
+		G.match_state = MatchState.new()
+
 		lobby_level = preload(
 			"res://src/level/lobby_level.tscn"
 		).instantiate()
@@ -35,6 +42,9 @@ class TestKeyboardPlayerSpawning:
 
 	func after_each():
 		ArrayPool.clear_all_pools()
+		G.level = null
+		G.local_session = null
+		G.match_state = null
 
 	func test_spawn_keyboard_player_first():
 		lobby_level._try_register_keyboard_player(
@@ -103,6 +113,13 @@ class TestGamepadPlayerSpawning:
 		ArrayPool.clear_all_pools()
 		root_node = Node.new()
 		add_child_autofree(root_node)
+
+		# Mock G.local_session.
+		G.local_session = LocalSession.new()
+
+		# Mock G.match_state.
+		G.match_state = MatchState.new()
+
 		lobby_level = preload(
 			"res://src/level/lobby_level.tscn"
 		).instantiate()
@@ -111,6 +128,9 @@ class TestGamepadPlayerSpawning:
 
 	func after_each():
 		ArrayPool.clear_all_pools()
+		G.level = null
+		G.local_session = null
+		G.match_state = null
 
 	func test_spawn_gamepad_gets_first_slot():
 		lobby_level._try_register_gamepad_player(0)
@@ -176,6 +196,13 @@ class TestPlayerDespawning:
 		ArrayPool.clear_all_pools()
 		root_node = Node.new()
 		add_child_autofree(root_node)
+
+		# Mock G.local_session.
+		G.local_session = LocalSession.new()
+
+		# Mock G.match_state.
+		G.match_state = MatchState.new()
+
 		lobby_level = preload(
 			"res://src/level/lobby_level.tscn"
 		).instantiate()
@@ -184,6 +211,9 @@ class TestPlayerDespawning:
 
 	func after_each():
 		ArrayPool.clear_all_pools()
+		G.level = null
+		G.local_session = null
+		G.match_state = null
 
 	func test_deregister_player_by_device_name():
 		lobby_level._try_register_keyboard_player(
@@ -227,6 +257,13 @@ class TestMatchStartTransition:
 		ArrayPool.clear_all_pools()
 		root_node = Node.new()
 		add_child_autofree(root_node)
+
+		# Mock G.local_session.
+		G.local_session = LocalSession.new()
+
+		# Mock G.match_state.
+		G.match_state = MatchState.new()
+
 		lobby_level = preload(
 			"res://src/level/lobby_level.tscn"
 		).instantiate()
@@ -235,6 +272,9 @@ class TestMatchStartTransition:
 
 	func after_each():
 		ArrayPool.clear_all_pools()
+		G.level = null
+		G.local_session = null
+		G.match_state = null
 
 	func test_can_start_match_with_players():
 		lobby_level._try_register_keyboard_player(
@@ -268,6 +308,13 @@ class TestLobbyLevelPlayerPositioning:
 		ArrayPool.clear_all_pools()
 		root_node = Node.new()
 		add_child_autofree(root_node)
+
+		# Mock G.local_session.
+		G.local_session = LocalSession.new()
+
+		# Mock G.match_state.
+		G.match_state = MatchState.new()
+
 		lobby_level = preload(
 			"res://src/level/lobby_level.tscn"
 		).instantiate()
@@ -276,6 +323,9 @@ class TestLobbyLevelPlayerPositioning:
 
 	func after_each():
 		ArrayPool.clear_all_pools()
+		G.level = null
+		G.local_session = null
+		G.match_state = null
 
 	func test_players_spawn_at_same_position():
 		lobby_level._try_register_keyboard_player(
