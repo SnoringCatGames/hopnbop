@@ -312,14 +312,14 @@ jobs:
     if: needs.check-changes.outputs.should_run == 'true'
     runs-on: macos-latest
     steps:
-      - name: Clean previous build (macOS)
-        working-directory: gamelift-gdextension/gamelift-server-sdk
-        run: |
-          rm -rf cmake-build
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Clean previous build (macOS)
+        working-directory: gamelift-gdextension/gamelift-server-sdk
+        run: |
+          rm -rf cmake-build
 
       - name: Install dependencies
         run: |
