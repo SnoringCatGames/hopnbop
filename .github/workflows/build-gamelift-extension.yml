@@ -81,6 +81,13 @@ jobs:
           find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i '' -E 's/cmake_minimum_required\(VERSION ([0-9]+(\.[0-9]+)?)\)/cmake_minimum_required(VERSION 3.5...3.30)/g'
           find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i '' -E 's/CMAKE_MINIMUM_REQUIRED\(VERSION ([0-9]+(\.[0-9]+)?)\)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/g'
 
+      - name: Patch all CMakeLists.txt for modern CMake (Linux)
+        working-directory: gamelift-gdextension/gamelift-server-sdk
+        run: |
+          # Recursively patch all CMakeLists.txt files (including thirdparty) for CMake >= 3.5 (GNU sed syntax)
+          find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i -E 's/cmake_minimum_required\(VERSION ([0-9]+(\.[0-9]+)?)\)/cmake_minimum_required(VERSION 3.5...3.30)/g'
+          find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i -E 's/CMAKE_MINIMUM_REQUIRED\(VERSION ([0-9]+(\.[0-9]+)?)\)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/g'
+
       - name: Build GameLift Server SDK
         working-directory: gamelift-gdextension/gamelift-server-sdk
         run: |
@@ -222,7 +229,7 @@ jobs:
                 $content = [regex]::Replace($content, '(project\([^)]+\))', "$1`n$mtPatch")
                 Set-Content $cmakeFile -Value $content -NoNewline
               } elseif ($content -match 'if\(MSVC\).*add_compile_options\(/bigobj\)') {
-                $content = [regex]::Replace($content, '(if\\(MSVC\\)\\s+add_compile_options\\(/bigobj\\))', "$1`n    set(CMAKE_MSVC_RUNTIME_LIBRARY \"MultiThreaded$<`<CONFIG:Debug`>:Debug>\")")
+                $content = [regex]::Replace($content, '(if\\\\(MSVC\\\\)\\\\s+add_compile_options\\\\(/bigobj\\\\))', "$1`n    set(CMAKE_MSVC_RUNTIME_LIBRARY \"MultiThreaded$<`<CONFIG:Debug`>:Debug>\")")
                 Set-Content $cmakeFile -Value $content -NoNewline
               }
             }
