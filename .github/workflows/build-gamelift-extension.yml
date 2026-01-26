@@ -97,6 +97,7 @@ jobs:
           }
 
       - name: Patch all CMakeLists.txt for modern CMake (macOS)
+        if: runner.os == 'macOS'
         working-directory: gamelift-gdextension/gamelift-server-sdk
         run: |
           # Recursively patch all CMakeLists.txt files (including thirdparty) for CMake >= 3.5 (BSD sed syntax)
@@ -251,7 +252,7 @@ jobs:
                 $content = [regex]::Replace($content, '(project\([^)]+\))', "$1`n$mtPatch")
                 Set-Content $cmakeFile -Value $content -NoNewline
               } elseif ($content -match 'if\(MSVC\).*add_compile_options\(/bigobj\)') {
-                $content = [regex]::Replace($content, '(if\\\\(MSVC\\\\)\\\\s+add_compile_options\\\\(/bigobj\\\\))', "$1`n    set(CMAKE_MSVC_RUNTIME_LIBRARY \"MultiThreaded$<`<CONFIG:Debug`>:Debug>\")")
+                $content = [regex]::Replace($content, '(if\\(MSVC\\)\\s+add_compile_options\\(/bigobj\\))', "$1`n    set(CMAKE_MSVC_RUNTIME_LIBRARY \"MultiThreaded$<`<CONFIG:Debug`>:Debug>\")")
                 Set-Content $cmakeFile -Value $content -NoNewline
               }
             }
