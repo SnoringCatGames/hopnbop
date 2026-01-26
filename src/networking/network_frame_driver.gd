@@ -49,7 +49,9 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 #
-#
+# - Implement Lobby.
+# - Also add text outline to player over-head name display that matches their
+#   assigned color.
 #
 #
 # Proceed with the "AWS GameLift Deployment Guide"

@@ -1,8 +1,10 @@
 @tool
 class_name Level
 extends Node2D
-
 ## Abstract base class for all level types (lobby, networked gameplay).
+
+
+@export var level_camera: Camera2D
 
 ## This is the location where all player nodes should be spawned.
 @export var players_node: Node2D:

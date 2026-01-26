@@ -164,3 +164,10 @@ func start_match() -> void:
 static func get_local_player_id(local_player_index: int) -> int:
 	# Lobby players use negative IDs: -1, -2, -3, etc.
 	return -(local_player_index + 1)
+
+
+func _on_rabbit_hole_body_entered(body: Node2D) -> void:
+	if not G.ensure(body is Player):
+		return
+
+	start_match()

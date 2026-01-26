@@ -46,6 +46,18 @@ texture = ExtResource("1_awer5")
 4:3/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
 5:3/0 = 0
 5:3/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+6:1/0 = 0
+6:1/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, -3.4622812, -8, -3.6421394, 8, -8, 8)
+7:1/0 = 0
+7:1/0/physics_layer_0/polygon_0/points = PackedVector2Array(3.3723507, -8, 8, -8, 8, 8, 3.4622803, 8)
+7:2/0 = 0
+6:2/0 = 0
+6:3/0 = 0
+7:3/0 = 0
+4:0/0 = 0
+5:0/0 = 0
+6:0/0 = 0
+7:0/0 = 0
 
 [resource]
 physics_layer_0/collision_layer = 1
