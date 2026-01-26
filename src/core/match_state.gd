@@ -131,6 +131,7 @@ func emit_bump_event(a: PlayerMatchState, b: PlayerMatchState) -> void:
 func server_on_player_disconnected(player: PlayerMatchState) -> void:
 	_connected_players.erase(player.player_id)
 	player_left.emit(player)
+	players_updated.emit()
 
 
 func get_players_for_peer(peer_id: int) -> Array[PlayerMatchState]:
