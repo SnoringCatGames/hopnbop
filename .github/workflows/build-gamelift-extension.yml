@@ -198,8 +198,8 @@ jobs:
 
           # Recursively patch all CMakeLists.txt files for /MT runtime (use here-string for multiline)
             $mtPatch = @"
-        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<${{ '<' }}CONFIG:Debug>:Debug>")
-      "@
+          set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<${{ '<' }}CONFIG:Debug>:Debug>")
+  "@
 
           # Clean build directory
           if (Test-Path cmake-build) { Remove-Item -Recurse -Force cmake-build }
