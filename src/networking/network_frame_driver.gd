@@ -620,7 +620,7 @@ func _server_rpc_client_request_pause() -> void:
 		return
 
 	# Check pause limit for this peer.
-	var pauses_used := G.game_panel.match_state.pauses_used_by_peer.get(peer_id, 0)
+	var pauses_used: int = G.game_panel.match_state.pauses_used_by_peer.get(peer_id, 0)
 	if pauses_used >= G.settings.max_pauses_per_client:
 		G.print(
 			"Client %d requested pause, but has exhausted pause limit (%d/%d)" % [

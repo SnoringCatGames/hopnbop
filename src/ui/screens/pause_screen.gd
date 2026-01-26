@@ -31,7 +31,7 @@ func _update_pause_info() -> void:
 	%PausedByLabel.text = "Paused by client %d" % initiator_peer_id
 
 	# Update pauser's pauses remaining.
-	var pauser_remaining := max(0, max_pauses - initiator_pauses_used)
+	var pauser_remaining := maxi(0, max_pauses - initiator_pauses_used)
 	%PauserPausesRemainingLabel.text = "Pauses remaining for pauser: %d/%d" % [
 		pauser_remaining,
 		max_pauses,
@@ -43,7 +43,7 @@ func _update_pause_info() -> void:
 	if G.game_panel.match_state.pauses_used_by_peer.has(local_peer_id):
 		local_pauses_used = G.game_panel.match_state.pauses_used_by_peer[local_peer_id]
 
-	var local_remaining := max(0, max_pauses - local_pauses_used)
+	var local_remaining := maxi(0, max_pauses - local_pauses_used)
 	%LocalPausesRemainingLabel.text = "Your pauses remaining: %d/%d" % [
 		local_remaining,
 		max_pauses,
@@ -65,7 +65,7 @@ func _update_countdown() -> void:
 
 	if auto_unpause_time > 0:
 		var remaining_usec := auto_unpause_time - Time.get_ticks_usec()
-		var remaining_sec := max(0, ceili(remaining_usec / 1_000_000.0))
+		var remaining_sec := maxi(0, ceili(remaining_usec / 1_000_000.0))
 		%TimeRemainingLabel.text = "Auto-unpause in: %d seconds" % remaining_sec
 	else:
 		%TimeRemainingLabel.text = ""
