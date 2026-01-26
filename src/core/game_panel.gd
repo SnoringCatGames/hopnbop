@@ -130,6 +130,13 @@ func _client_on_server_connected() -> void:
 func _client_on_server_disconnected() -> void:
 	G.check_is_client()
 
+	var reason := G.network.connector.last_disconnect_reason
+	G.print(
+		"Disconnected: %s" %
+			NetworkConnector.DisconnectReason.keys()[reason],
+		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+	)
+
 	client_exit_game()
 
 

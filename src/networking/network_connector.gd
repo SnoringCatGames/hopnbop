@@ -32,6 +32,14 @@ signal peer_players_declared(
 	assigned_ids: Array[int]
 )
 
+## Tracks the reason for client disconnection.
+enum DisconnectReason {
+	UNKNOWN,
+	CLIENT_INITIATED,
+	SERVER_SHUTDOWN,
+	CONNECTION_LOST,
+}
+
 const SERVER_ID := 1
 
 ## Transfer channel for pause/unpause RPCs. Using a dedicated channel ensures
@@ -40,6 +48,12 @@ const RPC_CHANNEL_PAUSE := 1
 
 var is_connected_to_server := false
 
+## Last disconnect reason for displaying user-friendly messages.
+var last_disconnect_reason := DisconnectReason.UNKNOWN
+
+var server_ip_address := ""
+var server_port := 0
+
 # Server-only: Counter for assigning sequential player IDs.
 var _next_player_id: int = 1
 
@@ -47,9 +61,6 @@ var _next_player_id: int = 1
 var _player_id_to_peer_id := {}
 # Dictionary<int, int>
 var _player_id_to_local_player_index := {}
-
-var server_ip_address := ""
-var server_port := 0
 
 
 func _enter_tree() -> void:
@@ -87,6 +98,9 @@ func server_enable_connections() -> void:
 
 func client_connect_to_server() -> void:
 	G.check_is_client()
+
+	# Reset disconnect reason for new connection attempt.
+	last_disconnect_reason = DisconnectReason.UNKNOWN
 
 	# TODO: Also support websocket or webrtc as needed.
 
@@ -151,7 +165,12 @@ func _on_peer_disconnected(peer_id: int) -> void:
 		if peer_id != SERVER_ID:
 			return
 
-		G.print("Disconnect from server", ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
+		# Set reason if not already set by shutdown notification
+		if last_disconnect_reason == DisconnectReason.UNKNOWN:
+			last_disconnect_reason = DisconnectReason.CONNECTION_LOST
+
+		G.print("Disconnect from server",
+			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 		_client_update_is_connected_to_server()
 		G.main.update_window_title()
 
@@ -216,7 +235,11 @@ func server_close_multiplayer_session() -> void:
 func client_disconnect() -> void:
 	G.check_is_client()
 
-	G.print("Disconnecting from server", ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
+	# Mark as client-initiated disconnect
+	last_disconnect_reason = DisconnectReason.CLIENT_INITIATED
+
+	G.print("Disconnecting from server",
+		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
 	if multiplayer.multiplayer_peer.is_connected:
 		multiplayer.multiplayer_peer.disconnect_peer(SERVER_ID)

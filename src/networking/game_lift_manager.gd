@@ -418,10 +418,22 @@ func _on_process_terminate_requested() -> void:
 			ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 		)
 
+	# Notify clients BEFORE disconnecting them.
+	if is_inside_tree():
+		var shutdown_msg := (
+			"This server needs to restart.\n" +
+			"Sorry about the interruption, and thanks for playing!\n" +
+			"Please start another match."
+		)
+		G.network.frame_driver._client_rpc_notify_shutdown.rpc(shutdown_msg)
+
+		# Wait 1 second for RPC delivery (reliable channel ensures delivery).
+		await get_tree().create_timer(1.0).timeout
+
 	# Stop accepting new players
 	_gamelift.update_player_session_creation_policy(_gamelift.DENY_ALL)
 
-	# Notify game panel to shut down gracefully
+	# Notify game panel to shut down gracefully (disconnects clients)
 	if is_instance_valid(G.game_panel):
 		G.game_panel.server_end_game()
 
@@ -436,7 +448,7 @@ func _on_process_terminate_requested() -> void:
 	_gamelift.destroy()
 
 	# Exit after brief delay
-	await get_tree().create_timer(2.0).timeout
+	await get_tree().create_timer(1.0).timeout
 	get_tree().quit()
 
 

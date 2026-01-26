@@ -587,8 +587,7 @@ func client_request_unpause() -> void:
 
 @rpc("any_peer", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _server_rpc_client_request_pause() -> void:
-	if G.network.is_client:
-		return
+	G.check_is_server()
 
 	if not G.settings.is_server_pause_enabled:
 		var peer_id := multiplayer.get_remote_sender_id()
@@ -612,8 +611,7 @@ func _server_rpc_client_request_pause() -> void:
 
 @rpc("any_peer", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _server_rpc_client_request_unpause() -> void:
-	if G.network.is_client:
-		return
+	G.check_is_server()
 
 	if not G.settings.is_server_pause_enabled:
 		var peer_id := multiplayer.get_remote_sender_id()
@@ -640,8 +638,7 @@ func _client_rpc_notify_pause(
 		server_pause_frame: int,
 		server_pause_time_usec: int,
 ) -> void:
-	if G.network.is_server:
-		return
+	G.check_is_client()
 
 	_client_execute_pause_at_server_frame(server_pause_frame, server_pause_time_usec)
 
@@ -654,14 +651,32 @@ func _client_rpc_notify_unpause(
 		server_unpause_time_usec: int,
 		server_cumulative_paused_frames: int,
 ) -> void:
-	if G.network.is_server:
-		return
+	G.check_is_client()
 
 	_client_server_execute_unpause_at_server_frame(
 		server_unpause_frame,
 		server_unpause_time_usec,
 		server_cumulative_paused_frames,
 	)
+
+
+## Server notifies all clients of impending graceful shutdown.
+## Called before disconnecting clients during Spot instance termination.
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
+func _client_rpc_notify_shutdown(shutdown_message: String) -> void:
+	G.check_is_client()
+
+	G.print(
+		"Server shutdown notification: %s" % shutdown_message,
+		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+	)
+
+	# Store reason in connector for disconnect handling.
+	G.network.connector.last_disconnect_reason = \
+		NetworkConnector.DisconnectReason.SERVER_SHUTDOWN
+
+	# Store message in LocalSession for game over screen display.
+	G.local_session.last_server_message = shutdown_message
 
 
 ## Internal method to execute pause on server or client.

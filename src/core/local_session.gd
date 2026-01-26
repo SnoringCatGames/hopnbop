@@ -19,6 +19,10 @@ var device_configs: Array[DeviceConfig] = []
 ## Array index corresponds to local_player_index.
 var session_ids: Array[String] = []
 
+## Message from server (e.g., shutdown notification) to display on game over
+## screen.
+var last_server_message := ""
+
 
 func _init() -> void:
 	clear()
@@ -41,6 +45,7 @@ func clear() -> void:
 	is_game_loading = false
 	session_ids.clear()
 	device_configs.clear()
+	last_server_message = ""
 
 
 func copy_match_state() -> void:

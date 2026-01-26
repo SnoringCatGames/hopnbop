@@ -1655,6 +1655,103 @@ This section provides step-by-step instructions for all manual AWS and third-par
      --certificate-path ./gamelift-cert.pem
    ```
 
+### Configure Spot Instances for Cost Savings
+
+Jump 'n Thump uses 5-minute matches, making Spot instances ideal for 70% cost savings with minimal disruption.
+
+#### 1. Create Spot Fleet
+
+Use AWS CLI to create a Spot fleet instead of On-Demand:
+
+```bash
+aws gamelift create-fleet \
+  --name "jumpnthump-spot-fleet" \
+  --description "Cost-optimized Spot instances for production" \
+  --build-id build-abc123... \
+  --ec2-instance-type c5.large \
+  --fleet-type SPOT \
+  --runtime-configuration "ServerProcesses=[{LaunchPath=/local/game/jumpnthump-server.x86_64,Parameters=--server,ConcurrentExecutions=1}]" \
+  --ec2-inbound-permissions "FromPort=4433,ToPort=4433,IpRange=0.0.0.0/0,Protocol=UDP" \
+  --region us-west-2
+```
+
+**Key parameter:** `--fleet-type SPOT` (instead of `ON_DEMAND`)
+
+#### 2. Graceful Shutdown Implementation
+
+The game handles Spot terminations gracefully:
+
+**Server behavior:**
+- GameLift signals termination → `game_lift_manager.gd:_on_process_terminate_requested()`
+- Server broadcasts: "Server is restarting. Thanks for playing! Feel free to start another match."
+- Waits 1 second for message delivery
+- Stops accepting new players
+- Disconnects all clients
+- Exits cleanly
+
+**Client behavior:**
+- Receives shutdown notification before disconnect
+- Stores message in `LocalSession.last_server_message`
+- Displays message on GAME_OVER screen
+- Player clicks "Play again" → returns to lobby
+- Can immediately start a new match
+
+**Implementation files:**
+- Server: [src/networking/game_lift_manager.gd](src/networking/game_lift_manager.gd#L407)
+- Client: [src/ui/screens/game_over_screen.gd](src/ui/screens/game_over_screen.gd#L9)
+
+#### 3. Spot Fleet Best Practices
+
+**Use multiple instance types** for better availability:
+```bash
+--ec2-instance-type c5.large,c5a.large,c5n.large
+```
+
+**Configure scaling for instance replacement:**
+```bash
+aws gamelift put-scaling-policy \
+  --name "spot-buffer-policy" \
+  --fleet-id fleet-abc123... \
+  --policy-type TargetBased \
+  --target-configuration "TargetValue=80.0" \
+  --metric-name PercentAvailableGameSessions
+```
+
+This ensures GameLift maintains 80% available capacity, automatically launching replacements when Spot instances terminate.
+
+**Monitor interruption rates:**
+- Navigate to CloudWatch console
+- Metrics → GameLift → Fleet Metrics → `FleetCapacity`
+- Create alarm if capacity drops below minimum threshold
+- Set alert for high interruption frequency (> 15% hourly)
+
+#### 4. Cost Analysis
+
+Based on c5.large in us-west-2 (January 2025 pricing):
+
+| Fleet Type | Cost per Hour | Monthly (10 instances) | Annual Cost | Savings |
+|------------|---------------|------------------------|-------------|---------|
+| On-Demand  | $0.085        | $612                   | $7,344      | -       |
+| Spot       | ~$0.026       | $187                   | $2,244      | **70%** |
+
+**Annual savings:** $5,100 for a 10-instance fleet
+
+Spot pricing varies by demand, but typically stays 60-80% cheaper than On-Demand.
+
+#### 5. When to Use Mixed Fleets (Optional)
+
+If you need guaranteed minimum capacity:
+- 20% On-Demand (baseline capacity that never terminates)
+- 80% Spot (cost-optimized burst capacity)
+
+**Trade-off:** Still saves ~55% while providing more stability.
+
+For Jump 'n Thump's 5-minute matches, **pure Spot is recommended** since:
+- Worst case: players lose ~2.5 minutes of gameplay
+- Interruptions are rare (5-10% of instances per day)
+- Players can immediately start a new match
+- Cost savings are maximized
+
 2. **Configure Scaling**
 
    For EC2 fleets:
