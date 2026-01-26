@@ -97,6 +97,10 @@ jobs:
             -DCMAKE_CXX_FLAGS="-fPIC" \
             -DRUN_UNIT_TESTS=OFF \
             ..
+          # Patch CMakeLists.txt files in build tree (including ExternalProject sources)
+          find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i '' -E 's/cmake_minimum_required\(VERSION ([0-9]+(\.[0-9]+)?)\)/cmake_minimum_required(VERSION 3.5...3.30)/g'
+          find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i '' -E 's/CMAKE_MINIMUM_REQUIRED\(VERSION ([0-9]+(\.[0-9]+)?)\)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/g'
+
           cmake --build . -j$(nproc)
 
       - name: Build GDExtension (Release)
@@ -188,24 +192,25 @@ jobs:
           (Get-Content CMakeLists.txt) -replace 'cmake_minimum_required\(VERSION 3\.1\)', 'cmake_minimum_required(VERSION 3.1...3.30)' | Set-Content CMakeLists.txt
           (Get-Content gamelift-server-sdk/CMakeLists.txt) -replace 'CMAKE_MINIMUM_REQUIRED\(VERSION 3\.1\)', 'CMAKE_MINIMUM_REQUIRED(VERSION 3.1...3.30)' | Set-Content gamelift-server-sdk/CMakeLists.txt
 
-          # Recursively patch all CMakeLists.txt files for /MT runtime (fix escaping)
+          # Recursively patch all CMakeLists.txt files for /MT runtime (use here-string for multiline)
+          $mtPatch = @"
+
+          # Clean build directory
+          if (Test-Path cmake-build) { Remove-Item -Recurse -Force cmake-build }
+
           Get-ChildItem -Path . -Filter CMakeLists.txt -Recurse | ForEach-Object {
             $cmakeFile = $_.FullName
             $content = Get-Content $cmakeFile -Raw
             if ($content -notmatch 'CMAKE_MSVC_RUNTIME_LIBRARY') {
               if ($content -match 'project\(') {
-                $content = $content -replace '(project\([^)]+\))', '$1`r`nif(MSVC)`r`n    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded``$<``$<CONFIG:Debug>:Debug>")`r`nendif()'
+                $content = [regex]::Replace($content, '(project\([^)]+\))', "${{ '$1' }}`n$mtPatch")
                 Set-Content $cmakeFile -Value $content -NoNewline
               } elseif ($content -match 'if\(MSVC\).*add_compile_options\(/bigobj\)') {
-                $content = $content -replace '(if\(MSVC\)\s+add_compile_options\(/bigobj\))', '$1`r`n    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded``$<``$<CONFIG:Debug>:Debug>")'
+                $content = [regex]::Replace($content, '(if\(MSVC\)\s+add_compile_options\(/bigobj\))', "${{ '$1' }}`n    set(CMAKE_MSVC_RUNTIME_LIBRARY \"MultiThreaded$<${{ '<' }}CONFIG:Debug>:Debug>\")")
                 Set-Content $cmakeFile -Value $content -NoNewline
               }
             }
           }
-
-          # Clean build directory
-          if (Test-Path cmake-build) { Remove-Item -Recurse -Force cmake-build }
-
           mkdir cmake-build
           cd cmake-build
           cmake -G "Visual Studio 17 2022" -A x64 `
@@ -318,6 +323,10 @@ jobs:
             -DOPENSSL_ROOT_DIR="$OPENSSL_ROOT" \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             ..
+          # Patch CMakeLists.txt files in build tree (including ExternalProject sources)
+          find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i '' -E 's/cmake_minimum_required\(VERSION ([0-9]+(\.[0-9]+)?)\)/cmake_minimum_required(VERSION 3.5...3.30)/g'
+          find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i '' -E 's/CMAKE_MINIMUM_REQUIRED\(VERSION ([0-9]+(\.[0-9]+)?)\)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/g'
+
           cmake --build . -j$(sysctl -n hw.ncpu) --verbose
 
       - name: Build GDExtension (Release)
