@@ -27,6 +27,22 @@ var is_soft := true
 var connect_time_usec := 0
 var disconnect_time_usec := 0
 
+# This is calculated locally, rather than networked.
+var _score := 0
+var score: int:
+	get:
+		return _score
+	set(value):
+		_score = value
+
+# This is calculated locally, rather than networked.
+var _rank := 1
+var rank: int:
+	get:
+		return _rank
+	set(value):
+		_rank = value
+
 var full_name: StringName:
 	get:
 		return "%s %s" % [adjective, bunny_name]

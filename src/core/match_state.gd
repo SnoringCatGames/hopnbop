@@ -2,6 +2,14 @@ class_name MatchState
 extends RefCounted
 
 
+# Scoring constants
+const _KILL_SCORE := 100
+const _DEATH_PENALTY := 90
+const _BUMP_SCORE := 5
+const _RANK_BONUS_PER_DIFF := 5
+const _SELF_KILL_PENALTY := 45
+
+
 signal player_connected(player: PlayerMatchState)
 signal player_disconnected(player: PlayerMatchState)
 
@@ -159,3 +167,65 @@ func _client_unpack_players() -> void:
 			else:
 				_connected_players.erase(player_id)
 				player_disconnected.emit(player)
+
+
+## Calculates the score for each player based on kills, deaths, bumps, and rank
+## differences.
+## - Kills: +KILL_SCORE, plus linear bonus for killing higher-ranked players
+## - Deaths: -DEATH_PENALTY, plus penalty for being killed by lower-ranked
+##           players
+## - Self-kills: -SELF_KILL_PENALTY
+## - Bumps: +BUMP_SCORE per bump
+func update_scores() -> void:
+	var all_player_ids := players_by_id.keys()
+
+	# Calculate base scores.
+	# Dictionary<int, int>
+	var scores := {}
+	for player_id in all_player_ids:
+		scores[player_id] = (
+			_total_kills_by_player_id.get(player_id, 0) -
+			_total_deaths_by_player_id.get(player_id, 0)
+		)
+
+	# Calculate base ranks.
+	all_player_ids.sort_custom(func(a, b): return scores[b] - scores[a])
+	# Dictionary<int, int>
+	var ranks := {}
+	for i in range(all_player_ids.size()):
+		ranks[all_player_ids[i]] = i
+
+	# Calculate final scores with bonuses/penalties.
+	for player_id in all_player_ids:
+		var score = 0
+		var bumps_count: int = _total_bumps_by_player_id.get(player_id, 0)
+		score += bumps_count * _BUMP_SCORE
+		for i in range(0, kills.size(), 2):
+			var killer = kills[i]
+			var killee = kills[i + 1]
+			if killer == player_id and killee == player_id:
+				score -= _SELF_KILL_PENALTY
+			elif killer == player_id:
+				var victim_rank = ranks.get(killee, ranks[player_id])
+				var my_rank = ranks[player_id]
+				var rank_diff = my_rank - victim_rank
+				var bonus = 0
+				if rank_diff > 0:
+					bonus = rank_diff * _RANK_BONUS_PER_DIFF
+				score += _KILL_SCORE + bonus
+			elif killee == player_id:
+				var killer_rank = ranks.get(killer, ranks[player_id])
+				var my_rank = ranks[player_id]
+				var rank_diff = killer_rank - my_rank
+				var penalty = 0
+				if rank_diff > 0:
+					penalty = rank_diff * _RANK_BONUS_PER_DIFF
+				score -= _DEATH_PENALTY + penalty
+		scores[player_id] = score
+
+	# Record final ranks and scores.
+	all_player_ids.sort_custom(func(a, b): return scores[b] - scores[a])
+	for i in range(all_player_ids.size()):
+		var player_id: int = all_player_ids[i]
+		players_by_id.get(player_id).rank = i + 1
+		players_by_id.get(player_id).score = scores[player_id]

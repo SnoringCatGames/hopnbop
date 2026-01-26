@@ -59,6 +59,7 @@ func _server_on_peer_players_declared(
 		)
 		state.server_add_player(player)
 
+	state.update_scores()
 	players_updated.emit()
 
 
@@ -81,6 +82,7 @@ func _server_on_peer_disconnected(peer_id: int) -> void:
 
 
 func _client_on_players_updated() -> void:
+	state.update_scores()
 	players_updated.emit()
 
 
@@ -99,6 +101,7 @@ func _client_on_kills_updated() -> void:
 
 	_previous_state.kills = state.kills.duplicate()
 
+	state.update_scores()
 	kills_updated.emit()
 
 
@@ -117,6 +120,7 @@ func _client_on_bumps_updated() -> void:
 
 	_previous_state.bumps = state.bumps.duplicate()
 
+	state.update_scores()
 	bumps_updated.emit()
 
 
@@ -148,6 +152,7 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 		ScaffolderLog.CATEGORY_GAME_STATE
 	)
 
+	state.update_scores()
 	player_killed.emit(get_player(killer_id), get_player(killee_id))
 	kills_updated.emit()
 
@@ -163,5 +168,6 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 		ScaffolderLog.CATEGORY_GAME_STATE
 	)
 
+	state.update_scores()
 	players_bumped.emit(get_player(player_1_id), get_player(player_2_id))
 	bumps_updated.emit()

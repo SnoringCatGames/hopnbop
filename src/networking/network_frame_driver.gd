@@ -50,9 +50,6 @@ extends Node
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 #
 # LEFT OFF HERE:
-# - macos next fix should be in.
-# - Review the AI refactor of pause.
-# - Add score calculation. Use _total_kills_by_player_id.
 # - Test GDExtension Windows build.
 # - AI: /plan We need to update NETWORKING_ARCHITECTURE.md to account for the current design--including player_ids, multiple players per client, and GameLift.
 # - AI: It seems like signals are duplicated between MatchStateSynchronizer and MatchState. Let's consolidate them as appropriate.
@@ -818,7 +815,7 @@ func _server_execute_unpause() -> void:
 
 	# Cancel auto-unpause timeout (server-only).
 	if G.network.is_server and _pause_auto_unpause_timeout_id != 0:
-		G.time.cancel_timeout(_pause_auto_unpause_timeout_id)
+		G.time.clear_timeout(_pause_auto_unpause_timeout_id)
 		_pause_auto_unpause_timeout_id = 0
 
 	# Reset pause state variables.
