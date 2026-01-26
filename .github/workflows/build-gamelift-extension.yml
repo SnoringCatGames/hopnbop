@@ -74,6 +74,28 @@ jobs:
         run: |
           git clone https://github.com/amazon-gamelift/amazon-gamelift-servers-cpp-server-sdk.git gamelift-server-sdk
 
+      # Linux: Patch all CMakeLists.txt for modern CMake (GNU sed syntax)
+      - name: Patch all CMakeLists.txt for modern CMake (Linux)
+        if: runner.os == 'Linux'
+        working-directory: gamelift-gdextension/gamelift-server-sdk
+        run: |
+          find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i -E 's/cmake_minimum_required\(VERSION ([0-9]+(\.[0-9]+)?)\)/cmake_minimum_required(VERSION 3.5...3.30)/g'
+          find . -name 'CMakeLists.txt' -print0 | xargs -0 sed -i -E 's/CMAKE_MINIMUM_REQUIRED\(VERSION ([0-9]+(\.[0-9]+)?)\)/CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)/g'
+
+      # Windows: Patch all CMakeLists.txt for modern CMake (PowerShell)
+      - name: Patch all CMakeLists.txt for modern CMake (Windows)
+        if: runner.os == 'Windows'
+        working-directory: gamelift-gdextension/gamelift-server-sdk
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path . -Filter CMakeLists.txt -Recurse | ForEach-Object {
+            $cmakeFile = $_.FullName
+            (Get-Content $cmakeFile -Raw) -replace 'cmake_minimum_required\(VERSION [0-9.]+\)', 'cmake_minimum_required(VERSION 3.5...3.30)' |
+              Set-Content $cmakeFile
+            (Get-Content $cmakeFile -Raw) -replace 'CMAKE_MINIMUM_REQUIRED\(VERSION [0-9.]+\)', 'CMAKE_MINIMUM_REQUIRED(VERSION 3.5...3.30)' |
+              Set-Content $cmakeFile
+          }
+
       - name: Patch all CMakeLists.txt for modern CMake (macOS)
         working-directory: gamelift-gdextension/gamelift-server-sdk
         run: |
@@ -347,6 +369,7 @@ jobs:
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_VERBOSE_MAKEFILE=ON \
             -DEXTERNALPROJECT_LOG_OUTPUT_ON_FAILURE=ON \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             ..
 
           # Patch CMakeLists.txt files in build tree (including ExternalProject sources)
