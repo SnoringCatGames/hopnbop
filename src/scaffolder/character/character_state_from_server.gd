@@ -147,22 +147,6 @@ func _network_process() -> void:
 		input_source._rollback_buffer.has_at(timestamp_index)
 	)
 
-	# FIXME: REMOVE
-	if G.network.server_frame_index < 10 and character is Player:
-		var player_id := (character as Player).player_id
-		G.print(
-			("CharacterStateFromServer._network_process: player_id=%d, " +
-			"is_remote=%s, has_auth_input=%s, input_source_type=%s, " +
-			"input_actions=%d") % [
-				player_id,
-				is_remote_player_on_client,
-				has_auth_input,
-				input_source.get_class(),
-				input_source.actions if input_source != null else -1
-			],
-			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
-		)
-
 	if has_auth_input or has_predicted_forwarded_input:
 		# Use received input from buffer (either authoritative from
 		# PlayerInputFromClient, or predicted from ForwardedPlayerInputFromServer).
@@ -187,17 +171,6 @@ func _network_process() -> void:
 			# _collect_actions() will call surfaces.update_actions() internally.
 			character._collect_actions()
 			input_from_client.frame_authority = FrameAuthority.AUTHORITATIVE
-			# FIXME: REMOVE
-			if G.network.server_frame_index < 10 and character is Player:
-				var p_id := (character as Player).player_id
-				G.print(
-					("Setting input_from_client as AUTHORITATIVE: " +
-					"player_id=%d, actions=%d") % [
-						p_id,
-						input_from_client.actions
-					],
-					ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
-				)
 		else:
 			# No new input yet - extrapolate from previous frame's input.
 			# This is intentional: predicted input uses the last known state

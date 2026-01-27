@@ -88,6 +88,7 @@ func _reconcile_jump_event() -> void:
 
 	if not has_jump_bit:
 		if frame_state[frame_state.size() - 1] == FrameAuthority.AUTHORITATIVE:
+			# FIXME: LEFT OFF HERE: Why is this happening? Is this a bug, or expected?
 			G.warning(
 				("last_triggered_jump_time_usec corresponds to a frame that " +
 				"is already recorded as authoritative and without jump " +

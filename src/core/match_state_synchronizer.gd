@@ -19,20 +19,17 @@ func _ready() -> void:
 		)
 		multiplayer.peer_disconnected.connect(_server_on_peer_disconnected)
 
+		# Assign outline colors once when all players have connected.
+		G.network.game_lift_manager.all_players_connected.connect(
+			_server_on_all_players_connected
+		)
+
 	# Connect to player state events for connector notification.
 	state.player_joined.connect(_on_player_joined)
 
 
 func _on_player_joined(player_match_state: PlayerMatchState) -> void:
 	var player := G.get_player(player_match_state.player_id)
-	# FIXME: REMOVE
-	G.print(
-		"MatchStateSynchronizer._on_player_joined: player_id=%d, player_found=%s" % [
-			player_match_state.player_id,
-			is_instance_valid(player)
-		],
-		ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
-	)
 	if is_instance_valid(player):
 		player.on_match_state_ready(player_match_state)
 	G.network.connector.client_on_player_state_connected(
@@ -40,16 +37,13 @@ func _on_player_joined(player_match_state: PlayerMatchState) -> void:
 		player_match_state.peer_id,
 		player_match_state.local_player_index)
 
-	# FIXME: REMOVE? This was added by the latest debug session.
 	# Now that the peer_id mapping is established, update authority on the
-	# player's networked state nodes.
+	# player's networked state nodes. This is necessary for remote players
+	# whose player_id was set before the mapping existed (during initial
+	# replication). The player_id setter guards against calling
+	# update_authority() without a mapping, so we call it explicitly here.
 	if is_instance_valid(player):
-		if is_instance_valid(player.state_from_server):
-			player.state_from_server.update_authority()
-		if is_instance_valid(player.input_from_client):
-			player.input_from_client.update_authority()
-		if is_instance_valid(player.forwarded_input_from_server):
-			player.forwarded_input_from_server.update_authority()
+		player.update_authority()
 
 
 func clear() -> void:
@@ -80,10 +74,24 @@ func _server_on_peer_players_declared(
 		)
 		state.server_add_player(player)
 
-	# Assign outline colors based on total player count.
-	_server_assign_outline_colors()
-
 	state.update_scores()
+
+	# FIXME: LEFT OFF HERE: This seems wrong? The all_players_connected signal should also work in preview mode.
+
+	# In preview mode, assign colors when all players have been added.
+	# In non-preview (GameLift) mode, colors are assigned via
+	# all_players_connected signal.
+	if G.network.is_preview:
+		var expected_player_count := G.settings.preview_client_count
+		var current_player_count := state.players_by_id.size()
+		if current_player_count >= expected_player_count:
+			_server_assign_outline_colors()
+
+
+func _server_on_all_players_connected() -> void:
+	# Assign outline colors once when all players have connected.
+	# This ensures colors are distributed evenly across all players.
+	_server_assign_outline_colors()
 
 
 ## Assigns outline colors to all players based on total player count.
@@ -100,6 +108,9 @@ func _server_assign_outline_colors() -> void:
 		var player_id: int = player_ids[i]
 		var player: PlayerMatchState = state.players_by_id[player_id]
 		player.outline_color = colors[i]
+
+	# Repack the player state to trigger replication of updated colors.
+	state._server_pack_players()
 
 
 func _server_on_peer_disconnected(peer_id: int) -> void:

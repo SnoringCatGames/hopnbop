@@ -190,20 +190,17 @@ func _server_pack_players() -> void:
 
 
 func _client_unpack_players() -> void:
-	# FIXME: REMOVE
 	G.print(
-		"MatchState._client_unpack_players: packed_players.size=%d" % packed_players.size(),
-		ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+		"MatchState._client_unpack_players: packed_players.size=%d" %
+			packed_players.size(),
+		ScaffolderLog.CATEGORY_GAME_STATE,
+		ScaffolderLog.Verbosity.VERBOSE
 	)
+
 	players_by_id.clear()
 
 	for packed_player in packed_players:
 		var player_id := PlayerMatchState.get_player_id_from_packed_state(packed_player)
-		# FIXME: REMOVE
-		G.print(
-			"  unpacking player_id=%d" % player_id,
-			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
-		)
 
 		if not players_by_id.has(player_id):
 			players_by_id[player_id] = PlayerMatchState.new()
@@ -217,11 +214,6 @@ func _client_unpack_players() -> void:
 		if player.is_connected_to_server != _connected_players.has(player_id):
 			if player.is_connected_to_server:
 				_connected_players[player_id] = true
-				# FIXME: REMOVE
-				G.print(
-					"  emitting player_joined for player_id=%d" % player_id,
-					ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
-				)
 				player_joined.emit(player)
 			else:
 				_connected_players.erase(player_id)
