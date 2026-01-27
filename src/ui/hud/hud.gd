@@ -8,16 +8,13 @@ extends PanelContainer
 func _enter_tree() -> void:
 	G.hud = self
 
-	if G.network.is_server:
-		visible = false
-		process_mode = Node.PROCESS_MODE_DISABLED
-		return
-
 
 func _ready() -> void:
 	G.log.log_system_ready("Hud")
 
 	if G.network.is_server:
+		visible = false
+		process_mode = Node.PROCESS_MODE_DISABLED
 		return
 
 	# Wait for G.settings to be assigned.

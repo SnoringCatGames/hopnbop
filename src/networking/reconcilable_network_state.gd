@@ -502,10 +502,7 @@ func _sync_from_scene_state() -> void:
 
 
 func _update_replication_config() -> void:
-	for property_path in replication_config.get_properties():
-		replication_config.remove_property(property_path)
-
-	if not is_instance_valid(root):
+	if not G.ensure(is_instance_valid(root)):
 		return
 
 	var packed_state_path := "%s:packed_state" % root.get_path_to(self)

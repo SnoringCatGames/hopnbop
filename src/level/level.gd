@@ -127,11 +127,12 @@ func _find_collision_free_position(initial_position: Vector2) -> Vector2:
 ## Called when a player is added to this level.
 ## Maintains players array and players_by_id dictionary.
 func register_player(player: Player) -> void:
-	# FIXME: REMOVE
-	G.print(
-		"Level.register_player: player_id=%d" % player.player_id,
-		ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
-	)
+	if G.is_verbose:
+		G.print(
+			"Level.register_player: player_id=%d" % player.player_id,
+			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+			ScaffolderLog.Verbosity.VERBOSE,
+		)
 	players.append(player)
 	players_by_id[player.player_id] = player
 

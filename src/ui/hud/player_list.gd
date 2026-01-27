@@ -13,6 +13,11 @@ const _MAX_PLAYER_LIST_SIZE := 8
 
 
 func _ready() -> void:
+	if G.network.is_server:
+		visible = false
+		process_mode = Node.PROCESS_MODE_DISABLED
+		return
+
 	# Wait a frame, so we know GamePanel is rendered.
 	await get_tree().process_frame
 

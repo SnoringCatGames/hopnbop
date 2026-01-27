@@ -1,19 +1,17 @@
 class_name SuperHud
 extends PanelContainer
 
+
 func _enter_tree() -> void:
 	G.super_hud = self
-
-	if G.network.is_server:
-		visible = false
-		process_mode = Node.PROCESS_MODE_DISABLED
-		return
 
 
 func _ready() -> void:
 	G.log.log_system_ready("SuperHud")
 
 	if G.network.is_server:
+		visible = false
+		process_mode = Node.PROCESS_MODE_DISABLED
 		return
 
 	# Initialize visibility based on current settings
@@ -33,9 +31,9 @@ func toggle_debug_console() -> void:
 
 	%DebugConsole.visible = not %DebugConsole.visible
 	G.print(
-        "Toggled DebugConsole: %s" %
+		"Toggled DebugConsole: %s" %
 		("visible" if %DebugConsole.visible else "hidden"),
-		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		ScaffolderLog.CATEGORY_INTERACTION,
 	)
 
 
@@ -45,9 +43,9 @@ func toggle_player_state_list() -> void:
 
 	%PlayerStateList.visible = not %PlayerStateList.visible
 	G.print(
-        "Toggled PlayerStateList: %s" %
+		"Toggled PlayerStateList: %s" %
 		("visible" if %PlayerStateList.visible else "hidden"),
-		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		ScaffolderLog.CATEGORY_INTERACTION,
 	)
 
 
@@ -57,7 +55,7 @@ func toggle_perf_tracker() -> void:
 
 	%PerfTracker.visible = not %PerfTracker.visible
 	G.print(
-        "Toggled PerfTracker: %s" %
+		"Toggled PerfTracker: %s" %
 		("visible" if %PerfTracker.visible else "hidden"),
-		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		ScaffolderLog.CATEGORY_INTERACTION,
 	)
