@@ -272,7 +272,14 @@ jobs:
             -DCMAKE_POLICY_DEFAULT_CMP0000=OLD `
             -DOPENSSL_ROOT_DIR="${{ github.workspace }}\vcpkg\installed\x64-windows" `
             ..
+
           cmake --build . --config Release
+
+      - name: List GameLift SDK include directory (Windows)
+        working-directory: gamelift-gdextension/gamelift-server-sdk
+        run: |
+          echo "Listing GameLift SDK include directory:"
+          dir cmake-build\prefix\include /s
 
       - name: Build GDExtension (Release)
         working-directory: gamelift-gdextension
