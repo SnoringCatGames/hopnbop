@@ -28,11 +28,22 @@ func _init(
 
 # Calculates actions for the current frame.
 func update(actions: CharacterActionState, time_scaled: float) -> void:
-	if !character.get_is_player_control_active():
+	# FIXME: REMOVE
+	var is_control_active := character.get_is_player_control_active()
+	if G.network.server_frame_index < 3:
+		G.print(
+			"PlayerActionSource.update: player_id=%d, control_active=%s" % [
+				character.player_id,
+				is_control_active
+			],
+			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+		)
+	if !is_control_active:
 		return
 
 	# Use device-specific input polling if device_config is set.
 	# Otherwise fall back to global input for backward compatibility.
+	var any_pressed := false
 	for action in ACTIONS_TO_INPUT_KEYS:
 		var input_key: StringName = ACTIONS_TO_INPUT_KEYS[action]
 		var is_pressed: bool
@@ -44,6 +55,9 @@ func update(actions: CharacterActionState, time_scaled: float) -> void:
 		else:
 			is_pressed = Input.is_action_pressed(action)
 
+		if is_pressed:
+			any_pressed = true
+
 		if !Input.is_key_pressed(KEY_CTRL):
 			CharacterActionSource.update_for_explicit_key_event(
 				actions,
@@ -52,6 +66,16 @@ func update(actions: CharacterActionState, time_scaled: float) -> void:
 				time_scaled,
 				is_additive,
 			)
+
+	# FIXME: REMOVE
+	if any_pressed and G.network.server_frame_index < 10:
+		G.print(
+			"PlayerActionSource.update: player_id=%d, INPUT DETECTED, actions=%d" % [
+				character.player_id,
+				actions.bitmask
+			],
+			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+		)
 
 
 static func get_is_some_player_action_pressed() -> bool:

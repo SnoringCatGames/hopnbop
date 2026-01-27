@@ -73,6 +73,18 @@ func _sync_from_scene_state() -> void:
 	if not G.ensure_valid(player):
 		return
 
+	# FIXME: REMOVE
+	if G.network.server_frame_index < 10:
+		G.print(
+			("PlayerInputFromClient._sync_from_scene_state: player_id=%d, " +
+			"actions_before=%d, actions_after=%d") % [
+				player.player_id,
+				actions,
+				player.actions.bitmask
+			],
+			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+		)
+
 	actions = player.actions.bitmask
 	last_triggered_jump_frame_index = player.last_triggered_jump_frame_index
 
