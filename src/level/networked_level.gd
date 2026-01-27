@@ -55,11 +55,13 @@ func _ready() -> void:
 func _client_on_player_spawned(p_player: Node) -> void:
 	G.ensure(p_player is Player)
 	var player: Player = p_player
-	# FIXME: REMOVE
-	G.print(
-		"Player spawned: %s (current player_id=%d)" % [player.get_string(), player.player_id],
-		ScaffolderLog.CATEGORY_GAME_STATE
-	)
+	if G.is_verbose:
+		G.print(
+			"Player spawned: %s (current player_id=%d)" %
+				[player.get_string(), player.player_id],
+			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+			ScaffolderLog.Verbosity.VERBOSE,
+		)
 
 
 func _client_on_player_despawned(p_player: Node) -> void:
@@ -99,7 +101,6 @@ func _server_register_players_for_peer(
 	for local_index in range(assigned_ids.size()):
 		var player_id := assigned_ids[local_index]
 		var player: Player = G.settings.default_player_scene.instantiate()
-		player.player_id = player_id
 		player.global_position = _get_player_spawn_position()
 		player.name = "Player_%d" % player_id
 		players_by_id[player_id] = player
@@ -110,6 +111,10 @@ func _server_register_players_for_peer(
 		peer_to_player_ids[peer_id].append(player_id)
 
 		players_node.add_child(player)
+
+		# Initialize player_id and update authority after add_child.
+		# This ensures all child nodes are ready and sibling references work.
+		player.server_initialize_player_id(player_id)
 
 
 func _server_deregister_players_for_peer(peer_id: int) -> void:

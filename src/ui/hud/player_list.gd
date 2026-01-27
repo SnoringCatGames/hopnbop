@@ -77,9 +77,10 @@ func _get_current_player_ids_from_match_level() -> Array[int]:
 	var all_player_ids: Array = G.match_state.players_by_id.keys()
 	var local_player_ids: Array[int] = G.local_session.local_player_ids
 
+	# Separate remote players by checking ownership directly.
 	var remote_player_ids: Array[int] = []
 	for player_id in all_player_ids:
-		if G.network.get_local_player_index_from_player_id(player_id) < 0:
+		if not local_player_ids.has(player_id):
 			remote_player_ids.append(player_id)
 
 	# If there are more than 8 players in the match, only the local players

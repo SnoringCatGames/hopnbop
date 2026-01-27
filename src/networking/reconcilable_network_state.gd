@@ -137,7 +137,14 @@ var player_id: int = 0:
 	set(value):
 		if value != player_id:
 			player_id = value
-			update_authority()
+
+			# Only update authority if we have a valid peer mapping.
+			# For remote players on clients, this mapping won't exist yet
+			# during initial replication - it will be set later in
+			# _on_player_joined(), which will call update_authority()
+			# explicitly.
+			if G.network.get_peer_id_from_player_id(value) != 0:
+				update_authority()
 
 			# Assign player_id on sibling nodes.
 			if is_server_authoritative:

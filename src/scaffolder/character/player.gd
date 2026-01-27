@@ -37,11 +37,13 @@ func _enter_tree() -> void:
 
 
 func _client_on_player_id_replicated(new_player_id: int) -> void:
-	# FIXME: REMOVE
 	G.print(
-		"Player._client_on_player_id_replicated: new_player_id=%d" % new_player_id,
-		ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+		"Player._client_on_player_id_replicated: new_player_id=%d" %
+			new_player_id,
+		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+		ScaffolderLog.Verbosity.VERBOSE,
 	)
+
 	player_id = new_player_id
 	G.level.register_player(self)
 
@@ -49,11 +51,6 @@ func _client_on_player_id_replicated(new_player_id: int) -> void:
 	# This triggers action source setup for networked mode.
 	if G.is_networked_level_active:
 		var player_match_state := G.get_player_match_state(player_id)
-		# FIXME: REMOVE
-		G.print(
-			"  match_state_found=%s" % is_instance_valid(player_match_state),
-			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
-		)
 		if is_instance_valid(player_match_state):
 			on_match_state_ready(player_match_state)
 
@@ -80,6 +77,27 @@ func _ready() -> void:
 	# duplicate setup.
 	if not G.is_networked_level_active:
 		_set_up_action_sources()
+
+
+## Called by the server after spawning to initialize player_id and update
+## authority on all networked child nodes. Must be called after add_child()
+## so that all child nodes are ready and sibling references are established.
+func server_initialize_player_id(p_player_id: int) -> void:
+	# Set the player_id, which propagates to state_from_server and then
+	# to input_from_client and forwarded_input_from_server.
+	player_id = p_player_id
+	update_authority()
+
+
+func update_authority() -> void:
+	# Now that player_id is set, update authority on all network nodes.
+	# This ensures they calculate the correct peer_id from player_id.
+	if is_instance_valid(state_from_server):
+		state_from_server.update_authority()
+	if is_instance_valid(input_from_client):
+		input_from_client.update_authority()
+	if is_instance_valid(forwarded_input_from_server):
+		forwarded_input_from_server.update_authority()
 
 
 func on_match_state_ready(_player_match_state: PlayerMatchState) -> void:
@@ -113,15 +131,10 @@ func _set_up_action_sources() -> void:
 			return
 
 		# Only set up action sources for local players.
-		# - On server: never set up action sources (server has no input devices)
-		# - On client: only for players owned by this peer
 		if G.network.is_server:
-			# FIXME: REMOVE
-			G.print(
-				"Player._set_up_action_sources: Is server (player_id=%d)" % player_id,
-				ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
-			)
 			return
+
+		# Only set up action sources for local players.
 		if player_match_state.peer_id != G.network.local_peer_id:
 			# This player belongs to a different peer.
 			G.warning(
