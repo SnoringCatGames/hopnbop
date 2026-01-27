@@ -13,15 +13,26 @@ gamelift-gdextension/bin/
 gamelift-gdextension/.scons_cache/
 gamelift-gdextension/.sconsign.dblite
 
+
 # Dependencies (developers clone/build these)
 gamelift-gdextension/godot-cpp/
-gamelift-gdextension/gamelift-server-sdk/.github
-gamelift-gdextension/gamelift-server-sdk/cmake-build
-gamelift-gdextension/gamelift-server-sdk/gamelift-server-sdk
-gamelift-gdextension/gamelift-server-sdk/gamelift-server-sdk-tests
-gamelift-gdextension/gamelift-server-sdk/release-notes
-gamelift-gdextension/gamelift-server-sdk/telemetry-metrics
-gamelift-gdextension/gamelift-server-sdk/thirdparty
+
+# Ignore all of gamelift-server-sdk except custom tracked files
+gamelift-gdextension/gamelift-server-sdk/*
+
+# Track custom cmake configuration files (contains MSVC runtime, rapidjson patches)
+!gamelift-gdextension/gamelift-server-sdk/cmake/
+!gamelift-gdextension/gamelift-server-sdk/cmake/**
+
+# Track root CMakeLists.txt with custom modifications
+!gamelift-gdextension/gamelift-server-sdk/CMakeLists.txt
+
+# Track documentation files
+!gamelift-gdextension/gamelift-server-sdk/CODE_OF_CONDUCT.md
+!gamelift-gdextension/gamelift-server-sdk/CONTRIBUTING.md
+!gamelift-gdextension/gamelift-server-sdk/LICENSE
+!gamelift-gdextension/gamelift-server-sdk/NOTICE
+!gamelift-gdextension/gamelift-server-sdk/README.md
 
 # Build logs
 gamelift-gdextension/*.log

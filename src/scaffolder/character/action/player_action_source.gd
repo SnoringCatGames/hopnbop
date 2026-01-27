@@ -33,7 +33,6 @@ func update(actions: CharacterActionState, time_scaled: float) -> void:
 
 	# Use device-specific input polling if device_config is set.
 	# Otherwise fall back to global input for backward compatibility.
-	var any_pressed := false
 	for action in ACTIONS_TO_INPUT_KEYS:
 		var input_key: StringName = ACTIONS_TO_INPUT_KEYS[action]
 		var is_pressed: bool
@@ -44,9 +43,6 @@ func update(actions: CharacterActionState, time_scaled: float) -> void:
 			)
 		else:
 			is_pressed = Input.is_action_pressed(action)
-
-		if is_pressed:
-			any_pressed = true
 
 		if !Input.is_key_pressed(KEY_CTRL):
 			CharacterActionSource.update_for_explicit_key_event(

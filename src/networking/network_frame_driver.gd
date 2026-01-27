@@ -51,14 +51,18 @@ extends Node
 
 # --- DEFINITELY SPLIT WORK ACROSS ON LAPTOP! ---
 
-# - Debug player attributes calculation. It's only receiving a player count of 1.
-
 # - Implement the connect-to-remote-server-in-preview mode. It should auto close the server window.
 
-# - Also add text outline to player over-head name display that matches their
-#   assigned color.
+# - Update PlayerOverheadLabels
+#   - They should include a text outline that matches the player's assigned color.
+#   - They should be about half as big
+#   - Currently, their top-left corner is at the position above the palyer. I want their center to be at that position.
+#   - They should use the default_theme, so they get the correct font.
+
 # - Fix "on_sync_receive: ignoring sync data from non-authority or for missing node"
+
 # - Lingering FIXMEs.
+
 # - Fix GitHub CI.
 
 # [Match countdown] Remaining Tasks:
@@ -368,6 +372,8 @@ extends Node
 # - Review NETWORKING_ARCHITECTURE.md.
 # - Review these notes: https://trello.com/c/i8peodBL
 # - Organize Settings.
+#   - Analyze all properties in Settings, and how they are used.
+#   - Re-group, re-order, re-name, and possibly consolidate properties in whichever way makes the most sense.
 # - Use is_instance_valid instead of null comparisons.
 # - Survey usage of G.check, G.ensure, G.error, G.fatal, and G.alert.
 #   - Check if there are places that I should be more gracefully showing the

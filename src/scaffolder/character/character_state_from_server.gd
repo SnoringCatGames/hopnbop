@@ -80,12 +80,13 @@ func _update_replication_config() -> void:
 	# Also sync the player_id, so the client can know which player has
 	# authority.
 	var player_id_path := "%s:player_id" % root.get_path_to(self)
-	replication_config.add_property(player_id_path)
-	replication_config.property_set_replication_mode(
-		player_id_path,
-		SceneReplicationConfig.ReplicationMode.REPLICATION_MODE_ON_CHANGE,
-	)
-	replication_config.property_set_spawn(player_id_path, true)
+	if not replication_config.has_property(player_id_path):
+		replication_config.add_property(player_id_path)
+		replication_config.property_set_replication_mode(
+			player_id_path,
+			SceneReplicationConfig.ReplicationMode.REPLICATION_MODE_ON_CHANGE,
+		)
+		replication_config.property_set_spawn(player_id_path, true)
 
 
 func _get_configuration_warnings() -> PackedStringArray:

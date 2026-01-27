@@ -56,8 +56,8 @@ class TestInitialization:
 
 		# Check that state arrays have correct size.
 		# Access frames that should exist.
-		for frame_idx in [-2, -1, 0]:
-			var state: Array = buffer.get_at(frame_idx)
+		for frame_index in [-2, -1, 0]:
+			var state: Array = buffer.get_at(frame_index)
 			assert_true(state is Array)
 			assert_eq(state.size(), 3)
 
@@ -345,8 +345,8 @@ class TestAppend:
 
 		# Frame 3 was created by the 3rd append (i=2)
 		var oldest: Array = buffer.get_oldest()
-		assert_eq(oldest[0], 20)  # i=2: 2 * 10 = 20
-		assert_eq(oldest[1], 40)  # i=2: 2 * 20 = 40
+		assert_eq(oldest[0], 20) # i=2: 2 * 10 = 20
+		assert_eq(oldest[1], 40) # i=2: 2 * 20 = 40
 
 
 class TestClear:
