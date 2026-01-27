@@ -370,6 +370,15 @@ func _client_rpc_receive_player_ids(assigned_ids: Array[int]) -> void:
 
 	G.local_session.local_player_ids = assigned_ids
 
+	# Register device configs for each local player.
+	for local_player_index in range(assigned_ids.size()):
+		if local_player_index < G.local_session.local_device_configs.size():
+			var device_config := G.local_session.local_device_configs[local_player_index]
+			G.input_device_manager.assign_device_to_player(
+				local_player_index,
+				device_config
+			)
+
 	G.print(
 		"Received assigned player IDs: %s" % [assigned_ids],
 		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,

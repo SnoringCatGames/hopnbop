@@ -25,14 +25,14 @@ extends Node2D
 func _enter_tree() -> void:
 	G.audio = self
 
+
+func _ready() -> void:
+	G.log.log_system_ready("AudioMain")
+
 	if G.network.is_server:
 		visible = false
 		process_mode = Node.PROCESS_MODE_DISABLED
 		return
-
-
-func _ready() -> void:
-	G.log.log_system_ready("AudioMain")
 
 	if not G.network.is_primary_client:
 		return

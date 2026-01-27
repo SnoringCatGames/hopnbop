@@ -32,11 +32,11 @@ static func calculate_outline_colors(player_count: int) -> Array[Color]:
 		# Use 4 base hues + alternating saturation/lightness variants.
 		var base_player_count := 4
 		for i in range(player_count):
-			var base_idx := i % base_player_count
-			var variation := i / base_player_count
-			var hue := float(base_idx) / float(base_player_count)
+			var base_index := i % base_player_count
+			var is_variation := i > base_player_count
+			var hue := float(base_index) / float(base_player_count)
 
-			if variation == 0:
+			if not is_variation:
 				# Normal: full saturation and value.
 				colors.append(Color.from_hsv(hue, 1.0, 1.0))
 			else:
@@ -47,9 +47,10 @@ static func calculate_outline_colors(player_count: int) -> Array[Color]:
 		# Use 4 base hues + 3 variations (normal, desat/light, sat/dark).
 		var base_player_count := 4
 		for i in range(player_count):
-			var base_idx := i % base_player_count
+			var base_index := i % base_player_count
+			@warning_ignore("integer_division")
 			var variation := i / base_player_count
-			var hue := float(base_idx) / float(base_player_count)
+			var hue := float(base_index) / float(base_player_count)
 
 			match variation:
 				0:

@@ -88,7 +88,6 @@ func _create_label(player_id: int) -> void:
 	var overhead_label := _PlayerOverheadLabel.new()
 	overhead_label.player_id = player_id
 	overhead_label.label = label
-	overhead_label.tween = create_tween()
 	overhead_label.is_visible = true
 
 	_labels_by_player_id[player_id] = overhead_label
@@ -178,6 +177,7 @@ func _fade_label(player_id: int, p_is_visible: bool) -> void:
 		_FADE_OUT_DURATION_SEC
 	)
 
+	label.tween = create_tween()
 	label.tween.tween_property(
 		label.label,
 		"modulate:a",

@@ -353,7 +353,7 @@ func _print_front_matter() -> void:
 		#_print_cat()
 		var app_name = ProjectSettings.get_setting("application/config/name")
 		print_rich(
-			"%s %s v%s %s\n" % [_RAINBOW_BAR, app_name, _REVERSE_RAINBOW_BAR])
+			"%s %s %s\n" % [_RAINBOW_BAR, app_name, _REVERSE_RAINBOW_BAR])
 
 	var app_version = ProjectSettings.get_setting(
 		"application/config/version",
