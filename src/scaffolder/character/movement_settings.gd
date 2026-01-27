@@ -91,6 +91,9 @@ var gravity_double_jump_slow_rise_acceleration: float:
 @export var min_horizontal_speed := 5.0
 @export var min_vertical_speed := 0.0
 
+@export var collision_bounce_base_speed := 300.0
+@export var collision_bounce_vertical_boost := -200.0
+
 @export var action_handler_types: Array[ActionHandlerType] = [
 	ActionHandlerType.FLOOR_DEFAULT,
 	ActionHandlerType.AIR_DEFAULT,

@@ -180,11 +180,37 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 
 	# Determine interaction type and record.
 	if not _intersecting_head_player_ids.has(other_player_id):
-		# Bump.
+		# Bump - both players bounce away from each other.
 		G.match_state.server_add_bump(player_id, other_player_id)
+		_apply_collision_bounce(other_player)
+		other_player._apply_collision_bounce(self)
 	else:
-		# Kill.
+		# Kill - only the killer bounces (killee is dying).
 		G.match_state.server_add_kill(player_id, other_player_id)
+		_apply_collision_bounce(other_player)
+
+
+func _apply_collision_bounce(other_player: Player) -> void:
+	G.check_is_server()
+
+	# Calculate direction away from other player.
+	var direction := (global_position - other_player.global_position).normalized()
+
+	# Base bounce velocity in the direction away from collision.
+	var base_bounce := direction * movement_settings.collision_bounce_base_speed
+
+	# Additional upward boost.
+	var upward_boost := Vector2(0, movement_settings.collision_bounce_vertical_boost)
+
+	# Combine base bounce + upward boost.
+	var total_bounce := base_bounce + upward_boost
+
+	# Apply velocity delta (will be replicated via CharacterStateFromServer).
+	velocity += total_bounce
+
+	# Record bump event for network reconciliation and sound effects.
+	state_from_server.last_bump_frame_index = G.network.server_frame_index
+	state_from_server.last_bump_direction = direction
 
 
 func _on_foot_area_area_entered(area: Area2D) -> void:

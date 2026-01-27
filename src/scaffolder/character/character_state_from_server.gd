@@ -20,6 +20,8 @@ var velocity := Vector2.ZERO
 ## A bitmask representing the player's surface state.
 var surfaces := 0
 var last_died_time_usec := -1
+var last_bump_time_usec := -1
+var last_bump_direction := Vector2.ZERO
 
 var is_dead: bool:
 	get:
@@ -38,18 +40,36 @@ var is_invincible: bool:
 				G.settings.player_invincibility_duration_sec) * 1_000_000)
 		return G.network.server_time_usec < invincibility_end_time_usec
 
+var last_bump_frame_index: int:
+	get:
+		if last_bump_time_usec < 0:
+			return -1
+		return G.network.frame_driver.get_frame_index_from_time_usec(
+			last_bump_time_usec,
+		)
+	set(value):
+		if value < 0:
+			last_bump_time_usec = -1
+		else:
+			last_bump_time_usec = \
+				G.network.frame_driver.get_time_usec_from_frame_index(value)
+
 const _synced_properties_and_rollback_diff_thresholds := {
 	position = DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD,
 	velocity = DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHOLD,
 	surfaces = 0,
+	last_bump_time_usec = 0,
+	last_bump_direction = 0.01,
 }
 
 
 func _get_default_values() -> Array:
 	return [
-		Vector2.ZERO,
-		Vector2.ZERO,
-		0,
+		Vector2.ZERO,    # position
+		Vector2.ZERO,    # velocity
+		0,               # surfaces
+		-1,              # last_bump_time_usec
+		Vector2.ZERO,    # last_bump_direction
 	]
 
 
