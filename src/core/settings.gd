@@ -104,3 +104,14 @@ var preview_client_count: int:
 
 @export var default_player_scene: PackedScene
 @export var player_scenes: Array[PackedScene] = []
+
+@export_group("Player Mechanics")
+@export var player_respawn_cooldown_sec := 2.0
+@export var player_invincibility_duration_sec := 2.0
+@export var player_invincibility_blink_frequency_hz := 8.0
+@export_group("")
+
+@export_group("Match Settings")
+@export var match_duration_sec := 5 * 60.0 # 5 minutes
+@export var match_end_disconnect_delay_sec := 3.0
+@export_group("")

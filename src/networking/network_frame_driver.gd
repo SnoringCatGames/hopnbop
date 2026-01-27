@@ -61,6 +61,25 @@ extends Node
 # - Lingering FIXMEs.
 # - Fix GitHub CI.
 
+# [Match countdown] Remaining Tasks:
+# Configure Replication in MatchStateSynchronizer:
+# 1. Open the MatchStateSynchronizer node in the scene tree
+# Add these properties to replicate:
+# state:match_start_time_usec (REPLICATION_MODE_ON_CHANGE)
+# state:match_duration_usec (REPLICATION_MODE_ON_CHANGE)
+# state:is_match_ended (REPLICATION_MODE_ON_CHANGE)
+# Create countdown_timer.tscn:
+# 2. Create new scene with Label as root
+# Attach CountdownTimer script
+# Configure theme overrides (font size ~24, outline)
+# Set unique_name_in_owner = true
+# Save as countdown_timer.tscn
+# Update hud.tscn:
+# 3. Open hud.tscn
+# Navigate to MarginContainer/VBoxContainer/HBoxContainer/RightContent
+# Add CountdownTimer scene as child
+# Position and style as needed
+
 # - Implement player kills.
 #   - See LEFT OFF HEREs in Bunny and MatchState.
 #   - Then handle destroying the killed player and respawning them after a short 1 second delay.
@@ -70,13 +89,6 @@ extends Node
 #     - But don't send an RPC for bumps.
 #   - Also implement bouncing for the killer when a kill occurs:
 #     - The killer should bounce upward a bit, while maintaining horizontal velocity.
-
-# - Implement match duration.
-#   - We should show a countdown label at the top-right corner of the hud for the current time remaining (with seconds precision).
-#   - This should defined by a property on Settings (in seconds). Start with 5 minutes.
-#   - On the server, end the match when the time elapses.
-#   - Wait N seconds before disconnecting players, in order to allow the final match_state to replicate.
-#   - Between when the match is ended and players are disconnected, reject any new bumps or kills, but allow players to continue moving around.
 
 # - Adjust scene files: lobby_level.tscn, player_list.tscn, player_display.tscn.
 # - Lobby scene:
