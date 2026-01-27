@@ -3,7 +3,7 @@ extends GutTest
 
 func test_detects_test_environment():
 	assert_true(
-		G.log._is_running_in_test_env(),
+		TestEnvironmentDetector.is_running_in_test_env(G.log),
 		"Should detect running in test environment",
 	)
 

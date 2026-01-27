@@ -63,8 +63,14 @@ func _network_process() -> void:
 func _sync_to_scene_state(previous_state: Array) -> void:
 	# Only sync to scene state for remote players. Local player already has
 	# their own input through PlayerInputFromClient.
-	if player.get_is_player_control_active():
-		return
+	if is_instance_valid(player.input_from_client):
+		# Player has local input source, don't override with forwarded input.
+		if not G.is_networked_level_active:
+			# In local mode, input_from_client presence means local control.
+			return
+		if player.input_from_client.is_multiplayer_authority():
+			# In networked mode, check multiplayer authority.
+			return
 
 	if not G.ensure_valid(player):
 		return
@@ -86,7 +92,14 @@ func _sync_from_scene_state() -> void:
 func _reconcile_jump_event() -> void:
 	# Only reconcile jumps for remote players. The local player uses
 	# PlayerInputFromClient for jump reconciliation.
-	if player.get_is_player_control_active():
-		return
+	if is_instance_valid(player.input_from_client):
+		# Player has local input source, don't reconcile jumps via forwarded
+		# input.
+		if not G.is_networked_level_active:
+			# In local mode, input_from_client presence means local control.
+			return
+		if player.input_from_client.is_multiplayer_authority():
+			# In networked mode, check multiplayer authority.
+			return
 
 	super._reconcile_jump_event()
