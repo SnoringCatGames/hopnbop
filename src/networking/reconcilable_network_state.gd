@@ -509,6 +509,9 @@ func _sync_from_scene_state() -> void:
 
 
 func _update_replication_config() -> void:
+	if Engine.is_editor_hint():
+		return
+
 	if not G.ensure(is_instance_valid(root)):
 		return
 

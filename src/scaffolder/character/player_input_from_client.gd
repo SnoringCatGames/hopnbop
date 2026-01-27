@@ -36,6 +36,8 @@ func _get_configuration_warnings() -> PackedStringArray:
 
 
 func _exit_tree() -> void:
+	if Engine.is_editor_hint():
+		return
 	if is_multiplayer_authority():
 		G.network.local_authority_removed.emit(self)
 
