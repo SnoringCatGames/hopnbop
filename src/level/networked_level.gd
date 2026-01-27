@@ -55,7 +55,11 @@ func _ready() -> void:
 func _client_on_player_spawned(p_player: Node) -> void:
 	G.ensure(p_player is Player)
 	var player: Player = p_player
-	G.print("Player spawned: %s" % player.get_string(), ScaffolderLog.CATEGORY_GAME_STATE)
+	# FIXME: REMOVE
+	G.print(
+		"Player spawned: %s (current player_id=%d)" % [player.get_string(), player.player_id],
+		ScaffolderLog.CATEGORY_GAME_STATE
+	)
 
 
 func _client_on_player_despawned(p_player: Node) -> void:

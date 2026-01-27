@@ -92,7 +92,7 @@ func _find_collision_free_position(initial_position: Vector2) -> Vector2:
 	# Create a shape query to check for collisions.
 	var query := PhysicsShapeQueryParameters2D.new()
 	query.shape = G.settings.bunny_collision_shape.duplicate()
-	query.collision_mask = 7  # Match player collision mask.
+	query.collision_mask = 7 # Match player collision mask.
 
 	# Test initial position.
 	query.transform = Transform2D(0.0, initial_position)
@@ -127,6 +127,11 @@ func _find_collision_free_position(initial_position: Vector2) -> Vector2:
 ## Called when a player is added to this level.
 ## Maintains players array and players_by_id dictionary.
 func register_player(player: Player) -> void:
+	# FIXME: REMOVE
+	G.print(
+		"Level.register_player: player_id=%d" % player.player_id,
+		ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+	)
 	players.append(player)
 	players_by_id[player.player_id] = player
 

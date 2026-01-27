@@ -37,6 +37,11 @@ func _enter_tree() -> void:
 
 
 func _client_on_player_id_replicated(new_player_id: int) -> void:
+	# FIXME: REMOVE
+	G.print(
+		"Player._client_on_player_id_replicated: new_player_id=%d" % new_player_id,
+		ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+	)
 	player_id = new_player_id
 	G.level.register_player(self)
 
@@ -44,6 +49,11 @@ func _client_on_player_id_replicated(new_player_id: int) -> void:
 	# This triggers action source setup for networked mode.
 	if G.is_networked_level_active:
 		var player_match_state := G.get_player_match_state(player_id)
+		# FIXME: REMOVE
+		G.print(
+			"  match_state_found=%s" % is_instance_valid(player_match_state),
+			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+		)
 		if is_instance_valid(player_match_state):
 			on_match_state_ready(player_match_state)
 
