@@ -79,12 +79,6 @@ extends Node
 # Position and style as needed
 
 # - Implement player kills.
-#   - See LEFT OFF HEREs in Bunny and MatchState.
-#   - Then handle destroying the killed player and respawning them after a short 1 second delay.
-#     - Check for any logic that depends of there being a local player node present, and update it to handle when the player is yet to respawn.
-#   - For any bunny-bunny collision that doesn't result in a kill, call this a "bump".
-#     - Also track bumps in match_state.
-#     - But don't send an RPC for bumps.
 #   - Also implement bouncing for the killer when a kill occurs:
 #     - The killer should bounce upward a bit, while maintaining horizontal velocity.
 
