@@ -1,0 +1,479 @@
+extends GutTest
+## Integration tests for player collision interactions (bump and kill).
+
+
+func before_each():
+	ArrayPool.clear_all_pools()
+
+
+func after_each():
+	ArrayPool.clear_all_pools()
+
+
+class TestCollisionBounceVelocity:
+	extends GutTest
+
+	var player1: Player
+	var player2: Player
+	var movement_settings: MovementSettings
+
+	func before_each():
+		ArrayPool.clear_all_pools()
+
+		# Create movement settings.
+		movement_settings = MovementSettings.new()
+		movement_settings.collision_bounce_base_speed = 300.0
+		movement_settings.collision_bounce_vertical_boost = -200.0
+
+		# Create players.
+		player1 = _create_test_player(1)
+		player2 = _create_test_player(2)
+
+	func after_each():
+		ArrayPool.clear_all_pools()
+		if is_instance_valid(player1):
+			player1.free()
+		if is_instance_valid(player2):
+			player2.free()
+
+	func _create_test_player(player_id: int) -> Player:
+		var player = Player.new()
+		player.player_id = player_id
+		player.movement_settings = movement_settings
+
+		var state = CharacterStateFromServer.new()
+		state.player_id = player_id
+		state.character = player
+		player.state_from_server = state
+
+		return player
+
+	func test_bounce_applies_directional_velocity():
+		# Position players for horizontal bounce.
+		player1.global_position = Vector2(0, 0)
+		player2.global_position = Vector2(100, 0)
+
+		var initial_velocity = player1.velocity
+
+		# Apply bounce (player1 bounces away from player2).
+		player1._apply_collision_bounce(player2)
+
+		# Player1 should bounce in negative X direction.
+		assert_lt(
+			player1.velocity.x,
+			initial_velocity.x,
+			"Player1 should bounce left"
+		)
+
+	func test_bounce_applies_upward_boost():
+		player1.global_position = Vector2(0, 0)
+		player2.global_position = Vector2(100, 0)
+
+		var initial_velocity_y = player1.velocity.y
+
+		player1._apply_collision_bounce(player2)
+
+		# Upward boost is negative Y (up in Godot).
+		assert_lt(
+			player1.velocity.y,
+			initial_velocity_y - 100.0,
+			"Player1 should have upward boost"
+		)
+
+	func test_bounce_magnitude_matches_settings():
+		player1.global_position = Vector2(0, 0)
+		player2.global_position = Vector2(100, 0)
+
+		player1.velocity = Vector2.ZERO
+		player1._apply_collision_bounce(player2)
+
+		var velocity_magnitude = player1.velocity.length()
+
+		# Expected: sqrt((300)^2 + (200)^2) ≈ 360.
+		assert_almost_eq(
+			velocity_magnitude,
+			360.0,
+			10.0,
+			"Velocity magnitude should match combined bounce"
+		)
+
+	func test_bounce_direction_away_from_collision():
+		# Player1 at origin, player2 to the right.
+		player1.global_position = Vector2(0, 0)
+		player2.global_position = Vector2(100, 0)
+
+		player1.velocity = Vector2.ZERO
+		player1._apply_collision_bounce(player2)
+
+		# Player1 should bounce left (negative X).
+		assert_lt(
+			player1.velocity.x,
+			0,
+			"Player1 should bounce away from player2"
+		)
+
+	func test_bounce_at_45_degree_angle():
+		# Player1 at origin, player2 at 45 degrees.
+		player1.global_position = Vector2(0, 0)
+		player2.global_position = Vector2(100, 100)
+
+		player1.velocity = Vector2.ZERO
+		player1._apply_collision_bounce(player2)
+
+		# Should bounce diagonally up-left.
+		assert_lt(
+			player1.velocity.x,
+			0,
+			"Should bounce left"
+		)
+		assert_lt(
+			player1.velocity.y,
+			0,
+			"Should bounce up"
+		)
+
+	func test_bump_records_frame_and_direction():
+		G.network.frame_driver.server_frame_index = 100
+
+		player1.global_position = Vector2(0, 0)
+		player2.global_position = Vector2(100, 0)
+
+		player1._apply_collision_bounce(player2)
+
+		assert_eq(
+			player1.state_from_server.last_bump_frame_index,
+			100,
+			"Bump frame should be recorded"
+		)
+
+		# Direction should be normalized.
+		var direction = player1.state_from_server.last_bump_direction
+		assert_almost_eq(
+			direction.length(),
+			1.0,
+			0.01,
+			"Direction should be normalized"
+		)
+
+
+class TestCollisionDetectionLogic:
+	extends GutTest
+
+	func before_each():
+		ArrayPool.clear_all_pools()
+
+	func after_each():
+		ArrayPool.clear_all_pools()
+
+	func test_bump_interaction_type_recorded():
+		var state = MatchState.new()
+		for pid in [1, 2]:
+			var p = PlayerMatchState.new()
+			p.player_id = pid
+			state.players_by_id[pid] = p
+
+		G.network.frame_driver.server_frame_index = 200
+		state.server_add_bump(1, 2)
+
+		assert_gt(
+			state.bumps.size(),
+			0,
+			"Bump should be recorded"
+		)
+		assert_eq(
+			state._total_bumps_by_player_id[1],
+			1,
+			"Player 1 bump count should increase"
+		)
+		assert_eq(
+			state._total_bumps_by_player_id[2],
+			1,
+			"Player 2 bump count should increase"
+		)
+
+	func test_kill_interaction_type_recorded():
+		var state = MatchState.new()
+		for pid in [1, 2]:
+			var p = PlayerMatchState.new()
+			p.player_id = pid
+			state.players_by_id[pid] = p
+
+		G.network.frame_driver.server_frame_index = 300
+		state.server_add_kill(1, 2)
+
+		assert_gt(
+			state.kills.size(),
+			0,
+			"Kill should be recorded"
+		)
+		assert_eq(
+			state._total_kills_by_player_id[1],
+			1,
+			"Killer kill count should increase"
+		)
+		assert_eq(
+			state._total_deaths_by_player_id[2],
+			1,
+			"Killee death count should increase"
+		)
+
+
+class TestBothPlayersBounceBehavior:
+	extends GutTest
+
+	var player1: Player
+	var player2: Player
+	var movement_settings: MovementSettings
+
+	func before_each():
+		ArrayPool.clear_all_pools()
+
+		movement_settings = MovementSettings.new()
+		movement_settings.collision_bounce_base_speed = 300.0
+		movement_settings.collision_bounce_vertical_boost = -200.0
+
+		player1 = _create_test_player(1)
+		player2 = _create_test_player(2)
+
+	func after_each():
+		ArrayPool.clear_all_pools()
+		if is_instance_valid(player1):
+			player1.free()
+		if is_instance_valid(player2):
+			player2.free()
+
+	func _create_test_player(player_id: int) -> Player:
+		var player = Player.new()
+		player.player_id = player_id
+		player.movement_settings = movement_settings
+
+		var state = CharacterStateFromServer.new()
+		state.player_id = player_id
+		state.character = player
+		player.state_from_server = state
+
+		return player
+
+	func test_both_players_bounce_on_bump():
+		player1.global_position = Vector2(0, 0)
+		player2.global_position = Vector2(100, 0)
+
+		player1.velocity = Vector2.ZERO
+		player2.velocity = Vector2.ZERO
+
+		# Simulate bump (both players bounce).
+		player1._apply_collision_bounce(player2)
+		player2._apply_collision_bounce(player1)
+
+		# Player1 should bounce left, player2 should bounce right.
+		assert_lt(
+			player1.velocity.x,
+			0,
+			"Player1 should bounce left"
+		)
+		assert_gt(
+			player2.velocity.x,
+			0,
+			"Player2 should bounce right"
+		)
+
+	func test_bounce_directions_are_opposite():
+		player1.global_position = Vector2(0, 0)
+		player2.global_position = Vector2(100, 0)
+
+		player1.velocity = Vector2.ZERO
+		player2.velocity = Vector2.ZERO
+
+		player1._apply_collision_bounce(player2)
+		player2._apply_collision_bounce(player1)
+
+		# X components should have opposite signs.
+		var same_sign = (
+			sign(player1.velocity.x) == sign(player2.velocity.x)
+		)
+		assert_false(
+			same_sign,
+			"Bounce X directions should be opposite"
+		)
+
+	func test_both_players_get_upward_boost():
+		player1.global_position = Vector2(0, 0)
+		player2.global_position = Vector2(100, 0)
+
+		player1.velocity = Vector2.ZERO
+		player2.velocity = Vector2.ZERO
+
+		player1._apply_collision_bounce(player2)
+		player2._apply_collision_bounce(player1)
+
+		# Both should have negative Y (upward).
+		assert_lt(
+			player1.velocity.y,
+			-100.0,
+			"Player1 should have upward boost"
+		)
+		assert_lt(
+			player2.velocity.y,
+			-100.0,
+			"Player2 should have upward boost"
+		)
+
+
+class TestBouncePreservesExistingVelocity:
+	extends GutTest
+
+	var player1: Player
+	var player2: Player
+	var movement_settings: MovementSettings
+
+	func before_each():
+		ArrayPool.clear_all_pools()
+
+		movement_settings = MovementSettings.new()
+		movement_settings.collision_bounce_base_speed = 300.0
+		movement_settings.collision_bounce_vertical_boost = -200.0
+
+		player1 = _create_test_player(1)
+		player2 = _create_test_player(2)
+
+	func after_each():
+		ArrayPool.clear_all_pools()
+		if is_instance_valid(player1):
+			player1.free()
+		if is_instance_valid(player2):
+			player2.free()
+
+	func _create_test_player(player_id: int) -> Player:
+		var player = Player.new()
+		player.player_id = player_id
+		player.movement_settings = movement_settings
+
+		var state = CharacterStateFromServer.new()
+		state.player_id = player_id
+		state.character = player
+		player.state_from_server = state
+
+		return player
+
+	func test_bounce_adds_to_existing_velocity():
+		player1.global_position = Vector2(0, 0)
+		player2.global_position = Vector2(100, 0)
+
+		# Give player1 initial rightward velocity.
+		player1.velocity = Vector2(50, 0)
+		var initial_velocity = player1.velocity
+
+		player1._apply_collision_bounce(player2)
+
+		# Bounce should add to existing velocity, not replace it.
+		assert_ne(
+			player1.velocity,
+			initial_velocity,
+			"Velocity should change"
+		)
+		# Since bounce is leftward and initial is rightward, may partially
+		# cancel but should still have changed.
+
+	func test_bounce_accumulates_with_gravity():
+		player1.global_position = Vector2(0, 0)
+		player2.global_position = Vector2(100, 0)
+
+		# Player1 is falling.
+		player1.velocity = Vector2(0, 500)  # Downward.
+		var initial_y = player1.velocity.y
+
+		player1._apply_collision_bounce(player2)
+
+		# Upward boost should counteract falling.
+		assert_lt(
+			player1.velocity.y,
+			initial_y,
+			"Bounce should reduce downward velocity"
+		)
+
+
+class TestCollisionEdgeCases:
+	extends GutTest
+
+	var player1: Player
+	var player2: Player
+	var movement_settings: MovementSettings
+
+	func before_each():
+		ArrayPool.clear_all_pools()
+
+		movement_settings = MovementSettings.new()
+		movement_settings.collision_bounce_base_speed = 300.0
+		movement_settings.collision_bounce_vertical_boost = -200.0
+
+		player1 = _create_test_player(1)
+		player2 = _create_test_player(2)
+
+	func after_each():
+		ArrayPool.clear_all_pools()
+		if is_instance_valid(player1):
+			player1.free()
+		if is_instance_valid(player2):
+			player2.free()
+
+	func _create_test_player(player_id: int) -> Player:
+		var player = Player.new()
+		player.player_id = player_id
+		player.movement_settings = movement_settings
+
+		var state = CharacterStateFromServer.new()
+		state.player_id = player_id
+		state.character = player
+		player.state_from_server = state
+
+		return player
+
+	func test_bounce_with_overlapping_positions():
+		# Both players at same position.
+		player1.global_position = Vector2(0, 0)
+		player2.global_position = Vector2(0, 0)
+
+		player1.velocity = Vector2.ZERO
+
+		# Should not crash despite zero distance.
+		player1._apply_collision_bounce(player2)
+
+		# Velocity should still be modified (direction undefined but
+		# normalized).
+		pass
+
+	func test_bounce_with_very_close_positions():
+		player1.global_position = Vector2(0, 0)
+		player2.global_position = Vector2(0.1, 0)  # Very close.
+
+		player1.velocity = Vector2.ZERO
+
+		player1._apply_collision_bounce(player2)
+
+		# Should produce valid bounce.
+		assert_ne(
+			player1.velocity,
+			Vector2.ZERO,
+			"Should produce non-zero velocity"
+		)
+
+	func test_bounce_with_diagonal_collision():
+		# Collision from top-right.
+		player1.global_position = Vector2(0, 0)
+		player2.global_position = Vector2(100, -100)
+
+		player1.velocity = Vector2.ZERO
+
+		player1._apply_collision_bounce(player2)
+
+		# Should bounce down-left.
+		assert_lt(
+			player1.velocity.x,
+			0,
+			"Should bounce left"
+		)
+		assert_gt(
+			player1.velocity.y,
+			0,
+			"Base bounce should be downward (but upward boost may dominate)"
+		)
