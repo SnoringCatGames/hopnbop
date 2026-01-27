@@ -81,8 +81,11 @@ var _total_deaths_by_player_id := {}
 # Dictionary<int, int>
 var _total_bumps_by_player_id := {}
 
-var _recent_interactions := CircularBuffer.new(
-	G.network.frame_driver.rollback_buffer_size)
+var _recent_interactions := RollbackBuffer.new(
+	G.network.frame_driver.rollback_buffer_size,
+	0,   # current_frame_index (start at 0)
+	[]   # default_frame_state (empty array for interactions)
+)
 
 var _is_packing_state_locally := false
 
@@ -140,10 +143,11 @@ func _client_notify_bump(
 ) -> void:
 	# Notify local players for sound effects and visual feedback.
 	var player_1: Player = G.get_player(_player_1_id)
+	var player_2: Player = G.get_player(_player_2_id)
+
 	if is_instance_valid(player_1):
 		player_1.client_on_bumped(player_2, true)
 
-	var player_2: Player = G.get_player(_player_2_id)
 	if is_instance_valid(player_2):
 		player_2.client_on_bumped(player_1, false)
 
