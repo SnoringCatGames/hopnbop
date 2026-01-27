@@ -10,6 +10,11 @@ var match_state: PlayerMatchState:
 # Dictionary<int, bool>
 var _intersecting_head_player_ids := {}
 
+var _processed_collision_this_frame := false
+var _last_collision_frame := -1
+var _blink_accumulator := 0.0
+var _is_blink_visible := true
+
 
 func _enter_tree() -> void:
 	super._enter_tree()
@@ -39,8 +44,20 @@ func _ready() -> void:
 		G.match_state.player_joined.connect(_on_any_player_joined)
 
 
+func _process(_delta: float) -> void:
+	super._process(_delta)
+	_update_invincibility_blink()
+
+
 func _process_movement_and_actions() -> void:
 	super._process_movement_and_actions()
+
+	# Reset collision flag each frame.
+	if G.network.is_server:
+		var current_frame: int = G.network.frame_driver.server_frame_index
+		if _last_collision_frame != current_frame:
+			_processed_collision_this_frame = false
+			_last_collision_frame = current_frame
 
 
 func play_sound(sound_name: StringName) -> void:
@@ -127,7 +144,6 @@ func _apply_outline_color() -> void:
 
 func _on_body_area_body_entered(body: Node2D) -> void:
 	# This should represent a collision with another player.
-
 	if not G.network.is_server:
 		return
 
@@ -137,27 +153,37 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	var other_player := body as Player
 	var other_player_id := other_player.player_id
 
-	# FIXME: LEFT OFF HERE: Need to fix two big problems:
-	# 1. We need to record on the other player that they got bumped this frame,
-	#    and check for that flag here, so we don't double-count.
-	# 2. We need to account for rollbacks.
-	#    - To do so, I think we should record this frame as bumped/killed/died
-	#      between these two players, and make this record indelible by rollbacks.
-	#      We then need to prevent bumps/kills/deaths from ever being recorded
-	#      for this player if there was aalready bump/kill/death recorded on this
-	#      player with this other player within N past or future frames (N should
-	#      be 4, but make it a const).
-	#    - We should record this in MatchState.
-	#    - But we don't need to replicate this state. We can just track it on the
-	#      server.
-	#    - Make sure we then send an RPC to all players whenever a bump or kill
-	#      is recorded.
-	#      - Include killer, killee, position, and time in the RPC args.
+	# Prevent double-counting (this frame was already processed from the other
+	# player).
+	if _processed_collision_this_frame:
+		return
+
+	# Skip if either player is dead.
+	if state_from_server.is_dead or other_player.state_from_server.is_dead:
+		return
+
+	# Skip if match has ended (all players are invincible during the end
+    # sequence).
+	if G.match_state.is_match_ended:
+		return
+
+	# Skip if either player is invincible.
+	if (
+		state_from_server.is_invincible or
+		other_player.state_from_server.is_invincible
+	):
+		return
+
+	# Mark this collision as processed.
+	_processed_collision_this_frame = true
+	other_player._processed_collision_this_frame = true
+
+	# Determine interaction type and record.
 	if not _intersecting_head_player_ids.has(other_player_id):
-		# Bump
+		# Bump.
 		G.match_state.server_add_bump(player_id, other_player_id)
 	else:
-		# Kill
+		# Kill.
 		G.match_state.server_add_kill(player_id, other_player_id)
 
 
@@ -183,3 +209,29 @@ func _on_foot_area_area_exited(area: Area2D) -> void:
 	var other_player := other_parent as Player
 
 	_intersecting_head_player_ids.erase(other_player.player_id)
+
+
+func _update_invincibility_blink() -> void:
+	if not state_from_server.is_invincible:
+		# Ensure visible when not invincible.
+		if not _is_blink_visible:
+			animator.visible = true
+			_is_blink_visible = true
+		return
+
+	# Don't blink during match-end invincibility.
+	if G.match_state.is_match_ended:
+		animator.visible = true
+		_is_blink_visible = true
+		return
+
+	# Calculate blink period (seconds per toggle).
+	var blink_period: float = 1.0 / \
+		(G.settings.player_invincibility_blink_frequency_hz * 2.0)
+
+	_blink_accumulator += get_process_delta_time()
+
+	if _blink_accumulator >= blink_period:
+		_blink_accumulator -= blink_period
+		_is_blink_visible = not _is_blink_visible
+		animator.visible = _is_blink_visible

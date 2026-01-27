@@ -22,6 +22,8 @@ var player_id: int:
 var _original_collision_layer := 0
 var _original_collision_mask := 0
 
+var _has_disabled_inter_player_collisions := false
+
 
 func _enter_tree() -> void:
 	super._enter_tree()
@@ -84,6 +86,15 @@ func _ready() -> void:
 	# duplicate setup.
 	if not G.is_networked_level_active:
 		_set_up_action_sources()
+
+
+func _process(_delta: float) -> void:
+	super._process(_delta)
+	_update_match_end_collisions()
+
+
+func _physics_process(_delta: float) -> void:
+	super._physics_process(_delta)
 
 
 ## Called by the server after spawning to initialize player_id and update
@@ -224,6 +235,7 @@ func server_execute_respawn() -> void:
 	is_sprite_visible = true
 	collision_layer = _original_collision_layer
 	collision_mask = _original_collision_mask
+	_has_disabled_inter_player_collisions = false
 
 
 func _server_clear_invincibility() -> void:
@@ -232,6 +244,22 @@ func _server_clear_invincibility() -> void:
 	# Clear death time to end invincibility period.
 	if state_from_server.last_died_time_usec >= 0:
 		state_from_server.last_died_time_usec = -1
+
+
+func _update_match_end_collisions() -> void:
+	if not is_instance_valid(G.match_state):
+		return
+
+	var should_disable_collisions := G.match_state.is_match_ended
+
+	if should_disable_collisions and not _has_disabled_inter_player_collisions:
+		# Disable inter-player collisions by removing player layer from mask.
+		set_collision_mask_value(4, false) # Layer 4 = "player"
+		_has_disabled_inter_player_collisions = true
+	elif not should_disable_collisions and _has_disabled_inter_player_collisions:
+		# Re-enable inter-player collisions.
+		set_collision_mask_value(4, true)
+		_has_disabled_inter_player_collisions = false
 
 
 func _get_configuration_warnings() -> PackedStringArray:

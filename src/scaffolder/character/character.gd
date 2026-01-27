@@ -138,6 +138,14 @@ func _ready() -> void:
 	floor_max_angle = G.geometry.FLOOR_MAX_ANGLE + G.geometry.WALL_ANGLE_EPSILON
 
 
+func _process(_delta: float) -> void:
+	pass
+
+
+func _physics_process(_delta: float) -> void:
+	pass
+
+
 func _set_up_action_sources() -> void:
 	pass
 
