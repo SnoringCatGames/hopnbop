@@ -275,6 +275,12 @@ jobs:
 
           cmake --build . --config Release
 
+      - name: List GameLift SDK build directory (Windows)
+        working-directory: gamelift-gdextension/gamelift-server-sdk
+        run: |
+          echo "Listing GameLift SDK build directory:"
+          dir cmake-build /s
+
       - name: Manually copy GameLift SDK headers and libraries (Windows)
         working-directory: gamelift-gdextension/gamelift-server-sdk
         run: |
@@ -288,12 +294,6 @@ jobs:
           if (Test-Path $src_lib) {
             Copy-Item -Path $src_lib -Destination $dst_lib -Recurse -Force
           }
-
-      - name: List GameLift SDK include directory (Windows)
-        working-directory: gamelift-gdextension/gamelift-server-sdk
-        run: |
-          echo "Listing GameLift SDK include directory:"
-          dir cmake-build\prefix\include /s
 
       - name: Build GDExtension (Release)
         working-directory: gamelift-gdextension
