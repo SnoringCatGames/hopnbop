@@ -265,6 +265,10 @@ func server_start_game() -> void:
 
 	G.local_session.is_game_active = true
 
+	# Reset timer state.
+	G.match_state.match_start_time_usec = -1
+	G.match_state.is_match_ended = false
+
 	# TODO: Add in-game support for specifying which level to spawn on the server.
 
 	_server_spawn_level(G.settings.default_level_scene)
@@ -278,12 +282,63 @@ func server_end_game() -> void:
 	G.check_valid(G.level, "Level is not valid")
 
 	G.local_session.is_game_active = false
+	G.match_state.match_start_time_usec = -1
+	G.match_state.is_match_ended = false
 
 	G.network.connector.server_close_multiplayer_session()
 
 	# TODO: Add support for tracking game stats in a separate backend database.
 
 	_server_destroy_level(G.level)
+
+
+func _process(_delta: float) -> void:
+	if not G.network.is_server:
+		return
+
+	# Start timer when ready.
+	if G.match_state.match_start_time_usec < 0:
+		_server_check_start_match_timer()
+		return
+
+	# Check if time has expired.
+	if not G.match_state.is_match_ended and G.match_state.is_match_time_expired:
+		_server_initiate_match_end()
+
+
+func _server_check_start_match_timer() -> void:
+	if G.match_state.match_start_time_usec >= 0:
+		return
+	if not is_level_fully_loaded:
+		return
+	if not is_instance_valid(G.level):
+		return
+
+	# Start timer once level is loaded (sets match_start_time_usec).
+	G.match_state.server_start_match_timer(G.settings.match_duration_sec)
+
+	G.print(
+		"Match timer started: %d seconds" % G.settings.match_duration_sec,
+		ScaffolderLog.CATEGORY_GAME_STATE
+	)
+
+
+func _server_initiate_match_end() -> void:
+	G.check_is_server()
+	G.check(not G.match_state.is_match_ended, "Match end already initiated")
+
+	G.print("Match time expired - initiating end sequence",
+		ScaffolderLog.CATEGORY_GAME_STATE)
+
+	# Set flag to enable invincibility for all players and notify clients.
+	G.match_state.is_match_ended = true
+	G.match_state._client_notify_match_ended.rpc()
+
+	# Schedule server shutdown after wait period.
+	G.time.set_timeout(
+		server_end_game,
+		G.settings.match_end_disconnect_delay_sec
+	)
 
 
 func on_return_to_game_from_screen(
