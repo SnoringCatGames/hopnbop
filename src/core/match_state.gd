@@ -9,6 +9,8 @@ const _BUMP_SCORE := 5
 const _RANK_BONUS_PER_DIFF := 5
 const _SELF_KILL_PENALTY := 45
 
+const _INTERACTION_DEDUPLICATION_WINDOW_FRAMES := 4
+
 
 signal player_joined(player: PlayerMatchState)
 signal player_left(player: PlayerMatchState)
@@ -18,9 +20,27 @@ signal players_bumped(a: PlayerMatchState, b: PlayerMatchState)
 signal players_updated
 signal kills_updated
 signal bumps_updated
+signal match_ended
 
 # Dictionary<int, PlayerMatchState>
 var players_by_id: Dictionary = {}
+
+# Match timing (server-authoritative, synced to clients via RPC).
+var match_start_time_usec := -1
+var match_duration_usec := 0
+var is_match_ended := false
+
+var match_time_remaining_sec: float:
+	get:
+		if match_start_time_usec < 0:
+			return 0.0
+		var elapsed_usec: int = G.network.server_time_usec - match_start_time_usec
+		var remaining_usec: int = match_duration_usec - elapsed_usec
+		return max(0.0, remaining_usec / 1_000_000.0)
+
+var is_match_time_expired: bool:
+	get:
+		return match_time_remaining_sec <= 0.0 and match_start_time_usec >= 0
 
 ## - We maintain both a packed Array of player state as well as a redundant
 ##   Dictionary of player state.
@@ -83,6 +103,53 @@ func clear() -> void:
 	_total_kills_by_player_id.clear()
 	_total_deaths_by_player_id.clear()
 	_total_bumps_by_player_id.clear()
+	match_start_time_usec = -1
+	match_duration_usec = 0
+	is_match_ended = false
+
+
+@rpc("authority", "call_remote", "reliable")
+func _client_notify_kill(
+	_killer_id: int,
+	_killee_id: int,
+	_position_x: float,
+	_position_y: float,
+	_time_usec: int
+) -> void:
+	# Set death timestamp on the killee so clients can calculate respawn/invincibility.
+	var killee: Player = G.get_player(_killee_id)
+	if is_instance_valid(killee):
+		killee.state_from_server.last_died_time_usec = _time_usec
+
+	# FIXME: LEFT OFF HERE: Clients can use this for instant audio/visual effects.
+	pass
+
+
+@rpc("authority", "call_remote", "reliable")
+func _client_notify_bump(
+	_player_1_id: int,
+	_player_2_id: int,
+	_position_x: float,
+	_position_y: float,
+	_time_usec: int
+) -> void:
+	# FIXME: LEFT OFF HERE: Clients can use this for instant audio/visual effects.
+	pass
+
+
+@rpc("authority", "call_remote", "reliable")
+func _client_notify_match_started(
+	_match_start_time_usec: int,
+	_match_duration_usec: int
+) -> void:
+	match_start_time_usec = _match_start_time_usec
+	match_duration_usec = _match_duration_usec
+
+
+@rpc("authority", "call_remote", "reliable")
+func _client_notify_match_ended() -> void:
+	is_match_ended = true
+	match_ended.emit()
 
 
 func duplicate() -> MatchState:
@@ -102,10 +169,31 @@ func server_add_player(player: PlayerMatchState) -> void:
 	players_updated.emit()
 
 
+func server_start_match_timer(duration_sec: float) -> void:
+	match_start_time_usec = G.network.server_time_usec
+	match_duration_usec = int(duration_sec * 1_000_000)
+
+	# Notify all clients.
+	_client_notify_match_started.rpc(match_start_time_usec, match_duration_usec)
+
+
 func server_add_kill(killer_id: int, killee_id: int) -> void:
+	var current_frame: int = G.network.frame_driver.server_frame_index
+
+	# Check for recent interaction to prevent duplicates.
+	if _has_recent_interaction(
+		killer_id,
+		killee_id,
+		current_frame,
+		PlayerInteraction.Type.KILL
+	):
+		return # Already recorded within window.
+
+	# Record in replicated arrays.
 	kills.append_array([killer_id, killee_id])
 	kills = kills.duplicate()
 
+	# Update kill/death counts.
 	if not _total_kills_by_player_id.has(killer_id):
 		_total_kills_by_player_id[killer_id] = 0
 	_total_kills_by_player_id[killer_id] += 1
@@ -114,12 +202,30 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 		_total_deaths_by_player_id[killee_id] = 0
 	_total_deaths_by_player_id[killee_id] += 1
 
-	var interaction := PlayerInteraction.new()
-	interaction.player_1_id = killer_id
-	interaction.player_2_id = killee_id
-	interaction.type = PlayerInteraction.Type.KILL
-	# FIXME: LEFT OFF HERE: Record in buffer at the right frame.
-	#_recent_interactions
+	# Store in indelible interaction buffer.
+	_store_interaction(
+		killer_id,
+		killee_id,
+		PlayerInteraction.Type.KILL,
+		current_frame
+	)
+
+	# Trigger respawn.
+	var killee: Player = G.get_player(killee_id)
+	if is_instance_valid(killee):
+		killee.server_trigger_death()
+
+	# Notify all clients via RPC for instant effects.
+	var collision_pos := Vector2.ZERO
+	if is_instance_valid(killee):
+		collision_pos = killee.global_position
+	_client_notify_kill.rpc(
+		killer_id,
+		killee_id,
+		collision_pos.x,
+		collision_pos.y,
+		G.network.server_time_usec
+	)
 
 	kills_updated.emit()
 
@@ -129,9 +235,22 @@ func emit_kill_event(killer: PlayerMatchState, killee: PlayerMatchState) -> void
 
 
 func server_add_bump(player_1_id: int, player_2_id: int) -> void:
+	var current_frame: int = G.network.frame_driver.server_frame_index
+
+	# Check for recent interaction to prevent duplicates.
+	if _has_recent_interaction(
+		player_1_id,
+		player_2_id,
+		current_frame,
+		PlayerInteraction.Type.BUMP
+	):
+		return # Already recorded within window.
+
+	# Record in replicated arrays.
 	bumps.append_array([player_1_id, player_2_id])
 	bumps = bumps.duplicate()
 
+	# Update bump counts for both players.
 	if not _total_bumps_by_player_id.has(player_1_id):
 		_total_bumps_by_player_id[player_1_id] = 0
 	_total_bumps_by_player_id[player_1_id] += 1
@@ -140,12 +259,26 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 		_total_bumps_by_player_id[player_2_id] = 0
 	_total_bumps_by_player_id[player_2_id] += 1
 
-	var interaction := PlayerInteraction.new()
-	interaction.player_1_id = player_1_id
-	interaction.player_2_id = player_2_id
-	interaction.type = PlayerInteraction.Type.KILL
-	# FIXME: LEFT OFF HERE: Record in buffer at the right frame.
-	#_recent_interactions
+	# Store in indelible interaction buffer (FIX: was KILL, now BUMP).
+	_store_interaction(
+		player_1_id,
+		player_2_id,
+		PlayerInteraction.Type.BUMP,
+		current_frame
+	)
+
+	# Notify all clients via RPC for instant effects.
+	var player_1: Player = G.get_player(player_1_id)
+	var collision_pos := Vector2.ZERO
+	if is_instance_valid(player_1):
+		collision_pos = player_1.global_position
+	_client_notify_bump.rpc(
+		player_1_id,
+		player_2_id,
+		collision_pos.x,
+		collision_pos.y,
+		G.network.server_time_usec
+	)
 
 	bumps_updated.emit()
 
@@ -167,6 +300,64 @@ func get_players_for_peer(peer_id: int) -> Array[PlayerMatchState]:
 		if player.peer_id == peer_id:
 			result.append(player)
 	return result
+
+
+func _has_recent_interaction(
+	player_1_id: int,
+	player_2_id: int,
+	current_frame: int,
+	interaction_type: int
+) -> bool:
+	# Search window: current_frame +/- WINDOW.
+	var search_start: int = max(
+		0,
+		current_frame - _INTERACTION_DEDUPLICATION_WINDOW_FRAMES
+	)
+	var search_end: int = current_frame + \
+		_INTERACTION_DEDUPLICATION_WINDOW_FRAMES
+
+	# Check each frame in window (skip current frame).
+	for frame_idx in range(search_start, search_end + 1):
+		if frame_idx == current_frame:
+			continue
+
+		if not _recent_interactions.has_at(frame_idx):
+			continue
+
+		var interactions = _recent_interactions.get_at(frame_idx)
+		if interactions == null:
+			continue
+
+		for interaction in interactions:
+			if interaction.type == interaction_type and \
+				interaction.matches_players(player_1_id, player_2_id):
+				return true
+
+	return false
+
+
+func _store_interaction(
+	player_1_id: int,
+	player_2_id: int,
+	interaction_type: int,
+	frame_index: int
+) -> void:
+	# Get or create interactions array for this frame.
+	var interactions = null
+	if _recent_interactions.has_at(frame_index):
+		interactions = _recent_interactions.get_at(frame_index)
+	else:
+		interactions = []
+		_recent_interactions.set_at(frame_index, interactions)
+
+	# Create and store interaction.
+	var interaction = PlayerInteraction.new()
+	interaction.player_1_id = player_1_id
+	interaction.player_2_id = player_2_id
+	interaction.type = interaction_type
+	interaction.frame_index = frame_index
+
+	interactions.append(interaction)
 
 
 func _server_pack_players() -> void:
