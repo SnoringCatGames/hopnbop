@@ -177,7 +177,6 @@ func client_load_game() -> void:
 	# Despawn lobby if present.
 	_client_despawn_lobby_if_present()
 
-	G.local_session.clear()
 	G.local_session.clear_latest_state()
 	G.local_session.is_game_active = false
 	G.local_session.is_game_loading = true

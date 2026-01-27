@@ -132,7 +132,7 @@ func _process(delta: float) -> void:
 		return
 	if is_server:
 		return
-	if not multiplayer.has_multiplayer_peer():
+	if not G.network.is_connected_to_server:
 		return
 
 	_time_since_last_sync += delta
@@ -188,8 +188,7 @@ func get_server_time_usec() -> int:
 ##
 ## On the server, this does nothing.
 func client_request_time_sync() -> void:
-	if is_server:
-		return
+	G.check_is_client()
 	if not multiplayer.has_multiplayer_peer():
 		return
 	# Don't sync time until we have the server's start time offset.
@@ -218,7 +217,7 @@ func force_clock_offset(delta_usec: int) -> void:
 		_client_offset_samples[i] += delta_usec
 
 	G.print(
-        "Manually adjusted clock offset by %d usec (new offset: %d usec)" %
+		"Manually adjusted clock offset by %d usec (new offset: %d usec)" %
 		[delta_usec, clock_offset_usec],
 		ScaffolderLog.CATEGORY_NETWORK_SYNC,
 	)

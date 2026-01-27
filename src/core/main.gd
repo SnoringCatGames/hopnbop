@@ -11,13 +11,13 @@ func _enter_tree() -> void:
 
 	randomize()
 
-	get_tree().paused = true
-
 	Scaffolder.set_up()
 
 
 func _ready() -> void:
 	G.log.log_system_ready("Main")
+
+	get_tree().paused = true
 
 	await get_tree().process_frame
 

@@ -9,7 +9,7 @@ const _SLOW_RENDER_FPS := 30
 const _SLOW_PHYSICS_FPS := ScaffolderTime.PHYSICS_FPS - 10
 const _SLOW_NETWORK_FPS := 30
 
-const _METRICS_LOG_INTERVAL_SEC := 5.0
+const _METRICS_LOG_INTERVAL_SEC := 15.0
 const _WARNING_THROTTLE_SEC := 5.0
 const _ROLLBACK_TRACKING_WINDOW_SEC := 60.0
 const _FASTFORWARD_TRACKING_WINDOW_SEC := 60.0
@@ -490,7 +490,7 @@ func _log_metrics_periodically() -> void:
 
 func _log_render_fps_warning(avg_fps: float) -> void:
 	G.warning(
-        "Slow render FPS: %.1f (threshold: %d)" %
+		"Slow render FPS: %.1f (threshold: %d)" %
 		[avg_fps, _SLOW_RENDER_FPS],
 		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 	)
@@ -498,7 +498,7 @@ func _log_render_fps_warning(avg_fps: float) -> void:
 
 func _log_physics_fps_warning(avg_fps: float) -> void:
 	G.warning(
-        "Slow physics FPS: %.1f (threshold: %d)" %
+		"Slow physics FPS: %.1f (threshold: %d)" %
 		[avg_fps, _SLOW_PHYSICS_FPS],
 		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 	)
@@ -506,7 +506,7 @@ func _log_physics_fps_warning(avg_fps: float) -> void:
 
 func _log_network_fps_warning(avg_fps: float) -> void:
 	G.warning(
-        "Slow network FPS: %.1f (threshold: %d)" %
+		"Slow network FPS: %.1f (threshold: %d)" %
 		[avg_fps, _SLOW_NETWORK_FPS],
 		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 	)
@@ -514,7 +514,7 @@ func _log_network_fps_warning(avg_fps: float) -> void:
 
 func _log_network_rtt_warning(rtt_msec: float) -> void:
 	G.warning(
-        "Slow network RTT: %.1fms (threshold: %.0fms)" %
+		"Slow network RTT: %.1fms (threshold: %.0fms)" %
 		[rtt_msec, _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0],
 		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 	)
@@ -522,7 +522,7 @@ func _log_network_rtt_warning(rtt_msec: float) -> void:
 
 func _log_large_fastforward_warning(frame_count: int) -> void:
 	G.warning(
-        "Large fast-forward: %d frames (threshold: %d)" %
+		"Large fast-forward: %d frames (threshold: %d)" %
 		[frame_count, _LARGE_FASTFORWARD_THRESHOLD],
 		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 	)
@@ -530,7 +530,7 @@ func _log_large_fastforward_warning(frame_count: int) -> void:
 
 func _log_high_fastforward_rate_warning(rate: float) -> void:
 	G.warning(
-        "High fast-forward rate: %.2f/sec (threshold: %.1f)" %
+		"High fast-forward rate: %.2f/sec (threshold: %.1f)" %
 		[rate, _HIGH_FASTFORWARD_RATE_THRESHOLD],
 		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 	)

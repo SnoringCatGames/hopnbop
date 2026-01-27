@@ -93,7 +93,8 @@ func server_enable_connections() -> void:
 
 	multiplayer.multiplayer_peer = peer
 
-	G.print("Started multiplayer server", ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
+	G.print("Started multiplayer server: port=%d" % [server_port],
+		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
 	G.main.update_window_title()
 
@@ -123,12 +124,15 @@ func client_connect_to_server() -> void:
 
 	multiplayer.multiplayer_peer = peer
 
-	G.print("Started multiplayer client", ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
+	G.print("Started multiplayer client: %s:%d" %
+		[server_ip_address, server_port],
+		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
 
 func _on_peer_connected(peer_id: int) -> void:
 	if G.network.is_server:
-		G.print("Client connected: %d" % peer_id, ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
+		G.print("Client connected: %d" % peer_id,
+			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
 		# FIXME: [GameLift]: Start level paused until all clients are connected.
 	else:
@@ -234,7 +238,8 @@ func _client_update_is_connected_to_server() -> void:
 func server_close_multiplayer_session() -> void:
 	G.check_is_server()
 
-	G.print("Ending network connections", ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
+	G.print("Ending network connections",
+		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
 	multiplayer.multiplayer_peer.refuse_new_connections = true
 

@@ -96,14 +96,7 @@ func _process_local_mode() -> void:
 	# Collect input from local player.
 	character._collect_actions()
 
-	# Debug: Log when actions are detected.
-	if character.actions.bitmask != 0:
-		G.print(
-			"Local mode actions: %d" % character.actions.bitmask,
-			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
-		)
-
-	# Apply movement.
+	# Apply movement (includes surfaces.update_touches()).
 	character._apply_movement()
 
 	# Process animations, sounds, etc.
@@ -111,6 +104,10 @@ func _process_local_mode() -> void:
 
 	# Sync state (for consistency with networked path).
 	_sync_from_scene_state()
+
+	# Update previous state for next frame's just_* checks.
+	character.actions.previous_bitmask = character.actions.bitmask
+	character.surfaces.previous_bitmask = character.surfaces.bitmask
 
 
 func _network_process() -> void:

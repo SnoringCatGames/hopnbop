@@ -41,7 +41,7 @@ func _ready() -> void:
 
 ## Requests session IDs from backend for the specified number of players.
 func request_session_ids(player_count: int) -> void:
-	if not G.network.should_connect_to_local_preview_server:
+	if not G.network.should_connect_to_remote_server:
 		_handle_preview_local_server_mode(player_count)
 		return
 
