@@ -128,7 +128,7 @@ func _apply_outline_color() -> void:
 func _on_body_area_body_entered(body: Node2D) -> void:
 	# This should represent a collision with another player.
 
-	if not G.is_server:
+	if not G.network.is_server:
 		return
 
 	if not G.ensure(body is Player):
