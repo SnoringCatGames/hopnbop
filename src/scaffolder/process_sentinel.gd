@@ -19,6 +19,7 @@ func _ready() -> void:
 
 	_pre_process_sentinel = _ProcessSentinelHelper.new()
 	_pre_process_sentinel.name = "PreProcessSentinel"
+	_pre_process_sentinel.process_mode = Node.PROCESS_MODE_ALWAYS
 	_pre_process_sentinel.process_priority = Utils.MIN_INT
 	_pre_process_sentinel.physics_processed.connect(_pre_physics_process)
 	_pre_process_sentinel.processed.connect(_pre_process)
@@ -26,8 +27,9 @@ func _ready() -> void:
 	root.move_child.call_deferred(_pre_process_sentinel, 0)
 
 	_post_process_sentinel = _ProcessSentinelHelper.new()
-	_pre_process_sentinel.name = "PostProcessSentinel"
-	_pre_process_sentinel.process_priority = Utils.MAX_INT
+	_post_process_sentinel.name = "PostProcessSentinel"
+	_post_process_sentinel.process_mode = Node.PROCESS_MODE_ALWAYS
+	_post_process_sentinel.process_priority = Utils.MAX_INT
 	_post_process_sentinel.physics_processed.connect(_post_physics_process)
 	_post_process_sentinel.processed.connect(_post_process)
 	root.add_child.call_deferred(_post_process_sentinel)

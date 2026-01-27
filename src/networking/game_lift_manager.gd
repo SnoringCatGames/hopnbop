@@ -39,10 +39,6 @@ var _player_to_session: Dictionary = {}
 # Dictionary<StringName, int>
 var _session_to_player: Dictionary = {}
 
-# Pending connections awaiting validation (peer_id -> player_count)
-# Dictionary<int, int>
-var _pending_peers := {}
-
 # Expected player count from matchmaking (total players across all peers)
 var _expected_player_count: int = 0
 var _validated_player_count: int = 0

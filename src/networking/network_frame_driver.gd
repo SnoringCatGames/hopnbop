@@ -51,101 +51,9 @@ extends Node
 #
 # - Also add text outline to player over-head name display that matches their
 #   assigned color.
-# - In the lobby, when spawning a player, briefly render over their head an indicator for which controls they're using.
-#   - A simple drawing of rectangles in the shape of WASD, IJKL, or Arrows, or a controller shape.
-#
-#
-# Proceed with the "AWS GameLift Deployment Guide"
-# - Add player authentication and profile management.
-# - Set up CloudWatch alarms for monitoring.
-# - Configure auto-scaling policies based on load.
-#
-# - Debug the game.
-#   - Fix the GDExtension importing in Godot.
-# - Review tests.
-# - Fix GitHub CI.
+# - Fix "on_sync_receive: ignoring sync data from non-authority or for missing node"
 # - Lingering FIXMEs.
-# - Use is_instance_valid instead of null comparisons.
-# - Implement annotations:
-#   - Toggleable at run time.
-#   - Render shape to match the collision shape
-#   - Render a dot for every frame in the rollback buffer.
-#     - Color code these based on authority, and whether they caused a rollback
-#       or a fast-forward.
-
-# - Log the app version (from project settings).
-# - Check on the server that clients have the same version, and reject them if
-#   they don't.
-#   - Even better, try to do this check from GameLift matchmaking.
-
-# - GameLift
-# - Implement kills and other gameplay bits.
-# - Add rollback debug visualizations.
-# - Organize Settings.
-# - Hook-up pause UI.
-#   - Show a small panel in the center of the window with a lightly transparent screen.
-# - Review these notes: https://docs.google.com/document/d/1qJcNUrE1y8UllVVCojp-IN3zCwml8VK7kjYhp1uJhV4
-# - Review NETWORKING_ARCHITECTURE.md.
-
-# FIXME: GameLift
-# - https://claude.ai/chat/c191d2ce-5457-4b81-bfb6-6b9dade6a939
-# - Also ask AI to:
-#   - Want to make sure we can easily test GameLift locally.
-#   - Implement easy scripts for building and deploying and testing. Maybe can also add a hook for GitHub Actions when creating tags? Or ask for a better deployment with trigger solution
-#   - Implement logic for handling logins to the various auth providers.
-#   - Implement a database for recording some game data:
-#     - player data (id, bunny name and adjective, first play time, last play time, total time played, total wins, total kills, total deaths, login info for whichever auth providers they've connected to, ...)
-#     - a leaderboard
-#   - Implement a way to make friends and to join matches with friends.
-
-# - Assign name and adjective when joining locally in the lobby. ---------------
-#   - Also assign a random character-sprite/costume to each player.
-#   - Also assign a random color to each player.
-#     - Define an algorithm to calculate these colors. Simply divide the hue
-#       space into N, where N is the number of players in the match.
-#       - Do this for up to 4 players.
-#       - For 5-8, use a desaturation and lightening shift.
-#       - For 9-12, use a saturation and darkening shift.
-#       - For 13+, just randomly pick hue/saturation/lightness, and don't even
-#         bother trying to avoid collisions.
-#     - Use this to render an outline around the player sprite.
-#     - Also render an outline around the player's hud display.
-#     - Don't render the outline in the lobby though, and re-assign the color
-#       from the server when the player joins, so we can ensure all players
-#       have a different color.
-#   - Add an additional custom player_joined RPC step.
-#     - This is sent from the client after the client is connected.
-#     - The server then broadcasts a player_joined RPC to all clients, with
-#       the client's info (including the player that triggered it in the first
-#       place). This is an opportunity for the local client to incorporate any
-#       state corrections from the server.
-# - Plan how to handle the camera.
-#   - Support two modes: global camera vs player camera.
-#     - This will be configured on the level.
-#     - For global camera, dynamically instantiate, configure (according to
-#       level bounds), attach, and activate a camera to the level.
-#     - For player camera, add support for split screen.
-#       - Add a TODO for this for now.
-# - Adjust scene files: lobby_level.tscn, player_list.tscn, player_display.tscn.
-# - Lobby scene:
-#   - Embed the game title logo within the level.
-#   - Also embed some controls instruction.
-#   - Also embed instructions to go down hole for starting match.
-#   - Call MatchmakingClient.start_matchmaking() when any player jumps down a
-#     rabbit hole on the right side of the level.
-# - Review PlayerList, PlayerDisplay, and PlayerOverheadLabels.
-#   - Make sure the local players are always listed at the left, in local_player_index order.
-# - Add support for rendering player outlines.
-
-# - Add support for selecting player spawn positions.
-#   - We'll use this both at level start, and later when we add support for players dying and respawning.
-#   - So make sure we add support for checking for collisions and/or other nearby players before choosing a spot.
-#   - We probably want to support this by manually configuring spawn positions within a level.
-
-# - Add support for dynamic level selection.
-#   - The server should choose the level for a match.
-#   - The client should be able to specific a three things: an inclusion list, an exclusion list, and a preferred level.
-#   - The server should try to accommodate these, but should be able to override all of these, depending on the combined client preferences of the match.
+# - Fix GitHub CI.
 
 # - Implement player kills.
 #   - In this game players kill each other by jumping on each other's heads.
@@ -168,18 +76,27 @@ extends Node
 #   - Also implement bouncing for the killer when a kill occurs:
 #     - The killer should bounce upward a bit, while maintaining horizontal velocity.
 
-# - Add Godot and SCG images to the splash screens.
-# - Add snore sound to SCG splash screen.
-# - Should a ta-da sound play as the first possible thing, during the initial
-#   engine splash made-with-Godot screen? Or during my custom one? And/or get
-#   rid of my custom one?
+# - Adjust scene files: lobby_level.tscn, player_list.tscn, player_display.tscn.
+# - Lobby scene:
+#   - Embed the game title logo within the level.
+#   - Also embed some controls instruction.
+#   - Also embed instructions to go down hole for starting match.
+#   - Call MatchmakingClient.start_matchmaking() when any player jumps down a
+#     rabbit hole on the right side of the level.
+# - Review PlayerList, PlayerDisplay, and PlayerOverheadLabels.
+#   - Make sure the local players are always listed at the left, in local_player_index order.
+# - Add support for rendering player outlines.
+# - Add support for dynamic level selection.
+#   - The server should choose the level for a match.
+#   - The client should be able to specific a three things: an inclusion list, an exclusion list, and a preferred level.
+#   - The server should try to accommodate these, but should be able to override all of these, depending on the combined client preferences of the match.
 
-# - Add support for a slide-transition effect that slides a black panel over the lobby screen before showing the loading screen.
-#   - This panel slide will use a Tween.
-#   - We'll need to trigger this from client_load_game.
-#   - We'll need to then have a delay before despawning the lobby level.
-#   - We'll need to then prevent player modifications (spawn, despawn, triggering anything in lobby) during this transition.
-#   - We should also add another tween to every screen to transition it from transparent to opaque when it is opened.
+# - Implement annotations:
+#   - Toggleable at run time.
+#   - Render shape to match the collision shape
+#   - Render a dot for every frame in the rollback buffer.
+#     - Color code these based on authority, and whether they caused a rollback
+#       or a fast-forward.
 
 # - Add another F[N] shortcut for toggling hud, super_hud, and annotation visibility.
 # - Add another F[N] shortcut for toggling music.
@@ -191,14 +108,22 @@ extends Node
 #     - Do this with getters on those properties.
 #     - Probably need to check Engine.is_editor_hint though also in the getters.
 
-# - [Copilot] Go through each file and fix formatting inconsistencies.
-#   - Make sure there are always two empty lines between functions and after the
-#     class `extends` line.
-#     - But make sure that if a file-level doc comment is present, it is on the
-#       next line after the `extends` line
-#   - Fix inconsistent line-break. Lines should break at 80 characters.
-#   - Use tabs instead of spaces.
-#   - Fix anything else that looks off.
+# - Hook-up / polish pause UI.
+#   - Show a small panel in the center of the window with a lightly transparent screen.
+
+# FIXME: GameLift
+# - [Obsolete?] Proceed with the "AWS GameLift Deployment Guide"
+#   - Add player authentication and profile management.
+#   - Set up CloudWatch alarms for monitoring.
+#   - Configure auto-scaling policies based on load.
+# - Also ask AI to:
+#   - Want to make sure we can easily test GameLift locally.
+#   - Implement easy scripts for building and deploying and testing. Maybe can also add a hook for GitHub Actions when creating tags? Or ask for a better deployment with trigger solution
+#   - Implement logic for handling logins to the various auth providers.
+#   - Implement a database for recording some game data:
+#     - player data (id, bunny name and adjective, first play time, last play time, total time played, total wins, total kills, total deaths, login info for whichever auth providers they've connected to, ...)
+#     - a leaderboard
+#   - Implement a way to make friends and to join matches with friends.
 
 # FIXME: Rollback debug visualization and networking improvements:
 #
@@ -368,8 +293,9 @@ extends Node
 #   - When the particle comes to rest (displacement for a frame is less than some threshold like 0.05), destroy the node, and record the particle's type and position in separate arrays.
 #   - Create a shader that accepts these arrays of particle types and positions, and renders them.
 #   - Alternatively, let me know if there is a better way to efficently render tens of thousands of particles like this!
-#
-# - Sounds
+# - In the lobby, when spawning a player, briefly render over their head an indicator for which controls they're using.
+#   - A simple drawing of rectangles in the shape of WASD, IJKL, or Arrows, or a controller shape.
+# - Sounds (talk to Alden)
 #   - Kill
 #     - Splatter sound
 #     - Confetti party popper sound for non-gore mode
@@ -378,10 +304,38 @@ extends Node
 #   - Walk sound
 #   - Bunny bump sound
 #   - Menu click sound
-#
-# - Review these notes: https://trello.com/c/i8peodBL
-#
+
+# - Add support for a slide-transition effect that slides a black panel over the lobby screen before showing the loading screen.
+#   - This panel slide will use a Tween.
+#   - We'll need to trigger this from client_load_game.
+#   - We'll need to then have a delay before despawning the lobby level.
+#   - We'll need to then prevent player modifications (spawn, despawn, triggering anything in lobby) during this transition.
+#   - We should also add another tween to every screen to transition it from transparent to opaque when it is opened.
+
+# - Add alternate the camera modes.
+#   - Support two modes: global camera vs player camera.
+#   - This will be configured on the level.
+#   - For global camera, dynamically instantiate, configure (according to
+#     level bounds), attach, and activate a camera to the level.
+#   - For player camera, add support for split screen.
+#     - Add a TODO for this for now.
+
+# - [Copilot] Go through each file and fix formatting inconsistencies.
+#   - Make sure there are always two empty lines between functions and after the
+#     class `extends` line.
+#     - But make sure that if a file-level doc comment is present, it is on the
+#       next line after the `extends` line
+#   - Fix inconsistent line-break. Lines should break at 80 characters.
+#   - Use tabs instead of spaces.
+#   - Fix anything else that looks off.
+
 # ### TODO: After everything else:
+# - Review tests.
+# - Review these notes: https://docs.google.com/document/d/1qJcNUrE1y8UllVVCojp-IN3zCwml8VK7kjYhp1uJhV4
+# - Review NETWORKING_ARCHITECTURE.md.
+# - Review these notes: https://trello.com/c/i8peodBL
+# - Organize Settings.
+# - Use is_instance_valid instead of null comparisons.
 # - Survey usage of G.check, G.ensure, G.error, G.fatal, and G.alert.
 #   - Check if there are places that I should be more gracefully showing the
 #     player a message, and/or redirecting back to the lobby, possibly with
@@ -536,10 +490,17 @@ func _ready() -> void:
 		# connections and unpause when all expected clients have connected.
 		if G.network.is_preview and G.network.is_server:
 			multiplayer.peer_connected.connect(_on_preview_peer_connected)
+			# Check if clients are already connected.
+			_check_preview_clients_connected()
 
 
 ## Handles peer connections in preview mode to auto-unpause when ready.
 func _on_preview_peer_connected(_peer_id: int) -> void:
+	_check_preview_clients_connected()
+
+
+## Checks if all expected clients are connected in preview mode.
+func _check_preview_clients_connected() -> void:
 	if not G.network.is_preview or not G.network.is_server:
 		return
 
@@ -547,7 +508,10 @@ func _on_preview_peer_connected(_peer_id: int) -> void:
 	var expected_count := G.settings.preview_client_count
 
 	G.print(
-		"Preview mode: %d/%d clients connected" % [connected_count, expected_count],
+		"Preview mode: %d/%d clients connected" % [
+			connected_count,
+			expected_count
+		],
 		ScaffolderLog.CATEGORY_NETWORK_SYNC,
 	)
 
@@ -557,7 +521,8 @@ func _on_preview_peer_connected(_peer_id: int) -> void:
 			ScaffolderLog.CATEGORY_NETWORK_SYNC,
 		)
 		# Disconnect signal to avoid re-checking.
-		multiplayer.peer_connected.disconnect(_on_preview_peer_connected)
+		if multiplayer.peer_connected.is_connected(_on_preview_peer_connected):
+			multiplayer.peer_connected.disconnect(_on_preview_peer_connected)
 		server_set_is_paused(false)
 
 
