@@ -61,6 +61,9 @@ var _total_deaths_by_player_id := {}
 # Dictionary<int, int>
 var _total_bumps_by_player_id := {}
 
+var _recent_interactions := CircularBuffer.new(
+	G.network.frame_driver.rollback_buffer_size)
+
 var _is_packing_state_locally := false
 
 # Dictionary<int, int> - Maps peer_id to number of pauses used.
@@ -111,6 +114,13 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 		_total_deaths_by_player_id[killee_id] = 0
 	_total_deaths_by_player_id[killee_id] += 1
 
+	var interaction := PlayerInteraction.new()
+	interaction.player_1_id = killer_id
+	interaction.player_2_id = killee_id
+	interaction.type = PlayerInteraction.Type.KILL
+	# FIXME: LEFT OFF HERE: Record in buffer at the right frame.
+	#_recent_interactions
+
 	kills_updated.emit()
 
 
@@ -129,6 +139,13 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 	if not _total_bumps_by_player_id.has(player_2_id):
 		_total_bumps_by_player_id[player_2_id] = 0
 	_total_bumps_by_player_id[player_2_id] += 1
+
+	var interaction := PlayerInteraction.new()
+	interaction.player_1_id = player_1_id
+	interaction.player_2_id = player_2_id
+	interaction.type = PlayerInteraction.Type.KILL
+	# FIXME: LEFT OFF HERE: Record in buffer at the right frame.
+	#_recent_interactions
 
 	bumps_updated.emit()
 

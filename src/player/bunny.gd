@@ -2,9 +2,13 @@
 class_name Bunny
 extends Player
 
+
 var match_state: PlayerMatchState:
 	get:
 		return G.get_player_match_state(player_id)
+
+# Dictionary<int, bool>
+var _intersecting_head_player_ids := {}
 
 
 func _enter_tree() -> void:
@@ -119,3 +123,54 @@ func _apply_outline_color() -> void:
 		shader_material.set_shader_parameter(
 			"outline_enabled",
 			G.is_networked_level_active)
+
+
+func _on_collided_with_player(other_player_id: int) -> void:
+	if not G.is_server:
+		return
+	# FIXME: LEFT OFF HERE: Need to fix two big problems:
+	# 1. We need to record on the other player that they got bumped this frame,
+	#    and check for that flag here, so we don't double-count.
+	# 2. We need to account for rollbacks.
+	#    - To do so, I think we should record this frame as bumped/killed/died
+	#      between these two players, and make this record indelible by rollbacks.
+	#      We then need to prevent bumps/kills/deaths from ever being recorded
+	#      for this player if there was aalready bump/kill/death recorded on this
+	#      player with this other player within N past or future frames (N should
+	#      be 4, but make it a const).
+	#    - We should record this in MatchState.
+	#    - But we don't need to replicate this state. We can just track it on the
+	#      server.
+	#    - Make sure we then send an RPC to all players whenever a bump or kill
+	#      is recorded.
+	#      - Include killer, killee, position, and time in the RPC args.
+	if not _intersecting_head_player_ids.has(other_player_id):
+		# Bump
+		G.match_state.server_add_bump(player_id, other_player_id)
+	else:
+		# Kill
+		G.match_state.server_add_kill(player_id, other_player_id)
+
+
+func _on_foot_area_area_entered(area: Area2D) -> void:
+	if not G.is_server:
+		return
+
+	var other_parent: Node = area.get_parent()
+	if not G.ensure(other_parent is Player):
+		return
+	var other_player := other_parent as Player
+
+	_intersecting_head_player_ids[other_player.player_id] = true
+
+
+func _on_foot_area_area_exited(area: Area2D) -> void:
+	if not G.is_server:
+		return
+
+	var other_parent: Node = area.get_parent()
+	if not G.ensure(other_parent is Player):
+		return
+	var other_player := other_parent as Player
+
+	_intersecting_head_player_ids.erase(other_player.player_id)

@@ -56,18 +56,7 @@ extends Node
 # - Fix GitHub CI.
 
 # - Implement player kills.
-#   - In this game players kill each other by jumping on each other's heads.
-#   - In order to detect when one player jumps onto another's head, use the following strategy (or let me know if there is some other industry standard way to implement this that wolud be better!):
-#     - Add an additional pair of Area2D nodes to Bunny.tscn.
-#     - Have the collision shape be a long thin rectangle for both of these.
-#     - Have one area line up with the bottom of the main collision shape and the other line up with the top.
-#     - Listen for area-entered and exited events for both of these shapes, and use those listeners to track a list of currently-overlapping bunnies.
-#     - Then add logic to also detect when two bunny's collide with eachother with their main collision geometry (possibly handle this by checking current collisions after move_and_slide?).
-#     - When two bunnies collide:
-#       - Check their relative velocity.
-#       - If they are getting closer together vertically, and they are in the list of currently overlapping head/foot areas, then trigger the kill.
-#   - Only detect kills on the server. Then send an RPC from the server to all clients for a kill. Include killer, killee, position, and time in the RPC args.
-#   - Also for a kill, update game_panel.match_state.
+#   - See LEFT OFF HEREs in Bunny and MatchState.
 #   - Then handle destroying the killed player and respawning them after a short 1 second delay.
 #     - Check for any logic that depends of there being a local player node present, and update it to handle when the player is yet to respawn.
 #   - For any bunny-bunny collision that doesn't result in a kill, call this a "bump".
