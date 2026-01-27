@@ -65,6 +65,13 @@ extends Node
 #   - Also implement bouncing for the killer when a kill occurs:
 #     - The killer should bounce upward a bit, while maintaining horizontal velocity.
 
+# - Implement match duration.
+#   - We should show a countdown label at the top-right corner of the hud for the current time remaining (with seconds precision).
+#   - This should defined by a property on Settings (in seconds). Start with 5 minutes.
+#   - On the server, end the match when the time elapses.
+#   - Wait N seconds before disconnecting players, in order to allow the final match_state to replicate.
+#   - Between when the match is ended and players are disconnected, reject any new bumps or kills, but allow players to continue moving around.
+
 # - Adjust scene files: lobby_level.tscn, player_list.tscn, player_display.tscn.
 # - Lobby scene:
 #   - Embed the game title logo within the level.
