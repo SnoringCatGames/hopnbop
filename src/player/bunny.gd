@@ -125,9 +125,18 @@ func _apply_outline_color() -> void:
 			G.is_networked_level_active)
 
 
-func _on_collided_with_player(other_player_id: int) -> void:
+func _on_body_area_body_entered(body: Node2D) -> void:
+	# This should represent a collision with another player.
+
 	if not G.is_server:
 		return
+
+	if not G.ensure(body is Player):
+		return
+
+	var other_player := body as Player
+	var other_player_id := other_player.player_id
+
 	# FIXME: LEFT OFF HERE: Need to fix two big problems:
 	# 1. We need to record on the other player that they got bumped this frame,
 	#    and check for that flag here, so we don't double-count.

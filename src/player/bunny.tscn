@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3 uid="uid://cn6hdqmmufnvr"]
+[gd_scene load_steps=15 format=3 uid="uid://cn6hdqmmufnvr"]
 
 [ext_resource type="Script" uid="uid://dwab2y7smxa" path="res://src/player/bunny.gd" id="1_j5lrb"]
 [ext_resource type="Resource" uid="uid://dq1d4nuh248j2" path="res://src/player/default_movement_settings.tres" id="2_4p26p"]
@@ -29,6 +29,9 @@ properties/0/replication_mode = 1
 [sub_resource type="CircleShape2D" id="CircleShape2D_rxibo"]
 radius = 6.0
 
+[sub_resource type="CircleShape2D" id="CircleShape2D_o16et"]
+radius = 6.0
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_o16et"]
 size = Vector2(12, 3)
 
@@ -37,7 +40,7 @@ size = Vector2(12, 4)
 
 [node name="Bunny" type="CharacterBody2D" node_paths=PackedStringArray("input_from_client", "forwarded_input_from_server", "collision_shape", "animator", "state_from_server")]
 collision_layer = 8
-collision_mask = 47
+collision_mask = 39
 script = ExtResource("1_j5lrb")
 input_from_client = NodePath("InputFromClient")
 forwarded_input_from_server = NodePath("ForwardedInputFromServer")
@@ -83,6 +86,15 @@ position = Vector2(0, -6)
 rotation = 1.5707964
 shape = SubResource("CircleShape2D_rxibo")
 
+[node name="BodyArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 8
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="BodyArea"]
+position = Vector2(0, -6)
+shape = SubResource("CircleShape2D_o16et")
+
 [node name="FootArea" type="Area2D" parent="."]
 collision_layer = 128
 collision_mask = 256
@@ -122,5 +134,6 @@ stream = ExtResource("7_o16et")
 unique_name_in_owner = true
 stream = ExtResource("7_o16et")
 
+[connection signal="body_entered" from="BodyArea" to="." method="_on_body_area_body_entered"]
 [connection signal="area_entered" from="FootArea" to="." method="_on_foot_area_area_entered"]
 [connection signal="area_exited" from="FootArea" to="." method="_on_foot_area_area_exited"]
