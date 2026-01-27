@@ -3,6 +3,8 @@ class_name Player
 extends Character
 
 
+const _PLAYER_COLLISION_LAYER := 4
+
 @export var input_from_client: PlayerInputFromClient:
 	set(value):
 		input_from_client = value
@@ -80,6 +82,10 @@ func _ready() -> void:
 	_original_collision_layer = collision_layer
 	_original_collision_mask = collision_mask
 
+	# Connect to match end signal.
+	if is_instance_valid(G.match_state):
+		G.match_state.match_ended.connect(_on_match_ended)
+
 	# Set up action sources for local mode (lobby).
 	# In networked mode, this will be called again from
 	# on_match_state_ready(), but _set_up_action_sources() guards against
@@ -90,7 +96,6 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	super._process(_delta)
-	_update_match_end_collisions()
 
 
 func _physics_process(_delta: float) -> void:
@@ -246,20 +251,10 @@ func _server_clear_invincibility() -> void:
 		state_from_server.last_died_time_usec = -1
 
 
-func _update_match_end_collisions() -> void:
-	if not is_instance_valid(G.match_state):
-		return
-
-	var should_disable_collisions := G.match_state.is_match_ended
-
-	if should_disable_collisions and not _has_disabled_inter_player_collisions:
-		# Disable inter-player collisions by removing player layer from mask.
-		set_collision_mask_value(4, false) # Layer 4 = "player"
-		_has_disabled_inter_player_collisions = true
-	elif not should_disable_collisions and _has_disabled_inter_player_collisions:
-		# Re-enable inter-player collisions.
-		set_collision_mask_value(4, true)
-		_has_disabled_inter_player_collisions = false
+func _on_match_ended() -> void:
+	# Disable inter-player collisions by removing player layer from mask.
+	set_collision_mask_value(_PLAYER_COLLISION_LAYER, false)
+	_has_disabled_inter_player_collisions = true
 
 
 func _get_configuration_warnings() -> PackedStringArray:

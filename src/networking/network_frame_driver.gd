@@ -361,6 +361,7 @@ extends Node
 #     - Have a setting to disable the bar
 
 # ### TODO: After everything else:
+# - Survey all RPCs. Decide whether we should introduce new RPC channels and assign them as appropriate. Reference them as consts on NetworkConnector.
 # - Review tests.
 # - Review these notes: https://docs.google.com/document/d/1qJcNUrE1y8UllVVCojp-IN3zCwml8VK7kjYhp1uJhV4
 # - Review NETWORKING_ARCHITECTURE.md.

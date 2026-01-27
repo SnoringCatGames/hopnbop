@@ -332,6 +332,7 @@ func _server_initiate_match_end() -> void:
 
 	# Set flag to enable invincibility for all players and notify clients.
 	G.match_state.is_match_ended = true
+	G.match_state.match_ended.emit()
 	G.match_state._client_notify_match_ended.rpc()
 
 	# Schedule server shutdown after wait period.
