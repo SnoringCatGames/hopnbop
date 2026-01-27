@@ -279,7 +279,7 @@ jobs:
         working-directory: gamelift-gdextension/gamelift-server-sdk
         run: |
           echo "Listing GameLift SDK build directory:"
-          dir cmake-build /s
+          Get-ChildItem -Path cmake-build -Recurse
 
       - name: Manually copy GameLift SDK headers and libraries (Windows)
         working-directory: gamelift-gdextension/gamelift-server-sdk
