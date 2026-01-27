@@ -40,6 +40,17 @@ func _on_player_joined(player_match_state: PlayerMatchState) -> void:
 		player_match_state.peer_id,
 		player_match_state.local_player_index)
 
+	# FIXME: REMOVE? This was added by the latest debug session.
+	# Now that the peer_id mapping is established, update authority on the
+	# player's networked state nodes.
+	if is_instance_valid(player):
+		if is_instance_valid(player.state_from_server):
+			player.state_from_server.update_authority()
+		if is_instance_valid(player.input_from_client):
+			player.input_from_client.update_authority()
+		if is_instance_valid(player.forwarded_input_from_server):
+			player.forwarded_input_from_server.update_authority()
+
 
 func clear() -> void:
 	state.clear()

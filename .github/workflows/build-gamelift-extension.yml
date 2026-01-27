@@ -274,6 +274,7 @@ jobs:
             ..
 
           cmake --build . --config Release
+          cmake --build . --config Release --target install
 
       - name: List GameLift SDK include directory (Windows)
         working-directory: gamelift-gdextension/gamelift-server-sdk
