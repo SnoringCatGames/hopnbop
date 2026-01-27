@@ -19,6 +19,9 @@ var player_id: int:
 	get:
 		return state_from_server.player_id
 
+var _original_collision_layer := 0
+var _original_collision_mask := 0
+
 
 func _enter_tree() -> void:
 	super._enter_tree()
@@ -70,6 +73,10 @@ func _ready() -> void:
 
 	if Engine.is_editor_hint():
 		return
+
+	# Store original collision values for respawn.
+	_original_collision_layer = collision_layer
+	_original_collision_mask = collision_mask
 
 	# Set up action sources for local mode (lobby).
 	# In networked mode, this will be called again from
@@ -190,6 +197,57 @@ func get_is_player_control_active() -> bool:
 		is_instance_valid(input_from_client) and
 		input_from_client.is_multiplayer_authority()
 	)
+
+
+func server_trigger_death() -> void:
+	G.check_is_server()
+
+	# Record death time (this is replicated and drives all derived state).
+	state_from_server.last_died_time_usec = G.network.server_time_usec
+
+	# Disable collision and hide.
+	is_sprite_visible = false
+	collision_layer = 0
+	collision_mask = 0
+
+	# Schedule respawn.
+	G.time.set_timeout(
+		server_execute_respawn,
+		G.settings.player_respawn_cooldown_sec
+	)
+
+	# Schedule invincibility expiry.
+	G.time.set_timeout(
+		_server_clear_invincibility,
+		G.settings.player_respawn_cooldown_sec + \
+			G.settings.player_invincibility_duration_sec
+	)
+
+
+func server_execute_respawn() -> void:
+	G.check_is_server()
+
+	if not state_from_server.is_dead:
+		return
+
+	# Get level for spawn position.
+	if not is_instance_valid(G.level):
+		return
+
+	# Re-enable and reposition.
+	global_position = G.level._get_player_spawn_position()
+	velocity = Vector2.ZERO
+	is_sprite_visible = true
+	collision_layer = _original_collision_layer
+	collision_mask = _original_collision_mask
+
+
+func _server_clear_invincibility() -> void:
+	G.check_is_server()
+
+	# Clear death time to end invincibility period.
+	if state_from_server.last_died_time_usec >= 0:
+		state_from_server.last_died_time_usec = -1
 
 
 func _get_configuration_warnings() -> PackedStringArray:

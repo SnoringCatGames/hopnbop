@@ -19,6 +19,24 @@ var position := Vector2.ZERO
 var velocity := Vector2.ZERO
 ## A bitmask representing the player's surface state.
 var surfaces := 0
+var last_died_time_usec := -1
+
+var is_dead: bool:
+	get:
+		if last_died_time_usec < 0:
+			return false
+		var respawn_time_usec: int = last_died_time_usec + \
+			int(G.settings.player_respawn_cooldown_sec * 1_000_000)
+		return G.network.server_time_usec < respawn_time_usec
+
+var is_invincible: bool:
+	get:
+		if last_died_time_usec < 0:
+			return false
+		var invincibility_end_time_usec: int = last_died_time_usec + \
+			int((G.settings.player_respawn_cooldown_sec + \
+				G.settings.player_invincibility_duration_sec) * 1_000_000)
+		return G.network.server_time_usec < invincibility_end_time_usec
 
 const _synced_properties_and_rollback_diff_thresholds := {
 	position = DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD,
