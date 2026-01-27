@@ -4,10 +4,10 @@ extends Node2D
 
 
 ## Hide labels when players closer than this.
-const _PROXIMITY_THRESHOLD := 48.0
+const _PROXIMITY_THRESHOLD := 96.0
 const _LABEL_OFFSET := Vector2(0, -40)
 const _FADE_IN_DURATION_SEC := 0.3
-const _FADE_OUT_DURATION_SEC := 0.1
+const _FADE_OUT_DURATION_SEC := 0.05
 
 @export var label_scene: PackedScene
 
@@ -73,7 +73,7 @@ func _create_label(player_id: int) -> void:
 		label.text = "Player"
 
 	label.player_id = player_id
-	label.visible = true
+	label.shown = true
 
 	_labels_by_player_id[player_id] = label
 	add_child(label)
@@ -145,11 +145,11 @@ func _fade_label(player_id: int, p_is_visible: bool) -> void:
 
 	var label: PlayerOverheadLabel = _labels_by_player_id[player_id]
 
-	if label.visible == p_is_visible:
+	if label.shown == p_is_visible:
 		# Already has the correct visibility.
 		return
 
-	label.visible = p_is_visible
+	label.shown = p_is_visible
 
 	# Kill any preexisting tween.
 	if is_instance_valid(label.tween):
@@ -165,7 +165,7 @@ func _fade_label(player_id: int, p_is_visible: bool) -> void:
 
 	label.tween = create_tween()
 	label.tween.tween_property(
-		label.label,
+		label,
 		"modulate:a",
 		target_alpha,
 		duration

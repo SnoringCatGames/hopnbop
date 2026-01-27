@@ -36,3 +36,4 @@ spawn_path = NodePath("../Levels")
 unique_name_in_owner = true
 
 [node name="PlayerOverheadLabels" parent="." instance=ExtResource("3_0qy1w")]
+unique_name_in_owner = true

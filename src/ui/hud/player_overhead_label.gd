@@ -5,6 +5,7 @@ extends Control
 var player_id: int
 var label: Label
 var tween: Tween
+var shown := true
 
 var text: String:
 	get:
