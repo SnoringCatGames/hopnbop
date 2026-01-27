@@ -110,10 +110,7 @@ func on_match_state_ready(_player_match_state: PlayerMatchState) -> void:
 
 func _set_up_action_sources() -> void:
 	if not _action_sources.is_empty():
-		G.warning(
-			"Player._set_up_action_sources: Already set up (player_id=%d)" % player_id,
-			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
-		)
+		# Guard against duplicate setup (expected behavior).
 		return
 
 	var local_player_index: int
