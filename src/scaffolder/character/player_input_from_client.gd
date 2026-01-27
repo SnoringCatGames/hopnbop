@@ -53,6 +53,38 @@ func _network_process() -> void:
 	pass
 
 
+func _post_network_process() -> void:
+	# FIXME: REMOVE
+	if G.network.server_frame_index < 10:
+		G.print(
+			("PlayerInputFromClient._post_network_process BEFORE: " +
+			"player_id=%d, is_authority=%s, packed_state_size=%d") % [
+				player.player_id,
+				is_multiplayer_authority(),
+				packed_state.size()
+			],
+			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+		)
+
+	super._post_network_process()
+
+	# FIXME: REMOVE
+	if G.network.server_frame_index < 10:
+		var has_auth := _has_authoritative_state_for_current_frame()
+		G.print(
+			("PlayerInputFromClient._post_network_process AFTER: " +
+			"player_id=%d, frame_authority=%d, actions=%d, " +
+			"has_auth_now=%s, packed_state_size=%d") % [
+				player.player_id,
+				frame_authority,
+				actions,
+				has_auth,
+				packed_state.size()
+			],
+			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+		)
+
+
 func _sync_to_scene_state(previous_state: Array) -> void:
 	if not G.ensure_valid(player):
 		return
@@ -71,6 +103,24 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 
 func _sync_from_scene_state() -> void:
 	if not G.ensure_valid(player):
+		return
+
+	# FIXME: REMOVE
+	if G.network.server_frame_index < 10:
+		G.print(
+			("PlayerInputFromClient._sync_from_scene_state called: " +
+			"player_id=%d, has_authority=%s, is_server=%s") % [
+				player.player_id,
+				is_multiplayer_authority(),
+				G.network.is_server
+			],
+			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+		)
+
+	# FIXME: REMOVE?? This was added by the latest debug session.
+	# Only sync from scene state if this client has authority.
+	# The server should NOT overwrite client input!
+	if not is_multiplayer_authority():
 		return
 
 	# FIXME: REMOVE
@@ -98,9 +148,15 @@ func _find_forwarded_input_sibling() -> ForwardedPlayerInputFromServer:
 	return null
 
 
-func _validate_synced_properties_match(forwarded_input: ForwardedPlayerInputFromServer) -> String:
-	var input_properties: Dictionary = _synced_properties_and_rollback_diff_thresholds
-	var forwarded_properties: Dictionary = forwarded_input._synced_properties_and_rollback_diff_thresholds
+func _validate_synced_properties_match(
+	forwarded_input: ForwardedPlayerInputFromServer
+) -> String:
+	var input_properties: Dictionary = (
+		_synced_properties_and_rollback_diff_thresholds
+	)
+	var forwarded_properties: Dictionary = (
+		forwarded_input._synced_properties_and_rollback_diff_thresholds
+	)
 
 	# Check if property names match.
 	var input_keys := input_properties.keys()
@@ -110,6 +166,10 @@ func _validate_synced_properties_match(forwarded_input: ForwardedPlayerInputFrom
 	forwarded_keys.sort()
 
 	if input_keys != forwarded_keys:
-		return "PlayerInputFromClient and ForwardedPlayerInputFromServer must have matching _synced_properties_and_rollback_diff_thresholds keys. Expected: %s, Got: %s" % [input_keys, forwarded_keys]
+		return (
+			"PlayerInputFromClient and ForwardedPlayerInputFromServer " +
+			"must have matching _synced_properties_and_rollback_diff_thresholds " +
+			"keys. Expected: %s, Got: %s"
+		) % [input_keys, forwarded_keys]
 
 	return ""
