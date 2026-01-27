@@ -53,12 +53,6 @@ extends Node
 
 # - Implement the connect-to-remote-server-in-preview mode. It should auto close the server window.
 
-# - Update PlayerOverheadLabels
-#   - They should include a text outline that matches the player's assigned color.
-#   - They should be about half as big
-#   - Currently, their top-left corner is at the position above the palyer. I want their center to be at that position.
-#   - They should use the default_theme, so they get the correct font.
-
 # - Fix "on_sync_receive: ignoring sync data from non-authority or for missing node"
 
 # - Lingering FIXMEs.

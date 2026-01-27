@@ -327,7 +327,7 @@ class TestLobbyLevelPlayerPositioning:
 		G.local_session = null
 		G.match_state = null
 
-	func test_players_spawn_at_same_position():
+	func test_players_spawn_at_different_positions():
 		lobby_level._try_register_keyboard_player(
 			InputDeviceManager.KEYBOARD_PARTITION_BINDINGS[0]
 		)
@@ -338,5 +338,10 @@ class TestLobbyLevelPlayerPositioning:
 		var player0: Player = lobby_level.players_by_id[-1]
 		var player1: Player = lobby_level.players_by_id[-2]
 
-		# Currently all lobby players spawn at Vector2.ZERO
-		assert_eq(player0.global_position, player1.global_position)
+		# Players should spawn at different positions (spread across spawn
+		# points to avoid clustering).
+		assert_ne(
+			player0.global_position,
+			player1.global_position,
+			"Players should spawn at different positions"
+		)
