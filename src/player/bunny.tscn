@@ -122,6 +122,10 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 stream = ExtResource("7_o16et")
 
+[node name="BumpAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
+unique_name_in_owner = true
+stream = ExtResource("7_o16et")
+
 [node name="WalkAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
 stream = ExtResource("7_o16et")

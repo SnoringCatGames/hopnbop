@@ -23,6 +23,8 @@ var last_died_time_usec := -1
 var last_bump_time_usec := -1
 var last_bump_direction := Vector2.ZERO
 
+var _last_reconciled_bump_frame_index := -1
+
 var is_dead: bool:
 	get:
 		if last_died_time_usec < 0:
@@ -152,6 +154,9 @@ func _process_local_mode() -> void:
 func _network_process() -> void:
 	if not G.ensure_valid(character):
 		return
+
+	# Reconcile bump events from server.
+	_reconcile_bump_event()
 
 	# Determine which input source to use.
 	# - Server and owning client: use PlayerInputFromClient (client-authoritative)
@@ -338,3 +343,58 @@ func _apply_input_to_character(input_source: ReconcilableNetworkedState) -> void
 		var input := input_source as ForwardedPlayerInputFromServer
 		character.actions.bitmask = input.actions
 		character.last_triggered_jump_frame_index = input.last_triggered_jump_frame_index
+
+
+func _reconcile_bump_event() -> void:
+	var bump_frame := last_bump_frame_index
+
+	# Skip if not a new bump event.
+	if bump_frame <= _last_reconciled_bump_frame_index:
+		return
+	if last_bump_time_usec < 0:
+		return
+
+	# Check if frame is too old.
+	if G.network.frame_driver.is_frame_too_old_to_consider(bump_frame):
+		G.warning(
+			"Bump event too old to reconcile: frame %d" % bump_frame,
+			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+		)
+		_last_reconciled_bump_frame_index = bump_frame
+		return
+
+	# Check if frame exists in buffer.
+	if not _rollback_buffer.has_at(bump_frame):
+		_last_reconciled_bump_frame_index = bump_frame
+		return
+
+	var frame_state: Array = _rollback_buffer.get_at(bump_frame)
+	var velocity_index: int = _property_name_to_pack_index.velocity
+	var stored_velocity: Vector2 = frame_state[velocity_index]
+
+	# Calculate expected bump velocity delta.
+	var base_bounce := last_bump_direction * \
+		character.movement_settings.collision_bounce_base_speed
+	var upward_boost := Vector2(
+		0,
+		character.movement_settings.collision_bounce_vertical_boost
+	)
+	var bump_delta := base_bounce + upward_boost
+
+	# Inject bump velocity into frame state.
+	frame_state[velocity_index] = stored_velocity + bump_delta
+	_rollback_buffer.set_at(bump_frame, frame_state)
+
+	if G.is_verbose:
+		G.print(
+			"F:%d Bump velocity injected into frame %d, queuing rollback (%s)" % [
+				G.network.server_frame_index,
+				bump_frame,
+				name,
+			],
+			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+			ScaffolderLog.Verbosity.VERBOSE,
+		)
+
+	G.network.frame_driver.queue_rollback(bump_frame)
+	_last_reconciled_bump_frame_index = bump_frame

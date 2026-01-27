@@ -78,6 +78,8 @@ func _get_audio_stream_player(sound_name: StringName) -> AudioStreamPlayer2D:
 			return %LandAudioStreamPlayer
 		"walk":
 			return %WalkAudioStreamPlayer
+		"bump":
+			return %BumpAudioStreamPlayer
 		"die":
 			if G.settings.is_gore_enabled:
 				return %DieGoreAudioStreamPlayer
@@ -163,7 +165,7 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 		return
 
 	# Skip if match has ended (all players are invincible during the end
-    # sequence).
+	# sequence).
 	if G.match_state.is_match_ended:
 		return
 
