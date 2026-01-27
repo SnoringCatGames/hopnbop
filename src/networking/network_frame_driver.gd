@@ -53,21 +53,6 @@ extends Node
 
 # - Debug player attributes calculation. It's only receiving a player count of 1.
 
-# - Add an additional Area2D to Bunny.
-#   - It should match the current bunny collision shape.
-#   - Then, remove Bunny collision mask against bunny.
-#   - Instead, detect body entered with the Area2D.
-#   - Use that to trigger bump/kill.
-
-# - Ask AI to implement my player-interaction plan.
-#   - Include notes from FIXME
-#   - There will be a cool down of N seconds before respawning a player.
-#   - Also, please survey pre-existing logic that makes assumptions of player existence when accesses Players to ensure nothing will break when the player doesn't exist.
-
-# - Implement an invincibility mode
-#   - Give players a brief period of invincibility after spawning. They should blink rapidly during this period. The duration should be configurable on Settings. While invincible they cannot participate in PlayerInteractions.
-#   - The mode at the end of a match before disconnecting should use the same invincibility logic, but without blinking.
-
 # - Implement the connect-to-remote-server-in-preview mode. It should auto close the server window.
 
 # - Also add text outline to player over-head name display that matches their
