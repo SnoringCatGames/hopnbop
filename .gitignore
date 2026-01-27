@@ -13,6 +13,7 @@ gamelift-gdextension/bin/
 gamelift-gdextension/.scons_cache/
 gamelift-gdextension/.sconsign.dblite
 
+
 # Dependencies (developers clone/build these)
 gamelift-gdextension/godot-cpp/
 gamelift-gdextension/gamelift-server-sdk/.github
@@ -22,6 +23,8 @@ gamelift-gdextension/gamelift-server-sdk/gamelift-server-sdk-tests
 gamelift-gdextension/gamelift-server-sdk/release-notes
 gamelift-gdextension/gamelift-server-sdk/telemetry-metrics
 gamelift-gdextension/gamelift-server-sdk/thirdparty
+!gamelift-gdextension/gamelift-server-sdk/cmake/
+!gamelift-gdextension/gamelift-server-sdk/cmake/**
 
 # Build logs
 gamelift-gdextension/*.log
