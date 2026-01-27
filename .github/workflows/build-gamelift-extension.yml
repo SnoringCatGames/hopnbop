@@ -274,7 +274,20 @@ jobs:
             ..
 
           cmake --build . --config Release
-          cmake --build . --config Release --target install
+
+      - name: Manually copy GameLift SDK headers and libraries (Windows)
+        working-directory: gamelift-gdextension/gamelift-server-sdk
+        run: |
+          $src_include = "cmake-build\aws-cpp-sdk-gamelift-server\include"
+          $dst_include = "cmake-build\prefix\include"
+          if (Test-Path $src_include) {
+            Copy-Item -Path $src_include -Destination $dst_include -Recurse -Force
+          }
+          $src_lib = "cmake-build\aws-cpp-sdk-gamelift-server\lib"
+          $dst_lib = "cmake-build\prefix\lib"
+          if (Test-Path $src_lib) {
+            Copy-Item -Path $src_lib -Destination $dst_lib -Recurse -Force
+          }
 
       - name: List GameLift SDK include directory (Windows)
         working-directory: gamelift-gdextension/gamelift-server-sdk
