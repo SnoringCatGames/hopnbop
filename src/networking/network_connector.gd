@@ -259,7 +259,8 @@ func client_disconnect() -> void:
 	G.print("Disconnecting from server",
 		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
-	if multiplayer.multiplayer_peer.is_connected:
+	if (multiplayer.multiplayer_peer.get_connection_status() !=
+			MultiplayerPeer.CONNECTION_DISCONNECTED):
 		multiplayer.multiplayer_peer.disconnect_peer(SERVER_ID)
 
 
