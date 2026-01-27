@@ -78,10 +78,24 @@ func _create_label(player_id: int) -> void:
 	label.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	label.grow_vertical = Control.GROW_DIRECTION_BEGIN
 
+	# Apply default theme.
+	label.theme = G.settings.default_theme
+
+	# Make label half size.
+	label.scale = Vector2(0.5, 0.5)
+
+	# Set outline size.
+	label.add_theme_constant_override("outline_size", 2)
+
 	# Set text from player match state.
 	var player_match_state := G.get_player_match_state(player_id)
 	if player_match_state:
 		label.text = player_match_state.bunny_name
+		# Apply player's assigned color as outline.
+		label.add_theme_color_override(
+			"font_outline_color",
+			player_match_state.outline_color
+		)
 	else:
 		label.text = "Player"
 
