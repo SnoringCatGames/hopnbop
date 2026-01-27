@@ -79,7 +79,10 @@ var server_port: int:
 		# Check for --port command-line argument (set by GameLift fleet config).
 		if G.args.has("port"):
 			return int(G.args.port)
-		return -1
+		# Fallback to the preview-mode port.
+		return G.settings.local_preview_server_port
+
+
 
 var is_connected_to_server: bool:
 	get:

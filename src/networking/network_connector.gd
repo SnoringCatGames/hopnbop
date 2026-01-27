@@ -53,9 +53,6 @@ var is_connected_to_server := false
 ## Last disconnect reason for displaying user-friendly messages.
 var last_disconnect_reason := DisconnectReason.UNKNOWN
 
-var server_ip_address := ""
-var server_port := 0
-
 # Server-only: Counter for assigning sequential player IDs.
 var _next_player_id: int = 1
 
@@ -76,11 +73,11 @@ func _ready() -> void:
 	G.log.log_system_ready("NetworkConnector")
 
 
-func server_enable_connections() -> void:
+func server_enable_connections(p_server_port: int) -> void:
 	G.check_is_server()
 
 	var peer = ENetMultiplayerPeer.new()
-	var result := peer.create_server(server_port, G.settings.max_client_count)
+	var result := peer.create_server(p_server_port, G.settings.max_client_count)
 
 	G.check(
 		result == Error.OK,
@@ -93,13 +90,16 @@ func server_enable_connections() -> void:
 
 	multiplayer.multiplayer_peer = peer
 
-	G.print("Started multiplayer server: port=%d" % [server_port],
+	G.print("Started multiplayer server: port=%d" % [p_server_port],
 		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
 	G.main.update_window_title()
 
 
-func client_connect_to_server() -> void:
+func client_connect_to_server(
+	p_server_ip_address: String,
+	p_server_port: int
+) -> void:
 	G.check_is_client()
 
 	# Reset disconnect reason for new connection attempt.
@@ -108,7 +108,7 @@ func client_connect_to_server() -> void:
 	# TODO: Also support websocket or webrtc as needed.
 
 	var peer = ENetMultiplayerPeer.new()
-	var result := peer.create_client(server_ip_address, server_port)
+	var result := peer.create_client(p_server_ip_address, p_server_port)
 
 	G.check(
 		result == Error.OK,
@@ -125,7 +125,7 @@ func client_connect_to_server() -> void:
 	multiplayer.multiplayer_peer = peer
 
 	G.print("Started multiplayer client: %s:%d" %
-		[server_ip_address, server_port],
+		[p_server_ip_address, p_server_port],
 		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
 
 

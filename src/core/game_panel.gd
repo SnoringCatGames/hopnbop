@@ -226,9 +226,7 @@ func _client_on_session_ids_received(
 		)
 
 	# Connect to server.
-	G.network.connector.server_ip_address = server_ip
-	G.network.connector.server_port = server_port
-	G.network.connector.client_connect_to_server()
+	G.network.connector.client_connect_to_server(server_ip, server_port)
 
 
 func _client_on_session_request_failed(error_message: String) -> void:
@@ -270,7 +268,7 @@ func server_start_game() -> void:
 
 	_server_spawn_level(G.settings.default_level_scene)
 
-	G.network.connector.server_enable_connections()
+	G.network.connector.server_enable_connections(G.network.server_port)
 
 
 func server_end_game() -> void:
