@@ -124,10 +124,6 @@ func _set_up_action_sources() -> void:
 		var player_match_state := G.get_player_match_state(player_id)
 		if not is_instance_valid(player_match_state):
 			# Player state not replicated yet.
-			G.warning(
-				"Player._set_up_action_sources: Match state not ready (player_id=%d)" % player_id,
-				ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
-			)
 			return
 
 		# Only set up action sources for local players.
@@ -137,15 +133,6 @@ func _set_up_action_sources() -> void:
 		# Only set up action sources for local players.
 		if player_match_state.peer_id != G.network.local_peer_id:
 			# This player belongs to a different peer.
-			G.warning(
-				("Player._set_up_action_sources: Not local client " +
-				"(player_id=%d, peer_id=%d, local_peer_id=%d)") % [
-					player_id,
-					player_match_state.peer_id,
-					G.network.local_peer_id
-				],
-				ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
-			)
 			return
 
 		local_player_index = player_match_state.local_player_index

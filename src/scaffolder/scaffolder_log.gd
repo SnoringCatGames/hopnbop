@@ -37,10 +37,6 @@ var _print_queue: Array[String] = []
 var _excluded_log_categories := {}
 var _force_include_log_warnings := true
 
-# Cache for test environment detection - only cache positive results
-# because GUT may not be in tree yet during early initialization
-var _is_test_env_cached: Variant = null
-
 var is_verbose: bool:
 	get:
 		return G.settings.verbosity >= Verbosity.VERBOSE
@@ -101,7 +97,7 @@ func print(
 		category := CATEGORY_DEFAULT,
 		verbosity := Verbosity.NORMAL,
 ) -> void:
-	if _is_running_in_test_env():
+	if TestEnvironmentDetector.is_running_in_test_env(self):
 		return
 
 	if not _is_category_enabled(category):
@@ -133,7 +129,7 @@ func error(
 		_category := CATEGORY_DEFAULT,
 		should_crash := true,
 ) -> void:
-	if _is_running_in_test_env():
+	if TestEnvironmentDetector.is_running_in_test_env(self):
 		return
 
 	message = "ERROR  : %s" % message
@@ -162,7 +158,7 @@ func warning(
 		message: String,
 		category := CATEGORY_DEFAULT,
 ) -> void:
-	if _is_running_in_test_env():
+	if TestEnvironmentDetector.is_running_in_test_env(self):
 		return
 
 	if _is_category_enabled(category) or _force_include_log_warnings:
@@ -174,7 +170,7 @@ func warning(
 
 
 func alert_user(message: String, _category := CATEGORY_DEFAULT) -> void:
-	if _is_running_in_test_env():
+	if TestEnvironmentDetector.is_running_in_test_env(self):
 		return
 
 	if _is_category_enabled(_category) or _force_include_log_warnings:
@@ -188,7 +184,7 @@ func alert_user(message: String, _category := CATEGORY_DEFAULT) -> void:
 
 
 func ensure(condition: bool, message: String) -> bool:
-	if _is_running_in_test_env():
+	if TestEnvironmentDetector.is_running_in_test_env(self):
 		return condition
 
 	if not condition:
@@ -200,7 +196,7 @@ func ensure(condition: bool, message: String) -> bool:
 
 
 func check(condition: bool, message: String) -> bool:
-	if _is_running_in_test_env():
+	if TestEnvironmentDetector.is_running_in_test_env(self):
 		return condition
 
 	if not condition:
@@ -220,56 +216,6 @@ func set_log_filtering(
 
 func _is_category_enabled(category: StringName) -> bool:
 	return not _excluded_log_categories.has(category)
-
-
-func _is_running_in_test_env() -> bool:
-	# Only cache positive results because GUT may not be in tree yet during
-	# early initialization (autoloads run before GUT is added)
-	if _is_test_env_cached == true:
-		return true
-
-	_calculate_is_running_in_test_env()
-	return bool(_is_test_env_cached)
-
-
-func _calculate_is_running_in_test_env() -> void:
-	# Check multiple indicators that we're running in a test environment
-	# Method 1: Check if running with gut_cmdln.gd (command line tests)
-	# The SceneTree script will be gut_cmdln.gd when running tests
-	var tree = get_tree()
-	if tree:
-		var script = tree.get_script()
-		if script:
-			var script_path = script.resource_path
-			if "gut_cmdln" in script_path or "gut_cli" in script_path:
-				_is_test_env_cached = true
-				return
-
-	# Method 2: Check if GUT is in the scene tree
-	var root = tree.root if tree else null
-	if root:
-		for child in root.get_children():
-			var child_class = child.get_class()
-			# Check for GutMain or RunFromEditor (editor test runner)
-			if (
-				child_class == "GutMain"
-				or child.has_method("get_test_count")
-				or child.name == "RunFromEditor"
-			):
-				_is_test_env_cached = true
-				return
-
-	# Method 3: Check command-line arguments for GUT-specific flags
-	# or if loading GUT scenes
-	for arg in OS.get_cmdline_args():
-		if (
-			(arg.begins_with("-g") and ("test" in arg or "dir" in arg or "exit" in arg))
-			or "addons/gut" in arg
-		):
-			_is_test_env_cached = true
-			return
-
-	_is_test_env_cached = false
 
 
 func get_category_prefix(category: StringName) -> StringName:
