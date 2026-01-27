@@ -57,9 +57,28 @@ extends Node
 
 # - Fix "on_sync_receive: ignoring sync data from non-authority or for missing node"
 
+# - Fix player outlines.
+
 # - Lingering FIXMEs.
 
 # - Fix GitHub CI.
+
+# - Implement annotations:
+#   - Toggleable at run time.
+#   - Render shape to match the collision shape
+#   - Render a dot for every frame in the rollback buffer.
+#     - Color code these based on authority, and whether they caused a rollback
+#       or a fast-forward.
+
+# - Add another F[N] shortcut for toggling hud, super_hud, and annotation visibility.
+# - Add another F[N] shortcut for toggling music.
+# - Update some "debug mode" checks (like for enabling screenshots) to consider
+#   whether we're running in preview mode in the editor.
+#   - Add this as a getter in settings.
+#   - Move some of the current G.network flag parsing and checks to settings.
+#   - We should also override various other settings if we're not in the editor.
+#     - Do this with getters on those properties.
+#     - Probably need to check Engine.is_editor_hint though also in the getters.
 
 # [Match countdown] Remaining Tasks:
 # Configure Replication in MatchStateSynchronizer:
@@ -85,36 +104,13 @@ extends Node
 #     - The killer should bounce upward a bit, while maintaining horizontal velocity.
 
 # - Adjust scene files: lobby_level.tscn, player_list.tscn, player_display.tscn.
+
 # - Lobby scene:
 #   - Embed the game title logo within the level.
 #   - Also embed some controls instruction.
 #   - Also embed instructions to go down hole for starting match.
 #   - Call MatchmakingClient.start_matchmaking() when any player jumps down a
 #     rabbit hole on the right side of the level.
-# - Review PlayerList, PlayerDisplay, and PlayerOverheadLabels.
-#   - Make sure the local players are always listed at the left, in local_player_index order.
-# - Add support for rendering player outlines.
-# - Add support for dynamic level selection.
-#   - The server should choose the level for a match.
-#   - The client should be able to specific a three things: an inclusion list, an exclusion list, and a preferred level.
-#   - The server should try to accommodate these, but should be able to override all of these, depending on the combined client preferences of the match.
-
-# - Implement annotations:
-#   - Toggleable at run time.
-#   - Render shape to match the collision shape
-#   - Render a dot for every frame in the rollback buffer.
-#     - Color code these based on authority, and whether they caused a rollback
-#       or a fast-forward.
-
-# - Add another F[N] shortcut for toggling hud, super_hud, and annotation visibility.
-# - Add another F[N] shortcut for toggling music.
-# - Update some "debug mode" checks (like for enabling screenshots) to consider
-#   whether we're running in preview mode in the editor.
-#   - Add this as a getter in settings.
-#   - Move some of the current G.network flag parsing and checks to settings.
-#   - We should also override various other settings if we're not in the editor.
-#     - Do this with getters on those properties.
-#     - Probably need to check Engine.is_editor_hint though also in the getters.
 
 # - Hook-up / polish pause UI.
 #   - Show a small panel in the center of the window with a lightly transparent screen.
@@ -321,6 +317,11 @@ extends Node
 #   - Walk sound
 #   - Bunny bump sound
 #   - Menu click sound
+
+# - Add support for dynamic level selection.
+#   - The server should choose the level for a match.
+#   - The client should be able to specific a three things: an inclusion list, an exclusion list, and a preferred level.
+#   - The server should try to accommodate these, but should be able to override all of these, depending on the combined client preferences of the match.
 
 # - Add support for a slide-transition effect that slides a black panel over the lobby screen before showing the loading screen.
 #   - This panel slide will use a Tween.
