@@ -203,7 +203,7 @@ func server_trigger_death() -> void:
 	G.check_is_server()
 
 	# Record death time (this is replicated and drives all derived state).
-	state_from_server.last_died_time_usec = G.network.server_time_usec
+	state_from_server.last_died_time_usec = G.network.server_frame_time_usec
 
 	# Disable collision and hide.
 	is_sprite_visible = false

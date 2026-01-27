@@ -134,8 +134,6 @@ func _on_peer_connected(peer_id: int) -> void:
 	if G.network.is_server:
 		G.print("Client connected: %d" % peer_id,
 			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
-
-		# FIXME: [GameLift]: Start level paused until all clients are connected.
 	else:
 		# Clients only care about connecting to the server
 		if peer_id != SERVER_ID:
@@ -244,7 +242,6 @@ func server_close_multiplayer_session() -> void:
 
 	multiplayer.multiplayer_peer.refuse_new_connections = true
 
-	# FIXME: [GameLift]: End game: Look at GameLift example; disconnect players; disable joins
 	for peer_id in multiplayer.get_peers():
 		if peer_id != SERVER_ID:
 			multiplayer.multiplayer_peer.disconnect_peer(peer_id)

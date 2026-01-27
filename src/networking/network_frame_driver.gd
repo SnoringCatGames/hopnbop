@@ -51,11 +51,7 @@ extends Node
 
 # --- DEFINITELY SPLIT WORK ACROSS ON LAPTOP! ---
 
-# Implement those new tests.
-
 # - Implement the connect-to-remote-server-in-preview mode. It should auto close the server window.
-
-# - Fix "on_sync_receive: ignoring sync data from non-authority or for missing node"
 
 # - Fix player outlines.
 

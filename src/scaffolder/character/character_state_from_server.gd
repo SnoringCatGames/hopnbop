@@ -31,7 +31,7 @@ var is_dead: bool:
 			return false
 		var respawn_time_usec: int = last_died_time_usec + \
 			int(G.settings.player_respawn_cooldown_sec * 1_000_000)
-		return G.network.server_time_usec < respawn_time_usec
+		return G.network.server_frame_time_usec < respawn_time_usec
 
 var is_invincible: bool:
 	get:
@@ -40,7 +40,7 @@ var is_invincible: bool:
 		var invincibility_end_time_usec: int = last_died_time_usec + \
 			int((G.settings.player_respawn_cooldown_sec + \
 				G.settings.player_invincibility_duration_sec) * 1_000_000)
-		return G.network.server_time_usec < invincibility_end_time_usec
+		return G.network.server_frame_time_usec < invincibility_end_time_usec
 
 var last_bump_frame_index: int:
 	get:
