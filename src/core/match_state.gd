@@ -170,6 +170,13 @@ func get_players_for_peer(peer_id: int) -> Array[PlayerMatchState]:
 
 
 func _server_pack_players() -> void:
+	if G.is_verbose:
+		G.print(
+			"MatchState._server_pack_players: packing %d players" % players_by_id.size(),
+			ScaffolderLog.CATEGORY_GAME_STATE,
+			ScaffolderLog.Verbosity.VERBOSE,
+		)
+
 	var new_packed_players := []
 	new_packed_players.resize(players_by_id.size())
 	var i := 0

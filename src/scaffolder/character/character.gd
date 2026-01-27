@@ -144,17 +144,6 @@ func _set_up_action_sources() -> void:
 
 ## This gets called during _network_process, just before _apply_movement.
 func _collect_actions() -> void:
-	# FIXME: REMOVE
-	# Debug logging for first few frames.
-	if G.network.server_frame_index < 10:
-		G.print(
-			"Character._collect_actions: frame=%d, action_sources_count=%d" % [
-				G.network.server_frame_index,
-				_action_sources.size()
-			],
-			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
-		)
-
 	# Clear actions for the current frame.
 	actions.clear()
 

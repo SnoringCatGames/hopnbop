@@ -48,7 +48,28 @@ extends Node
 ## - Only one rollback occurs per _network_process, earliest frame takes priority
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
-#
+
+# --- DEFINITELY SPLIT WORK ACROSS ON LAPTOP! ---
+
+# - Debug player attributes calculation. It's only receiving a player count of 1.
+
+# - Add an additional Area2D to Bunny.
+#   - It should match the current bunny collision shape.
+#   - Then, remove Bunny collision mask against bunny.
+#   - Instead, detect body entered with the Area2D.
+#   - Use that to trigger bump/kill.
+
+# - Ask AI to implement my player-interaction plan.
+#   - Include notes from FIXME
+#   - There will be a cool down of N seconds before respawning a player.
+#   - Also, please survey pre-existing logic that makes assumptions of player existence when accesses Players to ensure nothing will break when the player doesn't exist.
+
+# - Implement an invincibility mode
+#   - Give players a brief period of invincibility after spawning. They should blink rapidly during this period. The duration should be configurable on Settings. While invincible they cannot participate in PlayerInteractions.
+#   - The mode at the end of a match before disconnecting should use the same invincibility logic, but without blinking.
+
+# - Implement the connect-to-remote-server-in-preview mode. It should auto close the server window.
+
 # - Also add text outline to player over-head name display that matches their
 #   assigned color.
 # - Fix "on_sync_receive: ignoring sync data from non-authority or for missing node"
@@ -120,6 +141,15 @@ extends Node
 #     - player data (id, bunny name and adjective, first play time, last play time, total time played, total wins, total kills, total deaths, login info for whichever auth providers they've connected to, ...)
 #     - a leaderboard
 #   - Implement a way to make friends and to join matches with friends.
+
+# - Need to tweak movement parameters
+
+# - Have bunnies be flung in from off-screen from the left.
+#   - Move the happen points over there, and give bunnies initial velocity.
+#   - Remove some of the tiles near the top of the left wall for this. But make sure players can't jump that high.
+#   - Disable player-player collision mask bit in the lobby.
+
+# - Show a floating +/-N label over the PlayerDisplay when adjusting the score. With a tween. It should slowly rise up. It should fade out.
 
 # FIXME: Rollback debug visualization and networking improvements:
 #
@@ -324,6 +354,16 @@ extends Node
 #   - Fix inconsistent line-break. Lines should break at 80 characters.
 #   - Use tabs instead of spaces.
 #   - Fix anything else that looks off.
+
+# - Add support for web and mobile
+#   - Plan through what all needs to change to support websockets
+#   - Send client type to the matchmaking backend? Have it prefer the same device type, but be willing to match with others
+#   - Mobile controls:
+#     - Divide screen into three regions: left, middle, right
+#     - Tap middle to jump
+#     - Pressed left right I move
+#     - Draw a semitransparent bar across the bottom to indicate the regions with an icon
+#     - Have a setting to disable the bar
 
 # ### TODO: After everything else:
 # - Review tests.
