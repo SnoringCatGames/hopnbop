@@ -513,7 +513,8 @@ func _update_replication_config() -> void:
 		return
 
 	var packed_state_path := "%s:packed_state" % root.get_path_to(self)
-	replication_config.add_property(packed_state_path)
+	if not replication_config.has_property(packed_state_path):
+		replication_config.add_property(packed_state_path)
 
 
 func _set_up_rollback_buffer() -> void:
