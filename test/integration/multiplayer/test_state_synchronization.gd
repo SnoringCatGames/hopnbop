@@ -38,10 +38,10 @@ class TestClientPrediction:
 		# Client is at frame 10, predicting with velocity.
 		for i in range(11):
 			var state := ArrayPool.acquire(5)
-			state[0] = i * 10.0 * delta  # x position
-			state[1] = 0.0  # y position
-			state[2] = 10.0  # x velocity
-			state[3] = 0.0  # y velocity
+			state[0] = i * 10.0 * delta # x position
+			state[1] = 0.0 # y position
+			state[2] = 10.0 # x velocity
+			state[3] = 0.0 # y velocity
 			state[4] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
 			client_buffer.set_at(i, state)
 
@@ -90,9 +90,9 @@ class TestClientPrediction:
 
 		# Server sends correction for frame 5 with different velocity.
 		var server_correction := ArrayPool.acquire(5)
-		server_correction[0] = 5 * 8.0 * delta  # Different position
+		server_correction[0] = 5 * 8.0 * delta # Different position
 		server_correction[1] = 0.0
-		server_correction[2] = 8.0  # Different velocity
+		server_correction[2] = 8.0 # Different velocity
 		server_correction[3] = 0.0
 		server_correction[4] = \
 			ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
@@ -146,7 +146,7 @@ class TestOutOfOrderPackets:
 		# Server packet for frame 10 arrives late (client is already at
 		# frame 20).
 		var server_state_10 := ArrayPool.acquire(3)
-		server_state_10[0] = 55.0  # Different from predicted (50.0)
+		server_state_10[0] = 55.0 # Different from predicted (50.0)
 		server_state_10[1] = 0.0
 		server_state_10[2] = \
 			ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
@@ -211,7 +211,6 @@ class TestMultipleClientsScenario:
 		# Client 1 has low latency (1 frame behind server).
 		# Client 2 has high latency (5 frames behind server).
 		# Server is at frame 10.
-
 		for i in range(11):
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i * 10)
@@ -337,21 +336,21 @@ class TestFrameCatchup:
 		# Simulate receiving multiple server updates in quick succession.
 		var frames_to_update := [3, 5, 7, 9, 11]
 
-		for frame_idx in frames_to_update:
+		for frame_index in frames_to_update:
 			var state := ArrayPool.acquire(3)
-			state[0] = float(frame_idx * 10)
+			state[0] = float(frame_index * 10)
 			state[1] = 0.0
 			state[2] = \
 				ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
 
 			# Backfill if needed.
-			if frame_idx > buffer.get_latest_index():
-				buffer.backfill_to_with_last_state(frame_idx)
+			if frame_index > buffer.get_latest_index():
+				buffer.backfill_to_with_last_state(frame_index)
 
-			buffer.set_at(frame_idx, state)
+			buffer.set_at(frame_index, state)
 
 		# All frames should be present.
-		for frame_idx in frames_to_update:
-			assert_true(buffer.has_at(frame_idx))
-			var state: Array = buffer.get_at(frame_idx)
-			assert_eq(state[0], float(frame_idx * 10))
+		for frame_index in frames_to_update:
+			assert_true(buffer.has_at(frame_index))
+			var state: Array = buffer.get_at(frame_index)
+			assert_eq(state[0], float(frame_index * 10))

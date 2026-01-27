@@ -462,15 +462,15 @@ func _post_network_process() -> void:
 		return
 
 	_sync_from_scene_state()
+
+	# Authority peers send their state over the network.
 	if is_multiplayer_authority():
 		_pack_networked_state()
-	else:
-		if G.is_verbose:
-			if not is_server_authoritative:
-				G.print(
-					"%s F:%d NOT authority - skipping pack" %
-					[name, G.network.server_frame_index],
-					ScaffolderLog.CATEGORY_NETWORK_SYNC)
+
+	# All peers (authority and non-authority) pack local state into rollback
+	# buffer to maintain buffer continuity. Non-authority peers will later
+	# overwrite these frames with authoritative state when it arrives via
+	# _pack_buffer_state_from_network_state().
 	_pack_buffer_state_from_local_state()
 
 
@@ -675,11 +675,11 @@ func _cleanup_buffer_after_pause(pause_frame: int) -> void:
 
 	# Reset from pause_frame+1 to current latest.
 	var latest := _rollback_buffer.get_latest_index()
-	for frame_idx in range(pause_frame + 1, latest + 1):
+	for frame_index in range(pause_frame + 1, latest + 1):
 		var frame_state := ArrayPool.acquire(fill_state.size())
 		for i in range(fill_state.size()):
 			frame_state[i] = fill_state[i]
-		_rollback_buffer.set_at(frame_idx, frame_state)
+		_rollback_buffer.set_at(frame_index, frame_state)
 
 	ArrayPool.release(fill_state)
 

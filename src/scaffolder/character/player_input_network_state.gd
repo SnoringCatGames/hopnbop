@@ -56,12 +56,19 @@ func _reconcile_jump_event() -> void:
 
 	if G.is_verbose:
 		G.print(
-			"F:%d Reconciling jump event from frame %d (%s)" % [
+			(
+				"F:%d Reconciling jump: jump_frame=%d, last_reconciled=%d, " +
+				"time_usec=%d, current_actions=%s (%s)"
+			) % [
 				G.network.server_frame_index,
 				jump_frame,
+				_last_reconciled_jump_frame_index,
+				last_triggered_jump_time_usec,
+				_get_string_for_bitmask(actions),
 				name,
 			],
 			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+			ScaffolderLog.Verbosity.VERBOSE,
 		)
 
 	# Check if frame is too old.
@@ -80,25 +87,40 @@ func _reconcile_jump_event() -> void:
 
 	var frame_state: Array = _rollback_buffer.get_at(jump_frame)
 
-	# Set jump bit in this frame.
-	var actions_idx: int = _property_name_to_pack_index.actions
-	var current_actions: int = frame_state[actions_idx]
+	# Check if jump input is present in this frame.
+	# When does_up_also_trigger_jump is enabled, either jump bit or up bit
+	# is valid for triggering a jump.
+	var actions_index: int = _property_name_to_pack_index.actions
+	var current_actions: int = frame_state[actions_index]
 	var jump_bit_mask := 1 << CharacterActionState.BIT_JUMP
-	var has_jump_bit := (current_actions & jump_bit_mask) != 0
+	var has_jump_input := (current_actions & jump_bit_mask) != 0
 
-	if not has_jump_bit:
-		if frame_state[frame_state.size() - 1] == FrameAuthority.AUTHORITATIVE:
-			# FIXME: LEFT OFF HERE: Why is this happening? Is this a bug, or expected?
+	# Also check for UP bit if the setting allows UP to trigger jumps.
+	if G.settings.does_up_also_trigger_jump:
+		var up_bit_mask := 1 << CharacterActionState.BIT_UP
+		has_jump_input = has_jump_input or ((current_actions & up_bit_mask) != 0)
+
+	var stored_authority: int = frame_state[frame_state.size() - 1]
+
+	if not has_jump_input:
+		if stored_authority == FrameAuthority.AUTHORITATIVE:
 			G.warning(
-				("last_triggered_jump_time_usec corresponds to a frame that " +
-				"is already recorded as authoritative and without jump " +
-				"pressed: frame %d") % jump_frame,
+				(
+					"F:%d last_triggered_jump_time_usec corresponds to a frame that " +
+					"is already recorded as authoritative and without jump " +
+					"pressed: frame %d, actions=%s (%s)"
+				) % [
+					G.network.server_frame_index,
+					jump_frame,
+					_get_string_for_bitmask(current_actions),
+					name,
+				],
 				ScaffolderLog.CATEGORY_NETWORK_SYNC,
 			)
 			_last_reconciled_jump_frame_index = jump_frame
 			return
 
-		frame_state[actions_idx] = current_actions | jump_bit_mask
+		frame_state[actions_index] = current_actions | jump_bit_mask
 		_rollback_buffer.set_at(jump_frame, frame_state)
 
 		# Only clear previous frame's jump bit if it wasn't already pressed.
@@ -112,6 +134,7 @@ func _reconcile_jump_event() -> void:
 					name,
 				],
 				ScaffolderLog.CATEGORY_NETWORK_SYNC,
+				ScaffolderLog.Verbosity.VERBOSE,
 			)
 		G.network.frame_driver.queue_rollback(jump_frame)
 
@@ -123,8 +146,8 @@ func _clear_jump_bit_in_previous_frame_if_not_held(frame_index: int) -> void:
 		return
 
 	var frame_state: Array = _rollback_buffer.get_at(frame_index)
-	var actions_idx: int = _property_name_to_pack_index.actions
-	var current_actions: int = frame_state[actions_idx]
+	var actions_index: int = _property_name_to_pack_index.actions
+	var current_actions: int = frame_state[actions_index]
 	var jump_bit_mask: int = 1 << CharacterActionState.BIT_JUMP
 
 	# Only clear if the frame is predicted (not authoritative).
@@ -132,5 +155,5 @@ func _clear_jump_bit_in_previous_frame_if_not_held(frame_index: int) -> void:
 		frame_state[frame_state.size() - 1] == FrameAuthority.PREDICTED
 	)
 	if (current_actions & jump_bit_mask) != 0 and is_predicted:
-		frame_state[actions_idx] = current_actions & ~jump_bit_mask
+		frame_state[actions_index] = current_actions & ~jump_bit_mask
 		_rollback_buffer.set_at(frame_index, frame_state)

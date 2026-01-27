@@ -167,7 +167,7 @@ func _set_up_action_sources() -> void:
 	_action_sources.append(player_action_source)
 
 	G.print(
-		"Set up action sources for player %d (local_idx=%d, device=%s)" % [
+		"Set up action sources for player %d (local_index=%d, device=%s)" % [
 			player_id,
 			local_player_index,
 			device_config.name,

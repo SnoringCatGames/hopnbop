@@ -51,29 +51,18 @@ extends Node
 
 # --- DEFINITELY SPLIT WORK ACROSS ON LAPTOP! ---
 
-# - Debug player attributes calculation. It's only receiving a player count of 1.
-
-# - Add an additional Area2D to Bunny.
-#   - It should match the current bunny collision shape.
-#   - Then, remove Bunny collision mask against bunny.
-#   - Instead, detect body entered with the Area2D.
-#   - Use that to trigger bump/kill.
-
-# - Ask AI to implement my player-interaction plan.
-#   - Include notes from FIXME
-#   - There will be a cool down of N seconds before respawning a player.
-#   - Also, please survey pre-existing logic that makes assumptions of player existence when accesses Players to ensure nothing will break when the player doesn't exist.
-
-# - Implement an invincibility mode
-#   - Give players a brief period of invincibility after spawning. They should blink rapidly during this period. The duration should be configurable on Settings. While invincible they cannot participate in PlayerInteractions.
-#   - The mode at the end of a match before disconnecting should use the same invincibility logic, but without blinking.
-
 # - Implement the connect-to-remote-server-in-preview mode. It should auto close the server window.
 
-# - Also add text outline to player over-head name display that matches their
-#   assigned color.
+# - Update PlayerOverheadLabels
+#   - They should include a text outline that matches the player's assigned color.
+#   - They should be about half as big
+#   - Currently, their top-left corner is at the position above the palyer. I want their center to be at that position.
+#   - They should use the default_theme, so they get the correct font.
+
 # - Fix "on_sync_receive: ignoring sync data from non-authority or for missing node"
+
 # - Lingering FIXMEs.
+
 # - Fix GitHub CI.
 
 # - Implement player kills.
@@ -85,13 +74,6 @@ extends Node
 #     - But don't send an RPC for bumps.
 #   - Also implement bouncing for the killer when a kill occurs:
 #     - The killer should bounce upward a bit, while maintaining horizontal velocity.
-
-# - Implement match duration.
-#   - We should show a countdown label at the top-right corner of the hud for the current time remaining (with seconds precision).
-#   - This should defined by a property on Settings (in seconds). Start with 5 minutes.
-#   - On the server, end the match when the time elapses.
-#   - Wait N seconds before disconnecting players, in order to allow the final match_state to replicate.
-#   - Between when the match is ended and players are disconnected, reject any new bumps or kills, but allow players to continue moving around.
 
 # - Adjust scene files: lobby_level.tscn, player_list.tscn, player_display.tscn.
 # - Lobby scene:
@@ -371,6 +353,8 @@ extends Node
 # - Review NETWORKING_ARCHITECTURE.md.
 # - Review these notes: https://trello.com/c/i8peodBL
 # - Organize Settings.
+#   - Analyze all properties in Settings, and how they are used.
+#   - Re-group, re-order, re-name, and possibly consolidate properties in whichever way makes the most sense.
 # - Use is_instance_valid instead of null comparisons.
 # - Survey usage of G.check, G.ensure, G.error, G.fatal, and G.alert.
 #   - Check if there are places that I should be more gracefully showing the
