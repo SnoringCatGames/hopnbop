@@ -77,6 +77,42 @@ func _get_configuration_warnings() -> PackedStringArray:
 	return warnings
 
 
+func _physics_process(_delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
+
+	if not G.ensure_valid(character):
+		return
+
+	# Only handle local mode here; networked mode uses _network_process().
+	if G.is_networked_level_active:
+		return
+
+	# Local mode: Update character directly without networking.
+	_process_local_mode()
+
+
+func _process_local_mode() -> void:
+	# Collect input from local player.
+	character._collect_actions()
+
+	# Debug: Log when actions are detected.
+	if character.actions.bitmask != 0:
+		G.print(
+			"Local mode actions: %d" % character.actions.bitmask,
+			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+		)
+
+	# Apply movement.
+	character._apply_movement()
+
+	# Process animations, sounds, etc.
+	character._process_movement_and_actions()
+
+	# Sync state (for consistency with networked path).
+	_sync_from_scene_state()
+
+
 func _network_process() -> void:
 	if not G.ensure_valid(character):
 		return

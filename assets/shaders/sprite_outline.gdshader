@@ -9,11 +9,7 @@ void fragment() {
 
 	if (!outline_enabled) {
 		COLOR = color;
-		return;
-	}
-
-	// Only draw outline if current pixel is transparent.
-	if (color.a < 0.5) {
+	} else if (color.a < 0.5) {
 		// Check neighboring pixels in a plus pattern.
 		float outline = 0.0;
 		vec2 texture_size = vec2(textureSize(TEXTURE, 0));

@@ -7,9 +7,10 @@
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_nipfv"]
 size = Vector2(34, 45)
 
-[node name="LobbyLevel" type="Node2D" node_paths=PackedStringArray("level_camera", "players_node")]
+[node name="LobbyLevel" type="Node2D" node_paths=PackedStringArray("level_camera", "spawn_points", "players_node")]
 script = ExtResource("1_lobby")
 level_camera = NodePath("Camera2D")
+spawn_points = NodePath("SpawnPoints")
 players_node = NodePath("Players")
 
 [node name="SurfacesTileMapLayer" type="TileMapLayer" parent="."]

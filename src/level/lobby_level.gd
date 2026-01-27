@@ -80,12 +80,9 @@ func _try_deregister_gamepad_player(device_id: int) -> void:
 
 func _register_player(device_config: DeviceConfig) -> void:
 	var local_player_index := _pending_device_configs_by_index.size()
-	var player: Player = G.settings.default_player_scene.instantiate()
-	player.player_id = get_local_player_id(local_player_index)
-	player.global_position = _get_player_spawn_position()
-	player.name = "LobbyPlayer_%d" % local_player_index
-	players_node.add_child(player)
 
+	# Register device config BEFORE creating/adding player, so that
+	# Player._ready() can find the device when setting up action sources.
 	_pending_device_configs_by_index.append(device_config)
 	_pending_device_configs_by_name[device_config.name] = device_config
 
@@ -93,6 +90,13 @@ func _register_player(device_config: DeviceConfig) -> void:
 		local_player_index,
 		device_config
 	)
+
+	# Now create and add player to tree (this triggers _ready()).
+	var player: Player = G.settings.default_player_scene.instantiate()
+	player.player_id = get_local_player_id(local_player_index)
+	player.global_position = _get_player_spawn_position()
+	player.name = "LobbyPlayer_%d" % local_player_index
+	players_node.add_child(player)
 
 	register_player(player)
 

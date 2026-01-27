@@ -317,9 +317,10 @@ jobs:
         with:
           submodules: recursive
       - name: Clean previous build (macOS)
-        working-directory: gamelift-gdextension/gamelift-server-sdk
         run: |
-          rm -rf cmake-build
+          if [ -d "gamelift-gdextension/gamelift-server-sdk" ]; then
+            rm -rf gamelift-gdextension/gamelift-server-sdk/cmake-build
+          fi
 
       - name: Install dependencies
         run: |
