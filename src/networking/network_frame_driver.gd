@@ -51,7 +51,7 @@ extends Node
 
 # --- DEFINITELY SPLIT WORK ACROSS ON LAPTOP! ---
 
-# In MatchState, _recent_interactions isn't supporting our usage. It assumes sequential inserts. We need to update this to support our inserts at arbitrary future times. Should we create a new subclass, similar to RollbackBuffer? Or should we use/adapt RollbackBuffer itself for this?
+# Implement those new tests.
 
 # - Implement the connect-to-remote-server-in-preview mode. It should auto close the server window.
 

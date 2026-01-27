@@ -257,6 +257,18 @@ func _on_match_ended() -> void:
 	_has_disabled_inter_player_collisions = true
 
 
+func client_on_bumped(other_player: Player, is_first_of_pair: bool) -> void:
+	pass
+
+
+func client_on_killed(killee: Player) -> void:
+	pass
+
+
+func client_on_died(killer: Player) -> void:
+	pass
+
+
 func _get_configuration_warnings() -> PackedStringArray:
 	var warnings := PackedStringArray()
 	if not is_instance_valid(input_from_client):

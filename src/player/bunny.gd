@@ -263,3 +263,17 @@ func _update_invincibility_blink() -> void:
 		_blink_accumulator -= blink_period
 		_is_blink_visible = not _is_blink_visible
 		animator.visible = _is_blink_visible
+
+
+func client_on_bumped(other_player: Player, is_first_of_pair: bool) -> void:
+	# We don't need to play the bump sound at the same time for both players.
+	if is_first_of_pair:
+		play_sound("bump")
+
+
+func client_on_killed(killee: Player) -> void:
+	pass
+
+
+func client_on_died(killer: Player) -> void:
+	play_sound("die")

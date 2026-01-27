@@ -121,8 +121,13 @@ func _client_notify_kill(
 	if is_instance_valid(killee):
 		killee.state_from_server.last_died_time_usec = _time_usec
 
-	# FIXME: LEFT OFF HERE: Clients can use this for instant audio/visual effects.
-	pass
+	# Notify local players for sound effects and visual feedback.
+	var killer: Player = G.get_player(_killer_id)
+	if is_instance_valid(killer):
+		killer.client_on_killed(killee)
+
+	if is_instance_valid(killee):
+		killee.client_on_died(killer)
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -133,8 +138,14 @@ func _client_notify_bump(
 	_position_y: float,
 	_time_usec: int
 ) -> void:
-	# FIXME: LEFT OFF HERE: Clients can use this for instant audio/visual effects.
-	pass
+	# Notify local players for sound effects and visual feedback.
+	var player_1: Player = G.get_player(_player_1_id)
+	if is_instance_valid(player_1):
+		player_1.client_on_bumped(player_2, true)
+
+	var player_2: Player = G.get_player(_player_2_id)
+	if is_instance_valid(player_2):
+		player_2.client_on_bumped(player_1, false)
 
 
 @rpc("authority", "call_remote", "reliable")
