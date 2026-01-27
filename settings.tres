@@ -18,6 +18,7 @@ show_debug_player_state = true
 show_perf_tracker = true
 skip_splash = true
 bunny_collision_shape = SubResource("CircleShape2D_woca2")
+excluded_log_categories = Array[StringName]([&"SystemInitialization"])
 default_theme = ExtResource("3_r80nf")
 default_palette = ExtResource("2_yixrw")
 screen_style_box = ExtResource("5_r80nf")

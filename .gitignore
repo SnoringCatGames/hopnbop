@@ -15,7 +15,7 @@ gamelift-gdextension/.sconsign.dblite
 
 # Dependencies (developers clone/build these)
 gamelift-gdextension/godot-cpp/
-gamelift-gdextension/gamelift-server-sdk/
+!gamelift-gdextension/gamelift-server-sdk/
 
 # Build logs
 gamelift-gdextension/*.log

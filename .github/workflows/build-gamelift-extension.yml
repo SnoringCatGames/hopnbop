@@ -252,7 +252,7 @@ jobs:
               } elseif ($content -match 'if\(MSVC\).*add_compile_options\(/bigobj\)') {
                 # Properly escape parentheses in regex pattern for PowerShell
                 $pattern = 'if\(MSVC\)\s+add_compile_options\(/bigobj\)'
-                $replacement = "$&`n    set(CMAKE_MSVC_RUNTIME_LIBRARY \"MultiThreaded$<`<CONFIG:Debug`>:Debug>\")"
+                $replacement = "$&`n    set(CMAKE_MSVC_RUNTIME_LIBRARY 'MultiThreaded$<CONFIG:Debug>:Debug')"
                 $content = [regex]::Replace($content, $pattern, $replacement)
                 Set-Content $cmakeFile -Value $content -NoNewline
               }

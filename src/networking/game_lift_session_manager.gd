@@ -75,9 +75,9 @@ func request_session_ids(player_count: int) -> void:
 
 ## Handles preview mode by generating debug session IDs immediately.
 func _handle_preview_local_server_mode(player_count: int) -> void:
-	var debug_ids: Array[String] = []
+	var debug_session_ids: Array[String] = []
 	for i in range(player_count):
-		debug_ids.append("DEBUG_ID_%d" % i)
+		debug_session_ids.append("DEBUG_ID_%d" % i)
 
 	# Use local server settings.
 	var server_ip := G.settings.local_preview_server_ip_address
@@ -92,7 +92,7 @@ func _handle_preview_local_server_mode(player_count: int) -> void:
 	# Defer to next frame to maintain consistent async behavior.
 	await get_tree().process_frame
 
-	local_session_ids_received.emit(debug_ids, server_ip, server_port)
+	local_session_ids_received.emit(debug_session_ids, server_ip, server_port)
 
 
 ## Generates a unique client identifier for matchmaking requests.

@@ -25,6 +25,14 @@ func _ready() -> void:
 
 func _on_player_joined(player_match_state: PlayerMatchState) -> void:
 	var player := G.get_player(player_match_state.player_id)
+	# FIXME: REMOVE
+	G.print(
+		"MatchStateSynchronizer._on_player_joined: player_id=%d, player_found=%s" % [
+			player_match_state.player_id,
+			is_instance_valid(player)
+		],
+		ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+	)
 	if is_instance_valid(player):
 		player.on_match_state_ready(player_match_state)
 	G.network.connector.client_on_player_state_connected(

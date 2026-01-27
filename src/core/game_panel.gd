@@ -124,7 +124,8 @@ func _client_on_server_connected() -> void:
 	G.local_session.is_game_loading = false
 	G.local_session.is_game_active = true
 
-	G.screens.client_open_screen(ScreensMain.ScreenType.GAME)
+	# Stay on the loading screen. We will transition to GAME when server
+	# unpauses.
 
 
 func _client_on_server_disconnected() -> void:

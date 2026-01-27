@@ -40,6 +40,13 @@ func _client_on_player_id_replicated(new_player_id: int) -> void:
 	player_id = new_player_id
 	G.level.register_player(self)
 
+	# Now that the player is registered, call on_match_state_ready.
+	# This triggers action source setup for networked mode.
+	if G.is_networked_level_active:
+		var player_match_state := G.get_player_match_state(player_id)
+		if is_instance_valid(player_match_state):
+			on_match_state_ready(player_match_state)
+
 
 func _exit_tree() -> void:
 	super._exit_tree()
@@ -66,11 +73,19 @@ func _ready() -> void:
 
 
 func on_match_state_ready(_player_match_state: PlayerMatchState) -> void:
+	G.print(
+		"Player.on_match_state_ready called for player_id=%d" % player_id,
+		ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+	)
 	_set_up_action_sources()
 
 
 func _set_up_action_sources() -> void:
 	if not _action_sources.is_empty():
+		G.warning(
+			"Player._set_up_action_sources: Already set up (player_id=%d)" % player_id,
+			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+		)
 		return
 
 	var local_player_index: int
@@ -81,15 +96,33 @@ func _set_up_action_sources() -> void:
 		var player_match_state := G.get_player_match_state(player_id)
 		if not is_instance_valid(player_match_state):
 			# Player state not replicated yet.
+			G.warning(
+				"Player._set_up_action_sources: Match state not ready (player_id=%d)" % player_id,
+				ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+			)
 			return
 
 		# Only set up action sources for local players.
 		# - On server: never set up action sources (server has no input devices)
 		# - On client: only for players owned by this peer
 		if G.network.is_server:
+			# FIXME: REMOVE
+			G.print(
+				"Player._set_up_action_sources: Is server (player_id=%d)" % player_id,
+				ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+			)
 			return
 		if player_match_state.peer_id != G.network.local_peer_id:
 			# This player belongs to a different peer.
+			G.warning(
+				("Player._set_up_action_sources: Not local client " +
+				"(player_id=%d, peer_id=%d, local_peer_id=%d)") % [
+					player_id,
+					player_match_state.peer_id,
+					G.network.local_peer_id
+				],
+				ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+			)
 			return
 
 		local_player_index = player_match_state.local_player_index

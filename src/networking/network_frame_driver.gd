@@ -886,8 +886,12 @@ func _client_execute_unpause_at_server_frame(
 	G.network.time.unpause()
 
 	# Auto-close pause screen and return to game.
+	# Also transition from loading screen to game when server starts.
 	if is_instance_valid(G.screens):
 		if G.screens.current_screen == ScreensMain.ScreenType.PAUSE:
+			G.screens.client_open_screen(ScreensMain.ScreenType.GAME)
+		elif G.screens.current_screen == ScreensMain.ScreenType.LOADING:
+			# Transition from loading to game when server unpauses.
 			G.screens.client_open_screen(ScreensMain.ScreenType.GAME)
 
 	G.print(
