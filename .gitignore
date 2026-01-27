@@ -27,6 +27,10 @@ gamelift-gdextension/gamelift-server-sdk/*
 # Track root CMakeLists.txt with custom modifications
 !gamelift-gdextension/gamelift-server-sdk/CMakeLists.txt
 
+# Track SDK source CMakeLists.txt with MSVC runtime configuration
+!gamelift-gdextension/gamelift-server-sdk/gamelift-server-sdk/
+!gamelift-gdextension/gamelift-server-sdk/gamelift-server-sdk/CMakeLists.txt
+
 # Track documentation files
 !gamelift-gdextension/gamelift-server-sdk/CODE_OF_CONDUCT.md
 !gamelift-gdextension/gamelift-server-sdk/CONTRIBUTING.md

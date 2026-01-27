@@ -25,6 +25,8 @@ EXTERNALPROJECT_ADD(websocketpp
     PREFIX "websocketpp"
     UPDATE_COMMAND ""
     BUILD_COMMAND ""
+    CMAKE_ARGS
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5
     CMAKE_CACHE_ARGS
         ${GameLiftServerSdk_DEFAULT_ARGS}
     DEPENDS "asio"

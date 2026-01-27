@@ -130,6 +130,11 @@ func _apply_outline_color() -> void:
 		return
 
 	var sprite := animator.animated_sprite as AnimatedSprite2D
+
+	# Duplicate material to make it unique to this instance.
+	if sprite.material and not sprite.material.resource_local_to_scene:
+		sprite.material = sprite.material.duplicate()
+
 	var shader_material := sprite.material as ShaderMaterial
 
 	if G.ensure(is_instance_valid(shader_material)):

@@ -12,6 +12,7 @@ ExternalProject_Add(spdlog
     CMAKE_ARGS
         -DSPDLOG_BUILD_EXAMPLE=OFF
         -DSPDLOG_BUILD_TESTS=OFF
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5
     CMAKE_CACHE_ARGS
         ${GameLiftServerSdk_DEFAULT_ARGS}
 )

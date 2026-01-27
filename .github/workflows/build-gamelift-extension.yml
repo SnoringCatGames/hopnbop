@@ -76,13 +76,16 @@ jobs:
           git clone https://github.com/amazon-gamelift/amazon-gamelift-servers-cpp-server-sdk.git gamelift-server-sdk-temp
 
           # Copy only the directories that are NOT tracked in git
-          # (cmake/ and CMakeLists.txt are already in repo with customizations)
+          # (cmake/, root CMakeLists.txt, and SDK CMakeLists.txt have customizations)
           cp -r gamelift-server-sdk-temp/gamelift-server-sdk gamelift-server-sdk/
           cp -r gamelift-server-sdk-temp/gamelift-server-sdk-tests gamelift-server-sdk/
           cp -r gamelift-server-sdk-temp/thirdparty gamelift-server-sdk/
           cp -r gamelift-server-sdk-temp/.github gamelift-server-sdk/
           cp -r gamelift-server-sdk-temp/release-notes gamelift-server-sdk/
           cp -r gamelift-server-sdk-temp/telemetry-metrics gamelift-server-sdk/
+
+          # Restore custom CMakeLists.txt with MSVC runtime configuration
+          git restore gamelift-server-sdk/gamelift-server-sdk/CMakeLists.txt
 
           # Clean up temp directory
           rm -rf gamelift-server-sdk-temp
@@ -217,6 +220,9 @@ jobs:
           Copy-Item -Path gamelift-server-sdk-temp\release-notes -Destination gamelift-server-sdk\ -Recurse -Force
           Copy-Item -Path gamelift-server-sdk-temp\telemetry-metrics -Destination gamelift-server-sdk\ -Recurse -Force
 
+          # Restore custom CMakeLists.txt with MSVC runtime configuration
+          git restore gamelift-server-sdk\gamelift-server-sdk\CMakeLists.txt
+
           # Clean up temp directory
           Remove-Item -Recurse -Force gamelift-server-sdk-temp
 
@@ -344,6 +350,9 @@ jobs:
           cp -r gamelift-server-sdk-temp/.github gamelift-server-sdk/
           cp -r gamelift-server-sdk-temp/release-notes gamelift-server-sdk/
           cp -r gamelift-server-sdk-temp/telemetry-metrics gamelift-server-sdk/
+
+          # Restore custom CMakeLists.txt with MSVC runtime configuration
+          git restore gamelift-server-sdk/gamelift-server-sdk/CMakeLists.txt
 
           # Clean up temp directory
           rm -rf gamelift-server-sdk-temp
