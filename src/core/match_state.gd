@@ -2,6 +2,11 @@ class_name MatchState
 extends RefCounted
 
 
+## Reference to the MatchStateSynchronizer node that owns this state.
+## Set by MatchStateSynchronizer in _ready(). Used to call RPC methods.
+var synchronizer: MatchStateSynchronizer = null
+
+
 # Scoring constants
 const _KILL_SCORE := 100
 const _DEATH_PENALTY := 90
@@ -34,7 +39,7 @@ var match_time_remaining_sec: float:
 	get:
 		if match_start_time_usec < 0:
 			return 0.0
-		var elapsed_usec: int = G.network.server_time_usec - match_start_time_usec
+		var elapsed_usec: int = G.network.server_frame_time_usec - match_start_time_usec
 		var remaining_usec: int = match_duration_usec - elapsed_usec
 		return max(0.0, remaining_usec / 1_000_000.0)
 
@@ -83,8 +88,8 @@ var _total_bumps_by_player_id := {}
 
 var _recent_interactions := RollbackBuffer.new(
 	G.network.frame_driver.rollback_buffer_size,
-	0,   # current_frame_index (start at 0)
-	[]   # default_frame_state (empty array for interactions)
+	0, # current_frame_index (start at 0)
+	[] # default_frame_state (empty array for interactions)
 )
 
 var _is_packing_state_locally := false
@@ -111,8 +116,7 @@ func clear() -> void:
 	is_match_ended = false
 
 
-@rpc("authority", "call_remote", "reliable")
-func _client_notify_kill(
+func client_notify_kill(
 	_killer_id: int,
 	_killee_id: int,
 	_position_x: float,
@@ -133,8 +137,7 @@ func _client_notify_kill(
 		killee.client_on_died(killer)
 
 
-@rpc("authority", "call_remote", "reliable")
-func _client_notify_bump(
+func client_notify_bump(
 	_player_1_id: int,
 	_player_2_id: int,
 	_position_x: float,
@@ -152,8 +155,7 @@ func _client_notify_bump(
 		player_2.client_on_bumped(player_1, false)
 
 
-@rpc("authority", "call_remote", "reliable")
-func _client_notify_match_started(
+func client_notify_match_started(
 	_match_start_time_usec: int,
 	_match_duration_usec: int
 ) -> void:
@@ -161,8 +163,7 @@ func _client_notify_match_started(
 	match_duration_usec = _match_duration_usec
 
 
-@rpc("authority", "call_remote", "reliable")
-func _client_notify_match_ended() -> void:
+func client_notify_match_ended() -> void:
 	is_match_ended = true
 	match_ended.emit()
 
@@ -185,11 +186,15 @@ func server_add_player(player: PlayerMatchState) -> void:
 
 
 func server_start_match_timer(duration_sec: float) -> void:
-	match_start_time_usec = G.network.server_time_usec
+	match_start_time_usec = G.network.server_frame_time_usec
 	match_duration_usec = int(duration_sec * 1_000_000)
 
 	# Notify all clients.
-	_client_notify_match_started.rpc(match_start_time_usec, match_duration_usec)
+	if synchronizer:
+		synchronizer._rpc_client_notify_match_started.rpc(
+			match_start_time_usec,
+			match_duration_usec
+		)
 
 
 func server_add_kill(killer_id: int, killee_id: int) -> void:
@@ -234,13 +239,14 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 	var collision_pos := Vector2.ZERO
 	if is_instance_valid(killee):
 		collision_pos = killee.global_position
-	_client_notify_kill.rpc(
-		killer_id,
-		killee_id,
-		collision_pos.x,
-		collision_pos.y,
-		G.network.server_time_usec
-	)
+	if synchronizer:
+		synchronizer._rpc_client_notify_kill.rpc(
+			killer_id,
+			killee_id,
+			collision_pos.x,
+			collision_pos.y,
+			G.network.server_frame_time_usec
+		)
 
 	kills_updated.emit()
 
@@ -287,13 +293,14 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 	var collision_pos := Vector2.ZERO
 	if is_instance_valid(player_1):
 		collision_pos = player_1.global_position
-	_client_notify_bump.rpc(
-		player_1_id,
-		player_2_id,
-		collision_pos.x,
-		collision_pos.y,
-		G.network.server_time_usec
-	)
+	if synchronizer:
+		synchronizer._rpc_client_notify_bump.rpc(
+			player_1_id,
+			player_2_id,
+			collision_pos.x,
+			collision_pos.y,
+			G.network.server_frame_time_usec
+		)
 
 	bumps_updated.emit()
 

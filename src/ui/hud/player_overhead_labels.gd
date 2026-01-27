@@ -3,20 +3,15 @@ extends Node2D
 ## Manages world-space labels above players with proximity-based fading.
 
 
-class _PlayerOverheadLabel extends RefCounted:
-	var player_id: int
-	var label: Label
-	var tween: Tween
-	var is_visible := true
-
-
 ## Hide labels when players closer than this.
-const _PROXIMITY_THRESHOLD := 100.0
+const _PROXIMITY_THRESHOLD := 48.0
 const _LABEL_OFFSET := Vector2(0, -40)
 const _FADE_IN_DURATION_SEC := 0.3
 const _FADE_OUT_DURATION_SEC := 0.1
 
-# Dictionary<int, _PlayerOverheadLabel>
+@export var label_scene: PackedScene
+
+# Dictionary<int, PlayerOverheadLabel>
 var _labels_by_player_id := {}
 
 
@@ -67,44 +62,20 @@ func _update_labels() -> void:
 
 
 func _create_label(player_id: int) -> void:
-	var label := Label.new()
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	# Position the label using its bottom-center as the anchor point.
-	label.anchor_left = 0.5
-	label.anchor_right = 0.5
-	label.anchor_top = 1.0
-	label.anchor_bottom = 1.0
-	label.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	label.grow_vertical = Control.GROW_DIRECTION_BEGIN
-
-	# Apply default theme.
-	label.theme = G.settings.default_theme
-
-	# Make label half size.
-	label.scale = Vector2(0.5, 0.5)
-
-	# Set outline size.
-	label.add_theme_constant_override("outline_size", 2)
+	var label: PlayerOverheadLabel = label_scene.instantiate()
 
 	# Set text from player match state.
 	var player_match_state := G.get_player_match_state(player_id)
 	if player_match_state:
 		label.text = player_match_state.bunny_name
-		# Apply player's assigned color as outline.
-		label.add_theme_color_override(
-			"font_outline_color",
-			player_match_state.outline_color
-		)
+		label.color = player_match_state.outline_color
 	else:
 		label.text = "Player"
 
-	var overhead_label := _PlayerOverheadLabel.new()
-	overhead_label.player_id = player_id
-	overhead_label.label = label
-	overhead_label.is_visible = true
+	label.player_id = player_id
+	label.visible = true
 
-	_labels_by_player_id[player_id] = overhead_label
+	_labels_by_player_id[player_id] = label
 	add_child(label)
 
 
@@ -112,14 +83,14 @@ func _remove_label(player_id: int) -> void:
 	if not _labels_by_player_id.has(player_id):
 		return
 
-	var label: _PlayerOverheadLabel = _labels_by_player_id[player_id]
+	var label: PlayerOverheadLabel = _labels_by_player_id[player_id]
 	_labels_by_player_id.erase(player_id)
 
 	# Kill any active tween exists.
 	if is_instance_valid(label.tween):
 		label.tween.kill()
 
-	label.label.queue_free()
+	label.queue_free()
 
 
 func _update_label_positions() -> void:
@@ -128,8 +99,7 @@ func _update_label_positions() -> void:
 		if not is_instance_valid(player):
 			continue
 
-		var overhead_label: _PlayerOverheadLabel = _labels_by_player_id[player_id]
-		var label := overhead_label.label
+		var label: PlayerOverheadLabel = _labels_by_player_id[player_id]
 		# Position is at bottom-center of label due to anchor settings.
 		label.global_position = player.global_position + _LABEL_OFFSET
 
@@ -158,10 +128,10 @@ func _should_show_label(player_id: int) -> bool:
 		if not is_instance_valid(other_player):
 			continue
 
-		var distance := player.global_position.distance_squared_to(
+		var distance_squared := player.global_position.distance_squared_to(
 			other_player.global_position
 		)
-		if distance < _PROXIMITY_THRESHOLD * _PROXIMITY_THRESHOLD:
+		if distance_squared < _PROXIMITY_THRESHOLD * _PROXIMITY_THRESHOLD:
 			# Too close, hide label.
 			return false
 
@@ -173,11 +143,13 @@ func _fade_label(player_id: int, p_is_visible: bool) -> void:
 	if not _labels_by_player_id.has(player_id):
 		return
 
-	var label: _PlayerOverheadLabel = _labels_by_player_id[player_id]
+	var label: PlayerOverheadLabel = _labels_by_player_id[player_id]
 
-	if label.is_visible == p_is_visible:
+	if label.visible == p_is_visible:
 		# Already has the correct visibility.
 		return
+
+	label.visible = p_is_visible
 
 	# Kill any preexisting tween.
 	if is_instance_valid(label.tween):

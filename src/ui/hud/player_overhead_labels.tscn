@@ -1,0 +1,8 @@
+[gd_scene load_steps=3 format=3 uid="uid://dwispqdsk7si5"]
+
+[ext_resource type="Script" uid="uid://dcqwk0ejftso4" path="res://src/ui/hud/player_overhead_labels.gd" id="1_qw7f8"]
+[ext_resource type="PackedScene" uid="uid://t4cqkrqvl3vg" path="res://src/ui/hud/player_overhead_label.tscn" id="2_eidiy"]
+
+[node name="PlayerOverheadLabels" type="Node2D"]
+script = ExtResource("1_qw7f8")
+label_scene = ExtResource("2_eidiy")

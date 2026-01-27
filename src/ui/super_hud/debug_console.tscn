@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3 uid="uid://c2yul5us50jn4"]
 
 [ext_resource type="Script" uid="uid://b2puem2n2swrk" path="res://src/ui/super_hud/debug_console.gd" id="1_dqqip"]
-[ext_resource type="Theme" uid="uid://curquyi35i5lq" path="res://src/core/debug_overlay_theme.tres" id="2_ptlns"]
+[ext_resource type="Theme" uid="uid://curquyi35i5lq" path="res://src/ui/debug_overlay_theme.tres" id="2_ptlns"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dqqip"]
 bg_color = Color(0, 0, 0, 0.18039216)

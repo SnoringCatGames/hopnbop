@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://yhvfntnfgpqr"]
 
 [ext_resource type="Script" uid="uid://04ehtp054ctu" path="res://src/ui/super_hud/perf_tracker.gd" id="1_ja0e5"]
-[ext_resource type="Theme" uid="uid://curquyi35i5lq" path="res://src/core/debug_overlay_theme.tres" id="1_l1qg1"]
+[ext_resource type="Theme" uid="uid://curquyi35i5lq" path="res://src/ui/debug_overlay_theme.tres" id="1_l1qg1"]
 
 [node name="PerfTracker" type="PanelContainer"]
 anchors_preset = 15

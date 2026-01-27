@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3 uid="uid://b6ih7agfbjd6p"]
 
-[ext_resource type="Theme" uid="uid://curquyi35i5lq" path="res://src/core/debug_overlay_theme.tres" id="1_2d12c"]
+[ext_resource type="Theme" uid="uid://curquyi35i5lq" path="res://src/ui/debug_overlay_theme.tres" id="1_2d12c"]
 [ext_resource type="Script" uid="uid://se7e5ptnuuwg" path="res://src/ui/super_hud/player_state_panel_toast.gd" id="1_ql3m0"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_opccd"]

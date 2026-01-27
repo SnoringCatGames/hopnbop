@@ -216,7 +216,7 @@ func _apply_collision_bounce(other_player: Player) -> void:
 
 
 func _on_foot_area_area_entered(area: Area2D) -> void:
-	if not G.is_server:
+	if not G.network.is_server:
 		return
 
 	var other_parent: Node = area.get_parent()
@@ -228,7 +228,7 @@ func _on_foot_area_area_entered(area: Area2D) -> void:
 
 
 func _on_foot_area_area_exited(area: Area2D) -> void:
-	if not G.is_server:
+	if not G.network.is_server:
 		return
 
 	var other_parent: Node = area.get_parent()

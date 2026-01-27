@@ -1,6 +1,6 @@
 [gd_scene load_steps=5 format=3 uid="uid://36pbp6gkbedh"]
 
-[ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/core/default_theme.tres" id="1_qjt2k"]
+[ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/ui/default_theme.tres" id="1_qjt2k"]
 [ext_resource type="StyleBox" uid="uid://dc86ks0yqis4j" path="res://src/ui/screens/screen_style_box.tres" id="2_sda85"]
 [ext_resource type="Script" uid="uid://w1gpej2xgpu8" path="res://src/ui/screens/scg_splash_screen.gd" id="3_qjt2k"]
 [ext_resource type="Texture2D" uid="uid://42fnrnxlr1ov" path="res://assets/images/gui/snoring_cat_logo_splash.png" id="4_sda85"]

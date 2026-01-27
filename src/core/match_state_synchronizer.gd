@@ -7,6 +7,9 @@ var _previous_state := MatchState.new()
 
 
 func _ready() -> void:
+	# Set back-reference so MatchState can call RPC methods through this node.
+	state.synchronizer = self
+
 	if G.network.is_client:
 		state.players_updated.connect(_client_on_players_updated)
 		state.kills_updated.connect(_client_on_kills_updated)
@@ -76,7 +79,8 @@ func _server_on_peer_players_declared(
 
 	state.update_scores()
 
-	# FIXME: LEFT OFF HERE: This seems wrong? The all_players_connected signal should also work in preview mode.
+	# FIXME: LEFT OFF HERE: This seems wrong? The all_players_connected
+	# signal should also work in preview mode.
 
 	# In preview mode, assign colors when all players have been added.
 	# In non-preview (GameLift) mode, colors are assigned via
@@ -197,3 +201,56 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 
 	state.update_scores()
 	state.emit_bump_event(get_player(player_1_id), get_player(player_2_id))
+
+
+# RPC methods (must be on Node, not RefCounted).
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_client_notify_kill(
+	killer_id: int,
+	killee_id: int,
+	position_x: float,
+	position_y: float,
+	time_usec: int
+) -> void:
+	state.client_notify_kill(
+		killer_id,
+		killee_id,
+		position_x,
+		position_y,
+		time_usec
+	)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_client_notify_bump(
+	player_1_id: int,
+	player_2_id: int,
+	position_x: float,
+	position_y: float,
+	time_usec: int
+) -> void:
+	state.client_notify_bump(
+		player_1_id,
+		player_2_id,
+		position_x,
+		position_y,
+		time_usec
+	)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_client_notify_match_started(
+	match_start_time_usec: int,
+	match_duration_usec: int
+) -> void:
+	state.client_notify_match_started(
+		match_start_time_usec,
+		match_duration_usec
+	)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_client_notify_match_ended() -> void:
+	state.client_notify_match_ended()
