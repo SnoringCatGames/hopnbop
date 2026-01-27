@@ -16,14 +16,15 @@ extends Node
 ## conjunction with NetworkMain, which coordinates all networking subsystems.
 ##
 ## Usage:
-## - Server: Call server_enable_connections() to start accepting client
+## - Server: Call server_enable_connections(port) to start accepting client
 ##   connections
-## - Client: Call client_connect_to_server() to connect to a remote server
+## - Client: Call client_connect_to_server(ip, port) to connect to a remote
+##   server
 ## - Both: Listen to peer_connected/peer_disconnected signals for connection
 ##   events
 ##
-## Configuration is read from G.settings (server_port, server_ip_address,
-## max_client_count).
+## Server and client connection parameters are passed as function arguments.
+## Max client count is read from G.settings.
 
 ## Signal emitted when a peer declares their player count.
 ## assigned_ids is an Array[int] of the player IDs assigned by the server.
@@ -190,7 +191,7 @@ func _on_peer_disconnected(peer_id: int) -> void:
 
 
 func _client_send_player_declaration() -> void:
-	G.check(G.local_session.has_valid_session_ids(),
+	G.check(G.local_session.has_valid_local_session_ids(),
 		"Client has no session IDs.",
 	)
 

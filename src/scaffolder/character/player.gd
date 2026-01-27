@@ -83,6 +83,15 @@ func _set_up_action_sources() -> void:
 			# Player state not replicated yet.
 			return
 
+		# Only set up action sources for local players.
+		# - On server: never set up action sources (server has no input devices)
+		# - On client: only for players owned by this peer
+		if G.network.is_server:
+			return
+		if player_match_state.peer_id != G.network.local_peer_id:
+			# This player belongs to a different peer.
+			return
+
 		local_player_index = player_match_state.local_player_index
 	else:
 		# Local mode (lobby): Player IDs are negative (-1, -2, -3, etc.).

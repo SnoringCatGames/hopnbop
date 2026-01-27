@@ -250,7 +250,10 @@ jobs:
                 $content = [regex]::Replace($content, '(project\([^)]+\))', "$1`n$mtPatch")
                 Set-Content $cmakeFile -Value $content -NoNewline
               } elseif ($content -match 'if\(MSVC\).*add_compile_options\(/bigobj\)') {
-                $content = [regex]::Replace($content, '(if\(MSVC\)\s+add_compile_options\(/bigobj\))', "$1`n    set(CMAKE_MSVC_RUNTIME_LIBRARY \"MultiThreaded$<`<CONFIG:Debug`>:Debug>\")")
+                # Properly escape parentheses in regex pattern for PowerShell
+                $pattern = 'if\(MSVC\)\s+add_compile_options\(/bigobj\)'
+                $replacement = "$&`n    set(CMAKE_MSVC_RUNTIME_LIBRARY \"MultiThreaded$<`<CONFIG:Debug`>:Debug>\")"
+                $content = [regex]::Replace($content, $pattern, $replacement)
                 Set-Content $cmakeFile -Value $content -NoNewline
               }
             }
