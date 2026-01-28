@@ -107,14 +107,14 @@ elif env["platform"] == "macos":
     env.Append(
         CPPPATH=[
             os.path.join(GAMELIFT_SDK_PATH, "include"),
-            "/usr/local/opt/openssl/include",
+            os.path.join(OPENSSL_PATH, "include"),
         ]
     )
 
     env.Append(
         LIBPATH=[
             os.path.join(GAMELIFT_SDK_PATH, "lib"),
-            "/usr/local/opt/openssl/lib",
+            os.path.join(OPENSSL_PATH, "lib"),
         ]
     )
 

@@ -44,7 +44,7 @@ var preview_client_count: int:
 
 @export var dev_mode := true
 @export var auto_minimize_server_window := true
-@export var move_preview_windows_to_other_monitor := true
+@export var move_preview_windows_to_other_display := true
 @export var draw_annotations := false
 @export var show_debug_console := false
 @export var show_debug_player_state := false
