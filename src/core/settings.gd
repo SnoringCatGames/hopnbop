@@ -98,7 +98,7 @@ var preview_client_count: int:
 
 # --- Game-specific configuration ---
 
-@export var default_gravity_acceleration := 5000.0
+@export var default_gravity_acceleration := 4000.0
 
 @export var default_level_scene: PackedScene
 @export var level_scenes: Array[PackedScene] = []

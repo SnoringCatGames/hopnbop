@@ -323,8 +323,15 @@ func _on_foot_area_area_exited(area: Area2D) -> void:
 
 
 func _update_invincibility_blink() -> void:
+	# Don't blink if dead (sprite should stay hidden).
+	if state_from_server.is_dead:
+		if _is_blink_visible:
+			animator.visible = false
+			_is_blink_visible = false
+		return
+
 	if not state_from_server.is_invincible:
-		# Ensure visible when not invincible.
+		# Ensure visible when not invincible and not dead.
 		if not _is_blink_visible:
 			animator.visible = true
 			_is_blink_visible = true
