@@ -202,6 +202,16 @@ func get_is_player_control_active() -> bool:
 func server_trigger_death() -> void:
 	G.check_is_server()
 
+	G.print(
+		"F:%d Player %d triggered death, scheduling respawn in %s sec" % [
+			G.network.server_frame_index,
+			player_id,
+			G.settings.player_respawn_cooldown_sec,
+		],
+		ScaffolderLog.CATEGORY_GAME_STATE,
+		ScaffolderLog.Verbosity.VERBOSE,
+	)
+
 	# Record DIE interaction (new system).
 	state_from_server.record_interaction(
 		CharacterStateFromServer.ServerInteractionType.DIE,
@@ -225,11 +235,38 @@ func server_trigger_death() -> void:
 func server_execute_respawn() -> void:
 	G.check_is_server()
 
-	if not state_from_server.is_dead:
+	G.print(
+		"F:%d Player %d respawn timer fired, interaction_type=%d (DIE=%d)" % [
+			G.network.server_frame_index,
+			player_id,
+			state_from_server.last_interaction_type,
+			CharacterStateFromServer.ServerInteractionType.DIE,
+		],
+		ScaffolderLog.CATEGORY_GAME_STATE,
+		ScaffolderLog.Verbosity.VERBOSE,
+	)
+
+	# Only respawn if player is in DIE state (not already respawned).
+	if state_from_server.last_interaction_type != \
+		CharacterStateFromServer.ServerInteractionType.DIE:
+		G.print(
+			"F:%d Player %d respawn aborted - not in DIE state" % [
+				G.network.server_frame_index,
+				player_id,
+			],
+			ScaffolderLog.CATEGORY_GAME_STATE,
+		)
 		return
 
 	# Get level for spawn position.
 	if not is_instance_valid(G.level):
+		G.print(
+			"F:%d Player %d respawn aborted - G.level not valid" % [
+				G.network.server_frame_index,
+				player_id,
+			],
+			ScaffolderLog.CATEGORY_GAME_STATE,
+		)
 		return
 
 	var spawn_position := G.level._get_player_spawn_position()
@@ -257,7 +294,6 @@ func server_execute_respawn() -> void:
 			spawn_position,
 		],
 		ScaffolderLog.CATEGORY_GAME_STATE,
-		ScaffolderLog.Verbosity.VERBOSE,
 	)
 
 

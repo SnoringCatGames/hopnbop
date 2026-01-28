@@ -173,39 +173,6 @@ func _client_on_bumps_updated() -> void:
 	state.update_scores()
 
 
-# TODO: Call server_add_kill.
-func server_add_kill(killer_id: int, killee_id: int) -> void:
-	_previous_state.kills = state.kills.duplicate()
-
-	state.server_add_kill(killer_id, killee_id)
-
-	G.print(
-		"KILL: %s killed %s" % [killer_id, killee_id],
-		ScaffolderLog.CATEGORY_GAME_STATE
-	)
-
-	state.update_scores()
-	state.emit_kill_event(get_player(killer_id), get_player(killee_id))
-
-
-# TODO: Call server_add_bump.
-func server_add_bump(player_1_id: int, player_2_id: int) -> void:
-	_previous_state.bumps = state.bumps.duplicate()
-
-	state.server_add_bump(player_1_id, player_2_id)
-
-	G.print(
-		"BUMP: %s bumped %s" % [player_1_id, player_2_id],
-		ScaffolderLog.CATEGORY_GAME_STATE
-	)
-
-	state.update_scores()
-	state.emit_bump_event(get_player(player_1_id), get_player(player_2_id))
-
-
-# RPC methods (must be on Node, not RefCounted).
-
-
 @rpc("authority", "call_remote", "reliable")
 func _rpc_client_notify_match_started(
 	match_start_time_usec: int,

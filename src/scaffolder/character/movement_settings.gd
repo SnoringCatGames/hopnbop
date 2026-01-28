@@ -95,7 +95,7 @@ var gravity_double_jump_slow_rise_acceleration: float:
 @export var bump_bounce_vertical_boost := -300.0
 
 @export var kill_bounce_base_speed := 200.0
-@export var kill_bounce_vertical_boost := -800.0
+@export var kill_bounce_vertical_boost := -300.0
 
 @export var action_handler_types: Array[ActionHandlerType] = [
 	ActionHandlerType.FLOOR_DEFAULT,
