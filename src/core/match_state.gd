@@ -54,15 +54,17 @@ var is_match_time_expired: bool:
 ##   efficient local look-ups.
 var packed_players := []:
 	set(value):
-		# FIXME: REMOVE
-		G.print(
-			"MatchState.packed_players setter: old_size=%d, new_size=%d, is_packing_locally=%s" % [
-				packed_players.size(),
-				value.size(),
-				_is_packing_state_locally
-			],
-			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
-		)
+		if G.is_verbose:
+			G.print(
+				("MatchState.packed_players setter: " +
+				"old_size=%d, new_size=%d, is_packing_locally=%s") % [
+					packed_players.size(),
+					value.size(),
+					_is_packing_state_locally
+				],
+				ScaffolderLog.CATEGORY_NETWORK_SYNC,
+				ScaffolderLog.Verbosity.VERBOSE,
+			)
 		packed_players = value
 		if not _is_packing_state_locally:
 			_client_unpack_players()
