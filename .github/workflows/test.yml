@@ -97,47 +97,57 @@ jobs:
           fi
 
       - name: Run Unit Tests
-        continue-on-error: true
         id: unit-tests
         timeout-minutes: 10
         run: |
           echo "Starting unit tests..."
           echo "Command: ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . --script addons/gut/gut_cmdln.gd -gdir=res://test/unit -gexit -gjunit_xml_file=unit_test_results.xml"
 
+          set +e  # Don't exit immediately on error
           timeout 300s ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . \
             --script addons/gut/gut_cmdln.gd \
             -gdir=res://test/unit \
             -gexit \
-            -gjunit_xml_file=unit_test_results.xml 2>&1 | tee unit_test.log || {
-            EXIT_CODE=$?
-            echo "Unit tests exited with code: $EXIT_CODE"
-            if [ $EXIT_CODE -eq 124 ]; then
-              echo "ERROR: Tests timed out after 300 seconds"
-            fi
-          }
+            -gjunit_xml_file=unit_test_results.xml 2>&1 | tee unit_test.log
+          EXIT_CODE=$?
+          set -e  # Re-enable exit on error
+
+          echo "Unit tests exited with code: $EXIT_CODE"
+          if [ $EXIT_CODE -eq 124 ]; then
+            echo "ERROR: Tests timed out after 300 seconds"
+            exit 124
+          elif [ $EXIT_CODE -ne 0 ]; then
+            echo "ERROR: Tests failed with exit code $EXIT_CODE"
+            exit $EXIT_CODE
+          fi
 
           echo "Checking for output file..."
           ls -la unit_test_results.xml 2>&1 || echo "No unit test results file generated"
 
       - name: Run Integration Tests
-        continue-on-error: true
         id: integration-tests
         timeout-minutes: 10
         run: |
           echo "Starting integration tests..."
           echo "Command: ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . --script addons/gut/gut_cmdln.gd -gdir=res://test/integration -gexit -gjunit_xml_file=integration_test_results.xml"
 
+          set +e  # Don't exit immediately on error
           timeout 300s ./Godot_v4.5.1-stable_linux.x86_64 --headless --path . \
             --script addons/gut/gut_cmdln.gd \
             -gdir=res://test/integration \
             -gexit \
-            -gjunit_xml_file=integration_test_results.xml 2>&1 | tee integration_test.log || {
-            EXIT_CODE=$?
-            echo "Integration tests exited with code: $EXIT_CODE"
-            if [ $EXIT_CODE -eq 124 ]; then
-              echo "ERROR: Tests timed out after 300 seconds"
-            fi
-          }
+            -gjunit_xml_file=integration_test_results.xml 2>&1 | tee integration_test.log
+          EXIT_CODE=$?
+          set -e  # Re-enable exit on error
+
+          echo "Integration tests exited with code: $EXIT_CODE"
+          if [ $EXIT_CODE -eq 124 ]; then
+            echo "ERROR: Tests timed out after 300 seconds"
+            exit 124
+          elif [ $EXIT_CODE -ne 0 ]; then
+            echo "ERROR: Tests failed with exit code $EXIT_CODE"
+            exit $EXIT_CODE
+          fi
 
           echo "Checking for output file..."
           ls -la integration_test_results.xml 2>&1 || echo "No integration test results file generated"
