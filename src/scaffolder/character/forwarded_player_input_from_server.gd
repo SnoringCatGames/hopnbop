@@ -79,7 +79,13 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 
 	player.actions.previous_bitmask = previous_state[_property_name_to_pack_index.actions]
 
-	player.last_triggered_jump_frame_index = last_triggered_jump_frame_index
+	match:
+		ClientInteractionType.NONE:
+			pass
+		ClientInteractionType.JUMP:
+			player.last_triggered_jump_frame_index = last_interaction_frame_index
+		_:
+			G.fatal()
 
 
 func _sync_from_scene_state() -> void:
@@ -89,12 +95,11 @@ func _sync_from_scene_state() -> void:
 	pass
 
 
-func _reconcile_jump_event() -> void:
-	# Only reconcile jumps for remote players. The local player uses
-	# PlayerInputFromClient for jump reconciliation.
+func _reconcile_client_interaction() -> void:
+	# Only reconcile client interactions for remote players. The local player
+	# uses PlayerInputFromClient for client interaction reconciliation.
 	if is_instance_valid(player.input_from_client):
-		# Player has local input source, don't reconcile jumps via forwarded
-		# input.
+		# Player has local input source, don't reconcile via forwarded input.
 		if not G.is_networked_level_active:
 			# In local mode, input_from_client presence means local control.
 			return
@@ -102,4 +107,4 @@ func _reconcile_jump_event() -> void:
 			# In networked mode, check multiplayer authority.
 			return
 
-	super._reconcile_jump_event()
+	super._reconcile_client_interaction()

@@ -72,8 +72,6 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 
 	player.actions.previous_bitmask = previous_state[_property_name_to_pack_index.actions]
 
-	player.last_triggered_jump_frame_index = last_triggered_jump_frame_index
-
 
 func _sync_from_scene_state() -> void:
 	if not G.ensure_valid(player):
@@ -84,7 +82,14 @@ func _sync_from_scene_state() -> void:
 		return
 
 	actions = player.actions.bitmask
-	last_triggered_jump_frame_index = player.last_triggered_jump_frame_index
+
+	# Record jump interaction when jump is triggered.
+	if player.last_triggered_jump_frame_index >= 0:
+		last_interaction_type = ClientInteractionType.JUMP
+		last_interaction_frame_index = player.last_triggered_jump_frame_index
+		last_interaction_position = player.global_position
+		# Jump doesn't use direction, but set to zero for consistency.
+		last_interaction_direction = Vector2.ZERO
 
 
 func _find_forwarded_input_sibling() -> ForwardedPlayerInputFromServer:

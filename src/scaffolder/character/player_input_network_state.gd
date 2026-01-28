@@ -4,144 +4,40 @@ extends ReconcilableNetworkedState
 ## Base class for player input synchronization (PlayerInputFromClient and
 ## ForwardedPlayerInputFromServer). Provides shared jump reconciliation logic.
 
+## Client-authoritative interaction types.
+enum ClientInteractionType {
+	NONE,
+	JUMP,
+}
+
 ## A bitmask representing which of the player's actions are active.
 var actions := 0
 
-## Timestamp of the last triggered jump, for network sync of instantaneous
-## events. Use -1 (invalid time) to indicate no jump has been triggered yet.
-var last_triggered_jump_time_usec := -1
-
-var last_triggered_jump_frame_index: int:
-	get:
-		if last_triggered_jump_time_usec < 0:
-			return -1
-		return G.network.frame_driver.get_frame_index_from_time_usec(
-			last_triggered_jump_time_usec,
-		)
-	set(value):
-		if value < 0:
-			last_triggered_jump_time_usec = -1
-		else:
-			last_triggered_jump_time_usec = \
-			G.network.frame_driver.get_time_usec_from_frame_index(value)
-
-var _last_reconciled_jump_frame_index := -1
-
 const _synced_properties_and_rollback_diff_thresholds := {
 	actions = 0,
-	last_triggered_jump_time_usec = 0,
+	last_interaction_type = 0,
+	last_interaction_time_usec = 0,
+	last_interaction_position = 0.001,
+	last_interaction_direction = 0.001,
 }
 
 
 func _get_default_values() -> Array:
 	return [
 		0, # actions
-		-1, # last_triggered_jump_time_usec (-1 = no jump yet)
+		ClientInteractionType.NONE, # last_interaction_type
+		-1, # last_interaction_time_usec
+		Vector2.ZERO, # last_interaction_position
+		Vector2.ZERO, # last_interaction_direction
 	]
 
 
 func _handle_new_authoritative_state() -> void:
 	super._handle_new_authoritative_state()
-	_reconcile_jump_event()
+	_reconcile_client_interaction()
 
 
-func _reconcile_jump_event() -> void:
-	var jump_frame := last_triggered_jump_frame_index
-
-	# Skip if not a new jump event.
-	if jump_frame <= _last_reconciled_jump_frame_index:
-		return
-	if last_triggered_jump_time_usec < 0:
-		return
-
-	if G.is_verbose:
-		G.print(
-			(
-				"F:%d Reconciling jump: jump_frame=%d, last_reconciled=%d, " +
-				"time_usec=%d, current_actions=%s (%s)"
-			) % [
-				G.network.server_frame_index,
-				jump_frame,
-				_last_reconciled_jump_frame_index,
-				last_triggered_jump_time_usec,
-				_get_string_for_bitmask(actions),
-				name,
-			],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
-			ScaffolderLog.Verbosity.VERBOSE,
-		)
-
-	# Check if frame is too old.
-	if G.network.frame_driver.is_frame_too_old_to_consider(jump_frame):
-		G.warning(
-			"Jump event too old to reconcile: frame %d" % jump_frame,
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
-		)
-		_last_reconciled_jump_frame_index = jump_frame
-		return
-
-	# Check if frame exists in buffer.
-	if not _rollback_buffer.has_at(jump_frame):
-		_last_reconciled_jump_frame_index = jump_frame
-		return
-
-	var frame_state: Array = _rollback_buffer.get_at(jump_frame)
-
-	# Check if jump input is present in this frame.
-	# When does_up_also_trigger_jump is enabled, either jump bit or up bit
-	# is valid for triggering a jump.
-	var actions_index: int = _property_name_to_pack_index.actions
-	var current_actions: int = frame_state[actions_index]
-	var jump_bit_mask := 1 << CharacterActionState.BIT_JUMP
-	var has_jump_input := (current_actions & jump_bit_mask) != 0
-
-	# Also check for UP bit if the setting allows UP to trigger jumps.
-	if G.settings.does_up_also_trigger_jump:
-		var up_bit_mask := 1 << CharacterActionState.BIT_UP
-		has_jump_input = has_jump_input or ((current_actions & up_bit_mask) != 0)
-
-	var stored_authority: int = frame_state[frame_state.size() - 1]
-
-	if not has_jump_input:
-		if stored_authority == FrameAuthority.AUTHORITATIVE:
-			G.warning(
-				(
-					"F:%d last_triggered_jump_time_usec corresponds to a frame that " +
-					"is already recorded as authoritative and without jump " +
-					"pressed: frame %d, actions=%s (%s)"
-				) % [
-					G.network.server_frame_index,
-					jump_frame,
-					_get_string_for_bitmask(current_actions),
-					name,
-				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC,
-			)
-			_last_reconciled_jump_frame_index = jump_frame
-			return
-
-		frame_state[actions_index] = current_actions | jump_bit_mask
-		_rollback_buffer.set_at(jump_frame, frame_state)
-
-		# Only clear previous frame's jump bit if it wasn't already pressed.
-		_clear_jump_bit_in_previous_frame_if_not_held(jump_frame - 1)
-
-		if G.is_verbose:
-			G.print(
-				"F:%d Jump bit injected into frame %d, queuing rollback (%s)" % [
-					G.network.server_frame_index,
-					jump_frame,
-					name,
-				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC,
-				ScaffolderLog.Verbosity.VERBOSE,
-			)
-		G.network.frame_driver.queue_rollback(jump_frame)
-
-	_last_reconciled_jump_frame_index = jump_frame
-
-
-func _clear_jump_bit_in_previous_frame_if_not_held(frame_index: int) -> void:
+func _clear_jump_bit_in_frame_if_not_pressed(frame_index: int) -> void:
 	if frame_index < 0 or not _rollback_buffer.has_at(frame_index):
 		return
 
@@ -157,3 +53,79 @@ func _clear_jump_bit_in_previous_frame_if_not_held(frame_index: int) -> void:
 	if (current_actions & jump_bit_mask) != 0 and is_predicted:
 		frame_state[actions_index] = current_actions & ~jump_bit_mask
 		_rollback_buffer.set_at(frame_index, frame_state)
+
+
+## Unified client interaction reconciliation (new system).
+func _reconcile_client_interaction() -> void:
+	# Skip if no interaction.
+	if last_interaction_type == ClientInteractionType.NONE:
+		return
+
+	var interaction_frame := last_interaction_frame_index
+
+	var should_process := _should_reconcile_interaction(
+		interaction_frame,
+		_last_reconciled_interaction_frame_index
+	)
+
+	# Always mark as reconciled to prevent retry loops.
+	_last_reconciled_interaction_frame_index = interaction_frame
+
+	if not should_process:
+		return
+
+	match last_interaction_type:
+		ClientInteractionType.NONE:
+			pass
+		ClientInteractionType.JUMP:
+			_reconcile_jump_interaction(interaction_frame)
+		_:
+			G.fatal()
+
+
+## Reconciles a jump interaction by injecting the jump input bit into the
+## rollback buffer.
+func _reconcile_jump_interaction(frame_index: int) -> void:
+	var frame_state: Array = _rollback_buffer.get_at(frame_index)
+	var actions_index: int = _property_name_to_pack_index.actions
+	var current_actions: int = frame_state[actions_index]
+	var jump_bit_mask := 1 << CharacterActionState.BIT_JUMP
+	var has_jump_input := (current_actions & jump_bit_mask) != 0
+
+	# Also check for UP bit if the setting allows UP to trigger jumps.
+	if G.settings.does_up_also_trigger_jump:
+		var up_bit_mask := 1 << CharacterActionState.BIT_UP
+		has_jump_input = has_jump_input or ((current_actions & up_bit_mask) != 0)
+
+	if not has_jump_input:
+		var stored_authority: int = frame_state[frame_state.size() - 1]
+		if stored_authority == FrameAuthority.AUTHORITATIVE:
+			G.warning(
+				(
+					"F:%d last_interaction_time_usec corresponds to a frame " +
+					"that is already recorded as authoritative and without jump " +
+					"pressed: frame %d, actions=%s (%s)"
+				) % [
+					G.network.server_frame_index,
+					frame_index,
+					_get_string_for_bitmask(current_actions),
+					name,
+				],
+				ScaffolderLog.CATEGORY_NETWORK_SYNC,
+			)
+			return
+
+		# Inject jump bit using base class helper.
+		_inject_action_bit_into_buffer(frame_index, jump_bit_mask, actions_index)
+		_clear_jump_bit_in_frame_if_not_pressed(frame_index - 1)
+
+		if G.is_verbose:
+			G.print(
+				"F:%d Jump bit injected into frame %d via client interaction, queuing rollback (%s)" % [
+					G.network.server_frame_index,
+					frame_index,
+					name,
+				],
+				ScaffolderLog.CATEGORY_NETWORK_SYNC,
+				ScaffolderLog.Verbosity.VERBOSE,
+			)
