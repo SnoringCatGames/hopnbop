@@ -74,6 +74,34 @@ func _process_movement_and_actions() -> void:
 			_processed_collision_this_frame = false
 			_last_collision_frame = current_frame
 
+	# Handle client-side interaction effects (sounds, particles).
+	if (
+		state_from_server.last_interaction_frame_index ==
+		G.network.server_frame_index
+	):
+		_handle_interaction_effects()
+
+
+func _handle_interaction_effects() -> void:
+	# Play sounds/visual effects based on interaction type.
+	match state_from_server.last_interaction_type:
+		CharacterStateFromServer.ServerInteractionType.NONE:
+			pass
+		CharacterStateFromServer.ServerInteractionType.BUMP:
+			play_sound("bump")
+		CharacterStateFromServer.ServerInteractionType.KILL:
+			# Do nothing. The other player's DIE interaction will handle the
+			# effects.
+			pass
+		CharacterStateFromServer.ServerInteractionType.DIE:
+			# TODO: Add VFX.
+			play_sound("die")
+		CharacterStateFromServer.ServerInteractionType.SPAWN:
+			# TODO: Add spawn sound and VFX.
+			pass
+		_:
+			G.fatal()
+
 
 func play_sound(sound_name: StringName) -> void:
 	if not G.network.is_primary_client:
@@ -231,11 +259,23 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	):
 		return
 
+	# Check if kill already happened this frame - kills take precedence.
+	var current_frame := G.network.server_frame_index
+	if _did_kill_happen_this_frame(current_frame) or \
+		other_player._did_kill_happen_this_frame(current_frame):
+		G.print(
+			"Skipping bump - kill already processed this frame (players %d and %d)" % [
+				player_id,
+				other_player_id,
+			],
+			ScaffolderLog.CATEGORY_GAME_STATE,
+			ScaffolderLog.Verbosity.VERBOSE,
+		)
+		return
+
 	# Mark this collision as processed.
 	_processed_collision_this_frame = true
 	other_player._processed_collision_this_frame = true
-
-	# FIXME: LEFT OFF HERE: DEFER THIS, SO THAT KILLS WILL ALWAYS TAKE PRECEDENCE.
 
 	# Bump - both players bounce away from each other.
 	G.print(
@@ -247,42 +287,72 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	)
 
 	G.match_state.server_add_bump(player_id, other_player_id)
-	_server_apply_collision_bounce(other_player)
-	other_player._server_apply_collision_bounce(self)
-
-
-func _server_apply_collision_bounce(other_player: Player) -> void:
-	G.check_is_server()
-
-	# Calculate direction away from other player.
-	var direction := (global_position - other_player.global_position).normalized()
-
-	# Base bounce velocity in the direction away from collision.
-	var base_bounce := direction * movement_settings.bump_bounce_base_speed
-
-	# Additional upward boost.
-	var upward_boost := Vector2(
-		0,
-		movement_settings.bump_bounce_vertical_boost)
-
-	# Combine base bounce + upward boost.
-	var total_bounce := base_bounce + upward_boost
-
-	# Store bounce to apply after movement processing (prevents overwrite).
-	_pending_bounce = total_bounce
-
-	G.print(
-		"F:%d Queued bounce for player %d: %s" % [
-			G.network.server_frame_index,
-			player_id,
-			total_bounce,
-		],
-		ScaffolderLog.CATEGORY_GAME_STATE,
+	_server_apply_interaction(
+		other_player,
+		CharacterStateFromServer.ServerInteractionType.BUMP
+	)
+	other_player._server_apply_interaction(
+		self,
+		CharacterStateFromServer.ServerInteractionType.BUMP
 	)
 
-	# Record bump event for network reconciliation and sound effects.
-	state_from_server.last_bump_frame_index = G.network.server_frame_index
-	state_from_server.last_bump_direction = direction
+
+## Applies an interaction to this player (bounce velocity + state recording).
+func _server_apply_interaction(
+	other_player: Player,
+	interaction_type: CharacterStateFromServer.ServerInteractionType
+) -> void:
+	G.check_is_server()
+
+	var direction := (global_position - other_player.global_position).normalized()
+
+	# Select bounce settings based on interaction type.
+	var base_speed: float
+	var vertical_boost: float
+
+	match interaction_type:
+		CharacterStateFromServer.ServerInteractionType.BUMP:
+			base_speed = movement_settings.bump_bounce_base_speed
+			vertical_boost = movement_settings.bump_bounce_vertical_boost
+		CharacterStateFromServer.ServerInteractionType.KILL:
+			base_speed = movement_settings.kill_bounce_base_speed
+			vertical_boost = movement_settings.kill_bounce_vertical_boost
+		_:
+			G.fatal("Invalid interaction type for bounce: %d" % interaction_type)
+			return
+
+	var bounce_velocity := direction * base_speed + Vector2(0, vertical_boost)
+	_pending_bounce = bounce_velocity
+
+	# Record interaction for network reconciliation.
+	state_from_server.record_interaction(
+		interaction_type,
+		G.network.server_frame_index,
+		global_position,
+		direction
+	)
+
+	G.print(
+		"F:%d Applied %s interaction to player %d: bounce=%s, dir=%s" % [
+			G.network.server_frame_index,
+			CharacterStateFromServer.ServerInteractionType.keys()[interaction_type],
+			player_id,
+			bounce_velocity,
+			direction,
+		],
+		ScaffolderLog.CATEGORY_GAME_STATE,
+		ScaffolderLog.Verbosity.VERBOSE,
+	)
+
+
+## Checks if a kill (or death) interaction happened this frame.
+func _did_kill_happen_this_frame(frame_index: int) -> bool:
+	if state_from_server.last_interaction_frame_index == frame_index:
+		var type := state_from_server.last_interaction_type
+		if (type == CharacterStateFromServer.ServerInteractionType.KILL or
+			type == CharacterStateFromServer.ServerInteractionType.DIE):
+			return true
+	return false
 
 
 func _on_foot_area_area_entered(area: Area2D) -> void:
@@ -336,9 +406,17 @@ func _on_foot_area_area_entered(area: Area2D) -> void:
 	_processed_collision_this_frame = true
 	other_player._processed_collision_this_frame = true
 
-	# Kill - only the killer bounces (killee is dying).
+	# Kill - killer bounces with kill_bounce velocity, victim dies.
 	G.match_state.server_add_kill(player_id, other_player_id)
-	_server_apply_collision_bounce(other_player)
+
+	# Apply KILL interaction to killer (bounce up).
+	_server_apply_interaction(
+		other_player,
+		CharacterStateFromServer.ServerInteractionType.KILL
+	)
+
+	# Trigger death on victim.
+	other_player.server_trigger_death()
 
 
 func _update_invincibility_blink() -> void:

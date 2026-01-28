@@ -85,11 +85,12 @@ func _sync_from_scene_state() -> void:
 
 	# Record jump interaction when jump is triggered.
 	if player.last_triggered_jump_frame_index >= 0:
-		last_interaction_type = ClientInteractionType.JUMP
-		last_interaction_frame_index = player.last_triggered_jump_frame_index
-		last_interaction_position = player.global_position
-		# Jump doesn't use direction, but set to zero for consistency.
-		last_interaction_direction = Vector2.ZERO
+		record_interaction(
+			ClientInteractionType.JUMP,
+			player.last_triggered_jump_frame_index,
+			player.global_position,
+			Vector2.ZERO
+		)
 
 
 func _find_forwarded_input_sibling() -> ForwardedPlayerInputFromServer:

@@ -202,8 +202,13 @@ func get_is_player_control_active() -> bool:
 func server_trigger_death() -> void:
 	G.check_is_server()
 
-	# Record death time (this is replicated and drives all derived state).
-	state_from_server.last_died_time_usec = G.network.server_frame_time_usec
+	# Record DIE interaction (new system).
+	state_from_server.record_interaction(
+		CharacterStateFromServer.ServerInteractionType.DIE,
+		G.network.server_frame_index,
+		global_position,
+		Vector2.ZERO
+	)
 
 	# Disable collision and hide.
 	is_sprite_visible = false
@@ -214,13 +219,6 @@ func server_trigger_death() -> void:
 	G.time.set_timeout(
 		server_execute_respawn,
 		G.settings.player_respawn_cooldown_sec
-	)
-
-	# Schedule invincibility expiry.
-	G.time.set_timeout(
-		_server_clear_invincibility,
-		G.settings.player_respawn_cooldown_sec + \
-			G.settings.player_invincibility_duration_sec
 	)
 
 
@@ -234,21 +232,33 @@ func server_execute_respawn() -> void:
 	if not is_instance_valid(G.level):
 		return
 
+	var spawn_position := G.level._get_player_spawn_position()
+
+	# Record SPAWN interaction (NEW FEATURE).
+	state_from_server.record_interaction(
+		CharacterStateFromServer.ServerInteractionType.SPAWN,
+		G.network.server_frame_index,
+		spawn_position,
+		Vector2.ZERO
+	)
+
 	# Re-enable and reposition.
-	global_position = G.level._get_player_spawn_position()
+	global_position = spawn_position
 	velocity = Vector2.ZERO
 	is_sprite_visible = true
 	collision_layer = _original_collision_layer
 	collision_mask = _original_collision_mask
 	_has_disabled_inter_player_collisions = false
 
-
-func _server_clear_invincibility() -> void:
-	G.check_is_server()
-
-	# Clear death time to end invincibility period.
-	if state_from_server.last_died_time_usec >= 0:
-		state_from_server.last_died_time_usec = -1
+	G.print(
+		"F:%d Player %d respawned at %s" % [
+			G.network.server_frame_index,
+			player_id,
+			spawn_position,
+		],
+		ScaffolderLog.CATEGORY_GAME_STATE,
+		ScaffolderLog.Verbosity.VERBOSE,
+	)
 
 
 func _on_match_ended() -> void:

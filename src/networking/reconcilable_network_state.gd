@@ -1017,6 +1017,22 @@ func _get_interaction_frame_from_time(time_usec: int) -> int:
 	return G.network.frame_driver.get_frame_index_from_time_usec(time_usec)
 
 
+## Records an interaction by setting all interaction properties at once.
+## This is a convenience method to avoid repetitive property assignments.
+func record_interaction(
+	interaction_type: int,
+	frame_index: int,
+	position: Vector2,
+	direction: Vector2
+) -> void:
+	last_interaction_type = interaction_type
+	last_interaction_frame_index = (
+		frame_index if frame_index >= 0 else G.network.server_frame_index
+	)
+	last_interaction_position = position
+	last_interaction_direction = direction
+
+
 ## Validates whether an interaction should be reconciled.
 ## Checks: frame not already processed, not too old, exists in buffer (in the
 ## future).
