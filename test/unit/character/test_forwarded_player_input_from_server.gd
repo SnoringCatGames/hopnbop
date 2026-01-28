@@ -360,7 +360,7 @@ class TestStateSynchronization:
 		# Set jump timestamp (frame 60 @ 60 FPS = 1000000 usec).
 		var frame_60_time := \
 		G.network.frame_driver.get_time_usec_from_frame_index(60)
-		forwarded_input.last_triggered_jump_time_usec = frame_60_time
+		forwarded_input.last_interaction_time_usec = frame_60_time
 
 		# Create previous state.
 		var previous_state := ArrayPool.acquire(2)

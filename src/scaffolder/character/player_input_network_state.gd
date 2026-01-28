@@ -129,3 +129,17 @@ func _reconcile_jump_interaction(frame_index: int) -> void:
 				ScaffolderLog.CATEGORY_NETWORK_SYNC,
 				ScaffolderLog.Verbosity.VERBOSE,
 			)
+
+
+## Injects an action bit into the rollback buffer at the specified frame.
+## Used for jump interactions to ensure jump input is recorded.
+func _inject_action_bit_into_buffer(
+	frame_index: int,
+	bit_mask: int,
+	actions_index: int
+) -> void:
+	var frame_state: Array = _rollback_buffer.get_at(frame_index)
+	var current_actions: int = frame_state[actions_index]
+	frame_state[actions_index] = current_actions | bit_mask
+	_rollback_buffer.set_at(frame_index, frame_state)
+	G.network.frame_driver.queue_rollback(frame_index)

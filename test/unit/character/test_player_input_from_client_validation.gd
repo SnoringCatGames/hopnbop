@@ -140,7 +140,7 @@ class TestSyncGuard:
 		# Set jump timestamp.
 		var frame_100_time := \
 		G.network.frame_driver.get_time_usec_from_frame_index(100)
-		input_from_client.last_triggered_jump_time_usec = frame_100_time
+		input_from_client.last_interaction_time_usec = frame_100_time
 
 		# Create previous state.
 		var previous_state := ArrayPool.acquire(2)

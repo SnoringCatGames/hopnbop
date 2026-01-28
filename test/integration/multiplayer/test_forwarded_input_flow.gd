@@ -225,7 +225,7 @@ class TestRollbackIntegration:
 
 		# Set forwarded input state.
 		forwarded_input.actions = 0b1100
-		forwarded_input.last_triggered_jump_time_usec = 5000000
+		forwarded_input.last_interaction_time_usec = 5000000
 		forwarded_input.frame_authority = \
 		ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
 
@@ -233,7 +233,7 @@ class TestRollbackIntegration:
 		forwarded_input._sync_from_scene_state()
 		var state := ArrayPool.acquire(3)
 		state[0] = forwarded_input.actions
-		state[1] = forwarded_input.last_triggered_jump_time_usec
+		state[1] = forwarded_input.last_interaction_time_usec
 		state[2] = forwarded_input.frame_authority
 
 		forwarded_input._rollback_buffer.set_at(test_frame, state)
@@ -279,7 +279,7 @@ class TestRollbackIntegration:
 			"Should restore actions from buffer",
 		)
 		assert_eq(
-			forwarded_input.last_triggered_jump_time_usec,
+			forwarded_input.last_interaction_time_usec,
 			2500000,
 			"Should restore jump timestamp from buffer",
 		)

@@ -99,6 +99,29 @@ const DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHOLD := 10.0
 ## The estimated server frame, when this state occurred.
 var timestamp_index := 0
 
+## Unified interaction system properties.
+## Interaction type is an integer enum value (child classes define specific enums).
+var last_interaction_type := 0
+var last_interaction_time_usec := -1
+var last_interaction_position := Vector2.ZERO
+var last_interaction_direction := Vector2.ZERO
+
+var last_interaction_frame_index: int:
+	get:
+		if last_interaction_time_usec < 0:
+			return -1
+		return G.network.frame_driver.get_frame_index_from_time_usec(
+			last_interaction_time_usec
+		)
+	set(value):
+		if value < 0:
+			last_interaction_time_usec = -1
+		else:
+			last_interaction_time_usec = \
+				G.network.frame_driver.get_time_usec_from_frame_index(value)
+
+var _last_reconciled_interaction_frame_index := -1
+
 ## This identifies whether this data originated from an authoritative source.
 var frame_authority := FrameAuthority.UNKNOWN
 
@@ -998,3 +1021,31 @@ func _get_string_for_value(value, is_final_value := false) -> String:
 
 func _get_string_for_bitmask(value: int) -> String:
 	return String.num_int64(value, 2).lpad(8, "0")
+
+
+## Converts a timestamp in microseconds to a frame index.
+## Returns -1 if the timestamp is invalid (< 0).
+func _get_interaction_frame_from_time(time_usec: int) -> int:
+	if time_usec < 0:
+		return -1
+	return G.network.frame_driver.get_frame_index_from_time_usec(time_usec)
+
+
+## Validates whether an interaction should be reconciled.
+## Checks: frame not already processed, not too old, exists in buffer (in the
+## future).
+func _should_reconcile_interaction(
+	interaction_frame: int,
+	last_reconciled_frame: int
+) -> bool:
+	if interaction_frame <= last_reconciled_frame:
+		return false
+	if G.network.frame_driver.is_frame_too_old_to_consider(interaction_frame):
+		G.warning(
+			"Interaction too old to reconcile: frame %d" % interaction_frame,
+			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+		)
+		return false
+	if not _rollback_buffer.has_at(interaction_frame):
+		return false
+	return true

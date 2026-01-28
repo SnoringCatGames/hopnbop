@@ -79,7 +79,7 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 
 	player.actions.previous_bitmask = previous_state[_property_name_to_pack_index.actions]
 
-	match:
+	match last_interaction_type:
 		ClientInteractionType.NONE:
 			pass
 		ClientInteractionType.JUMP:
