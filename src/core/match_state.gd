@@ -196,6 +196,19 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 	if is_instance_valid(killee):
 		killee.server_trigger_death()
 
+	# Update scores and emit events.
+	G.print(
+		"KILL: %s killed %s" % [killer_id, killee_id],
+		ScaffolderLog.CATEGORY_GAME_STATE,
+		ScaffolderLog.Verbosity.VERBOSE,
+	)
+	update_scores()
+
+	var killer_match_state: PlayerMatchState = players_by_id.get(killer_id)
+	var killee_match_state: PlayerMatchState = players_by_id.get(killee_id)
+	if killer_match_state and killee_match_state:
+		emit_kill_event(killer_match_state, killee_match_state)
+
 	kills_updated.emit()
 
 
@@ -235,6 +248,19 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 		PlayerInteraction.Type.BUMP,
 		current_frame
 	)
+
+	# Update scores and emit events.
+	G.print(
+		"BUMP: %s bumped %s" % [player_1_id, player_2_id],
+		ScaffolderLog.CATEGORY_GAME_STATE,
+		ScaffolderLog.Verbosity.VERBOSE,
+	)
+	update_scores()
+
+	var player_1_match_state: PlayerMatchState = players_by_id.get(player_1_id)
+	var player_2_match_state: PlayerMatchState = players_by_id.get(player_2_id)
+	if player_1_match_state and player_2_match_state:
+		emit_bump_event(player_1_match_state, player_2_match_state)
 
 	bumps_updated.emit()
 

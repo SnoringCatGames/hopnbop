@@ -21,6 +21,20 @@ func _ready() -> void:
 
 	await get_tree().process_frame
 
+	_handle_preview_window_closing()
+
+	_start_app()
+
+	_update_window_mode()
+
+	if G.network.is_preview and G.network.is_client:
+		_position_client_window_in_preview_mode()
+
+
+func _handle_preview_window_closing() -> void:
+	if not G.network.is_preview:
+		return
+
 	if (
 		G.network.preview_client_number > 1 and
 		not G.settings.preview_run_multiple_clients
@@ -29,15 +43,22 @@ func _ready() -> void:
 			("Main._ready: Closing extra client process (--client=%s), " +
 			"because G.settings.preview_run_multiple_clients is false") %
 			G.network.preview_client_number,
+			ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 		)
 		close_app()
+		return
 
-	_start_app()
-
-	_update_window_mode()
-
-	if G.network.is_preview and G.network.is_client:
-		_position_client_window_in_preview_mode()
+	if (
+		G.network.is_server and
+		G.settings.preview_connect_to_remote_server
+	):
+		G.print(
+			("Main._ready: Closing local server process in preview mode, " +
+			"because G.settings.preview_connect_to_remote_server is true"),
+			ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		)
+		close_app()
+		return
 
 
 func _update_window_mode() -> void:

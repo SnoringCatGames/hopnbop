@@ -53,7 +53,7 @@ extends Node
 
 # - Check if we're still using the ArrayPool in all the places we should, especially with the new RollbackBuffer in MatchState.
 
-# - Implement the connect-to-remote-server-in-preview mode. It should auto close the server window.
+# I believe Settings.preview_connect_to_remote_server is handled. But now I want to also make sure that we auto-close the server window when in preview mode.
 
 # - Lingering FIXMEs.
 
