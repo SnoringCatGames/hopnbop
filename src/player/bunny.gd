@@ -7,9 +7,6 @@ var match_state: PlayerMatchState:
 	get:
 		return G.get_player_match_state(player_id)
 
-# Dictionary<int, bool>
-var _intersecting_head_player_ids := {}
-
 var _processed_collision_this_frame := false
 var _last_collision_frame := -1
 var _blink_accumulator := 0.0
@@ -238,32 +235,20 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	_processed_collision_this_frame = true
 	other_player._processed_collision_this_frame = true
 
-	# Determine interaction type and record.
-	if not _intersecting_head_player_ids.has(other_player_id):
-		# Bump - both players bounce away from each other.
-		G.print(
-			"Players bump detected: %d bumped %d" %
-				[player_id, other_player_id],
-			ScaffolderLog.CATEGORY_GAME_STATE,
-			ScaffolderLog.Verbosity.VERBOSE,
-			true,
-		)
+	# FIXME: LEFT OFF HERE: DEFER THIS, SO THAT KILLS WILL ALWAYS TAKE PRECEDENCE.
 
-		G.match_state.server_add_bump(player_id, other_player_id)
-		_server_apply_collision_bounce(other_player)
-		other_player._server_apply_collision_bounce(self)
-	else:
-		# Kill - only the killer bounces (killee is dying).
-		G.print(
-			"Player kill detected: %d killed %d" %
-				[player_id, other_player_id],
-			ScaffolderLog.CATEGORY_GAME_STATE,
-			ScaffolderLog.Verbosity.VERBOSE,
-			true,
-		)
+	# Bump - both players bounce away from each other.
+	G.print(
+		"Players bump detected: %d bumped %d" %
+			[player_id, other_player_id],
+		ScaffolderLog.CATEGORY_GAME_STATE,
+		ScaffolderLog.Verbosity.VERBOSE,
+		true,
+	)
 
-		G.match_state.server_add_kill(player_id, other_player_id)
-		_server_apply_collision_bounce(other_player)
+	G.match_state.server_add_bump(player_id, other_player_id)
+	_server_apply_collision_bounce(other_player)
+	other_player._server_apply_collision_bounce(self)
 
 
 func _server_apply_collision_bounce(other_player: Player) -> void:
@@ -273,10 +258,12 @@ func _server_apply_collision_bounce(other_player: Player) -> void:
 	var direction := (global_position - other_player.global_position).normalized()
 
 	# Base bounce velocity in the direction away from collision.
-	var base_bounce := direction * movement_settings.collision_bounce_base_speed
+	var base_bounce := direction * movement_settings.bump_bounce_base_speed
 
 	# Additional upward boost.
-	var upward_boost := Vector2(0, movement_settings.collision_bounce_vertical_boost)
+	var upward_boost := Vector2(
+		0,
+		movement_settings.bump_bounce_vertical_boost)
 
 	# Combine base bounce + upward boost.
 	var total_bounce := base_bounce + upward_boost
@@ -306,20 +293,52 @@ func _on_foot_area_area_entered(area: Area2D) -> void:
 	if not G.ensure(other_parent is Player):
 		return
 	var other_player := other_parent as Player
+	var other_player_id := other_player.player_id
 
-	_intersecting_head_player_ids[other_player.player_id] = true
+	var relative_velocity := velocity - other_player.velocity
+	var is_relative_velocity_downward := relative_velocity.y > 0
 
-
-func _on_foot_area_area_exited(area: Area2D) -> void:
-	if not G.network.is_server:
+	if other_player == self:
 		return
 
-	var other_parent: Node = area.get_parent()
-	if not G.ensure(other_parent is Player):
+	if not is_relative_velocity_downward:
 		return
-	var other_player := other_parent as Player
 
-	_intersecting_head_player_ids.erase(other_player.player_id)
+	# Prevent double-counting (this frame was already processed from the other
+	# player).
+	if _processed_collision_this_frame:
+		return
+
+	# Skip if either player is dead.
+	if state_from_server.is_dead or other_player.state_from_server.is_dead:
+		return
+
+	# Skip if match has ended (all players are invincible during the end
+	# sequence).
+	if G.match_state.is_match_ended:
+		return
+
+	# Skip if either player is invincible.
+	if (
+		state_from_server.is_invincible or
+		other_player.state_from_server.is_invincible
+	):
+		return
+
+	G.print(
+		"Player kill detected: %d killed %d" %
+			[player_id, other_player_id],
+		ScaffolderLog.CATEGORY_GAME_STATE,
+		ScaffolderLog.Verbosity.VERBOSE,
+		true,
+	)
+
+	_processed_collision_this_frame = true
+	other_player._processed_collision_this_frame = true
+
+	# Kill - only the killer bounces (killee is dying).
+	G.match_state.server_add_kill(player_id, other_player_id)
+	_server_apply_collision_bounce(other_player)
 
 
 func _update_invincibility_blink() -> void:

@@ -22,8 +22,8 @@ class TestCollisionBounceVelocity:
 
 		# Create movement settings.
 		movement_settings = MovementSettings.new()
-		movement_settings.collision_bounce_base_speed = 300.0
-		movement_settings.collision_bounce_vertical_boost = -200.0
+		movement_settings.bump_bounce_base_speed = 300.0
+		movement_settings.bump_bounce_vertical_boost = -200.0
 
 		# Create players.
 		player1 = _create_test_player(1)
@@ -231,8 +231,8 @@ class TestBothPlayersBounceBehavior:
 		ArrayPool.clear_all_pools()
 
 		movement_settings = MovementSettings.new()
-		movement_settings.collision_bounce_base_speed = 300.0
-		movement_settings.collision_bounce_vertical_boost = -200.0
+		movement_settings.bump_bounce_base_speed = 300.0
+		movement_settings.bump_bounce_vertical_boost = -200.0
 
 		player1 = _create_test_player(1)
 		player2 = _create_test_player(2)
@@ -334,8 +334,8 @@ class TestBouncePreservesExistingVelocity:
 		ArrayPool.clear_all_pools()
 
 		movement_settings = MovementSettings.new()
-		movement_settings.collision_bounce_base_speed = 300.0
-		movement_settings.collision_bounce_vertical_boost = -200.0
+		movement_settings.bump_bounce_base_speed = 300.0
+		movement_settings.bump_bounce_vertical_boost = -200.0
 
 		player1 = _create_test_player(1)
 		player2 = _create_test_player(2)
@@ -409,8 +409,8 @@ class TestCollisionEdgeCases:
 		ArrayPool.clear_all_pools()
 
 		movement_settings = MovementSettings.new()
-		movement_settings.collision_bounce_base_speed = 300.0
-		movement_settings.collision_bounce_vertical_boost = -200.0
+		movement_settings.bump_bounce_base_speed = 300.0
+		movement_settings.bump_bounce_vertical_boost = -200.0
 
 		player1 = _create_test_player(1)
 		player2 = _create_test_player(2)

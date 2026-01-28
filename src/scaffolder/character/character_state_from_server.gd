@@ -378,10 +378,10 @@ func _reconcile_bump_event() -> void:
 
 	# Calculate expected bump velocity delta.
 	var base_bounce := last_bump_direction * \
-		character.movement_settings.collision_bounce_base_speed
+		character.movement_settings.bump_bounce_base_speed
 	var upward_boost := Vector2(
 		0,
-		character.movement_settings.collision_bounce_vertical_boost
+		character.movement_settings.bump_bounce_vertical_boost
 	)
 	var bump_delta := base_bounce + upward_boost
 

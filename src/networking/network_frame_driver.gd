@@ -49,9 +49,23 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# --- DEFINITELY SPLIT WORK ACROSS ON LAPTOP! ---
+# - I think I want to refactor how some special interaction moments are replicated for the player.
+#   - Currently, we have PlayerInputNetworkState.last_triggered_jump_time_usec and CharacterStateFromServer.last_bump_time_usec/CharacterStateFromServer.last_bump_direction.
+#   - I think that we should replace all three of these with last_interaction_type, last_interaction_position, and last_interation_direction. Let's put all three of these on ReconcilableNetworkState, but duplicate the property declaration in the subclasses.
+#   - We then need to replace the pre-existing logic that handles the three old properties with the three new properties.
+#   - Then, we should add some new types for last_interaction_type. All of the types should include:
+#     - spawn
+#     - kill
+#     - die
+#     - bump
+#     - jump
+#   - Please carefully analyze all of the relevant systems and logic dealing with each of these concepts, and plan how to refactor them to use this new approach that will integrate well with the prediction/rollback mechanism.
+#   - We should replace RPCs when appropriate.
+#   - Please give any feedback into what would be a cleaner approach or design consideration.
+#   - After this is implemented, plan how to differentiate between bump_bounce_base_speed/bump_bounce_vertical_boost and kill_bounce_base_speed/kill_bounce_vertical_boost when applying velocity change from an interaction.
+#   - Also, plan how to make sure that kills will always take precedence over bumps if both happen in the same frame.
 
-# - Test kills and bumps.
+# - Test kills and bumps. Adjust foot, head, and body shapes.o
 
 # - Check if we're still using the ArrayPool in all the places we should, especially with the new RollbackBuffer in MatchState.
 

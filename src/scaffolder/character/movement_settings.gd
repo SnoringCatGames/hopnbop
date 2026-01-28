@@ -55,7 +55,7 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 @export var always_tries_to_face_direction_of_motion := true
 @export var max_jump_chain := 1
 
-@export var jump_boost := -600.0
+@export var jump_boost := -400.0
 @export var wall_jump_horizontal_boost := 200.0
 @export var wall_fall_horizontal_boost := 20.0
 
@@ -73,8 +73,8 @@ var gravity_double_jump_slow_rise_acceleration: float:
 	get:
 		return gravity_fast_fall_acceleration * gravity_double_jump_slow_rise_multiplier
 
-@export var walk_acceleration := 6000.0
-@export var in_air_horizontal_acceleration := 1500.0
+@export var walk_acceleration := 4000.0
+@export var in_air_horizontal_acceleration := 500.0
 @export var climb_up_speed := -230.0
 @export var climb_down_speed := 120.0
 @export var ceiling_crawl_speed := 230.0
@@ -85,14 +85,17 @@ var gravity_double_jump_slow_rise_acceleration: float:
 @export var friction_coeff_with_sideways_input := 1.25
 @export var friction_coeff_without_sideways_input := 1.0
 
-@export var max_ground_horizontal_speed := 320.0
-@export var max_air_horizontal_speed := 400.0
-@export var max_vertical_speed := 2800.0
+@export var max_ground_horizontal_speed := 200.0
+@export var max_air_horizontal_speed := 220.0
+@export var max_vertical_speed := 1000.0
 @export var min_horizontal_speed := 5.0
 @export var min_vertical_speed := 0.0
 
-@export var collision_bounce_base_speed := 300.0
-@export var collision_bounce_vertical_boost := -2000.0
+@export var bump_bounce_base_speed := 300.0
+@export var bump_bounce_vertical_boost := -300.0
+
+@export var kill_bounce_base_speed := 200.0
+@export var kill_bounce_vertical_boost := -800.0
 
 @export var action_handler_types: Array[ActionHandlerType] = [
 	ActionHandlerType.FLOOR_DEFAULT,

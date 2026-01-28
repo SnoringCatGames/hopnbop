@@ -125,8 +125,8 @@ class TestBumpReconciliation:
 
 		# Create minimal character setup.
 		movement_settings = MovementSettings.new()
-		movement_settings.collision_bounce_base_speed = 300.0
-		movement_settings.collision_bounce_vertical_boost = -200.0
+		movement_settings.bump_bounce_base_speed = 300.0
+		movement_settings.bump_bounce_vertical_boost = -200.0
 
 		character = Character.new()
 		character.movement_settings = movement_settings
@@ -318,8 +318,8 @@ class TestBumpReconciliationEdgeCases:
 		ArrayPool.clear_all_pools()
 
 		movement_settings = MovementSettings.new()
-		movement_settings.collision_bounce_base_speed = 300.0
-		movement_settings.collision_bounce_vertical_boost = -200.0
+		movement_settings.bump_bounce_base_speed = 300.0
+		movement_settings.bump_bounce_vertical_boost = -200.0
 
 		character = Character.new()
 		character.movement_settings = movement_settings
