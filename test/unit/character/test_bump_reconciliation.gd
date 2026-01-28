@@ -29,29 +29,17 @@ class TestInteractionFrameIndexConversion:
 			"Negative frame should stay -1"
 		)
 
-	func test_positive_frame_converts_to_time():
+	func test_positive_frame_can_be_set():
 		var state = CharacterStateFromServer.new()
 		state.last_interaction_frame_index = 100
-
-		assert_gt(
-			state.last_interaction_time_usec,
-			0,
-			"Positive frame should convert to positive time"
-		)
-
-	func test_setting_time_updates_frame():
-		var state = CharacterStateFromServer.new()
-		var time_100_frames = \
-			G.network.frame_driver.get_time_usec_from_frame_index(100)
-		state.last_interaction_time_usec = time_100_frames
 
 		assert_eq(
 			state.last_interaction_frame_index,
 			100,
-			"Setting time should update frame index"
+			"Positive frame should be stored correctly"
 		)
 
-	func test_frame_to_time_roundtrip():
+	func test_frame_roundtrip():
 		var state = CharacterStateFromServer.new()
 		var original_frame = 500
 		state.last_interaction_frame_index = original_frame
@@ -60,18 +48,18 @@ class TestInteractionFrameIndexConversion:
 		assert_eq(
 			retrieved_frame,
 			original_frame,
-			"Frame index should survive roundtrip conversion"
+			"Frame index should roundtrip correctly"
 		)
 
-	func test_setting_negative_frame_clears_time():
+	func test_setting_negative_frame():
 		var state = CharacterStateFromServer.new()
 		state.last_interaction_frame_index = 100
 		state.last_interaction_frame_index = -1
 
 		assert_eq(
-			state.last_interaction_time_usec,
+			state.last_interaction_frame_index,
 			-1,
-			"Setting frame to -1 should clear time"
+			"Setting frame to -1 should work"
 		)
 
 
@@ -294,7 +282,7 @@ class TestBumpReconciliation:
 		frame_state[1] = Vector2.ZERO # velocity
 		frame_state[2] = 0 # surfaces
 		frame_state[3] = CharacterStateFromServer.ServerInteractionType.NONE
-		frame_state[4] = -1 # last_interaction_time_usec
+		frame_state[4] = -1 # last_interaction_frame_index
 		frame_state[5] = Vector2.ZERO # last_interaction_position
 		frame_state[6] = Vector2.ZERO # last_interaction_direction
 		frame_state[7] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
@@ -323,7 +311,7 @@ class TestBumpReconciliation:
 		frame_state[1] = Vector2.ZERO # velocity
 		frame_state[2] = 0 # surfaces
 		frame_state[3] = CharacterStateFromServer.ServerInteractionType.NONE
-		frame_state[4] = -1 # last_interaction_time_usec
+		frame_state[4] = -1 # last_interaction_frame_index
 		frame_state[5] = Vector2.ZERO # last_interaction_position
 		frame_state[6] = Vector2.ZERO # last_interaction_direction
 		frame_state[7] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
@@ -406,7 +394,7 @@ class TestBumpReconciliationEdgeCases:
 		frame_state[1] = Vector2.ZERO # velocity
 		frame_state[2] = 0 # surfaces
 		frame_state[3] = CharacterStateFromServer.ServerInteractionType.NONE
-		frame_state[4] = -1 # last_interaction_time_usec
+		frame_state[4] = -1 # last_interaction_frame_index
 		frame_state[5] = Vector2.ZERO # last_interaction_position
 		frame_state[6] = Vector2.ZERO # last_interaction_direction
 		frame_state[7] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
@@ -453,7 +441,7 @@ class TestBumpReconciliationEdgeCases:
 		frame_state[1] = Vector2.ZERO # velocity
 		frame_state[2] = 0 # surfaces
 		frame_state[3] = CharacterStateFromServer.ServerInteractionType.NONE
-		frame_state[4] = -1 # last_interaction_time_usec
+		frame_state[4] = -1 # last_interaction_frame_index
 		frame_state[5] = Vector2.ZERO # last_interaction_position
 		frame_state[6] = Vector2.ZERO # last_interaction_direction
 		frame_state[7] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
