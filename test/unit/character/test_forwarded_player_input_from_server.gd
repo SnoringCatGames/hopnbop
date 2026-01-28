@@ -71,31 +71,57 @@ class TestConfigurationAndInitialization:
 		var props: Dictionary = \
 		forwarded_input._synced_properties_and_rollback_diff_thresholds
 
-		# Should have exactly 2 properties.
-		assert_eq(props.size(), 2, "Should have 2 synced properties")
+		# Should have exactly 5 properties (actions + 4 interaction props).
+		assert_eq(props.size(), 5, "Should have 5 synced properties")
 
 		# Should have actions with threshold 0.
 		assert_true(props.has("actions"), "Should sync actions")
 		assert_eq(props["actions"], 0, "Actions threshold should be 0")
 
-		# Should have last_triggered_jump_time_usec with threshold 0.
+		# Should have interaction properties.
 		assert_true(
-			props.has("last_triggered_jump_time_usec"),
-			"Should sync jump timestamp",
+			props.has("last_interaction_type"),
+			"Should sync interaction type",
 		)
-		assert_eq(
-			props["last_triggered_jump_time_usec"],
-			0,
-			"Jump timestamp threshold should be 0",
+		assert_true(
+			props.has("last_interaction_time_usec"),
+			"Should sync interaction timestamp",
+		)
+		assert_true(
+			props.has("last_interaction_position"),
+			"Should sync interaction position",
+		)
+		assert_true(
+			props.has("last_interaction_direction"),
+			"Should sync interaction direction",
 		)
 
 
 	func test_get_default_values_returns_correct_array():
 		var defaults: Array = forwarded_input._get_default_values()
 
-		assert_eq(defaults.size(), 2, "Should have 2 default values")
+		assert_eq(defaults.size(), 5, "Should have 5 default values")
 		assert_eq(defaults[0], 0, "Default actions should be 0")
-		assert_eq(defaults[1], -1, "Default jump timestamp should be -1")
+		assert_eq(
+			defaults[1],
+			PlayerInputNetworkState.ClientInteractionType.NONE,
+			"Default interaction type should be NONE",
+		)
+		assert_eq(
+			defaults[2],
+			-1,
+			"Default interaction timestamp should be -1",
+		)
+		assert_eq(
+			defaults[3],
+			Vector2.ZERO,
+			"Default interaction position should be zero",
+		)
+		assert_eq(
+			defaults[4],
+			Vector2.ZERO,
+			"Default interaction direction should be zero",
+		)
 
 
 class TestConfigurationWarnings:
