@@ -53,6 +53,8 @@ extends Node
 
 # - Test kills and bumps.
 
+# - Check if we're still using the ArrayPool in all the places we should, especially with the new RollbackBuffer in MatchState.
+
 # - Implement the connect-to-remote-server-in-preview mode. It should auto close the server window.
 
 # - Lingering FIXMEs.

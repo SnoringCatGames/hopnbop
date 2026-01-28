@@ -13,8 +13,8 @@ func after_each():
 class TestCollisionBounceVelocity:
 	extends GutTest
 
-	var player1: Player
-	var player2: Player
+	var player1: Bunny
+	var player2: Bunny
 	var movement_settings: MovementSettings
 
 	func before_each():
@@ -36,15 +36,17 @@ class TestCollisionBounceVelocity:
 		if is_instance_valid(player2):
 			player2.free()
 
-	func _create_test_player(player_id: int) -> Player:
-		var player = Player.new()
-		player.player_id = player_id
+	func _create_test_player(player_id: int) -> Bunny:
+		var player = Bunny.new()
 		player.movement_settings = movement_settings
 
 		var state = CharacterStateFromServer.new()
 		state.player_id = player_id
 		state.character = player
 		player.state_from_server = state
+
+		# Set player_id after state_from_server is assigned.
+		player.player_id = player_id
 
 		return player
 
@@ -221,8 +223,8 @@ class TestCollisionDetectionLogic:
 class TestBothPlayersBounceBehavior:
 	extends GutTest
 
-	var player1: Player
-	var player2: Player
+	var player1: Bunny
+	var player2: Bunny
 	var movement_settings: MovementSettings
 
 	func before_each():
@@ -242,15 +244,17 @@ class TestBothPlayersBounceBehavior:
 		if is_instance_valid(player2):
 			player2.free()
 
-	func _create_test_player(player_id: int) -> Player:
-		var player = Player.new()
-		player.player_id = player_id
+	func _create_test_player(player_id: int) -> Bunny:
+		var player = Bunny.new()
 		player.movement_settings = movement_settings
 
 		var state = CharacterStateFromServer.new()
 		state.player_id = player_id
 		state.character = player
 		player.state_from_server = state
+
+		# Set player_id after state_from_server is assigned.
+		player.player_id = player_id
 
 		return player
 
@@ -322,8 +326,8 @@ class TestBothPlayersBounceBehavior:
 class TestBouncePreservesExistingVelocity:
 	extends GutTest
 
-	var player1: Player
-	var player2: Player
+	var player1: Bunny
+	var player2: Bunny
 	var movement_settings: MovementSettings
 
 	func before_each():
@@ -343,15 +347,17 @@ class TestBouncePreservesExistingVelocity:
 		if is_instance_valid(player2):
 			player2.free()
 
-	func _create_test_player(player_id: int) -> Player:
-		var player = Player.new()
-		player.player_id = player_id
+	func _create_test_player(player_id: int) -> Bunny:
+		var player = Bunny.new()
 		player.movement_settings = movement_settings
 
 		var state = CharacterStateFromServer.new()
 		state.player_id = player_id
 		state.character = player
 		player.state_from_server = state
+
+		# Set player_id after state_from_server is assigned.
+		player.player_id = player_id
 
 		return player
 
@@ -395,8 +401,8 @@ class TestBouncePreservesExistingVelocity:
 class TestCollisionEdgeCases:
 	extends GutTest
 
-	var player1: Player
-	var player2: Player
+	var player1: Bunny
+	var player2: Bunny
 	var movement_settings: MovementSettings
 
 	func before_each():
@@ -416,15 +422,17 @@ class TestCollisionEdgeCases:
 		if is_instance_valid(player2):
 			player2.free()
 
-	func _create_test_player(player_id: int) -> Player:
-		var player = Player.new()
-		player.player_id = player_id
+	func _create_test_player(player_id: int) -> Bunny:
+		var player = Bunny.new()
 		player.movement_settings = movement_settings
 
 		var state = CharacterStateFromServer.new()
 		state.player_id = player_id
 		state.character = player
 		player.state_from_server = state
+
+		# Set player_id after state_from_server is assigned.
+		player.player_id = player_id
 
 		return player
 
@@ -440,7 +448,10 @@ class TestCollisionEdgeCases:
 
 		# Velocity should still be modified (direction undefined but
 		# normalized).
-		pass
+		assert_true(
+			true,
+			"Should not crash with overlapping positions"
+		)
 
 	func test_bounce_with_very_close_positions():
 		player1.global_position = Vector2(0, 0)

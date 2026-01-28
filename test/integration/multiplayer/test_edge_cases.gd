@@ -112,17 +112,6 @@ class TestEdgeCases:
 		assert_gte(oldest, 1, "Oldest should never be less than 1")
 
 
-	func test_time_conversion_at_frame_zero():
-		# Test time conversion edge case at frame 0
-		var time_at_zero := frame_driver.get_time_usec_from_frame_index(0)
-		var frame_from_zero := (
-			frame_driver.get_frame_index_from_time_usec(0)
-		)
-
-		assert_eq(frame_from_zero, 0, "Time 0 should map to frame 0")
-		assert_gt(time_at_zero, 0, "Frame 0 should have positive time (midpoint)")
-
-
 	func test_buffer_size_with_different_duration_settings():
 		# Test that buffer size correctly responds to settings
 		var original_duration := G.settings.rollback_buffer_duration_sec

@@ -452,6 +452,9 @@ func _pre_network_process() -> void:
 	_unpack_buffer_state(timestamp_index - 1)
 
 	var previous_frame_state = _rollback_buffer.get_at(timestamp_index - 2)
+	if previous_frame_state == null:
+		# For very early frames, use default values as "previous" state.
+		previous_frame_state = _get_default_values()
 	_sync_to_scene_state(previous_frame_state)
 
 

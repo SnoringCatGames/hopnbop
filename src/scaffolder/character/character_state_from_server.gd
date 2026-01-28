@@ -369,7 +369,11 @@ func _reconcile_bump_event() -> void:
 		return
 
 	var frame_state: Array = _rollback_buffer.get_at(bump_frame)
-	var velocity_index: int = _property_name_to_pack_index.velocity
+	# Get velocity index from property names array.
+	var velocity_index := _property_names_for_packing.find(&"velocity")
+	if velocity_index < 0:
+		# Fallback: velocity is second property in synced properties dict.
+		velocity_index = 1
 	var stored_velocity: Vector2 = frame_state[velocity_index]
 
 	# Calculate expected bump velocity delta.

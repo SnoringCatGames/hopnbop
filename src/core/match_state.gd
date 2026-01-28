@@ -381,6 +381,9 @@ func _store_interaction(
 
 	interactions.append(interaction)
 
+	# Store the updated array back to the buffer.
+	_recent_interactions.set_at(frame_index, interactions)
+
 
 func _server_pack_players() -> void:
 	if G.is_verbose:

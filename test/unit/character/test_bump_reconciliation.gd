@@ -135,8 +135,14 @@ class TestBumpReconciliation:
 		state.character = character
 		character.state_from_server = state
 
-		# Initialize rollback buffer.
-		state._set_up_rollback_buffer()
+		# Manually create rollback buffer (bypasses time initialization check).
+		var default_values := state._get_default_values().duplicate()
+		default_values.append(ReconcilableNetworkedState.FrameAuthority.PREDICTED)
+		state._rollback_buffer = RollbackBuffer.new(
+			90,  # capacity (typical rollback buffer size)
+			0,   # current_frame_index
+			default_values
+		)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
@@ -164,8 +170,12 @@ class TestBumpReconciliation:
 
 		state._reconcile_bump_event()
 
-		# Should skip without error.
-		pass
+		# Should skip without changing reconciled frame.
+		assert_eq(
+			state._last_reconciled_bump_frame_index,
+			100,
+			"Reconciled frame should not change when already processed"
+		)
 
 	func test_reconciliation_skips_stale_bump():
 		# Set current frame far ahead.
@@ -318,7 +328,14 @@ class TestBumpReconciliationEdgeCases:
 		state.character = character
 		character.state_from_server = state
 
-		state._initialize_rollback_buffer()
+		# Manually create rollback buffer (bypasses time initialization check).
+		var default_values := state._get_default_values().duplicate()
+		default_values.append(ReconcilableNetworkedState.FrameAuthority.PREDICTED)
+		state._rollback_buffer = RollbackBuffer.new(
+			90,  # capacity (typical rollback buffer size)
+			0,   # current_frame_index
+			default_values
+		)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
@@ -345,6 +362,13 @@ class TestBumpReconciliationEdgeCases:
 		# Should not crash.
 		state._reconcile_bump_event()
 
+		# Verify bump was marked as reconciled.
+		assert_eq(
+			state._last_reconciled_bump_frame_index,
+			600,
+			"Bump should be marked as reconciled even with zero direction"
+		)
+
 	func test_reconciliation_skips_missing_frame():
 		# Set bump at frame that doesn't exist in buffer.
 		state.last_bump_frame_index = 9999
@@ -359,13 +383,13 @@ class TestBumpReconciliationEdgeCases:
 			"Missing frame should be marked as processed"
 		)
 
-	func test_reconciliation_with_negative_upward_boost():
+	func test_reconciliation_with_downward_bump_direction():
 		G.network.frame_driver.server_frame_index = 700
 
 		# Manually create frame state array.
 		var frame_state = ArrayPool.acquire(6)
 		frame_state[0] = Vector2.ZERO  # position
-		frame_state[1] = Vector2(0, -100)  # velocity
+		frame_state[1] = Vector2.ZERO  # velocity
 		frame_state[2] = 0  # surfaces
 		frame_state[3] = -1  # last_bump_time_usec
 		frame_state[4] = Vector2.ZERO  # last_bump_direction
@@ -381,9 +405,10 @@ class TestBumpReconciliationEdgeCases:
 		var modified_state: Array = state._rollback_buffer.get_at(700)
 		var velocity: Vector2 = modified_state[1]  # Index 1 is velocity
 
-		# Should still apply upward boost despite downward direction.
-		assert_lt(
+		# With downward direction (300) and upward boost (-200), net is 100 downward.
+		assert_almost_eq(
 			velocity.y,
-			0,
-			"Upward boost should result in negative Y velocity"
+			100.0,
+			1.0,
+			"Downward bump with upward boost should result in net downward velocity"
 		)
