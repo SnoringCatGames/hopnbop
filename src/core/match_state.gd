@@ -116,42 +116,6 @@ func clear() -> void:
 	is_match_ended = false
 
 
-func client_notify_kill(
-	_killer_id: int,
-	_killee_id: int,
-	_position_x: float,
-	_position_y: float,
-	_time_usec: int
-) -> void:
-	# Notify local players for sound effects and visual feedback.
-	var killer: Player = G.get_player(_killer_id)
-	var killee: Player = G.get_player(_killee_id)
-
-	if is_instance_valid(killer):
-		killer.client_on_killed(killee)
-
-	if is_instance_valid(killee):
-		killee.client_on_died(killer)
-
-
-func client_notify_bump(
-	_player_1_id: int,
-	_player_2_id: int,
-	_position_x: float,
-	_position_y: float,
-	_time_usec: int
-) -> void:
-	# Notify local players for sound effects and visual feedback.
-	var player_1: Player = G.get_player(_player_1_id)
-	var player_2: Player = G.get_player(_player_2_id)
-
-	if is_instance_valid(player_1):
-		player_1.client_on_bumped(player_2, true)
-
-	if is_instance_valid(player_2):
-		player_2.client_on_bumped(player_1, false)
-
-
 func client_notify_match_started(
 	_match_start_time_usec: int,
 	_match_duration_usec: int

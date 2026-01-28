@@ -76,7 +76,7 @@ var preview_client_count: int:
 	ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION,
 	ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
 	#ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-	#ScaffolderLog.CATEGORY_NETWORK_SYNC,
+	ScaffolderLog.CATEGORY_NETWORK_SYNC,
 	#ScaffolderLog.CATEGORY_INTERACTION,
 	#ScaffolderLog.CATEGORY_GAME_STATE,
 ]
