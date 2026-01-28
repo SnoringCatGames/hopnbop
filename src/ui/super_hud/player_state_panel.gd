@@ -9,6 +9,7 @@ extends PanelContainer
 var player_id: int = 0
 var player: Player
 var player_match_state: PlayerMatchState
+var replaceable_toast: PlayerStatePanelToast = null
 
 
 func _ready() -> void:
@@ -73,16 +74,31 @@ func _physics_process(_delta: float) -> void:
 		add_toast(
 			"Attached to %s" %
 			SurfaceSide.get_string(player.surfaces.attachment_side),
+			true,
 		)
 
 
-func add_toast(text: String) -> void:
+func add_toast(text: String, replaceable: bool = false) -> void:
+	# If this is a replaceable toast and we have an old one, remove it.
+	if replaceable and is_instance_valid(replaceable_toast):
+		replaceable_toast.queue_free()
+		replaceable_toast = null
+
 	var toast: PlayerStatePanelToast = toast_scene.instantiate()
 	toast.text = text
 	%Toasts.add_child(toast)
 	%Toasts.move_child(toast, 0)
 
+	# Cache this toast if it's replaceable.
+	if replaceable:
+		replaceable_toast = toast
+
 	var tween = get_tree().create_tween()
 	tween.tween_property(toast, "modulate:a", 0, toast_fade_duration).set_delay(toast_fade_delay)
 	await tween.step_finished
-	toast.queue_free()
+	if is_instance_valid(toast):
+		toast.queue_free()
+
+	# Clear the cached reference if this was the replaceable toast.
+	if replaceable and toast == replaceable_toast:
+		replaceable_toast = null
