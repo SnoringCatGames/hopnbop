@@ -207,40 +207,6 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 
 
 @rpc("authority", "call_remote", "reliable")
-func _rpc_client_notify_kill(
-	killer_id: int,
-	killee_id: int,
-	position_x: float,
-	position_y: float,
-	time_usec: int
-) -> void:
-	state.client_notify_kill(
-		killer_id,
-		killee_id,
-		position_x,
-		position_y,
-		time_usec
-	)
-
-
-@rpc("authority", "call_remote", "reliable")
-func _rpc_client_notify_bump(
-	player_1_id: int,
-	player_2_id: int,
-	position_x: float,
-	position_y: float,
-	time_usec: int
-) -> void:
-	state.client_notify_bump(
-		player_1_id,
-		player_2_id,
-		position_x,
-		position_y,
-		time_usec
-	)
-
-
-@rpc("authority", "call_remote", "reliable")
 func _rpc_client_notify_match_started(
 	match_start_time_usec: int,
 	match_duration_usec: int
