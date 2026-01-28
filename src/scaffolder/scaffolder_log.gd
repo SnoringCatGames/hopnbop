@@ -96,14 +96,16 @@ func print(
 		message = "",
 		category := CATEGORY_DEFAULT,
 		verbosity := Verbosity.NORMAL,
+		force_enable := false,
 ) -> void:
 	if TestEnvironmentDetector.is_running_in_test_env(self):
 		return
 
-	if not _is_category_enabled(category):
-		return
-	if verbosity > G.settings.verbosity:
-		return
+	if not force_enable:
+		if not _is_category_enabled(category):
+			return
+		if verbosity > G.settings.verbosity:
+			return
 
 	if !(message is String):
 		message = str(message)

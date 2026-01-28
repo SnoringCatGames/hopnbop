@@ -195,6 +195,9 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	var other_player := body as Player
 	var other_player_id := other_player.player_id
 
+	if other_player == self:
+		return
+
 	# Prevent double-counting (this frame was already processed from the other
 	# player).
 	if _processed_collision_this_frame:
@@ -223,26 +226,26 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	# Determine interaction type and record.
 	if not _intersecting_head_player_ids.has(other_player_id):
 		# Bump - both players bounce away from each other.
-		if G.is_verbose:
-			G.print(
-				"Players bump detected: %d bumped %d" %
-					[player_id, other_player_id],
-				ScaffolderLog.CATEGORY_GAME_STATE,
-				ScaffolderLog.Verbosity.VERBOSE,
-			)
+		G.print(
+			"Players bump detected: %d bumped %d" %
+				[player_id, other_player_id],
+			ScaffolderLog.CATEGORY_GAME_STATE,
+			ScaffolderLog.Verbosity.VERBOSE,
+			true,
+		)
 
 		G.match_state.server_add_bump(player_id, other_player_id)
 		_server_apply_collision_bounce(other_player)
 		other_player._server_apply_collision_bounce(self)
 	else:
 		# Kill - only the killer bounces (killee is dying).
-		if G.is_verbose:
-			G.print(
-				"Player kill detected: %d killed %d" %
-					[player_id, other_player_id],
-				ScaffolderLog.CATEGORY_GAME_STATE,
-				ScaffolderLog.Verbosity.VERBOSE,
-			)
+		G.print(
+			"Player kill detected: %d killed %d" %
+				[player_id, other_player_id],
+			ScaffolderLog.CATEGORY_GAME_STATE,
+			ScaffolderLog.Verbosity.VERBOSE,
+			true,
+		)
 
 		G.match_state.server_add_kill(player_id, other_player_id)
 		_server_apply_collision_bounce(other_player)
@@ -321,15 +324,15 @@ func _update_invincibility_blink() -> void:
 		animator.visible = _is_blink_visible
 
 
-func client_on_bumped(other_player: Player, is_first_of_pair: bool) -> void:
+func client_on_bumped(_other_player: Player, is_first_of_pair: bool) -> void:
 	# We don't need to play the bump sound at the same time for both players.
 	if is_first_of_pair:
 		play_sound("bump")
 
 
-func client_on_killed(killee: Player) -> void:
+func client_on_killed(_killee: Player) -> void:
 	pass
 
 
-func client_on_died(killer: Player) -> void:
+func client_on_died(_killer: Player) -> void:
 	play_sound("die")

@@ -115,8 +115,9 @@ func print(
 		message = "",
 		category := ScaffolderLog.CATEGORY_DEFAULT,
 		verbosity := ScaffolderLog.Verbosity.NORMAL,
+		force_enable := false,
 ) -> void:
-	log.print(message, category, verbosity)
+	log.print(message, category, verbosity, force_enable)
 
 
 func warning(message = "", category := ScaffolderLog.CATEGORY_DEFAULT) -> void:
