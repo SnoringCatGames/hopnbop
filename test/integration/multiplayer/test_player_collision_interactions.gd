@@ -55,15 +55,13 @@ class TestCollisionBounceVelocity:
 		player1.global_position = Vector2(0, 0)
 		player2.global_position = Vector2(100, 0)
 
-		var initial_velocity = player1.velocity
-
 		# Apply bounce (player1 bounces away from player2).
-		player1._apply_collision_bounce(player2)
+		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
 
-		# Player1 should bounce in negative X direction.
+		# Player1 should have pending bounce in negative X direction.
 		assert_lt(
-			player1.velocity.x,
-			initial_velocity.x,
+			player1._pending_bounce.x,
+			0,
 			"Player1 should bounce left"
 		)
 
@@ -71,14 +69,12 @@ class TestCollisionBounceVelocity:
 		player1.global_position = Vector2(0, 0)
 		player2.global_position = Vector2(100, 0)
 
-		var initial_velocity_y = player1.velocity.y
-
-		player1._apply_collision_bounce(player2)
+		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
 
 		# Upward boost is negative Y (up in Godot).
 		assert_lt(
-			player1.velocity.y,
-			initial_velocity_y - 100.0,
+			player1._pending_bounce.y,
+			-100.0,
 			"Player1 should have upward boost"
 		)
 
@@ -86,17 +82,16 @@ class TestCollisionBounceVelocity:
 		player1.global_position = Vector2(0, 0)
 		player2.global_position = Vector2(100, 0)
 
-		player1.velocity = Vector2.ZERO
-		player1._apply_collision_bounce(player2)
+		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
 
-		var velocity_magnitude = player1.velocity.length()
+		var bounce_magnitude = player1._pending_bounce.length()
 
 		# Expected: sqrt((300)^2 + (200)^2) ≈ 360.
 		assert_almost_eq(
-			velocity_magnitude,
+			bounce_magnitude,
 			360.0,
 			10.0,
-			"Velocity magnitude should match combined bounce"
+			"Bounce magnitude should match combined bounce"
 		)
 
 	func test_bounce_direction_away_from_collision():
@@ -104,12 +99,11 @@ class TestCollisionBounceVelocity:
 		player1.global_position = Vector2(0, 0)
 		player2.global_position = Vector2(100, 0)
 
-		player1.velocity = Vector2.ZERO
-		player1._apply_collision_bounce(player2)
+		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
 
 		# Player1 should bounce left (negative X).
 		assert_lt(
-			player1.velocity.x,
+			player1._pending_bounce.x,
 			0,
 			"Player1 should bounce away from player2"
 		)
@@ -120,16 +114,16 @@ class TestCollisionBounceVelocity:
 		player2.global_position = Vector2(100, 100)
 
 		player1.velocity = Vector2.ZERO
-		player1._apply_collision_bounce(player2)
+		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
 
 		# Should bounce diagonally up-left.
 		assert_lt(
-			player1.velocity.x,
+			player1._pending_bounce.x,
 			0,
 			"Should bounce left"
 		)
 		assert_lt(
-			player1.velocity.y,
+			player1._pending_bounce.y,
 			0,
 			"Should bounce up"
 		)
@@ -140,16 +134,16 @@ class TestCollisionBounceVelocity:
 		player1.global_position = Vector2(0, 0)
 		player2.global_position = Vector2(100, 0)
 
-		player1._apply_collision_bounce(player2)
+		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
 
 		assert_eq(
-			player1.state_from_server.last_bump_frame_index,
+			player1.state_from_server.last_interaction_frame_index,
 			100,
 			"Bump frame should be recorded"
 		)
 
 		# Direction should be normalized.
-		var direction = player1.state_from_server.last_bump_direction
+		var direction = player1.state_from_server.last_interaction_direction
 		assert_almost_eq(
 			direction.length(),
 			1.0,
@@ -262,21 +256,18 @@ class TestBothPlayersBounceBehavior:
 		player1.global_position = Vector2(0, 0)
 		player2.global_position = Vector2(100, 0)
 
-		player1.velocity = Vector2.ZERO
-		player2.velocity = Vector2.ZERO
-
 		# Simulate bump (both players bounce).
-		player1._apply_collision_bounce(player2)
-		player2._apply_collision_bounce(player1)
+		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
+		player2._server_apply_interaction(player1, CharacterStateFromServer.ServerInteractionType.BUMP)
 
 		# Player1 should bounce left, player2 should bounce right.
 		assert_lt(
-			player1.velocity.x,
+			player1._pending_bounce.x,
 			0,
 			"Player1 should bounce left"
 		)
 		assert_gt(
-			player2.velocity.x,
+			player2._pending_bounce.x,
 			0,
 			"Player2 should bounce right"
 		)
@@ -285,15 +276,12 @@ class TestBothPlayersBounceBehavior:
 		player1.global_position = Vector2(0, 0)
 		player2.global_position = Vector2(100, 0)
 
-		player1.velocity = Vector2.ZERO
-		player2.velocity = Vector2.ZERO
-
-		player1._apply_collision_bounce(player2)
-		player2._apply_collision_bounce(player1)
+		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
+		player2._server_apply_interaction(player1, CharacterStateFromServer.ServerInteractionType.BUMP)
 
 		# X components should have opposite signs.
 		var same_sign = (
-			sign(player1.velocity.x) == sign(player2.velocity.x)
+			sign(player1._pending_bounce.x) == sign(player2._pending_bounce.x)
 		)
 		assert_false(
 			same_sign,
@@ -304,20 +292,17 @@ class TestBothPlayersBounceBehavior:
 		player1.global_position = Vector2(0, 0)
 		player2.global_position = Vector2(100, 0)
 
-		player1.velocity = Vector2.ZERO
-		player2.velocity = Vector2.ZERO
-
-		player1._apply_collision_bounce(player2)
-		player2._apply_collision_bounce(player1)
+		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
+		player2._server_apply_interaction(player1, CharacterStateFromServer.ServerInteractionType.BUMP)
 
 		# Both should have negative Y (upward).
 		assert_lt(
-			player1.velocity.y,
+			player1._pending_bounce.y,
 			-100.0,
 			"Player1 should have upward boost"
 		)
 		assert_lt(
-			player2.velocity.y,
+			player2._pending_bounce.y,
 			-100.0,
 			"Player2 should have upward boost"
 		)
@@ -367,18 +352,21 @@ class TestBouncePreservesExistingVelocity:
 
 		# Give player1 initial rightward velocity.
 		player1.velocity = Vector2(50, 0)
-		var initial_velocity = player1.velocity
 
-		player1._apply_collision_bounce(player2)
+		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
 
-		# Bounce should add to existing velocity, not replace it.
+		# Bounce should be set (will be added to velocity later).
 		assert_ne(
-			player1.velocity,
-			initial_velocity,
-			"Velocity should change"
+			player1._pending_bounce,
+			Vector2.ZERO,
+			"Bounce should be set"
 		)
-		# Since bounce is leftward and initial is rightward, may partially
-		# cancel but should still have changed.
+		# Bounce is leftward (negative X).
+		assert_lt(
+			player1._pending_bounce.x,
+			0,
+			"Bounce should be leftward"
+		)
 
 	func test_bounce_accumulates_with_gravity():
 		player1.global_position = Vector2(0, 0)
@@ -386,15 +374,14 @@ class TestBouncePreservesExistingVelocity:
 
 		# Player1 is falling.
 		player1.velocity = Vector2(0, 500)  # Downward.
-		var initial_y = player1.velocity.y
 
-		player1._apply_collision_bounce(player2)
+		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
 
-		# Upward boost should counteract falling.
+		# Bounce should have upward component (negative Y).
 		assert_lt(
-			player1.velocity.y,
-			initial_y,
-			"Bounce should reduce downward velocity"
+			player1._pending_bounce.y,
+			0,
+			"Bounce should have upward boost"
 		)
 
 
@@ -444,7 +431,7 @@ class TestCollisionEdgeCases:
 		player1.velocity = Vector2.ZERO
 
 		# Should not crash despite zero distance.
-		player1._apply_collision_bounce(player2)
+		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
 
 		# Velocity should still be modified (direction undefined but
 		# normalized).
@@ -457,15 +444,13 @@ class TestCollisionEdgeCases:
 		player1.global_position = Vector2(0, 0)
 		player2.global_position = Vector2(0.1, 0)  # Very close.
 
-		player1.velocity = Vector2.ZERO
-
-		player1._apply_collision_bounce(player2)
+		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
 
 		# Should produce valid bounce.
 		assert_ne(
-			player1.velocity,
+			player1._pending_bounce,
 			Vector2.ZERO,
-			"Should produce non-zero velocity"
+			"Should produce non-zero bounce"
 		)
 
 	func test_bounce_with_diagonal_collision():
@@ -473,18 +458,16 @@ class TestCollisionEdgeCases:
 		player1.global_position = Vector2(0, 0)
 		player2.global_position = Vector2(100, -100)
 
-		player1.velocity = Vector2.ZERO
-
-		player1._apply_collision_bounce(player2)
+		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
 
 		# Should bounce down-left.
 		assert_lt(
-			player1.velocity.x,
+			player1._pending_bounce.x,
 			0,
 			"Should bounce left"
 		)
 		assert_gt(
-			player1.velocity.y,
+			player1._pending_bounce.y,
 			0,
 			"Base bounce should be downward (but upward boost may dominate)"
 		)

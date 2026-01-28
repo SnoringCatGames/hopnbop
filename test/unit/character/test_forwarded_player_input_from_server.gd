@@ -84,8 +84,8 @@ class TestConfigurationAndInitialization:
 			"Should sync interaction type",
 		)
 		assert_true(
-			props.has("last_interaction_time_usec"),
-			"Should sync interaction timestamp",
+			props.has("last_interaction_frame_index"),
+			"Should sync interaction frame index",
 		)
 		assert_true(
 			props.has("last_interaction_position"),
@@ -357,10 +357,9 @@ class TestStateSynchronization:
 		# Mock remote player.
 		player.input_from_client = null
 
-		# Set jump timestamp (frame 60 @ 60 FPS = 1000000 usec).
-		var frame_60_time := \
-		G.network.frame_driver.get_time_usec_from_frame_index(60)
-		forwarded_input.last_interaction_time_usec = frame_60_time
+		# Set jump interaction at frame 60.
+		forwarded_input.last_interaction_type = PlayerInputNetworkState.ClientInteractionType.JUMP
+		forwarded_input.last_interaction_frame_index = 60
 
 		# Create previous state.
 		var previous_state := ArrayPool.acquire(2)

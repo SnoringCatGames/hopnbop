@@ -102,23 +102,9 @@ var timestamp_index := 0
 ## Unified interaction system properties.
 ## Interaction type is an integer enum value (child classes define specific enums).
 var last_interaction_type := 0
-var last_interaction_time_usec := -1
+var last_interaction_frame_index := -1
 var last_interaction_position := Vector2.ZERO
 var last_interaction_direction := Vector2.ZERO
-
-var last_interaction_frame_index: int:
-	get:
-		if last_interaction_time_usec < 0:
-			return -1
-		return G.network.frame_driver.get_frame_index_from_time_usec(
-			last_interaction_time_usec
-		)
-	set(value):
-		if value < 0:
-			last_interaction_time_usec = -1
-		else:
-			last_interaction_time_usec = \
-				G.network.frame_driver.get_time_usec_from_frame_index(value)
 
 var _last_reconciled_interaction_frame_index := -1
 

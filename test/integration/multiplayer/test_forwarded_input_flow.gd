@@ -225,16 +225,22 @@ class TestRollbackIntegration:
 
 		# Set forwarded input state.
 		forwarded_input.actions = 0b1100
-		forwarded_input.last_interaction_time_usec = 5000000
+		forwarded_input.last_interaction_type = PlayerInputNetworkState.ClientInteractionType.JUMP
+		forwarded_input.last_interaction_frame_index = 300
+		forwarded_input.last_interaction_position = Vector2(100, 200)
+		forwarded_input.last_interaction_direction = Vector2.ZERO
 		forwarded_input.frame_authority = \
 		ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
 
 		# Record state.
 		forwarded_input._sync_from_scene_state()
-		var state := ArrayPool.acquire(3)
+		var state := ArrayPool.acquire(6)
 		state[0] = forwarded_input.actions
-		state[1] = forwarded_input.last_interaction_time_usec
-		state[2] = forwarded_input.frame_authority
+		state[1] = forwarded_input.last_interaction_type
+		state[2] = forwarded_input.last_interaction_frame_index
+		state[3] = forwarded_input.last_interaction_position
+		state[4] = forwarded_input.last_interaction_direction
+		state[5] = forwarded_input.frame_authority
 
 		forwarded_input._rollback_buffer.set_at(test_frame, state)
 
@@ -252,8 +258,13 @@ class TestRollbackIntegration:
 		)
 		assert_eq(
 			retrieved[1],
-			5000000,
-			"Should store jump timestamp in buffer",
+			PlayerInputNetworkState.ClientInteractionType.JUMP,
+			"Should store interaction type in buffer",
+		)
+		assert_eq(
+			retrieved[2],
+			300,
+			"Should store jump frame index in buffer",
 		)
 
 
@@ -261,11 +272,14 @@ class TestRollbackIntegration:
 		# Use buffer's current latest + 1.
 		var test_frame := forwarded_input._rollback_buffer.get_latest_index() + 1
 
-		# Store state in buffer.
-		var state := ArrayPool.acquire(3)
-		state[0] = 0b0111
-		state[1] = 2500000
-		state[2] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+		# Store state in buffer (new interaction system has 5 properties + authority).
+		var state := ArrayPool.acquire(6)
+		state[0] = 0b0111  # actions
+		state[1] = PlayerInputNetworkState.ClientInteractionType.JUMP  # last_interaction_type
+		state[2] = 150  # last_interaction_frame_index
+		state[3] = Vector2.ZERO  # last_interaction_position
+		state[4] = Vector2.ZERO  # last_interaction_direction
+		state[5] = ReconcilableNetworkedState.FrameAuthority.PREDICTED  # frame_authority
 
 		forwarded_input._rollback_buffer.set_at(test_frame, state)
 
@@ -279,9 +293,14 @@ class TestRollbackIntegration:
 			"Should restore actions from buffer",
 		)
 		assert_eq(
-			forwarded_input.last_interaction_time_usec,
-			2500000,
-			"Should restore jump timestamp from buffer",
+			forwarded_input.last_interaction_type,
+			PlayerInputNetworkState.ClientInteractionType.JUMP,
+			"Should restore interaction type from buffer",
+		)
+		assert_eq(
+			forwarded_input.last_interaction_frame_index,
+			150,
+			"Should restore jump frame index from buffer",
 		)
 		assert_eq(
 			forwarded_input.frame_authority,

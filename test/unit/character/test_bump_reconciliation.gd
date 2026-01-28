@@ -19,14 +19,14 @@ class TestInteractionFrameIndexConversion:
 	func after_each():
 		ArrayPool.clear_all_pools()
 
-	func test_negative_time_converts_to_negative_frame():
+	func test_negative_frame_stays_negative():
 		var state = CharacterStateFromServer.new()
-		state.last_interaction_time_usec = -1
+		state.last_interaction_frame_index = -1
 
 		assert_eq(
 			state.last_interaction_frame_index,
 			-1,
-			"Negative time should convert to -1 frame"
+			"Negative frame should stay -1"
 		)
 
 	func test_positive_frame_converts_to_time():
@@ -37,6 +37,18 @@ class TestInteractionFrameIndexConversion:
 			state.last_interaction_time_usec,
 			0,
 			"Positive frame should convert to positive time"
+		)
+
+	func test_setting_time_updates_frame():
+		var state = CharacterStateFromServer.new()
+		var time_100_frames = \
+			G.network.frame_driver.get_time_usec_from_frame_index(100)
+		state.last_interaction_time_usec = time_100_frames
+
+		assert_eq(
+			state.last_interaction_frame_index,
+			100,
+			"Setting time should update frame index"
 		)
 
 	func test_frame_to_time_roundtrip():
@@ -81,8 +93,8 @@ class TestInteractionStateReplication:
 			"last_interaction_type should be synced"
 		)
 		assert_true(
-			props.has("last_interaction_time_usec"),
-			"last_interaction_time_usec should be synced"
+			props.has("last_interaction_frame_index"),
+			"last_interaction_frame_index should be synced"
 		)
 		assert_true(
 			props.has("last_interaction_position"),
@@ -103,9 +115,9 @@ class TestInteractionStateReplication:
 			"Interaction type should have exact match threshold"
 		)
 		assert_eq(
-			props["last_interaction_time_usec"],
+			props["last_interaction_frame_index"],
 			0,
-			"Interaction time should have exact match threshold"
+			"Interaction frame index should have exact match threshold"
 		)
 		assert_almost_eq(
 			props["last_interaction_position"],
@@ -227,14 +239,14 @@ class TestBumpReconciliation:
 
 		# Manually create frame state array.
 		# Format: [position, velocity, surfaces, last_interaction_type,
-		# last_interaction_time_usec, last_interaction_position,
+		# last_interaction_frame_index, last_interaction_position,
 		# last_interaction_direction, frame_authority]
 		var frame_state = ArrayPool.acquire(8)
 		frame_state[0] = Vector2.ZERO # position
 		frame_state[1] = Vector2(100, 100) # velocity
 		frame_state[2] = 0 # surfaces
 		frame_state[3] = CharacterStateFromServer.ServerInteractionType.NONE
-		frame_state[4] = -1 # last_interaction_time_usec
+		frame_state[4] = -1 # last_interaction_frame_index
 		frame_state[5] = Vector2.ZERO # last_interaction_position
 		frame_state[6] = Vector2.ZERO # last_interaction_direction
 		frame_state[7] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE

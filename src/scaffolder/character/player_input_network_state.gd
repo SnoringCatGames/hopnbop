@@ -16,7 +16,7 @@ var actions := 0
 const _synced_properties_and_rollback_diff_thresholds := {
 	actions = 0,
 	last_interaction_type = 0,
-	last_interaction_time_usec = 0,
+	last_interaction_frame_index = 0,
 	last_interaction_position = 0.001,
 	last_interaction_direction = 0.001,
 }
@@ -26,7 +26,7 @@ func _get_default_values() -> Array:
 	return [
 		0, # actions
 		ClientInteractionType.NONE, # last_interaction_type
-		-1, # last_interaction_time_usec
+		-1, # last_interaction_frame_index
 		Vector2.ZERO, # last_interaction_position
 		Vector2.ZERO, # last_interaction_direction
 	]
@@ -102,7 +102,7 @@ func _reconcile_jump_interaction(frame_index: int) -> void:
 		if stored_authority == FrameAuthority.AUTHORITATIVE:
 			G.warning(
 				(
-					"F:%d last_interaction_time_usec corresponds to a frame " +
+					"F:%d last_interaction_frame_index corresponds to a frame " +
 					"that is already recorded as authoritative and without jump " +
 					"pressed: frame %d, actions=%s (%s)"
 				) % [

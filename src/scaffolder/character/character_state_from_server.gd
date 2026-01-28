@@ -32,28 +32,28 @@ var surfaces := 0
 var is_dead: bool:
 	get:
 		if last_interaction_type != ServerInteractionType.DIE or \
-			last_interaction_time_usec < 0:
+			last_interaction_frame_index < 0:
 			return false
-		var respawn_time_usec: int = last_interaction_time_usec + \
-			int(G.settings.player_respawn_cooldown_sec * 1_000_000)
-		return G.network.server_frame_time_usec < respawn_time_usec
+		var respawn_frame: int = last_interaction_frame_index + \
+			int(G.settings.player_respawn_cooldown_sec * 60)
+		return G.network.server_frame_index < respawn_frame
 
 var is_invincible: bool:
 	get:
 		if last_interaction_type != ServerInteractionType.DIE or \
-			last_interaction_time_usec < 0:
+			last_interaction_frame_index < 0:
 			return false
-		var invincibility_end_time_usec: int = last_interaction_time_usec + \
+		var invincibility_end_frame: int = last_interaction_frame_index + \
 			int((G.settings.player_respawn_cooldown_sec + \
-				G.settings.player_invincibility_duration_sec) * 1_000_000)
-		return G.network.server_frame_time_usec < invincibility_end_time_usec
+				G.settings.player_invincibility_duration_sec) * 60)
+		return G.network.server_frame_index < invincibility_end_frame
 
 const _synced_properties_and_rollback_diff_thresholds := {
 	position = DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD,
 	velocity = DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHOLD,
 	surfaces = 0,
 	last_interaction_type = 0,
-	last_interaction_time_usec = 0,
+	last_interaction_frame_index = 0,
 	last_interaction_position = 0.01,
 	last_interaction_direction = 0.01,
 }
@@ -65,7 +65,7 @@ func _get_default_values() -> Array:
 		Vector2.ZERO, # velocity
 		0, # surfaces
 		ServerInteractionType.NONE, # last_interaction_type
-		-1, # last_interaction_time_usec
+		-1, # last_interaction_frame_index
 		Vector2.ZERO, # last_interaction_position
 		Vector2.ZERO, # last_interaction_direction
 	]

@@ -131,30 +131,28 @@ class TestSyncGuard:
 		ArrayPool.release(previous_state)
 
 
-	func test_sync_to_scene_state_updates_jump_frame_index_for_authority():
+	func test_sync_from_scene_state_reads_jump_frame_index_for_authority():
 		# Mock local authority.
 		input_from_client.set_multiplayer_authority(
 			multiplayer.get_unique_id(),
 		)
 
-		# Set jump timestamp.
-		var frame_100_time := \
-		G.network.frame_driver.get_time_usec_from_frame_index(100)
-		input_from_client.last_interaction_time_usec = frame_100_time
+		# Set player's jump frame index.
+		player.last_triggered_jump_frame_index = 100
 
-		# Create previous state.
-		var previous_state := ArrayPool.acquire(2)
-		previous_state[0] = 0
-		previous_state[1] = -1
+		# Sync from scene state.
+		input_from_client._sync_from_scene_state()
 
-		# Sync to scene state.
-		input_from_client._sync_to_scene_state(previous_state)
-
-		# Player should have jump frame index.
+		# Input should have captured the jump interaction.
 		assert_eq(
-			player.last_triggered_jump_frame_index,
+			input_from_client.last_interaction_type,
+			PlayerInputNetworkState.ClientInteractionType.JUMP,
+			"Should capture jump interaction type",
+		)
+		assert_eq(
+			input_from_client.last_interaction_frame_index,
 			100,
-			"Should update jump frame when has authority",
+			"Should capture jump frame index",
 		)
 
 		ArrayPool.release(previous_state)
