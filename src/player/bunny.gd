@@ -14,6 +14,7 @@ var _processed_collision_this_frame := false
 var _last_collision_frame := -1
 var _blink_accumulator := 0.0
 var _is_blink_visible := true
+var _pending_bounce := Vector2.ZERO
 
 
 func _enter_tree() -> void:
@@ -54,6 +55,20 @@ func _process(_delta: float) -> void:
 
 func _process_movement_and_actions() -> void:
 	super._process_movement_and_actions()
+
+	# Apply pending bounce after movement processing.
+	if G.network.is_server and _pending_bounce != Vector2.ZERO:
+		velocity += _pending_bounce
+		G.print(
+			"F:%d Applied pending bounce to player %d: added %s, new vel=%s" % [
+				G.network.server_frame_index,
+				player_id,
+				_pending_bounce,
+				velocity,
+			],
+			ScaffolderLog.CATEGORY_GAME_STATE,
+		)
+		_pending_bounce = Vector2.ZERO
 
 	# Reset collision flag each frame.
 	if G.network.is_server:
@@ -266,8 +281,17 @@ func _server_apply_collision_bounce(other_player: Player) -> void:
 	# Combine base bounce + upward boost.
 	var total_bounce := base_bounce + upward_boost
 
-	# Apply velocity delta (will be replicated via CharacterStateFromServer).
-	velocity += total_bounce
+	# Store bounce to apply after movement processing (prevents overwrite).
+	_pending_bounce = total_bounce
+
+	G.print(
+		"F:%d Queued bounce for player %d: %s" % [
+			G.network.server_frame_index,
+			player_id,
+			total_bounce,
+		],
+		ScaffolderLog.CATEGORY_GAME_STATE,
+	)
 
 	# Record bump event for network reconciliation and sound effects.
 	state_from_server.last_bump_frame_index = G.network.server_frame_index

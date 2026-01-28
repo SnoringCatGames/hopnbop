@@ -3,7 +3,7 @@ extends RefCounted
 
 
 static func generate_random_attributes() -> Dictionary:
-	var is_soft := randf() > 0.5
+	var is_soft := true
 	var adjective_list := (
 		BunnyWords.SOFT_ADJECTIVES if is_soft
 		else BunnyWords.HARD_ADJECTIVES
