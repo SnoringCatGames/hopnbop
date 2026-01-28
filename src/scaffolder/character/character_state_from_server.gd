@@ -2,6 +2,15 @@
 class_name CharacterStateFromServer
 extends ReconcilableNetworkedState
 
+## Server-authoritative interaction types (server controls timing).
+enum ServerInteractionType {
+	NONE,
+	SPAWN,
+	BUMP,
+	KILL,
+	DIE,
+}
+
 @export var character: Character:
 	set(value):
 		character = value
@@ -19,59 +28,46 @@ var position := Vector2.ZERO
 var velocity := Vector2.ZERO
 ## A bitmask representing the player's surface state.
 var surfaces := 0
-var last_died_time_usec := -1
-var last_bump_time_usec := -1
-var last_bump_direction := Vector2.ZERO
-
-var _last_reconciled_bump_frame_index := -1
 
 var is_dead: bool:
 	get:
-		if last_died_time_usec < 0:
+		if last_interaction_type != ServerInteractionType.DIE or \
+			last_interaction_time_usec < 0:
 			return false
-		var respawn_time_usec: int = last_died_time_usec + \
+		var respawn_time_usec: int = last_interaction_time_usec + \
 			int(G.settings.player_respawn_cooldown_sec * 1_000_000)
 		return G.network.server_frame_time_usec < respawn_time_usec
 
 var is_invincible: bool:
 	get:
-		if last_died_time_usec < 0:
+		if last_interaction_type != ServerInteractionType.DIE or \
+			last_interaction_time_usec < 0:
 			return false
-		var invincibility_end_time_usec: int = last_died_time_usec + \
+		var invincibility_end_time_usec: int = last_interaction_time_usec + \
 			int((G.settings.player_respawn_cooldown_sec + \
 				G.settings.player_invincibility_duration_sec) * 1_000_000)
 		return G.network.server_frame_time_usec < invincibility_end_time_usec
-
-var last_bump_frame_index: int:
-	get:
-		if last_bump_time_usec < 0:
-			return -1
-		return G.network.frame_driver.get_frame_index_from_time_usec(
-			last_bump_time_usec,
-		)
-	set(value):
-		if value < 0:
-			last_bump_time_usec = -1
-		else:
-			last_bump_time_usec = \
-				G.network.frame_driver.get_time_usec_from_frame_index(value)
 
 const _synced_properties_and_rollback_diff_thresholds := {
 	position = DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD,
 	velocity = DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHOLD,
 	surfaces = 0,
-	last_bump_time_usec = 0,
-	last_bump_direction = 0.01,
+	last_interaction_type = 0,
+	last_interaction_time_usec = 0,
+	last_interaction_position = 0.01,
+	last_interaction_direction = 0.01,
 }
 
 
 func _get_default_values() -> Array:
 	return [
-		Vector2.ZERO,    # position
-		Vector2.ZERO,    # velocity
-		0,               # surfaces
-		-1,              # last_bump_time_usec
-		Vector2.ZERO,    # last_bump_direction
+		Vector2.ZERO, # position
+		Vector2.ZERO, # velocity
+		0, # surfaces
+		ServerInteractionType.NONE, # last_interaction_type
+		-1, # last_interaction_time_usec
+		Vector2.ZERO, # last_interaction_position
+		Vector2.ZERO, # last_interaction_direction
 	]
 
 
@@ -155,8 +151,8 @@ func _network_process() -> void:
 	if not G.ensure_valid(character):
 		return
 
-	# Reconcile bump events from server.
-	_reconcile_bump_event()
+	# Reconcile server interactions.
+	_reconcile_server_interaction()
 
 	# Determine which input source to use.
 	# - Server and owning client: use PlayerInputFromClient (client-authoritative)
@@ -243,8 +239,17 @@ func _network_process() -> void:
 		is_instance_valid(input_from_client)
 	):
 		forwarded_input_from_server.actions = input_from_client.actions
-		forwarded_input_from_server.last_triggered_jump_time_usec = (
-			input_from_client.last_triggered_jump_time_usec
+		forwarded_input_from_server.last_interaction_type = (
+			input_from_client.last_interaction_type
+		)
+		forwarded_input_from_server.last_interaction_frame_index = (
+			input_from_client.last_interaction_frame_index
+		)
+		forwarded_input_from_server.last_interaction_position = (
+			input_from_client.last_interaction_position
+		)
+		forwarded_input_from_server.last_interaction_direction = (
+			input_from_client.last_interaction_direction
 		)
 		forwarded_input_from_server.frame_authority = (
 			input_from_client.frame_authority
@@ -335,70 +340,199 @@ func _sync_from_scene_state() -> void:
 func _apply_input_to_character(input_source: ReconcilableNetworkedState) -> void:
 	# Copy input from PlayerInputFromClient or ForwardedPlayerInputFromServer
 	# to the character.
-	if input_source is PlayerInputFromClient:
-		var input := input_source as PlayerInputFromClient
+	if input_source is PlayerInputNetworkState:
+		var input := input_source as PlayerInputNetworkState
 		character.actions.bitmask = input.actions
-		character.last_triggered_jump_frame_index = input.last_triggered_jump_frame_index
-	elif input_source is ForwardedPlayerInputFromServer:
-		var input := input_source as ForwardedPlayerInputFromServer
-		character.actions.bitmask = input.actions
-		character.last_triggered_jump_frame_index = input.last_triggered_jump_frame_index
+		match input.last_interaction_type:
+			PlayerInputNetworkState.ClientInteractionType.NONE:
+				pass
+			PlayerInputNetworkState.ClientInteractionType.JUMP:
+				character.last_triggered_jump_frame_index = input.last_interaction_frame_index
+			_:
+				G.fatal()
 
 
-func _reconcile_bump_event() -> void:
-	var bump_frame := last_bump_frame_index
-
-	# Skip if not a new bump event.
-	if bump_frame <= _last_reconciled_bump_frame_index:
-		return
-	if last_bump_time_usec < 0:
-		return
-
-	# Check if frame is too old.
-	if G.network.frame_driver.is_frame_too_old_to_consider(bump_frame):
-		G.warning(
-			"Bump event too old to reconcile: frame %d" % bump_frame,
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
-		)
-		_last_reconciled_bump_frame_index = bump_frame
+## Unified server interaction reconciliation.
+func _reconcile_server_interaction() -> void:
+	# Skip if no interaction.
+	if last_interaction_type == ServerInteractionType.NONE:
 		return
 
-	# Check if frame exists in buffer.
-	if not _rollback_buffer.has_at(bump_frame):
-		_last_reconciled_bump_frame_index = bump_frame
+	var interaction_frame := last_interaction_frame_index
+
+	var should_process := _should_reconcile_interaction(
+		interaction_frame,
+		_last_reconciled_interaction_frame_index
+	)
+
+	# Always mark as reconciled to prevent retry loops.
+	_last_reconciled_interaction_frame_index = interaction_frame
+
+	if not should_process:
 		return
 
-	var frame_state: Array = _rollback_buffer.get_at(bump_frame)
-	# Get velocity index from property names array.
-	var velocity_index := _property_names_for_packing.find(&"velocity")
-	if velocity_index < 0:
-		# Fallback: velocity is second property in synced properties dict.
-		velocity_index = 1
-	var stored_velocity: Vector2 = frame_state[velocity_index]
+	match last_interaction_type:
+		ServerInteractionType.NONE:
+			pass
+		ServerInteractionType.BUMP:
+			_reconcile_bump_interaction(interaction_frame)
+		ServerInteractionType.KILL:
+			_reconcile_kill_interaction(interaction_frame)
+		ServerInteractionType.DIE:
+			_reconcile_die_interaction(interaction_frame)
+		ServerInteractionType.SPAWN:
+			_reconcile_spawn_interaction(interaction_frame)
+		_:
+			G.fatal()
 
-	# Calculate expected bump velocity delta.
-	var base_bounce := last_bump_direction * \
-		character.movement_settings.bump_bounce_base_speed
-	var upward_boost := Vector2(
-		0,
+
+## Reconciles a bump interaction by injecting velocity delta into rollback
+## buffer.
+func _reconcile_bump_interaction(frame_index: int) -> void:
+	var bounce_velocity := _calculate_bounce_velocity(
+		last_interaction_direction,
+		character.movement_settings.bump_bounce_base_speed,
 		character.movement_settings.bump_bounce_vertical_boost
 	)
-	var bump_delta := base_bounce + upward_boost
-
-	# Inject bump velocity into frame state.
-	frame_state[velocity_index] = stored_velocity + bump_delta
-	_rollback_buffer.set_at(bump_frame, frame_state)
+	_inject_velocity_delta_into_buffer(frame_index, bounce_velocity)
 
 	if G.is_verbose:
 		G.print(
-			"F:%d Bump velocity injected into frame %d, queuing rollback (%s)" % [
+			"F:%d Bump velocity injected via server interaction into frame %d, queuing rollback (%s)" % [
 				G.network.server_frame_index,
-				bump_frame,
+				frame_index,
 				name,
 			],
 			ScaffolderLog.CATEGORY_NETWORK_SYNC,
 			ScaffolderLog.Verbosity.VERBOSE,
 		)
 
-	G.network.frame_driver.queue_rollback(bump_frame)
-	_last_reconciled_bump_frame_index = bump_frame
+
+## Reconciles a kill interaction by injecting kill bounce velocity into
+## rollback buffer.
+func _reconcile_kill_interaction(frame_index: int) -> void:
+	var bounce_velocity := _calculate_bounce_velocity(
+		last_interaction_direction,
+		character.movement_settings.kill_bounce_base_speed,
+		character.movement_settings.kill_bounce_vertical_boost
+	)
+	_inject_velocity_delta_into_buffer(frame_index, bounce_velocity)
+
+	if G.is_verbose:
+		G.print(
+			"F:%d Kill velocity injected into frame %d, queuing rollback (%s)" % [
+				G.network.server_frame_index,
+				frame_index,
+				name,
+			],
+			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+			ScaffolderLog.Verbosity.VERBOSE,
+		)
+
+
+## Reconciles a die interaction by stopping movement in rollback buffer.
+func _reconcile_die_interaction(frame_index: int) -> void:
+	var frame_state: Array = _rollback_buffer.get_at(frame_index)
+	var velocity_index := _property_names_for_packing.find(&"velocity")
+	if velocity_index < 0:
+		G.warning(
+			"Cannot reconcile die interaction: velocity property not found",
+			ScaffolderLog.CATEGORY_NETWORK_SYNC
+		)
+		return
+	frame_state[velocity_index] = Vector2.ZERO
+	_rollback_buffer.set_at(frame_index, frame_state)
+	G.network.frame_driver.queue_rollback(frame_index)
+
+	if G.is_verbose:
+		G.print(
+			"F:%d Die interaction reconciled at frame %d, queuing rollback (%s)" % [
+				G.network.server_frame_index,
+				frame_index,
+				name,
+			],
+			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+			ScaffolderLog.Verbosity.VERBOSE,
+		)
+
+
+## Reconciles a spawn interaction by teleporting to spawn position in rollback
+## buffer.
+func _reconcile_spawn_interaction(frame_index: int) -> void:
+	var frame_state: Array = _rollback_buffer.get_at(frame_index)
+	var position_index := _property_names_for_packing.find(&"position")
+	var velocity_index := _property_names_for_packing.find(&"velocity")
+
+	if position_index < 0 or velocity_index < 0:
+		G.warning(
+			"Cannot reconcile spawn interaction: position or velocity property not found",
+			ScaffolderLog.CATEGORY_NETWORK_SYNC
+		)
+		return
+
+	frame_state[position_index] = last_interaction_position
+	frame_state[velocity_index] = Vector2.ZERO
+	_rollback_buffer.set_at(frame_index, frame_state)
+	G.network.frame_driver.queue_rollback(frame_index)
+
+	if G.is_verbose:
+		G.print(
+			"F:%d Spawn interaction reconciled at frame %d, position=%s, queuing rollback (%s)" % [
+				G.network.server_frame_index,
+				frame_index,
+				last_interaction_position,
+				name,
+			],
+			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+			ScaffolderLog.Verbosity.VERBOSE,
+		)
+
+
+## Calculates bounce velocity from direction and movement settings.
+func _calculate_bounce_velocity(
+	direction: Vector2,
+	base_speed: float,
+	vertical_boost: float
+) -> Vector2:
+	var base_bounce := direction * base_speed
+	var upward_boost := Vector2(0, vertical_boost)
+	return base_bounce + upward_boost
+
+
+## Injects a velocity delta into the rollback buffer at the specified frame.
+## Used for bumps and kills to apply collision bounce.
+func _inject_velocity_delta_into_buffer(
+	frame_index: int,
+	velocity_delta: Vector2
+) -> void:
+	var frame_state: Array = _rollback_buffer.get_at(frame_index)
+	var velocity_index := _property_names_for_packing.find(&"velocity")
+	if velocity_index < 0:
+		G.warning(
+			"Cannot inject velocity delta: velocity property not found in synced properties",
+			ScaffolderLog.CATEGORY_NETWORK_SYNC
+		)
+		return
+	var stored_velocity: Vector2 = frame_state[velocity_index]
+	frame_state[velocity_index] = stored_velocity + velocity_delta
+	_rollback_buffer.set_at(frame_index, frame_state)
+	G.network.frame_driver.queue_rollback(frame_index)
+
+
+## Sets the position in the rollback buffer at the specified frame.
+## Used for spawn interactions to teleport the player.
+func _inject_position_into_buffer(
+	frame_index: int,
+	new_position: Vector2
+) -> void:
+	var frame_state: Array = _rollback_buffer.get_at(frame_index)
+	var position_index := _property_names_for_packing.find(&"position")
+	if position_index < 0:
+		G.warning(
+			"Cannot inject position: position property not found in synced properties",
+			ScaffolderLog.CATEGORY_NETWORK_SYNC
+		)
+		return
+	frame_state[position_index] = new_position
+	_rollback_buffer.set_at(frame_index, frame_state)
+	G.network.frame_driver.queue_rollback(frame_index)
