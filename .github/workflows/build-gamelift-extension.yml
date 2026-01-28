@@ -452,13 +452,13 @@ jobs:
           mkdir -p addons/gamelift/bin
 
           # Copy Linux binaries
-          cp artifacts/linux/* addons/gamelift/bin/
+          cp -r artifacts/linux/* addons/gamelift/bin/
 
           # Copy Windows binaries
-          cp artifacts/windows/* addons/gamelift/bin/
+          cp -r artifacts/windows/* addons/gamelift/bin/
 
-          # Copy macOS binaries
-          cp artifacts/macos/* addons/gamelift/bin/
+          # Copy macOS binaries (frameworks are directories)
+          cp -r artifacts/macos/* addons/gamelift/bin/
 
           # Copy gdextension file
           cp gamelift-gdextension/gamelift.gdextension addons/gamelift/
