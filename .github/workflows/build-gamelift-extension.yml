@@ -291,10 +291,8 @@ jobs:
       - name: Copy dependencies
         working-directory: gamelift-gdextension
         run: |
-          # Copy GameLift SDK DLL
-          Copy-Item gamelift-server-sdk\cmake-build\prefix\bin\aws-cpp-sdk-gamelift-server.dll bin\
-
-          # Copy OpenSSL DLLs
+          # GameLift SDK is statically linked, no need to copy
+          # Only copy OpenSSL DLLs (required at runtime)
           Copy-Item ${{ github.workspace }}\vcpkg\installed\x64-windows\bin\libssl-3-x64.dll bin\
           Copy-Item ${{ github.workspace }}\vcpkg\installed\x64-windows\bin\libcrypto-3-x64.dll bin\
 
