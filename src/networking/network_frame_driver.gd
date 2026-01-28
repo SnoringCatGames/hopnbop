@@ -51,9 +51,9 @@ extends Node
 
 # --- DEFINITELY SPLIT WORK ACROSS ON LAPTOP! ---
 
-# - Implement the connect-to-remote-server-in-preview mode. It should auto close the server window.
+# - Test kills and bumps.
 
-# - Fix player outlines.
+# - Implement the connect-to-remote-server-in-preview mode. It should auto close the server window.
 
 # - Lingering FIXMEs.
 

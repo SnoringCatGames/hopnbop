@@ -31,12 +31,17 @@ func _ready() -> void:
 
 
 func set_up() -> void:
-	G.match_state.players_updated.connect(_update_labels)
+	G.match_state.players_updated.connect(_on_players_updated)
 	_update_labels()
 
 
 func _process(_delta: float) -> void:
 	_update_label_positions()
+
+
+func _on_players_updated() -> void:
+	_update_labels()
+	_update_label_colors()
 
 
 func _update_labels() -> void:
@@ -102,6 +107,15 @@ func _update_label_positions() -> void:
 		var label: PlayerOverheadLabel = _labels_by_player_id[player_id]
 		# Position is at bottom-center of label due to anchor settings.
 		label.global_position = player.global_position + _LABEL_OFFSET
+
+
+func _update_label_colors() -> void:
+	# Update colors for all labels when player data is updated.
+	for player_id in _labels_by_player_id.keys():
+		var label: PlayerOverheadLabel = _labels_by_player_id[player_id]
+		var player_match_state := G.get_player_match_state(player_id)
+		if player_match_state:
+			label.color = player_match_state.outline_color
 
 
 func _update_label_visibility() -> void:

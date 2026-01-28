@@ -60,12 +60,39 @@ func _start_app() -> void:
 		G.game_panel.server_start_game()
 	else:
 		if G.settings.start_in_game:
-			# FIXME: Add support for auto-enabling one player with WASD.
-			G.game_panel.client_load_game()
+			_auto_start_game()
 		elif G.settings.skip_splash:
 			G.screens.client_open_screen(ScreensMain.ScreenType.LOBBY)
 		else:
 			G.screens.client_open_screen(ScreensMain.ScreenType.GODOT_SPLASH)
+
+
+func _auto_start_game() -> void:
+	# Auto-add one player with WASD keyboard bindings.
+	var wasd_bindings := (
+		InputDeviceManager.KEYBOARD_PARTITION_BINDINGS[0]
+	)
+	var device_config := DeviceConfig.new(
+		DeviceConfig.DeviceType.KEYBOARD,
+		DeviceConfig.KEYBOARD_DEVICE_ID,
+		wasd_bindings
+	)
+
+	# Add to local session.
+	var local_player_index := 0
+	G.local_session.local_device_configs.append(device_config)
+	G.input_device_manager.assign_device_to_player(
+		local_player_index,
+		device_config
+	)
+
+	# Generate player attributes.
+	var attributes := (
+		PlayerAttributeGenerator.generate_random_attributes()
+	)
+	G.local_session.local_player_attributes.append(attributes)
+
+	G.game_panel.client_load_game()
 
 
 func _notification(notification_type: int) -> void:

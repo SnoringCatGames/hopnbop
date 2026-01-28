@@ -39,9 +39,12 @@ func _ready() -> void:
 
 	# Set up outline color when match state becomes available.
 	if is_instance_valid(match_state):
-		_apply_outline_color()
+		_apply_outline_color.call_deferred()
 	else:
 		G.match_state.player_joined.connect(_on_any_player_joined)
+
+	# Update outline when colors are assigned/updated on the server.
+	G.match_state.players_updated.connect(_on_players_updated)
 
 
 func _process(_delta: float) -> void:
@@ -119,34 +122,66 @@ func get_string() -> String:
 	return "{Player}"
 
 
+func on_match_state_ready(_player_match_state: PlayerMatchState) -> void:
+	super.on_match_state_ready(_player_match_state)
+	_apply_outline_color()
+
+
 func _on_any_player_joined(player: PlayerMatchState) -> void:
 	if player.player_id == player_id:
 		_apply_outline_color()
 		G.match_state.player_joined.disconnect(_on_any_player_joined)
 
 
+func _on_players_updated() -> void:
+	# Reapply outline when player data is updated (e.g., color assignment).
+	_apply_outline_color()
+
+
 func _apply_outline_color() -> void:
-	if not G.ensure(is_instance_valid(match_state)):
+	# Match state may not be ready yet when players_updated fires.
+	if not is_instance_valid(match_state):
 		return
 
 	var sprite := animator.animated_sprite as AnimatedSprite2D
+	if not sprite:
+		G.warning("No sprite found on animator")
+		return
 
-	# Duplicate material to make it unique to this instance.
-	if sprite.material and not sprite.material.resource_local_to_scene:
+	# Always duplicate material to make it unique to this instance.
+	if sprite.material:
 		sprite.material = sprite.material.duplicate()
+	else:
+		G.warning("No material found on sprite")
+		return
 
 	var shader_material := sprite.material as ShaderMaterial
+	if not shader_material:
+		G.warning("Material is not a ShaderMaterial")
+		return
 
-	if G.ensure(is_instance_valid(shader_material)):
-		shader_material.set_shader_parameter(
-			"outline_color",
-			match_state.outline_color
-		)
+	# Set outline color.
+	shader_material.set_shader_parameter(
+		"outline_color",
+		match_state.outline_color
+	)
 
-		# Toggle outline based on whether we're in a networked match.
-		shader_material.set_shader_parameter(
-			"outline_enabled",
-			G.is_networked_level_active)
+	# Set outline width (make it more visible).
+	shader_material.set_shader_parameter("outline_width", 2.0)
+
+	# Toggle outline based on whether we're in a networked match.
+	var outline_enabled := G.is_networked_level_active
+	shader_material.set_shader_parameter("outline_enabled", outline_enabled)
+
+	G.print(
+		"Applied outline for player %s: color=%s, enabled=%s, width=2.0" % [
+			player_id,
+			match_state.outline_color,
+			outline_enabled,
+		],
+		ScaffolderLog.CATEGORY_GAME_STATE,
+		ScaffolderLog.Verbosity.VERBOSE
+	)
 
 
 func _on_body_area_body_entered(body: Node2D) -> void:
@@ -188,16 +223,32 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	# Determine interaction type and record.
 	if not _intersecting_head_player_ids.has(other_player_id):
 		# Bump - both players bounce away from each other.
+		if G.is_verbose:
+			G.print(
+				"Players bump detected: %d bumped %d" %
+					[player_id, other_player_id],
+				ScaffolderLog.CATEGORY_GAME_STATE,
+				ScaffolderLog.Verbosity.VERBOSE,
+			)
+
 		G.match_state.server_add_bump(player_id, other_player_id)
-		_apply_collision_bounce(other_player)
-		other_player._apply_collision_bounce(self)
+		_server_apply_collision_bounce(other_player)
+		other_player._server_apply_collision_bounce(self)
 	else:
 		# Kill - only the killer bounces (killee is dying).
+		if G.is_verbose:
+			G.print(
+				"Player kill detected: %d killed %d" %
+					[player_id, other_player_id],
+				ScaffolderLog.CATEGORY_GAME_STATE,
+				ScaffolderLog.Verbosity.VERBOSE,
+			)
+
 		G.match_state.server_add_kill(player_id, other_player_id)
-		_apply_collision_bounce(other_player)
+		_server_apply_collision_bounce(other_player)
 
 
-func _apply_collision_bounce(other_player: Player) -> void:
+func _server_apply_collision_bounce(other_player: Player) -> void:
 	G.check_is_server()
 
 	# Calculate direction away from other player.
