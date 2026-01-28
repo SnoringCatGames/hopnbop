@@ -123,13 +123,10 @@ func client_notify_kill(
 	_position_y: float,
 	_time_usec: int
 ) -> void:
-	# Set death timestamp on the killee so clients can calculate respawn/invincibility.
-	var killee: Player = G.get_player(_killee_id)
-	if is_instance_valid(killee):
-		killee.state_from_server.last_died_time_usec = _time_usec
-
 	# Notify local players for sound effects and visual feedback.
 	var killer: Player = G.get_player(_killer_id)
+	var killee: Player = G.get_player(_killee_id)
+
 	if is_instance_valid(killer):
 		killer.client_on_killed(killee)
 
@@ -235,19 +232,6 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 	if is_instance_valid(killee):
 		killee.server_trigger_death()
 
-	# Notify all clients via RPC for instant effects.
-	var collision_pos := Vector2.ZERO
-	if is_instance_valid(killee):
-		collision_pos = killee.global_position
-	if synchronizer:
-		synchronizer._rpc_client_notify_kill.rpc(
-			killer_id,
-			killee_id,
-			collision_pos.x,
-			collision_pos.y,
-			G.network.server_frame_time_usec
-		)
-
 	kills_updated.emit()
 
 
@@ -287,20 +271,6 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 		PlayerInteraction.Type.BUMP,
 		current_frame
 	)
-
-	# Notify all clients via RPC for instant effects.
-	var player_1: Player = G.get_player(player_1_id)
-	var collision_pos := Vector2.ZERO
-	if is_instance_valid(player_1):
-		collision_pos = player_1.global_position
-	if synchronizer:
-		synchronizer._rpc_client_notify_bump.rpc(
-			player_1_id,
-			player_2_id,
-			collision_pos.x,
-			collision_pos.y,
-			G.network.server_frame_time_usec
-		)
 
 	bumps_updated.emit()
 
