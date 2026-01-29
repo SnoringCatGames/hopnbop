@@ -50,7 +50,7 @@ extends Node
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
 # LEFT OFF HERE:
-# - A couple prompts actively processing
+# - A couple prompts actively processing (debug kills, add annotations)
 
 # LEFT OFF HERE:
 # - Still debugging kills and respawns.
@@ -63,15 +63,29 @@ extends Node
 
 # - Lingering FIXMEs.
 
-# - Implement annotations:
-#   - Toggleable at run time with F6.
-#   - Render shape to match the collision shape
-#   - Render a dot for every frame in the rollback buffer.
+# - Implement player debug annotations:
+#   - Add a new PlayerAnnotations class for this.
+#   - Add this as a child of Bunny in bunny.tscn.
+#   - Add an @export var for this to access the corresponding Player.
+#   - Populate this @export var in the scene file.
+#   - Render an outline to match the collision shape.
+#     - Use DrawUtils for drawing shape outlines.
+#   - Render a dot for every frame in the rollback buffer, and a thin line to
+#     connect adjacent dots.
 #     - Color code these based on authority, and whether they caused a rollback
 #       or a fast-forward.
+#   - Make annotation colors, thicknesses, and other dimensions configurable
+#     with consts.
+#   - Toggleable at run time with F6.
 
-# - Add F7 shortcut for toggling hud, super_hud, and annotation visibility.
+# - Add F7 shortcut for toggling hud visibility.
+#   - Additionally, this should act like a master switch that makes all other
+#     HUD/SuperHud UIs and annotations invisibile (but won't make them visible
+#     unless their own individual flag is also enabled).
 # - Add F8 shortcut for toggling music.
+# - Shift each FN shortcut up by two numbers.
+# - Move the F9 shortcut to F1.
+# - Move the F10 shortcut to F2.
 
 # UI fixes:
 # - [Match countdown] Remaining Tasks:
