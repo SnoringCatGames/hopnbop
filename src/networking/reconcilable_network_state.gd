@@ -106,6 +106,7 @@ var last_interaction_frame_index := -1
 var last_interaction_position := Vector2.ZERO
 var last_interaction_direction := Vector2.ZERO
 
+@warning_ignore("unused_private_class_variable")
 var _last_reconciled_interaction_frame_index := -1
 
 ## This identifies whether this data originated from an authoritative source.
