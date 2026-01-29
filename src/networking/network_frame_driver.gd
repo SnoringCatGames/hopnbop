@@ -49,15 +49,14 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
+# - I'm seeing a problem with state replication and client prediction.
+#   - Sometimes, when a local player moves left then stops, the remote client will continue showing that player as moving left endlessly. However, then when the local client moves the player right a bit, the remote client will snap the player's position back to the rightward position from the remote client briefly, but then go back to still moving that remote player leftward.
+
 # - Test kills and bumps. Adjust foot, head, and body shapes.
 
 # - Check if we're still using the ArrayPool in all the places we should, especially with the new RollbackBuffer in MatchState.
 
-# I believe Settings.preview_connect_to_remote_server is handled. But now I want to also make sure that we auto-close the server window when in preview mode.
-
 # - Lingering FIXMEs.
-
-# - Fix GitHub CI.
 
 # - Implement annotations:
 #   - Toggleable at run time.
@@ -76,38 +75,32 @@ extends Node
 #     - Do this with getters on those properties.
 #     - Probably need to check Engine.is_editor_hint though also in the getters.
 
-# [Match countdown] Remaining Tasks:
-# Configure Replication in MatchStateSynchronizer:
-# 1. Open the MatchStateSynchronizer node in the scene tree
-# Add these properties to replicate:
-# state:match_start_time_usec (REPLICATION_MODE_ON_CHANGE)
-# state:match_duration_usec (REPLICATION_MODE_ON_CHANGE)
-# state:is_match_ended (REPLICATION_MODE_ON_CHANGE)
-# Create countdown_timer.tscn:
-# 2. Create new scene with Label as root
-# Attach CountdownTimer script
-# Configure theme overrides (font size ~24, outline)
-# Set unique_name_in_owner = true
-# Save as countdown_timer.tscn
-# Update hud.tscn:
-# 3. Open hud.tscn
-# Navigate to MarginContainer/VBoxContainer/HBoxContainer/RightContent
-# Add CountdownTimer scene as child
-# Position and style as needed
-
-# - Implement player kills.
-#   - Also implement bouncing for the killer when a kill occurs:
-#     - The killer should bounce upward a bit, while maintaining horizontal velocity.
-
+# UI fixes:
+# - [Match countdown] Remaining Tasks:
+#   - Configure Replication in MatchStateSynchronizer:
+#   1. Open the MatchStateSynchronizer node in the scene tree
+#   - Add these properties to replicate:
+#   - state:match_start_time_usec (REPLICATION_MODE_ON_CHANGE)
+#   - state:match_duration_usec (REPLICATION_MODE_ON_CHANGE)
+#   - state:is_match_ended (REPLICATION_MODE_ON_CHANGE)
+#   - Create countdown_timer.tscn
+#   2. Create new scene with Label as root
+#   - Attach CountdownTimer script
+#   - Configure theme overrides (font size ~24, outline)
+#   - Set unique_name_in_owner = true
+#   - Save as countdown_timer.tscn
+#   - Update hud.tscn
+#   3. Open hud.tscn
+#   - Navigate to MarginContainer/VBoxContainer/HBoxContainer/RightContent
+#   - Add CountdownTimer scene as child
+#   - Position and style as needed
 # - Adjust scene files: lobby_level.tscn, player_list.tscn, player_display.tscn.
-
 # - Lobby scene:
 #   - Embed the game title logo within the level.
 #   - Also embed some controls instruction.
 #   - Also embed instructions to go down hole for starting match.
 #   - Call MatchmakingClient.start_matchmaking() when any player jumps down a
 #     rabbit hole on the right side of the level.
-
 # - Hook-up / polish pause UI.
 #   - Show a small panel in the center of the window with a lightly transparent screen.
 
@@ -125,7 +118,7 @@ extends Node
 #     - a leaderboard
 #   - Implement a way to make friends and to join matches with friends.
 
-# - Need to tweak movement parameters
+# - Tweak movement parameters
 
 # - Have bunnies be flung in from off-screen from the left.
 #   - Move the happen points over there, and give bunnies initial velocity.
