@@ -182,12 +182,32 @@ func _network_process() -> void:
 
 	# Handle actions (from a client).
 	var has_auth_input := input_source._has_authoritative_state_for_current_frame()
-	var has_predicted_forwarded_input := (
+
+	# Check if we should use predicted input at current frame. Only use it if
+	# we don't have fresher authoritative input at the previous frame to
+	# extrapolate from. This prevents using stale predictions during rollback
+	# re-simulation (e.g., when authoritative actions=0 arrives at frame N, we
+	# should extrapolate from N to get N+1, not use old predicted actions=1 at
+	# N+1).
+	var should_use_predicted_input := false
+	if (
 		input_source is ForwardedPlayerInputFromServer and
 		input_source._rollback_buffer.has_at(timestamp_index)
-	)
+	):
+		# Check if previous frame has authoritative input source data.
+		var prev_frame_is_auth := false
+		if input_source._rollback_buffer.has_at(timestamp_index - 1):
+			var prev_frame_state: Array = input_source._rollback_buffer.get_at(
+				timestamp_index - 1
+			)
+			if prev_frame_state != null:
+				prev_frame_is_auth = input_source._is_frame_authoritative(prev_frame_state)
 
-	if has_auth_input or has_predicted_forwarded_input:
+		# Only use predicted input if previous frame doesn't have authoritative
+		# data to extrapolate from.
+		should_use_predicted_input = not prev_frame_is_auth
+
+	if has_auth_input or should_use_predicted_input:
 		# Use received input from buffer (either authoritative from
 		# PlayerInputFromClient, or predicted from ForwardedPlayerInputFromServer).
 		input_source._unpack_buffer_state(timestamp_index)
@@ -196,7 +216,7 @@ func _network_process() -> void:
 		# Update surface attachment state based on the input we just loaded.
 		character.surfaces.update_actions()
 		if G.is_verbose:
-			var authority_str := "PREDICTED" if has_predicted_forwarded_input else "AUTHORITATIVE"
+			var authority_str := "PREDICTED" if should_use_predicted_input else "AUTHORITATIVE"
 			G.print(
 				"F:%d Using %s input (actions=%d)" % [
 					G.network.server_frame_index,
@@ -204,6 +224,7 @@ func _network_process() -> void:
 					character.actions.bitmask,
 				],
 				ScaffolderLog.CATEGORY_NETWORK_SYNC,
+				ScaffolderLog.Verbosity.VERBOSE,
 			)
 	else:
 		if is_authority_for_input_from_client:
@@ -433,14 +454,7 @@ func _reconcile_kill_interaction(frame_index: int) -> void:
 ## Reconciles a die interaction by stopping movement in rollback buffer.
 func _reconcile_die_interaction(frame_index: int) -> void:
 	var frame_state: Array = _rollback_buffer.get_at(frame_index)
-	var velocity_index := _property_names_for_packing.find(&"velocity")
-	if velocity_index < 0:
-		G.warning(
-			"Cannot reconcile die interaction: velocity property not found",
-			ScaffolderLog.CATEGORY_NETWORK_SYNC
-		)
-		return
-	frame_state[velocity_index] = Vector2.ZERO
+	_set_frame_property(frame_state, &"velocity", Vector2.ZERO)
 	_rollback_buffer.set_at(frame_index, frame_state)
 	G.network.frame_driver.queue_rollback(frame_index)
 
@@ -460,18 +474,8 @@ func _reconcile_die_interaction(frame_index: int) -> void:
 ## buffer.
 func _reconcile_spawn_interaction(frame_index: int) -> void:
 	var frame_state: Array = _rollback_buffer.get_at(frame_index)
-	var position_index := _property_names_for_packing.find(&"position")
-	var velocity_index := _property_names_for_packing.find(&"velocity")
-
-	if position_index < 0 or velocity_index < 0:
-		G.warning(
-			"Cannot reconcile spawn interaction: position or velocity property not found",
-			ScaffolderLog.CATEGORY_NETWORK_SYNC
-		)
-		return
-
-	frame_state[position_index] = last_interaction_position
-	frame_state[velocity_index] = Vector2.ZERO
+	_set_frame_property(frame_state, &"position", last_interaction_position)
+	_set_frame_property(frame_state, &"velocity", Vector2.ZERO)
 	_rollback_buffer.set_at(frame_index, frame_state)
 	G.network.frame_driver.queue_rollback(frame_index)
 
@@ -506,15 +510,8 @@ func _inject_velocity_delta_into_buffer(
 	velocity_delta: Vector2
 ) -> void:
 	var frame_state: Array = _rollback_buffer.get_at(frame_index)
-	var velocity_index := _property_names_for_packing.find(&"velocity")
-	if velocity_index < 0:
-		G.warning(
-			"Cannot inject velocity delta: velocity property not found in synced properties",
-			ScaffolderLog.CATEGORY_NETWORK_SYNC
-		)
-		return
-	var stored_velocity: Vector2 = frame_state[velocity_index]
-	frame_state[velocity_index] = stored_velocity + velocity_delta
+	var stored_velocity: Vector2 = _get_frame_property(frame_state, &"velocity")
+	_set_frame_property(frame_state, &"velocity", stored_velocity + velocity_delta)
 	_rollback_buffer.set_at(frame_index, frame_state)
 	G.network.frame_driver.queue_rollback(frame_index)
 
@@ -526,13 +523,6 @@ func _inject_position_into_buffer(
 	new_position: Vector2
 ) -> void:
 	var frame_state: Array = _rollback_buffer.get_at(frame_index)
-	var position_index := _property_names_for_packing.find(&"position")
-	if position_index < 0:
-		G.warning(
-			"Cannot inject position: position property not found in synced properties",
-			ScaffolderLog.CATEGORY_NETWORK_SYNC
-		)
-		return
-	frame_state[position_index] = new_position
+	_set_frame_property(frame_state, &"position", new_position)
 	_rollback_buffer.set_at(frame_index, frame_state)
 	G.network.frame_driver.queue_rollback(frame_index)

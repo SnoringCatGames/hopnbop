@@ -49,14 +49,30 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# - I'm seeing a problem with state replication and client prediction.
-#   - Sometimes, when a local player moves left then stops, the remote client will continue showing that player as moving left endlessly. However, then when the local client moves the player right a bit, the remote client will snap the player's position back to the rightward position from the remote client briefly, but then go back to still moving that remote player leftward.
+# I'm seeing that on the server, when dropping one player strait-down onto the head of another player, we're sometimes missing the foot-head-enter event, but then seeing the body-enter event. This makes us trigger a bump instead of a kill. I think this is probably because of frame rates, and speed of movement. I want to add some simple CCD-like logic in _on_body_area_body_entered that checks the previous positions of both players and determines whether their foot/head areas should have collided first.
+
+# - FIXED: State replication bug where remote clients continued showing movement
+#   after player stopped.
+#   - Root cause: During rollback re-simulation, stale predicted input at frame
+#     N+1 was being reused instead of extrapolating from new authoritative input
+#     at frame N. The code checked "does frame N+1 have data?" but didn't check
+#     if that data was stale (created before the authoritative frame N arrived).
+#   - Fix: Input selection logic now checks if previous frame has authoritative
+#     input. If so, extrapolate from that instead of using potentially stale
+#     predicted input at current frame. This ensures rollback re-simulation
+#     always uses fresh predictions based on authoritative state.
+#     (character_state_from_server.gd:189-211)
 
 # - Test kills and bumps. Adjust foot, head, and body shapes.
 
 # - Check if we're still using the ArrayPool in all the places we should, especially with the new RollbackBuffer in MatchState.
 
 # - Lingering FIXMEs.
+
+# - Add support for periodically sending the server's current perf state to all clients (have this pediod be defined by a const, default to 15 seconds for now).
+#   - Delay this first update to happen 5 seconds after the match starts, after all players have connected.
+# - Update the PerfTracker to now show the server's versions to the left of the local client's.
+# - Add column headers to indicate which values are for the local client vs the server.
 
 # - Implement annotations:
 #   - Toggleable at run time.
@@ -347,6 +363,7 @@ extends Node
 #     - Have a setting to disable the bar
 
 # ### TODO: After everything else:
+# - Survey the codebase for where we use string literals. Should any of these be StringName literals instead?
 # - Survey all RPCs. Decide whether we should introduce new RPC channels and assign them as appropriate. Reference them as consts on NetworkConnector.
 # - Review tests.
 # - Review these notes: https://docs.google.com/document/d/1qJcNUrE1y8UllVVCojp-IN3zCwml8VK7kjYhp1uJhV4

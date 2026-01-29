@@ -101,7 +101,14 @@ var timestamp_index := 0
 
 ## Unified interaction system properties.
 ## Interaction type is an integer enum value (child classes define specific enums).
-var last_interaction_type := 0
+var last_interaction_type := 0:
+	set(value):
+		# FIXME: REMOVE - debug when DIE interaction is set
+		if value == 4 and G.network.is_client: # 4 = DIE in ServerInteractionType
+			G.print(
+				">> last_interaction_type set to DIE (4) on client for node %s" % name
+			)
+		last_interaction_type = value
 var last_interaction_frame_index := -1
 var last_interaction_position := Vector2.ZERO
 var last_interaction_direction := Vector2.ZERO
@@ -281,11 +288,25 @@ func _handle_new_authoritative_state() -> void:
 		# Ignore any initial empty state.
 		return
 
-	var state_time_usec: int = packed_state[packed_state.size() - 1]
+	var state_time_usec: int = _get_packed_timestamp_usec(packed_state)
 	var state_frame_index := G.network.frame_driver.get_frame_index_from_time_usec(state_time_usec)
 
 	# Extract the frame authority from the received state.
-	var new_frame_authority: int = packed_state[packed_state.size() - 2]
+	var new_frame_authority: int = _get_packed_authority(packed_state)
+
+	# FIXME: REMOVE - debug packed_state reception on clients
+	if G.network.is_client and _property_names_for_packing.has(&"last_interaction_type"):
+		var type_index := _property_names_for_packing.find(&"last_interaction_type")
+		if type_index >= 0 and type_index < packed_state.size():
+			var type_value = packed_state[type_index]
+			if type_value != 0:
+				G.print(
+					">> _handle_new_authoritative_state: received packed_state with last_interaction_type=%d for frame %d, node=%s" % [
+						type_value,
+						state_frame_index,
+						name,
+					]
+				)
 
 	# PAUSE FILTERING: Reject states from after pause started.
 	if G.network.frame_driver.is_paused:
@@ -570,6 +591,16 @@ func _pack_networked_state() -> void:
 	state[i] = G.network.frame_driver.get_time_usec_from_frame_index(timestamp_index)
 	_is_packing_state_locally = true
 
+	# FIXME: REMOVE - debug interaction packing
+	if G.network.is_server and last_interaction_type != 0:
+		G.print(
+			">> _pack_networked_state: last_interaction_type=%d, frame=%d, node=%s" % [
+				last_interaction_type,
+				last_interaction_frame_index,
+				name,
+			]
+		)
+
 	if G.is_verbose:
 		var authority_string: StringName = FrameAuthority.keys()[frame_authority]
 		if not is_server_authoritative:
@@ -609,6 +640,19 @@ func _unpack_networked_state() -> void:
 			packed_state.size() == _property_names_for_packing.size() + 2):
 		return
 
+	# FIXME: REMOVE - debug interaction unpacking before setting
+	if G.network.is_client and _property_names_for_packing.has(&"last_interaction_type"):
+		var type_index := _property_names_for_packing.find(&"last_interaction_type")
+		var type_value = packed_state[type_index]
+		if type_value != 0:
+			G.print(
+				">> _unpack_networked_state BEFORE set: packed_state[%d]=%d (last_interaction_type), node=%s" % [
+					type_index,
+					type_value,
+					name,
+				]
+			)
+
 	var i := 0
 	for property_name in _property_names_for_packing:
 		set(property_name, packed_state[i])
@@ -616,8 +660,18 @@ func _unpack_networked_state() -> void:
 	# Skip frame_authority (at index i) - we handle it separately in _handle_new_authoritative_state
 	i += 1
 	# We send time values across the network, but we store indices.
-	var timestamp_usec: int = packed_state[i]
+	var timestamp_usec: int = _get_packed_timestamp_usec(packed_state)
 	timestamp_index = G.network.frame_driver.get_frame_index_from_time_usec(timestamp_usec)
+
+	# FIXME: REMOVE - debug interaction unpacking after setting
+	if G.network.is_client and last_interaction_type != 0:
+		G.print(
+			">> _unpack_networked_state AFTER set: last_interaction_type=%d, frame=%d, node=%s" % [
+				last_interaction_type,
+				last_interaction_frame_index,
+				name,
+			]
+		)
 
 
 func _pack_buffer_state_from_local_state() -> void:
@@ -639,8 +693,8 @@ func _pack_buffer_state_from_local_state() -> void:
 ## This does _not_ record state in the packed_state array for syncing across the
 ## network.
 func _pack_buffer_state_from_network_state(packed_network_state: Array) -> void:
-	var state_time_usec: int = packed_network_state[packed_network_state.size() - 1]
-	var new_frame_authority: int = packed_network_state[packed_network_state.size() - 2]
+	var state_time_usec: int = _get_packed_timestamp_usec(packed_network_state)
+	var new_frame_authority: int = _get_packed_authority(packed_network_state)
 	var frame_index := G.network.frame_driver.get_frame_index_from_time_usec(state_time_usec)
 
 	# For the rollback buffer, we use the same state layout as the network state,
@@ -764,6 +818,58 @@ func _unpack_buffer_state(frame_index: int) -> void:
 		set(property_name, frame_state[i])
 		i += 1
 	frame_authority = frame_state[i]
+
+
+## Gets a property value from a frame state array by property name.
+func _get_frame_property(frame_state: Array, property_name: StringName) -> Variant:
+	var pack_index: int = _property_name_to_pack_index[property_name]
+	return frame_state[pack_index]
+
+
+## Sets a property value in a frame state array by property name.
+func _set_frame_property(
+	frame_state: Array,
+	property_name: StringName,
+	value: Variant
+) -> void:
+	var pack_index: int = _property_name_to_pack_index[property_name]
+	frame_state[pack_index] = value
+
+
+## Gets the frame authority from a frame state array (rollback buffer format).
+func _get_frame_authority(frame_state: Array) -> FrameAuthority:
+	var authority_idx := frame_state.size() - 1
+	return frame_state[authority_idx] as FrameAuthority
+
+
+## Sets the frame authority in a frame state array (rollback buffer format).
+func _set_frame_authority(
+	frame_state: Array,
+	authority: FrameAuthority
+) -> void:
+	var authority_idx := frame_state.size() - 1
+	frame_state[authority_idx] = authority
+
+
+## Checks if a frame state has authoritative authority.
+func _is_frame_authoritative(frame_state: Array) -> bool:
+	return _get_frame_authority(frame_state) == FrameAuthority.AUTHORITATIVE
+
+
+## Checks if a frame state has predicted authority.
+func _is_frame_predicted(frame_state: Array) -> bool:
+	return _get_frame_authority(frame_state) == FrameAuthority.PREDICTED
+
+
+## Gets the timestamp from a packed_state array (network format).
+func _get_packed_timestamp_usec(packed_network_state: Array) -> int:
+	return packed_network_state[packed_network_state.size() - 1]
+
+
+## Gets the frame authority from a packed_state array (network format).
+func _get_packed_authority(packed_network_state: Array) -> FrameAuthority:
+	var authority_idx := packed_network_state.size() - 2
+	return packed_network_state[authority_idx] as FrameAuthority
 
 
 ## Returns an array of property names that have mismatched values between

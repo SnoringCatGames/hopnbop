@@ -8,14 +8,14 @@ enum Verbosity {
 	VERBOSE,
 }
 
-const CATEGORY_DEFAULT := StringName("Default")
-const CATEGORY_SYSTEM_INITIALIZATION := StringName("SysInit")
-const CATEGORY_CORE_SYSTEMS := StringName("CoreSystems")
-const CATEGORY_PLAYER_ACTIONS := StringName("PlayerActions")
-const CATEGORY_NETWORK_CONNECTIONS := StringName("NetworkConnections")
-const CATEGORY_NETWORK_SYNC := StringName("NetworkSync")
-const CATEGORY_INTERACTION := StringName("PlayerInteraction")
-const CATEGORY_GAME_STATE := StringName("GameState")
+const CATEGORY_DEFAULT := &"Default"
+const CATEGORY_SYSTEM_INITIALIZATION := &"SysInit"
+const CATEGORY_CORE_SYSTEMS := &"CoreSystems"
+const CATEGORY_PLAYER_ACTIONS := &"PlayerActions"
+const CATEGORY_NETWORK_CONNECTIONS := &"NetworkConnections"
+const CATEGORY_NETWORK_SYNC := &"NetworkSync"
+const CATEGORY_INTERACTION := &"PlayerInteraction"
+const CATEGORY_GAME_STATE := &"GameState"
 
 const _RAINBOW_BAR = (
     "[color=red]=[/color][color=orange]=[/color][color=yellow]=[/color]"

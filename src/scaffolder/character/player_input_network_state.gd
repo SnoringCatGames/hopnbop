@@ -42,16 +42,12 @@ func _clear_jump_bit_in_frame_if_not_pressed(frame_index: int) -> void:
 		return
 
 	var frame_state: Array = _rollback_buffer.get_at(frame_index)
-	var actions_index: int = _property_name_to_pack_index.actions
-	var current_actions: int = frame_state[actions_index]
+	var current_actions: int = _get_frame_property(frame_state, &"actions")
 	var jump_bit_mask: int = 1 << CharacterActionState.BIT_JUMP
 
 	# Only clear if the frame is predicted (not authoritative).
-	var is_predicted: bool = (
-		frame_state[frame_state.size() - 1] == FrameAuthority.PREDICTED
-	)
-	if (current_actions & jump_bit_mask) != 0 and is_predicted:
-		frame_state[actions_index] = current_actions & ~jump_bit_mask
+	if (current_actions & jump_bit_mask) != 0 and _is_frame_predicted(frame_state):
+		_set_frame_property(frame_state, &"actions", current_actions & ~jump_bit_mask)
 		_rollback_buffer.set_at(frame_index, frame_state)
 
 
@@ -87,8 +83,7 @@ func _reconcile_client_interaction() -> void:
 ## rollback buffer.
 func _reconcile_jump_interaction(frame_index: int) -> void:
 	var frame_state: Array = _rollback_buffer.get_at(frame_index)
-	var actions_index: int = _property_name_to_pack_index.actions
-	var current_actions: int = frame_state[actions_index]
+	var current_actions: int = _get_frame_property(frame_state, &"actions")
 	var jump_bit_mask := 1 << CharacterActionState.BIT_JUMP
 	var has_jump_input := (current_actions & jump_bit_mask) != 0
 
@@ -98,8 +93,7 @@ func _reconcile_jump_interaction(frame_index: int) -> void:
 		has_jump_input = has_jump_input or ((current_actions & up_bit_mask) != 0)
 
 	if not has_jump_input:
-		var stored_authority: int = frame_state[frame_state.size() - 1]
-		if stored_authority == FrameAuthority.AUTHORITATIVE:
+		if _is_frame_authoritative(frame_state):
 			G.warning(
 				(
 					"F:%d last_interaction_frame_index corresponds to a frame " +
@@ -116,7 +110,7 @@ func _reconcile_jump_interaction(frame_index: int) -> void:
 			return
 
 		# Inject jump bit using base class helper.
-		_inject_action_bit_into_buffer(frame_index, jump_bit_mask, actions_index)
+		_inject_action_bit_into_buffer(frame_index, jump_bit_mask)
 		_clear_jump_bit_in_frame_if_not_pressed(frame_index - 1)
 
 		if G.is_verbose:
@@ -136,10 +130,10 @@ func _reconcile_jump_interaction(frame_index: int) -> void:
 func _inject_action_bit_into_buffer(
 	frame_index: int,
 	bit_mask: int,
-	actions_index: int
+	_actions_index: int = -1  # Deprecated parameter, kept for compatibility.
 ) -> void:
 	var frame_state: Array = _rollback_buffer.get_at(frame_index)
-	var current_actions: int = frame_state[actions_index]
-	frame_state[actions_index] = current_actions | bit_mask
+	var current_actions: int = _get_frame_property(frame_state, &"actions")
+	_set_frame_property(frame_state, &"actions", current_actions | bit_mask)
 	_rollback_buffer.set_at(frame_index, frame_state)
 	G.network.frame_driver.queue_rollback(frame_index)
