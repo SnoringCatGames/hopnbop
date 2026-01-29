@@ -49,47 +49,29 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# I'm seeing that on the server, when dropping one player strait-down onto the head of another player, we're sometimes missing the foot-head-enter event, but then seeing the body-enter event. This makes us trigger a bump instead of a kill. I think this is probably because of frame rates, and speed of movement. I want to add some simple CCD-like logic in _on_body_area_body_entered that checks the previous positions of both players and determines whether their foot/head areas should have collided first.
+# LEFT OFF HERE:
+# - A couple prompts actively processing
 
-# - FIXED: State replication bug where remote clients continued showing movement
-#   after player stopped.
-#   - Root cause: During rollback re-simulation, stale predicted input at frame
-#     N+1 was being reused instead of extrapolating from new authoritative input
-#     at frame N. The code checked "does frame N+1 have data?" but didn't check
-#     if that data was stale (created before the authoritative frame N arrived).
-#   - Fix: Input selection logic now checks if previous frame has authoritative
-#     input. If so, extrapolate from that instead of using potentially stale
-#     predicted input at current frame. This ensures rollback re-simulation
-#     always uses fresh predictions based on authoritative state.
-#     (character_state_from_server.gd:189-211)
+# LEFT OFF HERE:
+# - Still debugging kills and respawns.
+# - Also just added some CCD for kill stomps.
 
 # - Test kills and bumps. Adjust foot, head, and body shapes.
 
-# - Check if we're still using the ArrayPool in all the places we should, especially with the new RollbackBuffer in MatchState.
+# - Check if we're still using the ArrayPool in all the places we should,
+#   especially with the new RollbackBuffer in MatchState.
 
 # - Lingering FIXMEs.
 
-# - Add support for periodically sending the server's current perf state to all clients (have this pediod be defined by a const, default to 15 seconds for now).
-#   - Delay this first update to happen 5 seconds after the match starts, after all players have connected.
-# - Update the PerfTracker to now show the server's versions to the left of the local client's.
-# - Add column headers to indicate which values are for the local client vs the server.
-
 # - Implement annotations:
-#   - Toggleable at run time.
+#   - Toggleable at run time with F6.
 #   - Render shape to match the collision shape
 #   - Render a dot for every frame in the rollback buffer.
 #     - Color code these based on authority, and whether they caused a rollback
 #       or a fast-forward.
 
-# - Add another F[N] shortcut for toggling hud, super_hud, and annotation visibility.
-# - Add another F[N] shortcut for toggling music.
-# - Update some "debug mode" checks (like for enabling screenshots) to consider
-#   whether we're running in preview mode in the editor.
-#   - Add this as a getter in settings.
-#   - Move some of the current G.network flag parsing and checks to settings.
-#   - We should also override various other settings if we're not in the editor.
-#     - Do this with getters on those properties.
-#     - Probably need to check Engine.is_editor_hint though also in the getters.
+# - Add F7 shortcut for toggling hud, super_hud, and annotation visibility.
+# - Add F8 shortcut for toggling music.
 
 # UI fixes:
 # - [Match countdown] Remaining Tasks:
@@ -119,6 +101,14 @@ extends Node
 #     rabbit hole on the right side of the level.
 # - Hook-up / polish pause UI.
 #   - Show a small panel in the center of the window with a lightly transparent screen.
+
+# - Update some "debug mode" checks (like for enabling screenshots) to consider
+#   whether we're running in preview mode in the editor.
+#   - Add this as a getter in settings.
+#   - Move some of the current G.network flag parsing and checks to settings.
+#   - We should also override various other settings if we're not in the editor.
+#     - Do this with getters on those properties.
+#     - Probably need to check Engine.is_editor_hint though also in the getters.
 
 # FIXME: GameLift
 # - [Obsolete?] Proceed with the "AWS GameLift Deployment Guide"

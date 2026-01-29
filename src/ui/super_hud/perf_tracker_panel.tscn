@@ -1,0 +1,188 @@
+[gd_scene load_steps=3 format=3 uid="uid://yhvfntnfgpqr"]
+
+[ext_resource type="Script" uid="uid://d1jrvql8lf6jq" path="res://src/ui/super_hud/perf_tracker_panel.gd" id="1_ja0e5"]
+[ext_resource type="Theme" uid="uid://curquyi35i5lq" path="res://src/ui/debug_overlay_theme.tres" id="1_l1qg1"]
+
+[node name="PerfTrackerPanel" type="PanelContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme = ExtResource("1_l1qg1")
+script = ExtResource("1_ja0e5")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="GridContainer" type="GridContainer" parent="MarginContainer"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+mouse_filter = 2
+columns = 3
+
+[node name="HeaderSpacer" type="Label" parent="MarginContainer/GridContainer"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+
+[node name="ServerHeader" type="Label" parent="MarginContainer/GridContainer"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "Server"
+horizontal_alignment = 2
+
+[node name="ClientHeader" type="Label" parent="MarginContainer/GridContainer"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "Client"
+horizontal_alignment = 2
+
+[node name="PhysicsFPSLabel" type="Label" parent="MarginContainer/GridContainer"]
+layout_mode = 2
+text = "Physics FPS:"
+
+[node name="ServerPhysicsFPS" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="ClientPhysicsFPS" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="RenderFPSLabel" type="Label" parent="MarginContainer/GridContainer"]
+layout_mode = 2
+text = "Render FPS:"
+
+[node name="ServerRenderFPS" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="ClientRenderFPS" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="NetworkFPSLabel" type="Label" parent="MarginContainer/GridContainer"]
+layout_mode = 2
+text = "Network FPS:"
+
+[node name="ServerNetworkFPS" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="ClientNetworkFPS" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="PingLabel" type="Label" parent="MarginContainer/GridContainer"]
+layout_mode = 2
+text = "Ping (ms):"
+
+[node name="ServerNetworkPing" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="ClientNetworkPing" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="RollbacksPerSecLabel" type="Label" parent="MarginContainer/GridContainer"]
+layout_mode = 2
+text = "Rollbacks/sec:"
+
+[node name="ServerRollbacksPerSec" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="ClientRollbacksPerSec" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="LastRollbackDurationLabel" type="Label" parent="MarginContainer/GridContainer"]
+layout_mode = 2
+text = "Last rollback (ms):"
+
+[node name="ServerLastRollbackDuration" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="ClientLastRollbackDuration" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="LastRollbackFramesLabel" type="Label" parent="MarginContainer/GridContainer"]
+layout_mode = 2
+text = "Last rollback frames:"
+
+[node name="ServerLastRollbackFrames" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="ClientLastRollbackFrames" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="FastforwardsPerSecLabel" type="Label" parent="MarginContainer/GridContainer"]
+layout_mode = 2
+text = "Fastforwards/sec:"
+
+[node name="ServerFastforwardsPerSec" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="ClientFastforwardsPerSec" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="LastFastforwardDurationLabel" type="Label" parent="MarginContainer/GridContainer"]
+layout_mode = 2
+text = "Last fastforward (ms):"
+
+[node name="ServerLastFastforwardDuration" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="ClientLastFastforwardDuration" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="LastFastforwardFramesLabel" type="Label" parent="MarginContainer/GridContainer"]
+layout_mode = 2
+text = "Last fastforward frames:"
+
+[node name="ServerLastFastforwardFrames" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="ClientLastFastforwardFrames" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2

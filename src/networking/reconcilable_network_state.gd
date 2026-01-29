@@ -1082,6 +1082,15 @@ func record_interaction(
 	last_interaction_position = position
 	last_interaction_direction = direction
 
+	if G.network.is_server and G.is_verbose:
+		G.verbose(
+			"Recorded interaction: player_id=%d, frame=%d, pos=%s" % [
+				player_id,
+				last_interaction_frame_index,
+				position,
+			]
+		)
+
 
 ## Validates whether an interaction should be reconciled.
 ## Checks: frame not already processed, not too old, exists in buffer (in the

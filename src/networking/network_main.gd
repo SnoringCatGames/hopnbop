@@ -48,6 +48,7 @@ signal local_authority_removed(input_from_client: PlayerInputFromClient)
 var time := ServerTimeTracker.new()
 var connector := NetworkConnector.new()
 var frame_driver := NetworkFrameDriver.new()
+var perf_tracker := PerfTracker.new()
 var game_lift_manager := GameLiftManager.new()
 var session_manager := GameLiftSessionManager.new()
 
@@ -119,6 +120,9 @@ func _enter_tree() -> void:
 
 	frame_driver.name = "NetworkFrameDriver"
 	add_child(frame_driver)
+
+	perf_tracker.name = "PerfTracker"
+	add_child(perf_tracker)
 
 	game_lift_manager.name = "GameLiftManager"
 	add_child(game_lift_manager)

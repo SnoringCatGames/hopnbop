@@ -22,7 +22,7 @@ func _sync_component_visibility() -> void:
 	# Sync all component visibility with current settings.
 	%DebugConsole.visible = G.settings.show_debug_console
 	%PlayerStateList.visible = G.settings.show_debug_player_state
-	%PerfTracker.visible = G.settings.show_perf_tracker
+	%PerfTrackerPanel.visible = G.settings.show_perf_tracker
 
 
 func toggle_debug_console() -> void:
@@ -53,9 +53,9 @@ func toggle_perf_tracker() -> void:
 	if G.network.is_server:
 		return
 
-	%PerfTracker.visible = not %PerfTracker.visible
+	%PerfTrackerPanel.visible = not %PerfTrackerPanel.visible
 	G.print(
 		"Toggled PerfTracker: %s" %
-		("visible" if %PerfTracker.visible else "hidden"),
+		("visible" if %PerfTrackerPanel.visible else "hidden"),
 		ScaffolderLog.CATEGORY_INTERACTION,
 	)

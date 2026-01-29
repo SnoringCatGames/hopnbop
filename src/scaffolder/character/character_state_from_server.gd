@@ -31,6 +31,7 @@ var surfaces := 0
 
 var is_dead: bool:
 	get:
+		# Player is dead only while DIE interaction is active (before SPAWN).
 		if last_interaction_type != ServerInteractionType.DIE or \
 			last_interaction_frame_index < 0:
 			return false
@@ -40,12 +41,12 @@ var is_dead: bool:
 
 var is_invincible: bool:
 	get:
-		if last_interaction_type != ServerInteractionType.DIE or \
+		# Player is invincible after SPAWN for the invincibility duration.
+		if last_interaction_type != ServerInteractionType.SPAWN or \
 			last_interaction_frame_index < 0:
 			return false
 		var invincibility_end_frame: int = last_interaction_frame_index + \
-			int((G.settings.player_respawn_cooldown_sec + \
-				G.settings.player_invincibility_duration_sec) * 60)
+			int(G.settings.player_invincibility_duration_sec * 60)
 		return G.network.server_frame_index < invincibility_end_frame
 
 const _synced_properties_and_rollback_diff_thresholds := {

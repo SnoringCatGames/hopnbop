@@ -4,7 +4,7 @@
 [ext_resource type="Theme" uid="uid://curquyi35i5lq" path="res://src/ui/debug_overlay_theme.tres" id="1_eekom"]
 [ext_resource type="PackedScene" uid="uid://e73j4d7tda7g" path="res://src/ui/super_hud/player_state_list.tscn" id="2_2h2xo"]
 [ext_resource type="PackedScene" uid="uid://c2yul5us50jn4" path="res://src/ui/super_hud/debug_console.tscn" id="2_h1llh"]
-[ext_resource type="PackedScene" uid="uid://yhvfntnfgpqr" path="res://src/ui/super_hud/perf_tracker.tscn" id="3_2h2xo"]
+[ext_resource type="PackedScene" uid="uid://yhvfntnfgpqr" path="res://src/ui/super_hud/perf_tracker_panel.tscn" id="3_2h2xo"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_kqj18"]
 
@@ -28,6 +28,6 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="PerfTracker" parent="." instance=ExtResource("3_2h2xo")]
+[node name="PerfTrackerPanel" parent="." instance=ExtResource("3_2h2xo")]
 unique_name_in_owner = true
 layout_mode = 2
