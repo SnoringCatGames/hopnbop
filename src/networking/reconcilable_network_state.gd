@@ -101,14 +101,7 @@ var timestamp_index := 0
 
 ## Unified interaction system properties.
 ## Interaction type is an integer enum value (child classes define specific enums).
-var last_interaction_type := 0:
-	set(value):
-		# FIXME: REMOVE - debug when DIE interaction is set
-		if value == 4 and G.network.is_client: # 4 = DIE in ServerInteractionType
-			G.print(
-				">> last_interaction_type set to DIE (4) on client for node %s" % name
-			)
-		last_interaction_type = value
+var last_interaction_type := 0
 var last_interaction_frame_index := -1
 var last_interaction_position := Vector2.ZERO
 var last_interaction_direction := Vector2.ZERO
@@ -293,20 +286,6 @@ func _handle_new_authoritative_state() -> void:
 
 	# Extract the frame authority from the received state.
 	var new_frame_authority: int = _get_packed_authority(packed_state)
-
-	# FIXME: REMOVE - debug packed_state reception on clients
-	if G.network.is_client and _property_names_for_packing.has(&"last_interaction_type"):
-		var type_index := _property_names_for_packing.find(&"last_interaction_type")
-		if type_index >= 0 and type_index < packed_state.size():
-			var type_value = packed_state[type_index]
-			if type_value != 0:
-				G.print(
-					">> _handle_new_authoritative_state: received packed_state with last_interaction_type=%d for frame %d, node=%s" % [
-						type_value,
-						state_frame_index,
-						name,
-					]
-				)
 
 	# PAUSE FILTERING: Reject states from after pause started.
 	if G.network.frame_driver.is_paused:
@@ -589,16 +568,6 @@ func _pack_networked_state() -> void:
 	state[i] = G.network.frame_driver.get_time_usec_from_frame_index(timestamp_index)
 	_is_packing_state_locally = true
 
-	# FIXME: REMOVE - debug interaction packing
-	if G.network.is_server and last_interaction_type != 0:
-		G.print(
-			">> _pack_networked_state: last_interaction_type=%d, frame=%d, node=%s" % [
-				last_interaction_type,
-				last_interaction_frame_index,
-				name,
-			]
-		)
-
 	if G.is_verbose:
 		var authority_string: StringName = FrameAuthority.keys()[frame_authority]
 		if not is_server_authoritative:
@@ -638,19 +607,6 @@ func _unpack_networked_state() -> void:
 			packed_state.size() == _property_names_for_packing.size() + 2):
 		return
 
-	# FIXME: REMOVE - debug interaction unpacking before setting
-	if G.network.is_client and _property_names_for_packing.has(&"last_interaction_type"):
-		var type_index := _property_names_for_packing.find(&"last_interaction_type")
-		var type_value = packed_state[type_index]
-		if type_value != 0:
-			G.print(
-				">> _unpack_networked_state BEFORE set: packed_state[%d]=%d (last_interaction_type), node=%s" % [
-					type_index,
-					type_value,
-					name,
-				]
-			)
-
 	var i := 0
 	for property_name in _property_names_for_packing:
 		set(property_name, packed_state[i])
@@ -660,16 +616,6 @@ func _unpack_networked_state() -> void:
 	# We send time values across the network, but we store indices.
 	var timestamp_usec: int = _get_packed_timestamp_usec(packed_state)
 	timestamp_index = G.network.frame_driver.get_frame_index_from_time_usec(timestamp_usec)
-
-	# FIXME: REMOVE - debug interaction unpacking after setting
-	if G.network.is_client and last_interaction_type != 0:
-		G.print(
-			">> _unpack_networked_state AFTER set: last_interaction_type=%d, frame=%d, node=%s" % [
-				last_interaction_type,
-				last_interaction_frame_index,
-				name,
-			]
-		)
 
 
 func _pack_buffer_state_from_local_state() -> void:
