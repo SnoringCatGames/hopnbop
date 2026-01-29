@@ -55,7 +55,7 @@ var is_match_time_expired: bool:
 var packed_players := []:
 	set(value):
 		if G.is_verbose:
-			G.print(
+			G.verbose(
 				("MatchState.packed_players setter: " +
 				"old_size=%d, new_size=%d, is_packing_locally=%s") % [
 					packed_players.size(),
@@ -63,7 +63,6 @@ var packed_players := []:
 					_is_packing_state_locally
 				],
 				ScaffolderLog.CATEGORY_NETWORK_SYNC,
-				ScaffolderLog.Verbosity.VERBOSE,
 			)
 		packed_players = value
 		if not _is_packing_state_locally:
@@ -199,10 +198,9 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 		killee.server_trigger_death()
 
 	# Update scores and emit events.
-	G.print(
+	G.verbose(
 		"KILL: %s killed %s" % [killer_id, killee_id],
 		ScaffolderLog.CATEGORY_GAME_STATE,
-		ScaffolderLog.Verbosity.VERBOSE,
 	)
 	update_scores()
 
@@ -252,10 +250,9 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 	)
 
 	# Update scores and emit events.
-	G.print(
+	G.verbose(
 		"BUMP: %s bumped %s" % [player_1_id, player_2_id],
 		ScaffolderLog.CATEGORY_GAME_STATE,
-		ScaffolderLog.Verbosity.VERBOSE,
 	)
 	update_scores()
 
@@ -349,10 +346,9 @@ func _store_interaction(
 
 func _server_pack_players() -> void:
 	if G.is_verbose:
-		G.print(
+		G.verbose(
 			"MatchState._server_pack_players: packing %d players" % players_by_id.size(),
 			ScaffolderLog.CATEGORY_GAME_STATE,
-			ScaffolderLog.Verbosity.VERBOSE,
 		)
 
 	var new_packed_players := []
@@ -368,11 +364,10 @@ func _server_pack_players() -> void:
 
 
 func _client_unpack_players() -> void:
-	G.print(
+	G.verbose(
 		"MatchState._client_unpack_players: packed_players.size=%d" %
 			packed_players.size(),
-		ScaffolderLog.CATEGORY_GAME_STATE,
-		ScaffolderLog.Verbosity.VERBOSE
+		ScaffolderLog.CATEGORY_GAME_STATE
 	)
 
 	players_by_id.clear()

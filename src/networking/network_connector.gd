@@ -368,10 +368,9 @@ func _client_rpc_receive_player_ids(assigned_ids: Array[int]) -> void:
 
 	G.local_session.local_player_ids = assigned_ids
 
-	G.print(
+	G.verbose(
 		"Set G.local_session.local_player_ids = %s" % [assigned_ids],
 		ScaffolderLog.CATEGORY_GAME_STATE,
-		ScaffolderLog.Verbosity.VERBOSE,
 	)
 
 	# Register device configs for each local player.
@@ -519,13 +518,12 @@ func server_register_player_id_to_peer_mapping(
 		p_player_id: int,
 		p_peer_id: int) -> void:
 	_player_id_to_peer_id[p_player_id] = p_peer_id
-	G.print(
+	G.verbose(
 		"Registered player_id=%d -> peer_id=%d" % [
 			p_player_id,
 			p_peer_id
 		],
 		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-		ScaffolderLog.Verbosity.VERBOSE,
 	)
 
 
@@ -535,14 +533,13 @@ func client_on_player_state_connected(
 		p_local_index: int) -> void:
 	_player_id_to_peer_id[p_player_id] = p_peer_id
 	_player_id_to_local_player_index[p_player_id] = p_local_index
-	G.print(
+	G.verbose(
 		"Client registered player state: player_id=%d, peer_id=%d, local_index=%d" % [
 			p_player_id,
 			p_peer_id,
 			p_local_index
 		],
 		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-		ScaffolderLog.Verbosity.VERBOSE,
 	)
 
 

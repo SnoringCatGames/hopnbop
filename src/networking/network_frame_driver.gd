@@ -1116,11 +1116,10 @@ func _run_network_process() -> void:
 
 
 func _rollback_and_reprocess() -> void:
-	G.print(
+	G.verbose(
 		"Starting rollback from frame %d to frame %d" %
 		[server_frame_index, _queued_rollback_frame_index],
 		ScaffolderLog.CATEGORY_NETWORK_SYNC,
-		ScaffolderLog.Verbosity.VERBOSE,
 	)
 
 	var rollback_start_time_usec := Time.get_ticks_usec()

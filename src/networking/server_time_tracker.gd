@@ -241,11 +241,10 @@ func clear() -> void:
 func pause() -> void:
 	_pause_start_wall_time_usec = Time.get_ticks_usec()
 
-	G.print(
+	G.verbose(
 		"Time tracking paused at wall-clock %d usec" %
 		_pause_start_wall_time_usec,
 		ScaffolderLog.CATEGORY_NETWORK_SYNC,
-		ScaffolderLog.Verbosity.VERBOSE,
 	)
 
 
@@ -266,13 +265,12 @@ func unpause() -> void:
 	@warning_ignore("integer_division")
 	var cumulative_pause_ms := _cumulative_pause_time_usec / 1000
 
-	G.print(
+	G.verbose(
 		"Time tracking unpaused after %d ms (total paused: %d ms)" % [
 			pause_duration_ms,
 			cumulative_pause_ms,
 		],
 		ScaffolderLog.CATEGORY_NETWORK_SYNC,
-		ScaffolderLog.Verbosity.VERBOSE,
 	)
 
 

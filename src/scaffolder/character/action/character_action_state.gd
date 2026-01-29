@@ -207,16 +207,14 @@ func _log_new_press_or_release(
 	)
 
 	if just_pressed:
-		G.print(
+		G.verbose(
 			"START %5s: %s" % [action_name, details],
 			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
-			ScaffolderLog.Verbosity.VERBOSE,
 		)
 	if just_released:
-		G.print(
+		G.verbose(
 			"STOP  %5s: %s" % [action_name, details],
 			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
-			ScaffolderLog.Verbosity.VERBOSE,
 		)
 
 

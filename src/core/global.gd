@@ -120,6 +120,14 @@ func print(
 	log.print(message, category, verbosity, force_enable)
 
 
+func verbose(
+		message = "",
+		category := ScaffolderLog.CATEGORY_DEFAULT,
+		force_enable := false,
+) -> void:
+	log.print(message, category, ScaffolderLog.Verbosity.VERBOSE, force_enable)
+
+
 func warning(message = "", category := ScaffolderLog.CATEGORY_DEFAULT) -> void:
 	log.warning(message, category)
 

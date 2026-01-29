@@ -114,14 +114,13 @@ func _reconcile_jump_interaction(frame_index: int) -> void:
 		_clear_jump_bit_in_frame_if_not_pressed(frame_index - 1)
 
 		if G.is_verbose:
-			G.print(
+			G.verbose(
 				"F:%d Jump bit injected into frame %d via client interaction, queuing rollback (%s)" % [
 					G.network.server_frame_index,
 					frame_index,
 					name,
 				],
 				ScaffolderLog.CATEGORY_NETWORK_SYNC,
-				ScaffolderLog.Verbosity.VERBOSE,
 			)
 
 

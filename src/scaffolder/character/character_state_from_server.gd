@@ -217,14 +217,13 @@ func _network_process() -> void:
 		character.surfaces.update_actions()
 		if G.is_verbose:
 			var authority_str := "PREDICTED" if should_use_predicted_input else "AUTHORITATIVE"
-			G.print(
+			G.verbose(
 				"F:%d Using %s input (actions=%d)" % [
 					G.network.server_frame_index,
 					authority_str,
 					character.actions.bitmask,
 				],
 				ScaffolderLog.CATEGORY_NETWORK_SYNC,
-				ScaffolderLog.Verbosity.VERBOSE,
 			)
 	else:
 		if is_authority_for_input_from_client:
@@ -418,14 +417,13 @@ func _reconcile_bump_interaction(frame_index: int) -> void:
 	_inject_velocity_delta_into_buffer(frame_index, bounce_velocity)
 
 	if G.is_verbose:
-		G.print(
+		G.verbose(
 			"F:%d Bump velocity injected via server interaction into frame %d, queuing rollback (%s)" % [
 				G.network.server_frame_index,
 				frame_index,
 				name,
 			],
 			ScaffolderLog.CATEGORY_NETWORK_SYNC,
-			ScaffolderLog.Verbosity.VERBOSE,
 		)
 
 
@@ -440,14 +438,13 @@ func _reconcile_kill_interaction(frame_index: int) -> void:
 	_inject_velocity_delta_into_buffer(frame_index, bounce_velocity)
 
 	if G.is_verbose:
-		G.print(
+		G.verbose(
 			"F:%d Kill velocity injected into frame %d, queuing rollback (%s)" % [
 				G.network.server_frame_index,
 				frame_index,
 				name,
 			],
 			ScaffolderLog.CATEGORY_NETWORK_SYNC,
-			ScaffolderLog.Verbosity.VERBOSE,
 		)
 
 
@@ -459,14 +456,13 @@ func _reconcile_die_interaction(frame_index: int) -> void:
 	G.network.frame_driver.queue_rollback(frame_index)
 
 	if G.is_verbose:
-		G.print(
+		G.verbose(
 			"F:%d Die interaction reconciled at frame %d, queuing rollback (%s)" % [
 				G.network.server_frame_index,
 				frame_index,
 				name,
 			],
 			ScaffolderLog.CATEGORY_NETWORK_SYNC,
-			ScaffolderLog.Verbosity.VERBOSE,
 		)
 
 
@@ -480,7 +476,7 @@ func _reconcile_spawn_interaction(frame_index: int) -> void:
 	G.network.frame_driver.queue_rollback(frame_index)
 
 	if G.is_verbose:
-		G.print(
+		G.verbose(
 			"F:%d Spawn interaction reconciled at frame %d, position=%s, queuing rollback (%s)" % [
 				G.network.server_frame_index,
 				frame_index,
@@ -488,7 +484,6 @@ func _reconcile_spawn_interaction(frame_index: int) -> void:
 				name,
 			],
 			ScaffolderLog.CATEGORY_NETWORK_SYNC,
-			ScaffolderLog.Verbosity.VERBOSE,
 		)
 
 

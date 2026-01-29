@@ -120,6 +120,14 @@ func print(
 	print(message)
 
 
+func verbose(
+		message = "",
+		category := CATEGORY_DEFAULT,
+		force_enable := false,
+) -> void:
+	self.print(message, category, Verbosity.VERBOSE, force_enable)
+
+
 # -   Using this function instead of `push_error` directly enables us to render
 #     the console output in environments like a mobile device.
 # -   This requires an explicit error message in order to disambiguate where

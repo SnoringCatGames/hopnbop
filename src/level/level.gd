@@ -128,10 +128,9 @@ func _find_collision_free_position(initial_position: Vector2) -> Vector2:
 ## Maintains players array and players_by_id dictionary.
 func register_player(player: Player) -> void:
 	if G.is_verbose:
-		G.print(
+		G.verbose(
 			"Level.register_player: player_id=%d" % player.player_id,
 			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-			ScaffolderLog.Verbosity.VERBOSE,
 		)
 	players.append(player)
 	players_by_id[player.player_id] = player

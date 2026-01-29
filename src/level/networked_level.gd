@@ -56,11 +56,10 @@ func _client_on_player_spawned(p_player: Node) -> void:
 	G.ensure(p_player is Player)
 	var player: Player = p_player
 	if G.is_verbose:
-		G.print(
+		G.verbose(
 			"Player spawned: %s (current player_id=%d)" %
 				[player.get_string(), player.player_id],
 			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-			ScaffolderLog.Verbosity.VERBOSE,
 		)
 
 

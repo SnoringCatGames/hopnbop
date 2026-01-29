@@ -313,15 +313,14 @@ func _handle_new_authoritative_state() -> void:
 		var pause_frame: int = G.network.frame_driver.pause_start_frame
 		if state_frame_index > pause_frame:
 			if G.is_verbose:
-				G.print(
+				G.verbose(
 					"%s F:%d Rejecting state from frame %d (after pause at %d)" % [
 						name,
 						G.network.server_frame_index,
 						state_frame_index,
 						pause_frame,
 					],
-					ScaffolderLog.CATEGORY_NETWORK_SYNC,
-					ScaffolderLog.Verbosity.VERBOSE)
+					ScaffolderLog.CATEGORY_NETWORK_SYNC)
 			return
 
 	if G.is_verbose:
@@ -407,11 +406,10 @@ func _handle_new_authoritative_state() -> void:
 				packed_state,
 				buffer_state,
 			)
-			G.print(
+			G.verbose(
 				"Prediction state mismatch (%s): %s" %
 				[node_type, mismatch_details],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC,
-				ScaffolderLog.Verbosity.VERBOSE)
+				ScaffolderLog.CATEGORY_NETWORK_SYNC)
 
 			G.network.frame_driver.queue_rollback(state_frame_index)
 
