@@ -51,19 +51,10 @@ extends Node
 
 # SEND THIS PROMPT:
 # I've recently added support for tracking the last-interaction type/frame/position/direction on ReconcilableNetworkState and its subclasses. I'm now trying to validate it. Please perform a thorough analysis of the current state of my client prediction, mismatch detection, rollback reconciliation, replication and rollback state packing and unpacking, initial interaction triggering and handling, and interaction replication and rollback handling. Please look for potential bugs, potential improvements, and potential informative cases to add more conditional debug logging for.
-
-# LEFT OFF HERE:
-# - A couple prompts actively processing (debug kills, add annotations)
-
-# LEFT OFF HERE:
-# - Still debugging kills and respawns.
-# - Also just added some CCD for kill stomps.
-
-# - Test kills and bumps. Adjust foot, head, and body shapes.
-
-# - When a kill is triggered, calculate the point at which the killer's position should have when the stomp contact first happened. Set that as the player's current position, and set that as the position of the interaction that we record on networked state.
-
 # - Is there a potential problem from frame drift between the client and the server?
+
+# - Test kills and bumps.
+# - Adjust foot, head, and body shapes.
 
 # - Check if we're still using the ArrayPool in all the places we should,
 #   especially with the new RollbackBuffer in MatchState.
