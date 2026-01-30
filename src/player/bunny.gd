@@ -56,15 +56,6 @@ func _process_movement_and_actions() -> void:
 	# Apply pending bounce after movement processing.
 	if G.network.is_server and _pending_bounce != Vector2.ZERO:
 		velocity += _pending_bounce
-		G.print(
-			"F:%d Applied pending bounce to player %d: added %s, new vel=%s" % [
-				G.network.server_frame_index,
-				player_id,
-				_pending_bounce,
-				velocity,
-			],
-			ScaffolderLog.CATEGORY_GAME_STATE,
-		)
 		_pending_bounce = Vector2.ZERO
 
 	# Reset collision flag each frame.
@@ -142,7 +133,7 @@ func _on_local_authority_added(
 func _set_up_camera() -> void:
 	var is_local_player := peer_id == G.network.local_peer_id
 
-	G.print(
+	G.verbose(
 		"Setting up camera for player %s (peer=%d, local=%d, is_local=%s)" % [
 			player_id,
 			peer_id,
@@ -150,7 +141,6 @@ func _set_up_camera() -> void:
 			is_local_player,
 		],
 		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-		ScaffolderLog.Verbosity.VERBOSE,
 	)
 
 	%CharacterCamera.enabled = is_local_player
@@ -213,14 +203,13 @@ func _apply_outline_color() -> void:
 	var outline_enabled := G.is_networked_level_active
 	shader_material.set_shader_parameter("outline_enabled", outline_enabled)
 
-	G.print(
+	G.verbose(
 		"Applied outline for player %s: color=%s, enabled=%s, width=2.0" % [
 			player_id,
 			match_state.outline_color,
 			outline_enabled,
 		],
 		ScaffolderLog.CATEGORY_GAME_STATE,
-		ScaffolderLog.Verbosity.VERBOSE
 	)
 
 
@@ -263,14 +252,64 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	var current_frame := G.network.server_frame_index
 	if _did_kill_happen_this_frame(current_frame) or \
 		other_player._did_kill_happen_this_frame(current_frame):
-		G.print(
+		G.verbose(
 			"Skipping bump - kill already processed this frame (players %d and %d)" % [
 				player_id,
 				other_player_id,
 			],
 			ScaffolderLog.CATEGORY_GAME_STATE,
-			ScaffolderLog.Verbosity.VERBOSE,
 		)
+		return
+
+	# Check if a foot-head collision happened this frame via swept detection.
+	# This catches high-speed collisions that skip over collision areas.
+	if _did_foot_pass_through_head_this_frame(other_player):
+		# Prevent double-counting (this frame was already processed from the
+		# other player).
+		if _processed_collision_this_frame:
+			return
+
+		# Mark this collision as processed.
+		_processed_collision_this_frame = true
+		other_player._processed_collision_this_frame = true
+
+		G.verbose(
+			"Player kill detected (swept): %d killed %d" %
+				[player_id, other_player.player_id],
+			ScaffolderLog.CATEGORY_GAME_STATE,
+			true,
+		)
+
+		# Calculate lag-compensated position.
+		var lag_compensated_position := (
+			_calculate_lag_compensated_kill_position(other_player)
+		)
+
+		# Process as kill with lag-compensated position.
+		G.match_state.server_add_kill(player_id, other_player.player_id)
+		_server_apply_interaction_with_position(
+			other_player,
+			CharacterStateFromServer.ServerInteractionType.KILL,
+			lag_compensated_position
+		)
+		other_player.server_trigger_death()
+		return
+
+	# Check if a kill collision is currently happening - kills take precedence.
+	# This prevents the bump from blocking the kill when bump fires first.
+	if _is_kill_collision_happening(other_player):
+		G.verbose(
+			"Skipping bump - kill collision is happening (players %d and %d)" % [
+				player_id,
+				other_player_id,
+			],
+			ScaffolderLog.CATEGORY_GAME_STATE,
+		)
+		return
+
+	# Prevent double-counting (this frame was already processed from the other
+	# player).
+	if _processed_collision_this_frame:
 		return
 
 	# Mark this collision as processed.
@@ -278,11 +317,10 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	other_player._processed_collision_this_frame = true
 
 	# Bump - both players bounce away from each other.
-	G.print(
+	G.verbose(
 		"Players bump detected: %d bumped %d" %
 			[player_id, other_player_id],
 		ScaffolderLog.CATEGORY_GAME_STATE,
-		ScaffolderLog.Verbosity.VERBOSE,
 		true,
 	)
 
@@ -332,7 +370,7 @@ func _server_apply_interaction(
 		direction
 	)
 
-	G.print(
+	G.verbose(
 		"F:%d Applied %s interaction to player %d: bounce=%s, dir=%s" % [
 			G.network.server_frame_index,
 			CharacterStateFromServer.ServerInteractionType.keys()[interaction_type],
@@ -341,7 +379,6 @@ func _server_apply_interaction(
 			direction,
 		],
 		ScaffolderLog.CATEGORY_GAME_STATE,
-		ScaffolderLog.Verbosity.VERBOSE,
 	)
 
 
@@ -353,6 +390,176 @@ func _did_kill_happen_this_frame(frame_index: int) -> bool:
 			type == CharacterStateFromServer.ServerInteractionType.DIE):
 			return true
 	return false
+
+
+## Checks if a kill collision is currently happening with another player.
+func _is_kill_collision_happening(other_player: Player) -> bool:
+	# Check if foot area overlaps with other player's body area.
+	var foot_area: Area2D = %FootArea
+	var other_body_area: Area2D = other_player.get_node("%BodyArea")
+
+	if not foot_area.overlaps_area(other_body_area):
+		return false
+
+	# Check if relative velocity is downward (required for kill).
+	var relative_velocity := velocity - other_player.velocity
+	return relative_velocity.y > 0
+
+
+## Checks if this player's foot passed through another player's head this
+## frame using swept collision detection. This catches high-speed collisions
+## that skip over collision areas between physics frames.
+func _did_foot_pass_through_head_this_frame(other_player: Player) -> bool:
+	# Early exit if no previous position data.
+	# Note: previous_position is a property inherited from Character class.
+	if (previous_position == Vector2.INF or
+		other_player.previous_position == Vector2.INF):
+		return false
+
+	# Check relative velocity is downward.
+	var relative_velocity := velocity - other_player.velocity
+	if relative_velocity.y <= 0:
+		return false
+
+	# Get previous positions in global coordinates.
+	# Note: previous_position is in local coords, convert to global.
+	# Since Level parent is stationary, parent.global_position is constant.
+	var my_prev_global: Vector2 = (
+		get_parent().global_position + previous_position
+	)
+	var other_prev_global: Vector2 = (
+		other_player.get_parent().global_position +
+		other_player.previous_position
+	)
+
+	# Calculate foot bottom and head top at t0 (previous frame).
+	const FOOT_OFFSET_Y = -1.0
+	const FOOT_HEIGHT = 2.0
+	const HEAD_OFFSET_Y = -11.0
+	const HEAD_HEIGHT = 2.0
+
+	var foot_bottom_t0 = (
+		my_prev_global.y +
+		FOOT_OFFSET_Y +
+		FOOT_HEIGHT / 2
+	)
+	var head_top_t0 = (
+		other_prev_global.y +
+		HEAD_OFFSET_Y -
+		HEAD_HEIGHT / 2
+	)
+
+	# Calculate foot bottom and head top at t1 (current frame).
+	var foot_bottom_t1 = (
+		global_position.y +
+		FOOT_OFFSET_Y +
+		FOOT_HEIGHT / 2
+	)
+	var head_top_t1 = (
+		other_player.global_position.y +
+		HEAD_OFFSET_Y -
+		HEAD_HEIGHT / 2
+	)
+
+	# Check if foot passed through head vertically.
+	var foot_was_above = foot_bottom_t0 < head_top_t0
+	var foot_is_below = foot_bottom_t1 > head_top_t1
+
+	if not (foot_was_above and foot_is_below):
+		return false
+
+	# Check horizontal overlap (at current frame for simplicity).
+	const FOOT_WIDTH = 10.0
+	const HEAD_WIDTH = 6.0
+	var foot_left = global_position.x + 0.5 - FOOT_WIDTH / 2
+	var foot_right = global_position.x + 0.5 + FOOT_WIDTH / 2
+	var head_left = other_player.global_position.x - HEAD_WIDTH / 2
+	var head_right = other_player.global_position.x + HEAD_WIDTH / 2
+
+	var has_horizontal_overlap = (
+		(foot_left <= head_right) and
+		(foot_right >= head_left)
+	)
+
+	if has_horizontal_overlap:
+		G.verbose(
+			(
+				"Swept collision detected: %d foot passed through %d " +
+				"head (t0: foot_y=%.1f, head_y=%.1f; t1: foot_y=%.1f, " +
+				"head_y=%.1f)"
+			) % [
+				player_id,
+				other_player.player_id,
+				foot_bottom_t0,
+				head_top_t0,
+				foot_bottom_t1,
+				head_top_t1
+			],
+			ScaffolderLog.CATEGORY_GAME_STATE
+		)
+
+	return has_horizontal_overlap
+
+
+## Calculates the killer's position at the moment of first contact with victim.
+## Returns the interpolated position based on swept collision intersection.
+func _calculate_lag_compensated_kill_position(
+	other_player: Player
+) -> Vector2:
+	# Constants matching swept detection.
+	const FOOT_OFFSET_Y = -1.0
+	const FOOT_HEIGHT = 2.0
+	const HEAD_OFFSET_Y = -11.0
+	const HEAD_HEIGHT = 2.0
+
+	# Get previous positions in global coordinates.
+	var my_prev_global: Vector2 = (
+		get_parent().global_position + previous_position
+	)
+	var other_prev_global: Vector2 = (
+		other_player.get_parent().global_position +
+		other_player.previous_position
+	)
+
+	# Calculate foot bottom and head top at t0 and t1.
+	var foot_bottom_t0 = my_prev_global.y + FOOT_OFFSET_Y + FOOT_HEIGHT / 2
+	var head_top_t0 = other_prev_global.y + HEAD_OFFSET_Y - HEAD_HEIGHT / 2
+	var foot_bottom_t1 = global_position.y + FOOT_OFFSET_Y + FOOT_HEIGHT / 2
+	var head_top_t1 = (
+		other_player.global_position.y + HEAD_OFFSET_Y - HEAD_HEIGHT / 2
+	)
+
+	# Calculate interpolation factor t where foot contacts head.
+	var foot_delta = foot_bottom_t1 - foot_bottom_t0
+	var head_delta = head_top_t1 - head_top_t0
+	var relative_delta = foot_delta - head_delta
+
+	var t: float
+	if abs(relative_delta) < 0.01:
+		t = 0.5 # Parallel movement - use midpoint.
+	else:
+		t = (head_top_t0 - foot_bottom_t0) / relative_delta
+		t = clamp(t, 0.0, 1.0)
+
+	# Interpolate killer's position at contact moment.
+	var lag_compensated_position = my_prev_global.lerp(global_position, t)
+
+	if G.is_verbose:
+		G.verbose(
+			(
+				"Lag compensation: player %d contact at t=%.3f, " +
+				"prev=%s, curr=%s, compensated=%s"
+			) % [
+				player_id,
+				t,
+				my_prev_global,
+				global_position,
+				lag_compensated_position,
+			],
+			ScaffolderLog.CATEGORY_GAME_STATE,
+		)
+
+	return lag_compensated_position
 
 
 func _on_foot_area_area_entered(area: Area2D) -> void:
@@ -395,12 +602,10 @@ func _on_foot_area_area_entered(area: Area2D) -> void:
 	):
 		return
 
-	G.print(
+	G.verbose(
 		"Player kill detected: %d killed %d" %
 			[player_id, other_player_id],
 		ScaffolderLog.CATEGORY_GAME_STATE,
-		ScaffolderLog.Verbosity.VERBOSE,
-		true,
 	)
 
 	_processed_collision_this_frame = true
