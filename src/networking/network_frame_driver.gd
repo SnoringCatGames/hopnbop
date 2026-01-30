@@ -50,7 +50,16 @@ extends Node
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
 # SEND THIS PROMPT:
-# I've recently added support for tracking the last-interaction type/frame/position/direction on ReconcilableNetworkState and its subclasses. I'm now trying to validate it. Please perform a thorough analysis of the current state of my client prediction, mismatch detection, rollback reconciliation, replication and rollback state packing and unpacking, initial interaction triggering and handling, and interaction replication and rollback handling. Please look for potential bugs, potential improvements, and potential informative cases to add more conditional debug logging for.
+# Before planning this task, do a thorough analysis of how client-prediction, rollbacks, and every individual character interaction type (i.e., the values of ClientInteractionType and ServerInteractionType) are used.
+# I've recently added support for tracking the last-interaction type/frame/position/direction on ReconcilableNetworkState and its subclasses. I'm now realizing that there are two fundamentally different types of interactions that we need to treat differently.
+# - Some interactions, like ClientInteractionType.JUMP, we need to be able to rollback. That is, the triggering of the interaction will always be authoritative and persist, but how it is applied will be updated during rollback.
+# - Some interactions, like ServerInteractionType.SPAWN, ServerInteractionType.BUMP, ServerInteractionType.KILL, and ServerInteractionType.DIE, we need to never rollback. We need to be able to update all machines to handle this state as soon as possible, and we'll treat the server's first impression of this interaction as final, regardless of possible future client inputs that would have prevented this interaction. Specifically, we need to tread the first frame of a new interaction as immutable (until it becomes too far in the past in the circular rollback buffer and we overwrite it with new frame indices).
+# - Add a method on ReconcilableNetworkState, overriden by the two immediate subclasses, that returns true if a given interaction type is rollbackable.
+# - Then, add support for preventing reconciling/rolling-back of non-rollbackable interactions.
+# - However, we _do_ need to be able to reset a given player/node to its state from before a given interaction when we're simulating a rollback to before that interaction (even though we're definitely going to leave the exact state of that particular interaction-onset frame as immutable).
+# - So, to support this, we need to introduce a new method on ReconcilableNetworkState, overriden by the two immediate subclasses, that accepts a frame index as a parameter and then resets all scene state to reflect both the direct state specified by the frame as well as the indirect state represented by whichever most-recent interaction is specified in the frame. Possibly we can more simply update the pre-existing unpack function for this, but maybe a dedicated method for addressing the unpack-for-last-interaction aspect would be helpful.
+#   - For the bunny, in particular, we should use this to update things like collision layers and visibility, or any other accounting for is dead.
+
 # - Is there a potential problem from frame drift between the client and the server?
 
 # - Test kills and bumps.
