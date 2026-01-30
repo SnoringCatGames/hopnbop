@@ -87,7 +87,7 @@ var _total_deaths_by_player_id := {}
 # Dictionary<int, int>
 var _total_bumps_by_player_id := {}
 
-var _recent_interactions := RollbackBuffer.new(
+var _server_recent_interactions := RollbackBuffer.new(
 	G.network.frame_driver.rollback_buffer_size,
 	0, # current_frame_index (start at 0)
 	[] # default_frame_state (empty array for interactions)
@@ -163,7 +163,7 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 	var current_frame: int = G.network.frame_driver.server_frame_index
 
 	# Check for recent interaction to prevent duplicates.
-	if _has_recent_interaction(
+	if _server_has_recent_interaction(
 		killer_id,
 		killee_id,
 		current_frame,
@@ -185,7 +185,7 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 	_total_deaths_by_player_id[killee_id] += 1
 
 	# Store in indelible interaction buffer.
-	_store_interaction(
+	_server_store_interaction(
 		killer_id,
 		killee_id,
 		PlayerInteraction.Type.KILL,
@@ -220,7 +220,7 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 	var current_frame: int = G.network.frame_driver.server_frame_index
 
 	# Check for recent interaction to prevent duplicates.
-	if _has_recent_interaction(
+	if _server_has_recent_interaction(
 		player_1_id,
 		player_2_id,
 		current_frame,
@@ -242,7 +242,7 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 	_total_bumps_by_player_id[player_2_id] += 1
 
 	# Store in indelible interaction buffer (FIX: was KILL, now BUMP).
-	_store_interaction(
+	_server_store_interaction(
 		player_1_id,
 		player_2_id,
 		PlayerInteraction.Type.BUMP,
@@ -283,7 +283,7 @@ func get_players_for_peer(peer_id: int) -> Array[PlayerMatchState]:
 	return result
 
 
-func _has_recent_interaction(
+func _server_has_recent_interaction(
 	player_1_id: int,
 	player_2_id: int,
 	current_frame: int,
@@ -298,14 +298,14 @@ func _has_recent_interaction(
 		_INTERACTION_DEDUPLICATION_WINDOW_FRAMES
 
 	# Check each frame in window (skip current frame).
-	for frame_idx in range(search_start, search_end + 1):
-		if frame_idx == current_frame:
+	for frame_index in range(search_start, search_end + 1):
+		if frame_index == current_frame:
 			continue
 
-		if not _recent_interactions.has_at(frame_idx):
+		if not _server_recent_interactions.has_at(frame_index):
 			continue
 
-		var interactions = _recent_interactions.get_at(frame_idx)
+		var interactions = _server_recent_interactions.get_at(frame_index)
 		if interactions == null:
 			continue
 
@@ -317,7 +317,7 @@ func _has_recent_interaction(
 	return false
 
 
-func _store_interaction(
+func _server_store_interaction(
 	player_1_id: int,
 	player_2_id: int,
 	interaction_type: int,
@@ -325,11 +325,11 @@ func _store_interaction(
 ) -> void:
 	# Get or create interactions array for this frame.
 	var interactions = null
-	if _recent_interactions.has_at(frame_index):
-		interactions = _recent_interactions.get_at(frame_index)
+	if _server_recent_interactions.has_at(frame_index):
+		interactions = _server_recent_interactions.get_at(frame_index)
 	else:
 		interactions = []
-		_recent_interactions.set_at(frame_index, interactions)
+		_server_recent_interactions.set_at(frame_index, interactions)
 
 	# Create and store interaction.
 	var interaction = PlayerInteraction.new()
@@ -341,7 +341,7 @@ func _store_interaction(
 	interactions.append(interaction)
 
 	# Store the updated array back to the buffer.
-	_recent_interactions.set_at(frame_index, interactions)
+	_server_recent_interactions.set_at(frame_index, interactions)
 
 
 func _server_pack_players() -> void:

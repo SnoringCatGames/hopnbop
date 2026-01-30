@@ -783,8 +783,8 @@ func _set_frame_property(
 
 ## Gets the frame authority from a frame state array (rollback buffer format).
 func _get_frame_authority(frame_state: Array) -> FrameAuthority:
-	var authority_idx := frame_state.size() - 1
-	return frame_state[authority_idx] as FrameAuthority
+	var authority_index := frame_state.size() - 1
+	return frame_state[authority_index] as FrameAuthority
 
 
 ## Sets the frame authority in a frame state array (rollback buffer format).
@@ -792,8 +792,8 @@ func _set_frame_authority(
 	frame_state: Array,
 	authority: FrameAuthority
 ) -> void:
-	var authority_idx := frame_state.size() - 1
-	frame_state[authority_idx] = authority
+	var authority_index := frame_state.size() - 1
+	frame_state[authority_index] = authority
 
 
 ## Checks if a frame state has authoritative authority.
@@ -813,8 +813,8 @@ func _get_packed_timestamp_usec(packed_network_state: Array) -> int:
 
 ## Gets the frame authority from a packed_state array (network format).
 func _get_packed_authority(packed_network_state: Array) -> FrameAuthority:
-	var authority_idx := packed_network_state.size() - 2
-	return packed_network_state[authority_idx] as FrameAuthority
+	var authority_index := packed_network_state.size() - 2
+	return packed_network_state[authority_index] as FrameAuthority
 
 
 ## Returns an array of property names that have mismatched values between
