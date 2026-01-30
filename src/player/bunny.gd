@@ -321,11 +321,10 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 		# Process as kill with lag-compensated position.
 		G.match_state.server_add_kill(player_id, other_player.player_id)
 		_server_apply_interaction_with_position(
-			other_player,
+			self,
 			CharacterStateFromServer.ServerInteractionType.KILL,
 			lag_compensated_position
 		)
-		other_player.server_trigger_death()
 		return
 
 	# Check if a kill collision is currently happening - kills take precedence.
@@ -687,13 +686,10 @@ func _on_foot_area_area_entered(area: Area2D) -> void:
 
 	# For direct collision, use current position (collision areas overlap).
 	_server_apply_interaction_with_position(
-		other_player,
+		self,
 		CharacterStateFromServer.ServerInteractionType.KILL,
 		global_position
 	)
-
-	# Trigger death on victim.
-	other_player.server_trigger_death()
 
 
 func _update_invincibility_blink() -> void:

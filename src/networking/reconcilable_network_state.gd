@@ -101,7 +101,28 @@ var timestamp_index := 0
 
 ## Unified interaction system properties.
 ## Interaction type is an integer enum value (child classes define specific enums).
-var last_interaction_type := 0
+var _last_interaction_type_backing := 0
+var last_interaction_type: int:
+	set(value):
+		if (G.is_verbose and
+				G.network.is_server and
+				_last_interaction_type_backing != value):
+			G.verbose(
+				"[INTERACTION] Player %d: %s (%d) -> %s (%d) at F:%d" % [
+					player_id,
+					_get_interaction_type_name(_last_interaction_type_backing),
+					_last_interaction_type_backing,
+					_get_interaction_type_name(value),
+					value,
+					G.network.server_frame_index
+				],
+				ScaffolderLog.CATEGORY_NETWORK_SYNC,
+				true,
+			)
+		_last_interaction_type_backing = value
+	get:
+		return _last_interaction_type_backing
+
 var last_interaction_frame_index := -1
 var last_interaction_position := Vector2.ZERO
 var last_interaction_direction := Vector2.ZERO
@@ -1141,16 +1162,15 @@ func record_interaction(
 	last_interaction_position = position
 	last_interaction_direction = direction
 
-	if G.network.is_server and G.is_verbose:
-		G.verbose(
-			"Recorded interaction: player_id=%d, type=%s (was %s), frame=%d, pos=%s" % [
+	if G.is_verbose and G.network.is_server:
+		G.print(
+			"[INTERACTION] Player %d: %s -> %s at frame %d" % [
 				player_id,
-				_get_interaction_type_name(interaction_type),
 				_get_interaction_type_name(old_type),
+				_get_interaction_type_name(interaction_type),
 				last_interaction_frame_index,
-				position,
 			],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC
+			ScaffolderLog.CATEGORY_GAME_STATE
 		)
 
 
