@@ -20,6 +20,8 @@ var draw_utils := DrawUtils.new()
 var network := NetworkMain.new()
 var input_device_manager := InputDeviceManager.new()
 var process_sentinel := ProcessSentinel.new()
+var window_manager := WindowManager.new()
+var input_handler := InputHandler.new()
 
 var main: Main
 var audio: AudioMain
@@ -75,6 +77,12 @@ func _enter_tree() -> void:
 
 	process_sentinel.name = "ProcessSentinel"
 	add_child(process_sentinel)
+
+	window_manager.name = "WindowManager"
+	add_child(window_manager)
+
+	input_handler.name = "InputHandler"
+	add_child(input_handler)
 
 
 func _ready() -> void:
