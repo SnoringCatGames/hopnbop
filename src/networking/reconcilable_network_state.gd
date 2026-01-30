@@ -895,7 +895,7 @@ func _get_mismatch_details_string(
 					[property_name, buffer_type_str, networked_type_str],
 				)
 			elif property_name == "last_interaction_frame_index":
-				var drift := abs(buffer_value - networked_value)
+				var drift := absi(buffer_value - networked_value)
 				details.append(
 					"{%s: local=%d, remote=%d, drift=%d}" %
 					[property_name, buffer_value, networked_value, drift],

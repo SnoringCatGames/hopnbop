@@ -72,7 +72,7 @@ func _reconcile_client_interaction() -> void:
 
 	# Verbose logging for reconciliation status.
 	if G.is_verbose:
-		var type_name := ClientInteractionType.keys()[last_interaction_type]
+		var type_name: StringName = ClientInteractionType.keys()[last_interaction_type]
 		G.verbose(
 			"Reconciling %s: frame=%d, should_process=%s, buffer_has=%s (%s)" % [
 				type_name,
