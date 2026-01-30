@@ -94,6 +94,14 @@ func _handle_interaction_effects() -> void:
 			pass
 		CharacterStateFromServer.ServerInteractionType.DIE:
 			# Immediately hide sprite and disable collision to match server state.
+			G.verbose(
+				"F:%d Player %d DIE interaction detected on client" % [
+					G.network.server_frame_index,
+					player_id,
+				],
+				ScaffolderLog.CATEGORY_GAME_STATE,
+				true,
+			)
 			animator.visible = false
 			_is_blink_visible = false
 			collision_layer = 0
@@ -107,6 +115,7 @@ func _handle_interaction_effects() -> void:
 					player_id,
 				],
 				ScaffolderLog.CATEGORY_GAME_STATE,
+				true,
 			)
 			animator.visible = true
 			_is_blink_visible = true
@@ -232,7 +241,7 @@ func _apply_outline_color() -> void:
 			match_state.outline_color,
 			outline_enabled,
 		],
-		ScaffolderLog.CATEGORY_GAME_STATE
+		ScaffolderLog.CATEGORY_GAME_STATE,
 	)
 
 
@@ -281,6 +290,7 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 				other_player_id,
 			],
 			ScaffolderLog.CATEGORY_GAME_STATE,
+			true,
 		)
 		return
 
@@ -327,6 +337,7 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 				other_player_id,
 			],
 			ScaffolderLog.CATEGORY_GAME_STATE,
+			true,
 		)
 		return
 
@@ -435,6 +446,7 @@ func _server_apply_interaction_with_position(
 			direction,
 		],
 		ScaffolderLog.CATEGORY_GAME_STATE,
+		true,
 	)
 
 
@@ -551,7 +563,8 @@ func _did_foot_pass_through_head_this_frame(other_player: Player) -> bool:
 				foot_bottom_t1,
 				head_top_t1
 			],
-			ScaffolderLog.CATEGORY_GAME_STATE
+			ScaffolderLog.CATEGORY_GAME_STATE,
+			true,
 		)
 
 	return has_horizontal_overlap
@@ -613,6 +626,7 @@ func _calculate_lag_compensated_kill_position(
 				lag_compensated_position,
 			],
 			ScaffolderLog.CATEGORY_GAME_STATE,
+			true,
 		)
 
 	return lag_compensated_position
