@@ -29,8 +29,6 @@ var _original_collision_mask := 0
 var _original_area_collision_layers := {}
 var _original_area_collision_masks := {}
 
-var _has_disabled_inter_player_collisions := false
-
 
 func _enter_tree() -> void:
 	super._enter_tree()
@@ -305,7 +303,6 @@ func server_execute_respawn() -> void:
 	is_sprite_visible = true
 	collision_layer = _original_collision_layer
 	collision_mask = _original_collision_mask
-	_has_disabled_inter_player_collisions = false
 
 	# Re-enable all Area2D collisions (BodyArea, FootArea, HeadArea).
 	for area_name in _original_area_collision_layers:
@@ -324,10 +321,36 @@ func server_execute_respawn() -> void:
 	)
 
 
+func set_is_collidable(is_collidable: bool) -> void:
+	if is_collidable:
+		# Player is alive - show and enable collision.
+		if not animator.visible:
+			animator.visible = true
+		if collision_layer == 0:
+			collision_layer = _original_collision_layer
+			collision_mask = _original_collision_mask
+			# Also restore Area2D children collision.
+			for area_name in _original_area_collision_layers:
+				var area := get_node_or_null(area_name)
+				if is_instance_valid(area) and area is Area2D:
+					area.collision_layer = _original_area_collision_layers[area_name]
+					area.collision_mask = _original_area_collision_masks[area_name]
+	else:
+		# Player is dead - hide and disable collision.
+		animator.visible = false
+		collision_layer = 0
+		collision_mask = 0
+		# Also disable Area2D children collision.
+		for area_name in _original_area_collision_layers:
+			var area := get_node_or_null(area_name)
+			if is_instance_valid(area) and area is Area2D:
+				area.collision_layer = 0
+				area.collision_mask = 0
+
+
 func _on_match_ended() -> void:
 	# Disable inter-player collisions by removing player layer from mask.
 	set_collision_mask_value(_PLAYER_COLLISION_LAYER, false)
-	_has_disabled_inter_player_collisions = true
 
 
 func _get_configuration_warnings() -> PackedStringArray:

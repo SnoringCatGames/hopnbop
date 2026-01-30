@@ -82,7 +82,7 @@ func _process_movement_and_actions() -> void:
 
 
 func _handle_interaction_effects() -> void:
-	# Play sounds/visual effects based on interaction type.
+	# Play sounds based on interaction type.
 	match state_from_server.last_interaction_type:
 		CharacterStateFromServer.ServerInteractionType.NONE:
 			pass
@@ -93,7 +93,6 @@ func _handle_interaction_effects() -> void:
 			# effects.
 			pass
 		CharacterStateFromServer.ServerInteractionType.DIE:
-			# Immediately hide sprite and disable collision to match server state.
 			G.verbose(
 				"F:%d Player %d DIE interaction detected on client" % [
 					G.network.server_frame_index,
@@ -102,13 +101,8 @@ func _handle_interaction_effects() -> void:
 				ScaffolderLog.CATEGORY_GAME_STATE,
 				true,
 			)
-			animator.visible = false
-			_is_blink_visible = false
-			collision_layer = 0
-			collision_mask = 0
 			play_sound("die")
 		CharacterStateFromServer.ServerInteractionType.SPAWN:
-			# Immediately show sprite and re-enable collision.
 			G.verbose(
 				"F:%d Player %d SPAWN interaction detected on client" % [
 					G.network.server_frame_index,
@@ -117,11 +111,6 @@ func _handle_interaction_effects() -> void:
 				ScaffolderLog.CATEGORY_GAME_STATE,
 				true,
 			)
-			animator.visible = true
-			_is_blink_visible = true
-			# Re-enable collision (not synced via network, must be done locally).
-			collision_layer = _original_collision_layer
-			collision_mask = _original_collision_mask
 		_:
 			G.fatal()
 
@@ -723,3 +712,15 @@ func _update_invincibility_blink() -> void:
 		_blink_accumulator -= blink_period
 		_is_blink_visible = not _is_blink_visible
 		animator.visible = _is_blink_visible
+
+
+func set_is_collidable(is_collidable: bool) -> void:
+	super.set_is_collidable(is_collidable)
+
+	# Also update blink visibility state.
+	if is_collidable:
+		# Alive - ensure blink state is visible.
+		_is_blink_visible = true
+	else:
+		# Dead - ensure blink state is hidden.
+		_is_blink_visible = false

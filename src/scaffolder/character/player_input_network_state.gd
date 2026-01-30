@@ -43,6 +43,19 @@ func _get_interaction_type_name(interaction_type: int) -> String:
 	return "UNKNOWN_%d" % interaction_type
 
 
+func _is_interaction_rollbackable(interaction_type: int) -> bool:
+	# Client interactions are rollbackable - effects recalculated during
+	# rollback.
+	match interaction_type:
+		ClientInteractionType.NONE:
+			return true
+		ClientInteractionType.JUMP:
+			return true
+		_:
+			G.fatal("Unknown ClientInteractionType: %d" % interaction_type)
+			return true
+
+
 func _clear_jump_bit_in_frame_if_not_pressed(frame_index: int) -> void:
 	if frame_index < 0 or not _rollback_buffer.has_at(frame_index):
 		return
@@ -149,7 +162,7 @@ func _reconcile_jump_interaction(frame_index: int) -> void:
 func _inject_action_bit_into_buffer(
 	frame_index: int,
 	bit_mask: int,
-	_actions_index: int = -1  # Deprecated parameter, kept for compatibility.
+	_actions_index: int = -1 # Deprecated parameter, kept for compatibility.
 ) -> void:
 	var frame_state: Array = _rollback_buffer.get_at(frame_index)
 	var current_actions: int = _get_frame_property(frame_state, &"actions")

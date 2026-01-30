@@ -304,6 +304,13 @@ func _update_collision_mask() -> void:
 	#surfaces.is_attaching_to_walk_through_walls)
 
 
+## Virtual method to set collision and visibility state based on collidability.
+## Override in subclasses to handle character-specific collision logic.
+func set_is_collidable(is_collidable: bool) -> void:
+	# Default: no-op. Subclasses override to implement specific behavior.
+	pass
+
+
 func force_boost(boost: Vector2) -> void:
 	velocity = boost
 

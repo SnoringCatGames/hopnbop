@@ -511,6 +511,11 @@ func _pre_network_process() -> void:
 		previous_frame_state = _get_default_values()
 	_sync_to_scene_state(previous_frame_state)
 
+	# Restore indirect interaction-based state after syncing.
+	var current_frame_state = _rollback_buffer.get_at(timestamp_index - 1)
+	if current_frame_state != null:
+		_restore_indirect_interaction_state(current_frame_state)
+
 
 ## This is called after _network_process has been called on all relevant nodes.
 func _post_network_process() -> void:
@@ -545,6 +550,16 @@ func _should_accept_predicted_states() -> bool:
 	return false
 
 
+## Virtual method: whether a given interaction type is rollbackable.
+## Defaults to true (all interactions can be recalculated during rollback).
+## Override to return false for non-rollbackable interactions
+## (server-authoritative interactions where the first impression is final).
+func _is_interaction_rollbackable(interaction_type: int) -> bool:
+	G.fatal(
+		"Abstract ReconcilableNetworkState._is_interaction_rollbackable is not implemented")
+	return true
+
+
 func _get_default_values() -> Array:
 	G.fatal(
 		"Abstract ReconcilableNetworkState._get_default_values is not implemented")
@@ -556,6 +571,17 @@ func _sync_to_scene_state(_previous_state: Array) -> void:
 	G.fatal(
 		"Abstract ReconcilableNetworkState._sync_to_scene_state is not implemented"
 	)
+
+
+## Virtual method: restore indirect scene state based on interaction type.
+## This handles scene state that isn't directly synced in the rollback buffer
+## (e.g., collision layers, visibility) but depends on the interaction state.
+## Called after _sync_to_scene_state() to ensure derived state matches the
+## restored frame.
+func _restore_indirect_interaction_state(_frame_state: Array) -> void:
+	G.fatal(
+		"Abstract ReconcilableNetworkState._restore_indirect_interaction_state is not implemented")
+	pass
 
 
 ## This will update the networked state to match the surrounding scene state.

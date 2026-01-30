@@ -91,6 +91,22 @@ func _get_interaction_type_name(interaction_type: int) -> String:
 	return "UNKNOWN_%d" % interaction_type
 
 
+func _is_interaction_rollbackable(interaction_type: int) -> bool:
+	# Server interactions are non-rollbackable - server's first impression is
+	# final.
+	match interaction_type:
+		ServerInteractionType.NONE:
+			return true  # No interaction, doesn't matter.
+		ServerInteractionType.SPAWN, \
+		ServerInteractionType.BUMP, \
+		ServerInteractionType.KILL, \
+		ServerInteractionType.DIE:
+			return false  # Non-rollbackable.
+		_:
+			G.fatal("Unknown ServerInteractionType: %d" % interaction_type)
+			return false
+
+
 func _ready() -> void:
 	super._ready()
 	update_configuration_warnings()
@@ -353,6 +369,34 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 	character.previous_position = previous_state[_property_name_to_pack_index.position]
 	character.previous_velocity = previous_state[_property_name_to_pack_index.velocity]
 	character.surfaces.previous_bitmask = previous_state[_property_name_to_pack_index.surfaces]
+
+
+func _restore_indirect_interaction_state(frame_state: Array) -> void:
+	if not G.ensure_valid(character):
+		return
+
+	# Extract interaction type from frame state.
+	var interaction_type: int = _get_frame_property(
+		frame_state,
+		&"last_interaction_type"
+	)
+
+	# Determine collidability based on interaction type.
+	var is_collidable: bool
+	match interaction_type:
+		ServerInteractionType.DIE:
+			is_collidable = false  # Dead - no collision.
+		ServerInteractionType.SPAWN, \
+		ServerInteractionType.NONE, \
+		ServerInteractionType.BUMP, \
+		ServerInteractionType.KILL:
+			is_collidable = true  # Alive - has collision.
+		_:
+			G.fatal("Unknown ServerInteractionType: %d" % interaction_type)
+			is_collidable = true
+
+	# Delegate to character-specific collision handling.
+	character.set_is_collidable(is_collidable)
 
 
 func _sync_from_scene_state() -> void:
