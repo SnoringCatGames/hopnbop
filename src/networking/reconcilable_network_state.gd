@@ -1133,6 +1133,7 @@ func record_interaction(
 	position: Vector2,
 	direction: Vector2
 ) -> void:
+	var old_type := last_interaction_type
 	last_interaction_type = interaction_type
 	last_interaction_frame_index = (
 		frame_index if frame_index >= 0 else G.network.server_frame_index
@@ -1142,11 +1143,14 @@ func record_interaction(
 
 	if G.network.is_server and G.is_verbose:
 		G.verbose(
-			"Recorded interaction: player_id=%d, frame=%d, pos=%s" % [
+			"Recorded interaction: player_id=%d, type=%s (was %s), frame=%d, pos=%s" % [
 				player_id,
+				_get_interaction_type_name(interaction_type),
+				_get_interaction_type_name(old_type),
 				last_interaction_frame_index,
 				position,
-			]
+			],
+			ScaffolderLog.CATEGORY_NETWORK_SYNC
 		)
 
 

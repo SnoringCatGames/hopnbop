@@ -87,7 +87,7 @@ func _ready() -> void:
 	_original_collision_mask = collision_mask
 
 	# Store all Area2D collision values (BodyArea, FootArea, HeadArea).
-	for area_name in [&"%BodyArea", &"%FootArea", &"%HeadArea"]:
+	for area_name in ["%BodyArea", "%FootArea", "%HeadArea"]:
 		var area := get_node_or_null(area_name)
 		if is_instance_valid(area) and area is Area2D:
 			_original_area_collision_layers[area_name] = area.collision_layer
