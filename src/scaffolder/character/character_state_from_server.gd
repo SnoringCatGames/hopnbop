@@ -85,6 +85,12 @@ func _should_accept_predicted_states() -> bool:
 	return G.network.is_client
 
 
+func _get_interaction_type_name(interaction_type: int) -> String:
+	if interaction_type >= 0 and interaction_type < ServerInteractionType.size():
+		return ServerInteractionType.keys()[interaction_type]
+	return "UNKNOWN_%d" % interaction_type
+
+
 func _ready() -> void:
 	super._ready()
 	update_configuration_warnings()
@@ -385,6 +391,20 @@ func _reconcile_server_interaction() -> void:
 		interaction_frame,
 		_last_reconciled_interaction_frame_index
 	)
+
+	# Verbose logging for reconciliation status.
+	if G.is_verbose:
+		var type_name := ServerInteractionType.keys()[last_interaction_type]
+		G.verbose(
+			"Reconciling %s: frame=%d, should_process=%s, buffer_has=%s (%s)" % [
+				type_name,
+				interaction_frame,
+				should_process,
+				_rollback_buffer.has_at(interaction_frame),
+				name
+			],
+			ScaffolderLog.CATEGORY_NETWORK_SYNC
+		)
 
 	# Always mark as reconciled to prevent retry loops.
 	_last_reconciled_interaction_frame_index = interaction_frame

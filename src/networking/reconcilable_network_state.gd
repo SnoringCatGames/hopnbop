@@ -391,7 +391,19 @@ func _handle_new_authoritative_state() -> void:
 				[node_type, mismatch_details],
 				ScaffolderLog.CATEGORY_NETWORK_SYNC)
 
+			# Queue rollback with detailed cause logging.
+			var primary_cause := mismatched_properties[0] as String
 			G.network.frame_driver.queue_rollback(state_frame_index)
+
+			if G.is_verbose:
+				G.verbose(
+					"Rollback queued: frame=%d, cause=%s mismatch (%s)" % [
+						state_frame_index,
+						primary_cause,
+						name
+					],
+					ScaffolderLog.CATEGORY_NETWORK_SYNC
+				)
 
 		# Release the array back to pool
 		ArrayPool.release(mismatched_properties)
@@ -412,6 +424,19 @@ func _handle_new_authoritative_state() -> void:
 		G.print(
 			"Fast-forwarding due to future state from server",
 			ScaffolderLog.CATEGORY_NETWORK_SYNC)
+
+		# Warn if fast-forward happens during active interaction.
+		if last_interaction_type != 0 and last_interaction_frame_index >= 0:
+			var frame_gap := state_frame_index - G.network.server_frame_index
+			G.warning(
+				"Fast-forward during active interaction: type=%d, frame=%d, gap=%d frames (%s)" % [
+					last_interaction_type,
+					last_interaction_frame_index,
+					frame_gap,
+					name
+				],
+				ScaffolderLog.CATEGORY_NETWORK_SYNC
+			)
 
 		# Adjust the time tracker's clock offset to account for the drift.
 		# This prevents the NTP averaging from reverting the fast-forward by
@@ -859,12 +884,35 @@ func _get_mismatch_details_string(
 		var pack_index: int = _property_name_to_pack_index[property_name]
 		var networked_value = networked_state[pack_index]
 		var buffer_value = buffer_state[pack_index]
-		var networked_str := _get_string_for_value(networked_value)
-		var buffer_str := _get_string_for_value(buffer_value)
-		details.append(
-			"{%s: remote=%s, local=%s}" %
-			[property_name, networked_str, buffer_str],
-		)
+
+		# Special formatting for interaction properties.
+		if property_name.contains("interaction"):
+			if property_name == "last_interaction_type":
+				var buffer_type_str := _get_interaction_type_name(buffer_value)
+				var networked_type_str := _get_interaction_type_name(networked_value)
+				details.append(
+					"{%s: local=%s, remote=%s}" %
+					[property_name, buffer_type_str, networked_type_str],
+				)
+			elif property_name == "last_interaction_frame_index":
+				var drift := abs(buffer_value - networked_value)
+				details.append(
+					"{%s: local=%d, remote=%d, drift=%d}" %
+					[property_name, buffer_value, networked_value, drift],
+				)
+			elif property_name in ["last_interaction_position", "last_interaction_direction"]:
+				var dist := (buffer_value as Vector2).distance_to(networked_value)
+				details.append(
+					"{%s: distance=%.3f}" %
+					[property_name, dist],
+				)
+		else:
+			var networked_str := _get_string_for_value(networked_value)
+			var buffer_str := _get_string_for_value(buffer_value)
+			details.append(
+				"{%s: local=%s, remote=%s}" %
+				[property_name, buffer_str, networked_str],
+			)
 
 	return ", ".join(details)
 
@@ -1058,6 +1106,15 @@ func _get_string_for_value(value, is_final_value := false) -> String:
 
 func _get_string_for_bitmask(value: int) -> String:
 	return String.num_int64(value, 2).lpad(8, "0")
+
+
+## Returns a human-readable name for an interaction type enum value.
+## Subclasses can override this to provide specific enum names.
+func _get_interaction_type_name(interaction_type: int) -> String:
+	# Default implementation - subclasses should override.
+	if interaction_type == 0:
+		return "NONE"
+	return str(interaction_type)
 
 
 ## Converts a timestamp in microseconds to a frame index.
