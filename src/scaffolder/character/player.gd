@@ -24,6 +24,11 @@ var player_id: int:
 var _original_collision_layer := 0
 var _original_collision_mask := 0
 
+# Store original collision layers for all Area2D children
+# (BodyArea, FootArea, HeadArea).
+var _original_area_collision_layers := {}
+var _original_area_collision_masks := {}
+
 var _has_disabled_inter_player_collisions := false
 
 
@@ -80,6 +85,13 @@ func _ready() -> void:
 	# Store original collision values for respawn.
 	_original_collision_layer = collision_layer
 	_original_collision_mask = collision_mask
+
+	# Store all Area2D collision values (BodyArea, FootArea, HeadArea).
+	for area_name in [&"%BodyArea", &"%FootArea", &"%HeadArea"]:
+		var area := get_node_or_null(area_name)
+		if is_instance_valid(area) and area is Area2D:
+			_original_area_collision_layers[area_name] = area.collision_layer
+			_original_area_collision_masks[area_name] = area.collision_mask
 
 	# Connect to match end signal.
 	if is_instance_valid(G.match_state):
@@ -227,6 +239,13 @@ func server_trigger_death() -> void:
 	collision_layer = 0
 	collision_mask = 0
 
+	# Disable all Area2D collisions (BodyArea, FootArea, HeadArea).
+	for area_name in _original_area_collision_layers:
+		var area := get_node_or_null(area_name)
+		if is_instance_valid(area) and area is Area2D:
+			area.collision_layer = 0
+			area.collision_mask = 0
+
 	# Schedule respawn.
 	G.time.set_timeout(
 		server_execute_respawn,
@@ -287,6 +306,13 @@ func server_execute_respawn() -> void:
 	collision_layer = _original_collision_layer
 	collision_mask = _original_collision_mask
 	_has_disabled_inter_player_collisions = false
+
+	# Re-enable all Area2D collisions (BodyArea, FootArea, HeadArea).
+	for area_name in _original_area_collision_layers:
+		var area := get_node_or_null(area_name)
+		if is_instance_valid(area) and area is Area2D:
+			area.collision_layer = _original_area_collision_layers[area_name]
+			area.collision_mask = _original_area_collision_masks[area_name]
 
 	G.verbose(
 		"F:%d Player %d respawned at %s" % [
