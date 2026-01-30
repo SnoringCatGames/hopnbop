@@ -44,11 +44,10 @@ func _enter_tree() -> void:
 
 
 func _client_on_player_id_replicated(new_player_id: int) -> void:
-	G.print(
+	G.verbose(
 		"Player._client_on_player_id_replicated: new_player_id=%d" %
 			new_player_id,
 		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-		ScaffolderLog.Verbosity.VERBOSE,
 	)
 
 	player_id = new_player_id
@@ -95,10 +94,14 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
 	super._process(_delta)
 
 
 func _physics_process(_delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
 	super._physics_process(_delta)
 
 
@@ -202,14 +205,13 @@ func get_is_player_control_active() -> bool:
 func server_trigger_death() -> void:
 	G.check_is_server()
 
-	G.print(
+	G.verbose(
 		"F:%d Player %d triggered death, scheduling respawn in %s sec" % [
 			G.network.server_frame_index,
 			player_id,
 			G.settings.player_respawn_cooldown_sec,
 		],
 		ScaffolderLog.CATEGORY_GAME_STATE,
-		ScaffolderLog.Verbosity.VERBOSE,
 	)
 
 	# Record DIE interaction (new system).
@@ -235,7 +237,7 @@ func server_trigger_death() -> void:
 func server_execute_respawn() -> void:
 	G.check_is_server()
 
-	G.print(
+	G.verbose(
 		"F:%d Player %d respawn timer fired, interaction_type=%d (DIE=%d)" % [
 			G.network.server_frame_index,
 			player_id,
@@ -243,7 +245,6 @@ func server_execute_respawn() -> void:
 			CharacterStateFromServer.ServerInteractionType.DIE,
 		],
 		ScaffolderLog.CATEGORY_GAME_STATE,
-		ScaffolderLog.Verbosity.VERBOSE,
 	)
 
 	# Only respawn if player is in DIE state (not already respawned).
@@ -287,7 +288,7 @@ func server_execute_respawn() -> void:
 	collision_mask = _original_collision_mask
 	_has_disabled_inter_player_collisions = false
 
-	G.print(
+	G.verbose(
 		"F:%d Player %d respawned at %s" % [
 			G.network.server_frame_index,
 			player_id,
