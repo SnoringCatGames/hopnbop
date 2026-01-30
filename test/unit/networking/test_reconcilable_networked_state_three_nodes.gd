@@ -25,6 +25,10 @@ class TestServerAuthState extends ReconcilableNetworkedState:
 	}
 
 
+	func _has_non_rollbackable_interactions() -> bool:
+		return false  # Test class doesn't use interaction tracking.
+
+
 	func _init() -> void:
 		super._init()
 		if replication_config == null:
@@ -56,6 +60,10 @@ class TestClientAuthState extends ReconcilableNetworkedState:
 	}
 
 
+	func _has_non_rollbackable_interactions() -> bool:
+		return false  # Test class doesn't use interaction tracking.
+
+
 	func _init() -> void:
 		super._init()
 		if replication_config == null:
@@ -85,6 +93,10 @@ class TestForwardedState extends ReconcilableNetworkedState:
 	@warning_ignore("unused_private_class_variable") var _synced_properties_and_rollback_diff_thresholds := {
 		"test_value": 0,
 	}
+
+
+	func _has_non_rollbackable_interactions() -> bool:
+		return false  # Test class doesn't use interaction tracking.
 
 
 	func _init() -> void:

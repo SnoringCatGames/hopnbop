@@ -35,6 +35,10 @@ func _init() -> void:
 		replication_config = SceneReplicationConfig.new()
 
 
+func _has_non_rollbackable_interactions() -> bool:
+	return false  # Test class doesn't use interaction tracking.
+
+
 func _get_is_server_authoritative() -> bool:
 	return true
 

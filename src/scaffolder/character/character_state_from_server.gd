@@ -91,17 +91,21 @@ func _get_interaction_type_name(interaction_type: int) -> String:
 	return "UNKNOWN_%d" % interaction_type
 
 
+func _has_non_rollbackable_interactions() -> bool:
+	return true
+
+
 func _is_interaction_rollbackable(interaction_type: int) -> bool:
 	# Server interactions are non-rollbackable - server's first impression is
 	# final.
 	match interaction_type:
 		ServerInteractionType.NONE:
-			return true  # No interaction, doesn't matter.
+			return true # No interaction, doesn't matter.
 		ServerInteractionType.SPAWN, \
 		ServerInteractionType.BUMP, \
 		ServerInteractionType.KILL, \
 		ServerInteractionType.DIE:
-			return false  # Non-rollbackable.
+			return false # Non-rollbackable.
 		_:
 			G.fatal("Unknown ServerInteractionType: %d" % interaction_type)
 			return false
@@ -120,7 +124,7 @@ func _update_replication_config() -> void:
 
 	# Also sync the player_id, so the client can know which player has
 	# authority.
-	var player_id_path := "%s:player_id" % root.get_path_to(self)
+	var player_id_path := "%s:player_id" % root.get_path_to(self )
 	if not replication_config.has_property(player_id_path):
 		replication_config.add_property(player_id_path)
 		replication_config.property_set_replication_mode(
@@ -385,12 +389,12 @@ func _restore_indirect_interaction_state(frame_state: Array) -> void:
 	var is_collidable: bool
 	match interaction_type:
 		ServerInteractionType.DIE:
-			is_collidable = false  # Dead - no collision.
+			is_collidable = false # Dead - no collision.
 		ServerInteractionType.SPAWN, \
 		ServerInteractionType.NONE, \
 		ServerInteractionType.BUMP, \
 		ServerInteractionType.KILL:
-			is_collidable = true  # Alive - has collision.
+			is_collidable = true # Alive - has collision.
 		_:
 			G.fatal("Unknown ServerInteractionType: %d" % interaction_type)
 			is_collidable = true

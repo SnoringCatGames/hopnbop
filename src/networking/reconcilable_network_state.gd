@@ -236,21 +236,21 @@ func _init() -> void:
 		return
 
 	G.ensure(
-		Utils.check_whether_sub_classes_are_tools(self),
+		Utils.check_whether_sub_classes_are_tools(self ),
 		"Subclasses of ReconcilableNetworkedState must be marked with @tool")
 
 
 func _enter_tree() -> void:
 	if Engine.is_editor_hint():
 		return
-	G.network.frame_driver.add_networked_state(self)
+	G.network.frame_driver.add_networked_state(self )
 
 
 func _exit_tree() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	G.network.frame_driver.remove_networked_state(self)
+	G.network.frame_driver.remove_networked_state(self )
 
 
 func _ready() -> void:
@@ -550,11 +550,22 @@ func _should_accept_predicted_states() -> bool:
 	return false
 
 
+## Virtual method: whether this class uses the interaction tracking system.
+## Must be overridden by subclasses to return true if they track interactions
+## (regardless of whether they are rollbackable or non-rollbackable).
+func _has_non_rollbackable_interactions() -> bool:
+	G.fatal(
+		"Abstract ReconcilableNetworkState._has_non_rollbackable_interactions " +
+		"is not implemented"
+	)
+	return false
+
+
 ## Virtual method: whether a given interaction type is rollbackable.
 ## Defaults to true (all interactions can be recalculated during rollback).
 ## Override to return false for non-rollbackable interactions
 ## (server-authoritative interactions where the first impression is final).
-func _is_interaction_rollbackable(interaction_type: int) -> bool:
+func _is_interaction_rollbackable(_interaction_type: int) -> bool:
 	G.fatal(
 		"Abstract ReconcilableNetworkState._is_interaction_rollbackable is not implemented")
 	return true
@@ -598,7 +609,7 @@ func _update_replication_config() -> void:
 	if not G.ensure(is_instance_valid(root)):
 		return
 
-	var packed_state_path := "%s:packed_state" % root.get_path_to(self)
+	var packed_state_path := "%s:packed_state" % root.get_path_to(self )
 	if not replication_config.has_property(packed_state_path):
 		replication_config.add_property(packed_state_path)
 
@@ -830,11 +841,51 @@ func _unpack_buffer_state(frame_index: int) -> void:
 	if frame_state == null:
 		return
 
+	# Check if this frame has a non-rollbackable interaction onset.
+	# If so, skip unpacking to preserve the immutable interaction state.
+	if _is_non_rollbackable_interaction_onset(frame_state, frame_index):
+		if G.is_verbose:
+			G.verbose(
+				("Skipping unpack of frame %d for %s - non-rollbackable %s " +
+				"interaction onset") % [
+					frame_index,
+					name,
+					_get_interaction_type_name(
+						_get_frame_property(frame_state, &"last_interaction_type")
+					)
+				],
+				ScaffolderLog.CATEGORY_NETWORK_SYNC
+			)
+		return
+
 	var i := 0
 	for property_name in _property_names_for_packing:
 		set(property_name, frame_state[i])
 		i += 1
 	frame_authority = frame_state[i]
+
+
+## Checks if the given frame is a non-rollbackable interaction onset.
+func _is_non_rollbackable_interaction_onset(
+	frame_state: Array,
+	frame_index: int
+) -> bool:
+	var interaction_type: int = _get_frame_property(
+		frame_state,
+		&"last_interaction_type"
+	)
+	var interaction_frame: int = _get_frame_property(
+		frame_state,
+		&"last_interaction_frame_index"
+	)
+
+	# This is an interaction onset frame if the interaction frame equals this
+	# frame.
+	if interaction_frame != frame_index:
+		return false
+
+	# Check if the interaction is non-rollbackable.
+	return not _is_interaction_rollbackable(interaction_type)
 
 
 ## Gets a property value from a frame state array by property name.
@@ -1116,6 +1167,21 @@ func _get_configuration_warnings() -> PackedStringArray:
 		warnings.append("root_path does not point to a valid node")
 	elif not _partner_state_configuration_warning.is_empty():
 		warnings.append(_partner_state_configuration_warning)
+
+	# Validate interaction tracking configuration.
+	if _has_non_rollbackable_interactions():
+		var required_properties := [
+			"last_interaction_type",
+			"last_interaction_frame_index",
+			"last_interaction_position",
+			"last_interaction_direction",
+		]
+		for prop in required_properties:
+			if thresholds != null and not thresholds.has(prop):
+				warnings.append(
+					("Class has non-rollbackable interactions but missing " +
+					"'%s' in _synced_properties_and_rollback_diff_thresholds") % prop
+				)
 
 	return warnings
 

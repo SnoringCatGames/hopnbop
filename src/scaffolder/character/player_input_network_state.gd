@@ -43,6 +43,10 @@ func _get_interaction_type_name(interaction_type: int) -> String:
 	return "UNKNOWN_%d" % interaction_type
 
 
+func _has_non_rollbackable_interactions() -> bool:
+	return true
+
+
 func _is_interaction_rollbackable(interaction_type: int) -> bool:
 	# Client interactions are rollbackable - effects recalculated during
 	# rollback.

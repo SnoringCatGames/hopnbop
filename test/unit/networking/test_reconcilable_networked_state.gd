@@ -35,6 +35,10 @@ class TestableNetworkedState extends ReconcilableNetworkedState:
 	}
 
 
+	func _has_non_rollbackable_interactions() -> bool:
+		return false  # Test class doesn't use interaction tracking.
+
+
 	func _init() -> void:
 		super._init()
 		# Initialize replication_config for programmatic instantiation.

@@ -1230,6 +1230,157 @@ State: [X]  [X]  [X]  [X]  [X]  [Y]
             ↑ PREDICTED copies
 ```
 
+### 5.7 Interaction Immutability and Rollback Protection
+
+Certain game events (called "interactions") are designated as **non-rollbackable** - once they occur, their onset frame becomes immutable and cannot be modified by future rollbacks. This ensures server-authoritative decisions remain final.
+
+**Interaction Categories:**
+
+| Type | Rollbackable? | Reason |
+|------|--------------|--------|
+| `ClientInteractionType.JUMP` | ✅ Yes | Client input; effects can be recalculated |
+| `ServerInteractionType.SPAWN` | ❌ No | Server-authoritative respawn timing/position |
+| `ServerInteractionType.BUMP` | ❌ No | Server-authoritative collision detection |
+| `ServerInteractionType.KILL` | ❌ No | Server-authoritative kill moment |
+| `ServerInteractionType.DIE` | ❌ No | Server-authoritative death moment |
+
+**Immutability Scope:**
+
+For non-rollbackable interactions, ALL properties are immutable at the onset frame:
+- `last_interaction_type` - The interaction enum value
+- `last_interaction_frame_index` - Frame when it occurred
+- `last_interaction_position` - World position where it occurred
+- `last_interaction_direction` - Normalized direction vector
+
+When the server says "KILL happened at frame 100 at position (50, 30) in direction (1, 0)", that entire record is final. The onset frame (frame 100) cannot be modified by future client predictions.
+
+**Implementation:**
+
+```gdscript
+# ReconcilableNetworkedState - Virtual method
+func _is_interaction_rollbackable(interaction_type: int) -> bool:
+    return true  # Default: rollbackable
+
+# CharacterStateFromServer - Override for server interactions
+func _is_interaction_rollbackable(interaction_type: int) -> bool:
+    match interaction_type:
+        ServerInteractionType.SPAWN, \
+        ServerInteractionType.BUMP, \
+        ServerInteractionType.KILL, \
+        ServerInteractionType.DIE:
+            return false  # Non-rollbackable
+        _:
+            return true
+```
+
+**Rollback Adjustment Algorithm:**
+
+Before rolling back, check if the target frame contains a non-rollbackable interaction:
+
+```gdscript
+# NetworkFrameDriver._rollback_and_reprocess()
+func _rollback_and_reprocess() -> void:
+    var adjusted_rollback_frame := _queued_rollback_frame_index
+
+    # Check all networked nodes for non-rollbackable interactions
+    for node in _networked_state_nodes:
+        if node.last_interaction_frame_index == adjusted_rollback_frame:
+            if not node._is_interaction_rollbackable(node.last_interaction_type):
+                # Skip to frame AFTER the immutable interaction
+                adjusted_rollback_frame = node.last_interaction_frame_index + 1
+
+    # If adjustment pushes past current frame, cancel rollback
+    if adjusted_rollback_frame >= server_frame_index:
+        return  # Cannot rollback
+
+    # Proceed with adjusted frame...
+```
+
+**Example Scenario:**
+
+```
+Timeline:
+Frame 100: Server sends DIE interaction (non-rollbackable)
+Frame 101: Client continues predicting
+Frame 102: Client continues predicting
+Frame 103: Server correction arrives for frame 101 (position mismatch)
+
+Rollback attempt:
+1. Mismatch detected at frame 101
+2. Queue rollback to frame 101
+3. Before rollback, check frame 101 for non-rollbackable interactions
+4. No interaction at 101, but frame 100 has DIE (already processed)
+5. Rollback proceeds from frame 101
+
+Result: Frame 100 (DIE interaction) remains immutable
+        Frames 101-103 are re-simulated with corrected position
+```
+
+**Edge Case: Multiple Interactions on Same Frame:**
+
+If two interactions would occur for the same node on the same frame, keep the first and abandon the second. This is a simplification that prevents conflicting interaction states.
+
+```gdscript
+# CharacterStateFromServer.record_interaction()
+func record_interaction(type: int, frame: int, pos: Vector2, dir: Vector2):
+    # Only record if this is a new interaction frame
+    if last_interaction_frame_index == frame:
+        # Already have interaction for this frame - keep first
+        return
+
+    last_interaction_type = type
+    last_interaction_frame_index = frame
+    last_interaction_position = pos
+    last_interaction_direction = dir
+```
+
+**Indirect State Restoration:**
+
+Non-rollbackable interactions often affect "indirect state" (collision layers, visibility) that isn't directly synced in the rollback buffer. A restoration method ensures this state is correctly derived:
+
+```gdscript
+# CharacterStateFromServer._restore_indirect_interaction_state()
+func _restore_indirect_interaction_state(frame_state: Array) -> void:
+    var interaction_type = _get_frame_property(frame_state, &"last_interaction_type")
+
+    match interaction_type:
+        ServerInteractionType.DIE:
+            # Dead: hide sprite, disable collision
+            player.animator.visible = false
+            player.collision_layer = 0
+            player.collision_mask = 0
+        ServerInteractionType.SPAWN, \
+        ServerInteractionType.NONE, \
+        ServerInteractionType.BUMP, \
+        ServerInteractionType.KILL:
+            # Alive: show sprite, enable collision
+            if not player.animator.visible:
+                player.animator.visible = true
+            if player.collision_layer == 0:
+                player.collision_layer = player._original_collision_layer
+                player.collision_mask = player._original_collision_mask
+```
+
+Called from `_pre_network_process()` after syncing position/velocity from rollback buffer:
+
+```gdscript
+func _pre_network_process() -> void:
+    _unpack_buffer_state(timestamp_index - 1)
+    _sync_to_scene_state(previous_frame_state)
+
+    # NEW: Restore indirect state based on interaction type
+    var current_frame_state = _rollback_buffer.get_at(timestamp_index - 1)
+    if current_frame_state != null:
+        _restore_indirect_interaction_state(current_frame_state)
+```
+
+**Why Immutability Matters:**
+
+1. **Prevents Retroactive Changes:** Once the server decides a player died at frame 100, future client inputs cannot "undo" that death
+2. **Maintains Fair Gameplay:** Lag-compensated kills remain valid even if later predictions differ
+3. **Simplifies Reconciliation:** Clear authority boundary - server interaction decisions are final
+4. **Fixes Collision Bug:** Previously, DIE would set `collision_layer = 0` immediately, but this wasn't in the rollback buffer. During rollback, collision stayed 0 even when player should be alive. Now collision is derived from interaction type during buffer unpacking.
+
 ---
 
 ## 6. Clock Synchronization (NTP)
@@ -2140,6 +2291,228 @@ For player characters, use two separate synchronizers:
 **Why Separate?**
 
 Spawning requires server authority (prevent client-side spawning exploits). Input requires peer authority (low-latency local input). Using separate synchronizers isolates these concerns.
+
+### 10.5 Interaction Replication System
+
+**Interactions** are frame-stamped game events (JUMP, SPAWN, BUMP, KILL, DIE) that trigger at specific moments and must be replicated across all clients. Unlike continuous state (position, velocity), interactions are discrete events with specific timing and location.
+
+**Two Parallel Systems:**
+
+| System | Authority | Interaction Types | Use Case |
+|--------|-----------|-------------------|----------|
+| `ClientInteractionType` | Client → Server → Clients | JUMP | Player inputs |
+| `ServerInteractionType` | Server → Clients | SPAWN, BUMP, KILL, DIE | Game events |
+
+**Interaction Properties:**
+
+All interactions share these tracked properties on `ReconcilableNetworkedState`:
+
+```gdscript
+var last_interaction_type: int                # Enum value (ClientInteractionType or ServerInteractionType)
+var last_interaction_frame_index: int        # Frame when interaction occurred (-1 = none)
+var last_interaction_position: Vector2       # World position where interaction happened
+var last_interaction_direction: Vector2      # Direction vector for the interaction
+```
+
+These properties are:
+- Synced across the network via `MultiplayerSynchronizer`
+- Stored in the rollback buffer for reconciliation
+- Used to trigger rollback when mismatches are detected
+
+**Client Interaction Flow (JUMP):**
+
+```
+1. LOCAL CLIENT (Input Detection)
+   Player.last_triggered_jump_frame_index = frame_index
+   ↓
+   PlayerInputFromClient._sync_from_scene_state()
+   ↓
+   record_interaction(JUMP, frame, position, Vector2.ZERO)
+   ↓
+   [Network replication via MultiplayerSynchronizer]
+   ↓
+2. SERVER (Reconciliation)
+   PlayerInputNetworkState._reconcile_client_interaction()
+   ↓
+   _reconcile_jump_interaction()
+   ↓
+   _inject_action_bit_into_buffer(frame_index, jump_bit_mask)
+   ↓
+   queue_rollback(frame_index)
+   ↓
+   [Rollback and re-simulation]
+```
+
+The server validates the jump input by checking if it's physically possible at that frame, then injects it into the rollback buffer and queues a rollback to ensure all frames after the jump are re-simulated with correct physics.
+
+**Server Interaction Flow (SPAWN, BUMP, KILL, DIE):**
+
+```
+1. SERVER (Collision Detection)
+   Bunny._on_body_area_body_entered() or _on_foot_area_area_entered()
+   ↓
+   G.match_state.server_add_bump/kill(player_ids)
+   ↓
+   _server_apply_interaction_with_position(other_player, type, position)
+   ↓
+   state_from_server.record_interaction(type, frame, position, direction)
+   ↓
+   [Network replication via MultiplayerSynchronizer]
+   ↓
+2. ALL CLIENTS (Reconciliation)
+   CharacterStateFromServer._reconcile_server_interaction()
+   ↓
+   match last_interaction_type:
+       BUMP → _reconcile_bump_interaction()
+       KILL → _reconcile_kill_interaction()
+       DIE → _reconcile_die_interaction()
+       SPAWN → _reconcile_spawn_interaction()
+   ↓
+   _inject_velocity_delta_into_buffer() or _inject_position_into_buffer()
+   ↓
+   queue_rollback(frame_index)
+   ↓
+   [Rollback and re-simulation]
+   ↓
+3. CLIENT (Visual Effects)
+   Bunny._handle_interaction_effects()
+   ↓
+   play_sound(), visual effects (particles, etc.)
+```
+
+**Reconciliation Methods:**
+
+Each interaction type has a dedicated reconciliation method:
+
+```gdscript
+# CharacterStateFromServer
+
+func _reconcile_bump_interaction(frame_index: int) -> void:
+    # Calculate bounce velocity from direction
+    var bounce_velocity = last_interaction_direction * bump_bounce_speed
+    # Inject into rollback buffer at interaction frame
+    _inject_velocity_delta_into_buffer(frame_index, bounce_velocity)
+    # Queue rollback to re-simulate from this frame
+    queue_rollback(frame_index)
+
+func _reconcile_kill_interaction(frame_index: int) -> void:
+    # Similar to bump, but larger bounce
+    var kill_bounce = last_interaction_direction * kill_bounce_speed
+    _inject_velocity_delta_into_buffer(frame_index, kill_bounce)
+    queue_rollback(frame_index)
+
+func _reconcile_die_interaction(frame_index: int) -> void:
+    # Zero out velocity - player is dead
+    _inject_velocity_delta_into_buffer(frame_index, Vector2.ZERO)
+    queue_rollback(frame_index)
+
+func _reconcile_spawn_interaction(frame_index: int) -> void:
+    # Teleport to spawn position
+    _inject_position_into_buffer(frame_index, last_interaction_position)
+    # Zero velocity at spawn
+    _inject_velocity_delta_into_buffer(frame_index, Vector2.ZERO)
+    queue_rollback(frame_index)
+```
+
+**Lag Compensation:**
+
+For high-speed interactions (KILL), the server uses swept collision detection and lag-compensated positioning:
+
+```gdscript
+# Bunny._did_foot_pass_through_head_this_frame()
+func _did_foot_pass_through_head_this_frame(other_player: Player) -> bool:
+    var foot_prev = foot_area.global_position_previous_frame
+    var foot_curr = foot_area.global_position
+    var head_prev = other_player.head_area.global_position_previous_frame
+    var head_curr = other_player.head_area.global_position
+
+    # Check if foot swept through head between frames
+    var collision_point = _calculate_swept_collision_point(
+        foot_prev, foot_curr,
+        head_prev, head_curr
+    )
+
+    if collision_point != null:
+        # Inject lag-compensated position into rollback buffer
+        _inject_position_into_buffer(
+            G.network.server_frame_index,
+            collision_point
+        )
+        return true
+
+    return false
+```
+
+This ensures that fast-moving players can still be killed fairly, even if they would have passed through each other in a single frame.
+
+**Indirect State Restoration:**
+
+Some state changes depend on interaction type but aren't directly synced in the rollback buffer (collision layers, visibility). The `_restore_indirect_interaction_state()` method ensures these are correctly derived:
+
+```gdscript
+func _restore_indirect_interaction_state(frame_state: Array) -> void:
+    var interaction_type = _get_frame_property(frame_state, &"last_interaction_type")
+
+    match interaction_type:
+        ServerInteractionType.DIE:
+            player.animator.visible = false
+            player.collision_layer = 0
+        ServerInteractionType.SPAWN, NONE, BUMP, KILL:
+            player.animator.visible = true
+            player.collision_layer = player._original_collision_layer
+```
+
+Called automatically during `_pre_network_process()` after unpacking position/velocity from the rollback buffer.
+
+**Interaction Deduplication:**
+
+To prevent the same collision from triggering multiple times:
+
+```gdscript
+# MatchState._server_has_recent_interaction()
+func _server_has_recent_interaction(player_a_id: int, player_b_id: int) -> bool:
+    var key = _get_interaction_key(player_a_id, player_b_id)
+
+    if _interaction_buffer.has(key):
+        var last_frame = _interaction_buffer[key]
+        var frame_diff = G.network.server_frame_index - last_frame
+
+        if frame_diff < deduplication_frame_window:
+            return true  # Too recent, deduplicate
+
+    _interaction_buffer[key] = G.network.server_frame_index
+    return false
+```
+
+**Reconciliation Guards:**
+
+The `_should_reconcile_interaction()` method prevents duplicate processing:
+
+```gdscript
+func _should_reconcile_interaction(
+    interaction_frame: int,
+    last_reconciled_frame: int
+) -> bool:
+    # Already processed this interaction
+    if last_reconciled_frame == interaction_frame:
+        return false
+
+    # Interaction frame too old (outside rollback buffer)
+    if is_frame_too_old_to_consider(interaction_frame):
+        return false
+
+    # No state in buffer for this frame
+    if not _rollback_buffer.has_at(interaction_frame):
+        return false
+
+    return true
+```
+
+Always marks as reconciled even if skipped to prevent retry loops.
+
+**Immutability (See Section 5.7):**
+
+Non-rollbackable interactions (SPAWN, BUMP, KILL, DIE) have immutable onset frames. Once the server decides a KILL happened at frame 100, that frame cannot be modified by future rollbacks. Only rollbackable interactions (JUMP) can have their effects recalculated during rollback.
 
 ---
 
