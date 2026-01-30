@@ -60,6 +60,11 @@ func _is_interaction_rollbackable(interaction_type: int) -> bool:
 			return true
 
 
+func _restore_indirect_interaction_state(_frame_state: Array) -> void:
+	# Do nothing.
+	pass
+
+
 func _clear_jump_bit_in_frame_if_not_pressed(frame_index: int) -> void:
 	if frame_index < 0 or not _rollback_buffer.has_at(frame_index):
 		return
