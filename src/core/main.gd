@@ -25,10 +25,10 @@ func _ready() -> void:
 
 	_start_app()
 
-	_update_window_mode()
+	G.window_manager.update_window_mode()
 
 	if G.network.is_preview and G.network.is_client:
-		_position_client_window_in_preview_mode()
+		G.window_manager.position_client_window_in_preview_mode()
 
 
 func _handle_preview_window_closing() -> void:
@@ -59,17 +59,6 @@ func _handle_preview_window_closing() -> void:
 		)
 		close_app()
 		return
-
-
-func _update_window_mode() -> void:
-	if (
-		G.settings.auto_minimize_server_window and
-		G.network.is_server and
-		G.network.is_preview
-	):
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MINIMIZED)
-	elif G.settings.full_screen and not G.network.is_server:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 
 func _start_app() -> void:
@@ -126,50 +115,8 @@ func _notification(notification_type: int) -> void:
 		NOTIFICATION_WM_CLOSE_REQUEST:
 			_disconnect_peers_in_preview_mode()
 			close_app()
-		NOTIFICATION_WM_WINDOW_FOCUS_OUT:
-			if (G.settings.pauses_on_focus_out and
-					G.settings.is_server_pause_enabled):
-				G.network.frame_driver.client_request_pause()
 		_:
 			pass
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if G.settings.dev_mode:
-		if event is InputEventKey:
-			match event.physical_keycode:
-				KEY_P:
-					if G.settings.is_screenshot_hotkey_enabled:
-						G.utils.take_screenshot()
-				KEY_O:
-					if is_instance_valid(G.hud):
-						G.hud.visible = not G.hud.visible
-						G.print(
-							"Toggled HUD visibility: %s" %
-							("visible" if G.hud.visible else "hidden"),
-							ScaffolderLog.CATEGORY_CORE_SYSTEMS,
-						)
-				KEY_ESCAPE:
-					if G.settings.is_server_pause_enabled:
-						G.network.frame_driver.client_request_pause()
-				KEY_F1:
-					if is_instance_valid(G.super_hud):
-						G.super_hud.toggle_debug_console()
-				KEY_F2:
-					if is_instance_valid(G.super_hud):
-						G.super_hud.toggle_player_state_list()
-				KEY_F3:
-					if is_instance_valid(G.super_hud):
-						G.super_hud.toggle_perf_tracker()
-				_:
-					pass
-
-	if (
-		event.is_action_pressed("toggle_pause") and
-		G.settings.is_server_pause_enabled
-	):
-		G.network.frame_driver.client_request_toggle_pause()
-		get_viewport().set_input_as_handled()
 
 
 func close_app() -> void:
@@ -190,71 +137,8 @@ func close_app() -> void:
 
 
 func update_window_title() -> void:
-	if not G.network.is_preview:
-		return
-
-	var app_name = ProjectSettings.get_setting("application/config/name")
-	var device_prefix: String
-	if G.network.is_server:
-		device_prefix = "SERVER"
-	else:
-		device_prefix = "CLIENT %s" % G.network.local_peer_id
-
-	DisplayServer.window_set_title("[%s] %s (DEBUG)" % [device_prefix, app_name])
-
-
-func _position_client_window_in_preview_mode() -> void:
-	# Account for window title bar height.
-	const TITLE_BAR_HEIGHT := 48
-
-	var screen_count := DisplayServer.get_screen_count()
-	# Default to current screen (which windows start on).
-	var target_screen := DisplayServer.window_get_current_screen()
-
-	# Check if we should move to another monitor.
-	if G.settings.move_preview_windows_to_other_display and screen_count > 1:
-		# Move client window(s) to screen 0 (secondary monitor).
-		target_screen = 0
-
-	# Get usable screen area for the target screen.
-	var usable_rect := DisplayServer.screen_get_usable_rect(target_screen)
-
-	if not G.settings.preview_run_multiple_clients:
-		# Single client: center window at half monitor size.
-		@warning_ignore("integer_division")
-		var window_width := usable_rect.size.x / 2
-		@warning_ignore("integer_division")
-		var window_height := usable_rect.size.y / 2
-
-		# Set size.
-		DisplayServer.window_set_size(Vector2i(window_width, window_height))
-
-		# Center the window.
-		@warning_ignore("integer_division")
-		var position_x := usable_rect.position.x + (
-			(usable_rect.size.x - window_width) / 2
-		)
-		@warning_ignore("integer_division")
-		var position_y := usable_rect.position.y + (
-			(usable_rect.size.y - window_height) / 2
-		)
-		DisplayServer.window_set_position(Vector2i(position_x, position_y))
-
-	else:
-		# Use split-screen layout (on either primary or other monitor).
-		@warning_ignore("integer_division")
-		var half_width := usable_rect.size.x / 2
-		var window_height := usable_rect.size.y - TITLE_BAR_HEIGHT
-
-		# Calculate position on target screen.
-		var position_x := usable_rect.position.x
-		if G.network.preview_client_number != 1:
-			position_x += half_width
-		var position_y := usable_rect.position.y + TITLE_BAR_HEIGHT
-
-		# Set size and position.
-		DisplayServer.window_set_size(Vector2i(half_width, window_height))
-		DisplayServer.window_set_position(Vector2i(position_x, position_y))
+	## Delegates to WindowManager for title updates.
+	G.window_manager.update_window_title()
 
 
 func _disconnect_peers_in_preview_mode() -> void:

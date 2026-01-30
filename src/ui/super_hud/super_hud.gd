@@ -14,7 +14,13 @@ func _ready() -> void:
 		process_mode = Node.PROCESS_MODE_DISABLED
 		return
 
-	# Initialize visibility based on current settings
+	# Wait for G.settings to be assigned.
+	await get_tree().process_frame
+
+	# Respect master HUD toggle.
+	self.visible = G.settings.show_hud
+
+	# Initialize component visibility based on current settings.
 	_sync_component_visibility()
 
 

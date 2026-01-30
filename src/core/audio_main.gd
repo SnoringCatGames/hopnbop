@@ -112,3 +112,22 @@ func fade_out(stream_player: AudioStreamPlayer) -> void:
 	# Ensure the stream is still playing, just in case we somehow end up with
 	# overlapping tweens (the latest tween should end up winning).
 	stream_player.stream_paused = true
+
+
+func apply_music_mute() -> void:
+	if not G.network.is_primary_client:
+		return
+
+	# Apply mute setting to currently playing music streams.
+	var menu_player := %MenuThemeStreamPlayer
+	var main_player := %MainThemeStreamPlayer
+
+	if menu_player.playing and not menu_player.stream_paused:
+		menu_player.volume_db = mute_volume if (
+			G.settings.mute_music
+		) else menu_theme_volume
+
+	if main_player.playing and not main_player.stream_paused:
+		main_player.volume_db = mute_volume if (
+			G.settings.mute_music
+		) else main_theme_volume
