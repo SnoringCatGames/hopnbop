@@ -49,6 +49,9 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
+# SEND THIS PROMPT:
+# I've recently added support for tracking the last-interaction type/frame/position/direction on ReconcilableNetworkState and its subclasses. I'm now trying to validate it. Please perform a thorough analysis of the current state of my client prediction, mismatch detection, rollback reconciliation, replication and rollback state packing and unpacking, initial interaction triggering and handling, and interaction replication and rollback handling. Please look for potential bugs, potential improvements, and potential informative cases to add more conditional debug logging for.
+
 # LEFT OFF HERE:
 # - A couple prompts actively processing (debug kills, add annotations)
 
@@ -58,10 +61,16 @@ extends Node
 
 # - Test kills and bumps. Adjust foot, head, and body shapes.
 
+# - When a kill is triggered, calculate the point at which the killer's position should have when the stomp contact first happened. Set that as the player's current position, and set that as the position of the interaction that we record on networked state.
+
+# - Is there a potential problem from frame drift between the client and the server?
+
 # - Check if we're still using the ArrayPool in all the places we should,
 #   especially with the new RollbackBuffer in MatchState.
 
 # - Lingering FIXMEs.
+
+#
 
 # - Implement player debug annotations:
 #   - Add a new PlayerAnnotations class for this.
@@ -78,14 +87,17 @@ extends Node
 #     with consts.
 #   - Toggleable at run time with F6.
 
+# TEST THIS
 # - Add F7 shortcut for toggling hud visibility.
 #   - Additionally, this should act like a master switch that makes all other
 #     HUD/SuperHud UIs and annotations invisibile (but won't make them visible
 #     unless their own individual flag is also enabled).
-# - Add F8 shortcut for toggling music.
+# - Add F8 shortcut for toggling music (but preserve sound playback).
 # - Shift each FN shortcut up by two numbers.
 # - Move the F9 shortcut to F1.
 # - Move the F10 shortcut to F2.
+
+# TEST that when a high-speed kill happens, the bounce happens from where the initial collision contact should have been.
 
 # UI fixes:
 # - [Match countdown] Remaining Tasks:
@@ -907,6 +919,8 @@ func _client_execute_unpause_at_server_frame(
 	# Adopt server's pause accounting.
 	_cumulative_paused_frames = server_cumulative_paused_frames
 
+	var previous_frame := server_frame_index
+
 	# Align frame index with server.
 	server_frame_index = server_unpause_frame
 	server_frame_time_usec = server_unpause_time_usec
@@ -936,9 +950,11 @@ func _client_execute_unpause_at_server_frame(
 			G.screens.client_open_screen(ScreensMain.ScreenType.GAME)
 
 	G.print(
-		"Client synchronized unpause at frame %d (cumulative paused: %d)" % [
+		"Client synchronized unpause: frame %d->%d (paused: %d, init=%s)" % [
+			previous_frame,
 			server_frame_index,
 			_cumulative_paused_frames,
+			_is_frame_tracking_initialized,
 		],
 		ScaffolderLog.CATEGORY_NETWORK_SYNC,
 	)
@@ -974,6 +990,7 @@ func _initialize_frame_tracking() -> void:
 
 	# Initialize to frame 0
 	# The first physics tick will increment this to 1
+	var previous_frame_index := server_frame_index
 	server_frame_index = 0
 	server_frame_time_usec = get_time_usec_from_frame_index(0)
 
@@ -988,7 +1005,7 @@ func _initialize_frame_tracking() -> void:
 	# Note: Clients sync to server's clock via NTP offset, but track their own
 	# frame indices locally starting from 0
 	G.print(
-		"Frame tracking initialized at frame 0",
+		"Frame tracking initialized at frame 0 (was %d)" % previous_frame_index,
 		ScaffolderLog.CATEGORY_NETWORK_SYNC,
 	)
 
@@ -1039,6 +1056,27 @@ func _resync_frame_time_to_wall_clock() -> void:
 	G.print(
 		"Re-synced frame timestamp to wall-clock (drift: %d ms)" %
 		[drift_usec / 1000],
+		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+	)
+
+
+# FIXME: REMOVE: Is this actually a potential problem?
+func _log_frame_drift() -> void:
+	# Calculate what frame we SHOULD be at based on server time
+	var estimated_server_time := G.network.time.get_server_time_usec()
+	var expected_frame := get_frame_index_from_time_usec(estimated_server_time)
+	var frame_drift := server_frame_index - expected_frame
+
+	@warning_ignore("integer_division")
+	var time_drift_ms := frame_drift * TARGET_NETWORK_TIME_STEP_USEC / 1000
+
+	G.print(
+		"Frame drift: local=%d expected=%d diff=%d (%d ms)" % [
+			server_frame_index,
+			expected_frame,
+			frame_drift,
+			time_drift_ms,
+		],
 		ScaffolderLog.CATEGORY_NETWORK_SYNC,
 	)
 
