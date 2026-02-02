@@ -56,7 +56,8 @@ extends Node
 
 # - Lingering FIXMEs.
 
-# TEST that when a high-speed kill happens, the bounce happens from where the initial collision contact should have been.
+# - TEST that when a high-speed kill happens, the bounce happens from where the
+#   initial collision contact should have been.
 
 # TEST THIS
 # - All FN keys

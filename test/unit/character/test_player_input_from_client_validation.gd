@@ -6,8 +6,6 @@ extends GutTest
 ## present and has matching synced properties, and the authority guards that
 ## prevent sync conflicts.
 
-const TestEnvironmentMock = preload("res://test/helpers/test_environment_mock.gd")
-
 
 func before_each():
 	ArrayPool.clear_all_pools()
@@ -154,5 +152,3 @@ class TestSyncGuard:
 			100,
 			"Should capture jump frame index",
 		)
-
-		ArrayPool.release(previous_state)
