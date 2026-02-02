@@ -306,7 +306,7 @@ func _update_collision_mask() -> void:
 
 ## Virtual method to set collision and visibility state based on collidability.
 ## Override in subclasses to handle character-specific collision logic.
-func set_is_collidable(is_collidable: bool) -> void:
+func set_is_collidable(_is_collidable: bool) -> void:
 	# Default: no-op. Subclasses override to implement specific behavior.
 	pass
 

@@ -843,7 +843,8 @@ func _unpack_buffer_state(frame_index: int) -> void:
 
 	# Check if this frame has a non-rollbackable interaction onset.
 	# If so, skip unpacking to preserve the immutable interaction state.
-	if _is_non_rollbackable_interaction_onset(frame_state, frame_index):
+	if (_has_non_rollbackable_interactions() and
+			_is_non_rollbackable_interaction_onset(frame_state, frame_index)):
 		if G.is_verbose:
 			G.verbose(
 				("Skipping unpack of frame %d for %s - non-rollbackable %s " +
