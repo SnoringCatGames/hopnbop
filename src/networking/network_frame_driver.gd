@@ -42,10 +42,12 @@ extends Node
 ## - Times are stored in microseconds for precision
 ##
 ## Rollback mechanism:
-## - queue_rollback() schedules rollback to a specific frame (conflict detection)
+## - queue_rollback() schedules rollback to a specific frame (conflict
+##   detection).
 ## - _rollback_and_reprocess() restores state and re-simulates up to current
-##   frame
-## - Only one rollback occurs per _network_process, earliest frame takes priority
+##   frame.
+## - Only one rollback occurs per _network_process, earliest frame takes
+##   priority.
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
