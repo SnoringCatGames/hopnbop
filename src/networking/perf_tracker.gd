@@ -117,6 +117,9 @@ var _throttled_warn_high_fastforward_rate: Callable
 
 
 func _ready() -> void:
+	if TestEnvironmentDetector.is_running_in_test_env(self):
+		return
+
 	G.log.log_system_ready("PerfTracker")
 
 	# Register custom performance monitors (only in preview mode for performance)
@@ -172,6 +175,9 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	if TestEnvironmentDetector.is_running_in_test_env(self):
+		return
+
 	_calculate_render_fps()
 	_check_and_reset_max_min_window()
 	if _current_render_fps > 0.0:
@@ -190,6 +196,9 @@ func _process(_delta: float) -> void:
 
 
 func _physics_process(_delta: float) -> void:
+	if TestEnvironmentDetector.is_running_in_test_env(self):
+		return
+
 	_calculate_physics_fps()
 	if _current_physics_fps > 0.0:
 		_min_physics_fps_in_window = min(

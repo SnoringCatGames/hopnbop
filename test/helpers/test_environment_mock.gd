@@ -7,6 +7,22 @@ extends RefCounted
 ## need without modifying production code.
 
 
+## Set up mock game_panel in G singleton.
+## Provides minimal mock with is_level_fully_loaded property for tests.
+## Note: Does not add to tree since it only needs to exist for property access.
+static func setup_mock_game_panel(_parent_node: Node = null) -> MockGamePanel:
+	# Free previous mock if it exists.
+	if is_instance_valid(G.game_panel):
+		G.game_panel.free()
+
+	var mock_game_panel = MockGamePanel.new()
+	mock_game_panel.name = "MockGamePanel"
+	# Set is_level_fully_loaded immediately since _ready won't be called.
+	mock_game_panel.is_level_fully_loaded = true
+	G.game_panel = mock_game_panel
+	return mock_game_panel
+
+
 ## Set up mock level in G singleton.
 ## Also initializes network time to allow rollback buffer setup.
 static func setup_mock_level(parent_node: Node) -> MockLevel:
@@ -28,6 +44,10 @@ static func setup_mock_level(parent_node: Node) -> MockLevel:
 	# Mock G.local_session for lobby operations.
 	if not is_instance_valid(G.local_session):
 		G.local_session = LocalSession.new()
+
+	# Mock G.game_panel for PerfTracker.
+	if not is_instance_valid(G.game_panel):
+		setup_mock_game_panel(parent_node)
 
 	return mock_level
 
@@ -181,3 +201,7 @@ static func cleanup_mock_level() -> void:
 	G.level = null
 	G.match_state = null
 	G.local_session = null
+
+	if is_instance_valid(G.game_panel):
+		G.game_panel.free()
+	G.game_panel = null

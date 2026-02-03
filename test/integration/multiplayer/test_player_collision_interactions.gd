@@ -2,6 +2,19 @@ extends GutTest
 ## Integration tests for player collision interactions (bump and kill).
 
 
+func before_all():
+	# Set up game_panel mock for entire test suite to prevent PerfTracker
+	# errors. PerfTracker runs as autoload between tests.
+	TestEnvironmentMock.setup_mock_game_panel()
+
+
+func after_all():
+	# Clean up game_panel mock after all tests.
+	if is_instance_valid(G.game_panel):
+		G.game_panel.free()
+	G.game_panel = null
+
+
 func before_each():
 	ArrayPool.clear_all_pools()
 
@@ -16,34 +29,50 @@ class TestCollisionBounceVelocity:
 	var player1: Bunny
 	var player2: Bunny
 	var movement_settings: MovementSettings
+	var mock_level: MockLevel
 
 	func before_each():
 		ArrayPool.clear_all_pools()
+
+		# Set up mock environment.
+		mock_level = TestEnvironmentMock.setup_mock_level(self)
 
 		# Create movement settings.
 		movement_settings = MovementSettings.new()
 		movement_settings.bump_bounce_base_speed = 300.0
 		movement_settings.bump_bounce_vertical_boost = -200.0
 
-		# Create players.
+		# Create players with networking infrastructure.
 		player1 = _create_test_player(1)
 		player2 = _create_test_player(2)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
-		if is_instance_valid(player1):
-			player1.free()
-		if is_instance_valid(player2):
-			player2.free()
+		TestEnvironmentMock.cleanup_mock_level()
 
 	func _create_test_player(player_id: int) -> Bunny:
 		var player = Bunny.new()
+		player.name = "Player%d" % player_id
 		player.movement_settings = movement_settings
 
+		# Initialize required Character exports.
+		player.collision_shape = CollisionShape2D.new()
+		player.animator = CharacterAnimator.new()
+		player.animator.animated_sprite = AnimatedSprite2D.new()
+		player.add_child(player.animator)
+
+		# Set up networked state node.
 		var state = CharacterStateFromServer.new()
+		state.name = "StateFromServer"
+		state.root_path = NodePath(".")
 		state.player_id = player_id
 		state.character = player
+		TestEnvironmentMock.init_replication_config(state)
+		player.add_child(state)
 		player.state_from_server = state
+
+		# Add to tree to trigger _ready() and initialize rollback buffer.
+		add_child_autofree(player)
 
 		# Set player_id after state_from_server is assigned.
 		player.player_id = player_id
@@ -220,9 +249,13 @@ class TestBothPlayersBounceBehavior:
 	var player1: Bunny
 	var player2: Bunny
 	var movement_settings: MovementSettings
+	var mock_level: MockLevel
 
 	func before_each():
 		ArrayPool.clear_all_pools()
+
+		# Set up mock environment.
+		mock_level = TestEnvironmentMock.setup_mock_level(self)
 
 		movement_settings = MovementSettings.new()
 		movement_settings.bump_bounce_base_speed = 300.0
@@ -233,19 +266,31 @@ class TestBothPlayersBounceBehavior:
 
 	func after_each():
 		ArrayPool.clear_all_pools()
-		if is_instance_valid(player1):
-			player1.free()
-		if is_instance_valid(player2):
-			player2.free()
+		TestEnvironmentMock.cleanup_mock_level()
 
 	func _create_test_player(player_id: int) -> Bunny:
 		var player = Bunny.new()
+		player.name = "Player%d" % player_id
 		player.movement_settings = movement_settings
 
+		# Initialize required Character exports.
+		player.collision_shape = CollisionShape2D.new()
+		player.animator = CharacterAnimator.new()
+		player.animator.animated_sprite = AnimatedSprite2D.new()
+		player.add_child(player.animator)
+
+		# Set up networked state node.
 		var state = CharacterStateFromServer.new()
+		state.name = "StateFromServer"
+		state.root_path = NodePath(".")
 		state.player_id = player_id
 		state.character = player
+		TestEnvironmentMock.init_replication_config(state)
+		player.add_child(state)
 		player.state_from_server = state
+
+		# Add to tree to trigger _ready() and initialize rollback buffer.
+		add_child_autofree(player)
 
 		# Set player_id after state_from_server is assigned.
 		player.player_id = player_id
@@ -314,9 +359,13 @@ class TestBouncePreservesExistingVelocity:
 	var player1: Bunny
 	var player2: Bunny
 	var movement_settings: MovementSettings
+	var mock_level: MockLevel
 
 	func before_each():
 		ArrayPool.clear_all_pools()
+
+		# Set up mock environment.
+		mock_level = TestEnvironmentMock.setup_mock_level(self)
 
 		movement_settings = MovementSettings.new()
 		movement_settings.bump_bounce_base_speed = 300.0
@@ -327,19 +376,31 @@ class TestBouncePreservesExistingVelocity:
 
 	func after_each():
 		ArrayPool.clear_all_pools()
-		if is_instance_valid(player1):
-			player1.free()
-		if is_instance_valid(player2):
-			player2.free()
+		TestEnvironmentMock.cleanup_mock_level()
 
 	func _create_test_player(player_id: int) -> Bunny:
 		var player = Bunny.new()
+		player.name = "Player%d" % player_id
 		player.movement_settings = movement_settings
 
+		# Initialize required Character exports.
+		player.collision_shape = CollisionShape2D.new()
+		player.animator = CharacterAnimator.new()
+		player.animator.animated_sprite = AnimatedSprite2D.new()
+		player.add_child(player.animator)
+
+		# Set up networked state node.
 		var state = CharacterStateFromServer.new()
+		state.name = "StateFromServer"
+		state.root_path = NodePath(".")
 		state.player_id = player_id
 		state.character = player
+		TestEnvironmentMock.init_replication_config(state)
+		player.add_child(state)
 		player.state_from_server = state
+
+		# Add to tree to trigger _ready() and initialize rollback buffer.
+		add_child_autofree(player)
 
 		# Set player_id after state_from_server is assigned.
 		player.player_id = player_id
@@ -391,9 +452,13 @@ class TestCollisionEdgeCases:
 	var player1: Bunny
 	var player2: Bunny
 	var movement_settings: MovementSettings
+	var mock_level: MockLevel
 
 	func before_each():
 		ArrayPool.clear_all_pools()
+
+		# Set up mock environment.
+		mock_level = TestEnvironmentMock.setup_mock_level(self)
 
 		movement_settings = MovementSettings.new()
 		movement_settings.bump_bounce_base_speed = 300.0
@@ -404,19 +469,31 @@ class TestCollisionEdgeCases:
 
 	func after_each():
 		ArrayPool.clear_all_pools()
-		if is_instance_valid(player1):
-			player1.free()
-		if is_instance_valid(player2):
-			player2.free()
+		TestEnvironmentMock.cleanup_mock_level()
 
 	func _create_test_player(player_id: int) -> Bunny:
 		var player = Bunny.new()
+		player.name = "Player%d" % player_id
 		player.movement_settings = movement_settings
 
+		# Initialize required Character exports.
+		player.collision_shape = CollisionShape2D.new()
+		player.animator = CharacterAnimator.new()
+		player.animator.animated_sprite = AnimatedSprite2D.new()
+		player.add_child(player.animator)
+
+		# Set up networked state node.
 		var state = CharacterStateFromServer.new()
+		state.name = "StateFromServer"
+		state.root_path = NodePath(".")
 		state.player_id = player_id
 		state.character = player
+		TestEnvironmentMock.init_replication_config(state)
+		player.add_child(state)
 		player.state_from_server = state
+
+		# Add to tree to trigger _ready() and initialize rollback buffer.
+		add_child_autofree(player)
 
 		# Set player_id after state_from_server is assigned.
 		player.player_id = player_id
