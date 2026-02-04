@@ -117,7 +117,7 @@ var _throttled_warn_high_fastforward_rate: Callable
 
 
 func _ready() -> void:
-	if TestEnvironmentDetector.is_running_in_test_env(self):
+	if TestEnvironmentDetector.is_running_in_test_env(self ):
 		return
 
 	G.log.log_system_ready("PerfTracker")
@@ -175,7 +175,7 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	if TestEnvironmentDetector.is_running_in_test_env(self):
+	if TestEnvironmentDetector.is_running_in_test_env(self ):
 		return
 
 	_calculate_render_fps()
@@ -196,7 +196,7 @@ func _process(_delta: float) -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	if TestEnvironmentDetector.is_running_in_test_env(self):
+	if TestEnvironmentDetector.is_running_in_test_env(self ):
 		return
 
 	_calculate_physics_fps()
@@ -301,7 +301,7 @@ func _server_collect_perf_state() -> Dictionary:
 	return {
 		"physics_fps": _current_physics_fps,
 		"min_physics_fps": _min_physics_fps_in_window,
-		"network_fps": _current_physics_fps,  # Use physics FPS as proxy
+		"network_fps": _current_physics_fps, # Use physics FPS as proxy
 		"min_network_fps": _min_physics_fps_in_window,
 		"rollbacks_per_sec": _current_rollbacks_per_sec,
 		"max_rollbacks_per_sec": _max_rollbacks_per_sec_in_window,
@@ -642,7 +642,12 @@ func _calculate_network_fps() -> void:
 
 
 func _update_network_ping() -> void:
-	_current_network_ping_ms = G.network.time.rtt_usec / 1_000.0
+	# Get RTT from FrameIndexSynchronizer.
+	if G.network.frame_sync != null:
+		_current_network_ping_ms = G.network.frame_sync.rtt_usec / 1000.0
+	else:
+		_current_network_ping_ms = 0.0
+
 	_max_network_ping_in_window = max(
 		_max_network_ping_in_window,
 		_current_network_ping_ms,

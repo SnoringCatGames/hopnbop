@@ -3,12 +3,12 @@ extends Node
 ## NetworkMain is the central orchestrator accessed via the G.network singleton.
 ## It manages and provides access to three core networking subsystems:
 ##
-## - **time** (ServerTimeTracker): NTP-like clock synchronization between client
-##   and server
 ## - **connector** (NetworkConnector): ENet peer management and connection
 ##   lifecycle
 ## - **frame_driver** (NetworkFrameDriver): Frame-synchronous simulation and
 ##   rollback coordination
+## - **frame_sync** (FrameIndexSynchronizer): Periodic frame index broadcasts
+##   to prevent client/server drift
 ##
 ## NetworkMain determines the local machine's role (server vs client) based on
 ## command-line arguments or headless mode and provides convenient accessors for
@@ -18,8 +18,6 @@ extends Node
 ## - is_connected_to_server: Connection status (always true on server)
 ## - local_peer_id: Local multiplayer peer ID
 ## - server_frame_index: Current server frame number
-## - server_frame_time_usec: Frame-aligned server time
-## - server_time_usec_not_frame_aligned: Raw estimated server time
 ##
 ## Testing with multiple instances in Godot editor:
 ## - In order to support local testing with preview mode in the Godot
@@ -45,9 +43,9 @@ signal local_authority_added(input_from_client: PlayerInputFromClient)
 @warning_ignore("unused_signal")
 signal local_authority_removed(input_from_client: PlayerInputFromClient)
 
-var time := ServerTimeTracker.new()
 var connector := NetworkConnector.new()
 var frame_driver := NetworkFrameDriver.new()
+var frame_sync: FrameIndexSynchronizer
 var perf_tracker := PerfTracker.new()
 var game_lift_manager := GameLiftManager.new()
 var session_manager := GameLiftSessionManager.new()
@@ -84,7 +82,6 @@ var server_port: int:
 		return G.settings.local_preview_server_port
 
 
-
 var is_connected_to_server: bool:
 	get:
 		return connector.is_connected_to_server
@@ -93,33 +90,21 @@ var local_peer_id: int:
 	get:
 		return multiplayer.get_unique_id()
 
-## If we bucket the current server_time_usec into discrete frames, this
-## canonical time would be the exact midpoint between the previous and next
-## frame.
-var server_frame_time_usec: int:
-	get:
-		return frame_driver.server_frame_time_usec
-
-## If we bucket the current server_time_usec into discrete frames, this
-## would be index of the current frame.
+## Current server frame index - the primary synchronization primitive.
 var server_frame_index: int:
 	get:
 		return frame_driver.server_frame_index
 
-var server_time_usec_not_frame_aligned: int:
-	get:
-		return time.get_server_time_usec()
-
-
 func _enter_tree() -> void:
-	time.name = "ServerTime"
-	add_child(time)
-
 	connector.name = "NetworkConnector"
 	add_child(connector)
 
 	frame_driver.name = "NetworkFrameDriver"
 	add_child(frame_driver)
+
+	frame_sync = FrameIndexSynchronizer.new()
+	frame_sync.name = "FrameIndexSynchronizer"
+	add_child(frame_sync)
 
 	perf_tracker.name = "PerfTracker"
 	add_child(perf_tracker)

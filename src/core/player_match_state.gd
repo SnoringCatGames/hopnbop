@@ -24,8 +24,8 @@ const _PROPERTY_NAMES := [
 	"body_type_index",
 	"costume_index",
 	"outline_color",
-	"connect_time_usec",
-	"disconnect_time_usec",
+	"connect_frame_index",
+	"disconnect_frame_index",
 ]
 
 var player_id: int = 0
@@ -37,8 +37,8 @@ var is_soft := true
 var body_type_index := 0
 var costume_index := 0
 var outline_color := Color.WHITE
-var connect_time_usec := 0
-var disconnect_time_usec := 0
+var connect_frame_index := 0
+var disconnect_frame_index := 0
 
 # This is calculated locally, rather than networked.
 var _score := 0
@@ -62,7 +62,7 @@ var full_name: StringName:
 
 var is_connected_to_server: bool:
 	get:
-		return connect_time_usec >= disconnect_time_usec
+		return connect_frame_index >= disconnect_frame_index
 
 var player: Player:
 	get:

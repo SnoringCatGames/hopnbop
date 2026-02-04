@@ -10,9 +10,9 @@ const TestEnvironmentMock = preload("res://test/helpers/test_environment_mock.gd
 
 func before_each():
 	ArrayPool.clear_all_pools()
-	# Initialize network time for rollback buffer setup
-	if not G.network.time.is_time_initialized:
-		G.network.time._start_time_offset_usec = 0
+	# Initialize frame tracking for rollback buffer setup
+	if not G.network.frame_driver._is_frame_tracking_initialized:
+		G.network.frame_driver._initialize_frame_tracking()
 
 
 func after_each():
@@ -32,9 +32,9 @@ class TestForwardingLogic:
 
 	func before_each():
 		ArrayPool.clear_all_pools()
-		# Initialize network time for rollback buffer setup
-		if not G.network.time.is_time_initialized:
-			G.network.time._start_time_offset_usec = 0
+		# Initialize frame tracking for rollback buffer setup
+		if not G.network.frame_driver._is_frame_tracking_initialized:
+			G.network.frame_driver._initialize_frame_tracking()
 
 		root_node = Node.new()
 		root_node.name = "Root"

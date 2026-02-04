@@ -76,9 +76,6 @@ class TestEdgeCases:
 	func test_fast_forward_from_early_frame():
 		# Test fast forward from very early frame to much later frame
 		frame_driver.server_frame_index = 1
-		frame_driver.server_frame_time_usec = (
-			frame_driver.get_time_usec_from_frame_index(1)
-		)
 
 		frame_driver.fast_forward(50)
 

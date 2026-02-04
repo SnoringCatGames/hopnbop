@@ -31,11 +31,7 @@ static func setup_mock_level(parent_node: Node) -> MockLevel:
 	parent_node.add_child(mock_level)
 	G.level = mock_level
 
-	# Initialize network time to allow rollback buffer setup.
-	# This prevents "backfill_to_with_last_state on Nil" errors.
-	if not G.network.time.is_time_initialized:
-		# Set start time offset to initialize time synchronization
-		G.network.time._start_time_offset_usec = 0
+	# Network frame tracking initializes automatically now (frame-based sync).
 
 	# Mock G.match_state for player initialization.
 	if not is_instance_valid(G.match_state):
@@ -85,11 +81,7 @@ static func setup_test_player_minimal() -> Player:
 ## Setup a player with full 3-node configuration.
 ## Creates the player with all required networked nodes and adds to tree.
 static func setup_test_player(parent_node: Node) -> Player:
-	# Ensure network time is initialized BEFORE creating player nodes.
-	if not G.network.time.is_time_initialized:
-		G.network.time._start_time_offset_usec = 0
-
-	# Also ensure frame tracking is initialized
+	# Ensure frame tracking is initialized before creating player nodes.
 	if not G.network.frame_driver._is_frame_tracking_initialized:
 		G.network.frame_driver._initialize_frame_tracking()
 
@@ -144,14 +136,9 @@ static func setup_player_with_networking(
 	parent_node: Node,
 	player_name: StringName = "Player"
 ) -> Dictionary:
-	# Ensure network time is initialized BEFORE creating player nodes.
+	# Ensure frame tracking is initialized before creating player nodes.
 	# This must happen before any networked nodes are created, as their _ready()
-	# methods will attempt to set up rollback buffers which require initialized
-	# time.
-	if not G.network.time.is_time_initialized:
-		G.network.time._start_time_offset_usec = 0
-
-	# Also ensure frame tracking is initialized
+	# methods will attempt to set up rollback buffers.
 	if not G.network.frame_driver._is_frame_tracking_initialized:
 		G.network.frame_driver._initialize_frame_tracking()
 

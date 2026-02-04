@@ -1,9 +1,6 @@
 @tool
 extends GutTest
 ## Unit tests for NetworkFrameDriver.
-##
-## Phase 1 tests focus on frame time conversion - the core math that underpins
-## all rollback functionality.
 
 func before_each():
 	ArrayPool.clear_all_pools()
@@ -11,111 +8,6 @@ func before_each():
 
 func after_each():
 	ArrayPool.clear_all_pools()
-
-
-class TestFrameTimeConversion:
-	extends GutTest
-	## Tests bidirectional conversion between time (microseconds) and frame
-	## indices.
-
-	const TARGET_NETWORK_TIME_STEP_USEC := 16666
-
-
-	func before_each():
-		ArrayPool.clear_all_pools()
-
-
-	func after_each():
-		ArrayPool.clear_all_pools()
-
-
-	func test_get_frame_index_from_time_usec_at_frame_boundary():
-		# Frame 1 should start at 16,666 microseconds
-		var frame_driver := NetworkFrameDriver.new()
-
-		var frame_index := (
-			frame_driver.get_frame_index_from_time_usec(
-				TARGET_NETWORK_TIME_STEP_USEC,
-			)
-		)
-
-		assert_eq(
-			frame_index,
-			1,
-			"16,666 microseconds should map to frame 1",
-		)
-
-
-	func test_get_time_usec_from_frame_index_returns_midpoint():
-		# Frame 10 midpoint = 10 * 16666 + 8333 = 174,993 microseconds
-		var frame_driver := NetworkFrameDriver.new()
-
-		var time_usec := frame_driver.get_time_usec_from_frame_index(10)
-
-		var expected_midpoint := floori(10 * TARGET_NETWORK_TIME_STEP_USEC + TARGET_NETWORK_TIME_STEP_USEC * 0.5)
-		assert_eq(
-			time_usec,
-			expected_midpoint,
-			"Frame 10 should return its midpoint timestamp",
-		)
-
-
-	func test_round_trip_conversion_preserves_frame_index():
-		# Converting frame -> time -> frame should return the same frame
-		var frame_driver := NetworkFrameDriver.new()
-		var original_frame := 42
-
-		var time_usec := frame_driver.get_time_usec_from_frame_index(
-			original_frame,
-		)
-		var recovered_frame := (
-			frame_driver.get_frame_index_from_time_usec(time_usec)
-		)
-
-		assert_eq(
-			recovered_frame,
-			original_frame,
-			"Round-trip conversion should preserve frame index",
-		)
-
-
-	func test_handles_zero_time_and_frame():
-		# Edge case: frame 0 and time 0
-		var frame_driver := NetworkFrameDriver.new()
-
-		var frame_from_zero_time := (
-			frame_driver.get_frame_index_from_time_usec(0)
-		)
-		var time_from_zero_frame := frame_driver.get_time_usec_from_frame_index(
-			0,
-		)
-
-		assert_eq(frame_from_zero_time, 0, "Time 0 should map to frame 0")
-		# Frame 0 midpoint = 0 * 16666 + 8333 = 8333
-		assert_eq(
-			time_from_zero_frame,
-			floori(TARGET_NETWORK_TIME_STEP_USEC * 0.5),
-			"Frame 0 should return midpoint timestamp",
-		)
-
-
-	func test_large_frame_indices_dont_overflow():
-		# Test with a very large frame number to ensure no integer overflow
-		var frame_driver := NetworkFrameDriver.new()
-		var large_frame := 1_000_000
-
-		var time_usec := frame_driver.get_time_usec_from_frame_index(
-			large_frame,
-		)
-		var recovered_frame := (
-			frame_driver.get_frame_index_from_time_usec(time_usec)
-		)
-
-		assert_eq(
-			recovered_frame,
-			large_frame,
-			"Large frame indices should not overflow",
-		)
 
 
 class TestRollbackQueueing:
@@ -455,26 +347,6 @@ class TestRollbackAndReprocess:
 		)
 
 
-	func test_time_conversion_consistency_during_rollback():
-		# Verify that time conversions remain consistent
-		# when frame_index changes during rollback
-		frame_driver.server_frame_index = 100
-		frame_driver.server_frame_time_usec = (
-			frame_driver.get_time_usec_from_frame_index(100)
-		)
-
-		var time_before := frame_driver.server_frame_time_usec
-		var expected_time := frame_driver.get_time_usec_from_frame_index(100)
-
-		# Time should match the frame index
-		assert_almost_eq(
-			time_before,
-			expected_time,
-			1,
-			"Time should match frame index",
-		)
-
-
 class TestFrameIndexCalculation:
 	extends GutTest
 	## Tests rollback buffer boundaries and frame validation logic.
@@ -574,9 +446,6 @@ class TestFastForward:
 	func test_fast_forward_advances_frame_index():
 		# Start at frame 10, fast forward to frame 20
 		frame_driver.server_frame_index = 10
-		frame_driver.server_frame_time_usec = (
-			frame_driver.get_time_usec_from_frame_index(10)
-		)
 
 		frame_driver.fast_forward(20)
 
@@ -584,25 +453,6 @@ class TestFastForward:
 			frame_driver.server_frame_index,
 			20,
 			"Should advance to frame 20",
-		)
-
-
-	func test_fast_forward_updates_time_usec():
-		# Fast forward should update both frame index and time
-		frame_driver.server_frame_index = 10
-		frame_driver.server_frame_time_usec = (
-			frame_driver.get_time_usec_from_frame_index(10)
-		)
-
-		frame_driver.fast_forward(20)
-
-		var expected_time := frame_driver.get_time_usec_from_frame_index(20)
-		# Allow for small timing accumulation differences
-		assert_almost_eq(
-			frame_driver.server_frame_time_usec,
-			expected_time,
-			NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_USEC * 10,
-			"Time should advance with frames",
 		)
 
 
@@ -897,61 +747,6 @@ class TestPauseUnpause:
 			history[0]["duration_frames"],
 			20,
 			"History should record duration",
-		)
-
-
-	func test_frame_to_time_conversion_accounts_for_pause():
-		# Pause for 50 frames
-		frame_driver._cumulative_paused_frames = 50
-
-		# Frame 100 should map to time as if it were frame 150
-		# Expected: (100 + 50) * 16666 + 8333 = 2,508,333 usec
-		var time_usec := frame_driver.get_time_usec_from_frame_index(100)
-		var expected_time := floori(
-			150 * NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_USEC +
-			NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_USEC * 0.5,
-		)
-
-		assert_eq(
-			time_usec,
-			expected_time,
-			"Time should account for cumulative paused frames",
-		)
-
-
-	func test_time_to_frame_conversion_accounts_for_pause():
-		# Pause for 50 frames
-		frame_driver._cumulative_paused_frames = 50
-
-		# Time representing frame 150 should map back to frame 100
-		# (150 * 16666 = 2,499,900 usec)
-		var time_usec := 150 * NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_USEC
-		var frame_index := frame_driver.get_frame_index_from_time_usec(time_usec)
-
-		assert_eq(
-			frame_index,
-			100,
-			"Frame index should account for cumulative paused frames",
-		)
-
-
-	func test_round_trip_conversion_with_pause():
-		# Set cumulative paused frames
-		frame_driver._cumulative_paused_frames = 75
-
-		# Convert frame 200 -> time -> frame
-		var original_frame := 200
-		var time_usec := frame_driver.get_time_usec_from_frame_index(
-			original_frame,
-		)
-		var recovered_frame := frame_driver.get_frame_index_from_time_usec(
-			time_usec,
-		)
-
-		assert_eq(
-			recovered_frame,
-			original_frame,
-			"Round-trip conversion should preserve frame with pause",
 		)
 
 

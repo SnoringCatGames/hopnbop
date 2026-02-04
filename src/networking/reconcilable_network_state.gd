@@ -306,8 +306,7 @@ func _handle_new_authoritative_state() -> void:
 		# Ignore any initial empty state.
 		return
 
-	var state_time_usec: int = _get_packed_timestamp_usec(packed_state)
-	var state_frame_index := G.network.frame_driver.get_frame_index_from_time_usec(state_time_usec)
+	var state_frame_index: int = _get_packed_frame_index(packed_state)
 
 	# Extract the frame authority from the received state.
 	var new_frame_authority: int = _get_packed_authority(packed_state)
@@ -363,13 +362,11 @@ func _handle_new_authoritative_state() -> void:
 		G.warning(
 			(
 				"Received networked state that is too old to reconcile - "
-				+"DISCARDING: state frame: %d, state time: %d, local frame: %d, "
-				+"local time: %d, oldest acceptable: %d"
+				+"DISCARDING: state frame: %d, local frame: %d, "
+				+"oldest acceptable: %d"
 			) % [
 				state_frame_index,
-				state_time_usec,
 				G.network.server_frame_index,
-				G.network.server_frame_time_usec,
 				G.network.frame_driver.oldest_rollbackable_frame_index,
 			],
 			ScaffolderLog.CATEGORY_NETWORK_SYNC)
@@ -448,17 +445,6 @@ func _handle_new_authoritative_state() -> void:
 		G.print(
 			"Fast-forwarding due to future state from server",
 			ScaffolderLog.CATEGORY_NETWORK_SYNC)
-
-		# Adjust the time tracker's clock offset to account for the drift.
-		# This prevents the NTP averaging from reverting the fast-forward by
-		# also adjusting all NTP samples. The force_clock_offset method
-		# updates both the current offset and all historical samples to
-		# maintain consistency.
-		var frames_behind := state_frame_index - 1 - G.network.server_frame_index
-		var time_delta_usec := floori(
-			frames_behind * G.network.frame_driver.TARGET_NETWORK_TIME_STEP_USEC,
-		)
-		G.network.time.force_clock_offset(time_delta_usec)
 
 		G.network.frame_driver.fast_forward(state_frame_index - 1)
 
@@ -605,12 +591,8 @@ func _update_replication_config() -> void:
 
 
 func _set_up_rollback_buffer() -> void:
-	# Don't initialize the rollback buffer until time is synchronized.
-	# On clients, server_frame_index will be 0 until we receive the server's
-	# time offset, which could cause the buffer to be initialized for the wrong
-	# frame range.
-	if not G.network.time.is_time_initialized:
-		return
+	# Initialize the rollback buffer with the current frame index.
+	# Frame indices start at 0 and are immediately valid (no time sync needed).
 
 	var default_values := _get_default_values().duplicate()
 	default_values.append(FrameAuthority.PREDICTED)
@@ -638,8 +620,8 @@ func _pack_networked_state() -> void:
 		i += 1
 	state[i] = frame_authority
 	i += 1
-	# We send time values across the network, but we store indices.
-	state[i] = G.network.frame_driver.get_time_usec_from_frame_index(timestamp_index)
+	# Send frame index directly.
+	state[i] = timestamp_index
 	_is_packing_state_locally = true
 
 	if G.is_verbose:
@@ -689,9 +671,8 @@ func _unpack_networked_state() -> void:
 		i += 1
 	# Skip frame_authority (at index i) - we handle it separately in _handle_new_authoritative_state
 	i += 1
-	# We send time values across the network, but we store indices.
-	var timestamp_usec: int = _get_packed_timestamp_usec(packed_state)
-	timestamp_index = G.network.frame_driver.get_frame_index_from_time_usec(timestamp_usec)
+	# Unpack frame index directly.
+	timestamp_index = _get_packed_frame_index(packed_state)
 
 
 func _pack_buffer_state_from_local_state() -> void:
@@ -772,9 +753,8 @@ func _pack_buffer_state_from_local_state() -> void:
 ## This does _not_ record state in the packed_state array for syncing across the
 ## network.
 func _pack_buffer_state_from_network_state(packed_network_state: Array) -> void:
-	var state_time_usec: int = _get_packed_timestamp_usec(packed_network_state)
+	var frame_index: int = _get_packed_frame_index(packed_network_state)
 	var new_frame_authority: int = _get_packed_authority(packed_network_state)
-	var frame_index := G.network.frame_driver.get_frame_index_from_time_usec(state_time_usec)
 
 	# Check if network has NONE but buffer has non-rollbackable onset.
 	# Client: FATAL error (server should never send NONE for onset).
@@ -1022,8 +1002,8 @@ func _is_frame_predicted(frame_state: Array) -> bool:
 	return _get_frame_authority(frame_state) == FrameAuthority.PREDICTED
 
 
-## Gets the timestamp from a packed_state array (network format).
-func _get_packed_timestamp_usec(packed_network_state: Array) -> int:
+## Gets the frame index from a packed_state array (network format).
+func _get_packed_frame_index(packed_network_state: Array) -> int:
 	return packed_network_state[packed_network_state.size() - 1]
 
 

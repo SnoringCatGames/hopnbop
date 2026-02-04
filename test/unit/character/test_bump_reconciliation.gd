@@ -417,6 +417,8 @@ class TestBumpReconciliationEdgeCases:
 		)
 
 	func test_reconciliation_skips_missing_frame():
+		G.network.frame_driver.server_frame_index = 10000
+
 		# Set bump at frame that doesn't exist in buffer.
 		state.last_interaction_type = \
 			CharacterStateFromServer.ServerInteractionType.BUMP

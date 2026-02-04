@@ -7,9 +7,9 @@ const MockGamePanel := preload("res://test/helpers/mock_game_panel.gd")
 
 func before_each():
 	ArrayPool.clear_all_pools()
-	# Initialize network systems.
-	if not G.network.time.is_time_initialized:
-		G.network.time._start_time_offset_usec = 0
+	# Initialize network frame tracking.
+	if not G.network.frame_driver._is_frame_tracking_initialized:
+		G.network.frame_driver._initialize_frame_tracking()
 
 
 func after_each():

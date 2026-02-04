@@ -19,6 +19,10 @@ func after_each():
 class MockPlayer extends Player:
 	# Properties like actions and last_triggered_jump_frame_index are inherited
 	# from Character.
+	func _init():
+		# Explicitly initialize inherited properties that have field initializers
+		super._init()
+
 	func _enter_tree() -> void:
 		# Override to prevent Player's _enter_tree logic which requires G.level
 		pass

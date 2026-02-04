@@ -72,9 +72,7 @@ func _server_on_peer_players_declared(
 
 		var player := PlayerMatchState.new()
 		player.set_up(player_id, peer_id, i, player_attributes[i])
-		player.connect_time_usec = (
-			G.network.server_time_usec_not_frame_aligned
-		)
+		player.connect_frame_index = G.network.server_frame_index
 		state.server_add_player(player)
 
 	state.update_scores()
@@ -126,9 +124,7 @@ func _server_on_peer_disconnected(peer_id: int) -> void:
 	for player in players_for_peer:
 		if G.ensure(state.players_by_id.has(player.player_id)):
 			# Set disconnect time for this player.
-			player.disconnect_time_usec = (
-				G.network.server_time_usec_not_frame_aligned
-			)
+			player.disconnect_frame_index = G.network.server_frame_index
 
 		state.server_on_player_disconnected(player)
 

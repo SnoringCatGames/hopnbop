@@ -414,23 +414,20 @@ class TestStatePacking:
 		)
 
 
-	func test_pack_networked_state_includes_timestamp():
-		# Set entity properties and timestamp
+	func test_pack_networked_state_includes_frame_index():
+		# Set entity properties and frame index
 		entity.timestamp_index = 100
 
 		# Pack state
 		entity.pack_networked_state_public()
 
-		# Last element should be timestamp in microseconds
-		var packed_time_usec: int = entity.packed_state[entity.packed_state.size() - 1]
-		var expected_time_usec := (
-			G.network.frame_driver.get_time_usec_from_frame_index(100)
-		)
+		# Last element should be frame index directly
+		var packed_frame_index: int = entity.packed_state[entity.packed_state.size() - 1]
 
 		assert_eq(
-			packed_time_usec,
-			expected_time_usec,
-			"Last element should be timestamp in microseconds",
+			packed_frame_index,
+			100,
+			"Last element should be frame index",
 		)
 
 
@@ -549,13 +546,10 @@ class TestStatePacking:
 
 
 	func test_pack_buffer_state_from_network_state_converts_authority():
-		# Use a timestamp that maps to a frame near the buffer's current state
+		# Use a frame near the buffer's current state
 		var base_frame := entity._rollback_buffer.get_latest_index() + 1
-		var timestamp_usec := (
-			G.network.frame_driver.get_time_usec_from_frame_index(base_frame)
-		)
 
-		# Create packed network state (6 properties + frame_authority + timestamp)
+		# Create packed network state (6 properties + frame_authority + frame_index)
 		var network_state := ArrayPool.acquire(8)
 		network_state[0] = Vector2(100.0, 50.0)
 		network_state[1] = Vector2(5.0, 2.0)
@@ -564,16 +558,13 @@ class TestStatePacking:
 		network_state[4] = true
 		network_state[5] = "player"
 		network_state[6] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
-		network_state[7] = timestamp_usec
+		network_state[7] = base_frame
 
 		# Pack into buffer
 		entity.pack_buffer_state_from_network_state_public(network_state)
 
 		# Verify buffer state was created with AUTHORITATIVE marker
-		var frame_index := (
-			G.network.frame_driver.get_frame_index_from_time_usec(timestamp_usec)
-		)
-		var buffer_state: Array = entity._rollback_buffer.get_at(frame_index)
+		var buffer_state: Array = entity._rollback_buffer.get_at(base_frame)
 
 		# Last element should be FrameAuthority.AUTHORITATIVE (1)
 		assert_eq(

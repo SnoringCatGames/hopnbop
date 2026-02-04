@@ -31,21 +31,22 @@ signal match_ended
 var players_by_id: Dictionary = {}
 
 # Match timing (server-authoritative, synced to clients via RPC).
-var match_start_time_usec := -1
+var match_start_frame_index := -1
 var match_duration_usec := 0
 var is_match_ended := false
 
 var match_time_remaining_sec: float:
 	get:
-		if match_start_time_usec < 0:
+		if match_start_frame_index < 0:
 			return 0.0
-		var elapsed_usec: int = G.network.server_frame_time_usec - match_start_time_usec
-		var remaining_usec: int = match_duration_usec - elapsed_usec
-		return max(0.0, remaining_usec / 1_000_000.0)
+		var elapsed_frames := G.network.server_frame_index - match_start_frame_index
+		var elapsed_sec := elapsed_frames / NetworkFrameDriver.TARGET_NETWORK_FPS
+		var remaining_sec := (match_duration_usec / 1_000_000.0) - elapsed_sec
+		return max(0.0, remaining_sec)
 
 var is_match_time_expired: bool:
 	get:
-		return match_time_remaining_sec <= 0.0 and match_start_time_usec >= 0
+		return match_time_remaining_sec <= 0.0 and match_start_frame_index >= 0
 
 ## - We maintain both a packed Array of player state as well as a redundant
 ##   Dictionary of player state.
@@ -112,16 +113,16 @@ func clear() -> void:
 	_total_kills_by_player_id.clear()
 	_total_deaths_by_player_id.clear()
 	_total_bumps_by_player_id.clear()
-	match_start_time_usec = -1
+	match_start_frame_index = -1
 	match_duration_usec = 0
 	is_match_ended = false
 
 
 func client_notify_match_started(
-	_match_start_time_usec: int,
+	_match_start_frame_index: int,
 	_match_duration_usec: int
 ) -> void:
-	match_start_time_usec = _match_start_time_usec
+	match_start_frame_index = _match_start_frame_index
 	match_duration_usec = _match_duration_usec
 
 
@@ -148,13 +149,13 @@ func server_add_player(player: PlayerMatchState) -> void:
 
 
 func server_start_match_timer(duration_sec: float) -> void:
-	match_start_time_usec = G.network.server_frame_time_usec
+	match_start_frame_index = G.network.server_frame_index
 	match_duration_usec = int(duration_sec * 1_000_000)
 
 	# Notify all clients.
 	if synchronizer:
 		synchronizer._rpc_client_notify_match_started.rpc(
-			match_start_time_usec,
+			match_start_frame_index,
 			match_duration_usec
 		)
 
