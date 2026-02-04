@@ -96,22 +96,25 @@ signal player_id_changed(new_player_id: int)
 const DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD := 1.0
 const DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHOLD := 10.0
 
+# 0 should be NONE in all interaction enums.
+const _NONE_INTERACTION_TYPE := 0
+
 ## The estimated server frame, when this state occurred.
-var timestamp_index := 0
+var timestamp_index := Utils.MIN_INT
 
 ## Unified interaction system properties.
 ## Interaction type is an integer enum value (child classes define specific enums).
-var _last_interaction_type_backing := 0
+var _last_interaction_type_internal := _NONE_INTERACTION_TYPE
 var last_interaction_type: int:
 	set(value):
 		if (G.is_verbose and
 				G.network.is_server and
-				_last_interaction_type_backing != value):
+				_last_interaction_type_internal != value):
 			G.verbose(
 				"[INTERACTION] Player %d: %s (%d) -> %s (%d) at F:%d" % [
 					player_id,
-					_get_interaction_type_name(_last_interaction_type_backing),
-					_last_interaction_type_backing,
+					_get_interaction_type_name(_last_interaction_type_internal),
+					_last_interaction_type_internal,
 					_get_interaction_type_name(value),
 					value,
 					G.network.server_frame_index
@@ -119,9 +122,9 @@ var last_interaction_type: int:
 				ScaffolderLog.CATEGORY_NETWORK_SYNC,
 				true,
 			)
-		_last_interaction_type_backing = value
+		_last_interaction_type_internal = value
 	get:
-		return _last_interaction_type_backing
+		return _last_interaction_type_internal
 
 var last_interaction_frame_index := -1
 var last_interaction_position := Vector2.ZERO
@@ -446,19 +449,6 @@ func _handle_new_authoritative_state() -> void:
 			"Fast-forwarding due to future state from server",
 			ScaffolderLog.CATEGORY_NETWORK_SYNC)
 
-		# Warn if fast-forward happens during active interaction.
-		if last_interaction_type != 0 and last_interaction_frame_index >= 0:
-			var frame_gap := state_frame_index - G.network.server_frame_index
-			G.warning(
-				"Fast-forward during active interaction: type=%d, frame=%d, gap=%d frames (%s)" % [
-					last_interaction_type,
-					last_interaction_frame_index,
-					frame_gap,
-					name
-				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC
-			)
-
 		# Adjust the time tracker's clock offset to account for the drift.
 		# This prevents the NTP averaging from reverting the fast-forward by
 		# also adjusting all NTP samples. The force_clock_offset method
@@ -691,6 +681,8 @@ func _unpack_networked_state() -> void:
 			packed_state.size() == _property_names_for_packing.size() + 2):
 		return
 
+	# Unpack all properties from network unconditionally.
+	# Protection for non-rollbackable state is in packing functions, not here.
 	var i := 0
 	for property_name in _property_names_for_packing:
 		set(property_name, packed_state[i])
@@ -703,6 +695,53 @@ func _unpack_networked_state() -> void:
 
 
 func _pack_buffer_state_from_local_state() -> void:
+	# Check if buffer has a non-rollbackable interaction onset that
+	# must be preserved.
+	if _rollback_buffer.has_at(timestamp_index):
+		var existing_state: Array = _rollback_buffer.get_at(timestamp_index)
+		var existing_interaction_type: int = _get_frame_property(
+			existing_state,
+			&"last_interaction_type"
+		)
+		var existing_interaction_frame: int = _get_frame_property(
+			existing_state,
+			&"last_interaction_frame_index"
+		)
+
+		# Check if buffer has non-rollbackable onset at THIS frame
+		var is_onset := (existing_interaction_frame == timestamp_index)
+		var is_non_rollbackable := not _is_interaction_rollbackable(existing_interaction_type)
+		var is_frame_locked := is_onset and is_non_rollbackable
+
+		if is_frame_locked:
+			# Check if current local state would overwrite with different interaction
+			var current_interaction_type := last_interaction_type
+			var current_interaction_frame := last_interaction_frame_index
+			var would_overwrite := (
+				current_interaction_type != existing_interaction_type or
+				current_interaction_frame != existing_interaction_frame
+			)
+
+			if would_overwrite:
+				# Buffer has authoritative onset, current state is prediction/corruption
+				# Preserve buffer's interaction properties, pack everything else
+				if G.is_verbose:
+					G.verbose(
+						"Preserving onset %s from buffer, not overwriting " +
+						"with local %s at frame %d (%s)" % [
+							_get_interaction_type_name(existing_interaction_type),
+							_get_interaction_type_name(current_interaction_type),
+							timestamp_index,
+							name
+						],
+						ScaffolderLog.CATEGORY_NETWORK_SYNC
+					)
+
+			# Rollback buffer already has a non-rollbackable interaction onset
+			# recorded in this frame.
+			return
+
+	# Normal packing: no onset to preserve, or onset matches current state
 	var state := ArrayPool.acquire(_property_names_for_packing.size() + 1)
 
 	var i := 0
@@ -725,6 +764,61 @@ func _pack_buffer_state_from_network_state(packed_network_state: Array) -> void:
 	var new_frame_authority: int = _get_packed_authority(packed_network_state)
 	var frame_index := G.network.frame_driver.get_frame_index_from_time_usec(state_time_usec)
 
+	# Check if network has NONE but buffer has non-rollbackable onset.
+	# Client: FATAL error (server should never send NONE for onset).
+	# Server: Reject bogus client state (prevents malicious/buggy clients).
+	var interaction_prop_index := _property_name_to_pack_index.get(
+		&"last_interaction_type",
+		-1
+	) as int
+	var network_interaction_type: int = packed_network_state[interaction_prop_index]
+
+	if (
+		network_interaction_type == _NONE_INTERACTION_TYPE and
+		_rollback_buffer.has_at(frame_index)
+	):
+		var existing_state: Array = _rollback_buffer.get_at(frame_index)
+		var existing_interaction_type: int = _get_frame_property(
+			existing_state,
+			&"last_interaction_type"
+		)
+		var existing_interaction_frame: int = _get_frame_property(
+			existing_state,
+			&"last_interaction_frame_index"
+		)
+
+		# Check if buffer has non-rollbackable onset
+		var is_onset := (existing_interaction_frame == frame_index)
+		var is_non_rollbackable := not _is_interaction_rollbackable(existing_interaction_type)
+		var is_frame_locked := is_onset and is_non_rollbackable
+
+		if is_frame_locked:
+			if G.network.is_client:
+				# CLIENT: Server should never send NONE for onset.
+				G.fatal(
+					("Network NONE from server attempting to overwrite non-rollbackable " +
+					"onset %s at frame %d - critical server bug! (%s)") % [
+						_get_interaction_type_name(existing_interaction_type),
+						frame_index,
+						name
+					]
+				)
+				return
+			else:
+				# SERVER: Reject bogus client state and log error.
+				G.error(
+					("Rejecting network NONE from client attempting to overwrite " +
+					"non-rollbackable onset %s at frame %d - bogus client state (%s)") % [
+						_get_interaction_type_name(existing_interaction_type),
+						frame_index,
+						name
+					],
+					ScaffolderLog.CATEGORY_NETWORK_SYNC
+				)
+				# Don't pack the bogus network state. Keep buffer's onset intact.
+				return
+
+	# Normal packing - network state is authoritative and valid
 	# For the rollback buffer, we use the same state layout as the network state,
 	# but we replace the timestamp with the frame_authority from the sender.
 	var rollback_frame_state := ArrayPool.acquire(packed_network_state.size() - 1)
@@ -841,24 +935,10 @@ func _unpack_buffer_state(frame_index: int) -> void:
 	if frame_state == null:
 		return
 
-	# Check if this frame has a non-rollbackable interaction onset.
-	# If so, skip unpacking to preserve the immutable interaction state.
-	if (_has_non_rollbackable_interactions() and
-			_is_non_rollbackable_interaction_onset(frame_state, frame_index)):
-		if G.is_verbose:
-			G.verbose(
-				("Skipping unpack of frame %d for %s - non-rollbackable %s " +
-				"interaction onset") % [
-					frame_index,
-					name,
-					_get_interaction_type_name(
-						_get_frame_property(frame_state, &"last_interaction_type")
-					)
-				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC
-			)
-		return
-
+	# Unpack all properties from buffer unconditionally.
+	# Protection for non-rollbackable state is now in packing functions, not
+	# here.
+	# This allows pure state restoration for simulation setup.
 	var i := 0
 	for property_name in _property_names_for_packing:
 		set(property_name, frame_state[i])
@@ -1226,7 +1306,7 @@ func _get_string_for_bitmask(value: int) -> String:
 ## Subclasses can override this to provide specific enum names.
 func _get_interaction_type_name(interaction_type: int) -> String:
 	# Default implementation - subclasses should override.
-	if interaction_type == 0:
+	if interaction_type == _NONE_INTERACTION_TYPE:
 		return "NONE"
 	return str(interaction_type)
 
@@ -1240,13 +1320,26 @@ func _get_interaction_frame_from_time(time_usec: int) -> int:
 
 
 ## Records an interaction by setting all interaction properties at once.
-## This is a convenience method to avoid repetitive property assignments.
 func record_interaction(
 	interaction_type: int,
 	frame_index: int,
 	position: Vector2,
 	direction: Vector2
 ) -> void:
+	# Never allow recording NONE interaction. NONE should only exist during
+	# initialization before any real interaction occurs. Once an interaction is
+	# recorded, it must persist until explicitly replaced by another non-NONE
+	# interaction (e.g., DIE persists until SPAWN).
+	if interaction_type == _NONE_INTERACTION_TYPE:
+		G.fatal(
+			"Attempted to record NONE interaction. This should never happen! " +
+			"Current: %s, Frame: %d" % [
+				_get_interaction_type_name(last_interaction_type),
+				G.network.server_frame_index if G.network else -1
+			]
+		)
+		return
+
 	var old_type := last_interaction_type
 	last_interaction_type = interaction_type
 	last_interaction_frame_index = (

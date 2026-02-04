@@ -51,6 +51,21 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
+# Ahhhh, I identified the problem.
+# - First to note, we can in general overwrite the interaction recorded within a given frame N as long as frame N does not represent the _onset_ of the interaction (that is, the last_interaction_frame_index stored in frame N does not point to frame N).
+#   - Unless the intereaction type is designated as "rollbackable", then we can override the interaction onset.
+#   - Also to note, we should never be overwriting a non-NONE type with the NONE type, since we should _always_ know what our most-recent interaction was.
+# - So then, the problem. When rolling back, or even just simulating the next frame, we start processing the given frame by first syncing scene state and node properties to the state recorded in the previous buffer frame. During this sync, it _is_ possible to overwrite interaction state that's recorded in the local node properties and scene state. HOWEVER, that override should only be for the purpose of simulating the given frame in its original condition. After we perform the simulation for the frame, and then get to actually preserving any derived state from the frame simulation (either in packed_state or in rollback_buffer), it's at that point that we need to make sure that we cannot ever overwrite interaction state that corresponds to the onset of an interaction.
+# - Now carefully revisit all logic in these ReconcilableNetworkState class and subclasses to make sure we're processing state correctly with this new understanding.
+# - This may require modifying some of our previous changes from this session.
+# - Do this careful thorough analysis, and make a plan for all updates to make.
+
+# - Is there any context you've learned in this session that would be helpful to
+#   document for future related debugging prompts? Similarly, are there any
+#   particularly useful places that we could add debug logging to help in the
+#   future? We want to be particularly careful not to generate a lot of log
+#   noise though.
+
 # - Is there a potential problem from frame drift between the client and the server?
 
 # - Test kills and bumps.

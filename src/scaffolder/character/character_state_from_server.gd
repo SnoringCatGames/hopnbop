@@ -411,6 +411,21 @@ func _sync_from_scene_state() -> void:
 	velocity = character.velocity
 	surfaces = character.surfaces.bitmask
 
+	# NOTE: Interaction properties (last_interaction_type,
+	# last_interaction_frame_index, last_interaction_position,
+	# last_interaction_direction) are NOT synced from scene state. They are
+	# only set via record_interaction() and persist across frames until
+	# explicitly changed by another interaction.
+	#
+	# IMPORTANT: DIE and SPAWN interactions are persistent states that must
+	# remain active across multiple frames:
+	# - DIE: Persists from death until respawn (checked by is_dead property)
+	# - SPAWN: Persists for invincibility duration (checked by is_invincible)
+	# - BUMP/KILL: One-frame events for applying physics impulses
+	#
+	# These properties are automatically packed into the rollback buffer and
+	# replicated over the network in _pack_buffer_state_from_local_state().
+
 
 func _apply_input_to_character(input_source: ReconcilableNetworkedState) -> void:
 	# Copy input from PlayerInputFromClient or ForwardedPlayerInputFromServer
