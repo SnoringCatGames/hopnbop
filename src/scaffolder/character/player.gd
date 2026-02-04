@@ -43,7 +43,7 @@ func _enter_tree() -> void:
 		)
 	else:
 		# Server sets player_id before adding to tree, so add immediately.
-		G.level.register_player(self)
+		G.level.register_player(self )
 
 
 func _client_on_player_id_replicated(new_player_id: int) -> void:
@@ -54,7 +54,7 @@ func _client_on_player_id_replicated(new_player_id: int) -> void:
 	)
 
 	player_id = new_player_id
-	G.level.register_player(self)
+	G.level.register_player(self )
 
 	# Now that the player is registered, call on_match_state_ready.
 	# This triggers action source setup for networked mode.
@@ -69,7 +69,7 @@ func _exit_tree() -> void:
 	if Engine.is_editor_hint():
 		return
 	if is_instance_valid(G.level):
-		G.level.deregister_player(self)
+		G.level.deregister_player(self )
 
 
 func _ready() -> void:
@@ -181,7 +181,7 @@ func _set_up_action_sources() -> void:
 		return
 
 	var player_action_source := PlayerActionSource.new(
-		self,
+		self ,
 		true,
 		device_config)
 	_action_sources.append(player_action_source)
@@ -224,7 +224,7 @@ func server_trigger_death() -> void:
 		ScaffolderLog.CATEGORY_GAME_STATE,
 	)
 
-	# Record DIE interaction (new system).
+	# Record DIE interaction.
 	state_from_server.record_interaction(
 		CharacterStateFromServer.ServerInteractionType.DIE,
 		G.network.server_frame_index,

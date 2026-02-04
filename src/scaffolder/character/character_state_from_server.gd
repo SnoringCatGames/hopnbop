@@ -498,7 +498,14 @@ func _reconcile_bump_interaction(frame_index: int) -> void:
 		character.movement_settings.bump_bounce_base_speed,
 		character.movement_settings.bump_bounce_vertical_boost
 	)
-	_inject_velocity_delta_into_buffer(frame_index, bounce_velocity)
+	_inject_velocity_delta_into_buffer(
+		frame_index,
+		bounce_velocity,
+		last_interaction_type,
+		last_interaction_frame_index,
+		last_interaction_position,
+		last_interaction_direction
+	)
 
 	if G.is_verbose:
 		G.verbose(
@@ -519,7 +526,14 @@ func _reconcile_kill_interaction(frame_index: int) -> void:
 		character.movement_settings.kill_bounce_base_speed,
 		character.movement_settings.kill_bounce_vertical_boost
 	)
-	_inject_velocity_delta_into_buffer(frame_index, bounce_velocity)
+	_inject_velocity_delta_into_buffer(
+		frame_index,
+		bounce_velocity,
+		last_interaction_type,
+		last_interaction_frame_index,
+		last_interaction_position,
+		last_interaction_direction
+	)
 
 	if G.is_verbose:
 		G.verbose(
@@ -532,10 +546,36 @@ func _reconcile_kill_interaction(frame_index: int) -> void:
 		)
 
 
+## Sets all interaction properties on a frame state. Used by buffer
+## modification functions to ensure interaction data persists through rollback.
+func _set_frame_interaction_properties(
+	frame_state: Array,
+	interaction_type: int,
+	interaction_frame_index: int,
+	interaction_position: Vector2,
+	interaction_direction: Vector2
+) -> void:
+	_set_frame_property(frame_state, &"last_interaction_type", interaction_type)
+	_set_frame_property(frame_state, &"last_interaction_frame_index", interaction_frame_index)
+	_set_frame_property(frame_state, &"last_interaction_position", interaction_position)
+	_set_frame_property(frame_state, &"last_interaction_direction", interaction_direction)
+
+
 ## Reconciles a die interaction by stopping movement in rollback buffer.
 func _reconcile_die_interaction(frame_index: int) -> void:
 	var frame_state: Array = _rollback_buffer.get_at(frame_index)
 	_set_frame_property(frame_state, &"velocity", Vector2.ZERO)
+
+	# Preserve interaction properties from local state (just unpacked from
+	# authoritative state) to ensure DIE persists through buffer modification.
+	_set_frame_interaction_properties(
+		frame_state,
+		last_interaction_type,
+		last_interaction_frame_index,
+		last_interaction_position,
+		last_interaction_direction
+	)
+
 	_rollback_buffer.set_at(frame_index, frame_state)
 	G.network.frame_driver.queue_rollback(frame_index)
 
@@ -556,6 +596,17 @@ func _reconcile_spawn_interaction(frame_index: int) -> void:
 	var frame_state: Array = _rollback_buffer.get_at(frame_index)
 	_set_frame_property(frame_state, &"position", last_interaction_position)
 	_set_frame_property(frame_state, &"velocity", Vector2.ZERO)
+
+	# Preserve interaction properties from local state (just unpacked from
+	# authoritative state) to ensure SPAWN persists through buffer modification.
+	_set_frame_interaction_properties(
+		frame_state,
+		last_interaction_type,
+		last_interaction_frame_index,
+		last_interaction_position,
+		last_interaction_direction
+	)
+
 	_rollback_buffer.set_at(frame_index, frame_state)
 	G.network.frame_driver.queue_rollback(frame_index)
 
@@ -582,26 +633,91 @@ func _calculate_bounce_velocity(
 	return base_bounce + upward_boost
 
 
-## Injects a velocity delta into the rollback buffer at the specified frame.
-## Used for bumps and kills to apply collision bounce.
+## Injects a velocity delta and interaction properties into the rollback buffer
+## at the specified frame. Used for bumps and kills to apply collision bounce.
+##
+## This function explicitly sets interaction properties in the buffer to
+## prevent them from being overwritten with stale NONE values.
 func _inject_velocity_delta_into_buffer(
 	frame_index: int,
-	velocity_delta: Vector2
+	velocity_delta: Vector2,
+	interaction_type: int,
+	interaction_frame_index: int,
+	interaction_position: Vector2,
+	interaction_direction: Vector2
 ) -> void:
 	var frame_state: Array = _rollback_buffer.get_at(frame_index)
 	var stored_velocity: Vector2 = _get_frame_property(frame_state, &"velocity")
 	_set_frame_property(frame_state, &"velocity", stored_velocity + velocity_delta)
+
+	# Set interaction properties explicitly (passed as parameters).
+	# This ensures the buffer has the correct interaction data, preventing
+	# _post_network_process() from overwriting with stale values.
+	_set_frame_interaction_properties(
+		frame_state,
+		interaction_type,
+		interaction_frame_index,
+		interaction_position,
+		interaction_direction
+	)
+
 	_rollback_buffer.set_at(frame_index, frame_state)
 	G.network.frame_driver.queue_rollback(frame_index)
 
 
-## Sets the position in the rollback buffer at the specified frame.
-## Used for spawn interactions to teleport the player.
+## Records an interaction and automatically injects it into the rollback buffer.
+##
+## Override of base class method. This ensures server-side interactions are
+## immediately injected into the buffer at the current frame to protect against
+## rollback clearing them before _post_network_process() can pack them.
+func record_interaction(
+	interaction_type: int,
+	frame_index: int,
+	position: Vector2,
+	direction: Vector2
+) -> void:
+	# Inject into buffer FIRST before setting local properties.
+	# This prevents rollback from clearing the interaction before
+	# _post_network_process() can pack it.
+	_inject_position_into_buffer(
+		frame_index,
+		position,
+		interaction_type,
+		frame_index,
+		position,
+		direction
+	)
+
+	# Then call base class to set local properties.
+	super.record_interaction(interaction_type, frame_index, position, direction)
+
+
+## Sets the position and interaction properties in the rollback buffer at the
+## specified frame. Used for lag-compensated position injection.
+##
+## This function explicitly sets interaction properties in the buffer to
+## prevent them from being overwritten with stale NONE values.
 func _inject_position_into_buffer(
 	frame_index: int,
-	new_position: Vector2
+	new_position: Vector2,
+	interaction_type: int,
+	interaction_frame_index: int,
+	interaction_position: Vector2,
+	interaction_direction: Vector2
 ) -> void:
 	var frame_state: Array = _rollback_buffer.get_at(frame_index)
 	_set_frame_property(frame_state, &"position", new_position)
+
+	# Set interaction properties explicitly.
+	# This ensures the buffer has the correct interaction data, preventing
+	# _post_network_process() from overwriting with stale values.
+	_set_frame_interaction_properties(
+		frame_state,
+		interaction_type,
+		interaction_frame_index,
+		interaction_position,
+		interaction_direction
+	)
+
 	_rollback_buffer.set_at(frame_index, frame_state)
 	G.network.frame_driver.queue_rollback(frame_index)

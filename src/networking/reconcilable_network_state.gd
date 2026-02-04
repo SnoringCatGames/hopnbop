@@ -696,7 +696,8 @@ func _unpack_networked_state() -> void:
 
 func _pack_buffer_state_from_local_state() -> void:
 	# Check if buffer has a non-rollbackable interaction onset that
-	# must be preserved.
+	# must be preserved. Only onset frames need protection (where
+	# last_interaction_frame_index == timestamp_index), not continuation frames.
 	if _rollback_buffer.has_at(timestamp_index):
 		var existing_state: Array = _rollback_buffer.get_at(timestamp_index)
 		var existing_interaction_type: int = _get_frame_property(
@@ -708,40 +709,51 @@ func _pack_buffer_state_from_local_state() -> void:
 			&"last_interaction_frame_index"
 		)
 
-		# Check if buffer has non-rollbackable onset at THIS frame
+		# Check if buffer has non-rollbackable onset at THIS frame.
 		var is_onset := (existing_interaction_frame == timestamp_index)
-		var is_non_rollbackable := not _is_interaction_rollbackable(existing_interaction_type)
+		var is_non_rollbackable := not _is_interaction_rollbackable(
+			existing_interaction_type
+		)
 		var is_frame_locked := is_onset and is_non_rollbackable
 
 		if is_frame_locked:
-			# Check if current local state would overwrite with different interaction
-			var current_interaction_type := last_interaction_type
-			var current_interaction_frame := last_interaction_frame_index
-			var would_overwrite := (
-				current_interaction_type != existing_interaction_type or
-				current_interaction_frame != existing_interaction_frame
+			# Buffer has authoritative onset - preserve interaction properties,
+			# but always update physics state (position, velocity).
+			if G.is_verbose and last_interaction_type != existing_interaction_type:
+				G.verbose(
+					"Preserving onset %s from buffer, not overwriting " +
+					"with local %s at frame %d (%s)" % [
+						_get_interaction_type_name(existing_interaction_type),
+						_get_interaction_type_name(last_interaction_type),
+						timestamp_index,
+						name
+					],
+					ScaffolderLog.CATEGORY_NETWORK_SYNC
+				)
+
+			# Pack hybrid state: interaction from buffer, physics from local.
+			var preserved_state := ArrayPool.acquire(
+				_property_names_for_packing.size() + 1
 			)
-
-			if would_overwrite:
-				# Buffer has authoritative onset, current state is prediction/corruption
-				# Preserve buffer's interaction properties, pack everything else
-				if G.is_verbose:
-					G.verbose(
-						"Preserving onset %s from buffer, not overwriting " +
-						"with local %s at frame %d (%s)" % [
-							_get_interaction_type_name(existing_interaction_type),
-							_get_interaction_type_name(current_interaction_type),
-							timestamp_index,
-							name
-						],
-						ScaffolderLog.CATEGORY_NETWORK_SYNC
+			var index := 0
+			for property_name in _property_names_for_packing:
+				if property_name.begins_with("last_interaction_"):
+					# Preserve interaction properties from buffer
+					preserved_state[index] = _get_frame_property(
+						existing_state,
+						property_name
 					)
+				else:
+					# Pack current local value (position, velocity, etc.)
+					preserved_state[index] = get(property_name)
+				index += 1
+			preserved_state[index] = frame_authority
 
-			# Rollback buffer already has a non-rollbackable interaction onset
-			# recorded in this frame.
+			# Note: state is owned by rollback buffer, don't release.
+			_record_buffer_frame(timestamp_index, preserved_state)
 			return
 
-	# Normal packing: no onset to preserve, or onset matches current state
+	# Normal packing: no onset to preserve.
 	var state := ArrayPool.acquire(_property_names_for_packing.size() + 1)
 
 	var i := 0

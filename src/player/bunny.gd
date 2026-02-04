@@ -310,7 +310,7 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 		# Process as kill with lag-compensated position.
 		G.match_state.server_add_kill(player_id, other_player.player_id)
 		_server_apply_interaction_with_position(
-			self,
+			self ,
 			CharacterStateFromServer.ServerInteractionType.KILL,
 			lag_compensated_position
 		)
@@ -352,7 +352,7 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 		CharacterStateFromServer.ServerInteractionType.BUMP
 	)
 	other_player._server_apply_interaction(
-		self,
+		self ,
 		CharacterStateFromServer.ServerInteractionType.BUMP
 	)
 
@@ -404,17 +404,11 @@ func _server_apply_interaction_with_position(
 	var bounce_velocity := direction * base_speed + Vector2(0, vertical_boost)
 	_pending_bounce = bounce_velocity
 
-	# Inject lag-compensated position into rollback buffer.
-	var current_frame := G.network.server_frame_index
-	state_from_server._inject_position_into_buffer(
-		current_frame,
-		override_position
-	)
-
-	# Record interaction with lag-compensated position.
+	# Record interaction with lag-compensated position (automatically injects
+	# into buffer).
 	state_from_server.record_interaction(
 		interaction_type,
-		current_frame,
+		G.network.server_frame_index,
 		override_position,
 		direction
 	)
@@ -424,7 +418,7 @@ func _server_apply_interaction_with_position(
 			"F:%d Applied %s interaction to player %d: pos=%s " +
 			"(lag compensated), bounce=%s, dir=%s"
 		) % [
-			current_frame,
+			G.network.server_frame_index,
 			CharacterStateFromServer.ServerInteractionType.keys()[
 				interaction_type
 			],
@@ -675,7 +669,7 @@ func _on_foot_area_area_entered(area: Area2D) -> void:
 
 	# For direct collision, use current position (collision areas overlap).
 	_server_apply_interaction_with_position(
-		self,
+		self ,
 		CharacterStateFromServer.ServerInteractionType.KILL,
 		global_position
 	)
