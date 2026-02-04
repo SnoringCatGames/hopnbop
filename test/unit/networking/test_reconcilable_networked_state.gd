@@ -36,7 +36,7 @@ class TestableNetworkedState extends ReconcilableNetworkedState:
 
 
 	func _has_non_rollbackable_interactions() -> bool:
-		return false  # Test class doesn't use interaction tracking.
+		return false # Test class doesn't use interaction tracking.
 
 
 	func _init() -> void:
@@ -399,7 +399,7 @@ class TestStatePacking:
 		entity.test_position = Vector2(100.0, 50.0)
 		entity.test_velocity = Vector2(10.0, 5.0)
 		entity.test_health = 95
-		entity.timestamp_index = 42
+		entity.frame_index = 42
 
 		# Pack state
 		entity.pack_networked_state_public()
@@ -416,7 +416,7 @@ class TestStatePacking:
 
 	func test_pack_networked_state_includes_frame_index():
 		# Set entity properties and frame index
-		entity.timestamp_index = 100
+		entity.frame_index = 100
 
 		# Pack state
 		entity.pack_networked_state_public()
@@ -434,14 +434,14 @@ class TestStatePacking:
 	func test_pack_networked_state_releases_old_array():
 		# Pack state twice to verify old array is released
 		entity.test_position = Vector2(100.0, 50.0)
-		entity.timestamp_index = 10
+		entity.frame_index = 10
 
 		entity.pack_networked_state_public()
 		var first_packed := entity.packed_state
 
 		# Change state and pack again
 		entity.test_position = Vector2(200.0, 100.0)
-		entity.timestamp_index = 20
+		entity.frame_index = 20
 
 		entity.pack_networked_state_public()
 		var second_packed := entity.packed_state
@@ -464,7 +464,7 @@ class TestStatePacking:
 		entity.test_speed = 15.5
 		entity.test_is_active = false
 		entity.test_name = "test_player"
-		entity.timestamp_index = 50
+		entity.frame_index = 50
 
 		# Pack to create properly ordered packed_state
 		entity.pack_networked_state_public()
@@ -582,7 +582,7 @@ class TestStatePacking:
 		entity.test_speed = 8.5
 		entity.test_is_active = false
 		entity.test_name = "round_trip_test"
-		entity.timestamp_index = 55
+		entity.frame_index = 55
 
 		# Pack and unpack
 		entity.pack_networked_state_public()
@@ -770,7 +770,7 @@ class TestBufferStateRestoration:
 		)
 
 		# Simulate _pre_network_process
-		entity.timestamp_index = G.network.server_frame_index
+		entity.frame_index = G.network.server_frame_index
 		entity.frame_authority = (
 			ReconcilableNetworkedState.FrameAuthority.UNKNOWN
 		)
@@ -782,16 +782,16 @@ class TestBufferStateRestoration:
 		)
 
 
-	func test_timestamp_index_updates_during_pre_network_process():
+	func test_frame_index_updates_during_pre_network_process():
 		# Simulate frame processing
 		var expected_frame := 42
 		G.network.server_frame_index = expected_frame
 
 		# Simulate _pre_network_process
-		entity.timestamp_index = expected_frame
+		entity.frame_index = expected_frame
 
 		assert_eq(
-			entity.timestamp_index,
+			entity.frame_index,
 			expected_frame,
 			"Timestamp index should match server frame index",
 		)

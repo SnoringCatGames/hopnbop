@@ -36,7 +36,7 @@ func _init() -> void:
 
 
 func _has_non_rollbackable_interactions() -> bool:
-	return false  # Test class doesn't use interaction tracking.
+	return false # Test class doesn't use interaction tracking.
 
 
 func _get_is_server_authoritative() -> bool:
@@ -50,7 +50,7 @@ func _pre_network_process() -> void:
 
 func _network_process() -> void:
 	network_process_count += 1
-	last_processed_frame = timestamp_index
+	last_processed_frame = frame_index
 
 	# Simple physics: position += velocity * delta.
 	position += velocity * NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC

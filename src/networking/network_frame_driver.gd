@@ -50,10 +50,6 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# - Is there a potential problem from frame drift between the client and the server?
-
-# - Unify naming for frame index timestamp blah.
-
 # - Test kills and bumps.
 # - Adjust foot, head, and body shapes.
 

@@ -100,7 +100,7 @@ const DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHOLD := 10.0
 const _NONE_INTERACTION_TYPE := 0
 
 ## The estimated server frame, when this state occurred.
-var timestamp_index := Utils.MIN_INT
+var frame_index := Utils.MIN_INT
 
 ## Unified interaction system properties.
 ## Interaction type is an integer enum value (child classes define specific enums).
@@ -463,32 +463,32 @@ func _pre_network_process() -> void:
 		if _rollback_buffer == null:
 			return
 
-	timestamp_index = G.network.server_frame_index
+	frame_index = G.network.server_frame_index
 	frame_authority = FrameAuthority.UNKNOWN
 
 	G.check(
-		_rollback_buffer.get_latest_index() >= timestamp_index - 2,
+		_rollback_buffer.get_latest_index() >= frame_index - 2,
 		("Rollback buffer missing required frame: " +
 		"current=%d, needs=%d, latest=%d") %
 		[
-			timestamp_index,
-			timestamp_index - 2,
+			frame_index,
+			frame_index - 2,
 			_rollback_buffer.get_latest_index(),
 		])
 
 	# We're about to simulate frame N. Start by loading frame N-1's final state
 	# as our starting point, and provide frame N-2 as "previous" for just_*
 	# comparisons (e.g., just_pressed, just_touched).
-	_unpack_buffer_state(timestamp_index - 1)
+	_unpack_buffer_state(frame_index - 1)
 
-	var previous_frame_state = _rollback_buffer.get_at(timestamp_index - 2)
+	var previous_frame_state = _rollback_buffer.get_at(frame_index - 2)
 	if previous_frame_state == null:
 		# For very early frames, use default values as "previous" state.
 		previous_frame_state = _get_default_values()
 	_sync_to_scene_state(previous_frame_state)
 
 	# Restore indirect interaction-based state after syncing.
-	var current_frame_state = _rollback_buffer.get_at(timestamp_index - 1)
+	var current_frame_state = _rollback_buffer.get_at(frame_index - 1)
 	if current_frame_state != null:
 		_restore_indirect_interaction_state(current_frame_state)
 
@@ -593,7 +593,6 @@ func _update_replication_config() -> void:
 func _set_up_rollback_buffer() -> void:
 	# Initialize the rollback buffer with the current frame index.
 	# Frame indices start at 0 and are immediately valid (no time sync needed).
-
 	var default_values := _get_default_values().duplicate()
 	default_values.append(FrameAuthority.PREDICTED)
 
@@ -621,7 +620,7 @@ func _pack_networked_state() -> void:
 	state[i] = frame_authority
 	i += 1
 	# Send frame index directly.
-	state[i] = timestamp_index
+	state[i] = frame_index
 	_is_packing_state_locally = true
 
 	if G.is_verbose:
@@ -672,15 +671,15 @@ func _unpack_networked_state() -> void:
 	# Skip frame_authority (at index i) - we handle it separately in _handle_new_authoritative_state
 	i += 1
 	# Unpack frame index directly.
-	timestamp_index = _get_packed_frame_index(packed_state)
+	frame_index = _get_packed_frame_index(packed_state)
 
 
 func _pack_buffer_state_from_local_state() -> void:
 	# Check if buffer has a non-rollbackable interaction onset that
 	# must be preserved. Only onset frames need protection (where
-	# last_interaction_frame_index == timestamp_index), not continuation frames.
-	if _rollback_buffer.has_at(timestamp_index):
-		var existing_state: Array = _rollback_buffer.get_at(timestamp_index)
+	# last_interaction_frame_index == frame_index), not continuation frames.
+	if _rollback_buffer.has_at(frame_index):
+		var existing_state: Array = _rollback_buffer.get_at(frame_index)
 		var existing_interaction_type: int = _get_frame_property(
 			existing_state,
 			&"last_interaction_type"
@@ -691,7 +690,7 @@ func _pack_buffer_state_from_local_state() -> void:
 		)
 
 		# Check if buffer has non-rollbackable onset at THIS frame.
-		var is_onset := (existing_interaction_frame == timestamp_index)
+		var is_onset := (existing_interaction_frame == frame_index)
 		var is_non_rollbackable := not _is_interaction_rollbackable(
 			existing_interaction_type
 		)
@@ -706,7 +705,7 @@ func _pack_buffer_state_from_local_state() -> void:
 					"with local %s at frame %d (%s)" % [
 						_get_interaction_type_name(existing_interaction_type),
 						_get_interaction_type_name(last_interaction_type),
-						timestamp_index,
+						frame_index,
 						name
 					],
 					ScaffolderLog.CATEGORY_NETWORK_SYNC
@@ -731,7 +730,7 @@ func _pack_buffer_state_from_local_state() -> void:
 			preserved_state[index] = frame_authority
 
 			# Note: state is owned by rollback buffer, don't release.
-			_record_buffer_frame(timestamp_index, preserved_state)
+			_record_buffer_frame(frame_index, preserved_state)
 			return
 
 	# Normal packing: no onset to preserve.
@@ -744,7 +743,7 @@ func _pack_buffer_state_from_local_state() -> void:
 	state[i] = frame_authority
 
 	# Note: state is now owned by the rollback buffer, don't release it here.
-	_record_buffer_frame(timestamp_index, state)
+	_record_buffer_frame(frame_index, state)
 
 
 ## Records the current state in the rollback buffer at the current simulated
@@ -1301,14 +1300,6 @@ func _get_interaction_type_name(interaction_type: int) -> String:
 	if interaction_type == _NONE_INTERACTION_TYPE:
 		return "NONE"
 	return str(interaction_type)
-
-
-## Converts a timestamp in microseconds to a frame index.
-## Returns -1 if the timestamp is invalid (< 0).
-func _get_interaction_frame_from_time(time_usec: int) -> int:
-	if time_usec < 0:
-		return -1
-	return G.network.frame_driver.get_frame_index_from_time_usec(time_usec)
 
 
 ## Records an interaction by setting all interaction properties at once.

@@ -219,13 +219,13 @@ func _network_process() -> void:
 	var should_use_predicted_input := false
 	if (
 		input_source is ForwardedPlayerInputFromServer and
-		input_source._rollback_buffer.has_at(timestamp_index)
+		input_source._rollback_buffer.has_at(frame_index)
 	):
 		# Check if previous frame has authoritative input source data.
 		var prev_frame_is_auth := false
-		if input_source._rollback_buffer.has_at(timestamp_index - 1):
+		if input_source._rollback_buffer.has_at(frame_index - 1):
 			var prev_frame_state: Array = input_source._rollback_buffer.get_at(
-				timestamp_index - 1
+				frame_index - 1
 			)
 			if prev_frame_state != null:
 				prev_frame_is_auth = input_source._is_frame_authoritative(prev_frame_state)
@@ -237,7 +237,7 @@ func _network_process() -> void:
 	if has_auth_input or should_use_predicted_input:
 		# Use received input from buffer (either authoritative from
 		# PlayerInputFromClient, or predicted from ForwardedPlayerInputFromServer).
-		input_source._unpack_buffer_state(timestamp_index)
+		input_source._unpack_buffer_state(frame_index)
 		# Copy input from source to character.
 		_apply_input_to_character(input_source)
 		# Update surface attachment state based on the input we just loaded.
@@ -263,7 +263,7 @@ func _network_process() -> void:
 			# This is intentional: predicted input uses the last known state
 			# (N-1) to simulate frame N, while authoritative input that arrives
 			# later will be at frame N.
-			input_source._unpack_buffer_state(timestamp_index - 1)
+			input_source._unpack_buffer_state(frame_index - 1)
 			# Copy input from source to character.
 			_apply_input_to_character(input_source)
 			input_source.frame_authority = FrameAuthority.PREDICTED
