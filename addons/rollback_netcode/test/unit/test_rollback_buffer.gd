@@ -1,12 +1,6 @@
 extends GutTest
 ## Unit tests for RollbackBuffer.
 
-# Mock the ReconcilableNetworkedState.FrameAuthority enum for testing.
-class MockFrameAuthority:
-	const UNKNOWN = 0
-	const AUTHORITATIVE = 1
-	const PREDICTED = 2
-
 
 func before_each():
 	ArrayPool.clear_all_pools()
