@@ -90,7 +90,7 @@ var local_peer_id: int:
 	get:
 		return multiplayer.get_unique_id()
 
-## Current server frame index - the primary synchronization primitive.
+## Current server frame index; the primary synchronization primitive.
 var server_frame_index: int:
 	get:
 		return frame_driver.server_frame_index

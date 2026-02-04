@@ -22,7 +22,7 @@ func _update_display() -> void:
 	# Don't show the countdown if the match hasn't started or has finished.
 	visible = (
 		is_instance_valid(G.match_state) and
-		G.match_state.match_start_time_usec >= 0
+		G.match_state.match_start_frame_index >= 0
 	)
 
 	var remaining_sec := G.match_state.match_time_remaining_sec

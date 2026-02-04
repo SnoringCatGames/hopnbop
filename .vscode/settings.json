@@ -69,5 +69,9 @@
 		"**/.scons_cache": true,
 		"**/godot-cpp/gen": true,
 		"**/cmake-build": true
+	},
+	"chat.tools.terminal.autoApprove": {
+		"godot": true,
+		"Out-File": true
 	}
 }

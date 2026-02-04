@@ -171,11 +171,11 @@ func _client_on_bumps_updated() -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func _rpc_client_notify_match_started(
-	match_start_time_usec: int,
+	match_start_frame_index: int,
 	match_duration_usec: int
 ) -> void:
 	state.client_notify_match_started(
-		match_start_time_usec,
+		match_start_frame_index,
 		match_duration_usec
 	)
 

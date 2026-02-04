@@ -266,7 +266,7 @@ func server_start_game() -> void:
 	G.local_session.is_game_active = true
 
 	# Reset timer state.
-	G.match_state.match_start_time_usec = -1
+	G.match_state.match_start_frame_index = -1
 	G.match_state.is_match_ended = false
 
 	# TODO: Add in-game support for specifying which level to spawn on the server.
@@ -282,7 +282,7 @@ func server_end_game() -> void:
 	G.check_valid(G.level, "Level is not valid")
 
 	G.local_session.is_game_active = false
-	G.match_state.match_start_time_usec = -1
+	G.match_state.match_start_frame_index = -1
 	G.match_state.is_match_ended = false
 
 	G.network.connector.server_close_multiplayer_session()
@@ -297,7 +297,7 @@ func _process(_delta: float) -> void:
 		return
 
 	# Start timer when ready.
-	if G.match_state.match_start_time_usec < 0:
+	if G.match_state.match_start_frame_index < 0:
 		_server_check_start_match_timer()
 		return
 
@@ -307,14 +307,14 @@ func _process(_delta: float) -> void:
 
 
 func _server_check_start_match_timer() -> void:
-	if G.match_state.match_start_time_usec >= 0:
+	if G.match_state.match_start_frame_index >= 0:
 		return
 	if not is_level_fully_loaded:
 		return
 	if not is_instance_valid(G.level):
 		return
 
-	# Start timer once level is loaded (sets match_start_time_usec).
+	# Start timer once level is loaded (sets match_start_frame_index).
 	G.match_state.server_start_match_timer(G.settings.match_duration_sec)
 
 	G.print(

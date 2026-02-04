@@ -25,6 +25,7 @@ theme_override_constants/margin_bottom = 10
 
 [node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
 layout_mode = 2
+mouse_filter = 2
 
 [node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
@@ -60,6 +61,7 @@ mouse_filter = 2
 [node name="VerticalSpacer" type="Control" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+mouse_filter = 2
 
 [node name="PlayerList" parent="MarginContainer/VBoxContainer" instance=ExtResource("3_player_list")]
 layout_mode = 2

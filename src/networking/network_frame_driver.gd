@@ -15,8 +15,7 @@ extends Node
 ## 3. **_post_network_process**: Pack and record new state to rollback buffer
 ##
 ## Key responsibilities:
-## - Maintains server_frame_index and server_frame_time_usec for frame-aligned
-##   simulation
+## - Maintains server_frame_index as the primary synchronization primitive
 ## - Manages the rollback buffer
 ## - Detects state mismatches and triggers rollback reconciliation
 ## - Coordinates re-simulation of frames during rollback
@@ -72,7 +71,7 @@ extends Node
 #   - Configure Replication in MatchStateSynchronizer:
 #   1. Open the MatchStateSynchronizer node in the scene tree
 #   - Add these properties to replicate:
-#   - state:match_start_time_usec (REPLICATION_MODE_ON_CHANGE)
+#   - state:match_start_frame_index (REPLICATION_MODE_ON_CHANGE)
 #   - state:match_duration_usec (REPLICATION_MODE_ON_CHANGE)
 #   - state:is_match_ended (REPLICATION_MODE_ON_CHANGE)
 #   - Create countdown_timer.tscn
@@ -399,20 +398,14 @@ const TARGET_NETWORK_FPS = ScaffolderTime.PHYSICS_FPS
 const TARGET_NETWORK_TIME_STEP_SEC := 1.0 / TARGET_NETWORK_FPS
 const TARGET_NETWORK_TIME_STEP_USEC := floori(1_000_000 / TARGET_NETWORK_FPS)
 
-## Frame-aligned server time (microseconds). Calculated from server_frame_index
-## via get_time_usec_from_frame_index(), which returns the midpoint timestamp
-## of the current frame. Periodically re-synced to wall-clock time for accurate
-## logging.
-var server_frame_time_usec := 0
-
 ## Current frame index. Incremented directly on each physics tick in
 ## _pre_physics_process(). Drives all frame-synchronous simulation and rollback.
-## This is the single source of truth for frame progression.
+## This is the single source of truth for frame progression and network
+## synchronization.
 var server_frame_index := 0
 
 ## Tracks whether frame tracking has been initialized. Initialization is
-## deferred until the first physics tick after ServerTimeTracker is ready,
-## preventing fast-forward at startup.
+## deferred until the first physics tick, preventing fast-forward at startup.
 var _is_frame_tracking_initialized := false
 
 ## Pauses frame simulation. Starts paused by default - server unpauses when
@@ -661,19 +654,15 @@ func _server_rpc_request_unpause() -> void:
 @rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _client_rpc_notify_pause(
 	server_pause_frame: int,
-	server_pause_time_usec: int,
 	pause_initiator_peer_id: int,
 	pause_initiator_pauses_used: int,
-	pause_auto_unpause_time_usec: int,
 ) -> void:
 	G.check_is_client()
 
 	_client_execute_pause_at_server_frame(
 		server_pause_frame,
-		server_pause_time_usec,
 		pause_initiator_peer_id,
 		pause_initiator_pauses_used,
-		pause_auto_unpause_time_usec,
 	)
 
 ## Server notifies all clients of unpause.
@@ -682,14 +671,12 @@ func _client_rpc_notify_pause(
 @rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _client_rpc_notify_unpause(
 		server_unpause_frame: int,
-		server_unpause_time_usec: int,
 		server_cumulative_paused_frames: int,
 ) -> void:
 	G.check_is_client()
 
 	_client_execute_unpause_at_server_frame(
 		server_unpause_frame,
-		server_unpause_time_usec,
 		server_cumulative_paused_frames,
 	)
 
@@ -757,18 +744,13 @@ func _server_execute_pause(
 	if G.network.is_server and is_inside_tree():
 		_client_rpc_notify_pause.rpc(
 			server_frame_index,
-			server_frame_time_usec,
 			_pause_initiator_peer_id,
 			_pause_initiator_pauses_used,
-			_pause_auto_unpause_time_usec,
 		)
 
 	# Pause Godot scene tree.
 	if is_inside_tree():
 		get_tree().paused = true
-
-	# Pause time tracking.
-	G.network.time.pause()
 
 	G.print(
 		"Server paused at frame %d by peer %d" % [
@@ -812,16 +794,12 @@ func _server_execute_unpause() -> void:
 	if G.network.is_server and is_inside_tree():
 		_client_rpc_notify_unpause.rpc(
 			server_frame_index,
-			server_frame_time_usec,
 			_cumulative_paused_frames,
 		)
 
 	# Unpause Godot scene tree.
 	if is_inside_tree():
 		get_tree().paused = false
-
-	# Unpause time tracking.
-	G.network.time.unpause()
 
 	G.print(
 		"Server unpaused at frame %d (paused for %d frames, cumulative: %d)" %
@@ -833,10 +811,8 @@ func _server_execute_unpause() -> void:
 ## Execute pause on client at server-specified frame (client-side).
 func _client_execute_pause_at_server_frame(
 		server_pause_frame: int,
-		server_pause_time_usec: int,
 		pause_initiator_peer_id: int,
 		pause_initiator_pauses_used: int,
-		pause_auto_unpause_time_usec: int,
 ) -> void:
 	if _is_paused:
 		return
@@ -844,11 +820,9 @@ func _client_execute_pause_at_server_frame(
 	_is_paused = true
 	_pause_initiator_peer_id = pause_initiator_peer_id
 	_pause_initiator_pauses_used = pause_initiator_pauses_used
-	_pause_auto_unpause_time_usec = pause_auto_unpause_time_usec
 
 	# Align with server's pause frame.
 	server_frame_index = server_pause_frame
-	server_frame_time_usec = server_pause_time_usec
 	_pause_start_frame_index = server_pause_frame
 
 	# Clean up buffer frames after pause started.
@@ -860,9 +834,6 @@ func _client_execute_pause_at_server_frame(
 	# Pause Godot scene tree.
 	if is_inside_tree():
 		get_tree().paused = true
-
-	# Pause time tracking.
-	G.network.time.pause()
 
 	# Auto-open pause screen for all clients.
 	if is_instance_valid(G.screens):
@@ -878,7 +849,6 @@ func _client_execute_pause_at_server_frame(
 ## Execute unpause on client at server-specified frame (client-side).
 func _client_execute_unpause_at_server_frame(
 		server_unpause_frame: int,
-		server_unpause_time_usec: int,
 		server_cumulative_paused_frames: int,
 ) -> void:
 	if not _is_paused:
@@ -891,7 +861,6 @@ func _client_execute_unpause_at_server_frame(
 
 	# Align frame index with server.
 	server_frame_index = server_unpause_frame
-	server_frame_time_usec = server_unpause_time_usec
 
 	_is_paused = false
 	_pause_start_frame_index = 0
@@ -904,9 +873,6 @@ func _client_execute_unpause_at_server_frame(
 	# Unpause Godot scene tree.
 	if is_inside_tree():
 		get_tree().paused = false
-
-	# Unpause time tracking.
-	G.network.time.unpause()
 
 	# Auto-close pause screen and return to game.
 	# Also transition from loading screen to game when server starts.
@@ -950,28 +916,16 @@ func _pre_physics_process(_delta: float) -> void:
 
 
 func _initialize_frame_tracking() -> void:
-	# Wait for ServerTimeTracker to be ready before starting frame tracking
-	if not G.network.time.is_time_initialized:
-		return
-
+	# Frame tracking can start immediately since we use frame-based sync.
 	_is_frame_tracking_initialized = true
 
 	# Initialize to frame 0
 	# The first physics tick will increment this to 1
 	var previous_frame_index := server_frame_index
 	server_frame_index = 0
-	server_frame_time_usec = get_time_usec_from_frame_index(0)
 
-	# Set up periodic wall-clock re-sync using ScaffolderTime's interval system
-	G.time.set_interval(
-		_resync_frame_time_to_wall_clock,
-		WALL_CLOCK_RESYNC_INTERVAL_SEC,
-		[],
-		TimeType.APP_CLOCK,
-	)
-
-	# Note: Clients sync to server's clock via NTP offset, but track their own
-	# frame indices locally starting from 0
+	# Note: Clients track their own frame indices locally starting from 0.
+	# Periodic frame index broadcasts from the server prevent drift.
 	G.print(
 		"Frame tracking initialized at frame 0 (was %d)" % previous_frame_index,
 		ScaffolderLog.CATEGORY_NETWORK_SYNC,
@@ -979,76 +933,6 @@ func _initialize_frame_tracking() -> void:
 
 
 ## If we bucket server time into discrete frames, this would be the index of the
-## frame corresponding to the given time. Accounts for cumulative pause time to
-## maintain continuous frame indices without gaps.
-func get_frame_index_from_time_usec(p_time_usec: int) -> int:
-	@warning_ignore("integer_division")
-	var raw_frame := p_time_usec / TARGET_NETWORK_TIME_STEP_USEC
-	return raw_frame - _cumulative_paused_frames
-
-
-## Convert frame index to time. Accounts for cumulative pause time by adding
-## paused frames back to the time calculation.
-func get_time_usec_from_frame_index(p_frame_index: int) -> int:
-	var adjusted_frame := p_frame_index + _cumulative_paused_frames
-	return floori(
-		adjusted_frame * TARGET_NETWORK_TIME_STEP_USEC +
-		TARGET_NETWORK_TIME_STEP_USEC * 0.5,
-	)
-
-
-func _update_server_frame_time() -> void:
-	# Update frame timestamp based on current frame index
-	# Periodic wall-clock re-sync is handled by G.time.set_interval
-	server_frame_time_usec = get_time_usec_from_frame_index(server_frame_index)
-
-
-func _resync_frame_time_to_wall_clock() -> void:
-	var actual_server_time_usec := G.network.server_time_usec_not_frame_aligned
-	var frame_based_time_usec := get_time_usec_from_frame_index(server_frame_index)
-	var drift_usec := actual_server_time_usec - frame_based_time_usec
-
-	# Warn if drift exceeds 1 second (indicates potential timing issues)
-	if absf(drift_usec) > 1_000_000:
-		@warning_ignore("integer_division")
-		G.warning(
-			"Large timestamp drift detected: %d ms at frame %d" %
-			[drift_usec / 1000, server_frame_index],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
-		)
-
-	# Sync frame time to wall-clock to maintain accurate timestamps for logging
-	server_frame_time_usec = actual_server_time_usec
-
-	@warning_ignore("integer_division")
-	G.print(
-		"Re-synced frame timestamp to wall-clock (drift: %d ms)" %
-		[drift_usec / 1000],
-		ScaffolderLog.CATEGORY_NETWORK_SYNC,
-	)
-
-
-# FIXME: REMOVE: Is this actually a potential problem?
-func _log_frame_drift() -> void:
-	# Calculate what frame we SHOULD be at based on server time
-	var estimated_server_time := G.network.time.get_server_time_usec()
-	var expected_frame := get_frame_index_from_time_usec(estimated_server_time)
-	var frame_drift := server_frame_index - expected_frame
-
-	@warning_ignore("integer_division")
-	var time_drift_ms := frame_drift * TARGET_NETWORK_TIME_STEP_USEC / 1000
-
-	G.print(
-		"Frame drift: local=%d expected=%d diff=%d (%d ms)" % [
-			server_frame_index,
-			expected_frame,
-			frame_drift,
-			time_drift_ms,
-		],
-		ScaffolderLog.CATEGORY_NETWORK_SYNC,
-	)
-
-
 func add_networked_state(node: ReconcilableNetworkedState) -> void:
 	G.ensure(not _networked_state_nodes.has(node))
 	_networked_state_nodes.append(node)
@@ -1111,13 +995,6 @@ func queue_rollback(p_conflicting_frame_index: int) -> bool:
 ## For most nodes in the scene, _network_process should happen before
 ## _physics_process.
 func _run_network_process() -> void:
-	# Don't process frames on clients until they have received the server's
-	# start time offset and can calculate valid frame indices.
-	if not G.network.time.is_time_initialized:
-		return
-
-	_update_server_frame_time()
-
 	if _queued_rollback_frame_index > 0:
 		_rollback_and_reprocess()
 		_queued_rollback_frame_index = 0
@@ -1135,13 +1012,8 @@ func _rollback_and_reprocess() -> void:
 	var rollback_start_time_usec := Time.get_ticks_usec()
 
 	var original_server_frame_index := server_frame_index
-	var original_server_frame_time_usec := server_frame_time_usec
 
 	server_frame_index = _queued_rollback_frame_index
-	server_frame_time_usec = floori(
-		server_frame_index * TARGET_NETWORK_TIME_STEP_USEC +
-		TARGET_NETWORK_TIME_STEP_USEC * 0.5,
-	)
 
 	# Re-simulate all frames between the mismatch and current frame (exclusive).
 	# The loop processes frames [rollback_frame, original_frame), but not the
@@ -1150,12 +1022,10 @@ func _rollback_and_reprocess() -> void:
 	var frame_count := 0
 	while server_frame_index < original_server_frame_index:
 		_network_process()
-		server_frame_time_usec += TARGET_NETWORK_TIME_STEP_USEC
 		server_frame_index += 1
 		frame_count += 1
 
 	server_frame_index = original_server_frame_index
-	server_frame_time_usec = original_server_frame_time_usec
 
 	# Track rollback metrics
 	last_rollback_frame_count = frame_count
@@ -1193,7 +1063,6 @@ func fast_forward(new_frame_index: int) -> void:
 	var frame_count := 0
 
 	while server_frame_index < new_frame_index:
-		server_frame_time_usec += TARGET_NETWORK_TIME_STEP_USEC
 		server_frame_index += 1
 		_network_process()
 		frame_count += 1
