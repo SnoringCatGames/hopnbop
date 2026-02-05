@@ -23,7 +23,7 @@ class TestFrameSimulation:
 	func before_each():
 		ArrayPool.clear_all_pools()
 		frame_index = 0
-		var default_state := [0.0, 0.0, 0.0, 0]  # x, y, velocity, authority
+		var default_state := [0.0, 0.0, 0.0, 0] # x, y, velocity, authority
 		buffer = RollbackBuffer.new(90, frame_index, default_state)
 
 	func after_each():
@@ -32,14 +32,14 @@ class TestFrameSimulation:
 	func test_simulates_multiple_frames_without_rollback():
 		# Simulate 30 frames of movement with constant velocity.
 		var velocity := 10.0
-		var delta := 1.0 / 60.0  # 60 FPS
+		var delta := 1.0 / 60.0 # 60 FPS
 
 		for i in range(30):
 			var state := ArrayPool.acquire(4)
-			state[0] = i * velocity * delta  # x position
-			state[1] = 0.0  # y position
+			state[0] = i * velocity * delta # x position
+			state[1] = 0.0 # y position
 			state[2] = velocity
-			state[3] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			state[3] = ReconcilableState.FrameAuthority.PREDICTED
 
 			buffer.set_at(frame_index, state)
 			frame_index += 1
@@ -58,7 +58,7 @@ class TestFrameSimulation:
 			state[0] = 0.0
 			state[1] = 0.0
 			state[2] = 0.0
-			state[3] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			state[3] = ReconcilableState.FrameAuthority.PREDICTED
 			buffer.append(state)
 
 		# Now append a specific state at frame 10.
@@ -66,7 +66,7 @@ class TestFrameSimulation:
 		state_10[0] = 90.0
 		state_10[1] = 50.0
 		state_10[2] = 10.0
-		state_10[3] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+		state_10[3] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 		buffer.append(state_10)
 
 		# Jump to frame 17 (skipping 11-16).
@@ -79,7 +79,7 @@ class TestFrameSimulation:
 			assert_eq(state[0], 90.0, "Backfilled position should match")
 			assert_eq(
 				state[3],
-				ReconcilableNetworkedState.FrameAuthority.PREDICTED,
+				ReconcilableState.FrameAuthority.PREDICTED,
                 "Backfilled state should be PREDICTED"
 			)
 
@@ -103,19 +103,19 @@ class TestRollbackReconciliation:
 		# Simulate client prediction for frames 0-10.
 		for i in range(11):
 			var state := ArrayPool.acquire(4)
-			state[0] = i * 5.0  # Client predicted position
+			state[0] = i * 5.0 # Client predicted position
 			state[1] = 0.0
 			state[2] = 5.0
-			state[3] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			state[3] = ReconcilableState.FrameAuthority.PREDICTED
 			buffer.set_at(i, state)
 
 		# Server sends authoritative correction for frame 5 with different
 		# position.
 		var server_state := ArrayPool.acquire(4)
-		server_state[0] = 30.0  # Server says position is different
+		server_state[0] = 30.0 # Server says position is different
 		server_state[1] = 0.0
 		server_state[2] = 5.0
-		server_state[3] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+		server_state[3] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		var client_state_5: Array = buffer.get_at(5)
 		var has_mismatch := absf(
@@ -132,7 +132,7 @@ class TestRollbackReconciliation:
 		assert_eq(corrected_state[0], 30.0)
 		assert_eq(
 			corrected_state[3],
-			ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+			ReconcilableState.FrameAuthority.AUTHORITATIVE
 		)
 
 	func test_re_simulates_frames_after_rollback_point():
@@ -142,7 +142,7 @@ class TestRollbackReconciliation:
 			state[0] = i * 10.0
 			state[1] = 0.0
 			state[2] = 10.0
-			state[3] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			state[3] = ReconcilableState.FrameAuthority.PREDICTED
 			buffer.set_at(i, state)
 
 		# Record predicted position at frame 10.
@@ -152,9 +152,9 @@ class TestRollbackReconciliation:
 		var server_state_5 := ArrayPool.acquire(4)
 		server_state_5[0] = 50.0
 		server_state_5[1] = 0.0
-		server_state_5[2] = 8.0  # Different velocity
+		server_state_5[2] = 8.0 # Different velocity
 		server_state_5[3] = \
-			ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+			ReconcilableState.FrameAuthority.AUTHORITATIVE
 		buffer.set_at(5, server_state_5)
 
 		# Re-simulate frames 6-10 with corrected velocity.
@@ -165,7 +165,7 @@ class TestRollbackReconciliation:
 			new_state[0] = prev_state[0] + prev_state[2] * delta
 			new_state[1] = 0.0
 			new_state[2] = prev_state[2]
-			new_state[3] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			new_state[3] = ReconcilableState.FrameAuthority.PREDICTED
 			buffer.set_at(i, new_state)
 
 		# Verify that frame 10 position has changed.
@@ -197,7 +197,7 @@ class TestBufferWraparound:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i)
 			state[1] = float(i * 2)
-			state[2] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.PREDICTED
 			buffer.append(state)
 
 		# Only the last 10 frames should be accessible.
@@ -219,7 +219,7 @@ class TestBufferWraparound:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i)
 			state[1] = 0.0
-			state[2] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.PREDICTED
 			buffer.append(state)
 
 		# Server sends correction for frame 25 (still within buffer).
@@ -229,7 +229,7 @@ class TestBufferWraparound:
 		server_state[0] = 999.0
 		server_state[1] = 888.0
 		server_state[2] = \
-			ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+			ReconcilableState.FrameAuthority.AUTHORITATIVE
 		buffer.set_at(25, server_state)
 
 		# Verify correction was applied.
@@ -310,7 +310,7 @@ class TestLargeGapBackfill:
 		var state_0 := ArrayPool.acquire(3)
 		state_0[0] = 999.0
 		state_0[1] = 888.0
-		state_0[2] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+		state_0[2] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 		buffer.set_at(0, state_0)
 
 		# Jump way ahead (beyond buffer capacity).
@@ -326,7 +326,7 @@ class TestLargeGapBackfill:
 		# But should be marked as PREDICTED.
 		assert_eq(
 			state_500[2],
-			ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			ReconcilableState.FrameAuthority.PREDICTED
 		)
 
 	func test_handles_negative_indices_correctly():

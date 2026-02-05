@@ -4,6 +4,17 @@ extends GutTest
 ## These tests verify pause coordination scenarios. Most detailed testing
 ## (state filtering, buffer cleanup) is covered in unit tests.
 
+static func _create_mock_config() -> NetworkConfig:
+	var config := NetworkConfig.new()
+	config.server_port = 4433
+	config.rollback_buffer_duration_sec = 1.5
+	return config
+
+
+static func _create_mock_logger() -> NetworkLogger:
+	return NetworkLogger.new()
+
+
 func before_each():
 	ArrayPool.clear_all_pools()
 
@@ -16,18 +27,39 @@ class TestFrameIndexContinuity:
 	extends GutTest
 	## Tests that frame indices remain continuous across pause/unpause cycles.
 
-	var frame_driver: NetworkFrameDriver
+	var frame_driver: FrameDriver
 
+	static func _create_mock_config() -> NetworkConfig:
+		var config := NetworkConfig.new()
+		config.server_port = 4433
+		config.rollback_buffer_duration_sec = 1.5
+		return config
+
+	static func _create_mock_logger() -> NetworkLogger:
+		return NetworkLogger.new()
 
 	func before_each():
 		ArrayPool.clear_all_pools()
-		frame_driver = NetworkFrameDriver.new()
+		var mock_orchestrator := Node.new()
+		mock_orchestrator.set_script(load("res://test/helpers/mock_orchestrator.gd"))
+		mock_orchestrator.is_server = true
+		mock_orchestrator.is_preview = false
+		add_child_autofree(mock_orchestrator)
+
+		var mock_connector := Node.new()
+		add_child_autofree(mock_connector)
+
+		frame_driver = FrameDriver.new(
+			_create_mock_config(),
+			_create_mock_logger(),
+			mock_orchestrator,
+			mock_connector
+		)
+		add_child_autofree(frame_driver)
 
 
 	func after_each():
 		ArrayPool.clear_all_pools()
-		if is_instance_valid(frame_driver):
-			frame_driver.free()
 
 
 	func test_frame_index_stays_constant_during_pause():
@@ -87,18 +119,39 @@ class TestPauseRollbackInteraction:
 	extends GutTest
 	## Tests interaction between pause and rollback systems.
 
-	var frame_driver: NetworkFrameDriver
+	var frame_driver: FrameDriver
 
+	static func _create_mock_config() -> NetworkConfig:
+		var config := NetworkConfig.new()
+		config.server_port = 4433
+		config.rollback_buffer_duration_sec = 1.5
+		return config
+
+	static func _create_mock_logger() -> NetworkLogger:
+		return NetworkLogger.new()
 
 	func before_each():
 		ArrayPool.clear_all_pools()
-		frame_driver = NetworkFrameDriver.new()
+		var mock_orchestrator := Node.new()
+		mock_orchestrator.set_script(load("res://test/helpers/mock_orchestrator.gd"))
+		mock_orchestrator.is_server = true
+		mock_orchestrator.is_preview = false
+		add_child_autofree(mock_orchestrator)
+
+		var mock_connector := Node.new()
+		add_child_autofree(mock_connector)
+
+		frame_driver = FrameDriver.new(
+			_create_mock_config(),
+			_create_mock_logger(),
+			mock_orchestrator,
+			mock_connector
+		)
+		add_child_autofree(frame_driver)
 
 
 	func after_each():
 		ArrayPool.clear_all_pools()
-		if is_instance_valid(frame_driver):
-			frame_driver.free()
 
 
 	func test_can_queue_rollback_after_unpause():

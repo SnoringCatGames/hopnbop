@@ -194,33 +194,36 @@ class TestRollbackBufferIntegration:
 		interaction.frame_index = 100
 
 		var interactions = [interaction]
-		state._server_recent_interactions.set_at(100, interactions)
+		var buffer = state._get_server_recent_interactions()
+		buffer.set_at(100, interactions)
 
 		assert_true(
-			state._server_recent_interactions.has_at(100),
+			buffer.has_at(100),
 			"Frame 100 should be accessible"
 		)
 
-		var retrieved = state._server_recent_interactions.get_at(100)
+		var retrieved = buffer.get_at(100)
 		assert_not_null(retrieved, "Should retrieve stored interactions")
 
 	func test_rollback_buffer_allows_non_sequential_inserts():
 		var state = MatchState.new()
 
+		var buffer = state._get_server_recent_interactions()
+
 		# Insert at frame 200 first.
 		G.network.frame_driver.server_frame_index = 200
-		state._server_recent_interactions.set_at(200, [])
+		buffer.set_at(200, [])
 
 		# Then insert at earlier frame 195 (rollback scenario).
 		G.network.frame_driver.server_frame_index = 195
-		state._server_recent_interactions.set_at(195, [])
+		buffer.set_at(195, [])
 
 		assert_true(
-			state._server_recent_interactions.has_at(195),
+			buffer.has_at(195),
 			"Earlier frame should be accessible"
 		)
 		assert_true(
-			state._server_recent_interactions.has_at(200),
+			buffer.has_at(200),
 			"Later frame should still be accessible"
 		)
 
@@ -236,7 +239,8 @@ class TestRollbackBufferIntegration:
 		state.server_add_kill(1, 2)
 
 		# Verify interaction was stored at correct frame.
-		var stored = state._server_recent_interactions.get_at(300)
+		var buffer = state._get_server_recent_interactions()
+		var stored = buffer.get_at(300)
 		assert_not_null(stored, "Interaction should be stored at frame 300")
 		assert_gt(
 			stored.size(),

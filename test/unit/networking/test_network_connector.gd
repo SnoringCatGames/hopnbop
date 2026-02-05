@@ -5,6 +5,18 @@ extends GutTest
 ## configuration reading and connection lifecycle tracking.
 
 
+## Create mock config for testing.
+static func _create_mock_config() -> NetworkConfig:
+	var config := NetworkConfig.new()
+	config.server_port = 4433
+	return config
+
+
+## Create mock logger for testing.
+static func _create_mock_logger() -> NetworkLogger:
+	return NetworkLogger.new()
+
+
 func before_each():
 	ArrayPool.clear_all_pools()
 
@@ -19,6 +31,13 @@ class TestServerMode:
 
 	var connector: NetworkConnector
 
+	static func _create_mock_config() -> NetworkConfig:
+		var config := NetworkConfig.new()
+		config.server_port = 4433
+		return config
+
+	static func _create_mock_logger() -> NetworkLogger:
+		return NetworkLogger.new()
 
 	func before_each():
 		ArrayPool.clear_all_pools()
@@ -44,7 +63,7 @@ class TestServerMode:
 		# This test verifies the method exists and has proper checks
 		# (actual connection creation is hard to test in unit tests)
 		assert_true(
-			NetworkConnector.new().has_method("server_enable_connections"),
+			NetworkConnector.new(_create_mock_config(), _create_mock_logger()).has_method("server_enable_connections"),
 			"Should have server_enable_connections method",
 		)
 
@@ -52,7 +71,7 @@ class TestServerMode:
 	func test_server_close_multiplayer_session_exists():
 		# Verify the method exists for server cleanup
 		assert_true(
-			NetworkConnector.new().has_method("server_close_multiplayer_session"),
+			NetworkConnector.new(_create_mock_config(), _create_mock_logger()).has_method("server_close_multiplayer_session"),
 			"Should have server_close_multiplayer_session method",
 		)
 
@@ -63,6 +82,13 @@ class TestClientMode:
 
 	var connector: NetworkConnector
 
+	static func _create_mock_config() -> NetworkConfig:
+		var config := NetworkConfig.new()
+		config.server_port = 4433
+		return config
+
+	static func _create_mock_logger() -> NetworkLogger:
+		return NetworkLogger.new()
 
 	func before_each():
 		ArrayPool.clear_all_pools()
@@ -77,7 +103,7 @@ class TestClientMode:
 	func test_client_connect_to_server_method_exists():
 		# Verify client connection method exists
 		assert_true(
-			NetworkConnector.new().has_method("client_connect_to_server"),
+			NetworkConnector.new(_create_mock_config(), _create_mock_logger()).has_method("client_connect_to_server"),
 			"Should have client_connect_to_server method",
 		)
 
@@ -85,14 +111,14 @@ class TestClientMode:
 	func test_client_disconnect_method_exists():
 		# Verify client disconnection method exists
 		assert_true(
-			NetworkConnector.new().has_method("client_disconnect"),
+			NetworkConnector.new(_create_mock_config(), _create_mock_logger()).has_method("client_disconnect"),
 			"Should have client_disconnect method",
 		)
 
 
 	func test_initial_is_connected_to_server_is_false():
 		# New connector should start disconnected
-		connector = NetworkConnector.new()
+		connector = NetworkConnector.new(_create_mock_config(), _create_mock_logger())
 
 		assert_false(
 			connector.is_connected_to_server,
@@ -106,10 +132,17 @@ class TestConnectionLifecycle:
 
 	var connector: NetworkConnector
 
+	static func _create_mock_config() -> NetworkConfig:
+		var config := NetworkConfig.new()
+		config.server_port = 4433
+		return config
+
+	static func _create_mock_logger() -> NetworkLogger:
+		return NetworkLogger.new()
 
 	func before_each():
 		ArrayPool.clear_all_pools()
-		connector = NetworkConnector.new()
+		connector = NetworkConnector.new(_create_mock_config(), _create_mock_logger())
 		# Add to scene tree so multiplayer property is available
 		add_child_autofree(connector)
 

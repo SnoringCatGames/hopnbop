@@ -1,6 +1,6 @@
 @tool
 extends GutTest
-## Unit tests for ReconcilableNetworkedState 3-node configuration validation.
+## Unit tests for ReconcilableState 3-node configuration validation.
 ##
 ## Tests the new validation logic that supports:
 ## - 1-node: NPC with only CharacterStateFromServer
@@ -17,7 +17,7 @@ func after_each():
 
 
 ## Test helper for server-authoritative state (like CharacterStateFromServer).
-class TestServerAuthState extends ReconcilableNetworkedState:
+class TestServerAuthState extends ReconcilableState:
 	var test_value := 0
 
 	@warning_ignore("unused_private_class_variable") var _synced_properties_and_rollback_diff_thresholds := {
@@ -52,7 +52,7 @@ class TestServerAuthState extends ReconcilableNetworkedState:
 
 
 ## Test helper for client-authoritative state (like PlayerInputFromClient).
-class TestClientAuthState extends ReconcilableNetworkedState:
+class TestClientAuthState extends ReconcilableState:
 	var test_value := 0
 
 	@warning_ignore("unused_private_class_variable") var _synced_properties_and_rollback_diff_thresholds := {
@@ -87,7 +87,7 @@ class TestClientAuthState extends ReconcilableNetworkedState:
 
 
 ## Test helper for forwarded input (server-authoritative, second server-auth node).
-class TestForwardedState extends ReconcilableNetworkedState:
+class TestForwardedState extends ReconcilableState:
 	var test_value := 0
 
 	@warning_ignore("unused_private_class_variable") var _synced_properties_and_rollback_diff_thresholds := {

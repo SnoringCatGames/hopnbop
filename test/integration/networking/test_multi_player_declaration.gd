@@ -5,6 +5,17 @@ const DEFAULT_LEVEL_SCENE := preload("res://src/level/default_level.tscn")
 const MockGamePanel := preload("res://test/helpers/mock_game_panel.gd")
 
 
+## Helper function to create default player attributes for testing.
+static func _get_default_attributes() -> Dictionary:
+	return {
+		"bunny_name": "TestBunny",
+		"adjective": "TestAdj",
+		"is_soft": false,
+		"body_type_index": 0,
+		"costume_index": 0,
+	}
+
+
 func before_each():
 	ArrayPool.clear_all_pools()
 	# Initialize network frame tracking.
@@ -19,6 +30,15 @@ func after_each():
 class TestMatchStateSynchronizerPlayerCreation:
 	extends GutTest
 
+	static func _get_default_attributes() -> Dictionary:
+		return {
+			"bunny_name": "TestBunny",
+			"adjective": "TestAdj",
+			"is_soft": false,
+			"body_type_index": 0,
+			"costume_index": 0,
+		}
+
 	func before_each():
 		ArrayPool.clear_all_pools()
 
@@ -30,8 +50,8 @@ class TestMatchStateSynchronizerPlayerCreation:
 		var peer_id := 1234
 		var assigned_ids: Array[int] = [1, 2]
 		var attributes := [
-			NetworkConnector._get_fallback_attributes(),
-			NetworkConnector._get_fallback_attributes(),
+			_get_default_attributes(),
+			_get_default_attributes(),
 		]
 
 		# Simulate server assigning IDs 1 and 2 to this peer.
@@ -50,9 +70,9 @@ class TestMatchStateSynchronizerPlayerCreation:
 		var synchronizer := MatchStateSynchronizer.new()
 		var assigned_ids: Array[int] = [1, 2, 3]
 		var attributes := [
-			NetworkConnector._get_fallback_attributes(),
-			NetworkConnector._get_fallback_attributes(),
-			NetworkConnector._get_fallback_attributes(),
+			_get_default_attributes(),
+			_get_default_attributes(),
+			_get_default_attributes(),
 		]
 		synchronizer._server_on_peer_players_declared(1, assigned_ids, attributes)
 
@@ -70,8 +90,8 @@ class TestMatchStateSynchronizerPlayerCreation:
 		var peer_id := 5678
 		var assigned_ids: Array[int] = [10, 11]
 		var attributes := [
-			NetworkConnector._get_fallback_attributes(),
-			NetworkConnector._get_fallback_attributes(),
+			_get_default_attributes(),
+			_get_default_attributes(),
 		]
 		synchronizer._server_on_peer_players_declared(
 			peer_id, assigned_ids, attributes)
@@ -95,14 +115,14 @@ class TestMatchStateSynchronizerPlayerCreation:
 		# Peer 1 gets IDs [1, 2]
 		synchronizer._server_on_peer_players_declared(1, [1, 2],
 		[
-			NetworkConnector._get_fallback_attributes(),
-			NetworkConnector._get_fallback_attributes(),
+			_get_default_attributes(),
+			_get_default_attributes(),
 		])
 
 		# Peer 2 gets IDs [3]
 		synchronizer._server_on_peer_players_declared(2, [3],
 		[
-			NetworkConnector._get_fallback_attributes()
+			_get_default_attributes()
 		])
 
 		assert_eq(synchronizer.state.players_by_id.size(), 3)
@@ -161,6 +181,15 @@ class TestNetworkedLevelPlayerSpawning:
 class TestPlayerIdFormatConsistency:
 	extends GutTest
 
+	static func _get_default_attributes() -> Dictionary:
+		return {
+			"bunny_name": "TestBunny",
+			"adjective": "TestAdj",
+			"is_soft": false,
+			"body_type_index": 0,
+			"costume_index": 0,
+		}
+
 	func before_each():
 		ArrayPool.clear_all_pools()
 
@@ -186,8 +215,8 @@ class TestPlayerIdFormatConsistency:
 		var peer_id := 1234
 		var assigned_ids: Array[int] = [1, 2]
 		var attributes := [
-			NetworkConnector._get_fallback_attributes(),
-			NetworkConnector._get_fallback_attributes(),
+			_get_default_attributes(),
+			_get_default_attributes(),
 		]
 
 		# Create players in both systems with same assigned IDs.

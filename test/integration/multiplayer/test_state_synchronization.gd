@@ -42,7 +42,7 @@ class TestClientPrediction:
 			state[1] = 0.0 # y position
 			state[2] = 10.0 # x velocity
 			state[3] = 0.0 # y velocity
-			state[4] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			state[4] = ReconcilableState.FrameAuthority.PREDICTED
 			client_buffer.set_at(i, state)
 
 		# Server is only at frame 5.
@@ -53,7 +53,7 @@ class TestClientPrediction:
 			state[2] = 10.0
 			state[3] = 0.0
 			state[4] = \
-				ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+				ReconcilableState.FrameAuthority.AUTHORITATIVE
 			server_buffer.set_at(i, state)
 
 		# Client should be ahead.
@@ -83,7 +83,7 @@ class TestClientPrediction:
 			state[1] = 0.0
 			state[2] = 10.0
 			state[3] = 0.0
-			state[4] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			state[4] = ReconcilableState.FrameAuthority.PREDICTED
 			client_buffer.set_at(i, state)
 
 		var client_pos_10_before: float = client_buffer.get_at(10)[0]
@@ -95,7 +95,7 @@ class TestClientPrediction:
 		server_correction[2] = 8.0 # Different velocity
 		server_correction[3] = 0.0
 		server_correction[4] = \
-			ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+			ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		# Apply server correction to client.
 		client_buffer.set_at(5, server_correction)
@@ -108,7 +108,7 @@ class TestClientPrediction:
 			new_state[1] = 0.0
 			new_state[2] = prev_state[2]
 			new_state[3] = 0.0
-			new_state[4] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			new_state[4] = ReconcilableState.FrameAuthority.PREDICTED
 			client_buffer.set_at(i, new_state)
 
 		var client_pos_10_after: float = client_buffer.get_at(10)[0]
@@ -140,7 +140,7 @@ class TestOutOfOrderPackets:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i * 5)
 			state[1] = 0.0
-			state[2] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.PREDICTED
 			buffer.set_at(i, state)
 
 		# Server packet for frame 10 arrives late (client is already at
@@ -149,7 +149,7 @@ class TestOutOfOrderPackets:
 		server_state_10[0] = 55.0 # Different from predicted (50.0)
 		server_state_10[1] = 0.0
 		server_state_10[2] = \
-			ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+			ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		# Should still be able to apply it.
 		assert_true(buffer.has_at(10))
@@ -160,7 +160,7 @@ class TestOutOfOrderPackets:
 		assert_eq(corrected[0], 55.0)
 		assert_eq(
 			corrected[2],
-			ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+			ReconcilableState.FrameAuthority.AUTHORITATIVE
 		)
 
 	func test_ignores_extremely_old_packets():
@@ -169,7 +169,7 @@ class TestOutOfOrderPackets:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i)
 			state[1] = 0.0
-			state[2] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.PREDICTED
 			buffer.append(state)
 
 		# Packet for frame 5 arrives (too old, beyond buffer capacity).
@@ -183,7 +183,7 @@ class TestOutOfOrderPackets:
 		old_packet[0] = 999.0
 		old_packet[1] = 0.0
 		old_packet[2] = \
-			ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+			ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		var result := buffer.set_at(5, old_packet)
 		assert_false(result, "Should not be able to set too-old frame")
@@ -216,7 +216,7 @@ class TestMultipleClientsScenario:
 			state[0] = float(i * 10)
 			state[1] = 0.0
 			state[2] = \
-				ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+				ReconcilableState.FrameAuthority.AUTHORITATIVE
 			server_buffer.set_at(i, state)
 
 		# Client 1 has received up to frame 9.
@@ -225,7 +225,7 @@ class TestMultipleClientsScenario:
 			state[0] = float(i * 10)
 			state[1] = 0.0
 			state[2] = \
-				ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+				ReconcilableState.FrameAuthority.AUTHORITATIVE
 			client1_buffer.set_at(i, state)
 
 		# Client 2 has only received up to frame 5.
@@ -234,7 +234,7 @@ class TestMultipleClientsScenario:
 			state[0] = float(i * 10)
 			state[1] = 0.0
 			state[2] = \
-				ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+				ReconcilableState.FrameAuthority.AUTHORITATIVE
 			client2_buffer.set_at(i, state)
 
 		# Verify different latest indices.
@@ -311,7 +311,7 @@ class TestFrameCatchup:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i)
 			state[1] = 0.0
-			state[2] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.PREDICTED
 			buffer.set_at(i, state)
 
 		assert_eq(buffer.get_latest_index(), 5)
@@ -329,7 +329,7 @@ class TestFrameCatchup:
 			# Should be marked as PREDICTED.
 			assert_eq(
 				state[2],
-				ReconcilableNetworkedState.FrameAuthority.PREDICTED
+				ReconcilableState.FrameAuthority.PREDICTED
 			)
 
 	func test_handles_burst_of_updates():
@@ -341,7 +341,7 @@ class TestFrameCatchup:
 			state[0] = float(frame_index * 10)
 			state[1] = 0.0
 			state[2] = \
-				ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+				ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 			# Backfill if needed.
 			if frame_index > buffer.get_latest_index():

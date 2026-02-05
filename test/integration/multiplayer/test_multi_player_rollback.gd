@@ -16,7 +16,7 @@ class TestMultiPlayerRollback:
 	extends GutTest
 	## Tests interactions between multiple networked entities during rollback.
 
-	var frame_driver: NetworkFrameDriver
+	var frame_driver: FrameDriver
 	var entity1: TestNetworkedEntity
 	var entity2: TestNetworkedEntity
 
@@ -115,7 +115,7 @@ class TestMultiPlayerRollback:
 		)
 
 		# Verify entities have separate buffers
-		# (buffers are created in ReconcilableNetworkedState._ready)
+		# (buffers are created in ReconcilableState._ready)
 		assert_ne(
 			entity1._rollback_buffer,
 			entity2._rollback_buffer,

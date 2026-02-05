@@ -17,7 +17,7 @@ class TestEdgeCases:
 	extends GutTest
 	## Tests extreme conditions and boundary cases.
 
-	var frame_driver: NetworkFrameDriver
+	var frame_driver: FrameDriver
 	var entity: TestNetworkedEntity
 
 
@@ -115,7 +115,7 @@ class TestEdgeCases:
 
 		# Calculate expected buffer size
 		var expected := ceili(
-			original_duration * NetworkFrameDriver.TARGET_NETWORK_FPS,
+			original_duration * FrameDriver.TARGET_NETWORK_FPS,
 		)
 		var actual := frame_driver.rollback_buffer_size
 

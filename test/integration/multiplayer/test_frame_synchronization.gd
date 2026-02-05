@@ -5,7 +5,7 @@ extends GutTest
 ## and rollback buffer management across different latency scenarios.
 
 
-const FRAME_DURATION_USEC := 16666  # ~60 FPS (1/60 second in microseconds)
+const FRAME_DURATION_USEC := 16666 # ~60 FPS (1/60 second in microseconds)
 
 
 func before_each():
@@ -21,21 +21,21 @@ class TestTimeToFrameConversion:
 
 	func test_converts_time_to_frame_index():
 		# At 60 FPS, each frame is ~16.666ms (16666 usec).
-		var time_usec := 1000000  # 1 second
+		var time_usec := 1000000 # 1 second
 		@warning_ignore("integer_division")
 		var expected_frame := time_usec / FRAME_DURATION_USEC
 		# Should be ~60 frames.
 		assert_eq(expected_frame, 60)
 
 	func test_converts_frame_to_time():
-		var frame := 120  # 2 seconds at 60 FPS
+		var frame := 120 # 2 seconds at 60 FPS
 		var expected_time_usec := frame * FRAME_DURATION_USEC
 		# Should be ~2 seconds (120 * 16666 = 1999920 usec).
 		assert_eq(expected_time_usec, 1999920)
 
 	func test_handles_fractional_frames():
 		# Time that doesn't align perfectly to frame boundary.
-		var time_usec := 25000  # 25ms
+		var time_usec := 25000 # 25ms
 		@warning_ignore("integer_division")
 		var frame := time_usec / FRAME_DURATION_USEC
 		# Should round down to frame 1.
@@ -56,7 +56,7 @@ class TestFrameSynchronization:
 
 	func before_each():
 		ArrayPool.clear_all_pools()
-		var default_state := [0.0, 0.0, 0, 0]  # x, y, frame, authority
+		var default_state := [0.0, 0.0, 0, 0] # x, y, frame, authority
 		client_buffer = RollbackBuffer.new(90, 0, default_state)
 		server_buffer = RollbackBuffer.new(90, 0, default_state)
 
@@ -79,7 +79,7 @@ class TestFrameSynchronization:
 			client_state[1] = 0.0
 			client_state[2] = current_frame
 			client_state[3] = \
-				ReconcilableNetworkedState.FrameAuthority.PREDICTED
+				ReconcilableState.FrameAuthority.PREDICTED
 			client_buffer.append(client_state)
 
 			var server_state := ArrayPool.acquire(4)
@@ -87,7 +87,7 @@ class TestFrameSynchronization:
 			server_state[1] = 0.0
 			server_state[2] = current_frame
 			server_state[3] = \
-				ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+				ReconcilableState.FrameAuthority.AUTHORITATIVE
 			server_buffer.append(server_state)
 
 		# Both should be at frame 10.
@@ -104,8 +104,8 @@ class TestFrameSynchronization:
 		# Server clock is 100ms (100000 usec) ahead of client.
 		var clock_offset_usec := 100000
 
-		var client_time := 500000  # Client thinks it's 500ms
-		var server_time := client_time + clock_offset_usec  # Server is 600ms
+		var client_time := 500000 # Client thinks it's 500ms
+		var server_time := client_time + clock_offset_usec # Server is 600ms
 
 		@warning_ignore("integer_division")
 		var client_frame := client_time / FRAME_DURATION_USEC
@@ -144,7 +144,7 @@ class TestLatencyScenarios:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i)
 			state[1] = 0.0
-			state[2] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.PREDICTED
 			buffer.set_at(i, state)
 
 		# Server state arrives for frame 4.
@@ -168,7 +168,7 @@ class TestLatencyScenarios:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i)
 			state[1] = 0.0
-			state[2] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.PREDICTED
 			buffer.set_at(i, state)
 
 		# Server state arrives for frame 14.
@@ -176,14 +176,14 @@ class TestLatencyScenarios:
 
 	func test_variable_latency_jitter():
 		# Simulate packets arriving with variable delay.
-		var packet_frames := [5, 7, 6, 9, 8]  # Out of order
+		var packet_frames := [5, 7, 6, 9, 8] # Out of order
 
 		for frame in packet_frames:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(frame * 10)
 			state[1] = 0.0
 			state[2] = \
-				ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+				ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 			# Ensure buffer can accommodate.
 			if frame > buffer.get_latest_index():
@@ -217,7 +217,7 @@ class TestFrameSkipDetection:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i)
 			state[1] = 0.0
-			state[2] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.PREDICTED
 			buffer.set_at(i, state)
 
 		var last_frame := buffer.get_latest_index()
@@ -234,7 +234,7 @@ class TestFrameSkipDetection:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i * 5)
 			state[1] = 0.0
-			state[2] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.PREDICTED
 			buffer.set_at(i, state)
 
 		# Jump to frame 15 (skipping 6-14).
@@ -249,7 +249,7 @@ class TestFrameSkipDetection:
 			# Should be marked PREDICTED.
 			assert_eq(
 				state[2],
-				ReconcilableNetworkedState.FrameAuthority.PREDICTED
+				ReconcilableState.FrameAuthority.PREDICTED
 			)
 
 

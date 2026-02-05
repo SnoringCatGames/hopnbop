@@ -230,7 +230,7 @@ class TestRollbackIntegration:
 		forwarded_input.last_interaction_position = Vector2(100, 200)
 		forwarded_input.last_interaction_direction = Vector2.ZERO
 		forwarded_input.frame_authority = \
-		ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+		ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		# Record state.
 		forwarded_input._sync_from_scene_state()
@@ -274,12 +274,12 @@ class TestRollbackIntegration:
 
 		# Store state in buffer (new interaction system has 5 properties + authority).
 		var state := ArrayPool.acquire(6)
-		state[0] = 0b0111  # actions
-		state[1] = PlayerInputNetworkState.ClientInteractionType.JUMP  # last_interaction_type
-		state[2] = 150  # last_interaction_frame_index
-		state[3] = Vector2.ZERO  # last_interaction_position
-		state[4] = Vector2.ZERO  # last_interaction_direction
-		state[5] = ReconcilableNetworkedState.FrameAuthority.PREDICTED  # frame_authority
+		state[0] = 0b0111 # actions
+		state[1] = PlayerInputNetworkState.ClientInteractionType.JUMP # last_interaction_type
+		state[2] = 150 # last_interaction_frame_index
+		state[3] = Vector2.ZERO # last_interaction_position
+		state[4] = Vector2.ZERO # last_interaction_direction
+		state[5] = ReconcilableState.FrameAuthority.PREDICTED # frame_authority
 
 		forwarded_input._rollback_buffer.set_at(test_frame, state)
 
@@ -304,7 +304,7 @@ class TestRollbackIntegration:
 		)
 		assert_eq(
 			forwarded_input.frame_authority,
-			ReconcilableNetworkedState.FrameAuthority.PREDICTED,
+			ReconcilableState.FrameAuthority.PREDICTED,
 			"Should restore frame authority from buffer",
 		)
 

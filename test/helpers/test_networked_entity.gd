@@ -1,6 +1,6 @@
 @tool
 class_name TestNetworkedEntity
-extends ReconcilableNetworkedState
+extends ReconcilableState
 ## A simple test entity for integration testing networked state and rollback.
 ##
 ## This entity tracks position and velocity, which can be used to test
@@ -53,7 +53,7 @@ func _network_process() -> void:
 	last_processed_frame = frame_index
 
 	# Simple physics: position += velocity * delta.
-	position += velocity * NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC
+	position += velocity * FrameDriver.TARGET_NETWORK_TIME_STEP_SEC
 
 
 func _post_network_process() -> void:
@@ -63,7 +63,7 @@ func _post_network_process() -> void:
 	pass
 
 
-## Implement required abstract methods from ReconcilableNetworkedState.
+## Implement required abstract methods from ReconcilableState.
 func _get_default_values() -> Array:
 	return [Vector2.ZERO, Vector2.ZERO, 0]
 

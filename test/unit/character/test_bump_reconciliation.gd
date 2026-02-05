@@ -159,7 +159,7 @@ class TestBumpReconciliation:
 
 		# Manually create rollback buffer (bypasses time initialization check).
 		var default_values := state._get_default_values().duplicate()
-		default_values.append(ReconcilableNetworkedState.FrameAuthority.PREDICTED)
+		default_values.append(ReconcilableState.FrameAuthority.PREDICTED)
 		state._rollback_buffer = RollbackBuffer.new(
 			90, # capacity (typical rollback buffer size)
 			0, # current_frame_index
@@ -237,7 +237,7 @@ class TestBumpReconciliation:
 		frame_state[4] = -1 # last_interaction_frame_index
 		frame_state[5] = Vector2.ZERO # last_interaction_position
 		frame_state[6] = Vector2.ZERO # last_interaction_direction
-		frame_state[7] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+		frame_state[7] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		state._rollback_buffer.set_at(300, frame_state)
 
@@ -285,7 +285,7 @@ class TestBumpReconciliation:
 		frame_state[4] = -1 # last_interaction_frame_index
 		frame_state[5] = Vector2.ZERO # last_interaction_position
 		frame_state[6] = Vector2.ZERO # last_interaction_direction
-		frame_state[7] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+		frame_state[7] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		state._rollback_buffer.set_at(400, frame_state)
 
@@ -314,7 +314,7 @@ class TestBumpReconciliation:
 		frame_state[4] = -1 # last_interaction_frame_index
 		frame_state[5] = Vector2.ZERO # last_interaction_position
 		frame_state[6] = Vector2.ZERO # last_interaction_direction
-		frame_state[7] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+		frame_state[7] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		state._rollback_buffer.set_at(500, frame_state)
 
@@ -373,7 +373,7 @@ class TestBumpReconciliationEdgeCases:
 
 		# Manually create rollback buffer (bypasses time initialization check).
 		var default_values := state._get_default_values().duplicate()
-		default_values.append(ReconcilableNetworkedState.FrameAuthority.PREDICTED)
+		default_values.append(ReconcilableState.FrameAuthority.PREDICTED)
 		state._rollback_buffer = RollbackBuffer.new(
 			90, # capacity (typical rollback buffer size)
 			0, # current_frame_index
@@ -397,7 +397,7 @@ class TestBumpReconciliationEdgeCases:
 		frame_state[4] = -1 # last_interaction_frame_index
 		frame_state[5] = Vector2.ZERO # last_interaction_position
 		frame_state[6] = Vector2.ZERO # last_interaction_direction
-		frame_state[7] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+		frame_state[7] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		state._rollback_buffer.set_at(600, frame_state)
 
@@ -446,7 +446,7 @@ class TestBumpReconciliationEdgeCases:
 		frame_state[4] = -1 # last_interaction_frame_index
 		frame_state[5] = Vector2.ZERO # last_interaction_position
 		frame_state[6] = Vector2.ZERO # last_interaction_direction
-		frame_state[7] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+		frame_state[7] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		state._rollback_buffer.set_at(700, frame_state)
 
