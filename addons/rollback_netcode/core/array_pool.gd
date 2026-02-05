@@ -11,7 +11,7 @@ extends RefCounted
 ##   ArrayPool.release(arr)
 
 # Dictionary<int, Array[Array]> - pools indexed by array size
-static var _pools_by_size := { }
+static var _pools_by_size := {}
 
 ## Maximum number of arrays to keep in each size pool
 const MAX_POOL_SIZE_PER_BUCKET := 32
@@ -62,7 +62,7 @@ static func clear_all_pools() -> void:
 
 ## Returns statistics about the current pool state.
 static func get_pool_stats() -> Dictionary:
-	var stats := { }
+	var stats := {}
 	var total_pooled := 0
 
 	for size in _pools_by_size.keys():

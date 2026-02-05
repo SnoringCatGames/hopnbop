@@ -1,0 +1,12 @@
+# Godot-generated files
+.import/
+export_presets.cfg
+
+# Test artifacts
+.gut/
+
+# Editor files
+*.swp
+*.swo
+*~
+.DS_Store

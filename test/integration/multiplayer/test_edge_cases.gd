@@ -115,7 +115,7 @@ class TestEdgeCases:
 
 		# Calculate expected buffer size
 		var expected := ceili(
-			original_duration * FrameDriver.TARGET_NETWORK_FPS,
+			original_duration * frame_driver.target_network_fps,
 		)
 		var actual := frame_driver.rollback_buffer_size
 

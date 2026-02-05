@@ -47,17 +47,11 @@ def login(event: Dict[str, Any], context: LambdaContext) -> Dict:
 
         # Authenticate with provider.
         if provider == "steam":
-            auth_token = asyncio.run(
-                auth_service.authenticate_steam(auth_code)
-            )
+            auth_token = asyncio.run(auth_service.authenticate_steam(auth_code))
         elif provider == "epic":
-            auth_token = asyncio.run(
-                auth_service.authenticate_epic(auth_code)
-            )
+            auth_token = asyncio.run(auth_service.authenticate_epic(auth_code))
         elif provider == "cognito":
-            auth_token = asyncio.run(
-                auth_service.authenticate_cognito(auth_code)
-            )
+            auth_token = asyncio.run(auth_service.authenticate_cognito(auth_code))
         else:
             return error_response(
                 400,
@@ -77,10 +71,7 @@ def login(event: Dict[str, Any], context: LambdaContext) -> Dict:
         # Issue JWT.
         jwt_token = auth_token.to_jwt(auth_service.jwt_secret)
 
-        logger.info(
-            f"User authenticated: {auth_token.player_id} "
-            f"via {provider}"
-        )
+        logger.info(f"User authenticated: {auth_token.player_id} " f"via {provider}")
 
         return {
             "statusCode": 200,
@@ -102,14 +93,10 @@ def login(event: Dict[str, Any], context: LambdaContext) -> Dict:
         return error_response(401, "AUTH_FAILED", str(e))
     except Exception as e:
         logger.exception("Login error")
-        return error_response(
-            500, "INTERNAL_ERROR", "Internal server error"
-        )
+        return error_response(500, "INTERNAL_ERROR", "Internal server error")
 
 
-def error_response(
-    status_code: int, error_code: str, message: str
-) -> Dict:
+def error_response(status_code: int, error_code: str, message: str) -> Dict:
     """Format error response."""
     return {
         "statusCode": status_code,
