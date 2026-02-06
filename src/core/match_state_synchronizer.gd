@@ -20,7 +20,7 @@ func _ready() -> void:
 		Netcode.connector.peer_players_declared.connect(
 			_server_on_peer_players_declared
 		)
-		multiplayer.peer_disconnected.connect(_server_on_peer_disconnected)
+		Netcode.connector.disconnected.connect(_server_on_peer_disconnected)
 
 	# Connect to player state events for connector notification.
 	state.player_joined.connect(_on_player_joined)
@@ -88,7 +88,7 @@ func _server_on_peer_players_declared(
 func _server_on_all_players_connected() -> void:
 	G.print(
 		"All players connected, assigning colors",
-		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS
+		NetworkLogger.CATEGORY_CONNECTIONS
 	)
 	# Assign outline colors once when all players have connected.
 	# This ensures colors are distributed evenly across all players.
@@ -100,7 +100,7 @@ func _server_assign_outline_colors() -> void:
 	var player_count := state.players_by_id.size()
 	G.print(
 		"Assigning colors to %d players" % player_count,
-		ScaffolderLog.CATEGORY_GAME_STATE
+		NetworkLogger.CATEGORY_GAME_STATE
 	)
 	var colors := PlayerAttributeGenerator.calculate_outline_colors(player_count)
 
@@ -115,14 +115,14 @@ func _server_assign_outline_colors() -> void:
 		player.outline_color = colors[i]
 		G.print(
 			"Player %d color = %s" % [player_id, colors[i]],
-			ScaffolderLog.CATEGORY_GAME_STATE
+			NetworkLogger.CATEGORY_GAME_STATE
 		)
 
 	# Repack the player state to trigger replication of updated colors.
 	state._server_pack_players()
 
 
-func _server_on_peer_disconnected(peer_id: int) -> void:
+func _server_on_peer_disconnected(peer_id: int, _reason: int) -> void:
 	# Handle all players for this peer.
 	var players_for_peer: Array[PlayerMatchState] = (
 		state.get_players_for_peer(peer_id)

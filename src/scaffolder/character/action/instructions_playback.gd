@@ -94,7 +94,7 @@ func get_previous_elapsed_time_scaled() -> float:
 
 
 func get_elapsed_time_scaled() -> float:
-	return G.time.get_scaled_play_time() - start_time_scaled
+	return Netcode.time.get_scaled_play_time() - start_time_scaled
 
 
 func _get_start_time_scaled_for_next_instruction() -> float:

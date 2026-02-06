@@ -1,27 +1,41 @@
 @tool
-class_name NetworkFrameProcessor
+class_name FrameProcessor
 extends Node
-## Helper node that enables any node to participate in frame-synchronous network
-## processing.
+## Helper node that enables any node to participate in frame-synchronous
+## network processing without full rollback support.
 ##
-## NetworkFrameProcessor acts as a bridge between NetworkFrameDriver and game
-## logic nodes that need to run during network frame simulation but don't extend
-## ReconcilableNetworkedState (i.e., they don't need to support server-mismatch
-## detection and rollback).
+## FrameProcessor acts as a bridge between FrameDriver and game logic nodes
+## that need to run during network frame simulation but don't extend
+## ReconcilableState (i.e., they don't need server-mismatch detection and
+## rollback).
+##
+## Typical use cases:
+## - UI updates that sync with game state
+## - Visual effects that don't affect gameplay
+## - Audio triggers based on network events
+## - Analytics/logging during frame processing
 ##
 ## Usage pattern:
-## 1. Add NetworkFrameProcessor as a child of your networked node
+## 1. Add FrameProcessor as a child of your networked node
 ## 2. Set root_path to point to the node that implements _network_process()
-## 3. NetworkFrameDriver will automatically call root._network_process() during
-##    each network frame
+## 3. FrameDriver will automatically call root._network_process() during each
+##    network frame
+##
+## Example scene tree:
+## ```
+## MyGameNode (has _network_process method)
+##   ├── FrameProcessor (root_path = "..")
+##   └── Sprite2D
+## ```
 
-## _network_process will be called on this node during network frame
-##  simulations.
+## Path to the node that implements _network_process().
+## Will be auto-populated to owner when first added in editor.
 @export var root_path: NodePath:
 	set(value):
 		root_path = value
 		update_configuration_warnings()
 
+## Reference to the root node (cached for performance).
 var root: Node:
 	get:
 		return get_node_or_null(root_path)
@@ -30,13 +44,13 @@ var root: Node:
 func _enter_tree() -> void:
 	if Engine.is_editor_hint():
 		return
-	G.network.frame_driver.add_network_frame_processor(self)
+	G.network.frame_driver.add_network_frame_processor(self )
 
 
 func _exit_tree() -> void:
 	if Engine.is_editor_hint():
 		return
-	G.network.frame_driver.remove_network_frame_processor(self)
+	G.network.frame_driver.remove_network_frame_processor(self )
 
 
 func _ready() -> void:
@@ -46,8 +60,11 @@ func _ready() -> void:
 	update_configuration_warnings()
 
 
+## Called by FrameDriver during network frame processing.
+## Delegates to root node's _network_process() method.
 func _network_process() -> void:
-	root._network_process()
+	if is_instance_valid(root) and root.has_method("_network_process"):
+		root._network_process()
 
 
 func _get_configuration_warnings() -> PackedStringArray:
@@ -58,6 +75,8 @@ func _get_configuration_warnings() -> PackedStringArray:
 	elif not is_instance_valid(root):
 		warnings.append("root_path does not point to a valid node")
 	elif not root.has_method("_network_process"):
-		warnings.append("The node at `Root Path` must have a `_network_process` method")
+		warnings.append(
+			"The node at root_path must have a _network_process() method"
+		)
 
 	return warnings

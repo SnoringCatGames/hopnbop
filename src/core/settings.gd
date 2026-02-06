@@ -1,8 +1,8 @@
 class_name Settings
-extends NetworkConfig
+extends NetworkSettings
 ## Game settings extending rollback netcode configuration.
 ##
-## This class extends NetworkConfig to provide all network settings plus
+## This class extends NetworkSettings to provide all network settings plus
 ## game-specific configuration. Dynamic values like
 ## is_preview_mode are computed during initialization.
 

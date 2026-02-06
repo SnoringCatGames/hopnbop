@@ -39,7 +39,7 @@ func toggle_debug_console() -> void:
 	G.print(
 		"Toggled DebugConsole: %s" %
 		("visible" if %DebugConsole.visible else "hidden"),
-		ScaffolderLog.CATEGORY_INTERACTION,
+		NetworkLogger.CATEGORY_INTERACTION,
 	)
 
 
@@ -51,7 +51,7 @@ func toggle_player_state_list() -> void:
 	G.print(
 		"Toggled PlayerStateList: %s" %
 		("visible" if %PlayerStateList.visible else "hidden"),
-		ScaffolderLog.CATEGORY_INTERACTION,
+		NetworkLogger.CATEGORY_INTERACTION,
 	)
 
 
@@ -63,5 +63,5 @@ func toggle_perf_tracker() -> void:
 	G.print(
 		"Toggled PerfTracker: %s" %
 		("visible" if %PerfTrackerPanel.visible else "hidden"),
-		ScaffolderLog.CATEGORY_INTERACTION,
+		NetworkLogger.CATEGORY_INTERACTION,
 	)

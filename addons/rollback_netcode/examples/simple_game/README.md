@@ -9,7 +9,7 @@ A minimal working example demonstrating the rollback netcode plugin for Godot 4.
 - **Server-authoritative player movement** with client-side prediction
 - **Rollback reconciliation** when predictions mismatch server state
 - **MultiplayerSpawner** integration for dynamic player instantiation
-- **Dependency injection** pattern (NetworkConfig, NetworkLogger, NetworkTime)
+- **Dependency injection** pattern (NetworkSettings, NetworkLogger, NetworkTime)
 - **WASD movement** at 200 pixels/second
 - **Color-coded logging** for easy debugging
 
@@ -18,7 +18,7 @@ A minimal working example demonstrating the rollback netcode plugin for Godot 4.
 ```
 simple_game/
 ├── scripts/
-│   ├── game_config.gd         # NetworkConfig implementation
+│   ├── game_settings.gd         # NetworkSettings implementation
 │   ├── game_logger.gd         # NetworkLogger with color-coded output
 │   ├── game_time.gd           # NetworkTime with Timer-based implementation
 │   ├── netcode_singleton.gd   # Global Netcode singleton (autoload)
@@ -57,7 +57,7 @@ godot --path "c:/Users/lsl/Repositories/jumpnthump/addons/rollback_netcode/examp
 ### 1. Plugin Initialization (main.gd)
 
 ```gdscript
-var config := GameConfig.new()      # Network settings
+var config := GameSettings.new()      # Network settings
 var logger := GameLogger.new()      # Logging implementation
 var time := GameTime.new(get_tree()) # Timer utilities
 
@@ -73,7 +73,7 @@ Netcode.initialize(orchestrator)
 
 - **Server mode**: `--server` flag or headless mode (auto-detected)
 - **Client mode**: Default when run in editor or as application
-- **Port**: 4433 (configurable in GameConfig)
+- **Port**: 4433 (configurable in GameSettings)
 
 ### 3. Player Spawning
 
@@ -105,7 +105,7 @@ When client prediction differs from server state:
 
 The plugin doesn't assume any specific logging or timer system - you provide implementations:
 
-- **NetworkConfig**: Game-specific settings (port, buffer size, etc.)
+- **NetworkSettings**: Game-specific settings (port, buffer size, etc.)
 - **NetworkLogger**: Logging backend (console, file, UI, etc.)
 - **NetworkTime**: Timer management (SceneTree timers, custom managers, etc.)
 
@@ -182,7 +182,7 @@ var _synced_properties_and_rollback_diff_thresholds := {
 ### Rollback not triggering
 
 - Increase network latency artificially to test rollback
-- Check `show_perf_tracker = true` in `GameConfig` for stats
+- Check `tracking_perf = true` in `GameSettings` for stats
 
 ### Input not working
 

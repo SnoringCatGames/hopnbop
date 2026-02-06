@@ -1587,7 +1587,7 @@ extends NetworkSettings
 @export var max_ping_threshold_ms := 200
 ```
 
-Save as `my_game_config.tres` and load normally.
+Save as `my_game_settings.tres` and load normally.
 
 ### Custom Logger Implementations
 

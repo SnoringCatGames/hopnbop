@@ -127,7 +127,7 @@ func _ready() -> void:
 	if TestEnvironmentDetector.is_running_in_test_env(self ):
 		return
 
-	Netcode.logger.print("PerfTracker")
+	Netcode.log.print("PerfTracker")
 
 	# Register custom performance monitors (only in preview mode for performance)
 	if Netcode.is_preview:
@@ -160,7 +160,7 @@ func _ready() -> void:
 	)
 
 	# Start periodic metric logging.
-	if Netcode.config.show_perf_tracker:
+	if Netcode.config.tracking_perf:
 		Netcode.time.set_interval(
 			_log_metrics_periodically,
 			METRICS_LOG_INTERVAL_SEC,
@@ -292,7 +292,7 @@ func _is_ready() -> bool:
 
 
 func _start_perf_sync_interval() -> void:
-	Netcode.logger.check(Netcode.is_server, "Must be server")
+	Netcode.log.check(Netcode.is_server, "Must be server")
 
 	# Wait for level to be fully loaded before starting sync
 	if not _is_ready():
@@ -308,14 +308,14 @@ func _start_perf_sync_interval() -> void:
 
 
 func _server_sync_perf_to_clients() -> void:
-	Netcode.logger.check(Netcode.is_server, "Must be server")
+	Netcode.log.check(Netcode.is_server, "Must be server")
 
 	var perf_state := _server_collect_perf_state()
 	_client_rpc_receive_server_perf_state.rpc(perf_state)
 
 
 func _server_collect_perf_state() -> Dictionary:
-	Netcode.logger.check(Netcode.is_server, "Must be server")
+	Netcode.log.check(Netcode.is_server, "Must be server")
 
 	return {
 		"physics_fps": _current_physics_fps,
@@ -341,7 +341,7 @@ func _server_collect_perf_state() -> Dictionary:
 
 @rpc("authority", "call_remote", "reliable")
 func _client_rpc_receive_server_perf_state(server_perf_state: Dictionary) -> void:
-	Netcode.logger.check(not Netcode.is_server, "Must be client")
+	Netcode.log.check(not Netcode.is_server, "Must be client")
 
 	# Validate expected keys
 	var required_keys := [
@@ -365,7 +365,7 @@ func _client_rpc_receive_server_perf_state(server_perf_state: Dictionary) -> voi
 
 	for key in required_keys:
 		if not server_perf_state.has(key):
-			Netcode.logger.warning("Server perf state missing key: %s" % key)
+			Netcode.log.warning("Server perf state missing key: %s" % key)
 			return
 
 	_server_perf_state = server_perf_state
@@ -522,10 +522,10 @@ func get_server_max_last_fastforward_frames() -> int:
 
 
 func _log_metrics_periodically() -> void:
-	if not Netcode.config.show_perf_tracker:
+	if not Netcode.config.tracking_perf:
 		return
 
-	Netcode.logger.print(
+	Netcode.log.print(
 		"PERF: FPS[P:%.1f R:%.1f N:%.1f] PING:%.1fms RB[/s:%.1f last:%.2fms/%df] FF[/s:%.1f last:%.2fms/%df]" % [
 			_current_physics_fps,
 			_current_render_fps,
@@ -545,7 +545,7 @@ func _log_metrics_periodically() -> void:
 
 
 func _log_render_fps_warning(avg_fps: float) -> void:
-	Netcode.logger.warning(
+	Netcode.log.warning(
 		"Slow render FPS: %.1f (threshold: %d)" %
 		[avg_fps, _SLOW_RENDER_FPS],
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
@@ -553,7 +553,7 @@ func _log_render_fps_warning(avg_fps: float) -> void:
 
 
 func _log_physics_fps_warning(avg_fps: float) -> void:
-	Netcode.logger.warning(
+	Netcode.log.warning(
 		"Slow physics FPS: %.1f (threshold: %d)" %
 		[avg_fps, _SLOW_PHYSICS_FPS],
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
@@ -561,7 +561,7 @@ func _log_physics_fps_warning(avg_fps: float) -> void:
 
 
 func _log_network_fps_warning(avg_fps: float) -> void:
-	Netcode.logger.warning(
+	Netcode.log.warning(
 		"Slow network FPS: %.1f (threshold: %d)" %
 		[avg_fps, _SLOW_NETWORK_FPS],
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
@@ -569,7 +569,7 @@ func _log_network_fps_warning(avg_fps: float) -> void:
 
 
 func _log_network_rtt_warning(rtt_msec: float) -> void:
-	Netcode.logger.warning(
+	Netcode.log.warning(
 		"Slow network RTT: %.1fms (threshold: %.0fms)" %
 		[rtt_msec, _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0],
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
@@ -580,7 +580,7 @@ func _log_large_fastforward_warning(frame_count: int) -> void:
 	# Suppress warning during grace period after frame reset (expected during reconnection).
 	if Netcode.frame_driver.is_in_sync_grace_period:
 		return
-	Netcode.logger.warning(
+	Netcode.log.warning(
 		"Large fast-forward: %d frames (threshold: %d)" %
 		[frame_count, _LARGE_FASTFORWARD_THRESHOLD],
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
@@ -588,7 +588,7 @@ func _log_large_fastforward_warning(frame_count: int) -> void:
 
 
 func _log_high_fastforward_rate_warning(rate: float) -> void:
-	Netcode.logger.warning(
+	Netcode.log.warning(
 		"High fast-forward rate: %.2f/sec (threshold: %.1f)" %
 		[rate, _HIGH_FASTFORWARD_RATE_THRESHOLD],
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,

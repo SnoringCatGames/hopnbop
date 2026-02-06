@@ -8,7 +8,7 @@ const PRIORITY := 250
 
 
 func _init() -> void:
-	super(NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
+	super (NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
 
 
 func process(character) -> bool:
@@ -32,7 +32,7 @@ func process(character) -> bool:
 			# -   Force a minimum speed value, in order to prevent early
 			#     acceleration from being cancelled-out by the min-speed cutoff.
 			var default_move_offset: float = (
-				character.current_walk_acceleration * G.time.get_scaled_network_frame_delta()
+				character.current_walk_acceleration * Netcode.time.get_time_step_sec()
 			)
 			var friction_factor: float = (
 				character.movement_settings.friction_coeff_with_sideways_input * friction_multiplier
@@ -60,7 +60,7 @@ func process(character) -> bool:
 			var friction_magnitude: float = (
 				friction_factor
 				* character.movement_settings.gravity_fast_fall_acceleration
-				* G.time.get_scaled_network_frame_delta()
+				* Netcode.time.get_time_step_sec()
 			)
 			friction_magnitude = clamp(friction_magnitude, 0.0, abs(character.velocity.x))
 			var friction_offset := friction_magnitude * -speed_sign

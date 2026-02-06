@@ -3,7 +3,7 @@ extends Node
 
 var is_server := true
 var is_preview := false
-var config: NetworkConfig
+var config: NetworkSettings
 var logger: NetworkLogger
 var connector: MockConnector
 var frame_driver: Node

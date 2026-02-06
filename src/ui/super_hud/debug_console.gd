@@ -28,11 +28,11 @@ func _ready() -> void:
 	%ConcatenatedLogs.add_theme_color_override("font_color", font_color)
 	%Time.add_theme_color_override("font_color", font_color)
 
-	G.time.set_timeout(_delayed_init, 0.8)
+	Netcode.time.set_timeout(_delayed_init, 0.8)
 
 
 func _process(_delta: float) -> void:
-	%Time.text = Utils.get_time_string_from_seconds(G.time.get_app_time(), false, false, true) + " "
+	%Time.text = Utils.get_time_string_from_seconds(Netcode.time.get_time(), false, false, true) + " "
 
 
 func _delayed_init() -> void:
@@ -57,7 +57,7 @@ func _set_concatenated_logs(p_text: String) -> void:
 	if not is_node_ready():
 		return
 	%ConcatenatedLogs.text = text
-	G.time.set_timeout(_scroll_to_bottom, 0.2)
+	Netcode.time.set_timeout(_scroll_to_bottom, 0.2)
 
 
 func _remove_surplus_message() -> void:

@@ -12,12 +12,12 @@ const PLAYER_SCENE := preload("res://addons/rollback_netcode/examples/simple_gam
 @onready var _spawner: MultiplayerSpawner = $MultiplayerSpawner
 
 var _orchestrator: NetworkOrchestrator
-var _players := {}  # Dictionary<int, CharacterBody2D>
+var _players := {} # Dictionary<int, CharacterBody2D>
 
 
 func _ready() -> void:
 	# Initialize rollback netcode plugin with dependencies.
-	var config := GameConfig.new()
+	var config := GameSettings.new()
 	var logger := GameLogger.new()
 	var time := GameTime.new(get_tree())
 
@@ -83,7 +83,7 @@ func _on_peer_disconnected(peer_id: int) -> void:
 
 func _spawn_player(peer_id: int) -> void:
 	if _players.has(peer_id):
-		return  # Already spawned.
+		return # Already spawned.
 
 	var player := PLAYER_SCENE.instantiate()
 	player.name = "Player_%d" % peer_id

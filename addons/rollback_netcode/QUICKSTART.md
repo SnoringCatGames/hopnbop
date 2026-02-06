@@ -31,8 +31,8 @@ rollback netcode in 5 minutes.
 **Code example** (alternative to .tres file):
 
 ```gdscript
-# game_config.gd
-class_name GameConfig
+# game_settings.gd
+class_name GameSettings
 extends NetworkSettings
 
 func _init() -> void:

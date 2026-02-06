@@ -51,7 +51,7 @@ func assign_device_to_player(
 	player_device_map[local_player_index] = device_config
 	G.print("Assigned device to player %d: type=%s, device_id=%d" %
 		[local_player_index, device_config.name, device_config.device_id],
-		ScaffolderLog.CATEGORY_PLAYER_ACTIONS)
+		NetworkLogger.CATEGORY_PLAYER_ACTIONS)
 
 
 func unassign_device_from_player(local_player_index: int) -> void:

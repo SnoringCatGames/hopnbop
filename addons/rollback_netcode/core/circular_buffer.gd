@@ -33,7 +33,7 @@ var capacity: int:
 
 
 func _init(p_capacity: int) -> void:
-	Netcode.logger.check(p_capacity > 0, "CircularBuffer capacity must be greater than 0")
+	Netcode.log.check(p_capacity > 0, "CircularBuffer capacity must be greater than 0")
 	_capacity = p_capacity
 	_data.resize(p_capacity)
 	for i in range(p_capacity):

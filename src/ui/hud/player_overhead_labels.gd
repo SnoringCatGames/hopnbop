@@ -22,7 +22,7 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	# Throttle visibility updates for performance (we check distance to all
 	# other players each time).
-	G.time.set_interval(
+	Netcode.time.set_interval(
 		_update_label_visibility,
 		0.2
 	)

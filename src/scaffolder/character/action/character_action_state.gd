@@ -160,7 +160,7 @@ func copy(other: CharacterActionState) -> void:
 
 
 func log_new_presses_and_releases(character) -> void:
-	if not G.is_verbose:
+	if not Netcode.log.is_verbose:
 		return
 	_log_new_press_or_release(character, "jump", just_pressed_jump, just_released_jump)
 	_log_new_press_or_release(character, "up", just_pressed_up, just_released_up)
@@ -209,12 +209,12 @@ func _log_new_press_or_release(
 	if just_pressed:
 		G.verbose(
 			"START %5s: %s" % [action_name, details],
-			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+			NetworkLogger.CATEGORY_PLAYER_ACTIONS,
 		)
 	if just_released:
 		G.verbose(
 			"STOP  %5s: %s" % [action_name, details],
-			ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+			NetworkLogger.CATEGORY_PLAYER_ACTIONS,
 		)
 
 

@@ -848,7 +848,7 @@ var config := load("res://network_settings.tres") as NetworkSettings
 var orchestrator = NetworkOrchestrator.new(config, logger, time)
 
 # Or subclass for custom logic:
-class_name MyGameConfig
+class_name MyGameSettings
 extends NetworkSettings
 
 @export var custom_setting := true
