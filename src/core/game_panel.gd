@@ -320,10 +320,10 @@ func client_load_game() -> void:
 	G.screens.client_open_screen(ScreensMain.ScreenType.LOADING)
 
 	# Request session IDs from backend before connecting.
-	_client_request_session_ids()
+	_client_client_request_session_ids()
 
 
-func _client_request_session_ids() -> void:
+func _client_client_request_session_ids() -> void:
 	Netcode.check_is_client()
 	session_manager.client_request_session()
 
@@ -363,9 +363,10 @@ func server_start_match() -> void:
 	# Set expected player count for session validation.
 	session_manager.server_set_expected_players(Netcode.settings.preview_client_count)
 
-	# TODO: Add in-game support for specifying which level to spawn on the server.
+	# Get selected level from session provider (GameLift or preview mode).
+	var level_scene := _server_get_selected_level_scene()
 
-	_server_spawn_level(G.settings.default_level_scene)
+	_server_spawn_level(level_scene)
 
 	Netcode.connector.server_enable_connections(Netcode.server_port)
 
@@ -434,7 +435,9 @@ func _server_on_preview_peer_connected(peer_id: int) -> void:
 		Netcode.frame_driver._frame_reset_time_usec = Time.get_ticks_usec()
 		# Reconnect preview mode auto-unpause signal for new match.
 		Netcode.frame_driver.server_reset_preview_mode_unpause()
-		_server_spawn_level(G.settings.default_level_scene)
+		# Get selected level (may use preferences from preview mode).
+		var level_scene := _server_get_selected_level_scene()
+		_server_spawn_level(level_scene)
 
 
 func _process(_delta: float) -> void:
@@ -509,6 +512,28 @@ func on_return_to_lobby_from_screen(
 
 func on_left_lobby_to_screen(_next_screen_type: ScreensMain.ScreenType) -> void:
 	pass
+
+
+## Get the level scene to spawn based on session provider selection.
+## Falls back to default_level_scene if no level is selected or found.
+func _server_get_selected_level_scene() -> PackedScene:
+	var level_id := session_manager.server_get_selected_level_id()
+
+	if not level_id.is_empty():
+		var level_info := G.level_registry.get_level_by_id(level_id)
+		if level_info != null and level_info.scene != null:
+			G.print(
+				"Using selected level: %s (%s)" % [level_id, level_info.display_name],
+				NetworkLogger.CATEGORY_GAME_STATE
+			)
+			return level_info.scene
+		else:
+			G.warning(
+				"Selected level '%s' not found in registry, using default" % level_id,
+				NetworkLogger.CATEGORY_GAME_STATE
+			)
+
+	return G.settings.default_level_scene
 
 
 func _server_spawn_level(level_scene: PackedScene) -> void:

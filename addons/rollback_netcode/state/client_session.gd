@@ -29,6 +29,12 @@ var local_player_ids: Array[int] = []
 ## Array index corresponds to local_player_index.
 var local_player_attributes: Array[Dictionary] = []
 
+## Level preferences for matchmaking (optional).
+var level_preferences: LevelPreferences = null
+
+## Selected level ID from matchmaking response.
+var selected_level_id: StringName = ""
+
 ## Message from server (e.g., shutdown notification) to display on game over
 ## screen.
 var latest_server_message := ""
@@ -57,6 +63,8 @@ func clear() -> void:
 	local_device_configs.clear()
 	local_player_ids.clear()
 	local_player_attributes.clear()
+	level_preferences = null
+	selected_level_id = ""
 
 
 func clear_latest_state() -> void:

@@ -156,10 +156,10 @@ func _matches_interaction(
 		return false
 
 	# Order-independent matching: (A, B) matches (B, A).
-	var matches_forward := (
+	var matches_forward: bool = (
 		interaction.a_id == entity_a_id and interaction.b_id == entity_b_id
 	)
-	var matches_reverse := (
+	var matches_reverse: bool = (
 		interaction.a_id == entity_b_id and interaction.b_id == entity_a_id
 	)
 

@@ -378,9 +378,9 @@ func _server_rpc_declare_players(
 
 	# Validate session IDs if provider is set.
 	if session_provider != null and session_provider.has_method(
-		"validate_player_sessions"
+		"server_validate_player_sessions"
 	):
-		session_provider.validate_player_sessions(
+		session_provider.server_validate_player_sessions(
 			peer_id,
 			assigned_ids,
 			session_ids

@@ -52,6 +52,8 @@ extends Node
 # - The server should try to accommodate these, but should be able to override all of these, depending on the combined client preferences of the match.
 # - Make sure to update any corresponding GameLift plugin, GDExtension, or backend server logic to accomodate this.
 
+# - I want you to add a shader-based transition. I want this to use a pixelation/tile approach, with dividing the screen into tiles and applying a delay to each. We should show it when leaving or entering the lobby or match levels.
+
 # - Add support for a slide-transition effect that slides a black panel over the lobby screen before showing the loading screen.
 #   - This panel slide will use a Tween.
 #   - We'll need to trigger this from client_load_game.

@@ -17,10 +17,12 @@ extends Node
 ## session_ids: Array[String] - Session identifiers for local players
 ## server_ip: String - Server IP address to connect to
 ## server_port: int - Server port number
+## selected_level_id: String - Level ID selected by server/backend (may be empty)
 signal session_ids_received(
 	session_ids: Array,
 	server_ip: String,
-	server_port: int
+	server_port: int,
+	selected_level_id: String
 )
 
 ## Emitted when session ID request fails.
@@ -35,29 +37,34 @@ signal player_session_validated(player_id: int, session_id: String)
 ## Emitted when all expected players have connected and validated.
 signal all_players_connected()
 
+## Emitted when server receives the selected level from game session.
+## level_id: String - The level ID to spawn
+signal level_selected(level_id: String)
+
 
 ## CLIENT: Request session IDs for local players.
 ## player_count: int - Number of local players (split-screen/couch co-op)
-func request_session_ids(player_count: int) -> void:
-	push_error("SessionProvider.request_session_ids not implemented")
+## level_prefs: Dictionary - Level preferences (inclusion, exclusion, preferred)
+func client_request_session_ids(player_count: int, level_prefs: Dictionary = {}) -> void:
+	push_error("SessionProvider.client_request_session_ids not implemented")
 
 
 ## SERVER: Validate session IDs for a connecting peer.
 ## peer_id: int - Network peer identifier
 ## player_ids: Array[int] - Game-assigned player IDs
 ## session_ids: Array[String] - Backend session identifiers to validate
-func validate_player_sessions(
+func server_validate_player_sessions(
 	peer_id: int,
 	player_ids: Array[int],
 	session_ids: Array
 ) -> void:
-	push_error("SessionProvider.validate_player_sessions not implemented")
+	push_error("SessionProvider.server_validate_player_sessions not implemented")
 
 
 ## SERVER: Set expected total player count for this match.
 ## count: int - Total players across all peers
-func set_expected_player_count(count: int) -> void:
-	push_error("SessionProvider.set_expected_player_count not implemented")
+func server_set_expected_player_count(count: int) -> void:
+	push_error("SessionProvider.server_set_expected_player_count not implemented")
 
 
 ## Returns true if session provider is active (not preview mode).
@@ -68,3 +75,9 @@ func is_active() -> bool:
 ## Called when provider should clean up (disconnect, etc.).
 func cleanup() -> void:
 	pass
+
+
+## SERVER: Get the selected level ID for this game session.
+## Returns empty string if no level has been selected yet.
+func server_get_selected_level_id() -> StringName:
+	return ""

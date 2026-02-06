@@ -18,6 +18,10 @@ from services.gamelift_service import (
 from services.auth_service import AuthService, AuthToken
 from services.player_service import PlayerService
 from services.rate_limiter import RateLimiter
+from services.level_selection_service import (
+    parse_level_preference,
+    select_level_for_match,
+)
 
 logger = Logger()
 tracer = Tracer()
@@ -72,14 +76,19 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
         body = json.loads(event.get("body", "{}"))
         player_count = body.get("player_count", 1)
         client_id = body.get("client_id", "unknown")
+        level_prefs_data = body.get("level_preferences", {})
 
         # Validate input.
         if player_count < 1 or player_count > 4:
             return error_response(400, "INVALID_INPUT", "player_count must be 1-4")
 
+        # Parse level preferences.
+        level_prefs = parse_level_preference(level_prefs_data)
+
         logger.info(
             f"Matchmaking request from {player_id}: "
-            f"{player_count} player(s), client {client_id}"
+            f"{player_count} player(s), client {client_id}, "
+            f"level prefs: {level_prefs_data}"
         )
 
         # Get or create player profile.
@@ -116,6 +125,12 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
 
             logger.info(f"Matchmaking complete: {result.game_session_id}")
 
+            # Select level based on player preferences.
+            # In a full implementation, we would aggregate preferences from
+            # all players in the match. For now, use this player's prefs.
+            selected_level_id = select_level_for_match([level_prefs])
+            logger.info(f"Selected level: {selected_level_id}")
+
             return {
                 "statusCode": 200,
                 "headers": {"Content-Type": "application/json"},
@@ -127,6 +142,7 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
                         "server_ip": result.server_ip,
                         "server_port": result.server_port,
                         "player_session_ids": result.player_session_ids,
+                        "selected_level_id": selected_level_id,
                     }
                 ),
             }

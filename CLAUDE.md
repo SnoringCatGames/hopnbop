@@ -49,7 +49,7 @@ All networked entities must extend ReconcilableNetworkedState and participate in
 - **MatchState/MatchStateSynchronizer** - Replicated match data (players, kills, bumps)
 - **PlayerMatchState** - Per-player metadata (name, connection status)
 - **GamePanel** - Game lifecycle orchestrator, handles level spawning
-- **LocalSession** - Per-client session state
+- **ClientSession** - Per-client session state
 
 #### Signal Architecture
 

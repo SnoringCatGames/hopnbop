@@ -79,6 +79,16 @@ extends NetworkSettings
 @export var default_level_scene: PackedScene
 @export var level_scenes: Array[PackedScene] = []
 
+@export_group("Level Registry")
+## Level metadata for dynamic selection. Each entry should contain:
+## - id: StringName - Unique identifier (e.g., "default_level")
+## - display_name: String - Human-readable name (e.g., "Classic Arena")
+## - scene: PackedScene - The level scene
+## - min_players: int - Minimum players (default 2)
+## - max_players: int - Maximum players (default 4)
+@export var level_metadata: Array[Dictionary] = []
+@export_group("")
+
 @export var default_player_scene: PackedScene
 @export var player_scenes: Array[PackedScene] = []
 

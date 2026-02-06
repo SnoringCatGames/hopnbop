@@ -65,26 +65,6 @@ var _connected_players := {}
 
 var _is_packing_state_locally := false
 
-## Shadow parent's packed_players to add game-specific unpacking logic.
-## When this property changes from network replication, trigger
-## _client_unpack_players().
-var packed_players := []:
-	set(value):
-		if Netcode.log.is_verbose:
-			Netcode.log.verbose(
-				("GameMatchState.packed_players setter: " +
-				"old_size=%d, new_size=%d, is_packing_locally=%s") % [
-					packed_players.size(),
-					value.size(),
-					_is_packing_state_locally
-				],
-				NetworkLogger.CATEGORY_NETWORK_SYNC,
-			)
-		packed_players = value
-		if not _is_packing_state_locally:
-			_client_unpack_players()
-			players_updated.emit()
-
 
 # --- Public API ---
 
@@ -435,3 +415,12 @@ func _server_pack_players() -> void:
 	# Emit players_updated on server side (clients get it via replication
 	# setter).
 	players_updated.emit()
+
+
+## Override parent's virtual method to trigger game-specific unpacking.
+func _on_packed_players_changed() -> void:
+	# Only unpack if this change came from network replication (not local
+	# packing).
+	if not _is_packing_state_locally:
+		_client_unpack_players()
+		players_updated.emit()

@@ -92,6 +92,8 @@ var packed_players := []:
 				NetworkLogger.CATEGORY_GAME_STATE,
 			)
 		packed_players = value
+		# Trigger virtual method for subclass customization.
+		_on_packed_players_changed()
 
 
 # --- Public API ---
@@ -215,3 +217,12 @@ func _client_unpack_players() -> void:
 		players_by_id[player.player_id] = player
 
 	players_updated.emit()
+
+
+## Virtual method called when packed_players changes.
+## Override in subclasses to add custom unpacking logic.
+## NOTE: This is called during server packing too, so check if you need to
+## guard with a flag to avoid redundant work.
+func _on_packed_players_changed() -> void:
+	# Default: do nothing (subclasses can override).
+	pass
