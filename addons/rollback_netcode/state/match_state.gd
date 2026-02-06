@@ -1,11 +1,7 @@
 class_name MatchState
 extends RefCounted
 
-
-## Reference to the MatchStateSynchronizer node that owns this state.
-## Set by MatchStateSynchronizer in _ready(). Used to call RPC methods.
 var synchronizer: MatchStateSynchronizer = null
-
 
 # Scoring constants
 const _KILL_SCORE := 100
@@ -39,8 +35,8 @@ var match_time_remaining_sec: float:
 	get:
 		if match_start_frame_index < 0:
 			return 0.0
-		var elapsed_frames := G.network.server_frame_index - match_start_frame_index
-		var elapsed_sec := elapsed_frames / NetworkFrameDriver.TARGET_NETWORK_FPS
+		var elapsed_frames := Netcode.server_frame_index - match_start_frame_index
+		var elapsed_sec := elapsed_frames / Netcode.frame_driver.target_network_fps
 		var remaining_sec := (match_duration_usec / 1_000_000.0) - elapsed_sec
 		return max(0.0, remaining_sec)
 
@@ -55,15 +51,15 @@ var is_match_time_expired: bool:
 ##   efficient local look-ups.
 var packed_players := []:
 	set(value):
-		if G.is_verbose:
-			G.verbose(
+		if Netcode.log.is_verbose:
+			Netcode.log.verbose(
 				("MatchState.packed_players setter: " +
 				"old_size=%d, new_size=%d, is_packing_locally=%s") % [
 					packed_players.size(),
 					value.size(),
 					_is_packing_state_locally
 				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC,
+				NetworkLogger.CATEGORY_NETWORK_SYNC,
 			)
 		packed_players = value
 		if not _is_packing_state_locally:
@@ -88,11 +84,16 @@ var _total_deaths_by_player_id := {}
 # Dictionary<int, int>
 var _total_bumps_by_player_id := {}
 
-var _server_recent_interactions := RollbackBuffer.new(
-	G.network.frame_driver.rollback_buffer_size,
-	0, # current_frame_index (start at 0)
-	[] # default_frame_state (empty array for interactions)
-)
+var _server_recent_interactions: RollbackBuffer
+
+func _get_server_recent_interactions() -> RollbackBuffer:
+	if _server_recent_interactions == null:
+		_server_recent_interactions = RollbackBuffer.new(
+			Netcode.frame_driver.rollback_buffer_size,
+			0, # current_frame_index (start at 0)
+			[] # default_frame_state (empty array for interactions)
+		)
+	return _server_recent_interactions
 
 var _is_packing_state_locally := false
 
@@ -113,6 +114,10 @@ func clear() -> void:
 	_total_kills_by_player_id.clear()
 	_total_deaths_by_player_id.clear()
 	_total_bumps_by_player_id.clear()
+	_connected_players.clear()
+	# Reset interaction deduplication buffer if it exists.
+	if _server_recent_interactions != null:
+		_server_recent_interactions = null
 	match_start_frame_index = -1
 	match_duration_usec = 0
 	is_match_ended = false
@@ -149,7 +154,7 @@ func server_add_player(player: PlayerMatchState) -> void:
 
 
 func server_start_match_timer(duration_sec: float) -> void:
-	match_start_frame_index = G.network.server_frame_index
+	match_start_frame_index = Netcode.server_frame_index
 	match_duration_usec = int(duration_sec * 1_000_000)
 
 	# Notify all clients.
@@ -161,7 +166,7 @@ func server_start_match_timer(duration_sec: float) -> void:
 
 
 func server_add_kill(killer_id: int, killee_id: int) -> void:
-	var current_frame: int = G.network.frame_driver.server_frame_index
+	var current_frame: int = Netcode.frame_driver.server_frame_index
 
 	# Check for recent interaction to prevent duplicates.
 	if _server_has_recent_interaction(
@@ -193,15 +198,11 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 		current_frame
 	)
 
-	# Trigger respawn.
-	var killee: Player = G.get_player(killee_id)
-	if is_instance_valid(killee):
-		killee.server_trigger_death()
-
 	# Update scores and emit events.
-	G.verbose(
+	# Note: Game code should connect to player_killed signal to handle respawn logic.
+	Netcode.log.verbose(
 		"KILL: %s killed %s" % [killer_id, killee_id],
-		ScaffolderLog.CATEGORY_GAME_STATE,
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 	update_scores()
 
@@ -218,7 +219,7 @@ func emit_kill_event(killer: PlayerMatchState, killee: PlayerMatchState) -> void
 
 
 func server_add_bump(player_1_id: int, player_2_id: int) -> void:
-	var current_frame: int = G.network.frame_driver.server_frame_index
+	var current_frame: int = Netcode.frame_driver.server_frame_index
 
 	# Check for recent interaction to prevent duplicates.
 	if _server_has_recent_interaction(
@@ -251,9 +252,9 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 	)
 
 	# Update scores and emit events.
-	G.verbose(
+	Netcode.log.verbose(
 		"BUMP: %s bumped %s" % [player_1_id, player_2_id],
-		ScaffolderLog.CATEGORY_GAME_STATE,
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 	update_scores()
 
@@ -303,10 +304,10 @@ func _server_has_recent_interaction(
 		if frame_index == current_frame:
 			continue
 
-		if not _server_recent_interactions.has_at(frame_index):
+		if not _get_server_recent_interactions().has_at(frame_index):
 			continue
 
-		var interactions = _server_recent_interactions.get_at(frame_index)
+		var interactions = _get_server_recent_interactions().get_at(frame_index)
 		if interactions == null:
 			continue
 
@@ -326,11 +327,11 @@ func _server_store_interaction(
 ) -> void:
 	# Get or create interactions array for this frame.
 	var interactions = null
-	if _server_recent_interactions.has_at(frame_index):
-		interactions = _server_recent_interactions.get_at(frame_index)
+	if _get_server_recent_interactions().has_at(frame_index):
+		interactions = _get_server_recent_interactions().get_at(frame_index)
 	else:
 		interactions = []
-		_server_recent_interactions.set_at(frame_index, interactions)
+		_get_server_recent_interactions().set_at(frame_index, interactions)
 
 	# Create and store interaction.
 	var interaction = PlayerInteraction.new()
@@ -342,14 +343,14 @@ func _server_store_interaction(
 	interactions.append(interaction)
 
 	# Store the updated array back to the buffer.
-	_server_recent_interactions.set_at(frame_index, interactions)
+	_get_server_recent_interactions().set_at(frame_index, interactions)
 
 
 func _server_pack_players() -> void:
-	if G.is_verbose:
-		G.verbose(
+	if Netcode.log.is_verbose:
+		Netcode.log.verbose(
 			"MatchState._server_pack_players: packing %d players" % players_by_id.size(),
-			ScaffolderLog.CATEGORY_GAME_STATE,
+			NetworkLogger.CATEGORY_GAME_STATE,
 		)
 
 	var new_packed_players := []
@@ -363,12 +364,15 @@ func _server_pack_players() -> void:
 	packed_players = new_packed_players
 	_is_packing_state_locally = false
 
+	# Emit players_updated on server side (clients get it via replication setter).
+	players_updated.emit()
+
 
 func _client_unpack_players() -> void:
-	G.verbose(
+	Netcode.log.verbose(
 		"MatchState._client_unpack_players: packed_players.size=%d" %
 			packed_players.size(),
-		ScaffolderLog.CATEGORY_GAME_STATE
+		NetworkLogger.CATEGORY_GAME_STATE
 	)
 
 	players_by_id.clear()

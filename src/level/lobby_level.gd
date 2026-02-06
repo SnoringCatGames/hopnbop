@@ -102,7 +102,7 @@ func _register_player(device_config: DeviceConfig) -> void:
 
 	# Generate player attributes when they join the lobby.
 	var attributes := PlayerAttributeGenerator.generate_random_attributes()
-	G.local_session.local_player_attributes.append(attributes)
+	G.client_session.local_player_attributes.append(attributes)
 
 	G.print(
 		"Spawned lobby player %d" % local_player_index,
@@ -131,7 +131,7 @@ func _deregister_player(device_name: StringName) -> void:
 	G.input_device_manager.unassign_device_from_player(local_player_index)
 
 	# Remove corresponding player attributes.
-	G.local_session.local_player_attributes.remove_at(local_player_index)
+	G.client_session.local_player_attributes.remove_at(local_player_index)
 
 	deregister_player(player)
 
@@ -159,10 +159,10 @@ func start_match() -> void:
 	if not G.ensure(can_start_match()):
 		return
 
-	G.local_session.local_device_configs = _pending_device_configs_by_index.duplicate()
+	G.client_session.local_device_configs = _pending_device_configs_by_index.duplicate()
 
 	G.print(
-		"Starting match with %d player(s)" % G.local_session.local_player_count,
+		"Starting match with %d player(s)" % G.client_session.local_player_count,
 		NetworkLogger.CATEGORY_GAME_STATE
 	)
 

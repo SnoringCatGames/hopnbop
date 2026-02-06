@@ -69,8 +69,8 @@ func client_open_screen(screen_type: ScreenType) -> void:
 			ScreenType.LOBBY,
 		].has(screen_type)
 	)
-	if ends_game and G.local_session.is_game_active:
-		G.game_panel.client_exit_game()
+	if ends_game and G.client_session.is_game_active:
+		G.game_panel.client_exit_match()
 
 	var plays_menu_theme := (
 		[

@@ -632,13 +632,13 @@ func client_request_toggle_pause() -> void:
 
 ## Request pause from client. Only works if Netcode.settings.is_server_pause_enabled.
 func client_request_pause() -> void:
-	G.check_is_client()
+	Netcode.check_is_client()
 	_server_rpc_client_request_pause.rpc_id(NetworkConnector.SERVER_ID)
 
 
 ## Request unpause from client. Only works if Netcode.settings.is_server_pause_enabled.
 func client_request_unpause() -> void:
-	G.check_is_client()
+	Netcode.check_is_client()
 	_server_rpc_request_unpause.rpc_id(NetworkConnector.SERVER_ID)
 
 ## Client requests server to pause.
@@ -646,7 +646,7 @@ func client_request_unpause() -> void:
 
 @rpc("any_peer", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _server_rpc_client_request_pause() -> void:
-	G.check_is_server()
+	Netcode.check_is_server()
 
 	var peer_id := multiplayer.get_remote_sender_id()
 
@@ -674,7 +674,7 @@ func _server_rpc_client_request_pause() -> void:
 ## Client requests server to unpause.
 @rpc("any_peer", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _server_rpc_request_unpause() -> void:
-	G.check_is_server()
+	Netcode.check_is_server()
 
 	var peer_id := multiplayer.get_remote_sender_id()
 
@@ -718,7 +718,7 @@ func _client_rpc_notify_pause(
 	pause_initiator_peer_id: int,
 	pause_initiator_pauses_used: int,
 ) -> void:
-	G.check_is_client()
+	Netcode.check_is_client()
 
 	_client_execute_pause_at_server_frame(
 		server_pause_frame,
@@ -734,7 +734,7 @@ func _client_rpc_notify_unpause(
 		server_unpause_frame: int,
 		server_cumulative_paused_frames: int,
 ) -> void:
-	G.check_is_client()
+	Netcode.check_is_client()
 
 	_client_execute_unpause_at_server_frame(
 		server_unpause_frame,
@@ -746,7 +746,7 @@ func _client_rpc_notify_unpause(
 ## Called before disconnecting clients during Spot instance termination.
 @rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
 func _client_rpc_notify_shutdown(shutdown_message: String) -> void:
-	G.check_is_client()
+	Netcode.check_is_client()
 
 	Netcode.log.print(
 		"Server shutdown notification: %s" % shutdown_message,

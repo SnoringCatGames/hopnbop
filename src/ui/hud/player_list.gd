@@ -75,7 +75,7 @@ func _get_current_player_ids_from_lobby() -> Array[int]:
 
 func _get_current_player_ids_from_match_level() -> Array[int]:
 	var all_player_ids: Array = G.match_state.players_by_id.keys()
-	var local_player_ids: Array[int] = G.local_session.local_player_ids
+	var local_player_ids: Array[int] = G.client_session.local_player_ids
 
 	# Separate remote players by checking ownership directly.
 	var remote_player_ids: Array[int] = []

@@ -40,18 +40,18 @@ func _on_players_updated() -> void:
 		# No player state to show.
 		return
 
-	if G.local_session.local_player_ids.is_empty():
+	if G.client_session.local_player_ids.is_empty():
 		# Local player IDs not yet assigned.
 		return
 
 	# Add local player states first.
-	for player_id in G.local_session.local_player_ids:
+	for player_id in G.client_session.local_player_ids:
 		if G.match_state.players_by_id.has(player_id):
 			_add_player_state(player_id)
 
 	# Add other players.
 	for player_id in G.match_state.players_by_id:
-		if player_id in G.local_session.local_player_ids:
+		if player_id in G.client_session.local_player_ids:
 			# Already added this local player.
 			continue
 		_add_player_state(player_id)

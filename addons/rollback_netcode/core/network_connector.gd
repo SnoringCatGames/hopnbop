@@ -98,7 +98,7 @@ func _ready() -> void:
 
 
 func server_enable_connections(p_server_port: int) -> void:
-	Netcode.log.check_is_server()
+	Netcode.check_is_server()
 
 	var peer = ENetMultiplayerPeer.new()
 	var result := peer.create_server(p_server_port, Netcode.settings.max_client_count)
@@ -124,7 +124,7 @@ func client_connect_to_server(
 	p_server_ip_address: String,
 	p_server_port: int
 ) -> void:
-	Netcode.log.check_is_client()
+	Netcode.check_is_client()
 
 	# Reset disconnect reason for new connection attempt.
 	last_disconnect_reason = DisconnectReason.UNKNOWN
@@ -270,7 +270,7 @@ func _client_update_is_connected_to_server() -> void:
 
 
 func server_close_multiplayer_session() -> void:
-	Netcode.log.check_is_server()
+	Netcode.check_is_server()
 
 	Netcode.log.print(
 		"Ending network connections",
@@ -285,7 +285,7 @@ func server_close_multiplayer_session() -> void:
 
 
 func server_disconnect_all_clients() -> void:
-	Netcode.log.check_is_server()
+	Netcode.check_is_server()
 
 	Netcode.log.print(
 		"Disconnecting all clients (keeping session open)",
@@ -299,7 +299,7 @@ func server_disconnect_all_clients() -> void:
 
 
 func client_disconnect() -> void:
-	Netcode.log.check_is_client()
+	Netcode.check_is_client()
 
 	# Mark as client-initiated disconnect
 	last_disconnect_reason = DisconnectReason.CLIENT_INITIATED
@@ -321,7 +321,7 @@ func _server_rpc_declare_players(
 	player_attributes: Array,
 	client_version: String
 ) -> void:
-	Netcode.log.check_is_server()
+	Netcode.check_is_server()
 
 	var peer_id := multiplayer.get_remote_sender_id()
 
@@ -413,7 +413,7 @@ func _server_rpc_declare_players(
 ## RPC called by server to send assigned player IDs to the client.
 @rpc("authority", "call_remote", "reliable")
 func _client_rpc_receive_player_ids(assigned_ids: Array[int]) -> void:
-	Netcode.log.check_is_client()
+	Netcode.check_is_client()
 
 	# Record local player IDs and indices.
 	for local_player_index in range(assigned_ids.size()):

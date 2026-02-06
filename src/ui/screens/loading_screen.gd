@@ -12,7 +12,7 @@ func _process(_delta: float) -> void:
 
 func on_open() -> void:
 	super.on_open()
-	G.check(G.local_session.is_game_loading, "LoadingScreen.on_open: Game is not loading")
+	G.check(G.client_session.is_game_loading, "LoadingScreen.on_open: Game is not loading")
 
 	# Set initial message.
 	update_status_message()

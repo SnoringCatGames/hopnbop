@@ -76,10 +76,10 @@ func _get_local_player_color() -> Color:
 		return Color.TRANSPARENT
 
 	# Get the first local player's ID.
-	if G.local_session.local_player_ids.is_empty():
+	if G.client_session.local_player_ids.is_empty():
 		return Color.TRANSPARENT
 
-	var local_player_id := G.local_session.local_player_ids[0]
+	var local_player_id := G.client_session.local_player_ids[0]
 	var player_state: PlayerMatchState = G.match_state.players_by_id.get(
 		local_player_id
 	)

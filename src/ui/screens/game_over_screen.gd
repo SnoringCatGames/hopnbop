@@ -11,8 +11,8 @@ func on_open() -> void:
 	super.on_open()
 
 	# Display server message if present.
-	if not G.local_session.latest_server_message.is_empty():
-		%MessageLabel.text = G.local_session.latest_server_message
+	if not G.client_session.latest_server_message.is_empty():
+		%MessageLabel.text = G.client_session.latest_server_message
 		%MessageLabel.visible = true
 	else:
 		%MessageLabel.visible = false

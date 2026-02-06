@@ -72,18 +72,6 @@ func _server_on_peer_players_declared(
 
 	state.update_scores()
 
-	# FIXME: LEFT OFF HERE: This seems wrong? The all_players_connected
-	# signal should also work in preview mode.
-
-	# In preview mode, assign colors when all players have been added.
-	# In non-preview (GameLift) mode, colors are assigned via
-	# all_players_connected signal.
-	if Netcode.is_preview:
-		var expected_player_count := G.settings.preview_client_count
-		var current_player_count := state.players_by_id.size()
-		if current_player_count >= expected_player_count:
-			_server_assign_outline_colors()
-
 
 func _server_on_all_players_connected() -> void:
 	G.print(

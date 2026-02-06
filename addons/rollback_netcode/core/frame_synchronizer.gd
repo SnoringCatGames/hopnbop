@@ -51,7 +51,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	# Only clients send pings. Server responds with pongs containing frame
 	# index.
-	if Netcode.connector.is_client and Netcode.connector.is_connected_to_server:
+	if Netcode.is_client and Netcode.connector.is_connected_to_server:
 		_client_process(delta)
 
 
@@ -66,7 +66,7 @@ func _client_process(delta: float) -> void:
 
 
 func _client_send_ping() -> void:
-	G.check_is_client()
+	Netcode.check_is_client()
 
 	var t1 := Time.get_ticks_usec()
 	_server_rpc_ping.rpc_id(1, t1)
@@ -74,7 +74,7 @@ func _client_send_ping() -> void:
 
 @rpc("any_peer", "call_remote", "unreliable")
 func _server_rpc_ping(client_t1: int) -> void:
-	G.check_is_server()
+	Netcode.check_is_server()
 
 	var t2 := Time.get_ticks_usec() # Server receive time.
 	var sender_id := multiplayer.get_remote_sender_id()
@@ -92,7 +92,7 @@ func _client_rpc_pong(
 		server_t3: int,
 		server_frame_at_t3: int,
 ) -> void:
-	G.check_is_client()
+	Netcode.check_is_client()
 
 	var t4 := Time.get_ticks_usec() # Client receive time.
 

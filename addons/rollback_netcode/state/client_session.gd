@@ -1,4 +1,4 @@
-class_name LocalSession
+class_name ClientSession
 extends RefCounted
 
 var is_game_active := false
@@ -19,7 +19,7 @@ var local_device_configs: Array[DeviceConfig] = []
 
 ## GameLift player session IDs from backend matchmaking.
 ## Array index corresponds to local_player_index.
-var local_session_ids: Array[String] = []
+var client_session_ids: Array[String] = []
 
 var local_player_ids: Array[int] = []
 
@@ -37,12 +37,12 @@ func _init() -> void:
 
 
 ## Validates that session IDs are properly populated.
-## Returns true if local_session_ids array matches player count and contains no empty
+## Returns true if client_session_ids array matches player count and contains no empty
 ## strings.
-func has_valid_local_session_ids() -> bool:
-	if local_session_ids.size() != local_device_configs.size():
+func has_valid_client_session_ids() -> bool:
+	if client_session_ids.size() != local_device_configs.size():
 		return false
-	for session_id in local_session_ids:
+	for session_id in client_session_ids:
 		if session_id.is_empty():
 			return false
 	return true
@@ -51,7 +51,7 @@ func has_valid_local_session_ids() -> bool:
 func clear() -> void:
 	is_game_active = false
 	is_game_loading = false
-	local_session_ids.clear()
+	client_session_ids.clear()
 	local_device_configs.clear()
 	local_player_ids.clear()
 	local_player_attributes.clear()

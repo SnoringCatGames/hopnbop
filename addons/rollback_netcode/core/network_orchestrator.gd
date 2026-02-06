@@ -1,23 +1,39 @@
-class_name NetworkMain
+class_name NetworkOrchestrator
 extends Node
-## NetworkMain is the central orchestrator accessed via the G.network singleton.
-## It manages and provides access to three core networking subsystems:
+## Main autoload singleton for the Rollback Netcode Plugin
+## (registered as "Netcode").
+##
+## This is the entry point for the rollback netcode plugin. It manages and
+## provides access to core networking subsystems:
 ##
 ## - **connector** (NetworkConnector): ENet peer management and connection
 ##   lifecycle
-## - **frame_driver** (NetworkFrameDriver): Frame-synchronous simulation and
-##   rollback coordination
-## - **frame_sync** (FrameIndexSynchronizer): Periodic frame index broadcasts
+## - **frame_driver** (FrameDriver): Frame-synchronous simulation and rollback
+##   coordination
+## - **frame_sync** (FrameSynchronizer): NTP-like frame index synchronization
 ##   to prevent client/server drift
 ##
-## NetworkMain determines the local machine's role (server vs client) based on
-## command-line arguments or headless mode and provides convenient accessors for
-## common networking state:
+## NetworkOrchestrator determines the local machine's role (server vs client)
+## based on command-line arguments or headless mode and provides convenient
+## accessors for common networking state:
 ##
 ## - is_server / is_client: Current machine's role
 ## - is_connected_to_server: Connection status (always true on server)
 ## - local_peer_id: Local multiplayer peer ID
 ## - server_frame_index: Current server frame number
+##
+## Usage:
+## ```gdscript
+## func _ready():
+##     Netcode.settings = load("res://network_settings.tres")
+##     Netcode.log = MyGameLogger.new()
+##     Netcode.initialize()
+##
+##     if "--server" in OS.get_cmdline_args():
+##         Netcode.server_start()
+##     else:
+##         Netcode.client_connect("127.0.0.1", 4433)
+## ```
 ##
 ## Testing with multiple instances in Godot editor:
 ## - In order to support local testing with preview mode in the Godot
@@ -30,25 +46,51 @@ extends Node
 ##     --server, --client=1, --client=2.
 ##   - Also, include --preview as an arg in each row.
 
-## Emitted when a PlayerInputFromClient node gains local multiplayer
-## authority on this client. This occurs when the server spawns a player
-## character for this client and the MultiplayerSynchronizer assigns
-## authority. Use this signal to detect when the local player is ready.
-@warning_ignore("unused_signal")
-signal local_authority_added(input_from_client: PlayerInputFromClient)
+## Get plugin version from plugin.cfg (single source of truth).
+static func get_version() -> String:
+	var config := ConfigFile.new()
+	var err := config.load("res://addons/rollback_netcode/plugin.cfg")
+	if err != OK:
+		push_error("Failed to load plugin.cfg for version")
+		return "unknown"
+	return config.get_value("plugin", "version", "unknown")
 
-## Emitted when a PlayerInputFromClient node loses local multiplayer
-## authority on this client. This occurs when the player character is
-## despawned or authority is transferred away from this client.
-@warning_ignore("unused_signal")
-signal local_authority_removed(input_from_client: PlayerInputFromClient)
+# --- Signals ---
 
-var connector := NetworkConnector.new()
-var frame_driver := NetworkFrameDriver.new()
-var frame_sync: FrameIndexSynchronizer
-var perf_tracker := PerfTracker.new()
-var game_lift_manager := GameLiftManager.new()
-var session_manager := GameLiftSessionManager.new()
+## Emitted when a player input node gains multiplayer authority.
+signal local_authority_added(node: PlayerInputFromClient)
+
+## Emitted when a player input node loses multiplayer authority.
+signal local_authority_removed(node: PlayerInputFromClient)
+
+# --- Configuration (set by consumer before calling initialize()) ---
+
+## Network configuration resource (must be set before initialize()).
+var settings: NetworkSettings
+
+## Logging implementation (must be set before initialize()).
+var log: NetworkLogger
+
+## Timer utilities for timeouts, intervals, and throttling (created
+## automatically during initialize()).
+var time: TimeUtils
+
+## Process sentinel for deterministic frame ordering.
+var process_sentinel: ProcessSentinel
+
+# --- Core Components ---
+
+## ENet peer management and connection lifecycle.
+var connector: NetworkConnector
+
+## Frame-synchronous simulation (will be FrameDriver after Week 5-6 refactor).
+var frame_driver: FrameDriver
+
+## NTP-like frame index synchronization.
+var frame_sync: FrameSynchronizer
+
+## Optional performance tracker for metrics and monitoring.
+var perf_tracker: PerfTracker
 
 var is_preview := true
 var is_headless := true
@@ -69,21 +111,19 @@ var preview_client_number := 0
 
 var should_connect_to_remote_server: bool:
 	get:
-		return not is_preview or G.settings.preview_connect_to_remote_server
+		if settings == null:
+			return false
+		return not is_preview or settings.preview_connect_to_remote_server
 
 ## Server port to bind to.
-## When running under GameLift, reads from --port command-line argument.
-var server_port: int:
-	get:
-		# Check for --port command-line argument (set by GameLift fleet config).
-		if G.args.has("port"):
-			return int(G.args.port)
-		# Fallback to the preview-mode port.
-		return G.settings.local_preview_server_port
+## Cached from --port command-line argument if present, otherwise uses settings.
+var server_port: int
 
 
 var is_connected_to_server: bool:
 	get:
+		if connector == null:
+			return false
 		return connector.is_connected_to_server
 
 var local_peer_id: int:
@@ -93,47 +133,101 @@ var local_peer_id: int:
 ## Current server frame index; the primary synchronization primitive.
 var server_frame_index: int:
 	get:
+		if frame_driver == null:
+			return 0
 		return frame_driver.server_frame_index
 
-func _enter_tree() -> void:
+var _is_initialized := false
+
+
+## Initialize the networking system.
+## Must be called after setting settings and log.
+## TimeUtils is created automatically during initialization.
+func initialize() -> void:
+	if _is_initialized:
+		if log != null:
+			log.warning(
+				"Netcode already initialized",
+				NetworkLogger.CATEGORY_CORE_SYSTEMS
+			)
+		return
+
+	if settings == null:
+		push_error("settings must be set before initialize()")
+		return
+
+	if log == null:
+		push_error("log must be set before initialize()")
+		return
+
+	_is_initialized = true
+
+	# Parse command-line args to determine role and preview mode.
+	var args := _parse_cmdline_args()
+	is_headless = DisplayServer.get_name() == "headless"
+	is_preview = OS.has_feature("editor")
+	preview_client_number = int(args.client) if args.has("client") else 0
+
+	# Determine server/client role based on context.
+	if is_preview:
+		# Preview mode (editor): Default to server unless --client specified.
+		is_server = not args.has("client")
+	else:
+		# Published mode: Default to client unless --server or headless.
+		is_server = is_headless or args.has("server")
+
+	# Cache server port from command-line arg or settings.
+	server_port = int(args.port) if args.has("port") else settings.server_port
+
+	# Validate preview client number if explicitly specified.
+	if is_preview and args.has("client"):
+		log.check(
+			preview_client_number > 0,
+			"Preview client arg must specify number > 0 (e.g., --client=1)"
+		)
+
+	time = TimeUtils.new(get_tree())
+
+	process_sentinel = ProcessSentinel.new()
+	process_sentinel.name = "ProcessSentinel"
+	add_child(process_sentinel)
+
+	connector = NetworkConnector.new()
 	connector.name = "NetworkConnector"
 	add_child(connector)
 
-	frame_driver.name = "NetworkFrameDriver"
+	frame_driver = FrameDriver.new()
+	frame_driver.name = "FrameDriver"
 	add_child(frame_driver)
 
-	frame_sync = FrameIndexSynchronizer.new()
-	frame_sync.name = "FrameIndexSynchronizer"
+	frame_sync = FrameSynchronizer.new()
+	frame_sync.name = "FrameSynchronizer"
 	add_child(frame_sync)
 
+	perf_tracker = PerfTracker.new()
 	perf_tracker.name = "PerfTracker"
 	add_child(perf_tracker)
 
-	game_lift_manager.name = "GameLiftManager"
-	add_child(game_lift_manager)
-
-	session_manager.name = "GameLiftSessionManager"
-	session_manager.backend_api_url = G.settings.gamelift_backend_api_url
-	session_manager.request_timeout_sec = G.settings.gamelift_matchmaking_timeout_sec
-	add_child(session_manager)
-
-	is_headless = DisplayServer.get_name() == "headless"
-	is_preview = OS.has_feature("editor")
-	is_server = is_headless or G.args.has("server")
-	preview_client_number = int(G.args.client) if G.args.has("client") else 0
-
-	if is_preview and is_client:
-		G.check(
-			preview_client_number > 0,
-			"Preview args need to be set in Debug > Custom Run Instances...")
-
-
-func _ready() -> void:
-	G.log.log_system_ready("NetworkMain")
-
 	if is_server and should_connect_to_remote_server:
-		G.check(server_port > 0,
-			"Server port command-line argument not provided")
+		log.check(
+			server_port > 0,
+			"Server port command-line argument not provided"
+		)
+
+
+## Parses command-line arguments into a dictionary.
+## Supports --key=value and --flag formats.
+func _parse_cmdline_args() -> Dictionary:
+	var result := {}
+	var cmdline_args := OS.get_cmdline_args()
+	for arg in cmdline_args:
+		if arg.begins_with("--"):
+			var key_value := arg.substr(2).split("=", true, 1)
+			if key_value.size() == 2:
+				result[key_value[0]] = key_value[1]
+			else:
+				result[key_value[0]] = true
+	return result
 
 
 # This is duplicated here for convenience when accessing.
@@ -144,3 +238,41 @@ func get_peer_id_from_player_id(p_player_id: int) -> int:
 # This is duplicated here for convenience when accessing.
 func get_local_player_index_from_player_id(p_player_id: int) -> int:
 	return connector.get_local_player_index_from_player_id(p_player_id)
+
+
+## Start server and begin listening for connections.
+func server_start() -> void:
+	log.print(
+		"Starting server on port %d" % server_port,
+		NetworkLogger.CATEGORY_CONNECTIONS
+	)
+	connector.server_enable_connections(server_port)
+
+
+## Connect to server at specified address and port.
+func client_connect(server_address: String, port: int) -> void:
+	log.print(
+		"Connecting to server at %s:%d" % [server_address, port],
+		NetworkLogger.CATEGORY_CONNECTIONS
+	)
+	connector.client_connect_to_server(server_address, port)
+
+
+## Check if current instance is server (with error logging if not).
+func check_is_server() -> bool:
+	if log == null:
+		return is_server
+	return log.check(
+		is_server,
+		"This logic assumes we should be a server, but we're a client"
+	)
+
+
+## Check if current instance is client (with error logging if not).
+func check_is_client() -> bool:
+	if log == null:
+		return is_client
+	return log.check(
+		is_client,
+		"This logic assumes we should be a client, but we're a server"
+	)

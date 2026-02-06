@@ -6,6 +6,12 @@ extends Node
 ## updates. Automatically assigned as a child of Global singleton.
 
 
+func _ready() -> void:
+	# Update the title after waiting for state to initialize.
+	await get_tree().process_frame
+	_update_window_title()
+
+
 func update_window_mode() -> void:
 	## Sets window mode based on settings and network role.
 	if (
@@ -18,7 +24,7 @@ func update_window_mode() -> void:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 
-func update_window_title() -> void:
+func _update_window_title() -> void:
 	## Updates window title with server/client designation in preview mode.
 	if not Netcode.is_preview:
 		return

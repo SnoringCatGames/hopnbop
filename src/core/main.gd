@@ -87,7 +87,7 @@ func _auto_start_game() -> void:
 
 	# Add to local session.
 	var local_player_index := 0
-	G.local_session.local_device_configs.append(device_config)
+	G.client_session.local_device_configs.append(device_config)
 	G.input_device_manager.assign_device_to_player(
 		local_player_index,
 		device_config
@@ -97,7 +97,7 @@ func _auto_start_game() -> void:
 	var attributes := (
 		PlayerAttributeGenerator.generate_random_attributes()
 	)
-	G.local_session.local_player_attributes.append(attributes)
+	G.client_session.local_player_attributes.append(attributes)
 
 	G.game_panel.client_load_game()
 
@@ -134,11 +134,6 @@ func close_app() -> void:
 				multiplayer.multiplayer_peer.disconnect_peer(peer_id)
 
 	get_tree().call_deferred("quit")
-
-
-func update_window_title() -> void:
-	## Delegates to WindowManager for title updates.
-	G.window_manager.update_window_title()
 
 
 func _disconnect_peers_in_preview_mode() -> void:
