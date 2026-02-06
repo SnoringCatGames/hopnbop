@@ -148,8 +148,7 @@ Manages ENet multiplayer peer connections between server and clients. Handles pe
 | logger | NetworkLogger | Logger for diagnostic messages |
 | orchestrator | Node | Reference to NetworkOrchestrator |
 | player_attribute_validator | Callable | Game-specific player attribute validation function |
-| fallback_attribute_provider | Callable | Provider for default player attributes |
-| local_session_provider | Callable | Provider for local session data (player count, IDs, attributes) |
+| client_session_provider | Callable | Provider for local session data (player count, IDs, attributes) |
 | is_connected_to_server | bool | Client connection status |
 | is_server | bool | True if server |
 | is_client | bool | True if client |
@@ -252,7 +251,7 @@ Gets the local player index for a given player_id.
 
 ```gdscript
 # Setup local session provider
-connector.local_session_provider = func() -> Dictionary:
+connector.client_session_provider = func() -> Dictionary:
     return {
         "session_ids": [1, 2],
         "player_count": 2,
@@ -1089,7 +1088,7 @@ Copy current state to latest snapshots (preserves state after disconnect for UI)
 ### Usage Example
 
 ```gdscript
-class_name MyLocalSession
+class_name MyClientSession
 extends ClientSession
 
 var matchmaking_token: String = ""

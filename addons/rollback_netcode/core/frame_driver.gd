@@ -1,12 +1,11 @@
-class_name NetworkFrameDriver
+class_name FrameDriver
 extends Node
 ## Core frame-synchronous simulation engine for client-prediction rollback
 ## networking.
 ##
-## NetworkFrameDriver is the heart of the networking system, managing
-## deterministic frame-based simulation at a fixed FPS (independent of render
-## framerate). It coordinates all networked entities through a three-phase
-## processing cycle:
+## FrameDriver is the heart of the networking system, managing deterministic
+## frame-based simulation at a fixed FPS (independent of render framerate). It
+## coordinates all networked entities through a three-phase processing cycle:
 ##
 ## 1. **_pre_network_process**: Restore state from rollback buffer for current
 ##    frame
@@ -20,17 +19,12 @@ extends Node
 ## - Detects state mismatches and triggers rollback reconciliation
 ## - Coordinates re-simulation of frames during rollback
 ## - Handles fast-forwarding when client falls behind server
-## - Registers and manages all ReconcilableNetworkedState and
-##   NetworkFrameProcessor nodes
+## - Registers and manages all ReconcilableState and FrameProcessor nodes
 ##
-## Networked entities must extend either ReconcilableNetworkedState or
-## NetworkFrameProcessor to participate in this frame-synchronous cycle.
-## - ReconcilableNetworkedState nodes support server-mismatch detection and
-##   rollback
-## - NetworkFrameProcessor nodes simply process each frame without rollback
-##   support.
-##
-## Accessed via G.network.frame_driver singleton.
+## Networked entities must extend either ReconcilableState or FrameProcessor to
+## participate in this frame-synchronous cycle.
+## - ReconcilableState nodes support server-mismatch detection and rollback
+## - FrameProcessor nodes simply process each frame without rollback support
 ##
 ## Frame timing:
 ## - Target: 60 FPS (TARGET_NETWORK_TIME_STEP_SEC = 1/60 ≈ 0.01666 seconds)
@@ -50,6 +44,37 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
+
+# BIIIIIIIIIG framework refactor.
+# - I want to consolidate settings.gd with g_network_loger.gd and network_logger.gd. I want the consumer game to only have the one settings resource where they configure everything (with reasonable property groupings).
+# - Review /rollback_netcode/examples/.
+# - Move scaffolder log (and maybe other utils) to NetCode.
+#   - Like ScaffolderTime...
+#     - And get rid of "scaled"
+# - Fix tests.
+# - Look at how some old Scaffolder utilities are used, like ScaffolderTime. Should we simplify and replace them with built-in logic that we _don't_ have the consumer app worry about?
+# -
+
+# Version Management Locations
+# 1. Rollback Netcode Plugin
+# - project settings
+# - addons/rollback_netcode/core/network_Netcode.gd:50 - const VERSION := "1.0.0" (single source of truth)
+# - addons/rollback_netcode/plugin.cfg:6 - version="1.0.0" (Asset Library metadata)
+# - addons/rollback_netcode/examples/simple_game/project.godot - Example project
+# 2. GameLift Session Manager Plugin
+# - project settings
+# - backend/template.yaml
+# - addons/gamelift_session_manager/plugin.cfg:6 - version="1.0.0"
+# 3. GameLift GDExtension
+# - No real version used.
+# - gamelift-gdextension/README.md - Build version references (lines 325-329)
+
+# 4. Jump 'n Thump Game
+# project.godot:14 - config/version="0.1.0" (main game version)
+# README.md - Currently just "TODO", but should document version
+
+# - Test that pause limit is enforced.
+
 # - Test kills and bumps.
 # - Adjust foot, head, and body shapes.
 
@@ -62,25 +87,10 @@ extends Node
 # - All FN keys
 # - Player annotator
 
+# - Test match countdown timer.
+# - Test return to lobby after countdown.
+
 # UI fixes:
-# - [Match countdown] Remaining Tasks:
-#   - Configure Replication in MatchStateSynchronizer:
-#   1. Open the MatchStateSynchronizer node in the scene tree
-#   - Add these properties to replicate:
-#   - state:match_start_frame_index (REPLICATION_MODE_ON_CHANGE)
-#   - state:match_duration_usec (REPLICATION_MODE_ON_CHANGE)
-#   - state:is_match_ended (REPLICATION_MODE_ON_CHANGE)
-#   - Create countdown_timer.tscn
-#   2. Create new scene with Label as root
-#   - Attach CountdownTimer script
-#   - Configure theme overrides (font size ~24, outline)
-#   - Set unique_name_in_owner = true
-#   - Save as countdown_timer.tscn
-#   - Update hud.tscn
-#   3. Open hud.tscn
-#   - Navigate to MarginContainer/VBoxContainer/HBoxContainer/RightContent
-#   - Add CountdownTimer scene as child
-#   - Position and style as needed
 # - Adjust scene files: lobby_level.tscn, player_list.tscn, player_display.tscn.
 # - Lobby scene:
 #   - Embed the game title logo within the level.
@@ -346,7 +356,7 @@ extends Node
 # - Survey all RPCs. Decide whether we should introduce new RPC channels and assign them as appropriate. Reference them as consts on NetworkConnector.
 # - Review tests.
 # - Review these notes: https://docs.google.com/document/d/1qJcNUrE1y8UllVVCojp-IN3zCwml8VK7kjYhp1uJhV4
-# - Review NETWORKING_ARCHITECTURE.md.
+# - Review the example app.
 # - Review these notes: https://trello.com/c/i8peodBL
 # - Organize Settings.
 #   - Analyze all properties in Settings, and how they are used.
@@ -376,6 +386,7 @@ extends Node
 #   particular, I think some of the current "local-session" vs "match-state" vs
 #   other state tracked in networking systems might be best to consolidate in a
 #   separate location.
+# - Search for and replace/remove anthropic and claude.
 #
 # ### Devlog post:
 # - AI helped a lot
@@ -384,15 +395,34 @@ extends Node
 #     - Probably ~60 iterations.
 #
 
+## Emitted when pause state changes (for UI updates).
+signal pause_state_changed(is_paused: bool, initiator_peer_id: int)
+
+## Emitted when a pause is requested (for validation/accounting).
+signal pause_requested(peer_id: int)
+
+## Emitted when an unpause is requested.
+signal unpause_requested(peer_id: int)
+
 ## This determines the period we use between frames that we record in rollback
 ## buffers.
 ##
 ## Network state will presumably be slower than this in practice. When that
 ## occurs, we fill-in empty frames by extrapolating from the most-recent filled
 ## frame.
-const TARGET_NETWORK_FPS = ScaffolderTime.PHYSICS_FPS
-const TARGET_NETWORK_TIME_STEP_SEC := 1.0 / TARGET_NETWORK_FPS
-const TARGET_NETWORK_TIME_STEP_USEC := floori(1_000_000 / TARGET_NETWORK_FPS)
+
+# Network tick rate properties derived from Netcode.settings.
+var target_network_fps: float:
+	get:
+		return Netcode.settings.target_network_fps if Netcode.settings else 60.0
+
+var target_network_time_step_sec: float:
+	get:
+		return 1.0 / target_network_fps
+
+var target_network_time_step_usec: int:
+	get:
+		return floori(1_000_000 / target_network_fps)
 
 ## Current frame index. Incremented directly on each physics tick in
 ## _pre_physics_process(). Drives all frame-synchronous simulation and rollback.
@@ -403,6 +433,22 @@ var server_frame_index := 0
 ## Tracks whether frame tracking has been initialized. Initialization is
 ## deferred until the first physics tick, preventing fast-forward at startup.
 var _is_frame_tracking_initialized := false
+
+## Timestamp when server_frame_index was last manually reset (for new matches).
+## Used to suppress frame sync warnings during the expected synchronization period.
+var _frame_reset_time_usec := 0
+
+## Grace period in seconds after frame reset to suppress sync warnings.
+const FRAME_SYNC_GRACE_PERIOD_SEC := 3.0
+
+## Returns true if we're within the grace period after a frame reset.
+## During this time, frame sync warnings are suppressed as they're expected.
+var is_in_sync_grace_period: bool:
+	get:
+		if _frame_reset_time_usec == 0:
+			return false
+		var elapsed_usec := Time.get_ticks_usec() - _frame_reset_time_usec
+		return elapsed_usec < (FRAME_SYNC_GRACE_PERIOD_SEC * 1_000_000)
 
 ## Pauses frame simulation. Starts paused by default - server unpauses when
 ## ready (e.g., after all players connect in GameLift). When paused,
@@ -436,16 +482,16 @@ var _pause_initiator_pauses_used: int = 0
 ## This is replicated to clients for countdown display.
 var _pause_auto_unpause_time_usec: int = 0
 
-## Timeout ID for auto-unpause timer (server-only).
-var _pause_auto_unpause_timeout_id: int = 0
+## SceneTreeTimer for auto-unpause (server-only).
+var _pause_auto_unpause_timer: SceneTreeTimer = null
 
 ## Interval for periodic wall-clock re-sync to maintain accurate timestamps for
-## logging. Re-sync is handled automatically via G.time.set_interval().
+## logging. Re-sync is handled automatically via SceneTree timers.
 const WALL_CLOCK_RESYNC_INTERVAL_SEC := 30.0
 
-var _networked_state_nodes: Array[ReconcilableNetworkedState] = []
+var _networked_state_nodes: Array[ReconcilableState] = []
 
-var _network_frame_processor_nodes: Array[NetworkFrameProcessor] = []
+var _frame_processor_nodes: Array[FrameProcessor] = []
 
 var _queued_rollback_frame_index := 0
 
@@ -461,9 +507,8 @@ var total_fastforwards := 0
 
 var rollback_buffer_size: int:
 	get:
-		return ceili(
-			G.settings.rollback_buffer_duration_sec * TARGET_NETWORK_FPS,
-		)
+		return ceili(Netcode.settings.rollback_buffer_duration_sec *
+			target_network_fps)
 
 var oldest_rollbackable_frame_index: int:
 	get:
@@ -486,22 +531,32 @@ var pause_start_frame: int:
 
 
 func _ready() -> void:
-	G.log.log_system_ready("NetworkFrameDriver")
+	Netcode.log.print("FrameDriver ready", NetworkLogger.CATEGORY_NETWORK)
 
 	if not Engine.is_editor_hint():
-		G.process_sentinel.pre_physics_process.connect(_pre_physics_process)
+		# Connect to ProcessSentinel for deterministic frame ordering.
+		# ProcessSentinel places helper nodes at scene tree root with extreme
+		# priority values to ensure this runs before all other physics processing.
+		Netcode.process_sentinel.pre_physics_process.connect(_pre_physics_process)
 
 		# Start paused - server will unpause when ready (e.g., after all players
-		# connect in GameLift).
+		# connect).
 		if is_inside_tree():
 			get_tree().paused = true
 
 		# In preview mode (local multi-instance testing), track client
 		# connections and unpause when all expected clients have connected.
-		if G.network.is_preview and G.network.is_server:
+		if Netcode.is_preview and Netcode.is_server:
 			multiplayer.peer_connected.connect(_on_preview_peer_connected)
 			# Check if clients are already connected.
 			_check_preview_clients_connected()
+
+
+func client_reset() -> void:
+	# Reset frame index for new match to sync with server's reset.
+	Netcode.frame_driver.server_frame_index = 0
+	# Start grace period to suppress expected frame sync warnings.
+	Netcode.frame_driver._frame_reset_time_usec = Time.get_ticks_usec()
 
 
 ## Handles peer connections in preview mode to auto-unpause when ready.
@@ -511,29 +566,47 @@ func _on_preview_peer_connected(_peer_id: int) -> void:
 
 ## Checks if all expected clients are connected in preview mode.
 func _check_preview_clients_connected() -> void:
-	if not G.network.is_preview or not G.network.is_server:
+	if not Netcode.is_preview or not Netcode.is_server:
 		return
 
 	var connected_count := multiplayer.get_peers().size()
-	var expected_count := G.settings.preview_client_count
+	var expected_count := Netcode.settings.preview_client_count
 
-	G.print(
-		"Preview mode: %d/%d clients connected" % [
-			connected_count,
-			expected_count
-		],
-		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+	Netcode.log.print(
+		"Preview mode: %d/%d clients connected" % [connected_count, expected_count],
+		NetworkLogger.CATEGORY_SYNC
 	)
 
 	if connected_count >= expected_count:
-		G.print(
+		Netcode.log.print(
 			"All expected clients connected; Unpausing game",
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+			NetworkLogger.CATEGORY_SYNC
 		)
 		# Disconnect signal to avoid re-checking.
 		if multiplayer.peer_connected.is_connected(_on_preview_peer_connected):
 			multiplayer.peer_connected.disconnect(_on_preview_peer_connected)
 		server_set_is_paused(false)
+
+
+## Re-enable preview mode auto-unpause for a new match.
+##
+## Call this when starting a new match in preview mode to reconnect the
+## peer_connected signal and re-enable auto-unpause logic.
+func server_reset_preview_mode_unpause() -> void:
+	if not Netcode.is_preview or not Netcode.is_server:
+		return
+
+	Netcode.log.print(
+		"Resetting preview mode auto-unpause for new match",
+		NetworkLogger.CATEGORY_SYNC
+	)
+
+	# Reconnect the signal if not already connected.
+	if not multiplayer.peer_connected.is_connected(_on_preview_peer_connected):
+		multiplayer.peer_connected.connect(_on_preview_peer_connected)
+
+	# Check if clients are already connected.
+	_check_preview_clients_connected()
 
 
 ## Pause or unpause frame simulation.
@@ -551,19 +624,19 @@ func server_set_is_paused(paused: bool) -> void:
 
 
 func client_request_toggle_pause() -> void:
-	if G.network.frame_driver.is_paused:
-		G.network.frame_driver.client_request_unpause()
+	if is_paused:
+		client_request_unpause()
 	else:
-		G.network.frame_driver.client_request_pause()
+		client_request_pause()
 
 
-## Request pause from client. Only works if Settings.is_server_pause_enabled.
+## Request pause from client. Only works if Netcode.settings.is_server_pause_enabled.
 func client_request_pause() -> void:
 	G.check_is_client()
 	_server_rpc_client_request_pause.rpc_id(NetworkConnector.SERVER_ID)
 
 
-## Request unpause from client. Only works if Settings.is_server_pause_enabled.
+## Request unpause from client. Only works if Netcode.settings.is_server_pause_enabled.
 func client_request_unpause() -> void:
 	G.check_is_client()
 	_server_rpc_request_unpause.rpc_id(NetworkConnector.SERVER_ID)
@@ -577,37 +650,25 @@ func _server_rpc_client_request_pause() -> void:
 
 	var peer_id := multiplayer.get_remote_sender_id()
 
-	if not G.settings.is_server_pause_enabled:
-		G.print(
+	if not Netcode.settings.is_server_pause_enabled:
+		Netcode.log.print(
 			"Client %d requested pause, but server pause is disabled" % peer_id,
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+						NetworkLogger.CATEGORY_SYNC
 		)
 		return
 
 	# Rate limit pause requests.
 	var current_time := Time.get_ticks_usec()
-	var cooldown_usec := int(G.settings.pause_request_cooldown_sec * 1_000_000)
+	var cooldown_usec := int(Netcode.settings.pause_request_cooldown_sec * 1_000_000)
 	if current_time - _last_pause_request_time_usec < cooldown_usec:
 		return
 
-	# Check pause limit for this peer.
-	var pauses_used: int = G.game_panel.match_state.pauses_used_by_peer.get(peer_id, 0)
-	if pauses_used >= G.settings.max_pauses_per_client:
-		G.print(
-			"Client %d requested pause, but has exhausted pause limit (%d/%d)" % [
-				peer_id,
-				pauses_used,
-				G.settings.max_pauses_per_client,
-			],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
-		)
-		return
-
-	# Increment pause count for this peer.
-	G.game_panel.match_state.pauses_used_by_peer[peer_id] = pauses_used + 1
+	# Emit signal for game to validate pause accounting.
+	# Game should connect to pause_requested signal and handle validation.
+	pause_requested.emit(peer_id)
 
 	_last_pause_request_time_usec = current_time
-	_server_execute_pause(peer_id, pauses_used + 1)
+	_server_execute_pause(peer_id, 0)
 
 
 ## Client requests server to unpause.
@@ -617,31 +678,35 @@ func _server_rpc_request_unpause() -> void:
 
 	var peer_id := multiplayer.get_remote_sender_id()
 
-	if not G.settings.is_server_pause_enabled:
-		G.print(
+	if not Netcode.settings.is_server_pause_enabled:
+		Netcode.log.print(
 			"Client %d requested unpause, but server pause is disabled" % peer_id,
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+			NetworkLogger.CATEGORY_SYNC
 		)
 		return
 
 	# Check if requesting peer is the pause initiator.
 	if peer_id != _pause_initiator_peer_id:
-		G.print(
+		Netcode.log.print(
 			"Client %d requested unpause, but only initiator (peer %d) can unpause" % [
 				peer_id,
 				_pause_initiator_peer_id,
 			],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+			NetworkLogger.CATEGORY_SYNC
 		)
 		return
 
 	# Rate limit pause requests.
 	var current_time := Time.get_ticks_usec()
-	var cooldown_usec := int(G.settings.pause_request_cooldown_sec * 1_000_000)
+	var cooldown_usec := int(Netcode.settings.pause_request_cooldown_sec * 1_000_000)
 	if current_time - _last_pause_request_time_usec < cooldown_usec:
 		return
 
 	_last_pause_request_time_usec = current_time
+
+	# Emit signal for game to handle
+	unpause_requested.emit(peer_id)
+
 	_server_execute_unpause()
 
 ## Server notifies all clients of pause.
@@ -683,17 +748,13 @@ func _client_rpc_notify_unpause(
 func _client_rpc_notify_shutdown(shutdown_message: String) -> void:
 	G.check_is_client()
 
-	G.print(
+	Netcode.log.print(
 		"Server shutdown notification: %s" % shutdown_message,
-		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+		NetworkLogger.CATEGORY_CONNECTIONS
 	)
 
 	# Store reason in connector for disconnect handling.
-	G.network.connector.last_disconnect_reason = \
-		NetworkConnector.DisconnectReason.SERVER_SHUTDOWN
-
-	# Store message in LocalSession for game over screen display.
-	G.local_session.latest_server_message = shutdown_message
+	Netcode.connector.last_disconnect_reason = NetworkConnector.DisconnectReason.SERVER_SHUTDOWN
 
 
 ## Internal method to execute pause on server or client.
@@ -715,19 +776,15 @@ func _server_execute_pause(
 	# Calculate auto-unpause time for replication to clients (for countdown).
 	_pause_auto_unpause_time_usec = (
 		Time.get_ticks_usec() +
-		int(G.settings.max_pause_duration_sec * 1_000_000)
+		int(Netcode.settings.max_pause_duration_sec * 1_000_000)
 	)
 
 	# Schedule auto-unpause using timer system (server-only).
-	if G.network.is_server:
-		_pause_auto_unpause_timeout_id = G.time.set_timeout(
-			func():
-				G.print(
-					"Auto-unpausing after timeout",
-					ScaffolderLog.CATEGORY_NETWORK_SYNC,
-				)
-				_server_execute_unpause(),
-			G.settings.max_pause_duration_sec,
+	if Netcode.is_server:
+		_pause_auto_unpause_timer = get_tree().create_timer(Netcode.settings.max_pause_duration_sec)
+		_pause_auto_unpause_timer.timeout.connect(func():
+			Netcode.log.print("Auto-unpausing after timeout", NetworkLogger.CATEGORY_SYNC)
+			_server_execute_unpause()
 		)
 
 	# Clean up buffer frames after pause started.
@@ -737,7 +794,7 @@ func _server_execute_pause(
 	_queued_rollback_frame_index = 0
 
 	# Notify clients (if server and in tree for RPC).
-	if G.network.is_server and is_inside_tree():
+	if Netcode.is_server and is_inside_tree():
 		_client_rpc_notify_pause.rpc(
 			server_frame_index,
 			_pause_initiator_peer_id,
@@ -748,12 +805,12 @@ func _server_execute_pause(
 	if is_inside_tree():
 		get_tree().paused = true
 
-	G.print(
-		"Server paused at frame %d by peer %d" % [
-			server_frame_index,
-			initiator_peer_id,
-		],
-		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+	# Emit signal for UI updates
+	pause_state_changed.emit(true, initiator_peer_id)
+
+	Netcode.log.print(
+		"Server paused at frame %d by peer %d" % [server_frame_index, initiator_peer_id],
+		NetworkLogger.CATEGORY_SYNC
 	)
 
 
@@ -776,10 +833,15 @@ func _server_execute_unpause() -> void:
 
 	_is_paused = false
 
+	# Unpause the scene tree (paused in _ready).
+	if is_inside_tree():
+		get_tree().paused = false
+
 	# Cancel auto-unpause timeout (server-only).
-	if G.network.is_server and _pause_auto_unpause_timeout_id != 0:
-		G.time.clear_timeout(_pause_auto_unpause_timeout_id)
-		_pause_auto_unpause_timeout_id = 0
+	# SceneTreeTimer cannot be canceled once started, so we just clear the
+	# reference.
+	if Netcode.is_server and _pause_auto_unpause_timer != null:
+		_pause_auto_unpause_timer = null
 
 	# Reset pause state variables.
 	_pause_initiator_peer_id = 0
@@ -787,7 +849,7 @@ func _server_execute_unpause() -> void:
 	_pause_auto_unpause_time_usec = 0
 
 	# Notify clients (if server and in tree for RPC).
-	if G.network.is_server and is_inside_tree():
+	if Netcode.is_server and is_inside_tree():
 		_client_rpc_notify_unpause.rpc(
 			server_frame_index,
 			_cumulative_paused_frames,
@@ -797,10 +859,13 @@ func _server_execute_unpause() -> void:
 	if is_inside_tree():
 		get_tree().paused = false
 
-	G.print(
+	# Emit signal for UI updates
+	pause_state_changed.emit(false, 0)
+
+	Netcode.log.print(
 		"Server unpaused at frame %d (paused for %d frames, cumulative: %d)" %
 		[server_frame_index, pause_duration_frames, _cumulative_paused_frames],
-		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+		NetworkLogger.CATEGORY_SYNC
 	)
 
 
@@ -831,14 +896,12 @@ func _client_execute_pause_at_server_frame(
 	if is_inside_tree():
 		get_tree().paused = true
 
-	# Auto-open pause screen for all clients.
-	if is_instance_valid(G.screens):
-		if G.screens.current_screen == ScreensMain.ScreenType.GAME:
-			G.screens.client_open_screen(ScreensMain.ScreenType.PAUSE)
+	# Emit signal for game to handle screen transitions
+	pause_state_changed.emit(true, pause_initiator_peer_id)
 
-	G.print(
+	Netcode.log.print(
 		"Client synchronized pause at frame %d" % server_frame_index,
-		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+		NetworkLogger.CATEGORY_SYNC
 	)
 
 
@@ -870,23 +933,17 @@ func _client_execute_unpause_at_server_frame(
 	if is_inside_tree():
 		get_tree().paused = false
 
-	# Auto-close pause screen and return to game.
-	# Also transition from loading screen to game when server starts.
-	if is_instance_valid(G.screens):
-		if G.screens.current_screen == ScreensMain.ScreenType.PAUSE:
-			G.screens.client_open_screen(ScreensMain.ScreenType.GAME)
-		elif G.screens.current_screen == ScreensMain.ScreenType.LOADING:
-			# Transition from loading to game when server unpauses.
-			G.screens.client_open_screen(ScreensMain.ScreenType.GAME)
+	# Emit signal for game to handle screen transitions
+	pause_state_changed.emit(false, 0)
 
-	G.print(
+	Netcode.log.print(
 		"Client synchronized unpause: frame %d->%d (paused: %d, init=%s)" % [
 			previous_frame,
 			server_frame_index,
 			_cumulative_paused_frames,
 			_is_frame_tracking_initialized,
 		],
-		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+		NetworkLogger.CATEGORY_SYNC
 	)
 
 
@@ -922,33 +979,33 @@ func _initialize_frame_tracking() -> void:
 
 	# Note: Clients track their own frame indices locally starting from 0.
 	# Periodic frame index broadcasts from the server prevent drift.
-	G.print(
+	Netcode.log.print(
 		"Frame tracking initialized at frame 0 (was %d)" % previous_frame_index,
-		ScaffolderLog.CATEGORY_NETWORK_SYNC,
+		NetworkLogger.CATEGORY_SYNC
 	)
 
 
-## If we bucket server time into discrete frames, this would be the index of the
-func add_networked_state(node: ReconcilableNetworkedState) -> void:
-	G.ensure(not _networked_state_nodes.has(node))
+## Registers a ReconcilableState node for frame-synchronous processing.
+func add_networked_state(node: ReconcilableState) -> void:
+	Netcode.log.ensure(not _networked_state_nodes.has(node), "Node already registered")
 	_networked_state_nodes.append(node)
 
 
-func remove_networked_state(node: ReconcilableNetworkedState) -> void:
+func remove_networked_state(node: ReconcilableState) -> void:
 	var index := _networked_state_nodes.find(node)
-	G.ensure(index >= 0)
+	Netcode.log.ensure(index >= 0, "Node not found in registered nodes")
 	_networked_state_nodes.remove_at(index)
 
 
-func add_network_frame_processor(node: NetworkFrameProcessor) -> void:
-	G.ensure(not _network_frame_processor_nodes.has(node))
-	_network_frame_processor_nodes.append(node)
+func add_frame_processor(node: FrameProcessor) -> void:
+	Netcode.log.ensure(not _frame_processor_nodes.has(node), "Node already registered")
+	_frame_processor_nodes.append(node)
 
 
-func remove_network_frame_processor(node: NetworkFrameProcessor) -> void:
-	var index := _network_frame_processor_nodes.find(node)
-	G.ensure(index >= 0)
-	_network_frame_processor_nodes.remove_at(index)
+func remove_frame_processor(node: FrameProcessor) -> void:
+	var index := _frame_processor_nodes.find(node)
+	Netcode.log.ensure(index >= 0, "Node not found in registered nodes")
+	_frame_processor_nodes.remove_at(index)
 
 
 func is_frame_too_old_to_consider(p_frame_index: int) -> bool:
@@ -969,10 +1026,11 @@ func is_frame_too_old_to_consider(p_frame_index: int) -> bool:
 func queue_rollback(p_conflicting_frame_index: int) -> bool:
 	var target_rollback_frame := p_conflicting_frame_index + 1
 	if is_frame_too_old_to_consider(p_conflicting_frame_index):
-		G.fatal(
+		Netcode.log.fatal(
 			("Requested rollback to frame %d, " +
 			"but oldest rollbackable frame is %d") %
 			[target_rollback_frame, oldest_rollbackable_frame_index],
+			NetworkLogger.CATEGORY_SYNC
 		)
 		return false
 
@@ -999,11 +1057,12 @@ func _run_network_process() -> void:
 
 
 func _rollback_and_reprocess() -> void:
-	G.verbose(
-		"Starting rollback from frame %d to frame %d" %
-		[server_frame_index, _queued_rollback_frame_index],
-		ScaffolderLog.CATEGORY_NETWORK_SYNC,
-	)
+	if Netcode.log.is_verbose:
+		Netcode.log.verbose(
+			"Starting rollback from frame %d to frame %d" %
+			[server_frame_index, _queued_rollback_frame_index],
+			NetworkLogger.CATEGORY_SYNC
+		)
 
 	var rollback_start_time_usec := Time.get_ticks_usec()
 
@@ -1046,7 +1105,7 @@ func _network_process() -> void:
 	# Let all network-process-aware nodes handle the frame.
 	for node in _networked_state_nodes:
 		node._network_process()
-	for node in _network_frame_processor_nodes:
+	for node in _frame_processor_nodes:
 		node._network_process()
 
 	# Sync the current network state from other scene state.

@@ -12,9 +12,6 @@ extends Node
 ## - Handling peer_connected and peer_disconnected signals
 ## - Managing graceful disconnection and session cleanup
 ##
-## This class is accessed via the G.network.connector singleton and works in
-## conjunction with NetworkMain, which coordinates all networking subsystems.
-##
 ## Usage:
 ## - Server: Call server_enable_connections(port) to start accepting client
 ##   connections
@@ -22,9 +19,6 @@ extends Node
 ##   server
 ## - Both: Listen to peer_connected/peer_disconnected signals for connection
 ##   events
-##
-## Server and client connection parameters are passed as function arguments.
-## Max client count is read from G.settings.
 
 ## Signal emitted when a peer declares their player count.
 ## assigned_ids is an Array[int] of the player IDs assigned by the server.
@@ -35,12 +29,23 @@ signal peer_players_declared(
 	player_attributes: Array
 )
 
+## Emitted when client successfully connects to server.
+signal connected(local_peer_id: int)
+
+## Emitted when disconnection occurs (client or server).
+signal disconnected(peer_id: int, reason: int)
+
+## Emitted when client receives assigned player IDs from server.
+signal player_ids_assigned(assigned_ids: Array[int])
+
 ## Tracks the reason for client disconnection.
 enum DisconnectReason {
 	UNKNOWN,
 	CLIENT_INITIATED,
 	SERVER_SHUTDOWN,
+	CONNECTION_FAILED,
 	CONNECTION_LOST,
+	MATCH_FINISHED,
 }
 
 const SERVER_ID := 1
@@ -48,6 +53,21 @@ const SERVER_ID := 1
 ## Transfer channel for pause/unpause RPCs. Using a dedicated channel ensures
 ## pause coordination messages are not blocked by other network traffic.
 const RPC_CHANNEL_PAUSE := 1
+
+## Callable for validating player attributes (game-specific).
+## Signature: func(attributes: Array, expected_count: int, peer_id: int) ->
+## Array
+var player_attribute_validator: Callable
+
+## Callable for getting local session data (session IDs, player count,
+## attributes).
+## Signature: func() -> Dictionary with keys: "session_ids", "player_count",
+## "attributes"
+var client_session_provider: Callable
+
+## Optional session provider for backend validation (GameLift, etc.).
+## Set this BEFORE server_enable_connections() or client_connect_to_server().
+var session_provider: SessionProvider = null
 
 var is_connected_to_server := false
 
@@ -64,44 +84,47 @@ var _player_id_to_local_player_index := {}
 
 
 func _enter_tree() -> void:
-	if G.network.is_client:
+	if Netcode.is_client:
 		_client_update_is_connected_to_server()
-	multiplayer.peer_connected.connect(_on_peer_connected)
-	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
+
+	if not multiplayer.peer_connected.is_connected(_on_peer_connected):
+		multiplayer.peer_connected.connect(_on_peer_connected)
+	if not multiplayer.peer_disconnected.is_connected(_on_peer_disconnected):
+		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 
 
 func _ready() -> void:
-	G.log.log_system_ready("NetworkConnector")
+	Netcode.log.print("NetworkConnector ready", NetworkLogger.CATEGORY_NETWORK)
 
 
 func server_enable_connections(p_server_port: int) -> void:
-	G.check_is_server()
+	Netcode.log.check_is_server()
 
 	var peer = ENetMultiplayerPeer.new()
-	var result := peer.create_server(p_server_port, G.settings.max_client_count)
+	var result := peer.create_server(p_server_port, Netcode.settings.max_client_count)
 
-	G.check(
+	Netcode.log.check(
 		result == Error.OK,
-		"Failed to start multiplayer server: error=%d" % result,
+		"Failed to create ENet server: error=%d" % result
 	)
-	G.check(
+	Netcode.log.check(
 		peer.get_connection_status() != MultiplayerPeer.CONNECTION_DISCONNECTED,
-		"Failed to start multiplayer server: status=DISCONNECTED",
+		"ENet server peer is disconnected after creation"
 	)
 
 	multiplayer.multiplayer_peer = peer
 
-	G.print("Started multiplayer server: port=%d" % [p_server_port],
-		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
-
-	G.main.update_window_title()
+	Netcode.log.print(
+		"Started multiplayer server: port=%d" % [p_server_port],
+		NetworkLogger.CATEGORY_CONNECTIONS
+	)
 
 
 func client_connect_to_server(
 	p_server_ip_address: String,
 	p_server_port: int
 ) -> void:
-	G.check_is_client()
+	Netcode.log.check_is_client()
 
 	# Reset disconnect reason for new connection attempt.
 	last_disconnect_reason = DisconnectReason.UNKNOWN
@@ -111,60 +134,68 @@ func client_connect_to_server(
 	var peer = ENetMultiplayerPeer.new()
 	var result := peer.create_client(p_server_ip_address, p_server_port)
 
-	G.check(
+	Netcode.log.check(
 		result == Error.OK,
 		"Failed to start multiplayer client: error=%d" % result,
 	)
 	if peer.get_connection_status() == MultiplayerPeer.CONNECTION_DISCONNECTED:
-		G.log.alert_user(
+		Netcode.log.error(
 			"Failed to start multiplayer client: status=DISCONNECTED",
-			ScaffolderLog.CATEGORY_CORE_SYSTEMS
+						NetworkLogger.CATEGORY_CONNECTIONS
 		)
-		G.game_panel.client_exit_game()
+		# Emit signal so game can handle exit
+		disconnected.emit(-1, DisconnectReason.CONNECTION_FAILED)
 		return
 
 	multiplayer.multiplayer_peer = peer
 
-	G.print("Started multiplayer client: %s:%d" %
-		[p_server_ip_address, p_server_port],
-		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
+	Netcode.log.print(
+		"Started multiplayer client: %s:%d" % [p_server_ip_address, p_server_port],
+		NetworkLogger.CATEGORY_CONNECTIONS
+	)
 
 
 func _on_peer_connected(peer_id: int) -> void:
-	if G.network.is_server:
-		G.print("Client connected: %d" % peer_id,
-			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
+	if Netcode.is_server:
+		Netcode.log.print(
+			"Client connected: %d" % peer_id,
+			NetworkLogger.CATEGORY_CONNECTIONS
+		)
 	else:
 		# Clients only care about connecting to the server
 		if peer_id != SERVER_ID:
 			return
 
-		G.print(
-			"Connected to server: Local peer_id: %s" %
-				G.network.local_peer_id,
-			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+		Netcode.log.print(
+			"Connected to server: Local peer_id: %s" % multiplayer.get_unique_id(),
+			NetworkLogger.CATEGORY_CONNECTIONS
 		)
 		_client_update_is_connected_to_server()
-		G.main.update_window_title()
+
+		# Emit signal for game to handle (window title, etc.)
+		connected.emit(multiplayer.get_unique_id())
 
 		# Declare player count to server.
 		_client_send_player_declaration()
 
 
 func _on_peer_disconnected(peer_id: int) -> void:
-	if G.network.is_server:
-		G.print(
+	if Netcode.is_server:
+		Netcode.log.print(
 			"Client disconnected: %d" % peer_id,
-			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+			NetworkLogger.CATEGORY_CONNECTIONS
 		)
 
-		# In preview mode, close the server when all clients have disconnected
-		if G.network.is_preview and multiplayer.get_peers().size() == 0:
-			G.print(
-				"All clients disconnected in preview mode, closing server",
-				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+		# Emit signal for game to handle (close server in preview mode, etc.)
+		disconnected.emit(peer_id, DisconnectReason.UNKNOWN)
+
+		# In preview mode, log when all clients have disconnected.
+		# Game code handles shutdown via the disconnected signal.
+		if Netcode.is_preview and multiplayer.get_peers().size() == 0:
+			Netcode.log.print(
+				"All clients disconnected in preview mode",
+				NetworkLogger.CATEGORY_CONNECTIONS
 			)
-			G.main.close_app()
 	else:
 		# Clients only care about disconnecting from the server
 		if peer_id != SERVER_ID:
@@ -174,39 +205,43 @@ func _on_peer_disconnected(peer_id: int) -> void:
 		if last_disconnect_reason == DisconnectReason.UNKNOWN:
 			last_disconnect_reason = DisconnectReason.CONNECTION_LOST
 
-		G.print("Disconnect from server",
-			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
+		Netcode.log.print(
+			"Disconnect from server",
+			NetworkLogger.CATEGORY_CONNECTIONS
+		)
 		_client_update_is_connected_to_server()
-		G.main.update_window_title()
 
-		# In preview mode, close the client when the server disconnects
-		if G.network.is_preview:
-			G.print(
-				"Server disconnected in preview mode, closing client",
-				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+		# Emit signal for game to handle (update window title, close app, etc.)
+		disconnected.emit(peer_id, last_disconnect_reason)
+
+		# In preview mode, log server disconnect.
+		# Game code handles shutdown via the disconnected signal.
+		if Netcode.is_preview:
+			Netcode.log.print(
+				"Server disconnected in preview mode",
+				NetworkLogger.CATEGORY_CONNECTIONS
 			)
-			G.main.close_app()
 
 
 func _client_send_player_declaration() -> void:
-	G.check(G.local_session.has_valid_local_session_ids(),
-		"Client has no session IDs.",
-	)
+	Netcode.log.check(client_session_provider.is_valid(),
+		"client_session_provider not set, cannot declare players")
 
-	# Send player count and session IDs to server.
-	var player_count := G.local_session.local_player_count
+	# Get local session data from game
+	var session_data: Dictionary = client_session_provider.call()
+	var session_ids: Array = session_data.get("session_ids", [])
+	var player_count: int = session_data.get("player_count", 0)
+	var player_attributes: Array = session_data.get("attributes", [])
 
-	# Use stored session IDs from backend matchmaking.
-	var session_ids := G.local_session.local_session_ids
-
-	G.check(player_count == session_ids.size(),
+	Netcode.log.check(
+		player_count == session_ids.size(),
 		"Player count %d does not match session IDs size %d." %
 			[player_count, session_ids.size()],
 	)
 
-	G.print(
+	Netcode.log.print(
 		"Declaring %d player(s) to server" % player_count,
-		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+		NetworkLogger.CATEGORY_CONNECTIONS
 	)
 
 	var client_version: String = ProjectSettings.get_setting(
@@ -218,13 +253,13 @@ func _client_send_player_declaration() -> void:
 	_server_rpc_declare_players.rpc_id(
 		SERVER_ID,
 		session_ids,
-		G.local_session.local_player_attributes,
+		player_attributes,
 		client_version
 	)
 
 
 func _client_update_is_connected_to_server() -> void:
-	if G.network.is_server:
+	if Netcode.is_server:
 		is_connected_to_server = true
 	else:
 		is_connected_to_server = false
@@ -235,10 +270,12 @@ func _client_update_is_connected_to_server() -> void:
 
 
 func server_close_multiplayer_session() -> void:
-	G.check_is_server()
+	Netcode.log.check_is_server()
 
-	G.print("Ending network connections",
-		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
+	Netcode.log.print(
+		"Ending network connections",
+		NetworkLogger.CATEGORY_CONNECTIONS
+	)
 
 	multiplayer.multiplayer_peer.refuse_new_connections = true
 
@@ -247,14 +284,29 @@ func server_close_multiplayer_session() -> void:
 			multiplayer.multiplayer_peer.disconnect_peer(peer_id)
 
 
+func server_disconnect_all_clients() -> void:
+	Netcode.log.check_is_server()
+
+	Netcode.log.print(
+		"Disconnecting all clients (keeping session open)",
+		NetworkLogger.CATEGORY_CONNECTIONS
+	)
+
+	# Disconnect all clients but keep session open for new connections
+	for peer_id in multiplayer.get_peers():
+		if peer_id != SERVER_ID:
+			multiplayer.multiplayer_peer.disconnect_peer(peer_id)
+
+
 func client_disconnect() -> void:
-	G.check_is_client()
+	Netcode.log.check_is_client()
 
 	# Mark as client-initiated disconnect
 	last_disconnect_reason = DisconnectReason.CLIENT_INITIATED
 
-	G.print("Disconnecting from server",
-		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS)
+	Netcode.log.print(
+		"Disconnecting from server", NetworkLogger.CATEGORY_CONNECTIONS
+	)
 
 	if (multiplayer.multiplayer_peer.get_connection_status() !=
 			MultiplayerPeer.CONNECTION_DISCONNECTED):
@@ -269,7 +321,7 @@ func _server_rpc_declare_players(
 	player_attributes: Array,
 	client_version: String
 ) -> void:
-	G.check_is_server()
+	Netcode.log.check_is_server()
 
 	var peer_id := multiplayer.get_remote_sender_id()
 
@@ -280,41 +332,40 @@ func _server_rpc_declare_players(
 	)
 
 	if not SemanticVersion.compare(client_version, server_version):
-		G.warning(
-			"Version mismatch from peer %d: Client v%s, Server v%s - " +
-			"disconnecting" % [
+		Netcode.log.warning(
+			"Version mismatch from peer %d: Client v%s, Server v%s - disconnecting" % [
 				peer_id,
 				client_version,
 				server_version,
 			],
-			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+			NetworkLogger.CATEGORY_CONNECTIONS
 		)
 		multiplayer.multiplayer_peer.disconnect_peer(peer_id)
 		return
 
-	G.print(
+	Netcode.log.print(
 		"Peer %d version validated: v%s" % [peer_id, client_version],
-		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+		NetworkLogger.CATEGORY_CONNECTIONS
 	)
 
 	var player_count := session_ids.size()
 
 	# Validate player count.
-	if player_count < 1 or player_count > G.settings.local_player_max:
-		G.warning(
+	if player_count < 1 or player_count > Netcode.settings.max_local_player_count:
+		Netcode.log.warning(
 			"Invalid player count from peer %d: %d (min=1, max=%d)" % [
 				peer_id,
 				player_count,
-				G.settings.local_player_max,
+				Netcode.settings.max_local_player_count,
 			],
-			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+			NetworkLogger.CATEGORY_CONNECTIONS
 		)
 		multiplayer.multiplayer_peer.disconnect_peer(peer_id)
 		return
 
-	G.print(
+	Netcode.log.print(
 		"Peer %d declared %d player(s)" % [peer_id, player_count],
-		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+		NetworkLogger.CATEGORY_CONNECTIONS
 	)
 
 	# Assign sequential player IDs.
@@ -325,31 +376,35 @@ func _server_rpc_declare_players(
 		_player_id_to_local_player_index[_next_player_id] = local_player_index
 		_next_player_id += 1
 
-	# Send assigned IDs back to client.
-	_client_rpc_receive_player_ids.rpc_id(peer_id, assigned_ids)
-
-	G.print(
-		"Assigned IDs %s to peer %d" % [assigned_ids, peer_id],
-		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-	)
-
-	# If GameLift is enabled, validate sessions before spawning players.
-	if (
-		G.network.should_connect_to_remote_server and
-		is_instance_valid(G.network.game_lift_manager)
+	# Validate session IDs if provider is set.
+	if session_provider != null and session_provider.has_method(
+		"validate_player_sessions"
 	):
-		G.network.game_lift_manager.validate_player_sessions(
+		session_provider.validate_player_sessions(
 			peer_id,
 			assigned_ids,
 			session_ids
 		)
 
-	# Validate and sanitize player attributes.
-	var validated_attributes := _validate_player_attributes(
-		player_attributes,
-		player_count,
-		peer_id
+	# Send assigned IDs back to client.
+	_client_rpc_receive_player_ids.rpc_id(peer_id, assigned_ids)
+
+	Netcode.log.print(
+		"Assigned IDs %s to peer %d" % [assigned_ids, peer_id],
+		NetworkLogger.CATEGORY_CONNECTIONS
 	)
+
+	# Validate and sanitize player attributes using callback.
+	var validated_attributes: Array
+	if player_attribute_validator.is_valid():
+		validated_attributes = player_attribute_validator.call(
+			player_attributes,
+			player_count,
+			peer_id
+		)
+	else:
+		# No validator provided, use attributes as-is
+		validated_attributes = player_attributes
 
 	# Emit signal for Level and MatchStateSynchronizer to handle spawning.
 	peer_players_declared.emit(peer_id, assigned_ids, validated_attributes)
@@ -358,158 +413,21 @@ func _server_rpc_declare_players(
 ## RPC called by server to send assigned player IDs to the client.
 @rpc("authority", "call_remote", "reliable")
 func _client_rpc_receive_player_ids(assigned_ids: Array[int]) -> void:
-	G.check_is_client()
+	Netcode.log.check_is_client()
 
 	# Record local player IDs and indices.
 	for local_player_index in range(assigned_ids.size()):
 		var player_id := assigned_ids[local_player_index]
-		_player_id_to_peer_id[player_id] = G.network.local_peer_id
+		_player_id_to_peer_id[player_id] = multiplayer.get_unique_id()
 		_player_id_to_local_player_index[player_id] = local_player_index
 
-	G.local_session.local_player_ids = assigned_ids
-
-	G.verbose(
-		"Set G.local_session.local_player_ids = %s" % [assigned_ids],
-		ScaffolderLog.CATEGORY_GAME_STATE,
-	)
-
-	# Register device configs for each local player.
-	for local_player_index in range(assigned_ids.size()):
-		if local_player_index < G.local_session.local_device_configs.size():
-			var device_config := G.local_session.local_device_configs[local_player_index]
-			G.input_device_manager.assign_device_to_player(
-				local_player_index,
-				device_config
-			)
-
-	G.print(
+	Netcode.log.print(
 		"Received assigned player IDs: %s" % [assigned_ids],
-		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+		NetworkLogger.CATEGORY_CONNECTIONS
 	)
 
-
-## Validates player attributes received from client.
-## Returns validated/sanitized array of attribute dictionaries.
-func _validate_player_attributes(
-	player_attributes: Array,
-	expected_count: int,
-	peer_id: int
-) -> Array:
-	# Validate array size.
-	if player_attributes.size() != expected_count:
-		G.warning(
-			"Invalid attributes count from peer %d: got %d, expected %d" % [
-				peer_id,
-				player_attributes.size(),
-				expected_count,
-			],
-			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-		)
-		# Generate fallback attributes for all players.
-		var fallback: Array = []
-		for i in range(expected_count):
-			fallback.append(_get_fallback_attributes())
-		return fallback
-
-	var validated: Array = []
-	for i in range(player_attributes.size()):
-		var attributes = player_attributes[i]
-
-		# Ensure attributes is a dictionary.
-		if not (attributes is Dictionary):
-			G.warning(
-				"Peer %d sent non-dictionary attribute at index %d" % [
-					peer_id,
-					i
-				],
-				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-			)
-			validated.append(_get_fallback_attributes())
-			continue
-
-		# Validate required keys exist.
-		if not (
-			attributes.has("bunny_name") and
-			attributes.has("adjective") and
-			attributes.has("body_type_index") and
-			attributes.has("costume_index") and
-			attributes.has("is_soft")
-		):
-			G.warning(
-				"Peer %d sent incomplete attributes at index %d" % [peer_id, i],
-				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-			)
-			validated.append(_get_fallback_attributes())
-			continue
-
-		# Validate bunny_name.
-		if not BunnyWords.NAMES.has(attributes.bunny_name):
-			G.warning(
-				"Peer %d sent invalid bunny_name: %s" % [
-					peer_id,
-					attributes.bunny_name
-				],
-				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-			)
-			attributes.bunny_name = BunnyWords.NAMES.pick_random()
-
-		# Validate adjective based on is_soft flag.
-		var valid_adjectives := (
-			BunnyWords.SOFT_ADJECTIVES if attributes.is_soft
-			else BunnyWords.HARD_ADJECTIVES
-		)
-		if not valid_adjectives.has(attributes.adjective):
-			G.warning(
-				"Peer %d sent invalid adjective: %s" % [
-					peer_id,
-					attributes.adjective
-				],
-				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-			)
-			attributes.adjective = valid_adjectives.pick_random()
-
-		# Validate body_type_index.
-		if (
-			attributes.body_type_index < 0 or
-			attributes.body_type_index >= PlayerMatchState._BODY_TYPE_COUNT
-		):
-			G.warning(
-				"Peer %d sent invalid body_type_index: %d" % [
-					peer_id,
-					attributes.body_type_index
-				],
-				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-			)
-			attributes.body_type_index = 0
-
-		# Validate costume_index.
-		if (
-			attributes.costume_index < 0 or
-			attributes.costume_index >= PlayerMatchState._COSTUME_COUNT
-		):
-			G.warning(
-				"Peer %d sent invalid costume_index: %d" % [
-					peer_id,
-					attributes.costume_index
-				],
-				ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-			)
-			attributes.costume_index = 0
-
-		validated.append(attributes)
-
-	return validated
-
-
-## Generates fallback attributes when client sends invalid data.
-static func _get_fallback_attributes() -> Dictionary:
-	return {
-		"bunny_name": BunnyWords.NAMES.pick_random(),
-		"adjective": BunnyWords.SOFT_ADJECTIVES.pick_random(),
-		"body_type_index": 0,
-		"costume_index": 0,
-		"is_soft": true
-	}
+	# Emit signal for game to handle (set local session, assign input devices)
+	player_ids_assigned.emit(assigned_ids)
 
 
 ## Called by the server to register the player_id to peer_id mapping.
@@ -518,13 +436,14 @@ func server_register_player_id_to_peer_mapping(
 		p_player_id: int,
 		p_peer_id: int) -> void:
 	_player_id_to_peer_id[p_player_id] = p_peer_id
-	G.verbose(
-		"Registered player_id=%d -> peer_id=%d" % [
-			p_player_id,
-			p_peer_id
-		],
-		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-	)
+	if Netcode.log.is_verbose:
+		Netcode.log.verbose(
+			"Registered player_id=%d -> peer_id=%d" % [
+				p_player_id,
+				p_peer_id
+			],
+			NetworkLogger.CATEGORY_CONNECTIONS
+		)
 
 
 func client_on_player_state_connected(
@@ -533,14 +452,15 @@ func client_on_player_state_connected(
 		p_local_index: int) -> void:
 	_player_id_to_peer_id[p_player_id] = p_peer_id
 	_player_id_to_local_player_index[p_player_id] = p_local_index
-	G.verbose(
-		"Client registered player state: player_id=%d, peer_id=%d, local_index=%d" % [
-			p_player_id,
-			p_peer_id,
-			p_local_index
-		],
-		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
-	)
+	if Netcode.log.is_verbose:
+		Netcode.log.verbose(
+			"Client registered player state: player_id=%d, peer_id=%d, local_index=%d" % [
+				p_player_id,
+				p_peer_id,
+				p_local_index
+			],
+			NetworkLogger.CATEGORY_CONNECTIONS
+		)
 
 
 ## Gets the peer_id associated with a given player_id.

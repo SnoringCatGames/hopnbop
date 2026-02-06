@@ -37,9 +37,9 @@ static func setup_mock_level(parent_node: Node) -> MockLevel:
 	if not is_instance_valid(G.match_state):
 		G.match_state = MatchState.new()
 
-	# Mock G.local_session for lobby operations.
-	if not is_instance_valid(G.local_session):
-		G.local_session = LocalSession.new()
+	# Mock G.client_session for lobby operations.
+	if not is_instance_valid(G.client_session):
+		G.client_session = ClientSession.new()
 
 	# Mock G.game_panel for PerfTracker.
 	if not is_instance_valid(G.game_panel):
@@ -187,7 +187,7 @@ static func setup_player_with_networking(
 static func cleanup_mock_level() -> void:
 	G.level = null
 	G.match_state = null
-	G.local_session = null
+	G.client_session = null
 
 	if is_instance_valid(G.game_panel):
 		G.game_panel.free()

@@ -186,11 +186,11 @@ func _ready() -> void:
     )
 
     # Spawn local player immediately.
-    if not Netcode.orchestrator.connector.is_server:
+    if not Netcode.is_server:
         _spawn_player(multiplayer.get_unique_id())
 
 func _on_peer_connected(peer_id: int) -> void:
-    if Netcode.orchestrator.connector.is_server:
+    if Netcode.is_server:
         _spawn_player(peer_id)
 
 func _spawn_player(peer_id: int) -> void:

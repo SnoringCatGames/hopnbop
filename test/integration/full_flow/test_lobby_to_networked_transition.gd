@@ -20,8 +20,8 @@ class TestFullPlayerFlow:
 		mock_level = MockLevel.new()
 		G.level = mock_level
 
-		# Mock G.local_session.
-		G.local_session = LocalSession.new()
+		# Mock G.client_session.
+		G.client_session = ClientSession.new()
 
 		# Mock G.match_state.
 		G.match_state = MatchState.new()
@@ -32,12 +32,12 @@ class TestFullPlayerFlow:
 	func after_each():
 		ArrayPool.clear_all_pools()
 		G.level = null
-		G.local_session = null
+		G.client_session = null
 		G.match_state = null
 		if is_instance_valid(mock_level):
 			mock_level.queue_free()
 
-	func test_lobby_device_configs_persist_to_local_session():
+	func test_lobby_device_configs_persist_to_client_session():
 		# Spawn players.
 		lobby._try_register_keyboard_player(
 			InputDeviceManager.KEYBOARD_PARTITION_BINDINGS[0]
@@ -113,8 +113,8 @@ class TestDeviceConfigThreading:
 		mock_level = MockLevel.new()
 		G.level = mock_level
 
-		# Mock G.local_session.
-		G.local_session = LocalSession.new()
+		# Mock G.client_session.
+		G.client_session = ClientSession.new()
 
 		# Mock G.match_state.
 		G.match_state = MatchState.new()
@@ -125,13 +125,12 @@ class TestDeviceConfigThreading:
 	func after_each():
 		ArrayPool.clear_all_pools()
 		G.level = null
-		G.local_session = null
+		G.client_session = null
 		G.match_state = null
 		if is_instance_valid(mock_level):
 			mock_level.queue_free()
 
 	func test_device_configs_contain_correct_bindings():
-
 		lobby._try_register_keyboard_player(
 			InputDeviceManager.KEYBOARD_PARTITION_BINDINGS[0]
 		)
@@ -153,7 +152,7 @@ class TestDeviceConfigThreading:
 		assert_eq(config.device_id, 3)
 
 
-class TestLocalSessionCleaning:
+class TestClientSessionCleaning:
 	extends GutTest
 	var lobby: LobbyLevel
 	var root_node: Node
@@ -168,8 +167,8 @@ class TestLocalSessionCleaning:
 		mock_level = MockLevel.new()
 		G.level = mock_level
 
-		# Mock G.local_session.
-		G.local_session = LocalSession.new()
+		# Mock G.client_session.
+		G.client_session = ClientSession.new()
 
 		# Mock G.match_state.
 		G.match_state = MatchState.new()
@@ -180,7 +179,7 @@ class TestLocalSessionCleaning:
 	func after_each():
 		ArrayPool.clear_all_pools()
 		G.level = null
-		G.local_session = null
+		G.client_session = null
 		G.match_state = null
 		if is_instance_valid(mock_level):
 			mock_level.queue_free()
@@ -221,8 +220,8 @@ class TestLobbyPlayerIsolation:
 		mock_level = MockLevel.new()
 		G.level = mock_level
 
-		# Mock G.local_session.
-		G.local_session = LocalSession.new()
+		# Mock G.client_session.
+		G.client_session = ClientSession.new()
 
 		# Mock G.match_state.
 		G.match_state = MatchState.new()
@@ -233,7 +232,7 @@ class TestLobbyPlayerIsolation:
 	func after_each():
 		ArrayPool.clear_all_pools()
 		G.level = null
-		G.local_session = null
+		G.client_session = null
 		G.match_state = null
 		if is_instance_valid(mock_level):
 			mock_level.queue_free()
