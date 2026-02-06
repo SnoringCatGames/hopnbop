@@ -32,6 +32,7 @@ var scg_splash_screen: SCGSplashScreen
 var loading_screen: LoadingScreen
 var game_over_screen: GameOverScreen
 var pause_screen: PauseScreen
+var screen_transition: ScreenTransition
 
 var game_panel: GamePanel
 var match_state: GameMatchState
@@ -100,27 +101,12 @@ func _ready() -> void:
 		preview_instance_label = ""
 
 
-# FIXME: Remove this, and just use the value from Settings. Check if I can
-#        modify custom class properties in an array there...
 func _initialize_level_registry() -> void:
 	level_registry = LevelRegistry.new()
 
-	# Register levels from settings metadata.
-	for metadata in settings.level_metadata:
-		level_registry.register_level_from_dict(metadata)
-
-	# Also register any level_scenes that weren't in metadata.
-	for scene in settings.level_scenes:
-		var existing_id := level_registry.get_level_id_for_scene(scene)
-		if existing_id.is_empty():
-			# Auto-generate ID from scene path.
-			var scene_path: String = scene.resource_path
-			var scene_name := scene_path.get_file().get_basename()
-			level_registry.register_level_from_dict({
-				"id": StringName(scene_name),
-				"display_name": scene_name.capitalize().replace("_", " "),
-				"scene": scene,
-			})
+	# Register levels from settings.
+	for level_info in settings.levels:
+		level_registry.register_level(level_info)
 
 	G.log.print(
 		"Level registry initialized with %d levels" % level_registry.get_level_count(),

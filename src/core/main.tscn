@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://bpnl5pn3ydite"]
+[gd_scene load_steps=9 format=3 uid="uid://bpnl5pn3ydite"]
 
 [ext_resource type="Script" uid="uid://cb3gdybtwy0ry" path="res://src/core/main.gd" id="1_avv2o"]
 [ext_resource type="PackedScene" uid="uid://bt1la6s52krxe" path="res://src/ui/hud/hud.tscn" id="2_ukt3u"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://luccssf71n0" path="res://src/core/game_panel.tscn" id="3_x62ka"]
 [ext_resource type="PackedScene" uid="uid://dlvy2ayb4r382" path="res://src/core/screens_main.tscn" id="6_q2b63"]
 [ext_resource type="PackedScene" uid="uid://bvkt5maj64yqm" path="res://src/ui/super_hud/super_hud.tscn" id="7_nxx65"]
+[ext_resource type="PackedScene" uid="uid://cidck5vww8ede" path="res://src/core/screen_transition.tscn" id="8_2uitn"]
 [ext_resource type="Script" uid="uid://c3nr6lphfvyed" path="res://src/ui/debug/window_border.gd" id="8_window_border"]
 
 [node name="Main" type="Node2D"]
@@ -36,3 +37,8 @@ layer = 300
 layout_mode = 3
 anchors_preset = 0
 script = ExtResource("8_window_border")
+
+[node name="TransitionLayer" type="CanvasLayer" parent="."]
+layer = 400
+
+[node name="ScreenTransition" parent="TransitionLayer" instance=ExtResource("8_2uitn")]

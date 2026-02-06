@@ -5,6 +5,8 @@ extends MultiplayerSynchronizer
 var state := GameMatchState.new()
 var _previous_state := GameMatchState.new()
 
+var _expected_player_count: int = 0
+
 
 func _ready() -> void:
 	# Set back-reference so GameMatchState can call RPC methods
@@ -73,15 +75,26 @@ func _server_on_peer_players_declared(
 
 	state.update_scores()
 
+	# Check if all expected players have now been added to match state.
+	# If so, assign outline colors based on final player count.
+	if _expected_player_count > 0 and \
+			state.players_by_id.size() >= _expected_player_count:
+		_server_assign_outline_colors()
+
+
+func server_set_expected_player_count(count: int) -> void:
+	_expected_player_count = count
+	G.print(
+		"Expected player count set to %d" % count,
+		NetworkLogger.CATEGORY_CONNECTIONS
+	)
+
 
 func _server_on_all_players_connected() -> void:
 	G.print(
-		"All players connected, assigning colors",
+		"All players validated by session provider",
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
-	# Assign outline colors once when all players have connected.
-	# This ensures colors are distributed evenly across all players.
-	_server_assign_outline_colors()
 
 
 ## Assigns outline colors to all players based on total player count.

@@ -6,6 +6,10 @@ const _NORMAL_SURFACES_COLLISION_MASK_BIT := 1
 const _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT := 2
 const _WALK_THROUGH_WALLS_COLLISION_MASK_BIT := 4
 
+# HACK to work-around Godot's problem with one-wall collisions definitely being
+# collidable from the side.
+const _FALL_THROUGH_FLOOR_COLLISION_FALL_SPEED_THRESHOLD := 70.0
+
 @export var collision_shape: CollisionShape2D:
 	set(value):
 		collision_shape = value
@@ -288,9 +292,17 @@ func processed_action(p_name: StringName) -> bool:
 # Update whether or not we should currently consider collisions with
 # fall-through floors and walk-through walls.
 func _update_collision_mask() -> void:
+	# HACK to disable collision with fall-through floors when we are moving
+	# sideways in the air, since Godot has a bug where one-way collisions can
+	# actually be collided with _sometimes_ from the side.
+	var is_fall_through_floor_bit_enabled := (
+		not surfaces.is_descending_through_floors and
+		(velocity.y >= _FALL_THROUGH_FLOOR_COLLISION_FALL_SPEED_THRESHOLD or
+		is_on_floor())
+	)
 	set_collision_mask_value(
 		_FALL_THROUGH_FLOORS_COLLISION_MASK_BIT,
-		not surfaces.is_descending_through_floors,
+		is_fall_through_floor_bit_enabled,
 	)
 	#set_collision_mask_value(
 	#_WALK_THROUGH_WALLS_COLLISION_MASK_BIT,

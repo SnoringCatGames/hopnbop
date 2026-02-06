@@ -279,6 +279,7 @@ extends Node
 #   from PART 5.
 
 # FIXME: After polishing networking from above:
+# - Add a screen shake for each kill?
 # - Use PixelLab for level art ideation?:
 #   - https://www.pixellab.ai/
 #   - Bunny

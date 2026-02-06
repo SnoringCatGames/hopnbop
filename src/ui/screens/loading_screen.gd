@@ -12,7 +12,16 @@ func _process(_delta: float) -> void:
 
 func on_open() -> void:
 	super.on_open()
-	G.check(G.client_session.is_game_loading, "LoadingScreen.on_open: Game is not loading")
+
+	# If game is no longer loading (disconnect during transition), skip setup.
+	# The screen system will immediately transition to GAME_OVER.
+	if not G.client_session.is_game_loading:
+		G.print(
+			"LoadingScreen opened but game is no longer loading " + \
+			"(disconnect during transition)",
+			NetworkLogger.CATEGORY_GAME_STATE
+		)
+		return
 
 	# Set initial message.
 	update_status_message()

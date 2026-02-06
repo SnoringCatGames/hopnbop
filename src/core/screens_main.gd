@@ -23,14 +23,22 @@ func _enter_tree() -> void:
 		process_mode = Node.PROCESS_MODE_DISABLED
 		return
 
+	# Explicitly set visible on clients.
+	visible = true
+
 
 func _ready() -> void:
-	G.log.log_system_ready("AudioMain")
+	G.log.log_system_ready("ScreensMain")
 
 	if Netcode.is_server:
 		for child in get_children():
 			child.queue_free()
 		return
+
+	G.print(
+		"ScreensMain._ready() - visible=%s" % visible,
+		NetworkLogger.CATEGORY_GAME_STATE
+	)
 
 
 func client_open_screen(screen_type: ScreenType) -> void:
@@ -41,6 +49,48 @@ func client_open_screen(screen_type: ScreenType) -> void:
 		return
 
 	var previous_screen_type := current_screen
+	var should_transition := _should_play_transition(
+		previous_screen_type,
+		screen_type
+	)
+
+	if should_transition and G.screen_transition:
+		# Capture current screen, switch, then fade out the capture.
+		G.screen_transition.transition_wipe(
+			G.settings.screen_transition_duration,
+			ScreenTransition.DEFAULT_PATTERN,
+			ScreenTransition.DEFAULT_TILE_STYLE,
+			func(): _perform_screen_switch(previous_screen_type, screen_type),
+		)
+	else:
+		_perform_screen_switch(previous_screen_type, screen_type)
+
+
+func _should_play_transition(
+	from_screen: ScreenType,
+	to_screen: ScreenType
+) -> bool:
+	# Play transitions for major screen changes involving lobby/match.
+	var transition_pairs := [
+		[ScreenType.LOBBY, ScreenType.LOADING],
+		[ScreenType.LOADING, ScreenType.GAME],
+		[ScreenType.GAME, ScreenType.GAME_OVER],
+		[ScreenType.GAME_OVER, ScreenType.LOBBY],
+		[ScreenType.UNKNOWN, ScreenType.LOBBY],
+		[ScreenType.UNKNOWN, ScreenType.GAME],
+		[ScreenType.SCG_SPLASH, ScreenType.LOBBY],
+		[ScreenType.SCG_SPLASH, ScreenType.GAME],
+	]
+	for pair in transition_pairs:
+		if from_screen == pair[0] and to_screen == pair[1]:
+			return true
+	return false
+
+
+func _perform_screen_switch(
+	previous_screen_type: ScreenType,
+	screen_type: ScreenType
+) -> void:
 	current_screen = screen_type
 
 	G.print(
@@ -54,17 +104,30 @@ func client_open_screen(screen_type: ScreenType) -> void:
 
 	get_tree().paused = screen_type not in [ScreenType.GAME, ScreenType.LOBBY]
 
+	# CRITICAL FIX: Ensure ScreensMain is visible before showing any screen.
+	if not Netcode.is_server:
+		visible = true
+
 	G.loading_screen.visible = screen_type == ScreenType.LOADING
 	G.game_over_screen.visible = screen_type == ScreenType.GAME_OVER
 	G.pause_screen.visible = screen_type == ScreenType.PAUSE
 	G.godot_splash_screen.visible = screen_type == ScreenType.GODOT_SPLASH
 	G.scg_splash_screen.visible = screen_type == ScreenType.SCG_SPLASH
 
+	if screen_type == ScreenType.LOADING:
+		G.print(
+			"Set LoadingScreen visible=true, actual=%s, ScreensMain.visible=%s, CanvasLayer.visible=%s" % [
+				G.loading_screen.visible,
+				visible,
+				get_parent().visible if get_parent() else "no_parent"
+			],
+			NetworkLogger.CATEGORY_GAME_STATE
+		)
+
 	var ends_game := (
 		[
 			ScreenType.GODOT_SPLASH,
 			ScreenType.SCG_SPLASH,
-			ScreenType.LOADING,
 			ScreenType.GAME_OVER,
 			ScreenType.LOBBY,
 		].has(screen_type)

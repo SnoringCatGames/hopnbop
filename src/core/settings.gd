@@ -40,6 +40,7 @@ extends NetworkSettings
 
 @export var godot_splash_duration_sec := 0.9
 @export var scg_splash_duration_sec := 0.9
+@export var screen_transition_duration := 0.7
 
 @export var bunny_collision_shape: Shape2D
 
@@ -74,19 +75,12 @@ extends NetworkSettings
 
 # --- Game-specific configuration ---
 
-@export var default_gravity_acceleration := 2000.0
-
-@export var default_level_scene: PackedScene
-@export var level_scenes: Array[PackedScene] = []
+@export var default_gravity_acceleration := 1300.0
 
 @export_group("Level Registry")
-## Level metadata for dynamic selection. Each entry should contain:
-## - id: StringName - Unique identifier (e.g., "default_level")
-## - display_name: String - Human-readable name (e.g., "Classic Arena")
-## - scene: PackedScene - The level scene
-## - min_players: int - Minimum players (default 2)
-## - max_players: int - Maximum players (default 4)
-@export var level_metadata: Array[Dictionary] = []
+## Registered levels for dynamic selection. The first enabled level is the
+## default.
+@export var levels: Array[LevelInfo] = []
 @export_group("")
 
 @export var default_player_scene: PackedScene

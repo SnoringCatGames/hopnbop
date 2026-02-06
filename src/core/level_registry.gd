@@ -6,35 +6,6 @@ extends RefCounted
 ## selection during matchmaking.
 
 
-## Information about a registered level.
-class LevelInfo extends RefCounted:
-	## Unique identifier (e.g., "default_level", "forest_arena").
-	var id: StringName = ""
-	## Human-readable display name (e.g., "Classic Arena").
-	var display_name: String = ""
-	## The level scene to instantiate.
-	var scene: PackedScene = null
-	## Minimum players required for this level.
-	var min_players: int = 2
-	## Maximum players supported by this level.
-	var max_players: int = 4
-	## Whether this level is available for selection.
-	var is_enabled: bool = true
-
-	func _init(
-		p_id: StringName = "",
-		p_display_name: String = "",
-		p_scene: PackedScene = null,
-		p_min_players: int = 2,
-		p_max_players: int = 4
-	) -> void:
-		id = p_id
-		display_name = p_display_name
-		scene = p_scene
-		min_players = p_min_players
-		max_players = p_max_players
-
-
 # Dictionary<StringName, LevelInfo>
 var _levels_by_id: Dictionary = {}
 
@@ -42,32 +13,7 @@ var _levels_by_id: Dictionary = {}
 var _levels: Array[LevelInfo] = []
 
 
-## Register a level from metadata dictionary.
-## Expected keys: id, display_name, scene (PackedScene), min_players, max_players
-func register_level_from_dict(metadata: Dictionary) -> void:
-	var id: StringName = metadata.get("id", "")
-	if id.is_empty():
-		push_warning("LevelRegistry: Cannot register level without id")
-		return
-
-	var scene: PackedScene = metadata.get("scene", null)
-	if scene == null:
-		push_warning("LevelRegistry: Cannot register level '%s' without scene" % id)
-		return
-
-	var info := LevelInfo.new(
-		id,
-		metadata.get("display_name", str(id)),
-		scene,
-		metadata.get("min_players", 2),
-		metadata.get("max_players", 4)
-	)
-	info.is_enabled = metadata.get("is_enabled", true)
-
-	register_level(info)
-
-
-## Register a level with full info.
+## Register a level.
 func register_level(info: LevelInfo) -> void:
 	if info.id.is_empty():
 		push_warning("LevelRegistry: Cannot register level without id")
@@ -145,3 +91,19 @@ func get_level_count() -> int:
 func clear() -> void:
 	_levels_by_id.clear()
 	_levels.clear()
+
+
+## Get the default level (first enabled level).
+## Returns null if no levels are registered or none are enabled.
+func get_default_level() -> LevelInfo:
+	for info in _levels:
+		if info.is_enabled:
+			return info
+	return null
+
+
+## Get the default level scene.
+## Returns null if no default level exists.
+func get_default_level_scene() -> PackedScene:
+	var info := get_default_level()
+	return info.scene if info != null else null
