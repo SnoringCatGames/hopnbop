@@ -39,8 +39,8 @@ func _process(_delta: float) -> void:
 
 
 func _update_render_fps_ui() -> void:
-	var current_fps := G.network.perf_tracker.get_client_render_fps()
-	var min_fps := G.network.perf_tracker.get_min_render_fps()
+	var current_fps := Netcode.perf_tracker.get_client_render_fps()
+	var min_fps := Netcode.perf_tracker.get_min_render_fps()
 
 	var min_text := "%.1f" % min_fps if min_fps != INF else "--"
 	%ClientRenderFPS.text = "%.1f (%s)" % [current_fps, min_text]
@@ -50,8 +50,8 @@ func _update_render_fps_ui() -> void:
 
 
 func _update_physics_fps_ui() -> void:
-	var current_fps := G.network.perf_tracker.get_client_physics_fps()
-	var min_fps := G.network.perf_tracker.get_min_physics_fps()
+	var current_fps := Netcode.perf_tracker.get_client_physics_fps()
+	var min_fps := Netcode.perf_tracker.get_min_physics_fps()
 
 	var min_text := "%.1f" % min_fps if min_fps != INF else "--"
 	%ClientPhysicsFPS.text = "%.1f (%s)" % [current_fps, min_text]
@@ -61,8 +61,8 @@ func _update_physics_fps_ui() -> void:
 
 
 func _update_network_fps_ui() -> void:
-	var current_fps := G.network.perf_tracker.get_client_network_fps()
-	var min_fps := G.network.perf_tracker.get_min_network_fps()
+	var current_fps := Netcode.perf_tracker.get_client_network_fps()
+	var min_fps := Netcode.perf_tracker.get_min_network_fps()
 
 	var min_text := "%.1f" % min_fps if min_fps != INF else "--"
 	%ClientNetworkFPS.text = "%.1f (%s)" % [current_fps, min_text]
@@ -72,8 +72,8 @@ func _update_network_fps_ui() -> void:
 
 
 func _update_network_ping_ui() -> void:
-	var current_ping := G.network.perf_tracker.get_client_network_ping_ms()
-	var max_ping := G.network.perf_tracker.get_max_network_ping_ms()
+	var current_ping := Netcode.perf_tracker.get_client_network_ping_ms()
+	var max_ping := Netcode.perf_tracker.get_max_network_ping_ms()
 
 	%ClientNetworkPing.text = "%.1f (%.1f)" % [current_ping, max_ping]
 
@@ -82,12 +82,12 @@ func _update_network_ping_ui() -> void:
 
 
 func _update_rollback_metrics_ui() -> void:
-	var rollbacks_per_sec := G.network.perf_tracker.get_client_rollbacks_per_sec()
-	var last_duration_ms := G.network.perf_tracker.get_client_last_rollback_duration_ms()
-	var last_frames := G.network.perf_tracker.get_client_last_rollback_frames()
-	var max_rollbacks := G.network.perf_tracker.get_max_rollbacks_per_sec()
-	var max_duration := G.network.perf_tracker.get_max_last_rollback_duration_ms()
-	var max_frames := G.network.perf_tracker.get_max_last_rollback_frames()
+	var rollbacks_per_sec := Netcode.perf_tracker.get_client_rollbacks_per_sec()
+	var last_duration_ms := Netcode.perf_tracker.get_client_last_rollback_duration_ms()
+	var last_frames := Netcode.perf_tracker.get_client_last_rollback_frames()
+	var max_rollbacks := Netcode.perf_tracker.get_max_rollbacks_per_sec()
+	var max_duration := Netcode.perf_tracker.get_max_last_rollback_duration_ms()
+	var max_frames := Netcode.perf_tracker.get_max_last_rollback_frames()
 
 	%ClientRollbacksPerSec.text = "%.1f (%.1f)" % [rollbacks_per_sec, max_rollbacks]
 	%ClientLastRollbackDuration.text = "%.2f (%.2f)" % [last_duration_ms, max_duration]
@@ -95,12 +95,12 @@ func _update_rollback_metrics_ui() -> void:
 
 
 func _update_fastforward_metrics_ui() -> void:
-	var fastforwards_per_sec := G.network.perf_tracker.get_client_fastforwards_per_sec()
-	var last_duration_ms := G.network.perf_tracker.get_client_last_fastforward_duration_ms()
-	var last_frames := G.network.perf_tracker.get_client_last_fastforward_frames()
-	var max_fastforwards := G.network.perf_tracker.get_max_fastforwards_per_sec()
-	var max_duration := G.network.perf_tracker.get_max_last_fastforward_duration_ms()
-	var max_frames := G.network.perf_tracker.get_max_last_fastforward_frames()
+	var fastforwards_per_sec := Netcode.perf_tracker.get_client_fastforwards_per_sec()
+	var last_duration_ms := Netcode.perf_tracker.get_client_last_fastforward_duration_ms()
+	var last_frames := Netcode.perf_tracker.get_client_last_fastforward_frames()
+	var max_fastforwards := Netcode.perf_tracker.get_max_fastforwards_per_sec()
+	var max_duration := Netcode.perf_tracker.get_max_last_fastforward_duration_ms()
+	var max_frames := Netcode.perf_tracker.get_max_last_fastforward_frames()
 
 	%ClientFastforwardsPerSec.text = "%.1f (%.1f)" % [fastforwards_per_sec, max_fastforwards]
 	%ClientLastFastforwardDuration.text = "%.2f (%.2f)" % [last_duration_ms, max_duration]
@@ -154,8 +154,8 @@ func _update_label_color(label: Label, is_slow: bool) -> void:
 
 func _update_server_ui() -> void:
 	# Physics FPS
-	var server_physics_fps := G.network.perf_tracker.get_server_physics_fps()
-	var server_min_physics_fps := G.network.perf_tracker.get_server_min_physics_fps()
+	var server_physics_fps := Netcode.perf_tracker.get_server_physics_fps()
+	var server_min_physics_fps := Netcode.perf_tracker.get_server_min_physics_fps()
 	var min_physics_text := "%.1f" % server_min_physics_fps if server_min_physics_fps != INF else "--"
 	%ServerPhysicsFPS.text = "%.1f (%s)" % [server_physics_fps, min_physics_text]
 
@@ -163,8 +163,8 @@ func _update_server_ui() -> void:
 	%ServerRenderFPS.text = "N/A"
 
 	# Network FPS
-	var server_network_fps := G.network.perf_tracker.get_server_network_fps()
-	var server_min_network_fps := G.network.perf_tracker.get_server_min_network_fps()
+	var server_network_fps := Netcode.perf_tracker.get_server_network_fps()
+	var server_min_network_fps := Netcode.perf_tracker.get_server_min_network_fps()
 	var min_network_text := "%.1f" % server_min_network_fps if server_min_network_fps != INF else "--"
 	%ServerNetworkFPS.text = "%.1f (%s)" % [server_network_fps, min_network_text]
 
@@ -172,27 +172,27 @@ func _update_server_ui() -> void:
 	%ServerNetworkPing.text = "N/A"
 
 	# Rollback metrics
-	var server_rollbacks_per_sec := G.network.perf_tracker.get_server_rollbacks_per_sec()
-	var server_max_rollbacks := G.network.perf_tracker.get_server_max_rollbacks_per_sec()
+	var server_rollbacks_per_sec := Netcode.perf_tracker.get_server_rollbacks_per_sec()
+	var server_max_rollbacks := Netcode.perf_tracker.get_server_max_rollbacks_per_sec()
 	%ServerRollbacksPerSec.text = "%.1f (%.1f)" % [server_rollbacks_per_sec, server_max_rollbacks]
 
-	var server_last_rollback_duration := G.network.perf_tracker.get_server_last_rollback_duration_ms()
-	var server_max_rollback_duration := G.network.perf_tracker.get_server_max_last_rollback_duration_ms()
+	var server_last_rollback_duration := Netcode.perf_tracker.get_server_last_rollback_duration_ms()
+	var server_max_rollback_duration := Netcode.perf_tracker.get_server_max_last_rollback_duration_ms()
 	%ServerLastRollbackDuration.text = "%.2f (%.2f)" % [server_last_rollback_duration, server_max_rollback_duration]
 
-	var server_last_rollback_frames := G.network.perf_tracker.get_server_last_rollback_frames()
-	var server_max_rollback_frames := G.network.perf_tracker.get_server_max_last_rollback_frames()
+	var server_last_rollback_frames := Netcode.perf_tracker.get_server_last_rollback_frames()
+	var server_max_rollback_frames := Netcode.perf_tracker.get_server_max_last_rollback_frames()
 	%ServerLastRollbackFrames.text = "%d (%d)" % [server_last_rollback_frames, server_max_rollback_frames]
 
 	# Fastforward metrics
-	var server_fastforwards_per_sec := G.network.perf_tracker.get_server_fastforwards_per_sec()
-	var server_max_fastforwards := G.network.perf_tracker.get_server_max_fastforwards_per_sec()
+	var server_fastforwards_per_sec := Netcode.perf_tracker.get_server_fastforwards_per_sec()
+	var server_max_fastforwards := Netcode.perf_tracker.get_server_max_fastforwards_per_sec()
 	%ServerFastforwardsPerSec.text = "%.1f (%.1f)" % [server_fastforwards_per_sec, server_max_fastforwards]
 
-	var server_last_fastforward_duration := G.network.perf_tracker.get_server_last_fastforward_duration_ms()
-	var server_max_fastforward_duration := G.network.perf_tracker.get_server_max_last_fastforward_duration_ms()
+	var server_last_fastforward_duration := Netcode.perf_tracker.get_server_last_fastforward_duration_ms()
+	var server_max_fastforward_duration := Netcode.perf_tracker.get_server_max_last_fastforward_duration_ms()
 	%ServerLastFastforwardDuration.text = "%.2f (%.2f)" % [server_last_fastforward_duration, server_max_fastforward_duration]
 
-	var server_last_fastforward_frames := G.network.perf_tracker.get_server_last_fastforward_frames()
-	var server_max_fastforward_frames := G.network.perf_tracker.get_server_max_last_fastforward_frames()
+	var server_last_fastforward_frames := Netcode.perf_tracker.get_server_last_fastforward_frames()
+	var server_max_fastforward_frames := Netcode.perf_tracker.get_server_max_last_fastforward_frames()
 	%ServerLastFastforwardFrames.text = "%d (%d)" % [server_last_fastforward_frames, server_max_fastforward_frames]

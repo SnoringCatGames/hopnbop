@@ -9,14 +9,14 @@ var _message_count := 0
 
 
 func _enter_tree() -> void:
-	if G.network.is_server:
+	if Netcode.is_server:
 		visible = false
 		process_mode = Node.PROCESS_MODE_DISABLED
 		return
 
 
 func _ready() -> void:
-	if G.network.is_server:
+	if Netcode.is_server:
 		G.log._print_queue.clear()
 		G.log.is_queuing_messages = false
 		return

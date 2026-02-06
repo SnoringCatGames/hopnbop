@@ -10,25 +10,25 @@ func update_window_mode() -> void:
 	## Sets window mode based on settings and network role.
 	if (
 		G.settings.auto_minimize_server_window and
-		G.network.is_server and
-		G.network.is_preview
+		Netcode.is_server and
+		Netcode.is_preview
 	):
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MINIMIZED)
-	elif G.settings.full_screen and not G.network.is_server:
+	elif G.settings.full_screen and not Netcode.is_server:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 
 func update_window_title() -> void:
 	## Updates window title with server/client designation in preview mode.
-	if not G.network.is_preview:
+	if not Netcode.is_preview:
 		return
 
 	var app_name = ProjectSettings.get_setting("application/config/name")
 	var device_prefix: String
-	if G.network.is_server:
+	if Netcode.is_server:
 		device_prefix = "SERVER"
 	else:
-		device_prefix = "CLIENT %s" % G.network.local_peer_id
+		device_prefix = "CLIENT %s" % Netcode.local_peer_id
 
 	DisplayServer.window_set_title(
 		"[%s] %s (DEBUG)" % [device_prefix, app_name]
@@ -37,7 +37,7 @@ func update_window_title() -> void:
 
 func position_client_window_in_preview_mode() -> void:
 	## Positions client windows in split-screen or centered layout.
-	if not G.network.is_preview or not G.network.is_client:
+	if not Netcode.is_preview or not Netcode.is_client:
 		return
 
 	# Account for window title bar height.
@@ -84,7 +84,7 @@ func position_client_window_in_preview_mode() -> void:
 
 		# Calculate position on target screen.
 		var position_x := usable_rect.position.x
-		if G.network.preview_client_number != 1:
+		if Netcode.preview_client_number != 1:
 			position_x += half_width
 		var position_y := usable_rect.position.y + TITLE_BAR_HEIGHT
 

@@ -64,7 +64,9 @@ func clear_latest_state() -> void:
 	latest_server_message = ""
 
 
-func copy_latest_state() -> void:
-	latest_match_state = G.game_panel.match_state.duplicate()
+## Copy current state into latest_* properties.
+## Consumers should call this with their current match_state.
+func copy_latest_state(match_state: MatchState) -> void:
+	latest_match_state = match_state.duplicate()
 	latest_local_device_configs = local_device_configs.duplicate()
 	latest_local_player_ids = local_player_ids.duplicate()

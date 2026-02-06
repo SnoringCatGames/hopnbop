@@ -23,7 +23,7 @@ func _ready() -> void:
 
 func _draw() -> void:
 	# Only draw in preview mode.
-	if not G.network.is_preview or not G.settings.preview_run_multiple_clients:
+	if not Netcode.is_preview or not G.settings.preview_run_multiple_clients:
 		return
 
 	# Get the local player's color.

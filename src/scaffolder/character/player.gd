@@ -34,7 +34,7 @@ func _enter_tree() -> void:
 	super._enter_tree()
 	if Engine.is_editor_hint():
 		return
-	if G.network.is_client:
+	if Netcode.is_client:
 		# On clients, wait for player_id to be replicated before adding
 		# to level's players_by_id dictionary.
 		state_from_server.player_id_changed.connect(
@@ -160,11 +160,11 @@ func _set_up_action_sources() -> void:
 			return
 
 		# Only set up action sources for local players.
-		if G.network.is_server:
+		if Netcode.is_server:
 			return
 
 		# Only set up action sources for local players.
-		if player_match_state.peer_id != G.network.local_peer_id:
+		if player_match_state.peer_id != Netcode.local_peer_id:
 			# This player belongs to a different peer.
 			return
 
@@ -217,7 +217,7 @@ func server_trigger_death() -> void:
 
 	G.verbose(
 		"F:%d Player %d triggered death, scheduling respawn in %s sec" % [
-			G.network.server_frame_index,
+			Netcode.server_frame_index,
 			player_id,
 			G.settings.player_respawn_cooldown_sec,
 		],
@@ -227,7 +227,7 @@ func server_trigger_death() -> void:
 	# Record DIE interaction.
 	state_from_server.record_interaction(
 		CharacterStateFromServer.ServerInteractionType.DIE,
-		G.network.server_frame_index,
+		Netcode.server_frame_index,
 		global_position,
 		Vector2.ZERO
 	)
@@ -256,7 +256,7 @@ func server_execute_respawn() -> void:
 
 	G.verbose(
 		"F:%d Player %d respawn timer fired, interaction_type=%d (DIE=%d)" % [
-			G.network.server_frame_index,
+			Netcode.server_frame_index,
 			player_id,
 			state_from_server.last_interaction_type,
 			CharacterStateFromServer.ServerInteractionType.DIE,
@@ -269,7 +269,7 @@ func server_execute_respawn() -> void:
 		CharacterStateFromServer.ServerInteractionType.DIE:
 		G.print(
 			"F:%d Player %d respawn aborted - not in DIE state" % [
-				G.network.server_frame_index,
+				Netcode.server_frame_index,
 				player_id,
 			],
 			ScaffolderLog.CATEGORY_GAME_STATE,
@@ -280,7 +280,7 @@ func server_execute_respawn() -> void:
 	if not is_instance_valid(G.level):
 		G.print(
 			"F:%d Player %d respawn aborted - G.level not valid" % [
-				G.network.server_frame_index,
+				Netcode.server_frame_index,
 				player_id,
 			],
 			ScaffolderLog.CATEGORY_GAME_STATE,
@@ -292,7 +292,7 @@ func server_execute_respawn() -> void:
 	# Record SPAWN interaction (NEW FEATURE).
 	state_from_server.record_interaction(
 		CharacterStateFromServer.ServerInteractionType.SPAWN,
-		G.network.server_frame_index,
+		Netcode.server_frame_index,
 		spawn_position,
 		Vector2.ZERO
 	)
@@ -313,7 +313,7 @@ func server_execute_respawn() -> void:
 
 	G.verbose(
 		"F:%d Player %d respawned at %s" % [
-			G.network.server_frame_index,
+			Netcode.server_frame_index,
 			player_id,
 			spawn_position,
 		],

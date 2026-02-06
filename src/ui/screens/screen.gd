@@ -2,12 +2,12 @@ class_name Screen
 extends PanelContainer
 
 func _enter_tree() -> void:
-	if G.network.is_server:
+	if Netcode.is_server:
 		visible = false
 		process_mode = Node.PROCESS_MODE_DISABLED
 		return
 
-	process_mode = Node.PROCESS_MODE_DISABLED if G.network.is_server else Node.PROCESS_MODE_ALWAYS
+	process_mode = Node.PROCESS_MODE_DISABLED if Netcode.is_server else Node.PROCESS_MODE_ALWAYS
 	_set_default_styling()
 
 

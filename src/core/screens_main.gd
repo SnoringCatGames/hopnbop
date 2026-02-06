@@ -18,7 +18,7 @@ var current_screen := ScreenType.UNKNOWN
 func _enter_tree() -> void:
 	G.screens = self
 
-	if G.network.is_server:
+	if Netcode.is_server:
 		visible = false
 		process_mode = Node.PROCESS_MODE_DISABLED
 		return
@@ -27,7 +27,7 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	G.log.log_system_ready("AudioMain")
 
-	if G.network.is_server:
+	if Netcode.is_server:
 		for child in get_children():
 			child.queue_free()
 		return

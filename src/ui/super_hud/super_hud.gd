@@ -9,7 +9,7 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	G.log.log_system_ready("SuperHud")
 
-	if G.network.is_server:
+	if Netcode.is_server:
 		visible = false
 		process_mode = Node.PROCESS_MODE_DISABLED
 		return
@@ -32,7 +32,7 @@ func _sync_component_visibility() -> void:
 
 
 func toggle_debug_console() -> void:
-	if G.network.is_server:
+	if Netcode.is_server:
 		return
 
 	%DebugConsole.visible = not %DebugConsole.visible
@@ -44,7 +44,7 @@ func toggle_debug_console() -> void:
 
 
 func toggle_player_state_list() -> void:
-	if G.network.is_server:
+	if Netcode.is_server:
 		return
 
 	%PlayerStateList.visible = not %PlayerStateList.visible
@@ -56,7 +56,7 @@ func toggle_player_state_list() -> void:
 
 
 func toggle_perf_tracker() -> void:
-	if G.network.is_server:
+	if Netcode.is_server:
 		return
 
 	%PerfTrackerPanel.visible = not %PerfTrackerPanel.visible

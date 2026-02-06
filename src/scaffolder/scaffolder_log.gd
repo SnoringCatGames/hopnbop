@@ -61,15 +61,15 @@ func _format_message(message: String, category: StringName) -> String:
 	)
 
 	var peer_id_value: String
-	if G.settings.include_peer_id_in_logs and G.network.is_preview:
-		if G.network.is_client:
-			if G.network.is_connected_to_server:
+	if G.settings.include_peer_id_in_logs and Netcode.is_preview:
+		if Netcode.is_client:
+			if Netcode.is_connected_to_server:
 				# Client, connected to server.
-				peer_id_value = "C%d" % G.network.local_peer_id
+				peer_id_value = "C%d" % Netcode.local_peer_id
 			else:
 				# Client, not yet connected to server.
-				if G.network.is_preview:
-					peer_id_value = "C%d" % G.network.preview_client_number
+				if Netcode.is_preview:
+					peer_id_value = "C%d" % Netcode.preview_client_number
 				else:
 					peer_id_value = "C-"
 		else:
@@ -305,7 +305,7 @@ func _print_front_matter() -> void:
 	)
 
 	# Only print the art when in preview mode, and only once then.
-	if G.network.is_preview and G.network.is_server:
+	if Netcode.is_preview and Netcode.is_server:
 		#_print_cat()
 		var app_name = ProjectSettings.get_setting("application/config/name")
 		print_rich(

@@ -29,8 +29,8 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	if G.network.is_client:
-		G.network.local_authority_added.connect(
+	if Netcode.is_client:
+		Netcode.local_authority_added.connect(
 			_on_local_authority_added,
 			CONNECT_ONE_SHOT,
 		)
@@ -58,13 +58,13 @@ func _process_movement_and_actions() -> void:
 	super._process_movement_and_actions()
 
 	# Apply pending bounce after movement processing.
-	if G.network.is_server and _pending_bounce != Vector2.ZERO:
+	if Netcode.is_server and _pending_bounce != Vector2.ZERO:
 		velocity += _pending_bounce
 		_pending_bounce = Vector2.ZERO
 
 	# Reset collision flag each frame.
-	if G.network.is_server:
-		var current_frame: int = G.network.frame_driver.server_frame_index
+	if Netcode.is_server:
+		var current_frame: int = Netcode.frame_driver.server_frame_index
 		if _last_collision_frame != current_frame:
 			_processed_collision_this_frame = false
 			_last_collision_frame = current_frame
@@ -95,7 +95,7 @@ func _handle_interaction_effects() -> void:
 		CharacterStateFromServer.ServerInteractionType.DIE:
 			G.verbose(
 				"F:%d Player %d DIE interaction detected on client" % [
-					G.network.server_frame_index,
+					Netcode.server_frame_index,
 					player_id,
 				],
 				ScaffolderLog.CATEGORY_GAME_STATE,
@@ -105,7 +105,7 @@ func _handle_interaction_effects() -> void:
 		CharacterStateFromServer.ServerInteractionType.SPAWN:
 			G.verbose(
 				"F:%d Player %d SPAWN interaction detected on client" % [
-					G.network.server_frame_index,
+					Netcode.server_frame_index,
 					player_id,
 				],
 				ScaffolderLog.CATEGORY_GAME_STATE,
@@ -116,7 +116,7 @@ func _handle_interaction_effects() -> void:
 
 
 func play_sound(sound_name: StringName) -> void:
-	if not G.network.is_primary_client:
+	if not Netcode.is_primary_client:
 		return
 
 	var stream_player := _get_audio_stream_player(sound_name)
@@ -152,13 +152,13 @@ func _on_local_authority_added(
 
 
 func _set_up_camera() -> void:
-	var is_local_player := peer_id == G.network.local_peer_id
+	var is_local_player := peer_id == Netcode.local_peer_id
 
 	G.verbose(
 		"Setting up camera for player %s (peer=%d, local=%d, is_local=%s)" % [
 			player_id,
 			peer_id,
-			G.network.local_peer_id,
+			Netcode.local_peer_id,
 			is_local_player,
 		],
 		ScaffolderLog.CATEGORY_GAME_STATE,
@@ -236,7 +236,7 @@ func _apply_outline_color() -> void:
 
 func _on_body_area_body_entered(body: Node2D) -> void:
 	# This should represent a collision with another player.
-	if not G.network.is_server:
+	if not Netcode.is_server:
 		return
 
 	if not G.ensure(body is Player):
@@ -270,7 +270,7 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 		return
 
 	# Check if kill already happened this frame - kills take precedence.
-	var current_frame := G.network.server_frame_index
+	var current_frame := Netcode.server_frame_index
 	if _did_kill_happen_this_frame(current_frame) or \
 		other_player._did_kill_happen_this_frame(current_frame):
 		G.verbose(
@@ -408,7 +408,7 @@ func _server_apply_interaction_with_position(
 	# into buffer).
 	state_from_server.record_interaction(
 		interaction_type,
-		G.network.server_frame_index,
+		Netcode.server_frame_index,
 		override_position,
 		direction
 	)
@@ -418,7 +418,7 @@ func _server_apply_interaction_with_position(
 			"F:%d Applied %s interaction to player %d: pos=%s " +
 			"(lag compensated), bounce=%s, dir=%s"
 		) % [
-			G.network.server_frame_index,
+			Netcode.server_frame_index,
 			CharacterStateFromServer.ServerInteractionType.keys()[
 				interaction_type
 			],
@@ -615,7 +615,7 @@ func _calculate_lag_compensated_kill_position(
 
 
 func _on_foot_area_area_entered(area: Area2D) -> void:
-	if not G.network.is_server:
+	if not Netcode.is_server:
 		return
 
 	var other_parent: Node = area.get_parent()

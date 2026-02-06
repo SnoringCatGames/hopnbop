@@ -171,7 +171,7 @@ func _collect_actions() -> void:
 
 	# Record the frame when jump is triggered for network reconciliation.
 	if actions.just_triggered_jump:
-		last_triggered_jump_frame_index = G.network.server_frame_index
+		last_triggered_jump_frame_index = Netcode.server_frame_index
 
 
 ## This gets called during _network_process.
@@ -269,10 +269,10 @@ func _process_animation() -> void:
 func _process_sounds() -> void:
 	# Check for a new jump event.
 	if last_triggered_jump_frame_index > _last_processed_jump_frame_index:
-		var current_frame_index := G.network.server_frame_index
+		var current_frame_index := Netcode.server_frame_index
 		var event_age := (
 			(current_frame_index - last_triggered_jump_frame_index) *
-			G.network.frame_driver.target_network_time_step_sec
+			Netcode.frame_driver.target_network_time_step_sec
 		)
 		if event_age <= _JUMP_EVENT_STALENESS_THRESHOLD_SEC:
 			play_sound("jump")
@@ -322,7 +322,7 @@ func get_next_position_prediction() -> Vector2:
 	# Since move_and_slide automatically accounts for delta, we need to
 	# compensate for that in order to support our modified framerate.
 	var modified_velocity: Vector2 = velocity * G.time.get_combined_scale()
-	return position + modified_velocity * G.network.frame_driver.target_network_time_step_sec
+	return position + modified_velocity * Netcode.frame_driver.target_network_time_step_sec
 
 
 func get_position_in_screen_space() -> Vector2:

@@ -5,14 +5,14 @@ extends PanelContainer
 
 
 func _enter_tree() -> void:
-	if G.network.is_server:
+	if Netcode.is_server:
 		visible = false
 		process_mode = Node.PROCESS_MODE_DISABLED
 		return
 
 
 func _ready() -> void:
-	if G.network.is_server:
+	if Netcode.is_server:
 		return
 
 	visibility_changed.connect(_on_visibility_changed)

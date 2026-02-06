@@ -12,7 +12,7 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	G.log.log_system_ready("Hud")
 
-	if G.network.is_server:
+	if Netcode.is_server:
 		visible = false
 		process_mode = Node.PROCESS_MODE_DISABLED
 		return
@@ -24,7 +24,7 @@ func _ready() -> void:
 
 
 func update_visibility() -> void:
-	if G.network.is_server:
+	if Netcode.is_server:
 		return
 
 	visible = true

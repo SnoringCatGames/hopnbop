@@ -142,7 +142,7 @@ func _reconcile_jump_interaction(p_frame_index: int) -> void:
 					"that is already recorded as authoritative and without jump " +
 					"pressed: frame %d, actions=%s (%s)"
 				) % [
-					G.network.server_frame_index,
+					Netcode.server_frame_index,
 					p_frame_index,
 					_get_string_for_bitmask(current_actions),
 					name,
@@ -158,7 +158,7 @@ func _reconcile_jump_interaction(p_frame_index: int) -> void:
 		if G.is_verbose:
 			G.verbose(
 				"F:%d Jump bit injected into frame %d via client interaction, queuing rollback (%s)" % [
-					G.network.server_frame_index,
+					Netcode.server_frame_index,
 					p_frame_index,
 					name,
 				],
@@ -177,4 +177,4 @@ func _inject_action_bit_into_buffer(
 	var current_actions: int = _get_frame_property(frame_state, &"actions")
 	_set_frame_property(frame_state, &"actions", current_actions | bit_mask)
 	_rollback_buffer.set_at(p_frame_index, frame_state)
-	G.network.frame_driver.queue_rollback(p_frame_index)
+	Netcode.frame_driver.queue_rollback(p_frame_index)

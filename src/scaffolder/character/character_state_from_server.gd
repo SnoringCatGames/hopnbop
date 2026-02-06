@@ -37,7 +37,7 @@ var is_dead: bool:
 			return false
 		var respawn_frame: int = last_interaction_frame_index + \
 			int(G.settings.player_respawn_cooldown_sec * 60)
-		return G.network.server_frame_index < respawn_frame
+		return Netcode.server_frame_index < respawn_frame
 
 var is_invincible: bool:
 	get:
@@ -47,7 +47,7 @@ var is_invincible: bool:
 			return false
 		var invincibility_end_frame: int = last_interaction_frame_index + \
 			int(G.settings.player_invincibility_duration_sec * 60)
-		return G.network.server_frame_index < invincibility_end_frame
+		return Netcode.server_frame_index < invincibility_end_frame
 
 const _synced_properties_and_rollback_diff_thresholds := {
 	position = DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD,
@@ -82,7 +82,7 @@ func _should_accept_predicted_states() -> bool:
 	# AUTHORITATIVE states arrive, since the client's prediction is
 	# already close to the server's. Remote clients especially need this
 	# since they only see forwarded input.
-	return G.network.is_client
+	return Netcode.is_client
 
 
 func _get_interaction_type_name(interaction_type: int) -> String:
@@ -198,7 +198,7 @@ func _network_process() -> void:
 		if G.is_verbose:
 			G.verbose(
 				"F:%d input_source is null! (is_remote=%s, has_forwarded=%s, has_input=%s)" % [
-					G.network.server_frame_index,
+					Netcode.server_frame_index,
 					is_remote_player_on_client,
 					forwarded_input_from_server != null,
 					input_from_client != null,
@@ -246,7 +246,7 @@ func _network_process() -> void:
 			var authority_str := "PREDICTED" if should_use_predicted_input else "AUTHORITATIVE"
 			G.verbose(
 				"F:%d Using %s input (actions=%d)" % [
-					G.network.server_frame_index,
+					Netcode.server_frame_index,
 					authority_str,
 					character.actions.bitmask,
 				],
@@ -272,7 +272,7 @@ func _network_process() -> void:
 			if G.is_verbose:
 				G.verbose(
 					"F:%d Extrapolating input from prev frame (actions=%d)" % [
-						G.network.server_frame_index,
+						Netcode.server_frame_index,
 						character.actions.bitmask,
 					],
 					ScaffolderLog.CATEGORY_NETWORK_SYNC,
@@ -304,7 +304,7 @@ func _network_process() -> void:
 		if G.is_verbose and input_from_client.actions != 0:
 			G.verbose(
 				"F:%d Forwarding input to remote clients (actions=%d)" % [
-					G.network.server_frame_index,
+					Netcode.server_frame_index,
 					forwarded_input_from_server.actions,
 				],
 				ScaffolderLog.CATEGORY_NETWORK_SYNC,
@@ -334,7 +334,7 @@ func _network_process() -> void:
 			G.print(
 				("F:%d Remote simulation: pos %s->%s, vel %s->%s, " +
 				"actions=%d") % [
-					G.network.server_frame_index,
+					Netcode.server_frame_index,
 					pos_before,
 					character.position,
 					vel_before,
@@ -359,7 +359,7 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 		if will_change:
 			G.print(
 				"F:%d _sync_to_scene_state: char pos %s->%s (rollback)" % [
-					G.network.server_frame_index,
+					Netcode.server_frame_index,
 					pos_before,
 					position,
 				],
@@ -510,7 +510,7 @@ func _reconcile_bump_interaction(p_frame_index: int) -> void:
 	if G.is_verbose:
 		G.verbose(
 			"F:%d Bump velocity injected via server interaction into frame %d, queuing rollback (%s)" % [
-				G.network.server_frame_index,
+				Netcode.server_frame_index,
 				p_frame_index,
 				name,
 			],
@@ -538,7 +538,7 @@ func _reconcile_kill_interaction(p_frame_index: int) -> void:
 	if G.is_verbose:
 		G.verbose(
 			"F:%d Kill velocity injected into frame %d, queuing rollback (%s)" % [
-				G.network.server_frame_index,
+				Netcode.server_frame_index,
 				p_frame_index,
 				name,
 			],
@@ -577,12 +577,12 @@ func _reconcile_die_interaction(p_frame_index: int) -> void:
 	)
 
 	_rollback_buffer.set_at(p_frame_index, frame_state)
-	G.network.frame_driver.queue_rollback(p_frame_index)
+	Netcode.frame_driver.queue_rollback(p_frame_index)
 
 	if G.is_verbose:
 		G.verbose(
 			"F:%d Die interaction reconciled at frame %d, queuing rollback (%s)" % [
-				G.network.server_frame_index,
+				Netcode.server_frame_index,
 				p_frame_index,
 				name,
 			],
@@ -608,12 +608,12 @@ func _reconcile_spawn_interaction(p_frame_index: int) -> void:
 	)
 
 	_rollback_buffer.set_at(p_frame_index, frame_state)
-	G.network.frame_driver.queue_rollback(p_frame_index)
+	Netcode.frame_driver.queue_rollback(p_frame_index)
 
 	if G.is_verbose:
 		G.verbose(
 			"F:%d Spawn interaction reconciled at frame %d, position=%s, queuing rollback (%s)" % [
-				G.network.server_frame_index,
+				Netcode.server_frame_index,
 				p_frame_index,
 				last_interaction_position,
 				name,
@@ -662,7 +662,7 @@ func _inject_velocity_delta_into_buffer(
 	)
 
 	_rollback_buffer.set_at(p_frame_index, frame_state)
-	G.network.frame_driver.queue_rollback(p_frame_index)
+	Netcode.frame_driver.queue_rollback(p_frame_index)
 
 
 ## Records an interaction and automatically injects it into the rollback buffer.
@@ -720,4 +720,4 @@ func _inject_position_into_buffer(
 	)
 
 	_rollback_buffer.set_at(p_frame_index, frame_state)
-	G.network.frame_driver.queue_rollback(p_frame_index)
+	Netcode.frame_driver.queue_rollback(p_frame_index)

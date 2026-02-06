@@ -28,7 +28,7 @@ func _input(event: InputEvent) -> void:
 		if is_instance_valid(G.audio):
 			G.audio.apply_music_mute()
 	elif event.is_action_pressed("take_screenshot"):
-		if G.network.is_preview:
+		if Netcode.is_preview:
 			G.utils.take_screenshot()
 	elif event.is_action_pressed("toggle_perf_tracker"):
 		G.settings.show_perf_tracker = not G.settings.show_perf_tracker
@@ -62,9 +62,9 @@ func _input(event: InputEvent) -> void:
 	elif event.is_action_pressed("toggle_pause"):
 		G.print(
 			"Requesting server %s" % (
-				"UNPAUSE" if G.network.frame_driver.is_paused else "PAUSE"
+				"UNPAUSE" if Netcode.frame_driver.is_paused else "PAUSE"
 			)
 		)
 		if G.settings.is_server_pause_enabled:
-			G.network.frame_driver.client_request_toggle_pause()
+			Netcode.frame_driver.client_request_toggle_pause()
 			get_viewport().set_input_as_handled()

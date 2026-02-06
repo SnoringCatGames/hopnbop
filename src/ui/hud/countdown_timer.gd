@@ -8,7 +8,7 @@ const _TIMER_TIME_REMAINING_BLINK_THRESHOLD_DELAY_SEC := 30.0
 
 
 func _ready() -> void:
-	if G.network.is_server:
+	if Netcode.is_server:
 		visible = false
 		process_mode = Node.PROCESS_MODE_DISABLED
 		return

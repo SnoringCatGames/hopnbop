@@ -22,9 +22,9 @@ func _enter_tree() -> void:
 
 	G.game_panel.on_level_added(self)
 
-	if G.network.is_server:
+	if Netcode.is_server:
 		# Listen for player count declarations from clients.
-		G.network.connector.peer_players_declared.connect(
+		Netcode.connector.peer_players_declared.connect(
 			_server_on_peer_players_declared)
 
 
@@ -44,11 +44,11 @@ func _ready() -> void:
 	for player_scene in G.settings.player_scenes:
 		player_spawner.add_spawnable_scene(player_scene.resource_path)
 
-	if G.network.is_client:
+	if Netcode.is_client:
 		%PlayerSpawner.spawned.connect(_client_on_player_spawned)
 		%PlayerSpawner.despawned.connect(_client_on_player_despawned)
 
-	if G.network.is_server:
+	if Netcode.is_server:
 		G.game_panel.is_level_fully_loaded = true
 
 
@@ -72,10 +72,10 @@ func _client_on_player_despawned(p_player: Node) -> void:
 func _exit_tree() -> void:
 	if Engine.is_editor_hint():
 		return
-	if G.network.is_server:
+	if Netcode.is_server:
 		if is_instance_valid(G.game_panel):
 			G.game_panel.is_level_fully_loaded = false
-		G.network.connector.peer_players_declared.disconnect(
+		Netcode.connector.peer_players_declared.disconnect(
 			_server_on_peer_players_declared)
 	if is_instance_valid(G.game_panel):
 		G.game_panel.on_level_removed(self)
@@ -143,7 +143,7 @@ func _server_deregister_players_for_peer(peer_id: int) -> void:
 func register_player(player: Player) -> void:
 	super.register_player(player)
 
-	if G.network.is_client:
+	if Netcode.is_client:
 		# Record peer to player_ids mapping on client side too.
 		var peer_id := player.peer_id
 		if not peer_to_player_ids.has(peer_id):
@@ -155,7 +155,7 @@ func register_player(player: Player) -> void:
 func deregister_player(player: Player) -> void:
 	super.deregister_player(player)
 
-	if G.network.is_client:
+	if Netcode.is_client:
 		# Update peer to player_ids mapping.
 		var peer_id := player.peer_id
 		if peer_to_player_ids.has(peer_id):
@@ -165,12 +165,12 @@ func deregister_player(player: Player) -> void:
 
 
 func register_npc(npc: NPC) -> void:
-	if G.network.is_client:
+	if Netcode.is_client:
 		npcs.append(npc)
 
 
 func deregister_npc(npc: NPC) -> void:
-	if G.network.is_client:
+	if Netcode.is_client:
 		npcs.erase(npc)
 
 

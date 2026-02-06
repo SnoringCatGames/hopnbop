@@ -13,7 +13,7 @@ var replaceable_toast: PlayerStatePanelToast = null
 
 
 func _ready() -> void:
-	if G.network.is_server:
+	if Netcode.is_server:
 		return
 
 	%IsDescendingThroughFloorsRow.visible = show_extra_debug_info
@@ -32,7 +32,7 @@ func clear() -> void:
 
 
 func _process(_delta: float) -> void:
-	if G.network.is_server:
+	if Netcode.is_server:
 		return
 	if not is_visible_in_tree():
 		return

@@ -22,7 +22,7 @@ func _process(_delta: float) -> void:
 
 
 func _update_pause_info() -> void:
-	var frame_driver := G.network.frame_driver
+	var frame_driver := Netcode.frame_driver
 	var initiator_peer_id := frame_driver._pause_initiator_peer_id
 	var initiator_pauses_used := frame_driver._pause_initiator_pauses_used
 	var max_pauses := G.settings.max_pauses_per_client
@@ -60,7 +60,7 @@ func _update_pause_info() -> void:
 
 
 func _update_countdown() -> void:
-	var frame_driver := G.network.frame_driver
+	var frame_driver := Netcode.frame_driver
 	var auto_unpause_time := frame_driver._pause_auto_unpause_time_usec
 
 	if auto_unpause_time > 0:
@@ -73,7 +73,7 @@ func _update_countdown() -> void:
 
 func _check_if_local_peer_can_unpause(initiator_peer_id: int) -> bool:
 	# Server can always unpause.
-	if G.network.is_server:
+	if Netcode.is_server:
 		return true
 
 	# Check if local peer is the initiator.
@@ -87,4 +87,4 @@ func _on_button_pressed() -> void:
 		return
 
 	G.audio.play_sound("click")
-	G.network.frame_driver.client_request_unpause()
+	Netcode.frame_driver.client_request_unpause()

@@ -22,7 +22,7 @@ func update_status_message() -> void:
 	if not is_instance_valid(%Label):
 		return
 
-	if G.network.connector.is_connected_to_server:
+	if Netcode.connector.is_connected_to_server:
 		%Label.text = "Waiting for players..."
 	else:
 		%Label.text = "Connecting to server..."
