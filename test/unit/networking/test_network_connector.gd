@@ -6,8 +6,8 @@ extends GutTest
 
 
 ## Create mock config for testing.
-static func _create_mock_config() -> NetworkConfig:
-	var config := NetworkConfig.new()
+static func _create_mock_config() -> NetworkSettings:
+	var config := NetworkSettings.new()
 	config.server_port = 4433
 	return config
 
@@ -31,8 +31,8 @@ class TestServerMode:
 
 	var connector: NetworkConnector
 
-	static func _create_mock_config() -> NetworkConfig:
-		var config := NetworkConfig.new()
+	static func _create_mock_config() -> NetworkSettings:
+		var config := NetworkSettings.new()
 		config.server_port = 4433
 		return config
 
@@ -82,8 +82,8 @@ class TestClientMode:
 
 	var connector: NetworkConnector
 
-	static func _create_mock_config() -> NetworkConfig:
-		var config := NetworkConfig.new()
+	static func _create_mock_config() -> NetworkSettings:
+		var config := NetworkSettings.new()
 		config.server_port = 4433
 		return config
 
@@ -132,8 +132,8 @@ class TestConnectionLifecycle:
 
 	var connector: NetworkConnector
 
-	static func _create_mock_config() -> NetworkConfig:
-		var config := NetworkConfig.new()
+	static func _create_mock_config() -> NetworkSettings:
+		var config := NetworkSettings.new()
 		config.server_port = 4433
 		return config
 

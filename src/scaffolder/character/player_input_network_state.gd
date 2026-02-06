@@ -93,7 +93,7 @@ func _reconcile_client_interaction() -> void:
 	)
 
 	# Verbose logging for reconciliation status.
-	if G.is_verbose:
+	if Netcode.log.is_verbose:
 		var type_name: StringName = ClientInteractionType.keys()[last_interaction_type]
 		G.verbose(
 			"Reconciling %s: frame=%d, should_process=%s, buffer_has=%s (%s)" % [
@@ -103,7 +103,7 @@ func _reconcile_client_interaction() -> void:
 				_rollback_buffer.has_at(interaction_frame),
 				name
 			],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC
+			NetworkLogger.CATEGORY_NETWORK_SYNC
 		)
 
 	# Always mark as reconciled to prevent retry loops.
@@ -147,7 +147,7 @@ func _reconcile_jump_interaction(p_frame_index: int) -> void:
 					_get_string_for_bitmask(current_actions),
 					name,
 				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC,
+				NetworkLogger.CATEGORY_NETWORK_SYNC,
 			)
 			return
 
@@ -155,14 +155,14 @@ func _reconcile_jump_interaction(p_frame_index: int) -> void:
 		_inject_action_bit_into_buffer(p_frame_index, jump_bit_mask)
 		_clear_jump_bit_in_frame_if_not_pressed(p_frame_index - 1)
 
-		if G.is_verbose:
+		if Netcode.log.is_verbose:
 			G.verbose(
 				"F:%d Jump bit injected into frame %d via client interaction, queuing rollback (%s)" % [
 					Netcode.server_frame_index,
 					p_frame_index,
 					name,
 				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC,
+				NetworkLogger.CATEGORY_NETWORK_SYNC,
 			)
 
 

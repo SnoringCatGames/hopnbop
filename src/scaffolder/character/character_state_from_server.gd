@@ -195,7 +195,7 @@ func _network_process() -> void:
 		input_source = input_from_client
 
 	if not G.ensure_valid(input_source):
-		if G.is_verbose:
+		if Netcode.log.is_verbose:
 			G.verbose(
 				"F:%d input_source is null! (is_remote=%s, has_forwarded=%s, has_input=%s)" % [
 					Netcode.server_frame_index,
@@ -203,7 +203,7 @@ func _network_process() -> void:
 					forwarded_input_from_server != null,
 					input_from_client != null,
 				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC,
+				NetworkLogger.CATEGORY_NETWORK_SYNC,
 			)
 		return
 
@@ -242,7 +242,7 @@ func _network_process() -> void:
 		_apply_input_to_character(input_source)
 		# Update surface attachment state based on the input we just loaded.
 		character.surfaces.update_actions()
-		if G.is_verbose:
+		if Netcode.log.is_verbose:
 			var authority_str := "PREDICTED" if should_use_predicted_input else "AUTHORITATIVE"
 			G.verbose(
 				"F:%d Using %s input (actions=%d)" % [
@@ -250,7 +250,7 @@ func _network_process() -> void:
 					authority_str,
 					character.actions.bitmask,
 				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC,
+				NetworkLogger.CATEGORY_NETWORK_SYNC,
 			)
 	else:
 		if is_authority_for_input_from_client:
@@ -269,13 +269,13 @@ func _network_process() -> void:
 			input_source.frame_authority = ReconcilableState.FrameAuthority.PREDICTED
 			# Update surface attachment state based on the input we just loaded.
 			character.surfaces.update_actions()
-			if G.is_verbose:
+			if Netcode.log.is_verbose:
 				G.verbose(
 					"F:%d Extrapolating input from prev frame (actions=%d)" % [
 						Netcode.server_frame_index,
 						character.actions.bitmask,
 					],
-					ScaffolderLog.CATEGORY_NETWORK_SYNC,
+					NetworkLogger.CATEGORY_NETWORK_SYNC,
 				)
 
 	# Forward input from PlayerInputFromClient to
@@ -301,13 +301,13 @@ func _network_process() -> void:
 		forwarded_input_from_server.frame_authority = (
 			input_from_client.frame_authority
 		)
-		if G.is_verbose and input_from_client.actions != 0:
+		if Netcode.log.is_verbose and input_from_client.actions != 0:
 			G.verbose(
 				"F:%d Forwarding input to remote clients (actions=%d)" % [
 					Netcode.server_frame_index,
 					forwarded_input_from_server.actions,
 				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC,
+				NetworkLogger.CATEGORY_NETWORK_SYNC,
 			)
 
 	# Handle scene state (from the server).
@@ -327,7 +327,7 @@ func _network_process() -> void:
 		var vel_before := character.velocity
 		character._apply_movement()
 		frame_authority = ReconcilableState.FrameAuthority.PREDICTED
-		if G.is_verbose and (
+		if Netcode.log.is_verbose and (
 			character.position.distance_to(pos_before) > 0.1 or
 			character.velocity.distance_to(vel_before) > 0.1
 		):
@@ -341,7 +341,7 @@ func _network_process() -> void:
 					character.velocity,
 					character.actions.bitmask,
 				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC,
+				NetworkLogger.CATEGORY_NETWORK_SYNC,
 			)
 
 	character._process_movement_and_actions()
@@ -353,7 +353,7 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 	if not G.ensure_valid(character):
 		return
 
-	if G.is_verbose and not is_authority_for_state_from_server:
+	if Netcode.log.is_verbose and not is_authority_for_state_from_server:
 		var pos_before := character.position
 		var will_change := position.distance_to(pos_before) > 0.1
 		if will_change:
@@ -363,7 +363,7 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 					pos_before,
 					position,
 				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC,
+				NetworkLogger.CATEGORY_NETWORK_SYNC,
 			)
 
 	character.position = position
@@ -456,7 +456,7 @@ func _reconcile_server_interaction() -> void:
 	)
 
 	# Verbose logging for reconciliation status.
-	if G.is_verbose:
+	if Netcode.log.is_verbose:
 		var type_name: StringName = ServerInteractionType.keys()[last_interaction_type]
 		G.verbose(
 			"Reconciling %s: frame=%d, should_process=%s, buffer_has=%s (%s)" % [
@@ -466,7 +466,7 @@ func _reconcile_server_interaction() -> void:
 				_rollback_buffer.has_at(interaction_frame),
 				name
 			],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC
+			NetworkLogger.CATEGORY_NETWORK_SYNC
 		)
 
 	# Always mark as reconciled to prevent retry loops.
@@ -507,14 +507,14 @@ func _reconcile_bump_interaction(p_frame_index: int) -> void:
 		last_interaction_direction
 	)
 
-	if G.is_verbose:
+	if Netcode.log.is_verbose:
 		G.verbose(
 			"F:%d Bump velocity injected via server interaction into frame %d, queuing rollback (%s)" % [
 				Netcode.server_frame_index,
 				p_frame_index,
 				name,
 			],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+			NetworkLogger.CATEGORY_NETWORK_SYNC,
 		)
 
 
@@ -535,14 +535,14 @@ func _reconcile_kill_interaction(p_frame_index: int) -> void:
 		last_interaction_direction
 	)
 
-	if G.is_verbose:
+	if Netcode.log.is_verbose:
 		G.verbose(
 			"F:%d Kill velocity injected into frame %d, queuing rollback (%s)" % [
 				Netcode.server_frame_index,
 				p_frame_index,
 				name,
 			],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+			NetworkLogger.CATEGORY_NETWORK_SYNC,
 		)
 
 
@@ -579,14 +579,14 @@ func _reconcile_die_interaction(p_frame_index: int) -> void:
 	_rollback_buffer.set_at(p_frame_index, frame_state)
 	Netcode.frame_driver.queue_rollback(p_frame_index)
 
-	if G.is_verbose:
+	if Netcode.log.is_verbose:
 		G.verbose(
 			"F:%d Die interaction reconciled at frame %d, queuing rollback (%s)" % [
 				Netcode.server_frame_index,
 				p_frame_index,
 				name,
 			],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+			NetworkLogger.CATEGORY_NETWORK_SYNC,
 		)
 
 
@@ -610,7 +610,7 @@ func _reconcile_spawn_interaction(p_frame_index: int) -> void:
 	_rollback_buffer.set_at(p_frame_index, frame_state)
 	Netcode.frame_driver.queue_rollback(p_frame_index)
 
-	if G.is_verbose:
+	if Netcode.log.is_verbose:
 		G.verbose(
 			"F:%d Spawn interaction reconciled at frame %d, position=%s, queuing rollback (%s)" % [
 				Netcode.server_frame_index,
@@ -618,7 +618,7 @@ func _reconcile_spawn_interaction(p_frame_index: int) -> void:
 				last_interaction_position,
 				name,
 			],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+			NetworkLogger.CATEGORY_NETWORK_SYNC,
 		)
 
 

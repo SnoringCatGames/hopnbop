@@ -163,7 +163,7 @@ func _collect_actions() -> void:
 	for action_source in _action_sources:
 		action_source.update(
 			actions,
-			G.time.get_time_step_sec())
+			Netcode.time.get_time_step_sec())
 
 	actions.log_new_presses_and_releases(self )
 
@@ -179,7 +179,7 @@ func _apply_movement() -> void:
 	var base_velocity := velocity
 	# Since move_and_slide automatically accounts for delta, we need to
 	# compensate for that in order to support our modified framerate.
-	var scaled_velocity: Vector2 = base_velocity * G.time.get_combined_scale()
+	var scaled_velocity: Vector2 = base_velocity * Netcode.time.get_combined_scale()
 
 	velocity = scaled_velocity
 	move_and_slide()
@@ -321,7 +321,7 @@ func force_boost(boost: Vector2) -> void:
 func get_next_position_prediction() -> Vector2:
 	# Since move_and_slide automatically accounts for delta, we need to
 	# compensate for that in order to support our modified framerate.
-	var modified_velocity: Vector2 = velocity * G.time.get_combined_scale()
+	var modified_velocity: Vector2 = velocity * Netcode.time.get_combined_scale()
 	return position + modified_velocity * Netcode.frame_driver.target_network_time_step_sec
 
 

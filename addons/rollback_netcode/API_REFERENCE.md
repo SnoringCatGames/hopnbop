@@ -15,7 +15,7 @@ Comprehensive class-by-class API documentation for the rollback netcode plugin.
 - [FrameSynchronizer](#framesynchronizer)
 - [FrameProcessor](#frameprocessor)
 - [ReconcilableState](#reconcilablestate)
-- [NetworkConfig](#networkconfig)
+- [NetworkSettings](#NetworkSettings)
 
 ### Interfaces
 - [NetworkLogger](#networklogger)
@@ -49,7 +49,7 @@ Central orchestrator for the rollback netcode plugin. Manages and provides acces
 
 | Name | Type | Description |
 |------|------|-------------|
-| config | NetworkConfig | Configuration resource injected during initialization |
+| config | NetworkSettings | Configuration resource injected during initialization |
 | logger | NetworkLogger | Logger for diagnostic messages |
 | time_provider | NetworkTime | Time provider for timers and throttling |
 | connector | NetworkConnector | ENet peer management and connection lifecycle |
@@ -70,12 +70,12 @@ Central orchestrator for the rollback netcode plugin. Manages and provides acces
 
 ### Methods
 
-#### _init(p_config: NetworkConfig, p_logger: NetworkLogger, p_time: NetworkTime) -> void
+#### _init(p_config: NetworkSettings, p_logger: NetworkLogger, p_time: NetworkTime) -> void
 
 Constructor. Initializes orchestrator with required dependencies.
 
 **Parameters:**
-- `p_config` (NetworkConfig): Configuration resource
+- `p_config` (NetworkSettings): Configuration resource
 - `p_logger` (NetworkLogger): Logger implementation
 - `p_time` (NetworkTime): Time provider implementation
 
@@ -107,7 +107,7 @@ Gets the local player index for a given player_id (0, 1, 2... for split-screen).
 
 ```gdscript
 # Create orchestrator (usually done in autoload singleton)
-var config := load("res://network_config.tres")
+var config := load("res://network_settings.tres")
 var logger := MyGameLogger.new()
 var time := MyGameTime.new()
 
@@ -144,7 +144,7 @@ Manages ENet multiplayer peer connections between server and clients. Handles pe
 
 | Name | Type | Description |
 |------|------|-------------|
-| config | NetworkConfig | Configuration resource |
+| config | NetworkSettings | Configuration resource |
 | logger | NetworkLogger | Logger for diagnostic messages |
 | orchestrator | Node | Reference to NetworkOrchestrator |
 | player_attribute_validator | Callable | Game-specific player attribute validation function |
@@ -298,7 +298,7 @@ Core frame-synchronous simulation engine for client-prediction rollback networki
 
 | Name | Type | Description |
 |------|------|-------------|
-| config | NetworkConfig | Configuration resource |
+| config | NetworkSettings | Configuration resource |
 | logger | NetworkLogger | Logger for diagnostic messages |
 | time_provider | NetworkTime | Time provider for timers |
 | orchestrator | Node | Reference to NetworkOrchestrator |
@@ -811,9 +811,9 @@ func _ready() -> void:
 
 ---
 
-## NetworkConfig
+## NetworkSettings
 
-**File:** `core/network_config.gd`
+**File:** `core/network_settings.gd`
 **Extends:** Resource
 
 Configuration resource for rollback netcode plugin. Users edit via Inspector or create .tres files.
@@ -823,7 +823,7 @@ Configuration resource for rollback netcode plugin. Users edit via Inspector or 
 | Category | Name | Type | Default | Description |
 |----------|------|------|---------|-------------|
 | **Network** | server_port | int | 4433 | Port for server to bind/client to connect |
-| | max_clients | int | 4 | Maximum simultaneous client connections |
+| | max_client_count | int | 4 | Maximum simultaneous client connections |
 | | rollback_buffer_duration_sec | float | 1.5 | Duration of rollback buffer (seconds, ~90 frames at 60 FPS) |
 | **Pause** | is_server_pause_enabled | bool | false | Whether server-initiated pause is enabled |
 | | max_pauses_per_client | int | 1 | Maximum pause requests per client |
@@ -832,24 +832,24 @@ Configuration resource for rollback netcode plugin. Users edit via Inspector or 
 | **Preview** | is_preview_mode | bool | false | Whether running in local preview mode |
 | | preview_client_count | int | 2 | Expected number of clients in preview |
 | | preview_connect_to_remote_server | bool | false | Connect to remote server in preview |
-| **Players** | max_local_players | int | 4 | Maximum local players per client (split-screen) |
-| **Debug** | show_perf_tracker | bool | false | Show performance tracker UI |
+| **Players** | max_local_player_count | int | 4 | Maximum local players per client (split-screen) |
+| **Debug** | tracking_perf | bool | false | Show performance tracker UI |
 
 ### Usage Example
 
 ```gdscript
 # Create .tres file in editor:
-# Right-click in FileSystem > New Resource > NetworkConfig
+# Right-click in FileSystem > New Resource > NetworkSettings
 # Edit properties in Inspector
-# Save as "res://network_config.tres"
+# Save as "res://network_settings.tres"
 
 # Load in code:
-var config := load("res://network_config.tres") as NetworkConfig
+var config := load("res://network_settings.tres") as NetworkSettings
 var orchestrator = NetworkOrchestrator.new(config, logger, time)
 
 # Or subclass for custom logic:
 class_name MyGameConfig
-extends NetworkConfig
+extends NetworkSettings
 
 @export var custom_setting := true
 ```
@@ -919,7 +919,7 @@ class_name MyGameLogger
 extends NetworkLogger
 
 func verbose(message: String, category: StringName = CATEGORY_DEFAULT) -> void:
-    if Settings.is_verbose_logging:
+    if Settings.includes_verbose_logs:
         print("[VERBOSE][%s] %s" % [category, message])
 
 func info(message: String, category: StringName = CATEGORY_DEFAULT) -> void:
@@ -1758,12 +1758,12 @@ Performance tracking and server-client metric synchronization. Tracks FPS, rollb
 
 ### Methods
 
-#### _init(config: NetworkConfig, logger: NetworkLogger, time_provider: NetworkTime, orchestrator: NetworkOrchestrator) -> void
+#### _init(config: NetworkSettings, logger: NetworkLogger, time_provider: NetworkTime, orchestrator: NetworkOrchestrator) -> void
 
 Initialize performance tracker.
 
 **Parameters:**
-- `config` (NetworkConfig): Configuration
+- `config` (NetworkSettings): Configuration
 - `logger` (NetworkLogger): Logger
 - `time_provider` (NetworkTime): Time provider
 - `orchestrator` (NetworkOrchestrator): Orchestrator reference

@@ -32,7 +32,7 @@ func _ready() -> void:
 func _get_player_spawn_position() -> Vector2:
 	if not is_instance_valid(spawn_points):
 		G.warning("spawn_points node not set in level: %s" %
-			Utils.get_display_name(self))
+			Utils.get_display_name(self ))
 		return Vector2.ZERO
 
 	var available_spawn_points: Array[SpawnPoint] = []
@@ -42,7 +42,7 @@ func _get_player_spawn_position() -> Vector2:
 
 	if not G.ensure(not available_spawn_points.is_empty()):
 		G.warning("No spawn points available in level: %s" %
-			Utils.get_display_name(self))
+			Utils.get_display_name(self ))
 		return Vector2.ZERO
 
 	# Find spawn point that's far enough from all players.
@@ -127,10 +127,10 @@ func _find_collision_free_position(initial_position: Vector2) -> Vector2:
 ## Called when a player is added to this level.
 ## Maintains players array and players_by_id dictionary.
 func register_player(player: Player) -> void:
-	if G.is_verbose:
+	if Netcode.log.is_verbose:
 		G.verbose(
 			"Level.register_player: player_id=%d" % player.player_id,
-			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
 	players.append(player)
 	players_by_id[player.player_id] = player

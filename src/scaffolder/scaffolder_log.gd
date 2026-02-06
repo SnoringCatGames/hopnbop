@@ -1,21 +1,7 @@
 class_name ScaffolderLog
-extends Node
+extends NetworkLogger
 
 signal on_message(message: String)
-
-enum Verbosity {
-	NORMAL,
-	VERBOSE,
-}
-
-const CATEGORY_DEFAULT := &"Default"
-const CATEGORY_SYSTEM_INITIALIZATION := &"SysInit"
-const CATEGORY_CORE_SYSTEMS := &"CoreSystems"
-const CATEGORY_PLAYER_ACTIONS := &"PlayerActions"
-const CATEGORY_NETWORK_CONNECTIONS := &"NetworkConnections"
-const CATEGORY_NETWORK_SYNC := &"NetworkSync"
-const CATEGORY_INTERACTION := &"PlayerInteraction"
-const CATEGORY_GAME_STATE := &"GameState"
 
 const _RAINBOW_BAR = (
     "[color=red]=[/color][color=orange]=[/color][color=yellow]=[/color]"
@@ -37,23 +23,19 @@ var _print_queue: Array[String] = []
 var _excluded_log_categories := {}
 var _force_include_log_warnings := true
 
-var is_verbose: bool:
-	get:
-		return G.settings.verbosity >= Verbosity.VERBOSE
-
 
 func _ready() -> void:
 	_print_front_matter()
 
-	self.print(
+	_print_internal(
 		"ScaffolderLog._ready",
-		ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION,
+		NetworkLogger.CATEGORY_SYSTEM_INITIALIZATION,
 	)
 
 
 func _format_message(message: String, category: StringName) -> String:
 	var play_time: float = (
-		G.time.get_play_time() if is_instance_valid(G) and is_instance_valid(G.time) else -1.0
+		Netcode.time.get_time() if is_instance_valid(G) and is_instance_valid(Netcode.time) else -1.0
 	)
 
 	var category_token := (
@@ -92,20 +74,18 @@ func _format_message(message: String, category: StringName) -> String:
 	)
 
 
-func print(
-		message = "",
-		category := CATEGORY_DEFAULT,
-		verbosity := Verbosity.NORMAL,
-		force_enable := false,
+func _print_internal(
+	message = "",
+	category := CATEGORY_DEFAULT,
+	is_verbose_message := false,
 ) -> void:
-	if TestEnvironmentDetector.is_running_in_test_env(self):
+	if TestEnvironmentDetector.is_running_in_test_env(self ):
 		return
 
-	if not force_enable:
-		if not _is_category_enabled(category):
-			return
-		if verbosity > G.settings.verbosity:
-			return
+	if not _is_category_enabled(category):
+		return
+	if is_verbose_message and not is_verbose:
+		return
 
 	if !(message is String):
 		message = str(message)
@@ -117,15 +97,22 @@ func print(
 	else:
 		on_message.emit(message)
 
+	# Call built-in print.
 	print(message)
 
 
-func verbose(
-		message = "",
-		category := CATEGORY_DEFAULT,
-		force_enable := false,
+func print(
+	message = "",
+	category := CATEGORY_DEFAULT,
 ) -> void:
-	self.print(message, category, Verbosity.VERBOSE, force_enable)
+	_print_internal(message, category, false)
+
+
+func verbose(
+	message = "",
+	category := CATEGORY_DEFAULT,
+) -> void:
+	_print_internal(message, category, true)
 
 
 # -   Using this function instead of `push_error` directly enables us to render
@@ -135,26 +122,26 @@ func verbose(
 #     -   This is needed because stack traces are not available on non-main
 #         threads.
 func error(
-		message: String,
-		_category := CATEGORY_DEFAULT,
-		should_crash := true,
+	message := "",
+	category := CATEGORY_DEFAULT,
+	should_crash := false,
 ) -> void:
-	if TestEnvironmentDetector.is_running_in_test_env(self):
+	if TestEnvironmentDetector.is_running_in_test_env(self ):
 		return
 
-	message = "ERROR  : %s" % message
+	var formatted_message := "ERROR  : %s" % message
 	if should_crash:
-		message = "FATAL %s" % message
+		formatted_message = "FATAL %s" % formatted_message
 
-	push_error(message)
+	push_error(formatted_message)
 	print_stack()
-	self.print(message, _category)
+	_print_internal(formatted_message, category)
 	breakpoint
 	if should_crash:
 		if not OS.has_feature("editor"):
 			# If we're not running in the editor in preview mode, let the player
 			# know why we're quitting.
-			OS.alert(message)
+			OS.alert(formatted_message)
 		get_tree().quit()
 
 
@@ -168,7 +155,7 @@ func warning(
 		message: String,
 		category := CATEGORY_DEFAULT,
 ) -> void:
-	if TestEnvironmentDetector.is_running_in_test_env(self):
+	if TestEnvironmentDetector.is_running_in_test_env(self ):
 		return
 
 	if _is_category_enabled(category) or _force_include_log_warnings:
@@ -176,11 +163,11 @@ func warning(
 
 		push_warning(message)
 
-		self.print(message, category)
+		_print_internal(message, category)
 
 
 func alert_user(message: String, _category := CATEGORY_DEFAULT) -> void:
-	if TestEnvironmentDetector.is_running_in_test_env(self):
+	if TestEnvironmentDetector.is_running_in_test_env(self ):
 		return
 
 	if _is_category_enabled(_category) or _force_include_log_warnings:
@@ -188,13 +175,13 @@ func alert_user(message: String, _category := CATEGORY_DEFAULT) -> void:
 
 		push_warning(formatted_message)
 
-		self.print(formatted_message, _category)
+		_print_internal(formatted_message, _category)
 
 	OS.alert(message)
 
 
-func ensure(condition: bool, message: String) -> bool:
-	if TestEnvironmentDetector.is_running_in_test_env(self):
+func ensure(condition: bool, message := "") -> bool:
+	if TestEnvironmentDetector.is_running_in_test_env(self ):
 		return condition
 
 	if not condition:
@@ -205,8 +192,8 @@ func ensure(condition: bool, message: String) -> bool:
 	return condition
 
 
-func check(condition: bool, message: String) -> bool:
-	if TestEnvironmentDetector.is_running_in_test_env(self):
+func check(condition: bool, message := "") -> bool:
+	if TestEnvironmentDetector.is_running_in_test_env(self ):
 		return condition
 
 	if not condition:
@@ -217,8 +204,8 @@ func check(condition: bool, message: String) -> bool:
 
 
 func set_log_filtering(
-		p_excluded_log_categories: Array[StringName],
-		p_force_include_log_warnings: bool,
+	p_excluded_log_categories: Array[StringName],
+	p_force_include_log_warnings: bool,
 ) -> void:
 	_excluded_log_categories = Utils.array_to_set(p_excluded_log_categories)
 	_force_include_log_warnings = p_force_include_log_warnings
@@ -267,7 +254,9 @@ func _parse_category_prefix(category: StringName) -> StringName:
 
 
 func log_system_ready(system_name: String) -> void:
-	self.print("%s ready" % system_name, ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+	_print_internal(
+		"%s ready" % system_name,
+		NetworkLogger.CATEGORY_SYSTEM_INITIALIZATION)
 
 
 func _print_front_matter() -> void:
@@ -315,13 +304,13 @@ func _print_front_matter() -> void:
 		"application/config/version",
 		"unknown"
 	)
-	self.print("Version: %s" % app_version, CATEGORY_CORE_SYSTEMS)
+	_print_internal("Version: %s" % app_version, CATEGORY_CORE_SYSTEMS)
 
-	self.print(local_datetime_string, CATEGORY_CORE_SYSTEMS)
-	self.print(utc_datetime_string, CATEGORY_CORE_SYSTEMS)
+	_print_internal(local_datetime_string, CATEGORY_CORE_SYSTEMS)
+	_print_internal(utc_datetime_string, CATEGORY_CORE_SYSTEMS)
 
-	self.print(device_info_string, CATEGORY_CORE_SYSTEMS)
-	self.print("", CATEGORY_CORE_SYSTEMS)
+	_print_internal(device_info_string, CATEGORY_CORE_SYSTEMS)
+	_print_internal("", CATEGORY_CORE_SYSTEMS)
 
 
 func _print_cat() -> void:

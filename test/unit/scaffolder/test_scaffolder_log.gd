@@ -10,7 +10,7 @@ func test_detects_test_environment():
 
 func test_error_does_not_crash_in_tests():
 	# This should not trigger breakpoint or quit in test environment
-	G.log.error("Test error message", ScaffolderLog.CATEGORY_DEFAULT, true)
+	G.log.error("Test error message", NetworkLogger.CATEGORY_DEFAULT, true)
 
 	# If we reach here, the error didn't crash the test
 	assert_true(true, "Error should not crash in test environment")

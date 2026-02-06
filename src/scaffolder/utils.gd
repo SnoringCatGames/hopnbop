@@ -128,7 +128,7 @@ static func subtract_and_mutate_nested_arrays(
 			elif expects_no_missing_matches:
 				G.ensure(
 					false,
-                    ("Wrong-type match: " +
+					("Wrong-type match: " +
 					"(We currently don't support subtracting properties " +
 					"from a Dictionary. We only support subtracting " +
 					"elements from Arrays.)" +
@@ -323,7 +323,7 @@ static func mix_colors(colors: Array, weights: Array) -> Color:
 static func get_datetime_string() -> String:
 	var datetime := Time.get_datetime_dict_from_system()
 	return (
-        "%s-%s-%s_%s.%s.%s" % [
+		"%s-%s-%s_%s.%s.%s" % [
 			datetime.year,
 			datetime.month,
 			datetime.day,
@@ -349,7 +349,7 @@ static func get_time_string_from_seconds(
 	if hours != 0 or includes_empty_hours:
 		if !is_undefined:
 			time_str = (
-                "%s%02d:" % [
+				"%s%02d:" % [
 					time_str,
 					hours,
 				]
@@ -363,7 +363,7 @@ static func get_time_string_from_seconds(
 	if minutes != 0 or includes_empty_minutes:
 		if !is_undefined:
 			time_str = (
-                "%s%02d:" % [
+				"%s%02d:" % [
 					time_str,
 					minutes,
 				]
@@ -375,7 +375,7 @@ static func get_time_string_from_seconds(
 	var seconds := int(time)
 	if !is_undefined:
 		time_str = (
-            "%s%02d" % [
+			"%s%02d" % [
 				time_str,
 				seconds,
 			]
@@ -388,7 +388,7 @@ static func get_time_string_from_seconds(
 		var milliseconds := int(fmod((time - seconds) * 1000.0, 1000.0))
 		if !is_undefined:
 			time_str = (
-                "%s.%03d" % [
+				"%s.%03d" % [
 					time_str,
 					milliseconds,
 				]
@@ -401,7 +401,7 @@ static func get_time_string_from_seconds(
 
 static func get_vector_string(vector: Vector2, decimal_place_count := 2) -> String:
 	return (
-        "(%.*f,%.*f)" % [
+		"(%.*f,%.*f)" % [
 			decimal_place_count,
 			vector.x,
 			decimal_place_count,
@@ -453,13 +453,13 @@ func take_screenshot() -> void:
 	if status != OK:
 		G.ensure(false)
 	else:
-		G.print("Took a screenshot: %s" % path, ScaffolderLog.CATEGORY_CORE_SYSTEMS)
+		G.print("Took a screenshot: %s" % path, NetworkLogger.CATEGORY_CORE_SYSTEMS)
 		were_screenshots_taken = true
 
 
 static func open_screenshot_folder() -> void:
 	var path := OS.get_user_data_dir() + "/screenshots"
-	G.print("Opening screenshot folder: " + path, ScaffolderLog.CATEGORY_CORE_SYSTEMS)
+	G.print("Opening screenshot folder: " + path, NetworkLogger.CATEGORY_CORE_SYSTEMS)
 	OS.shell_open(path)
 
 
@@ -646,7 +646,7 @@ static func get_property_value_from_node_path(base_node: Node, p_node_path: Node
 
 	G.error(
 		"get_property_value: Node not found: %s" % p_node_path,
-		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 	return null
 

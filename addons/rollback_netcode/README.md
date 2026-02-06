@@ -51,7 +51,7 @@ quickly.
   MultiplayerAPI integration
 - **Optional performance tracking** - Real-time metrics and profiling
   tools
-- **Resource-based configuration** - Inspector-friendly NetworkConfig
+- **Resource-based configuration** - Inspector-friendly NetworkSettings
   .tres files
 - **Extensible state management** - ReconcilableState base class for
   custom entities
@@ -91,7 +91,7 @@ quickly.
 extends Node
 
 # 1. Create NetworkOrchestrator with config
-var config := preload("res://network_config.tres")
+var config := preload("res://network_settings.tres")
 var netcode := NetworkOrchestrator.new(config, MyLogger.new(), MyTime.new())
 
 func _ready() -> void:
@@ -234,21 +234,21 @@ For a detailed walkthrough, see
 
 ## Configuration
 
-Network behavior is configured via NetworkConfig Resource files:
+Network behavior is configured via NetworkSettings Resource files:
 
 ### Creating a Configuration
 
 1. Right-click in FileSystem panel
 2. Select "New Resource..."
-3. Choose "NetworkConfig"
-4. Save as `network_config.tres`
+3. Choose "NetworkSettings"
+4. Save as `network_settings.tres`
 5. Edit properties in Inspector
 
 ### Key Configuration Options
 
 ```gdscript
 @export var server_port := 4433
-@export var max_clients := 4
+@export var max_client_count := 4
 @export var rollback_buffer_duration_sec := 1.5
 
 # Preview mode (editor testing)
@@ -256,17 +256,17 @@ Network behavior is configured via NetworkConfig Resource files:
 @export var preview_client_count := 2
 
 # Performance
-@export var show_perf_tracker := false
+@export var tracking_perf := false
 ```
 
 Load configuration in code:
 
 ```gdscript
-var config := load("res://network_config.tres") as NetworkConfig
+var config := load("res://network_settings.tres") as NetworkSettings
 var netcode := NetworkOrchestrator.new(config, logger, time_provider)
 ```
 
-For all configuration options, see the NetworkConfig class
+For all configuration options, see the NetworkSettings class
 documentation in [API_REFERENCE.md](docs/API_REFERENCE.md).
 
 ---
@@ -324,7 +324,7 @@ godot --headless -s --path . addons/gut/gut_cmdln.gd \
 
 ### Monitoring
 
-Enable PerfTracker in NetworkConfig to monitor:
+Enable PerfTracker in NetworkSettings to monitor:
 - Frame processing times
 - Network packet rates
 - Rollback frequency

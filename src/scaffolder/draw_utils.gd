@@ -3,7 +3,7 @@ extends Node
 
 
 func _ready() -> void:
-	G.print("DrawUtils._ready", ScaffolderLog.CATEGORY_SYSTEM_INITIALIZATION)
+	G.print("DrawUtils._ready", NetworkLogger.CATEGORY_SYSTEM_INITIALIZATION)
 
 
 static func draw_shape_outline(

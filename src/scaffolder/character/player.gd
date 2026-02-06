@@ -50,7 +50,7 @@ func _client_on_player_id_replicated(new_player_id: int) -> void:
 	G.verbose(
 		"Player._client_on_player_id_replicated: new_player_id=%d" %
 			new_player_id,
-		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 
 	player_id = new_player_id
@@ -139,7 +139,7 @@ func update_authority() -> void:
 func on_match_state_ready(_player_match_state: PlayerMatchState) -> void:
 	G.print(
 		"Player.on_match_state_ready called for player_id=%d" % player_id,
-		ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+		NetworkLogger.CATEGORY_PLAYER_ACTIONS,
 	)
 	_set_up_action_sources()
 
@@ -192,7 +192,7 @@ func _set_up_action_sources() -> void:
 			local_player_index,
 			device_config.name,
 		],
-		ScaffolderLog.CATEGORY_PLAYER_ACTIONS,
+		NetworkLogger.CATEGORY_PLAYER_ACTIONS,
 	)
 
 
@@ -221,7 +221,7 @@ func server_trigger_death() -> void:
 			player_id,
 			G.settings.player_respawn_cooldown_sec,
 		],
-		ScaffolderLog.CATEGORY_GAME_STATE,
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 	# Record DIE interaction.
@@ -245,7 +245,7 @@ func server_trigger_death() -> void:
 			area.collision_mask = 0
 
 	# Schedule respawn.
-	G.time.set_timeout(
+	Netcode.time.set_timeout(
 		server_execute_respawn,
 		G.settings.player_respawn_cooldown_sec
 	)
@@ -261,7 +261,7 @@ func server_execute_respawn() -> void:
 			state_from_server.last_interaction_type,
 			CharacterStateFromServer.ServerInteractionType.DIE,
 		],
-		ScaffolderLog.CATEGORY_GAME_STATE,
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 	# Only respawn if player is in DIE state (not already respawned).
@@ -272,7 +272,7 @@ func server_execute_respawn() -> void:
 				Netcode.server_frame_index,
 				player_id,
 			],
-			ScaffolderLog.CATEGORY_GAME_STATE,
+			NetworkLogger.CATEGORY_GAME_STATE,
 		)
 		return
 
@@ -283,7 +283,7 @@ func server_execute_respawn() -> void:
 				Netcode.server_frame_index,
 				player_id,
 			],
-			ScaffolderLog.CATEGORY_GAME_STATE,
+			NetworkLogger.CATEGORY_GAME_STATE,
 		)
 		return
 
@@ -317,7 +317,7 @@ func server_execute_respawn() -> void:
 			player_id,
 			spawn_position,
 		],
-		ScaffolderLog.CATEGORY_GAME_STATE,
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 

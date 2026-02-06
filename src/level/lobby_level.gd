@@ -40,7 +40,7 @@ func _check_gamepad_inputs() -> void:
 
 
 func _try_register_keyboard_player(key_bindings: Dictionary) -> void:
-	if _pending_device_configs_by_index.size() >= G.settings.local_player_max:
+	if _pending_device_configs_by_index.size() >= G.settings.max_local_player_count:
 		# No available slots.
 		return
 
@@ -57,7 +57,7 @@ func _try_register_keyboard_player(key_bindings: Dictionary) -> void:
 
 
 func _try_register_gamepad_player(device_id: int) -> void:
-	if _pending_device_configs_by_index.size() >= G.settings.local_player_max:
+	if _pending_device_configs_by_index.size() >= G.settings.max_local_player_count:
 		# No available slots.
 		return
 
@@ -106,7 +106,7 @@ func _register_player(device_config: DeviceConfig) -> void:
 
 	G.print(
 		"Spawned lobby player %d" % local_player_index,
-		ScaffolderLog.CATEGORY_PLAYER_ACTIONS)
+		NetworkLogger.CATEGORY_PLAYER_ACTIONS)
 
 	if is_instance_valid(G.game_panel):
 		G.game_panel.lobby_players_updated.emit()
@@ -139,7 +139,7 @@ func _deregister_player(device_name: StringName) -> void:
 
 	G.print(
 		"Despawned lobby player %d" % local_player_index,
-		ScaffolderLog.CATEGORY_PLAYER_ACTIONS)
+		NetworkLogger.CATEGORY_PLAYER_ACTIONS)
 
 	if is_instance_valid(G.game_panel):
 		G.game_panel.lobby_players_updated.emit()
@@ -163,7 +163,7 @@ func start_match() -> void:
 
 	G.print(
 		"Starting match with %d player(s)" % G.local_session.local_player_count,
-		ScaffolderLog.CATEGORY_GAME_STATE
+		NetworkLogger.CATEGORY_GAME_STATE
 	)
 
 	# Trigger GamePanel to despawn lobby and connect.

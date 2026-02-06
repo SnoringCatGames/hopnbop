@@ -20,7 +20,7 @@ func _enter_tree() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	G.game_panel.on_level_added(self)
+	G.game_panel.on_level_added(self )
 
 	if Netcode.is_server:
 		# Listen for player count declarations from clients.
@@ -55,18 +55,18 @@ func _ready() -> void:
 func _client_on_player_spawned(p_player: Node) -> void:
 	G.ensure(p_player is Player)
 	var player: Player = p_player
-	if G.is_verbose:
+	if Netcode.log.is_verbose:
 		G.verbose(
 			"Player spawned: %s (current player_id=%d)" %
 				[player.get_string(), player.player_id],
-			ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS,
+			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
 
 
 func _client_on_player_despawned(p_player: Node) -> void:
 	G.ensure(p_player is Player)
 	var player: Player = p_player
-	G.print("Player despawned: %s" % player.get_string(), ScaffolderLog.CATEGORY_GAME_STATE)
+	G.print("Player despawned: %s" % player.get_string(), NetworkLogger.CATEGORY_GAME_STATE)
 
 
 func _exit_tree() -> void:
@@ -78,7 +78,7 @@ func _exit_tree() -> void:
 		Netcode.connector.peer_players_declared.disconnect(
 			_server_on_peer_players_declared)
 	if is_instance_valid(G.game_panel):
-		G.game_panel.on_level_removed(self)
+		G.game_panel.on_level_removed(self )
 
 
 func _server_on_peer_players_declared(
@@ -94,7 +94,7 @@ func _server_register_players_for_peer(
 		assigned_ids: Array[int]) -> void:
 	G.print(
 		"Spawning %d player(s) for peer %d" % [assigned_ids.size(), peer_id],
-		ScaffolderLog.CATEGORY_GAME_STATE,
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 	for local_index in range(assigned_ids.size()):
@@ -122,7 +122,7 @@ func _server_deregister_players_for_peer(peer_id: int) -> void:
 	G.print(
 		"Removing %d player(s) for peer %d" %
 		[player_ids_to_remove.size(), peer_id],
-		ScaffolderLog.CATEGORY_GAME_STATE,
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 	for player_id in player_ids_to_remove:
@@ -134,7 +134,7 @@ func _server_deregister_players_for_peer(peer_id: int) -> void:
 			G.warning(
 				("Level._server_deregister_players_for_peer: " +
 				"No player found for ID: %s") % player_id,
-				ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+				NetworkLogger.CATEGORY_CORE_SYSTEMS,
 			)
 
 	peer_to_player_ids.erase(peer_id)

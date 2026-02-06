@@ -98,8 +98,7 @@ func _handle_interaction_effects() -> void:
 					Netcode.server_frame_index,
 					player_id,
 				],
-				ScaffolderLog.CATEGORY_GAME_STATE,
-				true,
+				NetworkLogger.CATEGORY_GAME_STATE,
 			)
 			play_sound("die")
 		CharacterStateFromServer.ServerInteractionType.SPAWN:
@@ -108,8 +107,7 @@ func _handle_interaction_effects() -> void:
 					Netcode.server_frame_index,
 					player_id,
 				],
-				ScaffolderLog.CATEGORY_GAME_STATE,
-				true,
+				NetworkLogger.CATEGORY_GAME_STATE,
 			)
 		_:
 			G.fatal()
@@ -161,7 +159,7 @@ func _set_up_camera() -> void:
 			Netcode.local_peer_id,
 			is_local_player,
 		],
-		ScaffolderLog.CATEGORY_GAME_STATE,
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 	%CharacterCamera.enabled = is_local_player
@@ -230,7 +228,7 @@ func _apply_outline_color() -> void:
 			match_state.outline_color,
 			outline_enabled,
 		],
-		ScaffolderLog.CATEGORY_GAME_STATE,
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 
@@ -278,8 +276,7 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 				player_id,
 				other_player_id,
 			],
-			ScaffolderLog.CATEGORY_GAME_STATE,
-			true,
+			NetworkLogger.CATEGORY_GAME_STATE,
 		)
 		return
 
@@ -298,8 +295,7 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 		G.verbose(
 			"Player kill detected (swept): %d killed %d" %
 				[player_id, other_player.player_id],
-			ScaffolderLog.CATEGORY_GAME_STATE,
-			true,
+			NetworkLogger.CATEGORY_GAME_STATE,
 		)
 
 		# Calculate lag-compensated position.
@@ -324,8 +320,7 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 				player_id,
 				other_player_id,
 			],
-			ScaffolderLog.CATEGORY_GAME_STATE,
-			true,
+			NetworkLogger.CATEGORY_GAME_STATE,
 		)
 		return
 
@@ -342,8 +337,7 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	G.verbose(
 		"Players bump detected: %d bumped %d" %
 			[player_id, other_player_id],
-		ScaffolderLog.CATEGORY_GAME_STATE,
-		true,
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 	G.match_state.server_add_bump(player_id, other_player_id)
@@ -427,8 +421,7 @@ func _server_apply_interaction_with_position(
 			bounce_velocity,
 			direction,
 		],
-		ScaffolderLog.CATEGORY_GAME_STATE,
-		true,
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 
@@ -545,8 +538,7 @@ func _did_foot_pass_through_head_this_frame(other_player: Player) -> bool:
 				foot_bottom_t1,
 				head_top_t1
 			],
-			ScaffolderLog.CATEGORY_GAME_STATE,
-			true,
+			NetworkLogger.CATEGORY_GAME_STATE,
 		)
 
 	return has_horizontal_overlap
@@ -595,7 +587,7 @@ func _calculate_lag_compensated_kill_position(
 	# Interpolate killer's position at contact moment.
 	var lag_compensated_position = my_prev_global.lerp(global_position, t)
 
-	if G.is_verbose:
+	if Netcode.log.is_verbose:
 		G.verbose(
 			(
 				"Lag compensation: player %d contact at t=%.3f, " +
@@ -607,8 +599,7 @@ func _calculate_lag_compensated_kill_position(
 				global_position,
 				lag_compensated_position,
 			],
-			ScaffolderLog.CATEGORY_GAME_STATE,
-			true,
+			NetworkLogger.CATEGORY_GAME_STATE,
 		)
 
 	return lag_compensated_position
@@ -657,8 +648,7 @@ func _on_foot_area_area_entered(area: Area2D) -> void:
 	G.verbose(
 		"Player kill detected: %d killed %d" %
 			[player_id, other_player_id],
-		ScaffolderLog.CATEGORY_GAME_STATE,
-		true,
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 	_processed_collision_this_frame = true

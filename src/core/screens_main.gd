@@ -34,7 +34,7 @@ func _ready() -> void:
 
 
 func client_open_screen(screen_type: ScreenType) -> void:
-	G.check_is_client()
+	Netcode.check_is_client()
 
 	if screen_type == current_screen:
 		# Already there!
@@ -49,7 +49,7 @@ func client_open_screen(screen_type: ScreenType) -> void:
 			ScreenType.keys()[previous_screen_type],
 			ScreenType.keys()[screen_type],
 		],
-		ScaffolderLog.CATEGORY_INTERACTION,
+		NetworkLogger.CATEGORY_INTERACTION,
 	)
 
 	get_tree().paused = screen_type not in [ScreenType.GAME, ScreenType.LOBBY]

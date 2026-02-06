@@ -15,17 +15,17 @@ rollback netcode in 5 minutes.
 
 ---
 
-## Step 1: Create NetworkConfig (1 minute)
+## Step 1: Create NetworkSettings (1 minute)
 
-**Create a NetworkConfig resource to configure your netcode settings.**
+**Create a NetworkSettings resource to configure your netcode settings.**
 
 1. Right-click in FileSystem panel
 2. Select "New Resource..."
-3. Choose "NetworkConfig"
-4. Save as `res://network_config.tres`
+3. Choose "NetworkSettings"
+4. Save as `res://network_settings.tres`
 5. Edit in Inspector:
    - `server_port`: 4433 (default)
-   - `max_clients`: 4
+   - `max_client_count`: 4
    - `rollback_buffer_duration_sec`: 1.5
 
 **Code example** (alternative to .tres file):
@@ -33,11 +33,11 @@ rollback netcode in 5 minutes.
 ```gdscript
 # game_config.gd
 class_name GameConfig
-extends NetworkConfig
+extends NetworkSettings
 
 func _init() -> void:
     server_port = 4433
-    max_clients = 4
+    max_client_count = 4
     rollback_buffer_duration_sec = 1.5
 ```
 
@@ -81,11 +81,11 @@ automatically when the plugin is enabled. You just need to configure it:
 ```gdscript
 # In your main scene or autoload
 func _ready() -> void:
-    var config := load("res://network_config.tres") as NetworkConfig
+    var config := load("res://network_settings.tres") as NetworkSettings
     var logger := GameLogger.new()
 
     Netcode.config = config
-    Netcode.logger = logger
+    Netcode.log = logger
     Netcode.initialize()  # TimeUtils is created automatically
 
     # Parse command-line args.
@@ -245,7 +245,7 @@ godot
 
 **Error:** `ENet: bind() failed`
 
-**Fix:** Change `server_port` in NetworkConfig or kill process using port
+**Fix:** Change `server_port` in NetworkSettings or kill process using port
 4433:
 
 ```bash

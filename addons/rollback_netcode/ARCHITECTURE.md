@@ -253,7 +253,7 @@ NetworkOrchestrator uses dependency injection for configuration and logging:
 ```gdscript
 class_name NetworkOrchestrator
 
-var config: NetworkConfig         # Game-configurable settings (required)
+var config: NetworkSettings         # Game-configurable settings (required)
 var logger: NetworkLogger         # Custom logging implementation (required)
 var time: TimeUtils               # Timer/throttle utilities (created internally)
 
@@ -1218,10 +1218,10 @@ Memory usage is negligible for modern hardware.
 
 ### PerfTracker Metrics
 
-Enable performance monitoring in NetworkConfig:
+Enable performance monitoring in NetworkSettings:
 
 ```gdscript
-@export var show_perf_tracker := true
+@export var tracking_perf := true
 ```
 
 **Tracked Metrics**:
@@ -1440,7 +1440,7 @@ class NetworkOrchestrator:
 # Constructor injection (testable)
 class NetworkOrchestrator:
     func _init(
-        p_config: NetworkConfig,
+        p_config: NetworkSettings,
         p_logger: NetworkLogger,
         p_time: NetworkTime
     ):
@@ -1464,11 +1464,11 @@ class NetworkOrchestrator:
 
 **Resource Advantages**:
 ```gdscript
-class_name NetworkConfig
+class_name NetworkSettings
 extends Resource
 
 @export var server_port := 4433      # Inspector editable!
-@export var max_clients := 4         # Type-safe!
+@export var max_client_count := 4         # Type-safe!
 @export var rollback_buffer_duration_sec := 1.5  # Documented!
 ```
 
@@ -1482,9 +1482,9 @@ extends Resource
 **Usage**:
 ```
 res://configs/
-├─ network_config_dev.tres    (for development, 2 clients)
-├─ network_config_prod.tres   (for production, 16 clients)
-└─ network_config_test.tres   (for testing, 4 clients)
+├─ network_settings_dev.tres    (for development, 2 clients)
+├─ network_settings_prod.tres   (for production, 16 clients)
+└─ network_settings_test.tres   (for testing, 4 clients)
 ```
 
 ### Why String Categories for Logging?
@@ -1568,7 +1568,7 @@ For 100 entities:
 - **Decrease** (1.0s): Low-latency games (LAN, local co-op)
 
 ```gdscript
-# In NetworkConfig
+# In NetworkSettings
 @export var rollback_buffer_duration_sec := 1.5  # Adjust here
 ```
 
@@ -1576,11 +1576,11 @@ For 100 entities:
 
 ## 12. Extension Points
 
-### Custom NetworkConfig Subclasses
+### Custom NetworkSettings Subclasses
 
 ```gdscript
-class_name MyGameNetworkConfig
-extends NetworkConfig
+class_name MyGameNetworkSettings
+extends NetworkSettings
 
 @export var my_custom_setting := true
 @export var server_region := "us-west"
@@ -1956,7 +1956,7 @@ const TARGET_NETWORK_TIME_STEP_SEC := 1.0 / target_tick_rate
 
 ```csharp
 // C# API
-var config = new NetworkConfig();
+var config = new NetworkSettings();
 var netcode = new NetworkOrchestrator(config, logger, time);
 
 // Custom entities

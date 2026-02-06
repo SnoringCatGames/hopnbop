@@ -4,8 +4,8 @@ extends GutTest
 ## These tests verify pause coordination scenarios. Most detailed testing
 ## (state filtering, buffer cleanup) is covered in unit tests.
 
-static func _create_mock_config() -> NetworkConfig:
-	var config := NetworkConfig.new()
+static func _create_mock_config() -> NetworkSettings:
+	var config := NetworkSettings.new()
 	config.server_port = 4433
 	config.rollback_buffer_duration_sec = 1.5
 	return config
@@ -29,8 +29,8 @@ class TestFrameIndexContinuity:
 
 	var frame_driver: FrameDriver
 
-	static func _create_mock_config() -> NetworkConfig:
-		var config := NetworkConfig.new()
+	static func _create_mock_config() -> NetworkSettings:
+		var config := NetworkSettings.new()
 		config.server_port = 4433
 		config.rollback_buffer_duration_sec = 1.5
 		return config
@@ -121,8 +121,8 @@ class TestPauseRollbackInteraction:
 
 	var frame_driver: FrameDriver
 
-	static func _create_mock_config() -> NetworkConfig:
-		var config := NetworkConfig.new()
+	static func _create_mock_config() -> NetworkSettings:
+		var config := NetworkSettings.new()
 		config.server_port = 4433
 		config.rollback_buffer_duration_sec = 1.5
 		return config
