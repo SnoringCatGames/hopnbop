@@ -146,8 +146,8 @@ class TestRollbackQueueing:
 		# Test that buffer size is calculated correctly
 		# Default: 2.0 seconds at 60 FPS = 120 frames
 		var expected_size := ceili(
-			G.settings.rollback_buffer_duration_sec *
-			NetworkFrameDriver.TARGET_NETWORK_FPS,
+			Netcode.config.rollback_buffer_duration_sec *
+			frame_driver.target_network_fps,
 		)
 
 		var actual_size := frame_driver.rollback_buffer_size
@@ -176,7 +176,7 @@ class TestNetworkFrameProcessor:
 
 	func _network_process() -> void:
 		network_process_count += 1
-		processed_frames.append(G.network.server_frame_index)
+		processed_frames.append(Netcode.server_frame_index)
 
 
 	func _post_network_process() -> void:
@@ -406,8 +406,8 @@ class TestFrameIndexCalculation:
 	func test_rollback_buffer_size_matches_settings():
 		# Default: 2.0 seconds at 60 FPS = 120 frames
 		var expected := ceili(
-			G.settings.rollback_buffer_duration_sec *
-			NetworkFrameDriver.TARGET_NETWORK_FPS,
+			Netcode.config.rollback_buffer_duration_sec *
+			frame_driver.target_network_fps,
 		)
 
 		var actual := frame_driver.rollback_buffer_size
@@ -520,7 +520,7 @@ class TestNodeRegistration:
 
 	func before_each():
 		ArrayPool.clear_all_pools()
-		frame_driver = G.network.frame_driver
+		frame_driver = Netcode.frame_driver
 
 
 	func after_each():

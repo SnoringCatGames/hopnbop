@@ -19,7 +19,6 @@ show_perf_tracker = true
 start_in_game = true
 skip_splash = true
 bunny_collision_shape = SubResource("CircleShape2D_woca2")
-verbosity = 1
 default_theme = ExtResource("3_r80nf")
 default_palette = ExtResource("2_yixrw")
 screen_style_box = ExtResource("5_r80nf")

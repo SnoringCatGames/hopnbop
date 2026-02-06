@@ -29,17 +29,17 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	G.log.log_system_ready("AudioMain")
 
-	if G.network.is_server:
+	if Netcode.is_server:
 		visible = false
 		process_mode = Node.PROCESS_MODE_DISABLED
 		return
 
-	if not G.network.is_primary_client:
+	if not Netcode.is_primary_client:
 		return
 
 
 func play_sound(sound_name: StringName) -> void:
-	if not G.network.is_primary_client:
+	if not Netcode.is_primary_client:
 		return
 
 	if not G.ensure(STREAM_PLAYERS_BY_NAME.has(sound_name)):
@@ -51,7 +51,7 @@ func play_sound(sound_name: StringName) -> void:
 
 
 func fade_to_menu_theme() -> void:
-	if not G.network.is_primary_client:
+	if not Netcode.is_primary_client:
 		return
 
 	fade_out(%MainThemeStreamPlayer)
@@ -59,7 +59,7 @@ func fade_to_menu_theme() -> void:
 
 
 func fade_to_main_theme() -> void:
-	if not G.network.is_primary_client:
+	if not Netcode.is_primary_client:
 		return
 
 	fade_out(%MenuThemeStreamPlayer)
@@ -67,7 +67,7 @@ func fade_to_main_theme() -> void:
 
 
 func fade_in(stream_player: AudioStreamPlayer, volume: float) -> void:
-	if not G.network.is_primary_client:
+	if not Netcode.is_primary_client:
 		return
 
 	if G.settings.mute_music:
@@ -94,7 +94,7 @@ func fade_in(stream_player: AudioStreamPlayer, volume: float) -> void:
 
 
 func fade_out(stream_player: AudioStreamPlayer) -> void:
-	if not G.network.is_primary_client:
+	if not Netcode.is_primary_client:
 		return
 
 	if not stream_player.playing:
@@ -115,7 +115,7 @@ func fade_out(stream_player: AudioStreamPlayer) -> void:
 
 
 func apply_music_mute() -> void:
-	if not G.network.is_primary_client:
+	if not Netcode.is_primary_client:
 		return
 
 	# Apply mute setting to currently playing music streams.

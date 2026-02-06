@@ -10,7 +10,7 @@ extends Node
 ## - Client: Receiving and storing server perf state
 ##
 ## This class handles logic and networking. UI rendering is handled by
-## PerfTrackerPanel. Accessed via G.network.perf_tracker singleton.
+## PerfTrackerPanel. Accessed via Netcode.perf_tracker singleton.
 
 # --- Server perf sync constants ---
 
@@ -30,7 +30,7 @@ const _SLOW_NETWORK_RTT_THRESHOLD_SEC := 0.1 # 100ms
 const _LARGE_FASTFORWARD_THRESHOLD := 2
 const _HIGH_FASTFORWARD_RATE_THRESHOLD := 0.2
 const _SLOW_RENDER_FPS := 30
-const _SLOW_PHYSICS_FPS := ScaffolderTime.PHYSICS_FPS - 10
+const _SLOW_PHYSICS_FPS := 50 # 10 FPS below target (60 - 10)
 const _SLOW_NETWORK_FPS := 30
 const _WARNING_THROTTLE_SEC := 5.0
 
@@ -113,6 +113,13 @@ var _throttled_warn_network_rtt: Callable
 var _throttled_warn_large_fastforward: Callable
 var _throttled_warn_high_fastforward_rate: Callable
 
+# --- Optional callbacks ---
+
+## Optional callback to check if the game is ready for performance tracking.
+## If not provided, always returns true (always ready).
+## Signature: func() -> bool
+var is_ready_callback: Callable
+
 # --- Lifecycle methods ---
 
 
@@ -120,52 +127,52 @@ func _ready() -> void:
 	if TestEnvironmentDetector.is_running_in_test_env(self ):
 		return
 
-	G.log.log_system_ready("PerfTracker")
+	Netcode.logger.print("PerfTracker")
 
 	# Register custom performance monitors (only in preview mode for performance)
-	if G.network.is_preview:
+	if Netcode.is_preview:
 		_register_custom_monitors()
 
 	# Set up throttled warning functions.
-	_throttled_warn_render_fps = G.time.throttle(
+	_throttled_warn_render_fps = Netcode.time.throttle(
 		_log_render_fps_warning,
 		_WARNING_THROTTLE_SEC,
 	)
-	_throttled_warn_physics_fps = G.time.throttle(
+	_throttled_warn_physics_fps = Netcode.time.throttle(
 		_log_physics_fps_warning,
 		_WARNING_THROTTLE_SEC,
 	)
-	_throttled_warn_network_fps = G.time.throttle(
+	_throttled_warn_network_fps = Netcode.time.throttle(
 		_log_network_fps_warning,
 		_WARNING_THROTTLE_SEC,
 	)
-	_throttled_warn_network_rtt = G.time.throttle(
+	_throttled_warn_network_rtt = Netcode.time.throttle(
 		_log_network_rtt_warning,
 		_WARNING_THROTTLE_SEC,
 	)
-	_throttled_warn_large_fastforward = G.time.throttle(
+	_throttled_warn_large_fastforward = Netcode.time.throttle(
 		_log_large_fastforward_warning,
 		_WARNING_THROTTLE_SEC,
 	)
-	_throttled_warn_high_fastforward_rate = G.time.throttle(
+	_throttled_warn_high_fastforward_rate = Netcode.time.throttle(
 		_log_high_fastforward_rate_warning,
 		_WARNING_THROTTLE_SEC,
 	)
 
 	# Start periodic metric logging.
-	if G.settings.show_perf_tracker:
-		G.time.set_interval(
+	if Netcode.config.show_perf_tracker:
+		Netcode.time.set_interval(
 			_log_metrics_periodically,
 			METRICS_LOG_INTERVAL_SEC,
 		)
 
 	# Connect to local authority signals for network FPS tracking
-	G.network.local_authority_added.connect(_on_local_authority_added)
-	G.network.local_authority_removed.connect(_on_local_authority_removed)
+	Netcode.local_authority_added.connect(_on_local_authority_added)
+	Netcode.local_authority_removed.connect(_on_local_authority_removed)
 
 	# Server: Start periodic sync to clients
-	if G.network.is_server:
-		G.time.set_timeout(
+	if Netcode.is_server:
+		Netcode.time.set_timeout(
 			_start_perf_sync_interval,
 			PERF_SYNC_INITIAL_DELAY_SEC,
 		)
@@ -190,7 +197,7 @@ func _process(_delta: float) -> void:
 	if (
 		_current_render_fps > 0.0
 		and _current_render_fps < _SLOW_RENDER_FPS
-		and G.game_panel.is_level_fully_loaded
+		and _is_ready()
 	):
 		_throttled_warn_render_fps.call(_current_render_fps)
 
@@ -210,7 +217,7 @@ func _physics_process(_delta: float) -> void:
 	if (
 		_current_physics_fps > 0.0
 		and _current_physics_fps < _SLOW_PHYSICS_FPS
-		and G.game_panel.is_level_fully_loaded
+		and _is_ready()
 	):
 		_throttled_warn_physics_fps.call(_current_physics_fps)
 
@@ -227,8 +234,8 @@ func _on_local_authority_added(
 	# Wait a tick to ensure state_from_server is populated
 	await get_tree().process_frame
 
-	G.check_valid(input_from_client)
-	G.check_valid(input_from_client.state_from_server)
+	is_instance_valid(input_from_client)
+	is_instance_valid(input_from_client.state_from_server)
 
 	input_from_client.state_from_server.received_network_state.connect(
 		_character_state_from_server_updated,
@@ -243,9 +250,9 @@ func _on_local_authority_removed(
 
 
 func _on_peer_connected(peer_id: int) -> void:
-	if not G.network.is_server:
+	if not Netcode.is_server:
 		return
-	if not G.game_panel.is_level_fully_loaded:
+	if not _is_ready():
 		return
 
 	# Send immediate sync to newly connected client
@@ -265,38 +272,50 @@ func _character_state_from_server_updated() -> void:
 	if (
 		_current_network_fps > 0.0
 		and _current_network_fps < _SLOW_NETWORK_FPS
-		and G.game_panel.is_level_fully_loaded
+		and _is_ready()
 	):
 		_throttled_warn_network_fps.call(_current_network_fps)
+
+
+# --- Helper methods ---
+
+
+## Check if the game is ready for performance tracking.
+## Uses optional callback if provided, otherwise always returns true.
+func _is_ready() -> bool:
+	if is_ready_callback.is_valid():
+		return is_ready_callback.call()
+	return true
+
 
 # --- Server-side RPC methods ---
 
 
 func _start_perf_sync_interval() -> void:
-	G.check_is_server()
+	Netcode.logger.check(Netcode.is_server, "Must be server")
 
 	# Wait for level to be fully loaded before starting sync
-	if not G.game_panel.is_level_fully_loaded:
+	if not _is_ready():
 		# Retry after 1 second if not ready
-		G.time.set_timeout(_start_perf_sync_interval, 1.0)
+		Netcode.time.set_timeout(_start_perf_sync_interval, 1.0)
 		return
 
 	# Start periodic sync
-	G.time.set_interval(
+	Netcode.time.set_interval(
 		_server_sync_perf_to_clients,
 		PERF_SYNC_INTERVAL_SEC,
 	)
 
 
 func _server_sync_perf_to_clients() -> void:
-	G.check_is_server()
+	Netcode.logger.check(Netcode.is_server, "Must be server")
 
 	var perf_state := _server_collect_perf_state()
 	_client_rpc_receive_server_perf_state.rpc(perf_state)
 
 
 func _server_collect_perf_state() -> Dictionary:
-	G.check_is_server()
+	Netcode.logger.check(Netcode.is_server, "Must be server")
 
 	return {
 		"physics_fps": _current_physics_fps,
@@ -322,7 +341,7 @@ func _server_collect_perf_state() -> Dictionary:
 
 @rpc("authority", "call_remote", "reliable")
 func _client_rpc_receive_server_perf_state(server_perf_state: Dictionary) -> void:
-	G.check_is_client()
+	Netcode.logger.check(not Netcode.is_server, "Must be client")
 
 	# Validate expected keys
 	var required_keys := [
@@ -346,7 +365,7 @@ func _client_rpc_receive_server_perf_state(server_perf_state: Dictionary) -> voi
 
 	for key in required_keys:
 		if not server_perf_state.has(key):
-			G.warning("Server perf state missing key: %s" % key)
+			Netcode.logger.warning("Server perf state missing key: %s" % key)
 			return
 
 	_server_perf_state = server_perf_state
@@ -503,10 +522,10 @@ func get_server_max_last_fastforward_frames() -> int:
 
 
 func _log_metrics_periodically() -> void:
-	if not G.settings.show_perf_tracker:
+	if not Netcode.config.show_perf_tracker:
 		return
 
-	G.print(
+	Netcode.logger.print(
 		"PERF: FPS[P:%.1f R:%.1f N:%.1f] PING:%.1fms RB[/s:%.1f last:%.2fms/%df] FF[/s:%.1f last:%.2fms/%df]" % [
 			_current_physics_fps,
 			_current_render_fps,
@@ -519,57 +538,60 @@ func _log_metrics_periodically() -> void:
 			_current_last_fastforward_duration_ms,
 			_current_last_fastforward_frames,
 		],
-		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
 # --- Performance warning logs ---
 
 
 func _log_render_fps_warning(avg_fps: float) -> void:
-	G.warning(
+	Netcode.logger.warning(
 		"Slow render FPS: %.1f (threshold: %d)" %
 		[avg_fps, _SLOW_RENDER_FPS],
-		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
 
 func _log_physics_fps_warning(avg_fps: float) -> void:
-	G.warning(
+	Netcode.logger.warning(
 		"Slow physics FPS: %.1f (threshold: %d)" %
 		[avg_fps, _SLOW_PHYSICS_FPS],
-		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
 
 func _log_network_fps_warning(avg_fps: float) -> void:
-	G.warning(
+	Netcode.logger.warning(
 		"Slow network FPS: %.1f (threshold: %d)" %
 		[avg_fps, _SLOW_NETWORK_FPS],
-		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
 
 func _log_network_rtt_warning(rtt_msec: float) -> void:
-	G.warning(
+	Netcode.logger.warning(
 		"Slow network RTT: %.1fms (threshold: %.0fms)" %
 		[rtt_msec, _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0],
-		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
 
 func _log_large_fastforward_warning(frame_count: int) -> void:
-	G.warning(
+	# Suppress warning during grace period after frame reset (expected during reconnection).
+	if Netcode.frame_driver.is_in_sync_grace_period:
+		return
+	Netcode.logger.warning(
 		"Large fast-forward: %d frames (threshold: %d)" %
 		[frame_count, _LARGE_FASTFORWARD_THRESHOLD],
-		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
 
 func _log_high_fastforward_rate_warning(rate: float) -> void:
-	G.warning(
+	Netcode.logger.warning(
 		"High fast-forward rate: %.2f/sec (threshold: %.1f)" %
 		[rate, _HIGH_FASTFORWARD_RATE_THRESHOLD],
-		ScaffolderLog.CATEGORY_CORE_SYSTEMS,
+		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
 # --- Private metric calculation helpers ---
@@ -643,8 +665,8 @@ func _calculate_network_fps() -> void:
 
 func _update_network_ping() -> void:
 	# Get RTT from FrameIndexSynchronizer.
-	if G.network.frame_sync != null:
-		_current_network_ping_ms = G.network.frame_sync.rtt_usec / 1000.0
+	if Netcode.frame_sync != null:
+		_current_network_ping_ms = Netcode.frame_sync.rtt_usec / 1000.0
 	else:
 		_current_network_ping_ms = 0.0
 
@@ -656,7 +678,7 @@ func _update_network_ping() -> void:
 	# Check for high network ping and log warning.
 	if (
 		_current_network_ping_ms > _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0
-		and G.game_panel.is_level_fully_loaded
+		and _is_ready()
 	):
 		_throttled_warn_network_rtt.call(_current_network_ping_ms)
 
@@ -669,7 +691,7 @@ func _update_rollback_metrics() -> void:
 	}
 
 	_current_rollbacks_per_sec = _calculate_events_per_sec(
-		G.network.frame_driver.total_rollbacks,
+		Netcode.frame_driver.total_rollbacks,
 		state,
 		_ROLLBACK_TRACKING_WINDOW_SEC,
 	)
@@ -680,10 +702,10 @@ func _update_rollback_metrics() -> void:
 
 	# Calculate last rollback metrics
 	_current_last_rollback_duration_ms = (
-		G.network.frame_driver.last_rollback_duration_usec / 1000.0
+		Netcode.frame_driver.last_rollback_duration_usec / 1000.0
 	)
 	_current_last_rollback_frames = (
-		G.network.frame_driver.last_rollback_frame_count
+		Netcode.frame_driver.last_rollback_frame_count
 	)
 
 	# Update max tracking
@@ -709,7 +731,7 @@ func _update_fastforward_metrics() -> void:
 	}
 
 	_current_fastforwards_per_sec = _calculate_events_per_sec(
-		G.network.frame_driver.total_fastforwards,
+		Netcode.frame_driver.total_fastforwards,
 		state,
 		_FASTFORWARD_TRACKING_WINDOW_SEC,
 	)
@@ -720,10 +742,10 @@ func _update_fastforward_metrics() -> void:
 
 	# Calculate last fastforward metrics
 	_current_last_fastforward_duration_ms = (
-		G.network.frame_driver.last_fastforward_duration_usec / 1000.0
+		Netcode.frame_driver.last_fastforward_duration_usec / 1000.0
 	)
 	_current_last_fastforward_frames = (
-		G.network.frame_driver.last_fastforward_frame_count
+		Netcode.frame_driver.last_fastforward_frame_count
 	)
 
 	# Update max tracking
@@ -743,14 +765,14 @@ func _update_fastforward_metrics() -> void:
 	# Check for large fastforward and log warning.
 	if (
 		_current_last_fastforward_frames >= _LARGE_FASTFORWARD_THRESHOLD
-		and G.game_panel.is_level_fully_loaded
+		and _is_ready()
 	):
 		_throttled_warn_large_fastforward.call(_current_last_fastforward_frames)
 
 	# Check for high fastforward rate and log warning.
 	if (
 		_current_fastforwards_per_sec > _HIGH_FASTFORWARD_RATE_THRESHOLD
-		and G.game_panel.is_level_fully_loaded
+		and _is_ready()
 	):
 		_throttled_warn_high_fastforward_rate.call(_current_fastforwards_per_sec)
 

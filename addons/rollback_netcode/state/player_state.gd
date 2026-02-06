@@ -64,12 +64,6 @@ var is_connected_to_server: bool:
 	get:
 		return connect_frame_index >= disconnect_frame_index
 
-var player: Player:
-	get:
-		if G.level.players_by_id.has(player_id):
-			return G.level.players_by_id[player_id]
-		return null
-
 
 func get_packed_state() -> Array:
 	var packed_state := []

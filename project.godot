@@ -19,7 +19,7 @@ config/icon="uid://bsrqq2id8rpl8"
 [autoload]
 
 G="*res://src/core/global.gd"
-Netcode="*res://src/core/netcode_wrapper.gd"
+Netcode="*res://addons/rollback_netcode/core/network_orchestrator.gd"
 
 [display]
 
@@ -27,7 +27,7 @@ window/stretch/mode="canvas_items"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/gut/plugin.cfg", "res://addons/rollback_netcode/plugin.cfg")
+enabled=PackedStringArray("res://addons/gamelift_session_manager/plugin.cfg", "res://addons/gut/plugin.cfg", "res://addons/rollback_netcode/plugin.cfg")
 
 [input]
 

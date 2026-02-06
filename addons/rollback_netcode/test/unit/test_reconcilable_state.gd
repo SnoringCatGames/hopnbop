@@ -557,7 +557,7 @@ class TestStatePacking:
 		network_state[3] = 12.0
 		network_state[4] = true
 		network_state[5] = "player"
-		network_state[6] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+		network_state[6] = ReconcilableNetworkedState.FrameAuthority.Type.AUTHORITATIVE
 		network_state[7] = base_frame
 
 		# Pack into buffer
@@ -566,10 +566,10 @@ class TestStatePacking:
 		# Verify buffer state was created with AUTHORITATIVE marker
 		var buffer_state: Array = entity._rollback_buffer.get_at(base_frame)
 
-		# Last element should be FrameAuthority.AUTHORITATIVE (1)
+		# Last element should be FrameAuthority.Type.AUTHORITATIVE (1)
 		assert_eq(
 			buffer_state[buffer_state.size() - 1],
-			ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE,
+			ReconcilableNetworkedState.FrameAuthority.Type.AUTHORITATIVE,
 			"Buffer state should have AUTHORITATIVE marker",
 		)
 
@@ -681,7 +681,7 @@ class TestBufferStateRestoration:
 		frame_state[3] = 12.0
 		frame_state[4] = true
 		frame_state[5] = "test"
-		frame_state[6] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+		frame_state[6] = ReconcilableNetworkedState.FrameAuthority.Type.PREDICTED
 
 		# Record at test frame
 		entity._record_buffer_frame(test_frame, frame_state)
@@ -705,7 +705,7 @@ class TestBufferStateRestoration:
 		frame_state[3] = 13.5
 		frame_state[4] = false
 		frame_state[5] = "restored"
-		frame_state[6] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+		frame_state[6] = ReconcilableNetworkedState.FrameAuthority.Type.AUTHORITATIVE
 
 		entity._rollback_buffer.set_at(test_frame, frame_state)
 
@@ -720,7 +720,7 @@ class TestBufferStateRestoration:
 		)
 		assert_eq(
 			entity.frame_authority,
-			ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE,
+			ReconcilableNetworkedState.FrameAuthority.Type.AUTHORITATIVE,
 			"Frame authority should be restored",
 		)
 
@@ -739,7 +739,7 @@ class TestBufferStateRestoration:
 		state_a[3] = 10.0
 		state_a[4] = true
 		state_a[5] = "frame_a"
-		state_a[6] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+		state_a[6] = ReconcilableNetworkedState.FrameAuthority.Type.PREDICTED
 
 		entity._rollback_buffer.set_at(frame_a, state_a)
 
@@ -751,7 +751,7 @@ class TestBufferStateRestoration:
 		state_b[3] = 10.0
 		state_b[4] = true
 		state_b[5] = "frame_b"
-		state_b[6] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+		state_b[6] = ReconcilableNetworkedState.FrameAuthority.Type.PREDICTED
 
 		entity._record_buffer_frame(frame_b, state_b)
 
@@ -766,18 +766,18 @@ class TestBufferStateRestoration:
 	func test_frame_authority_defaults_to_unknown():
 		# When _pre_network_process is called, frame_authority resets
 		entity.frame_authority = (
-			ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+			ReconcilableNetworkedState.FrameAuthority.Type.AUTHORITATIVE
 		)
 
 		# Simulate _pre_network_process
-		entity.frame_index = G.network.server_frame_index
+		entity.frame_index = Netcode.server_frame_index
 		entity.frame_authority = (
-			ReconcilableNetworkedState.FrameAuthority.UNKNOWN
+			ReconcilableNetworkedState.FrameAuthority.Type.UNKNOWN
 		)
 
 		assert_eq(
 			entity.frame_authority,
-			ReconcilableNetworkedState.FrameAuthority.UNKNOWN,
+			ReconcilableNetworkedState.FrameAuthority.Type.UNKNOWN,
 			"Frame authority should reset to UNKNOWN",
 		)
 
@@ -785,7 +785,7 @@ class TestBufferStateRestoration:
 	func test_frame_index_updates_during_pre_network_process():
 		# Simulate frame processing
 		var expected_frame := 42
-		G.network.server_frame_index = expected_frame
+		Netcode.server_frame_index = expected_frame
 
 		# Simulate _pre_network_process
 		entity.frame_index = expected_frame
@@ -808,7 +808,7 @@ class TestBufferStateRestoration:
 		state[3] = 10.0
 		state[4] = true
 		state[5] = "test"
-		state[6] = ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE
+		state[6] = ReconcilableNetworkedState.FrameAuthority.Type.AUTHORITATIVE
 
 		entity._rollback_buffer.set_at(test_frame, state)
 
@@ -825,14 +825,14 @@ class TestBufferStateRestoration:
 
 		assert_eq(
 			authority,
-			ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE,
+			ReconcilableNetworkedState.FrameAuthority.Type.AUTHORITATIVE,
 			"Frame should have AUTHORITATIVE marker",
 		)
 
 
 	func test_does_not_have_authoritative_state_when_predicted():
 		# Store predicted state for current frame
-		G.network.server_frame_index = 50
+		Netcode.server_frame_index = 50
 		var state := ArrayPool.acquire(7)
 		state[0] = Vector2.ZERO
 		state[1] = Vector2.ZERO
@@ -840,7 +840,7 @@ class TestBufferStateRestoration:
 		state[3] = 10.0
 		state[4] = true
 		state[5] = "test"
-		state[6] = ReconcilableNetworkedState.FrameAuthority.PREDICTED
+		state[6] = ReconcilableNetworkedState.FrameAuthority.Type.PREDICTED
 
 		entity._rollback_buffer.set_at(50, state)
 
@@ -1017,7 +1017,7 @@ class TestPropertyConfiguration:
 		entity.test_name = "initialized"
 
 		# Record initial state
-		var current_frame := G.network.server_frame_index
+		var current_frame := Netcode.server_frame_index
 		entity.record_initial_state()
 
 		# Frames N-2, N-1, and N should all exist
@@ -1042,7 +1042,7 @@ class TestPropertyConfiguration:
 		entity.test_health = 95
 
 		# Record initial state
-		var current_frame := G.network.server_frame_index
+		var current_frame := Netcode.server_frame_index
 		entity.record_initial_state()
 
 		# Retrieve state from frame N
@@ -1079,7 +1079,7 @@ class TestPropertyConfiguration:
 
 	func test_record_initial_state_marks_frames_as_predicted():
 		# Record initial state
-		var current_frame := G.network.server_frame_index
+		var current_frame := Netcode.server_frame_index
 		entity.record_initial_state()
 
 		# All frames should be marked as PREDICTED
@@ -1094,6 +1094,6 @@ class TestPropertyConfiguration:
 
 			assert_eq(
 				authority,
-				ReconcilableNetworkedState.FrameAuthority.PREDICTED,
+				ReconcilableNetworkedState.FrameAuthority.Type.PREDICTED,
 				"Frame %d should be marked as PREDICTED" % target_frame,
 			)

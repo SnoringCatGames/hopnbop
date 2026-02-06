@@ -909,7 +909,7 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             players=players
         ))
 
-        logger.info(f"Started matchmaking for {player_id}: {ticket_id}")
+        logger.print(f"Started matchmaking for {player_id}: {ticket_id}")
 
         return {
             'statusCode': 200,
@@ -1385,7 +1385,7 @@ MatchmakingFailureAlarm:
 
 Use AWS Lambda Powertools for structured logging:
 ```python
-logger.info("Matchmaking started", extra={
+logger.print("Matchmaking started", extra={
     'player_id': player_id,
     'ticket_id': ticket_id,
     'config': config_name

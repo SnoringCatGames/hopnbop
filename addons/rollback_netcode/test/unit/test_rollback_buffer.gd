@@ -137,14 +137,14 @@ class TestBackfill:
 			var state := ArrayPool.acquire(3)
 			state[0] = 0
 			state[1] = 0
-			state[2] = MockFrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.PREDICTED
 			buffer.append(state)
 
 		# Append state at frame 5 with specific values.
 		var state_5 := ArrayPool.acquire(3)
 		state_5[0] = 100
 		state_5[1] = 200
-		state_5[2] = MockFrameAuthority.AUTHORITATIVE
+		state_5[2] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 		buffer.append(state_5)
 
 		# Backfill to frame 8.
@@ -160,11 +160,11 @@ class TestBackfill:
 		assert_eq(state_6[0], 100)
 		assert_eq(state_6[1], 200)
 		# Backfilled states should be PREDICTED.
-		assert_eq(state_6[2], MockFrameAuthority.PREDICTED)
+		assert_eq(state_6[2], ReconcilableState.FrameAuthority.PREDICTED)
 
 		assert_eq(state_7[0], 100)
 		assert_eq(state_7[1], 200)
-		assert_eq(state_7[2], MockFrameAuthority.PREDICTED)
+		assert_eq(state_7[2], ReconcilableState.FrameAuthority.PREDICTED)
 
 
 	func test_backfill_does_nothing_if_already_filled():
@@ -188,7 +188,7 @@ class TestBackfill:
 		var state_0 := ArrayPool.acquire(3)
 		state_0[0] = 999
 		state_0[1] = 888
-		state_0[2] = MockFrameAuthority.AUTHORITATIVE
+		state_0[2] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 		buffer.set_at(0, state_0)
 
 		# Backfill to frame 100 (way beyond capacity).
@@ -201,7 +201,7 @@ class TestBackfill:
 		var state_100: Array = buffer.get_at(100)
 		assert_eq(state_100[0], 999)
 		assert_eq(state_100[1], 888)
-		assert_eq(state_100[2], MockFrameAuthority.PREDICTED)
+		assert_eq(state_100[2], ReconcilableState.FrameAuthority.PREDICTED)
 
 
 class TestSetAndGet:
@@ -222,14 +222,14 @@ class TestSetAndGet:
 		var state := ArrayPool.acquire(3)
 		state[0] = 42
 		state[1] = 84
-		state[2] = MockFrameAuthority.AUTHORITATIVE
+		state[2] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		buffer.set_at(5, state)
 
 		var retrieved: Array = buffer.get_at(5)
 		assert_eq(retrieved[0], 42)
 		assert_eq(retrieved[1], 84)
-		assert_eq(retrieved[2], MockFrameAuthority.AUTHORITATIVE)
+		assert_eq(retrieved[2], ReconcilableState.FrameAuthority.AUTHORITATIVE)
 
 
 	func test_get_at_out_of_range_returns_null():
@@ -260,7 +260,7 @@ class TestSetAndGet:
 		var state := ArrayPool.acquire(3)
 		state[0] = 42
 		state[1] = 84
-		state[2] = MockFrameAuthority.AUTHORITATIVE
+		state[2] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		var success := buffer.set_at(5, state)
 
@@ -270,7 +270,7 @@ class TestSetAndGet:
 		var retrieved: Array = buffer.get_at(5)
 		assert_eq(retrieved[0], 42)
 		assert_eq(retrieved[1], 84)
-		assert_eq(retrieved[2], MockFrameAuthority.AUTHORITATIVE)
+		assert_eq(retrieved[2], ReconcilableState.FrameAuthority.AUTHORITATIVE)
 
 
 	func test_set_at_rejects_index_too_far_back():
@@ -281,7 +281,7 @@ class TestSetAndGet:
 		var state := ArrayPool.acquire(3)
 		state[0] = 100
 		state[1] = 200
-		state[2] = MockFrameAuthority.AUTHORITATIVE
+		state[2] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		var success := buffer.set_at(10, state)
 
@@ -309,7 +309,7 @@ class TestAppend:
 		var state := ArrayPool.acquire(3)
 		state[0] = 123
 		state[1] = 456
-		state[2] = MockFrameAuthority.AUTHORITATIVE
+		state[2] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		buffer.append(state)
 
@@ -330,7 +330,7 @@ class TestAppend:
 			var state := ArrayPool.acquire(3)
 			state[0] = i * 10
 			state[1] = i * 20
-			state[2] = MockFrameAuthority.AUTHORITATIVE
+			state[2] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 			buffer.append(state)
 
 		# After 5 appends starting from frame 0, we're at frame 5.
