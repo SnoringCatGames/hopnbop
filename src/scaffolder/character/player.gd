@@ -213,7 +213,7 @@ func get_is_player_control_active() -> bool:
 
 
 func server_trigger_death() -> void:
-	G.check_is_server()
+	Netcode.check_is_server()
 
 	G.verbose(
 		"F:%d Player %d triggered death, scheduling respawn in %s sec" % [
@@ -252,7 +252,7 @@ func server_trigger_death() -> void:
 
 
 func server_execute_respawn() -> void:
-	G.check_is_server()
+	Netcode.check_is_server()
 
 	G.verbose(
 		"F:%d Player %d respawn timer fired, interaction_type=%d (DIE=%d)" % [

@@ -71,97 +71,37 @@ func fatal(message: String, category: StringName = CATEGORY_DEFAULT) -> void:
 
 ---
 
-## Step 3: Implement Time Provider (1 minute)
+## Step 3: Initialize Netcode (1 minute)
 
-**Create a time provider for scheduling callbacks.**
+**Configure and initialize the netcode system.**
 
-```gdscript
-# game_time.gd
-class_name GameTime
-extends NetworkTime
-
-var _scene_tree: SceneTree
-var _next_id := 1
-var _active_timers := {}
-
-func _init(scene_tree: SceneTree) -> void:
-    _scene_tree = scene_tree
-
-func set_timeout(callback: Callable, delay_sec: float) -> int:
-    var timer := Timer.new()
-    timer.wait_time = delay_sec
-    timer.one_shot = true
-    var id := _next_id
-    _next_id += 1
-    _active_timers[id] = timer
-    timer.timeout.connect(func() -> void:
-        callback.call()
-        _active_timers.erase(id)
-        timer.queue_free()
-    )
-    _scene_tree.root.add_child(timer)
-    timer.start()
-    return id
-
-func set_interval(callback: Callable, interval_sec: float) -> int:
-    var timer := Timer.new()
-    timer.wait_time = interval_sec
-    timer.one_shot = false
-    var id := _next_id
-    _next_id += 1
-    _active_timers[id] = timer
-    timer.timeout.connect(callback)
-    _scene_tree.root.add_child(timer)
-    timer.start()
-    return id
-
-func clear_timeout(id: int) -> void:
-    if _active_timers.has(id):
-        var timer: Timer = _active_timers[id]
-        timer.stop()
-        timer.queue_free()
-        _active_timers.erase(id)
-```
-
-**Or use the example:** See
-`addons/rollback_netcode/examples/simple_game/scripts/game_time.gd`
-
----
-
-## Step 4: Initialize Netcode (1 minute)
-
-**Create a singleton to initialize the netcode system.**
+The rollback_netcode plugin is added as an autoload singleton named "Netcode"
+automatically when the plugin is enabled. You just need to configure it:
 
 ```gdscript
-# netcode_singleton.gd (add as autoload named "Netcode")
-extends Node
-
-var orchestrator: NetworkOrchestrator
-
+# In your main scene or autoload
 func _ready() -> void:
     var config := load("res://network_config.tres") as NetworkConfig
     var logger := GameLogger.new()
-    var time_provider := GameTime.new(get_tree())
 
-    orchestrator = NetworkOrchestrator.new(config, logger, time_provider)
-    add_child(orchestrator)
+    Netcode.config = config
+    Netcode.logger = logger
+    Netcode.initialize()  # TimeUtils is created automatically
 
     # Parse command-line args.
     var args := OS.get_cmdline_user_args()
     if "--server" in args:
-        orchestrator.connector.start_server()
+        Netcode.server_start()
     else:
-        orchestrator.connector.connect_to_server("127.0.0.1")
+        Netcode.client_connect("127.0.0.1", 4433)
 ```
 
-**Add to autoloads:**
-
-1. Project > Project Settings > Autoload
-2. Add `res://netcode_singleton.gd` as "Netcode"
+**Note:** The Netcode singleton is automatically available once the plugin is
+enabled.
 
 ---
 
-## Step 5: Create Player with Prediction (1 minute)
+## Step 4: Create Player with Prediction (1 minute)
 
 **Create a player scene with networked state synchronization.**
 
@@ -229,7 +169,7 @@ func _sync_from_scene_state() -> void:
 
 ---
 
-## Step 6: Spawn Players (30 seconds)
+## Step 5: Spawn Players (30 seconds)
 
 **Set up automatic player spawning on connection.**
 
@@ -268,7 +208,7 @@ func _spawn_player(peer_id: int) -> void:
 
 ---
 
-## Step 7: Test It (30 seconds)
+## Step 6: Test It (30 seconds)
 
 **Run server and clients to see multiplayer in action.**
 

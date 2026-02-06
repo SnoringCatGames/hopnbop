@@ -161,11 +161,11 @@ Manages ENet multiplayer peer connections between server and clients. Handles pe
 
 Emitted when a peer declares their player count and receives assigned IDs from server.
 
-#### connection_established(local_peer_id: int)
+#### connected(local_peer_id: int)
 
 Emitted when client successfully connects to server.
 
-#### disconnection_occurred(peer_id: int, reason: int)
+#### disconnected(peer_id: int, reason: int)
 
 Emitted when disconnection occurs (client or server).
 
@@ -273,8 +273,8 @@ connector.player_attribute_validator = func(
 
 # Connect signals
 connector.peer_players_declared.connect(_on_players_declared)
-connector.connection_established.connect(_on_connected)
-connector.disconnection_occurred.connect(_on_disconnected)
+connector.connected.connect(_on_connected)
+connector.disconnected.connect(_on_disconnected)
 ```
 
 ### Notes

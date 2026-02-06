@@ -378,7 +378,7 @@ func _server_apply_interaction_with_position(
 	interaction_type: CharacterStateFromServer.ServerInteractionType,
 	override_position: Vector2
 ) -> void:
-	G.check_is_server()
+	Netcode.check_is_server()
 
 	var direction := (
 		override_position - other_player.global_position

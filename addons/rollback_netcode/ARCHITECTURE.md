@@ -248,30 +248,26 @@ Utilities
 
 ### Dependency Injection Pattern
 
-NetworkOrchestrator uses constructor injection to enable testing and
-flexibility:
+NetworkOrchestrator uses dependency injection for configuration and logging:
 
 ```gdscript
 class_name NetworkOrchestrator
 
-var config: NetworkConfig         # Game-configurable settings
-var logger: NetworkLogger         # Custom logging implementation
-var time_provider: NetworkTime    # Timer/throttle utilities
+var config: NetworkConfig         # Game-configurable settings (required)
+var logger: NetworkLogger         # Custom logging implementation (required)
+var time: TimeUtils               # Timer/throttle utilities (created internally)
 
-func _init(
-    p_config: NetworkConfig,
-    p_logger: NetworkLogger,
-    p_time: NetworkTime
-):
-    config = p_config
-    logger = p_logger
-    time_provider = p_time
+func initialize():
+    # Validates config and logger are set
+    # Creates TimeUtils automatically
+    if time == null:
+        time = TimeUtils.new(get_tree())
 ```
 
 This allows games to:
 - Inject custom loggers (file, remote, silent)
-- Override time provider for testing
-- Swap configurations at runtime
+- Provide custom configuration resources
+- Use TimeUtils for consistent timer behavior across the framework
 
 ---
 

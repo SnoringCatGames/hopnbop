@@ -43,7 +43,7 @@ var jump_sequence_count := 0
 
 var _current_max_horizontal_speed_multiplier := 1.0
 
-var surfaces := CharacterSurfaceState.new(self)
+var surfaces := CharacterSurfaceState.new(self )
 var actions := CharacterActionState.new()
 
 # Array<CharacterActionSource>
@@ -163,9 +163,9 @@ func _collect_actions() -> void:
 	for action_source in _action_sources:
 		action_source.update(
 			actions,
-			G.time.get_scaled_network_frame_delta())
+			G.time.get_time_step_sec())
 
-	actions.log_new_presses_and_releases(self)
+	actions.log_new_presses_and_releases(self )
 
 	surfaces.update_actions()
 
@@ -228,7 +228,7 @@ func _process_actions() -> void:
 		action_handler.uses_runtime_physics
 		if is_action_relevant_for_surface and \
 		is_action_relevant_for_physics_mode:
-			var executed: bool = action_handler.process(self)
+			var executed: bool = action_handler.process(self )
 			_previous_actions_handlers_this_frame[action_handler.name] = \
 			executed
 
@@ -326,7 +326,7 @@ func get_next_position_prediction() -> Vector2:
 
 
 func get_position_in_screen_space() -> Vector2:
-	return G.utils.get_screen_position_of_node_in_level(self)
+	return G.utils.get_screen_position_of_node_in_level(self )
 
 
 func get_is_player_control_active() -> bool:
