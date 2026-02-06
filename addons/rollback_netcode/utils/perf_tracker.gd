@@ -160,7 +160,7 @@ func _ready() -> void:
 	)
 
 	# Start periodic metric logging.
-	if Netcode.config.tracking_perf:
+	if Netcode.settings.tracking_perf:
 		Netcode.time.set_interval(
 			_log_metrics_periodically,
 			METRICS_LOG_INTERVAL_SEC,
@@ -199,7 +199,7 @@ func _process(_delta: float) -> void:
 		and _current_render_fps < _SLOW_RENDER_FPS
 		and _is_ready()
 	):
-		_throttled_warn_render_fps.call(_current_render_fps)
+		_throttled_warn_render_fps.call([_current_render_fps])
 
 
 func _physics_process(_delta: float) -> void:
@@ -219,7 +219,7 @@ func _physics_process(_delta: float) -> void:
 		and _current_physics_fps < _SLOW_PHYSICS_FPS
 		and _is_ready()
 	):
-		_throttled_warn_physics_fps.call(_current_physics_fps)
+		_throttled_warn_physics_fps.call([_current_physics_fps])
 
 	_update_network_ping()
 	_update_rollback_metrics()
@@ -274,7 +274,7 @@ func _character_state_from_server_updated() -> void:
 		and _current_network_fps < _SLOW_NETWORK_FPS
 		and _is_ready()
 	):
-		_throttled_warn_network_fps.call(_current_network_fps)
+		_throttled_warn_network_fps.call([_current_network_fps])
 
 
 # --- Helper methods ---
@@ -522,7 +522,7 @@ func get_server_max_last_fastforward_frames() -> int:
 
 
 func _log_metrics_periodically() -> void:
-	if not Netcode.config.tracking_perf:
+	if not Netcode.settings.tracking_perf:
 		return
 
 	Netcode.log.print(
@@ -680,7 +680,7 @@ func _update_network_ping() -> void:
 		_current_network_ping_ms > _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0
 		and _is_ready()
 	):
-		_throttled_warn_network_rtt.call(_current_network_ping_ms)
+		_throttled_warn_network_rtt.call([_current_network_ping_ms])
 
 
 func _update_rollback_metrics() -> void:
@@ -767,14 +767,14 @@ func _update_fastforward_metrics() -> void:
 		_current_last_fastforward_frames >= _LARGE_FASTFORWARD_THRESHOLD
 		and _is_ready()
 	):
-		_throttled_warn_large_fastforward.call(_current_last_fastforward_frames)
+		_throttled_warn_large_fastforward.call([_current_last_fastforward_frames])
 
 	# Check for high fastforward rate and log warning.
 	if (
 		_current_fastforwards_per_sec > _HIGH_FASTFORWARD_RATE_THRESHOLD
 		and _is_ready()
 	):
-		_throttled_warn_high_fastforward_rate.call(_current_fastforwards_per_sec)
+		_throttled_warn_high_fastforward_rate.call([_current_fastforwards_per_sec])
 
 
 func _calculate_events_per_sec(

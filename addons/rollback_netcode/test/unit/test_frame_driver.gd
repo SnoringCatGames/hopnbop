@@ -146,7 +146,7 @@ class TestRollbackQueueing:
 		# Test that buffer size is calculated correctly
 		# Default: 2.0 seconds at 60 FPS = 120 frames
 		var expected_size := ceili(
-			Netcode.config.rollback_buffer_duration_sec *
+			Netcode.settings.rollback_buffer_duration_sec *
 			frame_driver.target_network_fps,
 		)
 
@@ -406,7 +406,7 @@ class TestFrameIndexCalculation:
 	func test_rollback_buffer_size_matches_settings():
 		# Default: 2.0 seconds at 60 FPS = 120 frames
 		var expected := ceili(
-			Netcode.config.rollback_buffer_duration_sec *
+			Netcode.settings.rollback_buffer_duration_sec *
 			frame_driver.target_network_fps,
 		)
 

@@ -1,10 +1,10 @@
 @tool
-class_name ReconcilableNetworkedState
+class_name ReconcilableState
 extends MultiplayerSynchronizer
 ## Base class for all networked entities that require client-side prediction
 ## with server-mismatch reconciliation and rollback support.
 ##
-## ReconcilableNetworkedState is the foundation of the networking system,
+## ReconcilableState is the foundation of the networking system,
 ## providing automatic state replication, client prediction, mismatch detection,
 ## and rollback reconciliation for any game entity. Subclasses define which
 ## properties to sync and how to integrate with the scene hierarchy.
@@ -61,7 +61,7 @@ extends MultiplayerSynchronizer
 ## ```gdscript
 ## @tool
 ## class_name CharacterStateFromServer
-## extends ReconcilableNetworkedState
+## extends ReconcilableState
 ##
 ## var position := Vector2.ZERO
 ## var velocity := Vector2.ZERO
@@ -107,20 +107,19 @@ var frame_index := Utils.MIN_INT
 var _last_interaction_type_internal := _NONE_INTERACTION_TYPE
 var last_interaction_type: int:
 	set(value):
-		if (G.is_verbose and
-				G.network.is_server and
+		if (Netcode.log.is_verbose and
+				Netcode.is_server and
 				_last_interaction_type_internal != value):
-			G.verbose(
+			Netcode.log.verbose(
 				"[INTERACTION] Player %d: %s (%d) -> %s (%d) at F:%d" % [
 					player_id,
 					_get_interaction_type_name(_last_interaction_type_internal),
 					_last_interaction_type_internal,
 					_get_interaction_type_name(value),
 					value,
-					G.network.server_frame_index
+					Netcode.server_frame_index
 				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC,
-				true,
+				NetworkLogger.CATEGORY_NETWORK_SYNC,
 			)
 		_last_interaction_type_internal = value
 	get:
@@ -177,7 +176,7 @@ var player_id: int = 0:
 			# during initial replication - it will be set later in
 			# _on_player_joined(), which will call update_authority()
 			# explicitly.
-			if G.network.get_peer_id_from_player_id(value) != 0:
+			if Netcode.get_peer_id_from_player_id(value) != 0:
 				update_authority()
 
 			# Assign player_id on sibling nodes.
@@ -192,12 +191,12 @@ var player_id: int = 0:
 ## Peer ID that owns this entity.
 var peer_id: int:
 	get:
-		return G.network.get_peer_id_from_player_id(player_id)
+		return Netcode.get_peer_id_from_player_id(player_id)
 
 ## Local player index within the peer (0, 1, 2...).
 var local_player_index: int:
 	get:
-		return G.network.get_local_player_index_from_player_id(player_id)
+		return Netcode.get_local_player_index_from_player_id(player_id)
 
 var authority_id: int:
 	get:
@@ -238,22 +237,22 @@ func _init() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	G.ensure(
+	Netcode.log.ensure(
 		Utils.check_whether_sub_classes_are_tools(self ),
-		"Subclasses of ReconcilableNetworkedState must be marked with @tool")
+		"Subclasses of ReconcilableState must be marked with @tool")
 
 
 func _enter_tree() -> void:
 	if Engine.is_editor_hint():
 		return
-	G.network.frame_driver.add_networked_state(self )
+	Netcode.frame_driver.add_networked_state(self )
 
 
 func _exit_tree() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	G.network.frame_driver.remove_networked_state(self )
+	Netcode.frame_driver.remove_networked_state(self )
 
 
 func _ready() -> void:
@@ -286,7 +285,7 @@ func update_authority() -> void:
 	var previous_authority_id := get_multiplayer_authority()
 	set_multiplayer_authority(authority_id)
 	if previous_authority_id != authority_id:
-		G.print(
+		Netcode.log.print(
 			(
 				"%s authority changed: %d -> %d "
 				+"(server_auth=%s, peer_id=%d, is_local_auth=%s)"
@@ -298,7 +297,7 @@ func update_authority() -> void:
 				peer_id,
 				is_multiplayer_authority(),
 			],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC)
+			NetworkLogger.CATEGORY_NETWORK_SYNC)
 
 
 func _handle_new_authoritative_state() -> void:
@@ -312,30 +311,30 @@ func _handle_new_authoritative_state() -> void:
 	var new_frame_authority: int = _get_packed_authority(packed_state)
 
 	# PAUSE FILTERING: Reject states from after pause started.
-	if G.network.frame_driver.is_paused:
-		var pause_frame: int = G.network.frame_driver.pause_start_frame
+	if Netcode.frame_driver.is_paused:
+		var pause_frame: int = Netcode.frame_driver.pause_start_frame
 		if state_frame_index > pause_frame:
-			if G.is_verbose:
-				G.verbose(
+			if Netcode.log.is_verbose:
+				Netcode.log.verbose(
 					"%s F:%d Rejecting state from frame %d (after pause at %d)" % [
 						name,
-						G.network.server_frame_index,
+						Netcode.server_frame_index,
 						state_frame_index,
 						pause_frame,
 					],
-					ScaffolderLog.CATEGORY_NETWORK_SYNC)
+					NetworkLogger.CATEGORY_NETWORK_SYNC)
 			return
 
-	if G.is_verbose:
+	if Netcode.log.is_verbose:
 		var authority_string: StringName = FrameAuthority.keys()[new_frame_authority]
-		G.print("%s F:%d Received %s state for frame %d" %
+		Netcode.log.verbose("%s F:%d Received %s state for frame %d" %
 			[
 				name,
-				G.network.server_frame_index,
+				Netcode.server_frame_index,
 				authority_string,
 				state_frame_index,
 			],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC)
+			NetworkLogger.CATEGORY_NETWORK_SYNC)
 
 	# Clients should ignore PREDICTED state from server-authoritative nodes entirely.
 	# Only the server's AUTHORITATIVE state matters for reconciliation.
@@ -343,56 +342,58 @@ func _handle_new_authoritative_state() -> void:
 	# states because they have no local prediction alternative.
 	if (
 		is_server_authoritative
-		and G.network.is_client
+		and Netcode.is_client
 		and new_frame_authority == FrameAuthority.PREDICTED
 		and not _should_accept_predicted_states()
 	):
-		if G.is_verbose:
-			G.print(
+		if Netcode.log.is_verbose:
+			Netcode.log.verbose(
 				"%s F:%d Ignoring PREDICTED server state for frame %d" %
 				[
 					name,
-					G.network.server_frame_index,
+					Netcode.server_frame_index,
 					state_frame_index,
 				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC)
+				NetworkLogger.CATEGORY_NETWORK_SYNC)
 		return
 
-	if G.network.frame_driver.is_frame_too_old_to_consider(state_frame_index):
-		G.warning(
+	if Netcode.frame_driver.is_frame_too_old_to_consider(state_frame_index):
+		Netcode.log.warning(
 			(
 				"Received networked state that is too old to reconcile - "
 				+"DISCARDING: state frame: %d, local frame: %d, "
 				+"oldest acceptable: %d"
 			) % [
 				state_frame_index,
-				G.network.server_frame_index,
-				G.network.frame_driver.oldest_rollbackable_frame_index,
+				Netcode.server_frame_index,
+				Netcode.frame_driver.oldest_rollbackable_frame_index,
 			],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC)
+			NetworkLogger.CATEGORY_NETWORK_SYNC)
 		return
 
 	var should_trigger_fast_forward := (
-		G.network.server_frame_index < state_frame_index - 1 and G.network.is_client
+		Netcode.server_frame_index < state_frame_index - 1 and Netcode.is_client
 	)
-	var is_more_than_one_frame_ahead := G.network.server_frame_index < state_frame_index - 2
+	var is_more_than_one_frame_ahead := Netcode.server_frame_index < state_frame_index - 2
 
 	# Server rejects client states that are too far in the future (2+ frames ahead).
 	# This likely indicates a bug or malicious client.
-	if G.network.is_server and is_more_than_one_frame_ahead:
-		G.warning(
-			(
-				"Rejecting too-distant-future state from client: "
-				+"state frame %d, server frame %d"
-			) % [state_frame_index, G.network.server_frame_index],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC)
+	if Netcode.is_server and is_more_than_one_frame_ahead:
+		# Suppress warning during grace period after frame reset (expected during reconnection).
+		if not Netcode.frame_driver.is_in_sync_grace_period:
+			Netcode.log.warning(
+				(
+					"Rejecting too-distant-future state from client: "
+					+"state frame %d, server frame %d"
+				) % [state_frame_index, Netcode.server_frame_index],
+				NetworkLogger.CATEGORY_NETWORK_SYNC)
 		return
 
 	# Unpack if state is for current frame, next frame, or past. State for the
 	# next frame is valid when received between physics ticks.
-	var should_unpack_state := state_frame_index >= G.network.server_frame_index
+	var should_unpack_state := state_frame_index >= Netcode.server_frame_index
 	var should_check_for_prediction_mismatch := (
-		state_frame_index < G.network.server_frame_index
+		state_frame_index < Netcode.server_frame_index
 		and _rollback_buffer.has_at(state_frame_index)
 		and new_frame_authority == FrameAuthority.AUTHORITATIVE
 	)
@@ -407,23 +408,23 @@ func _handle_new_authoritative_state() -> void:
 				packed_state,
 				buffer_state,
 			)
-			G.verbose(
+			Netcode.log.verbose(
 				"Prediction state mismatch (%s): %s" %
 				[node_type, mismatch_details],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC)
+				NetworkLogger.CATEGORY_NETWORK_SYNC)
 
 			# Queue rollback with detailed cause logging.
 			var primary_cause := mismatched_properties[0] as String
-			G.network.frame_driver.queue_rollback(state_frame_index)
+			Netcode.frame_driver.queue_rollback(state_frame_index)
 
-			if G.is_verbose:
-				G.verbose(
+			if Netcode.log.is_verbose:
+				Netcode.log.verbose(
 					"Rollback queued: frame=%d, cause=%s mismatch (%s)" % [
 						state_frame_index,
 						primary_cause,
 						name
 					],
-					ScaffolderLog.CATEGORY_NETWORK_SYNC
+					NetworkLogger.CATEGORY_NETWORK_SYNC
 				)
 
 		# Release the array back to pool
@@ -442,11 +443,13 @@ func _handle_new_authoritative_state() -> void:
 	# If we have skipped frames, we need to force the entire system to
 	# fast-forward.
 	if should_trigger_fast_forward:
-		G.print(
-			"Fast-forwarding due to future state from server",
-			ScaffolderLog.CATEGORY_NETWORK_SYNC)
+		# Suppress message during grace period after frame reset (expected during reconnection).
+		if not Netcode.frame_driver.is_in_sync_grace_period:
+			Netcode.log.print(
+				"Fast-forwarding due to future state from server",
+				NetworkLogger.CATEGORY_NETWORK_SYNC)
 
-		G.network.frame_driver.fast_forward(state_frame_index - 1)
+		Netcode.frame_driver.fast_forward(state_frame_index - 1)
 
 
 func _network_process() -> void:
@@ -463,10 +466,10 @@ func _pre_network_process() -> void:
 		if _rollback_buffer == null:
 			return
 
-	frame_index = G.network.server_frame_index
+	frame_index = Netcode.server_frame_index
 	frame_authority = FrameAuthority.UNKNOWN
 
-	G.check(
+	Netcode.log.check(
 		_rollback_buffer.get_latest_index() >= frame_index - 2,
 		("Rollback buffer missing required frame: " +
 		"current=%d, needs=%d, latest=%d") %
@@ -513,7 +516,7 @@ func _post_network_process() -> void:
 
 
 func _get_is_server_authoritative() -> bool:
-	G.fatal(
+	Netcode.log.fatal(
 		"Abstract ReconcilableNetworkState._get_is_server_authoritative is not implemented")
 	return true
 
@@ -530,7 +533,7 @@ func _should_accept_predicted_states() -> bool:
 ## Must be overridden by subclasses to return true if they track interactions
 ## (regardless of whether they are rollbackable or non-rollbackable).
 func _has_non_rollbackable_interactions() -> bool:
-	G.fatal(
+	Netcode.log.fatal(
 		"Abstract ReconcilableNetworkState._has_non_rollbackable_interactions " +
 		"is not implemented"
 	)
@@ -542,20 +545,20 @@ func _has_non_rollbackable_interactions() -> bool:
 ## Override to return false for non-rollbackable interactions
 ## (server-authoritative interactions where the first impression is final).
 func _is_interaction_rollbackable(_interaction_type: int) -> bool:
-	G.fatal(
+	Netcode.log.fatal(
 		"Abstract ReconcilableNetworkState._is_interaction_rollbackable is not implemented")
 	return true
 
 
 func _get_default_values() -> Array:
-	G.fatal(
+	Netcode.log.fatal(
 		"Abstract ReconcilableNetworkState._get_default_values is not implemented")
 	return []
 
 
 ## This will update the surrounding scene state to match the networked state.
 func _sync_to_scene_state(_previous_state: Array) -> void:
-	G.fatal(
+	Netcode.log.fatal(
 		"Abstract ReconcilableNetworkState._sync_to_scene_state is not implemented"
 	)
 
@@ -566,14 +569,14 @@ func _sync_to_scene_state(_previous_state: Array) -> void:
 ## Called after _sync_to_scene_state() to ensure derived state matches the
 ## restored frame.
 func _restore_indirect_interaction_state(_frame_state: Array) -> void:
-	G.fatal(
+	Netcode.log.fatal(
 		"Abstract ReconcilableNetworkState._restore_indirect_interaction_state is not implemented")
 	pass
 
 
 ## This will update the networked state to match the surrounding scene state.
 func _sync_from_scene_state() -> void:
-	G.fatal(
+	Netcode.log.fatal(
 		"Abstract ReconcilableNetworkState._sync_from_scene_state is not implemented"
 	)
 
@@ -582,7 +585,7 @@ func _update_replication_config() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	if not G.ensure(is_instance_valid(root)):
+	if not Netcode.log.ensure(is_instance_valid(root)):
 		return
 
 	var packed_state_path := "%s:packed_state" % root.get_path_to(self )
@@ -597,16 +600,16 @@ func _set_up_rollback_buffer() -> void:
 	default_values.append(FrameAuthority.PREDICTED)
 
 	_rollback_buffer = RollbackBuffer.new(
-		G.network.frame_driver.rollback_buffer_size,
-		G.network.frame_driver.server_frame_index,
+		Netcode.frame_driver.rollback_buffer_size,
+		Netcode.frame_driver.server_frame_index,
 		default_values,
 	)
 
 
 func _has_authoritative_state_for_current_frame() -> bool:
-	if not _rollback_buffer.has_at(G.network.server_frame_index):
+	if not _rollback_buffer.has_at(Netcode.server_frame_index):
 		return false
-	var frame_data: Array = _rollback_buffer.get_at(G.network.server_frame_index)
+	var frame_data: Array = _rollback_buffer.get_at(Netcode.server_frame_index)
 	return frame_data[frame_data.size() - 1] == FrameAuthority.AUTHORITATIVE
 
 
@@ -623,26 +626,26 @@ func _pack_networked_state() -> void:
 	state[i] = frame_index
 	_is_packing_state_locally = true
 
-	if G.is_verbose:
+	if Netcode.log.is_verbose:
 		var authority_string: StringName = FrameAuthority.keys()[frame_authority]
 		if not is_server_authoritative:
-				G.print(
+				Netcode.log.verbose(
 					"%s F:%d Packed client-auth state (%s)" %
 					[
 						name,
-						G.network.server_frame_index,
+						Netcode.server_frame_index,
 						authority_string,
 					],
-					ScaffolderLog.CATEGORY_NETWORK_SYNC)
+					NetworkLogger.CATEGORY_NETWORK_SYNC)
 		else:
-			G.print(
+			Netcode.log.verbose(
 				"%s F:%d Packed server-auth state (%s)" %
 				[
 					name,
-					G.network.server_frame_index,
+					Netcode.server_frame_index,
 					authority_string,
 				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC)
+				NetworkLogger.CATEGORY_NETWORK_SYNC)
 
 	if not packed_state.is_empty():
 		ArrayPool.release(packed_state)
@@ -653,12 +656,12 @@ func _pack_networked_state() -> void:
 
 func _unpack_networked_state() -> void:
 	# Empty packed_state is expected and normal during initial sync. When a
-	# ReconcilableNetworkedState is first created, MultiplayerSynchronizer may
+	# ReconcilableState is first created, MultiplayerSynchronizer may
 	# trigger a sync before we've packed any state.
 	if packed_state.is_empty():
 		return
 
-	if not G.ensure(
+	if not Netcode.log.ensure(
 			packed_state.size() == _property_names_for_packing.size() + 2):
 		return
 
@@ -699,8 +702,8 @@ func _pack_buffer_state_from_local_state() -> void:
 		if is_frame_locked:
 			# Buffer has authoritative onset - preserve interaction properties,
 			# but always update physics state (position, velocity).
-			if G.is_verbose and last_interaction_type != existing_interaction_type:
-				G.verbose(
+			if Netcode.log.is_verbose and last_interaction_type != existing_interaction_type:
+				Netcode.log.verbose(
 					"Preserving onset %s from buffer, not overwriting " +
 					"with local %s at frame %d (%s)" % [
 						_get_interaction_type_name(existing_interaction_type),
@@ -708,7 +711,7 @@ func _pack_buffer_state_from_local_state() -> void:
 						frame_index,
 						name
 					],
-					ScaffolderLog.CATEGORY_NETWORK_SYNC
+					NetworkLogger.CATEGORY_NETWORK_SYNC
 				)
 
 			# Pack hybrid state: interaction from buffer, physics from local.
@@ -784,9 +787,9 @@ func _pack_buffer_state_from_network_state(packed_network_state: Array) -> void:
 		var is_frame_locked := is_onset and is_non_rollbackable
 
 		if is_frame_locked:
-			if G.network.is_client:
+			if Netcode.is_client:
 				# CLIENT: Server should never send NONE for onset.
-				G.fatal(
+				Netcode.log.fatal(
 					("Network NONE from server attempting to overwrite non-rollbackable " +
 					"onset %s at frame %d - critical server bug! (%s)") % [
 						_get_interaction_type_name(existing_interaction_type),
@@ -797,14 +800,14 @@ func _pack_buffer_state_from_network_state(packed_network_state: Array) -> void:
 				return
 			else:
 				# SERVER: Reject bogus client state and log error.
-				G.error(
+				Netcode.log.error(
 					("Rejecting network NONE from client attempting to overwrite " +
 					"non-rollbackable onset %s at frame %d - bogus client state (%s)") % [
 						_get_interaction_type_name(existing_interaction_type),
 						frame_index,
 						name
 					],
-					ScaffolderLog.CATEGORY_NETWORK_SYNC
+					NetworkLogger.CATEGORY_NETWORK_SYNC
 				)
 				# Don't pack the bogus network state. Keep buffer's onset intact.
 				return
@@ -871,7 +874,7 @@ func _cleanup_buffer_after_pause(pause_frame: int) -> void:
 ## frame and previous frames.
 ##
 ## This should be called (deferred) after _ready() completes to ensure the
-## ReconcilableNetworkedState's _ready() has finished setting up the buffer.
+## ReconcilableState's _ready() has finished setting up the buffer.
 ## It prevents _pre_network_process from loading default zero values from the
 ## buffer on the first frame by pre-populating frames N-2, N-1, and N.
 ##
@@ -882,7 +885,7 @@ func _cleanup_buffer_after_pause(pause_frame: int) -> void:
 ## state for the partner node if one exists (e.g., the client-authoritative
 ## input state paired with a server-authoritative character state).
 func record_initial_state(include_partners := true) -> void:
-	var current_frame := G.network.server_frame_index
+	var current_frame := Netcode.server_frame_index
 
 	# Sync the current scene state to the networked properties
 	_sync_from_scene_state()
@@ -1108,7 +1111,7 @@ func _check_do_values_mismatch(
 			else:
 				return buffer_value.distance_squared_to(networked_value) >= threshold * threshold
 		_:
-			G.fatal(
+			Netcode.log.fatal(
 				"Type not yet supported for client-prediction mismatch threshold calculations: %s" %
 				type_string(buffer_value))
 			return true
@@ -1124,10 +1127,10 @@ func _update_partner_state() -> void:
 	input_from_client = null
 	forwarded_input_from_server = null
 
-	# Collect all sibling ReconcilableNetworkedState nodes and categorize them.
-	var sibling_states: Array[ReconcilableNetworkedState] = []
+	# Collect all sibling ReconcilableState nodes and categorize them.
+	var sibling_states: Array[ReconcilableState] = []
 	for child in get_parent().get_children():
-		if child is ReconcilableNetworkedState and child != self:
+		if child is ReconcilableState and child != self:
 			sibling_states.append(child)
 
 			# Populate named properties based on node type.
@@ -1143,7 +1146,7 @@ func _update_partner_state() -> void:
 	if sibling_states.size() == 0:
 		# Valid 1-node setup (NPC with only CharacterStateFromServer).
 		if is_client_authoritative:
-			_partner_state_configuration_warning = ("A client-authoritative ReconcilableNetworkedState node must be accompanied by a server-authoritative ReconcilableNetworkedState sibling node")
+			_partner_state_configuration_warning = ("A client-authoritative ReconcilableState node must be accompanied by a server-authoritative ReconcilableState sibling node")
 	elif sibling_states.size() == 1:
 		# Invalid 2-node setup. Players now require the full 3-node setup.
 		_partner_state_configuration_warning = (
@@ -1192,16 +1195,16 @@ func _update_partner_state() -> void:
 		else:
 			_partner_state_configuration_warning = ("3-node configuration requires exactly 1 client-authoritative and 2 server-authoritative nodes")
 	elif sibling_states.size() > 2:
-		_partner_state_configuration_warning = ("There should be no more than 3 ReconcilableNetworkedState nodes (1 client-auth + 2 server-auth for Player, or 1 server-auth for NPC)")
+		_partner_state_configuration_warning = ("There should be no more than 3 ReconcilableState nodes (1 client-auth + 2 server-auth for Player, or 1 server-auth for NPC)")
 
 	if not Engine.is_editor_hint() and not _partner_state_configuration_warning.is_empty():
 		# Log and assert in game runtime environments.
-		G.error(
-			"ReconcilableNetworkedState is misconfigured: %s" %
+		Netcode.log.error(
+			"ReconcilableState is misconfigured: %s" %
 			_partner_state_configuration_warning,
-			ScaffolderLog.CATEGORY_CORE_SYSTEMS)
+			NetworkLogger.CATEGORY_CORE_SYSTEMS)
 
-	# Also refresh sibling ReconcilableNetworkedState warnings.
+	# Also refresh sibling ReconcilableState warnings.
 	# Trigger configuration warning updates on all siblings.
 	if is_instance_valid(state_from_server):
 		state_from_server.update_configuration_warnings()
@@ -1218,7 +1221,7 @@ func _get_configuration_warnings() -> PackedStringArray:
 
 	if thresholds == null:
 		warnings.append(
-			"A _synced_properties_and_rollback_diff_thresholds property must be defined on subclasses of ReconcilableNetworkedState",
+			"A _synced_properties_and_rollback_diff_thresholds property must be defined on subclasses of ReconcilableState",
 		)
 	elif not thresholds is Dictionary:
 		warnings.append(
@@ -1283,7 +1286,7 @@ func _get_string_for_value(value, is_final_value := false) -> String:
 		TYPE_VECTOR2, TYPE_VECTOR2I:
 			return Utils.get_vector_string(value, 1)
 		_:
-			G.fatal(
+			Netcode.log.fatal(
 				"Type not yet supported for rollback buffer: %s" %
 				type_string(value))
 			return ""
@@ -1314,11 +1317,11 @@ func record_interaction(
 	# recorded, it must persist until explicitly replaced by another non-NONE
 	# interaction (e.g., DIE persists until SPAWN).
 	if interaction_type == _NONE_INTERACTION_TYPE:
-		G.fatal(
+		Netcode.log.fatal(
 			"Attempted to record NONE interaction. This should never happen! " +
 			"Current: %s, Frame: %d" % [
 				_get_interaction_type_name(last_interaction_type),
-				G.network.server_frame_index if G.network else -1
+				Netcode.server_frame_index if Netcode else -1
 			]
 		)
 		return
@@ -1326,20 +1329,20 @@ func record_interaction(
 	var old_type := last_interaction_type
 	last_interaction_type = interaction_type
 	last_interaction_frame_index = (
-		frame_index if frame_index >= 0 else G.network.server_frame_index
+		frame_index if frame_index >= 0 else Netcode.server_frame_index
 	)
 	last_interaction_position = position
 	last_interaction_direction = direction
 
-	if G.is_verbose and G.network.is_server:
-		G.print(
+	if Netcode.log.is_verbose and Netcode.is_server:
+		Netcode.log.verbose(
 			"[INTERACTION] Player %d: %s -> %s at frame %d" % [
 				player_id,
 				_get_interaction_type_name(old_type),
 				_get_interaction_type_name(interaction_type),
 				last_interaction_frame_index,
 			],
-			ScaffolderLog.CATEGORY_GAME_STATE
+			NetworkLogger.CATEGORY_GAME_STATE
 		)
 
 
@@ -1352,10 +1355,10 @@ func _should_reconcile_interaction(
 ) -> bool:
 	if interaction_frame <= last_reconciled_frame:
 		return false
-	if G.network.frame_driver.is_frame_too_old_to_consider(interaction_frame):
-		G.warning(
+	if Netcode.frame_driver.is_frame_too_old_to_consider(interaction_frame):
+		Netcode.log.warning(
 			"Interaction too old to reconcile: frame %d" % interaction_frame,
-			ScaffolderLog.CATEGORY_NETWORK_SYNC,
+			NetworkLogger.CATEGORY_NETWORK_SYNC,
 		)
 		return false
 	if not _rollback_buffer.has_at(interaction_frame):

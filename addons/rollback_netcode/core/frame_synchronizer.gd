@@ -1,4 +1,4 @@
-class_name FrameIndexSynchronizer
+class_name FrameSynchronizer
 extends Node
 ## Synchronizes frame indices between server and clients using NTP-like
 ## protocol.
@@ -19,9 +19,18 @@ extends Node
 ## 5. Client estimates frames elapsed during transmission from t3 to t4.
 ## 6. Client estimates current server frame and corrects drift if needed.
 
-const DRIFT_THRESHOLD_FRAMES := 1 # Correct if +/- 3 frames off.
+const DRIFT_THRESHOLD_FRAMES := 1 # Correct if +/- 1 frame off.
 const PING_INTERVAL_SEC := 3.0 # Ping server every 3 seconds.
 const RTT_SMOOTHING_FACTOR := 0.2 # Exponential moving average weight.
+
+# Network timing derived from FrameDriver config.
+var target_network_time_step_sec: float:
+	get:
+		return (
+			Netcode.frame_driver.target_network_time_step_sec if
+			Netcode.frame_driver else
+			1.0 / 60.0
+		)
 
 var _time_since_last_ping_sec := 0.0
 
@@ -42,7 +51,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	# Only clients send pings. Server responds with pongs containing frame
 	# index.
-	if G.network.is_client and G.network.is_connected_to_server:
+	if Netcode.connector.is_client and Netcode.connector.is_connected_to_server:
 		_client_process(delta)
 
 
@@ -72,7 +81,7 @@ func _server_rpc_ping(client_t1: int) -> void:
 
 	# Immediately respond with pong, including current frame index.
 	var t3 := Time.get_ticks_usec() # Server send time.
-	var current_frame := G.network.frame_driver.server_frame_index
+	var current_frame := Netcode.frame_driver.server_frame_index
 	_client_rpc_pong.rpc_id(sender_id, client_t1, t2, t3, current_frame)
 
 
@@ -104,7 +113,7 @@ func _client_rpc_pong(
 	var transmission_time_usec := t4 - server_t3
 	var frames_during_transmission := roundi(
 		float(transmission_time_usec) /
-		(NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC * 1_000_000.0)
+		(target_network_time_step_sec * 1_000_000.0)
 	)
 
 	# Estimate current server frame index.
@@ -112,7 +121,7 @@ func _client_rpc_pong(
 		server_frame_at_t3 + frames_during_transmission
 	)
 
-	var local_frame := G.network.frame_driver.server_frame_index
+	var local_frame := Netcode.frame_driver.server_frame_index
 	var drift := estimated_current_server_frame - local_frame
 
 	# Correct drift if outside threshold.
@@ -122,25 +131,23 @@ func _client_rpc_pong(
 
 	if drift > 0:
 		# Client is behind - use existing fast-forward logic.
-		G.network.frame_driver.fast_forward(estimated_current_server_frame)
-		if G.is_verbose:
-			G.verbose(
+		Netcode.frame_driver.fast_forward(estimated_current_server_frame)
+		if Netcode.log.is_verbose:
+			Netcode.log.verbose(
 				"Client behind by %d frames, fast-forwarding to %d" % [
 					drift,
 					estimated_current_server_frame,
 				],
-				ScaffolderLog.CATEGORY_NETWORK_SYNC
+				NetworkLogger.CATEGORY_SYNC
 			)
 	else:
 		# Client is ahead - hard reset (shouldn't happen normally).
-		G.warning(
+		Netcode.log.warning(
 			"Client ahead of server by %d frames! Hard reset from %d to %d" % [
 				abs(drift),
 				local_frame,
 				estimated_current_server_frame,
 			],
-			ScaffolderLog.CATEGORY_NETWORK_SYNC
+			NetworkLogger.CATEGORY_SYNC
 		)
-		G.network.frame_driver.server_frame_index = (
-			estimated_current_server_frame
-		)
+		Netcode.frame_driver.server_frame_index = estimated_current_server_frame

@@ -84,7 +84,7 @@ func _ready() -> void:
     var config := load("res://network_settings.tres") as NetworkSettings
     var logger := GameLogger.new()
 
-    Netcode.config = config
+    Netcode.settings = config
     Netcode.log = logger
     Netcode.initialize()  # TimeUtils is created automatically
 

@@ -22,7 +22,7 @@ func cleanup() -> void:
 
 
 func get_time_step_sec() -> float:
-	return Netcode.target_network_time_step_sec
+	return Netcode.frame_driver.target_network_time_step_sec
 
 
 ## Get play time (same as app time in this simple implementation).
@@ -75,15 +75,17 @@ func clear_timeout(id: int) -> void:
 
 
 ## Create a throttled version of a callback.
+## The returned callable accepts variable arguments and passes them through.
 func throttle(callback: Callable, cooldown_sec: float) -> Callable:
 	# Use array to allow mutation from lambda (arrays are passed by reference).
 	var last_call_time := [-INF]
 
-	return func() -> void:
+	# Return a callable that accepts any arguments via Variant array.
+	return func(args: Array = []) -> void:
 		var current_time := Time.get_ticks_msec() / 1000.0
 		if current_time - last_call_time[0] >= cooldown_sec:
 			last_call_time[0] = current_time
-			callback.call()
+			callback.callv(args)
 
 
 # --- Helper classes ---
