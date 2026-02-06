@@ -53,7 +53,7 @@ func _network_process() -> void:
 	last_processed_frame = frame_index
 
 	# Simple physics: position += velocity * delta.
-	position += velocity * G.network.frame_driver.target_network_time_step_sec
+	position += velocity * Netcode.frame_driver.target_network_time_step_sec
 
 
 func _post_network_process() -> void:

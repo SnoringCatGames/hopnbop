@@ -24,9 +24,7 @@ func _ready() -> void:
 	# other players each time).
 	G.time.set_interval(
 		_update_label_visibility,
-		0.2,
-		[],
-		TimeType.APP_CLOCK,
+		0.2
 	)
 
 

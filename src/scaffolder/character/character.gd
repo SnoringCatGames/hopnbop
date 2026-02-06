@@ -163,7 +163,7 @@ func _collect_actions() -> void:
 	for action_source in _action_sources:
 		action_source.update(
 			actions,
-			G.time.get_scaled_network_time())
+			G.time.get_scaled_network_frame_delta())
 
 	actions.log_new_presses_and_releases(self)
 
@@ -272,7 +272,7 @@ func _process_sounds() -> void:
 		var current_frame_index := G.network.server_frame_index
 		var event_age := (
 			(current_frame_index - last_triggered_jump_frame_index) *
-			NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC
+			G.network.frame_driver.target_network_time_step_sec
 		)
 		if event_age <= _JUMP_EVENT_STALENESS_THRESHOLD_SEC:
 			play_sound("jump")
@@ -322,7 +322,7 @@ func get_next_position_prediction() -> Vector2:
 	# Since move_and_slide automatically accounts for delta, we need to
 	# compensate for that in order to support our modified framerate.
 	var modified_velocity: Vector2 = velocity * G.time.get_combined_scale()
-	return position + modified_velocity * NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC
+	return position + modified_velocity * G.network.frame_driver.target_network_time_step_sec
 
 
 func get_position_in_screen_space() -> Vector2:

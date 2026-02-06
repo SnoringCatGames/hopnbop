@@ -3,6 +3,10 @@ extends Label
 ## Displays match time remaining in M:SS format.
 
 
+const _TIMER_HIDE_AFTER_ZERO_DELAY_SEC := 0.3
+const _TIMER_TIME_REMAINING_BLINK_THRESHOLD_DELAY_SEC := 30.0
+
+
 func _ready() -> void:
 	if G.network.is_server:
 		visible = false
@@ -19,16 +23,40 @@ func _process(_delta: float) -> void:
 
 
 func _update_display() -> void:
-	# Don't show the countdown if the match hasn't started or has finished.
-	visible = (
-		is_instance_valid(G.match_state) and
-		G.match_state.match_start_frame_index >= 0
+	if not is_instance_valid(G.match_state):
+		visible = false
+		return
+
+	if G.match_state.match_start_frame_index < 0:
+		visible = false
+		return
+
+	# Calculate remaining time (can be negative after expiry).
+	var elapsed_frames := (
+		Netcode.server_frame_index -
+		G.match_state.match_start_frame_index
+	)
+	var elapsed_sec := (
+		elapsed_frames /
+		Netcode.frame_driver.target_network_fps
+	)
+	var remaining_sec := (
+		(G.match_state.match_duration_usec / 1_000_000.0) -
+		elapsed_sec
 	)
 
-	var remaining_sec := G.match_state.match_time_remaining_sec
+	# Hide after timer reaches zero.
+	if remaining_sec < -_TIMER_HIDE_AFTER_ZERO_DELAY_SEC:
+		visible = false
+		return
 
-	# Blink red at a half-second intervalwhen less than 30 seconds remain.
-	if remaining_sec < 30.0:
+	visible = true
+
+	# Clamp to 0 for display.
+	remaining_sec = max(0.0, remaining_sec)
+
+	# Blink red at a half-second interval when less than 30 seconds remain.
+	if remaining_sec < _TIMER_TIME_REMAINING_BLINK_THRESHOLD_DELAY_SEC:
 		modulate = (
 			Color.RED if
 			int(remaining_sec * 2) % 2 == 0 else

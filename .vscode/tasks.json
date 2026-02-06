@@ -1,576 +1,553 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        // =====================================================================
-        // Setup Tasks
-        // =====================================================================
-        {
-            "label": "GameLift: Initial Setup",
-            "type": "shell",
-            "command": "wsl",
-            "args": [
-                "bash",
-                "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --both"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "group": "build",
-            "detail": "Install dependencies and build GameLift GDExtension (first-time setup, both debug+release)"
-        },
-        {
-            "label": "GameLift: Install WSL Dependencies",
-            "type": "shell",
-            "command": "wsl",
-            "args": [
-                "bash",
-                "-c",
-                "sudo apt-get update && sudo apt-get install -y cmake make gcc g++ python3 libssl-dev && pip3 install --user scons"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "detail": "Install build tools in WSL (cmake, make, gcc, scons)"
-        },
-        // =====================================================================
-        // Build Tasks
-        // =====================================================================
-        {
-            "label": "GameLift: Build GDExtension (Release)",
-            "type": "shell",
-            "command": "wsl",
-            "args": [
-                "bash",
-                "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --release"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "detail": "Build GameLift GDExtension (release, Linux) using build.sh"
-        },
-        {
-            "label": "GameLift: Build GDExtension (Debug)",
-            "type": "shell",
-            "command": "wsl",
-            "args": [
-                "bash",
-                "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --debug"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "group": "build",
-            "detail": "Build GameLift GDExtension (debug, Linux) using build.sh"
-        },
-        {
-            "label": "GameLift: Build GDExtension (Both)",
-            "type": "shell",
-            "command": "wsl",
-            "args": [
-                "bash",
-                "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --both"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "group": "build",
-            "detail": "Build GameLift GDExtension (debug + release, Linux) using build.sh"
-        },
-        {
-            "label": "GameLift: Build All Platforms (Release)",
-            "type": "shell",
-            "command": "wsl",
-            "args": [
-                "bash",
-                "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --all-platforms --release"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "group": "build",
-            "detail": "Build GDExtension for Linux, Windows, and macOS (release only)"
-        },
-        {
-            "label": "GameLift: Build All Platforms (Both)",
-            "type": "shell",
-            "command": "wsl",
-            "args": [
-                "bash",
-                "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --all-platforms --both"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "group": "build",
-            "detail": "Build GDExtension for Linux, Windows, and macOS (debug + release)"
-        },
-        {
-            "label": "GameLift: Clean Build",
-            "type": "shell",
-            "command": "wsl",
-            "args": [
-                "bash",
-                "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump/gamelift-gdextension && rm -rf bin/ godot-cpp/bin/ .scons_cache/ .sconsign.dblite && echo 'Build artifacts cleaned'"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "detail": "Clean all build artifacts"
-        },
-        {
-            "label": "GameLift: Full Rebuild (with dependencies)",
-            "type": "shell",
-            "command": "wsl",
-            "args": [
-                "bash",
-                "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump/gamelift-gdextension && rm -rf cmake-build godot-cpp gamelift-server-sdk bin .scons_cache .sconsign.dblite && cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --both"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "group": "build",
-            "detail": "Clean everything and rebuild from scratch (includes downloading dependencies)"
-        },
-        // =====================================================================
-        // Run Tasks
-        // =====================================================================
-        {
-            "label": "Godot: Run Server (Preview Mode)",
-            "type": "process",
-            "command": "godot",
-            "args": [
-                "--headless",
-                "--",
-                "--server",
-                "--preview"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "detail": "Run game server in local preview mode (no GameLift)"
-        },
-        {
-            "label": "Godot: Run 3 Instances (Multi-Client Test)",
-            "type": "process",
-            "command": "godot",
-            "args": [
-                "--debug-collisions",
-                "--remote-debug",
-                "127.0.0.1:6007"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "detail": "Launch Godot editor for multi-instance testing (configure Debug > Customize Run Instances)"
-        },
-        {
-            "label": "GameLift: Run Server (Anywhere Mode)",
-            "type": "process",
-            "command": "godot",
-            "args": [
-                "--headless",
-                "--",
-                "--server"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "detail": "Run game server with GameLift Anywhere fleet (requires fleet setup)"
-        },
-        // =====================================================================
-        // Test Tasks
-        // =====================================================================
-        {
-            "label": "Tests: Run All Tests",
-            "type": "process",
-            "command": "godot",
-            "args": [
-                "--headless",
-                "-s",
-                "--path",
-                ".",
-                "addons/gut/gut_cmdln.gd",
-                "-gexit"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "group": "test",
-            "detail": "Run all GUT tests (unit + integration)"
-        },
-        {
-            "label": "Tests: Run Unit Tests",
-            "type": "process",
-            "command": "godot",
-            "args": [
-                "--headless",
-                "-s",
-                "--path",
-                ".",
-                "addons/gut/gut_cmdln.gd",
-                "-gdir=res://test/unit",
-                "-gexit"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "group": "test",
-            "detail": "Run unit tests only"
-        },
-        {
-            "label": "Tests: Run Integration Tests",
-            "type": "process",
-            "command": "godot",
-            "args": [
-                "--headless",
-                "-s",
-                "--path",
-                ".",
-                "addons/gut/gut_cmdln.gd",
-                "-gdir=res://test/integration",
-                "-gexit"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "group": "test",
-            "detail": "Run integration tests only"
-        },
-        {
-            "label": "Tests: Run Specific Test File",
-            "type": "process",
-            "command": "godot",
-            "args": [
-                "--headless",
-                "-s",
-                "--path",
-                ".",
-                "addons/gut/gut_cmdln.gd",
-                "-gtest=${input:testFile}",
-                "-gexit"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "group": "test",
-            "detail": "Run a specific test file (prompts for path)"
-        },
-        {
-            "label": "Tests: Run with JUnit XML Output",
-            "type": "process",
-            "command": "godot",
-            "args": [
-                "--headless",
-                "-s",
-                "--path",
-                ".",
-                "addons/gut/gut_cmdln.gd",
-                "-gexit",
-                "-gjunit_xml_file=test_results.xml"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "group": "test",
-            "detail": "Run all tests and export JUnit XML results"
-        },
-        // =====================================================================
-        // GameLift Deployment Tasks
-        // =====================================================================
-        {
-            "label": "GameLift: Package for Deployment",
-            "type": "shell",
-            "command": "wsl",
-            "args": [
-                "bash",
-                "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && mkdir -p gamelift-deploy/lib gamelift-deploy/addons && echo 'TODO: Export Godot server build first' && cp -r addons/gamelift gamelift-deploy/addons/ && cp gamelift-gdextension/gamelift-server-sdk/cmake-build/prefix/lib/libaws-cpp-sdk-gamelift-server.so gamelift-deploy/lib/ && echo '#!/bin/bash' > gamelift-deploy/run_server.sh && echo 'export LD_LIBRARY_PATH=\"$(pwd)/lib:$LD_LIBRARY_PATH\"' >> gamelift-deploy/run_server.sh && echo './jumpnthump_server --headless -- --server' >> gamelift-deploy/run_server.sh && chmod +x gamelift-deploy/run_server.sh && tar -czf gamelift-deploy.tar.gz gamelift-deploy/ && echo 'Deployment package created: gamelift-deploy.tar.gz'"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "detail": "Create deployment package for GameLift (requires exported server build)"
-        },
-        {
-            "label": "GameLift: Upload Build to AWS",
-            "type": "shell",
-            "command": "aws",
-            "args": [
-                "gamelift",
-                "upload-build",
-                "--name",
-                "jumpnthump-${input:buildVersion}",
-                "--build-version",
-                "${input:buildVersion}",
-                "--build-root",
-                "gamelift-deploy",
-                "--region",
-                "${input:awsRegion}"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "detail": "Upload deployment package to GameLift (requires AWS CLI configured)"
-        },
-        {
-            "label": "GameLift: Export Linux Server",
-            "type": "shell",
-            "command": "godot",
-            "args": [
-                "--headless",
-                "--export-release",
-                "Linux Server",
-                "build/linux/jumpnthump_server.x86_64"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "detail": "Export dedicated Linux server build for GameLift deployment"
-        },
-        {
-            "label": "GameLift: Package Build",
-            "type": "shell",
-            "command": "wsl",
-            "args": [
-                "bash",
-                "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && rm -rf gamelift-deploy && mkdir -p gamelift-deploy/lib gamelift-deploy/addons && cp -r build/linux/* gamelift-deploy/ && cp -r addons/gamelift gamelift-deploy/addons/ && cp gamelift-gdextension/gamelift-server-sdk/cmake-build/prefix/lib/libaws-cpp-sdk-gamelift-server.so gamelift-deploy/lib/ 2>/dev/null || echo 'Warning: GameLift SDK lib not found, build GDExtension first' && cat > gamelift-deploy/run_server.sh << 'EOF'\n#!/bin/bash\nexport LD_LIBRARY_PATH=\"$(pwd)/lib:$LD_LIBRARY_PATH\"\n./jumpnthump_server.x86_64 --headless -- --server\nEOF\n && chmod +x gamelift-deploy/run_server.sh && echo 'Package created in gamelift-deploy/'"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "dependsOn": [
-                "GameLift: Export Linux Server"
-            ],
-            "detail": "Package exported server with GameLift SDK for deployment"
-        },
-        {
-            "label": "GameLift: Upload Build",
-            "type": "shell",
-            "command": "wsl",
-            "args": [
-                "bash",
-                "-c",
-                "cd /mnt/c/Users/lsl/Repositories/jumpnthump && aws gamelift upload-build --name \"jumpnthump-${BUILD_VERSION:-$(date +%Y%m%d-%H%M%S)}\" --build-version \"${BUILD_VERSION:-$(date +%Y%m%d-%H%M%S)}\" --build-root gamelift-deploy --operating-system AMAZON_LINUX_2023 --region ${AWS_REGION:-us-east-1}"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "dependsOn": [
-                "GameLift: Package Build"
-            ],
-            "detail": "Upload packaged build to AWS GameLift"
-        },
-        {
-            "label": "GameLift: Create Fleet (Interactive)",
-            "type": "shell",
-            "command": "bash",
-            "args": [
-                "-c",
-                "echo 'Creating GameLift Fleet...' && echo '' && echo 'Note: Check AWS Console for the latest build ID from the upload.' && echo '' && echo 'Sample command:' && echo 'aws gamelift create-fleet \\' && echo '  --name \"jumpnthump-dev-fleet\" \\' && echo '  --description \"Development fleet for Jump n Thump\" \\' && echo '  --build-id \"build-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\" \\' && echo '  --ec2-instance-type c5.large \\' && echo '  --fleet-type ON_DEMAND \\' && echo '  --runtime-configuration \"ServerProcesses=[{LaunchPath=/local/game/run_server.sh,ConcurrentExecutions=1}]\" \\' && echo '  --ec2-inbound-permissions \"FromPort=7777,ToPort=7777,IpRange=0.0.0.0/0,Protocol=UDP\" \\' && echo '  --region us-east-1' && echo '' && echo 'Or use AWS Console: https://console.aws.amazon.com/gamelift/'"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "detail": "Instructions and example for creating a GameLift fleet"
-        },
-        {
-            "label": "GameLift: Setup Anywhere Fleet",
-            "type": "shell",
-            "command": "bash",
-            "args": [
-                "-c",
-                "echo '=== GameLift Anywhere Fleet Setup ===' && echo '' && echo '1. Create Anywhere fleet (if not exists):' && echo '   aws gamelift create-fleet --name \"jumpnthump-anywhere\" --compute-type ANYWHERE --locations \"Location=custom-location-1\"' && echo '' && echo '2. Register compute:' && echo '   aws gamelift register-compute --fleet-id fleet-xxxxx --compute-name my-local-pc --ip-address 127.0.0.1 --location custom-location-1' && echo '' && echo '3. Get auth token:' && echo '   aws gamelift get-compute-auth-token --fleet-id fleet-xxxxx --compute-name my-local-pc' && echo '' && echo '4. Set environment variables and run server' && echo '' && echo 'See: https://docs.aws.amazon.com/gamelift/latest/developerguide/fleets-creating-anywhere.html'"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "detail": "Instructions for setting up GameLift Anywhere fleet for local development"
-        },
-        // =====================================================================
-        // Development Tasks
-        // =====================================================================
-        {
-            "label": "Dev: Format GDScript",
-            "type": "shell",
-            "command": "godot",
-            "args": [
-                "--headless",
-                "--script",
-                "addons/gdscript_formatter/format_project.gd",
-                "--quit"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "detail": "Format all GDScript files using gdscript_formatter addon"
-        },
-        {
-            "label": "Dev: Open Godot Editor",
-            "type": "process",
-            "command": "godot",
-            "args": [
-                "-e"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "never"
-            },
-            "detail": "Open Godot editor"
-        },
-        {
-            "label": "Dev: Check for Pre-existing Errors",
-            "type": "process",
-            "command": "godot",
-            "args": [
-                "--headless",
-                "--check-only",
-                "--quit"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
-            },
-            "detail": "Check for GDScript parse errors without running"
-        },
-        // =====================================================================
-        // Git Tasks
-        // =====================================================================
-        {
-            "label": "Git: Commit with Co-Author",
-            "type": "shell",
-            "command": "git",
-            "args": [
-                "commit",
-                "-m",
-                "${input:commitMessage}",
-                "-m",
-                "",
-                "-m",
-                "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "detail": "Create git commit with Claude co-author attribution"
-        }
-    ],
-    // =========================================================================
-    // Input Prompts
-    // =========================================================================
-    "inputs": [
-        {
-            "id": "testFile",
-            "type": "promptString",
-            "description": "Test file path (e.g., res://test/unit/networking/test_rollback_buffer.gd)",
-            "default": "res://test/unit/"
-        },
-        {
-            "id": "buildVersion",
-            "type": "promptString",
-            "description": "Build version (e.g., 1.0.0, 2024-01-23)",
-            "default": "1.0.0"
-        },
-        {
-            "id": "awsRegion",
-            "type": "pickString",
-            "description": "AWS Region",
-            "options": [
-                "us-east-1",
-                "us-west-2",
-                "eu-west-1",
-                "ap-northeast-1"
-            ],
-            "default": "us-east-1"
-        },
-        {
-            "id": "commitMessage",
-            "type": "promptString",
-            "description": "Commit message",
-            "default": "Update"
-        }
-    ]
+	"version": "2.0.0",
+	"tasks": [
+		// =====================================================================
+		// Setup Tasks
+		// =====================================================================
+		{
+			"label": "GameLift: Initial Setup",
+			"type": "shell",
+			"command": "wsl",
+			"args": [
+				"bash",
+				"-c",
+				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --both"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"group": "build",
+			"detail": "Install dependencies and build GameLift GDExtension (first-time setup, both debug+release)"
+		},
+		{
+			"label": "GameLift: Install WSL Dependencies",
+			"type": "shell",
+			"command": "wsl",
+			"args": [
+				"bash",
+				"-c",
+				"sudo apt-get update && sudo apt-get install -y cmake make gcc g++ python3 libssl-dev && pip3 install --user scons"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"detail": "Install build tools in WSL (cmake, make, gcc, scons)"
+		},
+		// =====================================================================
+		// Build Tasks
+		// =====================================================================
+		{
+			"label": "GameLift: Build GDExtension (Release)",
+			"type": "shell",
+			"command": "wsl",
+			"args": [
+				"bash",
+				"-c",
+				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --release"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "Build GameLift GDExtension (release, Linux) using build.sh"
+		},
+		{
+			"label": "GameLift: Build GDExtension (Debug)",
+			"type": "shell",
+			"command": "wsl",
+			"args": [
+				"bash",
+				"-c",
+				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --debug"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"group": "build",
+			"detail": "Build GameLift GDExtension (debug, Linux) using build.sh"
+		},
+		{
+			"label": "GameLift: Build GDExtension (Both)",
+			"type": "shell",
+			"command": "wsl",
+			"args": [
+				"bash",
+				"-c",
+				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --both"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"group": "build",
+			"detail": "Build GameLift GDExtension (debug + release, Linux) using build.sh"
+		},
+		{
+			"label": "GameLift: Build All Platforms (Release)",
+			"type": "shell",
+			"command": "wsl",
+			"args": [
+				"bash",
+				"-c",
+				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --all-platforms --release"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"group": "build",
+			"detail": "Build GDExtension for Linux, Windows, and macOS (release only)"
+		},
+		{
+			"label": "GameLift: Build All Platforms (Both)",
+			"type": "shell",
+			"command": "wsl",
+			"args": [
+				"bash",
+				"-c",
+				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --all-platforms --both"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"group": "build",
+			"detail": "Build GDExtension for Linux, Windows, and macOS (debug + release)"
+		},
+		{
+			"label": "GameLift: Clean Build",
+			"type": "shell",
+			"command": "wsl",
+			"args": [
+				"bash",
+				"-c",
+				"cd /mnt/c/Users/lsl/Repositories/jumpnthump/gamelift-gdextension && rm -rf bin/ godot-cpp/bin/ .scons_cache/ .sconsign.dblite && echo 'Build artifacts cleaned'"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"detail": "Clean all build artifacts"
+		},
+		{
+			"label": "GameLift: Full Rebuild (with dependencies)",
+			"type": "shell",
+			"command": "wsl",
+			"args": [
+				"bash",
+				"-c",
+				"cd /mnt/c/Users/lsl/Repositories/jumpnthump/gamelift-gdextension && rm -rf cmake-build godot-cpp gamelift-server-sdk bin .scons_cache .sconsign.dblite && cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --both"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"group": "build",
+			"detail": "Clean everything and rebuild from scratch (includes downloading dependencies)"
+		},
+		// =====================================================================
+		// Run Tasks
+		// =====================================================================
+		{
+			"label": "Godot: Run Server (Preview Mode)",
+			"type": "process",
+			"command": "godot",
+			"args": [
+				"--headless",
+				"--",
+				"--server",
+				"--preview"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"detail": "Run game server in local preview mode (no GameLift)"
+		},
+		{
+			"label": "Godot: Run 3 Instances (Multi-Client Test)",
+			"type": "process",
+			"command": "godot",
+			"args": [
+				"--debug-collisions",
+				"--remote-debug",
+				"127.0.0.1:6007"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"detail": "Launch Godot editor for multi-instance testing (configure Debug > Customize Run Instances)"
+		},
+		{
+			"label": "GameLift: Run Server (Anywhere Mode)",
+			"type": "process",
+			"command": "godot",
+			"args": [
+				"--headless",
+				"--",
+				"--server"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"detail": "Run game server with GameLift Anywhere fleet (requires fleet setup)"
+		},
+		// =====================================================================
+		// Test Tasks
+		// =====================================================================
+		{
+			"label": "Tests: Run All Tests",
+			"type": "process",
+			"command": "godot",
+			"args": [
+				"--headless",
+				"-s",
+				"--path",
+				".",
+				"addons/gut/gut_cmdln.gd",
+				"-gexit"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"group": "test",
+			"detail": "Run all GUT tests (unit + integration)"
+		},
+		{
+			"label": "Tests: Run Unit Tests",
+			"type": "process",
+			"command": "godot",
+			"args": [
+				"--headless",
+				"-s",
+				"--path",
+				".",
+				"addons/gut/gut_cmdln.gd",
+				"-gdir=res://test/unit",
+				"-gexit"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"group": "test",
+			"detail": "Run unit tests only"
+		},
+		{
+			"label": "Tests: Run Integration Tests",
+			"type": "process",
+			"command": "godot",
+			"args": [
+				"--headless",
+				"-s",
+				"--path",
+				".",
+				"addons/gut/gut_cmdln.gd",
+				"-gdir=res://test/integration",
+				"-gexit"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"group": "test",
+			"detail": "Run integration tests only"
+		},
+		{
+			"label": "Tests: Run Specific Test File",
+			"type": "process",
+			"command": "godot",
+			"args": [
+				"--headless",
+				"-s",
+				"--path",
+				".",
+				"addons/gut/gut_cmdln.gd",
+				"-gtest=${input:testFile}",
+				"-gexit"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"group": "test",
+			"detail": "Run a specific test file (prompts for path)"
+		},
+		{
+			"label": "Tests: Run with JUnit XML Output",
+			"type": "process",
+			"command": "godot",
+			"args": [
+				"--headless",
+				"-s",
+				"--path",
+				".",
+				"addons/gut/gut_cmdln.gd",
+				"-gexit",
+				"-gjunit_xml_file=test_results.xml"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"group": "test",
+			"detail": "Run all tests and export JUnit XML results"
+		},
+		// =====================================================================
+		// GameLift Deployment Tasks
+		// =====================================================================
+		{
+			"label": "GameLift: Package for Deployment",
+			"type": "shell",
+			"command": "wsl",
+			"args": [
+				"bash",
+				"-c",
+				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && mkdir -p gamelift-deploy/lib gamelift-deploy/addons && echo 'TODO: Export Godot server build first' && cp -r addons/gamelift gamelift-deploy/addons/ && cp gamelift-gdextension/gamelift-server-sdk/cmake-build/prefix/lib/libaws-cpp-sdk-gamelift-server.so gamelift-deploy/lib/ && echo '#!/bin/bash' > gamelift-deploy/run_server.sh && echo 'export LD_LIBRARY_PATH=\"$(pwd)/lib:$LD_LIBRARY_PATH\"' >> gamelift-deploy/run_server.sh && echo './jumpnthump_server --headless -- --server' >> gamelift-deploy/run_server.sh && chmod +x gamelift-deploy/run_server.sh && tar -czf gamelift-deploy.tar.gz gamelift-deploy/ && echo 'Deployment package created: gamelift-deploy.tar.gz'"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"detail": "Create deployment package for GameLift (requires exported server build)"
+		},
+		{
+			"label": "GameLift: Upload Build to AWS",
+			"type": "shell",
+			"command": "aws",
+			"args": [
+				"gamelift",
+				"upload-build",
+				"--name",
+				"jumpnthump-${input:buildVersion}",
+				"--build-version",
+				"${input:buildVersion}",
+				"--build-root",
+				"gamelift-deploy",
+				"--region",
+				"${input:awsRegion}"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"detail": "Upload deployment package to GameLift (requires AWS CLI configured)"
+		},
+		{
+			"label": "GameLift: Export Linux Server",
+			"type": "shell",
+			"command": "godot",
+			"args": [
+				"--headless",
+				"--export-release",
+				"Linux Server",
+				"build/linux/jumpnthump_server.x86_64"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"detail": "Export dedicated Linux server build for GameLift deployment"
+		},
+		{
+			"label": "GameLift: Package Build",
+			"type": "shell",
+			"command": "wsl",
+			"args": [
+				"bash",
+				"-c",
+				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && rm -rf gamelift-deploy && mkdir -p gamelift-deploy/lib gamelift-deploy/addons && cp -r build/linux/* gamelift-deploy/ && cp -r addons/gamelift gamelift-deploy/addons/ && cp gamelift-gdextension/gamelift-server-sdk/cmake-build/prefix/lib/libaws-cpp-sdk-gamelift-server.so gamelift-deploy/lib/ 2>/dev/null || echo 'Warning: GameLift SDK lib not found, build GDExtension first' && cat > gamelift-deploy/run_server.sh << 'EOF'\n#!/bin/bash\nexport LD_LIBRARY_PATH=\"$(pwd)/lib:$LD_LIBRARY_PATH\"\n./jumpnthump_server.x86_64 --headless -- --server\nEOF\n && chmod +x gamelift-deploy/run_server.sh && echo 'Package created in gamelift-deploy/'"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"dependsOn": [
+				"GameLift: Export Linux Server"
+			],
+			"detail": "Package exported server with GameLift SDK for deployment"
+		},
+		{
+			"label": "GameLift: Upload Build",
+			"type": "shell",
+			"command": "wsl",
+			"args": [
+				"bash",
+				"-c",
+				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && aws gamelift upload-build --name \"jumpnthump-${BUILD_VERSION:-$(date +%Y%m%d-%H%M%S)}\" --build-version \"${BUILD_VERSION:-$(date +%Y%m%d-%H%M%S)}\" --build-root gamelift-deploy --operating-system AMAZON_LINUX_2023 --region ${AWS_REGION:-us-east-1}"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"dependsOn": [
+				"GameLift: Package Build"
+			],
+			"detail": "Upload packaged build to AWS GameLift"
+		},
+		{
+			"label": "GameLift: Create Fleet (Interactive)",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-c",
+				"echo 'Creating GameLift Fleet...' && echo '' && echo 'Note: Check AWS Console for the latest build ID from the upload.' && echo '' && echo 'Sample command:' && echo 'aws gamelift create-fleet \\' && echo '  --name \"jumpnthump-dev-fleet\" \\' && echo '  --description \"Development fleet for Jump n Thump\" \\' && echo '  --build-id \"build-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\" \\' && echo '  --ec2-instance-type c5.large \\' && echo '  --fleet-type ON_DEMAND \\' && echo '  --runtime-configuration \"ServerProcesses=[{LaunchPath=/local/game/run_server.sh,ConcurrentExecutions=1}]\" \\' && echo '  --ec2-inbound-permissions \"FromPort=7777,ToPort=7777,IpRange=0.0.0.0/0,Protocol=UDP\" \\' && echo '  --region us-east-1' && echo '' && echo 'Or use AWS Console: https://console.aws.amazon.com/gamelift/'"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"detail": "Instructions and example for creating a GameLift fleet"
+		},
+		{
+			"label": "GameLift: Setup Anywhere Fleet",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-c",
+				"echo '=== GameLift Anywhere Fleet Setup ===' && echo '' && echo '1. Create Anywhere fleet (if not exists):' && echo '   aws gamelift create-fleet --name \"jumpnthump-anywhere\" --compute-type ANYWHERE --locations \"Location=custom-location-1\"' && echo '' && echo '2. Register compute:' && echo '   aws gamelift register-compute --fleet-id fleet-xxxxx --compute-name my-local-pc --ip-address 127.0.0.1 --location custom-location-1' && echo '' && echo '3. Get auth token:' && echo '   aws gamelift get-compute-auth-token --fleet-id fleet-xxxxx --compute-name my-local-pc' && echo '' && echo '4. Set environment variables and run server' && echo '' && echo 'See: https://docs.aws.amazon.com/gamelift/latest/developerguide/fleets-creating-anywhere.html'"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"detail": "Instructions for setting up GameLift Anywhere fleet for local development"
+		},
+		// =====================================================================
+		// Development Tasks
+		// =====================================================================
+		{
+			"label": "Dev: Format GDScript",
+			"type": "shell",
+			"command": "godot",
+			"args": [
+				"--headless",
+				"--script",
+				"addons/gdscript_formatter/format_project.gd",
+				"--quit"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"detail": "Format all GDScript files using gdscript_formatter addon"
+		},
+		{
+			"label": "Dev: Open Godot Editor",
+			"type": "process",
+			"command": "godot",
+			"args": [
+				"-e"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "never"
+			},
+			"detail": "Open Godot editor"
+		},
+		{
+			"label": "Dev: Check for Pre-existing Errors",
+			"type": "process",
+			"command": "godot",
+			"args": [
+				"--headless",
+				"--check-only",
+				"--quit"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"detail": "Check for GDScript parse errors without running"
+		}
+	],
+	// =========================================================================
+	// Input Prompts
+	// =========================================================================
+	"inputs": [
+		{
+			"id": "testFile",
+			"type": "promptString",
+			"description": "Test file path (e.g., res://test/unit/networking/test_rollback_buffer.gd)",
+			"default": "res://test/unit/"
+		},
+		{
+			"id": "buildVersion",
+			"type": "promptString",
+			"description": "Build version (e.g., 1.0.0, 2024-01-23)",
+			"default": "1.0.0"
+		},
+		{
+			"id": "awsRegion",
+			"type": "pickString",
+			"description": "AWS Region",
+			"options": [
+				"us-east-1",
+				"us-west-2",
+				"eu-west-1",
+				"ap-northeast-1"
+			],
+			"default": "us-east-1"
+		},
+		{
+			"id": "commitMessage",
+			"type": "promptString",
+			"description": "Commit message",
+			"default": "Update"
+		}
+	]
 }

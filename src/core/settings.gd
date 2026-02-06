@@ -82,7 +82,7 @@ var preview_client_count: int:
 @export var force_include_log_warnings := true
 @export var include_category_in_logs := true
 @export var include_peer_id_in_logs := true
-@export var verbosity := ScaffolderLog.Verbosity.NORMAL
+@export var verbosity: int = 0 # ScaffolderLog.Verbosity.NORMAL
 @export_group("")
 
 @export var default_theme: Theme

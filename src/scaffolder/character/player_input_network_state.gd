@@ -1,6 +1,6 @@
 @tool
 class_name PlayerInputNetworkState
-extends ReconcilableNetworkedState
+extends ReconcilableState
 ## Base class for player input synchronization (PlayerInputFromClient and
 ## ForwardedPlayerInputFromServer). Provides shared jump reconciliation logic.
 
@@ -65,18 +65,18 @@ func _restore_indirect_interaction_state(_frame_state: Array) -> void:
 	pass
 
 
-func _clear_jump_bit_in_frame_if_not_pressed(frame_index: int) -> void:
-	if frame_index < 0 or not _rollback_buffer.has_at(frame_index):
+func _clear_jump_bit_in_frame_if_not_pressed(p_frame_index: int) -> void:
+	if p_frame_index < 0 or not _rollback_buffer.has_at(p_frame_index):
 		return
 
-	var frame_state: Array = _rollback_buffer.get_at(frame_index)
+	var frame_state: Array = _rollback_buffer.get_at(p_frame_index)
 	var current_actions: int = _get_frame_property(frame_state, &"actions")
 	var jump_bit_mask: int = 1 << CharacterActionState.BIT_JUMP
 
 	# Only clear if the frame is predicted (not authoritative).
 	if (current_actions & jump_bit_mask) != 0 and _is_frame_predicted(frame_state):
 		_set_frame_property(frame_state, &"actions", current_actions & ~jump_bit_mask)
-		_rollback_buffer.set_at(frame_index, frame_state)
+		_rollback_buffer.set_at(p_frame_index, frame_state)
 
 
 ## Unified client interaction reconciliation (new system).
@@ -123,8 +123,8 @@ func _reconcile_client_interaction() -> void:
 
 ## Reconciles a jump interaction by injecting the jump input bit into the
 ## rollback buffer.
-func _reconcile_jump_interaction(frame_index: int) -> void:
-	var frame_state: Array = _rollback_buffer.get_at(frame_index)
+func _reconcile_jump_interaction(p_frame_index: int) -> void:
+	var frame_state: Array = _rollback_buffer.get_at(p_frame_index)
 	var current_actions: int = _get_frame_property(frame_state, &"actions")
 	var jump_bit_mask := 1 << CharacterActionState.BIT_JUMP
 	var has_jump_input := (current_actions & jump_bit_mask) != 0
@@ -143,7 +143,7 @@ func _reconcile_jump_interaction(frame_index: int) -> void:
 					"pressed: frame %d, actions=%s (%s)"
 				) % [
 					G.network.server_frame_index,
-					frame_index,
+					p_frame_index,
 					_get_string_for_bitmask(current_actions),
 					name,
 				],
@@ -152,14 +152,14 @@ func _reconcile_jump_interaction(frame_index: int) -> void:
 			return
 
 		# Inject jump bit using base class helper.
-		_inject_action_bit_into_buffer(frame_index, jump_bit_mask)
-		_clear_jump_bit_in_frame_if_not_pressed(frame_index - 1)
+		_inject_action_bit_into_buffer(p_frame_index, jump_bit_mask)
+		_clear_jump_bit_in_frame_if_not_pressed(p_frame_index - 1)
 
 		if G.is_verbose:
 			G.verbose(
 				"F:%d Jump bit injected into frame %d via client interaction, queuing rollback (%s)" % [
 					G.network.server_frame_index,
-					frame_index,
+					p_frame_index,
 					name,
 				],
 				ScaffolderLog.CATEGORY_NETWORK_SYNC,
@@ -169,12 +169,12 @@ func _reconcile_jump_interaction(frame_index: int) -> void:
 ## Injects an action bit into the rollback buffer at the specified frame.
 ## Used for jump interactions to ensure jump input is recorded.
 func _inject_action_bit_into_buffer(
-	frame_index: int,
+	p_frame_index: int,
 	bit_mask: int,
 	_actions_index: int = -1 # Deprecated parameter, kept for compatibility.
 ) -> void:
-	var frame_state: Array = _rollback_buffer.get_at(frame_index)
+	var frame_state: Array = _rollback_buffer.get_at(p_frame_index)
 	var current_actions: int = _get_frame_property(frame_state, &"actions")
 	_set_frame_property(frame_state, &"actions", current_actions | bit_mask)
-	_rollback_buffer.set_at(frame_index, frame_state)
-	G.network.frame_driver.queue_rollback(frame_index)
+	_rollback_buffer.set_at(p_frame_index, frame_state)
+	G.network.frame_driver.queue_rollback(p_frame_index)

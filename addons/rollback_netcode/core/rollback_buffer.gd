@@ -167,7 +167,7 @@ func backfill_to_with_last_state(target_index: int) -> void:
 		fill_state[i] = latest_state[i]
 
 	# Backfilled state is not authoritative.
-	fill_state[fill_state.size() - 1] = FrameAuthority.Type.PREDICTED
+	fill_state[fill_state.size() - 1] = ReconcilableState.FrameAuthority.PREDICTED
 
 	# If the gap is larger than capacity, just reinitialize the entire array.
 	if target_index - get_latest_index() > _capacity:

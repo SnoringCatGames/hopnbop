@@ -54,7 +54,7 @@ func _draw_collision_shape() -> void:
 	var local_position := player.global_position - global_position
 
 	DrawUtils.draw_shape_outline(
-		self,
+		self ,
 		local_position,
 		player.collision_shape.shape,
 		COLLISION_OUTLINE_COLOR,
@@ -107,9 +107,9 @@ func _draw_rollback_buffer_trail() -> void:
 
 func _get_color_for_authority(authority: int) -> Color:
 	match authority:
-		ReconcilableNetworkedState.FrameAuthority.AUTHORITATIVE:
+		ReconcilableState.FrameAuthority.AUTHORITATIVE:
 			return COLOR_AUTHORITATIVE
-		ReconcilableNetworkedState.FrameAuthority.PREDICTED:
+		ReconcilableState.FrameAuthority.PREDICTED:
 			return COLOR_PREDICTED
 		_:
 			return COLOR_UNKNOWN

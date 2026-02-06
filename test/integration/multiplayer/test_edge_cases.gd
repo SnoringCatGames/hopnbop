@@ -111,7 +111,7 @@ class TestEdgeCases:
 
 	func test_buffer_size_with_different_duration_settings():
 		# Test that buffer size correctly responds to settings
-		var original_duration := G.settings.rollback_buffer_duration_sec
+		var original_duration := Netcode.config.rollback_buffer_duration_sec
 
 		# Calculate expected buffer size
 		var expected := ceili(

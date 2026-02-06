@@ -75,7 +75,11 @@
       "Bash(godot --headless -s:*)",
       "Bash(git mv:*)",
       "Bash(godot --headless -s --path . addons/gut/gut_cmdln.gd -gtest=res://test/unit/networking/test_network_frame_driver.gd -gexit)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(python fix_logger.py:*)",
+      "Bash(for file in array_pool.gd circular_buffer.gd frame_authority.gd frame_driver.gd frame_synchronizer.gd network_config.gd network_connector.gd network_logger.gd network_orchestrator.gd network_time.gd rollback_buffer.gd)",
+      "Bash(do sed -i '1s/^/@tool\\\\n/' \"$file\")",
+      "Bash(git diff:*)"
     ]
   }
 }

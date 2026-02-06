@@ -1,6 +1,6 @@
 @tool
 class_name CharacterStateFromServer
-extends ReconcilableNetworkedState
+extends ReconcilableState
 
 ## Server-authoritative interaction types (server controls timing).
 enum ServerInteractionType {
@@ -188,7 +188,7 @@ func _network_process() -> void:
 		not is_authority_for_state_from_server and
 		not is_authority_for_input_from_client
 	)
-	var input_source: ReconcilableNetworkedState
+	var input_source: ReconcilableState
 	if is_remote_player_on_client:
 		input_source = forwarded_input_from_server
 	else:
@@ -196,7 +196,7 @@ func _network_process() -> void:
 
 	if not G.ensure_valid(input_source):
 		if G.is_verbose:
-			G.print(
+			G.verbose(
 				"F:%d input_source is null! (is_remote=%s, has_forwarded=%s, has_input=%s)" % [
 					G.network.server_frame_index,
 					is_remote_player_on_client,
@@ -257,7 +257,7 @@ func _network_process() -> void:
 			# This client controls input - capture it now as authoritative.
 			# _collect_actions() will call surfaces.update_actions() internally.
 			character._collect_actions()
-			input_from_client.frame_authority = FrameAuthority.AUTHORITATIVE
+			input_from_client.frame_authority = ReconcilableState.FrameAuthority.AUTHORITATIVE
 		else:
 			# No new input yet - extrapolate from previous frame's input.
 			# This is intentional: predicted input uses the last known state
@@ -266,11 +266,11 @@ func _network_process() -> void:
 			input_source._unpack_buffer_state(frame_index - 1)
 			# Copy input from source to character.
 			_apply_input_to_character(input_source)
-			input_source.frame_authority = FrameAuthority.PREDICTED
+			input_source.frame_authority = ReconcilableState.FrameAuthority.PREDICTED
 			# Update surface attachment state based on the input we just loaded.
 			character.surfaces.update_actions()
 			if G.is_verbose:
-				G.print(
+				G.verbose(
 					"F:%d Extrapolating input from prev frame (actions=%d)" % [
 						G.network.server_frame_index,
 						character.actions.bitmask,
@@ -302,7 +302,7 @@ func _network_process() -> void:
 			input_from_client.frame_authority
 		)
 		if G.is_verbose and input_from_client.actions != 0:
-			G.print(
+			G.verbose(
 				"F:%d Forwarding input to remote clients (actions=%d)" % [
 					G.network.server_frame_index,
 					forwarded_input_from_server.actions,
@@ -326,7 +326,7 @@ func _network_process() -> void:
 		var pos_before := character.position
 		var vel_before := character.velocity
 		character._apply_movement()
-		frame_authority = FrameAuthority.PREDICTED
+		frame_authority = ReconcilableState.FrameAuthority.PREDICTED
 		if G.is_verbose and (
 			character.position.distance_to(pos_before) > 0.1 or
 			character.velocity.distance_to(vel_before) > 0.1
@@ -427,7 +427,7 @@ func _sync_from_scene_state() -> void:
 	# replicated over the network in _pack_buffer_state_from_local_state().
 
 
-func _apply_input_to_character(input_source: ReconcilableNetworkedState) -> void:
+func _apply_input_to_character(input_source: ReconcilableState) -> void:
 	# Copy input from PlayerInputFromClient or ForwardedPlayerInputFromServer
 	# to the character.
 	if input_source is PlayerInputNetworkState:
@@ -492,14 +492,14 @@ func _reconcile_server_interaction() -> void:
 
 ## Reconciles a bump interaction by injecting velocity delta into rollback
 ## buffer.
-func _reconcile_bump_interaction(frame_index: int) -> void:
+func _reconcile_bump_interaction(p_frame_index: int) -> void:
 	var bounce_velocity := _calculate_bounce_velocity(
 		last_interaction_direction,
 		character.movement_settings.bump_bounce_base_speed,
 		character.movement_settings.bump_bounce_vertical_boost
 	)
 	_inject_velocity_delta_into_buffer(
-		frame_index,
+		p_frame_index,
 		bounce_velocity,
 		last_interaction_type,
 		last_interaction_frame_index,
@@ -511,7 +511,7 @@ func _reconcile_bump_interaction(frame_index: int) -> void:
 		G.verbose(
 			"F:%d Bump velocity injected via server interaction into frame %d, queuing rollback (%s)" % [
 				G.network.server_frame_index,
-				frame_index,
+				p_frame_index,
 				name,
 			],
 			ScaffolderLog.CATEGORY_NETWORK_SYNC,
@@ -520,14 +520,14 @@ func _reconcile_bump_interaction(frame_index: int) -> void:
 
 ## Reconciles a kill interaction by injecting kill bounce velocity into
 ## rollback buffer.
-func _reconcile_kill_interaction(frame_index: int) -> void:
+func _reconcile_kill_interaction(p_frame_index: int) -> void:
 	var bounce_velocity := _calculate_bounce_velocity(
 		last_interaction_direction,
 		character.movement_settings.kill_bounce_base_speed,
 		character.movement_settings.kill_bounce_vertical_boost
 	)
 	_inject_velocity_delta_into_buffer(
-		frame_index,
+		p_frame_index,
 		bounce_velocity,
 		last_interaction_type,
 		last_interaction_frame_index,
@@ -539,7 +539,7 @@ func _reconcile_kill_interaction(frame_index: int) -> void:
 		G.verbose(
 			"F:%d Kill velocity injected into frame %d, queuing rollback (%s)" % [
 				G.network.server_frame_index,
-				frame_index,
+				p_frame_index,
 				name,
 			],
 			ScaffolderLog.CATEGORY_NETWORK_SYNC,
@@ -562,8 +562,8 @@ func _set_frame_interaction_properties(
 
 
 ## Reconciles a die interaction by stopping movement in rollback buffer.
-func _reconcile_die_interaction(frame_index: int) -> void:
-	var frame_state: Array = _rollback_buffer.get_at(frame_index)
+func _reconcile_die_interaction(p_frame_index: int) -> void:
+	var frame_state: Array = _rollback_buffer.get_at(p_frame_index)
 	_set_frame_property(frame_state, &"velocity", Vector2.ZERO)
 
 	# Preserve interaction properties from local state (just unpacked from
@@ -576,14 +576,14 @@ func _reconcile_die_interaction(frame_index: int) -> void:
 		last_interaction_direction
 	)
 
-	_rollback_buffer.set_at(frame_index, frame_state)
-	G.network.frame_driver.queue_rollback(frame_index)
+	_rollback_buffer.set_at(p_frame_index, frame_state)
+	G.network.frame_driver.queue_rollback(p_frame_index)
 
 	if G.is_verbose:
 		G.verbose(
 			"F:%d Die interaction reconciled at frame %d, queuing rollback (%s)" % [
 				G.network.server_frame_index,
-				frame_index,
+				p_frame_index,
 				name,
 			],
 			ScaffolderLog.CATEGORY_NETWORK_SYNC,
@@ -592,8 +592,8 @@ func _reconcile_die_interaction(frame_index: int) -> void:
 
 ## Reconciles a spawn interaction by teleporting to spawn position in rollback
 ## buffer.
-func _reconcile_spawn_interaction(frame_index: int) -> void:
-	var frame_state: Array = _rollback_buffer.get_at(frame_index)
+func _reconcile_spawn_interaction(p_frame_index: int) -> void:
+	var frame_state: Array = _rollback_buffer.get_at(p_frame_index)
 	_set_frame_property(frame_state, &"position", last_interaction_position)
 	_set_frame_property(frame_state, &"velocity", Vector2.ZERO)
 
@@ -607,14 +607,14 @@ func _reconcile_spawn_interaction(frame_index: int) -> void:
 		last_interaction_direction
 	)
 
-	_rollback_buffer.set_at(frame_index, frame_state)
-	G.network.frame_driver.queue_rollback(frame_index)
+	_rollback_buffer.set_at(p_frame_index, frame_state)
+	G.network.frame_driver.queue_rollback(p_frame_index)
 
 	if G.is_verbose:
 		G.verbose(
 			"F:%d Spawn interaction reconciled at frame %d, position=%s, queuing rollback (%s)" % [
 				G.network.server_frame_index,
-				frame_index,
+				p_frame_index,
 				last_interaction_position,
 				name,
 			],
@@ -639,14 +639,14 @@ func _calculate_bounce_velocity(
 ## This function explicitly sets interaction properties in the buffer to
 ## prevent them from being overwritten with stale NONE values.
 func _inject_velocity_delta_into_buffer(
-	frame_index: int,
+	p_frame_index: int,
 	velocity_delta: Vector2,
 	interaction_type: int,
 	interaction_frame_index: int,
 	interaction_position: Vector2,
 	interaction_direction: Vector2
 ) -> void:
-	var frame_state: Array = _rollback_buffer.get_at(frame_index)
+	var frame_state: Array = _rollback_buffer.get_at(p_frame_index)
 	var stored_velocity: Vector2 = _get_frame_property(frame_state, &"velocity")
 	_set_frame_property(frame_state, &"velocity", stored_velocity + velocity_delta)
 
@@ -661,8 +661,8 @@ func _inject_velocity_delta_into_buffer(
 		interaction_direction
 	)
 
-	_rollback_buffer.set_at(frame_index, frame_state)
-	G.network.frame_driver.queue_rollback(frame_index)
+	_rollback_buffer.set_at(p_frame_index, frame_state)
+	G.network.frame_driver.queue_rollback(p_frame_index)
 
 
 ## Records an interaction and automatically injects it into the rollback buffer.
@@ -672,24 +672,24 @@ func _inject_velocity_delta_into_buffer(
 ## rollback clearing them before _post_network_process() can pack them.
 func record_interaction(
 	interaction_type: int,
-	frame_index: int,
-	position: Vector2,
+	p_frame_index: int,
+	p_position: Vector2,
 	direction: Vector2
 ) -> void:
 	# Inject into buffer FIRST before setting local properties.
 	# This prevents rollback from clearing the interaction before
 	# _post_network_process() can pack it.
 	_inject_position_into_buffer(
-		frame_index,
-		position,
+		p_frame_index,
+		p_position,
 		interaction_type,
-		frame_index,
-		position,
+		p_frame_index,
+		p_position,
 		direction
 	)
 
 	# Then call base class to set local properties.
-	super.record_interaction(interaction_type, frame_index, position, direction)
+	super.record_interaction(interaction_type, p_frame_index, p_position, direction)
 
 
 ## Sets the position and interaction properties in the rollback buffer at the
@@ -698,14 +698,14 @@ func record_interaction(
 ## This function explicitly sets interaction properties in the buffer to
 ## prevent them from being overwritten with stale NONE values.
 func _inject_position_into_buffer(
-	frame_index: int,
+	p_frame_index: int,
 	new_position: Vector2,
 	interaction_type: int,
 	interaction_frame_index: int,
 	interaction_position: Vector2,
 	interaction_direction: Vector2
 ) -> void:
-	var frame_state: Array = _rollback_buffer.get_at(frame_index)
+	var frame_state: Array = _rollback_buffer.get_at(p_frame_index)
 	_set_frame_property(frame_state, &"position", new_position)
 
 	# Set interaction properties explicitly.
@@ -719,5 +719,5 @@ func _inject_position_into_buffer(
 		interaction_direction
 	)
 
-	_rollback_buffer.set_at(frame_index, frame_state)
-	G.network.frame_driver.queue_rollback(frame_index)
+	_rollback_buffer.set_at(p_frame_index, frame_state)
+	G.network.frame_driver.queue_rollback(p_frame_index)
