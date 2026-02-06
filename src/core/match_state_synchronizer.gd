@@ -10,22 +10,17 @@ func _ready() -> void:
 	# Set back-reference so MatchState can call RPC methods through this node.
 	state.synchronizer = self
 
-	if G.network.is_client:
+	if Netcode.is_client:
 		state.players_updated.connect(_client_on_players_updated)
 		state.kills_updated.connect(_client_on_kills_updated)
 		state.bumps_updated.connect(_client_on_bumps_updated)
 
-	if G.network.is_server:
+	if Netcode.is_server:
 		# Listen for player count declarations instead of raw peer connections.
-		G.network.connector.peer_players_declared.connect(
+		Netcode.connector.peer_players_declared.connect(
 			_server_on_peer_players_declared
 		)
 		multiplayer.peer_disconnected.connect(_server_on_peer_disconnected)
-
-		# Assign outline colors once when all players have connected.
-		G.network.game_lift_manager.all_players_connected.connect(
-			_server_on_all_players_connected
-		)
 
 	# Connect to player state events for connector notification.
 	state.player_joined.connect(_on_player_joined)
@@ -35,7 +30,7 @@ func _on_player_joined(player_match_state: PlayerMatchState) -> void:
 	var player := G.get_player(player_match_state.player_id)
 	if is_instance_valid(player):
 		player.on_match_state_ready(player_match_state)
-	G.network.connector.client_on_player_state_connected(
+	Netcode.connector.client_on_player_state_connected(
 		player_match_state.player_id,
 		player_match_state.peer_id,
 		player_match_state.local_player_index)
@@ -72,7 +67,7 @@ func _server_on_peer_players_declared(
 
 		var player := PlayerMatchState.new()
 		player.set_up(player_id, peer_id, i, player_attributes[i])
-		player.connect_frame_index = G.network.server_frame_index
+		player.connect_frame_index = Netcode.server_frame_index
 		state.server_add_player(player)
 
 	state.update_scores()
@@ -83,7 +78,7 @@ func _server_on_peer_players_declared(
 	# In preview mode, assign colors when all players have been added.
 	# In non-preview (GameLift) mode, colors are assigned via
 	# all_players_connected signal.
-	if G.network.is_preview:
+	if Netcode.is_preview:
 		var expected_player_count := G.settings.preview_client_count
 		var current_player_count := state.players_by_id.size()
 		if current_player_count >= expected_player_count:
@@ -91,6 +86,10 @@ func _server_on_peer_players_declared(
 
 
 func _server_on_all_players_connected() -> void:
+	G.print(
+		"All players connected, assigning colors",
+		ScaffolderLog.CATEGORY_NETWORK_CONNECTIONS
+	)
 	# Assign outline colors once when all players have connected.
 	# This ensures colors are distributed evenly across all players.
 	_server_assign_outline_colors()
@@ -99,6 +98,10 @@ func _server_on_all_players_connected() -> void:
 ## Assigns outline colors to all players based on total player count.
 func _server_assign_outline_colors() -> void:
 	var player_count := state.players_by_id.size()
+	G.print(
+		"Assigning colors to %d players" % player_count,
+		ScaffolderLog.CATEGORY_GAME_STATE
+	)
 	var colors := PlayerAttributeGenerator.calculate_outline_colors(player_count)
 
 	# Get sorted player IDs to ensure consistent color assignment.
@@ -110,6 +113,10 @@ func _server_assign_outline_colors() -> void:
 		var player_id: int = player_ids[i]
 		var player: PlayerMatchState = state.players_by_id[player_id]
 		player.outline_color = colors[i]
+		G.print(
+			"Player %d color = %s" % [player_id, colors[i]],
+			ScaffolderLog.CATEGORY_GAME_STATE
+		)
 
 	# Repack the player state to trigger replication of updated colors.
 	state._server_pack_players()
@@ -124,7 +131,7 @@ func _server_on_peer_disconnected(peer_id: int) -> void:
 	for player in players_for_peer:
 		if G.ensure(state.players_by_id.has(player.player_id)):
 			# Set disconnect time for this player.
-			player.disconnect_frame_index = G.network.server_frame_index
+			player.disconnect_frame_index = Netcode.server_frame_index
 
 		state.server_on_player_disconnected(player)
 

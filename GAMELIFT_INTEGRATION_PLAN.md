@@ -1,5 +1,7 @@
 # GameLift Session ID Backend Integration
 
+# FIXME: REMOVE
+
 ## Problem
 
 The client's `_client_send_player_declaration()` at [network_connector.gd:169](c:\Users\lsl\Repositories\jumpnthump\src\networking\network_connector.gd#L169) uses placeholder "DEBUG_ID_X" values instead of real GameLift player session IDs. The server validation infrastructure is ready but lacks the client-side integration to obtain session IDs from a backend service.

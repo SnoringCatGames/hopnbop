@@ -6,7 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://luccssf71n0" path="res://src/core/game_panel.tscn" id="3_x62ka"]
 [ext_resource type="PackedScene" uid="uid://dlvy2ayb4r382" path="res://src/core/screens_main.tscn" id="6_q2b63"]
 [ext_resource type="PackedScene" uid="uid://bvkt5maj64yqm" path="res://src/ui/super_hud/super_hud.tscn" id="7_nxx65"]
-[ext_resource type="Script" uid="uid://dsojp61hjxlui" path="res://src/ui/debug/window_border.gd" id="8_window_border"]
+[ext_resource type="Script" uid="uid://c3nr6lphfvyed" path="res://src/ui/debug/window_border.gd" id="8_window_border"]
 
 [node name="Main" type="Node2D"]
 process_mode = 3

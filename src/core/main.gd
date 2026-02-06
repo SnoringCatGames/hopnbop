@@ -27,29 +27,29 @@ func _ready() -> void:
 
 	G.window_manager.update_window_mode()
 
-	if G.network.is_preview and G.network.is_client:
+	if Netcode.is_preview and Netcode.is_client:
 		G.window_manager.position_client_window_in_preview_mode()
 
 
 func _handle_preview_window_closing() -> void:
-	if not G.network.is_preview:
+	if not Netcode.is_preview:
 		return
 
 	if (
-		G.network.preview_client_number > 1 and
+		Netcode.preview_client_number > 1 and
 		not G.settings.preview_run_multiple_clients
 	):
 		G.print(
 			("Main._ready: Closing extra client process (--client=%s), " +
 			"because G.settings.preview_run_multiple_clients is false") %
-			G.network.preview_client_number,
+			Netcode.preview_client_number,
 			ScaffolderLog.CATEGORY_CORE_SYSTEMS,
 		)
 		close_app()
 		return
 
 	if (
-		G.network.is_server and
+		Netcode.is_server and
 		G.settings.preview_connect_to_remote_server
 	):
 		G.print(
@@ -62,7 +62,7 @@ func _handle_preview_window_closing() -> void:
 
 
 func _start_app() -> void:
-	if G.network.is_server:
+	if Netcode.is_server:
 		get_tree().paused = false
 		G.game_panel.server_start_game()
 	else:
@@ -125,10 +125,10 @@ func close_app() -> void:
 	G.print("Main.close_app", ScaffolderLog.CATEGORY_CORE_SYSTEMS)
 
 	# Explicitly disconnect to notify peers immediately in preview mode
-	if G.network.is_preview:
-		if G.network.is_client and G.network.is_connected_to_server:
-			G.network.connector.client_disconnect()
-		elif G.network.is_server and multiplayer.get_peers().size() > 0:
+	if Netcode.is_preview:
+		if Netcode.is_client and Netcode.is_connected_to_server:
+			Netcode.connector.client_disconnect()
+		elif Netcode.is_server and multiplayer.get_peers().size() > 0:
 			# Disconnect all clients to notify them immediately
 			for peer_id in multiplayer.get_peers():
 				multiplayer.multiplayer_peer.disconnect_peer(peer_id)
@@ -143,15 +143,15 @@ func update_window_title() -> void:
 
 func _disconnect_peers_in_preview_mode() -> void:
 	# Explicitly disconnect to notify peers immediately in preview mode
-	if not G.network.is_preview:
+	if not Netcode.is_preview:
 		return
 
 	if not is_instance_valid(multiplayer) or not is_instance_valid(multiplayer.multiplayer_peer):
 		return
 
-	if G.network.is_client and G.network.is_connected_to_server:
-		G.network.connector.client_disconnect()
-	elif G.network.is_server and multiplayer.get_peers().size() > 0:
+	if Netcode.is_client and Netcode.is_connected_to_server:
+		Netcode.connector.client_disconnect()
+	elif Netcode.is_server and multiplayer.get_peers().size() > 0:
 		# Disconnect all clients to notify them immediately
 		for peer_id in multiplayer.get_peers():
 			multiplayer.multiplayer_peer.disconnect_peer(peer_id)

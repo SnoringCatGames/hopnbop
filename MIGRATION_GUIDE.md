@@ -1,5 +1,7 @@
 # Jump 'n Thump → Rollback Netcode Plugin Migration Guide
 
+# FIXME: REMOVE
+
 ## Overview
 
 This guide documents the migration of Jump 'n Thump from the embedded networking code to the reusable rollback netcode plugin.
@@ -33,12 +35,12 @@ var network: NetworkOrchestrator
 
 func _enter_tree() -> void:
 	# ... existing code ...
-	
+
 	# Initialize adapters.
 	_network_config_adapter = GNetworkConfig.new(settings)
 	_network_logger_adapter = GNetworkLogger.new(log)
 	_network_time_adapter = GNetworkTime.new(time)
-	
+
 	# Initialize NetworkOrchestrator with adapters.
 	network = NetworkOrchestrator.new(
 		_network_config_adapter,
@@ -86,7 +88,7 @@ var bumps: PackedInt32Array = []
 ### Extend ClientSession
 Update `src/core/local_session.gd` to extend `ClientSession` instead of being standalone.
 
-### Extend PlayerState  
+### Extend PlayerState
 Update `src/core/player_match_state.gd` to extend `PlayerState` from plugin.
 
 ## Phase 5: Delete Old Networking (PENDING)

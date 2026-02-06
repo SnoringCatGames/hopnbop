@@ -1,5 +1,7 @@
 # Jump 'n Thump Migration Status
 
+# FIXME: REMOVE
+
 ## ✅ Completed
 
 1. **Plugin Development** (Weeks 1-8)
