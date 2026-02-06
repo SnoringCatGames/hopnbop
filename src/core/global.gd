@@ -34,7 +34,7 @@ var game_over_screen: GameOverScreen
 var pause_screen: PauseScreen
 
 var game_panel: GamePanel
-var match_state: MatchState
+var match_state: GameMatchState
 var client_session: ClientSession
 var player_overhead_labels: PlayerOverheadLabels
 var level: Level

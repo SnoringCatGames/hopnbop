@@ -32,7 +32,7 @@ class TestKeyboardPlayerSpawning:
 		G.client_session = ClientSession.new()
 
 		# Mock G.match_state.
-		G.match_state = MatchState.new()
+		G.match_state = GameMatchState.new()
 
 		lobby_level = preload(
 			"res://src/level/lobby_level.tscn"
@@ -118,7 +118,7 @@ class TestGamepadPlayerSpawning:
 		G.client_session = ClientSession.new()
 
 		# Mock G.match_state.
-		G.match_state = MatchState.new()
+		G.match_state = GameMatchState.new()
 
 		lobby_level = preload(
 			"res://src/level/lobby_level.tscn"
@@ -201,7 +201,7 @@ class TestPlayerDespawning:
 		G.client_session = ClientSession.new()
 
 		# Mock G.match_state.
-		G.match_state = MatchState.new()
+		G.match_state = GameMatchState.new()
 
 		lobby_level = preload(
 			"res://src/level/lobby_level.tscn"
@@ -262,7 +262,7 @@ class TestMatchStartTransition:
 		G.client_session = ClientSession.new()
 
 		# Mock G.match_state.
-		G.match_state = MatchState.new()
+		G.match_state = GameMatchState.new()
 
 		lobby_level = preload(
 			"res://src/level/lobby_level.tscn"
@@ -313,7 +313,7 @@ class TestLobbyLevelPlayerPositioning:
 		G.client_session = ClientSession.new()
 
 		# Mock G.match_state.
-		G.match_state = MatchState.new()
+		G.match_state = GameMatchState.new()
 
 		lobby_level = preload(
 			"res://src/level/lobby_level.tscn"

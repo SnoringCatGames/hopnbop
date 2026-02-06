@@ -4,7 +4,9 @@ extends RefCounted
 var is_game_active := false
 var is_game_loading := false
 
-var latest_match_state := MatchState.new()
+## Latest match state (set via copy_latest_state).
+## Note: Subclass of MatchManager determined by game.
+var latest_match_state: MatchManager = null
 var latest_local_device_configs: Array[DeviceConfig] = []
 var latest_local_player_ids: Array[int] = []
 
@@ -58,7 +60,8 @@ func clear() -> void:
 
 
 func clear_latest_state() -> void:
-	latest_match_state.clear()
+	if latest_match_state != null and latest_match_state.has_method("clear"):
+		latest_match_state.clear()
 	latest_local_device_configs.clear()
 	latest_local_player_ids.clear()
 	latest_server_message = ""
@@ -66,7 +69,11 @@ func clear_latest_state() -> void:
 
 ## Copy current state into latest_* properties.
 ## Consumers should call this with their current match_state.
-func copy_latest_state(match_state: MatchState) -> void:
-	latest_match_state = match_state.duplicate()
+## Note: match_state must have a duplicate() method.
+func copy_latest_state(match_state: MatchManager) -> void:
+	if match_state.has_method("duplicate"):
+		latest_match_state = match_state.duplicate()
+	else:
+		latest_match_state = match_state
 	latest_local_device_configs = local_device_configs.duplicate()
 	latest_local_player_ids = local_player_ids.duplicate()

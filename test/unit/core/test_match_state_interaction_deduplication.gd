@@ -1,5 +1,5 @@
 extends GutTest
-## Unit tests for MatchState interaction deduplication.
+## Unit tests for GameMatchState interaction deduplication.
 
 
 func before_each():
@@ -19,8 +19,8 @@ class TestInteractionDeduplication:
 	func after_each():
 		ArrayPool.clear_all_pools()
 
-	func _make_state() -> MatchState:
-		var state = MatchState.new()
+	func _make_state() -> GameMatchState:
+		var state = GameMatchState.new()
 		# Add test players.
 		for pid in [1, 2]:
 			var p = PlayerMatchState.new()
@@ -183,30 +183,32 @@ class TestRollbackBufferIntegration:
 		ArrayPool.clear_all_pools()
 
 	func test_rollback_buffer_supports_arbitrary_frame_access():
-		var state = MatchState.new()
+		var state = GameMatchState.new()
 
-		# Store interaction at frame 100.
+		# Store interaction at frame 100 using the public API.
 		G.network.frame_driver.server_frame_index = 100
-		var interaction = PlayerInteraction.new()
-		interaction.player_1_id = 1
-		interaction.player_2_id = 2
-		interaction.type = PlayerInteraction.Type.KILL
-		interaction.frame_index = 100
-
-		var interactions = [interaction]
-		var buffer = state._get_server_recent_interactions()
-		buffer.set_at(100, interactions)
-
-		assert_true(
-			buffer.has_at(100),
-			"Frame 100 should be accessible"
+		state._server_store_interaction(
+			1, # player_1_id
+			2, # player_2_id
+			GameMatchState.InteractionType.KILL,
+			100 # frame_index
 		)
 
-		var retrieved = buffer.get_at(100)
-		assert_not_null(retrieved, "Should retrieve stored interactions")
+		# Verify it was stored by checking for the interaction.
+		var has_interaction := state._server_has_recent_interaction(
+			1,
+			2,
+			100,
+			GameMatchState.InteractionType.KILL
+		)
+
+		assert_true(
+			has_interaction,
+			"Interaction should be stored and retrievable"
+		)
 
 	func test_rollback_buffer_allows_non_sequential_inserts():
-		var state = MatchState.new()
+		var state = GameMatchState.new()
 
 		var buffer = state._get_server_recent_interactions()
 
@@ -228,7 +230,7 @@ class TestRollbackBufferIntegration:
 		)
 
 	func test_interactions_stored_at_correct_frames():
-		var state = MatchState.new()
+		var state = GameMatchState.new()
 		for pid in [1, 2]:
 			var p = PlayerMatchState.new()
 			p.player_id = pid

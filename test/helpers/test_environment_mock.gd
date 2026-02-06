@@ -35,7 +35,7 @@ static func setup_mock_level(parent_node: Node) -> MockLevel:
 
 	# Mock G.match_state for player initialization.
 	if not is_instance_valid(G.match_state):
-		G.match_state = MatchState.new()
+		G.match_state = GameMatchState.new()
 
 	# Mock G.client_session for lobby operations.
 	if not is_instance_valid(G.client_session):

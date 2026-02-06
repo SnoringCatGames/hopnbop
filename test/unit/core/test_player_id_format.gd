@@ -27,7 +27,7 @@ class TestLobbyPlayerIds:
 	func test_lobby_ids_are_sequential_negative():
 		for i in range(10):
 			var player_id := LobbyLevel.get_local_player_id(i)
-			assert_eq(player_id, -(i + 1))
+			assert_eq(player_id, - (i + 1))
 
 	func test_lobby_ids_are_negative():
 		for i in range(5):
@@ -197,7 +197,7 @@ class TestPlayerIdEdgeCases:
 		for i in range(100):
 			var player_id := LobbyLevel.get_local_player_id(i)
 			assert_lt(player_id, 0, "Lobby IDs must be negative")
-			assert_eq(player_id, -(i + 1))
+			assert_eq(player_id, - (i + 1))
 
 	func test_player_id_as_dictionary_key():
 		# Verify int player_ids work as dictionary keys
@@ -227,7 +227,7 @@ class TestMatchStateKillsAndBumpsArrays:
 		}
 
 	func test_kills_uses_packed_int32_array():
-		var match_state := MatchState.new()
+		var match_state := GameMatchState.new()
 
 		# Server records kill: player 1 killed player 2
 		match_state.kills = PackedInt32Array([1, 2])
@@ -238,7 +238,7 @@ class TestMatchStateKillsAndBumpsArrays:
 		assert_eq(match_state.kills[1], 2)
 
 	func test_bumps_uses_packed_int32_array():
-		var match_state := MatchState.new()
+		var match_state := GameMatchState.new()
 
 		# Server records bump: player 3 bumped player 4
 		match_state.bumps = PackedInt32Array([3, 4])
@@ -249,7 +249,7 @@ class TestMatchStateKillsAndBumpsArrays:
 		assert_eq(match_state.bumps[1], 4)
 
 	func test_multiple_kills_sequential():
-		var match_state := MatchState.new()
+		var match_state := GameMatchState.new()
 
 		# Multiple kills: 1->2, 3->4, 5->6
 		match_state.kills = PackedInt32Array([1, 2, 3, 4, 5, 6])
@@ -266,7 +266,7 @@ class TestMatchStateKillsAndBumpsArrays:
 		assert_eq(match_state.kills[5], 6)
 
 	func test_kills_with_negative_lobby_ids():
-		var match_state := MatchState.new()
+		var match_state := GameMatchState.new()
 
 		# Lobby player -1 kills lobby player -2
 		match_state.kills = PackedInt32Array([-1, -2])

@@ -1,13 +1,13 @@
 extends GutTest
-## Unit tests for MatchState.update_scores()
+## Unit tests for GameMatchState.update_scores()
 
 
 class TestMatchStateGetPlayerScore:
 	extends GutTest
 
 
-	func _make_state_with_players(player_ids: Array) -> MatchState:
-		var state = MatchState.new()
+	func _make_state_with_players(player_ids: Array) -> GameMatchState:
+		var state = GameMatchState.new()
 		for pid in player_ids:
 			var p = PlayerMatchState.new()
 			p.player_id = pid
@@ -15,7 +15,7 @@ class TestMatchStateGetPlayerScore:
 		return state
 
 
-	func _update_scores(state: MatchState) -> void:
+	func _update_scores(state: GameMatchState) -> void:
 		state.update_scores()
 
 

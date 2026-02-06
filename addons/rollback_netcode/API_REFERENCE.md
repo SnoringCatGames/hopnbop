@@ -23,7 +23,7 @@ Comprehensive class-by-class API documentation for the rollback netcode plugin.
 
 ### State Management
 - [ClientSession](#clientsession)
-- [MatchManager](#matchmanager)
+- [MatchState](#matchstate)
 - [PlayerState](#playerstate)
 - [InteractionTracker](#interactiontracker)
 
@@ -1064,7 +1064,7 @@ Abstract base class for local session state management. Tracks client-side game 
 | local_player_ids | Array[int] | Player IDs assigned to local players |
 | local_device_configs | Array | Device configurations (input mappings) |
 | local_player_attributes | Array[Dictionary] | Per-player metadata (name, appearance, etc.) |
-| latest_match_state | MatchManager | Snapshot of last match state (for UI) |
+| latest_match_state | MatchState | Snapshot of last match state (for UI) |
 | latest_local_device_configs | Array | Snapshot of last device configs |
 | latest_local_player_ids | Array[int] | Snapshot of last player IDs |
 
@@ -1078,12 +1078,12 @@ Clear all session state (called on disconnect or new session).
 
 Clear latest state snapshots.
 
-#### copy_latest_state(match_state: MatchManager) -> void
+#### copy_latest_state(match_state: MatchState) -> void
 
 Copy current state to latest snapshots (preserves state after disconnect for UI).
 
 **Parameters:**
-- `match_state` (MatchManager): Current match state to snapshot
+- `match_state` (MatchState): Current match state to snapshot
 
 ### Usage Example
 
@@ -1114,9 +1114,9 @@ func clear() -> void:
 
 ---
 
-## MatchManager
+## MatchState
 
-**File:** `state/match_manager.gd`
+**File:** `state/match_state.gd`
 **Extends:** RefCounted
 
 Abstract base class for match/game session state management. Tracks player roster, match timing, and network replication.
@@ -1203,7 +1203,7 @@ Get all players for a specific peer.
 
 ```gdscript
 class_name MyMatchState
-extends MatchManager
+extends MatchState
 
 signal player_scored(player_id: int, points: int)
 
@@ -1319,7 +1319,7 @@ func populate_from_packed_state(packed_state: Array) -> void:
 - **Critical:** player_id MUST be first element in packed arrays
 - Subclasses add game-specific properties (name, stats, loadout)
 - is_connected_to_server computed from connect/disconnect frame indices
-- Used by MatchManager for roster replication
+- Used by MatchState for roster replication
 
 ---
 

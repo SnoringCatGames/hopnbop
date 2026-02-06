@@ -64,7 +64,7 @@ func _handle_preview_window_closing() -> void:
 func _start_app() -> void:
 	if Netcode.is_server:
 		get_tree().paused = false
-		G.game_panel.server_start_game()
+		G.game_panel.server_start_match()
 	else:
 		if G.settings.start_in_game:
 			_auto_start_game()

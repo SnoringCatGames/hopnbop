@@ -152,7 +152,7 @@ class TestNetworkedLevelPlayerSpawning:
 		G.game_panel = mock_game_panel
 
 		# Mock G.match_state.
-		G.match_state = MatchState.new()
+		G.match_state = GameMatchState.new()
 
 		# Create networked level.
 		networked_level = DEFAULT_LEVEL_SCENE.instantiate()
@@ -206,7 +206,7 @@ class TestPlayerIdFormatConsistency:
 		G.game_panel = mock_game_panel
 
 		# Mock G.match_state.
-		G.match_state = MatchState.new()
+		G.match_state = GameMatchState.new()
 
 		var networked_level := DEFAULT_LEVEL_SCENE.instantiate()
 		root_node.add_child(networked_level)

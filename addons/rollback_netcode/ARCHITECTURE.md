@@ -1000,7 +1000,7 @@ session.input_devices = [
 ]
 ```
 
-### MatchManager
+### MatchState
 
 **Purpose**: Manages match lifecycle and player roster.
 
@@ -1028,7 +1028,7 @@ signal match_ended(results: Dictionary)
 **Example**:
 ```gdscript
 # Match coordinator
-var match := MatchManager.new()
+var match := MatchState.new()
 match.player_joined.connect(_on_player_joined)
 
 func _on_player_joined(player_id: int):
@@ -1686,10 +1686,10 @@ Use provided classes or replace:
 ```gdscript
 # Use built-in classes
 var session := ClientSession.new()
-var match := MatchManager.new()
+var match := MatchState.new()
 
 # OR: Implement your own
-class MyCustomMatchManager:
+class MyCustomMatchState:
     # Your custom implementation
     pass
 ```

@@ -2,12 +2,13 @@ class_name MatchStateSynchronizer
 extends MultiplayerSynchronizer
 
 
-var state := MatchState.new()
-var _previous_state := MatchState.new()
+var state := GameMatchState.new()
+var _previous_state := GameMatchState.new()
 
 
 func _ready() -> void:
-	# Set back-reference so MatchState can call RPC methods through this node.
+	# Set back-reference so GameMatchState can call RPC methods
+	# through this node.
 	state.synchronizer = self
 
 	if Netcode.is_client:

@@ -24,7 +24,7 @@ class TestFullPlayerFlow:
 		G.client_session = ClientSession.new()
 
 		# Mock G.match_state.
-		G.match_state = MatchState.new()
+		G.match_state = GameMatchState.new()
 
 		lobby = LOBBY_LEVEL_SCENE.instantiate()
 		root_node.add_child(lobby)
@@ -117,7 +117,7 @@ class TestDeviceConfigThreading:
 		G.client_session = ClientSession.new()
 
 		# Mock G.match_state.
-		G.match_state = MatchState.new()
+		G.match_state = GameMatchState.new()
 
 		lobby = LOBBY_LEVEL_SCENE.instantiate()
 		root_node.add_child(lobby)
@@ -171,7 +171,7 @@ class TestClientSessionCleaning:
 		G.client_session = ClientSession.new()
 
 		# Mock G.match_state.
-		G.match_state = MatchState.new()
+		G.match_state = GameMatchState.new()
 
 		lobby = LOBBY_LEVEL_SCENE.instantiate()
 		root_node.add_child(lobby)
@@ -224,7 +224,7 @@ class TestLobbyPlayerIsolation:
 		G.client_session = ClientSession.new()
 
 		# Mock G.match_state.
-		G.match_state = MatchState.new()
+		G.match_state = GameMatchState.new()
 
 		lobby = LOBBY_LEVEL_SCENE.instantiate()
 		root_node.add_child(lobby)

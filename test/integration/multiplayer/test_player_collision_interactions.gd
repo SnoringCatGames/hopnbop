@@ -35,7 +35,7 @@ class TestCollisionBounceVelocity:
 		ArrayPool.clear_all_pools()
 
 		# Set up mock environment.
-		mock_level = TestEnvironmentMock.setup_mock_level(self)
+		mock_level = TestEnvironmentMock.setup_mock_level(self )
 
 		# Create movement settings.
 		movement_settings = MovementSettings.new()
@@ -191,7 +191,7 @@ class TestCollisionDetectionLogic:
 		ArrayPool.clear_all_pools()
 
 	func test_bump_interaction_type_recorded():
-		var state = MatchState.new()
+		var state = GameMatchState.new()
 		for pid in [1, 2]:
 			var p = PlayerMatchState.new()
 			p.player_id = pid
@@ -217,7 +217,7 @@ class TestCollisionDetectionLogic:
 		)
 
 	func test_kill_interaction_type_recorded():
-		var state = MatchState.new()
+		var state = GameMatchState.new()
 		for pid in [1, 2]:
 			var p = PlayerMatchState.new()
 			p.player_id = pid
@@ -255,7 +255,7 @@ class TestBothPlayersBounceBehavior:
 		ArrayPool.clear_all_pools()
 
 		# Set up mock environment.
-		mock_level = TestEnvironmentMock.setup_mock_level(self)
+		mock_level = TestEnvironmentMock.setup_mock_level(self )
 
 		movement_settings = MovementSettings.new()
 		movement_settings.bump_bounce_base_speed = 300.0
@@ -365,7 +365,7 @@ class TestBouncePreservesExistingVelocity:
 		ArrayPool.clear_all_pools()
 
 		# Set up mock environment.
-		mock_level = TestEnvironmentMock.setup_mock_level(self)
+		mock_level = TestEnvironmentMock.setup_mock_level(self )
 
 		movement_settings = MovementSettings.new()
 		movement_settings.bump_bounce_base_speed = 300.0
@@ -434,7 +434,7 @@ class TestBouncePreservesExistingVelocity:
 		player2.global_position = Vector2(100, 0)
 
 		# Player1 is falling.
-		player1.velocity = Vector2(0, 500)  # Downward.
+		player1.velocity = Vector2(0, 500) # Downward.
 
 		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
 
@@ -458,7 +458,7 @@ class TestCollisionEdgeCases:
 		ArrayPool.clear_all_pools()
 
 		# Set up mock environment.
-		mock_level = TestEnvironmentMock.setup_mock_level(self)
+		mock_level = TestEnvironmentMock.setup_mock_level(self )
 
 		movement_settings = MovementSettings.new()
 		movement_settings.bump_bounce_base_speed = 300.0
@@ -519,7 +519,7 @@ class TestCollisionEdgeCases:
 
 	func test_bounce_with_very_close_positions():
 		player1.global_position = Vector2(0, 0)
-		player2.global_position = Vector2(0.1, 0)  # Very close.
+		player2.global_position = Vector2(0.1, 0) # Very close.
 
 		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
 

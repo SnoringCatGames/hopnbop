@@ -44,6 +44,20 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
+# - Let's add a countdown timer for starting the match after all players have connected. It should Show 3, then 2, then 1, then GO. It should show this text in the exact center of the hud. Each time the label changes, we should animate a scale change with a tween. The size should transition from x2 to x1 over 0.3 seconds. Except, for the GO tween, we should actually expand the scale instead of shrinking, and we should also fade it out over a second. We should leave the game paused on clients and server until the countdown is done.
+
+# Add support for dynamic level selection.
+# - The server should choose the level for a match.
+# - The client should be able to specific a three things when they start matchmaking with the backend: an inclusion list, an exclusion list, and a preferred level.
+# - The server should try to accommodate these, but should be able to override all of these, depending on the combined client preferences of the match.
+# - Make sure to update any corresponding GameLift plugin, GDExtension, or backend server logic to accomodate this.
+
+# - Add support for a slide-transition effect that slides a black panel over the lobby screen before showing the loading screen.
+#   - This panel slide will use a Tween.
+#   - We'll need to trigger this from client_load_game.
+#   - We'll need to then have a delay before despawning the lobby level.
+#   - We'll need to then prevent player modifications (spawn, despawn, triggering anything in lobby) during this transition.
+#   - We should also add another tween to every screen to transition it from transparent to opaque when it is opened.
 
 # BIIIIIIIIIG framework refactor.
 # - I want to consolidate settings.gd with g_network_loger.gd and network_logger.gd. I want the consumer game to only have the one settings resource where they configure everything (with reasonable property groupings).
@@ -311,18 +325,6 @@ extends Node
 #   - Walk sound
 #   - Bunny bump sound
 #   - Menu click sound
-
-# - Add support for dynamic level selection.
-#   - The server should choose the level for a match.
-#   - The client should be able to specific a three things: an inclusion list, an exclusion list, and a preferred level.
-#   - The server should try to accommodate these, but should be able to override all of these, depending on the combined client preferences of the match.
-
-# - Add support for a slide-transition effect that slides a black panel over the lobby screen before showing the loading screen.
-#   - This panel slide will use a Tween.
-#   - We'll need to trigger this from client_load_game.
-#   - We'll need to then have a delay before despawning the lobby level.
-#   - We'll need to then prevent player modifications (spawn, despawn, triggering anything in lobby) during this transition.
-#   - We should also add another tween to every screen to transition it from transparent to opaque when it is opened.
 
 # - Add alternate the camera modes.
 #   - Support two modes: global camera vs player camera.
