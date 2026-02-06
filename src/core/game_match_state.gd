@@ -1,5 +1,5 @@
 class_name GameMatchState
-extends MatchManager
+extends MatchState
 ## Jump 'n Thump specific match state with kills, bumps, and scoring.
 
 # --- Game-Specific Interaction Types ---
