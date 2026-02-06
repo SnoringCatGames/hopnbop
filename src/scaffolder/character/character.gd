@@ -176,14 +176,7 @@ func _collect_actions() -> void:
 
 ## This gets called during _network_process.
 func _apply_movement() -> void:
-	var base_velocity := velocity
-	# Since move_and_slide automatically accounts for delta, we need to
-	# compensate for that in order to support our modified framerate.
-	var scaled_velocity: Vector2 = base_velocity * Netcode.time.get_combined_scale()
-
-	velocity = scaled_velocity
 	move_and_slide()
-
 	surfaces.update_touches()
 
 
@@ -321,8 +314,7 @@ func force_boost(boost: Vector2) -> void:
 func get_next_position_prediction() -> Vector2:
 	# Since move_and_slide automatically accounts for delta, we need to
 	# compensate for that in order to support our modified framerate.
-	var modified_velocity: Vector2 = velocity * Netcode.time.get_combined_scale()
-	return position + modified_velocity * Netcode.frame_driver.target_network_time_step_sec
+	return position + velocity * Netcode.frame_driver.target_network_time_step_sec
 
 
 func get_position_in_screen_space() -> Vector2:

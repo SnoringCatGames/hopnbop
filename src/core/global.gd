@@ -12,14 +12,12 @@ var preview_instance_label := ""
 
 var args: Dictionary
 
-var time := ScaffolderTime.new()
 @warning_ignore("shadowed_global_identifier") var log := ScaffolderLog.new()
 var utils := Utils.new()
 var geometry := Geometry.new()
 var draw_utils := DrawUtils.new()
-var network := NetworkMain.new()
+
 var input_device_manager := InputDeviceManager.new()
-var process_sentinel := ProcessSentinel.new()
 var window_manager := WindowManager.new()
 var input_handler := InputHandler.new()
 
@@ -54,9 +52,6 @@ func _enter_tree() -> void:
 
 	args = Utils.parse_command_line_args()
 
-	time.name = "Time"
-	add_child(time)
-
 	log.name = "Log"
 	add_child(log)
 
@@ -69,14 +64,14 @@ func _enter_tree() -> void:
 	draw_utils.name = "DrawUtils"
 	add_child(draw_utils)
 
-	network.name = "Network"
-	add_child(network)
+	# Configure Netcode plugin.
+	Netcode.settings = settings
+	Netcode.log = log
+
+	settings.is_preview_mode = OS.has_feature("editor")
 
 	input_device_manager.name = "InputDeviceManager"
 	add_child(input_device_manager)
-
-	process_sentinel.name = "ProcessSentinel"
-	add_child(process_sentinel)
 
 	window_manager.name = "WindowManager"
 	add_child(window_manager)
@@ -86,11 +81,14 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
+	# Initialize Netcode now that the scene tree is available.
+	Netcode.initialize()
+
 	G.log.log_system_ready("Global")
 
-	if G.network.is_preview:
-		if G.network.is_client:
-			preview_instance_label = "Client %s" % G.network.preview_client_number
+	if Netcode.is_preview:
+		if Netcode.is_client:
+			preview_instance_label = "Client %s" % Netcode.preview_client_number
 		else:
 			preview_instance_label = "Server"
 	else:
@@ -112,39 +110,33 @@ func get_player(player_id: int) -> Player:
 		return null
 	return level.players_by_id[player_id]
 
-# --- Include some convenient access to logging/error utilities ---------------
 
-var is_verbose: bool:
-	get:
-		return log.is_verbose
+# --- Include some convenient access to logging/error utilities ---------------
 
 
 func print(
-		message = "",
-		category := ScaffolderLog.CATEGORY_DEFAULT,
-		verbosity := ScaffolderLog.Verbosity.NORMAL,
-		force_enable := false,
+	message = "",
+	category = &"Default", # NetworkLogger.CATEGORY_DEFAULT
 ) -> void:
-	log.print(message, category, verbosity, force_enable)
+	log.print(message, category)
 
 
 func verbose(
-		message = "",
-		category := ScaffolderLog.CATEGORY_DEFAULT,
-		force_enable := false,
+	message = "",
+	category = &"Default", # NetworkLogger.CATEGORY_DEFAULT
 ) -> void:
-	log.print(message, category, ScaffolderLog.Verbosity.VERBOSE, force_enable)
+	log.print(message, category)
 
 
-func warning(message = "", category := ScaffolderLog.CATEGORY_DEFAULT) -> void:
+func warning(message = "", category = &"Default") -> void: # NetworkLogger.CATEGORY_DEFAULT
 	log.warning(message, category)
 
 
-func error(message = "", category := ScaffolderLog.CATEGORY_DEFAULT) -> void:
+func error(message = "", category = &"Default") -> void: # NetworkLogger.CATEGORY_DEFAULT
 	log.error(message, category, false)
 
 
-func fatal(message = "", category := ScaffolderLog.CATEGORY_DEFAULT) -> void:
+func fatal(message = "", category = &"Default") -> void: # NetworkLogger.CATEGORY_DEFAULT
 	log.error(message, category, true)
 
 
@@ -165,12 +157,12 @@ func check_valid(object, message = "") -> bool:
 
 
 func check_is_server() -> bool:
-	return log.check(G.network.is_server,
+	return log.check(Netcode.is_server,
 		"This logic assumes we should be a server, but we're a client")
 
 
 func check_is_client() -> bool:
-	return log.check(G.network.is_client,
+	return log.check(Netcode.is_client,
 		"This logic assumes we should be a client, but we're a server")
 
 # -----------------------------------------------------------------------------

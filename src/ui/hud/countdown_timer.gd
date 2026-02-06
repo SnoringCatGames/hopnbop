@@ -66,6 +66,7 @@ func _update_display() -> void:
 		modulate = Color.WHITE
 
 	# Format as M:SS.
+	@warning_ignore("integer_division")
 	var minutes := int(remaining_sec) / 60
 	var seconds := int(remaining_sec) % 60
 

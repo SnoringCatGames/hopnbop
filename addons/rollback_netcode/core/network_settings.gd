@@ -14,7 +14,7 @@ extends Resource
 ##
 ## Or subclass for custom logic:
 ## ```gdscript
-## class_name MyGameConfig
+## class_name MyGameSettings
 ## extends NetworkSettings
 ##
 ## @export var custom_setting := true

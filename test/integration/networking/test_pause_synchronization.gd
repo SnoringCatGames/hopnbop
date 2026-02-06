@@ -40,6 +40,14 @@ class TestFrameIndexContinuity:
 
 	func before_each():
 		ArrayPool.clear_all_pools()
+
+		# Set up Netcode singleton with mock dependencies.
+		Netcode.settings = _create_mock_config()
+		Netcode.log = _create_mock_logger()
+
+		# Initialize Netcode to create TimeUtils and other dependencies.
+		Netcode.initialize()
+
 		var mock_orchestrator := Node.new()
 		mock_orchestrator.set_script(load("res://test/helpers/mock_orchestrator.gd"))
 		mock_orchestrator.is_server = true
@@ -49,12 +57,8 @@ class TestFrameIndexContinuity:
 		var mock_connector := Node.new()
 		add_child_autofree(mock_connector)
 
-		frame_driver = FrameDriver.new(
-			_create_mock_config(),
-			_create_mock_logger(),
-			mock_orchestrator,
-			mock_connector
-		)
+		# FrameDriver now uses Netcode singleton for dependencies.
+		frame_driver = FrameDriver.new()
 		add_child_autofree(frame_driver)
 
 
@@ -132,6 +136,14 @@ class TestPauseRollbackInteraction:
 
 	func before_each():
 		ArrayPool.clear_all_pools()
+
+		# Set up Netcode singleton with mock dependencies.
+		Netcode.settings = _create_mock_config()
+		Netcode.log = _create_mock_logger()
+
+		# Initialize Netcode to create TimeUtils and other dependencies.
+		Netcode.initialize()
+
 		var mock_orchestrator := Node.new()
 		mock_orchestrator.set_script(load("res://test/helpers/mock_orchestrator.gd"))
 		mock_orchestrator.is_server = true
@@ -141,12 +153,8 @@ class TestPauseRollbackInteraction:
 		var mock_connector := Node.new()
 		add_child_autofree(mock_connector)
 
-		frame_driver = FrameDriver.new(
-			_create_mock_config(),
-			_create_mock_logger(),
-			mock_orchestrator,
-			mock_connector
-		)
+		# FrameDriver now uses Netcode singleton for dependencies.
+		frame_driver = FrameDriver.new()
 		add_child_autofree(frame_driver)
 
 
