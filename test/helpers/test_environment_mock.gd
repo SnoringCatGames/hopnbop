@@ -82,8 +82,8 @@ static func setup_test_player_minimal() -> Player:
 ## Creates the player with all required networked nodes and adds to tree.
 static func setup_test_player(parent_node: Node) -> Player:
 	# Ensure frame tracking is initialized before creating player nodes.
-	if not G.network.frame_driver._is_frame_tracking_initialized:
-		G.network.frame_driver._initialize_frame_tracking()
+	if not Netcode.frame_driver._is_frame_tracking_initialized:
+		Netcode.frame_driver._initialize_frame_tracking()
 
 	# Create the player but don't add to tree yet
 	var player = Player.new()
@@ -139,8 +139,8 @@ static func setup_player_with_networking(
 	# Ensure frame tracking is initialized before creating player nodes.
 	# This must happen before any networked nodes are created, as their _ready()
 	# methods will attempt to set up rollback buffers.
-	if not G.network.frame_driver._is_frame_tracking_initialized:
-		G.network.frame_driver._initialize_frame_tracking()
+	if not Netcode.frame_driver._is_frame_tracking_initialized:
+		Netcode.frame_driver._initialize_frame_tracking()
 
 	# Use minimal setup to avoid double-creating networked nodes
 	var player = setup_test_player_minimal()

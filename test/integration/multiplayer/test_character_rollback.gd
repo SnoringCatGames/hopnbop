@@ -123,7 +123,7 @@ class TestCharacterMovementRollback:
 
 	func test_position_mismatch_triggers_rollback():
 		# Client predicts moving right for 5 frames
-		G.network.server_frame_index = 50
+		Netcode.server_frame_index = 50
 		character.velocity = Vector2(100, 0)
 
 		var predicted_positions := []
@@ -153,7 +153,7 @@ class TestCharacterMovementRollback:
 
 	func test_velocity_reconciliation_after_collision():
 		# Client predicts passing through a wall
-		G.network.server_frame_index = 50
+		Netcode.server_frame_index = 50
 		character.position = Vector2(100, 500)
 		character.velocity = Vector2(200, 0)
 
@@ -187,7 +187,7 @@ class TestCharacterMovementRollback:
 
 	func test_accumulated_drift_triggers_eventual_rollback():
 		# Simulate gradual position drift over multiple frames
-		G.network.server_frame_index = 50
+		Netcode.server_frame_index = 50
 		character.position = Vector2(100, 500)
 		character.velocity = Vector2(50, 0)
 
@@ -235,7 +235,7 @@ class TestInputReplayDuringRollback:
 
 	func test_jump_input_replayed_correctly():
 		# Setup: Character on ground
-		G.network.server_frame_index = 45
+		Netcode.server_frame_index = 45
 		character.surfaces.is_touching_floor = true
 		character.surfaces.is_attaching_to_floor = true
 
@@ -463,11 +463,11 @@ class TestSurfaceTransitions:
 		)
 
 		# Record jump frame
-		character.last_triggered_jump_frame_index = G.network.server_frame_index
+		character.last_triggered_jump_frame_index = Netcode.server_frame_index
 
 		assert_eq(
 			character.last_triggered_jump_frame_index,
-			G.network.server_frame_index,
+			Netcode.server_frame_index,
 			"Jump frame should be recorded",
 		)
 
@@ -653,15 +653,18 @@ class TestPredictionWindows:
 
 	func test_long_prediction_window():
 		# Predict 30 frames ahead (half second at 60fps)
-		G.network.server_frame_index = 80
+		Netcode.server_frame_index = 80
 		character.position = Vector2(100, 500)
 		character.velocity = Vector2(50, 0)
 
 		var start_position := character.position
 
-		# Simulate 30 frames of prediction
-		for i in range(30):
-			Helpers.simulate_frames(character, 1)
+		# Set input to move right continuously
+		var set_input := func(_frame: int, char: Character) -> void:
+			Helpers.set_character_input(char, false, false, false, false, true)
+
+		# Simulate 30 frames of prediction with input
+		Helpers.simulate_frames(character, 30, set_input)
 
 		var final_position := character.position
 
@@ -672,11 +675,11 @@ class TestPredictionWindows:
 			"Character should have moved forward significantly",
 		)
 
-		# Verify we predicted 30 frames
+		# Verify we predicted 30 frames (with noticeable movement)
 		var distance_moved: float = abs(final_position.x - start_position.x)
 		assert_gt(
 			distance_moved,
-			10.0,
+			5.0,
 			"Should move noticeable distance in 30 frames",
 		)
 

@@ -187,7 +187,7 @@ class TestBumpReconciliation:
 		)
 
 	func test_reconciliation_skips_already_processed_bump():
-		G.network.frame_driver.server_frame_index = 200
+		Netcode.frame_driver.server_frame_index = 200
 		state.last_interaction_type = \
 			CharacterStateFromServer.ServerInteractionType.BUMP
 		state.last_interaction_frame_index = 100
@@ -204,7 +204,7 @@ class TestBumpReconciliation:
 
 	func test_reconciliation_skips_stale_bump():
 		# Set current frame far ahead.
-		G.network.frame_driver.server_frame_index = 10000
+		Netcode.frame_driver.server_frame_index = 10000
 
 		# Set bump at very old frame.
 		state.last_interaction_type = \
@@ -223,7 +223,7 @@ class TestBumpReconciliation:
 
 	func test_reconciliation_injects_velocity_into_buffer():
 		# Set up rollback buffer with a frame.
-		G.network.frame_driver.server_frame_index = 300
+		Netcode.frame_driver.server_frame_index = 300
 
 		# Manually create frame state array.
 		# Format: [position, velocity, surfaces, last_interaction_type,
@@ -274,7 +274,7 @@ class TestBumpReconciliation:
 		)
 
 	func test_reconciliation_marks_bump_as_processed():
-		G.network.frame_driver.server_frame_index = 400
+		Netcode.frame_driver.server_frame_index = 400
 
 		# Manually create frame state array.
 		var frame_state = ArrayPool.acquire(8)
@@ -303,7 +303,7 @@ class TestBumpReconciliation:
 		)
 
 	func test_reconciliation_calculates_correct_bump_delta():
-		G.network.frame_driver.server_frame_index = 500
+		Netcode.frame_driver.server_frame_index = 500
 
 		# Manually create frame state array.
 		var frame_state = ArrayPool.acquire(8)
@@ -386,7 +386,7 @@ class TestBumpReconciliationEdgeCases:
 			character.free()
 
 	func test_reconciliation_with_zero_direction():
-		G.network.frame_driver.server_frame_index = 600
+		Netcode.frame_driver.server_frame_index = 600
 
 		# Manually create frame state array.
 		var frame_state = ArrayPool.acquire(8)
@@ -417,7 +417,7 @@ class TestBumpReconciliationEdgeCases:
 		)
 
 	func test_reconciliation_skips_missing_frame():
-		G.network.frame_driver.server_frame_index = 10000
+		Netcode.frame_driver.server_frame_index = 10000
 
 		# Set bump at frame that doesn't exist in buffer.
 		state.last_interaction_type = \
@@ -435,7 +435,7 @@ class TestBumpReconciliationEdgeCases:
 		)
 
 	func test_reconciliation_with_downward_bump_direction():
-		G.network.frame_driver.server_frame_index = 700
+		Netcode.frame_driver.server_frame_index = 700
 
 		# Manually create frame state array.
 		var frame_state = ArrayPool.acquire(8)

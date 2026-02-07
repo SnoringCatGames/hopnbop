@@ -16,9 +16,6 @@ func test_scaffolder_classes_loaded():
 	assert_not_null(log_instance, "ScaffolderLog should be instantiable")
 	log_instance.queue_free()
 
-	var time_instance = ScaffolderTime.new(get_tree())
-	assert_not_null(time_instance, "ScaffolderTime should be instantiable")
-
 	var utils_instance = Utils.new()
 	assert_not_null(utils_instance, "Utils should be instantiable")
 	utils_instance.queue_free()

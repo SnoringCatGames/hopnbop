@@ -18,7 +18,7 @@ static func simulate_frames(
 		# Use the public interface through state_from_server
 		if is_instance_valid(character.state_from_server):
 			character.state_from_server._network_process()
-		G.network.server_frame_index += 1
+		Netcode.server_frame_index += 1
 
 
 ## Create server state at a specific frame.

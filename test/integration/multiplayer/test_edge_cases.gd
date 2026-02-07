@@ -23,7 +23,7 @@ class TestEdgeCases:
 
 	func before_each():
 		ArrayPool.clear_all_pools()
-		frame_driver = G.network.frame_driver
+		frame_driver = Netcode.frame_driver
 
 
 	func after_each():

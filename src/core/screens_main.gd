@@ -114,16 +114,6 @@ func _perform_screen_switch(
 	G.godot_splash_screen.visible = screen_type == ScreenType.GODOT_SPLASH
 	G.scg_splash_screen.visible = screen_type == ScreenType.SCG_SPLASH
 
-	if screen_type == ScreenType.LOADING:
-		G.print(
-			"Set LoadingScreen visible=true, actual=%s, ScreensMain.visible=%s, CanvasLayer.visible=%s" % [
-				G.loading_screen.visible,
-				visible,
-				get_parent().visible if get_parent() else "no_parent"
-			],
-			NetworkLogger.CATEGORY_GAME_STATE
-		)
-
 	var ends_game := (
 		[
 			ScreenType.GODOT_SPLASH,

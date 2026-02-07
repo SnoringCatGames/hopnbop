@@ -158,7 +158,7 @@ class TestCollisionBounceVelocity:
 		)
 
 	func test_bump_records_frame_and_direction():
-		G.network.frame_driver.server_frame_index = 100
+		Netcode.frame_driver.server_frame_index = 100
 
 		player1.global_position = Vector2(0, 0)
 		player2.global_position = Vector2(100, 0)
@@ -197,7 +197,7 @@ class TestCollisionDetectionLogic:
 			p.player_id = pid
 			state.players_by_id[pid] = p
 
-		G.network.frame_driver.server_frame_index = 200
+		Netcode.frame_driver.server_frame_index = 200
 		state.server_add_bump(1, 2)
 
 		assert_gt(
@@ -223,7 +223,7 @@ class TestCollisionDetectionLogic:
 			p.player_id = pid
 			state.players_by_id[pid] = p
 
-		G.network.frame_driver.server_frame_index = 300
+		Netcode.frame_driver.server_frame_index = 300
 		state.server_add_kill(1, 2)
 
 		assert_gt(

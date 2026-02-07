@@ -46,48 +46,9 @@ extends Node
 
 # - Let's add a countdown timer for starting the match after all players have connected. It should Show 3, then 2, then 1, then GO. It should show this text in the exact center of the hud. Each time the label changes, we should animate a scale change with a tween. The size should transition from x2 to x1 over 0.3 seconds. Except, for the GO tween, we should actually expand the scale instead of shrinking, and we should also fade it out over a second. We should leave the game paused on clients and server until the countdown is done.
 
-# Add support for dynamic level selection.
-# - The server should choose the level for a match.
-# - The client should be able to specific a three things when they start matchmaking with the backend: an inclusion list, an exclusion list, and a preferred level.
-# - The server should try to accommodate these, but should be able to override all of these, depending on the combined client preferences of the match.
-# - Make sure to update any corresponding GameLift plugin, GDExtension, or backend server logic to accomodate this.
-
-# - I want you to add a shader-based transition. I want this to use a pixelation/tile approach, with dividing the screen into tiles and applying a delay to each. We should show it when leaving or entering the lobby or match levels.
-
-# - Add support for a slide-transition effect that slides a black panel over the lobby screen before showing the loading screen.
-#   - This panel slide will use a Tween.
-#   - We'll need to trigger this from client_load_game.
-#   - We'll need to then have a delay before despawning the lobby level.
-#   - We'll need to then prevent player modifications (spawn, despawn, triggering anything in lobby) during this transition.
-#   - We should also add another tween to every screen to transition it from transparent to opaque when it is opened.
-
-# BIIIIIIIIIG framework refactor.
-# - I want to consolidate settings.gd with g_network_loger.gd and network_logger.gd. I want the consumer game to only have the one settings resource where they configure everything (with reasonable property groupings).
 # - Review /rollback_netcode/examples/.
-# - Move scaffolder log (and maybe other utils) to NetCode.
-#   - Like ScaffolderTime...
-#     - And get rid of "scaled"
 # - Fix tests.
 # - Look at how some old Scaffolder utilities are used, like ScaffolderTime. Should we simplify and replace them with built-in logic that we _don't_ have the consumer app worry about?
-# -
-
-# Version Management Locations
-# 1. Rollback Netcode Plugin
-# - project settings
-# - addons/rollback_netcode/core/network_Netcode.gd:50 - const VERSION := "1.0.0" (single source of truth)
-# - addons/rollback_netcode/plugin.cfg:6 - version="1.0.0" (Asset Library metadata)
-# - addons/rollback_netcode/examples/simple_game/project.godot - Example project
-# 2. GameLift Session Manager Plugin
-# - project settings
-# - backend/template.yaml
-# - addons/gamelift_session_manager/plugin.cfg:6 - version="1.0.0"
-# 3. GameLift GDExtension
-# - No real version used.
-# - gamelift-gdextension/README.md - Build version references (lines 325-329)
-
-# 4. Jump 'n Thump Game
-# project.godot:14 - config/version="0.1.0" (main game version)
-# README.md - Currently just "TODO", but should document version
 
 # - Test that pause limit is enforced.
 
@@ -116,6 +77,13 @@ extends Node
 #     rabbit hole on the right side of the level.
 # - Hook-up / polish pause UI.
 #   - Show a small panel in the center of the window with a lightly transparent screen.
+# - Revise game-over UI.
+#   - Also a panel overlay over the still-visible level area.
+#   - Only show this game-over panel while in the lobby.
+#   - Have this panel persist, and not take up too much space.
+#   - Let players move while the panel is open.
+#   - So, completely not a "screen" or part of the transition system at all
+#     anymore.
 
 # - Update some "debug mode" checks (like for enabling screenshots) to consider
 #   whether we're running in preview mode in the editor.
@@ -392,7 +360,24 @@ extends Node
 #   other state tracked in networking systems might be best to consolidate in a
 #   separate location.
 # - Search for and replace/remove anthropic and claude.
-#
+
+# Record this somewhere. These are the places to update when bumping a new version.
+# Version Management Locations
+# 1. Rollback Netcode Plugin
+# - project settings
+# - addons/rollback_netcode/core/network_Netcode.gd:50 - const VERSION := "1.0.0" (single source of truth)
+# - addons/rollback_netcode/plugin.cfg:6 - version="1.0.0" (Asset Library metadata)
+# - addons/rollback_netcode/examples/simple_game/project.godot - Example project
+# 2. GameLift Session Manager Plugin
+# - project settings
+# - backend/template.yaml
+# - addons/gamelift_session_manager/plugin.cfg:6 - version="1.0.0"
+# 3. GameLift GDExtension
+# - No real version used.
+# - gamelift-gdextension/README.md - Build version references (lines 325-329)
+# 4. Jump 'n Thump Game
+# project.godot:14 - config/version="0.1.0" (main game version)
+
 # ### Devlog post:
 # - AI helped a lot
 # - AI sucked at:
@@ -1031,9 +1016,9 @@ func is_frame_too_old_to_consider(p_frame_index: int) -> bool:
 func queue_rollback(p_conflicting_frame_index: int) -> bool:
 	var target_rollback_frame := p_conflicting_frame_index + 1
 	if is_frame_too_old_to_consider(p_conflicting_frame_index):
-		Netcode.log.fatal(
-			("Requested rollback to frame %d, " +
-			"but oldest rollbackable frame is %d") %
+		Netcode.log.warning(
+			("Rollback rejected: frame %d is too old " +
+			"(oldest rollbackable: %d)") %
 			[target_rollback_frame, oldest_rollbackable_frame_index],
 			NetworkLogger.CATEGORY_SYNC
 		)

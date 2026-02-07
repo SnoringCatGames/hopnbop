@@ -130,9 +130,13 @@ func record_interaction(
 			# pressure is minimal compared to state packing (every frame).
 			frame_interactions = []
 			_rollback_buffer.set_at(frame_index, frame_interactions)
+			# Get the array back from buffer to ensure we have the right reference
+			frame_interactions = _rollback_buffer.get_at(frame_index)
 	else:
 		frame_interactions = []
 		_rollback_buffer.set_at(frame_index, frame_interactions)
+		# Get the array back from buffer to ensure we have the right reference
+		frame_interactions = _rollback_buffer.get_at(frame_index)
 
 	# Append interaction record.
 	frame_interactions.append({

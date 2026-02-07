@@ -1,8 +1,7 @@
 extends GutTest
 ## Integration tests for multi-player declaration with server-assigned sequential IDs.
 
-const DEFAULT_LEVEL_SCENE := preload("res://src/level/default_level.tscn")
-const MockGamePanel := preload("res://test/helpers/mock_game_panel.gd")
+const DEFAULT_LEVEL_SCENE := preload("res://src/level/level_1.tscn")
 
 
 ## Helper function to create default player attributes for testing.
@@ -19,8 +18,8 @@ static func _get_default_attributes() -> Dictionary:
 func before_each():
 	ArrayPool.clear_all_pools()
 	# Initialize network frame tracking.
-	if not G.network.frame_driver._is_frame_tracking_initialized:
-		G.network.frame_driver._initialize_frame_tracking()
+	if not Netcode.frame_driver._is_frame_tracking_initialized:
+		Netcode.frame_driver._initialize_frame_tracking()
 
 
 func after_each():

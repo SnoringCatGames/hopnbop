@@ -551,6 +551,7 @@ func _update_attachment_state() -> void:
 	var next_is_attaching_to_wall := (
 		standard_is_attaching_to_wall
 		and !is_triggering_wall_release
+		and !is_triggering_fall_through
 		and !next_is_attaching_to_floor
 		and !next_is_attaching_to_ceiling
 	)

@@ -11,8 +11,8 @@ const TestEnvironmentMock = preload("res://test/helpers/test_environment_mock.gd
 func before_each():
 	ArrayPool.clear_all_pools()
 	# Initialize frame tracking for rollback buffer setup
-	if not G.network.frame_driver._is_frame_tracking_initialized:
-		G.network.frame_driver._initialize_frame_tracking()
+	if not Netcode.frame_driver._is_frame_tracking_initialized:
+		Netcode.frame_driver._initialize_frame_tracking()
 
 
 func after_each():
@@ -33,8 +33,8 @@ class TestForwardingLogic:
 	func before_each():
 		ArrayPool.clear_all_pools()
 		# Initialize frame tracking for rollback buffer setup
-		if not G.network.frame_driver._is_frame_tracking_initialized:
-			G.network.frame_driver._initialize_frame_tracking()
+		if not Netcode.frame_driver._is_frame_tracking_initialized:
+			Netcode.frame_driver._initialize_frame_tracking()
 
 		root_node = Node.new()
 		root_node.name = "Root"
