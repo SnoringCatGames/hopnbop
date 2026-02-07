@@ -44,6 +44,7 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
+# - Fix unresponsive remote player for a couple seconds after countdown ends.
 # - Fix score popup UI.
 #   - Maybe have this at a constant offset afterall.
 # - Fix bunny outline thickness.
