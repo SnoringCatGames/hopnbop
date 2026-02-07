@@ -19,45 +19,58 @@ class TestMatchStateGetPlayerScore:
 		state.update_scores()
 
 
-	func test_basic_kill_and_death():
+	func test_basic_kill():
 		var state = _make_state_with_players([1, 2])
+		# Player 1 kills player 2.
 		state.kills.append_array([1, 2])
-		state._total_kills_by_player_id[1] = 1
-		state._total_deaths_by_player_id[2] = 1
 		_update_scores(state)
-		assert_eq(state.players_by_id[1].score, 105, "Killer gets kill score + rank bonus")
-		assert_eq(state.players_by_id[2].score, -95, "Killee gets death penalty + rank penalty")
+		# Player 1 (rank 0) kills player 2 (rank 1).
+		# Killing worse player = no bonus.
+		assert_eq(state.players_by_id[1].score, 100, "Killer gets base kill score")
+		# Player 2 (rank 1) killed by player 1 (rank 0).
+		# Dying to better player = no extra penalty.
+		assert_eq(state.players_by_id[2].score, -90, "Killee gets base death penalty")
 
 
 	func test_bump_adds_score():
 		var state = _make_state_with_players([1, 2])
-		state._total_bumps_by_player_id[1] = 3
+		# 3 bumps involving both players.
+		state.bumps.append_array([1, 2, 1, 2, 1, 2])
 		_update_scores(state)
+		# Each player gets 5 points per bump they're involved in.
 		assert_eq(state.players_by_id[1].score, 15, "Bumps add to score")
+		assert_eq(state.players_by_id[2].score, 15, "Both players get bump points")
 
 
 	func test_rank_bonus_for_kill():
 		var state = _make_state_with_players([1, 2, 3])
-		state._total_kills_by_player_id[2] = 5
-		state._total_kills_by_player_id[1] = 1
+		# Player 2 kills player 3 five times -> player 2 is rank 0.
+		state.kills.append_array([2, 3, 2, 3, 2, 3, 2, 3, 2, 3])
+		# Player 1 kills player 2 (higher-ranked).
 		state.kills.append_array([1, 2])
-		state._total_deaths_by_player_id[2] = 1
-		state._total_kills_by_player_id[1] += 1
 		_update_scores(state)
 		var score = state.players_by_id[1].score
-		assert_true(score > 100, "Killing higher-ranked player gives bonus")
+		# Player 1 (rank 1) kills player 2 (rank 0).
+		# Killing better player = bonus.
+		# rank_diff = my_rank(1) - victim_rank(0) = 1 > 0, bonus = 5.
+		assert_eq(score, 105, "Killing higher-ranked player gives bonus")
 
 
 	func test_rank_penalty_for_death():
 		var state = _make_state_with_players([1, 2, 3])
-		state._total_kills_by_player_id[1] = 5
-		state._total_kills_by_player_id[2] = 1
+		# Player 1 kills player 3 five times -> player 1 is rank 0.
+		state.kills.append_array([1, 3, 1, 3, 1, 3, 1, 3, 1, 3])
+		# Player 2 (rank 1) kills player 1 (rank 0).
 		state.kills.append_array([2, 1])
-		state._total_deaths_by_player_id[1] = 1
-		state._total_kills_by_player_id[2] += 1
 		_update_scores(state)
-		var score = state.players_by_id[1].score
-		assert_eq(score, -90, "Death to lower-ranked player is only penalized by DEATH_PENALTY")
+		# Player 1: 5 kills (100 each) + 1 death to worse player.
+		# Death penalty: killer_rank(1) - my_rank(0) = 1 > 0, penalty = 5.
+		# Total: 500 - 95 = 405.
+		assert_eq(
+			state.players_by_id[1].score,
+			405,
+			"Death to lower-ranked has rank penalty"
+		)
 
 
 	func test_self_kill_penalty():
@@ -70,8 +83,8 @@ class TestMatchStateGetPlayerScore:
 
 	func test_negative_score_allowed():
 		var state = _make_state_with_players([1, 2])
-		state.kills.append_array([2, 1])
-		state._total_deaths_by_player_id[1] = 10
+		# Player 2 kills player 1 three times.
+		state.kills.append_array([2, 1, 2, 1, 2, 1])
 		_update_scores(state)
 		var score = state.players_by_id[1].score
 		assert_true(score < 0, "Negative scores are allowed")

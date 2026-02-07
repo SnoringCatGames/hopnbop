@@ -44,8 +44,6 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# - Let's add a countdown timer for starting the match after all players have connected. It should Show 3, then 2, then 1, then GO. It should show this text in the exact center of the hud. Each time the label changes, we should animate a scale change with a tween. The size should transition from x2 to x1 over 0.3 seconds. Except, for the GO tween, we should actually expand the scale instead of shrinking, and we should also fade it out over a second. We should leave the game paused on clients and server until the countdown is done.
-
 # - Review /rollback_netcode/examples/.
 # - Fix tests.
 # - Look at how some old Scaffolder utilities are used, like ScaffolderTime. Should we simplify and replace them with built-in logic that we _don't_ have the consumer app worry about?
@@ -299,7 +297,7 @@ extends Node
 # - Make sleeping bunny animations for while the countdown is going.
 #   - Make sure to override process_mode on PlayerAnimators, so they will move when paused.
 
-# - Add alternate the camera modes.
+# - Add alternate camera modes.
 #   - Support two modes: global camera vs player camera.
 #   - This will be configured on the level.
 #   - For global camera, dynamically instantiate, configure (according to
@@ -1047,7 +1045,9 @@ func _pre_physics_process(_delta: float) -> void:
 	server_frame_index += 1
 
 	# Skip network processing during countdown.
-	# Frames still increment so clients can track countdown progress.
+	# Clients stay paused; animations still run (PROCESS_MODE_ALWAYS).
+	# Spawn positions are handled by allowing initial spawn state through
+	# countdown filtering in ReconcilableState._handle_new_authoritative_state().
 	if is_countdown_active:
 		return
 

@@ -157,6 +157,10 @@ var packed_state := []:
 
 var _is_packing_state_locally := false
 
+## Tracks whether we've received valid initial state from the server.
+## Used to allow the first state through even if it's "too old" (spawn data).
+var _has_received_valid_state := false
+
 var _property_names_for_packing: Array[StringName] = []
 # Dictionary<StringName, int>
 var _property_name_to_pack_index := {}
@@ -271,6 +275,11 @@ func _ready() -> void:
 	_parse_property_names()
 	update_authority()
 
+	# Re-process any packed_state that arrived before _ready() (e.g., spawn data).
+	# Before _parse_property_names(), _unpack_networked_state() fails the size check.
+	if not packed_state.is_empty():
+		_handle_new_authoritative_state()
+
 
 func _parse_property_names() -> void:
 	_property_names_for_packing.assign(
@@ -325,16 +334,18 @@ func _handle_new_authoritative_state() -> void:
 					NetworkLogger.CATEGORY_NETWORK_SYNC)
 			return
 
-	# COUNTDOWN FILTERING: Reject states from before countdown ends.
+	# COUNTDOWN FILTERING: Reject client states during countdown.
+	# Only applies to client-authoritative nodes on the server (input states).
+	# Server-authoritative states (spawn positions, etc.) are always accepted.
 	var countdown_end := Netcode.frame_driver.countdown_end_frame_index
-	if countdown_end >= 0 and state_frame_index < countdown_end:
+	var is_during_countdown := state_frame_index < countdown_end
+	if is_during_countdown and Netcode.is_server:
 		if Netcode.log.is_verbose:
 			Netcode.log.verbose(
-				"%s F:%d Rejecting state from frame %d (before countdown end %d)" % [
+				"%s F:%d Rejecting client state from frame %d (during countdown)" % [
 					name,
 					Netcode.server_frame_index,
 					state_frame_index,
-					countdown_end,
 				],
 				NetworkLogger.CATEGORY_NETWORK_SYNC)
 		return
@@ -371,18 +382,21 @@ func _handle_new_authoritative_state() -> void:
 				NetworkLogger.CATEGORY_NETWORK_SYNC)
 		return
 
-	if Netcode.frame_driver.is_frame_too_old_to_consider(state_frame_index):
-		Netcode.log.warning(
-			(
-				"Received networked state that is too old to reconcile - "
-				+"DISCARDING: state frame: %d, local frame: %d, "
-				+"oldest acceptable: %d"
-			) % [
-				state_frame_index,
-				Netcode.server_frame_index,
-				Netcode.frame_driver.oldest_rollbackable_frame_index,
-			],
-			NetworkLogger.CATEGORY_NETWORK_SYNC)
+	# Allow first state through even if "too old" (initial spawn data from frame 0).
+	# After receiving valid state once, apply normal frame filtering.
+	if _has_received_valid_state and Netcode.frame_driver.is_frame_too_old_to_consider(state_frame_index):
+		if not is_during_countdown:
+			Netcode.log.warning(
+				(
+					"Received networked state that is too old to reconcile - "
+					+"DISCARDING: state frame: %d, local frame: %d, "
+					+"oldest acceptable: %d"
+				) % [
+					state_frame_index,
+					Netcode.server_frame_index,
+					Netcode.frame_driver.oldest_rollbackable_frame_index,
+				],
+				NetworkLogger.CATEGORY_NETWORK_SYNC)
 		return
 
 	var should_trigger_fast_forward := (
@@ -405,7 +419,9 @@ func _handle_new_authoritative_state() -> void:
 
 	# Unpack if state is for current frame, next frame, or past. State for the
 	# next frame is valid when received between physics ticks.
-	var should_unpack_state := state_frame_index >= Netcode.server_frame_index
+	# Also unpack first state regardless of frame (initial spawn data).
+	var is_first_state := not _has_received_valid_state
+	var should_unpack_state := state_frame_index >= Netcode.server_frame_index or is_first_state
 	var should_check_for_prediction_mismatch := (
 		state_frame_index < Netcode.server_frame_index
 		and _rollback_buffer.has_at(state_frame_index)
@@ -452,6 +468,20 @@ func _handle_new_authoritative_state() -> void:
 		_unpack_networked_state()
 		frame_authority = new_frame_authority as FrameAuthority
 
+		# Apply server state directly to scene when:
+		# 1. This is the first state (initial spawn data), OR
+		# 2. Network processing is skipped (paused or during countdown)
+		# In both cases, _pre_network_process won't apply state normally.
+		var is_network_processing_skipped := (
+			Netcode.frame_driver.is_paused or is_during_countdown
+		)
+		var should_apply_directly := is_first_state or is_network_processing_skipped
+		if should_apply_directly and is_server_authoritative and Netcode.is_client:
+			_sync_to_scene_state(_get_default_values())
+
+	# Mark that we've received valid state (for first-state bypass of too-old check).
+	_has_received_valid_state = true
+
 	received_network_state.emit()
 
 	# If we have skipped frames, we need to force the entire system to
@@ -483,24 +513,31 @@ func _pre_network_process() -> void:
 	frame_index = Netcode.server_frame_index
 	frame_authority = FrameAuthority.UNKNOWN
 
-	Netcode.log.check(
-		_rollback_buffer.get_latest_index() >= frame_index - 2,
-		("Rollback buffer missing required frame: " +
-		"current=%d, needs=%d, latest=%d") %
-		[
-			frame_index,
-			frame_index - 2,
-			_rollback_buffer.get_latest_index(),
-		])
+	var latest_buffer_index := _rollback_buffer.get_latest_index()
+	var is_first_frame_after_gap := latest_buffer_index < frame_index - 2
+
+	# Skip buffer check if this is the first frame after a gap (e.g., countdown).
+	# The buffer won't have previous frames, so we'll use defaults.
+	if not is_first_frame_after_gap:
+		Netcode.log.check(
+			latest_buffer_index >= frame_index - 2,
+			("Rollback buffer missing required frame: " +
+			"current=%d, needs=%d, latest=%d") %
+			[
+				frame_index,
+				frame_index - 2,
+				latest_buffer_index,
+			])
 
 	# We're about to simulate frame N. Start by loading frame N-1's final state
 	# as our starting point, and provide frame N-2 as "previous" for just_*
 	# comparisons (e.g., just_pressed, just_touched).
-	_unpack_buffer_state(frame_index - 1)
+	if not is_first_frame_after_gap:
+		_unpack_buffer_state(frame_index - 1)
 
 	var previous_frame_state = _rollback_buffer.get_at(frame_index - 2)
-	if previous_frame_state == null:
-		# For very early frames, use default values as "previous" state.
+	if previous_frame_state == null or is_first_frame_after_gap:
+		# For very early frames or first frame after gap, use default values.
 		previous_frame_state = _get_default_values()
 	_sync_to_scene_state(previous_frame_state)
 
@@ -899,6 +936,11 @@ func _cleanup_buffer_after_pause(pause_frame: int) -> void:
 ## state for the partner node if one exists (e.g., the client-authoritative
 ## input state paired with a server-authoritative character state).
 func record_initial_state(include_partners := true) -> void:
+	# Skip if properties haven't been parsed yet (can happen when called on
+	# sibling nodes before their _ready() runs).
+	if _property_names_for_packing.is_empty():
+		return
+
 	var current_frame := Netcode.server_frame_index
 
 	# Sync the current scene state to the networked properties
@@ -923,6 +965,15 @@ func record_initial_state(include_partners := true) -> void:
 		_record_buffer_frame(target_frame, frame_state)
 
 	ArrayPool.release(initial_state)
+
+	# Also pack to network state so MultiplayerSynchronizer can replicate it.
+	# This is critical for spawn state during countdown when _post_network_process
+	# doesn't run. Set frame_index and frame_authority before packing.
+	# Guard: only pack if properties have been parsed (sibling nodes may not be ready yet).
+	if is_multiplayer_authority() and not _property_names_for_packing.is_empty():
+		frame_index = current_frame
+		frame_authority = FrameAuthority.AUTHORITATIVE
+		_pack_networked_state()
 
 	# Also initialize the partner state if present
 	if include_partners:
