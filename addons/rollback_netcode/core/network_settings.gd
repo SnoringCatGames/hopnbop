@@ -52,7 +52,8 @@ extends Resource
 
 
 ## Match start countdown duration in seconds.
-## Countdown displays 3, 2, 1, GO before match begins.
+## Countdown dynamically displays numbers based on duration (e.g., 4, 3, 2, 1, GO
+## for a 4-second countdown), then match begins when GO appears.
 @export var match_start_countdown_sec := 4.0
 
 

@@ -20,6 +20,9 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
+	# Must run during countdown to track player positions.
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
 	# Throttle visibility updates for performance (we check distance to all
 	# other players each time).
 	Netcode.time.set_interval(

@@ -1,11 +1,12 @@
 class_name MatchStartCountdown
 extends Control
-## Displays the match start countdown (3, 2, 1, GO) with animated transitions.
+## Displays the match start countdown with animated transitions.
+## Dynamically shows countdown numbers based on configured duration
+## (e.g., 4, 3, 2, 1, GO for a 4-second countdown).
 ## Uses frame-based timing synchronized to server_frame_index.
 ## UI-only component - game state (pause/unpause) is handled by FrameDriver.
 
 
-const NUM_COUNTDOWN_STEPS := 4  # "3", "2", "1", "GO".
 const SCALE_SHRINK_DURATION_SEC := 0.3
 const GO_DURATION_SEC := 1.0
 const INITIAL_SCALE := 2.0
@@ -18,7 +19,7 @@ const GO_FINAL_SCALE := 2.0
 
 var _tween: Tween
 var _is_active := false
-var _current_step := -1  # 0="3", 1="2", 2="1", 3="GO".
+var _current_step_index := -1
 
 
 func _ready() -> void:
@@ -39,7 +40,7 @@ func start_countdown() -> void:
 		return
 
 	_is_active = true
-	_current_step = -1
+	_current_step_index = -1
 	visible = true
 
 
@@ -47,16 +48,28 @@ func _process(_delta: float) -> void:
 	if not _is_active:
 		return
 
-	var countdown_end := Netcode.frame_driver.countdown_end_frame_index
+	var countdown_end := Netcode.frame_driver.match_start_countdown_end_frame_index
+	var countdown_sec := Netcode.settings.match_start_countdown_sec
+	var numeric_step_count := ceili(countdown_sec)
+
 	@warning_ignore("integer_division")
-	var frames_per_step := countdown_end / NUM_COUNTDOWN_STEPS
+	var frames_per_numeric_step := countdown_end / numeric_step_count
 
 	var frame := Netcode.server_frame_index
-	@warning_ignore("integer_division")
-	var new_step := mini(frame / frames_per_step, NUM_COUNTDOWN_STEPS - 1)
 
-	if new_step != _current_step:
-		_current_step = new_step
+	# Determine current step.
+	var next_step_index: int
+	if frame < countdown_end:
+		@warning_ignore("integer_division")
+		next_step_index = mini(
+			frame / frames_per_numeric_step,
+			numeric_step_count - 1)
+	else:
+		# Show "GO" when countdown ends (frame 240).
+		next_step_index = numeric_step_count
+
+	if next_step_index != _current_step_index:
+		_current_step_index = next_step_index
 		_update_display()
 
 	if frame >= countdown_end:
@@ -64,20 +77,18 @@ func _process(_delta: float) -> void:
 
 
 func _update_display() -> void:
-	match _current_step:
-		0:
-			_show_number("3")
-		1:
-			_show_number("2")
-		2:
-			_show_number("1")
-		3:
-			_show_go()
+	var countdown_sec := Netcode.settings.match_start_countdown_sec
+	var numeric_step_count := ceili(countdown_sec)
+
+	if _current_step_index < numeric_step_count:
+		var number := numeric_step_count - _current_step_index
+		_show_number(str(number))
+	else:
+		_show_go()
 
 
 func _finish_countdown() -> void:
 	_is_active = false
-	visible = false
 
 
 func _show_number(number_text: String) -> void:
@@ -127,3 +138,6 @@ func _show_go() -> void:
 		0.0,
 		GO_DURATION_SEC
 	).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+
+	# Hide the UI after animation completes.
+	_tween.finished.connect(func(): visible = false, CONNECT_ONE_SHOT)

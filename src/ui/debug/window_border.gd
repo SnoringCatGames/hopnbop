@@ -5,7 +5,7 @@ extends Control
 ## help distinguish between multiple client windows.
 
 const BORDER_WIDTH := 3.0
-const OPACITY := 0.3
+const OPACITY := 0.5
 
 
 func _ready() -> void:

@@ -13,7 +13,7 @@ extends RefCounted
 const _BODY_TYPE_COUNT := 1
 const _COSTUME_COUNT := 1
 
-const _OUTLINE_COLOR_OPACITY := 0.6
+const _OUTLINE_COLOR_OPACITY := 0.5
 const _LABEL_COLOR_WHITENING_FACTOR := 0.7
 
 
@@ -26,7 +26,7 @@ const _PROPERTY_NAMES := [
 	"is_soft",
 	"body_type_index",
 	"costume_index",
-	"outline_color",
+	"base_color",
 	"connect_frame_index",
 	"disconnect_frame_index",
 ]
@@ -73,8 +73,7 @@ var outline_color: Color:
 
 var label_color: Color:
 	get:
-		return base_color.lerp(Color.WHITE, _LABEL_COLOR_WHITENING_FACTOR)
-		#return base_color.lightened(_LABEL_COLOR_WHITENING_FACTOR)
+		return base_color.lightened(_LABEL_COLOR_WHITENING_FACTOR)
 
 
 func get_packed_state() -> Array:
@@ -114,8 +113,8 @@ func set_up(
 	body_type_index = p_attributes.body_type_index
 	costume_index = p_attributes.costume_index
 
-	# outline_color is assigned later by MatchStateSynchronizer.
-	outline_color = Color.WHITE
+	# base_color is assigned later by MatchStateSynchronizer.
+	base_color = Color.WHITE
 
 
 func get_string() -> String:

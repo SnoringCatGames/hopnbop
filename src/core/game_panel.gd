@@ -84,9 +84,9 @@ func _ready() -> void:
 			_client_on_pause_state_changed
 		)
 
-		# Show countdown UI when match countdown starts.
-		Netcode.frame_driver.countdown_started.connect(
-			_on_countdown_started
+		# Show countdown UI when match start countdown begins.
+		Netcode.frame_driver.match_start_countdown_started.connect(
+			_on_match_start_countdown_started
 		)
 
 	if Netcode.is_server:
@@ -445,8 +445,8 @@ func _server_on_all_players_connected() -> void:
 	Netcode.frame_driver.server_set_is_paused(false)
 
 
-func _on_countdown_started(_countdown_end_frame: int) -> void:
-	# Show countdown UI on clients.
+func _on_match_start_countdown_started(_countdown_end_frame: int) -> void:
+	# Show match start countdown UI on clients.
 	if is_instance_valid(G.hud):
 		G.hud.start_match_countdown()
 

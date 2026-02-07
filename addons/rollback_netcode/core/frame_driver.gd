@@ -44,6 +44,8 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
+# - Rename PlayerMatchState to PlayerState.
+
 # - Fix unresponsive remote player for a couple seconds after countdown ends.
 # - Fix score popup UI.
 #   - Maybe have this at a constant offset afterall.
@@ -402,12 +404,12 @@ signal pause_requested(peer_id: int)
 ## Emitted when an unpause is requested.
 signal unpause_requested(peer_id: int)
 
-## Emitted when match countdown starts (for game-specific UI).
+## Emitted when match start countdown begins (for game-specific UI).
 ## countdown_end_frame is the frame index when countdown ends.
-signal countdown_started(countdown_end_frame: int)
+signal match_start_countdown_started(countdown_end_frame: int)
 
-## Emitted when match countdown ends and gameplay begins.
-signal countdown_ended
+## Emitted when match start countdown ends and gameplay begins.
+signal match_start_countdown_ended
 
 ## This determines the period we use between frames that we record in rollback
 ## buffers.
@@ -490,22 +492,23 @@ var _pause_auto_unpause_time_usec: int = 0
 ## SceneTreeTimer for auto-unpause (server-only).
 var _pause_auto_unpause_timer: SceneTreeTimer = null
 
-## Frame index when countdown ends. States before this frame are discarded.
-## Set automatically when match starts.
-var countdown_end_frame_index := -1
+## Frame index when match start countdown ends. States before this frame are
+## discarded. Set automatically when match starts.
+var match_start_countdown_end_frame_index := -1
 
-## Tracks if the initial match countdown has been triggered.
+## Tracks if the initial match start countdown has been triggered.
 ## Used to distinguish first unpause (match start) from subsequent unpauses.
-var _has_match_countdown_started := false
+var _has_match_start_countdown_started := false
 
-var _has_match_countdown_ended := false
+## Tracks if the initial match start countdown has completed.
+var _has_match_start_countdown_ended := false
 
-## Returns true if countdown is currently active.
-var is_countdown_active: bool:
+## Returns true if match start countdown is currently active.
+var is_match_start_countdown_active: bool:
 	get:
 		return (
-			countdown_end_frame_index >= 0 and
-			server_frame_index < countdown_end_frame_index
+			match_start_countdown_end_frame_index >= 0 and
+			server_frame_index < match_start_countdown_end_frame_index
 		)
 
 ## Interval for periodic wall-clock re-sync to maintain accurate timestamps for
@@ -680,10 +683,10 @@ func _server_rpc_client_request_pause() -> void:
 		)
 		return
 
-	# Block pause requests during countdown.
-	if is_countdown_active:
+	# Block pause requests during match start countdown.
+	if is_match_start_countdown_active:
 		Netcode.log.print(
-			"Client %d requested pause during countdown - rejected" % peer_id,
+			"Client %d requested pause during match start countdown - rejected" % peer_id,
 			NetworkLogger.CATEGORY_SYNC
 		)
 		return
@@ -773,18 +776,18 @@ func _client_rpc_notify_unpause(
 	)
 
 
-## Server notifies clients to start match countdown.
+## Server notifies clients to start match start countdown.
 ## Clients pause locally and unpause when countdown ends.
 @rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
-func _client_rpc_start_countdown(countdown_frames: int) -> void:
+func _client_rpc_start_match_start_countdown(countdown_frames: int) -> void:
 	Netcode.check_is_client()
 
-	countdown_end_frame_index = countdown_frames
-	_has_match_countdown_started = true
+	match_start_countdown_end_frame_index = countdown_frames
+	_has_match_start_countdown_started = true
 	_is_paused = false
 
 	Netcode.log.print(
-		"Starting match countdown (%d frames)" % countdown_frames,
+		"Starting match start countdown (%d frames)" % countdown_frames,
 		NetworkLogger.CATEGORY_GAME_STATE
 	)
 
@@ -792,13 +795,13 @@ func _client_rpc_start_countdown(countdown_frames: int) -> void:
 	# This must happen before pausing tree so UI transitions work.
 	pause_state_changed.emit(false, 0)
 
-	# Pause client tree during countdown (characters won't move).
+	# Pause client tree during match start countdown (characters won't move).
 	# Will be unpaused when countdown ends in _pre_physics_process.
 	if is_inside_tree():
 		get_tree().paused = true
 
-	# Emit signal for game-specific UI (e.g., show countdown display).
-	countdown_started.emit(countdown_frames)
+	# Emit signal for game-specific UI (e.g., show match start countdown display).
+	match_start_countdown_started.emit(countdown_frames)
 
 
 ## Server notifies all clients of impending graceful shutdown.
@@ -908,32 +911,32 @@ func _server_execute_unpause() -> void:
 	_pause_auto_unpause_time_usec = 0
 
 	# Check if this is the initial match start and countdown is enabled.
-	var is_starting_countdown := (
+	var is_starting_match_start_countdown := (
 		Netcode.is_server and
-		not _has_match_countdown_started and
+		not _has_match_start_countdown_started and
 		Netcode.settings.match_start_countdown_sec > 0
 	)
 
-	if is_starting_countdown:
-		_has_match_countdown_started = true
+	if is_starting_match_start_countdown:
+		_has_match_start_countdown_started = true
 
-		# Calculate countdown end frame.
+		# Calculate match start countdown end frame.
 		var countdown_frames := int(
 			Netcode.settings.match_start_countdown_sec * target_network_fps
 		)
-		countdown_end_frame_index = countdown_frames
+		match_start_countdown_end_frame_index = countdown_frames
 
 		Netcode.log.print(
-			"Starting match countdown (%d frames)" % countdown_frames,
+			"Starting match start countdown (%d frames)" % countdown_frames,
 			NetworkLogger.CATEGORY_GAME_STATE
 		)
 
-		# Notify clients to start countdown (they pause locally).
+		# Notify clients to start match start countdown (they pause locally).
 		if is_inside_tree():
-			_client_rpc_start_countdown.rpc(countdown_frames)
+			_client_rpc_start_match_start_countdown.rpc(countdown_frames)
 
 		# Emit signal for game-specific UI.
-		countdown_started.emit(countdown_frames)
+		match_start_countdown_started.emit(countdown_frames)
 	else:
 		# Normal unpause - notify clients.
 		if Netcode.is_server and is_inside_tree():
@@ -1052,26 +1055,26 @@ func _pre_physics_process(_delta: float) -> void:
 	# Increment frame index directly on each physics tick.
 	server_frame_index += 1
 
-	# Skip network processing during countdown.
+	# During match start countdown, process only buffer synchronization without game logic.
+	# This keeps rollback buffers in sync while preventing character movement.
 	# Clients stay paused; animations still run (PROCESS_MODE_ALWAYS).
-	# Spawn positions are handled by allowing initial spawn state through
-	# countdown filtering in ReconcilableState._handle_new_authoritative_state().
-	if is_countdown_active:
+	if is_match_start_countdown_active:
+		_run_network_process(true)
 		return
 
-	# Handle countdown end: log, unpause client tree, emit signal.
-	if countdown_end_frame_index >= 0 and not _has_match_countdown_ended:
+	# Handle match start countdown end: log, unpause client tree, emit signal.
+	if match_start_countdown_end_frame_index >= 0 and not _has_match_start_countdown_ended:
 		Netcode.log.print(
-			"Countdown ended at frame %d, match starting" % server_frame_index,
+			"Match start countdown ended at frame %d, match starting" % server_frame_index,
 			NetworkLogger.CATEGORY_GAME_STATE
 		)
-		_has_match_countdown_ended = true
+		_has_match_start_countdown_ended = true
 
-		# Unpause client tree (was paused when countdown started).
+		# Unpause client tree (was paused when match start countdown started).
 		if Netcode.is_client and is_inside_tree():
 			get_tree().paused = false
 
-		countdown_ended.emit()
+		match_start_countdown_ended.emit()
 
 	_run_network_process()
 
@@ -1156,12 +1159,15 @@ func queue_rollback(p_conflicting_frame_index: int) -> bool:
 
 ## For most nodes in the scene, _network_process should happen before
 ## _physics_process.
-func _run_network_process() -> void:
+func _run_network_process(only_buffers := false) -> void:
 	if _queued_rollback_frame_index > 0:
 		_rollback_and_reprocess()
 		_queued_rollback_frame_index = 0
 
-	_network_process()
+	if only_buffers:
+		_network_process_buffers_only()
+	else:
+		_network_process()
 
 
 func _rollback_and_reprocess() -> void:
@@ -1221,6 +1227,27 @@ func _network_process() -> void:
 		node._post_network_process()
 
 
+## Process only buffer synchronization without game logic (for match start countdown).
+## This keeps rollback buffers in sync between server and clients during match start countdown
+## without actually simulating game logic.
+func _network_process_buffers_only() -> void:
+	# Remove invalid nodes (iterate backwards to avoid issues when removing).
+	for i in range(_networked_state_nodes.size() - 1, -1, -1):
+		var node := _networked_state_nodes[i]
+		if not is_instance_valid(node):
+			_networked_state_nodes.remove_at(i)
+
+	# Sync state from buffers to scene (but game logic won't run, so positions don't change).
+	for node in _networked_state_nodes:
+		node._pre_network_process()
+
+	# SKIP _network_process() - no game logic during match start countdown.
+
+	# Sync state back to buffers and send to network.
+	for node in _networked_state_nodes:
+		node._post_network_process()
+
+
 func fast_forward(new_frame_index: int) -> void:
 	var fastforward_start_time_usec := Time.get_ticks_usec()
 	var frame_count := 0
@@ -1234,3 +1261,11 @@ func fast_forward(new_frame_index: int) -> void:
 	last_fastforward_frame_count = frame_count
 	last_fastforward_duration_usec = Time.get_ticks_usec() - fastforward_start_time_usec
 	total_fastforwards += 1
+
+
+## Backfill all rollback buffers after match start countdown ends.
+## During match start countdown, network processing was skipped, so buffers weren't updated.
+## This fills frames from spawn to current frame with the last known state.
+func _backfill_all_buffers_after_match_start_countdown() -> void:
+	for node in _networked_state_nodes:
+		node.backfill_buffer_to_current_frame()
