@@ -30,6 +30,7 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 	add_visibility_filter(_visibility_filter)
+	record_initial_state(false)
 
 
 func _visibility_filter(p_peer_id: int) -> bool:

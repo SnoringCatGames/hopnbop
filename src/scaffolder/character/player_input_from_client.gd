@@ -16,6 +16,9 @@ func _get_is_server_authoritative() -> bool:
 func _ready() -> void:
 	super._ready()
 	update_configuration_warnings()
+	if Engine.is_editor_hint():
+		return
+	record_initial_state(false)
 
 
 func _get_configuration_warnings() -> PackedStringArray:

@@ -17,7 +17,7 @@ var spawn_position: Vector2:
 	get:
 		return Vector2(
 			roundf(global_position.x / SNAP_X) * SNAP_X,
-			roundf(global_position.y / SNAP_Y) * SNAP_Y
+			ceilf(global_position.y / SNAP_Y) * SNAP_Y
 		)
 
 var _previous_position: Vector2

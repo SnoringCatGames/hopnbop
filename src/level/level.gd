@@ -8,6 +8,8 @@ const _SPAWN_POSITION_MIN_SPAWN_DISTANCE := 200.0
 const _SPAWN_POSITION_COLLISION_CHECK_STEP := 4.0
 const _SPAWN_POSITION_MAX_UPWARD_SHIFT := 200.0
 
+@export var collision_tiles: TileMapLayer
+
 @export var level_camera: Camera2D
 
 @export var spawn_points: Node2D
@@ -26,24 +28,23 @@ var players_by_id := {}
 
 
 func _ready() -> void:
-	pass
+	G.check(is_instance_valid(collision_tiles),
+		"collision_tiles node not set in level: %s" %
+		Utils.get_display_name(self ))
+	G.check(is_instance_valid(spawn_points),
+		"spawn_points node not set in level: %s" %
+		Utils.get_display_name(self ))
 
 
 func _get_player_spawn_position() -> Vector2:
-	if not is_instance_valid(spawn_points):
-		G.warning("spawn_points node not set in level: %s" %
-			Utils.get_display_name(self ))
-		return Vector2.ZERO
-
 	var available_spawn_points: Array[SpawnPoint] = []
 	for child in spawn_points.get_children():
 		if G.ensure(child is SpawnPoint):
 			available_spawn_points.append(child)
 
-	if not G.ensure(not available_spawn_points.is_empty()):
-		G.warning("No spawn points available in level: %s" %
-			Utils.get_display_name(self ))
-		return Vector2.ZERO
+	G.check(not available_spawn_points.is_empty(),
+		"No spawn points available in level: %s" %
+		Utils.get_display_name(self ))
 
 	# Find spawn point that's far enough from all players.
 	var best_spawn_point: SpawnPoint = null
@@ -97,10 +98,8 @@ func _find_collision_free_position(initial_position: Vector2) -> Vector2:
 	# Test initial position.
 	query.transform = Transform2D(0.0, initial_position)
 	var space_state := get_world_2d().direct_space_state
-	var result := space_state.intersect_shape(query)
 
-	if result.is_empty():
-		# No collision at initial position.
+	if _is_position_collision_free(space_state, query):
 		return initial_position
 
 	# Try shifting upward.
@@ -108,10 +107,8 @@ func _find_collision_free_position(initial_position: Vector2) -> Vector2:
 	while shift <= _SPAWN_POSITION_MAX_UPWARD_SHIFT:
 		var test_position := initial_position - Vector2(0, shift)
 		query.transform = Transform2D(0.0, test_position)
-		result = space_state.intersect_shape(query)
 
-		if result.is_empty():
-			# Found collision-free position.
+		if _is_position_collision_free(space_state, query):
 			return test_position
 
 		shift += _SPAWN_POSITION_COLLISION_CHECK_STEP
@@ -122,6 +119,17 @@ func _find_collision_free_position(initial_position: Vector2) -> Vector2:
 			initial_position
 	)
 	return initial_position
+
+
+func _is_position_collision_free(
+	space_state: PhysicsDirectSpaceState2D,
+	query: PhysicsShapeQueryParameters2D,
+) -> bool:
+	var result := space_state.intersect_shape(query)
+	for collision in result:
+		if collision.collider != collision_tiles:
+			return false
+	return true
 
 
 ## Called when a player is added to this level.

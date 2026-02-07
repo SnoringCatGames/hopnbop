@@ -40,10 +40,20 @@ signal bumps_updated
 # --- Game-Specific State ---
 
 ## Every even index is the killer, every odd index is the killee.
-var kills: PackedInt32Array = []
+## Has a setter to trigger kills_updated signal when replicated to clients.
+var kills: PackedInt32Array = []:
+	set(value):
+		kills = value
+		if not _is_modifying_kills_locally:
+			kills_updated.emit()
 
 ## Every even index marks a 2-player bump pair.
-var bumps: PackedInt32Array = []
+## Has a setter to trigger bumps_updated signal when replicated to clients.
+var bumps: PackedInt32Array = []:
+	set(value):
+		bumps = value
+		if not _is_modifying_bumps_locally:
+			bumps_updated.emit()
 
 # Dictionary<int, int>
 var _total_kills_by_player_id := {}
@@ -64,6 +74,8 @@ var _interaction_tracker: InteractionTracker
 var _connected_players := {}
 
 var _is_packing_state_locally := false
+var _is_modifying_kills_locally := false
+var _is_modifying_bumps_locally := false
 
 
 # --- Public API ---
@@ -135,8 +147,11 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 		return # Already recorded within window.
 
 	# Record in replicated arrays.
+	# Use flag to prevent setter from emitting signal (we emit manually below).
+	_is_modifying_kills_locally = true
 	kills.append_array([killer_id, killee_id])
 	kills = kills.duplicate()
+	_is_modifying_kills_locally = false
 
 	# Update kill/death counts.
 	if not _total_kills_by_player_id.has(killer_id):
@@ -192,8 +207,11 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 		return # Already recorded within window.
 
 	# Record in replicated arrays.
+	# Use flag to prevent setter from emitting signal (we emit manually below).
+	_is_modifying_bumps_locally = true
 	bumps.append_array([player_1_id, player_2_id])
 	bumps = bumps.duplicate()
+	_is_modifying_bumps_locally = false
 
 	# Update bump counts for both players.
 	if not _total_bumps_by_player_id.has(player_1_id):
@@ -249,17 +267,44 @@ func server_on_player_disconnected(player: PlayerMatchState) -> void:
 func update_scores() -> void:
 	var all_player_ids := players_by_id.keys()
 
+	# Derive kill/death counts from replicated kills array.
+	# (The _total_* dictionaries are only updated on server, so we derive
+	# from the replicated arrays to ensure clients calculate correctly.)
+	# Dictionary<int, int>
+	var kills_count := {}
+	var deaths_count := {}
+	for player_id in all_player_ids:
+		kills_count[player_id] = 0
+		deaths_count[player_id] = 0
+	for i in range(0, kills.size(), 2):
+		var killer: int = kills[i]
+		var killee: int = kills[i + 1]
+		if kills_count.has(killer):
+			kills_count[killer] += 1
+		if deaths_count.has(killee):
+			deaths_count[killee] += 1
+
+	# Derive bump counts from replicated bumps array.
+	# Dictionary<int, int>
+	var bumps_count := {}
+	for player_id in all_player_ids:
+		bumps_count[player_id] = 0
+	for i in range(0, bumps.size(), 2):
+		var player_1: int = bumps[i]
+		var player_2: int = bumps[i + 1]
+		if bumps_count.has(player_1):
+			bumps_count[player_1] += 1
+		if bumps_count.has(player_2):
+			bumps_count[player_2] += 1
+
 	# Calculate base scores.
 	# Dictionary<int, int>
 	var scores := {}
 	for player_id in all_player_ids:
-		scores[player_id] = (
-			_total_kills_by_player_id.get(player_id, 0) -
-			_total_deaths_by_player_id.get(player_id, 0)
-		)
+		scores[player_id] = kills_count[player_id] - deaths_count[player_id]
 
 	# Calculate base ranks.
-	all_player_ids.sort_custom(func(a, b): return scores[b] - scores[a])
+	all_player_ids.sort_custom(func(a, b): return scores[a] > scores[b])
 	# Dictionary<int, int>
 	var ranks := {}
 	for i in range(all_player_ids.size()):
@@ -268,8 +313,7 @@ func update_scores() -> void:
 	# Calculate final scores with bonuses/penalties.
 	for player_id in all_player_ids:
 		var score = 0
-		var bumps_count: int = _total_bumps_by_player_id.get(player_id, 0)
-		score += bumps_count * _BUMP_SCORE
+		score += bumps_count[player_id] * _BUMP_SCORE
 		for i in range(0, kills.size(), 2):
 			var killer = kills[i]
 			var killee = kills[i + 1]
@@ -294,7 +338,7 @@ func update_scores() -> void:
 		scores[player_id] = score
 
 	# Record final ranks and scores.
-	all_player_ids.sort_custom(func(a, b): return scores[b] - scores[a])
+	all_player_ids.sort_custom(func(a, b): return scores[a] > scores[b])
 	for i in range(all_player_ids.size()):
 		var player_id: int = all_player_ids[i]
 		players_by_id.get(player_id).rank = i + 1

@@ -5,9 +5,10 @@
 [ext_resource type="TileSet" uid="uid://mtwu14d78k40" path="res://src/level/default_tile_set.tres" id="3_n5l76"]
 [ext_resource type="Script" uid="uid://1roi8ff6ow47" path="res://src/level/spawn_point.gd" id="4_56ru6"]
 
-[node name="DefaultLevel" type="Node2D" node_paths=PackedStringArray("player_spawner", "level_camera", "spawn_points", "players_node")]
+[node name="DefaultLevel" type="Node2D" node_paths=PackedStringArray("player_spawner", "collision_tiles", "level_camera", "spawn_points", "players_node")]
 script = ExtResource("1_jq71y")
 player_spawner = NodePath("PlayerSpawner")
+collision_tiles = NodePath("CollisionTiles")
 level_camera = NodePath("Camera2D")
 spawn_points = NodePath("SpawnPoints")
 players_node = NodePath("Players")

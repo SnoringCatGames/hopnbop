@@ -180,7 +180,24 @@ func _collect_actions() -> void:
 
 ## This gets called during _network_process.
 func _apply_movement() -> void:
+	# When descending through floors while pressing into a wall, temporarily
+	# zero horizontal velocity to prevent wall collision from zeroing Y velocity.
+	# Godot's move_and_slide collision resolution can reduce vertical velocity
+	# when sliding along a wall corner.
+	var saved_velocity_x := velocity.x
+	var should_preserve_wall_slide := (
+		surfaces.is_descending_through_floors and
+		surfaces.is_pressing_into_wall
+	)
+	if should_preserve_wall_slide:
+		velocity.x = 0.0
+
 	move_and_slide()
+
+	# Restore horizontal velocity after move_and_slide.
+	if should_preserve_wall_slide:
+		velocity.x = saved_velocity_x
+
 	surfaces.update_touches()
 
 
@@ -208,6 +225,14 @@ func _process_actions() -> void:
 	_previous_actions_handlers_this_frame.clear()
 
 	for action_handler in movement_settings.action_handlers:
+		# Don't run FloorDefaultAction when descending through floors, as it
+		# zeros velocity and prevents gravity from accumulating. But DO allow
+		# FallThroughFloorAction to run so we get the initial velocity boost.
+		var is_blocked_floor_action := (
+			surfaces.is_descending_through_floors and
+			action_handler.name == &"FloorDefaultAction"
+		)
+
 		var is_action_relevant_for_surface: bool = \
 		action_handler.type == surfaces.surface_type or \
 		action_handler.type == SurfaceType.OTHER or \
@@ -224,7 +249,8 @@ func _process_actions() -> void:
 		var is_action_relevant_for_physics_mode: bool = \
 		action_handler.uses_runtime_physics
 		if is_action_relevant_for_surface and \
-		is_action_relevant_for_physics_mode:
+		is_action_relevant_for_physics_mode and \
+		not is_blocked_floor_action:
 			var executed: bool = action_handler.process(self )
 			_previous_actions_handlers_this_frame[action_handler.name] = \
 			executed
