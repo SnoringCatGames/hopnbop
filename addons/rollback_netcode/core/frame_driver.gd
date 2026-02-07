@@ -46,6 +46,11 @@ extends Node
 
 # - Fix music playback.
 
+# - PlayerDisplay, fixed size
+# - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
+# - Give players collision mask for each other? Fix feel of impacts in general. Maybe make bump ups set a constant up and out, rather than additive
+# - Make sure the overall game area scaling/centering works well with the current display settings.
+
 # - Test kills and bumps.
 # - Adjust foot, head, and body shapes.
 # - TEST that when a high-speed kill happens, the bounce happens from where the

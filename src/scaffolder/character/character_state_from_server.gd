@@ -346,6 +346,10 @@ func _network_process() -> void:
 
 	character._process_movement_and_actions()
 
+	# Ensure visibility/collision state is correct based on current interaction.
+	# This is critical to prevent players from staying invisible after respawn.
+	_ensure_interaction_state_applied()
+
 	super._network_process()
 
 
@@ -385,6 +389,22 @@ func _restore_indirect_interaction_state(frame_state: Array) -> void:
 		&"last_interaction_type"
 	)
 
+	# Apply collidability based on interaction type.
+	_apply_interaction_collidability(interaction_type)
+
+
+## Ensures the current interaction state is properly applied to character
+## visibility and collision. Called every frame to maintain correct state.
+func _ensure_interaction_state_applied() -> void:
+	if not G.ensure_valid(character):
+		return
+
+	# Use current interaction type to determine collidability.
+	_apply_interaction_collidability(last_interaction_type)
+
+
+## Helper to apply collidability based on interaction type.
+func _apply_interaction_collidability(interaction_type: int) -> void:
 	# Determine collidability based on interaction type.
 	var is_collidable: bool
 	match interaction_type:

@@ -12,30 +12,33 @@ static func draw_shape_outline(
 		shape: Shape2D,
 		color: Color,
 		thickness: float,
+		sector_arc_length := 4.0,
 ) -> void:
 	if shape is CircleShape2D:
 		draw_circle_outline(
 			canvas,
 			position,
-			shape.shape.radius,
+			shape.radius,
 			color,
 			thickness,
+			sector_arc_length,
 		)
-	elif shape.shape is CapsuleShape2D:
+	elif shape is CapsuleShape2D:
 		draw_capsule_outline(
 			canvas,
 			position,
-			shape.shape.radius,
-			shape.shape.height,
+			shape.radius,
+			shape.height,
 			shape.is_rotated_90_degrees,
 			color,
 			thickness,
+			sector_arc_length,
 		)
-	elif shape.shape is RectangleShape2D:
+	elif shape is RectangleShape2D:
 		draw_rectangle_outline(
 			canvas,
 			position,
-			shape.shape.extents,
+			shape.extents,
 			shape.is_rotated_90_degrees,
 			color,
 			thickness,
@@ -44,7 +47,7 @@ static func draw_shape_outline(
 		G.fatal(
 			"Invalid Shape2D provided for draw_shape_outline: %s. The " +
 			"supported shapes are: CircleShape2D, CapsuleShape2D, " +
-			"RectangleShape2D." % shape.shape,
+			"RectangleShape2D." % shape,
 		)
 
 

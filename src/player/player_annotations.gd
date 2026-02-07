@@ -13,15 +13,16 @@ extends Node2D
 ## (master HUD toggle via G.settings.show_hud). Both must be enabled to show.
 
 # Configuration constants.
-const COLLISION_OUTLINE_COLOR := Color(1.0, 1.0, 1.0, 0.8)
-const COLLISION_OUTLINE_THICKNESS := 2.0
+const COLLISION_OUTLINE_COLOR := Color(0.0, 1.0, 1.0, 0.569)
+const COLLISION_OUTLINE_THICKNESS := 1.5
+const COLLISION_OUTLINE_SECTOR_ARC_LENGTH := 2.0
 
 const DOT_RADIUS := 2.0
 const LINE_THICKNESS := 1.0
 
 # Color coding by frame authority.
 const COLOR_AUTHORITATIVE := Color(0.0, 0.9, 0.6, 0.6)
-const COLOR_PREDICTED := Color(1.0, 0.8, 0.0, 0.6)
+const COLOR_PREDICTED := Color(1.0, 0.8, 0.0, 0.3)
 const COLOR_UNKNOWN := Color(0.5, 0.5, 0.5, 0.6)
 
 @export var player: Player
@@ -51,7 +52,7 @@ func _draw_collision_shape() -> void:
 	if not is_instance_valid(player.collision_shape):
 		return
 
-	var local_position := player.global_position - global_position
+	var local_position := player.collision_shape.global_position - global_position
 
 	DrawUtils.draw_shape_outline(
 		self ,
@@ -59,6 +60,7 @@ func _draw_collision_shape() -> void:
 		player.collision_shape.shape,
 		COLLISION_OUTLINE_COLOR,
 		COLLISION_OUTLINE_THICKNESS,
+		COLLISION_OUTLINE_SECTOR_ARC_LENGTH,
 	)
 
 
@@ -91,7 +93,9 @@ func _draw_rollback_buffer_trail() -> void:
 		var frame_position: Vector2 = frame_state[0]
 		var frame_authority: int = frame_state[frame_state.size() - 1]
 
-		var local_pos := frame_position - global_position
+		var local_pos := (
+			frame_position - global_position + player.collision_shape.position
+		)
 		var color := _get_color_for_authority(frame_authority)
 
 		# Draw line to previous frame if exists.

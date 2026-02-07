@@ -74,16 +74,16 @@ script = ExtResource("5_fwdpi")
 player = NodePath("..")
 metadata/_custom_type_script = "uid://cg16ocbfwgu5m"
 
-[node name="PlayerAnnotations" type="Node2D" parent="." node_paths=PackedStringArray("player")]
-script = ExtResource("6_annot")
-player = NodePath("..")
-
 [node name="CharacterCamera" type="Camera2D" parent="."]
 unique_name_in_owner = true
 zoom = Vector2(1.5, 1.5)
 
 [node name="PlayerAnimator" parent="." instance=ExtResource("5_sc4xa")]
 position = Vector2(0, -8)
+
+[node name="PlayerAnnotations" type="Node2D" parent="." node_paths=PackedStringArray("player")]
+script = ExtResource("6_annot")
+player = NodePath("..")
 
 [node name="PlayerBodyCollisionShape" type="CollisionShape2D" parent="."]
 unique_name_in_owner = true

@@ -16,12 +16,37 @@ func _input(event: InputEvent) -> void:
 			)
 		)
 	elif event.is_action_pressed("toggle_hud"):
-		G.settings.show_hud = not G.settings.show_hud
-		G.print("HUD: %s" % ("ON" if G.settings.show_hud else "OFF"))
+		# Check if any HUD/debug element is currently on.
+		var any_on = (
+			G.settings.show_hud
+			or G.settings.draw_annotations
+			or G.settings.show_debug_console
+			or G.settings.show_debug_player_state
+			or G.settings.show_perf_tracker
+		)
+
+		# If anything is on, turn everything off.
+		# If everything is off, turn everything on.
+		var new_state = not any_on
+
+		G.settings.show_hud = new_state
+		G.settings.draw_annotations = new_state
+		G.settings.show_debug_console = new_state
+		G.settings.show_debug_player_state = new_state
+		G.settings.show_perf_tracker = new_state
+
+		G.print(
+			"All HUD/Debug: %s" % ("ON" if new_state else "OFF")
+		)
+
+		# Update UI components.
 		if is_instance_valid(G.hud):
-			G.hud.visible = G.settings.show_hud
+			G.hud.visible = new_state
 		if is_instance_valid(G.super_hud):
-			G.super_hud.visible = G.settings.show_hud
+			G.super_hud.visible = new_state
+			G.super_hud.toggle_perf_tracker()
+			G.super_hud.toggle_debug_console()
+			G.super_hud.toggle_player_state_list()
 	elif event.is_action_pressed("toggle_music"):
 		G.settings.mute_music = not G.settings.mute_music
 		G.print("Music: %s" % ("OFF" if G.settings.mute_music else "ON"))
