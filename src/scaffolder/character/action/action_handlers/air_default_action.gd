@@ -108,7 +108,9 @@ static func update_velocity_in_air(
 		# Apply friction to slow horizontal movement when not pressing
 		# left/right.
 		var friction_deceleration := (
-			movement_settings.fall_sideways_friction * delta
+			movement_settings.fall_sideways_friction *
+			movement_settings.gravity_fast_fall_acceleration *
+			delta
 		)
 		if absf(velocity.x) <= friction_deceleration:
 			velocity.x = 0.0

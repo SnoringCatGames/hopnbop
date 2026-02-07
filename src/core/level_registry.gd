@@ -93,17 +93,20 @@ func clear() -> void:
 	_levels.clear()
 
 
-## Get the default level (first enabled level).
+## Get a random enabled level.
 ## Returns null if no levels are registered or none are enabled.
-func get_default_level() -> LevelInfo:
+func get_random_enabled_level() -> LevelInfo:
+	var enabled: Array[LevelInfo] = []
 	for info in _levels:
 		if info.is_enabled:
-			return info
-	return null
+			enabled.append(info)
+	if enabled.is_empty():
+		return null
+	return enabled.pick_random()
 
 
-## Get the default level scene.
-## Returns null if no default level exists.
-func get_default_level_scene() -> PackedScene:
-	var info := get_default_level()
+## Get a random enabled level scene.
+## Returns null if no enabled levels exist.
+func get_random_enabled_level_scene() -> PackedScene:
+	var info := get_random_enabled_level()
 	return info.scene if info != null else null
