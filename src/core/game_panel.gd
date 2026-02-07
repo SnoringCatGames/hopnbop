@@ -36,8 +36,9 @@ func _ready() -> void:
 	%MatchStateSynchronizer.set_multiplayer_authority(NetworkConnector.SERVER_ID)
 	%LevelSpawner.set_multiplayer_authority(NetworkConnector.SERVER_ID)
 
-	for level_scene in G.settings.level_scenes:
-		%LevelSpawner.add_spawnable_scene(level_scene.resource_path)
+	for level_info in G.settings.levels:
+		if level_info.scene != null:
+			%LevelSpawner.add_spawnable_scene(level_info.scene.resource_path)
 
 	# Set up session manager for network coordination.
 	session_manager = GameSessionManager.new()
@@ -62,9 +63,8 @@ func _ready() -> void:
 	if Netcode.is_server:
 		session_manager.match_ready.connect(_on_match_ready)
 		session_manager.server_should_reset.connect(_on_server_should_reset)
-		# Connect MatchStateSynchronizer for outline color assignment.
 		session_manager.session_provider.all_players_connected.connect(
-			%MatchStateSynchronizer._server_on_all_players_connected
+			_server_on_all_players_connected
 		)
 
 	if Netcode.is_client:
@@ -165,10 +165,20 @@ func _client_on_local_player_loaded(
 
 func _client_on_server_connected() -> void:
 	Netcode.check_is_client()
+
+	# Guard against being called multiple times (can happen if GamePanel._ready
+	# runs after connection is already established, causing both the direct call
+	# and the signal handler to fire).
+	if G.client_session.is_game_active:
+		G.print(
+			"Already connected to server, ignoring duplicate call",
+			NetworkLogger.CATEGORY_CONNECTIONS
+		)
+		return
+
 	G.check(G.client_session.is_game_loading, "Game load is not expected")
 	G.check(not G.client_session.is_game_active, "Game is already active")
 
-	G.client_session.is_game_loading = false
 	G.client_session.is_game_active = true
 
 	# Stay on the loading screen. We will transition to GAME when server
@@ -206,6 +216,8 @@ func _client_transition_to_game_if_ready() -> void:
 	# Only transition if game is active and we're on LOADING screen.
 	if G.client_session.is_game_active:
 		if G.screens.current_screen == ScreensMain.ScreenType.LOADING:
+			# Game is no longer loading - we're entering the game now.
+			G.client_session.is_game_loading = false
 			G.screens.client_open_screen(ScreensMain.ScreenType.GAME)
 
 
@@ -238,6 +250,21 @@ func _on_match_ready() -> void:
 		"Match ready, all players validated",
 		NetworkLogger.CATEGORY_GAME_STATE
 	)
+
+	# Set expected player count for color assignment. This tells
+	# MatchStateSynchronizer how many players to expect, so it can assign colors
+	# when the last player is added to match state.
+	# In preview mode, this is the number of client instances.
+	# In production, it's the number returned by the matchmaker.
+	var expected_count: int
+	if Netcode.is_preview:
+		expected_count = Netcode.settings.preview_client_count
+	else:
+		# Production: get from session provider or use connected peer count
+		expected_count = multiplayer.get_peers().size()
+
+	%MatchStateSynchronizer.server_set_expected_player_count(expected_count)
+
 	# Game-specific logic can go here (e.g., start countdown)
 
 
@@ -257,7 +284,7 @@ func _server_reset_for_new_match() -> void:
 	# Clear match state.
 	G.match_state.match_start_frame_index = -1
 	G.match_state.is_match_ended = false
-	G.match_state.server_clear_all_players()
+	G.match_state.clear()
 
 	# Despawn current level.
 	if is_instance_valid(G.level):
@@ -361,7 +388,11 @@ func server_start_match() -> void:
 	G.match_state.is_match_ended = false
 
 	# Set expected player count for session validation.
-	session_manager.server_set_expected_players(Netcode.settings.preview_client_count)
+	# In preview mode, this is the number of client instances.
+	# In production, GameLiftServerProvider sets this from session properties.
+	if Netcode.is_preview:
+		var expected_client_count := Netcode.settings.preview_client_count
+		session_manager.server_set_expected_players(expected_client_count)
 
 	# Get selected level from session provider (GameLift or preview mode).
 	var level_scene := _server_get_selected_level_scene()
@@ -408,7 +439,7 @@ func _server_on_all_players_connected() -> void:
 	Netcode.frame_driver.server_set_is_paused(false)
 
 
-func _server_on_preview_peer_connected(peer_id: int) -> void:
+func _server_on_preview_peer_connected(_peer_id: int) -> void:
 	Netcode.check_is_server()
 
 	# If no level exists or match has ended, spawn a new level for the new match.
@@ -427,8 +458,10 @@ func _server_on_preview_peer_connected(peer_id: int) -> void:
 		# Reset timer state for new match.
 		G.match_state.match_start_frame_index = -1
 		G.match_state.is_match_ended = false
-		# Reset expected player count for session validation.
-		session_manager.server_set_expected_players(Netcode.settings.preview_client_count)
+		# Reset expected client count for session validation (preview mode).
+		var expected_client_count := Netcode.settings.preview_client_count
+		session_manager.server_set_expected_players(expected_client_count)
+		# NOTE: MatchStateSynchronizer expected count set in _on_match_ready().
 		# Reset frame counter for fresh match start.
 		Netcode.frame_driver.server_frame_index = 0
 		# Start grace period to suppress expected frame sync warnings.
@@ -515,7 +548,7 @@ func on_left_lobby_to_screen(_next_screen_type: ScreensMain.ScreenType) -> void:
 
 
 ## Get the level scene to spawn based on session provider selection.
-## Falls back to default_level_scene if no level is selected or found.
+## If no level is selected, picks a random enabled level.
 func _server_get_selected_level_scene() -> PackedScene:
 	var level_id := session_manager.server_get_selected_level_id()
 
@@ -529,18 +562,34 @@ func _server_get_selected_level_scene() -> PackedScene:
 			return level_info.scene
 		else:
 			G.warning(
-				"Selected level '%s' not found in registry, using default" % level_id,
+				"Selected level '%s' not found in registry" % level_id,
 				NetworkLogger.CATEGORY_GAME_STATE
 			)
 
-	return G.settings.default_level_scene
+	# No level selected or not found - pick random from enabled levels.
+	var random_level := G.level_registry.get_random_enabled_level()
+	if random_level != null:
+		G.print(
+			"Randomly selected level: %s (%s)" % [
+				random_level.id,
+				random_level.display_name
+			],
+			NetworkLogger.CATEGORY_GAME_STATE
+		)
+		return random_level.scene
+
+	G.warning(
+		"No enabled levels available",
+		NetworkLogger.CATEGORY_GAME_STATE
+	)
+	return null
 
 
 func _server_spawn_level(level_scene: PackedScene) -> void:
 	Netcode.check_is_server()
 	G.check(
-		G.settings.level_scenes.has(level_scene),
-		"level_scene not registered in settings: %s" % level_scene,
+		G.level_registry.get_level_id_for_scene(level_scene) != "",
+		"level_scene not registered in level registry: %s" % level_scene,
 	)
 
 	# Pause server to wait for all clients to connect before starting match.
