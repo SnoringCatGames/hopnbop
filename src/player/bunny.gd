@@ -216,7 +216,7 @@ func _apply_outline_color() -> void:
 	)
 
 	# Set outline width (make it more visible).
-	shader_material.set_shader_parameter("outline_width", 2.0)
+	shader_material.set_shader_parameter("outline_width", 1.0)
 
 	# Toggle outline based on whether we're in a networked match.
 	var outline_enabled := G.is_networked_level_active
@@ -225,7 +225,7 @@ func _apply_outline_color() -> void:
 	G.verbose(
 		"Applied outline for player %s: color=%s, enabled=%s, width=2.0" % [
 			player_id,
-			match_state.outline_color,
+			match_state.base_color,
 			outline_enabled,
 		],
 		NetworkLogger.CATEGORY_GAME_STATE,

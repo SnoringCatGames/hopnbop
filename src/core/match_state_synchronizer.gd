@@ -114,7 +114,7 @@ func _server_assign_outline_colors() -> void:
 	for i in range(player_ids.size()):
 		var player_id: int = player_ids[i]
 		var player: PlayerMatchState = state.players_by_id[player_id]
-		player.outline_color = colors[i]
+		player.base_color = colors[i]
 		G.print(
 			"Player %d color = %s" % [player_id, colors[i]],
 			NetworkLogger.CATEGORY_GAME_STATE

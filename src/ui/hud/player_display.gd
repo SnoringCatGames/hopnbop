@@ -2,11 +2,9 @@ class_name PlayerDisplay
 extends PanelContainer
 ## Individual player info panel showing adjective, name, and score.
 
-# FIXME: Fix this. popup labels are not right yet.
-
 # Floating score popup settings.
 const _POPUP_MIN_SCORE_CHANGE := 10
-const _POPUP_RADIUS := 40.0
+const _POPUP_OFFSET := Vector2(50.0, -20.0)  # Right and slightly up.
 const _POPUP_INITIAL_SCALE := 0.1
 const _POPUP_TARGET_SCALE := 1.0
 const _POPUP_OVERSHOOT_SCALE := 1.15
@@ -74,6 +72,12 @@ func _update_display(delta: float) -> void:
 
 	%Score.text = "Score: %d" % _displayed_score
 
+	# Apply label color.
+	var label_color := player_match_state.label_color
+	%Name.add_theme_color_override("font_color", label_color)
+	%Adjective.add_theme_color_override("font_color", label_color)
+	%Score.add_theme_color_override("font_color", label_color)
+
 	# Apply outline color.
 	var outline_color := player_match_state.outline_color
 	%Name.add_theme_color_override("font_outline_color", outline_color)
@@ -110,13 +114,8 @@ func _spawn_score_popup(score_delta: int) -> void:
 	var score_center_local := score_rect.get_center() - my_rect.position
 	wrapper.position = score_center_local
 
-	# Calculate random angle offset (-30° to 210° = 2 to 10 o'clock).
-	var angle_deg := randf_range(-30.0, 210.0)
-	var angle_rad := deg_to_rad(angle_deg)
-	var offset := Vector2(cos(angle_rad), sin(angle_rad)) * _POPUP_RADIUS
-
-	# Position label at offset from wrapper center.
-	popup.position = offset
+	# Position label at constant offset (right and slightly up).
+	popup.position = _POPUP_OFFSET
 
 	# Defer pivot_offset assignment until label size is calculated.
 	_setup_popup_pivot.call_deferred(popup)

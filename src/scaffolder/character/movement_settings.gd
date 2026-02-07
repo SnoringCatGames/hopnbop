@@ -61,22 +61,12 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 @export var gravity_slow_rise_multiplier := 0.6
 @export var gravity_double_jump_slow_rise_multiplier := 0.68
 
-var gravity_fast_fall_acceleration: float:
-	get:
-		return gravity_acceleration_multiplier * G.settings.default_gravity_acceleration
-var gravity_slow_rise_acceleration: float:
-	get:
-		return gravity_fast_fall_acceleration * gravity_slow_rise_multiplier
-var gravity_double_jump_slow_rise_acceleration: float:
-	get:
-		return gravity_fast_fall_acceleration * gravity_double_jump_slow_rise_multiplier
-
 @export var walk_acceleration := 3000.0
 @export var in_air_horizontal_acceleration := 1000.0
 
 @export var friction_coeff_with_sideways_input := 1.25
 @export var friction_coeff_without_sideways_input := 1.0
-@export var fall_sideways_friction := 0.1
+@export var fall_horizontal_friction := 0.3
 
 @export var max_ground_horizontal_speed := 150.0
 @export var max_air_horizontal_speed := 150.0
@@ -101,6 +91,16 @@ var gravity_double_jump_slow_rise_acceleration: float:
 @export var fall_through_floor_velocity_boost := 100.0
 @export var ceiling_fall_velocity_boost := 100.0
 @export_group("")
+
+var gravity_fast_fall_acceleration: float:
+	get:
+		return gravity_acceleration_multiplier * G.settings.default_gravity_acceleration
+var gravity_slow_rise_acceleration: float:
+	get:
+		return gravity_fast_fall_acceleration * gravity_slow_rise_multiplier
+var gravity_double_jump_slow_rise_acceleration: float:
+	get:
+		return gravity_fast_fall_acceleration * gravity_double_jump_slow_rise_multiplier
 
 @export var action_handler_types: Array[ActionHandlerType] = [
 	ActionHandlerType.FLOOR_DEFAULT,

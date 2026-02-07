@@ -13,6 +13,9 @@ extends RefCounted
 const _BODY_TYPE_COUNT := 1
 const _COSTUME_COUNT := 1
 
+const _OUTLINE_COLOR_OPACITY := 0.6
+const _LABEL_COLOR_WHITENING_FACTOR := 0.7
+
 
 const _PROPERTY_NAMES := [
 	"player_id",
@@ -36,7 +39,7 @@ var adjective := ""
 var is_soft := true
 var body_type_index := 0
 var costume_index := 0
-var outline_color := Color.WHITE
+var base_color := Color.WHITE
 var connect_frame_index := 0
 var disconnect_frame_index := 0
 
@@ -63,6 +66,15 @@ var full_name: StringName:
 var is_connected_to_server: bool:
 	get:
 		return connect_frame_index >= disconnect_frame_index
+
+var outline_color: Color:
+	get:
+		return Color(base_color, _OUTLINE_COLOR_OPACITY)
+
+var label_color: Color:
+	get:
+		return base_color.lerp(Color.WHITE, _LABEL_COLOR_WHITENING_FACTOR)
+		#return base_color.lightened(_LABEL_COLOR_WHITENING_FACTOR)
 
 
 func get_packed_state() -> Array:

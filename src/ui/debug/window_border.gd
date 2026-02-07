@@ -87,7 +87,7 @@ func _get_local_player_color() -> Color:
 	if player_state == null:
 		return Color.TRANSPARENT
 
-	return player_state.outline_color
+	return player_state.base_color
 
 
 func _on_players_updated() -> void:

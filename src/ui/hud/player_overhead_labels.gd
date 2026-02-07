@@ -5,7 +5,7 @@ extends Node2D
 
 ## Hide labels when players closer than this.
 const _PROXIMITY_THRESHOLD := 96.0
-const _LABEL_OFFSET := Vector2(0, -40)
+const _LABEL_OFFSET := Vector2(0, -22)
 const _FADE_IN_DURATION_SEC := 0.3
 const _FADE_OUT_DURATION_SEC := 0.05
 
@@ -71,7 +71,7 @@ func _create_label(player_id: int) -> void:
 	var player_match_state := G.get_player_match_state(player_id)
 	if player_match_state:
 		label.text = player_match_state.bunny_name
-		label.color = player_match_state.outline_color
+		label.color = player_match_state.label_color
 	else:
 		label.text = "Player"
 
@@ -113,7 +113,7 @@ func _update_label_colors() -> void:
 		var label: PlayerOverheadLabel = _labels_by_player_id[player_id]
 		var player_match_state := G.get_player_match_state(player_id)
 		if player_match_state:
-			label.color = player_match_state.outline_color
+			label.color = player_match_state.label_color
 
 
 func _update_label_visibility() -> void:

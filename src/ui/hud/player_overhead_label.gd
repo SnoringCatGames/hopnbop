@@ -15,4 +15,4 @@ var text: String:
 
 var color: Color:
 	set(value):
-		%Label.add_theme_color_override("font_outline_color", value)
+		%Label.add_theme_color_override("font_color", value)
