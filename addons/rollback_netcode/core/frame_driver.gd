@@ -396,6 +396,13 @@ signal pause_requested(peer_id: int)
 ## Emitted when an unpause is requested.
 signal unpause_requested(peer_id: int)
 
+## Emitted when match countdown starts (for game-specific UI).
+## countdown_end_frame is the frame index when countdown ends.
+signal countdown_started(countdown_end_frame: int)
+
+## Emitted when match countdown ends and gameplay begins.
+signal countdown_ended
+
 ## This determines the period we use between frames that we record in rollback
 ## buffers.
 ##
@@ -478,8 +485,14 @@ var _pause_auto_unpause_time_usec: int = 0
 var _pause_auto_unpause_timer: SceneTreeTimer = null
 
 ## Frame index when countdown ends. States before this frame are discarded.
-## Set by game when countdown starts. -1 means no active countdown.
+## Set automatically when match starts.
 var countdown_end_frame_index := -1
+
+## Tracks if the initial match countdown has been triggered.
+## Used to distinguish first unpause (match start) from subsequent unpauses.
+var _has_match_countdown_started := false
+
+var _has_match_countdown_ended := false
 
 ## Returns true if countdown is currently active.
 var is_countdown_active: bool:
@@ -754,6 +767,34 @@ func _client_rpc_notify_unpause(
 	)
 
 
+## Server notifies clients to start match countdown.
+## Clients pause locally and unpause when countdown ends.
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
+func _client_rpc_start_countdown(countdown_frames: int) -> void:
+	Netcode.check_is_client()
+
+	countdown_end_frame_index = countdown_frames
+	_has_match_countdown_started = true
+	_is_paused = false
+
+	Netcode.log.print(
+		"Starting match countdown (%d frames)" % countdown_frames,
+		NetworkLogger.CATEGORY_GAME_STATE
+	)
+
+	# Emit pause_state_changed to trigger screen transition (LOADING -> GAME).
+	# This must happen before pausing tree so UI transitions work.
+	pause_state_changed.emit(false, 0)
+
+	# Pause client tree during countdown (characters won't move).
+	# Will be unpaused when countdown ends in _pre_physics_process.
+	if is_inside_tree():
+		get_tree().paused = true
+
+	# Emit signal for game-specific UI (e.g., show countdown display).
+	countdown_started.emit(countdown_frames)
+
+
 ## Server notifies all clients of impending graceful shutdown.
 ## Called before disconnecting clients during Spot instance termination.
 @rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
@@ -860,12 +901,40 @@ func _server_execute_unpause() -> void:
 	_pause_initiator_pauses_used = 0
 	_pause_auto_unpause_time_usec = 0
 
-	# Notify clients (if server and in tree for RPC).
-	if Netcode.is_server and is_inside_tree():
-		_client_rpc_notify_unpause.rpc(
-			server_frame_index,
-			_cumulative_paused_frames,
+	# Check if this is the initial match start and countdown is enabled.
+	var is_starting_countdown := (
+		Netcode.is_server and
+		not _has_match_countdown_started and
+		Netcode.settings.match_start_countdown_sec > 0
+	)
+
+	if is_starting_countdown:
+		_has_match_countdown_started = true
+
+		# Calculate countdown end frame.
+		var countdown_frames := int(
+			Netcode.settings.match_start_countdown_sec * target_network_fps
 		)
+		countdown_end_frame_index = countdown_frames
+
+		Netcode.log.print(
+			"Starting match countdown (%d frames)" % countdown_frames,
+			NetworkLogger.CATEGORY_GAME_STATE
+		)
+
+		# Notify clients to start countdown (they pause locally).
+		if is_inside_tree():
+			_client_rpc_start_countdown.rpc(countdown_frames)
+
+		# Emit signal for game-specific UI.
+		countdown_started.emit(countdown_frames)
+	else:
+		# Normal unpause - notify clients.
+		if Netcode.is_server and is_inside_tree():
+			_client_rpc_notify_unpause.rpc(
+				server_frame_index,
+				_cumulative_paused_frames,
+			)
 
 	# Unpause Godot scene tree.
 	if is_inside_tree():
@@ -981,6 +1050,20 @@ func _pre_physics_process(_delta: float) -> void:
 	# Frames still increment so clients can track countdown progress.
 	if is_countdown_active:
 		return
+
+	# Handle countdown end: log, unpause client tree, emit signal.
+	if countdown_end_frame_index >= 0 and not _has_match_countdown_ended:
+		Netcode.log.print(
+			"Countdown ended at frame %d, match starting" % server_frame_index,
+			NetworkLogger.CATEGORY_GAME_STATE
+		)
+		_has_match_countdown_ended = true
+
+		# Unpause client tree (was paused when countdown started).
+		if Netcode.is_client and is_inside_tree():
+			get_tree().paused = false
+
+		countdown_ended.emit()
 
 	_run_network_process()
 
