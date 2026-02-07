@@ -70,7 +70,7 @@ func _update_display(delta: float) -> void:
 			else:
 				_displayed_score -= 1
 
-	%Score.text = "Score: %d" % _displayed_score
+	%Score.text = "%d" % _displayed_score
 
 	# Apply label color.
 	var label_color := player_match_state.label_color

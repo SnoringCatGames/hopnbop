@@ -75,9 +75,7 @@ func fade_in(stream_player: AudioStreamPlayer, volume: float) -> void:
 
 	if not stream_player.playing:
 		stream_player.volume_db = mute_volume
-		# This is similar to calling play(), except play() resets playback
-		# position to zero.
-		stream_player.stream_paused = false
+		stream_player.play.call()
 
 	var tween := create_tween()
 	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)

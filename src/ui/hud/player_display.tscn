@@ -7,7 +7,7 @@ content_margin_left = 12.0
 content_margin_top = 8.0
 content_margin_right = 12.0
 content_margin_bottom = 8.0
-bg_color = Color(0, 0, 0, 0.10980392)
+bg_color = Color(0, 0, 0, 0.27450982)
 corner_radius_top_left = 48
 corner_radius_top_right = 48
 corner_radius_bottom_right = 48
@@ -21,14 +21,25 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_i2ycm")
 script = ExtResource("1_display")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
+custom_minimum_size = Vector2(180, 90)
 layout_mode = 2
 mouse_filter = 2
+alignment = 1
+
+[node name="Spacer" type="Control" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 2)
+layout_mode = 2
 
 [node name="Adjective" type="Label" parent="VBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_override_font_sizes/font_size = 12
 text = "Brave"
 horizontal_alignment = 1
+
+[node name="Spacer2" type="Control" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 2)
+layout_mode = 2
 
 [node name="Name" type="Label" parent="VBoxContainer"]
 unique_name_in_owner = true
@@ -36,8 +47,13 @@ layout_mode = 2
 text = "Player Name"
 horizontal_alignment = 1
 
+[node name="Spacer3" type="Control" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
 [node name="Score" type="Label" parent="VBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_override_font_sizes/font_size = 24
 text = "0"
 horizontal_alignment = 1
