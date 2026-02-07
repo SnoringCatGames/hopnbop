@@ -337,7 +337,7 @@ func _handle_new_authoritative_state() -> void:
 	# COUNTDOWN FILTERING: Reject client states during countdown.
 	# Only applies to client-authoritative nodes on the server (input states).
 	# Server-authoritative states (spawn positions, etc.) are always accepted.
-	var countdown_end := Netcode.frame_driver.countdown_end_frame_index
+	var countdown_end := Netcode.frame_driver.match_start_countdown_end_frame_index
 	var is_during_countdown := state_frame_index < countdown_end
 	if is_during_countdown and Netcode.is_server:
 		if Netcode.log.is_verbose:
@@ -984,6 +984,25 @@ func record_initial_state(include_partners := true) -> void:
 			input_from_client.record_initial_state(false)
 		if is_instance_valid(forwarded_input_from_server):
 			forwarded_input_from_server.record_initial_state(false)
+
+
+## Backfill the rollback buffer to the current frame.
+## Called when countdown ends to fill the gap created by skipped network processing.
+func backfill_buffer_to_current_frame() -> void:
+	if _rollback_buffer == null:
+		return
+	var latest_before := _rollback_buffer.get_latest_index()
+	_rollback_buffer.backfill_to_with_last_state(Netcode.server_frame_index - 1)
+	if Netcode.log.is_verbose and is_server_authoritative:
+		Netcode.log.verbose(
+			"Backfilled %s buffer: %d -> %d (gap: %d frames)" % [
+				name,
+				latest_before,
+				Netcode.server_frame_index - 1,
+				(Netcode.server_frame_index - 1) - latest_before
+			],
+			NetworkLogger.CATEGORY_NETWORK_SYNC
+		)
 
 
 func _unpack_buffer_state(frame_index: int) -> void:
