@@ -109,7 +109,7 @@ func _ready() -> void:
 			return is_level_fully_loaded
 
 
-func _on_player_joined(player: PlayerMatchState) -> void:
+func _on_player_joined(player: PlayerState) -> void:
 	# Check if this player belongs to the local peer.
 	var is_local_peer := (
 		Netcode.is_client and
@@ -122,12 +122,12 @@ func _on_player_joined(player: PlayerMatchState) -> void:
 	)
 
 
-func _on_player_left(player: PlayerMatchState) -> void:
+func _on_player_left(player: PlayerState) -> void:
 	G.print("Player left: %s" % player.get_string(),
 		NetworkLogger.CATEGORY_GAME_STATE)
 
 
-func _on_player_killed(killer: PlayerMatchState, killee: PlayerMatchState) -> void:
+func _on_player_killed(killer: PlayerState, killee: PlayerState) -> void:
 	G.print(
 		"Player killed: %s killed %s" %
 		[killer.get_string(), killee.get_string()],
@@ -141,7 +141,7 @@ func _on_player_killed(killer: PlayerMatchState, killee: PlayerMatchState) -> vo
 			killee_actor.server_trigger_death()
 
 
-func _on_players_bumped(a: PlayerMatchState, b: PlayerMatchState) -> void:
+func _on_players_bumped(a: PlayerState, b: PlayerState) -> void:
 	G.print(
 		"Players bumped: %s, %s" % [a.get_string(), b.get_string()],
 		NetworkLogger.CATEGORY_GAME_STATE,

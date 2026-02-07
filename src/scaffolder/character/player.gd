@@ -136,7 +136,7 @@ func update_authority() -> void:
 		forwarded_input_from_server.update_authority()
 
 
-func on_match_state_ready(_player_match_state: PlayerMatchState) -> void:
+func on_match_state_ready(_player_match_state: PlayerState) -> void:
 	G.print(
 		"Player.on_match_state_ready called for player_id=%d" % player_id,
 		NetworkLogger.CATEGORY_PLAYER_ACTIONS,

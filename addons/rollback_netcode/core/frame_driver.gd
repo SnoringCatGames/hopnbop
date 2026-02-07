@@ -44,7 +44,7 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# - Rename PlayerMatchState to PlayerState.
+# - Rename PlayerState to PlayerState.
 
 # - Fix unresponsive remote player for a couple seconds after countdown ends.
 # - Fix score popup UI.

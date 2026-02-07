@@ -26,10 +26,10 @@ const _INTERACTION_DEDUPLICATION_WINDOW_FRAMES := 4
 # --- Game-Specific Signals ---
 
 ## Emitted when a player kills another player.
-signal player_killed(killer: PlayerMatchState, killee: PlayerMatchState)
+signal player_killed(killer: PlayerState, killee: PlayerState)
 
 ## Emitted when two players bump.
-signal players_bumped(a: PlayerMatchState, b: PlayerMatchState)
+signal players_bumped(a: PlayerState, b: PlayerState)
 
 ## Emitted when kills array changes.
 signal kills_updated
@@ -179,8 +179,8 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 	)
 	update_scores()
 
-	var killer_match_state: PlayerMatchState = players_by_id.get(killer_id)
-	var killee_match_state: PlayerMatchState = players_by_id.get(killee_id)
+	var killer_match_state: PlayerState = players_by_id.get(killer_id)
+	var killee_match_state: PlayerState = players_by_id.get(killee_id)
 	if killer_match_state and killee_match_state:
 		emit_kill_event(killer_match_state, killee_match_state)
 
@@ -188,8 +188,8 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 
 
 func emit_kill_event(
-	killer: PlayerMatchState,
-	killee: PlayerMatchState
+	killer: PlayerState,
+	killee: PlayerState
 ) -> void:
 	player_killed.emit(killer, killee)
 
@@ -237,9 +237,9 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 	)
 	update_scores()
 
-	var player_1_match_state: PlayerMatchState = \
+	var player_1_match_state: PlayerState = \
 			players_by_id.get(player_1_id)
-	var player_2_match_state: PlayerMatchState = \
+	var player_2_match_state: PlayerState = \
 			players_by_id.get(player_2_id)
 	if player_1_match_state and player_2_match_state:
 		emit_bump_event(player_1_match_state, player_2_match_state)
@@ -247,11 +247,11 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 	bumps_updated.emit()
 
 
-func emit_bump_event(a: PlayerMatchState, b: PlayerMatchState) -> void:
+func emit_bump_event(a: PlayerState, b: PlayerState) -> void:
 	players_bumped.emit(a, b)
 
 
-func server_on_player_disconnected(player: PlayerMatchState) -> void:
+func server_on_player_disconnected(player: PlayerState) -> void:
 	_connected_players.erase(player.player_id)
 	player_left.emit(player)
 	players_updated.emit()
@@ -412,19 +412,19 @@ func _client_unpack_players() -> void:
 
 	for packed_player in packed_players:
 		var player_id := \
-				PlayerMatchState.get_player_id_from_packed_state(
+				PlayerState.get_player_id_from_packed_state(
 					packed_player
 				)
 
 		if not players_by_id.has(player_id):
-			players_by_id[player_id] = PlayerMatchState.new()
+			players_by_id[player_id] = PlayerState.new()
 
-		var player: PlayerMatchState = players_by_id[player_id]
+		var player: PlayerState = players_by_id[player_id]
 		player.populate_from_packed_state(packed_player)
 
 	# Trigger connected/disconnected events.
 	for player_id in players_by_id:
-		var player: PlayerMatchState = players_by_id[player_id]
+		var player: PlayerState = players_by_id[player_id]
 		if player.is_connected_to_server != \
 				_connected_players.has(player_id):
 			if player.is_connected_to_server:

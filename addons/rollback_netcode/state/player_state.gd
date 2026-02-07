@@ -1,4 +1,4 @@
-class_name PlayerMatchState
+class_name PlayerState
 extends RefCounted
 ## Match state associated with an individual player.
 ##

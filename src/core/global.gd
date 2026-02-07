@@ -114,7 +114,7 @@ func _initialize_level_registry() -> void:
 	)
 
 
-func get_player_match_state(player_id: int) -> PlayerMatchState:
+func get_player_match_state(player_id: int) -> PlayerState:
 	if (not is_instance_valid(match_state) or
 			not match_state.players_by_id.has(player_id)):
 		return null

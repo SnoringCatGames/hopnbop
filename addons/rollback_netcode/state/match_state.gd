@@ -26,10 +26,10 @@ var synchronizer = null
 # --- Generic Signals ---
 
 ## Emitted when a player joins the match.
-signal player_joined(player: PlayerMatchState)
+signal player_joined(player: PlayerState)
 
 ## Emitted when a player leaves the match.
-signal player_left(player: PlayerMatchState)
+signal player_left(player: PlayerState)
 
 ## Emitted when player roster changes.
 signal players_updated
@@ -40,7 +40,7 @@ signal match_ended
 # --- Player Roster (Generic) ---
 
 ## Active players indexed by player_id.
-## Dictionary<int, PlayerMatchState>
+## Dictionary<int, PlayerState>
 var players_by_id: Dictionary = {}
 
 # --- Match Timing (Generic) ---
@@ -100,7 +100,7 @@ var packed_players := []:
 
 
 ## Add a player to the match.
-func server_add_player(player: PlayerMatchState) -> void:
+func server_add_player(player: PlayerState) -> void:
 	players_by_id[player.player_id] = player
 	_server_pack_players()
 	player_joined.emit(player)
@@ -109,7 +109,7 @@ func server_add_player(player: PlayerMatchState) -> void:
 
 ## Remove a player from the match.
 func server_remove_player(player_id: int) -> void:
-	var player: PlayerMatchState = players_by_id.get(player_id)
+	var player: PlayerState = players_by_id.get(player_id)
 	if player == null:
 		return
 
@@ -120,15 +120,15 @@ func server_remove_player(player_id: int) -> void:
 
 
 ## Get player by ID (returns null if not found).
-func get_player(player_id: int) -> PlayerMatchState:
+func get_player(player_id: int) -> PlayerState:
 	return players_by_id.get(player_id)
 
 
 ## Get all players for a given peer_id.
-func get_players_for_peer(peer_id: int) -> Array[PlayerMatchState]:
-	var result: Array[PlayerMatchState] = []
+func get_players_for_peer(peer_id: int) -> Array[PlayerState]:
+	var result: Array[PlayerState] = []
 	for player_id in players_by_id:
-		var player: PlayerMatchState = players_by_id[player_id]
+		var player: PlayerState = players_by_id[player_id]
 		if player.peer_id == peer_id:
 			result.append(player)
 	return result
@@ -212,7 +212,7 @@ func _client_unpack_players() -> void:
 
 	# Unpack each player.
 	for packed_player in packed_players:
-		var player := PlayerMatchState.new()
+		var player := PlayerState.new()
 		player.set_packed_state(packed_player)
 		players_by_id[player.player_id] = player
 

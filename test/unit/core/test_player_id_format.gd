@@ -40,7 +40,7 @@ class TestLobbyPlayerIds:
 		assert_ne(player_id_0, player_id_1)
 
 
-class TestPlayerMatchStateWithInts:
+class TestPlayerStateWithInts:
 	extends GutTest
 
 	## Helper function for creating default player attributes.
@@ -54,39 +54,39 @@ class TestPlayerMatchStateWithInts:
 		}
 
 	func test_player_match_state_stores_int_player_id():
-		var player := PlayerMatchState.new()
+		var player := PlayerState.new()
 		player.set_up(42, 1234, 0, _get_default_attributes())
 
 		assert_eq(player.player_id, 42)
 		assert_typeof(player.player_id, TYPE_INT)
 
 	func test_player_match_state_stores_explicit_peer_id():
-		var player := PlayerMatchState.new()
+		var player := PlayerState.new()
 		player.set_up(42, 1234, 0, _get_default_attributes())
 
 		assert_eq(player.peer_id, 1234)
 		assert_typeof(player.peer_id, TYPE_INT)
 
 	func test_player_match_state_stores_explicit_local_index():
-		var player := PlayerMatchState.new()
+		var player := PlayerState.new()
 		player.set_up(42, 1234, 2, _get_default_attributes())
 
 		assert_eq(player.local_player_index, 2)
 		assert_typeof(player.local_player_index, TYPE_INT)
 
 	func test_player_match_state_with_negative_lobby_id():
-		var player := PlayerMatchState.new()
+		var player := PlayerState.new()
 		player.set_up(-1, 0, 0, _get_default_attributes())
 
 		assert_eq(player.player_id, -1)
 		assert_lt(player.player_id, 0)
 
 	func test_player_match_state_multiple_players_same_peer():
-		var players: Array[PlayerMatchState] = []
+		var players: Array[PlayerState] = []
 
 		# Simulate server assigning IDs 1, 2, 3 to peer 1234
 		for i in range(3):
-			var player := PlayerMatchState.new()
+			var player := PlayerState.new()
 			player.set_up(i + 1, 1234, i, _get_default_attributes())
 			players.append(player)
 
@@ -117,22 +117,22 @@ class TestPlayerIdPacking:
 		}
 
 	func test_packed_state_preserves_int_player_id():
-		var player := PlayerMatchState.new()
+		var player := PlayerState.new()
 		player.set_up(42, 1234, 0, _get_default_attributes())
 
 		var packed := player.get_packed_state()
-		var player_id_from_packed := PlayerMatchState.get_player_id_from_packed_state(packed)
+		var player_id_from_packed := PlayerState.get_player_id_from_packed_state(packed)
 
 		assert_eq(player_id_from_packed, 42)
 		assert_typeof(player_id_from_packed, TYPE_INT)
 
 	func test_packed_state_preserves_peer_id_and_local_index():
-		var player := PlayerMatchState.new()
+		var player := PlayerState.new()
 		player.set_up(42, 1234, 2, _get_default_attributes())
 
 		var packed := player.get_packed_state()
 
-		var restored := PlayerMatchState.new()
+		var restored := PlayerState.new()
 		restored.populate_from_packed_state(packed)
 
 		assert_eq(restored.player_id, 42)
@@ -140,11 +140,11 @@ class TestPlayerIdPacking:
 		assert_eq(restored.local_player_index, 2)
 
 	func test_packed_state_with_negative_lobby_id():
-		var player := PlayerMatchState.new()
+		var player := PlayerState.new()
 		player.set_up(-1, 0, 0, _get_default_attributes())
 
 		var packed := player.get_packed_state()
-		var player_id_from_packed := PlayerMatchState.get_player_id_from_packed_state(packed)
+		var player_id_from_packed := PlayerState.get_player_id_from_packed_state(packed)
 
 		assert_eq(player_id_from_packed, -1)
 
@@ -163,11 +163,11 @@ class TestPlayerIdEdgeCases:
 		}
 
 	func test_zero_player_id():
-		var player := PlayerMatchState.new()
+		var player := PlayerState.new()
 		assert_eq(player.player_id, 0, "Default player_id should be 0")
 
 	func test_very_large_positive_player_id():
-		var player := PlayerMatchState.new()
+		var player := PlayerState.new()
 		var large_id := 2147483647 # Max int32
 		player.set_up(large_id, 1, 0, _get_default_attributes())
 

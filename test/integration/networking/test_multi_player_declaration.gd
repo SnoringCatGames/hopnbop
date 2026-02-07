@@ -60,7 +60,7 @@ class TestMatchStateSynchronizerPlayerCreation:
 			attributes
 		)
 
-		# Verify 2 PlayerMatchState objects created with int keys.
+		# Verify 2 PlayerState objects created with int keys.
 		assert_eq(synchronizer.state.players_by_id.size(), 2)
 		assert_has(synchronizer.state.players_by_id, 1)
 		assert_has(synchronizer.state.players_by_id, 2)
@@ -95,8 +95,8 @@ class TestMatchStateSynchronizerPlayerCreation:
 		synchronizer._server_on_peer_players_declared(
 			peer_id, assigned_ids, attributes)
 
-		var player0: PlayerMatchState = synchronizer.state.players_by_id[10]
-		var player1: PlayerMatchState = synchronizer.state.players_by_id[11]
+		var player0: PlayerState = synchronizer.state.players_by_id[10]
+		var player1: PlayerState = synchronizer.state.players_by_id[11]
 
 		# Check player_ids are as assigned.
 		assert_eq(player0.player_id, 10)

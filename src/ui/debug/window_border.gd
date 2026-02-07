@@ -80,7 +80,7 @@ func _get_local_player_color() -> Color:
 		return Color.TRANSPARENT
 
 	var local_player_id := G.client_session.local_player_ids[0]
-	var player_state: PlayerMatchState = G.match_state.players_by_id.get(
+	var player_state: PlayerState = G.match_state.players_by_id.get(
 		local_player_id
 	)
 

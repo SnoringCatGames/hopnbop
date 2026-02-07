@@ -3,7 +3,7 @@ class_name Bunny
 extends Player
 
 
-var match_state: PlayerMatchState:
+var match_state: PlayerState:
 	get:
 		return G.get_player_match_state(player_id)
 
@@ -171,12 +171,12 @@ func get_string() -> String:
 	return "{Player}"
 
 
-func on_match_state_ready(_player_match_state: PlayerMatchState) -> void:
+func on_match_state_ready(_player_match_state: PlayerState) -> void:
 	super.on_match_state_ready(_player_match_state)
 	_apply_outline_color()
 
 
-func _on_any_player_joined(player: PlayerMatchState) -> void:
+func _on_any_player_joined(player: PlayerState) -> void:
 	if player.player_id == player_id:
 		_apply_outline_color()
 		G.match_state.player_joined.disconnect(_on_any_player_joined)

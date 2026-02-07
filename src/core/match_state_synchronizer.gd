@@ -29,7 +29,7 @@ func _ready() -> void:
 	state.player_joined.connect(_on_player_joined)
 
 
-func _on_player_joined(player_match_state: PlayerMatchState) -> void:
+func _on_player_joined(player_match_state: PlayerState) -> void:
 	var player := G.get_player(player_match_state.player_id)
 	if is_instance_valid(player):
 		player.on_match_state_ready(player_match_state)
@@ -52,7 +52,7 @@ func clear() -> void:
 	_previous_state.clear()
 
 
-func get_player(player_id: int) -> PlayerMatchState:
+func get_player(player_id: int) -> PlayerState:
 	if state.players_by_id.has(player_id):
 		return state.players_by_id[player_id]
 	return null
@@ -63,12 +63,12 @@ func _server_on_peer_players_declared(
 	assigned_ids: Array[int],
 	player_attributes: Array
 ) -> void:
-	# Create PlayerMatchState objects for each assigned player ID.
+	# Create PlayerState objects for each assigned player ID.
 	for i in range(assigned_ids.size()):
 		var player_id: int = assigned_ids[i]
 		G.ensure(not state.players_by_id.has(player_id))
 
-		var player := PlayerMatchState.new()
+		var player := PlayerState.new()
 		player.set_up(player_id, peer_id, i, player_attributes[i])
 		player.connect_frame_index = Netcode.server_frame_index
 		state.server_add_player(player)
@@ -113,7 +113,7 @@ func _server_assign_outline_colors() -> void:
 	# Assign colors to each player.
 	for i in range(player_ids.size()):
 		var player_id: int = player_ids[i]
-		var player: PlayerMatchState = state.players_by_id[player_id]
+		var player: PlayerState = state.players_by_id[player_id]
 		player.base_color = colors[i]
 		G.print(
 			"Player %d color = %s" % [player_id, colors[i]],
@@ -126,7 +126,7 @@ func _server_assign_outline_colors() -> void:
 
 func _server_on_peer_disconnected(peer_id: int, _reason: int) -> void:
 	# Handle all players for this peer.
-	var players_for_peer: Array[PlayerMatchState] = (
+	var players_for_peer: Array[PlayerState] = (
 		state.get_players_for_peer(peer_id)
 	)
 
