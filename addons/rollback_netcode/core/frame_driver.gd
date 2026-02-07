@@ -44,19 +44,26 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
+# - Fix score popup UI.
+#   - Maybe have this at a constant offset afterall.
+# - Fix bunny outline thickness.
+# - Remove wall bump sounds.
+# - Fix music playback.
+
+# - Test kills and bumps.
+# - Adjust foot, head, and body shapes.
+# - TEST that when a high-speed kill happens, the bounce happens from where the
+#   initial collision contact should have been.
+
+# - Polish movement. It still seems like we get jitter and stuck
+#   player-inputs-on-server-side too often.
+
 # - Review /rollback_netcode/examples/.
-# - Fix tests.
 # - Look at how some old Scaffolder utilities are used, like ScaffolderTime. Should we simplify and replace them with built-in logic that we _don't_ have the consumer app worry about?
 
 # - Test that pause limit is enforced.
 
-# - Test kills and bumps.
-# - Adjust foot, head, and body shapes.
-
 # - Lingering FIXMEs.
-
-# - TEST that when a high-speed kill happens, the bounce happens from where the
-#   initial collision contact should have been.
 
 # TEST THIS
 # - All FN keys
