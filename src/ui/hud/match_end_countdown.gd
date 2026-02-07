@@ -1,4 +1,4 @@
-class_name CountdownTimer
+class_name MatchEndCountdown
 extends Label
 ## Displays match time remaining in M:SS format.
 

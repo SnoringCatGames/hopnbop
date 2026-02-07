@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3 uid="uid://dpq7x8nwmk2lf"]
+
+[ext_resource type="Script" uid="uid://sph61py37ag6" path="res://src/ui/hud/match_end_countdown.gd" id="1_pbmew"]
+
+[node name="MatchEndCountdown" type="Label"]
+unique_name_in_owner = true
+offset_right = 40.0
+offset_bottom = 23.0
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 2
+script = ExtResource("1_pbmew")

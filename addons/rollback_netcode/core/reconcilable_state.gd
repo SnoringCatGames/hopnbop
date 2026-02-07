@@ -325,6 +325,20 @@ func _handle_new_authoritative_state() -> void:
 					NetworkLogger.CATEGORY_NETWORK_SYNC)
 			return
 
+	# COUNTDOWN FILTERING: Reject states from before countdown ends.
+	var countdown_end := Netcode.frame_driver.countdown_end_frame_index
+	if countdown_end >= 0 and state_frame_index < countdown_end:
+		if Netcode.log.is_verbose:
+			Netcode.log.verbose(
+				"%s F:%d Rejecting state from frame %d (before countdown end %d)" % [
+					name,
+					Netcode.server_frame_index,
+					state_frame_index,
+					countdown_end,
+				],
+				NetworkLogger.CATEGORY_NETWORK_SYNC)
+		return
+
 	if Netcode.log.is_verbose:
 		var authority_string: StringName = FrameAuthority.keys()[new_frame_authority]
 		Netcode.log.verbose("%s F:%d Received %s state for frame %d" %

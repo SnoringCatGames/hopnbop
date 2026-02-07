@@ -3,6 +3,7 @@ extends PanelContainer
 
 
 @onready var player_list: PlayerList = %PlayerList
+@onready var match_start_countdown: MatchStartCountdown = $MatchStartCountdown
 
 
 func _enter_tree() -> void:
@@ -43,3 +44,9 @@ func update_visibility() -> void:
 			pass
 		_:
 			G.ensure(false)
+
+
+func start_match_countdown() -> void:
+	if Netcode.is_server:
+		return
+	match_start_countdown.start_countdown()

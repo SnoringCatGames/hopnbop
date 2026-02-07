@@ -84,6 +84,11 @@ func _ready() -> void:
 			_client_on_pause_state_changed
 		)
 
+		# Show countdown UI when match countdown starts.
+		Netcode.frame_driver.countdown_started.connect(
+			_on_countdown_started
+		)
+
 	if Netcode.is_server:
 		# In preview mode, spawn new level when first client connects after match end.
 		if Netcode.is_preview:
@@ -436,7 +441,14 @@ func _server_on_all_players_connected() -> void:
 	)
 
 	# Unpause frame driver to start simulation.
+	# The framework automatically triggers countdown if enabled in settings.
 	Netcode.frame_driver.server_set_is_paused(false)
+
+
+func _on_countdown_started(_countdown_end_frame: int) -> void:
+	# Show countdown UI on clients.
+	if is_instance_valid(G.hud):
+		G.hud.start_match_countdown()
 
 
 func _server_on_preview_peer_connected(_peer_id: int) -> void:

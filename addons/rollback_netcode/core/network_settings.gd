@@ -51,6 +51,11 @@ extends Resource
 @export var max_pause_duration_sec := 60.0
 
 
+## Match start countdown duration in seconds.
+## Countdown displays 3, 2, 1, GO before match begins.
+@export var match_start_countdown_sec := 4.0
+
+
 ## Preview mode (local multi-instance testing).
 ## Whether running in local preview mode (multiple instances in editor).
 var is_preview_mode := false

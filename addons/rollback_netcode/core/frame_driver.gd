@@ -296,6 +296,8 @@ extends Node
 #   - Walk sound
 #   - Bunny bump sound
 #   - Menu click sound
+# - Make sleeping bunny animations for while the countdown is going.
+#   - Make sure to override process_mode on PlayerAnimators, so they will move when paused.
 
 # - Add alternate the camera modes.
 #   - Support two modes: global camera vs player camera.
@@ -475,6 +477,18 @@ var _pause_auto_unpause_time_usec: int = 0
 ## SceneTreeTimer for auto-unpause (server-only).
 var _pause_auto_unpause_timer: SceneTreeTimer = null
 
+## Frame index when countdown ends. States before this frame are discarded.
+## Set by game when countdown starts. -1 means no active countdown.
+var countdown_end_frame_index := -1
+
+## Returns true if countdown is currently active.
+var is_countdown_active: bool:
+	get:
+		return (
+			countdown_end_frame_index >= 0 and
+			server_frame_index < countdown_end_frame_index
+		)
+
 ## Interval for periodic wall-clock re-sync to maintain accurate timestamps for
 ## logging. Re-sync is handled automatically via SceneTree timers.
 const WALL_CLOCK_RESYNC_INTERVAL_SEC := 30.0
@@ -644,6 +658,14 @@ func _server_rpc_client_request_pause() -> void:
 		Netcode.log.print(
 			"Client %d requested pause, but server pause is disabled" % peer_id,
 						NetworkLogger.CATEGORY_SYNC
+		)
+		return
+
+	# Block pause requests during countdown.
+	if is_countdown_active:
+		Netcode.log.print(
+			"Client %d requested pause during countdown - rejected" % peer_id,
+			NetworkLogger.CATEGORY_SYNC
 		)
 		return
 
@@ -952,8 +974,13 @@ func _pre_physics_process(_delta: float) -> void:
 		_initialize_frame_tracking()
 		return
 
-	# Increment frame index directly on each physics tick
+	# Increment frame index directly on each physics tick.
 	server_frame_index += 1
+
+	# Skip network processing during countdown.
+	# Frames still increment so clients can track countdown progress.
+	if is_countdown_active:
+		return
 
 	_run_network_process()
 

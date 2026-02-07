@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3 uid="uid://bt1la6s52krxe"]
+[gd_scene load_steps=6 format=3 uid="uid://bt1la6s52krxe"]
 
 [ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/ui/default_theme.tres" id="1_4rn03"]
 [ext_resource type="Script" uid="uid://cvmchc2851mho" path="res://src/ui/hud/hud.gd" id="1_eqvli"]
 [ext_resource type="PackedScene" uid="uid://s18shy2l27qv" path="res://src/ui/hud/player_list.tscn" id="3_player_list"]
-[ext_resource type="PackedScene" uid="uid://dpq7x8nwmk2lf" path="res://src/ui/hud/countdown_timer.tscn" id="4_countdown"]
+[ext_resource type="PackedScene" uid="uid://dpq7x8nwmk2lf" path="res://src/ui/hud/match_end_countdown.tscn" id="4_countdown"]
+[ext_resource type="PackedScene" path="res://src/ui/hud/match_start_countdown.tscn" id="5_countdown_start"]
 
 [node name="Hud" type="PanelContainer"]
 process_mode = 3
@@ -32,7 +33,7 @@ size_flags_horizontal = 0
 layout_mode = 2
 size_flags_horizontal = 4
 
-[node name="CountdownTimer" parent="MarginContainer/MiddleContent" instance=ExtResource("4_countdown")]
+[node name="MatchEndCountdown" parent="MarginContainer/MiddleContent" instance=ExtResource("4_countdown")]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 horizontal_alignment = 1
@@ -46,4 +47,7 @@ layout_mode = 2
 size_flags_vertical = 8
 
 [node name="PlayerList" parent="MarginContainer/BottomContent" instance=ExtResource("3_player_list")]
+layout_mode = 2
+
+[node name="MatchStartCountdown" parent="." instance=ExtResource("5_countdown_start")]
 layout_mode = 2
