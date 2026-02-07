@@ -101,6 +101,8 @@ func _spawn_score_popup(score_delta: int) -> void:
 		"outline_size",
 		%Score.get_theme_constant("outline_size")
 	)
+	var label_color: Color = %Score.get_theme_color("font_color")
+	popup.add_theme_color_override("font_color", label_color)
 	var outline_color: Color = %Score.get_theme_color("font_outline_color")
 	popup.add_theme_color_override("font_outline_color", outline_color)
 
