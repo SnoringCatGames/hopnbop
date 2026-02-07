@@ -44,13 +44,6 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# - Rename PlayerState to PlayerState.
-
-# - Fix unresponsive remote player for a couple seconds after countdown ends.
-# - Fix score popup UI.
-#   - Maybe have this at a constant offset afterall.
-# - Fix bunny outline thickness.
-# - Remove wall bump sounds.
 # - Fix music playback.
 
 # - Test kills and bumps.

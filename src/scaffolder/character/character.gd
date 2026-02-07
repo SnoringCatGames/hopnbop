@@ -303,8 +303,9 @@ func _process_sounds() -> void:
 
 	if surfaces.just_left_air:
 		play_sound("land")
-	elif surfaces.just_touched_surface:
-		play_sound("land")
+	# Don't play wall-impact sounds. Too many false-positives.
+	#elif surfaces.just_touched_surface:
+		#play_sound("land")
 
 
 func play_sound(_sound_name: StringName) -> void:
