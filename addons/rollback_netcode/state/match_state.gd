@@ -170,6 +170,12 @@ func get_player_count() -> int:
 # --- Internal Methods ---
 
 
+## Factory method for creating player state instances.
+## Override in subclasses to return game-specific player state.
+func _create_player_state() -> PlayerState:
+	return PlayerState.new()
+
+
 ## Pack player states for network replication (called on server).
 func _server_pack_players() -> void:
 	if Netcode.log.is_verbose:
@@ -212,8 +218,8 @@ func _client_unpack_players() -> void:
 
 	# Unpack each player.
 	for packed_player in packed_players:
-		var player := PlayerState.new()
-		player.set_packed_state(packed_player)
+		var player := _create_player_state()
+		player.populate_from_packed_state(packed_player)
 		players_by_id[player.player_id] = player
 
 	players_updated.emit()
