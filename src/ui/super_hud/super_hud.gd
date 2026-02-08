@@ -47,9 +47,9 @@ func toggle_player_state_list() -> void:
 	if Netcode.is_server:
 		return
 
-	%PlayerStateList.visible = not %PlayerStateList.visible
+	%PlayerStateList.visible = G.settings.show_debug_player_state
 	Netcode.print(
-		"Toggled PlayerStateList: %s" %
+		"PlayerStateList: %s" %
 		("visible" if %PlayerStateList.visible else "hidden"),
 		NetworkLogger.CATEGORY_INTERACTION,
 	)

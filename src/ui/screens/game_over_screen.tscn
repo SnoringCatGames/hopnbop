@@ -31,13 +31,13 @@ vertical_alignment = 1
 [node name="Spacer" type="Control" parent="CenterContainer/VBoxContainer"]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
+mouse_filter = 2
 
 [node name="MessageLabel" type="Label" parent="CenterContainer/VBoxContainer"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 size_flags_horizontal = 4
-text = ""
 horizontal_alignment = 1
 autowrap_mode = 2
 
@@ -48,9 +48,11 @@ layout_mode = 2
 [node name="Spacer2" type="Control" parent="CenterContainer/VBoxContainer"]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
+mouse_filter = 2
 
 [node name="Button" type="Button" parent="CenterContainer/VBoxContainer"]
 unique_name_in_owner = true
+process_mode = 3
 custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 size_flags_horizontal = 4

@@ -108,7 +108,7 @@ func _initialize_level_registry() -> void:
 	for level_info in settings.levels:
 		level_registry.register_level(level_info)
 
-	G.loNetcode.print(
+	Netcode.print(
 		"Level registry initialized with %d levels" % level_registry.get_level_count(),
 		NetworkLogger.CATEGORY_SYSTEM_INITIALIZATION
 	)
