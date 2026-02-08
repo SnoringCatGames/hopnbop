@@ -455,6 +455,50 @@ func _apply_interaction_collidability(interaction_type: int) -> void:
 	character.set_is_collidable(is_collidable)
 
 
+## Gets the bounce velocity from the rollback buffer at the current frame.
+## Returns the bounce velocity if the current frame has a KILL or BUMP
+## interaction, or null if no bounce should be applied.
+##
+## This checks the buffer directly rather than using unpacked properties,
+## because _pre_network_process() unpacks the PREVIOUS frame's state.
+## During rollback re-simulation, we need to check if the CURRENT frame
+## (being simulated) has a bounce interaction.
+func get_current_frame_bounce_velocity():
+	if _rollback_buffer == null:
+		return null
+
+	var current_frame := Netcode.server_frame_index
+	if not _rollback_buffer.has_at(current_frame):
+		return null
+
+	var frame_state: Array = _rollback_buffer.get_at(current_frame)
+	if frame_state == null:
+		return null
+
+	var interaction_frame: int = _get_frame_property(
+		frame_state,
+		&"last_interaction_frame_index"
+	)
+
+	# Only apply bounce on the exact frame the interaction occurred.
+	if interaction_frame != current_frame:
+		return null
+
+	var interaction_type: int = _get_frame_property(
+		frame_state,
+		&"last_interaction_type"
+	)
+
+	# Only KILL and BUMP interactions have bounce velocities.
+	if (
+		interaction_type != ServerInteractionType.KILL and
+		interaction_type != ServerInteractionType.BUMP
+	):
+		return null
+
+	return _get_frame_property(frame_state, &"last_interaction_velocity")
+
+
 func _sync_from_scene_state() -> void:
 	if not G.ensure_valid(character):
 		return
@@ -496,67 +540,82 @@ func _apply_input_to_character(input_source: ReconcilableState) -> void:
 
 ## Unified server interaction reconciliation.
 func _reconcile_server_interaction() -> void:
-	# Skip if no interaction.
-	if last_interaction_type == ServerInteractionType.NONE:
+	# Check the current frame's buffer for interactions to reconcile.
+	# We can't use self.last_interaction_* because _unpack_buffer_state(N-1)
+	# has already overwritten them with the previous frame's values.
+	var current_frame := Netcode.server_frame_index
+	if not _rollback_buffer.has_at(current_frame):
 		return
 
-	var interaction_frame := last_interaction_frame_index
+	var frame_state: Array = _rollback_buffer.get_at(current_frame)
+	if frame_state == null:
+		return
+
+	var buffer_interaction_type: int = _get_frame_property(
+		frame_state,
+		&"last_interaction_type"
+	)
+	var buffer_interaction_frame: int = _get_frame_property(
+		frame_state,
+		&"last_interaction_frame_index"
+	)
+
+	# Skip if no interaction at current frame.
+	if buffer_interaction_type == ServerInteractionType.NONE:
+		return
+
+	# Only reconcile if this is the onset frame (interaction_frame == current_frame).
+	if buffer_interaction_frame != current_frame:
+		return
 
 	var should_process := _should_reconcile_interaction(
-		interaction_frame,
+		current_frame,
 		_last_reconciled_interaction_frame_index
 	)
 
 	# Verbose logging for reconciliation status.
 	if Netcode.log.is_verbose:
-		var type_name: StringName = ServerInteractionType.keys()[last_interaction_type]
+		var type_name: StringName = ServerInteractionType.keys()[buffer_interaction_type]
 		G.verbose(
-			"Reconciling %s: frame=%d, should_process=%s, buffer_has=%s (%s)" % [
+			"Reconciling %s: frame=%d, should_process=%s (%s)" % [
 				type_name,
-				interaction_frame,
+				current_frame,
 				should_process,
-				_rollback_buffer.has_at(interaction_frame),
 				name
 			],
 			NetworkLogger.CATEGORY_NETWORK_SYNC
 		)
 
 	# Always mark as reconciled to prevent retry loops.
-	_last_reconciled_interaction_frame_index = interaction_frame
+	_last_reconciled_interaction_frame_index = current_frame
 
 	if not should_process:
 		return
 
-	match last_interaction_type:
+	match buffer_interaction_type:
 		ServerInteractionType.NONE:
 			pass
 		ServerInteractionType.BUMP:
-			_reconcile_bump_interaction(interaction_frame)
+			_reconcile_bump_interaction(current_frame)
 		ServerInteractionType.KILL:
-			_reconcile_kill_interaction(interaction_frame)
+			_reconcile_kill_interaction(current_frame)
 		ServerInteractionType.DIE:
-			_reconcile_die_interaction(interaction_frame)
+			_reconcile_die_interaction(current_frame)
 		ServerInteractionType.SPAWN:
-			_reconcile_spawn_interaction(interaction_frame)
+			_reconcile_spawn_interaction(current_frame)
 		_:
 			G.fatal()
 
 
-## Reconciles a bump interaction by injecting velocity delta into rollback
-## buffer.
+## Reconciles a bump interaction by queuing rollback.
+## The bounce velocity is applied during re-simulation by bunny.gd via
+## get_current_frame_bounce_velocity() + force_boost().
 func _reconcile_bump_interaction(p_frame_index: int) -> void:
-	_inject_velocity_delta_into_buffer(
-		p_frame_index,
-		last_interaction_velocity,
-		last_interaction_type,
-		last_interaction_frame_index,
-		last_interaction_position,
-		last_interaction_velocity
-	)
+	Netcode.frame_driver.queue_rollback(p_frame_index)
 
 	if Netcode.log.is_verbose:
 		G.verbose(
-			"F:%d Bump velocity injected via server interaction into frame %d, queuing rollback (%s)" % [
+			"F:%d Bump interaction at frame %d, queuing rollback (%s)" % [
 				Netcode.server_frame_index,
 				p_frame_index,
 				name,
@@ -565,21 +624,15 @@ func _reconcile_bump_interaction(p_frame_index: int) -> void:
 		)
 
 
-## Reconciles a kill interaction by injecting kill bounce velocity into
-## rollback buffer.
+## Reconciles a kill interaction by queuing rollback.
+## The bounce velocity is applied during re-simulation by bunny.gd via
+## get_current_frame_bounce_velocity() + force_boost().
 func _reconcile_kill_interaction(p_frame_index: int) -> void:
-	_inject_velocity_delta_into_buffer(
-		p_frame_index,
-		last_interaction_velocity,
-		last_interaction_type,
-		last_interaction_frame_index,
-		last_interaction_position,
-		last_interaction_velocity
-	)
+	Netcode.frame_driver.queue_rollback(p_frame_index)
 
 	if Netcode.log.is_verbose:
 		G.verbose(
-			"F:%d Kill velocity injected into frame %d, queuing rollback (%s)" % [
+			"F:%d Kill interaction at frame %d, queuing rollback (%s)" % [
 				Netcode.server_frame_index,
 				p_frame_index,
 				name,
@@ -603,27 +656,15 @@ func _set_frame_interaction_properties(
 	_set_frame_property(frame_state, &"last_interaction_velocity", interaction_velocity)
 
 
-## Reconciles a die interaction by stopping movement in rollback buffer.
+## Reconciles a die interaction by queuing rollback.
+## Visibility/collision state is applied during re-simulation via
+## _ensure_interaction_state_applied().
 func _reconcile_die_interaction(p_frame_index: int) -> void:
-	var frame_state: Array = _rollback_buffer.get_at(p_frame_index)
-	_set_frame_property(frame_state, &"velocity", Vector2.ZERO)
-
-	# Preserve interaction properties from local state (just unpacked from
-	# authoritative state) to ensure DIE persists through buffer modification.
-	_set_frame_interaction_properties(
-		frame_state,
-		last_interaction_type,
-		last_interaction_frame_index,
-		last_interaction_position,
-		last_interaction_velocity
-	)
-
-	_rollback_buffer.set_at(p_frame_index, frame_state)
 	Netcode.frame_driver.queue_rollback(p_frame_index)
 
 	if Netcode.log.is_verbose:
 		G.verbose(
-			"F:%d Die interaction reconciled at frame %d, queuing rollback (%s)" % [
+			"F:%d Die interaction at frame %d, queuing rollback (%s)" % [
 				Netcode.server_frame_index,
 				p_frame_index,
 				name,
@@ -632,67 +673,21 @@ func _reconcile_die_interaction(p_frame_index: int) -> void:
 		)
 
 
-## Reconciles a spawn interaction by teleporting to spawn position in rollback
-## buffer.
+## Reconciles a spawn interaction by queuing rollback.
+## Position/visibility state is applied during re-simulation. The server state
+## already contains the correct spawn position.
 func _reconcile_spawn_interaction(p_frame_index: int) -> void:
-	var frame_state: Array = _rollback_buffer.get_at(p_frame_index)
-	_set_frame_property(frame_state, &"position", last_interaction_position)
-	_set_frame_property(frame_state, &"velocity", Vector2.ZERO)
-
-	# Preserve interaction properties from local state (just unpacked from
-	# authoritative state) to ensure SPAWN persists through buffer modification.
-	_set_frame_interaction_properties(
-		frame_state,
-		last_interaction_type,
-		last_interaction_frame_index,
-		last_interaction_position,
-		last_interaction_velocity
-	)
-
-	_rollback_buffer.set_at(p_frame_index, frame_state)
 	Netcode.frame_driver.queue_rollback(p_frame_index)
 
 	if Netcode.log.is_verbose:
 		G.verbose(
-			"F:%d Spawn interaction reconciled at frame %d, position=%s, queuing rollback (%s)" % [
+			"F:%d Spawn interaction at frame %d, queuing rollback (%s)" % [
 				Netcode.server_frame_index,
 				p_frame_index,
-				last_interaction_position,
 				name,
 			],
 			NetworkLogger.CATEGORY_NETWORK_SYNC,
 		)
-
-
-## Injects a velocity delta and interaction properties into the rollback buffer
-## at the specified frame. Used for bumps and kills to apply collision bounce.
-##
-## This function explicitly sets interaction properties in the buffer to
-## prevent them from being overwritten with stale NONE values.
-func _inject_velocity_delta_into_buffer(
-	p_frame_index: int,
-	p_velocity: Vector2,
-	interaction_type: int,
-	interaction_frame_index: int,
-	interaction_position: Vector2,
-	interaction_velocity: Vector2
-) -> void:
-	var frame_state: Array = _rollback_buffer.get_at(p_frame_index)
-	_set_frame_property(frame_state, &"velocity", p_velocity)
-
-	# Set interaction properties explicitly (passed as parameters).
-	# This ensures the buffer has the correct interaction data, preventing
-	# _post_network_process() from overwriting with stale values.
-	_set_frame_interaction_properties(
-		frame_state,
-		interaction_type,
-		interaction_frame_index,
-		interaction_position,
-		interaction_velocity
-	)
-
-	_rollback_buffer.set_at(p_frame_index, frame_state)
-	Netcode.frame_driver.queue_rollback(p_frame_index)
 
 
 ## Records an interaction and automatically injects it into the rollback buffer.

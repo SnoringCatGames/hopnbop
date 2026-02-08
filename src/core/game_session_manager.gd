@@ -226,15 +226,6 @@ func _client_on_server_disconnected(reason: int) -> void:
 	# Emit high-level event for game logic.
 	connection_lost.emit(reason_name, is_expected)
 
-	# In preview mode, close the client application.
-	if Netcode.is_preview:
-		G.print(
-			"Preview mode: Exiting client",
-			NetworkLogger.CATEGORY_CORE_SYSTEMS
-		)
-		await get_tree().create_timer(1.0).timeout
-		get_tree().quit()
-
 
 func _server_on_client_disconnected(peer_id: int, reason: int) -> void:
 	var reason_name: String = NetworkConnector.DisconnectReason.keys()[reason]
