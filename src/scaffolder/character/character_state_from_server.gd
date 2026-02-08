@@ -64,7 +64,7 @@ const _synced_properties_and_rollback_diff_thresholds := {
 	last_interaction_type = 0,
 	last_interaction_frame_index = 0,
 	last_interaction_position = 0.01,
-	last_interaction_direction = 0.01,
+	last_interaction_velocity = 10.0,
 }
 
 
@@ -76,7 +76,7 @@ func _get_default_values() -> Array:
 		ServerInteractionType.NONE, # last_interaction_type
 		-1, # last_interaction_frame_index
 		Vector2.ZERO, # last_interaction_position
-		Vector2.ZERO, # last_interaction_direction
+		Vector2.ZERO, # last_interaction_velocity
 	]
 
 
@@ -303,8 +303,8 @@ func _network_process() -> void:
 		forwarded_input_from_server.last_interaction_position = (
 			input_from_client.last_interaction_position
 		)
-		forwarded_input_from_server.last_interaction_direction = (
-			input_from_client.last_interaction_direction
+		forwarded_input_from_server.last_interaction_velocity = (
+			input_from_client.last_interaction_velocity
 		)
 		forwarded_input_from_server.frame_authority = (
 			input_from_client.frame_authority
@@ -465,7 +465,7 @@ func _sync_from_scene_state() -> void:
 
 	# NOTE: Interaction properties (last_interaction_type,
 	# last_interaction_frame_index, last_interaction_position,
-	# last_interaction_direction) are NOT synced from scene state. They are
+	# last_interaction_velocity) are NOT synced from scene state. They are
 	# only set via record_interaction() and persist across frames until
 	# explicitly changed by another interaction.
 	#
@@ -545,18 +545,13 @@ func _reconcile_server_interaction() -> void:
 ## Reconciles a bump interaction by injecting velocity delta into rollback
 ## buffer.
 func _reconcile_bump_interaction(p_frame_index: int) -> void:
-	var bounce_velocity := _calculate_bounce_velocity(
-		last_interaction_direction,
-		character.movement_settings.bump_bounce_base_speed,
-		character.movement_settings.bump_bounce_vertical_boost
-	)
 	_inject_velocity_delta_into_buffer(
 		p_frame_index,
-		bounce_velocity,
+		last_interaction_velocity,
 		last_interaction_type,
 		last_interaction_frame_index,
 		last_interaction_position,
-		last_interaction_direction
+		last_interaction_velocity
 	)
 
 	if Netcode.log.is_verbose:
@@ -573,18 +568,13 @@ func _reconcile_bump_interaction(p_frame_index: int) -> void:
 ## Reconciles a kill interaction by injecting kill bounce velocity into
 ## rollback buffer.
 func _reconcile_kill_interaction(p_frame_index: int) -> void:
-	var bounce_velocity := _calculate_bounce_velocity(
-		last_interaction_direction,
-		character.movement_settings.kill_bounce_base_speed,
-		character.movement_settings.kill_bounce_vertical_boost
-	)
 	_inject_velocity_delta_into_buffer(
 		p_frame_index,
-		bounce_velocity,
+		last_interaction_velocity,
 		last_interaction_type,
 		last_interaction_frame_index,
 		last_interaction_position,
-		last_interaction_direction
+		last_interaction_velocity
 	)
 
 	if Netcode.log.is_verbose:
@@ -605,12 +595,12 @@ func _set_frame_interaction_properties(
 	interaction_type: int,
 	interaction_frame_index: int,
 	interaction_position: Vector2,
-	interaction_direction: Vector2
+	interaction_velocity: Vector2
 ) -> void:
 	_set_frame_property(frame_state, &"last_interaction_type", interaction_type)
 	_set_frame_property(frame_state, &"last_interaction_frame_index", interaction_frame_index)
 	_set_frame_property(frame_state, &"last_interaction_position", interaction_position)
-	_set_frame_property(frame_state, &"last_interaction_direction", interaction_direction)
+	_set_frame_property(frame_state, &"last_interaction_velocity", interaction_velocity)
 
 
 ## Reconciles a die interaction by stopping movement in rollback buffer.
@@ -625,7 +615,7 @@ func _reconcile_die_interaction(p_frame_index: int) -> void:
 		last_interaction_type,
 		last_interaction_frame_index,
 		last_interaction_position,
-		last_interaction_direction
+		last_interaction_velocity
 	)
 
 	_rollback_buffer.set_at(p_frame_index, frame_state)
@@ -656,7 +646,7 @@ func _reconcile_spawn_interaction(p_frame_index: int) -> void:
 		last_interaction_type,
 		last_interaction_frame_index,
 		last_interaction_position,
-		last_interaction_direction
+		last_interaction_velocity
 	)
 
 	_rollback_buffer.set_at(p_frame_index, frame_state)
@@ -674,17 +664,6 @@ func _reconcile_spawn_interaction(p_frame_index: int) -> void:
 		)
 
 
-## Calculates bounce velocity from direction and movement settings.
-func _calculate_bounce_velocity(
-	direction: Vector2,
-	base_speed: float,
-	vertical_boost: float
-) -> Vector2:
-	var base_bounce := direction * base_speed
-	var upward_boost := Vector2(0, vertical_boost)
-	return base_bounce + upward_boost
-
-
 ## Injects a velocity delta and interaction properties into the rollback buffer
 ## at the specified frame. Used for bumps and kills to apply collision bounce.
 ##
@@ -696,7 +675,7 @@ func _inject_velocity_delta_into_buffer(
 	interaction_type: int,
 	interaction_frame_index: int,
 	interaction_position: Vector2,
-	interaction_direction: Vector2
+	interaction_velocity: Vector2
 ) -> void:
 	var frame_state: Array = _rollback_buffer.get_at(p_frame_index)
 	_set_frame_property(frame_state, &"velocity", p_velocity)
@@ -709,7 +688,7 @@ func _inject_velocity_delta_into_buffer(
 		interaction_type,
 		interaction_frame_index,
 		interaction_position,
-		interaction_direction
+		interaction_velocity
 	)
 
 	_rollback_buffer.set_at(p_frame_index, frame_state)
@@ -725,7 +704,7 @@ func record_interaction(
 	interaction_type: int,
 	p_frame_index: int,
 	p_position: Vector2,
-	direction: Vector2
+	velocity: Vector2
 ) -> void:
 	# Inject into buffer FIRST before setting local properties.
 	# This prevents rollback from clearing the interaction before
@@ -736,11 +715,11 @@ func record_interaction(
 		interaction_type,
 		p_frame_index,
 		p_position,
-		direction
+		velocity
 	)
 
 	# Then call base class to set local properties.
-	super.record_interaction(interaction_type, p_frame_index, p_position, direction)
+	super.record_interaction(interaction_type, p_frame_index, p_position, velocity)
 
 
 ## Sets the position and interaction properties in the rollback buffer at the
@@ -754,7 +733,7 @@ func _inject_position_into_buffer(
 	interaction_type: int,
 	interaction_frame_index: int,
 	interaction_position: Vector2,
-	interaction_direction: Vector2
+	interaction_velocity: Vector2
 ) -> void:
 	var frame_state: Array = _rollback_buffer.get_at(p_frame_index)
 	_set_frame_property(frame_state, &"position", new_position)
@@ -767,7 +746,7 @@ func _inject_position_into_buffer(
 		interaction_type,
 		interaction_frame_index,
 		interaction_position,
-		interaction_direction
+		interaction_velocity
 	)
 
 	_rollback_buffer.set_at(p_frame_index, frame_state)
