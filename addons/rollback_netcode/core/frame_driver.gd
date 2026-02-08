@@ -47,13 +47,23 @@ extends Node
 # - Fix kills to happen when _relative_ velocity.y is pushing head into foot, not just when one player is moving down.
 # - Fix respawn brief visibility.
 #   - Try again to move position immediately after death.
+# - TEST that when a high-speed kill happens, the bounce happens from where the
+#   initial collision contact should have been.
+#   -!!!!!!!!!!!!!!! I think this still happens
 
+# - Test that pause limit is enforced.
+
+# - Test returning to lobby and then to match and then to lobby in preview.
+
+# - Adjust match-end countdown.
+#   - Show a pulse size tween at 30 20 10.
+#   - Only show red blinks after 10.
+#   - Show a embiggen+fade-out tween after hitting zero.
+#   - Time value should be frozen at this point.
 
 # - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
 
 # - Test kills and bumps.
-# - TEST that when a high-speed kill happens, the bounce happens from where the
-#   initial collision contact should have been.
 
 # - Polish movement. It still seems like we get jitter and stuck
 #   player-inputs-on-server-side too often.
@@ -61,16 +71,9 @@ extends Node
 # - Review /rollback_netcode/examples/.
 # - Look at how some old Scaffolder utilities are used, like ScaffolderTime. Should we simplify and replace them with built-in logic that we _don't_ have the consumer app worry about?
 
-# - Test that pause limit is enforced.
-
 # - Lingering FIXMEs.
 
-# TEST THIS
-# - All FN keys
-# - Player annotator
-
 # - Test match countdown timer.
-# - Test return to lobby after countdown.
 
 # UI fixes:
 # - Adjust scene files: lobby_level.tscn, player_list.tscn, player_display.tscn.
