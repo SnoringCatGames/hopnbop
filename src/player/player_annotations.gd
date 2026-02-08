@@ -17,13 +17,24 @@ const COLLISION_OUTLINE_COLOR := Color(0.0, 1.0, 1.0, 0.569)
 const COLLISION_OUTLINE_THICKNESS := 1.5
 const COLLISION_OUTLINE_SECTOR_ARC_LENGTH := 2.0
 
-const DOT_RADIUS := 2.0
 const LINE_THICKNESS := 1.0
 
 # Color coding by frame authority.
-const COLOR_AUTHORITATIVE := Color(0.0, 0.9, 0.6, 0.6)
-const COLOR_PREDICTED := Color(1.0, 0.8, 0.0, 0.3)
+const COLOR_AUTHORITATIVE := Color(0.0, 0.9, 0.5, 0.6)
+const COLOR_PREDICTED := Color(0.3, 0.5, 1.0, 0.6)
 const COLOR_UNKNOWN := Color(0.5, 0.5, 0.5, 0.6)
+
+# Color coding for rollback/fast-forward events.
+const COLOR_ROLLBACK := Color(1.0, 0.3, 0.3, 0.6)
+const COLOR_FAST_FORWARD := Color(1.0, 0.8, 0.0, 0.3)
+
+# Dot radius based on authoritative delay (bigger = slower/more delayed).
+const DOT_RADIUS_MIN := 1.5
+const DOT_RADIUS_MAX := 4.0
+
+# Delay thresholds for dot radius interpolation.
+const DELAY_MIN_THRESHOLD := 3
+const DELAY_MAX_THRESHOLD := 10
 
 @export var player: Player
 
@@ -69,6 +80,7 @@ func _draw_rollback_buffer_trail() -> void:
 		return
 
 	var buffer := player.state_from_server._rollback_buffer
+	var debug_buffer := player.state_from_server._debug_frame_buffer
 
 	if buffer == null:
 		return
@@ -93,17 +105,27 @@ func _draw_rollback_buffer_trail() -> void:
 		var frame_position: Vector2 = frame_state[0]
 		var frame_authority: int = frame_state[frame_state.size() - 1]
 
+		# Get debug info for this frame.
+		var debug_entry: Array = []
+		if debug_buffer != null and debug_buffer.has_at(frame_index):
+			debug_entry = debug_buffer.get_at(frame_index)
+
 		var local_pos := (
 			frame_position - global_position + player.collision_shape.position
 		)
-		var color := _get_color_for_authority(frame_authority)
+
+		# Determine dot color based on debug info and authority.
+		var dot_color := _get_dot_color(frame_authority, debug_entry)
+
+		# Determine dot radius based on authoritative delay (bigger = slower).
+		var dot_radius := _get_dot_radius(debug_entry)
 
 		# Draw line to previous frame if exists.
 		if has_prev:
-			draw_line(prev_local_pos, local_pos, color, LINE_THICKNESS)
+			draw_line(prev_local_pos, local_pos, dot_color, LINE_THICKNESS)
 
 		# Draw dot for current frame.
-		draw_circle(local_pos, DOT_RADIUS, color)
+		draw_circle(local_pos, dot_radius, dot_color)
 
 		prev_local_pos = local_pos
 		has_prev = true
@@ -117,3 +139,34 @@ func _get_color_for_authority(authority: int) -> Color:
 			return COLOR_PREDICTED
 		_:
 			return COLOR_UNKNOWN
+
+
+func _get_dot_color(authority: int, debug_entry: Array) -> Color:
+	if not debug_entry.is_empty():
+		if debug_entry[ReconcilableState._DEBUG_ROLLBACK_INDEX] > 0:
+			return COLOR_ROLLBACK
+		if debug_entry[ReconcilableState._DEBUG_FAST_FORWARD_INDEX] > 0:
+			return COLOR_FAST_FORWARD
+	return _get_color_for_authority(authority)
+
+
+func _get_dot_radius(debug_entry: Array) -> float:
+	if debug_entry.is_empty():
+		return DOT_RADIUS_MIN
+
+	var delay: int = debug_entry[ReconcilableState._DEBUG_AUTH_DELAY_INDEX]
+
+	# Never received authoritative state - use max radius.
+	if delay < 0:
+		return DOT_RADIUS_MAX
+
+	if delay <= DELAY_MIN_THRESHOLD:
+		return DOT_RADIUS_MIN
+	elif delay >= DELAY_MAX_THRESHOLD:
+		return DOT_RADIUS_MAX
+	else:
+		var t := (
+			float(delay - DELAY_MIN_THRESHOLD) /
+			float(DELAY_MAX_THRESHOLD - DELAY_MIN_THRESHOLD)
+		)
+		return lerpf(DOT_RADIUS_MIN, DOT_RADIUS_MAX, t)
