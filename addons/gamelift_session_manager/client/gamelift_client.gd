@@ -145,7 +145,7 @@ func _on_request_completed(
 		)
 		return
 
-	if not SemanticVersion.compare(client_version, server_version):
+	if not GameliftSemanticVersion.compare(client_version, server_version):
 		session_request_failed.emit(
 			"Version mismatch: Client v%s, Server requires v%s. " +
 			"Please update your game client." % [

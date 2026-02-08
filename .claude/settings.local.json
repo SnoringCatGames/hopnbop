@@ -87,7 +87,9 @@
       "Bash(do sed -i 's/\\\\bMatchState\\\\b/GameMatchState/g' \"$file\")",
       "Bash(do sed -i 's/GameMatchStateSynchronizer/MatchStateSynchronizer/g' \"$file\")",
       "Bash(Select-String -Pattern \"\\(passed|failed|pending|risky\\)\" -Context 0,2)",
-      "Bash(c:)"
+      "Bash(c:)",
+      "Bash(findstr:*)",
+      "Bash(del \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\\\\addons\\\\rollback_netcode\\\\utils\\\\netcode_utils.gd\" \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\\\\addons\\\\rollback_netcode\\\\utils\\\\netcode_utils.gd.uid\")"
     ]
   }
 }

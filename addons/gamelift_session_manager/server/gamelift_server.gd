@@ -215,7 +215,7 @@ func _initialize_sdk() -> void:
 		outcome = _gamelift.init_sdk()
 
 	if not outcome.is_success():
-		if TestEnvironmentDetector.is_running_in_test_env(self ):
+		if GameliftTestEnvironmentDetector.is_running_in_test_env(self ):
 			Netcode.log.print(
 				"GameLift SDK init failed (expected in tests/preview): %s" % outcome.get_error_message(),
 				NetworkLogger.CATEGORY_CONNECTIONS

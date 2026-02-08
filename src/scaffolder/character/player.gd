@@ -29,6 +29,9 @@ var _original_collision_mask := 0
 var _original_area_collision_layers := {}
 var _original_area_collision_masks := {}
 
+# Pre-calculated respawn position, set when player dies.
+var _pending_respawn_position := Vector2.INF
+
 
 func _enter_tree() -> void:
 	super._enter_tree()
@@ -224,7 +227,7 @@ func server_trigger_death() -> void:
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
-	# Record DIE interaction.
+	# Record DIE interaction at death position (for effects).
 	state_from_server.record_interaction(
 		CharacterStateFromServer.ServerInteractionType.DIE,
 		Netcode.server_frame_index,
@@ -243,6 +246,22 @@ func server_trigger_death() -> void:
 		if is_instance_valid(area) and area is Area2D:
 			area.collision_layer = 0
 			area.collision_mask = 0
+
+	# Pre-calculate respawn position and move there immediately (while hidden).
+	# This prevents a one-frame visual glitch at respawn time where the player
+	# would appear at their death position before being moved to spawn.
+	if is_instance_valid(G.level):
+		_pending_respawn_position = G.level._get_player_spawn_position()
+		global_position = _pending_respawn_position
+		velocity = Vector2.ZERO
+		G.verbose(
+			"F:%d Player %d moved to respawn position %s (hidden)" % [
+				Netcode.server_frame_index,
+				player_id,
+				_pending_respawn_position,
+			],
+			NetworkLogger.CATEGORY_GAME_STATE,
+		)
 
 	# Schedule respawn.
 	Netcode.time.set_timeout(
@@ -287,7 +306,13 @@ func server_execute_respawn() -> void:
 		)
 		return
 
-	var spawn_position := G.level._get_player_spawn_position()
+	# Use pre-calculated respawn position, or calculate a new one as fallback.
+	var spawn_position: Vector2
+	if _pending_respawn_position != Vector2.INF:
+		spawn_position = _pending_respawn_position
+		_pending_respawn_position = Vector2.INF # Clear for next death.
+	else:
+		spawn_position = G.level._get_player_spawn_position()
 
 	# Record SPAWN interaction.
 	state_from_server.record_interaction(
@@ -297,7 +322,7 @@ func server_execute_respawn() -> void:
 		Vector2.ZERO
 	)
 
-	# Re-enable and reposition.
+	# Re-enable (position should already be at spawn_position from death).
 	global_position = spawn_position
 	velocity = Vector2.ZERO
 	is_sprite_visible = true
