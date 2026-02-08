@@ -47,7 +47,6 @@ extends Node
 # - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
 
 # - Test kills and bumps.
-# - Adjust foot, head, and body shapes.
 # - TEST that when a high-speed kill happens, the bounce happens from where the
 #   initial collision contact should have been.
 
@@ -108,14 +107,19 @@ extends Node
 #     - a leaderboard
 #   - Implement a way to make friends and to join matches with friends.
 
-# - Tweak movement parameters
+# Check on how the GitHub Actions current daily actions setup is working.
+
+# Make a new GitHub action for deploying releases.
+# - First, I should start using a dev branch for normal work, and merge into main whenever it's release-ready.
+# - It should takie master branch and deploy it to itch and aws gamelift
+# - It should also deploy to Godot Asset library.
+# - It should also create zip files for the build and record them in the repo.
+# - AND can it bump my versions for me?? Can it accept a text box for version? Can I tell it all the spots to update the version? Then I could put versions back in the READMEs...
 
 # - Have bunnies be flung in from off-screen from the left.
 #   - Move the happen points over there, and give bunnies initial velocity.
 #   - Remove some of the tiles near the top of the left wall for this. But make sure players can't jump that high.
 #   - Disable player-player collision mask bit in the lobby.
-
-# - Show a floating +/-N label over the PlayerDisplay when adjusting the score. With a tween. It should slowly rise up. It should fade out.
 
 # FIXME: Rollback debug visualization and networking improvements:
 #
@@ -297,6 +301,9 @@ extends Node
 #   - Walk sound
 #   - Bunny bump sound
 #   - Menu click sound
+#   - Add countdown tick sounds.
+#     - Match-start: Arpeggio: Do mi so do!
+#     - Match-end: Write a simple song, beat-aligned to seconds, 10 seconds long.
 # - Make sleeping bunny animations for while the countdown is going.
 #   - Make sure to override process_mode on PlayerAnimators, so they will move when paused.
 
@@ -326,6 +333,14 @@ extends Node
 #     - Pressed left right I move
 #     - Draw a semitransparent bar across the bottom to indicate the regions with an icon
 #     - Have a setting to disable the bar
+
+# Animated tiles
+# - Research how to implement animated tiles.
+# - Have Tile set point to a scene for each animated tile.
+# - ALSO, plan a way to sync occlusion and background animated tiles, so rustling one will also trigger the other.
+# - Probably implement this by subclassing the TileMap. Then have a property to indicate its partner TileMap, and assert it's set.
+# - Then, need to figure out collisions for an offset area for these rustle tiles.
+# - Then...
 
 # ### TODO: After everything else:
 # - Survey the codebase for where we use string literals. Should any of these be StringName literals instead?

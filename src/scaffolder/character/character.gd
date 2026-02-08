@@ -56,6 +56,12 @@ var jump_sequence_count := 0
 
 var _current_max_horizontal_speed_multiplier := 1.0
 
+# Frame index when force_boost was last called. Used to prevent immediate
+# floor re-attachment after a bounce.
+var _last_boost_frame_index := -1
+# Number of frames to prevent floor attachment after a boost.
+const _BOOST_FLOOR_ATTACHMENT_COOLDOWN_FRAMES := 3
+
 var surfaces := CharacterSurfaceState.new(self )
 var actions := CharacterActionState.new()
 
@@ -371,6 +377,20 @@ func force_boost(boost: Vector2) -> void:
 
 	position += Vector2(0.0, -1.0)
 	surfaces.force_boost()
+
+	# Record the frame when boost was applied to prevent floor re-attachment.
+	_last_boost_frame_index = Netcode.server_frame_index
+
+
+## Returns true if floor attachment should be blocked due to recent boost.
+## This prevents the character from immediately re-attaching to the floor
+## after a bounce (kill/bump), which would cause FloorDefaultAction to zero
+## the upward velocity.
+func is_in_boost_cooldown() -> bool:
+	if _last_boost_frame_index < 0:
+		return false
+	var frames_since_boost := Netcode.server_frame_index - _last_boost_frame_index
+	return frames_since_boost < _BOOST_FLOOR_ATTACHMENT_COOLDOWN_FRAMES
 
 
 func get_next_position_prediction() -> Vector2:

@@ -522,6 +522,9 @@ func _update_attachment_state() -> void:
 		and !is_triggering_explicit_ceiling_attachment
 	)
 
+	# Check if floor attachment is blocked due to recent boost (kill/bump).
+	var is_boost_cooldown_active: bool = character.is_in_boost_cooldown()
+
 	var standard_is_attaching_to_floor: bool = (
 		is_touching_floor
 		and (
@@ -535,6 +538,7 @@ func _update_attachment_state() -> void:
 		)
 		and !is_triggering_fall_through
 		and !is_triggering_jump
+		and !is_boost_cooldown_active
 		and (is_triggering_explicit_floor_attachment or !is_triggering_explicit_wall_attachment)
 	)
 

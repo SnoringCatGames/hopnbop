@@ -93,6 +93,6 @@ extends NetworkSettings
 @export_group("")
 
 @export_group("Match Settings")
-@export var match_duration_sec := 5 * 60.0 # 5 minutes
+@export var match_duration_sec := 1 * 60.0 # 5 minutes
 @export var match_end_disconnect_delay_sec := 3.0
 @export_group("")
