@@ -17,7 +17,7 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	G.log.log_system_ready("Utils")
+	Netcode.log.print("Utils ready", NetworkLogger.CATEGORY_SYSTEM_INITIALIZATION)
 
 
 static func splice(result: Array, start: int, delete_count: int, items_to_insert: Array) -> void:
@@ -126,7 +126,7 @@ static func subtract_and_mutate_nested_arrays(
 			elif result[key] is Array and other[key] is Array:
 				subtract_and_mutate_arrays(result[key], other[key])
 			elif expects_no_missing_matches:
-				G.ensure(
+				Netcode.log.ensure(
 					false,
 					("Wrong-type match: " +
 					"(We currently don't support subtracting properties " +
@@ -136,7 +136,7 @@ static func subtract_and_mutate_nested_arrays(
 					[key, result, other],
 				)
 		elif expects_no_missing_matches:
-			G.ensure(
+			Netcode.log.ensure(
 				false,
 				("Missing match: " + "\n    key=%s,\n    " +
 				"result=%s,\n    other=%s") % [key, result, other],
@@ -150,7 +150,7 @@ static func subtract_and_mutate_arrays(result: Array, other: Array) -> Array:
 		if result_index >= 0:
 			result.remove_at(result_index)
 		else:
-			G.ensure(
+			Netcode.log.ensure(
 				false,
 				("Missing match: " + "\n    element=%s,\n    " +
 				"result=%s,\n    other=%s") % [element, result, other],
@@ -243,7 +243,7 @@ static func ease_name_to_param(ease_name: StringName) -> float:
 		"ease_in_out_weak":
 			return -1.8
 		_:
-			G.ensure(false)
+			Netcode.log.ensure(false)
 			return INF
 
 
@@ -285,7 +285,7 @@ static func mix(values: Array, weights: Array):
 	elif values[0] is Vector3:
 		weighted_average = Vector3.ZERO
 	else:
-		G.ensure(false)
+		Netcode.log.ensure(false)
 
 	for i in count:
 		var value = values[i]
@@ -451,15 +451,15 @@ func take_screenshot() -> void:
 	var path := "user://screenshots/screenshot-%s.png" % get_datetime_string()
 	var status := image.save_png(path)
 	if status != OK:
-		G.ensure(false)
+		Netcode.log.ensure(false)
 	else:
-		G.print("Took a screenshot: %s" % path, NetworkLogger.CATEGORY_CORE_SYSTEMS)
+		Netcode.log.print("Took a screenshot: %s" % path, NetworkLogger.CATEGORY_CORE_SYSTEMS)
 		were_screenshots_taken = true
 
 
 static func open_screenshot_folder() -> void:
 	var path := OS.get_user_data_dir() + "/screenshots"
-	G.print("Opening screenshot folder: " + path, NetworkLogger.CATEGORY_CORE_SYSTEMS)
+	Netcode.log.print("Opening screenshot folder: " + path, NetworkLogger.CATEGORY_CORE_SYSTEMS)
 	OS.shell_open(path)
 
 
@@ -586,7 +586,7 @@ static func get_type_string(type: int) -> StringName:
 		TYPE_MAX:
 			return "TYPE_MAX"
 		_:
-			G.ensure(false, "%d" % type)
+			Netcode.log.ensure(false, "%d" % type)
 			return ""
 
 
@@ -644,7 +644,7 @@ static func get_property_value_from_node_path(base_node: Node, p_node_path: Node
 			# No property path was included, so let's return the resource or node.
 			return target_object
 
-	G.error(
+	Netcode.log.error(
 		"get_property_value: Node not found: %s" % p_node_path,
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)

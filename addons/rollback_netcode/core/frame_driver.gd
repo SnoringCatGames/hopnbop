@@ -44,11 +44,7 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# - I'm definitely seeing kill bounces being applied inconsistently
-
 # - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
-
-# - Make sure the overall game area scaling/centering works well with the current display settings.
 
 # - Test kills and bumps.
 # - Adjust foot, head, and body shapes.
