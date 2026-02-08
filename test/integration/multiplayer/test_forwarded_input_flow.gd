@@ -228,7 +228,7 @@ class TestRollbackIntegration:
 		forwarded_input.last_interaction_type = PlayerInputNetworkState.ClientInteractionType.JUMP
 		forwarded_input.last_interaction_frame_index = 300
 		forwarded_input.last_interaction_position = Vector2(100, 200)
-		forwarded_input.last_interaction_direction = Vector2.ZERO
+		forwarded_input.last_interaction_velocity = Vector2.ZERO
 		forwarded_input.frame_authority = \
 		ReconcilableState.FrameAuthority.AUTHORITATIVE
 
@@ -239,7 +239,7 @@ class TestRollbackIntegration:
 		state[1] = forwarded_input.last_interaction_type
 		state[2] = forwarded_input.last_interaction_frame_index
 		state[3] = forwarded_input.last_interaction_position
-		state[4] = forwarded_input.last_interaction_direction
+		state[4] = forwarded_input.last_interaction_velocity
 		state[5] = forwarded_input.frame_authority
 
 		forwarded_input._rollback_buffer.set_at(test_frame, state)
@@ -278,7 +278,7 @@ class TestRollbackIntegration:
 		state[1] = PlayerInputNetworkState.ClientInteractionType.JUMP # last_interaction_type
 		state[2] = 150 # last_interaction_frame_index
 		state[3] = Vector2.ZERO # last_interaction_position
-		state[4] = Vector2.ZERO # last_interaction_direction
+		state[4] = Vector2.ZERO # last_interaction_velocity
 		state[5] = ReconcilableState.FrameAuthority.PREDICTED # frame_authority
 
 		forwarded_input._rollback_buffer.set_at(test_frame, state)

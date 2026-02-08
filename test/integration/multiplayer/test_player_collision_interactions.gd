@@ -171,13 +171,12 @@ class TestCollisionBounceVelocity:
 			"Bump frame should be recorded"
 		)
 
-		# Direction should be normalized.
-		var direction = player1.state_from_server.last_interaction_direction
-		assert_almost_eq(
-			direction.length(),
-			1.0,
-			0.01,
-			"Direction should be normalized"
+		# Velocity should have reasonable magnitude (based on bump settings).
+		var velocity = player1.state_from_server.last_interaction_velocity
+		assert_gt(
+			velocity.length(),
+			100.0,
+			"Velocity should have significant magnitude"
 		)
 
 

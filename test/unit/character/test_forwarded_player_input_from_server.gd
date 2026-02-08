@@ -93,8 +93,8 @@ class TestConfigurationAndInitialization:
 			"Should sync interaction position",
 		)
 		assert_true(
-			props.has("last_interaction_direction"),
-			"Should sync interaction direction",
+			props.has("last_interaction_velocity"),
+			"Should sync interaction velocity",
 		)
 
 

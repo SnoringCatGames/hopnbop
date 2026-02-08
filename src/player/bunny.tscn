@@ -35,12 +35,12 @@ radius = 6.0
 height = 13.5
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_j2eem"]
-radius = 2.0
+radius = 2.5
 height = 11.0
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_sc4xa"]
-radius = 2.0
-height = 10.0
+radius = 2.5
+height = 11.0
 
 [node name="Bunny" type="CharacterBody2D" node_paths=PackedStringArray("input_from_client", "forwarded_input_from_server", "collision_shape", "animator", "state_from_server")]
 collision_layer = 8
@@ -112,7 +112,7 @@ collision_mask = 256
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="FootArea"]
-position = Vector2(0, -1.5)
+position = Vector2(0, -2)
 rotation = 1.5707964
 shape = SubResource("CapsuleShape2D_j2eem")
 
@@ -123,7 +123,7 @@ collision_mask = 0
 monitoring = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HeadArea"]
-position = Vector2(0, -10.5)
+position = Vector2(0, -10)
 rotation = 1.5707964
 shape = SubResource("CapsuleShape2D_sc4xa")
 

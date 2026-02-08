@@ -89,8 +89,8 @@ class TestInteractionStateReplication:
 			"last_interaction_position should be synced"
 		)
 		assert_true(
-			props.has("last_interaction_direction"),
-			"last_interaction_direction should be synced"
+			props.has("last_interaction_velocity"),
+			"last_interaction_velocity should be synced"
 		)
 
 	func test_interaction_properties_have_thresholds():
@@ -114,10 +114,10 @@ class TestInteractionStateReplication:
 			"Interaction position should have small tolerance"
 		)
 		assert_almost_eq(
-			props["last_interaction_direction"],
-			0.01,
-			0.001,
-			"Interaction direction should have small tolerance"
+			props["last_interaction_velocity"],
+			10.0,
+			0.1,
+			"Interaction velocity should have reasonable tolerance"
 		)
 
 	func test_interaction_properties_in_default_values():
@@ -210,7 +210,7 @@ class TestBumpReconciliation:
 		state.last_interaction_type = \
 			CharacterStateFromServer.ServerInteractionType.BUMP
 		state.last_interaction_frame_index = 10
-		state.last_interaction_direction = Vector2(1, 0)
+		state.last_interaction_velocity = Vector2(1, 0)
 
 		state._reconcile_server_interaction()
 
@@ -228,49 +228,45 @@ class TestBumpReconciliation:
 		# Manually create frame state array.
 		# Format: [position, velocity, surfaces, last_interaction_type,
 		# last_interaction_frame_index, last_interaction_position,
-		# last_interaction_direction, frame_authority]
+		# last_interaction_velocity, frame_authority]
 		var frame_state = ArrayPool.acquire(8)
 		frame_state[0] = Vector2.ZERO # position
-		frame_state[1] = Vector2(100, 100) # velocity
+		frame_state[1] = Vector2(100, 100) # velocity (will be replaced)
 		frame_state[2] = 0 # surfaces
 		frame_state[3] = CharacterStateFromServer.ServerInteractionType.NONE
 		frame_state[4] = -1 # last_interaction_frame_index
 		frame_state[5] = Vector2.ZERO # last_interaction_position
-		frame_state[6] = Vector2.ZERO # last_interaction_direction
+		frame_state[6] = Vector2.ZERO # last_interaction_velocity
 		frame_state[7] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		state._rollback_buffer.set_at(300, frame_state)
 
-		# Set bump event.
+		# Set bump event with the actual bounce velocity (already computed).
+		var bounce_velocity = Vector2(300.0, -200.0)
 		state.last_interaction_type = \
 			CharacterStateFromServer.ServerInteractionType.BUMP
 		state.last_interaction_frame_index = 300
-		state.last_interaction_direction = Vector2(1, 0).normalized()
+		state.last_interaction_velocity = bounce_velocity
 
 		# Reconcile.
 		state._reconcile_server_interaction()
 
-		# Verify velocity was modified.
+		# Verify velocity was set to the bounce velocity.
 		var modified_state: Array = state._rollback_buffer.get_at(300)
 		var velocity: Vector2 = modified_state[1] # Index 1 is velocity
 
-		# Should have original velocity + bump delta.
-		var expected_bump = (
-			Vector2(1, 0).normalized() * 300.0 + Vector2(0, -200.0)
-		)
-		var expected_velocity = Vector2(100, 100) + expected_bump
-
+		# Should have the stored bounce velocity directly.
 		assert_almost_eq(
 			velocity.x,
-			expected_velocity.x,
+			bounce_velocity.x,
 			1.0,
-			"X velocity should include bump"
+			"X velocity should match stored bounce velocity"
 		)
 		assert_almost_eq(
 			velocity.y,
-			expected_velocity.y,
+			bounce_velocity.y,
 			1.0,
-			"Y velocity should include bump"
+			"Y velocity should match stored bounce velocity"
 		)
 
 	func test_reconciliation_marks_bump_as_processed():
@@ -284,7 +280,7 @@ class TestBumpReconciliation:
 		frame_state[3] = CharacterStateFromServer.ServerInteractionType.NONE
 		frame_state[4] = -1 # last_interaction_frame_index
 		frame_state[5] = Vector2.ZERO # last_interaction_position
-		frame_state[6] = Vector2.ZERO # last_interaction_direction
+		frame_state[6] = Vector2.ZERO # last_interaction_velocity
 		frame_state[7] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		state._rollback_buffer.set_at(400, frame_state)
@@ -292,7 +288,7 @@ class TestBumpReconciliation:
 		state.last_interaction_type = \
 			CharacterStateFromServer.ServerInteractionType.BUMP
 		state.last_interaction_frame_index = 400
-		state.last_interaction_direction = Vector2(0, -1)
+		state.last_interaction_velocity = Vector2(0, -1)
 
 		state._reconcile_server_interaction()
 
@@ -302,7 +298,7 @@ class TestBumpReconciliation:
 			"Bump should be marked as reconciled"
 		)
 
-	func test_reconciliation_calculates_correct_bump_delta():
+	func test_reconciliation_uses_stored_velocity_directly():
 		Netcode.frame_driver.server_frame_index = 500
 
 		# Manually create frame state array.
@@ -313,37 +309,36 @@ class TestBumpReconciliation:
 		frame_state[3] = CharacterStateFromServer.ServerInteractionType.NONE
 		frame_state[4] = -1 # last_interaction_frame_index
 		frame_state[5] = Vector2.ZERO # last_interaction_position
-		frame_state[6] = Vector2.ZERO # last_interaction_direction
+		frame_state[6] = Vector2.ZERO # last_interaction_velocity
 		frame_state[7] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		state._rollback_buffer.set_at(500, frame_state)
 
-		# Bump direction at 45 degrees.
+		# Bump with pre-calculated velocity (as if direction was at 45 degrees).
 		var direction = Vector2(1, -1).normalized()
+		var bounce_velocity = direction * 300.0 + Vector2(0, -200.0)
 		state.last_interaction_type = \
 			CharacterStateFromServer.ServerInteractionType.BUMP
 		state.last_interaction_frame_index = 500
-		state.last_interaction_direction = direction
+		state.last_interaction_velocity = bounce_velocity
 
 		state._reconcile_server_interaction()
 
 		var modified_state: Array = state._rollback_buffer.get_at(500)
 		var velocity: Vector2 = modified_state[1] # Index 1 is velocity
 
-		# Expected: direction * base_speed + upward_boost.
-		var expected = direction * 300.0 + Vector2(0, -200.0)
-
+		# Velocity should match the stored bounce velocity directly.
 		assert_almost_eq(
 			velocity.x,
-			expected.x,
+			bounce_velocity.x,
 			1.0,
-			"X component should match expected"
+			"X component should match stored velocity"
 		)
 		assert_almost_eq(
 			velocity.y,
-			expected.y,
+			bounce_velocity.y,
 			1.0,
-			"Y component should match expected"
+			"Y component should match stored velocity"
 		)
 
 
@@ -385,7 +380,7 @@ class TestBumpReconciliationEdgeCases:
 		if is_instance_valid(character):
 			character.free()
 
-	func test_reconciliation_with_zero_direction():
+	func test_reconciliation_with_zero_velocity():
 		Netcode.frame_driver.server_frame_index = 600
 
 		# Manually create frame state array.
@@ -396,7 +391,7 @@ class TestBumpReconciliationEdgeCases:
 		frame_state[3] = CharacterStateFromServer.ServerInteractionType.NONE
 		frame_state[4] = -1 # last_interaction_frame_index
 		frame_state[5] = Vector2.ZERO # last_interaction_position
-		frame_state[6] = Vector2.ZERO # last_interaction_direction
+		frame_state[6] = Vector2.ZERO # last_interaction_velocity
 		frame_state[7] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		state._rollback_buffer.set_at(600, frame_state)
@@ -404,7 +399,7 @@ class TestBumpReconciliationEdgeCases:
 		state.last_interaction_type = \
 			CharacterStateFromServer.ServerInteractionType.BUMP
 		state.last_interaction_frame_index = 600
-		state.last_interaction_direction = Vector2.ZERO
+		state.last_interaction_velocity = Vector2.ZERO
 
 		# Should not crash.
 		state._reconcile_server_interaction()
@@ -413,7 +408,7 @@ class TestBumpReconciliationEdgeCases:
 		assert_eq(
 			state._last_reconciled_interaction_frame_index,
 			600,
-			"Bump should be marked as reconciled even with zero direction"
+			"Bump should be marked as reconciled even with zero velocity"
 		)
 
 	func test_reconciliation_skips_missing_frame():
@@ -423,7 +418,7 @@ class TestBumpReconciliationEdgeCases:
 		state.last_interaction_type = \
 			CharacterStateFromServer.ServerInteractionType.BUMP
 		state.last_interaction_frame_index = 9999
-		state.last_interaction_direction = Vector2(1, 0)
+		state.last_interaction_velocity = Vector2(1, 0)
 
 		state._reconcile_server_interaction()
 
@@ -434,7 +429,7 @@ class TestBumpReconciliationEdgeCases:
 			"Missing frame should be marked as processed"
 		)
 
-	func test_reconciliation_with_downward_bump_direction():
+	func test_reconciliation_with_downward_bump_velocity():
 		Netcode.frame_driver.server_frame_index = 700
 
 		# Manually create frame state array.
@@ -445,26 +440,28 @@ class TestBumpReconciliationEdgeCases:
 		frame_state[3] = CharacterStateFromServer.ServerInteractionType.NONE
 		frame_state[4] = -1 # last_interaction_frame_index
 		frame_state[5] = Vector2.ZERO # last_interaction_position
-		frame_state[6] = Vector2.ZERO # last_interaction_direction
+		frame_state[6] = Vector2.ZERO # last_interaction_velocity
 		frame_state[7] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		state._rollback_buffer.set_at(700, frame_state)
 
+		# Pre-calculated velocity: downward direction (0, 1) * 300 + vertical
+		# boost (0, -200) = (0, 100).
+		var bounce_velocity = Vector2(0, 100)
 		state.last_interaction_type = \
 			CharacterStateFromServer.ServerInteractionType.BUMP
 		state.last_interaction_frame_index = 700
-		state.last_interaction_direction = Vector2(0, 1) # Downward.
+		state.last_interaction_velocity = bounce_velocity
 
 		state._reconcile_server_interaction()
 
 		var modified_state: Array = state._rollback_buffer.get_at(700)
 		var velocity: Vector2 = modified_state[1] # Index 1 is velocity
 
-		# With downward direction (300) and upward boost (-200), net is 100
-		# downward.
+		# Velocity should match the stored bounce velocity.
 		assert_almost_eq(
 			velocity.y,
-			100.0,
+			bounce_velocity.y,
 			1.0,
-			"Downward bump with upward boost should result in net downward velocity"
+			"Velocity should match stored bounce velocity"
 		)
