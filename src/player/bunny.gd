@@ -3,7 +3,7 @@ class_name Bunny
 extends Player
 
 
-var match_state: PlayerState:
+var match_state: GamePlayerState:
 	get:
 		return G.get_player_match_state(player_id)
 

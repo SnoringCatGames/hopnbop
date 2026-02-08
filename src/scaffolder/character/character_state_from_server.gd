@@ -93,6 +93,10 @@ func _should_accept_predicted_states() -> bool:
 	return Netcode.is_client
 
 
+func _should_create_debug_buffer() -> bool:
+	return true
+
+
 func _get_interaction_type_name(interaction_type: int) -> String:
 	if interaction_type >= 0 and interaction_type < ServerInteractionType.size():
 		return ServerInteractionType.keys()[interaction_type]

@@ -68,7 +68,7 @@ func _server_on_peer_players_declared(
 		var player_id: int = assigned_ids[i]
 		G.ensure(not state.players_by_id.has(player_id))
 
-		var player := PlayerState.new()
+		var player := state._create_player_state()
 		player.set_up(player_id, peer_id, i, player_attributes[i])
 		player.connect_frame_index = Netcode.server_frame_index
 		state.server_add_player(player)

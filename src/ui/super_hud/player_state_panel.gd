@@ -8,7 +8,7 @@ extends PanelContainer
 
 var player_id: int = 0
 var player: Player
-var player_match_state: PlayerState
+var player_match_state: GamePlayerState
 var replaceable_toast: PlayerStatePanelToast = null
 
 

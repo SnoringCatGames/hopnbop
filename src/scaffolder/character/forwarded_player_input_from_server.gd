@@ -24,6 +24,10 @@ func _should_accept_predicted_states() -> bool:
 	return true
 
 
+func _should_create_debug_buffer() -> bool:
+	return true
+
+
 func _ready() -> void:
 	super._ready()
 	update_configuration_warnings()

@@ -81,6 +81,10 @@ var _is_modifying_bumps_locally := false
 # --- Public API ---
 
 
+func _create_player_state() -> PlayerState:
+	return GamePlayerState.new()
+
+
 func clear() -> void:
 	players_by_id.clear()
 	packed_players.clear()
@@ -417,7 +421,7 @@ func _client_unpack_players() -> void:
 				)
 
 		if not players_by_id.has(player_id):
-			players_by_id[player_id] = PlayerState.new()
+			players_by_id[player_id] = _create_player_state()
 
 		var player: PlayerState = players_by_id[player_id]
 		player.populate_from_packed_state(packed_player)

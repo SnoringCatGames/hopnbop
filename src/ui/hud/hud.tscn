@@ -28,10 +28,12 @@ theme_override_constants/margin_bottom = 16
 [node name="LeftContent" type="VBoxContainer" parent="MarginContainer"]
 layout_mode = 2
 size_flags_horizontal = 0
+mouse_filter = 2
 
 [node name="MiddleContent" type="VBoxContainer" parent="MarginContainer"]
 layout_mode = 2
 size_flags_horizontal = 4
+mouse_filter = 2
 
 [node name="MatchEndCountdown" parent="MarginContainer/MiddleContent" instance=ExtResource("4_countdown")]
 layout_mode = 2
@@ -41,10 +43,12 @@ horizontal_alignment = 1
 [node name="RightContent" type="VBoxContainer" parent="MarginContainer"]
 layout_mode = 2
 size_flags_horizontal = 8
+mouse_filter = 2
 
 [node name="BottomContent" type="VBoxContainer" parent="MarginContainer"]
 layout_mode = 2
 size_flags_vertical = 8
+mouse_filter = 2
 
 [node name="PlayerList" parent="MarginContainer/BottomContent" instance=ExtResource("3_player_list")]
 layout_mode = 2
