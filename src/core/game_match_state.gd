@@ -15,7 +15,7 @@ enum InteractionType {
 
 ## Scoring constants.
 const _KILL_SCORE := 100
-const _DEATH_PENALTY := 90
+const _DEATH_PENALTY := 20
 const _BUMP_SCORE := 5
 const _RANK_BONUS_PER_DIFF := 5
 const _SELF_KILL_PENALTY := 45
@@ -301,45 +301,53 @@ func update_scores() -> void:
 		if bumps_count.has(player_2):
 			bumps_count[player_2] += 1
 
-	# Calculate base scores.
 	# Dictionary<int, int>
 	var scores := {}
-	for player_id in all_player_ids:
-		scores[player_id] = kills_count[player_id] - deaths_count[player_id]
-
-	# Calculate base ranks.
-	all_player_ids.sort_custom(func(a, b): return scores[a] > scores[b])
 	# Dictionary<int, int>
 	var ranks := {}
-	for i in range(all_player_ids.size()):
-		ranks[all_player_ids[i]] = i
 
-	# Calculate final scores with bonuses/penalties.
-	for player_id in all_player_ids:
-		var score = 0
-		score += bumps_count[player_id] * _BUMP_SCORE
-		for i in range(0, kills.size(), 2):
-			var killer = kills[i]
-			var killee = kills[i + 1]
-			if killer == player_id and killee == player_id:
-				score -= _SELF_KILL_PENALTY
-			elif killer == player_id:
-				var victim_rank = ranks.get(killee, ranks[player_id])
-				var my_rank = ranks[player_id]
-				var rank_diff = my_rank - victim_rank
-				var bonus = 0
-				if rank_diff > 0:
-					bonus = rank_diff * _RANK_BONUS_PER_DIFF
-				score += _KILL_SCORE + bonus
-			elif killee == player_id:
-				var killer_rank = ranks.get(killer, ranks[player_id])
-				var my_rank = ranks[player_id]
-				var rank_diff = killer_rank - my_rank
-				var penalty = 0
-				if rank_diff > 0:
-					penalty = rank_diff * _RANK_BONUS_PER_DIFF
-				score -= _DEATH_PENALTY + penalty
-		scores[player_id] = score
+	if G.settings.use_simple_score:
+		for player_id in all_player_ids:
+			scores[player_id] = (
+				kills_count[player_id] * _KILL_SCORE +
+				bumps_count[player_id] * _BUMP_SCORE
+			)
+	else:
+		# Calculate base scores.
+		for player_id in all_player_ids:
+			scores[player_id] = kills_count[player_id] - deaths_count[player_id]
+
+		# Calculate base ranks.
+		all_player_ids.sort_custom(func(a, b): return scores[a] > scores[b])
+		for i in range(all_player_ids.size()):
+			ranks[all_player_ids[i]] = i
+
+		# Calculate final scores with bonuses/penalties.
+		for player_id in all_player_ids:
+			var score = 0
+			score += bumps_count[player_id] * _BUMP_SCORE
+			for i in range(0, kills.size(), 2):
+				var killer = kills[i]
+				var killee = kills[i + 1]
+				if killer == player_id and killee == player_id:
+					score -= _SELF_KILL_PENALTY
+				elif killer == player_id:
+					var victim_rank = ranks.get(killee, ranks[player_id])
+					var my_rank = ranks[player_id]
+					var rank_diff = my_rank - victim_rank
+					var bonus = 0
+					if rank_diff > 0:
+						bonus = rank_diff * _RANK_BONUS_PER_DIFF
+					score += _KILL_SCORE + bonus
+				elif killee == player_id:
+					var killer_rank = ranks.get(killer, ranks[player_id])
+					var my_rank = ranks[player_id]
+					var rank_diff = killer_rank - my_rank
+					var penalty = 0
+					if rank_diff > 0:
+						penalty = rank_diff * _RANK_BONUS_PER_DIFF
+					score -= _DEATH_PENALTY + penalty
+			scores[player_id] = score
 
 	# Record final ranks and scores.
 	all_player_ids.sort_custom(func(a, b): return scores[a] > scores[b])

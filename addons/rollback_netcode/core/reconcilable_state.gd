@@ -99,6 +99,12 @@ const DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHOLD := 10.0
 # 0 should be NONE in all interaction enums.
 const _NONE_INTERACTION_TYPE := 0
 
+# Debug buffer indices for per-frame debug metrics (preview mode only).
+const _DEBUG_ROLLBACK_INDEX := 0
+const _DEBUG_FAST_FORWARD_INDEX := 1
+const _DEBUG_AUTHORITATIVE_STATE_DELAY_INDEX := 2
+const _DEBUG_DEFAULT_ENTRY := [0, 0, -1]
+
 ## The estimated server frame, when this state occurred.
 var frame_index := Utils.MIN_INT
 
@@ -235,6 +241,9 @@ var root: Node:
 		return get_node_or_null(root_path)
 
 var _rollback_buffer: RollbackBuffer
+
+## Debug buffer for tracking rollback/fast-forward/delay metrics (preview mode only).
+var _debug_frame_buffer: RollbackBuffer
 
 
 func _init() -> void:
@@ -447,6 +456,14 @@ func _handle_new_authoritative_state() -> void:
 			var primary_cause := mismatched_properties[0] as String
 			Netcode.frame_driver.queue_rollback(state_frame_index)
 
+			# Record rollback event in debug buffer.
+			if _debug_frame_buffer != null:
+				var entry = _debug_frame_buffer.get_at(state_frame_index)
+				if entry != null:
+					entry[_DEBUG_ROLLBACK_INDEX] = (
+						Netcode.server_frame_index - state_frame_index
+					)
+
 			if Netcode.log.is_verbose:
 				Netcode.log.verbose(
 					"Rollback queued: frame=%d, cause=%s mismatch (%s)" % [
@@ -462,6 +479,15 @@ func _handle_new_authoritative_state() -> void:
 
 	# Record rollback buffer frame.
 	_pack_buffer_state_from_network_state(packed_state)
+
+	# Record authoritative delay in debug buffer.
+	if _debug_frame_buffer != null and new_frame_authority == FrameAuthority.AUTHORITATIVE:
+		_debug_frame_buffer.backfill_to_with_last_state(state_frame_index)
+		var entry = _debug_frame_buffer.get_at(state_frame_index)
+		if entry != null:
+			entry[_DEBUG_AUTHORITATIVE_STATE_DELAY_INDEX] = (
+				Netcode.server_frame_index - state_frame_index
+			)
 
 	if should_unpack_state:
 		# Record local class properties.
@@ -492,6 +518,17 @@ func _handle_new_authoritative_state() -> void:
 			Netcode.log.print(
 				"Fast-forwarding due to future state from server",
 				NetworkLogger.CATEGORY_NETWORK_SYNC)
+
+		# Record fast-forward event in debug buffer before fast-forwarding.
+		if _debug_frame_buffer != null:
+			_debug_frame_buffer.backfill_to_with_last_state(
+				Netcode.server_frame_index
+			)
+			var entry = _debug_frame_buffer.get_at(Netcode.server_frame_index)
+			if entry != null:
+				entry[_DEBUG_FAST_FORWARD_INDEX] = (
+					state_frame_index - 1 - Netcode.server_frame_index
+				)
 
 		Netcode.frame_driver.fast_forward(state_frame_index - 1)
 
@@ -580,6 +617,13 @@ func _should_accept_predicted_states() -> bool:
 	return false
 
 
+## Virtual method: whether this node should create a debug buffer for tracking
+## rollback/fast-forward/delay metrics. Only active in preview mode.
+## Override in subclasses that should track debug metrics.
+func _should_create_debug_buffer() -> bool:
+	return false
+
+
 ## Virtual method: whether this class uses the interaction tracking system.
 ## Must be overridden by subclasses to return true if they track interactions
 ## (regardless of whether they are rollbackable or non-rollbackable).
@@ -655,6 +699,14 @@ func _set_up_rollback_buffer() -> void:
 		Netcode.frame_driver.server_frame_index,
 		default_values,
 	)
+
+	# Create debug buffer alongside rollback buffer (preview mode only).
+	if Netcode.is_preview and _should_create_debug_buffer():
+		_debug_frame_buffer = RollbackBuffer.new(
+			Netcode.frame_driver.rollback_buffer_size,
+			Netcode.frame_driver.server_frame_index,
+			_DEBUG_DEFAULT_ENTRY.duplicate(),
+		)
 
 
 func _has_authoritative_state_for_current_frame() -> bool:
@@ -919,6 +971,15 @@ func _cleanup_buffer_after_pause(pause_frame: int) -> void:
 		_rollback_buffer.set_at(frame_index, frame_state)
 
 	ArrayPool.release(fill_state)
+
+	# Also reset debug buffer entries after pause.
+	if _debug_frame_buffer != null:
+		for frame_index in range(pause_frame + 1, latest + 1):
+			var entry := ArrayPool.acquire(3)
+			entry[0] = 0
+			entry[1] = 0
+			entry[2] = -1
+			_debug_frame_buffer.set_at(frame_index, entry)
 
 
 ## Records the initial spawn state to the rollback buffer for the current
