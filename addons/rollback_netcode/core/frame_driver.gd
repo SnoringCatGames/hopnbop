@@ -1094,6 +1094,18 @@ func _cleanup_buffer_after_pause() -> void:
 			node._cleanup_buffer_after_pause(_pause_start_frame_index)
 
 
+## Reinitialize rollback buffers after a hard frame reset.
+##
+## When the frame index jumps backward (e.g., from 1439 to 1429), the buffers
+## contain stale predicted data at the new frame indices. This method
+## reinitializes buffers to default values at the new frame, preventing stale
+## data from corrupting the simulation.
+func reinitialize_buffers_for_hard_reset(new_frame_index: int) -> void:
+	for node in _networked_state_nodes:
+		if is_instance_valid(node):
+			node._reinitialize_buffer_for_hard_reset(new_frame_index)
+
+
 func _pre_physics_process(_delta: float) -> void:
 	if _is_paused:
 		return

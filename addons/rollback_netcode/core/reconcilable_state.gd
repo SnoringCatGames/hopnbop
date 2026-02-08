@@ -944,6 +944,54 @@ func _record_buffer_frame(frame_index: int, frame_state: Array) -> void:
 	_rollback_buffer.set_at(frame_index, frame_state)
 
 
+## Reinitialize rollback buffer after a hard frame reset.
+##
+## When the frame index jumps backward, the buffer may contain stale predicted
+## data at the new frame indices. This method reinitializes the buffer using
+## CURRENT scene state (not defaults) to prevent teleporting characters.
+func _reinitialize_buffer_for_hard_reset(new_frame_index: int) -> void:
+	if _rollback_buffer == null:
+		return
+
+	# Skip if properties haven't been parsed yet.
+	if _property_names_for_packing.is_empty():
+		return
+
+	# Sync current scene state to networked properties first.
+	_sync_from_scene_state()
+
+	# Create fill state from current scene state (not defaults).
+	var fill_state := ArrayPool.acquire(_property_names_for_packing.size() + 1)
+	var i := 0
+	for property_name in _property_names_for_packing:
+		fill_state[i] = get(property_name)
+		i += 1
+	# Mark as PREDICTED so authoritative server state can overwrite.
+	fill_state[i] = FrameAuthority.PREDICTED
+
+	# Reinitialize the entire buffer with current state at new frame index.
+	_rollback_buffer._reinitialize_data(fill_state, new_frame_index)
+
+	# Release the temporary fill state (buffer made its own copies).
+	ArrayPool.release(fill_state)
+
+	# Also reinitialize debug buffer if present.
+	if _debug_frame_buffer != null:
+		_debug_frame_buffer._reinitialize_data(
+			_DEBUG_DEFAULT_ENTRY.duplicate(),
+			new_frame_index
+		)
+
+	if Netcode.log.is_verbose:
+		Netcode.log.verbose(
+			"%s buffer reinitialized for hard reset to frame %d" % [
+				name,
+				new_frame_index,
+			],
+			NetworkLogger.CATEGORY_NETWORK_SYNC
+		)
+
+
 ## Clean up rollback buffer state after pause started.
 ##
 ## Back-fills all frames after the pause frame with the pause frame's state

@@ -109,10 +109,12 @@ func _client_rpc_pong(
 		_smoothed_rtt_usec = rtt_usec
 		_is_rtt_initialized = true
 
-	# Calculate frames elapsed during transmission (from t3 to t4).
-	var transmission_time_usec := t4 - server_t3
+	# Estimate one-way delay as half RTT. Cannot use (t4 - server_t3) because
+	# client and server clocks are not synchronized. Mixing clock domains
+	# produces incorrect values that cause progressive frame drift.
+	var one_way_delay_usec := _smoothed_rtt_usec / 2
 	var frames_during_transmission := roundi(
-		float(transmission_time_usec) /
+		float(one_way_delay_usec) /
 		(target_network_time_step_sec * 1_000_000.0)
 	)
 
@@ -141,7 +143,11 @@ func _client_rpc_pong(
 				NetworkLogger.CATEGORY_SYNC
 			)
 	else:
-		# Client is ahead - hard reset (shouldn't happen normally).
+		# Client is ahead - hard reset. This can happen when the server runs
+		# slower than clients due to performance issues. We need to:
+		# 1. Set a grace period so incoming states aren't rejected
+		# 2. Reinitialize rollback buffers to clear stale predictions
+		# 3. Reset the frame index
 		Netcode.log.warning(
 			"Client ahead of server by %d frames! Hard reset from %d to %d" % [
 				abs(drift),
@@ -150,4 +156,11 @@ func _client_rpc_pong(
 			],
 			NetworkLogger.CATEGORY_SYNC
 		)
+		# Trigger grace period to prevent rejecting valid server states.
+		Netcode.frame_driver._frame_reset_time_usec = Time.get_ticks_usec()
+		# Reinitialize rollback buffers to clear stale predicted data.
+		Netcode.frame_driver.reinitialize_buffers_for_hard_reset(
+			estimated_current_server_frame
+		)
+		# Reset the frame index.
 		Netcode.frame_driver.server_frame_index = estimated_current_server_frame
