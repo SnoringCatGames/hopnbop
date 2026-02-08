@@ -3,7 +3,7 @@ extends Node
 
 
 func _ready() -> void:
-	G.print("DrawUtils._ready", NetworkLogger.CATEGORY_SYSTEM_INITIALIZATION)
+	Netcode.print("DrawUtils._ready", NetworkLogger.CATEGORY_SYSTEM_INITIALIZATION)
 
 
 static func draw_shape_outline(
@@ -44,7 +44,7 @@ static func draw_shape_outline(
 			thickness,
 		)
 	else:
-		G.fatal(
+		Netcode.fatal(
 			"Invalid Shape2D provided for draw_shape_outline: %s. The " +
 			"supported shapes are: CircleShape2D, CapsuleShape2D, " +
 			"RectangleShape2D." % shape,
@@ -129,7 +129,7 @@ static func compute_arc_points(
 			],
 		)
 	elif angle_diff < 0:
-		delta_theta = -delta_theta
+		delta_theta = - delta_theta
 
 	var should_include_partial_sector_at_end := \
 	absf(angle_diff) - sector_count * delta_theta > 0.01

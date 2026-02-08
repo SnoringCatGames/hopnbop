@@ -94,7 +94,7 @@ func client_request_session(level_prefs: LevelPreferences = null) -> void:
 	var player_count := G.client_session.local_player_count
 	var prefs_dict := {} if level_prefs == null else level_prefs.to_dict()
 
-	G.print(
+	Netcode.print(
 		"Requesting session for %d player(s)%s" % [
 			player_count,
 			" with level preferences" if not prefs_dict.is_empty() else ""
@@ -139,7 +139,7 @@ func _on_session_ids_received(
 	server_port: int,
 	selected_level_id: String = ""
 ) -> void:
-	G.print(
+	Netcode.print(
 		"Session IDs received, connecting to %s:%d%s" % [
 			server_ip,
 			server_port,
@@ -161,7 +161,7 @@ func _on_session_ids_received(
 
 
 func _on_session_request_failed(error_message: String) -> void:
-	G.error(
+	Netcode.error(
 		"Session request failed: %s" % error_message,
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
@@ -170,7 +170,7 @@ func _on_session_request_failed(error_message: String) -> void:
 
 
 func _on_player_ids_assigned(assigned_ids: Array[int]) -> void:
-	G.print(
+	Netcode.print(
 		"Player IDs assigned: %s" % assigned_ids,
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
@@ -183,7 +183,7 @@ func _on_player_ids_assigned(assigned_ids: Array[int]) -> void:
 
 
 func _on_all_players_connected() -> void:
-	G.print(
+	Netcode.print(
 		"All players connected and validated",
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
@@ -201,7 +201,7 @@ func _on_disconnected(peer_id: int, reason: int) -> void:
 
 func _client_on_server_disconnected(reason: int) -> void:
 	var reason_name: String = NetworkConnector.DisconnectReason.keys()[reason]
-	G.print(
+	Netcode.print(
 		"Disconnected from server: %s" % reason_name,
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
@@ -213,12 +213,12 @@ func _client_on_server_disconnected(reason: int) -> void:
 	)
 
 	if is_expected:
-		G.print(
+		Netcode.print(
 			"Match ended, returning to lobby",
 			NetworkLogger.CATEGORY_GAME_STATE
 		)
 	else:
-		G.warning(
+		Netcode.warning(
 			"Unexpected disconnect: %s" % reason_name,
 			NetworkLogger.CATEGORY_CONNECTIONS
 		)
@@ -229,14 +229,14 @@ func _client_on_server_disconnected(reason: int) -> void:
 
 func _server_on_client_disconnected(peer_id: int, reason: int) -> void:
 	var reason_name: String = NetworkConnector.DisconnectReason.keys()[reason]
-	G.print(
+	Netcode.print(
 		"Client %d disconnected: %s" % [peer_id, reason_name],
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
 
 	# Check if all clients have disconnected.
 	var remaining_peers := multiplayer.get_peers().size()
-	G.print(
+	Netcode.print(
 		"Remaining connected clients: %d" % remaining_peers,
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
@@ -246,21 +246,21 @@ func _server_on_client_disconnected(peer_id: int, reason: int) -> void:
 
 
 func _server_on_all_clients_disconnected() -> void:
-	G.print(
+	Netcode.print(
 		"All clients disconnected",
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
 
 	if Netcode.is_preview:
 		# In preview mode, signal to reset for another match.
-		G.print(
+		Netcode.print(
 			"Preview mode: Signaling server reset",
 			NetworkLogger.CATEGORY_CORE_SYSTEMS
 		)
 		server_should_reset.emit()
 	else:
 		# In production mode, exit the server application.
-		G.print(
+		Netcode.print(
 			"Production mode: Exiting server",
 			NetworkLogger.CATEGORY_CORE_SYSTEMS
 		)

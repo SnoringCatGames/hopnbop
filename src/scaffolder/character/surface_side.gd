@@ -22,7 +22,7 @@ static func get_string(side: int) -> StringName:
 		RIGHT_WALL:
 			return "RIGHT_WALL"
 		_:
-			G.fatal("Invalid SurfaceSide: %s" % side)
+			Netcode.fatal("Invalid SurfaceSide: %s" % side)
 			return "???"
 
 
@@ -39,7 +39,7 @@ static func get_type(string: StringName) -> int:
 		"RIGHT_WALL":
 			return RIGHT_WALL
 		_:
-			G.fatal("Invalid SurfaceSide: %s" % string)
+			Netcode.fatal("Invalid SurfaceSide: %s" % string)
 			return NONE
 
 
@@ -56,7 +56,7 @@ static func get_prefix(side: int) -> StringName:
 		RIGHT_WALL:
 			return "RW"
 		_:
-			G.fatal("Invalid SurfaceSide: %s" % side)
+			Netcode.fatal("Invalid SurfaceSide: %s" % side)
 			return "???"
 
 
@@ -73,7 +73,7 @@ static func get_normal(side: int) -> Vector2:
 		RIGHT_WALL:
 			return G.geometry.LEFT
 		_:
-			G.fatal("Invalid SurfaceSide: %s" % side)
+			Netcode.fatal("Invalid SurfaceSide: %s" % side)
 			return Vector2.INF
 
 

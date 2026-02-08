@@ -58,5 +58,5 @@ static func get_string(type: int) -> StringName:
 		RELEASED_FACE_RIGHT:
 			return "RELEASED_FACE_RIGHT"
 		_:
-			G.fatal("CharacterActionType.get_string")
+			Netcode.fatal("CharacterActionType.get_string")
 			return "UNKNOWN"

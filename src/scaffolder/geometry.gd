@@ -11,7 +11,7 @@ const FLOAT_EPSILON := 0.00001
 
 
 func _ready() -> void:
-	G.print("Geometry._ready", NetworkLogger.CATEGORY_SYSTEM_INITIALIZATION)
+	Netcode.print("Geometry._ready", NetworkLogger.CATEGORY_SYSTEM_INITIALIZATION)
 
 
 # Calculates the minimum squared distance between a line segment and a point.
@@ -771,7 +771,7 @@ static func do_shapes_match(a: Shape2D, b: Shape2D) -> bool:
 	elif a is RectangleShape2D:
 		return b is RectangleShape2D and a.extents == b.extents
 	else:
-		G.ensure(
+		Netcode.ensure(
 			false,
             "Invalid Shape2D provided: %s. The "
 			+"supported shapes are: CircleShape2D, CapsuleShape2D, "
@@ -790,7 +790,7 @@ static func calculate_half_width_height(shape: Shape2D, is_rotated_90_degrees: b
 	elif shape is RectangleShape2D:
 		half_width_height = shape.extents
 	else:
-		G.ensure(
+		Netcode.ensure(
 			false,
             ("Invalid Shape2D provided: %s. " +
 			"The supported shapes are: CircleShape2D, " +

@@ -37,7 +37,7 @@ func _handle_preview_window_closing() -> void:
 		Netcode.preview_client_number > 1 and
 		not G.settings.preview_run_multiple_clients
 	):
-		G.print(
+		Netcode.print(
 			("Main._ready: Closing extra client process (--client=%s), " +
 			"because G.settings.preview_run_multiple_clients is false") %
 			Netcode.preview_client_number,
@@ -50,7 +50,7 @@ func _handle_preview_window_closing() -> void:
 		Netcode.is_server and
 		G.settings.preview_connect_to_remote_server
 	):
-		G.print(
+		Netcode.print(
 			("Main._ready: Closing local server process in preview mode, " +
 			"because G.settings.preview_connect_to_remote_server is true"),
 			NetworkLogger.CATEGORY_CORE_SYSTEMS,
@@ -120,7 +120,7 @@ func _notification(notification_type: int) -> void:
 func close_app() -> void:
 	if G.utils.were_screenshots_taken:
 		Utils.open_screenshot_folder()
-	G.print("Main.close_app", NetworkLogger.CATEGORY_CORE_SYSTEMS)
+	Netcode.print("Main.close_app", NetworkLogger.CATEGORY_CORE_SYSTEMS)
 
 	# Explicitly disconnect to notify peers immediately in preview mode
 	if Netcode.is_preview:

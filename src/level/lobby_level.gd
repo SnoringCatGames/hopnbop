@@ -104,7 +104,7 @@ func _register_player(device_config: DeviceConfig) -> void:
 	var attributes := PlayerAttributeGenerator.generate_random_attributes()
 	G.client_session.local_player_attributes.append(attributes)
 
-	G.print(
+	Netcode.print(
 		"Spawned lobby player %d" % local_player_index,
 		NetworkLogger.CATEGORY_PLAYER_ACTIONS)
 
@@ -121,7 +121,7 @@ func _deregister_player(device_name: StringName) -> void:
 	var local_player_index := _pending_device_configs_by_index.find(device_config)
 
 	var player_id := get_local_player_id(local_player_index)
-	if not G.ensure(players_by_id.has(player_id)):
+	if not Netcode.ensure(players_by_id.has(player_id)):
 		return
 
 	var player: Player = players_by_id[player_id]
@@ -137,7 +137,7 @@ func _deregister_player(device_name: StringName) -> void:
 
 	player.queue_free()
 
-	G.print(
+	Netcode.print(
 		"Despawned lobby player %d" % local_player_index,
 		NetworkLogger.CATEGORY_PLAYER_ACTIONS)
 
@@ -156,12 +156,12 @@ func can_start_match() -> bool:
 
 ## Called by GamePanel to start match with current players.
 func start_match() -> void:
-	if not G.ensure(can_start_match()):
+	if not Netcode.ensure(can_start_match()):
 		return
 
 	G.client_session.local_device_configs = _pending_device_configs_by_index.duplicate()
 
-	G.print(
+	Netcode.print(
 		"Starting match with %d player(s)" % G.client_session.local_player_count,
 		NetworkLogger.CATEGORY_GAME_STATE
 	)
@@ -176,7 +176,7 @@ static func get_local_player_id(local_player_index: int) -> int:
 
 
 func _on_rabbit_hole_body_entered(body: Node2D) -> void:
-	if not G.ensure(body is Player):
+	if not Netcode.ensure(body is Player):
 		return
 
 	start_match()

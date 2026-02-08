@@ -49,7 +49,7 @@ func assign_device_to_player(
 		local_player_index: int,
 		device_config: DeviceConfig) -> void:
 	player_device_map[local_player_index] = device_config
-	G.print("Assigned device to player %d: type=%s, device_id=%d" %
+	Netcode.print("Assigned device to player %d: type=%s, device_id=%d" %
 		[local_player_index, device_config.name, device_config.device_id],
 		NetworkLogger.CATEGORY_PLAYER_ACTIONS)
 
@@ -81,7 +81,7 @@ func get_is_action_pressed(action: StringName, device_config: DeviceConfig) -> b
 			# NOTE: This requires action names to be defined in InputMap.
 			return Input.is_action_pressed(action, device_config.device_id)
 		_:
-			G.fatal()
+			Netcode.fatal()
 	return false
 
 

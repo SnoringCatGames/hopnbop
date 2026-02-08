@@ -12,7 +12,7 @@ func _input(event: InputEvent) -> void:
 		if not Netcode.is_preview:
 			return
 		G.settings.draw_annotations = not G.settings.draw_annotations
-		G.print(
+		Netcode.print(
 			"Debug annotations: %s" % (
 				"ON" if G.settings.draw_annotations else "OFF"
 			)
@@ -44,7 +44,7 @@ func _input(event: InputEvent) -> void:
 		G.settings.show_debug_player_state = is_preview_and_new_state
 		G.settings.show_perf_tracker = is_preview_and_new_state
 
-		G.print(
+		Netcode.print(
 			"All HUD/Debug: %s" % ("ON" if new_state else "OFF")
 		)
 
@@ -61,7 +61,7 @@ func _input(event: InputEvent) -> void:
 		_update_player_outlines()
 	elif event.is_action_pressed("toggle_music"):
 		G.settings.mute_music = not G.settings.mute_music
-		G.print("Music: %s" % ("OFF" if G.settings.mute_music else "ON"))
+		Netcode.print("Music: %s" % ("OFF" if G.settings.mute_music else "ON"))
 		if is_instance_valid(G.audio):
 			G.audio.apply_music_mute()
 	elif event.is_action_pressed("take_screenshot"):
@@ -71,7 +71,7 @@ func _input(event: InputEvent) -> void:
 		if not Netcode.is_preview:
 			return
 		G.settings.show_perf_tracker = not G.settings.show_perf_tracker
-		G.print(
+		Netcode.print(
 			"PerfPanel: %s" % (
 				"ON" if G.settings.show_perf_tracker else "OFF"
 			)
@@ -82,7 +82,7 @@ func _input(event: InputEvent) -> void:
 		if not Netcode.is_preview:
 			return
 		G.settings.show_debug_console = not G.settings.show_debug_console
-		G.print(
+		Netcode.print(
 			"DebugConsole: %s" % (
 				"ON" if G.settings.show_debug_console else "OFF"
 			)
@@ -95,7 +95,7 @@ func _input(event: InputEvent) -> void:
 		G.settings.show_debug_player_state = (
 			not G.settings.show_debug_player_state
 		)
-		G.print(
+		Netcode.print(
 			"DebugPlayerState: %s" % (
 				"ON" if G.settings.show_debug_player_state else "OFF"
 			)
@@ -103,7 +103,7 @@ func _input(event: InputEvent) -> void:
 		if is_instance_valid(G.super_hud):
 			G.super_hud.toggle_player_state_list()
 	elif event.is_action_pressed("toggle_pause"):
-		G.print(
+		Netcode.print(
 			"Requesting server %s" % (
 				"UNPAUSE" if Netcode.frame_driver.is_paused else "PAUSE"
 			)

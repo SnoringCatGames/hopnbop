@@ -25,7 +25,7 @@ func _init(p_source_type_prefix: StringName, p_character, p_is_additive: bool) -
 
 # Calculates actions for the current frame.
 func update(_actions: CharacterActionState, _time_scaled: float) -> void:
-	G.fatal("Abstract CharacterActionSource.update is not implemented")
+	Netcode.fatal("Abstract CharacterActionSource.update is not implemented")
 
 
 static func update_for_explicit_key_event(

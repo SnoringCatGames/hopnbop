@@ -66,7 +66,7 @@ func _server_on_peer_players_declared(
 	# Create PlayerState objects for each assigned player ID.
 	for i in range(assigned_ids.size()):
 		var player_id: int = assigned_ids[i]
-		G.ensure(not state.players_by_id.has(player_id))
+		Netcode.ensure(not state.players_by_id.has(player_id))
 
 		var player := state._create_player_state()
 		player.set_up(player_id, peer_id, i, player_attributes[i])
@@ -84,14 +84,14 @@ func _server_on_peer_players_declared(
 
 func server_set_expected_player_count(count: int) -> void:
 	_expected_player_count = count
-	G.print(
+	Netcode.print(
 		"Expected player count set to %d" % count,
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
 
 
 func _server_on_all_players_connected() -> void:
-	G.print(
+	Netcode.print(
 		"All players validated by session provider",
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
@@ -100,7 +100,7 @@ func _server_on_all_players_connected() -> void:
 ## Assigns outline colors to all players based on total player count.
 func _server_assign_outline_colors() -> void:
 	var player_count := state.players_by_id.size()
-	G.print(
+	Netcode.print(
 		"Assigning colors to %d players" % player_count,
 		NetworkLogger.CATEGORY_GAME_STATE
 	)
@@ -115,7 +115,7 @@ func _server_assign_outline_colors() -> void:
 		var player_id: int = player_ids[i]
 		var player: PlayerState = state.players_by_id[player_id]
 		player.base_color = colors[i]
-		G.print(
+		Netcode.print(
 			"Player %d color = %s" % [player_id, colors[i]],
 			NetworkLogger.CATEGORY_GAME_STATE
 		)
@@ -131,7 +131,7 @@ func _server_on_peer_disconnected(peer_id: int, _reason: int) -> void:
 	)
 
 	for player in players_for_peer:
-		if G.ensure(state.players_by_id.has(player.player_id)):
+		if Netcode.ensure(state.players_by_id.has(player.player_id)):
 			# Set disconnect time for this player.
 			player.disconnect_frame_index = Netcode.server_frame_index
 
@@ -143,7 +143,7 @@ func _client_on_players_updated() -> void:
 
 
 func _client_on_kills_updated() -> void:
-	G.ensure(
+	Netcode.ensure(
 		state.kills.size() > _previous_state.kills.size() or
 		state.kills.is_empty())
 
@@ -161,7 +161,7 @@ func _client_on_kills_updated() -> void:
 
 
 func _client_on_bumps_updated() -> void:
-	G.ensure(
+	Netcode.ensure(
 		state.bumps.size() > _previous_state.bumps.size() or
 		state.bumps.is_empty())
 

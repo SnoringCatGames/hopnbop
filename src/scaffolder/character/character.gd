@@ -132,7 +132,7 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	G.check(_get_configuration_warnings().is_empty())
+	Netcode.check(_get_configuration_warnings().is_empty())
 
 	movement_settings.set_up()
 
@@ -290,7 +290,7 @@ func _process_animation() -> void:
 				elif actions.pressed_down:
 					animator.play("ClimbDown")
 				else:
-					G.fatal("SurfacerCharacter._process_animation")
+					Netcode.fatal("SurfacerCharacter._process_animation")
 			else:
 				animator.play("RestOnWall")
 		SurfaceType.CEILING:
@@ -304,7 +304,7 @@ func _process_animation() -> void:
 			else:
 				animator.play("JumpRise")
 		_:
-			G.fatal("SurfacerCharacter._process_animation")
+			Netcode.fatal("SurfacerCharacter._process_animation")
 
 
 func _process_sounds() -> void:
@@ -327,7 +327,7 @@ func _process_sounds() -> void:
 
 
 func play_sound(_sound_name: StringName) -> void:
-	G.fatal("Abstract CharacterActionSource.update is not implemented")
+	Netcode.fatal("Abstract CharacterActionSource.update is not implemented")
 
 
 func processed_action(p_name: StringName) -> bool:

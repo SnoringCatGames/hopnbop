@@ -36,7 +36,7 @@ func toggle_debug_console() -> void:
 		return
 
 	%DebugConsole.visible = not %DebugConsole.visible
-	G.print(
+	Netcode.print(
 		"Toggled DebugConsole: %s" %
 		("visible" if %DebugConsole.visible else "hidden"),
 		NetworkLogger.CATEGORY_INTERACTION,
@@ -48,7 +48,7 @@ func toggle_player_state_list() -> void:
 		return
 
 	%PlayerStateList.visible = not %PlayerStateList.visible
-	G.print(
+	Netcode.print(
 		"Toggled PlayerStateList: %s" %
 		("visible" if %PlayerStateList.visible else "hidden"),
 		NetworkLogger.CATEGORY_INTERACTION,
@@ -60,7 +60,7 @@ func toggle_perf_tracker() -> void:
 		return
 
 	%PerfTrackerPanel.visible = not %PerfTrackerPanel.visible
-	G.print(
+	Netcode.print(
 		"Toggled PerfTracker: %s" %
 		("visible" if %PerfTrackerPanel.visible else "hidden"),
 		NetworkLogger.CATEGORY_INTERACTION,

@@ -50,7 +50,7 @@ func _enter_tree() -> void:
 
 
 func _client_on_player_id_replicated(new_player_id: int) -> void:
-	G.verbose(
+	Netcode.verbose(
 		"Player._client_on_player_id_replicated: new_player_id=%d" %
 			new_player_id,
 		NetworkLogger.CATEGORY_CONNECTIONS,
@@ -140,7 +140,7 @@ func update_authority() -> void:
 
 
 func on_match_state_ready(_player_match_state: PlayerState) -> void:
-	G.print(
+	Netcode.print(
 		"Player.on_match_state_ready called for player_id=%d" % player_id,
 		NetworkLogger.CATEGORY_PLAYER_ACTIONS,
 	)
@@ -179,7 +179,7 @@ func _set_up_action_sources() -> void:
 
 	device_config = G.input_device_manager.get_device_for_player(
 		local_player_index)
-	if not G.ensure(is_instance_valid(device_config),
+	if not Netcode.ensure(is_instance_valid(device_config),
 			"DeviceConfig not registered for player"):
 		return
 
@@ -189,7 +189,7 @@ func _set_up_action_sources() -> void:
 		device_config)
 	_action_sources.append(player_action_source)
 
-	G.print(
+	Netcode.print(
 		"Set up action sources for player %d (local_index=%d, device=%s)" % [
 			player_id,
 			local_player_index,
@@ -218,7 +218,7 @@ func get_is_player_control_active() -> bool:
 func server_trigger_death() -> void:
 	Netcode.check_is_server()
 
-	G.verbose(
+	Netcode.verbose(
 		"F:%d Player %d triggered death, scheduling respawn in %s sec" % [
 			Netcode.server_frame_index,
 			player_id,
@@ -254,7 +254,7 @@ func server_trigger_death() -> void:
 		_pending_respawn_position = G.level._get_player_spawn_position()
 		global_position = _pending_respawn_position
 		velocity = Vector2.ZERO
-		G.verbose(
+		Netcode.verbose(
 			"F:%d Player %d moved to respawn position %s (hidden)" % [
 				Netcode.server_frame_index,
 				player_id,
@@ -273,7 +273,7 @@ func server_trigger_death() -> void:
 func server_execute_respawn() -> void:
 	Netcode.check_is_server()
 
-	G.verbose(
+	Netcode.verbose(
 		"F:%d Player %d respawn timer fired, interaction_type=%d (DIE=%d)" % [
 			Netcode.server_frame_index,
 			player_id,
@@ -286,7 +286,7 @@ func server_execute_respawn() -> void:
 	# Only respawn if player is in DIE state (not already respawned).
 	if state_from_server.last_interaction_type != \
 		CharacterStateFromServer.ServerInteractionType.DIE:
-		G.print(
+		Netcode.print(
 			"F:%d Player %d respawn aborted - not in DIE state" % [
 				Netcode.server_frame_index,
 				player_id,
@@ -297,7 +297,7 @@ func server_execute_respawn() -> void:
 
 	# Get level for spawn position.
 	if not is_instance_valid(G.level):
-		G.print(
+		Netcode.print(
 			"F:%d Player %d respawn aborted - G.level not valid" % [
 				Netcode.server_frame_index,
 				player_id,
@@ -336,7 +336,7 @@ func server_execute_respawn() -> void:
 			area.collision_layer = _original_area_collision_layers[area_name]
 			area.collision_mask = _original_area_collision_masks[area_name]
 
-	G.verbose(
+	Netcode.verbose(
 		"F:%d Player %d respawned at %s" % [
 			Netcode.server_frame_index,
 			player_id,

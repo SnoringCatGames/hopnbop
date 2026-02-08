@@ -207,12 +207,12 @@ func _log_new_press_or_release(
 	)
 
 	if just_pressed:
-		G.verbose(
+		Netcode.verbose(
 			"START %5s: %s" % [action_name, details],
 			NetworkLogger.CATEGORY_PLAYER_ACTIONS,
 		)
 	if just_released:
-		G.verbose(
+		Netcode.verbose(
 			"STOP  %5s: %s" % [action_name, details],
 			NetworkLogger.CATEGORY_PLAYER_ACTIONS,
 		)

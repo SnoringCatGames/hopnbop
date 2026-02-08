@@ -28,10 +28,10 @@ var players_by_id := {}
 
 
 func _ready() -> void:
-	G.check(is_instance_valid(collision_tiles),
+	Netcode.check(is_instance_valid(collision_tiles),
 		"collision_tiles node not set in level: %s" %
 		Utils.get_display_name(self ))
-	G.check(is_instance_valid(spawn_points),
+	Netcode.check(is_instance_valid(spawn_points),
 		"spawn_points node not set in level: %s" %
 		Utils.get_display_name(self ))
 
@@ -39,10 +39,10 @@ func _ready() -> void:
 func _get_player_spawn_position() -> Vector2:
 	var available_spawn_points: Array[SpawnPoint] = []
 	for child in spawn_points.get_children():
-		if G.ensure(child is SpawnPoint):
+		if Netcode.ensure(child is SpawnPoint):
 			available_spawn_points.append(child)
 
-	G.check(not available_spawn_points.is_empty(),
+	Netcode.check(not available_spawn_points.is_empty(),
 		"No spawn points available in level: %s" %
 		Utils.get_display_name(self ))
 
@@ -114,7 +114,7 @@ func _find_collision_free_position(initial_position: Vector2) -> Vector2:
 		shift += _SPAWN_POSITION_COLLISION_CHECK_STEP
 
 	# No collision-free position found.
-	G.warning(
+	Netcode.warning(
 		"Could not find collision-free spawn position near %s" % \
 			initial_position
 	)
@@ -136,7 +136,7 @@ func _is_position_collision_free(
 ## Maintains players array and players_by_id dictionary.
 func register_player(player: Player) -> void:
 	if Netcode.log.is_verbose:
-		G.verbose(
+		Netcode.verbose(
 			"Level.register_player: player_id=%d" % player.player_id,
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)

@@ -20,5 +20,5 @@ func _init(p_name: StringName, p_type: int, p_uses_runtime_physics: bool, p_prio
 
 
 func process(_character) -> bool:
-	G.fatal("Abstract CharacterActionHandler.process is not implemented")
+	Netcode.fatal("Abstract CharacterActionHandler.process is not implemented")
 	return false

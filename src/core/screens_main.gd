@@ -35,7 +35,7 @@ func _ready() -> void:
 			child.queue_free()
 		return
 
-	G.print(
+	Netcode.print(
 		"ScreensMain._ready() - visible=%s" % visible,
 		NetworkLogger.CATEGORY_GAME_STATE
 	)
@@ -93,7 +93,7 @@ func _perform_screen_switch(
 ) -> void:
 	current_screen = screen_type
 
-	G.print(
+	Netcode.print(
 		"Switching screens: %s => %s" %
 		[
 			ScreenType.keys()[previous_screen_type],
@@ -176,5 +176,5 @@ func get_screen_from_type(screen_type: ScreenType) -> Screen:
 		ScreenType.GAME:
 			return null
 		_:
-			G.fatal("ScreensMain.get_screen_from_type")
+			Netcode.fatal("ScreensMain.get_screen_from_type")
 			return null

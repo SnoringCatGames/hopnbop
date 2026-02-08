@@ -42,7 +42,7 @@ func play_sound(sound_name: StringName) -> void:
 	if not Netcode.is_primary_client:
 		return
 
-	if not G.ensure(STREAM_PLAYERS_BY_NAME.has(sound_name)):
+	if not Netcode.ensure(STREAM_PLAYERS_BY_NAME.has(sound_name)):
 		return
 
 	var stream_player: AudioStreamPlayer = STREAM_PLAYERS_BY_NAME[sound_name]

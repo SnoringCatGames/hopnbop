@@ -22,7 +22,7 @@ static func get_string(type: int) -> StringName:
 		OTHER:
 			return "OTHER"
 		_:
-			G.fatal("SurfaceType.get_string")
+			Netcode.fatal("SurfaceType.get_string")
 			return ""
 
 
@@ -39,7 +39,7 @@ static func get_prefix(type: int) -> StringName:
 		OTHER:
 			return "O"
 		_:
-			G.fatal("SurfaceType.get_prefix")
+			Netcode.fatal("SurfaceType.get_prefix")
 			return ""
 
 
@@ -54,5 +54,5 @@ static func get_type_from_side(side: int) -> int:
 		SurfaceSide.NONE:
 			return AIR
 		_:
-			G.fatal("SurfaceType.get_type_from_side")
+			Netcode.fatal("SurfaceType.get_type_from_side")
 			return -1

@@ -112,7 +112,7 @@ func _process_movement_and_actions() -> void:
 				bounce_source = "buffer"
 
 		if applied_bounce and Netcode.log.is_verbose:
-			G.verbose(
+			Netcode.verbose(
 				"F:%d Player %d bounce applied (%s): vel=%s, pos=%s, surfaces=%d, boost_frame=%d" % [
 					Netcode.server_frame_index,
 					player_id,
@@ -167,7 +167,7 @@ func _handle_interaction_effects() -> void:
 			# effects.
 			pass
 		CharacterStateFromServer.ServerInteractionType.DIE:
-			G.verbose(
+			Netcode.verbose(
 				"F:%d Player %d DIE interaction detected on client" % [
 					Netcode.server_frame_index,
 					player_id,
@@ -176,7 +176,7 @@ func _handle_interaction_effects() -> void:
 			)
 			play_sound("die")
 		CharacterStateFromServer.ServerInteractionType.SPAWN:
-			G.verbose(
+			Netcode.verbose(
 				"F:%d Player %d SPAWN interaction detected on client" % [
 					Netcode.server_frame_index,
 					player_id,
@@ -184,7 +184,7 @@ func _handle_interaction_effects() -> void:
 				NetworkLogger.CATEGORY_GAME_STATE,
 			)
 		_:
-			G.fatal()
+			Netcode.fatal()
 
 
 func play_sound(sound_name: StringName) -> void:
@@ -213,7 +213,7 @@ func _get_audio_stream_player(sound_name: StringName) -> AudioStreamPlayer2D:
 			else:
 				return %DieFlowersAudioStreamPlayer
 		_:
-			G.fatal()
+			Netcode.fatal()
 			return null
 
 
@@ -226,7 +226,7 @@ func _on_local_authority_added(
 func _set_up_camera() -> void:
 	var is_local_player := peer_id == Netcode.local_peer_id
 
-	G.verbose(
+	Netcode.verbose(
 		"Setting up camera for player %s (peer=%d, local=%d, is_local=%s)" % [
 			player_id,
 			peer_id,
@@ -275,19 +275,19 @@ func _apply_outline_color() -> void:
 
 	var sprite := animator.animated_sprite as AnimatedSprite2D
 	if not sprite:
-		G.warning("No sprite found on animator")
+		Netcode.warning("No sprite found on animator")
 		return
 
 	# Always duplicate material to make it unique to this instance.
 	if sprite.material:
 		sprite.material = sprite.material.duplicate()
 	else:
-		G.warning("No material found on sprite")
+		Netcode.warning("No material found on sprite")
 		return
 
 	var shader_material := _get_shader_material()
 	if not shader_material:
-		G.warning("Material is not a ShaderMaterial")
+		Netcode.warning("Material is not a ShaderMaterial")
 		return
 
 	# Set outline color and width.
@@ -297,7 +297,7 @@ func _apply_outline_color() -> void:
 	# Set outline enabled state.
 	update_outline()
 
-	G.verbose(
+	Netcode.verbose(
 		"Applied outline for player %s: color=%s, enabled=%s, width=2.0" % [
 			player_id,
 			match_state.base_color,
@@ -323,7 +323,7 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	if not Netcode.is_server:
 		return
 
-	if not G.ensure(body is Player):
+	if not Netcode.ensure(body is Player):
 		return
 
 	var other_player := body as Player
@@ -362,7 +362,7 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	var current_frame := Netcode.server_frame_index
 	if _did_kill_happen_this_frame(current_frame) or \
 		other_player._did_kill_happen_this_frame(current_frame):
-		G.verbose(
+		Netcode.verbose(
 			"Skipping bump - kill already processed this frame (players %d and %d)" % [
 				player_id,
 				other_player_id,
@@ -383,7 +383,7 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 		_processed_collision_this_frame = true
 		other_player._processed_collision_this_frame = true
 
-		G.verbose(
+		Netcode.verbose(
 			"Player kill detected (swept): %d killed %d" %
 				[player_id, other_player.player_id],
 			NetworkLogger.CATEGORY_GAME_STATE,
@@ -406,7 +406,7 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	# Check if a kill collision is currently happening - kills take precedence.
 	# This prevents the bump from blocking the kill when bump fires first.
 	if _is_kill_collision_happening(other_player):
-		G.verbose(
+		Netcode.verbose(
 			"Skipping bump - kill collision is happening (players %d and %d)" % [
 				player_id,
 				other_player_id,
@@ -425,7 +425,7 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	other_player._processed_collision_this_frame = true
 
 	# Bump - both players bounce away from each other.
-	G.verbose(
+	Netcode.verbose(
 		"Players bump detected: %d bumped %d" %
 			[player_id, other_player_id],
 		NetworkLogger.CATEGORY_GAME_STATE,
@@ -479,7 +479,7 @@ func _server_apply_interaction_with_position(
 			var vertical_boost := movement_settings.kill_bounce_vertical_boost
 			bounce_velocity = Vector2(velocity.x, vertical_boost)
 		_:
-			G.fatal(
+			Netcode.fatal(
 				"Invalid interaction type for bounce: %d" % interaction_type
 			)
 			return
@@ -495,7 +495,7 @@ func _server_apply_interaction_with_position(
 		bounce_velocity
 	)
 
-	G.verbose(
+	Netcode.verbose(
 		(
 			"F:%d Applied %s interaction to player %d: pos=%s " +
 			"(lag compensated), bounce=%s, vel=%s"
@@ -613,7 +613,7 @@ func _did_foot_pass_through_head_this_frame(other_player: Player) -> bool:
 	)
 
 	if has_horizontal_overlap:
-		G.verbose(
+		Netcode.verbose(
 			(
 				"Swept collision detected: %d foot passed through %d " +
 				"head (t0: foot_y=%.1f, head_y=%.1f; t1: foot_y=%.1f, " +
@@ -676,7 +676,7 @@ func _calculate_lag_compensated_kill_position(
 	var lag_compensated_position = my_prev_global.lerp(global_position, t)
 
 	if Netcode.log.is_verbose:
-		G.verbose(
+		Netcode.verbose(
 			(
 				"Lag compensation: player %d contact at t=%.3f, " +
 				"prev=%s, curr=%s, compensated=%s"
@@ -698,7 +698,7 @@ func _on_foot_area_area_entered(area: Area2D) -> void:
 		return
 
 	var other_parent: Node = area.get_parent()
-	if not G.ensure(other_parent is Player):
+	if not Netcode.ensure(other_parent is Player):
 		return
 	var other_player := other_parent as Player
 	var other_player_id := other_player.player_id
@@ -738,7 +738,7 @@ func _on_foot_area_area_entered(area: Area2D) -> void:
 			_active_intersections[other_player_id].append("foot")
 		return
 
-	G.verbose(
+	Netcode.verbose(
 		"Player kill detected: %d killed %d" %
 			[player_id, other_player_id],
 		NetworkLogger.CATEGORY_GAME_STATE,
@@ -884,7 +884,7 @@ func _process_deferred_collisions() -> void:
 	if _active_intersections.is_empty():
 		return
 
-	G.verbose(
+	Netcode.verbose(
 		"Processing %d deferred collision(s) for player %d" % [
 			_active_intersections.size(),
 			player_id,
@@ -918,7 +918,7 @@ func _process_deferred_collisions() -> void:
 				# Check downward velocity requirement for kills.
 				var relative_velocity := velocity - other_player.velocity
 				if relative_velocity.y > 0:
-					G.verbose(
+					Netcode.verbose(
 						"Deferred kill: %d killed %d" % [player_id, other_player_id],
 						NetworkLogger.CATEGORY_GAME_STATE,
 					)
@@ -930,7 +930,7 @@ func _process_deferred_collisions() -> void:
 						CharacterStateFromServer.ServerInteractionType.KILL,
 						global_position
 					)
-					continue  # Skip body check since kill was processed.
+					continue # Skip body check since kill was processed.
 
 		# Check body (bump) if no kill was processed.
 		if intersection_types.has("body"):
@@ -939,7 +939,7 @@ func _process_deferred_collisions() -> void:
 			var is_still_intersecting := body_area.overlaps_body(other_player)
 
 			if is_still_intersecting:
-				G.verbose(
+				Netcode.verbose(
 					"Deferred bump: %d bumped %d" % [player_id, other_player_id],
 					NetworkLogger.CATEGORY_GAME_STATE,
 				)
@@ -985,36 +985,36 @@ func _check_visibility_bug_diagnostic() -> void:
 
 ## Logs detailed diagnostic information when visibility bug is detected.
 func _log_visibility_diagnostic() -> void:
-	G.print(
+	Netcode.print(
 		"===== VISIBILITY BUG DETECTED: Player %d =====" % player_id,
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
-	G.print(
+	Netcode.print(
 		"  Current frame: %d" % Netcode.server_frame_index,
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
-	G.print(
+	Netcode.print(
 		"  Last interaction: type=%s, frame=%d" % [
 			CharacterStateFromServer.ServerInteractionType.keys()[state_from_server.last_interaction_type],
 			state_from_server.last_interaction_frame_index,
 		],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
-	G.print(
+	Netcode.print(
 		"  State: is_dead=%s, is_invincible=%s" % [
 			state_from_server.is_dead,
 			state_from_server.is_invincible,
 		],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
-	G.print(
+	Netcode.print(
 		"  Visibility: animator.visible=%s, _is_blink_visible=%s" % [
 			animator.visible,
 			_is_blink_visible,
 		],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
-	G.print(
+	Netcode.print(
 		"  Collision: layer=%d (original=%d), mask=%d (original=%d)" % [
 			collision_layer,
 			_original_collision_layer,
@@ -1023,14 +1023,14 @@ func _log_visibility_diagnostic() -> void:
 		],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
-	G.print(
+	Netcode.print(
 		"  Position: global_position=%s, velocity=%s" % [
 			global_position,
 			velocity,
 		],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
-	G.print(
+	Netcode.print(
 		"  Blink state: _blink_accumulator=%.3f, last_toggle_frame=%d, period=%.3f" % [
 			_blink_accumulator,
 			_last_blink_toggle_frame,
@@ -1038,14 +1038,14 @@ func _log_visibility_diagnostic() -> void:
 		],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
-	G.print(
+	Netcode.print(
 		"  Authority: is_authority_for_state=%s, is_authority_for_input=%s" % [
 			state_from_server.is_authority_for_state_from_server,
 			state_from_server.is_authority_for_input_from_client,
 		],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
-	G.print(
+	Netcode.print(
 		"  Collidability tracking: last_applied_frame=%d, last_value=%s, apply_count=%d" % [
 			state_from_server._last_applied_collidability_frame,
 			state_from_server._last_applied_collidability_value,
@@ -1053,11 +1053,11 @@ func _log_visibility_diagnostic() -> void:
 		],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
-	G.print(
+	Netcode.print(
 		"  _last_processed_interaction_frame_index=%d" % _last_processed_interaction_frame_index,
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
-	G.print(
+	Netcode.print(
 		"========================================",
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)

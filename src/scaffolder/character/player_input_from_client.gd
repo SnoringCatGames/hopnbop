@@ -42,14 +42,14 @@ func _exit_tree() -> void:
 	if Engine.is_editor_hint():
 		return
 	if is_multiplayer_authority():
-		Netcode.local_authority_removed.emit(self)
+		Netcode.local_authority_removed.emit(self )
 
 
 func update_authority() -> void:
 	var was_multiplayer_authority := is_multiplayer_authority()
 	super.update_authority()
 	if is_multiplayer_authority() and not was_multiplayer_authority:
-		Netcode.local_authority_added.emit(self)
+		Netcode.local_authority_added.emit(self )
 
 
 func _network_process() -> void:
@@ -63,7 +63,7 @@ func _post_network_process() -> void:
 
 
 func _sync_to_scene_state(previous_state: Array) -> void:
-	if not G.ensure_valid(player):
+	if not Netcode.ensure_valid(player):
 		return
 
 	# Only sync to scene state if this is the locally-controlled player.
@@ -77,7 +77,7 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 
 
 func _sync_from_scene_state() -> void:
-	if not G.ensure_valid(player):
+	if not Netcode.ensure_valid(player):
 		return
 
 	# Only sync from scene state if this client has authority.

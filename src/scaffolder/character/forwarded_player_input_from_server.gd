@@ -53,7 +53,7 @@ func _get_configuration_warnings() -> PackedStringArray:
 	else:
 		# Validate that synced properties match by calling the validation on
 		# PlayerInputFromClient (avoids duplicating logic).
-		var property_mismatch := input_from_client._validate_synced_properties_match(self)
+		var property_mismatch := input_from_client._validate_synced_properties_match(self )
 		if not property_mismatch.is_empty():
 			warnings.append(property_mismatch)
 
@@ -77,7 +77,7 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 			# In networked mode, check multiplayer authority.
 			return
 
-	if not G.ensure_valid(player):
+	if not Netcode.ensure_valid(player):
 		return
 
 	player.actions.bitmask = actions
@@ -90,7 +90,7 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 		ClientInteractionType.JUMP:
 			player.last_triggered_jump_frame_index = last_interaction_frame_index
 		_:
-			G.fatal()
+			Netcode.fatal()
 
 
 func _sync_from_scene_state() -> void:

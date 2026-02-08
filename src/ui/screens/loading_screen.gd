@@ -16,7 +16,7 @@ func on_open() -> void:
 	# If game is no longer loading (disconnect during transition), skip setup.
 	# The screen system will immediately transition to GAME_OVER.
 	if not G.client_session.is_game_loading:
-		G.print(
+		Netcode.print(
 			"LoadingScreen opened but game is no longer loading " + \
 			"(disconnect during transition)",
 			NetworkLogger.CATEGORY_GAME_STATE

@@ -119,7 +119,7 @@ func _is_interaction_rollbackable(interaction_type: int) -> bool:
 		ServerInteractionType.DIE:
 			return false # Non-rollbackable.
 		_:
-			G.fatal("Unknown ServerInteractionType: %d" % interaction_type)
+			Netcode.fatal("Unknown ServerInteractionType: %d" % interaction_type)
 			return false
 
 
@@ -157,7 +157,7 @@ func _physics_process(_delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 
-	if not G.ensure_valid(character):
+	if not Netcode.ensure_valid(character):
 		return
 
 	# Only handle local mode here; networked mode uses _network_process().
@@ -187,7 +187,7 @@ func _process_local_mode() -> void:
 
 
 func _network_process() -> void:
-	if not G.ensure_valid(character):
+	if not Netcode.ensure_valid(character):
 		return
 
 	# Reconcile server interactions.
@@ -206,9 +206,9 @@ func _network_process() -> void:
 	else:
 		input_source = input_from_client
 
-	if not G.ensure_valid(input_source):
+	if not Netcode.ensure_valid(input_source):
 		if Netcode.log.is_verbose:
-			G.verbose(
+			Netcode.verbose(
 				"F:%d input_source is null! (is_remote=%s, has_forwarded=%s, has_input=%s)" % [
 					Netcode.server_frame_index,
 					is_remote_player_on_client,
@@ -256,7 +256,7 @@ func _network_process() -> void:
 		character.surfaces.update_actions()
 		if Netcode.log.is_verbose:
 			var authority_str := "PREDICTED" if should_use_predicted_input else "AUTHORITATIVE"
-			G.verbose(
+			Netcode.verbose(
 				"F:%d Using %s input (actions=%d)" % [
 					Netcode.server_frame_index,
 					authority_str,
@@ -282,7 +282,7 @@ func _network_process() -> void:
 			# Update surface attachment state based on the input we just loaded.
 			character.surfaces.update_actions()
 			if Netcode.log.is_verbose:
-				G.verbose(
+				Netcode.verbose(
 					"F:%d Extrapolating input from prev frame (actions=%d)" % [
 						Netcode.server_frame_index,
 						character.actions.bitmask,
@@ -314,7 +314,7 @@ func _network_process() -> void:
 			input_from_client.frame_authority
 		)
 		if Netcode.log.is_verbose and input_from_client.actions != 0:
-			G.verbose(
+			Netcode.verbose(
 				"F:%d Forwarding input to remote clients (actions=%d)" % [
 					Netcode.server_frame_index,
 					forwarded_input_from_server.actions,
@@ -345,7 +345,7 @@ func _network_process() -> void:
 				character.position.distance_to(pos_before) > 0.1 or
 				character.velocity.distance_to(vel_before) > 0.1
 			):
-				G.print(
+				Netcode.print(
 					("F:%d Remote simulation: pos %s->%s, vel %s->%s, " +
 					"actions=%d") % [
 						Netcode.server_frame_index,
@@ -368,14 +368,14 @@ func _network_process() -> void:
 
 
 func _sync_to_scene_state(previous_state: Array) -> void:
-	if not G.ensure_valid(character):
+	if not Netcode.ensure_valid(character):
 		return
 
 	if Netcode.log.is_verbose and not is_authority_for_state_from_server:
 		var pos_before := character.position
 		var will_change := position.distance_to(pos_before) > 0.1
 		if will_change:
-			G.print(
+			Netcode.print(
 				"F:%d _sync_to_scene_state: char pos %s->%s (rollback)" % [
 					Netcode.server_frame_index,
 					pos_before,
@@ -394,7 +394,7 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 
 
 func _restore_indirect_interaction_state(frame_state: Array) -> void:
-	if not G.ensure_valid(character):
+	if not Netcode.ensure_valid(character):
 		return
 
 	# Extract interaction type from frame state.
@@ -410,7 +410,7 @@ func _restore_indirect_interaction_state(frame_state: Array) -> void:
 ## Ensures the current interaction state is properly applied to character
 ## visibility and collision. Called every frame to maintain correct state.
 func _ensure_interaction_state_applied() -> void:
-	if not G.ensure_valid(character):
+	if not Netcode.ensure_valid(character):
 		return
 
 	# Use current interaction type to determine collidability.
@@ -430,7 +430,7 @@ func _apply_interaction_collidability(interaction_type: int) -> void:
 		ServerInteractionType.KILL:
 			is_collidable = true # Alive - has collision.
 		_:
-			G.fatal("Unknown ServerInteractionType: %d" % interaction_type)
+			Netcode.fatal("Unknown ServerInteractionType: %d" % interaction_type)
 			is_collidable = true
 
 	# -------------------------------------
@@ -444,7 +444,7 @@ func _apply_interaction_collidability(interaction_type: int) -> void:
 
 	# Log when collidability changes, especially for SPAWN.
 	if collidability_changed and Netcode.log.is_verbose:
-		G.verbose(
+		Netcode.verbose(
 			"F:%d Player collidability changed: %s -> %s (interaction=%s)" % [
 				current_frame,
 				not is_collidable,
@@ -504,7 +504,7 @@ func get_current_frame_bounce_velocity():
 
 
 func _sync_from_scene_state() -> void:
-	if not G.ensure_valid(character):
+	if not Netcode.ensure_valid(character):
 		return
 
 	position = character.position
@@ -539,7 +539,7 @@ func _apply_input_to_character(input_source: ReconcilableState) -> void:
 			PlayerInputNetworkState.ClientInteractionType.JUMP:
 				character.last_triggered_jump_frame_index = input.last_interaction_frame_index
 			_:
-				G.fatal()
+				Netcode.fatal()
 
 
 ## Unified server interaction reconciliation.
@@ -580,7 +580,7 @@ func _reconcile_server_interaction() -> void:
 	# Verbose logging for reconciliation status.
 	if Netcode.log.is_verbose:
 		var type_name: StringName = ServerInteractionType.keys()[buffer_interaction_type]
-		G.verbose(
+		Netcode.verbose(
 			"Reconciling %s: frame=%d, should_process=%s (%s)" % [
 				type_name,
 				current_frame,
@@ -608,7 +608,7 @@ func _reconcile_server_interaction() -> void:
 		ServerInteractionType.SPAWN:
 			_reconcile_spawn_interaction(current_frame)
 		_:
-			G.fatal()
+			Netcode.fatal()
 
 
 ## Reconciles a bump interaction by queuing rollback.
@@ -618,7 +618,7 @@ func _reconcile_bump_interaction(p_frame_index: int) -> void:
 	Netcode.frame_driver.queue_rollback(p_frame_index)
 
 	if Netcode.log.is_verbose:
-		G.verbose(
+		Netcode.verbose(
 			"F:%d Bump interaction at frame %d, queuing rollback (%s)" % [
 				Netcode.server_frame_index,
 				p_frame_index,
@@ -635,7 +635,7 @@ func _reconcile_kill_interaction(p_frame_index: int) -> void:
 	Netcode.frame_driver.queue_rollback(p_frame_index)
 
 	if Netcode.log.is_verbose:
-		G.verbose(
+		Netcode.verbose(
 			"F:%d Kill interaction at frame %d, queuing rollback (%s)" % [
 				Netcode.server_frame_index,
 				p_frame_index,
@@ -667,7 +667,7 @@ func _reconcile_die_interaction(p_frame_index: int) -> void:
 	Netcode.frame_driver.queue_rollback(p_frame_index)
 
 	if Netcode.log.is_verbose:
-		G.verbose(
+		Netcode.verbose(
 			"F:%d Die interaction at frame %d, queuing rollback (%s)" % [
 				Netcode.server_frame_index,
 				p_frame_index,
@@ -684,7 +684,7 @@ func _reconcile_spawn_interaction(p_frame_index: int) -> void:
 	Netcode.frame_driver.queue_rollback(p_frame_index)
 
 	if Netcode.log.is_verbose:
-		G.verbose(
+		Netcode.verbose(
 			"F:%d Spawn interaction at frame %d, queuing rollback (%s)" % [
 				Netcode.server_frame_index,
 				p_frame_index,

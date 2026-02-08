@@ -56,7 +56,7 @@ func _is_interaction_rollbackable(interaction_type: int) -> bool:
 		ClientInteractionType.JUMP:
 			return true
 		_:
-			G.fatal("Unknown ClientInteractionType: %d" % interaction_type)
+			Netcode.fatal("Unknown ClientInteractionType: %d" % interaction_type)
 			return true
 
 
@@ -95,7 +95,7 @@ func _reconcile_client_interaction() -> void:
 	# Verbose logging for reconciliation status.
 	if Netcode.log.is_verbose:
 		var type_name: StringName = ClientInteractionType.keys()[last_interaction_type]
-		G.verbose(
+		Netcode.verbose(
 			"Reconciling %s: frame=%d, should_process=%s, buffer_has=%s (%s)" % [
 				type_name,
 				interaction_frame,
@@ -118,7 +118,7 @@ func _reconcile_client_interaction() -> void:
 		ClientInteractionType.JUMP:
 			_reconcile_jump_interaction(interaction_frame)
 		_:
-			G.fatal()
+			Netcode.fatal()
 
 
 ## Reconciles a jump interaction by injecting the jump input bit into the
@@ -136,7 +136,7 @@ func _reconcile_jump_interaction(p_frame_index: int) -> void:
 
 	if not has_jump_input:
 		if _is_frame_authoritative(frame_state):
-			G.warning(
+			Netcode.warning(
 				(
 					"F:%d last_interaction_frame_index corresponds to a frame " +
 					"that is already recorded as authoritative and without jump " +
@@ -156,7 +156,7 @@ func _reconcile_jump_interaction(p_frame_index: int) -> void:
 		_clear_jump_bit_in_frame_if_not_pressed(p_frame_index - 1)
 
 		if Netcode.log.is_verbose:
-			G.verbose(
+			Netcode.verbose(
 				"F:%d Jump bit injected into frame %d via client interaction, queuing rollback (%s)" % [
 					Netcode.server_frame_index,
 					p_frame_index,

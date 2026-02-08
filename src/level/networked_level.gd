@@ -31,7 +31,7 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	var warnings := _get_configuration_warnings()
 	if not warnings.is_empty():
-		G.error("Level._ready: %s (%s)" % [warnings[0], get_scene_file_path()])
+		Netcode.error("Level._ready: %s (%s)" % [warnings[0], get_scene_file_path()])
 		return
 
 	if Engine.is_editor_hint():
@@ -53,10 +53,10 @@ func _ready() -> void:
 
 
 func _client_on_player_spawned(p_player: Node) -> void:
-	G.ensure(p_player is Player)
+	Netcode.ensure(p_player is Player)
 	var player: Player = p_player
 	if Netcode.log.is_verbose:
-		G.verbose(
+		Netcode.verbose(
 			"Player spawned: %s (current player_id=%d)" %
 				[player.get_string(), player.player_id],
 			NetworkLogger.CATEGORY_CONNECTIONS,
@@ -64,9 +64,9 @@ func _client_on_player_spawned(p_player: Node) -> void:
 
 
 func _client_on_player_despawned(p_player: Node) -> void:
-	G.ensure(p_player is Player)
+	Netcode.ensure(p_player is Player)
 	var player: Player = p_player
-	G.print("Player despawned: %s" % player.get_string(), NetworkLogger.CATEGORY_GAME_STATE)
+	Netcode.print("Player despawned: %s" % player.get_string(), NetworkLogger.CATEGORY_GAME_STATE)
 
 
 func _exit_tree() -> void:
@@ -92,7 +92,7 @@ func _server_on_peer_players_declared(
 func _server_register_players_for_peer(
 		peer_id: int,
 		assigned_ids: Array[int]) -> void:
-	G.print(
+	Netcode.print(
 		"Spawning %d player(s) for peer %d" % [assigned_ids.size(), peer_id],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
@@ -119,7 +119,7 @@ func _server_register_players_for_peer(
 func _server_deregister_players_for_peer(peer_id: int) -> void:
 	var player_ids_to_remove: Array = peer_to_player_ids.get(peer_id, [])
 
-	G.print(
+	Netcode.print(
 		"Removing %d player(s) for peer %d" %
 		[player_ids_to_remove.size(), peer_id],
 		NetworkLogger.CATEGORY_GAME_STATE,
@@ -131,7 +131,7 @@ func _server_deregister_players_for_peer(peer_id: int) -> void:
 			deregister_player(player)
 			player.queue_free()
 		else:
-			G.warning(
+			Netcode.warning(
 				("Level._server_deregister_players_for_peer: " +
 				"No player found for ID: %s") % player_id,
 				NetworkLogger.CATEGORY_CORE_SYSTEMS,

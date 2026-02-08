@@ -43,7 +43,7 @@ func update_visibility() -> void:
 		ScreensMain.ScreenType.GAME:
 			pass
 		_:
-			G.ensure(false)
+			Netcode.ensure(false)
 
 
 func start_match_countdown() -> void:

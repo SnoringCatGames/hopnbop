@@ -177,7 +177,7 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 	# Update scores and emit events.
 	# Note: Game code should connect to player_killed signal to handle
 	# respawn logic.
-	Netcode.log.verbose(
+	Netcode.loNetcode.verbose(
 		"KILL: %s killed %s" % [killer_id, killee_id],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
@@ -235,7 +235,7 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 	)
 
 	# Update scores and emit events.
-	Netcode.log.verbose(
+	Netcode.loNetcode.verbose(
 		"BUMP: %s bumped %s" % [player_1_id, player_2_id],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
@@ -414,7 +414,7 @@ func _server_store_interaction(
 
 ## Override parent to handle game-specific unpacking logic.
 func _client_unpack_players() -> void:
-	Netcode.log.verbose(
+	Netcode.loNetcode.verbose(
 		"GameMatchState._client_unpack_players: " + \
 				"packed_players.size=%d" % packed_players.size(),
 		NetworkLogger.CATEGORY_GAME_STATE
@@ -450,7 +450,7 @@ func _client_unpack_players() -> void:
 ## Override parent to handle synchronizer packing flag.
 func _server_pack_players() -> void:
 	if Netcode.log.is_verbose:
-		Netcode.log.verbose(
+		Netcode.loNetcode.verbose(
 			"GameMatchState._server_pack_players: " + \
 					"packing %d players" % players_by_id.size(),
 			NetworkLogger.CATEGORY_GAME_STATE,
