@@ -44,6 +44,11 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
+# - Fix kills to happen when _relative_ velocity.y is pushing head into foot, not just when one player is moving down.
+# - Fix respawn brief visibility.
+#   - Try again to move position immediately after death.
+
+
 # - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
 
 # - Test kills and bumps.
