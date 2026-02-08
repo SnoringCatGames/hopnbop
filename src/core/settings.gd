@@ -21,7 +21,9 @@ extends NetworkSettings
 
 @export_group("Debug & Development")
 @export var dev_mode := true
-@export var auto_minimize_server_window := true
+## If your machine isn't super powerful, you might want to keep the server
+## window up, so its performance isn't throttled.
+@export var auto_minimize_server_window := false
 @export var move_preview_windows_to_other_display := true
 @export var draw_annotations := false
 @export var show_debug_console := false

@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://cvmchc2851mho" path="res://src/ui/hud/hud.gd" id="1_eqvli"]
 [ext_resource type="PackedScene" uid="uid://s18shy2l27qv" path="res://src/ui/hud/player_list.tscn" id="3_player_list"]
 [ext_resource type="PackedScene" uid="uid://dpq7x8nwmk2lf" path="res://src/ui/hud/match_end_countdown.tscn" id="4_countdown"]
-[ext_resource type="PackedScene" path="res://src/ui/hud/match_start_countdown.tscn" id="5_countdown_start"]
+[ext_resource type="PackedScene" uid="uid://bsw2fyvgipqht" path="res://src/ui/hud/match_start_countdown.tscn" id="5_countdown_start"]
 
 [node name="Hud" type="PanelContainer"]
 process_mode = 3

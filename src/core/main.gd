@@ -26,9 +26,7 @@ func _ready() -> void:
 	_start_app()
 
 	G.window_manager.update_window_mode()
-
-	if Netcode.is_preview and Netcode.is_client:
-		G.window_manager.position_client_window_in_preview_mode()
+	G.window_manager.position_window_in_preview_mode()
 
 
 func _handle_preview_window_closing() -> void:

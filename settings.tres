@@ -1,6 +1,5 @@
 [gd_resource type="Resource" script_class="Settings" load_steps=13 format=3 uid="uid://dv60bmaw1pdx6"]
 
-[ext_resource type="PackedScene" uid="uid://bfl5qv8bb5apr" path="res://src/level/level_1.tscn" id="1_i3tmf"]
 [ext_resource type="Script" uid="uid://cqomr88ncj2d3" path="res://src/core/settings.gd" id="1_krfic"]
 [ext_resource type="PackedScene" uid="uid://c7h8xaxryasdf" path="res://src/level/lobby_level.tscn" id="1_lobby"]
 [ext_resource type="Resource" uid="uid://dlxwxma23mjon" path="res://src/ui/default_palette.tres" id="2_yixrw"]
@@ -13,11 +12,14 @@
 [sub_resource type="CircleShape2D" id="CircleShape2D_woca2"]
 radius = 6.0
 
+[sub_resource type="Resource" id="Resource_4irwu"]
+metadata/__load_path__ = "res://src/level/default_level.tscn"
+
 [sub_resource type="Resource" id="Resource_i3tmf"]
 script = ExtResource("5_i3tmf")
 id = &"level_1"
 display_name = "Level 1"
-scene = ExtResource("1_i3tmf")
+scene = SubResource("Resource_4irwu")
 max_players = 8
 metadata/_custom_type_script = "uid://l1of4ibugkpt"
 
@@ -44,6 +46,7 @@ lobby_level_scene = ExtResource("1_lobby")
 levels = Array[ExtResource("5_i3tmf")]([SubResource("Resource_i3tmf"), SubResource("Resource_bav20")])
 default_player_scene = ExtResource("3_woca2")
 player_scenes = Array[PackedScene]([ExtResource("3_woca2")])
+match_duration_sec = 32.0
 max_client_count = 8
 rollback_buffer_duration_sec = 2.0
 is_server_pause_enabled = true

@@ -257,6 +257,49 @@ func client_connect(server_address: String, port: int) -> void:
 	)
 	connector.client_connect_to_server(server_address, port)
 
+# --- Include some convenient access to logging/error utilities ---------------
+
+func print(
+	message = "",
+	category = &"Default", # NetworkLogger.CATEGORY_DEFAULT
+) -> void:
+	log.print(message, category)
+
+
+func verbose(
+	message = "",
+	category = &"Default", # NetworkLogger.CATEGORY_DEFAULT
+) -> void:
+	log.print(message, category)
+
+
+func warning(message = "", category = &"Default") -> void: # NetworkLogger.CATEGORY_DEFAULT
+	log.warning(message, category)
+
+
+func error(message = "", category = &"Default") -> void: # NetworkLogger.CATEGORY_DEFAULT
+	log.error(message, category)
+
+
+func fatal(message = "", category = &"Default") -> void: # NetworkLogger.CATEGORY_DEFAULT
+	log.fatal(message, category)
+
+
+func ensure(condition: bool, message = "") -> bool:
+	return log.ensure(condition, message)
+
+
+func ensure_valid(object, message = "") -> bool:
+	return log.ensure(is_instance_valid(object), message)
+
+
+func check(condition: bool, message = "") -> bool:
+	return log.check(condition, message)
+
+
+func check_valid(object, message = "") -> bool:
+	return log.check(is_instance_valid(object), message)
+
 
 ## Check if current instance is server (with error logging if not).
 func check_is_server() -> bool:
@@ -276,3 +319,5 @@ func check_is_client() -> bool:
 		is_client,
 		"This logic assumes we should be a client, but we're a server"
 	)
+
+# -----------------------------------------------------------------------------

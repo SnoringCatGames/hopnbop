@@ -562,6 +562,8 @@ func on_left_lobby_to_screen(_next_screen_type: ScreensMain.ScreenType) -> void:
 ## Get the level scene to spawn based on session provider selection.
 ## If no level is selected, picks a random enabled level.
 func _server_get_selected_level_scene() -> PackedScene:
+	G.check(G.level_registry != null)
+
 	var level_id := session_manager.server_get_selected_level_id()
 
 	if not level_id.is_empty():
@@ -599,6 +601,8 @@ func _server_get_selected_level_scene() -> PackedScene:
 
 func _server_spawn_level(level_scene: PackedScene) -> void:
 	Netcode.check_is_server()
+	G.check(level_scene != null)
+
 	G.check(
 		G.level_registry.get_level_id_for_scene(level_scene) != "",
 		"level_scene not registered in level registry: %s" % level_scene,

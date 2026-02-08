@@ -45,18 +45,9 @@ extends Node
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
 
-# - Adjust score. Much less negative on death.
-# - Add a settings flag. Simple score. Constant 100 increase for kill, constant 10 increase for bump
-
 # - Test that pause limit is enforced.
 
 # - Test returning to lobby and then to match and then to lobby in preview.
-
-# - Adjust match-end countdown.
-#   - Show a pulse size tween at 30 20 10.
-#   - Only show red blinks after 10.
-#   - Show a embiggen+fade-out tween after hitting zero.
-#   - Time value should be frozen at this point.
 
 # - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
 

@@ -20,9 +20,6 @@ extends RefCounted
 ##     player_scored.emit(player_id, points)
 ## ```
 
-## Reference to synchronizer (set by MatchStateSynchronizer).
-var synchronizer = null
-
 # --- Generic Signals ---
 
 ## Emitted when a player joins the match.
@@ -36,6 +33,9 @@ signal players_updated
 
 ## Emitted when match ends.
 signal match_ended
+
+## Reference to synchronizer (set by MatchStateSynchronizer).
+var synchronizer = null
 
 # --- Player Roster (Generic) ---
 
@@ -55,12 +55,20 @@ var match_duration_usec := 0
 var is_match_ended := false
 
 ## Time remaining in seconds (computed property).
+## Accounts for match-start countdown - time only starts counting down after
+## the countdown ends.
 var match_time_remaining_sec: float:
 	get:
 		if match_start_frame_index < 0:
 			return 0.0
-		var elapsed_frames := Netcode.server_frame_index - \
-				match_start_frame_index
+		# Account for match-start countdown - gameplay starts after it ends.
+		var countdown_end := \
+				Netcode.frame_driver.match_start_countdown_end_frame_index
+		var effective_start := (
+			countdown_end if countdown_end > 0 else
+			match_start_frame_index
+		)
+		var elapsed_frames := Netcode.server_frame_index - effective_start
 		var elapsed_sec := elapsed_frames / \
 				Netcode.frame_driver.target_network_fps
 		var remaining_sec := (match_duration_usec / 1_000_000.0) - \
