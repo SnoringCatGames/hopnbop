@@ -51,6 +51,7 @@ extends Node
 
 # - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
 
+# - Fix the brief visibility in the old position after respawn.
 
 # - Fix kills to happen when _relative_ velocity.y is pushing head into foot, not just when one player is moving down.
 # - Fix respawn brief visibility.
