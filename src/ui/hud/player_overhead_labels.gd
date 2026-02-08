@@ -130,6 +130,10 @@ func _update_label_visibility() -> void:
 
 
 func _should_show_label(player_id: int) -> bool:
+	# Hide all labels if setting is disabled.
+	if not G.settings.show_player_overhead_labels:
+		return false
+
 	var player := G.get_player(player_id)
 	if not is_instance_valid(player):
 		return false

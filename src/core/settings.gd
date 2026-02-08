@@ -37,6 +37,8 @@ extends NetworkSettings
 @export var does_up_also_trigger_jump := true
 
 @export var show_hud := true
+@export var show_player_overhead_labels := true
+@export var show_player_outlines := true
 
 @export var godot_splash_duration_sec := 0.9
 @export var scg_splash_duration_sec := 0.9

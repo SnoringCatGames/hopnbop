@@ -34,7 +34,7 @@ func _update_window_title() -> void:
 	if Netcode.is_server:
 		device_prefix = "SERVER"
 	else:
-		device_prefix = "CLIENT %s" % Netcode.local_peer_id
+		device_prefix = "CLIENT %s" % Netcode.preview_client_number
 
 	DisplayServer.window_set_title(
 		"[%s] %s (DEBUG)" % [device_prefix, app_name]

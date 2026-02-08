@@ -31,6 +31,7 @@ metadata/_custom_type_script = "uid://l1of4ibugkpt"
 
 [resource]
 script = ExtResource("1_krfic")
+draw_annotations = true
 show_debug_player_state = true
 show_perf_tracker = true
 start_in_game = true

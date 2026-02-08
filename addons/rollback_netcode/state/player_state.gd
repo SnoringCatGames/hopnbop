@@ -34,46 +34,13 @@ const _PROPERTY_NAMES := [
 var player_id: int = 0
 var peer_id: int = 0
 var local_player_index: int = 0
-var bunny_name := ""
-var adjective := ""
-var is_soft := true
-var body_type_index := 0
-var costume_index := 0
-var base_color := Color.WHITE
+
 var connect_frame_index := 0
 var disconnect_frame_index := 0
-
-# This is calculated locally, rather than networked.
-var _score := 0
-var score: int:
-	get:
-		return _score
-	set(value):
-		_score = value
-
-# This is calculated locally, rather than networked.
-var _rank := 1
-var rank: int:
-	get:
-		return _rank
-	set(value):
-		_rank = value
-
-var full_name: StringName:
-	get:
-		return "%s %s" % [adjective, bunny_name]
 
 var is_connected_to_server: bool:
 	get:
 		return connect_frame_index >= disconnect_frame_index
-
-var outline_color: Color:
-	get:
-		return Color(base_color, _OUTLINE_COLOR_OPACITY)
-
-var label_color: Color:
-	get:
-		return base_color.lightened(_LABEL_COLOR_WHITENING_FACTOR)
 
 
 func get_packed_state() -> Array:
@@ -124,3 +91,40 @@ func get_string() -> String:
 		peer_id,
 		local_player_index
 	]
+
+# FIXME: Move these into a subclass.
+
+var bunny_name := ""
+var adjective := ""
+var is_soft := true
+var body_type_index := 0
+var costume_index := 0
+var base_color := Color.WHITE
+
+# This is calculated locally, rather than networked.
+var _score := 0
+var score: int:
+	get:
+		return _score
+	set(value):
+		_score = value
+
+# This is calculated locally, rather than networked.
+var _rank := 1
+var rank: int:
+	get:
+		return _rank
+	set(value):
+		_rank = value
+
+var full_name: StringName:
+	get:
+		return "%s %s" % [adjective, bunny_name]
+
+var outline_color: Color:
+	get:
+		return Color(base_color, _OUTLINE_COLOR_OPACITY)
+
+var label_color: Color:
+	get:
+		return base_color.lightened(_LABEL_COLOR_WHITENING_FACTOR)

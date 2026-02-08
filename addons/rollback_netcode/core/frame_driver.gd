@@ -44,12 +44,39 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
+# We have a game-specific subclass for MatchState--GameMatchState. However, we also need this for PlayerState. I've grouped down at the bottom of PlayerState the logic that is game-specific and needs to be extracted from rollback_netcode. Please do so.
+
 # - Fix kills to happen when _relative_ velocity.y is pushing head into foot, not just when one player is moving down.
 # - Fix respawn brief visibility.
 #   - Try again to move position immediately after death.
 # - TEST that when a high-speed kill happens, the bounce happens from where the
 #   initial collision contact should have been.
 #   -!!!!!!!!!!!!!!! I think this still happens
+
+# - Also hide overhead labels and outlines when HUD is disabled
+
+# - Use is_debug for some things.
+#   - Force this to true for is_preview.
+#   - Use this for tracking debug buffer state.
+#   - Do a quick survey of other is_preview checks to see if any should swap.
+
+# Plan a good way to simulate various kinds on network problems.
+# - I want to be able to simulate a delayed server connection (maybe artificially add an N millisecond delay to each packed_state update?).
+# - Is it also possible to simulate slow-running frames? On the client or on the server--the mismatch might be interesting.
+# - Are there any other useful mechanisms we could use to simulate poor conditions in one way or another that would impact network sync?
+
+# - Ask AI if it's expected for there to be so many predicted instead of authoritative values. Shouldn't values in the past become authoritative as those packets around from the server?
+
+# - Also, update the prediction for stale remote players to not blindly continue velocity. Only continue inputs, and then extrapolate positions.
+
+# - Adjust score. Much less negative on death.
+# - Add a settings flag. Simple score. Constant 100 increase for kill, constant 10 increase for bump
+
+# - Gore / flowers
+#   - For the buildup and rasterization of particles once still, just draw to an ongoing texture. Simple!
+#   - BUT also add support for some dynamic gore chunks from each death. These should be kickable and react to player collisions, but the players should not react at all to colliding with them. These should fade and destroy after a time, to not build up toooo high.
+# - Add notes to implement: water, spring, ice, flies, jetpack, and other cheats
+
 
 # - Test that pause limit is enforced.
 

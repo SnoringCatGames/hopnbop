@@ -261,6 +261,13 @@ func _on_players_updated() -> void:
 	_apply_outline_color()
 
 
+func _get_shader_material() -> ShaderMaterial:
+	var sprite := animator.animated_sprite as AnimatedSprite2D
+	if not sprite or not sprite.material:
+		return null
+	return sprite.material as ShaderMaterial
+
+
 func _apply_outline_color() -> void:
 	# Match state may not be ready yet when players_updated fires.
 	if not is_instance_valid(match_state):
@@ -278,32 +285,37 @@ func _apply_outline_color() -> void:
 		G.warning("No material found on sprite")
 		return
 
-	var shader_material := sprite.material as ShaderMaterial
+	var shader_material := _get_shader_material()
 	if not shader_material:
 		G.warning("Material is not a ShaderMaterial")
 		return
 
-	# Set outline color.
-	shader_material.set_shader_parameter(
-		"outline_color",
-		match_state.outline_color
-	)
-
-	# Set outline width (make it more visible).
+	# Set outline color and width.
+	shader_material.set_shader_parameter("outline_color", match_state.outline_color)
 	shader_material.set_shader_parameter("outline_width", 1.0)
 
-	# Toggle outline based on whether we're in a networked match.
-	var outline_enabled := G.is_networked_level_active
-	shader_material.set_shader_parameter("outline_enabled", outline_enabled)
+	# Set outline enabled state.
+	update_outline()
 
 	G.verbose(
 		"Applied outline for player %s: color=%s, enabled=%s, width=2.0" % [
 			player_id,
 			match_state.base_color,
-			outline_enabled,
+			G.is_networked_level_active and G.settings.show_player_outlines,
 		],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
+
+
+func update_outline() -> void:
+	var shader_material := _get_shader_material()
+	if not shader_material:
+		return
+
+	var outline_enabled := (
+		G.is_networked_level_active and G.settings.show_player_outlines
+	)
+	shader_material.set_shader_parameter("outline_enabled", outline_enabled)
 
 
 func _on_body_area_body_entered(body: Node2D) -> void:

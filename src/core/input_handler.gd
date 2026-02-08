@@ -9,6 +9,8 @@ extends Node
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_annotations"):
+		if not Netcode.is_preview:
+			return
 		G.settings.draw_annotations = not G.settings.draw_annotations
 		G.print(
 			"Debug annotations: %s" % (
@@ -23,6 +25,8 @@ func _input(event: InputEvent) -> void:
 			or G.settings.show_debug_console
 			or G.settings.show_debug_player_state
 			or G.settings.show_perf_tracker
+			or G.settings.show_player_overhead_labels
+			or G.settings.show_player_outlines
 		)
 
 		# If anything is on, turn everything off.
@@ -30,10 +34,15 @@ func _input(event: InputEvent) -> void:
 		var new_state = not any_on
 
 		G.settings.show_hud = new_state
-		G.settings.draw_annotations = new_state
-		G.settings.show_debug_console = new_state
-		G.settings.show_debug_player_state = new_state
-		G.settings.show_perf_tracker = new_state
+		G.settings.show_player_overhead_labels = new_state
+		G.settings.show_player_outlines = new_state
+
+		# Preview-only settings: only enable when in preview mode.
+		var is_preview_and_new_state = new_state and Netcode.is_preview
+		G.settings.draw_annotations = is_preview_and_new_state
+		G.settings.show_debug_console = is_preview_and_new_state
+		G.settings.show_debug_player_state = is_preview_and_new_state
+		G.settings.show_perf_tracker = is_preview_and_new_state
 
 		G.print(
 			"All HUD/Debug: %s" % ("ON" if new_state else "OFF")
@@ -42,11 +51,14 @@ func _input(event: InputEvent) -> void:
 		# Update UI components.
 		if is_instance_valid(G.hud):
 			G.hud.visible = new_state
-		if is_instance_valid(G.super_hud):
-			G.super_hud.visible = new_state
+		if is_instance_valid(G.super_hud) and Netcode.is_preview:
+			G.super_hud.visible = is_preview_and_new_state
 			G.super_hud.toggle_perf_tracker()
 			G.super_hud.toggle_debug_console()
 			G.super_hud.toggle_player_state_list()
+		if is_instance_valid(G.player_overhead_labels):
+			G.player_overhead_labels.visible = new_state
+		_update_player_outlines()
 	elif event.is_action_pressed("toggle_music"):
 		G.settings.mute_music = not G.settings.mute_music
 		G.print("Music: %s" % ("OFF" if G.settings.mute_music else "ON"))
@@ -56,6 +68,8 @@ func _input(event: InputEvent) -> void:
 		if Netcode.is_preview:
 			G.utils.take_screenshot()
 	elif event.is_action_pressed("toggle_perf_tracker"):
+		if not Netcode.is_preview:
+			return
 		G.settings.show_perf_tracker = not G.settings.show_perf_tracker
 		G.print(
 			"PerfPanel: %s" % (
@@ -65,6 +79,8 @@ func _input(event: InputEvent) -> void:
 		if is_instance_valid(G.super_hud):
 			G.super_hud.toggle_perf_tracker()
 	elif event.is_action_pressed("toggle_debug_console"):
+		if not Netcode.is_preview:
+			return
 		G.settings.show_debug_console = not G.settings.show_debug_console
 		G.print(
 			"DebugConsole: %s" % (
@@ -74,6 +90,8 @@ func _input(event: InputEvent) -> void:
 		if is_instance_valid(G.super_hud):
 			G.super_hud.toggle_debug_console()
 	elif event.is_action_pressed("toggle_debug_player_state"):
+		if not Netcode.is_preview:
+			return
 		G.settings.show_debug_player_state = (
 			not G.settings.show_debug_player_state
 		)
@@ -93,3 +111,11 @@ func _input(event: InputEvent) -> void:
 		if G.settings.is_server_pause_enabled:
 			Netcode.frame_driver.client_request_toggle_pause()
 			get_viewport().set_input_as_handled()
+
+
+func _update_player_outlines() -> void:
+	if not is_instance_valid(G.level):
+		return
+	for player in G.level.players_by_id.values():
+		if is_instance_valid(player) and player.has_method("update_outline"):
+			player.update_outline()
