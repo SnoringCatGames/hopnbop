@@ -11,8 +11,22 @@ var _processed_collision_this_frame := false
 var _last_collision_frame := -1
 var _blink_accumulator := 0.0
 var _is_blink_visible := true
+# -------------------------------------
+# FIXME: REMOVE
+var _last_blink_toggle_frame := -1
+# -------------------------------------
 var _pending_bounce := Vector2.ZERO
 var _last_processed_interaction_frame_index := -1
+
+
+# -------------------------------------
+# FIXME: REMOVE
+# Bug detection: track visibility state for debugging.
+var _visibility_diagnostic_enabled := true
+var _last_expected_visible := true
+var _frames_invisible_when_should_be_visible := 0
+const _FRAMES_TO_TRIGGER_DIAGNOSTIC := 5
+# -------------------------------------
 
 
 func _enter_tree() -> void:
@@ -59,7 +73,7 @@ func _process_movement_and_actions() -> void:
 
 	# Apply pending bounce after movement processing.
 	if Netcode.is_server and _pending_bounce != Vector2.ZERO:
-		velocity += _pending_bounce
+		velocity = _pending_bounce
 		_pending_bounce = Vector2.ZERO
 
 	# Reset collision flag each frame.
@@ -79,6 +93,13 @@ func _process_movement_and_actions() -> void:
 	if should_process:
 		_handle_interaction_effects()
 		_last_processed_interaction_frame_index = state_from_server.last_interaction_frame_index
+
+
+	# -------------------------------------
+	# FIXME: REMOVE
+	# Diagnostic: detect if player should be visible but isn't.
+	_check_visibility_bug_diagnostic()
+	# -------------------------------------
 
 
 func _handle_interaction_effects() -> void:
@@ -696,6 +717,7 @@ func _update_invincibility_blink() -> void:
 		_blink_accumulator -= blink_period
 		_is_blink_visible = not _is_blink_visible
 		animator.visible = _is_blink_visible
+		_last_blink_toggle_frame = Netcode.server_frame_index
 
 
 func set_is_collidable(is_collidable: bool) -> void:
@@ -708,3 +730,114 @@ func set_is_collidable(is_collidable: bool) -> void:
 	else:
 		# Dead - ensure blink state is hidden.
 		_is_blink_visible = false
+
+
+# -------------------------------------
+# FIXME: REMOVE
+## Diagnostic check to detect visibility bug after respawn.
+## Only logs when bug is detected (player should be visible but isn't).
+func _check_visibility_bug_diagnostic() -> void:
+	if not _visibility_diagnostic_enabled:
+		return
+
+	# Determine if player should be visible based on interaction state.
+	var should_be_visible := (
+		state_from_server.last_interaction_type != CharacterStateFromServer.ServerInteractionType.DIE
+	)
+
+	# Check if there's a mismatch.
+	var is_actually_visible := animator.visible
+	var has_mismatch := should_be_visible and not is_actually_visible
+
+	if has_mismatch:
+		_frames_invisible_when_should_be_visible += 1
+
+		# Trigger diagnostic after N consecutive frames of mismatch.
+		if _frames_invisible_when_should_be_visible >= _FRAMES_TO_TRIGGER_DIAGNOSTIC:
+			_log_visibility_diagnostic()
+			# Disable further diagnostics to avoid log spam.
+			_visibility_diagnostic_enabled = false
+	else:
+		# Reset counter when state is correct.
+		_frames_invisible_when_should_be_visible = 0
+
+
+## Logs detailed diagnostic information when visibility bug is detected.
+func _log_visibility_diagnostic() -> void:
+	G.print(
+		"===== VISIBILITY BUG DETECTED: Player %d =====" % player_id,
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+	G.print(
+		"  Current frame: %d" % Netcode.server_frame_index,
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+	G.print(
+		"  Last interaction: type=%s, frame=%d" % [
+			CharacterStateFromServer.ServerInteractionType.keys()[state_from_server.last_interaction_type],
+			state_from_server.last_interaction_frame_index,
+		],
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+	G.print(
+		"  State: is_dead=%s, is_invincible=%s" % [
+			state_from_server.is_dead,
+			state_from_server.is_invincible,
+		],
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+	G.print(
+		"  Visibility: animator.visible=%s, _is_blink_visible=%s" % [
+			animator.visible,
+			_is_blink_visible,
+		],
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+	G.print(
+		"  Collision: layer=%d (original=%d), mask=%d (original=%d)" % [
+			collision_layer,
+			_original_collision_layer,
+			collision_mask,
+			_original_collision_mask,
+		],
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+	G.print(
+		"  Position: global_position=%s, velocity=%s" % [
+			global_position,
+			velocity,
+		],
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+	G.print(
+		"  Blink state: _blink_accumulator=%.3f, last_toggle_frame=%d, period=%.3f" % [
+			_blink_accumulator,
+			_last_blink_toggle_frame,
+			(1.0 / (G.settings.player_invincibility_blink_frequency_hz * 2.0)),
+		],
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+	G.print(
+		"  Authority: is_authority_for_state=%s, is_authority_for_input=%s" % [
+			state_from_server.is_authority_for_state_from_server,
+			state_from_server.is_authority_for_input_from_client,
+		],
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+	G.print(
+		"  Collidability tracking: last_applied_frame=%d, last_value=%s, apply_count=%d" % [
+			state_from_server._last_applied_collidability_frame,
+			state_from_server._last_applied_collidability_value,
+			state_from_server._collidability_apply_count,
+		],
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+	G.print(
+		"  _last_processed_interaction_frame_index=%d" % _last_processed_interaction_frame_index,
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+	G.print(
+		"========================================",
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+# -------------------------------------

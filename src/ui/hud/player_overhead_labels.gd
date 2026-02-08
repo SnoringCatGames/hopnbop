@@ -134,6 +134,10 @@ func _should_show_label(player_id: int) -> bool:
 	if not is_instance_valid(player):
 		return false
 
+	# Hide label if player is dead.
+	if player.state_from_server.is_dead:
+		return false
+
 	# Check distance to all other players.
 	for other_player_id in _labels_by_player_id.keys():
 		if other_player_id == player_id:

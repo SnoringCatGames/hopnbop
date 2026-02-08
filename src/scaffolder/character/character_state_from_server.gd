@@ -29,6 +29,14 @@ var velocity := Vector2.ZERO
 ## A bitmask representing the player's surface state.
 var surfaces := 0
 
+# -------------------------------------
+# FIXME: REMOVE
+# Diagnostic tracking for visibility bug.
+var _last_applied_collidability_frame := -1
+var _last_applied_collidability_value := true
+var _collidability_apply_count := 0
+# -------------------------------------
+
 var is_dead: bool:
 	get:
 		# Player is dead only while DIE interaction is active (before SPAWN).
@@ -310,41 +318,43 @@ func _network_process() -> void:
 				NetworkLogger.CATEGORY_NETWORK_SYNC,
 			)
 
-	# Handle scene state (from the server).
-	if is_authority_for_state_from_server:
-		# The server processes movement. Mark as authoritative only if we have
-		# authoritative input, otherwise mark as predicted to avoid overriding
-		# client predictions with server extrapolations.
-		character._apply_movement()
-		frame_authority = input_from_client.frame_authority
-	else:
-		# Client: always re-simulate movement based on current input.
-		# Don't unpack authoritative state from buffer, because it may be
-		# stale if ForwardedPlayerInputFromServer reconciled input (e.g., jump)
-		# after the server computed this state. Re-simulation ensures the
-		# character's position matches the reconciled input.
-		var pos_before := character.position
-		var vel_before := character.velocity
-		character._apply_movement()
-		frame_authority = ReconcilableState.FrameAuthority.PREDICTED
-		if Netcode.log.is_verbose and (
-			character.position.distance_to(pos_before) > 0.1 or
-			character.velocity.distance_to(vel_before) > 0.1
-		):
-			G.print(
-				("F:%d Remote simulation: pos %s->%s, vel %s->%s, " +
-				"actions=%d") % [
-					Netcode.server_frame_index,
-					pos_before,
-					character.position,
-					vel_before,
-					character.velocity,
-					character.actions.bitmask,
-				],
-				NetworkLogger.CATEGORY_NETWORK_SYNC,
-			)
+	# Skip movement processing if player is dead.
+	if not is_dead:
+		# Handle scene state (from the server).
+		if is_authority_for_state_from_server:
+			# The server processes movement. Mark as authoritative only if we have
+			# authoritative input, otherwise mark as predicted to avoid overriding
+			# client predictions with server extrapolations.
+			character._apply_movement()
+			frame_authority = input_from_client.frame_authority
+		else:
+			# Client: always re-simulate movement based on current input.
+			# Don't unpack authoritative state from buffer, because it may be
+			# stale if ForwardedPlayerInputFromServer reconciled input (e.g., jump)
+			# after the server computed this state. Re-simulation ensures the
+			# character's position matches the reconciled input.
+			var pos_before := character.position
+			var vel_before := character.velocity
+			character._apply_movement()
+			frame_authority = ReconcilableState.FrameAuthority.PREDICTED
+			if Netcode.log.is_verbose and (
+				character.position.distance_to(pos_before) > 0.1 or
+				character.velocity.distance_to(vel_before) > 0.1
+			):
+				G.print(
+					("F:%d Remote simulation: pos %s->%s, vel %s->%s, " +
+					"actions=%d") % [
+						Netcode.server_frame_index,
+						pos_before,
+						character.position,
+						vel_before,
+						character.velocity,
+						character.actions.bitmask,
+					],
+					NetworkLogger.CATEGORY_NETWORK_SYNC,
+				)
 
-	character._process_movement_and_actions()
+		character._process_movement_and_actions()
 
 	# Ensure visibility/collision state is correct based on current interaction.
 	# This is critical to prevent players from staying invisible after respawn.
@@ -418,6 +428,28 @@ func _apply_interaction_collidability(interaction_type: int) -> void:
 		_:
 			G.fatal("Unknown ServerInteractionType: %d" % interaction_type)
 			is_collidable = true
+
+	# -------------------------------------
+	# FIXME: REMOVE
+	# Track diagnostic info for visibility bug detection.
+	var current_frame := Netcode.server_frame_index
+	var collidability_changed := (_last_applied_collidability_value != is_collidable)
+	_last_applied_collidability_frame = current_frame
+	_last_applied_collidability_value = is_collidable
+	_collidability_apply_count += 1
+
+	# Log when collidability changes, especially for SPAWN.
+	if collidability_changed and Netcode.log.is_verbose:
+		G.verbose(
+			"F:%d Player collidability changed: %s -> %s (interaction=%s)" % [
+				current_frame,
+				not is_collidable,
+				is_collidable,
+				ServerInteractionType.keys()[interaction_type],
+			],
+			NetworkLogger.CATEGORY_GAME_STATE,
+		)
+	# -------------------------------------
 
 	# Delegate to character-specific collision handling.
 	character.set_is_collidable(is_collidable)
@@ -660,15 +692,14 @@ func _calculate_bounce_velocity(
 ## prevent them from being overwritten with stale NONE values.
 func _inject_velocity_delta_into_buffer(
 	p_frame_index: int,
-	velocity_delta: Vector2,
+	p_velocity: Vector2,
 	interaction_type: int,
 	interaction_frame_index: int,
 	interaction_position: Vector2,
 	interaction_direction: Vector2
 ) -> void:
 	var frame_state: Array = _rollback_buffer.get_at(p_frame_index)
-	var stored_velocity: Vector2 = _get_frame_property(frame_state, &"velocity")
-	_set_frame_property(frame_state, &"velocity", stored_velocity + velocity_delta)
+	_set_frame_property(frame_state, &"velocity", p_velocity)
 
 	# Set interaction properties explicitly (passed as parameters).
 	# This ensures the buffer has the correct interaction data, preventing

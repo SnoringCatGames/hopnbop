@@ -2,9 +2,15 @@
 class_name Character
 extends CharacterBody2D
 
-const _NORMAL_SURFACES_COLLISION_MASK_BIT := 1
-const _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT := 2
-const _WALK_THROUGH_WALLS_COLLISION_MASK_BIT := 4
+const _NORMAL_SURFACES_COLLISION_MASK_BIT := 1 << 0
+const _FALL_THROUGH_FLOORS_COLLISION_MASK_BIT := 1 << 1
+const _WALK_THROUGH_WALLS_COLLISION_MASK_BIT := 1 << 2
+const _PLAYER_COLLISION_MASK_BIT := 1 << 3
+const _ENEMY_COLLISION_MASK_BIT := 1 << 4
+const _PLAYER_PROJECTILE_COLLISION_MASK_BIT := 1 << 5
+const _ENEMY_PROJECTILE_COLLISION_MASK_BIT := 1 << 6
+const _FOOT_PROJECTILE_COLLISION_MASK_BIT := 1 << 7
+const _HEAD_PROJECTILE_COLLISION_MASK_BIT := 1 << 8
 
 # HACK to work-around Godot's problem with one-wall collisions definitely being
 # collidable from the side.
