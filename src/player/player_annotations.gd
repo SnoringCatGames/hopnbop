@@ -154,7 +154,7 @@ func _get_dot_radius(debug_entry: Array) -> float:
 	if debug_entry.is_empty():
 		return DOT_RADIUS_MIN
 
-	var delay: int = debug_entry[ReconcilableState._DEBUG_AUTH_DELAY_INDEX]
+	var delay: int = debug_entry[ReconcilableState._DEBUG_AUTHORITATIVE_STATE_DELAY_INDEX]
 
 	# Never received authoritative state - use max radius.
 	if delay < 0:
