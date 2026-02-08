@@ -482,8 +482,7 @@ func _handle_new_authoritative_state() -> void:
 
 	# Record authoritative delay in debug buffer.
 	if _debug_frame_buffer != null and new_frame_authority == FrameAuthority.AUTHORITATIVE:
-		_debug_frame_buffer.backfill_to_with_last_state(state_frame_index)
-		var entry = _debug_frame_buffer.get_at(state_frame_index)
+		var entry := _get_or_create_debug_entry(state_frame_index)
 		if entry != null:
 			entry[_DEBUG_AUTHORITATIVE_STATE_DELAY_INDEX] = (
 				Netcode.server_frame_index - state_frame_index
@@ -521,10 +520,7 @@ func _handle_new_authoritative_state() -> void:
 
 		# Record fast-forward event in debug buffer before fast-forwarding.
 		if _debug_frame_buffer != null:
-			_debug_frame_buffer.backfill_to_with_last_state(
-				Netcode.server_frame_index
-			)
-			var entry = _debug_frame_buffer.get_at(Netcode.server_frame_index)
+			var entry := _get_or_create_debug_entry(Netcode.server_frame_index)
 			if entry != null:
 				entry[_DEBUG_FAST_FORWARD_INDEX] = (
 					state_frame_index - 1 - Netcode.server_frame_index
@@ -622,6 +618,25 @@ func _should_accept_predicted_states() -> bool:
 ## Override in subclasses that should track debug metrics.
 func _should_create_debug_buffer() -> bool:
 	return false
+
+
+## Get or create a debug buffer entry at the specified frame index.
+## Unlike backfill_to_with_last_state(), this creates entries with default
+## values to avoid propagating rollback/fast-forward markers from other frames.
+func _get_or_create_debug_entry(frame_index: int) -> Array:
+	var entry = _debug_frame_buffer.get_at(frame_index)
+	if entry != null:
+		return entry
+
+	# Frame doesn't exist, create with defaults.
+	var new_entry := ArrayPool.acquire(3)
+	new_entry[0] = 0   # No rollback.
+	new_entry[1] = 0   # No fast-forward.
+	new_entry[2] = -1  # Auth delay not yet received.
+	_debug_frame_buffer.set_at(frame_index, new_entry)
+
+	# Get the actual stored entry (set_at may have copied to existing array).
+	return _debug_frame_buffer.get_at(frame_index)
 
 
 ## Virtual method: whether this class uses the interaction tracking system.
