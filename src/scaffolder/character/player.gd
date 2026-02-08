@@ -289,7 +289,7 @@ func server_execute_respawn() -> void:
 
 	var spawn_position := G.level._get_player_spawn_position()
 
-	# Record SPAWN interaction (NEW FEATURE).
+	# Record SPAWN interaction.
 	state_from_server.record_interaction(
 		CharacterStateFromServer.ServerInteractionType.SPAWN,
 		Netcode.server_frame_index,

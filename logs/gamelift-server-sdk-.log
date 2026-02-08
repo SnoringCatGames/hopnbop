@@ -184,3 +184,34 @@
 [2026-02-06 21:14:45] [info] Destroying WebsocketPPClientWrapper
 [2026-02-06 21:14:45] [info] Initializing GameLift SDK
 [2026-02-06 21:14:45] [info] Destroying WebsocketPPClientWrapper
+[2026-02-07 17:30:44] [info] Initializing GameLift SDK
+[2026-02-07 17:30:44] [info] Created Instance
+[2026-02-07 17:30:44] [info] Initializing Networking
+[2026-02-07 17:30:44] [info] Setting Up WebSocket With default callbacks
+[2026-02-07 17:30:44] [info] Registering GameLift CallBack for: CreateGameSession
+[2026-02-07 17:30:44] [info] Registering GameLift CallBack for: DescribePlayerSessions
+[2026-02-07 17:30:44] [info] Registering GameLift CallBack for: GetComputeCertificate
+[2026-02-07 17:30:44] [info] Registering GameLift CallBack for: GetFleetRoleCredentials
+[2026-02-07 17:30:44] [info] Registering GameLift CallBack for: TerminateProcess
+[2026-02-07 17:30:44] [info] Registering GameLift CallBack for: UpdateGameSession
+[2026-02-07 17:30:44] [info] Registering GameLift CallBack for: StartMatchBackfill
+[2026-02-07 17:30:44] [info] Registering GameLift CallBack for: RefreshConnection
+[2026-02-07 17:30:44] [error] Networking outcome failure when init SDK
+[2026-02-07 17:30:44] [info] Initializing GameLift SDK
+[2026-02-07 17:30:44] [info] Destroying WebsocketPPClientWrapper
+[2026-02-07 17:30:44] [info] Initializing GameLift SDK
+[2026-02-07 17:30:44] [info] Destroying WebsocketPPClientWrapper
+[2026-02-07 17:30:44] [info] Initializing GameLift SDK
+[2026-02-07 17:30:44] [info] Destroying WebsocketPPClientWrapper
+[2026-02-07 17:30:44] [info] Initializing GameLift SDK
+[2026-02-07 17:30:44] [info] Destroying WebsocketPPClientWrapper
+[2026-02-07 17:30:44] [info] Initializing GameLift SDK
+[2026-02-07 17:30:44] [info] Destroying WebsocketPPClientWrapper
+[2026-02-07 17:30:44] [info] Initializing GameLift SDK
+[2026-02-07 17:30:44] [info] Destroying WebsocketPPClientWrapper
+[2026-02-07 17:30:44] [info] Initializing GameLift SDK
+[2026-02-07 17:30:44] [info] Destroying WebsocketPPClientWrapper
+[2026-02-07 17:30:44] [info] Initializing GameLift SDK
+[2026-02-07 17:30:44] [info] Destroying WebsocketPPClientWrapper
+[2026-02-07 17:30:44] [info] Initializing GameLift SDK
+[2026-02-07 17:30:44] [info] Destroying WebsocketPPClientWrapper

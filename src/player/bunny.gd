@@ -18,6 +18,12 @@ var _last_blink_toggle_frame := -1
 var _pending_bounce := Vector2.ZERO
 var _last_processed_interaction_frame_index := -1
 
+# Track intersections during invincibility.
+# Dictionary<int, Array[String]> - player_id -> array of intersection types.
+# Can contain both "foot" and "body" for the same player.
+var _active_intersections := {}
+var _was_invincible_last_frame := false
+
 
 # -------------------------------------
 # FIXME: REMOVE
@@ -82,6 +88,10 @@ func _process_movement_and_actions() -> void:
 		if _last_collision_frame != current_frame:
 			_processed_collision_this_frame = false
 			_last_collision_frame = current_frame
+
+	# Update player-player collision based on invincibility state.
+	# This runs every frame to handle invincibility expiring.
+	_update_player_collision_for_invincibility()
 
 	# Handle client-side interaction effects (sounds, particles).
 	# Process the interaction if it's new (not yet processed).
@@ -281,11 +291,16 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	if G.match_state.is_match_ended:
 		return
 
-	# Skip if either player is invincible.
+	# Track intersection for deferred processing after invincibility.
 	if (
 		state_from_server.is_invincible or
 		other_player.state_from_server.is_invincible
 	):
+		# Track this intersection for later.
+		if not _active_intersections.has(other_player_id):
+			_active_intersections[other_player_id] = []
+		if not _active_intersections[other_player_id].has("body"):
+			_active_intersections[other_player_id].append("body")
 		return
 
 	# Check if kill already happened this frame - kills take precedence.
@@ -395,28 +410,25 @@ func _server_apply_interaction_with_position(
 ) -> void:
 	Netcode.check_is_server()
 
-	var direction := (
-		override_position - other_player.global_position
-	).normalized()
-
-	# Select bounce settings based on interaction type.
-	var base_speed: float
-	var vertical_boost: float
+	var bounce_velocity: Vector2
 
 	match interaction_type:
 		CharacterStateFromServer.ServerInteractionType.BUMP:
-			base_speed = movement_settings.bump_bounce_base_speed
-			vertical_boost = movement_settings.bump_bounce_vertical_boost
+			var direction := (
+				override_position - other_player.global_position
+			).normalized()
+			var base_speed := movement_settings.bump_bounce_base_speed
+			var vertical_boost := movement_settings.bump_bounce_vertical_boost
+			bounce_velocity = direction * base_speed + Vector2(0, vertical_boost)
 		CharacterStateFromServer.ServerInteractionType.KILL:
-			base_speed = movement_settings.kill_bounce_base_speed
-			vertical_boost = movement_settings.kill_bounce_vertical_boost
+			var vertical_boost := movement_settings.kill_bounce_vertical_boost
+			bounce_velocity = Vector2(velocity.x, vertical_boost)
 		_:
 			G.fatal(
 				"Invalid interaction type for bounce: %d" % interaction_type
 			)
 			return
 
-	var bounce_velocity := direction * base_speed + Vector2(0, vertical_boost)
 	_pending_bounce = bounce_velocity
 
 	# Record interaction with lag-compensated position (automatically injects
@@ -425,13 +437,13 @@ func _server_apply_interaction_with_position(
 		interaction_type,
 		Netcode.server_frame_index,
 		override_position,
-		direction
+		bounce_velocity
 	)
 
 	G.verbose(
 		(
 			"F:%d Applied %s interaction to player %d: pos=%s " +
-			"(lag compensated), bounce=%s, dir=%s"
+			"(lag compensated), bounce=%s, vel=%s"
 		) % [
 			Netcode.server_frame_index,
 			CharacterStateFromServer.ServerInteractionType.keys()[
@@ -439,8 +451,8 @@ func _server_apply_interaction_with_position(
 			],
 			player_id,
 			override_position,
+			_pending_bounce,
 			bounce_velocity,
-			direction,
 		],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
@@ -458,11 +470,11 @@ func _did_kill_happen_this_frame(frame_index: int) -> bool:
 
 ## Checks if a kill collision is currently happening with another player.
 func _is_kill_collision_happening(other_player: Player) -> bool:
-	# Check if foot area overlaps with other player's body area.
+	# Check if foot area overlaps with other player's head area.
 	var foot_area: Area2D = %FootArea
-	var other_body_area: Area2D = other_player.get_node("%BodyArea")
+	var other_head_area: Area2D = other_player.get_node("%HeadArea")
 
-	if not foot_area.overlaps_area(other_body_area):
+	if not foot_area.overlaps_area(other_head_area):
 		return false
 
 	# Check if relative velocity is downward (required for kill).
@@ -659,11 +671,16 @@ func _on_foot_area_area_entered(area: Area2D) -> void:
 	if G.match_state.is_match_ended:
 		return
 
-	# Skip if either player is invincible.
+	# Track intersection for deferred processing after invincibility.
 	if (
 		state_from_server.is_invincible or
 		other_player.state_from_server.is_invincible
 	):
+		# Track this intersection for later.
+		if not _active_intersections.has(other_player_id):
+			_active_intersections[other_player_id] = []
+		if not _active_intersections[other_player_id].has("foot"):
+			_active_intersections[other_player_id].append("foot")
 		return
 
 	G.verbose(
@@ -684,6 +701,43 @@ func _on_foot_area_area_entered(area: Area2D) -> void:
 		CharacterStateFromServer.ServerInteractionType.KILL,
 		global_position
 	)
+
+
+func _on_body_area_body_exited(body: Node2D) -> void:
+	if not Netcode.is_server:
+		return
+
+	if not body is Player:
+		return
+
+	var other_player := body as Player
+	var other_player_id := other_player.player_id
+
+	# Remove "body" from tracked intersections when players separate.
+	if _active_intersections.has(other_player_id):
+		var types: Array = _active_intersections[other_player_id]
+		types.erase("body")
+		if types.is_empty():
+			_active_intersections.erase(other_player_id)
+
+
+func _on_foot_area_area_exited(area: Area2D) -> void:
+	if not Netcode.is_server:
+		return
+
+	var other_parent: Node = area.get_parent()
+	if not other_parent is Player:
+		return
+
+	var other_player := other_parent as Player
+	var other_player_id := other_player.player_id
+
+	# Remove "foot" from tracked intersections when players separate.
+	if _active_intersections.has(other_player_id):
+		var types: Array = _active_intersections[other_player_id]
+		types.erase("foot")
+		if types.is_empty():
+			_active_intersections.erase(other_player_id)
 
 
 func _update_invincibility_blink() -> void:
@@ -727,9 +781,121 @@ func set_is_collidable(is_collidable: bool) -> void:
 	if is_collidable:
 		# Alive - ensure blink state is visible.
 		_is_blink_visible = true
+
+		# When alive, update player-player collision for invincibility.
+		_update_player_collision_for_invincibility()
 	else:
 		# Dead - ensure blink state is hidden.
 		_is_blink_visible = false
+
+
+## Updates player-player collision based on invincibility state.
+## Called when collidability changes and every frame during movement.
+func _update_player_collision_for_invincibility() -> void:
+	# Skip if not alive (dead players have all collision disabled).
+	if state_from_server.is_dead:
+		_was_invincible_last_frame = false
+		return
+
+	var is_invincible := state_from_server.is_invincible
+
+	# Check if invincibility just ended.
+	if _was_invincible_last_frame and not is_invincible:
+		_process_deferred_collisions()
+
+	_was_invincible_last_frame = is_invincible
+
+	# Disable player-player collision when invincible.
+	# Layer bit 4 = this player can be hit by others.
+	# Mask bit 4 = this player can hit others.
+	set_collision_layer_value(_PLAYER_COLLISION_LAYER, not is_invincible)
+	set_collision_mask_value(_PLAYER_COLLISION_LAYER, not is_invincible)
+
+	# Also update Area2D children (BodyArea, FootArea, HeadArea).
+	for area_name in ["%BodyArea", "%FootArea", "%HeadArea"]:
+		var area := get_node_or_null(area_name)
+		if is_instance_valid(area) and area is Area2D:
+			# Players use layer 4 for player-player collision.
+			area.set_collision_layer_value(_PLAYER_COLLISION_LAYER, not is_invincible)
+			area.set_collision_mask_value(_PLAYER_COLLISION_LAYER, not is_invincible)
+
+
+## Processes collisions that were deferred during invincibility.
+## Called when invincibility ends.
+func _process_deferred_collisions() -> void:
+	if not Netcode.is_server:
+		return
+
+	if _active_intersections.is_empty():
+		return
+
+	G.verbose(
+		"Processing %d deferred collision(s) for player %d" % [
+			_active_intersections.size(),
+			player_id,
+		],
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+
+	# Process each tracked intersection.
+	for other_player_id in _active_intersections.keys():
+		var intersection_types: Array = _active_intersections[other_player_id]
+		var other_player := G.get_player(other_player_id)
+
+		if not is_instance_valid(other_player):
+			continue
+
+		# Skip if other player is now dead or invincible.
+		if other_player.state_from_server.is_dead or \
+			other_player.state_from_server.is_invincible:
+			continue
+
+		# Check foot first (kill takes precedence over bump).
+		if intersection_types.has("foot"):
+			# Verify foot intersection is still active.
+			var foot_area: Area2D = %FootArea
+			var other_head_area: Area2D = other_player.get_node_or_null("%HeadArea")
+			var is_still_intersecting := false
+			if is_instance_valid(other_head_area):
+				is_still_intersecting = foot_area.overlaps_area(other_head_area)
+
+			if is_still_intersecting:
+				# Check downward velocity requirement for kills.
+				var relative_velocity := velocity - other_player.velocity
+				if relative_velocity.y > 0:
+					G.verbose(
+						"Deferred kill: %d killed %d" % [player_id, other_player_id],
+						NetworkLogger.CATEGORY_GAME_STATE,
+					)
+					_processed_collision_this_frame = true
+					other_player._processed_collision_this_frame = true
+					G.match_state.server_add_kill(player_id, other_player_id)
+					_server_apply_interaction_with_position(
+						self ,
+						CharacterStateFromServer.ServerInteractionType.KILL,
+						global_position
+					)
+					continue  # Skip body check since kill was processed.
+
+		# Check body (bump) if no kill was processed.
+		if intersection_types.has("body"):
+			# Verify body intersection is still active.
+			var body_area: Area2D = %BodyArea
+			var is_still_intersecting := body_area.overlaps_body(other_player)
+
+			if is_still_intersecting:
+				G.verbose(
+					"Deferred bump: %d bumped %d" % [player_id, other_player_id],
+					NetworkLogger.CATEGORY_GAME_STATE,
+				)
+				_processed_collision_this_frame = true
+				other_player._processed_collision_this_frame = true
+				G.match_state.server_add_bump(player_id, other_player_id)
+				_server_apply_interaction(other_player, CharacterStateFromServer.ServerInteractionType.BUMP)
+				other_player._server_apply_interaction(self , CharacterStateFromServer.ServerInteractionType.BUMP)
+
+	# Clear all tracked intersections after processing.
+	_active_intersections.clear()
 
 
 # -------------------------------------

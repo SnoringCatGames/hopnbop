@@ -127,7 +127,7 @@ var last_interaction_type: int:
 
 var last_interaction_frame_index := -1
 var last_interaction_position := Vector2.ZERO
-var last_interaction_direction := Vector2.ZERO
+var last_interaction_velocity := Vector2.ZERO
 
 @warning_ignore("unused_private_class_variable")
 var _last_reconciled_interaction_frame_index := -1
@@ -1157,7 +1157,7 @@ func _get_mismatch_details_string(
 					"{%s: local=%d, remote=%d, drift=%d}" %
 					[property_name, buffer_value, networked_value, drift],
 				)
-			elif property_name in ["last_interaction_position", "last_interaction_direction"]:
+			elif property_name in ["last_interaction_position", "last_interaction_velocity"]:
 				var dist := (buffer_value as Vector2).distance_to(networked_value)
 				details.append(
 					"{%s: distance=%.3f}" %
@@ -1333,7 +1333,7 @@ func _get_configuration_warnings() -> PackedStringArray:
 			"last_interaction_type",
 			"last_interaction_frame_index",
 			"last_interaction_position",
-			"last_interaction_direction",
+			"last_interaction_velocity",
 		]
 		for prop in required_properties:
 			if thresholds != null and not thresholds.has(prop):
@@ -1394,7 +1394,7 @@ func record_interaction(
 	interaction_type: int,
 	frame_index: int,
 	position: Vector2,
-	direction: Vector2
+	velocity: Vector2
 ) -> void:
 	# Never allow recording NONE interaction. NONE should only exist during
 	# initialization before any real interaction occurs. Once an interaction is
@@ -1416,7 +1416,7 @@ func record_interaction(
 		frame_index if frame_index >= 0 else Netcode.server_frame_index
 	)
 	last_interaction_position = position
-	last_interaction_direction = direction
+	last_interaction_velocity = velocity
 
 	if Netcode.log.is_verbose and Netcode.is_server:
 		Netcode.log.verbose(

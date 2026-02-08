@@ -12,9 +12,12 @@ const _ENEMY_PROJECTILE_COLLISION_MASK_BIT := 1 << 6
 const _FOOT_PROJECTILE_COLLISION_MASK_BIT := 1 << 7
 const _HEAD_PROJECTILE_COLLISION_MASK_BIT := 1 << 8
 
-# HACK to work-around Godot's problem with one-wall collisions definitely being
-# collidable from the side.
+# HACK to work-around Godot's problem with one-way collisions sometimes being
+# collidable from the side when moving sideways in the air.
 const _FALL_THROUGH_FLOOR_COLLISION_FALL_SPEED_THRESHOLD := 70.0
+# Frames after match start during which fall-through floor collision stays
+# enabled (0.2 sec at 60 FPS).
+const _SPAWN_FLOOR_COLLISION_PROTECTION_FRAMES := 12
 
 @export var collision_shape: CollisionShape2D:
 	set(value):
@@ -186,6 +189,9 @@ func _collect_actions() -> void:
 
 ## This gets called during _network_process.
 func _apply_movement() -> void:
+	# Update collision mask BEFORE move_and_slide to ensure correct physics.
+	_update_collision_mask()
+
 	# When descending through floors while pressing into a wall, temporarily
 	# zero horizontal velocity to prevent wall collision from zeroing Y velocity.
 	# Godot's move_and_slide collision resolution can reduce vertical velocity
@@ -328,10 +334,21 @@ func _update_collision_mask() -> void:
 	# HACK to disable collision with fall-through floors when we are moving
 	# sideways in the air, since Godot has a bug where one-way collisions can
 	# actually be collided with _sometimes_ from the side.
+	# Enable collision when:
+	# - Within spawn protection period after match start
+	# - On the floor (safe, not moving through air)
+	# - Falling fast (clearly coming from above, not sideways)
+	var match_start := Netcode.frame_driver.match_start_countdown_end_frame_index
+	var is_in_spawn_protection := (
+		match_start >= 0 and
+		Netcode.frame_driver.server_frame_index <
+			match_start + _SPAWN_FLOOR_COLLISION_PROTECTION_FRAMES
+	)
 	var is_fall_through_floor_bit_enabled := (
 		not surfaces.is_descending_through_floors and
-		(velocity.y >= _FALL_THROUGH_FLOOR_COLLISION_FALL_SPEED_THRESHOLD or
-		is_on_floor())
+		(is_in_spawn_protection or
+		is_on_floor() or
+		velocity.y >= _FALL_THROUGH_FLOOR_COLLISION_FALL_SPEED_THRESHOLD)
 	)
 	set_collision_mask_value(
 		_FALL_THROUGH_FLOORS_COLLISION_MASK_BIT,

@@ -44,8 +44,9 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
+# - I'm definitely seeing kill bounces being applied inconsistently
+
 # - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
-# - Give players collision mask for each other? Fix feel of impacts in general. Maybe make bump ups set a constant up and out, rather than additive
 
 # - Make sure the overall game area scaling/centering works well with the current display settings.
 

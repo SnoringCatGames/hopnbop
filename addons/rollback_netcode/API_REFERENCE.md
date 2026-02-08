@@ -597,7 +597,7 @@ func _network_process() -> void:
 | last_interaction_type | int | Last interaction type (game-specific enum) |
 | last_interaction_frame_index | int | Frame when interaction occurred |
 | last_interaction_position | Vector2 | Position of interaction |
-| last_interaction_direction | Vector2 | Direction of interaction |
+| last_interaction_velocity | Vector2 | Bounce velocity of interaction |
 
 ### Enums
 

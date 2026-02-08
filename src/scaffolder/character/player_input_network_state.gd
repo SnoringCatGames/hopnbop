@@ -18,7 +18,7 @@ const _synced_properties_and_rollback_diff_thresholds := {
 	last_interaction_type = 0,
 	last_interaction_frame_index = 0,
 	last_interaction_position = 0.001,
-	last_interaction_direction = 0.001,
+	last_interaction_velocity = 1.0,
 }
 
 
@@ -28,7 +28,7 @@ func _get_default_values() -> Array:
 		ClientInteractionType.NONE, # last_interaction_type
 		-1, # last_interaction_frame_index
 		Vector2.ZERO, # last_interaction_position
-		Vector2.ZERO, # last_interaction_direction
+		Vector2.ZERO, # last_interaction_velocity
 	]
 
 
