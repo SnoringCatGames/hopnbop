@@ -1,6 +1,6 @@
 @tool
 extends GutTest
-## Unit tests for ReconcilableNetworkedState.
+## Unit tests for ReconcilableState.
 ##
 ## Phase 1 tests focus on mismatch detection - the logic that determines when
 ## rollbacks should trigger.
@@ -14,7 +14,7 @@ func after_each():
 
 
 ## Test helper that exposes protected mismatch detection for testing.
-class TestableNetworkedState extends ReconcilableNetworkedState:
+class TestableNetworkedState extends ReconcilableState:
 	var test_position := Vector2.ZERO
 	var test_velocity := Vector2.ZERO
 	var test_health := 100
@@ -490,7 +490,7 @@ class TestStatePacking:
 		entity.test_name = "player"
 
 		# Set the _is_packing_state_locally flag to prevent the packed_state setter
-		# from triggering _handle_new_authoritative_state() which would unpack
+		# from triggering _handle_new_state_from_network() which would unpack
 		# the state automatically before we can test the unpacking explicitly
 		entity._is_packing_state_locally = true
 		entity.packed_state = packed_state_to_restore
@@ -557,7 +557,7 @@ class TestStatePacking:
 		network_state[3] = 12.0
 		network_state[4] = true
 		network_state[5] = "player"
-		network_state[6] = ReconcilableNetworkedState.FrameAuthority.Type.AUTHORITATIVE
+		network_state[6] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 		network_state[7] = base_frame
 
 		# Pack into buffer
@@ -566,10 +566,10 @@ class TestStatePacking:
 		# Verify buffer state was created with AUTHORITATIVE marker
 		var buffer_state: Array = entity._rollback_buffer.get_at(base_frame)
 
-		# Last element should be FrameAuthority.Type.AUTHORITATIVE (1)
+		# Last element should be FrameAuthority.AUTHORITATIVE (1)
 		assert_eq(
 			buffer_state[buffer_state.size() - 1],
-			ReconcilableNetworkedState.FrameAuthority.Type.AUTHORITATIVE,
+			ReconcilableState.FrameAuthority.AUTHORITATIVE,
 			"Buffer state should have AUTHORITATIVE marker",
 		)
 
@@ -681,7 +681,7 @@ class TestBufferStateRestoration:
 		frame_state[3] = 12.0
 		frame_state[4] = true
 		frame_state[5] = "test"
-		frame_state[6] = ReconcilableNetworkedState.FrameAuthority.Type.PREDICTED
+		frame_state[6] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 
 		# Record at test frame
 		entity._record_buffer_frame(test_frame, frame_state)
@@ -705,7 +705,7 @@ class TestBufferStateRestoration:
 		frame_state[3] = 13.5
 		frame_state[4] = false
 		frame_state[5] = "restored"
-		frame_state[6] = ReconcilableNetworkedState.FrameAuthority.Type.AUTHORITATIVE
+		frame_state[6] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		entity._rollback_buffer.set_at(test_frame, frame_state)
 
@@ -720,7 +720,7 @@ class TestBufferStateRestoration:
 		)
 		assert_eq(
 			entity.frame_authority,
-			ReconcilableNetworkedState.FrameAuthority.Type.AUTHORITATIVE,
+			ReconcilableState.FrameAuthority.AUTHORITATIVE,
 			"Frame authority should be restored",
 		)
 
@@ -739,7 +739,7 @@ class TestBufferStateRestoration:
 		state_a[3] = 10.0
 		state_a[4] = true
 		state_a[5] = "frame_a"
-		state_a[6] = ReconcilableNetworkedState.FrameAuthority.Type.PREDICTED
+		state_a[6] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 
 		entity._rollback_buffer.set_at(frame_a, state_a)
 
@@ -751,7 +751,7 @@ class TestBufferStateRestoration:
 		state_b[3] = 10.0
 		state_b[4] = true
 		state_b[5] = "frame_b"
-		state_b[6] = ReconcilableNetworkedState.FrameAuthority.Type.PREDICTED
+		state_b[6] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 
 		entity._record_buffer_frame(frame_b, state_b)
 
@@ -766,18 +766,18 @@ class TestBufferStateRestoration:
 	func test_frame_authority_defaults_to_unknown():
 		# When _pre_network_process is called, frame_authority resets
 		entity.frame_authority = (
-			ReconcilableNetworkedState.FrameAuthority.Type.AUTHORITATIVE
+			ReconcilableState.FrameAuthority.AUTHORITATIVE
 		)
 
 		# Simulate _pre_network_process
 		entity.frame_index = Netcode.server_frame_index
 		entity.frame_authority = (
-			ReconcilableNetworkedState.FrameAuthority.Type.UNKNOWN
+			ReconcilableState.FrameAuthority.UNKNOWN
 		)
 
 		assert_eq(
 			entity.frame_authority,
-			ReconcilableNetworkedState.FrameAuthority.Type.UNKNOWN,
+			ReconcilableState.FrameAuthority.UNKNOWN,
 			"Frame authority should reset to UNKNOWN",
 		)
 
@@ -808,7 +808,7 @@ class TestBufferStateRestoration:
 		state[3] = 10.0
 		state[4] = true
 		state[5] = "test"
-		state[6] = ReconcilableNetworkedState.FrameAuthority.Type.AUTHORITATIVE
+		state[6] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 
 		entity._rollback_buffer.set_at(test_frame, state)
 
@@ -820,12 +820,12 @@ class TestBufferStateRestoration:
 
 		var retrieved_state: Array = entity._rollback_buffer.get_at(test_frame)
 		var authority := (
-			retrieved_state[retrieved_state.size() - 1] as ReconcilableNetworkedState.FrameAuthority
+			retrieved_state[retrieved_state.size() - 1] as ReconcilableState.FrameAuthority
 		)
 
 		assert_eq(
 			authority,
-			ReconcilableNetworkedState.FrameAuthority.Type.AUTHORITATIVE,
+			ReconcilableState.FrameAuthority.AUTHORITATIVE,
 			"Frame should have AUTHORITATIVE marker",
 		)
 
@@ -840,7 +840,7 @@ class TestBufferStateRestoration:
 		state[3] = 10.0
 		state[4] = true
 		state[5] = "test"
-		state[6] = ReconcilableNetworkedState.FrameAuthority.Type.PREDICTED
+		state[6] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 
 		entity._rollback_buffer.set_at(50, state)
 
@@ -1082,18 +1082,18 @@ class TestPropertyConfiguration:
 		var current_frame := Netcode.server_frame_index
 		entity.record_initial_state()
 
-		# All frames should be marked as PREDICTED
+		# All frames should be marked as CLIENT_PREDICTED
 		for frame_offset in range(-2, 1):
 			var target_frame := current_frame + frame_offset
 			var frame_state: Array = (
 				entity._rollback_buffer.get_at(target_frame)
 			)
 			var authority := (
-				frame_state[frame_state.size() - 1] as ReconcilableNetworkedState.FrameAuthority
+				frame_state[frame_state.size() - 1] as ReconcilableState.FrameAuthority
 			)
 
 			assert_eq(
 				authority,
-				ReconcilableNetworkedState.FrameAuthority.Type.PREDICTED,
-				"Frame %d should be marked as PREDICTED" % target_frame,
+				ReconcilableState.FrameAuthority.CLIENT_PREDICTED,
+				"Frame %d should be marked as CLIENT_PREDICTED" % target_frame,
 			)

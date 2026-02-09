@@ -42,7 +42,7 @@ class TestClientPrediction:
 			state[1] = 0.0 # y position
 			state[2] = 10.0 # x velocity
 			state[3] = 0.0 # y velocity
-			state[4] = ReconcilableState.FrameAuthority.PREDICTED
+			state[4] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			client_buffer.set_at(i, state)
 
 		# Server is only at frame 5.
@@ -83,7 +83,7 @@ class TestClientPrediction:
 			state[1] = 0.0
 			state[2] = 10.0
 			state[3] = 0.0
-			state[4] = ReconcilableState.FrameAuthority.PREDICTED
+			state[4] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			client_buffer.set_at(i, state)
 
 		var client_pos_10_before: float = client_buffer.get_at(10)[0]
@@ -108,7 +108,7 @@ class TestClientPrediction:
 			new_state[1] = 0.0
 			new_state[2] = prev_state[2]
 			new_state[3] = 0.0
-			new_state[4] = ReconcilableState.FrameAuthority.PREDICTED
+			new_state[4] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			client_buffer.set_at(i, new_state)
 
 		var client_pos_10_after: float = client_buffer.get_at(10)[0]
@@ -140,7 +140,7 @@ class TestOutOfOrderPackets:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i * 5)
 			state[1] = 0.0
-			state[2] = ReconcilableState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			buffer.set_at(i, state)
 
 		# Server packet for frame 10 arrives late (client is already at
@@ -169,7 +169,7 @@ class TestOutOfOrderPackets:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i)
 			state[1] = 0.0
-			state[2] = ReconcilableState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			buffer.append(state)
 
 		# Packet for frame 5 arrives (too old, beyond buffer capacity).
@@ -311,7 +311,7 @@ class TestFrameCatchup:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i)
 			state[1] = 0.0
-			state[2] = ReconcilableState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			buffer.set_at(i, state)
 
 		assert_eq(buffer.get_latest_index(), 5)
@@ -326,10 +326,10 @@ class TestFrameCatchup:
 		for i in range(6, 21):
 			var state: Array = buffer.get_at(i)
 			assert_not_null(state)
-			# Should be marked as PREDICTED.
+			# Should be marked as CLIENT_PREDICTED.
 			assert_eq(
 				state[2],
-				ReconcilableState.FrameAuthority.PREDICTED
+				ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			)
 
 	func test_handles_burst_of_updates():

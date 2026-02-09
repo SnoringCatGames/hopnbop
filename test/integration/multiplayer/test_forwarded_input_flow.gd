@@ -279,7 +279,7 @@ class TestRollbackIntegration:
 		state[2] = 150 # last_interaction_frame_index
 		state[3] = Vector2.ZERO # last_interaction_position
 		state[4] = Vector2.ZERO # last_interaction_velocity
-		state[5] = ReconcilableState.FrameAuthority.PREDICTED # frame_authority
+		state[5] = ReconcilableState.FrameAuthority.SERVER_PREDICTED # frame_authority
 
 		forwarded_input._rollback_buffer.set_at(test_frame, state)
 
@@ -304,7 +304,7 @@ class TestRollbackIntegration:
 		)
 		assert_eq(
 			forwarded_input.frame_authority,
-			ReconcilableState.FrameAuthority.PREDICTED,
+			ReconcilableState.FrameAuthority.SERVER_PREDICTED,
 			"Should restore frame authority from buffer",
 		)
 

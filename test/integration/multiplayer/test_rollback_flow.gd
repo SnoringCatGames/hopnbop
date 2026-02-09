@@ -39,7 +39,7 @@ class TestFrameSimulation:
 			state[0] = i * velocity * delta # x position
 			state[1] = 0.0 # y position
 			state[2] = velocity
-			state[3] = ReconcilableState.FrameAuthority.PREDICTED
+			state[3] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 
 			buffer.set_at(frame_index, state)
 			frame_index += 1
@@ -58,7 +58,7 @@ class TestFrameSimulation:
 			state[0] = 0.0
 			state[1] = 0.0
 			state[2] = 0.0
-			state[3] = ReconcilableState.FrameAuthority.PREDICTED
+			state[3] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			buffer.append(state)
 
 		# Now append a specific state at frame 10.
@@ -79,8 +79,8 @@ class TestFrameSimulation:
 			assert_eq(state[0], 90.0, "Backfilled position should match")
 			assert_eq(
 				state[3],
-				ReconcilableState.FrameAuthority.PREDICTED,
-                "Backfilled state should be PREDICTED"
+				ReconcilableState.FrameAuthority.CLIENT_PREDICTED,
+                "Backfilled state should be CLIENT_PREDICTED"
 			)
 
 
@@ -106,7 +106,7 @@ class TestRollbackReconciliation:
 			state[0] = i * 5.0 # Client predicted position
 			state[1] = 0.0
 			state[2] = 5.0
-			state[3] = ReconcilableState.FrameAuthority.PREDICTED
+			state[3] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			buffer.set_at(i, state)
 
 		# Server sends authoritative correction for frame 5 with different
@@ -142,7 +142,7 @@ class TestRollbackReconciliation:
 			state[0] = i * 10.0
 			state[1] = 0.0
 			state[2] = 10.0
-			state[3] = ReconcilableState.FrameAuthority.PREDICTED
+			state[3] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			buffer.set_at(i, state)
 
 		# Record predicted position at frame 10.
@@ -165,7 +165,7 @@ class TestRollbackReconciliation:
 			new_state[0] = prev_state[0] + prev_state[2] * delta
 			new_state[1] = 0.0
 			new_state[2] = prev_state[2]
-			new_state[3] = ReconcilableState.FrameAuthority.PREDICTED
+			new_state[3] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			buffer.set_at(i, new_state)
 
 		# Verify that frame 10 position has changed.
@@ -197,7 +197,7 @@ class TestBufferWraparound:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i)
 			state[1] = float(i * 2)
-			state[2] = ReconcilableState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			buffer.append(state)
 
 		# Only the last 10 frames should be accessible.
@@ -219,7 +219,7 @@ class TestBufferWraparound:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i)
 			state[1] = 0.0
-			state[2] = ReconcilableState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			buffer.append(state)
 
 		# Server sends correction for frame 25 (still within buffer).
@@ -323,10 +323,10 @@ class TestLargeGapBackfill:
 		var state_500: Array = buffer.get_at(500)
 		assert_eq(state_500[0], 999.0)
 		assert_eq(state_500[1], 888.0)
-		# But should be marked as PREDICTED.
+		# But should be marked as CLIENT_PREDICTED.
 		assert_eq(
 			state_500[2],
-			ReconcilableState.FrameAuthority.PREDICTED
+			ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 		)
 
 	func test_handles_negative_indices_correctly():

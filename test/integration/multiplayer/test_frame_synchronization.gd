@@ -79,7 +79,7 @@ class TestFrameSynchronization:
 			client_state[1] = 0.0
 			client_state[2] = current_frame
 			client_state[3] = \
-				ReconcilableState.FrameAuthority.PREDICTED
+				ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			client_buffer.append(client_state)
 
 			var server_state := ArrayPool.acquire(4)
@@ -144,7 +144,7 @@ class TestLatencyScenarios:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i)
 			state[1] = 0.0
-			state[2] = ReconcilableState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			buffer.set_at(i, state)
 
 		# Server state arrives for frame 4.
@@ -168,7 +168,7 @@ class TestLatencyScenarios:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i)
 			state[1] = 0.0
-			state[2] = ReconcilableState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			buffer.set_at(i, state)
 
 		# Server state arrives for frame 14.
@@ -217,7 +217,7 @@ class TestFrameSkipDetection:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i)
 			state[1] = 0.0
-			state[2] = ReconcilableState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			buffer.set_at(i, state)
 
 		var last_frame := buffer.get_latest_index()
@@ -234,7 +234,7 @@ class TestFrameSkipDetection:
 			var state := ArrayPool.acquire(3)
 			state[0] = float(i * 5)
 			state[1] = 0.0
-			state[2] = ReconcilableState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			buffer.set_at(i, state)
 
 		# Jump to frame 15 (skipping 6-14).
@@ -246,10 +246,10 @@ class TestFrameSkipDetection:
 			var state: Array = buffer.get_at(i)
 			# Should have last known state.
 			assert_eq(state[0], float(5 * 5))
-			# Should be marked PREDICTED.
+			# Should be marked CLIENT_PREDICTED.
 			assert_eq(
 				state[2],
-				ReconcilableState.FrameAuthority.PREDICTED
+				ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			)
 
 

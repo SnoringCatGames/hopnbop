@@ -137,7 +137,7 @@ class TestBackfill:
 			var state := ArrayPool.acquire(3)
 			state[0] = 0
 			state[1] = 0
-			state[2] = ReconcilableState.FrameAuthority.PREDICTED
+			state[2] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			buffer.append(state)
 
 		# Append state at frame 5 with specific values.
@@ -159,12 +159,12 @@ class TestBackfill:
 
 		assert_eq(state_6[0], 100)
 		assert_eq(state_6[1], 200)
-		# Backfilled states should be PREDICTED.
-		assert_eq(state_6[2], ReconcilableState.FrameAuthority.PREDICTED)
+		# Backfilled states should be CLIENT_PREDICTED.
+		assert_eq(state_6[2], ReconcilableState.FrameAuthority.CLIENT_PREDICTED)
 
 		assert_eq(state_7[0], 100)
 		assert_eq(state_7[1], 200)
-		assert_eq(state_7[2], ReconcilableState.FrameAuthority.PREDICTED)
+		assert_eq(state_7[2], ReconcilableState.FrameAuthority.CLIENT_PREDICTED)
 
 
 	func test_backfill_does_nothing_if_already_filled():
@@ -201,7 +201,7 @@ class TestBackfill:
 		var state_100: Array = buffer.get_at(100)
 		assert_eq(state_100[0], 999)
 		assert_eq(state_100[1], 888)
-		assert_eq(state_100[2], ReconcilableState.FrameAuthority.PREDICTED)
+		assert_eq(state_100[2], ReconcilableState.FrameAuthority.CLIENT_PREDICTED)
 
 
 class TestSetAndGet:

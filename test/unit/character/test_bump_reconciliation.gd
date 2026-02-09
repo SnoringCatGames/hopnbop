@@ -159,7 +159,7 @@ class TestBumpReconciliation:
 
 		# Manually create rollback buffer (bypasses time initialization check).
 		var default_values := state._get_default_values().duplicate()
-		default_values.append(ReconcilableState.FrameAuthority.PREDICTED)
+		default_values.append(ReconcilableState.FrameAuthority.CLIENT_PREDICTED)
 		state._rollback_buffer = RollbackBuffer.new(
 			90, # capacity (typical rollback buffer size)
 			0, # current_frame_index
@@ -368,7 +368,7 @@ class TestBumpReconciliationEdgeCases:
 
 		# Manually create rollback buffer (bypasses time initialization check).
 		var default_values := state._get_default_values().duplicate()
-		default_values.append(ReconcilableState.FrameAuthority.PREDICTED)
+		default_values.append(ReconcilableState.FrameAuthority.CLIENT_PREDICTED)
 		state._rollback_buffer = RollbackBuffer.new(
 			90, # capacity (typical rollback buffer size)
 			0, # current_frame_index
