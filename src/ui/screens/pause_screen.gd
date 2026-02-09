@@ -40,8 +40,11 @@ func _update_pause_info() -> void:
 	# Update local peer's pauses remaining.
 	var local_peer_id := multiplayer.get_unique_id()
 	var local_pauses_used: int = 0
-	if G.game_panel.match_state.pauses_used_by_peer.has(local_peer_id):
-		local_pauses_used = G.game_panel.match_state.pauses_used_by_peer[local_peer_id]
+	if G.game_panel.match_state.pauses_used_by_peer.has(
+		local_peer_id
+	):
+		local_pauses_used = G.game_panel.match_state \
+			.pauses_used_by_peer[local_peer_id]
 
 	var local_remaining := maxi(0, max_pauses - local_pauses_used)
 	%LocalPausesRemainingLabel.text = "Your pauses remaining: %d/%d" % [

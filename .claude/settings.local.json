@@ -90,7 +90,8 @@
       "Bash(c:)",
       "Bash(findstr:*)",
       "Bash(del \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\\\\addons\\\\rollback_netcode\\\\utils\\\\netcode_utils.gd\" \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\\\\addons\\\\rollback_netcode\\\\utils\\\\netcode_utils.gd.uid\")",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(git -C \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\" diff HEAD -- settings.tres)"
     ]
   }
 }

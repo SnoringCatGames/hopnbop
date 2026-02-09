@@ -66,6 +66,8 @@ func _ready() -> void:
 		session_manager.session_provider.all_players_connected.connect(
 			_server_on_all_players_connected
 		)
+		Netcode.frame_driver.server_pause_validator = \
+			_server_validate_pause_request
 
 	if Netcode.is_client:
 		if Netcode.is_connected_to_server:
@@ -210,8 +212,26 @@ func _on_session_established(player_ids: Array[int]) -> void:
 func _client_on_pause_state_changed(is_paused: bool, _initiator_peer_id: int) -> void:
 	Netcode.check_is_client()
 
-	# When game unpauses, transition from LOADING to GAME.
-	if not is_paused:
+	if is_paused:
+		# Update pauses_used_by_peer immediately from the RPC data,
+		# so the pause screen has accurate counts before
+		# MatchStateSynchronizer replication arrives.
+		if _initiator_peer_id > 0:
+			G.match_state.pauses_used_by_peer[_initiator_peer_id] = \
+				Netcode.frame_driver._pause_initiator_pauses_used
+
+		# Open pause screen if game is active and we're in-game.
+		if (
+			G.client_session.is_game_active and
+			not G.client_session.is_game_loading and
+			G.screens.current_screen == ScreensMain.ScreenType.GAME
+		):
+			G.screens.client_open_screen(ScreensMain.ScreenType.PAUSE)
+	else:
+		# Return to game from pause screen.
+		if G.screens.current_screen == ScreensMain.ScreenType.PAUSE:
+			G.screens.client_open_screen(ScreensMain.ScreenType.GAME)
+		# Transition from LOADING to GAME when server unpauses.
 		_client_transition_to_game_if_ready()
 
 
@@ -432,6 +452,36 @@ func server_end_match() -> void:
 	_server_destroy_level(G.level)
 
 
+func _server_validate_pause_request(peer_id: int) -> Dictionary:
+	Netcode.check_is_server()
+
+	# Block pauses after match has ended.
+	if G.match_state.is_match_ended:
+		Netcode.print(
+			"Client %d pause rejected: match has ended" %
+			peer_id,
+			NetworkLogger.CATEGORY_SYNC,
+		)
+		return { "allowed": false }
+
+	# Check pause limit.
+	var max_pauses := G.settings.max_pauses_per_client
+	var used: int = \
+		G.match_state.pauses_used_by_peer.get(peer_id, 0)
+	if used >= max_pauses:
+		Netcode.print(
+			"Client %d pause rejected: limit reached (%d/%d)" %
+			[peer_id, used, max_pauses],
+			NetworkLogger.CATEGORY_SYNC,
+		)
+		return { "allowed": false }
+
+	# Increment and allow.
+	used += 1
+	G.match_state.pauses_used_by_peer[peer_id] = used
+	return { "allowed": true, "pauses_used": used }
+
+
 func _server_on_all_players_connected() -> void:
 	Netcode.check_is_server()
 
@@ -478,6 +528,10 @@ func _server_on_preview_peer_connected(_peer_id: int) -> void:
 		Netcode.frame_driver.server_frame_index = 0
 		# Start grace period to suppress expected frame sync warnings.
 		Netcode.frame_driver._frame_reset_time_usec = Time.get_ticks_usec()
+		# Reset match start countdown state from previous match.
+		Netcode.frame_driver.match_start_countdown_end_frame_index = -1
+		Netcode.frame_driver._has_match_start_countdown_started = false
+		Netcode.frame_driver._has_match_start_countdown_ended = false
 		# Reconnect preview mode auto-unpause signal for new match.
 		Netcode.frame_driver.server_reset_preview_mode_unpause()
 		# Get selected level (may use preferences from preview mode).

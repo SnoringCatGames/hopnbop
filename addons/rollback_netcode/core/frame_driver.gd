@@ -48,6 +48,9 @@ extends Node
 
 # In player.gd, we've recently made a change to calculate and assign the respawn position immediately when dying, rather than waiting until the player respawns. However, it looks like we may _also_ be then assigning that position again when respawning? I think the existence of the _pending_respawn_position property in general may be a hack? The initial position assignment upon death should be sufficient, right? I think we need to update this position assignment (upon death) to also explicitely record in the character_state_from_server node that the current frame is AUTHORITATIVE. This should also record the velocity as zero.
 
+# - I lost that poor-network-and-process conditions tracker....
+#   - Was that implemented? Behind an F key?
+
 # - Test pause screen.
 
 # - Test that pause limit is enforced.
@@ -523,6 +526,13 @@ var _cumulative_paused_frames := 0
 ## Array of { start_frame: int, end_frame: int, duration_frames: int }
 var _pause_history: Array[Dictionary] = []
 
+## Optional validator for pause requests (server-only). When set, called
+## with (peer_id: int) before executing a client-initiated pause. Must
+## return Dictionary with:
+## - "allowed": bool (false to reject the pause request)
+## - "pauses_used": int (cumulative pause count for the initiator)
+var server_pause_validator: Callable = Callable()
+
 ## Tracks last pause request time for rate limiting (microseconds).
 var _last_pause_request_time_usec := 0
 
@@ -630,6 +640,13 @@ func client_reset() -> void:
 	Netcode.frame_driver.server_frame_index = 0
 	# Start grace period to suppress expected frame sync warnings.
 	Netcode.frame_driver._frame_reset_time_usec = Time.get_ticks_usec()
+	# Start paused so client waits for server's unpause signal
+	# before transitioning from LOADING to GAME screen.
+	Netcode.frame_driver._is_paused = true
+	# Reset match start countdown state from previous match.
+	Netcode.frame_driver.match_start_countdown_end_frame_index = -1
+	Netcode.frame_driver._has_match_start_countdown_started = false
+	Netcode.frame_driver._has_match_start_countdown_ended = false
 
 
 ## Handles peer connections in preview mode to auto-unpause when ready.
@@ -744,12 +761,23 @@ func _server_rpc_client_request_pause() -> void:
 	if current_time - _last_pause_request_time_usec < cooldown_usec:
 		return
 
-	# Emit signal for game to validate pause accounting.
-	# Game should connect to pause_requested signal and handle validation.
+	# Validate with game-level logic (pause limits, match state, etc.).
+	var pauses_used := 0
+	if server_pause_validator.is_valid():
+		var result: Dictionary = server_pause_validator.call(peer_id)
+		if not result.get("allowed", true):
+			Netcode.log.print(
+				"Client %d pause rejected by game validator" %
+				peer_id,
+				NetworkLogger.CATEGORY_SYNC
+			)
+			return
+		pauses_used = result.get("pauses_used", 0)
+
 	pause_requested.emit(peer_id)
 
 	_last_pause_request_time_usec = current_time
-	_server_execute_pause(peer_id, 0)
+	_server_execute_pause(peer_id, pauses_used)
 
 
 ## Client requests server to unpause.

@@ -21,6 +21,10 @@ config/icon="uid://bsrqq2id8rpl8"
 G="*res://src/core/global.gd"
 Netcode="*res://addons/rollback_netcode/core/network_orchestrator.gd"
 
+[display]
+
+window/stretch/mode="canvas_items"
+
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/gamelift_session_manager/plugin.cfg", "res://addons/gut/plugin.cfg", "res://addons/rollback_netcode/plugin.cfg")
