@@ -9,7 +9,7 @@ class TestMatchStateGetPlayerScore:
 	func _make_state_with_players(player_ids: Array) -> GameMatchState:
 		var state = GameMatchState.new()
 		for pid in player_ids:
-			var p = PlayerState.new()
+			var p = GamePlayerState.new()
 			p.player_id = pid
 			state.players_by_id[pid] = p
 		return state

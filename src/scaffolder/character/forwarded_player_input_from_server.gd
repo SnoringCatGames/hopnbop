@@ -68,7 +68,7 @@ func _network_process() -> void:
 func _sync_to_scene_state(previous_state: Array) -> void:
 	# Only sync to scene state for remote players. Local player already has
 	# their own input through PlayerInputFromClient.
-	if is_instance_valid(player.input_from_client):
+	if is_instance_valid(player) and is_instance_valid(player.input_from_client):
 		# Player has local input source, don't override with forwarded input.
 		if not G.is_networked_level_active:
 			# In local mode, input_from_client presence means local control.
@@ -103,7 +103,7 @@ func _sync_from_scene_state() -> void:
 func _reconcile_client_interaction() -> void:
 	# Only reconcile client interactions for remote players. The local player
 	# uses PlayerInputFromClient for client interaction reconciliation.
-	if is_instance_valid(player.input_from_client):
+	if is_instance_valid(player) and is_instance_valid(player.input_from_client):
 		# Player has local input source, don't reconcile via forwarded input.
 		if not G.is_networked_level_active:
 			# In local mode, input_from_client presence means local control.

@@ -582,7 +582,7 @@ func _network_process() -> void:
 | Name | Type | Description |
 |------|------|-------------|
 | frame_index | int | Estimated server frame when this state occurred |
-| frame_authority | FrameAuthority | Whether state is AUTHORITATIVE or PREDICTED |
+| frame_authority | FrameAuthority | Authority level (AUTHORITATIVE, SERVER_PREDICTED, or CLIENT_PREDICTED) |
 | is_server_authoritative | bool | True if server is source of truth |
 | is_client_authoritative | bool | True if client is source of truth |
 | packed_state | Array | State packed for network replication |
@@ -606,8 +606,9 @@ func _network_process() -> void:
 | Value | Description |
 |-------|-------------|
 | UNKNOWN | Authority not yet determined |
-| AUTHORITATIVE | State confirmed by server |
-| PREDICTED | Client-side prediction pending confirmation |
+| AUTHORITATIVE | Server has real input, state is authoritative |
+| SERVER_PREDICTED | Server guessing input (extrapolating), lower confidence |
+| CLIENT_PREDICTED | Client has real input, predicting outcome |
 
 ### Signals
 
@@ -1697,7 +1698,7 @@ Override to support arbitrary indices (allows gaps).
 
 #### backfill_to_with_last_state(target_index: int) -> void
 
-Fill gaps with last-known state marked as PREDICTED.
+Fill gaps with last-known state marked as CLIENT_PREDICTED.
 
 **Parameters:**
 - `target_index` (int): Target frame index
@@ -1706,11 +1707,11 @@ Fill gaps with last-known state marked as PREDICTED.
 
 ```gdscript
 # Create buffer
-var default_state = [Vector2.ZERO, Vector2.ZERO, FrameAuthority.Type.PREDICTED]
+var default_state = [Vector2.ZERO, Vector2.ZERO, ReconcilableState.FrameAuthority.CLIENT_PREDICTED]
 var buffer = RollbackBuffer.new(90, 0, default_state)
 
 # Store frames
-var state_10 = [Vector2(100, 200), Vector2(50, 0), FrameAuthority.Type.AUTHORITATIVE]
+var state_10 = [Vector2(100, 200), Vector2(50, 0), ReconcilableState.FrameAuthority.AUTHORITATIVE]
 buffer.set_at(10, state_10)
 
 # Backfill gaps (frames 1-9 filled with frame 0 state)
@@ -1728,7 +1729,7 @@ var previous = buffer.get_at(-1)  # Default state for frame 0
 - Pre-filled with default state on initialization
 - Supports negative indices: -1 (previous), -2 (pre-previous)
 - Allows arbitrary frame indices (not just sequential)
-- Backfilling fills gaps with last-known PREDICTED state
+- Backfilling fills gaps with last-known CLIENT_PREDICTED state
 - Uses ArrayPool for memory efficiency
 - Critical for rollback reconciliation
 
@@ -1845,34 +1846,35 @@ $Label.text = "FPS: %.1f | Ping: %.1fms | Rollbacks: %.2f/s" % [fps, ping, rollb
 
 ## FrameAuthority
 
-**File:** `core/frame_authority.gd`
+**Defined in:** `core/reconcilable_state.gd`
 
-Frame authority enumeration for rollback netcode.
+Frame authority enumeration for rollback netcode. Distinguishes between
+authoritative server state, server extrapolation (guessing), and client
+prediction.
 
-### Enum
-
-#### Type
+### Enum Values
 
 | Value | Description |
 |-------|-------------|
 | UNKNOWN | Authority is unknown or uninitialized |
-| AUTHORITATIVE | Frame state is authoritative (confirmed by server) |
-| PREDICTED | Frame state is predicted (client-side, pending confirmation) |
+| AUTHORITATIVE | Server has real input, state is authoritative |
+| SERVER_PREDICTED | Server guessing input (extrapolating), lower confidence |
+| CLIENT_PREDICTED | Client has real input, predicting outcome |
 
 ### Usage Example
 
 ```gdscript
-# Import
-const FrameAuthority = preload("res://addons/rollback_netcode/core/frame_authority.gd")
-
-# Use in state
-var frame_authority := FrameAuthority.Type.Type.PREDICTED
+# Access via ReconcilableState class
+var frame_authority := ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 
 # Check authority
-if frame_authority == FrameAuthority.Type.Type.AUTHORITATIVE:
-    # Server-confirmed state
+if frame_authority == ReconcilableState.FrameAuthority.AUTHORITATIVE:
+    # Server-confirmed state with real input
     pass
-elif frame_authority == FrameAuthority.Type.Type.PREDICTED:
+elif frame_authority == ReconcilableState.FrameAuthority.SERVER_PREDICTED:
+    # Server extrapolation (no input yet), may be overridden
+    pass
+elif frame_authority == ReconcilableState.FrameAuthority.CLIENT_PREDICTED:
     # Client prediction, may be rolled back
     pass
 ```
@@ -1880,10 +1882,13 @@ elif frame_authority == FrameAuthority.Type.Type.PREDICTED:
 ### Notes
 
 - Stored in rollback buffer with each frame state
-- Server sends AUTHORITATIVE states
-- Client predictions marked PREDICTED until server confirms
-- Clients ignore PREDICTED states from server (use local predictions instead)
-- Exception: ForwardedPlayerInputFromServer accepts PREDICTED (no local alternative)
+- Server sends AUTHORITATIVE when it has real client input
+- Server sends SERVER_PREDICTED when extrapolating (no input yet)
+- Clients always re-simulate locally as CLIENT_PREDICTED
+- Only AUTHORITATIVE states trigger rollback on mismatch
+- Clients ignore SERVER_PREDICTED states by default (use local predictions)
+- Exception: ForwardedPlayerInputFromServer accepts SERVER_PREDICTED (no local
+  alternative)
 
 ---
 

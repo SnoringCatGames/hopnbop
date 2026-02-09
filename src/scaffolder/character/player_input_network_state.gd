@@ -32,8 +32,8 @@ func _get_default_values() -> Array:
 	]
 
 
-func _handle_new_authoritative_state() -> void:
-	super._handle_new_authoritative_state()
+func _handle_new_state_from_network() -> void:
+	super._handle_new_state_from_network()
 	_reconcile_client_interaction()
 
 

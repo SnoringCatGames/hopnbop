@@ -350,10 +350,16 @@ func _update_collision_mask() -> void:
 		Netcode.frame_driver.server_frame_index <
 			match_start + _SPAWN_FLOOR_COLLISION_PROTECTION_FRAMES
 	)
+	# Use both is_on_floor() (CharacterBody2D physics state) and
+	# surfaces.is_touching_floor (synced network state). The synced state
+	# is essential for remote players: when position is restored from
+	# rollback buffer, is_on_floor() is stale (from previous move_and_slide),
+	# but surfaces.is_touching_floor correctly reflects the server's state.
 	var is_fall_through_floor_bit_enabled := (
 		not surfaces.is_descending_through_floors and
 		(is_in_spawn_protection or
 		is_on_floor() or
+		surfaces.is_touching_floor or
 		velocity.y >= _FALL_THROUGH_FLOOR_COLLISION_FALL_SPEED_THRESHOLD)
 	)
 	set_collision_mask_value(

@@ -555,7 +555,7 @@ var packed_state := [
     Vector2(100, 50),  # position
     Vector2(0, -200),  # velocity
     100,               # health
-    FrameAuthority.Type.AUTHORITATIVE,  # authority flag
+    FrameAuthority.AUTHORITATIVE,  # authority flag
     1234,              # frame_index
 ]
 ```
@@ -588,7 +588,7 @@ func _post_network_process():
 When server state arrives for frame N, client compares against local buffer:
 
 ```gdscript
-func _handle_new_authoritative_state():
+func _handle_new_state_from_network():
     var networked_state = packed_state  # Just received from server
     var local_state = buffer.get_at(frame_index)
 
@@ -607,15 +607,17 @@ func _handle_new_authoritative_state():
 
 ```gdscript
 enum FrameAuthority {
-    UNKNOWN,         # Not yet determined
-    AUTHORITATIVE,   # From authoritative peer (server or input owner)
-    PREDICTED,       # Local prediction (not confirmed)
+    UNKNOWN,           # Not yet determined
+    AUTHORITATIVE,     # Server has real input, state is authoritative
+    SERVER_PREDICTED,  # Server guessing input (extrapolating)
+    CLIENT_PREDICTED,  # Client has real input, predicting outcome
 }
 ```
 
-- Server always sends AUTHORITATIVE
-- Clients predict locally as PREDICTED
-- Authority determines whether to trigger rollback
+- Server sends AUTHORITATIVE when it has real input from the client
+- Server sends SERVER_PREDICTED when extrapolating (no input yet)
+- Clients always re-simulate locally as CLIENT_PREDICTED
+- Only AUTHORITATIVE states trigger rollback on mismatch
 
 ---
 
@@ -681,7 +683,7 @@ After processing frame N, server broadcasts state to all clients:
 # Server: _post_network_process()
 func _pack_networked_state():
     var state := [position, velocity, health]
-    state.append(FrameAuthority.Type.AUTHORITATIVE)
+    state.append(FrameAuthority.AUTHORITATIVE)
     state.append(server_frame_index)
 
     packed_state = state  # MultiplayerSynchronizer replicates this
@@ -693,7 +695,7 @@ Client receives server state sometime later (latency):
 
 ```gdscript
 # Client: Triggered when packed_state changes
-func _handle_new_authoritative_state():
+func _handle_new_state_from_network():
     var state_frame = packed_state[-1]  # Extract frame index
 
     # Store in buffer at correct frame
@@ -798,12 +800,12 @@ func _rollback_and_reprocess():
 
 ```
 Before rollback (frame 105):
-  Buffer[100] = PREDICTED (wrong)
-  Buffer[101] = PREDICTED (based on wrong 100)
-  Buffer[102] = PREDICTED (based on wrong 101)
-  Buffer[103] = PREDICTED
-  Buffer[104] = PREDICTED
-  Buffer[105] = PREDICTED (current)
+  Buffer[100] = CLIENT_PREDICTED (wrong)
+  Buffer[101] = CLIENT_PREDICTED (based on wrong 100)
+  Buffer[102] = CLIENT_PREDICTED (based on wrong 101)
+  Buffer[103] = CLIENT_PREDICTED
+  Buffer[104] = CLIENT_PREDICTED
+  Buffer[105] = CLIENT_PREDICTED (current)
 
 Server state arrives:
   Buffer[100] = AUTHORITATIVE (correct)
@@ -811,21 +813,21 @@ Server state arrives:
 During rollback:
   server_frame_index = 101
   Load Buffer[100] (now correct!)
-  Re-simulate → Buffer[101] = PREDICTED (new, corrected)
+  Re-simulate → Buffer[101] = CLIENT_PREDICTED (new, corrected)
 
   server_frame_index = 102
   Load Buffer[101] (new, corrected)
-  Re-simulate → Buffer[102] = PREDICTED (new, corrected)
+  Re-simulate → Buffer[102] = CLIENT_PREDICTED (new, corrected)
 
   ... continue to frame 105
 
 After rollback:
   Buffer[100] = AUTHORITATIVE (correct)
-  Buffer[101] = PREDICTED (corrected)
-  Buffer[102] = PREDICTED (corrected)
-  Buffer[103] = PREDICTED (corrected)
-  Buffer[104] = PREDICTED (corrected)
-  Buffer[105] = PREDICTED (corrected)
+  Buffer[101] = CLIENT_PREDICTED (corrected)
+  Buffer[102] = CLIENT_PREDICTED (corrected)
+  Buffer[103] = CLIENT_PREDICTED (corrected)
+  Buffer[104] = CLIENT_PREDICTED (corrected)
+  Buffer[105] = CLIENT_PREDICTED (corrected)
 ```
 
 ### Reconciliation Complete
@@ -1850,7 +1852,7 @@ This gives best of both worlds:
 - Packed state replication
 - Mismatch detection thresholds
 - Rollback triggering
-- Authority handling (AUTHORITATIVE vs PREDICTED)
+- Authority handling (AUTHORITATIVE vs SERVER_PREDICTED vs CLIENT_PREDICTED)
 
 **Frame Timing**: 14+ tests covering:
 - Frame index increment
