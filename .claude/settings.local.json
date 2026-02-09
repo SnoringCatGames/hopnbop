@@ -100,7 +100,8 @@
       "Bash(do echo \"=== $file ===\")",
       "Bash(git -C \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\" log --oneline 3061260~5..3061260)",
       "Bash(git -C \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\" diff 3061260..fbebbf8 -- src/scaffolder/character/forwarded_player_input_from_server.gd)",
-      "Bash(git -C \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\" log --oneline 3061260..fbebbf8)"
+      "Bash(git -C \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\" log --oneline 3061260..fbebbf8)",
+      "Bash(git -C \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\" show 3061260:src/scaffolder/character/character_state_from_server.gd)"
     ]
   }
 }

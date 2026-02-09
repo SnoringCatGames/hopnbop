@@ -88,11 +88,10 @@ func _get_is_server_authoritative() -> bool:
 
 
 func _should_accept_predicted_states() -> bool:
-	# Accept SERVER_PREDICTED states only for remote clients (not the owner).
-	# - Owning client: Has authoritative input, so CLIENT_PREDICTED is better
-	#   than SERVER_PREDICTED. Reject SERVER_PREDICTED to keep local prediction.
-	# - Remote client: Only has forwarded input, so SERVER_PREDICTED is useful
-	#   for staying synced with the server's trajectory.
+	# Accept SERVER_PREDICTED states only for remote players (not the owning
+	# client). The owning client has authoritative input and runs its own
+	# prediction, so accepting server extrapolations would overwrite the
+	# client's more-accurate predicted state and cause jitter.
 	return Netcode.is_client and not is_authority_for_input_from_client
 
 
@@ -535,6 +534,15 @@ func _apply_input_to_character(input_source: ReconcilableState) -> void:
 	# to the character.
 	if input_source is PlayerInputNetworkState:
 		var input := input_source as PlayerInputNetworkState
+		# Zero previous_bitmask to match the behavior of _collect_actions()
+		# (which calls actions.clear()) and the server (where
+		# previous_bitmask is never set from the buffer). Without this,
+		# rollback re-simulation would have previous_bitmask = buffer[N-2]
+		# (set by _sync_to_scene_state), causing just_triggered_jump to
+		# return false when the button is held continuously. The server and
+		# normal play path both have previous_bitmask = 0, making
+		# just_triggered_jump behave like is_triggering_jump.
+		character.actions.previous_bitmask = 0
 		character.actions.bitmask = input.actions
 		match input.last_interaction_type:
 			PlayerInputNetworkState.ClientInteractionType.NONE:
@@ -574,6 +582,8 @@ func _reconcile_server_interaction() -> void:
 	# Update local interaction properties from current frame's buffer.
 	# This is critical for rollback re-simulation: _pre_network_process()
 	# unpacked frame N-1, so is_dead would return false without this update.
+	# Interaction properties are safe to restore from buffer because they are
+	# set by explicit injection (record_interaction), not by simulation.
 	last_interaction_type = buffer_interaction_type
 	last_interaction_frame_index = buffer_interaction_frame
 	last_interaction_position = _get_frame_property(
@@ -581,9 +591,15 @@ func _reconcile_server_interaction() -> void:
 	last_interaction_velocity = _get_frame_property(
 		frame_state, &"last_interaction_velocity")
 
-	# For DIE and SPAWN, also restore position/velocity from buffer.
-	# These interactions set authoritative position that must be preserved
-	# through rollback re-simulation.
+	# Only reconcile if this is the onset frame (interaction_frame == current_frame).
+	if buffer_interaction_frame != current_frame:
+		return
+
+	# For DIE and SPAWN onset, restore authoritative position/velocity from
+	# buffer. This is only safe on the onset frame where the buffer has
+	# injected authoritative data. On non-onset frames, the buffer may have
+	# stale data from a previous simulation that hasn't been re-simulated yet
+	# during rollback, which would overwrite correctly re-simulated positions.
 	if buffer_interaction_type == ServerInteractionType.DIE or \
 		buffer_interaction_type == ServerInteractionType.SPAWN:
 		position = _get_frame_property(frame_state, &"position")
@@ -591,10 +607,6 @@ func _reconcile_server_interaction() -> void:
 		if Netcode.ensure_valid(character):
 			character.position = position
 			character.velocity = velocity
-
-	# Only reconcile if this is the onset frame (interaction_frame == current_frame).
-	if buffer_interaction_frame != current_frame:
-		return
 
 	var should_process := _should_reconcile_interaction(
 		current_frame,
