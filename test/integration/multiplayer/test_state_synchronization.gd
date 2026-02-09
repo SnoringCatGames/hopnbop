@@ -326,10 +326,10 @@ class TestFrameCatchup:
 		for i in range(6, 21):
 			var state: Array = buffer.get_at(i)
 			assert_not_null(state)
-			# Should be marked as CLIENT_PREDICTED.
+			# Should be marked as SERVER_PREDICTED (tests run as server).
 			assert_eq(
 				state[2],
-				ReconcilableState.FrameAuthority.CLIENT_PREDICTED
+				ReconcilableState.FrameAuthority.SERVER_PREDICTED
 			)
 
 	func test_handles_burst_of_updates():

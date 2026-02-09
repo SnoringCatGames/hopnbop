@@ -1698,7 +1698,7 @@ Override to support arbitrary indices (allows gaps).
 
 #### backfill_to_with_last_state(target_index: int) -> void
 
-Fill gaps with last-known state marked as CLIENT_PREDICTED.
+Fill gaps with last-known state marked as predicted (SERVER_PREDICTED on server, CLIENT_PREDICTED on client).
 
 **Parameters:**
 - `target_index` (int): Target frame index
@@ -1729,7 +1729,7 @@ var previous = buffer.get_at(-1)  # Default state for frame 0
 - Pre-filled with default state on initialization
 - Supports negative indices: -1 (previous), -2 (pre-previous)
 - Allows arbitrary frame indices (not just sequential)
-- Backfilling fills gaps with last-known CLIENT_PREDICTED state
+- Backfilling fills gaps with last-known predicted state (SERVER_PREDICTED or CLIENT_PREDICTED)
 - Uses ArrayPool for memory efficiency
 - Critical for rollback reconciliation
 

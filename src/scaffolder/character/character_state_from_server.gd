@@ -22,7 +22,10 @@ var is_authority_for_state_from_server: bool:
 
 var is_authority_for_input_from_client: bool:
 	get:
-		return is_instance_valid(input_from_client) and input_from_client.is_multiplayer_authority()
+		return (
+			is_instance_valid(input_from_client) and
+			input_from_client.is_multiplayer_authority()
+		)
 
 var position := Vector2.ZERO
 var velocity := Vector2.ZERO
@@ -85,12 +88,12 @@ func _get_is_server_authoritative() -> bool:
 
 
 func _should_accept_predicted_states() -> bool:
-	# Accept PREDICTED server states on clients to stay synced with
-	# server's predicted trajectory. This reduces snap-back when
-	# AUTHORITATIVE states arrive, since the client's prediction is
-	# already close to the server's. Remote clients especially need this
-	# since they only see forwarded input.
-	return Netcode.is_client
+	# Accept SERVER_PREDICTED states only for remote clients (not the owner).
+	# - Owning client: Has authoritative input, so CLIENT_PREDICTED is better
+	#   than SERVER_PREDICTED. Reject SERVER_PREDICTED to keep local prediction.
+	# - Remote client: Only has forwarded input, so SERVER_PREDICTED is useful
+	#   for staying synced with the server's trajectory.
+	return Netcode.is_client and not is_authority_for_input_from_client
 
 
 func _should_create_debug_buffer() -> bool:
@@ -220,7 +223,7 @@ func _network_process() -> void:
 		return
 
 	# Handle actions (from a client).
-	var has_auth_input := input_source._has_authoritative_state_for_current_frame()
+	var has_authoritative_input := input_source._has_authoritative_state_for_current_frame()
 
 	# Check if we should use predicted input at current frame. Only use it if
 	# we don't have fresher authoritative input at the previous frame to
@@ -246,7 +249,7 @@ func _network_process() -> void:
 		# data to extrapolate from.
 		should_use_predicted_input = not prev_frame_is_auth
 
-	if has_auth_input or should_use_predicted_input:
+	if has_authoritative_input or should_use_predicted_input:
 		# Use received input from buffer (either authoritative from
 		# PlayerInputFromClient, or predicted from ForwardedPlayerInputFromServer).
 		input_source._unpack_buffer_state(frame_index)
@@ -278,7 +281,7 @@ func _network_process() -> void:
 			input_source._unpack_buffer_state(frame_index - 1)
 			# Copy input from source to character.
 			_apply_input_to_character(input_source)
-			input_source.frame_authority = ReconcilableState.FrameAuthority.PREDICTED
+			input_source.frame_authority = ReconcilableState.FrameAuthority.SERVER_PREDICTED
 			# Update surface attachment state based on the input we just loaded.
 			character.surfaces.update_actions()
 			if Netcode.log.is_verbose:
@@ -327,8 +330,8 @@ func _network_process() -> void:
 		# Handle scene state (from the server).
 		if is_authority_for_state_from_server:
 			# The server processes movement. Mark as authoritative only if we have
-			# authoritative input, otherwise mark as predicted to avoid overriding
-			# client predictions with server extrapolations.
+			# authoritative input, otherwise mark as SERVER_PREDICTED to avoid
+			# overriding client predictions with server extrapolations.
 			character._apply_movement()
 			frame_authority = input_from_client.frame_authority
 		else:
@@ -340,7 +343,7 @@ func _network_process() -> void:
 			var pos_before := character.position
 			var vel_before := character.velocity
 			character._apply_movement()
-			frame_authority = ReconcilableState.FrameAuthority.PREDICTED
+			frame_authority = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			if Netcode.log.is_verbose and (
 				character.position.distance_to(pos_before) > 0.1 or
 				character.velocity.distance_to(vel_before) > 0.1
@@ -568,6 +571,27 @@ func _reconcile_server_interaction() -> void:
 	if buffer_interaction_type == ServerInteractionType.NONE:
 		return
 
+	# Update local interaction properties from current frame's buffer.
+	# This is critical for rollback re-simulation: _pre_network_process()
+	# unpacked frame N-1, so is_dead would return false without this update.
+	last_interaction_type = buffer_interaction_type
+	last_interaction_frame_index = buffer_interaction_frame
+	last_interaction_position = _get_frame_property(
+		frame_state, &"last_interaction_position")
+	last_interaction_velocity = _get_frame_property(
+		frame_state, &"last_interaction_velocity")
+
+	# For DIE and SPAWN, also restore position/velocity from buffer.
+	# These interactions set authoritative position that must be preserved
+	# through rollback re-simulation.
+	if buffer_interaction_type == ServerInteractionType.DIE or \
+		buffer_interaction_type == ServerInteractionType.SPAWN:
+		position = _get_frame_property(frame_state, &"position")
+		velocity = _get_frame_property(frame_state, &"velocity")
+		if Netcode.ensure_valid(character):
+			character.position = position
+			character.velocity = velocity
+
 	# Only reconcile if this is the onset frame (interaction_frame == current_frame).
 	if buffer_interaction_frame != current_frame:
 		return
@@ -699,36 +723,76 @@ func _reconcile_spawn_interaction(p_frame_index: int) -> void:
 ## Override of base class method. This ensures server-side interactions are
 ## immediately injected into the buffer at the current frame to protect against
 ## rollback clearing them before _post_network_process() can pack them.
+##
+## For DIE interactions, use record_death_interaction() instead to also set
+## position and velocity.
 func record_interaction(
 	interaction_type: int,
 	p_frame_index: int,
 	p_position: Vector2,
-	velocity: Vector2
+	p_velocity: Vector2
 ) -> void:
 	# Inject into buffer FIRST before setting local properties.
 	# This prevents rollback from clearing the interaction before
 	# _post_network_process() can pack it.
-	_inject_position_into_buffer(
+	_inject_authoritative_state_into_buffer(
 		p_frame_index,
 		p_position,
+		p_velocity,
 		interaction_type,
 		p_frame_index,
 		p_position,
-		velocity
+		p_velocity
 	)
 
 	# Then call base class to set local properties.
-	super.record_interaction(interaction_type, p_frame_index, p_position, velocity)
+	super.record_interaction(interaction_type, p_frame_index, p_position, p_velocity)
 
 
-## Sets the position and interaction properties in the rollback buffer at the
-## specified frame. Used for lag-compensated position injection.
+## Records a DIE interaction with separate spawn and death positions.
 ##
-## This function explicitly sets interaction properties in the buffer to
-## prevent them from being overwritten with stale NONE values.
-func _inject_position_into_buffer(
+## For death, the character is immediately moved to the spawn position (while
+## hidden), but the interaction position records where death occurred (for
+## visual effects like particles). This method handles both correctly.
+func record_death_interaction(
+	p_frame_index: int,
+	spawn_position: Vector2,
+	death_position: Vector2
+) -> void:
+	# Inject authoritative state with:
+	# - position/velocity = spawn position + zero velocity (where character IS)
+	# - interaction position = death position (where interaction HAPPENED)
+	_inject_authoritative_state_into_buffer(
+		p_frame_index,
+		spawn_position,
+		Vector2.ZERO,
+		ServerInteractionType.DIE,
+		p_frame_index,
+		death_position,
+		Vector2.ZERO
+	)
+
+	# Update local properties to match.
+	position = spawn_position
+	velocity = Vector2.ZERO
+
+	# Set interaction properties on the local state.
+	last_interaction_type = ServerInteractionType.DIE
+	last_interaction_frame_index = p_frame_index
+	last_interaction_position = death_position
+	last_interaction_velocity = Vector2.ZERO
+
+
+## Sets position, velocity, and interaction properties in the rollback buffer
+## at the specified frame. Marks the frame as AUTHORITATIVE.
+##
+## Used for lag-compensated position injection and death/spawn state. This
+## function explicitly sets all physics and interaction properties in the
+## buffer to prevent them from being overwritten with stale values.
+func _inject_authoritative_state_into_buffer(
 	p_frame_index: int,
 	new_position: Vector2,
+	new_velocity: Vector2,
 	interaction_type: int,
 	interaction_frame_index: int,
 	interaction_position: Vector2,
@@ -736,6 +800,7 @@ func _inject_position_into_buffer(
 ) -> void:
 	var frame_state: Array = _rollback_buffer.get_at(p_frame_index)
 	_set_frame_property(frame_state, &"position", new_position)
+	_set_frame_property(frame_state, &"velocity", new_velocity)
 
 	# Set interaction properties explicitly.
 	# This ensures the buffer has the correct interaction data, preventing
@@ -747,6 +812,9 @@ func _inject_position_into_buffer(
 		interaction_position,
 		interaction_velocity
 	)
+
+	# Mark as authoritative so clients accept this state without prediction.
+	_set_frame_authority(frame_state, FrameAuthority.AUTHORITATIVE)
 
 	_rollback_buffer.set_at(p_frame_index, frame_state)
 	Netcode.frame_driver.queue_rollback(p_frame_index)

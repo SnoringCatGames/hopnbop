@@ -246,10 +246,10 @@ class TestFrameSkipDetection:
 			var state: Array = buffer.get_at(i)
 			# Should have last known state.
 			assert_eq(state[0], float(5 * 5))
-			# Should be marked CLIENT_PREDICTED.
+			# Should be marked SERVER_PREDICTED (tests run as server).
 			assert_eq(
 				state[2],
-				ReconcilableState.FrameAuthority.CLIENT_PREDICTED
+				ReconcilableState.FrameAuthority.SERVER_PREDICTED
 			)
 
 

@@ -1082,7 +1082,7 @@ class TestPropertyConfiguration:
 		var current_frame := Netcode.server_frame_index
 		entity.record_initial_state()
 
-		# All frames should be marked as CLIENT_PREDICTED
+		# All frames should be marked as SERVER_PREDICTED (tests run as server).
 		for frame_offset in range(-2, 1):
 			var target_frame := current_frame + frame_offset
 			var frame_state: Array = (
@@ -1094,6 +1094,6 @@ class TestPropertyConfiguration:
 
 			assert_eq(
 				authority,
-				ReconcilableState.FrameAuthority.CLIENT_PREDICTED,
-				"Frame %d should be marked as CLIENT_PREDICTED" % target_frame,
+				ReconcilableState.FrameAuthority.SERVER_PREDICTED,
+				"Frame %d should be marked as SERVER_PREDICTED" % target_frame,
 			)

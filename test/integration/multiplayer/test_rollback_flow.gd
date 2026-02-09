@@ -77,10 +77,11 @@ class TestFrameSimulation:
 			var state: Array = buffer.get_at(i)
 			assert_not_null(state, "Frame %d should be backfilled" % i)
 			assert_eq(state[0], 90.0, "Backfilled position should match")
+			# Tests run as server, so backfilled state is SERVER_PREDICTED.
 			assert_eq(
 				state[3],
-				ReconcilableState.FrameAuthority.CLIENT_PREDICTED,
-                "Backfilled state should be CLIENT_PREDICTED"
+				ReconcilableState.FrameAuthority.SERVER_PREDICTED,
+				"Backfilled state should be SERVER_PREDICTED"
 			)
 
 
@@ -323,10 +324,10 @@ class TestLargeGapBackfill:
 		var state_500: Array = buffer.get_at(500)
 		assert_eq(state_500[0], 999.0)
 		assert_eq(state_500[1], 888.0)
-		# But should be marked as CLIENT_PREDICTED.
+		# But should be marked as SERVER_PREDICTED (tests run as server).
 		assert_eq(
 			state_500[2],
-			ReconcilableState.FrameAuthority.CLIENT_PREDICTED
+			ReconcilableState.FrameAuthority.SERVER_PREDICTED
 		)
 
 	func test_handles_negative_indices_correctly():

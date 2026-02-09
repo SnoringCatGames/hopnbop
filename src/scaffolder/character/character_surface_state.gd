@@ -335,6 +335,9 @@ var surface_properties := SurfaceProperties.new()
 
 var character: Character
 
+# Validator for filtering invalid one-way floor collisions.
+var _one_way_validator := OneWayCollisionValidator.new()
+
 
 func _init(p_character: Character) -> void:
 	self.character = p_character
@@ -366,19 +369,31 @@ func _get_surface_type_from_mask(mask: int) -> int:
 
 
 func update_touches() -> void:
-	is_touching_floor = character.is_on_floor()
+	# Reset touch state before processing collisions.
+	is_touching_floor = false
 	is_touching_ceiling = character.is_on_ceiling()
+	is_touching_left_wall = false
+	is_touching_right_wall = false
 
-	if character.is_on_wall():
-		if character.get_wall_normal().x > 0:
-			is_touching_left_wall = true
-			is_touching_right_wall = false
-		else:
-			is_touching_left_wall = false
-			is_touching_right_wall = true
-	else:
-		is_touching_left_wall = false
-		is_touching_right_wall = false
+	# Process all slide collisions.
+	for i in range(character.get_slide_collision_count()):
+		var collision := character.get_slide_collision(i)
+		var normal := collision.get_normal()
+
+		# Floor-like collision (normal points up).
+		if normal.y < -0.5:
+			if _one_way_validator.validate_floor_collision(
+				collision, character.velocity,
+				character.collision_shape.shape,
+				character.global_position
+			):
+				is_touching_floor = true
+		# Wall collision (normal points horizontally).
+		elif abs(normal.y) < 0.5:
+			if normal.x > 0:
+				is_touching_left_wall = true
+			else:
+				is_touching_right_wall = true
 
 
 # Updates surface-related state according to the character's recent movement

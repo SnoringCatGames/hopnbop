@@ -86,7 +86,8 @@ extends MultiplayerSynchronizer
 enum FrameAuthority {
 	UNKNOWN,
 	AUTHORITATIVE,
-	PREDICTED,
+	SERVER_PREDICTED,
+	CLIENT_PREDICTED,
 }
 
 signal received_network_state
@@ -159,7 +160,7 @@ var packed_state := []:
 		packed_state = value
 
 		if not _is_packing_state_locally:
-			_handle_new_authoritative_state()
+			_handle_new_state_from_network()
 
 var _is_packing_state_locally := false
 
@@ -287,7 +288,7 @@ func _ready() -> void:
 	# Re-process any packed_state that arrived before _ready() (e.g., spawn data).
 	# Before _parse_property_names(), _unpack_networked_state() fails the size check.
 	if not packed_state.is_empty():
-		_handle_new_authoritative_state()
+		_handle_new_state_from_network()
 
 
 func _parse_property_names() -> void:
@@ -318,7 +319,7 @@ func update_authority() -> void:
 			NetworkLogger.CATEGORY_NETWORK_SYNC)
 
 
-func _handle_new_authoritative_state() -> void:
+func _handle_new_state_from_network() -> void:
 	if packed_state.is_empty():
 		# Ignore any initial empty state.
 		return
@@ -370,19 +371,22 @@ func _handle_new_authoritative_state() -> void:
 			],
 			NetworkLogger.CATEGORY_NETWORK_SYNC)
 
-	# Clients should ignore PREDICTED state from server-authoritative nodes entirely.
-	# Only the server's AUTHORITATIVE state matters for reconciliation.
-	# Exception: Some nodes (like ForwardedPlayerInputFromServer) need PREDICTED
-	# states because they have no local prediction alternative.
+	# Filter SERVER_PREDICTED state based on node type:
+	# - Owning clients should ignore SERVER_PREDICTED for their own character
+	#   (their CLIENT_PREDICTED is based on authoritative input, so it's better).
+	# - Remote clients should accept SERVER_PREDICTED (they only have forwarded
+	#   input, so server's prediction is useful).
+	# - Some nodes (like ForwardedPlayerInputFromServer) always need predicted
+	#   states because they have no local prediction alternative.
 	if (
 		is_server_authoritative
 		and Netcode.is_client
-		and new_frame_authority == FrameAuthority.PREDICTED
+		and new_frame_authority == FrameAuthority.SERVER_PREDICTED
 		and not _should_accept_predicted_states()
 	):
 		if Netcode.log.is_verbose:
 			Netcode.log.verbose(
-				"%s F:%d Ignoring PREDICTED server state for frame %d" %
+				"%s F:%d Ignoring SERVER_PREDICTED state for frame %d" %
 				[
 					name,
 					Netcode.server_frame_index,
@@ -430,7 +434,10 @@ func _handle_new_authoritative_state() -> void:
 	# next frame is valid when received between physics ticks.
 	# Also unpack first state regardless of frame (initial spawn data).
 	var is_first_state := not _has_received_valid_state
-	var should_unpack_state := state_frame_index >= Netcode.server_frame_index or is_first_state
+	var should_unpack_state := (
+		state_frame_index >= Netcode.server_frame_index or
+		is_first_state
+	)
 	var should_check_for_prediction_mismatch := (
 		state_frame_index < Netcode.server_frame_index
 		and _rollback_buffer.has_at(state_frame_index)
@@ -438,10 +445,15 @@ func _handle_new_authoritative_state() -> void:
 	)
 
 	if should_check_for_prediction_mismatch:
-		var mismatched_properties := _get_mismatched_properties(packed_state, state_frame_index)
+		var mismatched_properties := _get_mismatched_properties(
+			packed_state, state_frame_index)
 		if not mismatched_properties.is_empty():
 			var buffer_state: Array = _rollback_buffer.get_at(state_frame_index)
-			var node_type := "state-from-server" if is_server_authoritative else "state-from-client"
+			var node_type := (
+				"state-from-server" if
+				is_server_authoritative else
+				"state-from-client"
+			)
 			var mismatch_details := _get_mismatch_details_string(
 				mismatched_properties,
 				packed_state,
@@ -605,8 +617,8 @@ func _get_is_server_authoritative() -> bool:
 	return true
 
 
-## Virtual method: whether this node should accept PREDICTED states from the
-## server. Defaults to false (only accept AUTHORITATIVE states).
+## Virtual method: whether this node should accept SERVER_PREDICTED states from
+## the server. Defaults to false (only accept AUTHORITATIVE states).
 ## Override to return true for nodes that need server predictions (like
 ## ForwardedPlayerInputFromServer, which has no local prediction alternative).
 func _should_accept_predicted_states() -> bool:
@@ -630,9 +642,9 @@ func _get_or_create_debug_entry(frame_index: int) -> Array:
 
 	# Frame doesn't exist, create with defaults.
 	var new_entry := ArrayPool.acquire(3)
-	new_entry[0] = 0   # No rollback.
-	new_entry[1] = 0   # No fast-forward.
-	new_entry[2] = -1  # Auth delay not yet received.
+	new_entry[0] = 0 # No rollback.
+	new_entry[1] = 0 # No fast-forward.
+	new_entry[2] = -1 # Auth delay not yet received.
 	_debug_frame_buffer.set_at(frame_index, new_entry)
 
 	# Get the actual stored entry (set_at may have copied to existing array).
@@ -707,7 +719,9 @@ func _set_up_rollback_buffer() -> void:
 	# Initialize the rollback buffer with the current frame index.
 	# Frame indices start at 0 and are immediately valid (no time sync needed).
 	var default_values := _get_default_values().duplicate()
-	default_values.append(FrameAuthority.PREDICTED)
+	var default_authority := FrameAuthority.SERVER_PREDICTED if Netcode.is_server \
+		else FrameAuthority.CLIENT_PREDICTED
+	default_values.append(default_authority)
 
 	_rollback_buffer = RollbackBuffer.new(
 		Netcode.frame_driver.rollback_buffer_size,
@@ -789,7 +803,7 @@ func _unpack_networked_state() -> void:
 	for property_name in _property_names_for_packing:
 		set(property_name, packed_state[i])
 		i += 1
-	# Skip frame_authority (at index i) - we handle it separately in _handle_new_authoritative_state
+	# Skip frame_authority (at index i) - we handle it separately in _handle_new_state_from_network
 	i += 1
 	# Unpack frame index directly.
 	frame_index = _get_packed_frame_index(packed_state)
@@ -981,8 +995,10 @@ func _reinitialize_buffer_for_hard_reset(new_frame_index: int) -> void:
 	for property_name in _property_names_for_packing:
 		fill_state[i] = get(property_name)
 		i += 1
-	# Mark as PREDICTED so authoritative server state can overwrite.
-	fill_state[i] = FrameAuthority.PREDICTED
+	# Mark as predicted so authoritative state can overwrite.
+	var fill_authority := FrameAuthority.SERVER_PREDICTED if Netcode.is_server \
+		else FrameAuthority.CLIENT_PREDICTED
+	fill_state[i] = fill_authority
 
 	# Reinitialize the entire buffer with current state at new frame index.
 	_rollback_buffer._reinitialize_data(fill_state, new_frame_index)
@@ -1010,8 +1026,8 @@ func _reinitialize_buffer_for_hard_reset(new_frame_index: int) -> void:
 ## Clean up rollback buffer state after pause started.
 ##
 ## Back-fills all frames after the pause frame with the pause frame's state
-## marked as PREDICTED. This prevents mismatch detection from comparing
-## pre-pause server state with invalid post-pause client predictions.
+## marked as predicted. This prevents mismatch detection from comparing
+## pre-pause server state with invalid post-pause predictions.
 func _cleanup_buffer_after_pause(pause_frame: int) -> void:
 	# Get pause frame state.
 	if not _rollback_buffer.has_at(pause_frame):
@@ -1019,11 +1035,13 @@ func _cleanup_buffer_after_pause(pause_frame: int) -> void:
 
 	var pause_state: Array = _rollback_buffer.get_at(pause_frame)
 
-	# Create a copy marked as PREDICTED for resetting.
+	# Create a copy marked as predicted for resetting.
 	var fill_state := ArrayPool.acquire(pause_state.size())
 	for i in range(pause_state.size() - 1):
 		fill_state[i] = pause_state[i]
-	fill_state[fill_state.size() - 1] = FrameAuthority.PREDICTED
+	var fill_authority := FrameAuthority.SERVER_PREDICTED if Netcode.is_server \
+		else FrameAuthority.CLIENT_PREDICTED
+	fill_state[fill_state.size() - 1] = fill_authority
 
 	# Reset from pause_frame+1 to current latest.
 	var latest := _rollback_buffer.get_latest_index()
@@ -1053,8 +1071,8 @@ func _cleanup_buffer_after_pause(pause_frame: int) -> void:
 ## It prevents _pre_network_process from loading default zero values from the
 ## buffer on the first frame by pre-populating frames N-2, N-1, and N.
 ##
-## All frames are marked as PREDICTED so authoritative state from the server
-## can overwrite them.
+## All frames are marked as predicted (SERVER_PREDICTED on server,
+## CLIENT_PREDICTED on client) so authoritative state can overwrite them.
 ##
 ## If include_partners is true (default), this will also record the initial
 ## state for the partner node if one exists (e.g., the client-authoritative
@@ -1078,7 +1096,9 @@ func record_initial_state(include_partners := true) -> void:
 	for property_name in _property_names_for_packing:
 		initial_state[i] = get(property_name)
 		i += 1
-	initial_state[i] = FrameAuthority.PREDICTED
+	var initial_authority := FrameAuthority.SERVER_PREDICTED if Netcode.is_server \
+		else FrameAuthority.CLIENT_PREDICTED
+	initial_state[i] = initial_authority
 
 	# Record for N-2, N-1, and N
 	for frame_offset in range(-2, 1):
@@ -1207,9 +1227,21 @@ func _is_frame_authoritative(frame_state: Array) -> bool:
 	return _get_frame_authority(frame_state) == FrameAuthority.AUTHORITATIVE
 
 
-## Checks if a frame state has predicted authority.
+## Checks if a frame state has any predicted authority (server or client).
 func _is_frame_predicted(frame_state: Array) -> bool:
-	return _get_frame_authority(frame_state) == FrameAuthority.PREDICTED
+	var authority := _get_frame_authority(frame_state)
+	return authority == FrameAuthority.SERVER_PREDICTED \
+		or authority == FrameAuthority.CLIENT_PREDICTED
+
+
+## Checks if a frame state has server-predicted authority.
+func _is_frame_server_predicted(frame_state: Array) -> bool:
+	return _get_frame_authority(frame_state) == FrameAuthority.SERVER_PREDICTED
+
+
+## Checks if a frame state has client-predicted authority.
+func _is_frame_client_predicted(frame_state: Array) -> bool:
+	return _get_frame_authority(frame_state) == FrameAuthority.CLIENT_PREDICTED
 
 
 ## Gets the frame index from a packed_state array (network format).

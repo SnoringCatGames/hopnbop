@@ -159,12 +159,12 @@ class TestBackfill:
 
 		assert_eq(state_6[0], 100)
 		assert_eq(state_6[1], 200)
-		# Backfilled states should be CLIENT_PREDICTED.
-		assert_eq(state_6[2], ReconcilableState.FrameAuthority.CLIENT_PREDICTED)
+		# Backfilled states should be SERVER_PREDICTED (tests run as server).
+		assert_eq(state_6[2], ReconcilableState.FrameAuthority.SERVER_PREDICTED)
 
 		assert_eq(state_7[0], 100)
 		assert_eq(state_7[1], 200)
-		assert_eq(state_7[2], ReconcilableState.FrameAuthority.CLIENT_PREDICTED)
+		assert_eq(state_7[2], ReconcilableState.FrameAuthority.SERVER_PREDICTED)
 
 
 	func test_backfill_does_nothing_if_already_filled():
@@ -197,11 +197,12 @@ class TestBackfill:
 		# Latest index should now be 100.
 		assert_eq(buffer.get_latest_index(), 100)
 
-		# State at frame 100 should be based on frame 0.
+		# State at frame 100 should be based on frame 0 (but SERVER_PREDICTED since
+		# tests run as server).
 		var state_100: Array = buffer.get_at(100)
 		assert_eq(state_100[0], 999)
 		assert_eq(state_100[1], 888)
-		assert_eq(state_100[2], ReconcilableState.FrameAuthority.CLIENT_PREDICTED)
+		assert_eq(state_100[2], ReconcilableState.FrameAuthority.SERVER_PREDICTED)
 
 
 class TestSetAndGet:
