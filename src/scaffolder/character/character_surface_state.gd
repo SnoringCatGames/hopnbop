@@ -368,12 +368,17 @@ func _get_surface_type_from_mask(mask: int) -> int:
 		return SurfaceType.AIR
 
 
-func update_touches() -> void:
+func update_touches(
+	pre_move_and_slide_position: Vector2 = Vector2.INF,
+	pre_move_and_slide_velocity: Vector2 = Vector2.INF
+) -> void:
 	# Reset touch state before processing collisions.
 	is_touching_floor = false
 	is_touching_ceiling = character.is_on_ceiling()
 	is_touching_left_wall = false
 	is_touching_right_wall = false
+
+	var should_correct := pre_move_and_slide_position != Vector2.INF
 
 	# Process all slide collisions.
 	for i in range(character.get_slide_collision_count()):
@@ -388,12 +393,28 @@ func update_touches() -> void:
 				character.global_position
 			):
 				is_touching_floor = true
+			elif should_correct:
+				# Invalid one-way collision - correct position and velocity.
+				_correct_invalid_collision(collision, pre_move_and_slide_position, pre_move_and_slide_velocity)
+				should_correct = false # Only correct once per frame.
 		# Wall collision (normal points horizontally).
 		elif abs(normal.y) < 0.5:
 			if normal.x > 0:
 				is_touching_left_wall = true
 			else:
 				is_touching_right_wall = true
+
+
+## Corrects position and velocity after an invalid one-way tile collision.
+func _correct_invalid_collision(
+	collision: KinematicCollision2D,
+	pre_move_and_slide_position: Vector2,
+	pre_move_and_slide_velocity: Vector2
+) -> void:
+	# Use collision.get_remainder() to find where we should have gone.
+	var remainder := collision.get_remainder()
+	character.position += remainder
+	character.velocity = pre_move_and_slide_velocity
 
 
 # Updates surface-related state according to the character's recent movement

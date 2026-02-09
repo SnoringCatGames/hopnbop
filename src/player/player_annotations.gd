@@ -7,7 +7,7 @@ extends Node2D
 ## - Colored dots for each frame in the rollback buffer.
 ## - Lines connecting adjacent frames.
 ## - Color coding by frame authority (green=authoritative,
-##   yellow=predicted, gray=unknown).
+##   teal=server-predicted, blue=client-predicted, gray=unknown).
 ##
 ## Toggle at runtime with F6 (respects G.settings.draw_annotations) and F1
 ## (master HUD toggle via G.settings.show_hud). Both must be enabled to show.
@@ -20,8 +20,9 @@ const COLLISION_OUTLINE_SECTOR_ARC_LENGTH := 2.0
 const LINE_THICKNESS := 1.0
 
 # Color coding by frame authority.
-const COLOR_AUTHORITATIVE := Color(0.0, 0.9, 0.5, 0.6)
-const COLOR_PREDICTED := Color(0.3, 0.5, 1.0, 0.6)
+const COLOR_AUTHORITATIVE := Color(0.3, 0.9, 0.0, 0.6)
+const COLOR_SERVER_PREDICTED := Color(0.0, 0.6, 0.5, 0.6)
+const COLOR_CLIENT_PREDICTED := Color(0.1, 0.3, 1.0, 0.6)
 const COLOR_UNKNOWN := Color(0.5, 0.5, 0.5, 0.6)
 
 # Color coding for rollback/fast-forward events.
@@ -135,8 +136,10 @@ func _get_color_for_authority(authority: int) -> Color:
 	match authority:
 		ReconcilableState.FrameAuthority.AUTHORITATIVE:
 			return COLOR_AUTHORITATIVE
-		ReconcilableState.FrameAuthority.PREDICTED:
-			return COLOR_PREDICTED
+		ReconcilableState.FrameAuthority.SERVER_PREDICTED:
+			return COLOR_SERVER_PREDICTED
+		ReconcilableState.FrameAuthority.CLIENT_PREDICTED:
+			return COLOR_CLIENT_PREDICTED
 		_:
 			return COLOR_UNKNOWN
 
