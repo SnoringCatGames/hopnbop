@@ -91,7 +91,16 @@
       "Bash(findstr:*)",
       "Bash(del \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\\\\addons\\\\rollback_netcode\\\\utils\\\\netcode_utils.gd\" \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\\\\addons\\\\rollback_netcode\\\\utils\\\\netcode_utils.gd.uid\")",
       "Bash(git restore:*)",
-      "Bash(git -C \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\" diff HEAD -- settings.tres)"
+      "Bash(git -C \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\" diff HEAD -- settings.tres)",
+      "Bash(git -C \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\" log --oneline --stat 3061260..ae497f6)",
+      "Bash(git -C \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\" diff fbebbf8..ae497f6 -- src/scaffolder/character/character.gd)",
+      "Bash(git -C \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\" diff fbebbf8..ae497f6 -- src/scaffolder/character/character_surface_state.gd)",
+      "Bash(git -C \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\" diff 3061260..fbebbf8 -- src/scaffolder/character/character_surface_state.gd)",
+      "Bash(for file in \"addons/rollback_netcode/core/rollback_buffer.gd\" \"src/player/player_annotations.gd\" \"src/scaffolder/character/character_state_from_server.gd\")",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(git -C \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\" log --oneline 3061260~5..3061260)",
+      "Bash(git -C \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\" diff 3061260..fbebbf8 -- src/scaffolder/character/forwarded_player_input_from_server.gd)",
+      "Bash(git -C \"c:\\\\Users\\\\lsl\\\\Repositories\\\\jumpnthump\" log --oneline 3061260..fbebbf8)"
     ]
   }
 }

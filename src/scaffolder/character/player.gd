@@ -124,6 +124,17 @@ func server_initialize_player_id(p_player_id: int) -> void:
 	player_id = p_player_id
 	update_authority()
 
+	# Record a SPAWN interaction with authoritative position. This ensures
+	# clients receive the correct spawn position before the first frame
+	# processes, preventing a visual glitch during match-start countdown
+	# where the player appears at the scene default position.
+	state_from_server.record_interaction(
+		CharacterStateFromServer.ServerInteractionType.SPAWN,
+		Netcode.server_frame_index,
+		global_position,
+		Vector2.ZERO
+	)
+
 
 func update_authority() -> void:
 	# Now that player_id is set, update authority on all network nodes.
