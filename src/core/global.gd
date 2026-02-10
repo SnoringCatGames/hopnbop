@@ -38,6 +38,7 @@ var game_panel: GamePanel
 var match_state: GameMatchState
 var client_session: ClientSession
 var player_overhead_labels: PlayerOverheadLabels
+var player_annotations: PlayerAnnotations
 var level: Level
 
 var level_registry: LevelRegistry

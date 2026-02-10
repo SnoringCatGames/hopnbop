@@ -61,6 +61,8 @@ func _input(event: InputEvent) -> void:
 			G.super_hud.toggle_player_state_list()
 		if is_instance_valid(G.player_overhead_labels):
 			G.player_overhead_labels.visible = new_state
+		if is_instance_valid(G.player_annotations):
+			G.player_annotations.visible = new_state
 		_update_player_outlines()
 	elif event.is_action_pressed("toggle_music"):
 		G.settings.mute_music = not G.settings.mute_music

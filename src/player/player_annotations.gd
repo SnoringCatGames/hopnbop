@@ -1,16 +1,18 @@
 class_name PlayerAnnotations
 extends Node2D
-## Debug visualization for player collision shapes and rollback buffer trail.
+## Centralized debug visualization for all player collision shapes and
+## rollback buffer trails.
 ##
-## Displays:
-## - White outline matching the player's collision shape.
+## Displays for each player:
+## - Cyan outline matching the player's collision shape.
 ## - Colored dots for each frame in the rollback buffer.
 ## - Lines connecting adjacent frames.
 ## - Color coding by frame authority (green=authoritative,
 ##   teal=server-predicted, blue=client-predicted, gray=unknown).
 ##
-## Toggle at runtime with F6 (respects G.settings.draw_annotations) and F1
-## (master HUD toggle via G.settings.show_hud). Both must be enabled to show.
+## Toggle at runtime with F6 (respects G.settings.draw_annotations)
+## and F1 (master HUD toggle via G.settings.show_hud). Both must be
+## enabled to show.
 
 # Configuration constants.
 const COLLISION_OUTLINE_COLOR := Color(0.0, 1.0, 1.0, 0.569)
@@ -29,7 +31,8 @@ const COLOR_UNKNOWN := Color(0.5, 0.5, 0.5, 0.6)
 const COLOR_ROLLBACK := Color(1.0, 0.3, 0.3, 0.6)
 const COLOR_FAST_FORWARD := Color(1.0, 0.8, 0.0, 0.3)
 
-# Dot radius based on authoritative delay (bigger = slower/more delayed).
+# Dot radius based on authoritative delay (bigger = slower/more
+# delayed).
 const DOT_RADIUS_MIN := 1.5
 const DOT_RADIUS_MAX := 4.0
 
@@ -37,7 +40,32 @@ const DOT_RADIUS_MAX := 4.0
 const DELAY_MIN_THRESHOLD := 3
 const DELAY_MAX_THRESHOLD := 10
 
-@export var player: Player
+var _player_ids: Array = []
+
+
+func _enter_tree() -> void:
+	G.player_annotations = self
+
+
+func _ready() -> void:
+	# Must run during countdown to track player positions.
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
+
+func set_up() -> void:
+	G.match_state.players_updated.connect(_on_players_updated)
+	_update_player_ids()
+
+
+func _on_players_updated() -> void:
+	_update_player_ids()
+
+
+func _update_player_ids() -> void:
+	if not is_instance_valid(G.match_state):
+		_player_ids = []
+		return
+	_player_ids = G.match_state.players_by_id.keys()
 
 
 func _process(_delta: float) -> void:
@@ -53,18 +81,22 @@ func _draw() -> void:
 	):
 		return
 
-	if not is_instance_valid(player):
-		return
+	for player_id in _player_ids:
+		var player: Player = G.get_player(player_id)
+		if not is_instance_valid(player):
+			continue
+		_draw_collision_shape(player)
+		_draw_rollback_buffer_trail(player)
 
-	_draw_collision_shape()
-	_draw_rollback_buffer_trail()
 
-
-func _draw_collision_shape() -> void:
+func _draw_collision_shape(player: Player) -> void:
 	if not is_instance_valid(player.collision_shape):
 		return
 
-	var local_position := player.collision_shape.global_position - global_position
+	var local_position := (
+		player.collision_shape.global_position -
+		global_position
+	)
 
 	DrawUtils.draw_shape_outline(
 		self ,
@@ -76,12 +108,13 @@ func _draw_collision_shape() -> void:
 	)
 
 
-func _draw_rollback_buffer_trail() -> void:
+func _draw_rollback_buffer_trail(player: Player) -> void:
 	if not is_instance_valid(player.state_from_server):
 		return
 
 	var buffer := player.state_from_server._rollback_buffer
-	var debug_buffer := player.state_from_server._debug_frame_buffer
+	var debug_buffer := \
+		player.state_from_server._debug_frame_buffer
 
 	if buffer == null:
 		return
@@ -104,26 +137,41 @@ func _draw_rollback_buffer_trail() -> void:
 			continue
 
 		var frame_position: Vector2 = frame_state[0]
-		var frame_authority: int = frame_state[frame_state.size() - 1]
+		var frame_authority: int = \
+			frame_state[frame_state.size() - 1]
 
 		# Get debug info for this frame.
 		var debug_entry: Array = []
-		if debug_buffer != null and debug_buffer.has_at(frame_index):
+		if (
+			debug_buffer != null and
+			debug_buffer.has_at(frame_index)
+		):
 			debug_entry = debug_buffer.get_at(frame_index)
 
 		var local_pos := (
-			frame_position - global_position + player.collision_shape.position
+			frame_position -
+			global_position +
+			player.collision_shape.position
 		)
 
-		# Determine dot color based on debug info and authority.
-		var dot_color := _get_dot_color(frame_authority, debug_entry)
+		# Determine dot color based on debug info and
+		# authority.
+		var dot_color := _get_dot_color(
+			frame_authority, debug_entry
+		)
 
-		# Determine dot radius based on authoritative delay (bigger = slower).
+		# Determine dot radius based on authoritative delay
+		# (bigger = slower).
 		var dot_radius := _get_dot_radius(debug_entry)
 
 		# Draw line to previous frame if exists.
 		if has_prev:
-			draw_line(prev_local_pos, local_pos, dot_color, LINE_THICKNESS)
+			draw_line(
+				prev_local_pos,
+				local_pos,
+				dot_color,
+				LINE_THICKNESS,
+			)
 
 		# Draw dot for current frame.
 		draw_circle(local_pos, dot_radius, dot_color)
@@ -144,11 +192,17 @@ func _get_color_for_authority(authority: int) -> Color:
 			return COLOR_UNKNOWN
 
 
-func _get_dot_color(authority: int, debug_entry: Array) -> Color:
+func _get_dot_color(
+	authority: int, debug_entry: Array
+) -> Color:
 	if not debug_entry.is_empty():
-		if debug_entry[ReconcilableState._DEBUG_ROLLBACK_INDEX] > 0:
+		if debug_entry[
+			ReconcilableState._DEBUG_ROLLBACK_INDEX
+		] > 0:
 			return COLOR_ROLLBACK
-		if debug_entry[ReconcilableState._DEBUG_FAST_FORWARD_INDEX] > 0:
+		if debug_entry[
+			ReconcilableState._DEBUG_FAST_FORWARD_INDEX
+		] > 0:
 			return COLOR_FAST_FORWARD
 	return _get_color_for_authority(authority)
 
@@ -157,7 +211,10 @@ func _get_dot_radius(debug_entry: Array) -> float:
 	if debug_entry.is_empty():
 		return DOT_RADIUS_MIN
 
-	var delay: int = debug_entry[ReconcilableState._DEBUG_AUTHORITATIVE_STATE_DELAY_INDEX]
+	var delay: int = debug_entry[
+		ReconcilableState
+			._DEBUG_AUTHORITATIVE_STATE_DELAY_INDEX
+	]
 
 	# Never received authoritative state - use max radius.
 	if delay < 0:
@@ -170,6 +227,9 @@ func _get_dot_radius(debug_entry: Array) -> float:
 	else:
 		var t := (
 			float(delay - DELAY_MIN_THRESHOLD) /
-			float(DELAY_MAX_THRESHOLD - DELAY_MIN_THRESHOLD)
+			float(
+				DELAY_MAX_THRESHOLD -
+				DELAY_MIN_THRESHOLD
+			)
 		)
 		return lerpf(DOT_RADIUS_MIN, DOT_RADIUS_MAX, t)

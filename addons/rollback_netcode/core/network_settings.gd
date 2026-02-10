@@ -57,6 +57,24 @@ extends Resource
 @export var match_start_countdown_sec := 3.0
 
 
+## Input delay settings.
+## Whether adaptive input delay is enabled (adjusts based on RTT).
+## When enabled, local input is delayed by a calculated number of frames
+## so the server receives it before it needs to simulate that frame.
+@export var is_adaptive_input_delay_enabled := true
+
+## Maximum input delay in frames. Adaptive delay will not exceed this.
+## At 60 FPS: 8 frames = ~133ms. 0 = input delay disabled entirely.
+@export var max_input_delay_frames := 8
+
+
+## Redundant input settings.
+## Number of recent input frames to include in each state packet.
+## Higher values tolerate more packet loss but increase packet size
+## slightly. 0 = disabled.
+@export var redundant_input_frame_count := 3
+
+
 ## Preview mode (local multi-instance testing).
 ## Whether running in local preview mode (multiple instances in editor).
 var is_preview_mode := false

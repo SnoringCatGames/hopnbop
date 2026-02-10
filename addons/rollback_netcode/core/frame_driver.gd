@@ -46,8 +46,6 @@ extends Node
 
 # Fix kills.
 
-# - Enable Godot 4's built-in physics interpolation (physics/common/physics_jitter_fix + physics_interpolation_mode).
-
 # Analyze my overall netcode design. Compared to standard approaches, am I handling rollbacks and fast-forwards correctly? Should I be triggering them less frequently, or on fewer nodes? Should I be replicating more or less state?
 
 # Ok, let's implement adaptive input delay, as well as redundant input transmission. Also, implement support for any missing metrics you've called-out in Approach 7 from the plan document.
@@ -55,8 +53,6 @@ extends Node
 # Analyze my overall netcode design. I want to implement tick rate decoupling, so I can configure a separate frame rate for network frames vs physics frames. Do a deep and thorough analysis of all netcode systems and carefully identify all logic and edge-cases that needs to be updated to support this. Also, plan to write tests. Also, plan specific steps I can take to test whether this is working correctly.
 
 # Analyze my overall netcode design. I want to implement networked time dilation, so that I can implementy dynamic slow-motion effects.
-
-# /[TEST] Fix Coyote time (look at GGJ26).
 
 # - Fix initial spawn position upward offset.
 

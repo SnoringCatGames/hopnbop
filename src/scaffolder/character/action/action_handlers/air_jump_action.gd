@@ -26,29 +26,36 @@ func process(character) -> bool:
 		/ Netcode.time.get_time_step_sec()
 	)
 	var is_auto_jump_from_hold: bool = (
-		character.actions.pressed_jump and
+		character.actions.is_triggering_jump and
 		(last_jump_frame_index < 0 or
 			current_frame >
 				last_jump_frame_index + throttle_frames) and
 		not character.surfaces.is_attaching_to_surface
 	)
 	var is_jump_triggered: bool = (
-		character.actions.just_pressed_jump or
+		character.actions.just_triggered_jump or
 		is_auto_jump_from_hold
 	)
 
 	if is_jump_triggered and \
-			(character.jump_sequence_count < character.movement_settings.max_jump_chain or
-			character.surfaces.is_within_coyote_time):
+			(character.jump_sequence_count
+				< character.movement_settings
+					.max_jump_chain
+			or character.surfaces
+				.is_within_coyote_time):
 		if character.surfaces.just_entered_air or \
 				character.surfaces.is_within_coyote_time:
 			character.jump_sequence_count = 1
 		else:
 			character.jump_sequence_count += 1
 		var double_jump_multiplier := pow(
-				character.movement_settings.double_jump_boost_multiplier,
-				character.jump_sequence_count - 1)
-		character.velocity.y = character.movement_settings.jump_boost * double_jump_multiplier
+			character.movement_settings
+				.double_jump_boost_multiplier,
+			character.jump_sequence_count - 1)
+		character.velocity.y = (
+			character.movement_settings.jump_boost
+			* double_jump_multiplier
+		)
 		last_jump_frame_index = current_frame
 
 		return true
