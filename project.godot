@@ -159,6 +159,11 @@ toggle_network_simulation={
 2d_physics/layer_8="foot"
 2d_physics/layer_9="head"
 
+[physics]
+
+common/physics_jitter_fix=0.0
+common/physics_interpolation=true
+
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0
