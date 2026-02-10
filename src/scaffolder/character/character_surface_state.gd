@@ -235,7 +235,7 @@ var is_triggering_jump := false
 
 var is_descending_through_floors := false
 
-var last_floor_time := -INF
+var last_floor_frame_index := -1
 
 var last_floor_position := Vector2.INF
 
@@ -337,11 +337,19 @@ var horizontal_acceleration_sign: int:
 
 var is_within_coyote_time: bool:
 	get:
-		return (
-			is_attaching_to_floor or
-			Netcode.time.get_time() - last_floor_time <=
-			character.movement_settings.late_jump_forgiveness_threshold_sec
+		if is_attaching_to_floor:
+			return true
+		if last_floor_frame_index < 0:
+			return false
+		var frames_since_floor := (
+			Netcode.server_frame_index - last_floor_frame_index
 		)
+		var threshold_frames := int(
+			character.movement_settings
+				.late_jump_forgiveness_threshold_sec
+			/ Netcode.time.get_time_step_sec()
+		)
+		return frames_since_floor <= threshold_frames
 
 # TODO: Do something with this.
 var surface_properties := SurfaceProperties.new()
@@ -637,7 +645,7 @@ func _update_attachment_state() -> void:
 			Netcode.fatal("CharacterSurfaceState._update_attachment_state")
 
 	if is_attaching_to_floor:
-		last_floor_time = Netcode.time.get_time()
+		last_floor_frame_index = Netcode.server_frame_index
 		last_floor_position = character.global_position
 
 

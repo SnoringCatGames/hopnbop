@@ -144,6 +144,23 @@ var server_frame_index: int:
 var _is_initialized := false
 
 
+func _enter_tree() -> void:
+	# Parse command-line args to determine role and preview mode.
+	var args := _parse_cmdline_args()
+	is_headless = DisplayServer.get_name() == "headless"
+	is_preview = OS.has_feature("editor")
+	is_debug = OS.is_debug_build() or is_preview
+	preview_client_number = int(args.client) if args.has("client") else 0
+
+	# Determine server/client role based on context.
+	if is_preview:
+		# Preview mode (editor): Default to server unless --client specified.
+		is_server = not args.has("client")
+	else:
+		# Published mode: Default to client unless --server or headless.
+		is_server = is_headless or args.has("server")
+
+
 ## Initialize the networking system.
 ## Must be called after setting settings and log.
 ## TimeUtils is created automatically during initialization.
@@ -166,20 +183,7 @@ func initialize() -> void:
 
 	_is_initialized = true
 
-	# Parse command-line args to determine role and preview mode.
 	var args := _parse_cmdline_args()
-	is_headless = DisplayServer.get_name() == "headless"
-	is_preview = OS.has_feature("editor")
-	is_debug = OS.is_debug_build() or is_preview
-	preview_client_number = int(args.client) if args.has("client") else 0
-
-	# Determine server/client role based on context.
-	if is_preview:
-		# Preview mode (editor): Default to server unless --client specified.
-		is_server = not args.has("client")
-	else:
-		# Published mode: Default to client unless --server or headless.
-		is_server = is_headless or args.has("server")
 
 	# Cache server port from command-line arg or settings.
 	server_port = int(args.port) if args.has("port") else settings.server_port

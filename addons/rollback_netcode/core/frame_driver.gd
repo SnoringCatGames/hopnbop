@@ -46,18 +46,23 @@ extends Node
 
 # Fix kills.
 
+# - Enable Godot 4's built-in physics interpolation (physics/common/physics_jitter_fix + physics_interpolation_mode).
+
+# Analyze my overall netcode design. Compared to standard approaches, am I handling rollbacks and fast-forwards correctly? Should I be triggering them less frequently, or on fewer nodes? Should I be replicating more or less state?
+
+# Ok, let's implement adaptive input delay, as well as redundant input transmission. Also, implement support for any missing metrics you've called-out in Approach 7 from the plan document.
+
+# Analyze my overall netcode design. I want to implement tick rate decoupling, so I can configure a separate frame rate for network frames vs physics frames. Do a deep and thorough analysis of all netcode systems and carefully identify all logic and edge-cases that needs to be updated to support this. Also, plan to write tests. Also, plan specific steps I can take to test whether this is working correctly.
+
+# Analyze my overall netcode design. I want to implement networked time dilation, so that I can implementy dynamic slow-motion effects.
+
 # /[TEST] Fix Coyote time (look at GGJ26).
 
-# - I lost that poor-network-and-process conditions tracker....
-#   - Was that implemented? Behind an F key?
-
-# - Test pause auto-unpause timeout.
+# - Fix initial spawn position upward offset.
 
 # - Test with multiple local clients again.
 
 # - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
-
-# - Fix the brief visibility in the old position after respawn.
 
 # - Fix kills to happen when _relative_ velocity.y is pushing head into foot, not just when one player is moving down.
 # - Fix respawn brief visibility.
@@ -65,14 +70,6 @@ extends Node
 # - TEST that when a high-speed kill happens, the bounce happens from where the
 #   initial collision contact should have been.
 #   -!!!!!!!!!!!!!!! I think this still happens
-
-# - Use is_debug for some things.
-#   - Use OS.is_debug_build().
-#     - Make sure we don't have any other debug flag on any settings.
-#     - But then do expose a convenience getter for debug on settings/Netcode.
-#   - Force this to true for is_preview.
-#   - Use this for tracking debug buffer state.
-#   - Do a quick survey of other is_preview checks to see if any should swap.
 
 # - Ask AI if it's expected for there to be so many predicted instead of
 #   authoritative values. Shouldn't values in the past become authoritative as
@@ -96,8 +93,6 @@ extends Node
 # - Look at how some old Scaffolder utilities are used, like ScaffolderTime. Should we simplify and replace them with built-in logic that we _don't_ have the consumer app worry about?
 
 # - Lingering FIXMEs.
-
-# - Test match countdown timer.
 
 # UI fixes:
 # - Adjust scene files: lobby_level.tscn, player_list.tscn, player_display.tscn.
@@ -1044,6 +1039,12 @@ func _client_execute_pause_at_server_frame(
 	_is_paused = true
 	_pause_initiator_peer_id = pause_initiator_peer_id
 	_pause_initiator_pauses_used = pause_initiator_pauses_used
+
+	# Calculate auto-unpause time for countdown display.
+	_pause_auto_unpause_time_usec = (
+		Time.get_ticks_usec() +
+		int(Netcode.settings.max_pause_duration_sec * 1_000_000)
+	)
 
 	# Align with server's pause frame.
 	server_frame_index = server_pause_frame

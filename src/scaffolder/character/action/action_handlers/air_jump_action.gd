@@ -8,7 +8,7 @@ const PRIORITY := 420
 
 const AUTO_JUMP_FROM_HOLD_THROTTLE_PERIOD_SEC := 0.3
 
-var last_jump_time_sec := -INF
+var last_jump_frame_index := -1
 
 
 func _init() -> void:
@@ -20,11 +20,16 @@ func _init() -> void:
 
 
 func process(character) -> bool:
-	var current_time := Netcode.time.get_time()
+	var current_frame := Netcode.server_frame_index
+	var throttle_frames := int(
+		AUTO_JUMP_FROM_HOLD_THROTTLE_PERIOD_SEC
+		/ Netcode.time.get_time_step_sec()
+	)
 	var is_auto_jump_from_hold: bool = (
 		character.actions.pressed_jump and
-		current_time >
-			last_jump_time_sec + AUTO_JUMP_FROM_HOLD_THROTTLE_PERIOD_SEC and
+		(last_jump_frame_index < 0 or
+			current_frame >
+				last_jump_frame_index + throttle_frames) and
 		not character.surfaces.is_attaching_to_surface
 	)
 	var is_jump_triggered: bool = (
@@ -44,7 +49,7 @@ func process(character) -> bool:
 				character.movement_settings.double_jump_boost_multiplier,
 				character.jump_sequence_count - 1)
 		character.velocity.y = character.movement_settings.jump_boost * double_jump_multiplier
-		last_jump_time_sec = current_time
+		last_jump_frame_index = current_frame
 
 		return true
 	else:

@@ -13,6 +13,7 @@ func _enter_tree() -> void:
 func on_open() -> void:
 	super.on_open()
 	_update_pause_info()
+	_update_countdown()
 	%Button.grab_focus.call_deferred()
 
 
