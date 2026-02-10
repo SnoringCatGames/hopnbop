@@ -56,6 +56,7 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 @export var max_jump_chain := 1
 
 @export var jump_boost := -285.0
+@export var double_jump_boost_multiplier := 0.6
 
 @export var gravity_acceleration_multiplier := 1.0
 @export var gravity_slow_rise_multiplier := 0.6
@@ -80,7 +81,7 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 @export var kill_bounce_vertical_boost := -300.0
 
 ## Coyote time.
-@export var late_jump_forgiveness_threshold_sec := 0.15
+@export var late_jump_forgiveness_threshold_sec := 0.3
 
 @export_group("Less important")
 @export var wall_jump_horizontal_boost := 200.0

@@ -46,7 +46,7 @@ extends Node
 
 # Fix kills.
 
-# Fix Coyote time (look at GGJ26).
+# /[TEST] Fix Coyote time (look at GGJ26).
 
 # - I lost that poor-network-and-process conditions tracker....
 #   - Was that implemented? Behind an F key?

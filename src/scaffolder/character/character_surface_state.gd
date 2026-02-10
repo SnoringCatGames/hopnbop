@@ -339,7 +339,7 @@ var is_within_coyote_time: bool:
 	get:
 		return (
 			is_attaching_to_floor or
-			Network.time.get_time() - last_floor_time <=
+			Netcode.time.get_time() - last_floor_time <=
 			character.movement_settings.late_jump_forgiveness_threshold_sec
 		)
 
@@ -421,7 +421,7 @@ func update_touches(
 ## Corrects position and velocity after an invalid one-way tile collision.
 func _correct_invalid_collision(
 	collision: KinematicCollision2D,
-	pre_move_and_slide_position: Vector2,
+	_pre_move_and_slide_position: Vector2,
 	pre_move_and_slide_velocity: Vector2
 ) -> void:
 	# Use collision.get_remainder() to find where we should have gone.
@@ -637,7 +637,7 @@ func _update_attachment_state() -> void:
 			Netcode.fatal("CharacterSurfaceState._update_attachment_state")
 
 	if is_attaching_to_floor:
-		last_floor_time = G.time.get_play_time()
+		last_floor_time = Netcode.time.get_time()
 		last_floor_position = character.global_position
 
 

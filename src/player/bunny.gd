@@ -167,22 +167,24 @@ func _handle_interaction_effects() -> void:
 			# effects.
 			pass
 		CharacterStateFromServer.ServerInteractionType.DIE:
-			Netcode.verbose(
-				"F:%d Player %d DIE interaction detected on client" % [
-					Netcode.server_frame_index,
-					player_id,
-				],
-				NetworkLogger.CATEGORY_GAME_STATE,
-			)
+			if Netcode.log.is_verbose:
+				Netcode.verbose(
+					"F:%d Player %d DIE interaction detected on client" % [
+						Netcode.server_frame_index,
+						player_id,
+					],
+					NetworkLogger.CATEGORY_GAME_STATE,
+				)
 			play_sound("die")
 		CharacterStateFromServer.ServerInteractionType.SPAWN:
-			Netcode.verbose(
-				"F:%d Player %d SPAWN interaction detected on client" % [
-					Netcode.server_frame_index,
-					player_id,
-				],
-				NetworkLogger.CATEGORY_GAME_STATE,
-			)
+			if Netcode.log.is_verbose:
+				Netcode.verbose(
+					"F:%d Player %d SPAWN interaction detected on client" % [
+						Netcode.server_frame_index,
+						player_id,
+					],
+					NetworkLogger.CATEGORY_GAME_STATE,
+				)
 		_:
 			Netcode.fatal()
 
@@ -383,11 +385,12 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 		_processed_collision_this_frame = true
 		other_player._processed_collision_this_frame = true
 
-		Netcode.verbose(
-			"Player kill detected (swept): %d killed %d" %
-				[player_id, other_player.player_id],
-			NetworkLogger.CATEGORY_GAME_STATE,
-		)
+		if Netcode.log.is_verbose:
+			Netcode.verbose(
+				"Player kill detected (swept): %d killed %d" %
+					[player_id, other_player.player_id],
+				NetworkLogger.CATEGORY_GAME_STATE,
+			)
 
 		# Calculate lag-compensated position.
 		var lag_compensated_position := (
