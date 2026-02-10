@@ -44,20 +44,14 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# Fix kills
+# Fix kills.
 
 # Fix Coyote time (look at GGJ26).
-
-# Also, when we receive AUTHORITATIVE state, I want to make sure that we record the corresponding buffer frame as AUTHORITATIVE, even if there is otherwise no mismatch. I _think_ we might currently be preserving the preexisting recorded authority value if no mismatch is detected, but I could be wrong.
-
-# In player.gd, we've recently made a change to calculate and assign the respawn position immediately when dying, rather than waiting until the player respawns. However, it looks like we may _also_ be then assigning that position again when respawning? I think the existence of the _pending_respawn_position property in general may be a hack? The initial position assignment upon death should be sufficient, right? I think we need to update this position assignment (upon death) to also explicitely record in the character_state_from_server node that the current frame is AUTHORITATIVE. This should also record the velocity as zero.
 
 # - I lost that poor-network-and-process conditions tracker....
 #   - Was that implemented? Behind an F key?
 
-# - Test pause screen.
-
-# - Test that pause limit is enforced.
+# - Test pause auto-unpause timeout.
 
 # - Test returning to lobby and then to match and then to lobby in preview.
 
