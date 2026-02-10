@@ -1,0 +1,253 @@
+[gd_scene load_steps=3 format=3 uid="uid://clkliy4hvd8ub"]
+
+[ext_resource type="Script" uid="uid://dqtuqy3mu8hh2" path="res://src/ui/super_hud/network_condition_simulator_panel.gd" id="1_script"]
+[ext_resource type="Theme" uid="uid://curquyi35i5lq" path="res://src/ui/debug_overlay_theme.tres" id="1_theme"]
+
+[node name="NetworkConditionSimulatorPanel" type="PanelContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme = ExtResource("1_theme")
+script = ExtResource("1_script")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 8
+mouse_filter = 2
+
+[node name="Header" type="Label" parent="MarginContainer/VBox"]
+layout_mode = 2
+text = "Network Simulation (F7)"
+
+[node name="EnabledCheck" type="CheckButton" parent="MarginContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+text = "Disabled"
+
+[node name="Separator1" type="HSeparator" parent="MarginContainer/VBox"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="SliderGrid" type="GridContainer" parent="MarginContainer/VBox"]
+layout_mode = 2
+mouse_filter = 2
+columns = 3
+
+[node name="LatencyLabel" type="Label" parent="MarginContainer/VBox/SliderGrid"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "Latency:"
+
+[node name="LatencySlider" type="HSlider" parent="MarginContainer/VBox/SliderGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+max_value = 500.0
+step = 5.0
+
+[node name="LatencyValue" type="Label" parent="MarginContainer/VBox/SliderGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "0 ms"
+horizontal_alignment = 2
+
+[node name="JitterLabel" type="Label" parent="MarginContainer/VBox/SliderGrid"]
+layout_mode = 2
+text = "Jitter:"
+
+[node name="JitterSlider" type="HSlider" parent="MarginContainer/VBox/SliderGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+max_value = 200.0
+step = 5.0
+
+[node name="JitterValue" type="Label" parent="MarginContainer/VBox/SliderGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "0 ms"
+horizontal_alignment = 2
+
+[node name="PacketLossLabel" type="Label" parent="MarginContainer/VBox/SliderGrid"]
+layout_mode = 2
+text = "Packet Loss:"
+
+[node name="PacketLossSlider" type="HSlider" parent="MarginContainer/VBox/SliderGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+max_value = 50.0
+step = 0.5
+
+[node name="PacketLossValue" type="Label" parent="MarginContainer/VBox/SliderGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "0.0%"
+horizontal_alignment = 2
+
+[node name="FrameDelayLabel" type="Label" parent="MarginContainer/VBox/SliderGrid"]
+layout_mode = 2
+text = "Frame Delay:"
+
+[node name="FrameDelaySlider" type="HSlider" parent="MarginContainer/VBox/SliderGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+max_value = 50.0
+
+[node name="FrameDelayValue" type="Label" parent="MarginContainer/VBox/SliderGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "0 ms"
+horizontal_alignment = 2
+
+[node name="BandwidthLabel" type="Label" parent="MarginContainer/VBox/SliderGrid"]
+layout_mode = 2
+text = "BW Limit:"
+
+[node name="BandwidthSlider" type="HSlider" parent="MarginContainer/VBox/SliderGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+max_value = 60.0
+step = 5.0
+
+[node name="BandwidthValue" type="Label" parent="MarginContainer/VBox/SliderGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Off"
+horizontal_alignment = 2
+
+[node name="Separator2" type="HSeparator" parent="MarginContainer/VBox"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="SpikeHeader" type="Label" parent="MarginContainer/VBox"]
+layout_mode = 2
+text = "Latency Spikes"
+
+[node name="SpikeGrid" type="GridContainer" parent="MarginContainer/VBox"]
+layout_mode = 2
+mouse_filter = 2
+columns = 3
+
+[node name="SpikeIntervalLabel" type="Label" parent="MarginContainer/VBox/SpikeGrid"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "Interval:"
+
+[node name="SpikeIntervalSlider" type="HSlider" parent="MarginContainer/VBox/SpikeGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+max_value = 15.0
+step = 0.5
+
+[node name="SpikeIntervalValue" type="Label" parent="MarginContainer/VBox/SpikeGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Off"
+horizontal_alignment = 2
+
+[node name="SpikeDurationLabel" type="Label" parent="MarginContainer/VBox/SpikeGrid"]
+layout_mode = 2
+text = "Duration:"
+
+[node name="SpikeDurationSlider" type="HSlider" parent="MarginContainer/VBox/SpikeGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+max_value = 2000.0
+step = 50.0
+
+[node name="SpikeDurationValue" type="Label" parent="MarginContainer/VBox/SpikeGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "0 ms"
+horizontal_alignment = 2
+
+[node name="SpikeLatencyLabel" type="Label" parent="MarginContainer/VBox/SpikeGrid"]
+layout_mode = 2
+text = "Spike Lat:"
+
+[node name="SpikeLatencySlider" type="HSlider" parent="MarginContainer/VBox/SpikeGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+max_value = 1000.0
+step = 25.0
+
+[node name="SpikeLatencyValue" type="Label" parent="MarginContainer/VBox/SpikeGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "0 ms"
+horizontal_alignment = 2
+
+[node name="Separator3" type="HSeparator" parent="MarginContainer/VBox"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="PresetBox" type="HBoxContainer" parent="MarginContainer/VBox"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="PresetLabel" type="Label" parent="MarginContainer/VBox/PresetBox"]
+layout_mode = 2
+text = "Presets:"
+
+[node name="PresetNone" type="Button" parent="MarginContainer/VBox/PresetBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "None"
+
+[node name="PresetGood" type="Button" parent="MarginContainer/VBox/PresetBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Good"
+
+[node name="PresetBadWifi" type="Button" parent="MarginContainer/VBox/PresetBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Bad WiFi"
+
+[node name="Preset3G" type="Button" parent="MarginContainer/VBox/PresetBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "3G"
+
+[node name="PresetChaos" type="Button" parent="MarginContainer/VBox/PresetBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Chaos"
+
+[node name="Separator4" type="HSeparator" parent="MarginContainer/VBox"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="StatsLabel" type="Label" parent="MarginContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Simulation disabled"

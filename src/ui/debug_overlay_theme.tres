@@ -1,6 +1,5 @@
-[gd_resource type="Theme" load_steps=16 format=3 uid="uid://curquyi35i5lq"]
+[gd_resource type="Theme" load_steps=15 format=3 uid="uid://curquyi35i5lq"]
 
-[ext_resource type="FontFile" uid="uid://dqinodgfkr7qt" path="res://assets/fonts/pxlzr/pxlzr.ttf" id="1_fl8bb"]
 [ext_resource type="Texture2D" uid="uid://bkuxtbiaa6jlx" path="res://assets/images/gui/button_normal.png" id="2_e7mtb"]
 [ext_resource type="Texture2D" uid="uid://pnajuswex37w" path="res://assets/images/gui/button_hover.png" id="3_xe33a"]
 [ext_resource type="Texture2D" uid="uid://gqudk1l13bt3" path="res://assets/images/gui/button_pressed.png" id="4_55tvf"]
@@ -126,7 +125,7 @@ Button/constants/h_separation = 4
 Button/constants/icon_max_width = 0
 Button/constants/outline_size = 0
 Button/font_sizes/font_size = 16
-Button/fonts/font = ExtResource("1_fl8bb")
+Button/fonts/font = ExtResource("5_o1jer")
 Button/styles/disabled = SubResource("StyleBoxTexture_q3c4w")
 Button/styles/focus = SubResource("StyleBoxTexture_3hca0")
 Button/styles/hover = SubResource("StyleBoxTexture_or3yn")
