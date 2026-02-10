@@ -234,6 +234,11 @@ var is_triggering_fall_through := false
 var is_triggering_jump := false
 
 var is_descending_through_floors := false
+
+var last_floor_time := -INF
+
+var last_floor_position := Vector2.INF
+
 # TODO(OLD): Add support for grabbing jump-through ceilings.
 # - Not via a directional key.
 # - Make this configurable for climb_adjacent_surfaces behavior.
@@ -329,6 +334,14 @@ var horizontal_acceleration_sign: int:
 			return -1
 		else:
 			return 0
+
+var is_within_coyote_time: bool:
+	get:
+		return (
+			is_attaching_to_floor or
+			Network.time.get_time() - last_floor_time <=
+			character.movement_settings.late_jump_forgiveness_threshold_sec
+		)
 
 # TODO: Do something with this.
 var surface_properties := SurfaceProperties.new()
@@ -622,6 +635,10 @@ func _update_attachment_state() -> void:
 			is_descending_through_floors = character.actions.pressed_down
 		_:
 			Netcode.fatal("CharacterSurfaceState._update_attachment_state")
+
+	if is_attaching_to_floor:
+		last_floor_time = G.time.get_play_time()
+		last_floor_position = character.global_position
 
 
 func clear_current_state() -> void:
