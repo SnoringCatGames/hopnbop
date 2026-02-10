@@ -117,6 +117,20 @@ unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 2
 
+[node name="PacketLossLabel" type="Label" parent="MarginContainer/GridContainer"]
+layout_mode = 2
+text = "Packet Loss:"
+
+[node name="ServerPacketLoss" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="ClientPacketLoss" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
 [node name="InputDelayLabel" type="Label" parent="MarginContainer/GridContainer"]
 layout_mode = 2
 text = "Input Delay (frames):"

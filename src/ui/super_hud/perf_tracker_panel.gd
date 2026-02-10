@@ -9,6 +9,7 @@ extends PanelContainer
 const _SLOW_NETWORK_RTT_THRESHOLD_SEC := 0.1 # 100ms
 const _HIGH_JITTER_THRESHOLD_MS := 10.0
 const _HIGH_INPUT_DELAY_THRESHOLD := 3
+const _HIGH_PACKET_LOSS_THRESHOLD := 5.0 # 5%
 const _LARGE_FASTFORWARD_THRESHOLD := 2
 const _HIGH_FASTFORWARD_RATE_THRESHOLD := 0.2
 const _SLOW_RENDER_FPS := 30
@@ -36,6 +37,7 @@ func _process(_delta: float) -> void:
 	_update_physics_fps_ui()
 	_update_network_ping_ui()
 	_update_rtt_jitter_ui()
+	_update_packet_loss_ui()
 	_update_input_delay_ui()
 	_update_network_fps_ui()
 	_update_rollback_metrics_ui()
@@ -101,6 +103,24 @@ func _update_rtt_jitter_ui() -> void:
 
 	var is_high := current_jitter > _HIGH_JITTER_THRESHOLD_MS
 	_update_label_color(%ClientRttJitter, is_high)
+
+
+func _update_packet_loss_ui() -> void:
+	var current_loss := (
+		Netcode.perf_tracker.get_client_packet_loss_pct()
+	)
+	var max_loss := (
+		Netcode.perf_tracker.get_max_packet_loss_pct()
+	)
+
+	%ClientPacketLoss.text = (
+		"%.0f%% (%.0f%%)" % [current_loss, max_loss]
+	)
+	# Server doesn't track packet loss (no self-ping).
+	%ServerPacketLoss.text = "N/A"
+
+	var is_high := current_loss >= _HIGH_PACKET_LOSS_THRESHOLD
+	_update_label_color(%ClientPacketLoss, is_high)
 
 
 func _update_input_delay_ui() -> void:
