@@ -72,6 +72,13 @@ var _current_rtt_jitter_ms := 0.0
 var _current_input_delay_frames := 0
 var _current_packet_loss_pct := 0.0
 
+# Packet loss tracking (frame_index gap detection).
+var _last_received_state_frame_index := -1
+var _frames_received_in_window := 0
+var _frames_expected_in_window := 0
+var _loss_window_start_time := 0.0
+const _LOSS_WINDOW_SEC := 5.0
+
 # --- Min/max metric tracking (periodic window) ---
 
 var _max_min_window_start_time := 0.0
@@ -266,13 +273,17 @@ func _on_peer_connected(peer_id: int) -> void:
 	_client_rpc_receive_server_perf_state.rpc_id(peer_id, perf_state)
 
 
-func _character_state_from_server_updated() -> void:
+func _character_state_from_server_updated(
+		state_frame_index: int,
+) -> void:
 	_calculate_network_fps()
 	if _current_network_fps > 0.0:
 		_min_network_fps_in_window = min(
 			_min_network_fps_in_window,
 			_current_network_fps,
 		)
+
+	_update_packet_loss(state_frame_index)
 
 	# Check for slow network FPS and log warning.
 	if (
@@ -738,24 +749,57 @@ func _update_network_ping() -> void:
 		_current_input_delay_frames,
 	)
 
-	# Packet loss.
-	if Netcode.frame_sync != null:
-		_current_packet_loss_pct = (
-			Netcode.frame_sync.packet_loss_pct
-		)
-	else:
-		_current_packet_loss_pct = 0.0
-	_max_packet_loss_in_window = max(
-		_max_packet_loss_in_window,
-		_current_packet_loss_pct,
-	)
-
 	# Check for high network ping and log warning.
 	if (
 		_current_network_ping_ms > _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0
 		and _is_ready()
 	):
 		_throttled_warn_network_rtt.call([_current_network_ping_ms])
+
+
+func _update_packet_loss(state_frame_index: int) -> void:
+	if _last_received_state_frame_index < 0:
+		# First state -- initialize tracking.
+		_last_received_state_frame_index = state_frame_index
+		_loss_window_start_time = Time.get_ticks_msec() / 1000.0
+		return
+
+	# Only count forward-progressing frames (ignore out-of-order
+	# or duplicate deliveries).
+	if state_frame_index <= _last_received_state_frame_index:
+		return
+
+	var gap := state_frame_index - _last_received_state_frame_index
+	_frames_expected_in_window += gap
+	_frames_received_in_window += 1
+	_last_received_state_frame_index = state_frame_index
+
+	# Check if window has elapsed.
+	var current_time := Time.get_ticks_msec() / 1000.0
+	if current_time - _loss_window_start_time < _LOSS_WINDOW_SEC:
+		return
+
+	# Compute loss rate for completed window.
+	if _frames_expected_in_window > 0:
+		var delivery_rate := (
+			float(_frames_received_in_window)
+			/ _frames_expected_in_window
+		)
+		_current_packet_loss_pct = clampf(
+			(1.0 - delivery_rate) * 100.0, 0.0, 100.0
+		)
+	else:
+		_current_packet_loss_pct = 0.0
+
+	_max_packet_loss_in_window = max(
+		_max_packet_loss_in_window,
+		_current_packet_loss_pct,
+	)
+
+	# Reset for next window.
+	_frames_received_in_window = 0
+	_frames_expected_in_window = 0
+	_loss_window_start_time = current_time
 
 
 func _update_rollback_metrics() -> void:

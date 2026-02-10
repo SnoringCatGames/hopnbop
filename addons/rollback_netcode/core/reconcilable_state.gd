@@ -90,7 +90,7 @@ enum FrameAuthority {
 	CLIENT_PREDICTED,
 }
 
-signal received_network_state
+signal received_network_state(state_frame_index: int)
 signal network_processed
 signal player_id_changed(new_player_id: int)
 
@@ -568,7 +568,7 @@ func _handle_new_state_from_network(p_state: Array) -> void:
 	# Mark that we've received valid state (for first-state bypass of too-old check).
 	_has_received_valid_state = true
 
-	received_network_state.emit()
+	received_network_state.emit(state_frame_index)
 
 	# If we have skipped frames, we need to force the entire system to
 	# fast-forward.
