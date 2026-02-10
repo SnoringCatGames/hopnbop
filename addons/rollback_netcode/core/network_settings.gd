@@ -88,3 +88,38 @@ var preview_client_count: int:
 ## Whether to include verbose/debug logs in output.
 ## When disabled, verbose() calls are skipped (no string manipulation overhead).
 @export var includes_verbose_logs := false
+
+
+## Network condition simulation (dev/debug only).
+## These settings have no effect in release builds.
+@export_group("Network Simulation (Dev Only)")
+
+## Master enable for network condition simulation.
+@export var network_sim_enabled := false
+
+## Artificial one-way latency in milliseconds applied to incoming states.
+@export var network_sim_latency_ms := 0
+
+## Jitter: random variation added to latency (+/- this value in ms).
+@export var network_sim_jitter_ms := 0
+
+## Percentage of incoming states to drop (0-100).
+@export var network_sim_packet_loss_pct := 0.0
+
+## Artificial delay per physics tick in milliseconds (slows frame
+## processing to simulate a struggling machine).
+@export var network_sim_frame_delay_ms := 0
+
+## Max state deliveries per second (0 = unlimited).
+@export var network_sim_bandwidth_limit := 0
+
+## Spike pattern: interval between latency spikes (0 = disabled).
+@export var network_sim_spike_interval_sec := 0.0
+
+## Duration of each latency spike in milliseconds.
+@export var network_sim_spike_duration_ms := 0
+
+## Latency during a spike in milliseconds.
+@export var network_sim_spike_latency_ms := 0
+
+@export_group("")

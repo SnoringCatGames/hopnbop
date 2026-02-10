@@ -155,5 +155,9 @@ stream = ExtResource("7_o16et")
 unique_name_in_owner = true
 stream = ExtResource("7_o16et")
 
+[node name="RespawnAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
+unique_name_in_owner = true
+stream = ExtResource("7_o16et")
+
 [connection signal="body_entered" from="BodyArea" to="." method="_on_body_area_body_entered"]
 [connection signal="area_entered" from="FootArea" to="." method="_on_foot_area_area_entered"]

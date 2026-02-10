@@ -92,6 +92,10 @@ var frame_sync: FrameSynchronizer
 ## Optional performance tracker for metrics and monitoring.
 var perf_tracker: PerfTracker
 
+## Network condition simulator (debug builds only).
+var condition_simulator: NetworkConditionSimulator
+
+var is_debug := true
 var is_preview := true
 var is_headless := true
 var is_server := true
@@ -166,6 +170,7 @@ func initialize() -> void:
 	var args := _parse_cmdline_args()
 	is_headless = DisplayServer.get_name() == "headless"
 	is_preview = OS.has_feature("editor")
+	is_debug = OS.is_debug_build() or is_preview
 	preview_client_number = int(args.client) if args.has("client") else 0
 
 	# Determine server/client role based on context.
@@ -207,6 +212,11 @@ func initialize() -> void:
 	perf_tracker = PerfTracker.new()
 	perf_tracker.name = "PerfTracker"
 	add_child(perf_tracker)
+
+	if is_debug:
+		condition_simulator = NetworkConditionSimulator.new()
+		condition_simulator.name = "NetworkConditionSimulator"
+		add_child(condition_simulator)
 
 	if is_server and should_connect_to_remote_server:
 		log.check(

@@ -161,6 +161,14 @@ extends Node
 #   - Remove some of the tiles near the top of the left wall for this. But make sure players can't jump that high.
 #   - Disable player-player collision mask bit in the lobby.
 
+# - Fix code style inconsistencies across the codebase.
+#   - Use tabs, not spaces.
+#   - When wrapping expressions across multiple lines, place operators at the start of the next line rather than the end of the previous.
+#   - Wrap lines at 80 characters.
+#   - Use periods at the ends of comments.
+#   - Follow the Godot style guide: https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html
+#   - Use multiple sub-agents to parallelize this work.
+
 # FIXME: Rollback debug visualization and networking improvements:
 #
 # Prompt:

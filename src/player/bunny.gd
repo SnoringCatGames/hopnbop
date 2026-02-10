@@ -16,7 +16,8 @@ var _is_blink_visible := true
 var _last_blink_toggle_frame := -1
 # -------------------------------------
 var _pending_bounce := Vector2.ZERO
-var _last_processed_interaction_frame_index := -1
+var _last_processed_interaction_start_time := -1
+var _has_ever_died := false
 
 # Track intersections during invincibility.
 # Dictionary<int, Array[String]> - player_id -> array of intersection types.
@@ -138,14 +139,17 @@ func _process_movement_and_actions() -> void:
 
 	# Handle client-side interaction effects (sounds, particles).
 	# Process the interaction if it's new (not yet processed).
+	var interaction_start_time := (
+		state_from_server.last_interaction_frame_index
+	)
 	var should_process := (
-		state_from_server.last_interaction_frame_index > _last_processed_interaction_frame_index and
-		state_from_server.last_interaction_frame_index >= 0
+		interaction_start_time != _last_processed_interaction_start_time
+		and interaction_start_time >= 0
 	)
 
 	if should_process:
 		_handle_interaction_effects()
-		_last_processed_interaction_frame_index = state_from_server.last_interaction_frame_index
+		_last_processed_interaction_start_time = interaction_start_time
 
 
 	# -------------------------------------
@@ -176,6 +180,7 @@ func _handle_interaction_effects() -> void:
 					NetworkLogger.CATEGORY_GAME_STATE,
 				)
 			play_sound("die")
+			_has_ever_died = true
 		CharacterStateFromServer.ServerInteractionType.SPAWN:
 			if Netcode.log.is_verbose:
 				Netcode.verbose(
@@ -185,6 +190,8 @@ func _handle_interaction_effects() -> void:
 					],
 					NetworkLogger.CATEGORY_GAME_STATE,
 				)
+			if not _has_ever_died:
+				play_sound("respawn")
 		_:
 			Netcode.fatal()
 
@@ -214,6 +221,8 @@ func _get_audio_stream_player(sound_name: StringName) -> AudioStreamPlayer2D:
 				return %DieGoreAudioStreamPlayer
 			else:
 				return %DieFlowersAudioStreamPlayer
+		"respawn":
+			return %RespawnAudioStreamPlayer
 		_:
 			Netcode.fatal()
 			return null
@@ -1057,7 +1066,7 @@ func _log_visibility_diagnostic() -> void:
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 	Netcode.print(
-		"  _last_processed_interaction_frame_index=%d" % _last_processed_interaction_frame_index,
+		"  _last_processed_interaction_start_time=%d" % _last_processed_interaction_start_time,
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 	Netcode.print(

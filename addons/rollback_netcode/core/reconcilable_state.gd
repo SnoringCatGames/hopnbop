@@ -163,7 +163,11 @@ var predicted_packed_state := []:
 	set(value):
 		predicted_packed_state = value
 		if not _is_packing_state_locally:
-			_handle_new_state_from_network(value)
+			if _should_use_network_simulator():
+				Netcode.condition_simulator.queue_incoming_state(
+					self , value, &"predicted")
+			else:
+				_handle_new_state_from_network(value)
 
 ## Primary replication channel for packed state. All nodes replicate through
 ## this property. Contains properties + frame_authority + frame_index.
@@ -173,7 +177,11 @@ var authoritative_packed_state := []:
 	set(value):
 		authoritative_packed_state = value
 		if not _is_packing_state_locally:
-			_handle_new_state_from_network(value)
+			if _should_use_network_simulator():
+				Netcode.condition_simulator.queue_incoming_state(
+					self , value, &"authoritative")
+			else:
+				_handle_new_state_from_network(value)
 
 ## Tracks whether we've received valid initial state from the server.
 ## Used to allow the first state through even if it's "too old" (spawn data).
@@ -332,6 +340,14 @@ func update_authority() -> void:
 				is_multiplayer_authority(),
 			],
 			NetworkLogger.CATEGORY_NETWORK_SYNC)
+
+
+func _should_use_network_simulator() -> bool:
+	return (
+		Netcode.is_debug and
+		Netcode.condition_simulator != null and
+		Netcode.condition_simulator.is_enabled
+	)
 
 
 func _handle_new_state_from_network(p_state: Array) -> void:
