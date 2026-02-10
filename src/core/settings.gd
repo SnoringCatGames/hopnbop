@@ -29,6 +29,7 @@ extends NetworkSettings
 @export var show_debug_console := false
 @export var show_debug_player_state := false
 @export var show_perf_tracker := false
+@export var show_network_simulation := false
 @export_group("")
 
 @export var start_in_game := false

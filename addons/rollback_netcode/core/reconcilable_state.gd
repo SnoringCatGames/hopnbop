@@ -776,7 +776,7 @@ func _set_up_rollback_buffer() -> void:
 	)
 
 	# Create debug buffer alongside rollback buffer (preview mode only).
-	if Netcode.is_preview and _should_create_debug_buffer():
+	if Netcode.is_debug and _should_create_debug_buffer():
 		_debug_frame_buffer = RollbackBuffer.new(
 			Netcode.frame_driver.rollback_buffer_size,
 			Netcode.frame_driver.server_frame_index,

@@ -29,6 +29,9 @@ func _sync_component_visibility() -> void:
 	%DebugConsole.visible = G.settings.show_debug_console
 	%PlayerStateList.visible = G.settings.show_debug_player_state
 	%PerfTrackerPanel.visible = G.settings.show_perf_tracker
+	%NetworkSimulationPanel.visible = (
+		G.settings.show_network_simulation
+	)
 
 
 func toggle_debug_console() -> void:
@@ -63,5 +66,23 @@ func toggle_perf_tracker() -> void:
 	Netcode.print(
 		"Toggled PerfTracker: %s" %
 		("visible" if %PerfTrackerPanel.visible else "hidden"),
+		NetworkLogger.CATEGORY_INTERACTION,
+	)
+
+
+func toggle_network_simulation() -> void:
+	if Netcode.is_server:
+		return
+
+	%NetworkSimulationPanel.visible = (
+		not %NetworkSimulationPanel.visible
+	)
+	Netcode.print(
+		"Toggled NetworkSimulation: %s" %
+		(
+			"visible"
+			if %NetworkSimulationPanel.visible
+			else "hidden"
+		),
 		NetworkLogger.CATEGORY_INTERACTION,
 	)

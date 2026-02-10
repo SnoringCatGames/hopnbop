@@ -1138,6 +1138,17 @@ func reinitialize_buffers_for_hard_reset(new_frame_index: int) -> void:
 
 
 func _pre_physics_process(_delta: float) -> void:
+	# Slow frame simulation: artificially delay physics ticks to
+	# simulate a machine struggling to keep up.
+	if (
+		Netcode.condition_simulator != null
+		and Netcode.condition_simulator.is_enabled
+		and Netcode.condition_simulator.get_frame_delay_ms() > 0
+	):
+		OS.delay_msec(
+			Netcode.condition_simulator.get_frame_delay_ms()
+		)
+
 	if _is_paused:
 		return
 

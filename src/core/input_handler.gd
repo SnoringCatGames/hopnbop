@@ -9,7 +9,7 @@ extends Node
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_annotations"):
-		if not Netcode.is_preview:
+		if not Netcode.is_debug:
 			return
 		G.settings.draw_annotations = not G.settings.draw_annotations
 		Netcode.print(
@@ -38,11 +38,14 @@ func _input(event: InputEvent) -> void:
 		G.settings.show_player_outlines = new_state
 
 		# Preview-only settings: only enable when in preview mode.
-		var is_preview_and_new_state = new_state and Netcode.is_preview
-		G.settings.draw_annotations = is_preview_and_new_state
-		G.settings.show_debug_console = is_preview_and_new_state
-		G.settings.show_debug_player_state = is_preview_and_new_state
-		G.settings.show_perf_tracker = is_preview_and_new_state
+		var is_debug_and_new_state = new_state and Netcode.is_debug
+		G.settings.draw_annotations = is_debug_and_new_state
+		G.settings.show_debug_console = is_debug_and_new_state
+		G.settings.show_debug_player_state = is_debug_and_new_state
+		G.settings.show_perf_tracker = is_debug_and_new_state
+		# Network simulation panel is not included in the "all on"
+		# toggle — it must be opened explicitly via F7.
+		G.settings.show_network_simulation = false
 
 		Netcode.print(
 			"All HUD/Debug: %s" % ("ON" if new_state else "OFF")
@@ -51,8 +54,8 @@ func _input(event: InputEvent) -> void:
 		# Update UI components.
 		if is_instance_valid(G.hud):
 			G.hud.visible = new_state
-		if is_instance_valid(G.super_hud) and Netcode.is_preview:
-			G.super_hud.visible = is_preview_and_new_state
+		if is_instance_valid(G.super_hud) and Netcode.is_debug:
+			G.super_hud.visible = is_debug_and_new_state
 			G.super_hud.toggle_perf_tracker()
 			G.super_hud.toggle_debug_console()
 			G.super_hud.toggle_player_state_list()
@@ -65,10 +68,10 @@ func _input(event: InputEvent) -> void:
 		if is_instance_valid(G.audio):
 			G.audio.apply_music_mute()
 	elif event.is_action_pressed("take_screenshot"):
-		if Netcode.is_preview:
+		if Netcode.is_debug:
 			G.utils.take_screenshot()
 	elif event.is_action_pressed("toggle_perf_tracker"):
-		if not Netcode.is_preview:
+		if not Netcode.is_debug:
 			return
 		G.settings.show_perf_tracker = not G.settings.show_perf_tracker
 		Netcode.print(
@@ -79,7 +82,7 @@ func _input(event: InputEvent) -> void:
 		if is_instance_valid(G.super_hud):
 			G.super_hud.toggle_perf_tracker()
 	elif event.is_action_pressed("toggle_debug_console"):
-		if not Netcode.is_preview:
+		if not Netcode.is_debug:
 			return
 		G.settings.show_debug_console = not G.settings.show_debug_console
 		Netcode.print(
@@ -90,7 +93,7 @@ func _input(event: InputEvent) -> void:
 		if is_instance_valid(G.super_hud):
 			G.super_hud.toggle_debug_console()
 	elif event.is_action_pressed("toggle_debug_player_state"):
-		if not Netcode.is_preview:
+		if not Netcode.is_debug:
 			return
 		G.settings.show_debug_player_state = (
 			not G.settings.show_debug_player_state
@@ -102,6 +105,21 @@ func _input(event: InputEvent) -> void:
 		)
 		if is_instance_valid(G.super_hud):
 			G.super_hud.toggle_player_state_list()
+	elif event.is_action_pressed("toggle_network_simulation"):
+		if not Netcode.is_debug:
+			return
+		G.settings.show_network_simulation = (
+			not G.settings.show_network_simulation
+		)
+		Netcode.print(
+			"NetworkSimulation: %s" % (
+				"ON"
+				if G.settings.show_network_simulation
+				else "OFF"
+			)
+		)
+		if is_instance_valid(G.super_hud):
+			G.super_hud.toggle_network_simulation()
 	elif event.is_action_pressed("toggle_pause"):
 		Netcode.print(
 			"Requesting server %s" % (
