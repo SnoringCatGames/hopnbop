@@ -7,6 +7,8 @@ extends PanelContainer
 
 # UI color-coding thresholds.
 const _SLOW_NETWORK_RTT_THRESHOLD_SEC := 0.1 # 100ms
+const _HIGH_JITTER_THRESHOLD_MS := 10.0
+const _HIGH_INPUT_DELAY_THRESHOLD := 3
 const _LARGE_FASTFORWARD_THRESHOLD := 2
 const _HIGH_FASTFORWARD_RATE_THRESHOLD := 0.2
 const _SLOW_RENDER_FPS := 30
@@ -33,6 +35,8 @@ func _process(_delta: float) -> void:
 	_update_server_ui()
 	_update_physics_fps_ui()
 	_update_network_ping_ui()
+	_update_rtt_jitter_ui()
+	_update_input_delay_ui()
 	_update_network_fps_ui()
 	_update_rollback_metrics_ui()
 	_update_fastforward_metrics_ui()
@@ -79,6 +83,42 @@ func _update_network_ping_ui() -> void:
 
 	var is_slow := current_ping > _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0
 	_update_label_color(%ClientNetworkPing, is_slow)
+
+
+func _update_rtt_jitter_ui() -> void:
+	var current_jitter := (
+		Netcode.perf_tracker.get_client_rtt_jitter_ms()
+	)
+	var max_jitter := (
+		Netcode.perf_tracker.get_max_rtt_jitter_ms()
+	)
+
+	%ClientRttJitter.text = (
+		"%.1f (%.1f)" % [current_jitter, max_jitter]
+	)
+	# Server doesn't have jitter (no self-ping).
+	%ServerRttJitter.text = "N/A"
+
+	var is_high := current_jitter > _HIGH_JITTER_THRESHOLD_MS
+	_update_label_color(%ClientRttJitter, is_high)
+
+
+func _update_input_delay_ui() -> void:
+	var current_delay := (
+		Netcode.perf_tracker.get_client_input_delay_frames()
+	)
+	var max_delay := (
+		Netcode.perf_tracker.get_max_input_delay_frames()
+	)
+
+	%ClientInputDelay.text = "%d (%d)" % [
+		current_delay, max_delay,
+	]
+	# Server doesn't have input delay.
+	%ServerInputDelay.text = "N/A"
+
+	var is_high := current_delay >= _HIGH_INPUT_DELAY_THRESHOLD
+	_update_label_color(%ClientInputDelay, is_high)
 
 
 func _update_rollback_metrics_ui() -> void:

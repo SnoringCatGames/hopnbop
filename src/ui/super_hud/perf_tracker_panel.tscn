@@ -103,6 +103,34 @@ unique_name_in_owner = true
 layout_mode = 2
 horizontal_alignment = 2
 
+[node name="RttJitterLabel" type="Label" parent="MarginContainer/GridContainer"]
+layout_mode = 2
+text = "RTT Jitter (ms):"
+
+[node name="ServerRttJitter" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="ClientRttJitter" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="InputDelayLabel" type="Label" parent="MarginContainer/GridContainer"]
+layout_mode = 2
+text = "Input Delay (frames):"
+
+[node name="ServerInputDelay" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="ClientInputDelay" type="Label" parent="MarginContainer/GridContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
 [node name="RollbacksPerSecLabel" type="Label" parent="MarginContainer/GridContainer"]
 layout_mode = 2
 text = "Rollbacks/sec:"

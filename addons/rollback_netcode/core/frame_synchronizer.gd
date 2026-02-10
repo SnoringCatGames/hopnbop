@@ -22,6 +22,7 @@ extends Node
 const DRIFT_THRESHOLD_FRAMES := 1 # Correct if +/- 1 frame off.
 const PING_INTERVAL_SEC := 3.0 # Ping server every 3 seconds.
 const RTT_SMOOTHING_FACTOR := 0.2 # Exponential moving average weight.
+const _MAX_RTT_SAMPLES := 10 # Jitter window size.
 
 # Network timing derived from FrameDriver config.
 var target_network_time_step_sec: float:
@@ -37,11 +38,29 @@ var _time_since_last_ping_sec := 0.0
 # RTT tracking (in microseconds).
 var _smoothed_rtt_usec := 0
 var _is_rtt_initialized := false
+var _raw_rtt_samples: Array[int] = []
 
 ## Returns the smoothed round-trip time in microseconds.
 var rtt_usec: float:
 	get:
 		return _smoothed_rtt_usec
+
+## Returns RTT jitter as mean absolute deviation from smoothed RTT
+## (in microseconds).
+var rtt_jitter_usec: float:
+	get:
+		if _raw_rtt_samples.is_empty():
+			return 0.0
+		var total_deviation := 0.0
+		for sample in _raw_rtt_samples:
+			total_deviation += absf(
+				sample - _smoothed_rtt_usec
+			)
+		return total_deviation / _raw_rtt_samples.size()
+
+## Current adaptive input delay in frames, based on smoothed RTT.
+## Only updated on clients; always 0 on server.
+var input_delay_frames := 0
 
 
 func _ready() -> void:
@@ -99,6 +118,11 @@ func _client_rpc_pong(
 	# Calculate RTT: (t4 - t1) - (t3 - t2).
 	var rtt_usec := (t4 - client_t1) - (server_t3 - server_t2)
 
+	# Track raw RTT samples for jitter calculation.
+	_raw_rtt_samples.append(rtt_usec)
+	if _raw_rtt_samples.size() > _MAX_RTT_SAMPLES:
+		_raw_rtt_samples.remove_at(0)
+
 	# Smooth RTT using exponential moving average.
 	if _is_rtt_initialized:
 		_smoothed_rtt_usec = roundi(
@@ -108,6 +132,9 @@ func _client_rpc_pong(
 	else:
 		_smoothed_rtt_usec = rtt_usec
 		_is_rtt_initialized = true
+
+	# Update adaptive input delay.
+	_update_input_delay()
 
 	# Estimate one-way delay as half RTT. Cannot use (t4 - server_t3) because
 	# client and server clocks are not synchronized. Mixing clock domains
@@ -164,3 +191,33 @@ func _client_rpc_pong(
 		)
 		# Reset the frame index.
 		Netcode.frame_driver.server_frame_index = estimated_current_server_frame
+
+
+func _update_input_delay() -> void:
+	if not Netcode.settings.is_adaptive_input_delay_enabled:
+		input_delay_frames = 0
+		return
+
+	var max_delay: int = Netcode.settings.max_input_delay_frames
+	if max_delay <= 0:
+		input_delay_frames = 0
+		return
+
+	# Target delay = one-way latency in frames.
+	var time_step_usec := (
+		target_network_time_step_sec * 1_000_000.0
+	)
+	var target := ceili(
+		float(_smoothed_rtt_usec / 2) / time_step_usec
+	)
+	target = clampi(target, 0, max_delay)
+
+	# Ramp by at most +/-1 per pong to avoid jarring transitions.
+	if target > input_delay_frames:
+		input_delay_frames = mini(
+			input_delay_frames + 1, target
+		)
+	elif target < input_delay_frames:
+		input_delay_frames = maxi(
+			input_delay_frames - 1, target
+		)

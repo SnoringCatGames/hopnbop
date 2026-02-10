@@ -68,6 +68,8 @@ var _current_last_rollback_frames := 0
 var _current_fastforwards_per_sec := 0.0
 var _current_last_fastforward_duration_ms := 0.0
 var _current_last_fastforward_frames := 0
+var _current_rtt_jitter_ms := 0.0
+var _current_input_delay_frames := 0
 
 # --- Min/max metric tracking (periodic window) ---
 
@@ -82,6 +84,8 @@ var _max_last_rollback_frames_in_window := 0
 var _max_fastforwards_per_sec_in_window := 0.0
 var _max_last_fastforward_duration_in_window := 0.0
 var _max_last_fastforward_frames_in_window := 0
+var _max_rtt_jitter_in_window := 0.0
+var _max_input_delay_in_window := 0
 
 # --- Server metrics (client-only, received via RPC) ---
 
@@ -452,6 +456,22 @@ func get_max_last_fastforward_duration_ms() -> float:
 func get_max_last_fastforward_frames() -> int:
 	return _max_last_fastforward_frames_in_window
 
+
+func get_client_rtt_jitter_ms() -> float:
+	return _current_rtt_jitter_ms
+
+
+func get_max_rtt_jitter_ms() -> float:
+	return _max_rtt_jitter_in_window
+
+
+func get_client_input_delay_frames() -> int:
+	return _current_input_delay_frames
+
+
+func get_max_input_delay_frames() -> int:
+	return _max_input_delay_in_window
+
 # --- Public getters for server metrics ---
 
 
@@ -526,11 +546,18 @@ func _log_metrics_periodically() -> void:
 		return
 
 	Netcode.log.print(
-		"PERF: FPS[P:%.1f R:%.1f N:%.1f] PING:%.1fms RB[/s:%.1f last:%.2fms/%df] FF[/s:%.1f last:%.2fms/%df]" % [
+		(
+			"PERF: FPS[P:%.1f R:%.1f N:%.1f] "
+			+ "PING:%.1fms JITTER:%.1fms DELAY:%df "
+			+ "RB[/s:%.1f last:%.2fms/%df] "
+			+ "FF[/s:%.1f last:%.2fms/%df]"
+		) % [
 			_current_physics_fps,
 			_current_render_fps,
 			_current_network_fps,
 			_current_network_ping_ms,
+			_current_rtt_jitter_ms,
+			_current_input_delay_frames,
 			_current_rollbacks_per_sec,
 			_current_last_rollback_duration_ms,
 			_current_last_rollback_frames,
@@ -673,6 +700,30 @@ func _update_network_ping() -> void:
 	_max_network_ping_in_window = max(
 		_max_network_ping_in_window,
 		_current_network_ping_ms,
+	)
+
+	# RTT jitter.
+	if Netcode.frame_sync != null:
+		_current_rtt_jitter_ms = (
+			Netcode.frame_sync.rtt_jitter_usec / 1000.0
+		)
+	else:
+		_current_rtt_jitter_ms = 0.0
+	_max_rtt_jitter_in_window = max(
+		_max_rtt_jitter_in_window,
+		_current_rtt_jitter_ms,
+	)
+
+	# Input delay.
+	if Netcode.frame_sync != null:
+		_current_input_delay_frames = (
+			Netcode.frame_sync.input_delay_frames
+		)
+	else:
+		_current_input_delay_frames = 0
+	_max_input_delay_in_window = max(
+		_max_input_delay_in_window,
+		_current_input_delay_frames,
 	)
 
 	# Check for high network ping and log warning.
@@ -828,6 +879,8 @@ func _check_and_reset_max_min_window() -> void:
 		_max_fastforwards_per_sec_in_window = 0.0
 		_max_last_fastforward_duration_in_window = 0.0
 		_max_last_fastforward_frames_in_window = 0
+		_max_rtt_jitter_in_window = 0.0
+		_max_input_delay_in_window = 0
 		_max_min_window_start_time = current_time
 
 # --- Custom monitor registration ---
@@ -913,4 +966,20 @@ func _register_custom_monitors() -> void:
 	Performance.add_custom_monitor(
 		"networking/max_last_fastforward_frames",
 		func(): return _max_last_fastforward_frames_in_window,
+	)
+	Performance.add_custom_monitor(
+		"networking/rtt_jitter_ms",
+		func(): return _current_rtt_jitter_ms,
+	)
+	Performance.add_custom_monitor(
+		"networking/max_rtt_jitter_ms",
+		func(): return _max_rtt_jitter_in_window,
+	)
+	Performance.add_custom_monitor(
+		"networking/input_delay_frames",
+		func(): return _current_input_delay_frames,
+	)
+	Performance.add_custom_monitor(
+		"networking/max_input_delay_frames",
+		func(): return _max_input_delay_in_window,
 	)
