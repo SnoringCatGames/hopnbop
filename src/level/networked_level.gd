@@ -100,7 +100,6 @@ func _server_register_players_for_peer(
 	for local_index in range(assigned_ids.size()):
 		var player_id := assigned_ids[local_index]
 		var player: Player = G.settings.default_player_scene.instantiate()
-		player.global_position = _get_player_spawn_position()
 		player.name = "Player_%d" % player_id
 		players_by_id[player_id] = player
 
@@ -110,6 +109,7 @@ func _server_register_players_for_peer(
 		peer_to_player_ids[peer_id].append(player_id)
 
 		players_node.add_child(player)
+		player.global_position = _get_player_spawn_position()
 
 		# Initialize player_id and update authority after add_child.
 		# This ensures all child nodes are ready and sibling references work.

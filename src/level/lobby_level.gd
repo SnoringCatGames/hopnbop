@@ -94,9 +94,9 @@ func _register_player(device_config: DeviceConfig) -> void:
 	# Now create and add player to tree (this triggers _ready()).
 	var player: Player = G.settings.default_player_scene.instantiate()
 	player.player_id = get_local_player_id(local_player_index)
-	player.global_position = _get_player_spawn_position()
 	player.name = "LobbyPlayer_%d" % local_player_index
 	players_node.add_child(player)
+	player.global_position = _get_player_spawn_position()
 
 	register_player(player)
 
