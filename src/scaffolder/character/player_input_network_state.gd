@@ -32,8 +32,8 @@ func _get_default_values() -> Array:
 	]
 
 
-func _handle_new_state_from_network() -> void:
-	super._handle_new_state_from_network()
+func _handle_new_state_from_network(p_state: Array) -> void:
+	super._handle_new_state_from_network(p_state)
 	_reconcile_client_interaction()
 
 

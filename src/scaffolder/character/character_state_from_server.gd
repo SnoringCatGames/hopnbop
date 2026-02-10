@@ -95,6 +95,10 @@ func _should_accept_predicted_states() -> bool:
 	return Netcode.is_client and not is_authority_for_input_from_client
 
 
+func _uses_split_packed_state() -> bool:
+	return true
+
+
 func _should_create_debug_buffer() -> bool:
 	return true
 
@@ -236,17 +240,17 @@ func _network_process() -> void:
 		input_source._rollback_buffer.has_at(frame_index)
 	):
 		# Check if previous frame has authoritative input source data.
-		var prev_frame_is_auth := false
+		var previous_frame_index_is_auth := false
 		if input_source._rollback_buffer.has_at(frame_index - 1):
-			var prev_frame_state: Array = input_source._rollback_buffer.get_at(
+			var previous_frame_index_state: Array = input_source._rollback_buffer.get_at(
 				frame_index - 1
 			)
-			if prev_frame_state != null:
-				prev_frame_is_auth = input_source._is_frame_authoritative(prev_frame_state)
+			if previous_frame_index_state != null:
+				previous_frame_index_is_auth = input_source._is_frame_authoritative(previous_frame_index_state)
 
 		# Only use predicted input if previous frame doesn't have authoritative
 		# data to extrapolate from.
-		should_use_predicted_input = not prev_frame_is_auth
+		should_use_predicted_input = not previous_frame_index_is_auth
 
 	if has_authoritative_input or should_use_predicted_input:
 		# Use received input from buffer (either authoritative from
@@ -527,6 +531,77 @@ func _sync_from_scene_state() -> void:
 	#
 	# These properties are automatically packed into the rollback buffer and
 	# replicated over the network in _pack_buffer_state_from_local_state().
+
+
+func _post_network_process() -> void:
+	super._post_network_process()
+	# On the server, check if we can confirm past frames as authoritative.
+	# The current frame is always SERVER_PREDICTED (input arrives 1 tick
+	# late). But input for past frames may have been confirmed authoritative
+	# since last tick. When input matches prediction, no rollback occurs, so
+	# the character state was already computed correctly. We just need to
+	# upgrade its authority and send it to the client.
+	_try_send_confirmed_authoritative_state()
+
+
+## Checks if the input for a recently processed frame became authoritative.
+## If so, upgrades the character state authority and packs it for network
+## sending. This ensures clients receive AUTHORITATIVE confirmations even
+## when the server correctly predicts input (no rollback).
+func _try_send_confirmed_authoritative_state() -> void:
+	if not is_authority_for_state_from_server:
+		return
+	if not is_instance_valid(input_from_client):
+		return
+	if _rollback_buffer == null:
+		return
+
+	# Check the previous frame. Input typically arrives 1 tick after the
+	# frame was processed.
+	var previous_frame_index := frame_index - 1
+	if previous_frame_index < 0:
+		return
+	if not _rollback_buffer.has_at(previous_frame_index):
+		return
+	if not input_from_client._rollback_buffer.has_at(previous_frame_index):
+		return
+
+	# Check if input for the previous frame is authoritative.
+	var input_state: Array = \
+		input_from_client._rollback_buffer.get_at(previous_frame_index)
+	if not input_from_client._is_frame_authoritative(input_state):
+		return
+
+	# Check if character state is already authoritative.
+	var char_state: Array = _rollback_buffer.get_at(previous_frame_index)
+	if _is_frame_authoritative(char_state):
+		return
+
+	# Upgrade character state authority.
+	_set_frame_authority(char_state, FrameAuthority.AUTHORITATIVE)
+	_rollback_buffer.set_at(previous_frame_index, char_state)
+
+	# Pack this authoritative state for network sending.
+	# Build a packed state array from the buffer entry.
+	var prop_count := _property_names_for_packing.size()
+	var state := ArrayPool.acquire(prop_count + 2)
+	for i in range(prop_count):
+		state[i] = _get_frame_property(char_state, \
+			_property_names_for_packing[i])
+	state[prop_count] = FrameAuthority.AUTHORITATIVE
+	state[prop_count + 1] = previous_frame_index
+
+	_is_packing_state_locally = true
+	if not authoritative_packed_state.is_empty():
+		ArrayPool.release(authoritative_packed_state)
+	authoritative_packed_state = state
+	_is_packing_state_locally = false
+
+	if Netcode.log.is_verbose:
+		Netcode.log.verbose(
+			"%s F:%d Confirmed authoritative state for frame %d" %
+			[name, Netcode.server_frame_index, previous_frame_index],
+			NetworkLogger.CATEGORY_NETWORK_SYNC)
 
 
 func _apply_input_to_character(input_source: ReconcilableState) -> void:

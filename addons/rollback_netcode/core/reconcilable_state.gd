@@ -12,7 +12,7 @@ extends MultiplayerSynchronizer
 ## Architecture:
 ## This class bridges three systems:
 ## 1. **Godot MultiplayerSynchronizer**: Handles low-level replication of
-##	  packed_state across network
+##	  predicted_packed_state / authoritative_packed_state across network
 ## 2. **RollbackBuffer**: Stores historical states for time-travel during
 ##	  rollback
 ## 3. **NetworkFrameDriver**: Coordinates frame-synchronous simulation and
@@ -153,16 +153,27 @@ var is_client_authoritative: bool:
 	get:
 		return not _get_is_server_authoritative()
 
-## This should contain the values for all of the properties of this state
-## instance, packed (somewhat) efficiently for syncing across the network.
-var packed_state := []:
-	set(value):
-		packed_state = value
-
-		if not _is_packing_state_locally:
-			_handle_new_state_from_network()
-
 var _is_packing_state_locally := false
+
+## Additional replication channel for predicted state (current frame,
+## SERVER_PREDICTED). Only used by nodes that override
+## _uses_split_packed_state() to send predicted state alongside
+## authoritative confirmations each tick.
+var predicted_packed_state := []:
+	set(value):
+		predicted_packed_state = value
+		if not _is_packing_state_locally:
+			_handle_new_state_from_network(value)
+
+## Primary replication channel for packed state. All nodes replicate through
+## this property. Contains properties + frame_authority + frame_index.
+## For non-split nodes this is the only channel; for split nodes this
+## carries confirmed authoritative state (past frame).
+var authoritative_packed_state := []:
+	set(value):
+		authoritative_packed_state = value
+		if not _is_packing_state_locally:
+			_handle_new_state_from_network(value)
 
 ## Tracks whether we've received valid initial state from the server.
 ## Used to allow the first state through even if it's "too old" (spawn data).
@@ -285,10 +296,14 @@ func _ready() -> void:
 	_parse_property_names()
 	update_authority()
 
-	# Re-process any packed_state that arrived before _ready() (e.g., spawn data).
-	# Before _parse_property_names(), _unpack_networked_state() fails the size check.
-	if not packed_state.is_empty():
-		_handle_new_state_from_network()
+	# Re-process any state that arrived before _ready() (e.g., spawn data).
+	# Before _parse_property_names(), _unpack_networked_state() fails the size
+	# check. Either channel could receive data before _ready() via
+	# MultiplayerSynchronizer.
+	if not authoritative_packed_state.is_empty():
+		_handle_new_state_from_network(authoritative_packed_state)
+	if not predicted_packed_state.is_empty():
+		_handle_new_state_from_network(predicted_packed_state)
 
 
 func _parse_property_names() -> void:
@@ -319,15 +334,15 @@ func update_authority() -> void:
 			NetworkLogger.CATEGORY_NETWORK_SYNC)
 
 
-func _handle_new_state_from_network() -> void:
-	if packed_state.is_empty():
+func _handle_new_state_from_network(p_state: Array) -> void:
+	if p_state.is_empty():
 		# Ignore any initial empty state.
 		return
 
-	var state_frame_index: int = _get_packed_frame_index(packed_state)
+	var state_frame_index: int = _get_packed_frame_index(p_state)
 
 	# Extract the frame authority from the received state.
-	var new_frame_authority: int = _get_packed_authority(packed_state)
+	var new_frame_authority: int = _get_packed_authority(p_state)
 
 	# PAUSE FILTERING: Reject states from after pause started.
 	if Netcode.frame_driver.is_paused:
@@ -446,7 +461,7 @@ func _handle_new_state_from_network() -> void:
 
 	if should_check_for_prediction_mismatch:
 		var mismatched_properties := _get_mismatched_properties(
-			packed_state, state_frame_index)
+			p_state, state_frame_index)
 		if not mismatched_properties.is_empty():
 			var buffer_state: Array = _rollback_buffer.get_at(state_frame_index)
 			var node_type := (
@@ -456,7 +471,7 @@ func _handle_new_state_from_network() -> void:
 			)
 			var mismatch_details := _get_mismatch_details_string(
 				mismatched_properties,
-				packed_state,
+				p_state,
 				buffer_state,
 			)
 			Netcode.log.verbose(
@@ -490,7 +505,7 @@ func _handle_new_state_from_network() -> void:
 		ArrayPool.release(mismatched_properties)
 
 	# Record rollback buffer frame.
-	_pack_buffer_state_from_network_state(packed_state)
+	_pack_buffer_state_from_network_state(p_state)
 
 	# Record authoritative delay in debug buffer.
 	if _debug_frame_buffer != null and new_frame_authority == FrameAuthority.AUTHORITATIVE:
@@ -502,7 +517,7 @@ func _handle_new_state_from_network() -> void:
 
 	if should_unpack_state:
 		# Record local class properties.
-		_unpack_networked_state()
+		_unpack_networked_state(p_state)
 		frame_authority = new_frame_authority as FrameAuthority
 
 		# Apply server state directly to scene when:
@@ -625,6 +640,14 @@ func _should_accept_predicted_states() -> bool:
 	return false
 
 
+## Virtual method: whether this node uses an additional
+## predicted_packed_state replication channel alongside the primary
+## authoritative_packed_state. Override to return true for nodes that need
+## to send predicted and authoritative state simultaneously.
+func _uses_split_packed_state() -> bool:
+	return false
+
+
 ## Virtual method: whether this node should create a debug buffer for tracking
 ## rollback/fast-forward/delay metrics. Only active in preview mode.
 ## Override in subclasses that should track debug metrics.
@@ -710,9 +733,16 @@ func _update_replication_config() -> void:
 	if not Netcode.log.ensure(is_instance_valid(root)):
 		return
 
-	var packed_state_path := "%s:packed_state" % root.get_path_to(self )
-	if not replication_config.has_property(packed_state_path):
-		replication_config.add_property(packed_state_path)
+	var self_path: String = root.get_path_to(self )
+	var authoritative_path := \
+		"%s:authoritative_packed_state" % self_path
+	if not replication_config.has_property(authoritative_path):
+		replication_config.add_property(authoritative_path)
+	if _uses_split_packed_state():
+		var predicted_path := \
+			"%s:predicted_packed_state" % self_path
+		if not replication_config.has_property(predicted_path):
+			replication_config.add_property(predicted_path)
 
 
 func _set_up_rollback_buffer() -> void:
@@ -756,7 +786,6 @@ func _pack_networked_state() -> void:
 	i += 1
 	# Send frame index directly.
 	state[i] = frame_index
-	_is_packing_state_locally = true
 
 	if Netcode.log.is_verbose:
 		var authority_string: StringName = FrameAuthority.keys()[frame_authority]
@@ -779,34 +808,39 @@ func _pack_networked_state() -> void:
 				],
 				NetworkLogger.CATEGORY_NETWORK_SYNC)
 
-	if not packed_state.is_empty():
-		ArrayPool.release(packed_state)
-
-	packed_state = state
+	_is_packing_state_locally = true
+	if _uses_split_packed_state():
+		if not predicted_packed_state.is_empty():
+			ArrayPool.release(predicted_packed_state)
+		predicted_packed_state = state
+	else:
+		if not authoritative_packed_state.is_empty():
+			ArrayPool.release(authoritative_packed_state)
+		authoritative_packed_state = state
 	_is_packing_state_locally = false
 
 
-func _unpack_networked_state() -> void:
-	# Empty packed_state is expected and normal during initial sync. When a
+func _unpack_networked_state(p_state: Array) -> void:
+	# Empty state is expected and normal during initial sync. When a
 	# ReconcilableState is first created, MultiplayerSynchronizer may
 	# trigger a sync before we've packed any state.
-	if packed_state.is_empty():
+	if p_state.is_empty():
 		return
 
 	if not Netcode.log.ensure(
-			packed_state.size() == _property_names_for_packing.size() + 2):
+			p_state.size() == _property_names_for_packing.size() + 2):
 		return
 
 	# Unpack all properties from network unconditionally.
 	# Protection for non-rollbackable state is in packing functions, not here.
 	var i := 0
 	for property_name in _property_names_for_packing:
-		set(property_name, packed_state[i])
+		set(property_name, p_state[i])
 		i += 1
-	# Skip frame_authority (at index i) - we handle it separately in _handle_new_state_from_network
+	# Skip frame_authority (at index i) - we handle it separately in _handle_new_state_from_network.
 	i += 1
 	# Unpack frame index directly.
-	frame_index = _get_packed_frame_index(packed_state)
+	frame_index = _get_packed_frame_index(p_state)
 
 
 func _pack_buffer_state_from_local_state() -> void:
@@ -884,7 +918,7 @@ func _pack_buffer_state_from_local_state() -> void:
 ## Records the current state in the rollback buffer at the current simulated
 ## frame index.
 ##
-## This does _not_ record state in the packed_state array for syncing across the
+## This does _not_ record state in the packed state array for syncing across the
 ## network.
 func _pack_buffer_state_from_network_state(packed_network_state: Array) -> void:
 	var frame_index: int = _get_packed_frame_index(packed_network_state)
@@ -1244,12 +1278,12 @@ func _is_frame_client_predicted(frame_state: Array) -> bool:
 	return _get_frame_authority(frame_state) == FrameAuthority.CLIENT_PREDICTED
 
 
-## Gets the frame index from a packed_state array (network format).
+## Gets the frame index from a packed state array (network format).
 func _get_packed_frame_index(packed_network_state: Array) -> int:
 	return packed_network_state[packed_network_state.size() - 1]
 
 
-## Gets the frame authority from a packed_state array (network format).
+## Gets the frame authority from a packed state array (network format).
 func _get_packed_authority(packed_network_state: Array) -> FrameAuthority:
 	var authority_index := packed_network_state.size() - 2
 	return packed_network_state[authority_index] as FrameAuthority

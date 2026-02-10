@@ -73,14 +73,14 @@ class TestableNetworkedState extends ReconcilableState:
 		pass
 
 
-	# Override _unpack_networked_state with lazy initialization for editor mode
-	func _unpack_networked_state() -> void:
-		# Lazy initialization: ensure properties are parsed if they haven't been yet
-		# This handles the case where _ready() returned early in editor mode
+	# Override _unpack_networked_state with lazy initialization for editor mode.
+	func _unpack_networked_state(p_state: Array) -> void:
+		# Lazy initialization: ensure properties are parsed if they haven't been yet.
+		# This handles the case where _ready() returned early in editor mode.
 		if _property_names_for_packing.is_empty():
 			_parse_property_names()
 
-		super._unpack_networked_state()
+		super._unpack_networked_state(p_state)
 
 
 	# Override _parse_property_names to work around @tool + inner class issues
@@ -114,7 +114,7 @@ class TestableNetworkedState extends ReconcilableState:
 
 
 	func unpack_networked_state_public() -> void:
-		_unpack_networked_state()
+		_unpack_networked_state(authoritative_packed_state)
 
 
 	func pack_buffer_state_from_network_state_public(
@@ -404,13 +404,16 @@ class TestStatePacking:
 		# Pack state
 		entity.pack_networked_state_public()
 
-		# Verify packed_state is not empty and has correct size
-		# 6 properties + frame_authority + timestamp = 8 elements
-		assert_not_null(entity.packed_state, "packed_state should not be null")
+		# Verify authoritative_packed_state is not empty and has correct size.
+		# 6 properties + frame_authority + timestamp = 8 elements.
+		assert_not_null(
+			entity.authoritative_packed_state,
+			"authoritative_packed_state should not be null",
+		)
 		assert_eq(
-			entity.packed_state.size(),
+			entity.authoritative_packed_state.size(),
 			8,
-			"packed_state should have 8 elements (6 properties + frame_authority + timestamp)",
+			"authoritative_packed_state should have 8 elements",
 		)
 
 
@@ -421,8 +424,11 @@ class TestStatePacking:
 		# Pack state
 		entity.pack_networked_state_public()
 
-		# Last element should be frame index directly
-		var packed_frame_index: int = entity.packed_state[entity.packed_state.size() - 1]
+		# Last element should be frame index directly.
+		var packed_frame_index: int = \
+			entity.authoritative_packed_state[
+				entity.authoritative_packed_state.size() - 1
+			]
 
 		assert_eq(
 			packed_frame_index,
@@ -437,14 +443,14 @@ class TestStatePacking:
 		entity.frame_index = 10
 
 		entity.pack_networked_state_public()
-		var first_packed := entity.packed_state
+		var first_packed := entity.authoritative_packed_state
 
-		# Change state and pack again
+		# Change state and pack again.
 		entity.test_position = Vector2(200.0, 100.0)
 		entity.frame_index = 20
 
 		entity.pack_networked_state_public()
-		var second_packed := entity.packed_state
+		var second_packed := entity.authoritative_packed_state
 
 		# Arrays should be different instances
 		assert_ne(
@@ -466,9 +472,9 @@ class TestStatePacking:
 		entity.test_name = "test_player"
 		entity.frame_index = 50
 
-		# Pack to create properly ordered packed_state
+		# Pack to create properly ordered state.
 		entity.pack_networked_state_public()
-		var packed_state_to_restore := entity.packed_state
+		var packed_state_to_restore := entity.authoritative_packed_state
 
 		# Verify pack worked
 		assert_not_null(
@@ -489,16 +495,17 @@ class TestStatePacking:
 		entity.test_is_active = true
 		entity.test_name = "player"
 
-		# Set the _is_packing_state_locally flag to prevent the packed_state setter
-		# from triggering _handle_new_state_from_network() which would unpack
-		# the state automatically before we can test the unpacking explicitly
+		# Set the _is_packing_state_locally flag to prevent the setter from
+		# triggering _handle_new_state_from_network() which would unpack
+		# the state automatically before we can test the unpacking
+		# explicitly.
 		entity._is_packing_state_locally = true
-		entity.packed_state = packed_state_to_restore
+		entity.authoritative_packed_state = packed_state_to_restore
 		entity._is_packing_state_locally = false
 
-		# Verify state is still valid before unpacking
+		# Verify state is still valid before unpacking.
 		assert_eq(
-			entity.packed_state.size(),
+			entity.authoritative_packed_state.size(),
 			8,
 			"Packed state should still have 8 elements before unpack",
 		)
@@ -531,10 +538,10 @@ class TestStatePacking:
 
 
 	func test_unpack_networked_state_handles_empty_array():
-		# Set packed_state to empty and unpack
-		entity.packed_state = []
+		# Set authoritative_packed_state to empty and unpack.
+		entity.authoritative_packed_state = []
 
-		# Should not crash
+		# Should not crash.
 		entity.unpack_networked_state_public()
 
 		# Properties should remain at default values
@@ -586,7 +593,7 @@ class TestStatePacking:
 
 		# Pack and unpack
 		entity.pack_networked_state_public()
-		var packed_copy := entity.packed_state.duplicate()
+		var packed_copy := entity.authoritative_packed_state.duplicate()
 
 		# Verify pack worked
 		assert_not_null(packed_copy, "Packed copy should not be null")
@@ -604,14 +611,14 @@ class TestStatePacking:
 		entity.test_is_active = true
 		entity.test_name = ""
 
-		# Set the _is_packing_state_locally flag to prevent automatic unpacking
+		# Set flag to prevent automatic unpacking.
 		entity._is_packing_state_locally = true
-		entity.packed_state = packed_copy
+		entity.authoritative_packed_state = packed_copy
 		entity._is_packing_state_locally = false
 
-		# Verify state is still valid before unpacking
+		# Verify state is still valid before unpacking.
 		assert_eq(
-			entity.packed_state.size(),
+			entity.authoritative_packed_state.size(),
 			8,
 			"Packed state should still have 8 elements before unpack",
 		)
