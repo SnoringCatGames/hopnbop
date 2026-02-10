@@ -344,10 +344,28 @@ func update_authority() -> void:
 
 func _should_use_network_simulator() -> bool:
 	return (
-		Netcode.is_debug and
-		Netcode.condition_simulator != null and
-		Netcode.condition_simulator.is_enabled
+		Netcode.is_debug
+		and Netcode.condition_simulator != null
+		and Netcode.condition_simulator.is_enabled
 	)
+
+
+## Assign packed state to the replication property, triggering
+## MultiplayerSynchronizer to send it on the next network tick.
+func _assign_outgoing_state(
+	state: Array,
+	channel: StringName,
+) -> void:
+	_is_packing_state_locally = true
+	if channel == &"predicted":
+		if not predicted_packed_state.is_empty():
+			ArrayPool.release(predicted_packed_state)
+		predicted_packed_state = state
+	else:
+		if not authoritative_packed_state.is_empty():
+			ArrayPool.release(authoritative_packed_state)
+		authoritative_packed_state = state
+	_is_packing_state_locally = false
 
 
 func _handle_new_state_from_network(p_state: Array) -> void:
@@ -824,16 +842,17 @@ func _pack_networked_state() -> void:
 				],
 				NetworkLogger.CATEGORY_NETWORK_SYNC)
 
-	_is_packing_state_locally = true
-	if _uses_split_packed_state():
-		if not predicted_packed_state.is_empty():
-			ArrayPool.release(predicted_packed_state)
-		predicted_packed_state = state
+	var channel: StringName = (
+		&"predicted"
+		if _uses_split_packed_state()
+		else &"authoritative"
+	)
+
+	if _should_use_network_simulator():
+		Netcode.condition_simulator.queue_outgoing_state(
+			self, state, channel)
 	else:
-		if not authoritative_packed_state.is_empty():
-			ArrayPool.release(authoritative_packed_state)
-		authoritative_packed_state = state
-	_is_packing_state_locally = false
+		_assign_outgoing_state(state, channel)
 
 
 func _unpack_networked_state(p_state: Array) -> void:

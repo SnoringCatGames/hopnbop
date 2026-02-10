@@ -3,10 +3,14 @@ extends Node
 ## Simulates poor network conditions for testing rollback netcode behavior.
 ##
 ## This node is created by NetworkOrchestrator in debug builds only. It
-## intercepts incoming packed_state updates (via ReconcilableState) and
-## applies configurable latency, jitter, packet loss, bandwidth throttling,
-## and latency spikes before delivering them to the normal reconciliation
-## pipeline.
+## intercepts packed_state updates (via ReconcilableState) in both
+## directions and applies configurable latency, jitter, packet loss,
+## bandwidth throttling, and latency spikes before delivery.
+##
+## - **Incoming** (network → local): Delays state arriving from the
+##   remote peer before it enters the reconciliation pipeline.
+## - **Outgoing** (local → network): Delays the property assignment that
+##   triggers MultiplayerSynchronizer replication.
 ##
 ## It also supports artificial frame delays to simulate slow-running
 ## machines (applied in FrameDriver._pre_physics_process).
@@ -25,6 +29,7 @@ enum Preset {
 }
 
 var _incoming_queue := NetworkDelayQueue.new()
+var _outgoing_queue := NetworkDelayQueue.new()
 
 ## Spike state.
 var _next_spike_msec := 0
@@ -46,11 +51,13 @@ var is_enabled: bool:
 func _physics_process(_delta: float) -> void:
 	if not is_enabled:
 		if _incoming_queue.pending_count() > 0:
-			# Flush any remaining entries when disabled mid-stream.
-			_flush_all_immediately()
+			_flush_all_immediately(_incoming_queue, true)
+		if _outgoing_queue.pending_count() > 0:
+			_flush_all_immediately(_outgoing_queue, false)
 		return
 
-	_process_queue()
+	_process_incoming_queue()
+	_process_outgoing_queue()
 	_update_stats()
 
 
@@ -64,6 +71,18 @@ func queue_incoming_state(
 ) -> void:
 	var delay := _calculate_delay_ms()
 	_incoming_queue.enqueue(node, data, channel, delay)
+
+
+## Called by ReconcilableState when packing local state for outbound
+## replication. Instead of assigning to the packed_state property
+## immediately, we queue it with the appropriate delay.
+func queue_outgoing_state(
+	node: ReconcilableState,
+	data: Array,
+	channel: StringName,
+) -> void:
+	var delay := _calculate_delay_ms()
+	_outgoing_queue.enqueue(node, data, channel, delay)
 
 
 ## Current effective latency including base, jitter, spikes, and
@@ -139,6 +158,7 @@ func apply_preset(preset: Preset) -> void:
 ## Clear queues and reset state.
 func reset() -> void:
 	_incoming_queue.clear()
+	_outgoing_queue.clear()
 	_next_spike_msec = 0
 	_spike_end_msec = 0
 	stats_queued = 0
@@ -171,42 +191,114 @@ func _calculate_delay_ms() -> int:
 			)
 			_next_spike_msec = (
 				now
-				+ int(Netcode.settings.network_sim_spike_interval_sec * 1000.0)
+				+ int(
+					Netcode.settings.network_sim_spike_interval_sec
+					* 1000.0
+				)
 			)
 		if now < _spike_end_msec:
-			base = maxi(base, Netcode.settings.network_sim_spike_latency_ms)
+			base = maxi(
+				base,
+				Netcode.settings.network_sim_spike_latency_ms,
+			)
 
 	return maxi(base, 0)
 
 
-func _process_queue() -> void:
-	var loss: float = Netcode.settings.network_sim_packet_loss_pct if Netcode.settings else 0.0
-	var bw: int = Netcode.settings.network_sim_bandwidth_limit if Netcode.settings else 0
+func _process_incoming_queue() -> void:
+	var s := Netcode.settings
+	var loss: float = (
+		s.network_sim_packet_loss_pct if s else 0.0
+	)
+	var bw: int = (
+		s.network_sim_bandwidth_limit if s else 0
+	)
 
 	var ready := _incoming_queue.process(loss, bw)
 	for entry in ready:
-		_deliver_state(entry)
+		_deliver_incoming_state(entry)
 
 
-func _deliver_state(entry: NetworkDelayQueue.QueuedState) -> void:
+func _process_outgoing_queue() -> void:
+	var s := Netcode.settings
+	var loss: float = (
+		s.network_sim_packet_loss_pct if s else 0.0
+	)
+	var bw: int = (
+		s.network_sim_bandwidth_limit if s else 0
+	)
+
+	var ready := _outgoing_queue.process(loss, bw)
+	for entry in ready:
+		_deliver_outgoing_state(entry)
+
+
+func _deliver_incoming_state(
+	entry: NetworkDelayQueue.QueuedState,
+) -> void:
 	if not is_instance_valid(entry.state_node):
 		return
-
 	# Call the normal handler, bypassing the simulator check.
-	entry.state_node._handle_new_state_from_network(entry.state_data)
+	entry.state_node._handle_new_state_from_network(
+		entry.state_data
+	)
 
 
-func _flush_all_immediately() -> void:
-	# Deliver everything in the queue right now (no loss/throttle).
-	var ready := _incoming_queue.process(0.0, 0)
+func _deliver_outgoing_state(
+	entry: NetworkDelayQueue.QueuedState,
+) -> void:
+	if not is_instance_valid(entry.state_node):
+		return
+	# Assign to the packed_state property to trigger
+	# MultiplayerSynchronizer replication. Use the local-packing
+	# flag so the setter doesn't re-enter the simulator.
+	entry.state_node._is_packing_state_locally = true
+	if entry.channel == &"predicted":
+		if not entry.state_node.predicted_packed_state.is_empty():
+			ArrayPool.release(
+				entry.state_node.predicted_packed_state
+			)
+		entry.state_node.predicted_packed_state = (
+			entry.state_data
+		)
+	else:
+		if not entry.state_node.authoritative_packed_state.is_empty():
+			ArrayPool.release(
+				entry.state_node.authoritative_packed_state
+			)
+		entry.state_node.authoritative_packed_state = (
+			entry.state_data
+		)
+	entry.state_node._is_packing_state_locally = false
+
+
+func _flush_all_immediately(
+	queue: NetworkDelayQueue,
+	is_incoming: bool,
+) -> void:
+	var ready := queue.process(0.0, 0)
 	for entry in ready:
-		_deliver_state(entry)
-	# Force-clear anything with future delivery times.
-	_incoming_queue.clear()
+		if is_incoming:
+			_deliver_incoming_state(entry)
+		else:
+			_deliver_outgoing_state(entry)
+	queue.clear()
 
 
 func _update_stats() -> void:
-	stats_queued = _incoming_queue.states_queued
-	stats_delivered = _incoming_queue.states_delivered
-	stats_dropped = _incoming_queue.states_dropped
-	stats_pending = _incoming_queue.pending_count()
+	stats_queued = (
+		_incoming_queue.states_queued
+		+ _outgoing_queue.states_queued
+	)
+	stats_delivered = (
+		_incoming_queue.states_delivered
+		+ _outgoing_queue.states_delivered
+	)
+	stats_dropped = (
+		_incoming_queue.states_dropped
+		+ _outgoing_queue.states_dropped
+	)
+	stats_pending = (
+		_incoming_queue.pending_count()
+		+ _outgoing_queue.pending_count()
+	)

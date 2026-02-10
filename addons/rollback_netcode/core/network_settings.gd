@@ -95,9 +95,11 @@ var preview_client_count: int:
 @export_group("Network Simulation (Dev Only)")
 
 ## Master enable for network condition simulation.
+## When enabled, delays are applied to both incoming and outgoing
+## states symmetrically (simulating real round-trip latency).
 @export var network_sim_enabled := false
 
-## Artificial one-way latency in milliseconds applied to incoming states.
+## Artificial one-way latency in milliseconds.
 @export var network_sim_latency_ms := 0
 
 ## Jitter: random variation added to latency (+/- this value in ms).

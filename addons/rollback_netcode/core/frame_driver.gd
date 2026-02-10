@@ -53,7 +53,7 @@ extends Node
 
 # - Test pause auto-unpause timeout.
 
-# - Test returning to lobby and then to match and then to lobby in preview.
+# - Test with multiple local clients again.
 
 # - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
 
@@ -73,14 +73,6 @@ extends Node
 #   - Force this to true for is_preview.
 #   - Use this for tracking debug buffer state.
 #   - Do a quick survey of other is_preview checks to see if any should swap.
-
-# Plan a good way to simulate various kinds on network problems.
-# - I want to be able to simulate a delayed server connection (maybe
-#   artificially add an N millisecond delay to each packed_state update?).
-# - Is it also possible to simulate slow-running frames? On the client or on the
-#   server--the mismatch might be interesting.
-# - Are there any other useful mechanisms we could use to simulate poor
-#   conditions in one way or another that would impact network sync?
 
 # - Ask AI if it's expected for there to be so many predicted instead of
 #   authoritative values. Shouldn't values in the past become authoritative as
