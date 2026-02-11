@@ -107,6 +107,8 @@ var preview_client_count: int:
 ## When disabled, verbose() calls are skipped (no string manipulation overhead).
 @export var includes_verbose_logs := false
 
+@export var includes_frame_index_in_logs := true
+
 
 ## Network condition simulation (dev/debug only).
 ## These settings have no effect in release builds.

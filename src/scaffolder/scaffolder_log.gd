@@ -64,9 +64,16 @@ func _format_message(message: String, category: StringName) -> String:
 		"[%s]" % peer_id_value if G.settings.include_peer_id_in_logs else ""
 	)
 
+	var frame_index_string := (
+		("|%5d" % Netcode.server_frame_index)
+		if Netcode.settings.includes_frame_index_in_logs
+		else ""
+	)
+
 	return (
-		"[%8.3f]%s%s %s" % [
+		"[%8.3f%s]%s%s %s" % [
 			play_time,
+			frame_index_string,
 			category_token,
 			peer_id_token,
 			message,

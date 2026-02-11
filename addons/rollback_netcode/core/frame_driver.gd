@@ -651,16 +651,16 @@ func _ready() -> void:
 
 func client_reset() -> void:
 	# Reset frame index for new match to sync with server's reset.
-	Netcode.frame_driver.server_frame_index = 0
+	server_frame_index = 0
 	# Start grace period to suppress expected frame sync warnings.
-	Netcode.frame_driver._frame_reset_time_usec = Time.get_ticks_usec()
+	_frame_reset_time_usec = Time.get_ticks_usec()
 	# Start paused so client waits for server's unpause signal
 	# before transitioning from LOADING to GAME screen.
-	Netcode.frame_driver._is_paused = true
+	_is_paused = true
 	# Reset match start countdown state from previous match.
-	Netcode.frame_driver.match_start_countdown_end_frame_index = -1
-	Netcode.frame_driver._has_match_start_countdown_started = false
-	Netcode.frame_driver._has_match_start_countdown_ended = false
+	match_start_countdown_end_frame_index = -1
+	_has_match_start_countdown_started = false
+	_has_match_start_countdown_ended = false
 
 
 ## Handles peer connections in preview mode to auto-unpause when ready.
