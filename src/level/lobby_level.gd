@@ -5,6 +5,10 @@ extends Level
 ## Players spawn/despawn via keyboard partitions and gamepads.
 
 
+const _SPAWN_SPEED := 600.0
+const _SPAWN_TARGET_VELOCITY := Vector2(3, 2)
+const _SPAWN_VELOCITY_ANGLE_MAX_OFFSET := PI / 16
+
 ## Array of device configs (null = slot empty).
 var _pending_device_configs_by_index: Array[DeviceConfig] = []
 
@@ -97,6 +101,7 @@ func _register_player(device_config: DeviceConfig) -> void:
 	player.name = "LobbyPlayer_%d" % local_player_index
 	players_node.add_child(player)
 	player.global_position = _get_player_spawn_position()
+	player.velocity = _get_spawn_velocity()
 
 	register_player(player)
 
@@ -110,6 +115,16 @@ func _register_player(device_config: DeviceConfig) -> void:
 
 	if is_instance_valid(G.game_panel):
 		G.game_panel.lobby_players_updated.emit()
+
+
+func _get_spawn_velocity() -> Vector2:
+	var target_angle := _SPAWN_TARGET_VELOCITY.angle()
+	var spawn_angle := (
+		target_angle
+		- _SPAWN_VELOCITY_ANGLE_MAX_OFFSET
+		+ _SPAWN_VELOCITY_ANGLE_MAX_OFFSET * 2 * randf()
+	)
+	return Vector2.from_angle(spawn_angle) * _SPAWN_SPEED
 
 
 func _deregister_player(device_name: StringName) -> void:
