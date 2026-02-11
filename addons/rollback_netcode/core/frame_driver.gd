@@ -54,7 +54,22 @@ extends Node
 
 # Analyze my overall netcode design. I want to implement networked time dilation, so that I can implementy dynamic slow-motion effects.
 
-# - Fix initial spawn position upward offset.
+
+# I want to add a gore particle effect.
+# - When a player is killed, I want to generate a bunch of particles from around their collision area, and give them all outward velocity.
+# - These particles should each obey gravity, and should collide with the level (but not other players).
+# - After a particle comes to rest (speed magnitude is less than a small threshold) in the level, I want to remove the particle and rasterize its representation into a gore_accumulation buffer.
+#   - This should then support accumulating an infinite amount of gore across the level.
+# - Additionally, I want to support a set of 8 different images for gore particles--each particle will be assigned an index representing one of these.
+#   - Additionally, of these 8 different type indices, 4 should be treated as "fast" and four as "slow".
+#   - Fast particles should have more initial speed.
+#   - Each particle should be able to have a different collision size.
+#   - But all particles can have the same collision shape (square or circle, whatever's easy).
+# - Gore particles shouldn't rotate--that should simplify some things.
+# - Additionally, I want to add a flag in G.settings for gore_enabled. It should default to false.
+#   - When this is false, we should use a different set of images for the gore (the other set will probably be flowers, so not "gorey" but the gore mechanic will still be active).
+# - Should these particles be custom scenes, or should these actually use Godot's built-in particle APIs?
+
 
 # - Fix kills.
 
@@ -63,8 +78,6 @@ extends Node
 # - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
 
 # - Fix kills to happen when _relative_ velocity.y is pushing head into foot, not just when one player is moving down.
-# - Fix respawn brief visibility.
-#   - Try again to move position immediately after death.
 # - TEST that when a high-speed kill happens, the bounce happens from where the
 #   initial collision contact should have been.
 #   -!!!!!!!!!!!!!!! I think this still happens
@@ -92,23 +105,6 @@ extends Node
 
 # - Lingering FIXMEs.
 
-# UI fixes:
-# - Adjust scene files: lobby_level.tscn, player_list.tscn, player_display.tscn.
-# - Lobby scene:
-#   - Embed the game title logo within the level.
-#   - Also embed some controls instruction.
-#   - Also embed instructions to go down hole for starting match.
-#   - Call MatchmakingClient.start_matchmaking() when any player jumps down a
-#     rabbit hole on the right side of the level.
-# - Hook-up / polish pause UI.
-#   - Show a small panel in the center of the window with a lightly transparent screen.
-# - Revise game-over UI.
-#   - Also a panel overlay over the still-visible level area.
-#   - Only show this game-over panel while in the lobby.
-#   - Have this panel persist, and not take up too much space.
-#   - Let players move while the panel is open.
-#   - So, completely not a "screen" or part of the transition system at all
-#     anymore.
 
 # - Update some "debug mode" checks (like for enabling screenshots) to consider
 #   whether we're running in preview mode in the editor.
@@ -339,6 +335,24 @@ extends Node
 #     - Match-end: Write a simple song, beat-aligned to seconds, 10 seconds long.
 # - Make sleeping bunny animations for while the countdown is going.
 #   - Make sure to override process_mode on PlayerAnimators, so they will move when paused.
+
+# UI fixes:
+# - Adjust scene files: lobby_level.tscn, player_list.tscn, player_display.tscn.
+# - Lobby scene:
+#   - Embed the game title logo within the level.
+#   - Also embed some controls instruction.
+#   - Also embed instructions to go down hole for starting match.
+#   - Call MatchmakingClient.start_matchmaking() when any player jumps down a
+#     rabbit hole on the right side of the level.
+# - Hook-up / polish pause UI.
+#   - Show a small panel in the center of the window with a lightly transparent screen.
+# - Revise game-over UI.
+#   - Also a panel overlay over the still-visible level area.
+#   - Only show this game-over panel while in the lobby.
+#   - Have this panel persist, and not take up too much space.
+#   - Let players move while the panel is open.
+#   - So, completely not a "screen" or part of the transition system at all
+#     anymore.
 
 # - Add alternate camera modes.
 #   - Support two modes: global camera vs player camera.
