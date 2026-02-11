@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://3h8cr1h8ecqm"
-path="res://.godot/imported/cover_image.svg-9fea90b82f88af509ff72bed8b99d50f.ctex"
+uid="uid://r2onbmumkh4v"
+path="res://.godot/imported/dirt.png-f317a3aa2edc7b3ee200890e32d1ee13.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/cover_image.svg"
-dest_files=["res://.godot/imported/cover_image.svg-9fea90b82f88af509ff72bed8b99d50f.ctex"]
+source_file="res://assets/images/old/dirt.png"
+dest_files=["res://.godot/imported/dirt.png-f317a3aa2edc7b3ee200890e32d1ee13.ctex"]
 
 [params]
 
@@ -38,6 +38,3 @@ process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
 detect_3d/compress_to=1
-svg/scale=1.0
-editor/scale_with_editor_scale=false
-editor/convert_colors_with_editor_theme=false

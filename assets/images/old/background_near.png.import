@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dycalw0k84awj"
-path="res://.godot/imported/itchio_cover.png-2c3cc9f370db7ca57265803e42068fa4.ctex"
+uid="uid://dv8ppxhguy2"
+path="res://.godot/imported/background_near.png-f41d41729cb25cae23cc9ab0fa993cfe.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/itchio_cover.png"
-dest_files=["res://.godot/imported/itchio_cover.png-2c3cc9f370db7ca57265803e42068fa4.ctex"]
+source_file="res://assets/images/old/background_near.png"
+dest_files=["res://.godot/imported/background_near.png-f41d41729cb25cae23cc9ab0fa993cfe.ctex"]
 
 [params]
 

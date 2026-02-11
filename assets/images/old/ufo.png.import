@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bonk1e6a6moub"
-path="res://.godot/imported/itchio_background.png-9cf554cb1bee2ba88588719b8a3467b0.ctex"
+uid="uid://dsgbstsy1ok2w"
+path="res://.godot/imported/ufo.png-e0bb326c6ebec7262a6705298d4bcf51.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/itchio_background.png"
-dest_files=["res://.godot/imported/itchio_background.png-9cf554cb1bee2ba88588719b8a3467b0.ctex"]
+source_file="res://assets/images/old/ufo.png"
+dest_files=["res://.godot/imported/ufo.png-e0bb326c6ebec7262a6705298d4bcf51.ctex"]
 
 [params]
 

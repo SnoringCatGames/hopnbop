@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cy3vr1p2mdpro"
-path="res://.godot/imported/youtube_cover.png-00cb87a81ea1c3316f7f25e28d9a7a56.ctex"
+uid="uid://dniyej36rvq3s"
+path="res://.godot/imported/bunny.png-c14aa8f214a7a2c95645a027809739c5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/youtube_cover.png"
-dest_files=["res://.godot/imported/youtube_cover.png-00cb87a81ea1c3316f7f25e28d9a7a56.ctex"]
+source_file="res://assets/images/scratch/bunny.png"
+dest_files=["res://.godot/imported/bunny.png-c14aa8f214a7a2c95645a027809739c5.ctex"]
 
 [params]
 

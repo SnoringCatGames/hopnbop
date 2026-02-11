@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d085kkb23bsyn"
-path="res://.godot/imported/background_forest.png-8ac1d4f261db62b03a2ea5759fd99281.ctex"
+uid="uid://cy3vr1p2mdpro"
+path="res://.godot/imported/youtube_cover.png-0d6e0f9928d5a8090c8afca145dcdfab.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/background_forest.png"
-dest_files=["res://.godot/imported/background_forest.png-8ac1d4f261db62b03a2ea5759fd99281.ctex"]
+source_file="res://assets/images/old/youtube_cover.png"
+dest_files=["res://.godot/imported/youtube_cover.png-0d6e0f9928d5a8090c8afca145dcdfab.ctex"]
 
 [params]
 

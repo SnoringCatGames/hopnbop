@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bupovjqn6r2xe"
-path="res://.godot/imported/icon_512.png-0a9d661542f243b1cded8e5c4e6ae681.ctex"
+uid="uid://bn4af1ts3yrq4"
+path="res://.godot/imported/ldjam_cover.png-b66a54fc16b340a3e1db276e7020e003.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/icon_512.png"
-dest_files=["res://.godot/imported/icon_512.png-0a9d661542f243b1cded8e5c4e6ae681.ctex"]
+source_file="res://assets/images/old/ldjam_cover.png"
+dest_files=["res://.godot/imported/ldjam_cover.png-b66a54fc16b340a3e1db276e7020e003.ctex"]
 
 [params]
 
