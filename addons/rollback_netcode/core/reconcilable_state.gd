@@ -165,7 +165,8 @@ var predicted_packed_state := []:
 		if not _is_packing_state_locally:
 			if _should_use_network_simulator():
 				Netcode.condition_simulator.queue_incoming_state(
-					self , value, &"predicted")
+					self , value,
+					NetworkConditionSimulator.CHANNEL_PREDICTED)
 			else:
 				_handle_new_state_from_network(value)
 
@@ -179,7 +180,8 @@ var authoritative_packed_state := []:
 		if not _is_packing_state_locally:
 			if _should_use_network_simulator():
 				Netcode.condition_simulator.queue_incoming_state(
-					self , value, &"authoritative")
+					self , value,
+					NetworkConditionSimulator.CHANNEL_AUTHORITATIVE)
 			else:
 				_handle_new_state_from_network(value)
 
@@ -357,7 +359,7 @@ func _assign_outgoing_state(
 	channel: StringName,
 ) -> void:
 	_is_packing_state_locally = true
-	if channel == &"predicted":
+	if channel == NetworkConditionSimulator.CHANNEL_PREDICTED:
 		if not predicted_packed_state.is_empty():
 			ArrayPool.release(predicted_packed_state)
 		predicted_packed_state = state
@@ -487,8 +489,13 @@ func _handle_new_state_from_network(p_state: Array) -> void:
 		state_frame_index >= Netcode.server_frame_index or
 		is_first_state
 	)
+	# Use <= so that input arriving for the current frame (between
+	# physics ticks, before server_frame_index is incremented) also
+	# triggers mismatch detection. Without this, 1-tick-late input on
+	# localhost skips the check (N < N is false) and the character
+	# state simulated with wrong predicted input is never corrected.
 	var should_check_for_prediction_mismatch := (
-		state_frame_index < Netcode.server_frame_index
+		state_frame_index <= Netcode.server_frame_index
 		and _rollback_buffer.has_at(state_frame_index)
 		and new_frame_authority == FrameAuthority.AUTHORITATIVE
 	)
@@ -509,13 +516,29 @@ func _handle_new_state_from_network(p_state: Array) -> void:
 				buffer_state,
 			)
 			Netcode.log.verbose(
-				"Prediction state mismatch (%s): %s" %
-				[node_type, mismatch_details],
-				NetworkLogger.CATEGORY_NETWORK_SYNC)
+				"Mismatch at F:%d (%s): %s" %
+				[state_frame_index, node_type,
+				mismatch_details],
+				NetworkLogger.CATEGORY_SYNC)
 
 			# Queue rollback with detailed cause logging.
 			var primary_cause := mismatched_properties[0] as String
-			Netcode.frame_driver.queue_rollback(state_frame_index)
+			# For server-authoritative nodes (character state), the
+			# buffer entry is overwritten by
+			# _pack_buffer_state_from_network_state below, so re-sim
+			# starts from the next frame (queue_rollback adds +1).
+			# For client-authoritative nodes (input), only the input
+			# buffer is corrected — the character state at the
+			# mismatched frame was simulated with wrong input and
+			# needs re-simulation, so we target one frame earlier.
+			var rollback_frame := state_frame_index
+			if not is_server_authoritative:
+				rollback_frame -= 1
+			Netcode.frame_driver.queue_rollback(
+				rollback_frame,
+				"%s mismatch on %s" % [
+					primary_cause, name]
+			)
 
 			# Record rollback event in debug buffer.
 			if _debug_frame_buffer != null:
@@ -650,7 +673,12 @@ func _post_network_process() -> void:
 	_sync_from_scene_state()
 
 	# Authority peers send their state over the network.
-	if is_multiplayer_authority():
+	# Skip during rollback re-simulation to avoid sending
+	# past-frame states that confuse remote peers.
+	if (
+		is_multiplayer_authority()
+		and not Netcode.frame_driver.is_resimulating
+	):
 		_pack_networked_state()
 
 	# All peers (authority and non-authority) pack local state into rollback
@@ -843,14 +871,14 @@ func _pack_networked_state() -> void:
 				NetworkLogger.CATEGORY_NETWORK_SYNC)
 
 	var channel: StringName = (
-		&"predicted"
+		NetworkConditionSimulator.CHANNEL_PREDICTED
 		if _uses_split_packed_state()
-		else &"authoritative"
+		else NetworkConditionSimulator.CHANNEL_AUTHORITATIVE
 	)
 
 	if _should_use_network_simulator():
 		Netcode.condition_simulator.queue_outgoing_state(
-			self, state, channel)
+			self , state, channel)
 	else:
 		_assign_outgoing_state(state, channel)
 
@@ -1404,6 +1432,14 @@ func _check_do_values_mismatch(
 	networked_value: Variant,
 	threshold: Variant,
 ) -> bool:
+	# Negative threshold disables mismatch detection for this
+	# property (used when redundant input makes interaction
+	# metadata rollbacks unnecessary).
+	if (
+		typeof(threshold) in [TYPE_INT, TYPE_FLOAT]
+		and threshold < 0
+	):
+		return false
 	match typeof(buffer_value):
 		TYPE_BOOL, TYPE_STRING:
 			return buffer_value != networked_value

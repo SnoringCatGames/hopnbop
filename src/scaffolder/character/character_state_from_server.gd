@@ -175,8 +175,19 @@ func _physics_process(_delta: float) -> void:
 
 
 func _process_local_mode() -> void:
+	# Save current bitmask before _collect_actions() clears it.
+	# _collect_actions() calls actions.clear() which zeros both
+	# bitmask and previous_bitmask, losing the frame-to-frame
+	# transition needed by just_pressed_* onset detection. The
+	# networked path restores this from the input buffer; in
+	# local mode we save/restore it manually.
+	var previous_actions_bitmask := character.actions.bitmask
+
 	# Collect input from local player.
 	character._collect_actions()
+
+	# Restore previous frame's bitmask for onset detection.
+	character.actions.previous_bitmask = previous_actions_bitmask
 
 	# Apply movement (includes surfaces.update_touches()).
 	character._apply_movement()
@@ -187,8 +198,6 @@ func _process_local_mode() -> void:
 	# Sync state (for consistency with networked path).
 	_sync_from_scene_state()
 
-	# Update previous state for next frame's just_* checks.
-	character.actions.previous_bitmask = character.actions.bitmask
 	character.surfaces.previous_bitmask = character.surfaces.bitmask
 
 
@@ -252,16 +261,54 @@ func _network_process() -> void:
 		# data to extrapolate from.
 		should_use_predicted_input = not previous_frame_index_is_auth
 
+	# Calculate input delay upfront (only relevant for local authority).
+	var input_delay: int = 0
+	if is_authority_for_input_from_client:
+		input_delay = (
+			Netcode.frame_sync.input_delay_frames
+			if Netcode.frame_sync != null
+			else 0
+		)
+
+	# Save previous bitmask before any input loading (needed when no delay).
+	var previous_bitmask_before_input := character.actions.bitmask
+
 	if has_authoritative_input or should_use_predicted_input:
-		# Use received input from buffer (either authoritative from
-		# PlayerInputFromClient, or predicted from ForwardedPlayerInputFromServer).
+		# ROLLBACK PATH: Use received input from buffer.
+		# For local authority with delay, the buffer already contains
+		# delayed input -- no delay transformation needed.
 		input_source._unpack_buffer_state(frame_index)
-		# Copy input from source to character.
 		_apply_input_to_character(input_source)
-		# Update surface attachment state based on the input we just loaded.
+
+		# Restore previous_bitmask from the previous frame's input
+		# buffer so just_triggered_jump fires only on the onset
+		# frame, matching forward-sim behavior. Without this, the
+		# rollback path would have just_triggered_jump = true on
+		# every held frame (previous_bitmask = 0 from
+		# _apply_input_to_character), causing server/client
+		# divergence in AirJumpAction.
+		if input_source._rollback_buffer.has_at(
+			frame_index - 1
+		):
+			var prev_input_state: Array = (
+				input_source._rollback_buffer.get_at(
+					frame_index - 1
+				)
+			)
+			if prev_input_state != null:
+				character.actions.previous_bitmask = (
+					input_source._get_frame_property(
+						prev_input_state, &"actions"
+					)
+				)
+
 		character.surfaces.update_actions()
 		if Netcode.log.is_verbose:
-			var authority_str := "PREDICTED" if should_use_predicted_input else "AUTHORITATIVE"
+			var authority_str := (
+				"PREDICTED"
+				if should_use_predicted_input
+				else "AUTHORITATIVE"
+			)
 			Netcode.verbose(
 				"F:%d Using %s input (actions=%d)" % [
 					Netcode.server_frame_index,
@@ -272,29 +319,115 @@ func _network_process() -> void:
 			)
 	else:
 		if is_authority_for_input_from_client:
-			# This client controls input - capture it now as authoritative.
-			# _collect_actions() will call surfaces.update_actions() internally.
+			# FORWARD SIM: Capture fresh raw input.
+			# _collect_actions() calls surfaces.update_actions().
 			character._collect_actions()
-			input_from_client.frame_authority = ReconcilableState.FrameAuthority.AUTHORITATIVE
+			input_from_client.frame_authority = (
+				ReconcilableState.FrameAuthority.AUTHORITATIVE
+			)
+
+			if input_delay > 0:
+				# Apply delay transformation: store raw input in
+				# delay buffer and replace with delayed input for
+				# local simulation. _sync_from_scene_state will
+				# read the delayed value from player.actions.bitmask
+				# so server and client agree on timing.
+				var delay_buf := (
+					input_from_client.input_delay_buffer
+				)
+				var raw_input := character.actions.bitmask
+				delay_buf.store(frame_index, raw_input)
+				var delayed := delay_buf.get_delayed(
+					frame_index, input_delay
+				)
+				var prev_delayed := delay_buf.get_delayed(
+					frame_index - 1, input_delay
+				)
+				character.actions.bitmask = delayed
+				character.actions.previous_bitmask = prev_delayed
+
+				# Reset and re-detect jump trigger on delayed input.
+				character.last_triggered_jump_frame_index = -1
+				if character.actions.just_triggered_jump:
+					character.last_triggered_jump_frame_index = (
+						Netcode.server_frame_index
+					)
+
+				# Re-update surface state for delayed input.
+				character.surfaces.update_actions()
+			else:
+				# No input delay - use previous bitmask from last
+				# frame.
+				character.actions.previous_bitmask = (
+					previous_bitmask_before_input
+				)
+
+				# Reset and re-detect jump trigger with correct
+				# previous_bitmask (same as delay path above).
+				character.last_triggered_jump_frame_index = -1
+				if character.actions.just_triggered_jump:
+					character.last_triggered_jump_frame_index = (
+						Netcode.server_frame_index
+					)
+
+				# Re-update surface state with correct
+				# previous_bitmask.
+				character.surfaces.update_actions()
+
+				if Netcode.log.is_verbose:
+					if character.actions.just_triggered_jump:
+						Netcode.verbose(
+							"F:%d Jump onset detected "
+							+ "(no-delay path, "
+							+ "surface=%s) (%s)" % [
+								Netcode.server_frame_index,
+								SurfaceType.get_string(
+									character.surfaces
+										.surface_type
+								),
+								name,
+							],
+							NetworkLogger
+								.CATEGORY_NETWORK_SYNC,
+						)
 		else:
-			# No new input yet - extrapolate from previous frame's input.
-			# This is intentional: predicted input uses the last known state
-			# (N-1) to simulate frame N, while authoritative input that arrives
-			# later will be at frame N.
+			# No new input yet - extrapolate from previous frame's
+			# input. Predicted input uses the last known state (N-1)
+			# to simulate frame N.
 			input_source._unpack_buffer_state(frame_index - 1)
-			# Copy input from source to character.
 			_apply_input_to_character(input_source)
-			input_source.frame_authority = ReconcilableState.FrameAuthority.SERVER_PREDICTED
-			# Update surface attachment state based on the input we just loaded.
+			# Set previous_bitmask = current bitmask so no actions
+			# are detected as "just pressed" during extrapolation.
+			character.actions.previous_bitmask = (
+				character.actions.bitmask
+			)
+			input_source.frame_authority = (
+				ReconcilableState.FrameAuthority.SERVER_PREDICTED
+			)
 			character.surfaces.update_actions()
 			if Netcode.log.is_verbose:
 				Netcode.verbose(
-					"F:%d Extrapolating input from prev frame (actions=%d)" % [
+					"F:%d Extrapolating input from prev frame "
+					+ "(actions=%d)" % [
 						Netcode.server_frame_index,
 						character.actions.bitmask,
 					],
 					NetworkLogger.CATEGORY_NETWORK_SYNC,
 				)
+
+	# On the server, set frame authority to indicate whether this
+	# frame's character state is based on authoritative input or
+	# extrapolation. Without this, frame_authority stays UNKNOWN
+	# (set in _pre_network_process), which bypasses the client's
+	# SERVER_PREDICTED filter. The client then overwrites its
+	# correct local prediction buffer with the server's
+	# extrapolated state, causing jump rubberbanding.
+	if is_authority_for_state_from_server:
+		frame_authority = (
+			FrameAuthority.AUTHORITATIVE
+			if has_authoritative_input
+			else FrameAuthority.SERVER_PREDICTED
+		)
 
 	# Forward input from PlayerInputFromClient to
 	# ForwardedPlayerInputFromServer.
@@ -376,19 +509,6 @@ func _network_process() -> void:
 func _sync_to_scene_state(previous_state: Array) -> void:
 	if not Netcode.ensure_valid(character):
 		return
-
-	if Netcode.log.is_verbose and not is_authority_for_state_from_server:
-		var pos_before := character.position
-		var will_change := position.distance_to(pos_before) > 0.1
-		if will_change:
-			Netcode.print(
-				"F:%d _sync_to_scene_state: char pos %s->%s (rollback)" % [
-					Netcode.server_frame_index,
-					pos_before,
-					position,
-				],
-				NetworkLogger.CATEGORY_NETWORK_SYNC,
-			)
 
 	character.position = position
 	character.velocity = velocity
@@ -535,13 +655,13 @@ func _sync_from_scene_state() -> void:
 
 func _post_network_process() -> void:
 	super._post_network_process()
-	# On the server, check if we can confirm past frames as authoritative.
-	# The current frame is always SERVER_PREDICTED (input arrives 1 tick
-	# late). But input for past frames may have been confirmed authoritative
-	# since last tick. When input matches prediction, no rollback occurs, so
-	# the character state was already computed correctly. We just need to
-	# upgrade its authority and send it to the client.
-	_try_send_confirmed_authoritative_state()
+	# On the server, confirm the previous frame as authoritative
+	# (input typically arrives 1 tick late). This sends the character
+	# state for frame_index-1 to clients on the authoritative channel.
+	# Skip during re-sim: running with re-sim frame indices interferes
+	# with frame advancement.
+	if not Netcode.frame_driver.is_resimulating:
+		_try_send_confirmed_authoritative_state()
 
 
 ## Checks if the input for a recently processed frame became authoritative.
@@ -572,14 +692,17 @@ func _try_send_confirmed_authoritative_state() -> void:
 	if not input_from_client._is_frame_authoritative(input_state):
 		return
 
-	# Check if character state is already authoritative.
+	# Always upgrade and send, even if already AUTHORITATIVE from
+	# rollback re-simulation. Without this, _try_send skips frames
+	# that were marked AUTHORITATIVE during server rollback, causing
+	# the sent frame to stall for many ticks. The client then
+	# receives the same stale AUTHORITATIVE state repeatedly,
+	# triggering cascading rollbacks (especially during jumps where
+	# position diverges).
 	var char_state: Array = _rollback_buffer.get_at(previous_frame_index)
-	if _is_frame_authoritative(char_state):
-		return
-
-	# Upgrade character state authority.
-	_set_frame_authority(char_state, FrameAuthority.AUTHORITATIVE)
-	_rollback_buffer.set_at(previous_frame_index, char_state)
+	if not _is_frame_authoritative(char_state):
+		_set_frame_authority(char_state, FrameAuthority.AUTHORITATIVE)
+		_rollback_buffer.set_at(previous_frame_index, char_state)
 
 	# Pack this authoritative state for network sending.
 	# Build a packed state array from the buffer entry.
@@ -609,14 +732,10 @@ func _apply_input_to_character(input_source: ReconcilableState) -> void:
 	# to the character.
 	if input_source is PlayerInputNetworkState:
 		var input := input_source as PlayerInputNetworkState
-		# Zero previous_bitmask to match the behavior of _collect_actions()
-		# (which calls actions.clear()) and the server (where
-		# previous_bitmask is never set from the buffer). Without this,
-		# rollback re-simulation would have previous_bitmask = buffer[N-2]
-		# (set by _sync_to_scene_state), causing just_triggered_jump to
-		# return false when the button is held continuously. The server and
-		# normal play path both have previous_bitmask = 0, making
-		# just_triggered_jump behave like is_triggering_jump.
+		# Default previous_bitmask to 0. Callers override this:
+		# - Rollback path: reads from input buffer (frame N-1).
+		# - Extrapolation path: sets to current bitmask.
+		# - Forward sim path: sets from delay buffer or scene.
 		character.actions.previous_bitmask = 0
 		character.actions.bitmask = input.actions
 		match input.last_interaction_type:
@@ -726,7 +845,8 @@ func _reconcile_server_interaction() -> void:
 ## The bounce velocity is applied during re-simulation by bunny.gd via
 ## get_current_frame_bounce_velocity() + force_boost().
 func _reconcile_bump_interaction(p_frame_index: int) -> void:
-	Netcode.frame_driver.queue_rollback(p_frame_index)
+	Netcode.frame_driver.queue_rollback(
+		p_frame_index, "bump on %s" % name)
 
 	if Netcode.log.is_verbose:
 		Netcode.verbose(
@@ -743,7 +863,8 @@ func _reconcile_bump_interaction(p_frame_index: int) -> void:
 ## The bounce velocity is applied during re-simulation by bunny.gd via
 ## get_current_frame_bounce_velocity() + force_boost().
 func _reconcile_kill_interaction(p_frame_index: int) -> void:
-	Netcode.frame_driver.queue_rollback(p_frame_index)
+	Netcode.frame_driver.queue_rollback(
+		p_frame_index, "kill on %s" % name)
 
 	if Netcode.log.is_verbose:
 		Netcode.verbose(
@@ -775,7 +896,8 @@ func _set_frame_interaction_properties(
 ## Visibility/collision state is applied during re-simulation via
 ## _ensure_interaction_state_applied().
 func _reconcile_die_interaction(p_frame_index: int) -> void:
-	Netcode.frame_driver.queue_rollback(p_frame_index)
+	Netcode.frame_driver.queue_rollback(
+		p_frame_index, "die on %s" % name)
 
 	if Netcode.log.is_verbose:
 		Netcode.verbose(
@@ -792,7 +914,8 @@ func _reconcile_die_interaction(p_frame_index: int) -> void:
 ## Position/visibility state is applied during re-simulation. The server state
 ## already contains the correct spawn position.
 func _reconcile_spawn_interaction(p_frame_index: int) -> void:
-	Netcode.frame_driver.queue_rollback(p_frame_index)
+	Netcode.frame_driver.queue_rollback(
+		p_frame_index, "spawn on %s" % name)
 
 	if Netcode.log.is_verbose:
 		Netcode.verbose(
@@ -904,4 +1027,7 @@ func _inject_authoritative_state_into_buffer(
 	_set_frame_authority(frame_state, FrameAuthority.AUTHORITATIVE)
 
 	_rollback_buffer.set_at(p_frame_index, frame_state)
-	Netcode.frame_driver.queue_rollback(p_frame_index)
+	Netcode.frame_driver.queue_rollback(
+		p_frame_index,
+		"inject_authoritative on %s" % name
+	)

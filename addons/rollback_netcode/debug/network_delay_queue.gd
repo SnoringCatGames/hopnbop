@@ -11,7 +11,7 @@ extends RefCounted
 class QueuedState:
 	var state_node: ReconcilableState
 	var state_data: Array
-	var channel: StringName  # &"authoritative" or &"predicted"
+	var channel: StringName  # CHANNEL_AUTHORITATIVE or CHANNEL_PREDICTED.
 	var deliver_at_msec: int
 
 	func _init(

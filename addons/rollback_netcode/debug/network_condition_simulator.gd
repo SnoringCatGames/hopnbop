@@ -19,6 +19,11 @@ extends Node
 ## changed at runtime (e.g., via the debug UI panel) take effect
 ## immediately.
 
+## Channel name for predicted state (split-packed nodes).
+const CHANNEL_PREDICTED := &"predicted"
+## Channel name for authoritative state.
+const CHANNEL_AUTHORITATIVE := &"authoritative"
+
 ## Presets for common network conditions.
 enum Preset {
 	NONE,
@@ -253,7 +258,7 @@ func _deliver_outgoing_state(
 	# MultiplayerSynchronizer replication. Use the local-packing
 	# flag so the setter doesn't re-enter the simulator.
 	entry.state_node._is_packing_state_locally = true
-	if entry.channel == &"predicted":
+	if entry.channel == CHANNEL_PREDICTED:
 		if not entry.state_node.predicted_packed_state.is_empty():
 			ArrayPool.release(
 				entry.state_node.predicted_packed_state

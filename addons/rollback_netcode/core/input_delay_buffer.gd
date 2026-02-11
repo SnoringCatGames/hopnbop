@@ -55,6 +55,19 @@ func store(frame_index: int, bitmask: int) -> void:
 			_oldest_frame_index = _newest_frame_index - _CAPACITY + 1
 
 
+## Returns the raw bitmask stored at the given frame. Returns 0 if the frame
+## is not in the valid range [oldest, newest].
+func get_raw(frame_index: int) -> int:
+	# Check if frame is in valid range.
+	if _oldest_frame_index < 0:
+		return 0  # Buffer empty.
+	if frame_index < _oldest_frame_index or frame_index > _newest_frame_index:
+		return 0  # Outside valid range.
+
+	var slot := frame_index % _CAPACITY
+	return _buffer[slot]
+
+
 ## Returns the bitmask from (frame_index - delay). Returns 0 if the delayed
 ## frame is not in the valid range [oldest, newest].
 func get_delayed(frame_index: int, delay: int) -> int:
@@ -62,17 +75,7 @@ func get_delayed(frame_index: int, delay: int) -> int:
 		return 0
 
 	var target_frame := frame_index - delay
-	if target_frame < 0:
-		return 0
-
-	# Check if target frame is in valid range.
-	if _oldest_frame_index < 0:
-		return 0  # Buffer empty.
-	if target_frame < _oldest_frame_index or target_frame > _newest_frame_index:
-		return 0  # Outside valid range.
-
-	var slot := target_frame % _CAPACITY
-	return _buffer[slot]
+	return get_raw(target_frame)
 
 
 ## Resets the buffer, clearing all stored input. Called when the delay buffer
