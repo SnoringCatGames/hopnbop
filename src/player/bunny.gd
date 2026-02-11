@@ -137,26 +137,30 @@ func _process_movement_and_actions() -> void:
 	# This runs every frame to handle invincibility expiring.
 	_update_player_collision_for_invincibility()
 
-	# Handle client-side interaction effects (sounds, particles).
-	# Process the interaction if it's new (not yet processed).
-	var interaction_start_time := (
-		state_from_server.last_interaction_frame_index
-	)
-	var should_process := (
-		interaction_start_time != _last_processed_interaction_start_time
-		and interaction_start_time >= 0
-	)
-
-	if should_process:
-		_handle_interaction_effects()
-		_last_processed_interaction_start_time = interaction_start_time
-
 
 	# -------------------------------------
 	# FIXME: REMOVE
 	# Diagnostic: detect if player should be visible but isn't.
 	_check_visibility_bug_diagnostic()
 	# -------------------------------------
+
+
+func _process_client_effects() -> void:
+	# Handle client-side interaction effects (sounds, particles).
+	# Process the interaction if it's new (not yet processed).
+	var interaction_start_time := (
+		state_from_server.last_interaction_frame_index
+	)
+	var should_process := (
+		interaction_start_time !=
+			_last_processed_interaction_start_time
+		and interaction_start_time >= 0
+	)
+
+	if should_process:
+		_handle_interaction_effects()
+		_last_processed_interaction_start_time = \
+			interaction_start_time
 
 
 func _handle_interaction_effects() -> void:

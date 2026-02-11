@@ -240,6 +240,13 @@ func _process_movement_and_actions() -> void:
 	_update_collision_mask()
 
 
+## Called every network frame regardless of death state. Override
+## in subclasses to handle client-side effects (sounds, particles)
+## that must fire even when the character is dead.
+func _process_client_effects() -> void:
+	pass
+
+
 func _process_facing_direction() -> void:
 	# Flip the horizontal direction of the animation according to which way the
 	# character is facing.

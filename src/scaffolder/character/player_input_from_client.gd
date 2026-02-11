@@ -112,6 +112,17 @@ func _sync_from_scene_state() -> void:
 	# - Without delay: raw input from _collect_actions().
 	actions = player.actions.bitmask
 
+	# Client's own input is always authoritative. This ensures:
+	# - Server triggers mismatch detection + rollback when
+	#   extrapolated input differs from actual client input.
+	# - Server's extrapolated frames get SERVER_PREDICTED
+	#   authority (via _pre_network_process downgrade), making
+	#   them correctable by redundant input.
+	# Without this, input arrives as UNKNOWN, the server never
+	# rolls back, and stale extrapolated values cascade to
+	# remote clients via ForwardedInputFromServer.
+	frame_authority = FrameAuthority.AUTHORITATIVE
+
 	# Record jump interaction when jump is triggered. Skip during
 	# rollback re-simulation: the interaction was already sent, and
 	# re-recording with a slightly different position would trigger

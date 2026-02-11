@@ -194,6 +194,7 @@ func _process_local_mode() -> void:
 
 	# Process animations, sounds, etc.
 	character._process_movement_and_actions()
+	character._process_client_effects()
 
 	# Sync state (for consistency with networked path).
 	_sync_from_scene_state()
@@ -498,6 +499,12 @@ func _network_process() -> void:
 				)
 
 		character._process_movement_and_actions()
+
+	# Process client-side effects (sounds, particles) regardless of
+	# death state. This must be outside the is_dead guard so that
+	# death effects (die sound, gore particles) fire on the frame
+	# the interaction is first detected.
+	character._process_client_effects()
 
 	# Ensure visibility/collision state is correct based on current interaction.
 	# This is critical to prevent players from staying invisible after respawn.
