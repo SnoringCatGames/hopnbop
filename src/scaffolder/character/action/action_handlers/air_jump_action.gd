@@ -33,8 +33,11 @@ func process(character) -> bool:
 		not character.surfaces.is_attaching_to_surface
 	)
 	var is_jump_triggered: bool = (
-		character.actions.just_triggered_jump or
-		is_auto_jump_from_hold
+		not character.surfaces.is_launched
+		and (
+			character.actions.just_triggered_jump
+			or is_auto_jump_from_hold
+		)
 	)
 
 	if is_jump_triggered and \

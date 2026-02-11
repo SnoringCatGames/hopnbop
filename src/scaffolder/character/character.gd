@@ -216,6 +216,19 @@ func _apply_movement() -> void:
 	# Update touch state and correct any invalid one-way collisions.
 	surfaces.update_touches(saved_position, saved_velocity)
 
+	# Re-evaluate attachment state after collision detection.
+	# The first update_actions() call (during input handling) used
+	# stale touching state from the rollback buffer. After
+	# move_and_slide + update_touches, touching state reflects the
+	# actual collision. Re-running update_actions ensures attachment
+	# decisions (and thus surface_type) are based on the real
+	# post-movement collision state. Without this, a character that
+	# just jumped would still show surface_type=FLOOR on the next
+	# frame (buffer says touching floor from before the jump moved
+	# the character up), causing FloorDefaultAction to zero the
+	# jump velocity.
+	surfaces.update_actions()
+
 
 ## Update derived behaviors based on current movement and actions.
 ## This gets called during _network_process, just after _apply_movement.
@@ -249,24 +262,27 @@ func _process_actions() -> void:
 			action_handler.name == &"FloorDefaultAction"
 		)
 
-		var is_action_relevant_for_surface: bool = \
-		action_handler.type == surfaces.surface_type or \
-		action_handler.type == SurfaceType.OTHER or \
-		# Our surface-state logic considers the current actions, and
-		# surface-state is updated before we process actions here.
-		# Furthermore, we use action-handlers to actually apply the
-		# changes for things like jump impulses that are needed to
-		# actually transition the character from a surface. So we need
-		# to also consider the surface that we are currently leaving,
-		# and allow an action-handler of that departure-surface-type to
-		# handle this frame.
-		(action_handler.type == surfaces.just_left_surface_type and
-			surfaces.just_left_surface_type != SurfaceType.OTHER)
-		var is_action_relevant_for_physics_mode: bool = \
-		action_handler.uses_runtime_physics
-		if is_action_relevant_for_surface and \
-		is_action_relevant_for_physics_mode and \
-		not is_blocked_floor_action:
+		var is_action_relevant_for_surface: bool = (
+			action_handler.type == surfaces.surface_type or
+			action_handler.type == SurfaceType.OTHER or
+			# Our surface-state logic considers the current actions, and
+			# surface-state is updated before we process actions here.
+			# Furthermore, we use action-handlers to actually apply the
+			# changes for things like jump impulses that are needed to
+			# actually transition the character from a surface. So we need
+			# to also consider the surface that we are currently leaving,
+			# and allow an action-handler of that departure-surface-type to
+			# handle this frame.
+			(action_handler.type == surfaces.just_left_surface_type and
+				surfaces.just_left_surface_type != SurfaceType.OTHER)
+		)
+		var is_action_relevant_for_physics_mode: bool = (
+			action_handler.uses_runtime_physics
+		)
+		if (is_action_relevant_for_surface and
+			is_action_relevant_for_physics_mode and
+			not is_blocked_floor_action
+		):
 			var executed: bool = action_handler.process(self )
 			_previous_actions_handlers_this_frame[action_handler.name] = \
 			executed

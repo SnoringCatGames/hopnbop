@@ -45,8 +45,7 @@ extends Node
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
 # DEBUG THIS:
-#   adaptive input delay
-#   as well as redundant input transmission
+#   adaptive input delay, and redundant input transmission
 
 # Analyze my overall netcode design. Compared to standard approaches, am I handling rollbacks and fast-forwards correctly? Should I be triggering them less frequently, or on fewer nodes? Should I be replicating more or less state?
 
@@ -54,6 +53,10 @@ extends Node
 
 # Analyze my overall netcode design. I want to implement networked time dilation, so that I can implementy dynamic slow-motion effects.
 
+# - Test fly-in in lobby.
+#   - I want to add support for an is_launched flag on surface_state. I then want us to record this in CharacterSurfaceState.bitmask. When this is true, we should not apply fall_horizontal_friction. We should set this flag when CharacterSurfaceState.force_boost is called, and we should clear this flag when the character touches any surface.
+
+# - Test gore.
 
 # I want to add a gore particle effect.
 # - When a player is killed, I want to generate a bunch of particles from around their collision area, and give them all outward velocity.
@@ -146,6 +149,7 @@ extends Node
 #   - Use tabs, not spaces.
 #   - When wrapping expressions across multiple lines, place operators at the start of the next line rather than the end of the previous.
 #   - Wrap lines at 80 characters.
+#   - Prefer using parens to wrap lines rather than backslashes.
 #   - Use periods at the ends of comments.
 #   - Follow the Godot style guide: https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html
 #   - Use multiple sub-agents to parallelize this work.
@@ -582,6 +586,11 @@ var _networked_state_nodes: Array[ReconcilableState] = []
 var _frame_processor_nodes: Array[FrameProcessor] = []
 
 var _queued_rollback_frame_index := 0
+var _queued_rollback_cause: String = ""
+
+## True during rollback re-simulation. Used to suppress re-sending
+## of client input that was already transmitted during forward sim.
+var is_resimulating := false
 
 ## Rollback tracking metrics (for performance monitoring)
 var last_rollback_frame_count := 0
@@ -934,6 +943,7 @@ func _server_execute_pause(
 
 	# Clear queued rollback - it's based on invalid post-pause state.
 	_queued_rollback_frame_index = 0
+	_queued_rollback_cause = ""
 
 	# Notify clients (if server and in tree for RPC).
 	if Netcode.is_server and is_inside_tree():
@@ -1067,6 +1077,7 @@ func _client_execute_pause_at_server_frame(
 
 	# Clear queued rollback.
 	_queued_rollback_frame_index = 0
+	_queued_rollback_cause = ""
 
 	# Pause Godot scene tree.
 	if is_inside_tree():
@@ -1155,6 +1166,14 @@ func _pre_physics_process(_delta: float) -> void:
 		)
 
 	if _is_paused:
+		# Still advance frame index in local mode so frame-based
+		# logic (boost cooldown, coyote time, jump throttle) works
+		# correctly even though networking is paused.
+		if not G.is_networked_level_active:
+			if not _is_frame_tracking_initialized:
+				_initialize_frame_tracking()
+			else:
+				server_frame_index += 1
 		return
 
 	if not _is_frame_tracking_initialized:
@@ -1243,7 +1262,10 @@ func is_frame_too_old_to_consider(p_frame_index: int) -> bool:
 ##   mismatch.
 ##   - We already know that the local simulation at the mismatch resulting in
 ##     the wrong state, so we don't re-simulate that frame.
-func queue_rollback(p_conflicting_frame_index: int) -> bool:
+func queue_rollback(
+	p_conflicting_frame_index: int,
+	p_cause: String = "",
+) -> bool:
 	var target_rollback_frame := p_conflicting_frame_index + 1
 	if is_frame_too_old_to_consider(p_conflicting_frame_index):
 		Netcode.log.warning(
@@ -1257,7 +1279,10 @@ func queue_rollback(p_conflicting_frame_index: int) -> bool:
 	# Rollback simulation would start on the next frame after the mismatch.
 	if _queued_rollback_frame_index == 0:
 		_queued_rollback_frame_index = target_rollback_frame
+		_queued_rollback_cause = p_cause
 	else:
+		if target_rollback_frame < _queued_rollback_frame_index:
+			_queued_rollback_cause = p_cause
 		_queued_rollback_frame_index = mini(
 			_queued_rollback_frame_index,
 			target_rollback_frame,
@@ -1272,6 +1297,7 @@ func _run_network_process(only_buffers := false) -> void:
 	if _queued_rollback_frame_index > 0:
 		_rollback_and_reprocess()
 		_queued_rollback_frame_index = 0
+		_queued_rollback_cause = ""
 
 	if only_buffers:
 		_network_process_buffers_only()
@@ -1280,12 +1306,17 @@ func _run_network_process(only_buffers := false) -> void:
 
 
 func _rollback_and_reprocess() -> void:
-	if Netcode.log.is_verbose:
-		Netcode.log.verbose(
-			"Starting rollback from frame %d to frame %d" %
-			[server_frame_index, _queued_rollback_frame_index],
-			NetworkLogger.CATEGORY_SYNC
-		)
+	var cause_str := (
+		" cause=%s" % _queued_rollback_cause
+		if _queued_rollback_cause != ""
+		else ""
+	)
+	Netcode.log.print(
+		"Starting rollback from frame %d to frame %d%s" %
+		[server_frame_index,
+		_queued_rollback_frame_index, cause_str],
+		NetworkLogger.CATEGORY_SYNC
+	)
 
 	var rollback_start_time_usec := Time.get_ticks_usec()
 
@@ -1297,11 +1328,13 @@ func _rollback_and_reprocess() -> void:
 	# The loop processes frames [rollback_frame, original_frame), but not the
 	# original frame itself. The current frame will be re-simulated afterward in
 	# the normal _run_network_process flow.
+	is_resimulating = true
 	var frame_count := 0
 	while server_frame_index < original_server_frame_index:
 		_network_process()
 		server_frame_index += 1
 		frame_count += 1
+	is_resimulating = false
 
 	server_frame_index = original_server_frame_index
 

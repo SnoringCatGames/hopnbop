@@ -1,10 +1,11 @@
-[gd_resource type="Resource" script_class="Settings" load_steps=13 format=3 uid="uid://dv60bmaw1pdx6"]
+[gd_resource type="Resource" script_class="Settings" load_steps=14 format=3 uid="uid://dv60bmaw1pdx6"]
 
 [ext_resource type="Script" uid="uid://cqomr88ncj2d3" path="res://src/core/settings.gd" id="1_krfic"]
 [ext_resource type="PackedScene" uid="uid://c7h8xaxryasdf" path="res://src/level/lobby_level.tscn" id="1_lobby"]
 [ext_resource type="Resource" uid="uid://dlxwxma23mjon" path="res://src/ui/default_palette.tres" id="2_yixrw"]
 [ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/ui/default_theme.tres" id="3_r80nf"]
 [ext_resource type="PackedScene" uid="uid://cn6hdqmmufnvr" path="res://src/player/bunny.tscn" id="3_woca2"]
+[ext_resource type="PackedScene" uid="uid://b0s1k670r5ocf" path="res://src/gore/gore_particle.tscn" id="4_bav20"]
 [ext_resource type="PackedScene" uid="uid://bfl5qv8bb5apr" path="res://src/level/level_1.tscn" id="5_4irwu"]
 [ext_resource type="Script" uid="uid://l1of4ibugkpt" path="res://src/core/level_info.gd" id="5_i3tmf"]
 [ext_resource type="StyleBox" uid="uid://dc86ks0yqis4j" path="res://src/ui/screens/screen_style_box.tres" id="5_r80nf"]
@@ -34,9 +35,9 @@ script = ExtResource("1_krfic")
 draw_annotations = true
 show_debug_player_state = true
 show_perf_tracker = true
-start_in_game = true
 skip_splash = true
 bunny_collision_shape = SubResource("CircleShape2D_woca2")
+gore_particle_scene = ExtResource("4_bav20")
 default_theme = ExtResource("3_r80nf")
 default_palette = ExtResource("2_yixrw")
 screen_style_box = ExtResource("5_r80nf")

@@ -12,6 +12,13 @@ func _init() -> void:
 
 
 func process(character) -> bool:
+	# Only process when actually attached to wall. Skip when
+	# dispatched via just_left_surface_type (departure frame)
+	# to avoid zeroing wall-jump velocity on the frame after
+	# onset.
+	if character.surfaces.surface_type != SurfaceType.WALL:
+		return false
+
 	character.jump_sequence_count = 0
 	character.velocity.x = 0.0
 	character.velocity.y = 0.0

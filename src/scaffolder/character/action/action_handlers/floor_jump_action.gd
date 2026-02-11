@@ -15,6 +15,7 @@ func process(character) -> bool:
 	if (
 		!character.processed_action(FallThroughFloorAction.NAME)
 		and character.actions.just_triggered_jump
+		and not character.surfaces.is_launched
 	):
 		character.jump_sequence_count = 1
 		character.velocity.y = character.movement_settings.jump_boost

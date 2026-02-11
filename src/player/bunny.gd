@@ -180,6 +180,7 @@ func _handle_interaction_effects() -> void:
 					NetworkLogger.CATEGORY_GAME_STATE,
 				)
 			play_sound("die")
+			_spawn_gore_particles()
 			_has_ever_died = true
 		CharacterStateFromServer.ServerInteractionType.SPAWN:
 			if Netcode.log.is_verbose:
@@ -194,6 +195,17 @@ func _handle_interaction_effects() -> void:
 				play_sound("respawn")
 		_:
 			Netcode.fatal()
+
+
+func _spawn_gore_particles() -> void:
+	if not Netcode.is_primary_client:
+		return
+	if (not is_instance_valid(G.level) or
+			not is_instance_valid(G.level.gore_manager)):
+		return
+	var death_pos := \
+		state_from_server.last_interaction_position
+	G.level.gore_manager.spawn_particles(death_pos)
 
 
 func play_sound(sound_name: StringName) -> void:

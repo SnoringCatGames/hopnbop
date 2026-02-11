@@ -50,7 +50,64 @@ extends NetworkSettings
 @export var bunny_collision_shape: Shape2D
 
 @export var use_simple_score := true
+
+@export_group("Gore")
 @export var is_gore_enabled := false
+@export var gore_particle_scene: PackedScene
+## Number of particles spawned per death.
+@export var gore_particles_per_death := 20
+## Spawn area offset from death position (player body center).
+@export var gore_spawn_offset := Vector2(0.0, -6.0)
+## Particles originate randomly within this radius of the death
+## position.
+@export var gore_spawn_scatter_radius := 7.0
+## Initial speed range for fast particles (types 0-3).
+@export var gore_fast_speed_min := 180.0
+@export var gore_fast_speed_max := 320.0
+## Initial speed range for slow particles (types 4-7).
+@export var gore_slow_speed_min := 80.0
+@export var gore_slow_speed_max := 160.0
+## Added to random velocity Y to bias particles upward.
+@export var gore_upward_bias := -120.0
+## Velocity multiplier applied on each bounce.
+@export var gore_bounce_damping := 0.4
+## Velocity multiplier applied on each surface contact.
+@export var gore_friction := 0.92
+## Speed below which a particle is considered at rest.
+@export var gore_rest_speed_threshold := 15.0
+## Consecutive frames below rest threshold before rasterizing.
+@export var gore_rest_frame_count := 3
+## Collision radius per particle type (pixels). Array length
+## defines the number of particle types.
+@export var gore_collision_radii: Array[float] = [
+	1.5, 2.0, 1.5, 2.0, 2.5, 3.0, 2.5, 3.0,
+]
+## Gore texture paths (used when is_gore_enabled = true).
+@export var gore_texture_paths: Array[String] = [
+	"res://assets/images/gore/gore_0.png",
+	"res://assets/images/gore/gore_1.png",
+	"res://assets/images/gore/gore_2.png",
+	"res://assets/images/gore/gore_3.png",
+	"res://assets/images/gore/gore_4.png",
+	"res://assets/images/gore/gore_5.png",
+	"res://assets/images/gore/gore_6.png",
+	"res://assets/images/gore/gore_7.png",
+]
+## Flower texture paths (used when is_gore_enabled = false).
+@export var gore_flower_texture_paths: Array[String] = [
+	"res://assets/images/flowers/flower_0.png",
+	"res://assets/images/flowers/flower_1.png",
+	"res://assets/images/flowers/flower_2.png",
+	"res://assets/images/flowers/flower_3.png",
+	"res://assets/images/flowers/flower_4.png",
+	"res://assets/images/flowers/flower_5.png",
+	"res://assets/images/flowers/flower_6.png",
+	"res://assets/images/flowers/flower_7.png",
+]
+@export_group("")
+
+# Types 0 through half are "fast", the rest are "slow".
+const GORE_FAST_TYPE_END := 3
 
 @export_group("Logs")
 ## Logs with these categories won't be shown.
@@ -102,3 +159,13 @@ extends NetworkSettings
 @export var match_duration_sec := 1 * 60.0 # 5 minutes
 @export var match_end_disconnect_delay_sec := 3.0
 @export_group("")
+
+
+func gore_is_fast_type(type_index: int) -> bool:
+	return type_index <= GORE_FAST_TYPE_END
+
+
+func gore_get_speed_range(type_index: int) -> Vector2:
+	if gore_is_fast_type(type_index):
+		return Vector2(gore_fast_speed_min, gore_fast_speed_max)
+	return Vector2(gore_slow_speed_min, gore_slow_speed_max)

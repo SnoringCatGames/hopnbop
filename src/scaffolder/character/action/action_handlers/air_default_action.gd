@@ -44,6 +44,7 @@ func process(character) -> bool:
 		is_first_jump,
 		character.surfaces.horizontal_acceleration_sign,
 		character.movement_settings,
+		character.surfaces.is_launched,
 	)
 
 	# Bouncing off ceiling.
@@ -79,6 +80,7 @@ static func update_velocity_in_air(
 		is_first_jump: bool,
 		horizontal_acceleration_sign: int,
 		movement_settings: MovementSettings,
+		is_launched: bool = false,
 ) -> Vector2:
 	var is_rising_from_jump := velocity.y < 0 and is_pressing_jump
 
@@ -86,7 +88,7 @@ static func update_velocity_in_air(
 	# Similarly, make gravity stronger for double jumps.
 	var gravity := (
 		movement_settings.gravity_fast_fall_acceleration
-		if !is_rising_from_jump
+		if is_launched or !is_rising_from_jump
 		else (
 			movement_settings.gravity_slow_rise_acceleration
 			if is_first_jump
@@ -104,7 +106,10 @@ static func update_velocity_in_air(
 			* movement_settings.in_air_horizontal_acceleration
 			* horizontal_acceleration_sign
 		)
-	elif movement_settings.fall_horizontal_friction > 0.0:
+	elif (
+		movement_settings.fall_horizontal_friction > 0.0
+		and not is_launched
+	):
 		# Apply friction to slow horizontal movement when not pressing
 		# left/right.
 		var friction_deceleration := (

@@ -15,6 +15,7 @@ const BIT_ATTACHING_TO_CEILING := 5
 const BIT_ATTACHING_TO_LEFT_WALL := 6
 const BIT_ATTACHING_TO_RIGHT_WALL := 7
 const BIT_FACING_LEFT := 8
+const BIT_IS_LAUNCHED := 9
 
 ## The underlying state is stored as a bitmask.
 ##
@@ -28,6 +29,7 @@ const BIT_FACING_LEFT := 8
 ##   6: is_attaching_to_left_wall
 ##   7: is_attaching_to_right_wall
 ##   8: is_facing_left
+##   9: is_launched
 var bitmask: int = 0
 var previous_bitmask: int = 0
 
@@ -324,6 +326,14 @@ var is_facing_right: bool:
 	get:
 		return not _get_bit(bitmask, BIT_FACING_LEFT)
 
+## True when the character was launched by a force boost. Cleared when
+## any surface is touched. Prevents fall horizontal friction while set.
+var is_launched: bool:
+	set(value):
+		_set_bit(BIT_IS_LAUNCHED, value)
+	get:
+		return _get_bit(bitmask, BIT_IS_LAUNCHED)
+
 var horizontal_acceleration_sign: int:
 	get:
 		if is_attaching_to_wall:
@@ -424,6 +434,10 @@ func update_touches(
 				is_touching_left_wall = true
 			else:
 				is_touching_right_wall = true
+
+	# Clear launched state when touching any surface.
+	if is_touching_surface:
+		is_launched = false
 
 
 ## Corrects position and velocity after an invalid one-way tile collision.
@@ -679,6 +693,7 @@ func force_boost() -> void:
 	# Clear current state
 	bitmask = 0
 	horizontal_facing_sign = previous_horizontal_facing_sign
+	is_launched = true
 
 
 ## Gets the collision for a specific surface side from the character's
