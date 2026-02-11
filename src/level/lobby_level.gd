@@ -9,6 +9,8 @@ const _SPAWN_SPEED_MIN := 2000.0
 const _SPAWN_SPEED_MAX := 7000.0
 const _SPAWN_TARGET_DIRECTION := Vector2(20, -1)
 const _SPAWN_VELOCITY_ANGLE_MAX_OFFSET := PI / 128
+const _CONTROL_DISPLAY_FRAME_COUNT := 8
+const _CONTROL_DISPLAY_FPS := 2.0
 
 ## Array of device configs (null = slot empty).
 var _pending_device_configs_by_index: Array[DeviceConfig] = []
@@ -19,6 +21,8 @@ var _pending_device_configs_by_name := {}
 
 func _ready() -> void:
 	super._ready()
+
+	_set_up_control_displays()
 
 
 func _physics_process(_delta: float) -> void:
@@ -199,3 +203,15 @@ func _on_rabbit_hole_body_entered(body: Node2D) -> void:
 		return
 
 	start_match()
+
+
+func _set_up_control_displays() -> void:
+	var displays: Array[AnimatedSprite2D] = [
+		%WASDControls, %IJKLControls, %ArrowControls, %GamepadControls,
+	]
+	var delay_sec := _CONTROL_DISPLAY_FRAME_COUNT / _CONTROL_DISPLAY_FPS / displays.size()
+	for display in displays:
+		var frames := display.sprite_frames
+		frames.set_animation_speed(display.animation, _CONTROL_DISPLAY_FPS)
+		await get_tree().create_timer(delay_sec).timeout
+		display.play(display.animation)

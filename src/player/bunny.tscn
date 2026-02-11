@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3 uid="uid://cn6hdqmmufnvr"]
+[gd_scene load_steps=15 format=3 uid="uid://cn6hdqmmufnvr"]
 
 [ext_resource type="Script" uid="uid://dwab2y7smxa" path="res://src/player/bunny.gd" id="1_j5lrb"]
 [ext_resource type="Resource" uid="uid://dq1d4nuh248j2" path="res://src/player/default_movement_settings.tres" id="2_4p26p"]
@@ -30,19 +30,19 @@ properties/0/spawn = true
 properties/0/replication_mode = 1
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_rxibo"]
-radius = 6.0
+radius = 5.0
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_1rl0f"]
-radius = 6.0
-height = 13.5
+radius = 5.0
+height = 11.5
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_j2eem"]
-radius = 2.5
-height = 11.0
+radius = 2.0
+height = 10.0
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_sc4xa"]
-radius = 2.5
-height = 11.0
+radius = 2.0
+height = 10.0
 
 [node name="Bunny" type="CharacterBody2D" node_paths=PackedStringArray("input_from_client", "forwarded_input_from_server", "collision_shape", "animator", "state_from_server")]
 collision_layer = 8
@@ -84,11 +84,10 @@ unique_name_in_owner = true
 zoom = Vector2(1.5, 1.5)
 
 [node name="PlayerAnimator" parent="." instance=ExtResource("5_sc4xa")]
-position = Vector2(0, -8)
 
 [node name="PlayerBodyCollisionShape" type="CollisionShape2D" parent="."]
 unique_name_in_owner = true
-position = Vector2(0, -6)
+position = Vector2(0, -5)
 rotation = 1.5707964
 shape = SubResource("CircleShape2D_rxibo")
 
@@ -99,7 +98,7 @@ collision_mask = 8
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="BodyArea"]
-position = Vector2(0, -6)
+position = Vector2(0, -5)
 rotation = 1.5707964
 shape = SubResource("CapsuleShape2D_1rl0f")
 
@@ -110,7 +109,7 @@ collision_mask = 256
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="FootArea"]
-position = Vector2(0, -2)
+position = Vector2(0, -1.5)
 rotation = 1.5707964
 shape = SubResource("CapsuleShape2D_j2eem")
 
@@ -121,7 +120,7 @@ collision_mask = 0
 monitoring = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HeadArea"]
-position = Vector2(0, -10)
+position = Vector2(0, -8.5)
 rotation = 1.5707964
 shape = SubResource("CapsuleShape2D_sc4xa")
 

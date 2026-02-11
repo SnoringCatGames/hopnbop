@@ -1,12 +1,12 @@
 [gd_scene load_steps=8 format=3 uid="uid://bo0yvrajk0ktn"]
 
-[ext_resource type="Texture2D" uid="uid://ccrh0uyxuhy7h" path="res://assets/images/background_stars.png" id="1_hiovr"]
-[ext_resource type="Texture2D" uid="uid://dj2ig84eome17" path="res://assets/images/background_color.png" id="1_q8y0s"]
-[ext_resource type="Texture2D" uid="uid://b243yno6xjgom" path="res://assets/images/background_moon.png" id="2_q8y0s"]
-[ext_resource type="Texture2D" uid="uid://deyqd7ngj7khb" path="res://assets/images/background_far.png" id="3_gmre0"]
-[ext_resource type="Texture2D" uid="uid://dancm7xx3tyft" path="res://assets/images/background_close.png" id="4_bbilr"]
-[ext_resource type="Texture2D" uid="uid://dgcjqxigt15l1" path="res://assets/images/background_mountains.png" id="5_bbilr"]
-[ext_resource type="Texture2D" uid="uid://d085kkb23bsyn" path="res://assets/images/background_forest.png" id="7_x8l4o"]
+[ext_resource type="Texture2D" uid="uid://ccrh0uyxuhy7h" path="res://assets/images/old/background_stars.png" id="1_hiovr"]
+[ext_resource type="Texture2D" uid="uid://dj2ig84eome17" path="res://assets/images/old/background_color.png" id="1_q8y0s"]
+[ext_resource type="Texture2D" uid="uid://b243yno6xjgom" path="res://assets/images/old/background_moon.png" id="2_q8y0s"]
+[ext_resource type="Texture2D" uid="uid://deyqd7ngj7khb" path="res://assets/images/old/background_far.png" id="3_gmre0"]
+[ext_resource type="Texture2D" uid="uid://dancm7xx3tyft" path="res://assets/images/old/background_close.png" id="4_bbilr"]
+[ext_resource type="Texture2D" uid="uid://dgcjqxigt15l1" path="res://assets/images/old/background_mountains.png" id="5_bbilr"]
+[ext_resource type="Texture2D" uid="uid://d085kkb23bsyn" path="res://assets/images/old/background_forest.png" id="7_x8l4o"]
 
 [node name="Background" type="Node2D"]
 
