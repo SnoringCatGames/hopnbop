@@ -147,6 +147,10 @@ toggle_network_simulation={
 ]
 }
 
+[input_devices]
+
+buffering/agile_event_flushing=true
+
 [layer_names]
 
 2d_physics/layer_1="normal_surfaces"

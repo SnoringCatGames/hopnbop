@@ -26,6 +26,8 @@ var players: Array[Player] = []
 # Keys are player_id (int assigned by server, or negative for lobby).
 var players_by_id := {}
 
+var gore_manager: GoreManager
+
 
 func _ready() -> void:
 	Netcode.check(is_instance_valid(collision_tiles),
@@ -34,6 +36,11 @@ func _ready() -> void:
 	Netcode.check(is_instance_valid(spawn_points),
 		"spawn_points node not set in level: %s" %
 		Utils.get_display_name(self ))
+
+	if not Engine.is_editor_hint() and Netcode.is_client:
+		gore_manager = GoreManager.new()
+		gore_manager.name = "GoreManager"
+		add_child(gore_manager)
 
 
 func _get_player_spawn_position() -> Vector2:
