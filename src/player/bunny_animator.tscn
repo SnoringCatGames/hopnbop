@@ -317,4 +317,4 @@ position = Vector2(0, -6.5)
 sprite_frames = SubResource("SpriteFrames_eeopx")
 animation = &"Rest"
 autoplay = "Rest"
-frame_progress = 0.37361026
+frame_progress = 0.45551863

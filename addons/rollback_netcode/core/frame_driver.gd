@@ -53,8 +53,7 @@ extends Node
 
 # Analyze my overall netcode design. I want to implement networked time dilation, so that I can implementy dynamic slow-motion effects.
 
-# - Test fly-in in lobby.
-#   - I want to add support for an is_launched flag on surface_state. I then want us to record this in CharacterSurfaceState.bitmask. When this is true, we should not apply fall_horizontal_friction. We should set this flag when CharacterSurfaceState.force_boost is called, and we should clear this flag when the character touches any surface.
+# I just added control displays in the lobby scene. Now, when a player joins using the corresponding device config, I want to hide the corresponding control display. And then toggle it back on again if the player leaves by pressing down.
 
 # - Test gore.
 

@@ -49,11 +49,11 @@ var jump_sequence_count := 0
 
 var _current_max_horizontal_speed_multiplier := 1.0
 
-# Frame index when force_boost was last called. Used to prevent immediate
+# Frame index when force_launch was last called. Used to prevent immediate
 # floor re-attachment after a bounce.
-var _last_boost_frame_index := -1
-# Number of frames to prevent floor attachment after a boost.
-const _BOOST_FLOOR_ATTACHMENT_COOLDOWN_FRAMES := 3
+var _last_launch_frame_index := -1
+# Number of frames to prevent floor attachment after a launch.
+const _LAUNCH_FLOOR_ATTACHMENT_COOLDOWN_FRAMES := 3
 
 var surfaces := CharacterSurfaceState.new(self )
 var actions := CharacterActionState.new()
@@ -73,8 +73,12 @@ var current_surface_max_horizontal_speed: float:
 
 var current_air_max_horizontal_speed: float:
 	get:
-		return movement_settings.max_air_horizontal_speed * \
-		_current_max_horizontal_speed_multiplier
+		return (
+			movement_settings.max_launch_horizontal_speed
+			if surfaces.is_launched
+			else movement_settings.max_air_horizontal_speed *
+			_current_max_horizontal_speed_multiplier
+		)
 
 var current_walk_acceleration: float:
 	get:
@@ -263,7 +267,7 @@ func _process_actions() -> void:
 	for action_handler in movement_settings.action_handlers:
 		# Don't run FloorDefaultAction when descending through floors, as it
 		# zeros velocity and prevents gravity from accumulating. But DO allow
-		# FallThroughFloorAction to run so we get the initial velocity boost.
+		# FallThroughFloorAction to run so we get the initial velocity launch.
 		var is_blocked_floor_action := (
 			surfaces.is_descending_through_floors and
 			action_handler.name == &"FloorDefaultAction"
@@ -378,25 +382,25 @@ func set_is_collidable(_is_collidable: bool) -> void:
 	pass
 
 
-func force_boost(boost: Vector2) -> void:
+func force_launch(boost: Vector2) -> void:
 	velocity = boost
 
 	position += Vector2(0.0, -1.0)
-	surfaces.force_boost()
+	surfaces.force_launch()
 
-	# Record the frame when boost was applied to prevent floor re-attachment.
-	_last_boost_frame_index = Netcode.server_frame_index
+	# Record the frame when launch was applied to prevent floor re-attachment.
+	_last_launch_frame_index = Netcode.server_frame_index
 
 
-## Returns true if floor attachment should be blocked due to recent boost.
+## Returns true if floor attachment should be blocked due to recent launch.
 ## This prevents the character from immediately re-attaching to the floor
 ## after a bounce (kill/bump), which would cause FloorDefaultAction to zero
 ## the upward velocity.
-func is_in_boost_cooldown() -> bool:
-	if _last_boost_frame_index < 0:
+func is_in_launch_cooldown() -> bool:
+	if _last_launch_frame_index < 0:
 		return false
-	var frames_since_boost := Netcode.server_frame_index - _last_boost_frame_index
-	return frames_since_boost < _BOOST_FLOOR_ATTACHMENT_COOLDOWN_FRAMES
+	var frames_since_launch := Netcode.server_frame_index - _last_launch_frame_index
+	return frames_since_launch < _LAUNCH_FLOOR_ATTACHMENT_COOLDOWN_FRAMES
 
 
 func get_next_position_prediction() -> Vector2:

@@ -326,7 +326,7 @@ var is_facing_right: bool:
 	get:
 		return not _get_bit(bitmask, BIT_FACING_LEFT)
 
-## True when the character was launched by a force boost. Cleared when
+## True when the character was launched by a force launch. Cleared when
 ## any surface is touched. Prevents fall horizontal friction while set.
 var is_launched: bool:
 	set(value):
@@ -434,6 +434,15 @@ func update_touches(
 				is_touching_left_wall = true
 			else:
 				is_touching_right_wall = true
+
+	# Fallback: Godot's floor snap keeps the character grounded
+	# when they were on the floor previously, but that snap
+	# collision is internal to move_and_slide() and NOT included
+	# in get_slide_collision(). When the only motion collision is
+	# a wall (horizontal-only velocity), the loop above misses
+	# the floor. is_on_floor() captures the snap result.
+	if not is_touching_floor:
+		is_touching_floor = character.is_on_floor()
 
 	# Clear launched state when touching any surface.
 	if is_touching_surface:
@@ -593,8 +602,8 @@ func _update_attachment_state() -> void:
 		and !is_triggering_explicit_ceiling_attachment
 	)
 
-	# Check if floor attachment is blocked due to recent boost (kill/bump).
-	var is_boost_cooldown_active: bool = character.is_in_boost_cooldown()
+	# Check if floor attachment is blocked due to recent launch (kill/bump).
+	var is_launch_cooldown_active: bool = character.is_in_launch_cooldown()
 
 	var standard_is_attaching_to_floor: bool = (
 		is_touching_floor
@@ -609,7 +618,7 @@ func _update_attachment_state() -> void:
 		)
 		and !is_triggering_fall_through
 		and !is_triggering_jump
-		and !is_boost_cooldown_active
+		and !is_launch_cooldown_active
 		and (is_triggering_explicit_floor_attachment or !is_triggering_explicit_wall_attachment)
 	)
 
@@ -684,7 +693,7 @@ func clear_current_state() -> void:
 	is_descending_through_floors = false
 
 
-func force_boost() -> void:
+func force_launch() -> void:
 	var previous_horizontal_facing_sign := horizontal_facing_sign
 
 	# Save current state as previous so just_* getters work correctly

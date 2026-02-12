@@ -850,7 +850,7 @@ func _reconcile_server_interaction() -> void:
 
 ## Reconciles a bump interaction by queuing rollback.
 ## The bounce velocity is applied during re-simulation by bunny.gd via
-## get_current_frame_bounce_velocity() + force_boost().
+## get_current_frame_bounce_velocity() + force_launch().
 func _reconcile_bump_interaction(p_frame_index: int) -> void:
 	Netcode.frame_driver.queue_rollback(
 		p_frame_index, "bump on %s" % name)
@@ -868,7 +868,7 @@ func _reconcile_bump_interaction(p_frame_index: int) -> void:
 
 ## Reconciles a kill interaction by queuing rollback.
 ## The bounce velocity is applied during re-simulation by bunny.gd via
-## get_current_frame_bounce_velocity() + force_boost().
+## get_current_frame_bounce_velocity() + force_launch().
 func _reconcile_kill_interaction(p_frame_index: int) -> void:
 	Netcode.frame_driver.queue_rollback(
 		p_frame_index, "kill on %s" % name)

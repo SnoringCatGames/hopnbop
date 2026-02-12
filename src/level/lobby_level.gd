@@ -5,10 +5,10 @@ extends Level
 ## Players spawn/despawn via keyboard partitions and gamepads.
 
 
-const _SPAWN_SPEED_MIN := 2000.0
-const _SPAWN_SPEED_MAX := 7000.0
-const _SPAWN_TARGET_DIRECTION := Vector2(20, -1)
-const _SPAWN_VELOCITY_ANGLE_MAX_OFFSET := PI / 128
+const _SPAWN_SPEED_MIN := 150.0
+const _SPAWN_SPEED_MAX := 400.0
+const _SPAWN_TARGET_DIRECTION := Vector2(2, -1)
+const _SPAWN_VELOCITY_ANGLE_MAX_OFFSET := PI / 16
 const _CONTROL_DISPLAY_FRAME_COUNT := 8
 const _CONTROL_DISPLAY_FPS := 2.0
 
@@ -108,7 +108,7 @@ func _register_player(device_config: DeviceConfig) -> void:
 	player.global_position = spawn_position
 	players_node.add_child(player)
 	player.global_position = spawn_position
-	player.force_boost(_get_spawn_velocity())
+	player.force_launch(_get_spawn_velocity())
 
 	register_player(player)
 
@@ -122,6 +122,11 @@ func _register_player(device_config: DeviceConfig) -> void:
 
 	if is_instance_valid(G.game_panel):
 		G.game_panel.lobby_players_updated.emit()
+
+
+func _get_player_spawn_position() -> Vector2:
+	var available_spawn_points := _get_spawn_points()
+	return available_spawn_points.pick_random().spawn_position
 
 
 func _get_spawn_velocity() -> Vector2:

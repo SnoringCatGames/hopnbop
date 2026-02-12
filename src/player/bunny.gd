@@ -87,12 +87,12 @@ func _process_movement_and_actions() -> void:
 		var bounce_vel := Vector2.ZERO
 
 		if _pending_bounce != Vector2.ZERO:
-			# First pass: use force_boost() which nudges position up by 1 pixel
+			# First pass: use force_launch() which nudges position up by 1 pixel
 			# and clears surface attachments. This prevents the character from
 			# being detected as on the floor, which would cause FloorDefaultAction
 			# to zero the vertical velocity on subsequent frames.
 			bounce_vel = _pending_bounce
-			force_boost(_pending_bounce)
+			force_launch(_pending_bounce)
 			_pending_bounce = Vector2.ZERO
 			applied_bounce = true
 			bounce_source = "pending"
@@ -101,14 +101,14 @@ func _process_movement_and_actions() -> void:
 			# re-simulation when collision callbacks don't fire again).
 			var buffer_bounce = state_from_server.get_current_frame_bounce_velocity()
 			if buffer_bounce != null:
-				# Rollback re-simulation: use force_boost() just like first pass.
+				# Rollback re-simulation: use force_launch() just like first pass.
 				# We MUST nudge position here because rollback restores from
 				# frame N-1 (before the kill), not frame N. Without the nudge,
 				# the character would stay at the pre-kill position and might
 				# be detected as on the floor, causing FloorDefaultAction to
 				# zero velocity on subsequent frames.
 				bounce_vel = buffer_bounce
-				force_boost(buffer_bounce)
+				force_launch(buffer_bounce)
 				applied_bounce = true
 				bounce_source = "buffer"
 
@@ -121,7 +121,7 @@ func _process_movement_and_actions() -> void:
 					bounce_vel,
 					global_position,
 					surfaces.bitmask,
-					_last_boost_frame_index,
+					_last_launch_frame_index,
 				],
 				NetworkLogger.CATEGORY_GAME_STATE,
 			)

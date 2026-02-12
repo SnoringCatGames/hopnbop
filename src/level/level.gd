@@ -43,15 +43,19 @@ func _ready() -> void:
 		add_child(gore_manager)
 
 
-func _get_player_spawn_position() -> Vector2:
+func _get_spawn_points() -> Array[SpawnPoint]:
 	var available_spawn_points: Array[SpawnPoint] = []
 	for child in spawn_points.get_children():
 		if Netcode.ensure(child is SpawnPoint):
 			available_spawn_points.append(child)
-
 	Netcode.check(not available_spawn_points.is_empty(),
 		"No spawn points available in level: %s" %
 		Utils.get_display_name(self ))
+	return available_spawn_points
+
+
+func _get_player_spawn_position() -> Vector2:
+	var available_spawn_points := _get_spawn_points()
 
 	# Find spawn point that's far enough from all players.
 	var best_spawn_point: SpawnPoint = null
