@@ -468,16 +468,24 @@ func _handle_new_state_from_network(p_state: Array) -> void:
 	)
 	var is_more_than_one_frame_ahead := Netcode.server_frame_index < state_frame_index - 2
 
-	# Server rejects client states that are too far in the future (2+ frames ahead).
-	# This likely indicates a bug or malicious client.
+	# Server rejects client states that are too far in the future
+	# (3+ frames ahead). Under packet loss, input arrives in
+	# bursts after gaps, so this is expected under bad conditions.
 	if Netcode.is_server and is_more_than_one_frame_ahead:
-		# Suppress warning during grace period after frame reset (expected during reconnection).
-		if not Netcode.frame_driver.is_in_sync_grace_period:
-			Netcode.log.warning(
+		# Suppress during grace period after frame reset
+		# (expected during reconnection).
+		if (
+			not Netcode.frame_driver.is_in_sync_grace_period
+			and Netcode.log.is_verbose
+		):
+			Netcode.log.verbose(
 				(
-					"Rejecting too-distant-future state from client: "
-					+"state frame %d, server frame %d"
-				) % [state_frame_index, Netcode.server_frame_index],
+					"Rejecting too-distant-future state from "
+					+"client: state frame %d, server frame %d"
+				) % [
+					state_frame_index,
+					Netcode.server_frame_index,
+				],
 				NetworkLogger.CATEGORY_NETWORK_SYNC)
 		return
 

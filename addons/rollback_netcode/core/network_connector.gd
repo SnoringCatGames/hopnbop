@@ -94,7 +94,7 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
-	Netcode.log.print("NetworkConnector ready", NetworkLogger.CATEGORY_NETWORK)
+	Netcode.log.print("NetworkConnector ready", NetworkLogger.CATEGORY_SYSTEM_INITIALIZATION)
 
 
 func server_enable_connections(p_server_port: int) -> void:
