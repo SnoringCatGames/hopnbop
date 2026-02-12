@@ -153,9 +153,9 @@ func _register_player(
 	player.global_position = spawn_position
 	player.force_launch(_get_spawn_velocity())
 
-	# Disable inter-player collision in lobby.
-	player.set_collision_layer_value(
-		Player._PLAYER_COLLISION_LAYER, false)
+	# Disable inter-player physics collision in lobby.
+	# Only remove from mask (don't push other players),
+	# keep layer so Area2Ds (RabbitHole) can still detect.
 	player.set_collision_mask_value(
 		Player._PLAYER_COLLISION_LAYER, false)
 
