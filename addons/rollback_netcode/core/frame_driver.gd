@@ -53,6 +53,8 @@ extends Node
 
 # Analyze my overall netcode design. I want to implement networked time dilation, so that I can implementy dynamic slow-motion effects.
 
+# Not seeing various debug displays in the lobby.
+
 # I just added control displays in the lobby scene. Now, when a player joins using the corresponding device config, I want to hide the corresponding control display. And then toggle it back on again if the player leaves by pressing down.
 
 # Make sure inter-player collision is disabled in the lobby.
