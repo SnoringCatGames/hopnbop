@@ -631,7 +631,7 @@ var pause_start_frame: int:
 
 
 func _ready() -> void:
-	Netcode.log.print("FrameDriver ready", NetworkLogger.CATEGORY_NETWORK)
+	Netcode.log.print("FrameDriver ready", NetworkLogger.CATEGORY_SYSTEM_INITIALIZATION)
 
 	if not Engine.is_editor_hint():
 		# Connect to ProcessSentinel for deterministic frame ordering.
@@ -681,13 +681,13 @@ func _check_preview_clients_connected() -> void:
 
 	Netcode.log.print(
 		"Preview mode: %d/%d clients connected" % [connected_count, expected_count],
-		NetworkLogger.CATEGORY_SYNC
+		NetworkLogger.CATEGORY_NETWORK_SYNC
 	)
 
 	if connected_count >= expected_count:
 		Netcode.log.print(
 			"All expected clients connected; Unpausing game",
-			NetworkLogger.CATEGORY_SYNC
+			NetworkLogger.CATEGORY_NETWORK_SYNC
 		)
 		# Disconnect signal to avoid re-checking.
 		if multiplayer.peer_connected.is_connected(_on_preview_peer_connected):
@@ -705,7 +705,7 @@ func server_reset_preview_mode_unpause() -> void:
 
 	Netcode.log.print(
 		"Resetting preview mode auto-unpause for new match",
-		NetworkLogger.CATEGORY_SYNC
+		NetworkLogger.CATEGORY_NETWORK_SYNC
 	)
 
 	# Reconnect the signal if not already connected.
@@ -760,7 +760,7 @@ func _server_rpc_client_request_pause() -> void:
 	if not Netcode.settings.is_server_pause_enabled:
 		Netcode.log.print(
 			"Client %d requested pause, but server pause is disabled" % peer_id,
-						NetworkLogger.CATEGORY_SYNC
+						NetworkLogger.CATEGORY_NETWORK_SYNC
 		)
 		return
 
@@ -768,7 +768,7 @@ func _server_rpc_client_request_pause() -> void:
 	if is_match_start_countdown_active:
 		Netcode.log.print(
 			"Client %d requested pause during match start countdown - rejected" % peer_id,
-			NetworkLogger.CATEGORY_SYNC
+			NetworkLogger.CATEGORY_NETWORK_SYNC
 		)
 		return
 
@@ -786,7 +786,7 @@ func _server_rpc_client_request_pause() -> void:
 			Netcode.log.print(
 				"Client %d pause rejected by game validator" %
 				peer_id,
-				NetworkLogger.CATEGORY_SYNC
+				NetworkLogger.CATEGORY_NETWORK_SYNC
 			)
 			return
 		pauses_used = result.get("pauses_used", 0)
@@ -807,7 +807,7 @@ func _server_rpc_request_unpause() -> void:
 	if not Netcode.settings.is_server_pause_enabled:
 		Netcode.log.print(
 			"Client %d requested unpause, but server pause is disabled" % peer_id,
-			NetworkLogger.CATEGORY_SYNC
+			NetworkLogger.CATEGORY_NETWORK_SYNC
 		)
 		return
 
@@ -818,7 +818,7 @@ func _server_rpc_request_unpause() -> void:
 				peer_id,
 				_pause_initiator_peer_id,
 			],
-			NetworkLogger.CATEGORY_SYNC
+			NetworkLogger.CATEGORY_NETWORK_SYNC
 		)
 		return
 
@@ -937,7 +937,7 @@ func _server_execute_pause(
 	if Netcode.is_server:
 		_pause_auto_unpause_timer = get_tree().create_timer(Netcode.settings.max_pause_duration_sec)
 		_pause_auto_unpause_timer.timeout.connect(func():
-			Netcode.log.print("Auto-unpausing after timeout", NetworkLogger.CATEGORY_SYNC)
+			Netcode.log.print("Auto-unpausing after timeout", NetworkLogger.CATEGORY_NETWORK_SYNC)
 			_server_execute_unpause()
 		)
 
@@ -965,7 +965,7 @@ func _server_execute_pause(
 
 	Netcode.log.print(
 		"Server paused at frame %d by peer %d" % [server_frame_index, initiator_peer_id],
-		NetworkLogger.CATEGORY_SYNC
+		NetworkLogger.CATEGORY_NETWORK_SYNC
 	)
 
 
@@ -1048,7 +1048,7 @@ func _server_execute_unpause() -> void:
 	Netcode.log.print(
 		"Server unpaused at frame %d (paused for %d frames, cumulative: %d)" %
 		[server_frame_index, pause_duration_frames, _cumulative_paused_frames],
-		NetworkLogger.CATEGORY_SYNC
+		NetworkLogger.CATEGORY_NETWORK_SYNC
 	)
 
 
@@ -1091,7 +1091,7 @@ func _client_execute_pause_at_server_frame(
 
 	Netcode.log.print(
 		"Client synchronized pause at frame %d" % server_frame_index,
-		NetworkLogger.CATEGORY_SYNC
+		NetworkLogger.CATEGORY_NETWORK_SYNC
 	)
 
 
@@ -1133,7 +1133,7 @@ func _client_execute_unpause_at_server_frame(
 			_cumulative_paused_frames,
 			_is_frame_tracking_initialized,
 		],
-		NetworkLogger.CATEGORY_SYNC
+		NetworkLogger.CATEGORY_NETWORK_SYNC
 	)
 
 
@@ -1223,7 +1223,7 @@ func _initialize_frame_tracking() -> void:
 	# Periodic frame index broadcasts from the server prevent drift.
 	Netcode.log.print(
 		"Frame tracking initialized at frame 0 (was %d)" % previous_frame_index,
-		NetworkLogger.CATEGORY_SYNC
+		NetworkLogger.CATEGORY_NETWORK_SYNC
 	)
 
 
@@ -1275,7 +1275,7 @@ func queue_rollback(
 			("Rollback rejected: frame %d is too old " +
 			"(oldest rollbackable: %d)") %
 			[target_rollback_frame, oldest_rollbackable_frame_index],
-			NetworkLogger.CATEGORY_SYNC
+			NetworkLogger.CATEGORY_NETWORK_SYNC
 		)
 		return false
 
@@ -1318,7 +1318,7 @@ func _rollback_and_reprocess() -> void:
 		"Starting rollback from frame %d to frame %d%s" %
 		[server_frame_index,
 		_queued_rollback_frame_index, cause_str],
-		NetworkLogger.CATEGORY_SYNC
+		NetworkLogger.CATEGORY_NETWORK_SYNC
 	)
 
 	var rollback_start_time_usec := Time.get_ticks_usec()

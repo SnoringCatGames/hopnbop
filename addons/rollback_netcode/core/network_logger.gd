@@ -34,15 +34,12 @@ extends Node
 # Predefined log categories (users can pass custom strings for extensibility).
 const CATEGORY_SYSTEM_INITIALIZATION := &"SysInit"
 const CATEGORY_DEFAULT := &"default"
-const CATEGORY_NETWORK := &"network"
-const CATEGORY_SYNC := &"sync"
 const CATEGORY_NETWORK_SYNC := &"network_sync"
 const CATEGORY_CONNECTIONS := &"connections"
-const CATEGORY_FRAME := &"frame"
 const CATEGORY_CORE_SYSTEMS := &"core_systems"
 const CATEGORY_GAME_STATE := &"game_state"
 const CATEGORY_PLAYER_ACTIONS := &"PlayerActions"
-const CATEGORY_INTERACTION := &"PlayerInteraction"
+const CATEGORY_USER_INTERACTION := &"PlayerInteraction"
 
 
 ## Whether verbose/debug logs should be output.

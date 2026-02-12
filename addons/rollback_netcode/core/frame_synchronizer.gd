@@ -167,7 +167,7 @@ func _client_rpc_pong(
 					drift,
 					estimated_current_server_frame,
 				],
-				NetworkLogger.CATEGORY_SYNC
+				NetworkLogger.CATEGORY_NETWORK_SYNC
 			)
 	else:
 		# Client is ahead - hard reset. This can happen when the server runs
@@ -181,7 +181,7 @@ func _client_rpc_pong(
 				local_frame,
 				estimated_current_server_frame,
 			],
-			NetworkLogger.CATEGORY_SYNC
+			NetworkLogger.CATEGORY_NETWORK_SYNC
 		)
 		# Trigger grace period to prevent rejecting valid server states.
 		Netcode.frame_driver._frame_reset_time_usec = Time.get_ticks_usec()

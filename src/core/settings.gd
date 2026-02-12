@@ -118,7 +118,7 @@ const GORE_FAST_TYPE_END := 3
 	NetworkLogger.CATEGORY_PLAYER_ACTIONS,
 	#NetworkLogger.CATEGORY_CONNECTIONS,
 	NetworkLogger.CATEGORY_NETWORK_SYNC,
-	#NetworkLogger.CATEGORY_INTERACTION,
+	#NetworkLogger.CATEGORY_USER_INTERACTION,
 	#NetworkLogger.CATEGORY_GAME_STATE,
 ]
 ## If true, warning logs will be shown regardless of category filtering.

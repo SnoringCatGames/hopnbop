@@ -370,5 +370,5 @@ func _process_redundant_inputs(
 				hist_actions,
 				name,
 			],
-			NetworkLogger.CATEGORY_SYNC,
+			NetworkLogger.CATEGORY_NETWORK_SYNC,
 		)

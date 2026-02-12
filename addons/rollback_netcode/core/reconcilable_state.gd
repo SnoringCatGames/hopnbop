@@ -519,7 +519,7 @@ func _handle_new_state_from_network(p_state: Array) -> void:
 				"Mismatch at F:%d (%s): %s" %
 				[state_frame_index, node_type,
 				mismatch_details],
-				NetworkLogger.CATEGORY_SYNC)
+				NetworkLogger.CATEGORY_NETWORK_SYNC)
 
 			# Queue rollback with detailed cause logging.
 			var primary_cause := mismatched_properties[0] as String

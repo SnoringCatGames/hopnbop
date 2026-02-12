@@ -461,7 +461,7 @@ func _server_validate_pause_request(peer_id: int) -> Dictionary:
 		Netcode.print(
 			"Client %d pause rejected: match has ended" %
 			peer_id,
-			NetworkLogger.CATEGORY_SYNC,
+			NetworkLogger.CATEGORY_NETWORK_SYNC,
 		)
 		return { "allowed": false }
 
@@ -473,7 +473,7 @@ func _server_validate_pause_request(peer_id: int) -> Dictionary:
 		Netcode.print(
 			"Client %d pause rejected: limit reached (%d/%d)" %
 			[peer_id, used, max_pauses],
-			NetworkLogger.CATEGORY_SYNC,
+			NetworkLogger.CATEGORY_NETWORK_SYNC,
 		)
 		return { "allowed": false }
 

@@ -99,7 +99,7 @@ func _perform_screen_switch(
 			ScreenType.keys()[previous_screen_type],
 			ScreenType.keys()[screen_type],
 		],
-		NetworkLogger.CATEGORY_INTERACTION,
+		NetworkLogger.CATEGORY_USER_INTERACTION,
 	)
 
 	get_tree().paused = screen_type not in [ScreenType.GAME, ScreenType.LOBBY]
