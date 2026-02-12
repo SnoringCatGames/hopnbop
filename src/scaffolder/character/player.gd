@@ -227,8 +227,7 @@ func server_trigger_death() -> void:
 	Netcode.check_is_server()
 
 	Netcode.verbose(
-		"F:%d Player %d triggered death, scheduling respawn in %s sec" % [
-			Netcode.server_frame_index,
+		"Player %d triggered death, scheduling respawn in %s sec" % [
 			player_id,
 			G.settings.player_respawn_cooldown_sec,
 		],
@@ -269,8 +268,7 @@ func server_trigger_death() -> void:
 			area.collision_mask = 0
 
 	Netcode.verbose(
-		"F:%d Player %d moved to respawn position %s (hidden)" % [
-			Netcode.server_frame_index,
+		"Player %d moved to respawn position %s (hidden)" % [
 			player_id,
 			spawn_position,
 		],
@@ -288,8 +286,7 @@ func server_execute_respawn() -> void:
 	Netcode.check_is_server()
 
 	Netcode.verbose(
-		"F:%d Player %d respawn timer fired, interaction_type=%d (DIE=%d)" % [
-			Netcode.server_frame_index,
+		"Player %d respawn timer fired, interaction_type=%d (DIE=%d)" % [
 			player_id,
 			state_from_server.last_interaction_type,
 			CharacterStateFromServer.ServerInteractionType.DIE,
@@ -301,8 +298,7 @@ func server_execute_respawn() -> void:
 	if state_from_server.last_interaction_type != \
 		CharacterStateFromServer.ServerInteractionType.DIE:
 		Netcode.print(
-			"F:%d Player %d respawn aborted - not in DIE state" % [
-				Netcode.server_frame_index,
+			"Player %d respawn aborted - not in DIE state" % [
 				player_id,
 			],
 			NetworkLogger.CATEGORY_GAME_STATE,
@@ -333,8 +329,7 @@ func server_execute_respawn() -> void:
 			area.collision_mask = _original_area_collision_masks[area_name]
 
 	Netcode.verbose(
-		"F:%d Player %d respawned at %s" % [
-			Netcode.server_frame_index,
+		"Player %d respawned at %s" % [
 			player_id,
 			spawn_position,
 		],

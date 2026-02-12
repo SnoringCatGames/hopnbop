@@ -27,34 +27,47 @@ func _on_visibility_changed() -> void:
 
 
 func _initialize() -> void:
-	_on_players_updated()
-	if not G.match_state.players_updated.is_connected(_on_players_updated):
-		G.match_state.players_updated.connect(_on_players_updated)
+	_rebuild_panels()
+	if not G.match_state.players_updated.is_connected(
+		_rebuild_panels
+	):
+		G.match_state.players_updated.connect(_rebuild_panels)
+	if (
+		is_instance_valid(G.game_panel)
+		and not G.game_panel.lobby_players_updated.is_connected(
+			_rebuild_panels
+		)
+	):
+		G.game_panel.lobby_players_updated.connect(
+			_rebuild_panels
+		)
 
 
-func _on_players_updated() -> void:
+func _rebuild_panels() -> void:
 	for child in %States.get_children():
 		child.queue_free()
 
-	if G.match_state.players_by_id.is_empty():
-		# No player state to show.
-		return
+	# Networked match path.
+	if (
+		not G.match_state.players_by_id.is_empty()
+		and not G.client_session.local_player_ids.is_empty()
+	):
+		# Add local player states first.
+		for player_id in G.client_session.local_player_ids:
+			if G.match_state.players_by_id.has(player_id):
+				_add_player_state(player_id)
 
-	if G.client_session.local_player_ids.is_empty():
-		# Local player IDs not yet assigned.
-		return
-
-	# Add local player states first.
-	for player_id in G.client_session.local_player_ids:
-		if G.match_state.players_by_id.has(player_id):
+		# Add other players.
+		for player_id in G.match_state.players_by_id:
+			if player_id in G.client_session.local_player_ids:
+				continue
 			_add_player_state(player_id)
+		return
 
-	# Add other players.
-	for player_id in G.match_state.players_by_id:
-		if player_id in G.client_session.local_player_ids:
-			# Already added this local player.
-			continue
-		_add_player_state(player_id)
+	# Lobby fallback: use level's player list directly.
+	if is_instance_valid(G.level):
+		for player_id in G.level.players_by_id:
+			_add_player_state(player_id)
 
 
 func _add_player_state(player_id: int) -> void:

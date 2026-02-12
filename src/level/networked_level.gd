@@ -37,6 +37,8 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 
+	super._ready()
+
 	G.log.log_system_ready("Level")
 
 	%PlayerSpawner.set_multiplayer_authority(NetworkConnector.SERVER_ID)

@@ -114,8 +114,7 @@ func _process_movement_and_actions() -> void:
 
 		if applied_bounce and Netcode.log.is_verbose:
 			Netcode.verbose(
-				"F:%d Player %d bounce applied (%s): vel=%s, pos=%s, surfaces=%d, boost_frame=%d" % [
-					Netcode.server_frame_index,
+				"Player %d bounce applied (%s): vel=%s, pos=%s, surfaces=%d, boost_frame=%d" % [
 					player_id,
 					bounce_source,
 					bounce_vel,
@@ -157,6 +156,22 @@ func _process_client_effects() -> void:
 		and interaction_start_time >= 0
 	)
 
+	# FIXME: REMOVE - Gore diagnostic logging.
+	if (
+		should_process and
+		state_from_server.last_interaction_type ==
+			CharacterStateFromServer
+				.ServerInteractionType.DIE
+	):
+		print(
+			("GORE: DIE detected for player %d "
+			+ "at frame %d (last_processed=%d)") % [
+				player_id,
+				interaction_start_time,
+				_last_processed_interaction_start_time,
+			]
+		)
+
 	if should_process:
 		_handle_interaction_effects()
 		_last_processed_interaction_start_time = \
@@ -177,8 +192,7 @@ func _handle_interaction_effects() -> void:
 		CharacterStateFromServer.ServerInteractionType.DIE:
 			if Netcode.log.is_verbose:
 				Netcode.verbose(
-					"F:%d Player %d DIE interaction detected on client" % [
-						Netcode.server_frame_index,
+					"Player %d DIE interaction detected on client" % [
 						player_id,
 					],
 					NetworkLogger.CATEGORY_GAME_STATE,
@@ -189,8 +203,7 @@ func _handle_interaction_effects() -> void:
 		CharacterStateFromServer.ServerInteractionType.SPAWN:
 			if Netcode.log.is_verbose:
 				Netcode.verbose(
-					"F:%d Player %d SPAWN interaction detected on client" % [
-						Netcode.server_frame_index,
+					"Player %d SPAWN interaction detected on client" % [
 						player_id,
 					],
 					NetworkLogger.CATEGORY_GAME_STATE,
@@ -202,6 +215,21 @@ func _handle_interaction_effects() -> void:
 
 
 func _spawn_gore_particles() -> void:
+	# FIXME: REMOVE - Gore diagnostic logging.
+	print(
+		("GORE: _spawn_gore_particles for "
+		+ "player %d, is_primary=%s, "
+		+ "level_valid=%s, gore_mgr_valid=%s") % [
+			player_id,
+			Netcode.is_primary_client,
+			is_instance_valid(G.level),
+			(
+				is_instance_valid(G.level.gore_manager)
+				if is_instance_valid(G.level)
+				else false
+			),
+		]
+	)
 	if not Netcode.is_primary_client:
 		return
 	if (not is_instance_valid(G.level) or
@@ -209,6 +237,8 @@ func _spawn_gore_particles() -> void:
 		return
 	var death_pos := \
 		state_from_server.last_interaction_position
+	# FIXME: REMOVE - Gore diagnostic logging.
+	print("GORE: Spawning particles at %s" % death_pos)
 	G.level.gore_manager.spawn_particles(death_pos)
 
 
@@ -525,10 +555,9 @@ func _server_apply_interaction_with_position(
 
 	Netcode.verbose(
 		(
-			"F:%d Applied %s interaction to player %d: pos=%s " +
+			"Applied %s interaction to player %d: pos=%s " +
 			"(lag compensated), bounce=%s, vel=%s"
 		) % [
-			Netcode.server_frame_index,
 			CharacterStateFromServer.ServerInteractionType.keys()[
 				interaction_type
 			],

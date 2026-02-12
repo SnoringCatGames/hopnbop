@@ -28,6 +28,18 @@ var _is_dirty := false
 func _ready() -> void:
 	_load_textures()
 	_init_accumulation_buffer()
+	# FIXME: REMOVE - Gore diagnostic logging.
+	print(
+		("GORE: GoreManager ready, textures=%d, "
+		+ "buffer=%s") % [
+			_particle_textures.size(),
+			(
+				"valid"
+				if _accumulation_image
+				else "null"
+			),
+		]
+	)
 
 
 func _process(_delta: float) -> void:
@@ -37,6 +49,14 @@ func _process(_delta: float) -> void:
 
 
 func spawn_particles(death_position: Vector2) -> void:
+	# FIXME: REMOVE - Gore diagnostic logging.
+	print(
+		("GORE: GoreManager.spawn_particles "
+		+ "at %s, children=%d") % [
+			death_position,
+			get_child_count(),
+		]
+	)
 	var s := G.settings
 	var center := death_position + s.gore_spawn_offset
 	var type_count := s.gore_collision_radii.size()

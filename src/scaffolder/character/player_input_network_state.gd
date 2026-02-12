@@ -272,11 +272,10 @@ func _reconcile_jump_interaction(p_frame_index: int) -> void:
 		if _is_frame_authoritative(frame_state):
 			Netcode.warning(
 				(
-					"F:%d last_interaction_frame_index corresponds to a frame " +
-					"that is already recorded as authoritative and without jump " +
-					"pressed: frame %d, actions=%s (%s)"
+					"last_interaction_frame_index corresponds to a frame " +
+					"that is already recorded as authoritative and without " +
+					"jump pressed: frame %d, actions=%s (%s)"
 				) % [
-					Netcode.server_frame_index,
 					p_frame_index,
 					_get_string_for_bitmask(current_actions),
 					name,
@@ -291,8 +290,7 @@ func _reconcile_jump_interaction(p_frame_index: int) -> void:
 
 		if Netcode.log.is_verbose:
 			Netcode.verbose(
-				"F:%d Jump bit injected into frame %d via client interaction, queuing rollback (%s)" % [
-					Netcode.server_frame_index,
+				"Jump bit injected into frame %d via client interaction, queuing rollback (%s)" % [
 					p_frame_index,
 					name,
 				],
@@ -361,14 +359,14 @@ func _process_redundant_inputs(
 			hist_frame - 1,
 			"redundant_input on %s" % name
 		)
-		Netcode.log.print(
-			("F:%d Redundant input corrected frame %d "
-			+"(was=%d, now=%d) (%s)") % [
-				Netcode.server_frame_index,
-				hist_frame,
-				current_actions,
-				hist_actions,
-				name,
-			],
-			NetworkLogger.CATEGORY_NETWORK_SYNC,
-		)
+		if Netcode.log.is_verbose:
+			Netcode.log.verbose(
+				("Redundant input corrected frame %d "
+				+"(was=%d, now=%d) (%s)") % [
+					hist_frame,
+					current_actions,
+					hist_actions,
+					name,
+				],
+				NetworkLogger.CATEGORY_NETWORK_SYNC,
+			)

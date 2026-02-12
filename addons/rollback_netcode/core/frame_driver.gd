@@ -53,11 +53,12 @@ extends Node
 
 # Analyze my overall netcode design. I want to implement networked time dilation, so that I can implementy dynamic slow-motion effects.
 
-# Not seeing various debug displays in the lobby.
-
-# I just added control displays in the lobby scene. Now, when a player joins using the corresponding device config, I want to hide the corresponding control display. And then toggle it back on again if the player leaves by pressing down.
-
-# Make sure inter-player collision is disabled in the lobby.
+# We need to fix a few things in the lobby:
+# - When we rejoin the lobby from a match, we should preserve the same local players that were previously in the match. They should keep their device configs, and their attributes except color.
+# - When we rejoin the lobby from a match, we need to reset the PlayerDisplays.
+# - When spawning a new player, for a new device config, (from pressing up) in the lobby, we're not showing the correct name and adjective. I think our attribute generation is broken?
+# - Also, I just added control displays in the lobby scene. Now, when a player joins using the corresponding device config, I want to hide the corresponding control display. And then toggle it back on again if the player leaves by pressing down.
+# - Also, make sure inter-player collision is disabled in the lobby.
 
 # Adjust bump boost way down now that it exceeds normal max horizontal.
 

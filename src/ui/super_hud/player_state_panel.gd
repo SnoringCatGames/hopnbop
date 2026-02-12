@@ -40,10 +40,7 @@ func _process(_delta: float) -> void:
 	if not is_instance_valid(player):
 		player = G.get_player(player_id)
 
-	if not is_instance_valid(player_match_state):
-		player_match_state = G.get_player_match_state(player_id)
-
-	if not is_instance_valid(player_match_state) or not is_instance_valid(player):
+	if not is_instance_valid(player):
 		clear()
 		return
 
@@ -67,7 +64,7 @@ func _process(_delta: float) -> void:
 func _physics_process(_delta: float) -> void:
 	if not is_visible_in_tree:
 		return
-	if not is_instance_valid(player_match_state) or not is_instance_valid(player):
+	if not is_instance_valid(player):
 		return
 
 	if player.surfaces.just_changed_attachment_side:

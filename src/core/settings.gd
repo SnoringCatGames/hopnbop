@@ -80,7 +80,7 @@ extends NetworkSettings
 ## Collision radius per particle type (pixels). Array length
 ## defines the number of particle types.
 @export var gore_collision_radii: Array[float] = [
-	1.5, 2.0, 1.5, 2.0, 2.5, 3.0, 2.5, 3.0,
+	0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
 ]
 ## Gore texture paths (used when is_gore_enabled = true).
 @export var gore_texture_paths: Array[String] = [
