@@ -63,7 +63,7 @@ var is_invincible: bool:
 const _synced_properties_and_rollback_diff_thresholds := {
 	position = DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD,
 	velocity = DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHOLD,
-	surfaces = 0,
+	surfaces = -1,
 	last_interaction_type = 0,
 	last_interaction_frame_index = 0,
 	last_interaction_position = 0.01,
