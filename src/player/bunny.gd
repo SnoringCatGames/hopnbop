@@ -904,6 +904,10 @@ func set_is_collidable(is_collidable: bool) -> void:
 ## Updates player-player collision based on invincibility state.
 ## Called when collidability changes and every frame during movement.
 func _update_player_collision_for_invincibility() -> void:
+	# Skip in lobby (collision is disabled by LobbyLevel).
+	if G.is_lobby_active:
+		return
+
 	# Skip if not alive (dead players have all collision disabled).
 	if state_from_server.is_dead:
 		_was_invincible_last_frame = false

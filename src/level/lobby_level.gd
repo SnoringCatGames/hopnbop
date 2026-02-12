@@ -25,6 +25,11 @@ var _pending_device_configs_by_index: Array[DeviceConfig] = []
 # Dictionary<StringName, DeviceConfig>
 var _pending_device_configs_by_name := {}
 
+# Dictionary<StringName, int> - maps device name to
+# player_id. Needed because _pending_device_configs_by_index
+# shifts on removal, invalidating index-based ID lookups.
+var _device_name_to_player_id := {}
+
 # Tracks the number of gamepad players (for control display
 # toggling, since multiple gamepads share one display).
 var _gamepad_player_count := 0
@@ -156,6 +161,10 @@ func _register_player(
 
 	register_player(player)
 
+	# Track device name to player_id mapping.
+	_device_name_to_player_id[device_config.name] = \
+		player.player_id
+
 	# Generate or reuse player attributes.
 	var attributes := p_attributes
 	if attributes.is_empty():
@@ -219,8 +228,10 @@ func _deregister_player(
 	var local_player_index := \
 		_pending_device_configs_by_index.find(device_config)
 
-	var player_id := \
-		get_local_player_id(local_player_index)
+	# Look up player_id from stable mapping (not from
+	# array index, which shifts on removal).
+	var player_id: int = \
+		_device_name_to_player_id[device_name]
 	if not Netcode.ensure(players_by_id.has(player_id)):
 		return
 
@@ -229,6 +240,7 @@ func _deregister_player(
 	_pending_device_configs_by_index.remove_at(
 		local_player_index)
 	_pending_device_configs_by_name.erase(device_name)
+	_device_name_to_player_id.erase(device_name)
 	G.input_device_manager.unassign_device_from_player(
 		local_player_index)
 
@@ -391,15 +403,16 @@ func _set_control_display_visible(
 
 ## Assigns colors to all lobby players based on count.
 func _update_lobby_colors() -> void:
-	var count := _pending_device_configs_by_index.size()
-	if count == 0:
+	var player_ids: Array = \
+		_device_name_to_player_id.values()
+	if player_ids.is_empty():
 		return
 
 	var colors := \
 		PlayerAttributeGenerator \
-			.calculate_outline_colors(count)
-	for i in range(count):
-		var player_id := get_local_player_id(i)
+			.calculate_outline_colors(player_ids.size())
+	for i in range(player_ids.size()):
+		var player_id: int = player_ids[i]
 		if G.match_state.players_by_id.has(player_id):
 			G.match_state.players_by_id[player_id] \
 				.base_color = colors[i]

@@ -46,6 +46,9 @@ func _update_display(delta: float) -> void:
 	%Name.text = player_match_state.bunny_name
 	%Adjective.text = player_match_state.adjective
 
+	# Hide score in lobby.
+	%Score.visible = not G.is_lobby_active
+
 	# Handle score updates.
 	var actual_score: int = player_match_state.score
 	if actual_score != _target_score:

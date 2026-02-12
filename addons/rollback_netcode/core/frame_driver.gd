@@ -44,23 +44,9 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# DEBUG THIS:
-#   adaptive input delay, and redundant input transmission
-
 # Analyze my overall netcode design. Compared to standard approaches, am I handling rollbacks and fast-forwards correctly? Should I be triggering them less frequently, or on fewer nodes? Should I be replicating more or less state?
 
 # Analyze my overall netcode design. I want to implement tick rate decoupling, so I can configure a separate frame rate for network frames vs physics frames. Do a deep and thorough analysis of all netcode systems and carefully identify all logic and edge-cases that needs to be updated to support this. Also, plan to write tests. Also, plan specific steps I can take to test whether this is working correctly.
-
-# Analyze my overall netcode design. I want to implement networked time dilation, so that I can implementy dynamic slow-motion effects.
-
-# We need to fix a few things in the lobby:
-# - When we rejoin the lobby from a match, we should preserve the same local players that were previously in the match. They should keep their device configs, and their attributes except color.
-# - When we rejoin the lobby from a match, we need to reset the PlayerDisplays.
-# - When spawning a new player, for a new device config, (from pressing up) in the lobby, we're not showing the correct name and adjective. I think our attribute generation is broken?
-# - Also, I just added control displays in the lobby scene. Now, when a player joins using the corresponding device config, I want to hide the corresponding control display. And then toggle it back on again if the player leaves by pressing down.
-# - Also, make sure inter-player collision is disabled in the lobby.
-
-# Adjust bump boost way down now that it exceeds normal max horizontal.
 
 # - Test gore.
 
