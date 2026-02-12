@@ -35,6 +35,7 @@ script = ExtResource("1_krfic")
 draw_annotations = true
 show_debug_player_state = true
 show_perf_tracker = true
+start_in_game = true
 skip_splash = true
 bunny_collision_shape = SubResource("CircleShape2D_woca2")
 gore_particle_scene = ExtResource("4_bav20")

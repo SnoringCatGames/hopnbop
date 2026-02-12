@@ -55,6 +55,10 @@ extends Node
 
 # I just added control displays in the lobby scene. Now, when a player joins using the corresponding device config, I want to hide the corresponding control display. And then toggle it back on again if the player leaves by pressing down.
 
+# Make sure inter-player collision is disabled in the lobby.
+
+# Adjust bump boost way down now that it exceeds normal max horizontal.
+
 # - Test gore.
 
 # I want to add a gore particle effect.
