@@ -9,6 +9,7 @@ var is_game_loading := false
 var latest_match_state: MatchState = null
 var latest_local_device_configs: Array[DeviceConfig] = []
 var latest_local_player_ids: Array[int] = []
+var latest_local_player_attributes: Array[Dictionary] = []
 
 ## Number of local players on this client.
 var local_player_count: int:
@@ -72,6 +73,7 @@ func clear_latest_state() -> void:
 		latest_match_state.clear()
 	latest_local_device_configs.clear()
 	latest_local_player_ids.clear()
+	latest_local_player_attributes.clear()
 	latest_server_message = ""
 
 
@@ -85,3 +87,4 @@ func copy_latest_state(match_state: MatchState) -> void:
 		latest_match_state = match_state
 	latest_local_device_configs = local_device_configs.duplicate()
 	latest_local_player_ids = local_player_ids.duplicate()
+	latest_local_player_attributes = local_player_attributes.duplicate()

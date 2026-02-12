@@ -336,10 +336,17 @@ func _client_spawn_lobby() -> void:
 
 	Netcode.print("Spawning lobby level", NetworkLogger.CATEGORY_CORE_SYSTEMS)
 
+	# Clear stale match state from previous game.
+	G.match_state.clear()
+
 	var lobby_level: LobbyLevel = G.settings.lobby_level_scene.instantiate()
 	levels.append(lobby_level)
 	%Levels.add_child(lobby_level)
 	G.level = lobby_level
+
+	# Restore players from previous match (preserves device
+	# configs and attributes except color).
+	lobby_level.restore_players_from_previous_match()
 
 
 ## Despawn lobby level before connecting to server.
