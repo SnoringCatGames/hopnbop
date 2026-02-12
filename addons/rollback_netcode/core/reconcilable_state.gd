@@ -449,8 +449,11 @@ func _handle_new_state_from_network(p_state: Array) -> void:
 	# Allow first state through even if "too old" (initial spawn data from frame 0).
 	# After receiving valid state once, apply normal frame filtering.
 	if _has_received_valid_state and Netcode.frame_driver.is_frame_too_old_to_consider(state_frame_index):
-		if not is_during_countdown:
-			Netcode.log.warning(
+		if (
+			not is_during_countdown
+			and Netcode.log.is_verbose
+		):
+			Netcode.log.verbose(
 				(
 					"Received networked state that is too old to reconcile - "
 					+"DISCARDING: state frame: %d, local frame: %d, "

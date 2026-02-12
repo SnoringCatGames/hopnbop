@@ -48,6 +48,11 @@ func process(character) -> bool:
 				.is_within_coyote_time):
 		if character.surfaces.just_entered_air or \
 				character.surfaces.is_within_coyote_time:
+			# Coyote jump requires onset press, not held
+			# auto-jump. This prevents jumping when
+			# walking off a ledge while holding jump.
+			if not character.actions.just_triggered_jump:
+				return false
 			character.jump_sequence_count = 1
 		else:
 			character.jump_sequence_count += 1

@@ -140,9 +140,8 @@ func _sync_from_scene_state() -> void:
 
 		if Netcode.log.is_verbose:
 			Netcode.verbose(
-				"F:%d Jump interaction recorded "
+				"Jump interaction recorded "
 				+ "(trigger_frame=%d, pos=%s) (%s)" % [
-					Netcode.server_frame_index,
 					player.last_triggered_jump_frame_index,
 					player.global_position,
 					name,

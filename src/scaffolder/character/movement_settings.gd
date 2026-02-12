@@ -76,13 +76,13 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 @export var min_horizontal_speed := 5.0
 @export var min_vertical_speed := 0.0
 
-@export var bump_bounce_base_speed := 300.0
-@export var bump_bounce_vertical_boost := -300.0
+@export var bump_bounce_base_speed := 110.0
+@export var bump_bounce_vertical_boost := -70.0
 
 @export var kill_bounce_vertical_boost := -300.0
 
 ## Coyote time.
-@export var late_jump_forgiveness_threshold_sec := 0.12
+@export var late_jump_forgiveness_threshold_sec := 0.1
 
 @export_group("Less important")
 @export var wall_jump_horizontal_boost := 200.0
