@@ -44,10 +44,6 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# Analyze my overall netcode design. Compared to standard approaches, am I handling rollbacks and fast-forwards correctly? Should I be triggering them less frequently, or on fewer nodes? Should I be replicating more or less state?
-
-# Analyze my overall netcode design. I want to implement tick rate decoupling, so I can configure a separate frame rate for network frames vs physics frames. Do a deep and thorough analysis of all netcode systems and carefully identify all logic and edge-cases that needs to be updated to support this. Also, plan to write tests. Also, plan specific steps I can take to test whether this is working correctly.
-
 # - Add a general-purpose cheat handler.
 #   - This will listen for passwords that are typed on the keyboard (or gamepad button combos).
 #   - The list of possible passwords may change.
@@ -64,10 +60,10 @@ extends Node
 # - Test gore.
 
 
-# - Fix kills.
-
 # - Make score popup bigger, and to the right of to score.
 # - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
+
+# - Fix kills.
 
 # - TEST that when a high-speed kill happens, the bounce happens from where the
 #   initial collision contact should have been.
