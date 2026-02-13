@@ -24,22 +24,13 @@ var _particle_images: Array[Image] = []
 
 var _is_dirty := false
 
+# Tile size from the level's collision tile map.
+var _tile_size := Vector2i(16, 16)
+
 
 func _ready() -> void:
 	_load_textures()
 	_init_accumulation_buffer()
-	# FIXME: REMOVE - Gore diagnostic logging.
-	print(
-		("GORE: GoreManager ready, textures=%d, "
-		+ "buffer=%s") % [
-			_particle_textures.size(),
-			(
-				"valid"
-				if _accumulation_image
-				else "null"
-			),
-		]
-	)
 
 
 func _process(_delta: float) -> void:
@@ -49,14 +40,6 @@ func _process(_delta: float) -> void:
 
 
 func spawn_particles(death_position: Vector2) -> void:
-	# FIXME: REMOVE - Gore diagnostic logging.
-	print(
-		("GORE: GoreManager.spawn_particles "
-		+ "at %s, children=%d") % [
-			death_position,
-			get_child_count(),
-		]
-	)
 	var s := G.settings
 	var center := death_position + s.gore_spawn_offset
 	var type_count := s.gore_collision_radii.size()
@@ -123,15 +106,24 @@ func _rasterize_particle(particle: GoreParticle) -> void:
 		Vector2i.ZERO,
 		src_image.get_size())
 
-	# Convert world position to buffer coordinates, centered on
-	# the particle sprite.
+	# Convert world position to buffer coordinates.
+	# X: centered on particle. Y: bottom-aligned to the
+	# nearest visual tile surface below the particle, to
+	# compensate for the half-tile offset between physics
+	# collision surfaces and visual tile boundaries.
 	var world_pos := particle.global_position
+	var collision_radius: float = \
+		G.settings.gore_collision_radii[type_index]
+	var particle_bottom := world_pos.y + collision_radius
+	var tile_h := float(_tile_size.y)
+	var visual_surface_y := ceilf(
+		particle_bottom / tile_h) * tile_h
 	@warning_ignore("integer_division")
 	var buffer_pos := Vector2i(
-		int(world_pos.x - _buffer_origin.x) -
+		floori(world_pos.x - _buffer_origin.x) -
 			src_image.get_width() / 2,
-		int(world_pos.y - _buffer_origin.y) -
-			src_image.get_height() / 2)
+		floori(visual_surface_y - _buffer_origin.y) -
+			src_image.get_height())
 
 	# Clamp to buffer bounds.
 	var buf_size := _accumulation_image.get_size()
@@ -174,6 +166,7 @@ func _init_accumulation_buffer() -> void:
 	var tile_map: TileMapLayer = level.collision_tiles
 	var used_rect: Rect2i = tile_map.get_used_rect()
 	var tile_size: Vector2i = tile_map.tile_set.tile_size
+	_tile_size = tile_size
 
 	# Convert tile rect to pixel rect with margin.
 	var pixel_rect := Rect2i(

@@ -11,10 +11,6 @@ var _processed_collision_this_frame := false
 var _last_collision_frame := -1
 var _blink_accumulator := 0.0
 var _is_blink_visible := true
-# -------------------------------------
-# FIXME: REMOVE
-var _last_blink_toggle_frame := -1
-# -------------------------------------
 var _pending_bounce := Vector2.ZERO
 var _last_processed_interaction_start_time := -1
 var _has_ever_died := false
@@ -24,16 +20,6 @@ var _has_ever_died := false
 # Can contain both "foot" and "body" for the same player.
 var _active_intersections := {}
 var _was_invincible_last_frame := false
-
-
-# -------------------------------------
-# FIXME: REMOVE
-# Bug detection: track visibility state for debugging.
-var _visibility_diagnostic_enabled := true
-var _last_expected_visible := true
-var _frames_invisible_when_should_be_visible := 0
-const _FRAMES_TO_TRIGGER_DIAGNOSTIC := 5
-# -------------------------------------
 
 
 func _enter_tree() -> void:
@@ -137,12 +123,6 @@ func _process_movement_and_actions() -> void:
 	_update_player_collision_for_invincibility()
 
 
-	# -------------------------------------
-	# FIXME: REMOVE
-	# Diagnostic: detect if player should be visible but isn't.
-	_check_visibility_bug_diagnostic()
-	# -------------------------------------
-
 
 func _process_client_effects() -> void:
 	# Handle client-side interaction effects (sounds, particles).
@@ -155,22 +135,6 @@ func _process_client_effects() -> void:
 			_last_processed_interaction_start_time
 		and interaction_start_time >= 0
 	)
-
-	# FIXME: REMOVE - Gore diagnostic logging.
-	if (
-		should_process and
-		state_from_server.last_interaction_type ==
-			CharacterStateFromServer
-				.ServerInteractionType.DIE
-	):
-		print(
-			("GORE: DIE detected for player %d "
-			+ "at frame %d (last_processed=%d)") % [
-				player_id,
-				interaction_start_time,
-				_last_processed_interaction_start_time,
-			]
-		)
 
 	if should_process:
 		_handle_interaction_effects()
@@ -215,30 +179,13 @@ func _handle_interaction_effects() -> void:
 
 
 func _spawn_gore_particles() -> void:
-	# FIXME: REMOVE - Gore diagnostic logging.
-	print(
-		("GORE: _spawn_gore_particles for "
-		+ "player %d, is_primary=%s, "
-		+ "level_valid=%s, gore_mgr_valid=%s") % [
-			player_id,
-			Netcode.is_primary_client,
-			is_instance_valid(G.level),
-			(
-				is_instance_valid(G.level.gore_manager)
-				if is_instance_valid(G.level)
-				else false
-			),
-		]
-	)
-	if not Netcode.is_primary_client:
+	if not Netcode.is_client:
 		return
 	if (not is_instance_valid(G.level) or
 			not is_instance_valid(G.level.gore_manager)):
 		return
 	var death_pos := \
 		state_from_server.last_interaction_position
-	# FIXME: REMOVE - Gore diagnostic logging.
-	print("GORE: Spawning particles at %s" % death_pos)
 	G.level.gore_manager.spawn_particles(death_pos)
 
 
@@ -883,7 +830,6 @@ func _update_invincibility_blink() -> void:
 		_blink_accumulator -= blink_period
 		_is_blink_visible = not _is_blink_visible
 		animator.visible = _is_blink_visible
-		_last_blink_toggle_frame = Netcode.server_frame_index
 
 
 func set_is_collidable(is_collidable: bool) -> void:
@@ -1013,113 +959,3 @@ func _process_deferred_collisions() -> void:
 	# Clear all tracked intersections after processing.
 	_active_intersections.clear()
 
-
-# -------------------------------------
-# FIXME: REMOVE
-## Diagnostic check to detect visibility bug after respawn.
-## Only logs when bug is detected (player should be visible but isn't).
-func _check_visibility_bug_diagnostic() -> void:
-	if not _visibility_diagnostic_enabled:
-		return
-
-	# Determine if player should be visible based on interaction state.
-	var should_be_visible := (
-		state_from_server.last_interaction_type != CharacterStateFromServer.ServerInteractionType.DIE
-	)
-
-	# Check if there's a mismatch.
-	var is_actually_visible := animator.visible
-	var has_mismatch := should_be_visible and not is_actually_visible
-
-	if has_mismatch:
-		_frames_invisible_when_should_be_visible += 1
-
-		# Trigger diagnostic after N consecutive frames of mismatch.
-		if _frames_invisible_when_should_be_visible >= _FRAMES_TO_TRIGGER_DIAGNOSTIC:
-			_log_visibility_diagnostic()
-			# Disable further diagnostics to avoid log spam.
-			_visibility_diagnostic_enabled = false
-	else:
-		# Reset counter when state is correct.
-		_frames_invisible_when_should_be_visible = 0
-
-
-## Logs detailed diagnostic information when visibility bug is detected.
-func _log_visibility_diagnostic() -> void:
-	Netcode.print(
-		"===== VISIBILITY BUG DETECTED: Player %d =====" % player_id,
-		NetworkLogger.CATEGORY_GAME_STATE,
-	)
-	Netcode.print(
-		"  Current frame: %d" % Netcode.server_frame_index,
-		NetworkLogger.CATEGORY_GAME_STATE,
-	)
-	Netcode.print(
-		"  Last interaction: type=%s, frame=%d" % [
-			CharacterStateFromServer.ServerInteractionType.keys()[state_from_server.last_interaction_type],
-			state_from_server.last_interaction_frame_index,
-		],
-		NetworkLogger.CATEGORY_GAME_STATE,
-	)
-	Netcode.print(
-		"  State: is_dead=%s, is_invincible=%s" % [
-			state_from_server.is_dead,
-			state_from_server.is_invincible,
-		],
-		NetworkLogger.CATEGORY_GAME_STATE,
-	)
-	Netcode.print(
-		"  Visibility: animator.visible=%s, _is_blink_visible=%s" % [
-			animator.visible,
-			_is_blink_visible,
-		],
-		NetworkLogger.CATEGORY_GAME_STATE,
-	)
-	Netcode.print(
-		"  Collision: layer=%d (original=%d), mask=%d (original=%d)" % [
-			collision_layer,
-			_original_collision_layer,
-			collision_mask,
-			_original_collision_mask,
-		],
-		NetworkLogger.CATEGORY_GAME_STATE,
-	)
-	Netcode.print(
-		"  Position: global_position=%s, velocity=%s" % [
-			global_position,
-			velocity,
-		],
-		NetworkLogger.CATEGORY_GAME_STATE,
-	)
-	Netcode.print(
-		"  Blink state: _blink_accumulator=%.3f, last_toggle_frame=%d, period=%.3f" % [
-			_blink_accumulator,
-			_last_blink_toggle_frame,
-			(1.0 / (G.settings.player_invincibility_blink_frequency_hz * 2.0)),
-		],
-		NetworkLogger.CATEGORY_GAME_STATE,
-	)
-	Netcode.print(
-		"  Authority: is_authority_for_state=%s, is_authority_for_input=%s" % [
-			state_from_server.is_authority_for_state_from_server,
-			state_from_server.is_authority_for_input_from_client,
-		],
-		NetworkLogger.CATEGORY_GAME_STATE,
-	)
-	Netcode.print(
-		"  Collidability tracking: last_applied_frame=%d, last_value=%s, apply_count=%d" % [
-			state_from_server._last_applied_collidability_frame,
-			state_from_server._last_applied_collidability_value,
-			state_from_server._collidability_apply_count,
-		],
-		NetworkLogger.CATEGORY_GAME_STATE,
-	)
-	Netcode.print(
-		"  _last_processed_interaction_start_time=%d" % _last_processed_interaction_start_time,
-		NetworkLogger.CATEGORY_GAME_STATE,
-	)
-	Netcode.print(
-		"========================================",
-		NetworkLogger.CATEGORY_GAME_STATE,
-	)
-# -------------------------------------

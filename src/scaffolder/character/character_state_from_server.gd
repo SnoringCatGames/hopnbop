@@ -32,14 +32,6 @@ var velocity := Vector2.ZERO
 ## A bitmask representing the player's surface state.
 var surfaces := 0
 
-# -------------------------------------
-# FIXME: REMOVE
-# Diagnostic tracking for visibility bug.
-var _last_applied_collidability_frame := -1
-var _last_applied_collidability_value := true
-var _collidability_apply_count := 0
-# -------------------------------------
-
 var is_dead: bool:
 	get:
 		# Player is dead only while DIE interaction is active (before SPAWN).
@@ -582,27 +574,6 @@ func _apply_interaction_collidability(interaction_type: int) -> void:
 			Netcode.fatal("Unknown ServerInteractionType: %d" % interaction_type)
 			is_collidable = true
 
-	# -------------------------------------
-	# FIXME: REMOVE
-	# Track diagnostic info for visibility bug detection.
-	var current_frame := Netcode.server_frame_index
-	var collidability_changed := (_last_applied_collidability_value != is_collidable)
-	_last_applied_collidability_frame = current_frame
-	_last_applied_collidability_value = is_collidable
-	_collidability_apply_count += 1
-
-	# Log when collidability changes, especially for SPAWN.
-	if collidability_changed and Netcode.log.is_verbose:
-		Netcode.verbose(
-			"Player collidability changed: %s -> %s (interaction=%s)" % [
-				not is_collidable,
-				is_collidable,
-				ServerInteractionType.keys()[interaction_type],
-			],
-			NetworkLogger.CATEGORY_GAME_STATE,
-		)
-	# -------------------------------------
-
 	# Delegate to character-specific collision handling.
 	character.set_is_collidable(is_collidable)
 
@@ -793,6 +764,15 @@ func _reconcile_server_interaction() -> void:
 
 	# Skip if no interaction at current frame.
 	if buffer_interaction_type == ServerInteractionType.NONE:
+		return
+
+	# Skip stale interactions from pre-rollback data. After rollback
+	# re-simulation, buffer[current_frame] may still contain data
+	# from the previous simulation with an older interaction. Without
+	# this guard, the stale interaction overwrites the correct state
+	# loaded from buffer[current_frame - 1] by _pre_network_process,
+	# causing client-side effects (gore, sounds) to be skipped.
+	if buffer_interaction_frame < last_interaction_frame_index:
 		return
 
 	# Update local interaction properties from current frame's buffer.
