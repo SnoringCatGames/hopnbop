@@ -48,22 +48,20 @@ extends Node
 
 # Analyze my overall netcode design. I want to implement tick rate decoupling, so I can configure a separate frame rate for network frames vs physics frames. Do a deep and thorough analysis of all netcode systems and carefully identify all logic and edge-cases that needs to be updated to support this. Also, plan to write tests. Also, plan specific steps I can take to test whether this is working correctly.
 
-# - Test gore.
+# - Add a general-purpose cheat handler.
+#   - This will listen for passwords that are typed on the keyboard (or gamepad button combos).
+#   - The list of possible passwords may change.
+#   - But I want to start with "flowerpower" and "jetpack".
+#   - When jetpack mode is enabled, holding the "jump_triggered" control (not just "jump_pressed") will apply an upward acceleration, up to a max. This replaces discretes jumps.
+#   - flowerpower should toggle gore.
+#   - Some cheats should be networked, some should be local-only. jetpack is networked, flowerpower is local-only.
+#   - During matchmaking, a client should be able to specify to the server that they want cheats enabled. If the majority of clients (strictly more than half) want cheats, they're enabled. local-only cheats are always togglable regardless.
 
-# I want to add a gore particle effect.
-# - When a player is killed, I want to generate a bunch of particles from around their collision area, and give them all outward velocity.
-# - These particles should each obey gravity, and should collide with the level (but not other players).
-# - After a particle comes to rest (speed magnitude is less than a small threshold) in the level, I want to remove the particle and rasterize its representation into a gore_accumulation buffer.
-#   - This should then support accumulating an infinite amount of gore across the level.
-# - Additionally, I want to support a set of 8 different images for gore particles--each particle will be assigned an index representing one of these.
-#   - Additionally, of these 8 different type indices, 4 should be treated as "fast" and four as "slow".
-#   - Fast particles should have more initial speed.
-#   - Each particle should be able to have a different collision size.
-#   - But all particles can have the same collision shape (square or circle, whatever's easy).
-# - Gore particles shouldn't rotate--that should simplify some things.
-# - Additionally, I want to add a flag in G.settings for gore_enabled. It should default to false.
-#   - When this is false, we should use a different set of images for the gore (the other set will probably be flowers, so not "gorey" but the gore mechanic will still be active).
-# - Should these particles be custom scenes, or should these actually use Godot's built-in particle APIs?
+# - Also add support for some dynamic gore chunks from each death. These should be kickable and react to player collisions, but the players should not react at all to colliding with them. These should fade and destroy after a time, to not build up toooo high.
+
+# - Polish gore/flower sprites.
+# - Polish gore amounts.
+# - Test gore.
 
 
 # - Fix kills.
@@ -79,8 +77,6 @@ extends Node
 # - Ask AI if it's expected for there to be so many predicted instead of
 #   authoritative values. Shouldn't values in the past become authoritative as
 #   those packets around from the server?
-
-# - Also add support for some dynamic gore chunks from each death. These should be kickable and react to player collisions, but the players should not react at all to colliding with them. These should fade and destroy after a time, to not build up toooo high.
 
 # Water:
 # - Reverse gravity
