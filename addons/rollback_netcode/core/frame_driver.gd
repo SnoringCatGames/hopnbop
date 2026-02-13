@@ -66,8 +66,7 @@ extends Node
 
 # - Fix kills.
 
-# - Re simplify simple score. Just show kill counts
-# - Then update the pop-up when simple-score is enabled
+# - Make score popup bigger, and to the right of to score.
 # - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
 
 # - TEST that when a high-speed kill happens, the bounce happens from where the

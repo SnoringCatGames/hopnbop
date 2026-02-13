@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Settings" load_steps=14 format=3 uid="uid://dv60bmaw1pdx6"]
+[gd_resource type="Resource" script_class="Settings" load_steps=15 format=3 uid="uid://dv60bmaw1pdx6"]
 
 [ext_resource type="Script" uid="uid://cqomr88ncj2d3" path="res://src/core/settings.gd" id="1_krfic"]
 [ext_resource type="PackedScene" uid="uid://c7h8xaxryasdf" path="res://src/level/lobby_level.tscn" id="1_lobby"]
@@ -10,6 +10,7 @@
 [ext_resource type="Script" uid="uid://l1of4ibugkpt" path="res://src/core/level_info.gd" id="5_i3tmf"]
 [ext_resource type="StyleBox" uid="uid://dc86ks0yqis4j" path="res://src/ui/screens/screen_style_box.tres" id="5_r80nf"]
 [ext_resource type="PackedScene" uid="uid://btmcnai2hua60" path="res://src/level/level_2.tscn" id="6_4irwu"]
+[ext_resource type="PackedScene" path="res://src/gore/gore_kickable.tscn" id="7_kickable"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_woca2"]
 radius = 6.0
@@ -38,6 +39,7 @@ show_perf_tracker = true
 skip_splash = true
 bunny_collision_shape = SubResource("CircleShape2D_woca2")
 gore_particle_scene = ExtResource("4_bav20")
+gore_kickable_scene = ExtResource("7_kickable")
 default_theme = ExtResource("3_r80nf")
 default_palette = ExtResource("2_yixrw")
 screen_style_box = ExtResource("5_r80nf")
