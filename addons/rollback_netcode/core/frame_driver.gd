@@ -68,11 +68,10 @@ extends Node
 
 # - Fix kills.
 
-# - Test with multiple local clients again.
-
+# - Re simplify simple score. Just show kill counts
+# - Then update the pop-up when simple-score is enabled
 # - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
 
-# - Fix kills to happen when _relative_ velocity.y is pushing head into foot, not just when one player is moving down.
 # - TEST that when a high-speed kill happens, the bounce happens from where the
 #   initial collision contact should have been.
 #   -!!!!!!!!!!!!!!! I think this still happens
@@ -81,12 +80,20 @@ extends Node
 #   authoritative values. Shouldn't values in the past become authoritative as
 #   those packets around from the server?
 
-# - Also, update the prediction for stale remote players to not blindly continue
-#   velocity. Only continue inputs, and then extrapolate positions.
+# - Also add support for some dynamic gore chunks from each death. These should be kickable and react to player collisions, but the players should not react at all to colliding with them. These should fade and destroy after a time, to not build up toooo high.
 
-# - Gore / flowers
-#   - For the buildup and rasterization of particles once still, just draw to an ongoing texture. Simple!
-#   - BUT also add support for some dynamic gore chunks from each death. These should be kickable and react to player collisions, but the players should not react at all to colliding with them. These should fade and destroy after a time, to not build up toooo high.
+# Water:
+# - Reverse gravity
+# - Still use move and slide
+# - But also force a min y
+# - Define a float depth constant to define how far to sink into the surface
+# - Have water tiles use full collision square shape
+# - Detect intersection, and use the to trigger water float physics
+# - Need to make a good splash effect animation!
+# - Make a different splash animation for exiting the water
+# - Allow jumping up from the water only when you're at the surface
+# - Don't allow diving without jumping
+
 # - Add notes to implement: water, spring, ice, flies, jetpack, and other cheats
 
 

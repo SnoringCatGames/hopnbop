@@ -398,6 +398,10 @@ func client_exit_match() -> void:
 	G.client_session.copy_latest_state(G.match_state)
 	G.client_session.clear()
 
+	# Pause frame driver so it stops running network
+	# processing (rollback, buffers, etc.) in the lobby.
+	Netcode.frame_driver.client_reset()
+
 	# Reset match timer state for next game.
 	G.match_state.match_start_frame_index = -1
 	G.match_state.is_match_ended = false

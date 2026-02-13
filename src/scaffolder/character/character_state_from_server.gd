@@ -209,6 +209,15 @@ func _network_process() -> void:
 	# Reconcile server interactions.
 	_reconcile_server_interaction()
 
+	# Restore collision/visibility IMMEDIATELY after interaction
+	# reconciliation and BEFORE movement processing. Without this,
+	# _apply_movement() → _update_collision_mask() would set
+	# individual bits on a zeroed collision_mask (from DIE state),
+	# producing a partial mask (e.g., only the fall-through floor
+	# bit) that causes the character to fall through normal geometry
+	# during rollback re-simulation of the SPAWN onset frame.
+	_ensure_interaction_state_applied()
+
 	# Determine which input source to use.
 	# - Server and owning client: use PlayerInputFromClient (client-authoritative)
 	# - Remote clients viewing other players: use ForwardedPlayerInputFromServer (server-authoritative)
