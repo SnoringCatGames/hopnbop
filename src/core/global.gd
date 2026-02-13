@@ -34,6 +34,7 @@ var game_over_screen: GameOverScreen
 var pause_screen: PauseScreen
 var screen_transition: ScreenTransition
 
+var cheat_manager: CheatManager
 var game_panel: GamePanel
 var match_state: GameMatchState
 var client_session: ClientSession

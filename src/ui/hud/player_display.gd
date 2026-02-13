@@ -4,7 +4,7 @@ extends PanelContainer
 
 # Floating score popup settings.
 const _POPUP_MIN_SCORE_CHANGE := 10
-const _POPUP_OFFSET := Vector2(50.0, -20.0)  # Right and slightly up.
+const _POPUP_OFFSET := Vector2(50.0, -20.0) # Right and slightly up.
 const _POPUP_INITIAL_SCALE := 0.1
 const _POPUP_TARGET_SCALE := 1.0
 const _POPUP_OVERSHOOT_SCALE := 1.15
@@ -55,11 +55,17 @@ func _update_display(delta: float) -> void:
 		var score_delta := actual_score - _target_score
 		_target_score = actual_score
 
+		var min_score_change_for_popup := (
+			1
+			if G.settings.use_simple_score
+			else _POPUP_MIN_SCORE_CHANGE
+		)
+
 		# On first assignment, snap immediately.
 		if not _has_initialized_score:
 			_displayed_score = actual_score
 			_has_initialized_score = true
-		elif score_delta >= _POPUP_MIN_SCORE_CHANGE:
+		elif score_delta >= min_score_change_for_popup:
 			_spawn_score_popup(score_delta)
 
 	# Animate displayed score toward target.

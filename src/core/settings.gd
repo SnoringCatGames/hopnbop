@@ -30,6 +30,7 @@ extends NetworkSettings
 @export var show_debug_player_state := false
 @export var show_perf_tracker := false
 @export var show_network_simulation := false
+@export var are_cheats_enabled := false
 @export_group("")
 
 @export var start_in_game := false
@@ -103,6 +104,47 @@ extends NetworkSettings
 	"res://assets/images/flowers/flower_5.png",
 	"res://assets/images/flowers/flower_6.png",
 	"res://assets/images/flowers/flower_7.png",
+]
+## Scene for kickable gore pieces.
+@export var gore_kickable_scene: PackedScene
+## Number of kickables spawned per death.
+@export var gore_kickables_per_death := 8
+## Collision radius for kickable terrain interaction.
+@export var gore_kickable_collision_radius := 1.5
+## Radius of the Area2D that detects player kicks.
+@export var gore_kickable_kick_area_radius := 4.0
+## Minimum initial speed for kickables.
+@export var gore_kickable_speed_min := 60.0
+## Maximum initial speed for kickables.
+@export var gore_kickable_speed_max := 140.0
+## Velocity multiplier when kicked by a player.
+@export var gore_kickable_kick_multiplier := 0.6
+## Maximum speed a kickable can reach from a kick.
+@export var gore_kickable_max_kick_speed := 250.0
+## Seconds before a kickable starts fading.
+@export var gore_kickable_lifetime_sec := 8.0
+## Duration of the fade-out tween.
+@export var gore_kickable_fade_duration_sec := 2.0
+## Bounce damping for kickables.
+@export var gore_kickable_bounce_damping := 0.3
+## Friction multiplier for kickables on contact.
+@export var gore_kickable_friction := 0.88
+## Cooldown between kicks (seconds).
+@export var gore_kickable_kick_cooldown_sec := 0.15
+## Gore kickable texture paths (gore mode).
+@export var gore_kickable_texture_paths: Array[String] = [
+	"res://assets/images/gore/gore_kickable_0.png",
+	"res://assets/images/gore/gore_kickable_1.png",
+	"res://assets/images/gore/gore_kickable_2.png",
+	"res://assets/images/gore/gore_kickable_3.png",
+]
+## Gore kickable texture paths (flowers mode).
+@export var gore_kickable_flower_texture_paths: \
+		Array[String] = [
+	"res://assets/images/flowers/flower_kickable_0.png",
+	"res://assets/images/flowers/flower_kickable_1.png",
+	"res://assets/images/flowers/flower_kickable_2.png",
+	"res://assets/images/flowers/flower_kickable_3.png",
 ]
 @export_group("")
 
