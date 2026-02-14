@@ -308,10 +308,7 @@ func update_scores() -> void:
 
 	if G.settings.use_simple_score:
 		for player_id in all_player_ids:
-			scores[player_id] = (
-				kills_count[player_id] * _KILL_SCORE +
-				bumps_count[player_id] * _BUMP_SCORE
-			)
+			scores[player_id] = kills_count[player_id]
 	else:
 		# Calculate base scores.
 		for player_id in all_player_ids:

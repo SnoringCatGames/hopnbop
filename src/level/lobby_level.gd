@@ -6,7 +6,7 @@ extends Level
 
 
 const _SPAWN_SPEED_MIN := 150.0
-const _SPAWN_SPEED_MAX := 380.0
+const _SPAWN_SPEED_MAX := 330.0
 const _SPAWN_TARGET_DIRECTION := Vector2(2, -1)
 const _SPAWN_VELOCITY_ANGLE_MAX_OFFSET := PI / 16
 const _CONTROL_DISPLAY_FRAME_COUNT := 8
@@ -250,6 +250,7 @@ func _deregister_player(
 
 	# Remove lobby GamePlayerState.
 	G.match_state.players_by_id.erase(player_id)
+	G.match_state.players_updated.emit()
 
 	deregister_player(player)
 

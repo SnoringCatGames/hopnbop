@@ -20,6 +20,8 @@ func _init() -> void:
 
 
 func process(character) -> bool:
+	if character.processed_action(JetpackAction.NAME):
+		return false
 	var current_frame := Netcode.server_frame_index
 	var throttle_frames := int(
 		AUTO_JUMP_FROM_HOLD_THROTTLE_PERIOD_SEC

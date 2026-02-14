@@ -12,6 +12,8 @@ func _init() -> void:
 
 
 func process(character) -> bool:
+	if character.processed_action(JetpackAction.NAME):
+		return false
 	if character.actions.just_triggered_jump \
 			and not character.surfaces.is_launched:
 		character.jump_sequence_count = 1

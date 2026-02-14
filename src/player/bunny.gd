@@ -854,6 +854,13 @@ func _update_player_collision_for_invincibility() -> void:
 	if G.is_lobby_active:
 		return
 
+	# Keep collision disabled after match ends.
+	if is_instance_valid(G.match_state) and \
+			G.match_state.is_match_ended:
+		set_collision_mask_value(
+			_PLAYER_COLLISION_LAYER, false)
+		return
+
 	# Skip if not alive (dead players have all collision disabled).
 	if state_from_server.is_dead:
 		_was_invincible_last_frame = false

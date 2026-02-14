@@ -30,7 +30,9 @@ extends NetworkSettings
 @export var show_debug_player_state := false
 @export var show_perf_tracker := false
 @export var show_network_simulation := false
-@export var are_cheats_enabled := false
+@export var are_cheats_enabled := true
+@export var jetpack_acceleration := 1600.0
+@export var jetpack_max_upward_speed := 350.0
 @export_group("")
 
 @export var start_in_game := false
@@ -109,42 +111,45 @@ extends NetworkSettings
 @export var gore_kickable_scene: PackedScene
 ## Number of kickables spawned per death.
 @export var gore_kickables_per_death := 8
+## Draw radius for the colored circle (pixels).
+@export var gore_kickable_draw_radius := 3.0
 ## Collision radius for kickable terrain interaction.
 @export var gore_kickable_collision_radius := 1.5
 ## Radius of the Area2D that detects player kicks.
-@export var gore_kickable_kick_area_radius := 4.0
+@export var gore_kickable_kick_area_radius := 6.0
 ## Minimum initial speed for kickables.
 @export var gore_kickable_speed_min := 60.0
 ## Maximum initial speed for kickables.
 @export var gore_kickable_speed_max := 140.0
 ## Velocity multiplier when kicked by a player.
-@export var gore_kickable_kick_multiplier := 0.6
+@export var gore_kickable_kick_multiplier := 1.2
+## Minimum upward velocity applied on kick (pixels/sec).
+@export var gore_kickable_min_kick_pop := 200.0
 ## Maximum speed a kickable can reach from a kick.
-@export var gore_kickable_max_kick_speed := 250.0
+@export var gore_kickable_max_kick_speed := 400.0
 ## Seconds before a kickable starts fading.
 @export var gore_kickable_lifetime_sec := 8.0
 ## Duration of the fade-out tween.
 @export var gore_kickable_fade_duration_sec := 2.0
-## Bounce damping for kickables.
-@export var gore_kickable_bounce_damping := 0.3
+## Bounce damping for kickables (0 = no bounce, 1 = full).
+@export var gore_kickable_bounce_damping := 0.35
 ## Friction multiplier for kickables on contact.
-@export var gore_kickable_friction := 0.88
+@export var gore_kickable_friction := 0.92
 ## Cooldown between kicks (seconds).
 @export var gore_kickable_kick_cooldown_sec := 0.15
-## Gore kickable texture paths (gore mode).
-@export var gore_kickable_texture_paths: Array[String] = [
-	"res://assets/images/gore/gore_kickable_0.png",
-	"res://assets/images/gore/gore_kickable_1.png",
-	"res://assets/images/gore/gore_kickable_2.png",
-	"res://assets/images/gore/gore_kickable_3.png",
+## Gore draw colors (gore mode).
+@export var gore_kickable_colors: Array[Color] = [
+	Color(0.86, 0.12, 0.12),
+	Color(0.67, 0.08, 0.08),
+	Color(0.51, 0.06, 0.12),
+	Color(0.78, 0.16, 0.16),
 ]
-## Gore kickable texture paths (flowers mode).
-@export var gore_kickable_flower_texture_paths: \
-		Array[String] = [
-	"res://assets/images/flowers/flower_kickable_0.png",
-	"res://assets/images/flowers/flower_kickable_1.png",
-	"res://assets/images/flowers/flower_kickable_2.png",
-	"res://assets/images/flowers/flower_kickable_3.png",
+## Flower draw colors (flowers mode).
+@export var gore_kickable_flower_colors: Array[Color] = [
+	Color(0.94, 0.47, 0.71),
+	Color(0.98, 0.86, 0.24),
+	Color(0.31, 0.78, 0.31),
+	Color(0.71, 0.39, 0.94),
 ]
 @export_group("")
 

@@ -19,6 +19,7 @@ enum ActionHandlerType {
 	CEILING_CRAWL,
 	CEILING_FALL,
 	CEILING_JUMP_DOWN,
+	JETPACK,
 }
 
 var DEFAULT_ACTION_HANDLER_CLASSES := {
@@ -39,6 +40,7 @@ var DEFAULT_ACTION_HANDLER_CLASSES := {
 	ActionHandlerType.CEILING_CRAWL: CeilingCrawlAction,
 	ActionHandlerType.CEILING_FALL: CeilingFallAction,
 	ActionHandlerType.CEILING_JUMP_DOWN: CeilingJumpDownAction,
+	ActionHandlerType.JETPACK: JetpackAction,
 }
 
 const _MAX_SLIDES_DEFAULT := 4
@@ -124,6 +126,7 @@ var gravity_double_jump_slow_rise_acceleration: float:
 	ActionHandlerType.CEILING_CRAWL,
 	ActionHandlerType.CEILING_FALL,
 	ActionHandlerType.CEILING_JUMP_DOWN,
+	ActionHandlerType.JETPACK,
 ]
 
 var action_handlers: Array[CharacterActionHandler] = []
