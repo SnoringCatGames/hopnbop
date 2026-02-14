@@ -22,6 +22,9 @@ var _particle_textures: Array[Texture2D] = []
 # Corresponding images for blitting into accumulation buffer.
 var _particle_images: Array[Image] = []
 
+# Preloaded kickable draw colors.
+var _kickable_colors: Array[Color] = []
+
 var _is_dirty := false
 
 # Tile size from the level's collision tile map.
@@ -63,6 +66,68 @@ func spawn_particles(death_position: Vector2) -> void:
 			sin(vel_angle) * speed + s.gore_upward_bias)
 
 		_spawn_particle(type_index, spawn_pos, vel)
+
+	# Also spawn kickable pieces.
+	_spawn_kickables(death_position)
+
+
+func _spawn_kickables(death_position: Vector2) -> void:
+	var s := G.settings
+	if _kickable_colors.is_empty():
+		return
+	var center := death_position + s.gore_spawn_offset
+
+	for i in s.gore_kickables_per_death:
+		var color_index := randi_range(
+			0, _kickable_colors.size() - 1)
+
+		# Random position within scatter radius.
+		var angle := randf_range(0.0, TAU)
+		var dist := randf() * s.gore_spawn_scatter_radius
+		var spawn_pos := center + Vector2(
+			cos(angle) * dist, sin(angle) * dist)
+
+		# Initial velocity (slower than particles).
+		var speed := randf_range(
+			s.gore_kickable_speed_min,
+			s.gore_kickable_speed_max)
+		var vel_angle := randf_range(0.0, TAU)
+		var vel := Vector2(
+			cos(vel_angle) * speed,
+			sin(vel_angle) * speed + s.gore_upward_bias)
+
+		_spawn_kickable(color_index, spawn_pos, vel)
+
+
+func _spawn_kickable(
+	color_index: int,
+	pos: Vector2,
+	vel: Vector2,
+) -> void:
+	var kickable: GoreKickable = \
+		G.settings.gore_kickable_scene.instantiate()
+	kickable.type_index = color_index
+	kickable.draw_color = _kickable_colors[color_index]
+	kickable.position = pos
+	kickable.velocity = vel
+
+	# Set collision radius.
+	var shape: CollisionShape2D = kickable.get_node(
+		"CollisionShape2D")
+	var circle := CircleShape2D.new()
+	circle.radius = \
+		G.settings.gore_kickable_collision_radius
+	shape.shape = circle
+
+	# Set kick area detection radius.
+	var kick_shape: CollisionShape2D = kickable.get_node(
+		"KickArea/CollisionShape2D")
+	var kick_circle := CircleShape2D.new()
+	kick_circle.radius = \
+		G.settings.gore_kickable_kick_area_radius
+	kick_shape.shape = kick_circle
+
+	add_child(kickable)
 
 
 func _spawn_particle(
@@ -141,6 +206,7 @@ func _rasterize_particle(particle: GoreParticle) -> void:
 func _load_textures() -> void:
 	_particle_textures.clear()
 	_particle_images.clear()
+	_kickable_colors.clear()
 
 	var paths: Array[String]
 	if G.settings.is_gore_enabled:
@@ -152,6 +218,15 @@ func _load_textures() -> void:
 		var tex: Texture2D = load(path)
 		_particle_textures.append(tex)
 		_particle_images.append(tex.get_image())
+
+	# Load kickable colors.
+	if G.settings.is_gore_enabled:
+		_kickable_colors = \
+			G.settings.gore_kickable_colors.duplicate()
+	else:
+		_kickable_colors = \
+			G.settings.gore_kickable_flower_colors \
+			.duplicate()
 
 
 func _init_accumulation_buffer() -> void:
