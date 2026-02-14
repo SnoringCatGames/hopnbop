@@ -168,27 +168,27 @@ unique_name_in_owner = true
 position = Vector2(-55, 44)
 scale = Vector2(0.5, 0.5)
 sprite_frames = SubResource("SpriteFrames_s5vci")
-frame_progress = 0.709612
+frame_progress = 0.8282631
 
 [node name="IJKLControls" type="AnimatedSprite2D" parent="ControlDisplays"]
 unique_name_in_owner = true
 position = Vector2(-18, 44)
 scale = Vector2(0.5, 0.5)
 sprite_frames = SubResource("SpriteFrames_wxv6r")
-frame_progress = 0.709608
+frame_progress = 0.1459168
 
 [node name="ArrowControls" type="AnimatedSprite2D" parent="ControlDisplays"]
 unique_name_in_owner = true
 position = Vector2(19, 44)
 scale = Vector2(0.5, 0.5)
 sprite_frames = SubResource("SpriteFrames_v48v3")
-frame_progress = 0.90964717
+frame_progress = 0.77689654
 
 [node name="GamepadControls" type="AnimatedSprite2D" parent="ControlDisplays"]
 unique_name_in_owner = true
 position = Vector2(56, 44)
 scale = Vector2(0.5, 0.5)
 sprite_frames = SubResource("SpriteFrames_5ewn7")
-frame_progress = 0.33866513
+frame_progress = 0.15644321
 
 [connection signal="body_entered" from="RabbitHole" to="." method="_on_rabbit_hole_body_entered"]

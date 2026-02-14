@@ -1006,6 +1006,11 @@ func _inject_authoritative_state_into_buffer(
 	interaction_position: Vector2,
 	interaction_velocity: Vector2
 ) -> void:
+	# Ensure the buffer extends to the target frame. During Phase 2
+	# (_network_process), buffer[N] may not exist yet (it gets created
+	# in Phase 3). This handles cases like deferred collision processing
+	# where interactions are injected mid-frame.
+	_rollback_buffer.backfill_to_with_last_state(p_frame_index)
 	var frame_state: Array = _rollback_buffer.get_at(p_frame_index)
 	_set_frame_property(frame_state, &"position", new_position)
 	_set_frame_property(frame_state, &"velocity", new_velocity)
