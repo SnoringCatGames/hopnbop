@@ -241,6 +241,8 @@ var last_floor_frame_index := -1
 
 var last_floor_position := Vector2.INF
 
+var initial_launch_velocity := Vector2.INF
+
 # TODO(OLD): Add support for grabbing jump-through ceilings.
 # - Not via a directional key.
 # - Make this configurable for climb_adjacent_surfaces behavior.
@@ -447,6 +449,7 @@ func update_touches(
 	# Clear launched state when touching any surface.
 	if is_touching_surface:
 		is_launched = false
+		initial_launch_velocity = Vector2.INF
 
 
 ## Corrects position and velocity after an invalid one-way tile collision.
@@ -693,7 +696,7 @@ func clear_current_state() -> void:
 	is_descending_through_floors = false
 
 
-func force_launch() -> void:
+func force_launch(p_initial_launch_velocity: Vector2) -> void:
 	var previous_horizontal_facing_sign := horizontal_facing_sign
 
 	# Save current state as previous so just_* getters work correctly
@@ -703,6 +706,7 @@ func force_launch() -> void:
 	bitmask = 0
 	horizontal_facing_sign = previous_horizontal_facing_sign
 	is_launched = true
+	initial_launch_velocity = p_initial_launch_velocity
 
 
 ## Gets the collision for a specific surface side from the character's

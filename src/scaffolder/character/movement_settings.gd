@@ -79,7 +79,7 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 @export var min_vertical_speed := 0.0
 
 @export var bump_bounce_base_speed := 110.0
-@export var bump_bounce_vertical_boost := -70.0
+@export var bump_bounce_vertical_boost := -60.0
 
 @export var kill_bounce_vertical_boost := -300.0
 

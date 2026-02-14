@@ -44,8 +44,6 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# - Launch max_x velocity: If initial launch velocity_x is greater than max_launch_x, then use max_launch_x. Else, if initial launch x is less than normal air max x, use normal air max x. Else, use launch max x.
-
 # I hit a crash.
 # "Trying to assign value of type 'Nil' to a variable of type 'Array'."
 # res://src/scaffolder/character/character_state_from_server.gd:1009

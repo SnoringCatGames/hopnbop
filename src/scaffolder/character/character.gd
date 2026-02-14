@@ -73,12 +73,26 @@ var current_surface_max_horizontal_speed: float:
 
 var current_air_max_horizontal_speed: float:
 	get:
-		return (
-			movement_settings.max_launch_horizontal_speed
-			if surfaces.is_launched
-			else movement_settings.max_air_horizontal_speed *
-			_current_max_horizontal_speed_multiplier
-		)
+		if surfaces.is_launched:
+			var initial_launch_horizontal_speed := absf(
+				surfaces.initial_launch_velocity.x)
+			if (
+				initial_launch_horizontal_speed >
+				movement_settings.max_launch_horizontal_speed
+			):
+				return movement_settings.max_launch_horizontal_speed
+			elif (
+				initial_launch_horizontal_speed >
+				movement_settings.max_air_horizontal_speed
+			):
+				return initial_launch_horizontal_speed
+			else:
+				return movement_settings.max_air_horizontal_speed
+		else:
+			return (
+				movement_settings.max_air_horizontal_speed *
+				_current_max_horizontal_speed_multiplier
+			)
 
 var current_walk_acceleration: float:
 	get:
@@ -386,7 +400,7 @@ func force_launch(boost: Vector2) -> void:
 	velocity = boost
 
 	position += Vector2(0.0, -1.0)
-	surfaces.force_launch()
+	surfaces.force_launch(boost)
 
 	# Record the frame when launch was applied to prevent floor re-attachment.
 	_last_launch_frame_index = Netcode.server_frame_index
