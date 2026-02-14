@@ -53,6 +53,7 @@ extends NetworkSettings
 @export var bunny_collision_shape: Shape2D
 
 @export var use_simple_score := true
+@export var are_bumps_enabled := true
 
 @export_group("Gore")
 @export var is_gore_enabled := false

@@ -44,23 +44,10 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# - Add a general-purpose cheat handler.
-#   - This will listen for passwords that are typed on the keyboard (or gamepad button combos).
-#   - The list of possible passwords may change.
-#   - But I want to start with "flowerpower" and "jetpack".
-#   - When jetpack mode is enabled, holding the "jump_triggered" control (not just "jump_pressed") will apply an upward acceleration, up to a max. This replaces discretes jumps.
-#   - flowerpower should toggle gore.
-#   - Some cheats should be networked, some should be local-only. jetpack is networked, flowerpower is local-only.
-#   - During matchmaking, a client should be able to specify to the server that they want cheats enabled. If the majority of clients (strictly more than half) want cheats, they're enabled. local-only cheats are always togglable regardless.
-
 # - Launch max_x velocity: If initial launch velocity_x is greater than max_launch_x, then use max_launch_x. Else, if initial launch x is less than normal air max x, use normal air max x. Else, use launch max x.
 
-# - Try disabling bumps.
-
 # I hit a crash.
-
 # "Trying to assign value of type 'Nil' to a variable of type 'Array'."
-
 # res://src/scaffolder/character/character_state_from_server.gd:1009
 # res://src/scaffolder/character/character_state_from_server.gd:973
 # ...
@@ -156,6 +143,7 @@ extends Node
 #   - Wrap lines at 80 characters.
 #   - Prefer using parens to wrap lines rather than backslashes.
 #   - Use periods at the ends of comments.
+#   - Prefer `not` instead of `!` (although, do use `!=` when appropriate).
 #   - Follow the Godot style guide: https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html
 #   - Use multiple sub-agents to parallelize this work.
 

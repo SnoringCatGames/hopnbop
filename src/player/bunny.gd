@@ -424,6 +424,9 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	if _processed_collision_this_frame:
 		return
 
+	if not G.settings.are_bumps_enabled:
+		return
+
 	# Mark this collision as processed.
 	_processed_collision_this_frame = true
 	other_player._processed_collision_this_frame = true

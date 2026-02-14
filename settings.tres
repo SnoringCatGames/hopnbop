@@ -38,6 +38,7 @@ show_debug_player_state = true
 show_perf_tracker = true
 skip_splash = true
 bunny_collision_shape = SubResource("CircleShape2D_woca2")
+are_bumps_enabled = false
 gore_particle_scene = ExtResource("4_bav20")
 gore_kickable_scene = ExtResource("7_kickable")
 default_theme = ExtResource("3_r80nf")
