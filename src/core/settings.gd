@@ -80,10 +80,11 @@ extends NetworkSettings
 @export var gore_rest_speed_threshold := 15.0
 ## Consecutive frames below rest threshold before rasterizing.
 @export var gore_rest_frame_count := 3
+@export var gore_collision_radius := 0.33
 ## Collision radius per particle type (pixels). Array length
 ## defines the number of particle types.
-@export var gore_collision_radii: Array[float] = [
-	0.33, 0.33, 0.33, 0.33, 0.33, 0.33, 0.33, 0.33,
+@export var gore_sprite_radii: Array[float] = [
+	0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
 ]
 ## Gore texture paths (used when is_gore_enabled = true).
 @export var gore_texture_paths: Array[String] = [
@@ -110,7 +111,7 @@ extends NetworkSettings
 ## Scene for kickable gore pieces.
 @export var gore_kickable_scene: PackedScene
 ## Number of kickables spawned per death.
-@export var gore_kickables_per_death := 8
+@export var gore_kickables_per_death := 5
 ## Draw radius for the colored circle (pixels).
 @export var gore_kickable_draw_radius := 3.0
 ## Collision radius for kickable terrain interaction.
@@ -130,7 +131,7 @@ extends NetworkSettings
 ## Maximum speed a kickable can reach from a kick.
 @export var gore_kickable_max_kick_speed := 400.0
 ## Seconds before a kickable starts fading.
-@export var gore_kickable_lifetime_sec := 8.0
+@export var gore_kickable_lifetime_sec := 5.0
 ## Duration of the fade-out tween.
 @export var gore_kickable_fade_duration_sec := 2.0
 ## Bounce damping for kickables (0 = no bounce, 1 = full).

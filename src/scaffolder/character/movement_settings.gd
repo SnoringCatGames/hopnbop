@@ -73,8 +73,8 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 
 @export var max_ground_horizontal_speed := 90.0
 @export var max_air_horizontal_speed := 90.0
-@export var max_launch_horizontal_speed := 700.0
-@export var max_vertical_speed := 700.0
+@export var max_launch_horizontal_speed := 300.0
+@export var max_vertical_speed := 300.0
 @export var min_horizontal_speed := 5.0
 @export var min_vertical_speed := 0.0
 

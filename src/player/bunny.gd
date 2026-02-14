@@ -123,7 +123,6 @@ func _process_movement_and_actions() -> void:
 	_update_player_collision_for_invincibility()
 
 
-
 func _process_client_effects() -> void:
 	# Handle client-side interaction effects (sounds, particles).
 	# Process the interaction if it's new (not yet processed).
@@ -965,4 +964,3 @@ func _process_deferred_collisions() -> void:
 
 	# Clear all tracked intersections after processing.
 	_active_intersections.clear()
-

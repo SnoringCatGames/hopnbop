@@ -53,9 +53,17 @@ extends Node
 #   - Some cheats should be networked, some should be local-only. jetpack is networked, flowerpower is local-only.
 #   - During matchmaking, a client should be able to specify to the server that they want cheats enabled. If the majority of clients (strictly more than half) want cheats, they're enabled. local-only cheats are always togglable regardless.
 
-# - Also add support for some dynamic gore chunks from each death. These should be kickable and react to player collisions, but the players should not react at all to colliding with them. These should fade and destroy after a time, to not build up toooo high.
+# - Launch max_x velocity: If initial launch velocity_x is greater than max_launch_x, then use max_launch_x. Else, if initial launch x is less than normal air max x, use normal air max x. Else, use launch max x.
 
-# - Adjust gore rasterization radius to match.
+# - Try disabling bumps.
+
+# I hit a crash.
+
+# "Trying to assign value of type 'Nil' to a variable of type 'Array'."
+
+# res://src/scaffolder/character/character_state_from_server.gd:1009
+# res://src/scaffolder/character/character_state_from_server.gd:973
+# ...
 
 # - "Easter eggs"!
 #   - Release by easter.

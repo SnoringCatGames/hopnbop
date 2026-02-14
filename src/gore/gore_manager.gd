@@ -45,7 +45,7 @@ func _process(_delta: float) -> void:
 func spawn_particles(death_position: Vector2) -> void:
 	var s := G.settings
 	var center := death_position + s.gore_spawn_offset
-	var type_count := s.gore_collision_radii.size()
+	var type_count := s.gore_sprite_radii.size()
 
 	for i in s.gore_particles_per_death:
 		var type_index := randi_range(0, type_count - 1)
@@ -149,7 +149,7 @@ func _spawn_particle(
 	var shape: CollisionShape2D = particle.get_node(
 		"CollisionShape2D")
 	var circle := CircleShape2D.new()
-	circle.radius = G.settings.gore_collision_radii[type_index]
+	circle.radius = G.settings.gore_collision_radius
 	shape.shape = circle
 
 	particle.came_to_rest.connect(_on_particle_rested)
@@ -177,9 +177,9 @@ func _rasterize_particle(particle: GoreParticle) -> void:
 	# compensate for the half-tile offset between physics
 	# collision surfaces and visual tile boundaries.
 	var world_pos := particle.global_position
-	var collision_radius: float = \
-		G.settings.gore_collision_radii[type_index]
-	var particle_bottom := world_pos.y + collision_radius
+	var sprite_radius: float = \
+		G.settings.gore_sprite_radii[type_index]
+	var particle_bottom := world_pos.y + sprite_radius
 	var tile_h := float(_tile_size.y)
 	var visual_surface_y := ceilf(
 		particle_bottom / tile_h) * tile_h
@@ -188,7 +188,7 @@ func _rasterize_particle(particle: GoreParticle) -> void:
 		floori(world_pos.x - _buffer_origin.x) -
 			src_image.get_width() / 2,
 		floori(visual_surface_y - _buffer_origin.y) -
-			src_image.get_height())
+			src_image.get_height() + ceili(sprite_radius - G.settings.gore_collision_radius))
 
 	# Clamp to buffer bounds.
 	var buf_size := _accumulation_image.get_size()
