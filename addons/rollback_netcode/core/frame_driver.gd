@@ -44,12 +44,6 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# I hit a crash.
-# "Trying to assign value of type 'Nil' to a variable of type 'Array'."
-# res://src/scaffolder/character/character_state_from_server.gd:1009
-# res://src/scaffolder/character/character_state_from_server.gd:973
-# ...
-
 # - Polish gore/flower sprites.
 # - Polish gore amounts.
 # - Test gore.
@@ -64,10 +58,6 @@ extends Node
 # - TEST that when a high-speed kill happens, the bounce happens from where the
 #   initial collision contact should have been.
 #   -!!!!!!!!!!!!!!! I think this still happens
-
-# - Ask AI if it's expected for there to be so many predicted instead of
-#   authoritative values. Shouldn't values in the past become authoritative as
-#   those packets around from the server?
 
 # - "Easter eggs"!
 #   - Release by easter.
