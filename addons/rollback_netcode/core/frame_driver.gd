@@ -55,10 +55,17 @@ extends Node
 
 # - Also add support for some dynamic gore chunks from each death. These should be kickable and react to player collisions, but the players should not react at all to colliding with them. These should fade and destroy after a time, to not build up toooo high.
 
+# - Adjust gore rasterization radius to match.
+
+# - "Easter eggs"!
+#   - Release by easter.
+#   - Also, secrets in every level, and stuff you can actually collect and unlock...
+
 # - Polish gore/flower sprites.
 # - Polish gore amounts.
 # - Test gore.
 
+# - Sudden death.
 
 # - Make score popup bigger, and to the right of to score.
 # - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth

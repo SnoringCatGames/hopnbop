@@ -159,7 +159,11 @@ func register_player(player: Player) -> void:
 ## Updates players array and players_by_id dictionary.
 func deregister_player(player: Player) -> void:
 	players.erase(player)
-	players_by_id.erase(player.player_id)
+	# Only erase from players_by_id if this is the same
+	# instance. Prevents stale _exit_tree calls from
+	# removing re-registered players with the same id.
+	if players_by_id.get(player.player_id) == player:
+		players_by_id.erase(player.player_id)
 
 
 ## Returns a debug string identifying this level.
