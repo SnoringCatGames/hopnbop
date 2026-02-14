@@ -50,15 +50,11 @@ extends Node
 # res://src/scaffolder/character/character_state_from_server.gd:973
 # ...
 
-# - "Easter eggs"!
-#   - Release by easter.
-#   - Also, secrets in every level, and stuff you can actually collect and unlock...
-
 # - Polish gore/flower sprites.
 # - Polish gore amounts.
 # - Test gore.
 
-# - Sudden death.
+# - Show match scores in lobby.
 
 # - Make score popup bigger, and to the right of to score.
 # - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
@@ -72,6 +68,12 @@ extends Node
 # - Ask AI if it's expected for there to be so many predicted instead of
 #   authoritative values. Shouldn't values in the past become authoritative as
 #   those packets around from the server?
+
+# - "Easter eggs"!
+#   - Release by easter.
+#   - Also, secrets in every level, and stuff you can actually collect and unlock...
+
+# - Sudden death.
 
 # Water:
 # - Reverse gravity
