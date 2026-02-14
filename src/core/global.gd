@@ -84,6 +84,10 @@ func _enter_tree() -> void:
 	input_handler.name = "InputHandler"
 	add_child(input_handler)
 
+	cheat_manager = CheatManager.new()
+	cheat_manager.name = "CheatManager"
+	add_child(cheat_manager)
+
 
 func _ready() -> void:
 	# Initialize Netcode now that the scene tree is available.

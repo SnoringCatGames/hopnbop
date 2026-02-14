@@ -14,7 +14,7 @@ func _init() -> void:
 func process(character) -> bool:
 	if (
 		!character.processed_action(FallThroughFloorAction.NAME)
-		and !character.processed_action(JetpackAction.NAME)
+		and not CheatManager.is_jetpack_cheat_active()
 		and character.actions.just_triggered_jump
 		and not character.surfaces.is_launched
 	):

@@ -57,7 +57,7 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 @export var always_tries_to_face_direction_of_motion := true
 @export var max_jump_chain := 1
 
-@export var jump_boost := -285.0
+@export var jump_boost := -245.0
 @export var double_jump_boost_multiplier := 0.6
 
 @export var gravity_acceleration_multiplier := 1.0
@@ -71,10 +71,10 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 @export var friction_coeff_without_sideways_input := 1.0
 @export var fall_horizontal_friction := 0.3
 
-@export var max_ground_horizontal_speed := 150.0
-@export var max_air_horizontal_speed := 150.0
+@export var max_ground_horizontal_speed := 120.0
+@export var max_air_horizontal_speed := 120.0
 @export var max_launch_horizontal_speed := 800.0
-@export var max_vertical_speed := 1000.0
+@export var max_vertical_speed := 800.0
 @export var min_horizontal_speed := 5.0
 @export var min_vertical_speed := 0.0
 

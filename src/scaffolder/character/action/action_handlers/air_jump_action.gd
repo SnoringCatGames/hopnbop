@@ -20,7 +20,7 @@ func _init() -> void:
 
 
 func process(character) -> bool:
-	if character.processed_action(JetpackAction.NAME):
+	if CheatManager.is_jetpack_cheat_active():
 		return false
 	var current_frame := Netcode.server_frame_index
 	var throttle_frames := int(

@@ -307,6 +307,10 @@ func _on_server_should_reset() -> void:
 func _server_reset_for_new_match() -> void:
 	Netcode.check_is_server()
 
+	# Reset cheat state for new match.
+	if is_instance_valid(G.cheat_manager):
+		G.cheat_manager.reset()
+
 	# Clear match state.
 	G.match_state.match_start_frame_index = -1
 	G.match_state.is_match_ended = false
@@ -391,6 +395,10 @@ func _client_client_request_session_ids() -> void:
 func client_exit_match() -> void:
 	Netcode.check_is_client()
 
+	# Reset cheat state when leaving match.
+	if is_instance_valid(G.cheat_manager):
+		G.cheat_manager.reset()
+
 	G.client_session.is_game_active = false
 	G.client_session.is_game_loading = false
 
@@ -474,7 +482,7 @@ func _server_validate_pause_request(peer_id: int) -> Dictionary:
 			peer_id,
 			NetworkLogger.CATEGORY_NETWORK_SYNC,
 		)
-		return { "allowed": false }
+		return {"allowed": false}
 
 	# Check pause limit.
 	var max_pauses := G.settings.max_pauses_per_client
@@ -486,12 +494,12 @@ func _server_validate_pause_request(peer_id: int) -> Dictionary:
 			[peer_id, used, max_pauses],
 			NetworkLogger.CATEGORY_NETWORK_SYNC,
 		)
-		return { "allowed": false }
+		return {"allowed": false}
 
 	# Increment and allow.
 	used += 1
 	G.match_state.pauses_used_by_peer[peer_id] = used
-	return { "allowed": true, "pauses_used": used }
+	return {"allowed": true, "pauses_used": used}
 
 
 func _server_on_all_players_connected() -> void:

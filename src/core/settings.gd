@@ -31,8 +31,8 @@ extends NetworkSettings
 @export var show_perf_tracker := false
 @export var show_network_simulation := false
 @export var are_cheats_enabled := true
-@export var jetpack_acceleration := 1600.0
-@export var jetpack_max_upward_speed := 350.0
+@export var jetpack_acceleration := 1000.0
+@export var jetpack_max_upward_speed := 270.0
 @export_group("")
 
 @export var start_in_game := false
@@ -125,6 +125,8 @@ extends NetworkSettings
 @export var gore_kickable_kick_multiplier := 1.2
 ## Minimum upward velocity applied on kick (pixels/sec).
 @export var gore_kickable_min_kick_pop := 200.0
+## Repulsion speed pushing gore away from the kicking player.
+@export var gore_kickable_repulsion_speed := 120.0
 ## Maximum speed a kickable can reach from a kick.
 @export var gore_kickable_max_kick_speed := 400.0
 ## Seconds before a kickable starts fading.
@@ -185,7 +187,7 @@ const GORE_FAST_TYPE_END := 3
 
 # --- Game-specific configuration ---
 
-@export var default_gravity_acceleration := 1300.0
+@export var default_gravity_acceleration := 1000.0
 
 @export_group("Level Registry")
 ## Registered levels for dynamic selection. The first enabled level is the
