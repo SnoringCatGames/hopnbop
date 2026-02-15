@@ -10,7 +10,6 @@ const _FADE_DURATION_SEC := 0.5
 const _MAX_KICKS_PER_PLAYER := 3
 
 var type_index := 0
-var draw_color := Color.RED
 
 var _lifetime := 0.0
 var _kick_cooldown := 0.0
@@ -21,13 +20,6 @@ var _kick_counts: Dictionary = {}  # Player → int
 func _ready() -> void:
 	$KickArea.body_entered.connect(
 		_on_kick_area_body_entered)
-
-
-func _draw() -> void:
-	draw_circle(
-		Vector2.ZERO,
-		G.settings.gore_kickable_draw_radius,
-		draw_color)
 
 
 func _physics_process(delta: float) -> void:
