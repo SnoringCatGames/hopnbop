@@ -52,13 +52,10 @@ func _physics_process(delta: float) -> void:
 				is_instance_valid(
 					level.gore_manager)
 			):
-				var start_index: int = G.settings \
-					.gore_trail_start_size_index[
-						type_index]
 				level.gore_manager \
 					.spawn_trail_particle(
 						position,
-						start_index,
+						type_index,
 						is_behind,
 						self,
 						velocity)

@@ -65,12 +65,16 @@ extends NetworkSettings
 ## Particles originate randomly within this radius of the death
 ## position.
 @export var gore_spawn_scatter_radius := 7.0
+## Gravity multiplier for gore particles (relative to
+## default_gravity_acceleration).
+@export var gore_gravity_multiplier := 0.7
+@export var gore_trail_gravity_multiplier := 0.2
 ## Initial speed range for fast particles (types 0-3).
-@export var gore_fast_speed_min := 180.0
-@export var gore_fast_speed_max := 320.0
+@export var gore_fast_speed_min := 140.0
+@export var gore_fast_speed_max := 260.0
 ## Initial speed range for slow particles (types 4-7).
-@export var gore_slow_speed_min := 80.0
-@export var gore_slow_speed_max := 160.0
+@export var gore_slow_speed_min := 60.0
+@export var gore_slow_speed_max := 130.0
 ## Added to random velocity Y to bias particles upward.
 @export var gore_upward_bias := -120.0
 ## Velocity multiplier applied on each bounce.
@@ -82,10 +86,16 @@ extends NetworkSettings
 ## Consecutive frames below rest threshold before rasterizing.
 @export var gore_rest_frame_count := 3
 @export var gore_collision_radius := 0.33
-## Collision radius per particle type (pixels). Array length
-## defines the number of particle types.
+## Collision radius per gore particle type (pixels).
+## Array length defines the number of gore types.
 @export var gore_sprite_radii: Array[float] = [
 	0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
+]
+## Collision radius per flower particle type (pixels).
+## Array length defines the number of flower types.
+@export var gore_flower_sprite_radii: Array[float] = [
+	0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
+	0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
 ]
 ## Gore texture paths (used when is_gore_enabled = true).
 @export var gore_texture_paths: Array[String] = [
@@ -108,6 +118,12 @@ extends NetworkSettings
 	"res://assets/images/flowers/flower_5.png",
 	"res://assets/images/flowers/flower_6.png",
 	"res://assets/images/flowers/flower_7.png",
+	"res://assets/images/flowers/flower_8.png",
+	"res://assets/images/flowers/flower_9.png",
+	"res://assets/images/flowers/flower_10.png",
+	"res://assets/images/flowers/flower_11.png",
+	"res://assets/images/flowers/flower_12.png",
+	"res://assets/images/flowers/flower_13.png",
 ]
 ## Scene for kickable gore pieces.
 @export var gore_kickable_scene: PackedScene
@@ -135,7 +151,7 @@ extends NetworkSettings
 @export var gore_kickable_lifetime_sec := 5.0
 ## Duration of the fade-out tween (used by both
 ## kickable and non-rasterized non-kickable particles).
-@export var gore_fade_duration_sec := 2.0
+@export var gore_fade_duration_sec := 0.5
 ## Bounce damping for kickables (0 = no bounce, 1 = full).
 @export var gore_kickable_bounce_damping := 0.35
 ## Friction multiplier for kickables on contact.
@@ -156,7 +172,7 @@ extends NetworkSettings
 	"res://assets/images/gore/gore_trail_4.png",
 	"res://assets/images/gore/gore_trail_5.png",
 ]
-## Trail texture paths for flower mode (6 sizes,
+## Trail texture paths for flower mode (12 sizes,
 ## 0 = largest).
 @export var gore_flower_trail_texture_paths: \
 		Array[String] = [
@@ -166,19 +182,19 @@ extends NetworkSettings
 	"res://assets/images/flowers/flower_trail_3.png",
 	"res://assets/images/flowers/flower_trail_4.png",
 	"res://assets/images/flowers/flower_trail_5.png",
-]
-## Per gore type (0-7), starting trail size index
-## (0-5). Small/fast types (0-3) start smaller;
-## large/slow types (4-7) start larger.
-@export var gore_trail_start_size_index: \
-		Array[int] = [
-	4, 4, 3, 3, 2, 1, 1, 0,
+	"res://assets/images/flowers/flower_trail_6.png",
+	"res://assets/images/flowers/flower_trail_7.png",
+	"res://assets/images/flowers/flower_trail_8.png",
+	"res://assets/images/flowers/flower_trail_9.png",
+	"res://assets/images/flowers/flower_trail_10.png",
+	"res://assets/images/flowers/flower_trail_11.png",
 ]
 ## Seconds between trail particle spawns per chunk.
-@export var gore_trail_spawn_interval_sec := 0.05
-## Seconds a trail particle stays at one size before
-## shrinking to the next.
-@export var gore_trail_shrink_interval_sec := 0.12
+@export var gore_trail_spawn_interval_sec := 0.03
+## Total lifetime of a trail particle (seconds).
+## Per-size-index duration is computed at runtime as
+## total / number of trail texture sizes.
+@export var gore_trail_duration_sec := 0.6
 @export_group("")
 
 # Types 0 through half are "fast", the rest are "slow".
@@ -260,3 +276,9 @@ func gore_get_speed_range(type_index: int) -> Vector2:
 	if gore_is_fast_type(type_index):
 		return Vector2(gore_fast_speed_min, gore_fast_speed_max)
 	return Vector2(gore_slow_speed_min, gore_slow_speed_max)
+
+
+func gore_get_active_sprite_radii() -> Array[float]:
+	if is_gore_enabled:
+		return gore_sprite_radii
+	return gore_flower_sprite_radii

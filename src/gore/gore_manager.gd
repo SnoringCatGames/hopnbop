@@ -66,7 +66,7 @@ func _process(delta: float) -> void:
 ## types (0..GORE_FAST_TYPE_END) and 1/3 toward large.
 func _pick_type_index() -> int:
 	var s := G.settings
-	var type_count := s.gore_sprite_radii.size()
+	var type_count := s.gore_get_active_sprite_radii().size()
 	if randi() % 3 != 0:
 		return randi_range(0, s.GORE_FAST_TYPE_END)
 	else:
@@ -246,7 +246,7 @@ func _rasterize_particle(
 	# collision surfaces and visual tile boundaries.
 	var world_pos := particle.global_position
 	var sprite_radius: float = \
-		G.settings.gore_sprite_radii[type_index]
+		G.settings.gore_get_active_sprite_radii()[type_index]
 	var particle_bottom := world_pos.y + sprite_radius
 	var tile_h := float(_tile_size.y)
 	var visual_surface_y := ceilf(
@@ -287,25 +287,31 @@ func _rasterize_particle(
 		_is_front_dirty = true
 
 
-## Spawns a single trail particle at the given
-## position with the given starting size index.
-## chunk is the source gore chunk (used for
-## vertical clamping). chunk_vel is the velocity
-## of the chunk at the moment of spawning.
+## Spawns a single trail particle at a position.
+## type_index selects the starting trail size via
+## ratio mapping from chunk type count to trail
+## texture count. chunk is used for vertical
+## clamping. chunk_vel sets initial trail velocity.
 func spawn_trail_particle(
 	pos: Vector2,
-	size_index: int,
+	type_index: int,
 	is_behind: bool,
 	chunk: CharacterBody2D,
 	chunk_vel: Vector2,
 ) -> void:
-	if _trail_textures.is_empty():
+	var trail_count := _trail_textures.size()
+	if trail_count == 0:
 		return
-	if (
-		size_index < 0 or
-		size_index >= _trail_textures.size()
-	):
+	var chunk_count := _particle_textures.size()
+	if chunk_count <= 1:
 		return
+	# Map chunk type to trail start index. Type 0
+	# (smallest) starts near the end (smallest
+	# trail); highest type starts at 0 (largest).
+	var ratio := float(type_index) / (chunk_count - 1)
+	var max_trail := trail_count - 1
+	var size_index := int(
+		(1.0 - ratio) * max_trail)
 
 	var trail := GoreTrailParticle.new()
 	trail.texture = _trail_textures[size_index]
@@ -328,10 +334,12 @@ func spawn_trail_particle(
 
 
 func _update_trails(delta: float) -> void:
+	var trail_count := _trail_textures.size()
+	if trail_count == 0:
+		return
 	var shrink_interval: float = \
-		G.settings.gore_trail_shrink_interval_sec
-	var max_size_index: int = \
-		_trail_textures.size() - 1
+		G.settings.gore_trail_duration_sec / trail_count
+	var max_size_index: int = trail_count - 1
 	var gravity: float = \
 		G.settings.default_gravity_acceleration * \
 		G.settings.gore_gravity_multiplier * \

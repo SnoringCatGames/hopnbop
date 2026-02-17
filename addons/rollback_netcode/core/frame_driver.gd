@@ -46,22 +46,12 @@ extends Node
 
 # - Replace "jumpnthump" with "hopnbop" across the codebase.
 
-# - Test podium.
-# - Test crown.
-
-# - Implement new flower gore textures.
-# - Implement gore and flower trail particle textures.
-# - Test new gore textures and trail effect.
-
 # - Add skid vfx when landing, stopping, or changing direction.
 
 # - Bodies:
 #   - Create alternate body art.
 #   - Configure body_type_configs in settings.
 #   - Create a couple costumes.
-#   - Use the PlayerPortrayal in the score podium.
-#     - Also show overhead labels.
-#   - Hook-up crown when ahead by more N or more.
 
 # - Copy-over inbox notes.
 

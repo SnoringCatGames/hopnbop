@@ -3,7 +3,7 @@ extends PlayerState
 ## Hop 'n Bop specific player state with bunny attributes and scoring.
 
 
-const _OUTLINE_COLOR_OPACITY := 0.5
+const _OUTLINE_COLOR_OPACITY := 0.25
 const _LABEL_COLOR_WHITENING_FACTOR := 0.7
 
 
