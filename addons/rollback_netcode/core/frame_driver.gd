@@ -46,6 +46,9 @@ extends Node
 
 # - Replace "jumpnthump" with "hopnbop" across the codebase.
 
+# - Make all HUD text (like overhead labels) use a higher resolution, ignoring the rest of the game resolution.
+#   - Can my use of CanvasLayers help with this??
+
 # - Add skid vfx when landing, stopping, or changing direction.
 
 # - Bodies:
