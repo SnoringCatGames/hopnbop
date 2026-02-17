@@ -44,8 +44,6 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# - Replace "hopnbop" with "hopnbop" across the codebase.
-
 # - Make all HUD text (like overhead labels) use a higher resolution, ignoring the rest of the game resolution.
 #   - Can my use of CanvasLayers help with this??
 
