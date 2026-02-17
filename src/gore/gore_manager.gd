@@ -136,7 +136,7 @@ func _spawn_kickables(
 		var vel := Vector2(
 			cos(vel_angle) * speed,
 			sin(vel_angle) * speed
-				+ s.gore_upward_bias)
+				+s.gore_upward_bias)
 
 		_spawn_kickable(type_index, spawn_pos, vel)
 
@@ -289,10 +289,13 @@ func _rasterize_particle(
 
 ## Spawns a single trail particle at the given
 ## position with the given starting size index.
+## chunk_vel is the velocity of the gore chunk at
+## the moment of spawning.
 func spawn_trail_particle(
 	pos: Vector2,
 	size_index: int,
 	is_behind: bool,
+	chunk_vel: Vector2,
 ) -> void:
 	if _trail_textures.is_empty():
 		return
@@ -307,6 +310,8 @@ func spawn_trail_particle(
 	trail.size_index = size_index
 	trail.is_behind = is_behind
 	trail.position = pos
+	trail.vel = chunk_vel * \
+		GoreTrailParticle.SPEED_MULTIPLIER
 	trail.texture_filter = \
 		CanvasItem.TEXTURE_FILTER_NEAREST
 	if not is_behind:
@@ -321,6 +326,10 @@ func _update_trails(delta: float) -> void:
 		G.settings.gore_trail_shrink_interval_sec
 	var max_size_index: int = \
 		_trail_textures.size() - 1
+	var gravity: float = \
+		G.settings.default_gravity_acceleration * \
+		G.settings.gore_gravity_multiplier * \
+		G.settings.gore_trail_gravity_multiplier
 	var i := _active_trails.size() - 1
 
 	while i >= 0:
@@ -329,6 +338,10 @@ func _update_trails(delta: float) -> void:
 			_active_trails.remove_at(i)
 			i -= 1
 			continue
+
+		# Apply gravity and move trail particle.
+		trail.vel.y += gravity * delta
+		trail.position += trail.vel * delta
 
 		trail.elapsed += delta
 		if trail.elapsed >= shrink_interval:
