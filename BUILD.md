@@ -1,6 +1,6 @@
-# Building Jump 'n Thump with GameLift Support
+# Building Hop 'n Bop with GameLift Support
 
-This document describes how to build the GameLift GDExtension for Jump 'n Thump.
+This document describes how to build the GameLift GDExtension for Hop 'n Bop.
 
 # FIXME: Review this.
 

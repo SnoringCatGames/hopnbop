@@ -1,4 +1,4 @@
-# Jump 'n Thump Backend Service
+# Hop 'n Bop Backend Service
 
 Python-based backend service for GameLift matchmaking and player authentication.
 

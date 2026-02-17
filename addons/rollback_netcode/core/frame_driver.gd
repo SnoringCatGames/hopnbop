@@ -44,20 +44,21 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# - Polish gore/flower sprites.
-# - Polish gore amounts.
-# - Test gore.
+# - Replace "jumpnthump" with "hopnbop" across the codebase.
 
-# - Show match scores in lobby.
+# - Pressing down makes you "fall" when standing on the floor.
+
+# - More fixes for spamming entry/leaving in the lobby.
+
+# - Hide overhead labels before triggering transition away from lobby or transition away from match.
+
+# - Polish gore/flower sprites.
+
+# - Show match scores in lobby with podium.
+# - Show a crown on the current 1st place player in the match, and the last first place player in the lobby.
 
 # - Make score popup bigger, and to the right of to score.
 # - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
-
-# - Fix kills.
-
-# - TEST that when a high-speed kill happens, the bounce happens from where the
-#   initial collision contact should have been.
-#   -!!!!!!!!!!!!!!! I think this still happens
 
 # - "Easter eggs"!
 #   - Release by easter.
@@ -427,7 +428,7 @@ extends Node
 # 3. GameLift GDExtension
 # - No real version used.
 # - gamelift-gdextension/README.md - Build version references (lines 325-329)
-# 4. Jump 'n Thump Game
+# 4. Hop 'n Bop Game
 # project.godot:14 - config/version="0.1.0" (main game version)
 
 # ### Devlog post:

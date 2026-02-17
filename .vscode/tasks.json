@@ -440,7 +440,7 @@
 			"command": "bash",
 			"args": [
 				"-c",
-				"echo 'Creating GameLift Fleet...' && echo '' && echo 'Note: Check AWS Console for the latest build ID from the upload.' && echo '' && echo 'Sample command:' && echo 'aws gamelift create-fleet \\' && echo '  --name \"jumpnthump-dev-fleet\" \\' && echo '  --description \"Development fleet for Jump n Thump\" \\' && echo '  --build-id \"build-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\" \\' && echo '  --ec2-instance-type c5.large \\' && echo '  --fleet-type ON_DEMAND \\' && echo '  --runtime-configuration \"ServerProcesses=[{LaunchPath=/local/game/run_server.sh,ConcurrentExecutions=1}]\" \\' && echo '  --ec2-inbound-permissions \"FromPort=7777,ToPort=7777,IpRange=0.0.0.0/0,Protocol=UDP\" \\' && echo '  --region us-east-1' && echo '' && echo 'Or use AWS Console: https://console.aws.amazon.com/gamelift/'"
+				"echo 'Creating GameLift Fleet...' && echo '' && echo 'Note: Check AWS Console for the latest build ID from the upload.' && echo '' && echo 'Sample command:' && echo 'aws gamelift create-fleet \\' && echo '  --name \"jumpnthump-dev-fleet\" \\' && echo '  --description \"Development fleet for Hop n Bop\" \\' && echo '  --build-id \"build-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\" \\' && echo '  --ec2-instance-type c5.large \\' && echo '  --fleet-type ON_DEMAND \\' && echo '  --runtime-configuration \"ServerProcesses=[{LaunchPath=/local/game/run_server.sh,ConcurrentExecutions=1}]\" \\' && echo '  --ec2-inbound-permissions \"FromPort=7777,ToPort=7777,IpRange=0.0.0.0/0,Protocol=UDP\" \\' && echo '  --region us-east-1' && echo '' && echo 'Or use AWS Console: https://console.aws.amazon.com/gamelift/'"
 			],
 			"problemMatcher": [],
 			"presentation": {

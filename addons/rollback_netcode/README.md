@@ -26,7 +26,7 @@ by predicting player actions locally and automatically reconciling
 differences when the server's authoritative state arrives, providing
 instant visual feedback without sacrificing server control.
 
-The plugin is extracted from Jump 'n Thump, a production multiplayer
+The plugin is extracted from Hop 'n Bop, a production multiplayer
 action game, and comes with comprehensive testing (80+ unit tests),
 clear architectural patterns, and working examples to get you started
 quickly.

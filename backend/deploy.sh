@@ -1,9 +1,9 @@
 #!/bin/bash
-# Deployment script for Jump 'n Thump backend
+# Deployment script for Hop 'n Bop backend
 
 set -e
 
-echo "🚀 Deploying Jump 'n Thump backend..."
+echo "🚀 Deploying Hop 'n Bop backend..."
 
 # Check for samconfig.toml
 if [ ! -f "samconfig.toml" ]; then

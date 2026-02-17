@@ -1,6 +1,6 @@
-# Jump 'n Thump Test Suite
+# Hop 'n Bop Test Suite
 
-This directory contains unit and integration tests for the Jump 'n Thump
+This directory contains unit and integration tests for the Hop 'n Bop
 multiplayer game, using the GUT (Godot Unit Test) framework.
 
 ## Directory Structure

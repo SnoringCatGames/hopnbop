@@ -1,6 +1,6 @@
 # VSCode Development Tasks
 
-This directory contains VSCode configuration for the Jump 'n Thump project.
+This directory contains VSCode configuration for the Hop 'n Bop project.
 
 ## Quick Start
 
