@@ -186,6 +186,19 @@ const GORE_FAST_TYPE_END := 3
 @export var default_player_scene: PackedScene
 @export var player_scenes: Array[PackedScene] = []
 
+@export_group("Player Appearance")
+## Available body types. Index matches body_type_index
+## in GamePlayerState.
+@export var body_types: Array[BodyTypeConfig] = []
+## Available costumes. Index matches costume_index in
+## GamePlayerState. All costumes work with all body
+## types.
+@export var costumes: Array[CostumeConfig] = []
+## Crown costume config. Shown as an additional overlay
+## independent of the selected costume.
+@export var crown_costume: CostumeConfig = null
+@export_group("")
+
 @export_group("Player Mechanics")
 @export var player_respawn_cooldown_sec := 2.0
 @export var player_invincibility_duration_sec := 2.0

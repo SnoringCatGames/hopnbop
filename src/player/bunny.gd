@@ -43,9 +43,11 @@ func _ready() -> void:
 		)
 	_set_up_camera.call_deferred()
 
-	# Set up outline color when match state becomes available.
+	# Set up appearance and outline when match state
+	# becomes available.
 	if is_instance_valid(match_state):
-		_apply_outline_color.call_deferred()
+		_update_appearance.call_deferred()
+		_update_outline_color.call_deferred()
 	else:
 		G.match_state.player_joined.connect(_on_any_player_joined)
 
@@ -250,18 +252,59 @@ func get_string() -> String:
 
 func on_match_state_ready(_player_match_state: PlayerState) -> void:
 	super.on_match_state_ready(_player_match_state)
-	_apply_outline_color()
+	_update_appearance()
+	_update_outline_color()
 
 
 func _on_any_player_joined(player: PlayerState) -> void:
 	if player.player_id == player_id:
-		_apply_outline_color()
+		_update_appearance()
+		_update_outline_color()
 		G.match_state.player_joined.disconnect(_on_any_player_joined)
 
 
 func _on_players_updated() -> void:
-	# Reapply outline when player data is updated (e.g., color assignment).
-	_apply_outline_color()
+	# Reapply appearance and outline when player data
+	# is updated (e.g., color assignment).
+	_update_appearance()
+	_update_outline_color()
+
+
+func _update_appearance() -> void:
+	if not is_instance_valid(match_state):
+		return
+
+	var bunny_anim := animator as BunnyAnimator
+	if not is_instance_valid(bunny_anim):
+		return
+
+	# Look up body type config.
+	var body_type_index: int = \
+		match_state.body_type_index
+	var body_type_config: BodyTypeConfig = null
+	if (body_type_index >= 0 and
+			body_type_index < \
+				G.settings.body_types.size()):
+		body_type_config = \
+			G.settings.body_types[body_type_index]
+
+	# Look up costume config.
+	var costume_index: int = match_state.costume_index
+	var costume_config: CostumeConfig = null
+	if (costume_index >= 0 and
+			costume_index < \
+				G.settings.costumes.size()):
+		costume_config = \
+			G.settings.costumes[costume_index]
+
+	# Apply body type and costume to animator.
+	bunny_anim.apply_appearance(
+		body_type_config, costume_config)
+
+	# Store crown costume for later toggling.
+	if is_instance_valid(G.settings.crown_costume):
+		bunny_anim.set_crown_costume(
+			G.settings.crown_costume)
 
 
 func _get_shader_material() -> ShaderMaterial:
@@ -271,54 +314,96 @@ func _get_shader_material() -> ShaderMaterial:
 	return sprite.material as ShaderMaterial
 
 
-func _apply_outline_color() -> void:
-	# Match state may not be ready yet when players_updated fires.
+func _update_outline_color() -> void:
+	# Match state may not be ready yet when
+	# players_updated fires.
 	if not is_instance_valid(match_state):
 		return
 
-	var sprite := animator.animated_sprite as AnimatedSprite2D
+	var sprite := animator.animated_sprite \
+		as AnimatedSprite2D
 	if not sprite:
 		Netcode.warning("No sprite found on animator")
 		return
 
-	# Always duplicate material to make it unique to this instance.
-	if sprite.material:
-		sprite.material = sprite.material.duplicate()
-	else:
-		Netcode.warning("No material found on sprite")
-		return
+	# Apply outline to the base sprite.
+	_apply_outline_to_sprite(sprite)
 
-	var shader_material := _get_shader_material()
-	if not shader_material:
-		Netcode.warning("Material is not a ShaderMaterial")
-		return
-
-	# Set outline color and width.
-	shader_material.set_shader_parameter("outline_color", match_state.outline_color)
-	shader_material.set_shader_parameter("outline_width", 1.0)
+	# Apply outline to costume and crown overlays.
+	var bunny_anim := animator as BunnyAnimator
+	if is_instance_valid(bunny_anim):
+		var costume := bunny_anim.get_costume_overlay()
+		if is_instance_valid(costume):
+			_apply_outline_to_sprite(costume)
+		var crown := bunny_anim.get_crown_overlay()
+		if is_instance_valid(crown):
+			_apply_outline_to_sprite(crown)
 
 	# Set outline enabled state.
 	update_outline()
 
 	Netcode.verbose(
-		"Applied outline for player %s: color=%s, enabled=%s, width=2.0" % [
+		"Applied outline for player %s: color=%s" % [
 			player_id,
 			match_state.base_color,
-			G.is_networked_level_active and G.settings.show_player_outlines,
 		],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 
-func update_outline() -> void:
-	var shader_material := _get_shader_material()
-	if not shader_material:
+## Duplicates the sprite's material and sets outline
+## color and width.
+func _apply_outline_to_sprite(
+	sprite: AnimatedSprite2D,
+) -> void:
+	if not is_instance_valid(sprite.material):
 		return
 
+	sprite.material = sprite.material.duplicate()
+	var shader_material := \
+		sprite.material as ShaderMaterial
+	if not is_instance_valid(shader_material):
+		return
+
+	shader_material.set_shader_parameter(
+		"outline_color", match_state.outline_color)
+	shader_material.set_shader_parameter(
+		"outline_width", 1.0)
+
+
+func update_outline() -> void:
 	var outline_enabled := (
-		G.is_networked_level_active and G.settings.show_player_outlines
+		G.is_networked_level_active and
+		G.settings.show_player_outlines
 	)
-	shader_material.set_shader_parameter("outline_enabled", outline_enabled)
+
+	# Update base sprite.
+	_set_outline_enabled_on_sprite(
+		animator.animated_sprite, outline_enabled)
+
+	# Update overlays.
+	var bunny_anim := animator as BunnyAnimator
+	if is_instance_valid(bunny_anim):
+		_set_outline_enabled_on_sprite(
+			bunny_anim.get_costume_overlay(),
+			outline_enabled)
+		_set_outline_enabled_on_sprite(
+			bunny_anim.get_crown_overlay(),
+			outline_enabled)
+
+
+func _set_outline_enabled_on_sprite(
+	sprite: AnimatedSprite2D,
+	enabled: bool,
+) -> void:
+	if not is_instance_valid(sprite):
+		return
+	var shader_material := \
+		sprite.material as ShaderMaterial
+	if not is_instance_valid(shader_material):
+		return
+	shader_material.set_shader_parameter(
+		"outline_enabled", enabled)
 
 
 func _on_body_area_body_entered(body: Node2D) -> void:
