@@ -105,6 +105,14 @@ func play(animation_name: StringName) -> void:
 		_crown_overlay.play(animation_name)
 
 
+func stop() -> void:
+	animated_sprite.stop()
+	if is_instance_valid(_costume_overlay):
+		_costume_overlay.stop()
+	if is_instance_valid(_crown_overlay):
+		_crown_overlay.stop()
+
+
 ## Creates a new AnimatedSprite2D overlay as a child of
 ## this animator, duplicated from the base sprite with
 ## atlas textures swapped to the given texture.
@@ -128,8 +136,8 @@ func _create_overlay(
 		overlay.material = \
 			animated_sprite.material.duplicate()
 
-	# Sync animation state.
-	overlay.animation = animated_sprite.animation
+	# Sync animation state (play, then sync frame).
+	overlay.play(animated_sprite.animation)
 	overlay.frame = animated_sprite.frame
 
 	add_child(overlay)

@@ -24,6 +24,10 @@ const _LABEL_OFFSET_Y := -30.0
 const _LABEL_FONT_SIZE := 6
 const _LABEL_OUTLINE_SIZE := 1
 
+## Max random delay before a portrayal starts
+## animating (seconds).
+const _ANIMATION_STAGGER_MAX := 1.0
+
 
 func _ready() -> void:
 	var latest := \
@@ -128,6 +132,10 @@ func _add_portrayal(
 	# Show crown if this player earned it.
 	if player_state.player_id == crown_id:
 		portrayal.set_crown_visible(true)
+
+	# Stagger animation start time.
+	portrayal.play_after_delay(
+		randf() * _ANIMATION_STAGGER_MAX)
 
 	# Create name label.
 	var label := Label.new()

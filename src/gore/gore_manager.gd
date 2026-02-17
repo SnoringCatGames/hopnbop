@@ -152,7 +152,7 @@ func _spawn_kickable(
 	kickable.type_index = type_index
 	kickable.position = pos
 	kickable.velocity = vel
-	kickable.z_index = 1
+	kickable.z_index = 2
 
 	# Set texture from shared pool.
 	var sprite: Sprite2D = \
@@ -200,7 +200,7 @@ func _spawn_particle(
 		randf() < G.settings.gore_rasterize_ratio
 
 	if not is_behind:
-		particle.z_index = 1
+		particle.z_index = 2
 
 	# Set texture.
 	var sprite: Sprite2D = \
@@ -289,12 +289,14 @@ func _rasterize_particle(
 
 ## Spawns a single trail particle at the given
 ## position with the given starting size index.
-## chunk_vel is the velocity of the gore chunk at
-## the moment of spawning.
+## chunk is the source gore chunk (used for
+## vertical clamping). chunk_vel is the velocity
+## of the chunk at the moment of spawning.
 func spawn_trail_particle(
 	pos: Vector2,
 	size_index: int,
 	is_behind: bool,
+	chunk: CharacterBody2D,
 	chunk_vel: Vector2,
 ) -> void:
 	if _trail_textures.is_empty():
@@ -312,9 +314,13 @@ func spawn_trail_particle(
 	trail.position = pos
 	trail.vel = chunk_vel * \
 		GoreTrailParticle.SPEED_MULTIPLIER
+	trail.source_chunk = chunk
+	trail.last_chunk_y = pos.y
 	trail.texture_filter = \
 		CanvasItem.TEXTURE_FILTER_NEAREST
-	if not is_behind:
+	if is_behind:
+		trail.z_index = -1
+	else:
 		trail.z_index = 1
 
 	add_child(trail)
@@ -342,6 +348,20 @@ func _update_trails(delta: float) -> void:
 		# Apply gravity and move trail particle.
 		trail.vel.y += gravity * delta
 		trail.position += trail.vel * delta
+
+		# Clamp trail to not sink below the chunk
+		# when the chunk isn't moving upward or is
+		# no longer alive.
+		var chunk := trail.source_chunk
+		if is_instance_valid(chunk):
+			trail.last_chunk_y = chunk.position.y
+			if (
+				chunk.velocity.y >= 0.0 and
+				trail.position.y > chunk.position.y
+			):
+				trail.position.y = chunk.position.y
+		elif trail.position.y > trail.last_chunk_y:
+			trail.position.y = trail.last_chunk_y
 
 		trail.elapsed += delta
 		if trail.elapsed >= shrink_interval:
@@ -453,5 +473,5 @@ func _init_accumulation_buffer() -> void:
 	_front_sprite.position = _buffer_origin
 	_front_sprite.texture_filter = \
 		CanvasItem.TEXTURE_FILTER_NEAREST
-	_front_sprite.z_index = 1
+	_front_sprite.z_index = 2
 	add_child(_front_sprite)

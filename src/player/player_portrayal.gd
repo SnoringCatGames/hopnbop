@@ -65,6 +65,17 @@ func apply_player_state(
 	_animator.play(default_animation)
 
 
+## Stops the animation and restarts it after a delay.
+func play_after_delay(delay: float) -> void:
+	if not is_instance_valid(_animator):
+		return
+	_animator.stop()
+	get_tree().create_timer(delay).timeout.connect(
+		func():
+			if is_instance_valid(_animator):
+				_animator.play(default_animation))
+
+
 ## Shows or hides the crown overlay.
 func set_crown_visible(p_is_visible: bool) -> void:
 	if is_instance_valid(_animator):

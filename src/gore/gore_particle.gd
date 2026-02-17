@@ -50,11 +50,15 @@ func _physics_process(delta: float) -> void:
 					position,
 					start_index,
 					is_behind,
+					self,
 					velocity)
 
 	# Rest detection with consecutive-frame
-	# requirement.
+	# requirement. Only count frames where the chunk
+	# is in contact with a surface — a chunk at the
+	# apex of its arc is airborne, not at rest.
 	if (
+		collision and
 		velocity.length() <
 		G.settings.gore_rest_speed_threshold
 	):
@@ -63,6 +67,11 @@ func _physics_process(delta: float) -> void:
 			_rest_frame_counter >=
 			G.settings.gore_rest_frame_count
 		):
+			# Clear velocity so trail clamping sees
+			# the chunk as not moving upward. Without
+			# this, the post-bounce velocity.y is
+			# slightly negative and the clamp skips.
+			velocity = Vector2.ZERO
 			if will_rasterize:
 				came_to_rest.emit(self)
 				queue_free()

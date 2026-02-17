@@ -22,3 +22,11 @@ var elapsed := 0.0
 
 ## Velocity inherited from the spawning chunk.
 var vel := Vector2.ZERO
+
+## Reference to the chunk that spawned this trail.
+## Used to clamp vertical position.
+var source_chunk: CharacterBody2D
+
+## Last known y position of the source chunk.
+## Used for clamping after the chunk is freed.
+var last_chunk_y := 0.0

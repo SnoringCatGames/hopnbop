@@ -60,6 +60,7 @@ func _physics_process(delta: float) -> void:
 						position,
 						start_index,
 						is_behind,
+						self,
 						velocity)
 	else:
 		_trail_elapsed = 0.0

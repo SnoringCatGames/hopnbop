@@ -49,8 +49,6 @@ extends Node
 # - Test podium.
 # - Test crown.
 
-# - Add support for ties in the podium. If there is a tie for a given place, show both (or all three) bunnies side-by-side near the corresponding position marker. They sholud share the same y position, but we should give them an offset x position.
-
 # - Implement new flower gore textures.
 # - Implement gore and flower trail particle textures.
 # - Test new gore textures and trail effect.
