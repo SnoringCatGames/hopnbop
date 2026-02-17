@@ -767,22 +767,33 @@ func _validate_player_attributes(
 			)
 
 		# Ensure required fields exist with defaults.
-		if not attr.has("body_type_index"):
+		# Validate body_type_index bounds.
+		var body_type_idx: int = \
+			attr.get("body_type_index", 0)
+		if (body_type_idx < 0 or
+				body_type_idx >= \
+					G.settings.body_types.size()):
 			Netcode.warning(
-				"Peer %d: Invalid body_type_index, assigned 0: %s" % [
+				"Peer %d: body_type_index %d out of range, assigned 0" % [
 					peer_id,
-					attr["body_type_index"]
+					body_type_idx,
 				],
-				NetworkLogger.CATEGORY_CONNECTIONS
+				NetworkLogger.CATEGORY_CONNECTIONS,
 			)
 			attr["body_type_index"] = 0
-		if not attr.has("costume_index"):
+
+		# Validate costume_index bounds.
+		var costume_idx: int = \
+			attr.get("costume_index", 0)
+		if (costume_idx < 0 or
+				costume_idx >= \
+					G.settings.costumes.size()):
 			Netcode.warning(
-				"Peer %d: Invalid costume_index, assigned 0: %s" % [
+				"Peer %d: costume_index %d out of range, assigned 0" % [
 					peer_id,
-					attr["costume_index"]
+					costume_idx,
 				],
-				NetworkLogger.CATEGORY_CONNECTIONS
+				NetworkLogger.CATEGORY_CONNECTIONS,
 			)
 			attr["costume_index"] = 0
 

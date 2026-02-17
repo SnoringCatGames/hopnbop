@@ -341,7 +341,7 @@ metadata/_custom_type_script = "uid://1roi8ff6ow47"
 
 [node name="Title" type="Sprite2D" parent="."]
 unique_name_in_owner = true
-position = Vector2(-163, -136)
+position = Vector2(-161, -139)
 texture = ExtResource("4_s5vci")
 
 [node name="ControlDisplays" type="Node2D" parent="."]
@@ -349,6 +349,7 @@ position = Vector2(-33, -129)
 
 [node name="WASDControls" type="AnimatedSprite2D" parent="ControlDisplays"]
 unique_name_in_owner = true
+visible = false
 position = Vector2(3, 0)
 scale = Vector2(0.5, 0.5)
 sprite_frames = SubResource("SpriteFrames_s5vci")
@@ -357,6 +358,7 @@ metadata/_edit_lock_ = true
 
 [node name="IJKLControls" type="AnimatedSprite2D" parent="ControlDisplays"]
 unique_name_in_owner = true
+visible = false
 position = Vector2(3, 0)
 scale = Vector2(0.5, 0.5)
 sprite_frames = SubResource("SpriteFrames_wxv6r")
@@ -365,6 +367,7 @@ metadata/_edit_lock_ = true
 
 [node name="ArrowControls" type="AnimatedSprite2D" parent="ControlDisplays"]
 unique_name_in_owner = true
+visible = false
 position = Vector2(3, 0)
 scale = Vector2(0.5, 0.5)
 sprite_frames = SubResource("SpriteFrames_v48v3")
@@ -379,6 +382,7 @@ metadata/_edit_lock_ = true
 
 [node name="GamepadControls" type="AnimatedSprite2D" parent="ControlDisplays"]
 unique_name_in_owner = true
+visible = false
 position = Vector2(3, 0)
 scale = Vector2(0.5, 0.5)
 sprite_frames = SubResource("SpriteFrames_5ewn7")

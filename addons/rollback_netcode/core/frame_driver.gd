@@ -46,7 +46,17 @@ extends Node
 
 # - Replace "jumpnthump" with "hopnbop" across the codebase.
 
-# - Pressing down makes you "fall" when standing on the floor.
+# - Bodies:
+#   - Create alternate body art.
+#   - Configure body_type_configs in settings.
+#   - Create a couple costumes.
+#   - Use the PlayerPortrayal in the score podium.
+#     - Also show overhead labels.
+#   - Hook-up crown when ahead by more N or more.
+
+# - Copy-over inbox notes.
+
+# - Myself, fix the issue with main match countdown label hidden on second match.
 
 # - More fixes for spamming entry/leaving in the lobby.
 
