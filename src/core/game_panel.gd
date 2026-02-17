@@ -31,9 +31,6 @@ func _ready() -> void:
 
 	G.match_state = match_state
 
-	%PlayerOverheadLabels.set_up()
-	%PlayerAnnotations.set_up()
-
 	%MatchStateSynchronizer.set_multiplayer_authority(NetworkConnector.SERVER_ID)
 	%LevelSpawner.set_multiplayer_authority(NetworkConnector.SERVER_ID)
 

@@ -81,6 +81,12 @@ func _draw() -> void:
 	):
 		return
 
+	# Draw in world space by applying the viewport's canvas
+	# transform (includes camera pan and zoom).
+	draw_set_transform_matrix(
+		get_viewport().get_canvas_transform()
+	)
+
 	for player_id in _player_ids:
 		var player: Player = G.get_player(player_id)
 		if not is_instance_valid(player):
@@ -93,14 +99,9 @@ func _draw_collision_shape(player: Player) -> void:
 	if not is_instance_valid(player.collision_shape):
 		return
 
-	var local_position := (
-		player.collision_shape.global_position -
-		global_position
-	)
-
 	DrawUtils.draw_shape_outline(
-		self ,
-		local_position,
+		self,
+		player.collision_shape.global_position,
 		player.collision_shape.shape,
 		COLLISION_OUTLINE_COLOR,
 		COLLISION_OUTLINE_THICKNESS,
@@ -149,8 +150,7 @@ func _draw_rollback_buffer_trail(player: Player) -> void:
 			debug_entry = debug_buffer.get_at(frame_index)
 
 		var local_pos := (
-			frame_position -
-			global_position +
+			frame_position +
 			player.collision_shape.position
 		)
 

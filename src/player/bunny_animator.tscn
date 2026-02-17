@@ -1,7 +1,7 @@
 [gd_scene load_steps=44 format=3 uid="uid://br1b7cse0hxmt"]
 
 [ext_resource type="Script" uid="uid://bl01kk3ssewgt" path="res://src/player/bunny_animator.gd" id="1_ehlwh"]
-[ext_resource type="Texture2D" uid="uid://dniyej36rvq3s" path="res://assets/images/scratch/bunny.png" id="3_6bee0"]
+[ext_resource type="Texture2D" uid="uid://dniyej36rvq3s" path="res://assets/images/scratch/tan_bunny.png" id="3_6bee0"]
 [ext_resource type="Shader" uid="uid://bwlltrspkpdrj" path="res://assets/shaders/sprite_outline.gdshader" id="3_outline"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_outline"]

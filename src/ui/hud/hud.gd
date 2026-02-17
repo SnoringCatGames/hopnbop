@@ -18,6 +18,8 @@ func _ready() -> void:
 		process_mode = Node.PROCESS_MODE_DISABLED
 		return
 
+	%PlayerOverheadLabels.set_up()
+
 	# Wait for G.settings to be assigned.
 	await get_tree().process_frame
 

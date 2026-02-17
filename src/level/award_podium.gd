@@ -8,6 +8,8 @@ extends AnimatedSprite2D
 
 const _PORTRAYAL_SCENE := preload(
 	"res://src/player/player_portrayal.tscn")
+const _LABEL_FONT := preload(
+	"res://assets/fonts/pxlzr/pxlzr.ttf")
 
 ## Offset to align PlayerPortrayal's animator origin
 ## (at viewport position 18, 25) with the position
@@ -21,8 +23,12 @@ const _TIE_X_SPACING := 10.0
 ## Label position above the portrayal.
 const _LABEL_OFFSET_Y := -30.0
 
-const _LABEL_FONT_SIZE := 6
+## Label style matching PlayerOverheadLabel: font_size
+## 12 at scale 0.5, with 0.7 opacity on font color.
+const _LABEL_FONT_SIZE := 12
 const _LABEL_OUTLINE_SIZE := 1
+const _LABEL_SCALE := Vector2(0.5, 0.5)
+const _LABEL_COLOR_OPACITY := 0.7
 
 ## Max random delay before a portrayal starts
 ## animating (seconds).
@@ -137,19 +143,25 @@ func _add_portrayal(
 	portrayal.play_after_delay(
 		randf() * _ANIMATION_STAGGER_MAX)
 
-	# Create name label.
+	# Create name label (matching PlayerOverheadLabel
+	# style).
 	var label := Label.new()
 	label.text = player_state.bunny_name
 	label.horizontal_alignment = \
 		HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_override(
+		"font", _LABEL_FONT)
 	label.add_theme_font_size_override(
 		"font_size", _LABEL_FONT_SIZE)
 	label.add_theme_color_override(
-		"font_color", player_state.label_color)
+		"font_color",
+		Color(player_state.label_color,
+			_LABEL_COLOR_OPACITY))
 	label.add_theme_color_override(
 		"font_outline_color", Color.BLACK)
 	label.add_theme_constant_override(
 		"outline_size", _LABEL_OUTLINE_SIZE)
+	label.scale = _LABEL_SCALE
 	# Center the label horizontally above the
 	# portrayal.
 	label.position = Vector2(

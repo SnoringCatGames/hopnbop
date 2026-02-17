@@ -37,6 +37,9 @@ func set_up() -> void:
 
 
 func _process(_delta: float) -> void:
+	# Apply the viewport's canvas transform so that world-space
+	# positions map correctly to the CanvasLayer's screen space.
+	transform = get_viewport().get_canvas_transform()
 	_update_label_positions()
 
 
@@ -106,8 +109,9 @@ func _update_label_positions() -> void:
 			continue
 
 		var label: PlayerOverheadLabel = _labels_by_player_id[player_id]
-		# Position is at bottom-center of label due to anchor settings.
-		label.global_position = player.global_position + _LABEL_OFFSET
+		# Position in world space (parent transform handles
+		# world-to-screen conversion).
+		label.position = player.global_position + _LABEL_OFFSET
 
 
 func _update_label_colors() -> void:
