@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Settings" load_steps=20 format=3 uid="uid://dv60bmaw1pdx6"]
+[gd_resource type="Resource" script_class="Settings" load_steps=21 format=3 uid="uid://dv60bmaw1pdx6"]
 
 [ext_resource type="Script" uid="uid://bklo1tgck1vmm" path="res://src/player/body_type_config.gd" id="1_7ybur"]
 [ext_resource type="Script" uid="uid://cqomr88ncj2d3" path="res://src/core/settings.gd" id="1_krfic"]
@@ -14,6 +14,7 @@
 [ext_resource type="PackedScene" uid="uid://btmcnai2hua60" path="res://src/level/level_2.tscn" id="6_4irwu"]
 [ext_resource type="PackedScene" path="res://src/gore/gore_kickable.tscn" id="7_kickable"]
 [ext_resource type="Resource" path="res://src/player/tan_bunny_body_type.tres" id="8_bodytype"]
+[ext_resource type="Resource" path="res://src/player/white_bunny_body_type.tres" id="11_wbody"]
 [ext_resource type="Resource" path="res://src/player/default_costume.tres" id="9_costume"]
 [ext_resource type="Resource" path="res://src/player/crown_costume.tres" id="10_crown"]
 
@@ -54,7 +55,7 @@ lobby_level_scene = ExtResource("1_lobby")
 levels = Array[ExtResource("5_i3tmf")]([SubResource("Resource_i3tmf"), SubResource("Resource_bav20")])
 default_player_scene = ExtResource("3_woca2")
 player_scenes = Array[PackedScene]([ExtResource("3_woca2")])
-body_types = Array[ExtResource("1_7ybur")]([ExtResource("8_bodytype")])
+body_types = Array[ExtResource("1_7ybur")]([ExtResource("8_bodytype"), ExtResource("11_wbody")])
 costumes = Array[ExtResource("3_htelm")]([ExtResource("9_costume")])
 crown_costume = ExtResource("10_crown")
 max_client_count = 8
