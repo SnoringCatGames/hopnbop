@@ -54,6 +54,10 @@ func _ready() -> void:
 	# Update outline when colors are assigned/updated on the server.
 	G.match_state.players_updated.connect(_on_players_updated)
 
+	# Update crown when kills change.
+	G.match_state.kills_updated.connect(
+		_on_kills_updated)
+
 
 func _process(_delta: float) -> void:
 	if Engine.is_editor_hint():
@@ -268,6 +272,29 @@ func _on_players_updated() -> void:
 	# is updated (e.g., color assignment).
 	_update_appearance()
 	_update_outline_color()
+
+
+func _on_kills_updated() -> void:
+	_update_crown_visibility()
+
+
+func _update_crown_visibility() -> void:
+	var bunny_anim := animator as BunnyAnimator
+	if not is_instance_valid(bunny_anim):
+		return
+	var game_state := G.match_state as GameMatchState
+	if not is_instance_valid(game_state):
+		return
+	var crown_id := game_state.get_crown_player_id(
+		G.settings.crown_kill_lead)
+	var should_show := (crown_id == player_id)
+	bunny_anim.set_crown_visible(should_show)
+	# Apply outline to newly created crown.
+	if should_show:
+		var crown := bunny_anim.get_crown_overlay()
+		if is_instance_valid(crown):
+			_apply_outline_to_sprite(crown)
+		update_outline()
 
 
 func _update_appearance() -> void:

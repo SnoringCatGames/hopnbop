@@ -309,6 +309,45 @@ func restore_players_from_previous_match() -> void:
 		)
 		_register_player(device_config, attributes)
 
+	_apply_lobby_crowns.call_deferred()
+
+
+## Shows crown on the lobby bunny that ended the
+## previous match with the crown. Called deferred so
+## it runs after player appearance is applied.
+func _apply_lobby_crowns() -> void:
+	var latest := \
+		G.client_session.latest_match_state \
+			as GameMatchState
+	if latest == null:
+		return
+	var crown_id := latest.get_crown_player_id(
+		G.settings.crown_kill_lead)
+	if crown_id < 0:
+		return
+
+	# Map match player_id back to lobby player.
+	var saved_ids := \
+		G.client_session.latest_local_player_ids
+	for i in range(saved_ids.size()):
+		if saved_ids[i] != crown_id:
+			continue
+		var lobby_id := get_local_player_id(i)
+		if not players_by_id.has(lobby_id):
+			continue
+		var bunny: Bunny = players_by_id[lobby_id]
+		var bunny_anim := \
+			bunny.animator as BunnyAnimator
+		if is_instance_valid(bunny_anim):
+			bunny_anim.set_crown_visible(true)
+			var crown := \
+				bunny_anim.get_crown_overlay()
+			if is_instance_valid(crown):
+				bunny._apply_outline_to_sprite(
+					crown)
+			bunny.update_outline()
+		break
+
 
 static func get_local_player_id(
 	local_player_index: int,

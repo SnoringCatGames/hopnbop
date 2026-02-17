@@ -57,6 +57,7 @@ player_scenes = Array[PackedScene]([ExtResource("3_woca2")])
 body_types = Array[ExtResource("1_7ybur")]([ExtResource("8_bodytype")])
 costumes = Array[ExtResource("3_htelm")]([ExtResource("9_costume")])
 crown_costume = ExtResource("10_crown")
+crown_kill_lead = 5
 match_duration_sec = 10.0
 max_client_count = 8
 rollback_buffer_duration_sec = 2.0

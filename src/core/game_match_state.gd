@@ -354,6 +354,45 @@ func update_scores() -> void:
 		players_by_id.get(player_id).score = scores[player_id]
 
 
+## Returns the player_id that should wear the crown
+## (at least kill_lead more kills than all other
+## players), or -1 if no one qualifies.
+func get_crown_player_id(kill_lead: int) -> int:
+	var all_player_ids := players_by_id.keys()
+	if all_player_ids.is_empty():
+		return -1
+
+	# Build kill counts from replicated kills array.
+	var kill_counts := {}
+	for pid in all_player_ids:
+		kill_counts[pid] = 0
+	for i in range(0, kills.size(), 2):
+		var killer: int = kills[i]
+		if kill_counts.has(killer):
+			kill_counts[killer] += 1
+
+	# Find the player with the most kills.
+	var max_kills := 0
+	var max_player_id := -1
+	for pid in all_player_ids:
+		if kill_counts[pid] > max_kills:
+			max_kills = kill_counts[pid]
+			max_player_id = pid
+
+	if max_kills == 0:
+		return -1
+
+	# Check if they lead all others by at least
+	# kill_lead.
+	for pid in all_player_ids:
+		if pid == max_player_id:
+			continue
+		if max_kills - kill_counts[pid] < kill_lead:
+			return -1
+
+	return max_player_id
+
+
 # --- Internal Methods ---
 
 

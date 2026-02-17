@@ -197,6 +197,9 @@ const GORE_FAST_TYPE_END := 3
 ## Crown costume config. Shown as an additional overlay
 ## independent of the selected costume.
 @export var crown_costume: CostumeConfig = null
+## Minimum kill lead over all other players to
+## display the crown during a match.
+@export var crown_kill_lead := 5
 @export_group("")
 
 @export_group("Player Mechanics")

@@ -40,6 +40,10 @@ func show_results(
 	# Ensure scores and ranks are calculated.
 	match_state.update_scores()
 
+	# Determine crown holder.
+	var crown_id := match_state.get_crown_player_id(
+		G.settings.crown_kill_lead)
+
 	# Collect and sort players by rank.
 	var players: Array = \
 		match_state.players_by_id.values()
@@ -64,8 +68,8 @@ func show_results(
 		position_node.add_child(portrayal)
 		portrayal.apply_player_state(player_state)
 
-		# Show crown on 1st place.
-		if i == 0:
+		# Show crown if this player earned it.
+		if player_state.player_id == crown_id:
 			portrayal.set_crown_visible(true)
 
 		# Create name label.

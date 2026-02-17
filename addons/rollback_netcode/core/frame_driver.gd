@@ -46,6 +46,25 @@ extends Node
 
 # - Replace "jumpnthump" with "hopnbop" across the codebase.
 
+# I want to make a couple updates to gore:
+# 1. Add a gore trail behind moving gore chunks.
+#   - To implement this, we should spawn a new gore trail particle at a constant rate while a gore chunk is moving.
+#   - We should configure for each texture in gore_texture_paths, the starting gore trail particle size index.
+#   - There should be up to 6 different gore trail particle sizes. We'll configure a separate texture for each of them.
+#   - When spawning a new gore trail particle, we start with the assigned size index for the texture used for the given gore chunk.
+#   - Then, for a given trail particle, at a fixed rate, we swap it out for the next size down. When there are no more sizes down, we remove the gore trail particle.
+#   - When a gore chunk comes to rest, we stop spawning new trail particles.
+#   - All trail particles should be managed from a central class.
+# 2. Only have a configured ratio of non-kickable gore chunks persist to rasterization.
+#   - For the others, have them fade-out using Settings.gore_kickable_fade_duration_sec.
+#   - Also, is that setting being used for kickable gore? I did a quick search and didn't see it being referenced.
+#   - Also, rename gore_kickable_fade_duration_sec to gore_fade_duration_sec.
+#   - For a non-kickable chunk that isn't going to be rasterized, start the fade-out once it comes to rest.
+# - We'll do the same sort of thing for the non-"gorey" flower versions, but with a separate set of trail particle size textures.
+# - Create place-holders for the trail particles for now.
+
+# - Add skid vfx when landing, stopping, or changing direction.
+
 # - Bodies:
 #   - Create alternate body art.
 #   - Configure body_type_configs in settings.
