@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dniyej36rvq3s"
-path="res://.godot/imported/tan_bunny.png-8ebd1d34180bf45d5c132eae15b57ba6.ctex"
+uid="uid://3dp38h2m4ujn"
+path="res://.godot/imported/title.png-bb3ec1800c441492dab0d8ce1662a416.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/scratch/tan_bunny.png"
-dest_files=["res://.godot/imported/tan_bunny.png-8ebd1d34180bf45d5c132eae15b57ba6.ctex"]
+source_file="res://assets/images/title.png"
+dest_files=["res://.godot/imported/title.png-bb3ec1800c441492dab0d8ce1662a416.ctex"]
 
 [params]
 

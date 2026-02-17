@@ -14,9 +14,9 @@
 [ext_resource type="PackedScene" uid="uid://btmcnai2hua60" path="res://src/level/level_2.tscn" id="6_4irwu"]
 [ext_resource type="PackedScene" path="res://src/gore/gore_kickable.tscn" id="7_kickable"]
 [ext_resource type="Resource" path="res://src/player/tan_bunny_body_type.tres" id="8_bodytype"]
-[ext_resource type="Resource" path="res://src/player/white_bunny_body_type.tres" id="11_wbody"]
 [ext_resource type="Resource" path="res://src/player/default_costume.tres" id="9_costume"]
 [ext_resource type="Resource" path="res://src/player/crown_costume.tres" id="10_crown"]
+[ext_resource type="Resource" path="res://src/player/white_bunny_body_type.tres" id="11_wbody"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_woca2"]
 radius = 6.0

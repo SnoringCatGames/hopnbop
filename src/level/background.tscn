@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://bo0yvrajk0ktn"]
 
-[ext_resource type="Texture2D" uid="uid://ds165nq3ce40p" path="res://assets/images/scratch/background.png" id="1_up65g"]
+[ext_resource type="Texture2D" uid="uid://ds165nq3ce40p" path="res://assets/images/background.png" id="1_up65g"]
 
 [node name="Background" type="Node2D"]
 

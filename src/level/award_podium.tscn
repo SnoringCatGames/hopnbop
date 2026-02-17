@@ -1,7 +1,7 @@
 [gd_scene load_steps=27 format=3]
 
-[ext_resource type="Script" path="res://src/level/award_podium.gd" id="1_script"]
-[ext_resource type="Texture2D" uid="uid://cfrm40kvhkchf" path="res://assets/images/scratch/award_podium.png" id="2_texture"]
+[ext_resource type="Script" uid="uid://d0loi7pwyfxtf" path="res://src/level/award_podium.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://cfrm40kvhkchf" path="res://assets/images/award_podium.png" id="2_texture"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_wxv6r"]
 atlas = ExtResource("2_texture")

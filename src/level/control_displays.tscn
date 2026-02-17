@@ -1,7 +1,7 @@
 [gd_scene load_steps=18 format=4]
 
-[ext_resource type="Script" path="res://src/level/control_displays.gd" id="1_script"]
-[ext_resource type="Texture2D" uid="uid://btpn4bmskrju" path="res://assets/images/scratch/controls.png" id="2_controls"]
+[ext_resource type="Script" uid="uid://coohvqk02tpru" path="res://src/level/control_displays.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://btpn4bmskrju" path="res://assets/images/controls.png" id="2_controls"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_wasd1"]
 atlas = ExtResource("2_controls")

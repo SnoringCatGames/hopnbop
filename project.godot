@@ -14,7 +14,7 @@ config/name="Hop 'n Bop"
 config/version="0.1.0"
 run/main_scene="res://src/core/main.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
-config/icon="uid://bsrqq2id8rpl8"
+config/icon="uid://bmo0k1n04lcor"
 
 [autoload]
 

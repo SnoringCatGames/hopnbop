@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c6arvb5k120s6"
-path="res://.godot/imported/crown.png-8d07a8921cd3bdbd23733085a2d0ae16.ctex"
+uid="uid://cfrm40kvhkchf"
+path="res://.godot/imported/award_podium.png-96f3fbc2d61c89b82b8ccade37e01261.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/scratch/crown.png"
-dest_files=["res://.godot/imported/crown.png-8d07a8921cd3bdbd23733085a2d0ae16.ctex"]
+source_file="res://assets/images/award_podium.png"
+dest_files=["res://.godot/imported/award_podium.png-96f3fbc2d61c89b82b8ccade37e01261.ctex"]
 
 [params]
 
