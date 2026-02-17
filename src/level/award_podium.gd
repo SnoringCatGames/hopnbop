@@ -16,7 +16,7 @@ const _PORTRAYAL_OFFSET := Vector2(-18, -25)
 
 ## Horizontal spacing between tied players sharing
 ## a podium position.
-const _TIE_X_SPACING := 20.0
+const _TIE_X_SPACING := 10.0
 
 ## Label position above the portrayal.
 const _LABEL_OFFSET_Y := -30.0

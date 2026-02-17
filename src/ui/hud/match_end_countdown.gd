@@ -42,15 +42,15 @@ func _update_display() -> void:
 		return
 
 	# Don't show until match-start countdown ends.
-	var countdown_end := Netcode.frame_driver.match_start_countdown_end_frame_index
-	if countdown_end > 0 and Netcode.server_frame_index < countdown_end:
+	var match_start_countdown_end_frame_index := Netcode.frame_driver.match_start_countdown_end_frame_index
+	if match_start_countdown_end_frame_index > 0 and Netcode.server_frame_index < match_start_countdown_end_frame_index:
 		visible = false
 		return
 
 	# Calculate remaining time from when countdown ended (can be negative after
 	# expiry).
 	var match_start_after_countdown := (
-		countdown_end if countdown_end > 0 else
+		match_start_countdown_end_frame_index if match_start_countdown_end_frame_index > 0 else
 		G.match_state.match_start_frame_index
 	)
 	var elapsed_frames := (
@@ -103,6 +103,8 @@ func _update_display() -> void:
 			)
 		else:
 			modulate = Color.WHITE
+	else:
+		modulate = Color.WHITE
 
 	# Format as M:SS.
 	@warning_ignore("integer_division")
