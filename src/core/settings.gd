@@ -133,14 +133,52 @@ extends NetworkSettings
 @export var gore_kickable_max_kick_speed := 400.0
 ## Seconds before a kickable starts fading.
 @export var gore_kickable_lifetime_sec := 5.0
-## Duration of the fade-out tween.
-@export var gore_kickable_fade_duration_sec := 2.0
+## Duration of the fade-out tween (used by both
+## kickable and non-rasterized non-kickable particles).
+@export var gore_fade_duration_sec := 2.0
 ## Bounce damping for kickables (0 = no bounce, 1 = full).
 @export var gore_kickable_bounce_damping := 0.35
 ## Friction multiplier for kickables on contact.
 @export var gore_kickable_friction := 0.92
 ## Cooldown between kicks (seconds).
 @export var gore_kickable_kick_cooldown_sec := 0.15
+## Ratio of non-kickable particles that rasterize into
+## the accumulation buffer (0.0 = none, 1.0 = all).
+## The rest fade out instead.
+@export var gore_rasterize_ratio := 0.2
+## Trail texture paths for gore mode (6 sizes,
+## 0 = largest).
+@export var gore_trail_texture_paths: Array[String] = [
+	"res://assets/images/gore/gore_trail_0.png",
+	"res://assets/images/gore/gore_trail_1.png",
+	"res://assets/images/gore/gore_trail_2.png",
+	"res://assets/images/gore/gore_trail_3.png",
+	"res://assets/images/gore/gore_trail_4.png",
+	"res://assets/images/gore/gore_trail_5.png",
+]
+## Trail texture paths for flower mode (6 sizes,
+## 0 = largest).
+@export var gore_flower_trail_texture_paths: \
+		Array[String] = [
+	"res://assets/images/flowers/flower_trail_0.png",
+	"res://assets/images/flowers/flower_trail_1.png",
+	"res://assets/images/flowers/flower_trail_2.png",
+	"res://assets/images/flowers/flower_trail_3.png",
+	"res://assets/images/flowers/flower_trail_4.png",
+	"res://assets/images/flowers/flower_trail_5.png",
+]
+## Per gore type (0-7), starting trail size index
+## (0-5). Small/fast types (0-3) start smaller;
+## large/slow types (4-7) start larger.
+@export var gore_trail_start_size_index: \
+		Array[int] = [
+	4, 4, 3, 3, 2, 1, 1, 0,
+]
+## Seconds between trail particle spawns per chunk.
+@export var gore_trail_spawn_interval_sec := 0.05
+## Seconds a trail particle stays at one size before
+## shrinking to the next.
+@export var gore_trail_shrink_interval_sec := 0.12
 @export_group("")
 
 # Types 0 through half are "fast", the rest are "slow".

@@ -6,15 +6,16 @@ extends CharacterBody2D
 ## Client-side only. Not networked or rollback-aware.
 
 
-const _FADE_DURATION_SEC := 0.5
 const _MAX_KICKS_PER_PLAYER := 3
 
 var type_index := 0
+var is_behind := false
 
 var _lifetime := 0.0
 var _kick_cooldown := 0.0
 var _is_fading := false
-var _kick_counts: Dictionary = {}  # Player → int
+var _kick_counts: Dictionary = {}  # Player -> int
+var _trail_elapsed := 0.0
 
 
 func _ready() -> void:
@@ -33,6 +34,33 @@ func _physics_process(delta: float) -> void:
 			collision.get_normal()
 		) * G.settings.gore_kickable_bounce_damping
 		velocity *= G.settings.gore_kickable_friction
+
+	# Spawn trail particles while moving fast enough.
+	if (
+		velocity.length() >
+		G.settings.gore_rest_speed_threshold
+	):
+		_trail_elapsed += delta
+		var spawn_interval: float = \
+			G.settings.gore_trail_spawn_interval_sec
+		if _trail_elapsed >= spawn_interval:
+			_trail_elapsed -= spawn_interval
+			var level: Level = G.level
+			if (
+				is_instance_valid(level) and
+				is_instance_valid(
+					level.gore_manager)
+			):
+				var start_index: int = G.settings \
+					.gore_trail_start_size_index[
+						type_index]
+				level.gore_manager \
+					.spawn_trail_particle(
+						global_position,
+						start_index,
+						is_behind)
+	else:
+		_trail_elapsed = 0.0
 
 	# Update cooldowns.
 	if _kick_cooldown > 0.0:
@@ -63,7 +91,8 @@ func _on_kick_area_body_entered(body: Node2D) -> void:
 		G.settings.gore_kickable_kick_multiplier
 
 	# Push horizontally away from the player's center.
-	var away_x := global_position.x - player.global_position.x
+	var away_x := \
+		global_position.x - player.global_position.x
 	if away_x != 0.0:
 		impulse.x += \
 			signf(away_x) * \
@@ -76,7 +105,8 @@ func _on_kick_area_body_entered(body: Node2D) -> void:
 		-G.settings.gore_kickable_min_kick_pop)
 
 	# Clamp to max kick speed.
-	var max_speed := G.settings.gore_kickable_max_kick_speed
+	var max_speed := \
+		G.settings.gore_kickable_max_kick_speed
 	if impulse.length() > max_speed:
 		impulse = impulse.normalized() * max_speed
 
@@ -94,7 +124,7 @@ func _start_fade() -> void:
 	var tween := create_tween()
 	tween.tween_property(
 		self, "modulate:a", 0.0,
-		_FADE_DURATION_SEC,
+		G.settings.gore_fade_duration_sec,
 	).set_ease(
 		Tween.EASE_IN
 	).set_trans(
