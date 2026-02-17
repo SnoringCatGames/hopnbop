@@ -33,6 +33,14 @@ const KEYBOARD_PARTITION_BINDINGS := [
 		"move_right": KEY_RIGHT,
 		"jump": KEY_ENTER,
 	},
+	{
+		"name": "NumPad",
+		"move_up": KEY_KP_8,
+		"move_down": KEY_KP_5,
+		"move_left": KEY_KP_4,
+		"move_right": KEY_KP_6,
+		"jump": KEY_KP_0,
+	},
 ]
 
 ## Maps local player index to device configuration.

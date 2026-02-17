@@ -9,11 +9,23 @@ static func generate_random_attributes() -> Dictionary:
 		else BunnyWords.HARD_ADJECTIVES
 	)
 
+	# Select random body type and costume from
+	# configured options.
+	var body_type_index := 0
+	if not G.settings.body_types.is_empty():
+		body_type_index = \
+			randi() % G.settings.body_types.size()
+
+	var costume_index := 0
+	if not G.settings.costumes.is_empty():
+		costume_index = \
+			randi() % G.settings.costumes.size()
+
 	return {
 		"bunny_name": BunnyWords.NAMES.pick_random(),
 		"adjective": adjective_list.pick_random(),
-		"body_type_index": 0,
-		"costume_index": 0,
+		"body_type_index": body_type_index,
+		"costume_index": costume_index,
 		"is_soft": is_soft
 	}
 

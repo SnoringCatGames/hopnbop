@@ -1,6 +1,6 @@
 class_name GameMatchState
 extends MatchState
-## Jump 'n Thump specific match state with kills, bumps, and scoring.
+## Hop 'n Bop specific match state with kills, bumps, and scoring.
 
 # --- Game-Specific Interaction Types ---
 

@@ -1,6 +1,6 @@
 class_name GameSessionManager
 extends Node
-## Manages network session lifecycle for Jump 'n Thump.
+## Manages network session lifecycle for Hop 'n Bop.
 ##
 ## Coordinates session provider setup, connection flow, player ID assignment,
 ## and disconnect handling. Emits high-level events that game logic can respond

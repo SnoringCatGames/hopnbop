@@ -139,10 +139,11 @@ extends Node
 #   - Disable player-player collision mask bit in the lobby.
 
 # - Fix code style inconsistencies across the codebase.
-#   - Use tabs, not spaces.
 #   - When wrapping expressions across multiple lines, place operators at the start of the next line rather than the end of the previous.
 #   - Wrap lines at 80 characters.
 #   - Prefer using parens to wrap lines rather than backslashes.
+#   - Use tabs, not spaces.
+#   - Never use a grammatical em dash (or a hyphen or n dash substituted in one's place). Instead, use a period and a new sentence.
 #   - Use periods at the ends of comments.
 #   - Prefer `not` instead of `!` (although, do use `!=` when appropriate).
 #   - Follow the Godot style guide: https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html

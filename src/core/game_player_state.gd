@@ -1,6 +1,6 @@
 class_name GamePlayerState
 extends PlayerState
-## Jump 'n Thump specific player state with bunny attributes and scoring.
+## Hop 'n Bop specific player state with bunny attributes and scoring.
 
 
 const _OUTLINE_COLOR_OPACITY := 0.5
@@ -83,7 +83,7 @@ func set_up(
 	is_soft = p_attributes.is_soft
 	body_type_index = p_attributes.body_type_index
 	costume_index = p_attributes.costume_index
-	base_color = Color.WHITE  # Assigned later by MatchStateSynchronizer.
+	base_color = Color.WHITE # Assigned later by MatchStateSynchronizer.
 
 
 func get_string() -> String:

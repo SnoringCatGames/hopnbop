@@ -452,6 +452,21 @@ func update_touches(
 		initial_launch_velocity = Vector2.INF
 
 
+## Checks if a fall-through floor is directly beneath the character
+## by raycasting on only the fall-through floor collision layer.
+func _is_on_one_way_floor() -> bool:
+	var space := character.get_world_2d().direct_space_state
+	if space == null:
+		return false
+	var from := character.global_position
+	var to := from + Vector2(0, 20)
+	var query := PhysicsRayQueryParameters2D.create(
+		from, to, Character._FALL_THROUGH_FLOORS_COLLISION_MASK_BIT
+	)
+	query.exclude = [character.get_rid()]
+	return not space.intersect_ray(query).is_empty()
+
+
 ## Corrects position and velocity after an invalid one-way tile collision.
 func _correct_invalid_collision(
 	collision: KinematicCollision2D,
@@ -567,7 +582,11 @@ func _update_attachment_trigger_state() -> void:
 		and !is_triggering_explicit_wall_attachment
 		and !is_triggering_implicit_wall_attachment
 	)
-	is_triggering_fall_through = is_touching_floor and is_pressing_fall_through_input
+	is_triggering_fall_through = (
+		is_touching_floor
+		and is_pressing_fall_through_input
+		and _is_on_one_way_floor()
+	)
 	is_triggering_jump = just_pressed_jump and !is_triggering_fall_through
 
 
