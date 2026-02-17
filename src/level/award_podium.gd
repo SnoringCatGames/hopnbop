@@ -8,8 +8,6 @@ extends AnimatedSprite2D
 
 const _PORTRAYAL_SCENE := preload(
 	"res://src/player/player_portrayal.tscn")
-const _LABEL_FONT := preload(
-	"res://assets/fonts/pxlzr/pxlzr.ttf")
 
 ## Offset to align PlayerPortrayal's animator origin
 ## (at viewport position 18, 25) with the position
@@ -22,13 +20,6 @@ const _TIE_X_SPACING := 10.0
 
 ## Label position above the portrayal.
 const _LABEL_OFFSET_Y := -30.0
-
-## Label style matching PlayerOverheadLabel: font_size
-## 12 at scale 0.5, with 0.7 opacity on font color.
-const _LABEL_FONT_SIZE := 12
-const _LABEL_OUTLINE_SIZE := 1
-const _LABEL_SCALE := Vector2(0.5, 0.5)
-const _LABEL_COLOR_OPACITY := 0.7
 
 ## Max random delay before a portrayal starts
 ## animating (seconds).
@@ -84,6 +75,8 @@ func show_results(
 		%ThirdPlacePosition,
 	]
 
+	var label_entries: Array = []
+
 	var tier_count := mini(tiers.size(), 3)
 	for tier_index in range(tier_count):
 		var tier: Array = tiers[tier_index]
@@ -100,6 +93,22 @@ func show_results(
 				player_state,
 				crown_id,
 				x_offset)
+			label_entries.append({
+				"player_state": player_state,
+				"world_position":
+					position_node.global_position
+					+ Vector2(
+						x_offset,
+						_LABEL_OFFSET_Y),
+			})
+
+	# Delegate label rendering to
+	# PlayerOverheadLabels (in the Hud
+	# CanvasLayer for sharper resolution).
+	if is_instance_valid(
+			G.player_overhead_labels):
+		G.player_overhead_labels \
+			.show_podium_labels(label_entries)
 
 	visible = true
 
@@ -119,15 +128,14 @@ func _get_tie_x_offset(
 	return (index - center) * _TIE_X_SPACING
 
 
-## Adds a player portrayal and name label at the given
-## position node with an optional x offset for ties.
+## Adds a player portrayal at the given position node
+## with an optional x offset for ties.
 func _add_portrayal(
 	position_node: Node2D,
 	player_state: GamePlayerState,
 	crown_id: int,
 	x_offset: float,
 ) -> void:
-	# Create and configure player portrayal.
 	var portrayal: PlayerPortrayal = \
 		_PORTRAYAL_SCENE.instantiate()
 	portrayal.position = \
@@ -143,33 +151,6 @@ func _add_portrayal(
 	portrayal.play_after_delay(
 		randf() * _ANIMATION_STAGGER_MAX)
 
-	# Create name label (matching PlayerOverheadLabel
-	# style).
-	var label := Label.new()
-	label.text = player_state.bunny_name
-	label.horizontal_alignment = \
-		HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_override(
-		"font", _LABEL_FONT)
-	label.add_theme_font_size_override(
-		"font_size", _LABEL_FONT_SIZE)
-	label.add_theme_color_override(
-		"font_color",
-		Color(player_state.label_color,
-			_LABEL_COLOR_OPACITY))
-	label.add_theme_color_override(
-		"font_outline_color", Color.BLACK)
-	label.add_theme_constant_override(
-		"outline_size", _LABEL_OUTLINE_SIZE)
-	label.scale = _LABEL_SCALE
-	# Center the label horizontally above the
-	# portrayal.
-	label.position = Vector2(
-		x_offset, _LABEL_OFFSET_Y)
-	label.grow_horizontal = \
-		Control.GROW_DIRECTION_BOTH
-	position_node.add_child(label)
-
 
 ## Hides the podium and removes all dynamic children.
 func hide_results() -> void:
@@ -177,8 +158,8 @@ func hide_results() -> void:
 	visible = false
 
 
-## Removes dynamically added children (PlayerPortrayal
-## and Label instances) from all position nodes.
+## Removes dynamically added portrayals from all
+## position nodes and clears podium labels.
 func _clear_positions() -> void:
 	var position_nodes: Array[Node2D] = [
 		%FirstPlacePosition,
@@ -188,3 +169,8 @@ func _clear_positions() -> void:
 	for position_node in position_nodes:
 		for child in position_node.get_children():
 			child.queue_free()
+
+	if is_instance_valid(
+			G.player_overhead_labels):
+		G.player_overhead_labels \
+			.hide_podium_labels()

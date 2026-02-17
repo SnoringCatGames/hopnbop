@@ -14,6 +14,9 @@ const _FADE_OUT_DURATION_SEC := 0.05
 # Dictionary<int, PlayerOverheadLabel>
 var _labels_by_player_id := {}
 
+# Podium labels (fixed-position, no fading).
+var _podium_labels: Array[PlayerOverheadLabel] = []
+
 
 func _enter_tree() -> void:
 	G.player_overhead_labels = self
@@ -197,3 +200,33 @@ func _fade_label(player_id: int, p_is_visible: bool) -> void:
 		target_alpha,
 		duration
 	)
+
+
+## Shows labels at fixed world positions for the
+## award podium. Each entry is a Dictionary with
+## "player_state" (GamePlayerState) and
+## "world_position" (Vector2).
+func show_podium_labels(entries: Array) -> void:
+	hide_podium_labels()
+	for entry in entries:
+		var player_state: GamePlayerState = \
+			entry["player_state"]
+		var world_pos: Vector2 = \
+			entry["world_position"]
+
+		var label: PlayerOverheadLabel = \
+			label_scene.instantiate()
+		label.text = player_state.bunny_name
+		label.color = player_state.label_color
+		label.position = world_pos
+
+		_podium_labels.append(label)
+		add_child(label)
+
+
+## Removes all podium labels.
+func hide_podium_labels() -> void:
+	for label in _podium_labels:
+		if is_instance_valid(label):
+			label.queue_free()
+	_podium_labels.clear()
