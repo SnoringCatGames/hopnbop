@@ -28,7 +28,7 @@ class PlayerService:
     def __init__(self):
         self.dynamodb = boto3.resource("dynamodb")
         self.table_name = os.environ.get(
-            "PLAYERS_TABLE", "jumpnthump-players"
+            "PLAYERS_TABLE", "hopnbop-players"
         )
         self.table = self.dynamodb.Table(self.table_name)
 

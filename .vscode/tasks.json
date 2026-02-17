@@ -11,7 +11,7 @@
 			"args": [
 				"bash",
 				"-c",
-				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --both"
+				"cd /mnt/c/Users/lsl/Repositories/hopnbop && ./gamelift-gdextension/build.sh --both"
 			],
 			"problemMatcher": [],
 			"presentation": {
@@ -48,7 +48,7 @@
 			"args": [
 				"bash",
 				"-c",
-				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --release"
+				"cd /mnt/c/Users/lsl/Repositories/hopnbop && ./gamelift-gdextension/build.sh --skip-deps --release"
 			],
 			"problemMatcher": [],
 			"presentation": {
@@ -69,7 +69,7 @@
 			"args": [
 				"bash",
 				"-c",
-				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --debug"
+				"cd /mnt/c/Users/lsl/Repositories/hopnbop && ./gamelift-gdextension/build.sh --skip-deps --debug"
 			],
 			"problemMatcher": [],
 			"presentation": {
@@ -87,7 +87,7 @@
 			"args": [
 				"bash",
 				"-c",
-				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --both"
+				"cd /mnt/c/Users/lsl/Repositories/hopnbop && ./gamelift-gdextension/build.sh --skip-deps --both"
 			],
 			"problemMatcher": [],
 			"presentation": {
@@ -105,7 +105,7 @@
 			"args": [
 				"bash",
 				"-c",
-				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --all-platforms --release"
+				"cd /mnt/c/Users/lsl/Repositories/hopnbop && ./gamelift-gdextension/build.sh --skip-deps --all-platforms --release"
 			],
 			"problemMatcher": [],
 			"presentation": {
@@ -123,7 +123,7 @@
 			"args": [
 				"bash",
 				"-c",
-				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --skip-deps --all-platforms --both"
+				"cd /mnt/c/Users/lsl/Repositories/hopnbop && ./gamelift-gdextension/build.sh --skip-deps --all-platforms --both"
 			],
 			"problemMatcher": [],
 			"presentation": {
@@ -141,7 +141,7 @@
 			"args": [
 				"bash",
 				"-c",
-				"cd /mnt/c/Users/lsl/Repositories/jumpnthump/gamelift-gdextension && rm -rf bin/ godot-cpp/bin/ .scons_cache/ .sconsign.dblite && echo 'Build artifacts cleaned'"
+				"cd /mnt/c/Users/lsl/Repositories/hopnbop/gamelift-gdextension && rm -rf bin/ godot-cpp/bin/ .scons_cache/ .sconsign.dblite && echo 'Build artifacts cleaned'"
 			],
 			"problemMatcher": [],
 			"presentation": {
@@ -157,7 +157,7 @@
 			"args": [
 				"bash",
 				"-c",
-				"cd /mnt/c/Users/lsl/Repositories/jumpnthump/gamelift-gdextension && rm -rf cmake-build godot-cpp gamelift-server-sdk bin .scons_cache .sconsign.dblite && cd /mnt/c/Users/lsl/Repositories/jumpnthump && ./gamelift-gdextension/build.sh --both"
+				"cd /mnt/c/Users/lsl/Repositories/hopnbop/gamelift-gdextension && rm -rf cmake-build godot-cpp gamelift-server-sdk bin .scons_cache .sconsign.dblite && cd /mnt/c/Users/lsl/Repositories/hopnbop && ./gamelift-gdextension/build.sh --both"
 			],
 			"problemMatcher": [],
 			"presentation": {
@@ -344,7 +344,7 @@
 			"args": [
 				"bash",
 				"-c",
-				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && mkdir -p gamelift-deploy/lib gamelift-deploy/addons && echo 'TODO: Export Godot server build first' && cp -r addons/gamelift gamelift-deploy/addons/ && cp gamelift-gdextension/gamelift-server-sdk/cmake-build/prefix/lib/libaws-cpp-sdk-gamelift-server.so gamelift-deploy/lib/ && echo '#!/bin/bash' > gamelift-deploy/run_server.sh && echo 'export LD_LIBRARY_PATH=\"$(pwd)/lib:$LD_LIBRARY_PATH\"' >> gamelift-deploy/run_server.sh && echo './jumpnthump_server --headless -- --server' >> gamelift-deploy/run_server.sh && chmod +x gamelift-deploy/run_server.sh && tar -czf gamelift-deploy.tar.gz gamelift-deploy/ && echo 'Deployment package created: gamelift-deploy.tar.gz'"
+				"cd /mnt/c/Users/lsl/Repositories/hopnbop && mkdir -p gamelift-deploy/lib gamelift-deploy/addons && echo 'TODO: Export Godot server build first' && cp -r addons/gamelift gamelift-deploy/addons/ && cp gamelift-gdextension/gamelift-server-sdk/cmake-build/prefix/lib/libaws-cpp-sdk-gamelift-server.so gamelift-deploy/lib/ && echo '#!/bin/bash' > gamelift-deploy/run_server.sh && echo 'export LD_LIBRARY_PATH=\"$(pwd)/lib:$LD_LIBRARY_PATH\"' >> gamelift-deploy/run_server.sh && echo './hopnbop_server --headless -- --server' >> gamelift-deploy/run_server.sh && chmod +x gamelift-deploy/run_server.sh && tar -czf gamelift-deploy.tar.gz gamelift-deploy/ && echo 'Deployment package created: gamelift-deploy.tar.gz'"
 			],
 			"problemMatcher": [],
 			"presentation": {
@@ -362,7 +362,7 @@
 				"gamelift",
 				"upload-build",
 				"--name",
-				"jumpnthump-${input:buildVersion}",
+				"hopnbop-${input:buildVersion}",
 				"--build-version",
 				"${input:buildVersion}",
 				"--build-root",
@@ -385,7 +385,7 @@
 				"--headless",
 				"--export-release",
 				"Linux Server",
-				"build/linux/jumpnthump_server.x86_64"
+				"build/linux/hopnbop_server.x86_64"
 			],
 			"problemMatcher": [],
 			"presentation": {
@@ -402,7 +402,7 @@
 			"args": [
 				"bash",
 				"-c",
-				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && rm -rf gamelift-deploy && mkdir -p gamelift-deploy/lib gamelift-deploy/addons && cp -r build/linux/* gamelift-deploy/ && cp -r addons/gamelift gamelift-deploy/addons/ && cp gamelift-gdextension/gamelift-server-sdk/cmake-build/prefix/lib/libaws-cpp-sdk-gamelift-server.so gamelift-deploy/lib/ 2>/dev/null || echo 'Warning: GameLift SDK lib not found, build GDExtension first' && cat > gamelift-deploy/run_server.sh << 'EOF'\n#!/bin/bash\nexport LD_LIBRARY_PATH=\"$(pwd)/lib:$LD_LIBRARY_PATH\"\n./jumpnthump_server.x86_64 --headless -- --server\nEOF\n && chmod +x gamelift-deploy/run_server.sh && echo 'Package created in gamelift-deploy/'"
+				"cd /mnt/c/Users/lsl/Repositories/hopnbop && rm -rf gamelift-deploy && mkdir -p gamelift-deploy/lib gamelift-deploy/addons && cp -r build/linux/* gamelift-deploy/ && cp -r addons/gamelift gamelift-deploy/addons/ && cp gamelift-gdextension/gamelift-server-sdk/cmake-build/prefix/lib/libaws-cpp-sdk-gamelift-server.so gamelift-deploy/lib/ 2>/dev/null || echo 'Warning: GameLift SDK lib not found, build GDExtension first' && cat > gamelift-deploy/run_server.sh << 'EOF'\n#!/bin/bash\nexport LD_LIBRARY_PATH=\"$(pwd)/lib:$LD_LIBRARY_PATH\"\n./hopnbop_server.x86_64 --headless -- --server\nEOF\n && chmod +x gamelift-deploy/run_server.sh && echo 'Package created in gamelift-deploy/'"
 			],
 			"problemMatcher": [],
 			"presentation": {
@@ -422,7 +422,7 @@
 			"args": [
 				"bash",
 				"-c",
-				"cd /mnt/c/Users/lsl/Repositories/jumpnthump && aws gamelift upload-build --name \"jumpnthump-${BUILD_VERSION:-$(date +%Y%m%d-%H%M%S)}\" --build-version \"${BUILD_VERSION:-$(date +%Y%m%d-%H%M%S)}\" --build-root gamelift-deploy --operating-system AMAZON_LINUX_2023 --region ${AWS_REGION:-us-east-1}"
+				"cd /mnt/c/Users/lsl/Repositories/hopnbop && aws gamelift upload-build --name \"hopnbop-${BUILD_VERSION:-$(date +%Y%m%d-%H%M%S)}\" --build-version \"${BUILD_VERSION:-$(date +%Y%m%d-%H%M%S)}\" --build-root gamelift-deploy --operating-system AMAZON_LINUX_2023 --region ${AWS_REGION:-us-east-1}"
 			],
 			"problemMatcher": [],
 			"presentation": {
@@ -440,7 +440,7 @@
 			"command": "bash",
 			"args": [
 				"-c",
-				"echo 'Creating GameLift Fleet...' && echo '' && echo 'Note: Check AWS Console for the latest build ID from the upload.' && echo '' && echo 'Sample command:' && echo 'aws gamelift create-fleet \\' && echo '  --name \"jumpnthump-dev-fleet\" \\' && echo '  --description \"Development fleet for Hop n Bop\" \\' && echo '  --build-id \"build-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\" \\' && echo '  --ec2-instance-type c5.large \\' && echo '  --fleet-type ON_DEMAND \\' && echo '  --runtime-configuration \"ServerProcesses=[{LaunchPath=/local/game/run_server.sh,ConcurrentExecutions=1}]\" \\' && echo '  --ec2-inbound-permissions \"FromPort=7777,ToPort=7777,IpRange=0.0.0.0/0,Protocol=UDP\" \\' && echo '  --region us-east-1' && echo '' && echo 'Or use AWS Console: https://console.aws.amazon.com/gamelift/'"
+				"echo 'Creating GameLift Fleet...' && echo '' && echo 'Note: Check AWS Console for the latest build ID from the upload.' && echo '' && echo 'Sample command:' && echo 'aws gamelift create-fleet \\' && echo '  --name \"hopnbop-dev-fleet\" \\' && echo '  --description \"Development fleet for Hop n Bop\" \\' && echo '  --build-id \"build-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\" \\' && echo '  --ec2-instance-type c5.large \\' && echo '  --fleet-type ON_DEMAND \\' && echo '  --runtime-configuration \"ServerProcesses=[{LaunchPath=/local/game/run_server.sh,ConcurrentExecutions=1}]\" \\' && echo '  --ec2-inbound-permissions \"FromPort=7777,ToPort=7777,IpRange=0.0.0.0/0,Protocol=UDP\" \\' && echo '  --region us-east-1' && echo '' && echo 'Or use AWS Console: https://console.aws.amazon.com/gamelift/'"
 			],
 			"problemMatcher": [],
 			"presentation": {
@@ -455,7 +455,7 @@
 			"command": "bash",
 			"args": [
 				"-c",
-				"echo '=== GameLift Anywhere Fleet Setup ===' && echo '' && echo '1. Create Anywhere fleet (if not exists):' && echo '   aws gamelift create-fleet --name \"jumpnthump-anywhere\" --compute-type ANYWHERE --locations \"Location=custom-location-1\"' && echo '' && echo '2. Register compute:' && echo '   aws gamelift register-compute --fleet-id fleet-xxxxx --compute-name my-local-pc --ip-address 127.0.0.1 --location custom-location-1' && echo '' && echo '3. Get auth token:' && echo '   aws gamelift get-compute-auth-token --fleet-id fleet-xxxxx --compute-name my-local-pc' && echo '' && echo '4. Set environment variables and run server' && echo '' && echo 'See: https://docs.aws.amazon.com/gamelift/latest/developerguide/fleets-creating-anywhere.html'"
+				"echo '=== GameLift Anywhere Fleet Setup ===' && echo '' && echo '1. Create Anywhere fleet (if not exists):' && echo '   aws gamelift create-fleet --name \"hopnbop-anywhere\" --compute-type ANYWHERE --locations \"Location=custom-location-1\"' && echo '' && echo '2. Register compute:' && echo '   aws gamelift register-compute --fleet-id fleet-xxxxx --compute-name my-local-pc --ip-address 127.0.0.1 --location custom-location-1' && echo '' && echo '3. Get auth token:' && echo '   aws gamelift get-compute-auth-token --fleet-id fleet-xxxxx --compute-name my-local-pc' && echo '' && echo '4. Set environment variables and run server' && echo '' && echo 'See: https://docs.aws.amazon.com/gamelift/latest/developerguide/fleets-creating-anywhere.html'"
 			],
 			"problemMatcher": [],
 			"presentation": {

@@ -112,7 +112,7 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
         ]
 
         # Start matchmaking.
-        config_name = os.environ.get("MATCHMAKING_CONFIG", "jumpnthump-ffa-matchmaker")
+        config_name = os.environ.get("MATCHMAKING_CONFIG", "hopnbop-ffa-matchmaker")
         ticket_id = asyncio.run(
             gamelift.start_matchmaking(config_name=config_name, players=players)
         )
@@ -224,7 +224,7 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
         ]
 
         # Start matchmaking.
-        config_name = os.environ.get("MATCHMAKING_CONFIG", "jumpnthump-ffa-matchmaker")
+        config_name = os.environ.get("MATCHMAKING_CONFIG", "hopnbop-ffa-matchmaker")
         ticket_id = asyncio.run(
             gamelift.start_matchmaking(config_name=config_name, players=players)
         )

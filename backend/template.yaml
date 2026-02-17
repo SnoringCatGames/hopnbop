@@ -37,7 +37,7 @@ Parameters:
   MatchmakingConfigName:
     Type: String
     Description: GameLift matchmaking configuration name
-    Default: 'jumpnthump-ffa-matchmaker'
+    Default: 'hopnbop-ffa-matchmaker'
 
 Resources:
   # API Gateway
@@ -137,7 +137,7 @@ Resources:
   PlayersTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: jumpnthump-players
+      TableName: hopnbop-players
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: player_id
@@ -162,7 +162,7 @@ Resources:
   MatchHistoryTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: jumpnthump-match-history
+      TableName: hopnbop-match-history
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: player_id

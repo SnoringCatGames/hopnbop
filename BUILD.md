@@ -116,7 +116,7 @@ The recommended approach for building on Windows is using WSL:
 
 3. Build from WSL:
    ```bash
-   cd /mnt/c/Users/YourUser/Repositories/jumpnthump/gamelift-gdextension
+   cd /mnt/c/Users/YourUser/Repositories/hopnbop/gamelift-gdextension
    ./build.sh --godot-version 4.5
    ```
 

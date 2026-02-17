@@ -40,10 +40,10 @@ Open two terminal windows and run:
 
 ```bash
 # Terminal 1 (Server)
-godot --path "c:/Users/lsl/Repositories/jumpnthump/addons/rollback_netcode/examples/simple_game" -- --server
+godot --path "c:/Users/lsl/Repositories/hopnbop/addons/rollback_netcode/examples/simple_game" -- --server
 
 # Terminal 2 (Client)
-godot --path "c:/Users/lsl/Repositories/jumpnthump/addons/rollback_netcode/examples/simple_game"
+godot --path "c:/Users/lsl/Repositories/hopnbop/addons/rollback_netcode/examples/simple_game"
 ```
 
 ### Option 2: Godot Editor

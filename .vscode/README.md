@@ -223,8 +223,8 @@ If your WSL username is not "levi", update paths in `tasks.json`:
 - Replace `/home/levi/.local/bin/scons` with `/home/YOUR_USERNAME/.local/bin/scons`
 
 ### Changing Project Path
-If your repository is not in `C:\Users\lsl\Repositories\jumpnthump`, update:
-- All `/mnt/c/Users/lsl/Repositories/jumpnthump` paths in `tasks.json`
+If your repository is not in `C:\Users\lsl\Repositories\hopnbop`, update:
+- All `/mnt/c/Users/lsl/Repositories/hopnbop` paths in `tasks.json`
 
 ### Adding Custom Tasks
 Edit `.vscode/tasks.json` and add new task objects following the existing patterns.

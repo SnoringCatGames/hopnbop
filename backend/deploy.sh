@@ -41,7 +41,7 @@ echo ""
 echo "✅ Deployment complete!"
 echo ""
 echo "📋 Outputs:"
-sam list stack-outputs --stack-name jumpnthump-backend --output table
+sam list stack-outputs --stack-name hopnbop-backend --output table
 
 echo ""
 echo "🎮 Update your Godot settings with the ApiEndpoint URL above"
