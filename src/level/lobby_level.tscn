@@ -1,125 +1,15 @@
-[gd_scene load_steps=48 format=4 uid="uid://c7h8xaxryasdf"]
+[gd_scene load_steps=33 format=4 uid="uid://c7h8xaxryasdf"]
 
 [ext_resource type="Script" uid="uid://c0fbal5cscf2m" path="res://src/level/lobby_level.gd" id="1_lobby"]
 [ext_resource type="PackedScene" uid="uid://bo0yvrajk0ktn" path="res://src/level/background.tscn" id="2_6cujj"]
 [ext_resource type="TileSet" uid="uid://mtwu14d78k40" path="res://src/level/default_tile_set.tres" id="2_nipfv"]
 [ext_resource type="Script" uid="uid://1roi8ff6ow47" path="res://src/level/spawn_point.gd" id="3_lkfoy"]
 [ext_resource type="Texture2D" uid="uid://3dp38h2m4ujn" path="res://assets/images/scratch/title.png" id="4_s5vci"]
-[ext_resource type="Texture2D" uid="uid://btpn4bmskrju" path="res://assets/images/scratch/controls.png" id="5_uh0n1"]
+[ext_resource type="PackedScene" path="res://src/level/control_displays.tscn" id="5_ctrls"]
 [ext_resource type="Texture2D" uid="uid://cfrm40kvhkchf" path="res://assets/images/scratch/award_podium.png" id="7_oivdo"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_nipfv"]
 size = Vector2(34, 27)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_6cujj"]
-atlas = ExtResource("5_uh0n1")
-region = Rect2(222, 0, 74, 50)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_oivdo"]
-atlas = ExtResource("5_uh0n1")
-region = Rect2(222, 50, 74, 50)
-
-[sub_resource type="SpriteFrames" id="SpriteFrames_s5vci"]
-animations = [{
-"frames": [{
-"duration": 7.0,
-"texture": SubResource("AtlasTexture_6cujj")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_oivdo")
-}],
-"loop": true,
-"name": &"default",
-"speed": 2.0
-}]
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_omfp5"]
-atlas = ExtResource("5_uh0n1")
-region = Rect2(148, 0, 74, 50)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_3usab"]
-atlas = ExtResource("5_uh0n1")
-region = Rect2(148, 50, 74, 50)
-
-[sub_resource type="SpriteFrames" id="SpriteFrames_wxv6r"]
-animations = [{
-"frames": [{
-"duration": 7.0,
-"texture": SubResource("AtlasTexture_omfp5")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_3usab")
-}],
-"loop": true,
-"name": &"default",
-"speed": 2.0
-}]
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_fskew"]
-atlas = ExtResource("5_uh0n1")
-region = Rect2(74, 0, 74, 50)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_c4lci"]
-atlas = ExtResource("5_uh0n1")
-region = Rect2(74, 50, 74, 50)
-
-[sub_resource type="SpriteFrames" id="SpriteFrames_v48v3"]
-animations = [{
-"frames": [{
-"duration": 7.0,
-"texture": SubResource("AtlasTexture_fskew")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_c4lci")
-}],
-"loop": true,
-"name": &"default",
-"speed": 2.0
-}]
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_7gtxi"]
-atlas = ExtResource("5_uh0n1")
-region = Rect2(0, 0, 74, 50)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_dsyi7"]
-atlas = ExtResource("5_uh0n1")
-region = Rect2(0, 50, 74, 50)
-
-[sub_resource type="SpriteFrames" id="SpriteFrames_3gbdm"]
-animations = [{
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_7gtxi")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_dsyi7")
-}],
-"loop": true,
-"name": &"default",
-"speed": 2.0
-}]
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_gnycp"]
-atlas = ExtResource("5_uh0n1")
-region = Rect2(296, 0, 74, 50)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_6j3xo"]
-atlas = ExtResource("5_uh0n1")
-region = Rect2(296, 50, 74, 50)
-
-[sub_resource type="SpriteFrames" id="SpriteFrames_5ewn7"]
-animations = [{
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_gnycp")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_6j3xo")
-}],
-"loop": true,
-"name": &"default",
-"speed": 2.0
-}]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_wxv6r"]
 atlas = ExtResource("7_oivdo")
@@ -344,64 +234,26 @@ unique_name_in_owner = true
 position = Vector2(-161, -137)
 texture = ExtResource("4_s5vci")
 
-[node name="ControlDisplays" type="Node2D" parent="."]
+[node name="ControlDisplays" parent="." instance=ExtResource("5_ctrls")]
+unique_name_in_owner = true
 position = Vector2(-33, -127)
 
-[node name="WASDControls" type="AnimatedSprite2D" parent="ControlDisplays"]
-unique_name_in_owner = true
-visible = false
-position = Vector2(3, 0)
-scale = Vector2(0.5, 0.5)
-sprite_frames = SubResource("SpriteFrames_s5vci")
-frame_progress = 0.9899418
-metadata/_edit_lock_ = true
-
-[node name="IJKLControls" type="AnimatedSprite2D" parent="ControlDisplays"]
-unique_name_in_owner = true
-position = Vector2(3, 0)
-scale = Vector2(0.5, 0.5)
-sprite_frames = SubResource("SpriteFrames_wxv6r")
-frame_progress = 0.21668307
-metadata/_edit_lock_ = true
-
-[node name="ArrowControls" type="AnimatedSprite2D" parent="ControlDisplays"]
-unique_name_in_owner = true
-visible = false
-position = Vector2(3, 0)
-scale = Vector2(0.5, 0.5)
-sprite_frames = SubResource("SpriteFrames_v48v3")
-frame_progress = 0.42905897
-metadata/_edit_lock_ = true
-
-[node name="GamepadControls" type="AnimatedSprite2D" parent="ControlDisplays"]
-unique_name_in_owner = true
-visible = false
-scale = Vector2(0.5, 0.5)
-sprite_frames = SubResource("SpriteFrames_3gbdm")
-metadata/_edit_lock_ = true
-
-[node name="NumPadControls" type="AnimatedSprite2D" parent="ControlDisplays"]
-unique_name_in_owner = true
-visible = false
-position = Vector2(3, 0)
-scale = Vector2(0.5, 0.5)
-sprite_frames = SubResource("SpriteFrames_5ewn7")
-frame_progress = 0.94135845
-metadata/_edit_lock_ = true
-
-[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+[node name="AwardPodium" type="AnimatedSprite2D" parent="."]
 position = Vector2(101, -127)
 sprite_frames = SubResource("SpriteFrames_7gtxi")
 autoplay = "default"
 frame_progress = 0.3624636
 
-[node name="FirstPlacePosition" type="Node2D" parent="AnimatedSprite2D"]
+[node name="FirstPlacePosition" type="Node2D" parent="AwardPodium"]
+unique_name_in_owner = true
 position = Vector2(0, -12)
 
-[node name="SecondPlacePosition" type="Node2D" parent="AnimatedSprite2D"]
+[node name="SecondPlacePosition" type="Node2D" parent="AwardPodium"]
+unique_name_in_owner = true
 position = Vector2(-15, -5)
 
-[node name="ThirdPlacePosition" type="Node2D" parent="AnimatedSprite2D"]
+[node name="ThirdPlacePosition" type="Node2D" parent="AwardPodium"]
+unique_name_in_owner = true
 position = Vector2(15, 2)
 
 [connection signal="body_entered" from="RabbitHole" to="." method="_on_rabbit_hole_body_entered"]

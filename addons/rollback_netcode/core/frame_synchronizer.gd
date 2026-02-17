@@ -23,6 +23,10 @@ const DRIFT_THRESHOLD_FRAMES := 1 # Correct if +/- 1 frame off.
 const PING_INTERVAL_SEC := 3.0 # Ping server every 3 seconds.
 const RTT_SMOOTHING_FACTOR := 0.2 # Exponential moving average weight.
 const _MAX_RTT_SAMPLES := 10 # Jitter window size.
+# Minimum time between consecutive hard resets. Prevents a
+# feedback loop where repeated resets discard valid state
+# before it can stabilize.
+const _HARD_RESET_COOLDOWN_USEC := 3_000_000 # 3 seconds.
 
 # Network timing derived from FrameDriver config.
 var target_network_time_step_sec: float:
@@ -34,6 +38,7 @@ var target_network_time_step_sec: float:
 		)
 
 var _time_since_last_ping_sec := 0.0
+var _last_hard_reset_usec := 0
 
 # RTT tracking (in microseconds).
 var _smoothed_rtt_usec := 0
@@ -170,27 +175,37 @@ func _client_rpc_pong(
 				NetworkLogger.CATEGORY_NETWORK_SYNC
 			)
 	else:
-		# Client is ahead - hard reset. This can happen when the server runs
-		# slower than clients due to performance issues. We need to:
+		# Client is ahead - hard reset. This can happen when the server
+		# runs slower than clients due to performance issues. We need
+		# to:
 		# 1. Set a grace period so incoming states aren't rejected
 		# 2. Reinitialize rollback buffers to clear stale predictions
 		# 3. Reset the frame index
+		var now := Time.get_ticks_usec()
+		if now - _last_hard_reset_usec < _HARD_RESET_COOLDOWN_USEC:
+			return
+		_last_hard_reset_usec = now
 		Netcode.log.warning(
-			"Client ahead of server by %d frames! Hard reset from %d to %d" % [
+			("Client ahead of server by %d frames! "
+			+"Hard reset from %d to %d") % [
 				abs(drift),
 				local_frame,
 				estimated_current_server_frame,
 			],
 			NetworkLogger.CATEGORY_NETWORK_SYNC
 		)
-		# Trigger grace period to prevent rejecting valid server states.
-		Netcode.frame_driver._frame_reset_time_usec = Time.get_ticks_usec()
-		# Reinitialize rollback buffers to clear stale predicted data.
+		# Trigger grace period to prevent rejecting valid server
+		# states.
+		Netcode.frame_driver._frame_reset_time_usec = now
+		# Reinitialize rollback buffers to clear stale predicted
+		# data.
 		Netcode.frame_driver.reinitialize_buffers_for_hard_reset(
 			estimated_current_server_frame
 		)
 		# Reset the frame index.
-		Netcode.frame_driver.server_frame_index = estimated_current_server_frame
+		Netcode.frame_driver.server_frame_index = (
+			estimated_current_server_frame
+		)
 
 
 func _update_input_delay() -> void:

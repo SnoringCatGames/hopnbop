@@ -1,0 +1,151 @@
+[gd_scene load_steps=18 format=4]
+
+[ext_resource type="Script" path="res://src/level/control_displays.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://btpn4bmskrju" path="res://assets/images/scratch/controls.png" id="2_controls"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_wasd1"]
+atlas = ExtResource("2_controls")
+region = Rect2(111, 25, 37, 25)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_wasd2"]
+atlas = ExtResource("2_controls")
+region = Rect2(111, 0, 37, 25)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_wasd"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_wasd1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_wasd2")
+}],
+"loop": true,
+"name": &"default",
+"speed": 2.0
+}]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ijkl1"]
+atlas = ExtResource("2_controls")
+region = Rect2(74, 25, 37, 25)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ijkl2"]
+atlas = ExtResource("2_controls")
+region = Rect2(74, 0, 37, 25)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_ijkl"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ijkl1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ijkl2")
+}],
+"loop": true,
+"name": &"default",
+"speed": 2.0
+}]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_arrow1"]
+atlas = ExtResource("2_controls")
+region = Rect2(37, 25, 37, 25)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_arrow2"]
+atlas = ExtResource("2_controls")
+region = Rect2(37, 0, 37, 25)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_arrow"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_arrow1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_arrow2")
+}],
+"loop": true,
+"name": &"default",
+"speed": 2.0
+}]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_gpad1"]
+atlas = ExtResource("2_controls")
+region = Rect2(0, 25, 37, 25)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_gpad2"]
+atlas = ExtResource("2_controls")
+region = Rect2(0, 0, 37, 25)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_gpad"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_gpad1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_gpad2")
+}],
+"loop": true,
+"name": &"default",
+"speed": 2.0
+}]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_npad1"]
+atlas = ExtResource("2_controls")
+region = Rect2(148, 25, 37, 25)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_npad2"]
+atlas = ExtResource("2_controls")
+region = Rect2(148, 0, 37, 25)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_npad"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_npad1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_npad2")
+}],
+"loop": true,
+"name": &"default",
+"speed": 2.0
+}]
+
+[node name="ControlDisplays" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="WASDControls" type="AnimatedSprite2D" parent="."]
+unique_name_in_owner = true
+visible = false
+position = Vector2(3, 0)
+sprite_frames = SubResource("SpriteFrames_wasd")
+metadata/_edit_lock_ = true
+
+[node name="IJKLControls" type="AnimatedSprite2D" parent="."]
+unique_name_in_owner = true
+visible = false
+position = Vector2(3, 0)
+sprite_frames = SubResource("SpriteFrames_ijkl")
+metadata/_edit_lock_ = true
+
+[node name="ArrowControls" type="AnimatedSprite2D" parent="."]
+unique_name_in_owner = true
+visible = false
+position = Vector2(3, 0)
+sprite_frames = SubResource("SpriteFrames_arrow")
+metadata/_edit_lock_ = true
+
+[node name="GamepadControls" type="AnimatedSprite2D" parent="."]
+unique_name_in_owner = true
+visible = false
+sprite_frames = SubResource("SpriteFrames_gpad")
+metadata/_edit_lock_ = true
+
+[node name="NumPadControls" type="AnimatedSprite2D" parent="."]
+unique_name_in_owner = true
+visible = false
+position = Vector2(3, 0)
+sprite_frames = SubResource("SpriteFrames_npad")
+metadata/_edit_lock_ = true

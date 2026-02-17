@@ -9,15 +9,6 @@ const _SPAWN_SPEED_MIN := 150.0
 const _SPAWN_SPEED_MAX := 270.0
 const _SPAWN_TARGET_DIRECTION := Vector2(2, -1)
 const _SPAWN_VELOCITY_ANGLE_MAX_OFFSET := PI / 16
-const _CONTROL_DISPLAY_FRAME_COUNT := 8
-const _CONTROL_DISPLAY_FPS := 2.0
-
-# Maps keyboard device names to control display node names.
-const _DEVICE_TO_CONTROL_DISPLAY := {
-	"WASD": "WASDControls",
-	"IJKL": "IJKLControls",
-	"ArrowKeys": "ArrowControls",
-}
 
 ## Array of device configs (null = slot empty).
 var _pending_device_configs_by_index: Array[DeviceConfig] = []
@@ -30,15 +21,9 @@ var _pending_device_configs_by_name := {}
 # shifts on removal, invalidating index-based ID lookups.
 var _device_name_to_player_id := {}
 
-# Tracks the number of gamepad players (for control display
-# toggling, since multiple gamepads share one display).
-var _gamepad_player_count := 0
-
 
 func _ready() -> void:
 	super._ready()
-
-	_set_up_control_displays()
 
 
 func _physics_process(_delta: float) -> void:
@@ -185,7 +170,8 @@ func _register_player(
 		player_state
 
 	# Hide the corresponding control display.
-	_set_control_display_visible(device_config.name, false)
+	%ControlDisplays.set_device_in_use(
+		device_config.name, true)
 
 	# Update lobby colors for all players.
 	_update_lobby_colors()
@@ -257,7 +243,8 @@ func _deregister_player(
 	player.queue_free()
 
 	# Show the corresponding control display.
-	_set_control_display_visible(device_name, true)
+	%ControlDisplays.set_device_in_use(
+		device_name, false)
 
 	# Update lobby colors for remaining players.
 	_update_lobby_colors()
@@ -337,69 +324,6 @@ func _on_rabbit_hole_body_entered(
 		return
 
 	start_match()
-
-
-func _set_up_control_displays() -> void:
-	var displays: Array[AnimatedSprite2D] = [
-		%WASDControls,
-		%IJKLControls,
-		%ArrowControls,
-		%GamepadControls,
-	]
-	var delay_sec := (
-		_CONTROL_DISPLAY_FRAME_COUNT
-		/ _CONTROL_DISPLAY_FPS
-		/ displays.size()
-	)
-	for display in displays:
-		var frames := display.sprite_frames
-		frames.set_animation_speed(
-			display.animation, _CONTROL_DISPLAY_FPS)
-		await get_tree().create_timer(delay_sec).timeout
-		display.play(display.animation)
-
-
-## Returns the control display node for a device name,
-## or null if no match.
-func _get_control_display_for_device(
-	device_name: StringName,
-) -> AnimatedSprite2D:
-	if _DEVICE_TO_CONTROL_DISPLAY.has(device_name):
-		var node_name: String = \
-			_DEVICE_TO_CONTROL_DISPLAY[device_name]
-		return get_node("%" + node_name)
-
-	# Gamepad devices all map to the same display.
-	if str(device_name).begins_with("GamePad_"):
-		return %GamepadControls
-
-	return null
-
-
-## Shows or hides the control display for a device.
-## Handles gamepad reference counting (multiple gamepads
-## share one display).
-func _set_control_display_visible(
-	device_name: StringName,
-	p_visible: bool,
-) -> void:
-	# Handle gamepad reference counting.
-	if str(device_name).begins_with("GamePad_"):
-		if not p_visible:
-			_gamepad_player_count += 1
-		else:
-			_gamepad_player_count -= 1
-
-		# Only show gamepad display when all gamepads leave.
-		var display := %GamepadControls as AnimatedSprite2D
-		if display:
-			display.visible = _gamepad_player_count <= 0
-		return
-
-	var display := \
-		_get_control_display_for_device(device_name)
-	if display:
-		display.visible = p_visible
 
 
 ## Assigns colors to all lobby players based on count.
