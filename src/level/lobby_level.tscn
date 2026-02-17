@@ -307,7 +307,7 @@ tile_set = ExtResource("2_nipfv")
 metadata/_edit_lock_ = true
 
 [node name="Camera2D" type="Camera2D" parent="."]
-position = Vector2(-32, -67)
+position = Vector2(-32, -58)
 zoom = Vector2(3, 3)
 
 [node name="Players" type="Node2D" parent="."]
@@ -341,11 +341,11 @@ metadata/_custom_type_script = "uid://1roi8ff6ow47"
 
 [node name="Title" type="Sprite2D" parent="."]
 unique_name_in_owner = true
-position = Vector2(-161, -139)
+position = Vector2(-161, -137)
 texture = ExtResource("4_s5vci")
 
 [node name="ControlDisplays" type="Node2D" parent="."]
-position = Vector2(-33, -129)
+position = Vector2(-33, -127)
 
 [node name="WASDControls" type="AnimatedSprite2D" parent="ControlDisplays"]
 unique_name_in_owner = true
@@ -358,7 +358,6 @@ metadata/_edit_lock_ = true
 
 [node name="IJKLControls" type="AnimatedSprite2D" parent="ControlDisplays"]
 unique_name_in_owner = true
-visible = false
 position = Vector2(3, 0)
 scale = Vector2(0.5, 0.5)
 sprite_frames = SubResource("SpriteFrames_wxv6r")
@@ -374,13 +373,14 @@ sprite_frames = SubResource("SpriteFrames_v48v3")
 frame_progress = 0.42905897
 metadata/_edit_lock_ = true
 
-[node name="NumPadControls" type="AnimatedSprite2D" parent="ControlDisplays"]
+[node name="GamepadControls" type="AnimatedSprite2D" parent="ControlDisplays"]
 unique_name_in_owner = true
+visible = false
 scale = Vector2(0.5, 0.5)
 sprite_frames = SubResource("SpriteFrames_3gbdm")
 metadata/_edit_lock_ = true
 
-[node name="GamepadControls" type="AnimatedSprite2D" parent="ControlDisplays"]
+[node name="NumPadControls" type="AnimatedSprite2D" parent="ControlDisplays"]
 unique_name_in_owner = true
 visible = false
 position = Vector2(3, 0)
@@ -390,7 +390,7 @@ frame_progress = 0.94135845
 metadata/_edit_lock_ = true
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
-position = Vector2(101, -129)
+position = Vector2(101, -127)
 sprite_frames = SubResource("SpriteFrames_7gtxi")
 autoplay = "default"
 frame_progress = 0.3624636
