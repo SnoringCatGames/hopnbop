@@ -113,10 +113,10 @@ extends NetworkSettings
 @export var gore_kickable_scene: PackedScene
 ## Number of kickables spawned per death.
 @export var gore_kickables_per_death := 5
-## Draw radius for the colored circle (pixels).
-@export var gore_kickable_draw_radius := 3.0
-## Collision radius for kickable terrain interaction.
+## Collision radius for large kickable pieces.
 @export var gore_kickable_collision_radius := 1.5
+## Collision radius for small kickable pieces.
+@export var gore_kickable_small_collision_radius := 1.0
 ## Radius of the Area2D that detects player kicks.
 @export var gore_kickable_kick_area_radius := 6.0
 ## Minimum initial speed for kickables.
@@ -141,20 +141,6 @@ extends NetworkSettings
 @export var gore_kickable_friction := 0.92
 ## Cooldown between kicks (seconds).
 @export var gore_kickable_kick_cooldown_sec := 0.15
-## Gore draw colors (gore mode).
-@export var gore_kickable_colors: Array[Color] = [
-	Color(0.86, 0.12, 0.12),
-	Color(0.67, 0.08, 0.08),
-	Color(0.51, 0.06, 0.12),
-	Color(0.78, 0.16, 0.16),
-]
-## Flower draw colors (flowers mode).
-@export var gore_kickable_flower_colors: Array[Color] = [
-	Color(0.94, 0.47, 0.71),
-	Color(0.98, 0.86, 0.24),
-	Color(0.31, 0.78, 0.31),
-	Color(0.71, 0.39, 0.94),
-]
 @export_group("")
 
 # Types 0 through half are "fast", the rest are "slow".

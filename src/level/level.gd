@@ -41,6 +41,10 @@ func _ready() -> void:
 		gore_manager = GoreManager.new()
 		gore_manager.name = "GoreManager"
 		add_child(gore_manager)
+		# Place before players so behind-layer gore renders
+		# behind player sprites via tree order.
+		move_child(
+			gore_manager, players_node.get_index())
 
 
 func _get_spawn_points() -> Array[SpawnPoint]:

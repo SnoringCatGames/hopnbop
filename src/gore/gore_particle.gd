@@ -7,6 +7,7 @@ extends CharacterBody2D
 signal came_to_rest(particle: GoreParticle)
 
 var type_index := 0
+var is_behind := false
 
 var _rest_frame_counter := 0
 
