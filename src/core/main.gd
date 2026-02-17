@@ -65,6 +65,13 @@ func _start_app() -> void:
 		G.game_panel.server_start_match()
 	else:
 		if G.settings.start_in_game:
+			# We see issues in preview mode on resource-constrained machines
+			# where the server process may not send or receive messages
+			# correctly when all startup processing happens at once across each
+			# process.
+			var auto_start_delay := randf() * 0.5 + 0.5
+			await get_tree().create_timer(auto_start_delay).timeout
+
 			_auto_start_game()
 		elif G.settings.skip_splash:
 			G.screens.client_open_screen(ScreensMain.ScreenType.LOBBY)

@@ -21,7 +21,8 @@ var _trail_elapsed := 0.0
 func _physics_process(delta: float) -> void:
 	# Apply gravity.
 	velocity.y += \
-		G.settings.default_gravity_acceleration * delta
+		G.settings.default_gravity_acceleration * \
+		G.settings.gore_gravity_multiplier * delta
 
 	var collision := move_and_collide(velocity * delta)
 	if collision:
@@ -46,9 +47,10 @@ func _physics_process(delta: float) -> void:
 					type_index]
 			level.gore_manager \
 				.spawn_trail_particle(
-					global_position,
+					position,
 					start_index,
-					is_behind)
+					is_behind,
+					velocity)
 
 	# Rest detection with consecutive-frame
 	# requirement.
