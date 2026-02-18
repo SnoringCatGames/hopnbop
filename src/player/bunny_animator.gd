@@ -12,6 +12,8 @@ extends CharacterAnimator
 ## 3. Crown overlay (optional, toggled independently)
 
 
+@export var outline_group: CanvasGroup = null
+
 var _costume_overlay: AnimatedSprite2D = null
 var _crown_overlay: AnimatedSprite2D = null
 var _crown_costume: CostumeConfig = null
@@ -27,11 +29,15 @@ func apply_appearance(
 	# Apply body type texture to the base sprite.
 	if (is_instance_valid(body_type_config) and
 			is_instance_valid(body_type_config.sprite_sheet)):
+		var current_anim := animated_sprite.animation
 		var new_frames := _create_swapped_sprite_frames(
 			animated_sprite.sprite_frames,
 			body_type_config.sprite_sheet,
 		)
 		animated_sprite.sprite_frames = new_frames
+		# Re-play current animation to maintain playback
+		# after sprite_frames swap.
+		animated_sprite.play(current_anim)
 
 	# Remove previous costume overlay.
 	_remove_overlay(_costume_overlay)
@@ -130,17 +136,16 @@ func _create_overlay(
 		animated_sprite.sprite_frames, texture)
 	overlay.sprite_frames = new_frames
 
-	# Copy the material (will be duplicated later when
-	# outline color is applied).
-	if is_instance_valid(animated_sprite.material):
-		overlay.material = \
-			animated_sprite.material.duplicate()
-
 	# Sync animation state (play, then sync frame).
 	overlay.play(animated_sprite.animation)
 	overlay.frame = animated_sprite.frame
 
-	add_child(overlay)
+	# Add to outline_group so the CanvasGroup shader
+	# sees the combined silhouette.
+	if is_instance_valid(outline_group):
+		outline_group.add_child(overlay)
+	else:
+		add_child(overlay)
 	return overlay
 
 

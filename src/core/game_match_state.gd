@@ -358,25 +358,16 @@ func update_scores() -> void:
 ## (at least kill_lead more kills than all other
 ## players), or -1 if no one qualifies.
 func get_crown_player_id(kill_lead: int) -> int:
-	var all_player_ids := players_by_id.keys()
-	if all_player_ids.is_empty():
+	var counts := _get_kill_counts()
+	if counts.is_empty():
 		return -1
-
-	# Build kill counts from replicated kills array.
-	var kill_counts := {}
-	for pid in all_player_ids:
-		kill_counts[pid] = 0
-	for i in range(0, kills.size(), 2):
-		var killer: int = kills[i]
-		if kill_counts.has(killer):
-			kill_counts[killer] += 1
 
 	# Find the player with the most kills.
 	var max_kills := 0
 	var max_player_id := -1
-	for pid in all_player_ids:
-		if kill_counts[pid] > max_kills:
-			max_kills = kill_counts[pid]
+	for pid in counts:
+		if counts[pid] > max_kills:
+			max_kills = counts[pid]
 			max_player_id = pid
 
 	if max_kills == 0:
@@ -384,13 +375,49 @@ func get_crown_player_id(kill_lead: int) -> int:
 
 	# Check if they lead all others by at least
 	# kill_lead.
-	for pid in all_player_ids:
+	for pid in counts:
 		if pid == max_player_id:
 			continue
-		if max_kills - kill_counts[pid] < kill_lead:
+		if max_kills - counts[pid] < kill_lead:
 			return -1
 
 	return max_player_id
+
+
+## Returns the kill lead of the top-scoring player
+## over the runner-up. Returns 0 if there's a tie
+## for first, or -1 if there are no players.
+func get_winner_kill_lead() -> int:
+	var counts := _get_kill_counts()
+	if counts.is_empty():
+		return -1
+
+	# Find highest and second-highest kill counts.
+	var first := 0
+	var second := 0
+	for pid in counts:
+		var kc: int = counts[pid]
+		if kc > first:
+			second = first
+			first = kc
+		elif kc > second:
+			second = kc
+
+	return first - second
+
+
+## Builds a Dictionary<int, int> of player_id to
+## kill count from the replicated kills array.
+func _get_kill_counts() -> Dictionary:
+	var all_player_ids := players_by_id.keys()
+	var counts := {}
+	for pid in all_player_ids:
+		counts[pid] = 0
+	for i in range(0, kills.size(), 2):
+		var killer: int = kills[i]
+		if counts.has(killer):
+			counts[killer] += 1
+	return counts
 
 
 # --- Internal Methods ---

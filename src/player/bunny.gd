@@ -73,63 +73,71 @@ func _process_movement_and_actions() -> void:
 	super._process_movement_and_actions()
 
 	# Apply pending bounce after movement processing.
-	# This must happen AFTER action handlers run, because action handlers
-	# add gravity which would reduce the bounce effect.
-	if Netcode.is_server:
-		var applied_bounce := false
-		var bounce_source := ""
-		var bounce_vel := Vector2.ZERO
-		var is_resimulating := (
-			Netcode.frame_driver.is_resimulating
-		)
+	# This must happen AFTER action handlers run, because
+	# action handlers add gravity which would reduce the
+	# bounce effect.
+	#
+	# The buffer fallback path runs on BOTH server and
+	# client. On the client, this is critical because
+	# force_launch() sets initial_launch_velocity, which
+	# current_air_max_horizontal_speed uses for speed
+	# capping. Without this, the client would use the
+	# stale default (Vector2.INF), resulting in
+	# max_launch_horizontal_speed (300) instead of the
+	# correct max_air_horizontal_speed (90).
+	var applied_bounce := false
+	var bounce_source := ""
+	var bounce_vel := Vector2.ZERO
 
-		if (
-			_pending_bounce != Vector2.ZERO
-			and not is_resimulating
-		):
-			# Normal processing (not re-simulation): apply
-			# pending bounce from collision callback.
-			# force_launch() nudges position up by 1 pixel
-			# and clears surface attachments, preventing
-			# FloorDefaultAction from zeroing velocity.
-			bounce_vel = _pending_bounce
-			force_launch(_pending_bounce)
+	if (
+		Netcode.is_server
+		and _pending_bounce != Vector2.ZERO
+		and not Netcode.frame_driver.is_resimulating
+	):
+		# Server forward-sim only: apply pending bounce
+		# from collision callback. force_launch() nudges
+		# position up by 1 pixel and clears surface
+		# attachments, preventing FloorDefaultAction from
+		# zeroing velocity.
+		bounce_vel = _pending_bounce
+		force_launch(_pending_bounce)
+		_pending_bounce = Vector2.ZERO
+		applied_bounce = true
+		bounce_source = "pending"
+	else:
+		# Buffer fallback (server re-sim AND client):
+		# check buffer for bounce. This is the primary
+		# path during rollback re-simulation (collision
+		# callbacks don't re-fire). Also runs on the
+		# client so force_launch() sets
+		# initial_launch_velocity correctly.
+		var buffer_bounce = (
+			state_from_server
+				.get_current_frame_bounce_velocity()
+		)
+		if buffer_bounce != null:
+			bounce_vel = buffer_bounce
+			force_launch(buffer_bounce)
+			# Clear pending bounce when buffer handles
+			# this frame's bounce. This prevents
+			# redundant application after re-simulation
+			# completes.
 			_pending_bounce = Vector2.ZERO
 			applied_bounce = true
-			bounce_source = "pending"
-		else:
-			# During re-simulation OR when no pending bounce:
-			# check buffer for bounce. This is the primary
-			# path during rollback re-simulation (collision
-			# callbacks don't re-fire). Also serves as
-			# fallback when _pending_bounce is unset.
-			var buffer_bounce = (
-				state_from_server
-					.get_current_frame_bounce_velocity()
-			)
-			if buffer_bounce != null:
-				bounce_vel = buffer_bounce
-				force_launch(buffer_bounce)
-				# Clear pending bounce when buffer handles
-				# this frame's bounce. This prevents
-				# redundant application after re-simulation
-				# completes.
-				_pending_bounce = Vector2.ZERO
-				applied_bounce = true
-				bounce_source = "buffer"
+			bounce_source = "buffer"
 
-		if applied_bounce and Netcode.log.is_verbose:
-			Netcode.verbose(
-				"Player %d bounce applied (%s): vel=%s, pos=%s, surfaces=%d, boost_frame=%d" % [
-					player_id,
-					bounce_source,
-					bounce_vel,
-					global_position,
-					surfaces.bitmask,
-					_last_launch_frame_index,
-				],
-				NetworkLogger.CATEGORY_GAME_STATE,
-			)
+	if applied_bounce and Netcode.log.is_verbose:
+		Netcode.verbose(
+			"Player %d bounce applied (%s): vel=%s, pos=%s, surfaces=%d, boost_frame=%d" % [
+				player_id,
+				bounce_source,
+				bounce_vel,
+				global_position,
+				surfaces.bitmask,
+				_last_launch_frame_index,
+			],
+			NetworkLogger.CATEGORY_GAME_STATE,
+		)
 
 	# Reset collision flag each frame.
 	if Netcode.is_server:
@@ -241,19 +249,19 @@ func _spawn_squish_sprite() -> void:
 	var sprite := Sprite2D.new()
 	sprite.texture = squish_tex
 
-	# Position so the bottom of the squish sprite
-	# aligns with the character's feet.
-	var tex_half_h := \
-		squish_tex.get_height() / 2.0
-	sprite.global_position = Vector2(
-		death_pos.x,
-		death_pos.y - tex_half_h)
+	# Place at the death position (character
+	# origin, i.e. the feet).
+	sprite.global_position = death_pos
 	sprite.flip_h = anim_sprite.flip_h
 
-	# Copy outline material.
-	if is_instance_valid(anim_sprite.material):
-		sprite.material = \
-			anim_sprite.material.duplicate()
+	# Copy outline material from the CanvasGroup.
+	var bunny_anim := animator as BunnyAnimator
+	if is_instance_valid(bunny_anim):
+		var group := bunny_anim.outline_group
+		if (is_instance_valid(group) and
+				is_instance_valid(group.material)):
+			sprite.material = \
+				group.material.duplicate()
 
 	G.level.add_child(sprite)
 
@@ -365,12 +373,6 @@ func _update_crown_visibility() -> void:
 		G.settings.crown_kill_lead)
 	var should_show := (crown_id == player_id)
 	bunny_anim.set_crown_visible(should_show)
-	# Apply outline to newly created crown.
-	if should_show:
-		var crown := bunny_anim.get_crown_overlay()
-		if is_instance_valid(crown):
-			_apply_outline_to_sprite(crown)
-		update_outline()
 
 
 func _update_appearance() -> void:
@@ -411,10 +413,13 @@ func _update_appearance() -> void:
 
 
 func _get_shader_material() -> ShaderMaterial:
-	var sprite := animator.animated_sprite as AnimatedSprite2D
-	if not sprite or not sprite.material:
+	var bunny_anim := animator as BunnyAnimator
+	if not is_instance_valid(bunny_anim):
 		return null
-	return sprite.material as ShaderMaterial
+	var group := bunny_anim.outline_group
+	if not group or not group.material:
+		return null
+	return group.material as ShaderMaterial
 
 
 func _update_outline_color() -> void:
@@ -423,24 +428,27 @@ func _update_outline_color() -> void:
 	if not is_instance_valid(match_state):
 		return
 
-	var sprite := animator.animated_sprite \
-		as AnimatedSprite2D
-	if not sprite:
-		Netcode.warning("No sprite found on animator")
+	var bunny_anim := animator as BunnyAnimator
+	if not is_instance_valid(bunny_anim):
+		return
+	var group := bunny_anim.outline_group
+	if not is_instance_valid(group):
+		return
+	if not is_instance_valid(group.material):
 		return
 
-	# Apply outline to the base sprite.
-	_apply_outline_to_sprite(sprite)
+	# Apply outline to the CanvasGroup so the shader
+	# sees the combined silhouette of all layers.
+	group.material = group.material.duplicate()
+	var shader_material := \
+		group.material as ShaderMaterial
+	if not is_instance_valid(shader_material):
+		return
 
-	# Apply outline to costume and crown overlays.
-	var bunny_anim := animator as BunnyAnimator
-	if is_instance_valid(bunny_anim):
-		var costume := bunny_anim.get_costume_overlay()
-		if is_instance_valid(costume):
-			_apply_outline_to_sprite(costume)
-		var crown := bunny_anim.get_crown_overlay()
-		if is_instance_valid(crown):
-			_apply_outline_to_sprite(crown)
+	shader_material.set_shader_parameter(
+		"outline_color", match_state.outline_color)
+	shader_material.set_shader_parameter(
+		"outline_width", 1.0)
 
 	# Set outline enabled state.
 	update_outline()
@@ -454,61 +462,24 @@ func _update_outline_color() -> void:
 	)
 
 
-## Duplicates the sprite's material and sets outline
-## color and width.
-func _apply_outline_to_sprite(
-	sprite: AnimatedSprite2D,
-) -> void:
-	if not is_instance_valid(match_state):
-		return
-	if not is_instance_valid(sprite.material):
-		return
-
-	sprite.material = sprite.material.duplicate()
-	var shader_material := \
-		sprite.material as ShaderMaterial
-	if not is_instance_valid(shader_material):
-		return
-
-	shader_material.set_shader_parameter(
-		"outline_color", match_state.outline_color)
-	shader_material.set_shader_parameter(
-		"outline_width", 1.0)
-
-
 func update_outline() -> void:
 	var outline_enabled := (
 		G.is_networked_level_active and
 		G.settings.show_player_outlines
 	)
 
-	# Update base sprite.
-	_set_outline_enabled_on_sprite(
-		animator.animated_sprite, outline_enabled)
-
-	# Update overlays.
 	var bunny_anim := animator as BunnyAnimator
-	if is_instance_valid(bunny_anim):
-		_set_outline_enabled_on_sprite(
-			bunny_anim.get_costume_overlay(),
-			outline_enabled)
-		_set_outline_enabled_on_sprite(
-			bunny_anim.get_crown_overlay(),
-			outline_enabled)
-
-
-func _set_outline_enabled_on_sprite(
-	sprite: AnimatedSprite2D,
-	enabled: bool,
-) -> void:
-	if not is_instance_valid(sprite):
+	if not is_instance_valid(bunny_anim):
+		return
+	var group := bunny_anim.outline_group
+	if not is_instance_valid(group):
 		return
 	var shader_material := \
-		sprite.material as ShaderMaterial
+		group.material as ShaderMaterial
 	if not is_instance_valid(shader_material):
 		return
 	shader_material.set_shader_parameter(
-		"outline_enabled", enabled)
+		"outline_enabled", outline_enabled)
 
 
 func _on_body_area_body_entered(body: Node2D) -> void:
@@ -564,11 +535,23 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 		)
 		return
 
-	# Check if a foot-head collision happened this frame via swept detection.
-	# This catches high-speed collisions that skip over collision areas.
+	# Check if a foot-head collision happened this frame via
+	# swept detection in EITHER direction. This catches
+	# high-speed collisions that skip over collision areas.
+	# Check both directions because this callback may fire on
+	# either player first.
+	var swept_killer: Player = null
+	var swept_victim: Player = null
 	if _did_foot_pass_through_head_this_frame(other_player):
-		# Prevent double-counting (this frame was already processed from the
-		# other player).
+		swept_killer = self
+		swept_victim = other_player
+	elif other_player._did_foot_pass_through_head_this_frame(self):
+		swept_killer = other_player
+		swept_victim = self
+
+	if swept_killer != null:
+		# Prevent double-counting (this frame was already
+		# processed from the other player).
 		if _processed_collision_this_frame:
 			return
 
@@ -578,22 +561,32 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 
 		if Netcode.log.is_verbose:
 			Netcode.verbose(
-				"Player kill detected (swept): %d killed %d" %
-					[player_id, other_player.player_id],
+				"Player kill detected (swept): "
+				+ "%d killed %d" % [
+					swept_killer.player_id,
+					swept_victim.player_id,
+				],
 				NetworkLogger.CATEGORY_GAME_STATE,
 			)
 
 		# Calculate lag-compensated position.
-		var lag_compensated_position := (
-			_calculate_lag_compensated_kill_position(other_player)
+		var lag_compensated_position: Vector2 = (
+			swept_killer
+				._calculate_lag_compensated_kill_position(
+					swept_victim
+				)
 		)
 
 		# Process as kill with lag-compensated position.
-		G.match_state.server_add_kill(player_id, other_player.player_id)
-		_server_apply_interaction_with_position(
-			self ,
-			CharacterStateFromServer.ServerInteractionType.KILL,
-			lag_compensated_position
+		G.match_state.server_add_kill(
+			swept_killer.player_id,
+			swept_victim.player_id,
+		)
+		swept_killer._server_apply_interaction_with_position(
+			swept_killer,
+			CharacterStateFromServer
+				.ServerInteractionType.KILL,
+			lag_compensated_position,
 		)
 		return
 
@@ -719,17 +712,38 @@ func _did_kill_happen_this_frame(frame_index: int) -> bool:
 	return false
 
 
-## Checks if a kill collision is currently happening with another player.
+## Checks if a kill collision is currently happening between
+## this player and another player, in EITHER direction.
+## Returns true if either player's foot overlaps the other's
+## head with downward relative velocity.
 func _is_kill_collision_happening(other_player: Player) -> bool:
-	# Check if foot area overlaps with other player's head area.
-	var foot_area: Area2D = %FootArea
-	var other_head_area: Area2D = other_player.get_node("%HeadArea")
+	# Check both directions: self killing other, and
+	# other killing self.
+	return (
+		_is_foot_on_head(self, other_player) or
+		_is_foot_on_head(other_player, self)
+	)
 
-	if not foot_area.overlaps_area(other_head_area):
+
+## Checks if attacker's foot area overlaps victim's head
+## area with downward relative velocity.
+static func _is_foot_on_head(
+	attacker: Player,
+	victim: Player,
+) -> bool:
+	var foot_area: Area2D = attacker.get_node(
+		"%FootArea"
+	)
+	var head_area: Area2D = victim.get_node(
+		"%HeadArea"
+	)
+
+	if not foot_area.overlaps_area(head_area):
 		return false
 
-	# Check if relative velocity is downward (required for kill).
-	var relative_velocity := velocity - other_player.velocity
+	var relative_velocity := (
+		attacker.velocity - victim.velocity
+	)
 	return relative_velocity.y > 0
 
 

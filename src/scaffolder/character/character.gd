@@ -74,6 +74,22 @@ var current_surface_max_horizontal_speed: float:
 var current_air_max_horizontal_speed: float:
 	get:
 		if surfaces.is_launched:
+			# Guard against stale initial_launch_velocity
+			# during rollback. update_touches() resets it to
+			# INF when the character lands. If a rollback
+			# then rewinds to a frame where is_launched was
+			# true (via bitmask), the INF would produce
+			# max_launch_horizontal_speed (300) instead of
+			# the correct cap. Default to
+			# max_air_horizontal_speed in this case.
+			if (
+				surfaces.initial_launch_velocity
+					== Vector2.INF
+			):
+				return (
+					movement_settings
+						.max_air_horizontal_speed
+				)
 			var initial_launch_horizontal_speed := absf(
 				surfaces.initial_launch_velocity.x)
 			if (
@@ -149,9 +165,10 @@ func _ready() -> void:
 
 	start_position = position
 
-	# Start facing right.
+	# Start facing right with rest animation.
 	surfaces.is_facing_right = true
 	animator.face_right()
+	animator.play("Rest")
 
 	# Initialize position/velocity in state_from_server, but leave surfaces at
 	# default (0) since it's only valid after first physics update

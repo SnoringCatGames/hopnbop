@@ -80,41 +80,20 @@ func play_after_delay(delay: float) -> void:
 func set_crown_visible(p_is_visible: bool) -> void:
 	if is_instance_valid(_animator):
 		_animator.set_crown_visible(p_is_visible)
-		# Apply outline to newly created crown.
-		if p_is_visible:
-			var crown := \
-				_animator.get_crown_overlay()
-			if is_instance_valid(crown):
-				_apply_outline_to_sprite(crown)
 
 
 func _apply_outline_color() -> void:
-	# Apply to base sprite.
-	_apply_outline_to_sprite(
-		_animator.animated_sprite)
-
-	# Apply to costume overlay.
-	var costume := _animator.get_costume_overlay()
-	if is_instance_valid(costume):
-		_apply_outline_to_sprite(costume)
-
-	# Apply to crown overlay.
-	var crown := _animator.get_crown_overlay()
-	if is_instance_valid(crown):
-		_apply_outline_to_sprite(crown)
-
-
-func _apply_outline_to_sprite(
-	sprite: AnimatedSprite2D,
-) -> void:
-	if not is_instance_valid(sprite):
+	# Apply outline to the CanvasGroup so the shader
+	# sees the combined silhouette of all layers.
+	var group := _animator.outline_group
+	if not is_instance_valid(group):
 		return
-	if not is_instance_valid(sprite.material):
+	if not is_instance_valid(group.material):
 		return
 
-	sprite.material = sprite.material.duplicate()
+	group.material = group.material.duplicate()
 	var shader_material := \
-		sprite.material as ShaderMaterial
+		group.material as ShaderMaterial
 	if not is_instance_valid(shader_material):
 		return
 

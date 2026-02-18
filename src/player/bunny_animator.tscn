@@ -304,14 +304,18 @@ animations = [{
 "speed": 10.0
 }]
 
-[node name="BunnyAnimator" type="Node2D" node_paths=PackedStringArray("animated_sprite")]
+[node name="BunnyAnimator" type="Node2D" node_paths=PackedStringArray("animated_sprite", "outline_group")]
 process_mode = 3
 script = ExtResource("1_ehlwh")
 faces_right_by_default = false
-animated_sprite = NodePath("AnimatedSprite2D")
+animated_sprite = NodePath("OutlineGroup/AnimatedSprite2D")
+outline_group = NodePath("OutlineGroup")
 
-[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+[node name="OutlineGroup" type="CanvasGroup" parent="."]
 material = SubResource("ShaderMaterial_outline")
+fit_margin = 2.0
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="OutlineGroup"]
 position = Vector2(0, -6.5)
 sprite_frames = SubResource("SpriteFrames_eeopx")
 animation = &"Rest"

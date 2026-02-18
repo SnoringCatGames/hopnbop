@@ -4,8 +4,8 @@ extends Node2D
 ## skipping displays whose device is in use by a player.
 
 
-const _SHOW_SEC := 1.5
-const _BLINK_SEC := 0.2
+const _SHOW_SEC := 1
+const _BLINK_SEC := 0.5
 
 # Maps keyboard device names to display node names.
 const _DEVICE_TO_DISPLAY := {

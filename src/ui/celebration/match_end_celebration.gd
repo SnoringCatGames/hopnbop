@@ -23,6 +23,7 @@ const _TEXT_SLAM_SHAKE_INTENSITY := 8.0
 const _TEXT_SLAM_SHAKE_DURATION := 0.35
 const _IRIS_DELAY := 1.8
 const _IRIS_DURATION := 0.7
+const _IRIS_CENTER_OFFSET := Vector2(0, -5)
 
 
 @onready var _winner_label: Label = %WinnerText
@@ -297,7 +298,22 @@ func _delayed_burst(
 
 
 func _slam_winner_text() -> void:
-	_winner_label.text = "WINNER!"
+	var game_state := G.match_state as GameMatchState
+	var is_tie := (
+		is_instance_valid(game_state)
+		and game_state.get_winner_kill_lead() == 0
+	)
+
+	if is_tie:
+		_winner_label.text = "TIE!"
+	else:
+		var ps := G.get_player_match_state(
+			_winner.player_id) as GamePlayerState
+		if ps:
+			_winner_label.text = (
+				"%s\nWINS!" % ps.bunny_name.to_upper())
+		else:
+			_winner_label.text = "WINS!"
 	_winner_label.visible = true
 	_winner_label.pivot_offset = (
 		_winner_label.size / 2)
@@ -390,8 +406,9 @@ func _update_iris_center() -> void:
 
 	var canvas_xform := (
 		viewport.get_canvas_transform())
-	var screen_pos := (
-		canvas_xform * _winner.global_position)
+	var world_pos := (
+		_winner.global_position + _IRIS_CENTER_OFFSET)
+	var screen_pos := canvas_xform * world_pos
 	var vp_size := Vector2(
 		viewport.get_visible_rect().size)
 

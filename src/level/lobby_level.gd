@@ -340,12 +340,6 @@ func _apply_lobby_crowns() -> void:
 			bunny.animator as BunnyAnimator
 		if is_instance_valid(bunny_anim):
 			bunny_anim.set_crown_visible(true)
-			var crown := \
-				bunny_anim.get_crown_overlay()
-			if is_instance_valid(crown):
-				bunny._apply_outline_to_sprite(
-					crown)
-			bunny.update_outline()
 		break
 
 
