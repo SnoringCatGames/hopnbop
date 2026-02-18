@@ -8,15 +8,24 @@ extends EditorPlugin
 
 
 func _enter_tree() -> void:
-	# Register NetworkOrchestrator as Netcode autoload.
-	add_autoload_singleton("Netcode", "res://addons/rollback_netcode/core/network_orchestrator.gd")
+	# Register NetworkOrchestrator as Netcode autoload (if not
+	# already present).
+	if not ProjectSettings.has_setting("autoload/Netcode"):
+		add_autoload_singleton(
+			"Netcode",
+			"res://addons/rollback_netcode/core/"
+			+ "network_orchestrator.gd")
 
 	# Get version from plugin.cfg via static function.
-	var NetcodeScript = preload("res://addons/rollback_netcode/core/network_orchestrator.gd")
-	print("Rollback Netcode plugin v%s loaded" % NetcodeScript.get_version())
+	var NetcodeScript = preload(
+		"res://addons/rollback_netcode/core/"
+		+ "network_orchestrator.gd")
+	print(
+		"Rollback Netcode plugin v%s loaded"
+		% NetcodeScript.get_version())
 
 
 func _exit_tree() -> void:
-	# Remove Netcode autoload.
-	remove_autoload_singleton("Netcode")
-	print("Rollback Netcode plugin unloaded")
+	# Skip removing autoload on editor shutdown to avoid
+	# marking project settings as dirty.
+	pass

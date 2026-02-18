@@ -411,7 +411,7 @@ func client_exit_match() -> void:
 	G.match_state.match_start_frame_index = -1
 	G.match_state.is_match_ended = false
 
-	G.screens.client_open_screen(ScreensMain.ScreenType.GAME_OVER)
+	G.screens.client_open_screen(ScreensMain.ScreenType.LOBBY)
 	for level in levels:
 		levels.erase(level)
 		level.queue_free()

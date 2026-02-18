@@ -1,6 +1,5 @@
-[gd_scene load_steps=3 format=3 uid="uid://t4cqkrqvl3vg"]
+[gd_scene load_steps=2 format=3 uid="uid://t4cqkrqvl3vg"]
 
-[ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/ui/default_theme.tres" id="1_h3g6c"]
 [ext_resource type="Script" uid="uid://t3muxcymk8o8" path="res://src/ui/hud/player_overhead_label.gd" id="1_tttyo"]
 
 [node name="PlayerOverheadLabel" type="Control"]
@@ -8,7 +7,6 @@ layout_mode = 3
 anchors_preset = 0
 scale = Vector2(0.5, 0.5)
 mouse_filter = 2
-theme = ExtResource("1_h3g6c")
 script = ExtResource("1_tttyo")
 
 [node name="Label" type="Label" parent="."]
@@ -25,7 +23,5 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 pivot_offset = Vector2(0, 11.5)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 1
 theme_override_font_sizes/font_size = 12
 horizontal_alignment = 1
