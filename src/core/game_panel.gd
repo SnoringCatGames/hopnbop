@@ -345,6 +345,10 @@ func _client_spawn_lobby() -> void:
 	%Levels.add_child(lobby_level)
 	G.level = lobby_level
 
+	# Ensure the lobby camera is the active one.
+	if is_instance_valid(lobby_level.level_camera):
+		lobby_level.level_camera.make_current()
+
 	# Restore players from previous match (preserves device
 	# configs and attributes except color).
 	lobby_level.restore_players_from_previous_match()
@@ -411,11 +415,30 @@ func client_exit_match() -> void:
 	G.match_state.match_start_frame_index = -1
 	G.match_state.is_match_ended = false
 
-	G.screens.client_open_screen(ScreensMain.ScreenType.LOBBY)
-	for level in levels:
+	# Snapshot existing levels before switching screens.
+	# _client_spawn_lobby() will add the new lobby to
+	# the levels array, so we must only free the old
+	# ones.
+	var old_levels := levels.duplicate()
+
+	# Open lobby screen. The tile-wipe transition
+	# captures the current viewport (which includes
+	# the iris overlay if the celebration ran) before
+	# switching to the lobby.
+	G.screens.client_open_screen(
+		ScreensMain.ScreenType.LOBBY)
+
+	# Reset celebration AFTER the screen capture so
+	# the iris overlay is still visible (black) when
+	# the tile-wipe captures the screen.
+	if is_instance_valid(G.celebration):
+		G.celebration.reset()
+
+	# Free only the pre-existing levels (game level),
+	# not the newly spawned lobby.
+	for level in old_levels:
 		levels.erase(level)
 		level.queue_free()
-	G.level = null
 
 
 func server_start_match() -> void:

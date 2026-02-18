@@ -254,6 +254,12 @@ const GORE_FAST_TYPE_END := 3
 ## Minimum kill lead over all other players to
 ## display the crown during a match.
 @export var crown_kill_lead := 5
+## Minimum kills by the winner to show three confetti
+## bursts (upper left and right) at match end.
+@export var triple_confetti_kill_threshold := 5
+## Minimum kills by the winner to show two confetti
+## bursts (upper left and right) at match end.
+@export var double_confetti_kill_threshold := 3
 @export_group("")
 
 @export_group("Player Mechanics")
