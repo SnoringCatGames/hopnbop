@@ -35,6 +35,8 @@ var pause_screen: PauseScreen
 var screen_transition: ScreenTransition
 
 var cheat_manager: CheatManager
+var camera_shaker: CameraShaker
+var celebration: MatchEndCelebration
 var game_panel: GamePanel
 var match_state: GameMatchState
 var client_session: ClientSession
@@ -87,6 +89,10 @@ func _enter_tree() -> void:
 	cheat_manager = CheatManager.new()
 	cheat_manager.name = "CheatManager"
 	add_child(cheat_manager)
+
+	camera_shaker = CameraShaker.new()
+	camera_shaker.name = "CameraShaker"
+	add_child(camera_shaker)
 
 
 func _ready() -> void:

@@ -15,6 +15,8 @@ var _pending_bounce := Vector2.ZERO
 var _last_processed_interaction_start_time := -1
 var _has_ever_died := false
 
+const _SQUISH_DURATION_SEC := 0.09
+
 # Track intersections during invincibility.
 # Dictionary<int, Array[String]> - player_id -> array of intersection types.
 # Can contain both "foot" and "body" for the same player.
@@ -77,30 +79,42 @@ func _process_movement_and_actions() -> void:
 		var applied_bounce := false
 		var bounce_source := ""
 		var bounce_vel := Vector2.ZERO
+		var is_resimulating := (
+			Netcode.frame_driver.is_resimulating
+		)
 
-		if _pending_bounce != Vector2.ZERO:
-			# First pass: use force_launch() which nudges position up by 1 pixel
-			# and clears surface attachments. This prevents the character from
-			# being detected as on the floor, which would cause FloorDefaultAction
-			# to zero the vertical velocity on subsequent frames.
+		if (
+			_pending_bounce != Vector2.ZERO
+			and not is_resimulating
+		):
+			# Normal processing (not re-simulation): apply
+			# pending bounce from collision callback.
+			# force_launch() nudges position up by 1 pixel
+			# and clears surface attachments, preventing
+			# FloorDefaultAction from zeroing velocity.
 			bounce_vel = _pending_bounce
 			force_launch(_pending_bounce)
 			_pending_bounce = Vector2.ZERO
 			applied_bounce = true
 			bounce_source = "pending"
 		else:
-			# Check buffer directly for bounce (needed during rollback
-			# re-simulation when collision callbacks don't fire again).
-			var buffer_bounce = state_from_server.get_current_frame_bounce_velocity()
+			# During re-simulation OR when no pending bounce:
+			# check buffer for bounce. This is the primary
+			# path during rollback re-simulation (collision
+			# callbacks don't re-fire). Also serves as
+			# fallback when _pending_bounce is unset.
+			var buffer_bounce = (
+				state_from_server
+					.get_current_frame_bounce_velocity()
+			)
 			if buffer_bounce != null:
-				# Rollback re-simulation: use force_launch() just like first pass.
-				# We MUST nudge position here because rollback restores from
-				# frame N-1 (before the kill), not frame N. Without the nudge,
-				# the character would stay at the pre-kill position and might
-				# be detected as on the floor, causing FloorDefaultAction to
-				# zero velocity on subsequent frames.
 				bounce_vel = buffer_bounce
 				force_launch(buffer_bounce)
+				# Clear pending bounce when buffer handles
+				# this frame's bounce. This prevents
+				# redundant application after re-simulation
+				# completes.
+				_pending_bounce = Vector2.ZERO
 				applied_bounce = true
 				bounce_source = "buffer"
 
@@ -158,16 +172,19 @@ func _handle_interaction_effects() -> void:
 			# Do nothing. The other player's DIE interaction will handle the
 			# effects.
 			pass
-		CharacterStateFromServer.ServerInteractionType.DIE:
+		CharacterStateFromServer \
+				.ServerInteractionType.DIE:
 			if Netcode.log.is_verbose:
 				Netcode.verbose(
-					"Player %d DIE interaction detected on client" % [
+					("Player %d DIE interaction"
+					+ " detected on client") % [
 						player_id,
 					],
-					NetworkLogger.CATEGORY_GAME_STATE,
+					NetworkLogger
+						.CATEGORY_GAME_STATE,
 				)
 			play_sound("die")
-			_spawn_gore_particles()
+			_spawn_squish_sprite()
 			_has_ever_died = true
 		CharacterStateFromServer.ServerInteractionType.SPAWN:
 			if Netcode.log.is_verbose:
@@ -192,6 +209,65 @@ func _spawn_gore_particles() -> void:
 	var death_pos := \
 		state_from_server.last_interaction_position
 	G.level.gore_manager.spawn_particles(death_pos)
+
+
+## Spawns a detached Sprite2D showing the squish
+## frame at the death position. After the duration,
+## removes the sprite and spawns gore + camera
+## shake. This is independent of the player's
+## animator so it doesn't conflict with
+## death visibility/position updates.
+func _spawn_squish_sprite() -> void:
+	if not Netcode.is_client:
+		return
+	if not is_instance_valid(G.level):
+		return
+
+	var anim_sprite := \
+		animator.animated_sprite \
+		as AnimatedSprite2D
+	var squish_tex := \
+		anim_sprite.sprite_frames \
+		.get_frame_texture("Squish", 0)
+	if squish_tex == null:
+		_spawn_gore_particles()
+		G.camera_shaker.shake()
+		return
+
+	var death_pos := \
+		state_from_server \
+		.last_interaction_position
+
+	var sprite := Sprite2D.new()
+	sprite.texture = squish_tex
+
+	# Position so the bottom of the squish sprite
+	# aligns with the character's feet.
+	var tex_half_h := \
+		squish_tex.get_height() / 2.0
+	sprite.global_position = Vector2(
+		death_pos.x,
+		death_pos.y - tex_half_h)
+	sprite.flip_h = anim_sprite.flip_h
+
+	# Copy outline material.
+	if is_instance_valid(anim_sprite.material):
+		sprite.material = \
+			anim_sprite.material.duplicate()
+
+	G.level.add_child(sprite)
+
+	# After the squish duration, remove the
+	# sprite and spawn gore + camera shake.
+	get_tree().create_timer(
+		_SQUISH_DURATION_SEC
+	).timeout.connect(
+		func() -> void:
+			if is_instance_valid(sprite):
+				sprite.queue_free()
+			_spawn_gore_particles()
+			G.camera_shaker.shake()
+	)
 
 
 func play_sound(sound_name: StringName) -> void:
@@ -383,6 +459,8 @@ func _update_outline_color() -> void:
 func _apply_outline_to_sprite(
 	sprite: AnimatedSprite2D,
 ) -> void:
+	if not is_instance_valid(match_state):
+		return
 	if not is_instance_valid(sprite.material):
 		return
 
