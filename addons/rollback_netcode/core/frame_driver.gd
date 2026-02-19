@@ -44,11 +44,6 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# I want to make a couple updates to player kills.
-# - I want to show the "Squish" animation briefly before disappearing and gore effects (maybe 0.15 seconds, configured via a file-level const).
-# - I want to add a slight camera shake (also configurable via file-level consts).
-#   - Have the camera shake be controlled by a separate dedicated global class.
-
 # - Add skid vfx when landing, stopping, or changing direction.
 
 # - Bodies:
