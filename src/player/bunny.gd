@@ -128,13 +128,41 @@ func _process_movement_and_actions() -> void:
 
 	if applied_bounce and Netcode.log.is_verbose:
 		Netcode.verbose(
-			"Player %d bounce applied (%s): vel=%s, pos=%s, surfaces=%d, boost_frame=%d" % [
+			"Player %d bounce applied (%s): "
+			+ "vel=%s, pos=%s, surfaces=%d, "
+			+ "launch_frame=%d, resim=%s" % [
 				player_id,
 				bounce_source,
 				bounce_vel,
 				global_position,
 				surfaces.bitmask,
 				_last_launch_frame_index,
+				Netcode.frame_driver.is_resimulating,
+			],
+			NetworkLogger.CATEGORY_GAME_STATE,
+		)
+	elif (
+		not applied_bounce
+		and Netcode.log.is_verbose
+		and is_in_launch_cooldown()
+	):
+		# Log when no bounce was applied but the
+		# launch cooldown is still active. Helps
+		# diagnose cases where a bounce was applied
+		# recently and we're verifying continuity.
+		Netcode.verbose(
+			"Player %d in launch cooldown "
+			+ "(no bounce this frame): "
+			+ "vel=%s, pos=%s, surfaces=%d, "
+			+ "launch_frame=%d, on_floor=%s, "
+			+ "attaching_floor=%s" % [
+				player_id,
+				velocity,
+				global_position,
+				surfaces.bitmask,
+				_last_launch_frame_index,
+				surfaces.is_touching_floor,
+				surfaces.is_attaching_to_floor,
 			],
 			NetworkLogger.CATEGORY_GAME_STATE,
 		)
