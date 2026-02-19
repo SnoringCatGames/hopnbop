@@ -12,8 +12,7 @@ void fragment() {
 	} else if (color.a < 0.5) {
 		// Check neighboring pixels in a plus pattern.
 		float outline = 0.0;
-		vec2 texture_size = vec2(textureSize(TEXTURE, 0));
-		vec2 pixel_size = outline_width / texture_size;
+		vec2 pixel_size = outline_width * TEXTURE_PIXEL_SIZE;
 
 		// Check 4 directions for opaque pixels.
 		outline += texture(TEXTURE, UV + vec2(pixel_size.x, 0.0)).a;

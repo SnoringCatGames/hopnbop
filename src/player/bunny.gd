@@ -254,14 +254,25 @@ func _spawn_squish_sprite() -> void:
 	sprite.global_position = death_pos
 	sprite.flip_h = anim_sprite.flip_h
 
-	# Copy outline material from the CanvasGroup.
-	var bunny_anim := animator as BunnyAnimator
-	if is_instance_valid(bunny_anim):
-		var group := bunny_anim.outline_group
-		if (is_instance_valid(group) and
-				is_instance_valid(group.material)):
-			sprite.material = \
-				group.material.duplicate()
+	# Create outline material for the standalone
+	# sprite (uses the regular sprite_outline shader,
+	# not the canvas_group_outline shader).
+	if is_instance_valid(match_state):
+		var shader := preload(
+			"res://assets/shaders/"
+			+ "sprite_outline.gdshader")
+		var mat := ShaderMaterial.new()
+		mat.shader = shader
+		mat.set_shader_parameter(
+			"outline_color",
+			match_state.outline_color)
+		mat.set_shader_parameter(
+			"outline_width", 1.0)
+		mat.set_shader_parameter(
+			"outline_enabled",
+			G.is_networked_level_active and
+			G.settings.show_player_outlines)
+		sprite.material = mat
 
 	G.level.add_child(sprite)
 

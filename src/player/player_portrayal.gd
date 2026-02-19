@@ -1,21 +1,20 @@
 class_name PlayerPortrayal
-extends SubViewportContainer
+extends Control
 ## Renders a player's visual appearance for UI display.
-## Contains a BunnyAnimator in a SubViewport, configured
-## with the player's body type, costume, and outline
-## color.
+## Contains a BunnyAnimator configured with the player's
+## body type, costume, and outline color. Rendered
+## directly (no SubViewport) so the CanvasGroup outline
+## shader works via SCREEN_TEXTURE.
 
 
 ## The animation to play (e.g., "Rest", "Walk").
 @export var default_animation: StringName = &"Rest"
 
 var _animator: BunnyAnimator = null
-var _viewport: SubViewport = null
 var _outline_color := Color.WHITE
 
 
 func _ready() -> void:
-	_viewport = %SubViewport
 	_animator = %Animator
 
 
