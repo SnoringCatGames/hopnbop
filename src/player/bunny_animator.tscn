@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://bl01kk3ssewgt" path="res://src/player/bunny_animator.gd" id="1_ehlwh"]
 [ext_resource type="Texture2D" uid="uid://dniyej36rvq3s" path="res://assets/images/tan_bunny.png" id="3_6bee0"]
-[ext_resource type="Shader" uid="uid://bwlltrspkpdrj" path="res://assets/shaders/sprite_outline.gdshader" id="3_outline"]
+[ext_resource type="Shader" uid="uid://c4he1th5nooft" path="res://assets/shaders/canvas_group_outline.gdshader" id="3_outline"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_outline"]
 shader = ExtResource("3_outline")
@@ -304,20 +304,18 @@ animations = [{
 "speed": 10.0
 }]
 
-[node name="BunnyAnimator" type="Node2D" node_paths=PackedStringArray("animated_sprite", "outline_group")]
+[node name="BunnyAnimator" type="Node2D" node_paths=PackedStringArray("outline_group", "animated_sprite")]
 process_mode = 3
 script = ExtResource("1_ehlwh")
+outline_group = NodePath("OutlineGroup")
 faces_right_by_default = false
 animated_sprite = NodePath("OutlineGroup/AnimatedSprite2D")
-outline_group = NodePath("OutlineGroup")
 
 [node name="OutlineGroup" type="CanvasGroup" parent="."]
 material = SubResource("ShaderMaterial_outline")
 fit_margin = 2.0
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="OutlineGroup"]
-position = Vector2(0, -6.5)
 sprite_frames = SubResource("SpriteFrames_eeopx")
-animation = &"Rest"
+animation = &"Squish"
 autoplay = "Rest"
-frame_progress = 0.45551863

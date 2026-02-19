@@ -3,18 +3,11 @@
 [ext_resource type="Script" uid="uid://7jjxsexmcr1w" path="res://src/player/player_portrayal.gd" id="1_script"]
 [ext_resource type="PackedScene" uid="uid://br1b7cse0hxmt" path="res://src/player/bunny_animator.tscn" id="2_animator"]
 
-[node name="PlayerPortrayal" type="SubViewportContainer"]
-custom_minimum_size = Vector2(36, 38)
-stretch = true
+[node name="PlayerPortrayal" type="Control"]
+layout_mode = 3
+anchors_preset = 0
 script = ExtResource("1_script")
 
-[node name="SubViewport" type="SubViewport" parent="."]
+[node name="Animator" parent="." instance=ExtResource("2_animator")]
 unique_name_in_owner = true
-transparent_bg = true
-handle_input_locally = false
-size = Vector2i(36, 38)
-render_target_update_mode = 4
-
-[node name="Animator" parent="SubViewport" instance=ExtResource("2_animator")]
-unique_name_in_owner = true
-position = Vector2(18, 25)
+position = Vector2(0, -9.5)

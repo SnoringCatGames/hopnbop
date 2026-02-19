@@ -30,6 +30,9 @@ var gore_manager: GoreManager
 
 
 func _ready() -> void:
+	if Engine.is_editor_hint():
+		return
+
 	Netcode.check(is_instance_valid(collision_tiles),
 		"collision_tiles node not set in level: %s" %
 		Utils.get_display_name(self ))
@@ -37,7 +40,7 @@ func _ready() -> void:
 		"spawn_points node not set in level: %s" %
 		Utils.get_display_name(self ))
 
-	if not Engine.is_editor_hint() and Netcode.is_client:
+	if Netcode.is_client:
 		gore_manager = GoreManager.new()
 		gore_manager.name = "GoreManager"
 		add_child(gore_manager)

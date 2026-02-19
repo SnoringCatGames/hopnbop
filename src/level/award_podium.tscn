@@ -1,4 +1,4 @@
-[gd_scene load_steps=27 format=3]
+[gd_scene load_steps=27 format=3 uid="uid://cm56ivguy0tyt"]
 
 [ext_resource type="Script" uid="uid://d0loi7pwyfxtf" path="res://src/level/award_podium.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://cfrm40kvhkchf" path="res://assets/images/award_podium.png" id="2_texture"]
@@ -173,9 +173,9 @@ animations = [{
 }]
 
 [node name="AwardPodium" type="AnimatedSprite2D"]
-script = ExtResource("1_script")
 sprite_frames = SubResource("SpriteFrames_7gtxi")
 autoplay = "default"
+script = ExtResource("1_script")
 
 [node name="FirstPlacePosition" type="Node2D" parent="."]
 unique_name_in_owner = true

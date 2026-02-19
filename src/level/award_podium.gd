@@ -9,11 +9,6 @@ extends AnimatedSprite2D
 const _PORTRAYAL_SCENE := preload(
 	"res://src/player/player_portrayal.tscn")
 
-## Offset to align PlayerPortrayal's animator origin
-## (at viewport position 18, 25) with the position
-## marker.
-const _PORTRAYAL_OFFSET := Vector2(-18, -25)
-
 ## Horizontal spacing between tied players sharing
 ## a podium position.
 const _TIE_X_SPACING := 10.0
@@ -138,8 +133,7 @@ func _add_portrayal(
 ) -> void:
 	var portrayal: PlayerPortrayal = \
 		_PORTRAYAL_SCENE.instantiate()
-	portrayal.position = \
-		_PORTRAYAL_OFFSET + Vector2(x_offset, 0)
+	portrayal.position = Vector2(x_offset, 0)
 	position_node.add_child(portrayal)
 	portrayal.apply_player_state(player_state)
 
