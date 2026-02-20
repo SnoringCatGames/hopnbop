@@ -16,6 +16,12 @@ var _labels_by_player_id := {}
 
 # Podium labels (fixed-position, no fading).
 var _podium_labels: Array[PlayerOverheadLabel] = []
+var _podium_score_labels: Array[PlayerOverheadLabel] = []
+
+# When true, the node stays invisible until the screen
+# transition finishes. Prevents the throttled visibility
+# timer from re-showing labels mid-wipe.
+var _hidden_for_transition := false
 
 
 func _enter_tree() -> void:
@@ -40,6 +46,15 @@ func set_up() -> void:
 
 
 func _process(_delta: float) -> void:
+	# Restore visibility once the tile-wipe finishes.
+	if _hidden_for_transition:
+		if (
+			not is_instance_valid(G.screen_transition)
+			or not G.screen_transition.is_transitioning()
+		):
+			_hidden_for_transition = false
+			visible = true
+
 	# Apply the viewport's canvas transform so that world-space
 	# positions map correctly to the CanvasLayer's screen space.
 	transform = get_viewport().get_canvas_transform()
@@ -127,6 +142,10 @@ func _update_label_colors() -> void:
 
 
 func _update_label_visibility() -> void:
+	# Skip while hidden for a screen transition.
+	if _hidden_for_transition:
+		return
+
 	for player_id in _labels_by_player_id.keys():
 		var player = G.get_player(player_id)
 		if not is_instance_valid(player):
@@ -202,6 +221,38 @@ func _fade_label(player_id: int, p_is_visible: bool) -> void:
 	)
 
 
+## Immediately hides all labels (player and podium)
+## and keeps them hidden until the screen transition
+## finishes. Also forces a render pass so the viewport
+## texture reflects the hidden state before the
+## tile-wipe captures it.
+func hide_all() -> void:
+	_hidden_for_transition = true
+	visible = false
+
+	for player_id in _labels_by_player_id.keys():
+		var label: PlayerOverheadLabel = \
+			_labels_by_player_id[player_id]
+		if is_instance_valid(label.tween):
+			label.tween.kill()
+		label.modulate.a = 0.0
+		label.shown = false
+
+	for label in _podium_labels:
+		if is_instance_valid(label):
+			label.modulate.a = 0.0
+
+	for label in _podium_score_labels:
+		if is_instance_valid(label):
+			label.modulate.a = 0.0
+
+	# Force a synchronous render so the viewport texture
+	# reflects the hidden labels. Without this, the
+	# tile-wipe would capture the previous frame (where
+	# labels were still visible).
+	RenderingServer.force_draw(false, 0.0)
+
+
 ## Shows labels at fixed world positions for the
 ## award podium. Each entry is a Dictionary with
 ## "player_state" (GamePlayerState) and
@@ -224,9 +275,40 @@ func show_podium_labels(entries: Array) -> void:
 		add_child(label)
 
 
-## Removes all podium labels.
+## Removes all podium labels (names and scores).
 func hide_podium_labels() -> void:
 	for label in _podium_labels:
 		if is_instance_valid(label):
 			label.queue_free()
 	_podium_labels.clear()
+	hide_podium_score_labels()
+
+
+## Shows score labels at fixed world positions for
+## the award podium. One label per tier (tied
+## players share a single score label).
+func show_podium_score_labels(
+	entries: Array,
+) -> void:
+	hide_podium_score_labels()
+	for entry in entries:
+		var score_value: int = entry["score"]
+		var world_pos: Vector2 = \
+			entry["world_position"]
+
+		var label: PlayerOverheadLabel = \
+			label_scene.instantiate()
+		label.text = str(score_value)
+		label.color = Color.WHITE
+		label.position = world_pos
+
+		_podium_score_labels.append(label)
+		add_child(label)
+
+
+## Removes all podium score labels.
+func hide_podium_score_labels() -> void:
+	for label in _podium_score_labels:
+		if is_instance_valid(label):
+			label.queue_free()
+	_podium_score_labels.clear()

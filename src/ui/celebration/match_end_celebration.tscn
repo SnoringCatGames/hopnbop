@@ -1,14 +1,16 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3 uid="uid://cl4rrq5jk5usy"]
 
-[ext_resource type="Script" path="res://src/ui/celebration/match_end_celebration.gd" id="1_script"]
-[ext_resource type="Shader" path="res://assets/shaders/iris_close.gdshader" id="2_shader"]
-[ext_resource type="FontFile" uid="uid://dqinodgfkr7qt" path="res://assets/fonts/pxlzr/pxlzr.ttf" id="3_font"]
+[ext_resource type="Theme" uid="uid://cg4peau6bmpdw" path="res://src/ui/hud_theme.tres" id="1_gyiqn"]
+[ext_resource type="Script" uid="uid://brikesqcqixc1" path="res://src/ui/celebration/match_end_celebration.gd" id="1_script"]
+[ext_resource type="Shader" uid="uid://d0itj2mg8ig4b" path="res://assets/shaders/iris_close.gdshader" id="2_shader"]
+[ext_resource type="FontFile" uid="uid://b8pn1ef5wph8f" path="res://assets/fonts/Nunito/Nunito-Bold.ttf" id="4_gyiqn"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_iris"]
 shader = ExtResource("2_shader")
 shader_parameter/progress = 0.0
 shader_parameter/center = Vector2(0.5, 0.5)
 shader_parameter/edge_softness = 0.02
+shader_parameter/aspect_ratio = 1.777
 
 [node name="MatchEndCelebration" type="Control"]
 layout_mode = 3
@@ -18,6 +20,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme = ExtResource("1_gyiqn")
 script = ExtResource("1_script")
 
 [node name="IrisOverlay" type="ColorRect" parent="."]
@@ -46,12 +49,11 @@ offset_right = 150.0
 offset_bottom = 50.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 4
+theme_override_fonts/font = ExtResource("4_gyiqn")
 theme_override_font_sizes/font_size = 48
-theme_override_fonts/font = ExtResource("3_font")
 text = "WINNER!"
 horizontal_alignment = 1
 vertical_alignment = 1
