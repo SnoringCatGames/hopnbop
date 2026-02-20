@@ -188,3 +188,15 @@ position = Vector2(-15, -5)
 [node name="ThirdPlacePosition" type="Node2D" parent="."]
 unique_name_in_owner = true
 position = Vector2(15, 2)
+
+[node name="FirstPlaceScorePosition" type="Node2D" parent="."]
+unique_name_in_owner = true
+position = Vector2(0, 19)
+
+[node name="SecondPlaceScorePosition" type="Node2D" parent="."]
+unique_name_in_owner = true
+position = Vector2(-15, 19)
+
+[node name="ThirdPlaceScorePosition" type="Node2D" parent="."]
+unique_name_in_owner = true
+position = Vector2(15, 19)

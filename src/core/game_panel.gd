@@ -382,6 +382,11 @@ func client_load_game() -> void:
 	# Reset frame index for new match to sync with server's reset.
 	Netcode.frame_driver.client_reset()
 
+	# Hide overhead labels before the tile-wipe captures
+	# the screen.
+	if is_instance_valid(G.player_overhead_labels):
+		G.player_overhead_labels.hide_all()
+
 	G.screens.client_open_screen(ScreensMain.ScreenType.LOADING)
 
 	# Request session IDs from backend before connecting.
@@ -420,6 +425,11 @@ func client_exit_match() -> void:
 	# the levels array, so we must only free the old
 	# ones.
 	var old_levels := levels.duplicate()
+
+	# Hide overhead labels before the tile-wipe captures
+	# the screen.
+	if is_instance_valid(G.player_overhead_labels):
+		G.player_overhead_labels.hide_all()
 
 	# Open lobby screen. The tile-wipe transition
 	# captures the current viewport (which includes

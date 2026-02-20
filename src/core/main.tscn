@@ -7,7 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://dlvy2ayb4r382" path="res://src/core/screens_main.tscn" id="6_q2b63"]
 [ext_resource type="PackedScene" uid="uid://bvkt5maj64yqm" path="res://src/ui/super_hud/super_hud.tscn" id="7_nxx65"]
 [ext_resource type="PackedScene" uid="uid://cidck5vww8ede" path="res://src/core/screen_transition.tscn" id="8_2uitn"]
-[ext_resource type="PackedScene" path="res://src/ui/celebration/match_end_celebration.tscn" id="9_celeb"]
+[ext_resource type="PackedScene" uid="uid://cl4rrq5jk5usy" path="res://src/ui/celebration/match_end_celebration.tscn" id="9_celeb"]
 
 [node name="Main" type="Node2D"]
 process_mode = 3

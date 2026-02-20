@@ -69,8 +69,14 @@ func show_results(
 		%SecondPlacePosition,
 		%ThirdPlacePosition,
 	]
+	var score_position_nodes: Array[Node2D] = [
+		%FirstPlaceScorePosition,
+		%SecondPlaceScorePosition,
+		%ThirdPlaceScorePosition,
+	]
 
 	var label_entries: Array = []
+	var score_entries: Array = []
 
 	var tier_count := mini(tiers.size(), 3)
 	for tier_index in range(tier_count):
@@ -97,6 +103,15 @@ func show_results(
 						_LABEL_OFFSET_Y),
 			})
 
+		# One score label per tier (tied players
+		# share the same score).
+		score_entries.append({
+			"score": tier[0].score,
+			"world_position":
+				score_position_nodes[tier_index]
+					.global_position,
+		})
+
 	# Delegate label rendering to
 	# PlayerOverheadLabels (in the Hud
 	# CanvasLayer for sharper resolution).
@@ -104,6 +119,9 @@ func show_results(
 			G.player_overhead_labels):
 		G.player_overhead_labels \
 			.show_podium_labels(label_entries)
+		G.player_overhead_labels \
+			.show_podium_score_labels(
+				score_entries)
 
 	visible = true
 

@@ -44,25 +44,23 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
+# Fix screen layouts:
+# - Make game-area be multiples of target.
+# - Make remaining area fill window (so HUD is not overtop game-area).
+
 # - Add skid vfx when landing, stopping, or changing direction.
 
-# - Bodies:
-#   - Create alternate body art.
-#   - Configure body_type_configs in settings.
-#   - Create a couple costumes.
+# - Create additional body art.
+#   - Yellowy golden tan
+#   - Orangey red-head color?
+#   - Darker brown
+#   - Black/gray (closer to black)
+#   - Pink
+#   - Brown with while spots
+#   - White with brown spots
+#   - Tan with black spots
 
 # - Copy-over inbox notes.
-
-# - Myself, fix the issue with main match countdown label hidden on second match.
-
-# - More fixes for spamming entry/leaving in the lobby.
-
-# - Hide overhead labels before triggering transition away from lobby or transition away from match.
-
-# - Polish gore/flower sprites.
-
-# - Show match scores in lobby with podium.
-# - Show a crown on the current 1st place player in the match, and the last first place player in the lobby.
 
 # - Make score popup bigger, and to the right of to score.
 # - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
@@ -70,8 +68,6 @@ extends Node
 # - "Easter eggs"!
 #   - Release by easter.
 #   - Also, secrets in every level, and stuff you can actually collect and unlock...
-
-# - Sudden death.
 
 # Water:
 # - Reverse gravity
@@ -87,8 +83,6 @@ extends Node
 
 # - Add notes to implement: water, spring, ice, flies, jetpack, and other cheats
 
-
-# - Test kills and bumps.
 
 # - Polish movement. It still seems like we get jitter and stuck
 #   player-inputs-on-server-side too often.
@@ -377,6 +371,16 @@ extends Node
 #     - Draw a semitransparent bar across the bottom to indicate the regions with an icon
 #     - Have a setting to disable the bar
 
+# - Take another pass at fixing any broken tests.
+# - Ask the AI to take another pass at ensuring we have clean decoupling between the frameworks and the game logic.
+#   - addons/gamelift/
+#   - addons/gamelift_session_manager/ (can depend on rollback_netcode, cannot depend on src/)
+#   - addons/rollback_netcode/ (cannot depend on addons/gamelift/, addons/gamelift_session_manager/, src/, or addons/rollback_netcode/examples/)
+#   - src/
+#   - addons/rollback_netcode/examples/simple_game/ (cannot depend on src/)
+# - Test and polish addons/rollback_netcode/examples/simple_game/.
+# - Review and edit markdown docs.
+
 # Animated tiles
 # - Research how to implement animated tiles.
 # - Have Tile set point to a scene for each animated tile.
@@ -384,6 +388,8 @@ extends Node
 # - Probably implement this by subclassing the TileMap. Then have a property to indicate its partner TileMap, and assert it's set.
 # - Then, need to figure out collisions for an offset area for these rustle tiles.
 # - Then...
+
+# - Sudden death?
 
 # ### TODO: After everything else:
 # - Survey the codebase for where we use string literals. Should any of these be StringName literals instead?
