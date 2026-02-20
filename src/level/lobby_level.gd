@@ -21,6 +21,12 @@ var _pending_device_configs_by_name := {}
 # shifts on removal, invalidating index-based ID lookups.
 var _device_name_to_player_id := {}
 
+# Monotonically increasing counter for unique lobby player
+# IDs. Prevents ID collisions when players are removed and
+# re-added (array indices shift, but this counter never
+# decreases).
+var _next_lobby_id_counter := 0
+
 
 func _ready() -> void:
 	super._ready()
@@ -111,8 +117,10 @@ func _register_player(
 	device_config: DeviceConfig,
 	p_attributes: Dictionary = {},
 ) -> void:
-	var local_player_index := \
-		_pending_device_configs_by_index.size()
+	# Use monotonic counter for unique player identity.
+	# Dense array index is only for array operations.
+	var lobby_id := _next_lobby_id_counter
+	_next_lobby_id_counter += 1
 
 	# Register device config BEFORE creating/adding player,
 	# so that Player._ready() can find the device when
@@ -121,17 +129,18 @@ func _register_player(
 	_pending_device_configs_by_name[device_config.name] = \
 		device_config
 
+	# Use lobby_id as the device map key (matches what
+	# Player._ready() derives from player_id).
 	G.input_device_manager.assign_device_to_player(
-		local_player_index,
+		lobby_id,
 		device_config
 	)
 
 	# Now create and add player to tree (triggers _ready()).
 	var player: Player = \
 		G.settings.default_player_scene.instantiate()
-	player.player_id = \
-		get_local_player_id(local_player_index)
-	player.name = "LobbyPlayer_%d" % local_player_index
+	player.player_id = get_local_player_id(lobby_id)
+	player.name = "LobbyPlayer_%d" % lobby_id
 	var spawn_position := _get_player_spawn_position()
 	player.global_position = spawn_position
 	players_node.add_child(player)
@@ -164,7 +173,7 @@ func _register_player(
 	player_state.set_up(
 		player.player_id,
 		0,
-		local_player_index,
+		lobby_id,
 		attributes)
 	G.match_state.players_by_id[player.player_id] = \
 		player_state
@@ -177,7 +186,8 @@ func _register_player(
 	_update_lobby_colors()
 
 	Netcode.print(
-		"Spawned lobby player %d" % local_player_index,
+		"Spawned lobby player %d (id=%d)" % [
+			lobby_id, player.player_id],
 		NetworkLogger.CATEGORY_PLAYER_ACTIONS)
 
 	if is_instance_valid(G.game_panel):
@@ -211,7 +221,7 @@ func _deregister_player(
 
 	var device_config: DeviceConfig = \
 		_pending_device_configs_by_name[device_name]
-	var local_player_index := \
+	var dense_index := \
 		_pending_device_configs_by_index.find(device_config)
 
 	# Look up player_id from stable mapping (not from
@@ -223,16 +233,20 @@ func _deregister_player(
 
 	var player: Player = players_by_id[player_id]
 
+	# Derive the stable lobby_id that was used as the
+	# device map key (reverse of get_local_player_id).
+	var lobby_id := -(player_id + 1)
+
 	_pending_device_configs_by_index.remove_at(
-		local_player_index)
+		dense_index)
 	_pending_device_configs_by_name.erase(device_name)
 	_device_name_to_player_id.erase(device_name)
 	G.input_device_manager.unassign_device_from_player(
-		local_player_index)
+		lobby_id)
 
 	# Remove corresponding player attributes.
 	G.client_session.local_player_attributes.remove_at(
-		local_player_index)
+		dense_index)
 
 	# Remove lobby GamePlayerState.
 	G.match_state.players_by_id.erase(player_id)
@@ -250,7 +264,8 @@ func _deregister_player(
 	_update_lobby_colors()
 
 	Netcode.print(
-		"Despawned lobby player %d" % local_player_index,
+		"Despawned lobby player %d (id=%d)" % [
+			lobby_id, player_id],
 		NetworkLogger.CATEGORY_PLAYER_ACTIONS)
 
 	if is_instance_valid(G.game_panel):
@@ -273,6 +288,16 @@ func start_match() -> void:
 
 	G.client_session.local_device_configs = \
 		_pending_device_configs_by_index.duplicate()
+
+	# Re-key device assignments from lobby_id-based keys
+	# to dense match indices (0, 1, 2...) so the match
+	# can look up devices by local_player_index.
+	G.input_device_manager.clear_all_assignments()
+	for i in range(
+		G.client_session.local_device_configs.size()
+	):
+		G.input_device_manager.assign_device_to_player(
+			i, G.client_session.local_device_configs[i])
 
 	Netcode.print(
 		"Starting match with %d player(s)" %
