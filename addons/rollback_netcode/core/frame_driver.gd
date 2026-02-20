@@ -50,16 +50,6 @@ extends Node
 
 # - Add skid vfx when landing, stopping, or changing direction.
 
-# - Create additional body art.
-#   - Yellowy golden tan
-#   - Orangey red-head color?
-#   - Darker brown
-#   - Black/gray (closer to black)
-#   - Pink
-#   - Brown with while spots
-#   - White with brown spots
-#   - Tan with black spots
-
 # - Copy-over inbox notes.
 
 # - Make score popup bigger, and to the right of to score.

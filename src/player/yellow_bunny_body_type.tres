@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BodyTypeConfig" load_steps=3 format=3]
+
+[ext_resource type="Script" uid="uid://bklo1tgck1vmm" path="res://src/player/body_type_config.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://r1kp38a0snvm" path="res://assets/images/yellow_bunny.png" id="2_texture"]
+
+[resource]
+script = ExtResource("1_script")
+display_name = "Yellow Bunny"
+sprite_sheet = ExtResource("2_texture")
