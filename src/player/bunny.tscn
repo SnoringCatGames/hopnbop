@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://cn6hdqmmufnvr"]
+[gd_scene load_steps=16 format=3 uid="uid://cn6hdqmmufnvr"]
 
 [ext_resource type="Script" uid="uid://dwab2y7smxa" path="res://src/player/bunny.gd" id="1_j5lrb"]
 [ext_resource type="Resource" uid="uid://dq1d4nuh248j2" path="res://src/player/default_movement_settings.tres" id="2_4p26p"]
@@ -31,6 +31,19 @@ properties/0/replication_mode = 1
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_rxibo"]
 radius = 5.0
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_o3ivm"]
+animations = [{
+"frames": [],
+"loop": false,
+"name": &"skid_both",
+"speed": 15.0
+}, {
+"frames": [],
+"loop": false,
+"name": &"skid_right",
+"speed": 15.0
+}]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_1rl0f"]
 radius = 5.0
@@ -91,6 +104,12 @@ unique_name_in_owner = true
 position = Vector2(0, -5)
 rotation = 1.5707964
 shape = SubResource("CircleShape2D_rxibo")
+
+[node name="Skids" type="AnimatedSprite2D" parent="."]
+unique_name_in_owner = true
+position = Vector2(0, -7)
+sprite_frames = SubResource("SpriteFrames_o3ivm")
+animation = &"skid_right"
 
 [node name="BodyArea" type="Area2D" parent="."]
 unique_name_in_owner = true
