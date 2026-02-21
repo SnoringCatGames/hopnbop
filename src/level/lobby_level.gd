@@ -155,6 +155,9 @@ func _register_player(
 
 	register_player(player)
 
+	# Play jump sound for the newly-spawned bunny.
+	player.play_sound("jump")
+
 	# Track device name to player_id mapping.
 	_device_name_to_player_id[device_config.name] = \
 		player.player_id
@@ -235,7 +238,7 @@ func _deregister_player(
 
 	# Derive the stable lobby_id that was used as the
 	# device map key (reverse of get_local_player_id).
-	var lobby_id := -(player_id + 1)
+	var lobby_id := - (player_id + 1)
 
 	_pending_device_configs_by_index.remove_at(
 		dense_index)
@@ -254,6 +257,7 @@ func _deregister_player(
 
 	deregister_player(player)
 
+	G.audio.play_sound("kill")
 	player.queue_free()
 
 	# Show the corresponding control display.
@@ -304,6 +308,8 @@ func start_match() -> void:
 			G.client_session.local_player_count,
 		NetworkLogger.CATEGORY_GAME_STATE
 	)
+
+	G.audio.play_sound("hole")
 
 	# Trigger GamePanel to despawn lobby and connect.
 	G.game_panel.client_load_game()

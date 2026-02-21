@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://diqnxd2kabxfk"]
+[gd_scene load_steps=17 format=3 uid="uid://diqnxd2kabxfk"]
 
 [ext_resource type="Script" uid="uid://b5hrwox1n2lt0" path="res://src/core/audio_main.gd" id="1_tdp82"]
 [ext_resource type="AudioStream" uid="uid://d3nqcobglu0sa" path="res://assets/audio/old/pause_menu.wav" id="2_0ukso"]
@@ -11,6 +11,14 @@
 [ext_resource type="AudioStream" uid="uid://byhc1v5pobgjj" path="res://assets/audio/old/cadence_win.wav" id="9_wtepx"]
 [ext_resource type="AudioStream" uid="uid://dngmn1trd45h2" path="res://assets/audio/old/cadence_lose.wav" id="10_24bi3"]
 [ext_resource type="AudioStream" uid="uid://cycmr81xwq5rj" path="res://assets/audio/old/achievement.wav" id="11_q1bt0"]
+[ext_resource type="AudioStream" uid="uid://du3ckb0qd2u4c" path="res://assets/audio/kill1.wav" id="12_kill1"]
+[ext_resource type="AudioStream" uid="uid://bhl14gykl7c48" path="res://assets/audio/kill2.wav" id="13_kill2"]
+[ext_resource type="AudioStream" uid="uid://vicn70igr0mv" path="res://assets/audio/hole.wav" id="14_hole"]
+
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_kill"]
+streams_count = 2
+stream_0/stream = ExtResource("12_kill1")
+stream_1/stream = ExtResource("13_kill2")
 
 [sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_2b2qe"]
 streams_count = 4
@@ -61,3 +69,13 @@ stream = ExtResource("10_24bi3")
 [node name="AchievementStreamPlayer" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
 stream = ExtResource("11_q1bt0")
+
+[node name="KillStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = SubResource("AudioStreamRandomizer_kill")
+bus = &"SFX"
+
+[node name="HoleStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = ExtResource("14_hole")
+bus = &"SFX"

@@ -1,9 +1,14 @@
-[gd_scene load_steps=6 format=3 uid="uid://cl4rrq5jk5usy"]
+[gd_scene load_steps=13 format=3 uid="uid://cl4rrq5jk5usy"]
 
 [ext_resource type="Theme" uid="uid://cg4peau6bmpdw" path="res://src/ui/hud_theme.tres" id="1_gyiqn"]
 [ext_resource type="Script" uid="uid://brikesqcqixc1" path="res://src/ui/celebration/match_end_celebration.gd" id="1_script"]
 [ext_resource type="Shader" uid="uid://d0itj2mg8ig4b" path="res://assets/shaders/iris_close.gdshader" id="2_shader"]
 [ext_resource type="FontFile" uid="uid://b8pn1ef5wph8f" path="res://assets/fonts/Nunito/Nunito-Bold.ttf" id="4_gyiqn"]
+[ext_resource type="AudioStream" uid="uid://d1e0aeplgh4yq" path="res://assets/audio/confetti1.wav" id="5_2m605"]
+[ext_resource type="AudioStream" uid="uid://45j78ddcoof8" path="res://assets/audio/confetti2.wav" id="6_q7ehs"]
+[ext_resource type="AudioStream" uid="uid://b37h0kjrry8xn" path="res://assets/audio/confetti3.wav" id="7_gqvpc"]
+[ext_resource type="AudioStream" uid="uid://dg8kytk8qrpjn" path="res://assets/audio/confetti4.wav" id="8_r7p17"]
+[ext_resource type="AudioStream" uid="uid://w81u5lokp06a" path="res://assets/audio/boom.wav" id="9_q7ehs"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_iris"]
 shader = ExtResource("2_shader")
@@ -11,6 +16,17 @@ shader_parameter/progress = 0.0
 shader_parameter/center = Vector2(0.5, 0.5)
 shader_parameter/edge_softness = 0.02
 shader_parameter/aspect_ratio = 1.777
+
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_ru0mh"]
+streams_count = 4
+stream_0/stream = ExtResource("5_2m605")
+stream_1/stream = ExtResource("6_q7ehs")
+stream_2/stream = ExtResource("7_gqvpc")
+stream_3/stream = ExtResource("8_r7p17")
+
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_gqvpc"]
+streams_count = 1
+stream_0/stream = ExtResource("9_q7ehs")
 
 [node name="MatchEndCelebration" type="Control"]
 layout_mode = 3
@@ -57,3 +73,11 @@ theme_override_font_sizes/font_size = 48
 text = "WINNER!"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="ConfettiAudioStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = SubResource("AudioStreamRandomizer_ru0mh")
+
+[node name="BoomAudioStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = SubResource("AudioStreamRandomizer_gqvpc")

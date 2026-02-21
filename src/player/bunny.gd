@@ -209,6 +209,7 @@ func _update_skids() -> void:
 			&"skid_both",
 			false,
 		)
+		play_sound("skid")
 		_was_floor_skid_condition = false
 		return
 
@@ -224,6 +225,7 @@ func _update_skids() -> void:
 			&"jump",
 			false,
 		)
+		play_sound("skid")
 
 	# Floor skids (one-direction).
 	if surfaces.is_attaching_to_floor:
@@ -262,6 +264,7 @@ func _update_skids() -> void:
 				&"skid_right",
 				vel_x < 0,
 			)
+			play_sound("skid")
 		_was_floor_skid_condition = is_floor_skid
 	else:
 		_was_floor_skid_condition = false

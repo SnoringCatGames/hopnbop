@@ -45,12 +45,6 @@ extends Node
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
 # - Hook-up sounds:
-#  - Skid
-#  - Confetti
-#  - boom (on "FOO WINS!" landing)
-#  - register
-#  - deregister
-#  - down the rabbit hole
 #  - match-start countdown cadence chords
 #  - Match-end victory/draw cadence (in phone recording)
 #  - Match-end countdown reached zero whistle
@@ -61,8 +55,6 @@ extends Node
 # Fix screen layouts:
 # - Make game-area be multiples of target.
 # - Make remaining area fill window (so HUD is not overtop game-area).
-
-# - Add skid vfx when landing, stopping, or changing direction.
 
 # - Copy-over inbox notes.
 

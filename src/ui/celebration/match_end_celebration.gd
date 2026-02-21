@@ -26,10 +26,6 @@ const _IRIS_DURATION := 0.7
 const _IRIS_CENTER_OFFSET := Vector2(0, -5)
 
 
-@onready var _winner_label: Label = %WinnerText
-@onready var _iris_overlay: ColorRect = %IrisOverlay
-
-
 var _camera: Camera2D
 var _original_camera_parent: Node
 var _original_camera_zoom := Vector2.ONE
@@ -52,8 +48,8 @@ func _ready() -> void:
 
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
-	_winner_label.visible = false
-	_iris_overlay.visible = false
+	%WinnerText.visible = false
+	%IrisOverlay.visible = false
 
 	# Connect after GamePanel has set G.match_state.
 	if is_instance_valid(G.match_state):
@@ -285,6 +281,7 @@ func _burst_confetti_at(offset: Vector2) -> void:
 		_winner.global_position + offset,
 		_CONFETTI_COUNT,
 	)
+	%ConfettiAudioStreamPlayer.play()
 
 
 func _delayed_burst(
@@ -305,21 +302,21 @@ func _slam_winner_text() -> void:
 	)
 
 	if is_tie:
-		_winner_label.text = "TIE!"
+		%WinnerText.text = "TIE!"
 	else:
 		var ps := G.get_player_match_state(
 			_winner.player_id) as GamePlayerState
 		if ps:
-			_winner_label.text = (
+			%WinnerText.text = (
 				"%s\nWINS!" % ps.bunny_name.to_upper())
 		else:
-			_winner_label.text = "WINS!"
-	_winner_label.visible = true
-	_winner_label.pivot_offset = (
-		_winner_label.size / 2)
-	_winner_label.scale = (
+			%WinnerText.text = "WINS!"
+	%WinnerText.visible = true
+	%WinnerText.pivot_offset = (
+		%WinnerText.size / 2)
+	%WinnerText.scale = (
 		Vector2.ONE * _TEXT_INITIAL_SCALE)
-	_winner_label.modulate.a = 1.0
+	%WinnerText.modulate.a = 1.0
 
 	var tween := create_tween()
 	_active_tweens.append(tween)
@@ -328,7 +325,7 @@ func _slam_winner_text() -> void:
 
 	# Slam in with bounce overshoot.
 	tween.tween_property(
-		_winner_label,
+		%WinnerText,
 		"scale",
 		Vector2.ONE,
 		_TEXT_SLAM_DURATION,
@@ -338,12 +335,20 @@ func _slam_winner_text() -> void:
 		Tween.TRANS_BACK
 	)
 
+	# Play boom just before the bounce-back part
+	# of the easing completes.
+	var boom_delay := _TEXT_SLAM_DURATION - 0.08
+	get_tree().create_timer(
+		boom_delay, true, false, true
+	).timeout.connect(
+		%BoomAudioStreamPlayer.play)
+
 	# Hold.
 	tween.tween_interval(_TEXT_HOLD_DURATION)
 
 	# Fade out.
 	tween.tween_property(
-		_winner_label,
+		%WinnerText,
 		"modulate:a",
 		0.0,
 		_TEXT_FADE_DURATION,
@@ -354,17 +359,17 @@ func _slam_winner_text() -> void:
 	)
 
 	tween.finished.connect(func():
-		_winner_label.visible = false
+		%WinnerText.visible = false
 	)
 
 
 func _start_iris_close() -> void:
-	_iris_overlay.visible = true
+	%IrisOverlay.visible = true
 	_is_updating_iris = true
 	_update_iris_center()
 
 	var material: ShaderMaterial = (
-		_iris_overlay.material)
+		%IrisOverlay.material)
 	material.set_shader_parameter(
 		"progress", 0.0)
 
@@ -415,7 +420,7 @@ func _update_iris_center() -> void:
 	var uv := screen_pos / vp_size
 
 	var material: ShaderMaterial = (
-		_iris_overlay.material)
+		%IrisOverlay.material)
 	material.set_shader_parameter("center", uv)
 
 
@@ -437,12 +442,12 @@ func reset() -> void:
 	_original_camera_parent = null
 	_was_camera_reparented = false
 	visible = false
-	_winner_label.visible = false
-	_iris_overlay.visible = false
+	%WinnerText.visible = false
+	%IrisOverlay.visible = false
 
 	# Reset iris shader progress.
 	var material: ShaderMaterial = (
-		_iris_overlay.material)
+		%IrisOverlay.material)
 	material.set_shader_parameter(
 		"progress", 0.0)
 

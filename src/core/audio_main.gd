@@ -19,6 +19,8 @@ extends Node2D
 	"success" = %SuccessCadenceStreamPlayer,
 	"failure" = %FailureCadenceStreamPlayer,
 	"achievement" = %AchievementStreamPlayer,
+	"kill" = %KillStreamPlayer,
+	"hole" = %HoleStreamPlayer,
 }
 
 
