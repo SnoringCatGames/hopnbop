@@ -64,7 +64,7 @@ func _start_app() -> void:
 		get_tree().paused = false
 		G.game_panel.server_start_match()
 	else:
-		if G.settings.start_in_game:
+		if G.settings.start_in_game and G.settings.is_preview_mode:
 			# We see issues in preview mode on resource-constrained machines
 			# where the server process may not send or receive messages
 			# correctly when all startup processing happens at once across each
@@ -73,7 +73,7 @@ func _start_app() -> void:
 			await get_tree().create_timer(auto_start_delay).timeout
 
 			_auto_start_game()
-		elif G.settings.skip_splash:
+		elif G.settings.skip_splash and G.settings.is_preview_mode:
 			G.screens.client_open_screen(ScreensMain.ScreenType.LOBBY)
 		else:
 			G.screens.client_open_screen(ScreensMain.ScreenType.GODOT_SPLASH)
