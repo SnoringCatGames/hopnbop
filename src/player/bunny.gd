@@ -192,6 +192,11 @@ func _update_skids() -> void:
 		_was_floor_skid_condition = false
 		return
 
+	if Netcode.frame_driver \
+			.is_match_start_countdown_active:
+		_was_floor_skid_condition = false
+		return
+
 	if (
 		not is_instance_valid(G.level)
 		or not is_instance_valid(

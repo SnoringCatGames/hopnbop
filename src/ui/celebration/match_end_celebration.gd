@@ -3,7 +3,7 @@ extends Control
 ## Orchestrates the match-end celebration sequence:
 ## camera zoom, confetti, "WINNER" text slam, and
 ## iris close. Runs client-side only during the
-## 3-second window after match ends.
+## 5-second window after match ends.
 
 
 const _CAMERA_ZOOM_DURATION := 0.5
@@ -17,11 +17,11 @@ const _CONFETTI_OFFSET_UPPER_RIGHT := Vector2(40, -35)
 const _TEXT_SLAM_DELAY := 0.8
 const _TEXT_SLAM_DURATION := 0.3
 const _TEXT_INITIAL_SCALE := 5.0
-const _TEXT_HOLD_DURATION := 0.7
+const _TEXT_HOLD_DURATION := 1.5
 const _TEXT_FADE_DURATION := 0.4
 const _TEXT_SLAM_SHAKE_INTENSITY := 8.0
 const _TEXT_SLAM_SHAKE_DURATION := 0.35
-const _IRIS_DELAY := 1.8
+const _IRIS_DELAY := 3.8
 const _IRIS_DURATION := 0.7
 const _IRIS_CENTER_OFFSET := Vector2(0, -5)
 
@@ -110,7 +110,7 @@ func start_celebration() -> void:
 		)
 	)
 
-	# Phase 4: Iris close (t=1.8s).
+	# Phase 4: Iris close (t=3.8s).
 	var t3 := get_tree().create_timer(
 		_IRIS_DELAY, true, false, true)
 	t3.timeout.connect(_start_iris_close)

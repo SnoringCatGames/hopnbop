@@ -42,8 +42,6 @@ var previous_position := Vector2.INF
 var previous_velocity := Vector2.INF
 
 var last_triggered_jump_frame_index := -1
-var _last_processed_jump_frame_index := -1
-const _JUMP_EVENT_STALENESS_THRESHOLD_SEC := 0.5
 
 var jump_sequence_count := 0
 
@@ -364,16 +362,8 @@ func _process_animation() -> void:
 
 
 func _process_sounds() -> void:
-	# Check for a new jump event.
-	if last_triggered_jump_frame_index > _last_processed_jump_frame_index:
-		var current_frame_index := Netcode.server_frame_index
-		var event_age := (
-			(current_frame_index - last_triggered_jump_frame_index) *
-			Netcode.frame_driver.target_network_time_step_sec
-		)
-		if event_age <= _JUMP_EVENT_STALENESS_THRESHOLD_SEC:
-			play_sound("jump")
-		_last_processed_jump_frame_index = last_triggered_jump_frame_index
+	if actions.just_triggered_jump:
+		play_sound("jump")
 
 	if surfaces.just_left_air:
 		play_sound("land")
