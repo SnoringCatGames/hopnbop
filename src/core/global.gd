@@ -37,6 +37,7 @@ var screen_transition: ScreenTransition
 var cheat_manager: CheatManager
 var camera_shaker: CameraShaker
 var celebration: MatchEndCelebration
+var pixel_viewport_manager: PixelViewportManager
 var game_panel: GamePanel
 var match_state: GameMatchState
 var client_session: ClientSession

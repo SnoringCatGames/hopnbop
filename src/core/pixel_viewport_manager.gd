@@ -38,7 +38,7 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
-	if Netcode.is_server:
+	if Netcode.is_headless:
 		return
 
 	_base_resolution = Vector2i(
@@ -62,7 +62,7 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	if Netcode.is_server:
+	if Netcode.is_headless:
 		return
 	_update_camera_zoom()
 

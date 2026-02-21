@@ -24,7 +24,7 @@ const _TEXT_SLAM_SHAKE_DURATION := 0.35
 const _IRIS_DELAY := 3.8
 const _IRIS_DURATION := 0.7
 const _IRIS_CENTER_OFFSET := Vector2(0, -5)
-const _IRIS_TILE_SIZE_PX := 18.0
+const _IRIS_TILE_SIZE_PX := 10.0
 
 
 var _camera: Camera2D
@@ -382,8 +382,7 @@ func _start_iris_close() -> void:
 
 	# Tile-based rendering parameters.
 	material.set_shader_parameter(
-		"tile_count",
-		(vp_size / _IRIS_TILE_SIZE_PX).ceil())
+		"tile_size", _IRIS_TILE_SIZE_PX)
 	material.set_shader_parameter(
 		"random_seed", randf() * 1000.0)
 	material.set_shader_parameter(

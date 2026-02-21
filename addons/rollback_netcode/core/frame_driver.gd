@@ -44,6 +44,10 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
+# Update the loading-screen text to indicate the current match-connecting status:
+# - Finding other players...
+# - Connecting to server...
+
 # - Hook-up sounds:
 #  - match-start countdown cadence chords
 #  - Match-end victory/draw cadence (in phone recording)
@@ -106,26 +110,14 @@ extends Node
 # Ask if we sockets or webrtc make more sense for web
 # Ask if that would make it more worth having a slower network frame rate than physics
 
-# Move control displays smaller and in the bottom left. Have them shove in to compact space when one is used and removed.
 # Make a platform for level selection above hole.
 # Show level selection UI when landing on the platform. Hide it when selecting x at the top or bottom of the ui list. Ui list has three columns x header, check header, double check header. Exclusive selection or no selection for double check. All rows must be in x or check.
 
 # Big pit level, with steps up either side
 
-# Leaderboard UI show list of local players, with a list of other players next to them, with xN next to each other in the row
-
-# Hook up smoosh animation
-# For lobby previously match score, just show the three tiered pedestal with gold silver bronze from the overall match.
-# Make another screen transition to show at the end of a match. It narrows an aperture toward the highest scoring player (if there was one!).
-# If there wasn't... TODO
-# TODO: DOES THAT FULLY RESOLVE THE END OF MATCH GRACE PERIOD?
-# Remove game over screen.
-# Make sure lobby prayer color is white.
-# ADD ALTERNATE BUNNY COLORS.
 
 # Pogostick cheat
 # Bunnies in space cheat
-# Crown for winners head? Current winner, and previous winner when in lobby
 
 # ADD LEVEL WRAP AROUND LIKE KILLER QUEEN (vertically and horizontally)
 

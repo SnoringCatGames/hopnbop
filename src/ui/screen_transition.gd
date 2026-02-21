@@ -27,7 +27,7 @@ enum TileStyle {
 
 
 const DEFAULT_DURATION := 0.7
-const DEFAULT_TILE_COUNT := Vector2(16, 9) * 4
+const DEFAULT_TILE_SIZE_PX := 10.0
 const DEFAULT_PATTERN := DelayPattern.DIAGONAL_TOP_LEFT
 const DEFAULT_TILE_STYLE := TileStyle.SNAP
 const DEFAULT_DELAY_SPREAD := 0.3
@@ -60,7 +60,7 @@ func _ready() -> void:
 	color = Color.WHITE
 
 	# Apply default shader parameters.
-	set_tile_count(DEFAULT_TILE_COUNT)
+	set_tile_size(DEFAULT_TILE_SIZE_PX)
 	set_delay_spread(DEFAULT_DELAY_SPREAD)
 	set_pattern_randomness(DEFAULT_PATTERN_RANDOMNESS)
 
@@ -137,11 +137,11 @@ func set_transition_color(col: Color) -> void:
 		mat.set_shader_parameter("transition_color", col)
 
 
-## Sets the tile grid size.
-func set_tile_count(count: Vector2) -> void:
+## Sets the tile size in pixels (tiles are always square).
+func set_tile_size(size_px: float) -> void:
 	var mat := _get_shader_material()
 	if mat:
-		mat.set_shader_parameter("tile_count", count)
+		mat.set_shader_parameter("tile_size", size_px)
 
 
 ## Sets the delay spread (0.0 to 1.0).

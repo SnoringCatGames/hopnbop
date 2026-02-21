@@ -4,10 +4,6 @@ extends Node2D
 
 func _enter_tree() -> void:
 	G.main = self
-	G.game_viewport_container = (
-		$GameViewportContainer
-	)
-	G.game_viewport = %GameViewport
 	G.log.set_log_filtering(
 		G.settings.excluded_log_categories,
 		G.settings.force_include_log_warnings,

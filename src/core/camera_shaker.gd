@@ -19,8 +19,10 @@ var _shake_duration := 0.0
 
 func _get_active_camera() -> Camera2D:
 	# Camera2D lives in the game SubViewport.
-	if is_instance_valid(G.game_viewport):
-		var cam := G.game_viewport.get_camera_2d()
+	var pvm := G.pixel_viewport_manager
+	if is_instance_valid(pvm) \
+			and is_instance_valid(pvm.sub_viewport):
+		var cam := pvm.sub_viewport.get_camera_2d()
 		if is_instance_valid(cam):
 			return cam
 	return get_viewport().get_camera_2d()
