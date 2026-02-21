@@ -44,6 +44,8 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
+# zoom/sizing is not quite right during match-start countdown, and then snaps to correct at the end of the countdown (when unpause happens).
+
 # Update the loading-screen text to indicate the current match-connecting status:
 # - Finding other players...
 # - Connecting to server...
