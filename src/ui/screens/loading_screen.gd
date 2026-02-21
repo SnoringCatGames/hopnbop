@@ -27,6 +27,13 @@ func on_open() -> void:
 	update_status_message()
 
 
+# Override the parent method, so we can force the hud theme.
+func _set_default_styling() -> void:
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	#theme = G.settings.default_theme
+	add_theme_stylebox_override("panel", G.settings.screen_style_box)
+
+
 func update_status_message() -> void:
 	if not is_instance_valid(%Label):
 		return

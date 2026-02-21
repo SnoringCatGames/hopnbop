@@ -64,7 +64,6 @@ player_scenes = Array[PackedScene]([ExtResource("3_woca2")])
 body_types = Array[ExtResource("1_7ybur")]([ExtResource("8_bodytype"), ExtResource("11_wbody"), ExtResource("12_bbody"), ExtResource("13_brbody"), ExtResource("14_bsbody"), ExtResource("15_blsbody"), ExtResource("16_grbody"), ExtResource("17_ylbody")])
 costumes = Array[ExtResource("3_htelm")]([ExtResource("9_costume")])
 crown_costume = ExtResource("10_crown")
-match_duration_sec = 5.0
 max_client_count = 8
 rollback_buffer_duration_sec = 2.0
 is_server_pause_enabled = true

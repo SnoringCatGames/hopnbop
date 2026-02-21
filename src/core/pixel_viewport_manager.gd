@@ -56,6 +56,12 @@ func _ready() -> void:
 	sub_viewport = get_parent().get_node(
 		"GameViewportContainer/GameViewport")
 
+	# Ensure stretch/resize propagation works
+	# while the tree is paused (e.g. during
+	# match-start countdown).
+	container.process_mode = \
+		Node.PROCESS_MODE_ALWAYS
+
 	get_tree().root.size_changed.connect(
 		_on_window_resized)
 	# Apply initial sizing immediately.
@@ -94,12 +100,16 @@ func _on_window_resized() -> void:
 		(window_size.y - container_h) / 2.0,
 	)
 
-	# Recompute zoom scale for the new SubViewport
-	# size.
+	# Compute the SubViewport resolution and force
+	# it immediately. Relying on SubViewportContainer
+	# stretch propagation alone can lag by a frame
+	# when the tree is paused.
 	@warning_ignore("integer_division")
 	var svp_w := container_w / current_scale
 	@warning_ignore("integer_division")
 	var svp_h := container_h / current_scale
+	if is_instance_valid(sub_viewport):
+		sub_viewport.size = Vector2i(svp_w, svp_h)
 	_zoom_scale = minf(
 		float(svp_w) / float(_base_resolution.x),
 		float(svp_h) / float(_base_resolution.y),
@@ -139,6 +149,11 @@ func _update_camera_zoom() -> void:
 	# Record original zoom when we first see a camera.
 	if not _base_zooms.has(camera):
 		_base_zooms[camera] = camera.zoom
+		# Camera2D must process during pause to
+		# propagate zoom changes to the viewport's
+		# canvas_transform.
+		camera.process_mode = \
+			Node.PROCESS_MODE_ALWAYS
 
 	var base_zoom: Vector2 = _base_zooms[camera]
 	camera.zoom = base_zoom * _zoom_scale

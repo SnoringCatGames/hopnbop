@@ -4,15 +4,16 @@ extends PanelContainer
 
 # Floating score popup settings.
 const _POPUP_MIN_SCORE_CHANGE := 10
-const _POPUP_OFFSET := Vector2(50.0, -20.0) # Right and slightly up.
+const _POPUP_OFFSET := Vector2(-15.0, 0.0) # Small gap right of score.
 const _POPUP_INITIAL_SCALE := 0.1
-const _POPUP_TARGET_SCALE := 1.0
-const _POPUP_OVERSHOOT_SCALE := 1.15
-const _POPUP_GROW_DURATION_SEC := 0.15
-const _POPUP_BOUNCE_DURATION_SEC := 0.08
+const _POPUP_TARGET_SCALE := 1.95
+const _POPUP_OVERSHOOT_SCALE := 2.8
+const _POPUP_GROW_DURATION_SEC := 0.12
+const _POPUP_SETTLE_DURATION_SEC := 0.6
 const _POPUP_FADE_IN_DURATION_SEC := 0.1
-const _POPUP_VISIBLE_DURATION_SEC := 0.6
-const _POPUP_FADE_OUT_DURATION_SEC := 0.2
+const _POPUP_VISIBLE_DURATION_SEC := 0.9
+const _POPUP_FADE_OUT_DURATION_SEC := 0.3
+const _POPUP_SLIDE_OFFSET := Vector2(15.0, -25.0) # Drift right and up.
 
 # Score counter animation settings.
 const _SCORE_INCREMENT_INTERVAL_SEC := 0.02
@@ -65,7 +66,8 @@ func _update_display(delta: float) -> void:
 		if not _has_initialized_score:
 			_displayed_score = actual_score
 			_has_initialized_score = true
-		elif score_delta >= min_score_change_for_popup:
+		# Spawn popup for any qualifying score increase.
+		if score_delta >= min_score_change_for_popup:
 			_spawn_score_popup(score_delta)
 
 	# Animate displayed score toward target.
@@ -81,23 +83,29 @@ func _update_display(delta: float) -> void:
 
 	%Score.text = "%d" % _displayed_score
 
-	# Apply label color.
-	var label_color := player_match_state.label_color
+	# White in lobby, player color in match.
+	var label_color := (
+		Color.WHITE if G.is_lobby_active
+		else player_match_state.label_color
+	)
 	%Name.add_theme_color_override("font_color", label_color)
 	%Adjective.add_theme_color_override("font_color", label_color)
 	%Score.add_theme_color_override("font_color", label_color)
 
-	# Apply outline color.
-	var outline_color := player_match_state.outline_color
+	var outline_color := (
+		Color.TRANSPARENT if G.is_lobby_active
+		else player_match_state.outline_color
+	)
 	%Name.add_theme_color_override("font_outline_color", outline_color)
 	%Adjective.add_theme_color_override("font_outline_color", outline_color)
 	%Score.add_theme_color_override("font_outline_color", outline_color)
 
 
 func _spawn_score_popup(score_delta: int) -> void:
-	# Create a Control wrapper to break out of PanelContainer layout.
+	# Create a wrapper that escapes PanelContainer layout.
 	var wrapper := Control.new()
 	wrapper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrapper.top_level = true
 
 	# Create popup label.
 	var popup := Label.new()
@@ -119,13 +127,15 @@ func _spawn_score_popup(score_delta: int) -> void:
 	add_child(wrapper)
 	wrapper.add_child(popup)
 
-	# Position wrapper at score center.
+	# Position wrapper at the right edge of the score label, vertically
+	# centered.
 	var score_rect: Rect2 = %Score.get_global_rect()
-	var my_rect := get_global_rect()
-	var score_center_local := score_rect.get_center() - my_rect.position
-	wrapper.position = score_center_local
+	wrapper.position = Vector2(
+		score_rect.position.x + score_rect.size.x,
+		score_rect.get_center().y,
+	)
 
-	# Position label at constant offset (right and slightly up).
+	# Small offset gap from score label edge.
 	popup.position = _POPUP_OFFSET
 
 	# Defer pivot_offset assignment until label size is calculated.
@@ -144,20 +154,30 @@ func _spawn_score_popup(score_delta: int) -> void:
 		popup, "modulate:a", 1.0, _POPUP_FADE_IN_DURATION_SEC
 	).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 
-	# Scale: grow to overshoot.
+	# Scale: quick grow to overshoot.
 	tween.tween_property(
 		popup, "scale",
 		Vector2.ONE * _POPUP_OVERSHOOT_SCALE,
 		_POPUP_GROW_DURATION_SEC
 	).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 
-	# Scale: bounce back to target.
+	# Scale: elastic settle back to target.
 	tween.tween_property(
 		popup, "scale",
 		Vector2.ONE * _POPUP_TARGET_SCALE,
-		_POPUP_BOUNCE_DURATION_SEC
-	).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK) \
+		_POPUP_SETTLE_DURATION_SEC
+	).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC) \
 		.set_delay(_POPUP_GROW_DURATION_SEC)
+
+	# Slide away and up (relative to popup's current position).
+	var total_duration := \
+		_POPUP_VISIBLE_DURATION_SEC + _POPUP_FADE_OUT_DURATION_SEC
+	tween.tween_property(
+		popup, "position",
+		_POPUP_SLIDE_OFFSET,
+		total_duration
+	).as_relative() \
+		.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)
 
 	# Fade out after delay.
 	tween.tween_property(
@@ -166,9 +186,8 @@ func _spawn_score_popup(score_delta: int) -> void:
 		.set_delay(_POPUP_VISIBLE_DURATION_SEC)
 
 	# Cleanup - free the wrapper (which also frees the popup child).
-	var total_duration := \
-			_POPUP_VISIBLE_DURATION_SEC + _POPUP_FADE_OUT_DURATION_SEC
-	tween.tween_callback(wrapper.queue_free).set_delay(total_duration)
+	tween.tween_callback(wrapper.queue_free) \
+		.set_delay(total_duration)
 
 
 func _setup_popup_pivot(popup: Label) -> void:
