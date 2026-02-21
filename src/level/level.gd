@@ -29,10 +29,17 @@ var players_by_id := {}
 var gore_manager: GoreManager
 var skid_manager: SkidManager
 
+## Frame index when this level entered the tree.
+## Used to distinguish initial-spawn players from
+## mid-game joins.
+var start_frame_index := -1
+
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
+
+	start_frame_index = Netcode.server_frame_index
 
 	Netcode.check(is_instance_valid(collision_tiles),
 		"collision_tiles node not set in level: %s" %

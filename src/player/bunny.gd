@@ -17,8 +17,10 @@ var _has_ever_died := false
 
 const _SQUISH_DURATION_SEC := 0.09
 const _SKID_VELOCITY_THRESHOLD := 20.0
+const _LANDING_SKID_GRACE_FRAMES := 30
 
 var _was_floor_skid_condition := false
+var _suppress_landing_skid := false
 
 # Track intersections during invincibility.
 # Dictionary<int, Array[String]> - player_id -> array of intersection types.
@@ -40,6 +42,16 @@ func _ready() -> void:
 
 	if Engine.is_editor_hint():
 		return
+
+	# Suppress landing skids for players spawned with
+	# the level (not mid-game joins).
+	if (
+		is_instance_valid(G.level)
+		and Netcode.server_frame_index
+			- G.level.start_frame_index
+			< _LANDING_SKID_GRACE_FRAMES
+	):
+		_suppress_landing_skid = true
 
 	if Netcode.is_client:
 		Netcode.local_authority_added.connect(
@@ -132,8 +144,8 @@ func _process_movement_and_actions() -> void:
 	if applied_bounce and Netcode.log.is_verbose:
 		Netcode.verbose(
 			"Player %d bounce applied (%s): "
-			+ "vel=%s, pos=%s, surfaces=%d, "
-			+ "launch_frame=%d, resim=%s" % [
+			+"vel=%s, pos=%s, surfaces=%d, "
+			+"launch_frame=%d, resim=%s" % [
 				player_id,
 				bounce_source,
 				bounce_vel,
@@ -155,10 +167,10 @@ func _process_movement_and_actions() -> void:
 		# recently and we're verifying continuity.
 		Netcode.verbose(
 			"Player %d in launch cooldown "
-			+ "(no bounce this frame): "
-			+ "vel=%s, pos=%s, surfaces=%d, "
-			+ "launch_frame=%d, on_floor=%s, "
-			+ "attaching_floor=%s" % [
+			+"(no bounce this frame): "
+			+"vel=%s, pos=%s, surfaces=%d, "
+			+"launch_frame=%d, on_floor=%s, "
+			+"attaching_floor=%s" % [
 				player_id,
 				velocity,
 				global_position,
@@ -204,17 +216,34 @@ func _update_skids() -> void:
 	):
 		return
 
+	# Clear initial-spawn suppression after a grace
+	# window past level start or countdown end.
+	if _suppress_landing_skid:
+		var grace_origin := \
+			G.level.start_frame_index
+		var countdown_end := Netcode.frame_driver \
+			.match_start_countdown_end_frame_index
+		if countdown_end > grace_origin:
+			grace_origin = countdown_end
+		if (
+			Netcode.server_frame_index
+				- grace_origin
+				>= _LANDING_SKID_GRACE_FRAMES
+		):
+			_suppress_landing_skid = false
+
 	# Landing skid (bidirectional).
 	if (
 		surfaces.just_left_air
 		and surfaces.is_attaching_to_floor
 	):
-		G.level.skid_manager.spawn_skid(
-			global_position,
-			&"skid_both",
-			false,
-		)
-		play_sound("skid")
+		if not _suppress_landing_skid:
+			G.level.skid_manager.spawn_skid(
+				global_position,
+				&"skid_both",
+				false,
+			)
+			play_sound("skid")
 		_was_floor_skid_condition = false
 		return
 
@@ -309,7 +338,7 @@ func _handle_interaction_effects() -> void:
 			if Netcode.log.is_verbose:
 				Netcode.verbose(
 					("Player %d DIE interaction"
-					+ " detected on client") % [
+					+" detected on client") % [
 						player_id,
 					],
 					NetworkLogger
@@ -384,7 +413,7 @@ func _spawn_squish_sprite() -> void:
 	if is_instance_valid(match_state):
 		var shader := preload(
 			"res://assets/shaders/"
-			+ "sprite_outline.gdshader")
+			+"sprite_outline.gdshader")
 		var mat := ShaderMaterial.new()
 		mat.shader = shader
 		mat.set_shader_parameter(
@@ -683,7 +712,7 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	if _did_foot_pass_through_head_this_frame(other_player):
 		swept_killer = self
 		swept_victim = other_player
-	elif other_player._did_foot_pass_through_head_this_frame(self):
+	elif other_player._did_foot_pass_through_head_this_frame(self ):
 		swept_killer = other_player
 		swept_victim = self
 
@@ -700,7 +729,7 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 		if Netcode.log.is_verbose:
 			Netcode.verbose(
 				"Player kill detected (swept): "
-				+ "%d killed %d" % [
+				+"%d killed %d" % [
 					swept_killer.player_id,
 					swept_victim.player_id,
 				],
@@ -858,8 +887,8 @@ func _is_kill_collision_happening(other_player: Player) -> bool:
 	# Check both directions: self killing other, and
 	# other killing self.
 	return (
-		_is_foot_on_head(self, other_player) or
-		_is_foot_on_head(other_player, self)
+		_is_foot_on_head(self , other_player) or
+		_is_foot_on_head(other_player, self )
 	)
 
 
