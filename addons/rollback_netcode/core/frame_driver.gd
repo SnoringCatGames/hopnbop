@@ -44,8 +44,6 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# zoom/sizing is not quite right during match-start countdown, and then snaps to correct at the end of the countdown (when unpause happens).
-
 # Update the loading-screen text to indicate the current match-connecting status:
 # - Finding other players...
 # - Connecting to server...
@@ -57,17 +55,6 @@ extends Node
 #  - Match-end countdown last five seconds beeps
 #  - Crown ta-dah sound (musical)
 #  - SCG snore is playing, right?
-
-# Fix screen layouts:
-# - Make game-area be multiples of target.
-# - Make remaining area fill window (so HUD is not overtop game-area).
-
-# - Copy-over inbox notes.
-
-# Make a few updates to the score popup in PlayerDisplay.
-# - Make the popup bigger, and to the right of to score Label.
-# - Also, have the popup grow even larger with a tween (TRANS_BOUNCE, EASE_OUT).
-# - Also, have the popup slide away and up slightly during its duration (ease_in_out).
 
 # - "Easter eggs"!
 #   - Release by easter.
