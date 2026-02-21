@@ -34,6 +34,7 @@ var _last_camera: Camera2D
 
 
 func _enter_tree() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	G.pixel_viewport_manager = self
 
 
