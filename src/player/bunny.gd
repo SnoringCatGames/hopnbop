@@ -516,6 +516,16 @@ func on_match_state_ready(_player_match_state: PlayerState) -> void:
 	_update_appearance()
 	_update_outline_color()
 
+	# Disconnect the fallback listener if it was connected
+	# in _ready() (when player_id was still 0 and
+	# match_state was unavailable).
+	if G.match_state.player_joined.is_connected(
+		_on_any_player_joined
+	):
+		G.match_state.player_joined.disconnect(
+			_on_any_player_joined
+		)
+
 
 func _on_any_player_joined(player: PlayerState) -> void:
 	if player.player_id == player_id:

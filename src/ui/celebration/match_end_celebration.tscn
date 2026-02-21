@@ -79,6 +79,7 @@ vertical_alignment = 1
 [node name="ConfettiAudioStreamPlayer" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_ru0mh")
+volume_db = -9.348
 
 [node name="BoomAudioStreamPlayer" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true

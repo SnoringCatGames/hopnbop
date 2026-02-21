@@ -8,9 +8,9 @@ extends Control
 
 const _CAMERA_ZOOM_DURATION := 0.5
 const _TARGET_ZOOM := Vector2(3.0, 3.0)
-const _CONFETTI_DELAY := 0.5
+const _CONFETTI_DELAY := 0.35
 const _CONFETTI_COUNT := 40
-const _CONFETTI_STAGGER := 0.2
+const _CONFETTI_STAGGER := 0.45
 const _CONFETTI_OFFSET_CENTER := Vector2(0, -10)
 const _CONFETTI_OFFSET_UPPER_LEFT := Vector2(-40, -35)
 const _CONFETTI_OFFSET_UPPER_RIGHT := Vector2(40, -35)
@@ -52,13 +52,7 @@ func _ready() -> void:
 	%WinnerText.visible = false
 	%IrisOverlay.visible = false
 
-	# Connect after GamePanel has set G.match_state.
-	if is_instance_valid(G.match_state):
-		G.match_state.match_ended.connect(
-			start_celebration)
-	else:
-		# Fallback: wait for match_state to be set.
-		_connect_match_ended_deferred.call_deferred()
+	_connect_match_ended_deferred.call_deferred()
 
 
 func _connect_match_ended_deferred() -> void:
