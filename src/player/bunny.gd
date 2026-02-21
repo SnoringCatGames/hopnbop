@@ -195,6 +195,12 @@ func _process_movement_and_actions() -> void:
 
 
 func _process_animation() -> void:
+	# Force Rest during countdown to prevent
+	# JumpFall from rollback re-simulation.
+	if Netcode.frame_driver \
+			.is_match_start_countdown_active:
+		animator.play("Rest")
+		return
 	super._process_animation()
 	_update_skids()
 

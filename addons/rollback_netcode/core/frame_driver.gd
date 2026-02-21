@@ -44,8 +44,6 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# Increase the delay after the game is over before a transition-out occurs by 2 seconds. Adjust celebration effects accordingly.
-
 # - Hook-up sounds:
 #  - match-start countdown cadence chords
 #  - Match-end victory/draw cadence (in phone recording)
