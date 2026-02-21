@@ -82,7 +82,7 @@ extends Node
 # - Add notes to implement: water, spring, ice, flies, jetpack, and other cheats
 
 
-# - Polish movement. It still seems like we get jitter and stuck
+# - Polish networked movement. It still seems like we get jitter and stuck
 #   player-inputs-on-server-side too often.
 
 # - Review /rollback_netcode/examples/.
