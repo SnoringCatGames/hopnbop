@@ -24,6 +24,7 @@ const _TEXT_SLAM_SHAKE_DURATION := 0.35
 const _IRIS_DELAY := 3.8
 const _IRIS_DURATION := 0.7
 const _IRIS_CENTER_OFFSET := Vector2(0, -5)
+const _IRIS_TILE_SIZE_PX := 18.0
 
 
 var _camera: Camera2D
@@ -379,6 +380,15 @@ func _start_iris_close() -> void:
 	material.set_shader_parameter(
 		"aspect_ratio", vp_size.x / vp_size.y)
 
+	# Tile-based rendering parameters.
+	material.set_shader_parameter(
+		"tile_count",
+		(vp_size / _IRIS_TILE_SIZE_PX).ceil())
+	material.set_shader_parameter(
+		"random_seed", randf() * 1000.0)
+	material.set_shader_parameter(
+		"pattern_randomness", 0.1)
+
 	var tween := create_tween()
 	_active_tweens.append(tween)
 	tween.set_pause_mode(
@@ -409,11 +419,23 @@ func _update_iris_center() -> void:
 	if viewport == null:
 		return
 
-	var canvas_xform := (
-		viewport.get_canvas_transform())
 	var world_pos := (
-		_winner.global_position + _IRIS_CENTER_OFFSET)
-	var screen_pos := canvas_xform * world_pos
+		_winner.global_position
+		+ _IRIS_CENTER_OFFSET
+	)
+
+	var screen_pos: Vector2
+	if is_instance_valid(G.pixel_viewport_manager):
+		screen_pos = (
+			G.pixel_viewport_manager
+				.world_to_screen(world_pos)
+		)
+	else:
+		var canvas_xform := (
+			viewport.get_canvas_transform()
+		)
+		screen_pos = canvas_xform * world_pos
+
 	var vp_size := Vector2(
 		viewport.get_visible_rect().size)
 

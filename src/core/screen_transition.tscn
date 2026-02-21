@@ -6,7 +6,7 @@
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_wy2dm"]
 shader = ExtResource("1_vwba1")
 shader_parameter/progress = 0.0
-shader_parameter/tile_count = Vector2(16, 9)
+shader_parameter/tile_size = 18.0
 shader_parameter/transition_color = Color(0, 0, 0, 1)
 shader_parameter/use_captured_screen = false
 shader_parameter/delay_pattern = 5

@@ -55,9 +55,18 @@ func _process(_delta: float) -> void:
 			_hidden_for_transition = false
 			visible = true
 
-	# Apply the viewport's canvas transform so that world-space
-	# positions map correctly to the CanvasLayer's screen space.
-	transform = get_viewport().get_canvas_transform()
+	# Apply the combined transform so that world-space
+	# positions map correctly to the CanvasLayer's
+	# screen space.
+	if is_instance_valid(G.pixel_viewport_manager):
+		transform = (
+			G.pixel_viewport_manager
+				.get_world_to_screen_transform()
+		)
+	else:
+		transform = (
+			get_viewport().get_canvas_transform()
+		)
 	_update_label_positions()
 
 

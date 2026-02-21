@@ -1,0 +1,181 @@
+class_name PixelViewportManager
+extends Node
+## Manages integer-scaled pixel-perfect rendering for the
+## game SubViewport.
+##
+## Sizes the GameViewportContainer to fill the window at
+## the nearest integer pixel scale. Adjusts the active
+## camera's zoom so the base viewport area is always
+## visible. Provides coordinate mapping from game world
+## space to root viewport screen space.
+
+
+const _OVERFLOW_TOLERANCE := 0.05
+
+## The SubViewportContainer holding the game viewport.
+var container: SubViewportContainer
+## The game SubViewport.
+var sub_viewport: SubViewport
+var _base_resolution: Vector2i
+
+## Current integer scale factor.
+var current_scale: int = 1
+
+## Zoom multiplier applied to the active camera.
+var _zoom_scale := 1.0
+
+## Tracks each camera's original zoom before we modify
+## it. Dictionary<Camera2D, Vector2>.
+var _base_zooms := {}
+
+## Last camera we applied zoom to, for detecting
+## switches.
+var _last_camera: Camera2D
+
+
+func _enter_tree() -> void:
+	G.pixel_viewport_manager = self
+
+
+func _ready() -> void:
+	if Netcode.is_server:
+		return
+
+	_base_resolution = Vector2i(
+		ProjectSettings.get_setting(
+			"display/window/size/viewport_width",
+			1152),
+		ProjectSettings.get_setting(
+			"display/window/size/viewport_height",
+			648),
+	)
+
+	container = get_parent().get_node(
+		"GameViewportContainer")
+	sub_viewport = get_parent().get_node(
+		"GameViewportContainer/GameViewport")
+
+	get_tree().root.size_changed.connect(
+		_on_window_resized)
+	# Apply initial sizing immediately.
+	_on_window_resized()
+
+
+func _process(_delta: float) -> void:
+	if Netcode.is_server:
+		return
+	_update_camera_zoom()
+
+
+func _on_window_resized() -> void:
+	if not is_instance_valid(container):
+		return
+
+	var window_size := DisplayServer.window_get_size()
+	current_scale = _compute_integer_scale(
+		window_size, _base_resolution)
+
+	# Fill the window, aligned to integer scale.
+	@warning_ignore("integer_division")
+	var container_w := (window_size.x / current_scale) \
+		* current_scale
+	@warning_ignore("integer_division")
+	var container_h := (window_size.y / current_scale) \
+		* current_scale
+
+	container.stretch_shrink = current_scale
+	container.size = Vector2(container_w, container_h)
+
+	# Center the tiny remaining margin (0 to N-1
+	# pixels per side).
+	container.position = Vector2(
+		(window_size.x - container_w) / 2.0,
+		(window_size.y - container_h) / 2.0,
+	)
+
+	# Recompute zoom scale for the new SubViewport
+	# size.
+	@warning_ignore("integer_division")
+	var svp_w := container_w / current_scale
+	@warning_ignore("integer_division")
+	var svp_h := container_h / current_scale
+	_zoom_scale = minf(
+		float(svp_w) / float(_base_resolution.x),
+		float(svp_h) / float(_base_resolution.y),
+	)
+
+	# Apply immediately to the active camera.
+	_update_camera_zoom()
+
+
+static func _compute_integer_scale(
+	window_size: Vector2i,
+	base_resolution: Vector2i,
+) -> int:
+	var max_scale_x := int(
+		float(window_size.x)
+		* (1.0 + _OVERFLOW_TOLERANCE)
+		/ float(base_resolution.x)
+	)
+	var max_scale_y := int(
+		float(window_size.y)
+		* (1.0 + _OVERFLOW_TOLERANCE)
+		/ float(base_resolution.y)
+	)
+	var scale := mini(max_scale_x, max_scale_y)
+	return maxi(scale, 1)
+
+
+func _update_camera_zoom() -> void:
+	if not is_instance_valid(sub_viewport):
+		return
+
+	var camera := sub_viewport.get_camera_2d()
+	if not is_instance_valid(camera):
+		_last_camera = null
+		return
+
+	# Record original zoom when we first see a camera.
+	if not _base_zooms.has(camera):
+		_base_zooms[camera] = camera.zoom
+
+	var base_zoom: Vector2 = _base_zooms[camera]
+	camera.zoom = base_zoom * _zoom_scale
+
+	_last_camera = camera
+
+
+## Builds a Transform2D mapping world coordinates to
+## root viewport screen coordinates.
+func get_world_to_screen_transform() -> Transform2D:
+	if not is_instance_valid(sub_viewport):
+		return Transform2D.IDENTITY
+
+	var cx := sub_viewport.get_canvas_transform()
+	var sf := float(current_scale)
+	var cp := container.position
+
+	# Combine: canvas_transform * scale * offset.
+	return Transform2D(
+		Vector2(cx.x.x * sf, cx.x.y * sf),
+		Vector2(cx.y.x * sf, cx.y.y * sf),
+		Vector2(
+			cx.origin.x * sf + cp.x,
+			cx.origin.y * sf + cp.y),
+	)
+
+
+## Converts a world position to root viewport screen
+## coordinates.
+func world_to_screen(world_pos: Vector2) -> Vector2:
+	if not is_instance_valid(sub_viewport):
+		return world_pos
+
+	var canvas_pos := (
+		sub_viewport.get_canvas_transform()
+		* world_pos
+	)
+	return (
+		canvas_pos * float(current_scale)
+		+ container.position
+	)

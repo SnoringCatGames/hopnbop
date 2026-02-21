@@ -3,8 +3,9 @@ shader_type canvas_item;
 // Main animation progress (0.0 = fully visible, 1.0 = fully transitioned).
 uniform float progress : hint_range(0.0, 1.0) = 0.0;
 
-// Grid configuration.
-uniform vec2 tile_count = vec2(16.0, 9.0);
+// Tile size in pixels. Square tiles are computed from
+// this and the screen dimensions.
+uniform float tile_size = 18.0;
 
 // Transition color (what tiles snap to) - used when not using captured screen.
 uniform vec4 transition_color : source_color = vec4(0.0, 0.0, 0.0, 1.0);
@@ -55,6 +56,10 @@ void fragment() {
 	// Apply ease-out-in to progress (fast at edges, slow in middle).
 	float eased_progress = ease_out_in(progress);
 
+	// Compute square tile grid from screen dimensions.
+	vec2 screen_size = 1.0 / SCREEN_PIXEL_SIZE;
+	vec2 tile_count = ceil(screen_size / tile_size);
+
 	// Determine which tile this pixel belongs to.
 	vec2 tile_pos = floor(UV * tile_count);
 
@@ -69,9 +74,13 @@ void fragment() {
 	// Calculate this tile's delay (0.0 to 1.0) based on pattern.
 	float tile_delay = 0.0;
 	if (delay_pattern == 0) {
-		// Radial from center.
-		vec2 center = vec2(0.5, 0.5);
-		tile_delay = length(normalized - center) / length(vec2(0.5, 0.5));
+		// Radial from center (aspect-corrected for
+		// circular shape with square tiles).
+		vec2 diff = normalized - vec2(0.5, 0.5);
+		float ar = tile_count.x / tile_count.y;
+		diff.x *= ar;
+		tile_delay = length(diff)
+			/ length(vec2(0.5 * ar, 0.5));
 	} else if (delay_pattern == 1) {
 		// Diagonal from top-left.
 		tile_delay = (normalized.x + normalized.y) / 2.0;

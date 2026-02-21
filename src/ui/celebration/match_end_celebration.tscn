@@ -14,8 +14,10 @@
 shader = ExtResource("2_shader")
 shader_parameter/progress = 0.0
 shader_parameter/center = Vector2(0.5, 0.5)
-shader_parameter/edge_softness = 0.02
 shader_parameter/aspect_ratio = 1.777
+shader_parameter/tile_count = Vector2(64, 36)
+shader_parameter/random_seed = 0.0
+shader_parameter/pattern_randomness = 0.1
 
 [sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_ru0mh"]
 streams_count = 4
