@@ -41,6 +41,12 @@ var start_position := Vector2.INF
 var previous_position := Vector2.INF
 var previous_velocity := Vector2.INF
 
+## Velocity before move_and_slide() modifies it. Used for
+## collision callbacks (Area2D) that fire after physics,
+## where the post-move_and_slide velocity may have been
+## zeroed by surface collision resolution.
+var pre_movement_velocity := Vector2.ZERO
+
 var last_triggered_jump_frame_index := -1
 
 var jump_sequence_count := 0
@@ -227,6 +233,10 @@ func _apply_movement() -> void:
 	# Save state for potential collision correction.
 	var saved_position := position
 	var saved_velocity := velocity
+
+	# Save velocity before move_and_slide for Area2D
+	# collision callbacks that fire after physics.
+	pre_movement_velocity = velocity
 
 	# When descending through floors while pressing into a wall, temporarily
 	# zero horizontal velocity to prevent wall collision from zeroing Y velocity.

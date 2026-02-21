@@ -914,8 +914,12 @@ static func _is_foot_on_head(
 	if not foot_area.overlaps_area(head_area):
 		return false
 
+	# Use pre-movement velocity. This is called from
+	# Area2D/body callbacks that fire after physics,
+	# where move_and_slide() may have zeroed velocity.
 	var relative_velocity := (
-		attacker.velocity - victim.velocity
+		attacker.pre_movement_velocity
+		- victim.pre_movement_velocity
 	)
 	return relative_velocity.y > 0
 
@@ -930,8 +934,12 @@ func _did_foot_pass_through_head_this_frame(other_player: Player) -> bool:
 		other_player.previous_position == Vector2.INF):
 		return false
 
-	# Check relative velocity is downward.
-	var relative_velocity := velocity - other_player.velocity
+	# Check relative velocity is downward. Use
+	# pre-movement velocity since this is called from
+	# callbacks that fire after move_and_slide().
+	var relative_velocity := (
+		pre_movement_velocity
+		- other_player.pre_movement_velocity)
 	if relative_velocity.y <= 0:
 		return false
 
@@ -1086,11 +1094,19 @@ func _on_foot_area_area_entered(area: Area2D) -> void:
 	var other_player := other_parent as Player
 	var other_player_id := other_player.player_id
 
-	var relative_velocity := velocity - other_player.velocity
-	var is_relative_velocity_downward := relative_velocity.y > 0
-
 	if other_player == self:
 		return
+
+	# Use pre-movement velocity for the relative velocity
+	# check. By the time this Area2D callback fires (after
+	# the physics step), move_and_slide() may have zeroed
+	# velocity.y due to CharacterBody2D collision with the
+	# victim, causing a false negative.
+	var relative_velocity := (
+		pre_movement_velocity
+		- other_player.pre_movement_velocity)
+	var is_relative_velocity_downward := (
+		relative_velocity.y > 0)
 
 	if not is_relative_velocity_downward:
 		return
@@ -1308,8 +1324,13 @@ func _process_deferred_collisions() -> void:
 				is_still_intersecting = foot_area.overlaps_area(other_head_area)
 
 			if is_still_intersecting:
-				# Check downward velocity requirement for kills.
-				var relative_velocity := velocity - other_player.velocity
+				# Check downward velocity requirement for
+				# kills. Use pre-movement velocity since
+				# move_and_slide() may have zeroed it.
+				var relative_velocity := (
+					pre_movement_velocity
+					- other_player
+						.pre_movement_velocity)
 				if relative_velocity.y > 0:
 					Netcode.verbose(
 						"Deferred kill: %d killed %d" % [player_id, other_player_id],

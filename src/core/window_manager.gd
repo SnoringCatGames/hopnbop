@@ -78,6 +78,8 @@ func position_server_window_in_preview_mode() -> void:
 
 	@warning_ignore("integer_division")
 	var half_width := usable_rect.size.x / 2
+	@warning_ignore("integer_division")
+	var third_width := usable_rect.size.x / 3
 
 	if G.settings.preview_run_multiple_clients:
 		# With 2 clients: Server takes top portion (3/8), Client 2 bottom
@@ -87,7 +89,7 @@ func position_server_window_in_preview_mode() -> void:
 		@warning_ignore("integer_division")
 		var server_height := (available_height * 3) / 8
 
-		DisplayServer.window_set_size(Vector2i(half_width, server_height))
+		DisplayServer.window_set_size(Vector2i(third_width, server_height))
 		DisplayServer.window_set_position(
 			Vector2i(
 				usable_rect.position.x,
@@ -98,7 +100,7 @@ func position_server_window_in_preview_mode() -> void:
 		# With 1 client: Server takes left half.
 		var window_height := usable_rect.size.y - TITLE_BAR_HEIGHT
 
-		DisplayServer.window_set_size(Vector2i(half_width, window_height))
+		DisplayServer.window_set_size(Vector2i(third_width, window_height))
 		DisplayServer.window_set_position(
 			Vector2i(
 				usable_rect.position.x,
@@ -135,13 +137,14 @@ func position_client_window_in_preview_mode() -> void:
 		if server_visible:
 			# Client takes right half, server takes left half.
 			@warning_ignore("integer_division")
-			var half_width := usable_rect.size.x / 2
+			var third_width := usable_rect.size.x / 3
+			var two_third_width := usable_rect.size.x - third_width
 			var window_height := usable_rect.size.y - TITLE_BAR_HEIGHT
 
-			DisplayServer.window_set_size(Vector2i(half_width, window_height))
+			DisplayServer.window_set_size(Vector2i(two_third_width, window_height))
 			DisplayServer.window_set_position(
 				Vector2i(
-					usable_rect.position.x + half_width,
+					usable_rect.position.x + third_width,
 					usable_rect.position.y + TITLE_BAR_HEIGHT
 				)
 			)
@@ -172,7 +175,8 @@ func position_client_window_in_preview_mode() -> void:
 	else:
 		# Multiple clients layout.
 		@warning_ignore("integer_division")
-		var half_width := usable_rect.size.x / 2
+		var third_width := usable_rect.size.x / 3
+		var two_third_width := usable_rect.size.x - third_width
 
 		if server_visible:
 			# Client 1 takes right half, Client 2 takes bottom-left quadrant.
@@ -181,11 +185,11 @@ func position_client_window_in_preview_mode() -> void:
 				var window_height := usable_rect.size.y - TITLE_BAR_HEIGHT
 
 				DisplayServer.window_set_size(
-					Vector2i(half_width, window_height)
+					Vector2i(two_third_width, window_height)
 				)
 				DisplayServer.window_set_position(
 					Vector2i(
-						usable_rect.position.x + half_width,
+						usable_rect.position.x + third_width,
 						usable_rect.position.y + TITLE_BAR_HEIGHT
 					)
 				)
@@ -201,7 +205,7 @@ func position_client_window_in_preview_mode() -> void:
 				var client2_height := (available_height * 5) / 8
 
 				DisplayServer.window_set_size(
-					Vector2i(half_width, client2_height)
+					Vector2i(third_width, client2_height)
 				)
 				DisplayServer.window_set_position(
 					Vector2i(
@@ -217,11 +221,16 @@ func position_client_window_in_preview_mode() -> void:
 			# Calculate position on target screen.
 			var position_x := usable_rect.position.x
 			if Netcode.preview_client_number != 1:
-				position_x += half_width
+				position_x += third_width
 			var position_y := usable_rect.position.y + TITLE_BAR_HEIGHT
+			var width := (
+				two_third_width
+				if Netcode.preview_client_number != 1
+				else third_width
+			)
 
 			# Set size and position.
-			DisplayServer.window_set_size(Vector2i(half_width, window_height))
+			DisplayServer.window_set_size(Vector2i(width, window_height))
 			DisplayServer.window_set_position(
 				Vector2i(position_x, position_y)
 			)

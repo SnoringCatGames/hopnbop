@@ -52,6 +52,12 @@ var is_invincible: bool:
 			int(G.settings.player_invincibility_duration_sec * 60)
 		return Netcode.server_frame_index < invincibility_end_frame
 
+# Tracks the last frame for which we sent a
+# confirmed authoritative state to the owning
+# client. Used by _try_send_confirmed to catch
+# up on any frames skipped during rollback.
+var _last_confirmed_sent_frame := -1
+
 const _synced_properties_and_rollback_diff_thresholds := {
 	position = DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD,
 	velocity = DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHOLD,
@@ -673,10 +679,12 @@ func _post_network_process() -> void:
 		_try_send_confirmed_authoritative_state()
 
 
-## Checks if the input for a recently processed frame became authoritative.
-## If so, upgrades the character state authority and packs it for network
-## sending. This ensures clients receive AUTHORITATIVE confirmations even
-## when the server correctly predicts input (no rollback).
+## Checks if the input for recently processed frames became
+## authoritative. If so, upgrades the character state authority
+## and packs it for network sending. Scans from the last
+## confirmed frame forward to catch frames skipped during
+## rollback re-simulation (where this method is not called).
+## Sends one frame per tick to avoid burst overhead.
 func _try_send_confirmed_authoritative_state() -> void:
 	if not is_authority_for_state_from_server:
 		return
@@ -685,43 +693,74 @@ func _try_send_confirmed_authoritative_state() -> void:
 	if _rollback_buffer == null:
 		return
 
-	# Check the previous frame. Input typically arrives 1 tick after the
-	# frame was processed.
-	var previous_frame_index := frame_index - 1
-	if previous_frame_index < 0:
-		return
-	if not _rollback_buffer.has_at(previous_frame_index):
-		return
-	if not input_from_client._rollback_buffer.has_at(previous_frame_index):
-		return
-
-	# Check if input for the previous frame is authoritative.
-	var input_state: Array = \
-		input_from_client._rollback_buffer.get_at(previous_frame_index)
-	if not input_from_client._is_frame_authoritative(input_state):
+	# Scan from the frame after the last confirmed one
+	# up to the previous frame (input typically arrives
+	# 1 tick late). Send the earliest unconfirmed frame
+	# to ensure interaction onsets are never skipped.
+	var oldest_possible := maxi(
+		_last_confirmed_sent_frame + 1,
+		Netcode.frame_driver
+			.oldest_rollbackable_frame_index)
+	var newest_possible := frame_index - 1
+	if newest_possible < 0:
 		return
 
-	# Always upgrade and send, even if already AUTHORITATIVE from
-	# rollback re-simulation. Without this, _try_send skips frames
-	# that were marked AUTHORITATIVE during server rollback, causing
-	# the sent frame to stall for many ticks. The client then
-	# receives the same stale AUTHORITATIVE state repeatedly,
-	# triggering cascading rollbacks (especially during jumps where
-	# position diverges).
-	var char_state: Array = _rollback_buffer.get_at(previous_frame_index)
+	var target_frame := -1
+	for check_frame in range(
+		oldest_possible, newest_possible + 1
+	):
+		if not _rollback_buffer.has_at(check_frame):
+			# Frame fell out of buffer. Advance past
+			# it so we don't stall on lost frames.
+			_last_confirmed_sent_frame = maxi(
+				_last_confirmed_sent_frame,
+				check_frame)
+			continue
+		if not input_from_client._rollback_buffer \
+				.has_at(check_frame):
+			# Input fell out of buffer. Advance past
+			# it so we don't stall on lost input.
+			_last_confirmed_sent_frame = maxi(
+				_last_confirmed_sent_frame,
+				check_frame)
+			continue
+		var input_state: Array = \
+			input_from_client._rollback_buffer \
+				.get_at(check_frame)
+		if input_from_client._is_frame_authoritative(
+			input_state
+		):
+			target_frame = check_frame
+			break
+
+	if target_frame < 0:
+		return
+
+	# Always upgrade and send, even if already
+	# AUTHORITATIVE from rollback re-simulation.
+	# Without this, _try_send skips frames that were
+	# marked AUTHORITATIVE during server rollback,
+	# causing the sent frame to stall for many ticks.
+	var char_state: Array = \
+		_rollback_buffer.get_at(target_frame)
 	if not _is_frame_authoritative(char_state):
-		_set_frame_authority(char_state, FrameAuthority.AUTHORITATIVE)
-		_rollback_buffer.set_at(previous_frame_index, char_state)
+		_set_frame_authority(
+			char_state,
+			FrameAuthority.AUTHORITATIVE)
+		_rollback_buffer.set_at(
+			target_frame, char_state)
 
-	# Pack this authoritative state for network sending.
-	# Build a packed state array from the buffer entry.
-	var prop_count := _property_names_for_packing.size()
+	# Pack this authoritative state for network
+	# sending.
+	var prop_count := \
+		_property_names_for_packing.size()
 	var state := ArrayPool.acquire(prop_count + 2)
 	for i in range(prop_count):
-		state[i] = _get_frame_property(char_state, \
+		state[i] = _get_frame_property(
+			char_state,
 			_property_names_for_packing[i])
 	state[prop_count] = FrameAuthority.AUTHORITATIVE
-	state[prop_count + 1] = previous_frame_index
+	state[prop_count + 1] = target_frame
 
 	_is_packing_state_locally = true
 	if not authoritative_packed_state.is_empty():
@@ -729,10 +768,14 @@ func _try_send_confirmed_authoritative_state() -> void:
 	authoritative_packed_state = state
 	_is_packing_state_locally = false
 
+	_last_confirmed_sent_frame = target_frame
+
 	if Netcode.log.is_verbose:
 		Netcode.log.verbose(
-			"%s F:%d Confirmed authoritative state for frame %d" %
-			[name, Netcode.server_frame_index, previous_frame_index],
+			"%s F:%d Confirmed authoritative "
+			+ "state for frame %d" %
+			[name, Netcode.server_frame_index,
+			target_frame],
 			NetworkLogger.CATEGORY_NETWORK_SYNC)
 
 
