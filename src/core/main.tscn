@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://bpnl5pn3ydite"]
+[gd_scene load_steps=10 format=3 uid="uid://bpnl5pn3ydite"]
 
 [ext_resource type="Script" uid="uid://cb3gdybtwy0ry" path="res://src/core/main.gd" id="1_avv2o"]
 [ext_resource type="PackedScene" uid="uid://bt1la6s52krxe" path="res://src/ui/hud/hud.tscn" id="2_ukt3u"]
@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" uid="uid://bvkt5maj64yqm" path="res://src/ui/super_hud/super_hud.tscn" id="7_nxx65"]
 [ext_resource type="PackedScene" uid="uid://cidck5vww8ede" path="res://src/core/screen_transition.tscn" id="8_2uitn"]
 [ext_resource type="PackedScene" uid="uid://cl4rrq5jk5usy" path="res://src/ui/celebration/match_end_celebration.tscn" id="9_celeb"]
+[ext_resource type="Script" path="res://src/core/pixel_viewport_manager.gd" id="10_pvm"]
 
 [node name="Main" type="Node2D"]
 process_mode = 3
@@ -15,7 +16,20 @@ script = ExtResource("1_avv2o")
 
 [node name="AudioMain" parent="." instance=ExtResource("3_nlf45")]
 
-[node name="GamePanel" parent="." instance=ExtResource("3_x62ka")]
+[node name="GameViewportContainer" type="SubViewportContainer" parent="."]
+texture_filter = 0
+size = Vector2(1152, 648)
+stretch = true
+stretch_shrink = 1
+
+[node name="GameViewport" type="SubViewport" parent="GameViewportContainer"]
+unique_name_in_owner = true
+handle_input_locally = true
+canvas_item_default_texture_filter = 0
+size = Vector2i(1152, 648)
+render_target_update_mode = 4
+
+[node name="GamePanel" parent="GameViewportContainer/GameViewport" instance=ExtResource("3_x62ka")]
 position = Vector2(0, -7)
 
 [node name="Screens" type="CanvasLayer" parent="."]
@@ -42,3 +56,6 @@ layer = 300
 layer = 400
 
 [node name="ScreenTransition" parent="TransitionLayer" instance=ExtResource("8_2uitn")]
+
+[node name="PixelViewportManager" type="Node" parent="."]
+script = ExtResource("10_pvm")

@@ -81,11 +81,19 @@ func _draw() -> void:
 	):
 		return
 
-	# Draw in world space by applying the viewport's canvas
-	# transform (includes camera pan and zoom).
-	draw_set_transform_matrix(
-		get_viewport().get_canvas_transform()
-	)
+	# Draw in world space by applying the combined
+	# canvas + scaling transform.
+	var draw_xform: Transform2D
+	if is_instance_valid(G.pixel_viewport_manager):
+		draw_xform = (
+			G.pixel_viewport_manager
+				.get_world_to_screen_transform()
+		)
+	else:
+		draw_xform = (
+			get_viewport().get_canvas_transform()
+		)
+	draw_set_transform_matrix(draw_xform)
 
 	for player_id in _player_ids:
 		var player: Player = G.get_player(player_id)

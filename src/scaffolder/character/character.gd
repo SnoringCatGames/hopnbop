@@ -302,20 +302,23 @@ func _process_actions() -> void:
 			action_handler.name == &"FloorDefaultAction"
 		)
 
-		var is_action_relevant_for_surface: bool = (
-			action_handler.type == surfaces.surface_type or
-			action_handler.type == SurfaceType.OTHER or
-			# Our surface-state logic considers the current actions, and
-			# surface-state is updated before we process actions here.
-			# Furthermore, we use action-handlers to actually apply the
-			# changes for things like jump impulses that are needed to
-			# actually transition the character from a surface. So we need
-			# to also consider the surface that we are currently leaving,
-			# and allow an action-handler of that departure-surface-type to
-			# handle this frame.
-			(action_handler.type == surfaces.just_left_surface_type and
-				surfaces.just_left_surface_type != SurfaceType.OTHER)
-		)
+		# Our surface-state logic considers the current actions, and
+		# surface-state is updated before we process actions here.
+		# Furthermore, we use action-handlers to actually apply the
+		# changes for things like jump impulses that are needed to
+		# actually transition the character from a surface. So we need
+		# to also consider the surface that we are currently leaving,
+		# and allow an action-handler of that departure-surface-type to
+		# handle this frame. However, "Default" actions maintain steady-
+		# state behavior and should not run during surface transitions.
+		var is_just_left_and_not_default: bool = \
+				action_handler.type == surfaces.just_left_surface_type and \
+				surfaces.just_left_surface_type != SurfaceType.OTHER and \
+				!action_handler.name.contains("Default")
+		var is_action_relevant_for_surface: bool = \
+				action_handler.type == surfaces.surface_type or \
+				action_handler.type == SurfaceType.OTHER or \
+				is_just_left_and_not_default
 		var is_action_relevant_for_physics_mode: bool = (
 			action_handler.uses_runtime_physics
 		)

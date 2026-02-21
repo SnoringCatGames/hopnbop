@@ -58,8 +58,10 @@ extends Node
 
 # - Copy-over inbox notes.
 
-# - Make score popup bigger, and to the right of to score.
-# - Score popup, more tweens, position away, fade, embiggen more, rotate back and forth
+# Make a few updates to the score popup in PlayerDisplay.
+# - Make the popup bigger, and to the right of to score Label.
+# - Also, have the popup grow even larger with a tween (TRANS_BOUNCE, EASE_OUT).
+# - Also, have the popup slide away and up slightly during its duration (ease_in_out).
 
 # - "Easter eggs"!
 #   - Release by easter.
@@ -96,6 +98,225 @@ extends Node
 #   - We should also override various other settings if we're not in the editor.
 #     - Do this with getters on those properties.
 #     - Probably need to check Engine.is_editor_hint though also in the getters.
+
+
+#######################################################
+# UNPROCESSED EMAIL NOTES
+
+# Ask if we sockets or webrtc make more sense for web
+# Ask if that would make it more worth having a slower network frame rate than physics
+
+# Move control displays smaller and in the bottom left. Have them shove in to compact space when one is used and removed.
+# Make a platform for level selection above hole.
+# Show level selection UI when landing on the platform. Hide it when selecting x at the top or bottom of the ui list. Ui list has three columns x header, check header, double check header. Exclusive selection or no selection for double check. All rows must be in x or check.
+
+# Big pit level, with steps up either side
+
+# Leaderboard UI show list of local players, with a list of other players next to them, with xN next to each other in the row
+
+# Hook up smoosh animation
+# For lobby previously match score, just show the three tiered pedestal with gold silver bronze from the overall match.
+# Make another screen transition to show at the end of a match. It narrows an aperture toward the highest scoring player (if there was one!).
+# If there wasn't... TODO
+# TODO: DOES THAT FULLY RESOLVE THE END OF MATCH GRACE PERIOD?
+# Remove game over screen.
+# Make sure lobby prayer color is white.
+# ADD ALTERNATE BUNNY COLORS.
+
+# Pogostick cheat
+# Bunnies in space cheat
+# Crown for winners head? Current winner, and previous winner when in lobby
+
+# ADD LEVEL WRAP AROUND LIKE KILLER QUEEN (vertically and horizontally)
+
+# ADD SUPPORT FOR AUTO SIZING THE GAME AREA VIEWPORT. It should be a multiple of some value... That should leave the character at a discrete total scale.
+# But we can still shove UI below the game area viewport.
+# This should auto calculate and assign camera zoom as well.
+# This should account for the current level size.
+# This should account for the current window size.
+
+# Make a list of sound requests for Alden. Will need to decide on theme/vibe first. Different music per level? Different art per level?
+
+# Ask AI where auth fits into the current backend and GameLift logic. This was originally planned.
+
+# Find those notes for interactive animated tiles behind and in front
+
+# "moregore" should toggle extra gore. And I should tune down the current levels
+
+# Also make an exact shape copy of the original jump n bump level
+
+# Numpad controls
+# Mouse controls?
+# Cycle through one control display shown at a time in the bottom left corner.
+# Also, have the display blink on and off.
+# Always show the blue up.
+
+# Add support for a local-only mode.
+
+# Think about how to use my network to find an artist. Doesn't even have to be pixel art, I guess...
+
+# Change adjectives based on gameplay conditions:
+# Getting a crown
+# Bumping a lot
+# Killing a lot
+# Dying a lot
+# Jumping a lot
+# Not jumping a lot
+# Swimming a lot
+# Staying still
+# Not killing
+# Not dying
+# Slipping
+# Changing direction a lot
+
+# Decorative critters:
+# Snail
+# Birds
+# Frog/cricket
+# Fish (dodge bunnies in water)
+# Butterflies
+# Fly swarm
+
+# NOW is probably the time to document every aspect of the networking systems, what they do, why, pros and cons, ask AI to help, look at what .md files already exist, all to draft a particular collection of devlog posts, first deciding on main sections and bullets, then I approve, then draft them. GameLift, backend, auth, and other bits of networking not related to gameplay. Then all the gameplay bits
+#  (What is lock step again??)
+
+# After publishing devlog post, add links to code to the post, to provide more detailed explanations with visuals.
+
+# Still lots of emails with context for the blog post
+
+# Make placeholder sounds:
+# Jump
+# Land
+# Walk
+# Change direction
+# Die
+# Bump
+# Countdown start
+# Countdown end
+# Game over
+# Down the rabbit hole
+# Spawn player in lobby
+# Respawn player in lobby
+# Spawn player in game
+# Simple music (match and lobby)
+
+# Add another section to the idle animation: eating and pooping.
+# They happen together.
+# Poop actually results in particles that emit, spread, fall, and rasterize at 100% rate.
+# Also track who has pooped the most.
+# Use pooping to trigger additional adjectives (flatulent, fertilizing, fragrant, ...).
+
+# Track who swims the most, springs the most, slips the lost, pivots the most (flighty, scared, ...
+# ), hangs out with flies the most, and spends the most time on the uppermost platform height (king of the hill)
+# Adjectives for all of these!
+
+# Flies are drawn slowly to poop!
+# Flies are chased away by bunnies.
+# Flies have simple swarming/flocking behaviors.
+
+# Add another super hud panel for listing all tracked stats (the hidden things used for adjectives) for each player
+
+# Only poop once until moving again.
+
+# Fly sfx meds to components:
+# One is very positional. Oyr represents where it is relatively and how far.
+# The other is not positional, but it's stronger based on how close and how many. This one needs to have each individual bzzz have a lot of motion with panning.
+# Need to calculate a strength and relative position score based on the relative positions of ALL flies in the level
+
+# Add alternatw modes for all the holidays.
+# Halloween: candy gore, background change, level change, costume change
+# Vday: red and pink heart gore, also little baby bunnies run away away when killed, background/level/costume...
+# Shamrocks
+# Fireworks
+# Candy canes
+# Easter eggs (and finding bonus Easter eggs hidden in each level; need to add occlusion at for this!)
+# T day...
+# Chinese New Year's
+# Other important holidays across the world
+
+# Add bespoke art for each level, rather than tile sets. Or, at least, try this for one level.
+# DEFINITELY add decoration/occlusion art to scatter around in each level (with our without tile set versions of levels)
+
+# Alternate adjectives for holidays too
+
+# Add a drag force to celebration confetti
+
+# Publish to the AssetLibrary a plugin for client prediction
+
+# Publish to the AssetLibrary a GDExtension for GameLift integration?
+
+# **** Re-enable the `Build GDExtension` GitHub Actions Workflow
+
+
+#######################################################
+# Docs and devlog articles
+
+# Nakama
+# Gamelift
+# Agones
+# Shockbyte
+# P2Pdistributedauthorityvsserverauthority(don't want players to have to know about port forwarding!)
+# I don'tusetheMonoversionofGodot, and IamprettycomfortablemodifyingtheGodotenginelogic and writingGDExtensionlogic, soIoptedtousetheC + +APIs.
+# Estimatedtocostaround$10 / monthwithlowusage.(gofindthecalculatoragain, and sharespecifics, and alink)
+
+# Reply here also: https://www.reddit.com/r/godot/comments/hlx9xl/should_i_use_aws_gamelift_or_some_alternate/
+
+# Before posting anything, collect some actual metrics:
+# - My load
+# - My tests
+# - My costs
+# - My hours to implement
+
+# Publish the Gamelift plugin as a GDExtension??
+
+# Talk about how it compares with Unreal (and MHS)
+# Talk about how the Godot API setup feels, and how the GameLift deployment feels.
+# Talk about how much time I spent researching both parts
+
+# Talk about time spent researching vs implementing
+
+# Post this a bit after the jam--after fully testing the framework, and having a good demo to point to (and with polished debug visualizations!)
+
+# List important aspects of system
+# Interactions and last-time records
+# Some are rollbackable (like jumps) some are not (like death)
+# For two reasons, snappier responses and simpler reconciliation logic, we make some not rollbackable.
+# To be specific, it's the _onset_ of an interaction period that's not rollbackable--that is, the first frame that the new interaction appears in (though l, we actually check this by considering the last_ingeraction_frame_index, in case we have multiple instances of the same interaction in sequence). Non-onset frames of a non-rollbackable interaction can be rolled back
+# [Diagram]
+# Explain rollbacks in general
+# Explain fast forwards (only on client)
+
+# _I_ should write the docs, so I can remember better later
+
+# -----
+
+# The technique is most commonly called "dynamic input delay" or "dynamic input latency" in the game networking community. It's sometimes also referred to as "adaptive input delay."
+
+# What it is
+# The idea is to intentionally buffer local player input by N frames before injecting it into the simulation (while still transmitting it immediately to peers). This shrinks the prediction window — the number of frames the remote side must predict and potentially roll back. The tradeoff is local responsiveness vs. remote visual smoothness.
+
+# Key references
+# The best writeup is Ryan Juckett's INVERSUS article, where he calls it "Dynamic Input Latency":
+
+# The system measures the worst peer frame lag (averaged over 100 frames) and adjusts the local delay using a state machine
+# Fast connections: 0 frames of local lag, allowing a few frames of remote prediction
+# Worsening connections: adds local lag to slow down how fast remote prediction grows
+# Caps at 4 frames of local lag (anything beyond was too unpleasant)
+# This complements INVERSUS's 20-frame rollback window
+# SnapNet describes a tiered approach: the first 50ms of latency is absorbed by input delay, prediction handles 50-150ms, and beyond 150ms more input delay is added. They frame it as a balance between prediction and input delay.
+
+# The general principle
+# In pure rollback with 0 input delay, the remote side must predict N frames where N = one-way latency in frames. Every misprediction requires rollback + re-simulation. By adding K frames of input delay locally, the remote prediction window shrinks to N-K frames, reducing rollback frequency and visual glitches at the cost of K frames of local input lag.
+
+# Sources:
+
+# Rollback Networking in INVERSUS – Hypersect (http://blog.hypersect.com/rollback-networking-in-inversus/)
+# Rollback Networking in INVERSUS – Game Developer (https://www.gamedeveloper.com/design/rollback-networking-in-inversus)
+# Netcode Architectures Part 2: Rollback – SnapNet (https://www.snapnet.dev/blog/netcode-architectures-part-2-rollback/)
+# GGPO – Wikipedia (https://en.wikipedia.org/wiki/GGPO)
+
+#######################################################
+
 
 # FIXME: GameLift
 # - [Obsolete?] Proceed with the "AWS GameLift Deployment Guide"

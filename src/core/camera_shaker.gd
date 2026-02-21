@@ -4,9 +4,8 @@ extends Node
 ## Camera2D to produce a screen-shake effect.
 ## Registered as a global service on G.
 ##
-## Uses get_viewport().get_camera_2d() each frame
-## to find the active camera, so it survives scene
-## reloads without manual re-registration.
+## Checks the game SubViewport first (where the
+## Camera2D lives), falling back to the root viewport.
 
 
 const _DEFAULT_INTENSITY := 6.0
@@ -18,13 +17,22 @@ var _shake_intensity := 0.0
 var _shake_duration := 0.0
 
 
+func _get_active_camera() -> Camera2D:
+	# Camera2D lives in the game SubViewport.
+	if is_instance_valid(G.game_viewport):
+		var cam := G.game_viewport.get_camera_2d()
+		if is_instance_valid(cam):
+			return cam
+	return get_viewport().get_camera_2d()
+
+
 ## Starts a camera shake. Overlapping shakes
 ## take the max of current and new values.
 func shake(
 	intensity := _DEFAULT_INTENSITY,
 	duration := _DEFAULT_DURATION_SEC,
 ) -> void:
-	var camera := get_viewport().get_camera_2d()
+	var camera := _get_active_camera()
 	if not is_instance_valid(camera):
 		return
 	if _shake_timer > 0.0:
@@ -43,7 +51,7 @@ func _process(delta: float) -> void:
 	if _shake_timer <= 0.0:
 		return
 
-	var camera := get_viewport().get_camera_2d()
+	var camera := _get_active_camera()
 	if not is_instance_valid(camera):
 		return
 
