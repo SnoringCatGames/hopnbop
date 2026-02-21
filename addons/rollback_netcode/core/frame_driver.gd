@@ -44,9 +44,11 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
 
-# Update the loading-screen text to indicate the current match-connecting status:
-# - Finding other players...
-# - Connecting to server...
+# Big pit level, with steps up either side.
+# Also make an exact shape copy of the original jump n bump level
+# Update background to extend further up, for zoomed-out cameras.
+
+# Add a drag force to celebration confetti.
 
 # - Hook-up sounds:
 #  - match-start countdown cadence chords
@@ -56,9 +58,50 @@ extends Node
 #  - Crown ta-dah sound (musical)
 #  - SCG snore is playing, right?
 
-# - "Easter eggs"!
-#   - Release by easter.
-#   - Also, secrets in every level, and stuff you can actually collect and unlock...
+# Level-selection:
+# - Make a platform for level selection above hole.
+# - Show level selection UI when landing on the platform. Hide it when selecting
+#   x at the top or bottom of the ui list. Ui list has three columns x header,
+#   check header, double check header. Exclusive selection or no selection for
+#   double check. All rows must be in x or check.
+
+# ADD LEVEL WRAP AROUND LIKE KILLER QUEEN (vertically and horizontally)
+
+# More cheats:
+# - "pogostick" (networked to all clients)
+# - "bunniesinspace" (networked to all clients)
+# - "moregore" should toggle extra gore (local-only, not networked to all clients)
+
+# Change adjectives based on gameplay conditions:
+# - Getting a crown
+# - Bumping a lot
+# - Killing a lot
+# - Dying a lot
+# - Jumping a lot
+# - Not jumping a lot
+# - Swimming a lot
+# - Staying still
+# - Not killing
+# - Not dying
+# - Slipping
+# - Changing direction a lot
+
+# - Track who swims the most, springs the most, slips the lost, pivots the most
+#   (flighty, scared, ...), hangs out with flies the most, and spends the most
+#   time on the uppermost platform height (king of the hill)
+# - Adjectives for all of these!
+
+# - Add another super hud panel for listing all tracked stats (the hidden things
+#   used for adjectives) for each player
+
+# Add another section to the idle animation: eating and pooping.
+# - They happen together.
+# - Poop actually results in particles that emit, spread, fall, and rasterize at 100% rate.
+# - Also track who has pooped the most.
+# - Use pooping to trigger additional adjectives (flatulent, fertilizing, fragrant, ...).
+# - Only poop once until moving again.
+
+# ---
 
 # Water:
 # - Reverse gravity
@@ -79,154 +122,70 @@ extends Node
 #   player-inputs-on-server-side too often.
 
 # - Review /rollback_netcode/examples/.
-# - Look at how some old Scaffolder utilities are used, like ScaffolderTime. Should we simplify and replace them with built-in logic that we _don't_ have the consumer app worry about?
+# - Look at how some old Scaffolder utilities are used, like ScaffolderTime.
+#   Should we simplify and replace them with built-in logic that we _don't_ have
+#   the consumer app worry about?
+
 
 # - Lingering FIXMEs.
-
-
-# - Update some "debug mode" checks (like for enabling screenshots) to consider
-#   whether we're running in preview mode in the editor.
-#   - Add this as a getter in settings.
-#   - Move some of the current G.network flag parsing and checks to settings.
-#   - We should also override various other settings if we're not in the editor.
-#     - Do this with getters on those properties.
-#     - Probably need to check Engine.is_editor_hint though also in the getters.
 
 
 #######################################################
 # UNPROCESSED EMAIL NOTES
 
-# Ask if we sockets or webrtc make more sense for web
-# Ask if that would make it more worth having a slower network frame rate than physics
 
-# Make a platform for level selection above hole.
-# Show level selection UI when landing on the platform. Hide it when selecting x at the top or bottom of the ui list. Ui list has three columns x header, check header, double check header. Exclusive selection or no selection for double check. All rows must be in x or check.
+# Interactive animated tiles behind and in front:
+# - Research how to implement animated tiles.
+# - Have Tile set point to a scene for each animated tile.
+# - ALSO, plan a way to sync occlusion and background animated tiles, so
+#   rustling one will also trigger the other.
+# - Probably implement this by subclassing the TileMap. Then have a property to
+#   indicate its partner TileMap, and assert it's set.
+# - Then, need to figure out collisions for an offset area for these rustle tiles.
+# - Then...
 
-# Big pit level, with steps up either side
 
-
-# Pogostick cheat
-# Bunnies in space cheat
-
-# ADD LEVEL WRAP AROUND LIKE KILLER QUEEN (vertically and horizontally)
-
-# ADD SUPPORT FOR AUTO SIZING THE GAME AREA VIEWPORT. It should be a multiple of some value... That should leave the character at a discrete total scale.
-# But we can still shove UI below the game area viewport.
-# This should auto calculate and assign camera zoom as well.
-# This should account for the current level size.
-# This should account for the current window size.
-
-# Make a list of sound requests for Alden. Will need to decide on theme/vibe first. Different music per level? Different art per level?
-
-# Ask AI where auth fits into the current backend and GameLift logic. This was originally planned.
-
-# Find those notes for interactive animated tiles behind and in front
-
-# "moregore" should toggle extra gore. And I should tune down the current levels
-
-# Also make an exact shape copy of the original jump n bump level
-
-# Numpad controls
-# Mouse controls?
-# Cycle through one control display shown at a time in the bottom left corner.
-# Also, have the display blink on and off.
-# Always show the blue up.
-
-# Add support for a local-only mode.
-
-# Think about how to use my network to find an artist. Doesn't even have to be pixel art, I guess...
-
-# Change adjectives based on gameplay conditions:
-# Getting a crown
-# Bumping a lot
-# Killing a lot
-# Dying a lot
-# Jumping a lot
-# Not jumping a lot
-# Swimming a lot
-# Staying still
-# Not killing
-# Not dying
-# Slipping
-# Changing direction a lot
+# Flies:
+# - Flies are drawn slowly to poop!
+# - Flies are chased away by bunnies.
+# - Flies have simple swarming/flocking behaviors.
+# - Fly sfx needs two components:
+#   - One is very positional. Oyr represents where it is relatively and how far.
+#   - The other is not positional, but it's stronger based on how close and how
+#     many. This one needs to have each individual bzzz have a lot of motion
+#     with panning.
+#   - Need to calculate a strength and relative position score based on the
+#     relative positions of ALL flies in the level
 
 # Decorative critters:
-# Snail
-# Birds
-# Frog/cricket
-# Fish (dodge bunnies in water)
-# Butterflies
-# Fly swarm
+# - Snail
+# - Birds
+# - Frog/cricket
+# - Fish (dodge bunnies in water)
+# - Butterflies
+# - Fly swarm
 
-# NOW is probably the time to document every aspect of the networking systems, what they do, why, pros and cons, ask AI to help, look at what .md files already exist, all to draft a particular collection of devlog posts, first deciding on main sections and bullets, then I approve, then draft them. GameLift, backend, auth, and other bits of networking not related to gameplay. Then all the gameplay bits
-#  (What is lock step again??)
 
-# After publishing devlog post, add links to code to the post, to provide more detailed explanations with visuals.
+# ---
 
-# Still lots of emails with context for the blog post
+# - Add bespoke art for each level, rather than tile sets. Or, at least, try
+#   this for one level.
+# - DEFINITELY add decoration/occlusion art to scatter around in each level
+#   (with our without tile set versions of levels)
 
-# Make placeholder sounds:
-# Jump
-# Land
-# Walk
-# Change direction
-# Die
-# Bump
-# Countdown start
-# Countdown end
-# Game over
-# Down the rabbit hole
-# Spawn player in lobby
-# Respawn player in lobby
-# Spawn player in game
-# Simple music (match and lobby)
-
-# Add another section to the idle animation: eating and pooping.
-# They happen together.
-# Poop actually results in particles that emit, spread, fall, and rasterize at 100% rate.
-# Also track who has pooped the most.
-# Use pooping to trigger additional adjectives (flatulent, fertilizing, fragrant, ...).
-
-# Track who swims the most, springs the most, slips the lost, pivots the most (flighty, scared, ...
-# ), hangs out with flies the most, and spends the most time on the uppermost platform height (king of the hill)
-# Adjectives for all of these!
-
-# Flies are drawn slowly to poop!
-# Flies are chased away by bunnies.
-# Flies have simple swarming/flocking behaviors.
-
-# Add another super hud panel for listing all tracked stats (the hidden things used for adjectives) for each player
-
-# Only poop once until moving again.
-
-# Fly sfx meds to components:
-# One is very positional. Oyr represents where it is relatively and how far.
-# The other is not positional, but it's stronger based on how close and how many. This one needs to have each individual bzzz have a lot of motion with panning.
-# Need to calculate a strength and relative position score based on the relative positions of ALL flies in the level
-
-# Add alternatw modes for all the holidays.
-# Halloween: candy gore, background change, level change, costume change
-# Vday: red and pink heart gore, also little baby bunnies run away away when killed, background/level/costume...
-# Shamrocks
-# Fireworks
-# Candy canes
-# Easter eggs (and finding bonus Easter eggs hidden in each level; need to add occlusion at for this!)
-# T day...
-# Chinese New Year's
-# Other important holidays across the world
-
-# Add bespoke art for each level, rather than tile sets. Or, at least, try this for one level.
-# DEFINITELY add decoration/occlusion art to scatter around in each level (with our without tile set versions of levels)
-
-# Alternate adjectives for holidays too
-
-# Add a drag force to celebration confetti
-
-# Publish to the AssetLibrary a plugin for client prediction
-
-# Publish to the AssetLibrary a GDExtension for GameLift integration?
-
-# **** Re-enable the `Build GDExtension` GitHub Actions Workflow
+# Add alternate modes for all the holidays:
+#   - Halloween: candy gore, background change, level change, costume change
+#   - Vday: red and pink heart gore, also little baby bunnies run away away when
+#     killed, background/level/costume...
+#   - Shamrocks
+#   - Fireworks
+#   - Candy canes
+#   - Easter eggs (and finding bonus Easter eggs hidden in each level; need to
+#     add occlusion at for this!)
+#   - T day...
+#   - Chinese New Year's
+#   - Other important holidays across the world
+# - Alternate adjectives for holidays too
 
 
 #######################################################
@@ -299,6 +258,41 @@ extends Node
 #######################################################
 
 
+# ---
+
+
+# Make a list of sound requests for Alden. Will need to decide on theme/vibe first. Different music per level? Different art per level?
+
+# Think about how to use my network to find an artist. Doesn't even have to be pixel art, I guess...
+
+# NOW is probably the time to document every aspect of the networking systems, what they do, why, pros and cons, ask AI to help, look at what .md files already exist, all to draft a particular collection of devlog posts, first deciding on main sections and bullets, then I approve, then draft them. GameLift, backend, auth, and other bits of networking not related to gameplay. Then all the gameplay bits
+#  (What is lock step again??)
+
+# After publishing devlog post, add links to code to the post, to provide more detailed explanations with visuals.
+
+
+# ---
+
+# Publish to the AssetLibrary a plugin for client prediction
+
+# Publish to the AssetLibrary a GDExtension for GameLift integration?
+
+# **** Re-enable the `Build GDExtension` GitHub Actions Workflow
+
+# ---
+
+
+# Ask AI where auth fits into the current backend and GameLift logic. This was originally planned.
+
+# Web-client support:
+# - Ask if WebSockets or WebRTC make more sense for web.
+# - Ask if enabling network support for web clients would make it more worthwhile to have a slower network frame rate than physics frame rate.
+
+# Update the loading-screen text to indicate the current match-connecting status:
+# - Finding other players...
+# - Connecting to server...
+# - Auth?
+
 # FIXME: GameLift
 # - [Obsolete?] Proceed with the "AWS GameLift Deployment Guide"
 #   - Add player authentication and profile management.
@@ -312,6 +306,8 @@ extends Node
 #     - player data (id, bunny name and adjective, first play time, last play time, total time played, total wins, total kills, total deaths, login info for whichever auth providers they've connected to, ...)
 #     - a leaderboard
 #   - Implement a way to make friends and to join matches with friends.
+
+# Add support for a local-only mode.
 
 # Check on how the GitHub Actions current daily actions setup is working.
 
@@ -579,15 +575,11 @@ extends Node
 # - Test and polish addons/rollback_netcode/examples/simple_game/.
 # - Review and edit markdown docs.
 
-# Animated tiles
-# - Research how to implement animated tiles.
-# - Have Tile set point to a scene for each animated tile.
-# - ALSO, plan a way to sync occlusion and background animated tiles, so rustling one will also trigger the other.
-# - Probably implement this by subclassing the TileMap. Then have a property to indicate its partner TileMap, and assert it's set.
-# - Then, need to figure out collisions for an offset area for these rustle tiles.
-# - Then...
-
 # - Sudden death?
+
+# - Easter eggs!
+#   - Secrets and an art curiosity in every level, and stuff you can actually collect and unlock...
+#   - hidden holes in walls.
 
 # ### TODO: After everything else:
 # - Survey the codebase for where we use string literals. Should any of these be StringName literals instead?
