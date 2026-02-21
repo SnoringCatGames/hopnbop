@@ -27,6 +27,7 @@ var players: Array[Player] = []
 var players_by_id := {}
 
 var gore_manager: GoreManager
+var skid_manager: SkidManager
 
 
 func _ready() -> void:
@@ -48,6 +49,12 @@ func _ready() -> void:
 		# behind player sprites via tree order.
 		move_child(
 			gore_manager, players_node.get_index())
+
+		skid_manager = SkidManager.new()
+		skid_manager.name = "SkidManager"
+		add_child(skid_manager)
+		move_child(
+			skid_manager, players_node.get_index())
 
 
 func _get_spawn_points() -> Array[SpawnPoint]:

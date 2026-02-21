@@ -1,0 +1,196 @@
+[gd_scene load_steps=28 format=3 uid="uid://dpige50wvopn7"]
+
+[ext_resource type="Texture2D" uid="uid://jtnhdhs5y5x" path="res://assets/images/skid.png" id="1_skid"]
+[ext_resource type="Script" uid="uid://oy10vf2k5lbh" path="res://src/skid/skid.gd" id="2_script"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_qhrp3"]
+atlas = ExtResource("1_skid")
+region = Rect2(512, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_aifx8"]
+atlas = ExtResource("1_skid")
+region = Rect2(544, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_oveab"]
+atlas = ExtResource("1_skid")
+region = Rect2(576, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_05o7r"]
+atlas = ExtResource("1_skid")
+region = Rect2(608, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_y2iry"]
+atlas = ExtResource("1_skid")
+region = Rect2(640, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_m4cld"]
+atlas = ExtResource("1_skid")
+region = Rect2(672, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8ltt6"]
+atlas = ExtResource("1_skid")
+region = Rect2(704, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3rcy6"]
+atlas = ExtResource("1_skid")
+region = Rect2(736, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_both_1"]
+atlas = ExtResource("1_skid")
+region = Rect2(256, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_both_2"]
+atlas = ExtResource("1_skid")
+region = Rect2(288, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_both_3"]
+atlas = ExtResource("1_skid")
+region = Rect2(320, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_both_4"]
+atlas = ExtResource("1_skid")
+region = Rect2(352, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_both_5"]
+atlas = ExtResource("1_skid")
+region = Rect2(384, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_both_6"]
+atlas = ExtResource("1_skid")
+region = Rect2(416, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_both_7"]
+atlas = ExtResource("1_skid")
+region = Rect2(448, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_both_8"]
+atlas = ExtResource("1_skid")
+region = Rect2(480, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_right_1"]
+atlas = ExtResource("1_skid")
+region = Rect2(0, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_right_2"]
+atlas = ExtResource("1_skid")
+region = Rect2(32, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_right_3"]
+atlas = ExtResource("1_skid")
+region = Rect2(64, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_right_4"]
+atlas = ExtResource("1_skid")
+region = Rect2(96, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_right_5"]
+atlas = ExtResource("1_skid")
+region = Rect2(128, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_right_6"]
+atlas = ExtResource("1_skid")
+region = Rect2(160, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_right_7"]
+atlas = ExtResource("1_skid")
+region = Rect2(192, 0, 32, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_right_8"]
+atlas = ExtResource("1_skid")
+region = Rect2(224, 0, 32, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_skid"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_qhrp3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_aifx8")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_oveab")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_05o7r")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_y2iry")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_m4cld")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_8ltt6")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_3rcy6")
+}],
+"loop": false,
+"name": &"jump",
+"speed": 25.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_both_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_both_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_both_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_both_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_both_5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_both_6")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_both_7")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_both_8")
+}],
+"loop": false,
+"name": &"skid_both",
+"speed": 20.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_right_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_right_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_right_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_right_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_right_5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_right_6")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_right_7")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_right_8")
+}],
+"loop": false,
+"name": &"skid_right",
+"speed": 20.0
+}]
+
+[node name="Skid" type="AnimatedSprite2D"]
+texture_filter = 1
+sprite_frames = SubResource("SpriteFrames_skid")
+animation = &"jump"
+script = ExtResource("2_script")

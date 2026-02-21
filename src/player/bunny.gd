@@ -16,6 +16,9 @@ var _last_processed_interaction_start_time := -1
 var _has_ever_died := false
 
 const _SQUISH_DURATION_SEC := 0.09
+const _SKID_VELOCITY_THRESHOLD := 20.0
+
+var _was_floor_skid_condition := false
 
 # Track intersections during invincibility.
 # Dictionary<int, Array[String]> - player_id -> array of intersection types.
@@ -179,6 +182,91 @@ func _process_movement_and_actions() -> void:
 	_update_player_collision_for_invincibility()
 
 
+func _process_animation() -> void:
+	super._process_animation()
+	_update_skids()
+
+
+func _update_skids() -> void:
+	if state_from_server.is_dead:
+		_was_floor_skid_condition = false
+		return
+
+	if (
+		not is_instance_valid(G.level)
+		or not is_instance_valid(
+			G.level.skid_manager)
+	):
+		return
+
+	# Landing skid (bidirectional).
+	if (
+		surfaces.just_left_air
+		and surfaces.is_attaching_to_floor
+	):
+		G.level.skid_manager.spawn_skid(
+			global_position,
+			&"skid_both",
+			false,
+		)
+		_was_floor_skid_condition = false
+		return
+
+	# Jump skid.
+	if (
+		last_triggered_jump_frame_index
+			== Netcode.server_frame_index
+		and surfaces
+			.just_stopped_attaching_to_floor
+	):
+		G.level.skid_manager.spawn_skid(
+			surfaces.last_floor_position,
+			&"jump",
+			false,
+		)
+
+	# Floor skids (one-direction).
+	if surfaces.is_attaching_to_floor:
+		var vel_x := velocity.x
+		var accel_sign := (
+			surfaces.horizontal_acceleration_sign
+		)
+
+		# Stopping: no input, still moving.
+		var is_stopping := (
+			accel_sign == 0
+			and absf(vel_x)
+				> _SKID_VELOCITY_THRESHOLD
+		)
+		# Changing direction: input opposes
+		# velocity.
+		var is_changing_direction := (
+			accel_sign != 0
+			and signf(vel_x) != 0.0
+			and signf(vel_x) != accel_sign
+			and absf(vel_x)
+				> _SKID_VELOCITY_THRESHOLD
+		)
+
+		var is_floor_skid := (
+			is_stopping or is_changing_direction
+		)
+
+		# Trigger on rising edge only.
+		if (
+			is_floor_skid
+			and not _was_floor_skid_condition
+		):
+			G.level.skid_manager.spawn_skid(
+				global_position,
+				&"skid_right",
+				vel_x < 0,
+			)
+		_was_floor_skid_condition = is_floor_skid
+	else:
+		_was_floor_skid_condition = false
+
+
 func _process_client_effects() -> void:
 	# Handle client-side interaction effects (sounds, particles).
 	# Process the interaction if it's new (not yet processed).
@@ -334,7 +422,10 @@ func _get_audio_stream_player(sound_name: StringName) -> AudioStreamPlayer2D:
 		"land":
 			return %LandAudioStreamPlayer
 		"walk":
+			# TODO: Implement walk sounds?
 			return %WalkAudioStreamPlayer
+		"skid":
+			return %SkidAudioStreamPlayer
 		"bump":
 			return %BumpAudioStreamPlayer
 		"die":
