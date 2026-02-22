@@ -23,9 +23,8 @@ Netcode="*res://addons/rollback_netcode/core/network_orchestrator.gd"
 
 [display]
 
-window/size/viewport_width=1152
-window/size/viewport_height=648
-window/stretch/mode="disabled"
+window/size/viewport_width=1360
+window/size/viewport_height=765
 
 [editor_plugins]
 
