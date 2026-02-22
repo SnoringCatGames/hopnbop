@@ -46,8 +46,6 @@ extends Node
 
 # - Fix bunny sounds.
 
-# Add a drag force to celebration confetti.
-
 # - Hook-up sounds:
 #  - match-start countdown cadence chords
 #  - Match-end victory/draw cadence (in phone recording)
