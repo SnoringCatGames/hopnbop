@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Settings" load_steps=27 format=3 uid="uid://dv60bmaw1pdx6"]
+[gd_resource type="Resource" script_class="Settings" load_steps=31 format=3 uid="uid://dv60bmaw1pdx6"]
 
 [ext_resource type="Script" uid="uid://bklo1tgck1vmm" path="res://src/player/body_type_config.gd" id="1_7ybur"]
 [ext_resource type="Script" uid="uid://cqomr88ncj2d3" path="res://src/core/settings.gd" id="1_krfic"]
@@ -23,24 +23,45 @@
 [ext_resource type="Resource" path="res://src/player/black_spotted_bunny_body_type.tres" id="15_blsbody"]
 [ext_resource type="Resource" path="res://src/player/gray_bunny_body_type.tres" id="16_grbody"]
 [ext_resource type="Resource" path="res://src/player/yellow_bunny_body_type.tres" id="17_ylbody"]
+[ext_resource type="PackedScene" uid="uid://clcub1mgr6shb" path="res://src/level/level_0.tscn" id="19_jwo4p"]
+[ext_resource type="PackedScene" uid="uid://bbhm335xhffk" path="res://src/level/level_3.tscn" id="22_hsj8s"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_woca2"]
 radius = 6.0
 
 [sub_resource type="Resource" id="Resource_i3tmf"]
 script = ExtResource("5_i3tmf")
-id = &"level_1"
-display_name = "Level 1"
-scene = ExtResource("5_4irwu")
+id = &"level_0"
+display_name = "Level 0"
+scene = ExtResource("19_jwo4p")
 max_players = 8
 metadata/_custom_type_script = "uid://l1of4ibugkpt"
 
 [sub_resource type="Resource" id="Resource_bav20"]
 script = ExtResource("5_i3tmf")
+id = &"level_1"
+display_name = "Level 1"
+scene = ExtResource("5_4irwu")
+max_players = 8
+is_enabled = false
+metadata/_custom_type_script = "uid://l1of4ibugkpt"
+
+[sub_resource type="Resource" id="Resource_p8ob7"]
+script = ExtResource("5_i3tmf")
 id = &"level_2"
 display_name = "Level 2"
 scene = ExtResource("6_4irwu")
 max_players = 8
+is_enabled = false
+metadata/_custom_type_script = "uid://l1of4ibugkpt"
+
+[sub_resource type="Resource" id="Resource_h8oqh"]
+script = ExtResource("5_i3tmf")
+id = &"level_3"
+display_name = "Level 3"
+scene = ExtResource("22_hsj8s")
+max_players = 8
+is_enabled = false
 metadata/_custom_type_script = "uid://l1of4ibugkpt"
 
 [resource]
@@ -58,7 +79,7 @@ default_theme = ExtResource("3_r80nf")
 default_palette = ExtResource("2_yixrw")
 screen_style_box = ExtResource("5_r80nf")
 lobby_level_scene = ExtResource("1_lobby")
-levels = Array[ExtResource("5_i3tmf")]([SubResource("Resource_i3tmf"), SubResource("Resource_bav20")])
+levels = Array[ExtResource("5_i3tmf")]([SubResource("Resource_i3tmf"), SubResource("Resource_bav20"), SubResource("Resource_p8ob7"), SubResource("Resource_h8oqh")])
 default_player_scene = ExtResource("3_woca2")
 player_scenes = Array[PackedScene]([ExtResource("3_woca2")])
 body_types = Array[ExtResource("1_7ybur")]([ExtResource("8_bodytype"), ExtResource("11_wbody"), ExtResource("12_bbody"), ExtResource("13_brbody"), ExtResource("14_bsbody"), ExtResource("15_blsbody"), ExtResource("16_grbody"), ExtResource("17_ylbody")])

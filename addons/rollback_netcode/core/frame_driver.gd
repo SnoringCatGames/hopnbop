@@ -42,10 +42,10 @@ extends Node
 ## - Only one rollback occurs per _network_process, earliest frame takes
 ##   priority.
 
-# FIXME: LEFT OFF HERE: Main list: ---------------------------------------------
+# FIXME: LEFT OFF HERE: Main list: --------------------------------------------
 
 # Big pit level, with steps up either side.
-# Also make an exact shape copy of the original jump n bump level
+# Also make an exact shape copy of the original jump n bump level.
 # Update background to extend further up, for zoomed-out cameras.
 
 # Add a drag force to celebration confetti.
@@ -66,11 +66,6 @@ extends Node
 #   double check. All rows must be in x or check.
 
 # ADD LEVEL WRAP AROUND LIKE KILLER QUEEN (vertically and horizontally)
-
-# More cheats:
-# - "pogostick" (networked to all clients)
-# - "bunniesinspace" (networked to all clients)
-# - "moregore" should toggle extra gore (local-only, not networked to all clients)
 
 # Change adjectives based on gameplay conditions:
 # - Getting a crown
@@ -115,7 +110,7 @@ extends Node
 # - Allow jumping up from the water only when you're at the surface
 # - Don't allow diving without jumping
 
-# - Add notes to implement: water, spring, ice, flies, jetpack, and other cheats
+# - Add notes to implement: water, spring, ice, flies, and other cheats
 
 
 # - Polish networked movement. It still seems like we get jitter and stuck
@@ -165,6 +160,7 @@ extends Node
 # - Butterflies
 # - Fly swarm
 
+# - Implement "lordoftheflies" and "bloodisthickerthanwater".
 
 # ---
 
@@ -574,6 +570,8 @@ extends Node
 #   - addons/rollback_netcode/examples/simple_game/ (cannot depend on src/)
 # - Test and polish addons/rollback_netcode/examples/simple_game/.
 # - Review and edit markdown docs.
+
+# - Disable networked pause.
 
 # - Sudden death?
 
