@@ -31,8 +31,14 @@ extends NetworkSettings
 @export var show_perf_tracker := false
 @export var show_network_simulation := false
 @export var are_cheats_enabled := true
+@export var is_jetpack_enabled := false
 @export var jetpack_acceleration := 1000.0
 @export var jetpack_max_upward_speed := 270.0
+@export var is_bloodisthickerthanwater_enabled := false
+@export var is_lordoftheflies_enabled := false
+@export var is_pogostick_enabled := false
+@export var is_bunniesinspace_enabled := false
+@export var is_moregore_enabled := false
 @export_group("")
 
 @export var start_in_game := false

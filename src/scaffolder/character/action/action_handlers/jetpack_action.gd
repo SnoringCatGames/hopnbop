@@ -17,10 +17,7 @@ func _init() -> void:
 
 
 func process(character) -> bool:
-	if (
-		G.cheat_manager == null
-		or not G.cheat_manager.is_jetpack_active
-	):
+	if not CheatManager.is_jetpack_cheat_active():
 		return false
 
 	if character.actions.is_triggering_jump:

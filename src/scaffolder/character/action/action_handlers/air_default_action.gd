@@ -8,6 +8,8 @@ const PRIORITY := 410
 
 const BOUNCE_OFF_CEILING_VELOCITY := 15.0
 
+const BUNNIESINSPACE_GRAVITY_MULTIPLIER := 0.4
+
 
 func _init() -> void:
 	super (NAME, TYPE, USES_RUNTIME_PHYSICS, PRIORITY)
@@ -92,9 +94,12 @@ static func update_velocity_in_air(
 		else (
 			movement_settings.gravity_slow_rise_acceleration
 			if is_first_jump
-			else movement_settings.gravity_double_jump_slow_rise_acceleration
+			else movement_settings
+				.gravity_double_jump_slow_rise_acceleration
 		)
 	)
+	if CheatManager.is_bunniesinspace_cheat_active():
+		gravity *= BUNNIESINSPACE_GRAVITY_MULTIPLIER
 
 	# Vertical movement.
 	velocity.y += delta * gravity

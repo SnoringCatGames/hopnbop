@@ -10,6 +10,7 @@ extends Node2D
 # accumulation buffer. Handles particles that fly slightly
 # outside tile bounds.
 const _BUFFER_MARGIN := 32
+const MOREGORE_MULTIPLIER := 8
 
 # Behind-player accumulation buffer (z_index = -1).
 var _behind_image: Image
@@ -79,7 +80,10 @@ func spawn_particles(death_position: Vector2) -> void:
 	var s := G.settings
 	var center := death_position + s.gore_spawn_offset
 
-	for i in s.gore_particles_per_death:
+	var particle_count := s.gore_particles_per_death
+	if CheatManager.is_moregore_cheat_active():
+		particle_count *= MOREGORE_MULTIPLIER
+	for i in particle_count:
 		var type_index := _pick_type_index()
 		var is_behind := i % 2 == 0
 
@@ -117,7 +121,10 @@ func _spawn_kickables(
 		return
 	var center := death_position + s.gore_spawn_offset
 
-	for i in s.gore_kickables_per_death:
+	var kickable_count := s.gore_kickables_per_death
+	if CheatManager.is_moregore_cheat_active():
+		kickable_count *= MOREGORE_MULTIPLIER
+	for i in kickable_count:
 		var type_index := _pick_type_index()
 
 		# Random position within scatter radius.

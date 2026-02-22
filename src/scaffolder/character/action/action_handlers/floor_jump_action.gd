@@ -13,9 +13,12 @@ func _init() -> void:
 
 func process(character) -> bool:
 	if (
-		!character.processed_action(FallThroughFloorAction.NAME)
+		!character.processed_action(
+			FallThroughFloorAction.NAME)
 		and not CheatManager.is_jetpack_cheat_active()
-		and character.actions.just_triggered_jump
+		and (character.actions.just_triggered_jump
+			or CheatManager
+				.is_pogostick_cheat_active())
 		and not character.surfaces.is_launched
 	):
 		character.jump_sequence_count = 1

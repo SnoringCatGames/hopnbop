@@ -3,12 +3,12 @@ extends Node
 ## Detects cheat code passwords typed during gameplay and manages
 ## cheat state. Networked cheats use RPCs; local cheats apply
 ## immediately.
+##
+## All cheat-enablement flags live on Settings so they can be
+## toggled from the inspector.
 
 
 signal cheat_toggled(cheat_name: String, is_active: bool)
-
-## Active networked cheat states.
-var is_jetpack_active := false
 
 ## Rolling buffer of recently typed characters.
 var _input_buffer := ""
@@ -28,6 +28,21 @@ func _ready() -> void:
 		},
 		"jetpack": {
 			"is_networked": true,
+		},
+		"bloodisthickerthanwater": {
+			"is_networked": false,
+		},
+		"lordoftheflies": {
+			"is_networked": true,
+		},
+		"pogostick": {
+			"is_networked": true,
+		},
+		"bunniesinspace": {
+			"is_networked": true,
+		},
+		"moregore": {
+			"is_networked": false,
 		},
 	}
 
@@ -93,17 +108,45 @@ func _activate_cheat(cheat_name: String) -> void:
 
 
 func _apply_local_cheat(cheat_name: String) -> void:
+	var is_active := false
 	match cheat_name:
 		"flowerpower":
 			G.settings.is_gore_enabled = \
 				not G.settings.is_gore_enabled
+			is_active = G.settings.is_gore_enabled
 			Netcode.print(
 				"Cheat 'flowerpower': gore %s" % (
-					"ON" if G.settings.is_gore_enabled
+					"ON" if is_active
 					else "OFF"
 				)
 			)
-	cheat_toggled.emit(cheat_name, true)
+		"bloodisthickerthanwater":
+			G.settings \
+				.is_bloodisthickerthanwater_enabled = \
+				not G.settings \
+					.is_bloodisthickerthanwater_enabled
+			is_active = G.settings \
+				.is_bloodisthickerthanwater_enabled
+			# TODO: Hook up bloodisthickerthanwater
+			# effect.
+			Netcode.print(
+				"Cheat 'bloodisthickerthanwater'"
+				+ ": %s" % (
+					"ON" if is_active
+					else "OFF"
+				)
+			)
+		"moregore":
+			G.settings.is_moregore_enabled = \
+				not G.settings.is_moregore_enabled
+			is_active = G.settings.is_moregore_enabled
+			Netcode.print(
+				"Cheat 'moregore': %s" % (
+					"ON" if is_active
+					else "OFF"
+				)
+			)
+	cheat_toggled.emit(cheat_name, is_active)
 
 
 @rpc("any_peer", "reliable")
@@ -123,21 +166,22 @@ func _request_toggle_networked_cheat(
 
 	# Broadcast to all clients.
 	_client_on_networked_cheat_toggled.rpc(
-		cheat_name, is_jetpack_active
+		cheat_name,
+		_get_networked_cheat_state(cheat_name),
 	)
 
 
 func _apply_networked_cheat(cheat_name: String) -> void:
-	match cheat_name:
-		"jetpack":
-			is_jetpack_active = not is_jetpack_active
-			Netcode.print(
-				"Cheat 'jetpack': %s" % (
-					"ON" if is_jetpack_active
-					else "OFF"
-				)
-			)
-	cheat_toggled.emit(cheat_name, is_jetpack_active)
+	_toggle_networked_cheat_setting(cheat_name)
+	var is_active := \
+		_get_networked_cheat_state(cheat_name)
+	Netcode.print(
+		"Cheat '%s': %s" % [
+			cheat_name,
+			"ON" if is_active else "OFF",
+		]
+	)
+	cheat_toggled.emit(cheat_name, is_active)
 
 
 @rpc("authority", "reliable")
@@ -145,28 +189,118 @@ func _client_on_networked_cheat_toggled(
 	cheat_name: String,
 	is_active: bool,
 ) -> void:
-	match cheat_name:
-		"jetpack":
-			is_jetpack_active = is_active
-			Netcode.print(
-				"Cheat 'jetpack': %s" % (
-					"ON" if is_jetpack_active
-					else "OFF"
-				)
-			)
+	_set_networked_cheat_setting(
+		cheat_name, is_active)
+	Netcode.print(
+		"Cheat '%s': %s" % [
+			cheat_name,
+			"ON" if is_active else "OFF",
+		]
+	)
 	cheat_toggled.emit(cheat_name, is_active)
 
 
+## Toggles the Settings flag for a networked cheat.
+func _toggle_networked_cheat_setting(
+	cheat_name: String,
+) -> void:
+	match cheat_name:
+		"jetpack":
+			G.settings.is_jetpack_enabled = \
+				not G.settings.is_jetpack_enabled
+		"lordoftheflies":
+			G.settings.is_lordoftheflies_enabled = \
+				not G.settings \
+					.is_lordoftheflies_enabled
+		"pogostick":
+			G.settings.is_pogostick_enabled = \
+				not G.settings.is_pogostick_enabled
+		"bunniesinspace":
+			G.settings.is_bunniesinspace_enabled = \
+				not G.settings \
+					.is_bunniesinspace_enabled
+
+
+## Sets the Settings flag for a networked cheat.
+func _set_networked_cheat_setting(
+	cheat_name: String,
+	is_active: bool,
+) -> void:
+	match cheat_name:
+		"jetpack":
+			G.settings.is_jetpack_enabled = is_active
+		"lordoftheflies":
+			G.settings.is_lordoftheflies_enabled = \
+				is_active
+		"pogostick":
+			G.settings.is_pogostick_enabled = \
+				is_active
+		"bunniesinspace":
+			G.settings.is_bunniesinspace_enabled = \
+				is_active
+
+
+## Returns the current state of a networked cheat.
+func _get_networked_cheat_state(
+	cheat_name: String,
+) -> bool:
+	match cheat_name:
+		"jetpack":
+			return G.settings.is_jetpack_enabled
+		"lordoftheflies":
+			return G.settings \
+				.is_lordoftheflies_enabled
+		"pogostick":
+			return G.settings.is_pogostick_enabled
+		"bunniesinspace":
+			return G.settings \
+				.is_bunniesinspace_enabled
+	return false
+
+
 ## Returns true if the jetpack cheat is currently active.
-## Safe to call even when CheatManager hasn't been created yet.
+## Safe to call even when Settings hasn't been loaded yet.
 static func is_jetpack_cheat_active() -> bool:
 	return (
-		G.cheat_manager != null
-		and G.cheat_manager.is_jetpack_active
+		G.settings != null
+		and G.settings.is_jetpack_enabled
 	)
 
 
-## Resets all cheat state between matches.
+## Returns true if the pogostick cheat is currently
+## active. Safe to call even when Settings hasn't been
+## loaded yet.
+static func is_pogostick_cheat_active() -> bool:
+	return (
+		G.settings != null
+		and G.settings.is_pogostick_enabled
+	)
+
+
+## Returns true if the bunniesinspace cheat is currently
+## active. Safe to call even when Settings hasn't been
+## loaded yet.
+static func is_bunniesinspace_cheat_active() -> bool:
+	return (
+		G.settings != null
+		and G.settings.is_bunniesinspace_enabled
+	)
+
+
+## Returns true if the moregore cheat is currently
+## active. Safe to call even when Settings hasn't been
+## loaded yet.
+static func is_moregore_cheat_active() -> bool:
+	return (
+		G.settings != null
+		and G.settings.is_moregore_enabled
+	)
+
+
+## Resets all networked cheat state between matches.
 func reset() -> void:
-	is_jetpack_active = false
+	G.settings.is_jetpack_enabled = false
+	G.settings.is_lordoftheflies_enabled = false
+	G.settings.is_pogostick_enabled = false
+	G.settings.is_bunniesinspace_enabled = false
 	_input_buffer = ""
