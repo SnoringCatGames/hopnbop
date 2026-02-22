@@ -206,6 +206,9 @@ func _process_animation() -> void:
 
 
 func _update_skids() -> void:
+	if Netcode.frame_driver.is_resimulating:
+		return
+
 	if state_from_server.is_dead:
 		_was_floor_skid_condition = false
 		return
@@ -361,7 +364,7 @@ func _handle_interaction_effects() -> void:
 					],
 					NetworkLogger.CATEGORY_GAME_STATE,
 				)
-			if not _has_ever_died:
+			if _has_ever_died:
 				play_sound("respawn")
 		_:
 			Netcode.fatal()
@@ -450,6 +453,8 @@ func _spawn_squish_sprite() -> void:
 
 func play_sound(sound_name: StringName) -> void:
 	if not Netcode.is_primary_client:
+		return
+	if Netcode.frame_driver.is_resimulating:
 		return
 
 	var stream_player := _get_audio_stream_player(sound_name)

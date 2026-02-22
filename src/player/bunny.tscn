@@ -197,7 +197,7 @@ shape = SubResource("CapsuleShape2D_sc4xa")
 [node name="JumpAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_gp0bh")
-volume_db = -8.0
+volume_db = -12.0
 
 [node name="LandAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
