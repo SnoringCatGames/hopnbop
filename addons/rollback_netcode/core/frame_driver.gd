@@ -46,6 +46,9 @@ extends Node
 
 # - Fix bunny sounds.
 
+# - Respawn sound at start, and NOT at respawn.
+# - Spawn position in level 0.
+
 # - Hook-up sounds:
 #  - match-start countdown cadence chords
 #  - Match-end victory/draw cadence (in phone recording)

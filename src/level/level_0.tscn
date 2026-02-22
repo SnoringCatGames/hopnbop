@@ -48,12 +48,12 @@ script = ExtResource("4_ensm3")
 metadata/_custom_type_script = "uid://1roi8ff6ow47"
 
 [node name="SpawnPoint2" type="Node2D" parent="SpawnPoints"]
-position = Vector2(31, -184)
+position = Vector2(33, -178)
 script = ExtResource("4_ensm3")
 metadata/_custom_type_script = "uid://1roi8ff6ow47"
 
 [node name="SpawnPoint6" type="Node2D" parent="SpawnPoints"]
-position = Vector2(-209, -201)
+position = Vector2(-204, -193)
 script = ExtResource("4_ensm3")
 metadata/_custom_type_script = "uid://1roi8ff6ow47"
 
@@ -88,7 +88,7 @@ script = ExtResource("4_ensm3")
 metadata/_custom_type_script = "uid://1roi8ff6ow47"
 
 [node name="SpawnPoint10" type="Node2D" parent="SpawnPoints"]
-position = Vector2(-165, -152)
+position = Vector2(-170, -145)
 script = ExtResource("4_ensm3")
 metadata/_custom_type_script = "uid://1roi8ff6ow47"
 
@@ -98,6 +98,6 @@ script = ExtResource("4_ensm3")
 metadata/_custom_type_script = "uid://1roi8ff6ow47"
 
 [node name="SpawnPoint12" type="Node2D" parent="SpawnPoints"]
-position = Vector2(-267, -159)
+position = Vector2(-265, -148)
 script = ExtResource("4_ensm3")
 metadata/_custom_type_script = "uid://1roi8ff6ow47"

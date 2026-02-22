@@ -84,3 +84,4 @@ volume_db = -9.348
 [node name="BoomAudioStreamPlayer" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_gqvpc")
+volume_db = -8.0
