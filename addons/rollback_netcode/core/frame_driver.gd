@@ -44,9 +44,7 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: --------------------------------------------
 
-# - Fix bunny sounds.
-
-# - Spawn position in level 0.
+# - Spawn positions in level 0 are too high in some cases.
 
 # - Hook-up sounds:
 #  - match-start countdown cadence chords
