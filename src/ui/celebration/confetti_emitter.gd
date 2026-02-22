@@ -6,6 +6,8 @@ extends Node2D
 
 
 const _GRAVITY := 400.0
+const _DRAG_H := 1.5
+const _DRAG_V := 3.0
 const _UPWARD_MIN := -350.0
 const _UPWARD_MAX := -150.0
 const _HORIZONTAL_SPREAD := 200.0
@@ -13,13 +15,18 @@ const _PARTICLE_LIFETIME_SEC := 2.0
 const _FADE_DURATION_SEC := 0.5
 const _PARTICLE_SIZE := Vector2(4, 3)
 const _SPIN_SPEED_MAX := 12.0
+const _FLUTTER_H_AMP := 250.0
+const _FLUTTER_V_AMP := 200.0
+const _FLUTTER_FREQ_MIN := 4.0
+const _FLUTTER_FREQ_MAX := 8.0
+const _FLUTTER_TILT := 0.5
 
 const _COLORS: Array[Color] = [
-	Color(1.0, 0.2, 0.2),  # Red.
+	Color(1.0, 0.2, 0.2), # Red.
 	Color(1.0, 0.85, 0.1), # Yellow.
-	Color(0.2, 0.9, 0.3),  # Green.
-	Color(0.3, 0.5, 1.0),  # Blue.
-	Color(1.0, 0.4, 0.7),  # Pink.
+	Color(0.2, 0.9, 0.3), # Green.
+	Color(0.3, 0.5, 1.0), # Blue.
+	Color(1.0, 0.4, 0.7), # Pink.
 	Color(1.0, 0.55, 0.1), # Orange.
 ]
 
@@ -48,7 +55,7 @@ func burst(
 			"sprite": sprite,
 			"velocity": Vector2(
 				randf_range(
-					-_HORIZONTAL_SPREAD,
+					- _HORIZONTAL_SPREAD,
 					_HORIZONTAL_SPREAD,
 				),
 				randf_range(
@@ -57,10 +64,16 @@ func burst(
 				),
 			),
 			"spin": randf_range(
-				-_SPIN_SPEED_MAX,
+				- _SPIN_SPEED_MAX,
 				_SPIN_SPEED_MAX,
 			),
 			"age": 0.0,
+			"rot": 0.0,
+			"flutter_freq": randf_range(
+				_FLUTTER_FREQ_MIN,
+				_FLUTTER_FREQ_MAX,
+			),
+			"flutter_phase": randf_range(0.0, TAU),
 		})
 
 
@@ -84,13 +97,28 @@ func _process(delta: float) -> void:
 			i -= 1
 			continue
 
-		# Apply gravity.
+		# Apply gravity and drag.
 		var vel: Vector2 = p["velocity"]
 		vel.y += _GRAVITY * delta
+		vel.x *= 1.0 - _DRAG_H * delta
+		vel.y *= 1.0 - _DRAG_V * delta
+
+		# Apply flutter oscillation.
+		var flutter_t := sin(
+			age * p["flutter_freq"]
+			+ p["flutter_phase"]
+		)
+		vel.x += flutter_t * _FLUTTER_H_AMP * delta
+		vel.y += flutter_t * _FLUTTER_V_AMP * delta
 		p["velocity"] = vel
 
 		sprite.position += vel * delta
-		sprite.rotation += p["spin"] * delta
+
+		# Spin rotation with flutter tilt overlay.
+		p["rot"] += p["spin"] * delta
+		sprite.rotation = (
+			p["rot"] + flutter_t * _FLUTTER_TILT
+		)
 
 		# Fade out near end of life.
 		var fade_start := (

@@ -44,9 +44,7 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: --------------------------------------------
 
-# Big pit level, with steps up either side.
-# Also make an exact shape copy of the original jump n bump level.
-# Update background to extend further up, for zoomed-out cameras.
+# - Fix bunny sounds.
 
 # Add a drag force to celebration confetti.
 
