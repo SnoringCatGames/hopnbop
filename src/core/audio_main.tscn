@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3 uid="uid://diqnxd2kabxfk"]
+[gd_scene load_steps=18 format=3 uid="uid://diqnxd2kabxfk"]
 
 [ext_resource type="Script" uid="uid://b5hrwox1n2lt0" path="res://src/core/audio_main.gd" id="1_tdp82"]
 [ext_resource type="AudioStream" uid="uid://d3nqcobglu0sa" path="res://assets/audio/old/pause_menu.wav" id="2_0ukso"]
@@ -14,11 +14,7 @@
 [ext_resource type="AudioStream" uid="uid://du3ckb0qd2u4c" path="res://assets/audio/kill1.wav" id="12_kill1"]
 [ext_resource type="AudioStream" uid="uid://bhl14gykl7c48" path="res://assets/audio/kill2.wav" id="13_kill2"]
 [ext_resource type="AudioStream" uid="uid://vicn70igr0mv" path="res://assets/audio/hole.wav" id="14_hole"]
-
-[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_kill"]
-streams_count = 2
-stream_0/stream = ExtResource("12_kill1")
-stream_1/stream = ExtResource("13_kill2")
+[ext_resource type="AudioStream" uid="uid://crx2u5fhrw44s" path="res://assets/audio/crown_cadence.wav" id="15_crown"]
 
 [sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_2b2qe"]
 streams_count = 4
@@ -26,6 +22,11 @@ stream_0/stream = ExtResource("3_seawu")
 stream_1/stream = ExtResource("4_wywav")
 stream_2/stream = ExtResource("5_wtepx")
 stream_3/stream = ExtResource("6_24bi3")
+
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_kill"]
+streams_count = 2
+stream_0/stream = ExtResource("12_kill1")
+stream_1/stream = ExtResource("13_kill2")
 
 [node name="AudioMain" type="Node2D"]
 process_mode = 3
@@ -78,4 +79,10 @@ bus = &"SFX"
 [node name="HoleStreamPlayer" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
 stream = ExtResource("14_hole")
+bus = &"SFX"
+
+[node name="CrownCadenceStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = ExtResource("15_crown")
+volume_db = -16.0
 bus = &"SFX"

@@ -21,6 +21,7 @@ extends Node2D
 	"achievement" = %AchievementStreamPlayer,
 	"kill" = %KillStreamPlayer,
 	"hole" = %HoleStreamPlayer,
+	"crown_cadence" = %CrownCadenceStreamPlayer,
 }
 
 
@@ -66,6 +67,13 @@ func fade_to_main_theme() -> void:
 
 	fade_out(%MenuThemeStreamPlayer)
 	fade_in(%MainThemeStreamPlayer, main_theme_volume)
+
+
+func fade_out_main_theme() -> void:
+	if not Netcode.is_primary_client:
+		return
+
+	fade_out(%MainThemeStreamPlayer)
 
 
 func fade_in(stream_player: AudioStreamPlayer, volume: float) -> void:
