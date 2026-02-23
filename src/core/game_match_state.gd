@@ -73,6 +73,15 @@ var _interaction_tracker: InteractionTracker
 # Dictionary<int, bool>
 var _connected_players := {}
 
+# --- Gameplay Stats Tracking ---
+
+# Dictionary<int, PlayerMatchStats>
+var _stats_by_player_id := {}
+
+# Tracks previous crown holder for crown acquisition
+# counting.
+var _previous_crown_player_id := -1
+
 var _is_packing_state_locally := false
 var _is_modifying_kills_locally := false
 var _is_modifying_bumps_locally := false
@@ -95,6 +104,8 @@ func clear() -> void:
 	_total_deaths_by_player_id.clear()
 	_total_bumps_by_player_id.clear()
 	_connected_players.clear()
+	_stats_by_player_id.clear()
+	_previous_crown_player_id = -1
 	# Reset interaction deduplication buffer and tracker if they exist.
 	if _server_recent_interactions != null:
 		_server_recent_interactions = null
@@ -102,6 +113,17 @@ func clear() -> void:
 	match_start_frame_index = -1
 	match_duration_usec = 0
 	is_match_ended = false
+
+
+## Returns the PlayerMatchStats for the given
+## player, creating one if it doesn't exist yet.
+func server_get_or_create_stats(
+	player_id: int,
+) -> PlayerMatchStats:
+	if not _stats_by_player_id.has(player_id):
+		_stats_by_player_id[player_id] = \
+			PlayerMatchStats.new()
+	return _stats_by_player_id[player_id]
 
 
 func client_notify_match_started(
@@ -166,6 +188,12 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 		_total_deaths_by_player_id[killee_id] = 0
 	_total_deaths_by_player_id[killee_id] += 1
 
+	# Record gameplay stats.
+	server_get_or_create_stats(killer_id) \
+		.record_kill()
+	server_get_or_create_stats(killee_id) \
+		.record_death()
+
 	# Store in indelible interaction buffer.
 	_server_store_interaction(
 		killer_id,
@@ -225,6 +253,12 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 	if not _total_bumps_by_player_id.has(player_2_id):
 		_total_bumps_by_player_id[player_2_id] = 0
 	_total_bumps_by_player_id[player_2_id] += 1
+
+	# Record gameplay stats.
+	server_get_or_create_stats(player_1_id) \
+		.record_bump()
+	server_get_or_create_stats(player_2_id) \
+		.record_bump()
 
 	# Store in indelible interaction buffer.
 	_server_store_interaction(
