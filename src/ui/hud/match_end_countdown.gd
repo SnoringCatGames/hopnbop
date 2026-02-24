@@ -6,6 +6,7 @@ extends Label
 const _TIMER_HIDE_AFTER_ZERO_DELAY_SEC := 0.3
 const _TIMER_TIME_REMAINING_BLINK_THRESHOLD_DELAY_SEC := 10.0
 const _PULSE_SECONDS := [30, 20, 10, 5, 4, 3, 2, 1]
+const _COUNTDOWN_BEAT_SECONDS := [4, 3, 2, 1]
 const _PULSE_SCALE := 1.3
 const _PULSE_DURATION := 0.15
 
@@ -83,12 +84,17 @@ func _update_display() -> void:
 		var previous_second := _last_second
 		_last_second = current_second
 
+		# Play countdown beat in final seconds.
+		if current_second in _COUNTDOWN_BEAT_SECONDS:
+			%Beat1AudioStreamPlayer.play()
+
 		# Pulse at specific seconds.
 		if current_second in _PULSE_SECONDS:
 			_animate_pulse()
 
 		# Fade out and scale up when hitting zero.
 		if previous_second == 1 and current_second == 0:
+			%Beat2AudioStreamPlayer.play()
 			_is_animating_zero = true
 			_animate_zero_transition()
 

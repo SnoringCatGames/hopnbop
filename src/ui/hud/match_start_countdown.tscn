@@ -1,6 +1,10 @@
-[gd_scene load_steps=2 format=3 uid="uid://bsw2fyvgipqht"]
+[gd_scene load_steps=6 format=3 uid="uid://bsw2fyvgipqht"]
 
 [ext_resource type="Script" uid="uid://dfs47e4yb7t4h" path="res://src/ui/hud/match_start_countdown.gd" id="1_script"]
+[ext_resource type="AudioStream" uid="uid://1y44i4ts5wu0" path="res://assets/audio/match_start_countdown_beat1.wav" id="2_beat1"]
+[ext_resource type="AudioStream" uid="uid://bg3pl0x6v8lf1" path="res://assets/audio/match_start_countdown_beat2.wav" id="3_beat2"]
+[ext_resource type="AudioStream" uid="uid://fob1rh34o37w" path="res://assets/audio/match_start_countdown_beat3.wav" id="4_beat3"]
+[ext_resource type="AudioStream" uid="uid://dcdcuafew4phq" path="res://assets/audio/match_start_countdown_beat4.wav" id="5_beat4"]
 
 [node name="MatchStartCountdown" type="Control"]
 layout_mode = 3
@@ -25,8 +29,27 @@ offset_right = 100.0
 offset_bottom = 50.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 2
 theme_override_font_sizes/font_size = 72
 text = "3"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="Beat1AudioStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = ExtResource("2_beat1")
+volume_db = -32.0
+
+[node name="Beat2AudioStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = ExtResource("3_beat2")
+volume_db = -32.0
+
+[node name="Beat3AudioStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = ExtResource("4_beat3")
+volume_db = -32.0
+
+[node name="Beat4AudioStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = ExtResource("5_beat4")
+volume_db = -32.0

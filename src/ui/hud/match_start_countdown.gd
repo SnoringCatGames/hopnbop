@@ -83,8 +83,18 @@ func _update_display() -> void:
 	if _current_step_index < numeric_step_count:
 		var number := numeric_step_count - _current_step_index
 		_show_number(str(number))
+		_play_countdown_beat(number)
 	else:
 		_show_go()
+		_play_countdown_beat(0)
+
+
+func _play_countdown_beat(number: int) -> void:
+	match number:
+		3: %Beat1AudioStreamPlayer.play()
+		2: %Beat2AudioStreamPlayer.play()
+		1: %Beat3AudioStreamPlayer.play()
+		0: %Beat4AudioStreamPlayer.play()
 
 
 func _finish_countdown() -> void:

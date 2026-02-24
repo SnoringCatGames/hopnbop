@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://cl4rrq5jk5usy"]
+[gd_scene load_steps=15 format=3 uid="uid://cl4rrq5jk5usy"]
 
 [ext_resource type="Theme" uid="uid://cg4peau6bmpdw" path="res://src/ui/hud_theme.tres" id="1_gyiqn"]
 [ext_resource type="Script" uid="uid://brikesqcqixc1" path="res://src/ui/celebration/match_end_celebration.gd" id="1_script"]
@@ -9,6 +9,8 @@
 [ext_resource type="AudioStream" uid="uid://b37h0kjrry8xn" path="res://assets/audio/confetti3.wav" id="7_gqvpc"]
 [ext_resource type="AudioStream" uid="uid://dg8kytk8qrpjn" path="res://assets/audio/confetti4.wav" id="8_r7p17"]
 [ext_resource type="AudioStream" uid="uid://w81u5lokp06a" path="res://assets/audio/boom.wav" id="9_q7ehs"]
+[ext_resource type="AudioStream" uid="uid://dxpgwiffy3m41" path="res://assets/audio/win_cadence.wav" id="10_win"]
+[ext_resource type="AudioStream" uid="uid://ujctc7tce5t7" path="res://assets/audio/tie_cadence.wav" id="11_tie"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_iris"]
 shader = ExtResource("2_shader")
@@ -84,4 +86,14 @@ volume_db = -9.348
 [node name="BoomAudioStreamPlayer" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_gqvpc")
+volume_db = -8.0
+
+[node name="WinCadenceAudioStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = ExtResource("10_win")
+volume_db = -8.0
+
+[node name="TieCadenceAudioStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = ExtResource("11_tie")
 volume_db = -8.0
