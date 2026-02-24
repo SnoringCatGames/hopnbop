@@ -3,10 +3,11 @@ extends RefCounted
 
 
 static func generate_random_attributes() -> Dictionary:
-	var is_soft := true
+	var is_soft := randf() < 0.5
 	var adjective_list := (
-		BunnyWords.SOFT_ADJECTIVES if is_soft
-		else BunnyWords.HARD_ADJECTIVES
+		DynamicAdjectiveConfig.SOFT_ADJECTIVES
+		if is_soft
+		else DynamicAdjectiveConfig.HARD_ADJECTIVES
 	)
 
 	# Select random body type and costume from
@@ -22,7 +23,7 @@ static func generate_random_attributes() -> Dictionary:
 			randi() % G.settings.costumes.size()
 
 	return {
-		"bunny_name": BunnyWords.NAMES.pick_random(),
+		"bunny_name": DynamicAdjectiveConfig.NAMES.pick_random(),
 		"adjective": adjective_list.pick_random(),
 		"body_type_index": body_type_index,
 		"costume_index": costume_index,

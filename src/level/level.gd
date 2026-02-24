@@ -8,6 +8,17 @@ const _SPAWN_POSITION_MIN_SPAWN_DISTANCE := 200.0
 const _SPAWN_POSITION_COLLISION_CHECK_STEP := 4.0
 const _SPAWN_POSITION_MAX_UPWARD_SHIFT := 200.0
 
+## Terrain set for solid/collision tiles
+## (ice, spring, etc.).
+const TERRAIN_SET_COLLISION := 0
+## Terrain set for water tiles.
+const TERRAIN_SET_WATER := 1
+const ICE_TERRAIN_ID := 2
+const SPRING_TERRAIN_ID := 17
+const TILE_SIZE := 16.0
+
+const _WATER_SURFACE_SCAN_LIMIT := 20
+
 @export var collision_tiles: TileMapLayer
 
 @export var level_camera: Camera2D
@@ -28,6 +39,7 @@ var players_by_id := {}
 
 var gore_manager: GoreManager
 var skid_manager: SkidManager
+var splash_manager: SplashManager
 
 ## Frame index when this level entered the tree.
 ## Used to distinguish initial-spawn players from
@@ -62,6 +74,13 @@ func _ready() -> void:
 		add_child(skid_manager)
 		move_child(
 			skid_manager, players_node.get_index())
+
+		splash_manager = SplashManager.new()
+		splash_manager.name = "SplashManager"
+		add_child(splash_manager)
+		move_child(
+			splash_manager,
+			players_node.get_index())
 
 
 func _get_spawn_points() -> Array[SpawnPoint]:
@@ -185,6 +204,61 @@ func deregister_player(player: Player) -> void:
 	# removing re-registered players with the same id.
 	if players_by_id.get(player.player_id) == player:
 		players_by_id.erase(player.player_id)
+
+
+## Returns true if the tile at the given global
+## position is a water tile.
+func is_position_in_water(
+	global_pos: Vector2,
+) -> bool:
+	if not is_instance_valid(collision_tiles):
+		return false
+	var local_pos := collision_tiles.to_local(
+		global_pos)
+	var cell := collision_tiles.local_to_map(
+		local_pos)
+	return _is_cell_water(cell)
+
+
+## Returns the Y coordinate (in global space) of
+## the water surface above the given position.
+## Scans upward from the tile at global_pos to
+## find the topmost contiguous water tile. Returns
+## the top edge of that tile.
+func get_water_surface_y(
+	global_pos: Vector2,
+) -> float:
+	if not is_instance_valid(collision_tiles):
+		return global_pos.y
+	var local_pos := collision_tiles.to_local(
+		global_pos)
+	var cell := collision_tiles.local_to_map(
+		local_pos)
+	# Scan upward to find topmost water tile.
+	var top_cell := cell
+	for i in range(1, _WATER_SURFACE_SCAN_LIMIT):
+		var above := Vector2i(cell.x, cell.y - i)
+		if _is_cell_water(above):
+			top_cell = above
+		else:
+			break
+	# Return the top edge of the topmost water
+	# tile in global coords.
+	var top_local := collision_tiles.map_to_local(
+		top_cell)
+	var top_global := collision_tiles.to_global(
+		top_local)
+	return top_global.y - TILE_SIZE / 2.0
+
+
+func _is_cell_water(cell: Vector2i) -> bool:
+	var tile_data := (
+		collision_tiles.get_cell_tile_data(cell))
+	if tile_data == null:
+		return false
+	return tile_data.get_terrain_set() == (
+		TERRAIN_SET_WATER
+	)
 
 
 ## Returns a debug string identifying this level.

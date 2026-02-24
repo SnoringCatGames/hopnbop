@@ -1,0 +1,119 @@
+class_name PlayerMatchStats
+extends RefCounted
+## Server-side per-player stat accumulator for dynamic
+## adjective assignment. Tracks gameplay metrics during
+## a match and provides serialization for RPC delivery.
+
+
+var crown_time_sec := 0.0
+var regicide_count := 0
+var bump_count := 0
+var kill_count := 0
+var death_count := 0
+var jump_count := 0
+var water_time_sec := 0.0
+var water_jump_count := 0
+var ice_time_sec := 0.0
+var spring_launch_count := 0
+var direction_change_count := 0
+
+var _height_accumulator := 0.0
+var _height_frame_count := 0
+var _previous_facing_sign := 0
+
+
+var average_height: float:
+	get:
+		if _height_frame_count == 0:
+			return 0.0
+		return (
+			_height_accumulator
+			/ _height_frame_count
+		)
+
+
+## Accumulates per-frame stats from the character's
+## current state. Called once per server forward-sim
+## frame (not during resimulation or death).
+func accumulate_frame(
+	character: Character,
+	delta_sec: float,
+	has_crown: bool,
+) -> void:
+	# Height tracking (negate Y so higher altitude
+	# = higher value).
+	_height_accumulator += -character.global_position.y
+	_height_frame_count += 1
+
+	# Crown time.
+	if has_crown:
+		crown_time_sec += delta_sec
+
+	# Water time.
+	if character.surfaces.is_in_water:
+		water_time_sec += delta_sec
+
+	# Ice time (on floor with ice friction).
+	if (
+		character.surfaces.is_attaching_to_floor
+		and character.surfaces.surface_properties
+			.friction_multiplier < 1.0
+	):
+		ice_time_sec += delta_sec
+
+	# Direction changes.
+	var facing := (
+		character.surfaces.horizontal_facing_sign
+	)
+	if (
+		_previous_facing_sign != 0
+		and facing != 0
+		and facing != _previous_facing_sign
+	):
+		direction_change_count += 1
+	if facing != 0:
+		_previous_facing_sign = facing
+
+
+func record_jump(is_in_water: bool) -> void:
+	jump_count += 1
+	if is_in_water:
+		water_jump_count += 1
+
+
+func record_spring_launch() -> void:
+	spring_launch_count += 1
+
+
+func record_kill() -> void:
+	kill_count += 1
+
+
+func record_death() -> void:
+	death_count += 1
+
+
+func record_bump() -> void:
+	bump_count += 1
+
+
+func record_regicide() -> void:
+	regicide_count += 1
+
+
+## Packs stats into an Array for RPC transmission.
+func to_packed_array() -> Array:
+	return [
+		crown_time_sec,
+		regicide_count,
+		bump_count,
+		kill_count,
+		death_count,
+		jump_count,
+		water_time_sec,
+		water_jump_count,
+		ice_time_sec,
+		spring_launch_count,
+		direction_change_count,
+		average_height,
+	]

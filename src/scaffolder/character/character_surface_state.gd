@@ -384,9 +384,6 @@ var is_within_coyote_time: bool:
 		)
 		return frames_since_floor <= threshold_frames
 
-const _TERRAIN_SET := 0
-const _ICE_TERRAIN_ID := 2
-const _SPRING_TERRAIN_ID := 17
 const _ICE_FRICTION_MULTIPLIER := 0.15
 const _ICE_SPEED_MULTIPLIER := 1.5
 const _ICE_ACCELERATION_MULTIPLIER := 0.15
@@ -525,17 +522,17 @@ func _update_surface_properties() -> void:
 	if tile_data == null:
 		return
 
-	if tile_data.get_terrain_set() != _TERRAIN_SET:
+	if tile_data.get_terrain_set() != Level.TERRAIN_SET_COLLISION:
 		return
 	var terrain := tile_data.get_terrain()
-	if terrain == _ICE_TERRAIN_ID:
+	if terrain == Level.ICE_TERRAIN_ID:
 		surface_properties.friction_multiplier = (
 			_ICE_FRICTION_MULTIPLIER)
 		surface_properties.speed_multiplier = (
 			_ICE_SPEED_MULTIPLIER)
 		surface_properties.acceleration_multiplier = (
 			_ICE_ACCELERATION_MULTIPLIER)
-	elif terrain == _SPRING_TERRAIN_ID:
+	elif terrain == Level.SPRING_TERRAIN_ID:
 		surface_properties.is_spring = true
 
 

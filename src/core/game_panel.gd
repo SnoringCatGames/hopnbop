@@ -828,8 +828,8 @@ func _validate_player_attributes(
 		var attr: Dictionary = attributes[i].duplicate()
 
 		# Validate/sanitize bunny_name.
-		if not BunnyWords.NAMES.has(attr.get("bunny_name", "")):
-			attr["bunny_name"] = BunnyWords.NAMES.pick_random()
+		if not DynamicAdjectiveConfig.NAMES.has(attr.get("bunny_name", "")):
+			attr["bunny_name"] = DynamicAdjectiveConfig.NAMES.pick_random()
 			Netcode.warning(
 				"Peer %d: Invalid bunny_name, assigned random: %s" % [
 					peer_id,
@@ -844,8 +844,10 @@ func _validate_player_attributes(
 		var is_soft: bool = \
 			attr.get("is_soft", true)
 		var valid_adjectives := (
-			BunnyWords.SOFT_ADJECTIVES if is_soft
-			else BunnyWords.HARD_ADJECTIVES
+			DynamicAdjectiveConfig.SOFT_ADJECTIVES
+			if is_soft
+			else DynamicAdjectiveConfig
+				.HARD_ADJECTIVES
 		)
 		var is_valid_adj := (
 			valid_adjectives.has(adj_value) or

@@ -19,6 +19,8 @@ const _POPUP_SLIDE_OFFSET := Vector2(15.0, -25.0) # Drift right and up.
 const _SCORE_INCREMENT_INTERVAL_SEC := 0.02
 
 var player_id: int = 0
+var is_adjective_hidden := false
+var is_adjective_frozen := false
 
 var _displayed_score: int = 0
 var _target_score: int = 0
@@ -45,7 +47,10 @@ func _update_display(delta: float) -> void:
 
 	# Update name and adjective.
 	%Name.text = player_match_state.bunny_name
-	%Adjective.text = player_match_state.adjective
+	if not is_adjective_frozen:
+		%Adjective.text = \
+			player_match_state.adjective
+	%Adjective.visible = not is_adjective_hidden
 
 	# Hide score in lobby.
 	%Score.visible = not G.is_lobby_active

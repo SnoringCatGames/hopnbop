@@ -26,6 +26,10 @@ const _IRIS_DURATION := 0.7
 const _IRIS_CENTER_OFFSET := Vector2(0, -5)
 const _IRIS_TILE_SIZE_PX := 10.0
 
+const _ADJECTIVE_REVEAL_DELAY := 1.5
+const _ADJECTIVE_STAGGER_MAX := 0.3
+const _CADENCE_DELAY_SEC := 1.0
+
 
 var _camera: Camera2D
 var _original_camera_parent: Node
@@ -86,6 +90,10 @@ func start_celebration() -> void:
 
 	visible = true
 
+	# Fade out match music.
+	if is_instance_valid(G.audio):
+		G.audio.fade_out_main_theme()
+
 	# Phase 1: Zoom (t=0.0s).
 	_zoom_camera_to_winner()
 
@@ -105,7 +113,12 @@ func start_celebration() -> void:
 		)
 	)
 
-	# Phase 4: Iris close (t=3.8s).
+	# Phase 4: Win/tie cadence.
+	var t_cadence := get_tree().create_timer(
+		_CADENCE_DELAY_SEC, true, false, true)
+	t_cadence.timeout.connect(_play_cadence)
+
+	# Phase 5: Iris close (t=3.8s).
 	var t3 := get_tree().create_timer(
 		_IRIS_DELAY, true, false, true)
 	t3.timeout.connect(_start_iris_close)
@@ -404,6 +417,18 @@ func _start_iris_close() -> void:
 	)
 
 
+func _play_cadence() -> void:
+	var game_state := G.match_state as GameMatchState
+	var is_tie := (
+		is_instance_valid(game_state)
+		and game_state.get_winner_kill_lead() == 0
+	)
+	if is_tie:
+		%TieCadenceAudioStreamPlayer.play()
+	else:
+		%WinCadenceAudioStreamPlayer.play()
+
+
 func _update_iris_center() -> void:
 	if not is_instance_valid(_winner):
 		return
@@ -437,6 +462,96 @@ func _update_iris_center() -> void:
 	var material: ShaderMaterial = (
 		%IrisOverlay.material)
 	material.set_shader_parameter("center", uv)
+
+
+func reveal_adjectives(
+	adjective_map: Dictionary,
+) -> void:
+	if Netcode.is_server:
+		return
+	if not is_instance_valid(G.hud):
+		return
+
+	var player_list: PlayerList = \
+		G.hud.player_list
+	if not is_instance_valid(player_list):
+		return
+
+	# Freeze adjective labels immediately so
+	# replication doesn't spoil the reveal.
+	for player_id in adjective_map:
+		var display: PlayerDisplay = \
+			player_list._player_displays \
+			.get(player_id)
+		if is_instance_valid(display):
+			display.is_adjective_frozen = true
+
+	# Delay reveal until after "WINNER" text
+	# settles (~1.1s), with a small extra gap.
+	var timer := get_tree().create_timer(
+		_ADJECTIVE_REVEAL_DELAY,
+		true, false, true)
+	timer.timeout.connect(func():
+		for player_id in adjective_map:
+			var display: PlayerDisplay = \
+				player_list._player_displays \
+				.get(player_id)
+			if not is_instance_valid(display):
+				continue
+
+			# Stagger each popup randomly.
+			var stagger := randf() \
+				* _ADJECTIVE_STAGGER_MAX
+			var stagger_timer := \
+				get_tree().create_timer(
+					stagger,
+					true, false, true)
+			stagger_timer.timeout.connect(
+				_spawn_adjective_popup.bind(
+					display,
+					adjective_map[player_id],
+				)
+			)
+	)
+
+
+func _spawn_adjective_popup(
+	display: PlayerDisplay,
+	adjective: String,
+) -> void:
+	if not is_instance_valid(display):
+		return
+
+	var ps := G.get_player_match_state(
+		display.player_id) as GamePlayerState
+	var label_color := Color.WHITE
+	var outline_color := Color.TRANSPARENT
+	if ps:
+		label_color = ps.label_color
+		outline_color = ps.outline_color
+
+	# Hide the normal adjective label while the
+	# popup is showing.
+	display.is_adjective_hidden = true
+
+	var popup := AdjectiveRevealPopup.new()
+	display.add_child(popup)
+
+	# Position above the adjective label.
+	var adj_label: Label = display.get_node(
+		"%Adjective")
+	if is_instance_valid(adj_label):
+		popup.position = Vector2(
+			adj_label.global_position.x \
+				+ adj_label.size.x / 2.0,
+			adj_label.global_position.y \
+				- 4.0,
+		)
+	else:
+		popup.position = display.global_position
+
+	popup.reveal(
+		adjective, label_color, outline_color)
 
 
 func reset() -> void:
