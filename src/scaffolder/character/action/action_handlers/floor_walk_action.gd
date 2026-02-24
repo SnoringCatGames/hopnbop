@@ -12,6 +12,11 @@ func _init() -> void:
 
 
 func process(character) -> bool:
+	# Water handler manages horizontal movement in
+	# water.
+	if character.surfaces.is_in_water:
+		return false
+
 	if !character.processed_action(FloorJumpAction.NAME):
 		# Horizontal movement.
 		character.velocity.x += (

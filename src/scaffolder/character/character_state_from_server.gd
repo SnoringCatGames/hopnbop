@@ -9,6 +9,7 @@ enum ServerInteractionType {
 	BUMP,
 	KILL,
 	DIE,
+	SPRING,
 }
 
 @export var character: Character:
@@ -120,7 +121,8 @@ func _is_interaction_rollbackable(interaction_type: int) -> bool:
 		ServerInteractionType.SPAWN, \
 		ServerInteractionType.BUMP, \
 		ServerInteractionType.KILL, \
-		ServerInteractionType.DIE:
+		ServerInteractionType.DIE, \
+		ServerInteractionType.SPRING:
 			return false # Non-rollbackable.
 		_:
 			Netcode.fatal("Unknown ServerInteractionType: %d" % interaction_type)
@@ -544,6 +546,8 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 			== ServerInteractionType.KILL
 		or last_interaction_type
 			== ServerInteractionType.BUMP
+		or last_interaction_type
+			== ServerInteractionType.SPRING
 	):
 		character._last_launch_frame_index = (
 			last_interaction_frame_index
@@ -590,7 +594,8 @@ func _apply_interaction_collidability(interaction_type: int) -> void:
 		ServerInteractionType.SPAWN, \
 		ServerInteractionType.NONE, \
 		ServerInteractionType.BUMP, \
-		ServerInteractionType.KILL:
+		ServerInteractionType.KILL, \
+		ServerInteractionType.SPRING:
 			is_collidable = true # Alive - has collision.
 		_:
 			Netcode.fatal("Unknown ServerInteractionType: %d" % interaction_type)
@@ -634,10 +639,12 @@ func get_current_frame_bounce_velocity():
 		&"last_interaction_type"
 	)
 
-	# Only KILL and BUMP interactions have bounce velocities.
+	# Only KILL, BUMP, and SPRING interactions have bounce
+	# velocities.
 	if (
 		interaction_type != ServerInteractionType.KILL and
-		interaction_type != ServerInteractionType.BUMP
+		interaction_type != ServerInteractionType.BUMP and
+		interaction_type != ServerInteractionType.SPRING
 	):
 		return null
 
@@ -898,6 +905,8 @@ func _reconcile_server_interaction() -> void:
 			_reconcile_die_interaction(current_frame)
 		ServerInteractionType.SPAWN:
 			_reconcile_spawn_interaction(current_frame)
+		ServerInteractionType.SPRING:
+			_reconcile_spring_interaction(current_frame)
 		_:
 			Netcode.fatal()
 
@@ -929,6 +938,27 @@ func _reconcile_kill_interaction(p_frame_index: int) -> void:
 	if Netcode.log.is_verbose:
 		Netcode.verbose(
 			"Kill interaction at frame %d, queuing rollback (%s)" % [
+				p_frame_index,
+				name,
+			],
+			NetworkLogger.CATEGORY_NETWORK_SYNC,
+		)
+
+
+## Reconciles a spring interaction by queuing
+## rollback. The bounce velocity is applied during
+## re-simulation by bunny.gd via
+## get_current_frame_bounce_velocity() + force_launch().
+func _reconcile_spring_interaction(
+	p_frame_index: int,
+) -> void:
+	Netcode.frame_driver.queue_rollback(
+		p_frame_index, "spring on %s" % name)
+
+	if Netcode.log.is_verbose:
+		Netcode.verbose(
+			"Spring interaction at frame %d, "
+			+ "queuing rollback (%s)" % [
 				p_frame_index,
 				name,
 			],

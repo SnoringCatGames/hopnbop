@@ -16,6 +16,7 @@ const BIT_ATTACHING_TO_LEFT_WALL := 6
 const BIT_ATTACHING_TO_RIGHT_WALL := 7
 const BIT_FACING_LEFT := 8
 const BIT_IS_LAUNCHED := 9
+const BIT_IN_WATER := 10
 
 ## The underlying state is stored as a bitmask.
 ##
@@ -336,6 +337,26 @@ var is_launched: bool:
 	get:
 		return _get_bit(bitmask, BIT_IS_LAUNCHED)
 
+var is_in_water: bool:
+	set(value):
+		_set_bit(BIT_IN_WATER, value)
+	get:
+		return _get_bit(bitmask, BIT_IN_WATER)
+var just_entered_water: bool:
+	get:
+		return (
+			is_in_water
+			and not _get_bit(
+				previous_bitmask, BIT_IN_WATER)
+		)
+var just_exited_water: bool:
+	get:
+		return (
+			not is_in_water
+			and _get_bit(
+				previous_bitmask, BIT_IN_WATER)
+		)
+
 var horizontal_acceleration_sign: int:
 	get:
 		if is_attaching_to_wall:
@@ -363,7 +384,14 @@ var is_within_coyote_time: bool:
 		)
 		return frames_since_floor <= threshold_frames
 
-# TODO: Do something with this.
+const _TERRAIN_SET := 0
+const _ICE_TERRAIN_ID := 2
+const _SPRING_TERRAIN_ID := 17
+const _ICE_FRICTION_MULTIPLIER := 0.15
+const _ICE_SPEED_MULTIPLIER := 1.5
+const _ICE_ACCELERATION_MULTIPLIER := 0.15
+const _TERRAIN_SAMPLE_OFFSET := 4.0
+
 var surface_properties := SurfaceProperties.new()
 
 var character: Character
@@ -451,6 +479,8 @@ func update_touches(
 		is_launched = false
 		initial_launch_velocity = Vector2.INF
 
+	_update_surface_properties()
+
 
 ## Checks if a fall-through floor is directly beneath the character
 ## by raycasting on only the fall-through floor collision layer.
@@ -465,6 +495,48 @@ func _is_on_one_way_floor() -> bool:
 	)
 	query.exclude = [character.get_rid()]
 	return not space.intersect_ray(query).is_empty()
+
+
+## Updates surface_properties based on the terrain
+## type of the floor tile beneath the character.
+## Uses direct cell lookup (same approach as water
+## detection in Level) instead of raycasting, which
+## is unreliable for terrain identification.
+func _update_surface_properties() -> void:
+	surface_properties.reset()
+	if not is_touching_floor:
+		return
+	if not is_instance_valid(G.level):
+		return
+	var tilemap := G.level.collision_tiles
+	if not is_instance_valid(tilemap):
+		return
+
+	# Sample the tile just below the character's
+	# feet. global_position is at the feet, so
+	# offset down by a few pixels to land inside
+	# the floor tile.
+	var sample_pos := character.global_position \
+		+ Vector2(0, _TERRAIN_SAMPLE_OFFSET)
+	var local_pos := tilemap.to_local(sample_pos)
+	var cell := tilemap.local_to_map(local_pos)
+	var tile_data := tilemap.get_cell_tile_data(
+		cell)
+	if tile_data == null:
+		return
+
+	if tile_data.get_terrain_set() != _TERRAIN_SET:
+		return
+	var terrain := tile_data.get_terrain()
+	if terrain == _ICE_TERRAIN_ID:
+		surface_properties.friction_multiplier = (
+			_ICE_FRICTION_MULTIPLIER)
+		surface_properties.speed_multiplier = (
+			_ICE_SPEED_MULTIPLIER)
+		surface_properties.acceleration_multiplier = (
+			_ICE_ACCELERATION_MULTIPLIER)
+	elif terrain == _SPRING_TERRAIN_ID:
+		surface_properties.is_spring = true
 
 
 ## Corrects position and velocity after an invalid one-way tile collision.

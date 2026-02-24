@@ -12,6 +12,10 @@ func _init() -> void:
 
 
 func process(character) -> bool:
+	# Water handler manages friction in water.
+	if character.surfaces.is_in_water:
+		return false
+
 	if !character.processed_action(FloorJumpAction.NAME):
 		# Friction.
 		var acceleration_sign: int = character.surfaces.horizontal_acceleration_sign

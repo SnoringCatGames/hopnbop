@@ -81,6 +81,8 @@ func _physics_process(delta: float) -> void:
 
 func _start_fade() -> void:
 	var tween := create_tween()
+	tween.tween_interval(
+		G.settings.gore_fade_delay_sec)
 	tween.tween_property(
 		self, "modulate:a", 0.0,
 		G.settings.gore_fade_duration_sec,

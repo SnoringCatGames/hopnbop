@@ -16,6 +16,11 @@ func _init() -> void:
 
 
 func process(character) -> bool:
+	# Water handlers manage gravity and horizontal
+	# movement when in water.
+	if character.surfaces.is_in_water:
+		return false
+
 	# If the character falls off a wall or ledge, then that's considered the
 	# first jump.
 	character.jump_sequence_count = max(character.jump_sequence_count, 1)

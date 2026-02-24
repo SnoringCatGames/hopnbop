@@ -27,6 +27,7 @@ var _suppress_landing_skid := false
 # Can contain both "foot" and "body" for the same player.
 var _active_intersections := {}
 var _was_invincible_last_frame := false
+var _had_crown := false
 
 
 func _enter_tree() -> void:
@@ -86,6 +87,33 @@ func _process(_delta: float) -> void:
 
 func _process_movement_and_actions() -> void:
 	super._process_movement_and_actions()
+
+	# Spring tile detection (server forward-sim only).
+	# Clients receive the interaction via the rollback
+	# buffer, same as kill/bump.
+	if (
+		Netcode.is_server
+		and not Netcode.frame_driver.is_resimulating
+		and surfaces.surface_properties.is_spring
+		and _pending_bounce == Vector2.ZERO
+	):
+		var spring_velocity := Vector2(
+			velocity.x,
+			movement_settings
+				.spring_bounce_vertical_boost
+		)
+		_pending_bounce = spring_velocity
+		state_from_server.record_interaction(
+			CharacterStateFromServer
+				.ServerInteractionType.SPRING,
+			Netcode.server_frame_index,
+			global_position,
+			spring_velocity
+		)
+		# Record spring launch stat.
+		G.match_state \
+			.server_get_or_create_stats(player_id) \
+			.record_spring_launch()
 
 	# Apply pending bounce after movement processing.
 	# This must happen AFTER action handlers run, because
@@ -189,6 +217,37 @@ func _process_movement_and_actions() -> void:
 			_processed_collision_this_frame = false
 			_last_collision_frame = current_frame
 
+	# Accumulate per-frame gameplay stats (server
+	# forward-sim only, while alive and match active).
+	if (
+		Netcode.is_server
+		and not Netcode.frame_driver.is_resimulating
+		and not state_from_server.is_dead
+		and not G.match_state.is_match_ended
+	):
+		var stats := G.match_state \
+			.server_get_or_create_stats(player_id)
+		var game_state := \
+			G.match_state as GameMatchState
+		var crown_holder_id := -1
+		if is_instance_valid(game_state):
+			crown_holder_id = \
+				game_state.get_crown_player_id(
+					G.settings.crown_kill_lead)
+		stats.accumulate_frame(
+			self,
+			Netcode.frame_driver
+				.target_network_time_step_sec,
+			crown_holder_id == player_id,
+		)
+		# Track jumps.
+		if (
+			last_triggered_jump_frame_index
+				== Netcode.server_frame_index
+		):
+			stats.record_jump(
+				surfaces.is_in_water)
+
 	# Update player-player collision based on invincibility state.
 	# This runs every frame to handle invincibility expiring.
 	_update_player_collision_for_invincibility()
@@ -203,6 +262,42 @@ func _process_animation() -> void:
 		return
 	super._process_animation()
 	_update_skids()
+	_update_splashes()
+
+
+func _update_splashes() -> void:
+	if Netcode.frame_driver.is_resimulating:
+		return
+
+	if state_from_server.is_dead:
+		return
+
+	if (
+		not is_instance_valid(G.level)
+		or not is_instance_valid(
+			G.level.splash_manager)
+	):
+		return
+
+	# Entering water.
+	if surfaces.just_entered_water:
+		G.level.splash_manager.spawn_splash(
+			Vector2(
+				global_position.x,
+				water_surface_y),
+			&"enter_water",
+		)
+		play_sound("splash")
+
+	# Exiting water (including jumping out).
+	if surfaces.just_exited_water:
+		G.level.splash_manager.spawn_splash(
+			Vector2(
+				global_position.x,
+				water_surface_y),
+			&"exit_water",
+		)
+		play_sound("splash")
 
 
 func _update_skids() -> void:
@@ -366,6 +461,9 @@ func _handle_interaction_effects() -> void:
 				)
 			if _has_ever_died:
 				play_sound("respawn")
+		CharacterStateFromServer \
+				.ServerInteractionType.SPRING:
+			play_sound("spring")
 		_:
 			Netcode.fatal()
 
@@ -483,6 +581,10 @@ func _get_audio_stream_player(sound_name: StringName) -> AudioStreamPlayer2D:
 				return %DieFlowersAudioStreamPlayer
 		"respawn":
 			return %RespawnAudioStreamPlayer
+		"spring":
+			return %SpringAudioStreamPlayer
+		"splash":
+			return %SplashAudioStreamPlayer
 		_:
 			Netcode.fatal()
 			return null
@@ -560,7 +662,16 @@ func _update_crown_visibility() -> void:
 	var crown_id := game_state.get_crown_player_id(
 		G.settings.crown_kill_lead)
 	var should_show := (crown_id == player_id)
+
+	# Play crown cadence when this bunny newly gets
+	# the crown.
+	if should_show and not _had_crown:
+		if is_instance_valid(G.audio):
+			G.audio.play_sound("crown_cadence")
+	_had_crown = should_show
+
 	bunny_anim.set_crown_visible(should_show)
+
 
 
 func _update_appearance() -> void:
@@ -795,7 +906,19 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	if _processed_collision_this_frame:
 		return
 
+	# Record bump stat even when bumps are disabled,
+	# so dynamic adjective tracking sees collisions.
+	G.match_state.server_get_or_create_stats(
+		player_id).record_bump()
+	G.match_state.server_get_or_create_stats(
+		other_player_id).record_bump()
+
 	if not G.settings.are_bumps_enabled:
+		# Mark processed so the other player's
+		# callback doesn't double-count the stat.
+		_processed_collision_this_frame = true
+		other_player \
+			._processed_collision_this_frame = true
 		return
 
 	# Mark this collision as processed.
@@ -1372,6 +1495,16 @@ func _process_deferred_collisions() -> void:
 					"Deferred bump: %d bumped %d" % [player_id, other_player_id],
 					NetworkLogger.CATEGORY_GAME_STATE,
 				)
+				# Record bump stats for dynamic
+				# adjective tracking.
+				G.match_state \
+					.server_get_or_create_stats(
+						player_id) \
+					.record_bump()
+				G.match_state \
+					.server_get_or_create_stats(
+						other_player_id) \
+					.record_bump()
 				_processed_collision_this_frame = true
 				other_player._processed_collision_this_frame = true
 				G.match_state.server_add_bump(player_id, other_player_id)

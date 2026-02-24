@@ -89,6 +89,11 @@ func _ready() -> void:
 			_on_match_start_countdown_started
 		)
 
+		# Start match music when countdown ends.
+		Netcode.frame_driver.match_start_countdown_ended.connect(
+			_on_match_start_countdown_ended
+		)
+
 	if Netcode.is_server:
 		# In preview mode, spawn new level when first client connects after match end.
 		if Netcode.is_preview:
@@ -410,6 +415,29 @@ func client_exit_match() -> void:
 
 	Netcode.connector.client_disconnect()
 	G.client_session.copy_latest_state(G.match_state)
+
+	# Sync updated adjectives from match state
+	# back into latest attributes so they persist
+	# into the lobby.
+	for i in range(
+		G.client_session \
+			.latest_local_player_ids.size()
+	):
+		var pid: int = G.client_session \
+			.latest_local_player_ids[i]
+		var ps: GamePlayerState = \
+			G.match_state.players_by_id \
+			.get(pid)
+		if ps and i < G.client_session \
+				.latest_local_player_attributes \
+				.size():
+			G.client_session \
+				.latest_local_player_attributes \
+				[i]["adjective"] = ps.adjective
+			G.client_session \
+				.latest_local_player_attributes \
+				[i]["is_soft"] = false
+
 	G.client_session.clear()
 
 	# Pause frame driver so it stops running network
@@ -551,6 +579,10 @@ func _on_match_start_countdown_started(_countdown_end_frame: int) -> void:
 		G.hud.start_match_countdown()
 
 
+func _on_match_start_countdown_ended() -> void:
+	G.audio.fade_in_main_theme()
+
+
 func _server_on_preview_peer_connected(_peer_id: int) -> void:
 	Netcode.check_is_server()
 
@@ -629,10 +661,36 @@ func _server_initiate_match_end() -> void:
 	Netcode.print("Match time expired - initiating end sequence",
 		NetworkLogger.CATEGORY_GAME_STATE)
 
+	# Assign dynamic adjectives based on stats.
+	var new_adjectives := \
+		DynamicAdjectiveConfig.assign_adjectives(
+			G.match_state._stats_by_player_id)
+	for player_id in new_adjectives:
+		var ps: GamePlayerState = \
+			G.match_state.players_by_id.get(
+				player_id)
+		if ps:
+			ps.adjective = \
+				new_adjectives[player_id]
+	# Repack to replicate updated adjectives.
+	G.match_state._server_pack_players()
+
 	# Set flag to enable invincibility for all players and notify clients.
 	G.match_state.is_match_ended = true
 	G.match_state.match_ended.emit()
-	match_state_synchronizer._rpc_client_notify_match_ended.rpc()
+	match_state_synchronizer \
+		._rpc_client_notify_match_ended.rpc()
+
+	# Send dynamic adjectives to clients for
+	# celebration reveal.
+	var packed_adjective_data: Array = []
+	for player_id in new_adjectives:
+		packed_adjective_data.append(player_id)
+		packed_adjective_data.append(
+			new_adjectives[player_id])
+	match_state_synchronizer \
+		._rpc_client_notify_dynamic_adjectives \
+		.rpc(packed_adjective_data)
 
 	# Schedule server shutdown after wait period.
 	Netcode.time.set_timeout(
@@ -781,13 +839,23 @@ func _validate_player_attributes(
 			)
 
 		# Validate/sanitize adjective.
-		var is_soft: bool = attr.get("is_soft", true)
+		var adj_value: String = \
+			attr.get("adjective", "")
+		var is_soft: bool = \
+			attr.get("is_soft", true)
 		var valid_adjectives := (
 			BunnyWords.SOFT_ADJECTIVES if is_soft
 			else BunnyWords.HARD_ADJECTIVES
 		)
-		if not valid_adjectives.has(attr.get("adjective", "")):
-			attr["adjective"] = valid_adjectives.pick_random()
+		var is_valid_adj := (
+			valid_adjectives.has(adj_value) or
+			DynamicAdjectiveConfig \
+				.is_valid_dynamic_adjective(
+					adj_value)
+		)
+		if not is_valid_adj:
+			attr["adjective"] = \
+				valid_adjectives.pick_random()
 			Netcode.warning(
 				"Peer %d: Invalid adjective, assigned random: %s" % [
 					peer_id,

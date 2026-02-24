@@ -69,6 +69,20 @@ func fade_to_main_theme() -> void:
 	fade_in(%MainThemeStreamPlayer, main_theme_volume)
 
 
+func fade_out_menu_theme() -> void:
+	if not Netcode.is_primary_client:
+		return
+
+	fade_out(%MenuThemeStreamPlayer)
+
+
+func fade_in_main_theme() -> void:
+	if not Netcode.is_primary_client:
+		return
+
+	fade_in(%MainThemeStreamPlayer, main_theme_volume)
+
+
 func fade_out_main_theme() -> void:
 	if not Netcode.is_primary_client:
 		return

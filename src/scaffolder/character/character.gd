@@ -59,6 +59,10 @@ var _last_launch_frame_index := -1
 # Number of frames to prevent floor attachment after a launch.
 const _LAUNCH_FLOOR_ATTACHMENT_COOLDOWN_FRAMES := 3
 
+## Top edge of the water surface (global Y).
+## Updated each frame when in water.
+var water_surface_y := 0.0
+
 var surfaces := CharacterSurfaceState.new(self )
 var actions := CharacterActionState.new()
 
@@ -69,6 +73,11 @@ var _previous_actions_handlers_this_frame := {}
 
 var current_surface_max_horizontal_speed: float:
 	get:
+		if surfaces.is_in_water:
+			return (
+				movement_settings
+					.water_max_horizontal_speed
+			)
 		return movement_settings.max_ground_horizontal_speed * \
 		_current_max_horizontal_speed_multiplier * \
 		(surfaces.surface_properties.speed_multiplier if \
@@ -77,6 +86,11 @@ var current_surface_max_horizontal_speed: float:
 
 var current_air_max_horizontal_speed: float:
 	get:
+		if surfaces.is_in_water:
+			return (
+				movement_settings
+					.water_max_horizontal_speed
+			)
 		if surfaces.is_launched:
 			# Guard against stale initial_launch_velocity
 			# during rollback. update_touches() resets it to
@@ -116,10 +130,18 @@ var current_air_max_horizontal_speed: float:
 
 var current_walk_acceleration: float:
 	get:
-		return movement_settings.walk_acceleration * \
-		(surfaces.surface_properties.speed_multiplier if \
-			surfaces.is_attaching_to_surface else \
-			1.0)
+		var multiplier := 1.0
+		if surfaces.is_attaching_to_surface:
+			multiplier = (
+				surfaces.surface_properties
+					.speed_multiplier
+				* surfaces.surface_properties
+					.acceleration_multiplier
+			)
+		return (
+			movement_settings.walk_acceleration
+			* multiplier
+		)
 
 var current_climb_up_speed: float:
 	get:
@@ -272,6 +294,10 @@ func _apply_movement() -> void:
 	# jump velocity.
 	surfaces.update_actions()
 
+	# Update water state from tilemap after
+	# position is finalized.
+	_update_water_state()
+
 
 ## Update derived behaviors based on current movement and actions.
 ## This gets called during _network_process, just after _apply_movement.
@@ -343,7 +369,31 @@ func _process_actions() -> void:
 	assert(!Geometry.is_point_partial_inf(velocity))
 
 
+func _update_water_state() -> void:
+	if not is_instance_valid(G.level):
+		surfaces.is_in_water = false
+		return
+	var in_water := G.level.is_position_in_water(
+		global_position)
+	surfaces.is_in_water = in_water
+	if in_water:
+		water_surface_y = (
+			G.level.get_water_surface_y(
+				global_position)
+		)
+
+
 func _process_animation() -> void:
+	# Water animation overrides surface-type
+	# animations.
+	if surfaces.is_in_water:
+		if velocity.y < 0:
+			# Reuse rise/fall for now.
+			animator.play("JumpRise")
+		else:
+			animator.play("JumpFall")
+		return
+
 	match surfaces.surface_type:
 		SurfaceType.FLOOR:
 			if actions.pressed_left or actions.pressed_right:

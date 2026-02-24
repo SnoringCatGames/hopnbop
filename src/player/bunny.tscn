@@ -1,4 +1,4 @@
-[gd_scene load_steps=42 format=3 uid="uid://cn6hdqmmufnvr"]
+[gd_scene load_steps=52 format=3 uid="uid://cn6hdqmmufnvr"]
 
 [ext_resource type="Script" uid="uid://dwab2y7smxa" path="res://src/player/bunny.gd" id="1_j5lrb"]
 [ext_resource type="Resource" uid="uid://dq1d4nuh248j2" path="res://src/player/default_movement_settings.tres" id="2_4p26p"]
@@ -27,6 +27,14 @@
 [ext_resource type="AudioStream" uid="uid://elfifgbu512v" path="res://assets/audio/skid2.wav" id="26_mf2w0"]
 [ext_resource type="AudioStream" uid="uid://clvhr1jgijvpk" path="res://assets/audio/skid3.wav" id="27_86nik"]
 [ext_resource type="AudioStream" uid="uid://c6bo6gov7hp20" path="res://assets/audio/skid4.wav" id="28_gi3b3"]
+[ext_resource type="AudioStream" uid="uid://81a0dqx2efhu" path="res://assets/audio/spring.wav" id="29_spring0"]
+[ext_resource type="AudioStream" uid="uid://ectwhf41iprq" path="res://assets/audio/spring1.wav" id="30_spring1"]
+[ext_resource type="AudioStream" uid="uid://bl2v60t1a5mm5" path="res://assets/audio/spring2.wav" id="31_spring2"]
+[ext_resource type="AudioStream" uid="uid://bdwk4vvbo8lne" path="res://assets/audio/spring3.wav" id="32_spring3"]
+[ext_resource type="AudioStream" uid="uid://jursv6ryunkf" path="res://assets/audio/splash.wav" id="33_splash0"]
+[ext_resource type="AudioStream" uid="uid://ueaep77nea2y" path="res://assets/audio/splash1.wav" id="34_splash1"]
+[ext_resource type="AudioStream" uid="uid://bpcajxxqj3rcv" path="res://assets/audio/splash2.wav" id="35_splash2"]
+[ext_resource type="AudioStream" uid="uid://b85fpgsmplntt" path="res://assets/audio/splash3.wav" id="36_splash3"]
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_mf2ua"]
 properties/0/path = NodePath(".:predicted_packed_state")
@@ -110,6 +118,20 @@ stream_0/stream = ExtResource("25_e2y5a")
 stream_1/stream = ExtResource("26_mf2w0")
 stream_2/stream = ExtResource("27_86nik")
 stream_3/stream = ExtResource("28_gi3b3")
+
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_spring"]
+streams_count = 4
+stream_0/stream = ExtResource("29_spring0")
+stream_1/stream = ExtResource("30_spring1")
+stream_2/stream = ExtResource("31_spring2")
+stream_3/stream = ExtResource("32_spring3")
+
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_splash"]
+streams_count = 4
+stream_0/stream = ExtResource("33_splash0")
+stream_1/stream = ExtResource("34_splash1")
+stream_2/stream = ExtResource("35_splash2")
+stream_3/stream = ExtResource("36_splash3")
 
 [node name="Bunny" type="CharacterBody2D" node_paths=PackedStringArray("input_from_client", "forwarded_input_from_server", "collision_shape", "animator", "state_from_server")]
 collision_layer = 8
@@ -225,6 +247,15 @@ stream = SubResource("AudioStreamRandomizer_86nik")
 [node name="SkidAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_n5ror")
+
+[node name="SpringAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
+unique_name_in_owner = true
+stream = SubResource("AudioStreamRandomizer_spring")
+volume_db = -12.0
+
+[node name="SplashAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
+unique_name_in_owner = true
+stream = SubResource("AudioStreamRandomizer_splash")
 
 [connection signal="body_entered" from="BodyArea" to="." method="_on_body_area_body_entered"]
 [connection signal="area_entered" from="FootArea" to="." method="_on_foot_area_area_entered"]

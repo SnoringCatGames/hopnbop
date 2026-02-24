@@ -78,10 +78,6 @@ var _connected_players := {}
 # Dictionary<int, PlayerMatchStats>
 var _stats_by_player_id := {}
 
-# Tracks previous crown holder for crown acquisition
-# counting.
-var _previous_crown_player_id := -1
-
 var _is_packing_state_locally := false
 var _is_modifying_kills_locally := false
 var _is_modifying_bumps_locally := false
@@ -105,7 +101,6 @@ func clear() -> void:
 	_total_bumps_by_player_id.clear()
 	_connected_players.clear()
 	_stats_by_player_id.clear()
-	_previous_crown_player_id = -1
 	# Reset interaction deduplication buffer and tracker if they exist.
 	if _server_recent_interactions != null:
 		_server_recent_interactions = null
@@ -194,6 +189,13 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 	server_get_or_create_stats(killee_id) \
 		.record_death()
 
+	# Track regicide (killing the crowned player).
+	var crown_id := get_crown_player_id(
+		G.settings.crown_kill_lead)
+	if killee_id == crown_id:
+		server_get_or_create_stats(killer_id) \
+			.record_regicide()
+
 	# Store in indelible interaction buffer.
 	_server_store_interaction(
 		killer_id,
@@ -254,11 +256,9 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 		_total_bumps_by_player_id[player_2_id] = 0
 	_total_bumps_by_player_id[player_2_id] += 1
 
-	# Record gameplay stats.
-	server_get_or_create_stats(player_1_id) \
-		.record_bump()
-	server_get_or_create_stats(player_2_id) \
-		.record_bump()
+	# Note: bump stats are recorded at the collision
+	# detection site (bunny.gd) so they track even
+	# when are_bumps_enabled is false.
 
 	# Store in indelible interaction buffer.
 	_server_store_interaction(

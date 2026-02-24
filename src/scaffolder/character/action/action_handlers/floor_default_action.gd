@@ -12,6 +12,10 @@ func _init() -> void:
 
 
 func process(character) -> bool:
+	# Water handlers override floor behavior.
+	if character.surfaces.is_in_water:
+		return false
+
 	# Only process when actually attached to floor. Skip when
 	# dispatched via just_left_surface_type (departure frame)
 	# to avoid zeroing jump velocity on the frame after onset.

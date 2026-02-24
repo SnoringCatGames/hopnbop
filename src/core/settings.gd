@@ -155,6 +155,9 @@ extends NetworkSettings
 @export var gore_kickable_max_kick_speed := 400.0
 ## Seconds before a kickable starts fading.
 @export var gore_kickable_lifetime_sec := 5.0
+## Seconds a non-rasterized particle waits at rest
+## before starting the fade-out tween.
+@export var gore_fade_delay_sec := 2.0
 ## Duration of the fade-out tween (used by both
 ## kickable and non-rasterized non-kickable particles).
 @export var gore_fade_duration_sec := 0.5
@@ -235,7 +238,7 @@ const GORE_FAST_TYPE_END := 3
 
 # --- Game-specific configuration ---
 
-@export var default_gravity_acceleration := 1000.0
+@export var default_gravity_acceleration := 800.0
 
 @export_group("Level Registry")
 ## Registered levels for dynamic selection. The first enabled level is the

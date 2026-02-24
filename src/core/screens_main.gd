@@ -137,9 +137,11 @@ func _perform_screen_switch(
 	if plays_menu_theme:
 		G.audio.fade_to_menu_theme()
 
-	var plays_main_theme := [ScreenType.GAME].has(screen_type)
-	if plays_main_theme:
-		G.audio.fade_to_main_theme()
+	if screen_type == ScreenType.GAME:
+		# Fade out the menu theme immediately. The main
+		# theme starts after the match-start countdown
+		# (triggered by GamePanel).
+		G.audio.fade_out_menu_theme()
 
 	if screen_type == ScreenType.GAME:
 		G.game_panel.on_return_to_game_from_screen(previous_screen_type)

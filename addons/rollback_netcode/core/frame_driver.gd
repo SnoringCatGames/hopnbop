@@ -46,13 +46,11 @@ extends Node
 
 # - Spawn positions in level 0 are too high in some cases.
 
-# - Hook-up sounds:
-#  - match-start countdown cadence chords
-#  - Match-end victory/draw cadence (in phone recording)
-#  - Match-end countdown reached zero whistle
-#  - Match-end countdown last five seconds beeps
-#  - Crown ta-dah sound (musical)
-#  - SCG snore is playing, right?
+# - Make the jump and land skid vfx be slightly not symmetrical.
+# - Then have AI make sure that they are applied directionally.
+
+# - Make and hook-up a walk sound(s).
+# - Make and hook-up a walk-on-ice sound(s).
 
 # Level-selection:
 # - Make a platform for level selection above hole.

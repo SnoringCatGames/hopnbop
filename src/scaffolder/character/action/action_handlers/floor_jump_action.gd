@@ -12,6 +12,10 @@ func _init() -> void:
 
 
 func process(character) -> bool:
+	# Water jump handler manages jumping in water.
+	if character.surfaces.is_in_water:
+		return false
+
 	if (
 		!character.processed_action(
 			FallThroughFloorAction.NAME)

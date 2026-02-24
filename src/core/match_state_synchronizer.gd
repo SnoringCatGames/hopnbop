@@ -192,3 +192,29 @@ func _rpc_client_notify_match_started(
 @rpc("authority", "call_remote", "reliable")
 func _rpc_client_notify_match_ended() -> void:
 	state.client_notify_match_ended()
+
+
+## Receives dynamic adjective assignments from the
+## server. packed_data is an Array of alternating
+## [player_id, adjective_string, ...] pairs.
+@rpc("authority", "call_remote", "reliable")
+func _rpc_client_notify_dynamic_adjectives(
+	packed_data: Array,
+) -> void:
+	var adjective_map := {}
+	for i in range(0, packed_data.size(), 2):
+		adjective_map[packed_data[i]] = \
+			packed_data[i + 1]
+
+	# Update local player states.
+	for player_id in adjective_map:
+		var ps: GamePlayerState = \
+			state.players_by_id.get(player_id)
+		if ps:
+			ps.adjective = \
+				adjective_map[player_id]
+
+	# Trigger celebration adjective reveals.
+	if is_instance_valid(G.celebration):
+		G.celebration.reveal_adjectives(
+			adjective_map)

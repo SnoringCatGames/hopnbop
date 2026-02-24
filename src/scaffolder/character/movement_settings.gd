@@ -20,6 +20,8 @@ enum ActionHandlerType {
 	CEILING_FALL,
 	CEILING_JUMP_DOWN,
 	JETPACK,
+	WATER_DEFAULT,
+	WATER_JUMP,
 }
 
 var DEFAULT_ACTION_HANDLER_CLASSES := {
@@ -41,6 +43,8 @@ var DEFAULT_ACTION_HANDLER_CLASSES := {
 	ActionHandlerType.CEILING_FALL: CeilingFallAction,
 	ActionHandlerType.CEILING_JUMP_DOWN: CeilingJumpDownAction,
 	ActionHandlerType.JETPACK: JetpackAction,
+	ActionHandlerType.WATER_DEFAULT: WaterDefaultAction,
+	ActionHandlerType.WATER_JUMP: WaterJumpAction,
 }
 
 const _MAX_SLIDES_DEFAULT := 4
@@ -57,7 +61,7 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 @export var always_tries_to_face_direction_of_motion := true
 @export var max_jump_chain := 1
 
-@export var jump_boost := -245.0
+@export var jump_boost := -220.0
 @export var double_jump_boost_multiplier := 0.6
 
 @export var gravity_acceleration_multiplier := 1.0
@@ -81,7 +85,9 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 @export var bump_bounce_base_speed := 110.0
 @export var bump_bounce_vertical_boost := -60.0
 
-@export var kill_bounce_vertical_boost := -300.0
+@export var kill_bounce_vertical_boost := -240.0
+
+@export var spring_bounce_vertical_boost := -2350.0
 
 ## Coyote time.
 @export var late_jump_forgiveness_threshold_sec := 0.1
@@ -96,6 +102,32 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 
 @export var fall_through_floor_velocity_boost := 100.0
 @export var ceiling_fall_velocity_boost := 100.0
+@export_group("")
+
+@export_group("Water")
+## Upward acceleration when below the float line.
+@export var buoyancy_acceleration := 200.0
+## Pixels below the water surface to the float
+## line.
+@export var water_sink_threshold := 4.0
+## Position snap range near the float line.
+@export var water_snap_threshold := 0.1
+## Velocity threshold for snapping to float line.
+@export var water_snap_velocity_threshold := 5.0
+@export var water_horizontal_acceleration := 600.0
+@export var water_max_horizontal_speed := 60.0
+@export var water_horizontal_friction := 0.5
+## Multiplier applied to downward velocity on
+## the first frame of entering water (0.5 = half
+## speed).
+@export var water_entry_speed_multiplier := 0.55
+## Max upward speed while in water.
+@export var water_max_upward_speed := 120.0
+## Jump boost when at or above the float line.
+@export var water_surface_jump_boost := -160.0
+## Jump boost when below the float line (half of
+## surface).
+@export var water_subsurface_jump_boost := -80.0
 @export_group("")
 
 var gravity_fast_fall_acceleration: float:
@@ -127,6 +159,8 @@ var gravity_double_jump_slow_rise_acceleration: float:
 	ActionHandlerType.CEILING_FALL,
 	ActionHandlerType.CEILING_JUMP_DOWN,
 	ActionHandlerType.JETPACK,
+	ActionHandlerType.WATER_DEFAULT,
+	ActionHandlerType.WATER_JUMP,
 ]
 
 var action_handlers: Array[CharacterActionHandler] = []
