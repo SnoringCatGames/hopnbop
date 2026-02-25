@@ -44,12 +44,6 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: --------------------------------------------
 
-# - Make the jump and land skid vfx be slightly not symmetrical.
-# - Then have AI make sure that they are applied directionally.
-
-# - Make and hook-up a walk sound(s).
-# - Make and hook-up a walk-on-ice sound(s).
-
 # Level-selection:
 # - Make a platform for level selection above hole.
 # - Show level selection UI when landing on the platform. Hide it when selecting
@@ -60,15 +54,13 @@ extends Node
 # ADD LEVEL WRAP AROUND LIKE KILLER QUEEN (vertically and horizontally)
 
 # - Art:
-#   - Splash (in, and out).
-#   - Spring.
 #   - Swimming paddle animations.
 #   - Eating and pooping animation.
-#   - Additional spotted bunny types with other light colors instead of white.
 #   - Flies.
 #     - Each level should have a single configured fly swarm spawn point.
 #     - Collide with level.
-#     - Swarming behavior
+#     - Swarming behavior.
+#     - lordoftheflies
 #   - Snail.
 #     - Slight undulating animation, with eye-stalks wagging.
 #     - Moves along surfaces, rounding corners to adjacent surfaces.
@@ -102,9 +94,6 @@ extends Node
 # - Track who hangs out with flies the most
 # - Adjectives for all of these!
 
-# - Add another super hud panel for listing all tracked stats (the hidden things
-#   used for adjectives) for each player
-
 # Add another section to the idle animation: eating and pooping.
 # - They happen together.
 # - Poop actually results in particles that emit, spread, fall, and rasterize at 100% rate.
@@ -113,20 +102,6 @@ extends Node
 # - Only poop once until moving again.
 
 # ---
-
-# Water:
-# - Reverse gravity
-# - Still use move and slide
-# - But also force a min y
-# - Define a float depth constant to define how far to sink into the surface
-# - Have water tiles use full collision square shape
-# - Detect intersection, and use the to trigger water float physics
-# - Need to make a good splash effect animation!
-# - Make a different splash animation for exiting the water
-# - Allow jumping up from the water only when you're at the surface
-# - Don't allow diving without jumping
-
-# - Add notes to implement: water, spring, ice, flies, and other cheats
 
 
 # - Polish networked movement. It still seems like we get jitter and stuck
