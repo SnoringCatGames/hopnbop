@@ -23,8 +23,6 @@ var speed_multiplier := 1.0
 ## acceleration is reduced but max speed is not.
 var acceleration_multiplier := 1.0
 
-var is_spring := false
-
 var is_ice := false
 
 
@@ -32,5 +30,4 @@ func reset() -> void:
 	friction_multiplier = 1.0
 	speed_multiplier = 1.0
 	acceleration_multiplier = 1.0
-	is_spring = false
 	is_ice = false

@@ -14,7 +14,6 @@ const TERRAIN_SET_COLLISION := 0
 ## Terrain set for water tiles.
 const TERRAIN_SET_WATER := 1
 const ICE_TERRAIN_ID := 2
-const SPRING_TERRAIN_ID := 17
 const TILE_SIZE := 16.0
 
 const _WATER_SURFACE_SCAN_LIMIT := 20

@@ -117,3 +117,26 @@ func to_packed_array() -> Array:
 		direction_change_count,
 		average_height,
 	]
+
+
+## Populates this instance from a packed array
+## (inverse of to_packed_array).
+func populate_from_packed_array(
+	data: Array,
+) -> void:
+	crown_time_sec = data[0]
+	regicide_count = int(data[1])
+	bump_count = int(data[2])
+	kill_count = int(data[3])
+	death_count = int(data[4])
+	jump_count = int(data[5])
+	water_time_sec = data[6]
+	water_jump_count = int(data[7])
+	ice_time_sec = data[8]
+	spring_launch_count = int(data[9])
+	direction_change_count = int(data[10])
+	# average_height is computed from backing fields.
+	# Set accumulator to the value with frame_count=1
+	# so the getter returns the correct value.
+	_height_accumulator = data[11]
+	_height_frame_count = 1

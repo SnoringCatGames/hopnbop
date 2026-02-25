@@ -79,6 +79,7 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 @export var max_air_horizontal_speed := 90.0
 @export var max_launch_horizontal_speed := 300.0
 @export var max_vertical_speed := 300.0
+@export var max_launch_vertical_speed := 400.0
 @export var min_horizontal_speed := 5.0
 @export var min_vertical_speed := 0.0
 
@@ -87,7 +88,7 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 
 @export var kill_bounce_vertical_boost := -240.0
 
-@export var spring_bounce_vertical_boost := -2350.0
+@export var spring_bounce_vertical_boost := -392.0
 
 ## Coyote time.
 @export var late_jump_forgiveness_threshold_sec := 0.1

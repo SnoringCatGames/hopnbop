@@ -2,10 +2,16 @@ class_name MatchStateSynchronizer
 extends MultiplayerSynchronizer
 
 
+## How often the server sends stats to clients
+## (in physics frames). 30 frames = 0.5 sec at
+## 60 FPS.
+const _STATS_SEND_INTERVAL_FRAMES := 30
+
 var state := GameMatchState.new()
 var _previous_state := GameMatchState.new()
 
 var _expected_player_count: int = 0
+var _stats_frame_counter := 0
 
 
 func _ready() -> void:
@@ -176,6 +182,50 @@ func _client_on_bumps_updated() -> void:
 	_previous_state.bumps = state.bumps.duplicate()
 
 	state.update_scores()
+
+
+func _physics_process(_delta: float) -> void:
+	if not Netcode.is_server:
+		return
+	if state._stats_by_player_id.is_empty():
+		return
+
+	if Netcode.is_preview:
+		_stats_frame_counter += 1
+		if _stats_frame_counter >= _STATS_SEND_INTERVAL_FRAMES:
+			_stats_frame_counter = 0
+			_server_send_stats_to_clients()
+
+
+func _server_send_stats_to_clients() -> void:
+	var packed := []
+	for player_id in state._stats_by_player_id:
+		var stats: PlayerMatchStats = \
+			state._stats_by_player_id[player_id]
+		packed.append(player_id)
+		packed.append_array(
+			stats.to_packed_array())
+	_rpc_client_update_stats.rpc(packed)
+
+
+@rpc("authority", "call_remote", "unreliable")
+func _rpc_client_update_stats(
+	packed_data: Array,
+) -> void:
+	# Each entry is 1 player_id + 12 stat values
+	# = 13 stride.
+	var stride := 13
+	var i := 0
+	while i + stride <= packed_data.size():
+		var player_id: int = packed_data[i]
+		var stats_array := packed_data.slice(
+			i + 1, i + stride)
+		var stats := PlayerMatchStats.new()
+		stats.populate_from_packed_array(
+			stats_array)
+		state.client_store_stats(
+			player_id, stats)
+		i += stride
 
 
 @rpc("authority", "call_remote", "reliable")
