@@ -44,15 +44,6 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: --------------------------------------------
 
-# Level-selection:
-# - Make a platform for level selection above hole.
-# - Show level selection UI when landing on the platform. Hide it when selecting
-#   x at the top or bottom of the ui list. Ui list has three columns x header,
-#   check header, double check header. Exclusive selection or no selection for
-#   double check. All rows must be in x or check.
-
-# ADD LEVEL WRAP AROUND LIKE KILLER QUEEN (vertically and horizontally)
-
 # - Art:
 #   - Swimming paddle animations.
 #   - Eating and pooping animation.
@@ -90,7 +81,6 @@ extends Node
 #     - Add a new additional custom stat threshold check that considers a combined disruption score across all critter types.
 #     - Use a single upper-bound adjective list for this combined score.
 
-
 # - Track who hangs out with flies the most
 # - Adjectives for all of these!
 
@@ -102,6 +92,16 @@ extends Node
 # - Only poop once until moving again.
 
 # ---
+
+# ADD LEVEL WRAP AROUND LIKE KILLER QUEEN (vertically and horizontally)
+# - Also make critters and gore wrap-around.
+
+# Level-selection:
+# - Make a platform for level selection above hole.
+# - Show level selection UI when landing on the platform. Hide it when selecting
+#   x at the top or bottom of the ui list. Ui list has three columns x header,
+#   check header, double check header. Exclusive selection or no selection for
+#   double check. All rows must be in x or check.
 
 
 # - Polish networked movement. It still seems like we get jitter and stuck
