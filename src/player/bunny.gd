@@ -384,7 +384,7 @@ func _update_skids() -> void:
 			G.level.skid_manager.spawn_skid(
 				global_position,
 				&"skid_both",
-				false,
+				not surfaces.is_facing_right,
 			)
 			play_sound("skid")
 		_was_floor_skid_condition = false
@@ -400,7 +400,7 @@ func _update_skids() -> void:
 		G.level.skid_manager.spawn_skid(
 			surfaces.last_floor_position,
 			&"jump",
-			false,
+			not surfaces.is_facing_right,
 		)
 		play_sound("skid")
 
