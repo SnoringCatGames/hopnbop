@@ -1,7 +1,14 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=14 format=3 uid="uid://q1x52f28jpla"]
 
 [ext_resource type="Texture2D" uid="uid://dm2wuxmbibwhu" path="res://assets/images/spring.png" id="1_spring"]
-[ext_resource type="Script" path="res://src/objects/spring/spring.gd" id="2_script"]
+[ext_resource type="Texture2D" uid="uid://b0666mxrhtkvj" path="res://assets/images/spring_box.png" id="2_0csql"]
+[ext_resource type="Script" uid="uid://bvkid80yek3if" path="res://src/objects/spring/spring.gd" id="2_script"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
+size = Vector2(16, 16)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_trigger"]
+size = Vector2(14, 2)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_f0"]
 atlas = ExtResource("1_spring")
@@ -36,14 +43,6 @@ animations = [{
 "frames": [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_f0")
-}],
-"loop": true,
-"name": &"idle",
-"speed": 1.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_f0")
 }, {
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_f1")
@@ -65,27 +64,23 @@ animations = [{
 }],
 "loop": false,
 "name": &"bounce",
-"speed": 12.0
+"speed": 20.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_f0")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 1.0
 }]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
-size = Vector2(16, 16)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_trigger"]
-size = Vector2(14, 10)
-
 [node name="Spring" type="StaticBody2D"]
-collision_layer = 1
 collision_mask = 0
 script = ExtResource("2_script")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_floor")
-
-[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
-texture_filter = 1
-sprite_frames = SubResource("SpriteFrames_spring")
-animation = &"idle"
 
 [node name="TriggerArea" type="Area2D" parent="."]
 collision_layer = 0
@@ -93,8 +88,17 @@ collision_mask = 8
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="TriggerArea"]
-position = Vector2(0, -11)
+position = Vector2(0, -8)
 shape = SubResource("RectangleShape2D_trigger")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_0csql")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+texture_filter = 1
+position = Vector2(0, -12)
+sprite_frames = SubResource("SpriteFrames_spring")
+animation = &"bounce"
 
 [connection signal="body_entered" from="TriggerArea" to="." method="_on_trigger_area_body_entered"]
 [connection signal="animation_finished" from="AnimatedSprite2D" to="." method="_on_animated_sprite_2d_animation_finished"]

@@ -1,6 +1,10 @@
-[gd_resource type="TileSet" load_steps=3 format=3 uid="uid://mtwu14d78k40"]
+[gd_resource type="TileSet" load_steps=5 format=3 uid="uid://mtwu14d78k40"]
 
+[ext_resource type="PackedScene" uid="uid://q1x52f28jpla" path="res://src/objects/spring/spring.tscn" id="1_ns5eo"]
 [ext_resource type="Texture2D" uid="uid://8qja6ehruhbm" path="res://assets/images/tiles.png" id="2_ns5eo"]
+
+[sub_resource type="TileSetScenesCollectionSource" id="TileSetScenesCollectionSource_fo6ly"]
+scenes/1/scene = ExtResource("1_ns5eo")
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_fo6ly"]
 texture = ExtResource("2_ns5eo")
@@ -366,10 +370,6 @@ texture = ExtResource("2_ns5eo")
 1:7/0/terrain_set = 0
 1:7/0/terrain = 0
 1:7/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
-7:3/0 = 0
-7:3/0/terrain_set = 0
-7:3/0/terrain = 17
-7:3/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
 
 [resource]
 physics_layer_0/collision_layer = 1
@@ -421,3 +421,4 @@ terrain_set_1/mode = 0
 terrain_set_1/terrain_0/name = "water"
 terrain_set_1/terrain_0/color = Color(0.5, 0.34375, 0.25, 1)
 sources/1 = SubResource("TileSetAtlasSource_fo6ly")
+sources/0 = SubResource("TileSetScenesCollectionSource_fo6ly")
