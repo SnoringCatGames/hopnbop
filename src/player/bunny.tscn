@@ -262,7 +262,7 @@ stream = SubResource("AudioStreamRandomizer_walk")
 [node name="IceAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_ice")
-volume_db = -24.0
+volume_db = -30.0
 
 [node name="DieFlowersAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
