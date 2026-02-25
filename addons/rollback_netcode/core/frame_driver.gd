@@ -44,8 +44,6 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: --------------------------------------------
 
-# - Spawn positions in level 0 are too high in some cases.
-
 # - Make the jump and land skid vfx be slightly not symmetrical.
 # - Then have AI make sure that they are applied directionally.
 
@@ -61,57 +59,8 @@ extends Node
 
 # ADD LEVEL WRAP AROUND LIKE KILLER QUEEN (vertically and horizontally)
 
-# I want to add a new dynamic adjectives system.
-# - Along with this, we need to add a new system for tracking all sorts of additional player gameplay stats.
-#   - Track these on the server, and send via RPC down to clients at the end of a match.
-#   - Some things to track:
-#     - Count of times getting a crown
-#     - Count of bumps
-#     - Count of kills
-#     - Count of deaths
-#     - Count of jumps
-#     - Total time spent in water
-#     - Count of jumps from water
-#     - Total time spent on ice
-#     - Count of spring launches
-#     - Count of times changing horizontal movement direction
-#     - Average height
-# - Then, for each of the above tracked stats, let's configure (in a group in Settings) a fraction/ration (is there a better word for this?) threshold. Calculate the average value across all players for a given metric. If the ratio of a given player's value for a given stat vs the average exceeds a configured threshold for that stat, then the player qualifies for an adjective for that stat. Additionally, some stats _might_ have low-ratio thresholds; if a players ratio is less than the threshold, they qualify for the adjective. Actually, let's make both the lower and upper ratio thresholds optional for each stat. Then, for each configured stat lower/upper ratio threshold, we need to make sure we also have a list of interesting adjectives. Please come up with a list of 10-30 interesting adjectives for each of these lists. I'll now list exactly which stats have upper or lower ratio thresholds and adjective lists:
-#     - Count of times getting a crown: upper threshold (regal, kingly, majestic, conquering, noble, ...)
-#     - Count of bumps: upper and lower threshold
-#     - Count of kills: upper and lower threshold
-#     - Count of deaths: upper and lower threshold
-#     - Count of jumps: upper and lower threshold
-#     - Total time spent in water: upper and lower threshold
-#     - Count of jumps from water: upper threshold
-#     - Total time spent on ice: upper and lower threshold
-#     - Count of spring launches: upper and lower threshold
-#     - Count of times changing horizontal movement direction: upper and lower threshold (flighty/scared/nervous vs bold/surefooted/confident)
-#     - Average height: upper threshold
-# - Also, each player automatically qualifies each match for one of the preexisting "soft" and "hard" adjectives.
-# - Then, based on all the stats/adjective-lists a player qualifies for, choose a random list, then choose a random adjective from that list.
-# - We'll swap a player's adjective after each match (and when the are initially registered in the lobby, as we do now).
-# - Research other techniques for gameplay-stat-based awards in games. Is there a better approach we should take for this overall system?
-# - ALSO, we need to come up with a way of presenting awarded player adjectives at the end of the match, during the 5-second celebration period after the match-end countdown. Maybe just with a new popup, over the top of the PlayerDisplay, with excessive tweens, each with some random variance from one another.
 
-
-# Change adjectives based on gameplay conditions:
-# - Getting a crown
-# - Bumping a lot
-# - Killing a lot
-# - Dying a lot
-# - Jumping a lot
-# - Not jumping a lot
-# - Swimming a lot
-# - Staying still
-# - Not killing
-# - Not dying
-# - Slipping
-# - Changing direction a lot
-
-# - Track who swims the most, springs the most, slips the lost, pivots the most
-#   (flighty, scared, ...), hangs out with flies the most, and spends the most
-#   time on the uppermost platform height (king of the hill)
+# - Track who hangs out with flies the most
 # - Adjectives for all of these!
 
 # - Add another super hud panel for listing all tracked stats (the hidden things
