@@ -87,35 +87,36 @@ func _process(_delta: float) -> void:
 	_update_invincibility_blink()
 
 
+## Called by the Spring scene's Area2D when the
+## player enters the spring trigger zone.
+## Server forward-sim only.
+func server_trigger_spring_bounce() -> void:
+	if not Netcode.is_server:
+		return
+	if Netcode.frame_driver.is_resimulating:
+		return
+	if _pending_bounce != Vector2.ZERO:
+		return
+	var spring_velocity := Vector2(
+		velocity.x,
+		movement_settings.spring_bounce_vertical_boost
+	)
+	_pending_bounce = spring_velocity
+	state_from_server.record_interaction(
+		CharacterStateFromServer
+			.ServerInteractionType.SPRING,
+		Netcode.server_frame_index,
+		global_position,
+		spring_velocity
+	)
+	# Record spring launch stat.
+	G.match_state \
+		.server_get_or_create_stats(player_id) \
+		.record_spring_launch()
+
+
 func _process_movement_and_actions() -> void:
 	super._process_movement_and_actions()
-
-	# Spring tile detection (server forward-sim only).
-	# Clients receive the interaction via the rollback
-	# buffer, same as kill/bump.
-	if (
-		Netcode.is_server
-		and not Netcode.frame_driver.is_resimulating
-		and surfaces.surface_properties.is_spring
-		and _pending_bounce == Vector2.ZERO
-	):
-		var spring_velocity := Vector2(
-			velocity.x,
-			movement_settings
-				.spring_bounce_vertical_boost
-		)
-		_pending_bounce = spring_velocity
-		state_from_server.record_interaction(
-			CharacterStateFromServer
-				.ServerInteractionType.SPRING,
-			Netcode.server_frame_index,
-			global_position,
-			spring_velocity
-		)
-		# Record spring launch stat.
-		G.match_state \
-			.server_get_or_create_stats(player_id) \
-			.record_spring_launch()
 
 	# Apply pending bounce after movement processing.
 	# This must happen AFTER action handlers run, because

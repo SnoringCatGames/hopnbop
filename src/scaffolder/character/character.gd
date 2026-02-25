@@ -128,6 +128,43 @@ var current_air_max_horizontal_speed: float:
 				_current_max_horizontal_speed_multiplier
 			)
 
+var current_max_vertical_speed: float:
+	get:
+		if surfaces.is_launched:
+			# Guard against stale initial_launch_velocity
+			# during rollback (same pattern as horizontal).
+			if (
+				surfaces.initial_launch_velocity
+					== Vector2.INF
+			):
+				return (
+					movement_settings
+						.max_vertical_speed
+				)
+			var initial_launch_vertical_speed := absf(
+				surfaces.initial_launch_velocity.y)
+			if (
+				initial_launch_vertical_speed >
+				movement_settings
+					.max_launch_vertical_speed
+			):
+				return (
+					movement_settings
+						.max_launch_vertical_speed
+				)
+			elif (
+				initial_launch_vertical_speed >
+				movement_settings.max_vertical_speed
+			):
+				return initial_launch_vertical_speed
+			else:
+				return (
+					movement_settings
+						.max_vertical_speed
+				)
+		else:
+			return movement_settings.max_vertical_speed
+
 var current_walk_acceleration: float:
 	get:
 		var multiplier := 1.0

@@ -24,8 +24,8 @@
 [ext_resource type="Resource" path="res://src/player/gray_bunny_body_type.tres" id="16_grbody"]
 [ext_resource type="Resource" path="res://src/player/yellow_bunny_body_type.tres" id="17_ylbody"]
 [ext_resource type="Resource" path="res://src/player/light_brown_spotted_bunny_body_type.tres" id="18_lbsbody"]
-[ext_resource type="Resource" path="res://src/player/yellow_spotted_bunny_body_type.tres" id="20_ysbody"]
 [ext_resource type="PackedScene" uid="uid://clcub1mgr6shb" path="res://src/level/level_0.tscn" id="19_jwo4p"]
+[ext_resource type="Resource" path="res://src/player/yellow_spotted_bunny_body_type.tres" id="20_ysbody"]
 [ext_resource type="PackedScene" uid="uid://bbhm335xhffk" path="res://src/level/level_3.tscn" id="22_hsj8s"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_woca2"]

@@ -533,8 +533,6 @@ func _update_surface_properties() -> void:
 		surface_properties.acceleration_multiplier = (
 			_ICE_ACCELERATION_MULTIPLIER)
 		surface_properties.is_ice = true
-	elif terrain == Level.SPRING_TERRAIN_ID:
-		surface_properties.is_spring = true
 
 
 ## Corrects position and velocity after an invalid one-way tile collision.

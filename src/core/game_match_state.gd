@@ -121,6 +121,25 @@ func server_get_or_create_stats(
 	return _stats_by_player_id[player_id]
 
 
+## Returns the PlayerMatchStats for the given
+## player, or null if none exists. Works on both
+## server (where stats accumulate locally) and
+## client (where stats arrive via RPC).
+func get_player_stats(
+	player_id: int,
+) -> PlayerMatchStats:
+	return _stats_by_player_id.get(player_id)
+
+
+## Stores replicated stats for a player
+## (client-side).
+func client_store_stats(
+	player_id: int,
+	stats: PlayerMatchStats,
+) -> void:
+	_stats_by_player_id[player_id] = stats
+
+
 func client_notify_match_started(
 	_match_start_frame_index: int,
 	_match_duration_usec: int
