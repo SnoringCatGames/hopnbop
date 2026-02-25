@@ -106,6 +106,22 @@ stream_2/stream = ExtResource("15_ww3b2")
 stream_3/stream = ExtResource("16_js0y6")
 stream_4/stream = ExtResource("17_bd5h2")
 
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_walk"]
+streams_count = 6
+stream_0/stream = ExtResource("37_walk0")
+stream_1/stream = ExtResource("38_walk1")
+stream_2/stream = ExtResource("39_walk2")
+stream_3/stream = ExtResource("40_walk3")
+stream_4/stream = ExtResource("41_walk4")
+stream_5/stream = ExtResource("42_walk5")
+
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_ice"]
+streams_count = 4
+stream_0/stream = ExtResource("43_ice1")
+stream_1/stream = ExtResource("44_ice2")
+stream_2/stream = ExtResource("45_ice3")
+stream_3/stream = ExtResource("46_ice4")
+
 [sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_bd5h2"]
 streams_count = 2
 stream_0/stream = ExtResource("18_dmn4e")
@@ -142,22 +158,6 @@ stream_0/stream = ExtResource("33_splash0")
 stream_1/stream = ExtResource("34_splash1")
 stream_2/stream = ExtResource("35_splash2")
 stream_3/stream = ExtResource("36_splash3")
-
-[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_walk"]
-streams_count = 6
-stream_0/stream = ExtResource("37_walk0")
-stream_1/stream = ExtResource("38_walk1")
-stream_2/stream = ExtResource("39_walk2")
-stream_3/stream = ExtResource("40_walk3")
-stream_4/stream = ExtResource("41_walk4")
-stream_5/stream = ExtResource("42_walk5")
-
-[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_ice"]
-streams_count = 4
-stream_0/stream = ExtResource("43_ice1")
-stream_1/stream = ExtResource("44_ice2")
-stream_2/stream = ExtResource("45_ice3")
-stream_3/stream = ExtResource("46_ice4")
 
 [node name="Bunny" type="CharacterBody2D" node_paths=PackedStringArray("input_from_client", "forwarded_input_from_server", "collision_shape", "animator", "state_from_server")]
 collision_layer = 8
@@ -262,6 +262,7 @@ stream = SubResource("AudioStreamRandomizer_walk")
 [node name="IceAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_ice")
+volume_db = -24.0
 
 [node name="DieFlowersAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true

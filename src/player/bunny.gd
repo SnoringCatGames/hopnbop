@@ -18,9 +18,11 @@ var _has_ever_died := false
 const _SQUISH_DURATION_SEC := 0.09
 const _SKID_VELOCITY_THRESHOLD := 20.0
 const _LANDING_SKID_GRACE_FRAMES := 30
+const _WALK_SOUND_INTERVAL_FRAMES := 8
 
 var _was_floor_skid_condition := false
 var _suppress_landing_skid := false
+var _walk_sound_frame_counter := 0
 
 # Track intersections during invincibility.
 # Dictionary<int, Array[String]> - player_id -> array of intersection types.
@@ -263,6 +265,7 @@ func _process_animation() -> void:
 	super._process_animation()
 	_update_skids()
 	_update_splashes()
+	_update_walk_sounds()
 
 
 func _update_splashes() -> void:
@@ -298,6 +301,42 @@ func _update_splashes() -> void:
 			&"exit_water",
 		)
 		play_sound("splash")
+
+
+func _update_walk_sounds() -> void:
+	if Netcode.frame_driver.is_resimulating:
+		return
+
+	if state_from_server.is_dead:
+		_walk_sound_frame_counter = 0
+		return
+
+	if Netcode.frame_driver \
+			.is_match_start_countdown_active:
+		_walk_sound_frame_counter = 0
+		return
+
+	var is_walking := (
+		surfaces.is_attaching_to_floor
+		and (
+			actions.pressed_left
+			or actions.pressed_right
+		)
+	)
+
+	if is_walking:
+		_walk_sound_frame_counter += 1
+		if (
+			_walk_sound_frame_counter
+				>= _WALK_SOUND_INTERVAL_FRAMES
+		):
+			if surfaces.surface_properties.is_ice:
+				play_sound("ice")
+			else:
+				play_sound("walk")
+			_walk_sound_frame_counter = 0
+	else:
+		_walk_sound_frame_counter = 0
 
 
 func _update_skids() -> void:
@@ -568,8 +607,9 @@ func _get_audio_stream_player(sound_name: StringName) -> AudioStreamPlayer2D:
 		"land":
 			return %LandAudioStreamPlayer
 		"walk":
-			# TODO: Implement walk sounds?
 			return %WalkAudioStreamPlayer
+		"ice":
+			return %IceAudioStreamPlayer
 		"skid":
 			return %SkidAudioStreamPlayer
 		"bump":
