@@ -532,6 +532,7 @@ func _update_surface_properties() -> void:
 			_ICE_SPEED_MULTIPLIER)
 		surface_properties.acceleration_multiplier = (
 			_ICE_ACCELERATION_MULTIPLIER)
+		surface_properties.is_ice = true
 	elif terrain == Level.SPRING_TERRAIN_ID:
 		surface_properties.is_spring = true
 

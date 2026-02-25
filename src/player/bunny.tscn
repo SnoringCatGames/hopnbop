@@ -1,4 +1,4 @@
-[gd_scene load_steps=52 format=3 uid="uid://cn6hdqmmufnvr"]
+[gd_scene load_steps=64 format=3 uid="uid://cn6hdqmmufnvr"]
 
 [ext_resource type="Script" uid="uid://dwab2y7smxa" path="res://src/player/bunny.gd" id="1_j5lrb"]
 [ext_resource type="Resource" uid="uid://dq1d4nuh248j2" path="res://src/player/default_movement_settings.tres" id="2_4p26p"]
@@ -35,6 +35,16 @@
 [ext_resource type="AudioStream" uid="uid://ueaep77nea2y" path="res://assets/audio/splash1.wav" id="34_splash1"]
 [ext_resource type="AudioStream" uid="uid://bpcajxxqj3rcv" path="res://assets/audio/splash2.wav" id="35_splash2"]
 [ext_resource type="AudioStream" uid="uid://b85fpgsmplntt" path="res://assets/audio/splash3.wav" id="36_splash3"]
+[ext_resource type="AudioStream" uid="uid://bclde8lmrswcd" path="res://assets/audio/walk.wav" id="37_walk0"]
+[ext_resource type="AudioStream" uid="uid://blpaar7yrbmcw" path="res://assets/audio/walk1.wav" id="38_walk1"]
+[ext_resource type="AudioStream" uid="uid://bbtheitosvat8" path="res://assets/audio/walk2.wav" id="39_walk2"]
+[ext_resource type="AudioStream" uid="uid://csv4n02v6ivyf" path="res://assets/audio/walk3.wav" id="40_walk3"]
+[ext_resource type="AudioStream" uid="uid://d1glpa21emi87" path="res://assets/audio/walk4.wav" id="41_walk4"]
+[ext_resource type="AudioStream" uid="uid://xm4yofkjsscu" path="res://assets/audio/walk5.wav" id="42_walk5"]
+[ext_resource type="AudioStream" uid="uid://c4tuumu4utq58" path="res://assets/audio/ice1.wav" id="43_ice1"]
+[ext_resource type="AudioStream" uid="uid://1f00kcew0jkl" path="res://assets/audio/ice2.wav" id="44_ice2"]
+[ext_resource type="AudioStream" uid="uid://c0pfv6hsuqf7k" path="res://assets/audio/ice3.wav" id="45_ice3"]
+[ext_resource type="AudioStream" uid="uid://dhxb8e5uc2rvg" path="res://assets/audio/ice4.wav" id="46_ice4"]
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_mf2ua"]
 properties/0/path = NodePath(".:predicted_packed_state")
@@ -132,6 +142,22 @@ stream_0/stream = ExtResource("33_splash0")
 stream_1/stream = ExtResource("34_splash1")
 stream_2/stream = ExtResource("35_splash2")
 stream_3/stream = ExtResource("36_splash3")
+
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_walk"]
+streams_count = 6
+stream_0/stream = ExtResource("37_walk0")
+stream_1/stream = ExtResource("38_walk1")
+stream_2/stream = ExtResource("39_walk2")
+stream_3/stream = ExtResource("40_walk3")
+stream_4/stream = ExtResource("41_walk4")
+stream_5/stream = ExtResource("42_walk5")
+
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_ice"]
+streams_count = 4
+stream_0/stream = ExtResource("43_ice1")
+stream_1/stream = ExtResource("44_ice2")
+stream_2/stream = ExtResource("45_ice3")
+stream_3/stream = ExtResource("46_ice4")
 
 [node name="Bunny" type="CharacterBody2D" node_paths=PackedStringArray("input_from_client", "forwarded_input_from_server", "collision_shape", "animator", "state_from_server")]
 collision_layer = 8
@@ -231,6 +257,11 @@ stream = SubResource("AudioStreamRandomizer_5lt6i")
 
 [node name="WalkAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
+stream = SubResource("AudioStreamRandomizer_walk")
+
+[node name="IceAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
+unique_name_in_owner = true
+stream = SubResource("AudioStreamRandomizer_ice")
 
 [node name="DieFlowersAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
