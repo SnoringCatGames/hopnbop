@@ -59,6 +59,45 @@ extends Node
 
 # ADD LEVEL WRAP AROUND LIKE KILLER QUEEN (vertically and horizontally)
 
+# - Art:
+#   - Splash (in, and out).
+#   - Spring.
+#   - Swimming paddle animations.
+#   - Eating and pooping animation.
+#   - Additional spotted bunny types with other light colors instead of white.
+#   - Flies.
+#     - Each level should have a single configured fly swarm spawn point.
+#     - Collide with level.
+#     - Swarming behavior
+#   - Snail.
+#     - Slight undulating animation, with eye-stalks wagging.
+#     - Moves along surfaces, rounding corners to adjacent surfaces.
+#     - Can be jumped on a crunched.
+#       - Need a sfx.
+#     - Respawns on a random surface when crunched.
+#     - Only a single snail spawns at a time.
+#   - Butterfly.
+#     - Flutter-off when disturbed while resting.
+#     - Also, periodically flutter-off anyway.
+#     - Land on particular annotated decorative occlusion-layer art tiles positions.
+#     - Can fly over occlusion tiles.
+#     - Only a single butterfly spawns at a time.
+#   - Cricket.
+#     - Jump when disturbed.
+#     - Also, periodically jump anyway.
+#     - Will not pass bounds of spawn platform.
+#     - Periodically disappears and re-spawns on a different random surface.
+#     - Only spawns on a continuous floor surface of at least X length.
+#     - Only a single cricket spawns at a time.
+#   - Fish.
+#     - Will not pass out of bounds of their configured rectangular area.
+#     - Only a single fish spawns at a time.
+#   - Birds in the background.
+#     - Just spawn periodically and fly across the screen.
+#   - Track stats for disturbing each of the individual critter types.
+#     - Add a new additional custom stat threshold check that considers a combined disruption score across all critter types.
+#     - Use a single upper-bound adjective list for this combined score.
+
 
 # - Track who hangs out with flies the most
 # - Adjectives for all of these!
