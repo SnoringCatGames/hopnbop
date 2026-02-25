@@ -121,6 +121,7 @@ extends Node
 
 
 # Interactive animated tiles behind and in front:
+# - MAKE SURE THIS PLAN ACCOUNTS FOR THE BESPOKE-ART-PER-LEVEL PLAN.
 # - Research how to implement animated tiles.
 # - Have Tile set point to a scene for each animated tile.
 # - ALSO, plan a way to sync occlusion and background animated tiles, so
@@ -157,6 +158,7 @@ extends Node
 
 # - Add bespoke art for each level, rather than tile sets. Or, at least, try
 #   this for one level.
+#   - MAKE SURE THIS PLAN ACCOUNTS FOR THE TILE-ANIMATION PLAN!
 # - DEFINITELY add decoration/occlusion art to scatter around in each level
 #   (with our without tile set versions of levels)
 
