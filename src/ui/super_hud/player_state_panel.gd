@@ -1,6 +1,24 @@
 class_name PlayerStatePanel
 extends PanelContainer
 
+## Definition for each stat row:
+## [display_label, property_name, format].
+## format: "int", "sec", or "float".
+const _STAT_DEFS: Array[Array] = [
+	["Kills", "kill_count", "int"],
+	["Deaths", "death_count", "int"],
+	["Bumps", "bump_count", "int"],
+	["Jumps", "jump_count", "int"],
+	["Crown", "crown_time_sec", "sec"],
+	["Regicide", "regicide_count", "int"],
+	["Springs", "spring_launch_count", "int"],
+	["Water", "water_time_sec", "sec"],
+	["W. Jumps", "water_jump_count", "int"],
+	["Ice", "ice_time_sec", "sec"],
+	["Dir Chgs", "direction_change_count", "int"],
+	["Avg Hgt", "average_height", "float"],
+]
+
 @export var toast_scene: PackedScene
 @export var toast_fade_duration := 0.5
 @export var toast_fade_delay := 1.5
@@ -11,10 +29,15 @@ var player: Player
 var player_match_state: GamePlayerState
 var replaceable_toast: PlayerStatePanelToast = null
 
+# Maps property_name -> value Label node.
+var _stat_value_labels := {}
+
 
 func _ready() -> void:
 	if Netcode.is_server:
 		return
+
+	_build_stats_ui()
 
 	%IsDescendingThroughFloorsRow.visible = show_extra_debug_info
 	#%IsAscendingThroughCeilingsRow.visible = show_extra_debug_info
@@ -36,6 +59,8 @@ func _process(_delta: float) -> void:
 		return
 	if not is_visible_in_tree():
 		return
+
+	_update_stats_display()
 
 	if not is_instance_valid(player):
 		player = G.get_player(player_id)
@@ -99,3 +124,49 @@ func add_toast(text: String, replaceable: bool = false) -> void:
 	# Clear the cached reference if this was the replaceable toast.
 	if replaceable and toast == replaceable_toast:
 		replaceable_toast = null
+
+
+func _build_stats_ui() -> void:
+	for entry in _STAT_DEFS:
+		var label_text: String = entry[0]
+		var stat_key: String = entry[1]
+
+		var row := HBoxContainer.new()
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+		var name_label := Label.new()
+		name_label.text = label_text + ": "
+		name_label.size_flags_horizontal = \
+			Control.SIZE_EXPAND_FILL
+		row.add_child(name_label)
+
+		var value_label := Label.new()
+		value_label.horizontal_alignment = \
+			HORIZONTAL_ALIGNMENT_RIGHT
+		value_label.text = "-"
+		row.add_child(value_label)
+
+		%StatsSection.add_child(row)
+		_stat_value_labels[stat_key] = value_label
+
+
+func _update_stats_display() -> void:
+	var stats: PlayerMatchStats = \
+		G.match_state.get_player_stats(player_id)
+	if stats == null:
+		for key in _stat_value_labels:
+			_stat_value_labels[key].text = "-"
+		return
+
+	for entry in _STAT_DEFS:
+		var stat_key: String = entry[1]
+		var fmt: String = entry[2]
+		var value = stats.get(stat_key)
+		var label: Label = _stat_value_labels[stat_key]
+		match fmt:
+			"sec":
+				label.text = "%.1fs" % value
+			"float":
+				label.text = "%.1f" % value
+			_:
+				label.text = str(value)
