@@ -10,13 +10,50 @@ extends CharacterAnimator
 ##    animated_sprite
 ## 2. Costume overlay (optional, from costume_index)
 ## 3. Crown overlay (optional, toggled independently)
+##
+## Includes idle-eat behavior: while Rest loops, a
+## random iteration is chosen to interrupt with the
+## Eat animation. After Eat completes, Rest resumes
+## without further eat chances until the next fresh
+## external Rest trigger (i.e., the player moves and
+## stops again).
 
+## Upper bound (inclusive) for the random Rest loop
+## iteration that triggers the Eat interrupt.
+const EAT_CHANCE_RANGE: int = 5
+
+## Fraction of the Rest animation's frame count at
+## which the Eat interrupt check occurs.
+const REST_INTERRUPT_RATIO: float = 0.4
 
 @export var outline_group: CanvasGroup = null
 
 var _costume_overlay: AnimatedSprite2D = null
 var _crown_overlay: AnimatedSprite2D = null
 var _crown_costume: CostumeConfig = null
+
+## Whether the Rest/Eat cycle is active. True from
+## the first external Rest trigger until a non-Rest
+## animation plays.
+var _rest_eat_active: bool = false
+
+## Whether the Eat animation is currently playing.
+var _is_eating: bool = false
+
+## The randomly chosen Rest loop iteration on which
+## to trigger Eat. Set to -1 after Eat completes to
+## prevent further triggers.
+var _eat_target_iteration: int = -1
+
+## Current Rest loop iteration counter (0-based).
+var _rest_loop_count: int = 0
+
+
+func _ready() -> void:
+	animated_sprite.animation_looped.connect(
+		_on_animation_looped)
+	animated_sprite.frame_changed.connect(
+		_on_frame_changed)
 
 
 ## Applies body type and costume appearance. Swaps the
@@ -104,6 +141,35 @@ func face_right() -> void:
 
 
 func play(animation_name: StringName) -> void:
+	# Skip eat state changes during rollback
+	# resimulation. Animation is cosmetic-only and
+	# the correct state is restored on the final
+	# non-resim frame.
+	if Netcode.frame_driver.is_resimulating:
+		return
+
+	if animation_name == &"Rest":
+		if _rest_eat_active:
+			# Don't interrupt Eat, don't re-roll if
+			# Rest or Eat is active.
+			return
+		# Fresh external Rest trigger — start cycle.
+		_rest_eat_active = true
+		_is_eating = false
+		_rest_loop_count = 0
+		_eat_target_iteration = randi_range(
+			0, EAT_CHANCE_RANGE)
+		_play_on_all_layers(animation_name)
+	else:
+		# Non-Rest animation clears eat state.
+		_rest_eat_active = false
+		_is_eating = false
+		_play_on_all_layers(animation_name)
+
+
+func _play_on_all_layers(
+	animation_name: StringName,
+) -> void:
 	super.play(animation_name)
 	if is_instance_valid(_costume_overlay):
 		_costume_overlay.play(animation_name)
@@ -117,6 +183,41 @@ func stop() -> void:
 		_costume_overlay.stop()
 	if is_instance_valid(_crown_overlay):
 		_crown_overlay.stop()
+
+
+func _on_frame_changed() -> void:
+	if not _rest_eat_active or _is_eating:
+		return
+	if animated_sprite.animation != &"Rest":
+		return
+	var halfway_frame := int(
+		animated_sprite.sprite_frames
+			.get_frame_count(&"Rest")
+		* REST_INTERRUPT_RATIO)
+	if animated_sprite.frame != halfway_frame:
+		return
+	if _rest_loop_count == _eat_target_iteration:
+		_trigger_eat()
+
+
+func _on_animation_looped() -> void:
+	if not _rest_eat_active:
+		return
+	if _is_eating:
+		# Eat completed — go back to Rest, no new
+		# cycle. Set target to -1 so no future loop
+		# iteration can trigger Eat again.
+		_is_eating = false
+		_eat_target_iteration = -1
+		_play_on_all_layers(&"Rest")
+	else:
+		# Rest looped — increment iteration counter.
+		_rest_loop_count += 1
+
+
+func _trigger_eat() -> void:
+	_is_eating = true
+	_play_on_all_layers(&"Eat")
 
 
 ## Creates a new AnimatedSprite2D overlay as a child of
