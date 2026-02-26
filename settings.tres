@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Settings" load_steps=33 format=3 uid="uid://dv60bmaw1pdx6"]
+[gd_resource type="Resource" script_class="Settings" load_steps=34 format=3 uid="uid://dv60bmaw1pdx6"]
 
 [ext_resource type="Script" uid="uid://bklo1tgck1vmm" path="res://src/player/body_type_config.gd" id="1_7ybur"]
 [ext_resource type="Script" uid="uid://cqomr88ncj2d3" path="res://src/core/settings.gd" id="1_krfic"]
@@ -26,6 +26,7 @@
 [ext_resource type="Resource" path="res://src/player/light_brown_spotted_bunny_body_type.tres" id="18_lbsbody"]
 [ext_resource type="PackedScene" uid="uid://clcub1mgr6shb" path="res://src/level/level_0.tscn" id="19_jwo4p"]
 [ext_resource type="Resource" path="res://src/player/yellow_spotted_bunny_body_type.tres" id="20_ysbody"]
+[ext_resource type="Resource" path="res://src/player/brown_black_spotted_bunny_body_type.tres" id="21_bbsbody"]
 [ext_resource type="PackedScene" uid="uid://bbhm335xhffk" path="res://src/level/level_3.tscn" id="22_hsj8s"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_woca2"]
@@ -84,7 +85,7 @@ lobby_level_scene = ExtResource("1_lobby")
 levels = Array[ExtResource("5_i3tmf")]([SubResource("Resource_i3tmf"), SubResource("Resource_bav20"), SubResource("Resource_p8ob7"), SubResource("Resource_h8oqh")])
 default_player_scene = ExtResource("3_woca2")
 player_scenes = Array[PackedScene]([ExtResource("3_woca2")])
-body_types = Array[ExtResource("1_7ybur")]([ExtResource("8_bodytype"), ExtResource("11_wbody"), ExtResource("12_bbody"), ExtResource("13_brbody"), ExtResource("14_bsbody"), ExtResource("15_blsbody"), ExtResource("16_grbody"), ExtResource("17_ylbody"), ExtResource("18_lbsbody"), ExtResource("20_ysbody")])
+body_types = Array[ExtResource("1_7ybur")]([ExtResource("8_bodytype"), ExtResource("11_wbody"), ExtResource("12_bbody"), ExtResource("13_brbody"), ExtResource("14_bsbody"), ExtResource("15_blsbody"), ExtResource("16_grbody"), ExtResource("17_ylbody"), ExtResource("18_lbsbody"), ExtResource("20_ysbody"), ExtResource("21_bbsbody")])
 costumes = Array[ExtResource("3_htelm")]([ExtResource("9_costume")])
 crown_costume = ExtResource("10_crown")
 match_duration_sec = 45.0
