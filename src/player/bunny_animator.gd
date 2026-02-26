@@ -26,6 +26,11 @@ const EAT_CHANCE_RANGE: int = 5
 ## which the Eat interrupt check occurs.
 const REST_INTERRUPT_RATIO: float = 0.4
 
+## Emitted when the Rest/Eat cycle ends after an
+## eat occurred (i.e., the bunny transitions to a
+## non-Rest animation after having eaten).
+signal eat_cycle_ended
+
 @export var outline_group: CanvasGroup = null
 
 var _costume_overlay: AnimatedSprite2D = null
@@ -47,6 +52,10 @@ var _eat_target_iteration: int = -1
 
 ## Current Rest loop iteration counter (0-based).
 var _rest_loop_count: int = 0
+
+## Whether an Eat animation played during the
+## current Rest/Eat cycle. Reset on cycle start.
+var _did_eat_this_cycle: bool = false
 
 
 func _ready() -> void:
@@ -156,14 +165,18 @@ func play(animation_name: StringName) -> void:
 		# Fresh external Rest trigger — start cycle.
 		_rest_eat_active = true
 		_is_eating = false
+		_did_eat_this_cycle = false
 		_rest_loop_count = 0
 		_eat_target_iteration = randi_range(
 			0, EAT_CHANCE_RANGE)
 		_play_on_all_layers(animation_name)
 	else:
 		# Non-Rest animation clears eat state.
+		if _rest_eat_active and _did_eat_this_cycle:
+			eat_cycle_ended.emit()
 		_rest_eat_active = false
 		_is_eating = false
+		_did_eat_this_cycle = false
 		_play_on_all_layers(animation_name)
 
 
@@ -215,8 +228,20 @@ func _on_animation_looped() -> void:
 		_rest_loop_count += 1
 
 
+## Clears all Rest/Eat cycle state without
+## emitting eat_cycle_ended. Call on death and
+## respawn to prevent stale state.
+func reset_eat_cycle() -> void:
+	_rest_eat_active = false
+	_is_eating = false
+	_did_eat_this_cycle = false
+	_eat_target_iteration = -1
+	_rest_loop_count = 0
+
+
 func _trigger_eat() -> void:
 	_is_eating = true
+	_did_eat_this_cycle = true
 	_play_on_all_layers(&"Eat")
 
 

@@ -425,10 +425,11 @@ func _process_animation() -> void:
 	# animations.
 	if surfaces.is_in_water:
 		if velocity.y < 0:
-			# Reuse rise/fall for now.
 			animator.play("JumpRise")
-		else:
+		elif velocity.y > 0:
 			animator.play("JumpFall")
+		else:
+			animator.play("Swim")
 		return
 
 	match surfaces.surface_type:

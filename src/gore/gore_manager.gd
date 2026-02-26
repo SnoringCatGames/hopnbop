@@ -12,6 +12,35 @@ extends Node2D
 const _BUFFER_MARGIN := 32
 const MOREGORE_MULTIPLIER := 8
 
+# Poop particle spawn count range.
+const POOP_MIN_COUNT := 2
+const POOP_MAX_COUNT := 5
+
+# Poop particle fade delay range (seconds).
+const POOP_FADE_DELAY_MIN_SEC := 10.0
+const POOP_FADE_DELAY_MAX_SEC := 30.0
+
+# Poop particle color (dark brown).
+const POOP_COLOR := Color(0.30, 0.18, 0.08)
+
+# Poop spawn scatter radius (pixels).
+const POOP_SPAWN_SCATTER_RADIUS := 4.0
+
+# Poop initial speed range (pixels/sec).
+const POOP_SPEED_MIN := 13.0
+const POOP_SPEED_MAX := 27.0
+
+# Poop upward bias (pixels/sec).
+const POOP_UPWARD_BIAS := -60.0
+
+# Half-angle of the poop velocity spread cone
+# (radians). PI/3 = 60°, giving a 120° cone.
+const POOP_SPREAD_HALF_ANGLE := PI / 3.0
+
+# Gore fade delay variance (seconds). Applied
+# as +/- around the base gore_fade_delay_sec.
+const GORE_FADE_DELAY_VARIANCE_SEC := 1.0
+
 # Behind-player accumulation buffer (z_index = -1).
 var _behind_image: Image
 var _behind_texture: ImageTexture
@@ -113,6 +142,90 @@ func spawn_particles(death_position: Vector2) -> void:
 	_spawn_kickables(death_position)
 
 
+## Spawns poop particles at the given position.
+## Uses the same GoreParticle scene as gore but
+## with brown color, no rasterization, no trails,
+## and a long random fade delay. backward_sign
+## controls horizontal direction: -1 = left,
+## +1 = right (opposite the player's motion).
+func spawn_poop_particles(
+	spawn_position: Vector2,
+	backward_sign: float,
+) -> void:
+	# Base angle: PI (left) or 0 (right).
+	var base_angle: float
+	if backward_sign < 0.0:
+		base_angle = PI
+	else:
+		base_angle = 0.0
+
+	var count := randi_range(
+		POOP_MIN_COUNT, POOP_MAX_COUNT)
+	for i in count:
+		var is_behind := i % 2 == 0
+
+		# Random position within scatter radius.
+		var angle := randf_range(0.0, TAU)
+		var dist := \
+			randf() * POOP_SPAWN_SCATTER_RADIUS
+		var spawn_pos := spawn_position + Vector2(
+			cos(angle) * dist,
+			sin(angle) * dist)
+
+		# Initial velocity: directed away from
+		# movement within a spread cone.
+		var speed := randf_range(
+			POOP_SPEED_MIN, POOP_SPEED_MAX)
+		var vel_angle := base_angle + randf_range(
+			- POOP_SPREAD_HALF_ANGLE,
+			POOP_SPREAD_HALF_ANGLE)
+		var vel := Vector2(
+			cos(vel_angle) * speed,
+			sin(vel_angle) * speed
+				+ POOP_UPWARD_BIAS)
+
+		_spawn_poop_particle(
+			spawn_pos, vel, is_behind)
+
+
+func _spawn_poop_particle(
+	pos: Vector2,
+	vel: Vector2,
+	is_behind: bool,
+) -> void:
+	var particle: GoreParticle = \
+		G.settings.gore_particle_scene.instantiate()
+	particle.will_rasterize = false
+	particle.is_behind = is_behind
+	particle.position = pos
+	particle.velocity = vel
+	particle.emit_trails = false
+	particle.fade_delay_sec = randf_range(
+		POOP_FADE_DELAY_MIN_SEC,
+		POOP_FADE_DELAY_MAX_SEC)
+
+	if not is_behind:
+		particle.z_index = 2
+
+	# Set texture to white_pixel modulated to
+	# dark brown.
+	var sprite: Sprite2D = \
+		particle.get_node("Sprite2D")
+	sprite.texture = preload(
+		"res://assets/images/white_pixel.png")
+	sprite.modulate = POOP_COLOR
+
+	# Set collision radius.
+	var shape: CollisionShape2D = \
+		particle.get_node("CollisionShape2D")
+	var circle := CircleShape2D.new()
+	circle.radius = \
+		G.settings.gore_collision_radius
+	shape.shape = circle
+
+	add_child(particle)
+
+
 func _spawn_kickables(
 	death_position: Vector2,
 ) -> void:
@@ -205,6 +318,15 @@ func _spawn_particle(
 	particle.velocity = vel
 	particle.will_rasterize = \
 		randf() < G.settings.gore_rasterize_ratio
+
+	# Randomize fade delay for non-rasterized
+	# gore particles.
+	if not particle.will_rasterize:
+		particle.fade_delay_sec = \
+			G.settings.gore_fade_delay_sec \
+			+ randf_range(
+				- GORE_FADE_DELAY_VARIANCE_SEC,
+				GORE_FADE_DELAY_VARIANCE_SEC)
 
 	if not is_behind:
 		particle.z_index = 2

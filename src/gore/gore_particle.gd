@@ -14,6 +14,15 @@ var is_behind := false
 ## rest. When false, it fades out instead.
 var will_rasterize := true
 
+## Per-particle fade delay override (seconds).
+## When >= 0, used instead of the global
+## gore_fade_delay_sec from settings.
+var fade_delay_sec := -1.0
+
+## Whether this particle emits trail particles
+## while moving. Set to false for poop particles.
+var emit_trails := true
+
 var _rest_frame_counter := 0
 var _trail_elapsed := 0.0
 
@@ -32,23 +41,26 @@ func _physics_process(delta: float) -> void:
 		velocity *= G.settings.gore_friction
 
 	# Spawn trail particles while moving.
-	_trail_elapsed += delta
-	var spawn_interval: float = \
-		G.settings.gore_trail_spawn_interval_sec
-	if _trail_elapsed >= spawn_interval:
-		_trail_elapsed -= spawn_interval
-		var level: Level = G.level
-		if (
-			is_instance_valid(level) and
-			is_instance_valid(level.gore_manager)
-		):
-			level.gore_manager \
-				.spawn_trail_particle(
-					position,
-					type_index,
-					is_behind,
-					self,
-					velocity)
+	if emit_trails:
+		_trail_elapsed += delta
+		var spawn_interval: float = \
+			G.settings \
+				.gore_trail_spawn_interval_sec
+		if _trail_elapsed >= spawn_interval:
+			_trail_elapsed -= spawn_interval
+			var level: Level = G.level
+			if (
+				is_instance_valid(level) and
+				is_instance_valid(
+					level.gore_manager)
+			):
+				level.gore_manager \
+					.spawn_trail_particle(
+						position,
+						type_index,
+						is_behind,
+						self,
+						velocity)
 
 	# Rest detection with consecutive-frame
 	# requirement. Only count frames where the chunk
@@ -73,16 +85,32 @@ func _physics_process(delta: float) -> void:
 				came_to_rest.emit(self)
 				queue_free()
 			else:
+				_disable_collision()
 				_start_fade()
 				set_physics_process(false)
 	else:
 		_rest_frame_counter = 0
 
 
+## Disables collision on this particle to reduce
+## physics engine load once at rest.
+func _disable_collision() -> void:
+	collision_layer = 0
+	collision_mask = 0
+	var shape: CollisionShape2D = \
+		get_node_or_null("CollisionShape2D")
+	if is_instance_valid(shape):
+		shape.set_deferred("disabled", true)
+
+
 func _start_fade() -> void:
+	var delay: float
+	if fade_delay_sec >= 0.0:
+		delay = fade_delay_sec
+	else:
+		delay = G.settings.gore_fade_delay_sec
 	var tween := create_tween()
-	tween.tween_interval(
-		G.settings.gore_fade_delay_sec)
+	tween.tween_interval(delay)
 	tween.tween_property(
 		self, "modulate:a", 0.0,
 		G.settings.gore_fade_duration_sec,
