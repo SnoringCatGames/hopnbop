@@ -199,7 +199,7 @@ unique_name_in_owner = true
 zoom = Vector2(1.5, 1.5)
 
 [node name="PlayerAnimator" parent="." instance=ExtResource("5_sc4xa")]
-position = Vector2(0, -9.5)
+position = Vector2(0, -8)
 
 [node name="PlayerBodyCollisionShape" type="CollisionShape2D" parent="."]
 unique_name_in_owner = true

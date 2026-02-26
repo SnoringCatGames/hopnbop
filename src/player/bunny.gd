@@ -78,6 +78,13 @@ func _ready() -> void:
 	G.match_state.kills_updated.connect(
 		_on_kills_updated)
 
+	# Connect eat-cycle signal for poop particle
+	# spawning.
+	var bunny_anim := animator as BunnyAnimator
+	if is_instance_valid(bunny_anim):
+		bunny_anim.eat_cycle_ended.connect(
+			_on_eat_cycle_ended)
+
 
 func _process(_delta: float) -> void:
 	if Engine.is_editor_hint():
@@ -491,6 +498,10 @@ func _handle_interaction_effects() -> void:
 			play_sound("die")
 			_spawn_squish_sprite()
 			_has_ever_died = true
+			var bunny_anim := \
+				animator as BunnyAnimator
+			if is_instance_valid(bunny_anim):
+				bunny_anim.reset_eat_cycle()
 		CharacterStateFromServer.ServerInteractionType.SPAWN:
 			if Netcode.log.is_verbose:
 				Netcode.verbose(
@@ -501,6 +512,10 @@ func _handle_interaction_effects() -> void:
 				)
 			if _has_ever_died:
 				play_sound("respawn")
+			var bunny_anim := \
+				animator as BunnyAnimator
+			if is_instance_valid(bunny_anim):
+				bunny_anim.reset_eat_cycle()
 		CharacterStateFromServer \
 				.ServerInteractionType.SPRING:
 			play_sound("spring")
@@ -517,6 +532,36 @@ func _spawn_gore_particles() -> void:
 	var death_pos := \
 		state_from_server.last_interaction_position
 	G.level.gore_manager.spawn_particles(death_pos)
+
+
+func _on_eat_cycle_ended() -> void:
+	if not Netcode.is_client:
+		return
+	if Netcode.frame_driver.is_resimulating:
+		return
+	if state_from_server.is_dead:
+		return
+	if (
+		not is_instance_valid(G.level)
+		or not is_instance_valid(
+			G.level.gore_manager)
+	):
+		return
+
+	# Poop travels opposite to horizontal motion,
+	# or opposite facing direction if stationary.
+	var backward_sign: float
+	if velocity.x > 0.0:
+		backward_sign = -1.0
+	elif velocity.x < 0.0:
+		backward_sign = 1.0
+	elif surfaces.is_facing_right:
+		backward_sign = -1.0
+	else:
+		backward_sign = 1.0
+
+	G.level.gore_manager.spawn_poop_particles(
+		global_position, backward_sign)
 
 
 ## Spawns a detached Sprite2D showing the squish
