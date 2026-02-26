@@ -45,8 +45,6 @@ extends Node
 # FIXME: LEFT OFF HERE: Main list: --------------------------------------------
 
 # - Art:
-#   - Swimming paddle animations.
-#   - Eating and pooping animation.
 #   - Flies.
 #     - Each level should have a single configured fly swarm spawn point.
 #     - Collide with level.
