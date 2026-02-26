@@ -24,14 +24,14 @@ const POOP_FADE_DELAY_MAX_SEC := 30.0
 const POOP_COLOR := Color(0.30, 0.18, 0.08)
 
 # Poop spawn scatter radius (pixels).
-const POOP_SPAWN_SCATTER_RADIUS := 4.0
+const POOP_SPAWN_SCATTER_RADIUS := 2.0
 
 # Poop initial speed range (pixels/sec).
-const POOP_SPEED_MIN := 13.0
-const POOP_SPEED_MAX := 27.0
+const POOP_SPEED_MIN := 5.0
+const POOP_SPEED_MAX := 33.0
 
 # Poop upward bias (pixels/sec).
-const POOP_UPWARD_BIAS := -60.0
+const POOP_UPWARD_BIAS := -30.0
 
 # Half-angle of the poop velocity spread cone
 # (radians). PI/3 = 60°, giving a 120° cone.

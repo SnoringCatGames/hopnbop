@@ -51,7 +51,7 @@ func _ready() -> void:
 	if (
 		is_instance_valid(G.level)
 		and Netcode.server_frame_index
-			- G.level.start_frame_index
+			-G.level.start_frame_index
 			< _LANDING_SKID_GRACE_FRAMES
 	):
 		_suppress_landing_skid = true
@@ -245,7 +245,7 @@ func _process_movement_and_actions() -> void:
 				game_state.get_crown_player_id(
 					G.settings.crown_kill_lead)
 		stats.accumulate_frame(
-			self,
+			self ,
 			Netcode.frame_driver
 				.target_network_time_step_sec,
 			crown_holder_id == player_id,
@@ -560,8 +560,10 @@ func _on_eat_cycle_ended() -> void:
 	else:
 		backward_sign = 1.0
 
+	var spawn_pos := global_position \
+		+ Vector2(backward_sign * 2.0, -2.0)
 	G.level.gore_manager.spawn_poop_particles(
-		global_position, backward_sign)
+		spawn_pos, backward_sign)
 
 
 ## Spawns a detached Sprite2D showing the squish
@@ -757,7 +759,6 @@ func _update_crown_visibility() -> void:
 	_had_crown = should_show
 
 	bunny_anim.set_crown_visible(should_show)
-
 
 
 func _update_appearance() -> void:
