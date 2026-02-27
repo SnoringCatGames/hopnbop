@@ -40,6 +40,10 @@ func _ready() -> void:
 	if not Netcode.is_primary_client:
 		return
 
+	# Apply persisted audio settings.
+	apply_music_mute()
+	apply_sfx_mute()
+
 
 func play_sound(sound_name: StringName) -> void:
 	if not Netcode.is_primary_client:
@@ -153,3 +157,13 @@ func apply_music_mute() -> void:
 		main_player.volume_db = mute_volume if (
 			G.settings.mute_music
 		) else main_theme_volume
+
+
+func apply_sfx_mute() -> void:
+	if not Netcode.is_primary_client:
+		return
+
+	# Bus index 2 is "SFX" per
+	# default_bus_layout.tres.
+	AudioServer.set_bus_mute(
+		2, G.settings.mute_sfx)
