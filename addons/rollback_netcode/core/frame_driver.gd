@@ -44,12 +44,67 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: --------------------------------------------
 
+# When adding the level selection UI, also add other settings selections at the top of the list, like gore enablement, cheat enablement, critter enablement, ....
+
+# Use PixelLab for generating bespoke backgrounds and foregrounds and occlusion decorations layer for each level, given tilemap layouts to start from.
+
 # Level-selection:
 # I want to add a system for configuring matchmaking preferences on the client at runtime.
-# - I've added
-# - Make a platform for level selection above hole.
-# - Show level selection UI when landing on the platform. Hide it when selecting
-#   x at the top or bottom of the ui list. Ui list has three columns x header,
+# - Beforehand, I want you to add a new system for preserving settings with local storage on the player's device.
+#   - If there is a locally-stored settings file, and that includes an override for a given property, use that value instead of the normal value from G.settings. Otherwise, fallback to the normal value from G.settings.
+#   - When the player sets a local-settings value override for a given property back to the default value for that property--according to the normal G.settings value--then clear the override rather than recording it explicitly.
+#   - Make sure to also record the latest game version that the local-settings file was accessed with, and update this whenever we open the game.
+#   - Log the previous version that a local-settings file was recorded with, when loading the local-settings file.
+# - The main work for this will be creating a new panel overlay UI.
+# - We'll trigger the UI from SettingsBook._show_settings_ui.
+# - The panel will consist primarily of a vertical, scrollable list.
+# - There will be two sections in this vertical list.
+#   - The top section will list (vertically) miscellaneous gameplay settings. For now, this will include:
+#     - A toggle for G.settings.is_gore_enabled.
+#     - A toggle for G.settings.are_critters_enabled.
+#       - This is a new settings property I want you to add now. This will control whether we ever spawn a snail in the match.
+#     - A toggle for G.settings.are_cheats_enabled.
+#       - This will then toggle the visibility for a nested settings group under this row.
+#       - In this nested group, we should have a separate toggle for each of the cheats:
+#         - is_jetpack_enabled
+#         - jetpack_acceleration
+#         - jetpack_max_upward_speed
+#         - is_bloodisthickerthanwater_enabled
+#         - is_lordoftheflies_enabled
+#         - is_pogostick_enabled
+#         - is_bunniesinspace_enabled
+#         - is_moregore_enabled
+#     - A toggle for G.settings.full_screen.
+#     - A toggle for G.settings.mute_music.
+#     - A toggle for G.settings.mute_sfx. This is also a new property I want you to add now. You should be able to base this off of the mute_music property.
+#   - The bottom section will list (vertically) each level in the game.
+#     - Each row in this list will show a thumbnail image for the level (show a placeholder image here for now).
+#     - Above the thumbnail, there will be a skinny row with a custom UI for toggling the player's preference for the level.
+#       - I just created x_icon, checkmark_icon, and heart_icon images to use in this UI.
+#       - I also created a v_bar icon to use as a vertical divider between button sections.
+#       - All of these icons are white, so we can modulate them to be whatever color we want.
+#       - Let's modulate the v_bar icon to be a very dark gray, and make its alpha be 0.3.
+#       - I want the UI to consist of three separate sub buttons that together form a conceptual aggregate tri-toggle button.
+#         - Technically, these act as a radio button group, but we're going to implement that behavior with custom logic.
+#       - I want there to be no space between the three sub-buttons, so it looks like one cohesive button.
+#       - We'll place the x_icon over the left button, the checkmark_icon over the middle, and the heart_icon over the right. These icons should be centered within their subbutton.
+#       - Visually we'll place a v_bar between adjacent sub-buttons. But actually, let's place both of these v_bar icons inside of the middle subbutton, just on the extreme horizontal edges.
+#       - I added separate textures for each possible button state (normal, pressed, hovered, selected, disabled) for each possible subbutton position (left, middle, right).
+#       - The left sub-button (x_icon) represents "I don't want to play this level".
+#       - The middle sub-button (checkmark_icon) represents "I'm willing to play this level".
+#       - The right sub-button (heart_icon) represents "I want to play this level over all others".
+#       - See LevelPreferences for how these preferences will be used.
+#       - Exactly one subbutton must be selected at all times for a given aggregate button--no more, no less.
+#       - At most one level can have the right sub-button selected.
+#       - Selecting the right sub-button for a level with deselect it from any other level that may have had it selected (the middle sub-button will then become selected for that other level).
+#       - But it's valid for no level to have the right sub-button selected.
+#       - By default, all levels will have the middle sub-button selected.
+#       - We should update the call to GameSessionManager.client_request_session to include level preferences as indicated by this UI.
+#       - We should also persist these preferences to local storage, and load them from local storage when opening the settings UI.
+#
+# - It will have three columns x header,
+# - Hide it when selecting
+#   x at the top or bottom of the ui list.
 #   check header, double check header. Exclusive selection or no selection for
 #   double check. All rows must be in x or check.
 
@@ -276,6 +331,7 @@ extends Node
 # - Auth?
 
 # FIXME: GameLift
+# - Use hopnbop.net
 # - [Obsolete?] Proceed with the "AWS GameLift Deployment Guide"
 #   - Add player authentication and profile management.
 #   - Set up CloudWatch alarms for monitoring.
@@ -287,6 +343,9 @@ extends Node
 #   - Implement a database for recording some game data:
 #     - player data (id, bunny name and adjective, first play time, last play time, total time played, total wins, total kills, total deaths, login info for whichever auth providers they've connected to, ...)
 #     - a leaderboard
+#     - Persist player settings (gore, level preferences, etc).
+#       - If they're logged in, read and write to persisted backend storage. Otherwise, use local storage.
+#       - Also, don't show the settings book until after they've played three rounds (if they aren't logged in, use tracking from local storage).
 #   - Implement a way to make friends and to join matches with friends.
 
 # Add support for a local-only mode.
