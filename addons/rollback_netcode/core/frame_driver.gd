@@ -90,6 +90,8 @@ extends Node
 #       - We'll place the x_icon over the left button, the checkmark_icon over the middle, and the heart_icon over the right. These icons should be centered within their subbutton.
 #       - Visually we'll place a v_bar between adjacent sub-buttons. But actually, let's place both of these v_bar icons inside of the middle subbutton, just on the extreme horizontal edges.
 #       - I added separate textures for each possible button state (normal, pressed, hovered, selected, disabled) for each possible subbutton position (left, middle, right).
+#         - These should be used as nine-patches in texturestyleboxes.
+#         - The outer cells of the nine-patch are 6 pixels deep--except for aggregate_button_middle_x, which doesn't have right or left border cells.
 #       - The left sub-button (x_icon) represents "I don't want to play this level".
 #       - The middle sub-button (checkmark_icon) represents "I'm willing to play this level".
 #       - The right sub-button (heart_icon) represents "I want to play this level over all others".
@@ -101,12 +103,16 @@ extends Node
 #       - By default, all levels will have the middle sub-button selected.
 #       - We should update the call to GameSessionManager.client_request_session to include level preferences as indicated by this UI.
 #       - We should also persist these preferences to local storage, and load them from local storage when opening the settings UI.
-#
-# - It will have three columns x header,
-# - Hide it when selecting
-#   x at the top or bottom of the ui list.
-#   check header, double check header. Exclusive selection or no selection for
-#   double check. All rows must be in x or check.
+# - In general, the player will navigate this UI and toggle values using up/down/left/right controls (the same controls they use for movement, and these controls for a given player are determined by the DeviceConfig that that player was registered with).
+# - Up and down will change focus to the previous or next row in the overall list.
+# - Left and right will update/toggle the value for the focused row.
+# - To indicate which row is currently focused, use the focus_border texture.
+#   - This should be used as a nine-patch in a texturestylebox.
+#   - The outer cells of the nine-patch are 2 pixels deep.
+# - When a new row is focused, we should update the scroll position to ensure the entirety of the row is in view.
+# - When scrolling up/down past the edge of the list, we should wrap-around to the other end.
+# - We should add a special X-button row at the top of the list. Pressing left or right when this row is focused will close the UI.
+# - We should also support mouse clicks and scroll-wheel scrolling for this UI.
 
 # - Art:
 #   - Flies.
