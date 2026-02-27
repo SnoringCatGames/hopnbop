@@ -128,3 +128,5 @@ Makefile
 # BUT keep the script Makefiles
 !gamelift-gdextension/Makefile
 !gamelift-gdextension/*/Makefile
+
+~*.dll
