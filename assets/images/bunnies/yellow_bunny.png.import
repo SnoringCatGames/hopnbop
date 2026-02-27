@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://88tcnlh22h8c"
-path="res://.godot/imported/yellow_spotted_bunny.png-1a5ad8410ebbcffed8b368cefddd2add.ctex"
+uid="uid://r1kp38a0snvm"
+path="res://.godot/imported/yellow_bunny.png-c00825a087590d7a5e57883476337a0c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/yellow_spotted_bunny.png"
-dest_files=["res://.godot/imported/yellow_spotted_bunny.png-1a5ad8410ebbcffed8b368cefddd2add.ctex"]
+source_file="res://assets/images/bunnies/yellow_bunny.png"
+dest_files=["res://.godot/imported/yellow_bunny.png-c00825a087590d7a5e57883476337a0c.ctex"]
 
 [params]
 

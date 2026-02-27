@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bs881a6tjl3ty"
-path="res://.godot/imported/white_bunny.png-83946e88b942767e7637827ac7abf125.ctex"
+uid="uid://dniyej36rvq3s"
+path="res://.godot/imported/tan_bunny.png-88e4a50cb9773b242aa633e89a0e3f92.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/white_bunny.png"
-dest_files=["res://.godot/imported/white_bunny.png-83946e88b942767e7637827ac7abf125.ctex"]
+source_file="res://assets/images/bunnies/tan_bunny.png"
+dest_files=["res://.godot/imported/tan_bunny.png-88e4a50cb9773b242aa633e89a0e3f92.ctex"]
 
 [params]
 

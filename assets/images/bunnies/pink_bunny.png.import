@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cpcl7fc0e8vpp"
-path="res://.godot/imported/brown_bunny.png-f6cd5ed7fa276be96f206421060035ca.ctex"
+uid="uid://by4gpomt7t81f"
+path="res://.godot/imported/pink_bunny.png-5b31695d80e2ede42df735f376a0191f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/brown_bunny.png"
-dest_files=["res://.godot/imported/brown_bunny.png-f6cd5ed7fa276be96f206421060035ca.ctex"]
+source_file="res://assets/images/bunnies/pink_bunny.png"
+dest_files=["res://.godot/imported/pink_bunny.png-5b31695d80e2ede42df735f376a0191f.ctex"]
 
 [params]
 
