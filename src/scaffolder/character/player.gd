@@ -222,9 +222,13 @@ func _process_movement_and_actions() -> void:
 
 
 func get_is_player_control_active() -> bool:
-	# In local mode (lobby), players always have control.
+	# In local mode (lobby), players always have control
+	# unless this player has the settings UI open.
 	if not G.is_networked_level_active:
-		return true
+		return not (
+			G.is_settings_ui_shown
+			and G.settings_ui_player == self
+		)
 
 	# In networked mode, check multiplayer authority.
 	return (

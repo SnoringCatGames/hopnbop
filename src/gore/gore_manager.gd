@@ -28,7 +28,7 @@ const POOP_SPAWN_SCATTER_RADIUS := 2.0
 
 # Poop initial speed range (pixels/sec).
 const POOP_SPEED_MIN := 5.0
-const POOP_SPEED_MAX := 33.0
+const POOP_SPEED_MAX := 43.0
 
 # Poop upward bias (pixels/sec).
 const POOP_UPWARD_BIAS := -30.0

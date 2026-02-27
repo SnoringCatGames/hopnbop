@@ -16,6 +16,7 @@ var water_jump_count := 0
 var ice_time_sec := 0.0
 var spring_launch_count := 0
 var direction_change_count := 0
+var snail_crush_count := 0
 
 var _height_accumulator := 0.0
 var _height_frame_count := 0
@@ -101,6 +102,10 @@ func record_regicide() -> void:
 	regicide_count += 1
 
 
+func record_snail_crush() -> void:
+	snail_crush_count += 1
+
+
 ## Packs stats into an Array for RPC transmission.
 func to_packed_array() -> Array:
 	return [
@@ -116,6 +121,7 @@ func to_packed_array() -> Array:
 		spring_launch_count,
 		direction_change_count,
 		average_height,
+		snail_crush_count,
 	]
 
 
@@ -140,3 +146,4 @@ func populate_from_packed_array(
 	# so the getter returns the correct value.
 	_height_accumulator = data[11]
 	_height_frame_count = 1
+	snail_crush_count = int(data[12])

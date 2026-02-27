@@ -44,6 +44,15 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: --------------------------------------------
 
+# Level-selection:
+# I want to add a system for configuring matchmaking preferences on the client at runtime.
+# - I've added
+# - Make a platform for level selection above hole.
+# - Show level selection UI when landing on the platform. Hide it when selecting
+#   x at the top or bottom of the ui list. Ui list has three columns x header,
+#   check header, double check header. Exclusive selection or no selection for
+#   double check. All rows must be in x or check.
+
 # - Art:
 #   - Flies.
 #     - Each level should have a single configured fly swarm spawn point.
@@ -82,24 +91,10 @@ extends Node
 # - Track who hangs out with flies the most
 # - Adjectives for all of these!
 
-# Add another section to the idle animation: eating and pooping.
-# - They happen together.
-# - Poop actually results in particles that emit, spread, fall, and rasterize at 100% rate.
-# - Also track who has pooped the most.
-# - Use pooping to trigger additional adjectives (flatulent, fertilizing, fragrant, ...).
-# - Only poop once until moving again.
-
 # ---
 
 # ADD LEVEL WRAP AROUND LIKE KILLER QUEEN (vertically and horizontally)
 # - Also make critters and gore wrap-around.
-
-# Level-selection:
-# - Make a platform for level selection above hole.
-# - Show level selection UI when landing on the platform. Hide it when selecting
-#   x at the top or bottom of the ui list. Ui list has three columns x header,
-#   check header, double check header. Exclusive selection or no selection for
-#   double check. All rows must be in x or check.
 
 
 # - Polish networked movement. It still seems like we get jitter and stuck

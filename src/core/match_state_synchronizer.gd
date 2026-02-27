@@ -212,9 +212,9 @@ func _server_send_stats_to_clients() -> void:
 func _rpc_client_update_stats(
 	packed_data: Array,
 ) -> void:
-	# Each entry is 1 player_id + 12 stat values
-	# = 13 stride.
-	var stride := 13
+	# Each entry is 1 player_id + 13 stat values
+	# = 14 stride.
+	var stride := 14
 	var i := 0
 	while i + stride <= packed_data.size():
 		var player_id: int = packed_data[i]
