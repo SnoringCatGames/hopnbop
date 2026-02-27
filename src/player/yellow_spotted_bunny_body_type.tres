@@ -1,9 +1,9 @@
-[gd_resource type="Resource" script_class="BodyTypeConfig" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="BodyTypeConfig" load_steps=3 format=3 uid="uid://dqneco01117oe"]
 
 [ext_resource type="Script" uid="uid://bklo1tgck1vmm" path="res://src/player/body_type_config.gd" id="1_script"]
-[ext_resource type="Texture2D" path="res://assets/images/yellow_spotted_bunny.png" id="2_texture"]
+[ext_resource type="Texture2D" uid="uid://88tcnlh22h8c" path="res://assets/images/bunnies/yellow_spotted_bunny.png" id="2_ru8bs"]
 
 [resource]
 script = ExtResource("1_script")
 display_name = "Yellow Spotted Bunny"
-sprite_sheet = ExtResource("2_texture")
+sprite_sheet = ExtResource("2_ru8bs")
