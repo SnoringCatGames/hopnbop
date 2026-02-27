@@ -48,6 +48,33 @@ extends Node
 
 # Use PixelLab for generating bespoke backgrounds and foregrounds and occlusion decorations layer for each level, given tilemap layouts to start from.
 
+# I want to add a swarm of flies.
+# - Each fly will be represented by a single black pixel.
+#   - Use the white_pixel image for this, and modulate the color.
+# - Every single render frame, we assign a new random position for the sprite.
+#   - There are four possible positions for the sprite: (0,0), (-1,0), (0,-1), (-1,-1).
+# - Additionally, we need the flies to move around. I want you to help me plan how to define fly movement.
+#  - Fly movement should be somewhat erratic.
+#  - We want flies to try to stick together with nearby flies, but also to not clump too close together.
+#  - We'll need to research swarming/flocking algorithms to consider design options here.
+#  - We should use move_and_slide for fly movement, and flies should collide with level and player geometry.
+# - We only spawn flies in match levels.
+# - When a match level loads, we choose a random player spawn position, and spawn the fly swarm at an offset from that position (use a file-level const for this offset and assign it to (0,-15.5) for now).
+#   - Actually, first _try_ to use an offset of (0,-31.5), but if that position intersects with a collidle of layer Character._NORMAL_SURFACES_COLLISION_MASK_BIT, then fallback to the (0,-15.5) position.
+# - Flies and fly swarms should not be networked.
+# - Flies should avoid nearby players.
+# - Flies should be drawn to nearby poop.
+# - Also, I want to add sound effects for flies.
+#   - Fly sfx needs two components:
+#     - One is very positional. It represents where flies are relatively and how far.
+#     - The other is not positional, but it's stronger based on how close flies are and how
+#       many are nearby. This one needs to have each individual bzzz have a lot of motion
+#       with panning.
+#     - We should probably implement this by calculating a strength and relative position score based on the
+#       relative positions of all flies in the level.
+#     - OR, let me know if there is a better way to handle this.
+
+
 # Level-selection:
 # I want to add a system for configuring matchmaking preferences on the client at runtime.
 # - Beforehand, I want you to add a new system for preserving settings with local storage on the player's device.
