@@ -287,6 +287,16 @@ static func is_bunniesinspace_cheat_active() -> bool:
 	)
 
 
+## Returns true if the lordoftheflies cheat is
+## currently active. Safe to call even when
+## Settings hasn't been loaded yet.
+static func is_lordoftheflies_cheat_active() -> bool:
+	return (
+		G.settings != null
+		and G.settings.is_lordoftheflies_enabled
+	)
+
+
 ## Returns true if the moregore cheat is currently
 ## active. Safe to call even when Settings hasn't been
 ## loaded yet.

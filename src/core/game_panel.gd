@@ -400,7 +400,13 @@ func client_load_game() -> void:
 
 func _client_client_request_session_ids() -> void:
 	Netcode.check_is_client()
-	session_manager.client_request_session()
+	var level_prefs: LevelPreferences = null
+	if G.local_settings != null:
+		level_prefs = \
+			G.local_settings \
+				.load_level_preferences()
+	session_manager.client_request_session(
+		level_prefs)
 
 
 func client_exit_match() -> void:

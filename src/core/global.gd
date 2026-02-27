@@ -46,6 +46,7 @@ var player_annotations: PlayerAnnotations
 var level: Level
 
 var level_registry: LevelRegistry
+var local_settings: LocalSettings
 
 # Whether the settings UI is currently shown.
 var is_settings_ui_shown := false
@@ -108,6 +109,11 @@ func _ready() -> void:
 
 	# Initialize level registry from settings.
 	_initialize_level_registry()
+
+	# Initialize local settings persistence.
+	local_settings = LocalSettings.new(settings)
+	local_settings.load_settings()
+	local_settings.apply_all_overrides()
 
 	G.log.log_system_ready("Global")
 
