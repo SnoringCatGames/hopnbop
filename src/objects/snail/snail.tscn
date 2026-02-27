@@ -1,0 +1,124 @@
+[gd_scene load_steps=15 format=3 uid="uid://b4rlmpji0e7ox"]
+
+[ext_resource type="Script" uid="uid://dv2hw8s30ipgf" path="res://src/objects/snail/snail.gd" id="1_snail"]
+[ext_resource type="Texture2D" uid="uid://8aabg03whjh6" path="res://assets/images/snail.png" id="2_snail"]
+[ext_resource type="AudioStream" path="res://assets/audio/crunch.wav" id="3_crunch"]
+
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_snail"]
+properties/0/path = NodePath(".:position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath(".:rotation")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+properties/2/path = NodePath(".:visible")
+properties/2/spawn = true
+properties/2/replication_mode = 1
+properties/3/path = NodePath("AnimatedSprite2D:animation")
+properties/3/spawn = true
+properties/3/replication_mode = 1
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_f0"]
+atlas = ExtResource("2_snail")
+region = Rect2(0, 0, 17, 8)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_f1"]
+atlas = ExtResource("2_snail")
+region = Rect2(17, 0, 17, 8)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_f2"]
+atlas = ExtResource("2_snail")
+region = Rect2(34, 0, 17, 8)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_f3"]
+atlas = ExtResource("2_snail")
+region = Rect2(51, 0, 17, 8)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_f4"]
+atlas = ExtResource("2_snail")
+region = Rect2(68, 0, 17, 8)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_f5"]
+atlas = ExtResource("2_snail")
+region = Rect2(85, 0, 17, 8)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_f6"]
+atlas = ExtResource("2_snail")
+region = Rect2(102, 0, 17, 8)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_f7"]
+atlas = ExtResource("2_snail")
+region = Rect2(119, 0, 17, 8)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_0s3wv"]
+atlas = ExtResource("2_snail")
+region = Rect2(136, 0, 17, 8)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_crawl"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_f0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_f1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_f2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_f3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_f4")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_f5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_f6")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_f7")
+}],
+"loop": true,
+"name": &"crawl",
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_0s3wv")
+}],
+"loop": true,
+"name": &"crunched",
+"speed": 5.0
+}]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_0s3wv"]
+radius = 3.0
+
+[node name="Snail" type="Node2D"]
+texture_filter = 1
+script = ExtResource("1_snail")
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_config = SubResource("SceneReplicationConfig_snail")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+position = Vector2(0, 1)
+sprite_frames = SubResource("SpriteFrames_crawl")
+animation = &"crunched"
+autoplay = "crawl"
+offset = Vector2(0, -4)
+
+[node name="CrunchSfx" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("3_crunch")
+
+[node name="CrushArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 128
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CrushArea"]
+position = Vector2(-2, -3)
+shape = SubResource("CircleShape2D_0s3wv")
