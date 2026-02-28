@@ -14,7 +14,7 @@ const MOREGORE_MULTIPLIER := 8
 
 # Poop particle spawn count range.
 const POOP_MIN_COUNT := 2
-const POOP_MAX_COUNT := 5
+const POOP_MAX_COUNT := 4
 
 # Poop particle fade delay range (seconds).
 const POOP_FADE_DELAY_MIN_SEC := 10.0
@@ -27,7 +27,7 @@ const POOP_COLOR := Color(0.30, 0.18, 0.08)
 const POOP_SPAWN_SCATTER_RADIUS := 2.0
 
 # Poop initial speed range (pixels/sec).
-const POOP_SPEED_MIN := 5.0
+const POOP_SPEED_MIN := 1.0
 const POOP_SPEED_MAX := 43.0
 
 # Poop upward bias (pixels/sec).
