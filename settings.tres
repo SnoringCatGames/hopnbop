@@ -66,6 +66,7 @@ metadata/_custom_type_script = "uid://l1of4ibugkpt"
 
 [resource]
 script = ExtResource("1_krfic")
+start_in_game = true
 skip_splash = true
 bunny_collision_shape = SubResource("CircleShape2D_woca2")
 are_bumps_enabled = false
