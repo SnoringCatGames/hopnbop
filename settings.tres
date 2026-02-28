@@ -23,9 +23,9 @@
 [ext_resource type="Resource" path="res://src/player/black_spotted_bunny_body_type.tres" id="15_blsbody"]
 [ext_resource type="Resource" path="res://src/player/gray_bunny_body_type.tres" id="16_grbody"]
 [ext_resource type="Resource" path="res://src/player/yellow_bunny_body_type.tres" id="17_ylbody"]
-[ext_resource type="Resource" path="res://src/player/light_brown_spotted_bunny_body_type.tres" id="18_lbsbody"]
+[ext_resource type="Resource" uid="uid://c1oqx335u3flu" path="res://src/player/light_brown_spotted_bunny_body_type.tres" id="18_lbsbody"]
 [ext_resource type="PackedScene" uid="uid://clcub1mgr6shb" path="res://src/level/level_0.tscn" id="19_jwo4p"]
-[ext_resource type="Resource" path="res://src/player/yellow_spotted_bunny_body_type.tres" id="20_ysbody"]
+[ext_resource type="Resource" uid="uid://dqneco01117oe" path="res://src/player/yellow_spotted_bunny_body_type.tres" id="20_ysbody"]
 [ext_resource type="Resource" path="res://src/player/brown_black_spotted_bunny_body_type.tres" id="21_bbsbody"]
 [ext_resource type="PackedScene" uid="uid://bbhm335xhffk" path="res://src/level/level_3.tscn" id="22_hsj8s"]
 
@@ -72,7 +72,6 @@ script = ExtResource("1_krfic")
 draw_annotations = true
 show_debug_player_state = true
 show_perf_tracker = true
-start_in_game = true
 skip_splash = true
 bunny_collision_shape = SubResource("CircleShape2D_woca2")
 are_bumps_enabled = false

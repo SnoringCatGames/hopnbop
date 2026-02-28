@@ -13,15 +13,25 @@ func _ready() -> void:
 
 
 func update_window_mode() -> void:
-	## Sets window mode based on settings and network role.
+	## Sets window mode based on settings
+	## and network role.
 	if (
-		G.settings.auto_minimize_server_window and
-		Netcode.is_server and
-		Netcode.is_preview
+		G.settings.auto_minimize_server_window
+		and Netcode.is_server
+		and Netcode.is_preview
 	):
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MINIMIZED)
-	elif G.settings.full_screen and not Netcode.is_server:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+		DisplayServer.window_set_mode(
+			DisplayServer
+				.WINDOW_MODE_MINIMIZED)
+	elif not Netcode.is_server:
+		if G.settings.full_screen:
+			DisplayServer.window_set_mode(
+				DisplayServer
+					.WINDOW_MODE_FULLSCREEN)
+		else:
+			DisplayServer.window_set_mode(
+				DisplayServer
+					.WINDOW_MODE_WINDOWED)
 
 
 func _update_window_title() -> void:

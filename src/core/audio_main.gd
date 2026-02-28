@@ -22,6 +22,8 @@ extends Node2D
 	"kill" = %KillStreamPlayer,
 	"hole" = %HoleStreamPlayer,
 	"crown_cadence" = %CrownCadenceStreamPlayer,
+	"select" = %SelectStreamPlayer,
+	"focus" = %FocusStreamPlayer,
 }
 
 

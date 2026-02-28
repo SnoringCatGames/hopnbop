@@ -44,140 +44,42 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: --------------------------------------------
 
-# When adding the level selection UI, also add other settings selections at the top of the list, like gore enablement, cheat enablement, critter enablement, ....
-
 # Use PixelLab for generating bespoke backgrounds and foregrounds and occlusion decorations layer for each level, given tilemap layouts to start from.
 
-# I want to add a swarm of flies.
-# - Each fly will be represented by a single black pixel.
-#   - Use the white_pixel image for this, and modulate the color.
-# - Every single render frame, we assign a new random position for the sprite.
-#   - There are four possible positions for the sprite: (0,0), (-1,0), (0,-1), (-1,-1).
-# - Additionally, we need the flies to move around. I want you to help me plan how to define fly movement.
-#  - Fly movement should be somewhat erratic.
-#  - We want flies to try to stick together with nearby flies, but also to not clump too close together.
-#  - We'll need to research swarming/flocking algorithms to consider design options here.
-#  - We should use move_and_slide for fly movement, and flies should collide with level and player geometry.
-# - We only spawn flies in match levels.
-# - When a match level loads, we choose a random player spawn position, and spawn the fly swarm at an offset from that position (use a file-level const for this offset and assign it to (0,-15.5) for now).
-#   - Actually, first _try_ to use an offset of (0,-31.5), but if that position intersects with a collidle of layer Character._NORMAL_SURFACES_COLLISION_MASK_BIT, then fallback to the (0,-15.5) position.
-# - Flies and fly swarms should not be networked.
-# - Flies should avoid nearby players.
-# - Flies should be drawn to nearby poop.
-# - Also, I want to add sound effects for flies.
-#   - Fly sfx needs two components:
-#     - One is very positional. It represents where flies are relatively and how far.
-#     - The other is not positional, but it's stronger based on how close flies are and how
-#       many are nearby. This one needs to have each individual bzzz have a lot of motion
-#       with panning.
-#     - We should probably implement this by calculating a strength and relative position score based on the
-#       relative positions of all flies in the level.
-#     - OR, let me know if there is a better way to handle this.
+# - Add thumbnails for each level. Use in settings UI.
 
+# - Test setttings UI local persistence.
+# - Test setttings UI cheat enablement, and toggling gameplay features.
+# - Test level preferences.
+# - Test fly swarming.
+#   - lordoftheflies
+#   - Poop
+#   -
+# - Test cricket.
+#   - Intersects tiles.
+# - Test fish.
+#   - Can get stuck moving back and forth horizontally against the floor trying to get away.
+# - Test snail.
+#   - Crush sprite.
+#   - sfx.
+# - Test butterfly.
+#   -
+# - Test birds.
+#   -
 
-# Level-selection:
-# I want to add a system for configuring matchmaking preferences on the client at runtime.
-# - Beforehand, I want you to add a new system for preserving settings with local storage on the player's device.
-#   - If there is a locally-stored settings file, and that includes an override for a given property, use that value instead of the normal value from G.settings. Otherwise, fallback to the normal value from G.settings.
-#   - When the player sets a local-settings value override for a given property back to the default value for that property--according to the normal G.settings value--then clear the override rather than recording it explicitly.
-#   - Make sure to also record the latest game version that the local-settings file was accessed with, and update this whenever we open the game.
-#   - Log the previous version that a local-settings file was recorded with, when loading the local-settings file.
-# - The main work for this will be creating a new panel overlay UI.
-# - We'll trigger the UI from SettingsBook._show_settings_ui.
-# - The panel will consist primarily of a vertical, scrollable list.
-# - There will be two sections in this vertical list.
-#   - The top section will list (vertically) miscellaneous gameplay settings. For now, this will include:
-#     - A toggle for G.settings.is_gore_enabled.
-#     - A toggle for G.settings.are_critters_enabled.
-#       - This is a new settings property I want you to add now. This will control whether we ever spawn a snail in the match.
-#     - A toggle for G.settings.are_cheats_enabled.
-#       - This will then toggle the visibility for a nested settings group under this row.
-#       - In this nested group, we should have a separate toggle for each of the cheats:
-#         - is_jetpack_enabled
-#         - jetpack_acceleration
-#         - jetpack_max_upward_speed
-#         - is_bloodisthickerthanwater_enabled
-#         - is_lordoftheflies_enabled
-#         - is_pogostick_enabled
-#         - is_bunniesinspace_enabled
-#         - is_moregore_enabled
-#     - A toggle for G.settings.full_screen.
-#     - A toggle for G.settings.mute_music.
-#     - A toggle for G.settings.mute_sfx. This is also a new property I want you to add now. You should be able to base this off of the mute_music property.
-#   - The bottom section will list (vertically) each level in the game.
-#     - Each row in this list will show a thumbnail image for the level (show a placeholder image here for now).
-#     - Above the thumbnail, there will be a skinny row with a custom UI for toggling the player's preference for the level.
-#       - I just created x_icon, checkmark_icon, and heart_icon images to use in this UI.
-#       - I also created a v_bar icon to use as a vertical divider between button sections.
-#       - All of these icons are white, so we can modulate them to be whatever color we want.
-#       - Let's modulate the v_bar icon to be a very dark gray, and make its alpha be 0.3.
-#       - I want the UI to consist of three separate sub buttons that together form a conceptual aggregate tri-toggle button.
-#         - Technically, these act as a radio button group, but we're going to implement that behavior with custom logic.
-#       - I want there to be no space between the three sub-buttons, so it looks like one cohesive button.
-#       - We'll place the x_icon over the left button, the checkmark_icon over the middle, and the heart_icon over the right. These icons should be centered within their subbutton.
-#       - Visually we'll place a v_bar between adjacent sub-buttons. But actually, let's place both of these v_bar icons inside of the middle subbutton, just on the extreme horizontal edges.
-#       - I added separate textures for each possible button state (normal, pressed, hovered, selected, disabled) for each possible subbutton position (left, middle, right).
-#         - These should be used as nine-patches in texturestyleboxes.
-#         - The outer cells of the nine-patch are 6 pixels deep--except for aggregate_button_middle_x, which doesn't have right or left border cells.
-#       - The left sub-button (x_icon) represents "I don't want to play this level".
-#       - The middle sub-button (checkmark_icon) represents "I'm willing to play this level".
-#       - The right sub-button (heart_icon) represents "I want to play this level over all others".
-#       - See LevelPreferences for how these preferences will be used.
-#       - Exactly one subbutton must be selected at all times for a given aggregate button--no more, no less.
-#       - At most one level can have the right sub-button selected.
-#       - Selecting the right sub-button for a level with deselect it from any other level that may have had it selected (the middle sub-button will then become selected for that other level).
-#       - But it's valid for no level to have the right sub-button selected.
-#       - By default, all levels will have the middle sub-button selected.
-#       - We should update the call to GameSessionManager.client_request_session to include level preferences as indicated by this UI.
-#       - We should also persist these preferences to local storage, and load them from local storage when opening the settings UI.
-# - In general, the player will navigate this UI and toggle values using up/down/left/right controls (the same controls they use for movement, and these controls for a given player are determined by the DeviceConfig that that player was registered with).
-# - Up and down will change focus to the previous or next row in the overall list.
-# - Left and right will update/toggle the value for the focused row.
-# - To indicate which row is currently focused, use the focus_border texture.
-#   - This should be used as a nine-patch in a texturestylebox.
-#   - The outer cells of the nine-patch are 2 pixels deep.
-# - When a new row is focused, we should update the scroll position to ensure the entirety of the row is in view.
-# - When scrolling up/down past the edge of the list, we should wrap-around to the other end.
-# - We should add a special X-button row at the top of the list. Pressing left or right when this row is focused will close the UI.
-# - We should also support mouse clicks and scroll-wheel scrolling for this UI.
+# - Bird art.
+# - Butterfly art.
+# - Cricket art.
+# - Fish art.
 
-# - Art:
-#   - Flies.
-#     - Each level should have a single configured fly swarm spawn point.
-#     - Collide with level.
-#     - Swarming behavior.
-#     - lordoftheflies
-#   - Snail.
-#     - Slight undulating animation, with eye-stalks wagging.
-#     - Moves along surfaces, rounding corners to adjacent surfaces.
-#     - Can be jumped on a crunched.
-#       - Need a sfx.
-#     - Respawns on a random surface when crunched.
-#     - Only a single snail spawns at a time.
-#   - Butterfly.
-#     - Flutter-off when disturbed while resting.
-#     - Also, periodically flutter-off anyway.
-#     - Land on particular annotated decorative occlusion-layer art tiles positions.
-#     - Can fly over occlusion tiles.
-#     - Only a single butterfly spawns at a time.
-#   - Cricket.
-#     - Jump when disturbed.
-#     - Also, periodically jump anyway.
-#     - Will not pass bounds of spawn platform.
-#     - Periodically disappears and re-spawns on a different random surface.
-#     - Only spawns on a continuous floor surface of at least X length.
-#     - Only a single cricket spawns at a time.
-#   - Fish.
-#     - Will not pass out of bounds of their configured rectangular area.
-#     - Only a single fish spawns at a time.
-#   - Birds in the background.
-#     - Just spawn periodically and fly across the screen.
-#   - Track stats for disturbing each of the individual critter types.
-#     - Add a new additional custom stat threshold check that considers a combined disruption score across all critter types.
-#     - Use a single upper-bound adjective list for this combined score.
-
-# - Track who hangs out with flies the most
-# - Adjectives for all of these!
+# - Track stats for disturbing each of the individual critter types.
+#   - Disturbing fish and butterfly only happens at most once per X seconds, and only if the critter hasn't been disturbed in Y seconds. Use file-level consts. X should be 2 seconds. Y should be 0.8.
+#   - Add a new additional custom stat threshold check that considers a combined disruption score across all critter types.
+#   - Use a single upper-bound adjective list for this combined score.
+# - Track cumulative time spent near flies.
+#   - Make this weighted more heavily by how many flies are nearby.
+# - Hook-up adjectives for spending a _lot_ of time near flies.
+# - Hook-up adjectives for disturbing lots of critters.
 
 # ---
 

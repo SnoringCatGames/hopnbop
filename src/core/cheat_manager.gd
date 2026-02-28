@@ -92,18 +92,18 @@ func _check_for_cheats() -> void:
 func _activate_cheat(cheat_name: String) -> void:
 	var cheat: Dictionary = _cheats[cheat_name]
 
+	if not G.settings.are_cheats_enabled:
+		Netcode.print(
+			"Cheat '%s' denied: cheats not enabled"
+			% cheat_name
+		)
+		return
+
 	if cheat.is_networked:
-		if not G.settings.are_cheats_enabled:
-			Netcode.print(
-				"Cheat '%s' denied: cheats not enabled"
-				% cheat_name
-			)
-			return
 		_request_toggle_networked_cheat.rpc_id(
 			NetworkConnector.SERVER_ID, cheat_name
 		)
 	else:
-		# Local cheats always work.
 		_apply_local_cheat(cheat_name)
 
 
@@ -263,6 +263,7 @@ func _get_networked_cheat_state(
 static func is_jetpack_cheat_active() -> bool:
 	return (
 		G.settings != null
+		and G.settings.are_cheats_enabled
 		and G.settings.is_jetpack_enabled
 	)
 
@@ -273,6 +274,7 @@ static func is_jetpack_cheat_active() -> bool:
 static func is_pogostick_cheat_active() -> bool:
 	return (
 		G.settings != null
+		and G.settings.are_cheats_enabled
 		and G.settings.is_pogostick_enabled
 	)
 
@@ -283,6 +285,7 @@ static func is_pogostick_cheat_active() -> bool:
 static func is_bunniesinspace_cheat_active() -> bool:
 	return (
 		G.settings != null
+		and G.settings.are_cheats_enabled
 		and G.settings.is_bunniesinspace_enabled
 	)
 
@@ -293,6 +296,7 @@ static func is_bunniesinspace_cheat_active() -> bool:
 static func is_lordoftheflies_cheat_active() -> bool:
 	return (
 		G.settings != null
+		and G.settings.are_cheats_enabled
 		and G.settings.is_lordoftheflies_enabled
 	)
 
@@ -303,6 +307,7 @@ static func is_lordoftheflies_cheat_active() -> bool:
 static func is_moregore_cheat_active() -> bool:
 	return (
 		G.settings != null
+		and G.settings.are_cheats_enabled
 		and G.settings.is_moregore_enabled
 	)
 

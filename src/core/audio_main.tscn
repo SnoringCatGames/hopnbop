@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3 uid="uid://diqnxd2kabxfk"]
+[gd_scene load_steps=26 format=3 uid="uid://diqnxd2kabxfk"]
 
 [ext_resource type="Script" uid="uid://b5hrwox1n2lt0" path="res://src/core/audio_main.gd" id="1_tdp82"]
 [ext_resource type="AudioStream" uid="uid://d3nqcobglu0sa" path="res://assets/audio/old/pause_menu.wav" id="2_0ukso"]
@@ -15,6 +15,12 @@
 [ext_resource type="AudioStream" uid="uid://bhl14gykl7c48" path="res://assets/audio/kill2.wav" id="13_kill2"]
 [ext_resource type="AudioStream" uid="uid://vicn70igr0mv" path="res://assets/audio/hole.wav" id="14_hole"]
 [ext_resource type="AudioStream" uid="uid://crx2u5fhrw44s" path="res://assets/audio/crown_cadence.wav" id="15_crown"]
+[ext_resource type="AudioStream" uid="uid://yeuoaqbdj6fb" path="res://assets/audio/select1.wav" id="16_sel1"]
+[ext_resource type="AudioStream" uid="uid://dn4d4ugpixyep" path="res://assets/audio/select2.wav" id="17_sel2"]
+[ext_resource type="AudioStream" uid="uid://tep8kghrsl31" path="res://assets/audio/select3.wav" id="18_sel3"]
+[ext_resource type="AudioStream" uid="uid://dbc2kt3w8wfe1" path="res://assets/audio/focus1.wav" id="19_foc1"]
+[ext_resource type="AudioStream" uid="uid://j1rs6k4ysgwh" path="res://assets/audio/focus2.wav" id="20_foc2"]
+[ext_resource type="AudioStream" uid="uid://bnm0qyxudupra" path="res://assets/audio/focus3.wav" id="21_foc3"]
 
 [sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_2b2qe"]
 streams_count = 4
@@ -27,6 +33,18 @@ stream_3/stream = ExtResource("6_24bi3")
 streams_count = 2
 stream_0/stream = ExtResource("12_kill1")
 stream_1/stream = ExtResource("13_kill2")
+
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_select"]
+streams_count = 3
+stream_0/stream = ExtResource("16_sel1")
+stream_1/stream = ExtResource("17_sel2")
+stream_2/stream = ExtResource("18_sel3")
+
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_focus"]
+streams_count = 3
+stream_0/stream = ExtResource("19_foc1")
+stream_1/stream = ExtResource("20_foc2")
+stream_2/stream = ExtResource("21_foc3")
 
 [node name="AudioMain" type="Node2D"]
 process_mode = 3
@@ -85,4 +103,16 @@ bus = &"SFX"
 unique_name_in_owner = true
 stream = ExtResource("15_crown")
 volume_db = -16.0
+bus = &"SFX"
+
+[node name="SelectStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = SubResource("AudioStreamRandomizer_select")
+volume_db = -12.0
+bus = &"SFX"
+
+[node name="FocusStreamPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = SubResource("AudioStreamRandomizer_focus")
+volume_db = -8.0
 bus = &"SFX"
