@@ -37,6 +37,30 @@ const POOP_UPWARD_BIAS := -30.0
 # (radians). PI/3 = 60°, giving a 120° cone.
 const POOP_SPREAD_HALF_ANGLE := PI / 3.0
 
+# Snail goo particle count.
+const SNAIL_GOO_COUNT := 12
+
+# Snail goo fade delay range (seconds).
+const SNAIL_GOO_FADE_DELAY_MIN_SEC := 1.0
+const SNAIL_GOO_FADE_DELAY_MAX_SEC := 8.0
+
+# Snail goo colors (dark slimy greens).
+const SNAIL_GOO_COLORS: Array[Color] = [
+	Color("3b3316"),
+	Color("524b24"),
+	Color("78543d"),
+]
+
+# Snail goo spawn scatter radius (pixels).
+const SNAIL_GOO_SCATTER_RADIUS := 3.0
+
+# Snail goo initial speed range (pixels/sec).
+const SNAIL_GOO_SPEED_MIN := 5.0
+const SNAIL_GOO_SPEED_MAX := 35.0
+
+# Snail goo upward bias (pixels/sec).
+const SNAIL_GOO_UPWARD_BIAS := -40.0
+
 # Gore fade delay variance (seconds). Applied
 # as +/- around the base gore_fade_delay_sec.
 const GORE_FADE_DELAY_VARIANCE_SEC := 1.0
@@ -73,6 +97,9 @@ var _active_trails: Array[GoreTrailParticle] = []
 
 # Tile size from the level's collision tile map.
 var _tile_size := Vector2i(16, 16)
+
+# Active poop particles for fly attraction queries.
+var poop_particles: Array[GoreParticle] = []
 
 
 func _ready() -> void:
@@ -214,6 +241,88 @@ func _spawn_poop_particle(
 	sprite.texture = preload(
 		"res://assets/images/white_pixel.png")
 	sprite.modulate = POOP_COLOR
+
+	# Set collision radius.
+	var shape: CollisionShape2D = \
+		particle.get_node("CollisionShape2D")
+	var circle := CircleShape2D.new()
+	circle.radius = \
+		G.settings.gore_collision_radius
+	shape.shape = circle
+
+	add_child(particle)
+	poop_particles.append(particle)
+	particle.tree_exiting.connect(
+		_on_poop_particle_exiting.bind(particle))
+
+
+func _on_poop_particle_exiting(
+	particle: GoreParticle,
+) -> void:
+	poop_particles.erase(particle)
+
+
+## Spawns snail goo particles at the given
+## position. Uses the same GoreParticle scene
+## with white_pixel modulated to slimy green.
+func spawn_snail_goo_particles(
+	spawn_position: Vector2,
+) -> void:
+	for i in SNAIL_GOO_COUNT:
+		var is_behind := i % 2 == 0
+
+		# Random position within scatter radius.
+		var angle := randf_range(0.0, TAU)
+		var dist := \
+			randf() * SNAIL_GOO_SCATTER_RADIUS
+		var spawn_pos := spawn_position + Vector2(
+			cos(angle) * dist,
+			sin(angle) * dist)
+
+		# Random outward velocity.
+		var speed := randf_range(
+			SNAIL_GOO_SPEED_MIN,
+			SNAIL_GOO_SPEED_MAX)
+		var vel_angle := randf_range(0.0, TAU)
+		var vel := Vector2(
+			cos(vel_angle) * speed,
+			sin(vel_angle) * speed
+				+ SNAIL_GOO_UPWARD_BIAS)
+
+		_spawn_snail_goo_particle(
+			spawn_pos, vel, is_behind)
+
+
+func _spawn_snail_goo_particle(
+	pos: Vector2,
+	vel: Vector2,
+	is_behind: bool,
+) -> void:
+	var particle: GoreParticle = \
+		G.settings.gore_particle_scene.instantiate()
+	particle.will_rasterize = false
+	particle.is_behind = is_behind
+	particle.position = pos
+	particle.velocity = vel
+	particle.emit_trails = false
+	particle.fade_delay_sec = randf_range(
+		SNAIL_GOO_FADE_DELAY_MIN_SEC,
+		SNAIL_GOO_FADE_DELAY_MAX_SEC)
+
+	if not is_behind:
+		particle.z_index = 2
+
+	# Set texture to white_pixel modulated to
+	# a random snail goo color.
+	var sprite: Sprite2D = \
+		particle.get_node("Sprite2D")
+	sprite.texture = preload(
+		"res://assets/images/white_pixel.png")
+	sprite.modulate = SNAIL_GOO_COLORS.pick_random()
+
+	# 50% chance to double the particle scale.
+	if randi() % 2 == 0:
+		sprite.scale = Vector2(2.0, 2.0)
 
 	# Set collision radius.
 	var shape: CollisionShape2D = \

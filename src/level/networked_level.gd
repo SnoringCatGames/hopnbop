@@ -9,11 +9,50 @@ extends Level
 		player_spawner = value
 		update_configuration_warnings()
 
+## Number of fly swarms to spawn (client-side).
+@export var fly_swarm_count := 1
+
+## Number of flies per swarm.
+@export var flies_per_swarm := 8
+
+## Number of snails to spawn.
+@export var snail_count := 1
+
+## Number of crickets to spawn (client-side).
+@export var cricket_count := 1
+
+## Number of fish to spawn in water
+## (client-side).
+@export var fish_count := 1
+
+## Number of butterflies to spawn (client-side).
+@export var butterfly_count := 2
+
+## Fraction of the camera's vertical bounds where
+## birds may spawn (0.0 to 1.0). A value of 0.5
+## restricts birds to the middle 50% of the screen.
+@export_range(0.0, 1.0) \
+	var bird_flight_band_height := 0.5
+
+## Shifts the bird flight band vertically as a
+## fraction of the camera's height. Negative values
+## shift upward, positive shift downward.
+@export_range(-0.5, 0.5) \
+	var bird_flight_band_offset := 0.0
+
+const _FISH_SCENE_PATH := (
+	"res://src/objects/fish/fish.tscn")
+const _BUTTERFLY_SCENE_PATH := (
+	"res://src/objects/butterfly/butterfly.tscn")
+
 # Dictionary<int, Array[int]>
 # Maps peer_id to array of player_ids for that peer.
 var peer_to_player_ids := {}
 
 var npcs: Array[NPC] = []
+
+var _snails: Array[Snail] = []
+var _crickets: Array = []
 
 
 func _enter_tree() -> void:
@@ -50,7 +89,37 @@ func _ready() -> void:
 		%PlayerSpawner.spawned.connect(_client_on_player_spawned)
 		%PlayerSpawner.despawned.connect(_client_on_player_despawned)
 
+	if G.settings.are_critters_enabled:
+		for i in snail_count:
+			var snail: Snail = preload(
+				SnailSpawner.SNAIL_SCENE_PATH
+			).instantiate()
+			snail.name = "Snail_%d" % i
+			snail.setup(collision_tiles)
+			%Objects.add_child(snail)
+			_snails.append(snail)
+
+	if (
+		Netcode.is_client
+		and G.settings.are_critters_enabled
+	):
+		for i in cricket_count:
+			var cricket := preload(
+				"res://src/objects/cricket/"
+				+"cricket.tscn"
+			).instantiate()
+			cricket.name = "Cricket_%d" % i
+			%Objects.add_child(cricket)
+			_crickets.append(cricket)
+
+		_spawn_fly_swarms()
+		_spawn_fish()
+		_spawn_butterflies()
+		_spawn_bird_flock()
+
 	if Netcode.is_server:
+		if not _snails.is_empty():
+			_server_init_snails()
 		G.game_panel.is_level_fully_loaded = true
 
 
@@ -89,6 +158,7 @@ func _server_on_peer_players_declared(
 	_player_attributes: Array
 ) -> void:
 	_server_register_players_for_peer(peer_id, assigned_ids)
+	_server_send_snail_states_to_peer(peer_id)
 
 
 func _server_register_players_for_peer(
@@ -183,3 +253,135 @@ func _get_configuration_warnings() -> PackedStringArray:
 		warnings.append("player_spawner must be set")
 
 	return warnings
+
+
+func _server_init_snails() -> void:
+	for snail in _snails:
+		var surface := (
+			SnailSpawner
+				.find_random_interior_surface(
+					collision_tiles))
+		if surface.is_empty():
+			Netcode.warning(
+				"No interior surfaces for snail",
+				NetworkLogger.CATEGORY_GAME_STATE,
+			)
+			continue
+		var clockwise := randi() % 2 == 0
+		snail.initialize(
+			surface.tile,
+			surface.face,
+			clockwise,
+		)
+		snail._rpc_init.rpc(
+			surface.tile.x,
+			surface.tile.y,
+			surface.face,
+			1 if clockwise else 0,
+			Netcode.server_frame_index,
+		)
+
+
+## Sends current snail states to a late-joining
+## peer so their snails catch up.
+func _server_send_snail_states_to_peer(
+	peer_id: int,
+) -> void:
+	for snail in _snails:
+		if snail == null:
+			continue
+		if not snail.is_alive:
+			continue
+		snail._rpc_init.rpc_id(
+			peer_id,
+			snail.current_tile.x,
+			snail.current_tile.y,
+			snail.current_face,
+			1 if snail.is_clockwise else 0,
+			Netcode.server_frame_index,
+		)
+
+
+func _spawn_fly_swarms() -> void:
+	for i in fly_swarm_count:
+		var swarm := FlySwarm.new()
+		swarm.fly_count = flies_per_swarm
+		swarm.name = "FlySwarm_%d" % i
+		add_child(swarm)
+		move_child(
+			swarm, players_node.get_index())
+
+
+func _spawn_fish() -> void:
+	# Collect all water cells.
+	var water_cells: Array[Vector2i] = []
+	for cell in (
+		collision_tiles.get_used_cells()
+	):
+		var tile_data := (
+			collision_tiles
+				.get_cell_tile_data(cell))
+		if tile_data == null:
+			continue
+		if (tile_data.get_terrain_set()
+				== Level.TERRAIN_SET_WATER):
+			water_cells.append(cell)
+	if water_cells.is_empty():
+		return
+
+	var fish_scene: PackedScene = preload(
+		_FISH_SCENE_PATH)
+	for i in fish_count:
+		var cell: Vector2i = (
+			water_cells.pick_random())
+		var fish: Fish = (
+			fish_scene.instantiate())
+		fish.name = "Fish_%d" % i
+		fish.setup(collision_tiles)
+		add_child(fish)
+		move_child(
+			fish, players_node.get_index())
+		fish.initialize(cell)
+
+
+func _spawn_butterflies() -> void:
+	var interior_cells := (
+		SnailSpawner
+			.find_interior_empty_cells(
+				collision_tiles))
+	if interior_cells.is_empty():
+		return
+
+	var butterfly_scene: PackedScene = preload(
+		_BUTTERFLY_SCENE_PATH)
+	for i in butterfly_count:
+		var cell: Vector2i = (
+			interior_cells.pick_random())
+		var butterfly: Butterfly = (
+			butterfly_scene.instantiate())
+		butterfly.name = "Butterfly_%d" % i
+		butterfly.setup(
+			collision_tiles, interior_cells)
+		add_child(butterfly)
+		move_child(
+			butterfly,
+			players_node.get_index())
+		var local_pos := (
+			collision_tiles.map_to_local(cell))
+		butterfly.global_position = (
+			collision_tiles.to_global(local_pos))
+
+
+func _spawn_bird_flock() -> void:
+	var flock := BirdFlock.new()
+	flock.name = "BirdFlock"
+	flock.flight_band_height = (
+		bird_flight_band_height)
+	flock.flight_band_vertical_offset = (
+		bird_flight_band_offset)
+	flock.setup(level_camera)
+	add_child(flock)
+	# Place before collision tiles so birds render
+	# above background but behind terrain.
+	move_child(
+		flock, collision_tiles.get_index())
