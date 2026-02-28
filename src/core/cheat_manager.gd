@@ -25,24 +25,39 @@ func _ready() -> void:
 	_cheats = {
 		"flowerpower": {
 			"is_networked": false,
+			"settings_key":
+				&"is_gore_enabled",
 		},
 		"jetpack": {
 			"is_networked": true,
+			"settings_key":
+				&"is_jetpack_enabled",
 		},
 		"bloodisthickerthanwater": {
 			"is_networked": false,
+			"settings_key":
+				&"is_bloodisthickerthanwater"
+				+ &"_enabled",
 		},
 		"lordoftheflies": {
 			"is_networked": true,
+			"settings_key":
+				&"is_lordoftheflies_enabled",
 		},
 		"pogostick": {
 			"is_networked": true,
+			"settings_key":
+				&"is_pogostick_enabled",
 		},
 		"bunniesinspace": {
 			"is_networked": true,
+			"settings_key":
+				&"is_bunniesinspace_enabled",
 		},
 		"moregore": {
 			"is_networked": false,
+			"settings_key":
+				&"is_moregore_enabled",
 		},
 	}
 
@@ -107,43 +122,30 @@ func _activate_cheat(cheat_name: String) -> void:
 		_apply_local_cheat(cheat_name)
 
 
-func _apply_local_cheat(cheat_name: String) -> void:
-	var is_active := false
-	match cheat_name:
-		"flowerpower":
-			G.settings.is_gore_enabled = \
-				not G.settings.is_gore_enabled
-			is_active = G.settings.is_gore_enabled
-			Netcode.print(
-				"Cheat 'flowerpower': gore %s" % (
-					"ON" if is_active
-					else "OFF"
-				)
-			)
-		"bloodisthickerthanwater":
-			G.settings \
-				.is_bloodisthickerthanwater_enabled = \
-				not G.settings \
-					.is_bloodisthickerthanwater_enabled
-			is_active = G.settings \
-				.is_bloodisthickerthanwater_enabled
-			Netcode.print(
-				"Cheat 'bloodisthickerthanwater'"
-				+ ": %s" % (
-					"ON" if is_active
-					else "OFF"
-				)
-			)
-		"moregore":
-			G.settings.is_moregore_enabled = \
-				not G.settings.is_moregore_enabled
-			is_active = G.settings.is_moregore_enabled
-			Netcode.print(
-				"Cheat 'moregore': %s" % (
-					"ON" if is_active
-					else "OFF"
-				)
-			)
+func _apply_local_cheat(
+	cheat_name: String,
+) -> void:
+	var key: StringName = \
+		_cheats[cheat_name].settings_key
+	var is_active: bool = \
+		not G.settings.get(key)
+
+	# Persist via set_override BEFORE any direct
+	# G.settings change. set_override compares
+	# against the current value, so it must run
+	# first. It also updates G.settings.
+	if G.local_settings != null:
+		G.local_settings.set_override(
+			key, is_active)
+		G.local_settings.save_settings()
+	else:
+		G.settings.set(key, is_active)
+
+	Netcode.print(
+		"Cheat '%s': %s" % [
+			cheat_name,
+			"ON" if is_active else "OFF",
+		])
 	cheat_toggled.emit(cheat_name, is_active)
 
 
@@ -187,14 +189,23 @@ func _client_on_networked_cheat_toggled(
 	cheat_name: String,
 	is_active: bool,
 ) -> void:
+	# Persist via set_override BEFORE updating
+	# G.settings so the default comparison works.
+	if G.local_settings != null \
+			and _cheats.has(cheat_name):
+		var key: StringName = \
+			_cheats[cheat_name].settings_key
+		G.local_settings.set_override(
+			key, is_active)
+		G.local_settings.save_settings()
+
 	_set_networked_cheat_setting(
 		cheat_name, is_active)
 	Netcode.print(
 		"Cheat '%s': %s" % [
 			cheat_name,
 			"ON" if is_active else "OFF",
-		]
-	)
+		])
 	cheat_toggled.emit(cheat_name, is_active)
 
 
