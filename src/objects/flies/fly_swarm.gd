@@ -29,6 +29,10 @@ const SPAWN_OFFSET_FALLBACK := Vector2(0.0, -15.5)
 const SEPARATION_WEIGHT := 80.0
 const COHESION_WEIGHT := 30.0
 const PLAYER_INTERACTION_WEIGHT := 200.0
+
+## Multiplier applied to player interaction
+## weight when lordoftheflies cheat is active.
+const LORDOFTHEFLIES_ATTRACTION_MULTIPLIER := 2.25
 const POOP_ATTRACTION_WEIGHT := 40.0
 const HOME_WEIGHT := 20.0
 
@@ -257,11 +261,16 @@ func _update_flocking(delta: float) -> void:
 
 		# 3) Player interaction (avoid or
 		# attract depending on cheat).
+		var player_weight := \
+			PLAYER_INTERACTION_WEIGHT
+		if attract_to_players:
+			player_weight *= \
+				LORDOFTHEFLIES_ATTRACTION_MULTIPLIER
 		steer += _calc_player_interaction(
 			pos,
 			player_positions,
 			attract_to_players,
-		) * PLAYER_INTERACTION_WEIGHT
+		) * player_weight
 
 		# 4) Poop attraction.
 		steer += _calc_poop_attraction(

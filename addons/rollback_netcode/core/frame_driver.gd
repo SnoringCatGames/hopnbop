@@ -48,17 +48,9 @@ extends Node
 
 # - Add thumbnails for each level. Use in settings UI.
 
-# - Test level preferences.
-# - Test fly swarming.
-#   - lordoftheflies
-#   - Poop
-#   -
-# - Test cricket.
-#   - Intersects tiles.
 # - Test fish.
 #   - Can get stuck moving back and forth horizontally against the floor trying to get away.
 # - Test snail.
-#   - Crush sprite.
 #   - sfx.
 # - Test butterfly.
 #   -
@@ -74,10 +66,10 @@ extends Node
 #   - Disturbing fish and butterfly only happens at most once per X seconds, and only if the critter hasn't been disturbed in Y seconds. Use file-level consts. X should be 2 seconds. Y should be 0.8.
 #   - Add a new additional custom stat threshold check that considers a combined disruption score across all critter types.
 #   - Use a single upper-bound adjective list for this combined score.
-# - Track cumulative time spent near flies.
+# - Hook-up adjectives for disturbing lots of critters.
+# - ALSO, track cumulative time spent near flies.
 #   - Make this weighted more heavily by how many flies are nearby.
 # - Hook-up adjectives for spending a _lot_ of time near flies.
-# - Hook-up adjectives for disturbing lots of critters.
 
 # ---
 
