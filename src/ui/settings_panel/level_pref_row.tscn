@@ -1,0 +1,180 @@
+[gd_scene load_steps=38 format=3 uid="uid://cjv0ordnvb83u"]
+
+[ext_resource type="Script" uid="uid://3nj1wko00tkr" path="res://src/ui/settings_panel/level_pref_row.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://bg1rlb6jpxdj7" path="res://assets/images/gui/x_icon.png" id="2_x"]
+[ext_resource type="Texture2D" uid="uid://crfyeraq1bldu" path="res://assets/images/gui/checkmark_icon.png" id="3_check"]
+[ext_resource type="Texture2D" uid="uid://cjocl0pmhqd88" path="res://assets/images/gui/heart_icon.png" id="4_heart"]
+[ext_resource type="Texture2D" uid="uid://cltkd068djsig" path="res://assets/images/gui/aggregate_button_left_normal.png" id="5_ln"]
+[ext_resource type="Texture2D" uid="uid://bxp5ks5mvdw7a" path="res://assets/images/gui/aggregate_button_left_pressed.png" id="6_lp"]
+[ext_resource type="Texture2D" uid="uid://ckxyf5rh4yfva" path="res://assets/images/gui/aggregate_button_left_hovered.png" id="7_lh"]
+[ext_resource type="Texture2D" uid="uid://x0q41ib1vney" path="res://assets/images/gui/aggregate_button_left_selected.png" id="8_ls"]
+[ext_resource type="Texture2D" uid="uid://dptngfl5xmohi" path="res://assets/images/gui/aggregate_button_left_disabled.png" id="9_ld"]
+[ext_resource type="Texture2D" uid="uid://1aji6e7kinov" path="res://assets/images/gui/aggregate_button_middle_normal.png" id="10_mn"]
+[ext_resource type="Texture2D" uid="uid://esc26b1xyfcp" path="res://assets/images/gui/aggregate_button_middle_pressed.png" id="11_mp"]
+[ext_resource type="Texture2D" uid="uid://ckoejdbtvk2ee" path="res://assets/images/gui/aggregate_button_middle_hovered.png" id="12_mh"]
+[ext_resource type="Texture2D" uid="uid://dk5tktyms38ot" path="res://assets/images/gui/aggregate_button_middle_selected.png" id="13_ms"]
+[ext_resource type="Texture2D" uid="uid://b4fn2lyd4unwq" path="res://assets/images/gui/aggregate_button_middle_disabled.png" id="14_md"]
+[ext_resource type="Texture2D" uid="uid://j1ckl84en2tm" path="res://assets/images/gui/aggregate_button_right_normal.png" id="15_rn"]
+[ext_resource type="Texture2D" uid="uid://cvoggnw34riev" path="res://assets/images/gui/aggregate_button_right_pressed.png" id="16_rp"]
+[ext_resource type="Texture2D" uid="uid://xlt73xuyb6ey" path="res://assets/images/gui/aggregate_button_right_hovered.png" id="17_rh"]
+[ext_resource type="Texture2D" uid="uid://c0j8pjomeg5ab" path="res://assets/images/gui/aggregate_button_right_selected.png" id="18_rs"]
+[ext_resource type="Texture2D" uid="uid://0p3r8gne267h" path="res://assets/images/gui/aggregate_button_right_disabled.png" id="19_rd"]
+
+[sub_resource type="StyleBoxTexture" id="sbt_ln"]
+texture = ExtResource("5_ln")
+texture_margin_left = 6.0
+texture_margin_top = 6.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="sbt_lp"]
+texture = ExtResource("6_lp")
+texture_margin_left = 6.0
+texture_margin_top = 6.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="sbt_lh"]
+texture = ExtResource("7_lh")
+texture_margin_left = 6.0
+texture_margin_top = 6.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="sbt_ls"]
+texture = ExtResource("8_ls")
+texture_margin_left = 6.0
+texture_margin_top = 6.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="sbt_ld"]
+texture = ExtResource("9_ld")
+texture_margin_left = 6.0
+texture_margin_top = 6.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="sbt_mn"]
+content_margin_left = 0.0
+content_margin_right = 0.0
+texture = ExtResource("10_mn")
+texture_margin_top = 6.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="sbt_mp"]
+texture = ExtResource("11_mp")
+texture_margin_top = 6.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="sbt_mh"]
+texture = ExtResource("12_mh")
+texture_margin_top = 6.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="sbt_ms"]
+texture = ExtResource("13_ms")
+texture_margin_top = 6.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="sbt_md"]
+texture = ExtResource("14_md")
+texture_margin_top = 6.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="sbt_rn"]
+texture = ExtResource("15_rn")
+texture_margin_top = 6.0
+texture_margin_right = 6.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="sbt_rp"]
+texture = ExtResource("16_rp")
+texture_margin_top = 6.0
+texture_margin_right = 6.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="sbt_rh"]
+texture = ExtResource("17_rh")
+texture_margin_top = 6.0
+texture_margin_right = 6.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="sbt_rs"]
+texture = ExtResource("18_rs")
+texture_margin_top = 6.0
+texture_margin_right = 6.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="sbt_rd"]
+texture = ExtResource("19_rd")
+texture_margin_top = 6.0
+texture_margin_right = 6.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_tjr35"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_81igg"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_o1qun"]
+
+[node name="LevelPrefRow" type="PanelContainer"]
+script = ExtResource("1_script")
+left_normal = SubResource("sbt_ln")
+left_pressed = SubResource("sbt_lp")
+left_hovered = SubResource("sbt_lh")
+left_selected = SubResource("sbt_ls")
+left_disabled = SubResource("sbt_ld")
+middle_normal = SubResource("sbt_mn")
+middle_pressed = SubResource("sbt_mp")
+middle_hovered = SubResource("sbt_mh")
+middle_selected = SubResource("sbt_ms")
+middle_disabled = SubResource("sbt_md")
+right_normal = SubResource("sbt_rn")
+right_pressed = SubResource("sbt_rp")
+right_hovered = SubResource("sbt_rh")
+right_selected = SubResource("sbt_rs")
+right_disabled = SubResource("sbt_rd")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Label" type="Label" parent="VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ButtonContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="LeftBtn" type="Button" parent="VBoxContainer/ButtonContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 48)
+layout_mode = 2
+theme_override_styles/focus = SubResource("StyleBoxEmpty_tjr35")
+icon = ExtResource("2_x")
+icon_alignment = 1
+expand_icon = true
+
+[node name="MiddleBtn" type="Button" parent="VBoxContainer/ButtonContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 48)
+layout_mode = 2
+theme_override_styles/focus = SubResource("StyleBoxEmpty_81igg")
+icon = ExtResource("3_check")
+icon_alignment = 1
+expand_icon = true
+
+[node name="RightBtn" type="Button" parent="VBoxContainer/ButtonContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 48)
+layout_mode = 2
+theme_override_styles/focus = SubResource("StyleBoxEmpty_o1qun")
+icon = ExtResource("4_heart")
+icon_alignment = 1
+expand_icon = true
+
+[node name="Thumbnail" type="ColorRect" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+color = Color(0.3, 0.3, 0.3, 0.5)
+
+[connection signal="pressed" from="VBoxContainer/ButtonContainer/LeftBtn" to="." method="_on_left_btn_pressed"]
+[connection signal="pressed" from="VBoxContainer/ButtonContainer/MiddleBtn" to="." method="_on_middle_btn_pressed"]
+[connection signal="pressed" from="VBoxContainer/ButtonContainer/RightBtn" to="." method="_on_right_btn_pressed"]

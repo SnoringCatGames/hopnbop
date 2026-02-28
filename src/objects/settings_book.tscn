@@ -1,4 +1,4 @@
-[gd_scene load_steps=36 format=3 uid="uid://dqmmu7a6h5m32"]
+[gd_scene load_steps=37 format=3 uid="uid://dqmmu7a6h5m32"]
 
 [ext_resource type="Texture2D" uid="uid://cliqx7jliuq6" path="res://assets/images/stump.png" id="1_g1s7r"]
 [ext_resource type="Script" uid="uid://dnkm1gb6x8xs6" path="res://src/objects/settings_book.gd" id="1_jhw5o"]
@@ -221,6 +221,8 @@ size = Vector2(20, 2)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_jhw5o"]
 size = Vector2(22, 2)
 
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_jhw5o"]
+
 [node name="SettingsBook" type="Node2D"]
 script = ExtResource("1_jhw5o")
 
@@ -243,7 +245,7 @@ monitorable = false
 position = Vector2(0, -12)
 shape = SubResource("RectangleShape2D_npico")
 
-[node name="RigidBody2D" type="RigidBody2D" parent="."]
+[node name="RigidBody2D" type="StaticBody2D" parent="."]
 collision_layer = 2
 collision_mask = 0
 
@@ -251,6 +253,11 @@ collision_mask = 0
 position = Vector2(0, -10)
 shape = SubResource("RectangleShape2D_jhw5o")
 one_way_collision = true
+
+[node name="Panel" type="Panel" parent="."]
+offset_right = 40.0
+offset_bottom = 40.0
+theme_override_styles/panel = SubResource("StyleBoxTexture_jhw5o")
 
 [connection signal="body_entered" from="Area2D" to="." method="_on_area_2d_body_entered"]
 [connection signal="body_exited" from="Area2D" to="." method="_on_area_2d_body_exited"]

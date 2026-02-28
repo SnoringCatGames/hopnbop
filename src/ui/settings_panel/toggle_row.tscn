@@ -1,0 +1,37 @@
+[gd_scene load_steps=10 format=3 uid="uid://c3icet2l13hyx"]
+
+[ext_resource type="Script" uid="uid://cd554i2dx8q76" path="res://src/ui/settings_panel/toggle_row.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://deqspiioh6k2u" path="res://assets/images/gui/check_box_normal_checked.png" id="2_nc"]
+[ext_resource type="Texture2D" uid="uid://b4vo7gfs0fb5p" path="res://assets/images/gui/check_box_normal_unchecked.png" id="3_nu"]
+[ext_resource type="Texture2D" uid="uid://cwb2efbbmlinx" path="res://assets/images/gui/check_box_hovered_checked.png" id="4_hc"]
+[ext_resource type="Texture2D" uid="uid://cmg4urdci5jy3" path="res://assets/images/gui/check_box_hovered_unchecked.png" id="5_hu"]
+[ext_resource type="Texture2D" uid="uid://cps3eo47dbryb" path="res://assets/images/gui/check_box_pressed_checked.png" id="6_pc"]
+[ext_resource type="Texture2D" uid="uid://d1sed1sy4clrd" path="res://assets/images/gui/check_box_pressed_unchecked.png" id="7_pu"]
+[ext_resource type="Texture2D" uid="uid://bnel3pv8ovju4" path="res://assets/images/gui/check_box_disabled_checked.png" id="8_dc"]
+[ext_resource type="Texture2D" uid="uid://by7lhrdelcpcb" path="res://assets/images/gui/check_box_disabled_unchecked.png" id="9_du"]
+
+[node name="ToggleRow" type="PanelContainer"]
+script = ExtResource("1_script")
+tex_normal_checked = ExtResource("2_nc")
+tex_hovered_checked = ExtResource("4_hc")
+tex_pressed_checked = ExtResource("6_pc")
+tex_disabled_checked = ExtResource("8_dc")
+tex_normal_unchecked = ExtResource("3_nu")
+tex_hovered_unchecked = ExtResource("5_hu")
+tex_pressed_unchecked = ExtResource("7_pu")
+tex_disabled_unchecked = ExtResource("9_du")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Checkbox" type="TextureButton" parent="HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+stretch_mode = 3
+
+[node name="Label" type="Label" parent="HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3

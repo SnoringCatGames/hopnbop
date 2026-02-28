@@ -1,0 +1,19 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/settings_panel/close_row.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/images/gui/x_icon_enlarged.png" id="2_icon"]
+
+[node name="CloseRow" type="PanelContainer"]
+script = ExtResource("1_script")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+alignment = 1
+
+[node name="Icon" type="TextureRect" parent="HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("2_icon")
+stretch_mode = 5

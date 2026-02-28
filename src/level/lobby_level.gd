@@ -44,6 +44,10 @@ func _check_keyboard_inputs() -> void:
 	):
 		var bindings: Dictionary = \
 			InputDeviceManager.KEYBOARD_PARTITION_BINDINGS[i]
+		# Skip device used by settings UI player.
+		if _is_device_used_by_settings_ui(
+				bindings["name"]):
+			continue
 		if Input.is_physical_key_pressed(bindings["move_up"]):
 			_try_register_keyboard_player(bindings)
 		elif Input.is_physical_key_pressed(
@@ -54,6 +58,13 @@ func _check_keyboard_inputs() -> void:
 
 func _check_gamepad_inputs() -> void:
 	for device_id in Input.get_connected_joypads():
+		# Skip device used by settings UI player.
+		var device_name := \
+			DeviceConfig.get_controller_device_name(
+				device_id)
+		if _is_device_used_by_settings_ui(
+				device_name):
+			continue
 		if Input.is_action_pressed("move_up", device_id):
 			_try_register_gamepad_player(device_id)
 		elif Input.is_action_pressed(
@@ -372,6 +383,22 @@ func _apply_lobby_crowns() -> void:
 		if is_instance_valid(bunny_anim):
 			bunny_anim.set_crown_visible(true)
 		break
+
+
+## Returns true if the given device name belongs
+## to the player currently using the settings UI.
+func _is_device_used_by_settings_ui(
+	device_name: StringName,
+) -> bool:
+	if not G.is_settings_ui_shown:
+		return false
+	if not is_instance_valid(G.settings_ui_player):
+		return false
+	if not _device_name_to_player_id.has(
+			device_name):
+		return false
+	return _device_name_to_player_id[device_name] \
+		== G.settings_ui_player.player_id
 
 
 static func get_local_player_id(

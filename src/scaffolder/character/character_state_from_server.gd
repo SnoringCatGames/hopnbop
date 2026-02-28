@@ -10,6 +10,7 @@ enum ServerInteractionType {
 	KILL,
 	DIE,
 	SPRING,
+	SNAIL_CRUSH,
 }
 
 @export var character: Character:
@@ -122,7 +123,8 @@ func _is_interaction_rollbackable(interaction_type: int) -> bool:
 		ServerInteractionType.BUMP, \
 		ServerInteractionType.KILL, \
 		ServerInteractionType.DIE, \
-		ServerInteractionType.SPRING:
+		ServerInteractionType.SPRING, \
+		ServerInteractionType.SNAIL_CRUSH:
 			return false # Non-rollbackable.
 		_:
 			Netcode.fatal("Unknown ServerInteractionType: %d" % interaction_type)
@@ -548,6 +550,8 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 			== ServerInteractionType.BUMP
 		or last_interaction_type
 			== ServerInteractionType.SPRING
+		or last_interaction_type
+			== ServerInteractionType.SNAIL_CRUSH
 	):
 		character._last_launch_frame_index = (
 			last_interaction_frame_index
@@ -595,7 +599,8 @@ func _apply_interaction_collidability(interaction_type: int) -> void:
 		ServerInteractionType.NONE, \
 		ServerInteractionType.BUMP, \
 		ServerInteractionType.KILL, \
-		ServerInteractionType.SPRING:
+		ServerInteractionType.SPRING, \
+		ServerInteractionType.SNAIL_CRUSH:
 			is_collidable = true # Alive - has collision.
 		_:
 			Netcode.fatal("Unknown ServerInteractionType: %d" % interaction_type)
@@ -644,7 +649,8 @@ func get_current_frame_bounce_velocity():
 	if (
 		interaction_type != ServerInteractionType.KILL and
 		interaction_type != ServerInteractionType.BUMP and
-		interaction_type != ServerInteractionType.SPRING
+		interaction_type != ServerInteractionType.SPRING and
+		interaction_type != ServerInteractionType.SNAIL_CRUSH
 	):
 		return null
 
@@ -907,6 +913,9 @@ func _reconcile_server_interaction() -> void:
 			_reconcile_spawn_interaction(current_frame)
 		ServerInteractionType.SPRING:
 			_reconcile_spring_interaction(current_frame)
+		ServerInteractionType.SNAIL_CRUSH:
+			_reconcile_snail_crush_interaction(
+				current_frame)
 		_:
 			Netcode.fatal()
 
@@ -959,6 +968,24 @@ func _reconcile_spring_interaction(
 		Netcode.verbose(
 			"Spring interaction at frame %d, "
 			+ "queuing rollback (%s)" % [
+				p_frame_index,
+				name,
+			],
+			NetworkLogger.CATEGORY_NETWORK_SYNC,
+		)
+
+
+func _reconcile_snail_crush_interaction(
+	p_frame_index: int,
+) -> void:
+	Netcode.frame_driver.queue_rollback(
+		p_frame_index,
+		"snail_crush on %s" % name)
+
+	if Netcode.log.is_verbose:
+		Netcode.verbose(
+			"Snail crush interaction at frame "
+			+ "%d, queuing rollback (%s)" % [
 				p_frame_index,
 				name,
 			],

@@ -122,6 +122,30 @@ func server_trigger_spring_bounce() -> void:
 		.record_spring_launch()
 
 
+## Called by the Snail scene when the player
+## crushes it. Server forward-sim only.
+func server_trigger_snail_crush_bounce() -> void:
+	if not Netcode.is_server:
+		return
+	if Netcode.frame_driver.is_resimulating:
+		return
+	if _pending_bounce != Vector2.ZERO:
+		return
+	var crush_velocity := Vector2(
+		velocity.x,
+		movement_settings
+			.snail_crush_bounce_vertical_boost
+	)
+	_pending_bounce = crush_velocity
+	state_from_server.record_interaction(
+		CharacterStateFromServer
+			.ServerInteractionType.SNAIL_CRUSH,
+		Netcode.server_frame_index,
+		global_position,
+		crush_velocity
+	)
+
+
 func _process_movement_and_actions() -> void:
 	super._process_movement_and_actions()
 
@@ -519,6 +543,9 @@ func _handle_interaction_effects() -> void:
 		CharacterStateFromServer \
 				.ServerInteractionType.SPRING:
 			play_sound("spring")
+		CharacterStateFromServer \
+				.ServerInteractionType.SNAIL_CRUSH:
+			pass
 		_:
 			Netcode.fatal()
 

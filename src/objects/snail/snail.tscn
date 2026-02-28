@@ -2,21 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dv2hw8s30ipgf" path="res://src/objects/snail/snail.gd" id="1_snail"]
 [ext_resource type="Texture2D" uid="uid://8aabg03whjh6" path="res://assets/images/snail.png" id="2_snail"]
-[ext_resource type="AudioStream" path="res://assets/audio/crunch.wav" id="3_crunch"]
-
-[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_snail"]
-properties/0/path = NodePath(".:position")
-properties/0/spawn = true
-properties/0/replication_mode = 1
-properties/1/path = NodePath(".:rotation")
-properties/1/spawn = true
-properties/1/replication_mode = 1
-properties/2/path = NodePath(".:visible")
-properties/2/spawn = true
-properties/2/replication_mode = 1
-properties/3/path = NodePath("AnimatedSprite2D:animation")
-properties/3/spawn = true
-properties/3/replication_mode = 1
+[ext_resource type="AudioStream" uid="uid://fxfhc70xp6in" path="res://assets/audio/crunch.wav" id="3_crunch"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_f0"]
 atlas = ExtResource("2_snail")
@@ -101,13 +87,10 @@ radius = 3.0
 texture_filter = 1
 script = ExtResource("1_snail")
 
-[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
-replication_config = SubResource("SceneReplicationConfig_snail")
-
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
-position = Vector2(0, 1)
+position = Vector2(2, 1)
 sprite_frames = SubResource("SpriteFrames_crawl")
-animation = &"crunched"
+animation = &"crawl"
 autoplay = "crawl"
 offset = Vector2(0, -4)
 
@@ -120,5 +103,5 @@ collision_mask = 128
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CrushArea"]
-position = Vector2(-2, -3)
+position = Vector2(0, -3)
 shape = SubResource("CircleShape2D_0s3wv")

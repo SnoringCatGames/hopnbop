@@ -90,6 +90,8 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 
 @export var spring_bounce_vertical_boost := -365.0
 
+@export var snail_crush_bounce_vertical_boost := -40.0
+
 ## Coyote time.
 @export var late_jump_forgiveness_threshold_sec := 0.1
 
