@@ -46,7 +46,6 @@ id = &"level_1"
 display_name = "Level 1"
 scene = ExtResource("5_4irwu")
 max_players = 8
-is_enabled = false
 metadata/_custom_type_script = "uid://l1of4ibugkpt"
 
 [sub_resource type="Resource" id="Resource_p8ob7"]
@@ -55,7 +54,6 @@ id = &"level_2"
 display_name = "Level 2"
 scene = ExtResource("6_4irwu")
 max_players = 8
-is_enabled = false
 metadata/_custom_type_script = "uid://l1of4ibugkpt"
 
 [sub_resource type="Resource" id="Resource_h8oqh"]
@@ -64,7 +62,6 @@ id = &"level_3"
 display_name = "Level 3"
 scene = ExtResource("22_hsj8s")
 max_players = 8
-is_enabled = false
 metadata/_custom_type_script = "uid://l1of4ibugkpt"
 
 [resource]
