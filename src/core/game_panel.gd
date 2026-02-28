@@ -293,7 +293,9 @@ func _on_match_ready() -> void:
 
 	%MatchStateSynchronizer.server_set_expected_player_count(expected_count)
 
-	# Game-specific logic can go here (e.g., start countdown)
+	# Resolve critter preference via majority
+	# vote, then spawn snails if enabled.
+	_server_resolve_critter_preference()
 
 
 func _on_server_should_reset() -> void:
@@ -398,15 +400,23 @@ func client_load_game() -> void:
 	_client_client_request_session_ids()
 
 
-func _client_client_request_session_ids() -> void:
+func _client_client_request_session_ids() \
+		-> void:
 	Netcode.check_is_client()
-	var level_prefs: LevelPreferences = null
+	var session_prefs: SessionPreferences = null
 	if G.local_settings != null:
-		level_prefs = \
+		session_prefs = SessionPreferences.new()
+		session_prefs.level_preferences = \
 			G.local_settings \
 				.load_level_preferences()
+		session_prefs.are_critters_enabled = \
+			G.local_settings.get_value(
+				&"are_critters_enabled")
+		session_prefs.are_cheats_enabled = \
+			G.local_settings.get_value(
+				&"are_cheats_enabled")
 	session_manager.client_request_session(
-		level_prefs)
+		session_prefs)
 
 
 func client_exit_match() -> void:
@@ -531,9 +541,31 @@ func server_end_match() -> void:
 	else:
 		Netcode.connector.server_close_multiplayer_session()
 
-	# TODO: Add support for tracking game stats in a separate backend database.
+	# TODO: Add support for tracking game stats
+	# in a separate backend database.
 
 	_server_destroy_level(G.level)
+
+
+## Resolves critter preference and spawns
+## snails if enabled.
+func _server_resolve_critter_preference() \
+		-> void:
+	var critters_enabled := true
+	if G.local_settings != null:
+		critters_enabled = G.local_settings \
+			.get_value(&"are_critters_enabled")
+
+	Netcode.print(
+		"Critters: %s" % (
+			"enabled" \
+				if critters_enabled \
+				else "disabled"),
+		NetworkLogger.CATEGORY_GAME_STATE)
+
+	if critters_enabled \
+			and G.level is NetworkedLevel:
+		G.level.server_spawn_snails()
 
 
 func _server_validate_pause_request(peer_id: int) -> Dictionary:
@@ -748,23 +780,81 @@ func _server_get_selected_level_scene() -> PackedScene:
 				NetworkLogger.CATEGORY_GAME_STATE
 			)
 
-	# No level selected or not found - pick random from enabled levels.
-	var random_level := G.level_registry.get_random_enabled_level()
+	# Check local settings for level preferences
+	# (shared filesystem in preview mode).
+	if G.local_settings != null:
+		var prefs: LevelPreferences = \
+			G.local_settings \
+				.load_level_preferences()
+		if prefs != null \
+				and prefs.has_preferences():
+			var selected := \
+				_server_select_from_prefs(
+					prefs)
+			if selected != null:
+				return selected
+
+	# No level selected — pick random from
+	# enabled levels.
+	var random_level := \
+		G.level_registry \
+			.get_random_enabled_level()
 	if random_level != null:
 		Netcode.print(
-			"Randomly selected level: %s (%s)" % [
+			"Randomly selected level:"
+			+ " %s (%s)" % [
 				random_level.id,
-				random_level.display_name
-			],
-			NetworkLogger.CATEGORY_GAME_STATE
-		)
+				random_level.display_name],
+			NetworkLogger.CATEGORY_GAME_STATE)
 		return random_level.scene
 
 	Netcode.warning(
 		"No enabled levels available",
-		NetworkLogger.CATEGORY_GAME_STATE
-	)
+		NetworkLogger.CATEGORY_GAME_STATE)
 	return null
+
+
+## Selects a level scene based on local
+## level preferences.
+func _server_select_from_prefs(
+	prefs: LevelPreferences,
+) -> PackedScene:
+	# Use preferred level if set.
+	if not prefs.preferred_level.is_empty():
+		var info := G.level_registry \
+			.get_level_by_id(
+				prefs.preferred_level)
+		if info != null \
+				and info.scene != null:
+			Netcode.print(
+				"Using preferred level:"
+				+ " %s (%s)" % [
+					info.id,
+					info.display_name],
+				NetworkLogger \
+					.CATEGORY_GAME_STATE)
+			return info.scene
+
+	# Filter enabled levels by preferences.
+	var allowed: Array[LevelInfo] = []
+	for info: LevelInfo \
+			in G.level_registry._levels:
+		if info.is_enabled \
+				and prefs.is_level_allowed(
+					info.id):
+			allowed.append(info)
+
+	if allowed.is_empty():
+		return null
+
+	var pick: LevelInfo = \
+		allowed.pick_random()
+	Netcode.print(
+		"Selected level from prefs:"
+		+ " %s (%s)" % [
+			pick.id, pick.display_name],
+		NetworkLogger.CATEGORY_GAME_STATE)
+	return pick.scene
 
 
 func _server_spawn_level(level_scene: PackedScene) -> void:
