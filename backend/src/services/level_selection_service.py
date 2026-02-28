@@ -14,6 +14,21 @@ class LevelPreference:
     preferred: str = ""
 
 
+@dataclass
+class SessionPreference:
+    """Player's session preferences for matchmaking.
+
+    Bundles level preferences with gameplay
+    toggles (critters, cheats).
+    """
+
+    level: LevelPreference = field(
+        default_factory=LevelPreference
+    )
+    critters_enabled: bool = True
+    cheats_enabled: bool = True
+
+
 # Available levels registry.
 # In production, this could be loaded from a configuration file or database.
 AVAILABLE_LEVELS: Dict[str, Dict] = {
@@ -37,7 +52,9 @@ def get_available_level_ids() -> List[str]:
     ]
 
 
-def parse_level_preference(data: Optional[Dict]) -> LevelPreference:
+def parse_level_preference(
+    data: Optional[Dict],
+) -> LevelPreference:
     """Parse level preference from request data."""
     if not data:
         return LevelPreference()
@@ -46,6 +63,28 @@ def parse_level_preference(data: Optional[Dict]) -> LevelPreference:
         inclusion=data.get("inclusion", []),
         exclusion=data.get("exclusion", []),
         preferred=data.get("preferred", ""),
+    )
+
+
+def parse_session_preference(
+    data: Optional[Dict],
+) -> SessionPreference:
+    """Parse session preference from request data.
+
+    The dict uses a flat format with level keys
+    alongside critter/cheat keys.
+    """
+    if not data:
+        return SessionPreference()
+
+    return SessionPreference(
+        level=parse_level_preference(data),
+        critters_enabled=data.get(
+            "critters_enabled", True
+        ),
+        cheats_enabled=data.get(
+            "cheats_enabled", True
+        ),
     )
 
 

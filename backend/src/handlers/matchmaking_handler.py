@@ -20,6 +20,7 @@ from services.player_service import PlayerService
 from services.rate_limiter import RateLimiter
 from services.level_selection_service import (
     parse_level_preference,
+    parse_session_preference,
     select_level_for_match,
 )
 
@@ -76,19 +77,25 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
         body = json.loads(event.get("body", "{}"))
         player_count = body.get("player_count", 1)
         client_id = body.get("client_id", "unknown")
-        level_prefs_data = body.get("level_preferences", {})
+        session_prefs_data = body.get(
+            "session_preferences", {}
+        )
+        level_prefs_data = session_prefs_data
 
         # Validate input.
         if player_count < 1 or player_count > 4:
             return error_response(400, "INVALID_INPUT", "player_count must be 1-4")
 
-        # Parse level preferences.
-        level_prefs = parse_level_preference(level_prefs_data)
+        # Parse session preferences.
+        session_prefs = parse_session_preference(
+            session_prefs_data
+        )
+        level_prefs = session_prefs.level
 
         logger.info(
             f"Matchmaking request from {player_id}: "
             f"{player_count} player(s), client {client_id}, "
-            f"level prefs: {level_prefs_data}"
+            f"session prefs: {session_prefs_data}"
         )
 
         # Get or create player profile.
