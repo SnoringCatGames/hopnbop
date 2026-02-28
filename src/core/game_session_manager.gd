@@ -87,22 +87,32 @@ func _connect_network_signals() -> void:
 
 
 ## CLIENT: Request session IDs from backend.
-## level_prefs: Optional LevelPreferences for level selection hints.
-func client_request_session(level_prefs: LevelPreferences = null) -> void:
+## session_prefs: Optional SessionPreferences
+## for matchmaking hints.
+func client_request_session(
+	session_prefs: SessionPreferences = null,
+) -> void:
 	Netcode.check_is_client()
 
-	var player_count := G.client_session.local_player_count
-	var prefs_dict := {} if level_prefs == null else level_prefs.to_dict()
+	var player_count := \
+		G.client_session.local_player_count
+	var prefs_dict := {} \
+		if session_prefs == null \
+		else session_prefs.to_dict()
 
 	Netcode.print(
-		"Requesting session for %d player(s)%s" % [
+		"Requesting session for %d player(s)%s"
+		% [
 			player_count,
-			" with level preferences" if not prefs_dict.is_empty() else ""
+			" with session preferences" \
+				if not prefs_dict.is_empty() \
+				else "",
 		],
-		NetworkLogger.CATEGORY_CONNECTIONS
+		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 
-	session_provider.client_request_session_ids(player_count, prefs_dict)
+	session_provider.client_request_session_ids(
+		player_count, prefs_dict)
 
 
 ## Set expected player count for validation.

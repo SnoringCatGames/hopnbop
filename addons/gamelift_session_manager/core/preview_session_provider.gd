@@ -22,7 +22,10 @@ func is_active() -> bool:
 	return false # Not using real backend
 
 
-func client_request_session_ids(player_count: int, level_prefs: Dictionary = {}) -> void:
+func client_request_session_ids(
+	player_count: int,
+	session_prefs: Dictionary = {},
+) -> void:
 	# Generate debug session IDs.
 	var debug_session_ids: Array[String] = []
 	for i in range(player_count):
@@ -32,7 +35,8 @@ func client_request_session_ids(player_count: int, level_prefs: Dictionary = {})
 	var server_port: int = config.get("server_port", 4433)
 
 	# Select level locally based on preferences.
-	_selected_level_id = _select_level_locally(level_prefs)
+	_selected_level_id = \
+		_select_level_locally(session_prefs)
 
 	logger.print(
 		"Preview mode: Generated %d debug session ID(s), level: %s" % [

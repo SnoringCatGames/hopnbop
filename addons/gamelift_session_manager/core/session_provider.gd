@@ -43,9 +43,14 @@ signal level_selected(level_id: String)
 
 
 ## CLIENT: Request session IDs for local players.
-## player_count: int - Number of local players (split-screen/couch co-op)
-## level_prefs: Dictionary - Level preferences (inclusion, exclusion, preferred)
-func client_request_session_ids(player_count: int, level_prefs: Dictionary = {}) -> void:
+## player_count: int - Number of local players
+## (split-screen/couch co-op).
+## session_prefs: Dictionary - Session
+## preferences (level, critters, cheats).
+func client_request_session_ids(
+	player_count: int,
+	session_prefs: Dictionary = {},
+) -> void:
 	push_error("SessionProvider.client_request_session_ids not implemented")
 
 

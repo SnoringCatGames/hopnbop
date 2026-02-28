@@ -40,19 +40,24 @@ func is_active() -> bool:
 	return not backend_api_url.is_empty()
 
 
-func client_request_session_ids(player_count: int, level_prefs: Dictionary = {}) -> void:
+func client_request_session_ids(
+	player_count: int,
+	session_prefs: Dictionary = {},
+) -> void:
 	if backend_api_url.is_empty():
-		session_request_failed.emit("Backend API URL not configured")
+		session_request_failed.emit(
+			"Backend API URL not configured")
 		return
 
 	var request_body := {
 		"player_count": player_count,
-		"client_id": _generate_client_id()
+		"client_id": _generate_client_id(),
 	}
 
-	# Include level preferences if provided.
-	if not level_prefs.is_empty():
-		request_body["level_preferences"] = level_prefs
+	# Include session preferences if provided.
+	if not session_prefs.is_empty():
+		request_body["session_preferences"] = \
+			session_prefs
 
 	var body := JSON.stringify(request_body)
 
