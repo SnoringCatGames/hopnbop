@@ -42,7 +42,7 @@ const SNAIL_GOO_COUNT := 12
 
 # Snail goo fade delay range (seconds).
 const SNAIL_GOO_FADE_DELAY_MIN_SEC := 1.0
-const SNAIL_GOO_FADE_DELAY_MAX_SEC := 8.0
+const SNAIL_GOO_FADE_DELAY_MAX_SEC := 10.0
 
 # Snail goo colors (dark slimy greens).
 const SNAIL_GOO_COLORS: Array[Color] = [
