@@ -113,8 +113,13 @@ func _ready() -> void:
 		_spawn_butterflies()
 		_spawn_bird_flock()
 
+	# Create snail nodes on all peers so RPCs
+	# have matching target nodes. Snails start
+	# invisible until the server initializes them.
+	_create_snail_nodes()
+
 	if Netcode.is_server:
-		# Snails are spawned later by GamePanel
+		# Snails are initialized later by GamePanel
 		# after critter preference majority vote.
 		G.game_panel.is_level_fully_loaded = true
 
@@ -288,10 +293,7 @@ func _get_configuration_warnings() -> PackedStringArray:
 	return warnings
 
 
-## Spawns snails on the server. Called by
-## GamePanel after critter preference majority
-## vote resolves in favor of critters.
-func server_spawn_snails() -> void:
+func _create_snail_nodes() -> void:
 	for i in snail_count:
 		var snail: Snail = preload(
 			SnailSpawner.SNAIL_SCENE_PATH
@@ -300,6 +302,12 @@ func server_spawn_snails() -> void:
 		snail.setup(collision_tiles)
 		%Objects.add_child(snail)
 		_snails.append(snail)
+
+
+## Initializes snails on the server. Called by
+## GamePanel after critter preference majority
+## vote resolves in favor of critters.
+func server_spawn_snails() -> void:
 	if not _snails.is_empty():
 		_server_init_snails()
 

@@ -20,10 +20,6 @@ unique_name_in_owner = true
 _spawnable_scenes = PackedStringArray("uid://cn6hdqmmufnvr")
 spawn_path = NodePath("../Players")
 
-[node name="ObjectSpawner" type="MultiplayerSpawner" parent="."]
-unique_name_in_owner = true
-spawn_path = NodePath("../Objects")
-
 [node name="Background" parent="." instance=ExtResource("2_525fh")]
 position = Vector2(-128, -80)
 metadata/_edit_lock_ = true

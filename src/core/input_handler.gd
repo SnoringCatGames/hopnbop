@@ -131,7 +131,7 @@ func _input(event: InputEvent) -> void:
 					else "PAUSE"
 			)
 		)
-		if G.settings.is_server_pause_enabled and is_networked_level_active:
+		if G.settings.is_server_pause_enabled and G.is_networked_level_active:
 			Netcode.frame_driver \
 				.client_request_toggle_pause()
 			get_viewport() \
