@@ -6,7 +6,7 @@ const _SettingsPanelScene := preload(
 	"res://src/ui/settings_panel/"
 	+ "settings_panel.tscn")
 
-const _REOPEN_COOLDOWN_SEC := 0.2
+const _REOPEN_COOLDOWN_SEC := 0.15
 
 # Dictionary<Player, bool>
 var intersecting_players := {}

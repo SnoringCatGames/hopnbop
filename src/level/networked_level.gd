@@ -9,6 +9,8 @@ extends Level
 		player_spawner = value
 		update_configuration_warnings()
 
+@export var blood_is_thicker_than_water_tiles: TileMapLayer
+
 ## Number of fly swarms to spawn (client-side).
 @export var fly_swarm_count := 1
 
@@ -44,6 +46,7 @@ const _FISH_SCENE_PATH := (
 	"res://src/objects/fish/fish.tscn")
 const _BUTTERFLY_SCENE_PATH := (
 	"res://src/objects/butterfly/butterfly.tscn")
+const _BLOOD_TWEEN_DURATION := 0.3
 
 # Dictionary<int, Array[int]>
 # Maps peer_id to array of player_ids for that peer.
@@ -53,6 +56,7 @@ var npcs: Array[NPC] = []
 
 var _snails: Array[Snail] = []
 var _crickets: Array = []
+var _blood_tween: Tween
 
 
 func _enter_tree() -> void:
@@ -89,16 +93,8 @@ func _ready() -> void:
 		%PlayerSpawner.spawned.connect(_client_on_player_spawned)
 		%PlayerSpawner.despawned.connect(_client_on_player_despawned)
 
-	if G.settings.are_critters_enabled:
-		for i in snail_count:
-			var snail: Snail = preload(
-				SnailSpawner.SNAIL_SCENE_PATH
-			).instantiate()
-			snail.name = "Snail_%d" % i
-			snail.setup(collision_tiles)
-			%Objects.add_child(snail)
-			_snails.append(snail)
-
+	# Non-networked critters: each client
+	# uses its own local preference.
 	if (
 		Netcode.is_client
 		and G.settings.are_critters_enabled
@@ -118,9 +114,18 @@ func _ready() -> void:
 		_spawn_bird_flock()
 
 	if Netcode.is_server:
-		if not _snails.is_empty():
-			_server_init_snails()
+		# Snails are spawned later by GamePanel
+		# after critter preference majority vote.
 		G.game_panel.is_level_fully_loaded = true
+
+	if blood_is_thicker_than_water_tiles != null:
+		var is_active: bool = G.settings \
+			.is_bloodisthickerthanwater_enabled
+		blood_is_thicker_than_water_tiles \
+			.modulate.a = (
+				1.0 if is_active else 0.0)
+		G.cheat_manager.cheat_toggled.connect(
+			_on_cheat_toggled)
 
 
 func _client_on_player_spawned(p_player: Node) -> void:
@@ -148,8 +153,36 @@ func _exit_tree() -> void:
 			G.game_panel.is_level_fully_loaded = false
 		Netcode.connector.peer_players_declared.disconnect(
 			_server_on_peer_players_declared)
+	if (
+		blood_is_thicker_than_water_tiles != null
+		and G.cheat_manager.cheat_toggled
+			.is_connected(_on_cheat_toggled)
+	):
+		G.cheat_manager.cheat_toggled.disconnect(
+			_on_cheat_toggled)
 	if is_instance_valid(G.game_panel):
 		G.game_panel.on_level_removed(self )
+
+
+func _on_cheat_toggled(
+	cheat_name: String,
+	is_active: bool,
+) -> void:
+	if cheat_name != "bloodisthickerthanwater":
+		return
+	if blood_is_thicker_than_water_tiles == null:
+		return
+	if _blood_tween != null:
+		_blood_tween.kill()
+	var target_alpha := (
+		1.0 if is_active else 0.0)
+	_blood_tween = create_tween()
+	_blood_tween.tween_property(
+		blood_is_thicker_than_water_tiles,
+		"modulate:a",
+		target_alpha,
+		_BLOOD_TWEEN_DURATION,
+	)
 
 
 func _server_on_peer_players_declared(
@@ -253,6 +286,22 @@ func _get_configuration_warnings() -> PackedStringArray:
 		warnings.append("player_spawner must be set")
 
 	return warnings
+
+
+## Spawns snails on the server. Called by
+## GamePanel after critter preference majority
+## vote resolves in favor of critters.
+func server_spawn_snails() -> void:
+	for i in snail_count:
+		var snail: Snail = preload(
+			SnailSpawner.SNAIL_SCENE_PATH
+		).instantiate()
+		snail.name = "Snail_%d" % i
+		snail.setup(collision_tiles)
+		%Objects.add_child(snail)
+		_snails.append(snail)
+	if not _snails.is_empty():
+		_server_init_snails()
 
 
 func _server_init_snails() -> void:

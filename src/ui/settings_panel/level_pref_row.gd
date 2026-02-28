@@ -11,7 +11,7 @@ enum LevelPrefState {
 }
 
 const _SELECTED_ICON_COLOR := \
-	Color(0.7, 0.7, 0.7)
+	Color(0.9, 0.9, 0.9)
 const _VBAR_MODULATE := \
 	Color(1, 1, 1, 0.3)
 var _vbar_texture: Texture2D = preload(
@@ -61,7 +61,6 @@ func setup(
 
 func _ready() -> void:
 	super ()
-	%Label.text = _display_name
 	# Add left-side indent by duplicating
 	# styleboxes with extra content margin.
 	_focus_style = _focus_style.duplicate()

@@ -255,7 +255,10 @@ func _on_row_clicked(row: SettingsRow) -> void:
 	if index < 0:
 		return
 	_set_focus(index)
-	row.on_right()
+	# LevelPrefRow has its own sub-buttons;
+	# don't toggle on row click.
+	if not row is LevelPrefRow:
+		row.on_right()
 
 
 ## Rebuild the navigable row list from visible
@@ -425,7 +428,7 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed(&"close_menu"):
+	if event.is_action_pressed(&"toggle_pause"):
 		close()
 		get_viewport() \
 			.set_input_as_handled()

@@ -48,8 +48,6 @@ extends Node
 
 # - Add thumbnails for each level. Use in settings UI.
 
-# - Test setttings UI local persistence.
-# - Test setttings UI cheat enablement, and toggling gameplay features.
 # - Test level preferences.
 # - Test fly swarming.
 #   - lordoftheflies

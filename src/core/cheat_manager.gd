@@ -127,8 +127,6 @@ func _apply_local_cheat(cheat_name: String) -> void:
 					.is_bloodisthickerthanwater_enabled
 			is_active = G.settings \
 				.is_bloodisthickerthanwater_enabled
-			# TODO: Hook up bloodisthickerthanwater
-			# effect.
 			Netcode.print(
 				"Cheat 'bloodisthickerthanwater'"
 				+ ": %s" % (
