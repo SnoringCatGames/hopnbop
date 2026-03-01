@@ -328,6 +328,7 @@ enum StatName {
 	AVERAGE_HEIGHT,
 	COMBINED_DISRUPTION,
 	FLY_PROXIMITY_TIME,
+	POOP_COUNT,
 }
 
 
@@ -443,6 +444,13 @@ static var STAT_CONFIGS := {
 		"lower": null,
 		"upper_adjectives":
 			FLY_PROXIMITY_UPPER,
+		"lower_adjectives": [],
+	},
+	StatName.POOP_COUNT: {
+		"upper": 1.5,
+		"upper_abs": 3.0,
+		"lower": null,
+		"upper_adjectives": POOP_UPPER,
 		"lower_adjectives": [],
 	},
 }
@@ -768,6 +776,20 @@ const FLY_PROXIMITY_UPPER := [
 	"Midge-mantled",
 ]
 
+# Poop count upper: scatological, gross/funny
+# themes.
+const POOP_UPPER := [
+	"Prolific-pooper",
+	"Fertilizing",
+	"Trail-leaving",
+	"Pellet-dropping",
+	"Dung-dealing",
+	"Plop-prone",
+	"Bowel-blessed",
+	"Turd-turfing",
+	"Fecalferious",
+]
+
 
 # --- All dynamic adjective lists (for validation) ---
 
@@ -790,6 +812,7 @@ static var _ALL_DYNAMIC_LISTS: Array[Array] = [
 	HEIGHT_UPPER,
 	CRITTER_DISRUPTOR_UPPER,
 	FLY_PROXIMITY_UPPER,
+	POOP_UPPER,
 ]
 
 
@@ -954,5 +977,7 @@ static func _get_stat_value(
 				+ stats.snail_crush_count)
 		StatName.FLY_PROXIMITY_TIME:
 			return stats.fly_proximity_time_sec
+		StatName.POOP_COUNT:
+			return float(stats.poop_count)
 		_:
 			return 0.0
