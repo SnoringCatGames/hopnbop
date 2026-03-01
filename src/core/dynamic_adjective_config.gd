@@ -788,6 +788,7 @@ const POOP_UPPER := [
 	"Bowel-blessed",
 	"Turd-turfing",
 	"Fecalferious",
+	"Scat-tastic",
 ]
 
 
