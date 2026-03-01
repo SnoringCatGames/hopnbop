@@ -62,15 +62,6 @@ extends Node
 # - Cricket art.
 # - Fish art.
 
-# - Track stats for disturbing each of the individual critter types.
-#   - Disturbing fish and butterfly only happens at most once per X seconds, and only if the critter hasn't been disturbed in Y seconds. Use file-level consts. X should be 2 seconds. Y should be 0.8.
-#   - Add a new additional custom stat threshold check that considers a combined disruption score across all critter types.
-#   - Use a single upper-bound adjective list for this combined score.
-# - Hook-up adjectives for disturbing lots of critters.
-# - ALSO, track cumulative time spent near flies.
-#   - Make this weighted more heavily by how many flies are nearby.
-# - Hook-up adjectives for spending a _lot_ of time near flies.
-
 # ---
 
 # ADD LEVEL WRAP AROUND LIKE KILLER QUEEN (vertically and horizontally)
