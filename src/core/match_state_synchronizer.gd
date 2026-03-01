@@ -212,9 +212,9 @@ func _server_send_stats_to_clients() -> void:
 func _rpc_client_update_stats(
 	packed_data: Array,
 ) -> void:
-	# Each entry is 1 player_id + 13 stat values
-	# = 14 stride.
-	var stride := 14
+	# Each entry is 1 player_id + 17 stat values
+	# = 18 stride.
+	var stride := 18
 	var i := 0
 	while i + stride <= packed_data.size():
 		var player_id: int = packed_data[i]
@@ -225,6 +225,58 @@ func _rpc_client_update_stats(
 			stats_array)
 		state.client_store_stats(
 			player_id, stats)
+		i += stride
+
+
+## Receives critter disturbance and fly proximity
+## stat deltas from clients. Each entry is
+## [player_id, cricket, fish, butterfly,
+## fly_time] = 5 stride.
+@rpc("any_peer", "call_remote", "unreliable")
+func _rpc_server_update_critter_stats(
+	packed_data: Array,
+) -> void:
+	if not Netcode.is_server:
+		return
+
+	var sender_peer := \
+		multiplayer.get_remote_sender_id()
+	var level: NetworkedLevel = (
+		G.level as NetworkedLevel)
+	if not is_instance_valid(level):
+		return
+
+	# Validate peer owns the reported player_id.
+	var valid_ids: Array = (
+		level.peer_to_player_ids
+			.get(sender_peer, []))
+
+	var stride := 5
+	var i := 0
+	while i + stride <= packed_data.size():
+		var player_id: int = packed_data[i]
+		if not valid_ids.has(player_id):
+			i += stride
+			continue
+		var stats: PlayerMatchStats = (
+			state.server_get_or_create_stats(
+				player_id))
+		var cricket_d: int = (
+			int(packed_data[i + 1]))
+		var fish_d: int = (
+			int(packed_data[i + 2]))
+		var butterfly_d: int = (
+			int(packed_data[i + 3]))
+		var fly_time_d: float = (
+			packed_data[i + 4])
+		for _j in cricket_d:
+			stats.record_cricket_disturb()
+		for _j in fish_d:
+			stats.record_fish_disturb()
+		for _j in butterfly_d:
+			stats.record_butterfly_disturb()
+		stats.accumulate_fly_proximity(
+			fly_time_d)
 		i += stride
 
 
