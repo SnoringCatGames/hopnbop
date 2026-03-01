@@ -17,6 +17,10 @@ var ice_time_sec := 0.0
 var spring_launch_count := 0
 var direction_change_count := 0
 var snail_crush_count := 0
+var cricket_disturb_count := 0
+var fish_disturb_count := 0
+var butterfly_disturb_count := 0
+var fly_proximity_time_sec := 0.0
 
 var _height_accumulator := 0.0
 var _height_frame_count := 0
@@ -106,6 +110,24 @@ func record_snail_crush() -> void:
 	snail_crush_count += 1
 
 
+func record_cricket_disturb() -> void:
+	cricket_disturb_count += 1
+
+
+func record_fish_disturb() -> void:
+	fish_disturb_count += 1
+
+
+func record_butterfly_disturb() -> void:
+	butterfly_disturb_count += 1
+
+
+func accumulate_fly_proximity(
+	delta_weighted: float,
+) -> void:
+	fly_proximity_time_sec += delta_weighted
+
+
 ## Packs stats into an Array for RPC transmission.
 func to_packed_array() -> Array:
 	return [
@@ -122,6 +144,10 @@ func to_packed_array() -> Array:
 		direction_change_count,
 		average_height,
 		snail_crush_count,
+		cricket_disturb_count,
+		fish_disturb_count,
+		butterfly_disturb_count,
+		fly_proximity_time_sec,
 	]
 
 
@@ -147,3 +173,7 @@ func populate_from_packed_array(
 	_height_accumulator = data[11]
 	_height_frame_count = 1
 	snail_crush_count = int(data[12])
+	cricket_disturb_count = int(data[13])
+	fish_disturb_count = int(data[14])
+	butterfly_disturb_count = int(data[15])
+	fly_proximity_time_sec = data[16]

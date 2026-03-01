@@ -326,6 +326,8 @@ enum StatName {
 	SPRING_LAUNCHES,
 	DIRECTION_CHANGES,
 	AVERAGE_HEIGHT,
+	COMBINED_DISRUPTION,
+	FLY_PROXIMITY_TIME,
 }
 
 
@@ -425,6 +427,22 @@ static var STAT_CONFIGS := {
 		"upper_abs": 0.0,
 		"lower": null,
 		"upper_adjectives": HEIGHT_UPPER,
+		"lower_adjectives": [],
+	},
+	StatName.COMBINED_DISRUPTION: {
+		"upper": 1.5,
+		"upper_abs": 5.0,
+		"lower": null,
+		"upper_adjectives":
+			CRITTER_DISRUPTOR_UPPER,
+		"lower_adjectives": [],
+	},
+	StatName.FLY_PROXIMITY_TIME: {
+		"upper": 1.5,
+		"upper_abs": 10.0,
+		"lower": null,
+		"upper_adjectives":
+			FLY_PROXIMITY_UPPER,
 		"lower_adjectives": [],
 	},
 }
@@ -726,6 +744,30 @@ const HEIGHT_UPPER := [
 	"Zenith-bound",
 ]
 
+# Combined critter disruption upper: nature-
+# disrupting, chaotic themes.
+const CRITTER_DISRUPTOR_UPPER := [
+	"Disruptive",
+	"Terrorizing",
+	"Harassing",
+	"Exterminating",
+	"Frightening",
+	"Beast-bothering",
+	"Havoc-wreaking",
+]
+
+# Fly proximity time upper: fly-associated,
+# gross/funny themes.
+const FLY_PROXIMITY_UPPER := [
+	"Buzzing",
+	"Swarm-kissed",
+	"Fly-whispering",
+	"Buzz-bathed",
+	"Gnat-clouded",
+	"Bug-wreathed",
+	"Midge-mantled",
+]
+
 
 # --- All dynamic adjective lists (for validation) ---
 
@@ -746,6 +788,8 @@ static var _ALL_DYNAMIC_LISTS: Array[Array] = [
 	DIRECTION_CHANGES_UPPER,
 	DIRECTION_CHANGES_LOWER,
 	HEIGHT_UPPER,
+	CRITTER_DISRUPTOR_UPPER,
+	FLY_PROXIMITY_UPPER,
 ]
 
 
@@ -902,5 +946,13 @@ static func _get_stat_value(
 				stats.direction_change_count)
 		StatName.AVERAGE_HEIGHT:
 			return stats.average_height
+		StatName.COMBINED_DISRUPTION:
+			return float(
+				stats.cricket_disturb_count
+				+ stats.fish_disturb_count
+				+ stats.butterfly_disturb_count
+				+ stats.snail_crush_count)
+		StatName.FLY_PROXIMITY_TIME:
+			return stats.fly_proximity_time_sec
 		_:
 			return 0.0

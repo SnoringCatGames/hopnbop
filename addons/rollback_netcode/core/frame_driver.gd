@@ -49,7 +49,6 @@ extends Node
 # - Add thumbnails for each level. Use in settings UI.
 
 # - Test fish.
-#   - Can get stuck moving back and forth horizontally against the floor trying to get away.
 # - Test snail.
 #   - sfx.
 # - Test butterfly.
@@ -57,16 +56,12 @@ extends Node
 # - Test birds.
 #   -
 
-# - Bird art.
-# - Butterfly art.
-# - Cricket art.
-# - Fish art.
-
 # ---
 
 # ADD LEVEL WRAP AROUND LIKE KILLER QUEEN (vertically and horizontally)
 # - Also make critters and gore wrap-around.
 
+# - Look at usage of distance instead of distance_squared.
 
 # - Polish networked movement. It still seems like we get jitter and stuck
 #   player-inputs-on-server-side too often.
