@@ -495,10 +495,14 @@ func _has_tile(cell: Vector2i) -> bool:
 		return true
 	var tile_data := (
 		_collision_tiles.get_cell_tile_data(cell))
-	if tile_data == null:
-		return false
-	return (tile_data.get_terrain_set()
-		!= Level.TERRAIN_SET_WATER)
+	if tile_data != null:
+		return (tile_data.get_terrain_set()
+			!= Level.TERRAIN_SET_WATER)
+	# Scene collection tiles (e.g. springs)
+	# return null tile_data but are valid
+	# surfaces.
+	return (_collision_tiles
+		.get_cell_source_id(cell) != -1)
 
 
 func _on_crush_area_area_entered(

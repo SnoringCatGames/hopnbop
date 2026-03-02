@@ -12,6 +12,12 @@ const _ENEMY_PROJECTILE_COLLISION_MASK_BIT := 1 << 6
 const _FOOT_PROJECTILE_COLLISION_MASK_BIT := 1 << 7
 const _HEAD_PROJECTILE_COLLISION_MASK_BIT := 1 << 8
 
+# Increased floor_max_angle for ice surfaces. Prevents
+# circle collision shapes from getting stuck at tile
+# edges where the contact normal rotates past 45
+# degrees and triggers wall classification.
+const _ICE_FLOOR_MAX_ANGLE := PI / 2.5
+
 @export var collision_shape: CollisionShape2D:
 	set(value):
 		collision_shape = value
@@ -310,7 +316,36 @@ func _apply_movement() -> void:
 	if should_preserve_wall_slide:
 		velocity.x = 0.0
 
+	# During launch cooldown, use floating motion mode so
+	# move_and_slide bypasses all floor-specific behavior
+	# (snap, constant speed on slopes, wall blocking).
+	# Godot's internal was_on_floor state persists from the
+	# pre-launch move_and_slide, causing the grounded path
+	# to decompose diagonal movement differently when
+	# holding sideways, which reduces effective upward
+	# travel.
+	var saved_motion_mode := motion_mode
+	if is_in_launch_cooldown():
+		motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
+
+	# On ice surfaces, increase floor_max_angle so
+	# circle-on-tile-corner contacts at platform edges
+	# are still classified as floor by move_and_slide.
+	# Without this, the collision normal rotates past
+	# 45 degrees at the edge, causing wall
+	# classification that zeroes horizontal velocity.
+	var is_on_ice := (
+		surfaces.is_attaching_to_floor
+		and surfaces.surface_properties.is_ice
+	)
+	var saved_floor_max_angle := floor_max_angle
+	if is_on_ice:
+		floor_max_angle = _ICE_FLOOR_MAX_ANGLE
+
 	move_and_slide()
+
+	floor_max_angle = saved_floor_max_angle
+	motion_mode = saved_motion_mode
 
 	# Restore horizontal velocity after move_and_slide.
 	if should_preserve_wall_slide:

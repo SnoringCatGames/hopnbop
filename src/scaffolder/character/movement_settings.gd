@@ -85,6 +85,7 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 
 @export var bump_bounce_base_speed := 110.0
 @export var bump_bounce_vertical_boost := -60.0
+@export var bump_momentum_transfer_factor := 0.3
 
 @export var kill_bounce_vertical_boost := -240.0
 
@@ -130,7 +131,7 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 @export var water_surface_jump_boost := -160.0
 ## Timing window (seconds) around water contact
 ## during which a jump triggers a water hop.
-@export var water_hop_window_sec := 0.025
+@export var water_hop_window_sec := 0.0125
 ## Jump boost for a successful water hop (same
 ## strength as a floor jump by default).
 @export var water_hop_boost := -220.0

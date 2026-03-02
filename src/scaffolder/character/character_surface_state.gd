@@ -385,9 +385,9 @@ var is_within_coyote_time: bool:
 		)
 		return frames_since_floor <= threshold_frames
 
-const _ICE_FRICTION_MULTIPLIER := 0.15
+const _ICE_FRICTION_MULTIPLIER := 0.04
 const _ICE_SPEED_MULTIPLIER := 1.5
-const _ICE_ACCELERATION_MULTIPLIER := 0.15
+const _ICE_ACCELERATION_MULTIPLIER := 0.2
 const _TERRAIN_SAMPLE_OFFSET := 4.0
 
 var surface_properties := SurfaceProperties.new()

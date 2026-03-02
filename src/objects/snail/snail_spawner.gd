@@ -70,14 +70,15 @@ static func find_interior_surfaces(
 	# Collect interior surfaces.
 	var surfaces: Array = []
 	for cell in used_cells:
-		# Skip water tiles.
+		# Skip water tiles. Scene collection
+		# tiles (e.g. springs) return null
+		# tile_data and are always valid.
 		var tile_data := (
 			tiles.get_cell_tile_data(cell))
-		if tile_data == null:
-			continue
-		if (tile_data.get_terrain_set()
-				== Level.TERRAIN_SET_WATER):
-			continue
+		if tile_data != null:
+			if (tile_data.get_terrain_set()
+					== Level.TERRAIN_SET_WATER):
+				continue
 
 		for offset: Vector2i in _NEIGHBOR_OFFSETS:
 			var neighbor: Vector2i = cell + offset

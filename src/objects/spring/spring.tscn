@@ -75,7 +75,7 @@ animations = [{
 "speed": 1.0
 }]
 
-[node name="Spring" type="StaticBody2D"]
+[node name="Spring" type="StaticBody2D" groups=["snail_surface"]]
 collision_mask = 0
 script = ExtResource("2_script")
 
