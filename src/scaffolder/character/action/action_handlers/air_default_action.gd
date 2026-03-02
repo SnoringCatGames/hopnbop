@@ -52,6 +52,7 @@ func process(character) -> bool:
 		character.surfaces.horizontal_acceleration_sign,
 		character.movement_settings,
 		character.surfaces.is_launched,
+		character.is_in_ice_air_friction_cooldown(),
 	)
 
 	# Bouncing off ceiling.
@@ -88,6 +89,7 @@ static func update_velocity_in_air(
 		horizontal_acceleration_sign: int,
 		movement_settings: MovementSettings,
 		is_launched: bool = false,
+		skip_horizontal_friction: bool = false,
 ) -> Vector2:
 	var is_rising_from_jump := velocity.y < 0 and is_pressing_jump
 
@@ -119,6 +121,7 @@ static func update_velocity_in_air(
 	elif (
 		movement_settings.fall_horizontal_friction > 0.0
 		and not is_launched
+		and not skip_horizontal_friction
 	):
 		# Apply friction to slow horizontal movement when not pressing
 		# left/right.
