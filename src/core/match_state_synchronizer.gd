@@ -212,9 +212,9 @@ func _server_send_stats_to_clients() -> void:
 func _rpc_client_update_stats(
 	packed_data: Array,
 ) -> void:
-	# Each entry is 1 player_id + 17 stat values
-	# = 18 stride.
-	var stride := 18
+	# Each entry is 1 player_id + 18 stat values
+	# = 19 stride.
+	var stride := 19
 	var i := 0
 	while i + stride <= packed_data.size():
 		var player_id: int = packed_data[i]
@@ -228,10 +228,10 @@ func _rpc_client_update_stats(
 		i += stride
 
 
-## Receives critter disturbance and fly proximity
-## stat deltas from clients. Each entry is
-## [player_id, cricket, fish, butterfly,
-## fly_time] = 5 stride.
+## Receives critter disturbance, fly proximity,
+## and poop stat deltas from clients. Each entry
+## is [player_id, cricket, fish, butterfly,
+## fly_time, poop] = 6 stride.
 @rpc("any_peer", "call_remote", "unreliable")
 func _rpc_server_update_critter_stats(
 	packed_data: Array,
@@ -251,7 +251,7 @@ func _rpc_server_update_critter_stats(
 		level.peer_to_player_ids
 			.get(sender_peer, []))
 
-	var stride := 5
+	var stride := 6
 	var i := 0
 	while i + stride <= packed_data.size():
 		var player_id: int = packed_data[i]
@@ -269,6 +269,8 @@ func _rpc_server_update_critter_stats(
 			int(packed_data[i + 3]))
 		var fly_time_d: float = (
 			packed_data[i + 4])
+		var poop_d: int = (
+			int(packed_data[i + 5]))
 		for _j in cricket_d:
 			stats.record_cricket_disturb()
 		for _j in fish_d:
@@ -277,6 +279,8 @@ func _rpc_server_update_critter_stats(
 			stats.record_butterfly_disturb()
 		stats.accumulate_fly_proximity(
 			fly_time_d)
+		for _j in poop_d:
+			stats.record_poop()
 		i += stride
 
 

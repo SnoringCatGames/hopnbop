@@ -213,7 +213,6 @@ const SOFT_ADJECTIVES := [
 	"Bonkers",
 	"Melty",
 	"Boop-nosed",
-	"Absolute-unit",
 ]
 
 const HARD_ADJECTIVES := [
@@ -895,12 +894,12 @@ static func assign_adjectives(
 				qualifying_lists.append(
 					config["lower_adjectives"])
 
-		# Always include baseline soft and hard
-		# adjective lists.
+		# Always include baseline soft adjectives.
 		qualifying_lists.append(
 			SOFT_ADJECTIVES)
-		qualifying_lists.append(
-			HARD_ADJECTIVES)
+		if G.settings.are_hard_adjectives_enabled:
+			qualifying_lists.append(
+				HARD_ADJECTIVES)
 
 		# Step 3: Pick a random qualifying list,
 		# then a random adjective from it.

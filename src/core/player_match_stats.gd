@@ -21,6 +21,7 @@ var cricket_disturb_count := 0
 var fish_disturb_count := 0
 var butterfly_disturb_count := 0
 var fly_proximity_time_sec := 0.0
+var poop_count := 0
 
 var _height_accumulator := 0.0
 var _height_frame_count := 0
@@ -128,6 +129,10 @@ func accumulate_fly_proximity(
 	fly_proximity_time_sec += delta_weighted
 
 
+func record_poop() -> void:
+	poop_count += 1
+
+
 ## Packs stats into an Array for RPC transmission.
 func to_packed_array() -> Array:
 	return [
@@ -148,6 +153,7 @@ func to_packed_array() -> Array:
 		fish_disturb_count,
 		butterfly_disturb_count,
 		fly_proximity_time_sec,
+		poop_count,
 	]
 
 
@@ -177,3 +183,4 @@ func populate_from_packed_array(
 	fish_disturb_count = int(data[14])
 	butterfly_disturb_count = int(data[15])
 	fly_proximity_time_sec = data[16]
+	poop_count = int(data[17])
