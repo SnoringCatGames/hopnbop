@@ -547,16 +547,27 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 	# interaction data to prevent the stale-velocity
 	# guard from dropping the cap to
 	# max_vertical_speed.
-	if (
+	#
+	# Momentum-transfer bumps are excluded because
+	# they keep the character grounded. The launch
+	# cooldown would block floor attachment and
+	# switch to FLOATING mode, causing unintended
+	# vertical movement.
+	var is_launch_interaction: bool = (
 		last_interaction_type
 			== ServerInteractionType.KILL
-		or last_interaction_type
-			== ServerInteractionType.BUMP
 		or last_interaction_type
 			== ServerInteractionType.SPRING
 		or last_interaction_type
 			== ServerInteractionType.SNAIL_CRUSH
-	):
+		or (
+			last_interaction_type
+				== ServerInteractionType.BUMP
+			and G.settings.bump_mode
+				!= Settings.BumpMode.MOMENTUM_TRANSFER
+		)
+	)
+	if is_launch_interaction:
 		character._last_launch_frame_index = (
 			last_interaction_frame_index
 		)
@@ -702,7 +713,15 @@ func _sync_from_scene_state() -> void:
 		and level.wrap_bounds.size
 			!= Vector2.ZERO
 	):
-		position = level.wrap_position(position)
+		var wrapped: Vector2 = level.wrap_position(position)
+		if not wrapped.is_equal_approx(position):
+			# Teleported across bounds edge.
+			# Reset physics interpolation so
+			# Godot doesn't lerp between the
+			# old and new positions.
+			character \
+				.reset_physics_interpolation()
+		position = wrapped
 		character.position = position
 
 	velocity = character.velocity
@@ -1112,8 +1131,70 @@ func record_interaction(
 		p_velocity
 	)
 
+	# For launch interactions, update the surfaces
+	# bitmask to reflect the post-launch state.
+	# The injection only sets position, velocity,
+	# and interaction data, leaving the bitmask
+	# with stale pre-launch values (e.g.,
+	# is_attaching_to_floor = true, is_launched =
+	# false). Without this, CapVelocityAction uses
+	# max_vertical_speed instead of the launch
+	# velocity cap when loading this frame from
+	# the buffer.
+	var is_launch_type: bool = (
+		interaction_type
+			== ServerInteractionType.KILL
+		or interaction_type
+			== ServerInteractionType.SPRING
+		or interaction_type
+			== ServerInteractionType.SNAIL_CRUSH
+		or (
+			interaction_type
+				== ServerInteractionType.BUMP
+			and G.settings.bump_mode
+				!= Settings.BumpMode.MOMENTUM_TRANSFER
+		)
+	)
+	if is_launch_type:
+		var frame_state: Array = (
+			_rollback_buffer.get_at(p_frame_index)
+		)
+		if frame_state != null:
+			var current_surfaces: int = (
+				_get_frame_property(
+					frame_state, &"surfaces"
+				)
+			)
+			# Preserve facing bit, clear everything
+			# else, set is_launched. This matches
+			# what force_launch() does to the
+			# bitmask.
+			var facing_bit: int = (
+				current_surfaces
+				& (1 << CharacterSurfaceState
+					.BIT_FACING_LEFT)
+			)
+			var new_surfaces: int = (
+				facing_bit
+				| (1 << CharacterSurfaceState
+					.BIT_IS_LAUNCHED)
+			)
+			_set_frame_property(
+				frame_state,
+				&"surfaces",
+				new_surfaces,
+			)
+			_rollback_buffer.set_at(
+				p_frame_index, frame_state
+			)
+
 	# Then call base class to set local properties.
-	super.record_interaction(interaction_type, p_frame_index, p_position, p_velocity)
+	super.record_interaction(
+		interaction_type,
+		p_frame_index,
+		p_position,
+		p_velocity,
+	)
 
 
 ## Records a DIE interaction with separate spawn and death positions.

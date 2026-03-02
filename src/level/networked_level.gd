@@ -21,7 +21,7 @@ extends Level
 @export var snail_count := 1
 
 ## Number of crickets to spawn (client-side).
-@export var cricket_count := 1
+@export var cricket_count := 2
 
 ## Number of fish to spawn in water
 ## (client-side).

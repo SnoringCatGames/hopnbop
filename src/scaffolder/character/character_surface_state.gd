@@ -509,12 +509,42 @@ func _update_surface_properties() -> void:
 	# feet. global_position is at the feet, so
 	# offset down by a few pixels to land inside
 	# the floor tile.
-	var sample_pos := character.global_position \
+	var sample_pos := (
+		character.global_position
 		+ Vector2(0, _TERRAIN_SAMPLE_OFFSET)
+	)
 	var local_pos := tilemap.to_local(sample_pos)
 	var cell := tilemap.local_to_map(local_pos)
 	var tile_data := tilemap.get_cell_tile_data(
 		cell)
+
+	# At platform edges, the primary sample can
+	# miss because the character's position was
+	# advanced past the tile by the ice edge
+	# override. Fall back to sampling behind the
+	# character (opposite to movement direction)
+	# to catch the tile they just left.
+	if (
+		tile_data == null
+		and character.velocity.x != 0.0
+	):
+		var behind_offset := (
+			-signf(character.velocity.x)
+			* _TERRAIN_SAMPLE_OFFSET * 2.0
+		)
+		sample_pos = (
+			character.global_position
+			+ Vector2(
+				behind_offset,
+				_TERRAIN_SAMPLE_OFFSET,
+			)
+		)
+		local_pos = tilemap.to_local(sample_pos)
+		cell = tilemap.local_to_map(local_pos)
+		tile_data = (
+			tilemap.get_cell_tile_data(cell)
+		)
+
 	if tile_data == null:
 		return
 

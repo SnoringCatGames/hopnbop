@@ -12,6 +12,7 @@ var _last_collision_frame := -1
 var _blink_accumulator := 0.0
 var _is_blink_visible := true
 var _pending_bounce := Vector2.ZERO
+var _has_pending_bounce := false
 var _pending_is_momentum_transfer := false
 var _last_processed_interaction_start_time := -1
 var _has_ever_died := false
@@ -109,13 +110,14 @@ func server_trigger_spring_bounce() -> void:
 		return
 	if Netcode.frame_driver.is_resimulating:
 		return
-	if _pending_bounce != Vector2.ZERO:
+	if _has_pending_bounce:
 		return
 	var spring_velocity := Vector2(
 		velocity.x,
 		movement_settings.spring_bounce_vertical_boost
 	)
 	_pending_bounce = spring_velocity
+	_has_pending_bounce = true
 	state_from_server.record_interaction(
 		CharacterStateFromServer
 			.ServerInteractionType.SPRING,
@@ -136,7 +138,7 @@ func server_trigger_snail_crush_bounce() -> void:
 		return
 	if Netcode.frame_driver.is_resimulating:
 		return
-	if _pending_bounce != Vector2.ZERO:
+	if _has_pending_bounce:
 		return
 	var crush_velocity := Vector2(
 		velocity.x,
@@ -144,6 +146,7 @@ func server_trigger_snail_crush_bounce() -> void:
 			.snail_crush_bounce_vertical_boost
 	)
 	_pending_bounce = crush_velocity
+	_has_pending_bounce = true
 	state_from_server.record_interaction(
 		CharacterStateFromServer
 			.ServerInteractionType.SNAIL_CRUSH,
@@ -175,16 +178,17 @@ func _process_movement_and_actions() -> void:
 
 	if (
 		Netcode.is_server
-		and _pending_bounce != Vector2.ZERO
+		and _has_pending_bounce
 		and not Netcode.frame_driver.is_resimulating
 	):
 		# Server forward-sim only: apply pending bounce
 		# from collision callback.
 		bounce_vel = _pending_bounce
 		if _pending_is_momentum_transfer:
-			# Momentum transfer: adjust velocity without
-			# launch effects. Players stay grounded.
-			velocity = _pending_bounce
+			# Momentum transfer: only adjust horizontal
+			# velocity. Preserve vertical velocity so
+			# jumps and gravity are unaffected.
+			velocity.x = _pending_bounce.x
 		else:
 			# Bounce/kill: force_launch() nudges position
 			# up by 1 pixel and clears surface
@@ -192,6 +196,7 @@ func _process_movement_and_actions() -> void:
 			# from zeroing velocity.
 			force_launch(_pending_bounce)
 		_pending_bounce = Vector2.ZERO
+		_has_pending_bounce = false
 		_pending_is_momentum_transfer = false
 		applied_bounce = true
 		bounce_source = "pending"
@@ -217,7 +222,7 @@ func _process_movement_and_actions() -> void:
 					.ServerInteractionType.BUMP
 			)
 			if is_mt_bump:
-				velocity = buffer_bounce
+				velocity.x = buffer_bounce.x
 			else:
 				force_launch(buffer_bounce)
 			# Clear pending bounce when buffer handles
@@ -225,6 +230,7 @@ func _process_movement_and_actions() -> void:
 			# redundant application after re-simulation
 			# completes.
 			_pending_bounce = Vector2.ZERO
+			_has_pending_bounce = false
 			_pending_is_momentum_transfer = false
 			applied_bounce = true
 			bounce_source = "buffer"
@@ -1167,8 +1173,7 @@ func _server_apply_interaction_with_position(
 			)
 			return
 
-	_pending_bounce = bounce_velocity
-	_pending_is_momentum_transfer = (
+	var is_mt_bump := (
 		interaction_type
 		== CharacterStateFromServer
 			.ServerInteractionType.BUMP
@@ -1176,27 +1181,42 @@ func _server_apply_interaction_with_position(
 		== Settings.BumpMode.MOMENTUM_TRANSFER
 	)
 
-	# Record interaction with lag-compensated position (automatically injects
-	# into buffer).
-	state_from_server.record_interaction(
-		interaction_type,
-		Netcode.server_frame_index,
-		override_position,
-		bounce_velocity
-	)
+	_pending_bounce = bounce_velocity
+	_has_pending_bounce = true
+	_pending_is_momentum_transfer = is_mt_bump
+
+	# Momentum transfer bumps skip record_interaction.
+	# record_interaction injects bounce_velocity as
+	# the character's buffer state velocity and queues
+	# a rollback. For MT bumps this overwrites the
+	# real velocity, disrupts floor contact during
+	# resimulation, and causes cascading bumps with
+	# upward drift. Instead, the server applies the
+	# velocity change via _pending_bounce and clients
+	# see it via normal state replication.
+	if not is_mt_bump:
+		state_from_server.record_interaction(
+			interaction_type,
+			Netcode.server_frame_index,
+			override_position,
+			bounce_velocity,
+		)
 
 	Netcode.verbose(
 		(
-			"Applied %s interaction to player %d: pos=%s " +
-			"(lag compensated), bounce=%s, vel=%s"
+			"Applied %s interaction to player %d:"
+			+ " pos=%s, bounce=%s, vel=%s,"
+			+ " recorded=%s"
 		) % [
-			CharacterStateFromServer.ServerInteractionType.keys()[
-				interaction_type
-			],
+			CharacterStateFromServer
+				.ServerInteractionType.keys()[
+					interaction_type
+				],
 			player_id,
 			override_position,
 			_pending_bounce,
 			bounce_velocity,
+			not is_mt_bump,
 		],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
@@ -1210,10 +1230,19 @@ func _calculate_momentum_transfer(
 	other_player: Player,
 	override_position: Vector2,
 ) -> Vector2:
-	var axis := (
+	# Use a horizontal-only axis. Players on the same
+	# floor can have slight Y differences from physics
+	# positioning. A non-horizontal axis would project
+	# horizontal velocity into the vertical direction,
+	# causing unintended upward movement.
+	var raw_diff := (
 		other_player.global_position
 		- override_position
-	).normalized()
+	)
+	if raw_diff.x == 0.0:
+		# Players at same X. Default to facing right.
+		raw_diff.x = 1.0
+	var axis := Vector2(signf(raw_diff.x), 0.0)
 
 	# Project both velocities onto the collision axis.
 	# Positive = moving toward other player.
@@ -1234,16 +1263,18 @@ func _calculate_momentum_transfer(
 	)
 
 	var v_self_new := v_self - transfer
-	# Pusher: slow down but never reverse direction.
-	if v_self > 0.0:
-		v_self_new = maxf(0.0, v_self_new)
 
-	# Preserve velocity perpendicular to collision axis.
+	# Preserve horizontal velocity perpendicular to
+	# collision axis (zero for a pure left/right axis).
 	var perpendicular := (
 		pre_movement_velocity - v_self * axis
 	)
 
-	return perpendicular + axis * v_self_new
+	var result := perpendicular + axis * v_self_new
+	# Ensure no vertical component. Momentum transfer
+	# keeps players grounded.
+	result.y = 0.0
+	return result
 
 
 ## Checks if a kill (or death) interaction happened this frame.
@@ -1643,8 +1674,12 @@ func _update_player_collision_for_invincibility() -> void:
 	# Disable player-player collision when invincible.
 	# Layer bit 4 = this player can be hit by others.
 	# Mask bit 4 = this player can hit others.
-	set_collision_layer_value(_PLAYER_COLLISION_LAYER, not is_invincible)
-	set_collision_mask_value(_PLAYER_COLLISION_LAYER, not is_invincible)
+	set_collision_layer_value(
+		_PLAYER_COLLISION_LAYER, not is_invincible,
+	)
+	set_collision_mask_value(
+		_PLAYER_COLLISION_LAYER, not is_invincible,
+	)
 
 	# Also update Area2D children (BodyArea, FootArea, HeadArea).
 	for area_name in ["%BodyArea", "%FootArea", "%HeadArea"]:

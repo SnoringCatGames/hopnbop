@@ -32,6 +32,10 @@ var _base_zooms := {}
 ## switches.
 var _last_camera: Camera2D
 
+## When true, overrides camera base zoom to
+## Vector2(1, 1) for 1:1 pixel rendering.
+var is_thumbnail_snapshot_mode := false
+
 
 func _enter_tree() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -156,9 +160,40 @@ func _update_camera_zoom() -> void:
 			Node.PROCESS_MODE_ALWAYS
 
 	var base_zoom: Vector2 = _base_zooms[camera]
+
+	# In thumbnail snapshot mode, force base zoom
+	# to 1x for 1:1 pixel rendering.
+	if is_thumbnail_snapshot_mode:
+		base_zoom = Vector2.ONE
+
 	camera.zoom = base_zoom * _zoom_scale
 
 	_last_camera = camera
+
+
+## Configures 1:1 pixel rendering for thumbnail
+## snapshot mode. Sets the container, SubViewport,
+## and zoom directly rather than relying on
+## _on_window_resized(), because the
+## DisplayServer window resize is asynchronous
+## and may not have taken effect yet.
+func configure_thumbnail_snapshot(
+	level_pixel_size: Vector2i,
+) -> void:
+	is_thumbnail_snapshot_mode = true
+	_base_resolution = level_pixel_size
+	current_scale = 1
+	_zoom_scale = 1.0
+
+	if is_instance_valid(container):
+		container.stretch_shrink = 1
+		container.size = Vector2(level_pixel_size)
+		container.position = Vector2.ZERO
+
+	if is_instance_valid(sub_viewport):
+		sub_viewport.size = level_pixel_size
+
+	_update_camera_zoom()
 
 
 ## Builds a Transform2D mapping world coordinates to

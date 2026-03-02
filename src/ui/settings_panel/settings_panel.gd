@@ -187,15 +187,15 @@ func _build_ui() -> void:
 		"Full Screen", &"full_screen",
 		0, icon_fullscreen)
 
-	# Mute music toggle.
+	# Music toggle (inverted: checked = enabled).
 	_add_toggle_row(
-		"Mute Music", &"mute_music",
-		0, icon_music)
+		"Music", &"mute_music",
+		0, icon_music, true)
 
-	# Mute SFX toggle.
+	# SFX toggle (inverted: checked = enabled).
 	_add_toggle_row(
-		"Mute SFX", &"mute_sfx",
-		0, icon_sfx)
+		"SFX", &"mute_sfx",
+		0, icon_sfx, true)
 
 	# Spacer above level preferences.
 	var level_spacer := Control.new()
@@ -250,6 +250,7 @@ func _add_toggle_row(
 	setting_key: StringName,
 	indent_pixels := 0,
 	icon: Texture2D = null,
+	is_inverted := false,
 ) -> ToggleRow:
 	var row: ToggleRow = \
 		_ToggleRowScene.instantiate()
@@ -257,6 +258,8 @@ func _add_toggle_row(
 		row.set_indent(indent_pixels)
 	if icon != null:
 		row.set_icon(icon)
+	if is_inverted:
+		row.set_inverted()
 	row.setup(display_name, setting_key)
 	_row_container.add_child(row)
 	_connect_row_clicked(row)
@@ -335,15 +338,27 @@ func _set_focus(index: int) -> void:
 	_ensure_focused_visible()
 
 
-func _move_focus(direction: int) -> void:
+func _move_focus(
+	direction: int,
+	is_wrap := true,
+) -> void:
 	if _rows.is_empty():
 		return
 
-	var new_index := \
-		(_focused_index + direction) \
-		% _rows.size()
-	if new_index < 0:
-		new_index += _rows.size()
+	var new_index: int
+	if is_wrap:
+		new_index = \
+			(_focused_index + direction) \
+			% _rows.size()
+		if new_index < 0:
+			new_index += _rows.size()
+	else:
+		new_index = clampi(
+			_focused_index + direction,
+			0,
+			_rows.size() - 1)
+		if new_index == _focused_index:
+			return
 	_set_focus(new_index)
 	if is_instance_valid(G.audio):
 		G.audio.play_sound("focus")
@@ -460,12 +475,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		if mb.pressed:
 			if mb.button_index == \
 					MOUSE_BUTTON_WHEEL_UP:
-				_move_focus(-1)
+				_move_focus(-1, false)
 				get_viewport() \
 					.set_input_as_handled()
 			elif mb.button_index == \
 					MOUSE_BUTTON_WHEEL_DOWN:
-				_move_focus(1)
+				_move_focus(1, false)
 				get_viewport() \
 					.set_input_as_handled()
 

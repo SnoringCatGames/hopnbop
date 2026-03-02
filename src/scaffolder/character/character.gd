@@ -12,11 +12,17 @@ const _ENEMY_PROJECTILE_COLLISION_MASK_BIT := 1 << 6
 const _FOOT_PROJECTILE_COLLISION_MASK_BIT := 1 << 7
 const _HEAD_PROJECTILE_COLLISION_MASK_BIT := 1 << 8
 
-# Increased floor_max_angle for ice surfaces. Prevents
-# circle collision shapes from getting stuck at tile
-# edges where the contact normal rotates past 45
-# degrees and triggers wall classification.
-const _ICE_FLOOR_MAX_ANGLE := PI / 2.5
+# Minimum horizontal advance per frame when sliding
+# off an ice edge. Ensures the character clears the
+# tile corner in a reasonable number of frames even
+# at very slow speeds.
+const _ICE_EDGE_MIN_ADVANCE_PX := 0.5
+
+# Duration to suppress air horizontal friction after
+# leaving an ice floor. Prevents the character from
+# decelerating immediately when sliding off an ice edge.
+# 12 frames = 0.2 seconds at 60 FPS.
+const _ICE_AIR_FRICTION_COOLDOWN_FRAMES := 12
 
 @export var collision_shape: CollisionShape2D:
 	set(value):
@@ -63,8 +69,13 @@ var _current_max_horizontal_speed_multiplier := 1.0
 # Frame index when force_launch was last called. Used to prevent immediate
 # floor re-attachment after a bounce.
 var _last_launch_frame_index := -1
+
+# Frame index when the character was last on an ice floor.
+# Used to suppress air horizontal friction after leaving ice.
+var _last_ice_floor_frame_index := -1
 # Number of frames to prevent floor attachment after a launch.
 const _LAUNCH_FLOOR_ATTACHMENT_COOLDOWN_FRAMES := 3
+
 
 ## Top edge of the water surface (global Y).
 ## Updated each frame when in water.
@@ -324,31 +335,70 @@ func _apply_movement() -> void:
 	# to decompose diagonal movement differently when
 	# holding sideways, which reduces effective upward
 	# travel.
-	var saved_motion_mode := motion_mode
-	if is_in_launch_cooldown():
-		motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
-
-	# On ice surfaces, adjust move_and_slide behavior
-	# for smooth edge traversal. The circle collision
-	# shape contacts tile corners at angles that would
-	# otherwise cause wall classification (zeroing
-	# velocity) and speed loss from velocity projection
-	# onto the angled surface tangent.
 	var is_on_ice := (
 		surfaces.is_attaching_to_floor
 		and surfaces.surface_properties.is_ice
 	)
-	var saved_floor_max_angle := floor_max_angle
-	var saved_floor_constant_speed := floor_constant_speed
 	if is_on_ice:
-		floor_max_angle = _ICE_FLOOR_MAX_ANGLE
-		floor_constant_speed = true
+		_last_ice_floor_frame_index = (
+			Netcode.server_frame_index
+		)
+	var saved_motion_mode := motion_mode
+	if is_in_launch_cooldown():
+		motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
 
 	move_and_slide()
 
-	floor_max_angle = saved_floor_max_angle
-	floor_constant_speed = saved_floor_constant_speed
 	motion_mode = saved_motion_mode
+
+	# On ice, the circle collision shape gets stuck
+	# at tile corners because move_and_slide cannot
+	# advance past the contact point. Override
+	# horizontal position to the expected value so
+	# the character passes through the corner.
+	# Velocity is also preserved so the character
+	# maintains momentum. Only actual walls (nearly
+	# horizontal collision normal) block the override.
+	# Corner contacts have angled normals that are
+	# distinguishable from real walls.
+	var is_stuck_at_ice_edge := false
+	if is_on_ice and not should_preserve_wall_slide:
+		var has_true_wall := false
+		for i in get_slide_collision_count():
+			var n := get_slide_collision(i).get_normal()
+			if absf(n.x) > 0.9:
+				has_true_wall = true
+				break
+		if not has_true_wall:
+			var delta_time := (
+				Netcode.time.get_time_step_sec()
+			)
+			var expected_dx := (
+				saved_velocity.x * delta_time
+			)
+			# At slow speeds, ensure a minimum advance
+			# so the character clears the corner within
+			# a few frames instead of imperceptibly
+			# creeping past it.
+			var actual_dx := (
+				position.x - saved_position.x
+			)
+			if (
+				absf(expected_dx) > 0.001
+				and absf(actual_dx)
+					< absf(expected_dx) * 0.9
+			):
+				is_stuck_at_ice_edge = true
+				var min_dx := (
+					signf(saved_velocity.x)
+					* _ICE_EDGE_MIN_ADVANCE_PX
+				)
+				if absf(expected_dx) < absf(min_dx):
+					expected_dx = min_dx
+			position.x = (
+				saved_position.x + expected_dx
+			)
+		velocity.x = saved_velocity.x
 
 	# Restore horizontal velocity after move_and_slide.
 	if should_preserve_wall_slide:
@@ -369,6 +419,18 @@ func _apply_movement() -> void:
 	# the character up), causing FloorDefaultAction to zero the
 	# jump velocity.
 	surfaces.update_actions()
+
+	# When stuck at an ice edge, the position override
+	# advances the character past the tile corner, but
+	# collision data from move_and_slide is stale and
+	# still reports floor contact. This keeps
+	# surface_type as FLOOR, causing FloorDefaultAction
+	# to zero velocity.y and FloorFrictionAction to
+	# decelerate. Clear floor attachment to force an
+	# immediate air transition so gravity applies and
+	# horizontal momentum is preserved.
+	if is_stuck_at_ice_edge:
+		surfaces.is_attaching_to_floor = false
 
 	# Update water state from tilemap after
 	# position is finalized.
@@ -571,8 +633,28 @@ func force_launch(boost: Vector2) -> void:
 func is_in_launch_cooldown() -> bool:
 	if _last_launch_frame_index < 0:
 		return false
-	var frames_since_launch := Netcode.server_frame_index - _last_launch_frame_index
+	var frames_since_launch := (
+		Netcode.server_frame_index
+		- _last_launch_frame_index
+	)
 	return frames_since_launch < _LAUNCH_FLOOR_ATTACHMENT_COOLDOWN_FRAMES
+
+
+## Returns true if air horizontal friction should be
+## suppressed because the character recently left an
+## ice floor. This prevents immediate deceleration
+## when sliding off an ice edge.
+func is_in_ice_air_friction_cooldown() -> bool:
+	if _last_ice_floor_frame_index < 0:
+		return false
+	var frames_since_ice := (
+		Netcode.server_frame_index
+		- _last_ice_floor_frame_index
+	)
+	return (
+		frames_since_ice
+		< _ICE_AIR_FRICTION_COOLDOWN_FRAMES
+	)
 
 
 func get_next_position_prediction() -> Vector2:

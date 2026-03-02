@@ -94,6 +94,11 @@ const SURFACE_TARGET_MAX_ATTEMPTS := 20
 ## Per-target safety timeout (seconds).
 const SEGMENT_TIMEOUT_SEC := 8.0
 
+## Frames to ignore surface contact after
+## entering flight (prevents immediately
+## re-entering bump rest on a surface).
+const SURFACE_GRACE_FRAMES := 6
+
 ## Min perpendicular curve offset as fraction
 ## of start-to-end distance.
 const CURVE_OFFSET_MIN := 0.2
@@ -117,6 +122,29 @@ const EVASION_TARGET_ATTEMPTS := 10
 ## Min dot product between flee direction and
 ## evasion target direction.
 const EVASION_MIN_DOT := 0.3
+
+## Minimum distance for evasion targets
+## (pixels). Prevents ultra-short curves
+## that cause jitter from rapid re-picking.
+const EVASION_MIN_DISTANCE := 30.0
+
+## Flight speed multiplier during evasion.
+const EVASION_SPEED_MULT := 2.0
+
+## Steer response multiplier during evasion.
+const EVASION_STEER_MULT := 2.0
+
+## Flutter frequency multiplier when agitated.
+const EVASION_FLUTTER_FREQ_MULT := 1.6
+
+## Flutter amplitude multiplier when agitated.
+const EVASION_FLUTTER_AMP_MULT := 1.4
+
+## How quickly agitation ramps up (per second).
+const AGITATION_RISE_RATE := 4.0
+
+## How quickly agitation decays (per second).
+const AGITATION_DECAY_RATE := 0.8
 
 ## Sprite flutter base frequency (Hz).
 const FLUTTER_FREQ := 2.0
@@ -229,6 +257,19 @@ var _flutter_phase_timer := 0.0
 ## burst (randomized each burst).
 var _flutter_freq_mult := 1.0
 
+## Phase accumulator for flutter sine wave.
+## Avoids phase jumps when frequency changes.
+var _flutter_phase := 0.0
+
+## Frames remaining where surface contact
+## is ignored after entering flight.
+var _surface_grace := 0
+
+## Current agitation level (0 = calm,
+## 1 = fully agitated). Ramps up during
+## evasion, decays when calm.
+var _agitation := 0.0
+
 @onready var _sprite: AnimatedSprite2D = (
 	$AnimatedSprite2D)
 
@@ -275,10 +316,27 @@ func _ready() -> void:
 	if frame_count > 1:
 		_sprite.frame = randi() % frame_count
 
+	CritterWrapGhost.create_ghosts(
+		self, _sprite)
+
 
 func _physics_process(delta: float) -> void:
 	_noise_time += delta
 	_time_since_disturbed += delta
+
+	# Ease agitation toward target.
+	var agitation_target := (
+		1.0 if _evading else 0.0)
+	if _agitation < agitation_target:
+		_agitation = minf(
+			_agitation
+			+ AGITATION_RISE_RATE * delta,
+			1.0)
+	else:
+		_agitation = maxf(
+			_agitation
+			- AGITATION_DECAY_RATE * delta,
+			0.0)
 
 	# Tick flap/glide phase timer during
 	# flight.
@@ -301,9 +359,14 @@ func _physics_process(delta: float) -> void:
 		State.FLYING:
 			_air_duration_timer -= delta
 			_segment_timer -= delta
+			var speed_mult := lerpf(
+				1.0,
+				EVASION_SPEED_MULT,
+				_agitation)
 			_curve_t = minf(
 				_curve_t
-				+ _curve_speed * delta,
+				+ _curve_speed
+				* speed_mult * delta,
 				1.0)
 			_process_flying(delta)
 		State.RESTING:
@@ -320,6 +383,17 @@ func _physics_process(delta: float) -> void:
 
 
 func _process_flying(delta: float) -> void:
+	# Blend speed and steer response based on
+	# agitation.
+	var speed := lerpf(
+		FLY_SPEED,
+		FLY_SPEED * EVASION_SPEED_MULT,
+		_agitation)
+	var steer_rate := lerpf(
+		STEER_RESPONSE,
+		STEER_RESPONSE * EVASION_STEER_MULT,
+		_agitation)
+
 	# Steer toward guide point on Bezier
 	# curve.
 	var guide := _sample_curve(
@@ -331,7 +405,7 @@ func _process_flying(delta: float) -> void:
 
 	if to_guide.length() > 1.0:
 		steer = (
-			to_guide.normalized() * FLY_SPEED)
+			to_guide.normalized() * speed)
 
 	# Noise wander.
 	var nx := _noise.get_noise_2d(
@@ -365,7 +439,7 @@ func _process_flying(delta: float) -> void:
 
 	# Smooth velocity transition.
 	velocity = velocity.lerp(
-		steer, STEER_RESPONSE * delta)
+		steer, steer_rate * delta)
 	_prev_position = global_position
 	move_and_slide()
 
@@ -379,10 +453,20 @@ func _process_flying(delta: float) -> void:
 			_pick_air_target()
 		return
 
+	# Tick surface grace countdown.
+	if _surface_grace > 0:
+		_surface_grace -= 1
+
 	# If we bumped a surface while not
-	# landing, rest briefly before resuming.
+	# landing or evading, rest briefly before
+	# resuming. Grace period prevents
+	# immediately re-entering rest after
+	# takeoff. Evading butterflies slide along
+	# surfaces instead of stopping.
 	if (
 		not _landing
+		and not _evading
+		and _surface_grace <= 0
 		and (is_on_floor() or is_on_wall())
 	):
 		_enter_bump_rest()
@@ -393,17 +477,27 @@ func _process_flying(delta: float) -> void:
 	if absf(velocity.x) > 0.5:
 		_sprite.flip_h = velocity.x < 0.0
 
-	# Sprite flutter (visual only).
+	# Sprite flutter (visual only). Frequency
+	# and amplitude increase with agitation.
+	var freq_mult := lerpf(
+		1.0, EVASION_FLUTTER_FREQ_MULT,
+		_agitation)
+	var amp_mult := lerpf(
+		1.0, EVASION_FLUTTER_AMP_MULT,
+		_agitation)
 	var freq := (
-		FLUTTER_FREQ * _flutter_freq_mult)
-	var raw := sin(
-		_noise_time * freq * TAU)
+		FLUTTER_FREQ
+		* _flutter_freq_mult
+		* freq_mult)
+	_flutter_phase += freq * delta * TAU
+	var raw := sin(_flutter_phase)
 	var bouncy := absf(raw)
 	var blend := lerpf(
 		raw, bouncy, FLUTTER_BOUNCE)
 	_sprite.position.y = (
 		-blend
 		* FLUTTER_AMPLITUDE
+		* amp_mult
 		* _flutter_envelope)
 
 	# Target arrival / state transitions.
@@ -419,6 +513,11 @@ func _process_flying(delta: float) -> void:
 	var player_close := flee.length() > 1.0
 
 	if _evading:
+		# Clear evasion when player leaves range.
+		# Continue current curve naturally so
+		# agitation decays smoothly.
+		if not player_close:
+			_evading = false
 		if arrived or timed_out:
 			if player_close:
 				_pick_evasion_target(
@@ -504,6 +603,7 @@ func _enter_flying() -> void:
 	_seeking_surface = false
 	_evading = false
 	_landing_direction = Vector2.ZERO
+	_surface_grace = SURFACE_GRACE_FRAMES
 	_air_duration_timer = randf_range(
 		AIR_DURATION_MIN, AIR_DURATION_MAX)
 	_sprite.rotation = 0.0
@@ -768,6 +868,16 @@ func _pick_evasion_target(
 		var cand_global := (
 			_collision_tiles.to_global(
 				cand_local))
+		# Skip targets too close to avoid
+		# ultra-short curves.
+		if (
+			cand_global
+				.distance_squared_to(
+					global_position)
+			< EVASION_MIN_DISTANCE
+				* EVASION_MIN_DISTANCE
+		):
+			continue
 		var to_cand := (
 			(cand_global - global_position)
 			.normalized())
@@ -1019,18 +1129,6 @@ func _calc_player_flee() -> Array:
 	var nearest_pos := Vector2.ZERO
 	var level: Level = G.level
 	if not is_instance_valid(level):
-		# DEBUG: Remove after diagnosing.
-		if Engine.get_physics_frames() % 120 == 0:
-			print(
-				"[Butterfly] no valid level")
-		return [flee, nearest_pid, nearest_pos]
-
-	if level.players.is_empty():
-		# DEBUG: Remove after diagnosing.
-		if Engine.get_physics_frames() % 120 == 0:
-			print(
-				"[Butterfly] level.players "
-				+ "is empty")
 		return [flee, nearest_pid, nearest_pos]
 
 	for player in level.players:
@@ -1040,16 +1138,6 @@ func _calc_player_flee() -> Array:
 			global_position
 			- player.global_position)
 		var dist := diff.length()
-		# DEBUG: Remove after diagnosing.
-		if Engine.get_physics_frames() % 120 == 0:
-			print(
-				"[Butterfly] dist to player "
-				+ "%d: %.1f (radius: %.1f)"
-				% [
-					player.player_id,
-					dist,
-					PLAYER_FLEE_RADIUS,
-				])
 		if dist > 0.0 and (
 				dist < PLAYER_FLEE_RADIUS):
 			var ratio := (
