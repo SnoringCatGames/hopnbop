@@ -96,7 +96,7 @@ func _client_send_ping() -> void:
 	_server_rpc_ping.rpc_id(1, t1)
 
 
-@rpc("any_peer", "call_remote", "unreliable")
+@rpc("any_peer", "call_remote", "unreliable", NetworkConnector.RPC_CHANNEL_CLOCK_SYNC)
 func _server_rpc_ping(client_t1: int) -> void:
 	Netcode.check_is_server()
 
@@ -109,7 +109,7 @@ func _server_rpc_ping(client_t1: int) -> void:
 	_client_rpc_pong.rpc_id(sender_id, client_t1, t2, t3, current_frame)
 
 
-@rpc("authority", "call_remote", "unreliable")
+@rpc("authority", "call_remote", "unreliable", NetworkConnector.RPC_CHANNEL_CLOCK_SYNC)
 func _client_rpc_pong(
 		client_t1: int,
 		server_t2: int,

@@ -50,9 +50,22 @@ enum DisconnectReason {
 
 const SERVER_ID := 1
 
-## Transfer channel for pause/unpause RPCs. Using a dedicated channel ensures
-## pause coordination messages are not blocked by other network traffic.
-const RPC_CHANNEL_PAUSE := 1
+## RPC channel assignments. Each channel is an independent ENet ordering
+## queue. Separating RPCs by purpose prevents head-of-line blocking
+## between unrelated message types.
+##
+## Channel 0: Connection setup (safe default for new RPCs).
+## Channel 1: Session control (pause, countdown, shutdown).
+## Channel 2: Clock sync (latency-sensitive unreliable ping/pong).
+## Channel 3: Game events (match lifecycle + entity events).
+## Channel 4: Stats sync (periodic unreliable stat updates).
+## Channel 5: Debug/dev (perf tracker, cheats).
+const RPC_CHANNEL_DEFAULT := 0
+const RPC_CHANNEL_SESSION_CONTROL := 1
+const RPC_CHANNEL_CLOCK_SYNC := 2
+const RPC_CHANNEL_GAME_EVENTS := 3
+const RPC_CHANNEL_STATS := 4
+const RPC_CHANNEL_DEBUG := 5
 
 ## Callable for validating player attributes (game-specific).
 ## Signature: func(attributes: Array, expected_count: int, peer_id: int) ->
@@ -81,6 +94,11 @@ var _next_player_id: int = 1
 var _player_id_to_peer_id := {}
 # Dictionary<int, int>
 var _player_id_to_local_player_index := {}
+
+# Server-only: Stored peer declarations for replay
+# after level reload. Maps peer_id to
+# {assigned_ids: Array[int], attributes: Array}.
+var _peer_declarations := {}
 
 
 func _enter_tree() -> void:
@@ -406,8 +424,21 @@ func _server_rpc_declare_players(
 		# No validator provided, use attributes as-is
 		validated_attributes = player_attributes
 
+	# Store declaration for replay after level reload.
+	_peer_declarations[peer_id] = {
+		"assigned_ids": assigned_ids,
+		"attributes": validated_attributes,
+	}
+
 	# Emit signal for Level and MatchStateSynchronizer to handle spawning.
 	peer_players_declared.emit(peer_id, assigned_ids, validated_attributes)
+
+
+## Returns stored peer declarations for replaying
+## after a level reload. Each entry maps peer_id to
+## {assigned_ids: Array[int], attributes: Array}.
+func server_get_peer_declarations() -> Dictionary:
+	return _peer_declarations
 
 
 ## RPC called by server to send assigned player IDs to the client.

@@ -58,8 +58,15 @@ extends Node
 
 # ---
 
+# Add wrap-around level.
+
+# Add Dozohip level.
+
 # ADD LEVEL WRAP AROUND LIKE KILLER QUEEN (vertically and horizontally)
 # - Also make critters and gore wrap-around.
+
+# - Add support for jumping on water if you time it just right (+/-0.05 or something small).
+#   - Both early and late-press forgiveness.
 
 # - Look at usage of distance instead of distance_squared.
 
@@ -537,7 +544,6 @@ extends Node
 
 # ### TODO: After everything else:
 # - Survey the codebase for where we use string literals. Should any of these be StringName literals instead?
-# - Survey all RPCs. Decide whether we should introduce new RPC channels and assign them as appropriate. Reference them as consts on NetworkConnector.
 # - Review tests.
 # - Review these notes: https://docs.google.com/document/d/1qJcNUrE1y8UllVVCojp-IN3zCwml8VK7kjYhp1uJhV4
 # - Review the example app.
@@ -890,7 +896,7 @@ func client_request_unpause() -> void:
 ## Client requests server to pause.
 
 
-@rpc("any_peer", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
+@rpc("any_peer", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_SESSION_CONTROL)
 func _server_rpc_client_request_pause() -> void:
 	Netcode.check_is_server()
 
@@ -937,7 +943,7 @@ func _server_rpc_client_request_pause() -> void:
 
 
 ## Client requests server to unpause.
-@rpc("any_peer", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
+@rpc("any_peer", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_SESSION_CONTROL)
 func _server_rpc_request_unpause() -> void:
 	Netcode.check_is_server()
 
@@ -977,7 +983,7 @@ func _server_rpc_request_unpause() -> void:
 ## Server notifies all clients of pause.
 
 
-@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_SESSION_CONTROL)
 func _client_rpc_notify_pause(
 	server_pause_frame: int,
 	pause_initiator_peer_id: int,
@@ -994,7 +1000,7 @@ func _client_rpc_notify_pause(
 ## Server notifies all clients of unpause.
 
 
-@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_SESSION_CONTROL)
 func _client_rpc_notify_unpause(
 		server_unpause_frame: int,
 		server_cumulative_paused_frames: int,
@@ -1009,7 +1015,7 @@ func _client_rpc_notify_unpause(
 
 ## Server notifies clients to start match start countdown.
 ## Clients pause locally and unpause when countdown ends.
-@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_SESSION_CONTROL)
 func _client_rpc_start_match_start_countdown(countdown_frames: int) -> void:
 	Netcode.check_is_client()
 
@@ -1037,7 +1043,7 @@ func _client_rpc_start_match_start_countdown(countdown_frames: int) -> void:
 
 ## Server notifies all clients of impending graceful shutdown.
 ## Called before disconnecting clients during Spot instance termination.
-@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_PAUSE)
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_SESSION_CONTROL)
 func _client_rpc_notify_shutdown(shutdown_message: String) -> void:
 	Netcode.check_is_client()
 
