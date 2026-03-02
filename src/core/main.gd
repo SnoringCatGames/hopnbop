@@ -125,6 +125,13 @@ func _notification(notification_type: int) -> void:
 
 
 func close_app() -> void:
+	# Force-close settings panel so unsaved
+	# preferences are written to disk.
+	for child in get_tree().root.get_children():
+		if child is SettingsPanel:
+			child.close()
+			break
+
 	if G.utils.were_screenshots_taken:
 		Utils.open_screenshot_folder()
 	Netcode.print("Main.close_app", NetworkLogger.CATEGORY_CORE_SYSTEMS)

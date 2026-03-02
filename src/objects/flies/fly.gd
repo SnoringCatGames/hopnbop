@@ -14,8 +14,6 @@ const _SPRITE_OFFSETS: Array[Vector2] = [
 	Vector2(-1, -1),
 ]
 
-var _sprite: Sprite2D
-
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -26,11 +24,10 @@ func _ready() -> void:
 	collision_mask = (1 << 0) | (1 << 3)
 	up_direction = Vector2.UP
 	floor_stop_on_slope = false
-	_sprite = $Sprite2D
 
 
 func _process(_delta: float) -> void:
 	# Assign random sprite offset each render
 	# frame for jittery 1px appearance.
-	_sprite.offset = _SPRITE_OFFSETS[
+	%Sprite2D.offset = _SPRITE_OFFSETS[
 		randi() % _SPRITE_OFFSETS.size()]

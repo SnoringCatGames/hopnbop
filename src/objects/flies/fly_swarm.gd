@@ -323,6 +323,14 @@ func _update_flocking(delta: float) -> void:
 
 		fly.move_and_slide()
 
+		# Revert if fly entered water.
+		if (
+			is_instance_valid(level)
+			and level.is_position_in_water(
+				fly.global_position)
+		):
+			fly.global_position = pos
+
 
 func _update_home_point() -> void:
 	# Slowly wander the home point around the

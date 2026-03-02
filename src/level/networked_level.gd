@@ -15,7 +15,7 @@ extends Level
 @export var fly_swarm_count := 1
 
 ## Number of flies per swarm.
-@export var flies_per_swarm := 8
+@export var flies_per_swarm := 12
 
 ## Number of snails to spawn.
 @export var snail_count := 1
@@ -25,7 +25,7 @@ extends Level
 
 ## Number of fish to spawn in water
 ## (client-side).
-@export var fish_count := 1
+@export var fish_count := 2
 
 ## Number of butterflies to spawn (client-side).
 @export var butterfly_count := 2
@@ -42,6 +42,18 @@ extends Level
 @export_range(-0.5, 0.5) \
 	var bird_flight_band_offset := 0.0
 
+## Rectangular bounds for wrap-around movement,
+## centered at global (0,0). Only the size component
+## is used. If size is zero (default), wrap-around
+## is disabled.
+@export var wrap_bounds := Rect2():
+	set(value):
+		wrap_bounds = value
+		if is_instance_valid(_wrap_overlay):
+			_wrap_overlay.queue_redraw()
+		elif is_inside_tree():
+			_setup_wrap_bounds_overlay()
+
 const _FISH_SCENE_PATH := (
 	"res://src/objects/fish/fish.tscn")
 const _BUTTERFLY_SCENE_PATH := (
@@ -56,7 +68,9 @@ var npcs: Array[NPC] = []
 
 var _snails: Array[Snail] = []
 var _crickets: Array = []
+var _critter_stat_tracker: CritterStatTracker
 var _blood_tween: Tween
+var _wrap_overlay: WrapBoundsOverlay
 
 
 func _enter_tree() -> void:
@@ -72,6 +86,10 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
+	# Create overlay before editor guard so
+	# debug annotations render in-editor.
+	_setup_wrap_bounds_overlay()
+
 	var warnings := _get_configuration_warnings()
 	if not warnings.is_empty():
 		Netcode.error("Level._ready: %s (%s)" % [warnings[0], get_scene_file_path()])
@@ -99,6 +117,14 @@ func _ready() -> void:
 		Netcode.is_client
 		and G.settings.are_critters_enabled
 	):
+		# Stat tracker for critter disturbances
+		# and fly proximity.
+		_critter_stat_tracker = \
+			CritterStatTracker.new()
+		_critter_stat_tracker.name = \
+			"CritterStatTracker"
+		add_child(_critter_stat_tracker)
+
 		for i in cricket_count:
 			var cricket := preload(
 				"res://src/objects/cricket/"
@@ -107,6 +133,8 @@ func _ready() -> void:
 			cricket.name = "Cricket_%d" % i
 			%Objects.add_child(cricket)
 			_crickets.append(cricket)
+			_critter_stat_tracker \
+				.register_cricket(cricket)
 
 		_spawn_fly_swarms()
 		_spawn_fish()
@@ -131,6 +159,32 @@ func _ready() -> void:
 				1.0 if is_active else 0.0)
 		G.cheat_manager.cheat_toggled.connect(
 			_on_cheat_toggled)
+
+
+## Wraps a position to stay within wrap_bounds.
+## Returns the position unchanged if wrap_bounds
+## size is zero.
+func wrap_position(pos: Vector2) -> Vector2:
+	if wrap_bounds.size == Vector2.ZERO:
+		return pos
+	var half := wrap_bounds.size / 2.0
+	pos.x = fposmod(
+		pos.x + half.x,
+		wrap_bounds.size.x) - half.x
+	pos.y = fposmod(
+		pos.y + half.y,
+		wrap_bounds.size.y) - half.y
+	return pos
+
+
+func _setup_wrap_bounds_overlay() -> void:
+	if wrap_bounds.size == Vector2.ZERO:
+		return
+	if is_instance_valid(_wrap_overlay):
+		return
+	_wrap_overlay = WrapBoundsOverlay.new()
+	_wrap_overlay.name = "WrapBoundsOverlay"
+	add_child(_wrap_overlay)
 
 
 func _client_on_player_spawned(p_player: Node) -> void:
@@ -367,6 +421,9 @@ func _spawn_fly_swarms() -> void:
 		add_child(swarm)
 		move_child(
 			swarm, players_node.get_index())
+		if _critter_stat_tracker:
+			_critter_stat_tracker \
+				.register_fly_swarm(swarm)
 
 
 func _spawn_fish() -> void:
@@ -399,6 +456,9 @@ func _spawn_fish() -> void:
 		move_child(
 			fish, players_node.get_index())
 		fish.initialize(cell)
+		if _critter_stat_tracker:
+			_critter_stat_tracker \
+				.register_fish(fish)
 
 
 func _spawn_butterflies() -> void:
@@ -411,9 +471,32 @@ func _spawn_butterflies() -> void:
 
 	var butterfly_scene: PackedScene = preload(
 		_BUTTERFLY_SCENE_PATH)
+	var used_positions: Array[Vector2] = []
 	for i in butterfly_count:
-		var cell: Vector2i = (
+		# Pick spawn cell far from existing
+		# butterflies.
+		var best_cell: Vector2i = (
 			interior_cells.pick_random())
+		var best_min_dist := 0.0
+		for _attempt in 10:
+			var candidate: Vector2i = (
+				interior_cells.pick_random())
+			var cand_local := (
+				collision_tiles.map_to_local(
+					candidate))
+			var cand_global := (
+				collision_tiles.to_global(
+					cand_local))
+			var min_dist := INF
+			for pos in used_positions:
+				var d := (
+					cand_global
+						.distance_to(pos))
+				if d < min_dist:
+					min_dist = d
+			if min_dist > best_min_dist:
+				best_min_dist = min_dist
+				best_cell = candidate
 		var butterfly: Butterfly = (
 			butterfly_scene.instantiate())
 		butterfly.name = "Butterfly_%d" % i
@@ -424,9 +507,16 @@ func _spawn_butterflies() -> void:
 			butterfly,
 			players_node.get_index())
 		var local_pos := (
-			collision_tiles.map_to_local(cell))
+			collision_tiles.map_to_local(
+				best_cell))
 		butterfly.global_position = (
-			collision_tiles.to_global(local_pos))
+			collision_tiles.to_global(
+				local_pos))
+		used_positions.append(
+			butterfly.global_position)
+		if _critter_stat_tracker:
+			_critter_stat_tracker \
+				.register_butterfly(butterfly)
 
 
 func _spawn_bird_flock() -> void:
