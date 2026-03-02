@@ -33,6 +33,7 @@ class TestCollisionBounceVelocity:
 
 	func before_each():
 		ArrayPool.clear_all_pools()
+		G.settings.bump_mode = Settings.BumpMode.BOUNCE
 
 		# Set up mock environment.
 		mock_level = TestEnvironmentMock.setup_mock_level(self )
@@ -252,6 +253,7 @@ class TestBothPlayersBounceBehavior:
 
 	func before_each():
 		ArrayPool.clear_all_pools()
+		G.settings.bump_mode = Settings.BumpMode.BOUNCE
 
 		# Set up mock environment.
 		mock_level = TestEnvironmentMock.setup_mock_level(self )
@@ -362,6 +364,7 @@ class TestBouncePreservesExistingVelocity:
 
 	func before_each():
 		ArrayPool.clear_all_pools()
+		G.settings.bump_mode = Settings.BumpMode.BOUNCE
 
 		# Set up mock environment.
 		mock_level = TestEnvironmentMock.setup_mock_level(self )
@@ -455,6 +458,7 @@ class TestCollisionEdgeCases:
 
 	func before_each():
 		ArrayPool.clear_all_pools()
+		G.settings.bump_mode = Settings.BumpMode.BOUNCE
 
 		# Set up mock environment.
 		mock_level = TestEnvironmentMock.setup_mock_level(self )

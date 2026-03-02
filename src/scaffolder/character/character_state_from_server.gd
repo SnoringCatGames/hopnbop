@@ -539,10 +539,14 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 	character.velocity = velocity
 	character.surfaces.bitmask = surfaces
 
-	# Derive launch frame from interaction data so
-	# the 3-frame launch cooldown (which prevents
-	# immediate floor re-attachment after a bounce)
-	# works correctly across rollback re-simulation.
+	# Derive launch state from interaction data so
+	# the 3-frame launch cooldown and velocity cap
+	# work correctly across rollback re-simulation.
+	# initial_launch_velocity is not stored in the
+	# bitmask, so it must be restored from the
+	# interaction data to prevent the stale-velocity
+	# guard from dropping the cap to
+	# max_vertical_speed.
 	if (
 		last_interaction_type
 			== ServerInteractionType.KILL
@@ -555,6 +559,9 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 	):
 		character._last_launch_frame_index = (
 			last_interaction_frame_index
+		)
+		character.surfaces.initial_launch_velocity = (
+			last_interaction_velocity
 		)
 	else:
 		character._last_launch_frame_index = -1

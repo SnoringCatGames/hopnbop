@@ -1,0 +1,111 @@
+[gd_scene load_steps=16 format=3 uid="uid://cbo002msnip4r"]
+
+[ext_resource type="Script" uid="uid://coxq8orw0stqd" path="res://src/objects/fish/fish.gd" id="1_fish"]
+[ext_resource type="Texture2D" uid="uid://ctd88oxhml23r" path="res://assets/images/orange_fish.png" id="2_orange_fish"]
+
+[sub_resource type="AtlasTexture" id="evade_0"]
+atlas = ExtResource("2_orange_fish")
+region = Rect2(112, 0, 14, 9)
+
+[sub_resource type="AtlasTexture" id="evade_1"]
+atlas = ExtResource("2_orange_fish")
+region = Rect2(126, 0, 14, 9)
+
+[sub_resource type="AtlasTexture" id="evade_2"]
+atlas = ExtResource("2_orange_fish")
+region = Rect2(140, 0, 14, 9)
+
+[sub_resource type="AtlasTexture" id="evade_3"]
+atlas = ExtResource("2_orange_fish")
+region = Rect2(154, 0, 14, 9)
+
+[sub_resource type="AtlasTexture" id="swim_0"]
+atlas = ExtResource("2_orange_fish")
+region = Rect2(0, 0, 14, 9)
+
+[sub_resource type="AtlasTexture" id="swim_1"]
+atlas = ExtResource("2_orange_fish")
+region = Rect2(14, 0, 14, 9)
+
+[sub_resource type="AtlasTexture" id="swim_2"]
+atlas = ExtResource("2_orange_fish")
+region = Rect2(28, 0, 14, 9)
+
+[sub_resource type="AtlasTexture" id="swim_3"]
+atlas = ExtResource("2_orange_fish")
+region = Rect2(42, 0, 14, 9)
+
+[sub_resource type="AtlasTexture" id="swim_4"]
+atlas = ExtResource("2_orange_fish")
+region = Rect2(56, 0, 14, 9)
+
+[sub_resource type="AtlasTexture" id="swim_5"]
+atlas = ExtResource("2_orange_fish")
+region = Rect2(70, 0, 14, 9)
+
+[sub_resource type="AtlasTexture" id="swim_6"]
+atlas = ExtResource("2_orange_fish")
+region = Rect2(84, 0, 14, 9)
+
+[sub_resource type="AtlasTexture" id="swim_7"]
+atlas = ExtResource("2_orange_fish")
+region = Rect2(98, 0, 14, 9)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_fish"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("evade_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("evade_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("evade_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("evade_3")
+}],
+"loop": true,
+"name": &"evade",
+"speed": 12.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("swim_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("swim_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("swim_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("swim_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("swim_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("swim_5")
+}, {
+"duration": 1.0,
+"texture": SubResource("swim_6")
+}, {
+"duration": 1.0,
+"texture": SubResource("swim_7")
+}],
+"loop": true,
+"name": &"swim",
+"speed": 8.0
+}]
+
+[node name="Fish" type="Node2D"]
+texture_filter = 1
+script = ExtResource("1_fish")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+position = Vector2(-1, 0)
+sprite_frames = SubResource("SpriteFrames_fish")
+animation = &"swim"
+autoplay = "swim"
