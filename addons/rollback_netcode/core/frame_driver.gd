@@ -46,12 +46,9 @@ extends Node
 # FIXME: LEFT OFF HERE: Main list: --------------------------------------------
 
 
-# - Fix thumbnail convenience resizing settings behavior.
+# Thoroughly analyze the entire GDScript codebase (excluding addons/gut/), and fix any style guidelines issues that we've recently codified in CLAUDE.md.
 
-# - Ask AI to thoroughly analyze the entire GDScript codebase (excluding addons/gut/), and fix any style guidelines issues that we've recently codified in CLAUDE.md.
-
-# - Add thumbnails for each level. Use in settings UI.
-
+# Run and fix tests again.
 
 # ---
 
