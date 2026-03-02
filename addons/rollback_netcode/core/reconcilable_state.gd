@@ -114,9 +114,9 @@ var frame_index := Utils.MIN_INT
 var _last_interaction_type_internal := _NONE_INTERACTION_TYPE
 var last_interaction_type: int:
 	set(value):
-		if (Netcode.log.is_verbose and
-				Netcode.is_server and
-				_last_interaction_type_internal != value):
+		if (Netcode.log.is_verbose
+				and Netcode.is_server
+				and _last_interaction_type_internal != value):
 			Netcode.log.verbose(
 				"[INTERACTION] Player %d: %s (%d) -> %s (%d) at F:%d" % [
 					player_id,
@@ -307,8 +307,8 @@ func _ready() -> void:
 	update_authority()
 
 	# Re-process any state that arrived before _ready() (e.g., spawn data).
-	# Before _parse_property_names(), _unpack_networked_state() fails the size
-	# check. Either channel could receive data before _ready() via
+	# Before _parse_property_names(), _unpack_networked_state() fails the
+	# size check. Either channel could receive data before _ready() via
 	# MultiplayerSynchronizer.
 	if not authoritative_packed_state.is_empty():
 		_handle_new_state_from_network(authoritative_packed_state)
@@ -398,8 +398,11 @@ func _handle_new_state_from_network(p_state: Array) -> void:
 	# COUNTDOWN FILTERING: Reject client states during countdown.
 	# Only applies to client-authoritative nodes on the server (input states).
 	# Server-authoritative states (spawn positions, etc.) are always accepted.
-	var countdown_end := Netcode.frame_driver.match_start_countdown_end_frame_index
-	var is_during_countdown := state_frame_index < countdown_end
+	var is_during_countdown := (
+		state_frame_index
+		< Netcode.frame_driver
+			.match_start_countdown_end_frame_index
+	)
 	if is_during_countdown and Netcode.is_server:
 		if Netcode.log.is_verbose:
 			Netcode.log.verbose(
@@ -497,8 +500,8 @@ func _handle_new_state_from_network(p_state: Array) -> void:
 	# Also unpack first state regardless of frame (initial spawn data).
 	var is_first_state := not _has_received_valid_state
 	var should_unpack_state := (
-		state_frame_index >= Netcode.server_frame_index or
-		is_first_state
+		state_frame_index >= Netcode.server_frame_index
+		or is_first_state
 	)
 	# Use <= so that input arriving for the current frame (between
 	# physics ticks, before server_frame_index is incremented) also
@@ -539,7 +542,7 @@ func _handle_new_state_from_network(p_state: Array) -> void:
 			# _pack_buffer_state_from_network_state below, so re-sim
 			# starts from the next frame (queue_rollback adds +1).
 			# For client-authoritative nodes (input), only the input
-			# buffer is corrected — the character state at the
+			# buffer is corrected. The character state at the
 			# mismatched frame was simulated with wrong input and
 			# needs re-simulation, so we target one frame earlier.
 			var rollback_frame := state_frame_index
@@ -569,7 +572,7 @@ func _handle_new_state_from_network(p_state: Array) -> void:
 					NetworkLogger.CATEGORY_NETWORK_SYNC
 				)
 
-		# Release the array back to pool
+		# Release the array back to pool.
 		ArrayPool.release(mismatched_properties)
 
 	# Record rollback buffer frame.
@@ -590,7 +593,7 @@ func _handle_new_state_from_network(p_state: Array) -> void:
 
 		# Apply server state directly to scene when:
 		# 1. This is the first state (initial spawn data), OR
-		# 2. Network processing is skipped (paused or during countdown)
+		# 2. Network processing is skipped (paused or during countdown).
 		# In both cases, _pre_network_process won't apply state normally.
 		var is_network_processing_skipped := (
 			Netcode.frame_driver.is_paused or is_during_countdown
@@ -807,13 +810,15 @@ func _update_replication_config() -> void:
 		return
 
 	var self_path: String = root.get_path_to(self )
-	var authoritative_path := \
+	var authoritative_path := (
 		"%s:authoritative_packed_state" % self_path
+	)
 	if not replication_config.has_property(authoritative_path):
 		replication_config.add_property(authoritative_path)
 	if _uses_split_packed_state():
-		var predicted_path := \
+		var predicted_path := (
 			"%s:predicted_packed_state" % self_path
+		)
 		if not replication_config.has_property(predicted_path):
 			replication_config.add_property(predicted_path)
 
@@ -822,8 +827,11 @@ func _set_up_rollback_buffer() -> void:
 	# Initialize the rollback buffer with the current frame index.
 	# Frame indices start at 0 and are immediately valid (no time sync needed).
 	var default_values := _get_default_values().duplicate()
-	var default_authority := FrameAuthority.SERVER_PREDICTED if Netcode.is_server \
+	var default_authority := (
+		FrameAuthority.SERVER_PREDICTED
+		if Netcode.is_server
 		else FrameAuthority.CLIENT_PREDICTED
+	)
 	default_values.append(default_authority)
 
 	_rollback_buffer = RollbackBuffer.new(
@@ -932,7 +940,7 @@ func _pack_buffer_state_from_local_state() -> void:
 			&"last_interaction_frame_index"
 		)
 
-		# Check if buffer has non-rollbackable onset at THIS frame.
+		# Check if buffer has non-rollbackable onset. at THIS frame.
 		var is_onset := (existing_interaction_frame == frame_index)
 		var is_non_rollbackable := not _is_interaction_rollbackable(
 			existing_interaction_type
@@ -961,13 +969,13 @@ func _pack_buffer_state_from_local_state() -> void:
 			var index := 0
 			for property_name in _property_names_for_packing:
 				if property_name.begins_with("last_interaction_"):
-					# Preserve interaction properties from buffer
+					# Preserve interaction properties from buffer.
 					preserved_state[index] = _get_frame_property(
 						existing_state,
 						property_name
 					)
 				else:
-					# Pack current local value (position, velocity, etc.)
+					# Pack current local value (position, velocity, etc.).
 					preserved_state[index] = get(property_name)
 				index += 1
 			preserved_state[index] = frame_authority
@@ -1008,8 +1016,8 @@ func _pack_buffer_state_from_network_state(packed_network_state: Array) -> void:
 	var network_interaction_type: int = packed_network_state[interaction_prop_index]
 
 	if (
-		network_interaction_type == _NONE_INTERACTION_TYPE and
-		_rollback_buffer.has_at(frame_index)
+		network_interaction_type == _NONE_INTERACTION_TYPE
+		and _rollback_buffer.has_at(frame_index)
 	):
 		var existing_state: Array = _rollback_buffer.get_at(frame_index)
 		var existing_interaction_type: int = _get_frame_property(
@@ -1021,7 +1029,7 @@ func _pack_buffer_state_from_network_state(packed_network_state: Array) -> void:
 			&"last_interaction_frame_index"
 		)
 
-		# Check if buffer has non-rollbackable onset
+		# Check if buffer has non-rollbackable onset.
 		var is_onset := (existing_interaction_frame == frame_index)
 		var is_non_rollbackable := not _is_interaction_rollbackable(existing_interaction_type)
 		var is_frame_locked := is_onset and is_non_rollbackable
@@ -1052,7 +1060,7 @@ func _pack_buffer_state_from_network_state(packed_network_state: Array) -> void:
 				# Don't pack the bogus network state. Keep buffer's onset intact.
 				return
 
-	# Normal packing - network state is authoritative and valid
+	# Normal packing. Network state is authoritative and valid.
 	# For the rollback buffer, we use the same state layout as the network state,
 	# but we replace the timestamp with the frame_authority from the sender.
 	var rollback_frame_state := ArrayPool.acquire(packed_network_state.size() - 1)
@@ -1061,18 +1069,19 @@ func _pack_buffer_state_from_network_state(packed_network_state: Array) -> void:
 		rollback_frame_state[i] = packed_network_state[i]
 	rollback_frame_state[rollback_frame_state.size() - 1] = new_frame_authority
 
-	# Note: rollback_frame_state is now owned by the rollback buffer, don't
-	#	   release it here.
+	# Note: rollback_frame_state is now owned by the rollback
+	# buffer, don't release it here.
 	_record_buffer_frame(frame_index, rollback_frame_state)
 
 
 func _record_buffer_frame(frame_index: int, frame_state: Array) -> void:
-	# TODO: When updating frame buffer state later, reference the preexisting
-	#	   frame array, rather than instantiating a new one.
-	# Guard against null rollback buffer (For tests: can occur if time isn't
-	# initialized yet when record_initial_state() is called during _ready()).
+	# TODO: When updating frame buffer state later, reference the
+	# preexisting frame array, rather than instantiating a new one.
+	# Guard against null rollback buffer. For tests: can occur if time
+	# isn't initialized yet when record_initial_state() is called
+	# during _ready().
 	if _rollback_buffer == null:
-		# Release the frame_state array since we can't store it
+		# Release the frame_state array since we can't store it.
 		ArrayPool.release(frame_state)
 		return
 
@@ -1104,8 +1113,11 @@ func _reinitialize_buffer_for_hard_reset(new_frame_index: int) -> void:
 		fill_state[i] = get(property_name)
 		i += 1
 	# Mark as predicted so authoritative state can overwrite.
-	var fill_authority := FrameAuthority.SERVER_PREDICTED if Netcode.is_server \
+	var fill_authority := (
+		FrameAuthority.SERVER_PREDICTED
+		if Netcode.is_server
 		else FrameAuthority.CLIENT_PREDICTED
+	)
 	fill_state[i] = fill_authority
 
 	# Reinitialize the entire buffer with current state at new frame index.
@@ -1147,8 +1159,11 @@ func _cleanup_buffer_after_pause(pause_frame: int) -> void:
 	var fill_state := ArrayPool.acquire(pause_state.size())
 	for i in range(pause_state.size() - 1):
 		fill_state[i] = pause_state[i]
-	var fill_authority := FrameAuthority.SERVER_PREDICTED if Netcode.is_server \
+	var fill_authority := (
+		FrameAuthority.SERVER_PREDICTED
+		if Netcode.is_server
 		else FrameAuthority.CLIENT_PREDICTED
+	)
 	fill_state[fill_state.size() - 1] = fill_authority
 
 	# Reset from pause_frame+1 to current latest.
@@ -1191,12 +1206,10 @@ func record_initial_state(include_partners := true) -> void:
 	if _property_names_for_packing.is_empty():
 		return
 
-	var current_frame := Netcode.server_frame_index
-
-	# Sync the current scene state to the networked properties
+	# Sync the current scene state to the networked properties.
 	_sync_from_scene_state()
 
-	# Create the initial state array with current property values
+	# Create the initial state array with current property values.
 	var initial_state := ArrayPool.acquire(
 		_property_names_for_packing.size() + 1,
 	)
@@ -1204,13 +1217,18 @@ func record_initial_state(include_partners := true) -> void:
 	for property_name in _property_names_for_packing:
 		initial_state[i] = get(property_name)
 		i += 1
-	var initial_authority := FrameAuthority.SERVER_PREDICTED if Netcode.is_server \
+	var initial_authority := (
+		FrameAuthority.SERVER_PREDICTED
+		if Netcode.is_server
 		else FrameAuthority.CLIENT_PREDICTED
+	)
 	initial_state[i] = initial_authority
 
-	# Record for N-2, N-1, and N
+	# Record for N-2, N-1, and N.
 	for frame_offset in range(-2, 1):
-		var target_frame := current_frame + frame_offset
+		var target_frame := (
+			Netcode.server_frame_index + frame_offset
+		)
 		var frame_state := ArrayPool.acquire(initial_state.size())
 		for j in range(initial_state.size()):
 			frame_state[j] = initial_state[j]
@@ -1218,16 +1236,19 @@ func record_initial_state(include_partners := true) -> void:
 
 	ArrayPool.release(initial_state)
 
-	# Also pack to network state so MultiplayerSynchronizer can replicate it.
-	# This is critical for spawn state during countdown when _post_network_process
-	# doesn't run. Set frame_index and frame_authority before packing.
-	# Guard: only pack if properties have been parsed (sibling nodes may not be ready yet).
-	if is_multiplayer_authority() and not _property_names_for_packing.is_empty():
-		frame_index = current_frame
+	# Also pack to network state so MultiplayerSynchronizer
+	# can replicate it. This is critical for spawn state during
+	# countdown when _post_network_process doesn't run. Set
+	# frame_index and frame_authority before packing. Guard:
+	# only pack if properties have been parsed (sibling nodes
+	# may not be ready yet).
+	if (is_multiplayer_authority()
+			and not _property_names_for_packing.is_empty()):
+		frame_index = Netcode.server_frame_index
 		frame_authority = FrameAuthority.AUTHORITATIVE
 		_pack_networked_state()
 
-	# Also initialize the partner state if present
+	# Also initialize the partner state if present.
 	if include_partners:
 		# Record initial state for all sibling nodes.
 		if is_instance_valid(state_from_server):
@@ -1338,8 +1359,10 @@ func _is_frame_authoritative(frame_state: Array) -> bool:
 ## Checks if a frame state has any predicted authority (server or client).
 func _is_frame_predicted(frame_state: Array) -> bool:
 	var authority := _get_frame_authority(frame_state)
-	return authority == FrameAuthority.SERVER_PREDICTED \
+	return (
+		authority == FrameAuthority.SERVER_PREDICTED
 		or authority == FrameAuthority.CLIENT_PREDICTED
+	)
 
 
 ## Checks if a frame state has server-predicted authority.
@@ -1375,7 +1398,7 @@ func _get_mismatched_properties(
 	var buffer_data: Array = _rollback_buffer.get_at(frame_index)
 	var thresholds: Dictionary = get("_synced_properties_and_rollback_diff_thresholds")
 
-	# Pre-allocate for worst case (all properties mismatched)
+	# Pre-allocate for worst case (all properties mismatched).
 	var mismatched := ArrayPool.acquire(thresholds.size())
 	var mismatch_count := 0
 
@@ -1388,7 +1411,7 @@ func _get_mismatched_properties(
 			mismatched[mismatch_count] = property_name
 			mismatch_count += 1
 
-	# Trim to actual size
+	# Trim to actual size.
 	mismatched.resize(mismatch_count)
 	return mismatched
 
@@ -1456,13 +1479,13 @@ func _check_do_values_mismatch(
 			return buffer_value != networked_value
 		TYPE_INT, TYPE_FLOAT:
 			if threshold == 0:
-				# Threshold of 0 means exact match required
+				# Threshold of 0 means exact match required.
 				return buffer_value != networked_value
 			else:
 				return abs(buffer_value - networked_value) >= threshold
 		TYPE_VECTOR2, TYPE_VECTOR2I:
 			if threshold == 0:
-				# Threshold of 0 means exact match required
+				# Threshold of 0 means exact match required.
 				return buffer_value != networked_value
 			else:
 				return buffer_value.distance_squared_to(networked_value) >= threshold * threshold

@@ -80,9 +80,6 @@ extends Node
 
 # ---
 
-# - Polish networked movement. It still seems like we get jitter and stuck
-#   player-inputs-on-server-side too often.
-
 # - Review /rollback_netcode/examples/.
 # - Look at how some old Scaffolder utilities are used, like ScaffolderTime.
 #   Should we simplify and replace them with built-in logic that we _don't_ have
@@ -91,7 +88,7 @@ extends Node
 
 # - Lingering FIXMEs.
 
-# - Ask for target reviews of important files/systems:
+# - Ask for targeted reviews of important files/systems:
 #   - Player
 #   - Critters
 #   - Gore manager
@@ -145,7 +142,7 @@ extends Node
 # The technique is most commonly called "dynamic input delay" or "dynamic input latency" in the game networking community. It's sometimes also referred to as "adaptive input delay."
 
 # What it is
-# The idea is to intentionally buffer local player input by N frames before injecting it into the simulation (while still transmitting it immediately to peers). This shrinks the prediction window — the number of frames the remote side must predict and potentially roll back. The tradeoff is local responsiveness vs. remote visual smoothness.
+# The idea is to intentionally buffer local player input by N frames before injecting it into the simulation (while still transmitting it immediately to peers). This shrinks the prediction window. The number of frames the remote side must predict and potentially roll back is reduced. The tradeoff is local responsiveness vs. remote visual smoothness.
 
 # Key references
 # The best writeup is Ryan Juckett's INVERSUS article, where he calls it "Dynamic Input Latency":
@@ -703,8 +700,9 @@ var _has_match_start_countdown_ended := false
 var is_match_start_countdown_active: bool:
 	get:
 		return (
-			match_start_countdown_end_frame_index >= 0 and
-			server_frame_index < match_start_countdown_end_frame_index
+			match_start_countdown_end_frame_index >= 0
+			and server_frame_index
+				< match_start_countdown_end_frame_index
 		)
 
 ## Interval for periodic wall-clock re-sync to maintain accurate timestamps for
@@ -734,8 +732,10 @@ var total_fastforwards := 0
 
 var rollback_buffer_size: int:
 	get:
-		return ceili(Netcode.settings.rollback_buffer_duration_sec *
-			target_network_fps)
+		return ceili(
+			Netcode.settings.rollback_buffer_duration_sec
+			* target_network_fps
+		)
 
 var oldest_rollbackable_frame_index: int:
 	get:
@@ -784,8 +784,8 @@ func client_reset() -> void:
 	server_frame_index = 0
 	# Start grace period to suppress expected frame sync warnings.
 	_frame_reset_time_usec = Time.get_ticks_usec()
-	# Start paused so client waits for server's unpause signal
-	# before transitioning from LOADING to GAME screen.
+	# Start paused so client waits for server's unpause
+	# signal before transitioning from LOADING to GAME screen.
 	_is_paused = true
 	# Reset match start countdown state from previous match.
 	match_start_countdown_end_frame_index = -1
@@ -804,14 +804,16 @@ func _check_preview_clients_connected() -> void:
 		return
 
 	var connected_count := multiplayer.get_peers().size()
-	var expected_count := Netcode.settings.preview_client_count
 
 	Netcode.log.print(
-		"Preview mode: %d/%d clients connected" % [connected_count, expected_count],
+		"Preview mode: %d/%d clients connected" % [
+			connected_count,
+			Netcode.settings.preview_client_count,
+		],
 		NetworkLogger.CATEGORY_NETWORK_SYNC
 	)
 
-	if connected_count >= expected_count:
+	if connected_count >= Netcode.settings.preview_client_count:
 		Netcode.log.print(
 			"All expected clients connected; Unpausing game",
 			NetworkLogger.CATEGORY_NETWORK_SYNC
@@ -957,7 +959,7 @@ func _server_rpc_request_unpause() -> void:
 
 	_last_pause_request_time_usec = current_time
 
-	# Emit signal for game to handle
+	# Emit signal for game to handle.
 	unpause_requested.emit(peer_id)
 
 	_server_execute_unpause()
@@ -1054,10 +1056,14 @@ func _server_execute_pause(
 	_pause_initiator_peer_id = initiator_peer_id
 	_pause_initiator_pauses_used = pauses_used
 
-	# Calculate auto-unpause time for replication to clients (for countdown).
+	# Calculate auto-unpause time for replication to clients
+	# (for countdown).
 	_pause_auto_unpause_time_usec = (
-		Time.get_ticks_usec() +
-		int(Netcode.settings.max_pause_duration_sec * 1_000_000)
+		Time.get_ticks_usec()
+		+ int(
+			Netcode.settings.max_pause_duration_sec
+			* 1_000_000
+		)
 	)
 
 	# Schedule auto-unpause using timer system (server-only).
@@ -1087,7 +1093,7 @@ func _server_execute_pause(
 	if is_inside_tree():
 		get_tree().paused = true
 
-	# Emit signal for UI updates
+	# Emit signal for UI updates.
 	pause_state_changed.emit(true, initiator_peer_id)
 
 	Netcode.log.print(
@@ -1132,9 +1138,9 @@ func _server_execute_unpause() -> void:
 
 	# Check if this is the initial match start and countdown is enabled.
 	var is_starting_match_start_countdown := (
-		Netcode.is_server and
-		not _has_match_start_countdown_started and
-		Netcode.settings.match_start_countdown_sec > 0
+		Netcode.is_server
+		and not _has_match_start_countdown_started
+		and Netcode.settings.match_start_countdown_sec > 0
 	)
 
 	if is_starting_match_start_countdown:
@@ -1169,7 +1175,7 @@ func _server_execute_unpause() -> void:
 	if is_inside_tree():
 		get_tree().paused = false
 
-	# Emit signal for UI updates
+	# Emit signal for UI updates.
 	pause_state_changed.emit(false, 0)
 
 	Netcode.log.print(
@@ -1194,8 +1200,11 @@ func _client_execute_pause_at_server_frame(
 
 	# Calculate auto-unpause time for countdown display.
 	_pause_auto_unpause_time_usec = (
-		Time.get_ticks_usec() +
-		int(Netcode.settings.max_pause_duration_sec * 1_000_000)
+		Time.get_ticks_usec()
+		+ int(
+			Netcode.settings.max_pause_duration_sec
+			* 1_000_000
+		)
 	)
 
 	# Align with server's pause frame.
@@ -1213,7 +1222,7 @@ func _client_execute_pause_at_server_frame(
 	if is_inside_tree():
 		get_tree().paused = true
 
-	# Emit signal for game to handle screen transitions
+	# Emit signal for game to handle screen transitions.
 	pause_state_changed.emit(true, pause_initiator_peer_id)
 
 	Netcode.log.print(
@@ -1250,7 +1259,7 @@ func _client_execute_unpause_at_server_frame(
 	if is_inside_tree():
 		get_tree().paused = false
 
-	# Emit signal for game to handle screen transitions
+	# Emit signal for game to handle screen transitions.
 	pause_state_changed.emit(false, 0)
 
 	Netcode.log.print(
@@ -1341,8 +1350,8 @@ func _initialize_frame_tracking() -> void:
 	# Frame tracking can start immediately since we use frame-based sync.
 	_is_frame_tracking_initialized = true
 
-	# Initialize to frame 0
-	# The first physics tick will increment this to 1
+	# Initialize to frame 0.
+	# The first physics tick will increment this to 1.
 	var previous_frame_index := server_frame_index
 	server_frame_index = 0
 
@@ -1399,9 +1408,12 @@ func queue_rollback(
 	var target_rollback_frame := p_conflicting_frame_index + 1
 	if is_frame_too_old_to_consider(p_conflicting_frame_index):
 		Netcode.log.warning(
-			("Rollback rejected: frame %d is too old " +
-			"(oldest rollbackable: %d)") %
-			[target_rollback_frame, oldest_rollbackable_frame_index],
+			("Rollback rejected: frame %d is too old "
+			+ "(oldest rollbackable: %d)") %
+			[
+				target_rollback_frame,
+				oldest_rollbackable_frame_index,
+			],
 			NetworkLogger.CATEGORY_NETWORK_SYNC
 		)
 		return false
@@ -1469,7 +1481,7 @@ func _rollback_and_reprocess() -> void:
 
 	server_frame_index = original_server_frame_index
 
-	# Track rollback metrics
+	# Track rollback metrics.
 	last_rollback_frame_count = frame_count
 	last_rollback_duration_usec = Time.get_ticks_usec() - rollback_start_time_usec
 	total_rollbacks += 1
@@ -1530,7 +1542,7 @@ func fast_forward(new_frame_index: int) -> void:
 		_network_process()
 		frame_count += 1
 
-	# Track fast-forward metrics
+	# Track fast-forward metrics.
 	last_fastforward_frame_count = frame_count
 	last_fastforward_duration_usec = Time.get_ticks_usec() - fastforward_start_time_usec
 	total_fastforwards += 1
