@@ -47,6 +47,12 @@ const _TRAIL_FADE_DURATION_SEC := 1.0
 ## corner to prevent sprite-tile overlap.
 const _CONCAVE_CORNER_INSET := 6.0
 
+## TileSet physics layer index for normal
+## (non-fall-through, non-walk-through) surfaces.
+## Corresponds to
+## Character._NORMAL_SURFACES_COLLISION_MASK_BIT.
+const _NORMAL_SURFACES_PHYSICS_LAYER := 0
+
 ## CW forward direction along each face.
 const _CW_FORWARD := {
 	Face.TOP: Vector2i(1, 0),
@@ -183,6 +189,8 @@ func _ready() -> void:
 	# monitor.
 	if Netcode.is_client:
 		_crush_area.monitoring = false
+		CritterWrapGhost.create_ghosts(
+			self, _sprite)
 
 
 ## Called by NetworkedLevel on the server after
@@ -219,17 +227,28 @@ func _apply_init(
 	_apply_direction(clockwise)
 
 	# Fast-forward from event frame to now.
+	# Update _last_processed_frame afterward so
+	# _physics_process does not re-simulate the
+	# same frames.
 	var frames_ahead := (
 		Netcode.server_frame_index - frame)
 	if frames_ahead > 0:
 		_simulate_frames(frames_ahead)
+		_last_processed_frame = (
+			Netcode.server_frame_index)
 
 	_update_visual()
 	_sprite.play(&"crawl")
 
+	# Prevent the renderer from interpolating
+	# from the old position to the new one.
+	reset_physics_interpolation()
+
 
 ## Advances the snail by the given number of
-## network frames.
+## network frames. Wraps tile state after each
+## frame to stay consistent with the server,
+## which always processes one frame at a time.
 func _simulate_frames(count: int) -> void:
 	if not is_alive:
 		return
@@ -246,6 +265,7 @@ func _simulate_frames(count: int) -> void:
 		while progress >= threshold:
 			if not _advance():
 				break
+		_wrap_tile_state()
 
 
 func _spawn_goo_particles() -> void:
@@ -290,6 +310,7 @@ func _spawn_crunch_remnant() -> void:
 		_sprite.global_rotation)
 	remnant.global_position = (
 		_sprite.global_position + local_up)
+	remnant.reset_physics_interpolation()
 
 	var tween := remnant.create_tween()
 	tween.tween_interval(
@@ -328,8 +349,20 @@ func _physics_process(_delta: float) -> void:
 	if frame_delta <= 0:
 		return
 
+	var pre_sim_pos := global_position
 	_simulate_frames(frame_delta)
 	_update_visual()
+
+	# Reset physics interpolation if the snail
+	# wrapped to prevent the renderer from
+	# lerping across the level.
+	if (
+		global_position
+			.distance_squared_to(pre_sim_pos)
+		> Level.TILE_SIZE * Level.TILE_SIZE
+	):
+		reset_physics_interpolation()
+
 	_update_trail()
 
 
@@ -341,9 +374,19 @@ func _advance() -> bool:
 	var normal: Vector2i = _FACE_NORMALS[current_face]
 
 	# 1. Concave corner (triggers early).
+	# Both the diagonal tile and the forward
+	# tile must be crawlable. The forward tile
+	# forms the inner corner surface. Non-
+	# crawlable tiles (fall-through, water) and
+	# empty cells are treated as air and do not
+	# form valid concave corners.
+	var forward_tile := current_tile + forward
 	var concave_tile := (
 		current_tile + forward + normal)
-	if _has_tile(concave_tile):
+	if (
+		_has_tile(concave_tile)
+		and _has_tile(forward_tile)
+	):
 		# Record corner vertex for trail.
 		if _is_trail_initialized:
 			var tc := (
@@ -367,6 +410,10 @@ func _advance() -> bool:
 
 	# 2. Straight continuation.
 	var straight_tile := current_tile + forward
+	if not _has_tile(straight_tile):
+		# Try wrapping across level bounds.
+		straight_tile = _wrap_tile(
+			straight_tile, forward)
 	if _has_tile(straight_tile):
 		current_tile = straight_tile
 		progress -= Level.TILE_SIZE
@@ -408,11 +455,6 @@ func _update_visual() -> void:
 		tile_global + face_offset
 		+ progress_offset)
 
-	# Wrap position for toroidal level bounds.
-	var level := G.level
-	if level is NetworkedLevel:
-		level.wrap_node(self)
-
 	# Always rotate using the CW forward so
 	# the sprite's feet stay on the tile
 	# surface. flip_h handles the visual
@@ -431,6 +473,19 @@ func _update_trail() -> void:
 		_last_trail_pos = global_position
 		_trail_acc = 0.0
 		_is_trail_initialized = true
+		_pending_corner_positions.clear()
+		return
+
+	# If position jumped (wrap-around), reset
+	# trail to avoid drawing across the level.
+	if (
+		global_position
+			.distance_squared_to(
+				_last_trail_pos)
+		> Level.TILE_SIZE * Level.TILE_SIZE
+	):
+		_last_trail_pos = global_position
+		_trail_acc = 0.0
 		_pending_corner_positions.clear()
 		return
 
@@ -484,6 +539,10 @@ func _spawn_trail_particle(
 	get_parent().add_child(particle)
 
 	particle.global_position = pos
+	# Prevent physics interpolation from
+	# flashing the particle at (0,0) for one
+	# frame before snapping to the real position.
+	particle.reset_physics_interpolation()
 
 	var tween := particle.create_tween()
 	tween.tween_interval(
@@ -496,18 +555,121 @@ func _spawn_trail_particle(
 
 
 func _has_tile(cell: Vector2i) -> bool:
+	# Tiles outside wrap bounds do not exist
+	# from the snail's perspective. This
+	# prevents crawling into the border area
+	# beyond the play zone.
+	if not _is_tile_in_bounds(cell):
+		return false
 	if _extra_cells.has(cell):
 		return true
 	var tile_data := (
 		_collision_tiles.get_cell_tile_data(cell))
-	if tile_data != null:
-		return (tile_data.get_terrain_set()
-			!= Level.TERRAIN_SET_WATER)
-	# Scene collection tiles (e.g. springs)
-	# return null tile_data but are valid
-	# surfaces.
-	return (_collision_tiles
-		.get_cell_source_id(cell) != -1)
+	if tile_data == null:
+		# Scene-collection tiles (e.g. springs)
+		# return null tile_data. Fall back to
+		# checking whether the cell is occupied.
+		return (
+			_collision_tiles
+				.get_cell_source_id(cell) != -1)
+	if (tile_data.get_terrain_set()
+			== Level.TERRAIN_SET_WATER):
+		return false
+	# Only crawl on tiles with collision on
+	# the normal surfaces physics layer.
+	return (
+		tile_data
+			.get_collision_polygons_count(
+				_NORMAL_SURFACES_PHYSICS_LAYER)
+		> 0)
+
+
+## Returns true when the tile cell is within
+## the level's wrap bounds. Returns true if
+## wrapping is disabled (no bounds restriction).
+func _is_tile_in_bounds(
+	cell: Vector2i,
+) -> bool:
+	var level := G.level
+	if not level is NetworkedLevel:
+		return true
+	var bounds: Rect2 = level.wrap_bounds
+	if bounds.size == Vector2.ZERO:
+		return true
+	var local_pos := (
+		_collision_tiles.map_to_local(cell))
+	var global_pos := (
+		_collision_tiles.to_global(local_pos))
+	return bounds.has_point(global_pos)
+
+
+## Wraps the snail's tile state to the opposite
+## side of the level when it crosses the wrap
+## bounds. Called after simulation so tile
+## movement logic runs unmodified.
+func _wrap_tile_state() -> void:
+	var level := G.level
+	if not level is NetworkedLevel:
+		return
+	var bounds: Rect2 = level.wrap_bounds
+	if bounds.size == Vector2.ZERO:
+		return
+	var local_pos := (
+		_collision_tiles.map_to_local(
+			current_tile))
+	var global_pos := (
+		_collision_tiles.to_global(local_pos))
+	if bounds.has_point(global_pos):
+		return
+	# Wrap the position and find the
+	# corresponding tile.
+	var wrapped: Vector2 = level.wrap_position(
+		global_pos)
+	var wrapped_local := (
+		_collision_tiles.to_local(wrapped))
+	var new_tile := (
+		_collision_tiles.local_to_map(
+			wrapped_local))
+	if _has_tile(new_tile):
+		current_tile = new_tile
+
+
+## Translates a tile coordinate to the opposite
+## edge of the level's wrap bounds by shifting
+## the tile's global position by one full bounds
+## extent opposite to the forward direction.
+## Returns the original tile if wrapping is
+## disabled.
+func _wrap_tile(
+	tile: Vector2i,
+	forward: Vector2i,
+) -> Vector2i:
+	var level := G.level
+	if not level is NetworkedLevel:
+		return tile
+	var bounds: Rect2 = level.wrap_bounds
+	if bounds.size == Vector2.ZERO:
+		return tile
+	# Shift opposite to the movement direction
+	# by one full bounds extent.
+	var shift := Vector2.ZERO
+	if forward.x > 0:
+		shift.x = -bounds.size.x
+	elif forward.x < 0:
+		shift.x = bounds.size.x
+	if forward.y > 0:
+		shift.y = -bounds.size.y
+	elif forward.y < 0:
+		shift.y = bounds.size.y
+	var local_pos := (
+		_collision_tiles.map_to_local(tile))
+	var global_pos := (
+		_collision_tiles.to_global(local_pos))
+	var shifted_local := (
+		_collision_tiles.to_local(
+			global_pos + shift))
+	return _collision_tiles.local_to_map(
+		shifted_local)
 
 
 func _on_crush_area_area_entered(
@@ -584,9 +746,13 @@ func _respawn() -> void:
 	if not is_instance_valid(_collision_tiles):
 		return
 
+	var wb := Rect2()
+	var level := G.level
+	if level is NetworkedLevel:
+		wb = level.wrap_bounds
 	var surface := (
 		SnailSpawner.find_random_interior_surface(
-			_collision_tiles, _extra_cells))
+			_collision_tiles, _extra_cells, wb))
 	if surface.is_empty():
 		Netcode.warning(
 			"No interior surfaces for snail "

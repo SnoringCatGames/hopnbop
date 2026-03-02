@@ -31,11 +31,15 @@ const _OFFSET_TO_FACE := {
 ## given tilemap. An interior surface is a tile
 ## face that borders empty space inside the
 ## tilemap's enclosed area (not exterior).
+## When wrap_bounds is non-zero, surfaces whose
+## tile or neighbor cell falls outside the
+## bounds are excluded.
 ## Returns an array of {tile: Vector2i,
 ## face: Snail.Face}.
 static func find_interior_surfaces(
 	tiles: TileMapLayer,
 	extra_cells: Dictionary = {},
+	wrap_bounds: Rect2 = Rect2(),
 ) -> Array:
 	var used_cells := tiles.get_used_cells()
 	if (used_cells.is_empty()
@@ -70,14 +74,23 @@ static func find_interior_surfaces(
 	# Collect interior surfaces.
 	var surfaces: Array = []
 	for cell in used_cells:
-		# Skip water tiles. Scene collection
-		# tiles (e.g. springs) return null
-		# tile_data and are always valid.
+		# Skip water tiles and tiles without
+		# collision on the normal surfaces
+		# physics layer (e.g. fall-through
+		# floors). Scene collection tiles (e.g.
+		# springs) return null tile_data and are
+		# always valid.
 		var tile_data := (
 			tiles.get_cell_tile_data(cell))
 		if tile_data != null:
 			if (tile_data.get_terrain_set()
 					== Level.TERRAIN_SET_WATER):
+				continue
+			if (tile_data
+					.get_collision_polygons_count(
+						Snail
+						._NORMAL_SURFACES_PHYSICS_LAYER)
+					== 0):
 				continue
 
 		for offset: Vector2i in _NEIGHBOR_OFFSETS:
@@ -87,10 +100,14 @@ static func find_interior_surfaces(
 			if (not occupied.has(neighbor)
 					and not exterior.has(
 						neighbor)):
-				surfaces.append({
-					"tile": cell,
-					"face": _OFFSET_TO_FACE[offset],
-				})
+				if _is_cell_in_bounds(
+						neighbor, tiles,
+						wrap_bounds):
+					surfaces.append({
+						"tile": cell,
+						"face":
+							_OFFSET_TO_FACE[offset],
+					})
 
 	# Also collect surfaces from scene-based
 	# extra cells (e.g. Spring tiles).
@@ -100,10 +117,14 @@ static func find_interior_surfaces(
 			if (not occupied.has(neighbor)
 					and not exterior.has(
 						neighbor)):
-				surfaces.append({
-					"tile": cell,
-					"face": _OFFSET_TO_FACE[offset],
-				})
+				if _is_cell_in_bounds(
+						neighbor, tiles,
+						wrap_bounds):
+					surfaces.append({
+						"tile": cell,
+						"face":
+							_OFFSET_TO_FACE[offset],
+					})
 
 	return surfaces
 
@@ -113,9 +134,10 @@ static func find_interior_surfaces(
 static func find_random_interior_surface(
 	tiles: TileMapLayer,
 	extra_cells: Dictionary = {},
+	wrap_bounds: Rect2 = Rect2(),
 ) -> Dictionary:
 	var surfaces := find_interior_surfaces(
-		tiles, extra_cells)
+		tiles, extra_cells, wrap_bounds)
 	if surfaces.is_empty():
 		return {}
 	return surfaces.pick_random()
@@ -203,3 +225,18 @@ static func _flood_fill_exterior(
 				queue.append(neighbor)
 
 	return exterior
+
+
+## Returns true when a cell's center is within
+## the given wrap bounds. Returns true when
+## bounds size is zero (no restriction).
+static func _is_cell_in_bounds(
+	cell: Vector2i,
+	tiles: TileMapLayer,
+	bounds: Rect2,
+) -> bool:
+	if bounds.size == Vector2.ZERO:
+		return true
+	var local_pos := tiles.map_to_local(cell)
+	var global_pos := tiles.to_global(local_pos)
+	return bounds.has_point(global_pos)
