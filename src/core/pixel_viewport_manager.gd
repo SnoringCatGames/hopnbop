@@ -171,29 +171,22 @@ func _update_camera_zoom() -> void:
 	_last_camera = camera
 
 
-## Configures 1:1 pixel rendering for thumbnail
-## snapshot mode. Sets the container, SubViewport,
-## and zoom directly rather than relying on
-## _on_window_resized(), because the
-## DisplayServer window resize is asynchronous
-## and may not have taken effect yet.
+## Configures thumbnail snapshot mode. Overrides
+## _base_resolution so PVM's normal resize logic
+## produces the correct SubViewport size and zoom.
+## The container still fills the window (no
+## margins). Once the async window resize to
+## level_pixel_size completes, integer_scale = 1
+## and each game pixel = 1 screen pixel.
 func configure_thumbnail_snapshot(
 	level_pixel_size: Vector2i,
 ) -> void:
 	is_thumbnail_snapshot_mode = true
 	_base_resolution = level_pixel_size
-	current_scale = 1
-	_zoom_scale = 1.0
-
-	if is_instance_valid(container):
-		container.stretch_shrink = 1
-		container.size = Vector2(level_pixel_size)
-		container.position = Vector2.ZERO
-
-	if is_instance_valid(sub_viewport):
-		sub_viewport.size = level_pixel_size
-
-	_update_camera_zoom()
+	# Re-run resize logic with the new
+	# _base_resolution so the SubViewport and
+	# zoom update immediately.
+	_on_window_resized()
 
 
 ## Builds a Transform2D mapping world coordinates to

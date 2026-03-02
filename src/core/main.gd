@@ -25,8 +25,20 @@ func _ready() -> void:
 
 	_start_app()
 
-	G.window_manager.update_window_mode()
-	G.window_manager.position_window_in_preview_mode()
+	var is_thumbnail_snapshot := (
+		Netcode.is_preview
+		and Netcode.is_server
+		and G.settings
+			.level_override_for_thumbnail_snapshot
+		>= 0
+	)
+
+	# Skip normal window setup in thumbnail mode
+	# to avoid conflicting async window resizes.
+	if not is_thumbnail_snapshot:
+		G.window_manager.update_window_mode()
+		G.window_manager \
+			.position_window_in_preview_mode()
 
 	G.window_manager \
 		.configure_thumbnail_snapshot_if_needed()

@@ -216,10 +216,67 @@ func configure_thumbnail_snapshot_if_needed() \
 			.configure_thumbnail_snapshot(
 				visible_size)
 
-	# Take a screenshot after a short delay to
-	# let the async window resize finish.
-	get_tree().create_timer(0.1).timeout.connect(
-		G.utils.take_screenshot)
+	# Resolve the level id for the filename.
+	var override_index := clampi(
+		G.settings
+			.level_override_for_thumbnail_snapshot,
+		0,
+		G.level_registry.get_level_count() - 1,
+	)
+	var level_info := (
+		G.level_registry
+			.get_level_by_index(override_index))
+	var level_id := (
+		level_info.id
+		if level_info != null
+		else "unknown")
+
+	# Take a screenshot from the game SubViewport
+	# directly. This avoids root viewport size
+	# mismatches caused by the async window resize.
+	get_tree().create_timer(0.5).timeout.connect(
+		_take_thumbnail_screenshot.bind(level_id))
+
+
+func _take_thumbnail_screenshot(
+	level_id: StringName,
+) -> void:
+	## Captures the game SubViewport directly and
+	## saves it as a PNG screenshot named after the
+	## level id.
+	var pvm := G.pixel_viewport_manager
+	if (
+		not is_instance_valid(pvm)
+		or not is_instance_valid(pvm.sub_viewport)
+	):
+		return
+
+	var result := (
+		DirAccess.make_dir_recursive_absolute(
+			"user://screenshots"))
+	if result != OK:
+		return
+
+	var image := (
+		pvm.sub_viewport
+			.get_texture().get_image())
+	var path := (
+		"user://screenshots/%s.png"
+		% level_id)
+	var status := image.save_png(path)
+	if status != OK:
+		Netcode.print(
+			"Failed to save thumbnail: "
+			+ path,
+			NetworkLogger.CATEGORY_CORE_SYSTEMS,
+		)
+	else:
+		Netcode.print(
+			"Took thumbnail screenshot: "
+			+ path,
+			NetworkLogger.CATEGORY_CORE_SYSTEMS,
+		)
+		G.utils.were_screenshots_taken = true
 
 
 func position_client_window_in_preview_mode() -> void:
