@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://b2ykm6ywidj0p"]
+[gd_scene load_steps=11 format=3 uid="uid://b2ykm6ywidj0p"]
 
 [ext_resource type="Script" uid="uid://cv5ica4o4ad4j" path="res://src/objects/cricket/cricket.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://bir81edistnfp" path="res://assets/images/cricket.png" id="2_texture"]

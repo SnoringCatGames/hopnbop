@@ -664,6 +664,31 @@ func get_current_frame_bounce_velocity():
 	return _get_frame_property(frame_state, &"last_interaction_velocity")
 
 
+## Returns the interaction type from the rollback buffer at the
+## current frame, or NONE if no interaction exists.
+func get_current_frame_interaction_type() -> int:
+	if _rollback_buffer == null:
+		return ServerInteractionType.NONE
+	var current_frame := Netcode.server_frame_index
+	if not _rollback_buffer.has_at(current_frame):
+		return ServerInteractionType.NONE
+	var frame_state: Array = (
+		_rollback_buffer.get_at(current_frame)
+	)
+	if frame_state == null:
+		return ServerInteractionType.NONE
+	var interaction_frame: int = _get_frame_property(
+		frame_state,
+		&"last_interaction_frame_index",
+	)
+	if interaction_frame != current_frame:
+		return ServerInteractionType.NONE
+	return _get_frame_property(
+		frame_state,
+		&"last_interaction_type",
+	)
+
+
 func _sync_from_scene_state() -> void:
 	if not Netcode.ensure_valid(character):
 		return

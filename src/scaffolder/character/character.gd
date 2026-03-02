@@ -328,23 +328,26 @@ func _apply_movement() -> void:
 	if is_in_launch_cooldown():
 		motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
 
-	# On ice surfaces, increase floor_max_angle so
-	# circle-on-tile-corner contacts at platform edges
-	# are still classified as floor by move_and_slide.
-	# Without this, the collision normal rotates past
-	# 45 degrees at the edge, causing wall
-	# classification that zeroes horizontal velocity.
+	# On ice surfaces, adjust move_and_slide behavior
+	# for smooth edge traversal. The circle collision
+	# shape contacts tile corners at angles that would
+	# otherwise cause wall classification (zeroing
+	# velocity) and speed loss from velocity projection
+	# onto the angled surface tangent.
 	var is_on_ice := (
 		surfaces.is_attaching_to_floor
 		and surfaces.surface_properties.is_ice
 	)
 	var saved_floor_max_angle := floor_max_angle
+	var saved_floor_constant_speed := floor_constant_speed
 	if is_on_ice:
 		floor_max_angle = _ICE_FLOOR_MAX_ANGLE
+		floor_constant_speed = true
 
 	move_and_slide()
 
 	floor_max_angle = saved_floor_max_angle
+	floor_constant_speed = saved_floor_constant_speed
 	motion_mode = saved_motion_mode
 
 	# Restore horizontal velocity after move_and_slide.
