@@ -12,6 +12,7 @@ var _last_collision_frame := -1
 var _blink_accumulator := 0.0
 var _is_blink_visible := true
 var _pending_bounce := Vector2.ZERO
+var _pending_is_momentum_transfer := false
 var _last_processed_interaction_start_time := -1
 var _has_ever_died := false
 
@@ -178,13 +179,20 @@ func _process_movement_and_actions() -> void:
 		and not Netcode.frame_driver.is_resimulating
 	):
 		# Server forward-sim only: apply pending bounce
-		# from collision callback. force_launch() nudges
-		# position up by 1 pixel and clears surface
-		# attachments, preventing FloorDefaultAction from
-		# zeroing velocity.
+		# from collision callback.
 		bounce_vel = _pending_bounce
-		force_launch(_pending_bounce)
+		if _pending_is_momentum_transfer:
+			# Momentum transfer: adjust velocity without
+			# launch effects. Players stay grounded.
+			velocity = _pending_bounce
+		else:
+			# Bounce/kill: force_launch() nudges position
+			# up by 1 pixel and clears surface
+			# attachments, preventing FloorDefaultAction
+			# from zeroing velocity.
+			force_launch(_pending_bounce)
 		_pending_bounce = Vector2.ZERO
+		_pending_is_momentum_transfer = false
 		applied_bounce = true
 		bounce_source = "pending"
 	else:
@@ -200,12 +208,24 @@ func _process_movement_and_actions() -> void:
 		)
 		if buffer_bounce != null:
 			bounce_vel = buffer_bounce
-			force_launch(buffer_bounce)
+			var is_mt_bump: bool = (
+				G.settings.bump_mode
+				== Settings.BumpMode.MOMENTUM_TRANSFER
+				and state_from_server
+					.get_current_frame_interaction_type()
+				== CharacterStateFromServer
+					.ServerInteractionType.BUMP
+			)
+			if is_mt_bump:
+				velocity = buffer_bounce
+			else:
+				force_launch(buffer_bounce)
 			# Clear pending bounce when buffer handles
 			# this frame's bounce. This prevents
 			# redundant application after re-simulation
 			# completes.
 			_pending_bounce = Vector2.ZERO
+			_pending_is_momentum_transfer = false
 			applied_bounce = true
 			bounce_source = "buffer"
 
@@ -1148,6 +1168,13 @@ func _server_apply_interaction_with_position(
 			return
 
 	_pending_bounce = bounce_velocity
+	_pending_is_momentum_transfer = (
+		interaction_type
+		== CharacterStateFromServer
+			.ServerInteractionType.BUMP
+		and G.settings.bump_mode
+		== Settings.BumpMode.MOMENTUM_TRANSFER
+	)
 
 	# Record interaction with lag-compensated position (automatically injects
 	# into buffer).
@@ -1200,7 +1227,7 @@ func _calculate_momentum_transfer(
 		# Players separating. No momentum to transfer.
 		return Vector2.ZERO
 
-	var transfer := (
+	var transfer: float = (
 		closing_speed
 		* movement_settings
 			.bump_momentum_transfer_factor
