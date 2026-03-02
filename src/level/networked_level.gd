@@ -195,6 +195,22 @@ func wrap_position(pos: Vector2) -> Vector2:
 	return pos
 
 
+## Wraps a node's global position to stay within
+## wrap_bounds. Resets physics interpolation when
+## the position wraps to prevent the renderer
+## from lerping between the old and new positions.
+func wrap_node(node: Node2D) -> void:
+	if wrap_bounds.size == Vector2.ZERO:
+		return
+	var wrapped := wrap_position(
+		node.global_position)
+	if not wrapped.is_equal_approx(
+		node.global_position
+	):
+		node.global_position = wrapped
+		node.reset_physics_interpolation()
+
+
 func _setup_wrap_bounds_overlay() -> void:
 	if wrap_bounds.size == Vector2.ZERO:
 		return

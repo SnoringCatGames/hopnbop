@@ -50,6 +50,11 @@ func _physics_process(delta: float) -> void:
 		) * damping
 		velocity *= G.settings.gore_friction
 
+	# Wrap position for toroidal level bounds.
+	var level := G.level
+	if level is NetworkedLevel:
+		level.wrap_node(self)
+
 	# Spawn trail particles while moving.
 	if emit_trails:
 		_trail_elapsed += delta

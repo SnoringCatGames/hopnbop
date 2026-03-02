@@ -154,6 +154,11 @@ func _physics_process(delta: float) -> void:
 		State.FLEEING:
 			_process_fleeing(delta)
 
+	# Wrap position for toroidal level bounds.
+	var level := G.level
+	if level is NetworkedLevel:
+		level.wrap_node(self)
+
 
 # --- State processing ---
 

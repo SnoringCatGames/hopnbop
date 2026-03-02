@@ -313,6 +313,11 @@ func _physics_process(delta: float) -> void:
 			_bump_rest_timer -= delta
 			_process_bump_rest(delta)
 
+	# Wrap position for toroidal level bounds.
+	var level := G.level
+	if level is NetworkedLevel:
+		level.wrap_node(self)
+
 
 func _process_flying(delta: float) -> void:
 	# Steer toward guide point on Bezier
@@ -1014,6 +1019,18 @@ func _calc_player_flee() -> Array:
 	var nearest_pos := Vector2.ZERO
 	var level: Level = G.level
 	if not is_instance_valid(level):
+		# DEBUG: Remove after diagnosing.
+		if Engine.get_physics_frames() % 120 == 0:
+			print(
+				"[Butterfly] no valid level")
+		return [flee, nearest_pid, nearest_pos]
+
+	if level.players.is_empty():
+		# DEBUG: Remove after diagnosing.
+		if Engine.get_physics_frames() % 120 == 0:
+			print(
+				"[Butterfly] level.players "
+				+ "is empty")
 		return [flee, nearest_pid, nearest_pos]
 
 	for player in level.players:
@@ -1023,6 +1040,16 @@ func _calc_player_flee() -> Array:
 			global_position
 			- player.global_position)
 		var dist := diff.length()
+		# DEBUG: Remove after diagnosing.
+		if Engine.get_physics_frames() % 120 == 0:
+			print(
+				"[Butterfly] dist to player "
+				+ "%d: %.1f (radius: %.1f)"
+				% [
+					player.player_id,
+					dist,
+					PLAYER_FLEE_RADIUS,
+				])
 		if dist > 0.0 and (
 				dist < PLAYER_FLEE_RADIUS):
 			var ratio := (

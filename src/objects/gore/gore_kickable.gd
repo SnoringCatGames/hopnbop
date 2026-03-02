@@ -36,6 +36,11 @@ func _physics_process(delta: float) -> void:
 		) * G.settings.gore_kickable_bounce_damping
 		velocity *= G.settings.gore_kickable_friction
 
+	# Wrap position for toroidal level bounds.
+	var level := G.level
+	if level is NetworkedLevel:
+		level.wrap_node(self)
+
 	# Spawn trail particles while moving fast enough.
 	if (
 		velocity.length() >

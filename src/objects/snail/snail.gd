@@ -408,6 +408,11 @@ func _update_visual() -> void:
 		tile_global + face_offset
 		+ progress_offset)
 
+	# Wrap position for toroidal level bounds.
+	var level := G.level
+	if level is NetworkedLevel:
+		level.wrap_node(self)
+
 	# Always rotate using the CW forward so
 	# the sprite's feet stay on the tile
 	# surface. flip_h handles the visual

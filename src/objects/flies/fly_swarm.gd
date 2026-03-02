@@ -331,6 +331,10 @@ func _update_flocking(delta: float) -> void:
 		):
 			fly.global_position = pos
 
+		# Wrap for toroidal level bounds.
+		if level is NetworkedLevel:
+			level.wrap_node(fly)
+
 
 func _update_home_point() -> void:
 	# Slowly wander the home point around the

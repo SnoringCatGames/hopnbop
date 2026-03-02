@@ -187,6 +187,11 @@ func _physics_process(delta: float) -> void:
 		_MoveMode.EVADING:
 			_process_evading(delta)
 
+	# Wrap position for toroidal level bounds.
+	var level := G.level
+	if level is NetworkedLevel:
+		level.wrap_node(self)
+
 
 func _process_swimming(delta: float) -> void:
 	_update_flee_velocity()

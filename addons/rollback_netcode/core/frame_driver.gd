@@ -42,33 +42,44 @@ extends Node
 ## - Only one rollback occurs per _network_process, earliest frame takes
 ##   priority.
 
+
 # FIXME: LEFT OFF HERE: Main list: --------------------------------------------
+
 
 # Use PixelLab for generating bespoke backgrounds and foregrounds and occlusion decorations layer for each level, given tilemap layouts to start from.
 
 # - Add thumbnails for each level. Use in settings UI.
 
-# - Test fish.
-# - Test snail.
-#   - sfx.
-# - Test butterfly.
-#   -
-# - Test birds.
-#   -
+# - Make critters and gore wrap-around.
+
+# - Test butterfly evasion.
+
+# - Ask AI to thoroughly analyze the entire GDScript codebase (excluding addons/gut/), and fix any style guidelines issues that we've recently codified in CLAUDE.md.
+
+# - Implement bespoke art for one level to test the process.
+#   - Also implement occlusion art at this point.
+#   - Also implement foreground/background art responsive animations at this point.
 
 # ---
 
-# Add wrap-around level.
+# - Add bespoke art for each level, rather than tile sets. Or, at least, try
+#   this for one level.
+#   - MAKE SURE THIS PLAN ACCOUNTS FOR THE TILE-ANIMATION PLAN!
+# - DEFINITELY add decoration/occlusion art to scatter around in each level
+#   (with our without tile set versions of levels)
 
-# Add Dozohip level.
+# Interactive animated tiles behind and in front:
+# - MAKE SURE THIS PLAN ACCOUNTS FOR THE BESPOKE-ART-PER-LEVEL PLAN.
+# - Research how to implement animated tiles.
+# - Have Tile set point to a scene for each animated tile.
+# - ALSO, plan a way to sync occlusion and background animated tiles, so
+#   rustling one will also trigger the other.
+# - Probably implement this by subclassing the TileMap. Then have a property to
+#   indicate its partner TileMap, and assert it's set.
+# - Then, need to figure out collisions for an offset area for these rustle tiles.
+# - Then...
 
-# ADD LEVEL WRAP AROUND LIKE KILLER QUEEN (vertically and horizontally)
-# - Also make critters and gore wrap-around.
-
-# - Add support for jumping on water if you time it just right (+/-0.05 or something small).
-#   - Both early and late-press forgiveness.
-
-# - Look at usage of distance instead of distance_squared.
+# ---
 
 # - Polish networked movement. It still seems like we get jitter and stuck
 #   player-inputs-on-server-side too often.
@@ -89,66 +100,6 @@ extends Node
 #   - GameLift and matchmaking
 #   - ...
 #   -
-
-#######################################################
-# UNPROCESSED EMAIL NOTES
-
-
-# Interactive animated tiles behind and in front:
-# - MAKE SURE THIS PLAN ACCOUNTS FOR THE BESPOKE-ART-PER-LEVEL PLAN.
-# - Research how to implement animated tiles.
-# - Have Tile set point to a scene for each animated tile.
-# - ALSO, plan a way to sync occlusion and background animated tiles, so
-#   rustling one will also trigger the other.
-# - Probably implement this by subclassing the TileMap. Then have a property to
-#   indicate its partner TileMap, and assert it's set.
-# - Then, need to figure out collisions for an offset area for these rustle tiles.
-# - Then...
-
-
-# Flies:
-# - Flies are drawn slowly to poop!
-# - Flies are chased away by bunnies.
-# - Flies have simple swarming/flocking behaviors.
-# - Fly sfx needs two components:
-#   - One is very positional. Oyr represents where it is relatively and how far.
-#   - The other is not positional, but it's stronger based on how close and how
-#     many. This one needs to have each individual bzzz have a lot of motion
-#     with panning.
-#   - Need to calculate a strength and relative position score based on the
-#     relative positions of ALL flies in the level
-
-# Decorative critters:
-# - Snail
-# - Birds
-# - Frog/cricket
-# - Fish (dodge bunnies in water)
-# - Butterflies
-# - Fly swarm
-
-# - Implement "lordoftheflies" and "bloodisthickerthanwater".
-
-# ---
-
-# - Add bespoke art for each level, rather than tile sets. Or, at least, try
-#   this for one level.
-#   - MAKE SURE THIS PLAN ACCOUNTS FOR THE TILE-ANIMATION PLAN!
-# - DEFINITELY add decoration/occlusion art to scatter around in each level
-#   (with our without tile set versions of levels)
-
-# Add alternate modes for all the holidays:
-#   - Halloween: candy gore, background change, level change, costume change
-#   - Vday: red and pink heart gore, also little baby bunnies run away away when
-#     killed, background/level/costume...
-#   - Shamrocks
-#   - Fireworks
-#   - Candy canes
-#   - Easter eggs (and finding bonus Easter eggs hidden in each level; need to
-#     add occlusion at for this!)
-#   - T day...
-#   - Chinese New Year's
-#   - Other important holidays across the world
-# - Alternate adjectives for holidays too
 
 
 #######################################################
@@ -225,8 +176,13 @@ extends Node
 
 
 # Make a list of sound requests for Alden. Will need to decide on theme/vibe first. Different music per level? Different art per level?
-
-# Think about how to use my network to find an artist. Doesn't even have to be pixel art, I guess...
+# - Fly sfx needs two components:
+#   - One is very positional. Oyr represents where it is relatively and how far.
+#   - The other is not positional, but it's stronger based on how close and how
+#     many. This one needs to have each individual bzzz have a lot of motion
+#     with panning.
+#   - Need to calculate a strength and relative position score based on the
+#     relative positions of ALL flies in the level
 
 # NOW is probably the time to document every aspect of the networking systems, what they do, why, pros and cons, ask AI to help, look at what .md files already exist, all to draft a particular collection of devlog posts, first deciding on main sections and bullets, then I approve, then draft them. GameLift, backend, auth, and other bits of networking not related to gameplay. Then all the gameplay bits
 #  (What is lock step again??)
@@ -591,6 +547,20 @@ extends Node
 #   other state tracked in networking systems might be best to consolidate in a
 #   separate location.
 # - Search for and replace/remove anthropic and claude.
+
+# Add alternate modes for all the holidays:
+#   - Halloween: candy gore, background change, level change, costume change
+#   - Vday: red and pink heart gore, also little baby bunnies run away away when
+#     killed, background/level/costume...
+#   - Shamrocks
+#   - Fireworks
+#   - Candy canes
+#   - Easter eggs (and finding bonus Easter eggs hidden in each level; need to
+#     add occlusion at for this!)
+#   - T day...
+#   - Chinese New Year's
+#   - Other important holidays across the world
+# - Alternate adjectives for holidays too
 
 # Record this somewhere. These are the places to update when bumping a new version.
 # Version Management Locations
