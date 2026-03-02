@@ -133,7 +133,7 @@ right_disabled = SubResource("sbt_rd")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 2
-theme_override_constants/separation = 2
+theme_override_constants/separation = 5
 
 [node name="ButtonContainer" type="HBoxContainer" parent="VBoxContainer"]
 layout_mode = 2
@@ -143,6 +143,7 @@ theme_override_constants/separation = 0
 unique_name_in_owner = true
 custom_minimum_size = Vector2(64, 48)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_styles/focus = SubResource("StyleBoxEmpty_tjr35")
 icon = ExtResource("2_x")
 icon_alignment = 1
@@ -152,6 +153,7 @@ expand_icon = true
 unique_name_in_owner = true
 custom_minimum_size = Vector2(64, 48)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_styles/focus = SubResource("StyleBoxEmpty_81igg")
 icon = ExtResource("3_check")
 icon_alignment = 1
@@ -161,6 +163,7 @@ expand_icon = true
 unique_name_in_owner = true
 custom_minimum_size = Vector2(64, 48)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_styles/focus = SubResource("StyleBoxEmpty_o1qun")
 icon = ExtResource("4_heart")
 icon_alignment = 1
@@ -168,10 +171,15 @@ expand_icon = true
 
 [node name="Thumbnail" type="TextureRect" parent="VBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 40)
+custom_minimum_size = Vector2(0, 199)
 layout_mode = 2
+size_flags_horizontal = 0
 expand_mode = 3
 stretch_mode = 5
+
+[node name="Spacer" type="Control" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
 
 [connection signal="pressed" from="VBoxContainer/ButtonContainer/LeftBtn" to="." method="_on_left_btn_pressed"]
 [connection signal="pressed" from="VBoxContainer/ButtonContainer/MiddleBtn" to="." method="_on_middle_btn_pressed"]
