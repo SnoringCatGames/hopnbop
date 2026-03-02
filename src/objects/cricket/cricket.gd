@@ -465,18 +465,22 @@ func _choose_spawn_position() -> Vector2:
 			tiles)
 
 	# Keep only TOP faces (floors), skipping
-	# ice tiles.
+	# ice tiles and scene collection tiles
+	# (e.g. springs).
 	var floor_surfaces: Array = []
 	for s in surfaces:
 		if s.face != Snail.Face.TOP:
 			continue
 		var td := tiles.get_cell_tile_data(
 			s.tile)
-		if td != null \
-				and td.get_terrain_set() \
-				== Level.TERRAIN_SET_COLLISION \
-				and td.get_terrain() \
-				== Level.ICE_TERRAIN_ID:
+		# Scene collection tiles (springs)
+		# return null tile data.
+		if td == null:
+			continue
+		if (td.get_terrain_set()
+				== Level.TERRAIN_SET_COLLISION
+				and td.get_terrain()
+				== Level.ICE_TERRAIN_ID):
 			continue
 		floor_surfaces.append(s)
 	if floor_surfaces.is_empty():
