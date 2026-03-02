@@ -208,7 +208,7 @@ func _server_send_stats_to_clients() -> void:
 	_rpc_client_update_stats.rpc(packed)
 
 
-@rpc("authority", "call_remote", "unreliable")
+@rpc("authority", "call_remote", "unreliable", NetworkConnector.RPC_CHANNEL_STATS)
 func _rpc_client_update_stats(
 	packed_data: Array,
 ) -> void:
@@ -232,7 +232,7 @@ func _rpc_client_update_stats(
 ## and poop stat deltas from clients. Each entry
 ## is [player_id, cricket, fish, butterfly,
 ## fly_time, poop] = 6 stride.
-@rpc("any_peer", "call_remote", "unreliable")
+@rpc("any_peer", "call_remote", "unreliable", NetworkConnector.RPC_CHANNEL_STATS)
 func _rpc_server_update_critter_stats(
 	packed_data: Array,
 ) -> void:
@@ -284,7 +284,7 @@ func _rpc_server_update_critter_stats(
 		i += stride
 
 
-@rpc("authority", "call_remote", "reliable")
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_GAME_EVENTS)
 func _rpc_client_notify_match_started(
 	match_start_frame_index: int,
 	match_duration_usec: int
@@ -295,7 +295,7 @@ func _rpc_client_notify_match_started(
 	)
 
 
-@rpc("authority", "call_remote", "reliable")
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_GAME_EVENTS)
 func _rpc_client_notify_match_ended() -> void:
 	state.client_notify_match_ended()
 
@@ -303,7 +303,7 @@ func _rpc_client_notify_match_ended() -> void:
 ## Receives dynamic adjective assignments from the
 ## server. packed_data is an Array of alternating
 ## [player_id, adjective_string, ...] pairs.
-@rpc("authority", "call_remote", "reliable")
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_GAME_EVENTS)
 func _rpc_client_notify_dynamic_adjectives(
 	packed_data: Array,
 ) -> void:

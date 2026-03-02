@@ -63,6 +63,7 @@ extends NetworkSettings
 
 @export var use_simple_score := true
 @export var are_bumps_enabled := true
+@export var are_hard_adjectives_enabled := false
 
 @export_group("Gore")
 @export var is_gore_enabled := false
