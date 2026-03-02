@@ -51,9 +51,8 @@ func _physics_process(delta: float) -> void:
 		velocity *= G.settings.gore_friction
 
 	# Wrap position for toroidal level bounds.
-	var level := G.level
-	if level is NetworkedLevel:
-		level.wrap_node(self)
+	if G.level is NetworkedLevel:
+		G.level.wrap_node(self)
 
 	# Spawn trail particles while moving.
 	if emit_trails:
@@ -63,13 +62,12 @@ func _physics_process(delta: float) -> void:
 				.gore_trail_spawn_interval_sec
 		if _trail_elapsed >= spawn_interval:
 			_trail_elapsed -= spawn_interval
-			var level: Level = G.level
 			if (
-				is_instance_valid(level) and
+				is_instance_valid(G.level) and
 				is_instance_valid(
-					level.gore_manager)
+					G.level.gore_manager)
 			):
-				level.gore_manager \
+				G.level.gore_manager \
 					.spawn_trail_particle(
 						position,
 						type_index,

@@ -206,7 +206,8 @@ with the project-specific additions below.
 - **Line length:** 80 characters maximum.
 - **Blank lines:** Two blank lines between functions/methods.
 - **Line wrapping:** Prefer parentheses over backslashes for
-  line continuation.
+  line continuation. Conversely, unwrap lines onto a single
+  line when they fit within the 80-character limit.
 - **Operator placement:** When wrapping expressions across
   multiple lines, place operators at the start of the next
   line, not the end of the previous line.
@@ -368,6 +369,29 @@ in scripts:
 const _DEATH_EFFECT := preload(
 	"res://src/effects/death_effect.tscn"
 )
+```
+
+### Direct Access Over Local Copies
+
+Do not assign local or class-level variable copies of
+autoload properties (`G`, `Netcode`) or unique-name nodes
+(`%`). Access them directly where needed.
+
+```gdscript
+# Correct: access autoload properties directly.
+if G.match_state.is_match_active:
+	Netcode.server_frame_index += 1
+
+# Wrong: local copy of autoload property.
+var match_state := G.match_state
+if match_state.is_match_active:
+	pass
+
+# Correct: access unique-name node directly.
+%AnimatedSprite2D.play("idle")
+
+# Wrong: local or class-level copy.
+@onready var sprite := %AnimatedSprite2D
 ```
 
 ### Performance
