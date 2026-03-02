@@ -446,6 +446,8 @@ func _update_flee_velocity() -> void:
 	for player in level.players:
 		if not is_instance_valid(player):
 			continue
+		if not player.surfaces.is_in_water:
+			continue
 		var diff := (
 			global_position
 			- player.global_position)
@@ -480,6 +482,8 @@ func _is_any_player_nearby() -> bool:
 		return false
 	for player in level.players:
 		if not is_instance_valid(player):
+			continue
+		if not player.surfaces.is_in_water:
 			continue
 		var dist := global_position.distance_to(
 			player.global_position)
