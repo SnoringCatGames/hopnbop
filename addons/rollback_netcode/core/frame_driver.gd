@@ -45,6 +45,11 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: --------------------------------------------
 
+# /Make my image more resemble the reference. I want rectangular blocks that aren't exactly aligned with the tile grid. I want some brown dirt/wood blocks, some yellow sandy blocks, some gray stone blocks, some ice blocks. Grass should be on the tops of all non-stone blocks. There should be some running falling water and a pool. Omit the butterflies and flies.
+# /I've made this level using a tileset. I now want to replace it with bespoke art--no repeating tiles. Also, I want to replace most of the interior "stone" art with wood/dirt art. And some sandy art in some of the platforms on the left side of the screen. Also, I want a small trickle flowing into the pool from the middle of the floating platform that's directly above it. Replace the "ice" tiles with a transparent ice-cube aesthetic.
+#
+# This is a level for a 2D platformer, using a tileset with repeating tiles. I want to replace it with bespoke art across the entire level. I want to carefully preserve the overall geometry of the platforms and walls. I want tall stone columns on the outer sides. I want to still have some stone comprising some bottom parts of some platforms, but more dirt and wooden stump parts as well. Also, I want most of the platforms in the left half to incorporate sandy parts instead of wood/dirt parts. Also, I want a tiny trickle water fall falling into the bottom-left-corner pool from the wide platform that's directly above it. Also, I want to replace the "icy" parts with transparent ice-cube aesthetics.
+# Great. Now, I see the water falls in two parts. Have the second part fall from the platform on the left, rather than the one on the right. The water can pool/flow horizontally slightly to reach the preexisting lower waterfall part. Let's replace all the stump parts with dirt parts. Let's lighten up the tone a lot. This should be more of a sunny woodland glade than a gloomy cave. Some of the ice on the right half doesn't exactly match the tiles from the base image--make sure they do. Let there be more transition and merging between dirt/sand and stone, so a given "tile" is more likely to have a bit of both, with stone usually below sand/dirt. Also, allow for a tiny bit of deviation around "tile" edges, so they can stick out a bit more beyond the gridlines.
 
 # Thoroughly analyze the entire GDScript codebase (excluding addons/gut/), and fix any style guidelines issues that we've recently codified in CLAUDE.md.
 
@@ -1409,7 +1414,7 @@ func queue_rollback(
 	if is_frame_too_old_to_consider(p_conflicting_frame_index):
 		Netcode.log.warning(
 			("Rollback rejected: frame %d is too old "
-			+ "(oldest rollbackable: %d)") %
+			+"(oldest rollbackable: %d)") %
 			[
 				target_rollback_frame,
 				oldest_rollbackable_frame_index,
