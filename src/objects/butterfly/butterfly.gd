@@ -271,6 +271,23 @@ func _physics_process(delta: float) -> void:
 	_noise_time += delta
 	_time_since_disturbed += delta
 
+	# Tick flap/glide phase timer during
+	# flight.
+	if _state == State.FLYING:
+		_flutter_phase_timer -= delta
+		if _flutter_phase_timer <= 0.0:
+			if _flapping:
+				_start_glide()
+			else:
+				_start_flap_burst()
+		# Ease envelope toward target.
+		var target_env := (
+			1.0 if _flapping else 0.0)
+		_flutter_envelope = move_toward(
+			_flutter_envelope,
+			target_env,
+			FLUTTER_ENVELOPE_RATE * delta)
+
 	match _state:
 		State.FLYING:
 			_air_duration_timer -= delta
@@ -346,24 +363,12 @@ func _process_flying(delta: float) -> void:
 		return
 
 	# If we bumped a surface while not
-	# landing, pick a new target so we
-	# don't press into the wall.
+	# landing, rest briefly before resuming.
 	if (
 		not _landing
 		and (is_on_floor() or is_on_wall())
 	):
-		if _evading:
-			var flee_r := _calc_player_flee()
-			var fl: Vector2 = flee_r[0]
-			if fl.length() > 1.0:
-				_pick_evasion_target(
-					flee_r[2] as Vector2)
-			else:
-				_pick_air_target()
-		elif _air_duration_timer <= 0.0:
-			_pick_surface_target()
-		else:
-			_pick_air_target()
+		_enter_bump_rest()
 		return
 
 	# Flip sprite based on horizontal
@@ -372,13 +377,17 @@ func _process_flying(delta: float) -> void:
 		_sprite.flip_h = velocity.x < 0.0
 
 	# Sprite flutter (visual only).
+	var freq := (
+		FLUTTER_FREQ * _flutter_freq_mult)
 	var raw := sin(
-		_noise_time * FLUTTER_FREQ * TAU)
+		_noise_time * freq * TAU)
 	var bouncy := absf(raw)
 	var blend := lerpf(
 		raw, bouncy, FLUTTER_BOUNCE)
 	_sprite.position.y = (
-		-blend * FLUTTER_AMPLITUDE)
+		-blend
+		* FLUTTER_AMPLITUDE
+		* _flutter_envelope)
 
 	# Target arrival / state transitions.
 	var dist_to_end := (
@@ -496,6 +505,23 @@ func _enter_resting() -> void:
 	_evading = false
 	_sprite.position.y = 0.0
 	_sprite.play(&"rest")
+
+
+func _start_flap_burst() -> void:
+	_flapping = true
+	_flutter_phase_timer = randf_range(
+		FLAP_DURATION_MIN,
+		FLAP_DURATION_MAX)
+	_flutter_freq_mult = randf_range(
+		1.0 - FLUTTER_FREQ_VARIANCE,
+		1.0 + FLUTTER_FREQ_VARIANCE)
+
+
+func _start_glide() -> void:
+	_flapping = false
+	_flutter_phase_timer = randf_range(
+		GLIDE_DURATION_MIN,
+		GLIDE_DURATION_MAX)
 
 
 # ---- Target picking ----

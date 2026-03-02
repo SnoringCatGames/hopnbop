@@ -81,6 +81,14 @@ extends Node
 
 # - Lingering FIXMEs.
 
+# - Ask for target reviews of important files/systems:
+#   - Player
+#   - Critters
+#   - Gore manager
+#   - UI
+#   - GameLift and matchmaking
+#   - ...
+#   -
 
 #######################################################
 # UNPROCESSED EMAIL NOTES
