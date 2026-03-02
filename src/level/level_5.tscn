@@ -8,6 +8,7 @@
 [node name="Level5" type="Node2D" node_paths=PackedStringArray("player_spawner", "collision_tiles", "level_camera", "spawn_points", "players_node")]
 script = ExtResource("1_ng82b")
 player_spawner = NodePath("PlayerSpawner")
+snail_count = 6
 wrap_bounds = Rect2(-128, -128, 256, 256)
 collision_tiles = NodePath("CollisionTiles")
 level_camera = NodePath("Camera2D")
