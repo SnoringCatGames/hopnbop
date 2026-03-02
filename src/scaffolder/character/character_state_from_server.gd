@@ -25,8 +25,9 @@ var is_authority_for_state_from_server: bool:
 var is_authority_for_input_from_client: bool:
 	get:
 		return (
-			is_instance_valid(input_from_client) and
-			input_from_client.is_multiplayer_authority()
+			is_instance_valid(input_from_client)
+			and input_from_client
+				.is_multiplayer_authority()
 		)
 
 var position := Vector2.ZERO
@@ -37,21 +38,33 @@ var surfaces := 0
 var is_dead: bool:
 	get:
 		# Player is dead only while DIE interaction is active (before SPAWN).
-		if last_interaction_type != ServerInteractionType.DIE or \
-			last_interaction_frame_index < 0:
+		if (last_interaction_type != ServerInteractionType.DIE
+				or last_interaction_frame_index < 0):
 			return false
-		var respawn_frame: int = last_interaction_frame_index + \
-			int(G.settings.player_respawn_cooldown_sec * 60)
+		var respawn_frame: int = (
+			last_interaction_frame_index
+			+ int(
+				G.settings.player_respawn_cooldown_sec
+				* 60
+			)
+		)
 		return Netcode.server_frame_index < respawn_frame
 
 var is_invincible: bool:
 	get:
 		# Player is invincible after SPAWN for the invincibility duration.
-		if last_interaction_type != ServerInteractionType.SPAWN or \
-			last_interaction_frame_index < 0:
+		if (last_interaction_type
+				!= ServerInteractionType.SPAWN
+				or last_interaction_frame_index < 0):
 			return false
-		var invincibility_end_frame: int = last_interaction_frame_index + \
-			int(G.settings.player_invincibility_duration_sec * 60)
+		var invincibility_end_frame: int = (
+			last_interaction_frame_index
+			+ int(
+				G.settings
+					.player_invincibility_duration_sec
+				* 60
+			)
+		)
 		return Netcode.server_frame_index < invincibility_end_frame
 
 # Tracks the last frame for which we sent a
@@ -222,10 +235,10 @@ func _network_process() -> void:
 
 	# Determine which input source to use.
 	# - Server and owning client: use PlayerInputFromClient (client-authoritative)
-	# - Remote clients viewing other players: use ForwardedPlayerInputFromServer (server-authoritative)
+	# - Remote clients viewing other players: use ForwardedPlayerInputFromServer (server-authoritative).
 	var is_remote_player_on_client := (
-		not is_authority_for_state_from_server and
-		not is_authority_for_input_from_client
+		not is_authority_for_state_from_server
+		and not is_authority_for_input_from_client
 	)
 	var input_source: ReconcilableState
 	if is_remote_player_on_client:
@@ -264,8 +277,9 @@ func _network_process() -> void:
 	# N+1).
 	var should_use_predicted_input := false
 	if (
-		input_source is ForwardedPlayerInputFromServer and
-		input_source._rollback_buffer.has_at(frame_index)
+		input_source is ForwardedPlayerInputFromServer
+		and input_source._rollback_buffer
+			.has_at(frame_index)
 	):
 		# Check if previous frame has authoritative input source data.
 		var previous_frame_index_is_auth := false
@@ -448,9 +462,11 @@ func _network_process() -> void:
 	# Forward input from PlayerInputFromClient to
 	# ForwardedPlayerInputFromServer.
 	if (
-		is_authority_for_state_from_server and
-		is_instance_valid(forwarded_input_from_server) and
-		is_instance_valid(input_from_client)
+		is_authority_for_state_from_server
+		and is_instance_valid(
+			forwarded_input_from_server
+		)
+		and is_instance_valid(input_from_client)
 	):
 		forwarded_input_from_server.actions = input_from_client.actions
 		forwarded_input_from_server.last_interaction_type = (
@@ -496,12 +512,16 @@ func _network_process() -> void:
 			character._apply_movement()
 			frame_authority = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 			if Netcode.log.is_verbose and (
-				character.position.distance_to(pos_before) > 0.1 or
-				character.velocity.distance_to(vel_before) > 0.1
+				character.position
+					.distance_squared_to(pos_before)
+					> 0.01
+				or character.velocity
+					.distance_squared_to(vel_before)
+					> 0.01
 			):
 				Netcode.print(
-					("Remote simulation: pos %s->%s, vel %s->%s, " +
-					"actions=%d") % [
+					("Remote simulation: pos %s->%s,"
+					+ " vel %s->%s, actions=%d") % [
 						pos_before,
 						character.position,
 						vel_before,
@@ -661,11 +681,14 @@ func get_current_frame_bounce_velocity():
 	if _rollback_buffer == null:
 		return null
 
-	var current_frame := Netcode.server_frame_index
-	if not _rollback_buffer.has_at(current_frame):
+	if not _rollback_buffer.has_at(
+		Netcode.server_frame_index
+	):
 		return null
 
-	var frame_state: Array = _rollback_buffer.get_at(current_frame)
+	var frame_state: Array = _rollback_buffer.get_at(
+		Netcode.server_frame_index
+	)
 	if frame_state == null:
 		return null
 
@@ -674,8 +697,9 @@ func get_current_frame_bounce_velocity():
 		&"last_interaction_frame_index"
 	)
 
-	# Only apply bounce on the exact frame the interaction occurred.
-	if interaction_frame != current_frame:
+	# Only apply bounce on the exact frame the
+	# interaction occurred.
+	if interaction_frame != Netcode.server_frame_index:
 		return null
 
 	var interaction_type: int = _get_frame_property(
@@ -686,10 +710,13 @@ func get_current_frame_bounce_velocity():
 	# Only KILL, BUMP, and SPRING interactions have bounce
 	# velocities.
 	if (
-		interaction_type != ServerInteractionType.KILL and
-		interaction_type != ServerInteractionType.BUMP and
-		interaction_type != ServerInteractionType.SPRING and
-		interaction_type != ServerInteractionType.SNAIL_CRUSH
+		interaction_type != ServerInteractionType.KILL
+		and interaction_type
+			!= ServerInteractionType.BUMP
+		and interaction_type
+			!= ServerInteractionType.SPRING
+		and interaction_type
+			!= ServerInteractionType.SNAIL_CRUSH
 	):
 		return null
 
@@ -701,11 +728,12 @@ func get_current_frame_bounce_velocity():
 func get_current_frame_interaction_type() -> int:
 	if _rollback_buffer == null:
 		return ServerInteractionType.NONE
-	var current_frame := Netcode.server_frame_index
-	if not _rollback_buffer.has_at(current_frame):
+	if not _rollback_buffer.has_at(
+		Netcode.server_frame_index
+	):
 		return ServerInteractionType.NONE
-	var frame_state: Array = (
-		_rollback_buffer.get_at(current_frame)
+	var frame_state: Array = _rollback_buffer.get_at(
+		Netcode.server_frame_index
 	)
 	if frame_state == null:
 		return ServerInteractionType.NONE
@@ -713,7 +741,7 @@ func get_current_frame_interaction_type() -> int:
 		frame_state,
 		&"last_interaction_frame_index",
 	)
-	if interaction_frame != current_frame:
+	if interaction_frame != Netcode.server_frame_index:
 		return ServerInteractionType.NONE
 	return _get_frame_property(
 		frame_state,
@@ -814,17 +842,18 @@ func _try_send_confirmed_authoritative_state() -> void:
 				_last_confirmed_sent_frame,
 				check_frame)
 			continue
-		if not input_from_client._rollback_buffer \
-				.has_at(check_frame):
+		if not (input_from_client._rollback_buffer
+				.has_at(check_frame)):
 			# Input fell out of buffer. Advance past
 			# it so we don't stall on lost input.
 			_last_confirmed_sent_frame = maxi(
 				_last_confirmed_sent_frame,
 				check_frame)
 			continue
-		var input_state: Array = \
-			input_from_client._rollback_buffer \
+		var input_state: Array = (
+			input_from_client._rollback_buffer
 				.get_at(check_frame)
+		)
 		if input_from_client._is_frame_authoritative(
 			input_state
 		):
@@ -839,8 +868,9 @@ func _try_send_confirmed_authoritative_state() -> void:
 	# Without this, _try_send skips frames that were
 	# marked AUTHORITATIVE during server rollback,
 	# causing the sent frame to stall for many ticks.
-	var char_state: Array = \
+	var char_state: Array = (
 		_rollback_buffer.get_at(target_frame)
+	)
 	if not _is_frame_authoritative(char_state):
 		_set_frame_authority(
 			char_state,
@@ -850,8 +880,9 @@ func _try_send_confirmed_authoritative_state() -> void:
 
 	# Pack this authoritative state for network
 	# sending.
-	var prop_count := \
+	var prop_count := (
 		_property_names_for_packing.size()
+	)
 	var state := ArrayPool.acquire(prop_count + 2)
 	for i in range(prop_count):
 		state[i] = _get_frame_property(
@@ -870,9 +901,9 @@ func _try_send_confirmed_authoritative_state() -> void:
 
 	if Netcode.log.is_verbose:
 		Netcode.log.verbose(
-			"%s F:%d Confirmed authoritative "
-			+ "state for frame %d" %
-			[name, Netcode.server_frame_index,
+			("%s F:%d Confirmed authoritative "
+			+ "state for frame %d")
+			% [name, Netcode.server_frame_index,
 			target_frame],
 			NetworkLogger.CATEGORY_NETWORK_SYNC)
 
@@ -902,11 +933,14 @@ func _reconcile_server_interaction() -> void:
 	# Check the current frame's buffer for interactions to reconcile.
 	# We can't use self.last_interaction_* because _unpack_buffer_state(N-1)
 	# has already overwritten them with the previous frame's values.
-	var current_frame := Netcode.server_frame_index
-	if not _rollback_buffer.has_at(current_frame):
+	if not _rollback_buffer.has_at(
+		Netcode.server_frame_index
+	):
 		return
 
-	var frame_state: Array = _rollback_buffer.get_at(current_frame)
+	var frame_state: Array = _rollback_buffer.get_at(
+		Netcode.server_frame_index
+	)
 	if frame_state == null:
 		return
 
@@ -944,8 +978,9 @@ func _reconcile_server_interaction() -> void:
 	last_interaction_velocity = _get_frame_property(
 		frame_state, &"last_interaction_velocity")
 
-	# Only reconcile if this is the onset frame (interaction_frame == current_frame).
-	if buffer_interaction_frame != current_frame:
+	# Only reconcile if this is the onset frame
+	# (interaction_frame == current_frame).
+	if buffer_interaction_frame != Netcode.server_frame_index:
 		return
 
 	# For DIE and SPAWN onset, restore authoritative position/velocity from
@@ -953,8 +988,9 @@ func _reconcile_server_interaction() -> void:
 	# injected authoritative data. On non-onset frames, the buffer may have
 	# stale data from a previous simulation that hasn't been re-simulated yet
 	# during rollback, which would overwrite correctly re-simulated positions.
-	if buffer_interaction_type == ServerInteractionType.DIE or \
-		buffer_interaction_type == ServerInteractionType.SPAWN:
+	if (buffer_interaction_type == ServerInteractionType.DIE
+			or buffer_interaction_type
+				== ServerInteractionType.SPAWN):
 		position = _get_frame_property(frame_state, &"position")
 		velocity = _get_frame_property(frame_state, &"velocity")
 		if Netcode.ensure_valid(character):
@@ -962,17 +998,20 @@ func _reconcile_server_interaction() -> void:
 			character.velocity = velocity
 
 	var should_process := _should_reconcile_interaction(
-		current_frame,
+		Netcode.server_frame_index,
 		_last_reconciled_interaction_frame_index
 	)
 
 	# Verbose logging for reconciliation status.
 	if Netcode.log.is_verbose:
-		var type_name: StringName = ServerInteractionType.keys()[buffer_interaction_type]
+		var type_name: StringName = (
+			ServerInteractionType
+				.keys()[buffer_interaction_type]
+		)
 		Netcode.verbose(
 			"Reconciling %s: frame=%d, should_process=%s (%s)" % [
 				type_name,
-				current_frame,
+				Netcode.server_frame_index,
 				should_process,
 				name
 			],
@@ -980,7 +1019,9 @@ func _reconcile_server_interaction() -> void:
 		)
 
 	# Always mark as reconciled to prevent retry loops.
-	_last_reconciled_interaction_frame_index = current_frame
+	_last_reconciled_interaction_frame_index = (
+		Netcode.server_frame_index
+	)
 
 	if not should_process:
 		return
@@ -989,18 +1030,23 @@ func _reconcile_server_interaction() -> void:
 		ServerInteractionType.NONE:
 			pass
 		ServerInteractionType.BUMP:
-			_reconcile_bump_interaction(current_frame)
+			_reconcile_bump_interaction(
+				Netcode.server_frame_index)
 		ServerInteractionType.KILL:
-			_reconcile_kill_interaction(current_frame)
+			_reconcile_kill_interaction(
+				Netcode.server_frame_index)
 		ServerInteractionType.DIE:
-			_reconcile_die_interaction(current_frame)
+			_reconcile_die_interaction(
+				Netcode.server_frame_index)
 		ServerInteractionType.SPAWN:
-			_reconcile_spawn_interaction(current_frame)
+			_reconcile_spawn_interaction(
+				Netcode.server_frame_index)
 		ServerInteractionType.SPRING:
-			_reconcile_spring_interaction(current_frame)
+			_reconcile_spring_interaction(
+				Netcode.server_frame_index)
 		ServerInteractionType.SNAIL_CRUSH:
 			_reconcile_snail_crush_interaction(
-				current_frame)
+				Netcode.server_frame_index)
 		_:
 			Netcode.fatal()
 

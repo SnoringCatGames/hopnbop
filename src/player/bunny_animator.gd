@@ -128,36 +128,36 @@ func sync_visual_from(
 	source: BunnyAnimator,
 ) -> void:
 	# Base sprite.
-	animated_sprite.animation = \
-		source.animated_sprite.animation
-	animated_sprite.frame = \
-		source.animated_sprite.frame
-	animated_sprite.flip_h = \
-		source.animated_sprite.flip_h
+	animated_sprite.animation = (
+		source.animated_sprite.animation)
+	animated_sprite.frame = (
+		source.animated_sprite.frame)
+	animated_sprite.flip_h = (
+		source.animated_sprite.flip_h)
 	# Costume overlay.
 	var src_costume := source.get_costume_overlay()
 	if (
 		is_instance_valid(_costume_overlay)
 		and is_instance_valid(src_costume)
 	):
-		_costume_overlay.animation = \
-			src_costume.animation
-		_costume_overlay.frame = \
-			src_costume.frame
-		_costume_overlay.flip_h = \
-			src_costume.flip_h
+		_costume_overlay.animation = (
+			src_costume.animation)
+		_costume_overlay.frame = (
+			src_costume.frame)
+		_costume_overlay.flip_h = (
+			src_costume.flip_h)
 	# Crown overlay.
 	var src_crown := source.get_crown_overlay()
 	if (
 		is_instance_valid(_crown_overlay)
 		and is_instance_valid(src_crown)
 	):
-		_crown_overlay.animation = \
-			src_crown.animation
-		_crown_overlay.frame = \
-			src_crown.frame
-		_crown_overlay.flip_h = \
-			src_crown.flip_h
+		_crown_overlay.animation = (
+			src_crown.animation)
+		_crown_overlay.frame = (
+			src_crown.frame)
+		_crown_overlay.flip_h = (
+			src_crown.flip_h)
 
 
 ## Returns the costume overlay sprite, or null.
@@ -181,11 +181,11 @@ func face_left() -> void:
 func face_right() -> void:
 	super.face_right()
 	if is_instance_valid(_costume_overlay):
-		_costume_overlay.flip_h = \
-			not faces_right_by_default
+		_costume_overlay.flip_h = (
+			not faces_right_by_default)
 	if is_instance_valid(_crown_overlay):
-		_crown_overlay.flip_h = \
-			not faces_right_by_default
+		_crown_overlay.flip_h = (
+			not faces_right_by_default)
 
 
 func play(animation_name: StringName) -> void:
@@ -201,7 +201,7 @@ func play(animation_name: StringName) -> void:
 			# Don't interrupt Eat, don't re-roll if
 			# Rest or Eat is active.
 			return
-		# Fresh external Rest trigger — start cycle.
+		# Fresh external Rest trigger. Start cycle.
 		_rest_eat_active = true
 		_is_eating = false
 		_did_eat_this_cycle = false
@@ -256,14 +256,14 @@ func _on_animation_looped() -> void:
 	if not _rest_eat_active:
 		return
 	if _is_eating:
-		# Eat completed — go back to Rest, no new
+		# Eat completed. Go back to Rest, no new
 		# cycle. Set target to -1 so no future loop
 		# iteration can trigger Eat again.
 		_is_eating = false
 		_eat_target_iteration = -1
 		_play_on_all_layers(&"Rest")
 	else:
-		# Rest looped — increment iteration counter.
+		# Rest looped. Increment iteration counter.
 		_rest_loop_count += 1
 
 
@@ -331,14 +331,14 @@ static func _create_swapped_sprite_frames(
 	var frames: SpriteFrames = source_frames.duplicate()
 
 	for anim_name in frames.get_animation_names():
-		var frame_count := \
-			frames.get_frame_count(anim_name)
+		var frame_count := (
+			frames.get_frame_count(anim_name))
 		for i in range(frame_count):
 			var tex := frames.get_frame_texture(
 				anim_name, i)
 			if tex is AtlasTexture:
-				var atlas_tex: AtlasTexture = \
-					tex.duplicate()
+				var atlas_tex: AtlasTexture = (
+					tex.duplicate())
 				atlas_tex.atlas = new_texture
 				frames.set_frame(
 					anim_name,

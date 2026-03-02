@@ -75,9 +75,9 @@ func _process(_delta: float) -> void:
 
 func _draw() -> void:
 	if (
-		Engine.is_editor_hint() or
-		not G.settings.show_hud or
-		not G.settings.draw_annotations
+		Engine.is_editor_hint()
+		or not G.settings.show_hud
+		or not G.settings.draw_annotations
 	):
 		return
 
@@ -122,8 +122,8 @@ func _draw_rollback_buffer_trail(player: Player) -> void:
 		return
 
 	var buffer := player.state_from_server._rollback_buffer
-	var debug_buffer := \
-		player.state_from_server._debug_frame_buffer
+	var debug_buffer := (
+		player.state_from_server._debug_frame_buffer)
 
 	if buffer == null:
 		return
@@ -146,20 +146,20 @@ func _draw_rollback_buffer_trail(player: Player) -> void:
 			continue
 
 		var frame_position: Vector2 = frame_state[0]
-		var frame_authority: int = \
-			frame_state[frame_state.size() - 1]
+		var frame_authority: int = (
+			frame_state[frame_state.size() - 1])
 
 		# Get debug info for this frame.
 		var debug_entry: Array = []
 		if (
-			debug_buffer != null and
-			debug_buffer.has_at(frame_index)
+			debug_buffer != null
+			and debug_buffer.has_at(frame_index)
 		):
 			debug_entry = debug_buffer.get_at(frame_index)
 
 		var local_pos := (
-			frame_position +
-			player.collision_shape.position
+			frame_position
+			+ player.collision_shape.position
 		)
 
 		# Determine dot color based on debug info and
@@ -234,10 +234,10 @@ func _get_dot_radius(debug_entry: Array) -> float:
 		return DOT_RADIUS_MAX
 	else:
 		var t := (
-			float(delay - DELAY_MIN_THRESHOLD) /
-			float(
-				DELAY_MAX_THRESHOLD -
-				DELAY_MIN_THRESHOLD
+			float(delay - DELAY_MIN_THRESHOLD)
+			/ float(
+				DELAY_MAX_THRESHOLD
+				- DELAY_MIN_THRESHOLD
 			)
 		)
 		return lerpf(DOT_RADIUS_MIN, DOT_RADIUS_MAX, t)

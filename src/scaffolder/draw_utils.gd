@@ -45,9 +45,9 @@ static func draw_shape_outline(
 		)
 	else:
 		Netcode.fatal(
-			"Invalid Shape2D provided for draw_shape_outline: %s. The " +
-			"supported shapes are: CircleShape2D, CapsuleShape2D, " +
-			"RectangleShape2D." % shape,
+			"Invalid Shape2D provided for draw_shape_outline: %s. The "
+			+ "supported shapes are: CircleShape2D, CapsuleShape2D, "
+			+ "RectangleShape2D." % shape,
 		)
 
 
@@ -131,8 +131,10 @@ static func compute_arc_points(
 	elif angle_diff < 0:
 		delta_theta = - delta_theta
 
-	var should_include_partial_sector_at_end := \
-	absf(angle_diff) - sector_count * delta_theta > 0.01
+	var should_include_partial_sector_at_end := (
+		absf(angle_diff)
+		- sector_count * delta_theta > 0.01
+	)
 	var vertex_count := sector_count + 1
 	if should_include_partial_sector_at_end:
 		vertex_count += 1
@@ -146,8 +148,10 @@ static func compute_arc_points(
 
 	# Handle the fence-post problem.
 	if should_include_partial_sector_at_end:
-		points[vertex_count - 1] = \
-		Vector2(cos(end_angle), sin(end_angle)) * radius + center
+		points[vertex_count - 1] = (
+			Vector2(cos(end_angle), sin(end_angle))
+			* radius + center
+		)
 
 	return points
 
@@ -160,14 +164,16 @@ static func draw_rectangle_outline(
 		color: Color,
 		thickness := 1.0,
 ) -> void:
-	var x_offset: float = \
-	half_width_height.y if \
-	is_rotated_90_degrees else \
-	half_width_height.x
-	var y_offset: float = \
-	half_width_height.x if \
-	is_rotated_90_degrees else \
-	half_width_height.y
+	var x_offset: float = (
+		half_width_height.y
+		if is_rotated_90_degrees
+		else half_width_height.x
+	)
+	var y_offset: float = (
+		half_width_height.x
+		if is_rotated_90_degrees
+		else half_width_height.y
+	)
 
 	var polyline := PackedVector2Array()
 	polyline.resize(6)
@@ -201,14 +207,16 @@ static func draw_capsule_outline(
 ) -> void:
 	var sector_count := ceili((PI * radius / sector_arc_length) / 2.0) * 2
 	var delta_theta := PI / sector_count
-	var theta := \
-	PI / 2.0 if \
-	is_rotated_90_degrees else \
-	0.0
-	var capsule_end_offset := \
-	Vector2(height / 2.0, 0.0) if \
-	is_rotated_90_degrees else \
-	Vector2(0.0, height / 2.0)
+	var theta := (
+		PI / 2.0
+		if is_rotated_90_degrees
+		else 0.0
+	)
+	var capsule_end_offset := (
+		Vector2(height / 2.0, 0.0)
+		if is_rotated_90_degrees
+		else Vector2(0.0, height / 2.0)
+	)
 	var end_center := center - capsule_end_offset
 	var vertices := PackedVector2Array()
 	var vertex_count := (sector_count + 1) * 2 + 2
@@ -256,8 +264,9 @@ static func draw_ice_cream_cone(
 ) -> void:
 	assert(circle_radius >= 0.0)
 
-	var distance_from_cone_end_point_to_circle_center := \
-	cone_end_point.distance_to(circle_center)
+	var distance_from_cone_end_point_to_circle_center := (
+		cone_end_point.distance_to(circle_center)
+	)
 
 	if circle_radius <= 0.0:
 		# Degenerate case: A line segment.
@@ -290,15 +299,25 @@ static func draw_ice_cream_cone(
 			)
 			return
 
-	var angle_from_circle_center_to_point_of_tangency := \
-	acos(circle_radius / distance_from_cone_end_point_to_circle_center)
-	var angle_from_circle_center_to_cone_end_point := \
-	circle_center.angle_to_point(cone_end_point)
+	var angle_from_circle_center_to_point_of_tangency := (
+		acos(
+			circle_radius
+			/ distance_from_cone_end_point_to_circle_center
+		)
+	)
+	var angle_from_circle_center_to_cone_end_point := (
+		circle_center.angle_to_point(cone_end_point)
+	)
 
-	var start_angle := angle_from_circle_center_to_cone_end_point + \
-	angle_from_circle_center_to_point_of_tangency
-	var end_angle := angle_from_circle_center_to_cone_end_point - \
-	angle_from_circle_center_to_point_of_tangency + 2.0 * PI
+	var start_angle := (
+		angle_from_circle_center_to_cone_end_point
+		+ angle_from_circle_center_to_point_of_tangency
+	)
+	var end_angle := (
+		angle_from_circle_center_to_cone_end_point
+		- angle_from_circle_center_to_point_of_tangency
+		+ 2.0 * PI
+	)
 
 	var points := compute_arc_points(
 		circle_center,
@@ -319,24 +338,32 @@ static func draw_ice_cream_cone(
 			])
 
 			# Skip degenerate triangles with zero area.
-			var area: float = abs(
-				(points[i].x - cone_end_point.x) * \
-				(points[i + 1].y - cone_end_point.y) - \
-				(points[i + 1].x - cone_end_point.x) * \
-				(points[i].y - cone_end_point.y)
-			) / 2.0
+			var area: float = (
+				abs(
+					(points[i].x - cone_end_point.x)
+					* (points[i + 1].y
+						- cone_end_point.y)
+					- (points[i + 1].x
+						- cone_end_point.x)
+					* (points[i].y
+						- cone_end_point.y)
+				) / 2.0
+			)
 
 			if area > 0.001:
 				canvas.draw_colored_polygon(triangle, color)
 	else:
 		# These extra points prevent the stroke width from shrinking around
 		# the cone end point when drawing outlines.
-		var extra_cone_end_point_1 := \
-		cone_end_point + \
-		(points[points.size() - 1] - cone_end_point) * 0.000001
-		var extra_cone_end_point_2 := \
-		cone_end_point + \
-		(points[0] - cone_end_point) * 0.000001
+		var extra_cone_end_point_1 := (
+			cone_end_point
+			+ (points[points.size() - 1]
+				- cone_end_point) * 0.000001
+		)
+		var extra_cone_end_point_2 := (
+			cone_end_point
+			+ (points[0] - cone_end_point) * 0.000001
+		)
 
 		points.push_back(extra_cone_end_point_1)
 		points.push_back(cone_end_point)
