@@ -9,6 +9,7 @@ var _display_name: String
 var _value: bool
 var _indent_pixels := 0
 var _icon_texture: Texture2D
+var _is_inverted := false
 
 @onready var _checkbox: TextureButton = %Checkbox
 @onready var _label: Label = %Label
@@ -36,6 +37,13 @@ func set_indent(pixels: int) -> void:
 ## Call before add_child().
 func set_icon(tex: Texture2D) -> void:
 	_icon_texture = tex
+
+
+## Invert the visual display so the checkbox
+## shows checked when the underlying value is
+## false. Call before add_child().
+func set_inverted() -> void:
+	_is_inverted = true
 
 
 func setup(
@@ -117,7 +125,8 @@ func _apply_side_effect() -> void:
 
 
 func _update_checkbox_textures() -> void:
-	if _value:
+	var is_checked := _value != _is_inverted
+	if is_checked:
 		_checkbox.texture_normal = \
 			tex_hovered_checked \
 			if _is_mouse_hovered \
