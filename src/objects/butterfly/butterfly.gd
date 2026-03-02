@@ -519,6 +519,63 @@ func _enter_resting() -> void:
 	_sprite.play(&"rest")
 
 
+func _enter_bump_rest() -> void:
+	_state = State.BUMP_RESTING
+	_bump_rest_timer = randf_range(
+		BUMP_REST_DURATION_MIN,
+		BUMP_REST_DURATION_MAX)
+	velocity = Vector2.ZERO
+	_sprite.position.y = 0.0
+	_sprite.play(&"rest")
+
+
+func _process_bump_rest(delta: float) -> void:
+	# Apply surface-appropriate rest forces.
+	if is_on_wall():
+		velocity = (
+			-get_wall_normal()
+			* WALL_REST_PUSH)
+	else:
+		velocity.y += REST_GRAVITY * delta
+		velocity.x = 0.0
+
+	# Player proximity: flee if close.
+	var result := _calc_player_flee()
+	var flee: Vector2 = result[0]
+	if flee.length() > 1.0:
+		var pid: int = result[1]
+		if (
+			pid >= 0
+			and _time_since_disturbed
+				>= DISTURB_COOLDOWN_SEC
+		):
+			_time_since_disturbed = 0.0
+			disturbed.emit(pid)
+		var pos: Vector2 = result[2]
+		_enter_flying()
+		_pick_evasion_target(pos)
+		return
+
+	move_and_slide()
+
+	# Orient sprite to surface.
+	if is_on_wall():
+		var normal := get_wall_normal()
+		_sprite.rotation = (
+			normal.angle() + PI / 2.0)
+	elif is_on_floor():
+		_sprite.rotation = 0.0
+
+	# Resume flight when timer expires.
+	if _bump_rest_timer <= 0.0:
+		_sprite.rotation = 0.0
+		_enter_flying()
+		if _air_duration_timer <= 0.0:
+			_pick_surface_target()
+		else:
+			_pick_air_target()
+
+
 func _start_flap_burst() -> void:
 	_flapping = true
 	_flutter_phase_timer = randf_range(
