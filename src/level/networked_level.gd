@@ -28,7 +28,7 @@ extends Level
 @export var fish_count := 2
 
 ## Number of butterflies to spawn (client-side).
-@export var butterfly_count := 2
+@export var butterfly_count := 4
 
 ## Fraction of the camera's vertical bounds where
 ## birds may spawn (0.0 to 1.0). A value of 0.5
