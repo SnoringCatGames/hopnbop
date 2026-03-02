@@ -5,25 +5,33 @@ extends Node2D
 ## Client-side only, purely decorative.
 
 
-## Flight speed in pixels per second.
-const FLIGHT_SPEED := 90.0
+## Flight speed range in pixels per second.
+## Each bird picks a random speed within this
+## range on spawn.
+const FLIGHT_SPEED_MIN := 40.0
+const FLIGHT_SPEED_MAX := 66.0
 
 ## Max random deviation from horizontal (degrees).
-const MAX_ANGLE_DEVIATION_DEG := 3.0
+const MAX_ANGLE_DEVIATION_DEG := 6.0
 
 ## Angular drift per second (degrees) for gentle
 ## arc curvature.
-const CURVE_RATE_DEG := 0.5
+const CURVE_RATE_DEG := 3.0
 
 ## Distance beyond camera edge before despawning.
 const OFFSCREEN_MARGIN := 30.0
 
+## Total frames in the fly animation.
+const FRAME_COUNT := 53
+
 var _direction := Vector2.RIGHT
 var _curve_rate_rad := 0.0
+var _flight_speed := 0.0
 var _camera: Camera2D
 var _viewport_size := Vector2.ZERO
 
-@onready var _sprite: Sprite2D = $Sprite2D
+@onready var _sprite: AnimatedSprite2D = \
+	$AnimatedSprite2D
 
 
 func setup(
@@ -36,6 +44,8 @@ func setup(
 	_viewport_size = viewport_size
 	_direction = direction.normalized()
 	_curve_rate_rad = curve_rate_rad
+	_flight_speed = randf_range(
+		FLIGHT_SPEED_MIN, FLIGHT_SPEED_MAX)
 
 
 func _ready() -> void:
@@ -43,6 +53,9 @@ func _ready() -> void:
 	# Flip sprite when flying leftward.
 	if _direction.x < 0.0:
 		_sprite.flip_h = true
+	# Start at a random frame so birds spawned
+	# near each other don't flap in unison.
+	_sprite.frame = randi() % FRAME_COUNT
 
 
 func _process(delta: float) -> void:
@@ -51,7 +64,7 @@ func _process(delta: float) -> void:
 		_curve_rate_rad * delta)
 
 	# Move along direction.
-	position += _direction * FLIGHT_SPEED * delta
+	position += _direction * _flight_speed * delta
 
 	# Despawn when past the opposite edge.
 	if _is_past_opposite_edge():
