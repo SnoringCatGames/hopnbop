@@ -79,7 +79,7 @@ func open(player: Player) -> void:
 			.get_is_action_pressed(
 				&"move_right", _device_config)
 	if is_instance_valid(G.audio):
-		G.audio.play_sound("select")
+		G.audio.play_sound("focus")
 
 
 func close() -> void:
@@ -88,7 +88,7 @@ func close() -> void:
 	G.local_settings.save_settings()
 
 	if is_instance_valid(G.audio):
-		G.audio.play_sound("select")
+		G.audio.play_sound("focus")
 
 	G.is_settings_ui_shown = false
 	G.settings_ui_player = null

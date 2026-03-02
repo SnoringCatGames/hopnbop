@@ -8,10 +8,21 @@ extends NetworkSettings
 
 
 enum BumpMode {
-	BOUNCE,            ## Old symmetric bounce-away.
+	BOUNCE, ## Old symmetric bounce-away.
 	MOMENTUM_TRANSFER, ## Velocity-based momentum transfer.
 }
 
+## When >= 0 and in preview mode, forces the
+## server to load the level at this index from
+## the registry. Clamped to the maximum valid
+## index.
+@export var level_override_for_preview: int = -1
+## When >= 0 and in preview mode, forces level
+## load by index (overrides
+## level_override_for_preview), closes all client
+## windows, and configures 1:1 pixel rendering
+## for thumbnail capture.
+@export var level_override_for_thumbnail_snapshot: int = -1
 
 # FIXME: Review this.
 @export_group("GameLift")

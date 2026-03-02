@@ -87,6 +87,14 @@ func get_level_count() -> int:
 	return _levels.size()
 
 
+## Get level info by array index.
+## Returns null if index is out of range.
+func get_level_by_index(index: int) -> LevelInfo:
+	if index < 0 or index >= _levels.size():
+		return null
+	return _levels[index]
+
+
 ## Clear all registered levels.
 func clear() -> void:
 	_levels_by_id.clear()
