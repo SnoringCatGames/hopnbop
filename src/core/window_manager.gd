@@ -226,10 +226,11 @@ func configure_thumbnail_snapshot_if_needed() \
 	var level_info := (
 		G.level_registry
 			.get_level_by_index(override_index))
-	var level_id := (
+	var level_id: StringName = (
 		level_info.id
 		if level_info != null
-		else "unknown")
+		else &"unknown"
+	)
 
 	# Take a screenshot from the game SubViewport
 	# directly. This avoids root viewport size
