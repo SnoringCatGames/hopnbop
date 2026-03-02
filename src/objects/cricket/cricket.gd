@@ -135,6 +135,9 @@ func _ready() -> void:
 	modulate.a = 0.0
 	_respawn()
 
+	CritterWrapGhost.create_ghosts(
+		self, _sprite)
+
 
 func _physics_process(delta: float) -> void:
 	# If critters are disabled mid-game, despawn.

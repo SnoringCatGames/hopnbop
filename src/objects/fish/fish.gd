@@ -174,6 +174,9 @@ func _ready() -> void:
 		_sprite.frame = randi() % frame_count
 	_sprite.play(&"swim")
 
+	CritterWrapGhost.create_ghosts(
+		self, _sprite)
+
 
 func _physics_process(delta: float) -> void:
 	if not is_instance_valid(_collision_tiles):
@@ -247,10 +250,15 @@ func _process_evading(delta: float) -> void:
 		_evade_slide_dir * _evade_speed * delta)
 
 	# If we breached the margin, revert and pick
-	# a new random direction.
+	# a new random direction. Defer the sprite
+	# flip until the fish successfully moves, to
+	# prevent rapid left-right flicking in tight
+	# corners.
 	if not _is_within_evade_margin():
 		global_position = prev_pos
 		_pick_random_evade_dir()
+	else:
+		_update_evade_sprite_flip()
 
 
 ## Pick a new random evade direction after
@@ -282,11 +290,14 @@ func _pick_random_evade_dir() -> void:
 	else:
 		_evade_slide_dir = (
 			candidates.pick_random())
-	_update_evade_sprite_flip()
 
 
 func _exit_evade() -> void:
 	_move_mode = _MoveMode.SWIMMING
+	# Clear residual flee velocity so
+	# _probe_boundaries() does not immediately
+	# re-enter evade on the next swimming frame.
+	_flee_velocity = Vector2.ZERO
 	# Align swim directions to continue
 	# smoothly from the evade trajectory.
 	if absf(_evade_slide_dir.x) > 0.01:
