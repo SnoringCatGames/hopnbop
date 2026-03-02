@@ -276,8 +276,8 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 	_total_bumps_by_player_id[player_2_id] += 1
 
 	# Note: bump stats are recorded at the collision
-	# detection site (bunny.gd) so they track even
-	# when are_bumps_enabled is false.
+	# detection site (bunny.gd) regardless of bump_mode,
+	# so dynamic adjective tracking sees all collisions.
 
 	# Store in indelible interaction buffer.
 	_server_store_interaction(

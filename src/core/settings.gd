@@ -7,6 +7,12 @@ extends NetworkSettings
 ## is_preview_mode are computed during initialization.
 
 
+enum BumpMode {
+	BOUNCE,            ## Old symmetric bounce-away.
+	MOMENTUM_TRANSFER, ## Velocity-based momentum transfer.
+}
+
+
 # FIXME: Review this.
 @export_group("GameLift")
 @export var gamelift_anywhere_mode := false
@@ -62,7 +68,7 @@ extends NetworkSettings
 @export var bunny_collision_shape: Shape2D
 
 @export var use_simple_score := true
-@export var are_bumps_enabled := true
+@export var bump_mode: BumpMode = BumpMode.MOMENTUM_TRANSFER
 @export var are_hard_adjectives_enabled := false
 
 @export_group("Gore")

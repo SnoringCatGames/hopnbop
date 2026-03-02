@@ -668,8 +668,14 @@ func _server_preview_hot_reload() -> void:
 	# 7. Replay peer declarations so the new
 	#    level spawns players and
 	#    MatchStateSynchronizer re-creates
-	#    PlayerState objects.
+	#    PlayerState objects. Only replay for
+	#    currently connected peers. Stale entries
+	#    from prior matches (old peer IDs) are
+	#    skipped.
+	var connected_peers := multiplayer.get_peers()
 	for peer_id in declarations:
+		if peer_id not in connected_peers:
+			continue
 		var decl: Dictionary = \
 			declarations[peer_id]
 		Netcode.connector \
