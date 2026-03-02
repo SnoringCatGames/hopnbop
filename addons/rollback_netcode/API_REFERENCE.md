@@ -282,7 +282,7 @@ connector.disconnected.connect(_on_disconnected)
 - Sends player declaration to server on connection
 - Server assigns sequential player IDs starting from 1
 - Version validation uses semantic versioning from ProjectSettings
-- RPC channel RPC_CHANNEL_PAUSE (1) used for pause coordination
+- RPC channels defined as constants: RPC_CHANNEL_DEFAULT (0), RPC_CHANNEL_SESSION_CONTROL (1), RPC_CHANNEL_CLOCK_SYNC (2), RPC_CHANNEL_GAME_EVENTS (3), RPC_CHANNEL_STATS (4), RPC_CHANNEL_DEBUG (5)
 
 ---
 
