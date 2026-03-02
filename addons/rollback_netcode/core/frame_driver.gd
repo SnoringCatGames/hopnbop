@@ -46,19 +46,26 @@ extends Node
 # FIXME: LEFT OFF HERE: Main list: --------------------------------------------
 
 
-# Use PixelLab for generating bespoke backgrounds and foregrounds and occlusion decorations layer for each level, given tilemap layouts to start from.
-
-# - Add thumbnails for each level. Use in settings UI.
-
-# - Make critters and gore wrap-around.
-
-# - Test butterfly evasion.
+# - Fix thumbnail convenience resizing settings behavior.
+# - Fix critter and player wrap-around visual glitch.
+# - Fix snail wrap-around issues.
+#   - Can spawn in-air on the right side.
+#   - Can get stuck walking in circles in air when rounding convex corners.
+#   - Reset snail count on wrap-around level.
 
 # - Ask AI to thoroughly analyze the entire GDScript codebase (excluding addons/gut/), and fix any style guidelines issues that we've recently codified in CLAUDE.md.
 
+# - Add thumbnails for each level. Use in settings UI.
+
+
+# ---
+
+
 # - Implement bespoke art for one level to test the process.
+#   - Use PixelLab for generating bespoke backgrounds and foregrounds and occlusion decorations layer for each level, given tilemap layouts to start from.
 #   - Also implement occlusion art at this point.
 #   - Also implement foreground/background art responsive animations at this point.
+
 
 # ---
 
