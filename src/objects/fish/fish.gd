@@ -11,7 +11,7 @@ extends Node2D
 ## Client-side only, no collision geometry.
 
 
-enum _MoveMode { SWIMMING, EVADING }
+enum _MoveMode {SWIMMING, EVADING}
 
 ## Horizontal margin from non-water tile edges
 ## (pixels).
@@ -46,7 +46,7 @@ const DISTURB_COOLDOWN_SEC := 0.8
 signal disturbed(player_id: int)
 
 ## Player avoidance force strength (pixels/sec).
-const PLAYER_FLEE_SPEED := 30.0
+const PLAYER_FLEE_SPEED := 21.0
 
 ## Per-frame decay for flee velocity.
 const FLEE_DECAY := 0.92
@@ -273,7 +273,7 @@ func _pick_random_evade_dir() -> void:
 			candidates.append(dir)
 
 	if candidates.is_empty():
-		_evade_slide_dir = -_evade_slide_dir
+		_evade_slide_dir = - _evade_slide_dir
 	else:
 		_evade_slide_dir = (
 			candidates.pick_random())
@@ -308,7 +308,7 @@ func _probe_boundaries() -> void:
 			0.0))
 	var left_probe := (
 		global_position + Vector2(
-			-(Level.TILE_SIZE / 2.0
+			- (Level.TILE_SIZE / 2.0
 			+ HORIZONTAL_MARGIN_PX),
 			0.0))
 	var right_wall := not _is_water_at(
@@ -351,7 +351,7 @@ func _probe_boundaries() -> void:
 	var up_probe := (
 		global_position + Vector2(
 			0.0,
-			-(Level.TILE_SIZE / 2.0
+			- (Level.TILE_SIZE / 2.0
 			+ VERTICAL_MARGIN_TOP_PX)))
 	var down_wall := not _is_water_at(
 		down_probe)
@@ -386,7 +386,7 @@ func _enter_evade_h() -> void:
 	# Wall is in the _h_direction; normal
 	# points back into the water.
 	_evade_wall_normal = Vector2(
-		-_h_direction, 0.0)
+		- _h_direction, 0.0)
 	# Slide vertically, prefer the flee's
 	# vertical component.
 	if absf(_flee_velocity.y) > 0.1:

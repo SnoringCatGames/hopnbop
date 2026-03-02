@@ -1066,14 +1066,6 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 	G.match_state.server_get_or_create_stats(
 		other_player_id).record_bump()
 
-	if not G.settings.are_bumps_enabled:
-		# Mark processed so the other player's
-		# callback doesn't double-count the stat.
-		_processed_collision_this_frame = true
-		other_player \
-			._processed_collision_this_frame = true
-		return
-
 	# Mark this collision as processed.
 	_processed_collision_this_frame = true
 	other_player._processed_collision_this_frame = true
@@ -1123,12 +1115,29 @@ func _server_apply_interaction_with_position(
 
 	match interaction_type:
 		CharacterStateFromServer.ServerInteractionType.BUMP:
-			var direction := (
-				override_position - other_player.global_position
-			).normalized()
-			var base_speed := movement_settings.bump_bounce_base_speed
-			var vertical_boost := movement_settings.bump_bounce_vertical_boost
-			bounce_velocity = direction * base_speed + Vector2(0, vertical_boost)
+			match G.settings.bump_mode:
+				Settings.BumpMode.BOUNCE:
+					var direction := (
+						override_position
+						- other_player.global_position
+					).normalized()
+					bounce_velocity = (
+						direction
+						* movement_settings
+							.bump_bounce_base_speed
+						+ Vector2(
+							0,
+							movement_settings
+								.bump_bounce_vertical_boost,
+						)
+					)
+				Settings.BumpMode.MOMENTUM_TRANSFER:
+					bounce_velocity = (
+						_calculate_momentum_transfer(
+							other_player,
+							override_position,
+						)
+					)
 		CharacterStateFromServer.ServerInteractionType.KILL:
 			var vertical_boost := movement_settings.kill_bounce_vertical_boost
 			bounce_velocity = Vector2(velocity.x, vertical_boost)
@@ -1164,6 +1173,50 @@ func _server_apply_interaction_with_position(
 		],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
+
+
+## Calculates the post-collision velocity for this player
+## using momentum transfer. The other player's approach
+## velocity pushes this player, and this player's own
+## approach velocity is reduced proportionally.
+func _calculate_momentum_transfer(
+	other_player: Player,
+	override_position: Vector2,
+) -> Vector2:
+	var axis := (
+		other_player.global_position
+		- override_position
+	).normalized()
+
+	# Project both velocities onto the collision axis.
+	# Positive = moving toward other player.
+	var v_self := pre_movement_velocity.dot(axis)
+	var v_other := (
+		other_player.pre_movement_velocity.dot(axis)
+	)
+
+	var closing_speed := v_self - v_other
+	if closing_speed <= 0.0:
+		# Players separating. No momentum to transfer.
+		return Vector2.ZERO
+
+	var transfer := (
+		closing_speed
+		* movement_settings
+			.bump_momentum_transfer_factor
+	)
+
+	var v_self_new := v_self - transfer
+	# Pusher: slow down but never reverse direction.
+	if v_self > 0.0:
+		v_self_new = maxf(0.0, v_self_new)
+
+	# Preserve velocity perpendicular to collision axis.
+	var perpendicular := (
+		pre_movement_velocity - v_self * axis
+	)
+
+	return perpendicular + axis * v_self_new
 
 
 ## Checks if a kill (or death) interaction happened this frame.

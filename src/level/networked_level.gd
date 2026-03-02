@@ -433,19 +433,22 @@ func _server_send_snail_states_to_peer(
 		)
 
 
-## Scans scene-based surface nodes (group
-## "snail_surface") and returns a Dictionary
-## mapping their tile coordinates to true.
+## Scans collision_tiles children for scene
+## collection tile instances (e.g. springs) that
+## have the normal-surfaces collision layer bit.
+## Returns a Dictionary mapping their tile
+## coordinates to true.
 func _collect_extra_surface_cells() -> Dictionary:
 	var extra_cells := {}
-	for node in get_tree().get_nodes_in_group(
-			"snail_surface"):
-		var local_pos := (
-			collision_tiles.to_local(
-				node.global_position))
+	for child in collision_tiles.get_children():
+		if not child is CollisionObject2D:
+			continue
+		if (child.collision_layer
+				& Character._NORMAL_SURFACES_COLLISION_MASK_BIT == 0):
+			continue
 		var cell := (
 			collision_tiles.local_to_map(
-				local_pos))
+				child.position))
 		extra_cells[cell] = true
 	return extra_cells
 
