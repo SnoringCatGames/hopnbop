@@ -662,6 +662,17 @@ func _sync_from_scene_state() -> void:
 		return
 
 	position = character.position
+
+	# Wrap position around level bounds.
+	var level := G.level
+	if (
+		level is NetworkedLevel
+		and level.wrap_bounds.size
+			!= Vector2.ZERO
+	):
+		position = level.wrap_position(position)
+		character.position = position
+
 	velocity = character.velocity
 	surfaces = character.surfaces.bitmask
 

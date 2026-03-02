@@ -48,6 +48,7 @@ var previous_velocity := Vector2.INF
 var pre_movement_velocity := Vector2.ZERO
 
 var last_triggered_jump_frame_index := -1
+var last_water_hop_frame_index := -1
 
 var jump_sequence_count := 0
 
@@ -413,6 +414,10 @@ func _update_water_state() -> void:
 	var in_water := G.level.is_position_in_water(
 		global_position)
 	surfaces.is_in_water = in_water
+	if surfaces.just_entered_water:
+		surfaces.last_water_entry_frame_index = (
+			Netcode.server_frame_index
+		)
 	if in_water:
 		water_surface_y = (
 			G.level.get_water_surface_y(
@@ -464,6 +469,13 @@ func _process_animation() -> void:
 
 func _process_sounds() -> void:
 	if actions.just_triggered_jump:
+		play_sound("jump")
+	elif (
+		last_water_hop_frame_index
+			== Netcode.server_frame_index
+	):
+		# The before-contact water hop fires without
+		# just_triggered_jump, so play the sound here.
 		play_sound("jump")
 
 	if surfaces.just_left_air:

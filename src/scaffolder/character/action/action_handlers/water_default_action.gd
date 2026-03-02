@@ -91,17 +91,19 @@ func process(character) -> bool:
 		character.velocity.y -= (
 			ms.buoyancy_acceleration * delta
 		)
-		# Cap upward speed in water.
-		character.velocity.y = maxf(
-			character.velocity.y,
-			-ms.water_max_upward_speed,
-		)
-		# Prevent buoyancy from overshooting the
-		# float line. Clamp velocity so the next
-		# move_and_slide lands exactly at (or
-		# just past) the float line. Skip during
-		# jumps so the player can exit the water.
+		# Skip speed cap and overshoot prevention
+		# after jumps/hops so the player can exit
+		# the water.
 		if not recently_jumped:
+			# Cap upward speed in water.
+			character.velocity.y = maxf(
+				character.velocity.y,
+				-ms.water_max_upward_speed,
+			)
+			# Prevent buoyancy from overshooting
+			# the float line. Clamp velocity so
+			# the next move_and_slide lands exactly
+			# at (or just past) the float line.
 			var dist: float = (
 				character.global_position.y
 				- float_line_y

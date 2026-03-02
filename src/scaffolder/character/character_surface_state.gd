@@ -239,6 +239,7 @@ var is_triggering_jump := false
 var is_descending_through_floors := false
 
 var last_floor_frame_index := -1
+var last_water_entry_frame_index := -1
 
 var last_floor_position := Vector2.INF
 
@@ -470,11 +471,6 @@ func update_touches(
 	# the floor. is_on_floor() captures the snap result.
 	if not is_touching_floor:
 		is_touching_floor = character.is_on_floor()
-
-	# Clear launched state when touching any surface.
-	if is_touching_surface:
-		is_launched = false
-		initial_launch_velocity = Vector2.INF
 
 	_update_surface_properties()
 
@@ -760,6 +756,13 @@ func _update_attachment_state() -> void:
 	if is_attaching_to_floor:
 		last_floor_frame_index = Netcode.server_frame_index
 		last_floor_position = character.global_position
+		# Clear launched state on floor landing.
+		# Moved here from update_touches() so that
+		# wall/ceiling contacts during a launch don't
+		# prematurely reduce the velocity cap.
+		if is_launched:
+			is_launched = false
+			initial_launch_velocity = Vector2.INF
 
 
 func clear_current_state() -> void:

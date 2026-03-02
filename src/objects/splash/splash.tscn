@@ -103,13 +103,11 @@ animations = [{
 }],
 "loop": false,
 "name": &"exit_water",
-"speed": 10.0
+"speed": 25.0
 }]
 
 [node name="Splash" type="AnimatedSprite2D"]
 texture_filter = 1
 sprite_frames = SubResource("SpriteFrames_splash")
-animation = &"enter_water"
-frame = 8
-frame_progress = 1.0
+animation = &"exit_water"
 script = ExtResource("1_script")

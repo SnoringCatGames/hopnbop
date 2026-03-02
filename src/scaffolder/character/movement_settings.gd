@@ -90,7 +90,7 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 
 @export var spring_bounce_vertical_boost := -365.0
 
-@export var snail_crush_bounce_vertical_boost := -40.0
+@export var snail_crush_bounce_vertical_boost := -20.0
 
 ## Coyote time.
 @export var late_jump_forgiveness_threshold_sec := 0.1
@@ -128,9 +128,12 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 @export var water_max_upward_speed := 120.0
 ## Jump boost when at or above the float line.
 @export var water_surface_jump_boost := -160.0
-## Jump boost when below the float line (half of
-## surface).
-@export var water_subsurface_jump_boost := -80.0
+## Timing window (seconds) around water contact
+## during which a jump triggers a water hop.
+@export var water_hop_window_sec := 0.025
+## Jump boost for a successful water hop (same
+## strength as a floor jump by default).
+@export var water_hop_boost := -220.0
 @export_group("")
 
 var gravity_fast_fall_acceleration: float:

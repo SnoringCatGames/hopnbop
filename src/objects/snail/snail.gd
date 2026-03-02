@@ -45,7 +45,7 @@ const _TRAIL_FADE_DURATION_SEC := 1.0
 
 ## Pixels to cut from each side of a concave
 ## corner to prevent sprite-tile overlap.
-const _CONCAVE_CORNER_INSET := 2.0
+const _CONCAVE_CORNER_INSET := 6.0
 
 ## CW forward direction along each face.
 const _CW_FORWARD := {
@@ -552,7 +552,7 @@ func _server_crush(player: Player) -> void:
 		Netcode.server_frame_index)
 
 
-@rpc("authority", "call_remote", "reliable")
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_GAME_EVENTS)
 func _rpc_crush(_frame: int) -> void:
 	is_alive = false
 	visible = false
@@ -592,7 +592,7 @@ func _respawn() -> void:
 	)
 
 
-@rpc("authority", "call_remote", "reliable")
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_GAME_EVENTS)
 func _rpc_respawn(
 	tile_x: int,
 	tile_y: int,
@@ -617,7 +617,7 @@ func _apply_respawn(
 	_apply_init(tile, face, clockwise, frame)
 
 
-@rpc("authority", "call_remote", "reliable")
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_GAME_EVENTS)
 func _rpc_init(
 	tile_x: int,
 	tile_y: int,

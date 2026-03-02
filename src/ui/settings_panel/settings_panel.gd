@@ -58,6 +58,26 @@ func open(player: Player) -> void:
 	_resolve_device_config()
 	_build_ui()
 	_set_focus(0)
+	# Prime previous-input state so directions
+	# already held when the panel opens are not
+	# detected as "just pressed" on the first
+	# frame. Without this, holding left/right
+	# while landing on the settings book
+	# immediately triggers CloseRow and the panel
+	# closes before it is visible.
+	if _device_config != null:
+		_prev_up = G.input_device_manager \
+			.get_is_action_pressed(
+				&"move_up", _device_config)
+		_prev_down = G.input_device_manager \
+			.get_is_action_pressed(
+				&"move_down", _device_config)
+		_prev_left = G.input_device_manager \
+			.get_is_action_pressed(
+				&"move_left", _device_config)
+		_prev_right = G.input_device_manager \
+			.get_is_action_pressed(
+				&"move_right", _device_config)
 	if is_instance_valid(G.audio):
 		G.audio.play_sound("select")
 
