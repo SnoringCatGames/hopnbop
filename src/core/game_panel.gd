@@ -506,19 +506,35 @@ func server_start_match() -> void:
 	G.match_state.match_start_frame_index = -1
 	G.match_state.is_match_ended = false
 
+	var is_thumbnail := (
+		Netcode.is_preview
+		and G.settings
+			.level_override_for_thumbnail_snapshot
+		>= 0
+	)
+
 	# Set expected player count for session validation.
 	# In preview mode, this is the number of client instances.
 	# In production, GameLiftServerProvider sets this from session properties.
-	if Netcode.is_preview:
-		var expected_client_count := Netcode.settings.preview_client_count
-		session_manager.server_set_expected_players(expected_client_count)
+	# Skip in thumbnail mode (no clients expected).
+	if Netcode.is_preview and not is_thumbnail:
+		var expected_client_count := (
+			Netcode.settings.preview_client_count
+		)
+		session_manager.server_set_expected_players(
+			expected_client_count)
 
 	# Get selected level from session provider (GameLift or preview mode).
 	var level_scene := _server_get_selected_level_scene()
 
 	_server_spawn_level(level_scene)
 
-	Netcode.connector.server_enable_connections(Netcode.server_port)
+	# Skip enabling connections in thumbnail
+	# snapshot mode. No clients should connect.
+	if not is_thumbnail:
+		Netcode.connector \
+			.server_enable_connections(
+				Netcode.server_port)
 
 
 func server_end_match() -> void:
@@ -551,6 +567,15 @@ func server_end_match() -> void:
 ## snails if enabled.
 func _server_resolve_critter_preference() \
 		-> void:
+	# Skip critters in thumbnail snapshot mode.
+	if (
+		Netcode.is_preview
+		and G.settings
+			.level_override_for_thumbnail_snapshot
+		>= 0
+	):
+		return
+
 	var critters_enabled := true
 	if G.local_settings != null:
 		critters_enabled = G.local_settings \
@@ -842,6 +867,50 @@ func on_left_lobby_to_screen(_next_screen_type: ScreensMain.ScreenType) -> void:
 ## If no level is selected, picks a random enabled level.
 func _server_get_selected_level_scene() -> PackedScene:
 	Netcode.check(G.level_registry != null)
+
+	# In preview mode, check for level index
+	# overrides from settings. Thumbnail snapshot
+	# takes priority over preview override.
+	if Netcode.is_preview:
+		var override_index := -1
+		if (
+			G.settings
+				.level_override_for_thumbnail_snapshot
+			>= 0
+		):
+			override_index = (
+				G.settings
+					.level_override_for_thumbnail_snapshot
+			)
+		elif G.settings.level_override_for_preview >= 0:
+			override_index = (
+				G.settings
+					.level_override_for_preview
+			)
+
+		if override_index >= 0:
+			var max_index := (
+				G.level_registry.get_level_count()
+				- 1
+			)
+			var clamped := clampi(
+				override_index, 0, max_index,
+			)
+			var info := (
+				G.level_registry
+					.get_level_by_index(clamped)
+			)
+			if info != null and info.scene != null:
+				Netcode.print(
+					"Using level override index"
+					+ " %d: %s (%s)" % [
+						clamped,
+						info.id,
+						info.display_name],
+					NetworkLogger
+						.CATEGORY_GAME_STATE,
+				)
+				return info.scene
 
 	var level_id := session_manager.server_get_selected_level_id()
 

@@ -28,9 +28,26 @@ func _ready() -> void:
 	G.window_manager.update_window_mode()
 	G.window_manager.position_window_in_preview_mode()
 
+	G.window_manager \
+		.configure_thumbnail_snapshot_if_needed()
+
 
 func _handle_preview_window_closing() -> void:
 	if not Netcode.is_preview:
+		return
+
+	# In thumbnail snapshot mode, close all
+	# client windows. Only the server stays.
+	if G.window_manager \
+			.should_close_for_thumbnail_snapshot():
+		Netcode.print(
+			"Main._ready: Closing client"
+			+ " process for thumbnail"
+			+ " snapshot mode",
+			NetworkLogger
+				.CATEGORY_CORE_SYSTEMS,
+		)
+		close_app()
 		return
 
 	if (

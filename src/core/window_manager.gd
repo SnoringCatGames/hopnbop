@@ -119,6 +119,109 @@ func position_server_window_in_preview_mode() -> void:
 		)
 
 
+## Returns true if this process should close
+## because thumbnail snapshot mode is active and
+## this is a client.
+func should_close_for_thumbnail_snapshot() -> bool:
+	return (
+		Netcode.is_preview
+		and Netcode.is_client
+		and G.settings
+			.level_override_for_thumbnail_snapshot
+		>= 0
+	)
+
+
+## Configures thumbnail snapshot mode on the
+## server. Computes the camera's normal visible
+## area, sizes the window and viewport to match
+## at 1:1 pixel scale, and configures PVM.
+## No-op if preconditions are not met.
+func configure_thumbnail_snapshot_if_needed() \
+		-> void:
+	if (
+		not Netcode.is_preview
+		or not Netcode.is_server
+	):
+		return
+	if (
+		G.settings
+			.level_override_for_thumbnail_snapshot
+		< 0
+	):
+		return
+	if not is_instance_valid(G.level):
+		return
+
+	var camera := G.level.level_camera
+	if not is_instance_valid(camera):
+		return
+
+	# Compute the world area the camera normally
+	# shows during a match. The camera has not
+	# been processed by PVM yet, so its zoom is
+	# still the scene-configured base value
+	# (e.g. Vector2(3, 3)).
+	var camera_zoom := camera.zoom
+	var base_res := Vector2(
+		ProjectSettings.get_setting(
+			"display/window/size/viewport_width",
+			1152),
+		ProjectSettings.get_setting(
+			"display/window/size/viewport_height",
+			648),
+	)
+	var visible_size := Vector2i(
+		roundi(base_res.x / camera_zoom.x),
+		roundi(base_res.y / camera_zoom.y),
+	)
+
+	Netcode.print(
+		"Configuring thumbnail snapshot mode"
+		+ " (%dx%d px)" % [
+			visible_size.x, visible_size.y],
+		NetworkLogger.CATEGORY_CORE_SYSTEMS,
+	)
+
+	# Size and center the server window.
+	DisplayServer.window_set_size(visible_size)
+	var screen := (
+		DisplayServer
+			.window_get_current_screen())
+	var usable_rect := (
+		DisplayServer
+			.screen_get_usable_rect(screen))
+	@warning_ignore("integer_division")
+	var pos_x := (
+		usable_rect.position.x
+		+ (usable_rect.size.x - visible_size.x)
+		/ 2
+	)
+	@warning_ignore("integer_division")
+	var pos_y := (
+		usable_rect.position.y
+		+ (usable_rect.size.y - visible_size.y)
+		/ 2
+	)
+	DisplayServer.window_set_position(
+		Vector2i(pos_x, pos_y))
+
+	# Override PVM base resolution so the
+	# viewport, integer scale, and zoom scale
+	# all resolve to 1:1.
+	if is_instance_valid(
+		G.pixel_viewport_manager
+	):
+		G.pixel_viewport_manager \
+			.configure_thumbnail_snapshot(
+				visible_size)
+
+	# Take a screenshot after a short delay to
+	# let the async window resize finish.
+	get_tree().create_timer(0.1).timeout.connect(
+		G.utils.take_screenshot)
+
+
 func position_client_window_in_preview_mode() -> void:
 	## Positions client windows in split-screen or centered layout.
 	if not Netcode.is_preview or not Netcode.is_client:
