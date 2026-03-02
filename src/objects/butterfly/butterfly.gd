@@ -7,7 +7,7 @@ extends CharacterBody2D
 ## random color. Client-side only.
 
 
-enum State { FLYING, RESTING }
+enum State { FLYING, RESTING, BUMP_RESTING }
 
 ## HSV saturation for random color assignment.
 const COLOR_SATURATION := 0.6
@@ -24,6 +24,12 @@ const REST_DURATION_MIN := 1.5
 
 ## Maximum rest duration (seconds).
 const REST_DURATION_MAX := 3.5
+
+## Minimum bump rest duration (seconds).
+const BUMP_REST_DURATION_MIN := 2.0
+
+## Maximum bump rest duration (seconds).
+const BUMP_REST_DURATION_MAX := 5.0
 
 ## Minimum total in-air duration before seeking
 ## a surface (seconds).
@@ -169,6 +175,9 @@ var _segment_timer := 0.0
 ## Rest duration countdown.
 var _rest_timer := 0.0
 
+## Bump rest duration countdown.
+var _bump_rest_timer := 0.0
+
 ## True when current target is a surface.
 var _seeking_surface := false
 
@@ -300,6 +309,9 @@ func _physics_process(delta: float) -> void:
 		State.RESTING:
 			_rest_timer -= delta
 			_process_resting(delta)
+		State.BUMP_RESTING:
+			_bump_rest_timer -= delta
+			_process_bump_rest(delta)
 
 
 func _process_flying(delta: float) -> void:
