@@ -407,7 +407,8 @@ func _server_init_snails() -> void:
 			SnailSpawner
 				.find_random_interior_surface(
 					collision_tiles,
-					_extra_surface_cells))
+					_extra_surface_cells,
+					wrap_bounds))
 		if surface.is_empty():
 			Netcode.warning(
 				"No interior surfaces for snail",
@@ -459,8 +460,10 @@ func _collect_extra_surface_cells() -> Dictionary:
 	for child in collision_tiles.get_children():
 		if not child is CollisionObject2D:
 			continue
-		if (child.collision_layer
-				& Character._NORMAL_SURFACES_COLLISION_MASK_BIT == 0):
+		if ((child.collision_layer
+				& Character
+					._NORMAL_SURFACES_COLLISION_MASK_BIT)
+				== 0):
 			continue
 		var cell := (
 			collision_tiles.local_to_map(
