@@ -356,7 +356,7 @@ func _server_collect_perf_state() -> Dictionary:
 # --- Client-side RPC methods ---
 
 
-@rpc("authority", "call_remote", "reliable")
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_DEBUG)
 func _client_rpc_receive_server_perf_state(server_perf_state: Dictionary) -> void:
 	Netcode.log.check(not Netcode.is_server, "Must be client")
 

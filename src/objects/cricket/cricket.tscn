@@ -1,7 +1,62 @@
-[gd_scene load_steps=4 format=3 uid="uid://b2ykm6ywidj0p"]
+[gd_scene load_steps=10 format=3 uid="uid://b2ykm6ywidj0p"]
 
 [ext_resource type="Script" uid="uid://cv5ica4o4ad4j" path="res://src/objects/cricket/cricket.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://bir81edistnfp" path="res://assets/images/cricket.png" id="2_texture"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_j0"]
+atlas = ExtResource("2_texture")
+region = Rect2(0, 0, 9, 8)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_j1"]
+atlas = ExtResource("2_texture")
+region = Rect2(9, 0, 9, 8)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_j2"]
+atlas = ExtResource("2_texture")
+region = Rect2(18, 0, 9, 8)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_j3"]
+atlas = ExtResource("2_texture")
+region = Rect2(27, 0, 9, 8)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_j4"]
+atlas = ExtResource("2_texture")
+region = Rect2(36, 0, 9, 8)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_r0"]
+atlas = ExtResource("2_texture")
+region = Rect2(45, 0, 9, 8)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_cricket"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_j0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_j1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_j2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_j3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_j4")
+}],
+"loop": false,
+"name": &"jump",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_r0")
+}],
+"loop": true,
+"name": &"rest",
+"speed": 5.0
+}]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_81cap"]
 size = Vector2(5, 3)
@@ -10,9 +65,10 @@ size = Vector2(5, 3)
 collision_layer = 0
 script = ExtResource("1_script")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 texture_filter = 1
-texture = ExtResource("2_texture")
+sprite_frames = SubResource("SpriteFrames_cricket")
+animation = &"rest"
 offset = Vector2(0, -2.5)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]

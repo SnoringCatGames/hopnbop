@@ -292,6 +292,12 @@ extends Node
 #   - Prefer `not` instead of `!` (although, do use `!=` when appropriate).
 #   - Follow the Godot style guide: https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html
 #   - Use multiple sub-agents to parallelize this work.
+#   - Use file-level consts instead of hard-coding static-const values inline in functions.
+#   - In general, prefer configuring state in scene template files rather than in script files.
+#     - In particular:
+#       - AnimatedSprite2D.sprite_frames animations.
+#       - References to other files/resources.
+#         - Use @export vars to support these references, rather than hard-coding paths in scripts.
 
 # FIXME: Rollback debug visualization and networking improvements:
 #

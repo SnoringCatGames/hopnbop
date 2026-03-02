@@ -149,7 +149,7 @@ func _apply_local_cheat(
 	cheat_toggled.emit(cheat_name, is_active)
 
 
-@rpc("any_peer", "reliable")
+@rpc("any_peer", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_DEBUG)
 func _request_toggle_networked_cheat(
 	cheat_name: String,
 ) -> void:
@@ -184,7 +184,7 @@ func _apply_networked_cheat(cheat_name: String) -> void:
 	cheat_toggled.emit(cheat_name, is_active)
 
 
-@rpc("authority", "reliable")
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_DEBUG)
 func _client_on_networked_cheat_toggled(
 	cheat_name: String,
 	is_active: bool,
@@ -307,6 +307,19 @@ static func is_lordoftheflies_cheat_active() -> bool:
 		G.settings != null
 		and G.settings.are_cheats_enabled
 		and G.settings.is_lordoftheflies_enabled
+	)
+
+
+## Returns true if the bloodisthickerthanwater cheat is
+## currently active. Safe to call even when Settings
+## hasn't been loaded yet.
+static func is_bloodisthickerthanwater_cheat_active(
+) -> bool:
+	return (
+		G.settings != null
+		and G.settings.are_cheats_enabled
+		and G.settings
+			.is_bloodisthickerthanwater_enabled
 	)
 
 

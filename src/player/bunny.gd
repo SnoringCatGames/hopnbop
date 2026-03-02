@@ -30,6 +30,7 @@ var _walk_sound_frame_counter := 0
 var _active_intersections := {}
 var _was_invincible_last_frame := false
 var _had_crown := false
+var _wrap_ghosts: Array[WrapGhost] = []
 
 
 func _enter_tree() -> void:
@@ -84,6 +85,11 @@ func _ready() -> void:
 	if is_instance_valid(bunny_anim):
 		bunny_anim.eat_cycle_ended.connect(
 			_on_eat_cycle_ended)
+
+	# Create wrap ghosts for split-edge rendering
+	# (client-only visual effect).
+	if Netcode.is_client:
+		_setup_wrap_ghosts.call_deferred()
 
 
 func _process(_delta: float) -> void:
@@ -592,6 +598,13 @@ func _on_eat_cycle_ended() -> void:
 	G.level.gore_manager.spawn_poop_particles(
 		spawn_pos, backward_sign)
 
+	# Record poop stat for adjective assignment.
+	var reporter: ClientStatReporter = (
+		G.level.get_node_or_null(
+			"ClientStatReporter"))
+	if reporter != null:
+		reporter.record_poop(player_id)
+
 
 ## Spawns a detached Sprite2D showing the squish
 ## frame at the death position. After the duration,
@@ -823,6 +836,32 @@ func _update_appearance() -> void:
 	if is_instance_valid(G.settings.crown_costume):
 		bunny_anim.set_crown_costume(
 			G.settings.crown_costume)
+
+	# Refresh wrap ghost appearance to match.
+	for ghost in _wrap_ghosts:
+		if is_instance_valid(ghost):
+			ghost.refresh_appearance()
+
+
+func _setup_wrap_ghosts() -> void:
+	if not is_instance_valid(G.level):
+		return
+	if not G.level is NetworkedLevel:
+		return
+	var net_level: NetworkedLevel = G.level
+	if net_level.wrap_bounds.size == Vector2.ZERO:
+		return
+
+	for axis in [
+		WrapGhost.OffsetAxis.HORIZONTAL,
+		WrapGhost.OffsetAxis.VERTICAL,
+		WrapGhost.OffsetAxis.DIAGONAL,
+	]:
+		var ghost := WrapGhost.new()
+		ghost.name = "WrapGhost_%d" % axis
+		add_child(ghost)
+		ghost.setup(self, axis)
+		_wrap_ghosts.append(ghost)
 
 
 func _get_shader_material() -> ShaderMaterial:

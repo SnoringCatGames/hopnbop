@@ -51,15 +51,14 @@ const FADE_OUT_SEC := 1.0
 ## cricket (pixels).
 const SCARE_RADIUS := 40.0
 
+## Emitted when a player scares this cricket.
+signal disturbed(player_id: int)
+
 ## Minimum distance from players for preferred
 ## spawn point selection (pixels).
 const SPAWN_MIN_PLAYER_DIST := 80.0
 
 # --- Raycasting ---
-
-## Raycast distance to detect floor below a
-## spawn point (pixels).
-const FLOOR_DETECT_DIST := 64.0
 
 ## Raycast distance to scan for floor at hop
 ## target (pixels).
@@ -79,6 +78,12 @@ const FLOOR_EDGE_MARGIN := 4.0
 ## Only collide with normal_surfaces (bit 0).
 const COLLISION_MASK_VALUE := 1 << 0
 
+## Animation name for the jump sequence.
+const ANIM_JUMP := &"jump"
+
+## Animation name for the resting pose.
+const ANIM_REST := &"rest"
+
 enum State {
 	WAITING,
 	SPAWNING,
@@ -92,7 +97,18 @@ var _state: int = State.WAITING
 var _rest_timer := 0.0
 var _undisturbed_timer := 0.0
 var _fade_tween: Tween
-var _sprite: Sprite2D
+var _sprite: AnimatedSprite2D
+
+## Cached duration of one jump animation frame
+## (seconds).
+var _jump_frame_sec := 0.0
+
+## Countdown for the anticipation frame before
+## hop motion begins.
+var _hop_delay := 0.0
+
+## Velocity to apply once the hop delay expires.
+var _pending_hop_velocity := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -101,9 +117,21 @@ func _ready() -> void:
 	collision_mask = COLLISION_MASK_VALUE
 	up_direction = Vector2.UP
 	floor_snap_length = 2.0
-	_sprite = $Sprite2D
+	_sprite = $AnimatedSprite2D
+
+	# Cache jump animation frame duration from
+	# the SpriteFrames resource.
+	var frames := _sprite.sprite_frames
+	var fps := frames.get_animation_speed(
+		ANIM_JUMP)
+	var count := frames.get_frame_count(
+		ANIM_JUMP)
+	if fps > 0.0 and count > 0:
+		_jump_frame_sec = 1.0 / fps
+
 	# Start invisible; _respawn() begins the
 	# lifecycle.
+	_sprite.play(ANIM_REST)
 	modulate.a = 0.0
 	_respawn()
 
@@ -154,6 +182,16 @@ func _process_resting(delta: float) -> void:
 
 
 func _process_hopping(delta: float) -> void:
+	# Anticipation frame: stay grounded while
+	# the first animation frame plays.
+	if _hop_delay > 0.0:
+		_hop_delay -= delta
+		velocity.y += GRAVITY * delta
+		move_and_slide()
+		if _hop_delay <= 0.0:
+			velocity = _pending_hop_velocity
+		return
+
 	velocity.y += GRAVITY * delta
 	move_and_slide()
 
@@ -165,6 +203,7 @@ func _process_hopping(delta: float) -> void:
 	# Landed on floor.
 	if is_on_floor():
 		velocity = Vector2.ZERO
+		_sprite.play(ANIM_REST)
 		_state = State.RESTING
 		_rest_timer = randf_range(
 			REST_DELAY_MIN, REST_DELAY_MAX)
@@ -198,7 +237,12 @@ func _start_hop() -> void:
 	var vx := dx / air_time if \
 		air_time > 0.0 else 0.0
 
-	velocity = Vector2(vx, vy)
+	# Play jump animation immediately, but
+	# delay the actual motion by one animation
+	# frame (anticipation).
+	_sprite.play(ANIM_JUMP)
+	_pending_hop_velocity = Vector2(vx, vy)
+	_hop_delay = _jump_frame_sec
 	_state = State.HOPPING
 
 
@@ -270,27 +314,39 @@ func _find_floor_edge(
 
 
 func _start_flee() -> void:
-	var away_dir := _get_away_direction()
+	var result := _get_away_direction()
 
 	# Launch away with a higher hop.
 	var vy := -sqrt(
 		2.0 * GRAVITY * HOP_HEIGHT
 		* FLEE_HOP_HEIGHT_MULT)
-	var vx := away_dir * FLEE_HORIZONTAL_SPEED
+	var vx: float = (
+		result[0] * FLEE_HORIZONTAL_SPEED)
 
 	velocity = Vector2(vx, vy)
 	_sprite.flip_h = vx < 0.0
+	_sprite.play(ANIM_JUMP)
 	_state = State.FLEEING
 	_start_despawn()
 
+	# Notify tracker which player scared us.
+	var pid: int = result[1]
+	if pid >= 0:
+		disturbed.emit(pid)
 
-func _get_away_direction() -> float:
+
+## Returns [away_direction, player_id]. Player
+## ID is -1 when no player is found.
+func _get_away_direction() -> Array:
 	var level: Level = G.level
 	if not is_instance_valid(level):
-		return 1.0 if randf() > 0.5 else -1.0
+		var dir := 1.0 if randf() > 0.5 \
+			else -1.0
+		return [dir, -1]
 
 	var nearest_dist := INF
 	var nearest_dir := 1.0
+	var nearest_pid := -1
 	for player in level.players:
 		if not is_instance_valid(player):
 			continue
@@ -301,7 +357,8 @@ func _get_away_direction() -> float:
 			nearest_dist = dist
 			nearest_dir = signf(diff) \
 				if diff != 0.0 else 1.0
-	return nearest_dir
+			nearest_pid = player.player_id
+	return [nearest_dir, nearest_pid]
 
 
 # --- Player detection ---
@@ -376,6 +433,7 @@ func _respawn() -> void:
 
 
 func _on_spawn_complete() -> void:
+	_sprite.play(ANIM_REST)
 	_state = State.RESTING
 
 
@@ -387,76 +445,80 @@ func _choose_spawn_position() -> Vector2:
 	if not is_instance_valid(level):
 		return Vector2.ZERO
 
-	var points := level._get_spawn_points()
-	if points.is_empty():
+	# Use SnailSpawner's flood-fill to find
+	# interior TOP-face surfaces (floors).
+	var tiles: TileMapLayer = \
+		level.collision_tiles
+	if not is_instance_valid(tiles):
 		return Vector2.ZERO
 
-	# Filter out spawn points over water.
-	var dry_points: Array[SpawnPoint] = []
-	for sp in points:
-		if not level.is_position_in_water(
-			sp.spawn_position
-		):
-			dry_points.append(sp)
-	if dry_points.is_empty():
-		dry_points.assign(points)
+	var surfaces := \
+		SnailSpawner.find_interior_surfaces(
+			tiles)
 
-	# Prefer points far from all players.
-	var far_points: Array[SpawnPoint] = []
-	var best_point: SpawnPoint = null
+	# Keep only TOP faces (floors), skipping
+	# ice tiles.
+	var floor_surfaces: Array = []
+	for s in surfaces:
+		if s.face != Snail.Face.TOP:
+			continue
+		var td := tiles.get_cell_tile_data(
+			s.tile)
+		if td != null \
+				and td.get_terrain_set() \
+				== Level.TERRAIN_SET_COLLISION \
+				and td.get_terrain() \
+				== Level.ICE_TERRAIN_ID:
+			continue
+		floor_surfaces.append(s)
+	if floor_surfaces.is_empty():
+		return Vector2.ZERO
+
+	# Convert tile coords to world positions.
+	# TOP face = top edge of tile center.
+	var half_tile := Level.TILE_SIZE / 2.0
+
+	# Prefer surfaces far from all players.
+	var far: Array = []
+	var best_surface: Dictionary = {}
 	var best_min_dist := -INF
 
-	for sp in dry_points:
+	for s in floor_surfaces:
+		var local_pos := tiles.map_to_local(
+			s.tile)
+		var world_pos := tiles.to_global(
+			local_pos)
+		# Position on top of the tile.
+		world_pos.y -= half_tile
+
 		var min_dist := INF
 		for player in level.players:
 			if not is_instance_valid(player):
 				continue
-			var d: float = sp.spawn_position \
+			var d: float = world_pos \
 				.distance_to(
 					player.global_position)
 			min_dist = minf(min_dist, d)
 		if min_dist >= SPAWN_MIN_PLAYER_DIST:
-			far_points.append(sp)
+			far.append(s)
 		if min_dist > best_min_dist:
 			best_min_dist = min_dist
-			best_point = sp
+			best_surface = s
 
-	var chosen: SpawnPoint
-	if not far_points.is_empty():
-		chosen = far_points.pick_random()
+	var chosen: Dictionary
+	if not far.is_empty():
+		chosen = far.pick_random()
 	else:
-		chosen = best_point
+		chosen = best_surface
 
-	# Raycast down from spawn point to find
-	# actual floor surface.
-	return _find_floor_below(
-		chosen.spawn_position)
-
-
-func _find_floor_below(
-	pos: Vector2,
-) -> Vector2:
-	var space := \
-		get_world_2d().direct_space_state
-	# Start well above the position so the ray
-	# always approaches tiles from above, even
-	# if pos is inside a tile.
-	var ray_start := pos + Vector2(
-		0.0, -FLOOR_DETECT_DIST)
-	var ray_end := pos + Vector2(
-		0.0, FLOOR_DETECT_DIST)
-	var query := PhysicsRayQueryParameters2D \
-		.create(
-			ray_start,
-			ray_end,
-			COLLISION_MASK_VALUE,
-		)
-	var result := space.intersect_ray(query)
-	if result.is_empty():
-		return pos
-	# Nudge above the surface so the collision
-	# shape doesn't start inside the tile.
-	return result.position + Vector2(0.0, -1.0)
+	var local_pos := tiles.map_to_local(
+		chosen.tile)
+	var world_pos := tiles.to_global(local_pos)
+	# Place on top of the tile, nudged 1px up
+	# so the collision shape sits above the
+	# surface.
+	world_pos.y -= half_tile + 1.0
+	return world_pos
 
 
 # --- Tween utility ---

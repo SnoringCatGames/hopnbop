@@ -42,10 +42,10 @@ extends Level
 @export_range(-0.5, 0.5) \
 	var bird_flight_band_offset := 0.0
 
-## Rectangular bounds for wrap-around movement,
-## centered at global (0,0). Only the size component
-## is used. If size is zero (default), wrap-around
-## is disabled.
+## Rectangular bounds for wrap-around movement.
+## Position is the top-left corner; size is the
+## dimensions. If size is zero (default),
+## wrap-around is disabled.
 @export var wrap_bounds := Rect2():
 	set(value):
 		wrap_bounds = value
@@ -66,9 +66,11 @@ var peer_to_player_ids := {}
 
 var npcs: Array[NPC] = []
 
+var _extra_surface_cells := {}
 var _snails: Array[Snail] = []
 var _crickets: Array = []
 var _critter_stat_tracker: CritterStatTracker
+var _client_stat_reporter: ClientStatReporter
 var _blood_tween: Tween
 var _wrap_overlay: WrapBoundsOverlay
 
@@ -125,6 +127,16 @@ func _ready() -> void:
 			"CritterStatTracker"
 		add_child(_critter_stat_tracker)
 
+		# Reporter that periodically sends
+		# accumulated stats to the server.
+		_client_stat_reporter = \
+			ClientStatReporter.new()
+		_client_stat_reporter.name = \
+			"ClientStatReporter"
+		_client_stat_reporter.critter_tracker = \
+			_critter_stat_tracker
+		add_child(_client_stat_reporter)
+
 		for i in cricket_count:
 			var cricket := preload(
 				"res://src/objects/cricket/"
@@ -140,6 +152,12 @@ func _ready() -> void:
 		_spawn_fish()
 		_spawn_butterflies()
 		_spawn_bird_flock()
+
+	# Collect tile positions of scene-based
+	# surfaces (e.g. springs) so snails can
+	# crawl across them.
+	_extra_surface_cells = (
+		_collect_extra_surface_cells())
 
 	# Create snail nodes on all peers so RPCs
 	# have matching target nodes. Snails start
@@ -167,13 +185,13 @@ func _ready() -> void:
 func wrap_position(pos: Vector2) -> Vector2:
 	if wrap_bounds.size == Vector2.ZERO:
 		return pos
-	var half := wrap_bounds.size / 2.0
+	var origin := wrap_bounds.position
 	pos.x = fposmod(
-		pos.x + half.x,
-		wrap_bounds.size.x) - half.x
+		pos.x - origin.x,
+		wrap_bounds.size.x) + origin.x
 	pos.y = fposmod(
-		pos.y + half.y,
-		wrap_bounds.size.y) - half.y
+		pos.y - origin.y,
+		wrap_bounds.size.y) + origin.y
 	return pos
 
 
@@ -353,7 +371,8 @@ func _create_snail_nodes() -> void:
 			SnailSpawner.SNAIL_SCENE_PATH
 		).instantiate()
 		snail.name = "Snail_%d" % i
-		snail.setup(collision_tiles)
+		snail.setup(
+			collision_tiles, _extra_surface_cells)
 		%Objects.add_child(snail)
 		_snails.append(snail)
 
@@ -371,7 +390,8 @@ func _server_init_snails() -> void:
 		var surface := (
 			SnailSpawner
 				.find_random_interior_surface(
-					collision_tiles))
+					collision_tiles,
+					_extra_surface_cells))
 		if surface.is_empty():
 			Netcode.warning(
 				"No interior surfaces for snail",
@@ -411,6 +431,23 @@ func _server_send_snail_states_to_peer(
 			1 if snail.is_clockwise else 0,
 			Netcode.server_frame_index,
 		)
+
+
+## Scans scene-based surface nodes (group
+## "snail_surface") and returns a Dictionary
+## mapping their tile coordinates to true.
+func _collect_extra_surface_cells() -> Dictionary:
+	var extra_cells := {}
+	for node in get_tree().get_nodes_in_group(
+			"snail_surface"):
+		var local_pos := (
+			collision_tiles.to_local(
+				node.global_position))
+		var cell := (
+			collision_tiles.local_to_map(
+				local_pos))
+		extra_cells[cell] = true
+	return extra_cells
 
 
 func _spawn_fly_swarms() -> void:
@@ -465,7 +502,8 @@ func _spawn_butterflies() -> void:
 	var interior_cells := (
 		SnailSpawner
 			.find_interior_empty_cells(
-				collision_tiles))
+				collision_tiles,
+				_extra_surface_cells))
 	if interior_cells.is_empty():
 		return
 

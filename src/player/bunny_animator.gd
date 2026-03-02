@@ -121,6 +121,45 @@ func set_crown_visible(is_visible: bool) -> void:
 			_crown_overlay.visible = false
 
 
+## Copies animation, frame, and flip state from
+## the source animator. Bypasses eat/rest cycle
+## logic so the ghost stays in lockstep.
+func sync_visual_from(
+	source: BunnyAnimator,
+) -> void:
+	# Base sprite.
+	animated_sprite.animation = \
+		source.animated_sprite.animation
+	animated_sprite.frame = \
+		source.animated_sprite.frame
+	animated_sprite.flip_h = \
+		source.animated_sprite.flip_h
+	# Costume overlay.
+	var src_costume := source.get_costume_overlay()
+	if (
+		is_instance_valid(_costume_overlay)
+		and is_instance_valid(src_costume)
+	):
+		_costume_overlay.animation = \
+			src_costume.animation
+		_costume_overlay.frame = \
+			src_costume.frame
+		_costume_overlay.flip_h = \
+			src_costume.flip_h
+	# Crown overlay.
+	var src_crown := source.get_crown_overlay()
+	if (
+		is_instance_valid(_crown_overlay)
+		and is_instance_valid(src_crown)
+	):
+		_crown_overlay.animation = \
+			src_crown.animation
+		_crown_overlay.frame = \
+			src_crown.frame
+		_crown_overlay.flip_h = \
+			src_crown.flip_h
+
+
 ## Returns the costume overlay sprite, or null.
 func get_costume_overlay() -> AnimatedSprite2D:
 	return _costume_overlay
