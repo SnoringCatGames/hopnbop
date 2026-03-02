@@ -195,10 +195,190 @@ Debug toggles in settings: `dev_mode`, `draw_annotations`, `perf_tracker_enabled
 
 ## Code Style
 
-- **Line length:** Keep lines within 80 characters
-- **Comments:** End all comments with a period
-- GDScript formatter addon is installed (addons/gdscript_formatter). Format
-  code before committing.
+Follow the
+[Godot GDScript style guide](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html)
+with the project-specific additions below.
+
+### Formatting
+
+- **Indentation:** Tabs (4-space width), enforced by
+  `.editorconfig`.
+- **Line length:** 80 characters maximum.
+- **Blank lines:** Two blank lines between functions/methods.
+- **Line wrapping:** Prefer parentheses over backslashes for
+  line continuation.
+- **Operator placement:** When wrapping expressions across
+  multiple lines, place operators at the start of the next
+  line, not the end of the previous line.
+- **Trailing commas:** Include trailing commas in multi-line
+  function calls, arrays, and dictionaries.
+
+```gdscript
+# Correct: parens for wrapping, operator at start of line.
+var is_valid := (
+	is_instance_valid(node)
+	and node.is_inside_tree()
+	and not node.is_queued_for_deletion()
+)
+
+# Correct: trailing comma in multi-line call.
+some_function(
+	first_arg,
+	second_arg,
+)
+
+# Wrong: backslash continuation.
+var is_valid := is_instance_valid(node) \
+	and node.is_inside_tree()
+
+# Wrong: operator at end of line.
+var is_valid := (
+	is_instance_valid(node) and
+	node.is_inside_tree()
+)
+```
+
+### Naming Conventions
+
+- **Classes/enums:** `PascalCase`
+- **Functions/variables:** `snake_case`
+- **Constants:** `UPPER_SNAKE_CASE`
+- **Private members:** Prefix with underscore (`_my_var`,
+  `_my_method`)
+- **Signals:** Past tense (`player_died`, `match_started`)
+- **Booleans:** Prefix with `is_`, `can_`, `has_`
+- **No prefixes:** Avoid prefixes in variable names (e.g.,
+  use `speed` not `player_speed` when already inside a player
+  class). The underscore prefix for private members is the
+  exception.
+
+### Type Annotations
+
+- Use `:=` for inferred types on variable declarations.
+- Always specify return types on functions.
+- Use explicit type hints for `@export` vars and function
+  parameters.
+
+```gdscript
+var speed := 10.0
+const _MAX_SPEED := 200.0
+@export var jump_height: float = 64.0
+
+func get_speed() -> float:
+	return speed
+```
+
+### Negation
+
+- Prefer `not` over `!` for boolean negation.
+- Do use `!=` for inequality comparisons.
+
+```gdscript
+# Correct.
+if not is_alive:
+	return
+if count != 0:
+	process()
+
+# Wrong.
+if !is_alive:
+	return
+```
+
+### Comments and Prose
+
+- End all comments with a period.
+- Use `##` for doc comments (Godot documentation comments),
+  `#` for regular comments.
+- Never use em dashes, en dashes, or hyphens as grammatical
+  em dashes. Use a period and start a new sentence instead.
+- Wrap comments at 80 characters, matching the code line
+  limit.
+
+```gdscript
+## Advances the snail by the given number of
+## network frames. Each frame applies a fixed
+## movement step.
+func _simulate_frames(count: int) -> void:
+
+# Wrong: em dash in comment.
+# The snail moves forward — unless blocked.
+
+# Correct: period and new sentence.
+# The snail moves forward. It stops when blocked.
+```
+
+### File Structure
+
+Follow the Godot-recommended ordering within each script:
+
+1. `@tool`
+2. `class_name`
+3. `extends`
+4. Doc comment (`##`)
+5. `signal` declarations
+6. `enum` declarations
+7. `const` declarations
+8. `@export` variables
+9. Public variables
+10. Private variables (`_`-prefixed)
+11. `@onready` variables
+12. `_init()`, `_enter_tree()`, `_exit_tree()`, `_ready()`
+13. `_process()`, `_physics_process()`
+14. Other virtual/callback methods
+15. Public methods
+16. Private methods
+
+### Constants Over Inline Values
+
+Use file-level `const` declarations instead of hard-coding
+static values inline in functions. Private constants use
+underscore prefix.
+
+```gdscript
+# Correct: file-level constant.
+const _RESPAWN_DELAY_FRAMES := 30
+
+func _respawn() -> void:
+	timer = _RESPAWN_DELAY_FRAMES
+
+# Wrong: magic number inline.
+func _respawn() -> void:
+	timer = 30
+```
+
+### Scene Templates Over Scripts
+
+Prefer configuring state in `.tscn` scene files rather than
+in scripts:
+
+- **Animations:** Configure `AnimatedSprite2D.sprite_frames`
+  animations in the scene editor, not in code.
+- **Resource references:** Use `@export` vars and assign
+  resources in the scene inspector rather than hard-coding
+  `preload()` paths in scripts.
+- **Node references:** Use `%NodeName` unique-name syntax in
+  scenes when referencing sibling/child nodes.
+
+```gdscript
+# Preferred: export var assigned in scene inspector.
+@export var death_effect: PackedScene
+
+# Acceptable when scene assignment is impractical.
+const _DEATH_EFFECT := preload(
+	"res://src/effects/death_effect.tscn"
+)
+```
+
+### Performance
+
+- Prefer `distance_squared_to()` over `distance_to()` when
+  feasible, to avoid unnecessary `sqrt` calculations.
+
+### GDScript Formatter
+
+The GDScript formatter addon is installed
+(`addons/gdscript_formatter`). Format code before committing.
 
 ## Testing with GUT
 
