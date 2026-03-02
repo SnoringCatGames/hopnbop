@@ -121,6 +121,7 @@ var _next_face_map: Dictionary
 var _concave_face_map: Dictionary
 
 var _collision_tiles: TileMapLayer
+var _extra_cells: Dictionary = {}
 
 ## Network frame the snail's position was last
 ## computed at. -1 means not yet initialized.
@@ -144,10 +145,15 @@ var _pending_corner_positions: Array[Vector2] = []
 	$CrunchSfx)
 
 
-## Sets the collision tile layer. Call after
-## instantiation but before add_child.
-func setup(tiles: TileMapLayer) -> void:
+## Sets the collision tile layer and optional
+## extra surface cells. Call after instantiation
+## but before add_child.
+func setup(
+	tiles: TileMapLayer,
+	extra_cells: Dictionary = {},
+) -> void:
 	_collision_tiles = tiles
+	_extra_cells = extra_cells
 
 
 func _apply_direction(clockwise: bool) -> void:
@@ -485,6 +491,8 @@ func _spawn_trail_particle(
 
 
 func _has_tile(cell: Vector2i) -> bool:
+	if _extra_cells.has(cell):
+		return true
 	var tile_data := (
 		_collision_tiles.get_cell_tile_data(cell))
 	if tile_data == null:
@@ -569,7 +577,7 @@ func _respawn() -> void:
 
 	var surface := (
 		SnailSpawner.find_random_interior_surface(
-			_collision_tiles))
+			_collision_tiles, _extra_cells))
 	if surface.is_empty():
 		Netcode.warning(
 			"No interior surfaces for snail "

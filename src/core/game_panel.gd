@@ -601,6 +601,11 @@ func _server_validate_pause_request(peer_id: int) -> Dictionary:
 func _server_on_all_players_connected() -> void:
 	Netcode.check_is_server()
 
+	# In preview mode, hot-reload settings and
+	# level from local storage before starting.
+	if Netcode.is_preview:
+		_server_preview_hot_reload()
+
 	Netcode.print(
 		"All players validated, starting match",
 		NetworkLogger.CATEGORY_CONNECTIONS
@@ -609,6 +614,74 @@ func _server_on_all_players_connected() -> void:
 	# Unpause frame driver to start simulation.
 	# The framework automatically triggers countdown if enabled in settings.
 	Netcode.frame_driver.server_set_is_paused(false)
+
+
+## Re-reads local_settings.cfg from disk, applies
+## overrides to G.settings, then destroys and
+## re-spawns the level with fresh preferences.
+## Called in preview mode before countdown starts.
+func _server_preview_hot_reload() -> void:
+	Netcode.check_is_server()
+	Netcode.print(
+		"Hot-reloading settings and level"
+		+ " for preview mode",
+		NetworkLogger.CATEGORY_GAME_STATE
+	)
+
+	# 1. Reload settings from disk.
+	G.local_settings.load_settings()
+	G.local_settings.apply_all_overrides()
+
+	# 2. Save peer declarations before
+	#    destroying the level.
+	var declarations := Netcode.connector \
+		.server_get_peer_declarations()
+
+	# 3. Clear match state (players, scores).
+	G.match_state.clear()
+
+	# 4. Destroy current level and its players.
+	#    Remove from tree immediately (not
+	#    deferred) so MultiplayerSpawner sends
+	#    the despawn before we add the new level,
+	#    and the old camera releases.
+	if is_instance_valid(G.level):
+		var old_level := G.level
+		_server_destroy_level(old_level)
+		if old_level.get_parent() != null:
+			old_level.get_parent() \
+				.remove_child(old_level)
+
+	# 5. Spawn new level with fresh preferences.
+	var level_scene := \
+		_server_get_selected_level_scene()
+	_server_spawn_level(level_scene)
+
+	# 6. Re-set expected player count (cleared
+	#    with match state).
+	var expected_count: int = \
+		Netcode.settings.preview_client_count
+	%MatchStateSynchronizer \
+		.server_set_expected_player_count(
+			expected_count)
+
+	# 7. Replay peer declarations so the new
+	#    level spawns players and
+	#    MatchStateSynchronizer re-creates
+	#    PlayerState objects.
+	for peer_id in declarations:
+		var decl: Dictionary = \
+			declarations[peer_id]
+		Netcode.connector \
+			.peer_players_declared.emit(
+				peer_id,
+				decl["assigned_ids"],
+				decl["attributes"])
+
+	# 8. Re-resolve critter preference (was
+	#    done in _on_match_ready, but match
+	#    state was cleared).
+	_server_resolve_critter_preference()
 
 
 func _on_match_start_countdown_started(_countdown_end_frame: int) -> void:

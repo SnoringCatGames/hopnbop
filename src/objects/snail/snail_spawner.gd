@@ -35,14 +35,18 @@ const _OFFSET_TO_FACE := {
 ## face: Snail.Face}.
 static func find_interior_surfaces(
 	tiles: TileMapLayer,
+	extra_cells: Dictionary = {},
 ) -> Array:
 	var used_cells := tiles.get_used_cells()
-	if used_cells.is_empty():
+	if (used_cells.is_empty()
+			and extra_cells.is_empty()):
 		return []
 
 	# Build occupied set for O(1) lookup.
 	var occupied := {}
 	for cell in used_cells:
+		occupied[cell] = true
+	for cell in extra_cells:
 		occupied[cell] = true
 
 	# Compute bounding rect expanded by 1.
@@ -87,6 +91,19 @@ static func find_interior_surfaces(
 					"face": _OFFSET_TO_FACE[offset],
 				})
 
+	# Also collect surfaces from scene-based
+	# extra cells (e.g. Spring tiles).
+	for cell: Vector2i in extra_cells:
+		for offset: Vector2i in _NEIGHBOR_OFFSETS:
+			var neighbor: Vector2i = cell + offset
+			if (not occupied.has(neighbor)
+					and not exterior.has(
+						neighbor)):
+				surfaces.append({
+					"tile": cell,
+					"face": _OFFSET_TO_FACE[offset],
+				})
+
 	return surfaces
 
 
@@ -94,8 +111,10 @@ static func find_interior_surfaces(
 ## empty dictionary if none found.
 static func find_random_interior_surface(
 	tiles: TileMapLayer,
+	extra_cells: Dictionary = {},
 ) -> Dictionary:
-	var surfaces := find_interior_surfaces(tiles)
+	var surfaces := find_interior_surfaces(
+		tiles, extra_cells)
 	if surfaces.is_empty():
 		return {}
 	return surfaces.pick_random()
@@ -108,14 +127,18 @@ static func find_random_interior_surface(
 ## the enclosed play area).
 static func find_interior_empty_cells(
 	tiles: TileMapLayer,
+	extra_cells: Dictionary = {},
 ) -> Array[Vector2i]:
 	var used_cells := tiles.get_used_cells()
-	if used_cells.is_empty():
+	if (used_cells.is_empty()
+			and extra_cells.is_empty()):
 		return []
 
 	# Build occupied set for O(1) lookup.
 	var occupied := {}
 	for cell in used_cells:
+		occupied[cell] = true
+	for cell in extra_cells:
 		occupied[cell] = true
 
 	# Compute bounding rect expanded by 1.
