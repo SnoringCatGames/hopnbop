@@ -166,10 +166,12 @@ icon = ExtResource("4_heart")
 icon_alignment = 1
 expand_icon = true
 
-[node name="Thumbnail" type="ColorRect" parent="VBoxContainer"]
+[node name="Thumbnail" type="TextureRect" parent="VBoxContainer"]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
-color = Color(0.3, 0.3, 0.3, 0.5)
+expand_mode = 3
+stretch_mode = 5
 
 [connection signal="pressed" from="VBoxContainer/ButtonContainer/LeftBtn" to="." method="_on_left_btn_pressed"]
 [connection signal="pressed" from="VBoxContainer/ButtonContainer/MiddleBtn" to="." method="_on_middle_btn_pressed"]

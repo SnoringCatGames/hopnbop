@@ -47,11 +47,6 @@ extends Node
 
 
 # - Fix thumbnail convenience resizing settings behavior.
-# - Fix critter and player wrap-around visual glitch.
-# - Fix snail wrap-around issues.
-#   - Can spawn in-air on the right side.
-#   - Can get stuck walking in circles in air when rounding convex corners.
-#   - Reset snail count on wrap-around level.
 
 # - Ask AI to thoroughly analyze the entire GDScript codebase (excluding addons/gut/), and fix any style guidelines issues that we've recently codified in CLAUDE.md.
 
@@ -106,7 +101,6 @@ extends Node
 #   - UI
 #   - GameLift and matchmaking
 #   - ...
-#   -
 
 
 #######################################################

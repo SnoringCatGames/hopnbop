@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Settings" load_steps=38 format=3 uid="uid://dv60bmaw1pdx6"]
+[gd_resource type="Resource" script_class="Settings" load_steps=44 format=3 uid="uid://dv60bmaw1pdx6"]
 
 [ext_resource type="Script" uid="uid://bklo1tgck1vmm" path="res://src/player/body_type_config.gd" id="1_7ybur"]
 [ext_resource type="Script" uid="uid://cqomr88ncj2d3" path="res://src/core/settings.gd" id="1_krfic"]
@@ -30,6 +30,12 @@
 [ext_resource type="PackedScene" uid="uid://bbhm335xhffk" path="res://src/level/level_3.tscn" id="22_hsj8s"]
 [ext_resource type="PackedScene" uid="uid://ofyo05fys6w8" path="res://src/level/level_4.tscn" id="23_lvl4"]
 [ext_resource type="PackedScene" uid="uid://boayor76hc0tv" path="res://src/level/level_5.tscn" id="24_lvl5"]
+[ext_resource type="Texture2D" uid="uid://b6bc8m77xc1nk" path="res://assets/images/level_thumbnails/level_0.png" id="25_thumb0"]
+[ext_resource type="Texture2D" uid="uid://dn58ryo4m1y5d" path="res://assets/images/level_thumbnails/level_1.png" id="26_thumb1"]
+[ext_resource type="Texture2D" uid="uid://bs25wkpu78w4h" path="res://assets/images/level_thumbnails/level_2.png" id="27_thumb2"]
+[ext_resource type="Texture2D" uid="uid://bebc0irkn37q7" path="res://assets/images/level_thumbnails/level_3.png" id="28_thumb3"]
+[ext_resource type="Texture2D" uid="uid://dakaarxncuesh" path="res://assets/images/level_thumbnails/level_4.png" id="29_thumb4"]
+[ext_resource type="Texture2D" uid="uid://fe3bi0udwbh1" path="res://assets/images/level_thumbnails/level_5.png" id="30_thumb5"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_woca2"]
 radius = 6.0
@@ -40,6 +46,7 @@ id = &"level_0"
 display_name = "Level 0"
 scene = ExtResource("19_jwo4p")
 max_players = 8
+thumbnail = ExtResource("25_thumb0")
 metadata/_custom_type_script = "uid://l1of4ibugkpt"
 
 [sub_resource type="Resource" id="Resource_bav20"]
@@ -48,6 +55,7 @@ id = &"level_1"
 display_name = "Level 1"
 scene = ExtResource("5_4irwu")
 max_players = 8
+thumbnail = ExtResource("26_thumb1")
 metadata/_custom_type_script = "uid://l1of4ibugkpt"
 
 [sub_resource type="Resource" id="Resource_p8ob7"]
@@ -56,6 +64,7 @@ id = &"level_2"
 display_name = "Level 2"
 scene = ExtResource("6_4irwu")
 max_players = 8
+thumbnail = ExtResource("27_thumb2")
 metadata/_custom_type_script = "uid://l1of4ibugkpt"
 
 [sub_resource type="Resource" id="Resource_h8oqh"]
@@ -64,6 +73,7 @@ id = &"level_3"
 display_name = "Level 3"
 scene = ExtResource("22_hsj8s")
 max_players = 8
+thumbnail = ExtResource("28_thumb3")
 metadata/_custom_type_script = "uid://l1of4ibugkpt"
 
 [sub_resource type="Resource" id="Resource_lvl4"]
@@ -72,6 +82,7 @@ id = &"level_4"
 display_name = "Level 4"
 scene = ExtResource("23_lvl4")
 max_players = 8
+thumbnail = ExtResource("29_thumb4")
 metadata/_custom_type_script = "uid://l1of4ibugkpt"
 
 [sub_resource type="Resource" id="Resource_lvl5"]
@@ -80,11 +91,12 @@ id = &"level_5"
 display_name = "Level 5"
 scene = ExtResource("24_lvl5")
 max_players = 8
+thumbnail = ExtResource("30_thumb5")
 metadata/_custom_type_script = "uid://l1of4ibugkpt"
 
 [resource]
 script = ExtResource("1_krfic")
-level_override_for_preview = 5
+level_override_for_preview = 4
 start_in_game = true
 skip_splash = true
 bunny_collision_shape = SubResource("CircleShape2D_woca2")

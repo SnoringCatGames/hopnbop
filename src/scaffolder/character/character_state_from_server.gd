@@ -577,9 +577,30 @@ func _sync_to_scene_state(previous_state: Array) -> void:
 	else:
 		character._last_launch_frame_index = -1
 
-	character.previous_position = previous_state[_property_name_to_pack_index.position]
-	character.previous_velocity = previous_state[_property_name_to_pack_index.velocity]
-	character.surfaces.previous_bitmask = previous_state[_property_name_to_pack_index.surfaces]
+	character.previous_position = previous_state[
+		_property_name_to_pack_index.position]
+	character.previous_velocity = previous_state[
+		_property_name_to_pack_index.velocity]
+	character.surfaces.previous_bitmask = previous_state[
+		_property_name_to_pack_index.surfaces]
+
+	# If the position wrapped between previous and
+	# current frame, reset physics interpolation to
+	# prevent the renderer from lerping across the
+	# level.
+	var level := G.level
+	if (
+		level is NetworkedLevel
+		and level.wrap_bounds.size
+			!= Vector2.ZERO
+	):
+		var half: Vector2 = level.wrap_bounds.size * 0.5
+		var diff := (
+			character.position
+			- character.previous_position
+		).abs()
+		if diff.x > half.x or diff.y > half.y:
+			character.reset_physics_interpolation()
 
 
 func _restore_indirect_interaction_state(frame_state: Array) -> void:
@@ -713,16 +734,18 @@ func _sync_from_scene_state() -> void:
 		and level.wrap_bounds.size
 			!= Vector2.ZERO
 	):
-		var wrapped: Vector2 = level.wrap_position(position)
+		var wrapped: Vector2 = level.wrap_position(
+			position)
 		if not wrapped.is_equal_approx(position):
 			# Teleported across bounds edge.
-			# Reset physics interpolation so
-			# Godot doesn't lerp between the
-			# old and new positions.
-			character \
-				.reset_physics_interpolation()
-		position = wrapped
-		character.position = position
+			# Update position before resetting
+			# interpolation so the reset captures
+			# the wrapped position, not the old one.
+			position = wrapped
+			character.position = position
+			character.reset_physics_interpolation()
+		else:
+			character.position = position
 
 	velocity = character.velocity
 	surfaces = character.surfaces.bitmask

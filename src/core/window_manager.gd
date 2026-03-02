@@ -120,49 +120,72 @@ func position_server_window_in_preview_mode() -> void:
 
 
 ## Returns true if this process should close
-## because thumbnail snapshot mode is active and
+## because thumbnail generation is active and
 ## this is a client.
-func should_close_for_thumbnail_snapshot() -> bool:
+func should_close_for_thumbnail_generation() \
+		-> bool:
 	return (
 		Netcode.is_preview
 		and Netcode.is_client
-		and G.settings
-			.level_override_for_thumbnail_snapshot
-		>= 0
+		and G.settings.generate_level_thumbnails
 	)
 
 
-## Configures thumbnail snapshot mode on the
-## server. Computes the camera's normal visible
-## area, sizes the window and viewport to match
-## at 1:1 pixel scale, and configures PVM.
-## No-op if preconditions are not met.
-func configure_thumbnail_snapshot_if_needed() \
-		-> void:
-	if (
-		not Netcode.is_preview
-		or not Netcode.is_server
-	):
-		return
-	if (
-		G.settings
-			.level_override_for_thumbnail_snapshot
-		< 0
-	):
-		return
-	if not is_instance_valid(G.level):
-		return
+## Iterates through every registered level,
+## spawning each in sequence, configuring the
+## viewport for 1:1 pixel rendering, and saving
+## a screenshot named after the level id.
+func generate_all_thumbnails() -> void:
+	var count := G.level_registry.get_level_count()
+	Netcode.print(
+		"Generating thumbnails for %d levels"
+		% count,
+		NetworkLogger.CATEGORY_CORE_SYSTEMS,
+	)
 
-	var camera := G.level.level_camera
+	for i in count:
+		var info := (
+			G.level_registry.get_level_by_index(i))
+		if info == null or info.scene == null:
+			continue
+		await _generate_thumbnail_for_level(info)
+
+	Netcode.print(
+		"All thumbnail snapshots complete",
+		NetworkLogger.CATEGORY_CORE_SYSTEMS,
+	)
+
+
+func _generate_thumbnail_for_level(
+	info: LevelInfo,
+) -> void:
+	# Clean up previous level.
+	if is_instance_valid(G.level):
+		G.level.queue_free()
+		G.level = null
+		await get_tree().process_frame
+
+	# Spawn the level scene.
+	var level: Level = info.scene.instantiate()
+	G.game_panel.get_node("Levels") \
+		.add_child(level)
+	G.level = level
+
+	var camera := level.level_camera
 	if not is_instance_valid(camera):
+		Netcode.print(
+			"Skipping %s: no camera" % info.id,
+			NetworkLogger.CATEGORY_CORE_SYSTEMS,
+		)
 		return
 
-	# Compute the world area the camera normally
-	# shows during a match. The camera has not
-	# been processed by PVM yet, so its zoom is
-	# still the scene-configured base value
-	# (e.g. Vector2(3, 3)).
+	# Read the scene-configured camera zoom before
+	# the next process frame, where PVM would
+	# override it in thumbnail snapshot mode.
 	var camera_zoom := camera.zoom
+
+	# Wait a frame for camera initialization.
+	await get_tree().process_frame
 	var base_res := Vector2(
 		ProjectSettings.get_setting(
 			"display/window/size/viewport_width",
@@ -177,9 +200,14 @@ func configure_thumbnail_snapshot_if_needed() \
 	)
 
 	Netcode.print(
-		"Configuring thumbnail snapshot mode"
-		+ " (%dx%d px)" % [
-			visible_size.x, visible_size.y],
+		"Thumbnail [%d/%d] %s (%dx%d px)" % [
+			G.level_registry
+				.get_all_level_ids()
+				.find(info.id) + 1,
+			G.level_registry.get_level_count(),
+			info.id,
+			visible_size.x,
+			visible_size.y],
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
@@ -216,27 +244,10 @@ func configure_thumbnail_snapshot_if_needed() \
 			.configure_thumbnail_snapshot(
 				visible_size)
 
-	# Resolve the level id for the filename.
-	var override_index := clampi(
-		G.settings
-			.level_override_for_thumbnail_snapshot,
-		0,
-		G.level_registry.get_level_count() - 1,
-	)
-	var level_info := (
-		G.level_registry
-			.get_level_by_index(override_index))
-	var level_id: StringName = (
-		level_info.id
-		if level_info != null
-		else &"unknown"
-	)
+	# Wait for the viewport to render.
+	await get_tree().create_timer(0.5).timeout
 
-	# Take a screenshot from the game SubViewport
-	# directly. This avoids root viewport size
-	# mismatches caused by the async window resize.
-	get_tree().create_timer(0.5).timeout.connect(
-		_take_thumbnail_screenshot.bind(level_id))
+	_take_thumbnail_screenshot(info.id)
 
 
 func _take_thumbnail_screenshot(
@@ -244,7 +255,8 @@ func _take_thumbnail_screenshot(
 ) -> void:
 	## Captures the game SubViewport directly and
 	## saves it as a PNG screenshot named after the
-	## level id.
+	## level id. Also copies to the project asset
+	## folder for use as level thumbnails.
 	var pvm := G.pixel_viewport_manager
 	if (
 		not is_instance_valid(pvm)
@@ -271,13 +283,52 @@ func _take_thumbnail_screenshot(
 			+ path,
 			NetworkLogger.CATEGORY_CORE_SYSTEMS,
 		)
-	else:
+		return
+
+	Netcode.print(
+		"Took thumbnail screenshot: "
+		+ path,
+		NetworkLogger.CATEGORY_CORE_SYSTEMS,
+	)
+	G.utils.were_screenshots_taken = true
+
+	# Copy to project asset folder so level
+	# thumbnails stay up-to-date.
+	_copy_thumbnail_to_assets(image, level_id)
+
+
+func _copy_thumbnail_to_assets(
+	image: Image,
+	level_id: StringName,
+) -> void:
+	var asset_dir := (
+		"res://assets/images/level_thumbnails")
+	var dir_result := (
+		DirAccess.make_dir_recursive_absolute(
+			asset_dir))
+	if dir_result != OK:
 		Netcode.print(
-			"Took thumbnail screenshot: "
-			+ path,
+			"Failed to create asset dir: "
+			+ asset_dir,
 			NetworkLogger.CATEGORY_CORE_SYSTEMS,
 		)
-		G.utils.were_screenshots_taken = true
+		return
+
+	var asset_path := (
+		"%s/%s.png" % [asset_dir, level_id])
+	var status := image.save_png(asset_path)
+	if status != OK:
+		Netcode.print(
+			"Failed to copy thumbnail to: "
+			+ asset_path,
+			NetworkLogger.CATEGORY_CORE_SYSTEMS,
+		)
+	else:
+		Netcode.print(
+			"Copied thumbnail to: "
+			+ asset_path,
+			NetworkLogger.CATEGORY_CORE_SYSTEMS,
+		)
 
 
 func position_client_window_in_preview_mode() -> void:

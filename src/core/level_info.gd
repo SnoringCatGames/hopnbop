@@ -19,3 +19,6 @@ extends Resource
 
 ## Whether this level is available for selection.
 @export var is_enabled: bool = true
+
+## Optional thumbnail image for the settings menu.
+@export var thumbnail: Texture2D

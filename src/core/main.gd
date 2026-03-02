@@ -23,39 +23,38 @@ func _ready() -> void:
 
 	_handle_preview_window_closing()
 
-	_start_app()
-
-	var is_thumbnail_snapshot := (
+	var is_generating_thumbnails := (
 		Netcode.is_preview
 		and Netcode.is_server
-		and G.settings
-			.level_override_for_thumbnail_snapshot
-		>= 0
+		and G.settings.generate_level_thumbnails
 	)
 
-	# Skip normal window setup in thumbnail mode
-	# to avoid conflicting async window resizes.
-	if not is_thumbnail_snapshot:
-		G.window_manager.update_window_mode()
-		G.window_manager \
-			.position_window_in_preview_mode()
+	if is_generating_thumbnails:
+		get_tree().paused = false
+		await G.window_manager \
+			.generate_all_thumbnails()
+		close_app()
+		return
 
+	_start_app()
+
+	G.window_manager.update_window_mode()
 	G.window_manager \
-		.configure_thumbnail_snapshot_if_needed()
+		.position_window_in_preview_mode()
 
 
 func _handle_preview_window_closing() -> void:
 	if not Netcode.is_preview:
 		return
 
-	# In thumbnail snapshot mode, close all
+	# In thumbnail generation mode, close all
 	# client windows. Only the server stays.
 	if G.window_manager \
-			.should_close_for_thumbnail_snapshot():
+			.should_close_for_thumbnail_generation():
 		Netcode.print(
 			"Main._ready: Closing client"
 			+ " process for thumbnail"
-			+ " snapshot mode",
+			+ " generation mode",
 			NetworkLogger
 				.CATEGORY_CORE_SYSTEMS,
 		)

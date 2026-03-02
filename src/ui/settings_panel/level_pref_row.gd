@@ -21,6 +21,7 @@ var _level_id: StringName
 var _display_name: String
 var _state := LevelPrefState.INCLUDED
 var _panel: SettingsPanel
+var _thumbnail: Texture2D
 var _left_icon_rect: TextureRect
 var _middle_icon_rect: TextureRect
 var _right_icon_rect: TextureRect
@@ -52,11 +53,13 @@ func setup(
 	display_name: String,
 	panel: SettingsPanel,
 	initial_state := LevelPrefState.INCLUDED,
+	thumbnail: Texture2D = null,
 ) -> void:
 	_level_id = level_id
 	_display_name = display_name
 	_panel = panel
 	_state = initial_state
+	_thumbnail = thumbnail
 
 
 func _ready() -> void:
@@ -100,6 +103,10 @@ func _ready() -> void:
 	hbox.add_child(_middle_icon_rect)
 	hbox.add_child(_create_vbar())
 	%MiddleBtn.add_child(hbox)
+	if _thumbnail != null:
+		%Thumbnail.texture = _thumbnail
+	else:
+		%Thumbnail.visible = false
 	_update_button_styles()
 
 

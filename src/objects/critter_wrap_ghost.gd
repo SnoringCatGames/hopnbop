@@ -31,6 +31,13 @@ func setup(
 	_source_sprite = source_sprite
 	_offset_axis = p_offset_axis
 	top_level = true
+	# Disable physics interpolation. The ghost
+	# sets its position every _process() frame,
+	# so Godot must not lerp between physics
+	# ticks. Otherwise the ghost visually slides
+	# across the screen when the offset flips.
+	physics_interpolation_mode = (
+		PHYSICS_INTERPOLATION_MODE_OFF)
 
 	_ghost_sprite = AnimatedSprite2D.new()
 	_ghost_sprite.sprite_frames = (

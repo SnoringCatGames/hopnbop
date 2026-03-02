@@ -17,12 +17,12 @@ enum BumpMode {
 ## the registry. Clamped to the maximum valid
 ## index.
 @export var level_override_for_preview: int = -1
-## When >= 0 and in preview mode, forces level
-## load by index (overrides
-## level_override_for_preview), closes all client
-## windows, and configures 1:1 pixel rendering
-## for thumbnail capture.
-@export var level_override_for_thumbnail_snapshot: int = -1
+## When true and in preview mode, closes all
+## client windows and iterates through every
+## registered level, taking a 1:1 pixel
+## screenshot of each. The server closes after
+## all thumbnails are saved.
+@export var generate_level_thumbnails := false
 
 # FIXME: Review this.
 @export_group("GameLift")

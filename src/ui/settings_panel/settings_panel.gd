@@ -230,7 +230,8 @@ func _build_ui() -> void:
 			level_info.id,
 			level_info.display_name,
 			self,
-			initial_state)
+			initial_state,
+			level_info.thumbnail)
 		_row_container.add_child(level_row)
 		_connect_row_clicked(level_row)
 		_level_pref_rows.append(level_row)
