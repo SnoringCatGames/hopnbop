@@ -89,7 +89,7 @@ const _STRONG_SPEED_TO_MAINTAIN_COLLISION := 900.0
 
 @export var kill_bounce_vertical_boost := -240.0
 
-@export var spring_bounce_vertical_boost := -365.0
+@export var spring_bounce_vertical_boost := -360.0
 
 @export var snail_crush_bounce_vertical_boost := -20.0
 

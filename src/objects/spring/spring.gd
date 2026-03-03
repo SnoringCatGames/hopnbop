@@ -13,6 +13,8 @@ func _on_trigger_area_body_entered(
 	var player := body as Player
 	if player.state_from_server.is_dead:
 		return
+	if player.velocity.y < 0.0:
+		return
 	# Server triggers gameplay bounce.
 	player.server_trigger_spring_bounce()
 	# Animation plays on all peers (cosmetic).
