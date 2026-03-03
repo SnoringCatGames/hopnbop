@@ -53,7 +53,53 @@ extends Node
 
 # Run and fix tests again.
 
+# Review all tests. Also look for test slop.
+
 # Get CI working again.
+
+
+# Ask AI where auth fits into the current backend and GameLift logic. This was originally planned.
+
+# Web-client support:
+# - Ask if WebSockets or WebRTC make more sense for web.
+# - Ask if enabling network support for web clients would make it more worthwhile to have a slower network frame rate than physics frame rate.
+
+# Update the loading-screen text to indicate the current match-connecting status:
+# - Finding other players...
+# - Connecting to server...
+# - Auth?
+
+
+# ---
+
+# - Ask Claud, up-front, to review, plan, and design _all_ aspects of all backend systems.
+#   - Enumerate all design considerations up-front.
+
+# - Review DELETE_ME_old_doc_for_multiplayer_setup_and_deployment.md
+#   - This is a pretty old document you generated to describe to me how to set up all of the server and backend infrastructure and deployment.
+#   - I suspect this has quite a few out-of-date details at this point.
+# - Auth?
+# -
+
+
+# FIXME: GameLift
+# - Use hopnbop.net
+# - [Obsolete?] Proceed with the "AWS GameLift Deployment Guide"
+#   - Add player authentication and profile management.
+#   - Set up CloudWatch alarms for monitoring.
+#   - Configure auto-scaling policies based on load.
+# - Also ask AI to:
+#   - Want to make sure we can easily test GameLift locally.
+#   - Implement easy scripts for building and deploying and testing. Maybe can also add a hook for GitHub Actions when creating tags? Or ask for a better deployment with trigger solution
+#   - Implement logic for handling logins to the various auth providers.
+#   - Implement a database for recording some game data:
+#     - player data (id, bunny name and adjective, first play time, last play time, total time played, total wins, total kills, total deaths, login info for whichever auth providers they've connected to, ...)
+#     - a leaderboard
+#     - Persist player settings (gore, level preferences, etc).
+#       - If they're logged in, read and write to persisted backend storage. Otherwise, use local storage.
+#       - Also, don't show the settings book until after they've played three rounds (if they aren't logged in, use tracking from local storage).
+#   - Implement a way to make friends and to join matches with friends.
+
 
 # ---
 
@@ -65,6 +111,7 @@ extends Node
 
 
 # ---
+
 
 # - Add bespoke art for each level, rather than tile sets. Or, at least, try
 #   this for one level.
@@ -83,7 +130,9 @@ extends Node
 # - Then, need to figure out collisions for an offset area for these rustle tiles.
 # - Then...
 
+
 # ---
+
 
 # - Review /rollback_netcode/examples/.
 # - Look at how some old Scaffolder utilities are used, like ScaffolderTime.
@@ -201,35 +250,6 @@ extends Node
 # ---
 
 
-# Ask AI where auth fits into the current backend and GameLift logic. This was originally planned.
-
-# Web-client support:
-# - Ask if WebSockets or WebRTC make more sense for web.
-# - Ask if enabling network support for web clients would make it more worthwhile to have a slower network frame rate than physics frame rate.
-
-# Update the loading-screen text to indicate the current match-connecting status:
-# - Finding other players...
-# - Connecting to server...
-# - Auth?
-
-# FIXME: GameLift
-# - Use hopnbop.net
-# - [Obsolete?] Proceed with the "AWS GameLift Deployment Guide"
-#   - Add player authentication and profile management.
-#   - Set up CloudWatch alarms for monitoring.
-#   - Configure auto-scaling policies based on load.
-# - Also ask AI to:
-#   - Want to make sure we can easily test GameLift locally.
-#   - Implement easy scripts for building and deploying and testing. Maybe can also add a hook for GitHub Actions when creating tags? Or ask for a better deployment with trigger solution
-#   - Implement logic for handling logins to the various auth providers.
-#   - Implement a database for recording some game data:
-#     - player data (id, bunny name and adjective, first play time, last play time, total time played, total wins, total kills, total deaths, login info for whichever auth providers they've connected to, ...)
-#     - a leaderboard
-#     - Persist player settings (gore, level preferences, etc).
-#       - If they're logged in, read and write to persisted backend storage. Otherwise, use local storage.
-#       - Also, don't show the settings book until after they've played three rounds (if they aren't logged in, use tracking from local storage).
-#   - Implement a way to make friends and to join matches with friends.
-
 # Add support for a local-only mode.
 
 # Check on how the GitHub Actions current daily actions setup is working.
@@ -241,27 +261,6 @@ extends Node
 # - It should also create zip files for the build and record them in the repo.
 # - AND can it bump my versions for me?? Can it accept a text box for version? Can I tell it all the spots to update the version? Then I could put versions back in the READMEs...
 
-# - Have bunnies be flung in from off-screen from the left.
-#   - Move the happen points over there, and give bunnies initial velocity.
-#   - Remove some of the tiles near the top of the left wall for this. But make sure players can't jump that high.
-#   - Disable player-player collision mask bit in the lobby.
-
-# - Fix code style inconsistencies across the codebase.
-#   - When wrapping expressions across multiple lines, place operators at the start of the next line rather than the end of the previous.
-#   - Wrap lines at 80 characters.
-#   - Prefer using parens to wrap lines rather than backslashes.
-#   - Use tabs, not spaces.
-#   - Never use a grammatical em dash (or a hyphen or n dash substituted in one's place). Instead, use a period and a new sentence.
-#   - Use periods at the ends of comments.
-#   - Prefer `not` instead of `!` (although, do use `!=` when appropriate).
-#   - Follow the Godot style guide: https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html
-#   - Use multiple sub-agents to parallelize this work.
-#   - Use file-level consts instead of hard-coding static-const values inline in functions.
-#   - In general, prefer configuring state in scene template files rather than in script files.
-#     - In particular:
-#       - AnimatedSprite2D.sprite_frames animations.
-#       - References to other files/resources.
-#         - Use @export vars to support these references, rather than hard-coding paths in scripts.
 
 # FIXME: Rollback debug visualization and networking improvements:
 #

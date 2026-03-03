@@ -19,15 +19,19 @@ class TestFrameSimulation:
 
 	var buffer: RollbackBuffer
 	var frame_index: int
+	var _saved_is_server: bool
 
 	func before_each():
 		ArrayPool.clear_all_pools()
+		_saved_is_server = Netcode.is_server
+		Netcode.is_server = true
 		frame_index = 0
 		var default_state := [0.0, 0.0, 0.0, 0] # x, y, velocity, authority
 		buffer = RollbackBuffer.new(90, frame_index, default_state)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
+		Netcode.is_server = _saved_is_server
 
 	func test_simulates_multiple_frames_without_rollback():
 		# Simulate 30 frames of movement with constant velocity.
@@ -297,14 +301,18 @@ class TestLargeGapBackfill:
 	extends GutTest
 
 	var buffer: RollbackBuffer
+	var _saved_is_server: bool
 
 	func before_each():
 		ArrayPool.clear_all_pools()
+		_saved_is_server = Netcode.is_server
+		Netcode.is_server = true
 		var default_state := [100.0, 200.0, 0]
 		buffer = RollbackBuffer.new(90, 0, default_state)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
+		Netcode.is_server = _saved_is_server
 
 	func test_reinitializes_buffer_for_very_large_gap():
 		# Set a state at frame 0.

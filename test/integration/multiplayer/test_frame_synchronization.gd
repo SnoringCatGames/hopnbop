@@ -202,14 +202,18 @@ class TestFrameSkipDetection:
 	extends GutTest
 
 	var buffer: RollbackBuffer
+	var _saved_is_server: bool
 
 	func before_each():
 		ArrayPool.clear_all_pools()
+		_saved_is_server = Netcode.is_server
+		Netcode.is_server = true
 		var default_state := [0.0, 0.0, 0]
 		buffer = RollbackBuffer.new(90, 0, default_state)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
+		Netcode.is_server = _saved_is_server
 
 	func test_detects_frame_skip():
 		# Simulate frames 0-5, then skip to 10.
