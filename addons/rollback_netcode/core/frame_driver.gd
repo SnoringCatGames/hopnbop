@@ -288,6 +288,35 @@ extends Node
 # Client crash reporting SDK
 # - Yes, I think this is probably important? What does this entail?
 
+# ---
+
+# Answers to Your Infrastructure Questions
+# DDoS Protection: Yes, AWS handles the basics. AWS Shield Standard (free, automatic) protects against L3/L4 DDoS attacks on all AWS resources. API Gateway has built-in throttling (you already have rate limiting in your backend). GameLift has its own protections. At your scale (10 concurrent), no additional action needed. If you ever grow to thousands of concurrent, you'd consider AWS Shield Advanced ($3000/month), but that's way premature.
+
+# Anti-cheat vectors in your codebase: Your server-authoritative architecture is already the primary defense. Remaining vectors:
+
+# Input manipulation: Player sends impossible inputs (e.g., movement commands faster than allowed). Mitigate: server validates input rates per frame.
+# Timing exploits: Sending inputs stamped for past frames. Your frame driver already handles this via server-authoritative frame numbering.
+# Information gathering: Packet sniffing to see other players' hidden state. Low risk for a platformer where everyone is visible.
+# For a free casual game, server authority is sufficient. No kernel-level anti-cheat needed.
+# Player migration (Spot reclamation): Full state migration (serialize game state → transfer to new server → reconnect all clients) is extremely complex for a real-time rollback game. Frame numbers, rollback buffers, physics state all need seamless continuity. For 45-second matches, not worth it. Recommended approach: Spot gives 2-minute warning. Either finish the current match (plenty of time for a 45-sec match) or gracefully end it and return players to lobby with "Server maintenance" message. They re-queue immediately.
+
+# Database backups: DynamoDB Point-in-Time Recovery (PITR). One toggle, continuous backups for 35 days, ~$0.20/GB/month. Entirely AWS-managed, no local machines involved.
+
+# CDN for web build: Upload web build files to S3 bucket, serve via CloudFront (AWS CDN). ~1 hour initial setup. ~$0.10-1/month at your scale. Gives HTTPS, global edge caching, and fast load times. You'll set this up as part of the hopnbop.net milestone.
+
+# Email service: Not needed. OAuth providers handle identity verification. You're not doing password-based auth, marketing emails, or notifications. Skip entirely.
+
+# Secrets Manager: AWS service that stores sensitive values (JWT signing key, OAuth client secrets for Google/Apple/Discord/Twitch, Steam API key) encrypted at rest. Your Lambda functions read secrets at runtime instead of using environment variables. ~$0.40/secret/month. Benefits: secrets stay out of GitHub, supports rotation, audit trail. Current backend uses SAM parameters for secrets, which end up as plaintext in CloudFormation. Secrets Manager is more secure.
+
+# Blue/green deployments: Running two versions simultaneously. "Blue" = current production, "Green" = new version. Route traffic to Green, verify it works, decommission Blue. GameLift container fleets do this natively: old game sessions finish on old containers, new sessions start on new containers. Zero downtime, automatic. You don't need to build this yourself.
+
+# Client crash reporting: Catch unhandled exceptions in Godot, send crash data (stack trace, player ID, OS, game version) to your backend API, log to CloudWatch. Custom solution: ~100 LOC in a Godot autoload + one Lambda endpoint. Alternative: Sentry has a community-maintained Godot plugin (free tier: 5K events/month). For your scale, either works.
+
+# GitHub Actions budget: Weekly releases building ~4 targets (Linux server, Windows, Web, later Mac). Each build: ~15-20 min. GameLift deploy: ~5 min. itch.io upload: ~3 min. Total per release: ~40-60 min. Monthly: ~200 min. Free tier: 2,000 min/month. You're using < 10% of the free tier.
+
+# Now let me write the comprehensive plan.
+
 
 # ---
 
