@@ -70,7 +70,7 @@ extends Node
 
 # ---
 
-# MAKE SURE TO USE THE BIG CONTEXT OPTION FOR THIS.
+# /model opus[1m]
 
 
 # Review, plan, and design _all_ aspects of all backend/distributed systems.
@@ -149,6 +149,139 @@ extends Node
 #   - I'll host a website here.
 #   - I'll also host a web build here.
 #   - Let me know if we should use it for any of the other distributed systems connection flows.
+
+# ---
+
+### --- The Laundry List (of clarifying questions from Claud) ---
+# Here's every clarifying question I have, organized by area. Answer as many or as few as you'd like per round. I've marked the 4 most architecturally blocking ones with arrows, and those are in the multiple-choice below.
+
+# Authentication & Identity
+
+# Which OAuth providers beyond Steam and Epic? (Google? Apple? Discord? Twitch?)
+# - Yes, let's support Google, Apple, Discord, and Twitch.
+# Can anonymous players later link a provider and keep their stats?
+# - Yes.
+# Is 24-hour JWT with re-auth on expiry acceptable, or do you want refresh tokens?
+# - Refresh (for the better player experience), unless you think there's a compelling reason not to?
+# Matchmaking
+# 6. Region > auth status > platform priority: hard rules or soft preferences that relax over time?
+# - Definitely soft with relaxing over time. Pleeease override any of my ignorant design ideas when it comes to matchmking if you are aware of a tried-and-true pattern that works well. Please ask me when relevant!
+# 7. Max acceptable wait before relaxing constraints? (30s? 60s? 120s?)
+# - idk. What makes the most sense? These are typically, quick matches without too many players per match (2-8).
+# - Never matchmake a player to a solo match. Instead, timeout and show a no-matches-found message.
+# 8. "Play again" flow to keep the same lobby?
+# - Sure, let's add this.
+# - Also, let's add support for friending other randos you've played in a match with recently.
+# 9. Target match size? (Max 8 is configured, but what's typical?)
+# - I think 4 will probably be more typical, but I'm not certain until more playtesting.
+# 10. Party/group queue with friends?
+# - Yes, definitely!
+
+# Database & Persistence
+# 11. Leaderboard periods: all-time only, or also weekly/monthly?
+# - all-time and weekly
+# 12. "Friends' rankings" = friend-filtered leaderboard view?
+# - Yes
+# - I imagine on the client we might request the first page of the global leaderboard as well as either the entire friends leaderboard, or the first page plus the page around the local player, and then combine/filter these into a single view to present on the client.
+# 13. Which settings are cloud-synced vs local-only?
+# - All persisted settings should be recorded in both places.
+# - We then read from and prefer the cloud version when available.
+# 14. Should players be able to view their match history?
+# - Sure, maybe the most recent X (5?) matches.
+# 15. What are all the "adjective-related gameplay stats"?
+# - PlayerMatchStats
+
+# Monitoring & Operations
+# 16. Do you have an AWS account set up? What region(s)?
+# - Not yet.
+# - Probably Oregon/Seattle/PNW/west coast.
+# 17. Alerting channel: email, Slack, Discord, PagerDuty?
+# - email
+# 18. Expected player count at launch? (Affects fleet sizing, DB capacity, costs.)
+# - 10 concurrent users
+# 19. Uptime target?
+# - I'm not too worried about it, but more is better!
+
+# Web & Cross-Platform
+# 20. Web client: full feature parity or "lite" experience?
+# - Full feature parity
+# 21. Mobile: same gameplay or simplified?
+# - Same gameplay
+# 22. Mobile: local multiplayer on one device?
+# - No
+
+# Offline Mode
+# 23. AI opponents or solo practice only?
+# - No solo play. Offline mode implies local multiplayer.
+# 24. Should offline progress sync when going online?
+# - No. We want to preserve server authority.
+
+# Social
+# 25. Friend discovery: only via auth provider info (as you said), or also unique friend codes?
+# - Sure, ok, also via unique friend codes.
+# 26. In-game communication? (Chat, emotes, preset messages?)
+# - No
+# 27. Spectate friends' matches?
+# - No
+
+# Deployment & Infrastructure
+# 28. Target AWS regions? (NA only? EU? Asia?)
+# - Let's start with just NA
+# 29. Do you have Steam/Epic/itch.io developer accounts?
+# - Only itch.io so far, but I intend to get the others
+# 30. Deployment trigger: git tags? Manual? PR merge?
+# - Hmm, maybe PR merge will be the easiest for me.
+# 31. GitHub Actions budget concerns?
+# - I'm only planning to publish releases maybe once a week.
+# - Do we think building and deploying from GitHub Actions will go through much budget weekly?
+
+# Legal
+# 32. Target launch countries/regions?
+# - Idk. Any/all?
+# 33. Age rating: all ages or 13+? (COPPA has significant implications.)
+# - Let's go with 13+ for now.
+# 34. Publishing as individual or business entity?
+# - Business entity: Snoring Cat LLC
+# 35. Any planned monetization? (Affects legal requirements significantly.)
+# - No
+
+# hopnbop.net
+# 36. Account management features on the website?
+# - No, let's only do account management features in-game.
+# 37. Leaderboards on website?
+# - Yeah, sure
+# 38. Blog/patch notes/community features?
+# - Yeah, sure.
+# - I'll also probably make a Discord server for this game, so we should cross-link.
+
+# Things you may be overlooking (I flagged these in the plan file):
+
+# DDoS protection for servers and API
+# - What should I do to prepare for this?
+# - Is this not something that is more or less handled by the AWS frameworks I'm relying on?
+# Anti-cheat beyond server authority
+# - Where do you think there are potential cheat vectors in this codebase?
+# Client/server version mismatch handling
+# - Let's force clients to update to the latest version
+# Graceful Spot instance reclamation and player migration
+# - I _think_ we already added disconnect-handling logic on server and client to send clients back to the lobby with a message when this happens.
+# - BUT, how much work would it be to sync a new server to the old server's state and send all clients to connect to the new server? I assume this is what you mean by "migration"? Let's put-together a plan for that.
+# Database backups and disaster recovery
+# - Yeah... can this be handled by AWS in the cloud? I don't want to bother with any of that on local machines.
+# Game analytics and telemetry
+# - Seems important!
+# CDN for web build
+# - How much work is this? What does this entail?
+# Email service for account verification
+# - Is this important? Isn't this handled by the OAuth providers we're relying on?
+# GDPR data portability (export, not just deletion)
+# - Yes, please, let's support this!
+# Secrets management (AWS Secrets Manager)
+# - What does this entail?
+# Blue/green deployments for zero-downtime updates
+# - What does this mean?
+# Client crash reporting SDK
+# - Yes, I think this is probably important? What does this entail?
 
 
 # ---

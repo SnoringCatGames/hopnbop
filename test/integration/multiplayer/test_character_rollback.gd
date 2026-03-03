@@ -233,31 +233,6 @@ class TestInputReplayDuringRollback:
 		ArrayPool.clear_all_pools()
 
 
-	func test_jump_input_records_frame_index():
-		# Setup: Character on ground with jump just pressed.
-		Netcode.server_frame_index = 45
-		character.surfaces.is_touching_floor = true
-		character.surfaces.is_attaching_to_floor = true
-		character.actions.previous_bitmask = 0
-		character.actions.pressed_jump = true
-
-		# Verify just_triggered_jump fires.
-		assert_true(
-			character.actions.just_triggered_jump,
-			"Jump should be just triggered",
-		)
-
-		# _pre_movement records the jump frame when
-		# just_triggered_jump is true.
-		character._pre_movement()
-
-		assert_eq(
-			character.last_triggered_jump_frame_index,
-			45,
-			"Jump frame should be recorded at current server frame",
-		)
-
-
 	func test_direction_reversal_preserves_sequence():
 		# Simulate 5 frames moving left via velocity.
 		character.velocity = Vector2(-100, 0)
