@@ -69,8 +69,10 @@ class TestConfigurationAndInitialization:
 
 
 	func test_synced_properties_match_expected():
-		var props: Dictionary = \
-		forwarded_input._synced_properties_and_rollback_diff_thresholds
+		var props: Dictionary = (
+			forwarded_input
+			._synced_properties_and_rollback_diff_thresholds
+		)
 
 		# Should have exactly 5 properties (actions + 4 interaction props).
 		assert_eq(props.size(), 5, "Should have 5 synced properties")

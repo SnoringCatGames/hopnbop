@@ -67,20 +67,20 @@ class TestFrameIndexContinuity:
 
 
 	func test_frame_index_stays_constant_during_pause():
-		# Start at frame 100, unpause
+		# Start at frame 100, unpause.
 		frame_driver.server_frame_index = 100
 		frame_driver.server_set_is_paused(false)
 
-		# Pause
+		# Pause.
 		frame_driver.server_set_is_paused(true)
 
-		var frame_at_pause := frame_driver.server_frame_index
+		# Run network processing while paused. Frame index
+		# should not advance.
+		frame_driver._run_network_process()
 
-		# Frame should stay constant (in real scenario, _pre_physics_process
-		# returns early)
 		assert_eq(
 			frame_driver.server_frame_index,
-			frame_at_pause,
+			100,
 			"Frame index should stay constant during pause",
 		)
 

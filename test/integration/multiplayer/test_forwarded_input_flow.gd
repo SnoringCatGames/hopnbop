@@ -229,8 +229,9 @@ class TestRollbackIntegration:
 		forwarded_input.last_interaction_frame_index = 300
 		forwarded_input.last_interaction_position = Vector2(100, 200)
 		forwarded_input.last_interaction_velocity = Vector2.ZERO
-		forwarded_input.frame_authority = \
-		ReconcilableState.FrameAuthority.AUTHORITATIVE
+		forwarded_input.frame_authority = (
+			ReconcilableState.FrameAuthority.AUTHORITATIVE
+		)
 
 		# Record state.
 		forwarded_input._sync_from_scene_state()
@@ -314,12 +315,14 @@ class TestRollbackIntegration:
 		var predicted_actions := 0b0001
 		var authoritative_actions := 0b0010
 
-		# Check for mismatch (threshold 0 = exact match required).
-		var has_mismatch := \
-		forwarded_input._check_do_values_mismatch(
-			predicted_actions,
-			authoritative_actions,
-			0, # threshold
+		# Check for mismatch (threshold 0 = exact match
+		# required).
+		var has_mismatch := (
+			forwarded_input._check_do_values_mismatch(
+				predicted_actions,
+				authoritative_actions,
+				0, # threshold
+			)
 		)
 
 		assert_true(
@@ -332,11 +335,12 @@ class TestRollbackIntegration:
 		# Same actions, no mismatch.
 		var actions := 0b0101
 
-		var has_mismatch := \
-		forwarded_input._check_do_values_mismatch(
-			actions,
-			actions,
-			0,
+		var has_mismatch := (
+			forwarded_input._check_do_values_mismatch(
+				actions,
+				actions,
+				0,
+			)
 		)
 
 		assert_false(

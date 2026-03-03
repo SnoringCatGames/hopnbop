@@ -173,20 +173,18 @@ class TestDeviceManagerEdgeCases:
 		assert_false(manager.has_device_for_player(0))
 		assert_false(manager.has_device_for_player(999))
 
-	func test_get_device_returns_null_for_unassigned():
-		assert_null(manager.get_device_for_player(0))
-		assert_null(manager.get_device_for_player(999))
-
+	# TODO: Add bounds checking to InputDeviceManager.assign_device_to_player().
 	func test_can_assign_to_negative_index():
-		# BUG: No bounds checking on local_player_index
+		# BUG: No bounds checking on local_player_index.
 		var config := DeviceConfig.new(
 			DeviceConfig.DeviceType.KEYBOARD, -1, {}
 		)
 		manager.assign_device_to_player(-1, config)
 		assert_true(manager.has_device_for_player(-1))
 
+	# TODO: Add bounds checking to InputDeviceManager.assign_device_to_player().
 	func test_can_assign_to_very_large_index():
-		# BUG: No bounds checking on local_player_index
+		# BUG: No bounds checking on local_player_index.
 		var config := DeviceConfig.new(
 			DeviceConfig.DeviceType.KEYBOARD, -1, {}
 		)

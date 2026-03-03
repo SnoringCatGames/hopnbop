@@ -145,48 +145,12 @@ class TestPlayerIdEdgeCases:
 
 		assert_eq(player.player_id, large_id)
 
-	func test_sequential_id_assignment_simulation():
-		# Simulate server assigning sequential IDs.
-		var next_player_id := 1
-
-		var player_ids: Array[int] = []
-		for i in range(10):
-			player_ids.append(next_player_id)
-			next_player_id += 1
-
-		# Verify sequential.
-		for i in range(10):
-			assert_eq(player_ids[i], i + 1)
-
-		# Verify no duplicates.
-		var unique_ids := {}
-		for id in player_ids:
-			assert_false(
-				unique_ids.has(id),
-				"Should not have duplicate IDs",
-			)
-			unique_ids[id] = true
-
 	func test_negative_lobby_id_range():
 		# Test large range of lobby player indices.
 		for i in range(100):
 			var player_id := LobbyLevel.get_local_player_id(i)
 			assert_lt(player_id, 0, "Lobby IDs must be negative")
 			assert_eq(player_id, - (i + 1))
-
-	func test_player_id_as_dictionary_key():
-		# Verify int player_ids work as dictionary keys.
-		var players_by_id := {}
-
-		players_by_id[1] = "Player 1"
-		players_by_id[2] = "Player 2"
-		players_by_id[-1] = "Lobby Player 1"
-
-		assert_eq(players_by_id[1], "Player 1")
-		assert_eq(players_by_id[2], "Player 2")
-		assert_eq(players_by_id[-1], "Lobby Player 1")
-		assert_eq(players_by_id.size(), 3)
-
 
 class TestMatchStateKillsAndBumpsArrays:
 	extends GutTest

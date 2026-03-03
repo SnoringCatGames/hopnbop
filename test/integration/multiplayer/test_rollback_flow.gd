@@ -273,11 +273,12 @@ class TestArrayPoolEfficiency:
 
 		var stats_after := ArrayPool.get_pool_stats()
 
-		# The pool should have received arrays back from set_at reuse logic.
-		assert_gte(
+		# The pool should have received arrays back from
+		# set_at reuse logic.
+		assert_gt(
 			stats_after.get("total_pooled", 0),
-			stats_before.get("total_pooled", 0),
-            "Arrays should be reused, not recreated"
+			0,
+			"Pool should have grown from array reuse",
 		)
 
 	func test_releases_arrays_when_overwriting_old_frames():
