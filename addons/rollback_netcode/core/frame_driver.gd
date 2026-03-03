@@ -70,63 +70,85 @@ extends Node
 
 # ---
 
-# - Ask Claud, up-front, to review, plan, and design _all_ aspects of all backend systems.
-#   - Enumerate all design considerations up-front.
-#   - Review READMEs and other documents in the codebase.
-#   - Review DELETE_ME_old_doc_for_multiplayer_setup_and_deployment.md
-#     - This is a pretty old document you generated to describe to me how to set up all of the server and backend infrastructure and deployment.
-#     - I suspect this has quite a few out-of-date details at this point.
-#   - Also, I want to make sure to have an auth flow integrated into our client/server/backend/matchmaking architecture.
-#     - I don't _think_ we have an logic to support this yet, but I _think_ I asked for designs to support this originally.
-#     - I want to support oauth via a handful of different providers.
-#     - I also want to support optionally playing without authenticating.
-#       - But I want to discourage this, and I want to provide such players with more limited functionality.
-#         - No custom level-preferences or networked-settings preferences.
-#       - Also, we may want to have matchmaking prefer pairing anonymous players together, and authed players together.
-#         - We also may want to have matchmaking prefer pairing players together who are on the same platform.
-#         - And certainly prefer pair players who are in the same region (probably this is the main priority).
-#   - Please ask me for and/or include plans for any other important aspects/parts of distributed systems that I'm overlooking.
-#      - Assume I am not very familiar with what's important for backend and/or distributed systems design.
-#   - After planning and designing all distributed systems, I'm going to want to be VERY THOROUGHLY enumerate all manual steps I should in order to implement and deploy all systems.
-#   - I'm also going to want to be able to test gamelift systems locally.
-#     - I believe AWS has some sort of container support around this?
-#   - Implement easy scripts for building and deploying and testing. Maybe can also add a hook for GitHub Actions when creating tags? Or what do you think would be a better deployment with trigger solution?
-#   - Implement a database for recording some game data:
-#     - player data (id, last bunny name and adjective, first play time, last play time, total time played, total wins, total kills, total deaths, login info for whichever auth providers they've connected to, ..., [what else would be useful to record?])
-#     - a leaderboard
-#       - top players per level as well as top players in general.
-#       - Your ranking relative to all your friends' rankings.
-#     - Persist player settings (gore, level preferences, etc).
-#       - If they're logged in, read and write to persisted backend storage. Otherwise, use local storage.
-#       - Also, don't show the settings book until after they've played three rounds (if they aren't logged in, use tracking from local storage).
-#   - Implement a way to make friends and to join matches with friends.
-#     - This should work cross-platform.
-#     - I think players shouldn't be searchable. You should only be able to add a friend if you already know their info for one of their auth providers.
-#   - Also help me put-together an EULA, privacy policy, and data-deletion agreement.
-#     - Are these the normal legal documents one needs when publishing games that collect data?
-#     - Are there other important forms we should draft as well?
-#     - Please also enumerate any important maintanence or on-going work I should do to support these and related compliance requirements.
-#   - Also, in general, can you please document a list of other concerns I should know about relating to publishing a free game like this?
-#   - I hope you ask me a huge laundry-list of clarifying questions for this massive planning and design task.
-# -
+# MAKE SURE TO USE THE BIG CONTEXT OPTION FOR THIS.
 
 
-# FIXME: GameLift
-# - Use hopnbop.net
-# - [Obsolete?] Proceed with the "AWS GameLift Deployment Guide"
-#   - Add player authentication and profile management.
-#   - Set up CloudWatch alarms for monitoring.
-#   - Configure auto-scaling policies based on load.
-# - Also ask AI to:
-#   - Implement easy scripts for building and deploying and testing. Maybe can also add a hook for GitHub Actions when creating tags? Or ask for a better deployment with trigger solution
-#   - Implement logic for handling logins to the various auth providers.
-#   - Implement a database for recording some game data:
-#     - player data (id, bunny name and adjective, first play time, last play time, total time played, total wins, total kills, total deaths, login info for whichever auth providers they've connected to, ...)
-#     - a leaderboard
-#     - Persist player settings (gore, level preferences, etc).
-#       - If they're logged in, read and write to persisted backend storage. Otherwise, use local storage.
-#       - Also, don't show the settings book until after they've played three rounds (if they aren't logged in, use tracking from local storage).
-#   - Implement a way to make friends and to join matches with friends.
+# Review, plan, and design _all_ aspects of all backend/distributed systems.
+# - We already have a robust client codebase.
+# - We also have the (completely untested) start of some backend systems and AWS GameLift integration systems.
+# - Review READMEs and other documents in the codebase.
+# - Review DELETE_ME_old_doc_for_multiplayer_setup_and_deployment.md
+#   - This is a pretty old document you generated to describe to me how to set up all of the server and backend infrastructure and deployment.
+#   - I suspect this has quite a few out-of-date details at this point.
+# - Review the backend logic under backend/.
+# - Review the GDExtension for supporting AWS GameLift integration under gamelift-gdextension/
+# - Review the addon under addons/gamelift_session_manager/.
+# - Research AWS GameLift and related AWS systems.
+#   - We want to make sure to use EC2 Spot Instances for the cost savings.
+# - We'll need to set up CloudWatch alarms for monitoring.
+# - We'll need to configure auto-scaling policies based on load.
+# - I want to make sure we have good cloud-based monitoring, crash reporting, logging, and alerting set up for our backend and server systems.
+# - Also, I want to make sure to have an auth flow integrated into our client/server/backend/matchmaking architecture.
+#   - I don't _think_ we have an logic to support this yet, but I _think_ I asked for designs to support this originally.
+#   - I want to support oauth via a handful of different providers.
+#   - I also want to support optionally playing without authenticating.
+#     - But I want to discourage this, and I want to provide such players with more limited functionality.
+#       - No custom level-preferences or networked-settings preferences.
+#     - Also, we may want to have matchmaking prefer pairing anonymous players together, and authed players together.
+#       - We also may want to have matchmaking prefer pairing players together who are on the same platform.
+#       - And certainly prefer pair players who are in the same region (probably this is the main priority).
+#    - I think we may want some sort of profile-management system to go along with the auth support.
+# - We'll need to update the loading-screen text to indicate the current match-connecting status:
+#   - Finding other players...
+#   - Connecting to server...
+#   - Auth?
+#   - Other steps?
+# - Please ask me for and/or include plans for any other important aspects/parts of distributed systems that I'm overlooking.
+#   - Assume I am not very familiar with what's important for backend and/or distributed systems design.
+# - After planning and designing all distributed systems, I'm going to want to be VERY THOROUGHLY enumerate all manual steps I should in order to implement and deploy all systems.
+#   - Similarly, I want you to enumerate likely or common update and maintanence steps for any of these systems.
+# - I'm also going to want to be able to test gamelift systems locally.
+#   - I believe AWS has some sort of container support around this?
+# - I'm also going to want to be able to test connecting to a remote server from a local client running in preview mode in the editor.
+#   - I want to use a Settings flag/properties to configure this connection mode.
+#   - Hopefully this can cache auth tokens so we can continue to support the Settings.start_in_game flag for this mode.
+# - I'm also going to want to add support for a purely offline mode.
+#   - This will be supported in published versions, not just in preview in the editor.
+# - Implement easy scripts for building and deploying and testing. Maybe can also add a hook for GitHub Actions when creating tags? Or what do you think would be a better deployment-with-trigger solution?
+#   - As well as deploying new server builds to AWS GameLift, I'm going to want to also conveniently build and deploy clients to various hosting platforms, like itch.io (both in-browser web version and downloadable Windows/Mac/Linux builds), Steam, and EGS.
+#     - I also want to eventually publish mobile builds for iOS and Android. Any amount of building/deployment automation you can help me with there will also be very useful.
+#   - Speaking of web builds, I'm also going to want to update our network_connector (and maybe other systems) to support alternate network protocols for web builds, like WebSockets or WebRTC.
+#     - Which of Godot's WebSocket or WebRTC options make more sense for our web build?
+#     - Now that we want to enable network support for web clients, is it more worthwhile to add support to our network sync and driver systems to support a slower network frame rate than physics frame rate?
+#       - This was a possible optimization we discussed earlier, but deemed not worth it at the time.
+#     - Please plan to implement support for web builds and mobile builds, as well as crossplay between all platforms within a single match (the server will need to be able to have the different types of connections simultaneously).
+# - Implement a database for recording some game data:
+#   - Player data
+#     - id, last bunny name and adjective, last body type, first play time, last play time, total time played, total matches played, total wins, total kills, total deaths, totals from other adjective-related gameplay stats, login info for whichever auth providers they've connected to, ..., [what else would be useful to record?
+#     - Settings/preferences
+#   - A leaderboard
+#     - Top players per level as well as top players in general.
+#     - Your ranking relative to all your friends' rankings.
+#   - Persist player settings (gore, level preferences, etc).
+#     - Always use local storage, AND if they're logged in, also read and write to persisted backend storage.
+#       - If cloud data is available, prefer it as the source of truth over local data.
+#     - Also, let's hide the settings book in the lobby level until after they've played three rounds (if they aren't logged in, use tracking from local storage).
+# - Implement a way to make friends and to join matches with friends.
+#   - This should work cross-platform.
+#   - I think players shouldn't be searchable. You should only be able to add a friend if you already know their info for one of their auth providers.
+# - Also help me put-together an EULA, privacy policy, and data-deletion agreement.
+#   - Are these the normal legal documents one needs when publishing games that collect data?
+#   - Are there other important forms we should draft as well?
+#   - Please also enumerate any important maintanence or on-going work I should do to support these and related compliance requirements.
+# - Also, in general, can you please document a list of other concerns I should know about relating to publishing a free game like this?
+# - I hope you ask me a huge laundry-list of clarifying questions for this massive planning and design task.
+#   - Also, if it's better, please reorganize this requirements list, and then splite it up into well-defined thorough docs broken down into milestones to be implemented one-at-a-time with testing in between.
+#   - I thought it might be better to give you more complete context up-front.
+# - I purchased the hopnbop.net domain name.
+#   - Let's use this.
+#   - I'll host a website here.
+#   - I'll also host a web build here.
+#   - Let me know if we should use it for any of the other distributed systems connection flows.
 
 
 # ---
