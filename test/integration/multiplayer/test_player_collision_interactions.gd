@@ -35,6 +35,10 @@ class TestCollisionBounceVelocity:
 		ArrayPool.clear_all_pools()
 		G.settings.bump_mode = Settings.BumpMode.BOUNCE
 
+		# Reset frame index before creating players so
+		# their rollback buffers start at frame 0.
+		Netcode.frame_driver.server_frame_index = 0
+
 		# Set up mock environment.
 		mock_level = TestEnvironmentMock.setup_mock_level(self )
 

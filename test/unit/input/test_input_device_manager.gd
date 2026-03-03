@@ -121,7 +121,7 @@ class TestBindingPresets:
 
 	func test_partition_bindings_array_exists():
 		assert_not_null(InputDeviceManager.KEYBOARD_PARTITION_BINDINGS)
-		assert_eq(InputDeviceManager.KEYBOARD_PARTITION_BINDINGS.size(), 3)
+		assert_eq(InputDeviceManager.KEYBOARD_PARTITION_BINDINGS.size(), 4)
 
 	func test_wasd_bindings_preset_exists():
 		var wasd := InputDeviceManager.KEYBOARD_PARTITION_BINDINGS[0]
