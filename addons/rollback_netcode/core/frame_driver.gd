@@ -45,6 +45,11 @@ extends Node
 
 # FIXME: LEFT OFF HERE: Main list: --------------------------------------------
 
+
+# - Work with Claud on the BIG final plans.
+
+# - Delete DELETE_ME_old_doc_for_multiplayer_setup_and_deployment.md.
+
 # /Make my image more resemble the reference. I want rectangular blocks that aren't exactly aligned with the tile grid. I want some brown dirt/wood blocks, some yellow sandy blocks, some gray stone blocks, some ice blocks. Grass should be on the tops of all non-stone blocks. There should be some running falling water and a pool. Omit the butterflies and flies.
 # /I've made this level using a tileset. I now want to replace it with bespoke art--no repeating tiles. Also, I want to replace most of the interior "stone" art with wood/dirt art. And some sandy art in some of the platforms on the left side of the screen. Also, I want a small trickle flowing into the pool from the middle of the floating platform that's directly above it. Replace the "ice" tiles with a transparent ice-cube aesthetic.
 #
