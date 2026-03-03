@@ -29,7 +29,7 @@ class TestRollbackQueueing:
 
 
 	func test_queue_rollback_accepts_valid_frame():
-		# Set up: frame index at 50, buffer size 90.
+		# Frame index at 50, buffer size 120.
 		frame_driver.server_frame_index = 50
 
 		# Queue rollback to frame 45 (conflict frame).
@@ -37,10 +37,6 @@ class TestRollbackQueueing:
 		var result := frame_driver.queue_rollback(45)
 
 		assert_true(result, "Should accept valid rollback request")
-		# Access the private field through reflection or check behavior.
-		# Since we can't directly check _queued_rollback_frame_index,
-		# we verify it was accepted.
-		assert_true(result, "Valid frame should be queued")
 
 
 	func test_queue_rollback_rejects_too_old_frame():
@@ -89,21 +85,68 @@ class TestRollbackQueueing:
 
 
 	func test_queue_rollback_deduplication_keeps_earliest():
-		# Test that multiple queue_rollback calls keep the earliest frame.
+		# Multiple queue_rollback calls should keep the earliest
+		# target frame.
 		frame_driver.server_frame_index = 50
 
-		# Queue multiple rollbacks.
-		var result1 := frame_driver.queue_rollback(45) # Target: 46
-		var result2 := frame_driver.queue_rollback(47) # Target: 48
-		var result3 := frame_driver.queue_rollback(40) # Target: 41 (earliest)
+		frame_driver.queue_rollback(47) # Target: 48.
+		frame_driver.queue_rollback(45) # Target: 46 (earlier).
+		frame_driver.queue_rollback(49) # Target: 50 (later).
 
-		assert_true(result1, "First queue should succeed")
-		assert_true(result2, "Second queue should succeed")
-		assert_true(result3, "Third queue should succeed")
+		assert_eq(
+			frame_driver._queued_rollback_frame_index,
+			46,
+			"Should keep earliest rollback target (46)",
+		)
 
-		# We can't directly verify _queued_rollback_frame_index,
-		# but the implementation should keep frame 41.
-		# This would be verified by integration tests.
+
+	func test_queue_rollback_clears_after_processing():
+		# After _run_network_process, the queued rollback should
+		# be cleared.
+		frame_driver.server_frame_index = 50
+		frame_driver.queue_rollback(45)
+
+		assert_eq(
+			frame_driver._queued_rollback_frame_index,
+			46,
+			"Rollback should be queued at frame 46",
+		)
+
+		frame_driver._run_network_process()
+
+		assert_eq(
+			frame_driver._queued_rollback_frame_index,
+			0,
+			"Rollback queue should be cleared after processing",
+		)
+
+
+	func test_frame_index_restored_after_rollback_processing():
+		# After rollback + resimulation, frame index should be
+		# restored to its original value.
+		frame_driver.server_frame_index = 50
+		frame_driver.queue_rollback(45)
+
+		frame_driver._run_network_process()
+
+		assert_eq(
+			frame_driver.server_frame_index,
+			50,
+			"Frame index should be restored after rollback",
+		)
+
+
+	func test_rollback_to_current_frame_accepted():
+		# Edge case: rollback to current frame should be accepted
+		# but results in zero re-simulation frames.
+		frame_driver.server_frame_index = 50
+
+		var result := frame_driver.queue_rollback(49)
+
+		assert_true(
+			result,
+			"Should accept rollback to current frame",
+		)
 
 
 	func test_is_frame_too_old_at_boundary():
@@ -190,239 +233,6 @@ class TestNetworkFrameProcessor \
 		processed_frames.clear()
 
 
-class TestRollbackAndReprocess:
-	extends GutTest
-	## Tests the re-simulation algorithm - most critical rollback logic.
-	##
-	## Note: These tests verify rollback behavior indirectly since
-	## _rollback_and_reprocess is a private method. We test the observable
-	## effects through queue_rollback and frame processing.
-
-	var frame_driver: NetworkFrameDriver
-
-
-	func before_each():
-		ArrayPool.clear_all_pools()
-		frame_driver = NetworkFrameDriver.new()
-
-
-	func after_each():
-		ArrayPool.clear_all_pools()
-		if is_instance_valid(frame_driver):
-			frame_driver.free()
-
-
-	func test_rollback_queuing_sets_internal_state():
-		# Verify that queue_rollback sets up the internal state correctly.
-		frame_driver.server_frame_index = 50
-
-		var result := frame_driver.queue_rollback(45)
-
-		assert_true(result, "Should successfully queue rollback")
-		# The internal _queued_rollback_frame_index should be 46.
-		# We can't directly verify, but subsequent tests will show the effect.
-
-
-	func test_multiple_rollbacks_keep_earliest_frame():
-		# Test deduplication: multiple calls should keep earliest.
-		frame_driver.server_frame_index = 50
-
-		frame_driver.queue_rollback(47) # Target: 48
-		frame_driver.queue_rollback(45) # Target: 46 (earlier)
-		frame_driver.queue_rollback(49) # Target: 50 (later)
-
-		# Internal state should have frame 46 as the target (earliest).
-		assert_eq(
-			frame_driver._queued_rollback_frame_index,
-			46,
-			"Should keep earliest rollback target (46)",
-		)
-
-
-	func test_oldest_rollbackable_calculation_with_large_buffer():
-		# Buffer size 120, frame 200.
-		# oldest = max(200 - 120 + 3, 1) = 83.
-		frame_driver.server_frame_index = 200
-
-		var oldest := frame_driver.oldest_rollbackable_frame_index
-
-		assert_eq(oldest, 83, "Oldest rollbackable frame should be 83")
-
-
-	func test_oldest_rollbackable_calculation_early_game():
-		# Early in the game when frame_index < buffer_size.
-		frame_driver.server_frame_index = 10
-
-		var oldest := frame_driver.oldest_rollbackable_frame_index
-
-		assert_eq(
-			oldest,
-			1,
-			"Oldest rollbackable should be 1 early in game",
-		)
-
-
-	func test_frame_boundary_calculations():
-		# Test the +3 offset in oldest_rollbackable calculation.
-		# Formula: max(server_frame_index - buffer_size + 3, 1).
-		# At frame 123 with buffer 120: max(123 - 120 + 3, 1) = 6.
-		frame_driver.server_frame_index = 123
-
-		var oldest := frame_driver.oldest_rollbackable_frame_index
-
-		assert_eq(
-			oldest,
-			6,
-			"Should correctly calculate with +3 offset",
-		)
-
-
-	func test_queue_rollback_returns_false_for_ancient_frame():
-		# Very old frame that's definitely outside the buffer.
-		frame_driver.server_frame_index = 1000
-
-		var result := frame_driver.queue_rollback(1)
-
-		assert_false(
-			result,
-			"Should reject rollback for ancient frame",
-		)
-
-
-	func test_queue_rollback_clears_after_processing_simulation():
-		# Simulate the queue clearing behavior.
-		# In actual implementation, _queued_rollback_frame_index is reset to 0
-		# after _rollback_and_reprocess completes.
-		frame_driver.server_frame_index = 50
-
-		# Queue a rollback.
-		frame_driver.queue_rollback(45)
-
-		# Verify the rollback was queued.
-		assert_eq(
-			frame_driver._queued_rollback_frame_index,
-			46,
-			"Rollback should be queued at frame 46",
-		)
-
-		# Process the simulation, which should execute and clear the queue.
-		frame_driver._run_network_process()
-
-		# After _run_network_process, the queue should be cleared.
-		assert_eq(
-			frame_driver._queued_rollback_frame_index,
-			0,
-			"Rollback queue should be cleared after processing",
-		)
-
-
-	func test_rollback_state_consistency():
-		# Test that frame index is properly managed during rollback.
-		frame_driver.server_frame_index = 50
-
-		# Queue rollback to frame 46 (conflict at 45).
-		frame_driver.queue_rollback(45)
-
-		# After rollback would execute, frame_index should return to 50.
-		# This tests that the temporary rollback doesn't corrupt state.
-		var original_frame := frame_driver.server_frame_index
-		assert_eq(
-			original_frame,
-			50,
-			"Frame index should remain stable before rollback",
-		)
-
-
-	func test_rollback_with_current_frame_no_op():
-		# Edge case: rollback to current frame should be rejected.
-		frame_driver.server_frame_index = 50
-
-		# Try to rollback to frame 49 (conflict), target would be 50.
-		# This is technically valid but results in zero frames to process.
-		var result := frame_driver.queue_rollback(49)
-
-		assert_true(
-			result,
-			"Should accept rollback to current frame (edge case)",
-		)
-
-
-class TestFrameIndexCalculation:
-	extends GutTest
-	## Tests rollback buffer boundaries and frame validation logic.
-
-	var frame_driver: NetworkFrameDriver
-
-
-	func before_each():
-		ArrayPool.clear_all_pools()
-		frame_driver = NetworkFrameDriver.new()
-
-
-	func after_each():
-		ArrayPool.clear_all_pools()
-		if is_instance_valid(frame_driver):
-			frame_driver.free()
-
-
-	func test_oldest_rollbackable_frame_index_with_buffer_size_90():
-		# Frame 200, buffer 120 -> oldest = max(200 - 120 + 3, 1) = 83.
-		frame_driver.server_frame_index = 200
-
-		var oldest := frame_driver.oldest_rollbackable_frame_index
-
-		assert_eq(oldest, 83, "Oldest frame should be 83 at frame 200")
-
-
-	func test_oldest_rollbackable_never_negative_early_game():
-		# Frame 5, buffer 120 -> oldest = max(5 - 120 + 3, 1) = 1.
-		frame_driver.server_frame_index = 5
-
-		var oldest := frame_driver.oldest_rollbackable_frame_index
-
-		assert_eq(oldest, 1, "Oldest frame should never be less than 1")
-
-
-	func test_is_frame_too_old_to_consider_at_boundary():
-		# Frame 200, oldest = 83.
-		# Conflict frame 82, target 83 -> not too old.
-		frame_driver.server_frame_index = 200
-
-		var result := frame_driver.is_frame_too_old_to_consider(82)
-
-		assert_false(result, "Frame 82 (target 83) should not be too old")
-
-
-	func test_is_frame_too_old_to_consider_before_boundary():
-		# Frame 200, oldest = 83.
-		# Conflict frame 81, target 82 -> too old.
-		frame_driver.server_frame_index = 200
-
-		var result := frame_driver.is_frame_too_old_to_consider(81)
-
-		assert_true(result, "Frame 81 (target 82) should be too old")
-
-
-	func test_rollback_buffer_size_matches_settings():
-		# Default: 2.0 seconds at 60 FPS = 120 frames.
-		var expected := ceili(
-			Netcode.settings.rollback_buffer_duration_sec
-			* frame_driver.target_network_fps,
-		)
-
-		var actual := frame_driver.rollback_buffer_size
-
-		assert_eq(actual, expected, "Buffer size should match settings")
-
-
-	func test_oldest_rollbackable_with_plus_three_offset():
-		# Verify the +3 offset in the formula.
-		# At frame 123: max(123 - 120 + 3, 1) = 6.
-		frame_driver.server_frame_index = 123
-
-		var oldest := frame_driver.oldest_rollbackable_frame_index
-
-		assert_eq(oldest, 6, "Oldest should account for +3 offset")
 
 
 class TestFastForward:
@@ -457,18 +267,27 @@ class TestFastForward:
 
 
 	func test_fast_forward_processes_intermediate_frames():
-		# Fast forward from 10 to 15 should process frames 11, 12, 13, 14, 15.
-		# We can't directly verify _network_process calls without entities,
-		# but we can verify the frame index progression.
+		# Fast forward from 10 to 15 should process frames 11-15.
 		frame_driver.server_frame_index = 10
+
+		var processor := TestNetworkFrameProcessor.new()
+		frame_driver.add_network_frame_processor(processor)
 
 		frame_driver.fast_forward(15)
 
 		assert_eq(
+			processor.network_process_count,
+			5,
+			"Should process 5 intermediate frames",
+		)
+		assert_eq(
 			frame_driver.server_frame_index,
 			15,
-			"Should process all intermediate frames",
+			"Should advance to target frame",
 		)
+
+		frame_driver.remove_network_frame_processor(processor)
+		processor.free()
 
 
 	func test_fast_forward_with_zero_gap():

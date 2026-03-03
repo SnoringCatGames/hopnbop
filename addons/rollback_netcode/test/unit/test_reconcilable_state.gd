@@ -778,11 +778,8 @@ class TestBufferStateRestoration:
 			ReconcilableState.FrameAuthority.AUTHORITATIVE
 		)
 
-		# Simulate _pre_network_process.
-		entity.frame_index = Netcode.server_frame_index
-		entity.frame_authority = (
-			ReconcilableState.FrameAuthority.UNKNOWN
-		)
+		# Call the real production method.
+		entity._pre_network_process()
 
 		assert_eq(
 			entity.frame_authority,
@@ -792,16 +789,14 @@ class TestBufferStateRestoration:
 
 
 	func test_frame_index_updates_during_pre_network_process():
-		# Simulate frame processing.
-		var expected_frame := 42
-		Netcode.server_frame_index = expected_frame
+		# Set server frame index and call the real method.
+		Netcode.server_frame_index = 42
 
-		# Simulate _pre_network_process.
-		entity.frame_index = expected_frame
+		entity._pre_network_process()
 
 		assert_eq(
 			entity.frame_index,
-			expected_frame,
+			42,
 			"Timestamp index should match server frame index",
 		)
 

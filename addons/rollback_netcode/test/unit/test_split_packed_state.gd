@@ -130,7 +130,6 @@ class TestSplitPackedStateDefault:
 			entity._uses_split_packed_state(),
 			"Default should not use split packed state",
 		)
-		entity.queue_free()
 
 
 	func test_split_entity_uses_split_packed_state_is_true():
@@ -140,7 +139,6 @@ class TestSplitPackedStateDefault:
 			entity._uses_split_packed_state(),
 			"SplitEntity should use split packed state",
 		)
-		entity.queue_free()
 
 
 class TestNonSplitPacking:
