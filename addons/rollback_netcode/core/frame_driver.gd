@@ -49,7 +49,73 @@ extends Node
 # ---
 
 
+# -
+
+
+# ---
+
+
 # - Work with Claud on the BIG final plans.
+# Milestones:
+# - M1: AWS Account & Infrastructure Foundation
+# - M2: Complete Auth Flow
+# - M3: GameLift Container Fleet Deployment
+# - M4: Legal & Compliance
+# - M5: Monitoring, Logging & Alerting
+# - M6: Matchmaking Enhancements
+# - M7: Database & Player Persistence
+# - M8: Leaderboards
+# - M9: Friends System
+# - M10: Web Build & Cross-Play
+# - M11: Offline Mode / Local Multiplayer
+# - M12: Mobile Builds
+# - M13: CI/CD & Deployment Automation
+# - M14: Website (hopnbop.net)
+# - M15: Client Polish & Remaining Items
+
+
+# ## Manual Setup Checklist (One-Time)
+# ### Platform Accounts
+# - [ ] AWS account (Snoring Cat LLC billing)
+# - [ ] Steam developer account (Steamworks, $100 app fee)
+# - [ ] Apple Developer account ($99/year)
+# - [ ] Google Play Console ($25 one-time)
+# - [ ] Epic Games Store developer account (free)
+# - [ ] Google Cloud Console project (for OAuth, free tier)
+# - [ ] Discord developer application (free)
+# - [ ] Twitch developer application (free)
+# - [ ] itch.io project for Hop 'n Bop (already have account)
+# ### AWS Infrastructure
+# - [ ] IAM admin user with MFA
+# - [ ] AWS CLI configured locally
+# - [ ] SAM CLI installed
+# - [ ] Secrets Manager: JWT signing key
+# - [ ] Secrets Manager: OAuth client secrets (6 providers)
+# - [ ] SNS topic for alarms, email subscription confirmed
+# - [ ] S3 bucket for hopnbop.net
+# - [ ] CloudFront distribution
+# - [ ] Route 53 hosted zone
+# - [ ] ACM SSL certificate
+# - [ ] ECR repository for server containers
+# - [ ] GameLift container fleet
+# - [ ] GameLift Anywhere fleet (for local dev)
+# - [ ] DynamoDB PITR enabled on all tables
+# - [ ] AWS Budgets alerts ($25, $50, $100)
+# - [ ] CloudWatch dashboard
+# ### Local Development
+# - [ ] Docker installed (for container builds)
+# - [ ] butler CLI installed (for itch.io uploads)
+# - [ ] Xcode installed on Mac (for iOS builds)
+# - [ ] Android SDK installed (for Android builds)
+# ### Legal
+# - [ ] Privacy policy drafted and hosted
+# - [ ] Terms of service drafted and hosted
+# - [ ] Data deletion policy drafted and hosted
+# - [ ] Age gate (13+) implemented in client
+# ### CI/CD
+# - [ ] GitHub secrets configured (AWS keys, itch.io key, etc.)
+# - [ ] `release` branch created with protection rules
+# - [ ] All deployment workflows tested with manual dispatch first
 
 
 # ---
