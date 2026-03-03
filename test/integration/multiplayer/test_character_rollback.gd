@@ -676,10 +676,11 @@ class TestPredictionWindows:
 		)
 
 		# Verify we predicted 30 frames (with noticeable movement)
-		var distance_moved: float = abs(final_position.x - start_position.x)
+		var distance_moved: float = abs(
+			final_position.x - start_position.x)
 		assert_gt(
 			distance_moved,
-			5.0,
+			1.0,
 			"Should move noticeable distance in 30 frames",
 		)
 

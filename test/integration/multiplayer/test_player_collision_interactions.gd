@@ -197,7 +197,7 @@ class TestCollisionDetectionLogic:
 	func test_bump_interaction_type_recorded():
 		var state = GameMatchState.new()
 		for pid in [1, 2]:
-			var p = PlayerState.new()
+			var p = GamePlayerState.new()
 			p.player_id = pid
 			state.players_by_id[pid] = p
 
@@ -223,7 +223,7 @@ class TestCollisionDetectionLogic:
 	func test_kill_interaction_type_recorded():
 		var state = GameMatchState.new()
 		for pid in [1, 2]:
-			var p = PlayerState.new()
+			var p = GamePlayerState.new()
 			p.player_id = pid
 			state.players_by_id[pid] = p
 

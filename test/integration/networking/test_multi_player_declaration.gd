@@ -160,6 +160,7 @@ class TestNetworkedLevelPlayerSpawning:
 
 	func after_each():
 		ArrayPool.clear_all_pools()
+		G.level = null
 		G.game_panel = null
 		G.match_state = null
 		if is_instance_valid(mock_game_panel):
@@ -194,6 +195,9 @@ class TestPlayerIdFormatConsistency:
 
 	func after_each():
 		ArrayPool.clear_all_pools()
+		G.level = null
+		G.game_panel = null
+		G.match_state = null
 
 	func test_match_state_and_networked_level_ids_match():
 		var synchronizer := MatchStateSynchronizer.new()
@@ -230,11 +234,6 @@ class TestPlayerIdFormatConsistency:
 		for player_id in match_state_ids:
 			assert_has(level_ids, player_id)
 			assert_typeof(player_id, TYPE_INT)
-
-		# Cleanup.
-		G.game_panel = null
-		G.match_state = null
-		mock_game_panel.queue_free()
 
 
 class TestServerIdAssignmentSimulation:
