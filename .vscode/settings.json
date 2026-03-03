@@ -73,5 +73,6 @@
 	"chat.tools.terminal.autoApprove": {
 		"godot": true,
 		"Out-File": true
-	}
+	},
+	"cmake.sourceDirectory": "C:/Users/lsl/Repositories/hopnbop/gamelift-gdextension/vcpkg/ports/b64"
 }
