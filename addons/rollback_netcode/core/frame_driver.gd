@@ -51,8 +51,6 @@ extends Node
 # This is a level for a 2D platformer, using a tileset with repeating tiles. I want to replace it with bespoke art across the entire level. I want to carefully preserve the overall geometry of the platforms and walls. I want tall stone columns on the outer sides. I want to still have some stone comprising some bottom parts of some platforms, but more dirt and wooden stump parts as well. Also, I want most of the platforms in the left half to incorporate sandy parts instead of wood/dirt parts. Also, I want a tiny trickle water fall falling into the bottom-left-corner pool from the wide platform that's directly above it. Also, I want to replace the "icy" parts with transparent ice-cube aesthetics.
 # Great. Now, I see the water falls in two parts. Have the second part fall from the platform on the left, rather than the one on the right. The water can pool/flow horizontally slightly to reach the preexisting lower waterfall part. Let's replace all the stump parts with dirt parts. Let's lighten up the tone a lot. This should be more of a sunny woodland glade than a gloomy cave. Some of the ice on the right half doesn't exactly match the tiles from the base image--make sure they do. Let there be more transition and merging between dirt/sand and stone, so a given "tile" is more likely to have a bit of both, with stone usually below sand/dirt. Also, allow for a tiny bit of deviation around "tile" edges, so they can stick out a bit more beyond the gridlines.
 
-# Run and fix tests again.
-
 # Review all tests. Also look for test slop.
 
 # Get CI working again.
@@ -74,11 +72,42 @@ extends Node
 
 # - Ask Claud, up-front, to review, plan, and design _all_ aspects of all backend systems.
 #   - Enumerate all design considerations up-front.
-
-# - Review DELETE_ME_old_doc_for_multiplayer_setup_and_deployment.md
-#   - This is a pretty old document you generated to describe to me how to set up all of the server and backend infrastructure and deployment.
-#   - I suspect this has quite a few out-of-date details at this point.
-# - Auth?
+#   - Review READMEs and other documents in the codebase.
+#   - Review DELETE_ME_old_doc_for_multiplayer_setup_and_deployment.md
+#     - This is a pretty old document you generated to describe to me how to set up all of the server and backend infrastructure and deployment.
+#     - I suspect this has quite a few out-of-date details at this point.
+#   - Also, I want to make sure to have an auth flow integrated into our client/server/backend/matchmaking architecture.
+#     - I don't _think_ we have an logic to support this yet, but I _think_ I asked for designs to support this originally.
+#     - I want to support oauth via a handful of different providers.
+#     - I also want to support optionally playing without authenticating.
+#       - But I want to discourage this, and I want to provide such players with more limited functionality.
+#         - No custom level-preferences or networked-settings preferences.
+#       - Also, we may want to have matchmaking prefer pairing anonymous players together, and authed players together.
+#         - We also may want to have matchmaking prefer pairing players together who are on the same platform.
+#         - And certainly prefer pair players who are in the same region (probably this is the main priority).
+#   - Please ask me for and/or include plans for any other important aspects/parts of distributed systems that I'm overlooking.
+#      - Assume I am not very familiar with what's important for backend and/or distributed systems design.
+#   - After planning and designing all distributed systems, I'm going to want to be VERY THOROUGHLY enumerate all manual steps I should in order to implement and deploy all systems.
+#   - I'm also going to want to be able to test gamelift systems locally.
+#     - I believe AWS has some sort of container support around this?
+#   - Implement easy scripts for building and deploying and testing. Maybe can also add a hook for GitHub Actions when creating tags? Or what do you think would be a better deployment with trigger solution?
+#   - Implement a database for recording some game data:
+#     - player data (id, last bunny name and adjective, first play time, last play time, total time played, total wins, total kills, total deaths, login info for whichever auth providers they've connected to, ..., [what else would be useful to record?])
+#     - a leaderboard
+#       - top players per level as well as top players in general.
+#       - Your ranking relative to all your friends' rankings.
+#     - Persist player settings (gore, level preferences, etc).
+#       - If they're logged in, read and write to persisted backend storage. Otherwise, use local storage.
+#       - Also, don't show the settings book until after they've played three rounds (if they aren't logged in, use tracking from local storage).
+#   - Implement a way to make friends and to join matches with friends.
+#     - This should work cross-platform.
+#     - I think players shouldn't be searchable. You should only be able to add a friend if you already know their info for one of their auth providers.
+#   - Also help me put-together an EULA, privacy policy, and data-deletion agreement.
+#     - Are these the normal legal documents one needs when publishing games that collect data?
+#     - Are there other important forms we should draft as well?
+#     - Please also enumerate any important maintanence or on-going work I should do to support these and related compliance requirements.
+#   - Also, in general, can you please document a list of other concerns I should know about relating to publishing a free game like this?
+#   - I hope you ask me a huge laundry-list of clarifying questions for this massive planning and design task.
 # -
 
 
@@ -89,7 +118,6 @@ extends Node
 #   - Set up CloudWatch alarms for monitoring.
 #   - Configure auto-scaling policies based on load.
 # - Also ask AI to:
-#   - Want to make sure we can easily test GameLift locally.
 #   - Implement easy scripts for building and deploying and testing. Maybe can also add a hook for GitHub Actions when creating tags? Or ask for a better deployment with trigger solution
 #   - Implement logic for handling logins to the various auth providers.
 #   - Implement a database for recording some game data:
