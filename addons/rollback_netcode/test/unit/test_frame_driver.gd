@@ -29,27 +29,27 @@ class TestRollbackQueueing:
 
 
 	func test_queue_rollback_accepts_valid_frame():
-		# Set up: frame index at 50, buffer size 90
+		# Set up: frame index at 50, buffer size 90.
 		frame_driver.server_frame_index = 50
 
-		# Queue rollback to frame 45 (conflict frame)
-		# This becomes target rollback frame 46 (conflict + 1)
+		# Queue rollback to frame 45 (conflict frame).
+		# This becomes target rollback frame 46 (conflict + 1).
 		var result := frame_driver.queue_rollback(45)
 
 		assert_true(result, "Should accept valid rollback request")
-		# Access the private field through reflection or check behavior
+		# Access the private field through reflection or check behavior.
 		# Since we can't directly check _queued_rollback_frame_index,
-		# we verify it was accepted
+		# we verify it was accepted.
 		assert_true(result, "Valid frame should be queued")
 
 
 	func test_queue_rollback_rejects_too_old_frame():
-		# Set up: frame index at 200, buffer size 120
-		# oldest_rollbackable = max(200 - 120 + 3, 1) = 83
+		# Set up: frame index at 200, buffer size 120.
+		# oldest_rollbackable = max(200 - 120 + 3, 1) = 83.
 		frame_driver.server_frame_index = 200
 
-		# Try to queue rollback to frame 80 (too old)
-		# Target rollback would be 81, which is < 83
+		# Try to queue rollback to frame 80 (too old).
+		# Target rollback would be 81, which is < 83.
 		var result := frame_driver.queue_rollback(80)
 
 		assert_false(
@@ -59,12 +59,12 @@ class TestRollbackQueueing:
 
 
 	func test_queue_rollback_boundary_frame_accepted():
-		# Test the boundary case: exactly at oldest_rollbackable
+		# Test the boundary case: exactly at oldest_rollbackable.
 		frame_driver.server_frame_index = 200
-		# oldest_rollbackable = max(200 - 120 + 3, 1) = 83
+		# oldest_rollbackable = max(200 - 120 + 3, 1) = 83.
 
-		# Queue rollback to frame 82 (conflict)
-		# Target rollback = 83, which equals oldest_rollbackable
+		# Queue rollback to frame 82 (conflict).
+		# Target rollback = 83, which equals oldest_rollbackable.
 		var result := frame_driver.queue_rollback(82)
 
 		assert_true(
@@ -74,12 +74,12 @@ class TestRollbackQueueing:
 
 
 	func test_queue_rollback_boundary_frame_rejected():
-		# Test one frame before the boundary
+		# Test one frame before the boundary.
 		frame_driver.server_frame_index = 200
-		# oldest_rollbackable = 83
+		# oldest_rollbackable = 83.
 
-		# Queue rollback to frame 81 (conflict)
-		# Target rollback = 82, which is < 83
+		# Queue rollback to frame 81 (conflict).
+		# Target rollback = 82, which is < 83.
 		var result := frame_driver.queue_rollback(81)
 
 		assert_false(
@@ -89,10 +89,10 @@ class TestRollbackQueueing:
 
 
 	func test_queue_rollback_deduplication_keeps_earliest():
-		# Test that multiple queue_rollback calls keep the earliest frame
+		# Test that multiple queue_rollback calls keep the earliest frame.
 		frame_driver.server_frame_index = 50
 
-		# Queue multiple rollbacks
+		# Queue multiple rollbacks.
 		var result1 := frame_driver.queue_rollback(45) # Target: 46
 		var result2 := frame_driver.queue_rollback(47) # Target: 48
 		var result3 := frame_driver.queue_rollback(40) # Target: 41 (earliest)
@@ -102,23 +102,23 @@ class TestRollbackQueueing:
 		assert_true(result3, "Third queue should succeed")
 
 		# We can't directly verify _queued_rollback_frame_index,
-		# but the implementation should keep frame 41
-		# This would be verified by integration tests
+		# but the implementation should keep frame 41.
+		# This would be verified by integration tests.
 
 
 	func test_is_frame_too_old_at_boundary():
-		# Test the boundary check for is_frame_too_old_to_consider
+		# Test the boundary check for is_frame_too_old_to_consider.
 		frame_driver.server_frame_index = 200
-		# oldest_rollbackable = 83
+		# oldest_rollbackable = 83.
 
-		# Frame 82 (conflict), target 83 - should NOT be too old
+		# Frame 82 (conflict), target 83 - should NOT be too old.
 		var result_at_boundary := frame_driver.is_frame_too_old_to_consider(82)
 		assert_false(
 			result_at_boundary,
 			"Frame at boundary should not be too old",
 		)
 
-		# Frame 81 (conflict), target 82 - should be too old
+		# Frame 81 (conflict), target 82 - should be too old.
 		var result_before_boundary := (
 			frame_driver.is_frame_too_old_to_consider(81)
 		)
@@ -129,9 +129,9 @@ class TestRollbackQueueing:
 
 
 	func test_oldest_rollbackable_never_negative():
-		# Test early frames where buffer size exceeds frame index
+		# Test early frames where buffer size exceeds frame index.
 		frame_driver.server_frame_index = 5
-		# Formula: max(5 - 120 + 3, 1) = max(-112, 1) = 1
+		# Formula: max(5 - 120 + 3, 1) = max(-112, 1) = 1.
 
 		var oldest := frame_driver.oldest_rollbackable_frame_index
 
@@ -143,11 +143,11 @@ class TestRollbackQueueing:
 
 
 	func test_rollback_buffer_size_calculation():
-		# Test that buffer size is calculated correctly
-		# Default: 2.0 seconds at 60 FPS = 120 frames
+		# Test that buffer size is calculated correctly.
+		# Default: 2.0 seconds at 60 FPS = 120 frames.
 		var expected_size := ceili(
-			Netcode.settings.rollback_buffer_duration_sec *
-			frame_driver.target_network_fps,
+			Netcode.settings.rollback_buffer_duration_sec
+			* frame_driver.target_network_fps,
 		)
 
 		var actual_size := frame_driver.rollback_buffer_size
@@ -160,8 +160,8 @@ class TestRollbackQueueing:
 
 
 ## Test helper entity that tracks network processing calls.
-class TestNetworkFrameProcessor:
-	extends NetworkFrameProcessor
+class TestNetworkFrameProcessor \
+	extends NetworkFrameProcessor:
 	## Tracks how many times each processing phase is called.
 
 	var pre_process_count := 0
@@ -213,25 +213,25 @@ class TestRollbackAndReprocess:
 
 
 	func test_rollback_queuing_sets_internal_state():
-		# Verify that queue_rollback sets up the internal state correctly
+		# Verify that queue_rollback sets up the internal state correctly.
 		frame_driver.server_frame_index = 50
 
 		var result := frame_driver.queue_rollback(45)
 
 		assert_true(result, "Should successfully queue rollback")
-		# The internal _queued_rollback_frame_index should be 46
-		# We can't directly verify, but subsequent tests will show the effect
+		# The internal _queued_rollback_frame_index should be 46.
+		# We can't directly verify, but subsequent tests will show the effect.
 
 
 	func test_multiple_rollbacks_keep_earliest_frame():
-		# Test deduplication: multiple calls should keep earliest
+		# Test deduplication: multiple calls should keep earliest.
 		frame_driver.server_frame_index = 50
 
 		frame_driver.queue_rollback(47) # Target: 48
 		frame_driver.queue_rollback(45) # Target: 46 (earlier)
 		frame_driver.queue_rollback(49) # Target: 50 (later)
 
-		# Internal state should have frame 46 as the target (earliest)
+		# Internal state should have frame 46 as the target (earliest).
 		assert_eq(
 			frame_driver._queued_rollback_frame_index,
 			46,
@@ -240,8 +240,8 @@ class TestRollbackAndReprocess:
 
 
 	func test_oldest_rollbackable_calculation_with_large_buffer():
-		# Buffer size 120, frame 200
-		# oldest = max(200 - 120 + 3, 1) = 83
+		# Buffer size 120, frame 200.
+		# oldest = max(200 - 120 + 3, 1) = 83.
 		frame_driver.server_frame_index = 200
 
 		var oldest := frame_driver.oldest_rollbackable_frame_index
@@ -250,7 +250,7 @@ class TestRollbackAndReprocess:
 
 
 	func test_oldest_rollbackable_calculation_early_game():
-		# Early in the game when frame_index < buffer_size
+		# Early in the game when frame_index < buffer_size.
 		frame_driver.server_frame_index = 10
 
 		var oldest := frame_driver.oldest_rollbackable_frame_index
@@ -263,9 +263,9 @@ class TestRollbackAndReprocess:
 
 
 	func test_frame_boundary_calculations():
-		# Test the +3 offset in oldest_rollbackable calculation
-		# Formula: max(server_frame_index - buffer_size + 3, 1)
-		# At frame 123 with buffer 120: max(123 - 120 + 3, 1) = 6
+		# Test the +3 offset in oldest_rollbackable calculation.
+		# Formula: max(server_frame_index - buffer_size + 3, 1).
+		# At frame 123 with buffer 120: max(123 - 120 + 3, 1) = 6.
 		frame_driver.server_frame_index = 123
 
 		var oldest := frame_driver.oldest_rollbackable_frame_index
@@ -278,7 +278,7 @@ class TestRollbackAndReprocess:
 
 
 	func test_queue_rollback_returns_false_for_ancient_frame():
-		# Very old frame that's definitely outside the buffer
+		# Very old frame that's definitely outside the buffer.
 		frame_driver.server_frame_index = 1000
 
 		var result := frame_driver.queue_rollback(1)
@@ -290,25 +290,25 @@ class TestRollbackAndReprocess:
 
 
 	func test_queue_rollback_clears_after_processing_simulation():
-		# Simulate the queue clearing behavior
+		# Simulate the queue clearing behavior.
 		# In actual implementation, _queued_rollback_frame_index is reset to 0
-		# after _rollback_and_reprocess completes
+		# after _rollback_and_reprocess completes.
 		frame_driver.server_frame_index = 50
 
-		# Queue a rollback
+		# Queue a rollback.
 		frame_driver.queue_rollback(45)
 
-		# Verify the rollback was queued
+		# Verify the rollback was queued.
 		assert_eq(
 			frame_driver._queued_rollback_frame_index,
 			46,
 			"Rollback should be queued at frame 46",
 		)
 
-		# Process the simulation, which should execute and clear the queue
+		# Process the simulation, which should execute and clear the queue.
 		frame_driver._run_network_process()
 
-		# After _run_network_process, the queue should be cleared
+		# After _run_network_process, the queue should be cleared.
 		assert_eq(
 			frame_driver._queued_rollback_frame_index,
 			0,
@@ -317,14 +317,14 @@ class TestRollbackAndReprocess:
 
 
 	func test_rollback_state_consistency():
-		# Test that frame index is properly managed during rollback
+		# Test that frame index is properly managed during rollback.
 		frame_driver.server_frame_index = 50
 
-		# Queue rollback to frame 46 (conflict at 45)
+		# Queue rollback to frame 46 (conflict at 45).
 		frame_driver.queue_rollback(45)
 
-		# After rollback would execute, frame_index should return to 50
-		# This tests that the temporary rollback doesn't corrupt state
+		# After rollback would execute, frame_index should return to 50.
+		# This tests that the temporary rollback doesn't corrupt state.
 		var original_frame := frame_driver.server_frame_index
 		assert_eq(
 			original_frame,
@@ -334,11 +334,11 @@ class TestRollbackAndReprocess:
 
 
 	func test_rollback_with_current_frame_no_op():
-		# Edge case: rollback to current frame should be rejected
+		# Edge case: rollback to current frame should be rejected.
 		frame_driver.server_frame_index = 50
 
-		# Try to rollback to frame 49 (conflict), target would be 50
-		# This is technically valid but results in zero frames to process
+		# Try to rollback to frame 49 (conflict), target would be 50.
+		# This is technically valid but results in zero frames to process.
 		var result := frame_driver.queue_rollback(49)
 
 		assert_true(
@@ -366,7 +366,7 @@ class TestFrameIndexCalculation:
 
 
 	func test_oldest_rollbackable_frame_index_with_buffer_size_90():
-		# Frame 200, buffer 120 -> oldest = max(200 - 120 + 3, 1) = 83
+		# Frame 200, buffer 120 -> oldest = max(200 - 120 + 3, 1) = 83.
 		frame_driver.server_frame_index = 200
 
 		var oldest := frame_driver.oldest_rollbackable_frame_index
@@ -375,7 +375,7 @@ class TestFrameIndexCalculation:
 
 
 	func test_oldest_rollbackable_never_negative_early_game():
-		# Frame 5, buffer 120 -> oldest = max(5 - 120 + 3, 1) = 1
+		# Frame 5, buffer 120 -> oldest = max(5 - 120 + 3, 1) = 1.
 		frame_driver.server_frame_index = 5
 
 		var oldest := frame_driver.oldest_rollbackable_frame_index
@@ -384,8 +384,8 @@ class TestFrameIndexCalculation:
 
 
 	func test_is_frame_too_old_to_consider_at_boundary():
-		# Frame 200, oldest = 83
-		# Conflict frame 82, target 83 -> not too old
+		# Frame 200, oldest = 83.
+		# Conflict frame 82, target 83 -> not too old.
 		frame_driver.server_frame_index = 200
 
 		var result := frame_driver.is_frame_too_old_to_consider(82)
@@ -394,8 +394,8 @@ class TestFrameIndexCalculation:
 
 
 	func test_is_frame_too_old_to_consider_before_boundary():
-		# Frame 200, oldest = 83
-		# Conflict frame 81, target 82 -> too old
+		# Frame 200, oldest = 83.
+		# Conflict frame 81, target 82 -> too old.
 		frame_driver.server_frame_index = 200
 
 		var result := frame_driver.is_frame_too_old_to_consider(81)
@@ -404,10 +404,10 @@ class TestFrameIndexCalculation:
 
 
 	func test_rollback_buffer_size_matches_settings():
-		# Default: 2.0 seconds at 60 FPS = 120 frames
+		# Default: 2.0 seconds at 60 FPS = 120 frames.
 		var expected := ceili(
-			Netcode.settings.rollback_buffer_duration_sec *
-			frame_driver.target_network_fps,
+			Netcode.settings.rollback_buffer_duration_sec
+			* frame_driver.target_network_fps,
 		)
 
 		var actual := frame_driver.rollback_buffer_size
@@ -416,8 +416,8 @@ class TestFrameIndexCalculation:
 
 
 	func test_oldest_rollbackable_with_plus_three_offset():
-		# Verify the +3 offset in the formula
-		# At frame 123: max(123 - 120 + 3, 1) = 6
+		# Verify the +3 offset in the formula.
+		# At frame 123: max(123 - 120 + 3, 1) = 6.
 		frame_driver.server_frame_index = 123
 
 		var oldest := frame_driver.oldest_rollbackable_frame_index
@@ -444,7 +444,7 @@ class TestFastForward:
 
 
 	func test_fast_forward_advances_frame_index():
-		# Start at frame 10, fast forward to frame 20
+		# Start at frame 10, fast forward to frame 20.
 		frame_driver.server_frame_index = 10
 
 		frame_driver.fast_forward(20)
@@ -457,9 +457,9 @@ class TestFastForward:
 
 
 	func test_fast_forward_processes_intermediate_frames():
-		# Fast forward from 10 to 15 should process frames 11, 12, 13, 14, 15
+		# Fast forward from 10 to 15 should process frames 11, 12, 13, 14, 15.
 		# We can't directly verify _network_process calls without entities,
-		# but we can verify the frame index progression
+		# but we can verify the frame index progression.
 		frame_driver.server_frame_index = 10
 
 		frame_driver.fast_forward(15)
@@ -472,7 +472,7 @@ class TestFastForward:
 
 
 	func test_fast_forward_with_zero_gap():
-		# Fast forward to current frame should be no-op
+		# Fast forward to current frame should be no-op.
 		frame_driver.server_frame_index = 50
 
 		frame_driver.fast_forward(50)
@@ -485,7 +485,7 @@ class TestFastForward:
 
 
 	func test_fast_forward_with_one_frame_gap():
-		# Edge case: fast forward by exactly 1 frame
+		# Edge case: fast forward by exactly 1 frame.
 		frame_driver.server_frame_index = 30
 
 		frame_driver.fast_forward(31)
@@ -498,7 +498,7 @@ class TestFastForward:
 
 
 	func test_fast_forward_large_gap():
-		# Test with a large gap (100 frames)
+		# Test with a large gap (100 frames).
 		frame_driver.server_frame_index = 10
 
 		frame_driver.fast_forward(110)
@@ -530,10 +530,10 @@ class TestNodeRegistration:
 
 
 	func test_add_networked_state_registers_node():
-		# Create a test networked entity
+		# Create a test networked entity.
 		test_entity = TestNetworkedEntity.new()
 
-		# Manually add to frame driver
+		# Manually add to frame driver.
 		var initial_count := frame_driver._networked_state_nodes.size()
 		frame_driver.add_networked_state(test_entity)
 
@@ -549,11 +549,11 @@ class TestNodeRegistration:
 
 
 	func test_remove_networked_state_unregisters_node():
-		# Create and register test entity
+		# Create and register test entity.
 		test_entity = TestNetworkedEntity.new()
 		frame_driver.add_networked_state(test_entity)
 
-		# Remove entity
+		# Remove entity.
 		var count_before := frame_driver._networked_state_nodes.size()
 		frame_driver.remove_networked_state(test_entity)
 
@@ -569,10 +569,10 @@ class TestNodeRegistration:
 
 
 	func test_add_network_frame_processor_registers_node():
-		# Create a test node with NetworkFrameProcessor interface
+		# Create a test node with NetworkFrameProcessor interface.
 		var processor := TestNetworkFrameProcessor.new()
 
-		# Manually add to frame driver
+		# Manually add to frame driver.
 		var initial_count := frame_driver._network_frame_processor_nodes.size()
 		frame_driver.add_network_frame_processor(processor)
 
@@ -586,17 +586,17 @@ class TestNodeRegistration:
 			"Should contain the test processor",
 		)
 
-		# Cleanup
+		# Cleanup.
 		frame_driver.remove_network_frame_processor(processor)
 		processor.free()
 
 
 	func test_remove_network_frame_processor_unregisters_node():
-		# Create and register test processor
+		# Create and register test processor.
 		var processor := TestNetworkFrameProcessor.new()
 		frame_driver.add_network_frame_processor(processor)
 
-		# Remove processor
+		# Remove processor.
 		var count_before := frame_driver._network_frame_processor_nodes.size()
 		frame_driver.remove_network_frame_processor(processor)
 
@@ -610,7 +610,7 @@ class TestNodeRegistration:
 			"Should not contain the test processor",
 		)
 
-		# Cleanup
+		# Cleanup.
 		processor.free()
 
 
@@ -634,7 +634,7 @@ class TestPauseUnpause:
 
 
 	func test_starts_paused_by_default():
-		# Game should start paused until server unpauses
+		# Game should start paused until server unpauses.
 		assert_true(
 			frame_driver.is_paused,
 			"Should start paused by default",
@@ -642,10 +642,10 @@ class TestPauseUnpause:
 
 
 	func test_server_set_is_paused_true_pauses_simulation():
-		# Unpause first
+		# Unpause first.
 		frame_driver._is_paused = false
 
-		# Then pause via server_set_is_paused
+		# Then pause via server_set_is_paused.
 		frame_driver.server_set_is_paused(true)
 
 		assert_true(
@@ -655,10 +655,10 @@ class TestPauseUnpause:
 
 
 	func test_server_set_is_paused_false_unpauses_simulation():
-		# Start paused
+		# Start paused.
 		frame_driver._is_paused = true
 
-		# Unpause via server_set_is_paused
+		# Unpause via server_set_is_paused.
 		frame_driver.server_set_is_paused(false)
 
 		assert_false(
@@ -668,11 +668,11 @@ class TestPauseUnpause:
 
 
 	func test_pause_tracks_start_frame():
-		# Set up: at frame 100
+		# Set up: at frame 100.
 		frame_driver._is_paused = false
 		frame_driver.server_frame_index = 100
 
-		# Pause
+		# Pause.
 		frame_driver.server_set_is_paused(true)
 
 		assert_eq(
@@ -683,15 +683,15 @@ class TestPauseUnpause:
 
 
 	func test_unpause_accumulates_cumulative_frames():
-		# Start at frame 100, pause
+		# Start at frame 100, pause.
 		frame_driver.server_frame_index = 100
 		frame_driver._is_paused = false
 		frame_driver.server_set_is_paused(true)
 
-		# Simulate time passing (advance frame index as if paused for 30 frames)
+		# Simulate time passing (advance frame index as if paused for 30 frames).
 		frame_driver.server_frame_index = 130
 
-		# Unpause
+		# Unpause.
 		frame_driver.server_set_is_paused(false)
 
 		assert_eq(
@@ -702,14 +702,14 @@ class TestPauseUnpause:
 
 
 	func test_multiple_pause_cycles_accumulate():
-		# Pause cycle 1: pause at 100, unpause at 120 (20 frames)
+		# Pause cycle 1: pause at 100, unpause at 120 (20 frames).
 		frame_driver._is_paused = false
 		frame_driver.server_frame_index = 100
 		frame_driver.server_set_is_paused(true)
 		frame_driver.server_frame_index = 120
 		frame_driver.server_set_is_paused(false)
 
-		# Pause cycle 2: pause at 150, unpause at 170 (20 frames)
+		# Pause cycle 2: pause at 150, unpause at 170 (20 frames).
 		frame_driver.server_frame_index = 150
 		frame_driver.server_set_is_paused(true)
 		frame_driver.server_frame_index = 170
@@ -723,7 +723,7 @@ class TestPauseUnpause:
 
 
 	func test_pause_records_history():
-		# Pause at 100, unpause at 120
+		# Pause at 100, unpause at 120.
 		frame_driver._is_paused = false
 		frame_driver.server_frame_index = 100
 		frame_driver.server_set_is_paused(true)
@@ -751,7 +751,7 @@ class TestPauseUnpause:
 
 
 	func test_pause_start_frame_returns_zero_when_not_paused():
-		# Not paused
+		# Not paused.
 		frame_driver._is_paused = false
 
 		assert_eq(
@@ -762,10 +762,10 @@ class TestPauseUnpause:
 
 
 	func test_pause_clears_queued_rollback():
-		# Start unpaused
+		# Start unpaused.
 		frame_driver.server_set_is_paused(false)
 
-		# Queue a rollback
+		# Queue a rollback.
 		frame_driver.server_frame_index = 100
 		frame_driver.queue_rollback(95)
 
@@ -775,7 +775,7 @@ class TestPauseUnpause:
 			"Rollback should be queued",
 		)
 
-		# Pause
+		# Pause.
 		frame_driver.server_set_is_paused(true)
 
 		assert_eq(
@@ -786,17 +786,17 @@ class TestPauseUnpause:
 
 
 	func test_idempotent_pause():
-		# Pause twice
+		# Pause twice.
 		frame_driver._is_paused = false
 		frame_driver.server_frame_index = 100
 		frame_driver.server_set_is_paused(true)
 
 		var pause_start_1 := frame_driver.pause_start_frame
 
-		# Advance frame (shouldn't happen, but testing idempotency)
+		# Advance frame (shouldn't happen, but testing idempotency).
 		frame_driver.server_frame_index = 110
 
-		# Pause again (should be no-op)
+		# Pause again (should be no-op).
 		frame_driver.server_set_is_paused(true)
 
 		assert_eq(
@@ -807,13 +807,13 @@ class TestPauseUnpause:
 
 
 	func test_idempotent_unpause():
-		# Unpause twice
+		# Unpause twice.
 		frame_driver._is_paused = false
 		frame_driver.server_frame_index = 100
 
 		var cumulative_before := frame_driver._cumulative_paused_frames
 
-		# Unpause again (should be no-op)
+		# Unpause again (should be no-op).
 		frame_driver.server_set_is_paused(false)
 
 		assert_eq(
@@ -824,14 +824,14 @@ class TestPauseUnpause:
 
 
 	func test_pause_history_multiple_cycles():
-		# Cycle 1
+		# Cycle 1.
 		frame_driver._is_paused = false
 		frame_driver.server_frame_index = 50
 		frame_driver.server_set_is_paused(true)
 		frame_driver.server_frame_index = 60
 		frame_driver.server_set_is_paused(false)
 
-		# Cycle 2
+		# Cycle 2.
 		frame_driver.server_frame_index = 100
 		frame_driver.server_set_is_paused(true)
 		frame_driver.server_frame_index = 130

@@ -50,6 +50,7 @@ const FADE_OUT_SEC := 1.0
 ## Distance at which a player scares the
 ## cricket (pixels).
 const SCARE_RADIUS := 40.0
+const _SCARE_RADIUS_SQ := SCARE_RADIUS * SCARE_RADIUS
 
 ## Emitted when a player scares this cricket.
 signal disturbed(player_id: int)
@@ -57,6 +58,8 @@ signal disturbed(player_id: int)
 ## Minimum distance from players for preferred
 ## spawn point selection (pixels).
 const SPAWN_MIN_PLAYER_DIST := 80.0
+const _SPAWN_MIN_PLAYER_DIST_SQ := (
+	SPAWN_MIN_PLAYER_DIST * SPAWN_MIN_PLAYER_DIST)
 
 # --- Raycasting ---
 
@@ -158,9 +161,8 @@ func _physics_process(delta: float) -> void:
 			_process_fleeing(delta)
 
 	# Wrap position for toroidal level bounds.
-	var level := G.level
-	if level is NetworkedLevel:
-		level.wrap_node(self)
+	if G.level is NetworkedLevel:
+		G.level.wrap_node(self)
 
 
 # --- State processing ---
@@ -242,8 +244,9 @@ func _start_hop() -> void:
 
 	# Horizontal velocity to cover dx in
 	# air_time.
-	var vx := dx / air_time if \
-		air_time > 0.0 else 0.0
+	var vx := (
+		dx / air_time if air_time > 0.0
+		else 0.0)
 
 	# Play jump animation immediately, but
 	# delay the actual motion by one animation
@@ -255,8 +258,8 @@ func _start_hop() -> void:
 
 
 func _pick_hop_target_x() -> float:
-	var direction := 1.0 if randf() > 0.5 \
-		else -1.0
+	var direction := (
+		1.0 if randf() > 0.5 else -1.0)
 
 	# Scan outward to find where the floor
 	# ends in the chosen direction.
@@ -278,8 +281,8 @@ func _pick_hop_target_x() -> float:
 	var dist := randf_range(
 		minf(HOP_DISTANCE_MIN, max_dist),
 		minf(HOP_DISTANCE_MAX, max_dist))
-	return global_position.x \
-		+ direction * dist
+	return (
+		global_position.x + direction * dist)
 
 
 ## Steps outward from the cricket's position
@@ -289,28 +292,27 @@ func _pick_hop_target_x() -> float:
 func _find_floor_edge(
 	direction: float,
 ) -> float:
-	var space := \
-		get_world_2d().direct_space_state
+	var space := (
+		get_world_2d().direct_space_state)
 	var origin_y := global_position.y
 	var step := FLOOR_SCAN_STEP * direction
 	var dist := 0.0
-	var max_scan := HOP_DISTANCE_MAX \
-		+ FLOOR_EDGE_MARGIN
+	var max_scan := (
+		HOP_DISTANCE_MAX + FLOOR_EDGE_MARGIN)
 
 	while dist < max_scan:
 		dist += FLOOR_SCAN_STEP
-		var test_x := \
-			global_position.x + step \
-			* (dist / FLOOR_SCAN_STEP)
-		var query := \
+		var test_x := (
+			global_position.x
+			+ step * (dist / FLOOR_SCAN_STEP))
+		var query := (
 			PhysicsRayQueryParameters2D.create(
-				Vector2(test_x,
-					origin_y - 4.0),
-				Vector2(test_x,
-					origin_y
-					+ FLOOR_SCAN_DIST),
+				Vector2(test_x, origin_y - 4.0),
+				Vector2(
+					test_x,
+					origin_y + FLOOR_SCAN_DIST),
 				COLLISION_MASK_VALUE,
-			)
+			))
 		var result := space.intersect_ray(
 			query)
 		if result.is_empty():
@@ -348,8 +350,8 @@ func _start_flee() -> void:
 func _get_away_direction() -> Array:
 	var level: Level = G.level
 	if not is_instance_valid(level):
-		var dir := 1.0 if randf() > 0.5 \
-			else -1.0
+		var dir := (
+			1.0 if randf() > 0.5 else -1.0)
 		return [dir, -1]
 
 	var nearest_dist := INF
@@ -358,13 +360,15 @@ func _get_away_direction() -> Array:
 	for player in level.players:
 		if not is_instance_valid(player):
 			continue
-		var diff := global_position.x \
-			- player.global_position.x
+		var diff := (
+			global_position.x
+			- player.global_position.x)
 		var dist := absf(diff)
 		if dist < nearest_dist:
 			nearest_dist = dist
-			nearest_dir = signf(diff) \
-				if diff != 0.0 else 1.0
+			nearest_dir = (
+				signf(diff)
+				if diff != 0.0 else 1.0)
 			nearest_pid = player.player_id
 	return [nearest_dir, nearest_pid]
 
@@ -379,9 +383,10 @@ func _is_player_nearby() -> bool:
 	for player in level.players:
 		if not is_instance_valid(player):
 			continue
-		var dist := global_position \
-			.distance_to(player.global_position)
-		if dist < SCARE_RADIUS:
+		var dist_sq := (
+			global_position.distance_squared_to(
+				player.global_position))
+		if dist_sq < _SCARE_RADIUS_SQ:
 			return true
 	return false
 
@@ -455,14 +460,14 @@ func _choose_spawn_position() -> Vector2:
 
 	# Use SnailSpawner's flood-fill to find
 	# interior TOP-face surfaces (floors).
-	var tiles: TileMapLayer = \
-		level.collision_tiles
+	var tiles: TileMapLayer = (
+		level.collision_tiles)
 	if not is_instance_valid(tiles):
 		return Vector2.ZERO
 
-	var surfaces := \
+	var surfaces := (
 		SnailSpawner.find_interior_surfaces(
-			tiles)
+			tiles))
 
 	# Keep only TOP faces (floors), skipping
 	# ice tiles and scene collection tiles
@@ -503,18 +508,18 @@ func _choose_spawn_position() -> Vector2:
 		# Position on top of the tile.
 		world_pos.y -= half_tile
 
-		var min_dist := INF
+		var min_dist_sq := INF
 		for player in level.players:
 			if not is_instance_valid(player):
 				continue
-			var d: float = world_pos \
-				.distance_to(
-					player.global_position)
-			min_dist = minf(min_dist, d)
-		if min_dist >= SPAWN_MIN_PLAYER_DIST:
+			var d_sq: float = (
+				world_pos.distance_squared_to(
+					player.global_position))
+			min_dist_sq = minf(min_dist_sq, d_sq)
+		if min_dist_sq >= _SPAWN_MIN_PLAYER_DIST_SQ:
 			far.append(s)
-		if min_dist > best_min_dist:
-			best_min_dist = min_dist
+		if min_dist_sq > best_min_dist:
+			best_min_dist = min_dist_sq
 			best_surface = s
 
 	var chosen: Dictionary

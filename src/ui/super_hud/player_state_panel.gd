@@ -39,9 +39,12 @@ func _ready() -> void:
 
 	_build_stats_ui()
 
-	%IsDescendingThroughFloorsRow.visible = show_extra_debug_info
-	#%IsAscendingThroughCeilingsRow.visible = show_extra_debug_info
-	#%IsAttachingToWalkThroughWallsRow.visible = show_extra_debug_info
+	%IsDescendingThroughFloorsRow.visible = (
+		show_extra_debug_info)
+	#%IsAscendingThroughCeilingsRow.visible = (
+	#	show_extra_debug_info)
+	#%IsAttachingToWalkThroughWallsRow.visible = (
+	#	show_extra_debug_info)
 	%IsOnFloorRow.visible = show_extra_debug_info
 	%IsOnCeilingRow.visible = show_extra_debug_info
 	%IsOnWallRow.visible = show_extra_debug_info
@@ -69,17 +72,29 @@ func _process(_delta: float) -> void:
 		clear()
 		return
 
-	%Actions.text = CharacterActionState.get_debug_label_from_actions_bitmask(
-		player.actions.current_actions_bitmask,
-	)
-	%Position.text = Utils.get_vector_string(player.position, 1)
-	%Velocity.text = Utils.get_vector_string(player.velocity, 1)
+	%Actions.text = (
+		CharacterActionState
+			.get_debug_label_from_actions_bitmask(
+				player.actions
+					.current_actions_bitmask))
+	%Position.text = Utils.get_vector_string(
+		player.position, 1)
+	%Velocity.text = Utils.get_vector_string(
+		player.velocity, 1)
 
-	%AttachmentSide.text = SurfaceSide.get_string(player.surfaces.attachment_side)
+	%AttachmentSide.text = (
+		SurfaceSide.get_string(
+			player.surfaces.attachment_side))
 
-	%IsDescendingThroughFloors.text = str(player.surfaces.is_descending_through_floors)
-	#%IsAscendingThroughCeilings.text = str(player.surfaces.is_ascending_through_ceilings)
-	#%IsAttachingToWalkThroughWalls.text = str(player.surfaces.is_attaching_to_walk_through_walls)
+	%IsDescendingThroughFloors.text = str(
+		player.surfaces
+			.is_descending_through_floors)
+	#%IsAscendingThroughCeilings.text = str(
+	#	player.surfaces
+	#		.is_ascending_through_ceilings)
+	#%IsAttachingToWalkThroughWalls.text = str(
+	#	player.surfaces
+	#		.is_attaching_to_walk_through_walls)
 
 	%IsOnFloor.text = str(player.is_on_floor())
 	%IsOnCeiling.text = str(player.is_on_ceiling())
@@ -94,19 +109,24 @@ func _physics_process(_delta: float) -> void:
 
 	if player.surfaces.just_changed_attachment_side:
 		add_toast(
-			"Attached to %s" %
-			SurfaceSide.get_string(player.surfaces.attachment_side),
+			"Attached to %s"
+			% SurfaceSide.get_string(
+				player.surfaces
+					.attachment_side),
 			true,
 		)
 
 
 func add_toast(text: String, replaceable: bool = false) -> void:
-	# If this is a replaceable toast and we have an old one, remove it.
-	if replaceable and is_instance_valid(replaceable_toast):
+	# If this is a replaceable toast and we have
+	# an old one, remove it.
+	if (replaceable
+			and is_instance_valid(replaceable_toast)):
 		replaceable_toast.queue_free()
 		replaceable_toast = null
 
-	var toast: PlayerStatePanelToast = toast_scene.instantiate()
+	var toast: PlayerStatePanelToast = (
+		toast_scene.instantiate())
 	toast.text = text
 	%Toasts.add_child(toast)
 	%Toasts.move_child(toast, 0)
@@ -116,7 +136,10 @@ func add_toast(text: String, replaceable: bool = false) -> void:
 		replaceable_toast = toast
 
 	var tween = get_tree().create_tween()
-	tween.tween_property(toast, "modulate:a", 0, toast_fade_duration).set_delay(toast_fade_delay)
+	tween.tween_property(
+		toast, "modulate:a",
+		0, toast_fade_duration,
+	).set_delay(toast_fade_delay)
 	await tween.step_finished
 	if is_instance_valid(toast):
 		toast.queue_free()
@@ -136,13 +159,13 @@ func _build_stats_ui() -> void:
 
 		var name_label := Label.new()
 		name_label.text = label_text + ": "
-		name_label.size_flags_horizontal = \
-			Control.SIZE_EXPAND_FILL
+		name_label.size_flags_horizontal = (
+			Control.SIZE_EXPAND_FILL)
 		row.add_child(name_label)
 
 		var value_label := Label.new()
-		value_label.horizontal_alignment = \
-			HORIZONTAL_ALIGNMENT_RIGHT
+		value_label.horizontal_alignment = (
+			HORIZONTAL_ALIGNMENT_RIGHT)
 		value_label.text = "-"
 		row.add_child(value_label)
 
@@ -151,8 +174,8 @@ func _build_stats_ui() -> void:
 
 
 func _update_stats_display() -> void:
-	var stats: PlayerMatchStats = \
-		G.match_state.get_player_stats(player_id)
+	var stats: PlayerMatchStats = (
+		G.match_state.get_player_stats(player_id))
 	if stats == null:
 		for key in _stat_value_labels:
 			_stat_value_labels[key].text = "-"

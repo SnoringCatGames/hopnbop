@@ -32,13 +32,13 @@ class TestAcquire:
 		assert_eq(arr2.size(), 5)
 
 		var stats := ArrayPool.get_pool_stats()
-		# Acquiring creates buckets even if pools are empty
+		# Acquiring creates buckets even if pools are empty.
 		assert_eq(
 			stats.get("bucket_count", 0),
 			2,
             "Two size buckets should exist after acquiring"
 		)
-		# But no arrays should be in the pools yet
+		# But no arrays should be in the pools yet.
 		assert_eq(stats.get("total_pooled", 0), 0)
 
 	func test_acquire_creates_new_array_when_pool_empty():
@@ -49,7 +49,7 @@ class TestAcquire:
 		assert_not_null(arr1)
 		assert_not_null(arr2)
 
-		# Test that they're different instances by modifying one
+		# Test that they're different instances by modifying one.
 		arr1[0] = 999
 		assert_null(
 			arr2[0],

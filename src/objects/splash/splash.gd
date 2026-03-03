@@ -21,8 +21,8 @@ func _ready() -> void:
 ## Sets the atlas to the blood or default texture
 ## based on the current cheat state.
 func _apply_cheat_texture() -> void:
-	if CheatManager \
-			.is_bloodisthickerthanwater_cheat_active():
+	if (CheatManager
+			.is_bloodisthickerthanwater_cheat_active()):
 		_swap_atlas(_BLOOD_SPLASH_TEXTURE)
 	else:
 		_swap_atlas(_DEFAULT_SPLASH_TEXTURE)

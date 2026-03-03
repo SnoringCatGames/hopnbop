@@ -5,7 +5,7 @@ extends Node2D
 ## - Plugin initialization with dependency injection
 ## - Server/client mode detection from command-line args
 ## - Player spawning via MultiplayerSpawner
-## - Connection management
+## - Connection management.
 
 const PLAYER_SCENE := preload("res://addons/rollback_netcode/examples/simple_game/scenes/player.tscn")
 

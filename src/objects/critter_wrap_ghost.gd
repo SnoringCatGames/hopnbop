@@ -64,10 +64,9 @@ func _process(_delta: float) -> void:
 
 
 func _update_offset() -> void:
-	var level := G.level
-	if not level is NetworkedLevel:
+	if not G.level is NetworkedLevel:
 		return
-	var bounds: Rect2 = level.wrap_bounds
+	var bounds: Rect2 = G.level.wrap_bounds
 	if bounds.size == Vector2.ZERO:
 		return
 
@@ -140,10 +139,9 @@ static func create_ghosts(
 	source: Node2D,
 	source_sprite: AnimatedSprite2D,
 ) -> Array:
-	var level := G.level
-	if not level is NetworkedLevel:
+	if not G.level is NetworkedLevel:
 		return []
-	if level.wrap_bounds.size == Vector2.ZERO:
+	if G.level.wrap_bounds.size == Vector2.ZERO:
 		return []
 
 	var ghosts: Array = []

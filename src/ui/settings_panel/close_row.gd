@@ -17,16 +17,16 @@ func _ready() -> void:
 	super()
 	# Scale icon 2x.
 	if _icon.texture != null:
-		_icon.custom_minimum_size = \
-			_icon.texture.get_size() * 2
+		_icon.custom_minimum_size = (
+			_icon.texture.get_size() * 2)
 	# Add 8px content margin.
 	_focus_style = _focus_style.duplicate()
 	_focus_style.content_margin_left = 10
 	_focus_style.content_margin_right = 10
 	_focus_style.content_margin_top = 10
 	_focus_style.content_margin_bottom = 10
-	_unfocused_style = \
-		_unfocused_style.duplicate()
+	_unfocused_style = (
+		_unfocused_style.duplicate())
 	_unfocused_style.content_margin_left = 10
 	_unfocused_style.content_margin_right = 10
 	_unfocused_style.content_margin_top = 10

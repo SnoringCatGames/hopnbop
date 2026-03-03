@@ -42,16 +42,16 @@ func _show_settings_ui(player: Player) -> void:
 	if G.is_settings_ui_shown:
 		return
 	# No-op if closed too recently.
-	var elapsed := \
-		Time.get_ticks_msec() / 1000.0 \
-		- _last_closed_time
+	var elapsed := (
+		Time.get_ticks_msec() / 1000.0
+		- _last_closed_time)
 	if elapsed < _REOPEN_COOLDOWN_SEC:
 		return
 	G.is_settings_ui_shown = true
 	G.settings_ui_player = player
 
-	var panel: SettingsPanel = \
-		_SettingsPanelScene.instantiate()
+	var panel: SettingsPanel = (
+		_SettingsPanelScene.instantiate())
 	get_tree().root.add_child(panel)
 	panel.open(player)
 	panel.closed.connect(
@@ -59,7 +59,7 @@ func _show_settings_ui(player: Player) -> void:
 
 
 func _on_settings_panel_closed() -> void:
-	_last_closed_time = \
-		Time.get_ticks_msec() / 1000.0
+	_last_closed_time = (
+		Time.get_ticks_msec() / 1000.0)
 	G.is_settings_ui_shown = false
 	G.settings_ui_player = null

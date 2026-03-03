@@ -48,8 +48,8 @@ func _enter_tree() -> void:
 
 func _client_on_player_id_replicated(new_player_id: int) -> void:
 	Netcode.verbose(
-		"Player._client_on_player_id_replicated: new_player_id=%d" %
-			new_player_id,
+		"Player._client_on_player_id_replicated: new_player_id=%d"
+			% new_player_id,
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 
@@ -129,8 +129,9 @@ func server_initialize_player_id(p_player_id: int) -> void:
 	# MatchStateSynchronizer processes before NetworkedLevel
 	# in the peer_players_declared signal chain), notify
 	# the player so subclasses can update appearance.
-	var player_match_state = \
+	var player_match_state = (
 		G.get_player_match_state(player_id)
+	)
 	if player_match_state != null:
 		on_match_state_ready(player_match_state)
 
@@ -232,8 +233,8 @@ func get_is_player_control_active() -> bool:
 
 	# In networked mode, check multiplayer authority.
 	return (
-		is_instance_valid(input_from_client) and
-		input_from_client.is_multiplayer_authority()
+		is_instance_valid(input_from_client)
+		and input_from_client.is_multiplayer_authority()
 	)
 
 
@@ -309,8 +310,9 @@ func server_execute_respawn() -> void:
 	)
 
 	# Only respawn if player is in DIE state (not already respawned).
-	if state_from_server.last_interaction_type != \
-		CharacterStateFromServer.ServerInteractionType.DIE:
+	if (state_from_server.last_interaction_type
+			!= CharacterStateFromServer
+				.ServerInteractionType.DIE):
 		Netcode.print(
 			"Player %d respawn aborted - not in DIE state" % [
 				player_id,

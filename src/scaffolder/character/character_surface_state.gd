@@ -312,7 +312,7 @@ var attachment_side: int:
 
 var just_changed_attachment_side: bool:
 	get:
-		# Compare attachment bits (4-7) between current and previous bitmask
+		# Compare attachment bits (4-7) between current and previous bitmask.
 		const ATTACHMENT_MASK := 0xF << BIT_ATTACHING_TO_FLOOR
 		return (bitmask & ATTACHMENT_MASK) != (previous_bitmask & ATTACHMENT_MASK)
 
@@ -501,8 +501,9 @@ func _update_surface_properties() -> void:
 		return
 	if not is_instance_valid(G.level):
 		return
-	var tilemap := G.level.collision_tiles
-	if not is_instance_valid(tilemap):
+	if not is_instance_valid(
+		G.level.collision_tiles
+	):
 		return
 
 	# Sample the tile just below the character's
@@ -513,10 +514,17 @@ func _update_surface_properties() -> void:
 		character.global_position
 		+ Vector2(0, _TERRAIN_SAMPLE_OFFSET)
 	)
-	var local_pos := tilemap.to_local(sample_pos)
-	var cell := tilemap.local_to_map(local_pos)
-	var tile_data := tilemap.get_cell_tile_data(
-		cell)
+	var local_pos := (
+		G.level.collision_tiles.to_local(sample_pos)
+	)
+	var cell := (
+		G.level.collision_tiles
+			.local_to_map(local_pos)
+	)
+	var tile_data := (
+		G.level.collision_tiles
+			.get_cell_tile_data(cell)
+	)
 
 	# At platform edges, the primary sample can
 	# miss because the character's position was
@@ -539,10 +547,17 @@ func _update_surface_properties() -> void:
 				_TERRAIN_SAMPLE_OFFSET,
 			)
 		)
-		local_pos = tilemap.to_local(sample_pos)
-		cell = tilemap.local_to_map(local_pos)
+		local_pos = (
+			G.level.collision_tiles
+				.to_local(sample_pos)
+		)
+		cell = (
+			G.level.collision_tiles
+				.local_to_map(local_pos)
+		)
 		tile_data = (
-			tilemap.get_cell_tile_data(cell)
+			G.level.collision_tiles
+				.get_cell_tile_data(cell)
 		)
 
 	if tile_data == null:
@@ -796,7 +811,7 @@ func _update_attachment_state() -> void:
 
 
 func clear_current_state() -> void:
-	# Clear all bitmask-stored state (bits 0-8), default facing right
+	# Clear all bitmask-stored state (bits 0-8), default facing right.
 	bitmask = 0
 	previous_bitmask = 0
 
@@ -819,10 +834,10 @@ func clear_current_state() -> void:
 func force_launch(p_initial_launch_velocity: Vector2) -> void:
 	var previous_horizontal_facing_sign := horizontal_facing_sign
 
-	# Save current state as previous so just_* getters work correctly
+	# Save current state as previous so just_* getters work correctly.
 	previous_bitmask = bitmask
 
-	# Clear current state
+	# Clear current state.
 	bitmask = 0
 	horizontal_facing_sign = previous_horizontal_facing_sign
 	is_launched = true
@@ -842,19 +857,19 @@ func get_collision_for_side(side: int) -> KinematicCollision2D:
 
 		match side:
 			SurfaceSide.FLOOR:
-				# Floor collision: normal points up (y < -0.5)
+				# Floor collision: normal points up (y < -0.5).
 				if normal.y < -0.5:
 					return collision
 			SurfaceSide.CEILING:
-				# Ceiling collision: normal points down (y > 0.5)
+				# Ceiling collision: normal points down (y > 0.5).
 				if normal.y > 0.5:
 					return collision
 			SurfaceSide.LEFT_WALL:
-				# Left wall collision: normal points right (x > 0.5)
+				# Left wall collision: normal points right (x > 0.5).
 				if abs(normal.y) < 0.5 and normal.x > 0.5:
 					return collision
 			SurfaceSide.RIGHT_WALL:
-				# Right wall collision: normal points left (x < -0.5)
+				# Right wall collision: normal points left (x < -0.5).
 				if abs(normal.y) < 0.5 and normal.x < -0.5:
 					return collision
 

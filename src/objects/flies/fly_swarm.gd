@@ -40,8 +40,13 @@ const HOME_WEIGHT := 20.0
 
 const SEPARATION_RADIUS := 5.0
 const COHESION_RADIUS := 60.0
+const _COHESION_RADIUS_SQ := (
+	COHESION_RADIUS * COHESION_RADIUS)
 const PLAYER_INTERACTION_RADIUS := 40.0
 const POOP_ATTRACTION_RADIUS := 100.0
+const _POOP_ATTRACTION_RADIUS_SQ := (
+	POOP_ATTRACTION_RADIUS
+	* POOP_ATTRACTION_RADIUS)
 
 # --- Movement parameters ---
 
@@ -109,10 +114,12 @@ const _AMBIENT_PAN_RANGE := 40.0
 const _AMBIENT_PAN_NOISE_FREQUENCY := 0.3
 
 ## Audio file paths (placeholder).
-const _POSITIONAL_BUZZ_PATH := \
-	"res://assets/audio/sfx/fly_buzz_positional.ogg"
-const _AMBIENT_BUZZ_PATH := \
-	"res://assets/audio/sfx/fly_buzz_ambient.ogg"
+const _POSITIONAL_BUZZ_PATH := (
+	"res://assets/audio/sfx/"
+	+ "fly_buzz_positional.ogg")
+const _AMBIENT_BUZZ_PATH := (
+	"res://assets/audio/sfx/"
+	+ "fly_buzz_ambient.ogg")
 
 # Collision mask bit for normal_surfaces.
 const _NORMAL_SURFACES_MASK := 1 << 0
@@ -157,8 +164,8 @@ func _spawn_flies() -> void:
 	# Home point noise for slow wandering.
 	_home_noise = FastNoiseLite.new()
 	_home_noise.seed = randi()
-	_home_noise.noise_type = \
-		FastNoiseLite.TYPE_SIMPLEX
+	_home_noise.noise_type = (
+		FastNoiseLite.TYPE_SIMPLEX)
 	_home_noise.frequency = 0.15
 
 	for i in fly_count:
@@ -184,8 +191,8 @@ func _choose_spawn_position() -> Vector2:
 	if spawn_points.is_empty():
 		return Vector2.ZERO
 
-	var chosen: SpawnPoint = \
-		spawn_points.pick_random()
+	var chosen: SpawnPoint = (
+		spawn_points.pick_random())
 	var base_pos := chosen.spawn_position
 
 	# Try primary offset.
@@ -200,16 +207,16 @@ func _choose_spawn_position() -> Vector2:
 func _intersects_normal_surfaces(
 	test_pos: Vector2,
 ) -> bool:
-	var space_state := \
-		get_world_2d().direct_space_state
-	var query := \
-		PhysicsPointQueryParameters2D.new()
+	var space_state := (
+		get_world_2d().direct_space_state)
+	var query := (
+		PhysicsPointQueryParameters2D.new())
 	query.position = test_pos
 	query.collision_mask = _NORMAL_SURFACES_MASK
 	query.collide_with_areas = false
 	query.collide_with_bodies = true
-	var results := \
-		space_state.intersect_point(query, 1)
+	var results := (
+		space_state.intersect_point(query, 1))
 	return not results.is_empty()
 
 
@@ -229,19 +236,19 @@ func _update_flocking(delta: float) -> void:
 	# Gather poop positions.
 	var poop_positions: Array[Vector2] = []
 	if (
-		is_instance_valid(level) and
-		is_instance_valid(level.gore_manager)
+		is_instance_valid(level)
+		and is_instance_valid(level.gore_manager)
 	):
-		for poop in \
-				level.gore_manager.poop_particles:
+		for poop in (
+				level.gore_manager.poop_particles):
 			if is_instance_valid(poop):
 				poop_positions.append(
 					poop.global_position)
 
 	# Check cheat state once per frame.
-	var attract_to_players := \
-		CheatManager \
-			.is_lordoftheflies_cheat_active()
+	var attract_to_players := (
+		CheatManager
+			.is_lordoftheflies_cheat_active())
 
 	for i in _flies.size():
 		var fly := _flies[i]
@@ -252,40 +259,46 @@ func _update_flocking(delta: float) -> void:
 		var steer := Vector2.ZERO
 
 		# 1) Separation (only prevents overlap).
-		steer += _calc_separation(
-			i, pos) * SEPARATION_WEIGHT
+		steer += (
+			_calc_separation(i, pos)
+			* SEPARATION_WEIGHT)
 
 		# 2) Cohesion.
-		steer += _calc_cohesion(
-			i, pos) * COHESION_WEIGHT
+		steer += (
+			_calc_cohesion(i, pos)
+			* COHESION_WEIGHT)
 
 		# 3) Player interaction (avoid or
 		# attract depending on cheat).
-		var player_weight := \
-			PLAYER_INTERACTION_WEIGHT
+		var player_weight := (
+			PLAYER_INTERACTION_WEIGHT)
 		if attract_to_players:
-			player_weight *= \
-				LORDOFTHEFLIES_ATTRACTION_MULTIPLIER
-		steer += _calc_player_interaction(
-			pos,
-			player_positions,
-			attract_to_players,
-		) * player_weight
+			player_weight *= (
+				LORDOFTHEFLIES_ATTRACTION_MULTIPLIER)
+		steer += (
+			_calc_player_interaction(
+				pos,
+				player_positions,
+				attract_to_players,
+			) * player_weight)
 
 		# 4) Poop attraction.
-		steer += _calc_poop_attraction(
-			pos,
-			poop_positions,
-		) * POOP_ATTRACTION_WEIGHT
+		steer += (
+			_calc_poop_attraction(
+				pos,
+				poop_positions,
+			) * POOP_ATTRACTION_WEIGHT)
 
 		# 5) Home point attraction.
-		steer += _calc_home_attraction(
-			pos) * HOME_WEIGHT
+		steer += (
+			_calc_home_attraction(pos)
+			* HOME_WEIGHT)
 
 		# Clamp steering force.
 		if steer.length() > MAX_STEER_FORCE:
-			steer = steer.normalized() \
-				* MAX_STEER_FORCE
+			steer = (
+				steer.normalized()
+				* MAX_STEER_FORCE)
 
 		# Apply drag.
 		fly.velocity *= DRAG
@@ -317,9 +330,9 @@ func _update_flocking(delta: float) -> void:
 
 		# Clamp to max speed.
 		if fly.velocity.length() > MAX_SPEED:
-			fly.velocity = \
-				fly.velocity.normalized() \
-				* MAX_SPEED
+			fly.velocity = (
+				fly.velocity.normalized()
+				* MAX_SPEED)
 
 		fly.move_and_slide()
 
@@ -374,13 +387,13 @@ func _calc_separation(
 			continue
 		var diff := pos - other.global_position
 		var dist := diff.length()
-		if dist > 0.0 and \
-				dist < SEPARATION_RADIUS:
+		if (dist > 0.0
+				and dist < SEPARATION_RADIUS):
 			# Stronger repulsion when closer.
 			# Ratio is 1.0 at dist=0, 0.0 at
 			# dist=SEPARATION_RADIUS.
-			var ratio := 1.0 - \
-				dist / SEPARATION_RADIUS
+			var ratio := (
+				1.0 - dist / SEPARATION_RADIUS)
 			steer += diff.normalized() * ratio
 			count += 1
 	if count > 0:
@@ -400,9 +413,10 @@ func _calc_cohesion(
 		var other := _flies[j]
 		if not is_instance_valid(other):
 			continue
-		var dist := pos.distance_to(
-			other.global_position)
-		if dist < COHESION_RADIUS:
+		var dist_sq := (
+			pos.distance_squared_to(
+				other.global_position))
+		if dist_sq < _COHESION_RADIUS_SQ:
 			center += other.global_position
 			count += 1
 	if count == 0:
@@ -421,12 +435,14 @@ func _calc_player_interaction(
 		var diff := pos - player_pos
 		var dist := diff.length()
 		if (
-			dist > 0.0 and
-			dist < PLAYER_INTERACTION_RADIUS
+			dist > 0.0
+			and dist < PLAYER_INTERACTION_RADIUS
 		):
 			# Stronger effect when closer.
-			var ratio := 1.0 - dist / \
-				PLAYER_INTERACTION_RADIUS
+			var ratio := (
+				1.0
+				- dist
+				/ PLAYER_INTERACTION_RADIUS)
 			if attract:
 				# Steer toward player.
 				steer -= diff.normalized() * ratio
@@ -449,9 +465,9 @@ func _calc_scatter_impulse(
 		var diff := pos - player_pos
 		var dist := diff.length()
 		if (
-			dist > 0.0 and
-			dist < PLAYER_SCATTER_RADIUS and
-			dist < nearest_dist
+			dist > 0.0
+			and dist < PLAYER_SCATTER_RADIUS
+			and dist < nearest_dist
 		):
 			nearest_dist = dist
 			nearest_diff = diff
@@ -471,16 +487,17 @@ func _calc_poop_attraction(
 	poop_positions: Array[Vector2],
 ) -> Vector2:
 	# Steer toward nearest poop within radius.
-	var nearest_dist := INF
+	var nearest_dist_sq := INF
 	var nearest_pos := Vector2.ZERO
 	var found := false
 	for poop_pos in poop_positions:
-		var dist := pos.distance_to(poop_pos)
+		var dist_sq := (
+			pos.distance_squared_to(poop_pos))
 		if (
-			dist < POOP_ATTRACTION_RADIUS and
-			dist < nearest_dist
+			dist_sq < _POOP_ATTRACTION_RADIUS_SQ
+			and dist_sq < nearest_dist_sq
 		):
-			nearest_dist = dist
+			nearest_dist_sq = dist_sq
 			nearest_pos = poop_pos
 			found = true
 	if not found:
@@ -497,12 +514,12 @@ func _init_audio() -> void:
 			_POSITIONAL_BUZZ_PATH):
 		var stream: AudioStream = load(
 			_POSITIONAL_BUZZ_PATH)
-		_positional_buzz = \
-			AudioStreamPlayer2D.new()
+		_positional_buzz = (
+			AudioStreamPlayer2D.new())
 		_positional_buzz.stream = stream
 		_positional_buzz.autoplay = true
-		_positional_buzz.max_distance = \
-			_POSITIONAL_MAX_DISTANCE
+		_positional_buzz.max_distance = (
+			_POSITIONAL_MAX_DISTANCE)
 		_positional_buzz.volume_db = -80.0
 		add_child(_positional_buzz)
 
@@ -511,30 +528,30 @@ func _init_audio() -> void:
 			_AMBIENT_BUZZ_PATH):
 		var stream: AudioStream = load(
 			_AMBIENT_BUZZ_PATH)
-		_ambient_buzz = \
-			AudioStreamPlayer2D.new()
+		_ambient_buzz = (
+			AudioStreamPlayer2D.new())
 		_ambient_buzz.stream = stream
 		_ambient_buzz.autoplay = true
-		_ambient_buzz.max_distance = \
-			_AMBIENT_MAX_DISTANCE
-		_ambient_buzz.attenuation = \
-			_AMBIENT_ATTENUATION
+		_ambient_buzz.max_distance = (
+			_AMBIENT_MAX_DISTANCE)
+		_ambient_buzz.attenuation = (
+			_AMBIENT_ATTENUATION)
 		_ambient_buzz.volume_db = -80.0
 		add_child(_ambient_buzz)
 
 		# Noise for ambient panning motion.
 		_ambient_pan_noise = FastNoiseLite.new()
 		_ambient_pan_noise.seed = randi()
-		_ambient_pan_noise.noise_type = \
-			FastNoiseLite.TYPE_SIMPLEX
-		_ambient_pan_noise.frequency = \
-			_AMBIENT_PAN_NOISE_FREQUENCY
+		_ambient_pan_noise.noise_type = (
+			FastNoiseLite.TYPE_SIMPLEX)
+		_ambient_pan_noise.frequency = (
+			_AMBIENT_PAN_NOISE_FREQUENCY)
 
 
 func _update_audio(delta: float) -> void:
 	if (
-		_positional_buzz == null and
-		_ambient_buzz == null
+		_positional_buzz == null
+		and _ambient_buzz == null
 	):
 		return
 
@@ -546,8 +563,8 @@ func _update_audio(delta: float) -> void:
 	if not is_instance_valid(level.level_camera):
 		return
 
-	var listener_pos: Vector2 = \
-		level.level_camera.global_position
+	var listener_pos: Vector2 = (
+		level.level_camera.global_position)
 
 	# Calculate aggregate proximity score and
 	# weighted centroid.
@@ -556,13 +573,14 @@ func _update_audio(delta: float) -> void:
 	for fly in _flies:
 		if not is_instance_valid(fly):
 			continue
-		var dist := fly.global_position \
-			.distance_to(listener_pos)
-		var weight := \
-			1.0 / maxf(dist, _AUDIO_MIN_DIST)
+		var dist := (
+			fly.global_position
+				.distance_to(listener_pos))
+		var weight := (
+			1.0 / maxf(dist, _AUDIO_MIN_DIST))
 		score += weight
-		centroid_num += \
-			fly.global_position * weight
+		centroid_num += (
+			fly.global_position * weight)
 
 	if score <= 0.0:
 		if _positional_buzz != null:
@@ -571,29 +589,30 @@ func _update_audio(delta: float) -> void:
 			_ambient_buzz.volume_db = -80.0
 		return
 
-	var weighted_centroid: Vector2 = \
-		centroid_num / score
+	var weighted_centroid: Vector2 = (
+		centroid_num / score)
 
 	# Normalize score to 0-1 range.
-	var max_score: float = \
-		fly_count / _AUDIO_MIN_DIST
-	var normalized: float = \
-		clampf(score / max_score, 0.0, 1.0)
+	var max_score: float = (
+		fly_count / _AUDIO_MIN_DIST)
+	var normalized: float = clampf(
+		score / max_score, 0.0, 1.0)
 	var volume_db: float = clampf(
 		linear_to_db(normalized), -80.0, 0.0)
 
 	# Update positional buzz.
 	if _positional_buzz != null:
-		_positional_buzz.global_position = \
-			weighted_centroid
+		_positional_buzz.global_position = (
+			weighted_centroid)
 		_positional_buzz.volume_db = volume_db
 
 	# Update ambient buzz with panning motion.
 	if _ambient_buzz != null:
-		var pan_offset: float = \
+		var pan_offset: float = (
 			_ambient_pan_noise.get_noise_1d(
 				_ambient_pan_time * 60.0
-			) * _AMBIENT_PAN_RANGE
-		_ambient_buzz.global_position = \
-			listener_pos + Vector2(pan_offset, 0.0)
+			) * _AMBIENT_PAN_RANGE)
+		_ambient_buzz.global_position = (
+			listener_pos
+			+ Vector2(pan_offset, 0.0))
 		_ambient_buzz.volume_db = volume_db

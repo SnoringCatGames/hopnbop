@@ -127,53 +127,92 @@ func _on_preset(preset: NetworkConditionSimulator.Preset) -> void:
 
 
 func _sync_ui_from_settings() -> void:
-	var s := Netcode.settings
-	if s == null:
+	if Netcode.settings == null:
 		return
 
-	%EnabledCheck.button_pressed = s.network_sim_enabled
+	%EnabledCheck.button_pressed = (
+		Netcode.settings.network_sim_enabled)
 	_update_enabled_label()
 
-	%LatencySlider.value = s.network_sim_latency_ms
-	%LatencyValue.text = "%d ms" % s.network_sim_latency_ms
+	%LatencySlider.value = (
+		Netcode.settings.network_sim_latency_ms)
+	%LatencyValue.text = (
+		"%d ms"
+		% Netcode.settings.network_sim_latency_ms)
 
-	%JitterSlider.value = s.network_sim_jitter_ms
-	%JitterValue.text = "%d ms" % s.network_sim_jitter_ms
+	%JitterSlider.value = (
+		Netcode.settings.network_sim_jitter_ms)
+	%JitterValue.text = (
+		"%d ms"
+		% Netcode.settings.network_sim_jitter_ms)
 
-	%PacketLossSlider.value = s.network_sim_packet_loss_pct
-	%PacketLossValue.text = "%.1f%%" % s.network_sim_packet_loss_pct
+	%PacketLossSlider.value = (
+		Netcode.settings
+			.network_sim_packet_loss_pct)
+	%PacketLossValue.text = (
+		"%.1f%%"
+		% Netcode.settings
+			.network_sim_packet_loss_pct)
 
-	%FrameDelaySlider.value = s.network_sim_frame_delay_ms
-	%FrameDelayValue.text = "%d ms" % s.network_sim_frame_delay_ms
+	%FrameDelaySlider.value = (
+		Netcode.settings
+			.network_sim_frame_delay_ms)
+	%FrameDelayValue.text = (
+		"%d ms"
+		% Netcode.settings
+			.network_sim_frame_delay_ms)
 
-	%BandwidthSlider.value = s.network_sim_bandwidth_limit
-	if s.network_sim_bandwidth_limit == 0:
+	%BandwidthSlider.value = (
+		Netcode.settings
+			.network_sim_bandwidth_limit)
+	if (
+		Netcode.settings
+			.network_sim_bandwidth_limit == 0
+	):
 		%BandwidthValue.text = "Off"
 	else:
-		%BandwidthValue.text = "%d/sec" % s.network_sim_bandwidth_limit
+		%BandwidthValue.text = (
+			"%d/sec"
+			% Netcode.settings
+				.network_sim_bandwidth_limit)
 
-	%SpikeIntervalSlider.value = s.network_sim_spike_interval_sec
-	if s.network_sim_spike_interval_sec == 0.0:
+	%SpikeIntervalSlider.value = (
+		Netcode.settings
+			.network_sim_spike_interval_sec)
+	if (
+		Netcode.settings
+			.network_sim_spike_interval_sec
+			== 0.0
+	):
 		%SpikeIntervalValue.text = "Off"
 	else:
 		%SpikeIntervalValue.text = (
-			"%.1fs" % s.network_sim_spike_interval_sec
-		)
+			"%.1fs"
+			% Netcode.settings
+				.network_sim_spike_interval_sec)
 
-	%SpikeDurationSlider.value = s.network_sim_spike_duration_ms
+	%SpikeDurationSlider.value = (
+		Netcode.settings
+			.network_sim_spike_duration_ms)
 	%SpikeDurationValue.text = (
-		"%d ms" % s.network_sim_spike_duration_ms
-	)
+		"%d ms"
+		% Netcode.settings
+			.network_sim_spike_duration_ms)
 
-	%SpikeLatencySlider.value = s.network_sim_spike_latency_ms
+	%SpikeLatencySlider.value = (
+		Netcode.settings
+			.network_sim_spike_latency_ms)
 	%SpikeLatencyValue.text = (
-		"%d ms" % s.network_sim_spike_latency_ms
-	)
+		"%d ms"
+		% Netcode.settings
+			.network_sim_spike_latency_ms)
 
 
 func _update_enabled_label() -> void:
-	var on: bool = Netcode.settings.network_sim_enabled
-	%EnabledCheck.text = "Enabled" if on else "Disabled"
+	var on: bool = (
+		Netcode.settings.network_sim_enabled)
+	%EnabledCheck.text = (
+		"Enabled" if on else "Disabled")
 
 
 func _update_stats_label() -> void:

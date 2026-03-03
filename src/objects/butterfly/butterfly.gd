@@ -67,6 +67,8 @@ const PLAYER_FLEE_WEIGHT := 120.0
 ## Distance to target to consider arrived
 ## (pixels).
 const ARRIVAL_DISTANCE := 8.0
+const _ARRIVAL_DISTANCE_SQ := (
+	ARRIVAL_DISTANCE * ARRIVAL_DISTANCE)
 
 ## Speed at which the butterfly drifts toward
 ## a surface when landing (pixels/sec).
@@ -377,9 +379,8 @@ func _physics_process(delta: float) -> void:
 			_process_bump_rest(delta)
 
 	# Wrap position for toroidal level bounds.
-	var level := G.level
-	if level is NetworkedLevel:
-		level.wrap_node(self)
+	if G.level is NetworkedLevel:
+		G.level.wrap_node(self)
 
 
 func _process_flying(delta: float) -> void:
@@ -501,12 +502,12 @@ func _process_flying(delta: float) -> void:
 		* _flutter_envelope)
 
 	# Target arrival / state transitions.
-	var dist_to_end := (
-		global_position.distance_to(
+	var dist_sq_to_end := (
+		global_position.distance_squared_to(
 			_curve_end))
 	var arrived := (
 		_curve_t >= 1.0
-		and dist_to_end < ARRIVAL_DISTANCE)
+		and dist_sq_to_end < _ARRIVAL_DISTANCE_SQ)
 	var timed_out := _segment_timer <= 0.0
 	var flee: Vector2 = flee_result[0]
 	var nearest_pos: Vector2 = flee_result[2]
@@ -1148,9 +1149,8 @@ func _calc_player_flee() -> Array:
 				* PLAYER_FLEE_WEIGHT * ratio)
 			if dist < nearest_dist:
 				nearest_dist = dist
-				nearest_pid = \
-					player.player_id
-				nearest_pos = \
-					player.global_position
+				nearest_pid = player.player_id
+				nearest_pos = (
+					player.global_position)
 
 	return [flee, nearest_pid, nearest_pos]

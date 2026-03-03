@@ -37,6 +37,8 @@ const VERTICAL_SPEED := 4.0
 
 ## Player avoidance radius (pixels).
 const PLAYER_FLEE_RADIUS := 40.0
+const _PLAYER_FLEE_RADIUS_SQ := (
+	PLAYER_FLEE_RADIUS * PLAYER_FLEE_RADIUS)
 
 ## Minimum seconds since last disturbance before
 ## a new one can register.
@@ -191,9 +193,8 @@ func _physics_process(delta: float) -> void:
 			_process_evading(delta)
 
 	# Wrap position for toroidal level bounds.
-	var level := G.level
-	if level is NetworkedLevel:
-		level.wrap_node(self)
+	if G.level is NetworkedLevel:
+		G.level.wrap_node(self)
 
 
 func _process_swimming(delta: float) -> void:
@@ -214,7 +215,7 @@ func _process_swimming(delta: float) -> void:
 		(base + _flee_velocity + sep) * delta)
 
 	# Safety clamp: if we left water, snap back.
-	# Only revert position — direction is managed
+	# Only revert position. Direction is managed
 	# by _probe_boundaries().
 	if not _is_current_cell_water():
 		global_position = prev_pos
@@ -501,9 +502,10 @@ func _is_any_player_nearby() -> bool:
 			continue
 		if not player.surfaces.is_in_water:
 			continue
-		var dist := global_position.distance_to(
-			player.global_position)
-		if dist < PLAYER_FLEE_RADIUS:
+		var dist_sq := (
+			global_position.distance_squared_to(
+				player.global_position))
+		if dist_sq < _PLAYER_FLEE_RADIUS_SQ:
 			return true
 	return false
 

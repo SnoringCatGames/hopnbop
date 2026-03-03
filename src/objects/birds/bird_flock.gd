@@ -13,8 +13,8 @@ const SPAWN_INTERVAL_MAX := 9.0
 ## Maximum simultaneous birds on screen.
 const MAX_BIRDS := 3
 
-const _BIRD_SCENE_PATH := \
-	"res://src/objects/birds/bird.tscn"
+const _BIRD_SCENE_PATH := (
+	"res://src/objects/birds/bird.tscn")
 
 ## Fraction of camera height for vertical spawn
 ## range (0.0 to 1.0).
@@ -37,8 +37,8 @@ func setup(camera: Camera2D) -> void:
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_bird_scene = preload(_BIRD_SCENE_PATH)
-	_viewport_size = get_viewport() \
-		.get_visible_rect().size
+	_viewport_size = (
+		get_viewport().get_visible_rect().size)
 	_spawn_timer = randf_range(
 		SPAWN_INTERVAL_MIN, SPAWN_INTERVAL_MAX)
 
@@ -59,8 +59,8 @@ func _spawn_bird() -> void:
 
 	var visible_size: Vector2 = (
 		_viewport_size / _camera.zoom)
-	var cam_pos: Vector2 = \
-		_camera.global_position
+	var cam_pos: Vector2 = (
+		_camera.global_position)
 	var half_w: float = visible_size.x / 2.0
 
 	# Calculate vertical flight band.
@@ -76,23 +76,23 @@ func _spawn_bird() -> void:
 	var from_left: bool = randi() % 2 == 0
 	var spawn_x: float
 	if from_left:
-		spawn_x = cam_pos.x - half_w \
-			- Bird.OFFSCREEN_MARGIN
+		spawn_x = (cam_pos.x - half_w
+			- Bird.OFFSCREEN_MARGIN)
 	else:
-		spawn_x = cam_pos.x + half_w \
-			+ Bird.OFFSCREEN_MARGIN
+		spawn_x = (cam_pos.x + half_w
+			+ Bird.OFFSCREEN_MARGIN)
 
 	# Base direction toward opposite side.
-	var base_dir := Vector2.RIGHT if from_left \
-		else Vector2.LEFT
+	var base_dir := (Vector2.RIGHT if from_left
+		else Vector2.LEFT)
 
 	# Random angle deviation.
 	var angle_dev: float = deg_to_rad(
 		randf_range(
 			-Bird.MAX_ANGLE_DEVIATION_DEG,
 			Bird.MAX_ANGLE_DEVIATION_DEG))
-	var direction: Vector2 = \
-		base_dir.rotated(angle_dev)
+	var direction: Vector2 = (
+		base_dir.rotated(angle_dev))
 
 	# Random curve direction.
 	var curve_rate: float = deg_to_rad(

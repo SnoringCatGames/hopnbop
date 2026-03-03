@@ -48,8 +48,8 @@ func _update_display(delta: float) -> void:
 	# Update name and adjective.
 	%Name.text = player_match_state.bunny_name
 	if not is_adjective_frozen:
-		%Adjective.text = \
-			player_match_state.adjective
+		%Adjective.text = (
+			player_match_state.adjective)
 	%Adjective.visible = not is_adjective_hidden
 
 	# Hide score in lobby.
@@ -78,8 +78,9 @@ func _update_display(delta: float) -> void:
 	# Animate displayed score toward target.
 	if _displayed_score != _target_score:
 		_score_update_timer += delta
-		while _score_update_timer >= _SCORE_INCREMENT_INTERVAL_SEC and \
-				_displayed_score != _target_score:
+		while (_score_update_timer
+			>= _SCORE_INCREMENT_INTERVAL_SEC
+			and _displayed_score != _target_score):
 			_score_update_timer -= _SCORE_INCREMENT_INTERVAL_SEC
 			if _displayed_score < _target_score:
 				_displayed_score += 1
@@ -93,17 +94,23 @@ func _update_display(delta: float) -> void:
 		Color.WHITE if G.is_lobby_active
 		else player_match_state.label_color
 	)
-	%Name.add_theme_color_override("font_color", label_color)
-	%Adjective.add_theme_color_override("font_color", label_color)
-	%Score.add_theme_color_override("font_color", label_color)
+	%Name.add_theme_color_override(
+		"font_color", label_color)
+	%Adjective.add_theme_color_override(
+		"font_color", label_color)
+	%Score.add_theme_color_override(
+		"font_color", label_color)
 
 	var outline_color := (
 		Color.TRANSPARENT if G.is_lobby_active
 		else player_match_state.outline_color
 	)
-	%Name.add_theme_color_override("font_outline_color", outline_color)
-	%Adjective.add_theme_color_override("font_outline_color", outline_color)
-	%Score.add_theme_color_override("font_outline_color", outline_color)
+	%Name.add_theme_color_override(
+		"font_outline_color", outline_color)
+	%Adjective.add_theme_color_override(
+		"font_outline_color", outline_color)
+	%Score.add_theme_color_override(
+		"font_outline_color", outline_color)
 
 
 func _spawn_score_popup(score_delta: int) -> void:
@@ -115,18 +122,25 @@ func _spawn_score_popup(score_delta: int) -> void:
 	# Create popup label.
 	var popup := Label.new()
 	popup.text = "+%d" % score_delta
-	popup.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	popup.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	popup.horizontal_alignment = (
+		HORIZONTAL_ALIGNMENT_CENTER)
+	popup.vertical_alignment = (
+		VERTICAL_ALIGNMENT_CENTER)
 
 	# Copy styling from score label.
 	popup.add_theme_constant_override(
 		"outline_size",
 		%Score.get_theme_constant("outline_size")
 	)
-	var label_color: Color = %Score.get_theme_color("font_color")
-	popup.add_theme_color_override("font_color", label_color)
-	var outline_color: Color = %Score.get_theme_color("font_outline_color")
-	popup.add_theme_color_override("font_outline_color", outline_color)
+	var label_color: Color = (
+		%Score.get_theme_color("font_color"))
+	popup.add_theme_color_override(
+		"font_color", label_color)
+	var outline_color: Color = (
+		%Score.get_theme_color(
+			"font_outline_color"))
+	popup.add_theme_color_override(
+		"font_outline_color", outline_color)
 
 	# Add wrapper as child of PlayerDisplay, then label as child of wrapper.
 	add_child(wrapper)
@@ -171,28 +185,33 @@ func _spawn_score_popup(score_delta: int) -> void:
 		popup, "scale",
 		Vector2.ONE * _POPUP_TARGET_SCALE,
 		_POPUP_SETTLE_DURATION_SEC
-	).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC) \
-		.set_delay(_POPUP_GROW_DURATION_SEC)
+	).set_ease(Tween.EASE_OUT).set_trans(
+		Tween.TRANS_ELASTIC,
+	).set_delay(_POPUP_GROW_DURATION_SEC)
 
 	# Slide away and up (relative to popup's current position).
-	var total_duration := \
-		_POPUP_VISIBLE_DURATION_SEC + _POPUP_FADE_OUT_DURATION_SEC
+	var total_duration := (
+		_POPUP_VISIBLE_DURATION_SEC
+		+ _POPUP_FADE_OUT_DURATION_SEC)
 	tween.tween_property(
 		popup, "position",
 		_POPUP_SLIDE_OFFSET,
 		total_duration
-	).as_relative() \
-		.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)
+	).as_relative().set_ease(
+		Tween.EASE_IN_OUT,
+	).set_trans(Tween.TRANS_QUAD)
 
 	# Fade out after delay.
 	tween.tween_property(
 		popup, "modulate:a", 0.0, _POPUP_FADE_OUT_DURATION_SEC
-	).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD) \
-		.set_delay(_POPUP_VISIBLE_DURATION_SEC)
+	).set_ease(Tween.EASE_IN).set_trans(
+		Tween.TRANS_QUAD,
+	).set_delay(_POPUP_VISIBLE_DURATION_SEC)
 
 	# Cleanup - free the wrapper (which also frees the popup child).
-	tween.tween_callback(wrapper.queue_free) \
-		.set_delay(total_duration)
+	tween.tween_callback(
+		wrapper.queue_free,
+	).set_delay(total_duration)
 
 
 func _setup_popup_pivot(popup: Label) -> void:

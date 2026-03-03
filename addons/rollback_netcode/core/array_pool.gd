@@ -13,7 +13,7 @@ extends RefCounted
 # Dictionary<int, Array[Array]> - pools indexed by array size
 static var _pools_by_size := {}
 
-## Maximum number of arrays to keep in each size pool
+## Maximum number of arrays to keep in each size pool.
 const MAX_POOL_SIZE_PER_BUCKET := 32
 
 
@@ -44,11 +44,11 @@ static func release(arr: Array) -> void:
 
 	var pool: Array = _pools_by_size[size]
 
-	# Limit pool size to prevent unbounded memory growth
+	# Limit pool size to prevent unbounded memory growth.
 	if pool.size() >= MAX_POOL_SIZE_PER_BUCKET:
 		return
 
-	# Clear the array before returning to pool
+	# Clear the array before returning to pool.
 	for i in range(size):
 		arr[i] = null
 

@@ -97,8 +97,8 @@ func _apply_outline() -> void:
 	var src_group := src_anim.outline_group
 	if not is_instance_valid(src_group):
 		return
-	var src_mat := src_group.material \
-		as ShaderMaterial
+	var src_mat := (
+		src_group.material as ShaderMaterial)
 	if not is_instance_valid(src_mat):
 		return
 
@@ -120,10 +120,9 @@ func _process(_delta: float) -> void:
 
 
 func _update_offset() -> void:
-	var level := G.level
-	if not level is NetworkedLevel:
+	if not G.level is NetworkedLevel:
 		return
-	var bounds: Rect2 = level.wrap_bounds
+	var bounds: Rect2 = G.level.wrap_bounds
 	if bounds.size == Vector2.ZERO:
 		return
 
@@ -151,8 +150,8 @@ func _update_offset() -> void:
 
 
 func _sync_visual() -> void:
-	var src_anim := _source.animator \
-		as BunnyAnimator
+	var src_anim := (
+		_source.animator as BunnyAnimator)
 	if not is_instance_valid(src_anim):
 		return
 	_animator.sync_visual_from(src_anim)

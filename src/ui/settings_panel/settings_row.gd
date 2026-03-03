@@ -61,9 +61,9 @@ func _on_hover_changed() -> void:
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb: InputEventMouseButton = event
-		if mb.pressed \
-				and mb.button_index \
-				== MOUSE_BUTTON_LEFT:
+		if (mb.pressed
+				and mb.button_index
+				== MOUSE_BUTTON_LEFT):
 			accept_event()
 			clicked.emit()
 

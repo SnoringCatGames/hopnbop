@@ -273,9 +273,8 @@ func _spawn_goo_particles() -> void:
 			or not is_instance_valid(
 				G.level.gore_manager)):
 		return
-	G.level.gore_manager \
-		.spawn_snail_goo_particles(
-			global_position)
+	G.level.gore_manager.spawn_snail_goo_particles(
+		global_position)
 
 
 ## Spawns a standalone sprite showing the
@@ -590,10 +589,9 @@ func _has_tile(cell: Vector2i) -> bool:
 func _is_tile_in_bounds(
 	cell: Vector2i,
 ) -> bool:
-	var level := G.level
-	if not level is NetworkedLevel:
+	if not G.level is NetworkedLevel:
 		return true
-	var bounds: Rect2 = level.wrap_bounds
+	var bounds: Rect2 = G.level.wrap_bounds
 	if bounds.size == Vector2.ZERO:
 		return true
 	var local_pos := (
@@ -608,10 +606,9 @@ func _is_tile_in_bounds(
 ## bounds. Called after simulation so tile
 ## movement logic runs unmodified.
 func _wrap_tile_state() -> void:
-	var level := G.level
-	if not level is NetworkedLevel:
+	if not G.level is NetworkedLevel:
 		return
-	var bounds: Rect2 = level.wrap_bounds
+	var bounds: Rect2 = G.level.wrap_bounds
 	if bounds.size == Vector2.ZERO:
 		return
 	var local_pos := (
@@ -623,8 +620,8 @@ func _wrap_tile_state() -> void:
 		return
 	# Wrap the position and find the
 	# corresponding tile.
-	var wrapped: Vector2 = level.wrap_position(
-		global_pos)
+	var wrapped: Vector2 = (
+		G.level.wrap_position(global_pos))
 	var wrapped_local := (
 		_collision_tiles.to_local(wrapped))
 	var new_tile := (
@@ -644,10 +641,9 @@ func _wrap_tile(
 	tile: Vector2i,
 	forward: Vector2i,
 ) -> Vector2i:
-	var level := G.level
-	if not level is NetworkedLevel:
+	if not G.level is NetworkedLevel:
 		return tile
-	var bounds: Rect2 = level.wrap_bounds
+	var bounds: Rect2 = G.level.wrap_bounds
 	if bounds.size == Vector2.ZERO:
 		return tile
 	# Shift opposite to the movement direction
@@ -705,10 +701,10 @@ func _server_crush(player: Player) -> void:
 	visible = false
 
 	# Record stat for adjective tracking.
-	G.match_state \
+	(G.match_state
 		.server_get_or_create_stats(
-			player.player_id) \
-		.record_snail_crush()
+			player.player_id)
+		.record_snail_crush())
 
 	player.server_trigger_snail_crush_bounce()
 
@@ -747,9 +743,8 @@ func _respawn() -> void:
 		return
 
 	var wb := Rect2()
-	var level := G.level
-	if level is NetworkedLevel:
-		wb = level.wrap_bounds
+	if G.level is NetworkedLevel:
+		wb = G.level.wrap_bounds
 	var surface := (
 		SnailSpawner.find_random_interior_surface(
 			_collision_tiles, _extra_cells, wb))

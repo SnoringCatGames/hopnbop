@@ -31,16 +31,17 @@ func _ready() -> void:
 
 	if is_generating_thumbnails:
 		get_tree().paused = false
-		await G.window_manager \
-			.generate_all_thumbnails()
+		await (G.window_manager
+			.generate_all_thumbnails())
 		close_app()
 		return
 
 	_start_app()
 
 	G.window_manager.update_window_mode()
-	G.window_manager \
-		.position_window_in_preview_mode()
+	(G.window_manager
+		.position_window_in_preview_mode())
+
 
 
 func _handle_preview_window_closing() -> void:
@@ -49,8 +50,8 @@ func _handle_preview_window_closing() -> void:
 
 	# In thumbnail generation mode, close all
 	# client windows. Only the server stays.
-	if G.window_manager \
-			.should_close_for_thumbnail_generation():
+	if (G.window_manager
+			.should_close_for_thumbnail_generation()):
 		Netcode.print(
 			"Main._ready: Closing client"
 			+ " process for thumbnail"
@@ -62,12 +63,15 @@ func _handle_preview_window_closing() -> void:
 		return
 
 	if (
-		Netcode.preview_client_number > 1 and
-		not G.settings.preview_run_multiple_clients
+		Netcode.preview_client_number > 1
+		and not G.settings
+			.preview_run_multiple_clients
 	):
 		Netcode.print(
-			("Main._ready: Closing extra client process (--client=%s), " +
-			"because G.settings.preview_run_multiple_clients is false") %
+			("Main._ready: Closing extra client"
+			+ " process (--client=%s), because"
+			+ " preview_run_multiple_clients"
+			+ " is false") %
 			Netcode.preview_client_number,
 			NetworkLogger.CATEGORY_CORE_SYSTEMS,
 		)
@@ -75,12 +79,16 @@ func _handle_preview_window_closing() -> void:
 		return
 
 	if (
-		Netcode.is_server and
-		G.settings.preview_connect_to_remote_server
+		Netcode.is_server
+		and G.settings
+			.preview_connect_to_remote_server
 	):
 		Netcode.print(
-			("Main._ready: Closing local server process in preview mode, " +
-			"because G.settings.preview_connect_to_remote_server is true"),
+			("Main._ready: Closing local server"
+			+ " process in preview mode,"
+			+ " because"
+			+ " preview_connect_to_remote_server"
+			+ " is true"),
 			NetworkLogger.CATEGORY_CORE_SYSTEMS,
 		)
 		close_app()
@@ -164,12 +172,17 @@ func close_app() -> void:
 		Utils.open_screenshot_folder()
 	Netcode.print("Main.close_app", NetworkLogger.CATEGORY_CORE_SYSTEMS)
 
-	# Explicitly disconnect to notify peers immediately in preview mode
+	# Explicitly disconnect to notify peers
+	# immediately in preview mode.
 	if Netcode.is_preview:
-		if Netcode.is_client and Netcode.is_connected_to_server:
+		if (Netcode.is_client
+				and Netcode.is_connected_to_server):
 			Netcode.connector.client_disconnect()
-		elif Netcode.is_server and multiplayer.get_peers().size() > 0:
-			# Disconnect all clients to notify them immediately
+		elif (Netcode.is_server
+				and multiplayer.get_peers()
+					.size() > 0):
+			# Disconnect all clients to notify
+			# them immediately.
 			for peer_id in multiplayer.get_peers():
 				multiplayer.multiplayer_peer.disconnect_peer(peer_id)
 
@@ -177,16 +190,23 @@ func close_app() -> void:
 
 
 func _disconnect_peers_in_preview_mode() -> void:
-	# Explicitly disconnect to notify peers immediately in preview mode
+	# Explicitly disconnect to notify peers
+	# immediately in preview mode.
 	if not Netcode.is_preview:
 		return
 
-	if not is_instance_valid(multiplayer) or not is_instance_valid(multiplayer.multiplayer_peer):
+	if (not is_instance_valid(multiplayer)
+			or not is_instance_valid(
+				multiplayer.multiplayer_peer)):
 		return
 
-	if Netcode.is_client and Netcode.is_connected_to_server:
+	if (Netcode.is_client
+			and Netcode.is_connected_to_server):
 		Netcode.connector.client_disconnect()
-	elif Netcode.is_server and multiplayer.get_peers().size() > 0:
-		# Disconnect all clients to notify them immediately
+	elif (Netcode.is_server
+			and multiplayer.get_peers()
+				.size() > 0):
+		# Disconnect all clients to notify them
+		# immediately.
 		for peer_id in multiplayer.get_peers():
 			multiplayer.multiplayer_peer.disconnect_peer(peer_id)

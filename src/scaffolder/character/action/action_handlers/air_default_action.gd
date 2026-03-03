@@ -68,7 +68,7 @@ func process(character) -> bool:
 		if ceiling_collision != null:
 			var normal := ceiling_collision.get_normal()
 			# Only cancel horizontal velocity if ceiling is sloped AND the
-			# slope opposes movement direction (not for horizontal ceilings)
+			# slope opposes movement direction (not for horizontal ceilings).
 			var is_ceiling_sloped := absf(normal.x) > 0.1
 			if is_ceiling_sloped:
 				var is_sloped_against_movement: bool = (
@@ -126,9 +126,10 @@ static func update_velocity_in_air(
 		# Apply friction to slow horizontal movement when not pressing
 		# left/right.
 		var friction_deceleration := (
-			movement_settings.fall_horizontal_friction *
-			movement_settings.gravity_fast_fall_acceleration *
-			delta
+			movement_settings.fall_horizontal_friction
+			* movement_settings
+				.gravity_fast_fall_acceleration
+			* delta
 		)
 		if absf(velocity.x) <= friction_deceleration:
 			velocity.x = 0.0

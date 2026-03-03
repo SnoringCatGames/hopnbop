@@ -83,8 +83,9 @@ func _server_on_peer_players_declared(
 
 	# Check if all expected players have now been added to match state.
 	# If so, assign outline colors based on final player count.
-	if _expected_player_count > 0 and \
-			state.players_by_id.size() >= _expected_player_count:
+	if (_expected_player_count > 0
+			and state.players_by_id.size()
+				>= _expected_player_count):
 		_server_assign_outline_colors()
 
 
@@ -150,8 +151,9 @@ func _client_on_players_updated() -> void:
 
 func _client_on_kills_updated() -> void:
 	Netcode.ensure(
-		state.kills.size() > _previous_state.kills.size() or
-		state.kills.is_empty())
+		state.kills.size()
+			> _previous_state.kills.size()
+		or state.kills.is_empty())
 
 	var new_kills := state.kills.slice(_previous_state.kills.size())
 	var i := 0
@@ -168,8 +170,9 @@ func _client_on_kills_updated() -> void:
 
 func _client_on_bumps_updated() -> void:
 	Netcode.ensure(
-		state.bumps.size() > _previous_state.bumps.size() or
-		state.bumps.is_empty())
+		state.bumps.size()
+			> _previous_state.bumps.size()
+		or state.bumps.is_empty())
 
 	var new_bumps := state.bumps.slice(_previous_state.bumps.size())
 	var i := 0
@@ -200,8 +203,8 @@ func _physics_process(_delta: float) -> void:
 func _server_send_stats_to_clients() -> void:
 	var packed := []
 	for player_id in state._stats_by_player_id:
-		var stats: PlayerMatchStats = \
-			state._stats_by_player_id[player_id]
+		var stats: PlayerMatchStats = (
+		state._stats_by_player_id[player_id])
 		packed.append(player_id)
 		packed.append_array(
 			stats.to_packed_array())
@@ -239,8 +242,8 @@ func _rpc_server_update_critter_stats(
 	if not Netcode.is_server:
 		return
 
-	var sender_peer := \
-		multiplayer.get_remote_sender_id()
+	var sender_peer := (
+		multiplayer.get_remote_sender_id())
 	var level: NetworkedLevel = (
 		G.level as NetworkedLevel)
 	if not is_instance_valid(level):
@@ -309,16 +312,16 @@ func _rpc_client_notify_dynamic_adjectives(
 ) -> void:
 	var adjective_map := {}
 	for i in range(0, packed_data.size(), 2):
-		adjective_map[packed_data[i]] = \
-			packed_data[i + 1]
+		adjective_map[packed_data[i]] = (
+			packed_data[i + 1])
 
 	# Update local player states.
 	for player_id in adjective_map:
-		var ps: GamePlayerState = \
-			state.players_by_id.get(player_id)
+		var ps: GamePlayerState = (
+			state.players_by_id.get(player_id))
 		if ps:
-			ps.adjective = \
-				adjective_map[player_id]
+			ps.adjective = (
+				adjective_map[player_id])
 
 	# Trigger celebration adjective reveals.
 	if is_instance_valid(G.celebration):

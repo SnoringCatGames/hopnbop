@@ -43,8 +43,9 @@ func _input(event: InputEvent) -> void:
 		G.settings.show_debug_console = is_debug_and_new_state
 		G.settings.show_debug_player_state = is_debug_and_new_state
 		G.settings.show_perf_tracker = is_debug_and_new_state
-		# Network simulation panel is not included in the "all on"
-		# toggle — it must be opened explicitly via F7.
+		# Network simulation panel is not included
+		# in the "all on" toggle. It must be
+		# opened explicitly via F7.
 		G.settings.show_network_simulation = false
 
 		Netcode.print(
@@ -125,17 +126,16 @@ func _input(event: InputEvent) -> void:
 	elif event.is_action_pressed("toggle_pause"):
 		Netcode.print(
 			"Requesting server %s" % (
-				"UNPAUSE" \
-					if Netcode.frame_driver \
-						.is_paused \
-					else "PAUSE"
-			)
+				"UNPAUSE"
+				if Netcode.frame_driver
+					.is_paused
+				else "PAUSE"),
 		)
-		if G.settings.is_server_pause_enabled and G.is_networked_level_active:
-			Netcode.frame_driver \
-				.client_request_toggle_pause()
-			get_viewport() \
-				.set_input_as_handled()
+		if (G.settings.is_server_pause_enabled
+				and G.is_networked_level_active):
+			(Netcode.frame_driver
+				.client_request_toggle_pause())
+			get_viewport().set_input_as_handled()
 
 
 func _update_player_outlines() -> void:

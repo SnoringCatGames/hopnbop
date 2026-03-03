@@ -32,13 +32,14 @@ extends Level
 
 ## Fraction of the camera's vertical bounds where
 ## birds may spawn (0.0 to 1.0). A value of 0.5
-## restricts birds to the middle 50% of the screen.
+## restricts birds to the middle 50% of the
+## screen.
 @export_range(0.0, 1.0) \
 	var bird_flight_band_height := 0.5
 
 ## Shifts the bird flight band vertically as a
-## fraction of the camera's height. Negative values
-## shift upward, positive shift downward.
+## fraction of the camera's height. Negative
+## values shift upward, positive shift downward.
 @export_range(-0.5, 0.5) \
 	var bird_flight_band_offset := 0.0
 
@@ -61,7 +62,8 @@ const _BUTTERFLY_SCENE_PATH := (
 const _BLOOD_TWEEN_DURATION := 0.3
 
 # Dictionary<int, Array[int]>
-# Maps peer_id to array of player_ids for that peer.
+# Maps peer_id to array of player_ids for that
+# peer.
 var peer_to_player_ids := {}
 
 var npcs: Array[NPC] = []
@@ -79,12 +81,14 @@ func _enter_tree() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	G.game_panel.on_level_added(self )
+	G.game_panel.on_level_added(self)
 
 	if Netcode.is_server:
-		# Listen for player count declarations from clients.
-		Netcode.connector.peer_players_declared.connect(
-			_server_on_peer_players_declared)
+		# Listen for player count declarations
+		# from clients.
+		(Netcode.connector
+			.peer_players_declared.connect(
+				_server_on_peer_players_declared))
 
 
 func _ready() -> void:
@@ -94,7 +98,10 @@ func _ready() -> void:
 
 	var warnings := _get_configuration_warnings()
 	if not warnings.is_empty():
-		Netcode.error("Level._ready: %s (%s)" % [warnings[0], get_scene_file_path()])
+		Netcode.error(
+			"Level._ready: %s (%s)" % [
+				warnings[0],
+				get_scene_file_path()])
 		return
 
 	if Engine.is_editor_hint():
@@ -104,14 +111,18 @@ func _ready() -> void:
 
 	G.log.log_system_ready("Level")
 
-	%PlayerSpawner.set_multiplayer_authority(NetworkConnector.SERVER_ID)
+	%PlayerSpawner.set_multiplayer_authority(
+		NetworkConnector.SERVER_ID)
 
 	for player_scene in G.settings.player_scenes:
-		player_spawner.add_spawnable_scene(player_scene.resource_path)
+		player_spawner.add_spawnable_scene(
+			player_scene.resource_path)
 
 	if Netcode.is_client:
-		%PlayerSpawner.spawned.connect(_client_on_player_spawned)
-		%PlayerSpawner.despawned.connect(_client_on_player_despawned)
+		%PlayerSpawner.spawned.connect(
+			_client_on_player_spawned)
+		%PlayerSpawner.despawned.connect(
+			_client_on_player_despawned)
 
 	# Non-networked critters: each client
 	# uses its own local preference.
@@ -121,32 +132,32 @@ func _ready() -> void:
 	):
 		# Stat tracker for critter disturbances
 		# and fly proximity.
-		_critter_stat_tracker = \
-			CritterStatTracker.new()
-		_critter_stat_tracker.name = \
-			"CritterStatTracker"
+		_critter_stat_tracker = (
+			CritterStatTracker.new())
+		_critter_stat_tracker.name = (
+			"CritterStatTracker")
 		add_child(_critter_stat_tracker)
 
 		# Reporter that periodically sends
 		# accumulated stats to the server.
-		_client_stat_reporter = \
-			ClientStatReporter.new()
-		_client_stat_reporter.name = \
-			"ClientStatReporter"
-		_client_stat_reporter.critter_tracker = \
-			_critter_stat_tracker
+		_client_stat_reporter = (
+			ClientStatReporter.new())
+		_client_stat_reporter.name = (
+			"ClientStatReporter")
+		_client_stat_reporter.critter_tracker = (
+			_critter_stat_tracker)
 		add_child(_client_stat_reporter)
 
 		for i in cricket_count:
 			var cricket := preload(
 				"res://src/objects/cricket/"
-				+"cricket.tscn"
+				+ "cricket.tscn"
 			).instantiate()
 			cricket.name = "Cricket_%d" % i
 			%Objects.add_child(cricket)
 			_crickets.append(cricket)
-			_critter_stat_tracker \
-				.register_cricket(cricket)
+			(_critter_stat_tracker
+				.register_cricket(cricket))
 
 		_spawn_fly_swarms()
 		_spawn_fish()
@@ -165,16 +176,17 @@ func _ready() -> void:
 	_create_snail_nodes()
 
 	if Netcode.is_server:
-		# Snails are initialized later by GamePanel
-		# after critter preference majority vote.
+		# Snails are initialized later by
+		# GamePanel after critter preference
+		# majority vote.
 		G.game_panel.is_level_fully_loaded = true
 
 	if blood_is_thicker_than_water_tiles != null:
-		var is_active: bool = G.settings \
-			.is_bloodisthickerthanwater_enabled
-		blood_is_thicker_than_water_tiles \
-			.modulate.a = (
-				1.0 if is_active else 0.0)
+		var is_active: bool = (
+			G.settings
+				.is_bloodisthickerthanwater_enabled)
+		blood_is_thicker_than_water_tiles.modulate.a = (
+			1.0 if is_active else 0.0)
 		G.cheat_manager.cheat_toggled.connect(
 			_on_cheat_toggled)
 
@@ -221,21 +233,31 @@ func _setup_wrap_bounds_overlay() -> void:
 	add_child(_wrap_overlay)
 
 
-func _client_on_player_spawned(p_player: Node) -> void:
+func _client_on_player_spawned(
+	p_player: Node,
+) -> void:
 	Netcode.ensure(p_player is Player)
 	var player: Player = p_player
 	if Netcode.log.is_verbose:
 		Netcode.verbose(
-			"Player spawned: %s (current player_id=%d)" %
-				[player.get_string(), player.player_id],
+			"Player spawned: %s"
+			+ " (current player_id=%d)" % [
+				player.get_string(),
+				player.player_id],
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
 
 
-func _client_on_player_despawned(p_player: Node) -> void:
+func _client_on_player_despawned(
+	p_player: Node,
+) -> void:
 	Netcode.ensure(p_player is Player)
 	var player: Player = p_player
-	Netcode.print("Player despawned: %s" % player.get_string(), NetworkLogger.CATEGORY_GAME_STATE)
+	Netcode.print(
+		"Player despawned: %s"
+		% player.get_string(),
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
 
 
 func _exit_tree() -> void:
@@ -243,9 +265,11 @@ func _exit_tree() -> void:
 		return
 	if Netcode.is_server:
 		if is_instance_valid(G.game_panel):
-			G.game_panel.is_level_fully_loaded = false
-		Netcode.connector.peer_players_declared.disconnect(
-			_server_on_peer_players_declared)
+			G.game_panel.is_level_fully_loaded = (
+				false)
+		(Netcode.connector
+			.peer_players_declared.disconnect(
+				_server_on_peer_players_declared))
 	if (
 		blood_is_thicker_than_water_tiles != null
 		and G.cheat_manager.cheat_toggled
@@ -254,7 +278,7 @@ func _exit_tree() -> void:
 		G.cheat_manager.cheat_toggled.disconnect(
 			_on_cheat_toggled)
 	if is_instance_valid(G.game_panel):
-		G.game_panel.on_level_removed(self )
+		G.game_panel.on_level_removed(self)
 
 
 func _on_cheat_toggled(
@@ -281,58 +305,78 @@ func _on_cheat_toggled(
 func _server_on_peer_players_declared(
 	peer_id: int,
 	assigned_ids: Array[int],
-	_player_attributes: Array
+	_player_attributes: Array,
 ) -> void:
-	_server_register_players_for_peer(peer_id, assigned_ids)
+	_server_register_players_for_peer(
+		peer_id, assigned_ids)
 	_server_send_snail_states_to_peer(peer_id)
 
 
 func _server_register_players_for_peer(
-		peer_id: int,
-		assigned_ids: Array[int]) -> void:
+	peer_id: int,
+	assigned_ids: Array[int],
+) -> void:
 	Netcode.print(
-		"Spawning %d player(s) for peer %d" % [assigned_ids.size(), peer_id],
+		"Spawning %d player(s) for peer %d"
+		% [assigned_ids.size(), peer_id],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
-	for local_index in range(assigned_ids.size()):
-		var player_id := assigned_ids[local_index]
-		var player: Player = G.settings.default_player_scene.instantiate()
+	for local_index in range(
+		assigned_ids.size()
+	):
+		var player_id := (
+			assigned_ids[local_index])
+		var player: Player = (
+			G.settings.default_player_scene
+				.instantiate())
 		player.name = "Player_%d" % player_id
 		players_by_id[player_id] = player
 
 		# Record peer to player_ids mapping.
 		if not peer_to_player_ids.has(peer_id):
 			peer_to_player_ids[peer_id] = []
-		peer_to_player_ids[peer_id].append(player_id)
+		peer_to_player_ids[peer_id].append(
+			player_id)
 
 		players_node.add_child(player)
-		player.global_position = _get_player_spawn_position()
+		player.global_position = (
+			_get_player_spawn_position())
 
-		# Initialize player_id and update authority after add_child.
-		# This ensures all child nodes are ready and sibling references work.
-		player.server_initialize_player_id(player_id)
+		# Initialize player_id and update
+		# authority after add_child. This ensures
+		# all child nodes are ready and sibling
+		# references work.
+		player.server_initialize_player_id(
+			player_id)
 
 
-func _server_deregister_players_for_peer(peer_id: int) -> void:
-	var player_ids_to_remove: Array = peer_to_player_ids.get(peer_id, [])
+func _server_deregister_players_for_peer(
+	peer_id: int,
+) -> void:
+	var player_ids_to_remove: Array = (
+		peer_to_player_ids.get(peer_id, []))
 
 	Netcode.print(
-		"Removing %d player(s) for peer %d" %
-		[player_ids_to_remove.size(), peer_id],
+		"Removing %d player(s) for peer %d"
+		% [player_ids_to_remove.size(), peer_id],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 	for player_id in player_ids_to_remove:
 		if players_by_id.has(player_id):
-			var player: Player = players_by_id[player_id]
+			var player: Player = (
+				players_by_id[player_id])
 			deregister_player(player)
 			player.queue_free()
 		else:
 			Netcode.warning(
-				("Level._server_deregister_players_for_peer: " +
-				"No player found for ID: %s") % player_id,
-				NetworkLogger.CATEGORY_CORE_SYSTEMS,
+				"Level"
+				+ "._server_deregister_players"
+				+ "_for_peer: No player found"
+				+ " for ID: %s" % player_id,
+				NetworkLogger
+					.CATEGORY_CORE_SYSTEMS,
 			)
 
 	peer_to_player_ids.erase(peer_id)
@@ -342,12 +386,16 @@ func register_player(player: Player) -> void:
 	super.register_player(player)
 
 	if Netcode.is_client:
-		# Record peer to player_ids mapping on client side too.
+		# Record peer to player_ids mapping on
+		# client side too.
 		var peer_id := player.peer_id
 		if not peer_to_player_ids.has(peer_id):
 			peer_to_player_ids[peer_id] = []
-		if not peer_to_player_ids[peer_id].has(player.player_id):
-			peer_to_player_ids[peer_id].append(player.player_id)
+		if not peer_to_player_ids[peer_id].has(
+			player.player_id
+		):
+			peer_to_player_ids[peer_id].append(
+				player.player_id)
 
 
 func deregister_player(player: Player) -> void:
@@ -357,8 +405,11 @@ func deregister_player(player: Player) -> void:
 		# Update peer to player_ids mapping.
 		var peer_id := player.peer_id
 		if peer_to_player_ids.has(peer_id):
-			peer_to_player_ids[peer_id].erase(player.player_id)
-			if peer_to_player_ids[peer_id].is_empty():
+			peer_to_player_ids[peer_id].erase(
+				player.player_id)
+			if peer_to_player_ids[
+				peer_id
+			].is_empty():
 				peer_to_player_ids.erase(peer_id)
 
 
@@ -373,10 +424,12 @@ func deregister_npc(npc: NPC) -> void:
 
 
 func _get_configuration_warnings() -> PackedStringArray:
-	var warnings: PackedStringArray = super._get_configuration_warnings()
+	var warnings: PackedStringArray = (
+		super._get_configuration_warnings())
 
 	if not is_instance_valid(player_spawner):
-		warnings.append("player_spawner must be set")
+		warnings.append(
+			"player_spawner must be set")
 
 	return warnings
 
@@ -388,7 +441,9 @@ func _create_snail_nodes() -> void:
 		).instantiate()
 		snail.name = "Snail_%d" % i
 		snail.setup(
-			collision_tiles, _extra_surface_cells)
+			collision_tiles,
+			_extra_surface_cells,
+		)
 		%Objects.add_child(snail)
 		_snails.append(snail)
 
@@ -411,8 +466,10 @@ func _server_init_snails() -> void:
 					wrap_bounds))
 		if surface.is_empty():
 			Netcode.warning(
-				"No interior surfaces for snail",
-				NetworkLogger.CATEGORY_GAME_STATE,
+				"No interior surfaces"
+				+ " for snail",
+				NetworkLogger
+					.CATEGORY_GAME_STATE,
 			)
 			continue
 		var clockwise := randi() % 2 == 0
@@ -481,8 +538,8 @@ func _spawn_fly_swarms() -> void:
 		move_child(
 			swarm, players_node.get_index())
 		if _critter_stat_tracker:
-			_critter_stat_tracker \
-				.register_fly_swarm(swarm)
+			(_critter_stat_tracker
+				.register_fly_swarm(swarm))
 
 
 func _spawn_fish() -> void:
@@ -516,8 +573,8 @@ func _spawn_fish() -> void:
 			fish, players_node.get_index())
 		fish.initialize(cell)
 		if _critter_stat_tracker:
-			_critter_stat_tracker \
-				.register_fish(fish)
+			(_critter_stat_tracker
+				.register_fish(fish))
 
 
 func _spawn_butterflies() -> void:
@@ -537,7 +594,7 @@ func _spawn_butterflies() -> void:
 		# butterflies.
 		var best_cell: Vector2i = (
 			interior_cells.pick_random())
-		var best_min_dist := 0.0
+		var best_min_dist_sq := 0.0
 		for _attempt in 10:
 			var candidate: Vector2i = (
 				interior_cells.pick_random())
@@ -547,15 +604,16 @@ func _spawn_butterflies() -> void:
 			var cand_global := (
 				collision_tiles.to_global(
 					cand_local))
-			var min_dist := INF
+			var min_dist_sq := INF
 			for pos in used_positions:
 				var d := (
 					cand_global
-						.distance_to(pos))
-				if d < min_dist:
-					min_dist = d
-			if min_dist > best_min_dist:
-				best_min_dist = min_dist
+						.distance_squared_to(
+							pos))
+				if d < min_dist_sq:
+					min_dist_sq = d
+			if min_dist_sq > best_min_dist_sq:
+				best_min_dist_sq = min_dist_sq
 				best_cell = candidate
 		var butterfly: Butterfly = (
 			butterfly_scene.instantiate())
@@ -575,8 +633,8 @@ func _spawn_butterflies() -> void:
 		used_positions.append(
 			butterfly.global_position)
 		if _critter_stat_tracker:
-			_critter_stat_tracker \
-				.register_butterfly(butterfly)
+			(_critter_stat_tracker
+				.register_butterfly(butterfly))
 
 
 func _spawn_bird_flock() -> void:

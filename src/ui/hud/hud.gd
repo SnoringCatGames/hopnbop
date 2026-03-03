@@ -3,7 +3,8 @@ extends PanelContainer
 
 
 @onready var player_list: PlayerList = %PlayerList
-@onready var match_start_countdown: MatchStartCountdown = $MatchStartCountdown
+@onready var match_start_countdown: MatchStartCountdown = (
+	$MatchStartCountdown)
 
 
 func _enter_tree() -> void:

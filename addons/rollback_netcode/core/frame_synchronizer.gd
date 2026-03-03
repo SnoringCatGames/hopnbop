@@ -105,8 +105,13 @@ func _server_rpc_ping(client_t1: int) -> void:
 
 	# Immediately respond with pong, including current frame index.
 	var t3 := Time.get_ticks_usec() # Server send time.
-	var current_frame := Netcode.frame_driver.server_frame_index
-	_client_rpc_pong.rpc_id(sender_id, client_t1, t2, t3, current_frame)
+	_client_rpc_pong.rpc_id(
+		sender_id,
+		client_t1,
+		t2,
+		t3,
+		Netcode.frame_driver.server_frame_index,
+	)
 
 
 @rpc("authority", "call_remote", "unreliable", NetworkConnector.RPC_CHANNEL_CLOCK_SYNC)
@@ -131,8 +136,9 @@ func _client_rpc_pong(
 	# Smooth RTT using exponential moving average.
 	if _is_rtt_initialized:
 		_smoothed_rtt_usec = roundi(
-			RTT_SMOOTHING_FACTOR * rtt_usec +
-			(1.0 - RTT_SMOOTHING_FACTOR) * _smoothed_rtt_usec
+			RTT_SMOOTHING_FACTOR * rtt_usec
+			+ (1.0 - RTT_SMOOTHING_FACTOR)
+				* _smoothed_rtt_usec
 		)
 	else:
 		_smoothed_rtt_usec = rtt_usec
@@ -146,8 +152,8 @@ func _client_rpc_pong(
 	# produces incorrect values that cause progressive frame drift.
 	var one_way_delay_usec := _smoothed_rtt_usec / 2
 	var frames_during_transmission := roundi(
-		float(one_way_delay_usec) /
-		(target_network_time_step_sec * 1_000_000.0)
+		float(one_way_delay_usec)
+		/ (target_network_time_step_sec * 1_000_000.0)
 	)
 
 	# Estimate current server frame index.
@@ -155,8 +161,10 @@ func _client_rpc_pong(
 		server_frame_at_t3 + frames_during_transmission
 	)
 
-	var local_frame := Netcode.frame_driver.server_frame_index
-	var drift := estimated_current_server_frame - local_frame
+	var drift := (
+		estimated_current_server_frame
+		- Netcode.frame_driver.server_frame_index
+	)
 
 	# Correct drift if outside threshold.
 	if abs(drift) <= DRIFT_THRESHOLD_FRAMES:
@@ -164,8 +172,10 @@ func _client_rpc_pong(
 		return
 
 	if drift > 0:
-		# Client is behind - use existing fast-forward logic.
-		Netcode.frame_driver.fast_forward(estimated_current_server_frame)
+		# Client is behind. Use existing fast-forward logic.
+		Netcode.frame_driver.fast_forward(
+			estimated_current_server_frame
+		)
 		if Netcode.log.is_verbose:
 			Netcode.log.verbose(
 				"Client behind by %d frames, fast-forwarding to %d" % [
@@ -175,21 +185,22 @@ func _client_rpc_pong(
 				NetworkLogger.CATEGORY_NETWORK_SYNC
 			)
 	else:
-		# Client is ahead - hard reset. This can happen when the server
-		# runs slower than clients due to performance issues. We need
-		# to:
-		# 1. Set a grace period so incoming states aren't rejected
-		# 2. Reinitialize rollback buffers to clear stale predictions
-		# 3. Reset the frame index
+		# Client is ahead. Hard reset. This can happen when the
+		# server runs slower than clients due to performance
+		# issues. We need to:
+		# 1. Set a grace period so incoming states aren't rejected.
+		# 2. Reinitialize rollback buffers to clear stale
+		#    predictions.
+		# 3. Reset the frame index.
 		var now := Time.get_ticks_usec()
 		if now - _last_hard_reset_usec < _HARD_RESET_COOLDOWN_USEC:
 			return
 		_last_hard_reset_usec = now
 		Netcode.log.warning(
 			("Client ahead of server by %d frames! "
-			+"Hard reset from %d to %d") % [
+			+ "Hard reset from %d to %d") % [
 				abs(drift),
-				local_frame,
+				Netcode.frame_driver.server_frame_index,
 				estimated_current_server_frame,
 			],
 			NetworkLogger.CATEGORY_NETWORK_SYNC

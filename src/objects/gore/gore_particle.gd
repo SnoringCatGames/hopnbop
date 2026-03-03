@@ -34,9 +34,10 @@ var _trail_elapsed := 0.0
 
 func _physics_process(delta: float) -> void:
 	# Apply gravity.
-	velocity.y += \
-		G.settings.default_gravity_acceleration * \
-		G.settings.gore_gravity_multiplier * delta
+	velocity.y += (
+		G.settings.default_gravity_acceleration
+		* G.settings.gore_gravity_multiplier
+		* delta)
 
 	var collision := move_and_collide(velocity * delta)
 	if collision:
@@ -57,9 +58,9 @@ func _physics_process(delta: float) -> void:
 	# Spawn trail particles while moving.
 	if emit_trails:
 		_trail_elapsed += delta
-		var spawn_interval: float = \
-			G.settings \
-				.gore_trail_spawn_interval_sec
+		var spawn_interval: float = (
+			G.settings
+				.gore_trail_spawn_interval_sec)
 		if _trail_elapsed >= spawn_interval:
 			_trail_elapsed -= spawn_interval
 			if (
@@ -67,22 +68,22 @@ func _physics_process(delta: float) -> void:
 				is_instance_valid(
 					G.level.gore_manager)
 			):
-				G.level.gore_manager \
-					.spawn_trail_particle(
-						position,
-						type_index,
-						is_behind,
-						self,
-						velocity)
+				G.level.gore_manager.spawn_trail_particle(
+				position,
+				type_index,
+				is_behind,
+				self,
+				velocity,
+			)
 
 	# Rest detection with consecutive-frame
 	# requirement. Only count frames where the chunk
-	# is in contact with a surface — a chunk at the
+	# is in contact with a surface. A chunk at the
 	# apex of its arc is airborne, not at rest.
 	if (
-		collision and
-		velocity.length() <
-		G.settings.gore_rest_speed_threshold
+		collision
+		and velocity.length()
+			< G.settings.gore_rest_speed_threshold
 	):
 		_rest_frame_counter += 1
 		if (
@@ -110,8 +111,8 @@ func _physics_process(delta: float) -> void:
 func _disable_collision() -> void:
 	collision_layer = 0
 	collision_mask = 0
-	var shape: CollisionShape2D = \
-		get_node_or_null("CollisionShape2D")
+	var shape: CollisionShape2D = (
+		get_node_or_null("CollisionShape2D"))
 	if is_instance_valid(shape):
 		shape.set_deferred("disabled", true)
 

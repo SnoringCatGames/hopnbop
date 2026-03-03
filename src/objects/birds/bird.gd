@@ -30,8 +30,8 @@ var _flight_speed := 0.0
 var _camera: Camera2D
 var _viewport_size := Vector2.ZERO
 
-@onready var _sprite: AnimatedSprite2D = \
-	$AnimatedSprite2D
+@onready var _sprite: AnimatedSprite2D = (
+	$AnimatedSprite2D)
 
 
 func setup(

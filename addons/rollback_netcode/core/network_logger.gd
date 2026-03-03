@@ -49,9 +49,9 @@ var is_verbose: bool:
 	get:
 		return (
 			Netcode.settings.includes_verbose_logs if
-			is_instance_valid(Netcode) and
-				is_instance_valid(Netcode.settings) else
-			true
+			is_instance_valid(Netcode)
+				and is_instance_valid(Netcode.settings)
+			else true
 		)
 
 

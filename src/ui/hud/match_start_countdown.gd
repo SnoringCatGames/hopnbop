@@ -48,12 +48,17 @@ func _process(_delta: float) -> void:
 	if not _is_active:
 		return
 
-	var countdown_end := Netcode.frame_driver.match_start_countdown_end_frame_index
-	var countdown_sec := Netcode.settings.match_start_countdown_sec
+	var countdown_end := (
+		Netcode.frame_driver
+			.match_start_countdown_end_frame_index)
+	var countdown_sec := (
+		Netcode.settings
+			.match_start_countdown_sec)
 	var numeric_step_count := ceili(countdown_sec)
 
 	@warning_ignore("integer_division")
-	var frames_per_numeric_step := countdown_end / numeric_step_count
+	var frames_per_numeric_step := (
+		countdown_end / numeric_step_count)
 
 	var frame := Netcode.server_frame_index
 
@@ -77,7 +82,9 @@ func _process(_delta: float) -> void:
 
 
 func _update_display() -> void:
-	var countdown_sec := Netcode.settings.match_start_countdown_sec
+	var countdown_sec := (
+		Netcode.settings
+			.match_start_countdown_sec)
 	var numeric_step_count := ceili(countdown_sec)
 
 	if _current_step_index < numeric_step_count:

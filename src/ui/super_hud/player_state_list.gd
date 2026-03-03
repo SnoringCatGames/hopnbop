@@ -15,7 +15,8 @@ func _ready() -> void:
 	if Netcode.is_server:
 		return
 
-	visibility_changed.connect(_on_visibility_changed)
+	visibility_changed.connect(
+		_on_visibility_changed)
 
 	if visible:
 		_initialize()
@@ -28,15 +29,15 @@ func _on_visibility_changed() -> void:
 
 func _initialize() -> void:
 	_rebuild_panels()
-	if not G.match_state.players_updated.is_connected(
-		_rebuild_panels
-	):
-		G.match_state.players_updated.connect(_rebuild_panels)
+	if not (G.match_state.players_updated
+			.is_connected(_rebuild_panels)):
+		G.match_state.players_updated.connect(
+			_rebuild_panels)
 	if (
 		is_instance_valid(G.game_panel)
-		and not G.game_panel.lobby_players_updated.is_connected(
-			_rebuild_panels
-		)
+		and not (G.game_panel
+			.lobby_players_updated
+			.is_connected(_rebuild_panels))
 	):
 		G.game_panel.lobby_players_updated.connect(
 			_rebuild_panels
@@ -49,17 +50,22 @@ func _rebuild_panels() -> void:
 
 	# Networked match path.
 	if (
-		not G.match_state.players_by_id.is_empty()
-		and not G.client_session.local_player_ids.is_empty()
+		not G.match_state.players_by_id
+			.is_empty()
+		and not G.client_session
+			.local_player_ids.is_empty()
 	):
 		# Add local player states first.
-		for player_id in G.client_session.local_player_ids:
+		for player_id in (
+				G.client_session.local_player_ids):
 			if G.match_state.players_by_id.has(player_id):
 				_add_player_state(player_id)
 
 		# Add other players.
-		for player_id in G.match_state.players_by_id:
-			if player_id in G.client_session.local_player_ids:
+		for player_id in (
+				G.match_state.players_by_id):
+			if (player_id in G.client_session
+					.local_player_ids):
 				continue
 			_add_player_state(player_id)
 		return
@@ -71,6 +77,7 @@ func _rebuild_panels() -> void:
 
 
 func _add_player_state(player_id: int) -> void:
-	var player_state_panel: PlayerStatePanel = player_state_panel_scene.instantiate()
+	var player_state_panel: PlayerStatePanel = (
+		player_state_panel_scene.instantiate())
 	player_state_panel.player_id = player_id
 	%States.add_child(player_state_panel)

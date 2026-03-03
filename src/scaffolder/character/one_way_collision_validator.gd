@@ -10,6 +10,9 @@ extends RefCounted
 # FIXME: Get this from project settings. Update similar usage in the codebase.
 const FLOOR_MAX_ANGLE := PI / 4.0
 const EDGE_CORNER_TOLERANCE := 2.0 # Pixels of tolerance for edge detection.
+const EDGE_CORNER_TOLERANCE_SQUARED := (
+	EDGE_CORNER_TOLERANCE * EDGE_CORNER_TOLERANCE
+)
 
 # Cache for tile collision data to avoid repeated native API calls.
 # Key: Vector2i (tile coords)
@@ -150,11 +153,17 @@ func _is_edge_corner_collision(
 		var p1: Vector2 = segment[0]
 		var p2: Vector2 = segment[1]
 
-		var dist_to_p1 := collision_point.distance_to(p1)
-		var dist_to_p2 := collision_point.distance_to(p2)
+		var dist_sq_to_p1 := (
+			collision_point.distance_squared_to(p1)
+		)
+		var dist_sq_to_p2 := (
+			collision_point.distance_squared_to(p2)
+		)
 
-		if dist_to_p1 <= EDGE_CORNER_TOLERANCE or \
-			dist_to_p2 <= EDGE_CORNER_TOLERANCE:
+		if (dist_sq_to_p1
+				<= EDGE_CORNER_TOLERANCE_SQUARED
+				or dist_sq_to_p2
+				<= EDGE_CORNER_TOLERANCE_SQUARED):
 			return true
 
 	return false

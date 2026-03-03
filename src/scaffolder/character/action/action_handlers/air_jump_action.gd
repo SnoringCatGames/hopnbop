@@ -24,17 +24,18 @@ func process(character) -> bool:
 		return false
 	if CheatManager.is_jetpack_cheat_active():
 		return false
-	var current_frame := Netcode.server_frame_index
 	var throttle_frames := int(
 		AUTO_JUMP_FROM_HOLD_THROTTLE_PERIOD_SEC
 		/ Netcode.time.get_time_step_sec()
 	)
 	var is_auto_jump_from_hold: bool = (
-		character.actions.is_triggering_jump and
-		(last_jump_frame_index < 0 or
-			current_frame >
-				last_jump_frame_index + throttle_frames) and
-		not character.surfaces.is_attaching_to_surface
+		character.actions.is_triggering_jump
+		and (last_jump_frame_index < 0
+			or Netcode.server_frame_index
+				> last_jump_frame_index
+				+ throttle_frames)
+		and not character.surfaces
+			.is_attaching_to_surface
 	)
 	var is_jump_triggered: bool = (
 		not character.surfaces.is_launched
@@ -44,14 +45,15 @@ func process(character) -> bool:
 		)
 	)
 
-	if is_jump_triggered and \
-			(character.jump_sequence_count
+	if (is_jump_triggered
+			and (character.jump_sequence_count
 				< character.movement_settings
 					.max_jump_chain
-			or character.surfaces
-				.is_within_coyote_time):
-		if character.surfaces.just_entered_air or \
-				character.surfaces.is_within_coyote_time:
+				or character.surfaces
+					.is_within_coyote_time)):
+		if (character.surfaces.just_entered_air
+				or character.surfaces
+					.is_within_coyote_time):
 			# Coyote jump requires onset press, not held
 			# auto-jump. This prevents jumping when
 			# walking off a ledge while holding jump.
@@ -68,7 +70,9 @@ func process(character) -> bool:
 			character.movement_settings.jump_boost
 			* double_jump_multiplier
 		)
-		last_jump_frame_index = current_frame
+		last_jump_frame_index = (
+			Netcode.server_frame_index
+		)
 
 		return true
 	else:

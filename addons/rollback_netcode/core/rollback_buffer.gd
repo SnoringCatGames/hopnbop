@@ -167,8 +167,12 @@ func backfill_to_with_last_state(target_index: int) -> void:
 		fill_state[i] = latest_state[i]
 
 	# Backfilled state is not authoritative - use appropriate predicted type.
-	var fill_authority := ReconcilableState.FrameAuthority.SERVER_PREDICTED \
-		if Netcode.is_server else ReconcilableState.FrameAuthority.CLIENT_PREDICTED
+	var fill_authority := (
+		ReconcilableState.FrameAuthority.SERVER_PREDICTED
+		if Netcode.is_server
+		else ReconcilableState.FrameAuthority
+			.CLIENT_PREDICTED
+	)
 	fill_state[fill_state.size() - 1] = fill_authority
 
 	# If the gap is larger than capacity, just reinitialize the entire array.

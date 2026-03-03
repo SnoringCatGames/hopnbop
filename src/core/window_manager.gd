@@ -122,8 +122,8 @@ func position_server_window_in_preview_mode() -> void:
 ## Returns true if this process should close
 ## because thumbnail generation is active and
 ## this is a client.
-func should_close_for_thumbnail_generation() \
-		-> bool:
+func should_close_for_thumbnail_generation(
+) -> bool:
 	return (
 		Netcode.is_preview
 		and Netcode.is_client
@@ -167,8 +167,8 @@ func _generate_thumbnail_for_level(
 
 	# Spawn the level scene.
 	var level: Level = info.scene.instantiate()
-	G.game_panel.get_node("Levels") \
-		.add_child(level)
+	(G.game_panel.get_node("Levels")
+		.add_child(level))
 	G.level = level
 
 	var camera := level.level_camera
@@ -240,9 +240,9 @@ func _generate_thumbnail_for_level(
 	if is_instance_valid(
 		G.pixel_viewport_manager
 	):
-		G.pixel_viewport_manager \
+		(G.pixel_viewport_manager
 			.configure_thumbnail_snapshot(
-				visible_size)
+				visible_size))
 
 	# Wait for the viewport to render.
 	await get_tree().create_timer(0.5).timeout
@@ -257,10 +257,11 @@ func _take_thumbnail_screenshot(
 	## saves it as a PNG screenshot named after the
 	## level id. Also copies to the project asset
 	## folder for use as level thumbnails.
-	var pvm := G.pixel_viewport_manager
 	if (
-		not is_instance_valid(pvm)
-		or not is_instance_valid(pvm.sub_viewport)
+		not is_instance_valid(
+			G.pixel_viewport_manager)
+		or not is_instance_valid(
+			G.pixel_viewport_manager.sub_viewport)
 	):
 		return
 
@@ -271,7 +272,7 @@ func _take_thumbnail_screenshot(
 		return
 
 	var image := (
-		pvm.sub_viewport
+		G.pixel_viewport_manager.sub_viewport
 			.get_texture().get_image())
 	var path := (
 		"user://screenshots/%s.png"
@@ -432,8 +433,10 @@ func position_client_window_in_preview_mode() -> void:
 				DisplayServer.window_set_position(
 					Vector2i(
 						usable_rect.position.x,
-						usable_rect.position.y + TITLE_BAR_HEIGHT +
-						server_height + TITLE_BAR_HEIGHT
+						usable_rect.position.y
+						+ TITLE_BAR_HEIGHT
+						+ server_height
+						+ TITLE_BAR_HEIGHT
 					)
 				)
 		else:

@@ -12,6 +12,8 @@ const RECORD_COOLDOWN_SEC := 2.0
 ## Radius for counting nearby flies (matches
 ## FlySwarm.PLAYER_INTERACTION_RADIUS).
 const _FLY_PROXIMITY_RADIUS := 40.0
+const _FLY_PROXIMITY_RADIUS_SQ := (
+	_FLY_PROXIMITY_RADIUS * _FLY_PROXIMITY_RADIUS)
 
 # Accumulated counts per player_id. Public so
 # ClientStatReporter can read them for deltas.
@@ -121,14 +123,13 @@ func _update_fly_proximity(
 	if not is_instance_valid(level):
 		return
 
-	for player_id in \
-			G.client_session.local_player_ids:
-		var player: Player = \
-			level.players_by_id.get(player_id)
+	for player_id in (
+			G.client_session.local_player_ids):
+		var player: Player = (
+			level.players_by_id.get(player_id))
 		if not is_instance_valid(player):
 			continue
-		var player_pos := \
-			player.global_position
+		var player_pos := player.global_position
 
 		var nearby_count := 0
 		for swarm in _fly_swarms:
@@ -137,11 +138,11 @@ func _update_fly_proximity(
 			for fly in swarm._flies:
 				if not is_instance_valid(fly):
 					continue
-				var dist: float = (
+				var dist_sq: float = (
 					fly.global_position
-						.distance_to(
+						.distance_squared_to(
 							player_pos))
-				if dist < _FLY_PROXIMITY_RADIUS:
+				if dist_sq < _FLY_PROXIMITY_RADIUS_SQ:
 					nearby_count += 1
 
 		if nearby_count > 0:

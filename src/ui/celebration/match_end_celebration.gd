@@ -242,11 +242,11 @@ func _spawn_confetti() -> void:
 	if not is_instance_valid(G.level):
 		return
 
-	var game_state := G.match_state as GameMatchState
-	if not is_instance_valid(game_state):
+	var gms := G.match_state as GameMatchState
+	if not is_instance_valid(gms):
 		return
 
-	var kill_lead := game_state.get_winner_kill_lead()
+	var kill_lead := gms.get_winner_kill_lead()
 
 	# Tie: no confetti.
 	if kill_lead == 0:
@@ -303,10 +303,10 @@ func _delayed_burst(
 
 
 func _slam_winner_text() -> void:
-	var game_state := G.match_state as GameMatchState
+	var gms := G.match_state as GameMatchState
 	var is_tie := (
-		is_instance_valid(game_state)
-		and game_state.get_winner_kill_lead() == 0
+		is_instance_valid(gms)
+		and gms.get_winner_kill_lead() == 0
 	)
 
 	if is_tie:
@@ -418,10 +418,10 @@ func _start_iris_close() -> void:
 
 
 func _play_cadence() -> void:
-	var game_state := G.match_state as GameMatchState
+	var gms := G.match_state as GameMatchState
 	var is_tie := (
-		is_instance_valid(game_state)
-		and game_state.get_winner_kill_lead() == 0
+		is_instance_valid(gms)
+		and gms.get_winner_kill_lead() == 0
 	)
 	if is_tie:
 		%TieCadenceAudioStreamPlayer.play()
@@ -472,17 +472,17 @@ func reveal_adjectives(
 	if not is_instance_valid(G.hud):
 		return
 
-	var player_list: PlayerList = \
-		G.hud.player_list
+	var player_list: PlayerList = (
+		G.hud.player_list)
 	if not is_instance_valid(player_list):
 		return
 
 	# Freeze adjective labels immediately so
 	# replication doesn't spoil the reveal.
 	for player_id in adjective_map:
-		var display: PlayerDisplay = \
-			player_list._player_displays \
-			.get(player_id)
+		var display: PlayerDisplay = (
+			player_list._player_displays
+				.get(player_id))
 		if is_instance_valid(display):
 			display.is_adjective_frozen = true
 
@@ -493,19 +493,20 @@ func reveal_adjectives(
 		true, false, true)
 	timer.timeout.connect(func():
 		for player_id in adjective_map:
-			var display: PlayerDisplay = \
-				player_list._player_displays \
-				.get(player_id)
+			var display: PlayerDisplay = (
+				player_list._player_displays
+					.get(player_id))
 			if not is_instance_valid(display):
 				continue
 
 			# Stagger each popup randomly.
-			var stagger := randf() \
-				* _ADJECTIVE_STAGGER_MAX
-			var stagger_timer := \
+			var stagger := (
+				randf()
+				* _ADJECTIVE_STAGGER_MAX)
+			var stagger_timer := (
 				get_tree().create_timer(
 					stagger,
-					true, false, true)
+					true, false, true))
 			stagger_timer.timeout.connect(
 				_spawn_adjective_popup.bind(
 					display,
@@ -542,9 +543,9 @@ func _spawn_adjective_popup(
 		"%Adjective")
 	if is_instance_valid(adj_label):
 		popup.position = Vector2(
-			adj_label.global_position.x \
+			adj_label.global_position.x
 				+ adj_label.size.x / 2.0,
-			adj_label.global_position.y \
+			adj_label.global_position.y
 				- 4.0,
 		)
 	else:

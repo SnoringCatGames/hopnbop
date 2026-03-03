@@ -36,9 +36,9 @@ static func compare(v1: String, v2: String) -> bool:
 	if parsed1.is_empty() or parsed2.is_empty():
 		return false
 	return (
-		parsed1.major == parsed2.major and
-		parsed1.minor == parsed2.minor and
-		parsed1.patch == parsed2.patch
+		parsed1.major == parsed2.major
+		and parsed1.minor == parsed2.minor
+		and parsed1.patch == parsed2.patch
 	)
 
 

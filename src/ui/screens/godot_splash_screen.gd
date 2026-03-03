@@ -11,6 +11,9 @@ func on_open() -> void:
 
 	G.audio.play_sound("godot_splash")
 
-	await get_tree().create_timer(G.settings.godot_splash_duration_sec).timeout
+	await get_tree().create_timer(
+		G.settings.godot_splash_duration_sec,
+	).timeout
 
-	G.screens.client_open_screen(ScreensMain.ScreenType.SCG_SPLASH)
+	G.screens.client_open_screen(
+		ScreensMain.ScreenType.SCG_SPLASH)

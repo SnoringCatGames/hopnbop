@@ -119,24 +119,32 @@ func _process(delta: float) -> void:
 	_update_trails(delta)
 
 
-## Picks a random type index biased 2/3 toward small
-## types (0..GORE_FAST_TYPE_END) and 1/3 toward large.
+## Picks a random type index biased 2/3 toward
+## small types (0..GORE_FAST_TYPE_END) and 1/3
+## toward large.
 func _pick_type_index() -> int:
-	var s := G.settings
-	var type_count := s.gore_get_active_sprite_radii().size()
+	var type_count := (
+		G.settings
+			.gore_get_active_sprite_radii()
+			.size())
 	if randi() % 3 != 0:
-		return randi_range(0, s.GORE_FAST_TYPE_END)
+		return randi_range(
+			0, G.settings.GORE_FAST_TYPE_END)
 	else:
 		return randi_range(
-			s.GORE_FAST_TYPE_END + 1,
+			G.settings.GORE_FAST_TYPE_END + 1,
 			type_count - 1)
 
 
-func spawn_particles(death_position: Vector2) -> void:
-	var s := G.settings
-	var center := death_position + s.gore_spawn_offset
+func spawn_particles(
+	death_position: Vector2,
+) -> void:
+	var center := (
+		death_position
+		+ G.settings.gore_spawn_offset)
 
-	var particle_count := s.gore_particles_per_death
+	var particle_count := (
+		G.settings.gore_particles_per_death)
 	if CheatManager.is_moregore_cheat_active():
 		particle_count *= MOREGORE_MULTIPLIER
 	for i in particle_count:
@@ -145,22 +153,25 @@ func spawn_particles(death_position: Vector2) -> void:
 
 		# Random position within scatter radius.
 		var angle := randf_range(0.0, TAU)
-		var dist := \
-			randf() * s.gore_spawn_scatter_radius
+		var dist := (
+			randf()
+			* G.settings.gore_spawn_scatter_radius)
 		var spawn_pos := center + Vector2(
 			cos(angle) * dist,
 			sin(angle) * dist)
 
 		# Initial velocity: outward direction with
 		# speed based on type category.
-		var speed_range := \
-			s.gore_get_speed_range(type_index)
+		var speed_range := (
+			G.settings
+				.gore_get_speed_range(type_index))
 		var speed := randf_range(
 			speed_range.x, speed_range.y)
 		var vel_angle := randf_range(0.0, TAU)
 		var vel := Vector2(
 			cos(vel_angle) * speed,
-			sin(vel_angle) * speed + s.gore_upward_bias)
+			sin(vel_angle) * speed
+				+ G.settings.gore_upward_bias)
 
 		_spawn_particle(
 			type_index, spawn_pos, vel, is_behind)
@@ -193,8 +204,8 @@ func spawn_poop_particles(
 
 		# Random position within scatter radius.
 		var angle := randf_range(0.0, TAU)
-		var dist := \
-			randf() * POOP_SPAWN_SCATTER_RADIUS
+		var dist := (
+			randf() * POOP_SPAWN_SCATTER_RADIUS)
 		var spawn_pos := spawn_position + Vector2(
 			cos(angle) * dist,
 			sin(angle) * dist)
@@ -220,8 +231,9 @@ func _spawn_poop_particle(
 	vel: Vector2,
 	is_behind: bool,
 ) -> void:
-	var particle: GoreParticle = \
-		G.settings.gore_particle_scene.instantiate()
+	var particle: GoreParticle = (
+		G.settings.gore_particle_scene
+			.instantiate())
 	particle.will_rasterize = false
 	particle.is_behind = is_behind
 	particle.position = pos
@@ -236,18 +248,18 @@ func _spawn_poop_particle(
 
 	# Set texture to white_pixel modulated to
 	# dark brown.
-	var sprite: Sprite2D = \
-		particle.get_node("Sprite2D")
+	var sprite: Sprite2D = (
+		particle.get_node("Sprite2D"))
 	sprite.texture = preload(
 		"res://assets/images/white_pixel.png")
 	sprite.modulate = POOP_COLOR
 
 	# Set collision radius.
-	var shape: CollisionShape2D = \
-		particle.get_node("CollisionShape2D")
+	var shape: CollisionShape2D = (
+		particle.get_node("CollisionShape2D"))
 	var circle := CircleShape2D.new()
-	circle.radius = \
-		G.settings.gore_collision_radius
+	circle.radius = (
+		G.settings.gore_collision_radius)
 	shape.shape = circle
 
 	add_child(particle)
@@ -273,8 +285,8 @@ func spawn_snail_goo_particles(
 
 		# Random position within scatter radius.
 		var angle := randf_range(0.0, TAU)
-		var dist := \
-			randf() * SNAIL_GOO_SCATTER_RADIUS
+		var dist := (
+			randf() * SNAIL_GOO_SCATTER_RADIUS)
 		var spawn_pos := spawn_position + Vector2(
 			cos(angle) * dist,
 			sin(angle) * dist)
@@ -298,8 +310,9 @@ func _spawn_snail_goo_particle(
 	vel: Vector2,
 	is_behind: bool,
 ) -> void:
-	var particle: GoreParticle = \
-		G.settings.gore_particle_scene.instantiate()
+	var particle: GoreParticle = (
+		G.settings.gore_particle_scene
+			.instantiate())
 	particle.will_rasterize = false
 	particle.is_behind = is_behind
 	particle.position = pos
@@ -315,22 +328,23 @@ func _spawn_snail_goo_particle(
 
 	# Set texture to white_pixel modulated to
 	# a random snail goo color.
-	var sprite: Sprite2D = \
-		particle.get_node("Sprite2D")
+	var sprite: Sprite2D = (
+		particle.get_node("Sprite2D"))
 	sprite.texture = preload(
 		"res://assets/images/white_pixel.png")
-	sprite.modulate = SNAIL_GOO_COLORS.pick_random()
+	sprite.modulate = (
+		SNAIL_GOO_COLORS.pick_random())
 
 	# 50% chance to double the particle scale.
 	if randi() % 2 == 0:
 		sprite.scale = Vector2(2.0, 2.0)
 
 	# Set collision radius.
-	var shape: CollisionShape2D = \
-		particle.get_node("CollisionShape2D")
+	var shape: CollisionShape2D = (
+		particle.get_node("CollisionShape2D"))
 	var circle := CircleShape2D.new()
-	circle.radius = \
-		G.settings.gore_collision_radius
+	circle.radius = (
+		G.settings.gore_collision_radius)
 	shape.shape = circle
 
 	add_child(particle)
@@ -339,12 +353,14 @@ func _spawn_snail_goo_particle(
 func _spawn_kickables(
 	death_position: Vector2,
 ) -> void:
-	var s := G.settings
 	if _particle_textures.is_empty():
 		return
-	var center := death_position + s.gore_spawn_offset
+	var center := (
+		death_position
+		+ G.settings.gore_spawn_offset)
 
-	var kickable_count := s.gore_kickables_per_death
+	var kickable_count := (
+		G.settings.gore_kickables_per_death)
 	if CheatManager.is_moregore_cheat_active():
 		kickable_count *= MOREGORE_MULTIPLIER
 	for i in kickable_count:
@@ -352,21 +368,22 @@ func _spawn_kickables(
 
 		# Random position within scatter radius.
 		var angle := randf_range(0.0, TAU)
-		var dist := \
-			randf() * s.gore_spawn_scatter_radius
+		var dist := (
+			randf()
+			* G.settings.gore_spawn_scatter_radius)
 		var spawn_pos := center + Vector2(
 			cos(angle) * dist,
 			sin(angle) * dist)
 
 		# Initial velocity (slower than particles).
 		var speed := randf_range(
-			s.gore_kickable_speed_min,
-			s.gore_kickable_speed_max)
+			G.settings.gore_kickable_speed_min,
+			G.settings.gore_kickable_speed_max)
 		var vel_angle := randf_range(0.0, TAU)
 		var vel := Vector2(
 			cos(vel_angle) * speed,
 			sin(vel_angle) * speed
-				+s.gore_upward_bias)
+				+ G.settings.gore_upward_bias)
 
 		_spawn_kickable(type_index, spawn_pos, vel)
 
@@ -376,39 +393,42 @@ func _spawn_kickable(
 	pos: Vector2,
 	vel: Vector2,
 ) -> void:
-	var s := G.settings
-	var kickable: GoreKickable = \
-		s.gore_kickable_scene.instantiate()
+	var kickable: GoreKickable = (
+		G.settings.gore_kickable_scene
+			.instantiate())
 	kickable.type_index = type_index
 	kickable.position = pos
 	kickable.velocity = vel
 	kickable.z_index = 2
 
 	# Set texture from shared pool.
-	var sprite: Sprite2D = \
-		kickable.get_node("Sprite2D")
+	var sprite: Sprite2D = (
+		kickable.get_node("Sprite2D"))
 	sprite.texture = _particle_textures[type_index]
 
 	# Set collision radius based on type size.
-	var is_small := s.gore_is_fast_type(type_index)
-	var shape: CollisionShape2D = kickable.get_node(
-		"CollisionShape2D")
+	var is_small := (
+		G.settings.gore_is_fast_type(type_index))
+	var shape: CollisionShape2D = (
+		kickable.get_node("CollisionShape2D"))
 	var circle := CircleShape2D.new()
 	if is_small:
-		circle.radius = \
-			s.gore_kickable_small_collision_radius
+		circle.radius = (
+			G.settings
+				.gore_kickable_small_collision_radius)
 	else:
-		circle.radius = \
-			s.gore_kickable_collision_radius
+		circle.radius = (
+			G.settings
+				.gore_kickable_collision_radius)
 	shape.shape = circle
 
 	# Set kick area detection radius.
-	var kick_shape: CollisionShape2D = \
+	var kick_shape: CollisionShape2D = (
 		kickable.get_node(
-			"KickArea/CollisionShape2D")
+			"KickArea/CollisionShape2D"))
 	var kick_circle := CircleShape2D.new()
-	kick_circle.radius = \
-		s.gore_kickable_kick_area_radius
+	kick_circle.radius = (
+		G.settings.gore_kickable_kick_area_radius)
 	kick_shape.shape = kick_circle
 
 	add_child(kickable)
@@ -420,37 +440,39 @@ func _spawn_particle(
 	vel: Vector2,
 	is_behind: bool,
 ) -> void:
-	var particle: GoreParticle = \
-		G.settings.gore_particle_scene.instantiate()
+	var particle: GoreParticle = (
+		G.settings.gore_particle_scene
+			.instantiate())
 	particle.type_index = type_index
 	particle.is_behind = is_behind
 	particle.position = pos
 	particle.velocity = vel
-	particle.will_rasterize = \
-		randf() < G.settings.gore_rasterize_ratio
+	particle.will_rasterize = (
+		randf() < G.settings.gore_rasterize_ratio)
 
 	# Randomize fade delay for non-rasterized
 	# gore particles.
 	if not particle.will_rasterize:
-		particle.fade_delay_sec = \
-			G.settings.gore_fade_delay_sec \
+		particle.fade_delay_sec = (
+			G.settings.gore_fade_delay_sec
 			+ randf_range(
 				- GORE_FADE_DELAY_VARIANCE_SEC,
-				GORE_FADE_DELAY_VARIANCE_SEC)
+				GORE_FADE_DELAY_VARIANCE_SEC))
 
 	if not is_behind:
 		particle.z_index = 2
 
 	# Set texture.
-	var sprite: Sprite2D = \
-		particle.get_node("Sprite2D")
+	var sprite: Sprite2D = (
+		particle.get_node("Sprite2D"))
 	sprite.texture = _particle_textures[type_index]
 
 	# Set collision radius per type.
-	var shape: CollisionShape2D = particle.get_node(
-		"CollisionShape2D")
+	var shape: CollisionShape2D = (
+		particle.get_node("CollisionShape2D"))
 	var circle := CircleShape2D.new()
-	circle.radius = G.settings.gore_collision_radius
+	circle.radius = (
+		G.settings.gore_collision_radius)
 	shape.shape = circle
 
 	if particle.will_rasterize:
@@ -471,7 +493,8 @@ func _rasterize_particle(
 	var type_index := particle.type_index
 
 	Netcode.check(type_index >= 0)
-	Netcode.check(type_index < _particle_images.size())
+	Netcode.check(
+		type_index < _particle_images.size())
 
 	var src_image := _particle_images[type_index]
 	var src_rect := Rect2i(
@@ -479,27 +502,31 @@ func _rasterize_particle(
 		src_image.get_size())
 
 	# Convert world position to buffer coordinates.
-	# X: centered on particle. Y: bottom-aligned to the
-	# nearest visual tile surface below the particle, to
-	# compensate for the half-tile offset between physics
-	# collision surfaces and visual tile boundaries.
+	# X: centered on particle. Y: bottom-aligned to
+	# the nearest visual tile surface below the
+	# particle, to compensate for the half-tile
+	# offset between physics collision surfaces and
+	# visual tile boundaries.
 	var world_pos := particle.global_position
-	var sprite_radius: float = \
-		G.settings.gore_get_active_sprite_radii()[type_index]
-	var particle_bottom := world_pos.y + sprite_radius
+	var sprite_radius: float = (
+		G.settings
+			.gore_get_active_sprite_radii()
+			[type_index])
+	var particle_bottom := (
+		world_pos.y + sprite_radius)
 	var tile_h := float(_tile_size.y)
-	var visual_surface_y := ceilf(
-		particle_bottom / tile_h) * tile_h
+	var visual_surface_y := (
+		ceilf(particle_bottom / tile_h) * tile_h)
 	@warning_ignore("integer_division")
 	var buffer_pos := Vector2i(
-		floori(world_pos.x - _buffer_origin.x) -
-			src_image.get_width() / 2,
+		floori(world_pos.x - _buffer_origin.x)
+			- src_image.get_width() / 2,
 		floori(
 			visual_surface_y - _buffer_origin.y
-		) - src_image.get_height() +
-			ceili(
-				sprite_radius -
-				G.settings.gore_collision_radius))
+		) - src_image.get_height()
+			+ ceili(
+				sprite_radius
+				- G.settings.gore_collision_radius))
 
 	# Select the correct accumulation buffer layer.
 	var accum_image: Image
@@ -511,10 +538,11 @@ func _rasterize_particle(
 	# Clamp to buffer bounds.
 	var buf_size := accum_image.get_size()
 	if (
-		buffer_pos.x + src_image.get_width() < 0 or
-		buffer_pos.y + src_image.get_height() < 0 or
-		buffer_pos.x >= buf_size.x or
-		buffer_pos.y >= buf_size.y
+		buffer_pos.x + src_image.get_width() < 0
+		or buffer_pos.y
+			+ src_image.get_height() < 0
+		or buffer_pos.x >= buf_size.x
+		or buffer_pos.y >= buf_size.y
 	):
 		return
 
@@ -547,7 +575,8 @@ func spawn_trail_particle(
 	# Map chunk type to trail start index. Type 0
 	# (smallest) starts near the end (smallest
 	# trail); highest type starts at 0 (largest).
-	var ratio := float(type_index) / (chunk_count - 1)
+	var ratio := (
+		float(type_index) / (chunk_count - 1))
 	var max_trail := trail_count - 1
 	var size_index := int(
 		(1.0 - ratio) * max_trail)
@@ -557,12 +586,13 @@ func spawn_trail_particle(
 	trail.size_index = size_index
 	trail.is_behind = is_behind
 	trail.position = pos
-	trail.vel = chunk_vel * \
-		GoreTrailParticle.SPEED_MULTIPLIER
+	trail.vel = (
+		chunk_vel
+		* GoreTrailParticle.SPEED_MULTIPLIER)
 	trail.source_chunk = chunk
 	trail.last_chunk_y = pos.y
-	trail.texture_filter = \
-		CanvasItem.TEXTURE_FILTER_NEAREST
+	trail.texture_filter = (
+		CanvasItem.TEXTURE_FILTER_NEAREST)
 	if is_behind:
 		trail.z_index = -1
 	else:
@@ -576,13 +606,14 @@ func _update_trails(delta: float) -> void:
 	var trail_count := _trail_textures.size()
 	if trail_count == 0:
 		return
-	var shrink_interval: float = \
-		G.settings.gore_trail_duration_sec / trail_count
+	var shrink_interval: float = (
+		G.settings.gore_trail_duration_sec
+		/ trail_count)
 	var max_size_index: int = trail_count - 1
-	var gravity: float = \
-		G.settings.default_gravity_acceleration * \
-		G.settings.gore_gravity_multiplier * \
-		G.settings.gore_trail_gravity_multiplier
+	var gravity: float = (
+		G.settings.default_gravity_acceleration
+		* G.settings.gore_gravity_multiplier
+		* G.settings.gore_trail_gravity_multiplier)
 	var i := _active_trails.size() - 1
 
 	while i >= 0:
@@ -603,10 +634,12 @@ func _update_trails(delta: float) -> void:
 		if is_instance_valid(chunk):
 			trail.last_chunk_y = chunk.position.y
 			if (
-				chunk.velocity.y >= 0.0 and
-				trail.position.y > chunk.position.y
+				chunk.velocity.y >= 0.0
+				and trail.position.y
+					> chunk.position.y
 			):
-				trail.position.y = chunk.position.y
+				trail.position.y = (
+					chunk.position.y)
 		elif trail.position.y > trail.last_chunk_y:
 			trail.position.y = trail.last_chunk_y
 
@@ -619,9 +652,9 @@ func _update_trails(delta: float) -> void:
 				trail.queue_free()
 				_active_trails.remove_at(i)
 			else:
-				trail.texture = \
+				trail.texture = (
 					_trail_textures[
-						trail.size_index]
+						trail.size_index])
 		i -= 1
 
 
@@ -633,7 +666,8 @@ func _load_textures() -> void:
 	if G.settings.is_gore_enabled:
 		paths = G.settings.gore_texture_paths
 	else:
-		paths = G.settings.gore_flower_texture_paths
+		paths = (
+			G.settings.gore_flower_texture_paths)
 
 	for path in paths:
 		var tex: Texture2D = load(path)
@@ -644,12 +678,12 @@ func _load_textures() -> void:
 	_trail_textures.clear()
 	var trail_paths: Array[String]
 	if G.settings.is_gore_enabled:
-		trail_paths = \
-			G.settings.gore_trail_texture_paths
+		trail_paths = (
+			G.settings.gore_trail_texture_paths)
 	else:
-		trail_paths = \
-			G.settings \
-				.gore_flower_trail_texture_paths
+		trail_paths = (
+			G.settings
+				.gore_flower_trail_texture_paths)
 
 	for path in trail_paths:
 		var tex: Texture2D = load(path)
@@ -659,29 +693,30 @@ func _load_textures() -> void:
 func _init_accumulation_buffer() -> void:
 	var level: Level = get_parent()
 	if (
-		not is_instance_valid(level) or
-		not is_instance_valid(level.collision_tiles)
+		not is_instance_valid(level)
+		or not is_instance_valid(
+			level.collision_tiles)
 	):
 		push_warning(
-			"GoreManager: No collision_tiles " +
-			"found on parent level.")
+			"GoreManager: No collision_tiles "
+			+ "found on parent level.")
 		return
 
-	var tile_map: TileMapLayer = \
-		level.collision_tiles
-	var used_rect: Rect2i = \
-		tile_map.get_used_rect()
-	var tile_size: Vector2i = \
-		tile_map.tile_set.tile_size
+	var tile_map: TileMapLayer = (
+		level.collision_tiles)
+	var used_rect: Rect2i = (
+		tile_map.get_used_rect())
+	var tile_size: Vector2i = (
+		tile_map.tile_set.tile_size)
 	_tile_size = tile_size
 
 	# Convert tile rect to pixel rect with margin.
 	var pixel_rect := Rect2i(
-		used_rect.position * tile_size -
-			Vector2i(
+		used_rect.position * tile_size
+			- Vector2i(
 				_BUFFER_MARGIN, _BUFFER_MARGIN),
-		used_rect.size * tile_size +
-			Vector2i(
+		used_rect.size * tile_size
+			+ Vector2i(
 				_BUFFER_MARGIN * 2,
 				_BUFFER_MARGIN * 2))
 
@@ -694,15 +729,15 @@ func _init_accumulation_buffer() -> void:
 		pixel_rect.size.y,
 		false,
 		Image.FORMAT_RGBA8)
-	_behind_texture = \
+	_behind_texture = (
 		ImageTexture.create_from_image(
-			_behind_image)
+			_behind_image))
 	_behind_sprite = Sprite2D.new()
 	_behind_sprite.texture = _behind_texture
 	_behind_sprite.centered = false
 	_behind_sprite.position = _buffer_origin
-	_behind_sprite.texture_filter = \
-		CanvasItem.TEXTURE_FILTER_NEAREST
+	_behind_sprite.texture_filter = (
+		CanvasItem.TEXTURE_FILTER_NEAREST)
 	add_child(_behind_sprite)
 
 	# Create in-front-of-player accumulation buffer.
@@ -711,14 +746,14 @@ func _init_accumulation_buffer() -> void:
 		pixel_rect.size.y,
 		false,
 		Image.FORMAT_RGBA8)
-	_front_texture = \
+	_front_texture = (
 		ImageTexture.create_from_image(
-			_front_image)
+			_front_image))
 	_front_sprite = Sprite2D.new()
 	_front_sprite.texture = _front_texture
 	_front_sprite.centered = false
 	_front_sprite.position = _buffer_origin
-	_front_sprite.texture_filter = \
-		CanvasItem.TEXTURE_FILTER_NEAREST
+	_front_sprite.texture_filter = (
+		CanvasItem.TEXTURE_FILTER_NEAREST)
 	_front_sprite.z_index = 2
 	add_child(_front_sprite)

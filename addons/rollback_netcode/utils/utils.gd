@@ -128,18 +128,24 @@ static func subtract_and_mutate_nested_arrays(
 			elif expects_no_missing_matches:
 				Netcode.log.ensure(
 					false,
-					("Wrong-type match: " +
-					"(We currently don't support subtracting properties " +
-					"from a Dictionary. We only support subtracting " +
-					"elements from Arrays.)" +
-					"\n    key=%s,\n    result=%s,\n    other=%s") %
-					[key, result, other],
+					("Wrong-type match: "
+					+ "(We currently don't support "
+					+ "subtracting properties from a "
+					+ "Dictionary. We only support "
+					+ "subtracting elements "
+					+ "from Arrays.)"
+					+ "\n    key=%s,"
+					+ "\n    result=%s,"
+					+ "\n    other=%s")
+					% [key, result, other],
 				)
 		elif expects_no_missing_matches:
 			Netcode.log.ensure(
 				false,
-				("Missing match: " + "\n    key=%s,\n    " +
-				"result=%s,\n    other=%s") % [key, result, other],
+				("Missing match: "
+				+ "\n    key=%s,\n    "
+				+ "result=%s,\n    other=%s")
+				% [key, result, other],
 			)
 	return result
 
@@ -152,8 +158,10 @@ static func subtract_and_mutate_arrays(result: Array, other: Array) -> Array:
 		else:
 			Netcode.log.ensure(
 				false,
-				("Missing match: " + "\n    element=%s,\n    " +
-				"result=%s,\n    other=%s") % [element, result, other],
+				("Missing match: "
+				+ "\n    element=%s,\n    "
+				+ "result=%s,\n    other=%s")
+				% [element, result, other],
 			)
 	return result
 

@@ -116,8 +116,8 @@ func server_get_or_create_stats(
 	player_id: int,
 ) -> PlayerMatchStats:
 	if not _stats_by_player_id.has(player_id):
-		_stats_by_player_id[player_id] = \
-			PlayerMatchStats.new()
+		_stats_by_player_id[player_id] = (
+			PlayerMatchStats.new())
 	return _stats_by_player_id[player_id]
 
 
@@ -203,17 +203,17 @@ func server_add_kill(killer_id: int, killee_id: int) -> void:
 	_total_deaths_by_player_id[killee_id] += 1
 
 	# Record gameplay stats.
-	server_get_or_create_stats(killer_id) \
-		.record_kill()
-	server_get_or_create_stats(killee_id) \
-		.record_death()
+	server_get_or_create_stats(
+		killer_id).record_kill()
+	server_get_or_create_stats(
+		killee_id).record_death()
 
 	# Track regicide (killing the crowned player).
 	var crown_id := get_crown_player_id(
 		G.settings.crown_kill_lead)
 	if killee_id == crown_id:
-		server_get_or_create_stats(killer_id) \
-			.record_regicide()
+		server_get_or_create_stats(
+			killer_id).record_regicide()
 
 	# Store in indelible interaction buffer.
 	_server_store_interaction(
@@ -294,10 +294,10 @@ func server_add_bump(player_1_id: int, player_2_id: int) -> void:
 	)
 	update_scores()
 
-	var player_1_match_state: PlayerState = \
-			players_by_id.get(player_1_id)
-	var player_2_match_state: PlayerState = \
-			players_by_id.get(player_2_id)
+	var player_1_match_state: PlayerState = (
+		players_by_id.get(player_1_id))
+	var player_2_match_state: PlayerState = (
+		players_by_id.get(player_2_id))
 	if player_1_match_state and player_2_match_state:
 		emit_bump_event(player_1_match_state, player_2_match_state)
 
@@ -487,8 +487,8 @@ func _get_server_recent_interactions() -> RollbackBuffer:
 		_interaction_tracker = InteractionTracker.new(
 			_server_recent_interactions
 		)
-		_interaction_tracker.deduplication_window_frames = \
-			_INTERACTION_DEDUPLICATION_WINDOW_FRAMES
+		_interaction_tracker.deduplication_window_frames = (
+			_INTERACTION_DEDUPLICATION_WINDOW_FRAMES)
 	return _server_recent_interactions
 
 
@@ -531,18 +531,19 @@ func _server_store_interaction(
 ## Override parent to handle game-specific unpacking logic.
 func _client_unpack_players() -> void:
 	Netcode.verbose(
-		"GameMatchState._client_unpack_players: " + \
-				"packed_players.size=%d" % packed_players.size(),
-		NetworkLogger.CATEGORY_GAME_STATE
+		"GameMatchState._client_unpack_players:"
+		+ " packed_players.size=%d"
+		% packed_players.size(),
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 	players_by_id.clear()
 
 	for packed_player in packed_players:
-		var player_id := \
-				PlayerState.get_player_id_from_packed_state(
-					packed_player
-				)
+		var player_id := (
+			PlayerState
+				.get_player_id_from_packed_state(
+					packed_player))
 
 		if not players_by_id.has(player_id):
 			players_by_id[player_id] = _create_player_state()
@@ -553,8 +554,9 @@ func _client_unpack_players() -> void:
 	# Trigger connected/disconnected events.
 	for player_id in players_by_id:
 		var player: PlayerState = players_by_id[player_id]
-		if player.is_connected_to_server != \
-				_connected_players.has(player_id):
+		if (player.is_connected_to_server
+				!= _connected_players.has(
+					player_id)):
 			if player.is_connected_to_server:
 				_connected_players[player_id] = true
 				player_joined.emit(player)
@@ -567,8 +569,10 @@ func _client_unpack_players() -> void:
 func _server_pack_players() -> void:
 	if Netcode.log.is_verbose:
 		Netcode.verbose(
-			"GameMatchState._server_pack_players: " + \
-					"packing %d players" % players_by_id.size(),
+			"GameMatchState"
+			+ "._server_pack_players:"
+			+ " packing %d players"
+			% players_by_id.size(),
 			NetworkLogger.CATEGORY_GAME_STATE,
 		)
 
@@ -576,8 +580,9 @@ func _server_pack_players() -> void:
 	new_packed_players.resize(players_by_id.size())
 	var i := 0
 	for player_id in players_by_id:
-		new_packed_players[i] = \
-				players_by_id[player_id].get_packed_state()
+		new_packed_players[i] = (
+			players_by_id[player_id]
+				.get_packed_state())
 		i += 1
 
 	_is_packing_state_locally = true

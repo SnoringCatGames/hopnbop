@@ -106,6 +106,8 @@ func clear() -> void:
 
 ## Check if any preferences are set.
 func has_preferences() -> bool:
-	return not inclusion_list.is_empty() or \
-		not exclusion_list.is_empty() or \
-		not preferred_level.is_empty()
+	return (
+		not inclusion_list.is_empty()
+		or not exclusion_list.is_empty()
+		or not preferred_level.is_empty()
+	)

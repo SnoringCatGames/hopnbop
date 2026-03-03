@@ -1,8 +1,9 @@
 class_name WindowBorder
 extends Control
-## Debug overlay that draws a colored border around the window frame in
-## preview mode. The border color matches the local player's outline color to
-## help distinguish between multiple client windows.
+## Debug overlay that draws a colored border around
+## the window frame in preview mode. The border color
+## matches the local player's outline color to help
+## distinguish between multiple client windows.
 
 const BORDER_WIDTH := 3.0
 const OPACITY := 0.5
@@ -10,12 +11,14 @@ const OPACITY := 0.5
 
 func _ready() -> void:
 	# Make this control cover the entire viewport.
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(
+		Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	# Update border when player colors change.
 	if G.match_state != null:
-		G.match_state.players_updated.connect(_on_players_updated)
+		G.match_state.players_updated.connect(
+			_on_players_updated)
 
 	# Initial draw.
 	queue_redraw()
@@ -23,7 +26,9 @@ func _ready() -> void:
 
 func _draw() -> void:
 	# Only draw in preview mode.
-	if not Netcode.is_debug or not G.settings.preview_run_multiple_clients:
+	if (not Netcode.is_debug
+			or not G.settings
+				.preview_run_multiple_clients):
 		return
 
 	# Get the local player's color.
@@ -35,7 +40,7 @@ func _draw() -> void:
 	# Draw border around the viewport.
 	var viewport_size := get_viewport_rect().size
 
-	# Draw 4 lines to form a border (top, right, bottom, left).
+	# Draw 4 lines to form a border.
 	var half_width := BORDER_WIDTH / 2.0
 
 	# Top border.
@@ -48,16 +53,22 @@ func _draw() -> void:
 
 	# Right border.
 	draw_line(
-		Vector2(viewport_size.x - half_width, 0),
-		Vector2(viewport_size.x - half_width, viewport_size.y),
+		Vector2(
+			viewport_size.x - half_width, 0),
+		Vector2(
+			viewport_size.x - half_width,
+			viewport_size.y),
 		color,
 		BORDER_WIDTH
 	)
 
 	# Bottom border.
 	draw_line(
-		Vector2(0, viewport_size.y - half_width),
-		Vector2(viewport_size.x, viewport_size.y - half_width),
+		Vector2(
+			0, viewport_size.y - half_width),
+		Vector2(
+			viewport_size.x,
+			viewport_size.y - half_width),
 		color,
 		BORDER_WIDTH
 	)
@@ -79,10 +90,11 @@ func _get_local_player_color() -> Color:
 	if G.client_session.local_player_ids.is_empty():
 		return Color.TRANSPARENT
 
-	var local_player_id := G.client_session.local_player_ids[0]
-	var player_state: PlayerState = G.match_state.players_by_id.get(
-		local_player_id
-	)
+	var local_player_id := (
+		G.client_session.local_player_ids[0])
+	var player_state: PlayerState = (
+		G.match_state.players_by_id
+			.get(local_player_id))
 
 	if player_state == null:
 		return Color.TRANSPARENT

@@ -19,7 +19,9 @@ var text: String:
 
 var color: Color:
 	set(value):
-		%Label.add_theme_color_override("font_color", Color(value, _OPACITY))
+		%Label.add_theme_color_override(
+			"font_color",
+			Color(value, _OPACITY))
 
 
 func _ready() -> void:
@@ -30,7 +32,8 @@ func _center_label() -> void:
 	if not is_node_ready():
 		return
 
-	# Wait for next frame to ensure text has been rendered and size calculated.
+	# Wait for next frame to ensure text has been
+	# rendered and size calculated.
 	await get_tree().process_frame
 
 	var label_width: float = %Label.size.x

@@ -43,11 +43,11 @@ func _init(defaults: Settings = null) -> void:
 func load_settings() -> void:
 	var err := _config.load(SETTINGS_PATH)
 	if err == OK:
-		var prev_version: String = \
-			_config.get_value(
-				SECTION_META,
-				META_KEY_VERSION,
-				"unknown")
+		var prev_version: String = (
+		_config.get_value(
+			SECTION_META,
+			META_KEY_VERSION,
+			"unknown"))
 		Netcode.print(
 			"LocalSettings loaded"
 			+ " (prev version: %s)" % prev_version,
@@ -63,9 +63,9 @@ func load_settings() -> void:
 		)
 
 	# Record current version.
-	var current_version: String = \
+	var current_version: String = (
 		ProjectSettings.get_setting(
-			"application/config/version", "0.0.0")
+			"application/config/version", "0.0.0"))
 	_config.set_value(
 		SECTION_META,
 		META_KEY_VERSION,
@@ -88,11 +88,10 @@ func save_settings() -> void:
 func set_override(
 	key: StringName, value: Variant,
 ) -> void:
-	var default_value: Variant = \
-		_defaults.get(key)
-	if typeof(value) == typeof(default_value) \
-			and value == default_value:
-		# Matches default — clear override.
+	var default_value: Variant = _defaults.get(key)
+	if (typeof(value) == typeof(default_value)
+			and value == default_value):
+		# Matches default. Clear override.
 		if _config.has_section_key(
 				SECTION_SETTINGS, key):
 			_config.erase_section_key(
@@ -135,9 +134,9 @@ func apply_all_overrides() -> void:
 	for key in OVERRIDABLE_KEYS:
 		if _config.has_section_key(
 				SECTION_SETTINGS, key):
-			var value: Variant = \
+			var value: Variant = (
 				_config.get_value(
-					SECTION_SETTINGS, key)
+					SECTION_SETTINGS, key))
 			_defaults.set(key, value)
 
 
@@ -163,8 +162,7 @@ func save_level_preferences(
 
 ## Load level preferences from local storage.
 ## Returns null if no preferences are stored.
-func load_level_preferences() \
-		-> LevelPreferences:
+func load_level_preferences() -> LevelPreferences:
 	if not _config.has_section(SECTION_LEVEL_PREFS):
 		return null
 

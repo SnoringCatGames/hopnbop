@@ -152,8 +152,9 @@ func _pack_networked_state() -> void:
 		)
 
 	# Input nodes always use the authoritative channel.
-	var channel: StringName = \
+	var channel: StringName = (
 		NetworkConditionSimulator.CHANNEL_AUTHORITATIVE
+	)
 	if _should_use_network_simulator():
 		Netcode.condition_simulator.queue_outgoing_state(
 			self , state, channel
@@ -271,10 +272,13 @@ func _reconcile_jump_interaction(p_frame_index: int) -> void:
 	if not has_jump_input:
 		if _is_frame_authoritative(frame_state):
 			Netcode.warning(
-				(
-					"last_interaction_frame_index corresponds to a frame " +
-					"that is already recorded as authoritative and without " +
-					"jump pressed: frame %d, actions=%s (%s)"
+				("last_interaction_frame_index"
+					+ " corresponds to a frame "
+					+ "that is already recorded"
+					+ " as authoritative and"
+					+ " without jump pressed:"
+					+ " frame %d, actions=%s"
+					+ " (%s)"
 				) % [
 					p_frame_index,
 					_get_string_for_bitmask(current_actions),

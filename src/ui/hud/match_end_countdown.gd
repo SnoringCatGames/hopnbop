@@ -43,29 +43,35 @@ func _update_display() -> void:
 		return
 
 	# Don't show until match-start countdown ends.
-	var match_start_countdown_end_frame_index := Netcode.frame_driver.match_start_countdown_end_frame_index
-	if match_start_countdown_end_frame_index > 0 and Netcode.server_frame_index < match_start_countdown_end_frame_index:
+	var match_start_countdown_end_frame_index := (
+		Netcode.frame_driver
+			.match_start_countdown_end_frame_index)
+	if (
+		match_start_countdown_end_frame_index > 0
+		and Netcode.server_frame_index
+			< match_start_countdown_end_frame_index
+	):
 		visible = false
 		return
 
-	# Calculate remaining time from when countdown ended (can be negative after
-	# expiry).
+	# Calculate remaining time from when countdown
+	# ended (can be negative after expiry).
 	var match_start_after_countdown := (
-		match_start_countdown_end_frame_index if match_start_countdown_end_frame_index > 0 else
-		G.match_state.match_start_frame_index
+		match_start_countdown_end_frame_index
+		if match_start_countdown_end_frame_index
+			> 0
+		else G.match_state.match_start_frame_index
 	)
 	var elapsed_frames := (
-		Netcode.server_frame_index -
-		match_start_after_countdown
-	)
+		Netcode.server_frame_index
+		- match_start_after_countdown)
 	var elapsed_sec := (
-		elapsed_frames /
-		Netcode.frame_driver.target_network_fps
-	)
+		elapsed_frames
+		/ Netcode.frame_driver.target_network_fps)
 	var remaining_sec := (
-		(G.match_state.match_duration_usec / 1_000_000.0) -
-		elapsed_sec
-	)
+		(G.match_state.match_duration_usec
+			/ 1_000_000.0)
+		- elapsed_sec)
 
 	# Hide after timer reaches zero.
 	if remaining_sec < -_TIMER_HIDE_AFTER_ZERO_DELAY_SEC:
@@ -101,11 +107,14 @@ func _update_display() -> void:
 	# Blink red at a half-second interval when 10 seconds or less remain.
 	# Skip blinking during zero transition animation.
 	if not _is_animating_zero:
-		if remaining_sec <= _TIMER_TIME_REMAINING_BLINK_THRESHOLD_DELAY_SEC:
+		if (
+			remaining_sec
+			<= _TIMER_TIME_REMAINING_BLINK_THRESHOLD_DELAY_SEC
+		):
 			modulate = (
-				Color.WHITE if
-				int(remaining_sec * 2) % 2 == 0 else
-				Color.RED
+				Color.WHITE
+				if int(remaining_sec * 2) % 2 == 0
+				else Color.RED
 			)
 		else:
 			modulate = Color.WHITE

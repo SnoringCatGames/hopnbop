@@ -34,10 +34,10 @@ var _rows: Array[SettingsRow] = []
 var _level_pref_rows: Array[LevelPrefRow] = []
 var _focused_index := 0
 
-@onready var _scroll_container: \
-	ScrollContainer = %ScrollContainer
-@onready var _row_container: \
-	VBoxContainer = %RowContainer
+@onready var _scroll_container: ScrollContainer = (
+	%ScrollContainer)
+@onready var _row_container: VBoxContainer = (
+	%RowContainer)
 
 # Input state tracking for "just pressed"
 # detection.
@@ -66,18 +66,22 @@ func open(player: Player) -> void:
 	# immediately triggers CloseRow and the panel
 	# closes before it is visible.
 	if _device_config != null:
-		_prev_up = G.input_device_manager \
-			.get_is_action_pressed(
-				&"move_up", _device_config)
-		_prev_down = G.input_device_manager \
-			.get_is_action_pressed(
-				&"move_down", _device_config)
-		_prev_left = G.input_device_manager \
-			.get_is_action_pressed(
-				&"move_left", _device_config)
-		_prev_right = G.input_device_manager \
-			.get_is_action_pressed(
-				&"move_right", _device_config)
+		_prev_up = (
+			G.input_device_manager
+				.get_is_action_pressed(
+					&"move_up", _device_config))
+		_prev_down = (
+			G.input_device_manager
+				.get_is_action_pressed(
+					&"move_down", _device_config))
+		_prev_left = (
+			G.input_device_manager
+				.get_is_action_pressed(
+					&"move_left", _device_config))
+		_prev_right = (
+			G.input_device_manager
+				.get_is_action_pressed(
+					&"move_right", _device_config))
 	if is_instance_valid(G.audio):
 		G.audio.play_sound("focus")
 
@@ -98,31 +102,29 @@ func close() -> void:
 
 func _resolve_device_config() -> void:
 	# In lobby, player_id = -(lobby_id + 1).
-	var lobby_id: int = \
-		-((_player.player_id) + 1)
-	_device_config = \
-		G.input_device_manager \
-			.get_device_for_player(lobby_id)
+	var lobby_id: int = -((_player.player_id) + 1)
+	_device_config = (
+		G.input_device_manager
+			.get_device_for_player(lobby_id))
 
 
 func _build_ui() -> void:
 	# Top padding.
 	var top_spacer := Control.new()
-	top_spacer.custom_minimum_size = \
-		Vector2(0, 30)
+	top_spacer.custom_minimum_size = Vector2(0, 30)
 	_row_container.add_child(top_spacer)
 
 	# Close row.
-	var close_row: CloseRow = \
-		_CloseRowScene.instantiate()
+	var close_row: CloseRow = (
+		_CloseRowScene.instantiate())
 	close_row.setup(self)
 	_row_container.add_child(close_row)
 	_connect_row_clicked(close_row)
 
 	# Spacer below close button.
 	var close_spacer := Control.new()
-	close_spacer.custom_minimum_size = \
-		Vector2(0, 20)
+	close_spacer.custom_minimum_size = (
+		Vector2(0, 20))
 	_row_container.add_child(close_spacer)
 
 	# Gore toggle.
@@ -136,8 +138,8 @@ func _build_ui() -> void:
 		0, icon_critters)
 
 	# Cheats group toggle.
-	var cheats_row: CheatGroupRow = \
-		_CheatGroupRowScene.instantiate()
+	var cheats_row: CheatGroupRow = (
+		_CheatGroupRowScene.instantiate())
 	cheats_row.set_icon(icon_cheats)
 	cheats_row.setup(
 		"Cheats", &"are_cheats_enabled")
@@ -199,33 +201,33 @@ func _build_ui() -> void:
 
 	# Spacer above level preferences.
 	var level_spacer := Control.new()
-	level_spacer.custom_minimum_size = \
-		Vector2(0, 20)
+	level_spacer.custom_minimum_size = (
+		Vector2(0, 20))
 	_row_container.add_child(level_spacer)
 
 	# Load persisted level preferences.
-	var saved_prefs: LevelPreferences = \
-		G.local_settings.load_level_preferences()
+	var saved_prefs: LevelPreferences = (
+		G.local_settings.load_level_preferences())
 
 	# Level preference rows.
-	for level_info: LevelInfo \
-			in G.level_registry._levels:
-		var initial_state := \
-			LevelPrefRow.LevelPrefState.INCLUDED
+	for level_info: LevelInfo in (
+			G.level_registry._levels):
+		var initial_state := (
+			LevelPrefRow.LevelPrefState.INCLUDED)
 		if saved_prefs != null:
-			if level_info.id \
-					== saved_prefs.preferred_level:
-				initial_state = \
-					LevelPrefRow.LevelPrefState \
-						.PREFERRED
-			elif level_info.id \
-					in saved_prefs.exclusion_list:
-				initial_state = \
-					LevelPrefRow.LevelPrefState \
-						.EXCLUDED
+			if (level_info.id
+					== saved_prefs.preferred_level):
+				initial_state = (
+					LevelPrefRow.LevelPrefState
+						.PREFERRED)
+			elif (level_info.id
+					in saved_prefs.exclusion_list):
+				initial_state = (
+					LevelPrefRow.LevelPrefState
+						.EXCLUDED)
 
-		var level_row: LevelPrefRow = \
-			_LevelPrefRowScene.instantiate()
+		var level_row: LevelPrefRow = (
+			_LevelPrefRowScene.instantiate())
 		level_row.setup(
 			level_info.id,
 			level_info.display_name,
@@ -238,8 +240,8 @@ func _build_ui() -> void:
 
 	# Bottom padding.
 	var bottom_spacer := Control.new()
-	bottom_spacer.custom_minimum_size = \
-		Vector2(0, 30)
+	bottom_spacer.custom_minimum_size = (
+		Vector2(0, 30))
 	_row_container.add_child(bottom_spacer)
 
 	# Build initial navigable row list.
@@ -253,8 +255,8 @@ func _add_toggle_row(
 	icon: Texture2D = null,
 	is_inverted := false,
 ) -> ToggleRow:
-	var row: ToggleRow = \
-		_ToggleRowScene.instantiate()
+	var row: ToggleRow = (
+		_ToggleRowScene.instantiate())
 	if indent_pixels > 0:
 		row.set_indent(indent_pixels)
 	if icon != null:
@@ -289,8 +291,8 @@ func _on_row_clicked(row: SettingsRow) -> void:
 ## SettingsRow children.
 func rebuild_row_list() -> void:
 	var old_focused: SettingsRow = null
-	if _focused_index >= 0 \
-			and _focused_index < _rows.size():
+	if (_focused_index >= 0
+			and _focused_index < _rows.size()):
 		old_focused = _rows[_focused_index]
 
 	_rows.clear()
@@ -299,8 +301,8 @@ func rebuild_row_list() -> void:
 			_rows.append(child)
 
 	# Try to preserve focus on the same row.
-	if old_focused != null \
-			and old_focused in _rows:
+	if (old_focused != null
+			and old_focused in _rows):
 		_set_focus(_rows.find(old_focused))
 	else:
 		_set_focus(
@@ -316,12 +318,12 @@ func on_level_preferred(
 	preferred_row: LevelPrefRow,
 ) -> void:
 	for row in _level_pref_rows:
-		if row != preferred_row \
-				and row.get_state() == \
-				LevelPrefRow.LevelPrefState \
-					.PREFERRED:
+		if (row != preferred_row
+				and row.get_state()
+				== LevelPrefRow.LevelPrefState
+					.PREFERRED):
 			row.set_state(
-				LevelPrefRow.LevelPrefState \
+				LevelPrefRow.LevelPrefState
 					.INCLUDED)
 
 
@@ -330,8 +332,8 @@ func _set_focus(index: int) -> void:
 		return
 
 	# Clear old focus.
-	if _focused_index >= 0 \
-			and _focused_index < _rows.size():
+	if (_focused_index >= 0
+			and _focused_index < _rows.size()):
 		_rows[_focused_index].is_focused = false
 
 	_focused_index = index
@@ -348,9 +350,9 @@ func _move_focus(
 
 	var new_index: int
 	if is_wrap:
-		new_index = \
-			(_focused_index + direction) \
-			% _rows.size()
+		new_index = (
+			(_focused_index + direction)
+			% _rows.size())
 		if new_index < 0:
 			new_index += _rows.size()
 	else:
@@ -369,8 +371,7 @@ func _ensure_focused_visible() -> void:
 	if _rows.is_empty():
 		return
 
-	var row: SettingsRow = \
-		_rows[_focused_index]
+	var row: SettingsRow = _rows[_focused_index]
 
 	# Wait a frame for layout to settle.
 	await get_tree().process_frame
@@ -383,18 +384,22 @@ func _process(delta: float) -> void:
 	if _device_config == null:
 		return
 
-	var up := G.input_device_manager \
-		.get_is_action_pressed(
-			&"move_up", _device_config)
-	var down := G.input_device_manager \
-		.get_is_action_pressed(
-			&"move_down", _device_config)
-	var left := G.input_device_manager \
-		.get_is_action_pressed(
-			&"move_left", _device_config)
-	var right := G.input_device_manager \
-		.get_is_action_pressed(
-			&"move_right", _device_config)
+	var up := (
+		G.input_device_manager
+			.get_is_action_pressed(
+				&"move_up", _device_config))
+	var down := (
+		G.input_device_manager
+			.get_is_action_pressed(
+				&"move_down", _device_config))
+	var left := (
+		G.input_device_manager
+			.get_is_action_pressed(
+				&"move_left", _device_config))
+	var right := (
+		G.input_device_manager
+			.get_is_action_pressed(
+				&"move_right", _device_config))
 
 	# Detect "just pressed" transitions.
 	var up_just := up and not _prev_up
@@ -420,20 +425,20 @@ func _process(delta: float) -> void:
 
 	# Handle input repeat.
 	var should_repeat := false
-	if current_dir != "" \
-			and current_dir == _held_direction:
+	if (current_dir != ""
+			and current_dir == _held_direction):
 		_hold_timer += delta
 		if _hold_timer >= _INPUT_INITIAL_DELAY:
-			var time_past_delay := \
-				_hold_timer - _INPUT_INITIAL_DELAY
+			var time_past_delay := (
+				_hold_timer - _INPUT_INITIAL_DELAY)
 			var repeat_count := int(
-				time_past_delay \
+				time_past_delay
 				/ _INPUT_REPEAT_RATE)
-			var prev_time := \
-				_hold_timer - delta \
-				- _INPUT_INITIAL_DELAY
+			var prev_time := (
+				_hold_timer - delta
+				- _INPUT_INITIAL_DELAY)
 			var prev_count := int(
-				max(0, prev_time) \
+				max(0, prev_time)
 				/ _INPUT_REPEAT_RATE)
 			if repeat_count > prev_count:
 				should_repeat = true
@@ -442,48 +447,46 @@ func _process(delta: float) -> void:
 		_hold_timer = 0.0
 
 	# Process directional input.
-	if up_just or \
-			(should_repeat and current_dir == "up"):
+	if (up_just
+			or (should_repeat
+			and current_dir == "up")):
 		_move_focus(-1)
-	elif down_just or \
-			(should_repeat \
-			and current_dir == "down"):
+	elif (down_just
+			or (should_repeat
+			and current_dir == "down")):
 		_move_focus(1)
-	elif left_just or \
-			(should_repeat \
-			and current_dir == "left"):
-		if _focused_index >= 0 \
-				and _focused_index < _rows.size():
+	elif (left_just
+			or (should_repeat
+			and current_dir == "left")):
+		if (_focused_index >= 0
+				and _focused_index < _rows.size()):
 			_rows[_focused_index].on_left()
-	elif right_just or \
-			(should_repeat \
-			and current_dir == "right"):
-		if _focused_index >= 0 \
-				and _focused_index < _rows.size():
+	elif (right_just
+			or (should_repeat
+			and current_dir == "right")):
+		if (_focused_index >= 0
+				and _focused_index < _rows.size()):
 			_rows[_focused_index].on_right()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"toggle_pause"):
 		close()
-		get_viewport() \
-			.set_input_as_handled()
+		get_viewport().set_input_as_handled()
 		return
 
 	# Mouse scroll wheel.
 	if event is InputEventMouseButton:
 		var mb: InputEventMouseButton = event
 		if mb.pressed:
-			if mb.button_index == \
-					MOUSE_BUTTON_WHEEL_UP:
+			if (mb.button_index
+					== MOUSE_BUTTON_WHEEL_UP):
 				_move_focus(-1, false)
-				get_viewport() \
-					.set_input_as_handled()
-			elif mb.button_index == \
-					MOUSE_BUTTON_WHEEL_DOWN:
+				get_viewport().set_input_as_handled()
+			elif (mb.button_index
+					== MOUSE_BUTTON_WHEEL_DOWN):
 				_move_focus(1, false)
-				get_viewport() \
-					.set_input_as_handled()
+				get_viewport().set_input_as_handled()
 
 
 func _save_level_preferences() -> void:

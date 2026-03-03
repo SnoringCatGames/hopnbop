@@ -26,13 +26,13 @@ class TestInitialization:
 		var buffer := RollbackBuffer.new(5, 0, default_state)
 
 		# Check that frame 0 has default state.
-		# (Frames -2 and -1 are also accessible but harder to verify)
+		# (Frames -2 and -1 are also accessible but harder to verify.)
 		var state: Array = buffer.get_at(0)
 		assert_not_null(state, "Frame 0 should exist")
 		assert_eq(state[0], 100)
 		assert_eq(state[1], 200)
 
-		# Verify buffer reports correct latest index
+		# Verify buffer reports correct latest index.
 		assert_eq(buffer.get_latest_index(), 0)
 
 
@@ -245,8 +245,8 @@ class TestSetAndGet:
 		var default_state := [0, 0, 0]
 		var buffer := RollbackBuffer.new(5, 20, default_state)
 
-		# Buffer initialized at frame 20, so _total_pushed = 21
-		# Oldest accessible = _total_pushed - capacity = 21 - 5 = 16
+		# Buffer initialized at frame 20, so _total_pushed = 21.
+		# Oldest accessible = _total_pushed - capacity = 21 - 5 = 16.
 		assert_true(buffer.has_at(16))
 		assert_true(buffer.has_at(20))
 		assert_false(buffer.has_at(15))
@@ -326,7 +326,7 @@ class TestAppend:
 		var buffer := RollbackBuffer.new(3, 0, default_state)
 
 		# Fill the buffer beyond capacity.
-		# Buffer starts at frame 0, then we append to frames 1, 2, 3, 4, 5
+		# Buffer starts at frame 0, then we append to frames 1, 2, 3, 4, 5.
 		for i in range(5):
 			var state := ArrayPool.acquire(3)
 			state[0] = i * 10
@@ -338,7 +338,7 @@ class TestAppend:
 		# With capacity 3, oldest should be frame 3.
 		assert_eq(buffer.get_oldest_index(), 3)
 
-		# Frame 3 was created by the 3rd append (i=2)
+		# Frame 3 was created by the 3rd append (i=2).
 		var oldest: Array = buffer.get_oldest()
 		assert_eq(oldest[0], 20) # i=2: 2 * 10 = 20
 		assert_eq(oldest[1], 40) # i=2: 2 * 20 = 40

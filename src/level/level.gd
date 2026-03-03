@@ -112,9 +112,9 @@ func _get_player_spawn_position() -> Vector2:
 			min_distance_squared = min(min_distance_squared, distance_squared)
 
 		# Track spawn points that are far enough.
-		if (min_distance_squared >=
-				_SPAWN_POSITION_MIN_SPAWN_DISTANCE *
-				_SPAWN_POSITION_MIN_SPAWN_DISTANCE):
+		if (min_distance_squared
+				>= _SPAWN_POSITION_MIN_SPAWN_DISTANCE
+				* _SPAWN_POSITION_MIN_SPAWN_DISTANCE):
 			far_enough_spawn_points.append(spawn_point)
 
 		# Track spawn point with maximum minimum distance.
@@ -165,8 +165,9 @@ func _find_collision_free_position(initial_position: Vector2) -> Vector2:
 
 	# No collision-free position found.
 	Netcode.warning(
-		"Could not find collision-free spawn position near %s" % \
-			initial_position
+		("Could not find collision-free"
+			+ " spawn position near %s"
+			% initial_position)
 	)
 	return initial_position
 

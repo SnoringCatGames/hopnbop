@@ -22,7 +22,7 @@ class TestableNetworkedState extends ReconcilableState:
 	var test_is_active := true
 	var test_name := "player"
 
-	# Allow tests to change authority
+	# Allow tests to change authority.
 	var _test_is_server_authoritative := true
 
 	@warning_ignore("unused_private_class_variable") var _synced_properties_and_rollback_diff_thresholds := {
@@ -83,13 +83,13 @@ class TestableNetworkedState extends ReconcilableState:
 		super._unpack_networked_state(p_state)
 
 
-	# Override _parse_property_names to work around @tool + inner class issues
+	# Override _parse_property_names to work around @tool + inner class issues.
 	func _parse_property_names() -> void:
 		# Directly access the var instead of using get() which may fail
-		# in @tool mode with inner classes
+		# in @tool mode with inner classes.
 		var keys = _synced_properties_and_rollback_diff_thresholds.keys()
 
-		# Clear and manually populate to ensure typed array works correctly
+		# Clear and manually populate to ensure typed array works correctly.
 		_property_names_for_packing.clear()
 		for key in keys:
 			_property_names_for_packing.append(key)
@@ -100,7 +100,7 @@ class TestableNetworkedState extends ReconcilableState:
 			_property_name_to_pack_index[property_name] = i
 
 
-	# Expose protected methods for testing
+	# Expose protected methods for testing.
 	func check_do_values_mismatch_public(
 			buffer_value: Variant,
 			networked_value: Variant,
@@ -145,7 +145,7 @@ class TestMismatchDetection:
 	func test_check_do_values_mismatch_vector2_above_threshold():
 		# Distance = 5 pixels, threshold = 1.0
 		# distance_squared = 25, threshold_squared = 1
-		# 25 >= 1 -> mismatch
+		# 25 >= 1 -> mismatch.
 		var buffer_value := Vector2(100.0, 50.0)
 		var network_value := Vector2(105.0, 50.0)
 		var threshold := 1.0
@@ -162,7 +162,7 @@ class TestMismatchDetection:
 	func test_check_do_values_mismatch_vector2_below_threshold():
 		# Distance = 0.5 pixels, threshold = 1.0
 		# distance_squared = 0.25, threshold_squared = 1
-		# 0.25 < 1 -> no mismatch
+		# 0.25 < 1 -> no mismatch.
 		var buffer_value := Vector2(100.0, 50.0)
 		var network_value := Vector2(100.5, 50.0)
 		var threshold := 1.0
@@ -179,7 +179,7 @@ class TestMismatchDetection:
 	func test_check_do_values_mismatch_vector2_exact_threshold():
 		# Distance = 1.0 pixel, threshold = 1.0
 		# distance_squared = 1, threshold_squared = 1
-		# 1 >= 1 -> mismatch (boundary case)
+		# 1 >= 1 -> mismatch (boundary case).
 		var buffer_value := Vector2(100.0, 50.0)
 		var network_value := Vector2(101.0, 50.0)
 		var threshold := 1.0
@@ -194,7 +194,7 @@ class TestMismatchDetection:
 
 
 	func test_check_do_values_mismatch_vector2_zero_threshold_exact_match():
-		# Threshold 0 requires exact match
+		# Threshold 0 requires exact match.
 		var buffer_value := Vector2(100.0, 50.0)
 		var network_value := Vector2(100.0, 50.0)
 		var threshold := 0.0
@@ -209,7 +209,7 @@ class TestMismatchDetection:
 
 
 	func test_check_do_values_mismatch_vector2_zero_threshold_different():
-		# Threshold 0 requires exact match, any difference is a mismatch
+		# Threshold 0 requires exact match. Any difference is a mismatch.
 		var buffer_value := Vector2(100.0, 50.0)
 		var network_value := Vector2(100.01, 50.0)
 		var threshold := 0.0
@@ -224,7 +224,7 @@ class TestMismatchDetection:
 
 
 	func test_check_do_values_mismatch_float_above_threshold():
-		# abs(10.5 - 10.0) = 0.5 >= 0.1 -> mismatch
+		# abs(10.5 - 10.0) = 0.5 >= 0.1 -> mismatch.
 		var buffer_value := 10.0
 		var network_value := 10.5
 		var threshold := 0.1
@@ -239,7 +239,7 @@ class TestMismatchDetection:
 
 
 	func test_check_do_values_mismatch_float_below_threshold():
-		# abs(10.05 - 10.0) = 0.05 < 0.1 -> no mismatch
+		# abs(10.05 - 10.0) = 0.05 < 0.1 -> no mismatch.
 		var buffer_value := 10.0
 		var network_value := 10.05
 		var threshold := 0.1
@@ -254,7 +254,7 @@ class TestMismatchDetection:
 
 
 	func test_check_do_values_mismatch_float_zero_threshold_exact_match():
-		# Threshold 0 requires exact match
+		# Threshold 0 requires exact match.
 		var buffer_value := 10.0
 		var network_value := 10.0
 		var threshold := 0.0
@@ -269,7 +269,7 @@ class TestMismatchDetection:
 
 
 	func test_check_do_values_mismatch_int_above_threshold():
-		# abs(105 - 100) = 5 >= 5 -> mismatch
+		# abs(105 - 100) = 5 >= 5 -> mismatch.
 		var buffer_value := 100
 		var network_value := 105
 		var threshold := 5
@@ -284,7 +284,7 @@ class TestMismatchDetection:
 
 
 	func test_check_do_values_mismatch_int_below_threshold():
-		# abs(103 - 100) = 3 < 5 -> no mismatch
+		# abs(103 - 100) = 3 < 5 -> no mismatch.
 		var buffer_value := 100
 		var network_value := 103
 		var threshold := 5
@@ -299,7 +299,7 @@ class TestMismatchDetection:
 
 
 	func test_check_do_values_mismatch_bool_different():
-		# Booleans must match exactly
+		# Booleans must match exactly.
 		var buffer_value := true
 		var network_value := false
 		var threshold := 0 # Threshold not used for booleans
@@ -314,7 +314,7 @@ class TestMismatchDetection:
 
 
 	func test_check_do_values_mismatch_bool_same():
-		# Verify no false positive when booleans match
+		# Verify no false positive when booleans match.
 		var buffer_value := true
 		var network_value := true
 		var threshold := 0
@@ -329,7 +329,7 @@ class TestMismatchDetection:
 
 
 	func test_check_do_values_mismatch_string_different():
-		# Strings must match exactly
+		# Strings must match exactly.
 		var buffer_value := "player1"
 		var network_value := "player2"
 		var threshold := 0 # Threshold not used for strings
@@ -344,7 +344,7 @@ class TestMismatchDetection:
 
 
 	func test_check_do_values_mismatch_string_same():
-		# Verify no false positive when strings match
+		# Verify no false positive when strings match.
 		var buffer_value := "player1"
 		var network_value := "player1"
 		var threshold := 0
@@ -369,24 +369,24 @@ class TestStatePacking:
 	func before_each():
 		ArrayPool.clear_all_pools()
 
-		# Create root node for entity
+		# Create root node for entity.
 		root_node = Node.new()
 		root_node.name = "Root"
 		add_child_autofree(root_node)
 
-		# Create entity as child of root
+		# Create entity as child of root.
 		entity = TestableNetworkedState.new()
 		entity.name = "TestEntity"
 		entity.root_path = NodePath(".")
 		root_node.add_child(entity)
 
-		# Initialize entity
+		# Initialize entity.
 		entity._ready()
 		# Explicitly ensure rollback buffer and property names are initialized
-		# (in case _ready() was already called during @tool execution)
+		# (in case _ready() was already called during @tool execution).
 		if entity._rollback_buffer == null:
 			entity._set_up_rollback_buffer()
-		# Always re-parse property names to ensure they're up to date
+		# Always re-parse property names to ensure they're up to date.
 		entity._parse_property_names()
 
 
@@ -395,13 +395,13 @@ class TestStatePacking:
 
 
 	func test_pack_networked_state_creates_array_from_pool():
-		# Set entity properties
+		# Set entity properties.
 		entity.test_position = Vector2(100.0, 50.0)
 		entity.test_velocity = Vector2(10.0, 5.0)
 		entity.test_health = 95
 		entity.frame_index = 42
 
-		# Pack state
+		# Pack state.
 		entity.pack_networked_state_public()
 
 		# Verify authoritative_packed_state is not empty and has correct size.
@@ -418,17 +418,19 @@ class TestStatePacking:
 
 
 	func test_pack_networked_state_includes_frame_index():
-		# Set entity properties and frame index
+		# Set entity properties and frame index.
 		entity.frame_index = 100
 
-		# Pack state
+		# Pack state.
 		entity.pack_networked_state_public()
 
 		# Last element should be frame index directly.
-		var packed_frame_index: int = \
+		var packed_frame_index: int = (
 			entity.authoritative_packed_state[
-				entity.authoritative_packed_state.size() - 1
+				entity.authoritative_packed_state
+					.size() - 1
 			]
+		)
 
 		assert_eq(
 			packed_frame_index,
@@ -438,7 +440,7 @@ class TestStatePacking:
 
 
 	func test_pack_networked_state_releases_old_array():
-		# Pack state twice to verify old array is released
+		# Pack state twice to verify old array is released.
 		entity.test_position = Vector2(100.0, 50.0)
 		entity.frame_index = 10
 
@@ -452,18 +454,18 @@ class TestStatePacking:
 		entity.pack_networked_state_public()
 		var second_packed := entity.authoritative_packed_state
 
-		# Arrays should be different instances
+		# Arrays should be different instances.
 		assert_ne(
 			first_packed,
 			second_packed,
 			"Second pack should create new array",
 		)
 		# Old array should be released to pool (can't directly verify,
-		# but no memory leak should occur)
+		# but no memory leak should occur.)
 
 
 	func test_unpack_networked_state_restores_properties():
-		# First, set properties and pack to get the correct property order
+		# First, set properties and pack to get the correct property order.
 		entity.test_position = Vector2(123.0, 456.0)
 		entity.test_velocity = Vector2(10.0, 20.0)
 		entity.test_health = 85
@@ -476,7 +478,7 @@ class TestStatePacking:
 		entity.pack_networked_state_public()
 		var packed_state_to_restore := entity.authoritative_packed_state
 
-		# Verify pack worked
+		# Verify pack worked.
 		assert_not_null(
 			packed_state_to_restore,
 			"Packed state should not be null",
@@ -487,7 +489,7 @@ class TestStatePacking:
 			"Packed state should have 8 elements",
 		)
 
-		# Now reset properties to defaults
+		# Now reset properties to defaults.
 		entity.test_position = Vector2.ZERO
 		entity.test_velocity = Vector2.ZERO
 		entity.test_health = 100
@@ -512,7 +514,7 @@ class TestStatePacking:
 
 		entity.unpack_networked_state_public()
 
-		# Verify properties were restored
+		# Verify properties were restored.
 		assert_eq(
 			entity.test_position,
 			Vector2(123.0, 456.0),
@@ -544,7 +546,7 @@ class TestStatePacking:
 		# Should not crash.
 		entity.unpack_networked_state_public()
 
-		# Properties should remain at default values
+		# Properties should remain at default values.
 		assert_eq(
 			entity.test_position,
 			Vector2.ZERO,
@@ -553,10 +555,10 @@ class TestStatePacking:
 
 
 	func test_pack_buffer_state_from_network_state_converts_authority():
-		# Use a frame near the buffer's current state
+		# Use a frame near the buffer's current state.
 		var base_frame := entity._rollback_buffer.get_latest_index() + 1
 
-		# Create packed network state (6 properties + frame_authority + frame_index)
+		# Create packed network state (6 properties + frame_authority + frame_index).
 		var network_state := ArrayPool.acquire(8)
 		network_state[0] = Vector2(100.0, 50.0)
 		network_state[1] = Vector2(5.0, 2.0)
@@ -567,13 +569,13 @@ class TestStatePacking:
 		network_state[6] = ReconcilableState.FrameAuthority.AUTHORITATIVE
 		network_state[7] = base_frame
 
-		# Pack into buffer
+		# Pack into buffer.
 		entity.pack_buffer_state_from_network_state_public(network_state)
 
-		# Verify buffer state was created with AUTHORITATIVE marker
+		# Verify buffer state was created with AUTHORITATIVE marker.
 		var buffer_state: Array = entity._rollback_buffer.get_at(base_frame)
 
-		# Last element should be FrameAuthority.AUTHORITATIVE (1)
+		# Last element should be FrameAuthority.AUTHORITATIVE (1).
 		assert_eq(
 			buffer_state[buffer_state.size() - 1],
 			ReconcilableState.FrameAuthority.AUTHORITATIVE,
@@ -582,7 +584,7 @@ class TestStatePacking:
 
 
 	func test_pack_and_unpack_round_trip():
-		# Set entity properties
+		# Set entity properties.
 		entity.test_position = Vector2(200.0, 300.0)
 		entity.test_velocity = Vector2(15.0, 25.0)
 		entity.test_health = 75
@@ -591,11 +593,11 @@ class TestStatePacking:
 		entity.test_name = "round_trip_test"
 		entity.frame_index = 55
 
-		# Pack and unpack
+		# Pack and unpack.
 		entity.pack_networked_state_public()
 		var packed_copy := entity.authoritative_packed_state.duplicate()
 
-		# Verify pack worked
+		# Verify pack worked.
 		assert_not_null(packed_copy, "Packed copy should not be null")
 		assert_eq(
 			packed_copy.size(),
@@ -603,7 +605,7 @@ class TestStatePacking:
 			"Packed copy should have 8 elements",
 		)
 
-		# Clear properties
+		# Clear properties.
 		entity.test_position = Vector2.ZERO
 		entity.test_velocity = Vector2.ZERO
 		entity.test_health = 0
@@ -625,7 +627,7 @@ class TestStatePacking:
 
 		entity.unpack_networked_state_public()
 
-		# Verify all properties restored correctly
+		# Verify all properties restored correctly.
 		assert_eq(
 			entity.test_position,
 			Vector2(200.0, 300.0),
@@ -662,13 +664,13 @@ class TestBufferStateRestoration:
 		entity.root_path = NodePath(".")
 		root_node.add_child(entity)
 
-		# Initialize entity
+		# Initialize entity.
 		entity._ready()
 		# Explicitly ensure rollback buffer and property names are initialized
-		# (in case _ready() was already called during @tool execution)
+		# (in case _ready() was already called during @tool execution).
 		if entity._rollback_buffer == null:
 			entity._set_up_rollback_buffer()
-		# Always re-parse property names to ensure they're up to date
+		# Always re-parse property names to ensure they're up to date.
 		entity._parse_property_names()
 
 
@@ -677,10 +679,10 @@ class TestBufferStateRestoration:
 
 
 	func test_record_buffer_frame_stores_state():
-		# Use the buffer's current latest index + 1
+		# Use the buffer's current latest index + 1.
 		var test_frame := entity._rollback_buffer.get_latest_index() + 1
 
-		# Create a state to record
+		# Create a state to record.
 		var frame_state := ArrayPool.acquire(7)
 		frame_state[0] = Vector2(100.0, 200.0)
 		frame_state[1] = Vector2(10.0, 20.0)
@@ -690,10 +692,10 @@ class TestBufferStateRestoration:
 		frame_state[5] = "test"
 		frame_state[6] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
 
-		# Record at test frame
+		# Record at test frame.
 		entity._record_buffer_frame(test_frame, frame_state)
 
-		# Verify it was stored
+		# Verify it was stored.
 		assert_true(
 			entity._rollback_buffer.has_at(test_frame),
 			"Should have state at frame %d" % test_frame,
@@ -701,10 +703,10 @@ class TestBufferStateRestoration:
 
 
 	func test_unpack_buffer_state_restores_properties():
-		# Use the buffer's current latest index + 1
+		# Use the buffer's current latest index + 1.
 		var test_frame := entity._rollback_buffer.get_latest_index() + 1
 
-		# Store state in buffer
+		# Store state in buffer.
 		var frame_state := ArrayPool.acquire(7)
 		frame_state[0] = Vector2(150.0, 250.0)
 		frame_state[1] = Vector2(15.0, 25.0)
@@ -716,10 +718,10 @@ class TestBufferStateRestoration:
 
 		entity._rollback_buffer.set_at(test_frame, frame_state)
 
-		# Unpack from buffer
+		# Unpack from buffer.
 		entity._unpack_buffer_state(test_frame)
 
-		# Verify properties were restored
+		# Verify properties were restored.
 		assert_eq(
 			entity.test_position,
 			Vector2(150.0, 250.0),
@@ -733,12 +735,12 @@ class TestBufferStateRestoration:
 
 
 	func test_backfill_creates_intermediate_frames():
-		# Use frames relative to buffer's current state
+		# Use frames relative to buffer's current state.
 		var base_frame := entity._rollback_buffer.get_latest_index()
 		var frame_a := base_frame + 1
 		var frame_b := base_frame + 6
 
-		# Record state at frame_a
+		# Record state at frame_a.
 		var state_a := ArrayPool.acquire(7)
 		state_a[0] = Vector2(10.0, 10.0)
 		state_a[1] = Vector2.ZERO
@@ -750,7 +752,7 @@ class TestBufferStateRestoration:
 
 		entity._rollback_buffer.set_at(frame_a, state_a)
 
-		# Record state at frame_b with backfill
+		# Record state at frame_b with backfill.
 		var state_b := ArrayPool.acquire(7)
 		state_b[0] = Vector2(15.0, 15.0)
 		state_b[1] = Vector2.ZERO
@@ -762,7 +764,7 @@ class TestBufferStateRestoration:
 
 		entity._record_buffer_frame(frame_b, state_b)
 
-		# Intermediate frames should now exist (backfilled from frame_a)
+		# Intermediate frames should now exist (backfilled from frame_a).
 		for i in range(frame_a + 1, frame_b):
 			assert_true(
 				entity._rollback_buffer.has_at(i),
@@ -771,12 +773,12 @@ class TestBufferStateRestoration:
 
 
 	func test_frame_authority_defaults_to_unknown():
-		# When _pre_network_process is called, frame_authority resets
+		# When _pre_network_process is called, frame_authority resets.
 		entity.frame_authority = (
 			ReconcilableState.FrameAuthority.AUTHORITATIVE
 		)
 
-		# Simulate _pre_network_process
+		# Simulate _pre_network_process.
 		entity.frame_index = Netcode.server_frame_index
 		entity.frame_authority = (
 			ReconcilableState.FrameAuthority.UNKNOWN
@@ -790,11 +792,11 @@ class TestBufferStateRestoration:
 
 
 	func test_frame_index_updates_during_pre_network_process():
-		# Simulate frame processing
+		# Simulate frame processing.
 		var expected_frame := 42
 		Netcode.server_frame_index = expected_frame
 
-		# Simulate _pre_network_process
+		# Simulate _pre_network_process.
 		entity.frame_index = expected_frame
 
 		assert_eq(
@@ -805,7 +807,7 @@ class TestBufferStateRestoration:
 
 
 	func test_has_authoritative_state_for_current_frame():
-		# Use the buffer's current latest index + 1
+		# Use the buffer's current latest index + 1.
 		var test_frame := entity._rollback_buffer.get_latest_index() + 1
 
 		var state := ArrayPool.acquire(7)
@@ -819,7 +821,7 @@ class TestBufferStateRestoration:
 
 		entity._rollback_buffer.set_at(test_frame, state)
 
-		# Verify the state was stored with AUTHORITATIVE marker
+		# Verify the state was stored with AUTHORITATIVE marker.
 		assert_true(
 			entity._rollback_buffer.has_at(test_frame),
 			"Buffer should have test frame",
@@ -838,7 +840,7 @@ class TestBufferStateRestoration:
 
 
 	func test_does_not_have_authoritative_state_when_predicted():
-		# Store predicted state for current frame
+		# Store predicted state for current frame.
 		Netcode.server_frame_index = 50
 		var state := ArrayPool.acquire(7)
 		state[0] = Vector2.ZERO
@@ -851,7 +853,7 @@ class TestBufferStateRestoration:
 
 		entity._rollback_buffer.set_at(50, state)
 
-		# Check for authoritative state
+		# Check for authoritative state.
 		var has_auth := entity._has_authoritative_state_for_current_frame()
 
 		assert_false(
@@ -880,13 +882,13 @@ class TestPropertyConfiguration:
 		entity.root_path = NodePath(".")
 		root_node.add_child(entity)
 
-		# Initialize entity
+		# Initialize entity.
 		entity._ready()
 		# Explicitly ensure rollback buffer and property names are initialized
-		# (in case _ready() was already called during @tool execution)
+		# (in case _ready() was already called during @tool execution).
 		if entity._rollback_buffer == null:
 			entity._set_up_rollback_buffer()
-		# Always re-parse property names to ensure they're up to date
+		# Always re-parse property names to ensure they're up to date.
 		entity._parse_property_names()
 
 
@@ -895,17 +897,17 @@ class TestPropertyConfiguration:
 
 
 	func test_parse_property_names_from_threshold_dictionary():
-		# Parse property names
+		# Parse property names.
 		entity._parse_property_names()
 
-		# Should have 6 properties
+		# Should have 6 properties.
 		assert_eq(
 			entity._property_names_for_packing.size(),
 			6,
 			"Should have 6 properties",
 		)
 
-		# Should contain expected property names
+		# Should contain expected property names.
 		assert_true(
 			entity._property_names_for_packing.has("test_position"),
 			"Should have test_position",
@@ -917,10 +919,10 @@ class TestPropertyConfiguration:
 
 
 	func test_property_name_to_pack_index_mapping():
-		# Parse property names to build index mapping
+		# Parse property names to build index mapping.
 		entity._parse_property_names()
 
-		# Verify mapping contains correct indices
+		# Verify mapping contains correct indices.
 		assert_true(
 			entity._property_name_to_pack_index.has("test_position"),
 			"Should have index for test_position",
@@ -942,15 +944,15 @@ class TestPropertyConfiguration:
 
 
 	func test_get_configuration_warnings_empty_root_path():
-		# Create entity with empty root_path
+		# Create entity with empty root_path.
 		var bad_entity := TestableNetworkedState.new()
 		bad_entity.root_path = NodePath()
 		root_node.add_child(bad_entity)
 
-		# Get warnings
+		# Get warnings.
 		var warnings := bad_entity._get_configuration_warnings()
 
-		# Should have warning about empty root_path
+		# Should have warning about empty root_path.
 		assert_gt(
 			warnings.size(),
 			0,
@@ -972,17 +974,17 @@ class TestPropertyConfiguration:
 
 
 	func test_property_packing_order_is_consistent():
-		# Parse property names twice
+		# Parse property names twice.
 		entity._parse_property_names()
 		var first_names := entity._property_names_for_packing.duplicate()
 
-		# Clear and parse again
+		# Clear and parse again.
 		entity._property_names_for_packing.clear()
 		entity._property_name_to_pack_index.clear()
 		entity._parse_property_names()
 		var second_names := entity._property_names_for_packing
 
-		# Order should be consistent
+		# Order should be consistent.
 		assert_eq(
 			first_names,
 			second_names,
@@ -991,7 +993,7 @@ class TestPropertyConfiguration:
 
 
 	func test_get_string_for_packed_state():
-		# Create a packed state
+		# Create a packed state.
 		var packed := [
 			Vector2(100.0, 50.0),
 			Vector2(10.0, 5.0),
@@ -1002,10 +1004,10 @@ class TestPropertyConfiguration:
 			100000,
 		]
 
-		# Get string representation
+		# Get string representation.
 		var str_repr := entity.get_string_for_packed_state(packed)
 
-		# Should be a non-empty string with array format
+		# Should be a non-empty string with array format.
 		assert_ne(str_repr, "", "Should return non-empty string")
 		assert_true(
 			str_repr.begins_with("["),
@@ -1015,7 +1017,7 @@ class TestPropertyConfiguration:
 
 
 	func test_record_initial_state_populates_buffer_frames():
-		# Set properties to specific values
+		# Set properties to specific values.
 		entity.test_position = Vector2(50.0, 100.0)
 		entity.test_velocity = Vector2(5.0, 10.0)
 		entity.test_health = 80
@@ -1023,11 +1025,11 @@ class TestPropertyConfiguration:
 		entity.test_is_active = true
 		entity.test_name = "initialized"
 
-		# Record initial state
+		# Record initial state.
 		var current_frame := Netcode.server_frame_index
 		entity.record_initial_state()
 
-		# Frames N-2, N-1, and N should all exist
+		# Frames N-2, N-1, and N should all exist.
 		assert_true(
 			entity._rollback_buffer.has_at(current_frame - 2),
 			"Frame N-2 should exist",
@@ -1043,20 +1045,20 @@ class TestPropertyConfiguration:
 
 
 	func test_record_initial_state_preserves_property_values():
-		# Set specific values
+		# Set specific values.
 		entity.test_position = Vector2(123.0, 456.0)
 		entity.test_velocity = Vector2(12.0, 34.0)
 		entity.test_health = 95
 
-		# Record initial state
+		# Record initial state.
 		var current_frame := Netcode.server_frame_index
 		entity.record_initial_state()
 
-		# Retrieve state from frame N
+		# Retrieve state from frame N.
 		var frame_state: Array = entity._rollback_buffer.get_at(current_frame)
 
 		# Verify property values are preserved (order depends on property
-		# packing)
+		# packing).
 		var position_index: int = (
 			entity._property_name_to_pack_index["test_position"]
 		)
@@ -1085,7 +1087,7 @@ class TestPropertyConfiguration:
 
 
 	func test_record_initial_state_marks_frames_as_predicted():
-		# Record initial state
+		# Record initial state.
 		var current_frame := Netcode.server_frame_index
 		entity.record_initial_state()
 

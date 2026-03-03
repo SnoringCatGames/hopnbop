@@ -52,17 +52,17 @@ func record_poop(player_id: int) -> void:
 func _send_stats_to_server() -> void:
 	if not multiplayer.has_multiplayer_peer():
 		return
-	if not multiplayer.multiplayer_peer \
-			.get_connection_status() \
-			== MultiplayerPeer \
-				.CONNECTION_CONNECTED:
+	if not (multiplayer.multiplayer_peer
+			.get_connection_status()
+			== MultiplayerPeer
+				.CONNECTION_CONNECTED):
 		return
 	if not is_instance_valid(critter_tracker):
 		return
 
 	var packed := []
-	for player_id in \
-			G.client_session.local_player_ids:
+	for player_id in (
+			G.client_session.local_player_ids):
 		var cricket_delta: int = (
 			critter_tracker.cricket_counts
 				.get(player_id, 0)
@@ -127,8 +127,9 @@ func _send_stats_to_server() -> void:
 	var synchronizer: MatchStateSynchronizer = (
 		G.game_panel.match_state_synchronizer)
 	if is_instance_valid(synchronizer):
-		synchronizer \
-			._rpc_server_update_critter_stats \
+		(synchronizer
+			._rpc_server_update_critter_stats
 			.rpc_id(
 				NetworkConnector.SERVER_ID,
-				packed)
+				packed,
+			))

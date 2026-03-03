@@ -127,7 +127,9 @@ func transition_full(
 	midpoint_callback: Callable = Callable(),
 ) -> void:
 	# Use the new wipe transition instead.
-	await transition_wipe(duration / 2.0, pattern, tile_style, midpoint_callback)
+	await transition_wipe(
+		duration / 2.0, pattern,
+		tile_style, midpoint_callback)
 
 
 ## Sets the transition color.
@@ -225,7 +227,10 @@ func _animate_progress(
 	_is_transitioning = true
 	transition_started.emit()
 
-	print("ScreenTransition: Animating progress %s -> %s over %ss" % [from, to, duration])
+	print(
+		"ScreenTransition: Animating progress"
+		+ " %s -> %s over %ss"
+		% [from, to, duration])
 
 	_set_progress(from)
 

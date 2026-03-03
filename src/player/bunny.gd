@@ -126,9 +126,9 @@ func server_trigger_spring_bounce() -> void:
 		spring_velocity
 	)
 	# Record spring launch stat.
-	G.match_state \
-		.server_get_or_create_stats(player_id) \
-		.record_spring_launch()
+	(G.match_state
+		.server_get_or_create_stats(player_id)
+		.record_spring_launch())
 
 
 ## Called by the Snail scene when the player
@@ -278,7 +278,8 @@ func _process_movement_and_actions() -> void:
 
 	# Reset collision flag each frame.
 	if Netcode.is_server:
-		var current_frame: int = Netcode.frame_driver.server_frame_index
+		var current_frame: int = (
+		Netcode.frame_driver.server_frame_index)
 		if _last_collision_frame != current_frame:
 			_processed_collision_this_frame = false
 			_last_collision_frame = current_frame
@@ -291,15 +292,17 @@ func _process_movement_and_actions() -> void:
 		and not state_from_server.is_dead
 		and not G.match_state.is_match_ended
 	):
-		var stats := G.match_state \
-			.server_get_or_create_stats(player_id)
-		var game_state := \
-			G.match_state as GameMatchState
+		var stats := (
+			G.match_state
+				.server_get_or_create_stats(
+					player_id))
+		var gms := (
+			G.match_state as GameMatchState)
 		var crown_holder_id := -1
-		if is_instance_valid(game_state):
-			crown_holder_id = \
-				game_state.get_crown_player_id(
-					G.settings.crown_kill_lead)
+		if is_instance_valid(gms):
+			crown_holder_id = (
+				gms.get_crown_player_id(
+					G.settings.crown_kill_lead))
 		stats.accumulate_frame(
 			self ,
 			Netcode.frame_driver
@@ -322,8 +325,8 @@ func _process_movement_and_actions() -> void:
 func _process_animation() -> void:
 	# Force Rest during countdown to prevent
 	# JumpFall from rollback re-simulation.
-	if Netcode.frame_driver \
-			.is_match_start_countdown_active:
+	if (Netcode.frame_driver
+			.is_match_start_countdown_active):
 		animator.play("Rest")
 		return
 	super._process_animation()
@@ -375,8 +378,8 @@ func _update_walk_sounds() -> void:
 		_walk_sound_frame_counter = 0
 		return
 
-	if Netcode.frame_driver \
-			.is_match_start_countdown_active:
+	if (Netcode.frame_driver
+			.is_match_start_countdown_active):
 		_walk_sound_frame_counter = 0
 		return
 
@@ -411,8 +414,8 @@ func _update_skids() -> void:
 		_was_floor_skid_condition = false
 		return
 
-	if Netcode.frame_driver \
-			.is_match_start_countdown_active:
+	if (Netcode.frame_driver
+			.is_match_start_countdown_active):
 		_was_floor_skid_condition = false
 		return
 
@@ -426,10 +429,11 @@ func _update_skids() -> void:
 	# Clear initial-spawn suppression after a grace
 	# window past level start or countdown end.
 	if _suppress_landing_skid:
-		var grace_origin := \
-			G.level.start_frame_index
-		var countdown_end := Netcode.frame_driver \
-			.match_start_countdown_end_frame_index
+		var grace_origin := (
+			G.level.start_frame_index)
+		var countdown_end := (
+			Netcode.frame_driver
+				.match_start_countdown_end_frame_index)
 		if countdown_end > grace_origin:
 			grace_origin = countdown_end
 		if (
@@ -515,18 +519,18 @@ func _process_client_effects() -> void:
 	# Handle client-side interaction effects (sounds, particles).
 	# Process the interaction if it's new (not yet processed).
 	var interaction_start_time := (
-		state_from_server.last_interaction_frame_index
-	)
+		state_from_server
+			.last_interaction_frame_index)
 	var should_process := (
-		interaction_start_time !=
-			_last_processed_interaction_start_time
+		interaction_start_time
+			!= _last_processed_interaction_start_time
 		and interaction_start_time >= 0
 	)
 
 	if should_process:
 		_handle_interaction_effects()
-		_last_processed_interaction_start_time = \
-			interaction_start_time
+		_last_processed_interaction_start_time = (
+		interaction_start_time)
 
 
 func _handle_interaction_effects() -> void:
@@ -540,8 +544,8 @@ func _handle_interaction_effects() -> void:
 			# Do nothing. The other player's DIE interaction will handle the
 			# effects.
 			pass
-		CharacterStateFromServer \
-				.ServerInteractionType.DIE:
+		(CharacterStateFromServer
+				.ServerInteractionType.DIE):
 			if Netcode.log.is_verbose:
 				Netcode.verbose(
 					("Player %d DIE interaction"
@@ -554,8 +558,8 @@ func _handle_interaction_effects() -> void:
 			play_sound("die")
 			_spawn_squish_sprite()
 			_has_ever_died = true
-			var bunny_anim := \
-				animator as BunnyAnimator
+			var bunny_anim := (
+				animator as BunnyAnimator)
 			if is_instance_valid(bunny_anim):
 				bunny_anim.reset_eat_cycle()
 		CharacterStateFromServer.ServerInteractionType.SPAWN:
@@ -568,15 +572,15 @@ func _handle_interaction_effects() -> void:
 				)
 			if _has_ever_died:
 				play_sound("respawn")
-			var bunny_anim := \
-				animator as BunnyAnimator
+			var bunny_anim := (
+				animator as BunnyAnimator)
 			if is_instance_valid(bunny_anim):
 				bunny_anim.reset_eat_cycle()
-		CharacterStateFromServer \
-				.ServerInteractionType.SPRING:
+		(CharacterStateFromServer
+				.ServerInteractionType.SPRING):
 			play_sound("spring")
-		CharacterStateFromServer \
-				.ServerInteractionType.SNAIL_CRUSH:
+		(CharacterStateFromServer
+				.ServerInteractionType.SNAIL_CRUSH):
 			pass
 		_:
 			Netcode.fatal()
@@ -585,11 +589,14 @@ func _handle_interaction_effects() -> void:
 func _spawn_gore_particles() -> void:
 	if not Netcode.is_client:
 		return
-	if (not is_instance_valid(G.level) or
-			not is_instance_valid(G.level.gore_manager)):
+	if (
+		not is_instance_valid(G.level)
+		or not is_instance_valid(
+			G.level.gore_manager)
+	):
 		return
-	var death_pos := \
-		state_from_server.last_interaction_position
+	var death_pos := (
+		state_from_server.last_interaction_position)
 	G.level.gore_manager.spawn_particles(death_pos)
 
 
@@ -619,8 +626,9 @@ func _on_eat_cycle_ended() -> void:
 	else:
 		backward_sign = 1.0
 
-	var spawn_pos := global_position \
-		+ Vector2(backward_sign * 2.0, -2.0)
+	var spawn_pos := (
+		global_position
+		+ Vector2(backward_sign * 2.0, -2.0))
 	G.level.gore_manager.spawn_poop_particles(
 		spawn_pos, backward_sign)
 
@@ -644,20 +652,20 @@ func _spawn_squish_sprite() -> void:
 	if not is_instance_valid(G.level):
 		return
 
-	var anim_sprite := \
-		animator.animated_sprite \
-		as AnimatedSprite2D
-	var squish_tex := \
-		anim_sprite.sprite_frames \
-		.get_frame_texture("Squish", 0)
+	var anim_sprite := (
+		animator.animated_sprite
+		as AnimatedSprite2D)
+	var squish_tex := (
+		anim_sprite.sprite_frames
+			.get_frame_texture("Squish", 0))
 	if squish_tex == null:
 		_spawn_gore_particles()
 		G.camera_shaker.shake()
 		return
 
-	var death_pos := \
-		state_from_server \
-		.last_interaction_position
+	var death_pos := (
+		state_from_server
+			.last_interaction_position)
 
 	var sprite := Sprite2D.new()
 	sprite.texture = squish_tex
@@ -683,8 +691,8 @@ func _spawn_squish_sprite() -> void:
 			"outline_width", 1.0)
 		mat.set_shader_parameter(
 			"outline_enabled",
-			G.is_networked_level_active and
-			G.settings.show_player_outlines)
+			G.is_networked_level_active
+			and G.settings.show_player_outlines)
 		sprite.material = mat
 
 	G.level.add_child(sprite)
@@ -810,10 +818,10 @@ func _update_crown_visibility() -> void:
 	var bunny_anim := animator as BunnyAnimator
 	if not is_instance_valid(bunny_anim):
 		return
-	var game_state := G.match_state as GameMatchState
-	if not is_instance_valid(game_state):
+	var gms := G.match_state as GameMatchState
+	if not is_instance_valid(gms):
 		return
-	var crown_id := game_state.get_crown_player_id(
+	var crown_id := gms.get_crown_player_id(
 		G.settings.crown_kill_lead)
 	var should_show := (crown_id == player_id)
 
@@ -836,23 +844,27 @@ func _update_appearance() -> void:
 		return
 
 	# Look up body type config.
-	var body_type_index: int = \
-		match_state.body_type_index
+	var body_type_index: int = (
+		match_state.body_type_index)
 	var body_type_config: BodyTypeConfig = null
-	if (body_type_index >= 0 and
-			body_type_index < \
-				G.settings.body_types.size()):
-		body_type_config = \
-			G.settings.body_types[body_type_index]
+	if (
+		body_type_index >= 0
+		and body_type_index
+			< G.settings.body_types.size()
+	):
+		body_type_config = (
+			G.settings.body_types[body_type_index])
 
 	# Look up costume config.
 	var costume_index: int = match_state.costume_index
 	var costume_config: CostumeConfig = null
-	if (costume_index >= 0 and
-			costume_index < \
-				G.settings.costumes.size()):
-		costume_config = \
-			G.settings.costumes[costume_index]
+	if (
+		costume_index >= 0
+		and costume_index
+			< G.settings.costumes.size()
+	):
+		costume_config = (
+			G.settings.costumes[costume_index])
 
 	# Apply body type and costume to animator.
 	bunny_anim.apply_appearance(
@@ -918,8 +930,8 @@ func _update_outline_color() -> void:
 	# Apply outline to the CanvasGroup so the shader
 	# sees the combined silhouette of all layers.
 	group.material = group.material.duplicate()
-	var shader_material := \
-		group.material as ShaderMaterial
+	var shader_material := (
+		group.material as ShaderMaterial)
 	if not is_instance_valid(shader_material):
 		return
 
@@ -942,8 +954,8 @@ func _update_outline_color() -> void:
 
 func update_outline() -> void:
 	var outline_enabled := (
-		G.is_networked_level_active and
-		G.settings.show_player_outlines
+		G.is_networked_level_active
+		and G.settings.show_player_outlines
 	)
 
 	var bunny_anim := animator as BunnyAnimator
@@ -952,11 +964,11 @@ func update_outline() -> void:
 	var group := bunny_anim.outline_group
 	if not is_instance_valid(group):
 		return
-	var shader_material := \
-		group.material as ShaderMaterial
-	if not is_instance_valid(shader_material):
+	var sm := (
+		group.material as ShaderMaterial)
+	if not is_instance_valid(sm):
 		return
-	shader_material.set_shader_parameter(
+	sm.set_shader_parameter(
 		"outline_enabled", outline_enabled)
 
 
@@ -990,20 +1002,29 @@ func _on_body_area_body_entered(body: Node2D) -> void:
 
 	# Track intersection for deferred processing after invincibility.
 	if (
-		state_from_server.is_invincible or
-		other_player.state_from_server.is_invincible
+		state_from_server.is_invincible
+		or other_player.state_from_server
+			.is_invincible
 	):
 		# Track this intersection for later.
-		if not _active_intersections.has(other_player_id):
-			_active_intersections[other_player_id] = []
-		if not _active_intersections[other_player_id].has("body"):
-			_active_intersections[other_player_id].append("body")
+		if not _active_intersections.has(
+				other_player_id):
+			_active_intersections[
+				other_player_id] = []
+		if not _active_intersections[
+				other_player_id].has("body"):
+			_active_intersections[
+				other_player_id].append("body")
 		return
 
 	# Check if kill already happened this frame - kills take precedence.
 	var current_frame := Netcode.server_frame_index
-	if _did_kill_happen_this_frame(current_frame) or \
-		other_player._did_kill_happen_this_frame(current_frame):
+	if (
+		_did_kill_happen_this_frame(current_frame)
+		or other_player
+			._did_kill_happen_this_frame(
+				current_frame)
+	):
 		Netcode.verbose(
 			"Skipping bump - kill already processed this frame (players %d and %d)" % [
 				player_id,
@@ -1281,8 +1302,12 @@ func _calculate_momentum_transfer(
 func _did_kill_happen_this_frame(frame_index: int) -> bool:
 	if state_from_server.last_interaction_frame_index == frame_index:
 		var type := state_from_server.last_interaction_type
-		if (type == CharacterStateFromServer.ServerInteractionType.KILL or
-			type == CharacterStateFromServer.ServerInteractionType.DIE):
+		if (
+		type == CharacterStateFromServer
+			.ServerInteractionType.KILL
+		or type == CharacterStateFromServer
+			.ServerInteractionType.DIE
+	):
 			return true
 	return false
 
@@ -1295,8 +1320,8 @@ func _is_kill_collision_happening(other_player: Player) -> bool:
 	# Check both directions: self killing other, and
 	# other killing self.
 	return (
-		_is_foot_on_head(self , other_player) or
-		_is_foot_on_head(other_player, self )
+		_is_foot_on_head(self , other_player)
+		or _is_foot_on_head(other_player, self )
 	)
 
 
@@ -1332,8 +1357,11 @@ static func _is_foot_on_head(
 func _did_foot_pass_through_head_this_frame(other_player: Player) -> bool:
 	# Early exit if no previous position data.
 	# Note: previous_position is a property inherited from Character class.
-	if (previous_position == Vector2.INF or
-		other_player.previous_position == Vector2.INF):
+	if (
+		previous_position == Vector2.INF
+		or other_player.previous_position
+			== Vector2.INF
+	):
 		return false
 
 	# Check relative velocity is downward. Use
@@ -1352,37 +1380,39 @@ func _did_foot_pass_through_head_this_frame(other_player: Player) -> bool:
 		get_parent().global_position + previous_position
 	)
 	var other_prev_global: Vector2 = (
-		other_player.get_parent().global_position +
-		other_player.previous_position
+		other_player.get_parent().global_position
+		+ other_player.previous_position
 	)
 
-	# Calculate foot bottom and head top at t0 (previous frame).
+	# Calculate foot bottom and head top at t0
+	# (previous frame).
 	const FOOT_OFFSET_Y = -1.0
 	const FOOT_HEIGHT = 2.0
 	const HEAD_OFFSET_Y = -11.0
 	const HEAD_HEIGHT = 2.0
 
 	var foot_bottom_t0 = (
-		my_prev_global.y +
-		FOOT_OFFSET_Y +
-		FOOT_HEIGHT / 2
+		my_prev_global.y
+		+ FOOT_OFFSET_Y
+		+ FOOT_HEIGHT / 2
 	)
 	var head_top_t0 = (
-		other_prev_global.y +
-		HEAD_OFFSET_Y -
-		HEAD_HEIGHT / 2
+		other_prev_global.y
+		+ HEAD_OFFSET_Y
+		- HEAD_HEIGHT / 2
 	)
 
-	# Calculate foot bottom and head top at t1 (current frame).
+	# Calculate foot bottom and head top at t1
+	# (current frame).
 	var foot_bottom_t1 = (
-		global_position.y +
-		FOOT_OFFSET_Y +
-		FOOT_HEIGHT / 2
+		global_position.y
+		+ FOOT_OFFSET_Y
+		+ FOOT_HEIGHT / 2
 	)
 	var head_top_t1 = (
-		other_player.global_position.y +
-		HEAD_OFFSET_Y -
-		HEAD_HEIGHT / 2
+		other_player.global_position.y
+		+ HEAD_OFFSET_Y
+		- HEAD_HEIGHT / 2
 	)
 
 	# Check if foot passed through head vertically.
@@ -1401,8 +1431,8 @@ func _did_foot_pass_through_head_this_frame(other_player: Player) -> bool:
 	var head_right = other_player.global_position.x + HEAD_WIDTH / 2
 
 	var has_horizontal_overlap = (
-		(foot_left <= head_right) and
-		(foot_right >= head_left)
+		(foot_left <= head_right)
+		and (foot_right >= head_left)
 	)
 
 	if has_horizontal_overlap:
@@ -1441,17 +1471,23 @@ func _calculate_lag_compensated_kill_position(
 		get_parent().global_position + previous_position
 	)
 	var other_prev_global: Vector2 = (
-		other_player.get_parent().global_position +
-		other_player.previous_position
+		other_player.get_parent().global_position
+		+ other_player.previous_position
 	)
 
 	# Calculate foot bottom and head top at t0 and t1.
-	var foot_bottom_t0 = my_prev_global.y + FOOT_OFFSET_Y + FOOT_HEIGHT / 2
-	var head_top_t0 = other_prev_global.y + HEAD_OFFSET_Y - HEAD_HEIGHT / 2
-	var foot_bottom_t1 = global_position.y + FOOT_OFFSET_Y + FOOT_HEIGHT / 2
+	var foot_bottom_t0 = (
+		my_prev_global.y
+		+ FOOT_OFFSET_Y + FOOT_HEIGHT / 2)
+	var head_top_t0 = (
+		other_prev_global.y
+		+ HEAD_OFFSET_Y - HEAD_HEIGHT / 2)
+	var foot_bottom_t1 = (
+		global_position.y
+		+ FOOT_OFFSET_Y + FOOT_HEIGHT / 2)
 	var head_top_t1 = (
-		other_player.global_position.y + HEAD_OFFSET_Y - HEAD_HEIGHT / 2
-	)
+		other_player.global_position.y
+		+ HEAD_OFFSET_Y - HEAD_HEIGHT / 2)
 
 	# Calculate interpolation factor t where foot contacts head.
 	var foot_delta = foot_bottom_t1 - foot_bottom_t0
@@ -1529,14 +1565,19 @@ func _on_foot_area_area_entered(area: Area2D) -> void:
 
 	# Track intersection for deferred processing after invincibility.
 	if (
-		state_from_server.is_invincible or
-		other_player.state_from_server.is_invincible
+		state_from_server.is_invincible
+		or other_player.state_from_server
+			.is_invincible
 	):
 		# Track this intersection for later.
-		if not _active_intersections.has(other_player_id):
-			_active_intersections[other_player_id] = []
-		if not _active_intersections[other_player_id].has("foot"):
-			_active_intersections[other_player_id].append("foot")
+		if not _active_intersections.has(
+				other_player_id):
+			_active_intersections[
+				other_player_id] = []
+		if not _active_intersections[
+				other_player_id].has("foot"):
+			_active_intersections[
+				other_player_id].append("foot")
 		return
 
 	Netcode.verbose(
@@ -1618,8 +1659,11 @@ func _update_invincibility_blink() -> void:
 		return
 
 	# Calculate blink period (seconds per toggle).
-	var blink_period: float = 1.0 / \
-		(G.settings.player_invincibility_blink_frequency_hz * 2.0)
+	var blink_period: float = (
+		1.0
+		/ (G.settings
+			.player_invincibility_blink_frequency_hz
+			* 2.0))
 
 	_blink_accumulator += get_process_delta_time()
 
@@ -1652,8 +1696,10 @@ func _update_player_collision_for_invincibility() -> void:
 		return
 
 	# Keep collision disabled after match ends.
-	if is_instance_valid(G.match_state) and \
-			G.match_state.is_match_ended:
+	if (
+		is_instance_valid(G.match_state)
+		and G.match_state.is_match_ended
+	):
 		set_collision_mask_value(
 			_PLAYER_COLLISION_LAYER, false)
 		return
@@ -1716,8 +1762,11 @@ func _process_deferred_collisions() -> void:
 			continue
 
 		# Skip if other player is now dead or invincible.
-		if other_player.state_from_server.is_dead or \
-			other_player.state_from_server.is_invincible:
+		if (
+			other_player.state_from_server.is_dead
+			or other_player.state_from_server
+				.is_invincible
+		):
 			continue
 
 		# Check foot first (kill takes precedence over bump).
@@ -1765,14 +1814,14 @@ func _process_deferred_collisions() -> void:
 				)
 				# Record bump stats for dynamic
 				# adjective tracking.
-				G.match_state \
+				(G.match_state
 					.server_get_or_create_stats(
-						player_id) \
-					.record_bump()
-				G.match_state \
+						player_id)
+					.record_bump())
+				(G.match_state
 					.server_get_or_create_stats(
-						other_player_id) \
-					.record_bump()
+						other_player_id)
+					.record_bump())
 				_processed_collision_this_frame = true
 				other_player._processed_collision_this_frame = true
 				G.match_state.server_add_bump(player_id, other_player_id)

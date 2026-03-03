@@ -268,8 +268,10 @@ class TestSplitPacking:
 		entity.test_position = Vector2(200.0, 300.0)
 		entity.test_velocity = Vector2(15.0, 25.0)
 		entity.frame_index = 55
-		entity.frame_authority = \
-			ReconcilableState.FrameAuthority.SERVER_PREDICTED
+		entity.frame_authority = (
+			ReconcilableState.FrameAuthority
+				.SERVER_PREDICTED
+		)
 
 		entity._pack_networked_state()
 
@@ -446,10 +448,11 @@ class TestReplicationConfig:
 		entity._ready()
 		entity._update_replication_config()
 
-		var has_authoritative := \
+		var has_authoritative := (
 			entity.replication_config.has_property(
 				"TestEntity:authoritative_packed_state"
 			)
+		)
 		assert_true(
 			has_authoritative,
 			"Non-split entity should register "

@@ -62,30 +62,30 @@ func _ready() -> void:
 		_label.hide()
 		var icon := TextureRect.new()
 		icon.texture = _icon_texture
-		icon.custom_minimum_size = \
-			_icon_texture.get_size() * 4
-		icon.stretch_mode = \
-			TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.mouse_filter = \
-			Control.MOUSE_FILTER_IGNORE
-		_checkbox.get_parent() \
-			.add_child(icon)
+		icon.custom_minimum_size = (
+			_icon_texture.get_size() * 4)
+		icon.stretch_mode = (
+			TextureRect
+				.STRETCH_KEEP_ASPECT_CENTERED)
+		icon.mouse_filter = (
+			Control.MOUSE_FILTER_IGNORE)
+		_checkbox.get_parent().add_child(icon)
 	else:
 		_label.text = _display_name
 	if _indent_pixels > 0:
 		var spacer := Control.new()
-		spacer.custom_minimum_size.x = \
-			_indent_pixels
-		_checkbox.get_parent() \
-			.add_child(spacer)
-		_checkbox.get_parent() \
-			.move_child(spacer, 0)
+		spacer.custom_minimum_size.x = (
+			_indent_pixels)
+		_checkbox.get_parent().add_child(spacer)
+		_checkbox.get_parent().move_child(
+			spacer, 0)
 	# Scale checkbox 2x.
-	_checkbox.stretch_mode = \
-		TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	_checkbox.stretch_mode = (
+		TextureButton
+			.STRETCH_KEEP_ASPECT_CENTERED)
 	if tex_normal_checked != null:
-		_checkbox.custom_minimum_size = \
-			tex_normal_checked.get_size() * 2
+		_checkbox.custom_minimum_size = (
+			tex_normal_checked.get_size() * 2)
 	_update_checkbox_textures()
 
 
@@ -127,19 +127,19 @@ func _apply_side_effect() -> void:
 func _update_checkbox_textures() -> void:
 	var is_checked := _value != _is_inverted
 	if is_checked:
-		_checkbox.texture_normal = \
-			tex_hovered_checked \
-			if _is_mouse_hovered \
-			else tex_normal_checked
-		_checkbox.texture_disabled = \
-			tex_disabled_checked
+		_checkbox.texture_normal = (
+			tex_hovered_checked
+			if _is_mouse_hovered
+			else tex_normal_checked)
+		_checkbox.texture_disabled = (
+			tex_disabled_checked)
 	else:
-		_checkbox.texture_normal = \
-			tex_hovered_unchecked \
-			if _is_mouse_hovered \
-			else tex_normal_unchecked
-		_checkbox.texture_disabled = \
-			tex_disabled_unchecked
+		_checkbox.texture_normal = (
+			tex_hovered_unchecked
+			if _is_mouse_hovered
+			else tex_normal_unchecked)
+		_checkbox.texture_disabled = (
+			tex_disabled_unchecked)
 
 
 ## Get the current toggle value.

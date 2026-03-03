@@ -725,12 +725,12 @@ var _queued_rollback_cause: String = ""
 ## of client input that was already transmitted during forward sim.
 var is_resimulating := false
 
-## Rollback tracking metrics (for performance monitoring)
+## Rollback tracking metrics (for performance monitoring).
 var last_rollback_frame_count := 0
 var last_rollback_duration_usec := 0
 var total_rollbacks := 0
 
-## Fast-forward tracking metrics (for performance monitoring)
+## Fast-forward tracking metrics (for performance monitoring).
 var last_fastforward_frame_count := 0
 var last_fastforward_duration_usec := 0
 var total_fastforwards := 0
@@ -918,8 +918,9 @@ func _server_rpc_client_request_pause() -> void:
 		var result: Dictionary = server_pause_validator.call(peer_id)
 		if not result.get("allowed", true):
 			Netcode.log.print(
-				"Client %d pause rejected by game validator" %
-				peer_id,
+				("Client %d pause rejected by "
+				+ "game validator")
+				% peer_id,
 				NetworkLogger.CATEGORY_NETWORK_SYNC
 			)
 			return
@@ -1184,8 +1185,11 @@ func _server_execute_unpause() -> void:
 	pause_state_changed.emit(false, 0)
 
 	Netcode.log.print(
-		"Server unpaused at frame %d (paused for %d frames, cumulative: %d)" %
-		[server_frame_index, pause_duration_frames, _cumulative_paused_frames],
+		("Server unpaused at frame %d (paused "
+		+ "for %d frames, cumulative: %d)")
+		% [server_frame_index,
+		pause_duration_frames,
+		_cumulative_paused_frames],
 		NetworkLogger.CATEGORY_NETWORK_SYNC
 	)
 
@@ -1413,9 +1417,9 @@ func queue_rollback(
 	var target_rollback_frame := p_conflicting_frame_index + 1
 	if is_frame_too_old_to_consider(p_conflicting_frame_index):
 		Netcode.log.warning(
-			("Rollback rejected: frame %d is too old "
-			+"(oldest rollbackable: %d)") %
-			[
+			("Rollback rejected: frame %d is "
+			+ "too old (oldest rollbackable: %d)")
+			% [
 				target_rollback_frame,
 				oldest_rollbackable_frame_index,
 			],
@@ -1460,9 +1464,11 @@ func _rollback_and_reprocess() -> void:
 	)
 	if Netcode.log.is_verbose:
 		Netcode.log.verbose(
-			"Starting rollback from frame %d to frame %d%s" %
-			[server_frame_index,
-			_queued_rollback_frame_index, cause_str],
+			("Starting rollback from frame %d"
+			+ " to frame %d%s")
+			% [server_frame_index,
+			_queued_rollback_frame_index,
+			cause_str],
 			NetworkLogger.CATEGORY_NETWORK_SYNC
 		)
 

@@ -14,13 +14,13 @@ static func generate_random_attributes() -> Dictionary:
 	# configured options.
 	var body_type_index := 0
 	if not G.settings.body_types.is_empty():
-		body_type_index = \
-			randi() % G.settings.body_types.size()
+		body_type_index = (
+			randi() % G.settings.body_types.size())
 
 	var costume_index := 0
 	if not G.settings.costumes.is_empty():
-		costume_index = \
-			randi() % G.settings.costumes.size()
+		costume_index = (
+			randi() % G.settings.costumes.size())
 
 	return {
 		"bunny_name": DynamicAdjectiveConfig.NAMES.pick_random(),

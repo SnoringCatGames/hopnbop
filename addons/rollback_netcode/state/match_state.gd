@@ -62,26 +62,35 @@ var match_time_remaining_sec: float:
 		if match_start_frame_index < 0:
 			return 0.0
 		# Account for match-start countdown - gameplay starts after it ends.
-		var countdown_end := \
-				Netcode.frame_driver.match_start_countdown_end_frame_index
-		var effective_start := (
-			countdown_end if countdown_end > 0 else
-			match_start_frame_index
+		var countdown_end := (
+			Netcode.frame_driver
+				.match_start_countdown_end_frame_index
 		)
-		var elapsed_frames := Netcode.server_frame_index - effective_start
-		var elapsed_sec := elapsed_frames / \
-				Netcode.frame_driver.target_network_fps
-		var remaining_sec := (match_duration_usec / 1_000_000.0) - \
-				elapsed_sec
+		var effective_start := (
+			countdown_end if countdown_end > 0
+			else match_start_frame_index
+		)
+		var elapsed_frames := (
+			Netcode.server_frame_index
+			- effective_start
+		)
+		var elapsed_sec := (
+			elapsed_frames
+			/ Netcode.frame_driver.target_network_fps
+		)
+		var remaining_sec := (
+			(match_duration_usec / 1_000_000.0)
+			- elapsed_sec
+		)
 		return max(0.0, remaining_sec)
 
 ## True if match time has expired.
 var is_match_time_expired: bool:
 	get:
 		return (
-			match_start_frame_index >= 0 and
-			match_duration_usec > 0 and
-			match_time_remaining_sec <= 0.0
+			match_start_frame_index >= 0
+			and match_duration_usec > 0
+			and match_time_remaining_sec <= 0.0
 		)
 
 # --- Packed Player State (Generic) ---
@@ -95,8 +104,8 @@ var packed_players := []:
 	set(value):
 		if Netcode.log.is_verbose:
 			Netcode.log.verbose(
-				"MatchState.packed_players changed (size=%d)" % \
-						value.size(),
+				("MatchState.packed_players changed"
+				+ " (size=%d)") % value.size(),
 				NetworkLogger.CATEGORY_GAME_STATE,
 			)
 		packed_players = value
@@ -188,8 +197,9 @@ func _create_player_state() -> PlayerState:
 func _server_pack_players() -> void:
 	if Netcode.log.is_verbose:
 		Netcode.log.verbose(
-			"MatchState._server_pack_players: packing %d players" % \
-					players_by_id.size(),
+			("MatchState._server_pack_players:"
+			+ " packing %d players")
+			% players_by_id.size(),
 			NetworkLogger.CATEGORY_GAME_STATE,
 		)
 
@@ -216,8 +226,9 @@ func _server_pack_players() -> void:
 func _client_unpack_players() -> void:
 	if Netcode.log.is_verbose:
 		Netcode.log.verbose(
-			"MatchState._client_unpack_players: unpacking %d players" % \
-					packed_players.size(),
+			("MatchState._client_unpack_players:"
+			+ " unpacking %d players")
+			% packed_players.size(),
 			NetworkLogger.CATEGORY_GAME_STATE,
 		)
 

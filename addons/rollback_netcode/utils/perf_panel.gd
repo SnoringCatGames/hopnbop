@@ -48,7 +48,7 @@ extends Control
 ## - Current + min/max metric display format: "current (min/max)"
 ## - Rollback and fastforward metrics with threshold-based warnings
 ## - Network ping display with latency warnings
-## - Server metrics display (for clients monitoring server performance)
+## - Server metrics display (for clients monitoring server performance).
 
 # --- UI color-coding thresholds ---
 

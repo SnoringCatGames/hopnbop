@@ -5,15 +5,14 @@ extends SettingsRow
 
 
 enum LevelPrefState {
-	EXCLUDED, # X — left button.
-	INCLUDED, # Checkmark — middle button.
-	PREFERRED, # Heart — right button.
+	EXCLUDED, # X. Left button.
+	INCLUDED, # Checkmark. Middle button.
+	PREFERRED, # Heart. Right button.
 }
 
-const _SELECTED_ICON_COLOR := \
-	Color(0.9, 0.9, 0.9)
-const _VBAR_MODULATE := \
-	Color(1, 1, 1, 0.3)
+const _SELECTED_ICON_COLOR := (
+	Color(0.9, 0.9, 0.9))
+const _VBAR_MODULATE := Color(1, 1, 1, 0.3)
 var _vbar_texture: Texture2D = preload(
 	"res://assets/images/gui/v_bar.png")
 
@@ -68,38 +67,37 @@ func _ready() -> void:
 	# styleboxes with extra content margin.
 	_focus_style = _focus_style.duplicate()
 	_focus_style.content_margin_left = 10
-	_unfocused_style = \
-		_unfocused_style.duplicate()
+	_unfocused_style = (
+		_unfocused_style.duplicate())
 	_unfocused_style.content_margin_left = 10
 	_update_focus_style()
 	# Replace built-in button icons with
 	# TextureRects for uniform scaling.
-	_left_icon_rect = \
-		_replace_btn_icon(%LeftBtn)
-	_right_icon_rect = \
-		_replace_btn_icon(%RightBtn)
+	_left_icon_rect = (
+		_replace_btn_icon(%LeftBtn))
+	_right_icon_rect = (
+		_replace_btn_icon(%RightBtn))
 	# Middle button also gets v-bar separators
 	# flanking its icon.
-	var middle_tex: Texture2D = \
-		%MiddleBtn.icon
+	var middle_tex: Texture2D = %MiddleBtn.icon
 	%MiddleBtn.icon = null
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override(
 		"separation", 0)
 	hbox.set_anchors_preset(
 		Control.PRESET_FULL_RECT)
-	hbox.mouse_filter = \
-		Control.MOUSE_FILTER_IGNORE
+	hbox.mouse_filter = (
+		Control.MOUSE_FILTER_IGNORE)
 	hbox.add_child(_create_vbar())
 	_middle_icon_rect = TextureRect.new()
 	_middle_icon_rect.texture = middle_tex
-	_middle_icon_rect.stretch_mode = \
-		TextureRect \
-			.STRETCH_KEEP_ASPECT_CENTERED
-	_middle_icon_rect.size_flags_horizontal = \
-		Control.SIZE_EXPAND_FILL
-	_middle_icon_rect.mouse_filter = \
-		Control.MOUSE_FILTER_IGNORE
+	_middle_icon_rect.stretch_mode = (
+		TextureRect
+			.STRETCH_KEEP_ASPECT_CENTERED)
+	_middle_icon_rect.size_flags_horizontal = (
+		Control.SIZE_EXPAND_FILL)
+	_middle_icon_rect.mouse_filter = (
+		Control.MOUSE_FILTER_IGNORE)
 	hbox.add_child(_middle_icon_rect)
 	hbox.add_child(_create_vbar())
 	%MiddleBtn.add_child(hbox)
@@ -193,16 +191,16 @@ func _update_button_styles() -> void:
 func _create_vbar() -> TextureRect:
 	var vbar := TextureRect.new()
 	vbar.texture = _vbar_texture
-	vbar.custom_minimum_size = \
-		_vbar_texture.get_size() * 2
-	vbar.stretch_mode = \
-		TextureRect \
-			.STRETCH_KEEP_ASPECT_CENTERED
-	vbar.size_flags_vertical = \
-		Control.SIZE_EXPAND_FILL
+	vbar.custom_minimum_size = (
+		_vbar_texture.get_size() * 2)
+	vbar.stretch_mode = (
+		TextureRect
+			.STRETCH_KEEP_ASPECT_CENTERED)
+	vbar.size_flags_vertical = (
+		Control.SIZE_EXPAND_FILL)
 	vbar.modulate = _VBAR_MODULATE
-	vbar.mouse_filter = \
-		Control.MOUSE_FILTER_IGNORE
+	vbar.mouse_filter = (
+		Control.MOUSE_FILTER_IGNORE)
 	return vbar
 
 
@@ -213,13 +211,13 @@ func _replace_btn_icon(
 	btn.icon = null
 	var rect := TextureRect.new()
 	rect.texture = tex
-	rect.stretch_mode = \
-		TextureRect \
-			.STRETCH_KEEP_ASPECT_CENTERED
+	rect.stretch_mode = (
+		TextureRect
+			.STRETCH_KEEP_ASPECT_CENTERED)
 	rect.set_anchors_preset(
 		Control.PRESET_FULL_RECT)
-	rect.mouse_filter = \
-		Control.MOUSE_FILTER_IGNORE
+	rect.mouse_filter = (
+		Control.MOUSE_FILTER_IGNORE)
 	btn.add_child(rect)
 	return rect
 
@@ -251,8 +249,8 @@ func _apply_btn_style(
 
 	if icon_rect != null:
 		if is_selected:
-			icon_rect.modulate = \
-				_SELECTED_ICON_COLOR
+			icon_rect.modulate = (
+				_SELECTED_ICON_COLOR)
 		else:
 			icon_rect.modulate = Color.WHITE
 

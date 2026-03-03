@@ -63,8 +63,8 @@ func _ready() -> void:
 	# Ensure stretch/resize propagation works
 	# while the tree is paused (e.g. during
 	# match-start countdown).
-	container.process_mode = \
-		Node.PROCESS_MODE_ALWAYS
+	container.process_mode = (
+		Node.PROCESS_MODE_ALWAYS)
 
 	get_tree().root.size_changed.connect(
 		_on_window_resized)
@@ -88,11 +88,13 @@ func _on_window_resized() -> void:
 
 	# Fill the window, aligned to integer scale.
 	@warning_ignore("integer_division")
-	var container_w := (window_size.x / current_scale) \
-		* current_scale
+	var container_w := (
+		(window_size.x / current_scale)
+		* current_scale)
 	@warning_ignore("integer_division")
-	var container_h := (window_size.y / current_scale) \
-		* current_scale
+	var container_h := (
+		(window_size.y / current_scale)
+		* current_scale)
 
 	container.stretch_shrink = current_scale
 	container.size = Vector2(container_w, container_h)
@@ -156,8 +158,8 @@ func _update_camera_zoom() -> void:
 		# Camera2D must process during pause to
 		# propagate zoom changes to the viewport's
 		# canvas_transform.
-		camera.process_mode = \
-			Node.PROCESS_MODE_ALWAYS
+		camera.process_mode = (
+			Node.PROCESS_MODE_ALWAYS)
 
 	var base_zoom: Vector2 = _base_zooms[camera]
 

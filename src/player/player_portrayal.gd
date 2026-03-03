@@ -31,23 +31,23 @@ func apply_player_state(
 	_outline_color = player_match_state.outline_color
 
 	# Apply body type and costume.
-	var body_type_index: int = \
-		player_match_state.body_type_index
+	var body_type_index: int = (
+		player_match_state.body_type_index)
 	var body_type_config: BodyTypeConfig = null
-	if (body_type_index >= 0 and
-			body_type_index < \
-				G.settings.body_types.size()):
-		body_type_config = \
-			G.settings.body_types[body_type_index]
+	if (body_type_index >= 0
+			and body_type_index
+				< G.settings.body_types.size()):
+		body_type_config = (
+			G.settings.body_types[body_type_index])
 
-	var costume_index: int = \
-		player_match_state.costume_index
+	var costume_index: int = (
+		player_match_state.costume_index)
 	var costume_config: CostumeConfig = null
-	if (costume_index >= 0 and
-			costume_index < \
-				G.settings.costumes.size()):
-		costume_config = \
-			G.settings.costumes[costume_index]
+	if (costume_index >= 0
+			and costume_index
+				< G.settings.costumes.size()):
+		costume_config = (
+			G.settings.costumes[costume_index])
 
 	_animator.apply_appearance(
 		body_type_config, costume_config)
@@ -91,8 +91,8 @@ func _apply_outline_color() -> void:
 		return
 
 	group.material = group.material.duplicate()
-	var shader_material := \
-		group.material as ShaderMaterial
+	var shader_material := (
+		group.material as ShaderMaterial)
 	if not is_instance_valid(shader_material):
 		return
 

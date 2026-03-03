@@ -11,6 +11,9 @@ func on_open() -> void:
 
 	G.audio.play_sound("scg_splash")
 
-	await get_tree().create_timer(G.settings.scg_splash_duration_sec).timeout
+	await get_tree().create_timer(
+		G.settings.scg_splash_duration_sec,
+	).timeout
 
-	G.screens.client_open_screen(ScreensMain.ScreenType.LOBBY)
+	G.screens.client_open_screen(
+		ScreensMain.ScreenType.LOBBY)

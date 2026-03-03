@@ -96,11 +96,17 @@ var current_surface_max_horizontal_speed: float:
 				movement_settings
 					.water_max_horizontal_speed
 			)
-		return movement_settings.max_ground_horizontal_speed * \
-		_current_max_horizontal_speed_multiplier * \
-		(surfaces.surface_properties.speed_multiplier if \
-			surfaces.is_attaching_to_surface else \
-			1.0)
+		return (
+			movement_settings
+				.max_ground_horizontal_speed
+			* _current_max_horizontal_speed_multiplier
+			* (
+				surfaces.surface_properties
+					.speed_multiplier
+				if surfaces.is_attaching_to_surface
+				else 1.0
+			)
+		)
 
 var current_air_max_horizontal_speed: float:
 	get:
@@ -129,21 +135,30 @@ var current_air_max_horizontal_speed: float:
 			var initial_launch_horizontal_speed := absf(
 				surfaces.initial_launch_velocity.x)
 			if (
-				initial_launch_horizontal_speed >
-				movement_settings.max_launch_horizontal_speed
+				initial_launch_horizontal_speed
+				> movement_settings
+					.max_launch_horizontal_speed
 			):
-				return movement_settings.max_launch_horizontal_speed
+				return (
+					movement_settings
+						.max_launch_horizontal_speed
+				)
 			elif (
-				initial_launch_horizontal_speed >
-				movement_settings.max_air_horizontal_speed
+				initial_launch_horizontal_speed
+				> movement_settings
+					.max_air_horizontal_speed
 			):
 				return initial_launch_horizontal_speed
 			else:
-				return movement_settings.max_air_horizontal_speed
+				return (
+					movement_settings
+						.max_air_horizontal_speed
+				)
 		else:
 			return (
-				movement_settings.max_air_horizontal_speed *
-				_current_max_horizontal_speed_multiplier
+				movement_settings
+					.max_air_horizontal_speed
+				* _current_max_horizontal_speed_multiplier
 			)
 
 var current_max_vertical_speed: float:
@@ -162,8 +177,8 @@ var current_max_vertical_speed: float:
 			var initial_launch_vertical_speed := absf(
 				surfaces.initial_launch_velocity.y)
 			if (
-				initial_launch_vertical_speed >
-				movement_settings
+				initial_launch_vertical_speed
+				> movement_settings
 					.max_launch_vertical_speed
 			):
 				return (
@@ -171,8 +186,9 @@ var current_max_vertical_speed: float:
 						.max_launch_vertical_speed
 				)
 			elif (
-				initial_launch_vertical_speed >
-				movement_settings.max_vertical_speed
+				initial_launch_vertical_speed
+				> movement_settings
+					.max_vertical_speed
 			):
 				return initial_launch_vertical_speed
 			else:
@@ -200,24 +216,39 @@ var current_walk_acceleration: float:
 
 var current_climb_up_speed: float:
 	get:
-		return movement_settings.climb_up_speed * \
-		(surfaces.surface_properties.speed_multiplier if \
-			surfaces.is_attaching_to_surface else \
-			1.0)
+		return (
+			movement_settings.climb_up_speed
+			* (
+				surfaces.surface_properties
+					.speed_multiplier
+				if surfaces.is_attaching_to_surface
+				else 1.0
+			)
+		)
 
 var current_climb_down_speed: float:
 	get:
-		return movement_settings.climb_down_speed * \
-		(surfaces.surface_properties.speed_multiplier if \
-			surfaces.is_attaching_to_surface else \
-			1.0)
+		return (
+			movement_settings.climb_down_speed
+			* (
+				surfaces.surface_properties
+					.speed_multiplier
+				if surfaces.is_attaching_to_surface
+				else 1.0
+			)
+		)
 
 var current_ceiling_crawl_speed: float:
 	get:
-		return movement_settings.ceiling_crawl_speed * \
-		(surfaces.surface_properties.speed_multiplier if \
-			surfaces.is_attaching_to_surface else \
-			1.0)
+		return (
+			movement_settings.ceiling_crawl_speed
+			* (
+				surfaces.surface_properties
+					.speed_multiplier
+				if surfaces.is_attaching_to_surface
+				else 1.0
+			)
+		)
 
 var is_sprite_visible: bool:
 	set(value):
@@ -252,10 +283,10 @@ func _ready() -> void:
 	animator.play("Rest")
 
 	# Initialize position/velocity in state_from_server, but leave surfaces at
-	# default (0) since it's only valid after first physics update
+	# default (0) since it's only valid after first physics update.
 	state_from_server.position = position
 	state_from_server.velocity = velocity
-	# state_from_server.surfaces intentionally left at default 0
+	# state_from_server.surfaces intentionally left at default 0.
 
 	_set_up_action_sources()
 
@@ -321,8 +352,8 @@ func _apply_movement() -> void:
 	# when sliding along a wall corner.
 	var saved_velocity_x := velocity.x
 	var should_preserve_wall_slide := (
-		surfaces.is_descending_through_floors and
-		surfaces.is_pressing_into_wall
+		surfaces.is_descending_through_floors
+		and surfaces.is_pressing_into_wall
 	)
 	if should_preserve_wall_slide:
 		velocity.x = 0.0
@@ -472,8 +503,9 @@ func _process_actions() -> void:
 		# zeros velocity and prevents gravity from accumulating. But DO allow
 		# FallThroughFloorAction to run so we get the initial velocity launch.
 		var is_blocked_floor_action := (
-			surfaces.is_descending_through_floors and
-			action_handler.name == &"FloorDefaultAction"
+			surfaces.is_descending_through_floors
+			and action_handler.name
+				== &"FloorDefaultAction"
 		)
 
 		# Our surface-state logic considers the current actions, and
@@ -485,24 +517,30 @@ func _process_actions() -> void:
 		# and allow an action-handler of that departure-surface-type to
 		# handle this frame. However, "Default" actions maintain steady-
 		# state behavior and should not run during surface transitions.
-		var is_just_left_and_not_default: bool = \
-				action_handler.type == surfaces.just_left_surface_type and \
-				surfaces.just_left_surface_type != SurfaceType.OTHER and \
-				!action_handler.name.contains("Default")
-		var is_action_relevant_for_surface: bool = \
-				action_handler.type == surfaces.surface_type or \
-				action_handler.type == SurfaceType.OTHER or \
-				is_just_left_and_not_default
+		var is_just_left_and_not_default: bool = (
+			action_handler.type
+				== surfaces.just_left_surface_type
+			and surfaces.just_left_surface_type
+				!= SurfaceType.OTHER
+			and !action_handler.name.contains("Default")
+		)
+		var is_action_relevant_for_surface: bool = (
+			action_handler.type == surfaces.surface_type
+			or action_handler.type == SurfaceType.OTHER
+			or is_just_left_and_not_default
+		)
 		var is_action_relevant_for_physics_mode: bool = (
 			action_handler.uses_runtime_physics
 		)
-		if (is_action_relevant_for_surface and
-			is_action_relevant_for_physics_mode and
-			not is_blocked_floor_action
-		):
-			var executed: bool = action_handler.process(self )
-			_previous_actions_handlers_this_frame[action_handler.name] = \
-			executed
+		if (is_action_relevant_for_surface
+				and is_action_relevant_for_physics_mode
+				and not is_blocked_floor_action):
+			var executed: bool = (
+				action_handler.process(self )
+			)
+			_previous_actions_handlers_this_frame[
+				action_handler.name
+			] = executed
 
 	assert(!Geometry.is_point_partial_inf(velocity))
 

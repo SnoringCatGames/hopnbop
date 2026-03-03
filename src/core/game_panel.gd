@@ -31,140 +31,206 @@ func _ready() -> void:
 
 	G.match_state = match_state
 
-	%MatchStateSynchronizer.set_multiplayer_authority(NetworkConnector.SERVER_ID)
-	%LevelSpawner.set_multiplayer_authority(NetworkConnector.SERVER_ID)
+	%MatchStateSynchronizer.set_multiplayer_authority(
+		NetworkConnector.SERVER_ID)
+	%LevelSpawner.set_multiplayer_authority(
+		NetworkConnector.SERVER_ID)
 
 	for level_info in G.settings.levels:
 		if level_info.scene != null:
-			%LevelSpawner.add_spawnable_scene(level_info.scene.resource_path)
+			%LevelSpawner.add_spawnable_scene(
+				level_info.scene.resource_path)
 
 	# Set up session manager for network coordination.
 	session_manager = GameSessionManager.new()
 	session_manager.name = "SessionManager"
 	add_child(session_manager)
 
-	# Configure local session provider for NetworkConnector handshake.
-	Netcode.connector.client_session_provider = func() -> Dictionary:
-		return {
-			"session_ids": G.client_session.client_session_ids,
-			"player_count": G.client_session.local_player_count,
-			"attributes": G.client_session.local_player_attributes
-		}
+	# Configure local session provider for
+	# NetworkConnector handshake.
+	Netcode.connector.client_session_provider = (
+		func() -> Dictionary:
+			return {
+				"session_ids":
+					G.client_session
+						.client_session_ids,
+				"player_count":
+					G.client_session
+						.local_player_count,
+				"attributes":
+					G.client_session
+						.local_player_attributes,
+			}
+	)
 
-	# Configure player attribute validator for bunny validation.
-	Netcode.connector.player_attribute_validator = _validate_player_attributes
+	# Configure player attribute validator for
+	# bunny validation.
+	Netcode.connector.player_attribute_validator = (
+		_validate_player_attributes)
 
 	# Connect to high-level session events.
-	session_manager.session_established.connect(_on_session_established)
-	session_manager.connection_lost.connect(_on_connection_lost)
+	session_manager.session_established.connect(
+		_on_session_established)
+	session_manager.connection_lost.connect(
+		_on_connection_lost)
 
 	if Netcode.is_server:
-		session_manager.match_ready.connect(_on_match_ready)
-		session_manager.server_should_reset.connect(_on_server_should_reset)
-		session_manager.session_provider.all_players_connected.connect(
-			_server_on_all_players_connected
-		)
-		Netcode.frame_driver.server_pause_validator = \
-			_server_validate_pause_request
+		session_manager.match_ready.connect(
+			_on_match_ready)
+		session_manager.server_should_reset.connect(
+			_on_server_should_reset)
+		(session_manager.session_provider
+			.all_players_connected.connect(
+				_server_on_all_players_connected))
+		Netcode.frame_driver.server_pause_validator = (
+			_server_validate_pause_request)
 
 	if Netcode.is_client:
 		if Netcode.is_connected_to_server:
 			_client_on_server_connected()
-		multiplayer.connected_to_server.connect(_client_on_server_connected)
+		multiplayer.connected_to_server.connect(
+			_client_on_server_connected)
 
-		%LevelSpawner.spawned.connect(_client_on_level_spawned)
-		%LevelSpawner.despawned.connect(_client_on_level_despawned)
+		%LevelSpawner.spawned.connect(
+			_client_on_level_spawned)
+		%LevelSpawner.despawned.connect(
+			_client_on_level_despawned)
 
 		Netcode.local_authority_added.connect(
 			_client_on_local_player_loaded,
 		)
 
-		# Transition from LOADING to GAME when server unpauses.
-		Netcode.frame_driver.pause_state_changed.connect(
-			_client_on_pause_state_changed
-		)
+		# Transition from LOADING to GAME when
+		# server unpauses.
+		(Netcode.frame_driver
+			.pause_state_changed.connect(
+				_client_on_pause_state_changed))
 
-		# Show countdown UI when match start countdown begins.
-		Netcode.frame_driver.match_start_countdown_started.connect(
-			_on_match_start_countdown_started
-		)
+		# Show countdown UI when match start
+		# countdown begins.
+		(Netcode.frame_driver
+			.match_start_countdown_started
+			.connect(
+				_on_match_start_countdown_started))
 
 		# Start match music when countdown ends.
-		Netcode.frame_driver.match_start_countdown_ended.connect(
-			_on_match_start_countdown_ended
-		)
+		(Netcode.frame_driver
+			.match_start_countdown_ended
+			.connect(
+				_on_match_start_countdown_ended))
 
 	if Netcode.is_server:
-		# In preview mode, spawn new level when first client connects after match end.
+		# In preview mode, spawn new level when
+		# first client connects after match end.
 		if Netcode.is_preview:
 			Netcode.print(
-				"Connecting to peer_connected signal for preview mode",
-				NetworkLogger.CATEGORY_CONNECTIONS
+				"Connecting to peer_connected"
+				+ " signal for preview mode",
+				NetworkLogger
+					.CATEGORY_CONNECTIONS,
 			)
-			multiplayer.peer_connected.connect(_server_on_preview_peer_connected)
+			multiplayer.peer_connected.connect(
+				_server_on_preview_peer_connected)
 
-	G.match_state.player_joined.connect(_on_player_joined)
-	G.match_state.player_left.connect(_on_player_left)
-	G.match_state.player_killed.connect(_on_player_killed)
-	G.match_state.players_bumped.connect(_on_players_bumped)
+	G.match_state.player_joined.connect(
+		_on_player_joined)
+	G.match_state.player_left.connect(
+		_on_player_left)
+	G.match_state.player_killed.connect(
+		_on_player_killed)
+	G.match_state.players_bumped.connect(
+		_on_players_bumped)
 
-	# Set up PerfTracker callback for level ready state.
+	# Set up PerfTracker callback for level
+	# ready state.
 	if Netcode.perf_tracker != null:
-		Netcode.perf_tracker.is_ready_callback = func() -> bool:
-			return is_level_fully_loaded
+		Netcode.perf_tracker.is_ready_callback = (
+			func() -> bool:
+				return is_level_fully_loaded
+		)
 
 
-func _on_player_joined(player: PlayerState) -> void:
-	# Check if this player belongs to the local peer.
+func _on_player_joined(
+	player: PlayerState,
+) -> void:
+	# Check if this player belongs to the local
+	# peer.
 	var is_local_peer := (
-		Netcode.is_client and
-		player.peer_id == Netcode.local_peer_id
+		Netcode.is_client
+		and player.peer_id
+			== Netcode.local_peer_id
 	)
-	var self_suffix := " (local)" if is_local_peer else ""
+	var self_suffix := (
+		" (local)" if is_local_peer else "")
 	Netcode.print(
-		"Player joined: %s%s" % [player.get_string(), self_suffix],
+		"Player joined: %s%s" % [
+			player.get_string(), self_suffix],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 
-func _on_player_left(player: PlayerState) -> void:
-	Netcode.print("Player left: %s" % player.get_string(),
-		NetworkLogger.CATEGORY_GAME_STATE)
-
-
-func _on_player_killed(killer: PlayerState, killee: PlayerState) -> void:
+func _on_player_left(
+	player: PlayerState,
+) -> void:
 	Netcode.print(
-		"Player killed: %s killed %s" %
-		[killer.get_string(), killee.get_string()],
+		"Player left: %s" % player.get_string(),
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
-	# Trigger respawn on server (moved from MatchState).
+
+func _on_player_killed(
+	killer: PlayerState,
+	killee: PlayerState,
+) -> void:
+	Netcode.print(
+		"Player killed: %s killed %s" % [
+			killer.get_string(),
+			killee.get_string()],
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+
+	# Trigger respawn on server (moved from
+	# MatchState).
 	if Netcode.is_server:
-		var killee_actor: Player = G.get_player(killee.player_id)
+		var killee_actor: Player = (
+			G.get_player(killee.player_id))
 		if is_instance_valid(killee_actor):
 			killee_actor.server_trigger_death()
 
 
-func _on_players_bumped(a: PlayerState, b: PlayerState) -> void:
+func _on_players_bumped(
+	a: PlayerState,
+	b: PlayerState,
+) -> void:
 	Netcode.print(
-		"Players bumped: %s, %s" % [a.get_string(), b.get_string()],
+		"Players bumped: %s, %s" % [
+			a.get_string(), b.get_string()],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 
-func _client_on_level_spawned(p_level: Level) -> void:
+func _client_on_level_spawned(
+	p_level: Level,
+) -> void:
 	Netcode.ensure(p_level is Level)
 	var level: Level = p_level
-	Netcode.print("Level spawned: %s" % level.get_string(),
-		NetworkLogger.CATEGORY_GAME_STATE)
+	Netcode.print(
+		"Level spawned: %s"
+		% level.get_string(),
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
 
 
-func _client_on_level_despawned(p_level: Level) -> void:
+func _client_on_level_despawned(
+	p_level: Level,
+) -> void:
 	Netcode.ensure(p_level is Level)
 	var level: Level = p_level
-	Netcode.print("Level despawned: %s" % level.get_string(),
-		NetworkLogger.CATEGORY_GAME_STATE)
+	Netcode.print(
+		"Level despawned: %s"
+		% level.get_string(),
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
 
 
 func _client_on_local_player_loaded(
@@ -176,24 +242,35 @@ func _client_on_local_player_loaded(
 func _client_on_server_connected() -> void:
 	Netcode.check_is_client()
 
-	# Guard against being called multiple times (can happen if GamePanel._ready
-	# runs after connection is already established, causing both the direct call
-	# and the signal handler to fire).
+	# Guard against being called multiple times
+	# (can happen if GamePanel._ready runs after
+	# connection is already established, causing
+	# both the direct call and the signal handler
+	# to fire).
 	if G.client_session.is_game_active:
 		Netcode.print(
-			"Already connected to server, ignoring duplicate call",
-			NetworkLogger.CATEGORY_CONNECTIONS
+			"Already connected to server,"
+			+ " ignoring duplicate call",
+			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
 		return
 
-	Netcode.check(G.client_session.is_game_loading, "Game load is not expected")
-	Netcode.check(not G.client_session.is_game_active, "Game is already active")
+	Netcode.check(
+		G.client_session.is_game_loading,
+		"Game load is not expected",
+	)
+	Netcode.check(
+		not G.client_session.is_game_active,
+		"Game is already active",
+	)
 
 	G.client_session.is_game_active = true
 
-	# Stay on the loading screen. We will transition to GAME when server
-	# unpauses (handled in _client_on_pause_state_changed).
-	# But if game is already unpaused, transition immediately.
+	# Stay on the loading screen. We will
+	# transition to GAME when server unpauses
+	# (handled in _client_on_pause_state_changed).
+	# But if game is already unpaused, transition
+	# immediately.
 	if not Netcode.frame_driver.is_paused:
 		_client_transition_to_game_if_ready()
 
@@ -201,97 +278,129 @@ func _client_on_server_connected() -> void:
 # --- High-Level Session Event Handlers ---
 
 
-func _on_session_established(player_ids: Array[int]) -> void:
-	# Player IDs already stored in ClientSession by GameSessionManager.
+func _on_session_established(
+	player_ids: Array[int],
+) -> void:
+	# Player IDs already stored in ClientSession
+	# by GameSessionManager.
 	Netcode.print(
-		"Session established with %d player(s): %s" % [
-			player_ids.size(),
-			player_ids
-		],
-		NetworkLogger.CATEGORY_GAME_STATE
+		"Session established with %d player(s):"
+		+ " %s" % [player_ids.size(), player_ids],
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 
-func _client_on_pause_state_changed(is_paused: bool, _initiator_peer_id: int) -> void:
+func _client_on_pause_state_changed(
+	is_paused: bool,
+	_initiator_peer_id: int,
+) -> void:
 	Netcode.check_is_client()
 
 	if is_paused:
-		# Update pauses_used_by_peer immediately from the RPC data,
-		# so the pause screen has accurate counts before
-		# MatchStateSynchronizer replication arrives.
+		# Update pauses_used_by_peer immediately
+		# from the RPC data, so the pause screen
+		# has accurate counts before
+		# MatchStateSynchronizer replication
+		# arrives.
 		if _initiator_peer_id > 0:
-			G.match_state.pauses_used_by_peer[_initiator_peer_id] = \
-				Netcode.frame_driver._pause_initiator_pauses_used
+			G.match_state.pauses_used_by_peer[
+				_initiator_peer_id] = (
+					Netcode.frame_driver
+						._pause_initiator_pauses_used)
 
-		# Open pause screen if game is active and we're in-game.
+		# Open pause screen if game is active and
+		# we're in-game.
 		if (
-			G.client_session.is_game_active and
-			not G.client_session.is_game_loading and
-			G.screens.current_screen == ScreensMain.ScreenType.GAME
+			G.client_session.is_game_active
+			and not G.client_session.is_game_loading
+			and G.screens.current_screen
+				== ScreensMain.ScreenType.GAME
 		):
-			G.screens.client_open_screen(ScreensMain.ScreenType.PAUSE)
+			G.screens.client_open_screen(
+				ScreensMain.ScreenType.PAUSE)
 	else:
 		# Return to game from pause screen.
-		if G.screens.current_screen == ScreensMain.ScreenType.PAUSE:
-			G.screens.client_open_screen(ScreensMain.ScreenType.GAME)
-		# Transition from LOADING to GAME when server unpauses.
+		if (G.screens.current_screen
+				== ScreensMain.ScreenType.PAUSE):
+			G.screens.client_open_screen(
+				ScreensMain.ScreenType.GAME)
+		# Transition from LOADING to GAME when
+		# server unpauses.
 		_client_transition_to_game_if_ready()
 
 
 func _client_transition_to_game_if_ready() -> void:
 	Netcode.check_is_client()
 
-	# Only transition if game is active and we're on LOADING screen.
+	# Only transition if game is active and we're
+	# on LOADING screen.
 	if G.client_session.is_game_active:
-		if G.screens.current_screen == ScreensMain.ScreenType.LOADING:
-			# Game is no longer loading - we're entering the game now.
+		if (G.screens.current_screen
+				== ScreensMain.ScreenType.LOADING):
+			# Game is no longer loading - we're
+			# entering the game now.
 			G.client_session.is_game_loading = false
-			G.screens.client_open_screen(ScreensMain.ScreenType.GAME)
+			G.screens.client_open_screen(
+				ScreensMain.ScreenType.GAME)
 
 
-func _on_connection_lost(reason_name: String, is_expected: bool) -> void:
+func _on_connection_lost(
+	reason_name: String,
+	is_expected: bool,
+) -> void:
 	# Only clients handle connection loss UI.
 	if Netcode.is_client:
-		# Store disconnect reason for display on game over screen.
+		# Store disconnect reason for display on
+		# game over screen.
 		if not is_expected:
 			G.client_session.latest_server_message = (
-				"Disconnected: %s" % reason_name
-			)
+				"Disconnected: %s" % reason_name)
 
 		if is_expected:
 			Netcode.print(
 				"Match ended, returning to lobby",
-				NetworkLogger.CATEGORY_GAME_STATE
+				NetworkLogger.CATEGORY_GAME_STATE,
 			)
 		else:
 			Netcode.warning(
-				"Unexpected disconnect: %s" % reason_name,
-				NetworkLogger.CATEGORY_CONNECTIONS
+				"Unexpected disconnect: %s"
+				% reason_name,
+				NetworkLogger
+					.CATEGORY_CONNECTIONS,
 			)
 		client_exit_match()
 
 
 func _on_match_ready() -> void:
-	# All players connected and validated (server only).
+	# All players connected and validated
+	# (server only).
 	Netcode.check_is_server()
 	Netcode.print(
 		"Match ready, all players validated",
-		NetworkLogger.CATEGORY_GAME_STATE
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
-	# Set expected player count for color assignment. This tells
-	# MatchStateSynchronizer how many players to expect, so it can assign colors
-	# when the last player is added to match state.
-	# In preview mode, this is the number of client instances.
-	# In production, it's the number returned by the matchmaker.
+	# Set expected player count for color
+	# assignment. This tells
+	# MatchStateSynchronizer how many players to
+	# expect, so it can assign colors when the
+	# last player is added to match state.
+	# In preview mode, this is the number of
+	# client instances. In production, it's the
+	# number returned by the matchmaker.
 	var expected_count: int
 	if Netcode.is_preview:
-		expected_count = Netcode.settings.preview_client_count
+		expected_count = (
+			Netcode.settings.preview_client_count)
 	else:
-		# Production: get from session provider or use connected peer count
-		expected_count = multiplayer.get_peers().size()
+		# Production: get from session provider
+		# or use connected peer count.
+		expected_count = (
+			multiplayer.get_peers().size())
 
-	%MatchStateSynchronizer.server_set_expected_player_count(expected_count)
+	(%MatchStateSynchronizer
+		.server_set_expected_player_count(
+			expected_count))
 
 	# Resolve critter preference via majority
 	# vote, then spawn snails if enabled.
@@ -299,11 +408,12 @@ func _on_match_ready() -> void:
 
 
 func _on_server_should_reset() -> void:
-	# Server should reset for new match (preview mode only).
+	# Server should reset for new match
+	# (preview mode only).
 	Netcode.check_is_server()
 	Netcode.print(
 		"Resetting server for new match",
-		NetworkLogger.CATEGORY_CORE_SYSTEMS
+		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 	_server_reset_for_new_match()
 
@@ -329,12 +439,14 @@ func _server_reset_for_new_match() -> void:
 	Netcode.frame_driver.server_frame_index = 0
 
 	Netcode.print(
-		"Server reset complete, ready for new clients",
-		NetworkLogger.CATEGORY_CORE_SYSTEMS
+		"Server reset complete,"
+		+ " ready for new clients",
+		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
 
-## Spawn lobby level (client-only, no server connection).
+## Spawn lobby level (client-only, no server
+## connection).
 func _client_spawn_lobby() -> void:
 	Netcode.check_is_client()
 
@@ -342,12 +454,16 @@ func _client_spawn_lobby() -> void:
 		# Lobby is already ready.
 		return
 
-	Netcode.print("Spawning lobby level", NetworkLogger.CATEGORY_CORE_SYSTEMS)
+	Netcode.print(
+		"Spawning lobby level",
+		NetworkLogger.CATEGORY_CORE_SYSTEMS,
+	)
 
 	# Clear stale match state from previous game.
 	G.match_state.clear()
 
-	var lobby_level: LobbyLevel = G.settings.lobby_level_scene.instantiate()
+	var lobby_level: LobbyLevel = (
+		G.settings.lobby_level_scene.instantiate())
 	levels.append(lobby_level)
 	%Levels.add_child(lobby_level)
 	G.level = lobby_level
@@ -356,17 +472,23 @@ func _client_spawn_lobby() -> void:
 	if is_instance_valid(lobby_level.level_camera):
 		lobby_level.level_camera.make_current()
 
-	# Restore players from previous match (preserves device
-	# configs and attributes except color).
-	lobby_level.restore_players_from_previous_match()
+	# Restore players from previous match
+	# (preserves device configs and attributes
+	# except color).
+	(lobby_level
+		.restore_players_from_previous_match())
 
 
-## Despawn lobby level before connecting to server.
+## Despawn lobby level before connecting to
+## server.
 func _client_despawn_lobby_if_present() -> void:
 	if not G.is_lobby_active:
 		return
 
-	Netcode.print("Despawning lobby level", NetworkLogger.CATEGORY_CORE_SYSTEMS)
+	Netcode.print(
+		"Despawning lobby level",
+		NetworkLogger.CATEGORY_CORE_SYSTEMS,
+	)
 
 	var lobby_level: LobbyLevel = G.level
 	levels.erase(lobby_level)
@@ -376,8 +498,14 @@ func _client_despawn_lobby_if_present() -> void:
 
 func client_load_game() -> void:
 	Netcode.check_is_client()
-	Netcode.check(not G.client_session.is_game_active, "Game is already active")
-	Netcode.check(not G.client_session.is_game_loading, "Game is already loading")
+	Netcode.check(
+		not G.client_session.is_game_active,
+		"Game is already active",
+	)
+	Netcode.check(
+		not G.client_session.is_game_loading,
+		"Game is already loading",
+	)
 
 	# Despawn lobby if present.
 	_client_despawn_lobby_if_present()
@@ -386,35 +514,39 @@ func client_load_game() -> void:
 	G.client_session.is_game_active = false
 	G.client_session.is_game_loading = true
 
-	# Reset frame index for new match to sync with server's reset.
+	# Reset frame index for new match to sync
+	# with server's reset.
 	Netcode.frame_driver.client_reset()
 
-	# Hide overhead labels before the tile-wipe captures
-	# the screen.
-	if is_instance_valid(G.player_overhead_labels):
+	# Hide overhead labels before the tile-wipe
+	# captures the screen.
+	if is_instance_valid(
+		G.player_overhead_labels
+	):
 		G.player_overhead_labels.hide_all()
 
-	G.screens.client_open_screen(ScreensMain.ScreenType.LOADING)
+	G.screens.client_open_screen(
+		ScreensMain.ScreenType.LOADING)
 
-	# Request session IDs from backend before connecting.
+	# Request session IDs from backend before
+	# connecting.
 	_client_client_request_session_ids()
 
 
-func _client_client_request_session_ids() \
-		-> void:
+func _client_client_request_session_ids() -> void:
 	Netcode.check_is_client()
 	var session_prefs: SessionPreferences = null
 	if G.local_settings != null:
 		session_prefs = SessionPreferences.new()
-		session_prefs.level_preferences = \
-			G.local_settings \
-				.load_level_preferences()
-		session_prefs.are_critters_enabled = \
+		session_prefs.level_preferences = (
+			G.local_settings
+				.load_level_preferences())
+		session_prefs.are_critters_enabled = (
 			G.local_settings.get_value(
-				&"are_critters_enabled")
-		session_prefs.are_cheats_enabled = \
+				&"are_critters_enabled"))
+		session_prefs.are_cheats_enabled = (
 			G.local_settings.get_value(
-				&"are_cheats_enabled")
+				&"are_cheats_enabled"))
 	session_manager.client_request_session(
 		session_prefs)
 
@@ -430,66 +562,71 @@ func client_exit_match() -> void:
 	G.client_session.is_game_loading = false
 
 	Netcode.connector.client_disconnect()
-	G.client_session.copy_latest_state(G.match_state)
+	G.client_session.copy_latest_state(
+		G.match_state)
 
 	# Sync updated adjectives from match state
 	# back into latest attributes so they persist
 	# into the lobby.
 	for i in range(
-		G.client_session \
+		G.client_session
 			.latest_local_player_ids.size()
 	):
-		var pid: int = G.client_session \
-			.latest_local_player_ids[i]
-		var ps: GamePlayerState = \
-			G.match_state.players_by_id \
-			.get(pid)
-		if ps and i < G.client_session \
-				.latest_local_player_attributes \
-				.size():
-			G.client_session \
-				.latest_local_player_attributes \
-				[i]["adjective"] = ps.adjective
-			G.client_session \
-				.latest_local_player_attributes \
-				[i]["is_soft"] = false
+		var pid: int = (
+			G.client_session
+				.latest_local_player_ids[i])
+		var ps: GamePlayerState = (
+			G.match_state.players_by_id.get(pid))
+		if (ps
+				and i < G.client_session
+					.latest_local_player_attributes
+					.size()):
+			(G.client_session
+				.latest_local_player_attributes[
+					i])["adjective"] = ps.adjective
+			(G.client_session
+				.latest_local_player_attributes[
+					i])["is_soft"] = false
 
 	G.client_session.clear()
 
-	# Pause frame driver so it stops running network
-	# processing (rollback, buffers, etc.) in the lobby.
+	# Pause frame driver so it stops running
+	# network processing (rollback, buffers,
+	# etc.) in the lobby.
 	Netcode.frame_driver.client_reset()
 
 	# Reset match timer state for next game.
 	G.match_state.match_start_frame_index = -1
 	G.match_state.is_match_ended = false
 
-	# Snapshot existing levels before switching screens.
-	# _client_spawn_lobby() will add the new lobby to
-	# the levels array, so we must only free the old
-	# ones.
+	# Snapshot existing levels before switching
+	# screens. _client_spawn_lobby() will add
+	# the new lobby to the levels array, so we
+	# must only free the old ones.
 	var old_levels := levels.duplicate()
 
-	# Hide overhead labels before the tile-wipe captures
-	# the screen.
-	if is_instance_valid(G.player_overhead_labels):
+	# Hide overhead labels before the tile-wipe
+	# captures the screen.
+	if is_instance_valid(
+		G.player_overhead_labels
+	):
 		G.player_overhead_labels.hide_all()
 
 	# Open lobby screen. The tile-wipe transition
-	# captures the current viewport (which includes
-	# the iris overlay if the celebration ran) before
-	# switching to the lobby.
+	# captures the current viewport (which
+	# includes the iris overlay if the celebration
+	# ran) before switching to the lobby.
 	G.screens.client_open_screen(
 		ScreensMain.ScreenType.LOBBY)
 
-	# Reset celebration AFTER the screen capture so
-	# the iris overlay is still visible (black) when
-	# the tile-wipe captures the screen.
+	# Reset celebration AFTER the screen capture
+	# so the iris overlay is still visible (black)
+	# when the tile-wipe captures the screen.
 	if is_instance_valid(G.celebration):
 		G.celebration.reset()
 
-	# Free only the pre-existing levels (game level),
-	# not the newly spawned lobby.
+	# Free only the pre-existing levels (game
+	# level), not the newly spawned lobby.
 	for level in old_levels:
 		levels.erase(level)
 		level.queue_free()
@@ -497,8 +634,14 @@ func client_exit_match() -> void:
 
 func server_start_match() -> void:
 	Netcode.check_is_server()
-	Netcode.check(not G.client_session.is_game_active, "Game is already active")
-	Netcode.check(not is_instance_valid(G.level), "Level is already set")
+	Netcode.check(
+		not G.client_session.is_game_active,
+		"Game is already active",
+	)
+	Netcode.check(
+		not is_instance_valid(G.level),
+		"Level is already set",
+	)
 
 	G.client_session.is_game_active = true
 
@@ -506,31 +649,34 @@ func server_start_match() -> void:
 	G.match_state.match_start_frame_index = -1
 	G.match_state.is_match_ended = false
 
-	# Set expected player count for session validation.
-	# In preview mode, this is the number of client instances.
-	# In production, GameLiftServerProvider sets this from
+	# Set expected player count for session
+	# validation. In preview mode, this is the
+	# number of client instances. In production,
+	# GameLiftServerProvider sets this from
 	# session properties.
 	if Netcode.is_preview:
 		var expected_client_count := (
-			Netcode.settings.preview_client_count
-		)
-		session_manager.server_set_expected_players(
-			expected_client_count)
+			Netcode.settings.preview_client_count)
+		(session_manager
+			.server_set_expected_players(
+				expected_client_count))
 
-	# Get selected level from session provider (GameLift or preview mode).
-	var level_scene := _server_get_selected_level_scene()
+	# Get selected level from session provider
+	# (GameLift or preview mode).
+	var level_scene := (
+		_server_get_selected_level_scene())
 
 	_server_spawn_level(level_scene)
 
-	Netcode.connector \
-		.server_enable_connections(
-			Netcode.server_port)
+	Netcode.connector.server_enable_connections(
+		Netcode.server_port)
 
 
 func server_end_match() -> void:
 	Netcode.check_is_server()
 
-	# Guard against multiple calls (from delayed timer callbacks).
+	# Guard against multiple calls (from delayed
+	# timer callbacks).
 	if not G.client_session.is_game_active:
 		return
 	if not is_instance_valid(G.level):
@@ -540,12 +686,15 @@ func server_end_match() -> void:
 	G.match_state.match_start_frame_index = -1
 	G.match_state.is_match_ended = false
 
-	# In preview mode, disconnect clients but keep session open for next match.
-	# In production, close entire session.
+	# In preview mode, disconnect clients but
+	# keep session open for next match. In
+	# production, close entire session.
 	if Netcode.is_preview:
-		Netcode.connector.server_disconnect_all_clients()
+		(Netcode.connector
+			.server_disconnect_all_clients())
 	else:
-		Netcode.connector.server_close_multiplayer_session()
+		(Netcode.connector
+			.server_close_multiplayer_session())
 
 	# TODO: Add support for tracking game stats
 	# in a separate backend database.
@@ -553,54 +702,61 @@ func server_end_match() -> void:
 	_server_destroy_level(G.level)
 
 
-## Resolves critter preference and spawns
-## snails if enabled.
-func _server_resolve_critter_preference() \
-		-> void:
+## Resolves critter preference and spawns snails
+## if enabled.
+func _server_resolve_critter_preference() -> void:
 	var critters_enabled := true
 	if G.local_settings != null:
-		critters_enabled = G.local_settings \
-			.get_value(&"are_critters_enabled")
+		critters_enabled = (
+			G.local_settings.get_value(
+				&"are_critters_enabled"))
 
 	Netcode.print(
 		"Critters: %s" % (
-			"enabled" \
-				if critters_enabled \
-				else "disabled"),
-		NetworkLogger.CATEGORY_GAME_STATE)
+			"enabled"
+			if critters_enabled
+			else "disabled"),
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
 
-	if critters_enabled \
-			and G.level is NetworkedLevel:
+	if (critters_enabled
+			and G.level is NetworkedLevel):
 		G.level.server_spawn_snails()
 
 
-func _server_validate_pause_request(peer_id: int) -> Dictionary:
+func _server_validate_pause_request(
+	peer_id: int,
+) -> Dictionary:
 	Netcode.check_is_server()
 
 	# Block pauses after match has ended.
 	if G.match_state.is_match_ended:
 		Netcode.print(
-			"Client %d pause rejected: match has ended" %
-			peer_id,
+			"Client %d pause rejected:"
+			+ " match has ended" % peer_id,
 			NetworkLogger.CATEGORY_NETWORK_SYNC,
 		)
 		return {"allowed": false}
 
 	# Check pause limit.
-	var max_pauses := G.settings.max_pauses_per_client
-	var used: int = \
-		G.match_state.pauses_used_by_peer.get(peer_id, 0)
+	var max_pauses := (
+		G.settings.max_pauses_per_client)
+	var used: int = (
+		G.match_state.pauses_used_by_peer
+			.get(peer_id, 0))
 	if used >= max_pauses:
 		Netcode.print(
-			"Client %d pause rejected: limit reached (%d/%d)" %
-			[peer_id, used, max_pauses],
+			"Client %d pause rejected:"
+			+ " limit reached (%d/%d)" % [
+				peer_id, used, max_pauses],
 			NetworkLogger.CATEGORY_NETWORK_SYNC,
 		)
 		return {"allowed": false}
 
 	# Increment and allow.
 	used += 1
-	G.match_state.pauses_used_by_peer[peer_id] = used
+	G.match_state.pauses_used_by_peer[
+		peer_id] = used
 	return {"allowed": true, "pauses_used": used}
 
 
@@ -614,12 +770,14 @@ func _server_on_all_players_connected() -> void:
 
 	Netcode.print(
 		"All players validated, starting match",
-		NetworkLogger.CATEGORY_CONNECTIONS
+		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 
 	# Unpause frame driver to start simulation.
-	# The framework automatically triggers countdown if enabled in settings.
-	Netcode.frame_driver.server_set_is_paused(false)
+	# The framework automatically triggers
+	# countdown if enabled in settings.
+	Netcode.frame_driver.server_set_is_paused(
+		false)
 
 
 ## Re-reads local_settings.cfg from disk, applies
@@ -631,7 +789,7 @@ func _server_preview_hot_reload() -> void:
 	Netcode.print(
 		"Hot-reloading settings and level"
 		+ " for preview mode",
-		NetworkLogger.CATEGORY_GAME_STATE
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 	# 1. Reload settings from disk.
@@ -640,8 +798,9 @@ func _server_preview_hot_reload() -> void:
 
 	# 2. Save peer declarations before
 	#    destroying the level.
-	var declarations := Netcode.connector \
-		.server_get_peer_declarations()
+	var declarations := (
+		Netcode.connector
+			.server_get_peer_declarations())
 
 	# 3. Clear match state (players, scores).
 	G.match_state.clear()
@@ -655,21 +814,21 @@ func _server_preview_hot_reload() -> void:
 		var old_level := G.level
 		_server_destroy_level(old_level)
 		if old_level.get_parent() != null:
-			old_level.get_parent() \
-				.remove_child(old_level)
+			(old_level.get_parent()
+				.remove_child(old_level))
 
 	# 5. Spawn new level with fresh preferences.
-	var level_scene := \
-		_server_get_selected_level_scene()
+	var level_scene := (
+		_server_get_selected_level_scene())
 	_server_spawn_level(level_scene)
 
 	# 6. Re-set expected player count (cleared
 	#    with match state).
-	var expected_count: int = \
-		Netcode.settings.preview_client_count
-	%MatchStateSynchronizer \
+	var expected_count: int = (
+		Netcode.settings.preview_client_count)
+	(%MatchStateSynchronizer
 		.server_set_expected_player_count(
-			expected_count)
+			expected_count))
 
 	# 7. Replay peer declarations so the new
 	#    level spawns players and
@@ -678,17 +837,19 @@ func _server_preview_hot_reload() -> void:
 	#    currently connected peers. Stale entries
 	#    from prior matches (old peer IDs) are
 	#    skipped.
-	var connected_peers := multiplayer.get_peers()
+	var connected_peers := (
+		multiplayer.get_peers())
 	for peer_id in declarations:
 		if peer_id not in connected_peers:
 			continue
-		var decl: Dictionary = \
-			declarations[peer_id]
-		Netcode.connector \
+		var decl: Dictionary = (
+			declarations[peer_id])
+		(Netcode.connector
 			.peer_players_declared.emit(
 				peer_id,
 				decl["assigned_ids"],
-				decl["attributes"])
+				decl["attributes"],
+			))
 
 	# 8. Re-resolve critter preference (was
 	#    done in _on_match_ready, but match
@@ -696,7 +857,9 @@ func _server_preview_hot_reload() -> void:
 	_server_resolve_critter_preference()
 
 
-func _on_match_start_countdown_started(_countdown_end_frame: int) -> void:
+func _on_match_start_countdown_started(
+	_countdown_end_frame: int,
+) -> void:
 	# Show match start countdown UI on clients.
 	if is_instance_valid(G.hud):
 		G.hud.start_match_countdown()
@@ -706,41 +869,60 @@ func _on_match_start_countdown_ended() -> void:
 	G.audio.fade_in_main_theme()
 
 
-func _server_on_preview_peer_connected(_peer_id: int) -> void:
+func _server_on_preview_peer_connected(
+	_peer_id: int,
+) -> void:
 	Netcode.check_is_server()
 
-	# If no level exists or match has ended, spawn a new level for the new match.
-	if not is_instance_valid(G.level) or G.match_state.is_match_ended:
+	# If no level exists or match has ended,
+	# spawn a new level for the new match.
+	if (not is_instance_valid(G.level)
+			or G.match_state.is_match_ended):
 		Netcode.print(
 			"Spawning new level for next match",
-			NetworkLogger.CATEGORY_GAME_STATE
+			NetworkLogger.CATEGORY_GAME_STATE,
 		)
 		# Clean up old level if it still exists.
 		if is_instance_valid(G.level):
 			_server_destroy_level(G.level)
-		# Clear match state (removes old players, kills, bumps, etc.).
+		# Clear match state (removes old players,
+		# kills, bumps, etc.).
 		G.match_state.clear()
 		# Mark game as active for new match.
 		G.client_session.is_game_active = true
 		# Reset timer state for new match.
 		G.match_state.match_start_frame_index = -1
 		G.match_state.is_match_ended = false
-		# Reset expected client count for session validation (preview mode).
-		var expected_client_count := Netcode.settings.preview_client_count
-		session_manager.server_set_expected_players(expected_client_count)
-		# NOTE: MatchStateSynchronizer expected count set in _on_match_ready().
-		# Reset frame counter for fresh match start.
+		# Reset expected client count for session
+		# validation (preview mode).
+		var expected_client_count := (
+			Netcode.settings
+				.preview_client_count)
+		(session_manager
+			.server_set_expected_players(
+				expected_client_count))
+		# NOTE: MatchStateSynchronizer expected
+		# count set in _on_match_ready().
+		# Reset frame counter for fresh match
+		# start.
 		Netcode.frame_driver.server_frame_index = 0
-		# Start grace period to suppress expected frame sync warnings.
-		Netcode.frame_driver._frame_reset_time_usec = Time.get_ticks_usec()
-		# Reset match start countdown state from previous match.
+		# Start grace period to suppress expected
+		# frame sync warnings.
+		Netcode.frame_driver._frame_reset_time_usec = (
+			Time.get_ticks_usec())
+		# Reset match start countdown state from
+		# previous match.
 		Netcode.frame_driver.match_start_countdown_end_frame_index = -1
 		Netcode.frame_driver._has_match_start_countdown_started = false
 		Netcode.frame_driver._has_match_start_countdown_ended = false
-		# Reconnect preview mode auto-unpause signal for new match.
-		Netcode.frame_driver.server_reset_preview_mode_unpause()
-		# Get selected level (may use preferences from preview mode).
-		var level_scene := _server_get_selected_level_scene()
+		# Reconnect preview mode auto-unpause
+		# signal for new match.
+		(Netcode.frame_driver
+			.server_reset_preview_mode_unpause())
+		# Get selected level (may use preferences
+		# from preview mode).
+		var level_scene := (
+			_server_get_selected_level_scene())
 		_server_spawn_level(level_scene)
 
 
@@ -754,7 +936,9 @@ func _process(_delta: float) -> void:
 		return
 
 	# Check if time has expired.
-	if not G.match_state.is_match_ended and G.match_state.is_match_time_expired:
+	if (not G.match_state.is_match_ended
+			and G.match_state
+				.is_match_time_expired):
 		_server_initiate_match_end()
 
 
@@ -766,43 +950,56 @@ func _server_check_start_match_timer() -> void:
 	if not is_instance_valid(G.level):
 		return
 
-	var match_duration_sec := G.settings.match_duration_sec
+	var match_duration_sec := (
+		G.settings.match_duration_sec)
 
-	# Start timer once level is loaded (sets match_start_frame_index).
-	G.match_state.server_start_match_timer(match_duration_sec)
+	# Start timer once level is loaded (sets
+	# match_start_frame_index).
+	G.match_state.server_start_match_timer(
+		match_duration_sec)
 
 	Netcode.print(
-		"Match timer started: %d seconds" % match_duration_sec,
-		NetworkLogger.CATEGORY_GAME_STATE
+		"Match timer started: %d seconds"
+		% match_duration_sec,
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
 
 func _server_initiate_match_end() -> void:
 	Netcode.check_is_server()
-	Netcode.check(not G.match_state.is_match_ended, "Match end already initiated")
+	Netcode.check(
+		not G.match_state.is_match_ended,
+		"Match end already initiated",
+	)
 
-	Netcode.print("Match time expired - initiating end sequence",
-		NetworkLogger.CATEGORY_GAME_STATE)
+	Netcode.print(
+		"Match time expired"
+		+ " - initiating end sequence",
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
 
 	# Assign dynamic adjectives based on stats.
-	var new_adjectives := \
-		DynamicAdjectiveConfig.assign_adjectives(
-			G.match_state._stats_by_player_id)
+	var new_adjectives := (
+		DynamicAdjectiveConfig
+			.assign_adjectives(
+				G.match_state
+					._stats_by_player_id))
 	for player_id in new_adjectives:
-		var ps: GamePlayerState = \
-			G.match_state.players_by_id.get(
-				player_id)
+		var ps: GamePlayerState = (
+			G.match_state.players_by_id
+				.get(player_id))
 		if ps:
-			ps.adjective = \
-				new_adjectives[player_id]
+			ps.adjective = (
+				new_adjectives[player_id])
 	# Repack to replicate updated adjectives.
 	G.match_state._server_pack_players()
 
-	# Set flag to enable invincibility for all players and notify clients.
+	# Set flag to enable invincibility for all
+	# players and notify clients.
 	G.match_state.is_match_ended = true
 	G.match_state.match_ended.emit()
-	match_state_synchronizer \
-		._rpc_client_notify_match_ended.rpc()
+	(match_state_synchronizer
+		._rpc_client_notify_match_ended.rpc())
 
 	# Send dynamic adjectives to clients for
 	# celebration reveal.
@@ -811,41 +1008,51 @@ func _server_initiate_match_end() -> void:
 		packed_adjective_data.append(player_id)
 		packed_adjective_data.append(
 			new_adjectives[player_id])
-	match_state_synchronizer \
-		._rpc_client_notify_dynamic_adjectives \
-		.rpc(packed_adjective_data)
+	(match_state_synchronizer
+		._rpc_client_notify_dynamic_adjectives
+		.rpc(packed_adjective_data))
 
 	# Schedule server shutdown after wait period.
 	Netcode.time.set_timeout(
 		server_end_match,
-		G.settings.match_end_disconnect_delay_sec
+		G.settings.match_end_disconnect_delay_sec,
 	)
 
 
 func on_return_to_game_from_screen(
-		_previous_screen_type: ScreensMain.ScreenType) -> void:
-	Netcode.check(G.client_session.is_game_active, "Game is not active")
+	_previous_screen_type: ScreensMain.ScreenType,
+) -> void:
+	Netcode.check(
+		G.client_session.is_game_active,
+		"Game is not active",
+	)
 	Netcode.check(
 		not G.client_session.is_game_loading,
 		"Game is still loading",
 	)
 
 
-func on_left_game_to_screen(_next_screen_type: ScreensMain.ScreenType) -> void:
+func on_left_game_to_screen(
+	_next_screen_type: ScreensMain.ScreenType,
+) -> void:
 	pass
 
 
 func on_return_to_lobby_from_screen(
-		_previous_screen_type: ScreensMain.ScreenType) -> void:
+	_previous_screen_type: ScreensMain.ScreenType,
+) -> void:
 	_client_spawn_lobby()
 
 
-func on_left_lobby_to_screen(_next_screen_type: ScreensMain.ScreenType) -> void:
+func on_left_lobby_to_screen(
+	_next_screen_type: ScreensMain.ScreenType,
+) -> void:
 	pass
 
 
-## Get the level scene to spawn based on session provider selection.
-## If no level is selected, picks a random enabled level.
+## Get the level scene to spawn based on session
+## provider selection. If no level is selected,
+## picks a random enabled level.
 func _server_get_selected_level_scene() -> PackedScene:
 	Netcode.check(G.level_registry != null)
 
@@ -856,25 +1063,21 @@ func _server_get_selected_level_scene() -> PackedScene:
 		if G.settings.level_override_for_preview >= 0:
 			override_index = (
 				G.settings
-					.level_override_for_preview
-			)
+					.level_override_for_preview)
 
 		if override_index >= 0:
 			var max_index := (
-				G.level_registry.get_level_count()
-				- 1
-			)
+				G.level_registry
+					.get_level_count() - 1)
 			var clamped := clampi(
-				override_index, 0, max_index,
-			)
+				override_index, 0, max_index)
 			var info := (
 				G.level_registry
-					.get_level_by_index(clamped)
-			)
+					.get_level_by_index(clamped))
 			if info != null and info.scene != null:
 				Netcode.print(
-					"Using level override index"
-					+ " %d: %s (%s)" % [
+					"Using level override"
+					+ " index %d: %s (%s)" % [
 						clamped,
 						info.id,
 						info.display_name],
@@ -883,114 +1086,136 @@ func _server_get_selected_level_scene() -> PackedScene:
 				)
 				return info.scene
 
-	var level_id := session_manager.server_get_selected_level_id()
+	var level_id := (
+		session_manager
+			.server_get_selected_level_id())
 
 	if not level_id.is_empty():
-		var level_info := G.level_registry.get_level_by_id(level_id)
-		if level_info != null and level_info.scene != null:
+		var level_info := (
+			G.level_registry
+				.get_level_by_id(level_id))
+		if (level_info != null
+				and level_info.scene != null):
 			Netcode.print(
-				"Using selected level: %s (%s)" % [level_id, level_info.display_name],
-				NetworkLogger.CATEGORY_GAME_STATE
+				"Using selected level:"
+				+ " %s (%s)" % [
+					level_id,
+					level_info.display_name],
+				NetworkLogger
+					.CATEGORY_GAME_STATE,
 			)
 			return level_info.scene
 		else:
 			Netcode.warning(
-				"Selected level '%s' not found in registry" % level_id,
-				NetworkLogger.CATEGORY_GAME_STATE
+				"Selected level '%s' not found"
+				+ " in registry" % level_id,
+				NetworkLogger
+					.CATEGORY_GAME_STATE,
 			)
 
 	# Check local settings for level preferences
 	# (shared filesystem in preview mode).
 	if G.local_settings != null:
-		var prefs: LevelPreferences = \
-			G.local_settings \
-				.load_level_preferences()
-		if prefs != null \
-				and prefs.has_preferences():
-			var selected := \
-				_server_select_from_prefs(
-					prefs)
+		var prefs: LevelPreferences = (
+			G.local_settings
+				.load_level_preferences())
+		if (prefs != null
+				and prefs.has_preferences()):
+			var selected := (
+				_server_select_from_prefs(prefs))
 			if selected != null:
 				return selected
 
-	# No level selected — pick random from
-	# enabled levels.
-	var random_level := \
-		G.level_registry \
-			.get_random_enabled_level()
+	# No level selected. Pick random from enabled
+	# levels.
+	var random_level := (
+		G.level_registry
+			.get_random_enabled_level())
 	if random_level != null:
 		Netcode.print(
 			"Randomly selected level:"
 			+ " %s (%s)" % [
 				random_level.id,
 				random_level.display_name],
-			NetworkLogger.CATEGORY_GAME_STATE)
+			NetworkLogger.CATEGORY_GAME_STATE,
+		)
 		return random_level.scene
 
 	Netcode.warning(
 		"No enabled levels available",
-		NetworkLogger.CATEGORY_GAME_STATE)
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
 	return null
 
 
-## Selects a level scene based on local
-## level preferences.
+## Selects a level scene based on local level
+## preferences.
 func _server_select_from_prefs(
 	prefs: LevelPreferences,
 ) -> PackedScene:
 	# Use preferred level if set.
 	if not prefs.preferred_level.is_empty():
-		var info := G.level_registry \
-			.get_level_by_id(
-				prefs.preferred_level)
-		if info != null \
-				and info.scene != null:
+		var info := (
+			G.level_registry.get_level_by_id(
+				prefs.preferred_level))
+		if info != null and info.scene != null:
 			Netcode.print(
 				"Using preferred level:"
 				+ " %s (%s)" % [
 					info.id,
 					info.display_name],
-				NetworkLogger \
-					.CATEGORY_GAME_STATE)
+				NetworkLogger
+					.CATEGORY_GAME_STATE,
+			)
 			return info.scene
 
 	# Filter enabled levels by preferences.
 	var allowed: Array[LevelInfo] = []
-	for info: LevelInfo \
-			in G.level_registry._levels:
-		if info.is_enabled \
+	for info: LevelInfo in (
+		G.level_registry._levels
+	):
+		if (info.is_enabled
 				and prefs.is_level_allowed(
-					info.id):
+					info.id)):
 			allowed.append(info)
 
 	if allowed.is_empty():
 		return null
 
-	var pick: LevelInfo = \
-		allowed.pick_random()
+	var pick: LevelInfo = allowed.pick_random()
 	Netcode.print(
 		"Selected level from prefs:"
 		+ " %s (%s)" % [
 			pick.id, pick.display_name],
-		NetworkLogger.CATEGORY_GAME_STATE)
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
 	return pick.scene
 
 
-func _server_spawn_level(level_scene: PackedScene) -> void:
+func _server_spawn_level(
+	level_scene: PackedScene,
+) -> void:
 	Netcode.check_is_server()
 	Netcode.check(level_scene != null)
 
 	Netcode.check(
-		G.level_registry.get_level_id_for_scene(level_scene) != "",
-		"level_scene not registered in level registry: %s" % level_scene,
+		G.level_registry
+			.get_level_id_for_scene(
+				level_scene) != "",
+		"level_scene not registered in"
+		+ " level registry: %s" % level_scene,
 	)
 
-	# Pause server to wait for all clients to connect before starting match.
-	# In preview mode, frame_driver will auto-unpause when all clients join.
-	Netcode.frame_driver.server_set_is_paused(true)
+	# Pause server to wait for all clients to
+	# connect before starting match. In preview
+	# mode, frame_driver will auto-unpause when
+	# all clients join.
+	Netcode.frame_driver.server_set_is_paused(
+		true)
 
 	Netcode.print(
-		"Spawning level: %s" % Utils.get_display_name(level_scene),
+		"Spawning level: %s"
+		% Utils.get_display_name(level_scene),
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
@@ -1000,15 +1225,20 @@ func _server_spawn_level(level_scene: PackedScene) -> void:
 	G.level = level
 
 
-func _server_destroy_level(level: Level) -> void:
+func _server_destroy_level(
+	level: Level,
+) -> void:
 	Netcode.check_is_server()
 	Netcode.check(
 		levels.has(level),
 		"level not in current list: %s" % level,
 	)
 
-	Netcode.print("Destroying level: %s" % level.get_string(),
-		NetworkLogger.CATEGORY_GAME_STATE)
+	Netcode.print(
+		"Destroying level: %s"
+		% level.get_string(),
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
 
 	if G.level == level:
 		G.level = null
@@ -1030,85 +1260,100 @@ func on_level_removed(level: Level) -> void:
 		levels.erase(level)
 
 
-## Validates and sanitizes player attributes for bunny configuration.
-## Called by NetworkConnector when players declare their attributes.
+## Validates and sanitizes player attributes for
+## bunny configuration. Called by
+## NetworkConnector when players declare their
+## attributes.
 func _validate_player_attributes(
 	attributes: Array,
 	expected_count: int,
-	peer_id: int
+	peer_id: int,
 ) -> Array:
 	var validated: Array = []
 
-	for i in range(min(attributes.size(), expected_count)):
-		var attr: Dictionary = attributes[i].duplicate()
+	for i in range(
+		min(attributes.size(), expected_count)
+	):
+		var attr: Dictionary = (
+			attributes[i].duplicate())
 
 		# Validate/sanitize bunny_name.
-		if not DynamicAdjectiveConfig.NAMES.has(attr.get("bunny_name", "")):
-			attr["bunny_name"] = DynamicAdjectiveConfig.NAMES.pick_random()
+		if not DynamicAdjectiveConfig.NAMES.has(
+			attr.get("bunny_name", "")
+		):
+			attr["bunny_name"] = (
+				DynamicAdjectiveConfig.NAMES
+					.pick_random())
 			Netcode.warning(
-				"Peer %d: Invalid bunny_name, assigned random: %s" % [
+				"Peer %d: Invalid bunny_name,"
+				+ " assigned random: %s" % [
 					peer_id,
-					attr["bunny_name"]
-				],
-				NetworkLogger.CATEGORY_CONNECTIONS
+					attr["bunny_name"]],
+				NetworkLogger
+					.CATEGORY_CONNECTIONS,
 			)
 
 		# Validate/sanitize adjective.
-		var adj_value: String = \
-			attr.get("adjective", "")
-		var is_soft: bool = \
-			attr.get("is_soft", true)
+		var adj_value: String = (
+			attr.get("adjective", ""))
+		var is_soft: bool = (
+			attr.get("is_soft", true))
 		var valid_adjectives := (
-			DynamicAdjectiveConfig.SOFT_ADJECTIVES
+			DynamicAdjectiveConfig
+				.SOFT_ADJECTIVES
 			if is_soft
 			else DynamicAdjectiveConfig
 				.HARD_ADJECTIVES
 		)
 		var is_valid_adj := (
-			valid_adjectives.has(adj_value) or
-			DynamicAdjectiveConfig \
+			valid_adjectives.has(adj_value)
+			or DynamicAdjectiveConfig
 				.is_valid_dynamic_adjective(
 					adj_value)
 		)
 		if not is_valid_adj:
-			attr["adjective"] = \
-				valid_adjectives.pick_random()
+			attr["adjective"] = (
+				valid_adjectives.pick_random())
 			Netcode.warning(
-				"Peer %d: Invalid adjective, assigned random: %s" % [
+				"Peer %d: Invalid adjective,"
+				+ " assigned random: %s" % [
 					peer_id,
-					attr["adjective"]
-				],
-				NetworkLogger.CATEGORY_CONNECTIONS
+					attr["adjective"]],
+				NetworkLogger
+					.CATEGORY_CONNECTIONS,
 			)
 
-		# Ensure required fields exist with defaults.
-		# Validate body_type_index bounds.
-		var body_type_idx: int = \
-			attr.get("body_type_index", 0)
-		if (body_type_idx < 0 or
-				body_type_idx >= \
-					G.settings.body_types.size()):
+		# Ensure required fields exist with
+		# defaults. Validate body_type_index
+		# bounds.
+		var body_type_idx: int = (
+			attr.get("body_type_index", 0))
+		if (body_type_idx < 0
+				or body_type_idx
+					>= G.settings
+						.body_types.size()):
 			Netcode.warning(
-				"Peer %d: body_type_index %d out of range, assigned 0" % [
-					peer_id,
-					body_type_idx,
-				],
-				NetworkLogger.CATEGORY_CONNECTIONS,
+				"Peer %d: body_type_index %d"
+				+ " out of range, assigned 0"
+				% [peer_id, body_type_idx],
+				NetworkLogger
+					.CATEGORY_CONNECTIONS,
 			)
 			attr["body_type_index"] = 0
 
 		# Validate costume_index bounds.
-		var costume_idx: int = \
-			attr.get("costume_index", 0)
-		if (costume_idx < 0 or
-				costume_idx >= \
-					G.settings.costumes.size()):
+		var costume_idx: int = (
+			attr.get("costume_index", 0))
+		if (costume_idx < 0
+				or costume_idx
+					>= G.settings
+						.costumes.size()):
 			Netcode.warning(
-				"Peer %d: costume_index %d out of range, assigned 0" % [
-					peer_id,
-					costume_idx,
-				],
-				NetworkLogger.CATEGORY_CONNECTIONS,
+				"Peer %d: costume_index %d"
+				+ " out of range, assigned 0"
+				% [peer_id, costume_idx],
+				NetworkLogger
+					.CATEGORY_CONNECTIONS,
 			)
 			attr["costume_index"] = 0
 

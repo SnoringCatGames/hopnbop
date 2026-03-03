@@ -70,15 +70,15 @@ func set_device_in_use(
 			_gamepad_count -= 1
 		# Gamepad display is "in use" when any gamepad
 		# player is active.
-		_in_use[&"GamepadControls"] = \
-			_gamepad_count > 0
+		_in_use[&"GamepadControls"] = (
+			_gamepad_count > 0)
 		_on_availability_changed()
 		return
 
 	# Keyboard display mapping.
 	if _DEVICE_TO_DISPLAY.has(device_name):
-		var node_name: StringName = \
-			_DEVICE_TO_DISPLAY[device_name]
+		var node_name: StringName = (
+			_DEVICE_TO_DISPLAY[device_name])
 		_in_use[node_name] = in_use
 		_on_availability_changed()
 
@@ -101,7 +101,7 @@ func _on_availability_changed() -> void:
 func _update_cycle(delta: float) -> void:
 	var available_count := _get_available_count()
 	if available_count <= 1:
-		# Zero or one available — no cycling needed.
+		# Zero or one available. No cycling needed.
 		return
 
 	_elapsed += delta

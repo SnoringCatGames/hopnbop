@@ -25,9 +25,10 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	# Apply gravity.
-	velocity.y += \
-		G.settings.default_gravity_acceleration * \
-		G.settings.gore_gravity_multiplier * delta
+	velocity.y += (
+		G.settings.default_gravity_acceleration
+		* G.settings.gore_gravity_multiplier
+		* delta)
 
 	var collision := move_and_collide(velocity * delta)
 	if collision:
@@ -46,8 +47,8 @@ func _physics_process(delta: float) -> void:
 		G.settings.gore_rest_speed_threshold
 	):
 		_trail_elapsed += delta
-		var spawn_interval: float = \
-			G.settings.gore_trail_spawn_interval_sec
+		var spawn_interval: float = (
+			G.settings.gore_trail_spawn_interval_sec)
 		if _trail_elapsed >= spawn_interval:
 			_trail_elapsed -= spawn_interval
 			if (
@@ -55,13 +56,13 @@ func _physics_process(delta: float) -> void:
 				is_instance_valid(
 					G.level.gore_manager)
 			):
-				G.level.gore_manager \
-					.spawn_trail_particle(
-						position,
-						type_index,
-						is_behind,
-						self,
-						velocity)
+				G.level.gore_manager.spawn_trail_particle(
+				position,
+				type_index,
+				is_behind,
+				self,
+				velocity,
+			)
 	else:
 		_trail_elapsed = 0.0
 
@@ -72,8 +73,9 @@ func _physics_process(delta: float) -> void:
 	# Update lifetime and start fade when expired.
 	_lifetime += delta
 	if (
-		not _is_fading and
-		_lifetime >= G.settings.gore_kickable_lifetime_sec
+		not _is_fading
+		and _lifetime
+			>= G.settings.gore_kickable_lifetime_sec
 	):
 		_start_fade()
 
@@ -89,17 +91,17 @@ func _on_kick_area_body_entered(body: Node2D) -> void:
 	var player := body as Player
 
 	# Apply impulse from player velocity.
-	var impulse := \
-		player.velocity * \
-		G.settings.gore_kickable_kick_multiplier
+	var impulse := (
+		player.velocity
+		* G.settings.gore_kickable_kick_multiplier)
 
 	# Push horizontally away from the player's center.
-	var away_x := \
-		global_position.x - player.global_position.x
+	var away_x := (
+		global_position.x - player.global_position.x)
 	if away_x != 0.0:
-		impulse.x += \
-			signf(away_x) * \
-			G.settings.gore_kickable_repulsion_speed
+		impulse.x += (
+			signf(away_x)
+			* G.settings.gore_kickable_repulsion_speed)
 
 	# Ensure a minimum upward pop so kicked pieces
 	# launch visibly into the air.
@@ -108,14 +110,14 @@ func _on_kick_area_body_entered(body: Node2D) -> void:
 		-G.settings.gore_kickable_min_kick_pop)
 
 	# Clamp to max kick speed.
-	var max_speed := \
-		G.settings.gore_kickable_max_kick_speed
+	var max_speed: float = (
+		G.settings.gore_kickable_max_kick_speed)
 	if impulse.length() > max_speed:
 		impulse = impulse.normalized() * max_speed
 
 	velocity = impulse
-	_kick_cooldown = \
-		G.settings.gore_kickable_kick_cooldown_sec
+	_kick_cooldown = (
+		G.settings.gore_kickable_kick_cooldown_sec)
 	_kick_counts[body] = count + 1
 
 	# Reset lifetime so kicked pieces persist longer.

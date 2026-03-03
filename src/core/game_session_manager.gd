@@ -94,20 +94,20 @@ func client_request_session(
 ) -> void:
 	Netcode.check_is_client()
 
-	var player_count := \
-		G.client_session.local_player_count
-	var prefs_dict := {} \
-		if session_prefs == null \
-		else session_prefs.to_dict()
+	var player_count := (
+		G.client_session.local_player_count)
+	var prefs_dict := (
+		{}
+		if session_prefs == null
+		else session_prefs.to_dict())
 
 	Netcode.print(
-		"Requesting session for %d player(s)%s"
-		% [
+		"Requesting session for"
+		+ " %d player(s)%s" % [
 			player_count,
-			" with session preferences" \
-				if not prefs_dict.is_empty() \
-				else "",
-		],
+			" with session preferences"
+			if not prefs_dict.is_empty()
+			else ""],
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 
@@ -218,8 +218,9 @@ func _client_on_server_disconnected(reason: int) -> void:
 
 	# Check if this was an expected disconnect (match ended normally).
 	var is_expected := (
-		reason == NetworkConnector.DisconnectReason.MATCH_FINISHED or
-		G.match_state.is_match_ended
+		reason == NetworkConnector
+			.DisconnectReason.MATCH_FINISHED
+		or G.match_state.is_match_ended
 	)
 
 	if is_expected:

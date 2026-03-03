@@ -211,12 +211,13 @@ func _calculate_delay_ms() -> int:
 
 
 func _process_incoming_queue() -> void:
-	var s := Netcode.settings
 	var loss: float = (
-		s.network_sim_packet_loss_pct if s else 0.0
+		Netcode.settings.network_sim_packet_loss_pct
+		if Netcode.settings else 0.0
 	)
 	var bw: int = (
-		s.network_sim_bandwidth_limit if s else 0
+		Netcode.settings.network_sim_bandwidth_limit
+		if Netcode.settings else 0
 	)
 
 	var ready := _incoming_queue.process(loss, bw)
@@ -225,12 +226,13 @@ func _process_incoming_queue() -> void:
 
 
 func _process_outgoing_queue() -> void:
-	var s := Netcode.settings
 	var loss: float = (
-		s.network_sim_packet_loss_pct if s else 0.0
+		Netcode.settings.network_sim_packet_loss_pct
+		if Netcode.settings else 0.0
 	)
 	var bw: int = (
-		s.network_sim_bandwidth_limit if s else 0
+		Netcode.settings.network_sim_bandwidth_limit
+		if Netcode.settings else 0
 	)
 
 	var ready := _outgoing_queue.process(loss, bw)

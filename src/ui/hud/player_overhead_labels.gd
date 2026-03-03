@@ -32,8 +32,9 @@ func _ready() -> void:
 	# Must run during countdown to track player positions.
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
-	# Throttle visibility updates for performance (we check distance to all
-	# other players each time).
+	# Throttle visibility updates for performance
+	# (we check distance to all other players
+	# each time).
 	Netcode.time.set_interval(
 		_update_label_visibility,
 		0.2
@@ -41,7 +42,8 @@ func _ready() -> void:
 
 
 func set_up() -> void:
-	G.match_state.players_updated.connect(_on_players_updated)
+	G.match_state.players_updated.connect(
+		_on_players_updated)
 	_update_labels()
 
 
@@ -80,7 +82,8 @@ func _update_labels() -> void:
 		return
 
 	# Get current player IDs from match state.
-	var current_player_ids: Array = G.match_state.players_by_id.keys()
+	var current_player_ids: Array = (
+		G.match_state.players_by_id.keys())
 
 	# Remove labels for players that no longer exist.
 	var player_ids_to_remove: Array = []
@@ -98,10 +101,12 @@ func _update_labels() -> void:
 
 
 func _create_label(player_id: int) -> void:
-	var label: PlayerOverheadLabel = label_scene.instantiate()
+	var label: PlayerOverheadLabel = (
+		label_scene.instantiate())
 
 	# Set text from player match state.
-	var player_match_state := G.get_player_match_state(player_id)
+	var player_match_state := (
+		G.get_player_match_state(player_id))
 	if player_match_state:
 		label.text = player_match_state.bunny_name
 		label.color = (
@@ -122,10 +127,11 @@ func _remove_label(player_id: int) -> void:
 	if not _labels_by_player_id.has(player_id):
 		return
 
-	var label: PlayerOverheadLabel = _labels_by_player_id[player_id]
+	var label: PlayerOverheadLabel = (
+		_labels_by_player_id[player_id])
 	_labels_by_player_id.erase(player_id)
 
-	# Kill any active tween exists.
+	# Kill any active tween.
 	if is_instance_valid(label.tween):
 		label.tween.kill()
 
@@ -138,17 +144,22 @@ func _update_label_positions() -> void:
 		if not is_instance_valid(player):
 			continue
 
-		var label: PlayerOverheadLabel = _labels_by_player_id[player_id]
-		# Position in world space (parent transform handles
-		# world-to-screen conversion).
-		label.position = player.global_position + _LABEL_OFFSET
+		var label: PlayerOverheadLabel = (
+			_labels_by_player_id[player_id])
+		# Position in world space (parent transform
+		# handles world-to-screen conversion).
+		label.position = (
+			player.global_position + _LABEL_OFFSET)
 
 
 func _update_label_colors() -> void:
-	# Update colors for all labels when player data is updated.
+	# Update colors for all labels when player
+	# data is updated.
 	for player_id in _labels_by_player_id.keys():
-		var label: PlayerOverheadLabel = _labels_by_player_id[player_id]
-		var player_match_state := G.get_player_match_state(player_id)
+		var label: PlayerOverheadLabel = (
+			_labels_by_player_id[player_id])
+		var player_match_state := (
+			G.get_player_match_state(player_id))
 		if player_match_state:
 			label.color = (
 				Color.WHITE if G.is_lobby_active
@@ -188,14 +199,19 @@ func _should_show_label(player_id: int) -> bool:
 		if other_player_id == player_id:
 			continue
 
-		var other_player := G.get_player(other_player_id)
+		var other_player := (
+			G.get_player(other_player_id))
 		if not is_instance_valid(other_player):
 			continue
 
-		var distance_squared := player.global_position.distance_squared_to(
-			other_player.global_position
-		)
-		if distance_squared < _PROXIMITY_THRESHOLD * _PROXIMITY_THRESHOLD:
+		var distance_squared := (
+			player.global_position
+				.distance_squared_to(
+					other_player
+						.global_position))
+		if (distance_squared
+				< _PROXIMITY_THRESHOLD
+					* _PROXIMITY_THRESHOLD):
 			# Too close, hide label.
 			return false
 
@@ -203,11 +219,14 @@ func _should_show_label(player_id: int) -> bool:
 	return true
 
 
-func _fade_label(player_id: int, p_is_visible: bool) -> void:
+func _fade_label(
+	player_id: int, p_is_visible: bool,
+) -> void:
 	if not _labels_by_player_id.has(player_id):
 		return
 
-	var label: PlayerOverheadLabel = _labels_by_player_id[player_id]
+	var label: PlayerOverheadLabel = (
+		_labels_by_player_id[player_id])
 
 	if label.shown == p_is_visible:
 		# Already has the correct visibility.
@@ -246,8 +265,8 @@ func hide_all() -> void:
 	visible = false
 
 	for player_id in _labels_by_player_id.keys():
-		var label: PlayerOverheadLabel = \
-			_labels_by_player_id[player_id]
+		var label: PlayerOverheadLabel = (
+			_labels_by_player_id[player_id])
 		if is_instance_valid(label.tween):
 			label.tween.kill()
 		label.modulate.a = 0.0
@@ -275,13 +294,13 @@ func hide_all() -> void:
 func show_podium_labels(entries: Array) -> void:
 	hide_podium_labels()
 	for entry in entries:
-		var player_state: GamePlayerState = \
-			entry["player_state"]
-		var world_pos: Vector2 = \
-			entry["world_position"]
+		var player_state: GamePlayerState = (
+			entry["player_state"])
+		var world_pos: Vector2 = (
+			entry["world_position"])
 
-		var label: PlayerOverheadLabel = \
-			label_scene.instantiate()
+		var label: PlayerOverheadLabel = (
+			label_scene.instantiate())
 		label.text = player_state.bunny_name
 		label.color = player_state.label_color
 		label.position = world_pos
@@ -308,11 +327,11 @@ func show_podium_score_labels(
 	hide_podium_score_labels()
 	for entry in entries:
 		var score_value: int = entry["score"]
-		var world_pos: Vector2 = \
-			entry["world_position"]
+		var world_pos: Vector2 = (
+			entry["world_position"])
 
-		var label: PlayerOverheadLabel = \
-			label_scene.instantiate()
+		var label: PlayerOverheadLabel = (
+			label_scene.instantiate())
 		label.text = str(score_value)
 		label.color = Color.WHITE
 		label.position = world_pos

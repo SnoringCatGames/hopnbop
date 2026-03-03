@@ -61,9 +61,11 @@ func get_enabled_level_ids() -> Array[StringName]:
 func get_available_levels(player_count: int) -> Array[LevelInfo]:
 	var available: Array[LevelInfo] = []
 	for info in _levels:
-		if info.is_enabled and \
-				player_count >= info.min_players and \
-				player_count <= info.max_players:
+		if (info.is_enabled
+				and player_count
+					>= info.min_players
+				and player_count
+					<= info.max_players):
 			available.append(info)
 	return available
 

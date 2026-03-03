@@ -453,8 +453,8 @@ static func do_segment_and_polygon_intersect(
 				if t_leaving < t_entering:
 					return false
 
-	# Possible point of intersection 1: segment_a + t_entering * segment_diff
-	# Possible point of intersection 2: segment_a + t_leaving * segment_diff
+	# Possible point of intersection 1: segment_a + t_entering * segment_diff.
+	# Possible point of intersection 2: segment_a + t_leaving * segment_diff.
 
 	return true
 
@@ -613,19 +613,19 @@ static func is_polygon_convex(vertices: Array, epsilon := 0.001) -> bool:
 	if vertex_count < 3:
 		return true
 
-	# First nonzero orientation (positive or negative)
+	# First nonzero orientation (positive or negative).
 	var w_sign := 0
 
 	var x_sign := 0
-	# Sign of first nonzero edge vector x
+	# Sign of first nonzero edge vector x.
 	var x_first_sign := 0
-	# Number of sign changes in x
+	# Number of sign changes in x.
 	var x_flips := 0
 
 	var y_sign := 0
-	# Sign of first nonzero edge vector y
+	# Sign of first nonzero edge vector y.
 	var y_first_sign := 0
-	# Number of sign changes in y
+	# Number of sign changes in y.
 	var y_flips := 0
 
 	var previous_vertex: Vector2
@@ -792,9 +792,10 @@ static func calculate_half_width_height(shape: Shape2D, is_rotated_90_degrees: b
 	else:
 		Netcode.ensure(
 			false,
-            ("Invalid Shape2D provided: %s. " +
-			"The supported shapes are: CircleShape2D, " +
-			"CapsuleShape2D, RectangleShape2D.") % str(shape),
+			("Invalid Shape2D provided: %s. "
+			+ "The supported shapes are: CircleShape2D, "
+			+ "CapsuleShape2D, RectangleShape2D.")
+			% str(shape),
 		)
 
 	if is_rotated_90_degrees:

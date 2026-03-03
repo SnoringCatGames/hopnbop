@@ -18,7 +18,7 @@ extends Node
 ## - Client: Call client_connect_to_server(ip, port) to connect to a remote
 ##   server
 ## - Both: Listen to peer_connected/peer_disconnected signals for connection
-##   events
+##   events.
 
 ## Signal emitted when a peer declares their player count.
 ## assigned_ids is an Array[int] of the player IDs assigned by the server.
@@ -69,13 +69,13 @@ const RPC_CHANNEL_DEBUG := 5
 
 ## Callable for validating player attributes (game-specific).
 ## Signature: func(attributes: Array, expected_count: int, peer_id: int) ->
-## Array
+## Array.
 var player_attribute_validator: Callable
 
 ## Callable for getting local session data (session IDs, player count,
 ## attributes).
 ## Signature: func() -> Dictionary with keys: "session_ids", "player_count",
-## "attributes"
+## "attributes".
 var client_session_provider: Callable
 
 ## Optional session provider for backend validation (GameLift, etc.).
@@ -161,7 +161,7 @@ func client_connect_to_server(
 			"Failed to start multiplayer client: status=DISCONNECTED",
 						NetworkLogger.CATEGORY_CONNECTIONS
 		)
-		# Emit signal so game can handle exit
+		# Emit signal so game can handle exit.
 		disconnected.emit(-1, DisconnectReason.CONNECTION_FAILED)
 		return
 
@@ -180,7 +180,7 @@ func _on_peer_connected(peer_id: int) -> void:
 			NetworkLogger.CATEGORY_CONNECTIONS
 		)
 	else:
-		# Clients only care about connecting to the server
+		# Clients only care about connecting to the server.
 		if peer_id != SERVER_ID:
 			return
 
@@ -190,7 +190,7 @@ func _on_peer_connected(peer_id: int) -> void:
 		)
 		_client_update_is_connected_to_server()
 
-		# Emit signal for game to handle (window title, etc.)
+		# Emit signal for game to handle (window title, etc.).
 		connected.emit(multiplayer.get_unique_id())
 
 		# Declare player count to server.
@@ -204,7 +204,7 @@ func _on_peer_disconnected(peer_id: int) -> void:
 			NetworkLogger.CATEGORY_CONNECTIONS
 		)
 
-		# Emit signal for game to handle (close server in preview mode, etc.)
+		# Emit signal for game to handle (close server in preview mode, etc.).
 		disconnected.emit(peer_id, DisconnectReason.UNKNOWN)
 
 		# In preview mode, log when all clients have disconnected.
@@ -215,11 +215,11 @@ func _on_peer_disconnected(peer_id: int) -> void:
 				NetworkLogger.CATEGORY_CONNECTIONS
 			)
 	else:
-		# Clients only care about disconnecting from the server
+		# Clients only care about disconnecting from the server.
 		if peer_id != SERVER_ID:
 			return
 
-		# Set reason if not already set by shutdown notification
+		# Set reason if not already set by shutdown notification.
 		if last_disconnect_reason == DisconnectReason.UNKNOWN:
 			last_disconnect_reason = DisconnectReason.CONNECTION_LOST
 
@@ -229,7 +229,7 @@ func _on_peer_disconnected(peer_id: int) -> void:
 		)
 		_client_update_is_connected_to_server()
 
-		# Emit signal for game to handle (update window title, close app, etc.)
+		# Emit signal for game to handle (update window title, close app, etc.).
 		disconnected.emit(peer_id, last_disconnect_reason)
 
 		# In preview mode, log server disconnect.
@@ -245,7 +245,7 @@ func _client_send_player_declaration() -> void:
 	Netcode.log.check(client_session_provider.is_valid(),
 		"client_session_provider not set, cannot declare players")
 
-	# Get local session data from game
+	# Get local session data from game.
 	var session_data: Dictionary = client_session_provider.call()
 	var session_ids: Array = session_data.get("session_ids", [])
 	var player_count: int = session_data.get("player_count", 0)
@@ -253,8 +253,9 @@ func _client_send_player_declaration() -> void:
 
 	Netcode.log.check(
 		player_count == session_ids.size(),
-		"Player count %d does not match session IDs size %d." %
-			[player_count, session_ids.size()],
+		("Player count %d does not match "
+		+ "session IDs size %d.")
+		% [player_count, session_ids.size()],
 	)
 
 	Netcode.log.print(
@@ -310,7 +311,7 @@ func server_disconnect_all_clients() -> void:
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
 
-	# Disconnect all clients but keep session open for new connections
+	# Disconnect all clients but keep session open for new connections.
 	for peer_id in multiplayer.get_peers():
 		if peer_id != SERVER_ID:
 			multiplayer.multiplayer_peer.disconnect_peer(peer_id)
@@ -319,15 +320,15 @@ func server_disconnect_all_clients() -> void:
 func client_disconnect() -> void:
 	Netcode.check_is_client()
 
-	# Mark as client-initiated disconnect
+	# Mark as client-initiated disconnect.
 	last_disconnect_reason = DisconnectReason.CLIENT_INITIATED
 
 	Netcode.log.print(
 		"Disconnecting from server", NetworkLogger.CATEGORY_CONNECTIONS
 	)
 
-	if (multiplayer.multiplayer_peer.get_connection_status() !=
-			MultiplayerPeer.CONNECTION_DISCONNECTED):
+	if (multiplayer.multiplayer_peer.get_connection_status()
+			!= MultiplayerPeer.CONNECTION_DISCONNECTED):
 		multiplayer.multiplayer_peer.disconnect_peer(SERVER_ID)
 
 
@@ -421,7 +422,7 @@ func _server_rpc_declare_players(
 			peer_id
 		)
 	else:
-		# No validator provided, use attributes as-is
+		# No validator provided, use attributes as-is.
 		validated_attributes = player_attributes
 
 	# Store declaration for replay after level reload.
@@ -457,7 +458,7 @@ func _client_rpc_receive_player_ids(assigned_ids: Array[int]) -> void:
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
 
-	# Emit signal for game to handle (set local session, assign input devices)
+	# Emit signal for game to handle (set local session, assign input devices).
 	player_ids_assigned.emit(assigned_ids)
 
 

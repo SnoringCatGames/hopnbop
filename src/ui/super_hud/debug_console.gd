@@ -32,7 +32,11 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	%Time.text = Utils.get_time_string_from_seconds(Netcode.time.get_time(), false, false, true) + " "
+	%Time.text = (
+		Utils.get_time_string_from_seconds(
+			Netcode.time.get_time(),
+			false, false, true,
+		) + " ")
 
 
 func _delayed_init() -> void:
@@ -68,7 +72,9 @@ func _remove_surplus_message() -> void:
 
 
 func _scroll_to_bottom() -> void:
-	%ScrollContainer.scroll_vertical = %ScrollContainer.get_v_scroll_bar().max_value
+	%ScrollContainer.scroll_vertical = (
+		%ScrollContainer
+			.get_v_scroll_bar().max_value)
 
 
 func _log_print_queue() -> void:

@@ -1,16 +1,16 @@
 class_name AwardPodium
 extends AnimatedSprite2D
 ## Displays match results on a podium with player
-## portrayals and name labels for the top 3 places.
-## Supports ties: tied players appear side-by-side
-## at the same position marker.
+## portrayals and name labels for the top 3
+## places. Supports ties: tied players appear
+## side-by-side at the same position marker.
 
 
 const _PORTRAYAL_SCENE := preload(
 	"res://src/player/player_portrayal.tscn")
 
-## Horizontal spacing between tied players sharing
-## a podium position.
+## Horizontal spacing between tied players
+## sharing a podium position.
 const _TIE_X_SPACING := 10.0
 
 ## Label position above the portrayal.
@@ -22,19 +22,21 @@ const _ANIMATION_STAGGER_MAX := 1.0
 
 
 func _ready() -> void:
-	var latest := \
-		G.client_session.latest_match_state \
-			as GameMatchState
-	if (latest != null and
-			not latest.players_by_id.is_empty()):
+	var latest := (
+		G.client_session.latest_match_state
+			as GameMatchState)
+	if (latest != null
+			and not latest
+				.players_by_id.is_empty()):
 		show_results(latest)
 	else:
 		hide_results()
 
 
-## Shows match results on the podium. Populates up to 3
-## podium positions with player portrayals and name
-## labels. Tied players share a position side-by-side.
+## Shows match results on the podium. Populates
+## up to 3 podium positions with player
+## portrayals and name labels. Tied players share
+## a position side-by-side.
 func show_results(
 	match_state: GameMatchState,
 ) -> void:
@@ -44,22 +46,23 @@ func show_results(
 	match_state.update_scores()
 
 	# Determine crown holder.
-	var crown_id := match_state.get_crown_player_id(
-		G.settings.crown_kill_lead)
+	var crown_id := (
+		match_state.get_crown_player_id(
+			G.settings.crown_kill_lead))
 
 	# Collect and sort players by rank.
-	var players: Array = \
-		match_state.players_by_id.values()
+	var players: Array = (
+		match_state.players_by_id.values())
 	players.sort_custom(
 		func(a, b): return a.rank < b.rank)
 
-	# Group players into score tiers. Each tier maps
-	# to one podium position.
+	# Group players into score tiers. Each tier
+	# maps to one podium position.
 	var tiers: Array[Array] = []
 	for player_state in players:
-		if (tiers.is_empty() or
-				tiers.back().front().score !=
-					player_state.score):
+		if (tiers.is_empty()
+				or tiers.back().front().score
+					!= player_state.score):
 			tiers.append([player_state])
 		else:
 			tiers.back().append(player_state)
@@ -81,53 +84,56 @@ func show_results(
 	var tier_count := mini(tiers.size(), 3)
 	for tier_index in range(tier_count):
 		var tier: Array = tiers[tier_index]
-		var position_node: Node2D = \
-			position_nodes[tier_index]
+		var position_node: Node2D = (
+			position_nodes[tier_index])
 
 		for j in range(tier.size()):
-			var player_state: GamePlayerState = \
-				tier[j]
+			var player_state: GamePlayerState = (
+				tier[j])
 			var x_offset := _get_tie_x_offset(
 				j, tier.size())
 			_add_portrayal(
 				position_node,
 				player_state,
 				crown_id,
-				x_offset)
+				x_offset,
+			)
 			label_entries.append({
 				"player_state": player_state,
-				"world_position":
+				"world_position": (
 					position_node.global_position
 					+ Vector2(
 						x_offset,
-						_LABEL_OFFSET_Y),
+						_LABEL_OFFSET_Y)),
 			})
 
 		# One score label per tier (tied players
 		# share the same score).
 		score_entries.append({
 			"score": tier[0].score,
-			"world_position":
+			"world_position": (
 				score_position_nodes[tier_index]
-					.global_position,
+					.global_position),
 		})
 
 	# Delegate label rendering to
 	# PlayerOverheadLabels (in the Hud
 	# CanvasLayer for sharper resolution).
 	if is_instance_valid(
-			G.player_overhead_labels):
-		G.player_overhead_labels \
-			.show_podium_labels(label_entries)
-		G.player_overhead_labels \
+		G.player_overhead_labels
+	):
+		(G.player_overhead_labels
+			.show_podium_labels(label_entries))
+		(G.player_overhead_labels
 			.show_podium_score_labels(
-				score_entries)
+				score_entries))
 
 	visible = true
 
 
-## Returns the x offset for a player within a tied
-## group, centering them around the position marker.
+## Returns the x offset for a player within a
+## tied group, centering them around the position
+## marker.
 func _get_tie_x_offset(
 	index: int,
 	count: int,
@@ -141,16 +147,16 @@ func _get_tie_x_offset(
 	return (index - center) * _TIE_X_SPACING
 
 
-## Adds a player portrayal at the given position node
-## with an optional x offset for ties.
+## Adds a player portrayal at the given position
+## node with an optional x offset for ties.
 func _add_portrayal(
 	position_node: Node2D,
 	player_state: GamePlayerState,
 	crown_id: int,
 	x_offset: float,
 ) -> void:
-	var portrayal: PlayerPortrayal = \
-		_PORTRAYAL_SCENE.instantiate()
+	var portrayal: PlayerPortrayal = (
+		_PORTRAYAL_SCENE.instantiate())
 	portrayal.position = Vector2(x_offset, 0)
 	position_node.add_child(portrayal)
 	portrayal.apply_player_state(player_state)
@@ -164,7 +170,8 @@ func _add_portrayal(
 		randf() * _ANIMATION_STAGGER_MAX)
 
 
-## Hides the podium and removes all dynamic children.
+## Hides the podium and removes all dynamic
+## children.
 func hide_results() -> void:
 	_clear_positions()
 	visible = false
@@ -183,6 +190,7 @@ func _clear_positions() -> void:
 			child.queue_free()
 
 	if is_instance_valid(
-			G.player_overhead_labels):
-		G.player_overhead_labels \
-			.hide_podium_labels()
+		G.player_overhead_labels
+	):
+		(G.player_overhead_labels
+			.hide_podium_labels())

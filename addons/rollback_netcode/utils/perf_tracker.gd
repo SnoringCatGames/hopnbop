@@ -142,7 +142,7 @@ func _ready() -> void:
 
 	Netcode.log.print("PerfTracker")
 
-	# Register custom performance monitors (only in preview mode for performance)
+	# Register custom performance monitors (only in preview mode for performance).
 	if Netcode.is_preview:
 		_register_custom_monitors()
 
@@ -179,18 +179,18 @@ func _ready() -> void:
 			METRICS_LOG_INTERVAL_SEC,
 		)
 
-	# Connect to local authority signals for network FPS tracking
+	# Connect to local authority signals for network FPS tracking.
 	Netcode.local_authority_added.connect(_on_local_authority_added)
 	Netcode.local_authority_removed.connect(_on_local_authority_removed)
 
-	# Server: Start periodic sync to clients
+	# Server: Start periodic sync to clients.
 	if Netcode.is_server:
 		Netcode.time.set_timeout(
 			_start_perf_sync_interval,
 			PERF_SYNC_INITIAL_DELAY_SEC,
 		)
 
-		# Connect to peer connections for immediate sync on late-join
+		# Connect to peer connections for immediate sync on late-join.
 		multiplayer.peer_connected.connect(_on_peer_connected)
 
 
@@ -244,7 +244,7 @@ func _physics_process(_delta: float) -> void:
 func _on_local_authority_added(
 	input_from_client: PlayerInputFromClient,
 ) -> void:
-	# Wait a tick to ensure state_from_server is populated
+	# Wait a tick to ensure state_from_server is populated.
 	await get_tree().process_frame
 
 	is_instance_valid(input_from_client)
@@ -268,7 +268,7 @@ func _on_peer_connected(peer_id: int) -> void:
 	if not _is_ready():
 		return
 
-	# Send immediate sync to newly connected client
+	# Send immediate sync to newly connected client.
 	var perf_state := _server_collect_perf_state()
 	_client_rpc_receive_server_perf_state.rpc_id(peer_id, perf_state)
 
@@ -311,13 +311,13 @@ func _is_ready() -> bool:
 func _start_perf_sync_interval() -> void:
 	Netcode.log.check(Netcode.is_server, "Must be server")
 
-	# Wait for level to be fully loaded before starting sync
+	# Wait for level to be fully loaded before starting sync.
 	if not _is_ready():
-		# Retry after 1 second if not ready
+		# Retry after 1 second if not ready.
 		Netcode.time.set_timeout(_start_perf_sync_interval, 1.0)
 		return
 
-	# Start periodic sync
+	# Start periodic sync.
 	Netcode.time.set_interval(
 		_server_sync_perf_to_clients,
 		PERF_SYNC_INTERVAL_SEC,
@@ -360,7 +360,7 @@ func _server_collect_perf_state() -> Dictionary:
 func _client_rpc_receive_server_perf_state(server_perf_state: Dictionary) -> void:
 	Netcode.log.check(not Netcode.is_server, "Must be client")
 
-	# Validate expected keys
+	# Validate expected keys.
 	var required_keys := [
 		"physics_fps",
 		"min_physics_fps",
@@ -596,32 +596,37 @@ func _log_metrics_periodically() -> void:
 
 func _log_render_fps_warning(avg_fps: float) -> void:
 	Netcode.log.warning(
-		"Slow render FPS: %.1f (threshold: %d)" %
-		[avg_fps, _SLOW_RENDER_FPS],
+		("Slow render FPS: %.1f "
+		+ "(threshold: %d)")
+		% [avg_fps, _SLOW_RENDER_FPS],
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
 
 func _log_physics_fps_warning(avg_fps: float) -> void:
 	Netcode.log.warning(
-		"Slow physics FPS: %.1f (threshold: %d)" %
-		[avg_fps, _SLOW_PHYSICS_FPS],
+		("Slow physics FPS: %.1f "
+		+ "(threshold: %d)")
+		% [avg_fps, _SLOW_PHYSICS_FPS],
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
 
 func _log_network_fps_warning(avg_fps: float) -> void:
 	Netcode.log.warning(
-		"Slow network FPS: %.1f (threshold: %d)" %
-		[avg_fps, _SLOW_NETWORK_FPS],
+		("Slow network FPS: %.1f "
+		+ "(threshold: %d)")
+		% [avg_fps, _SLOW_NETWORK_FPS],
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
 
 func _log_network_rtt_warning(rtt_msec: float) -> void:
 	Netcode.log.warning(
-		"Slow network RTT: %.1fms (threshold: %.0fms)" %
-		[rtt_msec, _SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0],
+		("Slow network RTT: %.1fms "
+		+ "(threshold: %.0fms)")
+		% [rtt_msec,
+		_SLOW_NETWORK_RTT_THRESHOLD_SEC * 1000.0],
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
@@ -631,16 +636,20 @@ func _log_large_fastforward_warning(frame_count: int) -> void:
 	if Netcode.frame_driver.is_in_sync_grace_period:
 		return
 	Netcode.log.warning(
-		"Large fast-forward: %d frames (threshold: %d)" %
-		[frame_count, _LARGE_FASTFORWARD_THRESHOLD],
+		("Large fast-forward: %d frames "
+		+ "(threshold: %d)")
+		% [frame_count,
+		_LARGE_FASTFORWARD_THRESHOLD],
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
 
 func _log_high_fastforward_rate_warning(rate: float) -> void:
 	Netcode.log.warning(
-		"High fast-forward rate: %.2f/sec (threshold: %.1f)" %
-		[rate, _HIGH_FASTFORWARD_RATE_THRESHOLD],
+		("High fast-forward rate: %.2f/sec "
+		+ "(threshold: %.1f)")
+		% [rate,
+		_HIGH_FASTFORWARD_RATE_THRESHOLD],
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
@@ -650,20 +659,20 @@ func _log_high_fastforward_rate_warning(rate: float) -> void:
 func _calculate_render_fps() -> void:
 	var current_time: float = Time.get_ticks_msec() / 1000.0
 
-	# Initialize window on first call
+	# Initialize window on first call.
 	if _render_window_start_time == 0.0:
 		_render_window_start_time = current_time
 
 	_render_frame_count += 1
 
-	# Calculate FPS over the tracking window
+	# Calculate FPS over the tracking window.
 	var window_duration: float = current_time - _render_window_start_time
 	if window_duration > 0.0:
 		_current_render_fps = _render_frame_count / window_duration
 	else:
 		_current_render_fps = 0.0
 
-	# Reset window after full duration
+	# Reset window after full duration.
 	if window_duration >= _FPS_TRACKING_WINDOW_SEC:
 		_render_frame_count = 0
 		_render_window_start_time = current_time
@@ -672,20 +681,20 @@ func _calculate_render_fps() -> void:
 func _calculate_physics_fps() -> void:
 	var current_time: float = Time.get_ticks_msec() / 1000.0
 
-	# Initialize window on first call
+	# Initialize window on first call.
 	if _physics_window_start_time == 0.0:
 		_physics_window_start_time = current_time
 
 	_physics_frame_count += 1
 
-	# Calculate FPS over the tracking window
+	# Calculate FPS over the tracking window.
 	var window_duration: float = current_time - _physics_window_start_time
 	if window_duration > 0.0:
 		_current_physics_fps = _physics_frame_count / window_duration
 	else:
 		_current_physics_fps = 0.0
 
-	# Reset window after full duration
+	# Reset window after full duration.
 	if window_duration >= _FPS_TRACKING_WINDOW_SEC:
 		_physics_frame_count = 0
 		_physics_window_start_time = current_time
@@ -694,20 +703,20 @@ func _calculate_physics_fps() -> void:
 func _calculate_network_fps() -> void:
 	var current_time: float = Time.get_ticks_msec() / 1000.0
 
-	# Initialize window on first call
+	# Initialize window on first call.
 	if _network_window_start_time == 0.0:
 		_network_window_start_time = current_time
 
 	_network_frame_count += 1
 
-	# Calculate FPS over the tracking window
+	# Calculate FPS over the tracking window.
 	var window_duration: float = current_time - _network_window_start_time
 	if window_duration > 0.0:
 		_current_network_fps = _network_frame_count / window_duration
 	else:
 		_current_network_fps = 0.0
 
-	# Reset window after full duration
+	# Reset window after full duration.
 	if window_duration >= _FPS_TRACKING_WINDOW_SEC:
 		_network_frame_count = 0
 		_network_window_start_time = current_time
@@ -819,7 +828,7 @@ func _update_rollback_metrics() -> void:
 	_rollback_count_in_window = state.count_in_window
 	_last_total_rollbacks = state.last_total
 
-	# Calculate last rollback metrics
+	# Calculate last rollback metrics.
 	_current_last_rollback_duration_ms = (
 		Netcode.frame_driver.last_rollback_duration_usec / 1000.0
 	)
@@ -827,7 +836,7 @@ func _update_rollback_metrics() -> void:
 		Netcode.frame_driver.last_rollback_frame_count
 	)
 
-	# Update max tracking
+	# Update max tracking.
 	_max_rollbacks_per_sec_in_window = max(
 		_max_rollbacks_per_sec_in_window,
 		_current_rollbacks_per_sec,
@@ -859,7 +868,7 @@ func _update_fastforward_metrics() -> void:
 	_fastforward_count_in_window = state.count_in_window
 	_last_total_fastforwards = state.last_total
 
-	# Calculate last fastforward metrics
+	# Calculate last fastforward metrics.
 	_current_last_fastforward_duration_ms = (
 		Netcode.frame_driver.last_fastforward_duration_usec / 1000.0
 	)
@@ -867,7 +876,7 @@ func _update_fastforward_metrics() -> void:
 		Netcode.frame_driver.last_fastforward_frame_count
 	)
 
-	# Update max tracking
+	# Update max tracking.
 	_max_fastforwards_per_sec_in_window = max(
 		_max_fastforwards_per_sec_in_window,
 		_current_fastforwards_per_sec,
@@ -903,17 +912,17 @@ func _calculate_events_per_sec(
 ) -> float:
 	var current_time: float = Time.get_ticks_msec() / 1000.0
 
-	# Initialize window on first call
+	# Initialize window on first call.
 	if state.window_start_time == 0.0:
 		state.window_start_time = current_time
 		state.last_total = current_total
 
-	# Update event count in current window
+	# Update event count in current window.
 	var new_events: int = current_total - state.last_total
 	state.count_in_window += new_events
 	state.last_total = current_total
 
-	# Calculate events per second over the tracking window
+	# Calculate events per second over the tracking window.
 	var window_duration: float = current_time - state.window_start_time
 	var events_per_sec: float
 	if window_duration > 0.0:
@@ -921,7 +930,7 @@ func _calculate_events_per_sec(
 	else:
 		events_per_sec = 0.0
 
-	# Reset window after full duration
+	# Reset window after full duration.
 	if window_duration >= tracking_window_sec:
 		state.count_in_window = 0
 		state.window_start_time = current_time

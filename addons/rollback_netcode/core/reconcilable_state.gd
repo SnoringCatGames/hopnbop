@@ -416,8 +416,9 @@ func _handle_new_state_from_network(p_state: Array) -> void:
 
 	if Netcode.log.is_verbose:
 		var authority_string: StringName = FrameAuthority.keys()[new_frame_authority]
-		Netcode.log.verbose("%s F:%d Received %s state for frame %d" %
-			[
+		Netcode.log.verbose(
+			"%s F:%d Received %s state for frame %d"
+			% [
 				name,
 				Netcode.server_frame_index,
 				authority_string,
@@ -440,8 +441,8 @@ func _handle_new_state_from_network(p_state: Array) -> void:
 	):
 		if Netcode.log.is_verbose:
 			Netcode.log.verbose(
-				"%s F:%d Ignoring SERVER_PREDICTED state for frame %d" %
-				[
+				"%s F:%d Ignoring SERVER_PREDICTED state for frame %d"
+				% [
 					name,
 					Netcode.server_frame_index,
 					state_frame_index,
@@ -530,8 +531,8 @@ func _handle_new_state_from_network(p_state: Array) -> void:
 				buffer_state,
 			)
 			Netcode.log.verbose(
-				"Mismatch at F:%d (%s): %s" %
-				[state_frame_index, node_type,
+				"Mismatch at F:%d (%s): %s"
+				% [state_frame_index, node_type,
 				mismatch_details],
 				NetworkLogger.CATEGORY_NETWORK_SYNC)
 
@@ -652,9 +653,9 @@ func _pre_network_process() -> void:
 	if not is_first_frame_after_gap:
 		Netcode.log.check(
 			latest_buffer_index >= frame_index - 2,
-			("Rollback buffer missing required frame: " +
-			"current=%d, needs=%d, latest=%d") %
-			[
+			("Rollback buffer missing required frame: "
+			+ "current=%d, needs=%d, latest=%d")
+			% [
 				frame_index,
 				frame_index - 2,
 				latest_buffer_index,
@@ -755,8 +756,9 @@ func _get_or_create_debug_entry(frame_index: int) -> Array:
 ## (regardless of whether they are rollbackable or non-rollbackable).
 func _has_non_rollbackable_interactions() -> bool:
 	Netcode.log.fatal(
-		"Abstract ReconcilableNetworkState._has_non_rollbackable_interactions " +
-		"is not implemented"
+		"Abstract ReconcilableNetworkState"
+		+ "._has_non_rollbackable_interactions"
+		+ " is not implemented"
 	)
 	return false
 
@@ -872,8 +874,8 @@ func _pack_networked_state() -> void:
 		var authority_string: StringName = FrameAuthority.keys()[frame_authority]
 		if not is_server_authoritative:
 				Netcode.log.verbose(
-					"%s F:%d Packed client-auth state (%s)" %
-					[
+					"%s F:%d Packed client-auth state (%s)"
+					% [
 						name,
 						Netcode.server_frame_index,
 						authority_string,
@@ -881,8 +883,8 @@ func _pack_networked_state() -> void:
 					NetworkLogger.CATEGORY_NETWORK_SYNC)
 		else:
 			Netcode.log.verbose(
-				"%s F:%d Packed server-auth state (%s)" %
-				[
+				"%s F:%d Packed server-auth state (%s)"
+				% [
 					name,
 					Netcode.server_frame_index,
 					authority_string,
@@ -952,12 +954,16 @@ func _pack_buffer_state_from_local_state() -> void:
 			# but always update physics state (position, velocity).
 			if Netcode.log.is_verbose and last_interaction_type != existing_interaction_type:
 				Netcode.log.verbose(
-					"Preserving onset %s from buffer, not overwriting " +
-					"with local %s at frame %d (%s)" % [
-						_get_interaction_type_name(existing_interaction_type),
-						_get_interaction_type_name(last_interaction_type),
+					("Preserving onset %s from buffer, "
+					+ "not overwriting with local %s "
+					+ "at frame %d (%s)")
+					% [
+						_get_interaction_type_name(
+							existing_interaction_type),
+						_get_interaction_type_name(
+							last_interaction_type),
 						frame_index,
-						name
+						name,
 					],
 					NetworkLogger.CATEGORY_NETWORK_SYNC
 				)
@@ -1038,22 +1044,32 @@ func _pack_buffer_state_from_network_state(packed_network_state: Array) -> void:
 			if Netcode.is_client:
 				# CLIENT: Server should never send NONE for onset.
 				Netcode.log.fatal(
-					("Network NONE from server attempting to overwrite non-rollbackable " +
-					"onset %s at frame %d - critical server bug! (%s)") % [
-						_get_interaction_type_name(existing_interaction_type),
+					("Network NONE from server "
+					+ "attempting to overwrite "
+					+ "non-rollbackable onset %s "
+					+ "at frame %d - critical "
+					+ "server bug! (%s)")
+					% [
+						_get_interaction_type_name(
+							existing_interaction_type),
 						frame_index,
-						name
+						name,
 					]
 				)
 				return
 			else:
 				# SERVER: Reject bogus client state and log error.
 				Netcode.log.error(
-					("Rejecting network NONE from client attempting to overwrite " +
-					"non-rollbackable onset %s at frame %d - bogus client state (%s)") % [
-						_get_interaction_type_name(existing_interaction_type),
+					("Rejecting network NONE from "
+					+ "client attempting to overwrite "
+					+ "non-rollbackable onset %s "
+					+ "at frame %d - bogus client "
+					+ "state (%s)")
+					% [
+						_get_interaction_type_name(
+							existing_interaction_type),
 						frame_index,
-						name
+						name,
 					],
 					NetworkLogger.CATEGORY_NETWORK_SYNC
 				)
@@ -1435,27 +1451,33 @@ func _get_mismatch_details_string(
 				var buffer_type_str := _get_interaction_type_name(buffer_value)
 				var networked_type_str := _get_interaction_type_name(networked_value)
 				details.append(
-					"{%s: local=%s, remote=%s}" %
-					[property_name, buffer_type_str, networked_type_str],
+					"{%s: local=%s, remote=%s}"
+					% [property_name,
+					buffer_type_str,
+					networked_type_str],
 				)
 			elif property_name == "last_interaction_frame_index":
 				var drift := absi(buffer_value - networked_value)
 				details.append(
-					"{%s: local=%d, remote=%d, drift=%d}" %
-					[property_name, buffer_value, networked_value, drift],
+					("{%s: local=%d, remote=%d,"
+					+ " drift=%d}")
+					% [property_name,
+					buffer_value,
+					networked_value, drift],
 				)
 			elif property_name in ["last_interaction_position", "last_interaction_velocity"]:
 				var dist := (buffer_value as Vector2).distance_to(networked_value)
 				details.append(
-					"{%s: distance=%.3f}" %
-					[property_name, dist],
+					"{%s: distance=%.3f}"
+					% [property_name, dist],
 				)
 		else:
 			var networked_str := _get_string_for_value(networked_value)
 			var buffer_str := _get_string_for_value(buffer_value)
 			details.append(
-				"{%s: local=%s, remote=%s}" %
-				[property_name, buffer_str, networked_str],
+				"{%s: local=%s, remote=%s}"
+				% [property_name,
+				buffer_str, networked_str],
 			)
 
 	return ", ".join(details)
@@ -1491,8 +1513,10 @@ func _check_do_values_mismatch(
 				return buffer_value.distance_squared_to(networked_value) >= threshold * threshold
 		_:
 			Netcode.log.fatal(
-				"Type not yet supported for client-prediction mismatch threshold calculations: %s" %
-				type_string(buffer_value))
+				("Type not yet supported for "
+				+ "client-prediction mismatch "
+				+ "threshold calculations: %s")
+				% type_string(buffer_value))
 			return true
 
 
@@ -1579,8 +1603,8 @@ func _update_partner_state() -> void:
 	if not Engine.is_editor_hint() and not _partner_state_configuration_warning.is_empty():
 		# Log and assert in game runtime environments.
 		Netcode.log.error(
-			"ReconcilableState is misconfigured: %s" %
-			_partner_state_configuration_warning,
+			"ReconcilableState is misconfigured: %s"
+			% _partner_state_configuration_warning,
 			NetworkLogger.CATEGORY_CORE_SYSTEMS)
 
 	# Also refresh sibling ReconcilableState warnings.
@@ -1611,8 +1635,11 @@ func _get_configuration_warnings() -> PackedStringArray:
 		for property_name in thresholds.keys():
 			if get(property_name) == null:
 				warnings.append(
-					("Key %s in _synced_properties_and_rollback_diff_thresholds " +
-					"does not match any class property") % property_name,
+					("Key %s in _synced_properties"
+					+ "_and_rollback_diff_thresholds"
+					+ " does not match any class"
+					+ " property")
+					% property_name,
 				)
 
 	if root_path.is_empty():
@@ -1633,8 +1660,11 @@ func _get_configuration_warnings() -> PackedStringArray:
 		for prop in required_properties:
 			if thresholds != null and not thresholds.has(prop):
 				warnings.append(
-					("Class has non-rollbackable interactions but missing " +
-					"'%s' in _synced_properties_and_rollback_diff_thresholds") % prop
+					("Class has non-rollbackable "
+					+ "interactions but missing "
+					+ "'%s' in _synced_properties"
+					+ "_and_rollback_diff_thresholds")
+					% prop
 				)
 
 	return warnings
@@ -1666,8 +1696,9 @@ func _get_string_for_value(value, is_final_value := false) -> String:
 			return Utils.get_vector_string(value, 1)
 		_:
 			Netcode.log.fatal(
-				"Type not yet supported for rollback buffer: %s" %
-				type_string(value))
+				("Type not yet supported for "
+				+ "rollback buffer: %s")
+				% type_string(value))
 			return ""
 
 
@@ -1697,10 +1728,14 @@ func record_interaction(
 	# interaction (e.g., DIE persists until SPAWN).
 	if interaction_type == _NONE_INTERACTION_TYPE:
 		Netcode.log.fatal(
-			"Attempted to record NONE interaction. This should never happen! " +
-			"Current: %s, Frame: %d" % [
-				_get_interaction_type_name(last_interaction_type),
-				Netcode.server_frame_index if Netcode else -1
+			("Attempted to record NONE "
+			+ "interaction. This should never "
+			+ "happen! Current: %s, Frame: %d")
+			% [
+				_get_interaction_type_name(
+					last_interaction_type),
+				(Netcode.server_frame_index
+					if Netcode else -1),
 			]
 		)
 		return

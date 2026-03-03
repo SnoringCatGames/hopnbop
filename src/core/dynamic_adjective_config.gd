@@ -833,8 +833,8 @@ static func is_valid_dynamic_adjective(
 static func assign_adjectives(
 	stats_by_player_id: Dictionary,
 ) -> Dictionary:
-	var player_ids: Array = \
-		stats_by_player_id.keys()
+	var player_ids: Array = (
+		stats_by_player_id.keys())
 	var player_count := player_ids.size()
 
 	if player_count == 0:
@@ -906,8 +906,8 @@ static func assign_adjectives(
 		var chosen_list: Array = (
 			qualifying_lists.pick_random()
 		)
-		result[player_id] = \
-			chosen_list.pick_random()
+		result[player_id] = (
+			chosen_list.pick_random())
 
 	return result
 

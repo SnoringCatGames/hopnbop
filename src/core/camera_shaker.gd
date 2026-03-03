@@ -19,10 +19,13 @@ var _shake_duration := 0.0
 
 func _get_active_camera() -> Camera2D:
 	# Camera2D lives in the game SubViewport.
-	var pvm := G.pixel_viewport_manager
-	if is_instance_valid(pvm) \
-			and is_instance_valid(pvm.sub_viewport):
-		var cam := pvm.sub_viewport.get_camera_2d()
+	if (is_instance_valid(G.pixel_viewport_manager)
+			and is_instance_valid(
+				G.pixel_viewport_manager
+					.sub_viewport)):
+		var cam := (
+			G.pixel_viewport_manager.sub_viewport
+				.get_camera_2d())
 		if is_instance_valid(cam):
 			return cam
 	return get_viewport().get_camera_2d()
@@ -66,8 +69,8 @@ func _process(delta: float) -> void:
 
 	# Decay from full intensity to zero with
 	# exponential falloff.
-	var progress := _shake_timer / \
-		_shake_duration
+	var progress := (
+		_shake_timer / _shake_duration)
 	var decay := pow(progress, _DECAY_EXPONENT)
 	var current := _shake_intensity * decay
 

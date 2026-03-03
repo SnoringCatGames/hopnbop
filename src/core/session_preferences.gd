@@ -29,20 +29,20 @@ static func from_dict(
 	data: Dictionary,
 ) -> SessionPreferences:
 	var prefs := SessionPreferences.new()
-	prefs.level_preferences = \
-		LevelPreferences.from_dict(data)
-	prefs.are_critters_enabled = \
-		data.get("critters_enabled", true)
-	prefs.are_cheats_enabled = \
-		data.get("cheats_enabled", true)
+	prefs.level_preferences = (
+		LevelPreferences.from_dict(data))
+	prefs.are_critters_enabled = (
+		data.get("critters_enabled", true))
+	prefs.are_cheats_enabled = (
+		data.get("cheats_enabled", true))
 	return prefs
 
 
 ## Check if any non-default preferences are set.
 func has_preferences() -> bool:
-	if level_preferences != null \
-			and level_preferences \
-				.has_preferences():
+	if (level_preferences != null
+			and level_preferences
+				.has_preferences()):
 		return true
 	if not are_critters_enabled:
 		return true
