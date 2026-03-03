@@ -203,142 +203,168 @@ class TestBumpReconciliation:
 		)
 
 	func test_reconciliation_skips_stale_bump():
-		# Set current frame far ahead.
-		Netcode.frame_driver.server_frame_index = 10000
+		# Buffer at server_frame has an old BUMP
+		# interaction that's been superseded by a newer
+		# one on the state.
+		Netcode.frame_driver.server_frame_index = 50
 
-		# Set bump at very old frame.
-		state.last_interaction_type = \
-			CharacterStateFromServer.ServerInteractionType.BUMP
-		state.last_interaction_frame_index = 10
-		state.last_interaction_velocity = Vector2(1, 0)
+		var frame_state := ArrayPool.acquire(8)
+		frame_state[0] = Vector2.ZERO
+		frame_state[1] = Vector2.ZERO
+		frame_state[2] = 0
+		frame_state[3] = (
+			CharacterStateFromServer
+				.ServerInteractionType.BUMP)
+		# Old interaction frame in the buffer.
+		frame_state[4] = 40
+		frame_state[5] = Vector2.ZERO
+		frame_state[6] = Vector2(1, 0)
+		frame_state[7] = (
+			ReconcilableState
+				.FrameAuthority.AUTHORITATIVE)
+
+		state._rollback_buffer.set_at(
+			50, frame_state)
+
+		# State already has a newer interaction.
+		state.last_interaction_frame_index = 45
 
 		state._reconcile_server_interaction()
 
-		# Should skip due to staleness check.
+		# Stale check returns before updating
+		# _last_reconciled_interaction_frame_index.
 		assert_eq(
-			state._last_reconciled_interaction_frame_index,
-			10,
-			"Stale bump should be marked as reconciled"
+			state
+				._last_reconciled_interaction_frame_index,
+			-1,
+			"Stale bump should not update reconciled"
+			+ " frame",
 		)
 
-	func test_reconciliation_injects_velocity_into_buffer():
-		# Set up rollback buffer with a frame.
-		Netcode.frame_driver.server_frame_index = 300
+	func test_reconciliation_updates_state_from_buffer():
+		# Buffer at server_frame has BUMP interaction
+		# data. Reconciliation should update local state
+		# properties from the buffer.
+		Netcode.frame_driver.server_frame_index = 50
 
-		# Manually create frame state array.
-		# Format: [position, velocity, surfaces, last_interaction_type,
-		# last_interaction_frame_index, last_interaction_position,
-		# last_interaction_velocity, frame_authority]
-		var frame_state = ArrayPool.acquire(8)
-		frame_state[0] = Vector2.ZERO # position
-		frame_state[1] = Vector2(100, 100) # velocity (will be replaced)
-		frame_state[2] = 0 # surfaces
-		frame_state[3] = CharacterStateFromServer.ServerInteractionType.NONE
-		frame_state[4] = -1 # last_interaction_frame_index
-		frame_state[5] = Vector2.ZERO # last_interaction_position
-		frame_state[6] = Vector2.ZERO # last_interaction_velocity
-		frame_state[7] = ReconcilableState.FrameAuthority.AUTHORITATIVE
+		var bounce_velocity := Vector2(300.0, -200.0)
+		var frame_state := ArrayPool.acquire(8)
+		frame_state[0] = Vector2.ZERO
+		frame_state[1] = Vector2.ZERO
+		frame_state[2] = 0
+		frame_state[3] = (
+			CharacterStateFromServer
+				.ServerInteractionType.BUMP)
+		frame_state[4] = 50
+		frame_state[5] = Vector2.ZERO
+		frame_state[6] = bounce_velocity
+		frame_state[7] = (
+			ReconcilableState
+				.FrameAuthority.AUTHORITATIVE)
 
-		state._rollback_buffer.set_at(300, frame_state)
+		state._rollback_buffer.set_at(
+			50, frame_state)
 
-		# Set bump event with the actual bounce velocity (already computed).
-		var bounce_velocity = Vector2(300.0, -200.0)
-		state.last_interaction_type = \
-			CharacterStateFromServer.ServerInteractionType.BUMP
-		state.last_interaction_frame_index = 300
-		state.last_interaction_velocity = bounce_velocity
-
-		# Reconcile.
 		state._reconcile_server_interaction()
 
-		# Verify velocity was set to the bounce velocity.
-		var modified_state: Array = state._rollback_buffer.get_at(300)
-		var velocity: Vector2 = modified_state[1] # Index 1 is velocity
-
-		# Should have the stored bounce velocity directly.
+		# State properties should be updated from
+		# the buffer.
+		assert_eq(
+			state.last_interaction_type,
+			(CharacterStateFromServer
+				.ServerInteractionType.BUMP),
+			"Interaction type updated from buffer",
+		)
+		assert_eq(
+			state.last_interaction_frame_index,
+			50,
+			"Interaction frame updated from buffer",
+		)
 		assert_almost_eq(
-			velocity.x,
+			state.last_interaction_velocity.x,
 			bounce_velocity.x,
 			1.0,
-			"X velocity should match stored bounce velocity"
+			"Interaction velocity X updated from"
+			+ " buffer",
 		)
 		assert_almost_eq(
-			velocity.y,
+			state.last_interaction_velocity.y,
 			bounce_velocity.y,
 			1.0,
-			"Y velocity should match stored bounce velocity"
+			"Interaction velocity Y updated from"
+			+ " buffer",
 		)
 
 	func test_reconciliation_marks_bump_as_processed():
-		Netcode.frame_driver.server_frame_index = 400
+		Netcode.frame_driver.server_frame_index = 50
 
-		# Manually create frame state array.
-		var frame_state = ArrayPool.acquire(8)
-		frame_state[0] = Vector2.ZERO # position
-		frame_state[1] = Vector2.ZERO # velocity
-		frame_state[2] = 0 # surfaces
-		frame_state[3] = CharacterStateFromServer.ServerInteractionType.NONE
-		frame_state[4] = -1 # last_interaction_frame_index
-		frame_state[5] = Vector2.ZERO # last_interaction_position
-		frame_state[6] = Vector2.ZERO # last_interaction_velocity
-		frame_state[7] = ReconcilableState.FrameAuthority.AUTHORITATIVE
+		var frame_state := ArrayPool.acquire(8)
+		frame_state[0] = Vector2.ZERO
+		frame_state[1] = Vector2.ZERO
+		frame_state[2] = 0
+		frame_state[3] = (
+			CharacterStateFromServer
+				.ServerInteractionType.BUMP)
+		frame_state[4] = 50
+		frame_state[5] = Vector2.ZERO
+		frame_state[6] = Vector2(0, -1)
+		frame_state[7] = (
+			ReconcilableState
+				.FrameAuthority.AUTHORITATIVE)
 
-		state._rollback_buffer.set_at(400, frame_state)
-
-		state.last_interaction_type = \
-			CharacterStateFromServer.ServerInteractionType.BUMP
-		state.last_interaction_frame_index = 400
-		state.last_interaction_velocity = Vector2(0, -1)
+		state._rollback_buffer.set_at(
+			50, frame_state)
 
 		state._reconcile_server_interaction()
 
 		assert_eq(
-			state._last_reconciled_interaction_frame_index,
-			400,
-			"Bump should be marked as reconciled"
+			state
+				._last_reconciled_interaction_frame_index,
+			50,
+			"Bump should be marked as reconciled",
 		)
 
-	func test_reconciliation_uses_stored_velocity_directly():
-		Netcode.frame_driver.server_frame_index = 500
+	func test_reconciliation_preserves_stored_velocity():
+		Netcode.frame_driver.server_frame_index = 50
 
-		# Manually create frame state array.
-		var frame_state = ArrayPool.acquire(8)
-		frame_state[0] = Vector2.ZERO # position
-		frame_state[1] = Vector2.ZERO # velocity
-		frame_state[2] = 0 # surfaces
-		frame_state[3] = CharacterStateFromServer.ServerInteractionType.NONE
-		frame_state[4] = -1 # last_interaction_frame_index
-		frame_state[5] = Vector2.ZERO # last_interaction_position
-		frame_state[6] = Vector2.ZERO # last_interaction_velocity
-		frame_state[7] = ReconcilableState.FrameAuthority.AUTHORITATIVE
+		# Bump with pre-calculated velocity (as if
+		# direction was at 45 degrees).
+		var direction := Vector2(1, -1).normalized()
+		var bounce_velocity := (
+			direction * 300.0 + Vector2(0, -200.0))
 
-		state._rollback_buffer.set_at(500, frame_state)
+		var frame_state := ArrayPool.acquire(8)
+		frame_state[0] = Vector2.ZERO
+		frame_state[1] = Vector2.ZERO
+		frame_state[2] = 0
+		frame_state[3] = (
+			CharacterStateFromServer
+				.ServerInteractionType.BUMP)
+		frame_state[4] = 50
+		frame_state[5] = Vector2.ZERO
+		frame_state[6] = bounce_velocity
+		frame_state[7] = (
+			ReconcilableState
+				.FrameAuthority.AUTHORITATIVE)
 
-		# Bump with pre-calculated velocity (as if direction was at 45 degrees).
-		var direction = Vector2(1, -1).normalized()
-		var bounce_velocity = direction * 300.0 + Vector2(0, -200.0)
-		state.last_interaction_type = \
-			CharacterStateFromServer.ServerInteractionType.BUMP
-		state.last_interaction_frame_index = 500
-		state.last_interaction_velocity = bounce_velocity
+		state._rollback_buffer.set_at(
+			50, frame_state)
 
 		state._reconcile_server_interaction()
 
-		var modified_state: Array = state._rollback_buffer.get_at(500)
-		var velocity: Vector2 = modified_state[1] # Index 1 is velocity
-
-		# Velocity should match the stored bounce velocity directly.
+		# State velocity should match the buffer's
+		# interaction velocity.
 		assert_almost_eq(
-			velocity.x,
+			state.last_interaction_velocity.x,
 			bounce_velocity.x,
 			1.0,
-			"X component should match stored velocity"
+			"X component should match stored velocity",
 		)
 		assert_almost_eq(
-			velocity.y,
+			state.last_interaction_velocity.y,
 			bounce_velocity.y,
 			1.0,
-			"Y component should match stored velocity"
+			"Y component should match stored velocity",
 		)
 
 
@@ -381,87 +407,86 @@ class TestBumpReconciliationEdgeCases:
 			character.free()
 
 	func test_reconciliation_with_zero_velocity():
-		Netcode.frame_driver.server_frame_index = 600
+		Netcode.frame_driver.server_frame_index = 50
 
-		# Manually create frame state array.
-		var frame_state = ArrayPool.acquire(8)
-		frame_state[0] = Vector2.ZERO # position
-		frame_state[1] = Vector2.ZERO # velocity
-		frame_state[2] = 0 # surfaces
-		frame_state[3] = CharacterStateFromServer.ServerInteractionType.NONE
-		frame_state[4] = -1 # last_interaction_frame_index
-		frame_state[5] = Vector2.ZERO # last_interaction_position
-		frame_state[6] = Vector2.ZERO # last_interaction_velocity
-		frame_state[7] = ReconcilableState.FrameAuthority.AUTHORITATIVE
+		var frame_state := ArrayPool.acquire(8)
+		frame_state[0] = Vector2.ZERO
+		frame_state[1] = Vector2.ZERO
+		frame_state[2] = 0
+		frame_state[3] = (
+			CharacterStateFromServer
+				.ServerInteractionType.BUMP)
+		frame_state[4] = 50
+		frame_state[5] = Vector2.ZERO
+		frame_state[6] = Vector2.ZERO
+		frame_state[7] = (
+			ReconcilableState
+				.FrameAuthority.AUTHORITATIVE)
 
-		state._rollback_buffer.set_at(600, frame_state)
-
-		state.last_interaction_type = \
-			CharacterStateFromServer.ServerInteractionType.BUMP
-		state.last_interaction_frame_index = 600
-		state.last_interaction_velocity = Vector2.ZERO
+		state._rollback_buffer.set_at(
+			50, frame_state)
 
 		# Should not crash.
 		state._reconcile_server_interaction()
 
 		# Verify bump was marked as reconciled.
 		assert_eq(
-			state._last_reconciled_interaction_frame_index,
-			600,
-			"Bump should be marked as reconciled even with zero velocity"
+			state
+				._last_reconciled_interaction_frame_index,
+			50,
+			"Bump should be reconciled even with"
+			+ " zero velocity",
 		)
 
 	func test_reconciliation_skips_missing_frame():
-		Netcode.frame_driver.server_frame_index = 10000
-
-		# Set bump at frame that doesn't exist in buffer.
-		state.last_interaction_type = \
-			CharacterStateFromServer.ServerInteractionType.BUMP
-		state.last_interaction_frame_index = 9999
-		state.last_interaction_velocity = Vector2(1, 0)
+		# Server frame points to frame not in buffer.
+		Netcode.frame_driver.server_frame_index = 200
 
 		state._reconcile_server_interaction()
 
-		# Should skip without error.
+		# Should skip without error. Reconciled frame
+		# stays at default.
 		assert_eq(
-			state._last_reconciled_interaction_frame_index,
-			9999,
-			"Missing frame should be marked as processed"
+			state
+				._last_reconciled_interaction_frame_index,
+			-1,
+			"Missing frame should not update"
+			+ " reconciled index",
 		)
 
 	func test_reconciliation_with_downward_bump_velocity():
-		Netcode.frame_driver.server_frame_index = 700
+		Netcode.frame_driver.server_frame_index = 50
 
-		# Manually create frame state array.
-		var frame_state = ArrayPool.acquire(8)
-		frame_state[0] = Vector2.ZERO # position
-		frame_state[1] = Vector2.ZERO # velocity
-		frame_state[2] = 0 # surfaces
-		frame_state[3] = CharacterStateFromServer.ServerInteractionType.NONE
-		frame_state[4] = -1 # last_interaction_frame_index
-		frame_state[5] = Vector2.ZERO # last_interaction_position
-		frame_state[6] = Vector2.ZERO # last_interaction_velocity
-		frame_state[7] = ReconcilableState.FrameAuthority.AUTHORITATIVE
+		# Pre-calculated velocity: downward direction
+		# (0, 1) * 300 + vertical boost (0, -200) =
+		# (0, 100).
+		var bounce_velocity := Vector2(0, 100)
 
-		state._rollback_buffer.set_at(700, frame_state)
+		var frame_state := ArrayPool.acquire(8)
+		frame_state[0] = Vector2.ZERO
+		frame_state[1] = Vector2.ZERO
+		frame_state[2] = 0
+		frame_state[3] = (
+			CharacterStateFromServer
+				.ServerInteractionType.BUMP)
+		frame_state[4] = 50
+		frame_state[5] = Vector2.ZERO
+		frame_state[6] = bounce_velocity
+		frame_state[7] = (
+			ReconcilableState
+				.FrameAuthority.AUTHORITATIVE)
 
-		# Pre-calculated velocity: downward direction (0, 1) * 300 + vertical
-		# boost (0, -200) = (0, 100).
-		var bounce_velocity = Vector2(0, 100)
-		state.last_interaction_type = \
-			CharacterStateFromServer.ServerInteractionType.BUMP
-		state.last_interaction_frame_index = 700
-		state.last_interaction_velocity = bounce_velocity
+		state._rollback_buffer.set_at(
+			50, frame_state)
 
 		state._reconcile_server_interaction()
 
-		var modified_state: Array = state._rollback_buffer.get_at(700)
-		var velocity: Vector2 = modified_state[1] # Index 1 is velocity
-
-		# Velocity should match the stored bounce velocity.
+		# State velocity should match the buffer's
+		# interaction velocity.
 		assert_almost_eq(
-			velocity.y,
+			state.last_interaction_velocity.y,
 			bounce_velocity.y,
 			1.0,
-			"Velocity should match stored bounce velocity"
+			"Velocity should match stored bounce"
+			+ " velocity",
 		)

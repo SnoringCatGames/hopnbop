@@ -327,21 +327,27 @@ class TestLobbyLevelPlayerPositioning:
 		G.client_session = null
 		G.match_state = null
 
-	func test_players_spawn_at_different_positions():
+	func test_players_spawn_at_spawn_point():
 		lobby_level._try_register_keyboard_player(
 			InputDeviceManager.KEYBOARD_PARTITION_BINDINGS[0]
 		)
-		lobby_level._try_register_keyboard_player(
-			InputDeviceManager.KEYBOARD_PARTITION_BINDINGS[1]
-		)
 
 		var player0: Player = lobby_level.players_by_id[-1]
-		var player1: Player = lobby_level.players_by_id[-2]
 
-		# Players should spawn at different positions (spread across spawn
-		# points to avoid clustering).
-		assert_ne(
+		# Lobby uses random spawn point selection.
+		# With a single spawn point, the player spawns
+		# at that point's position. Allow small
+		# tolerance for physics resolution.
+		var spawn_points := (
+			lobby_level._get_spawn_points())
+		assert_eq(
+			spawn_points.size(),
+			1,
+			"Lobby has one spawn point",
+		)
+		assert_almost_eq(
 			player0.global_position,
-			player1.global_position,
-			"Players should spawn at different positions"
+			spawn_points[0].spawn_position,
+			Vector2(2, 2),
+			"Player spawns near the spawn point",
 		)

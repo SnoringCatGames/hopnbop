@@ -23,7 +23,7 @@ class TestInteractionDeduplication:
 		var state = GameMatchState.new()
 		# Add test players.
 		for pid in [1, 2]:
-			var p = PlayerState.new()
+			var p = GamePlayerState.new()
 			p.player_id = pid
 			state.players_by_id[pid] = p
 		# Initialize interaction tracker (lazy initialization).
@@ -238,7 +238,7 @@ class TestRollbackBufferIntegration:
 	func test_interactions_stored_at_correct_frames():
 		var state = GameMatchState.new()
 		for pid in [1, 2]:
-			var p = PlayerState.new()
+			var p = GamePlayerState.new()
 			p.player_id = pid
 			state.players_by_id[pid] = p
 		# Initialize interaction tracker.
