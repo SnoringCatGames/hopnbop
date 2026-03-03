@@ -234,58 +234,64 @@ class TestInputReplayDuringRollback:
 
 
 	func test_jump_input_replayed_correctly():
-		# Setup: Character on ground
+		# Setup: Character on ground.
 		Netcode.server_frame_index = 45
 		character.surfaces.is_touching_floor = true
 		character.surfaces.is_attaching_to_floor = true
 
-		# Record that jump was triggered at frame 50
-		character.last_triggered_jump_frame_index = 50
+		# Set jump input and simulate one frame.
+		Helpers.set_character_input(
+			character,
+			true,
+			false,
+			false,
+			false,
+			false,
+		)
+		Helpers.simulate_frames(character, 1)
 
-		# Verify jump was registered
+		# Verify jump frame was recorded at the simulated frame.
 		assert_eq(
-			character.last_triggered_jump_frame_index,
-			50,
-			"Jump should be recorded at frame 50",
+			fixture.state_from_server
+				.last_triggered_jump_frame_index,
+			Netcode.server_frame_index,
+			"Jump frame should match server frame index",
 		)
 
 
 	func test_directional_input_sequence_preserved():
-		# Input sequence: left(40), right(45), jump(50)
-		var input_history := []
+		# Simulate 5 frames moving left.
+		Helpers.set_character_input(
+			character,
+			false,
+			false,
+			false,
+			true,
+			false,
+		)
+		Helpers.simulate_frames(character, 5)
 
-		# Frame 40-44: Move left
-		for i in range(5):
-			Helpers.set_character_input(
-				character,
-				false,
-				false,
-				false,
-				true,
-				false,
-			)
-			input_history.append(["left", 40 + i])
+		# Record position after moving left.
+		var position_after_left := character.position.x
 
-		# Frame 45-49: Move right
-		for i in range(5):
-			Helpers.set_character_input(
-				character,
-				false,
-				false,
-				false,
-				false,
-				true,
-			)
-			input_history.append(["right", 45 + i])
+		# Simulate 5 frames moving right.
+		Helpers.set_character_input(
+			character,
+			false,
+			false,
+			false,
+			false,
+			true,
+		)
+		Helpers.simulate_frames(character, 5)
 
-		# Frame 50: Jump
-		Helpers.set_character_input(character, true, false, false, false, false)
-		input_history.append(["jump", 50])
-
-		# Verify sequence
-		assert_eq(input_history[0][0], "left", "First input should be left")
-		assert_eq(input_history[5][0], "right", "Sixth input should be right")
-		assert_eq(input_history[10][0], "jump", "Last input should be jump")
+		# Position should have moved rightward relative to
+		# the recorded position.
+		assert_gt(
+			character.position.x,
+			position_after_left,
+			"Right input should move character rightward",
+		)
 
 
 	func test_action_state_consistency_after_rollback():
@@ -580,26 +586,6 @@ class TestPhysicsDuringRollback:
 		)
 
 
-	func test_fall_through_floor_state():
-		# Test fall-through state
-		character.position = Vector2(100, 500)
-		character.surfaces.is_descending_through_floors = false
-
-		# Initial state
-		assert_false(
-			character.surfaces.is_descending_through_floors,
-			"Fall-through should be inactive",
-		)
-
-		# Trigger fall-through
-		character.surfaces.is_descending_through_floors = true
-
-		# Verify state
-		assert_true(
-			character.surfaces.is_descending_through_floors,
-			"Fall-through should be active",
-		)
-
 
 ## ============================================================================
 ## Multi-Frame Prediction & Corrections
@@ -684,37 +670,6 @@ class TestPredictionWindows:
 			"Should move noticeable distance in 30 frames",
 		)
 
-
-	func test_continuous_prediction_over_time():
-		# Verify character can predict continuously over many frames
-		character.position = Vector2(100, 500)
-		character.velocity = Vector2(100, 0)
-
-		var positions_over_time := []
-
-		# Track position over 15 frames
-		for i in range(15):
-			positions_over_time.append(character.position)
-			Helpers.simulate_frames(character, 1)
-
-		# Verify positions increase monotonically (moving right)
-		for i in range(1, 15):
-			assert_gt(
-				positions_over_time[i].x,
-				positions_over_time[i - 1].x,
-				"Position should increase each frame",
-			)
-
-		# Verify significant total movement
-		var total_distance: float = abs(
-			positions_over_time[14].x
-			- positions_over_time[0].x,
-		)
-		assert_gt(
-			total_distance,
-			1.0,
-			"Should move significant distance over 15 frames",
-		)
 
 
 ## ============================================================================

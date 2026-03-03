@@ -121,26 +121,6 @@ class TestForwardedState extends ReconcilableState:
 		pass
 
 
-class TestThreeNodePartnerDiscovery:
-	extends GutTest
-
-	var root_node: Node
-	var server_state: TestServerAuthState
-	var client_state: TestClientAuthState
-	var forwarded_state: TestForwardedState
-
-
-	func before_each():
-		ArrayPool.clear_all_pools()
-		root_node = Node.new()
-		root_node.name = "Root"
-		add_child_autofree(root_node)
-
-
-	func after_each():
-		ArrayPool.clear_all_pools()
-
-
 class TestThreeNodeValidationErrors:
 	extends GutTest
 

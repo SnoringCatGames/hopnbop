@@ -109,7 +109,7 @@ class TestEdgeCases:
 		assert_gte(oldest, 1, "Oldest should never be less than 1")
 
 
-	func test_buffer_size_with_different_duration_settings():
+	func test_buffer_size_matches_current_settings():
 		# Test that buffer size correctly responds to settings
 		var original_duration := Netcode.settings.rollback_buffer_duration_sec
 

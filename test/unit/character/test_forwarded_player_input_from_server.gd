@@ -396,11 +396,15 @@ class TestStateSynchronization:
 
 
 	func test_network_process_is_empty():
-		# Should not crash when called.
+		# Set actions to a non-zero value before calling.
+		forwarded_input.actions = 0b1111
+
 		forwarded_input._network_process()
 
-		# Assert that the method completed successfully without crashing.
-		assert_true(
-			true,
-			"_network_process() should complete without crashing",
+		# Verify _network_process has no side effects on
+		# a server-authoritative forwarded input node.
+		assert_eq(
+			forwarded_input.actions,
+			0b1111,
+			"_network_process() should not modify actions",
 		)

@@ -1,22 +1,6 @@
 extends GutTest
 ## Integration tests for LobbyLevel player spawning.
 
-var lobby_level: LobbyLevel
-var root_node: Node
-
-
-func before_each():
-	ArrayPool.clear_all_pools()
-	root_node = Node.new()
-	add_child_autofree(root_node)
-
-	lobby_level = preload("res://src/level/lobby_level.tscn").instantiate()
-	root_node.add_child(lobby_level)
-
-
-func after_each():
-	ArrayPool.clear_all_pools()
-
 
 class TestKeyboardPlayerSpawning:
 	extends GutTest

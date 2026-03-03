@@ -123,7 +123,7 @@ class TestMultiPlayerRollback:
 		)
 
 
-	func test_frame_driver_processes_entities_in_order():
+	func test_frame_driver_tracks_registered_entity_count():
 		# Verify that all entities are processed in each network process
 		entity1 = TestNetworkedEntity.create_test_entity()
 		entity2 = TestNetworkedEntity.create_test_entity()

@@ -7,43 +7,6 @@ extends GutTest
 ## prevent sync conflicts.
 
 
-func before_each():
-	ArrayPool.clear_all_pools()
-
-
-func after_each():
-	ArrayPool.clear_all_pools()
-	TestEnvironmentMock.cleanup_mock_level()
-
-
-class TestSiblingValidation:
-	extends GutTest
-
-	var root_node: Node
-	var player: Player
-	var input_from_client: PlayerInputFromClient
-
-
-	func before_each():
-		ArrayPool.clear_all_pools()
-
-		root_node = Node.new()
-		root_node.name = "Root"
-		add_child_autofree(root_node)
-
-		# Setup mock level to prevent Player._enter_tree crashes
-		TestEnvironmentMock.setup_mock_level(root_node)
-
-		# Use the full player setup to ensure all required nodes are present
-		var setup = TestEnvironmentMock.setup_player_with_networking(root_node)
-		player = setup.player
-		input_from_client = setup.input_from_client
-
-
-	func after_each():
-		ArrayPool.clear_all_pools()
-
-
 class TestSyncGuard:
 	extends GutTest
 

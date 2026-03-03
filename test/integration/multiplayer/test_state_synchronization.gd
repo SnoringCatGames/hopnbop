@@ -255,41 +255,88 @@ class TestMultipleClientsScenario:
 class TestStateDivergenceDetection:
 	extends GutTest
 
+	var entity: TestNetworkedEntity
+
 	func before_each():
 		ArrayPool.clear_all_pools()
 
 	func after_each():
 		ArrayPool.clear_all_pools()
+		if is_instance_valid(entity):
+			entity.queue_free()
+
+	func _create_entity(
+		initial_position := Vector2.ZERO,
+		initial_velocity := Vector2.ZERO,
+	) -> TestNetworkedEntity:
+		entity = TestNetworkedEntity.create_test_entity(
+			initial_position,
+			initial_velocity,
+		)
+		add_child_autofree(entity)
+		entity._ready()
+		entity.record_initial_state()
+		return entity
 
 	func test_detects_position_divergence():
-		var client_state := [100.0, 50.0, 10.0]
-		var server_state := [105.0, 50.0, 10.0]
+		var e := _create_entity(Vector2(100, 50))
+		var frame := Netcode.server_frame_index
 
-		# Position difference of 5.0 should trigger mismatch (threshold 1.0).
-		var pos_diff := absf(client_state[0] - server_state[0])
-		assert_gt(pos_diff, 1.0, "Should detect position divergence")
-
-	func test_ignores_small_position_differences():
-		var client_state := [100.0, 50.0, 10.0]
-		var server_state := [100.5, 50.0, 10.0]
-
-		# Position difference of 0.5 should not trigger mismatch
-		# (threshold 1.0).
-		var pos_diff := absf(client_state[0] - server_state[0])
-		assert_lt(
-			pos_diff,
-			1.0,
-            "Should ignore small position differences"
+		# Server state with position diverged by 5
+		# (above threshold of 1.0).
+		var server_state := ArrayPool.acquire(4)
+		server_state[0] = Vector2(105, 50)
+		server_state[1] = Vector2.ZERO
+		server_state[2] = 0
+		server_state[3] = (
+			ReconcilableState.FrameAuthority.AUTHORITATIVE
 		)
 
-	func test_detects_velocity_divergence():
-		var client_state := [100.0, 50.0, 10.0, 5.0]
-		var server_state := [100.0, 50.0, 12.0, 5.0]
+		var mismatched: Array = (
+			e._get_mismatched_properties(server_state, frame)
+		)
+		assert_has(mismatched, "position")
 
-		# Velocity difference of 2.0 should trigger mismatch
-		# (threshold 0.5).
-		var vel_diff := absf(client_state[2] - server_state[2])
-		assert_gt(vel_diff, 0.5, "Should detect velocity divergence")
+	func test_ignores_small_position_differences():
+		var e := _create_entity(Vector2(100, 50))
+		var frame := Netcode.server_frame_index
+
+		# Server state with position diverged by 0.5
+		# (below threshold of 1.0).
+		var server_state := ArrayPool.acquire(4)
+		server_state[0] = Vector2(100.5, 50)
+		server_state[1] = Vector2.ZERO
+		server_state[2] = 0
+		server_state[3] = (
+			ReconcilableState.FrameAuthority.AUTHORITATIVE
+		)
+
+		var mismatched: Array = (
+			e._get_mismatched_properties(server_state, frame)
+		)
+		assert_does_not_have(mismatched, "position")
+
+	func test_detects_velocity_divergence():
+		var e := _create_entity(
+			Vector2.ZERO,
+			Vector2(10, 0),
+		)
+		var frame := Netcode.server_frame_index
+
+		# Server state with velocity diverged by 2
+		# (above threshold of 0.5).
+		var server_state := ArrayPool.acquire(4)
+		server_state[0] = Vector2.ZERO
+		server_state[1] = Vector2(12, 0)
+		server_state[2] = 0
+		server_state[3] = (
+			ReconcilableState.FrameAuthority.AUTHORITATIVE
+		)
+
+		var mismatched: Array = (
+			e._get_mismatched_properties(server_state, frame)
+		)
+		assert_has(mismatched, "velocity")
 
 
 class TestFrameCatchup:

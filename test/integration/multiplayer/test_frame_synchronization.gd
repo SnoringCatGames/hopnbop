@@ -16,38 +16,6 @@ func after_each():
 	ArrayPool.clear_all_pools()
 
 
-class TestTimeToFrameConversion:
-	extends GutTest
-
-	func test_converts_time_to_frame_index():
-		# At 60 FPS, each frame is ~16.666ms (16666 usec).
-		var time_usec := 1000000 # 1 second
-		@warning_ignore("integer_division")
-		var expected_frame := time_usec / FRAME_DURATION_USEC
-		# Should be ~60 frames.
-		assert_eq(expected_frame, 60)
-
-	func test_converts_frame_to_time():
-		var frame := 120 # 2 seconds at 60 FPS
-		var expected_time_usec := frame * FRAME_DURATION_USEC
-		# Should be ~2 seconds (120 * 16666 = 1999920 usec).
-		assert_eq(expected_time_usec, 1999920)
-
-	func test_handles_fractional_frames():
-		# Time that doesn't align perfectly to frame boundary.
-		var time_usec := 25000 # 25ms
-		@warning_ignore("integer_division")
-		var frame := time_usec / FRAME_DURATION_USEC
-		# Should round down to frame 1.
-		assert_eq(frame, 1)
-
-	func test_zero_time_is_frame_zero():
-		var time_usec := 0
-		@warning_ignore("integer_division")
-		var frame := time_usec / FRAME_DURATION_USEC
-		assert_eq(frame, 0)
-
-
 class TestFrameSynchronization:
 	extends GutTest
 
@@ -130,50 +98,6 @@ class TestLatencyScenarios:
 	func after_each():
 		ArrayPool.clear_all_pools()
 
-	func test_low_latency_scenario():
-		# 20ms RTT (ping) = ~1 frame delay at 60 FPS.
-		var rtt_usec := 20000
-		@warning_ignore("integer_division")
-		var one_way_latency_frames := (rtt_usec / 2) / FRAME_DURATION_USEC
-
-		# Client predicts 1 frame ahead.
-		assert_eq(one_way_latency_frames, 0)
-
-		# Client should receive server state for frame 4 while at frame 5.
-		for i in range(6):
-			var state := ArrayPool.acquire(3)
-			state[0] = float(i)
-			state[1] = 0.0
-			state[2] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
-			buffer.set_at(i, state)
-
-		# Server state arrives for frame 4.
-		assert_true(buffer.has_at(4))
-
-	func test_high_latency_scenario():
-		# 200ms RTT = ~6 frames delay at 60 FPS.
-		var rtt_usec := 200000
-		@warning_ignore("integer_division")
-		var one_way_latency_frames := (rtt_usec / 2) / FRAME_DURATION_USEC
-
-		# Should be ~6 frames.
-		assert_almost_eq(one_way_latency_frames, 6.0, 1.0)
-
-		# Client predicts 6 frames ahead.
-		var client_frame := 20
-		var server_acknowledged_frame := client_frame - 6
-
-		# Client should have predicted up to frame 20.
-		for i in range(21):
-			var state := ArrayPool.acquire(3)
-			state[0] = float(i)
-			state[1] = 0.0
-			state[2] = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
-			buffer.set_at(i, state)
-
-		# Server state arrives for frame 14.
-		assert_true(buffer.has_at(server_acknowledged_frame))
-
 	func test_variable_latency_jitter():
 		# Simulate packets arriving with variable delay.
 		var packet_frames := [5, 7, 6, 9, 8] # Out of order
@@ -255,46 +179,3 @@ class TestFrameSkipDetection:
 				state[2],
 				ReconcilableState.FrameAuthority.SERVER_PREDICTED
 			)
-
-
-class TestBufferSizeAndLatency:
-	extends GutTest
-
-	func test_buffer_size_sufficient_for_latency():
-		# Buffer should hold at least 1.5 seconds of frames.
-		var buffer_duration_seconds := 1.5
-		var frames_per_second := 60
-		var min_buffer_size := int(
-			buffer_duration_seconds * frames_per_second
-		)
-
-		# Default buffer is 90 frames.
-		assert_eq(min_buffer_size, 90)
-
-		# This should handle up to 1.5 seconds of RTT.
-		var max_rtt_usec := int(buffer_duration_seconds * 1000000)
-		assert_eq(max_rtt_usec, 1500000)
-
-	func test_extreme_latency_requires_large_buffer():
-		# For 500ms RTT, client might predict 30 frames ahead.
-		var rtt_usec := 500000
-		@warning_ignore("integer_division")
-		var one_way_frames := (rtt_usec / 2) / FRAME_DURATION_USEC
-
-		# Should be ~15 frames one-way.
-		assert_almost_eq(one_way_frames, 15.0, 1.0)
-
-		# Buffer of 90 frames can handle this.
-		assert_gt(90, one_way_frames * 2)
-
-	func test_packet_loss_extends_effective_latency():
-		# If 3 packets in a row are lost at 60 FPS, effective delay is 3
-		# frames.
-		var packets_lost := 3
-		var frames_per_packet := 1
-
-		var additional_delay_frames := packets_lost * frames_per_packet
-		assert_eq(additional_delay_frames, 3)
-
-		# Buffer should still handle this easily.
-		assert_gt(90, additional_delay_frames)

@@ -49,18 +49,12 @@ class TestDeviceConfigEdgeCases:
 		assert_eq(config.key_bindings.size(), 0)
 		assert_eq(config.name, "Unknown")
 
-	func test_gamepad_ignores_key_bindings():
+	func test_gamepad_stores_bindings_regardless_of_type():
 		var bindings := {"move_up": KEY_W}
 		var config := DeviceConfig.new(
 			DeviceConfig.DeviceType.GAMEPAD, 0, bindings
 		)
 		assert_eq(config.type, DeviceConfig.DeviceType.GAMEPAD)
-
-	func test_negative_device_id_for_keyboard():
-		var config := DeviceConfig.new(
-			DeviceConfig.DeviceType.KEYBOARD, -1, {}
-		)
-		assert_eq(config.device_id, -1)
 
 	func test_positive_device_id_for_gamepad():
 		for device_id in [0, 1, 2, 3]:

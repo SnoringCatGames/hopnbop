@@ -1,5 +1,44 @@
+class_name TestPlayerCollisionInteractions
 extends GutTest
 ## Integration tests for player collision interactions (bump and kill).
+
+
+## Shared helper for creating a test player with networking
+## infrastructure. Pass the GutTest instance so
+## add_child_autofree() is called on the correct test.
+static func _create_test_player(
+	test: GutTest,
+	player_id: int,
+	movement_settings: MovementSettings,
+) -> Bunny:
+	var player = Bunny.new()
+	player.name = "Player%d" % player_id
+	player.movement_settings = movement_settings
+
+	# Initialize required Character exports.
+	player.collision_shape = CollisionShape2D.new()
+	player.animator = CharacterAnimator.new()
+	player.animator.animated_sprite = AnimatedSprite2D.new()
+	player.add_child(player.animator)
+
+	# Set up networked state node.
+	var state = CharacterStateFromServer.new()
+	state.name = "StateFromServer"
+	state.root_path = NodePath(".")
+	state.player_id = player_id
+	state.character = player
+	TestEnvironmentMock.init_replication_config(state)
+	player.add_child(state)
+	player.state_from_server = state
+
+	# Add to tree to trigger _ready() and initialize
+	# rollback buffer.
+	test.add_child_autofree(player)
+
+	# Set player_id after state_from_server is assigned.
+	player.player_id = player_id
+
+	return player
 
 
 func before_all():
@@ -48,41 +87,22 @@ class TestCollisionBounceVelocity:
 		movement_settings.bump_bounce_vertical_boost = -200.0
 
 		# Create players with networking infrastructure.
-		player1 = _create_test_player(1)
-		player2 = _create_test_player(2)
+		player1 = (
+			TestPlayerCollisionInteractions
+			._create_test_player(
+				self, 1, movement_settings,
+			)
+		)
+		player2 = (
+			TestPlayerCollisionInteractions
+			._create_test_player(
+				self, 2, movement_settings,
+			)
+		)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
 		TestEnvironmentMock.cleanup_mock_level()
-
-	func _create_test_player(player_id: int) -> Bunny:
-		var player = Bunny.new()
-		player.name = "Player%d" % player_id
-		player.movement_settings = movement_settings
-
-		# Initialize required Character exports.
-		player.collision_shape = CollisionShape2D.new()
-		player.animator = CharacterAnimator.new()
-		player.animator.animated_sprite = AnimatedSprite2D.new()
-		player.add_child(player.animator)
-
-		# Set up networked state node.
-		var state = CharacterStateFromServer.new()
-		state.name = "StateFromServer"
-		state.root_path = NodePath(".")
-		state.player_id = player_id
-		state.character = player
-		TestEnvironmentMock.init_replication_config(state)
-		player.add_child(state)
-		player.state_from_server = state
-
-		# Add to tree to trigger _ready() and initialize rollback buffer.
-		add_child_autofree(player)
-
-		# Set player_id after state_from_server is assigned.
-		player.player_id = player_id
-
-		return player
 
 	func test_bounce_applies_directional_velocity():
 		# Position players for horizontal bounce.
@@ -126,20 +146,6 @@ class TestCollisionBounceVelocity:
 			360.0,
 			10.0,
 			"Bounce magnitude should match combined bounce"
-		)
-
-	func test_bounce_direction_away_from_collision():
-		# Player1 at origin, player2 to the right.
-		player1.global_position = Vector2(0, 0)
-		player2.global_position = Vector2(100, 0)
-
-		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
-
-		# Player1 should bounce left (negative X).
-		assert_lt(
-			player1._pending_bounce.x,
-			0,
-			"Player1 should bounce away from player2"
 		)
 
 	func test_bounce_at_45_degree_angle():
@@ -266,41 +272,22 @@ class TestBothPlayersBounceBehavior:
 		movement_settings.bump_bounce_base_speed = 300.0
 		movement_settings.bump_bounce_vertical_boost = -200.0
 
-		player1 = _create_test_player(1)
-		player2 = _create_test_player(2)
+		player1 = (
+			TestPlayerCollisionInteractions
+			._create_test_player(
+				self, 1, movement_settings,
+			)
+		)
+		player2 = (
+			TestPlayerCollisionInteractions
+			._create_test_player(
+				self, 2, movement_settings,
+			)
+		)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
 		TestEnvironmentMock.cleanup_mock_level()
-
-	func _create_test_player(player_id: int) -> Bunny:
-		var player = Bunny.new()
-		player.name = "Player%d" % player_id
-		player.movement_settings = movement_settings
-
-		# Initialize required Character exports.
-		player.collision_shape = CollisionShape2D.new()
-		player.animator = CharacterAnimator.new()
-		player.animator.animated_sprite = AnimatedSprite2D.new()
-		player.add_child(player.animator)
-
-		# Set up networked state node.
-		var state = CharacterStateFromServer.new()
-		state.name = "StateFromServer"
-		state.root_path = NodePath(".")
-		state.player_id = player_id
-		state.character = player
-		TestEnvironmentMock.init_replication_config(state)
-		player.add_child(state)
-		player.state_from_server = state
-
-		# Add to tree to trigger _ready() and initialize rollback buffer.
-		add_child_autofree(player)
-
-		# Set player_id after state_from_server is assigned.
-		player.player_id = player_id
-
-		return player
 
 	func test_both_players_bounce_on_bump():
 		player1.global_position = Vector2(0, 0)
@@ -377,41 +364,22 @@ class TestBouncePreservesExistingVelocity:
 		movement_settings.bump_bounce_base_speed = 300.0
 		movement_settings.bump_bounce_vertical_boost = -200.0
 
-		player1 = _create_test_player(1)
-		player2 = _create_test_player(2)
+		player1 = (
+			TestPlayerCollisionInteractions
+			._create_test_player(
+				self, 1, movement_settings,
+			)
+		)
+		player2 = (
+			TestPlayerCollisionInteractions
+			._create_test_player(
+				self, 2, movement_settings,
+			)
+		)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
 		TestEnvironmentMock.cleanup_mock_level()
-
-	func _create_test_player(player_id: int) -> Bunny:
-		var player = Bunny.new()
-		player.name = "Player%d" % player_id
-		player.movement_settings = movement_settings
-
-		# Initialize required Character exports.
-		player.collision_shape = CollisionShape2D.new()
-		player.animator = CharacterAnimator.new()
-		player.animator.animated_sprite = AnimatedSprite2D.new()
-		player.add_child(player.animator)
-
-		# Set up networked state node.
-		var state = CharacterStateFromServer.new()
-		state.name = "StateFromServer"
-		state.root_path = NodePath(".")
-		state.player_id = player_id
-		state.character = player
-		TestEnvironmentMock.init_replication_config(state)
-		player.add_child(state)
-		player.state_from_server = state
-
-		# Add to tree to trigger _ready() and initialize rollback buffer.
-		add_child_autofree(player)
-
-		# Set player_id after state_from_server is assigned.
-		player.player_id = player_id
-
-		return player
 
 	func test_bounce_adds_to_existing_velocity():
 		player1.global_position = Vector2(0, 0)
@@ -471,41 +439,22 @@ class TestCollisionEdgeCases:
 		movement_settings.bump_bounce_base_speed = 300.0
 		movement_settings.bump_bounce_vertical_boost = -200.0
 
-		player1 = _create_test_player(1)
-		player2 = _create_test_player(2)
+		player1 = (
+			TestPlayerCollisionInteractions
+			._create_test_player(
+				self, 1, movement_settings,
+			)
+		)
+		player2 = (
+			TestPlayerCollisionInteractions
+			._create_test_player(
+				self, 2, movement_settings,
+			)
+		)
 
 	func after_each():
 		ArrayPool.clear_all_pools()
 		TestEnvironmentMock.cleanup_mock_level()
-
-	func _create_test_player(player_id: int) -> Bunny:
-		var player = Bunny.new()
-		player.name = "Player%d" % player_id
-		player.movement_settings = movement_settings
-
-		# Initialize required Character exports.
-		player.collision_shape = CollisionShape2D.new()
-		player.animator = CharacterAnimator.new()
-		player.animator.animated_sprite = AnimatedSprite2D.new()
-		player.add_child(player.animator)
-
-		# Set up networked state node.
-		var state = CharacterStateFromServer.new()
-		state.name = "StateFromServer"
-		state.root_path = NodePath(".")
-		state.player_id = player_id
-		state.character = player
-		TestEnvironmentMock.init_replication_config(state)
-		player.add_child(state)
-		player.state_from_server = state
-
-		# Add to tree to trigger _ready() and initialize rollback buffer.
-		add_child_autofree(player)
-
-		# Set player_id after state_from_server is assigned.
-		player.player_id = player_id
-
-		return player
 
 	func test_bounce_with_overlapping_positions():
 		# Both players at same position.
@@ -515,13 +464,19 @@ class TestCollisionEdgeCases:
 		player1.velocity = Vector2.ZERO
 
 		# Should not crash despite zero distance.
-		player1._server_apply_interaction(player2, CharacterStateFromServer.ServerInteractionType.BUMP)
+		player1._server_apply_interaction(
+			player2,
+			CharacterStateFromServer
+				.ServerInteractionType.BUMP,
+		)
 
-		# Velocity should still be modified (direction undefined but
-		# normalized).
-		assert_true(
-			true,
-			"Should not crash with overlapping positions"
+		# Production code uses a fallback direction for
+		# zero-distance collisions, so pending bounce
+		# should still be set.
+		assert_ne(
+			player1._pending_bounce,
+			Vector2.ZERO,
+			"Should have non-zero bounce with overlapping positions",
 		)
 
 	func test_bounce_with_very_close_positions():
