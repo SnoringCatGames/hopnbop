@@ -49,7 +49,8 @@ extends Node
 # ---
 
 
-# -
+# - Create a new AWS account for SCG?
+# - Create a new itch.io account for SCG too.
 
 
 # ---
