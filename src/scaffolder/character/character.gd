@@ -24,6 +24,16 @@ const _ICE_EDGE_MIN_ADVANCE_PX := 0.5
 # 12 frames = 0.2 seconds at 60 FPS.
 const _ICE_AIR_FRICTION_COOLDOWN_FRAMES := 12
 
+# Vertical nudge applied before move_and_slide on the
+# first frame of a launch. Lifts the collision circle
+# above seams between the launch body and adjacent
+# colinear floor tiles. The nudge is reversed after
+# move_and_slide. Must exceed the collision shape
+# radius (5px) minus the resting floor-to-center
+# distance (5px) plus safe_margin (0.08px) plus any
+# embedding from the previous frame's floor snap.
+const _LAUNCH_SEAM_NUDGE_PX := 4.0
+
 @export var collision_shape: CollisionShape2D:
 	set(value):
 		collision_shape = value
@@ -375,12 +385,45 @@ func _apply_movement() -> void:
 			Netcode.server_frame_index
 		)
 	var saved_motion_mode := motion_mode
+	var did_launch_nudge := false
 	if is_in_launch_cooldown():
-		motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
+		motion_mode = (
+			CharacterBody2D.MOTION_MODE_FLOATING
+		)
+		# On the first frame after a launch, nudge
+		# position up before move_and_slide and zero
+		# horizontal velocity. The launch point can
+		# be colinear with adjacent floor tiles
+		# (e.g., spring next to terrain). The
+		# collision circle catches on the seam
+		# between collision bodies during diagonal
+		# movement, reducing upward travel. The
+		# nudge lifts the circle above the seam.
+		# Zeroing horizontal velocity prevents any
+		# remaining diagonal movement from clipping
+		# the adjacent tile. Both are reversed after
+		# move_and_slide so force_launch's own nudge
+		# applies from the correct baseline and
+		# horizontal speed is preserved.
+		var frames_since_launch := (
+			Netcode.server_frame_index
+			- _last_launch_frame_index
+		)
+		if frames_since_launch <= 1:
+			position.y -= _LAUNCH_SEAM_NUDGE_PX
+			did_launch_nudge = true
+
+	var saved_launch_velocity_x := velocity.x
+	if did_launch_nudge:
+		velocity.x = 0.0
 
 	move_and_slide()
 
 	motion_mode = saved_motion_mode
+
+	if did_launch_nudge:
+		position.y += _LAUNCH_SEAM_NUDGE_PX
+		velocity.x = saved_launch_velocity_x
 
 	# On ice, the circle collision shape gets stuck
 	# at tile corners because move_and_slide cannot

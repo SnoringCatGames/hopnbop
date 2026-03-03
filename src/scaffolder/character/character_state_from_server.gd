@@ -669,48 +669,55 @@ func _apply_interaction_collidability(interaction_type: int) -> void:
 	character.set_is_collidable(is_collidable)
 
 
-## Gets the bounce velocity from the rollback buffer at the current frame.
-## Returns the bounce velocity if the current frame has a KILL or BUMP
-## interaction, or null if no bounce should be applied.
+## Gets the bounce velocity for this frame from
+## the rollback buffer. Returns the velocity if the
+## previous frame has a bounce interaction (KILL,
+## BUMP, SPRING, SNAIL_CRUSH), or null otherwise.
 ##
-## This checks the buffer directly rather than using unpacked properties,
-## because _pre_network_process() unpacks the PREVIOUS frame's state.
-## During rollback re-simulation, we need to check if the CURRENT frame
-## (being simulated) has a bounce interaction.
+## Checks buffer[frame - 1] because Area2D callbacks
+## fire after a frame's physics step. The server
+## applies force_launch on the following frame via
+## _pending_bounce. This function mirrors that
+## timing so re-simulation matches.
 func get_current_frame_bounce_velocity():
 	if _rollback_buffer == null:
 		return null
 
-	if not _rollback_buffer.has_at(
-		Netcode.server_frame_index
-	):
+	var prev_frame := (
+		Netcode.server_frame_index - 1
+	)
+	if not _rollback_buffer.has_at(prev_frame):
 		return null
 
-	var frame_state: Array = _rollback_buffer.get_at(
-		Netcode.server_frame_index
+	var frame_state: Array = (
+		_rollback_buffer.get_at(prev_frame)
 	)
 	if frame_state == null:
 		return null
 
-	var interaction_frame: int = _get_frame_property(
-		frame_state,
-		&"last_interaction_frame_index"
+	var interaction_frame: int = (
+		_get_frame_property(
+			frame_state,
+			&"last_interaction_frame_index",
+		)
 	)
 
-	# Only apply bounce on the exact frame the
-	# interaction occurred.
-	if interaction_frame != Netcode.server_frame_index:
+	# Only match when the interaction is fresh at
+	# the previous frame. Stale carried-forward
+	# values will not match.
+	if interaction_frame != prev_frame:
 		return null
 
-	var interaction_type: int = _get_frame_property(
-		frame_state,
-		&"last_interaction_type"
+	var interaction_type: int = (
+		_get_frame_property(
+			frame_state,
+			&"last_interaction_type",
+		)
 	)
 
-	# Only KILL, BUMP, and SPRING interactions have bounce
-	# velocities.
 	if (
-		interaction_type != ServerInteractionType.KILL
+		interaction_type
+			!= ServerInteractionType.KILL
 		and interaction_type
 			!= ServerInteractionType.BUMP
 		and interaction_type
@@ -720,28 +727,36 @@ func get_current_frame_bounce_velocity():
 	):
 		return null
 
-	return _get_frame_property(frame_state, &"last_interaction_velocity")
+	return _get_frame_property(
+		frame_state,
+		&"last_interaction_velocity",
+	)
 
 
-## Returns the interaction type from the rollback buffer at the
-## current frame, or NONE if no interaction exists.
+## Returns the interaction type for this frame from
+## the rollback buffer, or NONE if no interaction
+## applies. Uses the same prev-frame check as
+## get_current_frame_bounce_velocity().
 func get_current_frame_interaction_type() -> int:
 	if _rollback_buffer == null:
 		return ServerInteractionType.NONE
-	if not _rollback_buffer.has_at(
-		Netcode.server_frame_index
-	):
+	var prev_frame := (
+		Netcode.server_frame_index - 1
+	)
+	if not _rollback_buffer.has_at(prev_frame):
 		return ServerInteractionType.NONE
-	var frame_state: Array = _rollback_buffer.get_at(
-		Netcode.server_frame_index
+	var frame_state: Array = (
+		_rollback_buffer.get_at(prev_frame)
 	)
 	if frame_state == null:
 		return ServerInteractionType.NONE
-	var interaction_frame: int = _get_frame_property(
-		frame_state,
-		&"last_interaction_frame_index",
+	var interaction_frame: int = (
+		_get_frame_property(
+			frame_state,
+			&"last_interaction_frame_index",
+		)
 	)
-	if interaction_frame != Netcode.server_frame_index:
+	if interaction_frame != prev_frame:
 		return ServerInteractionType.NONE
 	return _get_frame_property(
 		frame_state,
@@ -930,9 +945,11 @@ func _apply_input_to_character(input_source: ReconcilableState) -> void:
 
 ## Unified server interaction reconciliation.
 func _reconcile_server_interaction() -> void:
-	# Check the current frame's buffer for interactions to reconcile.
-	# We can't use self.last_interaction_* because _unpack_buffer_state(N-1)
-	# has already overwritten them with the previous frame's values.
+	# Check the current frame's buffer for interactions to
+	# reconcile. During rollback re-simulation,
+	# _unpack_buffer_state(N-1) overwrites self properties
+	# with the previous frame's values, so we read from the
+	# buffer instead.
 	if not _rollback_buffer.has_at(
 		Netcode.server_frame_index
 	):
@@ -957,20 +974,24 @@ func _reconcile_server_interaction() -> void:
 	if buffer_interaction_type == ServerInteractionType.NONE:
 		return
 
-	# Skip stale interactions from pre-rollback data. After rollback
-	# re-simulation, buffer[current_frame] may still contain data
-	# from the previous simulation with an older interaction. Without
-	# this guard, the stale interaction overwrites the correct state
-	# loaded from buffer[current_frame - 1] by _pre_network_process,
-	# causing client-side effects (gore, sounds) to be skipped.
+	# Skip stale interactions from pre-rollback data. After
+	# rollback re-simulation, buffer[current_frame] may
+	# still contain data from the previous simulation with
+	# an older interaction. Without this guard, the stale
+	# interaction overwrites the correct state loaded from
+	# buffer[current_frame - 1] by _pre_network_process,
+	# causing client-side effects (gore, sounds) to be
+	# skipped.
 	if buffer_interaction_frame < last_interaction_frame_index:
 		return
 
-	# Update local interaction properties from current frame's buffer.
-	# This is critical for rollback re-simulation: _pre_network_process()
-	# unpacked frame N-1, so is_dead would return false without this update.
-	# Interaction properties are safe to restore from buffer because they are
-	# set by explicit injection (record_interaction), not by simulation.
+	# Update local interaction properties from current
+	# frame's buffer. This is critical for rollback
+	# re-simulation: _pre_network_process() unpacked frame
+	# N-1, so is_dead would return false without this
+	# update. Interaction properties are safe to restore
+	# from buffer because they are set by explicit injection
+	# (record_interaction), not by simulation.
 	last_interaction_type = buffer_interaction_type
 	last_interaction_frame_index = buffer_interaction_frame
 	last_interaction_position = _get_frame_property(
@@ -983,16 +1004,20 @@ func _reconcile_server_interaction() -> void:
 	if buffer_interaction_frame != Netcode.server_frame_index:
 		return
 
-	# For DIE and SPAWN onset, restore authoritative position/velocity from
-	# buffer. This is only safe on the onset frame where the buffer has
-	# injected authoritative data. On non-onset frames, the buffer may have
-	# stale data from a previous simulation that hasn't been re-simulated yet
-	# during rollback, which would overwrite correctly re-simulated positions.
+	# For DIE and SPAWN onset, restore authoritative
+	# position/velocity from buffer. This is only safe on
+	# the onset frame where the buffer has injected
+	# authoritative data. On non-onset frames, the buffer
+	# may have stale data from a previous simulation that
+	# hasn't been re-simulated yet during rollback, which
+	# would overwrite correctly re-simulated positions.
 	if (buffer_interaction_type == ServerInteractionType.DIE
 			or buffer_interaction_type
 				== ServerInteractionType.SPAWN):
-		position = _get_frame_property(frame_state, &"position")
-		velocity = _get_frame_property(frame_state, &"velocity")
+		position = _get_frame_property(
+			frame_state, &"position")
+		velocity = _get_frame_property(
+			frame_state, &"velocity")
 		if Netcode.ensure_valid(character):
 			character.position = position
 			character.velocity = velocity

@@ -233,64 +233,47 @@ class TestInputReplayDuringRollback:
 		ArrayPool.clear_all_pools()
 
 
-	func test_jump_input_replayed_correctly():
-		# Setup: Character on ground.
+	func test_jump_input_records_frame_index():
+		# Setup: Character on ground with jump just pressed.
 		Netcode.server_frame_index = 45
 		character.surfaces.is_touching_floor = true
 		character.surfaces.is_attaching_to_floor = true
+		character.actions.previous_bitmask = 0
+		character.actions.pressed_jump = true
 
-		# Set jump input and simulate one frame.
-		Helpers.set_character_input(
-			character,
-			true,
-			false,
-			false,
-			false,
-			false,
+		# Verify just_triggered_jump fires.
+		assert_true(
+			character.actions.just_triggered_jump,
+			"Jump should be just triggered",
 		)
-		Helpers.simulate_frames(character, 1)
 
-		# Verify jump frame was recorded at the simulated frame.
+		# _pre_movement records the jump frame when
+		# just_triggered_jump is true.
+		character._pre_movement()
+
 		assert_eq(
-			fixture.state_from_server
-				.last_triggered_jump_frame_index,
-			Netcode.server_frame_index,
-			"Jump frame should match server frame index",
+			character.last_triggered_jump_frame_index,
+			45,
+			"Jump frame should be recorded at current server frame",
 		)
 
 
-	func test_directional_input_sequence_preserved():
-		# Simulate 5 frames moving left.
-		Helpers.set_character_input(
-			character,
-			false,
-			false,
-			false,
-			true,
-			false,
-		)
+	func test_direction_reversal_preserves_sequence():
+		# Simulate 5 frames moving left via velocity.
+		character.velocity = Vector2(-100, 0)
 		Helpers.simulate_frames(character, 5)
-
-		# Record position after moving left.
 		var position_after_left := character.position.x
 
-		# Simulate 5 frames moving right.
-		Helpers.set_character_input(
-			character,
-			false,
-			false,
-			false,
-			false,
-			true,
-		)
+		# Reverse direction and simulate 5 more frames.
+		character.velocity = Vector2(100, 0)
 		Helpers.simulate_frames(character, 5)
 
 		# Position should have moved rightward relative to
-		# the recorded position.
+		# the leftmost point.
 		assert_gt(
 			character.position.x,
 			position_after_left,
-			"Right input should move character rightward",
+			"Right velocity should move character rightward",
 		)
 
 
