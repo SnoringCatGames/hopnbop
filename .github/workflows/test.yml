@@ -25,7 +25,7 @@ jobs:
             exit 0
           fi
 
-          CHANGES=$(git diff --name-only HEAD@{24.hours.ago} HEAD 2>/dev/null || echo "initial")
+          CHANGES=$(git log --since="24 hours ago" --name-only --pretty="" HEAD)
           if echo "$CHANGES" | grep -qE '^(src/|test/|addons/|project\.godot|\.github/workflows/test\.yml)'; then
             echo "Relevant changes found in last 24 hours"
             echo "should_run=true" >> $GITHUB_OUTPUT

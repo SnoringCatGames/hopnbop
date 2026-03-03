@@ -316,7 +316,8 @@ func _deregister_player(
 
 	deregister_player(player)
 
-	G.audio.play_sound("kill")
+	if is_instance_valid(G.audio):
+		G.audio.play_sound("kill")
 	player.queue_free()
 
 	# Show the corresponding control display.
@@ -378,7 +379,8 @@ func start_match() -> void:
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
-	G.audio.play_sound("hole")
+	if is_instance_valid(G.audio):
+		G.audio.play_sound("hole")
 
 	# Trigger GamePanel to despawn lobby and
 	# connect.
