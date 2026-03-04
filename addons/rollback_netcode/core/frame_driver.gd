@@ -48,6 +48,11 @@ extends Node
 
 # ---
 
+# - Brave Player Name with multiple local players in Lobby.
+#   - Actually, this seems to be upon deregistering and registering.
+# - Change icon to new bunny art and logo.
+# - Get it water. Die. Respawn with a splash somewhere.
+
 
 # - Create a new AWS account for SCG?
 # - Create a new itch.io account for SCG too.
