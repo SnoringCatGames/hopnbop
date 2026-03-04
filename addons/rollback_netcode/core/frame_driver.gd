@@ -56,7 +56,14 @@ extends Node
 
 # - Create a new AWS account for SCG?
 # - Create a new itch.io account for SCG too.
+# - Look into the additional $100 from AWS.
 
+
+# - https://discord.com/channels/1478592423813845106/1478592423813845109
+
+# - Fix Snoring Cat online presence:
+#   - Fix and republish Inner-Tube Climber.
+#   - Update snoringcat.games.
 
 # ---
 
@@ -82,7 +89,7 @@ extends Node
 
 # ## Manual Setup Checklist (One-Time)
 # ### Platform Accounts
-# - [ ] AWS account (Snoring Cat LLC billing)
+# - [x] AWS account (Snoring Cat LLC billing)
 # - [ ] Steam developer account (Steamworks, $100 app fee)
 # - [ ] Apple Developer account ($99/year)
 # - [ ] Google Play Console ($25 one-time)
@@ -92,7 +99,7 @@ extends Node
 # - [ ] Twitch developer application (free)
 # - [ ] itch.io project for Hop 'n Bop (already have account)
 # ### AWS Infrastructure
-# - [ ] IAM admin user with MFA
+# - [x] IAM admin user with MFA
 # - [ ] AWS CLI configured locally
 # - [ ] SAM CLI installed
 # - [ ] Secrets Manager: JWT signing key
