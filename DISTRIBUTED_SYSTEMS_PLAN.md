@@ -16,18 +16,18 @@ hopnbop.net (purchased).
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        CLIENTS                              │
+┌────────────────────────────────────────────────────────────┐
+│                        CLIENTS                             │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────────┐  │
 │  │ Windows  │  │   Web    │  │   iOS    │  │  Android   │  │
 │  │  (ENet)  │  │(WebSocket│  │(WebSocket│  │ (WebSocket │  │
 │  │          │  │  or WRT) │  │  or WRT) │  │   or WRT)  │  │
 │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └─────┬──────┘  │
-└───────┼──────────────┼──────────────┼──────────────┼────────┘
-        │              │              │              │
-        ▼              ▼              ▼              ▼
+└───────┼─────────────┼─────────────┼──────────────┼─────────┘
+        │             │             │              │
+        ▼             ▼             ▼              ▼
 ┌───────────────────────────────────────────────────────────┐
-│                    AWS INFRASTRUCTURE                      │
+│                    AWS INFRASTRUCTURE                     │
 │                                                           │
 │  ┌─────────────────────────────────────────────────────┐  │
 │  │              API Gateway (HTTPS)                    │  │
@@ -39,14 +39,14 @@ hopnbop.net (purchased).
 │  │  GET  /friends        POST /friends/add             │  │
 │  │  DELETE /player       POST /friends/remove          │  │
 │  └──────────────┬──────────────────────────────────────┘  │
-│                 ▼                                          │
+│                 ▼                                         │
 │  ┌─────────────────────────────────────────────────────┐  │
-│  │              Lambda Functions (Python 3.12)          │  │
+│  │              Lambda Functions (Python 3.12)         │  │
 │  │  auth_handler  matchmaking_handler  player_handler  │  │
 │  │  leaderboard_handler  friends_handler               │  │
 │  └───────┬────────────┬──────────────┬─────────────────┘  │
-│          │            │              │                     │
-│          ▼            ▼              ▼                     │
+│          │            │              │                    │
+│          ▼            ▼              ▼                    │
 │  ┌────────────┐ ┌──────────┐ ┌──────────────────────┐     │
 │  │  DynamoDB  │ │ GameLift │ │  Secrets Manager     │     │
 │  │  Players   │ │ FlexMatch│ │  JWT key, OAuth      │     │
@@ -55,7 +55,7 @@ hopnbop.net (purchased).
 │  │  Leaderbd  │ │          │                              │
 │  │  Settings  │ │          │                              │
 │  └────────────┘ └────┬─────┘                              │
-│                      ▼                                     │
+│                      ▼                                    │
 │  ┌─────────────────────────────────────────────────────┐  │
 │  │        GameLift Container Fleet (us-west-2)         │  │
 │  │   ┌──────────────────────────────────────────────┐  │  │
@@ -147,14 +147,15 @@ subsequent milestones can build on it.
 1. Go to aws.amazon.com, create account with Snoring Cat LLC info
 2. Enable MFA on root account
 3. Create IAM admin user with programmatic access
-4. Run `aws configure` with access key, set region to us-west-2
-5. Install AWS SAM CLI (`pip install aws-sam-cli`)
-6. Generate a JWT signing key (`openssl rand -hex 32`)
+4. Run `aws configure sso` and set region to us-west-2
+5. Install AWS SAM CLI (`winget install Amazon.SAM-CLI`)
+6. Generate a JWT signing key
+   (`python -c "import secrets; print(secrets.token_hex(32))"`)
 7. Create secrets in Secrets Manager via AWS Console
-8. Run `sam build && sam deploy --guided` from backend/
-9. Test endpoints with curl
+8. Run `sam build` then `sam deploy --guided` from backend/
+9. Test endpoints with `Invoke-RestMethod`
 
-**Testing**: `curl -X POST https://<api-id>.execute-api.us-west-2.amazonaws.com/Prod/auth/login`
+**Testing**: `Invoke-RestMethod -Method Post -Uri https://<api-id>.execute-api.us-west-2.amazonaws.com/Prod/auth/login`
 returns a structured error (no valid credentials, but proves the
 endpoint is live).
 
@@ -265,6 +266,7 @@ Spot instances and Anywhere mode for local testing.
 **Manual steps**:
 1. Create ECR repository:
    `aws ecr create-repository --repository-name hopnbop-server`
+   (works in both bash and PowerShell)
 2. Create GameLift container fleet via AWS Console or CLI
 3. Configure Spot + On-Demand priority in fleet queue
 4. Set up Anywhere fleet for local dev (already partially done)
@@ -855,8 +857,8 @@ all parallel jobs. Well within GitHub Actions free tier
 - `.github/workflows/deploy-itch.yml`
 - `.github/workflows/deploy-backend.yml`
 - `.github/workflows/deploy-web.yml`
-- `scripts/build-server-container.sh`
-- `scripts/upload-itch.sh`
+- `scripts/build-server-container.ps1`
+- `scripts/upload-itch.ps1`
 
 **Manual steps**:
 1. Create itch.io API key, add as GitHub secret
@@ -908,7 +910,7 @@ Route 53 hosting zone at $0.50/month).
 
 **Key files to create**:
 - `website/` directory with static site source
-- `scripts/deploy-website.sh`
+- `scripts/deploy-website.ps1`
 - `.github/workflows/deploy-web.yml` — Include website deploy
 
 ---
