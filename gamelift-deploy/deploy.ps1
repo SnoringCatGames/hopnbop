@@ -55,7 +55,7 @@ Write-Host "Docker build complete." -ForegroundColor Green
 # Step 3: Login to ECR.
 Write-Host "[3/5] Logging in to ECR..." -ForegroundColor Yellow
 $password = aws ecr get-login-password --region $Region --profile $Profile
-docker login --username AWS --password-stdin $EcrUri <<< $password
+$password | docker login --username AWS --password-stdin $EcrUri
 if ($LASTEXITCODE -ne 0) {
     Write-Error "ECR login failed"
     exit 1
