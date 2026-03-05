@@ -1,10 +1,26 @@
 """Authentication service with OAuth2 provider integration."""
 
+import os
 import jwt
 import httpx
 from datetime import datetime, timedelta
-from typing import Optional, Dict
+from typing import Optional
 from dataclasses import dataclass
+
+from services import secrets_service
+
+
+@dataclass
+class AuthResult:
+    """Result of authenticating with a provider.
+
+    Contains the provider-specific user ID and display name,
+    before mapping to a canonical player_id.
+    """
+
+    provider: str
+    provider_id: str
+    display_name: str
 
 
 @dataclass
@@ -14,6 +30,7 @@ class AuthToken:
     player_id: str
     display_name: str
     provider: str
+    is_anonymous: bool
     issued_at: datetime
     expires_at: datetime
 
@@ -23,6 +40,7 @@ class AuthToken:
             "sub": self.player_id,
             "name": self.display_name,
             "provider": self.provider,
+            "anon": self.is_anonymous,
             "iat": int(self.issued_at.timestamp()),
             "exp": int(self.expires_at.timestamp()),
         }
@@ -32,7 +50,9 @@ class AuthToken:
     def from_jwt(cls, token: str, secret: str) -> "AuthToken":
         """Decode and validate JWT."""
         try:
-            payload = jwt.decode(token, secret, algorithms=["HS256"])
+            payload = jwt.decode(
+                token, secret, algorithms=["HS256"]
+            )
         except jwt.ExpiredSignatureError:
             raise ValueError("Token expired")
         except jwt.InvalidTokenError:
@@ -42,6 +62,7 @@ class AuthToken:
             player_id=payload["sub"],
             display_name=payload["name"],
             provider=payload["provider"],
+            is_anonymous=payload.get("anon", False),
             issued_at=datetime.fromtimestamp(payload["iat"]),
             expires_at=datetime.fromtimestamp(payload["exp"]),
         )
@@ -50,25 +71,78 @@ class AuthToken:
 class AuthService:
     """OAuth2 provider integration."""
 
-    def __init__(
-        self, jwt_secret: str, token_lifetime_hours: int = 24
-    ):
-        self.jwt_secret = jwt_secret
-        self.token_lifetime = timedelta(hours=token_lifetime_hours)
+    # Providers that use Authorization Code flow and need
+    # a redirect_uri for token exchange.
+    BROWSER_PROVIDERS = {"google", "apple", "discord", "twitch"}
 
-    async def authenticate_steam(self, steam_ticket: str) -> AuthToken:
-        """
-        Validate Steam session ticket.
+    def __init__(self, token_lifetime_hours: int = 24):
+        self.token_lifetime = timedelta(
+            hours=token_lifetime_hours
+        )
 
-        https://partner.steamgames.com/doc/webapi/ISteamUserAuth#AuthenticateUserTicket
+    @property
+    def jwt_secret(self) -> str:
+        """Lazy-load JWT secret from Secrets Manager."""
+        return secrets_service.get_jwt_secret()
+
+    # --- Provider authentication ---
+
+    async def authenticate(
+        self,
+        provider: str,
+        auth_code: str,
+        redirect_uri: str = "",
+    ) -> AuthResult:
+        """Dispatch to the correct provider authenticator.
+
+        Returns an AuthResult with provider_id and display_name.
+        The caller is responsible for mapping to a canonical
+        player_id via ProviderMappingService.
         """
-        # Call Steam Web API to validate ticket.
+        if provider == "steam":
+            return await self._auth_steam(auth_code)
+        elif provider == "epic":
+            return await self._auth_epic(auth_code)
+        elif provider == "google":
+            return await self._auth_google(
+                auth_code, redirect_uri
+            )
+        elif provider == "discord":
+            return await self._auth_discord(
+                auth_code, redirect_uri
+            )
+        elif provider == "twitch":
+            return await self._auth_twitch(
+                auth_code, redirect_uri
+            )
+        elif provider == "apple":
+            return await self._auth_apple(
+                auth_code, redirect_uri
+            )
+        else:
+            raise ValueError(
+                f"Unsupported provider: {provider}"
+            )
+
+    async def _auth_steam(
+        self, steam_ticket: str
+    ) -> AuthResult:
+        """Validate Steam session ticket."""
+        config = secrets_service.get_oauth_config("steam")
+        api_key = config.get(
+            "api_key",
+            os.environ.get("STEAM_API_KEY", ""),
+        )
+        app_id = os.environ.get("STEAM_APP_ID", "")
+
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                "https://api.steampowered.com/ISteamUserAuth/AuthenticateUserTicket/v1/",
+                "https://api.steampowered.com"
+                "/ISteamUserAuth"
+                "/AuthenticateUserTicket/v1/",
                 params={
-                    "key": self._get_steam_api_key(),
-                    "appid": self._get_steam_app_id(),
+                    "key": api_key,
+                    "appid": app_id,
                     "ticket": steam_ticket,
                 },
             )
@@ -77,32 +151,34 @@ class AuthService:
             raise ValueError("Steam authentication failed")
 
         data = response.json()
-        if "response" not in data or "params" not in data["response"]:
+        params = (
+            data.get("response", {}).get("params")
+        )
+        if not params:
             raise ValueError("Invalid Steam response")
 
-        params = data["response"]["params"]
         steam_id = params["steamid"]
-
-        # Get player profile.
-        display_name = await self._get_steam_username(steam_id)
-
-        # Issue JWT.
-        now = datetime.now()
-        return AuthToken(
-            player_id=f"steam_{steam_id}",
-            display_name=display_name,
-            provider="steam",
-            issued_at=now,
-            expires_at=now + self.token_lifetime,
+        display_name = await self._get_steam_username(
+            api_key, steam_id
         )
 
-    async def authenticate_epic(self, access_token: str) -> AuthToken:
+        return AuthResult(
+            provider="steam",
+            provider_id=steam_id,
+            display_name=display_name,
+        )
+
+    async def _auth_epic(
+        self, access_token: str
+    ) -> AuthResult:
         """Validate Epic Games OAuth token."""
-        # Call Epic Games API to validate token.
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                "https://api.epicgames.dev/epic/oauth/v1/verify",
-                headers={"Authorization": f"Bearer {access_token}"},
+                "https://api.epicgames.dev"
+                "/epic/oauth/v1/verify",
+                headers={
+                    "Authorization": f"Bearer {access_token}"
+                },
             )
 
         if response.status_code != 200:
@@ -114,74 +190,290 @@ class AuthService:
             "display_name", f"Player_{epic_id[:8]}"
         )
 
-        now = datetime.now()
-        return AuthToken(
-            player_id=f"epic_{epic_id}",
-            display_name=display_name,
+        return AuthResult(
             provider="epic",
-            issued_at=now,
-            expires_at=now + self.token_lifetime,
+            provider_id=epic_id,
+            display_name=display_name,
         )
 
-    async def authenticate_cognito(self, cognito_token: str) -> AuthToken:
-        """Validate AWS Cognito JWT."""
-        # Cognito tokens are already JWTs, verify signature.
-        # https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-verifying-a-jwt.html
+    async def _auth_google(
+        self, auth_code: str, redirect_uri: str
+    ) -> AuthResult:
+        """Exchange Google auth code for user info."""
+        config = secrets_service.get_oauth_config("google")
+        client_id = config.get("client_id", "")
+        client_secret = config.get("client_secret", "")
 
-        # This is simplified - real implementation needs:
-        # 1. Download Cognito JWKS.
-        # 2. Verify signature with public key.
-        # 3. Check issuer, audience, expiration.
-
-        try:
-            payload = jwt.decode(
-                cognito_token,
-                options={
-                    "verify_signature": False
-                },  # Verify with JWKS in production.
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "code": auth_code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                },
             )
-        except jwt.InvalidTokenError:
-            raise ValueError("Invalid Cognito token")
 
-        cognito_id = payload["sub"]
-        display_name = payload.get(
-            "cognito:username", f"Player_{cognito_id[:8]}"
+        if response.status_code != 200:
+            raise ValueError(
+                "Google token exchange failed"
+            )
+
+        tokens = response.json()
+        id_token = tokens.get("id_token", "")
+
+        # Decode id_token without verification for now.
+        # Google id_tokens are signed JWTs. For production,
+        # verify with Google JWKS.
+        payload = jwt.decode(
+            id_token,
+            options={"verify_signature": False},
         )
 
+        google_id = payload["sub"]
+        display_name = payload.get(
+            "name",
+            payload.get(
+                "email", f"Player_{google_id[:8]}"
+            ),
+        )
+
+        return AuthResult(
+            provider="google",
+            provider_id=google_id,
+            display_name=display_name,
+        )
+
+    async def _auth_discord(
+        self, auth_code: str, redirect_uri: str
+    ) -> AuthResult:
+        """Exchange Discord auth code for user info."""
+        config = secrets_service.get_oauth_config("discord")
+        client_id = config.get("client_id", "")
+        client_secret = config.get("client_secret", "")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://discord.com/api/oauth2/token",
+                data={
+                    "code": auth_code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                },
+                headers={
+                    "Content-Type": (
+                        "application/x-www-form-urlencoded"
+                    )
+                },
+            )
+
+        if response.status_code != 200:
+            raise ValueError(
+                "Discord token exchange failed"
+            )
+
+        access_token = response.json()["access_token"]
+
+        # Fetch user info.
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://discord.com/api/users/@me",
+                headers={
+                    "Authorization": (
+                        f"Bearer {access_token}"
+                    )
+                },
+            )
+
+        if response.status_code != 200:
+            raise ValueError(
+                "Discord user info fetch failed"
+            )
+
+        user = response.json()
+        discord_id = user["id"]
+        display_name = user.get(
+            "global_name",
+            user.get(
+                "username", f"Player_{discord_id[:8]}"
+            ),
+        )
+
+        return AuthResult(
+            provider="discord",
+            provider_id=discord_id,
+            display_name=display_name,
+        )
+
+    async def _auth_twitch(
+        self, auth_code: str, redirect_uri: str
+    ) -> AuthResult:
+        """Exchange Twitch auth code for user info."""
+        config = secrets_service.get_oauth_config("twitch")
+        client_id = config.get("client_id", "")
+        client_secret = config.get("client_secret", "")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://id.twitch.tv/oauth2/token",
+                data={
+                    "code": auth_code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                },
+            )
+
+        if response.status_code != 200:
+            raise ValueError(
+                "Twitch token exchange failed"
+            )
+
+        access_token = response.json()["access_token"]
+
+        # Fetch user info.
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://api.twitch.tv/helix/users",
+                headers={
+                    "Authorization": (
+                        f"Bearer {access_token}"
+                    ),
+                    "Client-Id": client_id,
+                },
+            )
+
+        if response.status_code != 200:
+            raise ValueError(
+                "Twitch user info fetch failed"
+            )
+
+        users = response.json().get("data", [])
+        if not users:
+            raise ValueError("No Twitch user data")
+
+        user = users[0]
+        twitch_id = user["id"]
+        display_name = user.get(
+            "display_name", f"Player_{twitch_id[:8]}"
+        )
+
+        return AuthResult(
+            provider="twitch",
+            provider_id=twitch_id,
+            display_name=display_name,
+        )
+
+    async def _auth_apple(
+        self, auth_code: str, redirect_uri: str
+    ) -> AuthResult:
+        """Exchange Apple auth code for user info."""
+        config = secrets_service.get_oauth_config("apple")
+        client_id = config.get("client_id", "")
+        team_id = config.get("team_id", "")
+        key_id = config.get("key_id", "")
+        private_key = config.get("private_key", "")
+
+        # Generate client secret JWT for Apple.
+        now = datetime.now()
+        client_secret = jwt.encode(
+            {
+                "iss": team_id,
+                "iat": int(now.timestamp()),
+                "exp": int(
+                    (now + timedelta(minutes=5)).timestamp()
+                ),
+                "aud": "https://appleid.apple.com",
+                "sub": client_id,
+            },
+            private_key,
+            algorithm="ES256",
+            headers={"kid": key_id},
+        )
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://appleid.apple.com/auth/token",
+                data={
+                    "code": auth_code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                },
+            )
+
+        if response.status_code != 200:
+            raise ValueError(
+                "Apple token exchange failed"
+            )
+
+        tokens = response.json()
+        id_token = tokens.get("id_token", "")
+
+        payload = jwt.decode(
+            id_token,
+            options={"verify_signature": False},
+        )
+
+        apple_id = payload["sub"]
+        # Apple only sends email on first auth. Use it
+        # as display name fallback.
+        display_name = payload.get(
+            "email", f"Player_{apple_id[:8]}"
+        )
+
+        return AuthResult(
+            provider="apple",
+            provider_id=apple_id,
+            display_name=display_name,
+        )
+
+    # --- Token creation ---
+
+    def create_auth_token(
+        self,
+        player_id: str,
+        display_name: str,
+        provider: str,
+        is_anonymous: bool = False,
+    ) -> AuthToken:
+        """Create an AuthToken for an authenticated player."""
         now = datetime.now()
         return AuthToken(
-            player_id=f"cognito_{cognito_id}",
+            player_id=player_id,
             display_name=display_name,
-            provider="cognito",
+            provider=provider,
+            is_anonymous=is_anonymous,
             issued_at=now,
             expires_at=now + self.token_lifetime,
         )
 
-    def _get_steam_api_key(self) -> str:
-        """Get from environment/Parameter Store."""
-        import os
+    # --- Helpers ---
 
-        return os.environ["STEAM_API_KEY"]
-
-    def _get_steam_app_id(self) -> str:
-        """Get from environment."""
-        import os
-
-        return os.environ["STEAM_APP_ID"]
-
-    async def _get_steam_username(self, steam_id: str) -> str:
+    async def _get_steam_username(
+        self, api_key: str, steam_id: str
+    ) -> str:
         """Fetch Steam username via ISteamUser API."""
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/",
+                "https://api.steampowered.com"
+                "/ISteamUser/GetPlayerSummaries/v2/",
                 params={
-                    "key": self._get_steam_api_key(),
+                    "key": api_key,
                     "steamids": steam_id,
                 },
             )
 
         data = response.json()
-        players = data.get("response", {}).get("players", [])
+        players = (
+            data.get("response", {}).get("players", [])
+        )
         if players:
             return players[0].get(
                 "personaname", f"Player_{steam_id[:8]}"

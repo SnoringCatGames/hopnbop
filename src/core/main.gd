@@ -110,7 +110,14 @@ func _start_app() -> void:
 
 			_auto_start_game()
 		elif G.settings.skip_splash and G.settings.is_preview_mode:
-			G.screens.client_open_screen(ScreensMain.ScreenType.LOBBY)
+			if G.settings.skip_auth:
+				G.screens.client_open_screen(
+					ScreensMain.ScreenType.LOBBY
+				)
+			else:
+				G.screens.client_open_screen(
+					ScreensMain.ScreenType.AUTH
+				)
 		else:
 			G.screens.client_open_screen(ScreensMain.ScreenType.GODOT_SPLASH)
 

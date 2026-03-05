@@ -12,23 +12,10 @@ Globals:
         GAME_VERSION: "0.1.0"
         PLAYERS_TABLE: !Ref PlayersTable
         MATCH_HISTORY_TABLE: !Ref MatchHistoryTable
-        JWT_SECRET: !Ref JWTSecret
-        STEAM_API_KEY: !Ref SteamAPIKey
-        STEAM_APP_ID: !Ref SteamAppID
+        PROVIDER_MAPPINGS_TABLE: !Ref ProviderMappingsTable
         MATCHMAKING_CONFIG: !Ref MatchmakingConfigName
 
 Parameters:
-  JWTSecret:
-    Type: String
-    NoEcho: true
-    Description: Secret key for JWT signing
-
-  SteamAPIKey:
-    Type: String
-    NoEcho: true
-    Description: Steam Web API key
-    Default: ''
-
   SteamAppID:
     Type: String
     Description: Steam App ID
@@ -52,21 +39,98 @@ Resources:
       Auth:
         ApiKeyRequired: false
 
+  # Shared IAM policy for Secrets Manager access.
+  SecretsManagerPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+            Resource:
+              - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:hopnbop/*'
+
   # Lambda Functions
   AuthLoginFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: handlers.auth_handler.login
+      Environment:
+        Variables:
+          STEAM_APP_ID: !Ref SteamAppID
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PlayersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ProviderMappingsTable
+        - !Ref SecretsManagerPolicy
       Events:
         Login:
           Type: Api
           Properties:
             RestApiId: !Ref GameBackendAPI
             Path: /auth/login
+            Method: post
+
+  AuthAnonFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.auth_handler.anonymous_login
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ProviderMappingsTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        AnonLogin:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /auth/anon
+            Method: post
+
+  AuthRefreshFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.auth_handler.refresh
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        Refresh:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /auth/refresh
+            Method: post
+
+  AuthLinkFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.auth_handler.link_account
+      Environment:
+        Variables:
+          STEAM_APP_ID: !Ref SteamAppID
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ProviderMappingsTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        Link:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /auth/link
             Method: post
 
   JoinMatchmakingFunction:
@@ -85,6 +149,7 @@ Resources:
               Resource: '*'
         - DynamoDBCrudPolicy:
             TableName: !Ref PlayersTable
+        - !Ref SecretsManagerPolicy
       Events:
         Join:
           Type: Api
@@ -106,6 +171,7 @@ Resources:
               Resource: '*'
         - DynamoDBCrudPolicy:
             TableName: !Ref PlayersTable
+        - !Ref SecretsManagerPolicy
       Events:
         StartMatch:
           Type: Api
@@ -142,22 +208,21 @@ Resources:
       AttributeDefinitions:
         - AttributeName: player_id
           AttributeType: S
-        - AttributeName: auth_provider
-          AttributeType: S
-        - AttributeName: last_active
-          AttributeType: N
       KeySchema:
         - AttributeName: player_id
           KeyType: HASH
-      GlobalSecondaryIndexes:
-        - IndexName: auth_provider-index
-          KeySchema:
-            - AttributeName: auth_provider
-              KeyType: HASH
-            - AttributeName: last_active
-              KeyType: RANGE
-          Projection:
-            ProjectionType: ALL
+
+  ProviderMappingsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: hopnbop-provider-mappings
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: provider_composite
+          AttributeType: S
+      KeySchema:
+        - AttributeName: provider_composite
+          KeyType: HASH
 
   MatchHistoryTable:
     Type: AWS::DynamoDB::Table
@@ -183,6 +248,10 @@ Outputs:
   PlayersTableName:
     Description: 'DynamoDB players table'
     Value: !Ref PlayersTable
+
+  ProviderMappingsTableName:
+    Description: 'DynamoDB provider mappings table'
+    Value: !Ref ProviderMappingsTable
 
   MatchHistoryTableName:
     Description: 'DynamoDB match history table'

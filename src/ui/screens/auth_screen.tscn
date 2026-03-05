@@ -1,0 +1,122 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" uid="uid://cg4peau6bmpdw" path="res://src/ui/hud_theme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://src/ui/screens/auth_screen.gd" id="2_script"]
+
+[node name="AuthScreen" type="PanelContainer"]
+process_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 32
+text = "Sign In"
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 8)
+
+[node name="ButtonsContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Row1" type="HBoxContainer" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="SteamButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/Row1"]
+layout_mode = 2
+custom_minimum_size = Vector2(140, 40)
+text = "Steam"
+
+[node name="EpicButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/Row1"]
+layout_mode = 2
+custom_minimum_size = Vector2(140, 40)
+text = "Epic Games"
+
+[node name="Row2" type="HBoxContainer" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="GoogleButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/Row2"]
+layout_mode = 2
+custom_minimum_size = Vector2(140, 40)
+text = "Google"
+
+[node name="AppleButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/Row2"]
+layout_mode = 2
+custom_minimum_size = Vector2(140, 40)
+text = "Apple"
+
+[node name="Row3" type="HBoxContainer" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="DiscordButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/Row3"]
+layout_mode = 2
+custom_minimum_size = Vector2(140, 40)
+text = "Discord"
+
+[node name="TwitchButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/Row3"]
+layout_mode = 2
+custom_minimum_size = Vector2(140, 40)
+text = "Twitch"
+
+[node name="Spacer2" type="Control" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 4)
+
+[node name="AnonButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+custom_minimum_size = Vector2(200, 40)
+text = "Play Anonymously"
+
+[node name="LoadingContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="StatusLabel" type="Label" parent="CenterContainer/VBoxContainer/LoadingContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 18
+text = "Signing in..."
+horizontal_alignment = 1
+
+[node name="ErrorLabel" type="Label" parent="CenterContainer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonsContainer/Row1/SteamButton" to="." method="_on_steam_pressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonsContainer/Row1/EpicButton" to="." method="_on_epic_pressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonsContainer/Row2/GoogleButton" to="." method="_on_google_pressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonsContainer/Row2/AppleButton" to="." method="_on_apple_pressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonsContainer/Row3/DiscordButton" to="." method="_on_discord_pressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonsContainer/Row3/TwitchButton" to="." method="_on_twitch_pressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonsContainer/AnonButton" to="." method="_on_anonymous_pressed"]

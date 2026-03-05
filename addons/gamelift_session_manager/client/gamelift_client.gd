@@ -62,6 +62,15 @@ func client_request_session_ids(
 	var body := JSON.stringify(request_body)
 
 	var headers := ["Content-Type: application/json"]
+	if (
+		is_instance_valid(G)
+		and G.auth_token_store != null
+		and G.auth_token_store.is_token_valid()
+	):
+		headers.append(
+			"Authorization: Bearer %s"
+			% G.auth_token_store.jwt_token
+		)
 	var url := backend_api_url + "/matchmaking/join"
 
 	Netcode.log.print(

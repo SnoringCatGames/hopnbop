@@ -27,6 +27,10 @@ var hud: Hud
 var super_hud: SuperHud
 var screens: ScreensMain
 
+var auth_token_store: AuthTokenStore
+var auth_client: AuthClient
+var auth_screen: AuthScreen
+
 var godot_splash_screen: GodotSplashScreen
 var scg_splash_screen: SCGSplashScreen
 var loading_screen: LoadingScreen
@@ -93,6 +97,12 @@ func _enter_tree() -> void:
 
 	input_handler.name = "InputHandler"
 	add_child(input_handler)
+
+	auth_token_store = AuthTokenStore.new()
+
+	auth_client = AuthClient.new()
+	auth_client.name = "AuthClient"
+	add_child(auth_client)
 
 	cheat_manager = CheatManager.new()
 	cheat_manager.name = "CheatManager"

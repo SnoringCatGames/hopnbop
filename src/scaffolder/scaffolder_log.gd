@@ -141,8 +141,8 @@ func error(
 		formatted_message = "FATAL %s" % formatted_message
 
 	push_error(formatted_message)
-	print_stack()
 	_print_internal(formatted_message, category)
+	print_stack()
 	breakpoint
 	if should_crash:
 		if not OS.has_feature("editor"):

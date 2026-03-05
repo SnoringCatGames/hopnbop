@@ -36,6 +36,7 @@ func update_visibility() -> void:
 	match G.screens.current_screen:
 		ScreensMain.ScreenType.GODOT_SPLASH, \
 		ScreensMain.ScreenType.SCG_SPLASH, \
+		ScreensMain.ScreenType.AUTH, \
 		ScreensMain.ScreenType.LOADING:
 			visible = false
 		ScreensMain.ScreenType.GAME_OVER, \

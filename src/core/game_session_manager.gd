@@ -94,6 +94,29 @@ func client_request_session(
 ) -> void:
 	Netcode.check_is_client()
 
+	# Refresh auth token if needed before matchmaking.
+	if (
+		G.auth_token_store != null
+		and G.auth_token_store.needs_refresh()
+	):
+		Netcode.print(
+			"Refreshing auth token before"
+			+ " matchmaking",
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+		G.auth_client.refresh_token()
+		await G.auth_client.auth_completed
+		if not G.auth_token_store.is_token_valid():
+			Netcode.error(
+				"Auth token refresh failed,"
+				+ " cannot matchmake",
+				NetworkLogger.CATEGORY_CONNECTIONS,
+			)
+			connection_lost.emit(
+				"Auth token expired", false
+			)
+			return
+
 	var player_count := (
 		G.client_session.local_player_count)
 	var prefs_dict := (

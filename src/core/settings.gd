@@ -32,8 +32,19 @@ enum BumpMode {
 @export var gamelift_anywhere_fleet_id := ""
 @export var gamelift_anywhere_host_id := ""
 @export var gamelift_anywhere_process_id := ""
-@export var gamelift_backend_api_url := "https://api.example.com"
+@export var gamelift_backend_api_url := "https://4xol3ejva9.execute-api.us-west-2.amazonaws.com/prod"
 @export var gamelift_matchmaking_timeout_sec := 30.0
+@export_group("")
+
+@export_group("OAuth")
+## Public OAuth client IDs (safe to embed in client).
+@export var google_oauth_client_id := ""
+@export var discord_oauth_client_id := ""
+@export var twitch_oauth_client_id := ""
+@export var apple_oauth_client_id := ""
+## Skip auth screen and go straight to lobby
+## (for local preview testing).
+@export var skip_auth := false
 @export_group("")
 
 @export_group("Debug & Development")

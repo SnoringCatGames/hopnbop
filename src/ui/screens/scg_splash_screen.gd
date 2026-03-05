@@ -15,5 +15,9 @@ func on_open() -> void:
 		G.settings.scg_splash_duration_sec,
 	).timeout
 
-	G.screens.client_open_screen(
-		ScreensMain.ScreenType.LOBBY)
+	if G.settings.skip_auth:
+		G.screens.client_open_screen(
+			ScreensMain.ScreenType.LOBBY)
+	else:
+		G.screens.client_open_screen(
+			ScreensMain.ScreenType.AUTH)
