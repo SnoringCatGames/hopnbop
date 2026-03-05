@@ -1,6 +1,39 @@
 # Hop 'n Bop: Backend & Distributed Systems Master Plan
 
+---
 
+Manual Steps (User)
+Before the code works end-to-end, you need credentials for at
+least one provider. You can test with anonymous auth
+immediately. For OAuth providers, register apps at:
+
+Google: console.cloud.google.com (free)
+Discord: discord.com/developers (free)
+Twitch: dev.twitch.tv (free)
+Apple: developer.apple.com ($99/yr)
+After registering, update the Secrets Manager secrets with
+real client IDs and secrets.
+
+Verification
+Deploy backend: sam build then sam deploy
+Test anonymous auth:
+
+Invoke-RestMethod -Method Post `
+  -Uri https://4xol3ejva9.execute-api.us-west-2.amazonaws.com/prod/auth/anon `
+  -Body '{"device_id":"test-device-123"}' `
+  -ContentType 'application/json'
+Should return JWT + refresh token + player_id.
+Test refresh:
+
+Invoke-RestMethod -Method Post `
+  -Uri .../prod/auth/refresh `
+  -Body '{"player_id":"...","refresh_token":"..."}' `
+  -ContentType 'application/json'
+Run client in editor → splash → auth screen appears
+Click "Play Anonymously" → get token → navigate to lobby
+Close and reopen → cached token skips auth screen
+
+---
 
 ### M2: Complete Auth Flow
 
