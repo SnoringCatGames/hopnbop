@@ -39,9 +39,7 @@ enum BumpMode {
 @export_group("OAuth")
 ## Public OAuth client IDs (safe to embed in client).
 @export var google_oauth_client_id := ""
-@export var discord_oauth_client_id := ""
-@export var twitch_oauth_client_id := ""
-@export var apple_oauth_client_id := ""
+@export var facebook_oauth_client_id := ""
 ## Skip auth screen and go straight to lobby
 ## (for local preview testing).
 @export var skip_auth := false

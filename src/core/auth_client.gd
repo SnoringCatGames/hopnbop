@@ -3,13 +3,22 @@ extends Node
 ## HTTP client for backend authentication endpoints.
 ##
 ## Handles login (OAuth + anonymous), token refresh, and
-## account linking. For browser-based OAuth providers
-## (Google, Apple, Discord, Twitch), opens a browser and
-## runs a local TCP loopback server to capture the auth
-## code redirect.
+## account linking. Supports three OAuth flows:
+## - Loopback: Desktop clients open browser, local TCP
+##   server captures redirect (Google, Discord, etc.).
+## - Web polling: Web builds call /auth/web-start, open a
+##   new tab, and poll /auth/web-poll for the result.
+## - Platform: Steam/Epic provide tokens via their SDK.
 
 ## Emitted on successful authentication.
 signal auth_completed(success: bool, error: String)
+
+## Emitted when account linking completes.
+signal link_completed(
+	success: bool,
+	error: String,
+	provider: String,
+)
 
 ## Status updates for UI feedback.
 signal auth_status_changed(status: String)
@@ -24,11 +33,17 @@ enum Provider {
 	STEAM,
 	EPIC,
 	GOOGLE,
+	FACEBOOK,
 	APPLE,
 	DISCORD,
-	TWITCH,
 	ANONYMOUS,
 }
+
+## Platforms where auth is implied (SDK provides token).
+const PLATFORM_PROVIDERS := [
+	Provider.STEAM,
+	Provider.EPIC,
+]
 
 const _LOOPBACK_PORT := 9876
 const _LOOPBACK_HOST := "127.0.0.1"
@@ -37,27 +52,30 @@ const _AUTH_ENDPOINT := "/auth/login"
 const _ANON_ENDPOINT := "/auth/anon"
 const _REFRESH_ENDPOINT := "/auth/refresh"
 const _LINK_ENDPOINT := "/auth/link"
+const _WEB_START_ENDPOINT := "/auth/web-start"
+const _WEB_POLL_ENDPOINT := "/auth/web-poll"
+const _WEB_POLL_INTERVAL_SEC := 1.5
+const _WEB_POLL_TIMEOUT_SEC := 300.0
 
 ## Maps Provider enum to string name sent to backend.
 const _PROVIDER_NAMES := {
 	Provider.STEAM: "steam",
 	Provider.EPIC: "epic",
 	Provider.GOOGLE: "google",
+	Provider.FACEBOOK: "facebook",
 	Provider.APPLE: "apple",
 	Provider.DISCORD: "discord",
-	Provider.TWITCH: "twitch",
 	Provider.ANONYMOUS: "anonymous",
 }
 
 ## Providers that use browser-based OAuth flow.
 const _BROWSER_PROVIDERS := [
 	Provider.GOOGLE,
-	Provider.APPLE,
-	Provider.DISCORD,
-	Provider.TWITCH,
+	Provider.FACEBOOK,
 ]
 
 var _http_request: HTTPRequest
+var _poll_http_request: HTTPRequest
 var _tcp_server: TCPServer
 var _oauth_state: String
 var _oauth_provider: Provider
@@ -65,18 +83,45 @@ var _is_awaiting_oauth := false
 var _last_refresh_time := 0.0
 var _is_refreshing := false
 
+# Account linking state.
+var _is_linking := false
+var _link_provider_name := ""
+
+# Web polling state.
+var _web_session_code := ""
+var _is_web_polling := false
+var _web_poll_start_time := 0.0
+var _web_poll_timer: Timer
+
 
 func _ready() -> void:
 	_http_request = HTTPRequest.new()
 	_http_request.timeout = 30.0
 	add_child(_http_request)
 
+	_poll_http_request = HTTPRequest.new()
+	_poll_http_request.timeout = 10.0
+	add_child(_poll_http_request)
 
-func _process(delta: float) -> void:
+
+func _process(_delta: float) -> void:
 	if _is_awaiting_oauth and _tcp_server != null:
 		_poll_oauth_redirect()
 
 	_check_auto_refresh()
+
+
+## Returns true if running in a web browser.
+static func is_web_platform() -> bool:
+	return OS.has_feature("web")
+
+
+## Returns the implied platform provider, or -1 if none.
+static func get_platform_provider() -> int:
+	if OS.has_feature("steam"):
+		return Provider.STEAM
+	# Epic detection would go here.
+	return -1
 
 
 ## Start login flow for the given provider.
@@ -86,12 +131,12 @@ func login_with_provider(provider: Provider) -> void:
 		return
 
 	if provider in _BROWSER_PROVIDERS:
-		_start_browser_oauth(provider)
+		if is_web_platform():
+			_start_web_oauth(provider)
+		else:
+			_start_browser_oauth(provider)
 	else:
 		# Steam and Epic send platform tokens directly.
-		# The game client must obtain the token from
-		# the platform SDK first, then call
-		# submit_platform_token().
 		auth_status_changed.emit(
 			"Waiting for %s token..."
 			% _PROVIDER_NAMES[provider]
@@ -144,8 +189,13 @@ func refresh_token() -> void:
 
 ## Link a new OAuth provider to the current account.
 func link_provider(provider: Provider) -> void:
+	_is_linking = true
+	_link_provider_name = _PROVIDER_NAMES[provider]
 	if provider in _BROWSER_PROVIDERS:
-		_start_browser_oauth(provider, true)
+		if is_web_platform():
+			_start_web_oauth(provider)
+		else:
+			_start_browser_oauth(provider, true)
 	else:
 		auth_status_changed.emit(
 			"Use submit_platform_link() for %s"
@@ -158,6 +208,8 @@ func submit_platform_link(
 	provider: Provider,
 	token: String,
 ) -> void:
+	_is_linking = true
+	_link_provider_name = _PROVIDER_NAMES[provider]
 	auth_status_changed.emit("Linking account...")
 	var body := {
 		"provider": _PROVIDER_NAMES[provider],
@@ -168,12 +220,14 @@ func submit_platform_link(
 	)
 
 
-# --- Browser OAuth flow ---
+# =============================================================
+# Desktop loopback OAuth flow
+# =============================================================
 
 
 func _start_browser_oauth(
 	provider: Provider,
-	is_link := false,
+	_is_link := false,
 ) -> void:
 	_oauth_provider = provider
 	_oauth_state = _generate_state_nonce()
@@ -184,9 +238,8 @@ func _start_browser_oauth(
 		_LOOPBACK_PORT, _LOOPBACK_HOST
 	)
 	if err != OK:
-		auth_completed.emit(
-			false,
-			"Failed to start loopback server",
+		_emit_failure(
+			"Failed to start loopback server"
 		)
 		return
 
@@ -248,15 +301,11 @@ func _poll_oauth_redirect() -> void:
 	var state := _parse_query_param(data, "state")
 
 	if code.is_empty():
-		auth_completed.emit(
-			false, "No auth code received"
-		)
+		_emit_failure("No auth code received")
 		return
 
 	if state != _oauth_state:
-		auth_completed.emit(
-			false, "OAuth state mismatch"
-		)
+		_emit_failure("OAuth state mismatch")
 		return
 
 	var redirect_uri := (
@@ -270,22 +319,14 @@ func _poll_oauth_redirect() -> void:
 		"redirect_uri": redirect_uri,
 	}
 
-	var is_link := false
-	# Determine endpoint. If we have a valid token,
-	# this might be a link request.
+	# Determine endpoint.
 	var endpoint := _AUTH_ENDPOINT
-	if (
-		G.auth_token_store.is_token_valid()
-		and not G.auth_token_store.is_anonymous
-	):
+	if G.auth_token_store.is_token_valid():
 		endpoint = _LINK_ENDPOINT
-		is_link = true
-	elif G.auth_token_store.is_token_valid():
-		# Anonymous upgrading to full account.
-		endpoint = _LINK_ENDPOINT
-		is_link = true
 
-	_send_auth_request(endpoint, body, is_link)
+	_send_auth_request(
+		endpoint, body, endpoint == _LINK_ENDPOINT
+	)
 
 
 func _cleanup_tcp_server() -> void:
@@ -294,7 +335,193 @@ func _cleanup_tcp_server() -> void:
 		_tcp_server = null
 
 
-# --- HTTP requests ---
+# =============================================================
+# Web polling OAuth flow
+# =============================================================
+
+
+func _start_web_oauth(
+	provider: Provider,
+) -> void:
+	auth_status_changed.emit(
+		"Starting %s login..."
+		% _PROVIDER_NAMES[provider]
+	)
+
+	# Call /auth/web-start to get session_code + auth_url.
+	var url := (
+		G.settings.gamelift_backend_api_url
+		+ _WEB_START_ENDPOINT
+		+ "?provider=%s" % _PROVIDER_NAMES[provider]
+	)
+
+	var start_request := HTTPRequest.new()
+	start_request.timeout = 15.0
+	add_child(start_request)
+
+	start_request.request_completed.connect(
+		_on_web_start_response.bind(start_request),
+		CONNECT_ONE_SHOT,
+	)
+
+	var err := start_request.request(
+		url, [], HTTPClient.METHOD_GET
+	)
+	if err != OK:
+		start_request.queue_free()
+		_emit_failure("Failed to start web OAuth")
+
+
+func _on_web_start_response(
+	result: int,
+	response_code: int,
+	_headers: PackedStringArray,
+	body: PackedByteArray,
+	request_node: HTTPRequest,
+) -> void:
+	request_node.queue_free()
+
+	if result != HTTPRequest.RESULT_SUCCESS:
+		_emit_failure("Web OAuth start failed")
+		return
+
+	var json := JSON.new()
+	if json.parse(body.get_string_from_utf8()) != OK:
+		_emit_failure("Invalid server response")
+		return
+
+	var data: Dictionary = json.data
+	if response_code != 200:
+		_emit_failure(
+			data.get(
+				"message", "Web OAuth start failed"
+			)
+		)
+		return
+
+	_web_session_code = data.get("session_code", "")
+	var auth_url: String = data.get("auth_url", "")
+
+	if (
+		_web_session_code.is_empty()
+		or auth_url.is_empty()
+	):
+		_emit_failure("Invalid web OAuth response")
+		return
+
+	# Open auth URL in a new tab.
+	auth_status_changed.emit(
+		"Complete sign-in in the new tab..."
+	)
+	OS.shell_open(auth_url)
+
+	# Start polling.
+	_is_web_polling = true
+	_web_poll_start_time = (
+		Time.get_unix_time_from_system()
+	)
+	_start_web_poll_timer()
+
+
+func _start_web_poll_timer() -> void:
+	if _web_poll_timer != null:
+		_web_poll_timer.queue_free()
+
+	_web_poll_timer = Timer.new()
+	_web_poll_timer.wait_time = _WEB_POLL_INTERVAL_SEC
+	_web_poll_timer.one_shot = false
+	_web_poll_timer.timeout.connect(_do_web_poll)
+	add_child(_web_poll_timer)
+	_web_poll_timer.start()
+
+
+func _stop_web_polling() -> void:
+	_is_web_polling = false
+	_web_session_code = ""
+	if _web_poll_timer != null:
+		_web_poll_timer.stop()
+		_web_poll_timer.queue_free()
+		_web_poll_timer = null
+
+
+func _do_web_poll() -> void:
+	if not _is_web_polling:
+		_stop_web_polling()
+		return
+
+	# Check timeout.
+	var elapsed := (
+		Time.get_unix_time_from_system()
+		- _web_poll_start_time
+	)
+	if elapsed > _WEB_POLL_TIMEOUT_SEC:
+		_stop_web_polling()
+		_emit_failure("Sign-in timed out")
+		return
+
+	var url := (
+		G.settings.gamelift_backend_api_url
+		+ _WEB_POLL_ENDPOINT
+		+ "?session_code=%s" % _web_session_code
+	)
+
+	if _poll_http_request.get_http_client_status() != 0:
+		# Previous request still in flight.
+		return
+
+	_poll_http_request.request_completed.connect(
+		_on_web_poll_response, CONNECT_ONE_SHOT
+	)
+
+	var err := _poll_http_request.request(
+		url, [], HTTPClient.METHOD_GET
+	)
+	if err != OK:
+		if _poll_http_request.request_completed.is_connected(
+			_on_web_poll_response
+		):
+			_poll_http_request.request_completed.disconnect(
+				_on_web_poll_response
+			)
+
+
+func _on_web_poll_response(
+	result: int,
+	response_code: int,
+	_headers: PackedStringArray,
+	body: PackedByteArray,
+) -> void:
+	if not _is_web_polling:
+		return
+
+	if result != HTTPRequest.RESULT_SUCCESS:
+		return
+
+	var json := JSON.new()
+	if json.parse(body.get_string_from_utf8()) != OK:
+		return
+
+	var data: Dictionary = json.data
+
+	if response_code == 202:
+		# Still pending. Continue polling.
+		return
+
+	_stop_web_polling()
+
+	if response_code == 200:
+		if data.get("status") == "success":
+			_handle_auth_success(data)
+			return
+
+	_emit_failure(
+		data.get("message", "Authentication failed")
+	)
+
+
+# =============================================================
+# HTTP requests
+# =============================================================
 
 
 func _send_auth_request(
@@ -336,9 +563,7 @@ func _send_auth_request(
 	)
 	if err != OK:
 		_is_refreshing = false
-		auth_completed.emit(
-			false, "HTTP request failed: %d" % err
-		)
+		_emit_failure("HTTP request failed: %d" % err)
 
 
 func _on_auth_response(
@@ -350,9 +575,7 @@ func _on_auth_response(
 	_is_refreshing = false
 
 	if result != HTTPRequest.RESULT_SUCCESS:
-		auth_completed.emit(
-			false, "Request failed: %d" % result
-		)
+		_emit_failure("Request failed: %d" % result)
 		return
 
 	var json := JSON.new()
@@ -360,9 +583,7 @@ func _on_auth_response(
 		body.get_string_from_utf8()
 	)
 	if parse_err != OK:
-		auth_completed.emit(
-			false, "Invalid server response"
-		)
+		_emit_failure("Invalid server response")
 		return
 
 	var data: Dictionary = json.data
@@ -371,16 +592,19 @@ func _on_auth_response(
 		var msg: String = data.get(
 			"message", "Authentication failed"
 		)
-		auth_completed.emit(false, msg)
+		_emit_failure(msg)
 		return
 
 	if data.get("status") != "success":
-		auth_completed.emit(
-			false,
-			data.get("message", "Unknown error"),
+		_emit_failure(
+			data.get("message", "Unknown error")
 		)
 		return
 
+	_handle_auth_success(data)
+
+
+func _handle_auth_success(data: Dictionary) -> void:
 	# Check game version.
 	var server_version: String = data.get(
 		"game_version", ""
@@ -397,6 +621,23 @@ func _on_auth_response(
 				client_version, server_version
 			)
 
+	# Update linked providers from response.
+	if data.has("linked_providers"):
+		G.auth_token_store.linked_providers.clear()
+		var lp: Array = data.get("linked_providers", [])
+		for p in lp:
+			G.auth_token_store.linked_providers.append(
+				str(p)
+			)
+		G.auth_token_store.save_tokens()
+
+	if _is_linking:
+		_is_linking = false
+		var provider_name := _link_provider_name
+		_link_provider_name = ""
+		link_completed.emit(true, "", provider_name)
+		return
+
 	# Store tokens.
 	if data.has("jwt_token"):
 		G.auth_token_store.store_from_response(data)
@@ -408,7 +649,19 @@ func _on_auth_response(
 	auth_completed.emit(true, "")
 
 
-# --- Auto-refresh ---
+func _emit_failure(error: String) -> void:
+	if _is_linking:
+		_is_linking = false
+		var provider_name := _link_provider_name
+		_link_provider_name = ""
+		link_completed.emit(false, error, provider_name)
+	else:
+		auth_completed.emit(false, error)
+
+
+# =============================================================
+# Auto-refresh
+# =============================================================
 
 
 func _check_auto_refresh() -> void:
@@ -422,7 +675,9 @@ func _check_auto_refresh() -> void:
 	refresh_token()
 
 
-# --- OAuth URL builders ---
+# =============================================================
+# OAuth URL builders (desktop loopback only)
+# =============================================================
 
 
 func _build_oauth_url(
@@ -435,16 +690,8 @@ func _build_oauth_url(
 			return _build_google_auth_url(
 				redirect_uri, state
 			)
-		Provider.DISCORD:
-			return _build_discord_auth_url(
-				redirect_uri, state
-			)
-		Provider.TWITCH:
-			return _build_twitch_auth_url(
-				redirect_uri, state
-			)
-		Provider.APPLE:
-			return _build_apple_auth_url(
+		Provider.FACEBOOK:
+			return _build_facebook_auth_url(
 				redirect_uri, state
 			)
 		_:
@@ -466,53 +713,24 @@ func _build_google_auth_url(
 	)
 
 
-func _build_discord_auth_url(
+func _build_facebook_auth_url(
 	redirect_uri: String,
 	state: String,
 ) -> String:
-	var client_id := G.settings.discord_oauth_client_id
+	var client_id := G.settings.facebook_oauth_client_id
 	return (
-		"https://discord.com/api/oauth2/authorize"
+		"https://www.facebook.com/v19.0/dialog/oauth"
 		+ "?client_id=%s" % client_id
 		+ "&redirect_uri=%s" % redirect_uri.uri_encode()
 		+ "&response_type=code"
-		+ "&scope=identify"
+		+ "&scope=public_profile"
 		+ "&state=%s" % state
 	)
 
 
-func _build_twitch_auth_url(
-	redirect_uri: String,
-	state: String,
-) -> String:
-	var client_id := G.settings.twitch_oauth_client_id
-	return (
-		"https://id.twitch.tv/oauth2/authorize"
-		+ "?client_id=%s" % client_id
-		+ "&redirect_uri=%s" % redirect_uri.uri_encode()
-		+ "&response_type=code"
-		+ "&scope=user:read:email"
-		+ "&state=%s" % state
-	)
-
-
-func _build_apple_auth_url(
-	redirect_uri: String,
-	state: String,
-) -> String:
-	var client_id := G.settings.apple_oauth_client_id
-	return (
-		"https://appleid.apple.com/auth/authorize"
-		+ "?client_id=%s" % client_id
-		+ "&redirect_uri=%s" % redirect_uri.uri_encode()
-		+ "&response_type=code"
-		+ "&scope=name%%20email"
-		+ "&response_mode=query"
-		+ "&state=%s" % state
-	)
-
-
-# --- Utilities ---
+# =============================================================
+# Utilities
+# =============================================================
 
 
 func _generate_state_nonce() -> String:

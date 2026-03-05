@@ -2,9 +2,9 @@ class_name AuthScreen
 extends Screen
 ## Authentication screen with provider login buttons.
 ##
-## Shows sign-in options (6 OAuth providers + anonymous).
-## Checks for cached tokens on open and auto-navigates
-## to lobby if valid.
+## On platforms with implied auth (Steam, Epic), this screen
+## auto-logs-in without showing any buttons. On web and
+## desktop, it shows Google, Facebook, and anonymous options.
 
 var _is_authenticating := false
 
@@ -17,9 +17,9 @@ func _enter_tree() -> void:
 func on_open() -> void:
 	super.on_open()
 
-	_show_buttons()
 	%StatusLabel.text = ""
 	%ErrorLabel.text = ""
+	_show_buttons()
 
 	# Check cached token.
 	if G.auth_token_store.is_token_valid():
@@ -36,6 +36,14 @@ func on_open() -> void:
 		G.auth_client.refresh_token()
 		return
 
+	# On platforms with implied auth, auto-login.
+	var platform_provider := (
+		AuthClient.get_platform_provider()
+	)
+	if platform_provider >= 0:
+		_start_login(platform_provider as AuthClient.Provider)
+		return
+
 
 func on_close() -> void:
 	super.on_close()
@@ -46,6 +54,13 @@ func _show_buttons() -> void:
 	_is_authenticating = false
 	%ButtonsContainer.visible = true
 	%LoadingContainer.visible = false
+
+	# Hide buttons not relevant to this platform.
+	var has_platform := (
+		AuthClient.get_platform_provider() >= 0
+	)
+	%OAuthRow.visible = not has_platform
+	%AnonButton.visible = not has_platform
 
 
 func _show_loading(status: String) -> void:
@@ -70,28 +85,12 @@ func _navigate_to_lobby() -> void:
 # --- Button handlers ---
 
 
-func _on_steam_pressed() -> void:
-	_start_login(AuthClient.Provider.STEAM)
-
-
-func _on_epic_pressed() -> void:
-	_start_login(AuthClient.Provider.EPIC)
-
-
 func _on_google_pressed() -> void:
 	_start_login(AuthClient.Provider.GOOGLE)
 
 
-func _on_apple_pressed() -> void:
-	_start_login(AuthClient.Provider.APPLE)
-
-
-func _on_discord_pressed() -> void:
-	_start_login(AuthClient.Provider.DISCORD)
-
-
-func _on_twitch_pressed() -> void:
-	_start_login(AuthClient.Provider.TWITCH)
+func _on_facebook_pressed() -> void:
+	_start_login(AuthClient.Provider.FACEBOOK)
 
 
 func _on_anonymous_pressed() -> void:

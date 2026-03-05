@@ -149,6 +149,20 @@ class PlayerService:
             },
         )
 
+    async def remove_provider(
+        self,
+        player_id: str,
+        provider: str,
+    ) -> None:
+        """Remove a provider from a player's auth_providers map."""
+        self.table.update_item(
+            Key={"player_id": player_id},
+            UpdateExpression=(
+                "REMOVE auth_providers.#prov"
+            ),
+            ExpressionAttributeNames={"#prov": provider},
+        )
+
     async def get_or_create_player(
         self,
         player_id: str,

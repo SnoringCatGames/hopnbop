@@ -73,7 +73,9 @@ class AuthService:
 
     # Providers that use Authorization Code flow and need
     # a redirect_uri for token exchange.
-    BROWSER_PROVIDERS = {"google", "apple", "discord", "twitch"}
+    BROWSER_PROVIDERS = {
+        "google", "facebook", "apple", "discord",
+    }
 
     def __init__(self, token_lifetime_hours: int = 24):
         self.token_lifetime = timedelta(
@@ -107,12 +109,12 @@ class AuthService:
             return await self._auth_google(
                 auth_code, redirect_uri
             )
-        elif provider == "discord":
-            return await self._auth_discord(
+        elif provider == "facebook":
+            return await self._auth_facebook(
                 auth_code, redirect_uri
             )
-        elif provider == "twitch":
-            return await self._auth_twitch(
+        elif provider == "discord":
+            return await self._auth_discord(
                 auth_code, redirect_uri
             )
         elif provider == "apple":
@@ -243,6 +245,60 @@ class AuthService:
         return AuthResult(
             provider="google",
             provider_id=google_id,
+            display_name=display_name,
+        )
+
+    async def _auth_facebook(
+        self, auth_code: str, redirect_uri: str
+    ) -> AuthResult:
+        """Exchange Facebook auth code for user info."""
+        config = secrets_service.get_oauth_config("facebook")
+        client_id = config.get("client_id", "")
+        client_secret = config.get("client_secret", "")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://graph.facebook.com/v19.0"
+                "/oauth/access_token",
+                params={
+                    "code": auth_code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": redirect_uri,
+                },
+            )
+
+        if response.status_code != 200:
+            raise ValueError(
+                "Facebook token exchange failed"
+            )
+
+        access_token = response.json()["access_token"]
+
+        # Fetch user info.
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://graph.facebook.com/v19.0/me",
+                params={
+                    "access_token": access_token,
+                    "fields": "id,name",
+                },
+            )
+
+        if response.status_code != 200:
+            raise ValueError(
+                "Facebook user info fetch failed"
+            )
+
+        user = response.json()
+        fb_id = user["id"]
+        display_name = user.get(
+            "name", f"Player_{fb_id[:8]}"
+        )
+
+        return AuthResult(
+            provider="facebook",
+            provider_id=fb_id,
             display_name=display_name,
         )
 

@@ -19,6 +19,7 @@ var provider := ""
 var is_anonymous := false
 var expires_at := 0
 var rating := 1500
+var linked_providers: Array[String] = []
 
 
 func _init() -> void:
@@ -54,6 +55,10 @@ func store_from_response(data: Dictionary) -> void:
 	expires_at = data.get("expires_at", 0)
 	rating = data.get("rating", 1500)
 	provider = data.get("provider", "")
+	linked_providers.clear()
+	var lp: Array = data.get("linked_providers", [])
+	for p in lp:
+		linked_providers.append(str(p))
 	save_tokens()
 
 
@@ -67,6 +72,7 @@ func clear_tokens() -> void:
 	is_anonymous = false
 	expires_at = 0
 	rating = 1500
+	linked_providers.clear()
 	DirAccess.remove_absolute(
 		ProjectSettings.globalize_path(_AUTH_FILE_PATH)
 	)
@@ -89,6 +95,10 @@ func save_tokens() -> void:
 	)
 	config.set_value(_SECTION, "expires_at", expires_at)
 	config.set_value(_SECTION, "rating", rating)
+	config.set_value(
+		_SECTION, "linked_providers",
+		linked_providers,
+	)
 	config.save_encrypted_pass(
 		_AUTH_FILE_PATH, _get_passphrase()
 	)
@@ -126,6 +136,12 @@ func load_tokens() -> void:
 	rating = config.get_value(
 		_SECTION, "rating", 1500
 	)
+	linked_providers.clear()
+	var lp: Array = config.get_value(
+		_SECTION, "linked_providers", []
+	)
+	for p in lp:
+		linked_providers.append(str(p))
 
 
 func _get_passphrase() -> String:

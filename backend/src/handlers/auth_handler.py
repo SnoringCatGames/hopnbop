@@ -125,6 +125,9 @@ def login(
                     "expires_at": int(
                         auth_token.expires_at.timestamp()
                     ),
+                    "linked_providers": list(
+                        player_profile.auth_providers.keys()
+                    ),
                 }
             ),
         }
@@ -219,6 +222,9 @@ def anonymous_login(
                     "expires_at": int(
                         auth_token.expires_at.timestamp()
                     ),
+                    "linked_providers": list(
+                        player_profile.auth_providers.keys()
+                    ),
                 }
             ),
         }
@@ -309,6 +315,9 @@ def refresh(
                     "game_version": _GAME_VERSION,
                     "expires_at": int(
                         auth_token.expires_at.timestamp()
+                    ),
+                    "linked_providers": list(
+                        profile.auth_providers.keys()
                     ),
                 }
             ),
@@ -412,6 +421,13 @@ def link_account(
             )
         )
 
+        # Fetch updated profile for linked_providers.
+        updated_profile = asyncio.run(
+            player_service.get_player(
+                current_token.player_id
+            )
+        )
+
         logger.info(
             f"Linked {provider} to {current_token.player_id}"
         )
@@ -424,6 +440,9 @@ def link_account(
                     "status": "success",
                     "message": "Provider linked",
                     "provider": auth_result.provider,
+                    "linked_providers": list(
+                        updated_profile.auth_providers.keys()
+                    ) if updated_profile else [],
                 }
             ),
         }

@@ -36,56 +36,28 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Row1" type="HBoxContainer" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
+[node name="OAuthRow" type="HBoxContainer" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 1
 
-[node name="SteamButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/Row1"]
-layout_mode = 2
-custom_minimum_size = Vector2(140, 40)
-text = "Steam"
-
-[node name="EpicButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/Row1"]
-layout_mode = 2
-custom_minimum_size = Vector2(140, 40)
-text = "Epic Games"
-
-[node name="Row2" type="HBoxContainer" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
-layout_mode = 2
-theme_override_constants/separation = 8
-alignment = 1
-
-[node name="GoogleButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/Row2"]
+[node name="GoogleButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/OAuthRow"]
 layout_mode = 2
 custom_minimum_size = Vector2(140, 40)
 text = "Google"
 
-[node name="AppleButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/Row2"]
+[node name="FacebookButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/OAuthRow"]
 layout_mode = 2
 custom_minimum_size = Vector2(140, 40)
-text = "Apple"
-
-[node name="Row3" type="HBoxContainer" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
-layout_mode = 2
-theme_override_constants/separation = 8
-alignment = 1
-
-[node name="DiscordButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/Row3"]
-layout_mode = 2
-custom_minimum_size = Vector2(140, 40)
-text = "Discord"
-
-[node name="TwitchButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/Row3"]
-layout_mode = 2
-custom_minimum_size = Vector2(140, 40)
-text = "Twitch"
+text = "Facebook"
 
 [node name="Spacer2" type="Control" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 4)
 
 [node name="AnonButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
 custom_minimum_size = Vector2(200, 40)
@@ -113,10 +85,6 @@ theme_override_font_sizes/font_size = 14
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonsContainer/Row1/SteamButton" to="." method="_on_steam_pressed"]
-[connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonsContainer/Row1/EpicButton" to="." method="_on_epic_pressed"]
-[connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonsContainer/Row2/GoogleButton" to="." method="_on_google_pressed"]
-[connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonsContainer/Row2/AppleButton" to="." method="_on_apple_pressed"]
-[connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonsContainer/Row3/DiscordButton" to="." method="_on_discord_pressed"]
-[connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonsContainer/Row3/TwitchButton" to="." method="_on_twitch_pressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonsContainer/OAuthRow/GoogleButton" to="." method="_on_google_pressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonsContainer/OAuthRow/FacebookButton" to="." method="_on_facebook_pressed"]
 [connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonsContainer/AnonButton" to="." method="_on_anonymous_pressed"]
