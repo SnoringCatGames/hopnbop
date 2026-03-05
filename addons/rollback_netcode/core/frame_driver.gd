@@ -48,6 +48,8 @@ extends Node
 
 # ---
 
+# - Create an "anonymous" icon for the auth screen.
+
 # ---
 
 # - Brave Player Name with multiple local players in Lobby.
