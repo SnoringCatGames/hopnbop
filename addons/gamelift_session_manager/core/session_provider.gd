@@ -41,6 +41,11 @@ signal all_players_connected()
 ## level_id: String - The level ID to spawn
 signal level_selected(level_id: String)
 
+## Emitted when the hosting service requests process termination.
+## seconds_remaining: float - Approximate seconds until forced
+## termination. Zero if unknown.
+signal shutdown_requested(seconds_remaining: float)
+
 
 ## CLIENT: Request session IDs for local players.
 ## player_count: int - Number of local players

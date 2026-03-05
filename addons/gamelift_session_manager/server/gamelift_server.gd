@@ -337,26 +337,40 @@ func _on_process_terminate_requested() -> void:
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
 
-	# Get termination time if available.
+	# Stop accepting new players.
+	_gamelift.update_player_session_creation_policy(
+		_gamelift.DENY_ALL
+	)
+
+	# Calculate remaining time before forced termination.
+	var seconds_remaining := 0.0
 	var termination_time = _gamelift.get_termination_time()
 	if termination_time > 0:
+		var now_unix := Time.get_unix_time_from_system()
+		seconds_remaining = maxf(
+			float(termination_time) - now_unix,
+			0.0,
+		)
 		Netcode.log.print(
-			"Termination scheduled for: %d" % termination_time,
+			"Termination in ~%.0f seconds" % seconds_remaining,
 			NetworkLogger.CATEGORY_CONNECTIONS
 		)
 
-	# Stop accepting new players.
-	_gamelift.update_player_session_creation_policy(_gamelift.DENY_ALL)
+	# Let the game layer finish gracefully.
+	shutdown_requested.emit(seconds_remaining)
 
-	# Signal process ending.
+	# Defer process_ending so listeners can react first.
+	_end_process.call_deferred()
+
+
+func _end_process() -> void:
 	var outcome = _gamelift.process_ending()
 	if not outcome.is_success():
 		Netcode.log.warning(
-			"ProcessEnding failed: %s" % outcome.get_error_message(),
+			"ProcessEnding failed: %s"
+				% outcome.get_error_message(),
 			NetworkLogger.CATEGORY_CONNECTIONS
 		)
-
-	# Destroy SDK.
 	_gamelift.destroy()
 
 

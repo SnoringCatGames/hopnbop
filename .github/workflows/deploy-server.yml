@@ -1,0 +1,125 @@
+name: Deploy Game Server
+
+on:
+  push:
+    branches: [release]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Image version tag"
+        required: true
+        default: "0.1.0"
+      skip_export:
+        description: "Skip Godot export (use existing build/linux/)"
+        type: boolean
+        default: false
+
+env:
+  AWS_REGION: us-west-2
+  ECR_REPOSITORY: hopnbop-server
+  GODOT_VERSION: "4.5.1"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            SHORT_SHA=$(git rev-parse --short HEAD)
+            echo "tag=0.1.0-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Cache Godot
+        if: github.event.inputs.skip_export != 'true'
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: |
+            Godot_v${{ env.GODOT_VERSION }}-stable_linux.x86_64
+          key: godot-${{ env.GODOT_VERSION }}-stable-linux-x86_64
+
+      - name: Download Godot
+        if: >-
+          github.event.inputs.skip_export != 'true'
+          && steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip "Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          chmod +x "Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+
+      - name: Download Godot export templates
+        if: github.event.inputs.skip_export != 'true'
+        run: |
+          TEMPLATES_DIR="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$TEMPLATES_DIR"
+          wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -o "Godot_v${GODOT_VERSION}-stable_export_templates.tpz" -d /tmp/templates
+          mv /tmp/templates/templates/* "$TEMPLATES_DIR/"
+
+      - name: Export Godot Linux server
+        if: github.event.inputs.skip_export != 'true'
+        run: |
+          mkdir -p build/linux
+          ./Godot_v${GODOT_VERSION}-stable_linux.x86_64 \
+            --headless --export-release "Linux Server" \
+            build/linux/hopnbop_server.x86_64
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t "${{ env.ECR_REPOSITORY }}:${{ steps.version.outputs.tag }}" \
+            .
+
+      - name: Tag and push to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          FULL_TAG="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          LATEST_TAG="${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
+
+          docker tag "${ECR_REPOSITORY}:${IMAGE_TAG}" "$FULL_TAG"
+          docker tag "${ECR_REPOSITORY}:${IMAGE_TAG}" "$LATEST_TAG"
+          docker push "$FULL_TAG"
+          docker push "$LATEST_TAG"
+
+          echo "Pushed: $FULL_TAG"
+
+      - name: Update container group definition
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          FULL_TAG="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+          # Update image URI in definition.
+          jq --arg uri "$FULL_TAG" \
+            '.GameServerContainerDefinition.ImageUri = $uri' \
+            gamelift-deploy/container-group-definition.json > /tmp/cgd.json
+
+          aws gamelift create-container-group-definition \
+            --cli-input-json file:///tmp/cgd.json \
+            --region "${{ env.AWS_REGION }}"
+
+          echo "Container group definition updated with image: $FULL_TAG"
