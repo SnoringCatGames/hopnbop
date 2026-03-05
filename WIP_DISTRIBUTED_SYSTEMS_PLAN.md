@@ -2,19 +2,80 @@
 
 ---
 
-Manual Steps (User)
-Before the code works end-to-end, you need credentials for at
-least one provider. You can test with anonymous auth
-immediately. For OAuth providers, register apps at:
+OAuth Provider Registration Steps
 
-Google: console.cloud.google.com (free)
-Discord: discord.com/developers (free)
-Twitch: dev.twitch.tv (free)
-Apple: developer.apple.com ($99/yr)
-After registering, update the Secrets Manager secrets with
-real client IDs and secrets.
+Steam
+
+Go to https://partner.steamgames.com/
+You need a Steamworks developer account ($100 app fee)
+Create your app → get an App ID
+Go to Users & Permissions → Manage Groups → create a Web API key
+Store in Secrets Manager: hopnbop/oauth/steam → {"api_key": "YOUR_KEY"}
+No redirect URI needed (Steam uses session tickets, not browser OAuth)
+
+Epic Games
+
+Go to https://dev.epicgames.com/portal
+Create a new product → get a Client ID
+Under Product Settings → Clients, create OAuth credentials
+Epic uses access tokens from the Epic launcher SDK, not browser OAuth
+Store in Secrets Manager: hopnbop/oauth/epic → {"client_id": "...", "client_secret": "..."}
+
+Google
+
+Go to https://console.cloud.google.com/
+Create a new project (e.g., "Hop n Bop")
+APIs & Services → OAuth consent screen → External → fill in app name, support email, developer email
+APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID
+Application type: Web application
+Add Authorized redirect URIs: http://127.0.0.1 (loopback for desktop app)
+Note the Client ID and Client Secret
+Store in Secrets Manager: hopnbop/oauth/google → {"client_id": "...", "client_secret": "..."}
+Publish the OAuth consent screen (or it stays in "Testing" with 100-user limit)
+
+Apple
+
+Go to https://developer.apple.com/ ($99/year membership required)
+Certificates, Identifiers & Profiles → Identifiers → App IDs → register an App ID
+Enable Sign In with Apple capability
+Identifiers → Services IDs → create a Services ID (this is your client_id)
+Configure the Services ID: add your domain + redirect URLs (http://127.0.0.1)
+Keys → create a key with Sign In with Apple enabled → download the .p8 private key file
+Note: Team ID (top-right of developer portal), Key ID (from the key you created)
+Store in Secrets Manager: hopnbop/oauth/apple → {"client_id": "...", "team_id": "...", "key_id": "...", "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"}
+
+Discord
+
+Go to https://discord.com/developers/applications
+Click New Application → name it "Hop 'n Bop"
+Go to OAuth2 tab
+Note the Client ID and Client Secret (click "Reset Secret" if needed)
+Add Redirects: http://127.0.0.1 (the loopback server will use a dynamic port, but Discord matches on the host)
+Actually, Discord requires exact redirect URI match including port. You'll need to register a few ports or use a fixed port like http://127.0.0.1:9876/callback
+Scopes needed: identify (gives user ID and username)
+Store in Secrets Manager: hopnbop/oauth/discord → {"client_id": "...", "client_secret": "..."}
+
+Twitch
+
+Go to https://dev.twitch.tv/console/apps
+Click Register Your Application
+Name: "Hop 'n Bop", Category: "Game Integration"
+Add OAuth Redirect URLs: http://localhost:9876/callback (Twitch also requires exact match)
+Note the Client ID, then click New Secret for the Client Secret
+Store in Secrets Manager: hopnbop/oauth/twitch → {"client_id": "...", "client_secret": "..."}
+
+Important Notes
+
+- Google, Discord, Twitch are free and can be set up immediately
+- Steam requires a Steamworks developer account ($100)
+- Epic requires an Epic Games developer account (free but approval process)
+- Apple requires an Apple Developer membership ($99/year)
+- For Discord and Twitch, the redirect URI must match exactly (host + port + path). We'll use a fixed port like 9876 in the client's loopback server
+
+---
 
 Verification
+
 Deploy backend: sam build then sam deploy
 Test anonymous auth:
 
