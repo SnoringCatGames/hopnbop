@@ -4,6 +4,10 @@ import asyncio
 
 import pytest
 
+from services.provider_mapping_service import (
+    ProviderMappingService,
+)
+
 
 def _run(coro):
     """Run an async coroutine synchronously."""
@@ -12,10 +16,6 @@ def _run(coro):
 
 class TestMakeComposite:
     def test_format(self):
-        from services.provider_mapping_service import (
-            ProviderMappingService,
-        )
-
         assert (
             ProviderMappingService.make_composite(
                 "steam", "76561198012345678"
@@ -24,10 +24,6 @@ class TestMakeComposite:
         )
 
     def test_anonymous_format(self):
-        from services.provider_mapping_service import (
-            ProviderMappingService,
-        )
-
         assert (
             ProviderMappingService.make_composite(
                 "anonymous", "device-abc"
@@ -38,10 +34,6 @@ class TestMakeComposite:
 
 class TestLookup:
     def test_nonexistent_returns_none(self, aws_mock):
-        from services.provider_mapping_service import (
-            ProviderMappingService,
-        )
-
         pms = ProviderMappingService()
         result = _run(
             pms.lookup("steam", "nonexistent_id")
@@ -49,10 +41,6 @@ class TestLookup:
         assert result is None
 
     def test_existing_returns_player_id(self, aws_mock):
-        from services.provider_mapping_service import (
-            ProviderMappingService,
-        )
-
         pms = ProviderMappingService()
         _run(
             pms.create("steam", "steam_123", "p_player1")
@@ -63,10 +51,6 @@ class TestLookup:
 
 class TestCreate:
     def test_different_providers_same_id(self, aws_mock):
-        from services.provider_mapping_service import (
-            ProviderMappingService,
-        )
-
         pms = ProviderMappingService()
         _run(
             pms.create("steam", "user_123", "p_steam_player")
@@ -89,10 +73,6 @@ class TestCreate:
 
 class TestDelete:
     def test_delete_removes_mapping(self, aws_mock):
-        from services.provider_mapping_service import (
-            ProviderMappingService,
-        )
-
         pms = ProviderMappingService()
         _run(
             pms.create("discord", "disc_456", "p_player2")
@@ -108,10 +88,6 @@ class TestDelete:
         )
 
     def test_delete_nonexistent_no_error(self, aws_mock):
-        from services.provider_mapping_service import (
-            ProviderMappingService,
-        )
-
         pms = ProviderMappingService()
         # Should not raise.
         _run(pms.delete("steam", "does_not_exist"))

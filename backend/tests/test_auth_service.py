@@ -1,14 +1,14 @@
 """Tests for auth_service.py - AuthToken and AuthService."""
 
 import asyncio
-import time
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, patch, MagicMock
 
 import jwt
 import pytest
 
-TEST_JWT_SECRET = "test-secret-key-for-unit-tests"
+from services.auth_service import AuthService, AuthToken, AuthResult
+from tests.constants import TEST_JWT_SECRET
+from tests.conftest import mock_httpx_client, make_response
 
 
 def _run(coro):
@@ -16,17 +16,13 @@ def _run(coro):
     return asyncio.run(coro)
 
 
-# =========================================================================
+# =====================================================================
 # AuthToken
-# =========================================================================
+# =====================================================================
 
 
-class TestAuthTokenRoundTrip:
-    """AuthToken.to_jwt() and from_jwt() round-trip tests."""
-
+class TestAuthToken:
     def test_round_trip(self):
-        from services.auth_service import AuthToken
-
         now = datetime.now()
         token = AuthToken(
             player_id="p_abc123",
@@ -45,9 +41,7 @@ class TestAuthTokenRoundTrip:
         assert decoded.provider == "steam"
         assert decoded.is_anonymous is False
 
-    def test_anonymous_flag_preserved(self):
-        from services.auth_service import AuthToken
-
+    def test_anonymous_round_trip(self):
         now = datetime.now()
         token = AuthToken(
             player_id="p_anon999",
@@ -64,8 +58,6 @@ class TestAuthTokenRoundTrip:
         assert decoded.provider == "anonymous"
 
     def test_expired_token_raises(self):
-        from services.auth_service import AuthToken
-
         now = datetime.now()
         token = AuthToken(
             player_id="p_expired",
@@ -82,8 +74,6 @@ class TestAuthTokenRoundTrip:
             AuthToken.from_jwt(encoded, TEST_JWT_SECRET)
 
     def test_tampered_token_raises(self):
-        from services.auth_service import AuthToken
-
         now = datetime.now()
         token = AuthToken(
             player_id="p_tampered",
@@ -95,15 +85,12 @@ class TestAuthTokenRoundTrip:
         )
 
         encoded = token.to_jwt(TEST_JWT_SECRET)
-        # Tamper with the payload.
         tampered = encoded[:-5] + "XXXXX"
 
         with pytest.raises(ValueError, match="Invalid token"):
             AuthToken.from_jwt(tampered, TEST_JWT_SECRET)
 
     def test_wrong_secret_raises(self):
-        from services.auth_service import AuthToken
-
         now = datetime.now()
         token = AuthToken(
             player_id="p_wrong",
@@ -120,15 +107,13 @@ class TestAuthTokenRoundTrip:
             AuthToken.from_jwt(encoded, "wrong-secret")
 
 
-# =========================================================================
+# =====================================================================
 # AuthService.create_auth_token
-# =========================================================================
+# =====================================================================
 
 
 class TestCreateAuthToken:
-    def test_creates_token_with_correct_lifetime(self):
-        from services.auth_service import AuthService
-
+    def test_correct_lifetime(self):
         service = AuthService(token_lifetime_hours=12)
         token = service.create_auth_token(
             "p_test123", "TestName", "google"
@@ -142,8 +127,6 @@ class TestCreateAuthToken:
         assert abs(delta.total_seconds() - 12 * 3600) < 2
 
     def test_anonymous_flag(self):
-        from services.auth_service import AuthService
-
         service = AuthService()
         token = service.create_auth_token(
             "p_anon", "Anon", "anonymous", is_anonymous=True
@@ -151,15 +134,13 @@ class TestCreateAuthToken:
         assert token.is_anonymous is True
 
 
-# =========================================================================
-# AuthService.authenticate - provider dispatch
-# =========================================================================
+# =====================================================================
+# AuthService.authenticate - dispatch
+# =====================================================================
 
 
 class TestAuthenticateDispatch:
     def test_unsupported_provider_raises(self, aws_mock):
-        from services.auth_service import AuthService
-
         service = AuthService()
         with pytest.raises(
             ValueError, match="Unsupported provider"
@@ -167,52 +148,26 @@ class TestAuthenticateDispatch:
             _run(service.authenticate("foobar", "code123"))
 
 
-# =========================================================================
-# AuthService._auth_steam
-# =========================================================================
+# =====================================================================
+# Steam
+# =====================================================================
 
 
 class TestAuthSteam:
-    def test_valid_steam_ticket(self, aws_mock):
-        from services.auth_service import AuthService
-
-        mock_auth_response = MagicMock()
-        mock_auth_response.status_code = 200
-        mock_auth_response.json.return_value = {
+    def test_valid_ticket(self, aws_mock):
+        auth_resp = make_response(200, {
             "response": {
                 "params": {"steamid": "76561198012345678"}
-            }
-        }
-
-        mock_user_response = MagicMock()
-        mock_user_response.status_code = 200
-        mock_user_response.json.return_value = {
+            },
+        })
+        user_resp = make_response(200, {
             "response": {
-                "players": [
-                    {"personaname": "SteamPlayer"}
-                ]
-            }
-        }
+                "players": [{"personaname": "SteamPlayer"}]
+            },
+        })
 
-        with patch(
-            "services.auth_service.httpx.AsyncClient"
-        ) as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.__aenter__ = AsyncMock(
-                return_value=mock_client
-            )
-            mock_client.__aexit__ = AsyncMock(
-                return_value=False
-            )
-            mock_client.get = AsyncMock(
-                side_effect=[
-                    mock_auth_response,
-                    mock_user_response,
-                ]
-            )
-            mock_client_cls.return_value = mock_client
-
-            service = AuthService()
+        service = AuthService()
+        with mock_httpx_client([auth_resp, user_resp]):
             result = _run(
                 service._auth_steam("FAKE_TICKET")
             )
@@ -221,28 +176,11 @@ class TestAuthSteam:
         assert result.provider_id == "76561198012345678"
         assert result.display_name == "SteamPlayer"
 
-    def test_invalid_steam_ticket(self, aws_mock):
-        from services.auth_service import AuthService
+    def test_invalid_ticket_raises(self, aws_mock):
+        resp = make_response(403)
 
-        mock_response = MagicMock()
-        mock_response.status_code = 403
-
-        with patch(
-            "services.auth_service.httpx.AsyncClient"
-        ) as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.__aenter__ = AsyncMock(
-                return_value=mock_client
-            )
-            mock_client.__aexit__ = AsyncMock(
-                return_value=False
-            )
-            mock_client.get = AsyncMock(
-                return_value=mock_response
-            )
-            mock_client_cls.return_value = mock_client
-
-            service = AuthService()
+        service = AuthService()
+        with mock_httpx_client(resp):
             with pytest.raises(
                 ValueError,
                 match="Steam authentication failed",
@@ -250,45 +188,25 @@ class TestAuthSteam:
                 _run(service._auth_steam("BAD_TICKET"))
 
 
-# =========================================================================
-# AuthService._auth_google
-# =========================================================================
+# =====================================================================
+# Google
+# =====================================================================
 
 
 class TestAuthGoogle:
-    def test_valid_google_code(self, aws_mock):
-        from services.auth_service import AuthService
-
-        # Build a fake Google id_token (unsigned JWT).
+    def test_valid_code(self, aws_mock):
         fake_id_token = jwt.encode(
             {"sub": "google_user_123", "name": "GoogleUser"},
             "not-verified",
             algorithm="HS256",
         )
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
+        resp = make_response(200, {
             "id_token": fake_id_token,
             "access_token": "fake_access",
-        }
+        })
 
-        with patch(
-            "services.auth_service.httpx.AsyncClient"
-        ) as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.__aenter__ = AsyncMock(
-                return_value=mock_client
-            )
-            mock_client.__aexit__ = AsyncMock(
-                return_value=False
-            )
-            mock_client.post = AsyncMock(
-                return_value=mock_response
-            )
-            mock_client_cls.return_value = mock_client
-
-            service = AuthService()
+        service = AuthService()
+        with mock_httpx_client(resp):
             result = _run(
                 service._auth_google(
                     "AUTH_CODE",
@@ -300,49 +218,41 @@ class TestAuthGoogle:
         assert result.provider_id == "google_user_123"
         assert result.display_name == "GoogleUser"
 
+    def test_invalid_code_raises(self, aws_mock):
+        resp = make_response(403)
 
-# =========================================================================
-# AuthService._auth_discord
-# =========================================================================
+        service = AuthService()
+        with mock_httpx_client(resp):
+            with pytest.raises(
+                ValueError,
+                match="Google token exchange failed",
+            ):
+                _run(
+                    service._auth_google(
+                        "BAD_CODE",
+                        "http://127.0.0.1:9876/callback",
+                    )
+                )
+
+
+# =====================================================================
+# Discord
+# =====================================================================
 
 
 class TestAuthDiscord:
-    def test_valid_discord_code(self, aws_mock):
-        from services.auth_service import AuthService
-
-        mock_token_resp = MagicMock()
-        mock_token_resp.status_code = 200
-        mock_token_resp.json.return_value = {
-            "access_token": "discord_access_token"
-        }
-
-        mock_user_resp = MagicMock()
-        mock_user_resp.status_code = 200
-        mock_user_resp.json.return_value = {
+    def test_valid_code(self, aws_mock):
+        token_resp = make_response(200, {
+            "access_token": "discord_access_token",
+        })
+        user_resp = make_response(200, {
             "id": "discord_user_456",
             "global_name": "DiscordUser",
             "username": "discorduser",
-        }
+        })
 
-        with patch(
-            "services.auth_service.httpx.AsyncClient"
-        ) as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.__aenter__ = AsyncMock(
-                return_value=mock_client
-            )
-            mock_client.__aexit__ = AsyncMock(
-                return_value=False
-            )
-            mock_client.post = AsyncMock(
-                return_value=mock_token_resp
-            )
-            mock_client.get = AsyncMock(
-                return_value=mock_user_resp
-            )
-            mock_client_cls.return_value = mock_client
-
-            service = AuthService()
+        service = AuthService()
+        with mock_httpx_client([token_resp, user_resp]):
             result = _run(
                 service._auth_discord(
                     "AUTH_CODE",
@@ -354,52 +264,44 @@ class TestAuthDiscord:
         assert result.provider_id == "discord_user_456"
         assert result.display_name == "DiscordUser"
 
+    def test_token_exchange_failure_raises(self, aws_mock):
+        resp = make_response(401)
 
-# =========================================================================
-# AuthService._auth_twitch
-# =========================================================================
+        service = AuthService()
+        with mock_httpx_client(resp):
+            with pytest.raises(
+                ValueError,
+                match="Discord token exchange failed",
+            ):
+                _run(
+                    service._auth_discord(
+                        "BAD_CODE",
+                        "http://127.0.0.1:9876/callback",
+                    )
+                )
+
+
+# =====================================================================
+# Twitch
+# =====================================================================
 
 
 class TestAuthTwitch:
-    def test_valid_twitch_code(self, aws_mock):
-        from services.auth_service import AuthService
-
-        mock_token_resp = MagicMock()
-        mock_token_resp.status_code = 200
-        mock_token_resp.json.return_value = {
-            "access_token": "twitch_access_token"
-        }
-
-        mock_user_resp = MagicMock()
-        mock_user_resp.status_code = 200
-        mock_user_resp.json.return_value = {
+    def test_valid_code(self, aws_mock):
+        token_resp = make_response(200, {
+            "access_token": "twitch_access_token",
+        })
+        user_resp = make_response(200, {
             "data": [
                 {
                     "id": "twitch_user_789",
                     "display_name": "TwitchStreamer",
                 }
-            ]
-        }
+            ],
+        })
 
-        with patch(
-            "services.auth_service.httpx.AsyncClient"
-        ) as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.__aenter__ = AsyncMock(
-                return_value=mock_client
-            )
-            mock_client.__aexit__ = AsyncMock(
-                return_value=False
-            )
-            mock_client.post = AsyncMock(
-                return_value=mock_token_resp
-            )
-            mock_client.get = AsyncMock(
-                return_value=mock_user_resp
-            )
-            mock_client_cls.return_value = mock_client
-
-            service = AuthService()
+        service = AuthService()
+        with mock_httpx_client([token_resp, user_resp]):
             result = _run(
                 service._auth_twitch(
                     "AUTH_CODE",
@@ -411,39 +313,37 @@ class TestAuthTwitch:
         assert result.provider_id == "twitch_user_789"
         assert result.display_name == "TwitchStreamer"
 
+    def test_token_exchange_failure_raises(self, aws_mock):
+        resp = make_response(401)
 
-# =========================================================================
-# AuthService._auth_epic
-# =========================================================================
+        service = AuthService()
+        with mock_httpx_client(resp):
+            with pytest.raises(
+                ValueError,
+                match="Twitch token exchange failed",
+            ):
+                _run(
+                    service._auth_twitch(
+                        "BAD_CODE",
+                        "http://127.0.0.1:9876/callback",
+                    )
+                )
+
+
+# =====================================================================
+# Epic
+# =====================================================================
 
 
 class TestAuthEpic:
-    def test_valid_epic_token(self, aws_mock):
-        from services.auth_service import AuthService
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
+    def test_valid_token(self, aws_mock):
+        resp = make_response(200, {
             "account_id": "epic_acc_321",
             "display_name": "EpicGamer",
-        }
+        })
 
-        with patch(
-            "services.auth_service.httpx.AsyncClient"
-        ) as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.__aenter__ = AsyncMock(
-                return_value=mock_client
-            )
-            mock_client.__aexit__ = AsyncMock(
-                return_value=False
-            )
-            mock_client.get = AsyncMock(
-                return_value=mock_response
-            )
-            mock_client_cls.return_value = mock_client
-
-            service = AuthService()
+        service = AuthService()
+        with mock_httpx_client(resp):
             result = _run(
                 service._auth_epic("FAKE_ACCESS_TOKEN")
             )
@@ -452,32 +352,87 @@ class TestAuthEpic:
         assert result.provider_id == "epic_acc_321"
         assert result.display_name == "EpicGamer"
 
-    def test_invalid_epic_token(self, aws_mock):
-        from services.auth_service import AuthService
+    def test_invalid_token_raises(self, aws_mock):
+        resp = make_response(401)
 
-        mock_response = MagicMock()
-        mock_response.status_code = 401
-
-        with patch(
-            "services.auth_service.httpx.AsyncClient"
-        ) as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.__aenter__ = AsyncMock(
-                return_value=mock_client
-            )
-            mock_client.__aexit__ = AsyncMock(
-                return_value=False
-            )
-            mock_client.get = AsyncMock(
-                return_value=mock_response
-            )
-            mock_client_cls.return_value = mock_client
-
-            service = AuthService()
+        service = AuthService()
+        with mock_httpx_client(resp):
             with pytest.raises(
                 ValueError,
                 match="Epic authentication failed",
             ):
-                _run(
-                    service._auth_epic("BAD_TOKEN")
+                _run(service._auth_epic("BAD_TOKEN"))
+
+
+# =====================================================================
+# Apple
+# =====================================================================
+
+
+class TestAuthApple:
+    def test_valid_code(self, aws_mock):
+        fake_id_token = jwt.encode(
+            {
+                "sub": "apple_user_001",
+                "email": "apple@example.com",
+            },
+            "not-verified",
+            algorithm="HS256",
+        )
+        resp = make_response(200, {
+            "id_token": fake_id_token,
+            "access_token": "apple_access",
+        })
+
+        service = AuthService()
+        # Apple uses ES256 to sign the client_secret JWT.
+        # With an empty private_key in test secrets, jwt.encode
+        # will fail. Patch it to skip client_secret generation.
+        with mock_httpx_client(resp):
+            # Patch jwt.encode for the client_secret only
+            # (the id_token decode uses options=no_verify).
+            import unittest.mock as um
+
+            original_encode = jwt.encode
+
+            def _patched_encode(payload, key, **kwargs):
+                if kwargs.get("algorithm") == "ES256":
+                    return "fake-apple-client-secret"
+                return original_encode(payload, key, **kwargs)
+
+            with um.patch(
+                "services.auth_service.jwt.encode",
+                side_effect=_patched_encode,
+            ):
+                result = _run(
+                    service._auth_apple(
+                        "AUTH_CODE",
+                        "http://127.0.0.1:9876/callback",
+                    )
                 )
+
+        assert result.provider == "apple"
+        assert result.provider_id == "apple_user_001"
+        assert result.display_name == "apple@example.com"
+
+    def test_token_exchange_failure_raises(self, aws_mock):
+        resp = make_response(403)
+
+        service = AuthService()
+        import unittest.mock as um
+
+        with mock_httpx_client(resp):
+            with um.patch(
+                "services.auth_service.jwt.encode",
+                return_value="fake-apple-client-secret",
+            ):
+                with pytest.raises(
+                    ValueError,
+                    match="Apple token exchange failed",
+                ):
+                    _run(
+                        service._auth_apple(
+                            "BAD_CODE",
+                            "http://127.0.0.1:9876/callback",
+                        )
+                    )

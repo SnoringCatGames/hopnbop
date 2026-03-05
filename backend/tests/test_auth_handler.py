@@ -3,11 +3,12 @@
 import json
 import asyncio
 from unittest.mock import patch, AsyncMock, MagicMock
-from datetime import datetime, timedelta
 
 import pytest
 
-TEST_JWT_SECRET = "test-secret-key-for-unit-tests"
+from services.auth_service import AuthResult, AuthToken
+from tests.constants import TEST_JWT_SECRET
+from tests.conftest import mock_httpx_client, make_response
 
 
 class _FakeLambdaContext:
@@ -26,11 +27,10 @@ _CONTEXT = _FakeLambdaContext()
 
 def _make_event(body=None, headers=None):
     """Build a minimal Lambda API Gateway event."""
-    event = {
+    return {
         "body": json.dumps(body) if body else "{}",
         "headers": headers or {},
     }
-    return event
 
 
 def _parse_response(response):
@@ -38,9 +38,9 @@ def _parse_response(response):
     return response["statusCode"], json.loads(response["body"])
 
 
-# =========================================================================
+# =====================================================================
 # POST /auth/login
-# =========================================================================
+# =====================================================================
 
 
 class TestLogin:
@@ -63,39 +63,26 @@ class TestLogin:
         assert body["error_code"] == "MISSING_PARAMS"
 
     def test_valid_auth_returns_200(self, aws_mock):
+        """Login with a mocked provider. Exercises the full
+        handler flow including provider mapping, player
+        creation, and token issuance."""
         from handlers.auth_handler import login
-        from services.auth_service import AuthResult
 
-        mock_result = AuthResult(
-            provider="steam",
-            provider_id="steam_12345",
-            display_name="TestPlayer",
-        )
+        # Mock only the external HTTP call, not the whole
+        # auth_service. This lets the handler exercise real
+        # token creation and DB writes.
+        auth_resp = make_response(200, {
+            "response": {
+                "params": {"steamid": "steam_login_test"}
+            },
+        })
+        user_resp = make_response(200, {
+            "response": {
+                "players": [{"personaname": "LoginPlayer"}]
+            },
+        })
 
-        with patch(
-            "handlers.auth_handler.auth_service"
-        ) as mock_auth:
-            mock_auth.authenticate = AsyncMock(
-                return_value=mock_result
-            )
-            mock_auth.jwt_secret = TEST_JWT_SECRET
-            mock_auth.create_auth_token = MagicMock()
-            # Return a real-ish token.
-            from services.auth_service import AuthToken
-
-            now = datetime.now()
-            fake_token = AuthToken(
-                player_id="p_abc123",
-                display_name="TestPlayer",
-                provider="steam",
-                is_anonymous=False,
-                issued_at=now,
-                expires_at=now + timedelta(hours=24),
-            )
-            mock_auth.create_auth_token.return_value = (
-                fake_token
-            )
-
+        with mock_httpx_client([auth_resp, user_resp]):
             event = _make_event(
                 body={
                     "provider": "steam",
@@ -110,19 +97,60 @@ class TestLogin:
         assert body["status"] == "success"
         assert "jwt_token" in body
         assert "refresh_token" in body
-        assert "player_id" in body
+        assert body["player_id"].startswith("p_")
         assert body["is_anonymous"] is False
+        assert body["display_name"] == "LoginPlayer"
+
+    def test_returning_player_gets_same_id(self, aws_mock):
+        from handlers.auth_handler import login
+
+        auth_resp = make_response(200, {
+            "response": {
+                "params": {"steamid": "steam_returning"}
+            },
+        })
+        user_resp = make_response(200, {
+            "response": {
+                "players": [{"personaname": "Returner"}]
+            },
+        })
+
+        with mock_httpx_client([auth_resp, user_resp]):
+            event = _make_event(
+                body={
+                    "provider": "steam",
+                    "auth_code": "TICKET",
+                }
+            )
+            _, body1 = _parse_response(
+                login(event, _CONTEXT)
+            )
+
+        # Login again with the same steam ID.
+        auth_resp2 = make_response(200, {
+            "response": {
+                "params": {"steamid": "steam_returning"}
+            },
+        })
+        user_resp2 = make_response(200, {
+            "response": {
+                "players": [{"personaname": "Returner"}]
+            },
+        })
+
+        with mock_httpx_client([auth_resp2, user_resp2]):
+            _, body2 = _parse_response(
+                login(event, _CONTEXT)
+            )
+
+        assert body1["player_id"] == body2["player_id"]
 
     def test_auth_failure_returns_401(self, aws_mock):
         from handlers.auth_handler import login
 
-        with patch(
-            "handlers.auth_handler.auth_service"
-        ) as mock_auth:
-            mock_auth.authenticate = AsyncMock(
-                side_effect=ValueError("Steam auth failed")
-            )
+        resp = make_response(403)
 
+        with mock_httpx_client(resp):
             event = _make_event(
                 body={
                     "provider": "steam",
@@ -137,9 +165,9 @@ class TestLogin:
         assert body["error_code"] == "AUTH_FAILED"
 
 
-# =========================================================================
+# =====================================================================
 # POST /auth/anon
-# =========================================================================
+# =====================================================================
 
 
 class TestAnonymousLogin:
@@ -190,9 +218,9 @@ class TestAnonymousLogin:
         assert body1["player_id"] == body2["player_id"]
 
 
-# =========================================================================
+# =====================================================================
 # POST /auth/refresh
-# =========================================================================
+# =====================================================================
 
 
 class TestRefresh:
@@ -252,17 +280,39 @@ class TestRefresh:
         assert body["status"] == "success"
         assert "jwt_token" in body
         assert "refresh_token" in body
-        # New tokens should differ from old ones.
-        assert body["jwt_token"] != login_body["jwt_token"]
+        # Refresh token must rotate (opaque random hex).
         assert (
             body["refresh_token"]
             != login_body["refresh_token"]
         )
 
+    def test_old_refresh_token_invalid_after_rotation(
+        self, aws_mock
+    ):
+        from handlers.auth_handler import refresh
 
-# =========================================================================
+        login_body = self._create_player_with_token()
+        old_refresh = login_body["refresh_token"]
+
+        # First refresh succeeds and rotates.
+        event = _make_event(
+            body={
+                "player_id": login_body["player_id"],
+                "refresh_token": old_refresh,
+            }
+        )
+        status, _ = _parse_response(refresh(event, _CONTEXT))
+        assert status == 200
+
+        # Second refresh with the old token fails.
+        status, body = _parse_response(refresh(event, _CONTEXT))
+        assert status == 401
+        assert body["error_code"] == "INVALID_REFRESH"
+
+
+# =====================================================================
 # POST /auth/link
-# =========================================================================
+# =====================================================================
 
 
 class TestLinkAccount:
@@ -313,7 +363,6 @@ class TestLinkAccount:
             link_account,
             anonymous_login,
         )
-        from services.auth_service import AuthResult
 
         # Create anonymous player.
         login_event = _make_event(
@@ -361,7 +410,6 @@ class TestLinkAccount:
             link_account,
             anonymous_login,
         )
-        from services.auth_service import AuthResult
         from services.provider_mapping_service import (
             ProviderMappingService,
         )
