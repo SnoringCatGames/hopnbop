@@ -1,0 +1,32 @@
+{
+    "name": "hopnbop-ffa-ruleset",
+    "ruleLanguageVersion": "1.0",
+    "teams": [
+        {
+            "name": "players",
+            "minPlayers": 2,
+            "maxPlayers": 8,
+            "quantity": 1
+        }
+    ],
+    "rules": [
+        {
+            "name": "WaitTime",
+            "description": "Accept match after 45 seconds with minimum players",
+            "type": "waitTimePercent",
+            "waitTimeSeconds": 45,
+            "thresholdPercent": 25
+        }
+    ],
+    "expansions": [
+        {
+            "target": "teams[players].minPlayers",
+            "steps": [
+                {
+                    "waitTimeSeconds": 30,
+                    "value": 2
+                }
+            ]
+        }
+    ]
+}

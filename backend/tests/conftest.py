@@ -5,6 +5,8 @@ import sys
 import json
 import pytest
 import boto3
+from contextlib import contextmanager
+from unittest.mock import AsyncMock, MagicMock, patch
 from moto import mock_aws
 
 # Add src/ to path so imports work like they do in Lambda.
@@ -12,8 +14,7 @@ sys.path.insert(
     0, os.path.join(os.path.dirname(__file__), "..", "src")
 )
 
-TEST_JWT_SECRET = "test-secret-key-for-unit-tests"
-TEST_REGION = "us-east-1"
+from tests.constants import TEST_JWT_SECRET, TEST_REGION
 
 
 @pytest.fixture(autouse=True)
@@ -61,6 +62,75 @@ def aws_mock():
         # do not leak into subsequent tests.
         secrets_service.clear_cache()
         secrets_service._client = None
+
+
+# =================================================================
+# httpx mock helper
+# =================================================================
+
+
+@contextmanager
+def mock_httpx_client(responses):
+    """Mock httpx.AsyncClient for provider auth tests.
+
+    Args:
+        responses: A single MagicMock response, or a list of
+            them. When a list is given, successive calls to
+            client.get / client.post return successive items.
+
+    Yields:
+        The mock client instance (for additional assertions).
+
+    Usage::
+
+        resp = MagicMock(status_code=200)
+        resp.json.return_value = {"id": "123"}
+        with mock_httpx_client(resp) as client:
+            result = _run(service._auth_epic("token"))
+        client.get.assert_called_once()
+    """
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(
+        return_value=mock_client
+    )
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    if isinstance(responses, list):
+        # Mixed get/post: assign side_effect to both so the
+        # caller doesn't have to know which HTTP method is used
+        # internally. Each call pops from the same list.
+        call_iter = iter(responses)
+
+        async def _next_response(*args, **kwargs):
+            return next(call_iter)
+
+        mock_client.get = AsyncMock(side_effect=_next_response)
+        mock_client.post = AsyncMock(
+            side_effect=_next_response
+        )
+    else:
+        mock_client.get = AsyncMock(return_value=responses)
+        mock_client.post = AsyncMock(return_value=responses)
+
+    with patch(
+        "services.auth_service.httpx.AsyncClient"
+    ) as mock_cls:
+        mock_cls.return_value = mock_client
+        yield mock_client
+
+
+def make_response(status_code, json_body=None):
+    """Build a fake httpx response."""
+    resp = MagicMock()
+    resp.status_code = status_code
+    if json_body is not None:
+        resp.json.return_value = json_body
+    return resp
+
+
+# =================================================================
+# Internal helpers
+# =================================================================
 
 
 def _reinit_handler_services():
