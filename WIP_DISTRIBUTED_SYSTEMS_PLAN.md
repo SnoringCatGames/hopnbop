@@ -74,28 +74,6 @@ Important Notes
 
 ---
 
-Verification
-
-Deploy backend: sam build then sam deploy
-Test anonymous auth:
-
-Invoke-RestMethod -Method Post `
-  -Uri https://4xol3ejva9.execute-api.us-west-2.amazonaws.com/prod/auth/anon `
-  -Body '{"device_id":"test-device-123"}' `
-  -ContentType 'application/json'
-Should return JWT + refresh token + player_id.
-Test refresh:
-
-Invoke-RestMethod -Method Post `
-  -Uri .../prod/auth/refresh `
-  -Body '{"player_id":"...","refresh_token":"..."}' `
-  -ContentType 'application/json'
-Run client in editor → splash → auth screen appears
-Click "Play Anonymously" → get token → navigate to lobby
-Close and reopen → cached token skips auth screen
-
----
-
 ### M2: Complete Auth Flow
 
 **Goal**: End-to-end authentication from client through backend,
