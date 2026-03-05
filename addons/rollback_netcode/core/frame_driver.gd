@@ -159,6 +159,25 @@ extends Node
 
 # ---
 
+# - Make player annotations skinnier.
+
+# - Do research for better AI art tools.
+# - Look into whether there are plugins for krita or photoshop.
+# - Look into whether anything supports lasso tools for targeted updates.
+# - Then, make art for level with this first, and convert to pixel art second.
+
+# - Make a level editor for the game.
+# - Support a finite set of tile shapes.
+# - Support half tile sizes.
+# - Support slopes. 1/1 and 1/2
+# - Support two modes: tile set (given a custom template they upload), or a single whole-level image.
+# - There'd actually need to be three images. Main layer, background, foreground.
+# - Ask AI to help think through content moderation with custom art...
+
+# - Make a bunny level with clouds (in the cloud!)
+
+
+# ---
 
 # - Implement bespoke art for one level to test the process.
 #   - Use PixelLab for generating bespoke backgrounds and foregrounds and occlusion decorations layer for each level, given tilemap layouts to start from.
