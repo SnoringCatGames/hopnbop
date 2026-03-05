@@ -19,6 +19,9 @@ const _CheatGroupRowScene := preload(
 const _LevelPrefRowScene := preload(
 	"res://src/ui/settings_panel/"
 	+ "level_pref_row.tscn")
+const _LinkAccountRowScene := preload(
+	"res://src/ui/settings_panel/"
+	+ "link_account_row.tscn")
 
 @export_group("Row Icons")
 @export var icon_gore: Texture2D
@@ -199,6 +202,9 @@ func _build_ui() -> void:
 		"SFX", &"mute_sfx",
 		0, icon_sfx, true)
 
+	# Account linking section.
+	_add_link_account_rows()
+
 	# Spacer above level preferences.
 	var level_spacer := Control.new()
 	level_spacer.custom_minimum_size = (
@@ -267,6 +273,44 @@ func _add_toggle_row(
 	_row_container.add_child(row)
 	_connect_row_clicked(row)
 	return row
+
+
+func _add_link_account_rows() -> void:
+	# Only show linking when authenticated.
+	if not G.auth_token_store.is_token_valid():
+		return
+
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 20)
+	_row_container.add_child(spacer)
+
+	var linked: Array[String] = (
+		G.auth_token_store.linked_providers
+	)
+
+	# Google link row.
+	var google_row: LinkAccountRow = (
+		_LinkAccountRowScene.instantiate()
+	)
+	google_row.setup(
+		AuthClient.Provider.GOOGLE,
+		"Google",
+		"google" in linked,
+	)
+	_row_container.add_child(google_row)
+	_connect_row_clicked(google_row)
+
+	# Facebook link row.
+	var fb_row: LinkAccountRow = (
+		_LinkAccountRowScene.instantiate()
+	)
+	fb_row.setup(
+		AuthClient.Provider.FACEBOOK,
+		"Facebook",
+		"facebook" in linked,
+	)
+	_row_container.add_child(fb_row)
+	_connect_row_clicked(fb_row)
 
 
 func _connect_row_clicked(
