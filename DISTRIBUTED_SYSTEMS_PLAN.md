@@ -265,8 +265,8 @@ linking/unlinking.
    - Note the **Client ID** and **Client Secret**
 6. Store in AWS Secrets Manager:
    ```powershell
-   aws secretsmanager update-secret `
-     --secret-id hopnbop/oauth/google `
+   aws secretsmanager create-secret `
+     --name hopnbop/oauth/google `
      --secret-string '{"client_id":"YOUR_ID.apps.googleusercontent.com","client_secret":"YOUR_SECRET"}' `
      --region us-west-2 --profile hopnbop
    ```
@@ -320,8 +320,8 @@ display name.
      **App Secret** (this is the client secret)
 6. Store in AWS Secrets Manager:
    ```powershell
-   aws secretsmanager update-secret `
-     --secret-id hopnbop/oauth/facebook `
+   aws secretsmanager create-secret `
+     --name hopnbop/oauth/facebook `
      --secret-string '{"client_id":"YOUR_APP_ID","client_secret":"YOUR_APP_SECRET"}' `
      --region us-west-2 --profile hopnbop
    ```
@@ -503,8 +503,8 @@ M13 (CI/CD).
    - Note the **Web API Key**
 4. Store credentials:
    ```powershell
-   aws secretsmanager update-secret `
-     --secret-id hopnbop/oauth/steam `
+   aws secretsmanager create-secret `
+     --name hopnbop/oauth/steam `
      --secret-string '{"api_key":"YOUR_WEB_API_KEY"}' `
      --region us-west-2 --profile hopnbop
    ```
@@ -613,8 +613,8 @@ works (Shift+Tab).
    - Brand settings: app name, icon
 5. Store credentials:
    ```powershell
-   aws secretsmanager update-secret `
-     --secret-id hopnbop/oauth/epic `
+   aws secretsmanager create-secret `
+     --name hopnbop/oauth/epic `
      --secret-string '{"client_id":"YOUR_CLIENT_ID","client_secret":"YOUR_SECRET","deployment_id":"YOUR_DEPLOY_ID"}' `
      --region us-west-2 --profile hopnbop
    ```
@@ -828,8 +828,8 @@ target devices.
      top-right of the developer portal)
 5. Store credentials:
    ```powershell
-   aws secretsmanager update-secret `
-     --secret-id hopnbop/oauth/apple `
+   aws secretsmanager create-secret `
+     --name hopnbop/oauth/apple `
      --secret-string '{"team_id":"YOUR_TEAM_ID","key_id":"YOUR_KEY_ID","client_id":"com.snoringcat.hopnbop.auth","private_key":"-----BEGIN PRIVATE KEY-----\nYOUR_KEY_CONTENTS\n-----END PRIVATE KEY-----"}' `
      --region us-west-2 --profile hopnbop
    ```
