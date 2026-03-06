@@ -48,6 +48,12 @@ extends Node
 
 # ---
 
+# - Get icons (Steam, Google, Facebook, Apple, Epic)
+# You'll need to:
+# Create the provider icon .aseprite/.png files (steam, epic, google, facebook, apple)
+# Assign all icons in the SettingsPanel scene inspector under the new "Provider Icons" export group
+# Optionally assign icons to the auth screen buttons via their icon property in the scene editor
+
 # - Create an "anonymous" icon for the auth screen.
 
 # - Update Google Oauth (and facebook?) to have privacy and TOS links: https://console.cloud.google.com/auth/branding?authuser=2&project=hop-n-bop
