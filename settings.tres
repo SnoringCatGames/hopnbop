@@ -97,6 +97,7 @@ metadata/_custom_type_script = "uid://l1of4ibugkpt"
 [resource]
 script = ExtResource("1_krfic")
 level_override_for_preview = 5
+google_oauth_client_id = "659577872419-3tk6ai4ju7bopntl69rju1cm9h89oici"
 skip_splash = true
 bunny_collision_shape = SubResource("CircleShape2D_woca2")
 gore_particle_scene = ExtResource("4_bav20")

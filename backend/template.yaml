@@ -33,7 +33,7 @@ Resources:
     Properties:
       StageName: prod
       Cors:
-        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowMethods: "'GET,POST,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,Authorization'"
         AllowOrigin: "'*'"
       Auth:
@@ -151,6 +151,27 @@ Resources:
             RestApiId: !Ref GameBackendAPI
             Path: /auth/unlink
             Method: post
+
+  AuthDeleteAccountFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.auth_handler.delete_account
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ProviderMappingsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref MatchHistoryTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        DeleteAccount:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /auth/account
+            Method: delete
 
   JoinMatchmakingFunction:
     Type: AWS::Serverless::Function

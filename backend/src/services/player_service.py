@@ -259,3 +259,9 @@ class PlayerService:
                 " refresh_token_expires_at"
             ),
         )
+
+    async def delete_player(self, player_id: str) -> None:
+        """Delete a player record entirely."""
+        self.table.delete_item(
+            Key={"player_id": player_id}
+        )

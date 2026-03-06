@@ -5,6 +5,7 @@ import os
 import secrets
 import asyncio
 from typing import Dict, Any
+import boto3
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
@@ -572,6 +573,146 @@ def unlink_account(
         return _error(
             500, "INTERNAL_ERROR", "Internal server error"
         )
+
+
+@tracer.capture_lambda_handler
+@logger.inject_lambda_context
+def delete_account(
+    event: Dict[str, Any], context: LambdaContext
+) -> Dict:
+    """DELETE /auth/account - Delete player and all associated data."""
+    try:
+        # Validate JWT from Authorization header.
+        auth_header = (
+            event.get("headers", {}).get("Authorization", "")
+            or event.get("headers", {}).get(
+                "authorization", ""
+            )
+        )
+        if not auth_header.startswith("Bearer "):
+            return _error(
+                401, "UNAUTHORIZED", "Missing auth token"
+            )
+
+        token_str = auth_header[7:]
+        try:
+            current_token = AuthToken.from_jwt(
+                token_str, auth_service.jwt_secret
+            )
+        except ValueError as e:
+            return _error(401, "UNAUTHORIZED", str(e))
+
+        player_id = current_token.player_id
+
+        # Get player profile to find linked providers.
+        profile = asyncio.run(
+            player_service.get_player(player_id)
+        )
+        if profile is None:
+            return _error(
+                404, "NOT_FOUND", "Player not found"
+            )
+
+        # Delete all provider mappings.
+        for provider, provider_id in (
+            profile.auth_providers.items()
+        ):
+            asyncio.run(
+                provider_mapping_service.delete(
+                    provider, provider_id
+                )
+            )
+
+        # Delete anonymous device mapping if present.
+        if profile.device_id:
+            asyncio.run(
+                provider_mapping_service.delete(
+                    "anonymous", profile.device_id
+                )
+            )
+
+        # Delete match history.
+        _delete_match_history(player_id)
+
+        # Delete player profile.
+        asyncio.run(player_service.delete_player(player_id))
+
+        logger.info(f"Account deleted: {player_id}")
+
+        return {
+            "statusCode": 200,
+            "headers": _HEADERS,
+            "body": json.dumps(
+                {
+                    "status": "success",
+                    "message": "Account deleted",
+                }
+            ),
+        }
+
+    except Exception:
+        logger.exception("Delete account error")
+        return _error(
+            500, "INTERNAL_ERROR", "Internal server error"
+        )
+
+
+def _delete_match_history(player_id: str) -> None:
+    """Delete all match history entries for a player."""
+    dynamodb = boto3.resource("dynamodb")
+    table_name = os.environ.get(
+        "MATCH_HISTORY_TABLE", "hopnbop-match-history"
+    )
+    table = dynamodb.Table(table_name)
+
+    # Query all match entries for this player.
+    response = table.query(
+        KeyConditionExpression=(
+            boto3.dynamodb.conditions.Key("player_id").eq(
+                player_id
+            )
+        ),
+        ProjectionExpression=(
+            "player_id, match_timestamp"
+        ),
+    )
+
+    # Batch delete all items.
+    with table.batch_writer() as batch:
+        for item in response.get("Items", []):
+            batch.delete_item(
+                Key={
+                    "player_id": item["player_id"],
+                    "match_timestamp": item[
+                        "match_timestamp"
+                    ],
+                }
+            )
+
+        # Handle pagination.
+        while "LastEvaluatedKey" in response:
+            response = table.query(
+                KeyConditionExpression=(
+                    boto3.dynamodb.conditions.Key(
+                        "player_id"
+                    ).eq(player_id)
+                ),
+                ProjectionExpression=(
+                    "player_id, match_timestamp"
+                ),
+                ExclusiveStartKey=response[
+                    "LastEvaluatedKey"
+                ],
+            )
+            for item in response.get("Items", []):
+                batch.delete_item(
+                    Key={
+                        "player_id": item["player_id"],
+                        "match_timestamp": item[
+                            "match_timestamp"
+                        ],
+                    }
+                )
 
 
 def _error(

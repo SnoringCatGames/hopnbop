@@ -756,6 +756,259 @@ class TestUnlinkAccount:
 # =====================================================================
 
 
+# =====================================================================
+# DELETE /auth/account
+# =====================================================================
+
+
+class TestDeleteAccount:
+    def test_missing_auth_header_returns_401(self, aws_mock):
+        from handlers.auth_handler import delete_account
+
+        event = _make_event()
+        status, body = _parse_response(
+            delete_account(event, _CONTEXT)
+        )
+
+        assert status == 401
+        assert body["error_code"] == "UNAUTHORIZED"
+
+    def test_invalid_jwt_returns_401(self, aws_mock):
+        from handlers.auth_handler import delete_account
+
+        event = _make_event(
+            headers={"Authorization": "Bearer bad-token"}
+        )
+        status, body = _parse_response(
+            delete_account(event, _CONTEXT)
+        )
+
+        assert status == 401
+        assert body["error_code"] == "UNAUTHORIZED"
+
+    def test_nonexistent_player_returns_404(self, aws_mock):
+        from handlers.auth_handler import delete_account
+        from services.auth_service import AuthService
+
+        # Create a valid JWT for a player that doesn't exist
+        # in the database.
+        svc = AuthService(token_lifetime_hours=1)
+        token = svc.create_auth_token(
+            "p_doesnotexist", "Ghost", "steam"
+        )
+        jwt_str = token.to_jwt(svc.jwt_secret)
+
+        event = _make_event(
+            headers={"Authorization": f"Bearer {jwt_str}"}
+        )
+        status, body = _parse_response(
+            delete_account(event, _CONTEXT)
+        )
+
+        assert status == 404
+        assert body["error_code"] == "NOT_FOUND"
+
+    def test_delete_anonymous_account(self, aws_mock):
+        from handlers.auth_handler import (
+            delete_account,
+            anonymous_login,
+        )
+        from services.player_service import PlayerService
+        from services.provider_mapping_service import (
+            ProviderMappingService,
+        )
+
+        # Create anonymous player.
+        _, login_body = _parse_response(
+            anonymous_login(
+                _make_event(
+                    body={"device_id": "delete-anon-dev"}
+                ),
+                _CONTEXT,
+            )
+        )
+        player_id = login_body["player_id"]
+
+        # Delete account.
+        event = _make_event(
+            headers={
+                "Authorization": (
+                    f"Bearer {login_body['jwt_token']}"
+                )
+            }
+        )
+        status, body = _parse_response(
+            delete_account(event, _CONTEXT)
+        )
+
+        assert status == 200
+        assert body["status"] == "success"
+
+        # Verify player is gone.
+        ps = PlayerService()
+        profile = asyncio.run(ps.get_player(player_id))
+        assert profile is None
+
+        # Verify device mapping is gone.
+        pms = ProviderMappingService()
+        result = asyncio.run(
+            pms.lookup("anonymous", "delete-anon-dev")
+        )
+        assert result is None
+
+    def test_delete_linked_account(self, aws_mock):
+        from handlers.auth_handler import (
+            delete_account,
+            anonymous_login,
+            link_account,
+        )
+        from services.player_service import PlayerService
+        from services.provider_mapping_service import (
+            ProviderMappingService,
+        )
+
+        # Create anonymous player and link Google.
+        _, login_body = _parse_response(
+            anonymous_login(
+                _make_event(
+                    body={"device_id": "delete-linked-dev"}
+                ),
+                _CONTEXT,
+            )
+        )
+
+        mock_result = AuthResult(
+            provider="google",
+            provider_id="google_delete_test",
+            display_name="DeleteUser",
+        )
+
+        with patch(
+            "handlers.auth_handler.auth_service"
+        ) as mock_auth:
+            mock_auth.authenticate = AsyncMock(
+                return_value=mock_result
+            )
+            mock_auth.jwt_secret = TEST_JWT_SECRET
+
+            link_account(
+                _make_event(
+                    body={
+                        "provider": "google",
+                        "auth_code": "CODE",
+                    },
+                    headers={
+                        "Authorization": (
+                            "Bearer "
+                            f"{login_body['jwt_token']}"
+                        )
+                    },
+                ),
+                _CONTEXT,
+            )
+
+        player_id = login_body["player_id"]
+
+        # Delete account.
+        event = _make_event(
+            headers={
+                "Authorization": (
+                    f"Bearer {login_body['jwt_token']}"
+                )
+            }
+        )
+        status, body = _parse_response(
+            delete_account(event, _CONTEXT)
+        )
+
+        assert status == 200
+
+        # Verify player is gone.
+        ps = PlayerService()
+        assert asyncio.run(ps.get_player(player_id)) is None
+
+        # Verify both mappings are gone.
+        pms = ProviderMappingService()
+        assert (
+            asyncio.run(
+                pms.lookup("anonymous", "delete-linked-dev")
+            )
+            is None
+        )
+        assert (
+            asyncio.run(
+                pms.lookup("google", "google_delete_test")
+            )
+            is None
+        )
+
+    def test_delete_removes_match_history(self, aws_mock):
+        from handlers.auth_handler import (
+            delete_account,
+            anonymous_login,
+        )
+
+        import boto3
+
+        # Create anonymous player.
+        _, login_body = _parse_response(
+            anonymous_login(
+                _make_event(
+                    body={"device_id": "delete-history-dev"}
+                ),
+                _CONTEXT,
+            )
+        )
+        player_id = login_body["player_id"]
+
+        # Insert some match history directly.
+        table = boto3.resource("dynamodb").Table(
+            "hopnbop-match-history"
+        )
+        table.put_item(
+            Item={
+                "player_id": player_id,
+                "match_timestamp": 1000,
+                "result": "win",
+            }
+        )
+        table.put_item(
+            Item={
+                "player_id": player_id,
+                "match_timestamp": 2000,
+                "result": "loss",
+            }
+        )
+
+        # Delete account.
+        event = _make_event(
+            headers={
+                "Authorization": (
+                    f"Bearer {login_body['jwt_token']}"
+                )
+            }
+        )
+        status, _ = _parse_response(
+            delete_account(event, _CONTEXT)
+        )
+        assert status == 200
+
+        # Verify match history is gone.
+        response = table.query(
+            KeyConditionExpression=(
+                boto3.dynamodb.conditions.Key(
+                    "player_id"
+                ).eq(player_id)
+            )
+        )
+        assert len(response["Items"]) == 0
+
+
+# =====================================================================
+# linked_providers in auth responses
+# =====================================================================
+
+
 class TestLinkedProvidersInResponses:
     def test_login_includes_linked_providers(self, aws_mock):
         from handlers.auth_handler import login

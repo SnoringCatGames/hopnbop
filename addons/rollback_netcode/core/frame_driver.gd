@@ -50,6 +50,8 @@ extends Node
 
 # - Create an "anonymous" icon for the auth screen.
 
+# - Update Google Oauth (and facebook?) to have privacy and TOS links: https://console.cloud.google.com/auth/branding?authuser=2&project=hop-n-bop
+
 # ---
 
 # - Brave Player Name with multiple local players in Lobby.
