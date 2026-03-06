@@ -457,6 +457,123 @@ def link_account(
         )
 
 
+@tracer.capture_lambda_handler
+@logger.inject_lambda_context
+def unlink_account(
+    event: Dict[str, Any], context: LambdaContext
+) -> Dict:
+    """POST /auth/unlink - Unlink a provider from an account."""
+    try:
+        # Validate JWT from Authorization header.
+        auth_header = (
+            event.get("headers", {}).get("Authorization", "")
+            or event.get("headers", {}).get(
+                "authorization", ""
+            )
+        )
+        if not auth_header.startswith("Bearer "):
+            return _error(
+                401, "UNAUTHORIZED", "Missing auth token"
+            )
+
+        token_str = auth_header[7:]
+        try:
+            current_token = AuthToken.from_jwt(
+                token_str, auth_service.jwt_secret
+            )
+        except ValueError as e:
+            return _error(401, "UNAUTHORIZED", str(e))
+
+        body = json.loads(event.get("body", "{}"))
+        provider = body.get("provider", "")
+
+        if not provider:
+            return _error(
+                400,
+                "MISSING_PARAMS",
+                "Missing provider",
+            )
+
+        # Get current profile.
+        profile = asyncio.run(
+            player_service.get_player(
+                current_token.player_id
+            )
+        )
+        if profile is None:
+            return _error(
+                404, "NOT_FOUND", "Player not found"
+            )
+
+        # Check provider is actually linked.
+        if provider not in profile.auth_providers:
+            return _error(
+                400,
+                "NOT_LINKED",
+                "Provider is not linked to this account",
+            )
+
+        # Last-provider safety guard. Cannot unlink if
+        # this is the only auth method and the player has
+        # no device_id fallback.
+        provider_count = len(profile.auth_providers)
+        has_device_fallback = bool(profile.device_id)
+        if provider_count <= 1 and not has_device_fallback:
+            return _error(
+                409,
+                "LAST_PROVIDER",
+                "Cannot unlink the only auth provider",
+            )
+
+        # Remove provider mapping.
+        provider_id = profile.auth_providers[provider]
+        asyncio.run(
+            provider_mapping_service.delete(
+                provider, provider_id
+            )
+        )
+
+        # Remove provider from player profile.
+        asyncio.run(
+            player_service.remove_provider(
+                current_token.player_id, provider
+            )
+        )
+
+        # Fetch updated profile for linked_providers.
+        updated_profile = asyncio.run(
+            player_service.get_player(
+                current_token.player_id
+            )
+        )
+
+        logger.info(
+            f"Unlinked {provider} from "
+            f"{current_token.player_id}"
+        )
+
+        return {
+            "statusCode": 200,
+            "headers": _HEADERS,
+            "body": json.dumps(
+                {
+                    "status": "success",
+                    "message": "Provider unlinked",
+                    "provider": provider,
+                    "linked_providers": list(
+                        updated_profile.auth_providers.keys()
+                    ) if updated_profile else [],
+                }
+            ),
+        }
+
+    except Exception:
+        logger.exception("Unlink account error")
+        return _error(
+            500, "INTERNAL_ERROR", "Internal server error"
+        )
+
+
 def _error(
     status_code: int, error_code: str, message: str
 ) -> Dict:

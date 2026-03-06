@@ -32,11 +32,11 @@ hopnbop.net (purchased).
 │  ┌─────────────────────────────────────────────────────┐  │
 │  │              API Gateway (HTTPS)                    │  │
 │  │  POST /auth/login     POST /matchmaking/start       │  │
-│  │  POST /auth/refresh   GET  /matchmaking/status/:id  │  │
-│  │  POST /auth/link      GET  /player/profile          │  │
-│  │  POST /auth/anon      PUT  /player/settings         │  │
-│  │  GET  /player/export  GET  /leaderboard             │  │
-│  │  GET  /friends        POST /friends/add             │  │
+│  │  POST /auth/anon      GET  /matchmaking/status/:id  │  │
+│  │  POST /auth/refresh   GET  /player/profile          │  │
+│  │  POST /auth/link      PUT  /player/settings         │  │
+│  │  POST /auth/unlink    GET  /leaderboard             │  │
+│  │  GET  /player/export  POST /friends/add             │  │
 │  │  DELETE /player       POST /friends/remove          │  │
 │  └──────────────┬──────────────────────────────────────┘  │
 │                 ▼                                         │
@@ -89,7 +89,7 @@ hopnbop.net (purchased).
 | 4 | Web transport | WebSocket first, architect for swappability |
 | 5 | AWS region | us-west-2 (Oregon), single region to start |
 | 6 | Scale | 10-50 concurrent at launch |
-| 7 | OAuth providers | Steam, Epic, Google, Apple, Discord, Twitch |
+| 7 | OAuth providers | Web: Google + Facebook. Platform: Steam, Epic, Apple, Android |
 | 8 | Token refresh | Yes, refresh tokens for better UX |
 | 9 | Age rating | 13+ only |
 | 10 | Offline mode | Local multiplayer (couch co-op), not solo |
@@ -128,7 +128,7 @@ hopnbop.net (purchased).
 
 ## Milestones
 
-### M1: AWS Account & Infrastructure Foundation
+### M1: AWS Account & Infrastructure Foundation ✅
 
 **Goal**: Set up AWS account and base infrastructure so all
 subsequent milestones can build on it.
@@ -163,70 +163,807 @@ endpoint is live).
 
 ---
 
-### M2: Complete Auth Flow
+### M2: Complete Auth Flow ✅
 
 **Goal**: End-to-end authentication from client through backend,
-all 6 OAuth providers + anonymous + refresh tokens.
+OAuth providers + anonymous + refresh tokens + account
+linking/unlinking.
 
-**What's included**:
+**Status**: Complete. 67 backend tests passing.
 
-*Backend changes*:
-- Add Google, Apple, Discord, Twitch to auth_service.py
-- Add anonymous auth endpoint (POST /auth/anon) that generates
-  device-based player ID and issues limited JWT
-- Add refresh token endpoint (POST /auth/refresh)
-- Add account linking endpoint (POST /auth/link) to upgrade
-  anonymous → authed or add providers to existing account
-- Store refresh tokens in DynamoDB Players table
-- Migrate secrets from SAM parameters to Secrets Manager
-- Add version check field to login response
+**What was built**:
 
-*Client changes*:
-- Auth screen UI (provider selection buttons, anonymous play option)
-- Token storage (local file, encrypted)
-- Token refresh logic (auto-refresh before expiry)
-- Version check on auth response (force update if mismatch)
-- Settings flag for cached auth (support start_in_game with
-  stored token)
-- Loading screen status updates during auth flow
+*Backend (auth_handler.py, auth_service.py)*:
+- POST /auth/login. OAuth login (Steam, Epic, Google, Facebook,
+  Apple, Discord, Twitch). Issues JWT + refresh token.
+- POST /auth/anon. Anonymous login via device ID. Issues JWT
+  with is_anonymous flag.
+- POST /auth/refresh. Token rotation (old refresh token
+  invalidated).
+- POST /auth/link. Link additional OAuth provider to existing
+  account. Detects conflicts (provider already linked to
+  different player).
+- POST /auth/unlink. Unlink provider with last-provider safety
+  guard (blocks if only auth method and no device_id fallback).
+- All responses include linked_providers list.
 
-*New API endpoints*:
-- POST /auth/anon — Generate anonymous player ID
-- POST /auth/refresh — Refresh expired token
-- POST /auth/link — Link provider to existing account
-- GET /auth/version — Return required client version
+*Client (auth_client.gd)*:
+- Three OAuth flows:
+  - Desktop loopback: local TCP server on port 9876 captures
+    browser redirect.
+  - Web popup: Opens popup window, static oauth-callback.html
+    sends code via postMessage. No backend polling needed.
+  - Platform: Steam/Epic provide tokens via their SDK.
+- Auth screen: auto-login on implied-auth platforms (Steam,
+  Epic). Shows Google + Facebook + Anonymous on web/desktop.
+- Token storage: encrypted local config with linked_providers.
+- Auto-refresh: background refresh before token expiry.
+- Version mismatch detection from login response.
+- Account linking/unlinking from settings panel
+  (LinkAccountRow).
 
-**Key files to modify**:
-- `backend/src/handlers/auth_handler.py` — Add endpoints
-- `backend/src/services/auth_service.py` — Add 4 providers
-- `backend/template.yaml` — Add Lambda functions, secrets refs
-- `src/core/settings.gd` — Add auth-related settings
-- `src/ui/screens/` — New auth screen scene
-- `src/core/game_session_manager.gd` — Integrate auth before
-  matchmaking
-- `src/ui/screens/loading_screen.gd` — Status messages
+*OAuth provider decisions*:
+- Web/desktop explicit auth: Google + Facebook (best audience
+  coverage).
+- Platform implied auth: Steam, Epic, Apple, Android (SDK
+  provides token, no browser flow needed).
+- Account linking: any platform player can link Google/Facebook
+  as a cross-platform identity bridge.
 
-**OAuth provider setup** (manual steps for each):
-- **Google**: Create project in Google Cloud Console, enable
-  OAuth2, create credentials, note client ID/secret
-- **Apple**: Apple Developer account ($99/yr), create App ID,
-  enable Sign In with Apple, create Services ID, generate key
-- **Discord**: Create application at discord.com/developers,
-  add OAuth2 redirect, note client ID/secret
-- **Twitch**: Create application at dev.twitch.tv, add OAuth2
-  redirect, note client ID/secret
-- **Steam**: Already have Steam Web API key (existing code)
-- **Epic**: Need Epic Games developer account
+*Key files*:
+- `backend/src/handlers/auth_handler.py`. All auth endpoints.
+- `backend/src/services/auth_service.py`. Provider-specific
+  token exchange.
+- `backend/src/services/player_service.py`. Player profiles,
+  refresh tokens.
+- `backend/src/services/provider_mapping_service.py`. Provider
+  ID to player ID mapping.
+- `src/core/auth_client.gd`. All client OAuth flows.
+- `src/core/auth_token_store.gd`. Encrypted token persistence.
+- `src/ui/screens/auth_screen.gd`. Auth UI.
+- `src/ui/settings_panel/link_account_row.gd`. Link/unlink UI.
+- `web/oauth/callback/index.html`. Static callback for popup
+  OAuth (deployed to `hopnbop.net/oauth/callback/`).
 
-**Testing**:
-- Unit tests for each provider's token validation
-- Integration test: client → auth → receive JWT → connect to
-  server with JWT
-- Test anonymous flow: play without auth, get device ID
-- Test account linking: anonymous → link Google → verify stats
-  preserved
-- Test refresh: let token expire, verify auto-refresh works
-- Test version mismatch: server returns "update required"
+**Remaining manual steps**:
+- Configure Google OAuth (see setup guide below)
+- Configure Facebook OAuth (see setup guide below)
+- Store client secrets in Secrets Manager
+- Set client IDs in `settings.tres`
+- Test real end-to-end OAuth flows
+
+---
+
+#### Google OAuth Setup (Manual Steps)
+
+1. Go to Google Cloud Console (console.cloud.google.com)
+2. Create a new project (or select existing):
+   - Project name: "Hop n Bop"
+3. Enable the Google Identity API:
+   - APIs & Services > Library
+   - Search "Google Identity" or navigate to "Google Identity
+     Toolkit API"
+   - Click Enable
+4. Configure the OAuth consent screen:
+   - APIs & Services > OAuth consent screen
+   - User type: External
+   - App name: "Hop 'n Bop"
+   - User support email: your email
+   - Developer contact: your email
+   - Scopes: add `openid`, `profile`, `email`
+   - Test users: add your own Google account for testing
+   - Save
+5. Create OAuth 2.0 credentials:
+   - APIs & Services > Credentials > Create Credentials >
+     OAuth client ID
+   - Application type: **Web application**
+   - Name: "Hop n Bop Web Client"
+   - Authorized redirect URIs. Add all of these:
+     - `https://hopnbop.net/oauth/callback/` (web popup)
+     - `http://127.0.0.1:9876` (desktop loopback)
+   - Click Create
+   - Note the **Client ID** and **Client Secret**
+6. Store in AWS Secrets Manager:
+   ```
+   aws secretsmanager update-secret \
+     --secret-id hopnbop/oauth/google \
+     --secret-string '{"client_id":"YOUR_ID.apps.googleusercontent.com","client_secret":"YOUR_SECRET"}' \
+     --region us-west-2 --profile hopnbop
+   ```
+7. Set client ID in Godot:
+   - Open `settings.tres` in the Godot inspector
+   - Set `google_oauth_client_id` to the Client ID from step 5
+8. Publish the OAuth consent screen:
+   - Go back to OAuth consent screen
+   - Click "Publish App" to move from Testing to Production
+   - Google may require verification if you request sensitive
+     scopes (openid/profile/email are not sensitive, so this
+     should be immediate)
+
+**Testing**: Click the Google button in the auth screen. A
+browser window (desktop) or popup (web) should open to
+accounts.google.com. After signing in, the redirect should
+return a code that the client sends to /auth/login. Verify
+the response includes a valid JWT and the player's Google
+display name.
+
+---
+
+#### Facebook OAuth Setup (Manual Steps)
+
+1. Go to Facebook for Developers
+   (developers.facebook.com)
+2. Create a new app:
+   - Click "Create App"
+   - Use case: "Authenticate and request data from users
+     with Facebook Login"
+   - App type: Consumer
+   - App name: "Hop n Bop"
+   - Create
+3. Set up Facebook Login:
+   - In the app dashboard, find "Facebook Login" product
+   - Click "Set Up"
+   - Choose "Web"
+   - Site URL: `https://hopnbop.net`
+   - Save
+4. Configure OAuth settings:
+   - Facebook Login > Settings
+   - Valid OAuth Redirect URIs. Add both:
+     - `https://hopnbop.net/oauth/callback/`
+     - `http://127.0.0.1:9876`
+   - Client OAuth login: Yes
+   - Web OAuth login: Yes
+   - Save Changes
+5. Note your credentials:
+   - App Dashboard > Settings > Basic
+   - Note the **App ID** (this is the client ID) and
+     **App Secret** (this is the client secret)
+6. Store in AWS Secrets Manager:
+   ```
+   aws secretsmanager update-secret \
+     --secret-id hopnbop/oauth/facebook \
+     --secret-string '{"client_id":"YOUR_APP_ID","client_secret":"YOUR_APP_SECRET"}' \
+     --region us-west-2 --profile hopnbop
+   ```
+7. Set client ID in Godot:
+   - Open `settings.tres` in the Godot inspector
+   - Set `facebook_oauth_client_id` to the App ID from step 5
+8. Switch app to Live mode:
+   - App Dashboard > top toggle: switch from "Development" to
+     "Live"
+   - Facebook may require you to complete a Data Use Checkup
+     and provide a Privacy Policy URL
+     (`https://hopnbop.net/privacy`) before going live
+   - Only `public_profile` permission is needed (no app
+     review required for this default permission)
+
+**Testing**: Click the Facebook button in the auth screen. A
+browser window (desktop) or popup (web) should open to
+facebook.com. After signing in, the redirect should return a
+code that the client sends to /auth/login. The backend
+exchanges this via the Graph API v19.0 for an access token,
+fetches /me for the user's name and ID, and returns a JWT.
+
+---
+
+#### hopnbop.net Web Hosting Setup (Manual Steps)
+
+The site needs to be live before OAuth works (redirect URIs
+point to `hopnbop.net/oauth/callback/`). This is also where
+the web build, legal pages, and press kit will live.
+
+**Part A: Domain & Certificate**
+
+1. Register or transfer `hopnbop.net` to Route 53:
+   - If purchased elsewhere (e.g., Namecheap, Google Domains):
+     Route 53 > Hosted Zones > Create hosted zone for
+     `hopnbop.net`. Copy the 4 NS records. Update your
+     registrar's nameservers to these Route 53 NS records.
+     Allow 24-48 hours for DNS propagation.
+   - If purchasing new: Route 53 > Registered Domains >
+     Register. Route 53 auto-creates the hosted zone.
+2. Request an ACM SSL certificate:
+   - **Important**: Switch to `us-east-1` region in the AWS
+     Console. CloudFront requires certificates in us-east-1.
+   - ACM > Request a public certificate
+   - Domain names: `hopnbop.net` and `*.hopnbop.net`
+   - Validation method: DNS
+   - Click "Create records in Route 53" to auto-add the
+     CNAME validation records
+   - Wait for status to change to "Issued" (usually 5-30
+     minutes)
+
+**Part B: S3 Bucket**
+
+3. Create the S3 bucket:
+   ```
+   aws s3 mb s3://hopnbop-website --region us-west-2 \
+     --profile hopnbop
+   ```
+   - Do NOT enable "Static website hosting" on the bucket
+     (CloudFront will use OAC instead, which is more secure)
+   - Block all public access (default). CloudFront will be
+     the only way to reach the content.
+
+**Part C: CloudFront Distribution**
+
+4. Create a CloudFront distribution:
+   - CloudFront > Create distribution
+   - Origin domain: select the S3 bucket
+     (`hopnbop-website.s3.us-west-2.amazonaws.com`)
+   - Origin access: Origin Access Control (OAC). Create a
+     new OAC with S3 origin type.
+   - Viewer protocol policy: Redirect HTTP to HTTPS
+   - Allowed HTTP methods: GET, HEAD
+   - Cache policy: CachingOptimized (recommended)
+   - Alternate domain names (CNAMEs): `hopnbop.net` and
+     `www.hopnbop.net`
+   - Custom SSL certificate: select the ACM certificate
+     from step 2
+   - Default root object: `index.html`
+   - Error pages: Create custom error response for 403 →
+     `/index.html` with 200 status (for SPA routing, if
+     needed)
+   - Create distribution. Note the distribution domain
+     (e.g., `d1234abcdef.cloudfront.net`)
+5. Update S3 bucket policy to allow CloudFront OAC:
+   - After creating the distribution, CloudFront shows a
+     banner: "Copy policy". Copy the JSON and apply it:
+   ```
+   aws s3api put-bucket-policy \
+     --bucket hopnbop-website \
+     --policy file://cloudfront-bucket-policy.json \
+     --profile hopnbop
+   ```
+   Or paste it in the S3 Console under Permissions > Bucket
+   policy.
+
+**Part D: DNS Records**
+
+6. Create Route 53 DNS records:
+   - Route 53 > Hosted Zones > hopnbop.net
+   - Create record: Name = (blank for apex), Type = A,
+     Alias = Yes, Route traffic to CloudFront distribution
+   - Create record: Name = `www`, Type = A, Alias = Yes,
+     Route traffic to same CloudFront distribution
+   - Optionally create AAAA records (same config) for IPv6
+
+**Part E: Deploy Initial Content**
+
+7. Upload the OAuth callback page:
+   ```
+   aws s3 cp web/oauth/callback/index.html \
+     s3://hopnbop-website/oauth/callback/index.html \
+     --content-type "text/html" \
+     --profile hopnbop
+   ```
+8. Create a placeholder index.html:
+   ```
+   aws s3 cp web/index.html \
+     s3://hopnbop-website/index.html \
+     --content-type "text/html" \
+     --profile hopnbop
+   ```
+   (Create a simple landing page or "Coming Soon" page in
+   `web/index.html` first.)
+9. Invalidate CloudFront cache (do this after every deploy):
+   ```
+   aws cloudfront create-invalidation \
+     --distribution-id YOUR_DIST_ID \
+     --paths "/*" \
+     --profile hopnbop
+   ```
+
+**Part F: Verify**
+
+10. Browse to `https://hopnbop.net`. Verify HTTPS works and
+    the page loads.
+11. Browse to `https://hopnbop.net/oauth/callback/?code=test`.
+    Verify the callback page loads and shows the hourglass
+    then "No authorization code received" (since `code=test`
+    is not empty, it should show the success message with no
+    opener).
+12. Set up Google and Facebook OAuth redirect URIs pointing
+    to `https://hopnbop.net/oauth/callback/` (see setup
+    guides above).
+
+**Ongoing deployment**: Upload files with `aws s3 sync`,
+then invalidate CloudFront. This will be automated in
+M13 (CI/CD).
+
+**Files in the `web/` directory**:
+- `web/oauth/callback/index.html`. OAuth redirect page
+  (already created).
+- `web/index.html`. Landing page (to be created).
+- Future: `web/play/`. Godot web export files.
+- Future: `web/privacy/index.html`. Privacy policy.
+- Future: `web/terms/index.html`. Terms of service.
+- Future: `web/data-deletion/index.html`. Data deletion
+  policy.
+
+---
+
+#### Steam Integration & Deployment (Manual Steps)
+
+**Part A: Steamworks Setup**
+
+1. Create a Steamworks developer account:
+   - Go to partner.steamgames.com
+   - Sign up with your Steam account
+   - Pay the $100 app credit fee (refunded after $1000 revenue,
+     but this is a free game so it won't be refunded)
+   - Complete tax and banking information for Snoring Cat LLC
+2. Create a new app:
+   - Steamworks > Create New App
+   - App name: "Hop 'n Bop"
+   - Note the **App ID** (e.g. 1234560)
+3. Get your Steam Web API Key:
+   - steamcommunity.com/dev/apikey
+   - Domain: hopnbop.net
+   - Note the **Web API Key**
+4. Store credentials:
+   ```
+   aws secretsmanager update-secret \
+     --secret-id hopnbop/oauth/steam \
+     --secret-string '{"api_key":"YOUR_WEB_API_KEY"}' \
+     --region us-west-2 --profile hopnbop
+   ```
+   Also set the `STEAM_APP_ID` parameter when deploying:
+   ```
+   sam deploy --parameter-overrides SteamAppID=1234560
+   ```
+
+**Part B: Auth Integration (Client)**
+
+5. Install the GodotSteam GDExtension:
+   - Download from godotsteam.com (match your Godot version)
+   - Place the addon in `addons/godotsteam/`
+   - Enable in Project Settings > Plugins
+6. Initialize Steam SDK on startup:
+   ```gdscript
+   # In an autoload or _ready of a boot scene.
+   var is_init := Steam.steamInitEx(false, YOUR_APP_ID)
+   if is_init.status != Steam.STEAM_API_INIT_STATUS_OK:
+       push_error("Steam init failed: %s" % is_init.verbal)
+   ```
+7. Auth flow. When the auth screen detects the Steam
+   platform (via `OS.has_feature("steam")`), it calls
+   `AuthClient.login_with_provider(Provider.STEAM)` which
+   triggers `submit_platform_token`. The client gets a
+   session ticket:
+   ```gdscript
+   var auth_ticket: Dictionary = (
+       Steam.getAuthSessionTicket(Steam.networking_identities)
+   )
+   var ticket_hex: String = (
+       auth_ticket.buffer.hex_encode()
+   )
+   G.auth_client.submit_platform_token(
+       AuthClient.Provider.STEAM, ticket_hex
+   )
+   ```
+8. Backend validation. The `_auth_steam()` method in
+   `auth_service.py` calls the Steam Web API
+   `ISteamUserAuth/AuthenticateUserTicket` to validate
+   the ticket and get the player's Steam ID. Then it
+   fetches `ISteamUser/GetPlayerSummaries` for the
+   display name.
+
+**Part C: Store Deployment**
+
+9. Configure store page:
+   - Steamworks > App Admin > Store Page
+   - Upload capsule images (header: 460x215, hero: 3840x1240,
+     capsule: 231x87, library: 600x900)
+   - Upload screenshots (minimum 5, 1920x1080 recommended)
+   - Write short description (< 300 chars) and full description
+   - Set genres: Action, Indie, Multiplayer
+   - Set tags: Platformer, Local Multiplayer, Online Multiplayer
+   - Set supported languages
+   - Age rating: select "13+" or get IARC rating
+10. Configure build depots:
+    - Steamworks > App Admin > SteamPipe > Depots
+    - Create depot for Windows (default)
+    - Optionally create depots for Linux and macOS
+11. Upload builds using steamcmd:
+    ```
+    steamcmd +login YOUR_USERNAME \
+      +run_app_build app_build_1234560.vdf +quit
+    ```
+    Or use the Steamworks Upload tool (GUI).
+    The `app_build_*.vdf` file defines which local folder
+    maps to which depot.
+12. Set the build live:
+    - Steamworks > App Admin > SteamPipe > Builds
+    - Set the uploaded build as the default branch
+13. Submit for review:
+    - Steamworks > App Admin > Release > Request Review
+    - Steam review typically takes 2-5 business days
+    - Common rejection reasons: missing screenshots, broken
+      links, incomplete store page
+
+**Testing**: Launch the game through Steam. Verify GodotSteam
+initializes, the auth screen auto-logs in with Steam, and the
+backend validates the session ticket. Verify the Steam overlay
+works (Shift+Tab).
+
+---
+
+#### Epic Games Integration & Deployment (Manual Steps)
+
+**Part A: Epic Developer Portal Setup**
+
+1. Create an Epic Games developer account:
+   - Go to dev.epicgames.com
+   - Sign up (free)
+   - Create an organization for Snoring Cat LLC
+2. Create a new product:
+   - Developer Portal > Products > Create Product
+   - Product name: "Hop 'n Bop"
+3. Create an application (client):
+   - Product Settings > Clients > Add New Client
+   - Client policy: GameClient
+   - Note the **Client ID**, **Client Secret**, and
+     **Deployment ID**
+4. Configure Epic Account Services:
+   - Product Settings > Epic Account Services
+   - Create a new application
+   - Permissions: Basic Profile (no email needed)
+   - Linked clients: link the client from step 3
+   - Brand settings: app name, icon
+5. Store credentials:
+   ```
+   aws secretsmanager update-secret \
+     --secret-id hopnbop/oauth/epic \
+     --secret-string '{"client_id":"YOUR_CLIENT_ID","client_secret":"YOUR_SECRET","deployment_id":"YOUR_DEPLOY_ID"}' \
+     --region us-west-2 --profile hopnbop
+   ```
+
+**Part B: Auth Integration (Client)**
+
+6. Install the Epic Online Services (EOS) GDExtension:
+   - Use the community EOS plugin for Godot (e.g.,
+     3ddelano/epic-online-services-godot) or build a
+     minimal GDExtension wrapping the EOS SDK
+   - Place in `addons/eos/`
+7. Initialize EOS on startup:
+   ```gdscript
+   EOS.Platform.create({
+       "client_id": "YOUR_CLIENT_ID",
+       "client_secret": "YOUR_SECRET",
+       "product_id": "YOUR_PRODUCT_ID",
+       "sandbox_id": "YOUR_SANDBOX_ID",
+       "deployment_id": "YOUR_DEPLOYMENT_ID",
+   })
+   ```
+8. Auth flow. When Epic is detected, the client uses
+   the EOS Auth Interface to get an access token:
+   ```gdscript
+   # Login with Epic Account Portal.
+   EOS.Auth.login({
+       "type": EOS.Auth.LOGIN_EPIC_ACCOUNT_PORTAL,
+   })
+   # On success callback:
+   var token: String = EOS.Auth.copy_user_auth_token()
+   G.auth_client.submit_platform_token(
+       AuthClient.Provider.EPIC, token
+   )
+   ```
+9. Backend validation. The `_auth_epic()` method in
+   `auth_service.py` validates the token by calling the
+   Epic account API
+   (`api.epicgames.dev/epic/oauth/v2/tokenInfo`)
+   and fetches the user's display name.
+
+**Part C: Store Deployment**
+
+10. Submit to Epic Games Store:
+    - Developer Portal > Your Product > Store Settings
+    - Upload store assets (key art: 2560x1440, offer images,
+      screenshots)
+    - Write description, set genres, age rating
+    - Upload builds via BuildPatchTool:
+      ```
+      BuildPatchTool.exe -mode=UploadBinary \
+        -OrganizationId=YOUR_ORG \
+        -ProductId=YOUR_PRODUCT \
+        -ArtifactId=YOUR_ARTIFACT \
+        -BuildRoot="path/to/build" \
+        -CloudDir="path/to/cloud/cache" \
+        -BuildVersion="0.1.0" \
+        -AppLaunch="HopnBop.exe" \
+        -AppArgs=""
+      ```
+11. Submit for review:
+    - Epic review can take 1-2 weeks
+    - Free games are accepted (Epic takes 0% revenue for
+      games using Unreal, 12% for others. Since Godot is not
+      Unreal, standard 12% of $0 = $0)
+
+**Testing**: Launch the game via the Epic Games Launcher
+or directly with EOS initialized. Verify the EOS login
+portal appears, the auth screen auto-logs in with Epic,
+and the backend validates the token.
+
+---
+
+#### Android Integration & Deployment (Manual Steps)
+
+**Part A: Google Play Console Setup**
+
+1. Create a Google Play Developer account:
+   - Go to play.google.com/console
+   - Pay the $25 one-time registration fee
+   - Complete identity verification for Snoring Cat LLC
+2. Create a new app:
+   - Google Play Console > Create app
+   - App name: "Hop 'n Bop"
+   - Free app, Game category
+   - Accept policies
+3. Set up Google Play Games Services:
+   - Play Console > Play Games Services > Setup
+   - Create a new game project (or link existing Google
+     Cloud project from Google OAuth setup)
+   - Add your app's package name
+   - Note the **Games Services Project ID**
+4. Create OAuth credentials for Android:
+   - Google Cloud Console > APIs & Services > Credentials
+   - Create OAuth client ID > Application type: Android
+   - Package name: `com.snoringcat.hopnbop`
+   - SHA-1 fingerprint: get from your signing keystore:
+     ```
+     keytool -list -v -keystore your-key.jks \
+       -alias your-alias
+     ```
+   - Note the **Client ID** (this is different from the web
+     client ID)
+5. Link Play Games Services:
+   - Play Console > Play Games Services > Configuration
+   - Add the Android OAuth client from step 4
+   - Publish the Play Games Services configuration
+
+**Part B: Auth Integration (Client)**
+
+6. Android auth uses Google Play Games Services sign-in,
+   which provides a server auth code. The Godot Android
+   export includes a plugin for this:
+   - Use a GDScript Android plugin or
+     `JavaScriptBridge`-style JNI calls to invoke the Play
+     Games sign-in flow
+   - On sign-in success, get the server auth code:
+   ```gdscript
+   # After Play Games sign-in completes:
+   var server_auth_code: String = (
+       PlayGames.get_server_auth_code()
+   )
+   G.auth_client.submit_platform_token(
+       AuthClient.Provider.GOOGLE, server_auth_code
+   )
+   ```
+   - The backend's existing `_auth_google()` method handles
+     this. The server auth code is exchanged via Google's
+     token endpoint just like a web OAuth code.
+7. No separate backend provider needed. Android uses the
+   same `google` provider as web OAuth. The only difference
+   is the client ID (Android vs web) and the redirect_uri
+   (empty for Android server auth codes).
+
+**Part C: Store Deployment**
+
+8. Prepare store listing:
+   - Play Console > Your App > Store Listing
+   - Upload screenshots (phone: 1080x1920 min, tablet:
+     1920x1200, Chromebook optional)
+   - Upload feature graphic (1024x500)
+   - Upload app icon (512x512)
+   - Short description (80 chars), full description (4000 chars)
+   - Content rating: complete IARC questionnaire (free)
+   - Set target audience: 13+ (avoid Under 13 to skip COPPA)
+9. Complete Data Safety section:
+   - Play Console > App Content > Data Safety
+   - Declare: Account info (name, user ID), gameplay data
+   - Purpose: App functionality, analytics
+   - Data shared: No data shared with third parties
+   - Data encrypted in transit: Yes
+   - Data deletion: Yes (via in-game account deletion)
+10. Configure app signing:
+    - Play Console > Setup > App Signing
+    - Use Google-managed signing (recommended) or upload your
+      own key
+    - Keep your upload key safe. Losing it means you need to
+      contact Google support.
+11. Build and upload APK/AAB:
+    - In Godot: Project > Export > Android
+    - Export as AAB (Android App Bundle, required by Play Store)
+    - Upload via Play Console > Release > Production > Create
+      new release
+    - Or use the Google Play Developer API for CI automation
+12. Submit for review:
+    - Play Console > Release > Production > Start rollout
+    - Google review typically takes 1-3 days for new apps
+    - First submission may take longer (up to 7 days)
+    - Common rejection reasons: missing privacy policy link,
+      incomplete data safety form, permissions not justified
+
+**Testing**: Build Android export, install on a physical device
+or emulator. Verify Play Games sign-in triggers automatically,
+the auth screen auto-logs in, and the backend validates the
+Google server auth code. Test both WiFi and mobile data
+connectivity. Verify 60 FPS network tick is sustainable on
+target devices.
+
+---
+
+#### iOS / Apple Integration & Deployment (Manual Steps)
+
+**Part A: Apple Developer Setup**
+
+1. Enroll in the Apple Developer Program:
+   - Go to developer.apple.com
+   - Enroll as an organization (Snoring Cat LLC)
+   - Cost: $99/year
+   - Requires a D-U-N-S number for your LLC (free from Dun &
+     Bradstreet, takes 1-2 weeks if you don't have one)
+2. Create an App ID:
+   - Certificates, Identifiers & Profiles > Identifiers
+   - Register a new App ID
+   - Platform: iOS
+   - Bundle ID: `com.snoringcat.hopnbop`
+   - Capabilities: enable **Sign In with Apple** and
+     **Game Center**
+3. Create a Services ID (for web Sign In with Apple, if
+   needed for account linking):
+   - Identifiers > Services IDs
+   - Identifier: `com.snoringcat.hopnbop.auth`
+   - Enable Sign In with Apple
+   - Configure: add domains (`hopnbop.net`) and return URLs
+     (`https://hopnbop.net/oauth/callback/`,
+     `http://127.0.0.1:9876`)
+4. Create a Sign In with Apple private key:
+   - Certificates, Identifiers & Profiles > Keys
+   - Create a new key, enable Sign In with Apple
+   - Download the `.p8` key file (you can only download
+     it once)
+   - Note the **Key ID** and your **Team ID** (from the
+     top-right of the developer portal)
+5. Store credentials:
+   ```
+   aws secretsmanager update-secret \
+     --secret-id hopnbop/oauth/apple \
+     --secret-string '{"team_id":"YOUR_TEAM_ID","key_id":"YOUR_KEY_ID","client_id":"com.snoringcat.hopnbop.auth","private_key":"-----BEGIN PRIVATE KEY-----\nYOUR_KEY_CONTENTS\n-----END PRIVATE KEY-----"}' \
+     --region us-west-2 --profile hopnbop
+   ```
+
+**Part B: Auth Integration (Client)**
+
+6. iOS auth uses Game Center or Sign In with Apple. Game
+   Center is simpler for games (automatic sign-in, no
+   browser needed):
+   - Game Center: The player is already signed in at the
+     OS level. The game requests a Game Center identity
+     token on launch.
+   ```gdscript
+   # Using Godot's GameCenter singleton (iOS only):
+   # Request identity verification signature.
+   var result := GameCenter.request_identity_verification()
+   # result contains: signature, salt, timestamp, player_id
+   # Send to backend as the auth token.
+   var token_payload := JSON.stringify({
+       "player_id": result.player_id,
+       "signature": result.signature,
+       "salt": result.salt,
+       "timestamp": result.timestamp,
+       "bundle_id": "com.snoringcat.hopnbop",
+       "public_key_url": result.public_key_url,
+   })
+   G.auth_client.submit_platform_token(
+       AuthClient.Provider.APPLE, token_payload
+   )
+   ```
+7. Backend validation. The `_auth_apple()` method in
+   `auth_service.py` validates the Game Center identity
+   token by:
+   - Fetching Apple's public key from the `public_key_url`
+   - Verifying the signature over the concatenated
+     player_id + bundle_id + timestamp + salt
+   - Returning the Game Center player_id as the provider_id
+   Note: If using Sign In with Apple (web flow) instead of
+   Game Center, the backend exchanges an authorization code
+   via Apple's token endpoint, similar to Google OAuth.
+
+**Part C: Store Deployment**
+
+8. Create the app in App Store Connect:
+   - Go to appstoreconnect.apple.com
+   - My Apps > "+" > New App
+   - Platform: iOS
+   - Name: "Hop 'n Bop"
+   - Bundle ID: select `com.snoringcat.hopnbop`
+   - SKU: `hopnbop`
+   - Primary language: English
+9. Configure App Privacy:
+   - App Store Connect > App > App Privacy
+   - Data types collected:
+     - Contact Info: Name (from OAuth display name)
+     - Identifiers: User ID (player_id)
+     - Usage Data: Gameplay data (match stats)
+   - For each: Not linked to identity, Not used for tracking
+   - Purposes: App Functionality
+10. Prepare store listing:
+    - Screenshots required for each supported device size:
+      - iPhone 6.7" (1290x2796) — required
+      - iPhone 6.5" (1284x2778)
+      - iPad Pro 12.9" (2048x2732) — if supporting iPad
+    - App icon: 1024x1024 (no transparency, no rounded corners)
+    - Promotional text (170 chars), description (4000 chars)
+    - Keywords (100 chars, comma-separated)
+    - Category: Games > Action
+    - Age rating: complete the questionnaire (result: 12+
+      or 17+ depending on answers about violence)
+11. Build and upload:
+    - Requires a Mac with Xcode
+    - In Godot: Project > Export > iOS
+    - Open the generated Xcode project
+    - Set signing team to Snoring Cat LLC
+    - Archive: Product > Archive
+    - Upload to App Store Connect via Xcode Organizer
+    - Or use `xcodebuild` + `altool` for CI:
+      ```
+      xcodebuild -project HopnBop.xcodeproj \
+        -scheme HopnBop -archivePath build/HopnBop.xcarchive \
+        archive
+      xcodebuild -exportArchive \
+        -archivePath build/HopnBop.xcarchive \
+        -exportOptionsPlist ExportOptions.plist \
+        -exportPath build/ipa
+      xcrun altool --upload-app \
+        -f build/ipa/HopnBop.ipa \
+        -t ios -u "apple-id@email.com" -p "app-specific-pwd"
+      ```
+12. Submit for review:
+    - App Store Connect > Your App > Submit for Review
+    - Apple review takes 1-7 days (typically 24-48 hours)
+    - **Common rejection reasons**:
+      - Missing privacy policy URL
+      - Sign In with Apple required if you offer other
+        third-party sign-in (Google/Facebook). Since the
+        game uses Game Center on iOS, this may not apply.
+        But if you show Google/Facebook buttons on iOS,
+        you MUST also offer Sign In with Apple.
+      - Crashes on launch (test on real devices)
+      - Incomplete metadata or placeholder content
+      - IPv6 compatibility issues (test on IPv6-only network)
+    - If rejected, read the rejection notes carefully,
+      fix the issues, and resubmit. You can reply to the
+      reviewer via Resolution Center.
+13. TestFlight (pre-release testing):
+    - Before submitting for production review, upload a
+      build and distribute via TestFlight
+    - Internal testers (up to 25): instant access, no review
+    - External testers (up to 10,000): requires brief beta
+      review (usually < 24 hours)
+    - Use TestFlight for beta testing before each release
+
+**Important Apple-specific requirements**:
+- **Sign In with Apple mandate**: If the iOS app offers
+  Google or Facebook login, Apple requires Sign In with
+  Apple as an option. On iOS, using Game Center as the
+  primary auth method (with no visible third-party login
+  buttons) avoids this requirement. Show the
+  Google/Facebook linking buttons only in the settings
+  panel, not on the login screen.
+- **App Transport Security**: All network requests must use
+  HTTPS. The backend API already uses HTTPS via API Gateway.
+- **Background behavior**: iOS suspends apps aggressively.
+  Handle `NOTIFICATION_APPLICATION_PAUSED` and
+  `NOTIFICATION_APPLICATION_RESUMED` to pause/resume
+  network connections gracefully.
+
+**Testing**: Build iOS export, run on a physical iPhone via
+Xcode. Verify Game Center auto-signs in, the auth screen
+auto-logs in, and the backend validates the Game Center
+identity token. Test on WiFi and cellular. Test
+backgrounding the app mid-match and returning.
 
 ---
 
@@ -939,30 +1676,108 @@ Route 53 hosting zone at $0.50/month).
 
 ---
 
+### M16: Mobile Auth (Android & iOS)
+
+**Goal**: Native OAuth sign-in flows for Android and iOS using
+custom URI scheme deep links and platform SDKs.
+
+**What's included**:
+
+*Custom URI Scheme Flow*:
+- Register `com.hopnbop.game://` custom URI scheme
+- Android: Intent filter in export config captures OAuth redirect
+- iOS: URL scheme in Info.plist captures OAuth redirect
+- New `_start_mobile_oauth()` path in AuthClient that uses
+  `OS.shell_open()` to launch system browser, then receives
+  the auth code via deep link when the browser redirects back
+- Godot plugin or native extension to surface incoming deep
+  link URL to GDScript
+
+*Platform-Native SDK Integration (optional, higher quality)*:
+- Google Sign-In for Android (GodotGoogleSignIn plugin or
+  custom JNI wrapper)
+- Sign in with Apple for iOS (required by App Store if offering
+  other social sign-in options)
+- These provide a native UI (bottom sheet / system dialog)
+  instead of opening a browser tab
+
+*GCP Console Updates*:
+- Create **Android** OAuth client ID (package name +
+  SHA-1 signing cert)
+- Create **iOS** OAuth client ID (bundle ID)
+- Add both to `hopnbop/oauth/google` Secrets Manager config
+  or create separate per-platform secrets
+
+*AuthClient Changes*:
+- Add `_MOBILE_PROVIDERS` list or detect platform at runtime
+  via `OS.has_feature("android")` / `OS.has_feature("ios")`
+- Route to `_start_mobile_oauth()` from `login_with_provider()`
+  when on mobile
+- Handle incoming deep link in `_notification()` or via
+  platform plugin signal
+
+*Apple Sign-In Requirement*:
+- If the iOS app offers Google/Facebook sign-in, Apple requires
+  Sign in with Apple as an option
+- Implement Apple OAuth flow (already stubbed in
+  `auth_service._auth_apple()`)
+- Apple Developer account setup: create Services ID, configure
+  Sign in with Apple capability
+
+**Manual steps**:
+1. GCP Console: Create Android OAuth client (package name,
+   SHA-1 from keystore)
+2. GCP Console: Create iOS OAuth client (bundle ID)
+3. Apple Developer: Enable Sign in with Apple for the app ID
+4. Apple Developer: Create Services ID for web/redirect flow
+5. Configure Godot Android export with intent filter for
+   `com.hopnbop.game://oauth/callback`
+6. Configure Godot iOS export with URL scheme
+7. Test on physical devices (emulators often lack Google Play
+   Services)
+
+**Testing**:
+- Android: `adb shell am start -a android.intent.action.VIEW
+  -d "com.hopnbop.game://oauth/callback?code=test&state=test"`
+  triggers the deep link handler
+- iOS: `xcrun simctl openurl booted
+  "com.hopnbop.game://oauth/callback?code=test&state=test"`
+- End-to-end: Sign in with Google on Android device, verify
+  tokens received and player created
+
+**Key files to create/modify**:
+- `src/core/auth_client.gd` — Add mobile OAuth path
+- `export_presets.cfg` — Android intent filter, iOS URL scheme
+- `android/build/AndroidManifest.xml` (if custom build)
+- Godot plugin for deep link capture (if needed)
+
+---
+
 ## Manual Setup Checklist (One-Time)
 
 ### Platform Accounts
-- [ ] AWS account (Snoring Cat LLC billing)
+- [x] AWS account (Snoring Cat LLC billing)
 - [ ] Steam developer account (Steamworks, $100 app fee)
 - [ ] Apple Developer account ($99/year)
 - [ ] Google Play Console ($25 one-time)
 - [ ] Epic Games Store developer account (free)
 - [ ] Google Cloud Console project (for OAuth, free tier)
-- [ ] Discord developer application (free)
-- [ ] Twitch developer application (free)
+- [ ] Facebook for Developers app (free)
 - [ ] itch.io project for Hop 'n Bop (already have account)
 
 ### AWS Infrastructure
-- [ ] IAM admin user with MFA
-- [ ] AWS CLI configured locally
-- [ ] SAM CLI installed
-- [ ] Secrets Manager: JWT signing key
-- [ ] Secrets Manager: OAuth client secrets (6 providers)
+- [x] IAM admin user with MFA
+- [x] AWS CLI configured locally
+- [x] SAM CLI installed
+- [x] Secrets Manager: JWT signing key
+- [ ] Secrets Manager: Google OAuth client secret
+- [ ] Secrets Manager: Facebook OAuth client secret
 - [ ] SNS topic for alarms, email subscription confirmed
-- [ ] S3 bucket for hopnbop.net
-- [ ] CloudFront distribution
-- [ ] Route 53 hosted zone
-- [ ] ACM SSL certificate
+- [ ] S3 bucket for hopnbop.net (see web hosting setup guide)
+- [ ] CloudFront distribution with OAC
+- [ ] Route 53 hosted zone + DNS records
+- [ ] ACM SSL certificate (us-east-1)
+- [ ] OAuth callback page deployed to S3
 - [ ] ECR repository for server containers
 - [ ] GameLift container fleet
 - [ ] GameLift Anywhere fleet (for local dev)

@@ -241,6 +241,7 @@ def _create_secrets():
         "steam",
         "epic",
         "google",
+        "facebook",
         "discord",
         "twitch",
         "apple",

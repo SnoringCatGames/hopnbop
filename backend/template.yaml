@@ -133,70 +133,24 @@ Resources:
             Path: /auth/link
             Method: post
 
-  WebOAuthStartFunction:
+  AuthUnlinkFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
-      Handler: handlers.web_oauth_handler.web_start
-      Environment:
-        Variables:
-          PENDING_AUTH_TABLE: !Ref PendingAuthTable
-          API_BASE_URL: !Sub 'https://${GameBackendAPI}.execute-api.${AWS::Region}.amazonaws.com/prod'
+      Handler: handlers.auth_handler.unlink_account
       Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref PendingAuthTable
-        - !Ref SecretsManagerPolicy
-      Events:
-        WebStart:
-          Type: Api
-          Properties:
-            RestApiId: !Ref GameBackendAPI
-            Path: /auth/web-start
-            Method: get
-
-  WebOAuthCallbackFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: src/
-      Handler: handlers.web_oauth_handler.oauth_callback
-      Environment:
-        Variables:
-          PENDING_AUTH_TABLE: !Ref PendingAuthTable
-          API_BASE_URL: !Sub 'https://${GameBackendAPI}.execute-api.${AWS::Region}.amazonaws.com/prod'
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref PendingAuthTable
         - DynamoDBCrudPolicy:
             TableName: !Ref PlayersTable
         - DynamoDBCrudPolicy:
             TableName: !Ref ProviderMappingsTable
         - !Ref SecretsManagerPolicy
       Events:
-        OAuthCallback:
+        Unlink:
           Type: Api
           Properties:
             RestApiId: !Ref GameBackendAPI
-            Path: /auth/oauth-callback
-            Method: get
-
-  WebOAuthPollFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: src/
-      Handler: handlers.web_oauth_handler.web_poll
-      Environment:
-        Variables:
-          PENDING_AUTH_TABLE: !Ref PendingAuthTable
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref PendingAuthTable
-      Events:
-        WebPoll:
-          Type: Api
-          Properties:
-            RestApiId: !Ref GameBackendAPI
-            Path: /auth/web-poll
-            Method: get
+            Path: /auth/unlink
+            Method: post
 
   JoinMatchmakingFunction:
     Type: AWS::Serverless::Function
@@ -288,21 +242,6 @@ Resources:
       KeySchema:
         - AttributeName: provider_composite
           KeyType: HASH
-
-  PendingAuthTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: hopnbop-pending-auth
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: session_code
-          AttributeType: S
-      KeySchema:
-        - AttributeName: session_code
-          KeyType: HASH
-      TimeToLiveSpecification:
-        AttributeName: ttl
-        Enabled: true
 
   MatchHistoryTable:
     Type: AWS::DynamoDB::Table
