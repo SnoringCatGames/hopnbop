@@ -22,6 +22,9 @@ const _LevelPrefRowScene := preload(
 const _LinkAccountRowScene := preload(
 	"res://src/ui/settings_panel/"
 	+ "link_account_row.tscn")
+const _DeleteAccountRowScene := preload(
+	"res://src/ui/settings_panel/"
+	+ "delete_account_row.tscn")
 
 @export_group("Row Icons")
 @export var icon_gore: Texture2D
@@ -30,6 +33,14 @@ const _LinkAccountRowScene := preload(
 @export var icon_fullscreen: Texture2D
 @export var icon_music: Texture2D
 @export var icon_sfx: Texture2D
+
+@export_group("Provider Icons")
+@export var icon_anonymous: Texture2D
+@export var icon_steam: Texture2D
+@export var icon_epic: Texture2D
+@export var icon_google: Texture2D
+@export var icon_facebook: Texture2D
+@export var icon_apple: Texture2D
 
 var _player: Player
 var _device_config: DeviceConfig
@@ -205,6 +216,9 @@ func _build_ui() -> void:
 	# Account linking section.
 	_add_link_account_rows()
 
+	# Delete account row.
+	_add_delete_account_row()
+
 	# Spacer above level preferences.
 	var level_spacer := Control.new()
 	level_spacer.custom_minimum_size = (
@@ -292,6 +306,8 @@ func _add_link_account_rows() -> void:
 	var google_row: LinkAccountRow = (
 		_LinkAccountRowScene.instantiate()
 	)
+	if icon_google != null:
+		google_row.set_icon(icon_google)
 	google_row.setup(
 		AuthClient.Provider.GOOGLE,
 		"Google",
@@ -304,6 +320,8 @@ func _add_link_account_rows() -> void:
 	var fb_row: LinkAccountRow = (
 		_LinkAccountRowScene.instantiate()
 	)
+	if icon_facebook != null:
+		fb_row.set_icon(icon_facebook)
 	fb_row.setup(
 		AuthClient.Provider.FACEBOOK,
 		"Facebook",
@@ -311,6 +329,22 @@ func _add_link_account_rows() -> void:
 	)
 	_row_container.add_child(fb_row)
 	_connect_row_clicked(fb_row)
+
+
+func _add_delete_account_row() -> void:
+	# Only show when authenticated.
+	if not G.auth_token_store.is_token_valid():
+		return
+
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 20)
+	_row_container.add_child(spacer)
+
+	var row: DeleteAccountRow = (
+		_DeleteAccountRowScene.instantiate()
+	)
+	_row_container.add_child(row)
+	_connect_row_clicked(row)
 
 
 func _connect_row_clicked(
@@ -371,7 +405,10 @@ func on_level_preferred(
 					.INCLUDED)
 
 
-func _set_focus(index: int) -> void:
+func _set_focus(
+	index: int,
+	is_scroll_to_focus := true,
+) -> void:
 	if _rows.is_empty():
 		return
 
@@ -382,12 +419,14 @@ func _set_focus(index: int) -> void:
 
 	_focused_index = index
 	_rows[_focused_index].is_focused = true
-	_ensure_focused_visible()
+	if is_scroll_to_focus:
+		_ensure_focused_visible()
 
 
 func _move_focus(
 	direction: int,
 	is_wrap := true,
+	is_scroll_to_focus := true,
 ) -> void:
 	if _rows.is_empty():
 		return
@@ -406,7 +445,7 @@ func _move_focus(
 			_rows.size() - 1)
 		if new_index == _focused_index:
 			return
-	_set_focus(new_index)
+	_set_focus(new_index, is_scroll_to_focus)
 	if is_instance_valid(G.audio):
 		G.audio.play_sound("focus")
 
@@ -525,11 +564,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		if mb.pressed:
 			if (mb.button_index
 					== MOUSE_BUTTON_WHEEL_UP):
-				_move_focus(-1, false)
+				_move_focus(-1, false, false)
 				get_viewport().set_input_as_handled()
 			elif (mb.button_index
 					== MOUSE_BUTTON_WHEEL_DOWN):
-				_move_focus(1, false)
+				_move_focus(1, false, false)
 				get_viewport().set_input_as_handled()
 
 

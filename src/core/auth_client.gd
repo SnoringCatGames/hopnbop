@@ -27,6 +27,9 @@ signal unlink_completed(
 	provider: String,
 )
 
+## Emitted when account deletion completes.
+signal delete_completed(success: bool, error: String)
+
 ## Status updates for UI feedback.
 signal auth_status_changed(status: String)
 
@@ -59,6 +62,7 @@ const _ANON_ENDPOINT := "/auth/anon"
 const _REFRESH_ENDPOINT := "/auth/refresh"
 const _LINK_ENDPOINT := "/auth/link"
 const _UNLINK_ENDPOINT := "/auth/unlink"
+const _DELETE_ACCOUNT_ENDPOINT := "/auth/account"
 const _POPUP_TIMEOUT_SEC := 300.0
 
 ## Maps Provider enum to string name sent to backend.
@@ -92,6 +96,9 @@ var _link_provider_name := ""
 # Account unlinking state.
 var _is_unlinking := false
 var _unlink_provider_name := ""
+
+# Account deletion state.
+var _is_deleting := false
 
 # Popup OAuth state (web platform).
 var _js_message_callback: JavaScriptObject
@@ -231,6 +238,15 @@ func unlink_provider(provider: Provider) -> void:
 	_send_auth_request(
 		_UNLINK_ENDPOINT, body, true
 	)
+
+
+## Delete the current account and all associated data.
+func delete_account() -> void:
+	if _is_deleting:
+		return
+	_is_deleting = true
+	auth_status_changed.emit("Deleting account...")
+	_send_delete_request()
 
 
 # =============================================================
@@ -558,6 +574,39 @@ func _send_auth_request(
 		_emit_failure("HTTP request failed: %d" % err)
 
 
+func _send_delete_request() -> void:
+	var url := (
+		G.settings.gamelift_backend_api_url
+		+ _DELETE_ACCOUNT_ENDPOINT
+	)
+
+	var headers := [
+		"Content-Type: application/json",
+		"Authorization: Bearer %s"
+		% G.auth_token_store.jwt_token,
+	]
+
+	if _http_request.request_completed.is_connected(
+		_on_auth_response
+	):
+		_http_request.request_completed.disconnect(
+			_on_auth_response
+		)
+
+	_http_request.request_completed.connect(
+		_on_auth_response, CONNECT_ONE_SHOT
+	)
+
+	var err := _http_request.request(
+		url,
+		headers,
+		HTTPClient.METHOD_DELETE,
+	)
+	if err != OK:
+		_is_deleting = false
+		_emit_failure("HTTP request failed: %d" % err)
+
+
 func _on_auth_response(
 	result: int,
 	response_code: int,
@@ -591,6 +640,11 @@ func _on_auth_response(
 		_emit_failure(
 			data.get("message", "Unknown error")
 		)
+		return
+
+	# Handle delete response separately.
+	if _is_deleting:
+		_handle_delete_success()
 		return
 
 	# Handle unlink response separately.
@@ -664,6 +718,12 @@ func _handle_unlink_success(data: Dictionary) -> void:
 	unlink_completed.emit(true, "", provider_name)
 
 
+func _handle_delete_success() -> void:
+	_is_deleting = false
+	G.auth_token_store.clear_tokens()
+	delete_completed.emit(true, "")
+
+
 func _emit_failure(error: String) -> void:
 	if _is_linking:
 		_is_linking = false
@@ -675,6 +735,9 @@ func _emit_failure(error: String) -> void:
 		var provider_name := _unlink_provider_name
 		_unlink_provider_name = ""
 		unlink_completed.emit(false, error, provider_name)
+	elif _is_deleting:
+		_is_deleting = false
+		delete_completed.emit(false, error)
 	else:
 		auth_completed.emit(false, error)
 

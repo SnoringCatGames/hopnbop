@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://dj7uvmicathvk"]
+[gd_scene load_steps=14 format=3 uid="uid://dj7uvmicathvk"]
 
 [ext_resource type="Script" uid="uid://diga7isw7pv4r" path="res://src/ui/settings_panel/settings_panel.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://cgeum80qm7jgg" path="res://assets/images/gui/gore_icon.png" id="2_gore"]
@@ -7,6 +7,12 @@
 [ext_resource type="Texture2D" uid="uid://d3sxfq37j2gwk" path="res://assets/images/gui/fullscreen_icon.png" id="5_fullscreen"]
 [ext_resource type="Texture2D" uid="uid://chmhqtl2vtbg6" path="res://assets/images/gui/music_icon.png" id="6_music"]
 [ext_resource type="Texture2D" uid="uid://cbr2qkqcjro2l" path="res://assets/images/gui/sfx_icon.png" id="7_sfx"]
+[ext_resource type="Texture2D" uid="uid://bos83k5rfp1i" path="res://assets/images/gui/anonymous.png" id="8_anonymous"]
+[ext_resource type="Texture2D" uid="uid://dwhlv145flrk1" path="res://assets/images/gui/steam_32.png" id="9_steam"]
+[ext_resource type="Texture2D" uid="uid://dpct5t7ydudi6" path="res://assets/images/gui/epic_32.png" id="10_epic"]
+[ext_resource type="Texture2D" uid="uid://ug712rpyt4i" path="res://assets/images/gui/google_32.png" id="11_google"]
+[ext_resource type="Texture2D" uid="uid://b6c8nywrbpw6n" path="res://assets/images/gui/facebook_32.png" id="12_facebook"]
+[ext_resource type="Texture2D" uid="uid://dewjlcd5gptmj" path="res://assets/images/gui/apple_32.png" id="13_apple"]
 
 [node name="SettingsPanel" type="CanvasLayer"]
 layer = 100
@@ -17,6 +23,12 @@ icon_cheats = ExtResource("4_cheats")
 icon_fullscreen = ExtResource("5_fullscreen")
 icon_music = ExtResource("6_music")
 icon_sfx = ExtResource("7_sfx")
+icon_anonymous = ExtResource("8_anonymous")
+icon_steam = ExtResource("9_steam")
+icon_epic = ExtResource("10_epic")
+icon_google = ExtResource("11_google")
+icon_facebook = ExtResource("12_facebook")
+icon_apple = ExtResource("13_apple")
 
 [node name="Background" type="ColorRect" parent="."]
 anchors_preset = 11
