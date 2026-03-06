@@ -75,16 +75,18 @@ class TestDelete:
     def test_delete_removes_mapping(self, aws_mock):
         pms = ProviderMappingService()
         _run(
-            pms.create("discord", "disc_456", "p_player2")
+            pms.create(
+                "facebook", "fb_456", "p_player2"
+            )
         )
         assert (
-            _run(pms.lookup("discord", "disc_456"))
+            _run(pms.lookup("facebook", "fb_456"))
             == "p_player2"
         )
 
-        _run(pms.delete("discord", "disc_456"))
+        _run(pms.delete("facebook", "fb_456"))
         assert (
-            _run(pms.lookup("discord", "disc_456")) is None
+            _run(pms.lookup("facebook", "fb_456")) is None
         )
 
     def test_delete_nonexistent_no_error(self, aws_mock):

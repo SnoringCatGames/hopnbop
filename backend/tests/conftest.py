@@ -242,8 +242,6 @@ def _create_secrets():
         "epic",
         "google",
         "facebook",
-        "discord",
-        "twitch",
         "apple",
     ]:
         client.create_secret(

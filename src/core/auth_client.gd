@@ -5,9 +5,9 @@ extends Node
 ## Handles login (OAuth + anonymous), token refresh, and
 ## account linking. Supports three OAuth flows:
 ## - Loopback: Desktop clients open browser, local TCP
-##   server captures redirect (Google, Discord, etc.).
-## - Web polling: Web builds call /auth/web-start, open a
-##   new tab, and poll /auth/web-poll for the result.
+##   server captures redirect (Google, Facebook).
+## - Popup: Web builds open a popup window, static
+##   callback page sends code via postMessage.
 ## - Platform: Steam/Epic provide tokens via their SDK.
 
 ## Emitted on successful authentication.
@@ -15,6 +15,13 @@ signal auth_completed(success: bool, error: String)
 
 ## Emitted when account linking completes.
 signal link_completed(
+	success: bool,
+	error: String,
+	provider: String,
+)
+
+## Emitted when account unlinking completes.
+signal unlink_completed(
 	success: bool,
 	error: String,
 	provider: String,
@@ -35,7 +42,6 @@ enum Provider {
 	GOOGLE,
 	FACEBOOK,
 	APPLE,
-	DISCORD,
 	ANONYMOUS,
 }
 
@@ -52,10 +58,8 @@ const _AUTH_ENDPOINT := "/auth/login"
 const _ANON_ENDPOINT := "/auth/anon"
 const _REFRESH_ENDPOINT := "/auth/refresh"
 const _LINK_ENDPOINT := "/auth/link"
-const _WEB_START_ENDPOINT := "/auth/web-start"
-const _WEB_POLL_ENDPOINT := "/auth/web-poll"
-const _WEB_POLL_INTERVAL_SEC := 1.5
-const _WEB_POLL_TIMEOUT_SEC := 300.0
+const _UNLINK_ENDPOINT := "/auth/unlink"
+const _POPUP_TIMEOUT_SEC := 300.0
 
 ## Maps Provider enum to string name sent to backend.
 const _PROVIDER_NAMES := {
@@ -64,7 +68,6 @@ const _PROVIDER_NAMES := {
 	Provider.GOOGLE: "google",
 	Provider.FACEBOOK: "facebook",
 	Provider.APPLE: "apple",
-	Provider.DISCORD: "discord",
 	Provider.ANONYMOUS: "anonymous",
 }
 
@@ -75,7 +78,6 @@ const _BROWSER_PROVIDERS := [
 ]
 
 var _http_request: HTTPRequest
-var _poll_http_request: HTTPRequest
 var _tcp_server: TCPServer
 var _oauth_state: String
 var _oauth_provider: Provider
@@ -87,21 +89,19 @@ var _is_refreshing := false
 var _is_linking := false
 var _link_provider_name := ""
 
-# Web polling state.
-var _web_session_code := ""
-var _is_web_polling := false
-var _web_poll_start_time := 0.0
-var _web_poll_timer: Timer
+# Account unlinking state.
+var _is_unlinking := false
+var _unlink_provider_name := ""
+
+# Popup OAuth state (web platform).
+var _js_message_callback: JavaScriptObject
+var _popup_timeout_timer: Timer
 
 
 func _ready() -> void:
 	_http_request = HTTPRequest.new()
 	_http_request.timeout = 30.0
 	add_child(_http_request)
-
-	_poll_http_request = HTTPRequest.new()
-	_poll_http_request.timeout = 10.0
-	add_child(_poll_http_request)
 
 
 func _process(_delta: float) -> void:
@@ -220,6 +220,19 @@ func submit_platform_link(
 	)
 
 
+## Unlink a provider from the current account.
+func unlink_provider(provider: Provider) -> void:
+	_is_unlinking = true
+	_unlink_provider_name = _PROVIDER_NAMES[provider]
+	auth_status_changed.emit("Unlinking account...")
+	var body := {
+		"provider": _PROVIDER_NAMES[provider],
+	}
+	_send_auth_request(
+		_UNLINK_ENDPOINT, body, true
+	)
+
+
 # =============================================================
 # Desktop loopback OAuth flow
 # =============================================================
@@ -321,7 +334,7 @@ func _poll_oauth_redirect() -> void:
 
 	# Determine endpoint.
 	var endpoint := _AUTH_ENDPOINT
-	if G.auth_token_store.is_token_valid():
+	if _is_linking:
 		endpoint = _LINK_ENDPOINT
 
 	_send_auth_request(
@@ -336,186 +349,165 @@ func _cleanup_tcp_server() -> void:
 
 
 # =============================================================
-# Web polling OAuth flow
+# Web popup OAuth flow (postMessage)
 # =============================================================
 
 
 func _start_web_oauth(
 	provider: Provider,
 ) -> void:
+	_oauth_provider = provider
+	_oauth_state = _generate_state_nonce()
+
+	var redirect_uri := G.settings.oauth_callback_url
+	var auth_url := _build_oauth_url(
+		provider, redirect_uri, _oauth_state
+	)
+
 	auth_status_changed.emit(
-		"Starting %s login..."
+		"Opening %s login..."
 		% _PROVIDER_NAMES[provider]
 	)
 
-	# Call /auth/web-start to get session_code + auth_url.
-	var url := (
-		G.settings.gamelift_backend_api_url
-		+ _WEB_START_ENDPOINT
-		+ "?provider=%s" % _PROVIDER_NAMES[provider]
+	# Register JS message listener for the callback.
+	_setup_js_message_listener()
+
+	# Open popup. Must happen synchronously from user
+	# interaction to avoid popup blockers.
+	var js_code := (
+		"window.open('%s', 'oauth_popup',"
+		+ " 'width=500,height=700')"
+	) % auth_url.replace("'", "\\'")
+	var popup: JavaScriptObject = (
+		JavaScriptBridge.eval(js_code)
 	)
 
-	var start_request := HTTPRequest.new()
-	start_request.timeout = 15.0
-	add_child(start_request)
-
-	start_request.request_completed.connect(
-		_on_web_start_response.bind(start_request),
-		CONNECT_ONE_SHOT,
-	)
-
-	var err := start_request.request(
-		url, [], HTTPClient.METHOD_GET
-	)
-	if err != OK:
-		start_request.queue_free()
-		_emit_failure("Failed to start web OAuth")
-
-
-func _on_web_start_response(
-	result: int,
-	response_code: int,
-	_headers: PackedStringArray,
-	body: PackedByteArray,
-	request_node: HTTPRequest,
-) -> void:
-	request_node.queue_free()
-
-	if result != HTTPRequest.RESULT_SUCCESS:
-		_emit_failure("Web OAuth start failed")
-		return
-
-	var json := JSON.new()
-	if json.parse(body.get_string_from_utf8()) != OK:
-		_emit_failure("Invalid server response")
-		return
-
-	var data: Dictionary = json.data
-	if response_code != 200:
+	if popup == null:
+		_cleanup_js_message_listener()
 		_emit_failure(
-			data.get(
-				"message", "Web OAuth start failed"
-			)
+			"Popup blocked. Please allow popups."
 		)
 		return
 
-	_web_session_code = data.get("session_code", "")
-	var auth_url: String = data.get("auth_url", "")
-
-	if (
-		_web_session_code.is_empty()
-		or auth_url.is_empty()
-	):
-		_emit_failure("Invalid web OAuth response")
-		return
-
-	# Open auth URL in a new tab.
 	auth_status_changed.emit(
-		"Complete sign-in in the new tab..."
-	)
-	OS.shell_open(auth_url)
-
-	# Start polling.
-	_is_web_polling = true
-	_web_poll_start_time = (
-		Time.get_unix_time_from_system()
-	)
-	_start_web_poll_timer()
-
-
-func _start_web_poll_timer() -> void:
-	if _web_poll_timer != null:
-		_web_poll_timer.queue_free()
-
-	_web_poll_timer = Timer.new()
-	_web_poll_timer.wait_time = _WEB_POLL_INTERVAL_SEC
-	_web_poll_timer.one_shot = false
-	_web_poll_timer.timeout.connect(_do_web_poll)
-	add_child(_web_poll_timer)
-	_web_poll_timer.start()
-
-
-func _stop_web_polling() -> void:
-	_is_web_polling = false
-	_web_session_code = ""
-	if _web_poll_timer != null:
-		_web_poll_timer.stop()
-		_web_poll_timer.queue_free()
-		_web_poll_timer = null
-
-
-func _do_web_poll() -> void:
-	if not _is_web_polling:
-		_stop_web_polling()
-		return
-
-	# Check timeout.
-	var elapsed := (
-		Time.get_unix_time_from_system()
-		- _web_poll_start_time
-	)
-	if elapsed > _WEB_POLL_TIMEOUT_SEC:
-		_stop_web_polling()
-		_emit_failure("Sign-in timed out")
-		return
-
-	var url := (
-		G.settings.gamelift_backend_api_url
-		+ _WEB_POLL_ENDPOINT
-		+ "?session_code=%s" % _web_session_code
+		"Complete sign-in in the popup..."
 	)
 
-	if _poll_http_request.get_http_client_status() != 0:
-		# Previous request still in flight.
-		return
+	# Start a timeout timer.
+	_start_popup_timeout()
 
-	_poll_http_request.request_completed.connect(
-		_on_web_poll_response, CONNECT_ONE_SHOT
+
+func _setup_js_message_listener() -> void:
+	_cleanup_js_message_listener()
+
+	_js_message_callback = (
+		JavaScriptBridge.create_callback(
+			_on_js_message
+		)
+	)
+	JavaScriptBridge.eval(
+		"window._hopnbop_oauth_cb = null;"
+	)
+	var window: JavaScriptObject = (
+		JavaScriptBridge.get_interface("window")
+	)
+	window.addEventListener(
+		"message", _js_message_callback
 	)
 
-	var err := _poll_http_request.request(
-		url, [], HTTPClient.METHOD_GET
+
+func _cleanup_js_message_listener() -> void:
+	if _js_message_callback != null:
+		var window: JavaScriptObject = (
+			JavaScriptBridge.get_interface("window")
+		)
+		window.removeEventListener(
+			"message", _js_message_callback
+		)
+		_js_message_callback = null
+
+	if _popup_timeout_timer != null:
+		_popup_timeout_timer.stop()
+		_popup_timeout_timer.queue_free()
+		_popup_timeout_timer = null
+
+
+func _start_popup_timeout() -> void:
+	if _popup_timeout_timer != null:
+		_popup_timeout_timer.queue_free()
+
+	_popup_timeout_timer = Timer.new()
+	_popup_timeout_timer.wait_time = _POPUP_TIMEOUT_SEC
+	_popup_timeout_timer.one_shot = true
+	_popup_timeout_timer.timeout.connect(
+		_on_popup_timeout
 	)
-	if err != OK:
-		if _poll_http_request.request_completed.is_connected(
-			_on_web_poll_response
-		):
-			_poll_http_request.request_completed.disconnect(
-				_on_web_poll_response
-			)
+	add_child(_popup_timeout_timer)
+	_popup_timeout_timer.start()
 
 
-func _on_web_poll_response(
-	result: int,
-	response_code: int,
-	_headers: PackedStringArray,
-	body: PackedByteArray,
-) -> void:
-	if not _is_web_polling:
+func _on_popup_timeout() -> void:
+	_cleanup_js_message_listener()
+	_emit_failure("Sign-in timed out")
+
+
+func _on_js_message(args: Array) -> void:
+	# args[0] is the MessageEvent.
+	var event: JavaScriptObject = args[0]
+
+	# Verify origin matches our callback URL.
+	var origin: String = event.origin
+	var expected_origin := (
+		G.settings.oauth_callback_url
+			.get_base_dir()
+			.trim_suffix("/")
+	)
+	# get_base_dir on a URL strips the filename, giving
+	# the origin. But we need just scheme + host.
+	# Use a simpler check: the callback URL must start
+	# with the event origin.
+	if not G.settings.oauth_callback_url.begins_with(
+		origin
+	):
 		return
 
-	if result != HTTPRequest.RESULT_SUCCESS:
+	var data: JavaScriptObject = event.data
+	if data == null:
 		return
 
-	var json := JSON.new()
-	if json.parse(body.get_string_from_utf8()) != OK:
+	var msg_type: String = data.type
+	if msg_type != "oauth_callback":
 		return
 
-	var data: Dictionary = json.data
+	var code: String = data.code
+	var state: String = data.state
 
-	if response_code == 202:
-		# Still pending. Continue polling.
+	_cleanup_js_message_listener()
+
+	if code.is_empty():
+		_emit_failure("No auth code received")
 		return
 
-	_stop_web_polling()
+	if state != _oauth_state:
+		_emit_failure("OAuth state mismatch")
+		return
 
-	if response_code == 200:
-		if data.get("status") == "success":
-			_handle_auth_success(data)
-			return
+	var redirect_uri := G.settings.oauth_callback_url
 
-	_emit_failure(
-		data.get("message", "Authentication failed")
+	auth_status_changed.emit("Authenticating...")
+	var body := {
+		"provider": _PROVIDER_NAMES[_oauth_provider],
+		"auth_code": code,
+		"redirect_uri": redirect_uri,
+	}
+
+	# Determine endpoint.
+	var endpoint := _AUTH_ENDPOINT
+	if _is_linking:
+		endpoint = _LINK_ENDPOINT
+
+	_send_auth_request(
+		endpoint, body, endpoint == _LINK_ENDPOINT
 	)
 
 
@@ -601,6 +593,11 @@ func _on_auth_response(
 		)
 		return
 
+	# Handle unlink response separately.
+	if _is_unlinking:
+		_handle_unlink_success(data)
+		return
+
 	_handle_auth_success(data)
 
 
@@ -649,12 +646,35 @@ func _handle_auth_success(data: Dictionary) -> void:
 	auth_completed.emit(true, "")
 
 
+func _handle_unlink_success(data: Dictionary) -> void:
+	_is_unlinking = false
+	var provider_name := _unlink_provider_name
+	_unlink_provider_name = ""
+
+	# Update linked providers from response.
+	if data.has("linked_providers"):
+		G.auth_token_store.linked_providers.clear()
+		var lp: Array = data.get("linked_providers", [])
+		for p in lp:
+			G.auth_token_store.linked_providers.append(
+				str(p)
+			)
+		G.auth_token_store.save_tokens()
+
+	unlink_completed.emit(true, "", provider_name)
+
+
 func _emit_failure(error: String) -> void:
 	if _is_linking:
 		_is_linking = false
 		var provider_name := _link_provider_name
 		_link_provider_name = ""
 		link_completed.emit(false, error, provider_name)
+	elif _is_unlinking:
+		_is_unlinking = false
+		var provider_name := _unlink_provider_name
+		_unlink_provider_name = ""
+		unlink_completed.emit(false, error, provider_name)
 	else:
 		auth_completed.emit(false, error)
 
@@ -676,7 +696,7 @@ func _check_auto_refresh() -> void:
 
 
 # =============================================================
-# OAuth URL builders (desktop loopback only)
+# OAuth URL builders
 # =============================================================
 
 

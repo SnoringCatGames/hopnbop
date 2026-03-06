@@ -74,7 +74,7 @@ class AuthService:
     # Providers that use Authorization Code flow and need
     # a redirect_uri for token exchange.
     BROWSER_PROVIDERS = {
-        "google", "facebook", "apple", "discord",
+        "google", "facebook", "apple",
     }
 
     def __init__(self, token_lifetime_hours: int = 24):
@@ -111,10 +111,6 @@ class AuthService:
             )
         elif provider == "facebook":
             return await self._auth_facebook(
-                auth_code, redirect_uri
-            )
-        elif provider == "discord":
-            return await self._auth_discord(
                 auth_code, redirect_uri
             )
         elif provider == "apple":
@@ -299,129 +295,6 @@ class AuthService:
         return AuthResult(
             provider="facebook",
             provider_id=fb_id,
-            display_name=display_name,
-        )
-
-    async def _auth_discord(
-        self, auth_code: str, redirect_uri: str
-    ) -> AuthResult:
-        """Exchange Discord auth code for user info."""
-        config = secrets_service.get_oauth_config("discord")
-        client_id = config.get("client_id", "")
-        client_secret = config.get("client_secret", "")
-
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://discord.com/api/oauth2/token",
-                data={
-                    "code": auth_code,
-                    "client_id": client_id,
-                    "client_secret": client_secret,
-                    "redirect_uri": redirect_uri,
-                    "grant_type": "authorization_code",
-                },
-                headers={
-                    "Content-Type": (
-                        "application/x-www-form-urlencoded"
-                    )
-                },
-            )
-
-        if response.status_code != 200:
-            raise ValueError(
-                "Discord token exchange failed"
-            )
-
-        access_token = response.json()["access_token"]
-
-        # Fetch user info.
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://discord.com/api/users/@me",
-                headers={
-                    "Authorization": (
-                        f"Bearer {access_token}"
-                    )
-                },
-            )
-
-        if response.status_code != 200:
-            raise ValueError(
-                "Discord user info fetch failed"
-            )
-
-        user = response.json()
-        discord_id = user["id"]
-        display_name = user.get(
-            "global_name",
-            user.get(
-                "username", f"Player_{discord_id[:8]}"
-            ),
-        )
-
-        return AuthResult(
-            provider="discord",
-            provider_id=discord_id,
-            display_name=display_name,
-        )
-
-    async def _auth_twitch(
-        self, auth_code: str, redirect_uri: str
-    ) -> AuthResult:
-        """Exchange Twitch auth code for user info."""
-        config = secrets_service.get_oauth_config("twitch")
-        client_id = config.get("client_id", "")
-        client_secret = config.get("client_secret", "")
-
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://id.twitch.tv/oauth2/token",
-                data={
-                    "code": auth_code,
-                    "client_id": client_id,
-                    "client_secret": client_secret,
-                    "redirect_uri": redirect_uri,
-                    "grant_type": "authorization_code",
-                },
-            )
-
-        if response.status_code != 200:
-            raise ValueError(
-                "Twitch token exchange failed"
-            )
-
-        access_token = response.json()["access_token"]
-
-        # Fetch user info.
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://api.twitch.tv/helix/users",
-                headers={
-                    "Authorization": (
-                        f"Bearer {access_token}"
-                    ),
-                    "Client-Id": client_id,
-                },
-            )
-
-        if response.status_code != 200:
-            raise ValueError(
-                "Twitch user info fetch failed"
-            )
-
-        users = response.json().get("data", [])
-        if not users:
-            raise ValueError("No Twitch user data")
-
-        user = users[0]
-        twitch_id = user["id"]
-        display_name = user.get(
-            "display_name", f"Player_{twitch_id[:8]}"
-        )
-
-        return AuthResult(
-            provider="twitch",
-            provider_id=twitch_id,
             display_name=display_name,
         )
 
