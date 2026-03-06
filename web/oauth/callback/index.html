@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hop 'n Bop - Signing in...</title>
+<style>
+body {
+  font-family: system-ui, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+  background: #1a1a2e;
+  color: #eee;
+}
+.card {
+  text-align: center;
+  padding: 2rem;
+  border-radius: 12px;
+  background: #16213e;
+  box-shadow: 0 4px 24px rgba(0,0,0,.3);
+  max-width: 400px;
+}
+.icon { font-size: 3rem; }
+.success { color: #4CAF50; }
+.error { color: #f44336; }
+p { margin-top: 1rem; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon" id="icon">&#8987;</div>
+  <p id="message">Completing sign-in...</p>
+</div>
+<script>
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var code = params.get("code") || "";
+  var state = params.get("state") || "";
+  var error = params.get("error") || "";
+
+  var icon = document.getElementById("icon");
+  var message = document.getElementById("message");
+
+  if (error) {
+    icon.textContent = "\u2718";
+    icon.className = "icon error";
+    message.textContent = "Authentication failed: " + error;
+    return;
+  }
+
+  if (!code) {
+    icon.textContent = "\u2718";
+    icon.className = "icon error";
+    message.textContent = "No authorization code received.";
+    return;
+  }
+
+  if (window.opener) {
+    window.opener.postMessage(
+      { type: "oauth_callback", code: code, state: state },
+      window.location.origin
+    );
+    icon.textContent = "\u2714";
+    icon.className = "icon success";
+    message.textContent =
+      "Authentication successful! This window will close.";
+    setTimeout(function() { window.close(); }, 1500);
+  } else {
+    icon.textContent = "\u2714";
+    icon.className = "icon success";
+    message.textContent =
+      "Authentication complete. You can close this tab"
+      + " and return to the game.";
+  }
+})();
+</script>
+</body>
+</html>
