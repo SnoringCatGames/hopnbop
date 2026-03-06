@@ -1,15 +1,15 @@
 class_name LinkAccountRow
 extends SettingsRow
-## A row for linking an OAuth provider to the
-## current player account. Shows provider name
-## and linked status. Left/right triggers the
-## link flow when not yet linked.
+## A row for linking or unlinking an OAuth provider.
+## Shows provider name and linked status. Left/right
+## triggers the link flow when not yet linked, or the
+## unlink flow when already linked.
 
 
 var _provider: AuthClient.Provider
 var _provider_name: String
 var _is_linked := false
-var _is_linking := false
+var _is_busy := false
 
 @onready var _label: Label = %Label
 @onready var _status_label: Label = %StatusLabel
@@ -32,18 +32,25 @@ func _ready() -> void:
 
 
 func on_left() -> void:
-	_try_link()
+	_toggle()
 
 
 func on_right() -> void:
-	_try_link()
+	_toggle()
+
+
+func _toggle() -> void:
+	if _is_busy:
+		return
+
+	if _is_linked:
+		_try_unlink()
+	else:
+		_try_link()
 
 
 func _try_link() -> void:
-	if _is_linked or _is_linking:
-		return
-
-	_is_linking = true
+	_is_busy = true
 	_status_label.text = "Linking..."
 
 	G.auth_client.link_completed.connect(
@@ -52,14 +59,35 @@ func _try_link() -> void:
 	G.auth_client.link_provider(_provider)
 
 
+func _try_unlink() -> void:
+	_is_busy = true
+	_status_label.text = "Unlinking..."
+
+	G.auth_client.unlink_completed.connect(
+		_on_unlink_completed, CONNECT_ONE_SHOT
+	)
+	G.auth_client.unlink_provider(_provider)
+
+
 func _on_link_completed(
 	success: bool,
-	error: String,
+	_error: String,
 	_provider_str: String,
 ) -> void:
-	_is_linking = false
+	_is_busy = false
 	if success:
 		_is_linked = true
+	_update_status()
+
+
+func _on_unlink_completed(
+	success: bool,
+	_error: String,
+	_provider_str: String,
+) -> void:
+	_is_busy = false
+	if success:
+		_is_linked = false
 	_update_status()
 
 

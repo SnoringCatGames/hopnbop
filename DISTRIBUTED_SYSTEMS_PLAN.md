@@ -94,7 +94,7 @@ hopnbop.net (purchased).
 | 9 | Age rating | 13+ only |
 | 10 | Offline mode | Local multiplayer (couch co-op), not solo |
 | 11 | Offline sync | No. Server authority preserved |
-| 12 | Dev accounts | itch.io only so far |
+| 12 | Dev accounts | None yet |
 | 13 | Deploy trigger | PR merge to release branch |
 | 14 | Monetization | None. Completely free |
 | 15 | Publisher | Snoring Cat LLC |
@@ -175,7 +175,7 @@ linking/unlinking.
 
 *Backend (auth_handler.py, auth_service.py)*:
 - POST /auth/login. OAuth login (Steam, Epic, Google, Facebook,
-  Apple, Discord, Twitch). Issues JWT + refresh token.
+  Apple). Issues JWT + refresh token.
 - POST /auth/anon. Anonymous login via device ID. Issues JWT
   with is_anonymous flag.
 - POST /auth/refresh. Token rotation (old refresh token
@@ -264,10 +264,10 @@ linking/unlinking.
    - Click Create
    - Note the **Client ID** and **Client Secret**
 6. Store in AWS Secrets Manager:
-   ```
-   aws secretsmanager update-secret \
-     --secret-id hopnbop/oauth/google \
-     --secret-string '{"client_id":"YOUR_ID.apps.googleusercontent.com","client_secret":"YOUR_SECRET"}' \
+   ```powershell
+   aws secretsmanager update-secret `
+     --secret-id hopnbop/oauth/google `
+     --secret-string '{"client_id":"YOUR_ID.apps.googleusercontent.com","client_secret":"YOUR_SECRET"}' `
      --region us-west-2 --profile hopnbop
    ```
 7. Set client ID in Godot:
@@ -319,10 +319,10 @@ display name.
    - Note the **App ID** (this is the client ID) and
      **App Secret** (this is the client secret)
 6. Store in AWS Secrets Manager:
-   ```
-   aws secretsmanager update-secret \
-     --secret-id hopnbop/oauth/facebook \
-     --secret-string '{"client_id":"YOUR_APP_ID","client_secret":"YOUR_APP_SECRET"}' \
+   ```powershell
+   aws secretsmanager update-secret `
+     --secret-id hopnbop/oauth/facebook `
+     --secret-string '{"client_id":"YOUR_APP_ID","client_secret":"YOUR_APP_SECRET"}' `
      --region us-west-2 --profile hopnbop
    ```
 7. Set client ID in Godot:
@@ -376,8 +376,8 @@ the web build, legal pages, and press kit will live.
 **Part B: S3 Bucket**
 
 3. Create the S3 bucket:
-   ```
-   aws s3 mb s3://hopnbop-website --region us-west-2 \
+   ```powershell
+   aws s3 mb s3://hopnbop-website --region us-west-2 `
      --profile hopnbop
    ```
    - Do NOT enable "Static website hosting" on the bucket
@@ -409,10 +409,10 @@ the web build, legal pages, and press kit will live.
 5. Update S3 bucket policy to allow CloudFront OAC:
    - After creating the distribution, CloudFront shows a
      banner: "Copy policy". Copy the JSON and apply it:
-   ```
-   aws s3api put-bucket-policy \
-     --bucket hopnbop-website \
-     --policy file://cloudfront-bucket-policy.json \
+   ```powershell
+   aws s3api put-bucket-policy `
+     --bucket hopnbop-website `
+     --policy file://cloudfront-bucket-policy.json `
      --profile hopnbop
    ```
    Or paste it in the S3 Console under Permissions > Bucket
@@ -431,26 +431,26 @@ the web build, legal pages, and press kit will live.
 **Part E: Deploy Initial Content**
 
 7. Upload the OAuth callback page:
-   ```
-   aws s3 cp web/oauth/callback/index.html \
-     s3://hopnbop-website/oauth/callback/index.html \
-     --content-type "text/html" \
+   ```powershell
+   aws s3 cp web/oauth/callback/index.html `
+     s3://hopnbop-website/oauth/callback/index.html `
+     --content-type "text/html" `
      --profile hopnbop
    ```
 8. Create a placeholder index.html:
-   ```
-   aws s3 cp web/index.html \
-     s3://hopnbop-website/index.html \
-     --content-type "text/html" \
+   ```powershell
+   aws s3 cp web/index.html `
+     s3://hopnbop-website/index.html `
+     --content-type "text/html" `
      --profile hopnbop
    ```
    (Create a simple landing page or "Coming Soon" page in
    `web/index.html` first.)
 9. Invalidate CloudFront cache (do this after every deploy):
-   ```
-   aws cloudfront create-invalidation \
-     --distribution-id YOUR_DIST_ID \
-     --paths "/*" \
+   ```powershell
+   aws cloudfront create-invalidation `
+     --distribution-id YOUR_DIST_ID `
+     --paths "/*" `
      --profile hopnbop
    ```
 
@@ -502,14 +502,14 @@ M13 (CI/CD).
    - Domain: hopnbop.net
    - Note the **Web API Key**
 4. Store credentials:
-   ```
-   aws secretsmanager update-secret \
-     --secret-id hopnbop/oauth/steam \
-     --secret-string '{"api_key":"YOUR_WEB_API_KEY"}' \
+   ```powershell
+   aws secretsmanager update-secret `
+     --secret-id hopnbop/oauth/steam `
+     --secret-string '{"api_key":"YOUR_WEB_API_KEY"}' `
      --region us-west-2 --profile hopnbop
    ```
    Also set the `STEAM_APP_ID` parameter when deploying:
-   ```
+   ```powershell
    sam deploy --parameter-overrides SteamAppID=1234560
    ```
 
@@ -566,8 +566,8 @@ M13 (CI/CD).
     - Create depot for Windows (default)
     - Optionally create depots for Linux and macOS
 11. Upload builds using steamcmd:
-    ```
-    steamcmd +login YOUR_USERNAME \
+    ```powershell
+    steamcmd +login YOUR_USERNAME `
       +run_app_build app_build_1234560.vdf +quit
     ```
     Or use the Steamworks Upload tool (GUI).
@@ -612,10 +612,10 @@ works (Shift+Tab).
    - Linked clients: link the client from step 3
    - Brand settings: app name, icon
 5. Store credentials:
-   ```
-   aws secretsmanager update-secret \
-     --secret-id hopnbop/oauth/epic \
-     --secret-string '{"client_id":"YOUR_CLIENT_ID","client_secret":"YOUR_SECRET","deployment_id":"YOUR_DEPLOY_ID"}' \
+   ```powershell
+   aws secretsmanager update-secret `
+     --secret-id hopnbop/oauth/epic `
+     --secret-string '{"client_id":"YOUR_CLIENT_ID","client_secret":"YOUR_SECRET","deployment_id":"YOUR_DEPLOY_ID"}' `
      --region us-west-2 --profile hopnbop
    ```
 
@@ -663,15 +663,15 @@ works (Shift+Tab).
       screenshots)
     - Write description, set genres, age rating
     - Upload builds via BuildPatchTool:
-      ```
-      BuildPatchTool.exe -mode=UploadBinary \
-        -OrganizationId=YOUR_ORG \
-        -ProductId=YOUR_PRODUCT \
-        -ArtifactId=YOUR_ARTIFACT \
-        -BuildRoot="path/to/build" \
-        -CloudDir="path/to/cloud/cache" \
-        -BuildVersion="0.1.0" \
-        -AppLaunch="HopnBop.exe" \
+      ```powershell
+      BuildPatchTool.exe -mode=UploadBinary `
+        -OrganizationId=YOUR_ORG `
+        -ProductId=YOUR_PRODUCT `
+        -ArtifactId=YOUR_ARTIFACT `
+        -BuildRoot="path/to/build" `
+        -CloudDir="path/to/cloud/cache" `
+        -BuildVersion="0.1.0" `
+        -AppLaunch="HopnBop.exe" `
         -AppArgs=""
       ```
 11. Submit for review:
@@ -711,8 +711,8 @@ and the backend validates the token.
    - Create OAuth client ID > Application type: Android
    - Package name: `com.snoringcat.hopnbop`
    - SHA-1 fingerprint: get from your signing keystore:
-     ```
-     keytool -list -v -keystore your-key.jks \
+     ```powershell
+     keytool -list -v -keystore your-key.jks `
        -alias your-alias
      ```
    - Note the **Client ID** (this is different from the web
@@ -827,10 +827,10 @@ target devices.
    - Note the **Key ID** and your **Team ID** (from the
      top-right of the developer portal)
 5. Store credentials:
-   ```
-   aws secretsmanager update-secret \
-     --secret-id hopnbop/oauth/apple \
-     --secret-string '{"team_id":"YOUR_TEAM_ID","key_id":"YOUR_KEY_ID","client_id":"com.snoringcat.hopnbop.auth","private_key":"-----BEGIN PRIVATE KEY-----\nYOUR_KEY_CONTENTS\n-----END PRIVATE KEY-----"}' \
+   ```powershell
+   aws secretsmanager update-secret `
+     --secret-id hopnbop/oauth/apple `
+     --secret-string '{"team_id":"YOUR_TEAM_ID","key_id":"YOUR_KEY_ID","client_id":"com.snoringcat.hopnbop.auth","private_key":"-----BEGIN PRIVATE KEY-----\nYOUR_KEY_CONTENTS\n-----END PRIVATE KEY-----"}' `
      --region us-west-2 --profile hopnbop
    ```
 
@@ -908,7 +908,8 @@ target devices.
     - Archive: Product > Archive
     - Upload to App Store Connect via Xcode Organizer
     - Or use `xcodebuild` + `altool` for CI:
-      ```
+      ```bash
+      # These run on macOS (requires Xcode).
       xcodebuild -project HopnBop.xcodeproj \
         -scheme HopnBop -archivePath build/HopnBop.xcarchive \
         archive

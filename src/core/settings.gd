@@ -40,6 +40,9 @@ enum BumpMode {
 ## Public OAuth client IDs (safe to embed in client).
 @export var google_oauth_client_id := ""
 @export var facebook_oauth_client_id := ""
+## URL of the oauth-callback.html page hosted alongside
+## the web build (e.g. https://hopnbop.net/oauth-callback.html).
+@export var oauth_callback_url := "https://hopnbop.net/oauth/callback/"
 ## Skip auth screen and go straight to lobby
 ## (for local preview testing).
 @export var skip_auth := false
