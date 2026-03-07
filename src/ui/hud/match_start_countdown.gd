@@ -54,23 +54,31 @@ func _process(_delta: float) -> void:
 	var countdown_sec := (
 		Netcode.settings
 			.match_start_countdown_sec)
+	var countdown_duration := int(
+		countdown_sec
+		* Netcode.frame_driver.target_network_fps
+	)
 	var numeric_step_count := ceili(countdown_sec)
+	var countdown_start := (
+		countdown_end - countdown_duration
+	)
 
 	@warning_ignore("integer_division")
 	var frames_per_numeric_step := (
-		countdown_end / numeric_step_count)
+		countdown_duration / numeric_step_count)
 
 	var frame := Netcode.server_frame_index
+	var elapsed := frame - countdown_start
 
 	# Determine current step.
 	var next_step_index: int
 	if frame < countdown_end:
 		@warning_ignore("integer_division")
 		next_step_index = mini(
-			frame / frames_per_numeric_step,
+			elapsed / frames_per_numeric_step,
 			numeric_step_count - 1)
 	else:
-		# Show "GO" when countdown ends (frame 240).
+		# Show "GO" when countdown ends.
 		next_step_index = numeric_step_count
 
 	if next_step_index != _current_step_index:

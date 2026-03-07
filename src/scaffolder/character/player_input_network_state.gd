@@ -78,7 +78,7 @@ func _post_network_process() -> void:
 		# corrections from the network or redundant input.
 		if _rollback_buffer == null:
 			return
-		var frame_state: Array = (
+		var frame_state: Variant = (
 			_rollback_buffer.get_at(frame_index)
 		)
 		if (

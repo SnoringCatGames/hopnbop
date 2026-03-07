@@ -73,7 +73,13 @@ var is_invincible: bool:
 # up on any frames skipped during rollback.
 var _last_confirmed_sent_frame := -1
 
-const _synced_properties_and_rollback_diff_thresholds := {
+## Looser position threshold for remote players.
+const _REMOTE_POSITION_THRESHOLD := 10.0
+
+## Looser velocity threshold for remote players.
+const _REMOTE_VELOCITY_THRESHOLD := 100.0
+
+var _synced_properties_and_rollback_diff_thresholds := {
 	position = DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD,
 	velocity = DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHOLD,
 	surfaces = -1,
@@ -82,6 +88,8 @@ const _synced_properties_and_rollback_diff_thresholds := {
 	last_interaction_position = 0.01,
 	last_interaction_velocity = 10.0,
 }
+
+var _has_applied_remote_thresholds := false
 
 
 func _get_default_values() -> Array:
@@ -106,6 +114,34 @@ func _should_accept_predicted_states() -> bool:
 	# prediction, so accepting server extrapolations would overwrite the
 	# client's more-accurate predicted state and cause jitter.
 	return Netcode.is_client and not is_authority_for_input_from_client
+
+
+func _pre_network_process() -> void:
+	_apply_remote_thresholds_if_needed()
+	super._pre_network_process()
+
+
+## Increases mismatch thresholds for remote
+## players so normal prediction drift doesn't
+## trigger constant rollbacks (which cause
+## visible jitter). Interaction thresholds
+## remain tight so kills/bumps still rollback.
+func _apply_remote_thresholds_if_needed() -> void:
+	if _has_applied_remote_thresholds:
+		return
+	if not Netcode.is_client:
+		return
+	if is_authority_for_input_from_client:
+		return
+	# input_from_client might not be set yet.
+	if not is_instance_valid(input_from_client):
+		return
+	_has_applied_remote_thresholds = true
+	var t := (
+		_synced_properties_and_rollback_diff_thresholds
+	)
+	t.position = _REMOTE_POSITION_THRESHOLD
+	t.velocity = _REMOTE_VELOCITY_THRESHOLD
 
 
 func _uses_split_packed_state() -> bool:
@@ -410,8 +446,8 @@ func _network_process() -> void:
 					if character.actions.just_triggered_jump:
 						Netcode.verbose(
 							"Jump onset detected "
-							+ "(no-delay path, "
-							+ "surface=%s) (%s)" % [
+							+"(no-delay path, "
+							+"surface=%s) (%s)" % [
 								SurfaceType.get_string(
 									character.surfaces
 										.surface_type
@@ -439,7 +475,7 @@ func _network_process() -> void:
 			if Netcode.log.is_verbose:
 				Netcode.verbose(
 					"Extrapolating input from prev frame "
-					+ "(actions=%d)" % [
+					+"(actions=%d)" % [
 						character.actions.bitmask,
 					],
 					NetworkLogger.CATEGORY_NETWORK_SYNC,
@@ -521,7 +557,7 @@ func _network_process() -> void:
 			):
 				Netcode.print(
 					("Remote simulation: pos %s->%s,"
-					+ " vel %s->%s, actions=%d") % [
+					+" vel %s->%s, actions=%d") % [
 						pos_before,
 						character.position,
 						vel_before,
@@ -917,7 +953,7 @@ func _try_send_confirmed_authoritative_state() -> void:
 	if Netcode.log.is_verbose:
 		Netcode.log.verbose(
 			("%s F:%d Confirmed authoritative "
-			+ "state for frame %d")
+			+"state for frame %d")
 			% [name, Netcode.server_frame_index,
 			target_frame],
 			NetworkLogger.CATEGORY_NETWORK_SYNC)
@@ -1123,7 +1159,7 @@ func _reconcile_spring_interaction(
 	if Netcode.log.is_verbose:
 		Netcode.verbose(
 			"Spring interaction at frame %d, "
-			+ "queuing rollback (%s)" % [
+			+"queuing rollback (%s)" % [
 				p_frame_index,
 				name,
 			],
@@ -1141,7 +1177,7 @@ func _reconcile_snail_crush_interaction(
 	if Netcode.log.is_verbose:
 		Netcode.verbose(
 			"Snail crush interaction at frame "
-			+ "%d, queuing rollback (%s)" % [
+			+"%d, queuing rollback (%s)" % [
 				p_frame_index,
 				name,
 			],
