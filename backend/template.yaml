@@ -9,7 +9,7 @@ Globals:
     MemorySize: 512
     Environment:
       Variables:
-        GAME_VERSION: "0.1.0"
+        GAME_VERSION: "0.2.0"
         PLAYERS_TABLE: !Ref PlayersTable
         MATCH_HISTORY_TABLE: !Ref MatchHistoryTable
         PROVIDER_MAPPINGS_TABLE: !Ref ProviderMappingsTable
@@ -231,12 +231,69 @@ Resources:
               Action:
                 - gamelift:DescribeMatchmaking
               Resource: '*'
+        - !Ref SecretsManagerPolicy
       Events:
         GetStatus:
           Type: Api
           Properties:
             RestApiId: !Ref GameBackendAPI
             Path: /matchmaking/status/{ticket_id}
+            Method: get
+
+  # Match Result Functions
+  SubmitMatchResultFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.match_handler.submit_match_result
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref MatchHistoryTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        SubmitResult:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /matches/result
+            Method: post
+
+  GetLeaderboardFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.match_handler.get_leaderboard
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        GetLeaderboard:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /leaderboard
+            Method: get
+
+  GetPlayerStatsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.match_handler.get_player_stats
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref MatchHistoryTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        GetPlayerStats:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /players/{player_id}/stats
             Method: get
 
   # DynamoDB Tables
@@ -248,9 +305,27 @@ Resources:
       AttributeDefinitions:
         - AttributeName: player_id
           AttributeType: S
+        - AttributeName: rating_partition
+          AttributeType: S
+        - AttributeName: rating
+          AttributeType: N
       KeySchema:
         - AttributeName: player_id
           KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: rating-index
+          KeySchema:
+            - AttributeName: rating_partition
+              KeyType: HASH
+            - AttributeName: rating
+              KeyType: RANGE
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - display_name
+              - matches_played
+              - wins
+              - losses
 
   ProviderMappingsTable:
     Type: AWS::DynamoDB::Table

@@ -79,6 +79,9 @@ func _ready() -> void:
 			_on_match_ready)
 		session_manager.server_should_reset.connect(
 			_on_server_should_reset)
+		(session_manager.server_shutdown_imminent
+			.connect(
+				_on_server_shutdown_imminent))
 		(session_manager.session_provider
 			.all_players_connected.connect(
 				_server_on_all_players_connected))
@@ -407,6 +410,35 @@ func _on_match_ready() -> void:
 	_server_resolve_critter_preference()
 
 
+func _on_server_shutdown_imminent(
+	seconds_remaining: float,
+) -> void:
+	Netcode.check_is_server()
+
+	# Notify clients so they see the correct
+	# disconnect reason.
+	Netcode.connector.server_notify_shutdown()
+
+	# If a match is active and there is enough
+	# time, let it finish naturally.
+	if (G.match_state.is_match_active
+			and not G.match_state.is_match_ended
+			and seconds_remaining > 10.0):
+		Netcode.print(
+			"Match active, allowing finish"
+			+ " before shutdown (%.0fs remaining)"
+			% seconds_remaining,
+			NetworkLogger.CATEGORY_GAME_STATE,
+		)
+		return
+
+	# No active match or not enough time.
+	# Force end and disconnect.
+	if (G.match_state.is_match_active
+			and not G.match_state.is_match_ended):
+		_server_initiate_match_end()
+
+
 func _on_server_should_reset() -> void:
 	# Server should reset for new match
 	# (preview mode only).
@@ -696,10 +728,63 @@ func server_end_match() -> void:
 		(Netcode.connector
 			.server_close_multiplayer_session())
 
-	# TODO: Add support for tracking game stats
-	# in a separate backend database.
+	_server_report_match_result()
 
 	_server_destroy_level(G.level)
+
+
+## Reports match results to the backend API.
+## Only runs on GameLift servers (not preview).
+func _server_report_match_result() -> void:
+	var provider := (
+		session_manager.session_provider)
+	if not provider is GameLiftServerProvider:
+		return
+	var backend_id_map: Dictionary = (
+		provider.get_backend_player_id_map())
+	if backend_id_map.is_empty():
+		return
+
+	var player_results := []
+	for pid in G.match_state.players_by_id:
+		var ps: GamePlayerState = (
+			G.match_state.players_by_id[pid])
+		var backend_id: String = (
+			backend_id_map.get(pid, ""))
+		if backend_id.is_empty():
+			continue
+		var stats: PlayerMatchStats = (
+			G.match_state.get_player_stats(pid))
+		var entry := {
+			"player_id": backend_id,
+			"rank": ps.rank,
+			"score": ps.score,
+		}
+		if stats != null:
+			entry["kill_count"] = stats.kill_count
+			entry["death_count"] = (
+				stats.death_count)
+			entry["bump_count"] = stats.bump_count
+			entry["crown_time_sec"] = (
+				stats.crown_time_sec)
+			entry["regicide_count"] = (
+				stats.regicide_count)
+		player_results.append(entry)
+
+	var game_session_id: String = (
+		provider._game_session.game_session_id)
+	var duration_sec: float = (
+		G.match_state.match_duration_usec
+		/ 1_000_000.0)
+	var level_id: String = String(
+		provider.server_get_selected_level_id())
+
+	G.match_result_reporter.report(
+		game_session_id,
+		duration_sec,
+		level_id,
+		player_results,
+	)
 
 
 ## Resolves critter preference and spawns snails
@@ -993,6 +1078,11 @@ func _server_initiate_match_end() -> void:
 				new_adjectives[player_id])
 	# Repack to replicate updated adjectives.
 	G.match_state._server_pack_players()
+
+	# Send final stats to all clients so they
+	# have complete data for the game over screen.
+	(match_state_synchronizer
+		._server_send_stats_to_clients())
 
 	# Set flag to enable invincibility for all
 	# players and notify clients.

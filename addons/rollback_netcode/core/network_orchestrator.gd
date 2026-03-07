@@ -188,6 +188,11 @@ func initialize() -> void:
 	# Cache server port from command-line arg or settings.
 	server_port = int(args.port) if args.has("port") else settings.server_port
 
+	# Auto-select WebSocket transport for web exports.
+	if OS.has_feature("web"):
+		settings.transport_type = (
+			NetworkSettings.TransportType.WEBSOCKET)
+
 	# Validate preview client number if explicitly specified.
 	if is_preview and args.has("client"):
 		log.check(

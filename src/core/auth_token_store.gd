@@ -3,13 +3,16 @@ extends RefCounted
 ## Persists authentication tokens to encrypted local storage.
 ##
 ## Stores JWT, refresh token, and player metadata in an
-## encrypted ConfigFile at user://auth.cfg. Uses
+## encrypted ConfigFile at user://auth.cfg. In preview
+## mode, secondary clients use separate files to avoid
+## identity collisions during matchmaking. Uses
 ## OS.get_unique_id() as the encryption passphrase for
 ## basic obfuscation.
 
-const _AUTH_FILE_PATH := "user://auth.cfg"
 const _SECTION := "auth"
 const _REFRESH_MARGIN_SEC := 3600
+
+var _auth_file_path := "user://auth.cfg"
 
 var jwt_token := ""
 var refresh_token := ""
@@ -23,7 +26,25 @@ var linked_providers: Array[String] = []
 
 
 func _init() -> void:
+	# In preview mode, each client uses a separate
+	# auth file so they don't overwrite each other.
+	# Parse args directly because Netcode is not yet
+	# initialized when this runs (G autoloads first).
+	var client_num := _get_preview_client_number()
+	if client_num > 1:
+		_auth_file_path = (
+			"user://auth_client%d.cfg"
+			% client_num)
 	load_tokens()
+
+
+static func _get_preview_client_number() -> int:
+	if not OS.has_feature("editor"):
+		return 0
+	for arg in OS.get_cmdline_args():
+		if arg.begins_with("--client="):
+			return int(arg.substr(9))
+	return 0
 
 
 ## Returns true when a JWT exists and has not expired.
@@ -74,7 +95,7 @@ func clear_tokens() -> void:
 	rating = 1500
 	linked_providers.clear()
 	DirAccess.remove_absolute(
-		ProjectSettings.globalize_path(_AUTH_FILE_PATH)
+		ProjectSettings.globalize_path(_auth_file_path)
 	)
 
 
@@ -100,7 +121,7 @@ func save_tokens() -> void:
 		linked_providers,
 	)
 	config.save_encrypted_pass(
-		_AUTH_FILE_PATH, _get_passphrase()
+		_auth_file_path, _get_passphrase()
 	)
 
 
@@ -108,7 +129,7 @@ func save_tokens() -> void:
 func load_tokens() -> void:
 	var config := ConfigFile.new()
 	var err := config.load_encrypted_pass(
-		_AUTH_FILE_PATH, _get_passphrase()
+		_auth_file_path, _get_passphrase()
 	)
 	if err != OK:
 		return

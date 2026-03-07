@@ -21,7 +21,17 @@ extends Resource
 ## ```
 
 
+## Transport protocol for multiplayer connections.
+enum TransportType {
+	ENET,      ## UDP-based. Native desktop clients.
+	WEBSOCKET, ## TCP-based. Web and mobile clients.
+}
+
+
 ## Network settings.
+## Transport protocol used for server and client peers.
+@export var transport_type := TransportType.ENET
+
 ## Port number for server to listen on / client to connect to.
 @export var server_port := 4433
 

@@ -133,6 +133,13 @@ var _extra_cells: Dictionary = {}
 ## computed at. -1 means not yet initialized.
 var _last_processed_frame := -1
 
+## Stored init state for re-deriving position
+## after NTP frame corrections.
+var _init_tile := Vector2i.ZERO
+var _init_face := 0
+var _init_clockwise := true
+var _init_frame := -1
+
 ## Server-only: frame at which to respawn.
 var _respawn_at_frame := -1
 var _is_respawning := false
@@ -225,6 +232,13 @@ func _apply_init(
 	_is_trail_initialized = false
 	_sprite.self_modulate.a = 1.0
 	_apply_direction(clockwise)
+
+	# Store init state for re-deriving after
+	# NTP frame corrections.
+	_init_tile = tile
+	_init_face = face
+	_init_clockwise = clockwise
+	_init_frame = frame
 
 	# Fast-forward from event frame to now.
 	# Update _last_processed_frame afterward so
@@ -342,11 +356,41 @@ func _physics_process(_delta: float) -> void:
 
 	var frame_delta := (
 		current_frame - _last_processed_frame)
-	_last_processed_frame = current_frame
 
-	# Clock correction backward or no change.
-	if frame_delta <= 0:
+	# No change.
+	if frame_delta == 0:
 		return
+
+	# NTP frame correction detected: re-derive
+	# position from stored init state instead of
+	# incrementally simulating a wrong delta.
+	# Threshold of 3 distinguishes corrections
+	# from normal single-frame ticks.
+	var is_frame_correction := (
+		frame_delta < 0 or frame_delta > 3
+	)
+	if is_frame_correction and _init_frame >= 0:
+		current_tile = _init_tile
+		current_face = _init_face
+		progress = Level.TILE_SIZE / 2.0
+		_apply_direction(_init_clockwise)
+		var total_frames := (
+			current_frame - _init_frame)
+		if total_frames > 0:
+			_simulate_frames(total_frames)
+		_last_processed_frame = current_frame
+		_update_visual()
+		# Reset trail so it doesn't draw a line
+		# from the old position to the new one.
+		_is_trail_initialized = false
+		reset_physics_interpolation()
+		return
+
+	# Backward jump without init state.
+	if frame_delta < 0:
+		return
+
+	_last_processed_frame = current_frame
 
 	var pre_sim_pos := global_position
 	_simulate_frames(frame_delta)

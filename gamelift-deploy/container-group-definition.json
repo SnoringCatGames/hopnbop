@@ -5,18 +5,27 @@
     "TotalVcpuLimit": 1.0,
     "GameServerContainerDefinition": {
         "ContainerName": "hopnbop-server",
-        "ImageUri": "270469481989.dkr.ecr.us-west-2.amazonaws.com/hopnbop-server:latest",
+        "ImageUri": "270469481989.dkr.ecr.us-west-2.amazonaws.com/hopnbop-server:0.1.0",
         "PortConfiguration": {
             "ContainerPortRanges": [
                 {
                     "FromPort": 4433,
                     "ToPort": 4433,
                     "Protocol": "UDP"
+                },
+                {
+                    "FromPort": 4434,
+                    "ToPort": 4434,
+                    "Protocol": "TCP"
                 }
             ]
         },
-        "ServerSdkVersion": "5.2.0",
-        "MemoryLimitMebibytes": 896,
-        "Vcpu": 0.9
+        "EnvironmentOverride": [
+            {
+                "Name": "SERVER_API_KEY",
+                "Value": "REPLACE_WITH_SECRET"
+            }
+        ],
+        "ServerSdkVersion": "5.2.0"
     }
 }

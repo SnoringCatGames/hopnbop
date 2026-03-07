@@ -68,6 +68,7 @@ const _INPUT_REPEAT_RATE := 0.1
 
 
 func open(player: Player) -> void:
+	G.log.print("[SettingsPanel] Opened")
 	_player = player
 	_resolve_device_config()
 	_build_ui()
@@ -101,6 +102,7 @@ func open(player: Player) -> void:
 
 
 func close() -> void:
+	G.log.print("[SettingsPanel] Closed")
 	# Collect and save level preferences.
 	_save_level_preferences()
 	G.local_settings.save_settings()
@@ -355,6 +357,9 @@ func _connect_row_clicked(
 
 
 func _on_row_clicked(row: SettingsRow) -> void:
+	G.log.print(
+		"[SettingsPanel] Row clicked: %s" % row.name
+	)
 	var index := _rows.find(row)
 	if index < 0:
 		return

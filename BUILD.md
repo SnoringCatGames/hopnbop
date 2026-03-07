@@ -194,50 +194,63 @@ ls -la addons/gamelift/
 
 Open Godot and check for errors in the Output tab. If the extension loads successfully, you should see no error messages related to GameLift.
 
-## Deployment to GameLift
+## Deployment to GameLift (Container Fleet)
 
-### 1. Build for Linux Release
-```bash
-cd gamelift-gdextension
-./build.sh --skip-deps --release
+The game server runs as a Docker container on a GameLift container
+fleet. The Dockerfile uses a multi-stage build that compiles the
+GameLift Server SDK v5.2.0 from source with `GAMELIFT_USE_STD=1`
+to match the GDExtension's ABI, then packages the Godot server
+binary with all dependencies.
+
+### Prerequisites
+- Docker Desktop running
+- AWS CLI configured (`aws sso login --profile hopnbop`)
+- Godot CLI on PATH (for export step)
+- Linux export templates installed in Godot
+
+### Deploy a new server version
+
+```powershell
+.\gamelift-deploy\deploy.ps1 -Version "0.2.0"
 ```
 
-### 2. Export Godot Project
-Use Godot's export dialog to create a Linux server build (headless, no visuals).
+This script:
+1. Exports the Godot Linux server build
+2. Builds the Docker image (multi-stage, compiles SDK)
+3. Pushes to ECR (`hopnbop-server:<version>`)
+4. Updates the container group definition (injects
+   `SERVER_API_KEY` from Secrets Manager)
 
-### 3. Create Deployment Package
+The fleet automatically deploys the new version. Monitor with:
 ```bash
-# Create directory structure
-mkdir -p gamelift-server-deploy/lib
-
-# Copy server binary
-cp exported_server gamelift-server-deploy/
-
-# Copy GameLift extension
-cp -r addons/gamelift gamelift-server-deploy/
-
-# Copy GameLift SDK libraries
-cp gamelift-server-sdk/lib/*.so gamelift-server-deploy/lib/
-
-# Copy OpenSSL libraries
-cp /usr/lib/x86_64-linux-gnu/libssl.so.3 gamelift-server-deploy/lib/
-cp /usr/lib/x86_64-linux-gnu/libcrypto.so.3 gamelift-server-deploy/lib/
-
-# Create install script
-cat > gamelift-server-deploy/install.sh << 'EOF'
-#!/bin/bash
-export LD_LIBRARY_PATH="$(pwd)/lib:$LD_LIBRARY_PATH"
-chmod +x exported_server
-EOF
-
-chmod +x gamelift-server-deploy/install.sh
-
-# Package
-tar -czf gamelift-server-deploy.tar.gz gamelift-server-deploy/
+aws gamelift list-fleet-deployments \
+    --fleet-id <fleet-id> --region us-west-2 --profile hopnbop
 ```
 
-### 4. Upload to GameLift
-Use AWS CLI or GameLift console to upload the deployment package.
+### First-time fleet setup
+
+Only needed once. Creates the fleet, matchmaker, queue, and ruleset:
+```bash
+bash gamelift-deploy/create-fleet.sh
+```
+
+### Key details
+- The GDExtension `.gdextension` manifest and `.so` binaries must
+  be on the filesystem (not inside `.pck`). The Dockerfile copies
+  them to match the `res://addons/gamelift/` path structure.
+- Ubuntu 24.04 base image is required (GLIBCXX_3.4.32).
+- SDK version must be pinned to v5.2.0 to match fleet configuration.
+- `SERVER_API_KEY` environment variable is set via the container
+  group definition and read by `global.gd` at startup.
+
+### GameLift server integration notes
+- The server must call `activate_game_session()` in the
+  `game_session_started` callback. Without it, FlexMatch times out
+  with `GAME_SESSION_ACTIVATION_TIMEOUT` and the deployment goes
+  IMPAIRED.
+- GDExtension methods return `Variant` to GDScript. Use explicit
+  type annotations (`var x: int = ...`) instead of inferred types
+  (`var x := ...`) to avoid "Cannot infer type" errors at runtime.
 
 ## Troubleshooting
 

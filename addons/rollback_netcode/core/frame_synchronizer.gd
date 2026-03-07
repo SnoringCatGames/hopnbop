@@ -37,7 +37,7 @@ var target_network_time_step_sec: float:
 			1.0 / 60.0
 		)
 
-var _time_since_last_ping_sec := 0.0
+var _time_since_last_ping_sec := PING_INTERVAL_SEC
 var _last_hard_reset_usec := 0
 
 # RTT tracking (in microseconds).
@@ -70,6 +70,13 @@ var input_delay_frames := 0
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+
+
+## Resets sync state for a new connection.
+## Ensures the first NTP ping fires immediately.
+func client_reset() -> void:
+	_time_since_last_ping_sec = PING_INTERVAL_SEC
+	_last_hard_reset_usec = 0
 
 
 func _process(delta: float) -> void:
@@ -171,6 +178,12 @@ func _client_rpc_pong(
 		# Within acceptable range, no correction needed.
 		return
 
+	# Mark frame tracking as initialized so
+	# _initialize_frame_tracking() doesn't reset
+	# the frame index we're about to set.
+	var fd := Netcode.frame_driver
+	fd._is_frame_tracking_initialized = true
+
 	if drift > 0:
 		# Client is behind. Use existing fast-forward logic.
 		Netcode.frame_driver.fast_forward(
@@ -205,9 +218,11 @@ func _client_rpc_pong(
 			],
 			NetworkLogger.CATEGORY_NETWORK_SYNC
 		)
-		# Trigger grace period to prevent rejecting valid server
-		# states.
+		# Trigger grace period to prevent rejecting
+		# valid server states and to suppress
+		# fast-forwards from stale buffered packets.
 		Netcode.frame_driver._frame_reset_time_usec = now
+		Netcode.frame_driver._hard_reset_backward_time_usec = now
 		# Reinitialize rollback buffers to clear stale predicted
 		# data.
 		Netcode.frame_driver.reinitialize_buffers_for_hard_reset(

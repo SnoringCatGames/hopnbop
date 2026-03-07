@@ -170,6 +170,16 @@ func login_anonymous() -> void:
 	var device_id := OS.get_unique_id()
 	if device_id.is_empty():
 		device_id = _generate_fallback_device_id()
+	# In preview mode, append client number so
+	# each instance gets a unique player identity.
+	if (
+		Netcode.is_preview
+		and Netcode.is_client
+		and Netcode.preview_client_number > 0
+	):
+		device_id += (
+			"_client%d"
+			% Netcode.preview_client_number)
 	var body := {"device_id": device_id}
 	_send_auth_request(_ANON_ENDPOINT, body)
 
@@ -196,6 +206,10 @@ func refresh_token() -> void:
 
 ## Link a new OAuth provider to the current account.
 func link_provider(provider: Provider) -> void:
+	G.log.print(
+		"[AuthClient] link_provider: %s"
+		% _PROVIDER_NAMES[provider]
+	)
 	_is_linking = true
 	_link_provider_name = _PROVIDER_NAMES[provider]
 	if provider in _BROWSER_PROVIDERS:
@@ -311,13 +325,16 @@ func _poll_oauth_redirect() -> void:
 				break
 		await get_tree().process_frame
 
-	# Send response HTML.
+	# Send response HTML. Try to auto-close the tab,
+	# with a fallback message if the browser blocks it.
 	var html := (
 		"HTTP/1.1 200 OK\r\n"
 		+ "Content-Type: text/html\r\n\r\n"
-		+ "<html><body><h2>Authentication"
-		+ " complete</h2><p>You can close this"
-		+ " window.</p></body></html>"
+		+ "<html><body>"
+		+ "<h2>Authentication complete</h2>"
+		+ "<p>You can close this window.</p>"
+		+ "<script>window.close();</script>"
+		+ "</body></html>"
 	)
 	connection.put_data(html.to_utf8_buffer())
 	connection.disconnect_from_host()
@@ -328,6 +345,14 @@ func _poll_oauth_redirect() -> void:
 	# Parse auth code from request.
 	var code := _parse_query_param(data, "code")
 	var state := _parse_query_param(data, "state")
+	G.log.print(
+		"[AuthClient] OAuth redirect: code=%s state_ok=%s"
+		% [
+			"present" if not code.is_empty()
+				else "empty",
+			state == _oauth_state,
+		]
+	)
 
 	if code.is_empty():
 		_emit_failure("No auth code received")
@@ -341,17 +366,21 @@ func _poll_oauth_redirect() -> void:
 		"http://%s:%d" % [_LOOPBACK_HOST, _LOOPBACK_PORT]
 	)
 
+	# Determine endpoint.
+	var endpoint := _AUTH_ENDPOINT
+	if _is_linking:
+		endpoint = _LINK_ENDPOINT
+	G.log.print(
+		"[AuthClient] Sending to %s (linking=%s)"
+		% [endpoint, _is_linking]
+	)
+
 	auth_status_changed.emit("Authenticating...")
 	var body := {
 		"provider": _PROVIDER_NAMES[_oauth_provider],
 		"auth_code": code,
 		"redirect_uri": redirect_uri,
 	}
-
-	# Determine endpoint.
-	var endpoint := _AUTH_ENDPOINT
-	if _is_linking:
-		endpoint = _LINK_ENDPOINT
 
 	_send_auth_request(
 		endpoint, body, endpoint == _LINK_ENDPOINT
@@ -541,6 +570,7 @@ func _send_auth_request(
 		G.settings.gamelift_backend_api_url + endpoint
 	)
 	var json_body := JSON.stringify(body)
+	G.log.print("[AuthClient] HTTP POST %s" % url)
 
 	var headers := [
 		"Content-Type: application/json",
@@ -570,6 +600,10 @@ func _send_auth_request(
 		json_body,
 	)
 	if err != OK:
+		G.log.warning(
+			"[AuthClient] HTTP request error: %d"
+			% err
+		)
 		_is_refreshing = false
 		_emit_failure("HTTP request failed: %d" % err)
 
@@ -613,6 +647,10 @@ func _on_auth_response(
 	_headers: PackedStringArray,
 	body: PackedByteArray,
 ) -> void:
+	G.log.print(
+		"[AuthClient] Response: result=%d code=%d len=%d"
+		% [result, response_code, body.size()]
+	)
 	_is_refreshing = false
 
 	if result != HTTPRequest.RESULT_SUCCESS:
@@ -725,6 +763,10 @@ func _handle_delete_success() -> void:
 
 
 func _emit_failure(error: String) -> void:
+	G.log.warning(
+		"[AuthClient] Failure: %s (linking=%s)"
+		% [error, _is_linking]
+	)
 	if _is_linking:
 		_is_linking = false
 		var provider_name := _link_provider_name
@@ -791,7 +833,7 @@ func _build_google_auth_url(
 		+ "?client_id=%s" % client_id
 		+ "&redirect_uri=%s" % redirect_uri.uri_encode()
 		+ "&response_type=code"
-		+ "&scope=openid%%20profile%%20email"
+		+ "&scope=openid%20profile%20email"
 		+ "&state=%s" % state
 	)
 

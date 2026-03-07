@@ -48,6 +48,33 @@ extends Node
 
 # ---
 
+
+# - Polish loading screen.
+
+
+# All M3 code changes are complete. The remaining items are:
+# - Godot client test — Connect from the game client to the live fleet, play a match, verify match results post to backend
+# - Dockerfile WebSocket port — The plan mentioned adding port 4434/tcp, but this is deferred to M10 (web builds)
+
+
+# Remaining items for end-to-end testing:
+# - hopnbop/server-api-key secret needs to be set as a fleet environment variable if the server posts match results to the backend API
+# - Client-side testing - connect a client, trigger matchmaking, verify a game session is created and playable
+# - PlayerInputNetworkState class resolution error - non-blocking but should be investigated for the export/pck
+
+
+# Remaining notes:
+# - The server API key needs to be set as a GameLift fleet environment variable (server_api_key) so game servers can read it via G.settings.server_api_key
+# - Existing player records won't appear on the leaderboard until they play a match or log in again (they lack rating_partition = "all")
+# - The lobby podium object was deferred (needs art assets)
+
+
+# Plan whether to show the actual game as the main landing page for hopnbop.net.
+# - Yes?
+# - Would probably want to add in-game buttons in the lobby then, just for the web build, which clicking-on would navigate to things like About, Terms, Privacy, Data-Deletion, etc.
+
+# - Would probably want to add in-game buttons in the lobby then, just for the web build, which clicking-on would navigate to things like About, Terms, Privacy, Data-Deletion, etc.
+
 # - Get icons (Steam, Google, Facebook, Apple, Epic)
 # You'll need to:
 # Create the provider icon .aseprite/.png files (steam, epic, google, facebook, apple)
@@ -236,6 +263,9 @@ extends Node
 #   - UI
 #   - GameLift and matchmaking
 #   - ...
+
+
+# - Ask for a security review of EVERYTHING.
 
 
 #######################################################
@@ -648,22 +678,6 @@ extends Node
 #   - Other important holidays across the world
 # - Alternate adjectives for holidays too
 
-# Record this somewhere. These are the places to update when bumping a new version.
-# Version Management Locations
-# 1. Rollback Netcode Plugin
-# - project settings
-# - addons/rollback_netcode/core/network_Netcode.gd:50 - const VERSION := "1.0.0" (single source of truth)
-# - addons/rollback_netcode/plugin.cfg:6 - version="1.0.0" (Asset Library metadata)
-# - addons/rollback_netcode/examples/simple_game/project.godot - Example project
-# 2. GameLift Session Manager Plugin
-# - project settings
-# - backend/template.yaml
-# - addons/gamelift_session_manager/plugin.cfg:6 - version="1.0.0"
-# 3. GameLift GDExtension
-# - No real version used.
-# - gamelift-gdextension/README.md - Build version references (lines 325-329)
-# 4. Hop 'n Bop Game
-# project.godot:14 - config/version="0.1.0" (main game version)
 
 # ### Devlog post:
 # - AI helped a lot
@@ -671,6 +685,7 @@ extends Node
 #   - Fixing the GitHub Actions CI workflows.
 #     - Probably ~60 iterations.
 #
+
 
 ## Emitted when pause state changes (for UI updates).
 signal pause_state_changed(is_paused: bool, initiator_peer_id: int)
@@ -733,6 +748,24 @@ var is_in_sync_grace_period: bool:
 			return false
 		var elapsed_usec := Time.get_ticks_usec() - _frame_reset_time_usec
 		return elapsed_usec < (FRAME_SYNC_GRACE_PERIOD_SEC * 1_000_000)
+
+## Timestamp of the last backward hard reset (client was ahead of server).
+## Used to suppress fast-forwards from stale buffered state packets.
+var _hard_reset_backward_time_usec := 0
+
+## Returns true if fast-forwards should be suppressed after a backward
+## hard reset. Stale state packets buffered before the reset would
+## otherwise race the frame counter back up.
+var is_suppressing_fast_forward: bool:
+	get:
+		if _hard_reset_backward_time_usec == 0:
+			return false
+		var elapsed_usec := (
+			Time.get_ticks_usec()
+			- _hard_reset_backward_time_usec)
+		return elapsed_usec < (
+			FRAME_SYNC_GRACE_PERIOD_SEC
+			* 1_000_000)
 
 ## Pauses frame simulation. Starts paused by default - server unpauses when
 ## ready (e.g., after all players connect in GameLift). When paused,
@@ -871,17 +904,31 @@ func _ready() -> void:
 
 
 func client_reset() -> void:
-	# Reset frame index for new match to sync with server's reset.
+	# Reset frame index for new match to sync
+	# with server's reset.
 	server_frame_index = 0
-	# Start grace period to suppress expected frame sync warnings.
+	# Prevent frame index from incrementing
+	# during loading/matchmaking. Frame tracking
+	# re-initializes when the connection starts.
+	_is_frame_tracking_initialized = false
+	# Start grace period to suppress expected
+	# frame sync warnings.
 	_frame_reset_time_usec = Time.get_ticks_usec()
-	# Start paused so client waits for server's unpause
-	# signal before transitioning from LOADING to GAME screen.
+	# Reset backward hard reset suppression.
+	_hard_reset_backward_time_usec = 0
+	# Start paused so client waits for server's
+	# unpause signal before transitioning from
+	# LOADING to GAME screen.
 	_is_paused = true
-	# Reset match start countdown state from previous match.
+	# Reset match start countdown state from
+	# previous match.
 	match_start_countdown_end_frame_index = -1
 	_has_match_start_countdown_started = false
 	_has_match_start_countdown_ended = false
+	# Reset NTP sync so first ping fires
+	# immediately on new connection.
+	if Netcode.frame_sync != null:
+		Netcode.frame_sync.client_reset()
 
 
 ## Handles peer connections in preview mode to auto-unpause when ready.
@@ -1238,23 +1285,33 @@ func _server_execute_unpause() -> void:
 	if is_starting_match_start_countdown:
 		_has_match_start_countdown_started = true
 
-		# Calculate match start countdown end frame.
-		var countdown_frames := int(
-			Netcode.settings.match_start_countdown_sec * target_network_fps
+		# Calculate match start countdown end frame
+		# relative to current server frame.
+		var countdown_duration := int(
+			Netcode.settings.match_start_countdown_sec
+			* target_network_fps
 		)
-		match_start_countdown_end_frame_index = countdown_frames
+		var countdown_end := (
+			server_frame_index + countdown_duration
+		)
+		match_start_countdown_end_frame_index = countdown_end
 
 		Netcode.log.print(
-			"Starting match start countdown (%d frames)" % countdown_frames,
+			("Starting match start countdown"
+			+" (%d frames, ends at %d)")
+			% [countdown_duration, countdown_end],
 			NetworkLogger.CATEGORY_GAME_STATE
 		)
 
-		# Notify clients to start match start countdown (they pause locally).
+		# Notify clients to start match start
+		# countdown (they pause locally).
 		if is_inside_tree():
-			_client_rpc_start_match_start_countdown.rpc(countdown_frames)
+			_client_rpc_start_match_start_countdown.rpc(
+				countdown_end,
+			)
 
 		# Emit signal for game-specific UI.
-		match_start_countdown_started.emit(countdown_frames)
+		match_start_countdown_started.emit(countdown_end)
 	else:
 		# Normal unpause - notify clients.
 		if Netcode.is_server and is_inside_tree():
@@ -1400,10 +1457,13 @@ func _pre_physics_process(_delta: float) -> void:
 		)
 
 	if _is_paused:
-		# Still advance frame index in local mode so frame-based
-		# logic (boost cooldown, coyote time, jump throttle) works
-		# correctly even though networking is paused.
-		if not G.is_networked_level_active:
+		# Still advance frame index in lobby so
+		# frame-based logic (boost cooldown, coyote
+		# time, jump throttle) works correctly even
+		# though networking is paused. Skip during
+		# matchmaking/loading to prevent frame drift
+		# before NTP sync.
+		if G.is_lobby_active:
 			if not _is_frame_tracking_initialized:
 				_initialize_frame_tracking()
 			else:

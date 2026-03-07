@@ -65,8 +65,15 @@ func _toggle() -> void:
 
 
 func _try_link() -> void:
+	G.log.print(
+		"[LinkAccountRow] Starting link for %s"
+		% _provider_name
+	)
 	_is_busy = true
-	_status_label.text = "Linking..."
+	if G.auth_token_store.is_anonymous:
+		_status_label.text = "Connecting..."
+	else:
+		_status_label.text = "Linking..."
 
 	G.auth_client.link_completed.connect(
 		_on_link_completed, CONNECT_ONE_SHOT
@@ -86,12 +93,23 @@ func _try_unlink() -> void:
 
 func _on_link_completed(
 	success: bool,
-	_error: String,
+	error: String,
 	_provider_str: String,
 ) -> void:
+	G.log.print(
+		"[LinkAccountRow] Link completed for %s:"
+		% _provider_name
+		+ " success=%s error='%s'"
+		% [success, error]
+	)
 	_is_busy = false
 	if success:
 		_is_linked = true
+	else:
+		push_warning(
+			"Link failed for %s: %s"
+			% [_provider_name, error]
+		)
 	_update_status()
 
 
@@ -110,6 +128,9 @@ func _update_status() -> void:
 	if _is_linked:
 		_status_label.text = "Linked"
 		_status_label.modulate = Color(0.6, 1.0, 0.6)
+	elif G.auth_token_store.is_anonymous:
+		_status_label.text = "Connect"
+		_status_label.modulate = Color.WHITE
 	else:
 		_status_label.text = "Link"
 		_status_label.modulate = Color.WHITE

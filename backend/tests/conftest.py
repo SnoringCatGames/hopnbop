@@ -165,6 +165,16 @@ def _reinit_handler_services():
     except ImportError:
         pass
 
+    try:
+        from services import match_service as ms_mod
+        from handlers import match_handler
+
+        importlib.reload(ms_mod)
+        match_handler.match_service = ms_mod.MatchService()
+        match_handler.player_service = ps_mod.PlayerService()
+    except ImportError:
+        pass
+
 
 def _create_dynamodb_tables():
     """Create all DynamoDB tables used by the backend."""
@@ -181,6 +191,38 @@ def _create_dynamodb_tables():
             {
                 "AttributeName": "player_id",
                 "AttributeType": "S",
+            },
+            {
+                "AttributeName": "rating_partition",
+                "AttributeType": "S",
+            },
+            {
+                "AttributeName": "rating",
+                "AttributeType": "N",
+            },
+        ],
+        GlobalSecondaryIndexes=[
+            {
+                "IndexName": "rating-index",
+                "KeySchema": [
+                    {
+                        "AttributeName": "rating_partition",
+                        "KeyType": "HASH",
+                    },
+                    {
+                        "AttributeName": "rating",
+                        "KeyType": "RANGE",
+                    },
+                ],
+                "Projection": {
+                    "ProjectionType": "INCLUDE",
+                    "NonKeyAttributes": [
+                        "display_name",
+                        "matches_played",
+                        "wins",
+                        "losses",
+                    ],
+                },
             }
         ],
         BillingMode="PAY_PER_REQUEST",
@@ -235,6 +277,11 @@ def _create_secrets():
     client.create_secret(
         Name="hopnbop/jwt-signing-key",
         SecretString=TEST_JWT_SECRET,
+    )
+
+    client.create_secret(
+        Name="hopnbop/server-api-key",
+        SecretString="test-server-api-key",
     )
 
     for provider in [

@@ -21,6 +21,14 @@ func on_open() -> void:
 	%ErrorLabel.text = ""
 	_show_buttons()
 
+	# In preview mode, force secondary clients to
+	# use anonymous login so each gets a unique
+	# player identity for matchmaking.
+	if _should_force_anonymous():
+		_start_login(
+			AuthClient.Provider.ANONYMOUS)
+		return
+
 	# Check cached token.
 	if G.auth_token_store.is_token_valid():
 		_navigate_to_lobby()
@@ -154,6 +162,14 @@ func _disconnect_signals() -> void:
 		G.auth_client.auth_completed.disconnect(
 			_on_auto_refresh_completed
 		)
+
+
+func _should_force_anonymous() -> bool:
+	return (
+		Netcode.is_preview
+		and Netcode.is_client
+		and Netcode.preview_client_number > 1
+	)
 
 
 func _disconnect_status_signal() -> void:

@@ -127,6 +127,55 @@ func server_validate_player_sessions(
 		_on_validation_success(player_id, session_id)
 
 
+## Builds a mapping from in-game int player_id
+## to backend string player_id. Parses matchmaker
+## data to extract player entries and maps them
+## via player session IDs. Returns empty dict in
+## preview mode or if matchmaker data is absent.
+func get_backend_player_id_map() -> Dictionary:
+	if _game_session == null:
+		return {}
+	if _game_session.matchmaker_data.is_empty():
+		return {}
+
+	var data = JSON.parse_string(
+		_game_session.matchmaker_data)
+	if not data or not data is Dictionary:
+		return {}
+
+	# Dictionary<int, String>
+	var result := {}
+	var teams: Array = data.get("teams", [])
+	for team in teams:
+		if not team is Dictionary:
+			continue
+		var players: Array = team.get("players", [])
+		for player in players:
+			if not player is Dictionary:
+				continue
+			var mm_player_id: String = player.get(
+				"playerId", "")
+			var session_id: String = player.get(
+				"playerSessionId", "")
+			if (mm_player_id.is_empty()
+					or session_id.is_empty()):
+				continue
+			# Strip trailing _N suffix to get
+			# the backend player_id.
+			var last_underscore := (
+				mm_player_id.rfind("_"))
+			var backend_id := mm_player_id
+			if last_underscore > 0:
+				backend_id = mm_player_id.substr(
+					0, last_underscore)
+			# Map session_id to in-game int id.
+			if _session_to_player.has(session_id):
+				var game_id: int = (
+					_session_to_player[session_id])
+				result[game_id] = backend_id
+	return result
+
+
 func cleanup() -> void:
 	if _gamelift and _is_initialized:
 		_gamelift.process_ending()
@@ -215,15 +264,24 @@ func _initialize_sdk() -> void:
 		outcome = _gamelift.init_sdk()
 
 	if not outcome.is_success():
-		if GameliftTestEnvironmentDetector.is_running_in_test_env(self ):
+		var is_expected := (
+			Netcode.is_preview
+			or GameliftTestEnvironmentDetector
+				.is_running_in_test_env(self)
+		)
+		if is_expected:
 			Netcode.log.print(
-				"GameLift SDK init failed (expected in tests/preview): %s" % outcome.get_error_message(),
-				NetworkLogger.CATEGORY_CONNECTIONS
+				"GameLift SDK init failed"
+				+ " (expected in tests/preview):"
+				+ " %s"
+				% outcome.get_error_message(),
+				NetworkLogger.CATEGORY_CONNECTIONS,
 			)
 		else:
 			Netcode.log.fatal(
-				"Init failed: %s" % outcome.get_error_message(),
-				NetworkLogger.CATEGORY_CONNECTIONS
+				"Init failed: %s"
+				% outcome.get_error_message(),
+				NetworkLogger.CATEGORY_CONNECTIONS,
 			)
 		return
 
@@ -273,32 +331,60 @@ func _on_game_session_started(session) -> void:
 	_game_session = session
 
 	Netcode.log.print(
-		"Game session started: %s" % session.game_session_id,
-		NetworkLogger.CATEGORY_CONNECTIONS
+		"Game session started: %s"
+		% session.game_session_id,
+		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 	Netcode.log.print(
-		"Max players: %d" % session.maximum_player_session_count,
-		NetworkLogger.CATEGORY_CONNECTIONS
+		"Max players: %d"
+		% session.maximum_player_session_count,
+		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 
-	# Parse expected player count from matchmaker data or session config.
-	var expected_count = session.maximum_player_session_count
+	# Tell GameLift this server is ready to accept
+	# players for this game session.
+	var activate_outcome = (
+		_gamelift.activate_game_session())
+	if activate_outcome.is_success():
+		Netcode.log.print(
+			"Game session activated",
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+	else:
+		Netcode.log.fatal(
+			"ActivateGameSession failed: %s"
+			% activate_outcome.get_error_message(),
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+		return
+
+	# Parse expected player count from matchmaker
+	# data or session config.
+	var expected_count: int = (
+		session.maximum_player_session_count)
 
 	if not session.matchmaker_data.is_empty():
-		var data = JSON.parse_string(session.matchmaker_data)
+		var data = JSON.parse_string(
+			session.matchmaker_data)
 		if data and data is Dictionary:
-			expected_count = _parse_player_count_from_matchmaker(data)
+			expected_count = (
+				_parse_player_count_from_matchmaker(
+					data))
 
 	server_set_expected_player_count(expected_count)
 
-	# Parse selected level from game properties (set by backend).
-	_selected_level_id = _parse_level_from_session(session)
+	# Parse selected level from game properties
+	# (set by backend).
+	_selected_level_id = (
+		_parse_level_from_session(session))
 	if not _selected_level_id.is_empty():
 		Netcode.log.print(
-			"Selected level: %s" % _selected_level_id,
-			NetworkLogger.CATEGORY_CONNECTIONS
+			"Selected level: %s"
+			% _selected_level_id,
+			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
-		level_selected.emit(String(_selected_level_id))
+		level_selected.emit(
+			String(_selected_level_id))
 
 
 func _parse_player_count_from_matchmaker(data: Dictionary) -> int:

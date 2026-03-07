@@ -34,7 +34,7 @@ MSYS_NO_PATHCONV=1 aws gamelift create-container-fleet \
     --description "Hop n Bop game server fleet" \
     --game-server-container-group-definition-name hopnbop-server-group \
     --instance-type c5.large \
-    --instance-connection-port-range "FromPort=4433,ToPort=4433" \
+    --instance-connection-port-range "FromPort=4433,ToPort=4434" \
     --region "$REGION" \
     --profile "$PROFILE" 2>&1
 
@@ -50,7 +50,7 @@ echo "  Fleet ID: $FLEET_ID"
 echo "[3/4] Creating game session queue..."
 MSYS_NO_PATHCONV=1 aws gamelift create-game-session-queue \
     --name hopnbop-game-queue \
-    --destinations "DestinationArn=arn:aws:gamelift:${REGION}:${ACCOUNT_ID}:fleet/${FLEET_ID}" \
+    --destinations "DestinationArn=arn:aws:gamelift:${REGION}:${ACCOUNT_ID}:containerfleet/${FLEET_ID}" \
     --timeout-in-seconds 120 \
     --region "$REGION" \
     --profile "$PROFILE" 2>/dev/null || echo "  (queue may already exist)"
@@ -62,7 +62,7 @@ MSYS_NO_PATHCONV=1 aws gamelift create-matchmaking-configuration \
     --game-session-queue-arns "arn:aws:gamelift:${REGION}:${ACCOUNT_ID}:gamesessionqueue/hopnbop-game-queue" \
     --rule-set-name hopnbop-ffa-ruleset \
     --request-timeout-seconds 60 \
-    --acceptance-required false \
+    --no-acceptance-required \
     --additional-player-count 0 \
     --region "$REGION" \
     --profile "$PROFILE" 2>/dev/null || echo "  (config may already exist)"

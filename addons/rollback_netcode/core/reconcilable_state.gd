@@ -611,21 +611,32 @@ func _handle_new_state_from_network(p_state: Array) -> void:
 	# If we have skipped frames, we need to force the entire system to
 	# fast-forward.
 	if should_trigger_fast_forward:
-		# Suppress message during grace period after frame reset (expected during reconnection).
-		if not Netcode.frame_driver.is_in_sync_grace_period:
-			Netcode.log.print(
-				"Fast-forwarding due to future state from server",
-				NetworkLogger.CATEGORY_NETWORK_SYNC)
+		# After a hard backward reset, buffered state
+		# packets from before the reset would race the
+		# frame counter back up. Suppress fast-forwards
+		# during the cooldown to let the NTP sync
+		# stabilize.
+		if Netcode.frame_driver.is_suppressing_fast_forward:
+			return
 
-		# Record fast-forward event in debug buffer before fast-forwarding.
+		Netcode.log.print(
+			"Fast-forwarding due to future state"
+			+ " from server",
+			NetworkLogger.CATEGORY_NETWORK_SYNC)
+
+		# Record fast-forward event in debug buffer
+		# before fast-forwarding.
 		if _debug_frame_buffer != null:
-			var entry := _get_or_create_debug_entry(Netcode.server_frame_index)
+			var entry := _get_or_create_debug_entry(
+				Netcode.server_frame_index)
 			if entry != null:
 				entry[_DEBUG_FAST_FORWARD_INDEX] = (
-					state_frame_index - 1 - Netcode.server_frame_index
+					state_frame_index - 1
+					- Netcode.server_frame_index
 				)
 
-		Netcode.frame_driver.fast_forward(state_frame_index - 1)
+		Netcode.frame_driver.fast_forward(
+			state_frame_index - 1)
 
 
 func _network_process() -> void:
@@ -735,7 +746,7 @@ func _should_create_debug_buffer() -> bool:
 ## Get or create a debug buffer entry at the specified frame index.
 ## Unlike backfill_to_with_last_state(), this creates entries with default
 ## values to avoid propagating rollback/fast-forward markers from other frames.
-func _get_or_create_debug_entry(frame_index: int) -> Array:
+func _get_or_create_debug_entry(frame_index: int) -> Variant:
 	var entry = _debug_frame_buffer.get_at(frame_index)
 	if entry != null:
 		return entry
@@ -745,9 +756,13 @@ func _get_or_create_debug_entry(frame_index: int) -> Array:
 	new_entry[0] = 0 # No rollback.
 	new_entry[1] = 0 # No fast-forward.
 	new_entry[2] = -1 # Auth delay not yet received.
-	_debug_frame_buffer.set_at(frame_index, new_entry)
+	if not _debug_frame_buffer.set_at(
+			frame_index, new_entry):
+		ArrayPool.release(new_entry)
+		return null
 
-	# Get the actual stored entry (set_at may have copied to existing array).
+	# Get the actual stored entry (set_at may
+	# have copied to existing array).
 	return _debug_frame_buffer.get_at(frame_index)
 
 

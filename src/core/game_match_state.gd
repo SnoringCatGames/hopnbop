@@ -159,6 +159,8 @@ func duplicate() -> GameMatchState:
 	copy.packed_players = packed_players.duplicate()
 	copy.kills = kills.duplicate()
 	copy.bumps = bumps.duplicate()
+	copy._stats_by_player_id = (
+		_stats_by_player_id.duplicate())
 	return copy
 
 

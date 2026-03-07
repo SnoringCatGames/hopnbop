@@ -9,15 +9,6 @@
             "quantity": 1
         }
     ],
-    "rules": [
-        {
-            "name": "WaitTime",
-            "description": "Accept match after 45 seconds with minimum players",
-            "type": "waitTimePercent",
-            "waitTimeSeconds": 45,
-            "thresholdPercent": 25
-        }
-    ],
     "expansions": [
         {
             "target": "teams[players].minPlayers",
