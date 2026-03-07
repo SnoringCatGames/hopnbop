@@ -49,7 +49,10 @@ extends Node
 # ---
 
 
+# Ideally, if we have a large enough player pool to choose from, we'd try to pair players together into a match according to their relative skill/rank levels. Is that feasible to add?
+
 # - Polish loading screen.
+# - Find and review leaderboard_panel.
 
 
 # All M3 code changes are complete. The remaining items are:
