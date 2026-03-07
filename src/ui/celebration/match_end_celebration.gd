@@ -376,23 +376,23 @@ func _start_iris_close() -> void:
 	_is_updating_iris = true
 	_update_iris_center()
 
-	var material: ShaderMaterial = (
+	var shader_mat: ShaderMaterial = (
 		%IrisOverlay.material)
-	material.set_shader_parameter(
+	shader_mat.set_shader_parameter(
 		"progress", 0.0)
 
 	# Set aspect ratio for circular iris.
 	var vp_size := Vector2(
 		get_viewport().get_visible_rect().size)
-	material.set_shader_parameter(
+	shader_mat.set_shader_parameter(
 		"aspect_ratio", vp_size.x / vp_size.y)
 
 	# Tile-based rendering parameters.
-	material.set_shader_parameter(
+	shader_mat.set_shader_parameter(
 		"tile_size", _IRIS_TILE_SIZE_PX)
-	material.set_shader_parameter(
+	shader_mat.set_shader_parameter(
 		"random_seed", randf() * 1000.0)
-	material.set_shader_parameter(
+	shader_mat.set_shader_parameter(
 		"pattern_randomness", 0.1)
 
 	var tween := create_tween()
@@ -401,7 +401,7 @@ func _start_iris_close() -> void:
 		Tween.TWEEN_PAUSE_PROCESS)
 	tween.tween_method(
 		func(value: float):
-			material.set_shader_parameter(
+			shader_mat.set_shader_parameter(
 				"progress", value),
 		0.0,
 		1.0,
@@ -459,9 +459,9 @@ func _update_iris_center() -> void:
 
 	var uv := screen_pos / vp_size
 
-	var material: ShaderMaterial = (
+	var shader_mat: ShaderMaterial = (
 		%IrisOverlay.material)
-	material.set_shader_parameter("center", uv)
+	shader_mat.set_shader_parameter("center", uv)
 
 
 func reveal_adjectives(
@@ -577,9 +577,9 @@ func reset() -> void:
 	%IrisOverlay.visible = false
 
 	# Reset iris shader progress.
-	var material: ShaderMaterial = (
+	var shader_mat: ShaderMaterial = (
 		%IrisOverlay.material)
-	material.set_shader_parameter(
+	shader_mat.set_shader_parameter(
 		"progress", 0.0)
 
 

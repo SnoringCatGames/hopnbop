@@ -402,8 +402,8 @@ func restore_players_from_previous_match() -> void:
 		return
 
 	Netcode.verbose(
-		"Restoring %d player(s) from"
-		+ " previous match"
+		("Restoring %d player(s) from"
+		+ " previous match")
 		% saved_configs.size(),
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)

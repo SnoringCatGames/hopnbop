@@ -87,8 +87,6 @@ func position_server_window_in_preview_mode() -> void:
 	var usable_rect := DisplayServer.screen_get_usable_rect(target_screen)
 
 	@warning_ignore("integer_division")
-	var half_width := usable_rect.size.x / 2
-	@warning_ignore("integer_division")
 	var third_width := usable_rect.size.x / 3
 
 	if G.settings.preview_run_multiple_clients:

@@ -502,11 +502,6 @@ func _on_js_message(args: Array) -> void:
 
 	# Verify origin matches our callback URL.
 	var origin: String = event.origin
-	var expected_origin := (
-		G.settings.oauth_callback_url
-			.get_base_dir()
-			.trim_suffix("/")
-	)
 	# get_base_dir on a URL strips the filename, giving
 	# the origin. But we need just scheme + host.
 	# Use a simpler check: the callback URL must start

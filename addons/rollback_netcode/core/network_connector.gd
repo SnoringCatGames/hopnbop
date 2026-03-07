@@ -385,9 +385,12 @@ func client_disconnect() -> void:
 		"Disconnecting from server", NetworkLogger.CATEGORY_CONNECTIONS
 	)
 
-	if (multiplayer.multiplayer_peer.get_connection_status()
-			!= MultiplayerPeer.CONNECTION_DISCONNECTED):
-		multiplayer.multiplayer_peer.disconnect_peer(SERVER_ID)
+	var peer := multiplayer.multiplayer_peer
+	if (peer != null
+			and peer.get_connection_status()
+				!= MultiplayerPeer
+					.CONNECTION_DISCONNECTED):
+		peer.disconnect_peer(SERVER_ID)
 
 
 ## RPC called by client to declare how many players they have.

@@ -132,6 +132,12 @@ var is_connected_to_server: bool:
 
 var local_peer_id: int:
 	get:
+		var peer := multiplayer.multiplayer_peer
+		if (peer == null
+				or peer.get_connection_status()
+					== MultiplayerPeer
+						.CONNECTION_DISCONNECTED):
+			return 0
 		return multiplayer.get_unique_id()
 
 ## Current server frame index; the primary synchronization primitive.

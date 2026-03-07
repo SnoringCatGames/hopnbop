@@ -6,6 +6,7 @@ extends PanelContainer
 ## keyboard focus or mouse hover.
 
 
+@warning_ignore("unused_signal")
 signal value_changed
 signal clicked
 

@@ -528,14 +528,14 @@ func _choose_spawn_position() -> Vector2:
 	else:
 		chosen = best_surface
 
-	var local_pos := tiles.map_to_local(
+	var chosen_pos := tiles.map_to_local(
 		chosen.tile)
-	var world_pos := tiles.to_global(local_pos)
+	var spawn_pos := tiles.to_global(chosen_pos)
 	# Place on top of the tile, nudged 1px up
 	# so the collision shape sits above the
 	# surface.
-	world_pos.y -= half_tile + 1.0
-	return world_pos
+	spawn_pos.y -= half_tile + 1.0
+	return spawn_pos
 
 
 # --- Tween utility ---

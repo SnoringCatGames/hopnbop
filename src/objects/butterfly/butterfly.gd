@@ -819,19 +819,19 @@ func _pick_surface_target() -> void:
 		% SURFACE_TARGET_MAX_ATTEMPTS)
 	var fallback: Dictionary = (
 		pool.pick_random())
-	var normal := (
+	var fb_normal := (
 		_face_to_normal(fallback.face))
-	var tile_local := (
+	var fb_tile_local := (
 		_collision_tiles.map_to_local(
 			fallback.tile))
-	var tile_global := (
+	var fb_tile_global := (
 		_collision_tiles.to_global(
-			tile_local))
+			fb_tile_local))
 	_target = (
-		tile_global
-		+ Vector2(normal)
+		fb_tile_global
+		+ Vector2(fb_normal)
 		* Level.TILE_SIZE / 2.0)
-	_landing_direction = -Vector2(normal)
+	_landing_direction = -Vector2(fb_normal)
 	_compute_curve(_target)
 
 
@@ -965,7 +965,6 @@ func _sample_curve(t: float) -> Vector2:
 func _is_curve_clear() -> bool:
 	if not is_instance_valid(_collision_tiles):
 		return true
-	var step := Level.TILE_SIZE * 0.5
 	# Walk along the curve in world-space
 	# increments.
 	var prev := _curve_start

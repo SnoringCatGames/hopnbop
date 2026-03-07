@@ -287,8 +287,8 @@ func _on_session_established(
 	# Player IDs already stored in ClientSession
 	# by GameSessionManager.
 	Netcode.print(
-		"Session established with %d player(s):"
-		+ " %s" % [player_ids.size(), player_ids],
+		("Session established with %d player(s):"
+		+ " %s") % [player_ids.size(), player_ids],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 

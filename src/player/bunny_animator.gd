@@ -106,8 +106,8 @@ func set_crown_costume(
 
 
 ## Shows or hides the crown overlay.
-func set_crown_visible(is_visible: bool) -> void:
-	if is_visible:
+func set_crown_visible(visible_flag: bool) -> void:
+	if visible_flag:
 		if not is_instance_valid(_crown_overlay):
 			if (is_instance_valid(_crown_costume) and
 					is_instance_valid(

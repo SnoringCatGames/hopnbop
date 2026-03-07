@@ -8,6 +8,7 @@ extends ColorRect
 
 signal transition_started
 signal transition_completed
+@warning_ignore("unused_signal")
 signal transition_midpoint
 
 
