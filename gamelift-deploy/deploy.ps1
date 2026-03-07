@@ -8,7 +8,7 @@
 #   - Linux export templates installed in Godot
 
 param(
-    [string]$Version = "0.1.0",
+    [string]$Version = "0.3.0",
     [string]$Profile = "hopnbop",
     [string]$Region = "us-west-2",
     [string]$Repository = "hopnbop-server",
@@ -32,8 +32,11 @@ if (-not $SkipExport) {
     # Ensure build directory exists.
     New-Item -ItemType Directory -Force -Path "build/linux" | Out-Null
 
-    # Export using Godot CLI. Requires godot to be on PATH.
-    & godot --headless --export-release "Linux Server" "build/linux/hopnbop_server.x86_64"
+    # Export the .pck only. The Linux server binary
+    # is platform-specific and unchanged between code
+    # deploys. --export-release fails on Windows due
+    # to Linux .so dependency copy issues.
+    & godot --headless --export-pack "Linux Server" "build/linux/hopnbop_server.pck"
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Godot export failed"
         exit 1
@@ -79,25 +82,71 @@ Write-Host "Push complete." -ForegroundColor Green
 # Step 5: Update container group definition.
 Write-Host "[5/5] Updating container group definition..." -ForegroundColor Yellow
 
-# Read the definition template and update the image URI.
+# Fetch server API key from Secrets Manager.
+$ServerApiKey = aws secretsmanager get-secret-value `
+    --secret-id "hopnbop/server-api-key" `
+    --region $Region `
+    --profile $Profile `
+    --query "SecretString" --output text 2>$null
+
+if (-not $ServerApiKey) {
+    Write-Warning "Could not fetch hopnbop/server-api-key from Secrets Manager. Env var will not be set."
+    $ServerApiKey = "REPLACE_WITH_SECRET"
+}
+
+# Read the definition template, update image URI and inject the API key.
 $definition = Get-Content "gamelift-deploy/container-group-definition.json" | ConvertFrom-Json
 $definition.GameServerContainerDefinition.ImageUri = $ImageTag
+foreach ($envVar in $definition.GameServerContainerDefinition.EnvironmentOverride) {
+    if ($envVar.Name -eq "SERVER_API_KEY") {
+        $envVar.Value = $ServerApiKey
+    }
+}
+
+# Write the game-server-container-definition to a
+# temp file. Passing JSON inline from PowerShell
+# mangles special characters.
+$gameServerDef = $definition.GameServerContainerDefinition | ConvertTo-Json -Depth 10 -Compress
 $tempFile = [System.IO.Path]::GetTempFileName()
-$definition | ConvertTo-Json -Depth 10 | Set-Content $tempFile
+Set-Content -Path $tempFile -Value $gameServerDef -NoNewline
 
-aws gamelift create-container-group-definition `
-    --cli-input-json "file://$tempFile" `
+aws gamelift update-container-group-definition `
+    --name $definition.Name `
+    --game-server-container-definition "file://$tempFile" `
+    --total-memory-limit-mebibytes $definition.TotalMemoryLimitMebibytes `
+    --total-vcpu-limit $definition.TotalVcpuLimit `
+    --version-description "Deploy v$Version" `
     --region $Region `
-    --profile $Profile 2>&1
+    --profile $Profile
 
-Remove-Item $tempFile
+Remove-Item $tempFile -ErrorAction SilentlyContinue
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Container group definition update failed"
+    exit 1
+}
+
+Write-Host "Container group definition updated." -ForegroundColor Green
+
+# Step 6: Update fleet to use new container group.
+$FleetId = "containerfleet-9836594e-0c96-4887-a8d5-be7f3541db36"
+Write-Host "[6/6] Updating fleet $FleetId..." -ForegroundColor Yellow
+
+aws gamelift update-container-fleet `
+    --fleet-id $FleetId `
+    --game-server-container-group-definition-name $definition.Name `
+    --region $Region `
+    --profile $Profile
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Fleet update failed"
+    exit 1
+}
 
 Write-Host ""
 Write-Host "=== Deployment complete ===" -ForegroundColor Green
 Write-Host "Image pushed: $ImageTag"
+Write-Host "Fleet deployment triggered."
 Write-Host ""
-Write-Host "Next steps:"
-Write-Host "  1. If this is the first deploy, create the fleet:"
-Write-Host "     .\gamelift-deploy\create-fleet.sh"
-Write-Host "  2. If fleet already exists, update it to use"
-Write-Host "     the new container group definition version."
+Write-Host "Monitor with:"
+Write-Host "  aws gamelift list-fleet-deployments --fleet-id $FleetId --region $Region --profile $Profile"

@@ -111,6 +111,7 @@ class PlayerService:
             "last_active": profile.last_active,
             "auth_providers": profile.auth_providers,
             "is_anonymous": profile.is_anonymous,
+            "rating_partition": "all",
         }
         if device_id:
             item["device_id"] = device_id

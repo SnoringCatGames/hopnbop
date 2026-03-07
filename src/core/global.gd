@@ -29,6 +29,8 @@ var screens: ScreensMain
 
 var auth_token_store: AuthTokenStore
 var auth_client: AuthClient
+var match_result_reporter: MatchResultReporter
+var backend_api_client: BackendApiClient
 var auth_screen: AuthScreen
 
 var godot_splash_screen: GodotSplashScreen
@@ -104,6 +106,14 @@ func _enter_tree() -> void:
 	auth_client.name = "AuthClient"
 	add_child(auth_client)
 
+	match_result_reporter = MatchResultReporter.new()
+	match_result_reporter.name = "MatchResultReporter"
+	add_child(match_result_reporter)
+
+	backend_api_client = BackendApiClient.new()
+	backend_api_client.name = "BackendApiClient"
+	add_child(backend_api_client)
+
 	cheat_manager = CheatManager.new()
 	cheat_manager.name = "CheatManager"
 	add_child(cheat_manager)
@@ -116,6 +126,13 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	# Initialize Netcode now that the scene tree is available.
 	Netcode.initialize()
+
+	# Read server API key from environment variable
+	# (set via GameLift container group definition).
+	var env_api_key := OS.get_environment(
+		"SERVER_API_KEY")
+	if not env_api_key.is_empty():
+		settings.server_api_key = env_api_key
 
 	# Initialize level registry from settings.
 	_initialize_level_registry()

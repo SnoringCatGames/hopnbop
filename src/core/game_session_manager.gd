@@ -18,39 +18,76 @@ signal connection_lost(reason_name: String, is_expected: bool)
 ## Emitted when server should reset for a new match (preview mode only).
 signal server_should_reset()
 
+## Emitted during matchmaking to report progress
+## to the UI (client only).
+signal matchmaking_progress(
+	phase: String,
+	elapsed_sec: float,
+	estimated_total_sec: float,
+)
+
+## Emitted when the server must shut down soon
+## (Spot reclamation or process termination).
+signal server_shutdown_imminent(
+	seconds_remaining: float)
+
 var session_provider: SessionProvider
 
 
 func _ready() -> void:
+	# Must process while paused so HTTPRequest
+	# and Timer children work during LOADING
+	# screen (tree is paused on non-game screens).
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
 	_setup_session_provider()
 	_connect_network_signals()
 
 
 ## Set up the appropriate session provider (GameLift or Preview mode).
 func _setup_session_provider() -> void:
-	if Netcode.should_connect_to_remote_server:
-		# Production mode: use GameLift.
-		if Netcode.is_server:
-			session_provider = GameLiftServerProvider.new(
-				{
-					"anywhere_mode": G.settings.gamelift_anywhere_mode,
-					"anywhere_websocket": G.settings.gamelift_anywhere_websocket,
-					"anywhere_auth_token": G.settings.gamelift_anywhere_auth_token,
-					"anywhere_fleet_id": G.settings.gamelift_anywhere_fleet_id,
-					"anywhere_host_id": G.settings.gamelift_anywhere_host_id,
-					"anywhere_process_id": G.settings.gamelift_anywhere_process_id,
-					"server_port": Netcode.server_port
-				}
-			)
-		else:
-			session_provider = GameLiftClient.new(G.settings.backend_api_url)
+	if (Netcode.should_connect_to_remote_server
+			and Netcode.is_server
+			and not Netcode.is_preview):
+		# Production server: use GameLift SDK.
+		session_provider = GameLiftServerProvider.new(
+			{
+				"anywhere_mode":
+					G.settings.gamelift_anywhere_mode,
+				"anywhere_websocket":
+					G.settings
+						.gamelift_anywhere_websocket,
+				"anywhere_auth_token":
+					G.settings
+						.gamelift_anywhere_auth_token,
+				"anywhere_fleet_id":
+					G.settings
+						.gamelift_anywhere_fleet_id,
+				"anywhere_host_id":
+					G.settings
+						.gamelift_anywhere_host_id,
+				"anywhere_process_id":
+					G.settings
+						.gamelift_anywhere_process_id,
+				"server_port": Netcode.server_port,
+			}
+		)
+	elif (Netcode.should_connect_to_remote_server
+			and Netcode.is_client):
+		# Client: use GameLift backend API.
+		session_provider = GameLiftClient.new(
+			G.settings.gamelift_backend_api_url)
 	else:
-		# Preview mode: no validation.
+		# Preview mode or preview server with
+		# remote connection: no validation.
 		session_provider = PreviewSessionProvider.new(
 			Netcode.log,
 			{
-				"server_ip": G.settings.local_preview_server_ip_address,
-				"server_port": G.settings.server_port
+				"server_ip":
+					G.settings
+						.local_preview_server_ip_address,
+				"server_port":
+					G.settings.server_port,
 			}
 		)
 
@@ -68,11 +105,21 @@ func _setup_session_provider() -> void:
 		session_provider.session_request_failed.connect(
 			_on_session_request_failed
 		)
+		if session_provider.has_signal(
+				"matchmaking_progress_updated"):
+			(session_provider
+				.matchmaking_progress_updated
+				.connect(
+					_on_matchmaking_progress))
 
 	if Netcode.is_server:
 		session_provider.all_players_connected.connect(
 			_on_all_players_connected
 		)
+		if session_provider.has_signal(
+				"shutdown_requested"):
+			session_provider.shutdown_requested.connect(
+				_on_shutdown_requested)
 
 
 ## Connect to NetworkConnector signals.
@@ -300,3 +347,25 @@ func _server_on_all_clients_disconnected() -> void:
 		)
 		await get_tree().create_timer(1.0).timeout
 		get_tree().quit()
+
+
+func _on_matchmaking_progress(
+	phase: String,
+	elapsed_sec: float,
+	estimated_total_sec: float,
+) -> void:
+	matchmaking_progress.emit(
+		phase, elapsed_sec, estimated_total_sec)
+
+
+func _on_shutdown_requested(
+	seconds_remaining: float,
+) -> void:
+	Netcode.print(
+		"Shutdown requested,"
+		+ " %.0f seconds remaining"
+		% seconds_remaining,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+	server_shutdown_imminent.emit(
+		seconds_remaining)

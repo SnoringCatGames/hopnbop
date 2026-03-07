@@ -1,5 +1,6 @@
 """Authentication service with OAuth2 provider integration."""
 
+import logging
 import os
 import jwt
 import httpx
@@ -8,6 +9,8 @@ from typing import Optional
 from dataclasses import dataclass
 
 from services import secrets_service
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -215,6 +218,12 @@ class AuthService:
             )
 
         if response.status_code != 200:
+            logger.error(
+                "Google token exchange failed:"
+                " status=%d body=%s",
+                response.status_code,
+                response.text,
+            )
             raise ValueError(
                 "Google token exchange failed"
             )

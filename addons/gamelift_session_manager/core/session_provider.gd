@@ -41,6 +41,19 @@ signal all_players_connected()
 ## level_id: String - The level ID to spawn
 signal level_selected(level_id: String)
 
+## Emitted during matchmaking to report progress.
+## phase: String - Current phase
+##     (e.g., "searching", "placing").
+## elapsed_sec: float - Seconds since matchmaking
+##     started.
+## estimated_total_sec: float - Estimated total wait
+##     time. Negative if unknown.
+signal matchmaking_progress_updated(
+	phase: String,
+	elapsed_sec: float,
+	estimated_total_sec: float,
+)
+
 ## Emitted when the hosting service requests process termination.
 ## seconds_remaining: float - Approximate seconds until forced
 ## termination. Zero if unknown.

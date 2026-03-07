@@ -118,22 +118,41 @@ func _ready() -> void:
 func server_enable_connections(p_server_port: int) -> void:
 	Netcode.check_is_server()
 
-	var peer = ENetMultiplayerPeer.new()
-	var result := peer.create_server(p_server_port, Netcode.settings.max_client_count)
+	var peer: MultiplayerPeer
+	var result: Error
+	var transport_name: String
+
+	match Netcode.settings.transport_type:
+		NetworkSettings.TransportType.WEBSOCKET:
+			var ws := WebSocketMultiplayerPeer.new()
+			result = ws.create_server(p_server_port)
+			peer = ws
+			transport_name = "WebSocket"
+		_:
+			var enet := ENetMultiplayerPeer.new()
+			result = enet.create_server(
+				p_server_port,
+				Netcode.settings.max_client_count)
+			peer = enet
+			transport_name = "ENet"
 
 	Netcode.log.check(
 		result == Error.OK,
-		"Failed to create ENet server: error=%d" % result
+		"Failed to create %s server: error=%d"
+		% [transport_name, result]
 	)
 	Netcode.log.check(
-		peer.get_connection_status() != MultiplayerPeer.CONNECTION_DISCONNECTED,
-		"ENet server peer is disconnected after creation"
+		peer.get_connection_status()
+			!= MultiplayerPeer.CONNECTION_DISCONNECTED,
+		"%s server peer is disconnected after creation"
+		% transport_name
 	)
 
 	multiplayer.multiplayer_peer = peer
 
 	Netcode.log.print(
-		"Started multiplayer server: port=%d" % [p_server_port],
+		"Started %s multiplayer server: port=%d"
+		% [transport_name, p_server_port],
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
 
@@ -147,29 +166,52 @@ func client_connect_to_server(
 	# Reset disconnect reason for new connection attempt.
 	last_disconnect_reason = DisconnectReason.UNKNOWN
 
-	# TODO: Also support websocket or webrtc as needed.
+	var peer: MultiplayerPeer
+	var result: Error
+	var transport_name: String
 
-	var peer = ENetMultiplayerPeer.new()
-	var result := peer.create_client(p_server_ip_address, p_server_port)
+	match Netcode.settings.transport_type:
+		NetworkSettings.TransportType.WEBSOCKET:
+			var ws := WebSocketMultiplayerPeer.new()
+			result = ws.create_client(
+				"ws://%s:%d"
+				% [p_server_ip_address, p_server_port])
+			peer = ws
+			transport_name = "WebSocket"
+		_:
+			var enet := ENetMultiplayerPeer.new()
+			result = enet.create_client(
+				p_server_ip_address, p_server_port)
+			peer = enet
+			transport_name = "ENet"
 
 	Netcode.log.check(
 		result == Error.OK,
-		"Failed to start multiplayer client: error=%d" % result,
+		"Failed to start %s client: error=%d"
+		% [transport_name, result],
 	)
-	if peer.get_connection_status() == MultiplayerPeer.CONNECTION_DISCONNECTED:
+	if (peer.get_connection_status()
+			== MultiplayerPeer
+				.CONNECTION_DISCONNECTED):
 		Netcode.log.error(
-			"Failed to start multiplayer client: status=DISCONNECTED",
-						NetworkLogger.CATEGORY_CONNECTIONS
+			"Failed to start %s client:"
+			+ " status=DISCONNECTED"
+			% transport_name,
+			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
 		# Emit signal so game can handle exit.
-		disconnected.emit(-1, DisconnectReason.CONNECTION_FAILED)
+		disconnected.emit(
+			-1, DisconnectReason.CONNECTION_FAILED)
 		return
 
 	multiplayer.multiplayer_peer = peer
 
 	Netcode.log.print(
-		"Started multiplayer client: %s:%d" % [p_server_ip_address, p_server_port],
-		NetworkLogger.CATEGORY_CONNECTIONS
+		"Started %s client: %s:%d"
+		% [transport_name,
+			p_server_ip_address,
+			p_server_port],
+		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 
 
@@ -317,6 +359,22 @@ func server_disconnect_all_clients() -> void:
 			multiplayer.multiplayer_peer.disconnect_peer(peer_id)
 
 
+## Notify all clients that the server is shutting down.
+## Sets their disconnect reason before the actual disconnect.
+func server_notify_shutdown() -> void:
+	Netcode.check_is_server()
+
+	Netcode.log.print(
+		"Notifying clients of server shutdown",
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+	for peer_id in multiplayer.get_peers():
+		if peer_id != SERVER_ID:
+			_client_rpc_server_shutting_down.rpc_id(
+				peer_id)
+
+
 func client_disconnect() -> void:
 	Netcode.check_is_client()
 
@@ -460,6 +518,20 @@ func _client_rpc_receive_player_ids(assigned_ids: Array[int]) -> void:
 
 	# Emit signal for game to handle (set local session, assign input devices).
 	player_ids_assigned.emit(assigned_ids)
+
+
+## RPC called by server to notify clients of imminent shutdown.
+## Sets disconnect reason so clients display the correct message.
+@rpc("authority", "call_remote", "reliable",
+	RPC_CHANNEL_SESSION_CONTROL)
+func _client_rpc_server_shutting_down() -> void:
+	Netcode.check_is_client()
+	last_disconnect_reason = (
+		DisconnectReason.SERVER_SHUTDOWN)
+	Netcode.log.print(
+		"Server is shutting down",
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
 
 
 ## Called by the server to register the player_id to peer_id mapping.

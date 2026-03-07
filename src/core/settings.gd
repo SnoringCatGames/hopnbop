@@ -34,6 +34,7 @@ enum BumpMode {
 @export var gamelift_anywhere_process_id := ""
 @export var gamelift_backend_api_url := "https://4xol3ejva9.execute-api.us-west-2.amazonaws.com/prod"
 @export var gamelift_matchmaking_timeout_sec := 30.0
+@export var server_api_key := ""
 @export_group("")
 
 @export_group("OAuth")

@@ -58,7 +58,7 @@ class GameLiftService:
             {
                 "PlayerId": p.player_id,
                 "PlayerAttributes": {
-                    "skill": {"N": str(p.skill_rating)},
+                    "skill": {"N": p.skill_rating},
                     "region": {"S": p.region},
                 },
                 "LatencyInMs": p.latency_map,
@@ -67,11 +67,13 @@ class GameLiftService:
         ]
 
         try:
-            response = self.client.start_matchmaking(
-                ConfigurationName=config_name,
-                TicketId=ticket_id,
-                Players=player_dicts,
-            )
+            kwargs = {
+                "ConfigurationName": config_name,
+                "Players": player_dicts,
+            }
+            if ticket_id is not None:
+                kwargs["TicketId"] = ticket_id
+            response = self.client.start_matchmaking(**kwargs)
             return response["MatchmakingTicket"]["TicketId"]
 
         except ClientError as e:

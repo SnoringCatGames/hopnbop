@@ -23,6 +23,7 @@ from services.level_selection_service import (
     parse_session_preference,
     select_level_for_match,
 )
+from services import secrets_service
 
 logger = Logger()
 tracer = Tracer()
@@ -35,6 +36,12 @@ gamelift = GameLiftService(
 )
 player_service = PlayerService()
 rate_limiter = RateLimiter()
+
+# In-memory store for session preferences keyed by ticket ID.
+# Lambda instances are short-lived so this only works when the
+# same instance handles both /start and /status. For
+# production, consider DynamoDB or ElastiCache.
+_pending_session_prefs: Dict[str, Dict] = {}
 
 
 @tracer.capture_lambda_handler
@@ -51,7 +58,7 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             return error_response(401, "MISSING_AUTH", "Missing authorization")
 
         jwt_token = auth_header[7:]
-        jwt_secret = os.environ.get("JWT_SECRET", "")
+        jwt_secret = secrets_service.get_jwt_secret()
 
         # For preview mode, accept debug tokens.
         if jwt_token.startswith("DEBUG_"):
@@ -180,7 +187,7 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             return error_response(401, "MISSING_AUTH", "Missing authorization")
 
         jwt_token = auth_header[7:]
-        jwt_secret = os.environ.get("JWT_SECRET", "")
+        jwt_secret = secrets_service.get_jwt_secret()
 
         # For preview mode, accept debug tokens.
         if jwt_token.startswith("DEBUG_"):
@@ -230,6 +237,11 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             for i in range(player_count)
         ]
 
+        # Parse session preferences for level selection.
+        session_prefs_data = body.get(
+            "session_preferences", {}
+        )
+
         # Start matchmaking.
         config_name = os.environ.get("MATCHMAKING_CONFIG", "hopnbop-ffa-matchmaker")
         ticket_id = asyncio.run(
@@ -237,6 +249,10 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
         )
 
         logger.info(f"Started matchmaking for {player_id}: {ticket_id}")
+
+        # Store session preferences for level selection
+        # when polling completes.
+        _pending_session_prefs[ticket_id] = session_prefs_data
 
         return {
             "statusCode": 200,
@@ -268,7 +284,7 @@ def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dic
         # Auth.
         auth_header = event.get("headers", {}).get("Authorization", "")
         jwt_token = auth_header[7:]
-        jwt_secret = os.environ.get("JWT_SECRET", "")
+        jwt_secret = secrets_service.get_jwt_secret()
 
         # Accept debug tokens.
         if not jwt_token.startswith("DEBUG_"):
@@ -294,6 +310,17 @@ def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dic
         if status["status"] == "completed":
             result = asyncio.run(gamelift.poll_matchmaking(ticket_id))
 
+            # Select level from stored session preferences.
+            session_prefs_data = _pending_session_prefs.pop(
+                ticket_id, {}
+            )
+            session_prefs = parse_session_preference(
+                session_prefs_data
+            )
+            selected_level_id = select_level_for_match(
+                [session_prefs.level]
+            )
+
             return {
                 "statusCode": 200,
                 "headers": {"Content-Type": "application/json"},
@@ -301,10 +328,14 @@ def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dic
                     {
                         "status": "success",
                         "ticket_id": ticket_id,
+                        "server_version": os.environ.get(
+                            "GAME_VERSION", "0.1.0"
+                        ),
                         "game_session_id": result.game_session_id,
                         "server_ip": result.server_ip,
                         "server_port": result.server_port,
                         "player_session_ids": result.player_session_ids,
+                        "selected_level_id": selected_level_id,
                     }
                 ),
             }
