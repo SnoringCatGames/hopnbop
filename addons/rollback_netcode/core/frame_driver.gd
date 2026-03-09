@@ -59,12 +59,12 @@ extends Node
 # - Autoclose settings menue when loading level.
 
 
-# - Add support for local-only mode.
+# - I want to add support for offline/local-only mode.
 #   - Please research how the current codebase works, and our options for supporting this.
 #     - I _suspect_ that the cleanest way to implement this, with the fewest changes, will be to simulate a server on the local process. But I'm really not sure.
 #   - Force a client into this mode if matchmaking failed to find any other players.
-#   - Include a brief (5-second) footer toast message at the start of the match mentioning that the match is in local-only mode, when the client tried to matchmake but ended up with only itself.
-#   - When in local-only mode, do record stats, if the client is authenticated, but don't update the leaderboard with match results.
+#   - Include a toast message at the start of the match mentioning that the match is in local-only mode, when the client tried to matchmake but ended up with only itself.
+#   - When in local-only mode, do record stats, if the client is authenticated, but don't update the leaderboard with match results. Unless this seems like unuseful complexity, then let me know.
 
 
 # Ideally, if we have a large enough player pool to choose from, we'd try to pair players together into a match according to their relative skill/rank levels. Is that feasible to add?
