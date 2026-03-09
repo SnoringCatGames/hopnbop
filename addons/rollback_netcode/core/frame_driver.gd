@@ -48,6 +48,41 @@ extends Node
 
 # ---
 
+# - Remove pxlzr font.
+
+# - Should we add an option for explicitly changing the language?
+#   - In the consent screen?
+#   - In the settings menu?
+
+# - Make more icons
+#   - Alert
+#   - Language
+#   - Delete data
+#   - Export data
+#   - Info
+#   - Credits
+#   - i18n globe
+
+# I want to update the side-panel to be reusable for different content.
+# - I want to use this as a submenu for listing all of the available i18n options.
+#   - This would then be shown when triggering the language row in the main settings menu.
+# - I also want to create a new info side-panel.
+#   - Move export-data, delete-data, terms, privacy, data-deletion rows into this info panel.
+# - All versions of the menu should have the x button at the top.
+# - Ensure that things that close the settings panel currently also close all versions of this newly reusable menu.
+# - When opening one version of this panel from another, we should keep track of the stack of panels.
+#   - Then, we re-open the previous panel when closing a nested panel.
+#   - OR, maybe we should instead just leave the previous panel open, and render the new nested panel on top of it.
+# - Let's also add a slide-in (from the right) tween for displaying panels.
+#   - And a slide-out animation.
+#   - Slide-out should last 0.1 seconds. Slide-in can last 0.2 seconds.
+# - Also create a credits panel.
+#   - This will be a separate whole-page panel, rather than a side panel.
+#   - Open this from another row in the info panel.
+#   - Have this be an overlay over the whole screen, with a semi-transparent black background.
+#     - The text content should be centered.
+#     - Clicking left/right/trigger_ui (with any device config) should close the panel.
+#     - Auto-close the settings menu when this is opened.
 
 # - Set up FB OAuth.
 

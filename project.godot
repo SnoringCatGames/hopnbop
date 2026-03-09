@@ -170,6 +170,12 @@ trigger_ui={
 
 buffering/agile_event_flushing=true
 
+[internationalization]
+
+locale/translations=PackedStringArray("res://translations/ui_translations.en.translation", "res://translations/ui_translations.zh.translation", "res://translations/ui_translations.es.translation", "res://translations/ui_translations.hi.translation", "res://translations/ui_translations.ar.translation", "res://translations/ui_translations.fr.translation", "res://translations/ui_translations.pt.translation", "res://translations/ui_translations.ru.translation", "res://translations/ui_translations.ja.translation", "res://translations/ui_translations.de.translation", "res://translations/ui_translations.ko.translation", "res://translations/ui_translations.it.translation", "res://translations/ui_translations.th.translation")
+locale/locale_filter_mode=1
+locale/locale_filter=PackedStringArray("en", "zh", "es", "hi", "ar", "fr", "pt", "ru", "ja", "de", "ko", "it", "th")
+
 [layer_names]
 
 2d_physics/layer_1="normal_surfaces"
