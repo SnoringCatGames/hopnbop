@@ -59,6 +59,34 @@ All networked entities must extend ReconcilableNetworkedState and participate in
 - MatchStateSynchronizer acts as a replication coordinator that triggers these signals
 - All external code should connect to `G.match_state` signals for match events
 
+#### Local Mode (Offline/Local-Only)
+
+The game supports an offline local-only mode where the same
+process acts as both server and client. The process stays
+`is_server = false` (so client UI continues working) but sets
+`Netcode.is_local_mode = true`. The property
+`Netcode.runs_server_logic` (`is_server or is_local_mode`)
+replaces `is_server` checks where server-side game logic must
+also run locally.
+
+**Local Mode RPC Pattern:** When adding server-to-client RPCs
+(`call_remote`), also add a direct local call gated by
+`Netcode.is_local_mode`. RPCs with `call_remote` do not reach
+the local process in offline mode.
+
+```gdscript
+_client_rpc_foo.rpc(args)
+if Netcode.is_local_mode:
+    _client_rpc_foo(args)
+```
+
+This pattern keeps `@rpc` annotations unchanged and makes the
+local-mode path explicit. Not all RPCs need this treatment.
+Only server-to-client RPCs where the client needs to receive
+the call (e.g., match ended, unpause, stats). Server-side
+functions that already apply state locally before sending the
+RPC (e.g., snail crush/respawn) do not need it.
+
 ### Character System (src/scaffolder/character/)
 
 Reusable character framework:
