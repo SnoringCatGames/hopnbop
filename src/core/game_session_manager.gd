@@ -243,15 +243,23 @@ func _on_session_ids_received(
 func _on_session_request_failed(error_message: String) -> void:
 	Netcode.error(
 		"Session request failed: %s" % error_message,
-		NetworkLogger.CATEGORY_CONNECTIONS
+		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
+
+	# Version mismatch is a terminal error. Show a
+	# blocking overlay with no way to proceed.
+	if (error_message.begins_with("Version mismatch")
+			and is_instance_valid(G.error_overlay)):
+		G.error_overlay.show_error(error_message)
+		return
+
 	# Emit as unexpected connection loss.
 	connection_lost.emit("Session request failed", false)
 
 
 func _on_player_ids_assigned(assigned_ids: Array[int]) -> void:
 	Netcode.print(
-		"Player IDs assigned: %s" % assigned_ids,
+		"Player IDs assigned: %s" % str(assigned_ids),
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
 

@@ -50,6 +50,11 @@ func _ready() -> void:
 	# NetworkConnector handshake.
 	Netcode.connector.client_session_provider = (
 		func() -> Dictionary:
+			var bid := ""
+			if (G.auth_token_store != null
+					and not G.auth_token_store
+						.player_id.is_empty()):
+				bid = G.auth_token_store.player_id
 			return {
 				"session_ids":
 					G.client_session
@@ -60,6 +65,7 @@ func _ready() -> void:
 				"attributes":
 					G.client_session
 						.local_player_attributes,
+				"backend_player_id": bid,
 			}
 	)
 
@@ -743,15 +749,28 @@ func _server_report_match_result() -> void:
 	var backend_id_map: Dictionary = (
 		provider.get_backend_player_id_map())
 	if backend_id_map.is_empty():
+		Netcode.print(
+			"No backend player ID mapping."
+			+ " Skipping match report.",
+			NetworkLogger.CATEGORY_GAME_STATE,
+		)
 		return
 
-	var player_results := []
+	# Build one result per backend_player_id. When
+	# couch co-op players share an account, keep the
+	# entry with the best (lowest) rank.
+	var best_by_backend_id: Dictionary = {}
 	for pid in G.match_state.players_by_id:
 		var ps: GamePlayerState = (
 			G.match_state.players_by_id[pid])
 		var backend_id: String = (
 			backend_id_map.get(pid, ""))
 		if backend_id.is_empty():
+			continue
+		var existing: Dictionary = (
+			best_by_backend_id.get(backend_id, {}))
+		if (not existing.is_empty()
+				and existing["rank"] <= ps.rank):
 			continue
 		var stats: PlayerMatchStats = (
 			G.match_state.get_player_stats(pid))
@@ -769,7 +788,9 @@ func _server_report_match_result() -> void:
 				stats.crown_time_sec)
 			entry["regicide_count"] = (
 				stats.regicide_count)
-		player_results.append(entry)
+		best_by_backend_id[backend_id] = entry
+	var player_results: Array = (
+		best_by_backend_id.values())
 
 	var game_session_id: String = (
 		provider._game_session.game_session_id)

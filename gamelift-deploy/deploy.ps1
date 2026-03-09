@@ -8,7 +8,7 @@
 #   - Linux export templates installed in Godot
 
 param(
-    [string]$Version = "0.3.0",
+    [string]$Version = "0.4.2",
     [string]$Profile = "hopnbop",
     [string]$Region = "us-west-2",
     [string]$Repository = "hopnbop-server",

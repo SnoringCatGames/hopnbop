@@ -38,6 +38,7 @@ var scg_splash_screen: SCGSplashScreen
 var loading_screen: LoadingScreen
 var game_over_screen: GameOverScreen
 var pause_screen: PauseScreen
+var error_overlay: ErrorOverlay
 var screen_transition: ScreenTransition
 
 var cheat_manager: CheatManager

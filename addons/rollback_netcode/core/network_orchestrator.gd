@@ -132,6 +132,8 @@ var is_connected_to_server: bool:
 
 var local_peer_id: int:
 	get:
+		if not is_connected_to_server:
+			return 0
 		var peer := multiplayer.multiplayer_peer
 		if (peer == null
 				or peer.get_connection_status()

@@ -292,6 +292,8 @@ func _client_send_player_declaration() -> void:
 	var session_ids: Array = session_data.get("session_ids", [])
 	var player_count: int = session_data.get("player_count", 0)
 	var player_attributes: Array = session_data.get("attributes", [])
+	var backend_player_id: String = session_data.get(
+		"backend_player_id", "")
 
 	Netcode.log.check(
 		player_count == session_ids.size(),
@@ -315,7 +317,8 @@ func _client_send_player_declaration() -> void:
 		SERVER_ID,
 		session_ids,
 		player_attributes,
-		client_version
+		client_version,
+		backend_player_id,
 	)
 
 
@@ -385,6 +388,9 @@ func client_disconnect() -> void:
 		"Disconnecting from server", NetworkLogger.CATEGORY_CONNECTIONS
 	)
 
+	if not is_connected_to_server:
+		return
+
 	var peer := multiplayer.multiplayer_peer
 	if (peer != null
 			and peer.get_connection_status()
@@ -399,7 +405,8 @@ func client_disconnect() -> void:
 func _server_rpc_declare_players(
 	session_ids: Array,
 	player_attributes: Array,
-	client_version: String
+	client_version: String,
+	backend_player_id: String = "",
 ) -> void:
 	Netcode.check_is_server()
 
@@ -463,7 +470,8 @@ func _server_rpc_declare_players(
 		session_provider.server_validate_player_sessions(
 			peer_id,
 			assigned_ids,
-			session_ids
+			session_ids,
+			backend_player_id,
 		)
 
 	# Send assigned IDs back to client.
