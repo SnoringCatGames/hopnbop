@@ -48,6 +48,10 @@ extends Node
 
 # ---
 
+# - When jumping up onto spring, can be too horizontal to trigger.
+# - Sometimes, spawning (on wrap-around level?) shows two versions of bunny overlaid.
+# - Autoclose settings menue when loading level.
+
 
 # - Add support for local-only mode.
 #   - Please research how the current codebase works, and our options for supporting this.

@@ -60,7 +60,8 @@ func client_request_session_ids(
 func server_validate_player_sessions(
 	peer_id: int,
 	player_ids: Array[int],
-	_session_ids: Array
+	_session_ids: Array,
+	_backend_player_id: String = "",
 ) -> void:
 	logger.print(
 		"Preview mode: Auto-accepting %d player(s) for peer %d" % [

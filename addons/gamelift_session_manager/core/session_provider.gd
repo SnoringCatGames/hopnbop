@@ -79,7 +79,8 @@ func client_request_session_ids(
 func server_validate_player_sessions(
 	peer_id: int,
 	player_ids: Array[int],
-	session_ids: Array
+	session_ids: Array,
+	backend_player_id: String = "",
 ) -> void:
 	push_error("SessionProvider.server_validate_player_sessions not implemented")
 
