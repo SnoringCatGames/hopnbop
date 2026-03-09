@@ -146,6 +146,10 @@ func _ready() -> void:
 	local_settings = LocalSettings.new(settings)
 	local_settings.load_settings()
 	local_settings.apply_all_overrides()
+	local_settings.apply_locale()
+
+	# Configure font fallbacks for non-Latin scripts.
+	FontFallbackConfig.configure_fallbacks()
 
 	G.log.log_system_ready("Global")
 
