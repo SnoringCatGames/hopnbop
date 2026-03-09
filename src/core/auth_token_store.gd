@@ -9,6 +9,8 @@ extends RefCounted
 ## OS.get_unique_id() as the encryption passphrase for
 ## basic obfuscation.
 
+const LEGAL_VERSION := "1.0"
+
 const _SECTION := "auth"
 const _REFRESH_MARGIN_SEC := 3600
 
@@ -23,6 +25,8 @@ var is_anonymous := false
 var expires_at := 0
 var rating := 1500
 var linked_providers: Array[String] = []
+var consent_accepted_at := 0
+var consent_legal_version := ""
 
 
 func _init() -> void:
@@ -55,6 +59,18 @@ func is_token_valid() -> bool:
 	return now < expires_at
 
 
+## Returns true when consent has been given for
+## the specified legal version.
+func has_valid_consent(
+	current_version: String,
+) -> bool:
+	return (
+		consent_accepted_at > 0
+		and consent_legal_version
+			== current_version
+	)
+
+
 ## Returns true when the JWT is close to expiring
 ## but a refresh token is available.
 func needs_refresh() -> bool:
@@ -76,6 +92,14 @@ func store_from_response(data: Dictionary) -> void:
 	expires_at = data.get("expires_at", 0)
 	rating = data.get("rating", 1500)
 	provider = data.get("provider", "")
+	var server_consent: int = data.get(
+		"consent_accepted_at", 0
+	)
+	if server_consent > 0:
+		consent_accepted_at = server_consent
+		consent_legal_version = data.get(
+			"consent_legal_version", ""
+		)
 	linked_providers.clear()
 	var lp: Array = data.get("linked_providers", [])
 	for p in lp:
@@ -94,6 +118,8 @@ func clear_tokens() -> void:
 	expires_at = 0
 	rating = 1500
 	linked_providers.clear()
+	consent_accepted_at = 0
+	consent_legal_version = ""
 	DirAccess.remove_absolute(
 		ProjectSettings.globalize_path(_auth_file_path)
 	)
@@ -119,6 +145,14 @@ func save_tokens() -> void:
 	config.set_value(
 		_SECTION, "linked_providers",
 		linked_providers,
+	)
+	config.set_value(
+		_SECTION, "consent_accepted_at",
+		consent_accepted_at,
+	)
+	config.set_value(
+		_SECTION, "consent_legal_version",
+		consent_legal_version,
 	)
 	config.save_encrypted_pass(
 		_auth_file_path, _get_passphrase()
@@ -163,6 +197,12 @@ func load_tokens() -> void:
 	)
 	for p in lp:
 		linked_providers.append(str(p))
+	consent_accepted_at = config.get_value(
+		_SECTION, "consent_accepted_at", 0
+	)
+	consent_legal_version = config.get_value(
+		_SECTION, "consent_legal_version", ""
+	)
 
 
 func _get_passphrase() -> String:

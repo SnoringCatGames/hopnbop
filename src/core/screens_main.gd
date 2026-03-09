@@ -5,6 +5,7 @@ enum ScreenType {
 	UNKNOWN,
 	GODOT_SPLASH,
 	SCG_SPLASH,
+	CONSENT,
 	AUTH,
 	LOADING,
 	GAME_OVER,
@@ -80,9 +81,12 @@ func _should_play_transition(
 		[ScreenType.GAME_OVER, ScreenType.LOBBY],
 		[ScreenType.UNKNOWN, ScreenType.LOBBY],
 		[ScreenType.UNKNOWN, ScreenType.GAME],
+		[ScreenType.SCG_SPLASH, ScreenType.CONSENT],
 		[ScreenType.SCG_SPLASH, ScreenType.AUTH],
 		[ScreenType.SCG_SPLASH, ScreenType.LOBBY],
 		[ScreenType.SCG_SPLASH, ScreenType.GAME],
+		[ScreenType.CONSENT, ScreenType.AUTH],
+		[ScreenType.CONSENT, ScreenType.LOBBY],
 		[ScreenType.AUTH, ScreenType.LOBBY],
 	]
 	for pair in transition_pairs:
@@ -117,6 +121,10 @@ func _perform_screen_switch(
 	G.pause_screen.visible = screen_type == ScreenType.PAUSE
 	G.godot_splash_screen.visible = screen_type == ScreenType.GODOT_SPLASH
 	G.scg_splash_screen.visible = screen_type == ScreenType.SCG_SPLASH
+	if is_instance_valid(G.consent_screen):
+		G.consent_screen.visible = (
+			screen_type == ScreenType.CONSENT
+		)
 	if is_instance_valid(G.auth_screen):
 		G.auth_screen.visible = screen_type == ScreenType.AUTH
 
@@ -124,6 +132,7 @@ func _perform_screen_switch(
 		[
 			ScreenType.GODOT_SPLASH,
 			ScreenType.SCG_SPLASH,
+			ScreenType.CONSENT,
 			ScreenType.AUTH,
 			ScreenType.GAME_OVER,
 			ScreenType.LOBBY,
@@ -174,6 +183,8 @@ func get_screen_from_type(screen_type: ScreenType) -> Screen:
 			return G.godot_splash_screen
 		ScreenType.SCG_SPLASH:
 			return G.scg_splash_screen
+		ScreenType.CONSENT:
+			return G.consent_screen
 		ScreenType.AUTH:
 			return G.auth_screen
 		ScreenType.LOADING:
