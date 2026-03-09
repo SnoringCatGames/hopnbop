@@ -127,6 +127,10 @@ extends Node
 
 # ---
 
+# - Review gamelift GDScript, backend, python, audit all AWS activity and used systems, website pages, etc.
+
+# ---
+
 
 # - Work with Claud on the BIG final plans.
 # Milestones:
