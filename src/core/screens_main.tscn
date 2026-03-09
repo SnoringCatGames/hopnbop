@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://cdp0hul2o5i0x" path="res://src/ui/screens/loading_screen.tscn" id="4_0eyfq"]
 [ext_resource type="PackedScene" uid="uid://hrkm0p3okgms" path="res://src/ui/screens/game_over_screen.tscn" id="4_3e1sw"]
 [ext_resource type="PackedScene" path="res://src/ui/screens/auth_screen.tscn" id="5_auth"]
+[ext_resource type="PackedScene" path="res://src/ui/screens/error_overlay.tscn" id="6_error"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_gihf7"]
 
@@ -47,5 +48,9 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="AuthScreen" parent="." instance=ExtResource("5_auth")]
+visible = false
+layout_mode = 2
+
+[node name="ErrorOverlay" parent="." instance=ExtResource("6_error")]
 visible = false
 layout_mode = 2
