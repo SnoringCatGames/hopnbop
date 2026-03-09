@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://bpnl5pn3ydite"]
+[gd_scene load_steps=11 format=3 uid="uid://bpnl5pn3ydite"]
 
 [ext_resource type="Script" uid="uid://cb3gdybtwy0ry" path="res://src/core/main.gd" id="1_avv2o"]
 [ext_resource type="PackedScene" uid="uid://bt1la6s52krxe" path="res://src/ui/hud/hud.tscn" id="2_ukt3u"]
@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" uid="uid://cidck5vww8ede" path="res://src/core/screen_transition.tscn" id="8_2uitn"]
 [ext_resource type="PackedScene" uid="uid://cl4rrq5jk5usy" path="res://src/ui/celebration/match_end_celebration.tscn" id="9_celeb"]
 [ext_resource type="Script" uid="uid://dusd766l5y455" path="res://src/core/pixel_viewport_manager.gd" id="10_pvm"]
+[ext_resource type="PackedScene" path="res://src/ui/toast/toast_overlay.tscn" id="11_toast"]
 
 [node name="Main" type="Node2D"]
 process_mode = 3
@@ -51,6 +52,11 @@ layer = 250
 layer = 300
 
 [node name="SuperHud" parent="SuperHud" instance=ExtResource("7_nxx65")]
+
+[node name="ToastLayer" type="CanvasLayer" parent="."]
+layer = 350
+
+[node name="ToastOverlay" parent="ToastLayer" instance=ExtResource("11_toast")]
 
 [node name="TransitionLayer" type="CanvasLayer" parent="."]
 layer = 400

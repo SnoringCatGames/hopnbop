@@ -32,6 +32,7 @@ var auth_client: AuthClient
 var match_result_reporter: MatchResultReporter
 var backend_api_client: BackendApiClient
 var auth_screen: AuthScreen
+var consent_screen: ConsentScreen
 
 var godot_splash_screen: GodotSplashScreen
 var scg_splash_screen: SCGSplashScreen
@@ -39,6 +40,7 @@ var loading_screen: LoadingScreen
 var game_over_screen: GameOverScreen
 var pause_screen: PauseScreen
 var error_overlay: ErrorOverlay
+var toast_overlay: ToastOverlay
 var screen_transition: ScreenTransition
 
 var cheat_manager: CheatManager

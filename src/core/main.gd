@@ -116,7 +116,7 @@ func _start_app() -> void:
 				)
 			else:
 				G.screens.client_open_screen(
-					ScreensMain.ScreenType.AUTH
+					ScreensMain.ScreenType.CONSENT
 				)
 		else:
 			G.screens.client_open_screen(ScreensMain.ScreenType.GODOT_SPLASH)

@@ -254,7 +254,7 @@ func _on_session_request_failed(error_message: String) -> void:
 		return
 
 	# Emit as unexpected connection loss.
-	connection_lost.emit("Session request failed", false)
+	connection_lost.emit(error_message, false)
 
 
 func _on_player_ids_assigned(assigned_ids: Array[int]) -> void:

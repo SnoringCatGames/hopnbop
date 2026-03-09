@@ -20,4 +20,4 @@ func on_open() -> void:
 			ScreensMain.ScreenType.LOBBY)
 	else:
 		G.screens.client_open_screen(
-			ScreensMain.ScreenType.AUTH)
+			ScreensMain.ScreenType.CONSENT)

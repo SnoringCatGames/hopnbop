@@ -48,6 +48,12 @@ extends Node
 
 # ---
 
+# - Test the new toast system.
+#   - Think of other places to show toasts?
+#   - Add an alert icon for toasts.
+
+# - Check whether there is a hard billing limit on AWS, or if it just alerts at the thresholds.
+
 # - When jumping up onto spring, can be too horizontal to trigger.
 # - Sometimes, spawning (on wrap-around level?) shows two versions of bunny overlaid.
 # - Autoclose settings menue when loading level.

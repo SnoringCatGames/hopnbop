@@ -364,6 +364,11 @@ func _on_connection_lost(
 		if not is_expected:
 			G.client_session.latest_server_message = (
 				"Disconnected: %s" % reason_name)
+			if is_instance_valid(G.toast_overlay):
+				G.toast_overlay.show_toast(
+					reason_name,
+					ToastOverlay.Type.ERROR,
+				)
 
 		if is_expected:
 			Netcode.print(
