@@ -49,6 +49,18 @@ extends Node
 # ---
 
 
+# - Set up FB OAuth.
+
+# - Create a credits screen.
+#   - Levi - Game Development
+#   - Alden - Audio Design
+#   - Jackie - Expert Consultation
+#   - Playtesters:
+#     - Caitlin
+#     - Jackie
+#     - Amira
+
+
 # - I want to add internationalization.
 #   - Research how to implement this in Godot.
 #   - Then, make a specific plan for how best to implement it in my codebase.

@@ -223,6 +223,9 @@ func _process_movement_and_actions() -> void:
 
 
 func get_is_player_control_active() -> bool:
+	if G.is_confirm_dialog_shown:
+		return false
+
 	# In local mode (lobby), players always have control
 	# unless this player has the settings UI open.
 	if not G.is_networked_level_active:

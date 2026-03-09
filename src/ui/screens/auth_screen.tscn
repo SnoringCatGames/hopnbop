@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Theme" uid="uid://cg4peau6bmpdw" path="res://src/ui/hud_theme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://src/ui/screens/auth_screen.gd" id="2_script"]
+[ext_resource type="StyleBox" uid="uid://co2x2prpygpfd" path="res://src/ui/settings_panel/focus_border_stylebox.tres" id="3_focus"]
 
 [node name="AuthScreen" type="PanelContainer"]
 process_mode = 3
@@ -36,20 +37,26 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="OAuthRow" type="HBoxContainer" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
+[node name="OAuthRow" type="VBoxContainer" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 1
 
 [node name="GoogleButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/OAuthRow"]
+unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(140, 40)
+custom_minimum_size = Vector2(200, 40)
+size_flags_horizontal = 4
+theme_override_styles/focus = ExtResource("3_focus")
 text = "Google"
 
 [node name="FacebookButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/OAuthRow"]
+unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(140, 40)
+custom_minimum_size = Vector2(200, 40)
+size_flags_horizontal = 4
+theme_override_styles/focus = ExtResource("3_focus")
 text = "Facebook"
 
 [node name="Spacer2" type="Control" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
@@ -61,6 +68,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
 custom_minimum_size = Vector2(200, 40)
+theme_override_styles/focus = ExtResource("3_focus")
 text = "Play Anonymously"
 
 [node name="LoadingContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer"]

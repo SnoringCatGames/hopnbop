@@ -63,6 +63,9 @@ var is_settings_ui_shown := false
 # The player that opened the settings UI (null when closed).
 var settings_ui_player: Player = null
 
+# Whether a modal confirmation dialog is currently shown.
+var is_confirm_dialog_shown := false
+
 var is_lobby_active: bool:
 	get:
 		return is_instance_valid(level) and level is LobbyLevel
