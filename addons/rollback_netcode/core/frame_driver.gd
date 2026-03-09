@@ -48,6 +48,20 @@ extends Node
 
 # ---
 
+
+# - I want to add internationalization.
+#   - Research how to implement this in Godot.
+#   - Then, make a specific plan for how best to implement it in my codebase.
+#   - Then, survey all text shown in this game, and replace these with hooks into our new i18n system.
+#   - I think we should give careful consideration to our name and adjective lists in C:\Users\lsl\Repositories\hopnbop\src\core\dynamic_adjective_config.gd.
+#     - These lists are tailored to English idioms.
+#     - Rather than providing literal translations for these, we should generate lists of meaningful idioms for the target language.
+#     - It's ok for the resulting list in the target language to be smaller than the English version.
+#   - I then want to provide translations of this game for the top 12 most common languages.
+#     - Also, I want to include Thai.
+#   - Tell me, do we also need to include translations of legal documents (terms, privacy, data-deletion)?
+
+
 # - Test the new toast system.
 #   - Think of other places to show toasts?
 #   - Add an alert icon for toasts.
