@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://dlvy2ayb4r382"]
+[gd_scene load_steps=9 format=3 uid="uid://dlvy2ayb4r382"]
 
 [ext_resource type="Script" uid="uid://cdurlt7srnaw2" path="res://src/core/screens_main.gd" id="1_r4bio"]
 [ext_resource type="PackedScene" uid="uid://cmn6locn3jq66" path="res://src/ui/screens/godot_splash_screen.tscn" id="2_47nlx"]
@@ -8,7 +8,6 @@
 [ext_resource type="PackedScene" uid="uid://hrkm0p3okgms" path="res://src/ui/screens/game_over_screen.tscn" id="4_3e1sw"]
 [ext_resource type="PackedScene" path="res://src/ui/screens/consent_screen.tscn" id="4_consent"]
 [ext_resource type="PackedScene" path="res://src/ui/screens/auth_screen.tscn" id="5_auth"]
-[ext_resource type="PackedScene" path="res://src/ui/screens/error_overlay.tscn" id="6_error"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_gihf7"]
 
@@ -53,9 +52,5 @@ visible = false
 layout_mode = 2
 
 [node name="AuthScreen" parent="." instance=ExtResource("5_auth")]
-visible = false
-layout_mode = 2
-
-[node name="ErrorOverlay" parent="." instance=ExtResource("6_error")]
 visible = false
 layout_mode = 2

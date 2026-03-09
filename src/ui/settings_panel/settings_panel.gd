@@ -25,6 +25,15 @@ const _LinkAccountRowScene := preload(
 const _DeleteAccountRowScene := preload(
 	"res://src/ui/settings_panel/"
 	+ "delete_account_row.tscn")
+const _ExportDataRowScene := preload(
+	"res://src/ui/settings_panel/"
+	+ "export_data_row.tscn")
+const _LogOutRowScene := preload(
+	"res://src/ui/settings_panel/"
+	+ "log_out_row.tscn")
+const _LegalLinkRowScene := preload(
+	"res://src/ui/settings_panel/"
+	+ "legal_link_row.tscn")
 
 @export_group("Row Icons")
 @export var icon_gore: Texture2D
@@ -47,6 +56,7 @@ var _device_config: DeviceConfig
 var _rows: Array[SettingsRow] = []
 var _level_pref_rows: Array[LevelPrefRow] = []
 var _focused_index := 0
+var is_input_blocked := false
 
 @onready var _scroll_container: ScrollContainer = (
 	%ScrollContainer)
@@ -59,6 +69,7 @@ var _prev_up := false
 var _prev_down := false
 var _prev_left := false
 var _prev_right := false
+var _prev_trigger := false
 
 # Input repeat tracking.
 var _held_direction := ""
@@ -97,6 +108,7 @@ func open(player: Player) -> void:
 			G.input_device_manager
 				.get_is_action_pressed(
 					&"move_right", _device_config))
+		_prev_trigger = _is_trigger_pressed()
 	if is_instance_valid(G.audio):
 		G.audio.play_sound("focus")
 
@@ -220,6 +232,15 @@ func _build_ui() -> void:
 
 	# Delete account row.
 	_add_delete_account_row()
+
+	# Export data row.
+	_add_export_data_row()
+
+	# Log out row.
+	_add_log_out_row()
+
+	# Legal links.
+	_add_legal_section()
 
 	# Spacer above level preferences.
 	var level_spacer := Control.new()
@@ -345,8 +366,71 @@ func _add_delete_account_row() -> void:
 	var row: DeleteAccountRow = (
 		_DeleteAccountRowScene.instantiate()
 	)
+	row.setup(self, _device_config)
 	_row_container.add_child(row)
 	_connect_row_clicked(row)
+
+
+func _add_export_data_row() -> void:
+	if not G.auth_token_store.is_token_valid():
+		return
+
+	var row: ExportDataRow = (
+		_ExportDataRowScene.instantiate()
+	)
+	row.setup(self)
+	_row_container.add_child(row)
+	_connect_row_clicked(row)
+
+
+func _add_log_out_row() -> void:
+	if not G.auth_token_store.is_token_valid():
+		return
+	if AuthClient.get_platform_provider() >= 0:
+		return
+
+	var row: LogOutRow = (
+		_LogOutRowScene.instantiate()
+	)
+	row.setup(self, _device_config)
+	_row_container.add_child(row)
+	_connect_row_clicked(row)
+
+
+func _add_legal_section() -> void:
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 20)
+	_row_container.add_child(spacer)
+
+	var terms_row: LegalLinkRow = (
+		_LegalLinkRowScene.instantiate()
+	)
+	terms_row.setup(
+		"Terms of Service",
+		"https://hopnbop.net/terms",
+	)
+	_row_container.add_child(terms_row)
+	_connect_row_clicked(terms_row)
+
+	var privacy_row: LegalLinkRow = (
+		_LegalLinkRowScene.instantiate()
+	)
+	privacy_row.setup(
+		"Privacy Policy",
+		"https://hopnbop.net/privacy",
+	)
+	_row_container.add_child(privacy_row)
+	_connect_row_clicked(privacy_row)
+
+	var deletion_row: LegalLinkRow = (
+		_LegalLinkRowScene.instantiate()
+	)
+	deletion_row.setup(
+		"Data Deletion Policy",
+		"https://hopnbop.net/data-deletion",
+	)
+	_row_container.add_child(deletion_row)
+	_connect_row_clicked(deletion_row)
 
 
 func _connect_row_clicked(
@@ -468,8 +552,24 @@ func _ensure_focused_visible() -> void:
 	_scroll_container.ensure_control_visible(row)
 
 
+func _is_trigger_pressed() -> bool:
+	if (Input.is_physical_key_pressed(KEY_ENTER)
+			or Input.is_physical_key_pressed(
+				KEY_SPACE)):
+		return true
+	if (_device_config != null
+			and _device_config.type
+			== DeviceConfig.DeviceType.GAMEPAD):
+		return Input.is_action_pressed(
+			&"trigger_ui",
+			_device_config.device_id)
+	return false
+
+
 func _process(delta: float) -> void:
 	if _device_config == null:
+		return
+	if is_input_blocked:
 		return
 
 	var up := (
@@ -556,8 +656,19 @@ func _process(delta: float) -> void:
 				and _focused_index < _rows.size()):
 			_rows[_focused_index].on_right()
 
+	# Trigger detection (Enter/Space/trigger_ui).
+	var trigger := _is_trigger_pressed()
+	var trigger_just := trigger and not _prev_trigger
+	_prev_trigger = trigger
+	if trigger_just:
+		if (_focused_index >= 0
+				and _focused_index < _rows.size()):
+			_rows[_focused_index].on_right()
+
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_input_blocked:
+		return
 	if event.is_action_pressed(&"toggle_pause"):
 		close()
 		get_viewport().set_input_as_handled()

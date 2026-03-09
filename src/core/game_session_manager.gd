@@ -31,6 +31,10 @@ signal matchmaking_progress(
 signal server_shutdown_imminent(
 	seconds_remaining: float)
 
+const _CONFIRM_OVERLAY_SCENE := preload(
+	"res://src/ui/confirm_overlay/"
+	+ "confirm_overlay.tscn")
+
 var session_provider: SessionProvider
 
 
@@ -247,10 +251,17 @@ func _on_session_request_failed(error_message: String) -> void:
 	)
 
 	# Version mismatch is a terminal error. Show a
-	# blocking overlay with no way to proceed.
-	if (error_message.begins_with("Version mismatch")
-			and is_instance_valid(G.error_overlay)):
-		G.error_overlay.show_error(error_message)
+	# blocking dialog with no way to proceed.
+	if error_message.begins_with("Version mismatch"):
+		var dialog: ConfirmOverlay = (
+			_CONFIRM_OVERLAY_SCENE.instantiate())
+		get_tree().root.add_child(dialog)
+		dialog.open(
+			error_message,
+			"Close Game",
+			func() -> void:
+				get_tree().quit(),
+		)
 		return
 
 	# Emit as unexpected connection loss.

@@ -1,8 +1,8 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://src/ui/settings_panel/delete_account_row.gd" id="1_script"]
+[ext_resource type="Script" path="res://src/ui/settings_panel/export_data_row.gd" id="1_script"]
 
-[node name="DeleteAccountRow" type="PanelContainer"]
+[node name="ExportDataRow" type="PanelContainer"]
 script = ExtResource("1_script")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]

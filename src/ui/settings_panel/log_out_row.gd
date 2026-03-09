@@ -1,6 +1,6 @@
-class_name DeleteAccountRow
+class_name LogOutRow
 extends SettingsRow
-## A row that triggers account deletion via a
+## A row that logs the player out via a
 ## ConfirmOverlay modal dialog.
 
 
@@ -25,7 +25,7 @@ func setup(
 
 func _ready() -> void:
 	super()
-	_label.text = "Delete Account"
+	_label.text = "Log Out"
 
 
 func on_left() -> void:
@@ -50,49 +50,29 @@ func _activate() -> void:
 				_panel.is_input_blocked = false)
 	get_tree().root.add_child(dialog)
 	dialog.open(
-		"Delete your account?",
-		"Delete",
-		_do_delete,
+		"Log out?",
+		"Log Out",
+		_do_logout,
 		"Cancel",
 		func() -> void: pass,
 		_device_config,
 	)
 
 
-func _do_delete() -> void:
+func _do_logout() -> void:
 	_is_busy = true
-
-	G.auth_client.delete_completed.connect(
-		_on_delete_completed, CONNECT_ONE_SHOT,
-	)
-	G.auth_client.delete_account()
-
-
-func _on_delete_completed(
-	success: bool,
-	error: String,
-) -> void:
-	_is_busy = false
 
 	if is_instance_valid(_panel):
 		_panel.close()
 
-	if success:
-		if is_instance_valid(G.toast_overlay):
-			G.toast_overlay.show_toast(
-				"Account deleted",
-				ToastOverlay.Type.SUCCESS,
-			)
-		G.screens.client_open_screen(
-			ScreensMain.ScreenType.CONSENT,
+	G.auth_token_store.clear_tokens()
+
+	if is_instance_valid(G.toast_overlay):
+		G.toast_overlay.show_toast(
+			"Logged out",
+			ToastOverlay.Type.INFO,
 		)
-	else:
-		G.log.error(
-			"Account deletion failed: %s"
-			% error,
-		)
-		if is_instance_valid(G.toast_overlay):
-			G.toast_overlay.show_toast(
-				"Delete failed: %s" % error,
-				ToastOverlay.Type.ERROR,
-			)
+
+	G.screens.client_open_screen(
+		ScreensMain.ScreenType.CONSENT,
+	)
