@@ -28,6 +28,8 @@ class PlayerProfile:
     auth_providers: dict = field(default_factory=dict)
     is_anonymous: bool = False
     device_id: str = ""
+    consent_accepted_at: int = 0
+    consent_legal_version: str = ""
 
 
 class PlayerService:
@@ -73,6 +75,12 @@ class PlayerService:
             auth_providers=item.get("auth_providers", {}),
             is_anonymous=item.get("is_anonymous", False),
             device_id=item.get("device_id", ""),
+            consent_accepted_at=int(
+                item.get("consent_accepted_at", 0)
+            ),
+            consent_legal_version=item.get(
+                "consent_legal_version", ""
+            ),
         )
 
     async def create_player(
@@ -82,6 +90,8 @@ class PlayerService:
         auth_providers: dict,
         is_anonymous: bool = False,
         device_id: str = "",
+        consent_accepted_at: int = 0,
+        consent_legal_version: str = "",
     ) -> PlayerProfile:
         """Create new player profile."""
         now = int(datetime.now().timestamp())
@@ -98,6 +108,8 @@ class PlayerService:
             auth_providers=auth_providers,
             is_anonymous=is_anonymous,
             device_id=device_id,
+            consent_accepted_at=consent_accepted_at,
+            consent_legal_version=consent_legal_version,
         )
 
         item = {
@@ -115,6 +127,13 @@ class PlayerService:
         }
         if device_id:
             item["device_id"] = device_id
+        if consent_accepted_at:
+            item["consent_accepted_at"] = (
+                consent_accepted_at
+            )
+            item["consent_legal_version"] = (
+                consent_legal_version
+            )
 
         self.table.put_item(Item=item)
         return profile
@@ -171,6 +190,8 @@ class PlayerService:
         auth_providers: dict,
         is_anonymous: bool = False,
         device_id: str = "",
+        consent_accepted_at: int = 0,
+        consent_legal_version: str = "",
     ) -> PlayerProfile:
         """Get existing player or create if not exists."""
         profile = await self.get_player(player_id)
@@ -182,10 +203,43 @@ class PlayerService:
                 auth_providers,
                 is_anonymous=is_anonymous,
                 device_id=device_id,
+                consent_accepted_at=consent_accepted_at,
+                consent_legal_version=consent_legal_version,
+            )
+        elif consent_accepted_at > 0:
+            await self.store_consent(
+                player_id,
+                consent_accepted_at,
+                consent_legal_version,
+            )
+            profile.consent_accepted_at = (
+                consent_accepted_at
+            )
+            profile.consent_legal_version = (
+                consent_legal_version
             )
 
         await self.update_last_active(player_id)
         return profile
+
+    async def store_consent(
+        self,
+        player_id: str,
+        consent_accepted_at: int,
+        consent_legal_version: str,
+    ) -> None:
+        """Store consent timestamp and legal version."""
+        self.table.update_item(
+            Key={"player_id": player_id},
+            UpdateExpression=(
+                "SET consent_accepted_at = :cat,"
+                " consent_legal_version = :ver"
+            ),
+            ExpressionAttributeValues={
+                ":cat": consent_accepted_at,
+                ":ver": consent_legal_version,
+            },
+        )
 
     # --- Refresh token methods ---
 

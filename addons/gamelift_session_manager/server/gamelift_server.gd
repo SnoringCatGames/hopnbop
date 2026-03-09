@@ -7,7 +7,10 @@ extends SessionProvider
 ## - Player session validation
 ## - Process lifecycle callbacks
 
-# FIXME: Review this.
+## Seconds to wait for players to connect after a
+## game session starts. If no players arrive in
+## time, the server terminates to free capacity.
+const _SESSION_IDLE_TIMEOUT_SEC := 60.0
 
 
 ## GameLift configuration.
@@ -24,12 +27,19 @@ var _player_to_session: Dictionary = {}
 # Dictionary<String, int>
 var _session_to_player: Dictionary = {}
 
+# Maps game player_id -> backend player_id (for match
+# result reporting). Built from client-declared IDs.
+# Dictionary<int, String>
+var _player_to_backend_id: Dictionary = {}
+
 # Expected player count from matchmaking (total players across all peers).
 var _expected_player_count: int = 0
 var _validated_player_count: int = 0
 
 # Selected level from game session properties.
 var _selected_level_id: StringName = ""
+
+var _idle_timer: Timer
 
 
 func _init(p_config: Dictionary = {}) -> void:
@@ -59,18 +69,18 @@ func server_get_selected_level_id() -> StringName:
 func server_validate_player_sessions(
 	peer_id: int,
 	player_ids: Array[int],
-	session_ids: Array
+	session_ids: Array,
+	backend_player_id: String = "",
 ) -> void:
 	var player_count := session_ids.size()
 
 	if not is_active():
 		# Preview mode: auto-accept without validation.
 		Netcode.log.print(
-			"Preview: Auto-accepting %d player(s) for peer %d" % [
-				player_count,
-				peer_id
-			],
-			NetworkLogger.CATEGORY_CONNECTIONS
+			("Preview: Auto-accepting %d player(s)"
+			+" for peer %d")
+			% [player_count, peer_id],
+			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
 		for i in range(player_count):
 			var player_id: int = player_ids[i]
@@ -79,7 +89,10 @@ func server_validate_player_sessions(
 				if i < session_ids.size()
 				else ""
 			)
-			_on_validation_success(player_id, session_id)
+			_on_validation_success(
+				player_id, session_id)
+		_store_backend_ids(
+			player_ids, backend_player_id)
 		return
 
 	# Validate all session IDs for this peer.
@@ -87,93 +100,76 @@ func server_validate_player_sessions(
 	for i in range(player_count):
 		if i >= session_ids.size():
 			Netcode.log.warning(
-				"Missing session ID for player %d" % player_ids[i],
-				NetworkLogger.CATEGORY_CONNECTIONS
+				"Missing session ID for player %d"
+				% player_ids[i],
+				NetworkLogger.CATEGORY_CONNECTIONS,
 			)
 			all_valid = false
 			break
 
 		var session_id: String = str(session_ids[i])
-		var outcome = _gamelift.accept_player_session(session_id)
+		var outcome = (
+			_gamelift.accept_player_session(
+				session_id))
 
 		if outcome.is_success():
 			Netcode.log.print(
-				"Player session validated: %s (peer %d, index %d)" % [
-					session_id,
-					peer_id,
-					i
-				],
-				NetworkLogger.CATEGORY_CONNECTIONS
+				("Player session validated:"
+				+" %s (peer %d, index %d)")
+				% [session_id, peer_id, i],
+				NetworkLogger.CATEGORY_CONNECTIONS,
 			)
 		else:
 			Netcode.log.warning(
-				"Player session validation failed for %s: %s" % [
-					session_id,
-					outcome.get_error_message()
-				],
-				NetworkLogger.CATEGORY_CONNECTIONS
+				("Player session validation"
+				+" failed for %s: %s")
+				% [session_id,
+					outcome.get_error_message()],
+				NetworkLogger.CATEGORY_CONNECTIONS,
 			)
 			all_valid = false
 			break
 
 	if not all_valid:
-		session_request_failed.emit("Player session validation failed")
+		session_request_failed.emit(
+			"Player session validation failed")
 		return
 
-	# All sessions valid - record mappings and emit signals.
+	# All sessions valid. Record mappings and emit
+	# signals.
 	for i in range(player_count):
 		var player_id: int = player_ids[i]
 		var session_id: String = str(session_ids[i])
-		_on_validation_success(player_id, session_id)
+		_on_validation_success(
+			player_id, session_id)
+	_store_backend_ids(
+		player_ids, backend_player_id)
 
 
-## Builds a mapping from in-game int player_id
-## to backend string player_id. Parses matchmaker
-## data to extract player entries and maps them
-## via player session IDs. Returns empty dict in
-## preview mode or if matchmaker data is absent.
+## Returns the mapping from in-game int player_id
+## to backend string player_id. Built from client
+## declarations during session validation.
 func get_backend_player_id_map() -> Dictionary:
-	if _game_session == null:
-		return {}
-	if _game_session.matchmaker_data.is_empty():
-		return {}
+	return _player_to_backend_id
 
-	var data = JSON.parse_string(
-		_game_session.matchmaker_data)
-	if not data or not data is Dictionary:
-		return {}
 
-	# Dictionary<int, String>
-	var result := {}
-	var teams: Array = data.get("teams", [])
-	for team in teams:
-		if not team is Dictionary:
-			continue
-		var players: Array = team.get("players", [])
-		for player in players:
-			if not player is Dictionary:
-				continue
-			var mm_player_id: String = player.get(
-				"playerId", "")
-			var session_id: String = player.get(
-				"playerSessionId", "")
-			if (mm_player_id.is_empty()
-					or session_id.is_empty()):
-				continue
-			# Strip trailing _N suffix to get
-			# the backend player_id.
-			var last_underscore := (
-				mm_player_id.rfind("_"))
-			var backend_id := mm_player_id
-			if last_underscore > 0:
-				backend_id = mm_player_id.substr(
-					0, last_underscore)
-			# Map session_id to in-game int id.
-			if _session_to_player.has(session_id):
-				var game_id: int = (
-					_session_to_player[session_id])
-				result[game_id] = backend_id
-	return result
+## Stores backend player ID for each game player.
+## For couch co-op, multiple game players from the
+## same client share the same backend_player_id.
+func _store_backend_ids(
+	player_ids: Array[int],
+	backend_player_id: String,
+) -> void:
+	if backend_player_id.is_empty():
+		return
+	for i in range(player_ids.size()):
+		_player_to_backend_id[player_ids[i]] = (
+			backend_player_id)
+		Netcode.log.print(
+			"Backend ID: player %d -> %s"
+			% [player_ids[i], backend_player_id],
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
 
 
 func cleanup() -> void:
@@ -206,11 +202,44 @@ func _on_validation_success(player_id: int, session_id: String) -> void:
 
 
 func _on_all_players_ready() -> void:
+	_stop_idle_timer()
 	Netcode.log.print(
 		"All players connected and validated",
-		NetworkLogger.CATEGORY_CONNECTIONS
+		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 	all_players_connected.emit()
+
+
+func _start_idle_timer() -> void:
+	_idle_timer = Timer.new()
+	_idle_timer.one_shot = true
+	_idle_timer.wait_time = _SESSION_IDLE_TIMEOUT_SEC
+	_idle_timer.timeout.connect(
+		_on_idle_timeout)
+	add_child(_idle_timer)
+	_idle_timer.start()
+	Netcode.log.print(
+		"Idle timeout: %.0fs"
+		% _SESSION_IDLE_TIMEOUT_SEC,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+
+func _stop_idle_timer() -> void:
+	if is_instance_valid(_idle_timer):
+		_idle_timer.stop()
+		_idle_timer.queue_free()
+		_idle_timer = null
+
+
+func _on_idle_timeout() -> void:
+	Netcode.log.warning(
+		("No players connected within %.0fs."
+		+" Terminating to free capacity.")
+		% _SESSION_IDLE_TIMEOUT_SEC,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+	_end_process()
 
 
 # =============================================================================
@@ -267,13 +296,13 @@ func _initialize_sdk() -> void:
 		var is_expected := (
 			Netcode.is_preview
 			or GameliftTestEnvironmentDetector
-				.is_running_in_test_env(self)
+				.is_running_in_test_env(self )
 		)
 		if is_expected:
 			Netcode.log.print(
 				"GameLift SDK init failed"
-				+ " (expected in tests/preview):"
-				+ " %s"
+				+" (expected in tests/preview):"
+				+" %s"
 				% outcome.get_error_message(),
 				NetworkLogger.CATEGORY_CONNECTIONS,
 			)
@@ -385,6 +414,10 @@ func _on_game_session_started(session) -> void:
 		)
 		level_selected.emit(
 			String(_selected_level_id))
+
+	# Start idle timeout. If no players connect in
+	# time, the server terminates to free capacity.
+	_start_idle_timer()
 
 
 func _parse_player_count_from_matchmaker(data: Dictionary) -> int:

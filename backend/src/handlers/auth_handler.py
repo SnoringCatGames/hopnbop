@@ -4,6 +4,7 @@ import json
 import os
 import secrets
 import asyncio
+from datetime import datetime
 from typing import Dict, Any
 import boto3
 from aws_lambda_powertools import Logger, Tracer
@@ -80,12 +81,22 @@ def login(
                 )
             )
 
+        # Read consent fields from request.
+        consent_accepted_at = int(
+            body.get("consent_accepted_at", 0)
+        )
+        consent_legal_version = body.get(
+            "consent_legal_version", ""
+        )
+
         # Get or create player profile.
         player_profile = asyncio.run(
             player_service.get_or_create_player(
                 player_id,
                 auth_result.display_name,
                 {auth_result.provider: auth_result.provider_id},
+                consent_accepted_at=consent_accepted_at,
+                consent_legal_version=consent_legal_version,
             )
         )
 
@@ -128,6 +139,12 @@ def login(
                     ),
                     "linked_providers": list(
                         player_profile.auth_providers.keys()
+                    ),
+                    "consent_accepted_at": (
+                        player_profile.consent_accepted_at
+                    ),
+                    "consent_legal_version": (
+                        player_profile.consent_legal_version
                     ),
                 }
             ),
@@ -176,6 +193,14 @@ def anonymous_login(
                 )
             )
 
+        # Read consent fields from request.
+        consent_accepted_at = int(
+            body.get("consent_accepted_at", 0)
+        )
+        consent_legal_version = body.get(
+            "consent_legal_version", ""
+        )
+
         display_name = f"Player_{player_id[2:10]}"
 
         player_profile = asyncio.run(
@@ -185,6 +210,8 @@ def anonymous_login(
                 {},
                 is_anonymous=True,
                 device_id=device_id,
+                consent_accepted_at=consent_accepted_at,
+                consent_legal_version=consent_legal_version,
             )
         )
 
@@ -225,6 +252,12 @@ def anonymous_login(
                     ),
                     "linked_providers": list(
                         player_profile.auth_providers.keys()
+                    ),
+                    "consent_accepted_at": (
+                        player_profile.consent_accepted_at
+                    ),
+                    "consent_legal_version": (
+                        player_profile.consent_legal_version
                     ),
                 }
             ),
@@ -319,6 +352,12 @@ def refresh(
                     ),
                     "linked_providers": list(
                         profile.auth_providers.keys()
+                    ),
+                    "consent_accepted_at": (
+                        profile.consent_accepted_at
+                    ),
+                    "consent_legal_version": (
+                        profile.consent_legal_version
                     ),
                 }
             ),
@@ -613,6 +652,14 @@ def delete_account(
                 404, "NOT_FOUND", "Player not found"
             )
 
+        # Archive consent record before deletion.
+        if profile.consent_accepted_at > 0:
+            _archive_consent(
+                player_id,
+                profile.consent_accepted_at,
+                profile.consent_legal_version,
+            )
+
         # Delete all provider mappings.
         for provider, provider_id in (
             profile.auth_providers.items()
@@ -655,6 +702,35 @@ def delete_account(
         return _error(
             500, "INTERNAL_ERROR", "Internal server error"
         )
+
+
+# 3 years in seconds.
+_CONSENT_AUDIT_TTL_SECONDS = 3 * 365 * 24 * 60 * 60
+
+
+def _archive_consent(
+    player_id: str,
+    consent_accepted_at: int,
+    consent_legal_version: str,
+) -> None:
+    """Write consent record to audit table with TTL."""
+    dynamodb = boto3.resource("dynamodb")
+    table_name = os.environ.get(
+        "CONSENT_AUDIT_TABLE", "hopnbop-consent-audit"
+    )
+    table = dynamodb.Table(table_name)
+    now = int(datetime.now().timestamp())
+    table.put_item(
+        Item={
+            "player_id": player_id,
+            "consent_accepted_at": consent_accepted_at,
+            "consent_legal_version": (
+                consent_legal_version
+            ),
+            "deleted_at": now,
+            "expires_at": now + _CONSENT_AUDIT_TTL_SECONDS,
+        }
+    )
 
 
 def _delete_match_history(player_id: str) -> None:

@@ -30,6 +30,13 @@ signal unlink_completed(
 ## Emitted when account deletion completes.
 signal delete_completed(success: bool, error: String)
 
+## Emitted when data export completes.
+signal export_completed(
+	success: bool,
+	error: String,
+	data: Dictionary,
+)
+
 ## Status updates for UI feedback.
 signal auth_status_changed(status: String)
 
@@ -63,6 +70,7 @@ const _REFRESH_ENDPOINT := "/auth/refresh"
 const _LINK_ENDPOINT := "/auth/link"
 const _UNLINK_ENDPOINT := "/auth/unlink"
 const _DELETE_ACCOUNT_ENDPOINT := "/auth/account"
+const _EXPORT_ENDPOINT := "/player/export"
 const _POPUP_TIMEOUT_SEC := 300.0
 
 ## Maps Provider enum to string name sent to backend.
@@ -100,6 +108,10 @@ var _unlink_provider_name := ""
 # Account deletion state.
 var _is_deleting := false
 
+# Data export state.
+var _is_exporting := false
+var _export_http_request: HTTPRequest
+
 # Popup OAuth state (web platform).
 var _js_message_callback: JavaScriptObject
 var _popup_timeout_timer: Timer
@@ -109,6 +121,10 @@ func _ready() -> void:
 	_http_request = HTTPRequest.new()
 	_http_request.timeout = 30.0
 	add_child(_http_request)
+
+	_export_http_request = HTTPRequest.new()
+	_export_http_request.timeout = 60.0
+	add_child(_export_http_request)
 
 
 func _process(_delta: float) -> void:
@@ -160,6 +176,12 @@ func submit_platform_token(
 	var body := {
 		"provider": _PROVIDER_NAMES[provider],
 		"auth_code": token,
+		"consent_accepted_at": (
+			G.auth_token_store.consent_accepted_at
+		),
+		"consent_legal_version": (
+			G.auth_token_store.consent_legal_version
+		),
 	}
 	_send_auth_request(_AUTH_ENDPOINT, body)
 
@@ -180,7 +202,15 @@ func login_anonymous() -> void:
 		device_id += (
 			"_client%d"
 			% Netcode.preview_client_number)
-	var body := {"device_id": device_id}
+	var body := {
+		"device_id": device_id,
+		"consent_accepted_at": (
+			G.auth_token_store.consent_accepted_at
+		),
+		"consent_legal_version": (
+			G.auth_token_store.consent_legal_version
+		),
+	}
 	_send_auth_request(_ANON_ENDPOINT, body)
 
 
@@ -261,6 +291,107 @@ func delete_account() -> void:
 	_is_deleting = true
 	auth_status_changed.emit("Deleting account...")
 	_send_delete_request()
+
+
+## Export all player data as JSON.
+func export_player_data() -> void:
+	if _is_exporting:
+		return
+
+	if not G.auth_token_store.is_token_valid():
+		G.log.warning(
+			"Export failed: not authenticated",
+		)
+		export_completed.emit(
+			false, "Not authenticated", {},
+		)
+		return
+
+	_is_exporting = true
+
+	var url := (
+		G.settings.gamelift_backend_api_url
+		+ _EXPORT_ENDPOINT
+	)
+	var headers := [
+		"Content-Type: application/json",
+		"Authorization: Bearer %s"
+		% G.auth_token_store.jwt_token,
+	]
+
+	var export_signal := (
+		_export_http_request.request_completed
+	)
+	if export_signal.is_connected(
+		_on_export_response
+	):
+		export_signal.disconnect(
+			_on_export_response
+		)
+
+	_export_http_request.request_completed.connect(
+		_on_export_response, CONNECT_ONE_SHOT
+	)
+
+	var err := _export_http_request.request(
+		url,
+		headers,
+		HTTPClient.METHOD_GET,
+	)
+	if err != OK:
+		_is_exporting = false
+		export_completed.emit(
+			false,
+			"HTTP request failed: %d" % err,
+			{},
+		)
+
+
+func _on_export_response(
+	result: int,
+	response_code: int,
+	_headers: PackedStringArray,
+	body: PackedByteArray,
+) -> void:
+	_is_exporting = false
+
+	if result != HTTPRequest.RESULT_SUCCESS:
+		G.log.error(
+			"Export request failed: result=%d"
+			% result,
+		)
+		export_completed.emit(
+			false, "Request failed", {},
+		)
+		return
+
+	var json := JSON.new()
+	var parse_err := json.parse(
+		body.get_string_from_utf8()
+	)
+	if parse_err != OK:
+		G.log.error(
+			"Export: invalid server response",
+		)
+		export_completed.emit(
+			false, "Invalid server response", {},
+		)
+		return
+
+	var data: Dictionary = json.data
+
+	if response_code != 200:
+		var msg: String = data.get(
+			"message", "Export failed"
+		)
+		G.log.error(
+			"Export failed: %d %s"
+			% [response_code, msg],
+		)
+		export_completed.emit(false, msg, {})
+		return
+
+	export_completed.emit(true, "", data)
 
 
 # =============================================================
@@ -381,6 +512,13 @@ func _poll_oauth_redirect() -> void:
 		"auth_code": code,
 		"redirect_uri": redirect_uri,
 	}
+	if endpoint == _AUTH_ENDPOINT:
+		body["consent_accepted_at"] = (
+			G.auth_token_store.consent_accepted_at
+		)
+		body["consent_legal_version"] = (
+			G.auth_token_store.consent_legal_version
+		)
 
 	_send_auth_request(
 		endpoint, body, endpoint == _LINK_ENDPOINT
@@ -545,6 +683,14 @@ func _on_js_message(args: Array) -> void:
 	var endpoint := _AUTH_ENDPOINT
 	if _is_linking:
 		endpoint = _LINK_ENDPOINT
+
+	if endpoint == _AUTH_ENDPOINT:
+		body["consent_accepted_at"] = (
+			G.auth_token_store.consent_accepted_at
+		)
+		body["consent_legal_version"] = (
+			G.auth_token_store.consent_legal_version
+		)
 
 	_send_auth_request(
 		endpoint, body, endpoint == _LINK_ENDPOINT
