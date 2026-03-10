@@ -7,8 +7,9 @@ const DEFAULT_LEVEL_SCENE := preload("res://src/level/level_1.tscn")
 ## Helper function to create default player attributes for testing.
 static func _get_default_attributes() -> Dictionary:
 	return {
-		"bunny_name": "TestBunny",
-		"adjective": "TestAdj",
+		"name_index": 0,
+		"adj_list_id": 0,
+		"adj_index": 0,
 		"is_soft": false,
 		"body_type_index": 0,
 		"costume_index": 0,
@@ -31,8 +32,9 @@ class TestMatchStateSynchronizerPlayerCreation:
 
 	static func _get_default_attributes() -> Dictionary:
 		return {
-			"bunny_name": "TestBunny",
-			"adjective": "TestAdj",
+			"name_index": 0,
+			"adj_list_id": 0,
+			"adj_index": 0,
 			"is_soft": false,
 			"body_type_index": 0,
 			"costume_index": 0,
@@ -183,8 +185,9 @@ class TestPlayerIdFormatConsistency:
 
 	static func _get_default_attributes() -> Dictionary:
 		return {
-			"bunny_name": "TestBunny",
-			"adjective": "TestAdj",
+			"name_index": 0,
+			"adj_list_id": 0,
+			"adj_index": 0,
 			"is_soft": false,
 			"body_type_index": 0,
 			"costume_index": 0,

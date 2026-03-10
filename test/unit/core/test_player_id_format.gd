@@ -6,8 +6,9 @@ extends GutTest
 ## Shared helper for creating default player attributes.
 static func _get_default_attributes() -> Dictionary:
 	return {
-		"bunny_name": "TestBunny",
-		"adjective": "TestAdj",
+		"name_index": 0,
+		"adj_list_id": 0,
+		"adj_index": 0,
 		"is_soft": false,
 		"body_type_index": 0,
 		"costume_index": 0,

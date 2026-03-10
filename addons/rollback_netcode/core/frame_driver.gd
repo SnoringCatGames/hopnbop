@@ -48,6 +48,8 @@ extends Node
 
 # ---
 
+# - Test local mode.
+
 # - Remove pxlzr font.
 
 # - Should we add an option for explicitly changing the language?
@@ -1224,30 +1226,59 @@ func _client_rpc_notify_unpause(
 
 ## Server notifies clients to start match start countdown.
 ## Clients pause locally and unpause when countdown ends.
+## server_current_frame lets the client sync its frame
+## counter immediately, eliminating the initial frame drift
+## that would otherwise persist until the next NTP ping.
+## Default of -1 provides backward compatibility with
+## servers that send the old 1-parameter version.
 @rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_SESSION_CONTROL)
-func _client_rpc_start_match_start_countdown(countdown_frames: int) -> void:
+func _client_rpc_start_match_start_countdown(
+	countdown_end_frame: int,
+	server_current_frame: int = -1,
+) -> void:
 	Netcode.check_is_client()
 
-	match_start_countdown_end_frame_index = countdown_frames
+	# Sync frame counter to the server's frame
+	# if provided. This eliminates the drift
+	# caused by the RPC transmission delay.
+	var previous_frame := server_frame_index
+	if server_current_frame >= 0:
+		server_frame_index = server_current_frame
+		_is_frame_tracking_initialized = true
+
+	match_start_countdown_end_frame_index = (
+		countdown_end_frame)
 	_has_match_start_countdown_started = true
 	_is_paused = false
 
 	Netcode.log.print(
-		"Starting match start countdown (%d frames)" % countdown_frames,
-		NetworkLogger.CATEGORY_GAME_STATE
+		("Starting match start countdown"
+		+" (%d frames), synced frame %d->%d")
+		% [
+			countdown_end_frame,
+			previous_frame,
+			server_frame_index,
+		],
+		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
-	# Emit pause_state_changed to trigger screen transition (LOADING -> GAME).
-	# This must happen before pausing tree so UI transitions work.
+	# Emit pause_state_changed to trigger screen
+	# transition (LOADING -> GAME). This must
+	# happen before pausing tree so UI transitions
+	# work.
 	pause_state_changed.emit(false, 0)
 
-	# Pause client tree during match start countdown (characters won't move).
-	# Will be unpaused when countdown ends in _pre_physics_process.
+	# Pause client tree during match start
+	# countdown (characters won't move). Will be
+	# unpaused when countdown ends in
+	# _pre_physics_process.
 	if is_inside_tree():
 		get_tree().paused = true
 
-	# Emit signal for game-specific UI (e.g., show match start countdown display).
-	match_start_countdown_started.emit(countdown_frames)
+	# Emit signal for game-specific UI (e.g.,
+	# show match start countdown display).
+	match_start_countdown_started.emit(
+		countdown_end_frame)
 
 
 ## Server notifies all clients of impending graceful shutdown.
@@ -1291,8 +1322,8 @@ func _server_execute_pause(
 		)
 	)
 
-	# Schedule auto-unpause using timer system (server-only).
-	if Netcode.is_server:
+	# Schedule auto-unpause using timer system.
+	if Netcode.runs_server_logic:
 		_pause_auto_unpause_timer = get_tree().create_timer(Netcode.settings.max_pause_duration_sec)
 		_pause_auto_unpause_timer.timeout.connect(func():
 			Netcode.log.print("Auto-unpausing after timeout", NetworkLogger.CATEGORY_NETWORK_SYNC)
@@ -1307,12 +1338,13 @@ func _server_execute_pause(
 	_queued_rollback_cause = ""
 
 	# Notify clients (if server and in tree for RPC).
-	if Netcode.is_server and is_inside_tree():
-		_client_rpc_notify_pause.rpc(
-			server_frame_index,
-			_pause_initiator_peer_id,
-			_pause_initiator_pauses_used,
-		)
+	if Netcode.runs_server_logic and is_inside_tree():
+		Netcode.call_client_rpc_with_local_support(
+			_client_rpc_notify_pause.bind(
+				server_frame_index,
+				_pause_initiator_peer_id,
+				_pause_initiator_pauses_used,
+			))
 
 	# Pause Godot scene tree.
 	if is_inside_tree():
@@ -1353,7 +1385,7 @@ func _server_execute_unpause() -> void:
 	# Cancel auto-unpause timeout (server-only).
 	# SceneTreeTimer cannot be canceled once started, so we just clear the
 	# reference.
-	if Netcode.is_server and _pause_auto_unpause_timer != null:
+	if Netcode.runs_server_logic and _pause_auto_unpause_timer != null:
 		_pause_auto_unpause_timer = null
 
 	# Reset pause state variables.
@@ -1363,7 +1395,7 @@ func _server_execute_unpause() -> void:
 
 	# Check if this is the initial match start and countdown is enabled.
 	var is_starting_match_start_countdown := (
-		Netcode.is_server
+		Netcode.runs_server_logic
 		and not _has_match_start_countdown_started
 		and Netcode.settings.match_start_countdown_sec > 0
 	)
@@ -1390,21 +1422,27 @@ func _server_execute_unpause() -> void:
 		)
 
 		# Notify clients to start match start
-		# countdown (they pause locally).
+		# countdown (they pause locally). Include
+		# server frame index so clients can sync
+		# their frame counter immediately.
 		if is_inside_tree():
-			_client_rpc_start_match_start_countdown.rpc(
-				countdown_end,
-			)
+			Netcode.call_client_rpc_with_local_support(
+				_client_rpc_start_match_start_countdown
+					.bind(
+						countdown_end,
+						server_frame_index,
+					))
 
 		# Emit signal for game-specific UI.
 		match_start_countdown_started.emit(countdown_end)
 	else:
 		# Normal unpause - notify clients.
-		if Netcode.is_server and is_inside_tree():
-			_client_rpc_notify_unpause.rpc(
-				server_frame_index,
-				_cumulative_paused_frames,
-			)
+		if Netcode.runs_server_logic and is_inside_tree():
+			Netcode.call_client_rpc_with_local_support(
+				_client_rpc_notify_unpause.bind(
+					server_frame_index,
+					_cumulative_paused_frames,
+				))
 
 	# Unpause Godot scene tree.
 	if is_inside_tree():

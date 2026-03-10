@@ -511,6 +511,88 @@ func server_get_peer_declarations() -> Dictionary:
 	return _peer_declarations
 
 
+## Set up local mode player declarations without
+## RPCs. Simulates the server-side player
+## declaration flow for offline play.
+func local_mode_setup(
+	player_attributes: Array,
+	session_ids: Array,
+) -> void:
+	is_connected_to_server = true
+
+	var peer_id := SERVER_ID
+	var player_count := session_ids.size()
+
+	Netcode.log.print(
+		"Local mode: Declaring %d player(s)"
+		% player_count,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+	# Assign sequential player IDs.
+	var assigned_ids: Array[int] = []
+	for local_player_index in range(player_count):
+		assigned_ids.append(_next_player_id)
+		_player_id_to_peer_id[
+			_next_player_id] = peer_id
+		_player_id_to_local_player_index[
+			_next_player_id] = local_player_index
+		_next_player_id += 1
+
+	# Validate attributes.
+	var validated_attributes: Array
+	if player_attribute_validator.is_valid():
+		validated_attributes = (
+			player_attribute_validator.call(
+				player_attributes,
+				player_count,
+				peer_id,
+			))
+	else:
+		validated_attributes = player_attributes
+
+	# Store declaration for replay.
+	_peer_declarations[peer_id] = {
+		"assigned_ids": assigned_ids,
+		"attributes": validated_attributes,
+	}
+
+	Netcode.log.print(
+		"Local mode: Assigned IDs %s"
+		% [assigned_ids],
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+	# Emit signals for Level and
+	# MatchStateSynchronizer.
+	peer_players_declared.emit(
+		peer_id,
+		assigned_ids,
+		validated_attributes,
+	)
+	player_ids_assigned.emit(assigned_ids)
+
+	# Validate sessions through the provider
+	# to trigger all_players_connected.
+	if session_provider != null:
+		(session_provider
+			.server_validate_player_sessions(
+				peer_id, assigned_ids,
+				session_ids))
+
+
+## Reset state set by local_mode_setup() so the
+## connector is ready for a fresh session.
+func reset_local_mode() -> void:
+	is_connected_to_server = false
+	last_disconnect_reason = (
+		DisconnectReason.UNKNOWN)
+	_next_player_id = 1
+	_player_id_to_peer_id = {}
+	_player_id_to_local_player_index = {}
+	_peer_declarations = {}
+
+
 ## RPC called by server to send assigned player IDs to the client.
 @rpc("authority", "call_remote", "reliable")
 func _client_rpc_receive_player_ids(assigned_ids: Array[int]) -> void:

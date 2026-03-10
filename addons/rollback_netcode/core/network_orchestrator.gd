@@ -102,6 +102,16 @@ var is_server := true
 var is_client: bool:
 	get:
 		return not is_server
+## True when the process should run server-side
+## game logic. This is the case on dedicated
+## servers and in local (offline) mode.
+var runs_server_logic: bool:
+	get:
+		return is_server or is_local_mode
+## True when the client is running in offline
+## local-only mode (same process acts as both
+## server and client).
+var is_local_mode := false
 ## If in preview mode, this is only the first client.
 ## If in published mode, this is any client.
 var is_primary_client: bool:
@@ -328,13 +338,15 @@ func check_valid(object, message = "") -> bool:
 	return log.check(is_instance_valid(object), message)
 
 
-## Check if current instance is server (with error logging if not).
+## Check if current instance runs server logic
+## (with error logging if not). Passes for
+## dedicated servers and local mode.
 func check_is_server() -> bool:
 	if log == null:
-		return is_server
+		return runs_server_logic
 	return log.check(
-		is_server,
-		"This logic assumes we should be a server, but we're a client"
+		runs_server_logic,
+		"Expected server or local mode",
 	)
 
 
@@ -346,5 +358,21 @@ func check_is_client() -> bool:
 		is_client,
 		"This logic assumes we should be a client, but we're a server"
 	)
+
+
+## Call a server-to-client RPC and, in local
+## mode, also invoke it directly. Use for RPCs
+## annotated with call_remote, which do not
+## reach the local process. Bind arguments
+## before passing:
+##
+##   Netcode.call_client_rpc_with_local_support(
+##       _client_rpc_foo.bind(arg1, arg2))
+func call_client_rpc_with_local_support(
+	bound_method: Callable,
+) -> void:
+	bound_method.rpc()
+	if is_local_mode:
+		bound_method.call()
 
 # -----------------------------------------------------------------------------

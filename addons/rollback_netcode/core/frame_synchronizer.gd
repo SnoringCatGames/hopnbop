@@ -28,6 +28,11 @@ const _MAX_RTT_SAMPLES := 10 # Jitter window size.
 # before it can stabilize.
 const _HARD_RESET_COOLDOWN_USEC := 3_000_000 # 3 seconds.
 
+# Burst mode: send pings more frequently after reset for
+# faster initial RTT establishment and frame sync.
+const _BURST_PING_INTERVAL_SEC := 0.5
+const _BURST_PING_COUNT := 6 # Send 6 burst pings (3 seconds).
+
 # Network timing derived from FrameDriver config.
 var target_network_time_step_sec: float:
 	get:
@@ -39,6 +44,7 @@ var target_network_time_step_sec: float:
 
 var _time_since_last_ping_sec := PING_INTERVAL_SEC
 var _last_hard_reset_usec := 0
+var _burst_pings_remaining := _BURST_PING_COUNT
 
 # RTT tracking (in microseconds).
 var _smoothed_rtt_usec := 0
@@ -73,10 +79,12 @@ func _ready() -> void:
 
 
 ## Resets sync state for a new connection.
-## Ensures the first NTP ping fires immediately.
+## Ensures the first NTP ping fires immediately
+## and enables burst mode for fast initial sync.
 func client_reset() -> void:
 	_time_since_last_ping_sec = PING_INTERVAL_SEC
 	_last_hard_reset_usec = 0
+	_burst_pings_remaining = _BURST_PING_COUNT
 
 
 func _process(delta: float) -> void:
@@ -88,8 +96,15 @@ func _process(delta: float) -> void:
 
 func _client_process(delta: float) -> void:
 	_time_since_last_ping_sec += delta
-	if _time_since_last_ping_sec >= PING_INTERVAL_SEC:
+	var interval := (
+		_BURST_PING_INTERVAL_SEC
+		if _burst_pings_remaining > 0
+		else PING_INTERVAL_SEC
+	)
+	if _time_since_last_ping_sec >= interval:
 		_time_since_last_ping_sec = 0.0
+		if _burst_pings_remaining > 0:
+			_burst_pings_remaining -= 1
 		_client_send_ping()
 
 
