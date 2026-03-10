@@ -136,3 +136,4 @@ Makefile
 !gamelift-gdextension/*/Makefile
 
 ~*.dll
+~*.TMP
