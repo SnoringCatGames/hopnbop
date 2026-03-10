@@ -109,6 +109,17 @@ extends Node
 #   - Tell me, do we also need to include translations of legal documents (terms, privacy, data-deletion)?
 
 
+# Tasks to perform when releasing a new version.
+# - Carefully survey the entire codebase.
+#   - Make sure all displayed text is properly connected to i18n, and ensure each supported language has correct translations for each piece of text.
+#   - Ensure we bump all version references to the correct values.
+#   - Ensure we reset all Settings flags to release values.
+#   - Ensure all legal documents are up-to-date and cover any recent changes.
+#   - Ensure all RPCs use appropriate channels.
+#   - Ensure all log/print/verbose/warning/error statements go through a utility in G or Netcode, use the correct category tag, and are guarded in an if-statement on Netcode.log.is_verbose if they are verbose.
+#   -
+
+
 # - Test the new toast system.
 #   - Think of other places to show toasts?
 #   - Add an alert icon for toasts.
