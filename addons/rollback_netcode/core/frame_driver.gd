@@ -1245,6 +1245,11 @@ func _client_rpc_start_match_start_countdown(
 	if server_current_frame >= 0:
 		server_frame_index = server_current_frame
 		_is_frame_tracking_initialized = true
+		# Invalidate in-flight NTP pings so stale
+		# burst pongs don't override this sync.
+		if Netcode.frame_sync != null:
+			(Netcode.frame_sync
+				.invalidate_in_flight_pings())
 
 	match_start_countdown_end_frame_index = (
 		countdown_end_frame)

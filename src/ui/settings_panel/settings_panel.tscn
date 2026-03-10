@@ -1,31 +1,18 @@
-[gd_scene load_steps=24 format=3 uid="uid://dj7uvmicathvk"]
+[gd_scene load_steps=12 format=3]
 
-[ext_resource type="Script" uid="uid://diga7isw7pv4r" path="res://src/ui/settings_panel/settings_panel.gd" id="1_script"]
+[ext_resource type="Script" path="res://src/ui/settings_panel/preferences_page.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://cgeum80qm7jgg" path="res://assets/images/gui/gore_icon.png" id="2_gore"]
 [ext_resource type="Texture2D" uid="uid://brfrjin3pgn4p" path="res://assets/images/gui/critters_icon.png" id="3_critters"]
 [ext_resource type="Texture2D" uid="uid://da3rhn5sgnh80" path="res://assets/images/gui/cheat_icon.png" id="4_cheats"]
 [ext_resource type="Texture2D" uid="uid://d3sxfq37j2gwk" path="res://assets/images/gui/fullscreen_icon.png" id="5_fullscreen"]
 [ext_resource type="Texture2D" uid="uid://chmhqtl2vtbg6" path="res://assets/images/gui/music_icon.png" id="6_music"]
 [ext_resource type="Texture2D" uid="uid://cbr2qkqcjro2l" path="res://assets/images/gui/sfx_icon.png" id="7_sfx"]
-[ext_resource type="Texture2D" uid="uid://bos83k5rfp1i" path="res://assets/images/gui/anonymous.png" id="8_anonymous"]
-[ext_resource type="Texture2D" uid="uid://dwhlv145flrk1" path="res://assets/images/gui/steam_32.png" id="9_steam"]
-[ext_resource type="Texture2D" uid="uid://dpct5t7ydudi6" path="res://assets/images/gui/epic_32.png" id="10_epic"]
-[ext_resource type="Texture2D" uid="uid://ug712rpyt4i" path="res://assets/images/gui/google_32.png" id="11_google"]
-[ext_resource type="Texture2D" uid="uid://b6c8nywrbpw6n" path="res://assets/images/gui/facebook_32.png" id="12_facebook"]
-[ext_resource type="Texture2D" uid="uid://dewjlcd5gptmj" path="res://assets/images/gui/apple_32.png" id="13_apple"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/close_row.tscn" id="14_close_row"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/toggle_row.tscn" id="15_toggle"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/cheat_group_row.tscn" id="16_cheat_group"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/level_pref_row.tscn" id="17_level_pref"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/link_account_row.tscn" id="18_link_account"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/delete_account_row.tscn" id="19_delete_account"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/export_data_row.tscn" id="20_export_data"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/log_out_row.tscn" id="21_log_out"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/legal_link_row.tscn" id="22_legal_link"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/language_row.tscn" id="23_language"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/side_panel_page.tscn" id="8_base"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/back_row.tscn" id="9_back_row"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/toggle_row.tscn" id="10_toggle"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/cheat_group_row.tscn" id="11_cheat_group"]
 
-[node name="SettingsPanel" type="CanvasLayer"]
-layer = 260
+[node name="PreferencesPage" instance=ExtResource("8_base")]
 script = ExtResource("1_script")
 icon_gore = ExtResource("2_gore")
 icon_critters = ExtResource("3_critters")
@@ -33,51 +20,6 @@ icon_cheats = ExtResource("4_cheats")
 icon_fullscreen = ExtResource("5_fullscreen")
 icon_music = ExtResource("6_music")
 icon_sfx = ExtResource("7_sfx")
-icon_anonymous = ExtResource("8_anonymous")
-icon_steam = ExtResource("9_steam")
-icon_epic = ExtResource("10_epic")
-icon_google = ExtResource("11_google")
-icon_facebook = ExtResource("12_facebook")
-icon_apple = ExtResource("13_apple")
-_close_row_scene = ExtResource("14_close_row")
-_toggle_row_scene = ExtResource("15_toggle")
-_cheat_group_row_scene = ExtResource("16_cheat_group")
-_level_pref_row_scene = ExtResource("17_level_pref")
-_link_account_row_scene = ExtResource("18_link_account")
-_delete_account_row_scene = ExtResource("19_delete_account")
-_export_data_row_scene = ExtResource("20_export_data")
-_log_out_row_scene = ExtResource("21_log_out")
-_legal_link_row_scene = ExtResource("22_legal_link")
-_language_row_scene = ExtResource("23_language")
-
-[node name="Background" type="ColorRect" parent="."]
-anchors_preset = 11
-anchor_left = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -390.0
-grow_horizontal = 0
-grow_vertical = 2
-mouse_filter = 2
-color = Color(0, 0, 0, 0.6)
-
-[node name="ScrollContainer" type="ScrollContainer" parent="."]
-unique_name_in_owner = true
-layout_direction = 2
-anchors_preset = 11
-anchor_left = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -382.0
-offset_top = 8.0
-offset_right = -8.0
-offset_bottom = -8.0
-grow_horizontal = 0
-grow_vertical = 2
-horizontal_scroll_mode = 0
-
-[node name="RowContainer" type="VBoxContainer" parent="ScrollContainer"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 8
+_back_row_scene = ExtResource("9_back_row")
+_toggle_row_scene = ExtResource("10_toggle")
+_cheat_group_row_scene = ExtResource("11_cheat_group")
