@@ -312,6 +312,63 @@ const DEFAULT_UPPER_THRESHOLD := 1.5
 const DEFAULT_LOWER_THRESHOLD := 0.5
 
 
+## Identifies each adjective list by integer for
+## index-based replication.
+enum AdjectiveListType {
+	SOFT,
+	HARD,
+	CROWN_UPPER,
+	REGICIDE_UPPER,
+	BUMPS_UPPER,
+	KILLS_UPPER,
+	KILLS_LOWER,
+	DEATHS_UPPER,
+	DEATHS_LOWER,
+	JUMPS_UPPER,
+	JUMPS_LOWER,
+	WATER_TIME_UPPER,
+	WATER_JUMP_UPPER,
+	ICE_TIME_UPPER,
+	SPRINGS_UPPER,
+	DIRECTION_CHANGES_UPPER,
+	DIRECTION_CHANGES_LOWER,
+	HEIGHT_UPPER,
+	CRITTER_DISRUPTOR_UPPER,
+	FLY_PROXIMITY_UPPER,
+	POOP_UPPER,
+}
+
+
+## Maps AdjectiveListType to the corresponding array.
+static var ADJ_LISTS_BY_ID := {
+	AdjectiveListType.SOFT: SOFT_ADJECTIVES,
+	AdjectiveListType.HARD: HARD_ADJECTIVES,
+	AdjectiveListType.CROWN_UPPER: CROWN_UPPER,
+	AdjectiveListType.REGICIDE_UPPER: REGICIDE_UPPER,
+	AdjectiveListType.BUMPS_UPPER: BUMPS_UPPER,
+	AdjectiveListType.KILLS_UPPER: KILLS_UPPER,
+	AdjectiveListType.KILLS_LOWER: KILLS_LOWER,
+	AdjectiveListType.DEATHS_UPPER: DEATHS_UPPER,
+	AdjectiveListType.DEATHS_LOWER: DEATHS_LOWER,
+	AdjectiveListType.JUMPS_UPPER: JUMPS_UPPER,
+	AdjectiveListType.JUMPS_LOWER: JUMPS_LOWER,
+	AdjectiveListType.WATER_TIME_UPPER: WATER_TIME_UPPER,
+	AdjectiveListType.WATER_JUMP_UPPER: WATER_JUMP_UPPER,
+	AdjectiveListType.ICE_TIME_UPPER: ICE_TIME_UPPER,
+	AdjectiveListType.SPRINGS_UPPER: SPRINGS_UPPER,
+	AdjectiveListType.DIRECTION_CHANGES_UPPER:
+		DIRECTION_CHANGES_UPPER,
+	AdjectiveListType.DIRECTION_CHANGES_LOWER:
+		DIRECTION_CHANGES_LOWER,
+	AdjectiveListType.HEIGHT_UPPER: HEIGHT_UPPER,
+	AdjectiveListType.CRITTER_DISRUPTOR_UPPER:
+		CRITTER_DISRUPTOR_UPPER,
+	AdjectiveListType.FLY_PROXIMITY_UPPER:
+		FLY_PROXIMITY_UPPER,
+	AdjectiveListType.POOP_UPPER: POOP_UPPER,
+}
+
+
 enum StatName {
 	CROWN_TIME,
 	REGICIDE_COUNT,
@@ -829,7 +886,7 @@ static func is_valid_dynamic_adjective(
 
 ## Assigns dynamic adjectives to all players based
 ## on their match stats. Returns a Dictionary mapping
-## player_id -> new adjective string.
+## player_id -> {adj_list_id: int, adj_index: int}.
 static func assign_adjectives(
 	stats_by_player_id: Dictionary,
 ) -> Dictionary:
@@ -902,14 +959,69 @@ static func assign_adjectives(
 				HARD_ADJECTIVES)
 
 		# Step 3: Pick a random qualifying list,
-		# then a random adjective from it.
+		# then a random adjective index from it.
 		var chosen_list: Array = (
 			qualifying_lists.pick_random()
 		)
-		result[player_id] = (
-			chosen_list.pick_random())
+		var list_id := _get_adj_list_id(
+			chosen_list)
+		var adj_index := (
+			randi() % chosen_list.size())
+		result[player_id] = {
+			"adj_list_id": list_id,
+			"adj_index": adj_index,
+		}
 
 	return result
+
+
+## Resolves a name index to a localized name string.
+static func get_localized_name(
+	index: int,
+) -> String:
+	var names: Array = (
+		LocalizedNameConfig.get_names())
+	return names[index % names.size()]
+
+
+## Resolves an adjective list ID and index to a
+## localized adjective string.
+static func get_localized_adjective(
+	list_id: int, index: int,
+) -> String:
+	var adj_list: Array = (
+		LocalizedNameConfig.get_adjectives(list_id))
+	return adj_list[index % adj_list.size()]
+
+
+## Returns the AdjectiveListType for a given adjective
+## array reference.
+static func _get_adj_list_id(
+	adj_list: Array,
+) -> int:
+	for list_id in ADJ_LISTS_BY_ID:
+		if ADJ_LISTS_BY_ID[list_id] == adj_list:
+			return list_id
+	return AdjectiveListType.SOFT
+
+
+## Checks if an adj_list_id is valid.
+static func is_valid_adj_list_id(
+	list_id: int,
+) -> bool:
+	return ADJ_LISTS_BY_ID.has(list_id)
+
+
+## Checks if an adj_index is valid for a given
+## list_id.
+static func is_valid_adj_index(
+	list_id: int, index: int,
+) -> bool:
+	if not ADJ_LISTS_BY_ID.has(list_id):
+		return false
+	var adj_list: Array = (
+		ADJ_LISTS_BY_ID[list_id])
+	return index >= 0 and index < adj_list.size()
 
 
 static func _calculate_averages(

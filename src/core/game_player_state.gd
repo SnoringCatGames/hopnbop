@@ -8,12 +8,28 @@ const _LABEL_COLOR_WHITENING_FACTOR := 0.7
 
 
 # Game-specific properties (moved from PlayerState).
-var bunny_name := ""
-var adjective := ""
+var name_index := 0
+var adj_list_id := 0
+var adj_index := 0
 var is_soft := true
 var body_type_index := 0
 var costume_index := 0
 var base_color := Color.WHITE
+
+# Computed properties that resolve locally via
+# locale.
+var bunny_name: String:
+	get:
+		return (
+			DynamicAdjectiveConfig
+				.get_localized_name(name_index))
+
+var adjective: String:
+	get:
+		return (
+			DynamicAdjectiveConfig
+				.get_localized_adjective(
+					adj_list_id, adj_index))
 
 # Calculated locally, not networked.
 var _score := 0
@@ -46,8 +62,9 @@ var label_color: Color:
 
 func _get_game_property_names() -> Array:
 	return [
-		"bunny_name",
-		"adjective",
+		"name_index",
+		"adj_list_id",
+		"adj_index",
 		"is_soft",
 		"body_type_index",
 		"costume_index",
@@ -78,8 +95,9 @@ func set_up(
 	super.set_up(p_player_id, p_peer_id, p_local_index, p_attributes)
 
 	# Apply game-specific attributes.
-	bunny_name = p_attributes.bunny_name
-	adjective = p_attributes.adjective
+	name_index = p_attributes.name_index
+	adj_list_id = p_attributes.adj_list_id
+	adj_index = p_attributes.adj_index
 	is_soft = p_attributes.is_soft
 	body_type_index = p_attributes.body_type_index
 	costume_index = p_attributes.costume_index

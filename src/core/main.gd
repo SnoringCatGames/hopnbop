@@ -171,8 +171,8 @@ func close_app() -> void:
 	# Force-close settings panel so unsaved
 	# preferences are written to disk.
 	for child in get_tree().root.get_children():
-		if child is SettingsPanel:
-			child.close()
+		if child is SidePanelManager:
+			child.close_all()
 			break
 
 	if G.utils.were_screenshots_taken:

@@ -69,23 +69,21 @@ process acts as both server and client. The process stays
 replaces `is_server` checks where server-side game logic must
 also run locally.
 
-**Local Mode RPC Pattern:** When adding server-to-client RPCs
-(`call_remote`), also add a direct local call gated by
-`Netcode.is_local_mode`. RPCs with `call_remote` do not reach
-the local process in offline mode.
+**Local Mode RPC Pattern:** RPCs annotated with `call_remote`
+do not reach the local process. Use `Netcode.call_client_rpc_with_local_support()`
+to send the RPC and also call it directly in local mode. Bind
+arguments before passing.
 
 ```gdscript
-_client_rpc_foo.rpc(args)
-if Netcode.is_local_mode:
-    _client_rpc_foo(args)
+Netcode.call_client_rpc_with_local_support(
+    _client_rpc_foo.bind(arg1, arg2))
 ```
 
-This pattern keeps `@rpc` annotations unchanged and makes the
-local-mode path explicit. Not all RPCs need this treatment.
-Only server-to-client RPCs where the client needs to receive
-the call (e.g., match ended, unpause, stats). Server-side
-functions that already apply state locally before sending the
-RPC (e.g., snail crush/respawn) do not need it.
+Not all RPCs need this treatment. Only server-to-client RPCs
+where the client needs to receive the call (e.g., match ended,
+unpause, stats). Server-side functions that already apply state
+locally before sending the RPC (e.g., snail crush/respawn) do
+not need it.
 
 ### Character System (src/scaffolder/character/)
 

@@ -188,12 +188,12 @@ func _client_on_bumps_updated() -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	if not Netcode.is_server:
+	if not Netcode.runs_server_logic:
 		return
 	if state._stats_by_player_id.is_empty():
 		return
 
-	if Netcode.is_preview:
+	if Netcode.is_preview or Netcode.is_local_mode:
 		_stats_frame_counter += 1
 		if _stats_frame_counter >= _STATS_SEND_INTERVAL_FRAMES:
 			_stats_frame_counter = 0
@@ -208,7 +208,8 @@ func _server_send_stats_to_clients() -> void:
 		packed.append(player_id)
 		packed.append_array(
 			stats.to_packed_array())
-	_rpc_client_update_stats.rpc(packed)
+	Netcode.rpc_locally_too(
+		_rpc_client_update_stats.bind(packed))
 
 
 @rpc("authority", "call_remote", "unreliable", NetworkConnector.RPC_CHANNEL_STATS)
@@ -304,26 +305,45 @@ func _rpc_client_notify_match_ended() -> void:
 
 
 ## Receives dynamic adjective assignments from the
-## server. packed_data is an Array of alternating
-## [player_id, adjective_string, ...] pairs.
+## server. packed_data is an Array of
+## [player_id, adj_list_id, adj_index, ...] triples
+## (stride of 3).
 @rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_GAME_EVENTS)
 func _rpc_client_notify_dynamic_adjectives(
 	packed_data: Array,
 ) -> void:
 	var adjective_map := {}
-	for i in range(0, packed_data.size(), 2):
-		adjective_map[packed_data[i]] = (
-			packed_data[i + 1])
+	for i in range(0, packed_data.size(), 3):
+		var player_id: int = packed_data[i]
+		var list_id: int = packed_data[i + 1]
+		var adj_idx: int = packed_data[i + 2]
+		adjective_map[player_id] = {
+			"adj_list_id": list_id,
+			"adj_index": adj_idx,
+		}
 
 	# Update local player states.
 	for player_id in adjective_map:
 		var ps: GamePlayerState = (
 			state.players_by_id.get(player_id))
 		if ps:
-			ps.adjective = (
+			var data: Dictionary = (
 				adjective_map[player_id])
+			ps.adj_list_id = data.adj_list_id
+			ps.adj_index = data.adj_index
 
 	# Trigger celebration adjective reveals.
+	# Pass resolved adjective strings for the
+	# reveal popup.
 	if is_instance_valid(G.celebration):
+		var string_map := {}
+		for player_id in adjective_map:
+			var data: Dictionary = (
+				adjective_map[player_id])
+			string_map[player_id] = (
+				DynamicAdjectiveConfig
+					.get_localized_adjective(
+						data.adj_list_id,
+						data.adj_index))
 		G.celebration.reveal_adjectives(
-			adjective_map)
+			string_map)

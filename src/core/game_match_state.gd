@@ -170,10 +170,13 @@ func server_start_match_timer(duration_sec: float) -> void:
 
 	# Notify all clients.
 	if synchronizer:
-		synchronizer._rpc_client_notify_match_started.rpc(
-			match_start_frame_index,
-			match_duration_usec
-		)
+		Netcode.call_client_rpc_with_local_support(
+			synchronizer
+				._rpc_client_notify_match_started
+				.bind(
+					match_start_frame_index,
+					match_duration_usec,
+				))
 
 
 func server_add_kill(killer_id: int, killee_id: int) -> void:
@@ -534,7 +537,7 @@ func _server_store_interaction(
 func _client_unpack_players() -> void:
 	Netcode.verbose(
 		"GameMatchState._client_unpack_players:"
-		+ " packed_players.size=%d"
+		+" packed_players.size=%d"
 		% packed_players.size(),
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
@@ -572,8 +575,8 @@ func _server_pack_players() -> void:
 	if Netcode.log.is_verbose:
 		Netcode.verbose(
 			"GameMatchState"
-			+ "._server_pack_players:"
-			+ " packing %d players"
+			+"._server_pack_players:"
+			+" packing %d players"
 			% players_by_id.size(),
 			NetworkLogger.CATEGORY_GAME_STATE,
 		)
@@ -598,8 +601,11 @@ func _server_pack_players() -> void:
 
 ## Override parent's virtual method to trigger game-specific unpacking.
 func _on_packed_players_changed() -> void:
-	# Only unpack if this change came from network replication (not local
-	# packing).
-	if not _is_packing_state_locally:
+	# Only unpack if this change came from network
+	# replication (not local packing). In local
+	# mode, server and client share the same state
+	# object, so replication unpacking is skipped.
+	if (not _is_packing_state_locally
+			and not Netcode.is_local_mode):
 		_client_unpack_players()
 		players_updated.emit()

@@ -13,6 +13,12 @@ const SECTION_SETTINGS := "settings"
 const SECTION_LEVEL_PREFS := "level_preferences"
 const SECTION_META := "meta"
 const META_KEY_VERSION := "game_version"
+const KEY_LOCALE := "locale"
+
+const SUPPORTED_LOCALES: Array[String] = [
+	"en", "zh", "es", "hi", "ar", "fr",
+	"pt", "ru", "ja", "de", "ko", "it", "th",
+]
 
 ## Setting keys that can be locally overridden.
 const OVERRIDABLE_KEYS: Array[StringName] = [
@@ -28,6 +34,7 @@ const OVERRIDABLE_KEYS: Array[StringName] = [
 	&"is_pogostick_enabled",
 	&"is_bunniesinspace_enabled",
 	&"is_moregore_enabled",
+	&"prefer_offline_mode",
 ]
 
 var _config := ConfigFile.new()
@@ -138,6 +145,54 @@ func apply_all_overrides() -> void:
 				_config.get_value(
 					SECTION_SETTINGS, key))
 			_defaults.set(key, value)
+
+
+## Get the stored locale, or detect from OS.
+func get_locale() -> String:
+	if _config.has_section_key(
+			SECTION_SETTINGS, KEY_LOCALE):
+		var stored: String = _config.get_value(
+			SECTION_SETTINGS, KEY_LOCALE)
+		if stored in SUPPORTED_LOCALES:
+			return stored
+	# Auto-detect from OS.
+	var os_lang := OS.get_locale_language()
+	if os_lang in SUPPORTED_LOCALES:
+		return os_lang
+	return "en"
+
+
+## Set the locale and persist it.
+func set_locale(locale: String) -> void:
+	if locale not in SUPPORTED_LOCALES:
+		locale = "en"
+	_config.set_value(
+		SECTION_SETTINGS, KEY_LOCALE, locale)
+	TranslationServer.set_locale(locale)
+	LocalizedNameConfig.clear_cache()
+	save_settings()
+
+	# Refresh overhead labels so names update.
+	if (is_instance_valid(G.player_overhead_labels)
+			and G.player_overhead_labels
+				.has_method("refresh_label_text")):
+		G.player_overhead_labels.refresh_label_text()
+
+	# Force layout refresh after locale change.
+	# Switching between LTR and RTL can leave the
+	# renderer in a stale state. A 1px window
+	# resize triggers a full layout recalculation.
+	var window := G.get_window()
+	if window:
+		var size := window.size
+		window.size = size + Vector2i(1, 0)
+		window.size = size
+
+
+## Apply the stored locale to TranslationServer.
+func apply_locale() -> void:
+	var locale := get_locale()
+	TranslationServer.set_locale(locale)
 
 
 ## Save level preferences to local storage.

@@ -4,11 +4,14 @@ extends RefCounted
 
 static func generate_random_attributes() -> Dictionary:
 	var is_soft := randf() < 0.5
-	var adjective_list := (
-		DynamicAdjectiveConfig.SOFT_ADJECTIVES
+	var list_id: int = (
+		DynamicAdjectiveConfig.AdjectiveListType.SOFT
 		if is_soft
-		else DynamicAdjectiveConfig.HARD_ADJECTIVES
-	)
+		else DynamicAdjectiveConfig
+			.AdjectiveListType.HARD)
+	var adj_list: Array = (
+		DynamicAdjectiveConfig
+			.ADJ_LISTS_BY_ID[list_id])
 
 	# Select random body type and costume from
 	# configured options.
@@ -23,11 +26,16 @@ static func generate_random_attributes() -> Dictionary:
 			randi() % G.settings.costumes.size())
 
 	return {
-		"bunny_name": DynamicAdjectiveConfig.NAMES.pick_random(),
-		"adjective": adjective_list.pick_random(),
+		"name_index": (
+			randi()
+			% DynamicAdjectiveConfig
+				.NAMES.size()),
+		"adj_list_id": list_id,
+		"adj_index": (
+			randi() % adj_list.size()),
 		"body_type_index": body_type_index,
 		"costume_index": costume_index,
-		"is_soft": is_soft
+		"is_soft": is_soft,
 	}
 
 

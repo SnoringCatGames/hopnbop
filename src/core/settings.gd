@@ -77,6 +77,8 @@ enum BumpMode {
 @export var mute_music := false
 @export var mute_sfx := false
 
+@export var prefer_offline_mode := false
+
 @export var are_critters_enabled := true
 
 @export var does_up_also_trigger_jump := true

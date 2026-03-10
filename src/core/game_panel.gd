@@ -79,6 +79,9 @@ func _ready() -> void:
 		_on_session_established)
 	session_manager.connection_lost.connect(
 		_on_connection_lost)
+	(session_manager
+		.local_mode_fallback_requested
+		.connect(_on_local_mode_fallback))
 
 	if Netcode.is_server:
 		session_manager.match_ready.connect(
@@ -134,7 +137,7 @@ func _ready() -> void:
 		if Netcode.is_preview:
 			Netcode.print(
 				"Connecting to peer_connected"
-				+ " signal for preview mode",
+				+" signal for preview mode",
 				NetworkLogger
 					.CATEGORY_CONNECTIONS,
 			)
@@ -200,7 +203,7 @@ func _on_player_killed(
 
 	# Trigger respawn on server (moved from
 	# MatchState).
-	if Netcode.is_server:
+	if Netcode.runs_server_logic:
 		var killee_actor: Player = (
 			G.get_player(killee.player_id))
 		if is_instance_valid(killee_actor):
@@ -259,7 +262,7 @@ func _client_on_server_connected() -> void:
 	if G.client_session.is_game_active:
 		Netcode.print(
 			"Already connected to server,"
-			+ " ignoring duplicate call",
+			+" ignoring duplicate call",
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
 		return
@@ -294,7 +297,7 @@ func _on_session_established(
 	# by GameSessionManager.
 	Netcode.print(
 		("Session established with %d player(s):"
-		+ " %s") % [player_ids.size(), player_ids],
+		+" %s") % [player_ids.size(), player_ids],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
@@ -403,7 +406,10 @@ func _on_match_ready() -> void:
 	# client instances. In production, it's the
 	# number returned by the matchmaker.
 	var expected_count: int
-	if Netcode.is_preview:
+	if Netcode.is_local_mode:
+		expected_count = (
+			G.client_session.local_player_count)
+	elif Netcode.is_preview:
 		expected_count = (
 			Netcode.settings.preview_client_count)
 	else:
@@ -437,7 +443,7 @@ func _on_server_shutdown_imminent(
 			and seconds_remaining > 10.0):
 		Netcode.print(
 			"Match active, allowing finish"
-			+ " before shutdown (%.0fs remaining)"
+			+" before shutdown (%.0fs remaining)"
 			% seconds_remaining,
 			NetworkLogger.CATEGORY_GAME_STATE,
 		)
@@ -483,7 +489,7 @@ func _server_reset_for_new_match() -> void:
 
 	Netcode.print(
 		"Server reset complete,"
-		+ " ready for new clients",
+		+" ready for new clients",
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
@@ -533,6 +539,12 @@ func _client_despawn_lobby_if_present() -> void:
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
+	# Close credits overlay if open.
+	for child in get_tree().root.get_children():
+		if child is CreditsOverlay:
+			child.close()
+			break
+
 	var lobby_level: LobbyLevel = G.level
 	levels.erase(lobby_level)
 	lobby_level.queue_free()
@@ -571,9 +583,24 @@ func client_load_game() -> void:
 	G.screens.client_open_screen(
 		ScreensMain.ScreenType.LOADING)
 
-	# Request session IDs from backend before
-	# connecting.
-	_client_client_request_session_ids()
+	# Check offline mode preference.
+	var is_offline: bool = (
+		G.local_settings != null
+		and G.local_settings.get_value(
+			&"prefer_offline_mode"))
+
+	if is_offline:
+		if is_instance_valid(G.toast_overlay):
+			G.toast_overlay.show_toast(
+				tr("TOAST.PLAYING_OFFLINE"))
+		_client_start_local_mode()
+	else:
+		if is_instance_valid(G.toast_overlay):
+			G.toast_overlay.show_toast(
+				tr("TOAST.PLAYING_ONLINE"))
+		# Request session IDs from backend
+		# before connecting.
+		_client_client_request_session_ids()
 
 
 func _client_client_request_session_ids() -> void:
@@ -594,6 +621,124 @@ func _client_client_request_session_ids() -> void:
 		session_prefs)
 
 
+func _on_local_mode_fallback() -> void:
+	if is_instance_valid(G.toast_overlay):
+		G.toast_overlay.show_toast(
+			tr("TOAST.LOCAL_MODE_FALLBACK"))
+	_client_start_local_mode()
+
+
+## Sets up offline local-only mode. The process
+## stays a client but also runs server-side
+## game logic via is_local_mode.
+func _client_start_local_mode() -> void:
+	# Initialize local mode in session manager.
+	session_manager.start_local_mode()
+
+	# Connect late server-side signals that are
+	# normally connected in _ready() under
+	# if Netcode.is_server.
+	session_manager.match_ready.connect(
+		_on_match_ready)
+	(session_manager.session_provider
+		.all_players_connected.connect(
+			_server_on_all_players_connected))
+	Netcode.frame_driver.server_pause_validator = (
+		_server_validate_pause_request)
+
+	# Connect MatchStateSynchronizer server
+	# signals (normally connected in its _ready
+	# under if Netcode.is_server).
+	(Netcode.connector
+		.peer_players_declared.connect(
+			match_state_synchronizer
+				._server_on_peer_players_declared))
+	(Netcode.connector
+		.disconnected.connect(
+			match_state_synchronizer
+				._server_on_peer_disconnected))
+
+	# Mark game as active (normally done by
+	# _client_on_server_connected via signal).
+	G.client_session.is_game_active = true
+
+	# Set expected player count.
+	var player_count := (
+		G.client_session.local_player_count)
+	(session_manager
+		.server_set_expected_players(
+			player_count))
+
+	# Get selected level and spawn it.
+	var level_scene := (
+		_server_get_selected_level_scene())
+	_server_spawn_level(level_scene)
+
+	# Generate fake session IDs and simulate
+	# player declaration.
+	var session_ids: Array = []
+	for i in range(player_count):
+		session_ids.append(
+			"local_%d" % (i + 1))
+
+	Netcode.connector.local_mode_setup(
+		G.client_session
+			.local_player_attributes,
+		session_ids,
+	)
+
+
+## Tear down local-mode state: disconnect late
+## signals, reset the pause validator, and clear
+## the local-mode flag.
+func _cleanup_local_mode() -> void:
+	# Disconnect late server-side signals
+	# connected in _client_start_local_mode().
+	if session_manager.match_ready.is_connected(
+			_on_match_ready):
+		session_manager.match_ready.disconnect(
+			_on_match_ready)
+	var provider := session_manager.session_provider
+	if (is_instance_valid(provider)
+			and provider.all_players_connected
+				.is_connected(
+					_server_on_all_players_connected
+				)):
+		(provider.all_players_connected
+			.disconnect(
+				_server_on_all_players_connected))
+
+	# Disconnect MatchStateSynchronizer signals.
+	if (Netcode.connector
+			.peer_players_declared.is_connected(
+				match_state_synchronizer
+					._server_on_peer_players_declared
+			)):
+		(Netcode.connector
+			.peer_players_declared.disconnect(
+				match_state_synchronizer
+					._server_on_peer_players_declared
+			))
+	if (Netcode.connector
+			.disconnected.is_connected(
+				match_state_synchronizer
+					._server_on_peer_disconnected
+			)):
+		(Netcode.connector
+			.disconnected.disconnect(
+				match_state_synchronizer
+					._server_on_peer_disconnected))
+
+	# Reset pause validator.
+	Netcode.frame_driver.server_pause_validator = Callable()
+
+	# Restore original session provider and
+	# reset multiplayer peer.
+	session_manager.cleanup_local_mode()
+
+	Netcode.is_local_mode = false
+
+
 func client_exit_match() -> void:
 	Netcode.check_is_client()
 
@@ -604,7 +749,15 @@ func client_exit_match() -> void:
 	G.client_session.is_game_active = false
 	G.client_session.is_game_loading = false
 
-	Netcode.connector.client_disconnect()
+	if Netcode.is_local_mode:
+		_cleanup_local_mode()
+	else:
+		Netcode.connector.client_disconnect()
+		# Null out the peer so persistent
+		# MultiplayerSynchronizer nodes (e.g.
+		# MatchStateSynchronizer) stop trying to
+		# sync on an inactive ENet peer.
+		multiplayer.multiplayer_peer = null
 	G.client_session.copy_latest_state(
 		G.match_state)
 
@@ -626,7 +779,12 @@ func client_exit_match() -> void:
 					.size()):
 			(G.client_session
 				.latest_local_player_attributes[
-					i])["adjective"] = ps.adjective
+					i])["adj_list_id"] = (
+				ps.adj_list_id)
+			(G.client_session
+				.latest_local_player_attributes[
+					i])["adj_index"] = (
+				ps.adj_index)
 			(G.client_session
 				.latest_local_player_attributes[
 					i])["is_soft"] = false
@@ -729,13 +887,18 @@ func server_end_match() -> void:
 	G.match_state.match_start_frame_index = -1
 	G.match_state.is_match_ended = false
 
-	# In preview mode, disconnect clients but
-	# keep session open for next match. In
-	# production, close entire session.
-	if Netcode.is_preview:
+	if Netcode.is_local_mode:
+		# Local mode: client_exit_match handles
+		# cleanup, level free, and lobby transition.
+		client_exit_match()
+		return
+	elif Netcode.is_preview:
+		# Preview mode: disconnect clients but
+		# keep session open for next match.
 		(Netcode.connector
 			.server_disconnect_all_clients())
 	else:
+		# Production: close entire session.
 		(Netcode.connector
 			.server_close_multiplayer_session())
 
@@ -756,7 +919,7 @@ func _server_report_match_result() -> void:
 	if backend_id_map.is_empty():
 		Netcode.print(
 			"No backend player ID mapping."
-			+ " Skipping match report.",
+			+" Skipping match report.",
 			NetworkLogger.CATEGORY_GAME_STATE,
 		)
 		return
@@ -844,7 +1007,7 @@ func _server_validate_pause_request(
 	if G.match_state.is_match_ended:
 		Netcode.print(
 			"Client %d pause rejected:"
-			+ " match has ended" % peer_id,
+			+" match has ended" % peer_id,
 			NetworkLogger.CATEGORY_NETWORK_SYNC,
 		)
 		return {"allowed": false}
@@ -858,7 +1021,7 @@ func _server_validate_pause_request(
 	if used >= max_pauses:
 		Netcode.print(
 			"Client %d pause rejected:"
-			+ " limit reached (%d/%d)" % [
+			+" limit reached (%d/%d)" % [
 				peer_id, used, max_pauses],
 			NetworkLogger.CATEGORY_NETWORK_SYNC,
 		)
@@ -899,7 +1062,7 @@ func _server_preview_hot_reload() -> void:
 	Netcode.check_is_server()
 	Netcode.print(
 		"Hot-reloading settings and level"
-		+ " for preview mode",
+		+" for preview mode",
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
@@ -1038,7 +1201,7 @@ func _server_on_preview_peer_connected(
 
 
 func _process(_delta: float) -> void:
-	if not Netcode.is_server:
+	if not Netcode.runs_server_logic:
 		return
 
 	# Start timer when ready.
@@ -1085,7 +1248,7 @@ func _server_initiate_match_end() -> void:
 
 	Netcode.print(
 		"Match time expired"
-		+ " - initiating end sequence",
+		+" - initiating end sequence",
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
@@ -1100,8 +1263,10 @@ func _server_initiate_match_end() -> void:
 			G.match_state.players_by_id
 				.get(player_id))
 		if ps:
-			ps.adjective = (
+			var data: Dictionary = (
 				new_adjectives[player_id])
+			ps.adj_list_id = data.adj_list_id
+			ps.adj_index = data.adj_index
 	# Repack to replicate updated adjectives.
 	G.match_state._server_pack_players()
 
@@ -1114,19 +1279,26 @@ func _server_initiate_match_end() -> void:
 	# players and notify clients.
 	G.match_state.is_match_ended = true
 	G.match_state.match_ended.emit()
-	(match_state_synchronizer
-		._rpc_client_notify_match_ended.rpc())
+	Netcode.call_client_rpc_with_local_support(
+		match_state_synchronizer
+			._rpc_client_notify_match_ended)
 
 	# Send dynamic adjectives to clients for
-	# celebration reveal.
+	# celebration reveal. Stride of 3:
+	# [player_id, adj_list_id, adj_index, ...].
 	var packed_adjective_data: Array = []
 	for player_id in new_adjectives:
+		var data: Dictionary = (
+			new_adjectives[player_id])
 		packed_adjective_data.append(player_id)
 		packed_adjective_data.append(
-			new_adjectives[player_id])
-	(match_state_synchronizer
-		._rpc_client_notify_dynamic_adjectives
-		.rpc(packed_adjective_data))
+			data.adj_list_id)
+		packed_adjective_data.append(
+			data.adj_index)
+	Netcode.call_client_rpc_with_local_support(
+		match_state_synchronizer
+			._rpc_client_notify_dynamic_adjectives
+			.bind(packed_adjective_data))
 
 	# Schedule server shutdown after wait period.
 	Netcode.time.set_timeout(
@@ -1193,7 +1365,7 @@ func _server_get_selected_level_scene() -> PackedScene:
 			if info != null and info.scene != null:
 				Netcode.print(
 					"Using level override"
-					+ " index %d: %s (%s)" % [
+					+" index %d: %s (%s)" % [
 						clamped,
 						info.id,
 						info.display_name],
@@ -1214,7 +1386,7 @@ func _server_get_selected_level_scene() -> PackedScene:
 				and level_info.scene != null):
 			Netcode.print(
 				"Using selected level:"
-				+ " %s (%s)" % [
+				+" %s (%s)" % [
 					level_id,
 					level_info.display_name],
 				NetworkLogger
@@ -1224,7 +1396,7 @@ func _server_get_selected_level_scene() -> PackedScene:
 		else:
 			Netcode.warning(
 				"Selected level '%s' not found"
-				+ " in registry" % level_id,
+				+" in registry" % level_id,
 				NetworkLogger
 					.CATEGORY_GAME_STATE,
 			)
@@ -1250,7 +1422,7 @@ func _server_get_selected_level_scene() -> PackedScene:
 	if random_level != null:
 		Netcode.print(
 			"Randomly selected level:"
-			+ " %s (%s)" % [
+			+" %s (%s)" % [
 				random_level.id,
 				random_level.display_name],
 			NetworkLogger.CATEGORY_GAME_STATE,
@@ -1277,7 +1449,7 @@ func _server_select_from_prefs(
 		if info != null and info.scene != null:
 			Netcode.print(
 				"Using preferred level:"
-				+ " %s (%s)" % [
+				+" %s (%s)" % [
 					info.id,
 					info.display_name],
 				NetworkLogger
@@ -1301,7 +1473,7 @@ func _server_select_from_prefs(
 	var pick: LevelInfo = allowed.pick_random()
 	Netcode.print(
 		"Selected level from prefs:"
-		+ " %s (%s)" % [
+		+" %s (%s)" % [
 			pick.id, pick.display_name],
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
@@ -1319,7 +1491,7 @@ func _server_spawn_level(
 			.get_level_id_for_scene(
 				level_scene) != "",
 		"level_scene not registered in"
-		+ " level registry: %s" % level_scene,
+		+" level registry: %s" % level_scene,
 	)
 
 	# Pause server to wait for all clients to
@@ -1393,48 +1565,65 @@ func _validate_player_attributes(
 		var attr: Dictionary = (
 			attributes[i].duplicate())
 
-		# Validate/sanitize bunny_name.
-		if not DynamicAdjectiveConfig.NAMES.has(
-			attr.get("bunny_name", "")
-		):
-			attr["bunny_name"] = (
-				DynamicAdjectiveConfig.NAMES
-					.pick_random())
+		# Validate/sanitize name_index.
+		var name_idx: int = (
+			attr.get("name_index", 0))
+		if (name_idx < 0
+				or name_idx
+					>= DynamicAdjectiveConfig
+						.NAMES.size()):
+			attr["name_index"] = (
+				randi()
+				% DynamicAdjectiveConfig
+					.NAMES.size())
 			Netcode.warning(
-				"Peer %d: Invalid bunny_name,"
-				+ " assigned random: %s" % [
+				"Peer %d: Invalid name_index,"
+				+" assigned random: %d" % [
 					peer_id,
-					attr["bunny_name"]],
+					attr["name_index"]],
 				NetworkLogger
 					.CATEGORY_CONNECTIONS,
 			)
 
-		# Validate/sanitize adjective.
-		var adj_value: String = (
-			attr.get("adjective", ""))
-		var is_soft: bool = (
-			attr.get("is_soft", true))
-		var valid_adjectives := (
-			DynamicAdjectiveConfig
-				.SOFT_ADJECTIVES
-			if is_soft
-			else DynamicAdjectiveConfig
-				.HARD_ADJECTIVES
-		)
-		var is_valid_adj := (
-			valid_adjectives.has(adj_value)
-			or DynamicAdjectiveConfig
-				.is_valid_dynamic_adjective(
-					adj_value)
-		)
-		if not is_valid_adj:
-			attr["adjective"] = (
-				valid_adjectives.pick_random())
+		# Validate/sanitize adj_list_id and
+		# adj_index.
+		var list_id: int = (
+			attr.get("adj_list_id", 0))
+		var adj_idx: int = (
+			attr.get("adj_index", 0))
+		if not DynamicAdjectiveConfig \
+				.is_valid_adj_list_id(list_id):
+			var is_soft: bool = (
+				attr.get("is_soft", true))
+			list_id = (
+				DynamicAdjectiveConfig
+					.AdjectiveListType.SOFT
+				if is_soft
+				else DynamicAdjectiveConfig
+					.AdjectiveListType.HARD)
+			attr["adj_list_id"] = list_id
+			var adj_list: Array = (
+				DynamicAdjectiveConfig
+					.ADJ_LISTS_BY_ID[list_id])
+			attr["adj_index"] = (
+				randi() % adj_list.size())
 			Netcode.warning(
-				"Peer %d: Invalid adjective,"
-				+ " assigned random: %s" % [
-					peer_id,
-					attr["adjective"]],
+				"Peer %d: Invalid adj_list_id,"
+				+" assigned random" % peer_id,
+				NetworkLogger
+					.CATEGORY_CONNECTIONS,
+			)
+		elif not DynamicAdjectiveConfig \
+				.is_valid_adj_index(
+					list_id, adj_idx):
+			var adj_list: Array = (
+				DynamicAdjectiveConfig
+					.ADJ_LISTS_BY_ID[list_id])
+			attr["adj_index"] = (
+				randi() % adj_list.size())
+			Netcode.warning(
+				"Peer %d: Invalid adj_index,"
+				+" assigned random" % peer_id,
 				NetworkLogger
 					.CATEGORY_CONNECTIONS,
 			)
@@ -1450,7 +1639,7 @@ func _validate_player_attributes(
 						.body_types.size()):
 			Netcode.warning(
 				"Peer %d: body_type_index %d"
-				+ " out of range, assigned 0"
+				+" out of range, assigned 0"
 				% [peer_id, body_type_idx],
 				NetworkLogger
 					.CATEGORY_CONNECTIONS,
@@ -1466,7 +1655,7 @@ func _validate_player_attributes(
 						.costumes.size()):
 			Netcode.warning(
 				"Peer %d: costume_index %d"
-				+ " out of range, assigned 0"
+				+" out of range, assigned 0"
 				% [peer_id, costume_idx],
 				NetworkLogger
 					.CATEGORY_CONNECTIONS,

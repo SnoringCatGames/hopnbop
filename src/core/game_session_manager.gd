@@ -31,11 +31,20 @@ signal matchmaking_progress(
 signal server_shutdown_imminent(
 	seconds_remaining: float)
 
+## Emitted when matchmaking times out and the
+## client has enough local players to fall back
+## to offline mode.
+signal local_mode_fallback_requested()
+
 const _CONFIRM_OVERLAY_SCENE := preload(
 	"res://src/ui/confirm_overlay/"
 	+ "confirm_overlay.tscn")
 
 var session_provider: SessionProvider
+
+## The original session provider set up in _ready().
+## Stored so it can be restored after local mode.
+var _original_session_provider: SessionProvider
 
 
 func _ready() -> void:
@@ -97,6 +106,7 @@ func _setup_session_provider() -> void:
 
 	session_provider.name = "SessionProvider"
 	add_child(session_provider)
+	_original_session_provider = session_provider
 
 	# Set in NetworkConnector for validation.
 	Netcode.connector.session_provider = session_provider
@@ -189,9 +199,73 @@ func client_request_session(
 		player_count, prefs_dict)
 
 
+## Initialize local-only offline mode. Sets up
+## OfflineMultiplayerPeer, swaps to
+## LocalOnlySessionProvider, and connects late
+## server-side signals.
+func start_local_mode() -> void:
+	Netcode.is_local_mode = true
+
+	Netcode.print(
+		"Starting local mode",
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+	# Set up offline multiplayer peer (peer
+	# ID 1 = SERVER_ID).
+	var offline_peer := (
+		OfflineMultiplayerPeer.new())
+	multiplayer.multiplayer_peer = offline_peer
+
+	# Swap session provider to local-only.
+	# Keep the original alive for restore later.
+	var local_provider := (
+		LocalOnlySessionProvider.new())
+	local_provider.name = (
+		"LocalOnlySessionProvider")
+	add_child(local_provider)
+	session_provider = local_provider
+	Netcode.connector.session_provider = (
+		local_provider)
+
+	# Connect late server-side signals on
+	# this manager.
+	(session_provider.all_players_connected
+		.connect(_on_all_players_connected))
+
+
+## Tear down local mode and restore the
+## original session provider.
+func cleanup_local_mode() -> void:
+	# Free the local-only provider.
+	if (is_instance_valid(session_provider)
+			and session_provider
+				is LocalOnlySessionProvider):
+		session_provider.queue_free()
+
+	# Restore original provider.
+	session_provider = _original_session_provider
+	Netcode.connector.session_provider = (
+		_original_session_provider)
+
+	# Reset connector state from local mode.
+	Netcode.connector.reset_local_mode()
+
+	# Reset multiplayer peer.
+	multiplayer.multiplayer_peer = null
+
+	Netcode.print(
+		"Local mode cleaned up",
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+
 ## Set expected player count for validation.
 func server_set_expected_players(count: int) -> void:
-	Netcode.check_is_server()
+	Netcode.check(
+		Netcode.runs_server_logic,
+		"Expected server or local mode",
+	)
 
 	if session_provider != null and session_provider.has_method(
 		"server_set_expected_player_count"
@@ -203,7 +277,7 @@ func server_set_expected_players(count: int) -> void:
 ## On server: returns level from game session properties.
 ## On client: returns level from matchmaking response.
 func server_get_selected_level_id() -> StringName:
-	if Netcode.is_server:
+	if Netcode.runs_server_logic:
 		if session_provider != null and session_provider.has_method(
 			"server_get_selected_level_id"
 		):
@@ -262,6 +336,16 @@ func _on_session_request_failed(error_message: String) -> void:
 			func() -> void:
 				get_tree().quit(),
 		)
+		return
+
+	# Fall back to local mode on timeout with
+	# enough local players.
+	var is_timeout := error_message.begins_with(
+		"Matchmaking timed out")
+	if (is_timeout
+			and G.client_session.local_player_count
+				>= 2):
+		local_mode_fallback_requested.emit()
 		return
 
 	# Emit as unexpected connection loss.

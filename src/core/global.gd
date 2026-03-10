@@ -65,6 +65,9 @@ var settings_ui_player: Player = null
 # Whether a modal confirmation dialog is currently shown.
 var is_confirm_dialog_shown := false
 
+# Whether the credits overlay is currently shown.
+var is_credits_shown := false
+
 var is_lobby_active: bool:
 	get:
 		return is_instance_valid(level) and level is LobbyLevel
