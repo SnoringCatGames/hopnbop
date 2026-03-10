@@ -308,12 +308,17 @@ display name.
    - Save
 4. Configure OAuth settings:
    - Facebook Login > Settings
-   - Valid OAuth Redirect URIs. Add both:
+   - Valid OAuth Redirect URIs:
      - `https://hopnbop.net/oauth/callback/`
-     - `http://127.0.0.1:9876`
    - Client OAuth login: Yes
    - Web OAuth login: Yes
    - Save Changes
+   - Note: Facebook requires HTTPS redirect URIs, so the
+     desktop loopback (`http://127.0.0.1:9876`) cannot be
+     used directly. Desktop auth uses a two-hop pattern:
+     Facebook redirects to the hosted callback page, which
+     then forwards the code to the loopback server via a
+     client-side redirect.
 5. Note your credentials:
    - App Dashboard > Settings > Basic
    - Note the **App ID** (this is the client ID) and
@@ -339,10 +344,13 @@ display name.
 
 **Testing**: Click the Facebook button in the auth screen. A
 browser window (desktop) or popup (web) should open to
-facebook.com. After signing in, the redirect should return a
-code that the client sends to /auth/login. The backend
-exchanges this via the Graph API v19.0 for an access token,
-fetches /me for the user's name and ID, and returns a JWT.
+facebook.com. After signing in, Facebook redirects to the
+hosted callback page. On web, the popup sends the code via
+postMessage. On desktop, the callback page redirects to the
+loopback server (`http://127.0.0.1:9876`), which captures
+the code and sends it to /auth/login. The backend exchanges
+this via the Graph API v19.0 for an access token, fetches
+/me for the user's name and ID, and returns a JWT.
 
 ---
 

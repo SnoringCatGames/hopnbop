@@ -50,8 +50,6 @@ extends Node
 
 # - Test local mode.
 
-# - Remove pxlzr font.
-
 # - Should we add an option for explicitly changing the language?
 #   - In the consent screen?
 #   - In the settings menu?
