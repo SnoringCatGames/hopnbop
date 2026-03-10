@@ -59,6 +59,7 @@ p { margin-top: 1rem; line-height: 1.5; }
   }
 
   if (window.opener) {
+    // Web popup flow: send code back to the opener window.
     window.opener.postMessage(
       { type: "oauth_callback", code: code, state: state },
       window.location.origin
@@ -69,11 +70,19 @@ p { margin-top: 1rem; line-height: 1.5; }
       "Authentication successful! This window will close.";
     setTimeout(function() { window.close(); }, 1500);
   } else {
+    // Desktop two-hop flow: forward the code to the local
+    // loopback server. Providers that require HTTPS redirect
+    // URIs (e.g. Facebook) land here first, then the
+    // loopback server captures the code.
+    var loopback = "http://127.0.0.1:9876";
+    var target = loopback
+      + "/?code=" + encodeURIComponent(code)
+      + "&state=" + encodeURIComponent(state);
     icon.textContent = "\u2714";
     icon.className = "icon success";
     message.textContent =
-      "Authentication complete. You can close this tab"
-      + " and return to the game.";
+      "Authentication successful! Returning to the game...";
+    window.location.href = target;
   }
 })();
 </script>

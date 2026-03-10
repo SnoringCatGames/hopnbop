@@ -63,6 +63,13 @@ const PLATFORM_PROVIDERS := [
 
 const _LOOPBACK_PORT := 9876
 const _LOOPBACK_HOST := "127.0.0.1"
+## Providers that require HTTPS redirect URIs and cannot
+## use the direct loopback flow on desktop. These use a
+## two-hop pattern: redirect to the hosted callback page
+## first, which then forwards to the loopback server.
+const _HTTPS_REDIRECT_PROVIDERS := [
+	Provider.FACEBOOK,
+]
 const _REFRESH_COOLDOWN_SEC := 60.0
 const _AUTH_ENDPOINT := "/auth/login"
 const _ANON_ENDPOINT := "/auth/anon"
@@ -418,9 +425,18 @@ func _start_browser_oauth(
 		return
 
 	_is_awaiting_oauth = true
-	var redirect_uri := (
-		"http://%s:%d" % [_LOOPBACK_HOST, _LOOPBACK_PORT]
-	)
+
+	# Providers that require HTTPS redirect URIs use the
+	# hosted callback page, which then forwards the code
+	# to the loopback server via a client-side redirect.
+	var redirect_uri: String
+	if provider in _HTTPS_REDIRECT_PROVIDERS:
+		redirect_uri = G.settings.oauth_callback_url
+	else:
+		redirect_uri = (
+			"http://%s:%d"
+			% [_LOOPBACK_HOST, _LOOPBACK_PORT]
+		)
 
 	var auth_url := _build_oauth_url(
 		provider, redirect_uri, _oauth_state
@@ -493,9 +509,16 @@ func _poll_oauth_redirect() -> void:
 		_emit_failure("OAuth state mismatch")
 		return
 
-	var redirect_uri := (
-		"http://%s:%d" % [_LOOPBACK_HOST, _LOOPBACK_PORT]
-	)
+	# The redirect_uri sent to the backend must match the
+	# one used in the initial authorization request.
+	var redirect_uri: String
+	if _oauth_provider in _HTTPS_REDIRECT_PROVIDERS:
+		redirect_uri = G.settings.oauth_callback_url
+	else:
+		redirect_uri = (
+			"http://%s:%d"
+			% [_LOOPBACK_HOST, _LOOPBACK_PORT]
+		)
 
 	# Determine endpoint.
 	var endpoint := _AUTH_ENDPOINT
