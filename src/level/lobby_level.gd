@@ -39,9 +39,7 @@ func _physics_process(_delta: float) -> void:
 
 
 func _check_keyboard_inputs() -> void:
-	if G.is_confirm_dialog_shown:
-		return
-	if G.is_credits_shown:
+	if G.is_ui_interaction_mode_enabled:
 		return
 	# Check each join/leave buttons for each
 	# keyboard partition.
@@ -68,9 +66,7 @@ func _check_keyboard_inputs() -> void:
 
 
 func _check_gamepad_inputs() -> void:
-	if G.is_confirm_dialog_shown:
-		return
-	if G.is_credits_shown:
+	if G.is_ui_interaction_mode_enabled:
 		return
 	for device_id in Input.get_connected_joypads():
 		# Skip device used by settings UI player.
