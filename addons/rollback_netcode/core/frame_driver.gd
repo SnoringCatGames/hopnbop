@@ -942,6 +942,20 @@ var last_fastforward_frame_count := 0
 var last_fastforward_duration_usec := 0
 var total_fastforwards := 0
 
+## Number of extra frames to process (one per physics
+## tick) for gradual clock catch-up. Set by
+## FrameSynchronizer when the client drifts slightly
+## behind the server. Smooths correction over multiple
+## ticks instead of processing many frames at once.
+var _catchup_frames_remaining := 0
+
+## Returns true when the frame driver is gradually
+## catching up to the server frame. Used to suppress
+## redundant state-triggered fast-forwards.
+var is_catching_up: bool:
+	get:
+		return _catchup_frames_remaining > 0
+
 var rollback_buffer_size: int:
 	get:
 		return ceili(
@@ -1004,6 +1018,8 @@ func client_reset() -> void:
 	_frame_reset_time_usec = Time.get_ticks_usec()
 	# Reset backward hard reset suppression.
 	_hard_reset_backward_time_usec = 0
+	# Cancel any in-progress gradual catch-up.
+	_catchup_frames_remaining = 0
 	# Start paused so client waits for server's
 	# unpause signal before transitioning from
 	# LOADING to GAME screen.
@@ -1628,6 +1644,15 @@ func _pre_physics_process(_delta: float) -> void:
 		match_start_countdown_ended.emit()
 
 	_run_network_process()
+
+	# Gradual catch-up: process one extra frame per
+	# physics tick to smoothly close small clock drift
+	# gaps instead of fast-forwarding many frames at
+	# once (which causes visible stutter).
+	if _catchup_frames_remaining > 0:
+		server_frame_index += 1
+		_catchup_frames_remaining -= 1
+		_run_network_process()
 
 
 func _initialize_frame_tracking() -> void:

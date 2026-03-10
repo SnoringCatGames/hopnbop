@@ -619,6 +619,13 @@ func _handle_new_state_from_network(p_state: Array) -> void:
 		if Netcode.frame_driver.is_suppressing_fast_forward:
 			return
 
+		# During gradual catch-up, the frame driver
+		# is already processing extra frames each
+		# tick. The state is already buffered (above)
+		# and will be reached naturally.
+		if Netcode.frame_driver.is_catching_up:
+			return
+
 		Netcode.log.print(
 			"Fast-forwarding due to future state"
 			+ " from server",

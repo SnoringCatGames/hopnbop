@@ -19,7 +19,7 @@ extends Node
 ## 5. Client estimates frames elapsed during transmission from t3 to t4.
 ## 6. Client estimates current server frame and corrects drift if needed.
 
-const DRIFT_THRESHOLD_FRAMES := 1 # Correct if +/- 1 frame off.
+const _MIN_DRIFT_THRESHOLD_FRAMES := 2
 const PING_INTERVAL_SEC := 3.0 # Ping server every 3 seconds.
 const RTT_SMOOTHING_FACTOR := 0.2 # Exponential moving average weight.
 const _MAX_RTT_SAMPLES := 10 # Jitter window size.
@@ -32,6 +32,12 @@ const _HARD_RESET_COOLDOWN_USEC := 3_000_000 # 3 seconds.
 # faster initial RTT establishment and frame sync.
 const _BURST_PING_INTERVAL_SEC := 0.5
 const _BURST_PING_COUNT := 6 # Send 6 burst pings (3 seconds).
+
+# Maximum drift (in frames) that uses gradual catch-up
+# (one extra frame per tick) instead of instant
+# fast-forward. Drifts above this threshold still use
+# instant fast-forward for large desynchronizations.
+const _GRADUAL_CATCHUP_MAX_FRAMES := 10
 
 # Network timing derived from FrameDriver config.
 var target_network_time_step_sec: float:
@@ -218,9 +224,23 @@ func _client_rpc_pong(
 		- Netcode.frame_driver.server_frame_index
 	)
 
+	# Jitter-aware drift threshold. Convert RTT
+	# jitter to frames so noisy estimates do not
+	# trigger unnecessary corrections.
+	var jitter_frames := ceili(
+		rtt_jitter_usec
+		/ (target_network_time_step_sec
+			* 1_000_000.0)
+	)
+	var effective_threshold := maxi(
+		_MIN_DRIFT_THRESHOLD_FRAMES,
+		jitter_frames,
+	)
+
 	# Correct drift if outside threshold.
-	if abs(drift) <= DRIFT_THRESHOLD_FRAMES:
-		# Within acceptable range, no correction needed.
+	if abs(drift) <= effective_threshold:
+		# Within acceptable range, no correction
+		# needed.
 		return
 
 	# Mark frame tracking as initialized so
@@ -230,18 +250,41 @@ func _client_rpc_pong(
 	fd._is_frame_tracking_initialized = true
 
 	if drift > 0:
-		# Client is behind. Use existing fast-forward logic.
-		Netcode.frame_driver.fast_forward(
-			estimated_current_server_frame
-		)
-		if Netcode.log.is_verbose:
-			Netcode.log.verbose(
-				"Client behind by %d frames, fast-forwarding to %d" % [
-					drift,
-					estimated_current_server_frame,
-				],
-				NetworkLogger.CATEGORY_NETWORK_SYNC
+		if drift <= _GRADUAL_CATCHUP_MAX_FRAMES:
+			# Small drift: gradually process one
+			# extra frame per physics tick to close
+			# the gap without visible stutter.
+			fd._catchup_frames_remaining = maxi(
+				fd._catchup_frames_remaining,
+				drift,
 			)
+			if Netcode.log.is_verbose:
+				Netcode.log.verbose(
+					("Client behind by %d frames,"
+					+ " gradual catch-up to %d")
+					% [
+						drift,
+						estimated_current_server_frame,
+					],
+					NetworkLogger
+						.CATEGORY_NETWORK_SYNC,
+				)
+		else:
+			# Large drift: instant fast-forward.
+			fd.fast_forward(
+				estimated_current_server_frame
+			)
+			if Netcode.log.is_verbose:
+				Netcode.log.verbose(
+					("Client behind by %d frames,"
+					+ " fast-forwarding to %d")
+					% [
+						drift,
+						estimated_current_server_frame,
+					],
+					NetworkLogger
+						.CATEGORY_NETWORK_SYNC,
+				)
 	else:
 		# Client is ahead. Hard reset. This can happen when the
 		# server runs slower than clients due to performance
