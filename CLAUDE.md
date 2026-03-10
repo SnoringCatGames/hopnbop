@@ -278,6 +278,10 @@ var is_valid := (
   use `speed` not `player_speed` when already inside a player
   class). The underscore prefix for private members is the
   exception.
+- **No abbreviations:** Use full words in identifiers (e.g.,
+  `diagnostic` not `diag`, `configuration` not `config`,
+  `information` not `info`). Standard domain abbreviations
+  (`rtt`, `fps`, `rpc`, `usec`, `id`) are acceptable.
 
 ### Type Annotations
 
