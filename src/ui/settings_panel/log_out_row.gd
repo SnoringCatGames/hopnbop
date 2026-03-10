@@ -4,11 +4,9 @@ extends SettingsRow
 ## ConfirmOverlay modal dialog.
 
 
-const _ConfirmOverlayScene := preload(
-	"res://src/ui/confirm_overlay/"
-	+ "confirm_overlay.tscn")
+@export var _confirm_overlay_scene: PackedScene
 
-var _panel: SettingsPanel
+var _page: SidePanelPage
 var _device_config: DeviceConfig
 var _is_busy := false
 
@@ -16,16 +14,16 @@ var _is_busy := false
 
 
 func setup(
-	panel: SettingsPanel,
+	page: SidePanelPage,
 	device_config: DeviceConfig,
 ) -> void:
-	_panel = panel
+	_page = page
 	_device_config = device_config
 
 
 func _ready() -> void:
 	super()
-	_label.text = "Log Out"
+	_label.text = tr("SETTINGS.LOG_OUT")
 
 
 func on_left() -> void:
@@ -40,20 +38,20 @@ func _activate() -> void:
 	if _is_busy:
 		return
 
-	_panel.is_input_blocked = true
+	_page.is_input_active = false
 
 	var dialog: ConfirmOverlay = (
-		_ConfirmOverlayScene.instantiate())
+		_confirm_overlay_scene.instantiate())
 	dialog.tree_exiting.connect(
 		func() -> void:
-			if is_instance_valid(_panel):
-				_panel.is_input_blocked = false)
+			if is_instance_valid(_page):
+				_page.is_input_active = true)
 	get_tree().root.add_child(dialog)
 	dialog.open(
-		"Log out?",
-		"Log Out",
+		tr("CONFIRM.LOG_OUT"),
+		tr("SETTINGS.LOG_OUT"),
 		_do_logout,
-		"Cancel",
+		tr("CONFIRM.CANCEL"),
 		func() -> void: pass,
 		_device_config,
 	)
@@ -62,14 +60,15 @@ func _activate() -> void:
 func _do_logout() -> void:
 	_is_busy = true
 
-	if is_instance_valid(_panel):
-		_panel.close()
+	if (is_instance_valid(_page)
+			and is_instance_valid(_page.manager)):
+		_page.manager.close_all()
 
 	G.auth_token_store.clear_tokens()
 
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
-			"Logged out",
+			tr("TOAST.LOGGED_OUT"),
 			ToastOverlay.Type.INFO,
 		)
 

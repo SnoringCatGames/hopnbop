@@ -77,6 +77,18 @@ func _on_players_updated() -> void:
 	_update_label_colors()
 
 
+## Refreshes label text for all players. Call
+## when the locale changes so names update.
+func refresh_label_text() -> void:
+	for player_id in _labels_by_player_id:
+		var label: PlayerOverheadLabel = (
+			_labels_by_player_id[player_id])
+		var ps := G.get_player_match_state(
+			player_id)
+		if ps:
+			label.text = ps.bunny_name
+
+
 func _update_labels() -> void:
 	if not is_instance_valid(G.match_state):
 		return

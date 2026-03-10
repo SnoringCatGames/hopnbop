@@ -1,0 +1,33 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/settings_panel/side_panel_manager.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/settings_page.tscn" id="2_settings_page"]
+
+[node name="SidePanelManager" type="CanvasLayer"]
+layer = 260
+script = ExtResource("1_script")
+_settings_page_scene = ExtResource("2_settings_page")
+
+[node name="Background" type="ColorRect" parent="."]
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -390.0
+grow_horizontal = 0
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="PanelStack" type="Control" parent="."]
+unique_name_in_owner = true
+clip_children = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -382.0
+offset_right = -8.0
+grow_horizontal = 0
+grow_vertical = 2
+mouse_filter = 2

@@ -8,32 +8,17 @@ extends CanvasLayer
 
 signal closed
 
-const _CloseRowScene := preload(
-	"res://src/ui/settings_panel/close_row.tscn")
-const _ToggleRowScene := preload(
-	"res://src/ui/settings_panel/"
-	+ "toggle_row.tscn")
-const _CheatGroupRowScene := preload(
-	"res://src/ui/settings_panel/"
-	+ "cheat_group_row.tscn")
-const _LevelPrefRowScene := preload(
-	"res://src/ui/settings_panel/"
-	+ "level_pref_row.tscn")
-const _LinkAccountRowScene := preload(
-	"res://src/ui/settings_panel/"
-	+ "link_account_row.tscn")
-const _DeleteAccountRowScene := preload(
-	"res://src/ui/settings_panel/"
-	+ "delete_account_row.tscn")
-const _ExportDataRowScene := preload(
-	"res://src/ui/settings_panel/"
-	+ "export_data_row.tscn")
-const _LogOutRowScene := preload(
-	"res://src/ui/settings_panel/"
-	+ "log_out_row.tscn")
-const _LegalLinkRowScene := preload(
-	"res://src/ui/settings_panel/"
-	+ "legal_link_row.tscn")
+@export_group("Row Scenes")
+@export var _close_row_scene: PackedScene
+@export var _toggle_row_scene: PackedScene
+@export var _cheat_group_row_scene: PackedScene
+@export var _level_pref_row_scene: PackedScene
+@export var _link_account_row_scene: PackedScene
+@export var _delete_account_row_scene: PackedScene
+@export var _export_data_row_scene: PackedScene
+@export var _log_out_row_scene: PackedScene
+@export var _legal_link_row_scene: PackedScene
+@export var _language_row_scene: PackedScene
 
 @export_group("Row Icons")
 @export var icon_gore: Texture2D
@@ -144,7 +129,7 @@ func _build_ui() -> void:
 
 	# Close row.
 	var close_row: CloseRow = (
-		_CloseRowScene.instantiate())
+		_close_row_scene.instantiate())
 	close_row.setup(self)
 	_row_container.add_child(close_row)
 	_connect_row_clicked(close_row)
@@ -157,20 +142,23 @@ func _build_ui() -> void:
 
 	# Gore toggle.
 	_add_toggle_row(
-		"Gore", &"is_gore_enabled",
+		tr("SETTINGS.GORE"),
+		&"is_gore_enabled",
 		0, icon_gore)
 
 	# Critters toggle.
 	_add_toggle_row(
-		"Critters", &"are_critters_enabled",
+		tr("SETTINGS.CRITTERS"),
+		&"are_critters_enabled",
 		0, icon_critters)
 
 	# Cheats group toggle.
 	var cheats_row: CheatGroupRow = (
-		_CheatGroupRowScene.instantiate())
+		_cheat_group_row_scene.instantiate())
 	cheats_row.set_icon(icon_cheats)
 	cheats_row.setup(
-		"Cheats", &"are_cheats_enabled")
+		tr("SETTINGS.CHEATS"),
+		&"are_cheats_enabled")
 	_row_container.add_child(cheats_row)
 	_connect_row_clicked(cheats_row)
 
@@ -214,18 +202,22 @@ func _build_ui() -> void:
 
 	# Full screen toggle.
 	_add_toggle_row(
-		"Full Screen", &"full_screen",
+		tr("SETTINGS.FULL_SCREEN"),
+		&"full_screen",
 		0, icon_fullscreen)
 
 	# Music toggle (inverted: checked = enabled).
 	_add_toggle_row(
-		"Music", &"mute_music",
+		tr("SETTINGS.MUSIC"), &"mute_music",
 		0, icon_music, true)
 
 	# SFX toggle (inverted: checked = enabled).
 	_add_toggle_row(
-		"SFX", &"mute_sfx",
+		tr("SETTINGS.SFX"), &"mute_sfx",
 		0, icon_sfx, true)
+
+	# Language selector.
+	_add_language_row()
 
 	# Account linking section.
 	_add_link_account_rows()
@@ -270,7 +262,7 @@ func _build_ui() -> void:
 						.EXCLUDED)
 
 		var level_row: LevelPrefRow = (
-			_LevelPrefRowScene.instantiate())
+			_level_pref_row_scene.instantiate())
 		level_row.setup(
 			level_info.id,
 			level_info.display_name,
@@ -299,7 +291,7 @@ func _add_toggle_row(
 	is_inverted := false,
 ) -> ToggleRow:
 	var row: ToggleRow = (
-		_ToggleRowScene.instantiate())
+		_toggle_row_scene.instantiate())
 	if indent_pixels > 0:
 		row.set_indent(indent_pixels)
 	if icon != null:
@@ -310,6 +302,14 @@ func _add_toggle_row(
 	_row_container.add_child(row)
 	_connect_row_clicked(row)
 	return row
+
+
+func _add_language_row() -> void:
+	var row: LanguageRow = (
+		_language_row_scene.instantiate())
+	row.setup(self)
+	_row_container.add_child(row)
+	_connect_row_clicked(row)
 
 
 func _add_link_account_rows() -> void:
@@ -327,7 +327,7 @@ func _add_link_account_rows() -> void:
 
 	# Google link row.
 	var google_row: LinkAccountRow = (
-		_LinkAccountRowScene.instantiate()
+		_link_account_row_scene.instantiate()
 	)
 	if icon_google != null:
 		google_row.set_icon(icon_google)
@@ -341,7 +341,7 @@ func _add_link_account_rows() -> void:
 
 	# Facebook link row.
 	var fb_row: LinkAccountRow = (
-		_LinkAccountRowScene.instantiate()
+		_link_account_row_scene.instantiate()
 	)
 	if icon_facebook != null:
 		fb_row.set_icon(icon_facebook)
@@ -364,7 +364,7 @@ func _add_delete_account_row() -> void:
 	_row_container.add_child(spacer)
 
 	var row: DeleteAccountRow = (
-		_DeleteAccountRowScene.instantiate()
+		_delete_account_row_scene.instantiate()
 	)
 	row.setup(self, _device_config)
 	_row_container.add_child(row)
@@ -376,7 +376,7 @@ func _add_export_data_row() -> void:
 		return
 
 	var row: ExportDataRow = (
-		_ExportDataRowScene.instantiate()
+		_export_data_row_scene.instantiate()
 	)
 	row.setup(self)
 	_row_container.add_child(row)
@@ -390,7 +390,7 @@ func _add_log_out_row() -> void:
 		return
 
 	var row: LogOutRow = (
-		_LogOutRowScene.instantiate()
+		_log_out_row_scene.instantiate()
 	)
 	row.setup(self, _device_config)
 	_row_container.add_child(row)
@@ -403,30 +403,30 @@ func _add_legal_section() -> void:
 	_row_container.add_child(spacer)
 
 	var terms_row: LegalLinkRow = (
-		_LegalLinkRowScene.instantiate()
+		_legal_link_row_scene.instantiate()
 	)
 	terms_row.setup(
-		"Terms of Service",
+		tr("CONSENT.TERMS_OF_SERVICE"),
 		"https://hopnbop.net/terms",
 	)
 	_row_container.add_child(terms_row)
 	_connect_row_clicked(terms_row)
 
 	var privacy_row: LegalLinkRow = (
-		_LegalLinkRowScene.instantiate()
+		_legal_link_row_scene.instantiate()
 	)
 	privacy_row.setup(
-		"Privacy Policy",
+		tr("CONSENT.PRIVACY_POLICY"),
 		"https://hopnbop.net/privacy",
 	)
 	_row_container.add_child(privacy_row)
 	_connect_row_clicked(privacy_row)
 
 	var deletion_row: LegalLinkRow = (
-		_LegalLinkRowScene.instantiate()
+		_legal_link_row_scene.instantiate()
 	)
 	deletion_row.setup(
-		"Data Deletion Policy",
+		tr("SETTINGS.DATA_DELETION_POLICY"),
 		"https://hopnbop.net/data-deletion",
 	)
 	_row_container.add_child(deletion_row)

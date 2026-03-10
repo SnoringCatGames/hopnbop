@@ -1,4 +1,4 @@
-[gd_scene load_steps=38 format=3 uid="uid://cjv0ordnvb83u"]
+[gd_scene load_steps=39 format=3 uid="uid://cjv0ordnvb83u"]
 
 [ext_resource type="Script" uid="uid://3nj1wko00tkr" path="res://src/ui/settings_panel/level_pref_row.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://bg1rlb6jpxdj7" path="res://assets/images/gui/x_icon.png" id="2_x"]
@@ -19,6 +19,7 @@
 [ext_resource type="Texture2D" uid="uid://xlt73xuyb6ey" path="res://assets/images/gui/aggregate_button_right_hovered.png" id="17_rh"]
 [ext_resource type="Texture2D" uid="uid://c0j8pjomeg5ab" path="res://assets/images/gui/aggregate_button_right_selected.png" id="18_rs"]
 [ext_resource type="Texture2D" uid="uid://0p3r8gne267h" path="res://assets/images/gui/aggregate_button_right_disabled.png" id="19_rd"]
+[ext_resource type="Texture2D" path="res://assets/images/gui/v_bar.png" id="20_vbar"]
 
 [sub_resource type="StyleBoxTexture" id="sbt_ln"]
 texture = ExtResource("5_ln")
@@ -115,6 +116,7 @@ texture_margin_bottom = 12.0
 
 [node name="LevelPrefRow" type="PanelContainer"]
 script = ExtResource("1_script")
+_vbar_texture = ExtResource("20_vbar")
 left_normal = SubResource("sbt_ln")
 left_pressed = SubResource("sbt_lp")
 left_hovered = SubResource("sbt_lh")

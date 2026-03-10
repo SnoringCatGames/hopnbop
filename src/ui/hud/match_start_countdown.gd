@@ -137,7 +137,7 @@ func _show_number(number_text: String) -> void:
 
 
 func _show_go() -> void:
-	_label.text = "GO!"
+	_label.text = tr("COUNTDOWN.GO")
 	# Recalculate pivot after text change.
 	_label.pivot_offset = _label.size / 2
 	_label.scale = Vector2.ONE * FINAL_SCALE
