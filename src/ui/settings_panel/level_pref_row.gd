@@ -18,7 +18,7 @@ const _VBAR_MODULATE := Color(1, 1, 1, 0.3)
 var _level_id: StringName
 var _display_name: String
 var _state := LevelPrefState.INCLUDED
-var _panel: LevelPrefPage
+var _panel: LevelPrefPanel
 var _thumbnail: Texture2D
 var _left_icon_rect: TextureRect
 var _middle_icon_rect: TextureRect
@@ -49,7 +49,7 @@ var _right_icon_rect: TextureRect
 func setup(
 	level_id: StringName,
 	display_name: String,
-	panel: LevelPrefPage,
+	panel: LevelPrefPanel,
 	initial_state := LevelPrefState.INCLUDED,
 	thumbnail: Texture2D = null,
 ) -> void:

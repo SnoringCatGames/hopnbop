@@ -1,16 +1,16 @@
-class_name SettingsPage
-extends SidePanelPage
-## Top-level settings page. Contains only a close
-## row and trigger rows for sub-panels.
+class_name MainMenuPanel
+extends SidePanel
+## Top-level main menu panel. Contains only a
+## close row and trigger rows for sub-panels.
 
 
 @export var _close_row_scene: PackedScene
 @export var _sub_panel_trigger_row_scene: PackedScene
-@export var _preferences_page_scene: PackedScene
-@export var _level_pref_page_scene: PackedScene
-@export var _language_page_scene: PackedScene
-@export var _account_page_scene: PackedScene
-@export var _info_page_scene: PackedScene
+@export var _settings_panel_scene: PackedScene
+@export var _level_pref_panel_scene: PackedScene
+@export var _language_panel_scene: PackedScene
+@export var _account_panel_scene: PackedScene
+@export var _info_panel_scene: PackedScene
 
 
 func build_ui() -> void:
@@ -35,27 +35,27 @@ func build_ui() -> void:
 	# Settings trigger.
 	_add_sub_panel_trigger_row(
 		tr("SETTINGS.SETTINGS"),
-		_preferences_page_scene)
+		_settings_panel_scene)
 
 	# Levels trigger.
 	_add_sub_panel_trigger_row(
 		tr("SETTINGS.LEVELS"),
-		_level_pref_page_scene)
+		_level_pref_panel_scene)
 
 	# Language trigger.
 	_add_sub_panel_trigger_row(
 		tr("SETTINGS.LANGUAGE"),
-		_language_page_scene)
+		_language_panel_scene)
 
 	# Account trigger.
 	_add_sub_panel_trigger_row(
 		tr("SETTINGS.ACCOUNT"),
-		_account_page_scene)
+		_account_panel_scene)
 
 	# Info trigger.
 	_add_sub_panel_trigger_row(
 		tr("SETTINGS.INFO"),
-		_info_page_scene)
+		_info_panel_scene)
 
 	# Bottom padding.
 	var bottom_spacer := Control.new()
@@ -66,10 +66,10 @@ func build_ui() -> void:
 
 func _add_sub_panel_trigger_row(
 	display_name: String,
-	page_scene: PackedScene,
+	panel_scene: PackedScene,
 ) -> void:
 	var row: SubPanelTriggerRow = (
 		_sub_panel_trigger_row_scene.instantiate())
-	row.setup(display_name, page_scene, self)
+	row.setup(display_name, panel_scene, self)
 	_row_container.add_child(row)
 	_connect_row_clicked(row)

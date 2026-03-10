@@ -1,17 +1,17 @@
 class_name BackRow
 extends SettingsRow
-## Row at the top of sub-pages. Pressing left or
-## right pops the current page, returning to the
-## previous panel.
+## Row at the top of sub-panels. Pressing left
+## or right pops the current panel, returning
+## to the previous one.
 
 
-var _page: SidePanelPage
+var _panel: SidePanel
 
 @onready var _icon: TextureRect = %Icon
 
 
-func setup(page: SidePanelPage) -> void:
-	_page = page
+func setup(panel: SidePanel) -> void:
+	_panel = panel
 
 
 func _ready() -> void:
@@ -36,8 +36,8 @@ func _ready() -> void:
 
 
 func on_left() -> void:
-	_page.manager.pop_page()
+	_panel.manager.pop_panel()
 
 
 func on_right() -> void:
-	_page.manager.pop_page()
+	_panel.manager.pop_panel()

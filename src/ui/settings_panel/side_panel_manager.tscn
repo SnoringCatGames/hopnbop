@@ -1,12 +1,12 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/ui/settings_panel/side_panel_manager.gd" id="1_script"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/settings_page.tscn" id="2_settings_page"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/main_menu_panel.tscn" id="2_main_menu"]
 
 [node name="SidePanelManager" type="CanvasLayer"]
 layer = 260
 script = ExtResource("1_script")
-_settings_page_scene = ExtResource("2_settings_page")
+_main_menu_panel_scene = ExtResource("2_main_menu")
 
 [node name="Background" type="ColorRect" parent="."]
 anchors_preset = 11

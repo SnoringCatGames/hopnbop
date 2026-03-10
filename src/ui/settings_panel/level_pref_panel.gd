@@ -1,5 +1,5 @@
-class_name LevelPrefPage
-extends SidePanelPage
+class_name LevelPrefPanel
+extends SidePanel
 ## Level preferences sub-panel. Shows one row per
 ## level with exclude/include/prefer tri-toggle.
 

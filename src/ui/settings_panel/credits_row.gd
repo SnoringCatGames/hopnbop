@@ -7,7 +7,7 @@ extends SettingsRow
 
 @export var _credits_overlay_scene: PackedScene
 
-var _page: SidePanelPage
+var _panel: SidePanel
 var _display_name := ""
 
 @onready var _label: Label = %Label
@@ -16,14 +16,14 @@ var _display_name := ""
 
 static func new_row(
 	display_name: String,
-	page: SidePanelPage,
+	panel: SidePanel,
 ) -> CreditsRow:
 	var scene := preload(
 		"res://src/ui/settings_panel/"
 		+ "credits_row.tscn")
 	var row: CreditsRow = scene.instantiate()
 	row._display_name = display_name
-	row._page = page
+	row._panel = panel
 	return row
 
 
@@ -45,9 +45,9 @@ func on_right() -> void:
 
 
 func _open_credits() -> void:
-	if not is_instance_valid(_page):
+	if not is_instance_valid(_panel):
 		return
-	if not is_instance_valid(_page.manager):
+	if not is_instance_valid(_panel.manager):
 		return
 
 	# Add the overlay to the tree root.
@@ -59,4 +59,4 @@ func _open_credits() -> void:
 	root.add_child(overlay)
 
 	# Close settings menu.
-	_page.manager.close_all()
+	_panel.manager.close_all()

@@ -1,21 +1,21 @@
 [gd_scene load_steps=10 format=3]
 
-[ext_resource type="Script" path="res://src/ui/settings_panel/settings_page.gd" id="1_script"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/side_panel_page.tscn" id="2_base"]
+[ext_resource type="Script" path="res://src/ui/settings_panel/main_menu_panel.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/side_panel.tscn" id="2_base"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/close_row.tscn" id="3_close_row"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/sub_panel_trigger_row.tscn" id="4_trigger_row"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/preferences_page.tscn" id="5_preferences"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/level_pref_page.tscn" id="6_level_pref"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/language_page.tscn" id="7_language"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/account_page.tscn" id="8_account"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/info_page.tscn" id="9_info"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/settings_panel.tscn" id="5_settings"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/level_pref_panel.tscn" id="6_level_pref"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/language_panel.tscn" id="7_language"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/account_panel.tscn" id="8_account"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/info_panel.tscn" id="9_info"]
 
-[node name="SettingsPage" instance=ExtResource("2_base")]
+[node name="MainMenuPanel" instance=ExtResource("2_base")]
 script = ExtResource("1_script")
 _close_row_scene = ExtResource("3_close_row")
 _sub_panel_trigger_row_scene = ExtResource("4_trigger_row")
-_preferences_page_scene = ExtResource("5_preferences")
-_level_pref_page_scene = ExtResource("6_level_pref")
-_language_page_scene = ExtResource("7_language")
-_account_page_scene = ExtResource("8_account")
-_info_page_scene = ExtResource("9_info")
+_settings_panel_scene = ExtResource("5_settings")
+_level_pref_panel_scene = ExtResource("6_level_pref")
+_language_panel_scene = ExtResource("7_language")
+_account_panel_scene = ExtResource("8_account")
+_info_panel_scene = ExtResource("9_info")

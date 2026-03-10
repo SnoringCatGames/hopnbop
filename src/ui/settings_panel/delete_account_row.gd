@@ -6,7 +6,7 @@ extends SettingsRow
 
 @export var _confirm_overlay_scene: PackedScene
 
-var _page: SidePanelPage
+var _panel: SidePanel
 var _device_config: DeviceConfig
 var _is_busy := false
 
@@ -14,10 +14,10 @@ var _is_busy := false
 
 
 func setup(
-	page: SidePanelPage,
+	panel: SidePanel,
 	device_config: DeviceConfig,
 ) -> void:
-	_page = page
+	_panel = panel
 	_device_config = device_config
 
 
@@ -38,14 +38,14 @@ func _activate() -> void:
 	if _is_busy:
 		return
 
-	_page.is_input_active = false
+	_panel.is_input_active = false
 
 	var dialog: ConfirmOverlay = (
 		_confirm_overlay_scene.instantiate())
 	dialog.tree_exiting.connect(
 		func() -> void:
-			if is_instance_valid(_page):
-				_page.is_input_active = true)
+			if is_instance_valid(_panel):
+				_panel.is_input_active = true)
 	get_tree().root.add_child(dialog)
 	dialog.open(
 		tr("CONFIRM.DELETE_ACCOUNT"),
@@ -72,9 +72,9 @@ func _on_delete_completed(
 ) -> void:
 	_is_busy = false
 
-	if (is_instance_valid(_page)
-			and is_instance_valid(_page.manager)):
-		_page.manager.close_all()
+	if (is_instance_valid(_panel)
+			and is_instance_valid(_panel.manager)):
+		_panel.manager.close_all()
 
 	if success:
 		if is_instance_valid(G.toast_overlay):

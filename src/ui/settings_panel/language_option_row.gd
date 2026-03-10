@@ -7,7 +7,7 @@ extends SettingsRow
 
 var _locale := ""
 var _native_name := ""
-var _page: SidePanelPage
+var _panel: SidePanel
 var _is_current := false
 
 @onready var _label: Label = %Label
@@ -18,12 +18,12 @@ func setup(
 	locale: String,
 	native_name: String,
 	is_current: bool,
-	page: SidePanelPage,
+	panel: SidePanel,
 ) -> void:
 	_locale = locale
 	_native_name = native_name
 	_is_current = is_current
-	_page = page
+	_panel = panel
 
 
 func _ready() -> void:
@@ -51,6 +51,6 @@ func _select() -> void:
 
 	# Close the entire settings menu so all
 	# labels rebuild with the new locale.
-	if (is_instance_valid(_page)
-			and is_instance_valid(_page.manager)):
-		_page.manager.close_all()
+	if (is_instance_valid(_panel)
+			and is_instance_valid(_panel.manager)):
+		_panel.manager.close_all()

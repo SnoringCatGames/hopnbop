@@ -16,7 +16,7 @@ var _is_dismissed := false
 func _ready() -> void:
 	_poller = AnyDeviceInputPoller.new()
 	_poller.prime()
-	G.is_credits_shown = true
+	G.is_ui_interaction_mode_enabled = true
 
 
 func _process(delta: float) -> void:
@@ -44,5 +44,5 @@ func close() -> void:
 	if _is_dismissed:
 		return
 	_is_dismissed = true
-	G.is_credits_shown = false
+	G.is_ui_interaction_mode_enabled = false
 	queue_free()

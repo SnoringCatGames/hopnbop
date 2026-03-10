@@ -3,14 +3,14 @@ extends SettingsRow
 ## A row that exports all player data as JSON.
 
 
-var _page: SidePanelPage
+var _panel: SidePanel
 var _is_busy := false
 
 @onready var _label: Label = %Label
 
 
-func setup(page: SidePanelPage) -> void:
-	_page = page
+func setup(panel: SidePanel) -> void:
+	_panel = panel
 
 
 func _ready() -> void:
@@ -44,9 +44,9 @@ func _on_export_completed(
 ) -> void:
 	_is_busy = false
 
-	if (is_instance_valid(_page)
-			and is_instance_valid(_page.manager)):
-		_page.manager.close_all()
+	if (is_instance_valid(_panel)
+			and is_instance_valid(_panel.manager)):
+		_panel.manager.close_all()
 
 	if not success:
 		G.log.error(

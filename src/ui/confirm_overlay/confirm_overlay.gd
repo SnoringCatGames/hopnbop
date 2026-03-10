@@ -56,10 +56,10 @@ func open(
 
 	_update_focus()
 
-	G.is_confirm_dialog_shown = true
+	G.is_ui_interaction_mode_enabled = true
 	tree_exiting.connect(
 		func() -> void:
-			G.is_confirm_dialog_shown = false)
+			G.is_ui_interaction_mode_enabled = false)
 
 	# Set up input source.
 	if _device_config == null:

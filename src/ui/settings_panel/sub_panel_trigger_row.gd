@@ -5,8 +5,8 @@ extends SettingsRow
 
 
 var _display_name := ""
-var _page_scene: PackedScene
-var _page: SidePanelPage
+var _panel_scene: PackedScene
+var _panel: SidePanel
 
 @onready var _label: Label = %Label
 @onready var _arrow_label: Label = %ArrowLabel
@@ -14,12 +14,12 @@ var _page: SidePanelPage
 
 func setup(
 	display_name: String,
-	page_scene: PackedScene,
-	page: SidePanelPage,
+	panel_scene: PackedScene,
+	panel: SidePanel,
 ) -> void:
 	_display_name = display_name
-	_page_scene = page_scene
-	_page = page
+	_panel_scene = panel_scene
+	_panel = panel
 
 
 func _ready() -> void:
@@ -40,12 +40,12 @@ func on_right() -> void:
 
 
 func _open_sub_panel() -> void:
-	if _page_scene == null:
+	if _panel_scene == null:
 		return
-	if not is_instance_valid(_page):
+	if not is_instance_valid(_panel):
 		return
-	if not is_instance_valid(_page.manager):
+	if not is_instance_valid(_panel.manager):
 		return
-	var new_page: SidePanelPage = (
-		_page_scene.instantiate())
-	_page.manager.push_page(new_page)
+	var new_panel: SidePanel = (
+		_panel_scene.instantiate())
+	_panel.manager.push_panel(new_panel)

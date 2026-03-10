@@ -1,9 +1,8 @@
-class_name SidePanelPage
+class_name SidePanel
 extends Control
-## Base class for side-panel page content.
-## Manages a scrollable list of SettingsRow
-## children with focus navigation and
-## device-specific input.
+## Base class for side-panel content. Manages a
+## scrollable list of SettingsRow children with
+## focus navigation and device-specific input.
 
 
 var manager: SidePanelManager

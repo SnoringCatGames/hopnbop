@@ -5,24 +5,24 @@ extends ToggleRow
 
 
 var _sub_rows: Array[SettingsRow] = []
-var _page: SidePanelPage
+var _panel: SidePanel
 
 
 func set_sub_rows(
 	sub_rows: Array[SettingsRow],
-	page: SidePanelPage,
+	panel: SidePanel,
 ) -> void:
 	_sub_rows = sub_rows
-	_page = page
+	_panel = panel
 	_update_sub_row_visibility()
 
 
 func _toggle() -> void:
 	super._toggle()
 	_update_sub_row_visibility()
-	# Rebuild the page's row list to include/
+	# Rebuild the panel's row list to include/
 	# exclude sub-rows from navigation.
-	_page.rebuild_row_list()
+	_panel.rebuild_row_list()
 
 
 func _update_sub_row_visibility() -> void:

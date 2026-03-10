@@ -1,5 +1,5 @@
-class_name InfoPage
-extends SidePanelPage
+class_name InfoPanel
+extends SidePanel
 ## Info sub-panel containing legal links and
 ## credits access.
 

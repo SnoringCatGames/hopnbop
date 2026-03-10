@@ -62,11 +62,9 @@ var is_settings_ui_shown := false
 # The player that opened the settings UI (null when closed).
 var settings_ui_player: Player = null
 
-# Whether a modal confirmation dialog is currently shown.
-var is_confirm_dialog_shown := false
-
-# Whether the credits overlay is currently shown.
-var is_credits_shown := false
+# Whether a global UI overlay (confirm dialog,
+# credits, etc.) is blocking all player input.
+var is_ui_interaction_mode_enabled := false
 
 var is_lobby_active: bool:
 	get:

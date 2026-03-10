@@ -1,5 +1,5 @@
-class_name LanguagePage
-extends SidePanelPage
+class_name LanguagePanel
+extends SidePanel
 ## Language selection sub-panel. Displays one row
 ## per supported locale with the native name.
 

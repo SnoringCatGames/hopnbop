@@ -1,17 +1,17 @@
 class_name CloseRow
 extends SettingsRow
-## Special row at the top of the settings page.
-## Pressing left or right closes the entire
-## side-panel stack.
+## Special row at the top of the main menu
+## panel. Pressing left or right closes the
+## entire side-panel stack.
 
 
-var _page: SidePanelPage
+var _panel: SidePanel
 
 @onready var _icon: TextureRect = %Icon
 
 
-func setup(page: SidePanelPage) -> void:
-	_page = page
+func setup(panel: SidePanel) -> void:
+	_panel = panel
 
 
 func _ready() -> void:
@@ -36,8 +36,8 @@ func _ready() -> void:
 
 
 func on_left() -> void:
-	_page.manager.close_all()
+	_panel.manager.close_all()
 
 
 func on_right() -> void:
-	_page.manager.close_all()
+	_panel.manager.close_all()

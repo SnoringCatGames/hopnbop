@@ -1,6 +1,6 @@
 class_name SidePanelManager
 extends CanvasLayer
-## Container that manages a stack of SidePanelPage
+## Container that manages a stack of SidePanel
 ## instances with slide animations. Owns the
 ## background overlay and handles cascading close.
 
@@ -10,11 +10,11 @@ signal closed
 const _SLIDE_IN_DURATION := 0.2
 const _SLIDE_OUT_DURATION := 0.1
 
-@export var _settings_page_scene: PackedScene
+@export var _main_menu_panel_scene: PackedScene
 
 var _player: Player
 var _device_config: DeviceConfig
-var _panel_stack: Array[SidePanelPage] = []
+var _panel_stack: Array[SidePanel] = []
 var _is_closing := false
 
 
@@ -23,54 +23,54 @@ func open(player: Player) -> void:
 	_player = player
 	_resolve_device_config()
 
-	# Push the initial settings page.
-	var page: SettingsPage = (
-		_settings_page_scene.instantiate())
-	push_page(page)
+	# Push the initial main menu panel.
+	var panel: MainMenuPanel = (
+		_main_menu_panel_scene.instantiate())
+	push_panel(panel)
 
 	if is_instance_valid(G.audio):
 		G.audio.play_sound("focus")
 
 
-func push_page(page: SidePanelPage) -> void:
-	# Disable input on current top page.
+func push_panel(panel: SidePanel) -> void:
+	# Disable input on current top panel.
 	if not _panel_stack.is_empty():
 		_panel_stack.back().is_input_active = false
 
-	page.setup(self, _player, _device_config)
-	_panel_stack.append(page)
-	%PanelStack.add_child(page)
-	# Size the page to fill the PanelStack. The
-	# page root is not anchor-managed so
+	panel.setup(self, _player, _device_config)
+	_panel_stack.append(panel)
+	%PanelStack.add_child(panel)
+	# Size the panel to fill the PanelStack. The
+	# panel root is not anchor-managed so
 	# position.x can be tweened for sliding.
-	page.size = %PanelStack.size
-	page.build_ui()
-	page.rebuild_row_list()
-	page._set_focus(0)
-	page.prime_input_state()
-	_animate_slide_in(page)
+	panel.size = %PanelStack.size
+	panel.build_ui()
+	panel.rebuild_row_list()
+	panel._set_focus(0)
+	panel.prime_input_state()
+	_animate_slide_in(panel)
 
 
-func pop_page() -> void:
+func pop_panel() -> void:
 	if _is_closing:
 		return
 	if _panel_stack.size() <= 1:
-		# Last page. Close everything.
+		# Last panel. Close everything.
 		close_all()
 		return
 
-	var top_page: SidePanelPage = (
+	var top_panel: SidePanel = (
 		_panel_stack.pop_back())
-	top_page.is_input_active = false
+	top_panel.is_input_active = false
 	_animate_slide_out(
-		top_page,
+		top_panel,
 		func() -> void:
-			top_page.queue_free(),
+			top_panel.queue_free(),
 	)
 
-	# Re-enable input on the new top page.
+	# Re-enable input on the new top panel.
 	if not _panel_stack.is_empty():
-		var new_top: SidePanelPage = _panel_stack.back()
+		var new_top: SidePanel = _panel_stack.back()
 		new_top.is_input_active = true
 		# Prime input state to avoid phantom
 		# "just pressed" from keys held during
@@ -88,10 +88,10 @@ func close_all() -> void:
 	G.log.print("[SidePanelManager] Closed")
 
 	# Save level preferences if the level pref
-	# page exists in the stack.
-	for page in _panel_stack:
-		if page is LevelPrefPage:
-			page.save_level_preferences()
+	# panel exists in the stack.
+	for panel in _panel_stack:
+		if panel is LevelPrefPanel:
+			panel.save_level_preferences()
 			break
 	G.local_settings.save_settings()
 
@@ -118,16 +118,16 @@ func _resolve_device_config() -> void:
 
 
 func _animate_slide_in(
-	page: SidePanelPage,
+	panel: SidePanel,
 ) -> void:
 	# Start off-screen to the right.
 	var width: float = %PanelStack.size.x
-	page.position.x = width
+	panel.position.x = width
 	var tween := create_tween()
 	tween.set_pause_mode(
 		Tween.TWEEN_PAUSE_PROCESS)
 	tween.tween_property(
-		page, "position:x",
+		panel, "position:x",
 		0.0, _SLIDE_IN_DURATION,
 	).set_ease(
 		Tween.EASE_OUT,
@@ -137,7 +137,7 @@ func _animate_slide_in(
 
 
 func _animate_slide_out(
-	page: SidePanelPage,
+	panel: SidePanel,
 	on_complete: Callable,
 ) -> void:
 	var width: float = %PanelStack.size.x
@@ -145,7 +145,7 @@ func _animate_slide_out(
 	tween.set_pause_mode(
 		Tween.TWEEN_PAUSE_PROCESS)
 	tween.tween_property(
-		page, "position:x",
+		panel, "position:x",
 		width, _SLIDE_OUT_DURATION,
 	).set_ease(
 		Tween.EASE_IN,

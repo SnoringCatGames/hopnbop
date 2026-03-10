@@ -1,6 +1,6 @@
-class_name PreferencesPage
-extends SidePanelPage
-## Preferences sub-panel containing all gameplay,
+class_name SettingsPanel
+extends SidePanel
+## Settings sub-panel containing all gameplay,
 ## display, and audio toggles.
 
 

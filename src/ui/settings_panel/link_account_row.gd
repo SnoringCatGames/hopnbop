@@ -13,7 +13,7 @@ var _provider_name: String
 var _is_linked := false
 var _is_busy := false
 var _icon_texture: Texture2D
-var _page: SidePanelPage
+var _panel: SidePanel
 
 @onready var _icon: TextureRect = %Icon
 @onready var _label: Label = %Label
@@ -30,12 +30,12 @@ func setup(
 	provider: AuthClient.Provider,
 	display_name: String,
 	is_linked: bool,
-	page: SidePanelPage,
+	panel: SidePanel,
 ) -> void:
 	_provider = provider
 	_provider_name = display_name
 	_is_linked = is_linked
-	_page = page
+	_panel = panel
 
 
 func _ready() -> void:
@@ -87,22 +87,22 @@ func _try_link() -> void:
 
 
 func _try_unlink() -> void:
-	if not is_instance_valid(_page):
+	if not is_instance_valid(_panel):
 		return
 
-	_page.is_input_active = false
+	_panel.is_input_active = false
 
 	var device_config: DeviceConfig = null
-	if is_instance_valid(_page.manager):
+	if is_instance_valid(_panel.manager):
 		device_config = (
-			_page.manager.get_device_config())
+			_panel.manager.get_device_config())
 
 	var dialog: ConfirmOverlay = (
 		_confirm_overlay_scene.instantiate())
 	dialog.tree_exiting.connect(
 		func() -> void:
-			if is_instance_valid(_page):
-				_page.is_input_active = true)
+			if is_instance_valid(_panel):
+				_panel.is_input_active = true)
 	get_tree().root.add_child(dialog)
 	dialog.open(
 		tr("CONFIRM.UNLINK_ACCOUNT")

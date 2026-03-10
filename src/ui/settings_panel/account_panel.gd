@@ -1,5 +1,5 @@
-class_name AccountPage
-extends SidePanelPage
+class_name AccountPanel
+extends SidePanel
 ## Account sub-panel containing OAuth linking,
 ## delete account, export data, and log out rows.
 
