@@ -40,6 +40,11 @@ const _ROLLBACK_TRACKING_WINDOW_SEC := 60.0
 const _FASTFORWARD_TRACKING_WINDOW_SEC := 60.0
 const _MAX_MIN_TRACKING_WINDOW_SEC := 10.0
 const _FPS_TRACKING_WINDOW_SEC := 1.0
+# Minimum frames before FPS calculation is
+# considered reliable. Prevents false low-FPS
+# warnings from single-frame jitter right after
+# window reset (e.g. 1 frame / 0.021s = 47.6).
+const _MIN_FRAMES_FOR_FPS_WARNING := 10
 
 # --- Tracking window state ---
 
@@ -210,6 +215,7 @@ func _process(_delta: float) -> void:
 	if (
 		_current_render_fps > 0.0
 		and _current_render_fps < _SLOW_RENDER_FPS
+		and _render_frame_count >= _MIN_FRAMES_FOR_FPS_WARNING
 		and _is_ready()
 	):
 		_throttled_warn_render_fps.call([_current_render_fps])
@@ -227,9 +233,12 @@ func _physics_process(_delta: float) -> void:
 		)
 
 	# Check for slow physics FPS and log warning.
+	# Require enough samples to avoid false warnings
+	# from single-frame jitter after window reset.
 	if (
 		_current_physics_fps > 0.0
 		and _current_physics_fps < _SLOW_PHYSICS_FPS
+		and _physics_frame_count >= _MIN_FRAMES_FOR_FPS_WARNING
 		and _is_ready()
 	):
 		_throttled_warn_physics_fps.call([_current_physics_fps])
@@ -289,6 +298,7 @@ func _character_state_from_server_updated(
 	if (
 		_current_network_fps > 0.0
 		and _current_network_fps < _SLOW_NETWORK_FPS
+		and _network_frame_count >= _MIN_FRAMES_FOR_FPS_WARNING
 		and _is_ready()
 	):
 		_throttled_warn_network_fps.call([_current_network_fps])
