@@ -29,12 +29,8 @@ var _poller := AnyDeviceInputPoller.new()
 var _focusable: Array[Control] = []
 var _focused_index := 0
 
-var _focus_style: StyleBoxTexture = preload(
-	"res://src/ui/settings_panel/"
-	+ "focus_border_stylebox.tres")
-var _unfocused_style: StyleBoxFlat = preload(
-	"res://src/ui/settings_panel/"
-	+ "unfocused_stylebox.tres")
+@export var _focus_style: StyleBoxTexture
+@export var _unfocused_style: StyleBoxFlat
 
 
 func _enter_tree() -> void:
@@ -69,6 +65,13 @@ func _ready() -> void:
 		TextureButton.STRETCH_KEEP_ASPECT_CENTERED)
 	%TermsCheckBox.stretch_mode = (
 		TextureButton.STRETCH_KEEP_ASPECT_CENTERED)
+
+	# Flip arrows for RTL locales.
+	var arrow_text := "<" if is_layout_rtl() else ">"
+	%TermsLinkRow.get_node(
+		"HBoxContainer/Arrow").text = arrow_text
+	%PrivacyLinkRow.get_node(
+		"HBoxContainer/Arrow").text = arrow_text
 
 	# Connect mouse interactions for focusable
 	# PanelContainer rows.

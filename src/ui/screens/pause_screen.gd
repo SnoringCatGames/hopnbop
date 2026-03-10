@@ -34,14 +34,14 @@ func _update_pause_info() -> void:
 
 	# Update "Paused by" label.
 	%PausedByLabel.text = (
-		"Paused by client %d"
+		tr("PAUSE.PAUSED_BY")
 		% initiator_peer_id)
 
 	# Update pauser's pauses remaining.
 	var pauser_remaining := (
 		maxi(0, max_pauses - initiator_pauses_used))
 	%PauserPausesRemainingLabel.text = (
-		"Pauses remaining for pauser: %d/%d"
+		tr("PAUSE.PAUSER_REMAINING")
 		% [pauser_remaining, max_pauses])
 
 	# Update local peer's pauses remaining.
@@ -61,7 +61,7 @@ func _update_pause_info() -> void:
 	var local_remaining := (
 		maxi(0, max_pauses - local_pauses_used))
 	%LocalPausesRemainingLabel.text = (
-		"Your pauses remaining: %d/%d"
+		tr("PAUSE.YOUR_REMAINING")
 		% [local_remaining, max_pauses])
 
 	# Check if local peer can unpause.
@@ -71,9 +71,9 @@ func _update_pause_info() -> void:
 	%Button.disabled = not _can_local_peer_unpause
 
 	if not _can_local_peer_unpause:
-		%Button.text = "Unpause (locked)"
+		%Button.text = tr("PAUSE.UNPAUSE_LOCKED")
 	else:
-		%Button.text = "Unpause"
+		%Button.text = tr("PAUSE.UNPAUSE")
 
 
 func _update_countdown() -> void:
@@ -89,7 +89,7 @@ func _update_countdown() -> void:
 			maxi(0, ceili(
 				remaining_usec / 1_000_000.0)))
 		%TimeRemainingLabel.text = (
-			"Auto-unpause in: %d seconds"
+			tr("PAUSE.AUTO_UNPAUSE")
 			% remaining_sec)
 	else:
 		%TimeRemainingLabel.text = ""

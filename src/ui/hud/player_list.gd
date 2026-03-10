@@ -6,9 +6,7 @@ extends HBoxContainer
 # Dictionary<int, PlayerDisplay>
 var _player_displays := {}
 
-# Preload PlayerDisplay scene.
-const PLAYER_DISPLAY_SCENE := preload(
-	"res://src/ui/hud/player_display.tscn")
+@export var _player_display_scene: PackedScene
 
 const _MAX_PLAYER_LIST_SIZE := 8
 
@@ -48,7 +46,7 @@ func _update_displays() -> void:
 	for player_id in current_player_ids:
 		if not _player_displays.has(player_id):
 			var display: PlayerDisplay = (
-				PLAYER_DISPLAY_SCENE.instantiate())
+				_player_display_scene.instantiate())
 			display.set_player_id(player_id)
 			_player_displays[player_id] = display
 			add_child(display)

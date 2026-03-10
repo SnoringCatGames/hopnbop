@@ -6,8 +6,7 @@ extends AnimatedSprite2D
 ## side-by-side at the same position marker.
 
 
-const _PORTRAYAL_SCENE := preload(
-	"res://src/player/player_portrayal.tscn")
+@export var _portrayal_scene: PackedScene
 
 ## Horizontal spacing between tied players
 ## sharing a podium position.
@@ -156,7 +155,7 @@ func _add_portrayal(
 	x_offset: float,
 ) -> void:
 	var portrayal: PlayerPortrayal = (
-		_PORTRAYAL_SCENE.instantiate())
+		_portrayal_scene.instantiate())
 	portrayal.position = Vector2(x_offset, 0)
 	position_node.add_child(portrayal)
 	portrayal.apply_player_state(player_state)

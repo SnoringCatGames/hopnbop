@@ -1,0 +1,21 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://src/ui/settings_panel/account_page.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://ug712rpyt4i" path="res://assets/images/gui/google_32.png" id="2_google"]
+[ext_resource type="Texture2D" uid="uid://b6c8nywrbpw6n" path="res://assets/images/gui/facebook_32.png" id="3_facebook"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/side_panel_page.tscn" id="4_base"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/back_row.tscn" id="5_back_row"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/link_account_row.tscn" id="6_link_account"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/delete_account_row.tscn" id="7_delete_account"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/export_data_row.tscn" id="8_export_data"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/log_out_row.tscn" id="9_log_out"]
+
+[node name="AccountPage" instance=ExtResource("4_base")]
+script = ExtResource("1_script")
+icon_google = ExtResource("2_google")
+icon_facebook = ExtResource("3_facebook")
+_back_row_scene = ExtResource("5_back_row")
+_link_account_row_scene = ExtResource("6_link_account")
+_delete_account_row_scene = ExtResource("7_delete_account")
+_export_data_row_scene = ExtResource("8_export_data")
+_log_out_row_scene = ExtResource("9_log_out")

@@ -11,6 +11,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+layout_direction = 2
 theme = ExtResource("1_theme")
 script = ExtResource("2_script")
 
@@ -25,7 +26,7 @@ theme_override_constants/separation = 16
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 32
-text = "Sign In"
+text = "AUTH.SIGN_IN"
 horizontal_alignment = 1
 
 [node name="Spacer" type="Control" parent="CenterContainer/VBoxContainer"]
@@ -49,7 +50,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(200, 40)
 size_flags_horizontal = 4
 theme_override_styles/focus = ExtResource("3_focus")
-text = "Google"
+text = "AUTH.GOOGLE"
 
 [node name="FacebookButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonsContainer/OAuthRow"]
 unique_name_in_owner = true
@@ -57,7 +58,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(200, 40)
 size_flags_horizontal = 4
 theme_override_styles/focus = ExtResource("3_focus")
-text = "Facebook"
+text = "AUTH.FACEBOOK"
 
 [node name="Spacer2" type="Control" parent="CenterContainer/VBoxContainer/ButtonsContainer"]
 layout_mode = 2
@@ -69,7 +70,7 @@ layout_mode = 2
 size_flags_horizontal = 4
 custom_minimum_size = Vector2(200, 40)
 theme_override_styles/focus = ExtResource("3_focus")
-text = "Play Anonymously"
+text = "AUTH.PLAY_ANONYMOUSLY"
 
 [node name="LoadingContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer"]
 unique_name_in_owner = true
@@ -82,7 +83,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 18
-text = "Signing in..."
+text = "AUTH.SIGNING_IN"
 horizontal_alignment = 1
 
 [node name="ErrorLabel" type="Label" parent="CenterContainer/VBoxContainer"]

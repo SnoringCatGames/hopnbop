@@ -11,6 +11,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+layout_direction = 2
 theme = ExtResource("1_bdo0u")
 theme_override_styles/panel = ExtResource("2_p4mol")
 script = ExtResource("1_wmw1d")
@@ -24,7 +25,7 @@ layout_mode = 2
 [node name="Label" type="Label" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 4
-text = "Game over"
+text = "GAME_OVER.TITLE"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -66,14 +67,14 @@ unique_name_in_owner = true
 process_mode = 3
 custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
-text = "Play again"
+text = "GAME_OVER.PLAY_AGAIN"
 
 [node name="LeaderboardButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonContainer"]
 unique_name_in_owner = true
 process_mode = 3
 custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
-text = "Leaderboard"
+text = "GAME_OVER.LEADERBOARD"
 
 [connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonContainer/Button" to="." method="_on_button_pressed"]
 [connection signal="pressed" from="CenterContainer/VBoxContainer/ButtonContainer/LeaderboardButton" to="." method="_on_leaderboard_pressed"]

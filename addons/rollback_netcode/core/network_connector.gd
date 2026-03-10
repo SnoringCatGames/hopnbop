@@ -67,6 +67,15 @@ const RPC_CHANNEL_GAME_EVENTS := 3
 const RPC_CHANNEL_STATS := 4
 const RPC_CHANNEL_DEBUG := 5
 
+## ENet throttle tuning for faster unreliable
+## packet ramp-up on new connections. ENet
+## defaults start at ~31% send rate and ramp
+## slowly (5s intervals, +2/32 per interval).
+## These values reach full throughput within 1s.
+const _ENET_THROTTLE_INTERVAL_MS := 1000
+const _ENET_THROTTLE_ACCELERATION := 32
+const _ENET_THROTTLE_DECELERATION := 2
+
 ## Callable for validating player attributes (game-specific).
 ## Signature: func(attributes: Array, expected_count: int, peer_id: int) ->
 ## Array.
@@ -221,6 +230,7 @@ func _on_peer_connected(peer_id: int) -> void:
 			"Client connected: %d" % peer_id,
 			NetworkLogger.CATEGORY_CONNECTIONS
 		)
+		_configure_enet_throttle(peer_id)
 	else:
 		# Clients only care about connecting to the server.
 		if peer_id != SERVER_ID:
@@ -230,6 +240,7 @@ func _on_peer_connected(peer_id: int) -> void:
 			"Connected to server: Local peer_id: %s" % multiplayer.get_unique_id(),
 			NetworkLogger.CATEGORY_CONNECTIONS
 		)
+		_configure_enet_throttle(SERVER_ID)
 		_client_update_is_connected_to_server()
 
 		# Emit signal for game to handle (window title, etc.).
@@ -674,3 +685,46 @@ func get_local_player_index_from_player_id(p_player_id: int) -> int:
 	if _player_id_to_local_player_index.has(p_player_id):
 		return _player_id_to_local_player_index[p_player_id]
 	return -1
+
+
+## Configures ENet's unreliable packet throttle for
+## faster ramp-up on new connections. By default,
+## ENet starts at ~31% send rate for unreliable
+## packets and increases slowly (every 5 seconds,
+## +2/32). This causes state replication and NTP
+## pings to be heavily throttled for tens of
+## seconds on high-latency connections. This
+## reconfigures the throttle to reach full
+## throughput within ~1 second.
+func _configure_enet_throttle(
+	peer_id: int,
+) -> void:
+	var mp_peer := multiplayer.multiplayer_peer
+	if not mp_peer is ENetMultiplayerPeer:
+		return
+
+	var enet_peer := (
+		mp_peer as ENetMultiplayerPeer)
+	var packet_peer := enet_peer.get_peer(
+		peer_id)
+	if packet_peer == null:
+		return
+
+	packet_peer.throttle_configure(
+		_ENET_THROTTLE_INTERVAL_MS,
+		_ENET_THROTTLE_ACCELERATION,
+		_ENET_THROTTLE_DECELERATION,
+	)
+
+	Netcode.log.print(
+		("Configured ENet throttle for"
+		+ " peer %d: interval=%dms,"
+		+ " accel=%d, decel=%d")
+		% [
+			peer_id,
+			_ENET_THROTTLE_INTERVAL_MS,
+			_ENET_THROTTLE_ACCELERATION,
+			_ENET_THROTTLE_DECELERATION,
+		],
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)

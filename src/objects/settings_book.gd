@@ -2,9 +2,7 @@ class_name SettingsBook
 extends Node2D
 
 
-const _SettingsPanelScene := preload(
-	"res://src/ui/settings_panel/"
-	+ "settings_panel.tscn")
+@export var _side_panel_manager_scene: PackedScene
 
 const _REOPEN_COOLDOWN_SEC := 0.15
 
@@ -50,11 +48,11 @@ func _show_settings_ui(player: Player) -> void:
 	G.is_settings_ui_shown = true
 	G.settings_ui_player = player
 
-	var panel: SettingsPanel = (
-		_SettingsPanelScene.instantiate())
-	get_tree().root.add_child(panel)
-	panel.open(player)
-	panel.closed.connect(
+	var mgr: SidePanelManager = (
+		_side_panel_manager_scene.instantiate())
+	get_tree().root.add_child(mgr)
+	mgr.open(player)
+	mgr.closed.connect(
 		_on_settings_panel_closed)
 
 

@@ -10,12 +10,8 @@ extends CanvasLayer
 
 const _ACTIVATION_DELAY_SEC := 0.2
 
-var _focus_style: StyleBoxTexture = preload(
-	"res://src/ui/settings_panel/"
-	+ "focus_border_stylebox.tres")
-var _unfocused_style: StyleBoxFlat = preload(
-	"res://src/ui/settings_panel/"
-	+ "unfocused_stylebox.tres")
+@export var _focus_style: StyleBoxTexture
+@export var _unfocused_style: StyleBoxFlat
 
 var _on_accept: Callable
 var _on_reject: Callable

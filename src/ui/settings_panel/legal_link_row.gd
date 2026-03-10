@@ -21,7 +21,10 @@ func setup(
 func _ready() -> void:
 	super()
 	_label.text = _display_name
-	_arrow_label.text = ">"
+	if is_layout_rtl():
+		_arrow_label.text = "<"
+	else:
+		_arrow_label.text = ">"
 
 
 func on_left() -> void:

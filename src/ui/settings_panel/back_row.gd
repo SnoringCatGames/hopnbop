@@ -1,8 +1,8 @@
-class_name CloseRow
+class_name BackRow
 extends SettingsRow
-## Special row at the top of the settings page.
-## Pressing left or right closes the entire
-## side-panel stack.
+## Row at the top of sub-pages. Pressing left or
+## right pops the current page, returning to the
+## previous panel.
 
 
 var _page: SidePanelPage
@@ -36,8 +36,8 @@ func _ready() -> void:
 
 
 func on_left() -> void:
-	_page.manager.close_all()
+	_page.manager.pop_page()
 
 
 func on_right() -> void:
-	_page.manager.close_all()
+	_page.manager.pop_page()

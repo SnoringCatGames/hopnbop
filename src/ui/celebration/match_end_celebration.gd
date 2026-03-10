@@ -310,15 +310,17 @@ func _slam_winner_text() -> void:
 	)
 
 	if is_tie:
-		%WinnerText.text = "TIE!"
+		%WinnerText.text = tr("CELEBRATION.TIE")
 	else:
 		var ps := G.get_player_match_state(
 			_winner.player_id) as GamePlayerState
 		if ps:
 			%WinnerText.text = (
-				"%s\nWINS!" % ps.bunny_name.to_upper())
+				tr("CELEBRATION.WINS")
+				% ps.bunny_name.to_upper())
 		else:
-			%WinnerText.text = "WINS!"
+			%WinnerText.text = tr(
+				"CELEBRATION.WINNER")
 	%WinnerText.visible = true
 	%WinnerText.pivot_offset = (
 		%WinnerText.size / 2)

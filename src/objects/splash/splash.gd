@@ -4,13 +4,8 @@ extends AnimatedSprite2D
 ## its animation finishes.
 
 
-const _DEFAULT_SPLASH_TEXTURE := preload(
-	"res://assets/images/splash.png"
-)
-const _BLOOD_SPLASH_TEXTURE := preload(
-	"res://assets/images/"
-	+ "bloodisthickerthanwater_splash.png"
-)
+@export var _default_splash_texture: Texture2D
+@export var _blood_splash_texture: Texture2D
 
 
 func _ready() -> void:
@@ -23,9 +18,9 @@ func _ready() -> void:
 func _apply_cheat_texture() -> void:
 	if (CheatManager
 			.is_bloodisthickerthanwater_cheat_active()):
-		_swap_atlas(_BLOOD_SPLASH_TEXTURE)
+		_swap_atlas(_blood_splash_texture)
 	else:
-		_swap_atlas(_DEFAULT_SPLASH_TEXTURE)
+		_swap_atlas(_default_splash_texture)
 
 
 ## Replaces the atlas texture on every frame of every

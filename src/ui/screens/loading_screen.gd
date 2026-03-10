@@ -71,28 +71,30 @@ func update_status_message() -> void:
 		return
 
 	if Netcode.connector.is_connected_to_server:
-		%Label.text = "Waiting for players..."
+		%Label.text = tr("LOADING.WAITING_FOR_PLAYERS")
 	elif not _matchmaking_phase.is_empty():
 		%Label.text = _get_matchmaking_text()
 	else:
-		%Label.text = "Connecting to server..."
+		%Label.text = tr("LOADING.CONNECTING")
 
 
 func _get_matchmaking_text() -> String:
 	var phase_text: String
 	match _matchmaking_phase:
 		"queued":
-			phase_text = "In queue"
+			phase_text = tr("LOADING.IN_QUEUE")
 		"searching":
 			if _matchmaking_elapsed_sec >= (
 					_EXPANSION_WAIT_SEC):
-				phase_text = "Expanding search"
+				phase_text = tr(
+					"LOADING.EXPANDING_SEARCH")
 			else:
-				phase_text = "Searching for match"
+				phase_text = tr(
+					"LOADING.SEARCHING")
 		"placing":
-			phase_text = "Match found"
+			phase_text = tr("LOADING.MATCH_FOUND")
 		_:
-			phase_text = "Matchmaking"
+			phase_text = tr("LOADING.MATCHMAKING")
 
 	# Show elapsed time.
 	var elapsed := ceili(_matchmaking_elapsed_sec)
@@ -108,7 +110,7 @@ func _get_matchmaking_text() -> String:
 		)
 		if remaining > 0:
 			time_text += (
-				" ~%ds remaining"
+				" " + tr("LOADING.REMAINING")
 				% ceili(remaining))
 
 	return time_text + "..."

@@ -2,7 +2,6 @@ class_name GameOverScreen
 extends Screen
 
 
-const _RANK_SUFFIXES := ["st", "nd", "rd"]
 
 
 func _enter_tree() -> void:
@@ -103,10 +102,16 @@ func _add_result_row(
 		row.add_child(kd_label)
 
 
-static func _ordinal(n: int) -> String:
-	if n >= 1 and n <= 3:
-		return "%d%s" % [n, _RANK_SUFFIXES[n - 1]]
-	return "%dth" % n
+func _ordinal(n: int) -> String:
+	match n:
+		1:
+			return tr("ORDINAL.1ST")
+		2:
+			return tr("ORDINAL.2ND")
+		3:
+			return tr("ORDINAL.3RD")
+		_:
+			return tr("ORDINAL.NTH") % n
 
 
 func _on_button_pressed() -> void:

@@ -46,6 +46,13 @@ var _time_since_last_ping_sec := PING_INTERVAL_SEC
 var _last_hard_reset_usec := 0
 var _burst_pings_remaining := _BURST_PING_COUNT
 
+## Minimum valid ping timestamp. Pongs from pings
+## sent before this time are stale and discarded.
+## Set when an external frame sync (e.g. countdown
+## RPC) authoritatively sets the frame index, so
+## stale burst pongs don't override it.
+var _min_valid_ping_time_usec := 0
+
 # RTT tracking (in microseconds).
 var _smoothed_rtt_usec := 0
 var _is_rtt_initialized := false
@@ -85,6 +92,18 @@ func client_reset() -> void:
 	_time_since_last_ping_sec = PING_INTERVAL_SEC
 	_last_hard_reset_usec = 0
 	_burst_pings_remaining = _BURST_PING_COUNT
+	_min_valid_ping_time_usec = 0
+
+
+## Marks all in-flight pings as stale. Called
+## when an external mechanism (e.g. countdown
+## RPC) authoritatively syncs the frame index.
+## Pongs from pings sent before this moment are
+## discarded to prevent backward hard resets
+## from stale burst pongs.
+func invalidate_in_flight_pings() -> void:
+	_min_valid_ping_time_usec = (
+		Time.get_ticks_usec())
 
 
 func _process(delta: float) -> void:
@@ -144,6 +163,17 @@ func _client_rpc_pong(
 		server_frame_at_t3: int,
 ) -> void:
 	Netcode.check_is_client()
+
+	# Discard pongs from pings sent before the
+	# last authoritative frame sync (e.g.
+	# countdown RPC). These carry stale server
+	# frame estimates that would cause incorrect
+	# backward hard resets.
+	if (
+		_min_valid_ping_time_usec > 0
+		and client_t1 < _min_valid_ping_time_usec
+	):
+		return
 
 	var t4 := Time.get_ticks_usec() # Client receive time.
 

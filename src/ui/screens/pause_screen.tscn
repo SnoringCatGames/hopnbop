@@ -11,6 +11,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+layout_direction = 2
 theme = ExtResource("1_lpqvl")
 theme_override_styles/panel = ExtResource("2_a781q")
 script = ExtResource("2_lpqvl")
@@ -26,25 +27,25 @@ mouse_filter = 2
 [node name="PausedByLabel" type="Label" parent="CenterContainer/VBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Paused by client X"
+text = "PAUSE.PAUSED_BY"
 horizontal_alignment = 1
 
 [node name="TimeRemainingLabel" type="Label" parent="CenterContainer/VBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Auto-unpause in: XX seconds"
+text = "PAUSE.AUTO_UNPAUSE"
 horizontal_alignment = 1
 
 [node name="PauserPausesRemainingLabel" type="Label" parent="CenterContainer/VBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Pauses remaining for pauser: X/Y"
+text = "PAUSE.PAUSER_REMAINING"
 horizontal_alignment = 1
 
 [node name="LocalPausesRemainingLabel" type="Label" parent="CenterContainer/VBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Your pauses remaining: X/Y"
+text = "PAUSE.YOUR_REMAINING"
 horizontal_alignment = 1
 
 [node name="HSeparator" type="HSeparator" parent="CenterContainer/VBoxContainer"]
@@ -57,6 +58,6 @@ process_mode = 3
 custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 size_flags_horizontal = 4
-text = "Unpause"
+text = "PAUSE.UNPAUSE"
 
 [connection signal="pressed" from="CenterContainer/VBoxContainer/Button" to="." method="_on_button_pressed"]

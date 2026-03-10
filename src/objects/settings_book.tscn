@@ -1,8 +1,9 @@
-[gd_scene load_steps=37 format=3 uid="uid://dqmmu7a6h5m32"]
+[gd_scene load_steps=38 format=3 uid="uid://dqmmu7a6h5m32"]
 
 [ext_resource type="Texture2D" uid="uid://cliqx7jliuq6" path="res://assets/images/stump.png" id="1_g1s7r"]
 [ext_resource type="Script" uid="uid://dnkm1gb6x8xs6" path="res://src/objects/settings_book.gd" id="1_jhw5o"]
 [ext_resource type="Texture2D" uid="uid://dt10mtltdp3b7" path="res://assets/images/book.png" id="2_jhw5o"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/side_panel_manager.tscn" id="3_side_panel"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_npico"]
 atlas = ExtResource("2_jhw5o")
@@ -225,6 +226,7 @@ size = Vector2(22, 2)
 
 [node name="SettingsBook" type="Node2D"]
 script = ExtResource("1_jhw5o")
+_side_panel_manager_scene = ExtResource("3_side_panel")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 position = Vector2(0, -8)

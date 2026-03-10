@@ -1,12 +1,16 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Theme" uid="uid://cg4peau6bmpdw" path="res://src/ui/hud_theme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://src/ui/confirm_overlay/confirm_overlay.gd" id="2_script"]
+[ext_resource type="StyleBox" path="res://src/ui/settings_panel/focus_border_stylebox.tres" id="3_focus"]
+[ext_resource type="StyleBoxFlat" path="res://src/ui/settings_panel/unfocused_stylebox.tres" id="4_unfocused"]
 
 [node name="ConfirmOverlay" type="CanvasLayer"]
-layer = 150
+layer = 280
 process_mode = 3
 script = ExtResource("2_script")
+_focus_style = ExtResource("3_focus")
+_unfocused_style = ExtResource("4_unfocused")
 
 [node name="Background" type="ColorRect" parent="."]
 anchors_preset = 15
@@ -22,6 +26,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+layout_direction = 2
 mouse_filter = 2
 
 [node name="PanelContainer" type="PanelContainer" parent="CenterContainer"]

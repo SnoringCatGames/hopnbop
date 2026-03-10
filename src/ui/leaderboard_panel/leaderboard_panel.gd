@@ -2,7 +2,7 @@ class_name LeaderboardPanel
 extends CanvasLayer
 ## Full-screen overlay showing leaderboard and
 ## player stats. Follows the same CanvasLayer
-## overlay pattern as SettingsPanel.
+## overlay pattern as SidePanelManager.
 
 
 signal closed

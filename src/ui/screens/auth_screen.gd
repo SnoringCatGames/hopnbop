@@ -42,7 +42,7 @@ func on_open() -> void:
 
 	# Try auto-refresh.
 	if G.auth_token_store.needs_refresh():
-		_show_loading("Resuming session...")
+		_show_loading(tr("AUTH.RESUMING_SESSION"))
 		G.auth_client.auth_completed.connect(
 			_on_auto_refresh_completed,
 			CONNECT_ONE_SHOT,
@@ -189,7 +189,7 @@ func _start_login(
 	if _is_authenticating:
 		return
 
-	_show_loading("Signing in...")
+	_show_loading(tr("AUTH.SIGNING_IN"))
 
 	G.auth_client.auth_completed.connect(
 		_on_login_completed,

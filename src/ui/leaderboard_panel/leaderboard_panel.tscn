@@ -4,7 +4,7 @@
 [ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/ui/default_theme.tres" id="2_theme"]
 
 [node name="LeaderboardPanel" type="CanvasLayer"]
-layer = 100
+layer = 260
 script = ExtResource("1_script")
 
 [node name="Background" type="ColorRect" parent="."]

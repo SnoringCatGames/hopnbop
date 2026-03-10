@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Theme" uid="uid://cg4peau6bmpdw" path="res://src/ui/hud_theme.tres" id="1_theme"]
 [ext_resource type="Texture2D" uid="uid://srk2i3d48pgr" path="res://assets/images/title_512.png" id="10_logo"]
@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" uid="uid://cps3eo47dbryb" path="res://assets/images/gui/check_box_pressed_checked.png" id="7_pc"]
 [ext_resource type="Texture2D" uid="uid://d1sed1sy4clrd" path="res://assets/images/gui/check_box_pressed_unchecked.png" id="8_pu"]
 [ext_resource type="StyleBox" uid="uid://co2x2prpygpfd" path="res://src/ui/settings_panel/focus_border_stylebox.tres" id="9_focus"]
+[ext_resource type="StyleBoxFlat" path="res://src/ui/settings_panel/unfocused_stylebox.tres" id="11_unfocused"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_unfocused"]
 bg_color = Color(0, 0, 0, 0)
@@ -28,6 +29,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+layout_direction = 2
 theme = ExtResource("1_theme")
 script = ExtResource("2_script")
 tex_normal_checked = ExtResource("3_nc")
@@ -36,6 +38,8 @@ tex_pressed_checked = ExtResource("7_pc")
 tex_normal_unchecked = ExtResource("4_nu")
 tex_hovered_unchecked = ExtResource("6_hu")
 tex_pressed_unchecked = ExtResource("8_pu")
+_focus_style = ExtResource("9_focus")
+_unfocused_style = ExtResource("11_unfocused")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 2
@@ -78,7 +82,7 @@ theme_override_constants/separation = 8
 [node name="Label" type="Label" parent="VBoxContainer/ContentCenter/ContentBox/TermsLinkRow/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Terms of Service"
+text = "CONSENT.TERMS_OF_SERVICE"
 
 [node name="Arrow" type="Label" parent="VBoxContainer/ContentCenter/ContentBox/TermsLinkRow/HBoxContainer"]
 layout_mode = 2
@@ -98,7 +102,7 @@ theme_override_constants/separation = 8
 [node name="Label" type="Label" parent="VBoxContainer/ContentCenter/ContentBox/PrivacyLinkRow/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Privacy Policy"
+text = "CONSENT.PRIVACY_POLICY"
 
 [node name="Arrow" type="Label" parent="VBoxContainer/ContentCenter/ContentBox/PrivacyLinkRow/HBoxContainer"]
 layout_mode = 2
@@ -123,7 +127,7 @@ stretch_mode = 3
 
 [node name="AgeLabel" type="Label" parent="VBoxContainer/ContentCenter/ContentBox/AgeRow/HBoxContainer"]
 layout_mode = 2
-text = "I am 13 years or older"
+text = "CONSENT.AGE_CONFIRM"
 
 [node name="TermsRow" type="PanelContainer" parent="VBoxContainer/ContentCenter/ContentBox"]
 unique_name_in_owner = true
@@ -143,8 +147,7 @@ stretch_mode = 3
 
 [node name="TermsLabel" type="Label" parent="VBoxContainer/ContentCenter/ContentBox/TermsRow/HBoxContainer"]
 layout_mode = 2
-text = "I agree to the Terms of Service
-and Privacy Policy"
+text = "CONSENT.AGREE_TERMS"
 
 [node name="Spacer" type="Control" parent="VBoxContainer/ContentCenter/ContentBox"]
 layout_mode = 2
@@ -157,7 +160,7 @@ size_flags_horizontal = 4
 custom_minimum_size = Vector2(200, 40)
 disabled = true
 theme_override_styles/focus = ExtResource("9_focus")
-text = "Continue"
+text = "CONSENT.CONTINUE"
 
 [node name="BottomSpacer" type="Control" parent="VBoxContainer"]
 layout_mode = 2

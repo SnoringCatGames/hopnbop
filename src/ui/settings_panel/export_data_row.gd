@@ -3,19 +3,19 @@ extends SettingsRow
 ## A row that exports all player data as JSON.
 
 
-var _panel: SettingsPanel
+var _page: SidePanelPage
 var _is_busy := false
 
 @onready var _label: Label = %Label
 
 
-func setup(panel: SettingsPanel) -> void:
-	_panel = panel
+func setup(page: SidePanelPage) -> void:
+	_page = page
 
 
 func _ready() -> void:
 	super()
-	_label.text = "Export My Data"
+	_label.text = tr("SETTINGS.EXPORT_DATA")
 
 
 func on_left() -> void:
@@ -44,8 +44,9 @@ func _on_export_completed(
 ) -> void:
 	_is_busy = false
 
-	if is_instance_valid(_panel):
-		_panel.close()
+	if (is_instance_valid(_page)
+			and is_instance_valid(_page.manager)):
+		_page.manager.close_all()
 
 	if not success:
 		G.log.error(
@@ -53,7 +54,7 @@ func _on_export_completed(
 		)
 		if is_instance_valid(G.toast_overlay):
 			G.toast_overlay.show_toast(
-				"Export failed: %s" % error,
+				tr("TOAST.EXPORT_FAILED") % error,
 				ToastOverlay.Type.ERROR,
 			)
 		return
@@ -75,7 +76,7 @@ func _on_export_completed(
 		G.log.error("Export: failed to save file")
 		if is_instance_valid(G.toast_overlay):
 			G.toast_overlay.show_toast(
-				"Failed to save export file",
+				tr("TOAST.SAVE_FAILED"),
 				ToastOverlay.Type.ERROR,
 			)
 		return
@@ -87,7 +88,7 @@ func _on_export_completed(
 
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
-			"Data exported successfully",
+			tr("TOAST.EXPORT_SUCCESS"),
 			ToastOverlay.Type.SUCCESS,
 		)
 

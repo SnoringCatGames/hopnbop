@@ -1,7 +1,8 @@
-[gd_scene load_steps=27 format=3 uid="uid://cm56ivguy0tyt"]
+[gd_scene load_steps=28 format=3 uid="uid://cm56ivguy0tyt"]
 
 [ext_resource type="Script" uid="uid://d0loi7pwyfxtf" path="res://src/level/award_podium.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://cfrm40kvhkchf" path="res://assets/images/award_podium.png" id="2_texture"]
+[ext_resource type="PackedScene" path="res://src/player/player_portrayal.tscn" id="3_portrayal"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_wxv6r"]
 atlas = ExtResource("2_texture")
@@ -176,6 +177,7 @@ animations = [{
 sprite_frames = SubResource("SpriteFrames_7gtxi")
 autoplay = "default"
 script = ExtResource("1_script")
+_portrayal_scene = ExtResource("3_portrayal")
 
 [node name="FirstPlacePosition" type="Node2D" parent="."]
 unique_name_in_owner = true

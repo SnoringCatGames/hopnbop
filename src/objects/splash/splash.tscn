@@ -1,7 +1,8 @@
-[gd_scene load_steps=13 format=3 uid="uid://dau3yeskewf1h"]
+[gd_scene load_steps=14 format=3 uid="uid://dau3yeskewf1h"]
 
 [ext_resource type="Script" uid="uid://d0itvanqgofwp" path="res://src/objects/splash/splash.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://dj5ug4gjn7qg" path="res://assets/images/splash.png" id="2_splash"]
+[ext_resource type="Texture2D" path="res://assets/images/bloodisthickerthanwater_splash.png" id="3_blood_splash"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_f0"]
 atlas = ExtResource("2_splash")
@@ -111,3 +112,5 @@ texture_filter = 1
 sprite_frames = SubResource("SpriteFrames_splash")
 animation = &"exit_water"
 script = ExtResource("1_script")
+_default_splash_texture = ExtResource("2_splash")
+_blood_splash_texture = ExtResource("3_blood_splash")

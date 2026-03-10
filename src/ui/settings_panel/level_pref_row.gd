@@ -13,13 +13,12 @@ enum LevelPrefState {
 const _SELECTED_ICON_COLOR := (
 	Color(0.9, 0.9, 0.9))
 const _VBAR_MODULATE := Color(1, 1, 1, 0.3)
-var _vbar_texture: Texture2D = preload(
-	"res://assets/images/gui/v_bar.png")
+@export var _vbar_texture: Texture2D
 
 var _level_id: StringName
 var _display_name: String
 var _state := LevelPrefState.INCLUDED
-var _panel: SettingsPanel
+var _panel: LevelPrefPage
 var _thumbnail: Texture2D
 var _left_icon_rect: TextureRect
 var _middle_icon_rect: TextureRect
@@ -50,7 +49,7 @@ var _right_icon_rect: TextureRect
 func setup(
 	level_id: StringName,
 	display_name: String,
-	panel: SettingsPanel,
+	panel: LevelPrefPage,
 	initial_state := LevelPrefState.INCLUDED,
 	thumbnail: Texture2D = null,
 ) -> void:

@@ -4,11 +4,9 @@ extends SettingsRow
 ## ConfirmOverlay modal dialog.
 
 
-const _ConfirmOverlayScene := preload(
-	"res://src/ui/confirm_overlay/"
-	+ "confirm_overlay.tscn")
+@export var _confirm_overlay_scene: PackedScene
 
-var _panel: SettingsPanel
+var _page: SidePanelPage
 var _device_config: DeviceConfig
 var _is_busy := false
 
@@ -16,16 +14,16 @@ var _is_busy := false
 
 
 func setup(
-	panel: SettingsPanel,
+	page: SidePanelPage,
 	device_config: DeviceConfig,
 ) -> void:
-	_panel = panel
+	_page = page
 	_device_config = device_config
 
 
 func _ready() -> void:
 	super()
-	_label.text = "Delete Account"
+	_label.text = tr("SETTINGS.DELETE_ACCOUNT")
 
 
 func on_left() -> void:
@@ -40,20 +38,20 @@ func _activate() -> void:
 	if _is_busy:
 		return
 
-	_panel.is_input_blocked = true
+	_page.is_input_active = false
 
 	var dialog: ConfirmOverlay = (
-		_ConfirmOverlayScene.instantiate())
+		_confirm_overlay_scene.instantiate())
 	dialog.tree_exiting.connect(
 		func() -> void:
-			if is_instance_valid(_panel):
-				_panel.is_input_blocked = false)
+			if is_instance_valid(_page):
+				_page.is_input_active = true)
 	get_tree().root.add_child(dialog)
 	dialog.open(
-		"Delete your account?",
-		"Delete",
+		tr("CONFIRM.DELETE_ACCOUNT"),
+		tr("CONFIRM.DELETE"),
 		_do_delete,
-		"Cancel",
+		tr("CONFIRM.CANCEL"),
 		func() -> void: pass,
 		_device_config,
 	)
@@ -74,13 +72,14 @@ func _on_delete_completed(
 ) -> void:
 	_is_busy = false
 
-	if is_instance_valid(_panel):
-		_panel.close()
+	if (is_instance_valid(_page)
+			and is_instance_valid(_page.manager)):
+		_page.manager.close_all()
 
 	if success:
 		if is_instance_valid(G.toast_overlay):
 			G.toast_overlay.show_toast(
-				"Account deleted",
+				tr("TOAST.ACCOUNT_DELETED"),
 				ToastOverlay.Type.SUCCESS,
 			)
 		G.screens.client_open_screen(
@@ -93,6 +92,6 @@ func _on_delete_completed(
 		)
 		if is_instance_valid(G.toast_overlay):
 			G.toast_overlay.show_toast(
-				"Delete failed: %s" % error,
+				tr("TOAST.DELETE_FAILED") % error,
 				ToastOverlay.Type.ERROR,
 			)

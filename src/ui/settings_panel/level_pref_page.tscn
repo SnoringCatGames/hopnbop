@@ -1,0 +1,11 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/ui/settings_panel/level_pref_page.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/side_panel_page.tscn" id="2_base"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/back_row.tscn" id="3_back_row"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/level_pref_row.tscn" id="4_level_pref"]
+
+[node name="LevelPrefPage" instance=ExtResource("2_base")]
+script = ExtResource("1_script")
+_back_row_scene = ExtResource("3_back_row")
+_level_pref_row_scene = ExtResource("4_level_pref")
