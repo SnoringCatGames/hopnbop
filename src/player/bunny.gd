@@ -106,7 +106,7 @@ func _process(_delta: float) -> void:
 ## player enters the spring trigger zone.
 ## Server forward-sim only.
 func server_trigger_spring_bounce() -> void:
-	if not Netcode.is_server:
+	if not Netcode.runs_server_logic:
 		return
 	if Netcode.frame_driver.is_resimulating:
 		return
@@ -134,7 +134,7 @@ func server_trigger_spring_bounce() -> void:
 ## Called by the Snail scene when the player
 ## crushes it. Server forward-sim only.
 func server_trigger_snail_crush_bounce() -> void:
-	if not Netcode.is_server:
+	if not Netcode.runs_server_logic:
 		return
 	if Netcode.frame_driver.is_resimulating:
 		return
@@ -177,7 +177,7 @@ func _process_movement_and_actions() -> void:
 	var bounce_vel := Vector2.ZERO
 
 	if (
-		Netcode.is_server
+		Netcode.runs_server_logic
 		and _has_pending_bounce
 		and not Netcode.frame_driver.is_resimulating
 	):
@@ -277,7 +277,7 @@ func _process_movement_and_actions() -> void:
 		)
 
 	# Reset collision flag each frame.
-	if Netcode.is_server:
+	if Netcode.runs_server_logic:
 		var current_frame: int = (
 		Netcode.frame_driver.server_frame_index)
 		if _last_collision_frame != current_frame:
@@ -287,7 +287,7 @@ func _process_movement_and_actions() -> void:
 	# Accumulate per-frame gameplay stats (server
 	# forward-sim only, while alive and match active).
 	if (
-		Netcode.is_server
+		Netcode.runs_server_logic
 		and not Netcode.frame_driver.is_resimulating
 		and not state_from_server.is_dead
 		and not G.match_state.is_match_ended
@@ -974,7 +974,7 @@ func update_outline() -> void:
 
 func _on_body_area_body_entered(body: Node2D) -> void:
 	# This should represent a collision with another player.
-	if not Netcode.is_server:
+	if not Netcode.runs_server_logic:
 		return
 
 	if not Netcode.ensure(body is Player):
@@ -1523,7 +1523,7 @@ func _calculate_lag_compensated_kill_position(
 
 
 func _on_foot_area_area_entered(area: Area2D) -> void:
-	if not Netcode.is_server:
+	if not Netcode.runs_server_logic:
 		return
 
 	var other_parent: Node = area.get_parent()
@@ -1601,7 +1601,7 @@ func _on_foot_area_area_entered(area: Area2D) -> void:
 
 
 func _on_body_area_body_exited(body: Node2D) -> void:
-	if not Netcode.is_server:
+	if not Netcode.runs_server_logic:
 		return
 
 	if not body is Player:
@@ -1619,7 +1619,7 @@ func _on_body_area_body_exited(body: Node2D) -> void:
 
 
 func _on_foot_area_area_exited(area: Area2D) -> void:
-	if not Netcode.is_server:
+	if not Netcode.runs_server_logic:
 		return
 
 	var other_parent: Node = area.get_parent()
@@ -1739,7 +1739,7 @@ func _update_player_collision_for_invincibility() -> void:
 ## Processes collisions that were deferred during invincibility.
 ## Called when invincibility ends.
 func _process_deferred_collisions() -> void:
-	if not Netcode.is_server:
+	if not Netcode.runs_server_logic:
 		return
 
 	if _active_intersections.is_empty():

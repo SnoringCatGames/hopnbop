@@ -61,7 +61,7 @@ func _pre_network_process() -> void:
 		if frame_authority == FrameAuthority.AUTHORITATIVE:
 			frame_authority = (
 				FrameAuthority.SERVER_PREDICTED
-				if Netcode.is_server
+				if Netcode.runs_server_logic
 				else FrameAuthority.CLIENT_PREDICTED
 			)
 

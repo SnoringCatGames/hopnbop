@@ -83,7 +83,7 @@ func _enter_tree() -> void:
 
 	G.game_panel.on_level_added(self)
 
-	if Netcode.is_server:
+	if Netcode.runs_server_logic:
 		# Listen for player count declarations
 		# from clients.
 		(Netcode.connector
@@ -175,7 +175,7 @@ func _ready() -> void:
 	# invisible until the server initializes them.
 	_create_snail_nodes()
 
-	if Netcode.is_server:
+	if Netcode.runs_server_logic:
 		# Snails are initialized later by
 		# GamePanel after critter preference
 		# majority vote.
@@ -263,7 +263,7 @@ func _client_on_player_despawned(
 func _exit_tree() -> void:
 	if Engine.is_editor_hint():
 		return
-	if Netcode.is_server:
+	if Netcode.runs_server_logic:
 		if is_instance_valid(G.game_panel):
 			G.game_panel.is_level_fully_loaded = (
 				false)

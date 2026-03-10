@@ -189,13 +189,15 @@ func _ready() -> void:
 	# initialize() or _rpc_init).
 	visible = false
 
-	if Netcode.is_server:
+	if Netcode.runs_server_logic:
 		_crush_area.area_entered.connect(
 			_on_crush_area_area_entered)
 	# Clients don't need the crush area to
-	# monitor.
-	if Netcode.is_client:
+	# monitor (unless in local mode where both
+	# roles coexist).
+	if Netcode.is_client and not Netcode.is_local_mode:
 		_crush_area.monitoring = false
+	if Netcode.is_client:
 		CritterWrapGhost.create_ghosts(
 			self, _sprite)
 
@@ -346,7 +348,7 @@ func _physics_process(_delta: float) -> void:
 		Netcode.server_frame_index)
 
 	# Server frame-based respawn timer.
-	if Netcode.is_server and _is_respawning:
+	if Netcode.runs_server_logic and _is_respawning:
 		if current_frame >= _respawn_at_frame:
 			_respawn()
 		return
@@ -715,7 +717,7 @@ func _wrap_tile(
 func _on_crush_area_area_entered(
 	area: Area2D,
 ) -> void:
-	if not Netcode.is_server:
+	if not Netcode.runs_server_logic:
 		return
 	if not is_alive:
 		return
