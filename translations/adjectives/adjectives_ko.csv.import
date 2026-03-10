@@ -1,0 +1,17 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://cvisqthjgfo4n"
+
+[deps]
+
+files=["res://translations/adjectives/adjectives_ko.adjective.translation"]
+
+source_file="res://translations/adjectives/adjectives_ko.csv"
+dest_files=["res://translations/adjectives/adjectives_ko.adjective.translation"]
+
+[params]
+
+compress=true
+delimiter=0

@@ -1,0 +1,15 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://dvhyc868q1atd"
+valid=false
+
+[deps]
+
+source_file="res://translations/names/names_hi.csv"
+
+[params]
+
+compress=true
+delimiter=0

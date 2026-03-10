@@ -1,0 +1,75 @@
+keys,en,zh,es,hi,ar,fr,pt,ru,ja,de,ko,it,th
+AUTH.SIGN_IN,Sign In,登录,Iniciar sesión,साइन इन,تسجيل الدخول,Se connecter,Entrar,Войти,サインイン,Anmelden,로그인,Accedi,เข้าสู่ระบบ
+AUTH.GOOGLE,Google,Google,Google,Google,Google,Google,Google,Google,Google,Google,Google,Google,Google
+AUTH.FACEBOOK,Facebook,Facebook,Facebook,Facebook,Facebook,Facebook,Facebook,Facebook,Facebook,Facebook,Facebook,Facebook,Facebook
+AUTH.PLAY_ANONYMOUSLY,Play Anonymously,匿名游玩,Jugar de forma anónima,गुमनाम खेलें,اللعب بشكل مجهول,Jouer anonymement,Jogar anonimamente,Играть анонимно,匿名でプレイ,Anonym spielen,익명으로 플레이,Gioca in anonimo,เล่นแบบไม่ระบุตัวตน
+AUTH.SIGNING_IN,Signing in...,正在登录...,Iniciando sesión...,साइन इन हो रहा है...,جاري تسجيل الدخول...,Connexion en cours...,Entrando...,Вход...,サインイン中...,Anmeldung...,로그인 중...,Accesso in corso...,กำลังเข้าสู่ระบบ...
+AUTH.RESUMING_SESSION,Resuming session...,正在恢复会话...,Reanudando sesión...,सत्र फिर से शुरू हो रहा है...,استئناف الجلسة...,Reprise de session...,Retomando sessão...,Восстановление сеанса...,セッション再開中...,Sitzung wird fortgesetzt...,세션 복원 중...,Ripresa sessione...,กำลังดำเนินเซสชันต่อ...
+CONSENT.TERMS_OF_SERVICE,Terms of Service,服务条款,Términos de servicio,सेवा की शर्तें,شروط الخدمة,Conditions d'utilisation,Termos de Serviço,Условия использования,利用規約,Nutzungsbedingungen,이용약관,Termini di Servizio,ข้อกำหนดการใช้บริการ
+CONSENT.PRIVACY_POLICY,Privacy Policy,隐私政策,Política de privacidad,गोपनीयता नीति,سياسة الخصوصية,Politique de confidentialité,Política de Privacidade,Политика конфиденциальности,プライバシーポリシー,Datenschutzrichtlinie,개인정보 처리방침,Informativa sulla Privacy,นโยบายความเป็นส่วนตัว
+CONSENT.AGE_CONFIRM,I am 13 years or older,我已年满13岁,Tengo 13 años o más,मेरी उम्र 13 साल या उससे अधिक है,أبلغ من العمر 13 عامًا أو أكثر,J'ai 13 ans ou plus,Tenho 13 anos ou mais,Мне 13 лет или больше,13歳以上です,Ich bin 13 Jahre oder älter,만 13세 이상입니다,Ho 13 anni o più,ฉันมีอายุ 13 ปีขึ้นไป
+CONSENT.AGREE_TERMS,I agree to the Terms of Service and Privacy Policy,我同意服务条款和隐私政策,Acepto los Términos de servicio y la Política de privacidad,मैं सेवा की शर्तों और गोपनीयता नीति से सहमत हूं,أوافق على شروط الخدمة وسياسة الخصوصية,J'accepte les Conditions d'utilisation et la Politique de confidentialité,Concordo com os Termos de Serviço e a Política de Privacidade,Я принимаю Условия использования и Политику конфиденциальности,利用規約とプライバシーポリシーに同意します,Ich stimme den Nutzungsbedingungen und der Datenschutzrichtlinie zu,이용약관 및 개인정보 처리방침에 동의합니다,Accetto i Termini di Servizio e l'Informativa sulla Privacy,ฉันยอมรับข้อกำหนดการใช้บริการและนโยบายความเป็นส่วนตัว
+CONSENT.CONTINUE,Continue,继续,Continuar,जारी रखें,متابعة,Continuer,Continuar,Продолжить,続行,Weiter,계속,Continua,ดำเนินการต่อ
+LOADING.CONNECTING,Connecting to server...,正在连接服务器...,Conectando al servidor...,सर्वर से कनेक्ट हो रहा है...,جاري الاتصال بالخادم...,Connexion au serveur...,Conectando ao servidor...,Подключение к серверу...,サーバーに接続中...,Verbindung zum Server...,서버에 연결 중...,Connessione al server...,กำลังเชื่อมต่อเซิร์ฟเวอร์...
+LOADING.WAITING_FOR_PLAYERS,Waiting for players...,正在等待玩家...,Esperando jugadores...,खिलाड़ियों की प्रतीक्षा...,في انتظار اللاعبين...,En attente de joueurs...,Aguardando jogadores...,Ожидание игроков...,プレイヤーを待っています...,Warten auf Spieler...,플레이어 대기 중...,In attesa dei giocatori...,กำลังรอผู้เล่น...
+LOADING.IN_QUEUE,In queue,排队中,En cola,कतार में,في قائمة الانتظار,En file d'attente,Na fila,В очереди,キューに参加中,In Warteschlange,대기열,In coda,อยู่ในคิว
+LOADING.EXPANDING_SEARCH,Expanding search,正在扩大搜索,Ampliando búsqueda,खोज बढ़ा रहे हैं,توسيع البحث,Élargissement de la recherche,Expandindo busca,Расширение поиска,検索を拡大中,Suche wird erweitert,검색 확장 중,Espansione della ricerca,ขยายการค้นหา
+LOADING.SEARCHING,Searching for match,正在搜索比赛,Buscando partida,मैच खोज रहे हैं,البحث عن مباراة,Recherche de partie,Buscando partida,Поиск матча,マッチを検索中,Suche nach Spiel,매치 검색 중,Ricerca partita,กำลังค้นหาแมตช์
+LOADING.MATCH_FOUND,Match found,比赛已找到,Partida encontrada,मैच मिल गया,تم العثور على مباراة,Partie trouvée,Partida encontrada,Матч найден,マッチが見つかりました,Spiel gefunden,매치 발견,Partita trovata,พบแมตช์แล้ว
+LOADING.MATCHMAKING,Matchmaking,正在匹配,Emparejamiento,मैचमेकिंग,البحث عن مباراة,Matchmaking,Matchmaking,Подбор игры,マッチメイキング,Matchmaking,매치메이킹,Matchmaking,กำลังจับคู่
+LOADING.REMAINING,~%ds remaining,剩余约%d秒,~%ds restantes,~%d सेकंड शेष,~%d ثانية متبقية,~%ds restantes,~%ds restantes,~%d сек. осталось,残り約%d秒,~%d Sek. verbleibend,~%d초 남음,~%ds rimanenti,เหลือ ~%d วินาที
+PAUSE.PAUSED_BY,Paused by client %d,已被客户端 %d 暂停,Pausado por el cliente %d,क्लाइंट %d द्वारा रोका गया,تم الإيقاف بواسطة العميل %d,Mis en pause par le client %d,Pausado pelo cliente %d,Пауза от клиента %d,クライアント%dがポーズ中,Pause durch Client %d,클라이언트 %d에 의해 일시 중지,Pausa dal client %d,หยุดชั่วคราวโดยผู้เล่น %d
+PAUSE.AUTO_UNPAUSE,Auto-unpause in: %d seconds,自动恢复: %d 秒后,Auto-reanudar en: %d segundos,ऑटो-अनपॉज: %d सेकंड में,إلغاء الإيقاف التلقائي خلال: %d ثانية,Reprise auto dans: %d secondes,Auto-retomar em: %d segundos,Авто-продолжение через: %d сек.,自動再開まで: %d秒,Auto-Fortsetzen in: %d Sek.,자동 재개: %d초 후,Ripresa automatica tra: %d secondi,เล่นต่ออัตโนมัติใน: %d วินาที
+PAUSE.PAUSER_REMAINING,Pauses remaining for pauser: %d/%d,暂停者剩余暂停次数: %d/%d,Pausas restantes del pausador: %d/%d,पॉज़ करने वाले की शेष पॉज़: %d/%d,مرات الإيقاف المتبقية للموقف: %d/%d,Pauses restantes pour le pauseur: %d/%d,Pausas restantes do pausador: %d/%d,Оставшиеся паузы: %d/%d,一時停止した人の残り回数: %d/%d,Verbleibende Pausen: %d/%d,일시정지한 사람의 남은 횟수: %d/%d,Pause rimanenti per chi ha pausato: %d/%d,จำนวนครั้งที่เหลือ: %d/%d
+PAUSE.YOUR_REMAINING,Your pauses remaining: %d/%d,你的剩余暂停次数: %d/%d,Tus pausas restantes: %d/%d,आपकी शेष पॉज़: %d/%d,مرات الإيقاف المتبقية لك: %d/%d,Vos pauses restantes: %d/%d,Suas pausas restantes: %d/%d,Ваши оставшиеся паузы: %d/%d,あなたの残りポーズ回数: %d/%d,Ihre verbleibenden Pausen: %d/%d,남은 일시정지 횟수: %d/%d,Le tue pause rimanenti: %d/%d,จำนวนครั้งที่เหลือของคุณ: %d/%d
+PAUSE.UNPAUSE,Unpause,取消暂停,Reanudar,जारी रखें,استئناف,Reprendre,Retomar,Продолжить,再開,Fortsetzen,재개,Riprendi,เล่นต่อ
+PAUSE.UNPAUSE_LOCKED,Unpause (locked),取消暂停（已锁定）,Reanudar (bloqueado),जारी रखें (लॉक),استئناف (مقفل),Reprendre (verrouillé),Retomar (bloqueado),Продолжить (заблокировано),再開（ロック中）,Fortsetzen (gesperrt),재개 (잠김),Riprendi (bloccato),เล่นต่อ (ล็อค)
+GAME_OVER.TITLE,Game over,游戏结束,Fin del juego,गेम ओवर,انتهت اللعبة,Fin de partie,Fim de jogo,Игра окончена,ゲームオーバー,Spielende,게임 오버,Fine partita,จบเกม
+GAME_OVER.PLAY_AGAIN,Play again,再玩一次,Jugar de nuevo,फिर से खेलें,اللعب مرة أخرى,Rejouer,Jogar novamente,Играть снова,もう一度プレイ,Nochmal spielen,다시 플레이,Gioca ancora,เล่นอีกครั้ง
+GAME_OVER.LEADERBOARD,Leaderboard,排行榜,Clasificación,लीडरबोर्ड,لوحة المتصدرين,Classement,Classificação,Таблица лидеров,リーダーボード,Bestenliste,리더보드,Classifica,กระดานผู้นำ
+CELEBRATION.TIE,TIE!,平局！,¡EMPATE!,टाई!,تعادل!,ÉGALITÉ !,EMPATE!,НИЧЬЯ!,引き分け！,UNENTSCHIEDEN!,무승부!,PAREGGIO!,เสมอ!
+CELEBRATION.WINS,%s WINS!,%s 获胜！,¡%s GANA!,%s जीता!,%s فاز!,%s GAGNE !,%s VENCE!,%s ПОБЕЖДАЕТ!,%sの勝ち！,%s GEWINNT!,%s 승리!,%s VINCE!,%s ชนะ!
+CELEBRATION.WINNER,WINS!,获胜！,¡GANA!,जीता!,فاز!,GAGNE !,VENCE!,ПОБЕЖДАЕТ!,勝ち！,GEWINNT!,승리!,VINCE!,ชนะ!
+COUNTDOWN.GO,GO!,开始！,¡YA!,जाओ!,انطلق!,GO !,VAI!,ВПЕРЁД!,GO!,LOS!,출발!,VIA!,ไป!
+SETTINGS.GORE,Gore,血腥,Gore,गोर,عنف,Gore,Gore,Кровь,ゴア,Blut,고어,Gore,เลือดสาด
+SETTINGS.CRITTERS,Critters,小动物,Bichos,जीव,مخلوقات,Bestioles,Criaturas,Живность,生き物,Tierchen,생물,Creature,สัตว์
+SETTINGS.CHEATS,Cheats,作弊,Trucos,चीट्स,غش,Triches,Trapaças,Читы,チート,Cheats,치트,Trucchi,สูตรโกง
+SETTINGS.FULL_SCREEN,Full Screen,全屏,Pantalla completa,पूर्ण स्क्रीन,شاشة كاملة,Plein écran,Tela cheia,Полный экран,フルスクリーン,Vollbild,전체 화면,Schermo intero,เต็มจอ
+SETTINGS.MUSIC,Music,音乐,Música,संगीत,موسيقى,Musique,Música,Музыка,音楽,Musik,음악,Musica,เพลง
+SETTINGS.SFX,SFX,音效,Efectos,ध्वनि प्रभाव,مؤثرات صوتية,SFX,SFX,Звуки,効果音,SFX,효과음,SFX,เอฟเฟกต์เสียง
+SETTINGS.DELETE_ACCOUNT,Delete Account,删除账户,Eliminar cuenta,खाता हटाएं,حذف الحساب,Supprimer le compte,Excluir conta,Удалить аккаунт,アカウント削除,Konto löschen,계정 삭제,Elimina account,ลบบัญชี
+SETTINGS.EXPORT_DATA,Export My Data,导出我的数据,Exportar mis datos,मेरा डेटा निर्यात करें,تصدير بياناتي,Exporter mes données,Exportar meus dados,Экспорт данных,データをエクスポート,Meine Daten exportieren,내 데이터 내보내기,Esporta i miei dati,ส่งออกข้อมูลของฉัน
+SETTINGS.LOG_OUT,Log Out,退出登录,Cerrar sesión,लॉग आउट,تسجيل الخروج,Se déconnecter,Sair,Выйти,ログアウト,Abmelden,로그아웃,Esci,ออกจากระบบ
+SETTINGS.DATA_DELETION_POLICY,Data Deletion Policy,数据删除政策,Política de eliminación de datos,डेटा विलोपन नीति,سياسة حذف البيانات,Politique de suppression des données,Política de Exclusão de Dados,Политика удаления данных,データ削除ポリシー,Datenlöschungsrichtlinie,데이터 삭제 정책,Politica di Cancellazione Dati,นโยบายการลบข้อมูล
+SETTINGS.LANGUAGE,Language,语言,Idioma,भाषा,اللغة,Langue,Idioma,Язык,言語,Sprache,언어,Lingua,ภาษา
+SETTINGS.INFO,Info,信息,Info,जानकारी,معلومات,Info,Info,Инфо,情報,Info,정보,Info,ข้อมูล
+SETTINGS.CREDITS,Credits,制作团队,Créditos,श्रेय,الاعتمادات,Crédits,Créditos,Авторы,クレジット,Credits,크레딧,Crediti,เครดิต
+SETTINGS.OFFLINE_MODE,Offline Mode,离线模式,Modo sin conexión,ऑफ़लाइन मोड,وضع عدم الاتصال,Mode hors ligne,Modo offline,Офлайн-режим,オフラインモード,Offline-Modus,오프라인 모드,Modalità offline,โหมดออฟไลน์
+SETTINGS.SETTINGS,Settings,设置,Ajustes,सेटिंग्स,الإعدادات,Paramètres,Configurações,Настройки,設定,Einstellungen,설정,Impostazioni,การตั้งค่า
+SETTINGS.LEVELS,Levels,关卡,Niveles,स्तर,المستويات,Niveaux,Níveis,Уровни,レベル,Level,레벨,Livelli,ด่าน
+SETTINGS.ACCOUNT,Account,账户,Cuenta,खाता,الحساب,Compte,Conta,Аккаунт,アカウント,Konto,계정,Account,บัญชี
+CONFIRM.DELETE_ACCOUNT,Delete your account?,确定要删除账户吗？,¿Eliminar tu cuenta?,अपना खाता हटाएं?,هل تريد حذف حسابك؟,Supprimer votre compte ?,Excluir sua conta?,Удалить ваш аккаунт?,アカウントを削除しますか？,Konto löschen?,계정을 삭제하시겠습니까?,Eliminare il tuo account?,ลบบัญชีของคุณ?
+CONFIRM.DELETE,Delete,删除,Eliminar,हटाएं,حذف,Supprimer,Excluir,Удалить,削除,Löschen,삭제,Elimina,ลบ
+CONFIRM.CANCEL,Cancel,取消,Cancelar,रद्द करें,إلغاء,Annuler,Cancelar,Отмена,キャンセル,Abbrechen,취소,Annulla,ยกเลิก
+CONFIRM.LOG_OUT,Log out?,确定要退出登录吗？,¿Cerrar sesión?,लॉग आउट करें?,هل تريد تسجيل الخروج؟,Se déconnecter ?,Sair?,Выйти из аккаунта?,ログアウトしますか？,Abmelden?,로그아웃하시겠습니까?,Effettuare il logout?,ออกจากระบบ?
+CONFIRM.UNLINK_ACCOUNT,Unlink %s?,取消链接 %s？,¿Desvincular %s?,%s अनलिंक करें?,إلغاء ربط %s؟,Délier %s ?,Desvincular %s?,Отвязать %s?,%sのリンクを解除しますか？,%s entknüpfen?,%s 연동을 해제하시겠습니까?,Scollegare %s?,ยกเลิกการเชื่อมโยง %s?
+TOAST.ACCOUNT_DELETED,Account deleted,账户已删除,Cuenta eliminada,खाता हटाया गया,تم حذف الحساب,Compte supprimé,Conta excluída,Аккаунт удалён,アカウントが削除されました,Konto gelöscht,계정이 삭제되었습니다,Account eliminato,ลบบัญชีแล้ว
+TOAST.DELETE_FAILED,Delete failed: %s,删除失败: %s,Error al eliminar: %s,हटाना विफल: %s,فشل الحذف: %s,Suppression échouée : %s,Falha ao excluir: %s,Ошибка удаления: %s,削除に失敗: %s,Löschen fehlgeschlagen: %s,삭제 실패: %s,Eliminazione fallita: %s,ลบไม่สำเร็จ: %s
+TOAST.EXPORT_FAILED,Export failed: %s,导出失败: %s,Error al exportar: %s,निर्यात विफल: %s,فشل التصدير: %s,Exportation échouée : %s,Falha ao exportar: %s,Ошибка экспорта: %s,エクスポートに失敗: %s,Export fehlgeschlagen: %s,내보내기 실패: %s,Esportazione fallita: %s,ส่งออกไม่สำเร็จ: %s
+TOAST.SAVE_FAILED,Failed to save export file,导出文件保存失败,Error al guardar el archivo,फ़ाइल सहेजना विफल,فشل حفظ ملف التصدير,Échec de l'enregistrement du fichier,Falha ao salvar o arquivo,Ошибка сохранения файла,エクスポートファイルの保存に失敗,Datei konnte nicht gespeichert werden,내보내기 파일 저장 실패,Salvataggio file fallito,บันทึกไฟล์ส่งออกไม่สำเร็จ
+TOAST.EXPORT_SUCCESS,Data exported successfully,数据导出成功,Datos exportados correctamente,डेटा सफलतापूर्वक निर्यात किया गया,تم تصدير البيانات بنجاح,Données exportées avec succès,Dados exportados com sucesso,Данные успешно экспортированы,データのエクスポートに成功,Daten erfolgreich exportiert,데이터가 성공적으로 내보내졌습니다,Dati esportati con successo,ส่งออกข้อมูลสำเร็จ
+TOAST.LOGGED_OUT,Logged out,已退出登录,Sesión cerrada,लॉग आउट हो गया,تم تسجيل الخروج,Déconnecté,Sessão encerrada,Выход выполнен,ログアウトしました,Abgemeldet,로그아웃되었습니다,Disconnesso,ออกจากระบบแล้ว
+TOAST.PLAYING_ONLINE,Playing online. Change in Settings.,在线游玩中。可在设置中更改。,Jugando en línea. Cambiar en Ajustes.,ऑनलाइन खेल रहे हैं। सेटिंग्स में बदलें।,اللعب عبر الإنترنت. غيّر في الإعدادات.,En ligne. Modifier dans les paramètres.,Jogando online. Altere em Configurações.,Онлайн-игра. Измените в настройках.,オンラインでプレイ中。設定で変更できます。,Online-Spiel. In Einstellungen ändern.,온라인 플레이 중. 설정에서 변경하세요.,Giocando online. Modifica nelle impostazioni.,เล่นออนไลน์ เปลี่ยนได้ในการตั้งค่า
+TOAST.PLAYING_OFFLINE,Playing offline. Change in Settings.,离线游玩中。可在设置中更改。,Jugando sin conexión. Cambiar en Ajustes.,ऑफ़लाइन खेल रहे हैं। सेटिंग्स में बदलें।,اللعب بدون اتصال. غيّر في الإعدادات.,Hors ligne. Modifier dans les paramètres.,Jogando offline. Altere em Configurações.,Офлайн-игра. Измените в настройках.,オフラインでプレイ中。設定で変更できます。,Offline-Spiel. In Einstellungen ändern.,오프라인 플레이 중. 설정에서 변경하세요.,Giocando offline. Modifica nelle impostazioni.,เล่นออฟไลน์ เปลี่ยนได้ในการตั้งค่า
+TOAST.LOCAL_MODE_FALLBACK,No online players found. Playing locally.,未找到在线玩家。本地游玩中。,No se encontraron jugadores en línea. Jugando localmente.,कोई ऑनलाइन खिलाड़ी नहीं मिला। स्थानीय रूप से खेल रहे हैं।,لم يتم العثور على لاعبين عبر الإنترنت. اللعب محليًا.,Aucun joueur en ligne trouvé. Partie locale.,Nenhum jogador online encontrado. Jogando localmente.,Онлайн-игроки не найдены. Играем локально.,オンラインプレイヤーが見つかりません。ローカルでプレイします。,Keine Online-Spieler gefunden. Lokales Spiel.,온라인 플레이어를 찾을 수 없습니다. 로컬로 플레이합니다.,Nessun giocatore online trovato. Partita locale.,ไม่พบผู้เล่นออนไลน์ เล่นแบบโลคอล
+LINK.CONNECTING,Connecting...,正在连接...,Conectando...,कनेक्ट हो रहा है...,جاري الاتصال...,Connexion...,Conectando...,Подключение...,接続中...,Verbinden...,연결 중...,Connessione...,กำลังเชื่อมต่อ...
+LINK.LINKING,Linking...,正在链接...,Vinculando...,लिंक हो रहा है...,جاري الربط...,Liaison...,Vinculando...,Привязка...,リンク中...,Verknüpfen...,연동 중...,Collegamento...,กำลังเชื่อมโยง...
+LINK.UNLINKING,Unlinking...,正在取消链接...,Desvinculando...,अनलिंक हो रहा है...,جاري إلغاء الربط...,Déconnexion...,Desvinculando...,Отвязка...,リンク解除中...,Entknüpfen...,연동 해제 중...,Scollegamento...,กำลังยกเลิกการเชื่อมโยง...
+LINK.LINKED,Linked,已链接,Vinculado,लिंक किया गया,مرتبط,Lié,Vinculado,Привязан,リンク済み,Verknüpft,연동됨,Collegato,เชื่อมโยงแล้ว
+LINK.CONNECT,Connect,连接,Conectar,कनेक्ट,اتصال,Connecter,Conectar,Подключить,接続,Verbinden,연결,Connetti,เชื่อมต่อ
+LINK.LINK,Link,链接,Vincular,लिंक,ربط,Lier,Vincular,Привязать,リンク,Verknüpfen,연동,Collega,เชื่อมโยง
+LINK.UNLINK,Unlink,取消链接,Desvincular,अनलिंक,إلغاء الربط,Délier,Desvincular,Отвязать,リンク解除,Entknüpfen,연동 해제,Scollega,ยกเลิกการเชื่อมโยง
+ORDINAL.1ST,1st,第1,1.º,पहला,الأول,1er,1º,1-й,1位,1.,1위,1°,อันดับ 1
+ORDINAL.2ND,2nd,第2,2.º,दूसरा,الثاني,2e,2º,2-й,2位,2.,2위,2°,อันดับ 2
+ORDINAL.3RD,3rd,第3,3.º,तीसरा,الثالث,3e,3º,3-й,3位,3.,3위,3°,อันดับ 3
+ORDINAL.NTH,%dth,第%d,%d.º,%dवां,%d,%de,%dº,%d-й,%d位,%d.,위 %d,%d°,อันดับ %d

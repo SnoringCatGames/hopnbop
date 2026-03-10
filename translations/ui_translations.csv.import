@@ -1,0 +1,17 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://c04tpiqvb5cf"
+
+[deps]
+
+files=["res://translations/ui_translations.en.translation", "res://translations/ui_translations.zh.translation", "res://translations/ui_translations.es.translation", "res://translations/ui_translations.hi.translation", "res://translations/ui_translations.ar.translation", "res://translations/ui_translations.fr.translation", "res://translations/ui_translations.pt.translation", "res://translations/ui_translations.ru.translation", "res://translations/ui_translations.ja.translation", "res://translations/ui_translations.de.translation", "res://translations/ui_translations.ko.translation", "res://translations/ui_translations.it.translation", "res://translations/ui_translations.th.translation"]
+
+source_file="res://translations/ui_translations.csv"
+dest_files=["res://translations/ui_translations.en.translation", "res://translations/ui_translations.zh.translation", "res://translations/ui_translations.es.translation", "res://translations/ui_translations.hi.translation", "res://translations/ui_translations.ar.translation", "res://translations/ui_translations.fr.translation", "res://translations/ui_translations.pt.translation", "res://translations/ui_translations.ru.translation", "res://translations/ui_translations.ja.translation", "res://translations/ui_translations.de.translation", "res://translations/ui_translations.ko.translation", "res://translations/ui_translations.it.translation", "res://translations/ui_translations.th.translation"]
+
+[params]
+
+compress=true
+delimiter=0

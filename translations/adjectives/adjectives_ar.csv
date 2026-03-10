@@ -1,0 +1,230 @@
+category,adjective
+soft,منفوش
+soft,كروي
+soft,ناعم
+soft,دبدوبي
+soft,نعسان
+soft,ممتلئ
+soft,رقيق
+soft,لطيف
+soft,خجول
+soft,محبوب
+soft,مشاغب صغير
+soft,حنون
+soft,طري
+soft,بريء
+soft,دمث
+soft,مكوّر
+soft,قطني
+soft,كسلان
+soft,مدلّل
+soft,دبّوب
+soft,وردي
+soft,أخرق
+soft,فضولي
+soft,مبطبط
+soft,مهلهل
+hard,وحشي
+hard,مرعب
+hard,لا يُقهر
+hard,مدمّر
+hard,جبّار
+hard,شرس
+hard,بلا رحمة
+hard,هائل
+hard,مجنون
+hard,عاصف
+hard,مروّع
+hard,ناري
+hard,مهلك
+hard,غاضب
+hard,متوحش
+hard,بركاني
+hard,شيطاني
+hard,كارثي
+hard,ملتهب
+hard,مسعور
+hard,طاغي
+hard,رهيب
+hard,جهنّمي
+hard,زلزالي
+hard,مهووس
+crown_upper,ملكي
+crown_upper,سلطاني
+crown_upper,متوّج
+crown_upper,عظيم
+crown_upper,مهيب
+crown_upper,إمبراطوري
+crown_upper,مجيد
+crown_upper,فخيم
+crown_upper,أميري
+crown_upper,مظفّر
+regicide_upper,قاتل الملوك
+regicide_upper,مُطيح بالعرش
+regicide_upper,مغتصب
+regicide_upper,ثائر
+regicide_upper,انقلابي
+regicide_upper,محطم التيجان
+regicide_upper,خالع الملوك
+regicide_upper,مزعزع العروش
+regicide_upper,كاسر الصولجان
+bumps_upper,مشاكس
+bumps_upper,عنيد
+bumps_upper,مزاحم
+bumps_upper,ثوري
+bumps_upper,صدّام
+bumps_upper,متهوّر
+bumps_upper,نطّاح
+bumps_upper,مناطح
+bumps_upper,مصادم
+bumps_upper,مندفع
+kills_upper,فتّاك
+kills_upper,قاهر
+kills_upper,ساحق
+kills_upper,مبيد
+kills_upper,لا يُوقف
+kills_upper,مهيمن
+kills_upper,محطّم
+kills_upper,ماحق
+kills_upper,قاصم
+kills_upper,مُنهي
+kills_lower,مسالم
+kills_lower,وديع
+kills_lower,رحيم
+kills_lower,حليم
+kills_lower,هادئ
+kills_lower,لا يؤذي
+kills_lower,رقيق القلب
+kills_lower,حمامة سلام
+kills_lower,عطوف
+kills_lower,ودود
+deaths_upper,منحوس
+deaths_upper,تعيس
+deaths_upper,أخرق
+deaths_upper,سيء الحظ
+deaths_upper,هش
+deaths_upper,زجاجي
+deaths_upper,متعثّر
+deaths_upper,مصاب
+deaths_upper,مُبتلى
+deaths_upper,مغبون
+deaths_lower,خالد
+deaths_lower,لا يموت
+deaths_lower,صامد
+deaths_lower,منيع
+deaths_lower,عصيّ
+deaths_lower,فولاذي
+deaths_lower,صلب كالصخر
+deaths_lower,لا يُخدش
+deaths_lower,محصّن
+jumps_upper,قفّاز
+jumps_upper,نطّاط
+jumps_upper,لا يهدأ
+jumps_upper,طائر
+jumps_upper,مكهرب
+jumps_upper,متحمّس
+jumps_upper,وثّاب
+jumps_upper,فرّاز
+jumps_upper,مرتدّ
+jumps_upper,ضفدعي
+jumps_lower,راسخ
+jumps_lower,ثابت
+jumps_lower,أرضي
+jumps_lower,متجذّر
+jumps_lower,لا يتزحزح
+jumps_lower,هادئ البال
+jumps_lower,ثقيل القدم
+jumps_lower,رصين
+jumps_lower,ساكن
+jumps_lower,جامد
+water_time_upper,برمائي
+water_time_upper,مبلّل
+water_time_upper,غوّاص
+water_time_upper,مائي
+water_time_upper,غارق
+water_time_upper,بحري
+water_time_upper,سمكيّ
+water_time_upper,محيطي
+water_time_upper,مُشبع
+water_time_upper,قاع البحر
+water_jump_upper,دلفيني
+water_jump_upper,يركب الموج
+water_jump_upper,متطاير
+water_jump_upper,يشقّ الماء
+water_jump_upper,نافورة
+water_jump_upper,راكب أمواج
+water_jump_upper,منقضّ على الماء
+water_jump_upper,سمك طائر
+ice_time_upper,متجمّد
+ice_time_upper,جليدي
+ice_time_upper,قطبي
+ice_time_upper,ثلجي
+ice_time_upper,متزلّج
+ice_time_upper,صقيعي
+ice_time_upper,عاصفة ثلجية
+ice_time_upper,تحت الصفر
+ice_time_upper,شتوي
+ice_time_upper,بارد كالجليد
+springs_upper,منجنيقي
+springs_upper,صاروخي
+springs_upper,مقذوف
+springs_upper,مرن
+springs_upper,ارتدادي
+springs_upper,فوق صوتي
+springs_upper,مقلاعي
+springs_upper,منطلق
+springs_upper,نبضي
+springs_upper,مدفعي
+direction_changes_upper,متردّد
+direction_changes_upper,مرتبك
+direction_changes_upper,متخبّط
+direction_changes_upper,حائر
+direction_changes_upper,مشتّت
+direction_changes_upper,متقلّب
+direction_changes_upper,مضطرب
+direction_changes_upper,ملتوي المسار
+direction_changes_upper,تائه
+direction_changes_upper,متلعثم
+direction_changes_lower,حازم
+direction_changes_lower,عازم
+direction_changes_lower,ثابت العزم
+direction_changes_lower,لا يتراجع
+direction_changes_lower,مركّز
+direction_changes_lower,حديدي الإرادة
+direction_changes_lower,صارم
+direction_changes_lower,قاطع
+direction_changes_lower,واثق
+direction_changes_lower,مصمّم
+height_upper,سماوي
+height_upper,شاهق
+height_upper,محلّق
+height_upper,قمّي
+height_upper,علوّي
+height_upper,فوق السحاب
+height_upper,طبقي الجوّ
+height_upper,نسري
+height_upper,سامق
+critter_disruptor_upper,مشاغب
+critter_disruptor_upper,مفزع
+critter_disruptor_upper,مزعج
+critter_disruptor_upper,فوضوي
+critter_disruptor_upper,مرهب
+critter_disruptor_upper,مهيج
+critter_disruptor_upper,شغبي
+critter_disruptor_upper,مُقلق
+fly_proximity_upper,طنّان
+fly_proximity_upper,محاط بالذباب
+fly_proximity_upper,يجذب الحشرات
+fly_proximity_upper,سرب ملتصق
+fly_proximity_upper,همهام
+fly_proximity_upper,ذبابي
+fly_proximity_upper,بعوضي
+fly_proximity_upper,حشري
+poop_upper,مخصّب
+poop_upper,كثير الفضلات
+poop_upper,مبذّر
+poop_upper,راشّ
+poop_upper,سمّاد
+poop_upper,غزير الإنتاج
+poop_upper,بعراتي
+poop_upper,أثري
