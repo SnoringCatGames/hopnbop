@@ -32,11 +32,27 @@ if (-not $SkipExport) {
     # Ensure build directory exists.
     New-Item -ItemType Directory -Force -Path "build/linux" | Out-Null
 
+    # Delete stale .pck to force a fresh export.
+    # Godot's --export-pack sometimes skips writing
+    # if the output file already exists.
+    $pckPath = "build/linux/hopnbop_server.pck"
+    if (Test-Path $pckPath) {
+        Remove-Item $pckPath
+        Write-Host "  Removed stale .pck" -ForegroundColor DarkGray
+    }
+
+    # Reimport to regenerate the script class cache.
+    # Headless export does not reimport automatically.
+    & godot --headless --import
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Reimport returned non-zero (may be OK)"
+    }
+
     # Export the .pck only. The Linux server binary
     # is platform-specific and unchanged between code
     # deploys. --export-release fails on Windows due
     # to Linux .so dependency copy issues.
-    & godot --headless --export-pack "Linux Server" "build/linux/hopnbop_server.pck"
+    & godot --headless --export-pack "Linux Server" $pckPath
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Godot export failed"
         exit 1
