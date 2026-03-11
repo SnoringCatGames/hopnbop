@@ -346,6 +346,11 @@ extends Node
 
 # ---
 
+# - Make bespoke art for the web loading screen.
+#   - This should be inspired by the level art.
+
+# ---
+
 
 # - Review /rollback_netcode/examples/.
 # - Look at how some old Scaffolder utilities are used, like ScaffolderTime.

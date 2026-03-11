@@ -43,30 +43,15 @@ body {
 }
 
 #status-splash {
-	max-height: 30vh;
-	max-width: 60vw;
-	object-fit: contain;
-	margin-bottom: 1rem;
-}
-
-#status-splash.show-image--false {
 	display: none;
 }
 
-#status-splash.fullsize--true {
-	max-height: 40vh;
-}
-
-#status-splash.use-filter--false {
+#status-logo {
+	max-height: 30vh;
+	max-width: 70vw;
+	object-fit: contain;
 	image-rendering: pixelated;
-}
-
-#status-title {
-	font-size: 2rem;
-	font-weight: 700;
-	color: #fff;
 	margin-bottom: 1.5rem;
-	letter-spacing: 0.05em;
 }
 
 #status-progress, #status-notice {
@@ -152,8 +137,8 @@ body {
 		</noscript>
 
 		<div id="status">
-			<div id="status-title">Hop 'n Bop</div>
-			<img id="status-splash" class="show-image--true fullsize--true use-filter--true" src="index.png" alt="">
+			<img id="status-logo" src="logo.png" alt="Hop 'n Bop">
+			<img id="status-splash" src="index.png" alt="">
 			<progress id="status-progress"></progress>
 			<div id="status-label">Loading...</div>
 			<div id="status-notice"></div>
@@ -166,7 +151,7 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":24420040,"index.wasm":38057390},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":24420184,"index.wasm":38057390},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 

@@ -120,7 +120,7 @@ var _is_exporting := false
 var _export_http_request: HTTPRequest
 
 # Popup OAuth state (web platform).
-var _js_message_callback: JavaScriptObject
+var _is_awaiting_web_oauth := false
 var _popup_timeout_timer: Timer
 
 
@@ -137,6 +137,9 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if _is_awaiting_oauth and _tcp_server != null:
 		_poll_oauth_redirect()
+
+	if _is_awaiting_web_oauth:
+		_poll_web_oauth()
 
 	_check_auto_refresh()
 
@@ -578,8 +581,11 @@ func _start_web_oauth(
 		% _PROVIDER_NAMES[provider]
 	)
 
-	# Register JS message listener for the callback.
-	_setup_js_message_listener()
+	# Set up BroadcastChannel to receive the OAuth code.
+	# Uses polling instead of callbacks because
+	# JavaScriptBridge callbacks are unreliable in
+	# threaded builds (Godot runs in a pthread).
+	_setup_web_oauth_channel()
 
 	# Open popup. Must happen synchronously from user
 	# interaction to avoid popup blockers.
@@ -593,6 +599,7 @@ func _start_web_oauth(
 	) % auth_url.replace("'", "\\'")
 	JavaScriptBridge.eval(js_code)
 
+	_is_awaiting_web_oauth = true
 	auth_status_changed.emit(
 		"Complete sign-in in the popup..."
 	)
@@ -601,87 +608,57 @@ func _start_web_oauth(
 	_start_popup_timeout()
 
 
-func _setup_js_message_listener() -> void:
-	_cleanup_js_message_listener()
+func _setup_web_oauth_channel() -> void:
+	_cleanup_web_oauth_channel()
 
-	_js_message_callback = (
-		JavaScriptBridge.create_callback(
-			_on_broadcast_message
-		)
-	)
-	# Use BroadcastChannel instead of
-	# window.opener.postMessage. COOP headers
-	# (required for threads) sever window.opener,
-	# but BroadcastChannel works across same-origin
-	# pages regardless of COOP.
+	# Create a BroadcastChannel and store received
+	# messages as a JSON string in a global variable.
+	# Polled from _poll_web_oauth() each frame.
+	# BroadcastChannel works across same-origin pages
+	# regardless of COOP headers.
 	JavaScriptBridge.eval(
-		"window._hopnbop_oauth_channel"
+		"window._hopnbop_oauth_result = null;"
+		+ "window._hopnbop_oauth_channel"
 		+ " = new BroadcastChannel("
 		+ "'hopnbop_oauth');"
-	)
-	var channel: JavaScriptObject = (
-		JavaScriptBridge.eval(
-			"window._hopnbop_oauth_channel"
-		)
-	)
-	channel.addEventListener(
-		"message", _js_message_callback
+		+ "window._hopnbop_oauth_channel.onmessage"
+		+ " = function(e) {"
+		+ " window._hopnbop_oauth_result"
+		+ " = JSON.stringify(e.data);"
+		+ "};"
 	)
 
 
-func _cleanup_js_message_listener() -> void:
-	if _js_message_callback != null:
-		JavaScriptBridge.eval(
-			"if (window._hopnbop_oauth_channel) {"
-			+ " window._hopnbop_oauth_channel.close();"
-			+ " window._hopnbop_oauth_channel = null;"
-			+ "}"
-		)
-		_js_message_callback = null
-
-	if _popup_timeout_timer != null:
-		_popup_timeout_timer.stop()
-		_popup_timeout_timer.queue_free()
-		_popup_timeout_timer = null
-
-
-func _start_popup_timeout() -> void:
-	if _popup_timeout_timer != null:
-		_popup_timeout_timer.queue_free()
-
-	_popup_timeout_timer = Timer.new()
-	_popup_timeout_timer.wait_time = _POPUP_TIMEOUT_SEC
-	_popup_timeout_timer.one_shot = true
-	_popup_timeout_timer.timeout.connect(
-		_on_popup_timeout
+func _poll_web_oauth() -> void:
+	var result_json: Variant = JavaScriptBridge.eval(
+		"window._hopnbop_oauth_result"
 	)
-	add_child(_popup_timeout_timer)
-	_popup_timeout_timer.start()
-
-
-func _on_popup_timeout() -> void:
-	_cleanup_js_message_listener()
-	_emit_failure("Sign-in timed out")
-
-
-func _on_broadcast_message(args: Array) -> void:
-	# args[0] is the MessageEvent from BroadcastChannel.
-	# BroadcastChannel is same-origin only, so no
-	# origin check is needed.
-	var event: JavaScriptObject = args[0]
-
-	var data: JavaScriptObject = event.data
-	if data == null:
+	if result_json == null:
 		return
 
-	var msg_type: String = data.type
+	# Clear it so we don't process twice.
+	JavaScriptBridge.eval(
+		"window._hopnbop_oauth_result = null;"
+	)
+
+	_is_awaiting_web_oauth = false
+
+	var json := JSON.new()
+	var err := json.parse(result_json)
+	if err != OK:
+		_cleanup_web_oauth_channel()
+		_emit_failure("Invalid OAuth response")
+		return
+
+	var data: Dictionary = json.data
+	var msg_type: String = data.get("type", "")
 	if msg_type != "oauth_callback":
 		return
 
-	var code: String = data.code
-	var state: String = data.state
+	var code: String = data.get("code", "")
+	var state: String = data.get("state", "")
 
-	_cleanup_js_message_listener()
+	_cleanup_web_oauth_channel()
 
 	if code.is_empty():
 		_emit_failure("No auth code received")
@@ -716,6 +693,41 @@ func _on_broadcast_message(args: Array) -> void:
 	_send_auth_request(
 		endpoint, body, endpoint == _LINK_ENDPOINT
 	)
+
+
+func _cleanup_web_oauth_channel() -> void:
+	_is_awaiting_web_oauth = false
+	JavaScriptBridge.eval(
+		"if (window._hopnbop_oauth_channel) {"
+		+ " window._hopnbop_oauth_channel.close();"
+		+ " window._hopnbop_oauth_channel = null;"
+		+ "}"
+		+ "window._hopnbop_oauth_result = null;"
+	)
+
+	if _popup_timeout_timer != null:
+		_popup_timeout_timer.stop()
+		_popup_timeout_timer.queue_free()
+		_popup_timeout_timer = null
+
+
+func _start_popup_timeout() -> void:
+	if _popup_timeout_timer != null:
+		_popup_timeout_timer.queue_free()
+
+	_popup_timeout_timer = Timer.new()
+	_popup_timeout_timer.wait_time = _POPUP_TIMEOUT_SEC
+	_popup_timeout_timer.one_shot = true
+	_popup_timeout_timer.timeout.connect(
+		_on_popup_timeout
+	)
+	add_child(_popup_timeout_timer)
+	_popup_timeout_timer.start()
+
+
+func _on_popup_timeout() -> void:
+	_cleanup_web_oauth_channel()
+	_emit_failure("Sign-in timed out")
 
 
 # =============================================================

@@ -30,6 +30,14 @@ logger = Logger()
 tracer = Tracer()
 metrics = Metrics()
 
+# CORS headers included in every response.
+_HEADERS = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+}
+
 # Initialize services (cached across invocations).
 gamelift = GameLiftService(
     region=os.environ.get("AWS_REGION", "us-west-2"),
@@ -157,7 +165,7 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
 
             return {
                 "statusCode": 200,
-                "headers": {"Content-Type": "application/json"},
+                "headers": _HEADERS,
                 "body": json.dumps(
                     {
                         "status": "success",
@@ -269,7 +277,7 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
 
         return {
             "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},
+            "headers": _HEADERS,
             "body": json.dumps(
                 {
                     "status": "success",
@@ -315,7 +323,7 @@ def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dic
         if status["status"] in ["queued", "searching", "placing"]:
             return {
                 "statusCode": 200,
-                "headers": {"Content-Type": "application/json"},
+                "headers": _HEADERS,
                 "body": json.dumps(status),
             }
 
@@ -336,7 +344,7 @@ def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dic
 
             return {
                 "statusCode": 200,
-                "headers": {"Content-Type": "application/json"},
+                "headers": _HEADERS,
                 "body": json.dumps(
                     {
                         "status": "success",
@@ -357,7 +365,7 @@ def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dic
         # Failed/cancelled/timeout.
         return {
             "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},
+            "headers": _HEADERS,
             "body": json.dumps(
                 {
                     "status": "failed",
@@ -387,7 +395,7 @@ def error_response(
         "message": message,
     }
 
-    headers = {"Content-Type": "application/json"}
+    headers = dict(_HEADERS)
     if retry_after:
         headers["Retry-After"] = str(retry_after)
 

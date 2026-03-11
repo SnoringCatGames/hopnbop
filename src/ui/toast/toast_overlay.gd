@@ -15,6 +15,8 @@ enum Type {
 	ERROR,
 }
 
+@export var _toast_style: StyleBoxFlat
+
 const _COLORS := {
 	Type.INFO: Color.WHITE,
 	Type.SUCCESS: Color(0.6, 1.0, 0.6),
@@ -36,14 +38,22 @@ func show_toast(
 		"[Toast:%s] %s" % [type_name, message],
 	)
 
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	panel.add_theme_stylebox_override(
+		"panel", _toast_style,
+	)
+
 	var label := Label.new()
 	label.text = message
 	label.modulate = _COLORS.get(type, Color.WHITE)
 	label.horizontal_alignment = (
 		HORIZONTAL_ALIGNMENT_CENTER
 	)
+	panel.add_child(label)
 
-	%ToastContainer.add_child(label)
+	%ToastContainer.add_child(panel)
 
 	# Cap the number of visible toasts.
 	while %ToastContainer.get_child_count() > _MAX_TOASTS:
@@ -53,11 +63,11 @@ func show_toast(
 	# Fade out and remove after delay.
 	var tween := get_tree().create_tween()
 	tween.tween_property(
-		label, "modulate:a",
+		panel, "modulate:a",
 		0.0, _FADE_DURATION_SEC,
 	).set_delay(_FADE_DELAY_SEC)
 	tween.tween_callback(
 		func() -> void:
-			if is_instance_valid(label):
-				label.queue_free()
+			if is_instance_valid(panel):
+				panel.queue_free()
 	)

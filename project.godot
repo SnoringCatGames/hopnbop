@@ -21,6 +21,10 @@ config/icon="uid://bmo0k1n04lcor"
 G="*res://src/core/global.gd"
 Netcode="*res://addons/rollback_netcode/core/network_orchestrator.gd"
 
+[debug]
+
+file_logging/max_log_files=3
+
 [display]
 
 window/size/viewport_width=1360
@@ -193,11 +197,6 @@ locale/locale_filter=PackedStringArray("en", "zh", "es", "hi", "ar", "fr", "pt",
 
 common/physics_jitter_fix=0.0
 common/physics_interpolation=true
-
-[debug]
-
-file_logging/enable_file_logging.pc=true
-file_logging/max_log_files=3
 
 [rendering]
 

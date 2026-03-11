@@ -1,9 +1,20 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Theme" uid="uid://cg4peau6bmpdw" path="res://src/ui/hud_theme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://src/ui/toast/toast_overlay.gd" id="2_script"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_toast"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_toast"]
+bg_color = Color(0, 0, 0, 0.6)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+content_margin_left = 8.0
+content_margin_right = 8.0
+content_margin_top = 8.0
+content_margin_bottom = 8.0
 
 [node name="ToastOverlay" type="PanelContainer"]
 process_mode = 3
@@ -16,6 +27,7 @@ mouse_filter = 2
 theme = ExtResource("1_theme")
 theme_override_styles/panel = SubResource("StyleBoxEmpty_toast")
 script = ExtResource("2_script")
+_toast_style = SubResource("StyleBoxFlat_toast")
 
 [node name="MarginContainer" type="MarginContainer" parent="."]
 layout_mode = 2
