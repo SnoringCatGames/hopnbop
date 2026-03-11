@@ -5,7 +5,8 @@ import os
 import asyncio
 from typing import Dict, Any
 
-from aws_lambda_powertools import Logger, Tracer
+from aws_lambda_powertools import Logger, Metrics, Tracer
+from aws_lambda_powertools.metrics import MetricUnit
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
 import sys
@@ -19,6 +20,7 @@ from services import secrets_service
 
 logger = Logger()
 tracer = Tracer()
+metrics = Metrics()
 
 # Initialize services.
 match_service = MatchService()
@@ -73,6 +75,7 @@ def _validate_jwt(event: Dict):
 
 @tracer.capture_lambda_handler
 @logger.inject_lambda_context
+@metrics.log_metrics
 def submit_match_result(
     event: Dict[str, Any], context: LambdaContext
 ) -> Dict:
@@ -121,6 +124,14 @@ def submit_match_result(
                 "game_session_id": game_session_id,
                 "player_count": len(player_results),
             },
+        )
+        metrics.add_dimension(
+            name="level_id", value=level_id or "unknown"
+        )
+        metrics.add_metric(
+            name="match_completed",
+            unit=MetricUnit.Count,
+            value=1,
         )
 
         return {

@@ -1,12 +1,28 @@
 {
     "name": "hopnbop-ffa-ruleset",
     "ruleLanguageVersion": "1.0",
+    "playerAttributes": [
+        {
+            "name": "is_web",
+            "type": "number",
+            "default": 0
+        }
+    ],
     "teams": [
         {
             "name": "players",
             "minPlayers": 2,
             "maxPlayers": 8,
             "quantity": 1
+        }
+    ],
+    "rules": [
+        {
+            "name": "SamePlatformPreference",
+            "description": "Prefer matching players on the same platform.",
+            "type": "batchDistance",
+            "batchAttribute": "is_web",
+            "maxDistance": 0
         }
     ],
     "expansions": [
@@ -16,6 +32,15 @@
                 {
                     "waitTimeSeconds": 30,
                     "value": 2
+                }
+            ]
+        },
+        {
+            "target": "rules[SamePlatformPreference].maxDistance",
+            "steps": [
+                {
+                    "waitTimeSeconds": 15,
+                    "value": 1
                 }
             ]
         }

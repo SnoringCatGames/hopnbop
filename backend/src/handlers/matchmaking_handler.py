@@ -4,7 +4,8 @@ import json
 import os
 import asyncio
 from typing import Dict, Any
-from aws_lambda_powertools import Logger, Tracer
+from aws_lambda_powertools import Logger, Metrics, Tracer
+from aws_lambda_powertools.metrics import MetricUnit
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
 import sys
@@ -27,6 +28,7 @@ from services import secrets_service
 
 logger = Logger()
 tracer = Tracer()
+metrics = Metrics()
 
 # Initialize services (cached across invocations).
 gamelift = GameLiftService(
@@ -46,6 +48,7 @@ _pending_session_prefs: Dict[str, Dict] = {}
 
 @tracer.capture_lambda_handler
 @logger.inject_lambda_context
+@metrics.log_metrics
 def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
     """
     POST /matchmaking/join
@@ -138,6 +141,11 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             result = asyncio.run(gamelift.poll_matchmaking(ticket_id))
 
             logger.info(f"Matchmaking complete: {result.game_session_id}")
+            metrics.add_metric(
+                name="player_connected",
+                unit=MetricUnit.Count,
+                value=1,
+            )
 
             # Select level based on player preferences.
             # In a full implementation, we would aggregate preferences from

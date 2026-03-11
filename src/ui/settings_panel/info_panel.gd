@@ -71,6 +71,22 @@ func _add_legal_section() -> void:
 	_row_container.add_child(deletion_row)
 	_connect_row_clicked(deletion_row)
 
+	# Spacer before community link.
+	var discord_spacer := Control.new()
+	discord_spacer.custom_minimum_size = (
+		Vector2(0, 20))
+	_row_container.add_child(discord_spacer)
+
+	var discord_row: LegalLinkRow = (
+		_legal_link_row_scene.instantiate()
+	)
+	discord_row.setup(
+		"Discord",
+		"https://discord.gg/QX939SF7nb",
+	)
+	_row_container.add_child(discord_row)
+	_connect_row_clicked(discord_row)
+
 
 func _add_credits_row() -> void:
 	var spacer := Control.new()

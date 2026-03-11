@@ -7,7 +7,8 @@ import asyncio
 from datetime import datetime
 from typing import Dict, Any
 import boto3
-from aws_lambda_powertools import Logger, Tracer
+from aws_lambda_powertools import Logger, Metrics, Tracer
+from aws_lambda_powertools.metrics import MetricUnit
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
 import sys
@@ -20,6 +21,7 @@ from services.provider_mapping_service import ProviderMappingService
 
 logger = Logger()
 tracer = Tracer()
+metrics = Metrics()
 
 # Initialize services.
 auth_service = AuthService(token_lifetime_hours=24)
@@ -37,6 +39,7 @@ _HEADERS = {
 
 @tracer.capture_lambda_handler
 @logger.inject_lambda_context
+@metrics.log_metrics
 def login(
     event: Dict[str, Any], context: LambdaContext
 ) -> Dict:
@@ -120,6 +123,14 @@ def login(
             f"User authenticated: {player_id} "
             f"via {provider}"
         )
+        metrics.add_dimension(
+            name="provider", value=provider
+        )
+        metrics.add_metric(
+            name="auth_success",
+            unit=MetricUnit.Count,
+            value=1,
+        )
 
         return {
             "statusCode": 200,
@@ -152,6 +163,14 @@ def login(
 
     except ValueError as e:
         logger.error(f"Authentication failed: {e}")
+        metrics.add_dimension(
+            name="provider", value=provider
+        )
+        metrics.add_metric(
+            name="auth_failure",
+            unit=MetricUnit.Count,
+            value=1,
+        )
         return _error(401, "AUTH_FAILED", str(e))
     except Exception:
         logger.exception("Login error")
@@ -162,6 +181,7 @@ def login(
 
 @tracer.capture_lambda_handler
 @logger.inject_lambda_context
+@metrics.log_metrics
 def anonymous_login(
     event: Dict[str, Any], context: LambdaContext
 ) -> Dict:
@@ -233,6 +253,14 @@ def anonymous_login(
         )
 
         logger.info(f"Anonymous login: {player_id}")
+        metrics.add_dimension(
+            name="provider", value="anonymous"
+        )
+        metrics.add_metric(
+            name="auth_success",
+            unit=MetricUnit.Count,
+            value=1,
+        )
 
         return {
             "statusCode": 200,
@@ -264,6 +292,14 @@ def anonymous_login(
         }
 
     except Exception:
+        metrics.add_dimension(
+            name="provider", value="anonymous"
+        )
+        metrics.add_metric(
+            name="auth_failure",
+            unit=MetricUnit.Count,
+            value=1,
+        )
         logger.exception("Anonymous login error")
         return _error(
             500, "INTERNAL_ERROR", "Internal server error"
