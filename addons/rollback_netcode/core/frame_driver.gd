@@ -62,6 +62,8 @@ extends Node
 #   - Info
 #   - Credits
 #   - i18n globe
+#   - Discord
+#   - ...
 
 # I want to update the side-panel to be reusable for different content.
 # - I want to use this as a submenu for listing all of the available i18n options.
