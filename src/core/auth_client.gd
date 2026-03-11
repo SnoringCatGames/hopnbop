@@ -563,7 +563,10 @@ func _start_web_oauth(
 	provider: Provider,
 ) -> void:
 	_oauth_provider = provider
-	_oauth_state = _generate_state_nonce()
+	# Prefix state with "popup:" so the callback page
+	# knows to use BroadcastChannel instead of the
+	# loopback redirect.
+	_oauth_state = "popup:" + _generate_state_nonce()
 
 	var redirect_uri := G.settings.oauth_callback_url
 	var auth_url := _build_oauth_url(
@@ -580,20 +583,15 @@ func _start_web_oauth(
 
 	# Open popup. Must happen synchronously from user
 	# interaction to avoid popup blockers.
+	# Note: with COOP headers (threaded builds), the
+	# return value of window.open() is a restricted
+	# proxy that Godot sees as null, even when the
+	# popup actually opens. We cannot rely on it.
 	var js_code := (
 		"window.open('%s', 'oauth_popup',"
 		+ " 'width=500,height=700')"
 	) % auth_url.replace("'", "\\'")
-	var popup: JavaScriptObject = (
-		JavaScriptBridge.eval(js_code)
-	)
-
-	if popup == null:
-		_cleanup_js_message_listener()
-		_emit_failure(
-			"Popup blocked. Please allow popups."
-		)
-		return
+	JavaScriptBridge.eval(js_code)
 
 	auth_status_changed.emit(
 		"Complete sign-in in the popup..."
@@ -608,27 +606,36 @@ func _setup_js_message_listener() -> void:
 
 	_js_message_callback = (
 		JavaScriptBridge.create_callback(
-			_on_js_message
+			_on_broadcast_message
 		)
 	)
+	# Use BroadcastChannel instead of
+	# window.opener.postMessage. COOP headers
+	# (required for threads) sever window.opener,
+	# but BroadcastChannel works across same-origin
+	# pages regardless of COOP.
 	JavaScriptBridge.eval(
-		"window._hopnbop_oauth_cb = null;"
+		"window._hopnbop_oauth_channel"
+		+ " = new BroadcastChannel("
+		+ "'hopnbop_oauth');"
 	)
-	var window: JavaScriptObject = (
-		JavaScriptBridge.get_interface("window")
+	var channel: JavaScriptObject = (
+		JavaScriptBridge.eval(
+			"window._hopnbop_oauth_channel"
+		)
 	)
-	window.addEventListener(
+	channel.addEventListener(
 		"message", _js_message_callback
 	)
 
 
 func _cleanup_js_message_listener() -> void:
 	if _js_message_callback != null:
-		var window: JavaScriptObject = (
-			JavaScriptBridge.get_interface("window")
-		)
-		window.removeEventListener(
-			"message", _js_message_callback
+		JavaScriptBridge.eval(
+			"if (window._hopnbop_oauth_channel) {"
+			+ " window._hopnbop_oauth_channel.close();"
+			+ " window._hopnbop_oauth_channel = null;"
+			+ "}"
 		)
 		_js_message_callback = null
 
@@ -657,20 +664,11 @@ func _on_popup_timeout() -> void:
 	_emit_failure("Sign-in timed out")
 
 
-func _on_js_message(args: Array) -> void:
-	# args[0] is the MessageEvent.
+func _on_broadcast_message(args: Array) -> void:
+	# args[0] is the MessageEvent from BroadcastChannel.
+	# BroadcastChannel is same-origin only, so no
+	# origin check is needed.
 	var event: JavaScriptObject = args[0]
-
-	# Verify origin matches our callback URL.
-	var origin: String = event.origin
-	# get_base_dir on a URL strips the filename, giving
-	# the origin. But we need just scheme + host.
-	# Use a simpler check: the callback URL must start
-	# with the event origin.
-	if not G.settings.oauth_callback_url.begins_with(
-		origin
-	):
-		return
 
 	var data: JavaScriptObject = event.data
 	if data == null:

@@ -1578,7 +1578,8 @@ and deployments to all platforms.
 ```
 .github/workflows/
   deploy-server.yml    → Build Docker → Push ECR → Update fleet
-  deploy-itch.yml      → Build Win/Mac/Linux/Web → Upload itch.io
+  deploy-steam.yml     → Build Win/Mac/Linux → Upload via steamcmd
+  deploy-epic.yml      → Build Win → Upload via BuildPatchTool
   deploy-backend.yml   → SAM build → SAM deploy
   deploy-web.yml       → Build web → Upload S3 → Invalidate CDN
   test.yml             → (existing) Run GUT tests
@@ -1593,14 +1594,30 @@ and deployments to all platforms.
 5. Each job uploads artifacts and deploys to respective platform
 6. Notification on success/failure
 
-*itch.io Deployment*:
-- Use butler CLI (itch.io's upload tool)
-- Push channels: windows, mac, linux, web
-- Automatic version tagging from git
+*Steam Deployment*:
+- Use `steamcmd` CLI for automated uploads
+- Configure `app_build.vdf` with depot mappings for each
+  platform (Windows, macOS, Linux)
+- Set build description from git tag or version string
+- Upload to a staging branch first, then promote to default
+  after smoke testing
+- Store Steam credentials as GitHub secrets (`STEAM_USERNAME`,
+  `STEAM_CONFIG_VDF` for cached auth token)
+- Steam Guard: use sentry file or shared secret for
+  non-interactive login in CI
+
+*Epic Games Store Deployment*:
+- Use Epic's `BuildPatchTool` (BPT) CLI for uploads
+- Configure with organization ID, product ID, artifact ID,
+  and client credentials
+- Upload Windows build only (Epic does not support Linux/macOS
+  for most indie titles)
+- Store Epic service credentials as GitHub secrets
+  (`EPIC_CLIENT_ID`, `EPIC_CLIENT_SECRET`,
+  `EPIC_ORGANIZATION_ID`)
+- Label each build with version string for rollback support
 
 *Future Platform Deployments*:
-- Steam: steamcmd upload (needs Steamworks account first)
-- Epic: Epic Games Store CLI
 - iOS: Xcode Cloud or fastlane
 - Android: fastlane + Google Play API
 
@@ -1609,12 +1626,15 @@ all parallel jobs. Well within GitHub Actions free tier
 (2000 min/month).
 
 **Key files to create**:
-- `.github/workflows/deploy-server.yml`
-- `.github/workflows/deploy-itch.yml`
+- `.github/workflows/deploy-server.yml` (exists)
+- `.github/workflows/deploy-steam.yml`
+- `.github/workflows/deploy-epic.yml`
 - `.github/workflows/deploy-backend.yml`
-- `.github/workflows/deploy-web.yml`
+- `.github/workflows/deploy-web.yml` (exists)
 - `scripts/build-server-container.ps1`
-- `scripts/upload-itch.ps1`
+- `scripts/upload-steam.ps1`
+- `scripts/upload-epic.ps1`
+- `steam/app_build.vdf` (Steam app build config)
 
 **TODO**: Do not finalize automated release deployment until
 blog/patch-notes generation is integrated into the release
@@ -1622,10 +1642,15 @@ flow. Each release should auto-generate an entry in
 `web/blog/index.html` with the release version and notes.
 
 **Manual steps**:
-1. Create itch.io API key, add as GitHub secret
-2. Install butler locally for testing
-3. Create `release` branch
-4. Configure branch protection rules
+1. Create Steamworks account and app, obtain app ID and
+   depot IDs
+2. Generate Steam API key, cache `config.vdf` auth token,
+   add as GitHub secrets
+3. Register with Epic Games Store, create product and
+   artifact, obtain client credentials
+4. Add Epic credentials as GitHub secrets
+5. Create `release` branch
+6. Configure branch protection rules
 
 ---
 

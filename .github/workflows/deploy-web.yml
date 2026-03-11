@@ -75,10 +75,8 @@ jobs:
         run: |
           for f in build/web/*; do
             filename=$(basename "$f")
-            if [ "$filename" != "index.html" ]; then
-              cp "$f" "web/$filename"
-              echo "Copied $filename"
-            fi
+            cp "$f" "web/$filename"
+            echo "Copied $filename"
           done
 
       - name: Sync to S3

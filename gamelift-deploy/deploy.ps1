@@ -8,7 +8,7 @@
 #   - Linux export templates installed in Godot
 
 param(
-    [string]$Version = "0.5.1",
+    [string]$Version = "0.7.0",
     [string]$Profile = "hopnbop",
     [string]$Region = "us-west-2",
     [string]$Repository = "hopnbop-server",
@@ -53,8 +53,10 @@ if (-not $SkipExport) {
     # deploys. --export-release fails on Windows due
     # to Linux .so dependency copy issues.
     & godot --headless --export-pack "Linux Server" $pckPath
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Godot export failed"
+    # Godot may return non-zero due to GDExtension DLL
+    # lock warnings on Windows. Verify the .pck exists.
+    if (-not (Test-Path $pckPath)) {
+        Write-Error "Godot export failed (no .pck produced)"
         exit 1
     }
     Write-Host "Export complete." -ForegroundColor Green

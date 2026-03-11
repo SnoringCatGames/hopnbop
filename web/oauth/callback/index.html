@@ -58,8 +58,26 @@ p { margin-top: 1rem; line-height: 1.5; }
     return;
   }
 
-  if (window.opener) {
-    // Web popup flow: send code back to the opener window.
+  // The web popup flow prefixes the state with "popup:"
+  // to distinguish it from the desktop two-hop flow.
+  var isPopupFlow = state.indexOf("popup:") === 0;
+
+  if (isPopupFlow && typeof BroadcastChannel !== "undefined") {
+    // Web popup flow: send code via BroadcastChannel.
+    // This works even with COOP headers (which sever
+    // window.opener in threaded Godot builds).
+    var channel = new BroadcastChannel("hopnbop_oauth");
+    channel.postMessage(
+      { type: "oauth_callback", code: code, state: state }
+    );
+    channel.close();
+    icon.textContent = "\u2714";
+    icon.className = "icon success";
+    message.textContent =
+      "Authentication successful! This window will close.";
+    setTimeout(function() { window.close(); }, 1500);
+  } else if (window.opener) {
+    // Fallback for browsers without BroadcastChannel.
     window.opener.postMessage(
       { type: "oauth_callback", code: code, state: state },
       window.location.origin

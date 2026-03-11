@@ -49,12 +49,11 @@ if (-not $SkipExport) {
 if (-not $SkipExport) {
     Write-Host "[2/4] Copying export files to web/..." -ForegroundColor Yellow
 
-    # Copy all build output files except index.html (we use
-    # our custom shell). The export produces .js, .wasm,
-    # .pck, .worker.js, and other supporting files.
-    Get-ChildItem "build/web" -File | Where-Object {
-        $_.Name -ne "index.html"
-    } | ForEach-Object {
+    # Copy all build output files including the processed
+    # index.html. The shell template lives at web/shell.html
+    # and is consumed by the export. The exported index.html
+    # has all $GODOT_* placeholders replaced.
+    Get-ChildItem "build/web" -File | ForEach-Object {
         Copy-Item $_.FullName "web/$($_.Name)" -Force
         Write-Host "  Copied $($_.Name)" -ForegroundColor DarkGray
     }

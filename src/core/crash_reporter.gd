@@ -10,6 +10,10 @@ const _MAX_MESSAGE_LENGTH := 4096
 const _COOLDOWN_SEC := 5.0
 const _MAX_REPORTS_PER_SESSION := 20
 const _REQUEST_TIMEOUT_SEC := 10.0
+const _LOG_DIRECTORY := "user://logs/"
+const _PREVIOUS_LOG_PREFIX := "godot_"
+const _CRASH_MARKER := "handle_crash: Program crashed"
+const _REPORTED_MARKER_PATH := "user://logs/.crash_reported"
 
 var _http_request: HTTPRequest
 var _report_count := 0
@@ -25,6 +29,11 @@ func _ready() -> void:
 	add_child(_http_request)
 	_http_request.request_completed.connect(
 		_on_request_completed)
+
+	# Check for crashes from the previous session
+	# after the current frame to avoid blocking
+	# startup.
+	_check_previous_session_crash.call_deferred()
 
 
 func report_crash(
@@ -122,6 +131,83 @@ func _build_payload(
 		"network_ping_ms": network_ping_ms,
 		"timestamp_utc": timestamp_utc,
 	}
+
+
+func _check_previous_session_crash() -> void:
+	var dir := DirAccess.open(_LOG_DIRECTORY)
+	if not dir:
+		return
+
+	# Read the last reported log filename to avoid
+	# re-reporting the same crash.
+	var last_reported := ""
+	if FileAccess.file_exists(_REPORTED_MARKER_PATH):
+		var marker := FileAccess.open(
+			_REPORTED_MARKER_PATH, FileAccess.READ)
+		if marker:
+			last_reported = (
+				marker.get_as_text().strip_edges())
+			marker.close()
+
+	# Find the most recent previous session log.
+	# Filenames are godot_YYYY-MM-DDTHH.MM.SS.log,
+	# so lexicographic comparison gives chronological
+	# order.
+	var latest_log := ""
+	dir.list_dir_begin()
+	var file_name := dir.get_next()
+	while not file_name.is_empty():
+		if (
+			file_name.begins_with(_PREVIOUS_LOG_PREFIX)
+			and file_name.ends_with(".log")
+			and file_name > latest_log
+		):
+			latest_log = file_name
+		file_name = dir.get_next()
+	dir.list_dir_end()
+
+	if latest_log.is_empty():
+		return
+	if latest_log == last_reported:
+		return
+
+	var crash_text := _scan_log_for_crash(
+		_LOG_DIRECTORY + latest_log)
+	if crash_text.is_empty():
+		return
+
+	report_crash(crash_text, true)
+
+	# Record this log as reported so we do not
+	# re-report on the next startup.
+	var marker := FileAccess.open(
+		_REPORTED_MARKER_PATH, FileAccess.WRITE)
+	if marker:
+		marker.store_string(latest_log)
+		marker.close()
+
+
+func _scan_log_for_crash(log_path: String) -> String:
+	var file := FileAccess.open(
+		log_path, FileAccess.READ)
+	if not file:
+		return ""
+
+	var content := file.get_as_text()
+	file.close()
+
+	var crash_index := content.find(_CRASH_MARKER)
+	if crash_index == -1:
+		return ""
+
+	# Extract from the crash marker to the end of
+	# the log (includes the backtrace).
+	var crash_text := content.substr(crash_index)
+	if crash_text.length() > _MAX_MESSAGE_LENGTH:
+		crash_text = crash_text.left(
+			_MAX_MESSAGE_LENGTH)
+
+	return "Previous session crash:\n" + crash_text
 
 
 func _on_request_completed(

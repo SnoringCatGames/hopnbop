@@ -99,5 +99,8 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD pgrep -f hopnbop_server || exit 1
 
 # Run the dedicated server in headless mode.
-ENTRYPOINT ["/game/hopnbop_server.x86_64", \
-            "--server", "--headless"]
+# Pipe stderr to the game session log so Godot crash
+# backtraces are captured in the file that GameLift
+# uploads to CloudWatch on process termination.
+ENTRYPOINT ["/bin/sh", "-c", \
+            "/game/hopnbop_server.x86_64 --server --headless 2>&1 | tee /game/logs/server.log"]
