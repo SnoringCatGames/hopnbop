@@ -976,7 +976,7 @@ backgrounding the app mid-match and returning.
 
 ---
 
-### M3: GameLift Container Fleet Deployment
+### M3: GameLift Container Fleet Deployment ✅
 
 **Goal**: Deploy game server to GameLift container fleet with
 Spot instances and Anywhere mode for local testing.
@@ -1028,7 +1028,7 @@ Spot instances and Anywhere mode for local testing.
 
 ---
 
-### M4: Legal & Compliance
+### M4: Legal & Compliance ✅
 
 **Goal**: Draft and publish all required legal documents before
 collecting real user data in production.
@@ -1092,10 +1092,15 @@ collecting real user data in production.
 
 ---
 
-### M5: Monitoring, Logging & Alerting
+### M5: Monitoring, Logging & Alerting ✅
 
 **Goal**: Production visibility into server health, player
 experience, and costs.
+
+**Status**: Code complete. 106 backend tests passing (10 new
+telemetry tests). Manual steps remain: deploy with AlertEmail
+parameter, confirm SNS subscription, enable DynamoDB PITR,
+create AWS Budgets.
 
 **What's included**:
 
@@ -1337,6 +1342,11 @@ LeaderboardTable:
 - Toggle: all-time vs weekly
 - Toggle: global vs per-level
 - Friends filter overlay
+
+**TODO**: Add in-game leaderboard display. The web leaderboard
+page exists at `web/leaderboard/index.html` and fetches from
+the backend API. The in-game UI should show the same data using
+a dedicated leaderboard screen.
 
 **Key files to create**:
 - `backend/src/handlers/leaderboard_handler.py`
@@ -1605,6 +1615,11 @@ all parallel jobs. Well within GitHub Actions free tier
 - `.github/workflows/deploy-web.yml`
 - `scripts/build-server-container.ps1`
 - `scripts/upload-itch.ps1`
+
+**TODO**: Do not finalize automated release deployment until
+blog/patch-notes generation is integrated into the release
+flow. Each release should auto-generate an entry in
+`web/blog/index.html` with the release version and notes.
 
 **Manual steps**:
 1. Create itch.io API key, add as GitHub secret

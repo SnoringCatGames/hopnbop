@@ -31,6 +31,7 @@ var auth_token_store: AuthTokenStore
 var auth_client: AuthClient
 var match_result_reporter: MatchResultReporter
 var backend_api_client: BackendApiClient
+var crash_reporter: CrashReporter
 var auth_screen: AuthScreen
 var consent_screen: ConsentScreen
 
@@ -119,6 +120,10 @@ func _enter_tree() -> void:
 	backend_api_client = BackendApiClient.new()
 	backend_api_client.name = "BackendApiClient"
 	add_child(backend_api_client)
+
+	crash_reporter = CrashReporter.new()
+	crash_reporter.name = "CrashReporter"
+	add_child(crash_reporter)
 
 	cheat_manager = CheatManager.new()
 	cheat_manager.name = "CheatManager"

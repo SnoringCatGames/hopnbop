@@ -1,34 +1,282 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Hop 'n Bop</title>
-<style>
-body {
-  font-family: system-ui, sans-serif;
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 2rem 1rem;
-  background: #1a1a2e;
-  color: #eee;
-  line-height: 1.6;
-  text-align: center;
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+		<title>$GODOT_PROJECT_NAME</title>
+		<meta name="description" content="A multiplayer action game by Snoring Cat.">
+		<style>
+html, body, #canvas {
+	margin: 0;
+	padding: 0;
+	border: 0;
 }
-h1 { color: #fff; margin-top: 4rem; }
-a { color: #7eb8da; }
-.links { margin-top: 2rem; }
-.links a { margin: 0 0.5rem; }
-</style>
-</head>
-<body>
-<h1>Hop 'n Bop</h1>
-<p>A multiplayer action game by <a href="https://snoringcat.games">Snoring Cat</a>.</p>
-<p>Coming soon.</p>
-<div class="links">
-  <a href="/privacy/">Privacy Policy</a>
-  <a href="/terms/">Terms of Service</a>
-  <a href="/data-deletion/">Data Deletion</a>
-</div>
-</body>
+
+body {
+	color: #eee;
+	background-color: #1a1a2e;
+	overflow: hidden;
+	touch-action: none;
+	font-family: system-ui, -apple-system, sans-serif;
+}
+
+#canvas {
+	display: block;
+}
+
+#canvas:focus {
+	outline: none;
+}
+
+#status, #status-splash, #status-progress {
+	position: absolute;
+	left: 0;
+	right: 0;
+}
+
+#status, #status-splash {
+	top: 0;
+	bottom: 0;
+}
+
+#status {
+	background-color: #1a1a2e;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	visibility: hidden;
+}
+
+#status-splash {
+	max-height: 100%;
+	max-width: 100%;
+	margin: auto;
+}
+
+#status-splash.show-image--false {
+	display: none;
+}
+
+#status-splash.fullsize--true {
+	height: 100%;
+	width: 100%;
+	object-fit: contain;
+}
+
+#status-splash.use-filter--false {
+	image-rendering: pixelated;
+}
+
+#status-title {
+	font-size: 2rem;
+	font-weight: 700;
+	color: #fff;
+	margin-bottom: 1.5rem;
+	letter-spacing: 0.05em;
+}
+
+#status-progress, #status-notice {
+	display: none;
+}
+
+#status-progress {
+	bottom: auto;
+	width: min(320px, 70vw);
+	height: 6px;
+	margin-top: 1.5rem;
+	appearance: none;
+	border: none;
+	border-radius: 3px;
+	overflow: hidden;
+	background: #2a2a4a;
+}
+
+#status-progress::-webkit-progress-bar {
+	background: #2a2a4a;
+	border-radius: 3px;
+}
+
+#status-progress::-webkit-progress-value {
+	background: #7eb8da;
+	border-radius: 3px;
+	transition: width 0.2s ease;
+}
+
+#status-progress::-moz-progress-bar {
+	background: #7eb8da;
+	border-radius: 3px;
+}
+
+#status-label {
+	margin-top: 0.75rem;
+	font-size: 0.85rem;
+	color: #888;
+}
+
+#status-notice {
+	background-color: #3a1a2e;
+	border-radius: 0.5rem;
+	border: 1px solid #9b3943;
+	color: #e0e0e0;
+	line-height: 1.4;
+	margin: 1rem 2rem 0;
+	max-width: 480px;
+	overflow: hidden;
+	padding: 1rem 1.5rem;
+	text-align: center;
+	z-index: 1;
+}
+
+#footer-links {
+	position: absolute;
+	bottom: 1rem;
+	left: 0;
+	right: 0;
+	text-align: center;
+	font-size: 0.75rem;
+}
+
+#footer-links a {
+	color: #7eb8da;
+	text-decoration: none;
+	margin: 0 0.5rem;
+}
+
+#footer-links a:hover {
+	text-decoration: underline;
+}
+		</style>
+		$GODOT_HEAD_INCLUDE
+	</head>
+	<body>
+		<canvas id="canvas">
+			Your browser does not support the canvas tag.
+		</canvas>
+
+		<noscript>
+			Your browser does not support JavaScript.
+		</noscript>
+
+		<div id="status">
+			<img id="status-splash" class="$GODOT_SPLASH_CLASSES" src="$GODOT_SPLASH" alt="">
+			<div id="status-title">Hop 'n Bop</div>
+			<progress id="status-progress"></progress>
+			<div id="status-label">Loading...</div>
+			<div id="status-notice"></div>
+			<div id="footer-links">
+				<a href="/privacy/">Privacy</a>
+				<a href="/terms/">Terms</a>
+				<a href="/blog/">Blog</a>
+			</div>
+		</div>
+
+		<script src="$GODOT_URL"></script>
+		<script>
+const GODOT_CONFIG = $GODOT_CONFIG;
+const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
+const engine = new Engine(GODOT_CONFIG);
+
+(function () {
+	const statusOverlay = document.getElementById('status');
+	const statusProgress = document.getElementById('status-progress');
+	const statusNotice = document.getElementById('status-notice');
+	const statusLabel = document.getElementById('status-label');
+
+	let initializing = true;
+	let statusMode = '';
+
+	function setStatusMode(mode) {
+		if (statusMode === mode || !initializing) {
+			return;
+		}
+		if (mode === 'hidden') {
+			statusOverlay.remove();
+			initializing = false;
+			return;
+		}
+		statusOverlay.style.visibility = 'visible';
+		statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
+		statusLabel.style.display = mode === 'progress' ? 'block' : 'none';
+		statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
+		statusMode = mode;
+	}
+
+	function setStatusNotice(text) {
+		while (statusNotice.lastChild) {
+			statusNotice.removeChild(statusNotice.lastChild);
+		}
+		const lines = text.split('\n');
+		lines.forEach((line) => {
+			statusNotice.appendChild(document.createTextNode(line));
+			statusNotice.appendChild(document.createElement('br'));
+		});
+	}
+
+	function displayFailureNotice(err) {
+		console.error(err);
+		if (err instanceof Error) {
+			setStatusNotice(err.message);
+		} else if (typeof err === 'string') {
+			setStatusNotice(err);
+		} else {
+			setStatusNotice('An unknown error occurred.');
+		}
+		setStatusMode('notice');
+		initializing = false;
+	}
+
+	const missing = Engine.getMissingFeatures({
+		threads: GODOT_THREADS_ENABLED,
+	});
+
+	if (missing.length !== 0) {
+		if (GODOT_CONFIG['serviceWorker'] && GODOT_CONFIG['ensureCrossOriginIsolationHeaders'] && 'serviceWorker' in navigator) {
+			let serviceWorkerRegistrationPromise;
+			try {
+				serviceWorkerRegistrationPromise = navigator.serviceWorker.getRegistration();
+			} catch (err) {
+				serviceWorkerRegistrationPromise = Promise.reject(new Error('Service worker registration failed.'));
+			}
+			Promise.race([
+				serviceWorkerRegistrationPromise.then((registration) => {
+					if (registration != null) {
+						return Promise.reject(new Error('Service worker already exists.'));
+					}
+					return registration;
+				}).then(() => engine.installServiceWorker()),
+				new Promise((resolve) => {
+					setTimeout(() => resolve(), 2000);
+				}),
+			]).then(() => {
+				window.location.reload();
+			}).catch((err) => {
+				console.error('Error while registering service worker:', err);
+			});
+		} else {
+			const missingMsg = 'Error\nThe following features required to run Godot projects on the Web are missing:\n';
+			displayFailureNotice(missingMsg + missing.join('\n'));
+		}
+	} else {
+		setStatusMode('progress');
+		engine.startGame({
+			'onProgress': function (current, total) {
+				if (current > 0 && total > 0) {
+					statusProgress.value = current;
+					statusProgress.max = total;
+					const percent = Math.round((current / total) * 100);
+					statusLabel.textContent = 'Loading... ' + percent + '%';
+				} else {
+					statusProgress.removeAttribute('value');
+					statusProgress.removeAttribute('max');
+					statusLabel.textContent = 'Loading...';
+				}
+			},
+		}).then(() => {
+			setStatusMode('hidden');
+		}, displayFailureNotice);
+	}
+}());
+		</script>
+	</body>
 </html>

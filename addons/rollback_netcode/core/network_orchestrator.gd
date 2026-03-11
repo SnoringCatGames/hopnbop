@@ -58,10 +58,10 @@ static func get_version() -> String:
 # --- Signals ---
 
 ## Emitted when a player input node gains multiplayer authority.
-signal local_authority_added(node: PlayerInputFromClient)
+signal local_authority_added(node: ReconcilableState)
 
 ## Emitted when a player input node loses multiplayer authority.
-signal local_authority_removed(node: PlayerInputFromClient)
+signal local_authority_removed(node: ReconcilableState)
 
 # --- Configuration (set by consumer before calling initialize()) ---
 

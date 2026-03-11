@@ -142,6 +142,14 @@ func error(
 
 	push_error(formatted_message)
 	_print_internal(formatted_message, category)
+
+	if (
+		is_instance_valid(G)
+		and is_instance_valid(G.crash_reporter)
+	):
+		G.crash_reporter.report_crash(
+			formatted_message, should_crash)
+
 	print_stack()
 	breakpoint
 	if should_crash:

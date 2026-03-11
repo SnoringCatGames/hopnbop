@@ -1,0 +1,102 @@
+/* Shared styles for hopnbop.net non-game pages. */
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  background: #1a1a2e;
+  color: #eee;
+  line-height: 1.6;
+}
+
+h1 { color: #fff; }
+h2 { color: #ddd; margin-top: 2rem; }
+a { color: #7eb8da; }
+a:hover { text-decoration: none; }
+.updated { color: #999; font-size: 0.9rem; }
+.version { color: #999; font-size: 0.9rem; }
+
+/* Navigation bar. */
+nav {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #2a2a4a;
+  font-size: 0.9rem;
+}
+
+nav a {
+  margin-right: 1rem;
+  text-decoration: none;
+}
+
+nav a:hover {
+  text-decoration: underline;
+}
+
+/* Tables (leaderboard). */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #2a2a4a;
+}
+
+th {
+  color: #aaa;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+td { color: #ddd; }
+
+tr:hover td { background: #22223a; }
+
+/* Blog entries. */
+.post {
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #2a2a4a;
+}
+
+.post:last-child { border-bottom: none; }
+
+.post h2 {
+  margin-top: 0;
+  margin-bottom: 0.25rem;
+}
+
+.post .date {
+  color: #888;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.post ul {
+  padding-left: 1.25rem;
+}
+
+/* Status messages. */
+.status-message {
+  color: #888;
+  text-align: center;
+  padding: 2rem 0;
+}
+
+/* Footer. */
+footer {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid #2a2a4a;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+footer a { color: #7eb8da; }

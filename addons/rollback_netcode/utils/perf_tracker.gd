@@ -251,7 +251,7 @@ func _physics_process(_delta: float) -> void:
 
 
 func _on_local_authority_added(
-	input_from_client: PlayerInputFromClient,
+	input_from_client: ReconcilableState,
 ) -> void:
 	# Wait a tick to ensure state_from_server is populated.
 	await get_tree().process_frame
@@ -265,7 +265,7 @@ func _on_local_authority_added(
 
 
 func _on_local_authority_removed(
-		_input_from_client: PlayerInputFromClient,
+		_input_from_client: ReconcilableState,
 ) -> void:
 	# Do nothing.
 	pass

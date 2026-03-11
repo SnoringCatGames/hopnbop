@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Leaderboard - Hop 'n Bop</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<nav>
+  <a href="/">Play</a>
+  <a href="/leaderboard/">Leaderboard</a>
+  <a href="/blog/">Blog</a>
+</nav>
+
+<h1>Leaderboard</h1>
+
+<div id="controls" style="margin-bottom:1rem">
+  <button id="btn-alltime" class="active">All-Time</button>
+  <button id="btn-weekly">Weekly</button>
+  <style>
+    #controls button {
+      background: #2a2a4a;
+      color: #ccc;
+      border: 1px solid #3a3a5a;
+      padding: 0.4rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      margin-right: 0.5rem;
+    }
+    #controls button.active {
+      background: #7eb8da;
+      color: #1a1a2e;
+      border-color: #7eb8da;
+    }
+    #controls button:hover:not(.active) {
+      background: #3a3a5a;
+    }
+  </style>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Player</th>
+      <th>Wins</th>
+    </tr>
+  </thead>
+  <tbody id="leaderboard-body">
+    <tr><td colspan="3" class="status-message">Loading...</td></tr>
+  </tbody>
+</table>
+
+<script>
+const API_URL = 'https://4xol3ejva9.execute-api.us-west-2.amazonaws.com/prod';
+let currentType = 'alltime';
+
+const btnAlltime = document.getElementById('btn-alltime');
+const btnWeekly = document.getElementById('btn-weekly');
+const tbody = document.getElementById('leaderboard-body');
+
+btnAlltime.addEventListener('click', () => switchType('alltime'));
+btnWeekly.addEventListener('click', () => switchType('weekly'));
+
+function switchType(type) {
+  currentType = type;
+  btnAlltime.classList.toggle('active', type === 'alltime');
+  btnWeekly.classList.toggle('active', type === 'weekly');
+  fetchLeaderboard();
+}
+
+async function fetchLeaderboard() {
+  tbody.innerHTML = '<tr><td colspan="3" class="status-message">Loading...</td></tr>';
+  try {
+    const response = await fetch(
+      API_URL + '/leaderboard?type=' + currentType + '&scope=global&page=1'
+    );
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const data = await response.json();
+    const entries = data.entries || data.players || [];
+    if (entries.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="status-message">No entries yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = entries.map((entry, i) =>
+      '<tr>' +
+        '<td>' + (i + 1) + '</td>' +
+        '<td>' + escapeHtml(entry.display_name || entry.player_id || 'Unknown') + '</td>' +
+        '<td>' + (entry.score != null ? entry.score : entry.wins || 0) + '</td>' +
+      '</tr>'
+    ).join('');
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="3" class="status-message">Could not load leaderboard.</td></tr>';
+    console.error('Leaderboard fetch error:', err);
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+fetchLeaderboard();
+</script>
+
+<footer>
+  <a href="/privacy/">Privacy</a> &middot;
+  <a href="/terms/">Terms</a> &middot;
+  <a href="/data-deletion/">Data Deletion</a>
+</footer>
+</body>
+</html>
