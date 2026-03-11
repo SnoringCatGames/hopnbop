@@ -1,5 +1,7 @@
 # GameLift Container Fleet Deployment Script
-# Usage: .\gamelift-deploy\deploy.ps1 [-Version "0.1.0"] [-SkipExport]
+# Usage: .\gamelift-deploy\deploy.ps1 [-SkipExport]
+#
+# Version is read from project.godot (config/version).
 #
 # Prerequisites:
 #   - Docker Desktop running
@@ -8,7 +10,6 @@
 #   - Linux export templates installed in Godot
 
 param(
-    [string]$Version = "0.7.0",
     [string]$Profile = "hopnbop",
     [string]$Region = "us-west-2",
     [string]$Repository = "hopnbop-server",
@@ -18,6 +19,26 @@ param(
 $ErrorActionPreference = "Stop"
 $AccountId = "270469481989"
 $EcrUri = "$AccountId.dkr.ecr.$Region.amazonaws.com"
+
+# Read version from project.godot (single source of truth).
+$projectGodot = Get-Content "project.godot" -Raw
+if ($projectGodot -match 'config/version="([^"]+)"') {
+    $Version = $Matches[1]
+} else {
+    Write-Error "Could not read config/version from project.godot"
+    exit 1
+}
+
+# Warn if backend/template.yaml GAME_VERSION is out of sync.
+$templateYaml = Get-Content "backend/template.yaml" -Raw
+if ($templateYaml -match 'GAME_VERSION:\s*"([^"]+)"') {
+    $backendVersion = $Matches[1]
+    if ($backendVersion -ne $Version) {
+        Write-Warning "backend/template.yaml GAME_VERSION is `"$backendVersion`" but project.godot is `"$Version`". Remember to update and redeploy the backend."
+    }
+} else {
+    Write-Warning "Could not read GAME_VERSION from backend/template.yaml"
+}
 $ImageTag = "$EcrUri/${Repository}:${Version}"
 
 Write-Host "=== GameLift Server Deployment ===" -ForegroundColor Cyan
