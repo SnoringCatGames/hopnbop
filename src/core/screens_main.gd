@@ -76,6 +76,7 @@ func _should_play_transition(
 	var transition_pairs := [
 		[ScreenType.LOBBY, ScreenType.LOADING],
 		[ScreenType.LOADING, ScreenType.GAME],
+		[ScreenType.LOADING, ScreenType.LOBBY],
 		[ScreenType.GAME, ScreenType.GAME_OVER],
 		[ScreenType.GAME, ScreenType.LOBBY],
 		[ScreenType.GAME_OVER, ScreenType.LOBBY],

@@ -31,6 +31,12 @@ signal matchmaking_progress(
 signal server_shutdown_imminent(
 	seconds_remaining: float)
 
+## Emitted when matchmaking fails before a server
+## connection is established (e.g., cancelled,
+## HTTP error). The client should show a toast
+## and return to the lobby.
+signal matchmaking_failed(reason: String)
+
 ## Emitted when matchmaking times out and the
 ## client has enough local players to fall back
 ## to offline mode.
@@ -348,8 +354,10 @@ func _on_session_request_failed(error_message: String) -> void:
 		local_mode_fallback_requested.emit()
 		return
 
-	# Emit as unexpected connection loss.
-	connection_lost.emit(error_message, false)
+	# No server connection was established, so this
+	# is not a connection loss. Signal matchmaking
+	# failure so the client returns to the lobby.
+	matchmaking_failed.emit(error_message)
 
 
 func _on_player_ids_assigned(assigned_ids: Array[int]) -> void:

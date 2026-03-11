@@ -79,6 +79,8 @@ func _ready() -> void:
 		_on_session_established)
 	session_manager.connection_lost.connect(
 		_on_connection_lost)
+	session_manager.matchmaking_failed.connect(
+		_on_matchmaking_failed)
 	(session_manager
 		.local_mode_fallback_requested
 		.connect(_on_local_mode_fallback))
@@ -386,6 +388,24 @@ func _on_connection_lost(
 					.CATEGORY_CONNECTIONS,
 			)
 		client_exit_match()
+
+
+func _on_matchmaking_failed(reason: String) -> void:
+	Netcode.warning(
+		"Matchmaking failed: %s" % reason,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+	G.client_session.is_game_loading = false
+
+	if is_instance_valid(G.toast_overlay):
+		G.toast_overlay.show_toast(
+			"Matchmaking failed. Try again.",
+			ToastOverlay.Type.INFO,
+		)
+
+	G.screens.client_open_screen(
+		ScreensMain.ScreenType.LOBBY)
 
 
 func _on_match_ready() -> void:

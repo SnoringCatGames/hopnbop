@@ -475,16 +475,33 @@ func _poll_oauth_redirect() -> void:
 				break
 		await get_tree().process_frame
 
-	# Send response HTML. Try to auto-close the tab,
-	# with a fallback message if the browser blocks it.
+	# Send styled response HTML matching the web
+	# callback page. Browsers block window.close()
+	# for tabs not opened by JavaScript, so we just
+	# tell the user to close the tab manually.
 	var html := (
 		"HTTP/1.1 200 OK\r\n"
 		+ "Content-Type: text/html\r\n\r\n"
-		+ "<html><body>"
-		+ "<h2>Authentication complete</h2>"
-		+ "<p>You can close this window.</p>"
-		+ "<script>window.close();</script>"
-		+ "</body></html>"
+		+ "<!DOCTYPE html><html><head>"
+		+ "<meta charset=\"utf-8\">"
+		+ "<style>"
+		+ "body{font-family:system-ui,sans-serif;"
+		+ "display:flex;justify-content:center;"
+		+ "align-items:center;min-height:100vh;"
+		+ "margin:0;background:#1a1a2e;color:#eee}"
+		+ ".card{text-align:center;padding:2rem;"
+		+ "border-radius:12px;background:#16213e;"
+		+ "box-shadow:0 4px 24px rgba(0,0,0,.3);"
+		+ "max-width:400px}"
+		+ ".icon{font-size:3rem;color:#4CAF50}"
+		+ "p{margin-top:1rem;line-height:1.5}"
+		+ "</style></head><body>"
+		+ "<div class=\"card\">"
+		+ "<div class=\"icon\">&#10004;</div>"
+		+ "<p>Authentication successful!</p>"
+		+ "<p style=\"color:#888;font-size:.85rem\">"
+		+ "You can close this tab.</p>"
+		+ "</div></body></html>"
 	)
 	connection.put_data(html.to_utf8_buffer())
 	connection.disconnect_from_host()

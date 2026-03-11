@@ -57,7 +57,10 @@ Write-Host "[2/3] Running sam build..." -ForegroundColor Yellow
 
 Push-Location backend
 try {
-    sam build --profile $Profile --region $Region
+    # --use-container builds inside a Lambda-like Docker
+    # image so native extensions (bcrypt) are compiled
+    # for Amazon Linux, not the local OS.
+    sam build --use-container --profile $Profile --region $Region
     if ($LASTEXITCODE -ne 0) {
         Write-Error "sam build failed"
         exit 1
