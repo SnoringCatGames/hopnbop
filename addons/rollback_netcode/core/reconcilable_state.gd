@@ -90,6 +90,18 @@ enum FrameAuthority {
 	CLIENT_PREDICTED,
 }
 
+## Identifies the role of a ReconcilableState subclass
+## within the 3-node player architecture. Used for
+## sibling detection without compile-time class_name
+## references to subclasses, which would create circular
+## dependencies in exported builds.
+enum ReconcilableStateType {
+	GENERIC,
+	CHARACTER_STATE,
+	INPUT_FROM_CLIENT,
+	FORWARDED_INPUT,
+}
+
 signal received_network_state(state_frame_index: int)
 signal network_processed
 signal player_id_changed(new_player_id: int)
@@ -243,15 +255,15 @@ var authority_id: int:
 ##
 ## For NPCs, only state_from_server is present.
 ## For 2-node players (legacy), only state_from_server and input_from_client are present.
-var state_from_server: CharacterStateFromServer:
+var state_from_server: ReconcilableState:
 	set(value):
 		state_from_server = value
 		_get_configuration_warnings()
-var input_from_client: PlayerInputFromClient:
+var input_from_client: ReconcilableState:
 	set(value):
 		input_from_client = value
 		_get_configuration_warnings()
-var forwarded_input_from_server: ForwardedPlayerInputFromServer:
+var forwarded_input_from_server: ReconcilableState:
 	set(value):
 		forwarded_input_from_server = value
 		_get_configuration_warnings()
@@ -725,6 +737,12 @@ func _get_is_server_authoritative() -> bool:
 	Netcode.log.fatal(
 		"Abstract ReconcilableNetworkState._get_is_server_authoritative is not implemented")
 	return true
+
+
+## Virtual method: identifies this node's role in the
+## 3-node player architecture. Override in subclasses.
+func _get_type() -> ReconcilableStateType:
+	return ReconcilableStateType.GENERIC
 
 
 ## Virtual method: whether this node should accept SERVER_PREDICTED states from
@@ -1280,7 +1298,14 @@ func record_initial_state(include_partners := true) -> void:
 	# frame_index and frame_authority before packing. Guard:
 	# only pack if properties have been parsed (sibling nodes
 	# may not be ready yet).
-	if (is_multiplayer_authority()
+	var has_peer := (
+		multiplayer != null
+		and multiplayer.multiplayer_peer != null
+		and multiplayer.multiplayer_peer.get_connection_status()
+			!= MultiplayerPeer.CONNECTION_DISCONNECTED
+	)
+	if (has_peer
+			and is_multiplayer_authority()
 			and not _property_names_for_packing.is_empty()):
 		frame_index = Netcode.server_frame_index
 		frame_authority = FrameAuthority.AUTHORITATIVE
@@ -1558,13 +1583,14 @@ func _update_partner_state() -> void:
 		if child is ReconcilableState and child != self:
 			sibling_states.append(child)
 
-			# Populate named properties based on node type.
-			if child is CharacterStateFromServer:
-				state_from_server = child as CharacterStateFromServer
-			elif child is PlayerInputFromClient:
-				input_from_client = child as PlayerInputFromClient
-			elif child is ForwardedPlayerInputFromServer:
-				forwarded_input_from_server = child as ForwardedPlayerInputFromServer
+			# Populate named properties based on node role.
+			match child._get_type():
+				ReconcilableStateType.CHARACTER_STATE:
+					state_from_server = child
+				ReconcilableStateType.INPUT_FROM_CLIENT:
+					input_from_client = child
+				ReconcilableStateType.FORWARDED_INPUT:
+					forwarded_input_from_server = child
 
 	# Validate the node configuration.
 	# Only 1-node or 3-node (client-controlled player) are valid.
@@ -1603,16 +1629,14 @@ func _update_partner_state() -> void:
 			# Valid 3-node setup.
 			# Validate that we found the two expected sibling types.
 			# (The third type is self, so it won't be in the sibling list.)
-			if self is CharacterStateFromServer:
-				# Self is CharacterStateFromServer, so we need the other two as siblings.
+			var state_type := _get_type()
+			if state_type == ReconcilableStateType.CHARACTER_STATE:
 				if input_from_client == null or forwarded_input_from_server == null:
 					_partner_state_configuration_warning = ("CharacterStateFromServer requires PlayerInputFromClient and ForwardedPlayerInputFromServer siblings")
-			elif self is PlayerInputFromClient:
-				# Self is PlayerInputFromClient, so we need the other two as siblings.
+			elif state_type == ReconcilableStateType.INPUT_FROM_CLIENT:
 				if state_from_server == null or forwarded_input_from_server == null:
 					_partner_state_configuration_warning = ("PlayerInputFromClient requires CharacterStateFromServer and ForwardedPlayerInputFromServer siblings")
-			elif self is ForwardedPlayerInputFromServer:
-				# Self is ForwardedPlayerInputFromServer, so we need the other two as siblings.
+			elif state_type == ReconcilableStateType.FORWARDED_INPUT:
 				if state_from_server == null or input_from_client == null:
 					_partner_state_configuration_warning = ("ForwardedPlayerInputFromServer requires CharacterStateFromServer and PlayerInputFromClient siblings")
 			else:

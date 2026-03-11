@@ -87,6 +87,7 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
         body = json.loads(event.get("body", "{}"))
         player_count = body.get("player_count", 1)
         client_id = body.get("client_id", "unknown")
+        platform = body.get("platform", "native")
         session_prefs_data = body.get(
             "session_preferences", {}
         )
@@ -124,6 +125,7 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
                 skill_rating=player_profile.rating,
                 region="us-west-2",
                 latency_map={"us-west-2": 50},
+                platform=platform,
             )
             for i in range(player_count)
         ]
@@ -165,6 +167,7 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
                         "server_port": result.server_port,
                         "player_session_ids": result.player_session_ids,
                         "selected_level_id": selected_level_id,
+                        "transport_type": result.transport_type,
                     }
                 ),
             }
@@ -220,6 +223,7 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
         # Parse request body.
         body = json.loads(event.get("body", "{}"))
         player_count = body.get("player_count", 1)
+        platform = body.get("platform", "native")
 
         # Validate input.
         if player_count < 1 or player_count > 4:
@@ -241,6 +245,7 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
                 skill_rating=player_profile.rating,
                 region="us-west-2",
                 latency_map={"us-west-2": 50},
+                platform=platform,
             )
             for i in range(player_count)
         ]
@@ -344,6 +349,7 @@ def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dic
                         "server_port": result.server_port,
                         "player_session_ids": result.player_session_ids,
                         "selected_level_id": selected_level_id,
+                        "transport_type": result.transport_type,
                     }
                 ),
             }

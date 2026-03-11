@@ -87,7 +87,10 @@ RUN mkdir -p /game/logs
 RUN chmod +x /game/hopnbop_server.x86_64
 
 # Expose ENet UDP port and WebSocket TCP port.
+# Both protocols share port 4433. ENet uses UDP,
+# WebSocket uses TCP.
 EXPOSE 4433/udp
+EXPOSE 4433/tcp
 EXPOSE 4434/tcp
 
 # Health check: verify the server process is running.

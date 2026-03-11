@@ -79,6 +79,9 @@ enum BumpMode {
 
 @export var prefer_offline_mode := false
 
+@export var discord_url := (
+	"https://discord.gg/QX939SF7nb")
+
 @export var are_critters_enabled := true
 
 @export var does_up_also_trigger_jump := true

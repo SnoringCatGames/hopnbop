@@ -1,6 +1,6 @@
 @tool
 class_name ForwardedPlayerInputFromServer
-extends PlayerInputNetworkState
+extends "res://src/scaffolder/character/player_input_network_state.gd"
 
 
 @export var player: Player:
@@ -15,6 +15,10 @@ var is_authority_for_forwarded_input: bool:
 
 func _get_is_server_authoritative() -> bool:
 	return true
+
+
+func _get_type() -> ReconcilableStateType:
+	return ReconcilableStateType.FORWARDED_INPUT
 
 
 func _should_accept_predicted_states() -> bool:
@@ -53,7 +57,12 @@ func _get_configuration_warnings() -> PackedStringArray:
 	else:
 		# Validate that synced properties match by calling the validation on
 		# PlayerInputFromClient (avoids duplicating logic).
-		var property_mismatch := input_from_client._validate_synced_properties_match(self )
+		var property_mismatch: String = (
+			input_from_client.call(
+				"_validate_synced_properties_match",
+				self,
+			)
+		)
 		if not property_mismatch.is_empty():
 			warnings.append(property_mismatch)
 

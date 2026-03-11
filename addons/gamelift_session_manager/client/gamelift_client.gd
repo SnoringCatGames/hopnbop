@@ -59,6 +59,10 @@ func client_request_session_ids(
 	var request_body := {
 		"player_count": player_count,
 		"client_id": _generate_client_id(),
+		"platform": (
+			"web"
+			if OS.has_feature("web")
+			else "native"),
 	}
 
 	if not session_prefs.is_empty():
@@ -347,15 +351,30 @@ func _handle_match_found(
 	var selected_level_id: String = data.get(
 		"selected_level_id", "")
 
+	# Set transport type from backend response.
+	# The backend determines this based on whether
+	# any matched player is on web.
+	var transport_type: String = data.get(
+		"transport_type", "enet")
+	if transport_type == "websocket":
+		Netcode.settings.transport_type = (
+			NetworkSettings
+				.TransportType.WEBSOCKET)
+	else:
+		Netcode.settings.transport_type = (
+			NetworkSettings.TransportType.ENET)
+
 	Netcode.log.print(
 		("Match found: %d session ID(s),"
-		+ " server %s:%d, level: %s") % [
+		+ " server %s:%d, level: %s,"
+		+ " transport: %s") % [
 			session_ids.size(),
 			server_ip,
 			server_port,
 			selected_level_id
 			if not selected_level_id.is_empty()
-			else "(default)"],
+			else "(default)",
+			transport_type],
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 

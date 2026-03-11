@@ -399,6 +399,9 @@ func _on_game_session_started(session) -> void:
 			expected_count = (
 				_parse_player_count_from_matchmaker(
 					data))
+			# Set transport based on whether any
+			# matched player is on web.
+			_set_transport_from_matchmaker(data)
 
 	server_set_expected_player_count(expected_count)
 
@@ -428,6 +431,53 @@ func _parse_player_count_from_matchmaker(data: Dictionary) -> int:
 			if team.has("players") and team.players is Array:
 				count += team.players.size()
 	return count if count > 0 else 2 # Default to 2 if parsing fails.
+
+
+## Determine transport from matchmaker player
+## attributes. If any player has is_web=1, the
+## entire match uses WebSocket.
+func _set_transport_from_matchmaker(
+	data: Dictionary,
+) -> void:
+	var has_web_player := false
+	if data.has("teams") and data.teams is Array:
+		for team in data.teams:
+			if (
+				not team.has("players")
+				or not team.players is Array
+			):
+				continue
+			for player in team.players:
+				var attrs: Dictionary = (
+					player.get("attributes", {}))
+				var is_web = attrs.get(
+					"is_web", {})
+				if (
+					is_web is Dictionary
+					and is_web.get(
+						"attributeValue", 0) == 1
+				):
+					has_web_player = true
+					break
+			if has_web_player:
+				break
+
+	if has_web_player:
+		Netcode.settings.transport_type = (
+			NetworkSettings.TransportType.WEBSOCKET)
+		Netcode.log.print(
+			"Web player detected,"
+			+ " using WebSocket transport",
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+	else:
+		Netcode.settings.transport_type = (
+			NetworkSettings.TransportType.ENET)
+		Netcode.log.print(
+			"All native players,"
+			+ " using ENet transport",
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
 
 
 ## Parse selected level from game session.

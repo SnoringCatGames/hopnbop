@@ -108,6 +108,10 @@ func _get_is_server_authoritative() -> bool:
 	return true
 
 
+func _get_type() -> ReconcilableStateType:
+	return ReconcilableStateType.CHARACTER_STATE
+
+
 func _should_accept_predicted_states() -> bool:
 	# Accept SERVER_PREDICTED states only for remote players (not the owning
 	# client). The owning client has authoritative input and runs its own
@@ -313,7 +317,8 @@ func _network_process() -> void:
 	# N+1).
 	var should_use_predicted_input := false
 	if (
-		input_source is ForwardedPlayerInputFromServer
+		input_source._get_type()
+			== ReconcilableStateType.FORWARDED_INPUT
 		and input_source._rollback_buffer
 			.has_at(frame_index)
 	):
@@ -400,16 +405,20 @@ func _network_process() -> void:
 				# local simulation. _sync_from_scene_state will
 				# read the delayed value from player.actions.bitmask
 				# so server and client agree on timing.
-				var delay_buf := (
-					input_from_client.input_delay_buffer
+				var delay_buf: InputDelayBuffer = (
+					input_from_client.get(
+						&"input_delay_buffer"
+					)
 				)
 				var raw_input := character.actions.bitmask
 				delay_buf.store(frame_index, raw_input)
-				var delayed := delay_buf.get_delayed(
+				var delayed: int = delay_buf.get_delayed(
 					frame_index, input_delay
 				)
-				var prev_delayed := delay_buf.get_delayed(
-					frame_index - 1, input_delay
+				var prev_delayed: int = (
+					delay_buf.get_delayed(
+						frame_index - 1, input_delay
+					)
 				)
 				character.actions.bitmask = delayed
 				character.actions.previous_bitmask = prev_delayed
@@ -962,19 +971,27 @@ func _try_send_confirmed_authoritative_state() -> void:
 func _apply_input_to_character(input_source: ReconcilableState) -> void:
 	# Copy input from PlayerInputFromClient or ForwardedPlayerInputFromServer
 	# to the character.
-	if input_source is PlayerInputNetworkState:
-		var input := input_source as PlayerInputNetworkState
+	var state_type := input_source._get_type()
+	if (
+		state_type == ReconcilableStateType.INPUT_FROM_CLIENT
+		or state_type == ReconcilableStateType.FORWARDED_INPUT
+	):
 		# Default previous_bitmask to 0. Callers override this:
 		# - Rollback path: reads from input buffer (frame N-1).
 		# - Extrapolation path: sets to current bitmask.
 		# - Forward sim path: sets from delay buffer or scene.
 		character.actions.previous_bitmask = 0
-		character.actions.bitmask = input.actions
-		match input.last_interaction_type:
-			PlayerInputNetworkState.ClientInteractionType.NONE:
+		character.actions.bitmask = input_source.get(
+			&"actions"
+		)
+		match input_source.last_interaction_type:
+			0: # ClientInteractionType.NONE
 				pass
-			PlayerInputNetworkState.ClientInteractionType.JUMP:
-				character.last_triggered_jump_frame_index = input.last_interaction_frame_index
+			1: # ClientInteractionType.JUMP
+				character.last_triggered_jump_frame_index = (
+					input_source
+						.last_interaction_frame_index
+				)
 			_:
 				Netcode.fatal()
 

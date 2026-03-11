@@ -82,7 +82,7 @@ func _add_legal_section() -> void:
 	)
 	discord_row.setup(
 		"Discord",
-		"https://discord.gg/QX939SF7nb",
+		G.settings.discord_url,
 	)
 	_row_container.add_child(discord_row)
 	_connect_row_clicked(discord_row)

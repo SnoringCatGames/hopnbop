@@ -182,9 +182,20 @@ func client_connect_to_server(
 	match Netcode.settings.transport_type:
 		NetworkSettings.TransportType.WEBSOCKET:
 			var ws := WebSocketMultiplayerPeer.new()
+			# Use wss:// for remote servers (browsers
+			# require WSS from HTTPS origins). Use
+			# ws:// for localhost/preview.
+			var is_local := (
+				p_server_ip_address == "127.0.0.1"
+				or p_server_ip_address == "localhost"
+				or Netcode.is_preview)
+			var scheme := (
+				"ws" if is_local else "wss")
 			result = ws.create_client(
-				"ws://%s:%d"
-				% [p_server_ip_address, p_server_port])
+				"%s://%s:%d"
+				% [scheme,
+					p_server_ip_address,
+					p_server_port])
 			peer = ws
 			transport_name = "WebSocket"
 		_:

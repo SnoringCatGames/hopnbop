@@ -16,6 +16,7 @@ class MatchmakingPlayer:
     skill_rating: int
     region: str
     latency_map: Dict[str, int]
+    platform: str = "native"
 
 
 @dataclass
@@ -27,6 +28,7 @@ class MatchResult:
     server_ip: str
     server_port: int
     player_session_ids: List[str]
+    transport_type: str = "enet"
 
 
 class GameLiftService:
@@ -60,6 +62,9 @@ class GameLiftService:
                 "PlayerAttributes": {
                     "skill": {"N": p.skill_rating},
                     "region": {"S": p.region},
+                    "is_web": {
+                        "N": 1 if p.platform == "web" else 0,
+                    },
                 },
                 "LatencyInMs": p.latency_map,
             }
@@ -125,6 +130,9 @@ class GameLiftService:
             # Success - match found.
             if status == "COMPLETED":
                 conn_info = ticket["GameSessionConnectionInfo"]
+                transport = self._determine_transport(
+                    ticket.get("Players", [])
+                )
 
                 return MatchResult(
                     ticket_id=ticket_id,
@@ -137,6 +145,7 @@ class GameLiftService:
                         mp["PlayerSessionId"]
                         for mp in conn_info["MatchedPlayerSessions"]
                     ],
+                    transport_type=transport,
                 )
 
             # Terminal failure states.
@@ -152,6 +161,22 @@ class GameLiftService:
 
             # Still in progress (QUEUED, SEARCHING, PLACING).
             await asyncio.sleep(self.poll_interval)
+
+    @staticmethod
+    def _determine_transport(players: list) -> str:
+        """Determine transport type from matched players.
+
+        If any player has is_web=1, the entire match uses
+        WebSocket so web clients can connect. Otherwise ENet.
+        """
+        for player in players:
+            attrs = player.get("PlayerAttributes", {})
+            is_web = attrs.get("is_web", {})
+            # FlexMatch returns attributes as {"N": value}.
+            value = is_web.get("N", 0) if isinstance(is_web, dict) else 0
+            if value == 1:
+                return "websocket"
+        return "enet"
 
     async def cancel_matchmaking(self, ticket_id: str) -> None:
         """Cancel active matchmaking ticket."""

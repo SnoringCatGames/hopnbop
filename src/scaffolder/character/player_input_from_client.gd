@@ -1,6 +1,6 @@
 @tool
 class_name PlayerInputFromClient
-extends PlayerInputNetworkState
+extends "res://src/scaffolder/character/player_input_network_state.gd"
 
 
 @export var player: Player:
@@ -15,6 +15,10 @@ var input_delay_buffer := InputDelayBuffer.new()
 
 func _get_is_server_authoritative() -> bool:
 	return false
+
+
+func _get_type() -> ReconcilableStateType:
+	return ReconcilableStateType.INPUT_FROM_CLIENT
 
 
 func _ready() -> void:
@@ -155,17 +159,21 @@ func _sync_from_scene_state() -> void:
 # ----------------------- Validation helpers --------------------------
 
 
-func _find_forwarded_input_sibling() -> ForwardedPlayerInputFromServer:
+func _find_forwarded_input_sibling() -> ReconcilableState:
 	if not is_node_ready():
 		return null
 	for child in get_parent().get_children():
-		if child is ForwardedPlayerInputFromServer:
-			return child as ForwardedPlayerInputFromServer
+		if (
+			child is ReconcilableState
+			and child._get_type()
+				== ReconcilableStateType.FORWARDED_INPUT
+		):
+			return child
 	return null
 
 
 func _validate_synced_properties_match(
-	forwarded_input: ForwardedPlayerInputFromServer
+	forwarded_input: ReconcilableState,
 ) -> String:
 	var input_properties: Dictionary = (
 		_synced_properties_and_rollback_diff_thresholds

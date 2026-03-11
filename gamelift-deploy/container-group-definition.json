@@ -14,6 +14,11 @@
                     "Protocol": "UDP"
                 },
                 {
+                    "FromPort": 4433,
+                    "ToPort": 4433,
+                    "Protocol": "TCP"
+                },
+                {
                     "FromPort": 4434,
                     "ToPort": 4434,
                     "Protocol": "TCP"
