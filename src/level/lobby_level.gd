@@ -515,3 +515,7 @@ func _update_lobby_colors() -> void:
 				player_id].base_color = colors[i]
 
 	G.match_state.players_updated.emit()
+
+
+func _on_settings_cave_body_entered(body: Node2D) -> void:
+	pass # Replace with function body.
