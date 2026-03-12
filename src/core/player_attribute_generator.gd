@@ -3,7 +3,10 @@ extends RefCounted
 
 
 static func generate_random_attributes() -> Dictionary:
-	var is_soft := randf() < 0.5
+	var is_soft := (
+		randf() < 0.5
+		or not G.settings.are_hard_adjectives_enabled
+	)
 	var list_id: int = (
 		DynamicAdjectiveConfig.AdjectiveListType.SOFT
 		if is_soft
