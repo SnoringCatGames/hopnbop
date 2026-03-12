@@ -98,4 +98,6 @@ LINK.UNLINK,Unlink,取消链接,Desvincular,अनलिंक,إلغاء الر
 ORDINAL.1ST,1st,第1,1.º,पहला,الأول,1er,1º,1-й,1位,1.,1위,1°,อันดับ 1
 ORDINAL.2ND,2nd,第2,2.º,दूसरा,الثاني,2e,2º,2-й,2位,2.,2위,2°,อันดับ 2
 ORDINAL.3RD,3rd,第3,3.º,तीसरा,الثالث,3e,3º,3-й,3位,3.,3위,3°,อันดับ 3
+VERSION.UPDATE_REQUIRED,A game update is required. Please download the latest version.,需要游戏更新。请下载最新版本。,Se requiere una actualización. Descarga la última versión.,गेम अपडेट आवश्यक है। कृपया नवीनतम संस्करण डाउनलोड करें।,يلزم تحديث اللعبة. يرجى تنزيل أحدث إصدار.,Une mise à jour est requise. Veuillez télécharger la dernière version.,Uma atualização é necessária. Baixe a versão mais recente.,Требуется обновление игры. Пожалуйста загрузите последнюю версию.,ゲームの更新が必要です。最新バージョンをダウンロードしてください。,Ein Spielupdate ist erforderlich. Bitte laden Sie die neueste Version herunter.,게임 업데이트가 필요합니다. 최신 버전을 다운로드하세요.,È necessario un aggiornamento. Scarica l'ultima versione.,ต้องอัปเดตเกม กรุณาดาวน์โหลดเวอร์ชันล่าสุด
+VERSION.CLOSE_GAME,Close Game,关闭游戏,Cerrar juego,गेम बंद करें,إغلاق اللعبة,Fermer le jeu,Fechar jogo,Закрыть игру,ゲームを閉じる,Spiel schließen,게임 닫기,Chiudi gioco,ปิดเกม
 ORDINAL.NTH,%dth,第%d,%d.º,%dवां,%d,%de,%dº,%d-й,%d位,%d.,위 %d,%d°,อันดับ %d
