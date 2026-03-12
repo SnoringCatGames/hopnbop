@@ -212,6 +212,14 @@ Godot's physics engine doesn't natively support rewinding/re-simulation. Options
 2. Follow pattern: modify velocity based on surface state and input
 3. Register in CharacterActionState
 
+### Internationalization (i18n)
+
+All user-visible strings must be hooked up to Godot's
+translation system using `tr()`. When adding or modifying
+user-facing text, check the existing translation files in
+the project to determine supported languages and file
+format, then provide translations for all of them.
+
 ## Configuration
 
 - **settings.tres** - Runtime settings (network, debug, gameplay)
