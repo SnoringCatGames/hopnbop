@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dewjlcd5gptmj"
-path="res://.godot/imported/apple_32.png-824cd7d3fe36158d07843e49561c41da.ctex"
+uid="uid://bu27kj2goeu1h"
+path="res://.godot/imported/epic_32.png-1c306682fe9b20349dba96de984961d4.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/gui/apple_32.png"
-dest_files=["res://.godot/imported/apple_32.png-824cd7d3fe36158d07843e49561c41da.ctex"]
+source_file="res://assets/images/gui/social_icons/epic_32.png"
+dest_files=["res://.godot/imported/epic_32.png-1c306682fe9b20349dba96de984961d4.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b24yon3hfhjbm"
-path="res://.godot/imported/discord_32.png-b0a8627ec7ef687931d79639fd97dc19.ctex"
+uid="uid://ctng3e31xuyki"
+path="res://.godot/imported/facebook_32.png-4821ff83c6e9c774d833de0bc94ceebc.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/images/gui/discord_32.png"
-dest_files=["res://.godot/imported/discord_32.png-b0a8627ec7ef687931d79639fd97dc19.ctex"]
+source_file="res://assets/images/gui/social_icons/facebook_32.png"
+dest_files=["res://.godot/imported/facebook_32.png-4821ff83c6e9c774d833de0bc94ceebc.ctex"]
 
 [params]
 
