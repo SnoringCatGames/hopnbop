@@ -40,6 +40,9 @@ func show_toast(
 
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.size_flags_horizontal = (
+		Control.SIZE_SHRINK_CENTER
+	)
 
 	panel.add_theme_stylebox_override(
 		"panel", _toast_style,

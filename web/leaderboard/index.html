@@ -18,8 +18,17 @@
 <div id="controls" style="margin-bottom:1rem">
   <button id="btn-alltime" class="active">All-Time</button>
   <button id="btn-weekly">Weekly</button>
+  <select id="scope-select">
+    <option value="global">Global</option>
+    <option value="level_0">Level 0</option>
+    <option value="level_1">Level 1</option>
+    <option value="level_2">Level 2</option>
+    <option value="level_3">Level 3</option>
+    <option value="level_4">Level 4</option>
+    <option value="level_5">Level 5</option>
+  </select>
   <style>
-    #controls button {
+    #controls button, #controls select {
       background: #2a2a4a;
       color: #ccc;
       border: 1px solid #3a3a5a;
@@ -34,7 +43,8 @@
       color: #1a1a2e;
       border-color: #7eb8da;
     }
-    #controls button:hover:not(.active) {
+    #controls button:hover:not(.active),
+    #controls select:hover {
       background: #3a3a5a;
     }
   </style>
@@ -59,10 +69,12 @@ let currentType = 'alltime';
 
 const btnAlltime = document.getElementById('btn-alltime');
 const btnWeekly = document.getElementById('btn-weekly');
+const scopeSelect = document.getElementById('scope-select');
 const tbody = document.getElementById('leaderboard-body');
 
 btnAlltime.addEventListener('click', () => switchType('alltime'));
 btnWeekly.addEventListener('click', () => switchType('weekly'));
+scopeSelect.addEventListener('change', () => fetchLeaderboard());
 
 function switchType(type) {
   currentType = type;
@@ -72,23 +84,24 @@ function switchType(type) {
 }
 
 async function fetchLeaderboard() {
+  const scope = scopeSelect.value;
   tbody.innerHTML = '<tr><td colspan="3" class="status-message">Loading...</td></tr>';
   try {
     const response = await fetch(
-      API_URL + '/leaderboard?type=' + currentType + '&scope=global&page=1'
+      API_URL + '/leaderboard?type=' + currentType + '&scope=' + scope + '&limit=50'
     );
     if (!response.ok) throw new Error('HTTP ' + response.status);
     const data = await response.json();
-    const entries = data.entries || data.players || [];
+    const entries = data.leaderboard || [];
     if (entries.length === 0) {
       tbody.innerHTML = '<tr><td colspan="3" class="status-message">No entries yet.</td></tr>';
       return;
     }
-    tbody.innerHTML = entries.map((entry, i) =>
+    tbody.innerHTML = entries.map((entry) =>
       '<tr>' +
-        '<td>' + (i + 1) + '</td>' +
+        '<td>' + entry.rank + '</td>' +
         '<td>' + escapeHtml(entry.display_name || entry.player_id || 'Unknown') + '</td>' +
-        '<td>' + (entry.score != null ? entry.score : entry.wins || 0) + '</td>' +
+        '<td>' + (entry.wins || 0) + '</td>' +
       '</tr>'
     ).join('');
   } catch (err) {
