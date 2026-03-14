@@ -24,14 +24,7 @@ func setup(panel: SidePanel) -> void:
 func _ready() -> void:
 	super()
 	_label.text = tr("SETTINGS.EXPORT_DATA")
-	if _icon_texture != null:
-		_icon.texture = _icon_texture
-		_icon.custom_minimum_size = (
-			_icon_texture.get_size()
-			* G.settings.icon_scale)
-		_icon.show()
-	else:
-		_icon.hide()
+	_apply_icon(_icon, _icon_texture)
 
 
 func on_left() -> void:

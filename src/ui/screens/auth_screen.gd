@@ -2,17 +2,19 @@ class_name AuthScreen
 extends Screen
 ## Authentication screen with provider login
 ## buttons. Supports keyboard/controller navigation
-## via AnyDeviceInputPoller.
+## via ScreenFocusNavigator.
 ##
 ## On platforms with implied auth (Steam, Epic),
 ## this screen auto-logs-in without showing any
 ## buttons. On web and desktop, it shows Google,
 ## Facebook, and anonymous options.
 
+@export_group("Provider Icons")
+@export var icon_google: Texture2D
+@export var icon_facebook: Texture2D
+
 var _is_authenticating := false
-var _poller := AnyDeviceInputPoller.new()
-var _focusable: Array[Control] = []
-var _focused_index := 0
+var _navigator := ScreenFocusNavigator.new()
 
 
 func _enter_tree() -> void:
@@ -29,8 +31,11 @@ func on_open() -> void:
 
 	# In preview mode, force secondary clients to
 	# use anonymous login so each gets a unique
-	# player identity for matchmaking.
+	# player identity for matchmaking. Clear any
+	# cached tokens first so auto-refresh does not
+	# race with the anonymous login request.
 	if _should_force_anonymous():
+		G.auth_token_store.clear_tokens()
 		_start_login(
 			AuthClient.Provider.ANONYMOUS)
 		return
@@ -61,7 +66,7 @@ func on_open() -> void:
 		return
 
 	_build_focusable_list()
-	_poller.prime()
+	_navigator.prime()
 
 
 func on_close() -> void:
@@ -71,61 +76,28 @@ func on_close() -> void:
 
 func _process(_delta: float) -> void:
 	if (not visible
-			or not %ButtonsContainer.visible
-			or _focusable.is_empty()):
+			or not %ButtonsContainer.visible):
 		return
 
-	_poller.poll(_delta)
-
-	if _poller.up_just:
-		_move_focus(-1)
-	elif _poller.down_just:
-		_move_focus(1)
-	elif (_poller.left_just
-			or _poller.right_just
-			or _poller.trigger_just):
+	if _navigator.poll(_delta):
 		_activate_focused()
 
 
 func _build_focusable_list() -> void:
-	_focusable.clear()
+	var items: Array[Control] = []
 	if %GoogleButton.visible:
-		_focusable.append(%GoogleButton)
+		items.append(%GoogleButton)
 	if %FacebookButton.visible:
-		_focusable.append(%FacebookButton)
+		items.append(%FacebookButton)
 	if %AnonButton.visible:
-		_focusable.append(%AnonButton)
-	if not _focusable.is_empty():
-		_focused_index = 0
-		_update_focus()
-
-
-func _move_focus(direction: int) -> void:
-	if _focusable.is_empty():
-		return
-	_focused_index = (
-		(_focused_index + direction)
-		% _focusable.size())
-	if _focused_index < 0:
-		_focused_index += _focusable.size()
-	_update_focus()
-	if is_instance_valid(G.audio):
-		G.audio.play_sound("focus")
-
-
-func _update_focus() -> void:
-	for i in _focusable.size():
-		if i == _focused_index:
-			_focusable[i].grab_focus()
-		else:
-			_focusable[i].release_focus()
+		items.append(%AnonButton)
+	_navigator.set_focusable_list(items)
 
 
 func _activate_focused() -> void:
-	if _focusable.is_empty():
+	var focused := _navigator.get_focused()
+	if focused == null:
 		return
-	var focused: Control = (
-		_focusable[_focused_index])
 	if focused == %GoogleButton:
 		_on_google_pressed()
 	elif focused == %FacebookButton:
@@ -138,6 +110,12 @@ func _show_buttons() -> void:
 	_is_authenticating = false
 	%ButtonsContainer.visible = true
 	%LoadingContainer.visible = false
+
+	# Set button icons.
+	_apply_button_icon(
+		%GoogleButton, icon_google)
+	_apply_button_icon(
+		%FacebookButton, icon_facebook)
 
 	# Hide buttons not relevant to this platform.
 	var has_platform := (
@@ -159,7 +137,7 @@ func _show_error(message: String) -> void:
 	_show_buttons()
 	%ErrorLabel.text = message
 	_build_focusable_list()
-	_poller.prime()
+	_navigator.prime()
 
 
 func _navigate_to_lobby() -> void:
@@ -223,7 +201,7 @@ func _on_auto_refresh_completed(
 		G.auth_token_store.clear_tokens()
 		_show_buttons()
 		_build_focusable_list()
-		_poller.prime()
+		_navigator.prime()
 
 
 func _on_status_changed(status: String) -> void:
@@ -261,3 +239,13 @@ func _disconnect_status_signal() -> void:
 		G.auth_client.auth_status_changed.disconnect(
 			_on_status_changed,
 		)
+
+
+func _apply_button_icon(
+	btn: Button,
+	tex: Texture2D,
+) -> void:
+	if tex == null:
+		return
+	btn.icon = tex
+	btn.expand_icon = true

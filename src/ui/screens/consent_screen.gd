@@ -12,6 +12,25 @@ extends Screen
 const _TERMS_URL := "https://hopnbop.net/terms"
 const _PRIVACY_URL := "https://hopnbop.net/privacy"
 
+const _LANGUAGE_ROW_MIN_WIDTH := 200.0
+const _LANGUAGE_SCROLL_HEIGHT := 200.0
+
+const _LOCALE_DISPLAY_NAMES := {
+	"en": "English",
+	"zh": "中文",
+	"es": "Español",
+	"hi": "हिन्दी",
+	"ar": "العربية",
+	"fr": "Français",
+	"pt": "Português",
+	"ru": "Русский",
+	"ja": "日本語",
+	"de": "Deutsch",
+	"ko": "한국어",
+	"it": "Italiano",
+	"th": "ไทย",
+}
+
 @export_group("Checked Textures")
 @export var tex_normal_checked: Texture2D
 @export var tex_hovered_checked: Texture2D
@@ -24,10 +43,16 @@ const _PRIVACY_URL := "https://hopnbop.net/privacy"
 
 var _age_checked := false
 var _terms_checked := false
+var _is_language_overlay_shown := false
 
 var _poller := AnyDeviceInputPoller.new()
 var _focusable: Array[Control] = []
 var _focused_index := 0
+
+@export_group("Row Icons")
+@export var icon_language: Texture2D
+@export var icon_terms: Texture2D
+@export var icon_privacy: Texture2D
 
 @export var _focus_style: StyleBoxTexture
 @export var _unfocused_style: StyleBoxFlat
@@ -66,19 +91,38 @@ func _ready() -> void:
 	%TermsCheckBox.stretch_mode = (
 		TextureButton.STRETCH_KEEP_ASPECT_CENTERED)
 
-	# Flip arrows for RTL locales.
-	var arrow_text := "<" if is_layout_rtl() else ">"
-	%TermsLinkRow.get_node(
-		"HBoxContainer/Arrow").text = arrow_text
-	%PrivacyLinkRow.get_node(
-		"HBoxContainer/Arrow").text = arrow_text
+	# Set row icons.
+	_setup_row_icon(
+		%LanguageRow.get_node(
+			"HBoxContainer/Icon"),
+		icon_language)
+	_setup_row_icon(
+		%TermsLinkRow.get_node(
+			"HBoxContainer/Icon"),
+		icon_terms)
+	_setup_row_icon(
+		%PrivacyLinkRow.get_node(
+			"HBoxContainer/Icon"),
+		icon_privacy)
+
+	# Set up chevron icons on arrow rows.
+	_setup_chevron(
+		%LanguageRow.get_node(
+			"HBoxContainer/Arrow"))
+	_setup_chevron(
+		%TermsLinkRow.get_node(
+			"HBoxContainer/Arrow"))
+	_setup_chevron(
+		%PrivacyLinkRow.get_node(
+			"HBoxContainer/Arrow"))
 
 	# Connect mouse interactions for focusable
 	# PanelContainer rows.
-	_connect_row_mouse(%TermsLinkRow, 0)
-	_connect_row_mouse(%PrivacyLinkRow, 1)
-	_connect_row_mouse(%AgeRow, 2)
-	_connect_row_mouse(%TermsRow, 3)
+	_connect_row_mouse(%LanguageRow, 0)
+	_connect_row_mouse(%TermsLinkRow, 1)
+	_connect_row_mouse(%PrivacyLinkRow, 2)
+	_connect_row_mouse(%AgeRow, 3)
+	_connect_row_mouse(%TermsRow, 4)
 
 
 func on_open() -> void:
@@ -99,6 +143,7 @@ func on_open() -> void:
 		return
 
 	# Show consent UI.
+	_is_language_overlay_shown = false
 	_age_checked = false
 	_terms_checked = false
 	%ContinueButton.disabled = true
@@ -128,6 +173,7 @@ func _process(_delta: float) -> void:
 
 func _build_focusable_list() -> void:
 	_focusable.clear()
+	_focusable.append(%LanguageRow)
 	_focusable.append(%TermsLinkRow)
 	_focusable.append(%PrivacyLinkRow)
 	_focusable.append(%AgeRow)
@@ -172,7 +218,12 @@ func _activate_focused() -> void:
 		return
 	var focused: Control = (
 		_focusable[_focused_index])
-	if focused == %TermsLinkRow:
+	if _is_language_overlay_shown:
+		_activate_language_option(focused)
+		return
+	if focused == %LanguageRow:
+		_open_language_overlay()
+	elif focused == %TermsLinkRow:
 		OS.shell_open(_TERMS_URL)
 	elif focused == %PrivacyLinkRow:
 		OS.shell_open(_PRIVACY_URL)
@@ -204,6 +255,229 @@ func _connect_row_mouse(
 		func() -> void:
 			_focused_index = focus_index
 			_update_focus())
+
+
+func _open_language_overlay() -> void:
+	_is_language_overlay_shown = true
+	# Hide static consent children.
+	for child in %ContentBox.get_children():
+		child.visible = false
+	_build_language_options()
+	_poller.prime()
+	if is_instance_valid(G.audio):
+		G.audio.play_sound("focus")
+
+
+func _close_language_overlay() -> void:
+	_is_language_overlay_shown = false
+	# Remove dynamic language rows.
+	var children := %ContentBox.get_children()
+	for child in children:
+		if child.has_meta("is_language_row"):
+			%ContentBox.remove_child(child)
+			child.queue_free()
+	# Show static consent children.
+	for child in %ContentBox.get_children():
+		child.visible = true
+	_update_rtl_arrows()
+	_build_focusable_list()
+	_poller.prime()
+	if is_instance_valid(G.audio):
+		G.audio.play_sound("focus")
+
+
+func _build_language_options() -> void:
+	_focusable.clear()
+
+	# Back row.
+	var back_row := _create_back_row()
+	back_row.set_meta("is_language_row", true)
+	%ContentBox.add_child(back_row)
+	_connect_row_mouse(
+		back_row, _focusable.size())
+	_focusable.append(back_row)
+
+	# Spacer between back and options.
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 4)
+	spacer.set_meta("is_language_row", true)
+	%ContentBox.add_child(spacer)
+
+	# Scrollable language list.
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(
+		_LANGUAGE_ROW_MIN_WIDTH,
+		_LANGUAGE_SCROLL_HEIGHT)
+	scroll.horizontal_scroll_mode = (
+		ScrollContainer.SCROLL_MODE_DISABLED)
+	scroll.set_meta("is_language_row", true)
+	%ContentBox.add_child(scroll)
+
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override(
+		"separation", 8)
+	scroll.add_child(list)
+
+	# One row per supported locale.
+	var current_locale := (
+		G.local_settings.get_locale())
+	for locale in LocalSettings.SUPPORTED_LOCALES:
+		var native_name: String = (
+			_LOCALE_DISPLAY_NAMES.get(
+				locale, locale))
+		var is_current := (
+			locale == current_locale)
+		var row := _create_language_option(
+			locale, native_name, is_current)
+		list.add_child(row)
+		_connect_row_mouse(
+			row, _focusable.size())
+		_focusable.append(row)
+
+	# Bottom padding outside scroll area.
+	var bottom_spacer := Control.new()
+	bottom_spacer.custom_minimum_size = (
+		Vector2(0, 40))
+	bottom_spacer.set_meta(
+		"is_language_row", true)
+	%ContentBox.add_child(bottom_spacer)
+
+	_focused_index = 0
+	_update_focus()
+
+
+func _create_back_row() -> PanelContainer:
+	var row := PanelContainer.new()
+	row.custom_minimum_size = Vector2(
+		_LANGUAGE_ROW_MIN_WIDTH, 0)
+	row.add_theme_stylebox_override(
+		"panel", _unfocused_style)
+	row.set_meta("is_back", true)
+
+	var hbox := HBoxContainer.new()
+	hbox.mouse_filter = (
+		Control.MOUSE_FILTER_IGNORE)
+	hbox.add_theme_constant_override(
+		"separation", 8)
+	row.add_child(hbox)
+
+	var arrow := TextureRect.new()
+	arrow.texture = G.settings.chevron_icon
+	arrow.expand_mode = (
+		TextureRect.EXPAND_IGNORE_SIZE)
+	arrow.stretch_mode = (
+		TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+	var back_chevron_size := (
+		G.settings.chevron_icon.get_size()
+		* G.settings.icon_scale)
+	arrow.custom_minimum_size = back_chevron_size
+	if not is_layout_rtl():
+		arrow.pivot_offset = back_chevron_size / 2.0
+		arrow.scale.x = -1.0
+	hbox.add_child(arrow)
+
+	var label := Label.new()
+	label.text = tr("SETTINGS.LANGUAGE")
+	label.size_flags_horizontal = (
+		Control.SIZE_EXPAND_FILL)
+	hbox.add_child(label)
+
+	return row
+
+
+func _create_language_option(
+	locale: String,
+	native_name: String,
+	is_current: bool,
+) -> PanelContainer:
+	var row := PanelContainer.new()
+	row.custom_minimum_size = Vector2(
+		_LANGUAGE_ROW_MIN_WIDTH, 0)
+	row.add_theme_stylebox_override(
+		"panel", _unfocused_style)
+	row.set_meta("locale", locale)
+
+	var hbox := HBoxContainer.new()
+	hbox.mouse_filter = (
+		Control.MOUSE_FILTER_IGNORE)
+	hbox.add_theme_constant_override(
+		"separation", 8)
+	row.add_child(hbox)
+
+	var check_label := Label.new()
+	if is_current:
+		check_label.text = "✓"
+	else:
+		check_label.text = ""
+	check_label.custom_minimum_size = (
+		Vector2(20, 0))
+	hbox.add_child(check_label)
+
+	var name_label := Label.new()
+	name_label.text = native_name
+	name_label.size_flags_horizontal = (
+		Control.SIZE_EXPAND_FILL)
+	hbox.add_child(name_label)
+
+	return row
+
+
+func _activate_language_option(
+	focused: Control,
+) -> void:
+	if focused.has_meta("is_back"):
+		_close_language_overlay()
+		return
+	if not focused.has_meta("locale"):
+		return
+	var locale: String = (
+		focused.get_meta("locale"))
+	G.local_settings.set_locale(locale)
+	if is_instance_valid(G.audio):
+		G.audio.play_sound("select")
+	_close_language_overlay()
+
+
+func _setup_row_icon(
+	icon_rect: TextureRect,
+	tex: Texture2D,
+) -> void:
+	if tex != null:
+		icon_rect.texture = tex
+		icon_rect.custom_minimum_size = (
+			tex.get_size()
+			* G.settings.icon_scale)
+		icon_rect.show()
+	else:
+		icon_rect.hide()
+
+
+func _setup_chevron(rect: TextureRect) -> void:
+	rect.texture = G.settings.chevron_icon
+	rect.expand_mode = (
+		TextureRect.EXPAND_IGNORE_SIZE)
+	rect.stretch_mode = (
+		TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+	var chevron_size := (
+		G.settings.chevron_icon.get_size()
+		* G.settings.icon_scale)
+	rect.custom_minimum_size = chevron_size
+	rect.scale.x = 1.0
+	if is_layout_rtl():
+		rect.pivot_offset = chevron_size / 2.0
+		rect.scale.x = -1.0
+
+
+func _update_rtl_arrows() -> void:
+	_setup_chevron(
+		%LanguageRow.get_node(
+			"HBoxContainer/Arrow"))
+	_setup_chevron(
+		%TermsLinkRow.get_node(
+			"HBoxContainer/Arrow"))
+	_setup_chevron(
+		%PrivacyLinkRow.get_node(
+			"HBoxContainer/Arrow"))
 
 
 func _on_age_pressed() -> void:

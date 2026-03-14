@@ -76,3 +76,59 @@ func _update_focus_style() -> void:
 	else:
 		add_theme_stylebox_override(
 			"panel", _unfocused_style)
+
+
+## Configures a TextureRect with the given texture.
+## Uses G.settings.icon_scale for sizing, or
+## get_icon_display_width() when custom_scale > 0.
+func _apply_icon(
+	icon_rect: TextureRect,
+	texture: Texture2D,
+	custom_scale: int = -1,
+) -> void:
+	if texture != null:
+		icon_rect.texture = texture
+		if custom_scale > 0:
+			var width := (
+				G.settings
+					.get_icon_display_width())
+			icon_rect.custom_minimum_size = (
+				Vector2(width, width))
+		else:
+			icon_rect.custom_minimum_size = (
+				texture.get_size()
+				* G.settings.icon_scale)
+		icon_rect.show()
+	else:
+		icon_rect.hide()
+
+
+## Configures a TextureRect as a right-facing
+## chevron arrow, flipped for RTL layouts.
+func _setup_chevron(rect: TextureRect) -> void:
+	rect.texture = G.settings.chevron_icon
+	var chevron_size := (
+		G.settings.chevron_icon.get_size()
+		* G.settings.icon_scale)
+	rect.custom_minimum_size = chevron_size
+	if is_layout_rtl():
+		rect.pivot_offset = chevron_size / 2.0
+		rect.scale.x = -1.0
+
+
+## Duplicates the focus and unfocused styles and
+## adds content margins on all sides.
+func _apply_content_margin_to_styles(
+	margin: float,
+) -> void:
+	_focus_style = _focus_style.duplicate()
+	_focus_style.content_margin_left = margin
+	_focus_style.content_margin_right = margin
+	_focus_style.content_margin_top = margin
+	_focus_style.content_margin_bottom = margin
+	_unfocused_style = (
+		_unfocused_style.duplicate())
+	_unfocused_style.content_margin_left = margin
+	_unfocused_style.content_margin_right = margin
+	_unfocused_style.content_margin_top = margin
+	_unfocused_style.content_margin_bottom = margin

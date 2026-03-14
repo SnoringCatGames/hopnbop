@@ -49,7 +49,7 @@ func open(
 	if _has_reject:
 		%RejectLabel.text = reject_text
 		%RejectButton.visible = true
-		_focused_on_accept = true
+		_focused_on_accept = false
 	else:
 		%RejectButton.visible = false
 		_focused_on_accept = true

@@ -5,6 +5,10 @@ extends Control
 ## focus navigation and device-specific input.
 
 
+const _CONFIRM_OVERLAY_SCENE := preload(
+	"res://src/ui/confirm_overlay/"
+	+ "confirm_overlay.tscn")
+
 var manager: SidePanelManager
 var _player: Player
 var _device_config: DeviceConfig
@@ -50,6 +54,33 @@ func setup(
 ## Override in subclasses to populate rows.
 func build_ui() -> void:
 	pass
+
+
+## Opens a ConfirmOverlay modal, disabling this
+## panel's input while the dialog is open.
+func open_confirm_dialog(
+	message: String,
+	accept_text: String,
+	on_accept: Callable,
+	reject_text: String = "",
+	on_reject: Callable = Callable(),
+) -> void:
+	is_input_active = false
+	var dialog: ConfirmOverlay = (
+		_CONFIRM_OVERLAY_SCENE.instantiate())
+	dialog.tree_exiting.connect(
+		func() -> void:
+			if is_instance_valid(self):
+				is_input_active = true)
+	get_tree().root.add_child(dialog)
+	dialog.open(
+		message,
+		accept_text,
+		on_accept,
+		reject_text,
+		on_reject,
+		_device_config,
+	)
 
 
 func prime_input_state() -> void:

@@ -6,8 +6,6 @@ extends SettingsRow
 ## unlink flow (with confirmation) when already linked.
 
 
-@export var _confirm_overlay_scene: PackedScene
-
 var _provider: AuthClient.Provider
 var _provider_name: String
 var _is_linked := false
@@ -46,20 +44,7 @@ func setup(
 func _ready() -> void:
 	super()
 	_label.text = _provider_name
-	if _icon_texture != null:
-		_icon.texture = _icon_texture
-		if _icon_scale > 0:
-			var width := (
-				G.settings.get_icon_display_width())
-			_icon.custom_minimum_size = (
-				Vector2(width, width))
-		else:
-			_icon.custom_minimum_size = (
-				_icon_texture.get_size()
-				* G.settings.icon_scale)
-		_icon.show()
-	else:
-		_icon.hide()
+	_apply_icon(_icon, _icon_texture, _icon_scale)
 	_update_status()
 
 
@@ -102,28 +87,12 @@ func _try_unlink() -> void:
 	if not is_instance_valid(_panel):
 		return
 
-	_panel.is_input_active = false
-
-	var device_config: DeviceConfig = null
-	if is_instance_valid(_panel.manager):
-		device_config = (
-			_panel.manager.get_device_config())
-
-	var dialog: ConfirmOverlay = (
-		_confirm_overlay_scene.instantiate())
-	dialog.tree_exiting.connect(
-		func() -> void:
-			if is_instance_valid(_panel):
-				_panel.is_input_active = true)
-	get_tree().root.add_child(dialog)
-	dialog.open(
+	_panel.open_confirm_dialog(
 		tr("CONFIRM.UNLINK_ACCOUNT")
 			% _provider_name,
 		tr("LINK.UNLINK"),
 		_do_unlink,
 		tr("CONFIRM.CANCEL"),
-		func() -> void: pass,
-		device_config,
 	)
 
 

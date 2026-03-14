@@ -17,6 +17,7 @@ const _POPUP_SLIDE_OFFSET := Vector2(15.0, -25.0) # Drift right and up.
 
 # Score counter animation settings.
 const _SCORE_INCREMENT_INTERVAL_SEC := 0.02
+const _PROFILE_IMAGE_SIZE := 32
 
 var player_id: int = 0
 var is_adjective_hidden := false
@@ -26,11 +27,23 @@ var _displayed_score: int = 0
 var _target_score: int = 0
 var _score_update_timer: float = 0.0
 var _has_initialized_score: bool = false
+var _profile_image: ProfileImageDisplay
+var _is_profile_image_set := false
+
+
+func _ready() -> void:
+	_profile_image = ProfileImageDisplay.new()
+	_profile_image.image_size = _PROFILE_IMAGE_SIZE
+	_profile_image.size_flags_horizontal = (
+		Control.SIZE_SHRINK_CENTER)
+	$VBoxContainer.add_child(_profile_image)
+	$VBoxContainer.move_child(_profile_image, 0)
 
 
 func set_player_id(p_player_id: int) -> void:
 	player_id = p_player_id
 	_has_initialized_score = false
+	_is_profile_image_set = false
 
 
 func _process(delta: float) -> void:
@@ -44,6 +57,14 @@ func _update_display(delta: float) -> void:
 	var player_match_state := G.get_player_match_state(player_id)
 	if not player_match_state:
 		return
+
+	# Set profile image once when state is available.
+	if not _is_profile_image_set:
+		_profile_image.set_player(
+			player_id,
+			G.get_peer_anonymous_color(
+				player_match_state.peer_id))
+		_is_profile_image_set = true
 
 	# Update name and adjective.
 	%Name.text = player_match_state.bunny_name
@@ -219,3 +240,5 @@ func _setup_popup_pivot(popup: Label) -> void:
 	popup.pivot_offset = popup.size / 2.0
 	# Adjust position so label appears centered on calculated position.
 	popup.position -= popup.size / 2.0
+
+

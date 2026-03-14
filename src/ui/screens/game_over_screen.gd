@@ -2,14 +2,31 @@ class_name GameOverScreen
 extends Screen
 
 
+## Fixed width for the Add Friend button column
+## and its balancing spacer on the opposite side.
+const _FRIEND_BUTTON_WIDTH := 48
+
+const _ADD_FRIEND_ICON := preload(
+	"res://assets/images/gui/add_friend_icon.png")
+
 ## Set of backend player IDs that have been
 ## friend-added this session (to avoid duplicates).
 var _added_friend_ids: Dictionary = {}
+
+var _navigator := ScreenFocusNavigator.new()
 
 
 func _enter_tree() -> void:
 	super._enter_tree()
 	G.game_over_screen = self
+
+
+func _process(_delta: float) -> void:
+	if not visible:
+		return
+
+	if _navigator.poll(_delta):
+		_activate_focused()
 
 
 func on_open() -> void:
@@ -27,11 +44,28 @@ func on_open() -> void:
 		%MessageLabel.visible = false
 
 	_populate_results()
+	_build_focusable_list()
+	_navigator.prime()
 
-	# Wait a frame for the button to be fully
-	# ready, then grab focus.
-	await get_tree().process_frame
-	%PlayAgainButton.grab_focus()
+
+func _build_focusable_list() -> void:
+	var items: Array[Control] = []
+	items.append(%PlayAgainButton)
+	items.append(%ReturnToLobbyButton)
+	items.append(%LeaderboardButton)
+	_navigator.set_focusable_list(items)
+
+
+func _activate_focused() -> void:
+	var focused := _navigator.get_focused()
+	if focused == null:
+		return
+	if focused == %PlayAgainButton:
+		_on_play_again_pressed()
+	elif focused == %ReturnToLobbyButton:
+		_on_return_to_lobby_pressed()
+	elif focused == %LeaderboardButton:
+		_on_leaderboard_pressed()
 
 
 func _populate_results() -> void:
@@ -64,6 +98,12 @@ func _populate_results() -> void:
 			b: GamePlayerState) -> bool:
 			return a.rank < b.rank)
 
+	# Check if any row will show an Add Friend
+	# button so we can reserve balanced space.
+	var has_any_friend_button := (
+		not G.auth_token_store.is_anonymous
+		and not participants.is_empty())
+
 	for ps: GamePlayerState in sorted_players:
 		var stats: PlayerMatchStats = (
 			match_state.get_player_stats(
@@ -71,7 +111,9 @@ func _populate_results() -> void:
 		var backend_id := (
 			_find_backend_id(
 				ps.player_id, participants))
-		_add_result_row(ps, stats, backend_id)
+		_add_result_row(
+			ps, stats, backend_id,
+			has_any_friend_button)
 
 
 func _find_backend_id(
@@ -89,6 +131,7 @@ func _add_result_row(
 	ps: GamePlayerState,
 	stats: PlayerMatchStats,
 	backend_player_id: String,
+	reserve_friend_column: bool,
 ) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override(
@@ -97,12 +140,22 @@ func _add_result_row(
 		BoxContainer.ALIGNMENT_CENTER)
 	%ResultsContainer.add_child(row)
 
+	# Left spacer to balance the Add Friend
+	# button on the right, keeping the core
+	# content centered.
+	if reserve_friend_column:
+		var left_spacer := Control.new()
+		left_spacer.custom_minimum_size.x = (
+			_FRIEND_BUTTON_WIDTH)
+		row.add_child(left_spacer)
+
 	# Profile image.
 	var profile_image := ProfileImageDisplay.new()
 	profile_image.image_size = 48
 	row.add_child(profile_image)
 	profile_image.set_player(
-		ps.player_id, ps.base_color)
+		ps.player_id,
+		G.get_peer_anonymous_color(ps.peer_id))
 
 	# Rank label.
 	var rank_label := Label.new()
@@ -138,16 +191,26 @@ func _add_result_row(
 			HORIZONTAL_ALIGNMENT_RIGHT)
 		row.add_child(kd_label)
 
-	# Add Friend button for non-local, non-anonymous
-	# players with a backend player ID.
-	if (not backend_player_id.is_empty()
-			and not G.auth_token_store.is_anonymous):
-		var add_button := Button.new()
-		add_button.text = tr("FRIENDS.ADD")
-		add_button.pressed.connect(
-			_on_add_friend_pressed.bind(
-				backend_player_id, add_button))
-		row.add_child(add_button)
+	# Add Friend button or equal-width spacer.
+	if reserve_friend_column:
+		var show_button := (
+			not backend_player_id.is_empty()
+			and not G.auth_token_store.is_anonymous)
+		if show_button:
+			var add_button := Button.new()
+			add_button.icon = _ADD_FRIEND_ICON
+			add_button.custom_minimum_size.x = (
+				_FRIEND_BUTTON_WIDTH)
+			add_button.pressed.connect(
+				_on_add_friend_pressed.bind(
+					backend_player_id,
+					add_button))
+			row.add_child(add_button)
+		else:
+			var right_spacer := Control.new()
+			right_spacer.custom_minimum_size.x = (
+				_FRIEND_BUTTON_WIDTH)
+			row.add_child(right_spacer)
 
 
 func _ordinal(n: int) -> String:
@@ -176,24 +239,24 @@ func _on_add_friend_pressed(
 		backend_player_id, "recent_match")
 
 	# Show toast on result.
-	if not G.friends_api_client.friend_added\
-			.is_connected(_on_friend_add_result):
+	if not (G.friends_api_client.friend_added
+			.is_connected(_on_friend_add_result)):
 		G.friends_api_client.friend_added.connect(
 			_on_friend_add_result,
 			CONNECT_ONE_SHOT)
-		G.friends_api_client.request_failed\
+		(G.friends_api_client.request_failed
 			.connect(
 				_on_friend_add_failed,
-				CONNECT_ONE_SHOT)
+				CONNECT_ONE_SHOT))
 
 
 func _on_friend_add_result(
 	data: Dictionary,
 ) -> void:
-	if G.friends_api_client.request_failed\
-			.is_connected(_on_friend_add_failed):
-		G.friends_api_client.request_failed\
-			.disconnect(_on_friend_add_failed)
+	if (G.friends_api_client.request_failed
+			.is_connected(_on_friend_add_failed)):
+		(G.friends_api_client.request_failed
+			.disconnect(_on_friend_add_failed))
 	var already: bool = data.get(
 		"already_friends", false)
 	if is_instance_valid(G.toast_overlay):
@@ -206,10 +269,10 @@ func _on_friend_add_result(
 
 
 func _on_friend_add_failed(error: String) -> void:
-	if G.friends_api_client.friend_added\
-			.is_connected(_on_friend_add_result):
-		G.friends_api_client.friend_added\
-			.disconnect(_on_friend_add_result)
+	if (G.friends_api_client.friend_added
+			.is_connected(_on_friend_add_result)):
+		(G.friends_api_client.friend_added
+			.disconnect(_on_friend_add_result))
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
 			error, G.toast_overlay.Type.ERROR)

@@ -1,11 +1,9 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://src/ui/settings_panel/log_out_row.gd" id="1_script"]
-[ext_resource type="PackedScene" path="res://src/ui/confirm_overlay/confirm_overlay.tscn" id="2_confirm_overlay"]
 
 [node name="LogOutRow" type="PanelContainer"]
 script = ExtResource("1_script")
-_confirm_overlay_scene = ExtResource("2_confirm_overlay")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
 layout_mode = 2

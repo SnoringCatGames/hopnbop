@@ -41,14 +41,7 @@ static func new_row(
 func _ready() -> void:
 	super()
 	_label.text = _display_name
-	if _icon_texture != null:
-		_icon.texture = _icon_texture
-		_icon.custom_minimum_size = (
-			_icon_texture.get_size()
-			* G.settings.icon_scale)
-		_icon.show()
-	else:
-		_icon.hide()
+	_apply_icon(_icon, _icon_texture)
 	_setup_chevron(_arrow)
 
 
@@ -76,14 +69,3 @@ func _open_credits() -> void:
 
 	# Close settings menu.
 	_panel.manager.close_all()
-
-
-func _setup_chevron(rect: TextureRect) -> void:
-	rect.texture = G.settings.chevron_icon
-	var chevron_size := (
-		G.settings.chevron_icon.get_size()
-		* G.settings.icon_scale)
-	rect.custom_minimum_size = chevron_size
-	if is_layout_rtl():
-		rect.pivot_offset = chevron_size / 2.0
-		rect.scale.x = -1.0

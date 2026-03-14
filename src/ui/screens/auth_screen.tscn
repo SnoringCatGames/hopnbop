@@ -1,8 +1,10 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Theme" uid="uid://cg4peau6bmpdw" path="res://src/ui/hud_theme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://src/ui/screens/auth_screen.gd" id="2_script"]
 [ext_resource type="StyleBox" uid="uid://co2x2prpygpfd" path="res://src/ui/settings_panel/focus_border_stylebox.tres" id="3_focus"]
+[ext_resource type="Texture2D" uid="uid://dmo5odxt0xwf0" path="res://assets/images/gui/social_icons/google_32.png" id="4_google"]
+[ext_resource type="Texture2D" uid="uid://ctng3e31xuyki" path="res://assets/images/gui/social_icons/facebook_32.png" id="5_facebook"]
 
 [node name="AuthScreen" type="PanelContainer"]
 process_mode = 3
@@ -14,6 +16,8 @@ grow_vertical = 2
 layout_direction = 2
 theme = ExtResource("1_theme")
 script = ExtResource("2_script")
+icon_google = ExtResource("4_google")
+icon_facebook = ExtResource("5_facebook")
 
 [node name="CenterContainer" type="CenterContainer" parent="."]
 layout_mode = 2

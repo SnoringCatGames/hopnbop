@@ -13,8 +13,20 @@ enum Tab {
 	MY_STATS,
 }
 
+const _TYPE_LABELS: Array[String] = [
+	"All Time", "Weekly",
+]
+const _TYPE_PARAMS: Array[String] = [
+	"alltime", "weekly",
+]
+
 var _current_tab := Tab.LEADERBOARD
 var _is_loading := false
+var _type_index := 0
+var _scope_index := 0
+## Cached scope list: ["global", level_id, ...].
+var _scope_options: Array[String] = []
+var _scope_labels: Array[String] = []
 
 @onready var _tab_label: Label = %TabLabel
 @onready var _content_container: VBoxContainer = (
@@ -26,12 +38,15 @@ var _is_loading := false
 func _ready() -> void:
 	(G.backend_api_client.leaderboard_received
 		.connect(_on_leaderboard_received))
-	(G.backend_api_client.player_stats_received
-		.connect(_on_player_stats_received))
+	(G.backend_api_client.profile_received
+		.connect(_on_profile_received))
 	(G.backend_api_client.request_failed
 		.connect(_on_request_failed))
 
-	_close_hint.text = "Press ESC to close"
+	_build_scope_options()
+	_close_hint.text = (
+		"ESC close | Left/Right tab"
+		+ " | Up/Down filter")
 	_show_tab(Tab.LEADERBOARD)
 
 
@@ -56,6 +71,12 @@ func _unhandled_input(
 	elif event.is_action_pressed("ui_right"):
 		get_viewport().set_input_as_handled()
 		_switch_tab(1)
+	elif event.is_action_pressed("ui_up"):
+		get_viewport().set_input_as_handled()
+		_cycle_filter(-1)
+	elif event.is_action_pressed("ui_down"):
+		get_viewport().set_input_as_handled()
+		_cycle_filter(1)
 
 
 func _switch_tab(direction: int) -> void:
@@ -69,33 +90,95 @@ func _switch_tab(direction: int) -> void:
 		_show_tab(new_tab as Tab)
 
 
+func _cycle_filter(direction: int) -> void:
+	if _is_loading:
+		return
+	if _current_tab != Tab.LEADERBOARD:
+		return
+	# Up/down cycles through all type+scope
+	# combinations as a flat list.
+	var scope_count := _scope_options.size()
+	var total := (
+		_TYPE_LABELS.size() * scope_count)
+	var combined := (
+		_type_index * scope_count
+		+ _scope_index)
+	combined = wrapi(
+		combined + direction, 0, total)
+	var new_type := combined / scope_count
+	var new_scope := combined % scope_count
+	if (new_type != _type_index
+			or new_scope != _scope_index):
+		_type_index = new_type
+		_scope_index = new_scope
+		_fetch_leaderboard()
+
+
+func _build_scope_options() -> void:
+	_scope_options = ["global"]
+	_scope_labels = ["Global"]
+	if G.level_registry != null:
+		for id in (
+			G.level_registry
+				.get_enabled_level_ids()
+		):
+			_scope_options.append(String(id))
+			var info := (
+				G.level_registry
+					.get_level_by_id(id))
+			if info and not info.display_name.is_empty():
+				_scope_labels.append(
+					info.display_name)
+			else:
+				_scope_labels.append(String(id))
+
+
+func _fetch_leaderboard() -> void:
+	_clear_content()
+	_update_leaderboard_header()
+	_set_loading(true)
+	G.backend_api_client.fetch_leaderboard(
+		_TYPE_PARAMS[_type_index],
+		_scope_options[_scope_index],
+	)
+
+
+func _update_leaderboard_header() -> void:
+	var filter_text := "%s - %s" % [
+		_TYPE_LABELS[_type_index],
+		_scope_labels[_scope_index],
+	]
+	_tab_label.text = (
+		"< Leaderboard: %s >" % filter_text)
+
+
 func _show_tab(tab: Tab) -> void:
 	_current_tab = tab
 	_clear_content()
 
 	match tab:
 		Tab.LEADERBOARD:
-			_tab_label.text = (
-				"< Leaderboard >")
+			_update_leaderboard_header()
 			_set_loading(true)
-			(G.backend_api_client
-				.fetch_leaderboard())
+			G.backend_api_client.fetch_leaderboard(
+				_TYPE_PARAMS[_type_index],
+				_scope_options[_scope_index],
+			)
 		Tab.MY_STATS:
 			_tab_label.text = (
 				"< My Stats >")
 			_set_loading(true)
-			var player_id := (
+			if not (
 				G.auth_token_store
-					.player_id)
-			if player_id.is_empty():
+					.is_token_valid()
+			):
 				_set_loading(false)
 				_status_label.text = (
 					"Not logged in")
 				_status_label.show()
 				return
 			(G.backend_api_client
-				.fetch_player_stats(
-					player_id))
+				.fetch_player_profile())
 
 
 func _on_leaderboard_received(
@@ -134,7 +217,7 @@ func _on_leaderboard_received(
 		_add_leaderboard_row(entry)
 
 
-func _on_player_stats_received(
+func _on_profile_received(
 	data: Dictionary,
 ) -> void:
 	_set_loading(false)
@@ -143,9 +226,9 @@ func _on_player_stats_received(
 
 	_clear_content()
 
-	var player: Dictionary = data.get(
-		"player", {})
-	if player.is_empty():
+	var profile: Dictionary = data.get(
+		"profile", {})
+	if profile.is_empty():
 		_status_label.text = "No data"
 		_status_label.show()
 		return
@@ -153,29 +236,43 @@ func _on_player_stats_received(
 	# Profile summary.
 	_add_stat_row(
 		"Rating",
-		str(player.get("rating", 1500)))
-	_add_stat_row(
-		"Rank",
-		"#%d" % player.get("rank", 0))
+		str(profile.get("rating", 1500)))
+	var rank: int = data.get("rank", 0)
+	if rank > 0:
+		_add_stat_row("Rank", "#%d" % rank)
 	_add_stat_row(
 		"Matches",
-		str(player.get("matches_played", 0)))
+		str(profile.get("matches_played", 0)))
 	_add_stat_row(
 		"Wins",
-		str(player.get("wins", 0)))
-	_add_stat_row(
-		"Losses",
-		str(player.get("losses", 0)))
-	_add_stat_row(
-		"Win Rate",
-		"%.1f%%" % player.get("win_rate", 0.0))
+		str(profile.get("wins", 0)))
+
+	# Lifetime stats.
+	var kills: int = profile.get(
+		"total_kills", 0)
+	var deaths: int = profile.get(
+		"total_deaths", 0)
+	var bumps: int = profile.get(
+		"total_bumps", 0)
+	var crown_sec: float = profile.get(
+		"total_crown_time_sec", 0.0)
+	if kills > 0 or deaths > 0:
+		var sep := HSeparator.new()
+		_content_container.add_child(sep)
+		_add_stat_row("Kills", str(kills))
+		_add_stat_row("Deaths", str(deaths))
+		_add_stat_row("Bumps", str(bumps))
+		if crown_sec > 0:
+			_add_stat_row(
+				"Crown Time",
+				"%.0fs" % crown_sec)
 
 	# Recent matches.
 	var matches: Array = data.get(
 		"recent_matches", [])
 	if not matches.is_empty():
-		var sep := HSeparator.new()
-		_content_container.add_child(sep)
+		var sep2 := HSeparator.new()
+		_content_container.add_child(sep2)
 
 		var header := Label.new()
 		header.text = "Recent Matches"
@@ -200,6 +297,18 @@ func _add_leaderboard_row(
 	row.add_theme_constant_override(
 		"separation", 12)
 	_content_container.add_child(row)
+
+	# Profile image.
+	var profile_image := ProfileImageDisplay.new()
+	profile_image.image_size = 32
+	row.add_child(profile_image)
+	var image_url: String = entry.get(
+		"profile_image_url", "")
+	var pid: String = entry.get(
+		"player_id", "")
+	var cache_key: int = pid.hash()
+	profile_image.set_from_url(
+		cache_key, image_url, Color.GRAY)
 
 	var rank_label := Label.new()
 	rank_label.text = "#%d" % entry.get(

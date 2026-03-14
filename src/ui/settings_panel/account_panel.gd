@@ -112,7 +112,7 @@ func _add_delete_account_row() -> void:
 	)
 	if icon_delete_account != null:
 		row.set_icon(icon_delete_account)
-	row.setup(self, manager.get_device_config())
+	row.setup(self)
 	_row_container.add_child(row)
 	_connect_row_clicked(row)
 
@@ -142,6 +142,6 @@ func _add_log_out_row() -> void:
 	)
 	if icon_logout != null:
 		row.set_icon(icon_logout)
-	row.setup(self, manager.get_device_config())
+	row.setup(self)
 	_row_container.add_child(row)
 	_connect_row_clicked(row)
