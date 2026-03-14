@@ -22,20 +22,12 @@ func set_icon(tex: Texture2D) -> void:
 	_icon_texture = tex
 
 
-static func new_row(
+func setup(
 	display_name: String,
 	panel: SidePanel,
-	icon: Texture2D = null,
-) -> CreditsRow:
-	var scene := preload(
-		"res://src/ui/settings_panel/"
-		+ "credits_row.tscn")
-	var row: CreditsRow = scene.instantiate()
-	row._display_name = display_name
-	row._panel = panel
-	if icon != null:
-		row.set_icon(icon)
-	return row
+) -> void:
+	_display_name = display_name
+	_panel = panel
 
 
 func _ready() -> void:
