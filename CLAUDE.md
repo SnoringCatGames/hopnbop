@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Hop 'n Bop is a multiplayer action game built with Godot 4.5. It implements client-side prediction with rollback reconciliation for networked gameplay.
 
+## Claude Code Settings
+
+Do NOT use the local memory system (`~/.claude/projects/*/memory/`).
+This project is worked on across multiple machines. All persistent
+context belongs in this file so it stays in sync via git.
+
 ## Running the Game
 
 Test multiplayer locally in Godot editor:
@@ -19,6 +25,233 @@ Launch flags:
 - `--server` - Run as server
 - `--client=N` - Run as client N (1, 2, etc.)
 - `--preview` - Local multi-instance testing mode
+
+## Deployment
+
+### Deploy Order
+
+1. **Backend (SAM)** first. API changes must be live
+   before clients or servers reference them.
+2. **GameLift server** second. Server code may depend
+   on new backend endpoints.
+3. **Website (web client)** last. Client needs both
+   backend and server to be ready.
+
+### Backend (SAM)
+
+**Script:** `scripts/deploy-backend.ps1`
+
+Syncs `GAME_VERSION` and `PROTOCOL_VERSION` in `template.yaml`
+from `project.godot`, runs `sam build --use-container`, runs
+`sam deploy --no-confirm-changeset`.
+
+```powershell
+.\scripts\deploy-backend.ps1
+```
+
+**Common issues:**
+- `sam deploy` hangs without `--no-confirm-changeset` (waits
+  for interactive confirmation).
+- Never pass `--template-file template.yaml` to `sam deploy`.
+  That bypasses the build output and deploys raw source without
+  pip dependencies (73KB instead of ~17MB), causing
+  `No module named 'aws_lambda_powertools'` Lambda init errors.
+- Build container pulls `public.ecr.aws/sam/build-python3.12`.
+  Docker Desktop must be running.
+- Delete `.aws-sam/` if build cache is stale (causes
+  "Unresolved resource dependencies" error).
+
+### GameLift Server
+
+**Script:** `gamelift-deploy/deploy.ps1`
+
+Exports Godot Linux .pck, builds Docker image, pushes to ECR,
+updates container group definition, triggers fleet deployment.
+
+```powershell
+.\gamelift-deploy\deploy.ps1              # full
+.\gamelift-deploy\deploy.ps1 -SkipExport  # skip Godot export
+```
+
+**Common issues:**
+- Godot `--export-pack` returns non-zero due to GDExtension
+  DLL copy warnings (non-fatal on Windows). Check if .pck
+  exists at `build/linux/hopnbop_server.pck`; if so, re-run
+  with `-SkipExport`.
+- Container group definition limit is 4 versions. Delete old
+  versions before updating:
+  ```bash
+  aws gamelift delete-container-group-definition \
+    --name hopnbop-server-group --version-number N \
+    --region us-west-2 --profile hopnbop
+  ```
+- Definition stays in COPYING state for ~15 seconds after
+  update. Fleet update fails if definition is not yet READY.
+- Fleet deployment takes 5-15 minutes after container group
+  definition update.
+- Always use `docker build --no-cache` to avoid BuildKit
+  serving a stale .pck from layer cache.
+
+**Monitor fleet rollout:**
+```bash
+aws gamelift list-fleet-deployments \
+  --fleet-id containerfleet-9836594e-0c96-4887-a8d5-be7f3541db36 \
+  --region us-west-2 --profile hopnbop
+```
+
+### Website (Web Client)
+
+**Script:** `scripts/deploy-website.ps1`
+
+Exports Godot web build, copies export files into `web/`,
+syncs `web/` to S3, invalidates CloudFront cache.
+
+```powershell
+.\scripts\deploy-website.ps1              # full (includes game export)
+.\scripts\deploy-website.ps1 -SkipExport  # skip export
+```
+
+**Common issues:**
+- Godot `--export-release "Web"` returns non-zero due to
+  missing resource warnings. Export usually succeeds anyway.
+  Run export manually, verify files in `build/web/` are fresh,
+  copy to `web/`, then run with `-SkipExport`.
+- `-SkipExport` also skips the copy step. If you exported
+  manually, copy `build/web/*` to `web/` before running the
+  S3 sync.
+- CloudFront invalidation takes 1-2 minutes to propagate.
+
+**Website structure:**
+- Root page loads the Godot web export directly (no landing
+  page).
+- Supporting pages: `/leaderboard/`, `/blog/`, `/privacy/`,
+  `/terms/`, `/data-deletion/`.
+- Discord invite link: `https://discord.gg/QX939SF7nb`.
+- Update `web/blog/index.html` with patch notes when making
+  new releases.
+
+### Prerequisites (All Deploys)
+
+- AWS SSO login: `aws sso login --profile hopnbop`
+- Docker Desktop running (backend build + GameLift)
+- Godot CLI on PATH (GameLift + website export)
+
+### Version Management
+
+**Single source of truth:** `project.godot`
+- `config/version="X.Y.Z"` (display version, bump on
+  redeploy)
+- `config/protocol_version=N` (integer, bump only when
+  client/server protocol changes)
+
+**Synced locations:**
+- `backend/template.yaml` `GAME_VERSION` and
+  `PROTOCOL_VERSION` (synced automatically by
+  `deploy-backend.ps1`)
+- ECR image tag (set automatically by
+  `gamelift-deploy/deploy.ps1`)
+- `export_presets.cfg` `file_version`/`product_version`
+  (optional, currently empty)
+
+**Version check architecture:**
+- `protocol_version` determines client/server compatibility.
+  Only bump when the network protocol actually changes.
+- `config/version` is for display only. Hotfix deploys can
+  bump this without breaking existing clients.
+- Client checks `protocol_version` at app startup via
+  `GET /version` (unauthenticated). Also checked in auth
+  response, matchmaking response, and server RPC.
+
+### AWS Resources
+
+- **Account:** 270469481989
+- **Region:** us-west-2
+- **Profile:** hopnbop
+- **Fleet ID:** containerfleet-9836594e-0c96-4887-a8d5-be7f3541db36
+- **ECR repo:** 270469481989.dkr.ecr.us-west-2.amazonaws.com/hopnbop-server
+- **S3 bucket:** hopnbop-website
+- **CloudFront:** E3LT833LSVTW9R
+- **Container group def:** hopnbop-server-group
+- **Matchmaker:** hopnbop-ffa-matchmaker
+- **Game session queue:** hopnbop-game-queue
+- **FlexMatch ruleset:** hopnbop-ffa-ruleset
+- **IAM role:** GameLiftContainerFleetRole
+- **Hosted zone:** Z05562172A1JF6AX39U2N (game.hopnbop.net)
+- **TLS cert secret:** hopnbop/tls-wildcard-cert (expires
+  2026-06-09)
+- **CloudWatch log group:**
+  gamelift-containerfleet-9836594e-0c96-4887-a8d5-be7f3541db36-us-west-2
+
+### GameLift Architecture Notes
+
+**Multi-stage Docker build:** Stage 1 compiles GameLift Server
+SDK v5.2.0 from source with `GAMELIFT_USE_STD=1` and
+`BUILD_SHARED_LIBS=ON` on Ubuntu 24.04. Stage 2 is the runtime
+image. This is necessary because the GDExtension binary was
+built with `GAMELIFT_USE_STD=1` (std::string API) and requires
+a matching SDK build.
+
+**SDK version pinning:** The fleet was created with SDK v5.2.0.
+The Docker build must pin `--branch v5.2.0` when cloning the
+SDK source. Using `main` (v5.4.0+) causes WebSocket handshake
+failures.
+
+**Ubuntu 24.04 requirement:** The GDExtension binary requires
+GLIBCXX_3.4.32 which is only available in Ubuntu 24.04+.
+
+**GDExtension files outside .pck:** The `.gdextension` manifest
+and `.so` binaries must exist on the filesystem. They cannot be
+inside the `.pck` file.
+
+**GDExtension type inference:** GDExtension methods return
+`Variant` to GDScript. Using `:=` causes "Cannot infer type"
+errors. Always use explicit type annotations:
+```gdscript
+# Wrong.
+var count := session.maximum_player_session_count
+# Correct.
+var count: int = session.maximum_player_session_count
+```
+
+**Critical:** The server MUST call
+`_gamelift.activate_game_session()` in the
+`_on_game_session_started` callback. Without it, FlexMatch
+times out with GAME_SESSION_ACTIVATION_TIMEOUT and the
+deployment goes IMPAIRED.
+
+**SERVER_API_KEY:** Set via the container group definition's
+`EnvironmentOverride`. Read in `global.gd:_ready()`, stored in
+`settings.server_api_key`, used by `match_result_reporter.gd`
+to authenticate with the backend API.
+
+### WSS TLS Termination
+
+```
+Web client --wss://{id}.game.hopnbop.net:4434-->
+  nginx (TLS) --ws://localhost:4433--> Godot
+
+Native client --enet://ip:4433/UDP--> Godot (unchanged)
+```
+
+Wildcard cert for `*.game.hopnbop.net` via Let's Encrypt
+DNS-01. Stored in Secrets Manager (`hopnbop/tls-wildcard-cert`).
+Expires **2026-06-09**. Renewal needed before then.
+
+Fleet inbound permissions must include both TCP and UDP. TCP was
+missing initially, blocking all WebSocket/WSS traffic.
+
+### End-to-End Matchmaking Flow
+
+1. Client calls `POST /auth/anon` to get JWT
+2. Client calls `POST /matchmaking/start` with JWT
+3. Client polls `GET /matchmaking/status/{ticket_id}`
+4. Response includes `server_ip`, `server_port`,
+   `player_session_ids` (all dynamically assigned)
+5. Client connects via ENet to server_ip:server_port
+6. Server validates player session IDs via GameLift SDK
+
+API Gateway has a 29-second hard timeout. Use the two-step
+start+poll approach, not a single blocking join endpoint.
 
 ## Architecture
 
@@ -423,16 +656,16 @@ in scripts:
 - **Animations:** Configure `AnimatedSprite2D.sprite_frames`
   animations in the scene editor, not in code.
 - **Resource references:** Use `@export` vars and assign
-  resources in the scene inspector rather than hard-coding
-  `preload()` paths in scripts.
+  resources in the scene inspector. NEVER use `preload()` or
+  `load()` for resource references in scripts.
 - **Node references:** Use `%NodeName` unique-name syntax in
   scenes when referencing sibling/child nodes.
 
 ```gdscript
-# Preferred: export var assigned in scene inspector.
+# Correct: export var assigned in scene inspector.
 @export var death_effect: PackedScene
 
-# Acceptable when scene assignment is impractical.
+# Wrong: preload in script.
 const _DEATH_EFFECT := preload(
 	"res://src/effects/death_effect.tscn"
 )
@@ -862,3 +1095,33 @@ Networking concepts and patterns:
 Godot networking addons (for reference, not used in this project):
 - [Netfox](https://forum.godotengine.org/t/netfox-addons-for-online-multiplayer-games/36066) - Client-side prediction and server reconciliation addon
 - [MonkeNet](https://github.com/grazianobolla/godot-monke-net) - C# addon with prediction, interpolation, lag compensation
+
+## Known Issues
+
+### Server Stuck on "Waiting for Players" (2026-03-11)
+
+Pre-existing issue. Matches have NEVER completed on the
+deployed GameLift server. No player validation or connection
+logs exist in the entire CloudWatch history.
+
+**Symptoms:**
+- Native clients connect via ENet (get peer IDs).
+- Clients send "Declaring N player(s) to server" RPC.
+- Server log shows `packed_players.size=0`.
+- PERF shows `N:0.0` (network FPS = 0) on both server and
+  client.
+- Game stuck on "Waiting for players" screen forever.
+
+**Hypotheses:**
+1. RPCs not delivered to paused nodes (NetworkConnector has
+   default `process_mode`).
+2. Server in wrong state when game session arrives (starts
+   match at t=0.5s, GameLift assigns session much later).
+3. Game tree pause/unpause race between `Main._ready()` and
+   `frame_driver._ready()`.
+
+**Key files:** `src/core/main.gd:98-101`,
+`addons/rollback_netcode/core/frame_driver.gd:1015-1034`,
+`addons/rollback_netcode/core/network_connector.gd:430`,
+`addons/gamelift_session_manager/server/gamelift_server.gd:74`,
+`src/core/game_panel.gd:1221`.

@@ -48,8 +48,6 @@ extends Node
 
 # ---
 
-# claude --dangerously-skip-permissions --continue
-
 
 # - I just renamed the repo to hopnbop_private.
 #   - Rename locally.
