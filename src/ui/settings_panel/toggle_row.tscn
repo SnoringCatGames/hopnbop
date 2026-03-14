@@ -11,6 +11,7 @@
 [ext_resource type="Texture2D" uid="uid://by7lhrdelcpcb" path="res://assets/images/gui/check_box_disabled_unchecked.png" id="9_du"]
 
 [node name="ToggleRow" type="PanelContainer"]
+process_mode = 3
 script = ExtResource("1_script")
 tex_normal_checked = ExtResource("2_nc")
 tex_hovered_checked = ExtResource("4_hc")

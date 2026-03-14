@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://t3muxcymk8o8" path="res://src/ui/hud/player_overhead_label.gd" id="1_tttyo"]
 
 [node name="PlayerOverheadLabel" type="Control"]
+process_mode = 3
 layout_mode = 3
 anchors_preset = 0
 scale = Vector2(0.5, 0.5)

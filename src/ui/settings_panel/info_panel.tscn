@@ -14,6 +14,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/credits_row.tscn" id="9_credits_row"]
 
 [node name="InfoPanel" instance=ExtResource("2_base")]
+process_mode = 3
 script = ExtResource("1_script")
 icon_terms = ExtResource("5_terms")
 icon_privacy = ExtResource("5b_privacy")

@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://src/ui/settings_panel/side_panel.gd" id="1_script"]
 
 [node name="SidePanel" type="Control"]
+process_mode = 3
 script = ExtResource("1_script")
 
 [node name="Background" type="ColorRect" parent="."]

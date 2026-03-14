@@ -1,11 +1,10 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://src/ui/settings_panel/credits_row.gd" id="1_script"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/credits_overlay.tscn" id="2_credits_overlay"]
 
 [node name="CreditsRow" type="PanelContainer"]
+process_mode = 3
 script = ExtResource("1_script")
-_credits_overlay_scene = ExtResource("2_credits_overlay")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
 layout_mode = 2

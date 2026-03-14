@@ -336,7 +336,7 @@ func _on_session_request_failed(error_message: String) -> void:
 		var dialog: ConfirmOverlay = (
 			G.settings.confirm_overlay_scene
 				.instantiate())
-		get_tree().root.add_child(dialog)
+		G.confirm_layer.add_child(dialog)
 		dialog.open(
 			error_message,
 			"Close Game",

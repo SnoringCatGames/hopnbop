@@ -5,14 +5,19 @@
 [ext_resource type="StyleBox" path="res://src/ui/settings_panel/focus_border_stylebox.tres" id="3_focus"]
 [ext_resource type="StyleBoxFlat" path="res://src/ui/settings_panel/unfocused_stylebox.tres" id="4_unfocused"]
 
-[node name="ConfirmOverlay" type="CanvasLayer"]
-layer = 280
+[node name="ConfirmOverlay" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 process_mode = 3
 script = ExtResource("2_script")
 _focus_style = ExtResource("3_focus")
 _unfocused_style = ExtResource("4_unfocused")
 
 [node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -21,6 +26,7 @@ grow_vertical = 2
 color = Color(0, 0, 0, 0.6)
 
 [node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0

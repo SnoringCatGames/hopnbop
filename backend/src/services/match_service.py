@@ -283,16 +283,21 @@ class MatchService:
             profile_image_url = ""
             if not display_name:
                 # Fetch from DB if not in result.
+                # Also check is_anonymous to skip
+                # leaderboard writes for anon players.
                 player_item = (
                     self.players_table.get_item(
                         Key={"player_id": player_id},
                         ProjectionExpression=(
                             "display_name,"
-                            " profile_image_url"
+                            " profile_image_url,"
+                            " is_anonymous"
                         ),
                     )
                 )
                 db_item = player_item.get("Item", {})
+                if db_item.get("is_anonymous", False):
+                    continue
                 display_name = db_item.get(
                     "display_name", ""
                 )

@@ -35,11 +35,11 @@ static func configure_fallbacks() -> void:
 	var fallback_fonts: Array[Font] = []
 	for file_name in _FALLBACK_FILES:
 		var path: String = _NOTO_FONT_DIR + file_name
-		if not FileAccess.file_exists(path):
+		if not ResourceLoader.exists(path):
 			continue
-		var font := FontFile.new()
-		font.load_dynamic_font(path)
-		fallback_fonts.append(font)
+		var font: FontFile = load(path)
+		if font != null:
+			fallback_fonts.append(font)
 
 	if fallback_fonts.is_empty():
 		return

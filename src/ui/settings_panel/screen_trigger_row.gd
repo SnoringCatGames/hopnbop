@@ -49,11 +49,13 @@ func on_right() -> void:
 func _open_screen() -> void:
 	if _screen_type == ScreensMain.ScreenType.UNKNOWN:
 		return
-	var screen: LegalDocScreen = (
+	var screen: Screen = (
 		G.screens.get_screen_from_type(
-			_screen_type) as LegalDocScreen)
+			_screen_type))
 	if not is_instance_valid(screen):
 		return
-	screen.set_return_screen(G.screens.current_screen)
+	if screen.has_method("set_return_screen"):
+		screen.set_return_screen(
+			G.screens.current_screen)
 	_panel.manager.close_all()
 	G.screens.client_open_screen(_screen_type)

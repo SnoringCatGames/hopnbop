@@ -34,7 +34,7 @@ render_target_update_mode = 4
 position = Vector2(0, -7)
 
 [node name="Screens" type="CanvasLayer" parent="."]
-layer = 100
+layer = 210
 
 [node name="ScreensMain" parent="Screens" instance=ExtResource("6_q2b63")]
 
@@ -42,6 +42,14 @@ layer = 100
 layer = 200
 
 [node name="Hud" parent="Hud" instance=ExtResource("2_ukt3u")]
+
+[node name="SidePanelLayer" type="CanvasLayer" parent="."]
+unique_name_in_owner = true
+layer = 260
+
+[node name="ConfirmLayer" type="CanvasLayer" parent="."]
+unique_name_in_owner = true
+layer = 280
 
 [node name="CelebrationLayer" type="CanvasLayer" parent="."]
 layer = 250

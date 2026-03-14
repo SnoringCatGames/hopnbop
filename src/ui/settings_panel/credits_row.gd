@@ -1,11 +1,9 @@
 class_name CreditsRow
 extends SettingsRow
-## A row that opens the credits overlay.
+## A row that opens the credits screen.
 ## Closes the settings menu before showing
-## the overlay.
+## the screen.
 
-
-@export var _credits_overlay_scene: PackedScene
 
 var _panel: SidePanel
 var _display_name := ""
@@ -50,14 +48,8 @@ func _open_credits() -> void:
 		return
 	if not is_instance_valid(_panel.manager):
 		return
-
-	# Add the overlay to the tree root.
-	# queue_free from close_all is deferred, so
-	# the tree root is still accessible.
-	var root := get_tree().root
-	var overlay: CreditsOverlay = (
-		_credits_overlay_scene.instantiate())
-	root.add_child(overlay)
-
-	# Close settings menu.
+	G.credits_screen.set_return_screen(
+		G.screens.current_screen)
 	_panel.manager.close_all()
+	G.screens.client_open_screen(
+		ScreensMain.ScreenType.CREDITS)

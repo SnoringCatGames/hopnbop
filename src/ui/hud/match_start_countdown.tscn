@@ -7,6 +7,7 @@
 [ext_resource type="AudioStream" uid="uid://dcdcuafew4phq" path="res://assets/audio/match_start_countdown_beat4.wav" id="5_beat4"]
 
 [node name="MatchStartCountdown" type="Control"]
+process_mode = 3
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

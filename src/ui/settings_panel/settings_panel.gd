@@ -7,6 +7,8 @@ extends SidePanel
 @export var _back_row_scene: PackedScene
 @export var _toggle_row_scene: PackedScene
 @export var _cheat_group_row_scene: PackedScene
+@export var _sub_panel_trigger_row_scene: PackedScene
+@export var _language_panel_scene: PackedScene
 
 @export_group("Row Icons")
 @export var icon_gore: Texture2D
@@ -16,6 +18,7 @@ extends SidePanel
 @export var icon_music: Texture2D
 @export var icon_sfx: Texture2D
 @export var icon_offline: Texture2D
+@export var icon_language: Texture2D
 
 
 func build_ui() -> void:
@@ -36,6 +39,12 @@ func build_ui() -> void:
 	back_spacer.custom_minimum_size = (
 		Vector2(0, 20))
 	_row_container.add_child(back_spacer)
+
+	# Language trigger.
+	_add_sub_panel_trigger_row(
+		tr("SETTINGS.LANGUAGE"),
+		_language_panel_scene,
+		icon_language)
 
 	# Gore toggle.
 	_add_toggle_row(
@@ -124,6 +133,20 @@ func build_ui() -> void:
 	bottom_spacer.custom_minimum_size = (
 		Vector2(0, 30))
 	_row_container.add_child(bottom_spacer)
+
+
+func _add_sub_panel_trigger_row(
+	display_name: String,
+	panel_scene: PackedScene,
+	icon: Texture2D = null,
+) -> void:
+	var row: SubPanelTriggerRow = (
+		_sub_panel_trigger_row_scene.instantiate())
+	if icon != null:
+		row.set_icon(icon)
+	row.setup(display_name, panel_scene, self)
+	_row_container.add_child(row)
+	_connect_row_clicked(row)
 
 
 func _add_toggle_row(

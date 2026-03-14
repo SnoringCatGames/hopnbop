@@ -1,17 +1,9 @@
-class_name LeaderboardPanel
-extends CanvasLayer
-## Full-screen overlay showing leaderboard and
-## player stats. Follows the same CanvasLayer
-## overlay pattern as SidePanelManager.
+class_name LeaderboardScreen
+extends Screen
+## Full-screen leaderboard viewer. Shows ranked
+## player scores with a collapsible filter row.
+## Opened from game-over or the side panel.
 
-
-signal closed
-
-
-enum Tab {
-	LEADERBOARD,
-	MY_STATS,
-}
 
 const _TYPE_LABELS: Array[String] = [
 	"All Time", "Weekly",
@@ -19,99 +11,94 @@ const _TYPE_LABELS: Array[String] = [
 const _TYPE_PARAMS: Array[String] = [
 	"alltime", "weekly",
 ]
+const _FONT_SIZE := 28
+const _SELECTED_PREFIX := "\u25b8 "
 
-var _current_tab := Tab.LEADERBOARD
+@export var _focus_style: StyleBoxTexture
+@export var _unfocused_style: StyleBoxFlat
+@export var _x_icon: Texture2D
+@export var _filter_icon: Texture2D
+
+var _return_screen_type := (
+	ScreensMain.ScreenType.UNKNOWN)
+var _default_type_param := "weekly"
+var _default_scope := "global"
 var _is_loading := false
-var _type_index := 0
+var _is_filter_expanded := false
+## Index into _TYPE_PARAMS. Default: Weekly.
+var _type_index := 1
+## Index into _scope_options. Default: global.
 var _scope_index := 0
-## Cached scope list: ["global", level_id, ...].
+## Cached scope IDs: ["global", level_id, ...].
 var _scope_options: Array[String] = []
 var _scope_labels: Array[String] = []
 
-@onready var _tab_label: Label = %TabLabel
-@onready var _content_container: VBoxContainer = (
-	%ContentContainer)
-@onready var _status_label: Label = %StatusLabel
-@onready var _close_hint: Label = %CloseHint
+
+func _enter_tree() -> void:
+	super._enter_tree()
+	G.leaderboard_screen = self
 
 
 func _ready() -> void:
 	(G.backend_api_client.leaderboard_received
 		.connect(_on_leaderboard_received))
-	(G.backend_api_client.profile_received
-		.connect(_on_profile_received))
 	(G.backend_api_client.request_failed
 		.connect(_on_request_failed))
+	_setup_filter_master_row()
+	_setup_close_row()
 
+
+func on_open() -> void:
+	super.on_open()
+	_apply_default_filter()
 	_build_scope_options()
-	_close_hint.text = (
-		"ESC close | Left/Right tab"
-		+ " | Up/Down filter")
-	_show_tab(Tab.LEADERBOARD)
+	_is_filter_expanded = false
+	_build_filter_rows()
+	_update_filter_sub_rows_visibility()
+	_fetch_leaderboard()
 
 
-func close() -> void:
-	if is_instance_valid(G.audio):
-		G.audio.play_sound("focus")
-	closed.emit()
-	queue_free()
+## Set where the back button navigates to.
+## Call before opening this screen.
+func set_return_screen(
+	screen_type: ScreensMain.ScreenType,
+) -> void:
+	_return_screen_type = screen_type
+
+
+## Set the default filter applied on open.
+## Call before opening this screen.
+func set_default_filter(
+	type_param: String,
+	scope: String,
+) -> void:
+	_default_type_param = type_param
+	_default_scope = scope
 
 
 func _unhandled_input(
 	event: InputEvent,
 ) -> void:
-	if event.is_action_pressed("ui_cancel"):
-		get_viewport().set_input_as_handled()
-		close()
+	if not visible:
 		return
-
-	if event.is_action_pressed("ui_left"):
+	if (event.is_action_pressed("ui_cancel")
+			or event.is_action_pressed(
+				&"close_menu")):
 		get_viewport().set_input_as_handled()
-		_switch_tab(-1)
-	elif event.is_action_pressed("ui_right"):
-		get_viewport().set_input_as_handled()
-		_switch_tab(1)
-	elif event.is_action_pressed("ui_up"):
-		get_viewport().set_input_as_handled()
-		_cycle_filter(-1)
-	elif event.is_action_pressed("ui_down"):
-		get_viewport().set_input_as_handled()
-		_cycle_filter(1)
+		_on_close_pressed()
 
 
-func _switch_tab(direction: int) -> void:
-	if _is_loading:
-		return
-	var new_tab := wrapi(
-		_current_tab + direction,
-		0,
-		Tab.size())
-	if new_tab != _current_tab:
-		_show_tab(new_tab as Tab)
+func _on_close_pressed() -> void:
+	G.audio.play_sound("click")
+	G.screens.client_open_screen(
+		_return_screen_type)
 
 
-func _cycle_filter(direction: int) -> void:
-	if _is_loading:
-		return
-	if _current_tab != Tab.LEADERBOARD:
-		return
-	# Up/down cycles through all type+scope
-	# combinations as a flat list.
-	var scope_count := _scope_options.size()
-	var total := (
-		_TYPE_LABELS.size() * scope_count)
-	var combined := (
-		_type_index * scope_count
-		+ _scope_index)
-	combined = wrapi(
-		combined + direction, 0, total)
-	var new_type := combined / scope_count
-	var new_scope := combined % scope_count
-	if (new_type != _type_index
-			or new_scope != _scope_index):
-		_type_index = new_type
-		_scope_index = new_scope
-		_fetch_leaderboard()
+func _apply_default_filter() -> void:
+	var type_idx := _TYPE_PARAMS.find(
+		_default_type_param)
+	_type_index = (
+		type_idx if type_idx >= 0 else 1)
 
 
 func _build_scope_options() -> void:
@@ -126,16 +113,24 @@ func _build_scope_options() -> void:
 			var info := (
 				G.level_registry
 					.get_level_by_id(id))
-			if info and not info.display_name.is_empty():
+			if (info
+					and not info.display_name
+					.is_empty()):
 				_scope_labels.append(
 					info.display_name)
 			else:
-				_scope_labels.append(String(id))
+				_scope_labels.append(
+					String(id))
+	# Map default scope to index.
+	var scope_idx := _scope_options.find(
+		_default_scope)
+	_scope_index = (
+		scope_idx if scope_idx >= 0 else 0)
 
 
 func _fetch_leaderboard() -> void:
 	_clear_content()
-	_update_leaderboard_header()
+	_update_scope_label()
 	_set_loading(true)
 	G.backend_api_client.fetch_leaderboard(
 		_TYPE_PARAMS[_type_index],
@@ -143,151 +138,62 @@ func _fetch_leaderboard() -> void:
 	)
 
 
-func _update_leaderboard_header() -> void:
-	var filter_text := "%s - %s" % [
-		_TYPE_LABELS[_type_index],
-		_scope_labels[_scope_index],
-	]
-	_tab_label.text = (
-		"< Leaderboard: %s >" % filter_text)
-
-
-func _show_tab(tab: Tab) -> void:
-	_current_tab = tab
-	_clear_content()
-
-	match tab:
-		Tab.LEADERBOARD:
-			_update_leaderboard_header()
-			_set_loading(true)
-			G.backend_api_client.fetch_leaderboard(
-				_TYPE_PARAMS[_type_index],
-				_scope_options[_scope_index],
-			)
-		Tab.MY_STATS:
-			_tab_label.text = (
-				"< My Stats >")
-			_set_loading(true)
-			if not (
-				G.auth_token_store
-					.is_token_valid()
-			):
-				_set_loading(false)
-				_status_label.text = (
-					"Not logged in")
-				_status_label.show()
-				return
-			(G.backend_api_client
-				.fetch_player_profile())
+func _update_scope_label() -> void:
+	var scope_label_text := (
+		_scope_labels[_scope_index]
+		if _scope_labels.size() > _scope_index
+		else "Global")
+	%ScopeLabel.text = (
+		"Leaderboard: %s \u00b7 %s" % [
+			_TYPE_LABELS[_type_index],
+			scope_label_text,
+		])
 
 
 func _on_leaderboard_received(
 	data: Dictionary,
 ) -> void:
-	_set_loading(false)
-	if _current_tab != Tab.LEADERBOARD:
+	if not visible:
 		return
-
+	_set_loading(false)
 	_clear_content()
 
-	# Show player's own rank.
-	var your_rank: int = data.get("your_rank", 0)
+	var your_rank: int = data.get(
+		"your_rank", 0)
 	var your_rating: int = data.get(
 		"your_rating", 1500)
 	if your_rank > 0:
-		var header := Label.new()
-		header.text = "Your rank: #%d (%d)" % [
-			your_rank, your_rating]
-		header.horizontal_alignment = (
-			HORIZONTAL_ALIGNMENT_CENTER)
-		_content_container.add_child(header)
+		%RankLabel.text = (
+			"Your rank: #%d \u00b7 Rating: %d"
+			% [your_rank, your_rating])
+		%RankLabel.show()
 
-		var sep := HSeparator.new()
-		_content_container.add_child(sep)
-
-	# Show leaderboard entries.
 	var board: Array = data.get(
 		"leaderboard", [])
-	if board.is_empty():
-		_status_label.text = "No players yet"
-		_status_label.show()
+	# Filter out anonymous entries
+	# (empty display_name).
+	var filtered: Array = board.filter(
+		func(e: Dictionary) -> bool:
+			return not e.get(
+				"display_name", "").is_empty())
+
+	if filtered.is_empty():
+		%StatusLabel.text = "No players yet"
+		%StatusLabel.show()
 		return
 
-	for entry in board:
+	for entry in filtered:
 		_add_leaderboard_row(entry)
 
 
-func _on_profile_received(
-	data: Dictionary,
+func _on_request_failed(
+	error: String,
 ) -> void:
-	_set_loading(false)
-	if _current_tab != Tab.MY_STATS:
+	if not visible:
 		return
-
-	_clear_content()
-
-	var profile: Dictionary = data.get(
-		"profile", {})
-	if profile.is_empty():
-		_status_label.text = "No data"
-		_status_label.show()
-		return
-
-	# Profile summary.
-	_add_stat_row(
-		"Rating",
-		str(profile.get("rating", 1500)))
-	var rank: int = data.get("rank", 0)
-	if rank > 0:
-		_add_stat_row("Rank", "#%d" % rank)
-	_add_stat_row(
-		"Matches",
-		str(profile.get("matches_played", 0)))
-	_add_stat_row(
-		"Wins",
-		str(profile.get("wins", 0)))
-
-	# Lifetime stats.
-	var kills: int = profile.get(
-		"total_kills", 0)
-	var deaths: int = profile.get(
-		"total_deaths", 0)
-	var bumps: int = profile.get(
-		"total_bumps", 0)
-	var crown_sec: float = profile.get(
-		"total_crown_time_sec", 0.0)
-	if kills > 0 or deaths > 0:
-		var sep := HSeparator.new()
-		_content_container.add_child(sep)
-		_add_stat_row("Kills", str(kills))
-		_add_stat_row("Deaths", str(deaths))
-		_add_stat_row("Bumps", str(bumps))
-		if crown_sec > 0:
-			_add_stat_row(
-				"Crown Time",
-				"%.0fs" % crown_sec)
-
-	# Recent matches.
-	var matches: Array = data.get(
-		"recent_matches", [])
-	if not matches.is_empty():
-		var sep2 := HSeparator.new()
-		_content_container.add_child(sep2)
-
-		var header := Label.new()
-		header.text = "Recent Matches"
-		header.horizontal_alignment = (
-			HORIZONTAL_ALIGNMENT_CENTER)
-		_content_container.add_child(header)
-
-		for m in matches:
-			_add_match_row(m)
-
-
-func _on_request_failed(error: String) -> void:
 	_set_loading(false)
-	_status_label.text = error
-	_status_label.show()
+	%StatusLabel.text = error
+	%StatusLabel.show()
 
 
 func _add_leaderboard_row(
@@ -296,24 +202,23 @@ func _add_leaderboard_row(
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override(
 		"separation", 12)
-	_content_container.add_child(row)
+	%ContentContainer.add_child(row)
 
-	# Profile image.
 	var profile_image := ProfileImageDisplay.new()
-	profile_image.image_size = 32
+	profile_image.image_size = 48
 	row.add_child(profile_image)
 	var image_url: String = entry.get(
 		"profile_image_url", "")
-	var pid: String = entry.get(
-		"player_id", "")
-	var cache_key: int = pid.hash()
+	var pid: String = entry.get("player_id", "")
 	profile_image.set_from_url(
-		cache_key, image_url, Color.GRAY)
+		pid.hash(), image_url, Color.GRAY)
 
 	var rank_label := Label.new()
 	rank_label.text = "#%d" % entry.get(
 		"rank", 0)
-	rank_label.custom_minimum_size.x = 40
+	rank_label.custom_minimum_size.x = 56
+	rank_label.add_theme_font_size_override(
+		"font_size", _FONT_SIZE)
 	row.add_child(rank_label)
 
 	var name_label := Label.new()
@@ -321,14 +226,18 @@ func _add_leaderboard_row(
 		entry.get("display_name", ""))
 	name_label.size_flags_horizontal = (
 		Control.SIZE_EXPAND_FILL)
+	name_label.add_theme_font_size_override(
+		"font_size", _FONT_SIZE)
 	row.add_child(name_label)
 
 	var rating_label := Label.new()
 	rating_label.text = str(
 		entry.get("rating", 1500))
-	rating_label.custom_minimum_size.x = 50
+	rating_label.custom_minimum_size.x = 70
 	rating_label.horizontal_alignment = (
 		HORIZONTAL_ALIGNMENT_RIGHT)
+	rating_label.add_theme_font_size_override(
+		"font_size", _FONT_SIZE)
 	row.add_child(rating_label)
 
 	var wl_label := Label.new()
@@ -336,88 +245,212 @@ func _add_leaderboard_row(
 		entry.get("wins", 0),
 		entry.get("losses", 0),
 	]
-	wl_label.custom_minimum_size.x = 60
+	wl_label.custom_minimum_size.x = 80
 	wl_label.horizontal_alignment = (
 		HORIZONTAL_ALIGNMENT_RIGHT)
+	wl_label.add_theme_font_size_override(
+		"font_size", _FONT_SIZE)
 	row.add_child(wl_label)
 
 
-func _add_stat_row(
-	label_text: String,
-	value_text: String,
+func _setup_filter_master_row() -> void:
+	_update_filter_row_style(false)
+	(%FilterMasterRow.gui_input
+		.connect(_on_filter_master_row_gui_input))
+	(%FilterMasterRow.mouse_entered
+		.connect(func() -> void:
+			_update_filter_row_style(true)))
+	(%FilterMasterRow.mouse_exited
+		.connect(func() -> void:
+			_update_filter_row_style(false)))
+	if _filter_icon != null:
+		%FilterIcon.texture = _filter_icon
+		%FilterIcon.custom_minimum_size = (
+			_filter_icon.get_size()
+			* G.settings.icon_scale)
+		%FilterIcon.show()
+	else:
+		%FilterIcon.hide()
+
+
+func _on_filter_master_row_gui_input(
+	event: InputEvent,
 ) -> void:
-	var row := HBoxContainer.new()
-	_content_container.add_child(row)
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if (mb.pressed
+				and mb.button_index
+				== MOUSE_BUTTON_LEFT):
+			_is_filter_expanded = (
+				not _is_filter_expanded)
+			_update_filter_sub_rows_visibility()
+
+
+func _update_filter_row_style(
+	is_hovered: bool,
+) -> void:
+	if is_hovered or _is_filter_expanded:
+		(%FilterMasterRow
+			.add_theme_stylebox_override(
+				"panel", _focus_style))
+	else:
+		(%FilterMasterRow
+			.add_theme_stylebox_override(
+				"panel", _unfocused_style))
+
+
+func _update_filter_sub_rows_visibility() -> void:
+	%FilterSubRows.visible = _is_filter_expanded
+	_update_filter_label()
+	_update_filter_row_style(false)
+
+
+func _update_filter_label() -> void:
+	var scope_text := (
+		_scope_labels[_scope_index]
+		if _scope_labels.size() > _scope_index
+		else "Global")
+	%FilterLabel.text = (
+		"Filter: %s \u00b7 %s" % [
+			_TYPE_LABELS[_type_index],
+			scope_text,
+		])
+
+
+func _build_filter_rows() -> void:
+	for child in %FilterSubRows.get_children():
+		child.queue_free()
+
+	# Time period options.
+	for i in _TYPE_LABELS.size():
+		var prefix := (
+			_SELECTED_PREFIX
+			if i == _type_index
+			else "  ")
+		_add_filter_option_row(
+			prefix + _TYPE_LABELS[i],
+			_select_type.bind(i))
+
+	var sep := HSeparator.new()
+	%FilterSubRows.add_child(sep)
+
+	# Scope options.
+	for i in _scope_options.size():
+		var prefix := (
+			_SELECTED_PREFIX
+			if i == _scope_index
+			else "  ")
+		_add_filter_option_row(
+			prefix + _scope_labels[i],
+			_select_scope.bind(i))
+
+
+func _add_filter_option_row(
+	label_text: String,
+	on_click: Callable,
+) -> void:
+	var row := PanelContainer.new()
+	row.add_theme_stylebox_override(
+		"panel", _unfocused_style)
+	%FilterSubRows.add_child(row)
 
 	var label := Label.new()
 	label.text = label_text
-	label.size_flags_horizontal = (
-		Control.SIZE_EXPAND_FILL)
+	label.add_theme_font_size_override(
+		"font_size", _FONT_SIZE)
 	row.add_child(label)
 
-	var value := Label.new()
-	value.text = value_text
-	value.horizontal_alignment = (
-		HORIZONTAL_ALIGNMENT_RIGHT)
-	row.add_child(value)
+	row.gui_input.connect(
+		func(event: InputEvent) -> void:
+			if event is InputEventMouseButton:
+				var mb := (
+					event as InputEventMouseButton)
+				if (mb.pressed
+						and mb.button_index
+						== MOUSE_BUTTON_LEFT):
+					on_click.call())
+	row.mouse_entered.connect(
+		func() -> void:
+			row.add_theme_stylebox_override(
+				"panel", _focus_style))
+	row.mouse_exited.connect(
+		func() -> void:
+			row.add_theme_stylebox_override(
+				"panel", _unfocused_style))
 
 
-func _add_match_row(m: Dictionary) -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override(
-		"separation", 8)
-	_content_container.add_child(row)
+func _select_type(index: int) -> void:
+	if _is_loading:
+		return
+	_type_index = index
+	_is_filter_expanded = false
+	_build_filter_rows()
+	_update_filter_sub_rows_visibility()
+	_fetch_leaderboard()
 
-	var result_label := Label.new()
-	if m.get("is_win", false):
-		result_label.text = "W"
-		result_label.modulate = (
-			Color(0.6, 1.0, 0.6))
+
+func _select_scope(index: int) -> void:
+	if _is_loading:
+		return
+	_scope_index = index
+	_is_filter_expanded = false
+	_build_filter_rows()
+	_update_filter_sub_rows_visibility()
+	_fetch_leaderboard()
+
+
+func _setup_close_row() -> void:
+	_update_close_row_style(false)
+	(%CloseRow.gui_input
+		.connect(_on_close_row_gui_input))
+	(%CloseRow.mouse_entered
+		.connect(func() -> void:
+			_update_close_row_style(true)))
+	(%CloseRow.mouse_exited
+		.connect(func() -> void:
+			_update_close_row_style(false)))
+	if _x_icon != null:
+		%CloseIcon.texture = _x_icon
+		%CloseIcon.custom_minimum_size = (
+			_x_icon.get_size() * 2.0)
+		%CloseIcon.show()
+
+
+func _update_close_row_style(
+	is_hovered: bool,
+) -> void:
+	if is_hovered:
+		%CloseRow.add_theme_stylebox_override(
+			"panel", _focus_style)
 	else:
-		result_label.text = "L"
-		result_label.modulate = (
-			Color(1.0, 0.4, 0.4))
-	result_label.custom_minimum_size.x = 20
-	row.add_child(result_label)
+		%CloseRow.add_theme_stylebox_override(
+			"panel", _unfocused_style)
 
-	var level_label := Label.new()
-	level_label.text = str(
-		m.get("level_id", ""))
-	level_label.size_flags_horizontal = (
-		Control.SIZE_EXPAND_FILL)
-	row.add_child(level_label)
 
-	var rank_label := Label.new()
-	rank_label.text = "%d/%d" % [
-		m.get("rank", 0),
-		m.get("player_count", 0),
-	]
-	rank_label.custom_minimum_size.x = 40
-	rank_label.horizontal_alignment = (
-		HORIZONTAL_ALIGNMENT_RIGHT)
-	row.add_child(rank_label)
-
-	var kd_label := Label.new()
-	kd_label.text = "%d/%d" % [
-		m.get("kill_count", 0),
-		m.get("death_count", 0),
-	]
-	kd_label.custom_minimum_size.x = 40
-	kd_label.horizontal_alignment = (
-		HORIZONTAL_ALIGNMENT_RIGHT)
-	row.add_child(kd_label)
+func _on_close_row_gui_input(
+	event: InputEvent,
+) -> void:
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if (mb.pressed
+				and mb.button_index
+				== MOUSE_BUTTON_LEFT):
+			_on_close_pressed()
 
 
 func _clear_content() -> void:
-	for child in _content_container.get_children():
+	for child in (
+		%ContentContainer.get_children()
+	):
 		child.queue_free()
-	_status_label.hide()
+	%StatusLabel.hide()
+	%RankLabel.hide()
 
 
 func _set_loading(loading: bool) -> void:
 	_is_loading = loading
 	if loading:
-		_status_label.text = "Loading..."
-		_status_label.show()
+		%StatusLabel.text = "Loading..."
+		%StatusLabel.show()
 	else:
-		_status_label.hide()
+		%StatusLabel.hide()

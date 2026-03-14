@@ -11,6 +11,7 @@ content_margin_bottom = 2.0
 bg_color = Color(1, 1, 1, 0.07058824)
 
 [node name="PlayerStatePanelToast" type="PanelContainer"]
+process_mode = 3
 mouse_filter = 2
 theme = ExtResource("1_2d12c")
 theme_override_styles/panel = SubResource("StyleBoxFlat_opccd")

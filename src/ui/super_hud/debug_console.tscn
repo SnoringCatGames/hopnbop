@@ -7,6 +7,7 @@
 bg_color = Color(0, 0, 0, 0.18039216)
 
 [node name="DebugConsole" type="PanelContainer"]
+process_mode = 3
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_dqqip")
 script = ExtResource("1_dqqip")

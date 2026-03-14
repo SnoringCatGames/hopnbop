@@ -6,9 +6,9 @@ extends SidePanel
 
 @export var _close_row_scene: PackedScene
 @export var _sub_panel_trigger_row_scene: PackedScene
+@export var _screen_trigger_row_scene: PackedScene
 @export var _settings_panel_scene: PackedScene
 @export var _level_pref_panel_scene: PackedScene
-@export var _language_panel_scene: PackedScene
 @export var _friends_panel_scene: PackedScene
 @export var _account_panel_scene: PackedScene
 @export var _info_panel_scene: PackedScene
@@ -16,10 +16,11 @@ extends SidePanel
 @export_group("Row Icons")
 @export var icon_settings: Texture2D
 @export var icon_levels: Texture2D
-@export var icon_language: Texture2D
 @export var icon_friends: Texture2D
 @export var icon_account: Texture2D
 @export var icon_info: Texture2D
+@export var icon_leaderboard: Texture2D
+@export var icon_my_stats: Texture2D
 
 
 func build_ui() -> void:
@@ -53,11 +54,18 @@ func build_ui() -> void:
 		_level_pref_panel_scene,
 		icon_levels)
 
-	# Language trigger.
-	_add_sub_panel_trigger_row(
-		tr("SETTINGS.LANGUAGE"),
-		_language_panel_scene,
-		icon_language)
+	# Leaderboard screen trigger (all players).
+	_add_screen_trigger_row(
+		tr("SETTINGS.LEADERBOARD"),
+		ScreensMain.ScreenType.LEADERBOARD,
+		icon_leaderboard)
+
+	# My Stats trigger (non-anonymous only).
+	if not G.auth_token_store.is_anonymous:
+		_add_screen_trigger_row(
+			tr("SETTINGS.MY_STATS"),
+			ScreensMain.ScreenType.MY_STATS,
+			icon_my_stats)
 
 	# Friends trigger (hidden for anonymous players).
 	if not G.auth_token_store.is_anonymous:
@@ -95,5 +103,19 @@ func _add_sub_panel_trigger_row(
 	if icon != null:
 		row.set_icon(icon)
 	row.setup(display_name, panel_scene, self)
+	_row_container.add_child(row)
+	_connect_row_clicked(row)
+
+
+func _add_screen_trigger_row(
+	display_name: String,
+	screen_type: ScreensMain.ScreenType,
+	icon: Texture2D = null,
+) -> void:
+	var row: ScreenTriggerRow = (
+		_screen_trigger_row_scene.instantiate())
+	if icon != null:
+		row.set_icon(icon)
+	row.setup(display_name, screen_type, self)
 	_row_container.add_child(row)
 	_connect_row_clicked(row)

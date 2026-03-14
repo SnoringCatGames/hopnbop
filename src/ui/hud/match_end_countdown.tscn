@@ -5,6 +5,7 @@
 [ext_resource type="AudioStream" uid="uid://c2ieqbred51hi" path="res://assets/audio/match_end_countdown_beat2.wav" id="3_beat2"]
 
 [node name="MatchEndCountdown" type="Label"]
+process_mode = 3
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 0)
 offset_right = 120.0

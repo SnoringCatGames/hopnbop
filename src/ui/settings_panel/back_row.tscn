@@ -4,6 +4,7 @@
 [ext_resource type="Texture2D" path="res://assets/images/gui/x_icon_enlarged.png" id="2_icon"]
 
 [node name="BackRow" type="PanelContainer"]
+process_mode = 3
 script = ExtResource("1_script")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]

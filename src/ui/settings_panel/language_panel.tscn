@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/language_option_row.tscn" id="4_lang_option"]
 
 [node name="LanguagePanel" instance=ExtResource("2_base")]
+process_mode = 3
 script = ExtResource("1_script")
 _back_row_scene = ExtResource("3_back_row")
 _language_option_row_scene = ExtResource("4_lang_option")

@@ -44,7 +44,11 @@ func update_visibility() -> void:
 		ScreensMain.ScreenType.DATA_DELETION:
 			visible = false
 		ScreensMain.ScreenType.GAME_OVER, \
-		ScreensMain.ScreenType.PAUSE:
+		ScreensMain.ScreenType.PAUSE, \
+		ScreensMain.ScreenType.LEADERBOARD, \
+		ScreensMain.ScreenType.MY_STATS, \
+		ScreensMain.ScreenType.CREDITS, \
+		ScreensMain.ScreenType.LANGUAGE:
 			pass
 		ScreensMain.ScreenType.LOBBY:
 			pass

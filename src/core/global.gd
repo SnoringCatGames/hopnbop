@@ -41,6 +41,10 @@ var consent_screen: ConsentScreen
 var terms_screen: LegalDocScreen
 var privacy_screen: LegalDocScreen
 var data_deletion_screen: LegalDocScreen
+var leaderboard_screen: LeaderboardScreen
+var my_stats_screen: MyStatsScreen
+var credits_screen: CreditsScreen
+var language_screen: LanguageScreen
 
 var godot_splash_screen: GodotSplashScreen
 var scg_splash_screen: SCGSplashScreen
@@ -54,6 +58,8 @@ var cheat_manager: CheatManager
 var camera_shaker: CameraShaker
 var celebration: MatchEndCelebration
 var pixel_viewport_manager: PixelViewportManager
+var side_panel_layer: CanvasLayer
+var confirm_layer: CanvasLayer
 var game_panel: GamePanel
 var match_state: GameMatchState
 var client_session: ClientSession
@@ -75,14 +81,14 @@ var settings_ui_player: Player = null
 # credits, etc.) is blocking all player input.
 var is_ui_interaction_mode_enabled := false
 
-var _peer_color_cache: Dictionary = {}
-
 var is_lobby_active: bool:
 	get:
 		return is_instance_valid(level) and level is LobbyLevel
 var is_networked_level_active: bool:
 	get:
 		return is_instance_valid(level) and level is NetworkedLevel
+
+var _peer_color_cache: Dictionary = {}
 
 
 func _enter_tree() -> void:

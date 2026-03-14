@@ -1,5 +1,5 @@
 class_name SidePanelManager
-extends CanvasLayer
+extends Control
 ## Container that manages a stack of SidePanel
 ## instances with slide animations. Owns the
 ## background overlay and handles cascading close.
@@ -165,4 +165,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed(&"toggle_pause"):
 		close_all()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed(&"close_menu"):
+		pop_panel()
 		get_viewport().set_input_as_handled()

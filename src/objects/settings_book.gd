@@ -46,7 +46,7 @@ func _show_settings_ui(player: Player) -> void:
 
 	var mgr: SidePanelManager = (
 		_side_panel_manager_scene.instantiate())
-	get_tree().root.add_child(mgr)
+	G.side_panel_layer.add_child(mgr)
 	mgr.open(player)
 	mgr.closed.connect(
 		_on_settings_panel_closed)

@@ -94,8 +94,10 @@ func show_toast(
 		var oldest: Node = %ToastContainer.get_child(0)
 		oldest.queue_free()
 
-	# Fade out and remove after delay.
-	var tween := get_tree().create_tween()
+	# Fade out and remove after delay. Use a node-bound tween
+	# so it inherits this node's PROCESS_MODE_ALWAYS and keeps
+	# running even when the scene tree is paused.
+	var tween := create_tween()
 	tween.tween_property(
 		panel, "modulate:a",
 		0.0, _FADE_DURATION_SEC,

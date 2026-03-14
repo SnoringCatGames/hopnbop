@@ -14,6 +14,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/log_out_row.tscn" id="9_log_out"]
 
 [node name="AccountPanel" instance=ExtResource("4_base")]
+process_mode = 3
 script = ExtResource("1_script")
 icon_google = ExtResource("2_google")
 icon_facebook = ExtResource("3_facebook")

@@ -9,25 +9,6 @@ extends Screen
 ## AnyDeviceInputPoller.
 
 
-const _LANGUAGE_ROW_MIN_WIDTH := 200.0
-const _LANGUAGE_SCROLL_HEIGHT := 200.0
-
-const _LOCALE_DISPLAY_NAMES := {
-	"en": "English",
-	"zh": "中文",
-	"es": "Español",
-	"hi": "हिन्दी",
-	"ar": "العربية",
-	"fr": "Français",
-	"pt": "Português",
-	"ru": "Русский",
-	"ja": "日本語",
-	"de": "Deutsch",
-	"ko": "한국어",
-	"it": "Italiano",
-	"th": "ไทย",
-}
-
 @export_group("Checked Textures")
 @export var tex_normal_checked: Texture2D
 @export var tex_hovered_checked: Texture2D
@@ -48,7 +29,6 @@ const _LOCALE_DISPLAY_NAMES := {
 
 var _age_checked := false
 var _terms_checked := false
-var _is_language_overlay_shown := false
 
 var _poller := AnyDeviceInputPoller.new()
 var _focusable: Array[Control] = []
@@ -147,11 +127,11 @@ func on_open() -> void:
 		return
 
 	# Show consent UI.
-	_is_language_overlay_shown = false
 	_age_checked = false
 	_terms_checked = false
 	%ContinueButton.disabled = true
 	_update_checkbox_textures()
+	_update_rtl_arrows()
 
 	_build_focusable_list()
 	_poller.prime()
@@ -222,11 +202,8 @@ func _activate_focused() -> void:
 		return
 	var focused: Control = (
 		_focusable[_focused_index])
-	if _is_language_overlay_shown:
-		_activate_language_option(focused)
-		return
 	if focused == %LanguageRow:
-		_open_language_overlay()
+		_open_language_screen()
 	elif focused == %TermsLinkRow:
 		_open_legal_screen(ScreensMain.ScreenType.TERMS)
 	elif focused == %PrivacyLinkRow:
@@ -260,187 +237,6 @@ func _connect_row_mouse(
 		func() -> void:
 			_focused_index = focus_index
 			_update_focus())
-
-
-func _open_language_overlay() -> void:
-	_is_language_overlay_shown = true
-	# Hide static consent children.
-	for child in %ContentBox.get_children():
-		child.visible = false
-	_build_language_options()
-	_poller.prime()
-	if is_instance_valid(G.audio):
-		G.audio.play_sound("focus")
-
-
-func _close_language_overlay() -> void:
-	_is_language_overlay_shown = false
-	# Remove dynamic language rows.
-	var children := %ContentBox.get_children()
-	for child in children:
-		if child.has_meta("is_language_row"):
-			%ContentBox.remove_child(child)
-			child.queue_free()
-	# Show static consent children.
-	for child in %ContentBox.get_children():
-		child.visible = true
-	_update_rtl_arrows()
-	_build_focusable_list()
-	_poller.prime()
-	if is_instance_valid(G.audio):
-		G.audio.play_sound("focus")
-
-
-func _build_language_options() -> void:
-	_focusable.clear()
-
-	# Back row.
-	var back_row := _create_back_row()
-	back_row.set_meta("is_language_row", true)
-	%ContentBox.add_child(back_row)
-	_connect_row_mouse(
-		back_row, _focusable.size())
-	_focusable.append(back_row)
-
-	# Spacer between back and options.
-	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 4)
-	spacer.set_meta("is_language_row", true)
-	%ContentBox.add_child(spacer)
-
-	# Scrollable language list.
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(
-		_LANGUAGE_ROW_MIN_WIDTH,
-		_LANGUAGE_SCROLL_HEIGHT)
-	scroll.horizontal_scroll_mode = (
-		ScrollContainer.SCROLL_MODE_DISABLED)
-	scroll.set_meta("is_language_row", true)
-	%ContentBox.add_child(scroll)
-
-	var list := VBoxContainer.new()
-	list.add_theme_constant_override(
-		"separation", 8)
-	scroll.add_child(list)
-
-	# One row per supported locale.
-	var current_locale := (
-		G.local_settings.get_locale())
-	for locale in LocalSettings.SUPPORTED_LOCALES:
-		var native_name: String = (
-			_LOCALE_DISPLAY_NAMES.get(
-				locale, locale))
-		var is_current := (
-			locale == current_locale)
-		var row := _create_language_option(
-			locale, native_name, is_current)
-		list.add_child(row)
-		_connect_row_mouse(
-			row, _focusable.size())
-		_focusable.append(row)
-
-	# Bottom padding outside scroll area.
-	var bottom_spacer := Control.new()
-	bottom_spacer.custom_minimum_size = (
-		Vector2(0, 40))
-	bottom_spacer.set_meta(
-		"is_language_row", true)
-	%ContentBox.add_child(bottom_spacer)
-
-	_focused_index = 0
-	_update_focus()
-
-
-func _create_back_row() -> PanelContainer:
-	var row := PanelContainer.new()
-	row.custom_minimum_size = Vector2(
-		_LANGUAGE_ROW_MIN_WIDTH, 0)
-	row.add_theme_stylebox_override(
-		"panel", _unfocused_style)
-	row.set_meta("is_back", true)
-
-	var hbox := HBoxContainer.new()
-	hbox.mouse_filter = (
-		Control.MOUSE_FILTER_IGNORE)
-	hbox.add_theme_constant_override(
-		"separation", 8)
-	row.add_child(hbox)
-
-	var arrow := TextureRect.new()
-	arrow.texture = G.settings.chevron_icon
-	arrow.expand_mode = (
-		TextureRect.EXPAND_IGNORE_SIZE)
-	arrow.stretch_mode = (
-		TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
-	var back_chevron_size := (
-		G.settings.chevron_icon.get_size()
-		* G.settings.icon_scale)
-	arrow.custom_minimum_size = back_chevron_size
-	if not is_layout_rtl():
-		arrow.pivot_offset = back_chevron_size / 2.0
-		arrow.scale.x = -1.0
-	hbox.add_child(arrow)
-
-	var label := Label.new()
-	label.text = tr("SETTINGS.LANGUAGE")
-	label.size_flags_horizontal = (
-		Control.SIZE_EXPAND_FILL)
-	hbox.add_child(label)
-
-	return row
-
-
-func _create_language_option(
-	locale: String,
-	native_name: String,
-	is_current: bool,
-) -> PanelContainer:
-	var row := PanelContainer.new()
-	row.custom_minimum_size = Vector2(
-		_LANGUAGE_ROW_MIN_WIDTH, 0)
-	row.add_theme_stylebox_override(
-		"panel", _unfocused_style)
-	row.set_meta("locale", locale)
-
-	var hbox := HBoxContainer.new()
-	hbox.mouse_filter = (
-		Control.MOUSE_FILTER_IGNORE)
-	hbox.add_theme_constant_override(
-		"separation", 8)
-	row.add_child(hbox)
-
-	var check_label := Label.new()
-	if is_current:
-		check_label.text = "✓"
-	else:
-		check_label.text = ""
-	check_label.custom_minimum_size = (
-		Vector2(20, 0))
-	hbox.add_child(check_label)
-
-	var name_label := Label.new()
-	name_label.text = native_name
-	name_label.size_flags_horizontal = (
-		Control.SIZE_EXPAND_FILL)
-	hbox.add_child(name_label)
-
-	return row
-
-
-func _activate_language_option(
-	focused: Control,
-) -> void:
-	if focused.has_meta("is_back"):
-		_close_language_overlay()
-		return
-	if not focused.has_meta("locale"):
-		return
-	var locale: String = (
-		focused.get_meta("locale"))
-	G.local_settings.set_locale(locale)
-	if is_instance_valid(G.audio):
-		G.audio.play_sound("select")
-	_close_language_overlay()
 
 
 func _setup_row_icon(
@@ -560,6 +356,13 @@ func _on_continue_pressed() -> void:
 		AuthTokenStore.LEGAL_VERSION)
 	G.auth_token_store.save_tokens()
 	_navigate_to_auth()
+
+
+func _open_language_screen() -> void:
+	G.language_screen.set_return_screen(
+		ScreensMain.ScreenType.CONSENT)
+	G.screens.client_open_screen(
+		ScreensMain.ScreenType.LANGUAGE)
 
 
 func _open_legal_screen(

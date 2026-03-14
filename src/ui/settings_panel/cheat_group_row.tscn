@@ -4,4 +4,5 @@
 [ext_resource type="Script" path="res://src/ui/settings_panel/cheat_group_row.gd" id="2_script"]
 
 [node name="CheatGroupRow" instance=ExtResource("1_base")]
+process_mode = 3
 script = ExtResource("2_script")

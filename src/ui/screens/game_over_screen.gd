@@ -7,7 +7,6 @@ extends Screen
 const _FRIEND_BUTTON_WIDTH := 48
 
 @export var _add_friend_icon: Texture2D
-@export var _leaderboard_panel_scene: PackedScene
 
 ## Set of backend player IDs that have been
 ## friend-added this session (to avoid duplicates).
@@ -19,6 +18,16 @@ var _navigator := ScreenFocusNavigator.new()
 func _enter_tree() -> void:
 	super._enter_tree()
 	G.game_over_screen = self
+
+
+func _unhandled_input(
+	event: InputEvent,
+) -> void:
+	if not visible:
+		return
+	if event.is_action_pressed(&"close_menu"):
+		get_viewport().set_input_as_handled()
+		_on_return_to_lobby_pressed()
 
 
 func _process(_delta: float) -> void:
@@ -106,8 +115,12 @@ func _populate_results() -> void:
 		not G.auth_token_store.is_anonymous
 		and participants.any(
 			func(p: Dictionary) -> bool:
-				return not p.get(
-					"backend_player_id", "").is_empty()))
+				return (
+					not p.get(
+						"is_anonymous", true)
+					and not p.get(
+						"backend_player_id",
+						"").is_empty())))
 
 	for ps: GamePlayerState in sorted_players:
 		var stats: PlayerMatchStats = (
@@ -116,8 +129,15 @@ func _populate_results() -> void:
 		var backend_id := (
 			_find_backend_id(
 				ps.player_id, participants))
+		var is_anon := (
+			_find_participant_bool(
+				ps.player_id,
+				participants,
+				"is_anonymous",
+				true))
 		_add_result_row(
 			ps, stats, backend_id,
+			is_anon,
 			has_any_friend_button)
 
 
@@ -132,10 +152,23 @@ func _find_backend_id(
 	return ""
 
 
+func _find_participant_bool(
+	player_id: int,
+	participants: Array[Dictionary],
+	field: String,
+	default_value: bool,
+) -> bool:
+	for entry in participants:
+		if entry.get("player_id", -1) == player_id:
+			return entry.get(field, default_value)
+	return default_value
+
+
 func _add_result_row(
 	ps: GamePlayerState,
 	stats: PlayerMatchStats,
 	backend_player_id: String,
+	is_anonymous: bool,
 	reserve_friend_column: bool,
 ) -> void:
 	var row := HBoxContainer.new()
@@ -199,7 +232,8 @@ func _add_result_row(
 	# Add Friend button or equal-width spacer.
 	if reserve_friend_column:
 		var show_button := (
-			not backend_player_id.is_empty()
+			not is_anonymous
+			and not backend_player_id.is_empty()
 			and not G.auth_token_store.is_anonymous)
 		if show_button:
 			var add_button := Button.new()
@@ -296,6 +330,14 @@ func _on_return_to_lobby_pressed() -> void:
 
 func _on_leaderboard_pressed() -> void:
 	G.audio.play_sound("click")
-	var panel: LeaderboardPanel = (
-		_leaderboard_panel_scene.instantiate())
-	get_tree().root.add_child(panel)
+	var level_id := String(
+		G.client_session.selected_level_id)
+	var scope := (
+		level_id if not level_id.is_empty()
+		else "global")
+	G.leaderboard_screen.set_return_screen(
+		ScreensMain.ScreenType.GAME_OVER)
+	G.leaderboard_screen.set_default_filter(
+		"weekly", scope)
+	G.screens.client_open_screen(
+		ScreensMain.ScreenType.LEADERBOARD)

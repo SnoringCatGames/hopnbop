@@ -578,16 +578,11 @@ func _client_despawn_lobby_if_present() -> void:
 	)
 
 	# Close settings menu if open.
-	for child in get_tree().root.get_children():
+	for child in G.side_panel_layer.get_children():
 		if child is SidePanelManager:
 			child.close_all()
 			break
 
-	# Close credits overlay if open.
-	for child in get_tree().root.get_children():
-		if child is CreditsOverlay:
-			child.close()
-			break
 
 	var lobby_level: LobbyLevel = G.level
 	levels.erase(lobby_level)
@@ -873,6 +868,7 @@ func _populate_match_participants() -> void:
 			"player_id": pid,
 			"display_name": String(ps.full_name),
 			"backend_player_id": backend_id,
+			"is_anonymous": backend_id.is_empty(),
 		}
 		G.client_session.latest_match_participants.append(
 			entry)

@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/hud/player_display.tscn" id="2_player_display"]
 
 [node name="PlayerList" type="HBoxContainer"]
+process_mode = 3
 unique_name_in_owner = true
 size_flags_horizontal = 4
 mouse_filter = 2

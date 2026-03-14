@@ -63,7 +63,8 @@ func _ready() -> void:
 		var icon := TextureRect.new()
 		icon.texture = _icon_texture
 		icon.custom_minimum_size = (
-			_icon_texture.get_size() * 4)
+			_icon_texture.get_size()
+			* G.settings.icon_scale)
 		icon.stretch_mode = (
 			TextureRect
 				.STRETCH_KEEP_ASPECT_CENTERED)

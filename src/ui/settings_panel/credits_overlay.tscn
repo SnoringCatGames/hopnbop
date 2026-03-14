@@ -2,27 +2,12 @@
 
 [ext_resource type="Script" uid="uid://di7b1q8tpc53t" path="res://src/ui/settings_panel/credits_overlay.gd" id="1_script"]
 
-[node name="CreditsOverlay" type="CanvasLayer"]
+[node name="CreditsScreen" type="PanelContainer"]
 process_mode = 3
-layer = 260
 script = ExtResource("1_script")
 
-[node name="Background" type="ColorRect" parent="."]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-color = Color(0, 0, 0, 0.8)
-
 [node name="CenterContainer" type="CenterContainer" parent="."]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
+layout_mode = 2
 
 [node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
 layout_mode = 2

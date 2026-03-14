@@ -37,6 +37,17 @@ const _INPUT_INITIAL_DELAY := 0.3
 const _INPUT_REPEAT_RATE := 0.1
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_propagate_size()
+
+
+func _propagate_size() -> void:
+	for child in get_children():
+		if child is Control:
+			child.size = size
+
+
 func setup(
 	mgr: SidePanelManager,
 	player: Player,
@@ -69,7 +80,7 @@ func open_confirm_dialog(
 		func() -> void:
 			if is_instance_valid(self):
 				is_input_active = true)
-	get_tree().root.add_child(dialog)
+	G.confirm_layer.add_child(dialog)
 	dialog.open(
 		message,
 		accept_text,

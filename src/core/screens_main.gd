@@ -15,6 +15,10 @@ enum ScreenType {
 	TERMS,
 	PRIVACY,
 	DATA_DELETION,
+	LEADERBOARD,
+	MY_STATS,
+	CREDITS,
+	LANGUAGE,
 }
 
 var current_screen := ScreenType.UNKNOWN
@@ -141,6 +145,18 @@ func _perform_screen_switch(
 	if is_instance_valid(G.data_deletion_screen):
 		G.data_deletion_screen.visible = (
 			screen_type == ScreenType.DATA_DELETION)
+	if is_instance_valid(G.leaderboard_screen):
+		G.leaderboard_screen.visible = (
+			screen_type == ScreenType.LEADERBOARD)
+	if is_instance_valid(G.my_stats_screen):
+		G.my_stats_screen.visible = (
+			screen_type == ScreenType.MY_STATS)
+	if is_instance_valid(G.credits_screen):
+		G.credits_screen.visible = (
+			screen_type == ScreenType.CREDITS)
+	if is_instance_valid(G.language_screen):
+		G.language_screen.visible = (
+			screen_type == ScreenType.LANGUAGE)
 
 	var ends_game := (
 		[
@@ -214,6 +230,14 @@ func get_screen_from_type(screen_type: ScreenType) -> Screen:
 			screen = G.privacy_screen
 		ScreenType.DATA_DELETION:
 			screen = G.data_deletion_screen
+		ScreenType.LEADERBOARD:
+			screen = G.leaderboard_screen
+		ScreenType.MY_STATS:
+			screen = G.my_stats_screen
+		ScreenType.CREDITS:
+			screen = G.credits_screen
+		ScreenType.LANGUAGE:
+			screen = G.language_screen
 		ScreenType.LOBBY, ScreenType.GAME:
 			screen = null
 		_:

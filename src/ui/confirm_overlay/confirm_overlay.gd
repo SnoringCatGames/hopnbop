@@ -1,8 +1,8 @@
 class_name ConfirmOverlay
-extends CanvasLayer
+extends Control
 ## Modal confirmation dialog. Dynamically
-## instantiated, added to the scene tree root,
-## and queue_free'd on dismiss.
+## instantiated, added to the ConfirmLayer
+## CanvasLayer, and queue_free'd on dismiss.
 ##
 ## Supports accept-only mode (no reject button)
 ## and device-specific or any-device input.
@@ -85,6 +85,19 @@ func open(
 			func() -> void:
 				_focused_on_accept = false
 				_update_focus())
+
+
+func _unhandled_input(
+	event: InputEvent,
+) -> void:
+	if not _has_reject:
+		return
+	if _time_open < _ACTIVATION_DELAY_SEC:
+		return
+	if event.is_action_pressed(&"close_menu"):
+		get_viewport().set_input_as_handled()
+		_focused_on_accept = false
+		_activate_focused()
 
 
 func _process(delta: float) -> void:

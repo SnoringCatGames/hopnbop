@@ -35,10 +35,32 @@ if (-not $SkipExport) {
         Write-Warning "Reimport returned non-zero (may be OK)"
     }
 
-    & godot --headless --export-release "Web" "build/web/index.html"
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Godot web export failed"
-        exit 1
+    # Hide the GameLift GDExtension before web export.
+    # The extension has no web/wasm32 binary. When the
+    # Emscripten runtime (which has no GDExtension
+    # support) tries to load it, the failure cascades
+    # through the GDScript type system and breaks
+    # scripts that access G.settings. Temporarily
+    # renaming the .gdextension file prevents Godot
+    # from discovering it during export.
+    $gdextPath = "addons/gamelift/gamelift.gdextension"
+    $gdextBackup = "$gdextPath.disabled"
+    $didHideExt = $false
+    if (Test-Path $gdextPath) {
+        Rename-Item $gdextPath $gdextBackup
+        $didHideExt = $true
+    }
+
+    try {
+        & godot --headless --export-release "Web" "build/web/index.html"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "Godot web export failed"
+            exit 1
+        }
+    } finally {
+        if ($didHideExt -and (Test-Path $gdextBackup)) {
+            Rename-Item $gdextBackup $gdextPath
+        }
     }
     Write-Host "Export complete." -ForegroundColor Green
 } else {

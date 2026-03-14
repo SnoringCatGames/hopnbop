@@ -7,6 +7,7 @@
 [ext_resource type="Texture2D" uid="uid://b7ks0k7gdcjpe" path="res://assets/images/gui/remove_friend_icon.png" id="5_remove_friend"]
 
 [node name="FriendsPanel" instance=ExtResource("2_base")]
+process_mode = 3
 script = ExtResource("1_script")
 _back_row_scene = ExtResource("3_back_row")
 _add_friend_icon = ExtResource("4_add_friend")

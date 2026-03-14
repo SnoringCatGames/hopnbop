@@ -4,6 +4,8 @@ extends Node2D
 
 func _enter_tree() -> void:
 	G.main = self
+	G.side_panel_layer = %SidePanelLayer
+	G.confirm_layer = %ConfirmLayer
 	G.log.set_log_filtering(
 		G.settings.excluded_log_categories,
 		G.settings.force_include_log_warnings,
@@ -131,7 +133,7 @@ func _show_update_required_dialog() -> void:
 	var dialog: ConfirmOverlay = (
 		G.settings.confirm_overlay_scene
 			.instantiate())
-	get_tree().root.add_child(dialog)
+	G.confirm_layer.add_child(dialog)
 	get_tree().paused = false
 	dialog.open(
 		tr("VERSION.UPDATE_REQUIRED"),
@@ -217,7 +219,7 @@ func _notification(notification_type: int) -> void:
 func close_app() -> void:
 	# Force-close settings panel so unsaved
 	# preferences are written to disk.
-	for child in get_tree().root.get_children():
+	for child in G.side_panel_layer.get_children():
 		if child is SidePanelManager:
 			child.close_all()
 			break

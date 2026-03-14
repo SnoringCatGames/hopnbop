@@ -1,13 +1,17 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Theme" uid="uid://cg4peau6bmpdw" path="res://src/ui/hud_theme.tres" id="1_theme"]
 [ext_resource type="Texture2D" uid="uid://srk2i3d48pgr" path="res://assets/images/title_512.png" id="2_logo"]
-[ext_resource type="Script" path="res://src/ui/screens/legal_doc_screen.gd" id="3_script"]
+[ext_resource type="Script" path="res://src/ui/screens/language_screen.gd" id="3_script"]
 [ext_resource type="StyleBox" uid="uid://co2x2prpygpfd" path="res://src/ui/settings_panel/focus_border_stylebox.tres" id="4_focus"]
 [ext_resource type="StyleBoxFlat" path="res://src/ui/settings_panel/unfocused_stylebox.tres" id="5_unfocused"]
 [ext_resource type="Texture2D" path="res://assets/images/gui/x_icon_enlarged.png" id="6_icon"]
+[ext_resource type="Texture2D" uid="uid://crfyeraq1bldu" path="res://assets/images/gui/checkmark_icon.png" id="7_checkmark"]
 
-[node name="LegalDocScreen" type="PanelContainer"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_unfocused"]
+bg_color = Color(0, 0, 0, 0)
+
+[node name="LanguageScreen" type="PanelContainer"]
 process_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -17,6 +21,7 @@ grow_vertical = 2
 layout_direction = 2
 theme = ExtResource("1_theme")
 script = ExtResource("3_script")
+icon_checkmark = ExtResource("7_checkmark")
 _focus_style = ExtResource("4_focus")
 _unfocused_style = ExtResource("5_unfocused")
 
@@ -43,53 +48,43 @@ theme_override_constants/margin_left = 80
 theme_override_constants/margin_right = 80
 theme_override_constants/margin_bottom = 80
 
-[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/ScrollMargin"]
+[node name="ContentBox" type="VBoxContainer" parent="VBoxContainer/ScrollMargin"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 3
+custom_minimum_size = Vector2(300, 0)
+theme_override_constants/separation = 0
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/ScrollMargin/ContentBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="ContentBox" type="VBoxContainer" parent="VBoxContainer/ScrollMargin/ScrollContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 16
-
-[node name="TitleLabel" type="Label" parent="VBoxContainer/ScrollMargin/ScrollContainer/ContentBox"]
+[node name="LanguageList" type="VBoxContainer" parent="VBoxContainer/ScrollMargin/ContentBox/ScrollContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 28
-horizontal_alignment = 1
+theme_override_constants/separation = 8
 
-[node name="Spacer" type="Control" parent="VBoxContainer/ScrollMargin/ScrollContainer/ContentBox"]
+[node name="BottomSpacer" type="Control" parent="VBoxContainer/ScrollMargin/ContentBox"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 8)
+custom_minimum_size = Vector2(0, 16)
 
-[node name="Content" type="Label" parent="VBoxContainer/ScrollMargin/ScrollContainer/ContentBox"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
-horizontal_alignment = 1
-autowrap_mode = 2
-
-[node name="BottomSpacer" type="Control" parent="VBoxContainer/ScrollMargin/ScrollContainer/ContentBox"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 32)
-
-[node name="BackRow" type="PanelContainer" parent="VBoxContainer/ScrollMargin/ScrollContainer/ContentBox"]
+[node name="CloseRow" type="PanelContainer" parent="VBoxContainer/ScrollMargin/ContentBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
 custom_minimum_size = Vector2(160, 0)
+theme_override_styles/panel = SubResource("StyleBoxFlat_unfocused")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/ScrollMargin/ScrollContainer/ContentBox/BackRow"]
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/ScrollMargin/ContentBox/CloseRow"]
 layout_mode = 2
 mouse_filter = 2
 alignment = 1
 
-[node name="IconMargin" type="MarginContainer" parent="VBoxContainer/ScrollMargin/ScrollContainer/ContentBox/BackRow/HBoxContainer"]
+[node name="IconMargin" type="MarginContainer" parent="VBoxContainer/ScrollMargin/ContentBox/CloseRow/HBoxContainer"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/margin_left = 16
@@ -97,9 +92,13 @@ theme_override_constants/margin_top = 16
 theme_override_constants/margin_right = 16
 theme_override_constants/margin_bottom = 16
 
-[node name="Icon" type="TextureRect" parent="VBoxContainer/ScrollMargin/ScrollContainer/ContentBox/BackRow/HBoxContainer/IconMargin"]
+[node name="Icon" type="TextureRect" parent="VBoxContainer/ScrollMargin/ContentBox/CloseRow/HBoxContainer/IconMargin"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 texture = ExtResource("6_icon")
 stretch_mode = 5
+
+[node name="ContentBottomSpacer" type="Control" parent="VBoxContainer/ScrollMargin/ContentBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 40)

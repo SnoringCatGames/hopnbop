@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://src/ui/settings_panel/log_out_row.gd" id="1_script"]
 
 [node name="LogOutRow" type="PanelContainer"]
+process_mode = 3
 script = ExtResource("1_script")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]

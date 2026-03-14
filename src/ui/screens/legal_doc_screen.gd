@@ -140,22 +140,9 @@ func _update_back_row_style() -> void:
 
 func _setup_back_row() -> void:
 	_update_back_row_style()
-	var arrow: TextureRect = (
-		%BackRow.get_node("HBoxContainer/Arrow"))
-	arrow.texture = G.settings.chevron_icon
-	arrow.expand_mode = (
-		TextureRect.EXPAND_IGNORE_SIZE)
-	arrow.stretch_mode = (
-		TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
-	var icon_size := (
-		G.settings.chevron_icon.get_size()
-		* G.settings.icon_scale)
-	var pad: float = G.settings.icon_padding * 2.0
-	var total_size := icon_size + Vector2(pad, pad)
-	arrow.custom_minimum_size = total_size
-	if not is_layout_rtl():
-		arrow.pivot_offset = total_size / 2.0
-		arrow.scale.x = -1.0
+	var icon: TextureRect = %Icon
+	icon.custom_minimum_size = (
+		icon.texture.get_size() * 2)
 
 
 func _load_content() -> String:

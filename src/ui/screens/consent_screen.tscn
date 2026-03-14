@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Theme" uid="uid://cg4peau6bmpdw" path="res://src/ui/hud_theme.tres" id="1_theme"]
 [ext_resource type="Texture2D" uid="uid://srk2i3d48pgr" path="res://assets/images/title_512.png" id="10_logo"]
@@ -213,4 +213,3 @@ text = "CONSENT.CONTINUE"
 [node name="ContentBottomSpacer" type="Control" parent="VBoxContainer/BottomHalf/ContentBox"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 40)
-
