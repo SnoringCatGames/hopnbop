@@ -1,4 +1,4 @@
-class_name LegalLinkRow
+class_name LinkRow
 extends SettingsRow
 ## A row that opens a URL in the browser.
 

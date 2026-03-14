@@ -5,7 +5,7 @@ extends SidePanel
 
 
 @export var _back_row_scene: PackedScene
-@export var _legal_link_row_scene: PackedScene
+@export var _link_row_scene: PackedScene
 @export var _credits_row_scene: PackedScene
 
 @export_group("Row Icons")
@@ -50,8 +50,8 @@ func build_ui() -> void:
 
 
 func _add_legal_section() -> void:
-	var terms_row: LegalLinkRow = (
-		_legal_link_row_scene.instantiate()
+	var terms_row: LinkRow = (
+		_link_row_scene.instantiate()
 	)
 	if icon_terms != null:
 		terms_row.set_icon(icon_terms)
@@ -62,8 +62,8 @@ func _add_legal_section() -> void:
 	_row_container.add_child(terms_row)
 	_connect_row_clicked(terms_row)
 
-	var privacy_row: LegalLinkRow = (
-		_legal_link_row_scene.instantiate()
+	var privacy_row: LinkRow = (
+		_link_row_scene.instantiate()
 	)
 	if icon_privacy != null:
 		privacy_row.set_icon(icon_privacy)
@@ -74,8 +74,8 @@ func _add_legal_section() -> void:
 	_row_container.add_child(privacy_row)
 	_connect_row_clicked(privacy_row)
 
-	var deletion_row: LegalLinkRow = (
-		_legal_link_row_scene.instantiate()
+	var deletion_row: LinkRow = (
+		_link_row_scene.instantiate()
 	)
 	if icon_data_deletion != null:
 		deletion_row.set_icon(icon_data_deletion)
@@ -92,8 +92,8 @@ func _add_legal_section() -> void:
 		Vector2(0, 20))
 	_row_container.add_child(discord_spacer)
 
-	var discord_row: LegalLinkRow = (
-		_legal_link_row_scene.instantiate()
+	var discord_row: LinkRow = (
+		_link_row_scene.instantiate()
 	)
 	if icon_discord != null:
 		discord_row.set_icon(icon_discord, 1)
@@ -104,8 +104,8 @@ func _add_legal_section() -> void:
 	_row_container.add_child(discord_row)
 	_connect_row_clicked(discord_row)
 
-	var github_row: LegalLinkRow = (
-		_legal_link_row_scene.instantiate()
+	var github_row: LinkRow = (
+		_link_row_scene.instantiate()
 	)
 	if icon_github != null:
 		github_row.set_icon(icon_github, 1)
