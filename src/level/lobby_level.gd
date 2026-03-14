@@ -353,6 +353,15 @@ func get_player_count() -> int:
 		_pending_device_configs_by_index.size())
 
 
+## Returns the player IDs of all currently
+## registered lobby players.
+func get_registered_player_ids() -> Array[int]:
+	var ids: Array[int] = []
+	ids.assign(
+		_device_name_to_player_id.values())
+	return ids
+
+
 func can_start_match() -> bool:
 	return get_player_count() > 0
 

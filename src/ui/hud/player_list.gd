@@ -68,15 +68,7 @@ func _get_current_player_ids() -> Array[int]:
 func _get_current_player_ids_from_lobby(
 ) -> Array[int]:
 	var lobby := G.level as LobbyLevel
-	var current_player_ids: Array[int] = []
-	current_player_ids.resize(
-		lobby.get_player_count())
-	for local_player_index in range(
-			lobby.get_player_count()):
-		current_player_ids[local_player_index] = (
-			LobbyLevel.get_local_player_id(local_player_index)
-		)
-	return current_player_ids
+	return lobby.get_registered_player_ids()
 
 
 func _get_current_player_ids_from_match_level(
