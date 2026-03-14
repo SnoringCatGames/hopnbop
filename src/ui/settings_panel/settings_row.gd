@@ -10,12 +10,8 @@ extends PanelContainer
 signal value_changed
 signal clicked
 
-var _focus_style: StyleBoxTexture = preload(
-	"res://src/ui/settings_panel/"
-	+ "focus_border_stylebox.tres")
-var _unfocused_style: StyleBoxFlat = preload(
-	"res://src/ui/settings_panel/"
-	+ "unfocused_stylebox.tres")
+var _focus_style: StyleBox
+var _unfocused_style: StyleBox
 
 var _is_mouse_hovered := false
 
@@ -26,6 +22,8 @@ var is_focused := false:
 
 
 func _ready() -> void:
+	_focus_style = G.settings.focus_border_stylebox
+	_unfocused_style = G.settings.unfocused_stylebox
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
 	_update_focus_style()

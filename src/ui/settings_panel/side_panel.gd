@@ -5,10 +5,6 @@ extends Control
 ## focus navigation and device-specific input.
 
 
-const _CONFIRM_OVERLAY_SCENE := preload(
-	"res://src/ui/confirm_overlay/"
-	+ "confirm_overlay.tscn")
-
 var manager: SidePanelManager
 var _player: Player
 var _device_config: DeviceConfig
@@ -67,7 +63,8 @@ func open_confirm_dialog(
 ) -> void:
 	is_input_active = false
 	var dialog: ConfirmOverlay = (
-		_CONFIRM_OVERLAY_SCENE.instantiate())
+		G.settings.confirm_overlay_scene
+			.instantiate())
 	dialog.tree_exiting.connect(
 		func() -> void:
 			if is_instance_valid(self):

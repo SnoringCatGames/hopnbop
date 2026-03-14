@@ -6,12 +6,14 @@ extends SidePanel
 
 @export var _back_row_scene: PackedScene
 @export var _legal_link_row_scene: PackedScene
+@export var _credits_row_scene: PackedScene
 
 @export_group("Row Icons")
 @export var icon_terms: Texture2D
 @export var icon_privacy: Texture2D
 @export var icon_data_deletion: Texture2D
 @export var icon_discord: Texture2D
+@export var icon_github: Texture2D
 @export var icon_credits: Texture2D
 
 
@@ -102,6 +104,18 @@ func _add_legal_section() -> void:
 	_row_container.add_child(discord_row)
 	_connect_row_clicked(discord_row)
 
+	var github_row: LegalLinkRow = (
+		_legal_link_row_scene.instantiate()
+	)
+	if icon_github != null:
+		github_row.set_icon(icon_github, 1)
+	github_row.setup(
+		tr("SETTINGS.OPEN_SOURCE"),
+		"https://github.com/SnoringCatGames/hopnbop",
+	)
+	_row_container.add_child(github_row)
+	_connect_row_clicked(github_row)
+
 
 func _add_credits_row() -> void:
 	var spacer := Control.new()
@@ -109,11 +123,9 @@ func _add_credits_row() -> void:
 	_row_container.add_child(spacer)
 
 	var row: CreditsRow = (
-		CreditsRow.new_row(
-			tr("SETTINGS.CREDITS"),
-			self,
-			icon_credits,
-		)
-	)
+		_credits_row_scene.instantiate())
+	if icon_credits != null:
+		row.set_icon(icon_credits)
+	row.setup(tr("SETTINGS.CREDITS"), self)
 	_row_container.add_child(row)
 	_connect_row_clicked(row)

@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Settings" load_steps=45 format=3 uid="uid://dv60bmaw1pdx6"]
+[gd_resource type="Resource" script_class="Settings" load_steps=59 format=3 uid="uid://dv60bmaw1pdx6"]
 
 [ext_resource type="Script" uid="uid://bklo1tgck1vmm" path="res://src/player/body_type_config.gd" id="1_7ybur"]
 [ext_resource type="Script" uid="uid://cqomr88ncj2d3" path="res://src/core/settings.gd" id="1_krfic"]
@@ -37,6 +37,20 @@
 [ext_resource type="Texture2D" uid="uid://bebc0irkn37q7" path="res://assets/images/level_thumbnails/level_3.png" id="28_thumb3"]
 [ext_resource type="Texture2D" uid="uid://dakaarxncuesh" path="res://assets/images/level_thumbnails/level_4.png" id="29_thumb4"]
 [ext_resource type="Texture2D" uid="uid://fe3bi0udwbh1" path="res://assets/images/level_thumbnails/level_5.png" id="30_thumb5"]
+[ext_resource type="PackedScene" path="res://src/ui/confirm_overlay/confirm_overlay.tscn" id="32_confirm"]
+[ext_resource type="Texture2D" uid="uid://g3ysr8be4but" path="res://assets/images/white_pixel.png" id="33_wpixel"]
+[ext_resource type="StyleBox" uid="uid://co2x2prpygpfd" path="res://src/ui/settings_panel/focus_border_stylebox.tres" id="34_focus"]
+[ext_resource type="StyleBox" path="res://src/ui/settings_panel/unfocused_stylebox.tres" id="35_unfocus"]
+[ext_resource type="Texture2D" uid="uid://bos83k5rfp1i" path="res://assets/images/gui/anonymous.png" id="36_anon"]
+[ext_resource type="Shader" path="res://src/ui/profile_image/circle_mask.gdshader" id="37_circmask"]
+[ext_resource type="PackedScene" uid="uid://dau3yeskewf1h" path="res://src/objects/splash/splash.tscn" id="38_splash"]
+[ext_resource type="PackedScene" uid="uid://dpige50wvopn7" path="res://src/objects/skid/skid.tscn" id="39_skid"]
+[ext_resource type="PackedScene" uid="uid://dbt4k1f2q3gvp" path="res://src/objects/birds/bird.tscn" id="40_bird"]
+[ext_resource type="PackedScene" uid="uid://lchd0mulxipo" path="res://src/objects/flies/fly.tscn" id="41_fly"]
+[ext_resource type="PackedScene" uid="uid://b2ykm6ywidj0p" path="res://src/objects/cricket/cricket.tscn" id="42_cricket"]
+[ext_resource type="PackedScene" uid="uid://b4rlmpji0e7ox" path="res://src/objects/snail/snail.tscn" id="43_snail"]
+[ext_resource type="PackedScene" uid="uid://cbo002msnip4r" path="res://src/objects/fish/fish.tscn" id="44_fish"]
+[ext_resource type="PackedScene" uid="uid://da0codoqtdnpm" path="res://src/objects/butterfly/butterfly.tscn" id="45_bfly"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_woca2"]
 radius = 6.0
@@ -102,6 +116,20 @@ google_oauth_client_id = "659577872419-3tk6ai4ju7bopntl69rju1cm9h89oici.apps.goo
 facebook_oauth_client_id = "4346465752288719"
 skip_splash = true
 chevron_icon = ExtResource("31_chevron")
+confirm_overlay_scene = ExtResource("32_confirm")
+white_pixel_texture = ExtResource("33_wpixel")
+focus_border_stylebox = ExtResource("34_focus")
+unfocused_stylebox = ExtResource("35_unfocus")
+anonymous_texture = ExtResource("36_anon")
+circle_mask_shader = ExtResource("37_circmask")
+splash_scene = ExtResource("38_splash")
+skid_scene = ExtResource("39_skid")
+bird_scene = ExtResource("40_bird")
+fly_scene = ExtResource("41_fly")
+cricket_scene = ExtResource("42_cricket")
+snail_scene = ExtResource("43_snail")
+fish_scene = ExtResource("44_fish")
+butterfly_scene = ExtResource("45_bfly")
 show_hud = false
 bunny_collision_shape = SubResource("CircleShape2D_woca2")
 gore_particle_scene = ExtResource("4_bav20")
