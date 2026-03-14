@@ -1,0 +1,87 @@
+TERMS OF SERVICE
+Last updated: March 8, 2026 — Version 1.0
+
+These Terms of Service ("Terms") govern your use of Hop 'n Bop ("the Game"),
+published by Snoring Cat LLC ("we", "us", "our"). By using the Game you agree
+to these Terms.
+
+
+1. ELIGIBILITY
+
+You must be at least 13 years old to use the Game. By using the Game, you
+represent that you meet this requirement.
+
+
+2. LICENSE
+
+We grant you a limited, non-exclusive, non-transferable, revocable license to
+use the Game for personal, non-commercial purposes. The Game is provided free
+of charge.
+
+
+3. ACCOUNT
+
+You may sign in using a third-party provider (Google, Facebook, Steam, Epic,
+Apple, Game Center) or play anonymously. You are responsible for maintaining
+the security of your third-party account credentials. We are not liable for
+unauthorized access resulting from compromised third-party accounts.
+
+
+4. CONDUCT
+
+You agree not to:
+- Use cheats, exploits, automation, or unauthorized modifications.
+- Disrupt gameplay for other players.
+- Attempt to access other players' accounts or data.
+- Reverse-engineer or decompile the Game's server software.
+
+
+5. TERMINATION
+
+We may suspend or terminate your access to the Game at any time, with or
+without cause, including for violation of these Terms. You may stop using the
+Game at any time. You may request deletion of your account and data per our
+Data Deletion Policy.
+
+
+6. DISCLAIMER OF WARRANTIES
+
+THE GAME IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE, AND NON-INFRINGEMENT. WE DO NOT WARRANT THAT THE GAME WILL BE
+UNINTERRUPTED, ERROR-FREE, OR SECURE.
+
+
+7. LIMITATION OF LIABILITY
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, SNORING CAT LLC SHALL NOT BE LIABLE
+FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES
+ARISING FROM YOUR USE OF THE GAME. OUR TOTAL LIABILITY SHALL NOT EXCEED $0
+(THE AMOUNT YOU PAID FOR THE GAME).
+
+
+8. PRIVACY
+
+Your use of the Game is also governed by our Privacy Policy.
+
+
+9. CHANGES
+
+We may update these Terms from time to time. The "Last updated" date at the
+top will reflect the most recent revision. If we make material changes, you
+will be asked to re-accept these Terms the next time you open the Game.
+Continued use of the Game after changes constitutes acceptance of the revised
+Terms.
+
+
+10. GOVERNING LAW
+
+These Terms are governed by the laws of the State of Washington, United
+States, without regard to conflict of law principles.
+
+
+11. CONTACT
+
+Snoring Cat LLC
+https://snoringcat.games
+Email: legal@hopnbop.net

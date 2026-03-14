@@ -1,0 +1,52 @@
+DATA DELETION POLICY
+Last updated: March 11, 2026 — Version 1.1
+
+You have the right to request deletion of all data associated with your
+Hop 'n Bop account.
+
+
+HOW TO DELETE YOUR DATA
+
+Before deleting your account, you may export your data via
+Settings > Account > Export My Data.
+
+Open Settings in the game, go to Account, and select "Delete Account". Your
+account and all associated data will be deleted immediately. This action
+cannot be undone.
+
+If you are unable to access the game, email privacy@hopnbop.net with the
+subject "Data Deletion Request" and include your player ID so we can locate
+your account.
+
+
+WHAT GETS DELETED
+
+When you delete your account, we permanently delete:
+- Your player profile (display name, player ID, profile image URL).
+- All linked authentication provider mappings.
+- Gameplay statistics and match history.
+- Cloud-synced settings.
+- Friend connections (removed from both sides).
+- Leaderboard entries.
+- Consent records (after a 3-year retention period for legal compliance).
+
+
+TIMELINE
+
+In-game deletion is processed immediately. Email requests are processed
+within 30 days. Once processed, the deletion is permanent and cannot be
+undone.
+
+
+DATA WE CANNOT DELETE
+
+Aggregated, anonymized analytics data (e.g., total matches played across all
+players) does not contain personally identifiable information and is not
+subject to deletion.
+
+
+CONTACT
+
+Snoring Cat LLC
+https://snoringcat.games
+Email: privacy@hopnbop.net

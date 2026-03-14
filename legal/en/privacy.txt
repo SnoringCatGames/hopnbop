@@ -1,0 +1,94 @@
+PRIVACY POLICY
+Last updated: March 11, 2026 — Version 1.1
+
+Hop 'n Bop ("the Game") is published by Snoring Cat LLC ("we", "us", "our").
+This policy describes how we collect, use, and protect your information.
+
+
+1. INFORMATION WE COLLECT
+
+- Account information: When you sign in via Google, Facebook, Steam, Epic,
+  Apple, or Game Center, we receive your display name, profile image URL, and
+  a provider-specific user ID. We do not receive or store your password.
+- Device identifier: If you play anonymously, we generate a random device ID
+  stored locally on your device.
+- Gameplay data: Match results, scores, kills, deaths, and other in-game
+  statistics.
+- Technical data: Game version, platform, and crash reports (stack traces, no
+  personal data).
+- Consent records: Timestamp and legal document version of your agreement to
+  our Terms and Privacy Policy.
+
+
+2. HOW WE USE YOUR INFORMATION
+
+- Authenticate your identity and maintain your account.
+- Track gameplay statistics, display leaderboards, and show your profile image
+  to other players in-game and on leaderboards.
+- Match you with other players.
+- Diagnose crashes and improve the Game.
+
+
+3. INFORMATION SHARING
+
+We do not sell, rent, or share your personal information with third parties.
+We comply with the EU General Data Protection Regulation (GDPR) and the
+California Consumer Privacy Act (CCPA). Your data is stored on Amazon Web
+Services (AWS) infrastructure in the United States. Authentication providers
+(Google, Facebook, etc.) are contacted only during sign-in and receive no
+gameplay data from us.
+
+
+4. DATA RETENTION
+
+Gameplay data is retained for the lifetime of your account. Consent records
+are retained for 3 years after account deletion for legal compliance. All
+other data is deleted immediately upon account deletion.
+
+
+5. YOUR RIGHTS
+
+- Access: Request a copy of your data via in-game settings or email.
+- Portability/export: Download your data in JSON format via in-game settings.
+- Deletion: Delete your account and all associated data via in-game settings
+  or email. See our Data Deletion Policy.
+- Rectification: Request correction of inaccurate data via email.
+- Restriction: Request we limit processing of your data.
+- Objection: Object to processing of your data.
+- Do not sell: We do not sell personal information (CCPA).
+
+To exercise any right, use the in-game Account settings or email
+privacy@hopnbop.net.
+
+CALIFORNIA RESIDENTS: Under the CCPA, you have the right to know what data
+we collect, request deletion, and opt out of the sale of personal information.
+We do not sell personal information. To make a request, email
+privacy@hopnbop.net or use the in-game Account settings.
+
+
+6. CHILDREN'S PRIVACY
+
+The Game is intended for players aged 13 and older. We do not knowingly
+collect information from children under 13. If we learn that we have collected
+data from a child under 13, we will delete it promptly.
+
+
+7. SECURITY
+
+We use industry-standard encryption (HTTPS/TLS) for all data in transit and
+encrypt sensitive data at rest. Access to player data is restricted to
+authorized systems.
+
+
+8. CHANGES TO THIS POLICY
+
+We may update this policy from time to time. The "Last updated" date at the
+top will reflect the most recent revision. Continued use of the Game after
+changes constitutes acceptance of the revised policy.
+
+
+9. CONTACT
+
+Snoring Cat LLC
+https://snoringcat.games
+Email: privacy@hopnbop.net
