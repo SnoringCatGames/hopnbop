@@ -2,6 +2,7 @@
 
 import os
 import boto3
+from boto3.dynamodb.conditions import Attr
 from typing import Optional
 
 
@@ -64,3 +65,35 @@ class ProviderMappingService:
         self.table.delete_item(
             Key={"provider_composite": composite}
         )
+
+    async def list_by_player(
+        self, player_id: str
+    ) -> list:
+        """Return all provider mappings for a player.
+
+        Each entry is a dict with 'provider' and
+        'provider_id' keys. Performs a full table scan;
+        acceptable because merges are infrequent.
+        """
+        results = []
+        scan_kwargs = {
+            "FilterExpression": (
+                Attr("player_id").eq(player_id)
+            ),
+        }
+        while True:
+            response = self.table.scan(**scan_kwargs)
+            for item in response.get("Items", []):
+                composite = item["provider_composite"]
+                parts = composite.split("#", 1)
+                if len(parts) == 2:
+                    results.append({
+                        "provider": parts[0],
+                        "provider_id": parts[1],
+                    })
+            if "LastEvaluatedKey" not in response:
+                break
+            scan_kwargs["ExclusiveStartKey"] = (
+                response["LastEvaluatedKey"]
+            )
+        return results

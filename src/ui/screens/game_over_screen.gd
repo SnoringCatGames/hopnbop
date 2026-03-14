@@ -100,9 +100,14 @@ func _populate_results() -> void:
 
 	# Check if any row will show an Add Friend
 	# button so we can reserve balanced space.
+	# Anonymous participants have no backend ID,
+	# so they never show a button.
 	var has_any_friend_button := (
 		not G.auth_token_store.is_anonymous
-		and not participants.is_empty())
+		and participants.any(
+			func(p: Dictionary) -> bool:
+				return not p.get(
+					"backend_player_id", "").is_empty()))
 
 	for ps: GamePlayerState in sorted_players:
 		var stats: PlayerMatchStats = (

@@ -26,14 +26,19 @@ from services.level_selection_service import (
 )
 from services import secrets_service
 from services.dns_service import DnsService
+from services.active_session_service import ActiveSessionService
 
 logger = Logger()
 tracer = Tracer()
 metrics = Metrics()
 
-# WSS port where nginx terminates TLS and proxies to the
-# Godot WebSocket server on port 4433.
-_WSS_PORT = 4434
+# Offset from the game session's primary port (ENet UDP)
+# to the nginx WSS port. GameLift allocates 3 consecutive
+# host ports per session for the 3 declared container
+# ports: [4433 UDP, 4433 TCP, 4434 TCP]. The primary port
+# returned by GameLift maps to the first (UDP) container
+# port, so the nginx WSS port is at offset +2.
+_WSS_PORT_OFFSET = 2
 
 # CORS headers included in every response.
 _HEADERS = {
@@ -52,19 +57,21 @@ gamelift = GameLiftService(
 player_service = PlayerService()
 rate_limiter = RateLimiter()
 dns_service = DnsService()
+active_session_service = ActiveSessionService()
 
 def _resolve_server_address(result):
     """Resolve server address and port for the match result.
 
     For WebSocket matches (web clients), creates a Route 53 DNS
-    record and returns the hostname + WSS port (4434). For ENet
+    record and returns the hostname + WSS host port. For ENet
     matches (native clients), returns the raw IP + game port.
     """
     if result.transport_type == "websocket":
         hostname = dns_service.create_game_session_record(
             result.game_session_id, result.server_ip
         )
-        return hostname, _WSS_PORT
+        wss_port = result.server_port + _WSS_PORT_OFFSET
+        return hostname, wss_port
     return result.server_ip, result.server_port
 
 
@@ -144,7 +151,7 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             player_service.get_or_create_player(
                 player_id,
                 auth_token.display_name,
-                auth_token.provider,
+                {},
             )
         )
 
@@ -153,6 +160,17 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
         is_authenticated = (
             0 if auth_token.provider in ("anonymous", "debug") else 1
         )
+
+        # Guard: reject if player already has an active session.
+        if not active_session_service.try_start_matchmaking(
+            player_id, "pending"
+        ):
+            return error_response(
+                409,
+                "CONCURRENT_SESSION",
+                "You are already in matchmaking or an active"
+                " match. Please finish or wait for it to end.",
+            )
 
         # Create matchmaking players (one per local player).
         players = [
@@ -167,10 +185,24 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             for i in range(player_count)
         ]
 
-        # Start matchmaking.
-        config_name = os.environ.get("MATCHMAKING_CONFIG", "hopnbop-ffa-matchmaker")
-        ticket_id = asyncio.run(
-            gamelift.start_matchmaking(config_name=config_name, players=players)
+        # Start matchmaking. Clear the session lock on failure
+        # so the player is not stuck waiting for TTL expiry.
+        config_name = os.environ.get(
+            "MATCHMAKING_CONFIG", "hopnbop-ffa-matchmaker"
+        )
+        try:
+            ticket_id = asyncio.run(
+                gamelift.start_matchmaking(
+                    config_name=config_name, players=players
+                )
+            )
+        except Exception:
+            active_session_service.clear_session(player_id)
+            raise
+
+        # Update the session record with the real ticket ID.
+        active_session_service.update_ticket_id(
+            player_id, ticket_id
         )
 
         logger.info(f"Started matchmaking: {ticket_id}")
@@ -184,6 +216,12 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
                 name="player_connected",
                 unit=MetricUnit.Count,
                 value=1,
+            )
+
+            # Transition session state to in_match now that
+            # the game session ID is known.
+            active_session_service.transition_to_in_match(
+                player_id, result.game_session_id
             )
 
             # Select level based on player preferences.
@@ -216,6 +254,7 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
 
         except TimeoutError as e:
             logger.warning(f"Matchmaking timeout: {ticket_id}")
+            active_session_service.clear_session(player_id)
             return error_response(408, "MATCHMAKING_TIMEOUT", str(e))
 
     except ValueError as e:
@@ -277,7 +316,7 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             player_service.get_or_create_player(
                 player_id,
                 auth_token.display_name,
-                auth_token.provider,
+                {},
             )
         )
 
@@ -286,6 +325,17 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
         is_authenticated = (
             0 if auth_token.provider in ("anonymous", "debug") else 1
         )
+
+        # Guard: reject if player already has an active session.
+        if not active_session_service.try_start_matchmaking(
+            player_id, "pending"
+        ):
+            return error_response(
+                409,
+                "CONCURRENT_SESSION",
+                "You are already in matchmaking or an active"
+                " match. Please finish or wait for it to end.",
+            )
 
         # Create matchmaking players.
         players = [
@@ -305,10 +355,24 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             "session_preferences", {}
         )
 
-        # Start matchmaking.
-        config_name = os.environ.get("MATCHMAKING_CONFIG", "hopnbop-ffa-matchmaker")
-        ticket_id = asyncio.run(
-            gamelift.start_matchmaking(config_name=config_name, players=players)
+        # Start matchmaking. Clear the session lock on failure
+        # so the player is not stuck waiting for TTL expiry.
+        config_name = os.environ.get(
+            "MATCHMAKING_CONFIG", "hopnbop-ffa-matchmaker"
+        )
+        try:
+            ticket_id = asyncio.run(
+                gamelift.start_matchmaking(
+                    config_name=config_name, players=players
+                )
+            )
+        except Exception:
+            active_session_service.clear_session(player_id)
+            raise
+
+        # Update the session record with the real ticket ID.
+        active_session_service.update_ticket_id(
+            player_id, ticket_id
         )
 
         logger.info(f"Started matchmaking for {player_id}: {ticket_id}")
@@ -349,9 +413,13 @@ def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dic
         jwt_token = auth_header[7:]
         jwt_secret = secrets_service.get_jwt_secret()
 
-        # Accept debug tokens.
-        if not jwt_token.startswith("DEBUG_"):
-            AuthToken.from_jwt(jwt_token, jwt_secret)
+        # Accept debug tokens. Capture player_id for session
+        # cleanup on terminal status.
+        if jwt_token.startswith("DEBUG_"):
+            player_id = jwt_token
+        else:
+            auth_token = AuthToken.from_jwt(jwt_token, jwt_secret)
+            player_id = auth_token.player_id
 
         # Get ticket ID from path.
         ticket_id = event.get("pathParameters", {}).get("ticket_id")
@@ -372,6 +440,12 @@ def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dic
         # If completed, do full poll to get connection info.
         if status["status"] == "completed":
             result = asyncio.run(gamelift.poll_matchmaking(ticket_id))
+
+            # Transition session state from matchmaking to
+            # in_match now that the game session ID is known.
+            active_session_service.transition_to_in_match(
+                player_id, result.game_session_id
+            )
 
             # Select level from stored session preferences.
             session_prefs_data = _pending_session_prefs.pop(
@@ -409,7 +483,8 @@ def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dic
                 ),
             }
 
-        # Failed/cancelled/timeout.
+        # Failed/cancelled/timeout — release the session lock.
+        active_session_service.clear_session(player_id)
         return {
             "statusCode": 200,
             "headers": _HEADERS,

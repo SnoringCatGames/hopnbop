@@ -143,10 +143,19 @@ func _on_start_response(
 		return
 
 	if response_code != 200:
-		var error_msg := body.get_string_from_utf8()
-		session_request_failed.emit(
-			"HTTP %d: %s"
-			% [response_code, error_msg])
+		var raw := body.get_string_from_utf8()
+		var parsed := JSON.new()
+		if (
+			parsed.parse(raw) == OK
+			and parsed.data is Dictionary
+		):
+			session_request_failed.emit(
+				parsed.data.get(
+					"message",
+					"HTTP %d" % response_code))
+		else:
+			session_request_failed.emit(
+				"HTTP %d: %s" % [response_code, raw])
 		return
 
 	var data := _parse_json(body)

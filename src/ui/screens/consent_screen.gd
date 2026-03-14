@@ -9,9 +9,6 @@ extends Screen
 ## AnyDeviceInputPoller.
 
 
-const _TERMS_URL := "https://hopnbop.net/terms"
-const _PRIVACY_URL := "https://hopnbop.net/privacy"
-
 const _LANGUAGE_ROW_MIN_WIDTH := 200.0
 const _LANGUAGE_SCROLL_HEIGHT := 200.0
 
@@ -41,6 +38,14 @@ const _LOCALE_DISPLAY_NAMES := {
 @export var tex_hovered_unchecked: Texture2D
 @export var tex_pressed_unchecked: Texture2D
 
+@export_group("Row Icons")
+@export var icon_language: Texture2D
+@export var icon_terms: Texture2D
+@export var icon_privacy: Texture2D
+
+@export var _focus_style: StyleBoxTexture
+@export var _unfocused_style: StyleBoxFlat
+
 var _age_checked := false
 var _terms_checked := false
 var _is_language_overlay_shown := false
@@ -49,13 +54,9 @@ var _poller := AnyDeviceInputPoller.new()
 var _focusable: Array[Control] = []
 var _focused_index := 0
 
-@export_group("Row Icons")
-@export var icon_language: Texture2D
-@export var icon_terms: Texture2D
-@export var icon_privacy: Texture2D
-
-@export var _focus_style: StyleBoxTexture
-@export var _unfocused_style: StyleBoxFlat
+var _language_arrow: TextureRect
+var _terms_arrow: TextureRect
+var _privacy_arrow: TextureRect
 
 
 func _enter_tree() -> void:
@@ -105,16 +106,19 @@ func _ready() -> void:
 			"HBoxContainer/Icon"),
 		icon_privacy)
 
+	# Store arrow refs before _setup_chevron wraps
+	# them in a MarginContainer via padding.
+	_language_arrow = %LanguageRow.get_node(
+		"HBoxContainer/Arrow")
+	_terms_arrow = %TermsLinkRow.get_node(
+		"HBoxContainer/Arrow")
+	_privacy_arrow = %PrivacyLinkRow.get_node(
+		"HBoxContainer/Arrow")
+
 	# Set up chevron icons on arrow rows.
-	_setup_chevron(
-		%LanguageRow.get_node(
-			"HBoxContainer/Arrow"))
-	_setup_chevron(
-		%TermsLinkRow.get_node(
-			"HBoxContainer/Arrow"))
-	_setup_chevron(
-		%PrivacyLinkRow.get_node(
-			"HBoxContainer/Arrow"))
+	_setup_chevron(_language_arrow)
+	_setup_chevron(_terms_arrow)
+	_setup_chevron(_privacy_arrow)
 
 	# Connect mouse interactions for focusable
 	# PanelContainer rows.
@@ -224,9 +228,10 @@ func _activate_focused() -> void:
 	if focused == %LanguageRow:
 		_open_language_overlay()
 	elif focused == %TermsLinkRow:
-		OS.shell_open(_TERMS_URL)
+		_open_legal_screen(ScreensMain.ScreenType.TERMS)
 	elif focused == %PrivacyLinkRow:
-		OS.shell_open(_PRIVACY_URL)
+		_open_legal_screen(
+			ScreensMain.ScreenType.PRIVACY)
 	elif focused == %AgeRow:
 		_on_age_pressed()
 	elif focused == %TermsRow:
@@ -447,6 +452,7 @@ func _setup_row_icon(
 		icon_rect.custom_minimum_size = (
 			tex.get_size()
 			* G.settings.icon_scale)
+		_wrap_icon_with_padding(icon_rect)
 		icon_rect.show()
 	else:
 		icon_rect.hide()
@@ -458,26 +464,49 @@ func _setup_chevron(rect: TextureRect) -> void:
 		TextureRect.EXPAND_IGNORE_SIZE)
 	rect.stretch_mode = (
 		TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
-	var chevron_size := (
+	var icon_size := (
 		G.settings.chevron_icon.get_size()
 		* G.settings.icon_scale)
-	rect.custom_minimum_size = chevron_size
+	rect.custom_minimum_size = icon_size
+	_wrap_icon_with_padding(rect)
 	rect.scale.x = 1.0
 	if is_layout_rtl():
-		rect.pivot_offset = chevron_size / 2.0
+		rect.pivot_offset = icon_size / 2.0
 		rect.scale.x = -1.0
 
 
+func _wrap_icon_with_padding(
+	icon_rect: TextureRect,
+) -> void:
+	var pad := G.settings.icon_padding
+	if pad <= 0:
+		return
+	var parent := icon_rect.get_parent()
+	var mc: MarginContainer
+	if parent is MarginContainer:
+		mc = parent as MarginContainer
+	else:
+		mc = MarginContainer.new()
+		mc.mouse_filter = (
+			Control.MOUSE_FILTER_IGNORE)
+		parent.add_child(mc)
+		parent.move_child(
+			mc, icon_rect.get_index())
+		icon_rect.reparent(mc)
+	mc.add_theme_constant_override(
+		"margin_left", pad)
+	mc.add_theme_constant_override(
+		"margin_right", pad)
+	mc.add_theme_constant_override(
+		"margin_top", pad)
+	mc.add_theme_constant_override(
+		"margin_bottom", pad)
+
+
 func _update_rtl_arrows() -> void:
-	_setup_chevron(
-		%LanguageRow.get_node(
-			"HBoxContainer/Arrow"))
-	_setup_chevron(
-		%TermsLinkRow.get_node(
-			"HBoxContainer/Arrow"))
-	_setup_chevron(
-		%PrivacyLinkRow.get_node(
-			"HBoxContainer/Arrow"))
+	_setup_chevron(_language_arrow)
+	_setup_chevron(_terms_arrow)
+	_setup_chevron(_privacy_arrow)
 
 
 func _on_age_pressed() -> void:
@@ -531,6 +560,19 @@ func _on_continue_pressed() -> void:
 		AuthTokenStore.LEGAL_VERSION)
 	G.auth_token_store.save_tokens()
 	_navigate_to_auth()
+
+
+func _open_legal_screen(
+	screen_type: ScreensMain.ScreenType,
+) -> void:
+	var screen: LegalDocScreen = (
+		G.screens.get_screen_from_type(
+			screen_type) as LegalDocScreen)
+	if not is_instance_valid(screen):
+		return
+	screen.set_return_screen(
+		ScreensMain.ScreenType.CONSENT)
+	G.screens.client_open_screen(screen_type)
 
 
 func _navigate_to_auth() -> void:

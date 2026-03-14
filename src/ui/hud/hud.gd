@@ -38,7 +38,10 @@ func update_visibility() -> void:
 		ScreensMain.ScreenType.SCG_SPLASH, \
 		ScreensMain.ScreenType.CONSENT, \
 		ScreensMain.ScreenType.AUTH, \
-		ScreensMain.ScreenType.LOADING:
+		ScreensMain.ScreenType.LOADING, \
+		ScreensMain.ScreenType.TERMS, \
+		ScreensMain.ScreenType.PRIVACY, \
+		ScreensMain.ScreenType.DATA_DELETION:
 			visible = false
 		ScreensMain.ScreenType.GAME_OVER, \
 		ScreensMain.ScreenType.PAUSE:

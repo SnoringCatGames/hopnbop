@@ -577,6 +577,12 @@ func _client_despawn_lobby_if_present() -> void:
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
+	# Close settings menu if open.
+	for child in get_tree().root.get_children():
+		if child is SidePanelManager:
+			child.close_all()
+			break
+
 	# Close credits overlay if open.
 	for child in get_tree().root.get_children():
 		if child is CreditsOverlay:

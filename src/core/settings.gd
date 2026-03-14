@@ -89,6 +89,7 @@ enum BumpMode {
 const BASE_ICON_WIDTH := 11
 
 @export var icon_scale := 4
+@export var icon_padding := 4
 @export var chevron_icon: Texture2D
 
 @export_group("Shared Scenes and Resources")

@@ -1,0 +1,98 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Theme" uid="uid://cg4peau6bmpdw" path="res://src/ui/hud_theme.tres" id="1_theme"]
+[ext_resource type="Texture2D" uid="uid://srk2i3d48pgr" path="res://assets/images/title_512.png" id="2_logo"]
+[ext_resource type="Script" path="res://src/ui/screens/legal_doc_screen.gd" id="3_script"]
+[ext_resource type="StyleBox" uid="uid://co2x2prpygpfd" path="res://src/ui/settings_panel/focus_border_stylebox.tres" id="4_focus"]
+[ext_resource type="StyleBoxFlat" path="res://src/ui/settings_panel/unfocused_stylebox.tres" id="5_unfocused"]
+
+[node name="LegalDocScreen" type="PanelContainer"]
+process_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+layout_direction = 2
+theme = ExtResource("1_theme")
+script = ExtResource("3_script")
+_focus_style = ExtResource("4_focus")
+_unfocused_style = ExtResource("5_unfocused")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="TopHalf" type="CenterContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
+
+[node name="Logo" type="TextureRect" parent="VBoxContainer/TopHalf"]
+layout_mode = 2
+custom_minimum_size = Vector2(256, 192)
+texture = ExtResource("2_logo")
+expand_mode = 3
+stretch_mode = 5
+
+[node name="ScrollMargin" type="MarginContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.0
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 40
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/ScrollMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ContentBox" type="VBoxContainer" parent="VBoxContainer/ScrollMargin/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="TitleLabel" type="Label" parent="VBoxContainer/ScrollMargin/ScrollContainer/ContentBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 28
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="VBoxContainer/ScrollMargin/ScrollContainer/ContentBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 8)
+
+[node name="Content" type="Label" parent="VBoxContainer/ScrollMargin/ScrollContainer/ContentBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="BottomSpacer" type="Control" parent="VBoxContainer/ScrollMargin/ScrollContainer/ContentBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 32)
+
+[node name="BackRow" type="PanelContainer" parent="VBoxContainer/ScrollMargin/ScrollContainer/ContentBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/ScrollMargin/ScrollContainer/ContentBox/BackRow"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Arrow" type="TextureRect" parent="VBoxContainer/ScrollMargin/ScrollContainer/ContentBox/BackRow/HBoxContainer"]
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BackLabel" type="Label" parent="VBoxContainer/ScrollMargin/ScrollContainer/ContentBox/BackRow/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "SETTINGS.BACK"

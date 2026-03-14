@@ -4,9 +4,10 @@ import json
 import os
 import secrets
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Any
 import boto3
+import jwt
 from aws_lambda_powertools import Logger, Metrics, Tracer
 from aws_lambda_powertools.metrics import MetricUnit
 from aws_lambda_powertools.utilities.typing import LambdaContext
@@ -494,12 +495,28 @@ def link_account(
                     ),
                 }
             else:
-                return _error(
-                    409,
-                    "PROVIDER_CONFLICT",
-                    "This provider account is already "
-                    "linked to a different player",
+                # Issue a short-lived merge token so
+                # the client can confirm a merge without
+                # re-running OAuth (codes are single-use).
+                merge_token = _make_merge_token(
+                    current_token.player_id,
+                    existing_player_id,
+                    auth_service.jwt_secret,
                 )
+                return {
+                    "statusCode": 409,
+                    "headers": _HEADERS,
+                    "body": json.dumps({
+                        "status": "error",
+                        "error_code": "PROVIDER_CONFLICT",
+                        "message": (
+                            "This provider account is"
+                            " already linked to a"
+                            " different player"
+                        ),
+                        "merge_token": merge_token,
+                    }),
+                }
 
         # Add provider to current player.
         asyncio.run(
@@ -514,6 +531,10 @@ def link_account(
                 current_token.player_id,
                 auth_result.provider,
                 auth_result.provider_id,
+                display_name=auth_result.display_name,
+                profile_image_url=(
+                    auth_result.profile_image_url
+                ),
             )
         )
 
@@ -665,6 +686,177 @@ def unlink_account(
 
     except Exception:
         logger.exception("Unlink account error")
+        return _error(
+            500, "INTERNAL_ERROR", "Internal server error"
+        )
+
+
+@tracer.capture_lambda_handler
+@logger.inject_lambda_context
+def merge_accounts(
+    event: Dict[str, Any], context: LambdaContext
+) -> Dict:
+    """POST /auth/merge - Merge another account into this one.
+
+    Requires a merge_token issued by POST /auth/link when a
+    PROVIDER_CONFLICT is detected. The token encodes both
+    player IDs and expires in 5 minutes.
+    """
+    try:
+        # Validate Bearer JWT (primary account).
+        auth_header = (
+            event.get("headers", {}).get("Authorization", "")
+            or event.get("headers", {}).get(
+                "authorization", ""
+            )
+        )
+        if not auth_header.startswith("Bearer "):
+            return _error(
+                401, "UNAUTHORIZED", "Missing auth token"
+            )
+
+        token_str = auth_header[7:]
+        try:
+            current_token = AuthToken.from_jwt(
+                token_str, auth_service.jwt_secret
+            )
+        except ValueError as e:
+            return _error(401, "UNAUTHORIZED", str(e))
+
+        body = json.loads(event.get("body", "{}"))
+        merge_token_str = body.get("merge_token", "")
+        if not merge_token_str:
+            return _error(
+                400,
+                "MISSING_PARAMS",
+                "Missing merge_token",
+            )
+
+        # Verify merge token.
+        try:
+            merge_payload = jwt.decode(
+                merge_token_str,
+                auth_service.jwt_secret,
+                algorithms=["HS256"],
+            )
+        except jwt.ExpiredSignatureError:
+            return _error(
+                400,
+                "MERGE_TOKEN_EXPIRED",
+                "Merge token has expired",
+            )
+        except jwt.InvalidTokenError:
+            return _error(
+                400,
+                "INVALID_MERGE_TOKEN",
+                "Invalid merge token",
+            )
+
+        if merge_payload.get("sub") != "merge":
+            return _error(
+                400,
+                "INVALID_MERGE_TOKEN",
+                "Invalid merge token",
+            )
+
+        primary_player_id = merge_payload.get("primary")
+        secondary_player_id = merge_payload.get("secondary")
+
+        if primary_player_id != current_token.player_id:
+            return _error(
+                403,
+                "FORBIDDEN",
+                "Merge token does not match current player",
+            )
+
+        # Fetch secondary profile before any writes so we
+        # have the device_id for cleanup.
+        secondary_profile = asyncio.run(
+            player_service.get_player(secondary_player_id)
+        )
+        if secondary_profile is None:
+            return _error(
+                404,
+                "NOT_FOUND",
+                "Secondary player not found",
+            )
+
+        # Merge stats from secondary into primary.
+        merged_profile = asyncio.run(
+            player_service.merge_players(
+                primary_player_id, secondary_player_id
+            )
+        )
+        if merged_profile is None:
+            return _error(
+                404,
+                "NOT_FOUND",
+                "Primary player not found",
+            )
+
+        # Re-point all secondary provider mappings to
+        # the primary player.
+        secondary_mappings = asyncio.run(
+            provider_mapping_service.list_by_player(
+                secondary_player_id
+            )
+        )
+        for mapping in secondary_mappings:
+            asyncio.run(
+                provider_mapping_service.create(
+                    mapping["provider"],
+                    mapping["provider_id"],
+                    primary_player_id,
+                )
+            )
+
+        # Migrate secondary's friends to primary.
+        asyncio.run(
+            friends_service.migrate_friends(
+                secondary_player_id, primary_player_id
+            )
+        )
+
+        # Remove secondary from leaderboard.
+        leaderboard_service.remove_player(
+            secondary_player_id
+        )
+
+        # Delete secondary player data.
+        _delete_match_history(secondary_player_id)
+        settings_service.delete_settings(
+            secondary_player_id
+        )
+        if secondary_profile.device_id:
+            asyncio.run(
+                provider_mapping_service.delete(
+                    "anonymous",
+                    secondary_profile.device_id,
+                )
+            )
+        asyncio.run(
+            player_service.delete_player(secondary_player_id)
+        )
+
+        logger.info(
+            f"Merged {secondary_player_id}"
+            f" into {primary_player_id}"
+        )
+
+        return {
+            "statusCode": 200,
+            "headers": _HEADERS,
+            "body": json.dumps({
+                "status": "success",
+                "message": "Accounts merged",
+                "linked_providers": list(
+                    merged_profile.auth_providers.keys()
+                ),
+            }),
+        }
+
+    except Exception:
+        logger.exception("Merge accounts error")
         return _error(
             500, "INTERNAL_ERROR", "Internal server error"
         )
@@ -856,6 +1048,30 @@ def _delete_match_history(player_id: str) -> None:
                         ],
                     }
                 )
+
+
+def _make_merge_token(
+    primary_player_id: str,
+    secondary_player_id: str,
+    secret: str,
+) -> str:
+    """Issue a short-lived JWT for confirming an account merge.
+
+    The token encodes both player IDs and expires in 5
+    minutes. The client presents it to POST /auth/merge
+    after the user confirms, avoiding a second OAuth round-
+    trip (OAuth codes are single-use).
+    """
+    now = datetime.now()
+    payload = {
+        "sub": "merge",
+        "primary": primary_player_id,
+        "secondary": secondary_player_id,
+        "exp": int(
+            (now + timedelta(minutes=5)).timestamp()
+        ),
+    }
+    return jwt.encode(payload, secret, algorithm="HS256")
 
 
 def _error(

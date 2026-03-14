@@ -21,6 +21,7 @@ from services.leaderboard_service import (
     _current_iso_week,
 )
 from services import secrets_service
+from services.active_session_service import ActiveSessionService
 
 logger = Logger()
 tracer = Tracer()
@@ -30,6 +31,7 @@ metrics = Metrics()
 match_service = MatchService()
 player_service = PlayerService()
 leaderboard_service = LeaderboardService()
+active_session_service = ActiveSessionService()
 
 # CORS headers included in every response.
 _HEADERS = {
@@ -122,6 +124,19 @@ def submit_match_result(
             level_id=level_id,
             player_results=player_results,
         )
+
+        # Release active session locks so players can
+        # matchmake again. Non-fatal: TTL cleans up stragglers.
+        for pr in player_results:
+            try:
+                active_session_service.clear_session(
+                    pr["player_id"]
+                )
+            except Exception:
+                logger.warning(
+                    "Failed to clear session for %s",
+                    pr["player_id"],
+                )
 
         logger.info(
             "Match result recorded",

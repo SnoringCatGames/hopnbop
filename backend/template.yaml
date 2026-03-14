@@ -22,6 +22,7 @@ Globals:
         PARTIES_TABLE: !Ref PartiesTable
         HOSTED_ZONE_ID: !Ref GameHostedZoneId
         POWERTOOLS_METRICS_NAMESPACE: HopNBop
+        ACTIVE_SESSIONS_TABLE: !Ref ActiveSessionsTable
 
 Parameters:
   SteamAppID:
@@ -173,6 +174,33 @@ Resources:
             Path: /auth/unlink
             Method: post
 
+  AuthMergeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.auth_handler.merge_accounts
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ProviderMappingsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FriendsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LeaderboardTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref MatchHistoryTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SettingsTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        MergeAccounts:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /auth/merge
+            Method: post
+
   AuthDeleteAccountFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -248,6 +276,8 @@ Resources:
               Resource: !Sub "arn:aws:route53:::hostedzone/${GameHostedZoneId}"
         - DynamoDBCrudPolicy:
             TableName: !Ref PlayersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ActiveSessionsTable
         - !Ref SecretsManagerPolicy
       Events:
         Join:
@@ -270,6 +300,8 @@ Resources:
               Resource: '*'
         - DynamoDBCrudPolicy:
             TableName: !Ref PlayersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ActiveSessionsTable
         - !Ref SecretsManagerPolicy
       Events:
         StartMatch:
@@ -295,6 +327,8 @@ Resources:
               Action:
                 - route53:ChangeResourceRecordSets
               Resource: !Sub "arn:aws:route53:::hostedzone/${GameHostedZoneId}"
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ActiveSessionsTable
         - !Ref SecretsManagerPolicy
       Events:
         GetStatus:
@@ -317,6 +351,8 @@ Resources:
             TableName: !Ref MatchHistoryTable
         - DynamoDBCrudPolicy:
             TableName: !Ref LeaderboardTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ActiveSessionsTable
         - !Ref SecretsManagerPolicy
       Events:
         SubmitResult:
@@ -972,6 +1008,21 @@ Resources:
           AttributeType: S
       KeySchema:
         - AttributeName: party_id
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: true
+
+  ActiveSessionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: hopnbop-active-sessions
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: player_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: player_id
           KeyType: HASH
       TimeToLiveSpecification:
         AttributeName: expires_at

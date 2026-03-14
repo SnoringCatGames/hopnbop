@@ -1,9 +1,10 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://src/ui/settings_panel/info_panel.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/side_panel.tscn" id="2_base"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/back_row.tscn" id="3_back_row"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/link_row.tscn" id="4_link"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/screen_trigger_row.tscn" id="10_screen_trigger"]
 [ext_resource type="Texture2D" uid="uid://b833ufnj6jyf3" path="res://assets/images/gui/terms_icon.png" id="5_terms"]
 [ext_resource type="Texture2D" uid="uid://c8tk3vnw7vlct" path="res://assets/images/gui/privacy_icon.png" id="5b_privacy"]
 [ext_resource type="Texture2D" uid="uid://cskq5pteeuekm" path="res://assets/images/gui/data_deletion_icon.png" id="6_data_deletion"]
@@ -22,4 +23,5 @@ icon_github = ExtResource("7b_github")
 icon_credits = ExtResource("8_credits")
 _back_row_scene = ExtResource("3_back_row")
 _link_row_scene = ExtResource("4_link")
+_screen_trigger_row_scene = ExtResource("10_screen_trigger")
 _credits_row_scene = ExtResource("9_credits_row")

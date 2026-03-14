@@ -20,6 +20,7 @@ func _ready() -> void:
 	if _icon.texture != null:
 		_icon.custom_minimum_size = (
 			_icon.texture.get_size() * 2)
+		_wrap_icon_with_padding(_icon)
 	_apply_content_margin_to_styles(10)
 	_update_focus_style()
 

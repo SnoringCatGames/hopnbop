@@ -30,6 +30,13 @@ signal unlink_completed(
 ## Emitted when account deletion completes.
 signal delete_completed(success: bool, error: String)
 
+## Emitted when account merge completes.
+signal merge_completed(
+	success: bool,
+	error: String,
+	provider: String,
+)
+
 ## Emitted when data export completes.
 signal export_completed(
 	success: bool,
@@ -76,6 +83,7 @@ const _ANON_ENDPOINT := "/auth/anon"
 const _REFRESH_ENDPOINT := "/auth/refresh"
 const _LINK_ENDPOINT := "/auth/link"
 const _UNLINK_ENDPOINT := "/auth/unlink"
+const _MERGE_ENDPOINT := "/auth/merge"
 const _DELETE_ACCOUNT_ENDPOINT := "/auth/account"
 const _EXPORT_ENDPOINT := "/player/export"
 const _POPUP_TIMEOUT_SEC := 300.0
@@ -114,6 +122,11 @@ var _unlink_provider_name := ""
 
 # Account deletion state.
 var _is_deleting := false
+
+# Account merge state.
+var _is_merging := false
+var _pending_merge_token := ""
+var _pending_merge_provider_name := ""
 
 # Data export state.
 var _is_exporting := false
@@ -293,6 +306,24 @@ func unlink_provider(provider: Provider) -> void:
 	_send_auth_request(
 		_UNLINK_ENDPOINT, body, true
 	)
+
+
+## Confirm the pending account merge. Must only be called
+## after a PROVIDER_CONFLICT link failure, which stores a
+## short-lived merge token internally.
+func confirm_merge() -> void:
+	_is_merging = true
+	_send_auth_request(
+		_MERGE_ENDPOINT,
+		{"merge_token": _pending_merge_token},
+		true,
+	)
+
+
+## Cancel the pending account merge and clear merge state.
+func cancel_merge() -> void:
+	_pending_merge_token = ""
+	_pending_merge_provider_name = ""
 
 
 ## Delete the current account and all associated data.
@@ -867,6 +898,22 @@ func _on_auth_response(
 		var msg: String = data.get(
 			"message", "Authentication failed"
 		)
+		# On PROVIDER_CONFLICT during linking, capture
+		# the merge token so the user can confirm a merge
+		# without re-running OAuth.
+		if (
+			_is_linking
+			and response_code == 409
+			and data.get("error_code", "") == "PROVIDER_CONFLICT"
+		):
+			var merge_token: String = (
+				data.get("merge_token", ""))
+			if not merge_token.is_empty():
+				_pending_merge_token = merge_token
+				_pending_merge_provider_name = (
+					_link_provider_name)
+				_emit_failure("PROVIDER_CONFLICT")
+				return
 		_emit_failure(msg)
 		return
 
@@ -879,6 +926,11 @@ func _on_auth_response(
 	# Handle delete response separately.
 	if _is_deleting:
 		_handle_delete_success()
+		return
+
+	# Handle merge response separately.
+	if _is_merging:
+		_handle_merge_success(data)
 		return
 
 	# Handle unlink response separately.
@@ -957,6 +1009,24 @@ func _handle_unlink_success(data: Dictionary) -> void:
 	unlink_completed.emit(true, "", provider_name)
 
 
+func _handle_merge_success(data: Dictionary) -> void:
+	_is_merging = false
+	var provider_name := _pending_merge_provider_name
+	_pending_merge_token = ""
+	_pending_merge_provider_name = ""
+
+	if data.has("linked_providers"):
+		G.auth_token_store.linked_providers.clear()
+		var lp: Array = data.get("linked_providers", [])
+		for p in lp:
+			G.auth_token_store.linked_providers.append(
+				str(p)
+			)
+		G.auth_token_store.save_tokens()
+
+	merge_completed.emit(true, "", provider_name)
+
+
 func _handle_delete_success() -> void:
 	_is_deleting = false
 	G.auth_token_store.clear_tokens()
@@ -973,6 +1043,12 @@ func _emit_failure(error: String) -> void:
 		var provider_name := _link_provider_name
 		_link_provider_name = ""
 		link_completed.emit(false, error, provider_name)
+	elif _is_merging:
+		_is_merging = false
+		var provider_name := _pending_merge_provider_name
+		_pending_merge_token = ""
+		_pending_merge_provider_name = ""
+		merge_completed.emit(false, error, provider_name)
 	elif _is_unlinking:
 		_is_unlinking = false
 		var provider_name := _unlink_provider_name

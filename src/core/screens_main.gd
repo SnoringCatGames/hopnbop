@@ -12,6 +12,9 @@ enum ScreenType {
 	PAUSE,
 	LOBBY,
 	GAME,
+	TERMS,
+	PRIVACY,
+	DATA_DELETION,
 }
 
 var current_screen := ScreenType.UNKNOWN
@@ -125,10 +128,19 @@ func _perform_screen_switch(
 	G.scg_splash_screen.visible = screen_type == ScreenType.SCG_SPLASH
 	if is_instance_valid(G.consent_screen):
 		G.consent_screen.visible = (
-			screen_type == ScreenType.CONSENT
-		)
+			screen_type == ScreenType.CONSENT)
 	if is_instance_valid(G.auth_screen):
-		G.auth_screen.visible = screen_type == ScreenType.AUTH
+		G.auth_screen.visible = (
+			screen_type == ScreenType.AUTH)
+	if is_instance_valid(G.terms_screen):
+		G.terms_screen.visible = (
+			screen_type == ScreenType.TERMS)
+	if is_instance_valid(G.privacy_screen):
+		G.privacy_screen.visible = (
+			screen_type == ScreenType.PRIVACY)
+	if is_instance_valid(G.data_deletion_screen):
+		G.data_deletion_screen.visible = (
+			screen_type == ScreenType.DATA_DELETION)
 
 	var ends_game := (
 		[
@@ -180,25 +192,30 @@ func _perform_screen_switch(
 
 
 func get_screen_from_type(screen_type: ScreenType) -> Screen:
+	var screen: Screen = null
 	match screen_type:
 		ScreenType.GODOT_SPLASH:
-			return G.godot_splash_screen
+			screen = G.godot_splash_screen
 		ScreenType.SCG_SPLASH:
-			return G.scg_splash_screen
+			screen = G.scg_splash_screen
 		ScreenType.CONSENT:
-			return G.consent_screen
+			screen = G.consent_screen
 		ScreenType.AUTH:
-			return G.auth_screen
+			screen = G.auth_screen
 		ScreenType.LOADING:
-			return G.loading_screen
+			screen = G.loading_screen
 		ScreenType.GAME_OVER:
-			return G.game_over_screen
+			screen = G.game_over_screen
 		ScreenType.PAUSE:
-			return G.pause_screen
-		ScreenType.LOBBY:
-			return null
-		ScreenType.GAME:
-			return null
+			screen = G.pause_screen
+		ScreenType.TERMS:
+			screen = G.terms_screen
+		ScreenType.PRIVACY:
+			screen = G.privacy_screen
+		ScreenType.DATA_DELETION:
+			screen = G.data_deletion_screen
+		ScreenType.LOBBY, ScreenType.GAME:
+			screen = null
 		_:
 			Netcode.fatal("ScreensMain.get_screen_from_type")
-			return null
+	return screen

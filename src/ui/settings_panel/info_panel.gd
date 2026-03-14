@@ -6,6 +6,7 @@ extends SidePanel
 
 @export var _back_row_scene: PackedScene
 @export var _link_row_scene: PackedScene
+@export var _screen_trigger_row_scene: PackedScene
 @export var _credits_row_scene: PackedScene
 
 @export_group("Row Icons")
@@ -50,38 +51,38 @@ func build_ui() -> void:
 
 
 func _add_legal_section() -> void:
-	var terms_row: LinkRow = (
-		_link_row_scene.instantiate()
-	)
+	var terms_row: ScreenTriggerRow = (
+		_screen_trigger_row_scene.instantiate())
 	if icon_terms != null:
 		terms_row.set_icon(icon_terms)
 	terms_row.setup(
 		tr("CONSENT.TERMS_OF_SERVICE"),
-		"https://hopnbop.net/terms",
+		ScreensMain.ScreenType.TERMS,
+		self,
 	)
 	_row_container.add_child(terms_row)
 	_connect_row_clicked(terms_row)
 
-	var privacy_row: LinkRow = (
-		_link_row_scene.instantiate()
-	)
+	var privacy_row: ScreenTriggerRow = (
+		_screen_trigger_row_scene.instantiate())
 	if icon_privacy != null:
 		privacy_row.set_icon(icon_privacy)
 	privacy_row.setup(
 		tr("CONSENT.PRIVACY_POLICY"),
-		"https://hopnbop.net/privacy",
+		ScreensMain.ScreenType.PRIVACY,
+		self,
 	)
 	_row_container.add_child(privacy_row)
 	_connect_row_clicked(privacy_row)
 
-	var deletion_row: LinkRow = (
-		_link_row_scene.instantiate()
-	)
+	var deletion_row: ScreenTriggerRow = (
+		_screen_trigger_row_scene.instantiate())
 	if icon_data_deletion != null:
 		deletion_row.set_icon(icon_data_deletion)
 	deletion_row.setup(
 		tr("SETTINGS.DATA_DELETION_POLICY"),
-		"https://hopnbop.net/data-deletion",
+		ScreensMain.ScreenType.DATA_DELETION,
+		self,
 	)
 	_row_container.add_child(deletion_row)
 	_connect_row_clicked(deletion_row)

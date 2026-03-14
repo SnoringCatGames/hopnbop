@@ -116,6 +116,8 @@ func _show_buttons() -> void:
 		%GoogleButton, icon_google)
 	_apply_button_icon(
 		%FacebookButton, icon_facebook)
+	_apply_button_icon(
+		%AnonButton, G.settings.anonymous_texture)
 
 	# Hide buttons not relevant to this platform.
 	var has_platform := (

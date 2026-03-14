@@ -48,6 +48,23 @@ extends Node
 
 # ---
 
+# - We should not show AddFriend buttons in the game-over screen for a given player row if that player is anonymous.
+
+# Let's fix the leaderboard screen.
+# - It should use the same patterns as other UIs and screens.
+#   - It should be a proper registered Screen type.
+#   - It should have a vertical list of horizontal rows/buttons for interactions.
+#   - It should have a close button with the x icon at the bottom.
+#   - It should also support closing with X (which it currenty states that it supports, but it is broken).
+# - Also, we should double the font size.
+# - Also, in general, we should not include anonymous players in leaderboard rankings.
+# - Also, what is "filter" supposed to mean?
+# - Also, what is "tab" supposed to do?
+# - Also, what is the number in parens after "Your rank:"?
+
+# Let's fix the friends panel.
+# -
+
 # - Test one client replays and the other doesn't.
 
 # - Test trying to login on two devices at the same time for a given player. Also prevent at matchmaking time.

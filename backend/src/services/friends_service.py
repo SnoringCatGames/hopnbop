@@ -206,6 +206,67 @@ class FriendsService:
                     }
                 )
 
+    async def migrate_friends(
+        self,
+        from_player_id: str,
+        to_player_id: str,
+    ) -> None:
+        """Migrate all friends from one player to another.
+
+        For each friend of from_player_id:
+        - Adds to_player_id <-> friend_id if not already
+          friends and friend_id != to_player_id.
+        - Removes from_player_id <-> friend_id.
+        Used during account merges.
+        """
+        from_friends = await self.list_friends(from_player_id)
+        if not from_friends:
+            return
+
+        to_friends_set = {
+            f.friend_id
+            for f in (
+                await self.list_friends(to_player_id)
+            )
+        }
+
+        with self.friends_table.batch_writer() as batch:
+            for friend in from_friends:
+                fid = friend.friend_id
+                # Remove the old relationship regardless.
+                batch.delete_item(
+                    Key={
+                        "player_id": from_player_id,
+                        "friend_id": fid,
+                    }
+                )
+                batch.delete_item(
+                    Key={
+                        "player_id": fid,
+                        "friend_id": from_player_id,
+                    }
+                )
+                # Skip if this friend is the merge target
+                # or already friends with the target.
+                if (
+                    fid == to_player_id
+                    or fid in to_friends_set
+                ):
+                    continue
+                # Add new relationship to target player.
+                batch.put_item(Item={
+                    "player_id": to_player_id,
+                    "friend_id": fid,
+                    "source": friend.source,
+                    "created_at": friend.created_at,
+                })
+                batch.put_item(Item={
+                    "player_id": fid,
+                    "friend_id": to_player_id,
+                    "source": friend.source,
+                    "created_at": friend.created_at,
+                })
+
     async def get_friends_data_for_export(
         self, player_id: str
     ) -> List[dict]:

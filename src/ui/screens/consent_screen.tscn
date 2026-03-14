@@ -50,163 +50,158 @@ _unfocused_style = ExtResource("11_unfocused")
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 2
 
-[node name="TopSpacer" type="Control" parent="VBoxContainer"]
+[node name="TopHalf" type="CenterContainer" parent="VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
 
-[node name="LogoCenter" type="CenterContainer" parent="VBoxContainer"]
-layout_mode = 2
-
-[node name="Logo" type="TextureRect" parent="VBoxContainer/LogoCenter"]
+[node name="Logo" type="TextureRect" parent="VBoxContainer/TopHalf"]
 layout_mode = 2
 custom_minimum_size = Vector2(256, 192)
 texture = ExtResource("10_logo")
 expand_mode = 3
 stretch_mode = 5
 
-[node name="MiddleSpacer" type="Control" parent="VBoxContainer"]
+[node name="BottomHalf" type="CenterContainer" parent="VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
-size_flags_stretch_ratio = 0.5
+size_flags_stretch_ratio = 2.0
 
-[node name="ContentCenter" type="CenterContainer" parent="VBoxContainer"]
-layout_mode = 2
-
-[node name="ContentBox" type="VBoxContainer" parent="VBoxContainer/ContentCenter"]
+[node name="ContentBox" type="VBoxContainer" parent="VBoxContainer/BottomHalf"]
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 300)
 theme_override_constants/separation = 8
 
-[node name="LanguageRow" type="PanelContainer" parent="VBoxContainer/ContentCenter/ContentBox"]
+[node name="LanguageRow" type="PanelContainer" parent="VBoxContainer/BottomHalf/ContentBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_unfocused")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/ContentCenter/ContentBox/LanguageRow"]
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/BottomHalf/ContentBox/LanguageRow"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 8
 
-[node name="Icon" type="TextureRect" parent="VBoxContainer/ContentCenter/ContentBox/LanguageRow/HBoxContainer"]
+[node name="Icon" type="TextureRect" parent="VBoxContainer/BottomHalf/ContentBox/LanguageRow/HBoxContainer"]
 layout_mode = 2
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 visible = false
 
-[node name="Label" type="Label" parent="VBoxContainer/ContentCenter/ContentBox/LanguageRow/HBoxContainer"]
+[node name="Label" type="Label" parent="VBoxContainer/BottomHalf/ContentBox/LanguageRow/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "SETTINGS.LANGUAGE"
 
-[node name="Arrow" type="TextureRect" parent="VBoxContainer/ContentCenter/ContentBox/LanguageRow/HBoxContainer"]
+[node name="Arrow" type="TextureRect" parent="VBoxContainer/BottomHalf/ContentBox/LanguageRow/HBoxContainer"]
 layout_mode = 2
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="TermsLinkRow" type="PanelContainer" parent="VBoxContainer/ContentCenter/ContentBox"]
+[node name="TermsLinkRow" type="PanelContainer" parent="VBoxContainer/BottomHalf/ContentBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_unfocused")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/ContentCenter/ContentBox/TermsLinkRow"]
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/BottomHalf/ContentBox/TermsLinkRow"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 8
 
-[node name="Icon" type="TextureRect" parent="VBoxContainer/ContentCenter/ContentBox/TermsLinkRow/HBoxContainer"]
+[node name="Icon" type="TextureRect" parent="VBoxContainer/BottomHalf/ContentBox/TermsLinkRow/HBoxContainer"]
 layout_mode = 2
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 visible = false
 
-[node name="Label" type="Label" parent="VBoxContainer/ContentCenter/ContentBox/TermsLinkRow/HBoxContainer"]
+[node name="Label" type="Label" parent="VBoxContainer/BottomHalf/ContentBox/TermsLinkRow/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "CONSENT.TERMS_OF_SERVICE"
 
-[node name="Arrow" type="TextureRect" parent="VBoxContainer/ContentCenter/ContentBox/TermsLinkRow/HBoxContainer"]
+[node name="Arrow" type="TextureRect" parent="VBoxContainer/BottomHalf/ContentBox/TermsLinkRow/HBoxContainer"]
 layout_mode = 2
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="PrivacyLinkRow" type="PanelContainer" parent="VBoxContainer/ContentCenter/ContentBox"]
+[node name="PrivacyLinkRow" type="PanelContainer" parent="VBoxContainer/BottomHalf/ContentBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_unfocused")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/ContentCenter/ContentBox/PrivacyLinkRow"]
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/BottomHalf/ContentBox/PrivacyLinkRow"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 8
 
-[node name="Icon" type="TextureRect" parent="VBoxContainer/ContentCenter/ContentBox/PrivacyLinkRow/HBoxContainer"]
+[node name="Icon" type="TextureRect" parent="VBoxContainer/BottomHalf/ContentBox/PrivacyLinkRow/HBoxContainer"]
 layout_mode = 2
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 visible = false
 
-[node name="Label" type="Label" parent="VBoxContainer/ContentCenter/ContentBox/PrivacyLinkRow/HBoxContainer"]
+[node name="Label" type="Label" parent="VBoxContainer/BottomHalf/ContentBox/PrivacyLinkRow/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "CONSENT.PRIVACY_POLICY"
 
-[node name="Arrow" type="TextureRect" parent="VBoxContainer/ContentCenter/ContentBox/PrivacyLinkRow/HBoxContainer"]
+[node name="Arrow" type="TextureRect" parent="VBoxContainer/BottomHalf/ContentBox/PrivacyLinkRow/HBoxContainer"]
 layout_mode = 2
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="AgeRow" type="PanelContainer" parent="VBoxContainer/ContentCenter/ContentBox"]
+[node name="AgeRow" type="PanelContainer" parent="VBoxContainer/BottomHalf/ContentBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_unfocused")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/ContentCenter/ContentBox/AgeRow"]
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/BottomHalf/ContentBox/AgeRow"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 8
 
-[node name="AgeCheckBox" type="TextureButton" parent="VBoxContainer/ContentCenter/ContentBox/AgeRow/HBoxContainer"]
+[node name="AgeCheckBox" type="TextureButton" parent="VBoxContainer/BottomHalf/ContentBox/AgeRow/HBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 texture_normal = ExtResource("4_nu")
 stretch_mode = 3
 
-[node name="AgeLabel" type="Label" parent="VBoxContainer/ContentCenter/ContentBox/AgeRow/HBoxContainer"]
+[node name="AgeLabel" type="Label" parent="VBoxContainer/BottomHalf/ContentBox/AgeRow/HBoxContainer"]
 layout_mode = 2
 text = "CONSENT.AGE_CONFIRM"
 
-[node name="TermsRow" type="PanelContainer" parent="VBoxContainer/ContentCenter/ContentBox"]
+[node name="TermsRow" type="PanelContainer" parent="VBoxContainer/BottomHalf/ContentBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_unfocused")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/ContentCenter/ContentBox/TermsRow"]
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/BottomHalf/ContentBox/TermsRow"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 8
 
-[node name="TermsCheckBox" type="TextureButton" parent="VBoxContainer/ContentCenter/ContentBox/TermsRow/HBoxContainer"]
+[node name="TermsCheckBox" type="TextureButton" parent="VBoxContainer/BottomHalf/ContentBox/TermsRow/HBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 texture_normal = ExtResource("4_nu")
 stretch_mode = 3
 
-[node name="TermsLabel" type="Label" parent="VBoxContainer/ContentCenter/ContentBox/TermsRow/HBoxContainer"]
+[node name="TermsLabel" type="Label" parent="VBoxContainer/BottomHalf/ContentBox/TermsRow/HBoxContainer"]
 layout_mode = 2
 text = "CONSENT.AGREE_TERMS"
 
-[node name="Spacer" type="Control" parent="VBoxContainer/ContentCenter/ContentBox"]
+[node name="Spacer" type="Control" parent="VBoxContainer/BottomHalf/ContentBox"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 4)
 
-[node name="ContinueButton" type="Button" parent="VBoxContainer/ContentCenter/ContentBox"]
+[node name="ContinueButton" type="Button" parent="VBoxContainer/BottomHalf/ContentBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
@@ -215,10 +210,7 @@ disabled = true
 theme_override_styles/focus = ExtResource("9_focus")
 text = "CONSENT.CONTINUE"
 
-[node name="ContentBottomSpacer" type="Control" parent="VBoxContainer/ContentCenter/ContentBox"]
+[node name="ContentBottomSpacer" type="Control" parent="VBoxContainer/BottomHalf/ContentBox"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 40)
 
-[node name="BottomSpacer" type="Control" parent="VBoxContainer"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 30)

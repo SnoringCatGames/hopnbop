@@ -5,6 +5,7 @@ import secrets
 import uuid
 import boto3
 import bcrypt
+from decimal import Decimal
 from typing import Optional
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -59,6 +60,14 @@ class PlayerProfile:
     total_fly_proximity_time_sec: float = 0.0
     total_poop_count: int = 0
     profile_image_url: str = ""
+    # Per-provider display names and profile images.
+    # Keys are provider strings (e.g. "google", "steam").
+    provider_display_names: dict = field(
+        default_factory=dict
+    )
+    provider_profile_images: dict = field(
+        default_factory=dict
+    )
 
 
 class PlayerService:
@@ -176,6 +185,12 @@ class PlayerService:
             profile_image_url=item.get(
                 "profile_image_url", ""
             ),
+            provider_display_names=item.get(
+                "provider_display_names", {}
+            ),
+            provider_profile_images=item.get(
+                "provider_profile_images", {}
+            ),
         )
 
     @staticmethod
@@ -197,11 +212,15 @@ class PlayerService:
         consent_accepted_at: int = 0,
         consent_legal_version: str = "",
         profile_image_url: str = "",
+        provider_display_names: dict = None,
+        provider_profile_images: dict = None,
     ) -> PlayerProfile:
         """Create new player profile."""
         now = int(datetime.now().timestamp())
         friend_code = self._generate_friend_code()
 
+        pdn = provider_display_names or {}
+        ppi = provider_profile_images or {}
         profile = PlayerProfile(
             player_id=player_id,
             display_name=display_name,
@@ -220,6 +239,8 @@ class PlayerService:
             first_play_time=now,
             updated_at=now,
             profile_image_url=profile_image_url,
+            provider_display_names=pdn,
+            provider_profile_images=ppi,
         )
 
         item = {
@@ -237,6 +258,8 @@ class PlayerService:
             "friend_code": profile.friend_code,
             "first_play_time": profile.first_play_time,
             "updated_at": profile.updated_at,
+            "provider_display_names": pdn,
+            "provider_profile_images": ppi,
         }
         if device_id:
             item["device_id"] = device_id
@@ -283,19 +306,56 @@ class PlayerService:
         player_id: str,
         provider: str,
         provider_id: str,
+        display_name: str = "",
+        profile_image_url: str = "",
     ) -> None:
-        """Add a provider to a player's auth_providers map."""
+        """Add a provider to a player's auth_providers map.
+
+        Optionally stores the provider-specific display name
+        and profile image URL in per-provider maps.
+        Initializes those maps if they do not exist yet.
+        """
+        # Ensure the per-provider display maps exist on
+        # this item (no-op for players created after the
+        # initial migration).
         self.table.update_item(
             Key={"player_id": player_id},
             UpdateExpression=(
-                "SET auth_providers.#prov = :pid,"
-                " is_anonymous = :false"
+                "SET provider_display_names"
+                " = if_not_exists("
+                "provider_display_names, :em),"
+                " provider_profile_images"
+                " = if_not_exists("
+                "provider_profile_images, :em)"
             ),
+            ExpressionAttributeValues={":em": {}},
+        )
+
+        expr = (
+            "SET auth_providers.#prov = :pid,"
+            " is_anonymous = :false"
+        )
+        attr_values: dict = {
+            ":pid": provider_id,
+            ":false": False,
+        }
+        if display_name:
+            expr += (
+                ", provider_display_names.#prov = :dn"
+            )
+            attr_values[":dn"] = display_name
+        if profile_image_url:
+            expr += (
+                ", provider_profile_images.#prov = :pi"
+                ", profile_image_url = :pi"
+            )
+            attr_values[":pi"] = profile_image_url
+
+        self.table.update_item(
+            Key={"player_id": player_id},
+            UpdateExpression=expr,
             ExpressionAttributeNames={"#prov": provider},
-            ExpressionAttributeValues={
-                ":pid": provider_id,
-                ":false": False,
-            },
+            ExpressionAttributeValues=attr_values,
         )
 
     async def remove_provider(
@@ -338,9 +398,23 @@ class PlayerService:
                 profile_image_url=profile_image_url,
             )
         else:
-            # Update profile image URL on each login in
-            # case the user changed their avatar.
-            if profile_image_url:
+            # Refresh per-provider display info on each
+            # login in case the user changed their name
+            # or avatar on the platform.
+            if auth_providers:
+                provider = next(iter(auth_providers))
+                await self.add_provider(
+                    player_id,
+                    provider,
+                    auth_providers[provider],
+                    display_name=display_name,
+                    profile_image_url=profile_image_url,
+                )
+                if profile_image_url:
+                    profile.profile_image_url = (
+                        profile_image_url
+                    )
+            elif profile_image_url:
                 await self.update_profile_image_url(
                     player_id, profile_image_url
                 )
@@ -474,6 +548,219 @@ class PlayerService:
         return await self.get_player(
             items[0]["player_id"]
         )
+
+    async def merge_players(
+        self,
+        primary_id: str,
+        secondary_id: str,
+    ) -> Optional[PlayerProfile]:
+        """Merge the secondary player into the primary.
+
+        Stats are combined (sums for counters, max for
+        rating, min/max for timestamps). All providers
+        from the secondary are added to the primary.
+        The secondary record is NOT deleted here; the
+        caller is responsible for cleanup.
+
+        Returns the updated primary profile, or None if
+        either player is not found.
+        """
+        primary = await self.get_player(primary_id)
+        secondary = await self.get_player(secondary_id)
+
+        if primary is None or secondary is None:
+            return None
+
+        # Merge auth providers (primary takes precedence).
+        merged_providers = {
+            **secondary.auth_providers,
+            **primary.auth_providers,
+        }
+        merged_display_names = {
+            **secondary.provider_display_names,
+            **primary.provider_display_names,
+        }
+        merged_profile_images = {
+            **secondary.provider_profile_images,
+            **primary.provider_profile_images,
+        }
+
+        # Merge scalar fields.
+        merged_rating = max(
+            primary.rating, secondary.rating
+        )
+        merged_created_at = min(
+            primary.created_at, secondary.created_at
+        )
+        p_first = primary.first_play_time
+        s_first = secondary.first_play_time
+        first_times = [t for t in [p_first, s_first] if t]
+        merged_first_play_time = (
+            min(first_times) if first_times else 0
+        )
+        merged_last_play_time = max(
+            primary.last_play_time, secondary.last_play_time
+        )
+        merged_last_active = max(
+            primary.last_active, secondary.last_active
+        )
+        if (
+            secondary.consent_accepted_at
+            > primary.consent_accepted_at
+        ):
+            merged_consent_at = (
+                secondary.consent_accepted_at
+            )
+            merged_consent_version = (
+                secondary.consent_legal_version
+            )
+        else:
+            merged_consent_at = primary.consent_accepted_at
+            merged_consent_version = (
+                primary.consent_legal_version
+            )
+        merged_device_id = (
+            primary.device_id or secondary.device_id
+        )
+        merged_image_url = (
+            primary.profile_image_url
+            or secondary.profile_image_url
+        )
+
+        now = int(datetime.now().timestamp())
+        self.table.update_item(
+            Key={"player_id": primary_id},
+            UpdateExpression=(
+                "SET rating = :r,"
+                " matches_played = :mp,"
+                " wins = :w,"
+                " losses = :l,"
+                " total_kills = :tk,"
+                " total_deaths = :td,"
+                " total_bumps = :tb,"
+                " total_crown_time_sec = :tct,"
+                " total_regicide_count = :trc,"
+                " total_jumps = :tj,"
+                " total_water_count = :twc,"
+                " total_ice_count = :tic,"
+                " total_spring_count = :tsc,"
+                " total_direction_changes = :tdc,"
+                " total_snail_crushes = :tsn,"
+                " total_cricket_disturbances = :tcr,"
+                " total_fish_disturbances = :tfd,"
+                " total_butterfly_disturbances = :tbd,"
+                " total_fly_proximity_time_sec = :tfp,"
+                " total_poop_count = :tpc,"
+                " total_time_played_sec = :ttp,"
+                " auth_providers = :ap,"
+                " provider_display_names = :pdn,"
+                " provider_profile_images = :ppi,"
+                " is_anonymous = :false,"
+                " device_id = :did,"
+                " profile_image_url = :piu,"
+                " created_at = :ca,"
+                " first_play_time = :fpt,"
+                " last_play_time = :lpt,"
+                " last_active = :la,"
+                " consent_accepted_at = :cat,"
+                " consent_legal_version = :cv,"
+                " updated_at = :now"
+            ),
+            ExpressionAttributeValues={
+                ":r": merged_rating,
+                ":mp": (
+                    primary.matches_played
+                    + secondary.matches_played
+                ),
+                ":w": primary.wins + secondary.wins,
+                ":l": (
+                    primary.losses + secondary.losses
+                ),
+                ":tk": (
+                    primary.total_kills
+                    + secondary.total_kills
+                ),
+                ":td": (
+                    primary.total_deaths
+                    + secondary.total_deaths
+                ),
+                ":tb": (
+                    primary.total_bumps
+                    + secondary.total_bumps
+                ),
+                ":tct": Decimal(str(
+                    primary.total_crown_time_sec
+                    + secondary.total_crown_time_sec
+                )),
+                ":trc": (
+                    primary.total_regicide_count
+                    + secondary.total_regicide_count
+                ),
+                ":tj": (
+                    primary.total_jumps
+                    + secondary.total_jumps
+                ),
+                ":twc": (
+                    primary.total_water_count
+                    + secondary.total_water_count
+                ),
+                ":tic": (
+                    primary.total_ice_count
+                    + secondary.total_ice_count
+                ),
+                ":tsc": (
+                    primary.total_spring_count
+                    + secondary.total_spring_count
+                ),
+                ":tdc": (
+                    primary.total_direction_changes
+                    + secondary.total_direction_changes
+                ),
+                ":tsn": (
+                    primary.total_snail_crushes
+                    + secondary.total_snail_crushes
+                ),
+                ":tcr": (
+                    primary.total_cricket_disturbances
+                    + secondary.total_cricket_disturbances
+                ),
+                ":tfd": (
+                    primary.total_fish_disturbances
+                    + secondary.total_fish_disturbances
+                ),
+                ":tbd": (
+                    primary.total_butterfly_disturbances
+                    + secondary.total_butterfly_disturbances
+                ),
+                ":tfp": Decimal(str(
+                    primary.total_fly_proximity_time_sec
+                    + secondary.total_fly_proximity_time_sec
+                )),
+                ":tpc": (
+                    primary.total_poop_count
+                    + secondary.total_poop_count
+                ),
+                ":ttp": Decimal(str(
+                    primary.total_time_played_sec
+                    + secondary.total_time_played_sec
+                )),
+                ":ap": merged_providers,
+                ":pdn": merged_display_names,
+                ":ppi": merged_profile_images,
+                ":false": False,
+                ":did": merged_device_id,
+                ":piu": merged_image_url,
+                ":ca": merged_created_at,
+                ":fpt": merged_first_play_time,
+                ":lpt": merged_last_play_time,
+                ":la": merged_last_active,
+                ":cat": merged_consent_at,
+                ":cv": merged_consent_version,
+                ":now": now,
+            },
+        )
+
+        return await self.get_player(primary_id)
 
     async def delete_player(self, player_id: str) -> None:
         """Delete a player record entirely."""

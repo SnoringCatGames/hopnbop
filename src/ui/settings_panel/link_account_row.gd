@@ -117,14 +117,61 @@ func _on_link_completed(
 		+ " success=%s error='%s'"
 		% [success, error]
 	)
+	if success:
+		_is_busy = false
+		_is_linked = true
+		_update_status()
+		return
+
+	if error == "PROVIDER_CONFLICT":
+		# Keep _is_busy true while the dialog is shown.
+		_offer_merge()
+		return
+
+	_is_busy = false
+	push_warning(
+		"Link failed for %s: %s"
+		% [_provider_name, error]
+	)
+	_update_status()
+
+
+func _offer_merge() -> void:
+	if not is_instance_valid(_panel):
+		_is_busy = false
+		_update_status()
+		return
+	_panel.open_confirm_dialog(
+		tr("CONFIRM.MERGE_ACCOUNT") % _provider_name,
+		tr("LINK.MERGE"),
+		_do_merge,
+		tr("CONFIRM.CANCEL"),
+		_on_merge_cancelled,
+	)
+
+
+func _do_merge() -> void:
+	_status_label.text = tr("LINK.MERGING")
+	G.auth_client.merge_completed.connect(
+		_on_merge_completed, CONNECT_ONE_SHOT
+	)
+	G.auth_client.confirm_merge()
+
+
+func _on_merge_cancelled() -> void:
+	_is_busy = false
+	G.auth_client.cancel_merge()
+	_update_status()
+
+
+func _on_merge_completed(
+	success: bool,
+	_error: String,
+	_provider_str: String,
+) -> void:
 	_is_busy = false
 	if success:
 		_is_linked = true
-	else:
-		push_warning(
-			"Link failed for %s: %s"
-			% [_provider_name, error]
-		)
 	_update_status()
 
 

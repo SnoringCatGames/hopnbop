@@ -79,6 +79,7 @@ func _update_focus_style() -> void:
 ## Configures a TextureRect with the given texture.
 ## Uses G.settings.icon_scale for sizing, or
 ## get_icon_display_width() when custom_scale > 0.
+## Wraps in a MarginContainer to apply icon_padding.
 func _apply_icon(
 	icon_rect: TextureRect,
 	texture: Texture2D,
@@ -96,6 +97,7 @@ func _apply_icon(
 			icon_rect.custom_minimum_size = (
 				texture.get_size()
 				* G.settings.icon_scale)
+		_wrap_icon_with_padding(icon_rect)
 		icon_rect.show()
 	else:
 		icon_rect.hide()
@@ -103,15 +105,48 @@ func _apply_icon(
 
 ## Configures a TextureRect as a right-facing
 ## chevron arrow, flipped for RTL layouts.
+## Wraps in a MarginContainer to apply icon_padding.
 func _setup_chevron(rect: TextureRect) -> void:
 	rect.texture = G.settings.chevron_icon
-	var chevron_size := (
+	var icon_size := (
 		G.settings.chevron_icon.get_size()
 		* G.settings.icon_scale)
-	rect.custom_minimum_size = chevron_size
+	rect.custom_minimum_size = icon_size
+	_wrap_icon_with_padding(rect)
 	if is_layout_rtl():
-		rect.pivot_offset = chevron_size / 2.0
+		rect.pivot_offset = icon_size / 2.0
 		rect.scale.x = -1.0
+
+
+## Wraps icon_rect in a MarginContainer if not already
+## wrapped, and applies G.settings.icon_padding on all
+## sides. Does nothing when icon_padding is zero.
+func _wrap_icon_with_padding(
+	icon_rect: TextureRect,
+) -> void:
+	var pad := G.settings.icon_padding
+	if pad <= 0:
+		return
+	var parent := icon_rect.get_parent()
+	var mc: MarginContainer
+	if parent is MarginContainer:
+		mc = parent as MarginContainer
+	else:
+		mc = MarginContainer.new()
+		mc.mouse_filter = (
+			Control.MOUSE_FILTER_IGNORE)
+		parent.add_child(mc)
+		parent.move_child(
+			mc, icon_rect.get_index())
+		icon_rect.reparent(mc)
+	mc.add_theme_constant_override(
+		"margin_left", pad)
+	mc.add_theme_constant_override(
+		"margin_right", pad)
+	mc.add_theme_constant_override(
+		"margin_top", pad)
+	mc.add_theme_constant_override(
+		"margin_bottom", pad)
 
 
 ## Duplicates the focus and unfocused styles and

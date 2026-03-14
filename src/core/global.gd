@@ -38,6 +38,9 @@ var crash_reporter: CrashReporter
 var profile_image_cache: ProfileImageCache
 var auth_screen: AuthScreen
 var consent_screen: ConsentScreen
+var terms_screen: LegalDocScreen
+var privacy_screen: LegalDocScreen
+var data_deletion_screen: LegalDocScreen
 
 var godot_splash_screen: GodotSplashScreen
 var scg_splash_screen: SCGSplashScreen

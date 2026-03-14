@@ -473,6 +473,9 @@ class TestLinkAccount:
 
         assert status == 409
         assert body["error_code"] == "PROVIDER_CONFLICT"
+        assert "merge_token" in body, (
+            "409 PROVIDER_CONFLICT must include a merge_token"
+        )
 
     def test_successful_link_returns_linked_providers(
         self, aws_mock
@@ -749,6 +752,303 @@ class TestUnlinkAccount:
 
         assert status == 200
         assert body["status"] == "success"
+
+
+# =====================================================================
+# POST /auth/merge
+# =====================================================================
+
+
+class TestMergeAccounts:
+    def _setup_conflict(self, aws_mock):
+        """Helper: create two anon players, pre-link Google
+        to player 1, trigger a link attempt from player 2
+        (gets 409 + merge_token). Returns
+        (jwt2, merge_token, player1_id, player2_id)."""
+        from handlers.auth_handler import (
+            anonymous_login,
+            link_account,
+        )
+        from services.provider_mapping_service import (
+            ProviderMappingService,
+        )
+        from services.player_service import PlayerService
+
+        _, body1 = _parse_response(
+            anonymous_login(
+                _make_event(
+                    body={"device_id": "merge-dev-1"}
+                ),
+                _CONTEXT,
+            )
+        )
+        _, body2 = _parse_response(
+            anonymous_login(
+                _make_event(
+                    body={"device_id": "merge-dev-2"}
+                ),
+                _CONTEXT,
+            )
+        )
+
+        pms = ProviderMappingService()
+        asyncio.run(
+            pms.create(
+                "google",
+                "google_merge_id",
+                body1["player_id"],
+            )
+        )
+        # Sync the PlayersTable auth_providers to match
+        # the ProviderMappings entry, as link_account would.
+        ps = PlayerService()
+        asyncio.run(
+            ps.add_provider(
+                body1["player_id"],
+                "google",
+                "google_merge_id",
+            )
+        )
+
+        mock_result = AuthResult(
+            provider="google",
+            provider_id="google_merge_id",
+            display_name="MergeUser",
+        )
+
+        with patch(
+            "handlers.auth_handler.auth_service"
+        ) as mock_auth:
+            mock_auth.authenticate = AsyncMock(
+                return_value=mock_result
+            )
+            mock_auth.jwt_secret = TEST_JWT_SECRET
+
+            _, conflict_body = _parse_response(
+                link_account(
+                    _make_event(
+                        body={
+                            "provider": "google",
+                            "auth_code": "CODE",
+                        },
+                        headers={
+                            "Authorization": (
+                                f"Bearer {body2['jwt_token']}"
+                            )
+                        },
+                    ),
+                    _CONTEXT,
+                )
+            )
+
+        return (
+            body2["jwt_token"],
+            conflict_body.get("merge_token", ""),
+            body1["player_id"],
+            body2["player_id"],
+        )
+
+    def test_missing_auth_header_returns_401(
+        self, aws_mock
+    ):
+        from handlers.auth_handler import merge_accounts
+
+        event = _make_event(
+            body={"merge_token": "sometoken"}
+        )
+        status, body = _parse_response(
+            merge_accounts(event, _CONTEXT)
+        )
+
+        assert status == 401
+        assert body["error_code"] == "UNAUTHORIZED"
+
+    def test_missing_merge_token_returns_400(
+        self, aws_mock
+    ):
+        from handlers.auth_handler import (
+            merge_accounts,
+            anonymous_login,
+        )
+
+        _, login_body = _parse_response(
+            anonymous_login(
+                _make_event(
+                    body={"device_id": "merge-no-token"}
+                ),
+                _CONTEXT,
+            )
+        )
+
+        event = _make_event(
+            body={},
+            headers={
+                "Authorization": (
+                    f"Bearer {login_body['jwt_token']}"
+                )
+            },
+        )
+        status, body = _parse_response(
+            merge_accounts(event, _CONTEXT)
+        )
+
+        assert status == 400
+        assert body["error_code"] == "MISSING_PARAMS"
+
+    def test_invalid_merge_token_returns_400(
+        self, aws_mock
+    ):
+        from handlers.auth_handler import (
+            merge_accounts,
+            anonymous_login,
+        )
+
+        _, login_body = _parse_response(
+            anonymous_login(
+                _make_event(
+                    body={"device_id": "merge-bad-token"}
+                ),
+                _CONTEXT,
+            )
+        )
+
+        event = _make_event(
+            body={"merge_token": "not.a.real.token"},
+            headers={
+                "Authorization": (
+                    f"Bearer {login_body['jwt_token']}"
+                )
+            },
+        )
+        status, body = _parse_response(
+            merge_accounts(event, _CONTEXT)
+        )
+
+        assert status == 400
+        assert body["error_code"] == "INVALID_MERGE_TOKEN"
+
+    def test_conflict_response_includes_merge_token(
+        self, aws_mock
+    ):
+        """409 PROVIDER_CONFLICT must include a merge_token."""
+        jwt2, merge_token, _, _ = self._setup_conflict(
+            aws_mock
+        )
+
+        assert merge_token, (
+            "merge_token must be present in 409 response"
+        )
+
+    def test_wrong_player_merge_token_returns_403(
+        self, aws_mock
+    ):
+        from handlers.auth_handler import (
+            merge_accounts,
+            anonymous_login,
+        )
+
+        # Get a merge_token issued for player 2.
+        _jwt2, merge_token, _, _ = (
+            self._setup_conflict(aws_mock)
+        )
+
+        # Create a third, unrelated player.
+        _, body3 = _parse_response(
+            anonymous_login(
+                _make_event(
+                    body={"device_id": "merge-dev-3"}
+                ),
+                _CONTEXT,
+            )
+        )
+
+        # Present the merge_token using player 3's JWT.
+        event = _make_event(
+            body={"merge_token": merge_token},
+            headers={
+                "Authorization": (
+                    f"Bearer {body3['jwt_token']}"
+                )
+            },
+        )
+        status, body = _parse_response(
+            merge_accounts(event, _CONTEXT)
+        )
+
+        assert status == 403
+        assert body["error_code"] == "FORBIDDEN"
+
+    def test_successful_merge_combines_providers(
+        self, aws_mock
+    ):
+        from handlers.auth_handler import merge_accounts
+        from services.player_service import PlayerService
+
+        jwt2, merge_token, player1_id, player2_id = (
+            self._setup_conflict(aws_mock)
+        )
+
+        event = _make_event(
+            body={"merge_token": merge_token},
+            headers={
+                "Authorization": f"Bearer {jwt2}"
+            },
+        )
+        status, body = _parse_response(
+            merge_accounts(event, _CONTEXT)
+        )
+
+        assert status == 200
+        assert body["status"] == "success"
+        # google should now be linked to player 2
+        # (the primary in this merge).
+        assert "google" in body["linked_providers"]
+
+        # Secondary player (player 1) should be deleted.
+        ps = PlayerService()
+        assert (
+            asyncio.run(ps.get_player(player1_id))
+            is None
+        )
+
+    def test_successful_merge_sums_stats(self, aws_mock):
+        from handlers.auth_handler import merge_accounts
+        from services.player_service import PlayerService
+
+        jwt2, merge_token, player1_id, player2_id = (
+            self._setup_conflict(aws_mock)
+        )
+
+        ps = PlayerService()
+        # Give both players some wins so we can verify
+        # they are summed after the merge.
+        ps.table.update_item(
+            Key={"player_id": player1_id},
+            UpdateExpression="SET wins = :w",
+            ExpressionAttributeValues={":w": 5},
+        )
+        ps.table.update_item(
+            Key={"player_id": player2_id},
+            UpdateExpression="SET wins = :w",
+            ExpressionAttributeValues={":w": 3},
+        )
+
+        event = _make_event(
+            body={"merge_token": merge_token},
+            headers={
+                "Authorization": f"Bearer {jwt2}"
+            },
+        )
+        status, body = _parse_response(
+            merge_accounts(event, _CONTEXT)
+        )
+
+        assert status == 200
+        merged = asyncio.run(
+            ps.get_player(player2_id)
+        )
+        assert merged is not None
+        assert merged.wins == 8
 
 
 # =====================================================================
