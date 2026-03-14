@@ -14,6 +14,11 @@ extends SidePanel
 @export var icon_google: Texture2D
 @export var icon_facebook: Texture2D
 
+@export_group("Row Icons")
+@export var icon_delete_account: Texture2D
+@export var icon_export_data: Texture2D
+@export var icon_logout: Texture2D
+
 
 func build_ui() -> void:
 	# Top padding.
@@ -67,7 +72,7 @@ func _add_link_account_rows() -> void:
 		_link_account_row_scene.instantiate()
 	)
 	if icon_google != null:
-		google_row.set_icon(icon_google)
+		google_row.set_icon(icon_google, 1)
 	google_row.setup(
 		AuthClient.Provider.GOOGLE,
 		"Google",
@@ -82,7 +87,7 @@ func _add_link_account_rows() -> void:
 		_link_account_row_scene.instantiate()
 	)
 	if icon_facebook != null:
-		fb_row.set_icon(icon_facebook)
+		fb_row.set_icon(icon_facebook, 1)
 	fb_row.setup(
 		AuthClient.Provider.FACEBOOK,
 		"Facebook",
@@ -105,6 +110,8 @@ func _add_delete_account_row() -> void:
 	var row: DeleteAccountRow = (
 		_delete_account_row_scene.instantiate()
 	)
+	if icon_delete_account != null:
+		row.set_icon(icon_delete_account)
 	row.setup(self, manager.get_device_config())
 	_row_container.add_child(row)
 	_connect_row_clicked(row)
@@ -117,6 +124,8 @@ func _add_export_data_row() -> void:
 	var row: ExportDataRow = (
 		_export_data_row_scene.instantiate()
 	)
+	if icon_export_data != null:
+		row.set_icon(icon_export_data)
 	row.setup(self)
 	_row_container.add_child(row)
 	_connect_row_clicked(row)
@@ -131,6 +140,8 @@ func _add_log_out_row() -> void:
 	var row: LogOutRow = (
 		_log_out_row_scene.instantiate()
 	)
+	if icon_logout != null:
+		row.set_icon(icon_logout)
 	row.setup(self, manager.get_device_config())
 	_row_container.add_child(row)
 	_connect_row_clicked(row)

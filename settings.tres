@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Settings" load_steps=44 format=3 uid="uid://dv60bmaw1pdx6"]
+[gd_resource type="Resource" script_class="Settings" load_steps=45 format=3 uid="uid://dv60bmaw1pdx6"]
 
 [ext_resource type="Script" uid="uid://bklo1tgck1vmm" path="res://src/player/body_type_config.gd" id="1_7ybur"]
 [ext_resource type="Script" uid="uid://cqomr88ncj2d3" path="res://src/core/settings.gd" id="1_krfic"]
@@ -30,6 +30,7 @@
 [ext_resource type="PackedScene" uid="uid://bbhm335xhffk" path="res://src/level/level_3.tscn" id="22_hsj8s"]
 [ext_resource type="PackedScene" uid="uid://ofyo05fys6w8" path="res://src/level/level_4.tscn" id="23_lvl4"]
 [ext_resource type="PackedScene" uid="uid://boayor76hc0tv" path="res://src/level/level_5.tscn" id="24_lvl5"]
+[ext_resource type="Texture2D" uid="uid://bol2t5fsvy1a6" path="res://assets/images/gui/right_chevron_icon.png" id="31_chevron"]
 [ext_resource type="Texture2D" uid="uid://b6bc8m77xc1nk" path="res://assets/images/level_thumbnails/level_0.png" id="25_thumb0"]
 [ext_resource type="Texture2D" uid="uid://dn58ryo4m1y5d" path="res://assets/images/level_thumbnails/level_1.png" id="26_thumb1"]
 [ext_resource type="Texture2D" uid="uid://bs25wkpu78w4h" path="res://assets/images/level_thumbnails/level_2.png" id="27_thumb2"]
@@ -100,6 +101,7 @@ level_override_for_preview = 2
 google_oauth_client_id = "659577872419-3tk6ai4ju7bopntl69rju1cm9h89oici.apps.googleusercontent.com"
 facebook_oauth_client_id = "4346465752288719"
 skip_splash = true
+chevron_icon = ExtResource("31_chevron")
 show_hud = false
 bunny_collision_shape = SubResource("CircleShape2D_woca2")
 gore_particle_scene = ExtResource("4_bav20")

@@ -314,32 +314,28 @@ func _handle_match_found(
 	var server_port: int = data.get(
 		"server_port", 4433)
 
-	# Validate server version.
-	var server_version: String = data.get(
-		"server_version", "")
-	var client_version: String = (
-		ProjectSettings.get_setting(
-			"application/config/version",
-			"unknown"))
-
-	if (
-		not server_version.is_empty()
-		and not GameliftSemanticVersion.compare(
-			client_version, server_version)
-	):
-		session_request_failed.emit(
-			("Version mismatch: Client v%s,"
-			+ " Server requires v%s."
-			+ " Please update your game client.")
-			% [client_version, server_version])
-		return
-
-	if not server_version.is_empty():
+	# Validate protocol version.
+	var server_protocol: int = data.get(
+		"protocol_version", -1)
+	if server_protocol > 0:
+		var client_protocol: int = (
+			ProjectSettings.get_setting(
+				"application/config/"
+				+ "protocol_version",
+				1,
+			))
+		if server_protocol != client_protocol:
+			session_request_failed.emit(
+				("Version mismatch: Client"
+				+ " protocol v%d, Server"
+				+ " requires v%d. Please"
+				+ " update your game client.")
+				% [client_protocol,
+					server_protocol])
+			return
 		Netcode.log.print(
-			("Version validated: Client v%s"
-			+ " matches Server v%s") % [
-				client_version,
-				server_version],
+			"Protocol version validated: v%d"
+			% client_protocol,
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
 

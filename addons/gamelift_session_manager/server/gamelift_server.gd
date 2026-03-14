@@ -32,6 +32,16 @@ var _session_to_player: Dictionary = {}
 # Dictionary<int, String>
 var _player_to_backend_id: Dictionary = {}
 
+# Maps game player_id -> profile image URL. Built from
+# client-declared data during session validation.
+# Dictionary<int, String>
+var _player_to_profile_image_url: Dictionary = {}
+
+# Backend player IDs identified as anonymous from
+# matchmaker data (is_authenticated == 0).
+# Dictionary<String, bool>
+var _anonymous_backend_ids: Dictionary = {}
+
 # Expected player count from matchmaking (total players across all peers).
 var _expected_player_count: int = 0
 var _validated_player_count: int = 0
@@ -71,8 +81,23 @@ func server_validate_player_sessions(
 	player_ids: Array[int],
 	session_ids: Array,
 	backend_player_id: String = "",
+	profile_image_url: String = "",
 ) -> void:
 	var player_count := session_ids.size()
+
+	Netcode.log.print(
+		("Validating %d session(s) for"
+		+ " peer %d (is_active=%s,"
+		+ " expected=%d, validated=%d)")
+		% [
+			player_count,
+			peer_id,
+			is_active(),
+			_expected_player_count,
+			_validated_player_count,
+		],
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
 
 	if not is_active():
 		# Preview mode: auto-accept without validation.
@@ -93,6 +118,8 @@ func server_validate_player_sessions(
 				player_id, session_id)
 		_store_backend_ids(
 			player_ids, backend_player_id)
+		_store_profile_image_urls(
+			player_ids, profile_image_url)
 		return
 
 	# Validate all session IDs for this peer.
@@ -144,6 +171,8 @@ func server_validate_player_sessions(
 			player_id, session_id)
 	_store_backend_ids(
 		player_ids, backend_player_id)
+	_store_profile_image_urls(
+		player_ids, profile_image_url)
 
 
 ## Returns the mapping from in-game int player_id
@@ -151,6 +180,18 @@ func server_validate_player_sessions(
 ## declarations during session validation.
 func get_backend_player_id_map() -> Dictionary:
 	return _player_to_backend_id
+
+
+## Returns the mapping from in-game int player_id
+## to profile image URL string.
+func get_profile_image_url_map() -> Dictionary:
+	return _player_to_profile_image_url
+
+
+## Returns backend player IDs identified as
+## anonymous from matchmaker data.
+func get_anonymous_backend_ids() -> Dictionary:
+	return _anonymous_backend_ids
 
 
 ## Stores backend player ID for each game player.
@@ -170,6 +211,20 @@ func _store_backend_ids(
 			% [player_ids[i], backend_player_id],
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
+
+
+## Stores profile image URL for each game player.
+## For couch co-op, multiple game players from the
+## same client share the same profile image URL.
+func _store_profile_image_urls(
+	player_ids: Array[int],
+	profile_image_url: String,
+) -> void:
+	if profile_image_url.is_empty():
+		return
+	for i in range(player_ids.size()):
+		_player_to_profile_image_url[
+			player_ids[i]] = profile_image_url
 
 
 func cleanup() -> void:
@@ -259,15 +314,27 @@ func _initialize_sdk() -> void:
 	_gamelift = ClassDB.instantiate("GameLiftServer")
 	add_child(_gamelift)
 
-	# Connect signals.
+	# Connect signals with CONNECT_DEFERRED so
+	# callbacks run on the main thread. The
+	# GameLift GDExtension fires these from a
+	# background thread, and GDScript is not
+	# thread-safe.
 	if _gamelift.has_signal("game_session_started"):
-		_gamelift.game_session_started.connect(_on_game_session_started)
-	if _gamelift.has_signal("process_terminate_requested"):
+		_gamelift.game_session_started.connect(
+			_on_game_session_started,
+			CONNECT_DEFERRED,
+		)
+	if _gamelift.has_signal(
+			"process_terminate_requested"):
 		_gamelift.process_terminate_requested.connect(
-			_on_process_terminate_requested
+			_on_process_terminate_requested,
+			CONNECT_DEFERRED,
 		)
 	if _gamelift.has_signal("health_check_requested"):
-		_gamelift.health_check_requested.connect(_on_health_check)
+		_gamelift.health_check_requested.connect(
+			_on_health_check,
+			CONNECT_DEFERRED,
+		)
 
 	# Initialize SDK.
 	var outcome
@@ -372,8 +439,23 @@ func _on_game_session_started(session) -> void:
 
 	# Tell GameLift this server is ready to accept
 	# players for this game session.
+	Netcode.log.print(
+		"Calling activate_game_session",
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
 	var activate_outcome = (
 		_gamelift.activate_game_session())
+	Netcode.log.print(
+		"activate_game_session returned: %s"
+		% type_string(typeof(activate_outcome)),
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+	if activate_outcome == null:
+		Netcode.log.fatal(
+			"activate_game_session returned null",
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+		return
 	if activate_outcome.is_success():
 		Netcode.log.print(
 			"Game session activated",
@@ -392,6 +474,11 @@ func _on_game_session_started(session) -> void:
 	var expected_count: int = (
 		session.maximum_player_session_count)
 
+	Netcode.log.print(
+		"Matchmaker data: %s"
+		% session.matchmaker_data.left(500),
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
 	if not session.matchmaker_data.is_empty():
 		var data = JSON.parse_string(
 			session.matchmaker_data)
@@ -402,6 +489,10 @@ func _on_game_session_started(session) -> void:
 			# Set transport based on whether any
 			# matched player is on web.
 			_set_transport_from_matchmaker(data)
+			# Identify anonymous players so their
+			# backend IDs are not shared with
+			# other clients for friend-add.
+			_parse_anonymous_from_matchmaker(data)
 
 	server_set_expected_player_count(expected_count)
 
@@ -417,6 +508,12 @@ func _on_game_session_started(session) -> void:
 		)
 		level_selected.emit(
 			String(_selected_level_id))
+
+	Netcode.log.print(
+		"Game session setup complete,"
+		+ " starting idle timer",
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
 
 	# Start idle timeout. If no players connect in
 	# time, the server terminates to free capacity.
@@ -476,6 +573,48 @@ func _set_transport_from_matchmaker(
 		Netcode.log.print(
 			"All native players,"
 			+ " using ENet transport",
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+
+
+## Identify anonymous players from matchmaker
+## data. A player with is_authenticated == 0 is
+## anonymous.
+func _parse_anonymous_from_matchmaker(
+	data: Dictionary,
+) -> void:
+	_anonymous_backend_ids.clear()
+	if (
+		not data.has("teams")
+		or not data.teams is Array
+	):
+		return
+	for team in data.teams:
+		if (
+			not team.has("players")
+			or not team.players is Array
+		):
+			continue
+		for player in team.players:
+			var player_id: String = player.get(
+				"playerId", "")
+			if player_id.is_empty():
+				continue
+			var attrs: Dictionary = player.get(
+				"attributes", {})
+			var is_auth = attrs.get(
+				"is_authenticated", {})
+			if (
+				is_auth is Dictionary
+				and is_auth.get(
+					"attributeValue", 1) == 0
+			):
+				_anonymous_backend_ids[
+					player_id] = true
+	if not _anonymous_backend_ids.is_empty():
+		Netcode.log.print(
+			"Anonymous players: %s"
+			% str(_anonymous_backend_ids.keys()),
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
 

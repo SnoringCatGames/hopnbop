@@ -11,6 +11,7 @@ var config: Dictionary
 var _expected_player_count: int = 0
 var _validated_player_count: int = 0
 var _selected_level_id: StringName = ""
+var _player_to_profile_image_url: Dictionary = {}
 
 
 func _init(p_logger: NetworkLogger, p_config: Dictionary = {}) -> void:
@@ -62,6 +63,7 @@ func server_validate_player_sessions(
 	player_ids: Array[int],
 	_session_ids: Array,
 	_backend_player_id: String = "",
+	profile_image_url: String = "",
 ) -> void:
 	logger.print(
 		"Preview mode: Auto-accepting %d player(s) for peer %d" % [
@@ -70,6 +72,12 @@ func server_validate_player_sessions(
 		],
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
+
+	# Store profile image URL for all players.
+	if not profile_image_url.is_empty():
+		for player_id in player_ids:
+			_player_to_profile_image_url[
+				player_id] = profile_image_url
 
 	# Auto-accept all sessions without validation.
 	for player_id in player_ids:
@@ -97,6 +105,10 @@ func server_set_expected_player_count(count: int) -> void:
 
 func server_get_selected_level_id() -> StringName:
 	return _selected_level_id
+
+
+func get_profile_image_url_map() -> Dictionary:
+	return _player_to_profile_image_url
 
 
 ## Select a level locally based on client preferences.

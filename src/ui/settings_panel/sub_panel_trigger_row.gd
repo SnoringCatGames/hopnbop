@@ -4,8 +4,6 @@ extends SettingsRow
 ## Displays a label and a ">" arrow indicator.
 
 
-@export var _chevron_icon: Texture2D
-
 var _display_name := ""
 var _panel_scene: PackedScene
 var _panel: SidePanel
@@ -67,9 +65,9 @@ func _open_sub_panel() -> void:
 
 
 func _setup_chevron(rect: TextureRect) -> void:
-	rect.texture = _chevron_icon
+	rect.texture = G.settings.chevron_icon
 	var chevron_size := (
-		_chevron_icon.get_size()
+		G.settings.chevron_icon.get_size()
 		* G.settings.icon_scale)
 	rect.custom_minimum_size = chevron_size
 	if is_layout_rtl():

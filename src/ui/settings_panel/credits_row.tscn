@@ -12,12 +12,22 @@ layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 12
 
+[node name="Icon" type="TextureRect" parent="HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+visible = false
+
 [node name="Label" type="Label" parent="HBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="ArrowLabel" type="Label" parent="HBoxContainer"]
+[node name="Arrow" type="TextureRect" parent="HBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
-horizontal_alignment = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5

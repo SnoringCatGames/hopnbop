@@ -5,8 +5,16 @@ extends SettingsRow
 
 var _panel: SidePanel
 var _is_busy := false
+var _icon_texture: Texture2D
 
+@onready var _icon: TextureRect = %Icon
 @onready var _label: Label = %Label
+
+
+## Set an icon to display before the label. Call
+## before add_child().
+func set_icon(tex: Texture2D) -> void:
+	_icon_texture = tex
 
 
 func setup(panel: SidePanel) -> void:
@@ -16,6 +24,14 @@ func setup(panel: SidePanel) -> void:
 func _ready() -> void:
 	super()
 	_label.text = tr("SETTINGS.EXPORT_DATA")
+	if _icon_texture != null:
+		_icon.texture = _icon_texture
+		_icon.custom_minimum_size = (
+			_icon_texture.get_size()
+			* G.settings.icon_scale)
+		_icon.show()
+	else:
+		_icon.hide()
 
 
 func on_left() -> void:

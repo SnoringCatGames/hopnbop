@@ -11,6 +11,7 @@ var _matchmaking_phase := ""
 var _matchmaking_elapsed_sec := 0.0
 var _matchmaking_estimated_sec := -1.0
 var _is_matchmaking_connected := false
+var _is_timed_out := false
 
 
 func _enter_tree() -> void:
@@ -33,6 +34,10 @@ func on_open() -> void:
 	_matchmaking_phase = ""
 	_matchmaking_elapsed_sec = 0.0
 	_matchmaking_estimated_sec = -1.0
+	_is_timed_out = false
+
+	if is_instance_valid(%RetryButton):
+		%RetryButton.visible = false
 
 	# If game is no longer loading (disconnect
 	# during transition), skip setup. The screen
@@ -70,8 +75,13 @@ func update_status_message() -> void:
 	if not is_instance_valid(%Label):
 		return
 
+	if _is_timed_out:
+		%Label.text = tr("LOADING.NO_MATCH_FOUND")
+		return
+
 	if Netcode.connector.is_connected_to_server:
-		%Label.text = tr("LOADING.WAITING_FOR_PLAYERS")
+		%Label.text = tr(
+			"LOADING.WAITING_FOR_PLAYERS")
 	elif not _matchmaking_phase.is_empty():
 		%Label.text = _get_matchmaking_text()
 	else:
@@ -81,6 +91,9 @@ func update_status_message() -> void:
 func _get_matchmaking_text() -> String:
 	var phase_text: String
 	match _matchmaking_phase:
+		"authenticating":
+			phase_text = tr(
+				"LOADING.AUTHENTICATING")
 		"queued":
 			phase_text = tr("LOADING.IN_QUEUE")
 		"searching":
@@ -95,6 +108,11 @@ func _get_matchmaking_text() -> String:
 			phase_text = tr("LOADING.MATCH_FOUND")
 		_:
 			phase_text = tr("LOADING.MATCHMAKING")
+
+	# Authenticating phase does not show elapsed
+	# time since it is typically very brief.
+	if _matchmaking_phase == "authenticating":
+		return phase_text
 
 	# Show elapsed time.
 	var elapsed := ceili(_matchmaking_elapsed_sec)
@@ -114,6 +132,25 @@ func _get_matchmaking_text() -> String:
 				% ceili(remaining))
 
 	return time_text + "..."
+
+
+## Called by GamePanel when matchmaking times out.
+## Shows the timeout message and retry button.
+func show_matchmaking_timeout() -> void:
+	_is_timed_out = true
+	if is_instance_valid(%RetryButton):
+		%RetryButton.visible = true
+		%RetryButton.grab_focus()
+	update_status_message()
+
+
+func _on_retry_pressed() -> void:
+	G.audio.play_sound("click")
+	_is_timed_out = false
+	if is_instance_valid(%RetryButton):
+		%RetryButton.visible = false
+	G.client_session.is_game_loading = true
+	G.game_panel._client_client_request_session_ids()
 
 
 func _connect_matchmaking_signal() -> void:

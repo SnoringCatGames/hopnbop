@@ -40,10 +40,17 @@ func setup(
 	# Match the animator's local offset from the
 	# player root node.
 	_animator.position = source.animator.position
+	# Hide until the first _sync_visual() call
+	# applies the correct visibility. Without this
+	# the ghost renders at (0,0) relative to the
+	# player for one frame before _update_offset()
+	# runs in _process().
+	_animator.visible = false
 	add_child(_animator)
 
 	_apply_appearance()
 	_apply_outline()
+	_update_offset()
 
 
 ## Applies the source player's appearance (body

@@ -5,12 +5,9 @@ extends SidePanel
 ## of friends with remove buttons.
 
 
-const _REMOVE_FRIEND_ICON := preload(
-	"res://assets/images/gui/remove_friend_icon.png")
-const _ADD_FRIEND_ICON := preload(
-	"res://assets/images/gui/add_friend_icon.png")
-
 @export var _back_row_scene: PackedScene
+@export var _add_friend_icon: Texture2D
+@export var _remove_friend_icon: Texture2D
 
 var _friend_code_label: Label
 var _add_input: LineEdit
@@ -162,7 +159,7 @@ func _build_add_friend_section() -> void:
 
 	_add_button = Button.new()
 	_add_button.text = tr("FRIENDS.ADD")
-	_add_button.icon = _ADD_FRIEND_ICON
+	_add_button.icon = _add_friend_icon
 	_add_button.expand_icon = true
 	_add_button.pressed.connect(
 		_on_add_friend_pressed)
@@ -294,7 +291,7 @@ func _add_friend_row(
 	row.add_child(invite_button)
 
 	var remove_button := Button.new()
-	remove_button.icon = _REMOVE_FRIEND_ICON
+	remove_button.icon = _remove_friend_icon
 	remove_button.expand_icon = true
 	remove_button.pressed.connect(
 		_on_remove_friend_pressed.bind(friend_id))

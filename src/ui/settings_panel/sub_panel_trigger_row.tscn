@@ -1,11 +1,9 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://src/ui/settings_panel/sub_panel_trigger_row.gd" id="1_script"]
-[ext_resource type="Texture2D" uid="uid://bol2t5fsvy1a6" path="res://assets/images/gui/right_chevron_icon.png" id="2_chevron"]
 
 [node name="SubPanelTriggerRow" type="PanelContainer"]
 script = ExtResource("1_script")
-_chevron_icon = ExtResource("2_chevron")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
 layout_mode = 2

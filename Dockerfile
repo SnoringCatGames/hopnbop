@@ -38,9 +38,13 @@ FROM ubuntu:24.04
 # Prevent interactive prompts during package installation.
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install minimal runtime dependencies for Godot headless.
+# Install runtime dependencies for Godot headless, nginx
+# (TLS termination for WSS), jq (JSON parsing), and
+# unzip (AWS CLI installer).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    curl \
+    jq \
     libfontconfig1 \
     libgl1 \
     libglib2.0-0 \
@@ -50,7 +54,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxinerama1 \
     libxrandr2 \
     libxrender1 \
+    nginx \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# Install AWS CLI v2 (used at startup to fetch the TLS
+# certificate from Secrets Manager).
+RUN curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
+    -o "/tmp/awscli.zip" && \
+    unzip -q /tmp/awscli.zip -d /tmp && \
+    /tmp/aws/install && \
+    rm -rf /tmp/awscli.zip /tmp/aws
 
 WORKDIR /game
 
@@ -86,9 +100,14 @@ RUN mkdir -p /game/logs
 # Make the server binary executable.
 RUN chmod +x /game/hopnbop_server.x86_64
 
-# Expose ENet UDP port and WebSocket TCP port.
-# Both protocols share port 4433. ENet uses UDP,
-# WebSocket uses TCP.
+# Copy nginx config for WSS TLS termination and the
+# entrypoint script that fetches the cert at startup.
+COPY gamelift-deploy/nginx.conf /etc/nginx/nginx.conf
+COPY gamelift-deploy/entrypoint.sh /game/entrypoint.sh
+RUN chmod +x /game/entrypoint.sh
+
+# Expose ENet UDP port, WebSocket TCP port, and WSS
+# port (nginx TLS termination for web clients).
 EXPOSE 4433/udp
 EXPOSE 4433/tcp
 EXPOSE 4434/tcp
@@ -98,9 +117,7 @@ EXPOSE 4434/tcp
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD pgrep -f hopnbop_server || exit 1
 
-# Run the dedicated server in headless mode.
-# Pipe stderr to the game session log so Godot crash
-# backtraces are captured in the file that GameLift
-# uploads to CloudWatch on process termination.
-ENTRYPOINT ["/bin/sh", "-c", \
-            "/game/hopnbop_server.x86_64 --server --headless 2>&1 | tee /game/logs/server.log"]
+# Entrypoint fetches the TLS cert from Secrets Manager,
+# starts nginx, then runs the Godot server in the
+# foreground.
+ENTRYPOINT ["/game/entrypoint.sh"]
