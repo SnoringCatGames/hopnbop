@@ -110,7 +110,7 @@ func _add_legal_section() -> void:
 	if icon_github != null:
 		github_row.set_icon(icon_github, 1)
 	github_row.setup(
-		tr("SETTINGS.OPEN_SOURCE"),
+		tr("SETTINGS.SOURCE_CODE"),
 		"https://github.com/SnoringCatGames/hopnbop",
 	)
 	_row_container.add_child(github_row)
