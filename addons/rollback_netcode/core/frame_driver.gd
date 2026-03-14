@@ -51,10 +51,6 @@ extends Node
 # Should backend/samconfig.toml remain gitignored?
 
 
-# - I just renamed the repo to hopnbop_private.
-#   - Rename locally.
-#   - Then create the empty public shell for the public version of hopnbop.
-
 # - Fix FB OAuth.
 
 # - Check what's next for Steam and Epic Games.
