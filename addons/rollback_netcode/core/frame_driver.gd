@@ -71,6 +71,15 @@ extends Node
 
 # - Fix crossplay auth.
 
+# - Test/fix party formation, matchmaking, and lobbying
+#   - The panel UI?
+#   - Matchmaking
+#   - Forming
+#   - Disbanding
+#   - Who gets control?
+
+# ---
+
 # - Check what's next for Steam and Epic Games.
 #   - Get Alden and Ben added as testers.
 
