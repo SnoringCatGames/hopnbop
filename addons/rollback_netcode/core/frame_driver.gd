@@ -48,6 +48,8 @@ extends Node
 
 # ---
 
+# Should backend/samconfig.toml remain gitignored?
+
 
 # - I just renamed the repo to hopnbop_private.
 #   - Rename locally.
