@@ -130,6 +130,21 @@ syncs `web/` to S3, invalidates CloudFront cache.
 - Update `web/blog/index.html` with patch notes when making
   new releases.
 
+### Legal Documents
+
+The game bundles plain-text copies of the legal docs for
+offline access. When updating legal content, update **both**
+locations:
+
+1. **Web pages:** `web/terms/index.html`,
+   `web/privacy/index.html`, `web/data-deletion/index.html`
+2. **In-game text:** `legal/en/terms.txt`,
+   `legal/en/privacy.txt`, `legal/en/data_deletion.txt`
+   (and any translated variants in `legal/{locale}/`)
+
+If the changes require users to re-consent, also bump
+`LEGAL_VERSION` in `src/core/auth_token_store.gd`.
+
 ### Prerequisites (All Deploys)
 
 - AWS SSO login: `aws sso login --profile hopnbop`
@@ -227,18 +242,27 @@ to authenticate with the backend API.
 ### WSS TLS Termination
 
 ```
-Web client --wss://{id}.game.hopnbop.net:4434-->
-  nginx (TLS) --ws://localhost:4433--> Godot
+Web client --wss://{id}.game.hopnbop.net:{Port+2}-->
+  nginx (container port 4434, TLS) --ws://localhost:4433--> Godot
 
-Native client --enet://ip:4433/UDP--> Godot (unchanged)
+Native client --enet://ip:{Port}/UDP--> Godot (unchanged)
 ```
+
+GameLift remaps container ports to dynamic host ports from the
+fleet's `InstanceConnectionPortRange` (4192-4204). Each game
+session gets 3 consecutive host ports, one per container port:
+
+- `Port+0` → container `4433 UDP` (ENet, returned as `Port`)
+- `Port+1` → container `4433 TCP` (WebSocket direct)
+- `Port+2` → container `4434 TCP` (nginx WSS)
+
+The backend returns `Port` for ENet and `Port+2` for WSS. The
+DNS hostname maps to the raw server IP; the client connects to
+the dynamically assigned host port, not the container port.
 
 Wildcard cert for `*.game.hopnbop.net` via Let's Encrypt
 DNS-01. Stored in Secrets Manager (`hopnbop/tls-wildcard-cert`).
 Expires **2026-06-09**. Renewal needed before then.
-
-Fleet inbound permissions must include both TCP and UDP. TCP was
-missing initially, blocking all WebSocket/WSS traffic.
 
 ### End-to-End Matchmaking Flow
 
@@ -660,6 +684,19 @@ in scripts:
   `load()` for resource references in scripts.
 - **Node references:** Use `%NodeName` unique-name syntax in
   scenes when referencing sibling/child nodes.
+
+**Editing `.tscn` files directly (without the Godot editor):**
+Scene files can be edited as text. The key fields are:
+- `load_steps=N` in the header — increment N for each new
+  `[ext_resource]` entry added.
+- `[ext_resource type="PackedScene" path="res://..." id="X"]`
+  — declares a scene dependency. Use a unique `id` string.
+  `uid=` is optional; omit it if the scene has no UID yet.
+- `[node name="Foo" parent="." instance=ExtResource("X")]`
+  — instantiates the scene as a child node.
+- Export vars on an instanced node are set directly on the
+  node entry, e.g. `doc_type = 0`. Enum values are integers
+  (0, 1, 2…) matching declaration order.
 
 ```gdscript
 # Correct: export var assigned in scene inspector.
