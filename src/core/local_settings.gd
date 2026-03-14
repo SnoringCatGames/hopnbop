@@ -11,9 +11,11 @@ extends RefCounted
 const SETTINGS_PATH := "user://local_settings.cfg"
 const SECTION_SETTINGS := "settings"
 const SECTION_LEVEL_PREFS := "level_preferences"
+const SECTION_APPEARANCE := "appearance"
 const SECTION_META := "meta"
 const META_KEY_VERSION := "game_version"
 const KEY_LOCALE := "locale"
+const KEY_ANONYMOUS_HUE := "anonymous_color_hue"
 
 const SUPPORTED_LOCALES: Array[String] = [
 	"en", "zh", "es", "hi", "ar", "fr",
@@ -239,3 +241,52 @@ func load_level_preferences() -> LevelPreferences:
 		return null
 
 	return LevelPreferences.from_dict(data)
+
+
+## Get the persisted anonymous color hue for this
+## client. Generates and saves a random hue on
+## first access.
+func get_anonymous_color_hue() -> float:
+	if _config.has_section_key(
+			SECTION_APPEARANCE,
+			KEY_ANONYMOUS_HUE):
+		return _config.get_value(
+			SECTION_APPEARANCE,
+			KEY_ANONYMOUS_HUE)
+	# Generate and persist on first access.
+	var hue := randf()
+	_config.set_value(
+		SECTION_APPEARANCE,
+		KEY_ANONYMOUS_HUE,
+		hue)
+	save_settings()
+	return hue
+
+
+## Clear all local user state. Called on logout
+## so the next session starts clean.
+func clear_user_state() -> void:
+	if _config.has_section(SECTION_SETTINGS):
+		_config.erase_section(SECTION_SETTINGS)
+	if _config.has_section(SECTION_LEVEL_PREFS):
+		_config.erase_section(SECTION_LEVEL_PREFS)
+	_config.erase_section_key(
+		SECTION_META, "cloud_sync_at")
+	_config.erase_section_key(
+		SECTION_META, "rounds_played")
+	save_settings()
+
+
+## Get the number of rounds played locally.
+func get_rounds_played() -> int:
+	return _config.get_value(
+		SECTION_META, "rounds_played", 0)
+
+
+## Increment the local rounds played counter.
+func increment_rounds_played() -> void:
+	var current := get_rounds_played()
+	_config.set_value(
+		SECTION_META, "rounds_played",
+		current + 1)
+	save_settings()

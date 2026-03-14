@@ -166,6 +166,10 @@ func client_request_session(
 		G.auth_token_store != null
 		and G.auth_token_store.needs_refresh()
 	):
+		# Notify loading screen that authentication
+		# is in progress.
+		matchmaking_progress.emit(
+			"authenticating", 0.0, -1.0)
 		Netcode.print(
 			"Refreshing auth token before"
 			+ " matchmaking",
@@ -325,7 +329,7 @@ func _on_session_ids_received(
 
 
 func _on_session_request_failed(error_message: String) -> void:
-	Netcode.error(
+	Netcode.print(
 		"Session request failed: %s" % error_message,
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
@@ -368,6 +372,14 @@ func _on_player_ids_assigned(assigned_ids: Array[int]) -> void:
 
 	# Store in local session.
 	G.client_session.local_player_ids = assigned_ids.duplicate()
+
+	# Populate profile image URLs for local players
+	# from auth store so they are available in the
+	# lobby before the server broadcasts them.
+	if not G.auth_token_store.profile_image_url.is_empty():
+		for pid in assigned_ids:
+			G.client_session.profile_image_urls[pid] = (
+				G.auth_token_store.profile_image_url)
 
 	# Emit high-level event for game logic.
 	session_established.emit(assigned_ids)

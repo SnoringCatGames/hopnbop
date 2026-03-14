@@ -28,10 +28,21 @@ if ($projectGodot -match 'config/version="([^"]+)"') {
 }
 
 Write-Host "Version: $Version"
+
+# Read protocol version from project.godot.
+if ($projectGodot -match 'config/protocol_version=(\d+)') {
+    $ProtocolVersion = $Matches[1]
+} else {
+    Write-Error "Could not read config/protocol_version from project.godot"
+    exit 1
+}
+
+Write-Host "Protocol version: $ProtocolVersion"
 Write-Host ""
 
-# Step 1: Sync GAME_VERSION in template.yaml.
-Write-Host "[1/3] Syncing GAME_VERSION in template.yaml..." -ForegroundColor Yellow
+# Step 1: Sync GAME_VERSION and PROTOCOL_VERSION
+# in template.yaml.
+Write-Host "[1/3] Syncing versions in template.yaml..." -ForegroundColor Yellow
 
 $templatePath = "backend/template.yaml"
 $templateContent = Get-Content $templatePath -Raw
@@ -42,7 +53,6 @@ if ($templateContent -match 'GAME_VERSION:\s*"([^"]+)"') {
         $templateContent = $templateContent -replace (
             'GAME_VERSION:\s*"[^"]+"'),
             "GAME_VERSION: `"$Version`""
-        Set-Content -Path $templatePath -Value $templateContent -NoNewline
         Write-Host "  Updated GAME_VERSION: $currentVersion -> $Version" -ForegroundColor Green
     } else {
         Write-Host "  GAME_VERSION already $Version" -ForegroundColor DarkGray
@@ -51,6 +61,23 @@ if ($templateContent -match 'GAME_VERSION:\s*"([^"]+)"') {
     Write-Error "Could not find GAME_VERSION in $templatePath"
     exit 1
 }
+
+if ($templateContent -match 'PROTOCOL_VERSION:\s*"(\d+)"') {
+    $currentProtocol = $Matches[1]
+    if ($currentProtocol -ne $ProtocolVersion) {
+        $templateContent = $templateContent -replace (
+            'PROTOCOL_VERSION:\s*"\d+"'),
+            "PROTOCOL_VERSION: `"$ProtocolVersion`""
+        Write-Host "  Updated PROTOCOL_VERSION: $currentProtocol -> $ProtocolVersion" -ForegroundColor Green
+    } else {
+        Write-Host "  PROTOCOL_VERSION already $ProtocolVersion" -ForegroundColor DarkGray
+    }
+} else {
+    Write-Error "Could not find PROTOCOL_VERSION in $templatePath"
+    exit 1
+}
+
+Set-Content -Path $templatePath -Value $templateContent -NoNewline
 
 # Step 2: SAM build.
 Write-Host "[2/3] Running sam build..." -ForegroundColor Yellow
@@ -70,7 +97,7 @@ try {
     # Step 3: SAM deploy.
     Write-Host "[3/3] Running sam deploy..." -ForegroundColor Yellow
 
-    sam deploy --profile $Profile --region $Region
+    sam deploy --no-confirm-changeset --profile $Profile --region $Region
     if ($LASTEXITCODE -ne 0) {
         Write-Error "sam deploy failed"
         exit 1

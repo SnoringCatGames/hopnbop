@@ -31,7 +31,11 @@ var auth_token_store: AuthTokenStore
 var auth_client: AuthClient
 var match_result_reporter: MatchResultReporter
 var backend_api_client: BackendApiClient
+var friends_api_client: FriendsApiClient
+var party_api_client: PartyApiClient
+var party_manager: PartyManager
 var crash_reporter: CrashReporter
+var profile_image_cache: ProfileImageCache
 var auth_screen: AuthScreen
 var consent_screen: ConsentScreen
 
@@ -56,6 +60,7 @@ var level: Level
 
 var level_registry: LevelRegistry
 var local_settings: LocalSettings
+var settings_cloud_sync: SettingsCloudSync
 
 # Whether the settings UI is currently shown.
 var is_settings_ui_shown := false
@@ -66,6 +71,8 @@ var settings_ui_player: Player = null
 # Whether a global UI overlay (confirm dialog,
 # credits, etc.) is blocking all player input.
 var is_ui_interaction_mode_enabled := false
+
+var _peer_color_cache: Dictionary = {}
 
 var is_lobby_active: bool:
 	get:
@@ -121,9 +128,25 @@ func _enter_tree() -> void:
 	backend_api_client.name = "BackendApiClient"
 	add_child(backend_api_client)
 
+	friends_api_client = FriendsApiClient.new()
+	friends_api_client.name = "FriendsApiClient"
+	add_child(friends_api_client)
+
+	party_api_client = PartyApiClient.new()
+	party_api_client.name = "PartyApiClient"
+	add_child(party_api_client)
+
+	party_manager = PartyManager.new()
+	party_manager.name = "PartyManager"
+	add_child(party_manager)
+
 	crash_reporter = CrashReporter.new()
 	crash_reporter.name = "CrashReporter"
 	add_child(crash_reporter)
+
+	profile_image_cache = ProfileImageCache.new()
+	profile_image_cache.name = "ProfileImageCache"
+	add_child(profile_image_cache)
 
 	cheat_manager = CheatManager.new()
 	cheat_manager.name = "CheatManager"
@@ -153,6 +176,9 @@ func _ready() -> void:
 	local_settings.load_settings()
 	local_settings.apply_all_overrides()
 	local_settings.apply_locale()
+
+	# Cloud settings sync manager.
+	settings_cloud_sync = SettingsCloudSync.new()
 
 	# Configure font fallbacks for non-Latin scripts.
 	FontFallbackConfig.configure_fallbacks()
@@ -199,3 +225,27 @@ func get_player(player_id: int) -> Player:
 	):
 		return null
 	return level.players_by_id[player_id]
+
+
+## Return the anonymous icon color for a given
+## peer. The local client's color is persisted
+## across sessions. Remote peers get a random
+## color cached for the current session.
+func get_peer_anonymous_color(
+	peer_id: int,
+) -> Color:
+	if peer_id in _peer_color_cache:
+		return _peer_color_cache[peer_id]
+	var hue: float
+	if peer_id == multiplayer.get_unique_id():
+		hue = local_settings.get_anonymous_color_hue()
+	else:
+		hue = randf()
+	var color := Color.from_hsv(hue, 0.7, 0.9)
+	_peer_color_cache[peer_id] = color
+	return color
+
+
+## Clear cached peer colors between matches.
+func clear_peer_color_cache() -> void:
+	_peer_color_cache.clear()

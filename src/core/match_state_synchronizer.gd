@@ -347,3 +347,37 @@ func _rpc_client_notify_dynamic_adjectives(
 						data.adj_index))
 		G.celebration.reveal_adjectives(
 			string_map)
+
+
+## Receives backend player ID mapping from the
+## server before match end. packed_data is an Array
+## of [player_id, backend_player_id, ...] pairs
+## (stride of 2).
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_GAME_EVENTS)
+func _rpc_client_receive_backend_ids(
+	packed_data: Array,
+) -> void:
+	for i in range(0, packed_data.size(), 2):
+		var player_id: int = packed_data[i]
+		var backend_id: String = packed_data[i + 1]
+		G.client_session.backend_player_id_map[
+			player_id] = backend_id
+
+
+## Receives profile image URLs from the server.
+## packed_data is [player_id, url, ...] pairs
+## (stride of 2).
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_GAME_EVENTS)
+func _rpc_client_receive_profile_images(
+	packed_data: Array,
+) -> void:
+	for i in range(0, packed_data.size(), 2):
+		var player_id: int = packed_data[i]
+		var url: String = packed_data[i + 1]
+		G.client_session.profile_image_urls[
+			player_id] = url
+		# Trigger download so ProfileImageDisplay
+		# instances update via image_loaded signal.
+		if not url.is_empty():
+			G.profile_image_cache.request_image(
+				player_id, url)

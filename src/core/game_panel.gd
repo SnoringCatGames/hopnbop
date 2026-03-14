@@ -55,6 +55,14 @@ func _ready() -> void:
 					and not G.auth_token_store
 						.player_id.is_empty()):
 				bid = G.auth_token_store.player_id
+			var piu := ""
+			if (G.auth_token_store != null
+					and not G.auth_token_store
+						.profile_image_url
+						.is_empty()):
+				piu = (
+					G.auth_token_store
+						.profile_image_url)
 			return {
 				"session_ids":
 					G.client_session
@@ -66,6 +74,7 @@ func _ready() -> void:
 					G.client_session
 						.local_player_attributes,
 				"backend_player_id": bid,
+				"profile_image_url": piu,
 			}
 	)
 
@@ -364,22 +373,12 @@ func _on_connection_lost(
 ) -> void:
 	# Only clients handle connection loss UI.
 	if Netcode.is_client:
-		# Store disconnect reason for display on
-		# game over screen.
-		if not is_expected:
-			G.client_session.latest_server_message = (
-				"Disconnected: %s" % reason_name)
-			if is_instance_valid(G.toast_overlay):
-				G.toast_overlay.show_toast(
-					reason_name,
-					ToastOverlay.Type.ERROR,
-				)
-
 		if is_expected:
 			Netcode.print(
-				"Match ended, returning to lobby",
+				"Match ended, showing results",
 				NetworkLogger.CATEGORY_GAME_STATE,
 			)
+			_client_transition_to_game_over()
 		else:
 			Netcode.warning(
 				"Unexpected disconnect: %s"
@@ -387,7 +386,14 @@ func _on_connection_lost(
 				NetworkLogger
 					.CATEGORY_CONNECTIONS,
 			)
-		client_exit_match()
+			G.client_session.latest_server_message = (
+				"Disconnected: %s" % reason_name)
+			if is_instance_valid(G.toast_overlay):
+				G.toast_overlay.show_toast(
+					reason_name,
+					ToastOverlay.Type.ERROR,
+				)
+			client_exit_match()
 
 
 func _on_matchmaking_failed(reason: String) -> void:
@@ -397,6 +403,18 @@ func _on_matchmaking_failed(reason: String) -> void:
 	)
 
 	G.client_session.is_game_loading = false
+
+	# On timeout, stay on loading screen and show
+	# a retry button instead of returning to lobby.
+	var is_timeout := (
+		"timeout" in reason.to_lower()
+		or "timed out" in reason.to_lower()
+	)
+	if is_timeout and is_instance_valid(
+		G.loading_screen
+	):
+		G.loading_screen.show_matchmaking_timeout()
+		return
 
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
@@ -759,9 +777,11 @@ func _cleanup_local_mode() -> void:
 	Netcode.is_local_mode = false
 
 
-func client_exit_match() -> void:
-	Netcode.check_is_client()
-
+## Shared cleanup after a match ends. Disconnects
+## from the server, saves state, and resets the
+## frame driver. Does NOT open any screen or free
+## levels.
+func _client_cleanup_after_match() -> void:
 	# Reset cheat state when leaving match.
 	if is_instance_valid(G.cheat_manager):
 		G.cheat_manager.reset()
@@ -809,7 +829,15 @@ func client_exit_match() -> void:
 				.latest_local_player_attributes[
 					i])["is_soft"] = false
 
+	# Build participants list for post-match
+	# friend add. Uses backend_player_id_map
+	# received from server via RPC.
+	_populate_match_participants()
+
 	G.client_session.clear()
+
+	# Track rounds played for settings book gating.
+	G.local_settings.increment_rounds_played()
 
 	# Pause frame driver so it stops running
 	# network processing (rollback, buffers,
@@ -820,6 +848,36 @@ func client_exit_match() -> void:
 	G.match_state.match_start_frame_index = -1
 	G.match_state.is_match_ended = false
 
+
+## Populate latest_match_participants from match
+## state and backend ID mapping. Skips local
+## players since they are on the same device.
+func _populate_match_participants() -> void:
+	G.client_session.latest_match_participants.clear()
+	for pid in G.match_state.players_by_id:
+		if pid in G.client_session.local_player_ids:
+			continue
+		var ps: GamePlayerState = (
+			G.match_state.players_by_id[pid])
+		var backend_id: String = (
+			G.client_session
+				.backend_player_id_map
+				.get(pid, ""))
+		var entry := {
+			"player_id": pid,
+			"display_name": String(ps.full_name),
+			"backend_player_id": backend_id,
+		}
+		G.client_session.latest_match_participants.append(
+			entry)
+
+
+## Free game levels, open the given screen with
+## a tile-wipe transition, and reset the
+## celebration overlay.
+func _client_free_levels_and_open_screen(
+	screen_type: ScreensMain.ScreenType,
+) -> void:
 	# Snapshot existing levels before switching
 	# screens. _client_spawn_lobby() will add
 	# the new lobby to the levels array, so we
@@ -833,12 +891,11 @@ func client_exit_match() -> void:
 	):
 		G.player_overhead_labels.hide_all()
 
-	# Open lobby screen. The tile-wipe transition
+	# Open screen. The tile-wipe transition
 	# captures the current viewport (which
 	# includes the iris overlay if the celebration
-	# ran) before switching to the lobby.
-	G.screens.client_open_screen(
-		ScreensMain.ScreenType.LOBBY)
+	# ran) before switching.
+	G.screens.client_open_screen(screen_type)
 
 	# Reset celebration AFTER the screen capture
 	# so the iris overlay is still visible (black)
@@ -851,6 +908,72 @@ func client_exit_match() -> void:
 	for level in old_levels:
 		levels.erase(level)
 		level.queue_free()
+
+
+## Clean up after match and return to the lobby.
+## Used for unexpected disconnects.
+func client_exit_match() -> void:
+	Netcode.check_is_client()
+	_client_cleanup_after_match()
+	_client_free_levels_and_open_screen(
+		ScreensMain.ScreenType.LOBBY)
+
+
+## Clean up after match and show the game over
+## screen with results. Used for expected
+## (normal) match endings.
+func _client_transition_to_game_over() -> void:
+	_client_cleanup_after_match()
+	_client_free_levels_and_open_screen(
+		ScreensMain.ScreenType.GAME_OVER)
+
+
+## Start a new match from the game over screen
+## without returning to the lobby first.
+func client_play_again() -> void:
+	Netcode.check_is_client()
+
+	# Restore player configs from last match.
+	G.client_session.local_device_configs = (
+		G.client_session
+			.latest_local_device_configs
+			.duplicate())
+	G.client_session.local_player_attributes = (
+		G.client_session
+			.latest_local_player_attributes
+			.duplicate(true))
+
+	G.client_session.is_game_loading = true
+
+	# Reset frame index for new match.
+	Netcode.frame_driver.client_reset()
+
+	# Hide overhead labels before the tile-wipe
+	# captures the screen.
+	if is_instance_valid(
+		G.player_overhead_labels
+	):
+		G.player_overhead_labels.hide_all()
+
+	G.screens.client_open_screen(
+		ScreensMain.ScreenType.LOADING)
+
+	# Check offline mode preference.
+	var is_offline: bool = (
+		G.local_settings != null
+		and G.local_settings.get_value(
+			&"prefer_offline_mode"))
+
+	if is_offline:
+		if is_instance_valid(G.toast_overlay):
+			G.toast_overlay.show_toast(
+				tr("TOAST.PLAYING_OFFLINE"))
+		_client_start_local_mode()
+	else:
+		if is_instance_valid(G.toast_overlay):
+			G.toast_overlay.show_toast(
+				tr("TOAST.PLAYING_ONLINE"))
+		_client_client_request_session_ids()
 
 
 func server_start_match() -> void:
@@ -927,6 +1050,63 @@ func server_end_match() -> void:
 	_server_destroy_level(G.level)
 
 
+## Sends the backend player ID mapping to all
+## clients via RPC so they can friend-add after
+## the match. Packs as flat array [pid, bid, ...].
+func _server_send_backend_ids_to_clients() -> void:
+	var provider := (
+		session_manager.session_provider)
+	if not provider is GameLiftServerProvider:
+		return
+	var backend_id_map: Dictionary = (
+		provider.get_backend_player_id_map())
+	if backend_id_map.is_empty():
+		return
+	# Skip anonymous players so clients cannot
+	# friend-add them.
+	var anonymous_ids: Dictionary = (
+		provider.get_anonymous_backend_ids())
+	var packed_data: Array = []
+	for player_id in backend_id_map:
+		var backend_id: String = (
+			backend_id_map[player_id])
+		if backend_id in anonymous_ids:
+			continue
+		packed_data.append(player_id)
+		packed_data.append(backend_id)
+	if packed_data.is_empty():
+		return
+	Netcode.call_client_rpc_with_local_support(
+		match_state_synchronizer
+			._rpc_client_receive_backend_ids
+			.bind(packed_data))
+
+
+## Sends profile image URLs to all clients via
+## RPC so they can render avatars. Packs as flat
+## array [pid, url, ...].
+func _server_send_profile_images_to_clients(
+) -> void:
+	var provider := (
+		session_manager.session_provider)
+	if not provider.has_method(
+			"get_profile_image_url_map"):
+		return
+	var image_url_map: Dictionary = (
+		provider.get_profile_image_url_map())
+	if image_url_map.is_empty():
+		return
+	var packed_data: Array = []
+	for player_id in image_url_map:
+		packed_data.append(player_id)
+		packed_data.append(
+			image_url_map[player_id])
+	Netcode.call_client_rpc_with_local_support(
+		match_state_synchronizer
+			._rpc_client_receive_profile_images
+			.bind(packed_data))
+
+
 ## Reports match results to the backend API.
 ## Only runs on GameLift servers (not preview).
 func _server_report_match_result() -> void:
@@ -968,14 +1148,8 @@ func _server_report_match_result() -> void:
 			"score": ps.score,
 		}
 		if stats != null:
-			entry["kill_count"] = stats.kill_count
-			entry["death_count"] = (
-				stats.death_count)
-			entry["bump_count"] = stats.bump_count
-			entry["crown_time_sec"] = (
-				stats.crown_time_sec)
-			entry["regicide_count"] = (
-				stats.regicide_count)
+			entry.merge(
+				stats.to_report_dictionary())
 		best_by_backend_id[backend_id] = entry
 	var player_results: Array = (
 		best_by_backend_id.values())
@@ -1066,6 +1240,10 @@ func _server_on_all_players_connected() -> void:
 		"All players validated, starting match",
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
+
+	# Send profile images to clients now that all
+	# peers have declared their URLs.
+	_server_send_profile_images_to_clients()
 
 	# Unpause frame driver to start simulation.
 	# The framework automatically triggers
@@ -1294,6 +1472,13 @@ func _server_initiate_match_end() -> void:
 	# have complete data for the game over screen.
 	(match_state_synchronizer
 		._server_send_stats_to_clients())
+
+	# Send backend player ID mapping to clients
+	# so they can friend-add post-match.
+	_server_send_backend_ids_to_clients()
+
+	# Send profile image URLs to all clients.
+	_server_send_profile_images_to_clients()
 
 	# Set flag to enable invincibility for all
 	# players and notify clients.

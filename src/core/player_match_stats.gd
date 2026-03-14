@@ -133,6 +133,35 @@ func record_poop() -> void:
 	poop_count += 1
 
 
+## Returns all stats as a Dictionary for backend
+## match result reporting.
+func to_report_dictionary() -> Dictionary:
+	return {
+		"kill_count": kill_count,
+		"death_count": death_count,
+		"bump_count": bump_count,
+		"crown_time_sec": crown_time_sec,
+		"regicide_count": regicide_count,
+		"jump_count": jump_count,
+		"water_time_sec": water_time_sec,
+		"water_jump_count": water_jump_count,
+		"ice_time_sec": ice_time_sec,
+		"spring_launch_count": spring_launch_count,
+		"direction_change_count": (
+			direction_change_count),
+		"snail_crush_count": snail_crush_count,
+		"cricket_disturb_count": (
+			cricket_disturb_count),
+		"fish_disturb_count": fish_disturb_count,
+		"butterfly_disturb_count": (
+			butterfly_disturb_count),
+		"fly_proximity_time_sec": (
+			fly_proximity_time_sec),
+		"poop_count": poop_count,
+		"average_height": average_height,
+	}
+
+
 ## Packs stats into an Array for RPC transmission.
 func to_packed_array() -> Array:
 	return [

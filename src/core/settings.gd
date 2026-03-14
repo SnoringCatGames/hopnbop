@@ -86,6 +86,11 @@ enum BumpMode {
 
 @export var does_up_also_trigger_jump := true
 
+const BASE_ICON_WIDTH := 11
+
+@export var icon_scale := 4
+@export var chevron_icon: Texture2D
+
 @export var show_hud := true
 @export var show_player_overhead_labels := true
 @export var show_player_outlines := true
@@ -336,3 +341,7 @@ func gore_get_active_sprite_radii() -> Array[float]:
 	if is_gore_enabled:
 		return gore_sprite_radii
 	return gore_flower_sprite_radii
+
+
+func get_icon_display_width() -> float:
+	return BASE_ICON_WIDTH * icon_scale

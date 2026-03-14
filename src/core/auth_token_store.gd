@@ -9,7 +9,7 @@ extends RefCounted
 ## OS.get_unique_id() as the encryption passphrase for
 ## basic obfuscation.
 
-const LEGAL_VERSION := "1.0"
+const LEGAL_VERSION := "1.1"
 
 const _SECTION := "auth"
 const _REFRESH_MARGIN_SEC := 3600
@@ -27,6 +27,7 @@ var rating := 1500
 var linked_providers: Array[String] = []
 var consent_accepted_at := 0
 var consent_legal_version := ""
+var profile_image_url := ""
 
 
 func _init() -> void:
@@ -100,6 +101,9 @@ func store_from_response(data: Dictionary) -> void:
 		consent_legal_version = data.get(
 			"consent_legal_version", ""
 		)
+	profile_image_url = data.get(
+		"profile_image_url", ""
+	)
 	linked_providers.clear()
 	var lp: Array = data.get("linked_providers", [])
 	for p in lp:
@@ -120,6 +124,7 @@ func clear_tokens() -> void:
 	linked_providers.clear()
 	consent_accepted_at = 0
 	consent_legal_version = ""
+	profile_image_url = ""
 	DirAccess.remove_absolute(
 		ProjectSettings.globalize_path(_auth_file_path)
 	)
@@ -153,6 +158,10 @@ func save_tokens() -> void:
 	config.set_value(
 		_SECTION, "consent_legal_version",
 		consent_legal_version,
+	)
+	config.set_value(
+		_SECTION, "profile_image_url",
+		profile_image_url,
 	)
 	config.save_encrypted_pass(
 		_auth_file_path, _get_passphrase()
@@ -202,6 +211,9 @@ func load_tokens() -> void:
 	)
 	consent_legal_version = config.get_value(
 		_SECTION, "consent_legal_version", ""
+	)
+	profile_image_url = config.get_value(
+		_SECTION, "profile_image_url", ""
 	)
 
 

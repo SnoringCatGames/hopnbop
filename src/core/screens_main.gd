@@ -80,6 +80,7 @@ func _should_play_transition(
 		[ScreenType.GAME, ScreenType.GAME_OVER],
 		[ScreenType.GAME, ScreenType.LOBBY],
 		[ScreenType.GAME_OVER, ScreenType.LOBBY],
+		[ScreenType.GAME_OVER, ScreenType.LOADING],
 		[ScreenType.UNKNOWN, ScreenType.LOBBY],
 		[ScreenType.UNKNOWN, ScreenType.GAME],
 		[ScreenType.SCG_SPLASH, ScreenType.CONSENT],

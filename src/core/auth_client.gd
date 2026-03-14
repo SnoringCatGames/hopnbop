@@ -212,6 +212,7 @@ func login_anonymous() -> void:
 		device_id += (
 			"_client%d"
 			% Netcode.preview_client_number)
+
 	var body := {
 		"device_id": device_id,
 		"consent_accepted_at": (
@@ -772,6 +773,10 @@ func _send_auth_request(
 			% G.auth_token_store.jwt_token
 		)
 
+	# Cancel any in-progress request (e.g. an
+	# auto-refresh that raced with a new login).
+	_http_request.cancel_request()
+
 	# Disconnect previous signal if any.
 	if _http_request.request_completed.is_connected(
 		_on_auth_response
@@ -885,20 +890,20 @@ func _on_auth_response(
 
 
 func _handle_auth_success(data: Dictionary) -> void:
-	# Check game version.
-	var server_version: String = data.get(
-		"game_version", ""
-	)
-	if not server_version.is_empty():
-		var client_version: String = (
+	# Check protocol version.
+	var server_protocol: int = data.get(
+		"protocol_version", -1)
+	if server_protocol > 0:
+		var client_protocol: int = (
 			ProjectSettings.get_setting(
-				"application/config/version",
-				"0.0.0",
-			)
-		)
-		if server_version != client_version:
+				"application/config/"
+				+ "protocol_version",
+				1,
+			))
+		if server_protocol != client_protocol:
 			version_mismatch.emit(
-				client_version, server_version
+				str(client_protocol),
+				str(server_protocol),
 			)
 
 	# Update linked providers from response.
@@ -927,6 +932,11 @@ func _handle_auth_success(data: Dictionary) -> void:
 
 	auth_status_changed.emit("Authenticated")
 	auth_completed.emit(true, "")
+
+	# Fetch and merge cloud settings after login.
+	if G.settings_cloud_sync != null:
+		G.settings_cloud_sync \
+			.fetch_and_merge_from_cloud()
 
 
 func _handle_unlink_success(data: Dictionary) -> void:

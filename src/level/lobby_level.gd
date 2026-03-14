@@ -31,9 +31,15 @@ var _next_lobby_id_counter := 0
 
 func _ready() -> void:
 	super._ready()
+	if not Engine.is_editor_hint():
+		%HideSettingsTiles.visible = (
+			G.local_settings.get_rounds_played()
+			== 0)
 
 
 func _physics_process(_delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
 	_check_keyboard_inputs()
 	_check_gamepad_inputs()
 
@@ -517,5 +523,7 @@ func _update_lobby_colors() -> void:
 	G.match_state.players_updated.emit()
 
 
-func _on_settings_cave_body_entered(body: Node2D) -> void:
-	pass # Replace with function body.
+func _on_settings_cave_body_entered(
+	_body: Node2D,
+) -> void:
+	%HideSettingsTiles.visible = false
