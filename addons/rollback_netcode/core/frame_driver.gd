@@ -48,6 +48,10 @@ extends Node
 
 # ---
 
+
+# claude --dangerously-skip-permissions --continue
+
+
 # Should backend/samconfig.toml remain gitignored?
 
 
