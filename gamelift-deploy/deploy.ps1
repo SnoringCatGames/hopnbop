@@ -29,7 +29,15 @@ if ($projectGodot -match 'config/version="([^"]+)"') {
     exit 1
 }
 
-# Warn if backend/template.yaml GAME_VERSION is out of sync.
+# Read protocol version from project.godot.
+if ($projectGodot -match 'config/protocol_version=(\d+)') {
+    $ProtocolVersion = $Matches[1]
+} else {
+    Write-Error "Could not read config/protocol_version from project.godot"
+    exit 1
+}
+
+# Warn if backend/template.yaml versions are out of sync.
 $templateYaml = Get-Content "backend/template.yaml" -Raw
 if ($templateYaml -match 'GAME_VERSION:\s*"([^"]+)"') {
     $backendVersion = $Matches[1]
@@ -38,6 +46,14 @@ if ($templateYaml -match 'GAME_VERSION:\s*"([^"]+)"') {
     }
 } else {
     Write-Warning "Could not read GAME_VERSION from backend/template.yaml"
+}
+if ($templateYaml -match 'PROTOCOL_VERSION:\s*"(\d+)"') {
+    $backendProtocol = $Matches[1]
+    if ($backendProtocol -ne $ProtocolVersion) {
+        Write-Warning "backend/template.yaml PROTOCOL_VERSION is `"$backendProtocol`" but project.godot is `"$ProtocolVersion`". Remember to update and redeploy the backend."
+    }
+} else {
+    Write-Warning "Could not read PROTOCOL_VERSION from backend/template.yaml"
 }
 $ImageTag = "$EcrUri/${Repository}:${Version}"
 

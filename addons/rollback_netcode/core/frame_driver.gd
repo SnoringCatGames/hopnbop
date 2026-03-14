@@ -48,6 +48,19 @@ extends Node
 
 # ---
 
+# - Rather than toggling the visibility/enablement of the settings book:
+#   - Shift all lobby parts rightward.
+#   - Create a cave in the bottom part of the spawn wall.
+#   - Put the settings book in the cave.
+#   - Hide the cave with occlusion tiles.
+#   - Reveal the cave after playing _1_ match.
+#   - Also revieal the cave after entering it once.
+#   - Always show the cave after it's been revealed the first time.
+#   - Persist this on the backend player state.
+
+# - Check what's next for Steam and Epic Games.
+#   - Get Alden and Ben added as testers.
+
 # - Test local mode.
 
 # - Should we add an option for explicitly changing the language?
@@ -202,6 +215,8 @@ extends Node
 # ---
 
 # - Review gamelift GDScript, backend, python, audit all AWS activity and used systems, website pages, etc.
+
+# - Add tooltips, with localized text, with translations in all supported languages, to each button in the app.
 
 # ---
 

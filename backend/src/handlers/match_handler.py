@@ -16,6 +16,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from services.auth_service import AuthToken
 from services.match_service import MatchService
 from services.player_service import PlayerService
+from services.leaderboard_service import (
+    LeaderboardService,
+    _current_iso_week,
+)
 from services import secrets_service
 
 logger = Logger()
@@ -25,6 +29,7 @@ metrics = Metrics()
 # Initialize services.
 match_service = MatchService()
 player_service = PlayerService()
+leaderboard_service = LeaderboardService()
 
 # CORS headers included in every response.
 _HEADERS = {
@@ -157,47 +162,137 @@ def submit_match_result(
 def get_leaderboard(
     event: Dict[str, Any], context: LambdaContext
 ) -> Dict:
-    """GET /leaderboard - Get top players by rating."""
-    try:
-        token_or_error = _validate_jwt(event)
-        if isinstance(token_or_error, dict):
-            return token_or_error
-        token = token_or_error
+    """GET /leaderboard - Get leaderboard entries.
 
-        # Parse limit from query string.
+    Query params:
+    - type: "alltime" (default) or "weekly"
+    - scope: "global" (default) or a level_id
+    - limit: page size (default 50)
+    - cursor: opaque cursor for next page
+    - player_id: return context page for this player
+
+    Authentication is optional. When a valid JWT is
+    provided, the response includes the requesting
+    player's rank and rating.
+    """
+    try:
+        # Auth is optional for the leaderboard.
+        token = None
+        token_or_error = _validate_jwt(event)
+        if not isinstance(token_or_error, dict):
+            token = token_or_error
+
         params = event.get("queryStringParameters") or {}
+
+        lb_type = params.get("type", "alltime")
+        if lb_type not in ("alltime", "weekly"):
+            lb_type = "alltime"
+
+        scope = params.get("scope", "global")
+
         try:
             limit = int(params.get("limit", 50))
         except (ValueError, TypeError):
             limit = 50
+        limit = min(limit, 100)
 
-        leaderboard = match_service.get_leaderboard(
-            limit=limit
-        )
+        cursor = params.get("cursor")
+        target_player_id = params.get("player_id")
 
-        # Get requesting player's rank.
-        player = asyncio.run(
-            player_service.get_player(token.player_id)
-        )
-        your_rank = 0
-        your_rating = 1500
-        if player:
-            your_rating = player.rating
-            your_rank = match_service.get_player_rank(
-                token.player_id, player.rating
+        # Build leaderboard_id.
+        if lb_type == "weekly":
+            week = _current_iso_week()
+            if scope == "global":
+                lb_id = f"weekly#{week}"
+            else:
+                lb_id = f"weekly#{scope}#{week}"
+        else:
+            if scope == "global":
+                lb_id = "alltime#global"
+            else:
+                lb_id = f"alltime#{scope}"
+
+        # If target_player_id requested, return context.
+        if target_player_id:
+            player = asyncio.run(
+                player_service.get_player(
+                    target_player_id
+                )
             )
+            if player:
+                context_data = (
+                    leaderboard_service.get_player_context(
+                        lb_id,
+                        target_player_id,
+                        player.rating,
+                    )
+                )
+                return {
+                    "statusCode": 200,
+                    "headers": _HEADERS,
+                    "body": json.dumps(
+                        {
+                            "status": "success",
+                            "leaderboard": (
+                                context_data["entries"]
+                            ),
+                            "player_rank": (
+                                context_data["rank"]
+                            ),
+                        }
+                    ),
+                }
+
+        # Try dedicated leaderboard table first.
+        entries, next_cursor = (
+            leaderboard_service.get_page(
+                lb_id, limit=limit, cursor=cursor
+            )
+        )
+
+        # Fallback to rating-index GSI for alltime
+        # global if the dedicated table is empty.
+        if (
+            not entries
+            and lb_id == "alltime#global"
+            and not cursor
+        ):
+            entries = match_service.get_leaderboard(
+                limit=limit
+            )
+            next_cursor = None
+
+        response_body = {
+            "status": "success",
+            "leaderboard": entries,
+        }
+        if next_cursor:
+            response_body["next_cursor"] = next_cursor
+
+        # Include personalized rank when authenticated.
+        if token is not None:
+            player = asyncio.run(
+                player_service.get_player(
+                    token.player_id
+                )
+            )
+            your_rank = 0
+            your_rating = 1500
+            if player:
+                your_rating = player.rating
+                your_rank = (
+                    match_service.get_player_rank(
+                        token.player_id,
+                        player.rating,
+                    )
+                )
+            response_body["your_rank"] = your_rank
+            response_body["your_rating"] = your_rating
 
         return {
             "statusCode": 200,
             "headers": _HEADERS,
-            "body": json.dumps(
-                {
-                    "status": "success",
-                    "your_rank": your_rank,
-                    "your_rating": your_rating,
-                    "leaderboard": leaderboard,
-                }
-            ),
+            "body": json.dumps(response_body),
         }
 
     except Exception:

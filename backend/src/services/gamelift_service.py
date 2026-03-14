@@ -17,6 +17,7 @@ class MatchmakingPlayer:
     region: str
     latency_map: Dict[str, int]
     platform: str = "native"
+    is_authenticated: int = 0
 
 
 @dataclass
@@ -64,6 +65,9 @@ class GameLiftService:
                     "region": {"S": p.region},
                     "is_web": {
                         "N": 1 if p.platform == "web" else 0,
+                    },
+                    "is_authenticated": {
+                        "N": p.is_authenticated,
                     },
                 },
                 "LatencyInMs": p.latency_map,

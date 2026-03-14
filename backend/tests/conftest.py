@@ -35,6 +35,21 @@ def _aws_env(monkeypatch):
     monkeypatch.setenv("GAME_VERSION", "0.1.0")
     monkeypatch.setenv("POWERTOOLS_TRACE_DISABLED", "1")
     monkeypatch.setenv("POWERTOOLS_METRICS_NAMESPACE", "test")
+    monkeypatch.setenv(
+        "SETTINGS_TABLE", "hopnbop-settings"
+    )
+    monkeypatch.setenv(
+        "LEADERBOARD_TABLE", "hopnbop-leaderboard"
+    )
+    monkeypatch.setenv(
+        "CONSENT_AUDIT_TABLE", "hopnbop-consent-audit"
+    )
+    monkeypatch.setenv(
+        "FRIENDS_TABLE", "hopnbop-friends"
+    )
+    monkeypatch.setenv(
+        "PARTIES_TABLE", "hopnbop-parties"
+    )
 
 
 @pytest.fixture
@@ -175,6 +190,36 @@ def _reinit_handler_services():
     except ImportError:
         pass
 
+    try:
+        from services import settings_service as ss_mod
+
+        importlib.reload(ss_mod)
+    except ImportError:
+        pass
+
+    try:
+        from services import leaderboard_service as ls_mod
+
+        importlib.reload(ls_mod)
+    except ImportError:
+        pass
+
+    try:
+        from handlers import player_handler
+
+        player_handler.player_service = (
+            ps_mod.PlayerService()
+        )
+        player_handler.match_service = ms_mod.MatchService()
+        try:
+            player_handler.settings_service = (
+                ss_mod.SettingsService()
+            )
+        except NameError:
+            pass
+    except (ImportError, AttributeError):
+        pass
+
 
 def _create_dynamodb_tables():
     """Create all DynamoDB tables used by the backend."""
@@ -200,6 +245,10 @@ def _create_dynamodb_tables():
                 "AttributeName": "rating",
                 "AttributeType": "N",
             },
+            {
+                "AttributeName": "friend_code",
+                "AttributeType": "S",
+            },
         ],
         GlobalSecondaryIndexes=[
             {
@@ -223,7 +272,19 @@ def _create_dynamodb_tables():
                         "losses",
                     ],
                 },
-            }
+            },
+            {
+                "IndexName": "friend-code-index",
+                "KeySchema": [
+                    {
+                        "AttributeName": "friend_code",
+                        "KeyType": "HASH",
+                    },
+                ],
+                "Projection": {
+                    "ProjectionType": "KEYS_ONLY",
+                },
+            },
         ],
         BillingMode="PAY_PER_REQUEST",
     )
@@ -262,6 +323,90 @@ def _create_dynamodb_tables():
             {
                 "AttributeName": "match_timestamp",
                 "AttributeType": "N",
+            },
+        ],
+        BillingMode="PAY_PER_REQUEST",
+    )
+
+    dynamodb.create_table(
+        TableName="hopnbop-settings",
+        KeySchema=[
+            {
+                "AttributeName": "player_id",
+                "KeyType": "HASH",
+            }
+        ],
+        AttributeDefinitions=[
+            {
+                "AttributeName": "player_id",
+                "AttributeType": "S",
+            }
+        ],
+        BillingMode="PAY_PER_REQUEST",
+    )
+
+    dynamodb.create_table(
+        TableName="hopnbop-friends",
+        KeySchema=[
+            {
+                "AttributeName": "player_id",
+                "KeyType": "HASH",
+            },
+            {
+                "AttributeName": "friend_id",
+                "KeyType": "RANGE",
+            },
+        ],
+        AttributeDefinitions=[
+            {
+                "AttributeName": "player_id",
+                "AttributeType": "S",
+            },
+            {
+                "AttributeName": "friend_id",
+                "AttributeType": "S",
+            },
+        ],
+        BillingMode="PAY_PER_REQUEST",
+    )
+
+    dynamodb.create_table(
+        TableName="hopnbop-parties",
+        KeySchema=[
+            {
+                "AttributeName": "party_id",
+                "KeyType": "HASH",
+            },
+        ],
+        AttributeDefinitions=[
+            {
+                "AttributeName": "party_id",
+                "AttributeType": "S",
+            },
+        ],
+        BillingMode="PAY_PER_REQUEST",
+    )
+
+    dynamodb.create_table(
+        TableName="hopnbop-leaderboard",
+        KeySchema=[
+            {
+                "AttributeName": "leaderboard_id",
+                "KeyType": "HASH",
+            },
+            {
+                "AttributeName": "score_player",
+                "KeyType": "RANGE",
+            },
+        ],
+        AttributeDefinitions=[
+            {
+                "AttributeName": "leaderboard_id",
+                "AttributeType": "S",
+            },
+            {
+                "AttributeName": "score_player",
+                "AttributeType": "S",
             },
         ],
         BillingMode="PAY_PER_REQUEST",

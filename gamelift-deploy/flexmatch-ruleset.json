@@ -6,12 +6,17 @@
             "name": "is_web",
             "type": "number",
             "default": 0
+        },
+        {
+            "name": "is_authenticated",
+            "type": "number",
+            "default": 0
         }
     ],
     "teams": [
         {
             "name": "players",
-            "minPlayers": 2,
+            "minPlayers": 4,
             "maxPlayers": 8,
             "quantity": 1
         }
@@ -23,24 +28,40 @@
             "type": "batchDistance",
             "batchAttribute": "is_web",
             "maxDistance": 0
+        },
+        {
+            "name": "SameAuthPreference",
+            "description": "Prefer matching authenticated players together.",
+            "type": "batchDistance",
+            "batchAttribute": "is_authenticated",
+            "maxDistance": 0
         }
     ],
     "expansions": [
-        {
-            "target": "teams[players].minPlayers",
-            "steps": [
-                {
-                    "waitTimeSeconds": 30,
-                    "value": 2
-                }
-            ]
-        },
         {
             "target": "rules[SamePlatformPreference].maxDistance",
             "steps": [
                 {
                     "waitTimeSeconds": 15,
                     "value": 1
+                }
+            ]
+        },
+        {
+            "target": "rules[SameAuthPreference].maxDistance",
+            "steps": [
+                {
+                    "waitTimeSeconds": 30,
+                    "value": 1
+                }
+            ]
+        },
+        {
+            "target": "teams[players].minPlayers",
+            "steps": [
+                {
+                    "waitTimeSeconds": 30,
+                    "value": 2
                 }
             ]
         }

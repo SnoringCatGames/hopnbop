@@ -40,6 +40,21 @@ var selected_level_id: StringName = ""
 ## screen.
 var latest_server_message := ""
 
+## Backend player ID mapping received from server
+## before match end. Maps game player_id (int) to
+## backend player_id (String).
+var backend_player_id_map: Dictionary = {}
+
+## Profile image URL mapping received from server.
+## Maps game player_id (int) to URL (String).
+var profile_image_urls: Dictionary = {}
+
+## Recent match participants for post-match friend
+## add. Each entry: {"player_id": int,
+## "display_name": String,
+## "backend_player_id": String}.
+var latest_match_participants: Array[Dictionary] = []
+
 
 func _init() -> void:
 	clear()
@@ -75,6 +90,9 @@ func clear_latest_state() -> void:
 	latest_local_player_ids.clear()
 	latest_local_player_attributes.clear()
 	latest_server_message = ""
+	backend_player_id_map.clear()
+	profile_image_urls.clear()
+	latest_match_participants.clear()
 
 
 ## Copy current state into latest_* properties.

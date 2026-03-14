@@ -25,10 +25,15 @@ from services.level_selection_service import (
     select_level_for_match,
 )
 from services import secrets_service
+from services.dns_service import DnsService
 
 logger = Logger()
 tracer = Tracer()
 metrics = Metrics()
+
+# WSS port where nginx terminates TLS and proxies to the
+# Godot WebSocket server on port 4433.
+_WSS_PORT = 4434
 
 # CORS headers included in every response.
 _HEADERS = {
@@ -46,6 +51,22 @@ gamelift = GameLiftService(
 )
 player_service = PlayerService()
 rate_limiter = RateLimiter()
+dns_service = DnsService()
+
+def _resolve_server_address(result):
+    """Resolve server address and port for the match result.
+
+    For WebSocket matches (web clients), creates a Route 53 DNS
+    record and returns the hostname + WSS port (4434). For ENet
+    matches (native clients), returns the raw IP + game port.
+    """
+    if result.transport_type == "websocket":
+        hostname = dns_service.create_game_session_record(
+            result.game_session_id, result.server_ip
+        )
+        return hostname, _WSS_PORT
+    return result.server_ip, result.server_port
+
 
 # In-memory store for session preferences keyed by ticket ID.
 # Lambda instances are short-lived so this only works when the
@@ -77,6 +98,7 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
                 player_id=jwt_token,
                 display_name=f"Player_{jwt_token[-4:]}",
                 provider="debug",
+                is_anonymous=False,
                 issued_at=None,
                 expires_at=None,
             )
@@ -126,6 +148,12 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             )
         )
 
+        # Determine authentication status for FlexMatch
+        # preference matching.
+        is_authenticated = (
+            0 if auth_token.provider in ("anonymous", "debug") else 1
+        )
+
         # Create matchmaking players (one per local player).
         players = [
             MatchmakingPlayer(
@@ -134,6 +162,7 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
                 region="us-west-2",
                 latency_map={"us-west-2": 50},
                 platform=platform,
+                is_authenticated=is_authenticated,
             )
             for i in range(player_count)
         ]
@@ -163,6 +192,10 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             selected_level_id = select_level_for_match([level_prefs])
             logger.info(f"Selected level: {selected_level_id}")
 
+            server_address, server_port = (
+                _resolve_server_address(result)
+            )
+
             return {
                 "statusCode": 200,
                 "headers": _HEADERS,
@@ -170,9 +203,10 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
                     {
                         "status": "success",
                         "server_version": os.environ.get("GAME_VERSION", "0.1.0"),
+                        "protocol_version": int(os.environ.get("PROTOCOL_VERSION", "1")),
                         "game_session_id": result.game_session_id,
-                        "server_ip": result.server_ip,
-                        "server_port": result.server_port,
+                        "server_ip": server_address,
+                        "server_port": server_port,
                         "player_session_ids": result.player_session_ids,
                         "selected_level_id": selected_level_id,
                         "transport_type": result.transport_type,
@@ -214,6 +248,7 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
                 player_id=jwt_token,
                 display_name=f"Player_{jwt_token[-4:]}",
                 provider="debug",
+                is_anonymous=False,
                 issued_at=None,
                 expires_at=None,
             )
@@ -246,6 +281,12 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             )
         )
 
+        # Determine authentication status for FlexMatch
+        # preference matching.
+        is_authenticated = (
+            0 if auth_token.provider in ("anonymous", "debug") else 1
+        )
+
         # Create matchmaking players.
         players = [
             MatchmakingPlayer(
@@ -254,6 +295,7 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
                 region="us-west-2",
                 latency_map={"us-west-2": 50},
                 platform=platform,
+                is_authenticated=is_authenticated,
             )
             for i in range(player_count)
         ]
@@ -342,6 +384,10 @@ def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dic
                 [session_prefs.level]
             )
 
+            server_address, server_port = (
+                _resolve_server_address(result)
+            )
+
             return {
                 "statusCode": 200,
                 "headers": _HEADERS,
@@ -352,9 +398,10 @@ def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dic
                         "server_version": os.environ.get(
                             "GAME_VERSION", "0.1.0"
                         ),
+                        "protocol_version": int(os.environ.get("PROTOCOL_VERSION", "1")),
                         "game_session_id": result.game_session_id,
-                        "server_ip": result.server_ip,
-                        "server_port": result.server_port,
+                        "server_ip": server_address,
+                        "server_port": server_port,
                         "player_session_ids": result.player_session_ids,
                         "selected_level_id": selected_level_id,
                         "transport_type": result.transport_type,

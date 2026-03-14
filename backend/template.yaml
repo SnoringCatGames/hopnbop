@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Hop 'n Bop GameLift Backend
+Description: Hop 'n Bop GameLift Backend v0.7.1
 
 Globals:
   Function:
@@ -9,12 +9,18 @@ Globals:
     MemorySize: 512
     Environment:
       Variables:
-        GAME_VERSION: "0.7.0"
+        GAME_VERSION: "0.7.2"
+        PROTOCOL_VERSION: "1"
         PLAYERS_TABLE: !Ref PlayersTable
         MATCH_HISTORY_TABLE: !Ref MatchHistoryTable
         PROVIDER_MAPPINGS_TABLE: !Ref ProviderMappingsTable
         MATCHMAKING_CONFIG: !Ref MatchmakingConfigName
         CONSENT_AUDIT_TABLE: !Ref ConsentAuditTable
+        SETTINGS_TABLE: !Ref SettingsTable
+        LEADERBOARD_TABLE: !Ref LeaderboardTable
+        FRIENDS_TABLE: !Ref FriendsTable
+        PARTIES_TABLE: !Ref PartiesTable
+        HOSTED_ZONE_ID: !Ref GameHostedZoneId
         POWERTOOLS_METRICS_NAMESPACE: HopNBop
 
 Parameters:
@@ -33,6 +39,11 @@ Parameters:
     Description: Email address for CloudWatch alarm notifications
     Default: ''
 
+  GameHostedZoneId:
+    Type: String
+    Description: Route 53 hosted zone ID for hopnbop.net (used for game session DNS records)
+    Default: 'Z05562172A1JF6AX39U2N'
+
 Conditions:
   HasAlertEmail: !Not [!Equals [!Ref AlertEmail, '']]
 
@@ -43,7 +54,7 @@ Resources:
     Properties:
       StageName: prod
       Cors:
-        AllowMethods: "'GET,POST,DELETE,OPTIONS'"
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,Authorization'"
         AllowOrigin: "'*'"
       Auth:
@@ -176,6 +187,12 @@ Resources:
             TableName: !Ref MatchHistoryTable
         - DynamoDBCrudPolicy:
             TableName: !Ref ConsentAuditTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SettingsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LeaderboardTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FriendsTable
         - !Ref SecretsManagerPolicy
       Events:
         DeleteAccount:
@@ -197,6 +214,10 @@ Resources:
             TableName: !Ref MatchHistoryTable
         - DynamoDBCrudPolicy:
             TableName: !Ref ProviderMappingsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SettingsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FriendsTable
         - !Ref SecretsManagerPolicy
       Events:
         ExportData:
@@ -220,6 +241,11 @@ Resources:
                 - gamelift:DescribeMatchmaking
                 - gamelift:StopMatchmaking
               Resource: '*'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - route53:ChangeResourceRecordSets
+              Resource: !Sub "arn:aws:route53:::hostedzone/${GameHostedZoneId}"
         - DynamoDBCrudPolicy:
             TableName: !Ref PlayersTable
         - !Ref SecretsManagerPolicy
@@ -264,6 +290,11 @@ Resources:
               Action:
                 - gamelift:DescribeMatchmaking
               Resource: '*'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - route53:ChangeResourceRecordSets
+              Resource: !Sub "arn:aws:route53:::hostedzone/${GameHostedZoneId}"
         - !Ref SecretsManagerPolicy
       Events:
         GetStatus:
@@ -284,6 +315,8 @@ Resources:
             TableName: !Ref PlayersTable
         - DynamoDBCrudPolicy:
             TableName: !Ref MatchHistoryTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LeaderboardTable
         - !Ref SecretsManagerPolicy
       Events:
         SubmitResult:
@@ -301,6 +334,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PlayersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LeaderboardTable
         - !Ref SecretsManagerPolicy
       Events:
         GetLeaderboard:
@@ -329,6 +364,112 @@ Resources:
             Path: /players/{player_id}/stats
             Method: get
 
+  # Player Profile & Settings Functions
+  GetPlayerProfileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.player_handler.get_player_profile
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref MatchHistoryTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        GetProfile:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /player/profile
+            Method: get
+
+  GetPlayerSettingsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.player_handler.get_player_settings
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SettingsTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        GetSettings:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /player/settings
+            Method: get
+
+  SavePlayerSettingsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.player_handler.save_player_settings
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SettingsTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        SaveSettings:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /player/settings
+            Method: put
+
+  GetMatchHistoryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.player_handler.get_match_history
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref MatchHistoryTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        GetHistory:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /player/history
+            Method: get
+
+  # Leaderboard Maintenance Functions
+  WeeklyLeaderboardResetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.leaderboard_handler.reset_weekly_leaderboard
+      Timeout: 300
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LeaderboardTable
+      Events:
+        WeeklyReset:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 0 ? * MON *)
+            Description: Reset weekly leaderboards every Monday at 00:00 UTC
+
+  # Version Check
+  GetVersionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.version_handler.get_version
+      MemorySize: 128
+      Timeout: 5
+      Events:
+        GetVersion:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /version
+            Method: get
+
   # Telemetry Functions
   CrashReportFunction:
     Type: AWS::Serverless::Function
@@ -343,6 +484,192 @@ Resources:
           Properties:
             RestApiId: !Ref GameBackendAPI
             Path: /telemetry/crash
+            Method: post
+
+  # Friends Functions
+  ListFriendsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.friends_handler.list_friends
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FriendsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        ListFriends:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /friends
+            Method: get
+
+  AddFriendFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.friends_handler.add_friend
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FriendsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        AddFriend:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /friends/add
+            Method: post
+
+  RemoveFriendFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.friends_handler.remove_friend
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FriendsTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        RemoveFriend:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /friends/remove
+            Method: post
+
+  SearchFriendCodeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.friends_handler.search_by_code
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        SearchFriendCode:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /friends/search
+            Method: get
+
+  # Party Functions
+  CreatePartyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.party_handler.create_party
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PartiesTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        CreateParty:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /party/create
+            Method: post
+
+  InviteToPartyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.party_handler.invite_to_party
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PartiesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FriendsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        InviteToParty:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /party/invite
+            Method: post
+
+  JoinPartyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.party_handler.join_party
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PartiesTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        JoinParty:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /party/join
+            Method: post
+
+  LeavePartyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.party_handler.leave_party
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PartiesTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        LeaveParty:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /party/leave
+            Method: post
+
+  GetPartyStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.party_handler.get_party_status
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PartiesTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        GetPartyStatus:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /party/status
+            Method: get
+
+  StartPartyMatchmakingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.party_handler.start_party_matchmaking
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PartiesTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - gamelift:StartMatchmaking
+                - gamelift:DescribeMatchmaking
+              Resource: '*'
+        - !Ref SecretsManagerPolicy
+      Events:
+        StartPartyMatchmaking:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /party/start
             Method: post
 
   # Monitoring and Alerting
@@ -522,6 +849,8 @@ Resources:
           AttributeType: S
         - AttributeName: rating
           AttributeType: N
+        - AttributeName: friend_code
+          AttributeType: S
       KeySchema:
         - AttributeName: player_id
           KeyType: HASH
@@ -539,6 +868,12 @@ Resources:
               - matches_played
               - wins
               - losses
+        - IndexName: friend-code-index
+          KeySchema:
+            - AttributeName: friend_code
+              KeyType: HASH
+          Projection:
+            ProjectionType: KEYS_ONLY
 
   ProviderMappingsTable:
     Type: AWS::DynamoDB::Table
@@ -578,6 +913,65 @@ Resources:
           AttributeType: S
       KeySchema:
         - AttributeName: player_id
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: true
+
+  SettingsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: hopnbop-settings
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: player_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: player_id
+          KeyType: HASH
+
+  LeaderboardTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: hopnbop-leaderboard
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: leaderboard_id
+          AttributeType: S
+        - AttributeName: score_player
+          AttributeType: S
+      KeySchema:
+        - AttributeName: leaderboard_id
+          KeyType: HASH
+        - AttributeName: score_player
+          KeyType: RANGE
+
+  FriendsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: hopnbop-friends
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: player_id
+          AttributeType: S
+        - AttributeName: friend_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: player_id
+          KeyType: HASH
+        - AttributeName: friend_id
+          KeyType: RANGE
+
+  PartiesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: hopnbop-parties
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: party_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: party_id
           KeyType: HASH
       TimeToLiveSpecification:
         AttributeName: expires_at

@@ -316,6 +316,8 @@ func _client_send_player_declaration() -> void:
 	var player_attributes: Array = session_data.get("attributes", [])
 	var backend_player_id: String = session_data.get(
 		"backend_player_id", "")
+	var profile_image_url: String = session_data.get(
+		"profile_image_url", "")
 
 	Netcode.log.check(
 		player_count == session_ids.size(),
@@ -329,18 +331,20 @@ func _client_send_player_declaration() -> void:
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
 
-	var client_version: String = ProjectSettings.get_setting(
-		"application/config/version",
-		"unknown"
-	)
+	var client_protocol_version: String = str(
+		ProjectSettings.get_setting(
+			"application/config/protocol_version",
+			1,
+		))
 
 	# Call RPC to declare players.
 	_server_rpc_declare_players.rpc_id(
 		SERVER_ID,
 		session_ids,
 		player_attributes,
-		client_version,
+		client_protocol_version,
 		backend_player_id,
+		profile_image_url,
 	)
 
 
@@ -429,32 +433,39 @@ func _server_rpc_declare_players(
 	player_attributes: Array,
 	client_version: String,
 	backend_player_id: String = "",
+	profile_image_url: String = "",
 ) -> void:
 	Netcode.check_is_server()
 
 	var peer_id := multiplayer.get_remote_sender_id()
 
-	# Validate client version.
-	var server_version: String = ProjectSettings.get_setting(
-		"application/config/version",
-		"unknown"
-	)
+	# Validate protocol version.
+	var server_protocol_version: String = str(
+		ProjectSettings.get_setting(
+			"application/config/protocol_version",
+			1,
+		))
 
-	if not SemanticVersion.compare(client_version, server_version):
+	if client_version != server_protocol_version:
 		Netcode.log.warning(
-			"Version mismatch from peer %d: Client v%s, Server v%s - disconnecting" % [
+			("Protocol mismatch from peer %d:"
+			+ " client=%s, server=%s"
+			+ " - disconnecting")
+			% [
 				peer_id,
 				client_version,
-				server_version,
+				server_protocol_version,
 			],
-			NetworkLogger.CATEGORY_CONNECTIONS
+			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
-		multiplayer.multiplayer_peer.disconnect_peer(peer_id)
+		multiplayer.multiplayer_peer.disconnect_peer(
+			peer_id)
 		return
 
 	Netcode.log.print(
-		"Peer %d version validated: v%s" % [peer_id, client_version],
-		NetworkLogger.CATEGORY_CONNECTIONS
+		"Peer %d protocol validated: v%s"
+		% [peer_id, client_version],
+		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 
 	var player_count := session_ids.size()
@@ -494,6 +505,7 @@ func _server_rpc_declare_players(
 			assigned_ids,
 			session_ids,
 			backend_player_id,
+			profile_image_url,
 		)
 
 	# Send assigned IDs back to client.

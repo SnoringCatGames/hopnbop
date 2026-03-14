@@ -24,6 +24,7 @@ class AuthResult:
     provider: str
     provider_id: str
     display_name: str
+    profile_image_url: str = ""
 
 
 @dataclass
@@ -159,14 +160,17 @@ class AuthService:
             raise ValueError("Invalid Steam response")
 
         steam_id = params["steamid"]
-        display_name = await self._get_steam_username(
+        steam_info = await self._get_steam_player_information(
             api_key, steam_id
         )
 
         return AuthResult(
             provider="steam",
             provider_id=steam_id,
-            display_name=display_name,
+            display_name=steam_info["display_name"],
+            profile_image_url=steam_info.get(
+                "profile_image_url", ""
+            ),
         )
 
     async def _auth_epic(
@@ -246,11 +250,13 @@ class AuthService:
                 "email", f"Player_{google_id[:8]}"
             ),
         )
+        profile_image_url = payload.get("picture", "")
 
         return AuthResult(
             provider="google",
             provider_id=google_id,
             display_name=display_name,
+            profile_image_url=profile_image_url,
         )
 
     async def _auth_facebook(
@@ -274,6 +280,12 @@ class AuthService:
             )
 
         if response.status_code != 200:
+            logger.error(
+                "Facebook token exchange failed:"
+                " status=%d body=%s",
+                response.status_code,
+                response.text,
+            )
             raise ValueError(
                 "Facebook token exchange failed"
             )
@@ -286,11 +298,17 @@ class AuthService:
                 "https://graph.facebook.com/v19.0/me",
                 params={
                     "access_token": access_token,
-                    "fields": "id,name",
+                    "fields": "id,name,picture.type(large)",
                 },
             )
 
         if response.status_code != 200:
+            logger.error(
+                "Facebook user info fetch failed:"
+                " status=%d body=%s",
+                response.status_code,
+                response.text,
+            )
             raise ValueError(
                 "Facebook user info fetch failed"
             )
@@ -300,11 +318,17 @@ class AuthService:
         display_name = user.get(
             "name", f"Player_{fb_id[:8]}"
         )
+        profile_image_url = (
+            user.get("picture", {})
+            .get("data", {})
+            .get("url", "")
+        )
 
         return AuthResult(
             provider="facebook",
             provider_id=fb_id,
             display_name=display_name,
+            profile_image_url=profile_image_url,
         )
 
     async def _auth_apple(
@@ -394,10 +418,10 @@ class AuthService:
 
     # --- Helpers ---
 
-    async def _get_steam_username(
+    async def _get_steam_player_information(
         self, api_key: str, steam_id: str
-    ) -> str:
-        """Fetch Steam username via ISteamUser API."""
+    ) -> dict:
+        """Fetch Steam display name and avatar via ISteamUser API."""
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 "https://api.steampowered.com"
@@ -413,8 +437,18 @@ class AuthService:
             data.get("response", {}).get("players", [])
         )
         if players:
-            return players[0].get(
-                "personaname", f"Player_{steam_id[:8]}"
-            )
+            player = players[0]
+            return {
+                "display_name": player.get(
+                    "personaname",
+                    f"Player_{steam_id[:8]}",
+                ),
+                "profile_image_url": player.get(
+                    "avatarfull", ""
+                ),
+            }
 
-        return f"Player_{steam_id[:8]}"
+        return {
+            "display_name": f"Player_{steam_id[:8]}",
+            "profile_image_url": "",
+        }

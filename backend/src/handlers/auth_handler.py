@@ -18,6 +18,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from services.auth_service import AuthService, AuthToken
 from services.player_service import PlayerService
 from services.provider_mapping_service import ProviderMappingService
+from services.settings_service import SettingsService
+from services.leaderboard_service import LeaderboardService
+from services.friends_service import FriendsService
 
 logger = Logger()
 tracer = Tracer()
@@ -27,8 +30,12 @@ metrics = Metrics()
 auth_service = AuthService(token_lifetime_hours=24)
 player_service = PlayerService()
 provider_mapping_service = ProviderMappingService()
+settings_service = SettingsService()
+leaderboard_service = LeaderboardService()
+friends_service = FriendsService()
 
 _GAME_VERSION = os.environ.get("GAME_VERSION", "0.1.0")
+_PROTOCOL_VERSION = int(os.environ.get("PROTOCOL_VERSION", "1"))
 
 # CORS headers included in every response.
 _HEADERS = {
@@ -100,6 +107,9 @@ def login(
                 {auth_result.provider: auth_result.provider_id},
                 consent_accepted_at=consent_accepted_at,
                 consent_legal_version=consent_legal_version,
+                profile_image_url=(
+                    auth_result.profile_image_url
+                ),
             )
         )
 
@@ -145,6 +155,7 @@ def login(
                     "is_anonymous": False,
                     "rating": player_profile.rating,
                     "game_version": _GAME_VERSION,
+                    "protocol_version": _PROTOCOL_VERSION,
                     "expires_at": int(
                         auth_token.expires_at.timestamp()
                     ),
@@ -156,6 +167,9 @@ def login(
                     ),
                     "consent_legal_version": (
                         player_profile.consent_legal_version
+                    ),
+                    "profile_image_url": (
+                        player_profile.profile_image_url
                     ),
                 }
             ),
@@ -275,6 +289,7 @@ def anonymous_login(
                     "is_anonymous": True,
                     "rating": player_profile.rating,
                     "game_version": _GAME_VERSION,
+                    "protocol_version": _PROTOCOL_VERSION,
                     "expires_at": int(
                         auth_token.expires_at.timestamp()
                     ),
@@ -287,6 +302,7 @@ def anonymous_login(
                     "consent_legal_version": (
                         player_profile.consent_legal_version
                     ),
+                    "profile_image_url": "",
                 }
             ),
         }
@@ -383,6 +399,7 @@ def refresh(
                     "is_anonymous": profile.is_anonymous,
                     "rating": profile.rating,
                     "game_version": _GAME_VERSION,
+                    "protocol_version": _PROTOCOL_VERSION,
                     "expires_at": int(
                         auth_token.expires_at.timestamp()
                     ),
@@ -394,6 +411,9 @@ def refresh(
                     ),
                     "consent_legal_version": (
                         profile.consent_legal_version
+                    ),
+                    "profile_image_url": (
+                        profile.profile_image_url
                     ),
                 }
             ),
@@ -716,6 +736,17 @@ def delete_account(
 
         # Delete match history.
         _delete_match_history(player_id)
+
+        # Delete cloud settings.
+        settings_service.delete_settings(player_id)
+
+        # Delete leaderboard entries.
+        leaderboard_service.remove_player(player_id)
+
+        # Delete all friend relationships.
+        asyncio.run(
+            friends_service.delete_all_friends(player_id)
+        )
 
         # Delete player profile.
         asyncio.run(player_service.delete_player(player_id))
