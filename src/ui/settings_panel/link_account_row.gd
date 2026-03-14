@@ -13,6 +13,7 @@ var _provider_name: String
 var _is_linked := false
 var _is_busy := false
 var _icon_texture: Texture2D
+var _icon_scale := -1
 var _panel: SidePanel
 
 @onready var _icon: TextureRect = %Icon
@@ -22,8 +23,12 @@ var _panel: SidePanel
 
 ## Set an icon to display before the label. Call
 ## before add_child().
-func set_icon(tex: Texture2D) -> void:
+func set_icon(
+	tex: Texture2D,
+	scale: int = -1,
+) -> void:
 	_icon_texture = tex
+	_icon_scale = scale
 
 
 func setup(
@@ -43,8 +48,15 @@ func _ready() -> void:
 	_label.text = _provider_name
 	if _icon_texture != null:
 		_icon.texture = _icon_texture
-		_icon.custom_minimum_size = (
-			_icon_texture.get_size())
+		if _icon_scale > 0:
+			var width := (
+				G.settings.get_icon_display_width())
+			_icon.custom_minimum_size = (
+				Vector2(width, width))
+		else:
+			_icon.custom_minimum_size = (
+				_icon_texture.get_size()
+				* G.settings.icon_scale)
 		_icon.show()
 	else:
 		_icon.hide()

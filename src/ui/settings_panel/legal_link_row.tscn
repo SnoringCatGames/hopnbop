@@ -1,21 +1,33 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/ui/settings_panel/legal_link_row.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://bol2t5fsvy1a6" path="res://assets/images/gui/right_chevron_icon.png" id="2_chevron"]
 
 [node name="LegalLinkRow" type="PanelContainer"]
 script = ExtResource("1_script")
+_chevron_icon = ExtResource("2_chevron")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 12
 
+[node name="Icon" type="TextureRect" parent="HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+visible = false
+
 [node name="Label" type="Label" parent="HBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="ArrowLabel" type="Label" parent="HBoxContainer"]
+[node name="Arrow" type="TextureRect" parent="HBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
-horizontal_alignment = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5

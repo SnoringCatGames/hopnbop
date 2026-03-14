@@ -10,7 +10,12 @@ var _player: Player
 var _device_config: DeviceConfig
 var _rows: Array[SettingsRow] = []
 var _focused_index := 0
-var is_input_active := true
+var is_input_active := true:
+	set(value):
+		var was_inactive := not is_input_active
+		is_input_active = value
+		if value and was_inactive:
+			prime_input_state()
 
 @onready var _scroll_container: ScrollContainer = (
 	%ScrollContainer)

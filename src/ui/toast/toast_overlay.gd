@@ -16,6 +16,7 @@ enum Type {
 }
 
 @export var _toast_style: StyleBoxFlat
+@export var _error_icon: Texture2D
 
 const _COLORS := {
 	Type.INFO: Color.WHITE,
@@ -48,13 +49,43 @@ func show_toast(
 		"panel", _toast_style,
 	)
 
-	var label := Label.new()
-	label.text = message
-	label.modulate = _COLORS.get(type, Color.WHITE)
-	label.horizontal_alignment = (
-		HORIZONTAL_ALIGNMENT_CENTER
-	)
-	panel.add_child(label)
+	var color: Color = _COLORS.get(
+		type, Color.WHITE)
+
+	if type == Type.ERROR and _error_icon != null:
+		var hbox := HBoxContainer.new()
+		hbox.mouse_filter = (
+			Control.MOUSE_FILTER_IGNORE)
+		hbox.alignment = (
+			BoxContainer.ALIGNMENT_CENTER)
+		hbox.add_theme_constant_override(
+			"separation", 6)
+		var icon := TextureRect.new()
+		icon.texture = _error_icon
+		icon.custom_minimum_size = (
+			_error_icon.get_size()
+			* G.settings.icon_scale)
+		icon.expand_mode = (
+			TextureRect.EXPAND_IGNORE_SIZE)
+		icon.stretch_mode = (
+			TextureRect
+				.STRETCH_KEEP_ASPECT_CENTERED)
+		icon.mouse_filter = (
+			Control.MOUSE_FILTER_IGNORE)
+		icon.modulate = color
+		hbox.add_child(icon)
+		var label := Label.new()
+		label.text = message
+		label.modulate = color
+		hbox.add_child(label)
+		panel.add_child(hbox)
+	else:
+		var label := Label.new()
+		label.text = message
+		label.modulate = color
+		label.horizontal_alignment = (
+			HORIZONTAL_ALIGNMENT_CENTER)
+		panel.add_child(label)
 
 	%ToastContainer.add_child(panel)
 

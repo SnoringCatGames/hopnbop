@@ -95,6 +95,11 @@ func close_all() -> void:
 			break
 	G.local_settings.save_settings()
 
+	# Sync settings to cloud when authenticated.
+	if (G.settings_cloud_sync != null
+			and G.auth_token_store.is_token_valid()):
+		G.settings_cloud_sync.save_to_cloud()
+
 	if is_instance_valid(G.audio):
 		G.audio.play_sound("focus")
 

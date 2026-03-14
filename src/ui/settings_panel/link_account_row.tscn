@@ -16,7 +16,8 @@ theme_override_constants/separation = 12
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
-stretch_mode = 3
+expand_mode = 1
+stretch_mode = 5
 visible = false
 
 [node name="Label" type="Label" parent="HBoxContainer"]
