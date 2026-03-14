@@ -6,8 +6,8 @@ extends Screen
 ## and its balancing spacer on the opposite side.
 const _FRIEND_BUTTON_WIDTH := 48
 
-const _ADD_FRIEND_ICON := preload(
-	"res://assets/images/gui/add_friend_icon.png")
+@export var _add_friend_icon: Texture2D
+@export var _leaderboard_panel_scene: PackedScene
 
 ## Set of backend player IDs that have been
 ## friend-added this session (to avoid duplicates).
@@ -198,7 +198,7 @@ func _add_result_row(
 			and not G.auth_token_store.is_anonymous)
 		if show_button:
 			var add_button := Button.new()
-			add_button.icon = _ADD_FRIEND_ICON
+			add_button.icon = _add_friend_icon
 			add_button.custom_minimum_size.x = (
 				_FRIEND_BUTTON_WIDTH)
 			add_button.pressed.connect(
@@ -291,8 +291,6 @@ func _on_return_to_lobby_pressed() -> void:
 
 func _on_leaderboard_pressed() -> void:
 	G.audio.play_sound("click")
-	var panel: LeaderboardPanel = preload(
-		"res://src/ui/leaderboard_panel/"
-		+ "leaderboard_panel.tscn"
-	).instantiate()
+	var panel: LeaderboardPanel = (
+		_leaderboard_panel_scene.instantiate())
 	get_tree().root.add_child(panel)

@@ -34,8 +34,7 @@ var _request_pool: Array[HTTPRequest] = []
 
 
 func _ready() -> void:
-	_anonymous_texture = preload(
-		"res://assets/images/gui/anonymous.png")
+	_anonymous_texture = G.settings.anonymous_texture
 	for i in range(_MAX_CONCURRENT_DOWNLOADS):
 		var request := HTTPRequest.new()
 		request.name = (

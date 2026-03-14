@@ -25,9 +25,8 @@ func _ready() -> void:
 	custom_minimum_size = Vector2(
 		image_size, image_size)
 	var shader_material := ShaderMaterial.new()
-	shader_material.shader = preload(
-		"res://src/ui/profile_image/"
-		+ "circle_mask.gdshader")
+	shader_material.shader = (
+		G.settings.circle_mask_shader)
 	material = shader_material
 	_current_texture = (
 		G.profile_image_cache

@@ -5,14 +5,14 @@ extends Node2D
 ## opposite edge during wrap-around transitions.
 
 
-const _ANIMATOR_SCENE := preload(
-	"res://src/player/bunny_animator.tscn")
-
 enum OffsetAxis {
 	HORIZONTAL,
 	VERTICAL,
 	DIAGONAL,
 }
+
+## Set by the creator before calling setup().
+var animator_scene: PackedScene
 
 var offset_axis: OffsetAxis
 var _source: Bunny
@@ -36,7 +36,7 @@ func setup(
 	physics_interpolation_mode = (
 		PHYSICS_INTERPOLATION_MODE_OFF)
 
-	_animator = _ANIMATOR_SCENE.instantiate()
+	_animator = animator_scene.instantiate()
 	# Match the animator's local offset from the
 	# player root node.
 	_animator.position = source.animator.position

@@ -55,10 +55,6 @@ extends Level
 		elif is_inside_tree():
 			_setup_wrap_bounds_overlay()
 
-const _FISH_SCENE_PATH := (
-	"res://src/objects/fish/fish.tscn")
-const _BUTTERFLY_SCENE_PATH := (
-	"res://src/objects/butterfly/butterfly.tscn")
 const _BLOOD_TWEEN_DURATION := 0.3
 
 # Dictionary<int, Array[int]>
@@ -149,10 +145,9 @@ func _ready() -> void:
 		add_child(_client_stat_reporter)
 
 		for i in cricket_count:
-			var cricket := preload(
-				"res://src/objects/cricket/"
-				+ "cricket.tscn"
-			).instantiate()
+			var cricket := (
+				G.settings.cricket_scene
+					.instantiate())
 			cricket.name = "Cricket_%d" % i
 			%Objects.add_child(cricket)
 			_crickets.append(cricket)
@@ -436,9 +431,9 @@ func _get_configuration_warnings() -> PackedStringArray:
 
 func _create_snail_nodes() -> void:
 	for i in snail_count:
-		var snail: Snail = preload(
-			SnailSpawner.SNAIL_SCENE_PATH
-		).instantiate()
+		var snail: Snail = (
+			G.settings.snail_scene
+				.instantiate())
 		snail.name = "Snail_%d" % i
 		snail.setup(
 			collision_tiles,
@@ -559,13 +554,11 @@ func _spawn_fish() -> void:
 	if water_cells.is_empty():
 		return
 
-	var fish_scene: PackedScene = preload(
-		_FISH_SCENE_PATH)
 	for i in fish_count:
 		var cell: Vector2i = (
 			water_cells.pick_random())
 		var fish: Fish = (
-			fish_scene.instantiate())
+			G.settings.fish_scene.instantiate())
 		fish.name = "Fish_%d" % i
 		fish.setup(collision_tiles)
 		add_child(fish)
@@ -586,8 +579,6 @@ func _spawn_butterflies() -> void:
 	if interior_cells.is_empty():
 		return
 
-	var butterfly_scene: PackedScene = preload(
-		_BUTTERFLY_SCENE_PATH)
 	var used_positions: Array[Vector2] = []
 	for i in butterfly_count:
 		# Pick spawn cell far from existing
@@ -616,7 +607,8 @@ func _spawn_butterflies() -> void:
 				best_min_dist_sq = min_dist_sq
 				best_cell = candidate
 		var butterfly: Butterfly = (
-			butterfly_scene.instantiate())
+			G.settings.butterfly_scene
+				.instantiate())
 		butterfly.name = "Butterfly_%d" % i
 		butterfly.setup(
 			collision_tiles, interior_cells)

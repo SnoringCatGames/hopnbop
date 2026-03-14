@@ -48,80 +48,51 @@ extends Node
 
 # ---
 
-# - Rather than toggling the visibility/enablement of the settings book:
-#   - Shift all lobby parts rightward.
-#   - Create a cave in the bottom part of the spawn wall.
-#   - Put the settings book in the cave.
-#   - Hide the cave with occlusion tiles.
-#   - Reveal the cave after playing _1_ match.
-#   - Also revieal the cave after entering it once.
-#   - Always show the cave after it's been revealed the first time.
-#   - Persist this on the backend player state.
+# claude --dangerously-skip-permissions --continue
+
+
+# - I just renamed the repo to hopnbop_private.
+#   - Rename locally.
+#   - Then create the empty public shell for the public version of hopnbop.
+
+# - Fix FB OAuth.
 
 # - Check what's next for Steam and Epic Games.
 #   - Get Alden and Ben added as testers.
 
 # - Test local mode.
 
-# - Should we add an option for explicitly changing the language?
-#   - In the consent screen?
-#   - In the settings menu?
+# - Add additional delay or whatever it takes to ensure the snore sound plays on the SCG screen.
 
-# - Make more icons
-#   - Alert
-#   - Language
-#   - Delete data
-#   - Export data
-#   - Info
-#   - Credits
-#   - i18n globe
-#   - Discord
-#   - ...
+# - Check that we trigger sfx on all button clicks.
 
-# I want to update the side-panel to be reusable for different content.
-# - I want to use this as a submenu for listing all of the available i18n options.
-#   - This would then be shown when triggering the language row in the main settings menu.
-# - I also want to create a new info side-panel.
-#   - Move export-data, delete-data, terms, privacy, data-deletion rows into this info panel.
-# - All versions of the menu should have the x button at the top.
-# - Ensure that things that close the settings panel currently also close all versions of this newly reusable menu.
-# - When opening one version of this panel from another, we should keep track of the stack of panels.
-#   - Then, we re-open the previous panel when closing a nested panel.
-#   - OR, maybe we should instead just leave the previous panel open, and render the new nested panel on top of it.
-# - Let's also add a slide-in (from the right) tween for displaying panels.
-#   - And a slide-out animation.
-#   - Slide-out should last 0.1 seconds. Slide-in can last 0.2 seconds.
-# - Also create a credits panel.
-#   - This will be a separate whole-page panel, rather than a side panel.
-#   - Open this from another row in the info panel.
-#   - Have this be an overlay over the whole screen, with a semi-transparent black background.
-#     - The text content should be centered.
-#     - Clicking left/right/trigger_ui (with any device config) should close the panel.
-#     - Auto-close the settings menu when this is opened.
+# - Polish
+#   - credits screen
+#   - game over screen
+#   - friends panel
+#   - leaderboard screen
+#   - all other side-panel UI
+#   - Consent screen
+#   - Auth screen
+#   - Toast
+#     - Background opacity
+#     - Alert icon
+#   - Loading screen.
+# - Look for:
+#   - Icons
+#   - L/R interactions
+#   - Spacing
+#   - Should we add images anywhere?
 
-# - Set up FB OAuth.
+# - Test offline mode.
 
-# - Create a credits screen.
-#   - Levi - Game Development
-#   - Alden - Audio Design
-#   - Jackie - Expert Consultation
-#   - Playtesters:
-#     - Caitlin
-#     - Jackie
-#     - Amira
+# - Test with a controller.
 
+# - Should we include copies of legal docs in-game?
+#   - Is it sufficent to have them online only?
+#   - What if the user doesn't have an internet connection?
 
-# - I want to add internationalization.
-#   - Research how to implement this in Godot.
-#   - Then, make a specific plan for how best to implement it in my codebase.
-#   - Then, survey all text shown in this game, and replace these with hooks into our new i18n system.
-#   - I think we should give careful consideration to our name and adjective lists in C:\Users\lsl\Repositories\hopnbop\src\core\dynamic_adjective_config.gd.
-#     - These lists are tailored to English idioms.
-#     - Rather than providing literal translations for these, we should generate lists of meaningful idioms for the target language.
-#     - It's ok for the resulting list in the target language to be smaller than the English version.
-#   - I then want to provide translations of this game for the top 12 most common languages.
-#     - Also, I want to include Thai.
-#   - Tell me, do we also need to include translations of legal documents (terms, privacy, data-deletion)?
+# I believe AWS has a $100 free for new accounts deal. I believe they also mentioned an additional $100 if you meet some requirements. What are those requirements and what would we need to do? Check what I've already done in my AWS account.
 
 
 # Tasks to perform when releasing a new version.
@@ -135,29 +106,15 @@ extends Node
 #   -
 
 
-# - Test the new toast system.
-#   - Think of other places to show toasts?
-#   - Add an alert icon for toasts.
-
 # - Check whether there is a hard billing limit on AWS, or if it just alerts at the thresholds.
 
-# - When jumping up onto spring, can be too horizontal to trigger.
-# - Sometimes, spawning (on wrap-around level?) shows two versions of bunny overlaid.
-# - Autoclose settings menue when loading level.
-
-
-# - I want to add support for offline/local-only mode.
-#   - Please research how the current codebase works, and our options for supporting this.
-#     - I _suspect_ that the cleanest way to implement this, with the fewest changes, will be to simulate a server on the local process. But I'm really not sure.
-#   - Force a client into this mode if matchmaking failed to find any other players.
-#   - Include a toast message at the start of the match mentioning that the match is in local-only mode, when the client tried to matchmake but ended up with only itself.
-#   - When in local-only mode, do record stats, if the client is authenticated, but don't update the leaderboard with match results. Unless this seems like unuseful complexity, then let me know.
+# - Autoclose settings menu when loading level.
 
 
 # Ideally, if we have a large enough player pool to choose from, we'd try to pair players together into a match according to their relative skill/rank levels. Is that feasible to add?
 
-# - Polish loading screen.
-# - Find and review leaderboard_panel.
+
+# ---
 
 
 # All M3 code changes are complete. The remaining items are:
@@ -189,11 +146,11 @@ extends Node
 # Assign all icons in the SettingsPanel scene inspector under the new "Provider Icons" export group
 # Optionally assign icons to the auth screen buttons via their icon property in the scene editor
 
-# - Create an "anonymous" icon for the auth screen.
-
 # - Update Google Oauth (and facebook?) to have privacy and TOS links: https://console.cloud.google.com/auth/branding?authuser=2&project=hop-n-bop
 
+
 # ---
+
 
 # - Brave Player Name with multiple local players in Lobby.
 #   - Actually, this seems to be upon deregistering and registering.
@@ -201,8 +158,6 @@ extends Node
 # - Get it water. Die. Respawn with a splash somewhere.
 
 
-# - Create a new AWS account for SCG?
-# - Create a new itch.io account for SCG too.
 # - Look into the additional $100 from AWS.
 
 
@@ -217,6 +172,7 @@ extends Node
 # - Review gamelift GDScript, backend, python, audit all AWS activity and used systems, website pages, etc.
 
 # - Add tooltips, with localized text, with translations in all supported languages, to each button in the app.
+#   - Update Memory.md or Claude.md to mention including tooltips for all buttons.
 
 # ---
 

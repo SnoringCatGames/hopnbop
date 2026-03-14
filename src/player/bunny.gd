@@ -22,6 +22,9 @@ const _SKID_VELOCITY_THRESHOLD := 20.0
 const _LANDING_SKID_GRACE_FRAMES := 30
 const _WALK_SOUND_INTERVAL_FRAMES := 8
 
+@export var _sprite_outline_shader: Shader
+@export var _bunny_animator_scene: PackedScene
+
 var _was_floor_skid_condition := false
 var _suppress_landing_skid := false
 var _walk_sound_frame_counter := 0
@@ -679,9 +682,7 @@ func _spawn_squish_sprite() -> void:
 	# sprite (uses the regular sprite_outline shader,
 	# not the canvas_group_outline shader).
 	if is_instance_valid(match_state):
-		var shader := preload(
-			"res://assets/shaders/"
-			+"sprite_outline.gdshader")
+		var shader := _sprite_outline_shader
 		var mat := ShaderMaterial.new()
 		mat.shader = shader
 		mat.set_shader_parameter(
@@ -897,6 +898,8 @@ func _setup_wrap_ghosts() -> void:
 	]:
 		var ghost := WrapGhost.new()
 		ghost.name = "WrapGhost_%d" % axis
+		ghost.animator_scene = (
+			_bunny_animator_scene)
 		add_child(ghost)
 		ghost.setup(self, axis)
 		_wrap_ghosts.append(ghost)

@@ -9,8 +9,7 @@ var _splash_scene: PackedScene
 
 
 func _ready() -> void:
-	_splash_scene = preload(
-		"res://src/objects/splash/splash.tscn")
+	_splash_scene = G.settings.splash_scene
 
 
 func spawn_splash(

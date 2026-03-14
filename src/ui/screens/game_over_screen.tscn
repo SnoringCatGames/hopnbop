@@ -1,9 +1,11 @@
-[gd_scene load_steps=5 format=3 uid="uid://hrkm0p3okgms"]
+[gd_scene load_steps=7 format=3 uid="uid://hrkm0p3okgms"]
 
 [ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/ui/default_theme.tres" id="1_bdo0u"]
 [ext_resource type="Script" uid="uid://dnb4jgmiq7u6c" path="res://src/ui/screens/game_over_screen.gd" id="1_wmw1d"]
 [ext_resource type="StyleBox" uid="uid://dc86ks0yqis4j" path="res://src/ui/screens/screen_style_box.tres" id="2_p4mol"]
 [ext_resource type="StyleBox" uid="uid://co2x2prpygpfd" path="res://src/ui/settings_panel/focus_border_stylebox.tres" id="3_focus"]
+[ext_resource type="Texture2D" uid="uid://bv4hpy5s4kst6" path="res://assets/images/gui/add_friend_icon.png" id="4_add_friend"]
+[ext_resource type="PackedScene" path="res://src/ui/leaderboard_panel/leaderboard_panel.tscn" id="5_leaderboard"]
 
 [node name="GameOverScreen" type="PanelContainer"]
 process_mode = 3
@@ -16,6 +18,8 @@ layout_direction = 2
 theme = ExtResource("1_bdo0u")
 theme_override_styles/panel = ExtResource("2_p4mol")
 script = ExtResource("1_wmw1d")
+_add_friend_icon = ExtResource("4_add_friend")
+_leaderboard_panel_scene = ExtResource("5_leaderboard")
 
 [node name="CenterContainer" type="CenterContainer" parent="."]
 layout_mode = 2

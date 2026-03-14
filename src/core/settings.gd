@@ -91,6 +91,23 @@ const BASE_ICON_WIDTH := 11
 @export var icon_scale := 4
 @export var chevron_icon: Texture2D
 
+@export_group("Shared Scenes and Resources")
+@export var confirm_overlay_scene: PackedScene
+@export var white_pixel_texture: Texture2D
+@export var focus_border_stylebox: StyleBox
+@export var unfocused_stylebox: StyleBox
+@export var anonymous_texture: Texture2D
+@export var circle_mask_shader: Shader
+@export var splash_scene: PackedScene
+@export var skid_scene: PackedScene
+@export var bird_scene: PackedScene
+@export var fly_scene: PackedScene
+@export var cricket_scene: PackedScene
+@export var snail_scene: PackedScene
+@export var fish_scene: PackedScene
+@export var butterfly_scene: PackedScene
+@export_group("")
+
 @export var show_hud := true
 @export var show_player_overhead_labels := true
 @export var show_player_outlines := true

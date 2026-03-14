@@ -13,9 +13,6 @@ const SPAWN_INTERVAL_MAX := 9.0
 ## Maximum simultaneous birds on screen.
 const MAX_BIRDS := 3
 
-const _BIRD_SCENE_PATH := (
-	"res://src/objects/birds/bird.tscn")
-
 ## Fraction of camera height for vertical spawn
 ## range (0.0 to 1.0).
 var flight_band_height := 0.5
@@ -36,7 +33,7 @@ func setup(camera: Camera2D) -> void:
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_bird_scene = preload(_BIRD_SCENE_PATH)
+	_bird_scene = G.settings.bird_scene
 	_viewport_size = (
 		get_viewport().get_visible_rect().size)
 	_spawn_timer = randf_range(

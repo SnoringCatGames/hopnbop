@@ -144,8 +144,7 @@ var _ambient_pan_time: float = 0.0
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_fly_scene = preload(
-		"res://src/objects/flies/fly.tscn")
+	_fly_scene = G.settings.fly_scene
 	_spawn_flies()
 	_init_audio()
 

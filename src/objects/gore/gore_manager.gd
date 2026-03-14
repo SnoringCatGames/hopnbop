@@ -250,8 +250,7 @@ func _spawn_poop_particle(
 	# dark brown.
 	var sprite: Sprite2D = (
 		particle.get_node("Sprite2D"))
-	sprite.texture = preload(
-		"res://assets/images/white_pixel.png")
+	sprite.texture = G.settings.white_pixel_texture
 	sprite.modulate = POOP_COLOR
 
 	# Set collision radius.
@@ -330,8 +329,7 @@ func _spawn_snail_goo_particle(
 	# a random snail goo color.
 	var sprite: Sprite2D = (
 		particle.get_node("Sprite2D"))
-	sprite.texture = preload(
-		"res://assets/images/white_pixel.png")
+	sprite.texture = G.settings.white_pixel_texture
 	sprite.modulate = (
 		SNAIL_GOO_COLORS.pick_random())
 

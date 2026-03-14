@@ -1,4 +1,4 @@
-[gd_scene load_steps=64 format=3 uid="uid://cn6hdqmmufnvr"]
+[gd_scene load_steps=65 format=3 uid="uid://cn6hdqmmufnvr"]
 
 [ext_resource type="Script" uid="uid://dwab2y7smxa" path="res://src/player/bunny.gd" id="1_j5lrb"]
 [ext_resource type="Resource" uid="uid://dq1d4nuh248j2" path="res://src/player/default_movement_settings.tres" id="2_4p26p"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" uid="uid://chp1athjwjq76" path="res://src/scaffolder/character/player_input_from_client.gd" id="4_1rl0f"]
 [ext_resource type="Script" uid="uid://cg16ocbfwgu5m" path="res://src/scaffolder/character/forwarded_player_input_from_server.gd" id="5_fwdpi"]
 [ext_resource type="PackedScene" uid="uid://br1b7cse0hxmt" path="res://src/player/bunny_animator.tscn" id="5_sc4xa"]
+[ext_resource type="Shader" path="res://assets/shaders/sprite_outline.gdshader" id="47_outline"]
 [ext_resource type="AudioStream" uid="uid://r5n0bwh083ev" path="res://assets/audio/jump1.wav" id="8_b35oh"]
 [ext_resource type="AudioStream" uid="uid://dkerej1i165kn" path="res://assets/audio/jump2.wav" id="9_imdnb"]
 [ext_resource type="AudioStream" uid="uid://bqhhlyi1iksdi" path="res://assets/audio/jump3.wav" id="10_81ygd"]
@@ -169,6 +170,8 @@ collision_shape = NodePath("PlayerBodyCollisionShape")
 animator = NodePath("PlayerAnimator")
 movement_settings = ExtResource("2_4p26p")
 state_from_server = NodePath("StateFromServer")
+_sprite_outline_shader = ExtResource("47_outline")
+_bunny_animator_scene = ExtResource("5_sc4xa")
 
 [node name="StateFromServer" type="MultiplayerSynchronizer" parent="." node_paths=PackedStringArray("character")]
 process_mode = 3

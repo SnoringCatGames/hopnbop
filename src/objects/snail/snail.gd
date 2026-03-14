@@ -571,8 +571,7 @@ func _spawn_trail_particle(
 	pos: Vector2,
 ) -> void:
 	var particle := Sprite2D.new()
-	particle.texture = preload(
-		"res://assets/images/white_pixel.png")
+	particle.texture = G.settings.white_pixel_texture
 	var alpha := randf_range(
 		_TRAIL_ALPHA_MIN,
 		_TRAIL_ALPHA_MAX)

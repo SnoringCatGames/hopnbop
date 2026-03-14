@@ -8,8 +8,7 @@ var _skid_scene: PackedScene
 
 
 func _ready() -> void:
-	_skid_scene = preload(
-		"res://src/objects/skid/skid.tscn")
+	_skid_scene = G.settings.skid_scene
 
 
 func spawn_skid(

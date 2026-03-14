@@ -128,11 +128,9 @@ func _on_version_checked(
 
 
 func _show_update_required_dialog() -> void:
-	var scene := preload(
-		"res://src/ui/confirm_overlay/"
-		+ "confirm_overlay.tscn")
 	var dialog: ConfirmOverlay = (
-		scene.instantiate())
+		G.settings.confirm_overlay_scene
+			.instantiate())
 	get_tree().root.add_child(dialog)
 	get_tree().paused = false
 	dialog.open(

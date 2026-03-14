@@ -42,10 +42,6 @@ signal matchmaking_failed(reason: String)
 ## to offline mode.
 signal local_mode_fallback_requested()
 
-const _CONFIRM_OVERLAY_SCENE := preload(
-	"res://src/ui/confirm_overlay/"
-	+ "confirm_overlay.tscn")
-
 var session_provider: SessionProvider
 
 ## The original session provider set up in _ready().
@@ -338,7 +334,8 @@ func _on_session_request_failed(error_message: String) -> void:
 	# blocking dialog with no way to proceed.
 	if error_message.begins_with("Version mismatch"):
 		var dialog: ConfirmOverlay = (
-			_CONFIRM_OVERLAY_SCENE.instantiate())
+			G.settings.confirm_overlay_scene
+				.instantiate())
 		get_tree().root.add_child(dialog)
 		dialog.open(
 			error_message,
