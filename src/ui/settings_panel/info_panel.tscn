@@ -8,7 +8,7 @@
 [ext_resource type="Texture2D" uid="uid://c8tk3vnw7vlct" path="res://assets/images/gui/privacy_icon.png" id="5b_privacy"]
 [ext_resource type="Texture2D" uid="uid://cskq5pteeuekm" path="res://assets/images/gui/data_deletion_icon.png" id="6_data_deletion"]
 [ext_resource type="Texture2D" uid="uid://c46ihfd6l8kg6" path="res://assets/images/gui/social_icons/discord_32.png" id="7_discord"]
-[ext_resource type="Texture2D" uid="uid://bl0g0psdnnljl" path="res://assets/images/gui/github_logo_about.png" id="7b_github"]
+[ext_resource type="Texture2D" uid="uid://tpwv42t2747e" path="res://assets/images/gui/social_icons/github_32.png" id="7b_github"]
 [ext_resource type="Texture2D" uid="uid://bys61mpntks4h" path="res://assets/images/gui/credits_icon.png" id="8_credits"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/credits_row.tscn" id="9_credits_row"]
 
