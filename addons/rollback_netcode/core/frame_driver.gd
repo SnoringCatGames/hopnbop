@@ -48,17 +48,18 @@ extends Node
 
 # ---
 
+# - Test one client replays and the other doesn't.
 
-# claude --dangerously-skip-permissions --continue
+# - Test trying to login on two devices at the same time for a given player. Also prevent at matchmaking time.
 
-
-# Should backend/samconfig.toml remain gitignored?
-
-
-# - Fix FB OAuth.
+# - Fix crossplay auth.
 
 # - Check what's next for Steam and Epic Games.
 #   - Get Alden and Ben added as testers.
+
+# - Set up Android build.
+
+# - Set up iOS build.
 
 # - Test local mode.
 
@@ -108,10 +109,17 @@ extends Node
 
 # - Check whether there is a hard billing limit on AWS, or if it just alerts at the thresholds.
 
-# - Autoclose settings menu when loading level.
-
 
 # Ideally, if we have a large enough player pool to choose from, we'd try to pair players together into a match according to their relative skill/rank levels. Is that feasible to add?
+
+
+# ---
+
+# - Tell Claude no. The jitter is, I think, because the remote players input is stale. Or maybe velocity?
+# We just didn't see constant rubber banding like this, since rollback is based off past frames and so the current frame shouldn't regress backward!
+# .... Extrapolating forward.
+# ASK IN A NEW SESSION
+# I wonder if this relates to our use of three state nodes. That third node...
 
 
 # ---
@@ -133,18 +141,6 @@ extends Node
 # - Existing player records won't appear on the leaderboard until they play a match or log in again (they lack rating_partition = "all")
 # - The lobby podium object was deferred (needs art assets)
 
-
-# Plan whether to show the actual game as the main landing page for hopnbop.net.
-# - Yes?
-# - Would probably want to add in-game buttons in the lobby then, just for the web build, which clicking-on would navigate to things like About, Terms, Privacy, Data-Deletion, etc.
-
-# - Would probably want to add in-game buttons in the lobby then, just for the web build, which clicking-on would navigate to things like About, Terms, Privacy, Data-Deletion, etc.
-
-# - Get icons (Steam, Google, Facebook, Apple, Epic)
-# You'll need to:
-# Create the provider icon .aseprite/.png files (steam, epic, google, facebook, apple)
-# Assign all icons in the SettingsPanel scene inspector under the new "Provider Icons" export group
-# Optionally assign icons to the auth screen buttons via their icon property in the scene editor
 
 # - Update Google Oauth (and facebook?) to have privacy and TOS links: https://console.cloud.google.com/auth/branding?authuser=2&project=hop-n-bop
 
