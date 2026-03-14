@@ -106,6 +106,21 @@ Action handlers in `src/scaffolder/character/action_handlers/` modify velocity a
 - **Level** - Scene container managing players_by_id dictionary and MultiplayerSpawner
 - Server instantiates players for connected clients; clients receive spawned instances
 
+### Web Build Cross-Play
+
+FlexMatch uses an `is_web` player attribute for platform
+preference matching (relaxes after 15 seconds). The backend
+determines `transport_type` ("enet" or "websocket") from
+matched players and includes it in the matchmaking response.
+
+- Client sets `Netcode.settings.transport_type` from the
+  response before connecting.
+- Server sets transport from matchmaker data in
+  `_on_game_session_started`.
+- Both ENet (UDP) and WebSocket (TCP) share port 4433.
+- Web clients use `wss://` for remote, `ws://` for
+  local/preview.
+
 ## Networking Concepts Reference
 
 This section documents game networking patterns used in this project. These concepts apply broadly to multiplayer game development.
@@ -211,6 +226,20 @@ Godot's physics engine doesn't natively support rewinding/re-simulation. Options
 1. Create handler in `src/scaffolder/character/action_handlers/`
 2. Follow pattern: modify velocity based on surface state and input
 3. Register in CharacterActionState
+
+### Circular Dependency Prevention
+
+`ReconcilableState` (base class) must never reference subclass
+`class_name`s (`PlayerInputFromClient`,
+`CharacterStateFromServer`,
+`ForwardedPlayerInputFromServer`) as type annotations. This
+creates circular compile-time dependencies that break exported
+builds.
+
+Use the `ReconcilableStateType` enum and `_get_type()` virtual
+method pattern instead of `is` type checks. Access subclass
+properties through `ReconcilableState`-typed variables using
+`get()` or `call()` for dynamic dispatch.
 
 ### Internationalization (i18n)
 
@@ -441,6 +470,13 @@ if match_state.is_match_active:
 
 The GDScript formatter addon is installed
 (`addons/gdscript_formatter`). Format code before committing.
+
+### Legacy Code Migration
+
+Some older files use `!` for negation or backslash line
+continuation. When modifying lines in these files, convert
+them to the current style (`not`, parenthesized wrapping).
+Do not bulk-convert unrelated lines in the same commit.
 
 ## Testing with GUT
 
