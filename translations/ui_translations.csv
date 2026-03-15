@@ -44,6 +44,7 @@ SETTINGS.SFX,SFX,音效,Efectos,ध्वनि प्रभाव,مؤثرات 
 SETTINGS.DELETE_ACCOUNT,Delete Account,删除账户,Eliminar cuenta,खाता हटाएं,حذف الحساب,Supprimer le compte,Excluir conta,Удалить аккаунт,アカウント削除,Konto löschen,계정 삭제,Elimina account,ลบบัญชี
 SETTINGS.EXPORT_DATA,Export My Data,导出我的数据,Exportar mis datos,मेरा डेटा निर्यात करें,تصدير بياناتي,Exporter mes données,Exportar meus dados,Экспорт данных,データをエクスポート,Meine Daten exportieren,내 데이터 내보내기,Esporta i miei dati,ส่งออกข้อมูลของฉัน
 SETTINGS.LOG_OUT,Log Out,退出登录,Cerrar sesión,लॉग आउट,تسجيل الخروج,Se déconnecter,Sair,Выйти,ログアウト,Abmelden,로그아웃,Esci,ออกจากระบบ
+SETTINGS.QUIT,Quit,退出,Salir,बाहर निकलें,خروج,Quitter,Sair,Выйти,終了,Beenden,종료,Esci,ออก
 SETTINGS.DATA_DELETION_POLICY,Data Deletion Policy,数据删除政策,Política de eliminación de datos,डेटा विलोपन नीति,سياسة حذف البيانات,Politique de suppression des données,Política de Exclusão de Dados,Политика удаления данных,データ削除ポリシー,Datenlöschungsrichtlinie,데이터 삭제 정책,Politica di Cancellazione Dati,นโยบายการลบข้อมูล
 SETTINGS.BACK,Back,返回,Volver,वापस,رجوع,Retour,Voltar,Назад,戻る,Zurück,뒤로,Indietro,กลับ
 SETTINGS.LANGUAGE,Language,语言,Idioma,भाषा,اللغة,Langue,Idioma,Язык,言語,Sprache,언어,Lingua,ภาษา
