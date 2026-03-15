@@ -496,6 +496,17 @@ func _on_game_session_started(session) -> void:
 
 	server_set_expected_player_count(expected_count)
 
+	# Restart the server listener with the correct
+	# transport type. server_enable_connections()
+	# was already called during startup (in
+	# server_start_match), but at that point the
+	# transport type was the default (ENet). Now
+	# that we know the actual transport from
+	# matchmaker data, re-create the peer so web
+	# clients can connect via WebSocket.
+	Netcode.connector.server_enable_connections(
+		Netcode.server_port)
+
 	# Parse selected level from game properties
 	# (set by backend).
 	_selected_level_id = (
