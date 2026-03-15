@@ -48,6 +48,8 @@ extends Node
 
 # ---
 
+# Player overhead labels are not at all centered over the players. And They are inconsistent on different clients.
+
 # - We should not show AddFriend buttons in the game-over screen for a given player row if that player is anonymous.
 
 # Let's fix the leaderboard screen.
