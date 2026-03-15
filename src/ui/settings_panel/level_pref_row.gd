@@ -12,9 +12,12 @@ enum LevelPrefState {
 
 const _SELECTED_ICON_COLOR := (
 	Color(0.9, 0.9, 0.9))
-const _INDENT_MARGIN := 10.0
-const _BASE_ICON_HEIGHT := 10.0
-const _VBAR_SCALE := 2.0
+
+var _level_id: StringName
+var _display_name: String
+var _state := LevelPrefState.INCLUDED
+var _panel: LevelPrefPanel
+var _thumbnail: Texture2D
 
 @export_group("Left Button Styles")
 @export var left_normal: StyleBoxTexture
@@ -59,7 +62,7 @@ func setup(
 
 
 func _ready() -> void:
-	super()
+	super ()
 	# Grow button height by 2 pixels per icon
 	# scale unit so the buttons scale with the
 	# rest of the UI.
@@ -79,26 +82,6 @@ func _ready() -> void:
 	_unfocused_style.content_margin_left = (
 		_INDENT_MARGIN)
 	_update_focus_style()
-	# Scale icon rects based on settings.
-	var icon_height := (
-		_BASE_ICON_HEIGHT
-			* G.settings.icon_scale
-			+ G.settings.icon_padding
-	)
-	for icon_rect: TextureRect in [
-		%LeftIconRect,
-		%MiddleIconRect,
-		%RightIconRect,
-	]:
-		icon_rect.custom_minimum_size.y = (
-			icon_height)
-	# Scale vbar separators to double their
-	# texture size.
-	var vbar_size: Vector2 = (
-		%LeftVBar.texture.get_size() * _VBAR_SCALE
-	)
-	%LeftVBar.custom_minimum_size = vbar_size
-	%RightVBar.custom_minimum_size = vbar_size
 	if _thumbnail != null:
 		%Thumbnail.texture = _thumbnail
 	else:
@@ -135,7 +118,7 @@ func set_state(new_state: LevelPrefState) -> void:
 	if new_state == LevelPrefState.PREFERRED:
 		# Notify panel to enforce heart
 		# exclusivity.
-		_panel.on_level_preferred(self)
+		_panel.on_level_preferred(self )
 
 	_update_button_styles()
 
@@ -166,28 +149,28 @@ func _on_right_button_pressed() -> void:
 
 
 func _update_button_styles() -> void:
-	_apply_button_style(
-		%LeftButton, %LeftIconRect,
+	_apply_btn_style(
+		%LeftBtn, %LeftIconRect,
 		left_normal, left_pressed,
 		left_hovered, left_selected,
 		left_disabled,
 		_state == LevelPrefState.EXCLUDED)
-	_apply_button_style(
-		%MiddleButton, %MiddleIconRect,
+	_apply_btn_style(
+		%MiddleBtn, %MiddleIconRect,
 		middle_normal, middle_pressed,
 		middle_hovered, middle_selected,
 		middle_disabled,
 		_state == LevelPrefState.INCLUDED)
-	_apply_button_style(
-		%RightButton, %RightIconRect,
+	_apply_btn_style(
+		%RightBtn, %RightIconRect,
 		right_normal, right_pressed,
 		right_hovered, right_selected,
 		right_disabled,
 		_state == LevelPrefState.PREFERRED)
 
 
-func _apply_button_style(
-	button: Button,
+func _apply_btn_style(
+	btn: Button,
 	icon_rect: TextureRect,
 	normal_style: StyleBoxTexture,
 	pressed_style: StyleBoxTexture,

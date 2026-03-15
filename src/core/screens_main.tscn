@@ -11,7 +11,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/screens/legal_doc_screen.tscn" id="6_legal_doc"]
 [ext_resource type="PackedScene" path="res://src/ui/leaderboard_panel/leaderboard_panel.tscn" id="7_leaderboard"]
 [ext_resource type="PackedScene" path="res://src/ui/screens/my_stats_screen.tscn" id="8_my_stats"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/credits_overlay.tscn" id="9_credits"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/credits_screen.tscn" id="9_credits"]
 [ext_resource type="PackedScene" path="res://src/ui/screens/language_screen.tscn" id="10_language"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_gihf7"]
