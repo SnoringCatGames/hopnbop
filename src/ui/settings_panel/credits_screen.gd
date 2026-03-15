@@ -29,11 +29,10 @@ func on_open() -> void:
 	_is_dismissed = false
 	_poller = AnyDeviceInputPoller.new()
 	_poller.prime()
-	G.is_ui_interaction_mode_enabled = true
 
 
 func on_close() -> void:
-	G.is_ui_interaction_mode_enabled = false
+	pass
 
 
 func _process(delta: float) -> void:

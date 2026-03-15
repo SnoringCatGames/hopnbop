@@ -1,20 +1,28 @@
 [gd_scene load_steps=2 format=3 uid="uid://cgt0tdnn0dhsw"]
 
-[ext_resource type="Script" uid="uid://di7b1q8tpc53t" path="res://src/ui/settings_panel/credits_overlay.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://di7b1q8tpc53t" path="res://src/ui/settings_panel/credits_screen.gd" id="1_cv384"]
 
 [node name="CreditsScreen" type="PanelContainer"]
 process_mode = 3
-script = ExtResource("1_script")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_cv384")
 
 [node name="CenterContainer" type="CenterContainer" parent="."]
 layout_mode = 2
 
 [node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
+custom_minimum_size = Vector2(700, 0)
 layout_mode = 2
 
 [node name="Credits" type="Label" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 32
 text = "Credits"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -71,7 +79,7 @@ layout_mode = 2
 
 [node name="Playtesters" type="Label" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 32
 text = "Playtesters"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -100,7 +108,7 @@ layout_mode = 2
 
 [node name="Playtesters2" type="Label" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 28
 text = "Thanks for playing!"
 horizontal_alignment = 1
 vertical_alignment = 1
