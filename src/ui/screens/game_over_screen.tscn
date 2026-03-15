@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://hrkm0p3okgms"]
+[gd_scene load_steps=9 format=3 uid="uid://hrkm0p3okgms"]
 
 [ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/ui/default_theme.tres" id="1_bdo0u"]
 [ext_resource type="Script" uid="uid://dnb4jgmiq7u6c" path="res://src/ui/screens/game_over_screen.gd" id="1_wmw1d"]
@@ -6,6 +6,8 @@
 [ext_resource type="StyleBox" uid="uid://co2x2prpygpfd" path="res://src/ui/settings_panel/focus_border_stylebox.tres" id="3_focus"]
 [ext_resource type="Texture2D" uid="uid://bv4hpy5s4kst6" path="res://assets/images/gui/add_friend_icon.png" id="4_add_friend"]
 [ext_resource type="Texture2D" path="res://assets/images/gui/leaderboard_icon.png" id="5_leaderboard_icon"]
+[ext_resource type="Texture2D" path="res://assets/images/gui/retry_icon.png" id="6_retry_icon"]
+[ext_resource type="Texture2D" path="res://assets/images/gui/home_icon.png" id="7_home_icon"]
 
 [node name="GameOverScreen" type="PanelContainer"]
 process_mode = 3
@@ -73,6 +75,7 @@ layout_mode = 2
 size_flags_horizontal = 4
 theme_override_styles/focus = ExtResource("3_focus")
 text = "GAME_OVER.PLAY_AGAIN"
+icon = ExtResource("6_retry_icon")
 
 [node name="ReturnToLobbyButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonContainer"]
 unique_name_in_owner = true
@@ -82,6 +85,7 @@ layout_mode = 2
 size_flags_horizontal = 4
 theme_override_styles/focus = ExtResource("3_focus")
 text = "GAME_OVER.RETURN_TO_LOBBY"
+icon = ExtResource("7_home_icon")
 
 [node name="LeaderboardButton" type="Button" parent="CenterContainer/VBoxContainer/ButtonContainer"]
 unique_name_in_owner = true

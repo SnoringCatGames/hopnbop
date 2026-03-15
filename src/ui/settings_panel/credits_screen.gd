@@ -11,11 +11,11 @@ const _ACTIVATION_DELAY_SEC := 0.2
 @export var _focus_style: StyleBoxTexture
 @export var _unfocused_style: StyleBoxFlat
 
-var _return_screen_type := ScreensMain.ScreenType.UNKNOWN
-var _poller: AnyDeviceInputPoller
+var _return_screen_type := (
+	ScreensMain.ScreenType.UNKNOWN)
+var _navigator := ScreenFocusNavigator.new()
 var _time_open := 0.0
 var _is_dismissed := false
-var _close_row_hovered := false
 
 
 func _enter_tree() -> void:
@@ -26,10 +26,10 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	%CloseRow.gui_input.connect(
 		_on_close_row_gui_input)
-	%CloseRow.mouse_entered.connect(
-		_on_close_row_mouse_entered)
-	%CloseRow.mouse_exited.connect(
-		_on_close_row_mouse_exited)
+	%CloseRow.focus_entered.connect(
+		_update_close_row_style)
+	%CloseRow.focus_exited.connect(
+		_update_close_row_style)
 	%Icon.custom_minimum_size = (
 		%Icon.texture.get_size() * 2)
 
@@ -43,10 +43,9 @@ func set_return_screen(
 func on_open() -> void:
 	_time_open = 0.0
 	_is_dismissed = false
-	_close_row_hovered = false
-	_poller = AnyDeviceInputPoller.new()
-	_poller.prime()
-	_update_close_row_style()
+	var items: Array[Control] = [%CloseRow]
+	_navigator.set_focusable_list(items)
+	_navigator.prime()
 
 
 func on_close() -> void:
@@ -58,15 +57,13 @@ func _process(delta: float) -> void:
 		return
 	_time_open += delta
 	if _time_open < _ACTIVATION_DELAY_SEC:
-		# Still in delay. Pump poller to keep
-		# prev_* state fresh but ignore output.
-		_poller.poll(delta)
+		# Still in delay. Pump navigator to
+		# keep prev_* state fresh but ignore
+		# output.
+		_navigator.poll(delta)
 		return
 
-	_poller.poll(delta)
-	if (_poller.left_just
-			or _poller.right_just
-			or _poller.trigger_just):
+	if _navigator.poll(delta):
 		_on_close_pressed()
 
 
@@ -74,8 +71,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
 		return
 	if (event.is_action_pressed(&"ui_cancel")
-			or event.is_action_pressed(&"toggle_pause")
-			or event.is_action_pressed(&"close_menu")):
+			or event.is_action_pressed(
+				&"toggle_pause")
+			or event.is_action_pressed(
+				&"close_menu")):
 		_on_close_pressed()
 		get_viewport().set_input_as_handled()
 
@@ -84,11 +83,12 @@ func _on_close_pressed() -> void:
 	if _is_dismissed:
 		return
 	_is_dismissed = true
-	G.screens.client_open_screen(_return_screen_type)
+	G.screens.client_open_screen(
+		_return_screen_type)
 
 
 func _update_close_row_style() -> void:
-	if _close_row_hovered:
+	if %CloseRow.has_focus():
 		%CloseRow.add_theme_stylebox_override(
 			"panel", _focus_style)
 	else:
@@ -105,13 +105,3 @@ func _on_close_row_gui_input(
 				and mb.button_index
 				== MOUSE_BUTTON_LEFT):
 			_on_close_pressed()
-
-
-func _on_close_row_mouse_entered() -> void:
-	_close_row_hovered = true
-	_update_close_row_style()
-
-
-func _on_close_row_mouse_exited() -> void:
-	_close_row_hovered = false
-	_update_close_row_style()
