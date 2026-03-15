@@ -20,6 +20,19 @@ func _enter_tree() -> void:
 	G.game_over_screen = self
 
 
+func _ready() -> void:
+	var icon_width := int(
+		G.settings.get_icon_display_width())
+	for button: Button in [
+		%PlayAgainButton,
+		%ReturnToLobbyButton,
+		%LeaderboardButton,
+	]:
+		button.expand_icon = true
+		button.add_theme_constant_override(
+			"icon_max_width", icon_width)
+
+
 func _unhandled_input(
 	event: InputEvent,
 ) -> void:
