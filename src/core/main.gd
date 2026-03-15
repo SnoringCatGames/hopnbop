@@ -122,10 +122,24 @@ func _check_protocol_version() -> void:
 func _on_version_checked(
 	is_compatible: bool,
 	_server_protocol_version: int,
+	server_game_version: String,
 ) -> void:
 	if not is_compatible:
 		_show_update_required_dialog()
 		return
+
+	# On web, auto-refresh when the game version is
+	# stale. This forces the browser to fetch the
+	# latest build after a deployment.
+	if (
+		OS.has_feature("web")
+		and server_game_version != ""
+		and not _is_web_game_version_current(
+			server_game_version)
+	):
+		_web_hard_refresh(server_game_version)
+		return
+
 	_continue_client_startup()
 
 
@@ -141,6 +155,49 @@ func _show_update_required_dialog() -> void:
 		func() -> void:
 			get_tree().quit(),
 	)
+
+
+func _is_web_game_version_current(
+	server_game_version: String,
+) -> bool:
+	var client_game_version: String = (
+		ProjectSettings.get_setting(
+			"application/config/version", ""))
+	if client_game_version == server_game_version:
+		return true
+
+	# Check for the loop-breaker query param. If we
+	# already refreshed once for this version, do not
+	# refresh again to avoid an infinite reload loop.
+	var url: String = (
+		JavaScriptBridge.eval("window.location.href"))
+	var expected_param := (
+		"v_refreshed=" + server_game_version)
+	if expected_param in url:
+		return true
+
+	return false
+
+
+func _web_hard_refresh(
+	server_game_version: String,
+) -> void:
+	# Append the server version as a query param
+	# (loop breaker), then navigate to the new URL.
+	# Changing the URL forces the browser to re-fetch
+	# the page. If the browser still serves a stale
+	# build after this, the loop breaker param
+	# prevents another refresh.
+	var safe_version := (
+		server_game_version.replace("'", "\\'"))
+	JavaScriptBridge.eval("""
+		(function() {
+			var url = new URL(window.location.href);
+			url.searchParams.set(
+				'v_refreshed', '%s');
+			window.location.replace(url.toString());
+		})();
+	""" % safe_version)
 
 
 func _continue_client_startup() -> void:

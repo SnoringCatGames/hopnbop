@@ -19,6 +19,7 @@ signal request_failed(error: String)
 signal version_checked(
 	is_compatible: bool,
 	server_protocol_version: int,
+	server_game_version: String,
 )
 
 var _http_request: HTTPRequest
@@ -218,7 +219,7 @@ func check_version() -> void:
 	)
 	if error != OK:
 		http.queue_free()
-		version_checked.emit(true, -1)
+		version_checked.emit(true, -1, "")
 
 
 func _on_version_check_completed(
@@ -231,7 +232,7 @@ func _on_version_check_completed(
 	http.queue_free()
 
 	if result != HTTPRequest.RESULT_SUCCESS:
-		version_checked.emit(true, -1)
+		version_checked.emit(true, -1, "")
 		return
 
 	var parsed = JSON.parse_string(
@@ -241,14 +242,17 @@ func _on_version_check_completed(
 		or not parsed is Dictionary
 		or response_code != 200
 	):
-		version_checked.emit(true, -1)
+		version_checked.emit(true, -1, "")
 		return
 
 	var server_protocol: int = parsed.get(
 		"protocol_version", -1)
 	if server_protocol < 0:
-		version_checked.emit(true, -1)
+		version_checked.emit(true, -1, "")
 		return
+
+	var server_game_version: String = parsed.get(
+		"game_version", "")
 
 	var client_protocol: int = (
 		ProjectSettings.get_setting(
@@ -258,4 +262,7 @@ func _on_version_check_completed(
 	var is_compatible := (
 		server_protocol == client_protocol)
 	version_checked.emit(
-		is_compatible, server_protocol)
+		is_compatible,
+		server_protocol,
+		server_game_version,
+	)
