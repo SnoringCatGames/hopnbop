@@ -118,6 +118,10 @@ func _enter_tree() -> void:
 		multiplayer.peer_connected.connect(_on_peer_connected)
 	if not multiplayer.peer_disconnected.is_connected(_on_peer_disconnected):
 		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
+	if not multiplayer.connection_failed.is_connected(
+			_on_connection_failed):
+		multiplayer.connection_failed.connect(
+			_on_connection_failed)
 
 
 func _ready() -> void:
@@ -303,6 +307,16 @@ func _on_peer_disconnected(peer_id: int) -> void:
 				"Server disconnected in preview mode",
 				NetworkLogger.CATEGORY_CONNECTIONS
 			)
+
+
+func _on_connection_failed() -> void:
+	Netcode.log.error(
+		"Connection to server failed",
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+	last_disconnect_reason = DisconnectReason.CONNECTION_FAILED
+	_client_update_is_connected_to_server()
+	disconnected.emit(-1, DisconnectReason.CONNECTION_FAILED)
 
 
 func _client_send_player_declaration() -> void:
