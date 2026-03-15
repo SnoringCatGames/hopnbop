@@ -58,8 +58,26 @@ from `project.godot`, runs `sam build --use-container`, runs
   `No module named 'aws_lambda_powertools'` Lambda init errors.
 - Build container pulls `public.ecr.aws/sam/build-python3.12`.
   Docker Desktop must be running.
-- Delete `.aws-sam/` if build cache is stale (causes
-  "Unresolved resource dependencies" error).
+- Delete `backend/.aws-sam/` (not the repo root) if build
+  cache is stale (causes "Unresolved resource dependencies"
+  error).
+- **"No changes to deploy" when code changed:** SAM uses
+  content-addressed S3 keys. If the zip hash matches what
+  is already in S3, CloudFormation sees no diff. This can
+  happen when a previous `--force-upload` already pushed
+  the new code, or due to Docker mount caching on Windows.
+  Fix: use `aws lambda update-function-code` to force
+  Lambda to reload from S3:
+  ```bash
+  aws lambda update-function-code \
+    --function-name <full-function-name-with-suffix> \
+    --s3-bucket <sam-managed-bucket> \
+    --s3-key hopnbop-backend/<hash> \
+    --profile hopnbop --region us-west-2
+  ```
+  Get the function names with `aws lambda list-functions`
+  and the S3 key from the SAM deploy output. Only update
+  the functions whose code you changed.
 
 ### GameLift Server
 
@@ -75,9 +93,17 @@ updates container group definition, triggers fleet deployment.
 
 **Common issues:**
 - Godot `--export-pack` returns non-zero due to GDExtension
-  DLL copy warnings (non-fatal on Windows). Check if .pck
-  exists at `build/linux/hopnbop_server.pck`; if so, re-run
-  with `-SkipExport`.
+  DLL copy warnings (non-fatal on Windows). The deploy
+  script treats this as a failure. Workaround: run the
+  export manually, verify `.pck` exists, then re-run with
+  `-SkipExport`:
+  ```bash
+  mkdir -p build/linux
+  godot --headless --export-pack "Linux Server" \
+    build/linux/hopnbop_server.pck
+  ls -la build/linux/hopnbop_server.pck  # verify ~24MB
+  .\gamelift-deploy\deploy.ps1 -SkipExport
+  ```
 - Container group definition limit is 4 versions. Delete old
   versions before updating:
   ```bash
@@ -113,9 +139,16 @@ syncs `web/` to S3, invalidates CloudFront cache.
 
 **Common issues:**
 - Godot `--export-release "Web"` returns non-zero due to
-  missing resource warnings. Export usually succeeds anyway.
-  Run export manually, verify files in `build/web/` are fresh,
-  copy to `web/`, then run with `-SkipExport`.
+  missing resource warnings. The deploy script treats this
+  as a failure. Workaround: export manually, copy to
+  `web/`, then run with `-SkipExport`:
+  ```bash
+  mkdir -p build/web
+  godot --headless --export-release "Web" \
+    build/web/index.html
+  cp build/web/* web/
+  .\scripts\deploy-website.ps1 -SkipExport
+  ```
 - `-SkipExport` also skips the copy step. If you exported
   manually, copy `build/web/*` to `web/` before running the
   S3 sync.
