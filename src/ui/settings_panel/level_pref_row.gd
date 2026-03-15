@@ -12,17 +12,9 @@ enum LevelPrefState {
 
 const _SELECTED_ICON_COLOR := (
 	Color(0.9, 0.9, 0.9))
-const _VBAR_MODULATE := Color(1, 1, 1, 0.3)
-@export var _vbar_texture: Texture2D
-
-var _level_id: StringName
-var _display_name: String
-var _state := LevelPrefState.INCLUDED
-var _panel: LevelPrefPanel
-var _thumbnail: Texture2D
-var _left_icon_rect: TextureRect
-var _middle_icon_rect: TextureRect
-var _right_icon_rect: TextureRect
+const _INDENT_MARGIN := 10.0
+const _BASE_ICON_HEIGHT := 10.0
+const _VBAR_SCALE := 2.0
 
 @export_group("Left Button Styles")
 @export var left_normal: StyleBoxTexture
@@ -45,6 +37,12 @@ var _right_icon_rect: TextureRect
 @export var right_selected: StyleBoxTexture
 @export var right_disabled: StyleBoxTexture
 
+var _level_id: StringName
+var _display_name: String
+var _state := LevelPrefState.INCLUDED
+var _panel: LevelPrefPanel
+var _thumbnail: Texture2D
+
 
 func setup(
 	level_id: StringName,
@@ -61,45 +59,46 @@ func setup(
 
 
 func _ready() -> void:
-	super ()
+	super()
+	# Grow button height by 2 pixels per icon
+	# scale unit so the buttons scale with the
+	# rest of the UI.
+	var extra_height := 2 * G.settings.icon_scale
+	for button: Button in [
+		%LeftButton, %MiddleButton, %RightButton,
+	]:
+		button.custom_minimum_size.y += (
+			extra_height)
 	# Add left-side indent by duplicating
 	# styleboxes with extra content margin.
 	_focus_style = _focus_style.duplicate()
-	_focus_style.content_margin_left = 10
+	_focus_style.content_margin_left = (
+		_INDENT_MARGIN)
 	_unfocused_style = (
 		_unfocused_style.duplicate())
-	_unfocused_style.content_margin_left = 10
+	_unfocused_style.content_margin_left = (
+		_INDENT_MARGIN)
 	_update_focus_style()
-	# Replace built-in button icons with
-	# TextureRects for uniform scaling.
-	_left_icon_rect = (
-		_replace_btn_icon(%LeftBtn))
-	_right_icon_rect = (
-		_replace_btn_icon(%RightBtn))
-	# Middle button also gets v-bar separators
-	# flanking its icon.
-	var middle_tex: Texture2D = %MiddleBtn.icon
-	%MiddleBtn.icon = null
-	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override(
-		"separation", 0)
-	hbox.set_anchors_preset(
-		Control.PRESET_FULL_RECT)
-	hbox.mouse_filter = (
-		Control.MOUSE_FILTER_IGNORE)
-	hbox.add_child(_create_vbar())
-	_middle_icon_rect = TextureRect.new()
-	_middle_icon_rect.texture = middle_tex
-	_middle_icon_rect.stretch_mode = (
-		TextureRect
-			.STRETCH_KEEP_ASPECT_CENTERED)
-	_middle_icon_rect.size_flags_horizontal = (
-		Control.SIZE_EXPAND_FILL)
-	_middle_icon_rect.mouse_filter = (
-		Control.MOUSE_FILTER_IGNORE)
-	hbox.add_child(_middle_icon_rect)
-	hbox.add_child(_create_vbar())
-	%MiddleBtn.add_child(hbox)
+	# Scale icon rects based on settings.
+	var icon_height := (
+		_BASE_ICON_HEIGHT
+			* G.settings.icon_scale
+			+ G.settings.icon_padding
+	)
+	for icon_rect: TextureRect in [
+		%LeftIconRect,
+		%MiddleIconRect,
+		%RightIconRect,
+	]:
+		icon_rect.custom_minimum_size.y = (
+			icon_height)
+	# Scale vbar separators to double their
+	# texture size.
+	var vbar_size: Vector2 = (
+		%LeftVBar.texture.get_size() * _VBAR_SCALE
+	)
+	%LeftVBar.custom_minimum_size = vbar_size
+	%RightVBar.custom_minimum_size = vbar_size
 	if _thumbnail != null:
 		%Thumbnail.texture = _thumbnail
 	else:
@@ -136,7 +135,7 @@ func set_state(new_state: LevelPrefState) -> void:
 	if new_state == LevelPrefState.PREFERRED:
 		# Notify panel to enforce heart
 		# exclusivity.
-		_panel.on_level_preferred(self )
+		_panel.on_level_preferred(self)
 
 	_update_button_styles()
 
@@ -154,75 +153,41 @@ func get_level_id() -> StringName:
 	return _level_id
 
 
-func _on_left_btn_pressed() -> void:
+func _on_left_button_pressed() -> void:
 	set_state(LevelPrefState.EXCLUDED)
 
 
-func _on_middle_btn_pressed() -> void:
+func _on_middle_button_pressed() -> void:
 	set_state(LevelPrefState.INCLUDED)
 
 
-func _on_right_btn_pressed() -> void:
+func _on_right_button_pressed() -> void:
 	set_state(LevelPrefState.PREFERRED)
 
 
 func _update_button_styles() -> void:
-	_apply_btn_style(
-		%LeftBtn, _left_icon_rect,
+	_apply_button_style(
+		%LeftButton, %LeftIconRect,
 		left_normal, left_pressed,
 		left_hovered, left_selected,
 		left_disabled,
 		_state == LevelPrefState.EXCLUDED)
-	_apply_btn_style(
-		%MiddleBtn, _middle_icon_rect,
+	_apply_button_style(
+		%MiddleButton, %MiddleIconRect,
 		middle_normal, middle_pressed,
 		middle_hovered, middle_selected,
 		middle_disabled,
 		_state == LevelPrefState.INCLUDED)
-	_apply_btn_style(
-		%RightBtn, _right_icon_rect,
+	_apply_button_style(
+		%RightButton, %RightIconRect,
 		right_normal, right_pressed,
 		right_hovered, right_selected,
 		right_disabled,
 		_state == LevelPrefState.PREFERRED)
 
 
-func _create_vbar() -> TextureRect:
-	var vbar := TextureRect.new()
-	vbar.texture = _vbar_texture
-	vbar.custom_minimum_size = (
-		_vbar_texture.get_size() * 2)
-	vbar.stretch_mode = (
-		TextureRect
-			.STRETCH_KEEP_ASPECT_CENTERED)
-	vbar.size_flags_vertical = (
-		Control.SIZE_EXPAND_FILL)
-	vbar.modulate = _VBAR_MODULATE
-	vbar.mouse_filter = (
-		Control.MOUSE_FILTER_IGNORE)
-	return vbar
-
-
-func _replace_btn_icon(
-	btn: Button,
-) -> TextureRect:
-	var tex: Texture2D = btn.icon
-	btn.icon = null
-	var rect := TextureRect.new()
-	rect.texture = tex
-	rect.stretch_mode = (
-		TextureRect
-			.STRETCH_KEEP_ASPECT_CENTERED)
-	rect.set_anchors_preset(
-		Control.PRESET_FULL_RECT)
-	rect.mouse_filter = (
-		Control.MOUSE_FILTER_IGNORE)
-	btn.add_child(rect)
-	return rect
-
-
-func _apply_btn_style(
-	btn: Button,
+func _apply_button_style(
+	button: Button,
 	icon_rect: TextureRect,
 	normal_style: StyleBoxTexture,
 	pressed_style: StyleBoxTexture,
@@ -232,18 +197,18 @@ func _apply_btn_style(
 	is_selected: bool,
 ) -> void:
 	if is_selected:
-		btn.add_theme_stylebox_override(
+		button.add_theme_stylebox_override(
 			"normal", selected_style)
-		btn.add_theme_stylebox_override(
+		button.add_theme_stylebox_override(
 			"hover", selected_style)
-		btn.add_theme_stylebox_override(
+		button.add_theme_stylebox_override(
 			"pressed", selected_style)
 	else:
-		btn.add_theme_stylebox_override(
+		button.add_theme_stylebox_override(
 			"normal", normal_style)
-		btn.add_theme_stylebox_override(
+		button.add_theme_stylebox_override(
 			"hover", hover_style)
-		btn.add_theme_stylebox_override(
+		button.add_theme_stylebox_override(
 			"pressed", pressed_style)
 
 	if icon_rect != null:
@@ -253,5 +218,5 @@ func _apply_btn_style(
 		else:
 			icon_rect.modulate = Color.WHITE
 
-	btn.add_theme_stylebox_override(
+	button.add_theme_stylebox_override(
 		"disabled", disabled_style)

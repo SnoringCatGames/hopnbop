@@ -19,90 +19,148 @@
 [ext_resource type="Texture2D" uid="uid://xlt73xuyb6ey" path="res://assets/images/gui/aggregate_button_right_hovered.png" id="17_rh"]
 [ext_resource type="Texture2D" uid="uid://c0j8pjomeg5ab" path="res://assets/images/gui/aggregate_button_right_selected.png" id="18_rs"]
 [ext_resource type="Texture2D" uid="uid://0p3r8gne267h" path="res://assets/images/gui/aggregate_button_right_disabled.png" id="19_rd"]
-[ext_resource type="Texture2D" path="res://assets/images/gui/v_bar.png" id="20_vbar"]
+[ext_resource type="Texture2D" uid="uid://bh68kibsmhcqx" path="res://assets/images/gui/v_bar.png" id="20_vbar"]
 
 [sub_resource type="StyleBoxTexture" id="sbt_ln"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 texture = ExtResource("5_ln")
 texture_margin_left = 12.0
 texture_margin_top = 12.0
 texture_margin_bottom = 12.0
 
 [sub_resource type="StyleBoxTexture" id="sbt_lp"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 texture = ExtResource("6_lp")
 texture_margin_left = 12.0
 texture_margin_top = 12.0
 texture_margin_bottom = 12.0
 
 [sub_resource type="StyleBoxTexture" id="sbt_lh"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 texture = ExtResource("7_lh")
 texture_margin_left = 12.0
 texture_margin_top = 12.0
 texture_margin_bottom = 12.0
 
 [sub_resource type="StyleBoxTexture" id="sbt_ls"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 texture = ExtResource("8_ls")
 texture_margin_left = 12.0
 texture_margin_top = 12.0
 texture_margin_bottom = 12.0
 
 [sub_resource type="StyleBoxTexture" id="sbt_ld"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 texture = ExtResource("9_ld")
 texture_margin_left = 12.0
 texture_margin_top = 12.0
 texture_margin_bottom = 12.0
 
 [sub_resource type="StyleBoxTexture" id="sbt_mn"]
-content_margin_left = 0.0
-content_margin_right = 0.0
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 texture = ExtResource("10_mn")
 texture_margin_top = 12.0
 texture_margin_bottom = 12.0
 
 [sub_resource type="StyleBoxTexture" id="sbt_mp"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 texture = ExtResource("11_mp")
 texture_margin_top = 12.0
 texture_margin_bottom = 12.0
 
 [sub_resource type="StyleBoxTexture" id="sbt_mh"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 texture = ExtResource("12_mh")
 texture_margin_top = 12.0
 texture_margin_bottom = 12.0
 
 [sub_resource type="StyleBoxTexture" id="sbt_ms"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 texture = ExtResource("13_ms")
 texture_margin_top = 12.0
 texture_margin_bottom = 12.0
 
 [sub_resource type="StyleBoxTexture" id="sbt_md"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 texture = ExtResource("14_md")
 texture_margin_top = 12.0
 texture_margin_bottom = 12.0
 
 [sub_resource type="StyleBoxTexture" id="sbt_rn"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 texture = ExtResource("15_rn")
 texture_margin_top = 12.0
 texture_margin_right = 12.0
 texture_margin_bottom = 12.0
 
 [sub_resource type="StyleBoxTexture" id="sbt_rp"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 texture = ExtResource("16_rp")
 texture_margin_top = 12.0
 texture_margin_right = 12.0
 texture_margin_bottom = 12.0
 
 [sub_resource type="StyleBoxTexture" id="sbt_rh"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 texture = ExtResource("17_rh")
 texture_margin_top = 12.0
 texture_margin_right = 12.0
 texture_margin_bottom = 12.0
 
 [sub_resource type="StyleBoxTexture" id="sbt_rs"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 texture = ExtResource("18_rs")
 texture_margin_top = 12.0
 texture_margin_right = 12.0
 texture_margin_bottom = 12.0
 
 [sub_resource type="StyleBoxTexture" id="sbt_rd"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 texture = ExtResource("19_rd")
 texture_margin_top = 12.0
 texture_margin_right = 12.0
@@ -117,7 +175,6 @@ texture_margin_bottom = 12.0
 [node name="LevelPrefRow" type="PanelContainer"]
 process_mode = 3
 script = ExtResource("1_script")
-_vbar_texture = ExtResource("20_vbar")
 left_normal = SubResource("sbt_ln")
 left_pressed = SubResource("sbt_lp")
 left_hovered = SubResource("sbt_lh")
@@ -142,35 +199,91 @@ theme_override_constants/separation = 5
 layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="LeftBtn" type="Button" parent="VBoxContainer/ButtonContainer"]
+[node name="LeftButton" type="Button" parent="VBoxContainer/ButtonContainer"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(64, 48)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/focus = SubResource("StyleBoxEmpty_tjr35")
-icon = ExtResource("2_x")
-icon_alignment = 1
-expand_icon = true
 
-[node name="MiddleBtn" type="Button" parent="VBoxContainer/ButtonContainer"]
+[node name="LeftIconRect" type="TextureRect" parent="VBoxContainer/ButtonContainer/LeftButton"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("2_x")
+stretch_mode = 6
+
+[node name="MiddleButton" type="Button" parent="VBoxContainer/ButtonContainer"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(64, 48)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/focus = SubResource("StyleBoxEmpty_81igg")
-icon = ExtResource("3_check")
-icon_alignment = 1
-expand_icon = true
 
-[node name="RightBtn" type="Button" parent="VBoxContainer/ButtonContainer"]
+[node name="MiddleContent" type="HBoxContainer" parent="VBoxContainer/ButtonContainer/MiddleButton"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="LeftVBar" type="TextureRect" parent="VBoxContainer/ButtonContainer/MiddleButton/MiddleContent"]
+unique_name_in_owner = true
+modulate = Color(1, 1, 1, 0.3)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+texture = ExtResource("20_vbar")
+stretch_mode = 6
+
+[node name="MiddleIconRect" type="TextureRect" parent="VBoxContainer/ButtonContainer/MiddleButton/MiddleContent"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("3_check")
+stretch_mode = 6
+
+[node name="RightVBar" type="TextureRect" parent="VBoxContainer/ButtonContainer/MiddleButton/MiddleContent"]
+unique_name_in_owner = true
+modulate = Color(1, 1, 1, 0.3)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+texture = ExtResource("20_vbar")
+stretch_mode = 6
+
+[node name="RightButton" type="Button" parent="VBoxContainer/ButtonContainer"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(64, 48)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/focus = SubResource("StyleBoxEmpty_o1qun")
-icon = ExtResource("4_heart")
-icon_alignment = 1
-expand_icon = true
+
+[node name="RightIconRect" type="TextureRect" parent="VBoxContainer/ButtonContainer/RightButton"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("4_heart")
+stretch_mode = 6
 
 [node name="Thumbnail" type="TextureRect" parent="VBoxContainer"]
 unique_name_in_owner = true
@@ -184,6 +297,6 @@ stretch_mode = 5
 custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
 
-[connection signal="pressed" from="VBoxContainer/ButtonContainer/LeftBtn" to="." method="_on_left_btn_pressed"]
-[connection signal="pressed" from="VBoxContainer/ButtonContainer/MiddleBtn" to="." method="_on_middle_btn_pressed"]
-[connection signal="pressed" from="VBoxContainer/ButtonContainer/RightBtn" to="." method="_on_right_btn_pressed"]
+[connection signal="pressed" from="VBoxContainer/ButtonContainer/LeftButton" to="." method="_on_left_button_pressed"]
+[connection signal="pressed" from="VBoxContainer/ButtonContainer/MiddleButton" to="." method="_on_middle_button_pressed"]
+[connection signal="pressed" from="VBoxContainer/ButtonContainer/RightButton" to="." method="_on_right_button_pressed"]
