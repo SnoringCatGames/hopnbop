@@ -72,15 +72,19 @@ func _try_link() -> void:
 		% _provider_name
 	)
 	_is_busy = true
+
 	if G.auth_token_store.is_anonymous:
-		_status_label.text = tr("LINK.CONNECTING")
+		_status_label.text = tr("LINK.LOGGING_IN")
+		G.auth_client.auth_completed.connect(
+			_on_login_completed, CONNECT_ONE_SHOT
+		)
+		G.auth_client.login_with_provider(_provider)
 	else:
 		_status_label.text = tr("LINK.LINKING")
-
-	G.auth_client.link_completed.connect(
-		_on_link_completed, CONNECT_ONE_SHOT
-	)
-	G.auth_client.link_provider(_provider)
+		G.auth_client.link_completed.connect(
+			_on_link_completed, CONNECT_ONE_SHOT
+		)
+		G.auth_client.link_provider(_provider)
 
 
 func _try_unlink() -> void:
@@ -104,6 +108,30 @@ func _do_unlink() -> void:
 		_on_unlink_completed, CONNECT_ONE_SHOT
 	)
 	G.auth_client.unlink_provider(_provider)
+
+
+func _on_login_completed(
+	success: bool,
+	error: String,
+) -> void:
+	G.log.print(
+		"[LinkAccountRow] Login completed for %s:"
+		% _provider_name
+		+ " success=%s error='%s'"
+		% [success, error]
+	)
+	if success:
+		_is_busy = false
+		if is_instance_valid(_panel):
+			_panel.manager.pop_panel()
+		return
+
+	_is_busy = false
+	push_warning(
+		"Login failed for %s: %s"
+		% [_provider_name, error]
+	)
+	_update_status()
 
 
 func _on_link_completed(
@@ -191,7 +219,7 @@ func _update_status() -> void:
 		_status_label.text = tr("LINK.LINKED")
 		_status_label.modulate = Color(0.6, 1.0, 0.6)
 	elif G.auth_token_store.is_anonymous:
-		_status_label.text = tr("LINK.CONNECT")
+		_status_label.text = tr("LINK.LOG_IN")
 		_status_label.modulate = Color.WHITE
 	else:
 		_status_label.text = tr("LINK.LINK")
