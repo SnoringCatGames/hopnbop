@@ -12,6 +12,7 @@ enum LevelPrefState {
 
 const _SELECTED_ICON_COLOR := (
 	Color(0.9, 0.9, 0.9))
+const _INDENT_MARGIN := 10
 
 var _level_id: StringName
 var _display_name: String
@@ -39,12 +40,6 @@ var _thumbnail: Texture2D
 @export var right_hovered: StyleBoxTexture
 @export var right_selected: StyleBoxTexture
 @export var right_disabled: StyleBoxTexture
-
-var _level_id: StringName
-var _display_name: String
-var _state := LevelPrefState.INCLUDED
-var _panel: LevelPrefPanel
-var _thumbnail: Texture2D
 
 
 func setup(
@@ -150,19 +145,19 @@ func _on_right_button_pressed() -> void:
 
 func _update_button_styles() -> void:
 	_apply_btn_style(
-		%LeftBtn, %LeftIconRect,
+		%LeftButton, %LeftIconRect,
 		left_normal, left_pressed,
 		left_hovered, left_selected,
 		left_disabled,
 		_state == LevelPrefState.EXCLUDED)
 	_apply_btn_style(
-		%MiddleBtn, %MiddleIconRect,
+		%MiddleButton, %MiddleIconRect,
 		middle_normal, middle_pressed,
 		middle_hovered, middle_selected,
 		middle_disabled,
 		_state == LevelPrefState.INCLUDED)
 	_apply_btn_style(
-		%RightBtn, %RightIconRect,
+		%RightButton, %RightIconRect,
 		right_normal, right_pressed,
 		right_hovered, right_selected,
 		right_disabled,
@@ -170,7 +165,7 @@ func _update_button_styles() -> void:
 
 
 func _apply_btn_style(
-	btn: Button,
+	button: Button,
 	icon_rect: TextureRect,
 	normal_style: StyleBoxTexture,
 	pressed_style: StyleBoxTexture,

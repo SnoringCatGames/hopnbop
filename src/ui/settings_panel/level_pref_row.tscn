@@ -206,7 +206,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/focus = SubResource("StyleBoxEmpty_tjr35")
 
-[node name="LeftIconRect" type="TextureRect" parent="VBoxContainer/ButtonContainer/LeftBtn"]
+[node name="LeftIconRect" type="TextureRect" parent="VBoxContainer/ButtonContainer/LeftButton"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(33, 30)
 layout_mode = 1
@@ -219,18 +219,6 @@ offset_left = -5.5
 offset_top = -5.0
 offset_right = 5.5
 offset_bottom = 5.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-texture = ExtResource("2_x")
-stretch_mode = 6
-
-[node name="LeftIconRect" type="TextureRect" parent="VBoxContainer/ButtonContainer/LeftButton"]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 4
@@ -246,46 +234,6 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/focus = SubResource("StyleBoxEmpty_81igg")
 
-[node name="MiddleIconContainer" type="HBoxContainer" parent="VBoxContainer/ButtonContainer/MiddleBtn"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_constants/separation = 0
-
-[node name="LeftVBar" type="TextureRect" parent="VBoxContainer/ButtonContainer/MiddleBtn/MiddleIconContainer"]
-modulate = Color(1, 1, 1, 0.3)
-custom_minimum_size = Vector2(2, 28)
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-mouse_filter = 2
-texture = ExtResource("20_vbar")
-stretch_mode = 6
-
-[node name="MiddleIconRect" type="TextureRect" parent="VBoxContainer/ButtonContainer/MiddleBtn/MiddleIconContainer"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(33, 30)
-layout_mode = 2
-size_flags_horizontal = 6
-size_flags_vertical = 4
-mouse_filter = 2
-texture = ExtResource("3_check")
-stretch_mode = 6
-
-[node name="RightVBar" type="TextureRect" parent="VBoxContainer/ButtonContainer/MiddleBtn/MiddleIconContainer"]
-modulate = Color(1, 1, 1, 0.3)
-custom_minimum_size = Vector2(2, 28)
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-mouse_filter = 2
-texture = ExtResource("20_vbar")
-stretch_mode = 6
-
 [node name="MiddleContent" type="HBoxContainer" parent="VBoxContainer/ButtonContainer/MiddleButton"]
 layout_mode = 1
 anchors_preset = 15
@@ -299,16 +247,19 @@ theme_override_constants/separation = 0
 [node name="LeftVBar" type="TextureRect" parent="VBoxContainer/ButtonContainer/MiddleButton/MiddleContent"]
 unique_name_in_owner = true
 modulate = Color(1, 1, 1, 0.3)
+custom_minimum_size = Vector2(2, 30)
 layout_mode = 2
-size_flags_vertical = 3
+size_flags_horizontal = 4
+size_flags_vertical = 6
 mouse_filter = 2
 texture = ExtResource("20_vbar")
 stretch_mode = 6
 
 [node name="MiddleIconRect" type="TextureRect" parent="VBoxContainer/ButtonContainer/MiddleButton/MiddleContent"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(33, 30)
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 6
 size_flags_vertical = 4
 mouse_filter = 2
 texture = ExtResource("3_check")
@@ -317,8 +268,10 @@ stretch_mode = 6
 [node name="RightVBar" type="TextureRect" parent="VBoxContainer/ButtonContainer/MiddleButton/MiddleContent"]
 unique_name_in_owner = true
 modulate = Color(1, 1, 1, 0.3)
+custom_minimum_size = Vector2(2, 30)
 layout_mode = 2
-size_flags_vertical = 3
+size_flags_horizontal = 4
+size_flags_vertical = 6
 mouse_filter = 2
 texture = ExtResource("20_vbar")
 stretch_mode = 6
@@ -330,7 +283,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/focus = SubResource("StyleBoxEmpty_o1qun")
 
-[node name="RightIconRect" type="TextureRect" parent="VBoxContainer/ButtonContainer/RightBtn"]
+[node name="RightIconRect" type="TextureRect" parent="VBoxContainer/ButtonContainer/RightButton"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(33, 30)
 layout_mode = 1
@@ -345,6 +298,8 @@ offset_right = 5.5
 offset_bottom = 5.0
 grow_horizontal = 2
 grow_vertical = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
 mouse_filter = 2
 texture = ExtResource("4_heart")
 stretch_mode = 6
