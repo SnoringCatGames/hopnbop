@@ -22,8 +22,12 @@ func _ready() -> void:
 
 
 func on_left() -> void:
-	get_tree().quit()
+	_quit()
 
 
 func on_right() -> void:
-	get_tree().quit()
+	_quit()
+
+
+func _quit() -> void:
+	G.main.close_app()

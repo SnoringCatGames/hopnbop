@@ -149,10 +149,18 @@ func _on_start_response(
 			parsed.parse(raw) == OK
 			and parsed.data is Dictionary
 		):
-			session_request_failed.emit(
+			var msg: String = parsed.data.get(
+				"message",
+				"HTTP %d" % response_code)
+			var retry_sec: int = int(
 				parsed.data.get(
-					"message",
-					"HTTP %d" % response_code))
+					"retry_after_seconds", 0))
+			if retry_sec > 0:
+				msg = (
+					"Please wait %ds"
+					+ " before re-queuing."
+				) % retry_sec
+			session_request_failed.emit(msg)
 		else:
 			session_request_failed.emit(
 				"HTTP %d: %s" % [response_code, raw])
@@ -389,6 +397,37 @@ func _handle_match_found(
 		server_port,
 		selected_level_id,
 	)
+
+
+## Fire-and-forget POST to /matchmaking/leave to release
+## the backend session lock. Uses a temporary HTTPRequest
+## that self-frees on completion.
+func clear_session() -> void:
+	if backend_api_url.is_empty():
+		return
+
+	var url := backend_api_url + "/matchmaking/leave"
+	var http := HTTPRequest.new()
+	http.timeout = 10.0
+	add_child(http)
+	http.request_completed.connect(
+		func(
+			_result: int,
+			_code: int,
+			_headers: PackedStringArray,
+			_body: PackedByteArray,
+		) -> void:
+			http.queue_free(),
+		CONNECT_ONE_SHOT,
+	)
+	var error := http.request(
+		url,
+		_get_auth_headers(),
+		HTTPClient.METHOD_POST,
+		"{}",
+	)
+	if error != OK:
+		http.queue_free()
 
 
 func _parse_json(

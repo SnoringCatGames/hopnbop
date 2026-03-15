@@ -1,8 +1,9 @@
 class_name FriendsPanel
 extends SidePanel
 ## Friends sub-panel. Displays the player's friend
-## code, an add-friend input, and a scrollable list
-## of friends with remove buttons.
+## code, an add-friend input, and three sections:
+## incoming requests, accepted friends, and sent
+## requests.
 
 
 @export var _back_row_scene: PackedScene
@@ -54,7 +55,7 @@ func build_ui() -> void:
 		Vector2(0, 16))
 	_row_container.add_child(list_spacer)
 
-	# Friends list container.
+	# Friends list container (holds all sections).
 	_friends_container = VBoxContainer.new()
 	_friends_container.add_theme_constant_override(
 		"separation", 4)
@@ -80,36 +81,57 @@ func build_ui() -> void:
 	# Connect API signals.
 	G.friends_api_client.friends_received.connect(
 		_on_friends_received)
-	G.friends_api_client.friend_added.connect(
-		_on_friend_added)
+	G.friends_api_client\
+		.friend_request_sent.connect(
+			_on_friend_request_sent)
+	G.friends_api_client\
+		.friend_request_accepted.connect(
+			_on_friend_request_accepted)
+	G.friends_api_client\
+		.friend_request_rejected.connect(
+			_on_friend_request_rejected)
+	G.friends_api_client\
+		.friend_request_cancelled.connect(
+			_on_friend_request_cancelled)
 	G.friends_api_client.friend_removed.connect(
 		_on_friend_removed)
 	G.friends_api_client.request_failed.connect(
 		_on_request_failed)
+
+	# Mark notifications as seen.
+	G.friends_api_client.mark_seen()
 
 	# Fetch friends list.
 	_refresh_friends()
 
 
 func _exit_tree() -> void:
-	if is_instance_valid(G.friends_api_client):
-		var client := G.friends_api_client
-		if client.friends_received.is_connected(
-				_on_friends_received):
-			client.friends_received.disconnect(
-				_on_friends_received)
-		if client.friend_added.is_connected(
-				_on_friend_added):
-			client.friend_added.disconnect(
-				_on_friend_added)
-		if client.friend_removed.is_connected(
-				_on_friend_removed):
-			client.friend_removed.disconnect(
-				_on_friend_removed)
-		if client.request_failed.is_connected(
-				_on_request_failed):
-			client.request_failed.disconnect(
-				_on_request_failed)
+	var client := G.friends_api_client
+	if not is_instance_valid(client):
+		return
+	var signals_to_disconnect: Array[Signal] = [
+		client.friends_received,
+		client.friend_request_sent,
+		client.friend_request_accepted,
+		client.friend_request_rejected,
+		client.friend_request_cancelled,
+		client.friend_removed,
+		client.request_failed,
+	]
+	var callbacks: Array[Callable] = [
+		_on_friends_received,
+		_on_friend_request_sent,
+		_on_friend_request_accepted,
+		_on_friend_request_rejected,
+		_on_friend_request_cancelled,
+		_on_friend_removed,
+		_on_request_failed,
+	]
+	for i in signals_to_disconnect.size():
+		if signals_to_disconnect[i].is_connected(
+				callbacks[i]):
+			signals_to_disconnect[i].disconnect(
+				callbacks[i])
 
 
 func _build_friend_code_section() -> void:
@@ -171,7 +193,9 @@ func _refresh_friends() -> void:
 	G.friends_api_client.fetch_friends()
 
 
-func _on_profile_received(data: Dictionary) -> void:
+func _on_profile_received(
+	data: Dictionary,
+) -> void:
 	var player: Dictionary = data.get("player", {})
 	var code: String = player.get("friend_code", "")
 	if not code.is_empty():
@@ -193,40 +217,81 @@ func _on_copy_code_pressed() -> void:
 
 
 func _on_add_friend_pressed() -> void:
-	var code := _add_input.text.strip_edges().to_upper()
+	var code := (
+		_add_input.text.strip_edges().to_upper())
 	if code.is_empty():
 		return
 	_add_button.disabled = true
-	G.friends_api_client.add_friend_by_code(code)
+	G.friends_api_client.send_request_by_code(code)
 
 
-func _on_friend_added(data: Dictionary) -> void:
+func _on_friend_request_sent(
+	data: Dictionary,
+) -> void:
 	_add_button.disabled = false
 	_add_input.text = ""
-	var already_friends: bool = data.get(
-		"already_friends", false)
+	var result: String = data.get("result", "")
 	if is_instance_valid(G.toast_overlay):
-		if already_friends:
-			G.toast_overlay.show_toast(
-				tr("FRIENDS.ALREADY_FRIENDS"))
-		else:
-			G.toast_overlay.show_toast(
-				tr("FRIENDS.ADDED"))
-	# Refresh the friends list.
+		match result:
+			"request_sent":
+				G.toast_overlay.show_toast(
+					tr("FRIENDS.REQUEST_SENT"))
+			"auto_accepted":
+				G.toast_overlay.show_toast(
+					tr("FRIENDS.ADDED"))
+			"already_friends":
+				G.toast_overlay.show_toast(
+					tr("FRIENDS.ALREADY_FRIENDS"))
+			"already_pending":
+				G.toast_overlay.show_toast(
+					tr("FRIENDS.ALREADY_PENDING"))
 	_refresh_friends()
 
 
-func _on_friend_removed(data: Dictionary) -> void:
+func _on_friend_request_accepted(
+	_data: Dictionary,
+) -> void:
+	if is_instance_valid(G.toast_overlay):
+		G.toast_overlay.show_toast(
+			tr("FRIENDS.ADDED"))
+	_refresh_friends()
+
+
+func _on_friend_request_rejected(
+	_data: Dictionary,
+) -> void:
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
 			tr("FRIENDS.REMOVED"))
 	_refresh_friends()
 
 
-func _on_friends_received(data: Dictionary) -> void:
+func _on_friend_request_cancelled(
+	_data: Dictionary,
+) -> void:
+	_refresh_friends()
+
+
+func _on_friend_removed(
+	_data: Dictionary,
+) -> void:
+	if is_instance_valid(G.toast_overlay):
+		G.toast_overlay.show_toast(
+			tr("FRIENDS.REMOVED"))
+	_refresh_friends()
+
+
+func _on_friends_received(
+	data: Dictionary,
+) -> void:
 	_is_loading = false
 	var friends: Array = data.get("friends", [])
-	_populate_friends_list(friends)
+	var sent: Array = data.get(
+		"sent_requests", [])
+	var incoming: Array = data.get(
+		"incoming_requests", [])
+	_populate_all_sections(
+		friends, sent, incoming)
 
 
 func _on_request_failed(error: String) -> void:
@@ -238,14 +303,22 @@ func _on_request_failed(error: String) -> void:
 			error, G.toast_overlay.Type.ERROR)
 
 
-func _populate_friends_list(
+func _populate_all_sections(
 	friends: Array,
+	sent: Array,
+	incoming: Array,
 ) -> void:
 	# Clear existing rows.
 	for child in _friends_container.get_children():
 		child.queue_free()
 
-	if friends.is_empty():
+	var has_any := (
+		not friends.is_empty()
+		or not sent.is_empty()
+		or not incoming.is_empty()
+	)
+
+	if not has_any:
 		_empty_label = Label.new()
 		_empty_label.text = tr("FRIENDS.EMPTY")
 		_empty_label.horizontal_alignment = (
@@ -257,18 +330,98 @@ func _populate_friends_list(
 		_friends_container.add_child(_empty_label)
 		return
 
-	for friend_data in friends:
-		_add_friend_row(friend_data)
+	# Incoming requests section.
+	if not incoming.is_empty():
+		_add_section_header(
+			tr("FRIENDS.INCOMING_REQUESTS"),
+			Color(1.0, 0.85, 0.3),
+			incoming.size())
+		for entry in incoming:
+			_add_incoming_row(entry)
+		_add_section_spacer()
+
+	# Friends section.
+	if not friends.is_empty():
+		_add_section_header(
+			tr("FRIENDS.FRIENDS_LIST"),
+			Color(1.0, 1.0, 1.0))
+		for entry in friends:
+			_add_friend_row(entry)
+		_add_section_spacer()
+
+	# Sent requests section.
+	if not sent.is_empty():
+		_add_section_header(
+			tr("FRIENDS.SENT_REQUESTS"),
+			Color(0.6, 0.6, 0.6))
+		for entry in sent:
+			_add_sent_row(entry)
 
 	rebuild_row_list()
 
 
-func _add_friend_row(
-	friend_data: Dictionary,
+func _add_section_header(
+	text: String,
+	color: Color,
+	count: int = -1,
 ) -> void:
-	var friend_id: String = friend_data.get(
+	var header := Label.new()
+	if count >= 0:
+		header.text = "%s (%d)" % [text, count]
+	else:
+		header.text = text
+	header.add_theme_color_override(
+		"font_color", color)
+	_friends_container.add_child(header)
+
+
+func _add_section_spacer() -> void:
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 8)
+	_friends_container.add_child(spacer)
+
+
+func _add_incoming_row(
+	entry: Dictionary,
+) -> void:
+	var friend_id: String = entry.get(
 		"player_id", "")
-	var display_name: String = friend_data.get(
+	var display_name: String = entry.get(
+		"display_name", "Unknown")
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override(
+		"separation", 8)
+
+	var name_label := Label.new()
+	name_label.text = display_name
+	name_label.size_flags_horizontal = (
+		Control.SIZE_EXPAND_FILL)
+	row.add_child(name_label)
+
+	var accept_button := Button.new()
+	accept_button.text = tr("FRIENDS.ACCEPT")
+	accept_button.pressed.connect(
+		_on_accept_pressed.bind(
+			friend_id, accept_button))
+	row.add_child(accept_button)
+
+	var reject_button := Button.new()
+	reject_button.text = tr("FRIENDS.REJECT")
+	reject_button.pressed.connect(
+		_on_reject_pressed.bind(
+			friend_id, reject_button))
+	row.add_child(reject_button)
+
+	_friends_container.add_child(row)
+
+
+func _add_friend_row(
+	entry: Dictionary,
+) -> void:
+	var friend_id: String = entry.get(
+		"player_id", "")
+	var display_name: String = entry.get(
 		"display_name", "Unknown")
 
 	var row := HBoxContainer.new()
@@ -298,6 +451,59 @@ func _add_friend_row(
 	row.add_child(remove_button)
 
 	_friends_container.add_child(row)
+
+
+func _add_sent_row(
+	entry: Dictionary,
+) -> void:
+	var friend_id: String = entry.get(
+		"player_id", "")
+	var display_name: String = entry.get(
+		"display_name", "Unknown")
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override(
+		"separation", 8)
+
+	var name_label := Label.new()
+	name_label.text = display_name
+	name_label.size_flags_horizontal = (
+		Control.SIZE_EXPAND_FILL)
+	row.add_child(name_label)
+
+	var cancel_button := Button.new()
+	cancel_button.text = (
+		tr("FRIENDS.CANCEL_REQUEST"))
+	cancel_button.pressed.connect(
+		_on_cancel_pressed.bind(
+			friend_id, cancel_button))
+	row.add_child(cancel_button)
+
+	_friends_container.add_child(row)
+
+
+func _on_accept_pressed(
+	friend_id: String,
+	button: Button,
+) -> void:
+	button.disabled = true
+	G.friends_api_client.accept_request(friend_id)
+
+
+func _on_reject_pressed(
+	friend_id: String,
+	button: Button,
+) -> void:
+	button.disabled = true
+	G.friends_api_client.reject_request(friend_id)
+
+
+func _on_cancel_pressed(
+	friend_id: String,
+	button: Button,
+) -> void:
+	button.disabled = true
+	G.friends_api_client.cancel_request(friend_id)
 
 
 func _on_invite_to_party_pressed(

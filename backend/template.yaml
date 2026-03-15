@@ -9,7 +9,7 @@ Globals:
     MemorySize: 512
     Environment:
       Variables:
-        GAME_VERSION: "0.7.3"
+        GAME_VERSION: "0.7.5"
         PROTOCOL_VERSION: "1"
         PLAYERS_TABLE: !Ref PlayersTable
         MATCH_HISTORY_TABLE: !Ref MatchHistoryTable
@@ -338,6 +338,28 @@ Resources:
             Path: /matchmaking/status/{ticket_id}
             Method: get
 
+  LeaveMatchmakingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.matchmaking_handler.leave_matchmaking
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - gamelift:StopMatchmaking
+              Resource: '*'
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ActiveSessionsTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        LeaveMatch:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /matchmaking/leave
+            Method: post
+
   # Match Result Functions
   SubmitMatchResultFunction:
     Type: AWS::Serverless::Function
@@ -569,6 +591,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref FriendsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
         - !Ref SecretsManagerPolicy
       Events:
         RemoveFriend:
@@ -576,6 +600,99 @@ Resources:
           Properties:
             RestApiId: !Ref GameBackendAPI
             Path: /friends/remove
+            Method: post
+
+  AcceptFriendRequestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.friends_handler.accept_request
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FriendsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        AcceptFriendRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /friends/accept
+            Method: post
+
+  RejectFriendRequestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.friends_handler.reject_request
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FriendsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        RejectFriendRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /friends/reject
+            Method: post
+
+  CancelFriendRequestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.friends_handler.cancel_request
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FriendsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        CancelFriendRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /friends/cancel
+            Method: post
+
+  GetFriendNotificationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.friends_handler.get_notifications
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FriendsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        GetFriendNotifications:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /friends/notifications
+            Method: get
+
+  MarkFriendsSeenFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.friends_handler.mark_seen
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        MarkFriendsSeen:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /friends/seen
             Method: post
 
   SearchFriendCodeFunction:

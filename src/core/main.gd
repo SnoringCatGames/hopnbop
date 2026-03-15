@@ -208,8 +208,7 @@ func _show_update_required_dialog() -> void:
 	dialog.open(
 		tr("VERSION.UPDATE_REQUIRED"),
 		tr("VERSION.CLOSE_GAME"),
-		func() -> void:
-			get_tree().quit(),
+		close_app,
 	)
 
 
@@ -341,6 +340,24 @@ func close_app() -> void:
 		Utils.open_screenshot_folder()
 	Netcode.print("Main.close_app", NetworkLogger.CATEGORY_CORE_SYSTEMS)
 
+	# Release the backend session lock so the
+	# player can re-queue on next launch.
+	if (
+		Netcode.is_client
+		and Netcode.should_connect_to_remote_server
+		and is_instance_valid(G.game_panel)
+		and is_instance_valid(
+			G.game_panel.session_manager)
+		and is_instance_valid(
+			G.game_panel.session_manager
+				.session_provider)
+		and G.game_panel.session_manager
+			.session_provider
+			.has_method("clear_session")
+	):
+		(G.game_panel.session_manager
+			.session_provider.clear_session())
+
 	# Explicitly disconnect to notify peers
 	# immediately in preview mode.
 	if Netcode.is_preview:
@@ -355,7 +372,10 @@ func close_app() -> void:
 			for peer_id in multiplayer.get_peers():
 				multiplayer.multiplayer_peer.disconnect_peer(peer_id)
 
-	get_tree().call_deferred("quit")
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.close()")
+	else:
+		get_tree().call_deferred("quit")
 
 
 func _disconnect_peers_in_preview_mode() -> void:

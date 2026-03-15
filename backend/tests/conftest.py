@@ -220,6 +220,20 @@ def _reinit_handler_services():
     except (ImportError, AttributeError):
         pass
 
+    try:
+        from services import friends_service as fs_mod
+        from handlers import friends_handler
+
+        importlib.reload(fs_mod)
+        friends_handler.friends_service = (
+            fs_mod.FriendsService()
+        )
+        friends_handler.player_service = (
+            ps_mod.PlayerService()
+        )
+    except ImportError:
+        pass
+
 
 def _create_dynamodb_tables():
     """Create all DynamoDB tables used by the backend."""

@@ -71,10 +71,11 @@ func build_ui() -> void:
 
 	# Friends trigger (hidden for anonymous players).
 	if not G.auth_token_store.is_anonymous:
-		_add_sub_panel_trigger_row(
+		var friends_row := _add_sub_panel_trigger_row(
 			tr("SETTINGS.FRIENDS"),
 			_friends_panel_scene,
 			icon_friends)
+		_connect_friends_badge(friends_row)
 
 	# Account trigger.
 	_add_sub_panel_trigger_row(
@@ -106,7 +107,7 @@ func _add_sub_panel_trigger_row(
 	display_name: String,
 	panel_scene: PackedScene,
 	icon: Texture2D = null,
-) -> void:
+) -> SubPanelTriggerRow:
 	var row: SubPanelTriggerRow = (
 		_sub_panel_trigger_row_scene.instantiate())
 	if icon != null:
@@ -114,6 +115,21 @@ func _add_sub_panel_trigger_row(
 	row.setup(display_name, panel_scene, self)
 	_row_container.add_child(row)
 	_connect_row_clicked(row)
+	return row
+
+
+func _connect_friends_badge(
+	row: SubPanelTriggerRow,
+) -> void:
+	if not is_instance_valid(row):
+		return
+	var poller := G.friends_notification_poller
+	row.set_badge_visible(
+		poller.unseen_count > 0)
+	poller.unseen_count_changed.connect(
+		func(count: int) -> void:
+			if is_instance_valid(row):
+				row.set_badge_visible(count > 0))
 
 
 func _add_screen_trigger_row(

@@ -161,16 +161,37 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             0 if auth_token.provider in ("anonymous", "debug") else 1
         )
 
-        # Guard: reject if player already has an active session.
-        if not active_session_service.try_start_matchmaking(
-            player_id, "pending"
-        ):
+        # Guard: reject if player is in an active match.
+        # Matchmaking-state sessions are overridable so
+        # players can re-queue after closing the page.
+        allowed, old_ticket, retry_after_seconds = (
+            active_session_service.try_start_matchmaking(
+                player_id, "pending"
+            )
+        )
+        if not allowed:
+            wait_msg = (
+                "Please wait %ds before re-queuing."
+                % retry_after_seconds
+                if retry_after_seconds > 0
+                else "Please finish or wait for it to end."
+            )
             return error_response(
                 409,
                 "CONCURRENT_SESSION",
-                "You are already in matchmaking or an active"
-                " match. Please finish or wait for it to end.",
+                "You are already in an active match. "
+                + wait_msg,
+                retry_after_seconds=retry_after_seconds,
             )
+        if old_ticket and old_ticket != "pending":
+            try:
+                asyncio.run(
+                    gamelift.cancel_matchmaking(old_ticket))
+            except Exception:
+                logger.warning(
+                    "Failed to cancel old ticket %s",
+                    old_ticket,
+                )
 
         # Create matchmaking players (one per local player).
         players = [
@@ -326,16 +347,37 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             0 if auth_token.provider in ("anonymous", "debug") else 1
         )
 
-        # Guard: reject if player already has an active session.
-        if not active_session_service.try_start_matchmaking(
-            player_id, "pending"
-        ):
+        # Guard: reject if player is in an active match.
+        # Matchmaking-state sessions are overridable so
+        # players can re-queue after closing the page.
+        allowed, old_ticket, retry_after_seconds = (
+            active_session_service.try_start_matchmaking(
+                player_id, "pending"
+            )
+        )
+        if not allowed:
+            wait_msg = (
+                "Please wait %ds before re-queuing."
+                % retry_after_seconds
+                if retry_after_seconds > 0
+                else "Please finish or wait for it to end."
+            )
             return error_response(
                 409,
                 "CONCURRENT_SESSION",
-                "You are already in matchmaking or an active"
-                " match. Please finish or wait for it to end.",
+                "You are already in an active match. "
+                + wait_msg,
+                retry_after_seconds=retry_after_seconds,
             )
+        if old_ticket and old_ticket != "pending":
+            try:
+                asyncio.run(
+                    gamelift.cancel_matchmaking(old_ticket))
+            except Exception:
+                logger.warning(
+                    "Failed to cancel old ticket %s",
+                    old_ticket,
+                )
 
         # Create matchmaking players.
         players = [
@@ -504,11 +546,68 @@ def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dic
         return error_response(500, "INTERNAL_ERROR", "Internal server error")
 
 
+@tracer.capture_lambda_handler
+@logger.inject_lambda_context
+def leave_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
+    """
+    POST /matchmaking/leave
+    Release the active session lock so the player can re-queue.
+    Cancels a pending GameLift ticket if one exists.
+    """
+    try:
+        # Auth.
+        auth_header = event.get("headers", {}).get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return error_response(401, "MISSING_AUTH", "Missing authorization")
+
+        jwt_token = auth_header[7:]
+        jwt_secret = secrets_service.get_jwt_secret()
+
+        if jwt_token.startswith("DEBUG_"):
+            player_id = jwt_token
+        else:
+            auth_token = AuthToken.from_jwt(jwt_token, jwt_secret)
+            player_id = auth_token.player_id
+
+        # Read current session to cancel any pending
+        # matchmaking ticket before deleting the record.
+        session = active_session_service.get_active_session(
+            player_id
+        )
+        if session and session.get("state") == "matchmaking":
+            ticket_id = session.get("session_id", "")
+            if ticket_id and ticket_id != "pending":
+                try:
+                    asyncio.run(
+                        gamelift.cancel_matchmaking(ticket_id)
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to cancel ticket %s",
+                        ticket_id,
+                    )
+
+        active_session_service.clear_session(player_id)
+
+        return {
+            "statusCode": 200,
+            "headers": _HEADERS,
+            "body": json.dumps({"status": "ok"}),
+        }
+
+    except ValueError as e:
+        return error_response(400, "VALIDATION_ERROR", str(e))
+    except Exception as e:
+        logger.exception("Leave matchmaking error")
+        return error_response(500, "INTERNAL_ERROR", "Internal server error")
+
+
 def error_response(
     status_code: int,
     error_code: str,
     message: str,
     retry_after: int = None,
+    retry_after_seconds: int = 0,
 ) -> Dict:
     """Format error response."""
     body = {
@@ -516,6 +615,9 @@ def error_response(
         "error_code": error_code,
         "message": message,
     }
+
+    if retry_after_seconds > 0:
+        body["retry_after_seconds"] = retry_after_seconds
 
     headers = dict(_HEADERS)
     if retry_after:

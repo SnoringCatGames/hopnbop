@@ -5,12 +5,13 @@ extends Screen
 ## Fixed width for the Add Friend button column
 ## and its balancing spacer on the opposite side.
 const _FRIEND_BUTTON_WIDTH := 48
+const _STRIPE_COLOR := Color(1.0, 1.0, 1.0, 0.06)
 
 @export var _add_friend_icon: Texture2D
 
-## Set of backend player IDs that have been
-## friend-added this session (to avoid duplicates).
-var _added_friend_ids: Dictionary = {}
+## Set of backend player IDs that have been acted
+## on this session (to avoid duplicate actions).
+var _acted_friend_ids: Dictionary = {}
 
 var _navigator := ScreenFocusNavigator.new()
 
@@ -53,7 +54,7 @@ func _process(_delta: float) -> void:
 
 func on_open() -> void:
 	super.on_open()
-	_added_friend_ids.clear()
+	_acted_friend_ids.clear()
 
 	# Display server message if present.
 	if not (G.client_session
@@ -64,6 +65,10 @@ func on_open() -> void:
 		%MessageLabel.visible = true
 	else:
 		%MessageLabel.visible = false
+
+	# Refresh cached relationship data so buttons
+	# reflect current state.
+	G.friends_api_client.fetch_friends()
 
 	_populate_results()
 	_build_focusable_list()
@@ -135,7 +140,8 @@ func _populate_results() -> void:
 						"backend_player_id",
 						"").is_empty())))
 
-	for ps: GamePlayerState in sorted_players:
+	for i in sorted_players.size():
+		var ps: GamePlayerState = sorted_players[i]
 		var stats: PlayerMatchStats = (
 			match_state.get_player_stats(
 				ps.player_id))
@@ -151,7 +157,8 @@ func _populate_results() -> void:
 		_add_result_row(
 			ps, stats, backend_id,
 			is_anon,
-			has_any_friend_button)
+			has_any_friend_button,
+			i % 2 == 1)
 
 
 func _find_backend_id(
@@ -183,13 +190,23 @@ func _add_result_row(
 	backend_player_id: String,
 	is_anonymous: bool,
 	reserve_friend_column: bool,
+	is_striped: bool,
 ) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override(
 		"separation", 16)
 	row.alignment = (
 		BoxContainer.ALIGNMENT_CENTER)
-	%ResultsContainer.add_child(row)
+	if is_striped:
+		var panel := PanelContainer.new()
+		var style := StyleBoxFlat.new()
+		style.bg_color = _STRIPE_COLOR
+		panel.add_theme_stylebox_override(
+			"panel", style)
+		%ResultsContainer.add_child(panel)
+		panel.add_child(row)
+	else:
+		%ResultsContainer.add_child(row)
 
 	# Left spacer to balance the Add Friend
 	# button on the right, keeping the core
@@ -242,22 +259,15 @@ func _add_result_row(
 			HORIZONTAL_ALIGNMENT_RIGHT)
 		row.add_child(kd_label)
 
-	# Add Friend button or equal-width spacer.
+	# Friend action button or spacer.
 	if reserve_friend_column:
 		var show_button := (
 			not is_anonymous
 			and not backend_player_id.is_empty()
 			and not G.auth_token_store.is_anonymous)
 		if show_button:
-			var add_button := Button.new()
-			add_button.icon = _add_friend_icon
-			add_button.custom_minimum_size.x = (
-				_FRIEND_BUTTON_WIDTH)
-			add_button.pressed.connect(
-				_on_add_friend_pressed.bind(
-					backend_player_id,
-					add_button))
-			row.add_child(add_button)
+			_add_friend_button(
+				row, backend_player_id)
 		else:
 			var right_spacer := Control.new()
 			right_spacer.custom_minimum_size.x = (
@@ -277,54 +287,174 @@ func _ordinal(n: int) -> String:
 			return tr("ORDINAL.NTH") % n
 
 
+func _add_friend_button(
+	row: HBoxContainer,
+	backend_player_id: String,
+) -> void:
+	var client := G.friends_api_client
+
+	# Already friends. No button needed.
+	if client.is_friend(backend_player_id):
+		var right_spacer := Control.new()
+		right_spacer.custom_minimum_size.x = (
+			_FRIEND_BUTTON_WIDTH)
+		row.add_child(right_spacer)
+		return
+
+	# Sent request already pending.
+	if client.has_sent_request(
+		backend_player_id,
+	):
+		var pending_button := Button.new()
+		pending_button.text = (
+			tr("FRIENDS.PENDING"))
+		pending_button.disabled = true
+		pending_button.custom_minimum_size.x = (
+			_FRIEND_BUTTON_WIDTH)
+		row.add_child(pending_button)
+		return
+
+	# Incoming request. Show Accept button.
+	if client.has_incoming_request(
+		backend_player_id,
+	):
+		var accept_button := Button.new()
+		accept_button.text = (
+			tr("FRIENDS.ACCEPT"))
+		accept_button.custom_minimum_size.x = (
+			_FRIEND_BUTTON_WIDTH)
+		accept_button.pressed.connect(
+			_on_accept_friend_pressed.bind(
+				backend_player_id,
+				accept_button))
+		row.add_child(accept_button)
+		return
+
+	# No relationship. Show Add Friend button.
+	var add_button := Button.new()
+	add_button.icon = _add_friend_icon
+	add_button.expand_icon = true
+	add_button.add_theme_constant_override(
+		"icon_max_width",
+		int(G.settings
+			.get_icon_display_width()))
+	add_button.custom_minimum_size.x = (
+		_FRIEND_BUTTON_WIDTH)
+	add_button.pressed.connect(
+		_on_add_friend_pressed.bind(
+			backend_player_id,
+			add_button))
+	row.add_child(add_button)
+
+
 func _on_add_friend_pressed(
 	backend_player_id: String,
 	button: Button,
 ) -> void:
-	if backend_player_id in _added_friend_ids:
+	if backend_player_id in _acted_friend_ids:
 		return
-	_added_friend_ids[backend_player_id] = true
+	_acted_friend_ids[backend_player_id] = true
 	button.disabled = true
 	button.text = "✓"
 
-	G.friends_api_client.add_friend_by_player_id(
-		backend_player_id, "recent_match")
+	G.friends_api_client\
+		.send_request_by_player_id(
+			backend_player_id, "recent_match")
 
-	# Show toast on result.
-	if not (G.friends_api_client.friend_added
-			.is_connected(_on_friend_add_result)):
-		G.friends_api_client.friend_added.connect(
-			_on_friend_add_result,
-			CONNECT_ONE_SHOT)
-		(G.friends_api_client.request_failed
+	if not (G.friends_api_client
+			.friend_request_sent
+			.is_connected(
+				_on_friend_request_result)):
+		G.friends_api_client\
+			.friend_request_sent.connect(
+				_on_friend_request_result,
+				CONNECT_ONE_SHOT)
+		G.friends_api_client.request_failed\
 			.connect(
-				_on_friend_add_failed,
-				CONNECT_ONE_SHOT))
+				_on_friend_action_failed,
+				CONNECT_ONE_SHOT)
 
 
-func _on_friend_add_result(
+func _on_accept_friend_pressed(
+	backend_player_id: String,
+	button: Button,
+) -> void:
+	if backend_player_id in _acted_friend_ids:
+		return
+	_acted_friend_ids[backend_player_id] = true
+	button.disabled = true
+	button.text = "✓"
+
+	G.friends_api_client.accept_request(
+		backend_player_id)
+
+	if not (G.friends_api_client
+			.friend_request_accepted
+			.is_connected(
+				_on_friend_accept_result)):
+		G.friends_api_client\
+			.friend_request_accepted.connect(
+				_on_friend_accept_result,
+				CONNECT_ONE_SHOT)
+		G.friends_api_client.request_failed\
+			.connect(
+				_on_friend_action_failed,
+				CONNECT_ONE_SHOT)
+
+
+func _on_friend_request_result(
 	data: Dictionary,
 ) -> void:
 	if (G.friends_api_client.request_failed
-			.is_connected(_on_friend_add_failed)):
-		(G.friends_api_client.request_failed
-			.disconnect(_on_friend_add_failed))
-	var already: bool = data.get(
-		"already_friends", false)
+			.is_connected(
+				_on_friend_action_failed)):
+		G.friends_api_client.request_failed\
+			.disconnect(_on_friend_action_failed)
+	var result: String = data.get("result", "")
 	if is_instance_valid(G.toast_overlay):
-		if already:
-			G.toast_overlay.show_toast(
-				tr("FRIENDS.ALREADY_FRIENDS"))
-		else:
-			G.toast_overlay.show_toast(
-				tr("FRIENDS.ADDED"))
+		match result:
+			"request_sent":
+				G.toast_overlay.show_toast(
+					tr("FRIENDS.REQUEST_SENT"))
+			"auto_accepted":
+				G.toast_overlay.show_toast(
+					tr("FRIENDS.ADDED"))
+			"already_friends":
+				G.toast_overlay.show_toast(
+					tr("FRIENDS.ALREADY_FRIENDS"))
+			"already_pending":
+				G.toast_overlay.show_toast(
+					tr("FRIENDS.ALREADY_PENDING"))
 
 
-func _on_friend_add_failed(error: String) -> void:
-	if (G.friends_api_client.friend_added
-			.is_connected(_on_friend_add_result)):
-		(G.friends_api_client.friend_added
-			.disconnect(_on_friend_add_result))
+func _on_friend_accept_result(
+	_data: Dictionary,
+) -> void:
+	if (G.friends_api_client.request_failed
+			.is_connected(
+				_on_friend_action_failed)):
+		G.friends_api_client.request_failed\
+			.disconnect(_on_friend_action_failed)
+	if is_instance_valid(G.toast_overlay):
+		G.toast_overlay.show_toast(
+			tr("FRIENDS.ADDED"))
+
+
+func _on_friend_action_failed(
+	error: String,
+) -> void:
+	if (G.friends_api_client.friend_request_sent
+			.is_connected(
+				_on_friend_request_result)):
+		G.friends_api_client.friend_request_sent\
+			.disconnect(_on_friend_request_result)
+	if (G.friends_api_client
+			.friend_request_accepted
+			.is_connected(
+				_on_friend_accept_result)):
+		G.friends_api_client\
+			.friend_request_accepted\
+			.disconnect(_on_friend_accept_result)
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
 			error, G.toast_overlay.Type.ERROR)

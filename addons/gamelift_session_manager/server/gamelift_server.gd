@@ -563,7 +563,7 @@ func _set_transport_from_matchmaker(
 				if (
 					is_web is Dictionary
 					and is_web.get(
-						"attributeValue", 0) == 1
+						"valueAttribute", 0) == 1
 				):
 					has_web_player = true
 					break
@@ -590,7 +590,10 @@ func _set_transport_from_matchmaker(
 
 ## Identify anonymous players from matchmaker
 ## data. A player with is_authenticated == 0 is
-## anonymous.
+## anonymous. FlexMatch player IDs use the format
+## "backendId_N" (e.g., "abc123_0"), so the
+## trailing suffix is stripped to match the raw
+## backend player IDs used elsewhere.
 func _parse_anonymous_from_matchmaker(
 	data: Dictionary,
 ) -> void:
@@ -607,9 +610,9 @@ func _parse_anonymous_from_matchmaker(
 		):
 			continue
 		for player in team.players:
-			var player_id: String = player.get(
+			var flexmatch_id: String = player.get(
 				"playerId", "")
-			if player_id.is_empty():
+			if flexmatch_id.is_empty():
 				continue
 			var attrs: Dictionary = player.get(
 				"attributes", {})
@@ -618,16 +621,37 @@ func _parse_anonymous_from_matchmaker(
 			if (
 				is_auth is Dictionary
 				and is_auth.get(
-					"attributeValue", 1) == 0
+					"valueAttribute", 1) == 0
 			):
+				var backend_id := (
+					_strip_flexmatch_suffix(
+						flexmatch_id))
 				_anonymous_backend_ids[
-					player_id] = true
+					backend_id] = true
 	if not _anonymous_backend_ids.is_empty():
 		Netcode.log.print(
 			"Anonymous players: %s"
 			% str(_anonymous_backend_ids.keys()),
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
+
+
+## Strip the trailing "_N" couch co-op suffix
+## from a FlexMatch player ID to recover the raw
+## backend player ID. Returns the input unchanged
+## if no suffix is found.
+func _strip_flexmatch_suffix(
+	flexmatch_id: String,
+) -> String:
+	var last_underscore := (
+		flexmatch_id.rfind("_"))
+	if last_underscore < 0:
+		return flexmatch_id
+	var suffix := flexmatch_id.substr(
+		last_underscore + 1)
+	if suffix.is_valid_int():
+		return flexmatch_id.left(last_underscore)
+	return flexmatch_id
 
 
 ## Parse selected level from game session.

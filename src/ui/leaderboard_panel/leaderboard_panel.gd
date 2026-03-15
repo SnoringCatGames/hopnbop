@@ -12,6 +12,7 @@ const _TYPE_PARAMS: Array[String] = [
 	"alltime", "weekly",
 ]
 const _FONT_SIZE := 28
+const _STRIPE_COLOR := Color(1.0, 1.0, 1.0, 0.06)
 const _SELECTED_PREFIX := "\u25b8 "
 
 @export var _focus_style: StyleBoxTexture
@@ -182,8 +183,9 @@ func _on_leaderboard_received(
 		%StatusLabel.show()
 		return
 
-	for entry in filtered:
-		_add_leaderboard_row(entry)
+	for i in filtered.size():
+		_add_leaderboard_row(
+			filtered[i], i % 2 == 1)
 
 
 func _on_request_failed(
@@ -198,11 +200,21 @@ func _on_request_failed(
 
 func _add_leaderboard_row(
 	entry: Dictionary,
+	is_striped: bool,
 ) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override(
 		"separation", 12)
-	%ContentContainer.add_child(row)
+	if is_striped:
+		var panel := PanelContainer.new()
+		var style := StyleBoxFlat.new()
+		style.bg_color = _STRIPE_COLOR
+		panel.add_theme_stylebox_override(
+			"panel", style)
+		%ContentContainer.add_child(panel)
+		panel.add_child(row)
+	else:
+		%ContentContainer.add_child(row)
 
 	var profile_image := ProfileImageDisplay.new()
 	profile_image.image_size = 48

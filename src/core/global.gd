@@ -34,6 +34,7 @@ var backend_api_client: BackendApiClient
 var friends_api_client: FriendsApiClient
 var party_api_client: PartyApiClient
 var party_manager: PartyManager
+var friends_notification_poller: FriendsNotificationPoller
 var crash_reporter: CrashReporter
 var profile_image_cache: ProfileImageCache
 var auth_screen: AuthScreen
@@ -148,6 +149,13 @@ func _enter_tree() -> void:
 	party_manager = PartyManager.new()
 	party_manager.name = "PartyManager"
 	add_child(party_manager)
+
+	friends_notification_poller = (
+		FriendsNotificationPoller.new())
+	friends_notification_poller.name = (
+		"FriendsNotificationPoller")
+	add_child(friends_notification_poller)
+	friends_notification_poller.start_polling()
 
 	crash_reporter = CrashReporter.new()
 	crash_reporter.name = "CrashReporter"

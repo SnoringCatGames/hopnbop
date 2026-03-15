@@ -2,19 +2,28 @@
 
 import os
 import boto3
-from typing import List, Optional
+from typing import Dict, List, Optional
 from dataclasses import dataclass
 from datetime import datetime
 
 
+# Relationship status constants.
+STATUS_ACCEPTED = "accepted"
+STATUS_PENDING_SENT = "pending_sent"
+STATUS_PENDING_RECEIVED = "pending_received"
+
+
 @dataclass
-class FriendEntry:
-    """A single friend relationship."""
+class FriendRelationship:
+    """A single friend or pending relationship."""
 
     friend_id: str
     display_name: str
     source: str
+    status: str
+    sender_id: str
     created_at: int
+    updated_at: int
 
 
 class FriendsService:
@@ -35,21 +44,16 @@ class FriendsService:
             self.players_table_name
         )
 
-    async def add_friend(
-        self,
-        player_id: str,
-        friend_id: str,
-        source: str = "friend_code",
-    ) -> bool:
-        """Add a bidirectional friend relationship.
-
-        Returns True if the friend was added, False if
-        already friends.
-        """
+    def _validate_players(
+        self, player_id: str, friend_id: str
+    ) -> None:
+        """Validate both players exist and are not
+        anonymous. Raises ValueError on failure."""
         if player_id == friend_id:
-            raise ValueError("Cannot add yourself as a friend")
+            raise ValueError(
+                "Cannot add yourself as a friend"
+            )
 
-        # Verify both players exist and neither is anonymous.
         player = self.players_table.get_item(
             Key={"player_id": player_id},
             ProjectionExpression="player_id, is_anonymous",
@@ -68,81 +72,29 @@ class FriendsService:
             )
         if friend["Item"].get("is_anonymous", False):
             raise ValueError(
-                "Cannot add an anonymous player as a friend"
+                "Cannot add an anonymous player"
+                " as a friend"
             )
 
-        # Check if already friends.
-        existing = self.friends_table.get_item(
+    def _get_relationship(
+        self, player_id: str, friend_id: str
+    ) -> Optional[dict]:
+        """Get a single relationship row, or None."""
+        response = self.friends_table.get_item(
             Key={
                 "player_id": player_id,
                 "friend_id": friend_id,
             },
-            ProjectionExpression="player_id",
         )
-        if "Item" in existing:
-            return False
+        return response.get("Item")
 
-        now = int(datetime.now().timestamp())
-
-        # Write both directions.
-        with self.friends_table.batch_writer() as batch:
-            batch.put_item(
-                Item={
-                    "player_id": player_id,
-                    "friend_id": friend_id,
-                    "source": source,
-                    "created_at": now,
-                }
-            )
-            batch.put_item(
-                Item={
-                    "player_id": friend_id,
-                    "friend_id": player_id,
-                    "source": source,
-                    "created_at": now,
-                }
-            )
-
-        return True
-
-    async def remove_friend(
-        self,
-        player_id: str,
-        friend_id: str,
-    ) -> None:
-        """Remove a bidirectional friend relationship."""
-        with self.friends_table.batch_writer() as batch:
-            batch.delete_item(
-                Key={
-                    "player_id": player_id,
-                    "friend_id": friend_id,
-                }
-            )
-            batch.delete_item(
-                Key={
-                    "player_id": friend_id,
-                    "friend_id": player_id,
-                }
-            )
-
-    async def list_friends(
-        self, player_id: str
-    ) -> List[FriendEntry]:
-        """List all friends for a player."""
-        response = self.friends_table.query(
-            KeyConditionExpression=(
-                boto3.dynamodb.conditions.Key("player_id")
-                .eq(player_id)
-            ),
-        )
-
-        friend_ids = [
-            item["friend_id"] for item in response["Items"]
-        ]
+    def _resolve_display_names(
+        self, friend_ids: List[str]
+    ) -> Dict[str, str]:
+        """Batch-get display names for a list of
+        player IDs."""
         if not friend_ids:
-            return []
-
-        # Batch-get display names from PlayersTable.
+            return {}
         keys = [
             {"player_id": fid} for fid in friend_ids
         ]
@@ -156,7 +108,6 @@ class FriendsService:
                 }
             }
         )
-
         name_map = {}
         for item in batch_response.get(
             "Responses", {}
@@ -164,44 +115,477 @@ class FriendsService:
             name_map[item["player_id"]] = item.get(
                 "display_name", ""
             )
+        return name_map
 
-        entries = []
-        for item in response["Items"]:
-            fid = item["friend_id"]
-            entries.append(
-                FriendEntry(
-                    friend_id=fid,
-                    display_name=name_map.get(fid, ""),
-                    source=item.get("source", ""),
-                    created_at=int(
-                        item.get("created_at", 0)
+    async def send_friend_request(
+        self,
+        sender_id: str,
+        receiver_id: str,
+        source: str = "friend_code",
+    ) -> dict:
+        """Send a friend request or auto-accept if
+        the other player already sent one.
+
+        Returns a dict with a "result" key:
+        - "request_sent": new pending request created.
+        - "auto_accepted": mutual request, now friends.
+        - "already_friends": already accepted friends.
+        - "already_pending": request already sent.
+        """
+        self._validate_players(sender_id, receiver_id)
+
+        existing = self._get_relationship(
+            sender_id, receiver_id
+        )
+
+        if existing is not None:
+            status = existing.get(
+                "status", STATUS_ACCEPTED
+            )
+            if status == STATUS_ACCEPTED:
+                return {"result": "already_friends"}
+            if status == STATUS_PENDING_SENT:
+                return {"result": "already_pending"}
+            if status == STATUS_PENDING_RECEIVED:
+                # The receiver already sent us a
+                # request. Auto-accept both directions.
+                now = int(datetime.now().timestamp())
+                self.friends_table.update_item(
+                    Key={
+                        "player_id": sender_id,
+                        "friend_id": receiver_id,
+                    },
+                    UpdateExpression=(
+                        "SET #s = :accepted,"
+                        " updated_at = :now"
                     ),
+                    ExpressionAttributeNames={
+                        "#s": "status",
+                    },
+                    ExpressionAttributeValues={
+                        ":accepted": STATUS_ACCEPTED,
+                        ":now": now,
+                    },
                 )
+                self.friends_table.update_item(
+                    Key={
+                        "player_id": receiver_id,
+                        "friend_id": sender_id,
+                    },
+                    UpdateExpression=(
+                        "SET #s = :accepted,"
+                        " updated_at = :now"
+                    ),
+                    ExpressionAttributeNames={
+                        "#s": "status",
+                    },
+                    ExpressionAttributeValues={
+                        ":accepted": STATUS_ACCEPTED,
+                        ":now": now,
+                    },
+                )
+                return {"result": "auto_accepted"}
+
+        now = int(datetime.now().timestamp())
+
+        with self.friends_table.batch_writer() as batch:
+            batch.put_item(
+                Item={
+                    "player_id": sender_id,
+                    "friend_id": receiver_id,
+                    "status": STATUS_PENDING_SENT,
+                    "sender_id": sender_id,
+                    "source": source,
+                    "created_at": now,
+                    "updated_at": now,
+                }
+            )
+            batch.put_item(
+                Item={
+                    "player_id": receiver_id,
+                    "friend_id": sender_id,
+                    "status": STATUS_PENDING_RECEIVED,
+                    "sender_id": sender_id,
+                    "source": source,
+                    "created_at": now,
+                    "updated_at": now,
+                }
             )
 
-        return entries
+        return {"result": "request_sent"}
+
+    async def accept_friend_request(
+        self,
+        receiver_id: str,
+        sender_id: str,
+    ) -> bool:
+        """Accept a pending friend request.
+
+        Returns True if accepted, False if no pending
+        request found.
+        """
+        existing = self._get_relationship(
+            receiver_id, sender_id
+        )
+        if existing is None:
+            return False
+        status = existing.get(
+            "status", STATUS_ACCEPTED
+        )
+        if status != STATUS_PENDING_RECEIVED:
+            return False
+
+        now = int(datetime.now().timestamp())
+        self.friends_table.update_item(
+            Key={
+                "player_id": receiver_id,
+                "friend_id": sender_id,
+            },
+            UpdateExpression=(
+                "SET #s = :accepted,"
+                " updated_at = :now"
+            ),
+            ExpressionAttributeNames={
+                "#s": "status",
+            },
+            ExpressionAttributeValues={
+                ":accepted": STATUS_ACCEPTED,
+                ":now": now,
+            },
+        )
+        self.friends_table.update_item(
+            Key={
+                "player_id": sender_id,
+                "friend_id": receiver_id,
+            },
+            UpdateExpression=(
+                "SET #s = :accepted,"
+                " updated_at = :now"
+            ),
+            ExpressionAttributeNames={
+                "#s": "status",
+            },
+            ExpressionAttributeValues={
+                ":accepted": STATUS_ACCEPTED,
+                ":now": now,
+            },
+        )
+        return True
+
+    async def reject_friend_request(
+        self,
+        receiver_id: str,
+        sender_id: str,
+    ) -> bool:
+        """Reject a pending friend request by deleting
+        both rows.
+
+        Returns True if rejected, False if no pending
+        request found.
+        """
+        existing = self._get_relationship(
+            receiver_id, sender_id
+        )
+        if existing is None:
+            return False
+        status = existing.get(
+            "status", STATUS_ACCEPTED
+        )
+        if status != STATUS_PENDING_RECEIVED:
+            return False
+
+        with self.friends_table.batch_writer() as batch:
+            batch.delete_item(
+                Key={
+                    "player_id": receiver_id,
+                    "friend_id": sender_id,
+                }
+            )
+            batch.delete_item(
+                Key={
+                    "player_id": sender_id,
+                    "friend_id": receiver_id,
+                }
+            )
+        return True
+
+    async def cancel_friend_request(
+        self,
+        sender_id: str,
+        receiver_id: str,
+    ) -> bool:
+        """Cancel a sent friend request by deleting
+        both rows.
+
+        Returns True if cancelled, False if no pending
+        request found.
+        """
+        existing = self._get_relationship(
+            sender_id, receiver_id
+        )
+        if existing is None:
+            return False
+        status = existing.get(
+            "status", STATUS_ACCEPTED
+        )
+        if status != STATUS_PENDING_SENT:
+            return False
+
+        with self.friends_table.batch_writer() as batch:
+            batch.delete_item(
+                Key={
+                    "player_id": sender_id,
+                    "friend_id": receiver_id,
+                }
+            )
+            batch.delete_item(
+                Key={
+                    "player_id": receiver_id,
+                    "friend_id": sender_id,
+                }
+            )
+        return True
+
+    async def remove_friend(
+        self,
+        player_id: str,
+        friend_id: str,
+    ) -> bool:
+        """Remove an accepted friend relationship.
+
+        Returns True if removed, False if not an
+        accepted friend.
+        """
+        existing = self._get_relationship(
+            player_id, friend_id
+        )
+        if existing is None:
+            return False
+        status = existing.get(
+            "status", STATUS_ACCEPTED
+        )
+        if status != STATUS_ACCEPTED:
+            return False
+
+        with self.friends_table.batch_writer() as batch:
+            batch.delete_item(
+                Key={
+                    "player_id": player_id,
+                    "friend_id": friend_id,
+                }
+            )
+            batch.delete_item(
+                Key={
+                    "player_id": friend_id,
+                    "friend_id": player_id,
+                }
+            )
+        return True
+
+    async def list_all_relationships(
+        self, player_id: str
+    ) -> Dict[str, List[FriendRelationship]]:
+        """List all relationships grouped by status.
+
+        Returns a dict with keys "friends",
+        "sent_requests", "incoming_requests".
+        """
+        response = self.friends_table.query(
+            KeyConditionExpression=(
+                boto3.dynamodb.conditions.Key(
+                    "player_id"
+                ).eq(player_id)
+            ),
+        )
+
+        items = response["Items"]
+        friend_ids = [
+            item["friend_id"] for item in items
+        ]
+        name_map = self._resolve_display_names(
+            friend_ids
+        )
+
+        friends = []
+        sent_requests = []
+        incoming_requests = []
+
+        for item in items:
+            fid = item["friend_id"]
+            status = item.get(
+                "status", STATUS_ACCEPTED
+            )
+            rel = FriendRelationship(
+                friend_id=fid,
+                display_name=name_map.get(fid, ""),
+                source=item.get("source", ""),
+                status=status,
+                sender_id=item.get("sender_id", ""),
+                created_at=int(
+                    item.get("created_at", 0)
+                ),
+                updated_at=int(
+                    item.get("updated_at", 0)
+                ),
+            )
+            if status == STATUS_ACCEPTED:
+                friends.append(rel)
+            elif status == STATUS_PENDING_SENT:
+                sent_requests.append(rel)
+            elif status == STATUS_PENDING_RECEIVED:
+                incoming_requests.append(rel)
+            else:
+                # Legacy rows without status field.
+                friends.append(rel)
+
+        return {
+            "friends": friends,
+            "sent_requests": sent_requests,
+            "incoming_requests": incoming_requests,
+        }
+
+    async def get_notifications(
+        self,
+        player_id: str,
+        since_timestamp: int,
+    ) -> dict:
+        """Get new friend notifications since a
+        timestamp.
+
+        Returns incoming pending requests and recently
+        accepted relationships where this player was
+        the sender (i.e., someone accepted our request).
+        """
+        response = self.friends_table.query(
+            KeyConditionExpression=(
+                boto3.dynamodb.conditions.Key(
+                    "player_id"
+                ).eq(player_id)
+            ),
+            FilterExpression=(
+                boto3.dynamodb.conditions.Attr(
+                    "updated_at"
+                ).gt(since_timestamp)
+            ),
+        )
+
+        items = response["Items"]
+        friend_ids = [
+            item["friend_id"] for item in items
+        ]
+        name_map = self._resolve_display_names(
+            friend_ids
+        )
+
+        incoming_requests = []
+        accepted_requests = []
+
+        for item in items:
+            fid = item["friend_id"]
+            status = item.get(
+                "status", STATUS_ACCEPTED
+            )
+            entry = {
+                "friend_id": fid,
+                "display_name": name_map.get(fid, ""),
+                "sender_id": item.get(
+                    "sender_id", ""
+                ),
+                "status": status,
+                "updated_at": int(
+                    item.get("updated_at", 0)
+                ),
+            }
+            if status == STATUS_PENDING_RECEIVED:
+                incoming_requests.append(entry)
+            elif (
+                status == STATUS_ACCEPTED
+                and item.get("sender_id", "")
+                == player_id
+            ):
+                # We sent the request and they
+                # accepted it.
+                accepted_requests.append(entry)
+
+        return {
+            "incoming_requests": incoming_requests,
+            "accepted_requests": accepted_requests,
+        }
+
+    async def get_unseen_count(
+        self, player_id: str
+    ) -> int:
+        """Count unseen friend notifications."""
+        last_seen = await self.get_last_seen_timestamp(
+            player_id
+        )
+        notifications = await self.get_notifications(
+            player_id, last_seen
+        )
+        return (
+            len(notifications["incoming_requests"])
+            + len(notifications["accepted_requests"])
+        )
+
+    async def mark_friends_seen(
+        self, player_id: str
+    ) -> None:
+        """Update last_seen_friends_at on the player
+        record."""
+        now = int(datetime.now().timestamp())
+        self.players_table.update_item(
+            Key={"player_id": player_id},
+            UpdateExpression=(
+                "SET last_seen_friends_at = :now"
+            ),
+            ExpressionAttributeValues={
+                ":now": now,
+            },
+        )
+
+    async def get_last_seen_timestamp(
+        self, player_id: str
+    ) -> int:
+        """Get the last_seen_friends_at timestamp for
+        a player. Returns 0 if not set."""
+        response = self.players_table.get_item(
+            Key={"player_id": player_id},
+            ProjectionExpression="last_seen_friends_at",
+        )
+        item = response.get("Item", {})
+        return int(
+            item.get("last_seen_friends_at", 0)
+        )
 
     async def delete_all_friends(
         self, player_id: str
     ) -> None:
-        """Delete all friend relationships for a player.
+        """Delete all relationships for a player.
 
         Used for GDPR account deletion. Removes both
-        directions for every friend.
+        directions for every relationship regardless
+        of status.
         """
-        friends = await self.list_friends(player_id)
+        response = self.friends_table.query(
+            KeyConditionExpression=(
+                boto3.dynamodb.conditions.Key(
+                    "player_id"
+                ).eq(player_id)
+            ),
+        )
 
         with self.friends_table.batch_writer() as batch:
-            for friend in friends:
+            for item in response["Items"]:
+                fid = item["friend_id"]
                 batch.delete_item(
                     Key={
                         "player_id": player_id,
-                        "friend_id": friend.friend_id,
+                        "friend_id": fid,
                     }
                 )
                 batch.delete_item(
                     Key={
-                        "player_id": friend.friend_id,
+                        "player_id": fid,
                         "friend_id": player_id,
                     }
                 )
@@ -211,29 +595,40 @@ class FriendsService:
         from_player_id: str,
         to_player_id: str,
     ) -> None:
-        """Migrate all friends from one player to another.
+        """Migrate all relationships from one player
+        to another.
 
-        For each friend of from_player_id:
-        - Adds to_player_id <-> friend_id if not already
-          friends and friend_id != to_player_id.
-        - Removes from_player_id <-> friend_id.
+        For each relationship of from_player_id:
+        - If accepted and target doesn't already have
+          a relationship with that friend, migrate it.
+        - Pending requests are dropped during migration.
+        - Removes all from_player_id relationships.
         Used during account merges.
         """
-        from_friends = await self.list_friends(from_player_id)
-        if not from_friends:
-            return
+        from_rels = await self.list_all_relationships(
+            from_player_id
+        )
+        to_rels = await self.list_all_relationships(
+            to_player_id
+        )
 
-        to_friends_set = {
-            f.friend_id
-            for f in (
-                await self.list_friends(to_player_id)
-            )
-        }
+        # Build set of all friend_ids the target
+        # already has any relationship with.
+        to_friends_set = set()
+        for group in to_rels.values():
+            for rel in group:
+                to_friends_set.add(rel.friend_id)
 
         with self.friends_table.batch_writer() as batch:
-            for friend in from_friends:
-                fid = friend.friend_id
-                # Remove the old relationship regardless.
+            # Process all relationship types.
+            all_rels = (
+                from_rels["friends"]
+                + from_rels["sent_requests"]
+                + from_rels["incoming_requests"]
+            )
+            for rel in all_rels:
+                fid = rel.friend_id
+                # Remove the old relationship.
                 batch.delete_item(
                     Key={
                         "player_id": from_player_id,
@@ -246,38 +641,52 @@ class FriendsService:
                         "friend_id": from_player_id,
                     }
                 )
-                # Skip if this friend is the merge target
-                # or already friends with the target.
+                # Only migrate accepted friendships.
+                if rel.status != STATUS_ACCEPTED:
+                    continue
                 if (
                     fid == to_player_id
                     or fid in to_friends_set
                 ):
                     continue
-                # Add new relationship to target player.
+                # Add accepted friendship to target.
+                now = int(datetime.now().timestamp())
                 batch.put_item(Item={
                     "player_id": to_player_id,
                     "friend_id": fid,
-                    "source": friend.source,
-                    "created_at": friend.created_at,
+                    "status": STATUS_ACCEPTED,
+                    "sender_id": rel.sender_id,
+                    "source": rel.source,
+                    "created_at": rel.created_at,
+                    "updated_at": now,
                 })
                 batch.put_item(Item={
                     "player_id": fid,
                     "friend_id": to_player_id,
-                    "source": friend.source,
-                    "created_at": friend.created_at,
+                    "status": STATUS_ACCEPTED,
+                    "sender_id": rel.sender_id,
+                    "source": rel.source,
+                    "created_at": rel.created_at,
+                    "updated_at": now,
                 })
 
     async def get_friends_data_for_export(
         self, player_id: str
     ) -> List[dict]:
         """Get friends data for GDPR export."""
-        friends = await self.list_friends(player_id)
-        return [
-            {
-                "friend_id": f.friend_id,
-                "display_name": f.display_name,
-                "source": f.source,
-                "created_at": f.created_at,
-            }
-            for f in friends
-        ]
+        rels = await self.list_all_relationships(
+            player_id
+        )
+        result = []
+        for group in rels.values():
+            for rel in group:
+                result.append({
+                    "friend_id": rel.friend_id,
+                    "display_name": rel.display_name,
+                    "source": rel.source,
+                    "status": rel.status,
+                    "sender_id": rel.sender_id,
+                    "created_at": rel.created_at,
+                    "updated_at": rel.updated_at,
+                })
+        return result

@@ -404,6 +404,15 @@ func _on_matchmaking_failed(reason: String) -> void:
 
 	G.client_session.is_game_loading = false
 
+	# Release the backend session lock so the
+	# player can re-queue immediately.
+	if (
+		Netcode.should_connect_to_remote_server
+		and session_manager.session_provider
+			.has_method("clear_session")
+	):
+		session_manager.session_provider.clear_session()
+
 	# On timeout, stay on loading screen and show
 	# a retry button instead of returning to lobby.
 	var is_timeout := (
@@ -418,7 +427,7 @@ func _on_matchmaking_failed(reason: String) -> void:
 
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
-			"Matchmaking failed. Try again.",
+			reason,
 			ToastOverlay.Type.INFO,
 		)
 
@@ -864,11 +873,16 @@ func _populate_match_participants() -> void:
 			G.client_session
 				.backend_player_id_map
 				.get(pid, ""))
+		var has_profile_image := (
+			G.client_session.profile_image_urls
+				.has(pid))
 		var entry := {
 			"player_id": pid,
 			"display_name": String(ps.full_name),
 			"backend_player_id": backend_id,
-			"is_anonymous": backend_id.is_empty(),
+			"is_anonymous": (
+				backend_id.is_empty()
+				or not has_profile_image),
 		}
 		G.client_session.latest_match_participants.append(
 			entry)
@@ -916,6 +930,16 @@ func _client_free_levels_and_open_screen(
 ## Used for unexpected disconnects.
 func client_exit_match() -> void:
 	Netcode.check_is_client()
+
+	# Release the backend session lock so the
+	# player can re-queue immediately.
+	if (
+		Netcode.should_connect_to_remote_server
+		and session_manager.session_provider
+			.has_method("clear_session")
+	):
+		session_manager.session_provider.clear_session()
+
 	_client_cleanup_after_match()
 	_client_free_levels_and_open_screen(
 		ScreensMain.ScreenType.LOBBY)

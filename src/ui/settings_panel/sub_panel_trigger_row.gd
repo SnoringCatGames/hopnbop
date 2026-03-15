@@ -11,6 +11,7 @@ var _icon_texture: Texture2D
 
 @onready var _icon: TextureRect = %Icon
 @onready var _label: Label = %Label
+@onready var _badge: Panel = %Badge
 @onready var _arrow: TextureRect = %Arrow
 
 
@@ -35,6 +36,27 @@ func _ready() -> void:
 	_label.text = _display_name
 	_apply_icon(_icon, _icon_texture)
 	_setup_chevron(_arrow)
+	_badge.visible = false
+	_setup_badge_style()
+
+
+## Show or hide the notification badge dot.
+func set_badge_visible(
+	is_visible: bool,
+) -> void:
+	if is_instance_valid(_badge):
+		_badge.visible = is_visible
+
+
+func _setup_badge_style() -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.9, 0.15, 0.15)
+	style.corner_radius_top_left = 5
+	style.corner_radius_top_right = 5
+	style.corner_radius_bottom_left = 5
+	style.corner_radius_bottom_right = 5
+	_badge.add_theme_stylebox_override(
+		"panel", style)
 
 
 func on_left() -> void:

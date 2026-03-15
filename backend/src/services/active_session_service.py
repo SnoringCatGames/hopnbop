@@ -15,6 +15,10 @@ _MATCHMAKING_TTL_SEC = 180
 # Seconds before an in-match record is considered stale.
 _IN_MATCH_TTL_SEC = 900
 
+# Seconds after an in-match record is created before it
+# can be overridden. Prevents match-dodging.
+_IN_MATCH_COOLDOWN_SEC = 30
+
 _STATE_MATCHMAKING = "matchmaking"
 _STATE_IN_MATCH = "in_match"
 
@@ -39,12 +43,22 @@ class ActiveSessionService:
 
     def try_start_matchmaking(
         self, player_id: str, ticket_id: str
-    ) -> bool:
+    ) -> "tuple[bool, str | None, int]":
         """Attempt to create a matchmaking session record.
 
-        Returns True if the record was written successfully
-        (the player had no active session). Returns False if
-        the player already has a live non-stale session.
+        Returns (True, old_ticket_id_or_None, 0) if the record
+        was written successfully. The caller should cancel the
+        old ticket if one is returned. Returns (False, None,
+        retry_after_seconds) if the player has a live in-match
+        session that cannot be overridden yet.
+
+        Matchmaking-state sessions are always overridable so
+        that a player who closes the page and reopens can
+        immediately re-queue.
+
+        In-match sessions are overridable after the cooldown
+        period (_IN_MATCH_COOLDOWN_SEC) to allow players who
+        disconnected to re-queue without waiting the full TTL.
 
         Uses a two-step read-then-conditional-write to close
         the race window between concurrent callers.
@@ -57,13 +71,29 @@ class ActiveSessionService:
         )
         existing = response.get("Item")
 
+        old_ticket_id = None
         if existing and not self._is_record_stale(existing):
-            # Live session exists on another device.
-            return False
+            if existing.get("state") == _STATE_IN_MATCH:
+                created_at = int(
+                    existing.get("created_at", 0)
+                )
+                cooldown_remaining = (
+                    (created_at + _IN_MATCH_COOLDOWN_SEC)
+                    - now
+                )
+                if cooldown_remaining > 0:
+                    return False, None, cooldown_remaining
+                # Past cooldown. Allow override.
+            else:
+                # Matchmaking state. Allow override but
+                # remember the old ticket so the caller
+                # can cancel it.
+                old_ticket_id = existing.get("session_id")
 
-        # Step 2: Conditional write. Succeeds only if the
-        # item is absent or already expired (handles TTL
-        # lag and the race between step 1 and step 2).
+        # Step 2: Conditional write. Succeeds if the item is
+        # absent, expired, in matchmaking state, or in_match
+        # past the cooldown period.
+        cooldown_threshold = now - _IN_MATCH_COOLDOWN_SEC
         expires_at = now + _MATCHMAKING_TTL_SEC
         try:
             self._table.put_item(
@@ -77,17 +107,26 @@ class ActiveSessionService:
                 ConditionExpression=(
                     "attribute_not_exists(player_id)"
                     " OR expires_at <= :now"
+                    " OR #s = :matchmaking"
+                    " OR (#s = :in_match"
+                    " AND created_at <= :cooldown_threshold)"
                 ),
-                ExpressionAttributeValues={":now": now},
+                ExpressionAttributeValues={
+                    ":now": now,
+                    ":matchmaking": _STATE_MATCHMAKING,
+                    ":in_match": _STATE_IN_MATCH,
+                    ":cooldown_threshold": cooldown_threshold,
+                },
+                ExpressionAttributeNames={"#s": "state"},
             )
         except ClientError as exc:
             if (
                 exc.response["Error"]["Code"]
                 == "ConditionalCheckFailedException"
             ):
-                return False
+                return False, None, _IN_MATCH_COOLDOWN_SEC
             raise
-        return True
+        return True, old_ticket_id, 0
 
     def update_ticket_id(
         self, player_id: str, ticket_id: str

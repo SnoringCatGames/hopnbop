@@ -152,6 +152,47 @@ extends Node
 
 # ---
 
+# Stable Diffusion workflow: Level Geometry → Game Art
+# 1. Prepare your level shape
+
+# Draw your platform/terrain outlines in any image editor (even MS Paint works)
+# — white shapes on a black background, or simple line drawings of your surfaces.
+# 2. ControlNet: Canny or Scribble mode
+
+# In the webui, enable ControlNet and upload your level outline
+# Canny — best when your input has clean edges (exported from a level editor)
+# Scribble — best for rough hand-drawn sketches
+# Set control weight to ~0.7–1.0 (higher = stricter adherence to your shapes)
+# 3. Prompt for your art style
+
+# Example: "mossy stone platform, 2d game art, side view, pixel art style,
+# seamless tileable texture"
+# Use negative prompts: "3d, realistic, blurry, watermark"
+# 4. Generate + iterate
+
+# Generate several variations, pick the best one
+# Adjust ControlNet weight if the output doesn't follow your shapes closely
+# enough
+# 5. Inpaint problem areas
+
+# Switch to the Inpainting tab
+# Mask areas that need fixing (bad transitions, unwanted artifacts)
+# Regenerate just those masked sections
+# 6. Upscale if needed
+
+# Use Ultimate SD Upscale to bring the result to your target resolution
+# 7. Repeat per level section
+
+# Reuse the same prompts/settings for visual consistency across a level, just
+# swap the ControlNet input for each section's geometry
+# Pro Tips
+# Keep the seed fixed when generating variants of the same level to maintain
+# consistent style
+# Use batch generation (batch size 4) to quickly compare options
+# For tileable textures, include "seamless, tileable" in your prompt
+
+# ---
+
 
 # All M3 code changes are complete. The remaining items are:
 # - Godot client test — Connect from the game client to the live fleet, play a match, verify match results post to backend
