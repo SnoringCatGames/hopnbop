@@ -18,8 +18,8 @@ const KEY_LOCALE := "locale"
 const KEY_ANONYMOUS_HUE := "anonymous_color_hue"
 
 const SUPPORTED_LOCALES: Array[String] = [
-	"en", "zh", "es", "hi", "ar", "fr",
-	"pt", "ru", "ja", "de", "ko", "it", "th",
+	"ar", "zh", "en", "fr", "de", "hi",
+	"it", "ja", "ko", "pt", "ru", "es", "th",
 ]
 
 ## Setting keys that can be locally overridden.

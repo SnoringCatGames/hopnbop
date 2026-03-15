@@ -4,24 +4,24 @@ extends SidePanel
 ## per supported locale with the native name.
 
 
-@export var _back_row_scene: PackedScene
-@export var _language_option_row_scene: PackedScene
-
 const _LOCALE_DISPLAY_NAMES := {
-	"en": "English",
-	"zh": "中文",
-	"es": "Español",
-	"hi": "हिन्दी",
 	"ar": "العربية",
+	"zh": "中文",
+	"en": "English",
 	"fr": "Français",
+	"de": "Deutsch",
+	"hi": "हिन्दी",
+	"it": "Italiano",
+	"ja": "日本語",
+	"ko": "한국어",
 	"pt": "Português",
 	"ru": "Русский",
-	"ja": "日本語",
-	"de": "Deutsch",
-	"ko": "한국어",
-	"it": "Italiano",
+	"es": "Español",
 	"th": "ไทย",
 }
+
+@export var _back_row_scene: PackedScene
+@export var _language_option_row_scene: PackedScene
 
 
 func build_ui() -> void:

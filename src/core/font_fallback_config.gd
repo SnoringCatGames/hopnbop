@@ -69,12 +69,12 @@ static func _add_fallbacks_to_theme(
 
 	# Also add to button font if different.
 	if theme.has_font("font", "Button"):
-		var btn_font := theme.get_font(
+		var button_font := theme.get_font(
 			"font", "Button")
-		if (btn_font is FontFile
-				and btn_font != default_font):
+		if (button_font is FontFile
+				and button_font != default_font):
 			_add_fallbacks_to_font(
-				btn_font, fallback_fonts)
+				button_font, fallback_fonts)
 
 
 static func _add_fallbacks_to_font(

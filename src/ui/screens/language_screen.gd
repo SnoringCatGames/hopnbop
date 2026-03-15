@@ -10,18 +10,18 @@ extends Screen
 
 
 const _LOCALE_DISPLAY_NAMES := {
-	"en": "English",
-	"zh": "中文",
-	"es": "Español",
-	"hi": "हिन्दी",
 	"ar": "العربية",
+	"zh": "中文",
+	"en": "English",
 	"fr": "Français",
+	"de": "Deutsch",
+	"hi": "हिन्दी",
+	"it": "Italiano",
+	"ja": "日本語",
+	"ko": "한국어",
 	"pt": "Português",
 	"ru": "Русский",
-	"ja": "日本語",
-	"de": "Deutsch",
-	"ko": "한국어",
-	"it": "Italiano",
+	"es": "Español",
 	"th": "ไทย",
 }
 

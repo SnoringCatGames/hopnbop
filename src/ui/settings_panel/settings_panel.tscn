@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://src/ui/settings_panel/settings_panel.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://cgeum80qm7jgg" path="res://assets/images/gui/gore_icon.png" id="2_gore"]
@@ -14,6 +14,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/sub_panel_trigger_row.tscn" id="12_trigger_row"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/language_panel.tscn" id="13_language"]
 [ext_resource type="Texture2D" uid="uid://bpy4672iv1abq" path="res://assets/images/gui/language_icon.png" id="14_language_icon"]
+[ext_resource type="Texture2D" uid="uid://c6puv08fenj1v" path="res://assets/images/gui/offline_icon.png" id="15_offline_icon"]
 
 [node name="SettingsPanel" instance=ExtResource("8_base")]
 process_mode = 3
@@ -25,6 +26,7 @@ icon_fullscreen = ExtResource("5_fullscreen")
 icon_music = ExtResource("6_music")
 icon_sfx = ExtResource("7_sfx")
 icon_language = ExtResource("14_language_icon")
+icon_offline = ExtResource("15_offline_icon")
 _back_row_scene = ExtResource("9_back_row")
 _toggle_row_scene = ExtResource("10_toggle")
 _cheat_group_row_scene = ExtResource("11_cheat_group")

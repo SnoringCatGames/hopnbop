@@ -244,10 +244,10 @@ func _disconnect_status_signal() -> void:
 
 
 func _apply_button_icon(
-	btn: Button,
+	button: Button,
 	tex: Texture2D,
 ) -> void:
 	if tex == null:
 		return
-	btn.icon = tex
-	btn.expand_icon = true
+	button.icon = tex
+	button.expand_icon = true

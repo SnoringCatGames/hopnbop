@@ -5,6 +5,7 @@ extends SidePanel
 
 
 @export var _close_row_scene: PackedScene
+@export var _quit_row_scene: PackedScene
 @export var _sub_panel_trigger_row_scene: PackedScene
 @export var _screen_trigger_row_scene: PackedScene
 @export var _settings_panel_scene: PackedScene
@@ -21,6 +22,7 @@ extends SidePanel
 @export var icon_info: Texture2D
 @export var icon_leaderboard: Texture2D
 @export var icon_my_stats: Texture2D
+@export var icon_quit: Texture2D
 
 
 func build_ui() -> void:
@@ -85,6 +87,13 @@ func build_ui() -> void:
 		tr("SETTINGS.INFO"),
 		_info_panel_scene,
 		icon_info)
+
+	# Quit row.
+	var quit_row: QuitRow = (
+		_quit_row_scene.instantiate())
+	quit_row.set_icon(icon_quit)
+	_row_container.add_child(quit_row)
+	_connect_row_clicked(quit_row)
 
 	# Bottom padding.
 	var bottom_spacer := Control.new()

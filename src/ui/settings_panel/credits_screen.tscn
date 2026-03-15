@@ -1,6 +1,13 @@
-[gd_scene load_steps=2 format=3 uid="uid://cgt0tdnn0dhsw"]
+[gd_scene load_steps=7 format=3 uid="uid://cgt0tdnn0dhsw"]
 
 [ext_resource type="Script" uid="uid://di7b1q8tpc53t" path="res://src/ui/settings_panel/credits_screen.gd" id="1_cv384"]
+[ext_resource type="Theme" uid="uid://cg4peau6bmpdw" path="res://src/ui/hud_theme.tres" id="2_theme"]
+[ext_resource type="StyleBox" uid="uid://co2x2prpygpfd" path="res://src/ui/settings_panel/focus_border_stylebox.tres" id="3_focus"]
+[ext_resource type="StyleBoxFlat" path="res://src/ui/settings_panel/unfocused_stylebox.tres" id="4_unfocused"]
+[ext_resource type="Texture2D" uid="uid://by380pc766eum" path="res://assets/images/gui/x_icon_enlarged.png" id="5_icon"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close"]
+bg_color = Color(0, 0, 0, 0)
 
 [node name="CreditsScreen" type="PanelContainer"]
 process_mode = 3
@@ -11,104 +18,146 @@ grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme = ExtResource("2_theme")
 script = ExtResource("1_cv384")
+_focus_style = ExtResource("3_focus")
+_unfocused_style = ExtResource("4_unfocused")
 
-[node name="CenterContainer" type="CenterContainer" parent="."]
+[node name="OuterVBox" type="VBoxContainer" parent="."]
 layout_mode = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
+[node name="CenterContainer" type="CenterContainer" parent="OuterVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="OuterVBox/CenterContainer"]
 custom_minimum_size = Vector2(700, 0)
 layout_mode = 2
 
-[node name="Credits" type="Label" parent="CenterContainer/VBoxContainer"]
+[node name="Credits" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "Credits"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Spacer" type="Control" parent="CenterContainer/VBoxContainer"]
+[node name="Spacer" type="Control" parent="OuterVBox/CenterContainer/VBoxContainer"]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 
-[node name="HBoxContainer" type="HBoxContainer" parent="CenterContainer/VBoxContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="OuterVBox/CenterContainer/VBoxContainer"]
 custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CenterContainer/VBoxContainer/HBoxContainer"]
+[node name="Label" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Made by"
 
-[node name="LinkButton" type="LinkButton" parent="CenterContainer/VBoxContainer/HBoxContainer"]
+[node name="LinkButton" type="LinkButton" parent="OuterVBox/CenterContainer/VBoxContainer/HBoxContainer"]
 layout_mode = 2
 text = "Levi Lindsey"
 uri = "https://levi.dev"
 
-[node name="HBoxContainer2" type="HBoxContainer" parent="CenterContainer/VBoxContainer"]
+[node name="HBoxContainer2" type="HBoxContainer" parent="OuterVBox/CenterContainer/VBoxContainer"]
 custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CenterContainer/VBoxContainer/HBoxContainer2"]
+[node name="Label" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer/HBoxContainer2"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Sound"
 
-[node name="LinkButton" type="LinkButton" parent="CenterContainer/VBoxContainer/HBoxContainer2"]
+[node name="LinkButton" type="LinkButton" parent="OuterVBox/CenterContainer/VBoxContainer/HBoxContainer2"]
 layout_mode = 2
 text = "Alden Witt"
 uri = "https://www.instagram.com/aldenwitty"
 
-[node name="HBoxContainer3" type="HBoxContainer" parent="CenterContainer/VBoxContainer"]
+[node name="HBoxContainer3" type="HBoxContainer" parent="OuterVBox/CenterContainer/VBoxContainer"]
 custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CenterContainer/VBoxContainer/HBoxContainer3"]
+[node name="Label" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer/HBoxContainer3"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Project management"
 
-[node name="LinkButton" type="LinkButton" parent="CenterContainer/VBoxContainer/HBoxContainer3"]
+[node name="LinkButton" type="LinkButton" parent="OuterVBox/CenterContainer/VBoxContainer/HBoxContainer3"]
 layout_mode = 2
 text = "Jackie Lindsey"
 uri = "https://www.linkedin.com/in/jklindsey/"
 
-[node name="Spacer3" type="Control" parent="CenterContainer/VBoxContainer"]
+[node name="Spacer3" type="Control" parent="OuterVBox/CenterContainer/VBoxContainer"]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 
-[node name="Playtesters" type="Label" parent="CenterContainer/VBoxContainer"]
+[node name="Playtesters" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "Playtesters"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Spacer2" type="Control" parent="CenterContainer/VBoxContainer"]
+[node name="Spacer2" type="Control" parent="OuterVBox/CenterContainer/VBoxContainer"]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 
-[node name="GridContainer" type="GridContainer" parent="CenterContainer/VBoxContainer"]
+[node name="GridContainer" type="GridContainer" parent="OuterVBox/CenterContainer/VBoxContainer"]
 layout_mode = 2
 columns = 2
 
-[node name="Label" type="Label" parent="CenterContainer/VBoxContainer/GridContainer"]
+[node name="Label" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer/GridContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Caitlin Green"
 
-[node name="Label2" type="Label" parent="CenterContainer/VBoxContainer/GridContainer"]
+[node name="Label2" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer/GridContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Amira Lindsey"
 
-[node name="Spacer4" type="Control" parent="CenterContainer/VBoxContainer"]
+[node name="Spacer4" type="Control" parent="OuterVBox/CenterContainer/VBoxContainer"]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 
-[node name="Playtesters2" type="Label" parent="CenterContainer/VBoxContainer"]
+[node name="Playtesters2" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "Thanks for playing!"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="BottomSpacer" type="Control" parent="OuterVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 16)
+
+[node name="CloseRow" type="PanelContainer" parent="OuterVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+custom_minimum_size = Vector2(160, 0)
+theme_override_styles/panel = SubResource("StyleBoxFlat_close")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="OuterVBox/CloseRow"]
+layout_mode = 2
+mouse_filter = 2
+alignment = 1
+
+[node name="IconMargin" type="MarginContainer" parent="OuterVBox/CloseRow/HBoxContainer"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="Icon" type="TextureRect" parent="OuterVBox/CloseRow/HBoxContainer/IconMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("5_icon")
+stretch_mode = 5
+
+[node name="ContentBottomSpacer" type="Control" parent="OuterVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 40)

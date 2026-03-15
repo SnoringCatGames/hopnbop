@@ -331,19 +331,19 @@ func _update_checkbox_textures() -> void:
 
 
 func _apply_texture(
-	btn: TextureButton,
+	button: TextureButton,
 	is_checked: bool,
 ) -> void:
 	var is_hovered := (
-		btn.get_global_rect().has_point(
-			btn.get_global_mouse_position()))
+		button.get_global_rect().has_point(
+			button.get_global_mouse_position()))
 	if is_checked:
-		btn.texture_normal = (
+		button.texture_normal = (
 			tex_hovered_checked
 			if is_hovered
 			else tex_normal_checked)
 	else:
-		btn.texture_normal = (
+		button.texture_normal = (
 			tex_hovered_unchecked
 			if is_hovered
 			else tex_normal_unchecked)

@@ -119,7 +119,10 @@ func _perform_screen_switch(
 		NetworkLogger.CATEGORY_USER_INTERACTION,
 	)
 
-	get_tree().paused = screen_type not in [ScreenType.GAME, ScreenType.LOBBY]
+	get_tree().paused = (
+		screen_type not in [ScreenType.GAME, ScreenType.LOBBY])
+	G.is_ui_interaction_mode_enabled = (
+		screen_type not in [ScreenType.GAME, ScreenType.LOBBY])
 
 	# CRITICAL FIX: Ensure ScreensMain is visible before showing any screen.
 	if not Netcode.is_server:

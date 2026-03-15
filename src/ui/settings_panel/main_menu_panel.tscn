@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://src/ui/settings_panel/main_menu_panel.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/side_panel.tscn" id="2_base"]
@@ -17,6 +17,8 @@
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/screen_trigger_row.tscn" id="17_screen_trigger_row"]
 [ext_resource type="Texture2D" path="res://assets/images/gui/leaderboard_icon.png" id="18_leaderboard"]
 [ext_resource type="Texture2D" path="res://assets/images/gui/stats_icon.png" id="19_my_stats"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/quit_row.tscn" id="20_quit_row"]
+[ext_resource type="Texture2D" path="res://assets/images/gui/quit_icon.png" id="21_quit_icon"]
 
 [node name="MainMenuPanel" instance=ExtResource("2_base")]
 script = ExtResource("1_script")
@@ -35,3 +37,5 @@ icon_account = ExtResource("16_account")
 icon_info = ExtResource("12_info")
 icon_leaderboard = ExtResource("18_leaderboard")
 icon_my_stats = ExtResource("19_my_stats")
+_quit_row_scene = ExtResource("20_quit_row")
+icon_quit = ExtResource("21_quit_icon")
