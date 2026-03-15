@@ -47,7 +47,7 @@ if (-not $SkipExport) {
     $gdextBackup = "$gdextPath.disabled"
     $didHideExt = $false
     if (Test-Path $gdextPath) {
-        Rename-Item $gdextPath $gdextBackup
+        Move-Item $gdextPath $gdextBackup
         $didHideExt = $true
     }
 
@@ -59,7 +59,7 @@ if (-not $SkipExport) {
         }
     } finally {
         if ($didHideExt -and (Test-Path $gdextBackup)) {
-            Rename-Item $gdextBackup $gdextPath
+            Move-Item $gdextBackup $gdextPath
         }
     }
     Write-Host "Export complete." -ForegroundColor Green
