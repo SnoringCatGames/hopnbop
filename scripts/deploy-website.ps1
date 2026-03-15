@@ -63,6 +63,7 @@ if (-not $SkipExport) {
         }
     }
     Write-Host "Export complete." -ForegroundColor Green
+
 } else {
     Write-Host "[1/4] Skipping export (--SkipExport)" -ForegroundColor DarkGray
 }
@@ -83,6 +84,21 @@ if (-not $SkipExport) {
 } else {
     Write-Host "[2/4] Skipping copy (--SkipExport)" -ForegroundColor DarkGray
 }
+
+# Generate version.json for web client freshness
+# checking. The web client fetches this from the same
+# origin to detect stale builds without depending on
+# the backend API.
+$projGodot = Get-Content "project.godot" -Raw
+if ($projGodot -match 'config/version="([^"]+)"') {
+    $gameVersion = $Matches[1]
+} else {
+    Write-Error "Could not read config/version from project.godot"
+    exit 1
+}
+$versionJson = @{ game_version = $gameVersion } | ConvertTo-Json
+Set-Content -Path "web/version.json" -Value $versionJson -NoNewline
+Write-Host "Generated version.json (game_version=$gameVersion)" -ForegroundColor DarkGray
 
 # Step 3: Sync web/ to S3.
 Write-Host "[3/4] Syncing to S3..." -ForegroundColor Yellow
@@ -113,6 +129,16 @@ foreach ($pattern in $immutableTypes) {
         --profile $Profile `
         --region $Region
 }
+
+# Ensure version.json is never cached by the CDN.
+# The client adds a cache-busting query param, but
+# this is belt-and-suspenders.
+aws s3 cp "s3://$Bucket/version.json" `
+    "s3://$Bucket/version.json" `
+    --cache-control "no-cache, no-store, must-revalidate" `
+    --metadata-directive REPLACE `
+    --profile $Profile `
+    --region $Region
 
 Write-Host "S3 sync complete." -ForegroundColor Green
 

@@ -122,22 +122,78 @@ func _check_protocol_version() -> void:
 func _on_version_checked(
 	is_compatible: bool,
 	_server_protocol_version: int,
-	server_game_version: String,
+	_server_game_version: String,
 ) -> void:
 	if not is_compatible:
 		_show_update_required_dialog()
 		return
 
-	# On web, auto-refresh when the game version is
-	# stale. This forces the browser to fetch the
-	# latest build after a deployment.
+	# On web, check for a stale build by fetching
+	# version.json from the same origin. This works
+	# independently of the backend, so web-only
+	# deploys also trigger a refresh.
+	if OS.has_feature("web"):
+		_check_web_build_version()
+		return
+
+	_continue_client_startup()
+
+
+func _check_web_build_version() -> void:
+	var http := HTTPRequest.new()
+	http.timeout = 10.0
+	add_child(http)
+	http.request_completed.connect(
+		_on_web_version_check_completed.bind(http),
+		CONNECT_ONE_SHOT,
+	)
+	# Fetch version.json from the same origin with a
+	# cache-busting query param to bypass CDN cache.
+	var base_url: String = JavaScriptBridge.eval(
+		"window.location.origin")
+	var url := (
+		"%s/version.json?_t=%d"
+		% [base_url, Time.get_ticks_msec()])
+	var error := http.request(
+		url,
+		PackedStringArray(),
+		HTTPClient.METHOD_GET,
+	)
+	if error != OK:
+		http.queue_free()
+		_continue_client_startup()
+
+
+func _on_web_version_check_completed(
+	result: int,
+	response_code: int,
+	_headers: PackedStringArray,
+	body: PackedByteArray,
+	http: HTTPRequest,
+) -> void:
+	http.queue_free()
+
 	if (
-		OS.has_feature("web")
-		and server_game_version != ""
-		and not _is_web_game_version_current(
-			server_game_version)
+		result != HTTPRequest.RESULT_SUCCESS
+		or response_code != 200
 	):
-		_web_hard_refresh(server_game_version)
+		_continue_client_startup()
+		return
+
+	var parsed = JSON.parse_string(
+		body.get_string_from_utf8())
+	if parsed == null or not parsed is Dictionary:
+		_continue_client_startup()
+		return
+
+	var web_game_version: String = parsed.get(
+		"game_version", "")
+	if (
+		web_game_version != ""
+		and not _is_web_game_version_current(
+			web_game_version)
+	):
+		_web_hard_refresh(web_game_version)
 		return
 
 	_continue_client_startup()
