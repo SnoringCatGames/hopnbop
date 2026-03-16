@@ -1170,28 +1170,14 @@ Godot networking addons (for reference, not used in this project):
 
 ### Server Stuck on "Waiting for Players" (2026-03-11)
 
-Pre-existing issue. Matches have NEVER completed on the
-deployed GameLift server. No player validation or connection
-logs exist in the entire CloudWatch history.
+**Root cause found 2026-03-15:** Godot's built-in WebSocket
+server rejects upgrade requests that include an `Origin`
+header (as all browsers send). The nginx reverse proxy was
+forwarding the browser's `Origin: https://hopnbop.net`
+header to the upstream, causing Godot to return an error and
+nginx to respond with 502 Bad Gateway.
 
-**Symptoms:**
-- Native clients connect via ENet (get peer IDs).
-- Clients send "Declaring N player(s) to server" RPC.
-- Server log shows `packed_players.size=0`.
-- PERF shows `N:0.0` (network FPS = 0) on both server and
-  client.
-- Game stuck on "Waiting for players" screen forever.
-
-**Hypotheses:**
-1. RPCs not delivered to paused nodes (NetworkConnector has
-   default `process_mode`).
-2. Server in wrong state when game session arrives (starts
-   match at t=0.5s, GameLift assigns session much later).
-3. Game tree pause/unpause race between `Main._ready()` and
-   `frame_driver._ready()`.
-
-**Key files:** `src/core/main.gd:98-101`,
-`addons/rollback_netcode/core/frame_driver.gd:1015-1034`,
-`addons/rollback_netcode/core/network_connector.gd:430`,
-`addons/gamelift_session_manager/server/gamelift_server.gd:74`,
-`src/core/game_panel.gd:1221`.
+**Fix:** Added `proxy_set_header Origin "";` to
+`gamelift-deploy/nginx.conf` to strip the Origin header
+before proxying to Godot. Requires GameLift server
+redeploy.
