@@ -286,12 +286,14 @@ fleet's `InstanceConnectionPortRange` (4192-4204). Each game
 session gets 3 consecutive host ports, one per container port:
 
 - `Port+0` → container `4433 UDP` (ENet, returned as `Port`)
-- `Port+1` → container `4433 TCP` (WebSocket direct)
-- `Port+2` → container `4434 TCP` (nginx WSS)
+- `Port±N` → container `4433 TCP` (WebSocket direct)
+- `Port±N` → container `4434 TCP` (nginx WSS)
 
-The backend returns `Port` for ENet and `Port+2` for WSS. The
-DNS hostname maps to the raw server IP; the client connects to
-the dynamically assigned host port, not the container port.
+**Port mapping order varies across computes.** The backend
+cannot use a fixed offset. Instead, `_find_wss_port()` in
+`matchmaking_handler.py` probes candidate ports with TLS
+connections to discover the actual nginx port at match time.
+The DNS hostname maps to the raw server IP.
 
 Wildcard cert for `*.game.hopnbop.net` via Let's Encrypt
 DNS-01. Stored in Secrets Manager (`hopnbop/tls-wildcard-cert`).

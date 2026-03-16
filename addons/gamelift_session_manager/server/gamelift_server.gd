@@ -12,6 +12,12 @@ extends SessionProvider
 ## time, the server terminates to free capacity.
 const _SESSION_IDLE_TIMEOUT_SEC := 60.0
 
+## Seconds to wait for remaining players after the
+## first player validates. If not all expected
+## players arrive in time, the match starts with
+## whoever is present.
+const _CONNECTION_GRACE_SEC := 10.0
+
 
 ## GameLift configuration.
 var config: Dictionary
@@ -50,6 +56,7 @@ var _validated_player_count: int = 0
 var _selected_level_id: StringName = ""
 
 var _idle_timer: Timer
+var _grace_timer: Timer
 
 
 func _init(p_config: Dictionary = {}) -> void:
@@ -251,6 +258,11 @@ func _on_validation_success(player_id: int, session_id: String) -> void:
 
 	player_session_validated.emit(player_id, session_id)
 
+	# Start grace timer on first validation so late
+	# joiners do not block the match indefinitely.
+	if _validated_player_count == 1:
+		_start_grace_timer()
+
 	# Check if all matched players connected.
 	if _validated_player_count >= _expected_player_count:
 		_on_all_players_ready()
@@ -258,6 +270,7 @@ func _on_validation_success(player_id: int, session_id: String) -> void:
 
 func _on_all_players_ready() -> void:
 	_stop_idle_timer()
+	_stop_grace_timer()
 	Netcode.log.print(
 		"All players connected and validated",
 		NetworkLogger.CATEGORY_CONNECTIONS,
@@ -295,6 +308,72 @@ func _on_idle_timeout() -> void:
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 	_end_process()
+
+
+func _start_grace_timer() -> void:
+	_grace_timer = Timer.new()
+	_grace_timer.one_shot = true
+	_grace_timer.wait_time = _CONNECTION_GRACE_SEC
+	_grace_timer.timeout.connect(
+		_on_grace_timeout)
+	add_child(_grace_timer)
+	_grace_timer.start()
+	Netcode.log.print(
+		"Connection grace period: %.0fs"
+		% _CONNECTION_GRACE_SEC,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+
+func _stop_grace_timer() -> void:
+	if is_instance_valid(_grace_timer):
+		_grace_timer.stop()
+		_grace_timer.queue_free()
+		_grace_timer = null
+
+
+func _on_grace_timeout() -> void:
+	if (
+		_validated_player_count
+			>= _expected_player_count
+	):
+		return
+
+	var unique_peers := {}
+	for player_id in _player_to_session:
+		var peer_id: int = (
+			Netcode.connector
+				.get_peer_id_from_player_id(
+					player_id))
+		if peer_id > 0:
+			unique_peers[peer_id] = true
+
+	if unique_peers.size() <= 1:
+		Netcode.log.warning(
+			("Grace period expired: only %d peer(s)."
+			+ " Cancelling match.")
+			% unique_peers.size(),
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+		# Notify clients before terminating so they
+		# see SERVER_SHUTDOWN instead of
+		# CONNECTION_LOST.
+		Netcode.connector.server_notify_shutdown()
+		_end_process.call_deferred()
+		return
+
+	Netcode.log.warning(
+		("Grace period expired: %d/%d players"
+		+ " (%d peers). Starting with present"
+		+ " players.")
+		% [
+			_validated_player_count,
+			_expected_player_count,
+			unique_peers.size(),
+		],
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+	_on_all_players_ready()
 
 
 # =============================================================================

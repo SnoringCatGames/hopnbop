@@ -2,6 +2,7 @@
 
 import json
 import os
+import socket
 import asyncio
 from typing import Dict, Any
 from aws_lambda_powertools import Logger, Metrics, Tracer
@@ -32,13 +33,12 @@ logger = Logger()
 tracer = Tracer()
 metrics = Metrics()
 
-# Offset from the game session's primary port (ENet UDP)
-# to the nginx WSS port. GameLift allocates 3 consecutive
-# host ports per session for the 3 declared container
-# ports: [4433 UDP, 4433 TCP, 4434 TCP]. The primary port
-# returned by GameLift maps to the first (UDP) container
-# port, so the nginx WSS port is at offset +2.
-_WSS_PORT_OFFSET = 2
+# Candidate offsets from the game session Port to the
+# nginx WSS container port. GameLift's host port mapping
+# order varies across computes, so we probe to find which
+# offset reaches the TLS-enabled nginx port.
+_WSS_PORT_OFFSETS = [-2, -1, 1, 2]
+_WSS_PROBE_TIMEOUT_SEC = 2.0
 
 # CORS headers included in every response.
 _HEADERS = {
@@ -59,6 +59,86 @@ rate_limiter = RateLimiter()
 dns_service = DnsService()
 active_session_service = ActiveSessionService()
 
+
+def _probe_wss_port(server_ip: str, port: int) -> bool:
+    """Check if a port accepts TLS connections (nginx).
+
+    Uses a full TLS handshake to distinguish the nginx
+    WSS port (TLS) from the Godot WebSocket direct port
+    (plain TCP). Returns True only if TLS succeeds.
+    """
+    import ssl
+
+    try:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        with socket.create_connection(
+            (server_ip, port),
+            timeout=_WSS_PROBE_TIMEOUT_SEC,
+        ) as sock:
+            with ctx.wrap_socket(sock) as ssock:
+                return True
+    except Exception:
+        return False
+
+
+def _find_wss_port(
+    server_ip: str, game_port: int
+) -> int:
+    """Find the nginx WSS port by probing candidates.
+
+    Probes all candidate ports in parallel using
+    threads to stay within Lambda time budgets.
+    Falls back to game_port - 1 if no probe succeeds.
+    """
+    from concurrent.futures import (
+        ThreadPoolExecutor,
+        as_completed,
+    )
+
+    candidates = []
+    for offset in _WSS_PORT_OFFSETS:
+        candidate = game_port + offset
+        if 1 <= candidate <= 65535:
+            candidates.append((offset, candidate))
+
+    with ThreadPoolExecutor(
+        max_workers=len(candidates)
+    ) as pool:
+        futures = {
+            pool.submit(
+                _probe_wss_port,
+                server_ip,
+                candidate,
+            ): (offset, candidate)
+            for offset, candidate in candidates
+        }
+        for future in as_completed(futures):
+            offset, candidate = futures[future]
+            if future.result():
+                logger.info(
+                    "WSS port found",
+                    extra={
+                        "game_port": game_port,
+                        "wss_port": candidate,
+                        "offset": offset,
+                    },
+                )
+                return candidate
+
+    # Fallback if probing fails.
+    fallback = game_port - 1
+    logger.warning(
+        "WSS port probe failed, using fallback",
+        extra={
+            "game_port": game_port,
+            "fallback_port": fallback,
+        },
+    )
+    return fallback
+
+
 def _resolve_server_address(result):
     """Resolve server address and port for the match result.
 
@@ -70,7 +150,9 @@ def _resolve_server_address(result):
         hostname = dns_service.create_game_session_record(
             result.game_session_id, result.server_ip
         )
-        wss_port = result.server_port + _WSS_PORT_OFFSET
+        wss_port = _find_wss_port(
+            result.server_ip, result.server_port
+        )
         return hostname, wss_port
     return result.server_ip, result.server_port
 

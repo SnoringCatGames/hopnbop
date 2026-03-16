@@ -386,11 +386,26 @@ func _on_connection_lost(
 				NetworkLogger
 					.CATEGORY_CONNECTIONS,
 			)
+			# Show a friendly message when the
+			# server shuts down before the match
+			# started (e.g., not enough players
+			# connected in time).
+			var is_pre_match_shutdown: bool = (
+				reason_name == "SERVER_SHUTDOWN"
+				and not G.match_state
+					.is_match_active
+			)
+			var toast_message: String
+			if is_pre_match_shutdown:
+				toast_message = tr(
+					"TOAST.NOT_ENOUGH_PLAYERS")
+			else:
+				toast_message = reason_name
 			G.client_session.latest_server_message = (
 				"Disconnected: %s" % reason_name)
 			if is_instance_valid(G.toast_overlay):
 				G.toast_overlay.show_toast(
-					reason_name,
+					toast_message,
 					ToastOverlay.Type.ERROR,
 				)
 			client_exit_match()
