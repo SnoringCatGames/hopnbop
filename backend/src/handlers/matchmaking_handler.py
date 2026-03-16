@@ -2,7 +2,6 @@
 
 import json
 import os
-import socket
 import asyncio
 from typing import Dict, Any
 from aws_lambda_powertools import Logger, Metrics, Tracer
@@ -33,12 +32,12 @@ logger = Logger()
 tracer = Tracer()
 metrics = Metrics()
 
-# Candidate offsets from the game session Port to the
-# nginx WSS container port. GameLift's host port mapping
-# order varies across computes, so we probe to find which
-# offset reaches the TLS-enabled nginx port.
-_WSS_PORT_OFFSETS = [-2, -1, 1, 2]
-_WSS_PROBE_TIMEOUT_SEC = 2.0
+# Offset from the game session's primary port (ENet UDP)
+# to the WSS port. With 2 container ports [4433/UDP,
+# 4434/TCP], GameLift maps them to consecutive host ports.
+# The primary port (ProcessReady) maps to UDP; the WSS
+# port (nginx TLS proxy) is the next one (TCP).
+_WSS_PORT_OFFSET = 1
 
 # CORS headers included in every response.
 _HEADERS = {
@@ -60,85 +59,6 @@ dns_service = DnsService()
 active_session_service = ActiveSessionService()
 
 
-def _probe_wss_port(server_ip: str, port: int) -> bool:
-    """Check if a port accepts TLS connections (nginx).
-
-    Uses a full TLS handshake to distinguish the nginx
-    WSS port (TLS) from the Godot WebSocket direct port
-    (plain TCP). Returns True only if TLS succeeds.
-    """
-    import ssl
-
-    try:
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        with socket.create_connection(
-            (server_ip, port),
-            timeout=_WSS_PROBE_TIMEOUT_SEC,
-        ) as sock:
-            with ctx.wrap_socket(sock) as ssock:
-                return True
-    except Exception:
-        return False
-
-
-def _find_wss_port(
-    server_ip: str, game_port: int
-) -> int:
-    """Find the nginx WSS port by probing candidates.
-
-    Probes all candidate ports in parallel using
-    threads to stay within Lambda time budgets.
-    Falls back to game_port - 1 if no probe succeeds.
-    """
-    from concurrent.futures import (
-        ThreadPoolExecutor,
-        as_completed,
-    )
-
-    candidates = []
-    for offset in _WSS_PORT_OFFSETS:
-        candidate = game_port + offset
-        if 1 <= candidate <= 65535:
-            candidates.append((offset, candidate))
-
-    with ThreadPoolExecutor(
-        max_workers=len(candidates)
-    ) as pool:
-        futures = {
-            pool.submit(
-                _probe_wss_port,
-                server_ip,
-                candidate,
-            ): (offset, candidate)
-            for offset, candidate in candidates
-        }
-        for future in as_completed(futures):
-            offset, candidate = futures[future]
-            if future.result():
-                logger.info(
-                    "WSS port found",
-                    extra={
-                        "game_port": game_port,
-                        "wss_port": candidate,
-                        "offset": offset,
-                    },
-                )
-                return candidate
-
-    # Fallback if probing fails.
-    fallback = game_port - 1
-    logger.warning(
-        "WSS port probe failed, using fallback",
-        extra={
-            "game_port": game_port,
-            "fallback_port": fallback,
-        },
-    )
-    return fallback
-
-
 def _resolve_server_address(result):
     """Resolve server address and port for the match result.
 
@@ -150,11 +70,26 @@ def _resolve_server_address(result):
         hostname = dns_service.create_game_session_record(
             result.game_session_id, result.server_ip
         )
-        wss_port = _find_wss_port(
-            result.server_ip, result.server_port
-        )
+        wss_port = result.server_port + _WSS_PORT_OFFSET
         return hostname, wss_port
     return result.server_ip, result.server_port
+
+
+def _lookup_server_ip(game_session_id: str) -> str:
+    """Look up the server IP for a game session via GameLift."""
+    try:
+        response = gamelift.client.describe_game_sessions(
+            GameSessionId=game_session_id
+        )
+        sessions = response.get("GameSessions", [])
+        if sessions:
+            return sessions[0].get("IpAddress", "")
+    except Exception:
+        logger.warning(
+            "Failed to look up server IP for %s",
+            game_session_id,
+        )
+    return ""
 
 
 # In-memory store for session preferences keyed by ticket ID.
@@ -682,6 +617,84 @@ def leave_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
     except Exception as e:
         logger.exception("Leave matchmaking error")
         return error_response(500, "INTERNAL_ERROR", "Internal server error")
+
+
+@tracer.capture_lambda_handler
+@logger.inject_lambda_context
+def warmup_dns(event: Dict[str, Any], context: LambdaContext) -> Dict:
+    """
+    POST /internal/dns/warmup
+    Pre-create Route 53 DNS record for a game session.
+    Called by the game server when the session starts, well
+    before clients poll for results. This gives DNS time to
+    propagate so web clients can connect immediately.
+    """
+    try:
+        # Validate server API key.
+        headers = event.get("headers", {})
+        server_key = (
+            headers.get("X-Server-Key", "")
+            or headers.get("x-server-key", "")
+        )
+        if not server_key:
+            return error_response(
+                401, "MISSING_AUTH", "Missing server key"
+            )
+        expected = secrets_service.get_secret_string(
+            "hopnbop/server-api-key"
+        )
+        if server_key != expected:
+            return error_response(
+                401, "UNAUTHORIZED", "Invalid server key"
+            )
+
+        body = json.loads(event.get("body", "{}"))
+        game_session_id = body.get("game_session_id", "")
+
+        if not game_session_id:
+            return error_response(
+                400,
+                "INVALID_INPUT",
+                "game_session_id required",
+            )
+
+        # Look up the server IP from GameLift.
+        server_ip = body.get("server_ip", "")
+        if not server_ip:
+            server_ip = _lookup_server_ip(
+                game_session_id
+            )
+        if not server_ip:
+            return error_response(
+                404,
+                "SESSION_NOT_FOUND",
+                "Could not resolve server IP",
+            )
+
+        hostname = dns_service.create_game_session_record(
+            game_session_id, server_ip
+        )
+        logger.info(
+            "DNS warmup complete",
+            extra={
+                "hostname": hostname,
+                "server_ip": server_ip,
+            },
+        )
+
+        return {
+            "statusCode": 200,
+            "headers": _HEADERS,
+            "body": json.dumps(
+                {"status": "ok", "hostname": hostname}
+            ),
+        }
+
+    except Exception as e:
+        logger.exception("DNS warmup error")
+        return error_response(
+            500, "INTERNAL_ERROR", "DNS warmup failed"
+        )
 
 
 def error_response(

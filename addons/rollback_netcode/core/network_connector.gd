@@ -138,7 +138,8 @@ func server_enable_connections(p_server_port: int) -> void:
 	match Netcode.settings.transport_type:
 		NetworkSettings.TransportType.WEBSOCKET:
 			var ws := WebSocketMultiplayerPeer.new()
-			result = ws.create_server(p_server_port)
+			result = ws.create_server(
+				p_server_port)
 			peer = ws
 			transport_name = "WebSocket"
 		_:
@@ -186,6 +187,13 @@ func client_connect_to_server(
 	match Netcode.settings.transport_type:
 		NetworkSettings.TransportType.WEBSOCKET:
 			var ws := WebSocketMultiplayerPeer.new()
+			# Clear default subprotocol. Godot's
+			# default multiplayer subprotocol causes
+			# nginx to reject the upgrade (502)
+			# because the upstream Godot server
+			# does not echo it. Browsers then close
+			# the connection per RFC 6455.
+			ws.supported_protocols = PackedStringArray()
 			# Use wss:// for remote servers (browsers
 			# require WSS from HTTPS origins). Use
 			# ws:// for localhost/preview.

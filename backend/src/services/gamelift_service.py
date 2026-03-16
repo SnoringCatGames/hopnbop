@@ -1,6 +1,7 @@
 """GameLift service wrapper for matchmaking operations."""
 
 import asyncio
+import json
 import boto3
 from typing import List, Dict, Optional
 from dataclasses import dataclass
@@ -134,15 +135,16 @@ class GameLiftService:
             # Success - match found.
             if status == "COMPLETED":
                 conn_info = ticket["GameSessionConnectionInfo"]
-                transport = self._determine_transport(
-                    ticket.get("Players", [])
+                game_session_id = (
+                    conn_info["GameSessionArn"].split("/")[-1]
+                )
+                transport = self._determine_transport_from_session(
+                    conn_info["GameSessionArn"]
                 )
 
                 return MatchResult(
                     ticket_id=ticket_id,
-                    game_session_id=conn_info["GameSessionArn"].split("/")[
-                        -1
-                    ],
+                    game_session_id=game_session_id,
                     server_ip=conn_info["IpAddress"],
                     server_port=conn_info["Port"],
                     player_session_ids=[
@@ -166,20 +168,42 @@ class GameLiftService:
             # Still in progress (QUEUED, SEARCHING, PLACING).
             await asyncio.sleep(self.poll_interval)
 
-    @staticmethod
-    def _determine_transport(players: list) -> str:
-        """Determine transport type from matched players.
+    def _determine_transport_from_session(
+        self, game_session_arn: str
+    ) -> str:
+        """Determine transport from the game session's
+        MatchmakerData, which contains ALL matched players.
 
-        If any player has is_web=1, the entire match uses
-        WebSocket so web clients can connect. Otherwise ENet.
+        The ticket's Players list only has this ticket's
+        players, not the full match. MatchmakerData has
+        every player's attributes, so we can correctly
+        detect web players even when polling from a
+        desktop-only ticket.
         """
-        for player in players:
-            attrs = player.get("PlayerAttributes", {})
-            is_web = attrs.get("is_web", {})
-            # FlexMatch returns attributes as {"N": value}.
-            value = is_web.get("N", 0) if isinstance(is_web, dict) else 0
-            if value == 1:
-                return "websocket"
+        try:
+            response = self.client.describe_game_sessions(
+                GameSessionId=game_session_arn
+            )
+            sessions = response.get("GameSessions", [])
+            if not sessions:
+                return "enet"
+            matchmaker_data = sessions[0].get(
+                "MatchmakerData", ""
+            )
+            if not matchmaker_data:
+                return "enet"
+            data = json.loads(matchmaker_data)
+            for team in data.get("teams", []):
+                for player in team.get("players", []):
+                    attrs = player.get("attributes", {})
+                    is_web = attrs.get("is_web", {})
+                    value = is_web.get(
+                        "valueAttribute", 0
+                    )
+                    if value == 1.0:
+                        return "websocket"
+        except (ClientError, json.JSONDecodeError, KeyError):
+            pass
         return "enet"
 
     async def cancel_matchmaking(self, ticket_id: str) -> None:

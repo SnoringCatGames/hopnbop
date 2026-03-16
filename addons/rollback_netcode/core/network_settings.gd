@@ -35,6 +35,12 @@ enum TransportType {
 ## Port number for server to listen on / client to connect to.
 @export var server_port := 4433
 
+## TLS options for the WebSocket server. When set, the
+## server uses WSS (TLS-encrypted WebSocket) instead of
+## plain WS. Leave null for unencrypted connections
+## (preview/local mode).
+var server_tls_options: TLSOptions
+
 ## Maximum number of simultaneous client connections.
 @export var max_client_count := 4
 

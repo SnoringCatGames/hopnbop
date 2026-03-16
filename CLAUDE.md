@@ -275,25 +275,31 @@ to authenticate with the backend API.
 ### WSS TLS Termination
 
 ```
-Web client --wss://{id}.game.hopnbop.net:{Port+2}-->
-  nginx (container port 4434, TLS) --ws://localhost:4433--> Godot
+Web client --wss://{id}.game.hopnbop.net:{Port+1}--> nginx (TLS) --> Godot (WS)
 
 Native client --enet://ip:{Port}/UDP--> Godot (unchanged)
 ```
 
 GameLift remaps container ports to dynamic host ports from the
-fleet's `InstanceConnectionPortRange` (4192-4204). Each game
-session gets 3 consecutive host ports, one per container port:
+fleet's `InstanceConnectionPortRange` (4192-4211). Each game
+session gets 2 consecutive host ports:
 
 - `Port+0` → container `4433 UDP` (ENet, returned as `Port`)
-- `Port±N` → container `4433 TCP` (WebSocket direct)
-- `Port±N` → container `4434 TCP` (nginx WSS)
+- `Port+1` → container `4434 TCP` (nginx WSS proxy)
 
-**Port mapping order varies across computes.** The backend
-cannot use a fixed offset. Instead, `_find_wss_port()` in
-`matchmaking_handler.py` probes candidate ports with TLS
-connections to discover the actual nginx port at match time.
-The DNS hostname maps to the raw server IP.
+**Important:** The port range must accommodate pairs. With 2
+container ports per session, ensure `ToPort - FromPort + 1`
+is even. An odd range wastes the last port and can cause
+the WSS port to fall outside the range.
+
+nginx terminates TLS on container port 4434 and proxies to
+Godot's plain WebSocket server on localhost:4433. The TLS
+cert is fetched from Secrets Manager at container startup
+by `entrypoint.sh`. The backend returns `Port+1` for WSS
+connections.
+
+The DNS hostname maps to the raw server IP; the client
+connects to the dynamically assigned host port.
 
 Wildcard cert for `*.game.hopnbop.net` via Let's Encrypt
 DNS-01. Stored in Secrets Manager (`hopnbop/tls-wildcard-cert`).
@@ -1172,14 +1178,14 @@ Godot networking addons (for reference, not used in this project):
 
 ### Server Stuck on "Waiting for Players" (2026-03-11)
 
-**Root cause found 2026-03-15:** Godot's built-in WebSocket
-server rejects upgrade requests that include an `Origin`
-header (as all browsers send). The nginx reverse proxy was
-forwarding the browser's `Origin: https://hopnbop.net`
-header to the upstream, causing Godot to return an error and
-nginx to respond with 502 Bad Gateway.
+**Root cause found 2026-03-15:** Two issues:
+1. Godot's WebSocket server rejects HTTP upgrade requests
+   that include an `Origin` header (as all browsers send).
+2. GameLift's host port mapping order for 3+ container
+   ports was unpredictable across computes, making the
+   nginx WSS port offset unreliable.
 
-**Fix:** Added `proxy_set_header Origin "";` to
-`gamelift-deploy/nginx.conf` to strip the Origin header
-before proxying to Godot. Requires GameLift server
-redeploy.
+**Fix:** Removed nginx entirely. Godot's WebSocket server
+now handles TLS directly via `TLSOptions.server()`. The
+container definition was reduced to 2 ports (4433/UDP and
+4433/TCP), making the WSS port always `Port+1`.

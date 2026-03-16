@@ -106,10 +106,8 @@ COPY gamelift-deploy/nginx.conf /etc/nginx/nginx.conf
 COPY gamelift-deploy/entrypoint.sh /game/entrypoint.sh
 RUN chmod +x /game/entrypoint.sh
 
-# Expose ENet UDP port, WebSocket TCP port, and WSS
-# port (nginx TLS termination for web clients).
+# Expose ENet UDP port and nginx WSS TCP port.
 EXPOSE 4433/udp
-EXPOSE 4433/tcp
 EXPOSE 4434/tcp
 
 # Health check: verify the server process is running.

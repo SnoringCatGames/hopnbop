@@ -268,6 +268,7 @@ Resources:
                 - gamelift:StartMatchmaking
                 - gamelift:DescribeMatchmaking
                 - gamelift:StopMatchmaking
+                - gamelift:DescribeGameSessions
               Resource: '*'
         - Statement:
             - Effect: Allow
@@ -321,6 +322,7 @@ Resources:
             - Effect: Allow
               Action:
                 - gamelift:DescribeMatchmaking
+                - gamelift:DescribeGameSessions
               Resource: '*'
         - Statement:
             - Effect: Allow
@@ -337,6 +339,31 @@ Resources:
             RestApiId: !Ref GameBackendAPI
             Path: /matchmaking/status/{ticket_id}
             Method: get
+
+  WarmupDnsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.matchmaking_handler.warmup_dns
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - gamelift:DescribeGameSessions
+              Resource: '*'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - route53:ChangeResourceRecordSets
+              Resource: !Sub "arn:aws:route53:::hostedzone/${GameHostedZoneId}"
+        - !Ref SecretsManagerPolicy
+      Events:
+        WarmupDns:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /internal/dns/warmup
+            Method: post
 
   LeaveMatchmakingFunction:
     Type: AWS::Serverless::Function
@@ -815,6 +842,7 @@ Resources:
               Action:
                 - gamelift:StartMatchmaking
                 - gamelift:DescribeMatchmaking
+                - gamelift:DescribeGameSessions
               Resource: '*'
         - !Ref SecretsManagerPolicy
       Events:
