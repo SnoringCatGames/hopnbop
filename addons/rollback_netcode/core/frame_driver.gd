@@ -153,43 +153,143 @@ extends Node
 # ---
 
 # Stable Diffusion workflow: Level Geometry → Game Art
-# 1. Prepare your level shape
+# ● Level Art Workflow with AUTOMATIC1111
 
-# Draw your platform/terrain outlines in any image editor (even MS Paint works)
-# — white shapes on a black background, or simple line drawings of your surfaces.
-# 2. ControlNet: Canny or Scribble mode
+#   ---
+#   Setup Per Session
 
-# In the webui, enable ControlNet and upload your level outline
-# Canny — best when your input has clean edges (exported from a level editor)
-# Scribble — best for rough hand-drawn sketches
-# Set control weight to ~0.7–1.0 (higher = stricter adherence to your shapes)
-# 3. Prompt for your art style
+#   1. Select SDXL base model in the top-left
+#   dropdown
+#   2. Enable ControlNet in the panel below the
+#    prompt
+#   3. Set ControlNet preprocessor to none
+#   (since you'll provide pre-made seg maps)
+#   4. Set ControlNet model to the Seg model
+#   5. Control weight: 0.7–1.0 (higher =
+#   stricter adherence to your regions)
 
-# Example: "mossy stone platform, 2d game art, side view, pixel art style,
-# seamless tileable texture"
-# Use negative prompts: "3d, realistic, blurry, watermark"
-# 4. Generate + iterate
+#   ---
+#   Step 1: Create Your Level Map
 
-# Generate several variations, pick the best one
-# Adjust ControlNet weight if the output doesn't follow your shapes closely
-# enough
-# 5. Inpaint problem areas
+#   In your image editor (with the ADE20K .gpl
+#   palette loaded):
 
-# Switch to the Inpainting tab
-# Mask areas that need fixing (bad transitions, unwanted artifacts)
-# Regenerate just those masked sections
-# 6. Upscale if needed
+#   1. Draw your level geometry using flat
+#   ADE20K colors:
+#     - Platforms/stone: #FF290A (rock)
+#     - Ground/dirt: #787846 (earth)
+#     - Grass surfaces: #04FA07 (grass)
+#     - Sky/background: #06E6E6 (sky)
+#     - Water: #3DE6FA (water)
+#     - Trees/vegetation: #04C803 (tree)
+#     - Bridges: #FF5200 (bridge)
+#     - Walls: #787878 (wall)
+#     - etc.
+#   2. For non-standard materials (ice, lava,
+#   crystal, metal), pick the closest palette
+#   color and note which regions need custom
+#   prompts (see Step 2B).
+#   3. Export as PNG at your target aspect
+#   ratio (1024x1024 or 1024x576 for SDXL).
 
-# Use Ultimate SD Upscale to bring the result to your target resolution
-# 7. Repeat per level section
+#   ---
+#   Step 2: Generate — Choose Your Path
 
-# Reuse the same prompts/settings for visual consistency across a level, just
-# swap the ControlNet input for each section's geometry
-# Pro Tips
-# Keep the seed fixed when generating variants of the same level to maintain
-# consistent style
-# Use batch generation (batch size 4) to quickly compare options
-# For tileable textures, include "seamless, tileable" in your prompt
+#   Path A: Simple Levels (All Regions Suit the
+#    Palette)
+
+#   When your level only uses materials that
+#   map naturally to ADE20K categories:
+
+#   1. Go to the txt2img tab
+#   2. Upload your seg map to ControlNet
+#   3. Write a single prompt:
+#   2d platformer level, side view, mossy stone
+#    platforms,
+#   lush grass, clear blue sky, game art style
+#   4. Negative prompt:
+#   3d, realistic, blurry, watermark, UI, text
+#   5. Generate a batch of 4, pick the best
+
+#   Path B: Custom Materials (Ice, Lava,
+#   Crystal, etc.)
+
+#   When regions need materials the palette
+#   doesn't naturally represent:
+
+#   1. Go to the txt2img tab
+#   2. Upload your seg map to ControlNet
+#   3. Open the Regional Prompter panel
+#   4. Define regions and assign per-region
+#   prompts:
+#     - Water region → "frozen ice surface,
+#   translucent blue ice, frost"
+#     - Rock region → "glowing lava rock, magma
+#    cracks, ember"
+#     - Earth region → "dark metal platform,
+#   riveted steel, industrial"
+#   5. Each region gets its own concept
+#   regardless of what ADE20K color you used
+#   6. Generate a batch of 4, pick the best
+
+#   ---
+#   Step 3: Fix Problem Areas with Inpainting
+
+#   1. Switch to the img2img → Inpaint tab
+#   2. Load your best generation from Step 2
+#   3. Mask any areas that need fixing (bad
+#   transitions, artifacts, wrong textures)
+#   4. Write a prompt specific to that area
+#   (e.g., "seamless stone texture, mossy")
+#   5. Settings:
+#     - Mask blur: 4–8
+#     - Inpaint area: Only masked
+#     - Denoising strength: 0.5–0.7 (lower =
+#   more conservative changes)
+#   6. Generate and iterate
+
+#   ---
+#   Step 4: Upscale (If Needed)
+
+#   1. Go to the img2img tab
+#   2. Load your finished image
+#   3. Select Ultimate SD Upscale from the
+#   Scripts dropdown
+#   4. Set upscale factor (2x or 4x)
+#   5. Use a low denoising strength (0.2–0.35)
+#   to add detail without changing the
+#   composition
+
+#   ---
+#   Step 5: Refiner Pass (Optional)
+
+#   For extra detail and polish:
+
+#   1. Go to the img2img tab
+#   2. Load your image
+#   3. Switch to the SDXL Refiner model in the
+#   top-left dropdown
+#   4. Denoising strength: 0.2–0.3 (subtle
+#   refinement only)
+#   5. Generate — this adds fine detail and
+#   improves textures
+
+#   ---
+#   Tips for Consistency Across Levels
+
+#   - Lock the seed when generating variants of
+#    the same level — keeps the art style
+#   consistent
+#   - Save your prompts — reuse the same
+#   prompt/negative across level sections for
+#   visual coherence
+#   - Use the same ControlNet weight and
+#   denoising settings throughout a project
+#   - For tileable sections, add "seamless,
+#   tileable" to your prompt
+#   - Generate level sections with slight
+#   overlap so you can blend them together in
+#   your game engine
 
 # ---
 
