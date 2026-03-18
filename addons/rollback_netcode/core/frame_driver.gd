@@ -48,20 +48,6 @@ extends Node
 
 # ---
 
-# Ok, let's plan work to design that
-#   change: decoupling network rate from
-#   physics rate. Thoroughly analyze
-#   all network systems across the
-#   client, server, and backend that
-#   would relate to or be impacted by
-#   this decoupling. Research on the
-#   internet how other games have
-#   handled aspects of this
-#   architectural choice. Plan how to
-#   implement in our codebase.
-
-# ---
-
 # Player overhead labels are not at all centered over the players. And They are inconsistent on different clients.
 
 # - We should not show AddFriend buttons in the game-over screen for a given player row if that player is anonymous.
