@@ -106,6 +106,10 @@ class SplitEntity extends ReconcilableState:
 		return true
 
 
+	func _should_accept_predicted_states() -> bool:
+		return true
+
+
 	func _sync_to_scene_state(_previous_state: Array) -> void:
 		pass
 
@@ -169,7 +173,7 @@ class TestNonSplitPacking:
 
 		entity = NonSplitEntity.new()
 		entity.name = "TestEntity"
-		entity.root_path = NodePath(".")
+		entity.root_path = NodePath("..")
 		root_node.add_child(entity)
 
 		entity._ready()
@@ -230,7 +234,7 @@ class TestSplitPacking:
 
 		entity = SplitEntity.new()
 		entity.name = "TestEntity"
-		entity.root_path = NodePath(".")
+		entity.root_path = NodePath("..")
 		root_node.add_child(entity)
 
 		entity._ready()
@@ -335,7 +339,7 @@ class TestReceivePath:
 
 		entity = SplitEntity.new()
 		entity.name = "TestEntity"
-		entity.root_path = NodePath(".")
+		entity.root_path = NodePath("..")
 		root_node.add_child(entity)
 
 		entity._ready()
@@ -452,7 +456,7 @@ class TestReplicationConfig:
 
 		var entity := NonSplitEntity.new()
 		entity.name = "TestEntity"
-		entity.root_path = NodePath(".")
+		entity.root_path = NodePath("..")
 		root_node.add_child(entity)
 
 		entity._ready()
@@ -477,7 +481,7 @@ class TestReplicationConfig:
 
 		var entity := NonSplitEntity.new()
 		entity.name = "TestEntity"
-		entity.root_path = NodePath(".")
+		entity.root_path = NodePath("..")
 		root_node.add_child(entity)
 
 		entity._ready()
@@ -500,7 +504,7 @@ class TestReplicationConfig:
 
 		var entity := SplitEntity.new()
 		entity.name = "TestEntity"
-		entity.root_path = NodePath(".")
+		entity.root_path = NodePath("..")
 		root_node.add_child(entity)
 
 		entity._ready()
