@@ -34,9 +34,9 @@ metrics = Metrics()
 
 # Offset from the game session's primary port (ENet UDP)
 # to the WSS port. With 2 container ports [4433/UDP,
-# 4434/TCP], GameLift maps them to consecutive host ports.
+# 4433/TCP], GameLift maps them to consecutive host ports.
 # The primary port (ProcessReady) maps to UDP; the WSS
-# port (nginx TLS proxy) is the next one (TCP).
+# port (Godot TLS) is the next one (TCP).
 _WSS_PORT_OFFSET = 1
 
 # CORS headers included in every response.
@@ -62,17 +62,28 @@ active_session_service = ActiveSessionService()
 def _resolve_server_address(result):
     """Resolve server address and port for the match result.
 
-    For WebSocket matches (web clients), creates a Route 53 DNS
-    record and returns the hostname + WSS host port. For ENet
-    matches (native clients), returns the raw IP + game port.
+    For WebSocket matches, returns the pre-warmed DNS
+    hostname + WSS host port. The DNS A record was created
+    at container startup by entrypoint.sh, so it is already
+    propagated by the time clients connect. The hostname is
+    derived deterministically from the server IP.
+    For ENet matches (native-only), returns the raw IP.
     """
     if result.transport_type == "websocket":
-        hostname = dns_service.create_game_session_record(
-            result.game_session_id, result.server_ip
-        )
+        hostname = _hostname_from_ip(result.server_ip)
         wss_port = result.server_port + _WSS_PORT_OFFSET
         return hostname, wss_port
     return result.server_ip, result.server_port
+
+
+def _hostname_from_ip(ip: str) -> str:
+    """Derive a DNS hostname from a server IP.
+
+    Example: 35.91.191.229 -> s-35-91-191-229.game.hopnbop.net
+    Must match the hostname created in entrypoint.sh.
+    """
+    label = "s-" + ip.replace(".", "-")
+    return f"{label}.game.hopnbop.net"
 
 
 def _lookup_server_ip(game_session_id: str) -> str:

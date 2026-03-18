@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://hrkm0p3okgms"]
+[gd_scene load_steps=11 format=3 uid="uid://hrkm0p3okgms"]
 
 [ext_resource type="Theme" uid="uid://cl3pkwueh4mag" path="res://src/ui/default_theme.tres" id="1_bdo0u"]
 [ext_resource type="Script" uid="uid://dnb4jgmiq7u6c" path="res://src/ui/screens/game_over_screen.gd" id="1_wmw1d"]
@@ -8,6 +8,8 @@
 [ext_resource type="Texture2D" path="res://assets/images/gui/leaderboard_icon.png" id="5_leaderboard_icon"]
 [ext_resource type="Texture2D" path="res://assets/images/gui/retry_icon.png" id="6_retry_icon"]
 [ext_resource type="Texture2D" path="res://assets/images/gui/home_icon.png" id="7_home_icon"]
+[ext_resource type="Texture2D" path="res://assets/images/gui/request_sent_icon.png" id="8_request_sent_icon"]
+[ext_resource type="Texture2D" path="res://assets/images/gui/checkmark_icon.png" id="9_checkmark_icon"]
 
 [node name="GameOverScreen" type="PanelContainer"]
 process_mode = 3
@@ -21,6 +23,8 @@ theme = ExtResource("1_bdo0u")
 theme_override_styles/panel = ExtResource("2_p4mol")
 script = ExtResource("1_wmw1d")
 _add_friend_icon = ExtResource("4_add_friend")
+_request_sent_icon = ExtResource("8_request_sent_icon")
+_checkmark_icon = ExtResource("9_checkmark_icon")
 
 [node name="CenterContainer" type="CenterContainer" parent="."]
 layout_mode = 2

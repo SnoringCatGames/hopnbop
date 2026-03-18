@@ -48,6 +48,20 @@ extends Node
 
 # ---
 
+# Ok, let's plan work to design that
+#   change: decoupling network rate from
+#   physics rate. Thoroughly analyze
+#   all network systems across the
+#   client, server, and backend that
+#   would relate to or be impacted by
+#   this decoupling. Research on the
+#   internet how other games have
+#   handled aspects of this
+#   architectural choice. Plan how to
+#   implement in our codebase.
+
+# ---
+
 # Player overhead labels are not at all centered over the players. And They are inconsistent on different clients.
 
 # - We should not show AddFriend buttons in the game-over screen for a given player row if that player is anonymous.
@@ -962,6 +976,42 @@ var target_network_time_step_sec: float:
 var target_network_time_step_usec: int:
 	get:
 		return floori(1_000_000 / target_network_fps)
+
+## Number of simulation frames between state sends.
+## 1 = send every frame (default when
+## target_state_send_fps is 0 or >= sim rate).
+var state_send_interval: int:
+	get:
+		if not Netcode.settings:
+			return 1
+		var send_fps := _resolve_state_send_fps()
+		if send_fps <= 0.0 or send_fps >= target_network_fps:
+			return 1
+		return maxi(1, roundi(
+			target_network_fps / send_fps
+		))
+
+
+## Returns true if the current frame should send
+## replicated state over the network.
+func is_state_send_frame() -> bool:
+	return (server_frame_index % state_send_interval) == 0
+
+
+func _resolve_state_send_fps() -> float:
+	var settings := Netcode.settings
+	if settings == null:
+		return 0.0
+	# Check per-transport override first.
+	match settings.transport_type:
+		NetworkSettings.TransportType.ENET:
+			if settings.enet_state_send_fps > 0.0:
+				return settings.enet_state_send_fps
+		NetworkSettings.TransportType.WEBSOCKET:
+			if settings.websocket_state_send_fps > 0.0:
+				return settings.websocket_state_send_fps
+	# Fall back to global setting.
+	return settings.target_state_send_fps
 
 ## Current frame index. Incremented directly on each physics tick in
 ## _pre_physics_process(). Drives all frame-synchronous simulation and rollback.

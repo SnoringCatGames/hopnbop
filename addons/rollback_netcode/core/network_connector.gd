@@ -76,6 +76,9 @@ const _ENET_THROTTLE_INTERVAL_MS := 1000
 const _ENET_THROTTLE_ACCELERATION := 32
 const _ENET_THROTTLE_DECELERATION := 2
 
+## 75% of the 1MB outbound buffer size.
+const _BUFFER_PRESSURE_THRESHOLD := 786432
+
 ## Callable for validating player attributes (game-specific).
 ## Signature: func(attributes: Array, expected_count: int, peer_id: int) ->
 ## Array.
@@ -138,6 +141,18 @@ func server_enable_connections(p_server_port: int) -> void:
 	match Netcode.settings.transport_type:
 		NetworkSettings.TransportType.WEBSOCKET:
 			var ws := WebSocketMultiplayerPeer.new()
+			# Larger buffers for 4-player state
+			# replication. Default 64KB overflows
+			# on web clients within seconds.
+			ws.inbound_buffer_size = 1048576
+			ws.outbound_buffer_size = 1048576
+			ws.max_queued_packets = 16384
+			# Godot listens on plain WebSocket
+			# (no TLS) on the same port as ENet
+			# (4433). nginx on port 4434 handles
+			# TLS detection and routes both
+			# ws:// (native) and wss:// (web)
+			# traffic to this plain WS server.
 			result = ws.create_server(
 				p_server_port)
 			peer = ws
@@ -187,22 +202,26 @@ func client_connect_to_server(
 	match Netcode.settings.transport_type:
 		NetworkSettings.TransportType.WEBSOCKET:
 			var ws := WebSocketMultiplayerPeer.new()
-			# Clear default subprotocol. Godot's
-			# default multiplayer subprotocol causes
-			# nginx to reject the upgrade (502)
-			# because the upstream Godot server
-			# does not echo it. Browsers then close
-			# the connection per RFC 6455.
-			ws.supported_protocols = PackedStringArray()
-			# Use wss:// for remote servers (browsers
-			# require WSS from HTTPS origins). Use
-			# ws:// for localhost/preview.
+			# Larger buffers for 4-player state
+			# replication. Default 64KB overflows
+			# on web clients within seconds.
+			ws.inbound_buffer_size = 1048576
+			ws.outbound_buffer_size = 1048576
+			ws.max_queued_packets = 16384
+			# Web clients require wss:// (browser
+			# mixed content policy). Native clients
+			# use plain ws:// since the server runs
+			# without TLS for native connections.
+			# Local/preview always uses ws://.
 			var is_local := (
 				p_server_ip_address == "127.0.0.1"
 				or p_server_ip_address == "localhost"
 				or Netcode.is_preview)
+			var use_tls := (
+				not is_local
+				and OS.has_feature("web"))
 			var scheme := (
-				"ws" if is_local else "wss")
+				"wss" if use_tls else "ws")
 			result = ws.create_client(
 				"%s://%s:%d"
 				% [scheme,
@@ -318,8 +337,8 @@ func _on_peer_disconnected(peer_id: int) -> void:
 
 
 func _on_connection_failed() -> void:
-	Netcode.log.error(
-		"Connection to server failed",
+	Netcode.log.print(
+		"Connection attempt failed",
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 	last_disconnect_reason = DisconnectReason.CONNECTION_FAILED
@@ -681,6 +700,23 @@ func _client_rpc_server_shutting_down() -> void:
 		"Server is shutting down",
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
+	# Close the connection on the next frame to
+	# prevent buffer overflow from continued state
+	# replication between the shutdown notification
+	# and the actual server process exit.
+	_client_close_connection.call_deferred()
+
+
+## Close the client-side multiplayer peer. Called
+## after receiving a server shutdown notification
+## to stop receiving data immediately.
+func _client_close_connection() -> void:
+	var peer := multiplayer.multiplayer_peer
+	if (peer != null
+			and peer.get_connection_status()
+				!= MultiplayerPeer
+					.CONNECTION_DISCONNECTED):
+		peer.close()
 
 
 ## Called by the server to register the player_id to peer_id mapping.
@@ -730,6 +766,28 @@ func get_local_player_index_from_player_id(p_player_id: int) -> int:
 	if _player_id_to_local_player_index.has(p_player_id):
 		return _player_id_to_local_player_index[p_player_id]
 	return -1
+
+
+## Returns true if the given WebSocket peer's
+## outbound buffer exceeds the pressure threshold.
+## Always returns false for ENet peers.
+func is_peer_buffer_overloaded(
+	peer_id: int,
+) -> bool:
+	var mp_peer := multiplayer.multiplayer_peer
+	if not mp_peer is WebSocketMultiplayerPeer:
+		return false
+	var ws_peer := (
+		mp_peer as WebSocketMultiplayerPeer
+	)
+	var ws_channel := ws_peer.get_peer(peer_id)
+	if ws_channel == null:
+		return false
+	var buffered: int = (
+		ws_channel
+			.get_current_outbound_buffered_amount()
+	)
+	return buffered > _BUFFER_PRESSURE_THRESHOLD
 
 
 ## Configures ENet's unreliable packet throttle for

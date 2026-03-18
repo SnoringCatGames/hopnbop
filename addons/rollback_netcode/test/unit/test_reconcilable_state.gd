@@ -39,6 +39,12 @@ class TestableNetworkedState extends ReconcilableState:
 		return false # Test class doesn't use interaction tracking.
 
 
+	func _restore_indirect_interaction_state(
+		_frame_state: Array,
+	) -> void:
+		pass
+
+
 	func _init() -> void:
 		super._init()
 		# Initialize replication_config for programmatic instantiation.

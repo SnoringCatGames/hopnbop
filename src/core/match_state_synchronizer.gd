@@ -3,9 +3,15 @@ extends MultiplayerSynchronizer
 
 
 ## How often the server sends stats to clients
-## (in physics frames). 30 frames = 0.5 sec at
-## 60 FPS.
-const _STATS_SEND_INTERVAL_FRAMES := 30
+## (in physics frames). Scales with network FPS
+## so the interval is always 0.5 seconds.
+var _stats_send_interval_frames: int:
+	get:
+		return int(
+			0.5
+			* Netcode.frame_driver
+				.target_network_fps
+		)
 
 var state := GameMatchState.new()
 var _previous_state := GameMatchState.new()
@@ -195,7 +201,7 @@ func _physics_process(_delta: float) -> void:
 
 	if Netcode.is_preview or Netcode.is_local_mode:
 		_stats_frame_counter += 1
-		if _stats_frame_counter >= _STATS_SEND_INTERVAL_FRAMES:
+		if _stats_frame_counter >= _stats_send_interval_frames:
 			_stats_frame_counter = 0
 			_server_send_stats_to_clients()
 

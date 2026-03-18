@@ -54,6 +54,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxinerama1 \
     libxrandr2 \
     libxrender1 \
+    libnginx-mod-stream \
     nginx \
     unzip \
     && rm -rf /var/lib/apt/lists/*

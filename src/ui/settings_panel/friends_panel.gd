@@ -3,7 +3,8 @@ extends SidePanel
 ## Friends sub-panel. Displays the player's friend
 ## code, an add-friend input, and three sections:
 ## incoming requests, accepted friends, and sent
-## requests.
+## requests. All interactive elements are ActionRow
+## instances for U/D + L/R navigation.
 
 
 @export var _back_row_scene: PackedScene
@@ -13,9 +14,9 @@ extends SidePanel
 var _friend_code_label: Label
 var _add_input: LineEdit
 var _add_button: Button
-var _friends_container: VBoxContainer
-var _empty_label: Label
 var _is_loading := false
+var _bottom_spacer: Control
+var _dynamic_nodes: Array[Node] = []
 
 
 func build_ui() -> void:
@@ -37,7 +38,7 @@ func build_ui() -> void:
 		Vector2(0, 20))
 	_row_container.add_child(back_spacer)
 
-	# Friend code display.
+	# Friend code display row.
 	_build_friend_code_section()
 
 	# Spacer.
@@ -55,28 +56,12 @@ func build_ui() -> void:
 		Vector2(0, 16))
 	_row_container.add_child(list_spacer)
 
-	# Friends list container (holds all sections).
-	_friends_container = VBoxContainer.new()
-	_friends_container.add_theme_constant_override(
-		"separation", 4)
-	_row_container.add_child(_friends_container)
-
-	# Empty state label.
-	_empty_label = Label.new()
-	_empty_label.text = tr("FRIENDS.EMPTY")
-	_empty_label.horizontal_alignment = (
-		HORIZONTAL_ALIGNMENT_CENTER)
-	_empty_label.autowrap_mode = (
-		TextServer.AUTOWRAP_WORD_SMART)
-	_empty_label.add_theme_color_override(
-		"font_color", Color(0.6, 0.6, 0.6))
-	_friends_container.add_child(_empty_label)
-
-	# Bottom padding.
-	var bottom_spacer := Control.new()
-	bottom_spacer.custom_minimum_size = (
+	# Bottom padding. Repositioned after dynamic
+	# content on each refresh.
+	_bottom_spacer = Control.new()
+	_bottom_spacer.custom_minimum_size = (
 		Vector2(0, 30))
-	_row_container.add_child(bottom_spacer)
+	_row_container.add_child(_bottom_spacer)
 
 	# Connect API signals.
 	G.friends_api_client.friends_received.connect(
@@ -98,10 +83,9 @@ func build_ui() -> void:
 	G.friends_api_client.request_failed.connect(
 		_on_request_failed)
 
-	# Mark notifications as seen.
-	G.friends_api_client.mark_seen()
-
-	# Fetch friends list.
+	# Fetch friends list. mark_seen is called after
+	# the list loads to avoid blocking the shared
+	# HTTPRequest node.
 	_refresh_friends()
 
 
@@ -135,10 +119,17 @@ func _exit_tree() -> void:
 
 
 func _build_friend_code_section() -> void:
+	var code_row := ActionRow.new()
+	code_row.setup_actions(
+		_on_copy_code_pressed,
+		_on_copy_code_pressed)
+
 	var code_container := HBoxContainer.new()
 	code_container.alignment = (
 		BoxContainer.ALIGNMENT_CENTER)
-	_row_container.add_child(code_container)
+	code_container.mouse_filter = (
+		Control.MOUSE_FILTER_IGNORE)
+	code_row.add_child(code_container)
 
 	var code_header := Label.new()
 	code_header.text = (
@@ -157,6 +148,9 @@ func _build_friend_code_section() -> void:
 		_on_copy_code_pressed)
 	code_container.add_child(copy_button)
 
+	_row_container.add_child(code_row)
+	_connect_row_clicked(code_row)
+
 	# Fetch profile to get friend code.
 	if not G.backend_api_client.profile_received\
 			.is_connected(_on_profile_received):
@@ -166,10 +160,17 @@ func _build_friend_code_section() -> void:
 
 
 func _build_add_friend_section() -> void:
+	var add_row := ActionRow.new()
+	add_row.setup_actions(
+		_on_add_friend_pressed,
+		_on_add_friend_pressed)
+
 	var add_container := HBoxContainer.new()
 	add_container.add_theme_constant_override(
 		"separation", 8)
-	_row_container.add_child(add_container)
+	add_container.mouse_filter = (
+		Control.MOUSE_FILTER_IGNORE)
+	add_row.add_child(add_container)
 
 	_add_input = LineEdit.new()
 	_add_input.placeholder_text = (
@@ -186,6 +187,9 @@ func _build_add_friend_section() -> void:
 	_add_button.pressed.connect(
 		_on_add_friend_pressed)
 	add_container.add_child(_add_button)
+
+	_row_container.add_child(add_row)
+	_connect_row_clicked(add_row)
 
 
 func _refresh_friends() -> void:
@@ -292,6 +296,9 @@ func _on_friends_received(
 		"incoming_requests", [])
 	_populate_all_sections(
 		friends, sent, incoming)
+	# Mark notifications as seen now that the list
+	# has loaded and the HTTPRequest node is free.
+	G.friends_api_client.mark_seen()
 
 
 func _on_request_failed(error: String) -> void:
@@ -308,9 +315,15 @@ func _populate_all_sections(
 	sent: Array,
 	incoming: Array,
 ) -> void:
-	# Clear existing rows.
-	for child in _friends_container.get_children():
-		child.queue_free()
+	# Clear previous dynamic rows.
+	for node in _dynamic_nodes:
+		if is_instance_valid(node):
+			node.queue_free()
+	_dynamic_nodes.clear()
+
+	# Remove bottom spacer so dynamic content is
+	# added before it.
+	_row_container.remove_child(_bottom_spacer)
 
 	var has_any := (
 		not friends.is_empty()
@@ -319,43 +332,46 @@ func _populate_all_sections(
 	)
 
 	if not has_any:
-		_empty_label = Label.new()
-		_empty_label.text = tr("FRIENDS.EMPTY")
-		_empty_label.horizontal_alignment = (
+		var empty_label := Label.new()
+		empty_label.text = tr("FRIENDS.EMPTY")
+		empty_label.horizontal_alignment = (
 			HORIZONTAL_ALIGNMENT_CENTER)
-		_empty_label.autowrap_mode = (
+		empty_label.autowrap_mode = (
 			TextServer.AUTOWRAP_WORD_SMART)
-		_empty_label.add_theme_color_override(
+		empty_label.add_theme_color_override(
 			"font_color", Color(0.6, 0.6, 0.6))
-		_friends_container.add_child(_empty_label)
-		return
+		_row_container.add_child(empty_label)
+		_dynamic_nodes.append(empty_label)
+	else:
+		# Incoming requests section.
+		if not incoming.is_empty():
+			_add_section_header(
+				tr("FRIENDS.INCOMING_REQUESTS"),
+				Color(1.0, 0.85, 0.3),
+				incoming.size())
+			for entry in incoming:
+				_add_incoming_row(entry)
+			_add_section_spacer()
 
-	# Incoming requests section.
-	if not incoming.is_empty():
-		_add_section_header(
-			tr("FRIENDS.INCOMING_REQUESTS"),
-			Color(1.0, 0.85, 0.3),
-			incoming.size())
-		for entry in incoming:
-			_add_incoming_row(entry)
-		_add_section_spacer()
+		# Friends section.
+		if not friends.is_empty():
+			_add_section_header(
+				tr("FRIENDS.FRIENDS_LIST"),
+				Color(1.0, 1.0, 1.0))
+			for entry in friends:
+				_add_friend_row(entry)
+			_add_section_spacer()
 
-	# Friends section.
-	if not friends.is_empty():
-		_add_section_header(
-			tr("FRIENDS.FRIENDS_LIST"),
-			Color(1.0, 1.0, 1.0))
-		for entry in friends:
-			_add_friend_row(entry)
-		_add_section_spacer()
+		# Sent requests section.
+		if not sent.is_empty():
+			_add_section_header(
+				tr("FRIENDS.SENT_REQUESTS"),
+				Color(0.6, 0.6, 0.6))
+			for entry in sent:
+				_add_sent_row(entry)
 
-	# Sent requests section.
-	if not sent.is_empty():
-		_add_section_header(
-			tr("FRIENDS.SENT_REQUESTS"),
-			Color(0.6, 0.6, 0.6))
-		for entry in sent:
-			_add_sent_row(entry)
+	# Re-add bottom spacer at the end.
+	_row_container.add_child(_bottom_spacer)
 
 	rebuild_row_list()
 
@@ -372,13 +388,15 @@ func _add_section_header(
 		header.text = text
 	header.add_theme_color_override(
 		"font_color", color)
-	_friends_container.add_child(header)
+	_row_container.add_child(header)
+	_dynamic_nodes.append(header)
 
 
 func _add_section_spacer() -> void:
 	var spacer := Control.new()
 	spacer.custom_minimum_size = Vector2(0, 8)
-	_friends_container.add_child(spacer)
+	_row_container.add_child(spacer)
+	_dynamic_nodes.append(spacer)
 
 
 func _add_incoming_row(
@@ -389,31 +407,47 @@ func _add_incoming_row(
 	var display_name: String = entry.get(
 		"display_name", "Unknown")
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override(
+	var row := ActionRow.new()
+
+	var content := HBoxContainer.new()
+	content.add_theme_constant_override(
 		"separation", 8)
+	content.mouse_filter = (
+		Control.MOUSE_FILTER_IGNORE)
+	row.add_child(content)
 
 	var name_label := Label.new()
 	name_label.text = display_name
 	name_label.size_flags_horizontal = (
 		Control.SIZE_EXPAND_FILL)
-	row.add_child(name_label)
+	content.add_child(name_label)
 
 	var accept_button := Button.new()
 	accept_button.text = tr("FRIENDS.ACCEPT")
-	accept_button.pressed.connect(
-		_on_accept_pressed.bind(
-			friend_id, accept_button))
-	row.add_child(accept_button)
+	content.add_child(accept_button)
 
 	var reject_button := Button.new()
 	reject_button.text = tr("FRIENDS.REJECT")
-	reject_button.pressed.connect(
-		_on_reject_pressed.bind(
-			friend_id, reject_button))
-	row.add_child(reject_button)
+	content.add_child(reject_button)
 
-	_friends_container.add_child(row)
+	var accept_action := func() -> void:
+		accept_button.disabled = true
+		G.friends_api_client.accept_request(
+			friend_id)
+
+	var reject_action := func() -> void:
+		reject_button.disabled = true
+		G.friends_api_client.reject_request(
+			friend_id)
+
+	accept_button.pressed.connect(accept_action)
+	reject_button.pressed.connect(reject_action)
+	row.setup_actions(
+		accept_action, reject_action)
+
+	_row_container.add_child(row)
+	_connect_row_clicked(row)
+	_dynamic_nodes.append(row)
 
 
 func _add_friend_row(
@@ -424,33 +458,52 @@ func _add_friend_row(
 	var display_name: String = entry.get(
 		"display_name", "Unknown")
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override(
+	var row := ActionRow.new()
+
+	var content := HBoxContainer.new()
+	content.add_theme_constant_override(
 		"separation", 8)
+	content.mouse_filter = (
+		Control.MOUSE_FILTER_IGNORE)
+	row.add_child(content)
 
 	var name_label := Label.new()
 	name_label.text = display_name
 	name_label.size_flags_horizontal = (
 		Control.SIZE_EXPAND_FILL)
-	row.add_child(name_label)
+	content.add_child(name_label)
 
 	# Invite to party button.
 	var invite_button := Button.new()
 	invite_button.text = (
 		tr("FRIENDS.INVITE_TO_PARTY"))
-	invite_button.pressed.connect(
-		_on_invite_to_party_pressed.bind(
-			friend_id, invite_button))
-	row.add_child(invite_button)
+	content.add_child(invite_button)
 
 	var remove_button := Button.new()
 	remove_button.icon = _remove_friend_icon
 	remove_button.expand_icon = true
-	remove_button.pressed.connect(
-		_on_remove_friend_pressed.bind(friend_id))
-	row.add_child(remove_button)
+	content.add_child(remove_button)
 
-	_friends_container.add_child(row)
+	var invite_action := func() -> void:
+		invite_button.disabled = true
+		G.party_manager.invite_friend(friend_id)
+		if is_instance_valid(G.toast_overlay):
+			G.toast_overlay.show_toast(
+				tr("PARTY.INVITE"))
+
+	var remove_action := func() -> void:
+		G.friends_api_client.remove_friend(
+			friend_id)
+
+	invite_button.pressed.connect(invite_action)
+	remove_button.pressed.connect(remove_action)
+	# Right/trigger invites. Left removes.
+	row.setup_actions(
+		invite_action, remove_action)
+
+	_row_container.add_child(row)
+	_connect_row_clicked(row)
+	_dynamic_nodes.append(row)
 
 
 func _add_sent_row(
@@ -461,63 +514,34 @@ func _add_sent_row(
 	var display_name: String = entry.get(
 		"display_name", "Unknown")
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override(
+	var row := ActionRow.new()
+
+	var content := HBoxContainer.new()
+	content.add_theme_constant_override(
 		"separation", 8)
+	content.mouse_filter = (
+		Control.MOUSE_FILTER_IGNORE)
+	row.add_child(content)
 
 	var name_label := Label.new()
 	name_label.text = display_name
 	name_label.size_flags_horizontal = (
 		Control.SIZE_EXPAND_FILL)
-	row.add_child(name_label)
+	content.add_child(name_label)
 
 	var cancel_button := Button.new()
 	cancel_button.text = (
 		tr("FRIENDS.CANCEL_REQUEST"))
-	cancel_button.pressed.connect(
-		_on_cancel_pressed.bind(
-			friend_id, cancel_button))
-	row.add_child(cancel_button)
+	content.add_child(cancel_button)
 
-	_friends_container.add_child(row)
+	var cancel_action := func() -> void:
+		cancel_button.disabled = true
+		G.friends_api_client.cancel_request(
+			friend_id)
 
+	cancel_button.pressed.connect(cancel_action)
+	row.setup_actions(cancel_action, cancel_action)
 
-func _on_accept_pressed(
-	friend_id: String,
-	button: Button,
-) -> void:
-	button.disabled = true
-	G.friends_api_client.accept_request(friend_id)
-
-
-func _on_reject_pressed(
-	friend_id: String,
-	button: Button,
-) -> void:
-	button.disabled = true
-	G.friends_api_client.reject_request(friend_id)
-
-
-func _on_cancel_pressed(
-	friend_id: String,
-	button: Button,
-) -> void:
-	button.disabled = true
-	G.friends_api_client.cancel_request(friend_id)
-
-
-func _on_invite_to_party_pressed(
-	friend_id: String,
-	button: Button,
-) -> void:
-	button.disabled = true
-	G.party_manager.invite_friend(friend_id)
-	if is_instance_valid(G.toast_overlay):
-		G.toast_overlay.show_toast(
-			tr("PARTY.INVITE"))
-
-
-func _on_remove_friend_pressed(
-	friend_id: String,
-) -> void:
-	G.friends_api_client.remove_friend(friend_id)
+	_row_container.add_child(row)
+	_connect_row_clicked(row)
+	_dynamic_nodes.append(row)

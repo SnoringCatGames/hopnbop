@@ -1,6 +1,6 @@
 @tool
 extends GutTest
-## Unit tests for NetworkFrameDriver.
+## Unit tests for FrameDriver.
 
 func before_each():
 	ArrayPool.clear_all_pools()
@@ -14,12 +14,12 @@ class TestRollbackQueueing:
 	extends GutTest
 	## Tests rollback scheduling, deduplication, and validation.
 
-	var frame_driver: NetworkFrameDriver
+	var frame_driver: FrameDriver
 
 
 	func before_each():
 		ArrayPool.clear_all_pools()
-		frame_driver = NetworkFrameDriver.new()
+		frame_driver = FrameDriver.new()
 
 
 	func after_each():
@@ -203,8 +203,8 @@ class TestRollbackQueueing:
 
 
 ## Test helper entity that tracks network processing calls.
-class TestNetworkFrameProcessor \
-	extends NetworkFrameProcessor:
+class TestFrameProcessor \
+	extends FrameProcessor:
 	## Tracks how many times each processing phase is called.
 
 	var pre_process_count := 0
@@ -239,12 +239,12 @@ class TestFastForward:
 	extends GutTest
 	## Tests frame skip handling when client falls behind server.
 
-	var frame_driver: NetworkFrameDriver
+	var frame_driver: FrameDriver
 
 
 	func before_each():
 		ArrayPool.clear_all_pools()
-		frame_driver = NetworkFrameDriver.new()
+		frame_driver = FrameDriver.new()
 
 
 	func after_each():
@@ -270,7 +270,7 @@ class TestFastForward:
 		# Fast forward from 10 to 15 should process frames 11-15.
 		frame_driver.server_frame_index = 10
 
-		var processor := TestNetworkFrameProcessor.new()
+		var processor := TestFrameProcessor.new()
 		frame_driver.add_network_frame_processor(processor)
 
 		frame_driver.fast_forward(15)
@@ -331,9 +331,9 @@ class TestFastForward:
 
 class TestNodeRegistration:
 	extends GutTest
-	## Tests ReconcilableNetworkedState and NetworkFrameProcessor lifecycle.
+	## Tests ReconcilableNetworkedState and FrameProcessor lifecycle.
 
-	var frame_driver: NetworkFrameDriver
+	var frame_driver: FrameDriver
 	var test_entity: TestNetworkedEntity
 
 
@@ -388,8 +388,8 @@ class TestNodeRegistration:
 
 
 	func test_add_network_frame_processor_registers_node():
-		# Create a test node with NetworkFrameProcessor interface.
-		var processor := TestNetworkFrameProcessor.new()
+		# Create a test node with FrameProcessor interface.
+		var processor := TestFrameProcessor.new()
 
 		# Manually add to frame driver.
 		var initial_count := frame_driver._network_frame_processor_nodes.size()
@@ -412,7 +412,7 @@ class TestNodeRegistration:
 
 	func test_remove_network_frame_processor_unregisters_node():
 		# Create and register test processor.
-		var processor := TestNetworkFrameProcessor.new()
+		var processor := TestFrameProcessor.new()
 		frame_driver.add_network_frame_processor(processor)
 
 		# Remove processor.
@@ -438,12 +438,12 @@ class TestPauseUnpause:
 	## Tests pause/unpause functionality including state tracking, frame
 	## continuity, and time adjustments.
 
-	var frame_driver: NetworkFrameDriver
+	var frame_driver: FrameDriver
 
 
 	func before_each():
 		ArrayPool.clear_all_pools()
-		frame_driver = NetworkFrameDriver.new()
+		frame_driver = FrameDriver.new()
 
 
 	func after_each():

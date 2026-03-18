@@ -275,35 +275,91 @@ to authenticate with the backend API.
 ### WSS TLS Termination
 
 ```
-Web client --wss://{id}.game.hopnbop.net:{Port+1}--> nginx (TLS) --> Godot (WS)
-
-Native client --enet://ip:{Port}/UDP--> Godot (unchanged)
+Web client --wss://s-{ip}.game.hopnbop.net:{Port+1}--> nginx (TLS detect) --> TLS terminate --> Godot (plain WS)
+Native client --ws://s-{ip}.game.hopnbop.net:{Port+1}--> nginx (TLS detect) --> pass-through --> Godot (plain WS)
+ENet-only match --enet://ip:{Port}/UDP--> Godot (unchanged)
 ```
+
+nginx uses `ssl_preread` on container port 4434 to detect
+whether the incoming connection is TLS (web `wss://`) or
+plain (native `ws://`). TLS connections are routed to an
+internal HTTP block (port 4435) that terminates SSL and
+strips the `Origin` header before proxying to Godot.
+Plain connections are passed directly to Godot. Godot runs
+a plain WebSocket server on port 4433 (same port as ENet
+but TCP, no conflict since ENet uses UDP).
+
+**Critical nginx settings for real-time game traffic:**
+- `tcp_nodelay on` in the stream block (disables Nagle's
+  algorithm; without this, latency jumps to 3-10 seconds)
+- `proxy_buffering off` in the HTTP block
+- `proxy_socket_keepalive on` in the stream block
+
+**WebSocket buffer sizes:** Both client and server set
+`inbound_buffer_size` and `outbound_buffer_size` to 1MB
+(default 64KB) and `max_queued_packets` to 16384 (default
+2048). The default buffer overflows within seconds on web
+clients during 4-player matches.
 
 GameLift remaps container ports to dynamic host ports from the
 fleet's `InstanceConnectionPortRange` (4192-4211). Each game
 session gets 2 consecutive host ports:
 
 - `Port+0` → container `4433 UDP` (ENet, returned as `Port`)
-- `Port+1` → container `4434 TCP` (nginx WSS proxy)
+- `Port+1` → container `4434 TCP` (nginx TLS detection)
+
+GameLift documentation says port mapping is random, but with
+exactly 2 container ports the `Port+1` offset has been
+reliable across all testing. Do not add a third container
+port. GameLift requires different port numbers per entry,
+even for different protocols. Using the same number (e.g.,
+4433/UDP and 4433/TCP) causes GameLift to deduplicate.
 
 **Important:** The port range must accommodate pairs. With 2
 container ports per session, ensure `ToPort - FromPort + 1`
 is even. An odd range wastes the last port and can cause
 the WSS port to fall outside the range.
 
-nginx terminates TLS on container port 4434 and proxies to
-Godot's plain WebSocket server on localhost:4433. The TLS
-cert is fetched from Secrets Manager at container startup
-by `entrypoint.sh`. The backend returns `Port+1` for WSS
-connections.
+#### DNS Pre-Warming
 
-The DNS hostname maps to the raw server IP; the client
-connects to the dynamically assigned host port.
+DNS hostnames are derived deterministically from the server
+IP: `35.91.191.229` → `s-35-91-191-229.game.hopnbop.net`.
+The `entrypoint.sh` creates this Route 53 A record at
+container startup (via EC2 IMDS for the public IP), minutes
+before any game session is placed. By the time clients
+connect, DNS is fully propagated. No per-session DNS
+creation needed.
+
+The backend derives the same hostname from the server IP
+(in `_hostname_from_ip()`) and returns it to clients in the
+matchmaking response. Both sides compute the hostname
+independently from the IP.
 
 Wildcard cert for `*.game.hopnbop.net` via Let's Encrypt
 DNS-01. Stored in Secrets Manager (`hopnbop/tls-wildcard-cert`).
 Expires **2026-06-09**. Renewal needed before then.
+
+The `GameLiftContainerFleetRole` IAM role has an inline
+policy (`Route53DnsWarmup`) granting
+`route53:ChangeResourceRecordSets` on the hosted zone.
+
+#### Godot Native WSS Limitation (2026-03-17)
+
+Godot 4.5's native `WebSocketMultiplayerPeer` cannot
+connect via `wss://` to any remote server. Every
+configuration was tested with no success: default TLS,
+`TLSOptions.client_unsafe()`, Godot TLS server, nginx TLS
+proxy, with and without `supported_protocols`. The
+connection fails instantly (not a timeout). Browser `wss://`
+works fine (different TLS stack). Related Godot issues:
+[#34083](https://github.com/godotengine/godot/issues/34083),
+[#95217](https://github.com/godotengine/godot/issues/95217).
+
+**Workaround:** Native clients use plain `ws://` (no TLS).
+nginx's `ssl_preread` detects the lack of TLS and passes
+the connection through to Godot without encryption. This
+is acceptable because native ENet (the default transport)
+is also unencrypted UDP.
 
 ### End-to-End Matchmaking Flow
 
@@ -311,8 +367,12 @@ Expires **2026-06-09**. Renewal needed before then.
 2. Client calls `POST /matchmaking/start` with JWT
 3. Client polls `GET /matchmaking/status/{ticket_id}`
 4. Response includes `server_ip`, `server_port`,
-   `player_session_ids` (all dynamically assigned)
-5. Client connects via ENet to server_ip:server_port
+   `player_session_ids`, `transport_type` (all dynamically
+   assigned)
+5. Client connects to the server:
+   - ENet match: `enet://IP:Port` (UDP)
+   - WebSocket match: `ws://` or `wss://` to
+     `hostname:Port+1` (TCP, through nginx)
 6. Server validates player session IDs via GameLift SDK
 
 API Gateway has a 29-second hard timeout. Use the two-step
@@ -333,7 +393,7 @@ The networking system is frame-based with rollback support:
 - **ServerTimeTracker** - NTP-like clock sync between client and server. Server
   frame timing is based on physics ticks, with periodic wall-clock re-sync for
   accurate logging.
-- **NetworkConnector** - ENet peer management (default port 4433)
+- **NetworkConnector** - ENet/WebSocket peer management (default port 4433)
 
 **Frame Processing Flow:**
 1. `_pre_network_process()` - Sync scene state from rollback buffer
@@ -414,10 +474,16 @@ matched players and includes it in the matchmaking response.
 - Client sets `Netcode.settings.transport_type` from the
   response before connecting.
 - Server sets transport from matchmaker data in
-  `_on_game_session_started`.
-- Both ENet (UDP) and WebSocket (TCP) share port 4433.
-- Web clients use `wss://` for remote, `ws://` for
-  local/preview.
+  `_on_game_session_started`. Only switches to WebSocket
+  if the match includes a web player. ENet-only matches
+  stay on ENet.
+- Backend returns `s-{ip}.game.hopnbop.net` hostname for
+  WebSocket matches (DNS pre-warmed at container startup).
+- Web clients connect via `wss://hostname:Port+1` (through
+  nginx TLS termination).
+- Native clients connect via `ws://hostname:Port+1` (through
+  nginx pass-through, no TLS).
+- Local/preview always uses `ws://`.
 
 ## Networking Concepts Reference
 
@@ -546,6 +612,61 @@ translation system using `tr()`. When adding or modifying
 user-facing text, check the existing translation files in
 the project to determine supported languages and file
 format, then provide translations for all of them.
+
+## UI Patterns
+
+### Navigation
+
+All interactive UI elements must be navigable with U/D and
+L/R controls. Players use gamepads or keyboard. UI that only
+responds to mouse/touch is not acceptable.
+
+**Side panels** (`SidePanel` subclasses): Every interactive
+element (button, toggle, link) must be a `SettingsRow`
+subclass added directly to `_row_container`. The base class
+scans `_row_container.get_children()` for `SettingsRow`
+instances. Non-SettingsRow children (spacers, labels) are
+ignored. Call `_connect_row_clicked(row)` for each row and
+`rebuild_row_list()` after dynamic content changes.
+
+For dynamically generated rows that don't need a scene file,
+use `ActionRow` (extends `SettingsRow`). Call
+`setup_actions(on_right, on_left)` with callables for L/R
+input. Right/trigger is the primary action. Example:
+
+```gdscript
+var row := ActionRow.new()
+var content := HBoxContainer.new()
+content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+row.add_child(content)
+# ... add labels/buttons to content ...
+row.setup_actions(primary_action, secondary_action)
+_row_container.add_child(row)
+_connect_row_clicked(row)
+```
+
+**Screens** (`Screen` subclasses using `ScreenFocusNavigator`):
+All interactive buttons must be in the focusable list via
+`_navigator.set_focusable_list(items)`. Dynamically created
+buttons (e.g., friend action buttons in result rows) must also
+be added.
+
+### Button Icons
+
+Use pixel-art icons in most buttons. All icon buttons must use
+the same scale from Settings:
+
+```gdscript
+button.expand_icon = true
+button.add_theme_constant_override(
+    "icon_max_width",
+    int(G.settings.get_icon_display_width()))
+```
+
+Icon assets live in `assets/images/gui/`. When a new feature
+needs an icon that doesn't exist yet, ask for one. Do not
+ship buttons without icons or use placeholder text where an
+icon is expected.
 
 ## Configuration
 
@@ -1176,16 +1297,56 @@ Godot networking addons (for reference, not used in this project):
 
 ## Known Issues
 
-### Server Stuck on "Waiting for Players" (2026-03-11)
+### Web Client WebSocket Buffer Overflow (2026-03-17)
 
-**Root cause found 2026-03-15:** Two issues:
-1. Godot's WebSocket server rejects HTTP upgrade requests
-   that include an `Origin` header (as all browsers send).
-2. GameLift's host port mapping order for 3+ container
-   ports was unpredictable across computes, making the
-   nginx WSS port offset unreliable.
+Web clients in cross-play matches eventually hit "Buffer
+payload full! Dropping data" errors. The server replicates
+state for all players via MultiplayerSynchronizer nodes,
+generating ~150-500 state updates per second. The web
+client's single-threaded WASM runtime cannot always drain
+the inbound buffer fast enough.
 
-**Fix:** Removed nginx entirely. Godot's WebSocket server
-now handles TLS directly via `TLSOptions.server()`. The
-container definition was reduced to 2 ports (4433/UDP and
-4433/TCP), making the WSS port always `Port+1`.
+**Mitigation:** WebSocket buffers increased to 1MB
+(default 64KB) and max queued packets to 16384 (default
+2048). This provides ~7-30 seconds of headroom before
+overflow. A proper fix would be reducing the server's
+send rate for web peers (e.g., 30 FPS state updates
+instead of 60), but that is an architectural change.
+
+### WebSocket Cross-Play Latency (2026-03-17)
+
+Desktop clients in WebSocket cross-play matches see
+~100ms ping and 13-25% perceived packet loss, compared
+to ~25ms ping and 0% loss with ENet-only matches. This
+is inherent to TCP vs UDP: WebSocket over TCP has
+head-of-line blocking (a single lost packet stalls the
+entire stream until retransmitted). The "packet loss" in
+PERF stats measures late/missed frame updates, not actual
+TCP drops. Gameplay is playable but noticeably less smooth
+than ENet.
+
+### Resolved Issues
+
+**Server Stuck on "Waiting for Players" (2026-03-11,
+resolved 2026-03-17):** Godot's WebSocket server rejects
+HTTP upgrade requests with an `Origin` header (all
+browsers send one), and GameLift port mapping is
+unpredictable with 3+ container ports. Fixed by using
+nginx with `ssl_preread` for TLS detection on 2 container
+ports, with Origin stripping in the TLS termination path.
+
+**Native Clients Cannot Connect via WSS (2026-03-16,
+resolved 2026-03-17):** Godot 4.5's native mbedTLS-based
+WebSocket client cannot establish `wss://` connections to
+any remote server. Worked around by having native clients
+use plain `ws://` through nginx's pass-through path. See
+"Godot Native WSS Limitation" in the WSS TLS Termination
+section.
+
+**Buffer overflow on shutdown (2026-03-16, fixed):**
+Server did not disconnect clients when cancelling a match
+(grace period expiry) or during process termination with
+no active match. Client did not close the WebSocket on
+receiving the shutdown notification. Both fixed in
+`gamelift_server.gd`, `game_panel.gd`, and
+`network_connector.gd`.

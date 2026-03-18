@@ -40,6 +40,8 @@ const _BURST_PING_COUNT := 6 # Send 6 burst pings (3 seconds).
 const _GRADUAL_CATCHUP_MAX_FRAMES := 10
 
 # Network timing derived from FrameDriver config.
+## Falls back to 1/60 before Netcode.frame_driver
+## is initialized (e.g., during early _ready).
 var target_network_time_step_sec: float:
 	get:
 		return (

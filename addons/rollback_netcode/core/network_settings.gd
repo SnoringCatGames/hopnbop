@@ -49,6 +49,20 @@ var server_tls_options: TLSOptions
 ## Common values: 30 (lower bandwidth), 60 (standard), 120 (high precision).
 @export var target_network_fps := 60.0
 
+## Target send rate for replicated state (Hz).
+## 0 = same as target_network_fps. Only affects
+## predicted state sends. Input and confirmed
+## authoritative state are unaffected. Use integer
+## divisors of target_network_fps for even spacing
+## (e.g., 30, 20, 15 for 60 Hz sim).
+@export var target_state_send_fps := 0.0
+
+## Per-transport send rate overrides (Hz). 0 = use
+## target_state_send_fps. Only effective on the
+## server.
+@export var enet_state_send_fps := 0.0
+@export var websocket_state_send_fps := 0.0
+
 ## Duration of rollback buffer in seconds.
 @export var rollback_buffer_duration_sec := 1.5
 

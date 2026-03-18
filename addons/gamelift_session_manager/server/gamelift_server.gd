@@ -57,9 +57,6 @@ var _selected_level_id: StringName = ""
 
 var _idle_timer: Timer
 var _grace_timer: Timer
-var _dns_http_request: HTTPRequest
-
-const _DNS_WARMUP_ENDPOINT := "/internal/dns/warmup"
 
 const _TLS_CERT_PATH := "/game/tls/fullchain.pem"
 const _TLS_KEY_PATH := "/game/tls/privkey.pem"
@@ -366,6 +363,12 @@ func _on_grace_timeout() -> void:
 		# see SERVER_SHUTDOWN instead of
 		# CONNECTION_LOST.
 		Netcode.connector.server_notify_shutdown()
+		# Disconnect clients to stop state
+		# replication. Deferred so the shutdown
+		# RPC has time to send first.
+		(Netcode.connector
+			.server_close_multiplayer_session
+			.call_deferred())
 		_end_process.call_deferred()
 		return
 
@@ -632,23 +635,15 @@ func _on_game_session_started(session) -> void:
 
 	server_set_expected_player_count(expected_count)
 
-	# Pre-create the DNS record for web matches so
-	# it has time to propagate before clients
-	# connect. Fire-and-forget.
+	# Restart the server listener only if the
+	# transport changed from the default (ENet).
+	# The ENet server was already created during
+	# startup. Re-creating it would fail because
+	# the port is already bound.
 	if (Netcode.settings.transport_type
 			== NetworkSettings.TransportType.WEBSOCKET):
-		_warmup_dns(session.game_session_id)
-
-	# Restart the server listener with the correct
-	# transport type. server_enable_connections()
-	# was already called during startup (in
-	# server_start_match), but at that point the
-	# transport type was the default (ENet). Now
-	# that we know the actual transport from
-	# matchmaker data, re-create the peer so web
-	# clients can connect via WebSocket.
-	Netcode.connector.server_enable_connections(
-		Netcode.server_port)
+		Netcode.connector.server_enable_connections(
+			Netcode.server_port)
 
 	# Parse selected level from game properties
 	# (set by backend).
@@ -865,94 +860,6 @@ func _on_health_check() -> void:
 	# Return true (healthy) by default.
 	# TODO: Add custom health check logic if needed.
 	pass
-
-
-# =============================================================================
-# DNS Warmup
-# =============================================================================
-
-
-## Pre-create the Route 53 DNS record for this
-## game session so web clients can resolve the
-## hostname by the time they try to connect.
-## Fire-and-forget. Errors are logged but do not
-## block the session.
-func _warmup_dns(game_session_id: String) -> void:
-	var api_key := G.settings.server_api_key
-	if api_key.is_empty():
-		Netcode.log.print(
-			"No server API key. Skipping"
-			+ " DNS warmup.",
-			NetworkLogger.CATEGORY_CONNECTIONS,
-		)
-		return
-
-	if _dns_http_request == null:
-		_dns_http_request = HTTPRequest.new()
-		_dns_http_request.name = "DnsWarmupRequest"
-		add_child(_dns_http_request)
-		_dns_http_request.request_completed.connect(
-			_on_dns_warmup_completed)
-
-	var url := (
-		G.settings.gamelift_backend_api_url
-		+ _DNS_WARMUP_ENDPOINT
-	)
-	var headers := [
-		"Content-Type: application/json",
-		"X-Server-Key: %s" % api_key,
-	]
-	var body := JSON.stringify({
-		"game_session_id": game_session_id,
-	})
-
-	Netcode.log.print(
-		"Warming up DNS for %s"
-		% game_session_id,
-		NetworkLogger.CATEGORY_CONNECTIONS,
-	)
-
-	var error := _dns_http_request.request(
-		url,
-		headers,
-		HTTPClient.METHOD_POST,
-		body,
-	)
-	if error != OK:
-		Netcode.log.warning(
-			"DNS warmup request failed: %s"
-			% error_string(error),
-			NetworkLogger.CATEGORY_CONNECTIONS,
-		)
-
-
-func _on_dns_warmup_completed(
-	result: int,
-	response_code: int,
-	_headers: PackedStringArray,
-	body: PackedByteArray,
-) -> void:
-	if result != HTTPRequest.RESULT_SUCCESS:
-		Netcode.log.warning(
-			"DNS warmup HTTP error: %s"
-			% result,
-			NetworkLogger.CATEGORY_CONNECTIONS,
-		)
-		return
-
-	if response_code == 200:
-		Netcode.log.print(
-			"DNS warmup successful.",
-			NetworkLogger.CATEGORY_CONNECTIONS,
-		)
-	else:
-		var response_text := (
-			body.get_string_from_utf8())
-		Netcode.log.warning(
-			"DNS warmup failed (%d): %s"
-			% [response_code, response_text],
-			NetworkLogger.CATEGORY_CONNECTIONS,
-		)
 
 
 func _exit_tree() -> void:

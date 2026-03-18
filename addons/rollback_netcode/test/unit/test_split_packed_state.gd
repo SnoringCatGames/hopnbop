@@ -28,6 +28,12 @@ class NonSplitEntity extends ReconcilableState:
 		return false
 
 
+	func _restore_indirect_interaction_state(
+		_frame_state: Array,
+	) -> void:
+		pass
+
+
 	func _init() -> void:
 		super._init()
 		if replication_config == null:
@@ -74,6 +80,12 @@ class SplitEntity extends ReconcilableState:
 
 	func _has_non_rollbackable_interactions() -> bool:
 		return false
+
+
+	func _restore_indirect_interaction_state(
+		_frame_state: Array,
+	) -> void:
+		pass
 
 
 	func _init() -> void:

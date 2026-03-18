@@ -13,6 +13,13 @@ extends "res://src/scaffolder/character/player_input_network_state.gd"
 var input_delay_buffer := InputDelayBuffer.new()
 
 
+func _get_send_interval() -> int:
+	# Client input always sends every frame to
+	# ensure the server has up-to-date input for
+	# prediction.
+	return 1
+
+
 func _get_is_server_authoritative() -> bool:
 	return false
 

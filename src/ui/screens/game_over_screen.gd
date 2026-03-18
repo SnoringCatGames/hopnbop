@@ -8,6 +8,8 @@ const _FRIEND_BUTTON_WIDTH := 48
 const _STRIPE_COLOR := Color(1.0, 1.0, 1.0, 0.06)
 
 @export var _add_friend_icon: Texture2D
+@export var _request_sent_icon: Texture2D
+@export var _checkmark_icon: Texture2D
 
 ## Set of backend player IDs that have been acted
 ## on this session (to avoid duplicate actions).
@@ -293,12 +295,20 @@ func _add_friend_button(
 ) -> void:
 	var client := G.friends_api_client
 
-	# Already friends. No button needed.
+	var icon_width := int(
+		G.settings.get_icon_display_width())
+
+	# Already friends. Show checkmark.
 	if client.is_friend(backend_player_id):
-		var right_spacer := Control.new()
-		right_spacer.custom_minimum_size.x = (
+		var done_button := Button.new()
+		done_button.icon = _checkmark_icon
+		done_button.expand_icon = true
+		done_button.add_theme_constant_override(
+			"icon_max_width", icon_width)
+		done_button.disabled = true
+		done_button.custom_minimum_size.x = (
 			_FRIEND_BUTTON_WIDTH)
-		row.add_child(right_spacer)
+		row.add_child(done_button)
 		return
 
 	# Sent request already pending.
@@ -306,8 +316,10 @@ func _add_friend_button(
 		backend_player_id,
 	):
 		var pending_button := Button.new()
-		pending_button.text = (
-			tr("FRIENDS.PENDING"))
+		pending_button.icon = _request_sent_icon
+		pending_button.expand_icon = true
+		pending_button.add_theme_constant_override(
+			"icon_max_width", icon_width)
 		pending_button.disabled = true
 		pending_button.custom_minimum_size.x = (
 			_FRIEND_BUTTON_WIDTH)
@@ -335,9 +347,7 @@ func _add_friend_button(
 	add_button.icon = _add_friend_icon
 	add_button.expand_icon = true
 	add_button.add_theme_constant_override(
-		"icon_max_width",
-		int(G.settings
-			.get_icon_display_width()))
+		"icon_max_width", icon_width)
 	add_button.custom_minimum_size.x = (
 		_FRIEND_BUTTON_WIDTH)
 	add_button.pressed.connect(
@@ -355,7 +365,7 @@ func _on_add_friend_pressed(
 		return
 	_acted_friend_ids[backend_player_id] = true
 	button.disabled = true
-	button.text = "✓"
+	button.icon = _request_sent_icon
 
 	G.friends_api_client\
 		.send_request_by_player_id(
@@ -383,7 +393,13 @@ func _on_accept_friend_pressed(
 		return
 	_acted_friend_ids[backend_player_id] = true
 	button.disabled = true
-	button.text = "✓"
+	button.text = ""
+	button.icon = _checkmark_icon
+	button.expand_icon = true
+	button.add_theme_constant_override(
+		"icon_max_width",
+		int(G.settings
+			.get_icon_display_width()))
 
 	G.friends_api_client.accept_request(
 		backend_player_id)

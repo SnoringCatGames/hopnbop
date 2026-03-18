@@ -45,7 +45,8 @@ var is_dead: bool:
 			last_interaction_frame_index
 			+ int(
 				G.settings.player_respawn_cooldown_sec
-				* 60
+				* Netcode.frame_driver
+					.target_network_fps
 			)
 		)
 		return Netcode.server_frame_index < respawn_frame
@@ -62,7 +63,8 @@ var is_invincible: bool:
 			+ int(
 				G.settings
 					.player_invincibility_duration_sec
-				* 60
+				* Netcode.frame_driver
+					.target_network_fps
 			)
 		)
 		return Netcode.server_frame_index < invincibility_end_frame

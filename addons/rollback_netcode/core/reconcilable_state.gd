@@ -318,6 +318,13 @@ func _ready() -> void:
 	_parse_property_names()
 	update_authority()
 
+	# Register back-pressure visibility filter on
+	# the server to skip sends when a WebSocket
+	# peer's outbound buffer is nearly full.
+	if Netcode.is_server or Netcode.is_local_mode:
+		add_visibility_filter(
+			_back_pressure_filter)
+
 	# Re-process any state that arrived before _ready() (e.g., spawn data).
 	# Before _parse_property_names(), _unpack_networked_state() fails the
 	# size check. Either channel could receive data before _ready() via
@@ -720,9 +727,14 @@ func _post_network_process() -> void:
 	# Authority peers send their state over the network.
 	# Skip during rollback re-simulation to avoid sending
 	# past-frame states that confuse remote peers.
+	# Throttle by send interval to reduce bandwidth.
 	if (
 		is_multiplayer_authority()
 		and not Netcode.frame_driver.is_resimulating
+		and (
+			Netcode.server_frame_index
+			% _get_send_interval()
+		) == 0
 	):
 		_pack_networked_state()
 
@@ -766,6 +778,24 @@ func _uses_split_packed_state() -> bool:
 ## Override in subclasses that should track debug metrics.
 func _should_create_debug_buffer() -> bool:
 	return false
+
+
+## Returns the send interval for this node.
+## Subclasses override to use different rates
+## (e.g., input always sends every frame).
+## Default uses the global state send interval
+## from FrameDriver.
+func _get_send_interval() -> int:
+	return Netcode.frame_driver.state_send_interval
+
+
+## Visibility filter that skips sends when a
+## WebSocket peer's outbound buffer is under
+## pressure.
+func _back_pressure_filter(peer_id: int) -> bool:
+	return not Netcode.connector.is_peer_buffer_overloaded(
+		peer_id
+	)
 
 
 ## Get or create a debug buffer entry at the specified frame index.

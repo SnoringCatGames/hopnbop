@@ -516,6 +516,12 @@ func _on_server_shutdown_imminent(
 	if (G.match_state.is_match_active
 			and not G.match_state.is_match_ended):
 		_server_initiate_match_end()
+	else:
+		# No match in progress. Disconnect clients
+		# immediately to stop state replication
+		# and prevent buffer overflow.
+		(Netcode.connector
+			.server_close_multiplayer_session())
 
 
 func _on_server_should_reset() -> void:
