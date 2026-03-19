@@ -347,6 +347,10 @@ class TestReceivePath:
 			entity._set_up_rollback_buffer()
 		entity._parse_property_names()
 
+		# Unpause so state reception is not
+		# filtered by pause logic.
+		Netcode.frame_driver._is_paused = false
+
 
 	func after_each():
 		ArrayPool.clear_all_pools()

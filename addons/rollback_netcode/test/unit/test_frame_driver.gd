@@ -271,7 +271,7 @@ class TestFastForward:
 		frame_driver.server_frame_index = 10
 
 		var processor := TestFrameProcessor.new()
-		frame_driver.add_network_frame_processor(processor)
+		frame_driver.add_frame_processor(processor)
 
 		frame_driver.fast_forward(15)
 
@@ -286,7 +286,7 @@ class TestFastForward:
 			"Should advance to target frame",
 		)
 
-		frame_driver.remove_network_frame_processor(processor)
+		frame_driver.remove_frame_processor(processor)
 		processor.free()
 
 
@@ -387,45 +387,45 @@ class TestNodeRegistration:
 		)
 
 
-	func test_add_network_frame_processor_registers_node():
+	func test_add_frame_processor_registers_node():
 		# Create a test node with FrameProcessor interface.
 		var processor := TestFrameProcessor.new()
 
 		# Manually add to frame driver.
-		var initial_count := frame_driver._network_frame_processor_nodes.size()
-		frame_driver.add_network_frame_processor(processor)
+		var initial_count: int = frame_driver._frame_processor_nodes.size()
+		frame_driver.add_frame_processor(processor)
 
 		assert_eq(
-			frame_driver._network_frame_processor_nodes.size(),
+			frame_driver._frame_processor_nodes.size(),
 			initial_count + 1,
-			"Should add processor to _network_frame_processor_nodes",
+			"Should add processor to _frame_processor_nodes",
 		)
 		assert_true(
-			frame_driver._network_frame_processor_nodes.has(processor),
+			frame_driver._frame_processor_nodes.has(processor),
 			"Should contain the test processor",
 		)
 
 		# Cleanup.
-		frame_driver.remove_network_frame_processor(processor)
+		frame_driver.remove_frame_processor(processor)
 		processor.free()
 
 
-	func test_remove_network_frame_processor_unregisters_node():
+	func test_remove_frame_processor_unregisters_node():
 		# Create and register test processor.
 		var processor := TestFrameProcessor.new()
-		frame_driver.add_network_frame_processor(processor)
+		frame_driver.add_frame_processor(processor)
 
 		# Remove processor.
-		var count_before := frame_driver._network_frame_processor_nodes.size()
-		frame_driver.remove_network_frame_processor(processor)
+		var count_before: int = frame_driver._frame_processor_nodes.size()
+		frame_driver.remove_frame_processor(processor)
 
 		assert_eq(
-			frame_driver._network_frame_processor_nodes.size(),
+			frame_driver._frame_processor_nodes.size(),
 			count_before - 1,
-			"Should remove processor from _network_frame_processor_nodes",
+			"Should remove processor from _frame_processor_nodes",
 		)
 		assert_false(
-			frame_driver._network_frame_processor_nodes.has(processor),
+			frame_driver._frame_processor_nodes.has(processor),
 			"Should not contain the test processor",
 		)
 
@@ -444,12 +444,11 @@ class TestPauseUnpause:
 	func before_each():
 		ArrayPool.clear_all_pools()
 		frame_driver = FrameDriver.new()
+		add_child_autofree(frame_driver)
 
 
 	func after_each():
 		ArrayPool.clear_all_pools()
-		if is_instance_valid(frame_driver):
-			frame_driver.free()
 
 
 	func test_starts_paused_by_default():

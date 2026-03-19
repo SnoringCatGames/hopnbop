@@ -778,10 +778,21 @@ class TestBufferStateRestoration:
 			)
 
 
-	func test_frame_authority_defaults_to_unknown():
-		# When _pre_network_process is called, frame_authority resets.
+	func test_frame_authority_restores_from_buffer():
+		# When _pre_network_process is called, frame_authority
+		# is first set to UNKNOWN, then restored from the
+		# rollback buffer. The buffer default depends on
+		# Netcode.is_server (SERVER_PREDICTED when true,
+		# CLIENT_PREDICTED when false).
 		entity.frame_authority = (
 			ReconcilableState.FrameAuthority.AUTHORITATIVE
+		)
+
+		var expected_authority: int = (
+			ReconcilableState.FrameAuthority.SERVER_PREDICTED
+			if Netcode.is_server
+			else ReconcilableState.FrameAuthority
+				.CLIENT_PREDICTED
 		)
 
 		# Call the real production method.
@@ -789,14 +800,17 @@ class TestBufferStateRestoration:
 
 		assert_eq(
 			entity.frame_authority,
-			ReconcilableState.FrameAuthority.UNKNOWN,
-			"Frame authority should reset to UNKNOWN",
+			expected_authority,
+			"Frame authority should restore from buffer",
 		)
 
 
 	func test_frame_index_updates_during_pre_network_process():
-		# Set server frame index and call the real method.
-		Netcode.server_frame_index = 42
+		# Set server frame index on the frame driver
+		# (Netcode.server_frame_index is read-only).
+		var original := (
+			Netcode.frame_driver.server_frame_index)
+		Netcode.frame_driver.server_frame_index = 42
 
 		entity._pre_network_process()
 
@@ -805,6 +819,9 @@ class TestBufferStateRestoration:
 			42,
 			"Timestamp index should match server frame index",
 		)
+
+		# Restore original value.
+		Netcode.frame_driver.server_frame_index = original
 
 
 	func test_has_authoritative_state_for_current_frame():

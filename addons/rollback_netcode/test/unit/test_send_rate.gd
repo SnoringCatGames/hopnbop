@@ -37,6 +37,10 @@ class TestStateSendInterval:
 			Netcode.settings.websocket_state_send_fps)
 		_original_transport = (
 			Netcode.settings.transport_type)
+		# Zero out per-transport overrides so tests
+		# exercise the global setting in isolation.
+		Netcode.settings.enet_state_send_fps = 0.0
+		Netcode.settings.websocket_state_send_fps = 0.0
 
 
 	func after_each():
@@ -142,6 +146,8 @@ class TestIsStateSendFrame:
 	var frame_driver: FrameDriver
 	var _original_send_fps: float
 	var _original_network_fps: float
+	var _original_enet_fps: float
+	var _original_ws_fps: float
 
 
 	func before_each():
@@ -151,6 +157,14 @@ class TestIsStateSendFrame:
 			Netcode.settings.target_state_send_fps)
 		_original_network_fps = (
 			Netcode.settings.target_network_fps)
+		_original_enet_fps = (
+			Netcode.settings.enet_state_send_fps)
+		_original_ws_fps = (
+			Netcode.settings.websocket_state_send_fps)
+		# Zero out per-transport overrides so tests
+		# exercise the global setting in isolation.
+		Netcode.settings.enet_state_send_fps = 0.0
+		Netcode.settings.websocket_state_send_fps = 0.0
 
 
 	func after_each():
@@ -159,6 +173,10 @@ class TestIsStateSendFrame:
 			_original_send_fps)
 		Netcode.settings.target_network_fps = (
 			_original_network_fps)
+		Netcode.settings.enet_state_send_fps = (
+			_original_enet_fps)
+		Netcode.settings.websocket_state_send_fps = (
+			_original_ws_fps)
 		if is_instance_valid(frame_driver):
 			frame_driver.free()
 

@@ -60,8 +60,8 @@ var server_tls_options: TLSOptions
 ## Per-transport send rate overrides (Hz). 0 = use
 ## target_state_send_fps. Only effective on the
 ## server.
-@export var enet_state_send_fps := 0.0
-@export var websocket_state_send_fps := 0.0
+@export var enet_state_send_fps := 30.0
+@export var websocket_state_send_fps := 20.0
 
 ## Duration of rollback buffer in seconds.
 @export var rollback_buffer_duration_sec := 1.5

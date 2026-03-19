@@ -14,6 +14,9 @@ const _STRIPE_COLOR := Color(1.0, 1.0, 1.0, 0.06)
 ## Set of backend player IDs that have been acted
 ## on this session (to avoid duplicate actions).
 var _acted_friend_ids: Dictionary = {}
+## Friend action buttons collected during result
+## population for inclusion in the focusable list.
+var _friend_action_buttons: Array[Control] = []
 
 var _navigator := ScreenFocusNavigator.new()
 
@@ -79,6 +82,8 @@ func on_open() -> void:
 
 func _build_focusable_list() -> void:
 	var items: Array[Control] = []
+	for button in _friend_action_buttons:
+		items.append(button)
 	items.append(%PlayAgainButton)
 	items.append(%ReturnToLobbyButton)
 	items.append(%LeaderboardButton)
@@ -95,9 +100,15 @@ func _activate_focused() -> void:
 		_on_return_to_lobby_pressed()
 	elif focused == %LeaderboardButton:
 		_on_leaderboard_pressed()
+	elif focused is Button:
+		# Friend action button. Trigger its
+		# existing pressed callback.
+		(focused as Button).pressed.emit()
 
 
 func _populate_results() -> void:
+	_friend_action_buttons.clear()
+
 	# Clear previous results.
 	for child in %ResultsContainer.get_children():
 		child.queue_free()
@@ -340,6 +351,8 @@ func _add_friend_button(
 				backend_player_id,
 				accept_button))
 		row.add_child(accept_button)
+		_friend_action_buttons.append(
+			accept_button)
 		return
 
 	# No relationship. Show Add Friend button.
@@ -355,6 +368,7 @@ func _add_friend_button(
 			backend_player_id,
 			add_button))
 	row.add_child(add_button)
+	_friend_action_buttons.append(add_button)
 
 
 func _on_add_friend_pressed(
