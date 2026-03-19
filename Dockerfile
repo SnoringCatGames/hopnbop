@@ -79,6 +79,13 @@ COPY addons/gamelift/gamelift.gdextension \
 COPY addons/gamelift/bin/libgamelift.linux.template_release.x86_64.so \
      /game/addons/gamelift/bin/
 
+# Copy WebRTC GDExtension manifest and Linux binary
+# (webrtc-native v1.0.9, OpenSSL-based).
+COPY addons/webrtc/webrtc.gdextension \
+     /game/addons/webrtc/
+COPY addons/webrtc/lib/libwebrtc_native.linux.template_release.x86_64.so \
+     /game/addons/webrtc/lib/
+
 # Copy the SDK shared library built in the builder stage
 # (compiled with GAMELIFT_USE_STD=1 to match GDExtension ABI).
 COPY --from=sdk-builder \

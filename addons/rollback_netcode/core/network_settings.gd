@@ -25,6 +25,7 @@ extends Resource
 enum TransportType {
 	ENET,      ## UDP-based. Native desktop clients.
 	WEBSOCKET, ## TCP-based. Web and mobile clients.
+	WEBRTC,    ## UDP-like DataChannel. Web cross-play.
 }
 
 
@@ -62,6 +63,7 @@ var server_tls_options: TLSOptions
 ## server.
 @export var enet_state_send_fps := 30.0
 @export var websocket_state_send_fps := 20.0
+@export var webrtc_state_send_fps := 30.0
 
 ## Duration of rollback buffer in seconds.
 @export var rollback_buffer_duration_sec := 1.5

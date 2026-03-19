@@ -201,7 +201,7 @@ class GameLiftService:
                         "valueAttribute", 0
                     )
                     if value == 1.0:
-                        return "websocket"
+                        return "webrtc"
         except (ClientError, json.JSONDecodeError, KeyError):
             pass
         return "enet"

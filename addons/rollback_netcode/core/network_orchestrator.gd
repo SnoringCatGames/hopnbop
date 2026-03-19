@@ -206,10 +206,13 @@ func initialize() -> void:
 	# Cache server port from command-line arg or settings.
 	server_port = int(args.port) if args.has("port") else settings.server_port
 
-	# Auto-select WebSocket transport for web exports.
+	# Auto-select WebRTC transport for web exports.
+	# WebRTC DataChannels provide UDP-like semantics
+	# in the browser, eliminating TCP head-of-line
+	# blocking that plagues WebSocket.
 	if OS.has_feature("web"):
 		settings.transport_type = (
-			NetworkSettings.TransportType.WEBSOCKET)
+			NetworkSettings.TransportType.WEBRTC)
 
 	# Validate preview client number if explicitly specified.
 	if is_preview and args.has("client"):

@@ -140,6 +140,13 @@ __pycache__/
 !addons/gamelift/bin/*.dll
 !addons/gamelift/bin/*.dylib
 
+# AND keep the WebRTC extension libraries in addons/
+!addons/webrtc/lib/*.so
+!addons/webrtc/lib/*.dll
+!addons/webrtc/lib/*.dylib
+!addons/webrtc/lib/*.framework
+!addons/webrtc/lib/*.framework/**
+
 # Compiled Static libraries
 *.lai
 *.la

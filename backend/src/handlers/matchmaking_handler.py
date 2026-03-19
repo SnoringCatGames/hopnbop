@@ -62,14 +62,16 @@ active_session_service = ActiveSessionService()
 def _resolve_server_address(result):
     """Resolve server address and port for the match result.
 
-    For WebSocket matches, returns the pre-warmed DNS
-    hostname + WSS host port. The DNS A record was created
-    at container startup by entrypoint.sh, so it is already
-    propagated by the time clients connect. The hostname is
-    derived deterministically from the server IP.
+    For WebSocket and WebRTC matches, returns the pre-warmed
+    DNS hostname + WSS host port. WebRTC signaling uses a
+    brief WebSocket connection through the same nginx path.
+    The DNS A record was created at container startup by
+    entrypoint.sh, so it is already propagated by the time
+    clients connect. The hostname is derived
+    deterministically from the server IP.
     For ENet matches (native-only), returns the raw IP.
     """
-    if result.transport_type == "websocket":
+    if result.transport_type in ("websocket", "webrtc"):
         hostname = _hostname_from_ip(result.server_ip)
         wss_port = result.server_port + _WSS_PORT_OFFSET
         return hostname, wss_port

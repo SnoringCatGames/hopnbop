@@ -641,7 +641,7 @@ func _on_game_session_started(session) -> void:
 	# startup. Re-creating it would fail because
 	# the port is already bound.
 	if (Netcode.settings.transport_type
-			== NetworkSettings.TransportType.WEBSOCKET):
+			!= NetworkSettings.TransportType.ENET):
 		Netcode.connector.server_enable_connections(
 			Netcode.server_port)
 
@@ -710,10 +710,10 @@ func _set_transport_from_matchmaker(
 
 	if has_web_player:
 		Netcode.settings.transport_type = (
-			NetworkSettings.TransportType.WEBSOCKET)
+			NetworkSettings.TransportType.WEBRTC)
 		Netcode.log.print(
 			"Web player detected,"
-			+ " using WebSocket transport",
+			+ " using WebRTC transport",
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
 	else:

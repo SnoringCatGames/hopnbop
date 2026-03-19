@@ -369,13 +369,19 @@ func _handle_match_found(
 	# any matched player is on web.
 	var transport_type: String = data.get(
 		"transport_type", "enet")
-	if transport_type == "websocket":
-		Netcode.settings.transport_type = (
-			NetworkSettings
-				.TransportType.WEBSOCKET)
-	else:
-		Netcode.settings.transport_type = (
-			NetworkSettings.TransportType.ENET)
+	match transport_type:
+		"webrtc":
+			Netcode.settings.transport_type = (
+				NetworkSettings
+					.TransportType.WEBRTC)
+		"websocket":
+			Netcode.settings.transport_type = (
+				NetworkSettings
+					.TransportType.WEBSOCKET)
+		_:
+			Netcode.settings.transport_type = (
+				NetworkSettings
+					.TransportType.ENET)
 
 	Netcode.log.print(
 		("Match found: %d session ID(s),"

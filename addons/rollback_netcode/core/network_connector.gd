@@ -79,6 +79,15 @@ const _ENET_THROTTLE_DECELERATION := 2
 ## 75% of the 1MB outbound buffer size.
 const _BUFFER_PRESSURE_THRESHOLD := 786432
 
+## WebRTC signaling server (server-side only).
+var _webrtc_signaling_server: WebRTCSignalingServer
+
+## WebRTC signaling client (client-side only).
+var _webrtc_signaling_client: WebRTCSignalingClient
+
+## WebRTC multiplayer peer (set during signaling).
+var _webrtc_peer: WebRTCMultiplayerPeer
+
 ## Callable for validating player attributes (game-specific).
 ## Signature: func(attributes: Array, expected_count: int, peer_id: int) ->
 ## Array.
@@ -157,6 +166,9 @@ func server_enable_connections(p_server_port: int) -> void:
 				p_server_port)
 			peer = ws
 			transport_name = "WebSocket"
+		NetworkSettings.TransportType.WEBRTC:
+			_server_start_webrtc(p_server_port)
+			return
 		_:
 			var enet := ENetMultiplayerPeer.new()
 			result = enet.create_server(
@@ -229,6 +241,12 @@ func client_connect_to_server(
 					p_server_port])
 			peer = ws
 			transport_name = "WebSocket"
+		NetworkSettings.TransportType.WEBRTC:
+			_client_start_webrtc(
+				p_server_ip_address,
+				p_server_port,
+			)
+			return
 		_:
 			var enet := ENetMultiplayerPeer.new()
 			result = enet.create_client(
@@ -831,3 +849,154 @@ func _configure_enet_throttle(
 		],
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
+
+
+# =============================================================
+# WebRTC transport
+# =============================================================
+
+
+## Start the WebRTC signaling server and create
+## the WebRTCMultiplayerPeer in server mode.
+func _server_start_webrtc(
+	p_server_port: int,
+) -> void:
+	# Start signaling WebSocket server on the same
+	# port (TCP). WebRTC data flows over UDP, so
+	# there is no port conflict.
+	if _webrtc_signaling_server != null:
+		_webrtc_signaling_server.stop()
+		_webrtc_signaling_server.queue_free()
+
+	_webrtc_signaling_server = (
+		WebRTCSignalingServer.new())
+	_webrtc_signaling_server.name = (
+		"WebRTCSignalingServer")
+	add_child(_webrtc_signaling_server)
+	_webrtc_signaling_server.start(p_server_port)
+
+	# Create WebRTCMultiplayerPeer in server mode.
+	_webrtc_peer = WebRTCMultiplayerPeer.new()
+	_webrtc_peer.create_server()
+	multiplayer.multiplayer_peer = _webrtc_peer
+
+	# Connect signaling signals.
+	_webrtc_signaling_server.peer_signaled.connect(
+		_on_webrtc_peer_signaled)
+
+	Netcode.log.print(
+		"Started WebRTC server: port=%d"
+		% p_server_port,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+
+## Called when a client completes signaling. Adds
+## the client's WebRTCPeerConnection to the
+## multiplayer peer.
+func _on_webrtc_peer_signaled(
+	peer_connection: WebRTCPeerConnection,
+	peer_id: int,
+) -> void:
+	if _webrtc_peer == null:
+		return
+	_webrtc_peer.add_peer(
+		peer_connection, peer_id)
+	Netcode.log.print(
+		"WebRTC: added peer %d" % peer_id,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+
+## Start WebRTC signaling as a client. Connects to
+## the server's signaling WebSocket, performs SDP/ICE
+## exchange, then creates the multiplayer peer.
+func _client_start_webrtc(
+	p_server_ip_address: String,
+	p_server_port: int,
+) -> void:
+	# Reset disconnect reason for new connection.
+	last_disconnect_reason = (
+		DisconnectReason.UNKNOWN)
+
+	# Determine signaling WebSocket URL. Web clients
+	# use wss:// through nginx, native clients use
+	# ws:// for local/preview.
+	var is_local := (
+		p_server_ip_address == "127.0.0.1"
+		or p_server_ip_address == "localhost"
+		or Netcode.is_preview)
+	var use_tls := (
+		not is_local and OS.has_feature("web"))
+	var scheme := "wss" if use_tls else "ws"
+	var ws_url := "%s://%s:%d" % [
+		scheme,
+		p_server_ip_address,
+		p_server_port,
+	]
+
+	if _webrtc_signaling_client != null:
+		_webrtc_signaling_client.stop()
+		_webrtc_signaling_client.queue_free()
+
+	_webrtc_signaling_client = (
+		WebRTCSignalingClient.new())
+	_webrtc_signaling_client.name = (
+		"WebRTCSignalingClient")
+	add_child(_webrtc_signaling_client)
+
+	_webrtc_signaling_client.completed.connect(
+		_on_webrtc_signaling_completed)
+	_webrtc_signaling_client.failed.connect(
+		_on_webrtc_signaling_failed)
+
+	# Use a temporary peer ID based on hash. The
+	# server assigns the real ID during the
+	# multiplayer handshake.
+	var temp_peer_id := (
+		(Time.get_ticks_msec() % 2147483646) + 2)
+	_webrtc_signaling_client.start(
+		ws_url, temp_peer_id)
+
+	Netcode.log.print(
+		"Started WebRTC client signaling: %s"
+		% ws_url,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+
+## Called when client signaling completes. Creates
+## the WebRTCMultiplayerPeer in client mode and
+## adds the server's peer connection.
+func _on_webrtc_signaling_completed(
+	peer_connection: WebRTCPeerConnection,
+) -> void:
+	_webrtc_peer = WebRTCMultiplayerPeer.new()
+	# create_client(peer_id) sets this peer's ID.
+	# Use the temp ID assigned during signaling.
+	var client_id: int = (
+		_webrtc_signaling_client._peer_id)
+	_webrtc_peer.create_client(client_id)
+	# Add the server's peer connection (server is
+	# always peer_id 1).
+	_webrtc_peer.add_peer(peer_connection, SERVER_ID)
+	multiplayer.multiplayer_peer = _webrtc_peer
+
+	Netcode.log.print(
+		"WebRTC client connected (peer_id=%d)"
+		% client_id,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+
+## Called when client signaling fails after all
+## retries.
+func _on_webrtc_signaling_failed(
+	error: String,
+) -> void:
+	Netcode.log.error(
+		"WebRTC signaling failed: %s" % error,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+	disconnected.emit(
+		-1, DisconnectReason.CONNECTION_FAILED)

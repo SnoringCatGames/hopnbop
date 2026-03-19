@@ -236,6 +236,7 @@ class TestPerTransportSendRate:
 	var _original_network_fps: float
 	var _original_enet_fps: float
 	var _original_ws_fps: float
+	var _original_webrtc_fps: float
 	var _original_transport: int
 
 
@@ -250,6 +251,8 @@ class TestPerTransportSendRate:
 			Netcode.settings.enet_state_send_fps)
 		_original_ws_fps = (
 			Netcode.settings.websocket_state_send_fps)
+		_original_webrtc_fps = (
+			Netcode.settings.webrtc_state_send_fps)
 		_original_transport = (
 			Netcode.settings.transport_type)
 		Netcode.settings.target_network_fps = 60.0
@@ -265,6 +268,8 @@ class TestPerTransportSendRate:
 			_original_enet_fps)
 		Netcode.settings.websocket_state_send_fps = (
 			_original_ws_fps)
+		Netcode.settings.webrtc_state_send_fps = (
+			_original_webrtc_fps)
 		Netcode.settings.transport_type = (
 			_original_transport)
 		if is_instance_valid(frame_driver):
@@ -318,6 +323,34 @@ class TestPerTransportSendRate:
 		assert_eq(
 			frame_driver.state_send_interval, 1,
 			"All zero should mean every frame",
+		)
+
+
+	func test_webrtc_override_used_when_transport_is_webrtc():
+		Netcode.settings.transport_type = (
+			NetworkSettings.TransportType.WEBRTC)
+		Netcode.settings.target_state_send_fps = 20.0
+		Netcode.settings.webrtc_state_send_fps = 15.0
+		# WebRTC override (15) should win over
+		# global (20). 60/15 = 4.
+		assert_eq(
+			frame_driver.state_send_interval, 4,
+			"WebRTC override should produce"
+			+ " interval 4",
+		)
+
+
+	func test_webrtc_falls_back_to_global_when_zero():
+		Netcode.settings.transport_type = (
+			NetworkSettings.TransportType.WEBRTC)
+		Netcode.settings.target_state_send_fps = 20.0
+		Netcode.settings.webrtc_state_send_fps = 0.0
+		# Override is 0, falls back to global (20).
+		# 60/20 = 3.
+		assert_eq(
+			frame_driver.state_send_interval, 3,
+			"Should fall back to global when"
+			+ " WebRTC override is 0",
 		)
 
 

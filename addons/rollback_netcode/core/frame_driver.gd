@@ -996,6 +996,9 @@ func _resolve_state_send_fps() -> float:
 		NetworkSettings.TransportType.WEBSOCKET:
 			if settings.websocket_state_send_fps > 0.0:
 				return settings.websocket_state_send_fps
+		NetworkSettings.TransportType.WEBRTC:
+			if settings.webrtc_state_send_fps > 0.0:
+				return settings.webrtc_state_send_fps
 	# Fall back to global setting.
 	return settings.target_state_send_fps
 
