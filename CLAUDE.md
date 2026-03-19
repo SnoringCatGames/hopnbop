@@ -201,6 +201,11 @@ If the changes require users to re-consent, also bump
 - `export_presets.cfg` `file_version`/`product_version`
   (optional, currently empty)
 
+**Version bumping policy:**
+- When in doubt, bump the version. Always bump on redeploy.
+- Prefer bumping minor over patch. Only ask about major vs
+  minor.
+
 **Version check architecture:**
 - `protocol_version` determines client/server compatibility.
   Only bump when the network protocol actually changes.
