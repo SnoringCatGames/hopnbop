@@ -209,6 +209,8 @@ If the changes require users to re-consent, also bump
 **Commit policy:**
 - Do not commit partial or broken work. All changes for a
   feature must be working end-to-end before committing.
+- Never ask the user whether to commit. They will tell you
+  when they want to commit.
 
 **Version check architecture:**
 - `protocol_version` determines client/server compatibility.
