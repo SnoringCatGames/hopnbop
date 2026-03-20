@@ -206,6 +206,10 @@ If the changes require users to re-consent, also bump
 - Prefer bumping minor over patch. Only ask about major vs
   minor.
 
+**Commit policy:**
+- Do not commit partial or broken work. All changes for a
+  feature must be working end-to-end before committing.
+
 **Version check architecture:**
 - `protocol_version` determines client/server compatibility.
   Only bump when the network protocol actually changes.

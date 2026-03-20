@@ -11,6 +11,13 @@ extends Node
 ## in webrtc-native v1.0.9 (mbedTLS lacks ClientHello
 ## defragmentation).
 
+## Emitted when the WebRTCPeerConnection is created
+## (STATE_NEW), before signaling begins. The
+## multiplayer peer must add_peer at this point.
+signal peer_created(
+	peer_connection: WebRTCPeerConnection,
+)
+
 ## Emitted when signaling completes and the
 ## DataChannel is open.
 signal completed(
@@ -20,18 +27,21 @@ signal completed(
 ## Emitted when signaling fails after all retries.
 signal failed(error: String)
 
-const _ATTEMPT_TIMEOUT_SEC := 5.0
+const _ATTEMPT_TIMEOUT_SEC := 10.0
 const _MAX_RETRY_ATTEMPTS := 5
 
 var _ws: WebSocketPeer
 var _rtc: WebRTCPeerConnection
-var _data_channel: WebRTCDataChannel
 var _signaling_url := ""
 var _peer_id: int = 0
 var _attempt_count := 0
 var _attempt_start_msec := 0
 var _is_active := false
 var _is_completed := false
+
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 
 
 ## Begin signaling. url is the WebSocket URL to the
@@ -109,15 +119,23 @@ func _process(_delta: float) -> void:
 
 	var state := _ws.get_ready_state()
 
-	# Check timeout.
-	var elapsed := (
+	# Check timeout. Applies to the entire
+	# signaling attempt, not just the WebSocket
+	# connection phase.
+	var elapsed: float = (
 		(Time.get_ticks_msec()
 			- _attempt_start_msec)
 		/ 1000.0)
 	if elapsed > _ATTEMPT_TIMEOUT_SEC:
-		Netcode.log.warning(
-			"WebRTC signaling attempt %d timed out"
-			% _attempt_count,
+		Netcode.log.print(
+			("WebRTC signaling attempt %d/%d"
+			+ " timed out (%.1fs, ws_state=%d)")
+			% [
+				_attempt_count,
+				_MAX_RETRY_ATTEMPTS,
+				elapsed,
+				state,
+			],
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
 		_retry_or_fail()
@@ -125,9 +143,12 @@ func _process(_delta: float) -> void:
 
 	if state == WebSocketPeer.STATE_CLOSED:
 		if not _is_completed:
-			Netcode.log.warning(
-				"Signaling WebSocket closed"
-				+ " unexpectedly",
+			var code := _ws.get_close_code()
+			var reason := _ws.get_close_reason()
+			Netcode.log.print(
+				("Signaling WebSocket closed:"
+				+ " code=%d reason='%s'")
+				% [code, reason],
 				NetworkLogger.CATEGORY_CONNECTIONS,
 			)
 			_retry_or_fail()
@@ -141,43 +162,67 @@ func _process(_delta: float) -> void:
 	if _rtc == null:
 		_create_rtc_and_offer()
 
+	# Poll the RTC peer connection to process
+	# internal state and emit signals
+	# (session_description_created,
+	# ice_candidate_created).
+	if _rtc != null:
+		_rtc.poll()
+
 	# Read messages from signaling server.
 	while _ws.get_available_packet_count() > 0:
 		var packet := _ws.get_packet()
 		var text := packet.get_string_from_utf8()
 		_handle_message(text)
 
-	# Check DataChannel state.
-	if _data_channel != null:
-		_data_channel.poll()
-		if (_data_channel.get_ready_state()
-				== WebRTCDataChannel.STATE_OPEN):
-			_on_data_channel_open()
+	# Check if ICE connection is established.
+	if _rtc != null:
+		var conn_state := _rtc.get_connection_state()
+		if (conn_state
+				== WebRTCPeerConnection
+					.STATE_CONNECTED):
+			_on_connection_established()
 
 
 func _create_rtc_and_offer() -> void:
 	_rtc = WebRTCPeerConnection.new()
 
-	# Connect signals.
+	# Connect signals BEFORE initialize so we
+	# don't miss early ICE candidates.
 	_rtc.ice_candidate_created.connect(
 		_on_local_ice_candidate)
 	_rtc.session_description_created.connect(
 		_on_session_description)
 
-	# Create the DataChannel. This triggers SDP
-	# offer generation.
-	_data_channel = _rtc.create_data_channel(
-		"game",
-		{
-			"negotiated": true,
-			"id": 1,
-			"maxRetransmits": 0,
-			"ordered": false,
-		},
-	)
+	# Initialize ICE agent with STUN server.
+	# Must happen before add_peer and create_offer.
+	var init_err := _rtc.initialize({
+		"iceServers": [
+			{"urls": ["stun:stun.l.google.com:19302"]},
+		],
+	})
+	if init_err != OK:
+		Netcode.log.error(
+			"WebRTC: initialize failed: %d"
+			% init_err,
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
 
-	# Create the offer.
-	_rtc.create_offer()
+	# Emit peer_created while STATE_NEW so the
+	# multiplayer peer can add_peer(). add_peer
+	# creates internal data channels needed for
+	# create_offer to succeed.
+	peer_created.emit(_rtc)
+
+	# Create the offer. Requires add_peer() to
+	# have created internal channels first.
+	var offer_err := _rtc.create_offer()
+	if offer_err != OK:
+		Netcode.log.error(
+			"WebRTC: create_offer failed: %d"
+			% offer_err,
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
 
 	Netcode.log.print(
 		"WebRTC: created offer",
@@ -213,9 +258,18 @@ func _on_local_ice_candidate(
 	index: int,
 	candidate_name: String,
 ) -> void:
+	Netcode.log.print(
+		"WebRTC: local ICE candidate: %s"
+		% candidate_name,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
 	if (_ws == null
 			or _ws.get_ready_state()
 				!= WebSocketPeer.STATE_OPEN):
+		Netcode.log.warning(
+			"WebRTC: WS not open, can't send ICE",
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
 		return
 
 	var msg := JSON.stringify({
@@ -278,14 +332,14 @@ func _handle_connected(_data: Dictionary) -> void:
 	# The _process loop checks DataChannel state.
 
 
-func _on_data_channel_open() -> void:
+func _on_connection_established() -> void:
 	if _is_completed:
 		return
 	_is_completed = true
 	_is_active = false
 
 	Netcode.log.print(
-		"WebRTC: DataChannel open,"
+		"WebRTC: ICE connected,"
 		+ " signaling complete",
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
@@ -321,4 +375,3 @@ func _cleanup() -> void:
 		_rtc.close()
 	if not _is_completed:
 		_rtc = null
-		_data_channel = null

@@ -49,6 +49,10 @@ var _ws_signaled: Dictionary = {}
 var _ws_connect_time: Dictionary = {}
 
 
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
+
 func start(port: int) -> void:
 	_port = port
 	_tcp_server = TCPServer.new()
@@ -148,31 +152,18 @@ func _process(_delta: float) -> void:
 			var text := packet.get_string_from_utf8()
 			_handle_message(i, ws, text)
 
-	# Poll DataChannels and emit peer_signaled when
-	# a channel opens.
-	for ws_idx in _ws_to_data_channel:
+	# Poll RTC peer connections that have NOT yet
+	# been handed off to WebRTCMultiplayerPeer.
+	# After peer_signaled (add_peer), the
+	# multiplayer peer owns the connection and
+	# handles polling. Double-polling causes
+	# instability.
+	for ws_idx in _ws_to_rtc:
 		if _ws_signaled.has(ws_idx):
 			continue
-		var dc: WebRTCDataChannel = (
-			_ws_to_data_channel[ws_idx])
-		dc.poll()
-		if (dc.get_ready_state()
-				== WebRTCDataChannel.STATE_OPEN):
-			_ws_signaled[ws_idx] = true
-			var pid: int = (
-				_ws_to_peer_id.get(ws_idx, 0))
-			var rtc: WebRTCPeerConnection = (
-				_ws_to_rtc.get(ws_idx))
-			if rtc != null and pid > 0:
-				Netcode.log.print(
-					"Signaling: DataChannel open"
-					+ " for peer_id=%d" % pid,
-					NetworkLogger
-						.CATEGORY_CONNECTIONS,
-				)
-				peer_signaled.emit(rtc, pid)
-				notify_peer_connected(
-					ws_idx, pid)
+		var rtc_peer: WebRTCPeerConnection = (
+			_ws_to_rtc[ws_idx])
+		rtc_peer.poll()
 
 	# Clean up closed peers (reverse order to
 	# preserve indices).
@@ -242,33 +233,62 @@ func _handle_offer(
 
 	# Create a WebRTCPeerConnection for this client.
 	var rtc := WebRTCPeerConnection.new()
-	_ws_to_rtc[ws_index] = rtc
 
-	# Create a matching negotiated DataChannel. Must
-	# use the same id and parameters as the client.
-	var dc: WebRTCDataChannel = (
-		rtc.create_data_channel(
-			"game",
-			{
-				"negotiated": true,
-				"id": 1,
-				"maxRetransmits": 0,
-				"ordered": false,
-			},
-		))
-	_ws_to_data_channel[ws_index] = dc
-
-	# Connect ICE candidate signal to forward
-	# server-side candidates to the client.
+	# Connect signals BEFORE initialize so we
+	# don't miss early ICE candidates.
 	rtc.ice_candidate_created.connect(
 		_on_server_ice_candidate.bind(ws_index))
-
-	# Connect session description signal.
 	rtc.session_description_created.connect(
 		_on_session_description.bind(ws_index))
 
+	# Initialize ICE agent with STUN server.
+	# Must happen before add_peer.
+	var init_err := rtc.initialize({
+		"iceServers": [
+			{"urls": ["stun:stun.l.google.com:19302"]},
+		],
+	})
+	if init_err != OK:
+		Netcode.log.error(
+			"Signaling: initialize failed: %d"
+			% init_err,
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+
+	# Emit peer_signaled while STATE_NEW so
+	# add_peer() works. add_peer creates internal
+	# channels that set_remote_description needs.
+	_ws_to_rtc[ws_index] = rtc
+	peer_signaled.emit(rtc, peer_id)
+	# Mark as handed off so we stop polling this
+	# RTC. WebRTCMultiplayerPeer owns it now.
+	_ws_signaled[ws_index] = true
+
+	# Do NOT create a DataChannel manually.
+	# WebRTCMultiplayerPeer manages its own
+	# channels internally after add_peer().
+
 	# Set the remote description (client's offer).
-	rtc.set_remote_description("offer", sdp)
+	var desc_err := rtc.set_remote_description(
+		"offer", sdp)
+	if desc_err != OK:
+		Netcode.log.error(
+			("Signaling: set_remote_description"
+			+ " failed: %d") % desc_err,
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+	else:
+		Netcode.log.print(
+			("Signaling: set_remote_description"
+			+ " OK for ws_index=%d,"
+			+ " gathering=%d, signaling=%d")
+			% [
+				ws_index,
+				rtc.get_gathering_state(),
+				rtc.get_signaling_state(),
+			],
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
 
 
 func _on_session_description(
@@ -276,6 +296,12 @@ func _on_session_description(
 	sdp: String,
 	ws_index: int,
 ) -> void:
+	Netcode.log.print(
+		("Signaling: session_description_created"
+		+ " type=%s ws_index=%d sdp_len=%d")
+		% [type, ws_index, sdp.length()],
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
 	if not _ws_to_rtc.has(ws_index):
 		return
 

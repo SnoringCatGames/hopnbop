@@ -67,6 +67,19 @@ const RPC_CHANNEL_GAME_EVENTS := 3
 const RPC_CHANNEL_STATS := 4
 const RPC_CHANNEL_DEBUG := 5
 
+## WebRTC extra channel configuration matching
+## the RPC channels above. Channel 0 is handled
+## by the 3 reserved WebRTC channels. Channels
+## 1-5 need explicit entries. Each entry creates
+## one additional negotiated WebRTC data channel.
+const _WEBRTC_CHANNELS_CONFIG: Array = [
+	MultiplayerPeer.TRANSFER_MODE_RELIABLE,     # ch 1: session control
+	MultiplayerPeer.TRANSFER_MODE_UNRELIABLE,   # ch 2: clock sync
+	MultiplayerPeer.TRANSFER_MODE_RELIABLE,     # ch 3: game events
+	MultiplayerPeer.TRANSFER_MODE_UNRELIABLE,   # ch 4: stats
+	MultiplayerPeer.TRANSFER_MODE_UNRELIABLE,   # ch 5: debug
+]
+
 ## ENet throttle tuning for faster unreliable
 ## packet ramp-up on new connections. ENet
 ## defaults start at ~31% send rate and ramp
@@ -875,9 +888,11 @@ func _server_start_webrtc(
 	add_child(_webrtc_signaling_server)
 	_webrtc_signaling_server.start(p_server_port)
 
-	# Create WebRTCMultiplayerPeer in server mode.
+	# Create WebRTCMultiplayerPeer in server mode
+	# with extra channels matching RPC channels.
 	_webrtc_peer = WebRTCMultiplayerPeer.new()
-	_webrtc_peer.create_server()
+	_webrtc_peer.create_server(
+		_WEBRTC_CHANNELS_CONFIG)
 	multiplayer.multiplayer_peer = _webrtc_peer
 
 	# Connect signaling signals.
@@ -945,16 +960,20 @@ func _client_start_webrtc(
 		"WebRTCSignalingClient")
 	add_child(_webrtc_signaling_client)
 
-	_webrtc_signaling_client.completed.connect(
-		_on_webrtc_signaling_completed)
-	_webrtc_signaling_client.failed.connect(
-		_on_webrtc_signaling_failed)
-
 	# Use a temporary peer ID based on hash. The
 	# server assigns the real ID during the
 	# multiplayer handshake.
 	var temp_peer_id := (
 		(Time.get_ticks_msec() % 2147483646) + 2)
+
+	_webrtc_signaling_client.peer_created.connect(
+		_on_webrtc_client_peer_created.bind(
+			temp_peer_id))
+	_webrtc_signaling_client.completed.connect(
+		_on_webrtc_signaling_completed)
+	_webrtc_signaling_client.failed.connect(
+		_on_webrtc_signaling_failed)
+
 	_webrtc_signaling_client.start(
 		ws_url, temp_peer_id)
 
@@ -965,26 +984,36 @@ func _client_start_webrtc(
 	)
 
 
-## Called when client signaling completes. Creates
-## the WebRTCMultiplayerPeer in client mode and
-## adds the server's peer connection.
-func _on_webrtc_signaling_completed(
+## Called when the client's WebRTCPeerConnection is
+## created (STATE_NEW). Sets up the multiplayer peer
+## immediately so add_peer works, before signaling
+## progresses the connection state.
+func _on_webrtc_client_peer_created(
 	peer_connection: WebRTCPeerConnection,
+	client_id: int,
 ) -> void:
 	_webrtc_peer = WebRTCMultiplayerPeer.new()
-	# create_client(peer_id) sets this peer's ID.
-	# Use the temp ID assigned during signaling.
-	var client_id: int = (
-		_webrtc_signaling_client._peer_id)
-	_webrtc_peer.create_client(client_id)
-	# Add the server's peer connection (server is
-	# always peer_id 1).
-	_webrtc_peer.add_peer(peer_connection, SERVER_ID)
+	_webrtc_peer.create_client(
+		client_id, _WEBRTC_CHANNELS_CONFIG)
+	# Add peer while connection is STATE_NEW.
+	_webrtc_peer.add_peer(
+		peer_connection, SERVER_ID)
 	multiplayer.multiplayer_peer = _webrtc_peer
 
 	Netcode.log.print(
-		"WebRTC client connected (peer_id=%d)"
-		% client_id,
+		("WebRTC: multiplayer peer created"
+		+ " (client_id=%d)") % client_id,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+
+## Called when signaling completes and the
+## DataChannel is open.
+func _on_webrtc_signaling_completed(
+	_peer_connection: WebRTCPeerConnection,
+) -> void:
+	Netcode.log.print(
+		"WebRTC: signaling complete, connected",
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 
