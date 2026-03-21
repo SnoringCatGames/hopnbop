@@ -18,6 +18,11 @@ const TILE_SIZE := 16.0
 
 const _WATER_SURFACE_SCAN_LIMIT := 20
 
+## - If true, we'll hide the collision tiles in lieu of rendering a single
+##   consolidated image for the level.
+## - If false, we'll render individual tiles.
+@export var uses_single_sprite_for_level_art := false
+
 @export var collision_tiles: TileMapLayer
 
 @export var level_camera: Camera2D
@@ -58,6 +63,9 @@ func _ready() -> void:
 	Netcode.check(is_instance_valid(spawn_points),
 		"spawn_points node not set in level: %s" %
 		Utils.get_display_name(self ))
+
+	if uses_single_sprite_for_level_art:
+		collision_tiles.modulate.a = 0.0
 
 	if Netcode.is_client:
 		gore_manager = GoreManager.new()
