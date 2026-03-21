@@ -12,7 +12,10 @@
 
 ## Post: Stable Diffusion for 2D platformer art
 
-- With PixelLab?
+- Briefly experimented with Stable Diffusion.
+  - Completely garbage results at following specific level geometry.
+  - So, completely unusable for my purposes.
+- PixelLab performed just as poorly.
 
 ## Post: The Netcode rollback plugin
 
