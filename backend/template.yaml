@@ -9,8 +9,8 @@ Globals:
     MemorySize: 512
     Environment:
       Variables:
-        GAME_VERSION: "0.9.0"
-        PROTOCOL_VERSION: "1"
+        GAME_VERSION: "0.11.0"
+        PROTOCOL_VERSION: "2"
         PLAYERS_TABLE: !Ref PlayersTable
         MATCH_HISTORY_TABLE: !Ref MatchHistoryTable
         PROVIDER_MAPPINGS_TABLE: !Ref ProviderMappingsTable

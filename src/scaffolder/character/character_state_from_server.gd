@@ -953,11 +953,11 @@ func _try_send_confirmed_authoritative_state() -> void:
 	state[prop_count] = FrameAuthority.AUTHORITATIVE
 	state[prop_count + 1] = target_frame
 
-	_is_packing_state_locally = true
-	if not authoritative_packed_state.is_empty():
-		ArrayPool.release(authoritative_packed_state)
-	authoritative_packed_state = state
-	_is_packing_state_locally = false
+	_assign_outgoing_state(
+		state,
+		NetworkConditionSimulator
+			.CHANNEL_AUTHORITATIVE,
+	)
 
 	_last_confirmed_sent_frame = target_frame
 

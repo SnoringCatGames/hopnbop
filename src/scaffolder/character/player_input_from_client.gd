@@ -14,7 +14,12 @@ var input_delay_buffer := InputDelayBuffer.new()
 
 
 func _get_send_interval() -> int:
-	# Client input always sends every frame to
+	# With bundling, input is sent at the same rate
+	# as state to reduce SCTP packet count. Redundant
+	# input (redundant_input_frame_count) covers gaps.
+	if Netcode.is_bundled_send:
+		return Netcode.frame_driver.state_send_interval
+	# Without bundling, always send every frame to
 	# ensure the server has up-to-date input for
 	# prediction.
 	return 1

@@ -1094,7 +1094,11 @@ func server_end_match() -> void:
 
 	_server_report_match_result()
 
-	_server_destroy_level(G.level)
+	# G.level may already be null if the disconnect
+	# above triggered a server reset callback that
+	# destroyed the level.
+	if is_instance_valid(G.level):
+		_server_destroy_level(G.level)
 
 
 ## Sends the backend player ID mapping to all

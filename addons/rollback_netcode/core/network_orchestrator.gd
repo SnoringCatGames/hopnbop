@@ -92,6 +92,10 @@ var frame_sync: FrameSynchronizer
 ## Optional performance tracker for metrics and monitoring.
 var perf_tracker: PerfTracker
 
+## Bundles per-frame state into single packets (WebRTC
+## only). Reduces SCTP packet count from ~12/tick to 1.
+var state_bundler: StateBundler
+
 ## Network condition simulator (debug builds only).
 var condition_simulator: NetworkConditionSimulator
 
@@ -99,6 +103,18 @@ var is_debug := true
 var is_preview := true
 var is_headless := true
 var is_server := true
+
+## True when per-frame state is bundled into single
+## packets instead of using MultiplayerSynchronizer.
+## Only active for WebRTC transport.
+var is_bundled_send: bool:
+	get:
+		return (
+			state_bundler != null
+			and settings != null
+			and settings.transport_type
+				== NetworkSettings.TransportType.WEBRTC
+		)
 var is_client: bool:
 	get:
 		return not is_server
@@ -238,6 +254,10 @@ func initialize() -> void:
 	frame_sync = FrameSynchronizer.new()
 	frame_sync.name = "FrameSynchronizer"
 	add_child(frame_sync)
+
+	state_bundler = StateBundler.new()
+	state_bundler.name = "StateBundler"
+	add_child(state_bundler)
 
 	perf_tracker = PerfTracker.new()
 	perf_tracker.name = "PerfTracker"

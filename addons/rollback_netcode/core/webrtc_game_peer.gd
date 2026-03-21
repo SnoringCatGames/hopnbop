@@ -16,15 +16,6 @@ const _CHANNEL_ID_UNRELIABLE := 2
 
 const _MAX_PACKET_SIZE := 65536
 
-## Minimum packet size for SCTP PMTUD. Small packets
-## (~100 bytes) keep the congestion window tiny.
-## Padding to near-MTU size (1200 bytes) forces SCTP
-## to discover the real path capacity and open the
-## congestion window wider. Only applied to unreliable
-## packets (state sync). Reliable packets (RPCs) are
-## rare and should not be padded.
-const _MIN_UNRELIABLE_PACKET_SIZE := 1200
-
 ## Per-peer connection state.
 class PeerState:
 	var rtc: WebRTCPeerConnection
@@ -395,17 +386,12 @@ func _drain_channel(
 		channel.get_available_packet_count() > 0
 	):
 		var raw := channel.get_packet()
-		if raw.size() < 3:
+		if raw.size() < 2:
 			continue
 
-		# Header: 1 byte channel + 2 bytes payload
-		# length. Payload length is used to strip
-		# PMTUD padding on unreliable packets.
+		# First byte is the Godot transfer channel.
 		var ch: int = raw[0]
-		var payload_len: int = (
-			(raw[1] << 8) | raw[2])
-		var payload := raw.slice(
-			3, 3 + payload_len)
+		var payload := raw.slice(1)
 
 		var pkt := IncomingPacket.new()
 		pkt.data = payload
@@ -423,31 +409,16 @@ func _send_to_peer(
 	mode: int,
 	channel: int,
 ) -> void:
-	var is_reliable := (
-		mode == MultiplayerPeer
-			.TRANSFER_MODE_RELIABLE)
-
-	# Header: 1 byte channel + 2 bytes payload
-	# length (for stripping padding on receive).
-	var payload_len := data.size()
-	var header := PackedByteArray([
-		channel,
-		(payload_len >> 8) & 0xFF,
-		payload_len & 0xFF,
-	])
+	# Prepend 1-byte channel header.
+	var header := PackedByteArray([channel])
 	var packet := header + data
 
-	# Pad unreliable packets to trigger SCTP PMTUD.
-	if (not is_reliable
-			and packet.size()
-				< _MIN_UNRELIABLE_PACKET_SIZE):
-		packet.resize(_MIN_UNRELIABLE_PACKET_SIZE)
-
 	var target_channel: WebRTCDataChannel
-	if is_reliable:
-		target_channel = state.reliable
-	else:
-		target_channel = state.unreliable
+	match mode:
+		MultiplayerPeer.TRANSFER_MODE_RELIABLE:
+			target_channel = state.reliable
+		_:
+			target_channel = state.unreliable
 
 	if (target_channel != null
 			and _is_channel_open(target_channel)):

@@ -167,6 +167,13 @@ var is_client_authoritative: bool:
 
 var _is_packing_state_locally := false
 
+## Pending outgoing states for StateBundler. When
+## bundling is active, _assign_outgoing_state appends
+## here instead of setting the synchronizer properties.
+## Accumulated between bundler sends and consumed by
+## StateBundler._send_bundles().
+var _pending_bundle_states: Array = []
+
 ## Additional replication channel for predicted state (current frame,
 ## SERVER_PREDICTED). Only used by nodes that override
 ## _uses_split_packed_state() to send predicted state alongside
@@ -299,6 +306,18 @@ func _exit_tree() -> void:
 	if Engine.is_editor_hint():
 		return
 
+	# Release any pending bundle states.
+	for state in _pending_bundle_states:
+		ArrayPool.release(state)
+	_pending_bundle_states = []
+
+	# Invalidate bundler lookup cache.
+	if (
+		Netcode.state_bundler != null
+		and Netcode.is_bundled_send
+	):
+		Netcode.state_bundler.clear_lookup()
+
 	Netcode.frame_driver.remove_networked_state(self )
 
 
@@ -373,10 +392,15 @@ func _should_use_network_simulator() -> bool:
 
 ## Assign packed state to the replication property, triggering
 ## MultiplayerSynchronizer to send it on the next network tick.
+## When bundling is active, the state is stored in
+## _pending_bundle_states for StateBundler to collect.
 func _assign_outgoing_state(
 	state: Array,
 	channel: StringName,
 ) -> void:
+	if Netcode.is_bundled_send:
+		_pending_bundle_states.append(state)
+		return
 	_is_packing_state_locally = true
 	if channel == NetworkConditionSimulator.CHANNEL_PREDICTED:
 		if not predicted_packed_state.is_empty():
@@ -387,6 +411,15 @@ func _assign_outgoing_state(
 			ArrayPool.release(authoritative_packed_state)
 		authoritative_packed_state = state
 	_is_packing_state_locally = false
+
+
+## Return and clear all pending bundle states.
+## Called by StateBundler to collect states for
+## serialization into a single bundle packet.
+func consume_pending_bundle_states() -> Array:
+	var states := _pending_bundle_states
+	_pending_bundle_states = []
+	return states
 
 
 func _handle_new_state_from_network(p_state: Array) -> void:
@@ -876,6 +909,12 @@ func _sync_from_scene_state() -> void:
 
 func _update_replication_config() -> void:
 	if Engine.is_editor_hint():
+		return
+
+	# When bundling is active, skip registering
+	# per-frame replication properties. StateBundler
+	# handles sending instead of MultiplayerSynchronizer.
+	if Netcode.is_bundled_send:
 		return
 
 	if not Netcode.log.ensure(is_instance_valid(root)):

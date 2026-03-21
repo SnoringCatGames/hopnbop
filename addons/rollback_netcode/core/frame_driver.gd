@@ -2014,6 +2014,9 @@ func _network_process() -> void:
 	for node in _networked_state_nodes:
 		node._post_network_process()
 
+	# Send bundled state after all nodes have packed.
+	_maybe_send_bundles()
+
 
 ## Process only buffer synchronization without game logic (for match start countdown).
 ## This keeps rollback buffers in sync between server and clients during match start countdown
@@ -2035,6 +2038,9 @@ func _network_process_buffers_only() -> void:
 	for node in _networked_state_nodes:
 		node._post_network_process()
 
+	# Send bundled state after all nodes have packed.
+	_maybe_send_bundles()
+
 
 func fast_forward(new_frame_index: int) -> void:
 	var fastforward_start_time_usec := Time.get_ticks_usec()
@@ -2049,6 +2055,18 @@ func fast_forward(new_frame_index: int) -> void:
 	last_fastforward_frame_count = frame_count
 	last_fastforward_duration_usec = Time.get_ticks_usec() - fastforward_start_time_usec
 	total_fastforwards += 1
+
+
+## Send bundled state if bundling is active and not
+## during rollback re-simulation.
+func _maybe_send_bundles() -> void:
+	if (
+		not Netcode.is_bundled_send
+		or is_resimulating
+		or Netcode.state_bundler == null
+	):
+		return
+	Netcode.state_bundler._send_bundles()
 
 
 ## Backfill all rollback buffers after match start countdown ends.
