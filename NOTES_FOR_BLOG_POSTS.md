@@ -44,7 +44,7 @@
 ### Send rate throttling as mitigation
 - Reduced server state replication from 60 Hz to 20 Hz for WebSocket peers
 - Eliminated buffer overflow but couldn't fix head-of-line blocking
-- Gameplay playable but noticeably less smooth than ENet
+- Gameplay was never playable on WebSocket at any send rate due to TCP head-of-line blocking
 
 ### The decision to adopt WebRTC DataChannels
 - WebRTC DataChannels with unreliable/unordered mode provide UDP-like semantics in browsers
@@ -81,14 +81,44 @@
 
 ### Custom MultiplayerPeerExtension approach
 - Godot 4.5 has MultiplayerPeerExtension: GDScript-extensible base for custom MultiplayerPeer
-- WebRTCGamePeer: 3 negotiated DataChannels instead of 8 SCTP streams
+- WebRTCGamePeer: 2 negotiated DataChannels (reliable + unreliable) instead of 8 SCTP streams
 - Reliable channel: negotiated=true, id=1, ordered=true
-- Unreliable ordered channel: negotiated=true, id=2, ordered=true, maxRetransmits=0
-- Unreliable channel: negotiated=true, id=3, ordered=false, maxRetransmits=0
+- Unreliable channel: negotiated=true, id=2, ordered=false, maxRetransmits=0
 - Fewer SCTP streams = less congestion window contention
 - True fire-and-forget on unreliable channel (no head-of-line blocking for state sync)
 - No double-polling (custom peer owns WebRTCPeerConnection polling entirely)
 - 1-byte channel header per packet preserves Godot's transfer_channel routing
 - SceneMultiplayer handles relay (is_server_relay_supported = false)
-- Performance comparison: TBD after testing
+- Desktop performance: excellent (58-60 R FPS, 25-30ms ping, 0-28% loss)
+- Web performance: still degrades over match duration (R FPS drops from 47 to 4)
+
+### Failed optimization: PMTUD packet padding
+- Theory: small game packets (~100 bytes) don't trigger SCTP PMTUD, keeping
+  the congestion window constrained. Padding packets to 1200 bytes (near MTU)
+  would force SCTP to discover real path capacity and open the window wider.
+- Implementation: padded unreliable packets to 1200 bytes with a 3-byte header
+  (channel + payload length for stripping padding on receive)
+- Result: made things WORSE. SCTP congestion window is measured in bytes, not
+  packets. Padding to 1200 bytes means each packet consumes 12x more of the
+  congestion window. Fewer packets fit in flight before SCTP throttles.
+  Same packet rate but 12x the bandwidth = faster congestion.
+- Reverted immediately
+
+### Root cause: per-synchronizer packet overhead
+- Godot's MultiplayerSynchronizer sends one packet per node per tick
+- With 4 players: 9+ synchronizer nodes × 10 Hz = 90+ packets/sec aggregate
+- Each packet is a separate SCTP packet with its own overhead
+- Browser SCTP congestion control throttles at this packet rate regardless
+  of individual packet size
+- Potential fix: bypass MultiplayerSynchronizer, bundle all state updates
+  into a single packet per tick (10 packets/sec instead of 90+)
+
+### WebRTC performance rule of thumb
+- Combine all per-frame (always-send) synchronizers across the entire app
+  into a single consolidated synchronizer that sends one bundled packet per
+  tick. This is the single most impactful optimization for WebRTC performance.
+- On-change synchronizers (kills, bumps, player list, match events) and
+  reliable RPCs can stay separate. They fire infrequently and don't
+  contribute to the per-frame packet flood that overwhelms SCTP congestion
+  control.
 
