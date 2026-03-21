@@ -214,7 +214,7 @@ func _server_send_stats_to_clients() -> void:
 		packed.append(player_id)
 		packed.append_array(
 			stats.to_packed_array())
-	Netcode.rpc_locally_too(
+	Netcode.call_client_rpc_with_local_support(
 		_rpc_client_update_stats.bind(packed))
 
 

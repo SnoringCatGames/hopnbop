@@ -32,6 +32,7 @@ const _MAX_RETRY_ATTEMPTS := 5
 
 var _ws: WebSocketPeer
 var _rtc: WebRTCPeerConnection
+var _peer_added := false
 var _signaling_url := ""
 var _peer_id: int = 0
 var _attempt_count := 0
@@ -162,11 +163,12 @@ func _process(_delta: float) -> void:
 	if _rtc == null:
 		_create_rtc_and_offer()
 
-	# Poll the RTC peer connection to process
-	# internal state and emit signals
-	# (session_description_created,
-	# ice_candidate_created).
-	if _rtc != null:
+	# Poll the RTC peer connection ONLY before
+	# add_peer. After peer_created emits (which
+	# triggers add_peer), WebRTCGamePeer polls
+	# the connection in _poll(). Double-polling
+	# corrupts SCTP state.
+	if _rtc != null and not _peer_added:
 		_rtc.poll()
 
 	# Read messages from signaling server.
@@ -208,14 +210,15 @@ func _create_rtc_and_offer() -> void:
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
 
-	# Emit peer_created while STATE_NEW so the
-	# multiplayer peer can add_peer(). add_peer
-	# creates internal data channels needed for
-	# create_offer to succeed.
+	# Emit peer_created so WebRTCGamePeer can call
+	# add_peer() and create negotiated DataChannels.
+	# The channels must exist before create_offer
+	# so the SDP includes SCTP transport.
+	_peer_added = true
 	peer_created.emit(_rtc)
 
-	# Create the offer. Requires add_peer() to
-	# have created internal channels first.
+	# Create the offer. Requires DataChannels to
+	# exist so SDP includes SCTP transport.
 	var offer_err := _rtc.create_offer()
 	if offer_err != OK:
 		Netcode.log.error(
@@ -375,3 +378,4 @@ func _cleanup() -> void:
 		_rtc.close()
 	if not _is_completed:
 		_rtc = null
+		_peer_added = false

@@ -17,14 +17,13 @@ context belongs in this file so it stays in sync via git.
 Test multiplayer locally in Godot editor:
 1. Debug > Customize Run Instances
 2. Enable 3 instances with launch args:
-   - Instance 1: `--server --preview`
-   - Instance 2: `--client=1 --preview`
-   - Instance 3: `--client=2 --preview`
+   - Instance 1: `--server`
+   - Instance 2: `--client=1`
+   - Instance 3: `--client=2`
 
 Launch flags:
 - `--server` - Run as server
 - `--client=N` - Run as client N (1, 2, etc.)
-- `--preview` - Local multi-instance testing mode
 
 ## Deployment
 

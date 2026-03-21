@@ -67,18 +67,6 @@ const RPC_CHANNEL_GAME_EVENTS := 3
 const RPC_CHANNEL_STATS := 4
 const RPC_CHANNEL_DEBUG := 5
 
-## WebRTC extra channel configuration matching
-## the RPC channels above. Channel 0 is handled
-## by the 3 reserved WebRTC channels. Channels
-## 1-5 need explicit entries. Each entry creates
-## one additional negotiated WebRTC data channel.
-const _WEBRTC_CHANNELS_CONFIG: Array = [
-	MultiplayerPeer.TRANSFER_MODE_RELIABLE,     # ch 1: session control
-	MultiplayerPeer.TRANSFER_MODE_UNRELIABLE,   # ch 2: clock sync
-	MultiplayerPeer.TRANSFER_MODE_RELIABLE,     # ch 3: game events
-	MultiplayerPeer.TRANSFER_MODE_UNRELIABLE,   # ch 4: stats
-	MultiplayerPeer.TRANSFER_MODE_UNRELIABLE,   # ch 5: debug
-]
 
 ## ENet throttle tuning for faster unreliable
 ## packet ramp-up on new connections. ENet
@@ -98,8 +86,9 @@ var _webrtc_signaling_server: WebRTCSignalingServer
 ## WebRTC signaling client (client-side only).
 var _webrtc_signaling_client: WebRTCSignalingClient
 
-## WebRTC multiplayer peer (set during signaling).
-var _webrtc_peer: WebRTCMultiplayerPeer
+## Custom WebRTC multiplayer peer using raw
+## DataChannels (3 channels vs 8 SCTP streams).
+var _webrtc_peer: WebRTCGamePeer
 
 ## Callable for validating player attributes (game-specific).
 ## Signature: func(attributes: Array, expected_count: int, peer_id: int) ->
@@ -870,7 +859,7 @@ func _configure_enet_throttle(
 
 
 ## Start the WebRTC signaling server and create
-## the WebRTCMultiplayerPeer in server mode.
+## the WebRTCGamePeer in server mode.
 func _server_start_webrtc(
 	p_server_port: int,
 ) -> void:
@@ -888,11 +877,12 @@ func _server_start_webrtc(
 	add_child(_webrtc_signaling_server)
 	_webrtc_signaling_server.start(p_server_port)
 
-	# Create WebRTCMultiplayerPeer in server mode
-	# with extra channels matching RPC channels.
-	_webrtc_peer = WebRTCMultiplayerPeer.new()
-	_webrtc_peer.create_server(
-		_WEBRTC_CHANNELS_CONFIG)
+	# Create custom WebRTC peer in server mode.
+	# Uses 3 negotiated DataChannels (reliable,
+	# unreliable ordered, unreliable) instead of
+	# WebRTCMultiplayerPeer's 6-8 SCTP streams.
+	_webrtc_peer = WebRTCGamePeer.new()
+	_webrtc_peer.create_server()
 	multiplayer.multiplayer_peer = _webrtc_peer
 
 	# Connect signaling signals.
@@ -907,8 +897,8 @@ func _server_start_webrtc(
 
 
 ## Called when a client completes signaling. Adds
-## the client's WebRTCPeerConnection to the
-## multiplayer peer.
+## the client's WebRTCPeerConnection to the custom
+## peer, which creates 3 negotiated DataChannels.
 func _on_webrtc_peer_signaled(
 	peer_connection: WebRTCPeerConnection,
 	peer_id: int,
@@ -985,23 +975,24 @@ func _client_start_webrtc(
 
 
 ## Called when the client's WebRTCPeerConnection is
-## created (STATE_NEW). Sets up the multiplayer peer
-## immediately so add_peer works, before signaling
-## progresses the connection state.
+## created. Sets up the custom WebRTC peer with 3
+## negotiated DataChannels and adds the server
+## connection.
 func _on_webrtc_client_peer_created(
 	peer_connection: WebRTCPeerConnection,
 	client_id: int,
 ) -> void:
-	_webrtc_peer = WebRTCMultiplayerPeer.new()
-	_webrtc_peer.create_client(
-		client_id, _WEBRTC_CHANNELS_CONFIG)
-	# Add peer while connection is STATE_NEW.
+	_webrtc_peer = WebRTCGamePeer.new()
+	_webrtc_peer.create_client(client_id)
+	# Add server peer. Creates 3 negotiated
+	# DataChannels (reliable, unreliable ordered,
+	# unreliable).
 	_webrtc_peer.add_peer(
 		peer_connection, SERVER_ID)
 	multiplayer.multiplayer_peer = _webrtc_peer
 
 	Netcode.log.print(
-		("WebRTC: multiplayer peer created"
+		("WebRTC: custom peer created"
 		+ " (client_id=%d)") % client_id,
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)

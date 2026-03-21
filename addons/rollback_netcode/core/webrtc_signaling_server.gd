@@ -37,9 +37,6 @@ var _ws_to_peer_id: Dictionary = {}
 # WebRTCPeerConnection.
 var _ws_to_rtc: Dictionary = {}
 
-# Maps WebSocket peer index to its DataChannel.
-var _ws_to_data_channel: Dictionary = {}
-
 # Tracks which ws_index peers have already emitted
 # the peer_signaled signal.
 var _ws_signaled: Dictionary = {}
@@ -83,7 +80,6 @@ func stop() -> void:
 	_ws_peers.clear()
 	_ws_to_peer_id.clear()
 	_ws_to_rtc.clear()
-	_ws_to_data_channel.clear()
 	_ws_signaled.clear()
 	_ws_connect_time.clear()
 
@@ -153,11 +149,10 @@ func _process(_delta: float) -> void:
 			_handle_message(i, ws, text)
 
 	# Poll RTC peer connections that have NOT yet
-	# been handed off to WebRTCMultiplayerPeer.
-	# After peer_signaled (add_peer), the
-	# multiplayer peer owns the connection and
-	# handles polling. Double-polling causes
-	# instability.
+	# been handed off to WebRTCGamePeer. After
+	# peer_signaled (add_peer), the custom peer
+	# owns the connection and handles polling.
+	# Double-polling causes instability.
 	for ws_idx in _ws_to_rtc:
 		if _ws_signaled.has(ws_idx):
 			continue
@@ -255,18 +250,13 @@ func _handle_offer(
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
 
-	# Emit peer_signaled while STATE_NEW so
-	# add_peer() works. add_peer creates internal
-	# channels that set_remote_description needs.
+	# Emit peer_signaled so the custom peer can
+	# call add_peer() and create DataChannels.
 	_ws_to_rtc[ws_index] = rtc
 	peer_signaled.emit(rtc, peer_id)
 	# Mark as handed off so we stop polling this
-	# RTC. WebRTCMultiplayerPeer owns it now.
+	# RTC. WebRTCGamePeer owns it now.
 	_ws_signaled[ws_index] = true
-
-	# Do NOT create a DataChannel manually.
-	# WebRTCMultiplayerPeer manages its own
-	# channels internally after add_peer().
 
 	# Set the remote description (client's offer).
 	var desc_err := rtc.set_remote_description(
@@ -432,12 +422,11 @@ func _close_ws_deferred(ws_index: int) -> void:
 func _cleanup_ws_peer(index: int) -> void:
 	var was_signaled := _ws_signaled.has(index)
 	_ws_to_peer_id.erase(index)
-	_ws_to_data_channel.erase(index)
 	_ws_signaled.erase(index)
 	if _ws_to_rtc.has(index):
 		# Only close the RTC connection if signaling
 		# did not complete. Completed connections are
-		# owned by the WebRTCMultiplayerPeer.
+		# owned by the WebRTCGamePeer.
 		if not was_signaled:
 			var rtc: WebRTCPeerConnection = (
 				_ws_to_rtc[index])

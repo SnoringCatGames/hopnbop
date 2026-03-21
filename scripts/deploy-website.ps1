@@ -100,6 +100,24 @@ $versionJson = @{ game_version = $gameVersion } | ConvertTo-Json
 Set-Content -Path "web/version.json" -Value $versionJson -NoNewline
 Write-Host "Generated version.json (game_version=$gameVersion)" -ForegroundColor DarkGray
 
+# Inject cache-busting version param into index.html.
+# The Godot engine loader fetches index.pck and
+# index.wasm by filename. Without a version param,
+# browsers serve stale copies from their HTTP cache
+# (max-age=86400) even after a CloudFront invalidation.
+$ts = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+$cacheBust = "v=$gameVersion&t=$ts"
+$htmlPath = "web/index.html"
+$html = Get-Content $htmlPath -Raw
+# Add mainPack with cache-busting query param to
+# GODOT_CONFIG. The engine uses mainPack if set,
+# otherwise derives from executable name.
+$html = $html -replace `
+    '"fileSizes":', `
+    "`"mainPack`":`"index.pck?$cacheBust`",`"fileSizes`":"
+Set-Content -Path $htmlPath -Value $html -NoNewline
+Write-Host "Injected cache-busting into index.html ($cacheBust)" -ForegroundColor DarkGray
+
 # Step 3: Sync web/ to S3.
 Write-Host "[3/4] Syncing to S3..." -ForegroundColor Yellow
 
@@ -117,14 +135,18 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# Set longer cache for immutable assets (wasm, pck).
-$immutableTypes = @("*.wasm", "*.pck")
-foreach ($pattern in $immutableTypes) {
+# Set short browser cache for game assets (wasm, pck)
+# so the browser re-validates after deploys. The CDN
+# cache is invalidated by the CloudFront invalidation
+# step below. max-age=60 means browsers re-check within
+# 1 minute of a deploy.
+$gameAssetTypes = @("*.wasm", "*.pck")
+foreach ($pattern in $gameAssetTypes) {
     aws s3 cp "s3://$Bucket/" "s3://$Bucket/" `
         --recursive `
         --exclude "*" `
         --include $pattern `
-        --cache-control "max-age=86400" `
+        --cache-control "max-age=60" `
         --metadata-directive REPLACE `
         --profile $Profile `
         --region $Region

@@ -67,3 +67,25 @@
 - No STUN/TURN needed for client-to-server when server has known public IP
 - Rollback plan: change backend to return "websocket" instead of "webrtc"
 
+### WebRTCMultiplayerPeer performance failure
+- WebRTCMultiplayerPeer creates 6-8 SCTP streams (3 reserved + extras per channel config)
+- All streams share one SCTP congestion window per association
+- SCTP congestion control throttles even "unreliable" streams
+- Small game packets (~100 bytes) don't trigger PMTUD, keeping congestion window constrained
+- Result: web client R:2.3 FPS, PING:259ms, LOSS:95%. Desktop LOSS:15-52%
+- Packets arrive in bursts causing fast-forward cascades in rollback netcode
+- Root cause is not WebRTC itself but WebRTCMultiplayerPeer's SCTP stream design
+
+### Custom MultiplayerPeerExtension approach
+- Godot 4.5 has MultiplayerPeerExtension: GDScript-extensible base for custom MultiplayerPeer
+- WebRTCGamePeer: 3 negotiated DataChannels instead of 8 SCTP streams
+- Reliable channel: negotiated=true, id=1, ordered=true
+- Unreliable ordered channel: negotiated=true, id=2, ordered=true, maxRetransmits=0
+- Unreliable channel: negotiated=true, id=3, ordered=false, maxRetransmits=0
+- Fewer SCTP streams = less congestion window contention
+- True fire-and-forget on unreliable channel (no head-of-line blocking for state sync)
+- No double-polling (custom peer owns WebRTCPeerConnection polling entirely)
+- 1-byte channel header per packet preserves Godot's transfer_channel routing
+- SceneMultiplayer handles relay (is_server_relay_supported = false)
+- Performance comparison: TBD after testing
+
