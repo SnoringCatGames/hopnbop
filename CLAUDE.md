@@ -78,6 +78,22 @@ from `project.godot`, runs `sam build --use-container`, runs
   and the S3 key from the SAM deploy output. Only update
   the functions whose code you changed.
 
+### CLI Tool Availability
+
+Deploy scripts (`.ps1`) must be run via PowerShell.
+`sam`, `godot`, and other deploy tools are only in the
+PowerShell PATH, not the bash PATH. **Never run `sam`
+or `godot` directly from bash.** Always use
+`powershell -ExecutionPolicy Bypass -File <script>` or
+`powershell -Command "<command>"` when invoking them.
+
+SAM deploy with 36+ Lambda functions can take 5-10
+minutes with no console output during the CloudFormation
+changeset phase. Do not kill it prematurely. Check
+`aws cloudformation describe-stacks` for current status
+before assuming it is stuck. If deploy hangs for env-var-
+only changes (same code hash), retry with `--force-upload`.
+
 ### GameLift Server
 
 **Script:** `gamelift-deploy/deploy.ps1`
@@ -202,8 +218,8 @@ If the changes require users to re-consent, also bump
 
 **Version bumping policy:**
 - When in doubt, bump the version. Always bump on redeploy.
-- Prefer bumping minor over patch. Only ask about major vs
-  minor.
+- Prefer bumping minor over patch. Do not ask about version
+  numbers. Pick whichever sounds best and proceed.
 
 **Commit policy:**
 - Do not commit partial or broken work. All changes for a
