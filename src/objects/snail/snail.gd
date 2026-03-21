@@ -47,6 +47,11 @@ const _TRAIL_FADE_DURATION_SEC := 1.0
 ## corner to prevent sprite-tile overlap.
 const _CONCAVE_CORNER_INSET := 6.0
 
+## Ceiling collision shapes end this many pixels
+## above the tile boundary. Adjusts the
+## surface-following offset for Face.BOTTOM.
+const _CEILING_INSET := 4.0
+
 ## TileSet physics layer index for normal
 ## (non-fall-through, non-walk-through) surfaces.
 ## Corresponds to
@@ -440,9 +445,12 @@ func _advance() -> bool:
 			var tg := (
 				_collision_tiles.to_global(tc))
 			var h := Level.TILE_SIZE / 2.0
+			var normal_h := h
+			if current_face == Face.BOTTOM:
+				normal_h -= _CEILING_INSET
 			_pending_corner_positions.append(
 				tg + Vector2(forward) * h
-				+ Vector2(normal) * h)
+				+ Vector2(normal) * normal_h)
 		current_tile = concave_tile
 		current_face = (
 			_concave_face_map[current_face])
@@ -491,8 +499,12 @@ func _update_visual() -> void:
 	# Place at the tile surface edge. The
 	# sprite's bottom is at local (0, 0) via
 	# its offset, so no extra normal shift
-	# is needed.
-	var face_offset := normal * half
+	# is needed. Ceiling surfaces are inset
+	# from the tile boundary.
+	var normal_dist := half
+	if current_face == Face.BOTTOM:
+		normal_dist -= _CEILING_INSET
+	var face_offset := normal * normal_dist
 	var progress_offset := (
 		forward * (progress - half))
 
