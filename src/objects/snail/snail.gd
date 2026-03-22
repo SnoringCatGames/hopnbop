@@ -21,9 +21,9 @@ enum Face {
 ## Movement speed in pixels per second.
 const SPEED := 15.0
 
-## Frames before the snail respawns after
-## being crushed (~0.5s at 60fps).
-const _RESPAWN_DELAY_FRAMES := 30
+## Duration before the snail respawns after
+## being crushed.
+const _RESPAWN_DELAY_SEC := 0.5
 
 ## How long the crunched remnant sprite stays
 ## visible after a crush.
@@ -776,9 +776,13 @@ func _server_crush(player: Player) -> void:
 	)
 
 	_is_respawning = true
+	var respawn_delay_frames := int(
+		_RESPAWN_DELAY_SEC
+		/ Netcode.time.get_time_step_sec()
+	)
 	_respawn_at_frame = (
 		Netcode.server_frame_index
-		+ _RESPAWN_DELAY_FRAMES)
+		+ respawn_delay_frames)
 
 	_rpc_crush.rpc(
 		Netcode.server_frame_index)

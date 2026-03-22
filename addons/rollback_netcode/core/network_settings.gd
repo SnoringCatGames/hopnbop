@@ -50,6 +50,13 @@ var server_tls_options: TLSOptions
 ## Common values: 30 (lower bandwidth), 60 (standard), 120 (high precision).
 @export var target_network_fps := 60.0
 
+## Physics tick rate override for WebRTC matches.
+## 0 = use target_network_fps (no override). Lower
+## values reduce CPU load for WASM web clients at
+## the cost of coarser physics steps. Both server
+## and client must agree.
+@export var webrtc_physics_fps := 30.0
+
 ## Target send rate for replicated state (Hz).
 ## 0 = same as target_network_fps. Only affects
 ## predicted state sends. Input and confirmed

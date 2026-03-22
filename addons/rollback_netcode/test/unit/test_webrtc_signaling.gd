@@ -242,9 +242,9 @@ class TestTransportTypeWebRTC:
 	func test_webrtc_send_rate_default():
 		assert_eq(
 			Netcode.settings.webrtc_state_send_fps,
-			30.0,
+			20.0,
 			"Default WebRTC send rate should be"
-			+ " 30 Hz",
+			+ " 20 Hz",
 		)
 
 

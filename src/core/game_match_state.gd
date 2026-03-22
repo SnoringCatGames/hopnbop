@@ -20,8 +20,8 @@ const _BUMP_SCORE := 5
 const _RANK_BONUS_PER_DIFF := 5
 const _SELF_KILL_PENALTY := 45
 
-## Interaction deduplication window (frames).
-const _INTERACTION_DEDUPLICATION_WINDOW_FRAMES := 4
+## Interaction deduplication window.
+const _INTERACTION_DEDUPLICATION_WINDOW_SEC := 0.067
 
 # --- Game-Specific Signals ---
 
@@ -539,8 +539,10 @@ func _get_server_recent_interactions() -> RollbackBuffer:
 		_interaction_tracker = InteractionTracker.new(
 			_server_recent_interactions
 		)
-		_interaction_tracker.deduplication_window_frames = (
-			_INTERACTION_DEDUPLICATION_WINDOW_FRAMES)
+		_interaction_tracker.deduplication_window_frames = int(
+			_INTERACTION_DEDUPLICATION_WINDOW_SEC
+			/ Netcode.time.get_time_step_sec()
+		)
 	return _server_recent_interactions
 
 

@@ -122,3 +122,108 @@
   contribute to the per-frame packet flood that overwhelms SCTP congestion
   control.
 
+### State bundler implementation learnings
+
+- Custom `WebRTCGamePeer` (MultiplayerPeerExtension) must emit
+  `peer_connected`/`peer_disconnected` signals AFTER draining all
+  DataChannels, not during iteration. Emitting during iteration causes
+  SceneMultiplayer to process the signal synchronously (sending
+  PEER_CONFIG packets), but the second peer's packets haven't been
+  drained yet. Use a two-pass approach: first pass polls and drains,
+  second pass emits signals.
+
+- `var_to_bytes`/`bytes_to_var` creates temporary Array objects on
+  every call. In WASM's single-threaded runtime, these trigger GC
+  pauses that directly cause render FPS drops. Raw byte packing
+  (encode floats/ints directly into PackedByteArray using
+  `StreamPeerBuffer` or `decode_float`/`decode_s32`) eliminates
+  temporary allocations entirely. Decode directly into
+  ArrayPool-acquired arrays for zero GC pressure.
+
+- SAM deploy can silently hang when only environment variables change
+  (code hash identical). The CloudFormation changeset is never created.
+  Workaround: update Lambda env vars directly via
+  `aws lambda update-function-configuration`.
+
+- Godot headless export (`--export-pack`, `--export-release`) must run
+  from the project directory and cannot run two instances in parallel
+  on the same project. The second instance silently produces no output.
+
+- GameLift container group definitions have a limit of 4 versions.
+  Delete old versions before creating new ones.
+
+- Deploy scripts (`.ps1`) and CLI tools like `sam` and `godot` are
+  only in the PowerShell PATH on Windows, not the bash PATH.
+
+### PERF metrics with bundling
+
+- N (network FPS) counts per-`_handle_new_state_from_network` calls,
+  not per-packet. With bundling at 20 Hz, each bundle dispatches
+  multiple entity states, so N reads ~40 (2 states per entity × 20 Hz).
+
+- LOSS of 66-67% is expected with 20 Hz sends at 60 fps sim rate.
+  It measures missed frame updates, not actual packet drops.
+  (60 - 20) / 60 = 66.7%.
+
+### Frame sync destabilization at 30fps
+
+- Switched WebRTC matches to 30fps physics (from 60fps) to reduce
+  SCTP packet rate
+- FF/s (fast-forwards per second) grew from 2.8 to 18.5 over a
+  match, making gameplay progressively worse
+- Root cause was three interacting bugs in the NTP-based frame
+  synchronizer's drift correction
+
+#### Bug 1: Catch-up ratchet via `maxi()`
+- `fd._catchup_frames_remaining = maxi(fd._catchup_frames_remaining, drift)`
+- Each pong could only INCREASE the catch-up counter, never decrease it
+- If client is mid-catch-up and a new pong shows smaller drift, counter
+  stays high, causing systematic overshoot past the server's frame
+
+#### Bug 2: Asymmetric correction
+- Client behind server: smooth gradual catch-up (1 extra frame per tick)
+- Client ahead of server: destructive hard reset with 3-second cooldown
+- When catch-up overshoots by a few frames, the only correction was a
+  hard reset (clears rollback buffers, reinitializes state, resets frame
+  index). But the 3-second cooldown blocks another reset, so client runs
+  ahead for up to 3 seconds before snapping back. Then NTP detects client
+  behind again, triggers catch-up, overshoots again. Repeat forever.
+
+#### Bug 3: No catch-up cancellation on drift flip
+- When drift crosses zero (client goes from behind to ahead),
+  `_catchup_frames_remaining` was not cleared
+- Catch-up continued even though client was already at or ahead of
+  server, guaranteeing overshoot every time
+
+#### The oscillation cycle
+1. Client slightly behind -> gradual catch-up starts
+2. `maxi()` ratchets counter to peak drift value
+3. Client reaches server frame, but catch-up continues (no cancellation)
+4. Client overshoots, now ahead by a few frames
+5. Hard reset fires, snaps client back, clears buffers
+6. 3-second cooldown prevents another reset
+7. NTP detects client behind -> back to step 1
+
+#### Why this didn't manifest at 60fps
+- At 60fps, the drift correction granularity was finer (each extra
+  frame = 16.7ms). Overshoot of 1-2 frames was within the jitter-aware
+  threshold and got absorbed.
+- At 30fps, each extra frame = 33.3ms. The same overshoot exceeds the
+  threshold and triggers the hard reset path. The longer tick interval
+  also means each catch-up step is a bigger jump.
+
+#### Fix: 3 changes
+1. Replace `maxi()` with direct assignment: each pong is the freshest
+   drift measurement, use it directly
+2. Add symmetric gradual slow-down: for small client-ahead drift
+   (<=10 frames), skip physics ticks instead of hard reset. Mirrors
+   the gradual catch-up. Hard reset stays for large drift.
+3. Clear catch-up on drift flip: when a pong shows drift <= 0 within
+   threshold, cancel `_catchup_frames_remaining` immediately
+
+#### Results
+- FF/s: 0.0 stable across entire match (was 2.8 -> 18.5)
+- Zero hard resets during normal gameplay
+- RB/s (rollbacks): ~4-11/s, expected with WebRTC latency
+- PING: stable ~43-54ms (previously unstable due to oscillation)
+

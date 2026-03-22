@@ -300,6 +300,57 @@ func get_local_player_index_from_player_id(p_player_id: int) -> int:
 	return connector.get_local_player_index_from_player_id(p_player_id)
 
 
+## Apply the WebRTC physics tick rate if the
+## current transport is WebRTC and a rate override
+## is configured. Call when a match starts.
+## Apply the WebRTC physics tick rate if the
+## current transport is WebRTC and a rate override
+## is configured. Called when a match starts
+## (server: game session, client: matchmaking
+## response, preview: countdown).
+func apply_match_physics_fps() -> void:
+	if (
+		settings.transport_type
+			!= NetworkSettings.TransportType.WEBRTC
+		or settings.webrtc_physics_fps <= 0.0
+		or settings.webrtc_physics_fps
+			== settings.target_network_fps
+	):
+		return
+	var fps := settings.webrtc_physics_fps
+	Engine.physics_ticks_per_second = int(fps)
+	settings.target_network_fps = fps
+	# Invalidate in-flight NTP pings (they carry
+	# frame indices from the old tick rate).
+	if frame_sync != null and is_client:
+		frame_sync.invalidate_in_flight_pings()
+	log.print(
+		"Applied WebRTC physics FPS: %d"
+		% int(fps),
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+
+## Restore the default physics tick rate. Call
+## when a match ends or returning to lobby.
+func restore_default_physics_fps() -> void:
+	var default_fps := 60.0
+	if (
+		Engine.physics_ticks_per_second
+			!= int(default_fps)
+	):
+		Engine.physics_ticks_per_second = (
+			int(default_fps))
+		settings.target_network_fps = default_fps
+		if frame_sync != null and is_client:
+			frame_sync.invalidate_in_flight_pings()
+		log.print(
+			"Restored default physics FPS: %d"
+			% int(default_fps),
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+
+
 ## Start server and begin listening for connections.
 func server_start() -> void:
 	log.print(

@@ -955,6 +955,9 @@ func _client_free_levels_and_open_screen(
 func client_exit_match() -> void:
 	Netcode.check_is_client()
 
+	# Restore default physics tick rate.
+	Netcode.restore_default_physics_fps()
+
 	# Release the backend session lock so the
 	# player can re-queue immediately.
 	if (

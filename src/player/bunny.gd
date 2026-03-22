@@ -19,8 +19,8 @@ var _has_ever_died := false
 
 const _SQUISH_DURATION_SEC := 0.09
 const _SKID_VELOCITY_THRESHOLD := 20.0
-const _LANDING_SKID_GRACE_FRAMES := 30
-const _WALK_SOUND_INTERVAL_FRAMES := 8
+const _LANDING_SKID_GRACE_SEC := 0.5
+const _WALK_SOUND_INTERVAL_SEC := 0.133
 
 @export var _sprite_outline_shader: Shader
 @export var _bunny_animator_scene: PackedScene
@@ -36,6 +36,20 @@ var _active_intersections := {}
 var _was_invincible_last_frame := false
 var _had_crown := false
 var _wrap_ghosts: Array[WrapGhost] = []
+
+
+func _landing_skid_grace_frames() -> int:
+	return int(
+		_LANDING_SKID_GRACE_SEC
+		/ Netcode.time.get_time_step_sec()
+	)
+
+
+func _walk_sound_interval_frames() -> int:
+	return int(
+		_WALK_SOUND_INTERVAL_SEC
+		/ Netcode.time.get_time_step_sec()
+	)
 
 
 func _enter_tree() -> void:
@@ -58,7 +72,7 @@ func _ready() -> void:
 		is_instance_valid(G.level)
 		and Netcode.server_frame_index
 			-G.level.start_frame_index
-			< _LANDING_SKID_GRACE_FRAMES
+			< _landing_skid_grace_frames()
 	):
 		_suppress_landing_skid = true
 
@@ -398,7 +412,7 @@ func _update_walk_sounds() -> void:
 		_walk_sound_frame_counter += 1
 		if (
 			_walk_sound_frame_counter
-				>= _WALK_SOUND_INTERVAL_FRAMES
+				>= _walk_sound_interval_frames()
 		):
 			if surfaces.surface_properties.is_ice:
 				play_sound("ice")
@@ -442,7 +456,7 @@ func _update_skids() -> void:
 		if (
 			Netcode.server_frame_index
 				- grace_origin
-				>= _LANDING_SKID_GRACE_FRAMES
+				>= _landing_skid_grace_frames()
 		):
 			_suppress_landing_skid = false
 

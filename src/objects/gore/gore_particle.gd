@@ -86,10 +86,11 @@ func _physics_process(delta: float) -> void:
 			< G.settings.gore_rest_speed_threshold
 	):
 		_rest_frame_counter += 1
-		if (
-			_rest_frame_counter >=
-			G.settings.gore_rest_frame_count
-		):
+		var rest_frames := int(
+			G.settings.gore_rest_duration_sec
+			/ Netcode.time.get_time_step_sec()
+		)
+		if _rest_frame_counter >= rest_frames:
 			# Clear velocity so trail clamping sees
 			# the chunk as not moving upward. Without
 			# this, the post-bounce velocity.y is

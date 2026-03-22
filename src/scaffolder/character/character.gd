@@ -21,8 +21,7 @@ const _ICE_EDGE_MIN_ADVANCE_PX := 0.5
 # Duration to suppress air horizontal friction after
 # leaving an ice floor. Prevents the character from
 # decelerating immediately when sliding off an ice edge.
-# 12 frames = 0.2 seconds at 60 FPS.
-const _ICE_AIR_FRICTION_COOLDOWN_FRAMES := 12
+const _ICE_AIR_FRICTION_COOLDOWN_SEC := 0.2
 
 # Vertical nudge applied before move_and_slide on the
 # first frame of a launch. Lifts the collision circle
@@ -83,8 +82,8 @@ var _last_launch_frame_index := -1
 # Frame index when the character was last on an ice floor.
 # Used to suppress air horizontal friction after leaving ice.
 var _last_ice_floor_frame_index := -1
-# Number of frames to prevent floor attachment after a launch.
-const _LAUNCH_FLOOR_ATTACHMENT_COOLDOWN_FRAMES := 3
+# Duration to prevent floor attachment after a launch.
+const _LAUNCH_FLOOR_ATTACHMENT_COOLDOWN_SEC := 0.05
 
 
 ## Top edge of the water surface (global Y).
@@ -718,7 +717,11 @@ func is_in_launch_cooldown() -> bool:
 		Netcode.server_frame_index
 		- _last_launch_frame_index
 	)
-	return frames_since_launch < _LAUNCH_FLOOR_ATTACHMENT_COOLDOWN_FRAMES
+	var cooldown_frames := int(
+		_LAUNCH_FLOOR_ATTACHMENT_COOLDOWN_SEC
+		/ Netcode.time.get_time_step_sec()
+	)
+	return frames_since_launch < cooldown_frames
 
 
 ## Returns true if air horizontal friction should be
@@ -732,10 +735,11 @@ func is_in_ice_air_friction_cooldown() -> bool:
 		Netcode.server_frame_index
 		- _last_ice_floor_frame_index
 	)
-	return (
-		frames_since_ice
-		< _ICE_AIR_FRICTION_COOLDOWN_FRAMES
+	var cooldown_frames := int(
+		_ICE_AIR_FRICTION_COOLDOWN_SEC
+		/ Netcode.time.get_time_step_sec()
 	)
+	return frames_since_ice < cooldown_frames
 
 
 func get_next_position_prediction() -> Vector2:

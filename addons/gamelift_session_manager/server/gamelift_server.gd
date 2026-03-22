@@ -635,6 +635,11 @@ func _on_game_session_started(session) -> void:
 
 	server_set_expected_player_count(expected_count)
 
+	# Apply WebRTC physics tick rate before
+	# accepting connections so the server's frame
+	# sync starts at the correct rate.
+	Netcode.apply_match_physics_fps()
+
 	# Restart the server listener only if the
 	# transport changed from the default (ENet).
 	# The ENet server was already created during

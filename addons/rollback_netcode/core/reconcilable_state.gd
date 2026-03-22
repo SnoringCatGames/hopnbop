@@ -106,11 +106,19 @@ signal received_network_state(state_frame_index: int)
 signal network_processed
 signal player_id_changed(new_player_id: int)
 
-const DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD := 1.0
-const DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHOLD := 10.0
+const DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD := 2.0
+const DEFAULT_VELOCITY_DIFF_ROLLBACK_THRESHOLD := 20.0
 
 # 0 should be NONE in all interaction enums.
 const _NONE_INTERACTION_TYPE := 0
+
+## Property type IDs for raw byte packing in
+## StateBundler. Determined once from default values.
+enum PackType {
+	INT,
+	FLOAT,
+	VECTOR2,
+}
 
 # Debug buffer indices for per-frame debug metrics (preview mode only).
 const _DEBUG_ROLLBACK_INDEX := 0
@@ -168,11 +176,13 @@ var is_client_authoritative: bool:
 var _is_packing_state_locally := false
 
 ## Pending outgoing states for StateBundler. When
-## bundling is active, _assign_outgoing_state appends
-## here instead of setting the synchronizer properties.
-## Accumulated between bundler sends and consumed by
-## StateBundler._send_bundles().
-var _pending_bundle_states: Array = []
+## bundling is active, _assign_outgoing_state stores
+## the latest state per channel (predicted and
+## authoritative) instead of setting the synchronizer
+## properties. Only the latest per channel is kept to
+## minimize bundle size and deserialization overhead.
+var _pending_bundle_predicted: Array = []
+var _pending_bundle_authoritative: Array = []
 
 ## Additional replication channel for predicted state (current frame,
 ## SERVER_PREDICTED). Only used by nodes that override
@@ -211,6 +221,18 @@ var _has_received_valid_state := false
 var _property_names_for_packing: Array[StringName] = []
 # Dictionary<StringName, int>
 var _property_name_to_pack_index := {}
+
+## Cached property type layout for raw byte packing.
+## One PackType per synced property, determined from
+## _get_default_values() during _parse_property_names().
+## Used by StateBundler for encode/decode without
+## var_to_bytes overhead.
+var _pack_types: Array[int] = []
+
+## Raw byte size of one packed state (all properties
+## + frame_authority + frame_index). Cached for fast
+## decode offset calculation.
+var _pack_byte_size := 0
 
 ## Server-assigned player ID (integer).
 ##
@@ -307,9 +329,12 @@ func _exit_tree() -> void:
 		return
 
 	# Release any pending bundle states.
-	for state in _pending_bundle_states:
-		ArrayPool.release(state)
-	_pending_bundle_states = []
+	if not _pending_bundle_predicted.is_empty():
+		ArrayPool.release(_pending_bundle_predicted)
+		_pending_bundle_predicted = []
+	if not _pending_bundle_authoritative.is_empty():
+		ArrayPool.release(_pending_bundle_authoritative)
+		_pending_bundle_authoritative = []
 
 	# Invalidate bundler lookup cache.
 	if (
@@ -362,6 +387,26 @@ func _parse_property_names() -> void:
 		var property_name := _property_names_for_packing[i]
 		_property_name_to_pack_index[property_name] = i
 
+	# Build type layout from default values for raw
+	# byte packing. Each property is classified as
+	# INT, FLOAT, or VECTOR2.
+	var defaults := _get_default_values()
+	_pack_types.clear()
+	_pack_byte_size = 0
+	for i in range(defaults.size()):
+		var value = defaults[i]
+		if value is Vector2:
+			_pack_types.append(PackType.VECTOR2)
+			_pack_byte_size += 8
+		elif value is float:
+			_pack_types.append(PackType.FLOAT)
+			_pack_byte_size += 4
+		else:
+			_pack_types.append(PackType.INT)
+			_pack_byte_size += 4
+	# frame_authority (1 byte) + frame_index (4 bytes).
+	_pack_byte_size += 5
+
 
 func update_authority() -> void:
 	var previous_authority_id := get_multiplayer_authority()
@@ -392,14 +437,23 @@ func _should_use_network_simulator() -> bool:
 
 ## Assign packed state to the replication property, triggering
 ## MultiplayerSynchronizer to send it on the next network tick.
-## When bundling is active, the state is stored in
-## _pending_bundle_states for StateBundler to collect.
+## When bundling is active, the state is stored as the latest
+## pending state per channel for StateBundler to collect.
 func _assign_outgoing_state(
 	state: Array,
 	channel: StringName,
 ) -> void:
 	if Netcode.is_bundled_send:
-		_pending_bundle_states.append(state)
+		if channel == NetworkConditionSimulator.CHANNEL_PREDICTED:
+			if not _pending_bundle_predicted.is_empty():
+				ArrayPool.release(
+					_pending_bundle_predicted)
+			_pending_bundle_predicted = state
+		else:
+			if not _pending_bundle_authoritative.is_empty():
+				ArrayPool.release(
+					_pending_bundle_authoritative)
+			_pending_bundle_authoritative = state
 		return
 	_is_packing_state_locally = true
 	if channel == NetworkConditionSimulator.CHANNEL_PREDICTED:
@@ -417,8 +471,13 @@ func _assign_outgoing_state(
 ## Called by StateBundler to collect states for
 ## serialization into a single bundle packet.
 func consume_pending_bundle_states() -> Array:
-	var states := _pending_bundle_states
-	_pending_bundle_states = []
+	var states: Array = []
+	if not _pending_bundle_predicted.is_empty():
+		states.append(_pending_bundle_predicted)
+		_pending_bundle_predicted = []
+	if not _pending_bundle_authoritative.is_empty():
+		states.append(_pending_bundle_authoritative)
+		_pending_bundle_authoritative = []
 	return states
 
 
@@ -676,6 +735,12 @@ func _handle_new_state_from_network(p_state: Array) -> void:
 		# tick. The state is already buffered (above)
 		# and will be reached naturally.
 		if Netcode.frame_driver.is_catching_up:
+			return
+
+		# During gradual slow-down, the frame driver
+		# is skipping ticks to let the server catch
+		# up. Do not fast-forward.
+		if Netcode.frame_driver.is_slowing_down:
 			return
 
 		Netcode.log.print(

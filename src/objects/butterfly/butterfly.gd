@@ -96,10 +96,10 @@ const SURFACE_TARGET_MAX_ATTEMPTS := 20
 ## Per-target safety timeout (seconds).
 const SEGMENT_TIMEOUT_SEC := 8.0
 
-## Frames to ignore surface contact after
+## Duration to ignore surface contact after
 ## entering flight (prevents immediately
 ## re-entering bump rest on a surface).
-const SURFACE_GRACE_FRAMES := 6
+const SURFACE_GRACE_SEC := 0.1
 
 ## Min perpendicular curve offset as fraction
 ## of start-to-end distance.
@@ -604,7 +604,10 @@ func _enter_flying() -> void:
 	_seeking_surface = false
 	_evading = false
 	_landing_direction = Vector2.ZERO
-	_surface_grace = SURFACE_GRACE_FRAMES
+	_surface_grace = int(
+		SURFACE_GRACE_SEC
+		/ Netcode.time.get_time_step_sec()
+	)
 	_air_duration_timer = randf_range(
 		AIR_DURATION_MIN, AIR_DURATION_MAX)
 	_sprite.rotation = 0.0

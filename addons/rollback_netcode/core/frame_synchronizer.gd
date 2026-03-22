@@ -239,16 +239,21 @@ func _client_rpc_pong(
 		jitter_frames,
 	)
 
+	var fd := Netcode.frame_driver
+
 	# Correct drift if outside threshold.
 	if abs(drift) <= effective_threshold:
-		# Within acceptable range, no correction
-		# needed.
+		# Within acceptable range. Cancel any
+		# lingering catch-up if drift has flipped
+		# to zero or negative (client at/ahead of
+		# server) to prevent overshoot.
+		if drift <= 0:
+			fd._catchup_frames_remaining = 0
 		return
 
 	# Mark frame tracking as initialized so
 	# _initialize_frame_tracking() doesn't reset
 	# the frame index we're about to set.
-	var fd := Netcode.frame_driver
 	fd._is_frame_tracking_initialized = true
 
 	if drift > 0:
@@ -256,10 +261,7 @@ func _client_rpc_pong(
 			# Small drift: gradually process one
 			# extra frame per physics tick to close
 			# the gap without visible stutter.
-			fd._catchup_frames_remaining = maxi(
-				fd._catchup_frames_remaining,
-				drift,
-			)
+			fd._catchup_frames_remaining = drift
 			if Netcode.log.is_verbose:
 				Netcode.log.verbose(
 					("Client behind by %d frames,"
@@ -288,40 +290,71 @@ func _client_rpc_pong(
 						.CATEGORY_NETWORK_SYNC,
 				)
 	else:
-		# Client is ahead. Hard reset. This can happen when the
-		# server runs slower than clients due to performance
-		# issues. We need to:
-		# 1. Set a grace period so incoming states aren't rejected.
-		# 2. Reinitialize rollback buffers to clear stale
-		#    predictions.
-		# 3. Reset the frame index.
-		var now := Time.get_ticks_usec()
-		if now - _last_hard_reset_usec < _HARD_RESET_COOLDOWN_USEC:
-			return
-		_last_hard_reset_usec = now
-		Netcode.log.warning(
-			("Client ahead of server by %d frames! "
-			+ "Hard reset from %d to %d") % [
-				abs(drift),
-				Netcode.frame_driver.server_frame_index,
+		# Client is ahead of server. Cancel any
+		# lingering catch-up that caused the
+		# overshoot.
+		fd._catchup_frames_remaining = 0
+		if abs(drift) <= _GRADUAL_CATCHUP_MAX_FRAMES:
+			# Small drift: gradually skip physics
+			# ticks to let the server catch up.
+			# Mirrors the gradual catch-up for
+			# client-behind.
+			fd._slowdown_frames_remaining = (
+				abs(drift)
+			)
+			if Netcode.log.is_verbose:
+				Netcode.log.verbose(
+					("Client ahead by %d frames,"
+					+ " gradual slow-down")
+					% [abs(drift)],
+					NetworkLogger
+						.CATEGORY_NETWORK_SYNC,
+				)
+		else:
+			# Large drift: hard reset. This can
+			# happen when the server runs slower
+			# than clients due to performance
+			# issues. We need to:
+			# 1. Set a grace period so incoming
+			#    states aren't rejected.
+			# 2. Reinitialize rollback buffers to
+			#    clear stale predictions.
+			# 3. Reset the frame index.
+			var now := Time.get_ticks_usec()
+			if (
+				now - _last_hard_reset_usec
+				< _HARD_RESET_COOLDOWN_USEC
+			):
+				return
+			_last_hard_reset_usec = now
+			Netcode.log.warning(
+				("Client ahead of server by %d"
+				+ " frames! Hard reset from %d"
+				+ " to %d") % [
+					abs(drift),
+					fd.server_frame_index,
+					estimated_current_server_frame,
+				],
+				NetworkLogger
+					.CATEGORY_NETWORK_SYNC,
+			)
+			# Trigger grace period to prevent
+			# rejecting valid server states and
+			# to suppress fast-forwards from
+			# stale buffered packets.
+			fd._frame_reset_time_usec = now
+			fd._hard_reset_backward_time_usec = (
+				now
+			)
+			# Reinitialize rollback buffers to
+			# clear stale predicted data.
+			fd.reinitialize_buffers_for_hard_reset(
 				estimated_current_server_frame,
-			],
-			NetworkLogger.CATEGORY_NETWORK_SYNC
-		)
-		# Trigger grace period to prevent rejecting
-		# valid server states and to suppress
-		# fast-forwards from stale buffered packets.
-		Netcode.frame_driver._frame_reset_time_usec = now
-		Netcode.frame_driver._hard_reset_backward_time_usec = now
-		# Reinitialize rollback buffers to clear stale predicted
-		# data.
-		Netcode.frame_driver.reinitialize_buffers_for_hard_reset(
-			estimated_current_server_frame
-		)
-		# Reset the frame index.
-		Netcode.frame_driver.server_frame_index = (
-			estimated_current_server_frame
-		)
+			)
+			# Reset the frame index.
+			fd.server_frame_index = (
+				estimated_current_server_frame
+			)
 
 
 func _update_input_delay() -> void:

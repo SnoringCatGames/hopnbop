@@ -11,7 +11,7 @@ const PRIORITY := 405
 ## Frames after a jump during which float-line
 ## snapping and overshoot prevention are disabled,
 ## so the player can leave the water.
-const _JUMP_GRACE_FRAMES := 10
+const _JUMP_GRACE_SEC := 0.167
 
 
 func _init() -> void:
@@ -47,11 +47,15 @@ func process(character) -> bool:
 
 	# Don't snap to the float line right after
 	# a jump so the player can leave the water.
+	var jump_grace_frames := int(
+		_JUMP_GRACE_SEC
+		/ Netcode.time.get_time_step_sec()
+	)
 	var recently_jumped: bool = (
 		(Netcode.server_frame_index
 			- character
 				.last_triggered_jump_frame_index)
-		< _JUMP_GRACE_FRAMES
+		< jump_grace_frames
 	)
 
 	# --- Vertical force ---

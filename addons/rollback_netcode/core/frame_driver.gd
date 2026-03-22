@@ -1147,12 +1147,26 @@ var total_fastforwards := 0
 ## ticks instead of processing many frames at once.
 var _catchup_frames_remaining := 0
 
+## Number of physics ticks to skip (one per tick) for
+## gradual clock slow-down. Set by FrameSynchronizer
+## when the client drifts slightly ahead of the server.
+## Mirrors _catchup_frames_remaining for the opposite
+## direction.
+var _slowdown_frames_remaining := 0
+
 ## Returns true when the frame driver is gradually
 ## catching up to the server frame. Used to suppress
 ## redundant state-triggered fast-forwards.
 var is_catching_up: bool:
 	get:
 		return _catchup_frames_remaining > 0
+
+## Returns true when the frame driver is gradually
+## slowing down to let the server catch up. Used to
+## suppress redundant corrections during slow-down.
+var is_slowing_down: bool:
+	get:
+		return _slowdown_frames_remaining > 0
 
 var rollback_buffer_size: int:
 	get:
@@ -1216,8 +1230,10 @@ func client_reset() -> void:
 	_frame_reset_time_usec = Time.get_ticks_usec()
 	# Reset backward hard reset suppression.
 	_hard_reset_backward_time_usec = 0
-	# Cancel any in-progress gradual catch-up.
+	# Cancel any in-progress gradual catch-up or
+	# slow-down.
 	_catchup_frames_remaining = 0
+	_slowdown_frames_remaining = 0
 	# Start paused so client waits for server's
 	# unpause signal before transitioning from
 	# LOADING to GAME screen.
@@ -1813,6 +1829,14 @@ func _pre_physics_process(_delta: float) -> void:
 				server_frame_index += 1
 		return
 
+	# Gradual slow-down: skip this physics tick to
+	# let the server catch up by one frame. Mirrors
+	# the gradual catch-up (extra frame per tick)
+	# for the opposite direction.
+	if _slowdown_frames_remaining > 0:
+		_slowdown_frames_remaining -= 1
+		return
+
 	if not _is_frame_tracking_initialized:
 		_initialize_frame_tracking()
 		return
@@ -2049,6 +2073,8 @@ func _network_process_buffers_only() -> void:
 
 
 func fast_forward(new_frame_index: int) -> void:
+	# Cancel slow-down since we're jumping ahead.
+	_slowdown_frames_remaining = 0
 	var fastforward_start_time_usec := Time.get_ticks_usec()
 	var frame_count := 0
 

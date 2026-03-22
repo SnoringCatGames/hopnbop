@@ -151,8 +151,8 @@ const BASE_ICON_WIDTH := 11
 @export var gore_friction := 0.92
 ## Speed below which a particle is considered at rest.
 @export var gore_rest_speed_threshold := 15.0
-## Consecutive frames below rest threshold before rasterizing.
-@export var gore_rest_frame_count := 3
+## Duration below rest threshold before rasterizing.
+@export var gore_rest_duration_sec := 0.05
 @export var gore_collision_radius := 0.33
 ## Collision radius per gore particle type (pixels).
 ## Array length defines the number of gore types.

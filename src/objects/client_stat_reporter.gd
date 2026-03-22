@@ -7,9 +7,8 @@ extends Node
 
 
 ## How often to send accumulated stats to the
-## server (physics frames). 120 = ~2 sec at
-## 60 FPS.
-const _SEND_INTERVAL_FRAMES := 120
+## server.
+const _SEND_INTERVAL_SEC := 2.0
 
 ## Reference to the critter tracker whose counts
 ## we read for delta computation.
@@ -35,7 +34,11 @@ func _ready() -> void:
 
 func _physics_process(_delta: float) -> void:
 	_send_counter += 1
-	if _send_counter >= _SEND_INTERVAL_FRAMES:
+	var send_interval_frames := int(
+		_SEND_INTERVAL_SEC
+		/ Netcode.time.get_time_step_sec()
+	)
+	if _send_counter >= send_interval_frames:
 		_send_counter = 0
 		_send_stats_to_server()
 

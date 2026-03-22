@@ -383,6 +383,11 @@ func _handle_match_found(
 				NetworkSettings
 					.TransportType.ENET)
 
+	# Apply WebRTC physics tick rate before
+	# connecting so frame sync starts at the
+	# correct rate.
+	Netcode.apply_match_physics_fps()
+
 	Netcode.log.print(
 		("Match found: %d session ID(s),"
 		+ " server %s:%d, level: %s,"
