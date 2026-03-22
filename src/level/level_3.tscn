@@ -5,13 +5,13 @@
 [ext_resource type="TileSet" uid="uid://bvepcqe45mxdp" path="res://src/level/legacy_tile_set.tres" id="3_jo0sh"]
 [ext_resource type="Script" uid="uid://1roi8ff6ow47" path="res://src/level/spawn_point.gd" id="4_v7jl2"]
 
-[node name="Level3" type="Node2D" node_paths=PackedStringArray("player_spawner", "collision_tiles", "level_camera", "spawn_points")]
+[node name="Level3" type="Node2D" node_paths=PackedStringArray("player_spawner", "collision_tiles", "level_camera", "spawn_points", "players_node")]
 script = ExtResource("1_jo0sh")
 player_spawner = NodePath("PlayerSpawner")
-uses_single_sprite_for_level_art = null
 collision_tiles = NodePath("CollisionTiles")
 level_camera = NodePath("Camera2D")
 spawn_points = NodePath("SpawnPoints")
+players_node = NodePath("Players")
 metadata/_custom_type_script = "uid://cvuwfl2ng3kpn"
 metadata/_edit_lock_ = true
 

@@ -157,6 +157,12 @@ func _find_collision_free_position(initial_position: Vector2) -> Vector2:
 	query.transform = Transform2D(0.0, initial_position)
 	var space_state := get_world_2d().direct_space_state
 
+	# direct_space_state is null before the first
+	# physics step. Return the initial position
+	# without collision adjustment.
+	if space_state == null:
+		return initial_position
+
 	if _is_position_collision_free(space_state, query):
 		return initial_position
 
