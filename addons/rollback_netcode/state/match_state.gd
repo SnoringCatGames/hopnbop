@@ -84,6 +84,11 @@ var match_time_remaining_sec: float:
 		)
 		return max(0.0, remaining_sec)
 
+## True if match timer has started.
+var is_match_active: bool:
+	get:
+		return match_start_frame_index >= 0
+
 ## True if match time has expired.
 var is_match_time_expired: bool:
 	get:

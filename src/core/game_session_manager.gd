@@ -507,6 +507,8 @@ func _server_on_client_disconnected(peer_id: int, reason: int) -> void:
 
 	if remaining_peers == 0:
 		_server_on_all_clients_disconnected()
+	elif _should_abort_pre_match(remaining_peers):
+		_server_abort_not_enough_players()
 
 
 func _server_on_all_clients_disconnected() -> void:
@@ -530,6 +532,50 @@ func _server_on_all_clients_disconnected() -> void:
 		)
 		await get_tree().create_timer(1.0).timeout
 		get_tree().quit()
+
+
+## Returns true if a pre-match abort is warranted.
+## Conditions: match timer has not started, game
+## session is active, fewer than 2 clients remain,
+## and not in preview mode (where single-client
+## testing is valid).
+func _should_abort_pre_match(
+	remaining_peers: int,
+) -> bool:
+	if Netcode.is_preview:
+		return false
+	if Netcode.is_local_mode:
+		return false
+	if remaining_peers >= 2:
+		return false
+	# Only abort before the match timer starts.
+	if G.match_state.is_match_active:
+		return false
+	if G.match_state.is_match_ended:
+		return false
+	if not G.client_session.is_game_active:
+		return false
+	return true
+
+
+## Notifies remaining clients and closes the
+## session because a peer dropped before the
+## match started. Clients see the
+## TOAST.NOT_ENOUGH_PLAYERS message.
+func _server_abort_not_enough_players() -> void:
+	Netcode.print(
+		"Aborting: not enough players"
+		+ " to start match",
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+	# SERVER_SHUTDOWN reason triggers the
+	# NOT_ENOUGH_PLAYERS toast on clients.
+	Netcode.connector.server_notify_shutdown()
+	# Short delay so the notification RPC is
+	# delivered before the connection closes.
+	await get_tree().create_timer(0.5).timeout
+	(Netcode.connector
+		.server_close_multiplayer_session())
 
 
 func _on_matchmaking_progress(

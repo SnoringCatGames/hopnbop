@@ -94,18 +94,27 @@ func start_celebration() -> void:
 	if is_instance_valid(G.audio):
 		G.audio.fade_out_main_theme()
 
+	var is_forfeit := (
+		G.match_state is GameMatchState
+		and (G.match_state as GameMatchState
+			).is_forfeit_win
+	)
+
 	# Phase 1: Zoom (t=0.0s).
 	_zoom_camera_to_winner()
 
-	# Phase 2: Confetti (t=0.5s).
-	var t1 := get_tree().create_timer(
-		_CONFETTI_DELAY, true, false, true)
-	t1.timeout.connect(_spawn_confetti)
+	# Phase 2: Confetti (t=0.5s). Skipped for
+	# forfeit wins since it is not a real victory.
+	if not is_forfeit:
+		var t1 := get_tree().create_timer(
+			_CONFETTI_DELAY, true, false, true)
+		t1.timeout.connect(_spawn_confetti)
 
 	# Phase 3: Text slam + shake (t=0.8s).
 	var t2 := get_tree().create_timer(
 		_TEXT_SLAM_DELAY, true, false, true)
-	t2.timeout.connect(_slam_winner_text)
+	t2.timeout.connect(
+		_slam_winner_text.bind(is_forfeit))
 	t2.timeout.connect(func():
 		G.camera_shaker.shake(
 			_TEXT_SLAM_SHAKE_INTENSITY,
@@ -302,25 +311,41 @@ func _delayed_burst(
 		_burst_confetti_at.bind(offset))
 
 
-func _slam_winner_text() -> void:
+func _slam_winner_text(
+	is_forfeit := false,
+) -> void:
 	var gms := G.match_state as GameMatchState
-	var is_tie := (
-		is_instance_valid(gms)
-		and gms.get_winner_kill_lead() == 0
-	)
 
-	if is_tie:
-		%WinnerText.text = tr("CELEBRATION.TIE")
-	else:
+	if is_forfeit:
 		var ps := G.get_player_match_state(
 			_winner.player_id) as GamePlayerState
 		if ps:
 			%WinnerText.text = (
-				tr("CELEBRATION.WINS")
+				tr("CELEBRATION.WINS_BY_DEFAULT")
 				% ps.bunny_name.to_upper())
 		else:
 			%WinnerText.text = tr(
-				"CELEBRATION.WINNER")
+				"CELEBRATION.WINNER_BY_DEFAULT")
+	else:
+		var is_tie := (
+			is_instance_valid(gms)
+			and gms.get_winner_kill_lead() == 0
+		)
+
+		if is_tie:
+			%WinnerText.text = tr(
+				"CELEBRATION.TIE")
+		else:
+			var ps := G.get_player_match_state(
+				_winner.player_id
+			) as GamePlayerState
+			if ps:
+				%WinnerText.text = (
+					tr("CELEBRATION.WINS")
+					% ps.bunny_name.to_upper())
+			else:
+				%WinnerText.text = tr(
+					"CELEBRATION.WINNER")
 	%WinnerText.visible = true
 	%WinnerText.pivot_offset = (
 		%WinnerText.size / 2)

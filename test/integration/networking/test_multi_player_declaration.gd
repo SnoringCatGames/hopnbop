@@ -145,6 +145,8 @@ class TestNetworkedLevelPlayerSpawning:
 
 	func before_each():
 		ArrayPool.clear_all_pools()
+		if not Netcode.frame_driver._is_frame_tracking_initialized:
+			Netcode.frame_driver._initialize_frame_tracking()
 		root_node = Node.new()
 		add_child_autofree(root_node)
 
@@ -195,6 +197,8 @@ class TestPlayerIdFormatConsistency:
 
 	func before_each():
 		ArrayPool.clear_all_pools()
+		if not Netcode.frame_driver._is_frame_tracking_initialized:
+			Netcode.frame_driver._initialize_frame_tracking()
 
 	func after_each():
 		ArrayPool.clear_all_pools()

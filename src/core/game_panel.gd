@@ -200,6 +200,9 @@ func _on_player_left(
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
+	if Netcode.runs_server_logic:
+		_server_check_auto_end_on_disconnect()
+
 
 func _on_player_killed(
 	killer: PlayerState,
@@ -1486,6 +1489,46 @@ func _server_check_start_match_timer() -> void:
 		% match_duration_sec,
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
+
+
+## Checks whether a mid-match disconnect has left
+## only one peer (or zero) remaining. If so, ends
+## the match early with the remaining player(s)
+## winning by default.
+func _server_check_auto_end_on_disconnect() -> void:
+	if Netcode.is_local_mode:
+		return
+	if G.match_state.is_match_ended:
+		return
+	if not G.match_state.is_match_active:
+		return
+
+	var remaining_peers := (
+		multiplayer.get_peers().size())
+	if remaining_peers > 1:
+		return
+
+	# 0 peers: nobody left. Existing
+	# _server_on_all_clients_disconnected handles
+	# cleanup. Skip the celebration sequence since
+	# nobody would see it.
+	if remaining_peers == 0:
+		return
+
+	Netcode.print(
+		"Only 1 peer remaining."
+		+ " Auto-ending match (forfeit win).",
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+
+	# Mark as forfeit so celebration is altered.
+	G.match_state.is_forfeit_win = true
+
+	# Demote disconnected players so remaining
+	# player(s) are rank 1.
+	G.match_state.server_demote_disconnected_players()
+
+	_server_initiate_match_end()
 
 
 func _server_initiate_match_end() -> void:

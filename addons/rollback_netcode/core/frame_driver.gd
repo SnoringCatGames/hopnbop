@@ -72,6 +72,12 @@ extends Node
 
 # - Test trying to login on two devices at the same time for a given player. Also prevent at matchmaking time.
 
+# - Test players disconnecting:
+#   - Should be removed from match.
+#   - If one player remains, match ends, they "Wins by default".
+#   - Disconnected players should lose in the game-over screen.
+#   - If all other _clients_ disconnect during matchmaking, the remaining client should go back to the lobby.
+
 # - Fix crossplay auth.
 
 # - Test/fix party formation, matchmaking, and lobbying

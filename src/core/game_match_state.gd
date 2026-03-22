@@ -73,6 +73,10 @@ var _interaction_tracker: InteractionTracker
 # Dictionary<int, bool>
 var _connected_players := {}
 
+## True when the match ended because all opponents
+## disconnected rather than time expiring.
+var is_forfeit_win := false
+
 # --- Gameplay Stats Tracking ---
 
 # Dictionary<int, PlayerMatchStats>
@@ -108,6 +112,7 @@ func clear() -> void:
 	match_start_frame_index = -1
 	match_duration_usec = 0
 	is_match_ended = false
+	is_forfeit_win = false
 
 
 ## Returns the PlayerMatchStats for the given
@@ -317,6 +322,48 @@ func server_on_player_disconnected(player: PlayerState) -> void:
 	_connected_players.erase(player.player_id)
 	player_left.emit(player)
 	players_updated.emit()
+
+
+## Re-ranks players so that all connected players
+## outrank all disconnected players. Within each
+## group, the original score ordering is preserved.
+func server_demote_disconnected_players() -> void:
+	update_scores()
+
+	var connected_ids: Array[int] = []
+	var disconnected_ids: Array[int] = []
+	for pid in players_by_id:
+		var ps: PlayerState = players_by_id[pid]
+		if ps.is_connected_to_server:
+			connected_ids.append(pid)
+		else:
+			disconnected_ids.append(pid)
+
+	# Sort each group by current score descending.
+	connected_ids.sort_custom(
+		func(a: int, b: int) -> bool:
+			return (
+				players_by_id[a].score
+				> players_by_id[b].score
+			))
+	disconnected_ids.sort_custom(
+		func(a: int, b: int) -> bool:
+			return (
+				players_by_id[a].score
+				> players_by_id[b].score
+			))
+
+	# Assign ranks: connected first, then
+	# disconnected.
+	var rank := 1
+	for pid in connected_ids:
+		players_by_id[pid].rank = rank
+		rank += 1
+	for pid in disconnected_ids:
+		players_by_id[pid].rank = rank
+		rank += 1
+
+	_server_pack_players()
 
 
 ## Calculates the score for each player based on kills, deaths, bumps, and

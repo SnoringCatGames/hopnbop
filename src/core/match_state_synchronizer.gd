@@ -150,6 +150,13 @@ func _server_on_peer_disconnected(peer_id: int, _reason: int) -> void:
 
 		state.server_on_player_disconnected(player)
 
+	# Despawn player characters from the level.
+	if (is_instance_valid(G.level)
+			and G.level is NetworkedLevel):
+		(G.level as NetworkedLevel
+			)._server_deregister_players_for_peer(
+				peer_id)
+
 
 func _client_on_players_updated() -> void:
 	state.update_scores()

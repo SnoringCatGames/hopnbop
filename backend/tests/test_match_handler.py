@@ -242,15 +242,19 @@ class TestSubmitMatchResult:
 
 
 class TestGetLeaderboard:
-    def test_missing_auth_returns_401(self, aws_mock):
+    def test_missing_auth_returns_leaderboard(self, aws_mock):
         from handlers.match_handler import get_leaderboard
 
+        # Leaderboard is publicly accessible without auth.
         event = _make_event()
         status, body = _parse_response(
             get_leaderboard(event, _CONTEXT)
         )
 
-        assert status == 401
+        assert status == 200
+        assert body["status"] == "success"
+        assert "your_rank" not in body
+        assert "your_rating" not in body
 
     def test_returns_sorted_leaderboard(self, aws_mock):
         from handlers.match_handler import get_leaderboard

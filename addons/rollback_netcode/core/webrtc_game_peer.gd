@@ -128,6 +128,16 @@ func _poll() -> void:
 	if not _is_active:
 		return
 
+	# Two-pass polling: first pass polls connections,
+	# drains channels, and detects state changes.
+	# Second pass emits signals AFTER all channels
+	# are drained. This ensures packets are queued
+	# in _incoming before SceneMultiplayer processes
+	# peer_connected (which triggers PEER_CONFIG
+	# sends and RPC processing).
+	var newly_connected: Array[int] = []
+	var newly_disconnected: Array[int] = []
+
 	var peer_ids := _peers.keys()
 	for peer_id in peer_ids:
 		if not _peers.has(peer_id):
@@ -150,8 +160,7 @@ func _poll() -> void:
 				+ " open") % peer_id,
 				NetworkLogger.CATEGORY_CONNECTIONS,
 			)
-			emit_signal(
-				"peer_connected", peer_id)
+			newly_connected.append(peer_id)
 
 		if not all_open and was_connected:
 			# Check if connection was lost.
@@ -170,9 +179,7 @@ func _poll() -> void:
 					NetworkLogger
 						.CATEGORY_CONNECTIONS,
 				)
-				emit_signal(
-					"peer_disconnected",
-					peer_id)
+				newly_disconnected.append(peer_id)
 
 		if not state.is_connected:
 			continue
@@ -189,6 +196,13 @@ func _poll() -> void:
 			MultiplayerPeer
 				.TRANSFER_MODE_UNRELIABLE,
 		)
+
+	# Second pass: emit signals after all channels
+	# are drained.
+	for peer_id in newly_connected:
+		emit_signal("peer_connected", peer_id)
+	for peer_id in newly_disconnected:
+		emit_signal("peer_disconnected", peer_id)
 
 
 
