@@ -473,6 +473,20 @@ func _advance() -> bool:
 		return true
 
 	# 3. Convex corner.
+	# Record corner vertex for trail.
+	if _is_trail_initialized:
+		var tc := (
+			_collision_tiles.map_to_local(
+				current_tile))
+		var tg := (
+			_collision_tiles.to_global(tc))
+		var h := Level.TILE_SIZE / 2.0
+		var normal_h := h
+		if current_face == Face.BOTTOM:
+			normal_h -= _CEILING_INSET
+		_pending_corner_positions.append(
+			tg + Vector2(forward) * h
+			+ Vector2(normal) * normal_h)
 	current_face = _next_face_map[current_face]
 	progress = 0.0
 	return true
@@ -546,7 +560,7 @@ func _update_trail() -> void:
 		_pending_corner_positions.clear()
 		return
 
-	# Walk trail through any concave corners,
+	# Walk trail through any corner waypoints,
 	# forcing a particle at each vertex.
 	for corner_pos in _pending_corner_positions:
 		_trail_walk_to(corner_pos)
