@@ -163,6 +163,8 @@ func _ready() -> void:
 		_on_player_killed)
 	G.match_state.players_bumped.connect(
 		_on_players_bumped)
+	G.match_state.match_ended.connect(
+		_on_match_ended)
 
 	# Set up PerfTracker callback for level
 	# ready state.
@@ -202,6 +204,29 @@ func _on_player_left(
 
 	if Netcode.runs_server_logic:
 		_server_check_auto_end_on_disconnect()
+
+
+func _on_match_ended() -> void:
+	if not Netcode.is_client:
+		return
+	# Start a client-side timer to transition to
+	# game-over after the celebration sequence
+	# completes. This avoids depending on WebRTC
+	# disconnect detection, which can take 5-30
+	# seconds due to ICE timeouts. The timer
+	# matches the server's disconnect delay so
+	# the client transitions at the same time
+	# the server drops the connection.
+	Netcode.print(
+		"Match ended, starting client-side"
+		+ " game-over timer (%.1fs)"
+		% G.settings.match_end_disconnect_delay_sec,
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+	Netcode.time.set_timeout(
+		_client_transition_to_game_over,
+		G.settings.match_end_disconnect_delay_sec,
+	)
 
 
 func _on_player_killed(
@@ -816,6 +841,8 @@ func _cleanup_local_mode() -> void:
 ## frame driver. Does NOT open any screen or free
 ## levels.
 func _client_cleanup_after_match() -> void:
+	_has_transitioned_to_game_over = false
+
 	# Reset cheat state when leaving match.
 	if is_instance_valid(G.cheat_manager):
 		G.cheat_manager.reset()
@@ -974,8 +1001,15 @@ func client_exit_match() -> void:
 
 ## Clean up after match and show the game over
 ## screen with results. Used for expected
-## (normal) match endings.
+## (normal) match endings. May be called twice
+## (client-side timer + disconnect handler).
+## The guard prevents double-transition.
+var _has_transitioned_to_game_over := false
+
 func _client_transition_to_game_over() -> void:
+	if _has_transitioned_to_game_over:
+		return
+	_has_transitioned_to_game_over = true
 	_client_cleanup_after_match()
 	_client_free_levels_and_open_screen(
 		ScreensMain.ScreenType.GAME_OVER)
