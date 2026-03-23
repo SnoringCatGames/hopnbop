@@ -45,7 +45,7 @@ const _TRAIL_FADE_DURATION_SEC := 1.0
 
 ## Pixels to cut from each side of a concave
 ## corner to prevent sprite-tile overlap.
-const _CONCAVE_CORNER_INSET := 6.0
+const _CONCAVE_CORNER_INSET := 4.0
 
 ## Ceiling collision shapes end this many pixels
 ## above the tile boundary. Adjusts the

@@ -30,8 +30,13 @@ const _SLOW_NETWORK_RTT_THRESHOLD_SEC := 0.1 # 100ms
 const _LARGE_FASTFORWARD_THRESHOLD := 2
 const _HIGH_FASTFORWARD_RATE_THRESHOLD := 0.2
 const _SLOW_RENDER_FPS := 30
-const _SLOW_PHYSICS_FPS := 50 # 10 FPS below target (60 - 10)
-const _SLOW_NETWORK_FPS := 30
+## Margin below target physics FPS that triggers a
+## warning. Dynamic so it works at both 60fps and
+## 30fps. E.g. at 30fps target, threshold is 20.
+const _SLOW_PHYSICS_FPS_MARGIN := 10
+## Margin below target physics FPS for network FPS
+## warning. Network FPS should track physics FPS.
+const _SLOW_NETWORK_FPS_MARGIN := 10
 const _WARNING_THROTTLE_SEC := 5.0
 
 # --- Tracking window constants ---
@@ -235,13 +240,19 @@ func _physics_process(_delta: float) -> void:
 	# Check for slow physics FPS and log warning.
 	# Require enough samples to avoid false warnings
 	# from single-frame jitter after window reset.
+	var physics_threshold := (
+		Netcode.frame_driver.target_network_fps
+		- _SLOW_PHYSICS_FPS_MARGIN
+	) if Netcode.frame_driver else 50.0
 	if (
 		_current_physics_fps > 0.0
-		and _current_physics_fps < _SLOW_PHYSICS_FPS
+		and _current_physics_fps < physics_threshold
 		and _physics_frame_count >= _MIN_FRAMES_FOR_FPS_WARNING
 		and _is_ready()
 	):
-		_throttled_warn_physics_fps.call([_current_physics_fps])
+		_throttled_warn_physics_fps.call(
+			[_current_physics_fps, physics_threshold],
+		)
 
 	_update_network_ping()
 	_update_rollback_metrics()
@@ -295,13 +306,19 @@ func _character_state_from_server_updated(
 	_update_packet_loss(state_frame_index)
 
 	# Check for slow network FPS and log warning.
+	var network_threshold := (
+		Netcode.frame_driver.target_network_fps
+		- _SLOW_NETWORK_FPS_MARGIN
+	) if Netcode.frame_driver else 30.0
 	if (
 		_current_network_fps > 0.0
-		and _current_network_fps < _SLOW_NETWORK_FPS
+		and _current_network_fps < network_threshold
 		and _network_frame_count >= _MIN_FRAMES_FOR_FPS_WARNING
 		and _is_ready()
 	):
-		_throttled_warn_network_fps.call([_current_network_fps])
+		_throttled_warn_network_fps.call(
+			[_current_network_fps, network_threshold],
+		)
 
 
 # --- Helper methods ---
@@ -613,20 +630,26 @@ func _log_render_fps_warning(avg_fps: float) -> void:
 	)
 
 
-func _log_physics_fps_warning(avg_fps: float) -> void:
+func _log_physics_fps_warning(
+		avg_fps: float,
+		threshold: float,
+) -> void:
 	Netcode.log.warning(
 		("Slow physics FPS: %.1f "
 		+ "(threshold: %d)")
-		% [avg_fps, _SLOW_PHYSICS_FPS],
+		% [avg_fps, roundi(threshold)],
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 
 
-func _log_network_fps_warning(avg_fps: float) -> void:
+func _log_network_fps_warning(
+		avg_fps: float,
+		threshold: float,
+) -> void:
 	Netcode.log.warning(
 		("Slow network FPS: %.1f "
 		+ "(threshold: %d)")
-		% [avg_fps, _SLOW_NETWORK_FPS],
+		% [avg_fps, roundi(threshold)],
 		NetworkLogger.CATEGORY_CORE_SYSTEMS,
 	)
 

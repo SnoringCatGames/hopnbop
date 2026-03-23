@@ -163,10 +163,15 @@ func _poll() -> void:
 			newly_connected.append(peer_id)
 
 		if not all_open and was_connected:
-			# Check if connection was lost.
+			# Check if connection was lost. Include
+			# STATE_DISCONNECTED to avoid waiting
+			# for the ICE failed timeout (15-30s).
 			var conn_state := (
 				state.rtc.get_connection_state())
 			if (conn_state
+					== WebRTCPeerConnection
+						.STATE_DISCONNECTED
+					or conn_state
 					== WebRTCPeerConnection
 						.STATE_CLOSED
 					or conn_state
