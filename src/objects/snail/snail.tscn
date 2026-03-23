@@ -96,6 +96,7 @@ offset = Vector2(0, -4)
 
 [node name="CrunchSfx" type="AudioStreamPlayer2D" parent="."]
 stream = ExtResource("3_crunch")
+bus = &"SFX"
 
 [node name="CrushArea" type="Area2D" parent="."]
 collision_layer = 0

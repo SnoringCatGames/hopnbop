@@ -72,8 +72,18 @@ func on_open() -> void:
 		%MessageLabel.visible = false
 
 	# Refresh cached relationship data so buttons
-	# reflect current state.
+	# reflect current state. The fetch is async,
+	# so we populate immediately with cached data
+	# and re-populate when fresh data arrives.
 	G.friends_api_client.fetch_friends()
+	if not (G.friends_api_client
+			.friends_received
+			.is_connected(
+				_on_friends_data_refreshed)):
+		G.friends_api_client\
+			.friends_received.connect(
+				_on_friends_data_refreshed,
+				CONNECT_ONE_SHOT)
 
 	_populate_results()
 	_build_focusable_list()
@@ -141,17 +151,21 @@ func _populate_results() -> void:
 	# Check if any row will show an Add Friend
 	# button so we can reserve balanced space.
 	# Anonymous participants have no backend ID,
-	# so they never show a button.
+	# so they never show a button. Players we
+	# are already friends with are hidden.
+	var client := G.friends_api_client
 	var has_any_friend_button := (
 		not G.auth_token_store.is_anonymous
 		and participants.any(
 			func(p: Dictionary) -> bool:
+				var bid: String = p.get(
+					"backend_player_id", "")
 				return (
 					not p.get(
 						"is_anonymous", true)
-					and not p.get(
-						"backend_player_id",
-						"").is_empty())))
+					and not bid.is_empty()
+					and not client.is_friend(
+						bid))))
 
 	for i in sorted_players.size():
 		var ps: GamePlayerState = sorted_players[i]
@@ -309,17 +323,12 @@ func _add_friend_button(
 	var icon_width := int(
 		G.settings.get_icon_display_width())
 
-	# Already friends. Show checkmark.
+	# Already friends. Hide the button entirely.
 	if client.is_friend(backend_player_id):
-		var done_button := Button.new()
-		done_button.icon = _checkmark_icon
-		done_button.expand_icon = true
-		done_button.add_theme_constant_override(
-			"icon_max_width", icon_width)
-		done_button.disabled = true
-		done_button.custom_minimum_size.x = (
+		var spacer := Control.new()
+		spacer.custom_minimum_size.x = (
 			_FRIEND_BUTTON_WIDTH)
-		row.add_child(done_button)
+		row.add_child(spacer)
 		return
 
 	# Sent request already pending.
@@ -488,6 +497,14 @@ func _on_friend_action_failed(
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
 			error, G.toast_overlay.Type.ERROR)
+
+
+func _on_friends_data_refreshed(
+	_data: Dictionary,
+) -> void:
+	_populate_results()
+	_build_focusable_list()
+	_navigator.prime()
 
 
 func _on_play_again_pressed() -> void:

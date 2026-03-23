@@ -47,9 +47,10 @@ extends Node
 
 # ---
 
-# Player overhead labels are not at all centered over the players. And They are inconsistent on different clients.
+# - Look up fancy shader techniques for rendering reflective water effects in the foreground along the bottom.
+#   - Like Animal Well and Kingdom.
 
-# - We should not show AddFriend buttons in the game-over screen for a given player row if that player is anonymous.
+# Player overhead labels are not at all centered over the players. And They are inconsistent on different clients.
 
 # Let's fix the leaderboard screen.
 # - It should use the same patterns as other UIs and screens.

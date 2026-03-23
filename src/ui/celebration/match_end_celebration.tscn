@@ -84,18 +84,22 @@ vertical_alignment = 1
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_ru0mh")
 volume_db = -9.348
+bus = &"SFX"
 
 [node name="BoomAudioStreamPlayer" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_gqvpc")
 volume_db = -8.0
+bus = &"SFX"
 
 [node name="WinCadenceAudioStreamPlayer" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
 stream = ExtResource("10_win")
 volume_db = -8.0
+bus = &"SFX"
 
 [node name="TieCadenceAudioStreamPlayer" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
 stream = ExtResource("11_tie")
 volume_db = -8.0
+bus = &"SFX"

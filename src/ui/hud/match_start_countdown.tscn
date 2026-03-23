@@ -39,18 +39,22 @@ vertical_alignment = 1
 unique_name_in_owner = true
 stream = ExtResource("2_beat1")
 volume_db = -38.0
+bus = &"SFX"
 
 [node name="Beat2AudioStreamPlayer" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
 stream = ExtResource("3_beat2")
 volume_db = -38.0
+bus = &"SFX"
 
 [node name="Beat3AudioStreamPlayer" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
 stream = ExtResource("4_beat3")
 volume_db = -38.0
+bus = &"SFX"
 
 [node name="Beat4AudioStreamPlayer" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
 stream = ExtResource("5_beat4")
 volume_db = -38.0
+bus = &"SFX"

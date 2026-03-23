@@ -248,48 +248,59 @@ shape = SubResource("CapsuleShape2D_sc4xa")
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_gp0bh")
 volume_db = -12.0
+bus = &"SFX"
 
 [node name="LandAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_o3ivm")
+bus = &"SFX"
 
 [node name="BumpAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_5lt6i")
+bus = &"SFX"
 
 [node name="WalkAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_walk")
+bus = &"SFX"
 
 [node name="IceAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_ice")
 volume_db = -30.0
+bus = &"SFX"
 
 [node name="DieFlowersAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_bd5h2")
+bus = &"SFX"
 
 [node name="DieGoreAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_mf2w0")
+bus = &"SFX"
 
 [node name="RespawnAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_86nik")
+bus = &"SFX"
 
 [node name="SkidAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_n5ror")
+bus = &"SFX"
 
 [node name="SpringAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_spring")
 volume_db = -12.0
+bus = &"SFX"
 
 [node name="SplashAudioStreamPlayer" type="AudioStreamPlayer2D" parent="Sounds"]
 unique_name_in_owner = true
 stream = SubResource("AudioStreamRandomizer_splash")
+bus = &"SFX"
 
 [connection signal="body_entered" from="BodyArea" to="." method="_on_body_area_body_entered"]
 [connection signal="area_entered" from="FootArea" to="." method="_on_foot_area_area_entered"]
