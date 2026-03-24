@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Theme" uid="uid://cg4peau6bmpdw" path="res://src/ui/hud_theme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://src/ui/leaderboard_panel/leaderboard_panel.gd" id="2_script"]
@@ -6,6 +6,7 @@
 [ext_resource type="StyleBoxFlat" path="res://src/ui/settings_panel/unfocused_stylebox.tres" id="4_unfocused"]
 [ext_resource type="Texture2D" path="res://assets/images/gui/x_icon_enlarged.png" id="5_x_icon"]
 [ext_resource type="Texture2D" path="res://assets/images/gui/filter_icon.png" id="6_filter_icon"]
+[ext_resource type="PackedScene" path="res://src/ui/loading_spinner/loading_spinner.tscn" id="7_spinner"]
 
 [node name="LeaderboardScreen" type="PanelContainer"]
 process_mode = 3
@@ -91,6 +92,11 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
+
+[node name="LoadingSpinner" parent="VBoxContainer/MarginContainer/InnerVBox" instance=ExtResource("7_spinner")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
 
 [node name="StatusLabel" type="Label" parent="VBoxContainer/MarginContainer/InnerVBox"]
 unique_name_in_owner = true

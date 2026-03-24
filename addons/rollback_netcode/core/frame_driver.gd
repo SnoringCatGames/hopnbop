@@ -47,9 +47,6 @@ extends Node
 
 # ---
 
-# - Look up fancy shader techniques for rendering reflective water effects in the foreground along the bottom.
-#   - Like Animal Well and Kingdom.
-
 # Player overhead labels are not at all centered over the players. And They are inconsistent on different clients.
 
 # Let's fix the leaderboard screen.

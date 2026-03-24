@@ -8,6 +8,7 @@ extends SidePanel
 
 
 @export var _back_row_scene: PackedScene
+@export var _loading_spinner_scene: PackedScene
 @export var _add_friend_icon: Texture2D
 @export var _remove_friend_icon: Texture2D
 
@@ -15,6 +16,7 @@ var _friend_code_label: Label
 var _add_input: LineEdit
 var _add_button: Button
 var _is_loading := false
+var _loading_spinner: LoadingSpinner
 var _bottom_spacer: Control
 var _dynamic_nodes: Array[Node] = []
 
@@ -55,6 +57,13 @@ func build_ui() -> void:
 	list_spacer.custom_minimum_size = (
 		Vector2(0, 16))
 	_row_container.add_child(list_spacer)
+
+	# Loading spinner. Shown while fetching
+	# friends, hidden when data arrives.
+	_loading_spinner = (
+		_loading_spinner_scene.instantiate())
+	_loading_spinner.visible = false
+	_row_container.add_child(_loading_spinner)
 
 	# Bottom padding. Repositioned after dynamic
 	# content on each refresh.
@@ -194,6 +203,8 @@ func _build_add_friend_section() -> void:
 
 func _refresh_friends() -> void:
 	_is_loading = true
+	if is_instance_valid(_loading_spinner):
+		_loading_spinner.visible = true
 	G.friends_api_client.fetch_friends()
 
 
@@ -289,6 +300,8 @@ func _on_friends_received(
 	data: Dictionary,
 ) -> void:
 	_is_loading = false
+	if is_instance_valid(_loading_spinner):
+		_loading_spinner.visible = false
 	var friends: Array = data.get("friends", [])
 	var sent: Array = data.get(
 		"sent_requests", [])
@@ -303,6 +316,8 @@ func _on_friends_received(
 
 func _on_request_failed(error: String) -> void:
 	_is_loading = false
+	if is_instance_valid(_loading_spinner):
+		_loading_spinner.visible = false
 	if is_instance_valid(_add_button):
 		_add_button.disabled = false
 	if is_instance_valid(G.toast_overlay):

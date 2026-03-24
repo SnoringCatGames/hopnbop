@@ -461,8 +461,4 @@ func _clear_content() -> void:
 
 func _set_loading(loading: bool) -> void:
 	_is_loading = loading
-	if loading:
-		%StatusLabel.text = "Loading..."
-		%StatusLabel.show()
-	else:
-		%StatusLabel.hide()
+	%LoadingSpinner.visible = loading

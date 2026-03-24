@@ -186,27 +186,36 @@ class TestCharacterMovementRollback:
 
 
 	func test_accumulated_drift_triggers_eventual_rollback():
-		# Simulate gradual position drift over multiple frames
+		# Simulate gradual position drift over multiple frames.
 		Netcode.server_frame_index = 50
 		character.position = Vector2(100, 500)
 		character.velocity = Vector2(50, 0)
 
+		var threshold := (
+			CharacterStateFromServer
+				.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD)
 		var drift_per_frame := 0.3
 		var accumulated_drift := 0.0
 
-		for i in range(10):
+		for i in range(20):
 			Helpers.simulate_frames(character, 1)
 			accumulated_drift += drift_per_frame
 
-			if accumulated_drift > 1.0:
-				# Should trigger rollback at this point
-				var threshold := CharacterStateFromServer.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD
+			if accumulated_drift > threshold:
+				# Drift now exceeds rollback threshold.
 				assert_gt(
 					accumulated_drift,
 					threshold,
-					"Accumulated drift should exceed threshold",
+					"Accumulated drift should exceed"
+					+ " threshold",
 				)
-				break
+				return
+
+		assert_true(
+			false,
+			"Drift should have exceeded threshold"
+			+ " within 20 frames",
+		)
 
 
 ## ============================================================================
