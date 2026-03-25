@@ -7,6 +7,7 @@ extends SettingsRow
 
 
 signal text_changed(new_text: String)
+signal submitted
 
 const _EDITING_CARET_COLOR := Color(1.0, 0.85, 0.3)
 
@@ -35,6 +36,8 @@ func _ready() -> void:
 		_line_edit.max_length = _max_length
 	_line_edit.text_changed.connect(
 		_on_text_changed)
+	_line_edit.text_submitted.connect(
+		_on_text_submitted)
 	_line_edit.focus_entered.connect(
 		_on_focus_entered)
 	_line_edit.focus_exited.connect(
@@ -58,6 +61,10 @@ func _toggle_editing() -> void:
 
 func _on_text_changed(new_text: String) -> void:
 	text_changed.emit(new_text)
+
+
+func _on_text_submitted(_text: String) -> void:
+	submitted.emit()
 
 
 func _on_focus_entered() -> void:

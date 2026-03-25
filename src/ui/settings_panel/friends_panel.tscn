@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://src/ui/settings_panel/friends_panel.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/side_panel.tscn" id="2_base"]
@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/loading_spinner/loading_spinner.tscn" id="6_spinner"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/sub_panel_trigger_row.tscn" id="7_trigger_row"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/add_friend_panel.tscn" id="8_add_friend_panel"]
+[ext_resource type="Texture2D" path="res://assets/images/gui/copy.png" id="9_copy"]
 
 [node name="FriendsPanel" instance=ExtResource("2_base")]
 process_mode = 3
@@ -16,5 +17,6 @@ _back_row_scene = ExtResource("3_back_row")
 _loading_spinner_scene = ExtResource("6_spinner")
 _add_friend_icon = ExtResource("4_add_friend")
 _remove_friend_icon = ExtResource("5_remove_friend")
+_copy_icon = ExtResource("9_copy")
 _sub_panel_trigger_row_scene = ExtResource("7_trigger_row")
 _add_friend_panel_scene = ExtResource("8_add_friend_panel")

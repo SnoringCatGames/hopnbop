@@ -34,6 +34,11 @@ var _scope_index := 0
 var _scope_options: Array[String] = []
 var _scope_labels: Array[String] = []
 
+var _navigator := ScreenFocusNavigator.new()
+## Maps filter sub-row PanelContainers to their
+## selection callables.
+var _filter_row_actions: Dictionary = {}
+
 
 func _enter_tree() -> void:
 	super._enter_tree()
@@ -57,6 +62,15 @@ func on_open() -> void:
 	_build_filter_rows()
 	_update_filter_sub_rows_visibility()
 	_fetch_leaderboard()
+	_build_focusable_list(true)
+	_navigator.prime()
+
+
+func _process(delta: float) -> void:
+	if not visible:
+		return
+	if _navigator.poll(delta):
+		_activate_focused()
 
 
 ## Set where the back button navigates to.
@@ -162,7 +176,7 @@ func _on_leaderboard_received(
 	var your_rank: int = data.get(
 		"your_rank", 0)
 	var your_rating: int = data.get(
-		"your_rating", 1500)
+		"your_rating", 0)
 	if your_rank > 0:
 		%RankLabel.text = (
 			"Your rank: #%d \u00b7 Rating: %d"
@@ -179,6 +193,7 @@ func _on_leaderboard_received(
 				"display_name", "").is_empty())
 
 	if filtered.is_empty():
+		%ScrollContainer.hide()
 		%StatusLabel.text = "No players yet"
 		%StatusLabel.show()
 		return
@@ -194,6 +209,7 @@ func _on_request_failed(
 	if not visible:
 		return
 	_set_loading(false)
+	%ScrollContainer.hide()
 	%StatusLabel.text = error
 	%StatusLabel.show()
 
@@ -244,7 +260,7 @@ func _add_leaderboard_row(
 
 	var rating_label := Label.new()
 	rating_label.text = str(
-		entry.get("rating", 1500))
+		entry.get("score", entry.get("rating", 0)))
 	rating_label.custom_minimum_size.x = 70
 	rating_label.horizontal_alignment = (
 		HORIZONTAL_ALIGNMENT_RIGHT)
@@ -252,17 +268,49 @@ func _add_leaderboard_row(
 		"font_size", _FONT_SIZE)
 	row.add_child(rating_label)
 
-	var wl_label := Label.new()
-	wl_label.text = "%d/%d" % [
-		entry.get("wins", 0),
-		entry.get("losses", 0),
-	]
-	wl_label.custom_minimum_size.x = 80
-	wl_label.horizontal_alignment = (
-		HORIZONTAL_ALIGNMENT_RIGHT)
-	wl_label.add_theme_font_size_override(
-		"font_size", _FONT_SIZE)
-	row.add_child(wl_label)
+	if entry.has("wins") or entry.has("losses"):
+		var wl_label := Label.new()
+		wl_label.text = "%d/%d" % [
+			entry.get("wins", 0),
+			entry.get("losses", 0),
+		]
+		wl_label.custom_minimum_size.x = 80
+		wl_label.horizontal_alignment = (
+			HORIZONTAL_ALIGNMENT_RIGHT)
+		wl_label.add_theme_font_size_override(
+			"font_size", _FONT_SIZE)
+		row.add_child(wl_label)
+
+
+func _build_focusable_list(
+	focus_close: bool = false,
+) -> void:
+	var items: Array[Control] = []
+	items.append(%FilterMasterRow)
+	if _is_filter_expanded:
+		for child in (
+			%FilterSubRows.get_children()
+		):
+			if child is PanelContainer:
+				items.append(
+					child as PanelContainer)
+	items.append(%CloseRow)
+	_navigator.set_focusable_list(items)
+	if focus_close:
+		_navigator.focus_index(
+			items.size() - 1)
+
+
+func _activate_focused() -> void:
+	var focused := _navigator.get_focused()
+	if focused == null:
+		return
+	if focused == %CloseRow:
+		_on_close_pressed()
+	elif focused == %FilterMasterRow:
+		_toggle_filter()
+	elif _filter_row_actions.has(focused):
+		_filter_row_actions[focused].call()
 
 
 func _setup_filter_master_row() -> void:
@@ -273,6 +321,12 @@ func _setup_filter_master_row() -> void:
 		.connect(func() -> void:
 			_update_filter_row_style(true)))
 	(%FilterMasterRow.mouse_exited
+		.connect(func() -> void:
+			_update_filter_row_style(false)))
+	(%FilterMasterRow.focus_entered
+		.connect(func() -> void:
+			_update_filter_row_style(true)))
+	(%FilterMasterRow.focus_exited
 		.connect(func() -> void:
 			_update_filter_row_style(false)))
 	if _filter_icon != null:
@@ -293,9 +347,15 @@ func _on_filter_master_row_gui_input(
 		if (mb.pressed
 				and mb.button_index
 				== MOUSE_BUTTON_LEFT):
-			_is_filter_expanded = (
-				not _is_filter_expanded)
-			_update_filter_sub_rows_visibility()
+			_toggle_filter()
+
+
+func _toggle_filter() -> void:
+	if _is_loading:
+		return
+	_is_filter_expanded = not _is_filter_expanded
+	_update_filter_sub_rows_visibility()
+	_build_focusable_list()
 
 
 func _update_filter_row_style(
@@ -330,6 +390,7 @@ func _update_filter_label() -> void:
 
 
 func _build_filter_rows() -> void:
+	_filter_row_actions.clear()
 	for child in %FilterSubRows.get_children():
 		child.queue_free()
 
@@ -362,9 +423,11 @@ func _add_filter_option_row(
 	on_click: Callable,
 ) -> void:
 	var row := PanelContainer.new()
+	row.focus_mode = Control.FOCUS_ALL
 	row.add_theme_stylebox_override(
 		"panel", _unfocused_style)
 	%FilterSubRows.add_child(row)
+	_filter_row_actions[row] = on_click
 
 	var label := Label.new()
 	label.text = label_text
@@ -389,6 +452,14 @@ func _add_filter_option_row(
 		func() -> void:
 			row.add_theme_stylebox_override(
 				"panel", _unfocused_style))
+	row.focus_entered.connect(
+		func() -> void:
+			row.add_theme_stylebox_override(
+				"panel", _focus_style))
+	row.focus_exited.connect(
+		func() -> void:
+			row.add_theme_stylebox_override(
+				"panel", _unfocused_style))
 
 
 func _select_type(index: int) -> void:
@@ -398,6 +469,7 @@ func _select_type(index: int) -> void:
 	_is_filter_expanded = false
 	_build_filter_rows()
 	_update_filter_sub_rows_visibility()
+	_build_focusable_list()
 	_fetch_leaderboard()
 
 
@@ -408,6 +480,7 @@ func _select_scope(index: int) -> void:
 	_is_filter_expanded = false
 	_build_filter_rows()
 	_update_filter_sub_rows_visibility()
+	_build_focusable_list()
 	_fetch_leaderboard()
 
 
@@ -419,6 +492,12 @@ func _setup_close_row() -> void:
 		.connect(func() -> void:
 			_update_close_row_style(true)))
 	(%CloseRow.mouse_exited
+		.connect(func() -> void:
+			_update_close_row_style(false)))
+	(%CloseRow.focus_entered
+		.connect(func() -> void:
+			_update_close_row_style(true)))
+	(%CloseRow.focus_exited
 		.connect(func() -> void:
 			_update_close_row_style(false)))
 	if _x_icon != null:
@@ -455,6 +534,7 @@ func _clear_content() -> void:
 		%ContentContainer.get_children()
 	):
 		child.queue_free()
+	%ScrollContainer.show()
 	%StatusLabel.hide()
 	%RankLabel.hide()
 
@@ -462,3 +542,5 @@ func _clear_content() -> void:
 func _set_loading(loading: bool) -> void:
 	_is_loading = loading
 	%LoadingSpinner.visible = loading
+	if loading:
+		%ScrollContainer.hide()

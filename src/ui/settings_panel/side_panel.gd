@@ -303,12 +303,31 @@ func _process(delta: float) -> void:
 		_held_direction = current_dir
 		_hold_timer = 0.0
 
-	# Skip directional navigation when a descendant
-	# node (e.g., a TextInputRow's LineEdit) holds
-	# Godot GUI focus so that held arrow keys do
-	# not interrupt text editing.
-	if not _is_descendant_focused():
-		# Process directional input.
+	var descendant_focused := (
+		_is_descendant_focused())
+	if descendant_focused:
+		# While a child node (e.g., a LineEdit)
+		# has GUI focus, up/down releases that
+		# focus and moves row selection. Left/right
+		# remain suppressed so arrow keys still
+		# move the text cursor.
+		var focus_owner := (
+			get_viewport()
+				.gui_get_focus_owner())
+		if (up_just
+				or (should_repeat
+				and current_dir == "up")):
+			if is_instance_valid(focus_owner):
+				focus_owner.release_focus()
+			_move_focus(-1)
+		elif (down_just
+				or (should_repeat
+				and current_dir == "down")):
+			if is_instance_valid(focus_owner):
+				focus_owner.release_focus()
+			_move_focus(1)
+	else:
+		# Process all directional input.
 		if (up_just
 				or (should_repeat
 				and current_dir == "up")):

@@ -11,6 +11,7 @@ extends SidePanel
 @export var _loading_spinner_scene: PackedScene
 @export var _add_friend_icon: Texture2D
 @export var _remove_friend_icon: Texture2D
+@export var _copy_icon: Texture2D
 @export var _sub_panel_trigger_row_scene: PackedScene
 @export var _add_friend_panel_scene: PackedScene
 
@@ -160,7 +161,8 @@ func _build_friend_code_section() -> void:
 	code_container.add_child(_friend_code_label)
 
 	var copy_button := Button.new()
-	copy_button.text = " [+] "
+	copy_button.icon = _copy_icon
+	copy_button.expand_icon = true
 	copy_button.pressed.connect(
 		_on_copy_code_pressed)
 	code_container.add_child(copy_button)

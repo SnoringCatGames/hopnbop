@@ -43,6 +43,8 @@ func build_ui() -> void:
 		_MIN_CODE_LENGTH)
 	_code_input.text_changed.connect(
 		_on_code_changed)
+	_code_input.submitted.connect(
+		_on_send_pressed)
 	_row_container.add_child(_code_input)
 	_connect_row_clicked(_code_input)
 
@@ -57,34 +59,9 @@ func build_ui() -> void:
 	_send_row = ActionRow.new()
 	_send_row.setup_actions(
 		_on_send_pressed, _on_send_pressed)
-
-	var send_container := HBoxContainer.new()
-	send_container.add_theme_constant_override(
-		"separation", 8)
-	send_container.mouse_filter = (
-		Control.MOUSE_FILTER_IGNORE)
-	_send_row.add_child(send_container)
-
-	if _add_friend_icon != null:
-		var icon_rect := TextureRect.new()
-		icon_rect.texture = _add_friend_icon
-		icon_rect.custom_minimum_size = (
-			_add_friend_icon.get_size()
-			* G.settings.icon_scale)
-		icon_rect.expand_mode = (
-			TextureRect.EXPAND_IGNORE_SIZE)
-		icon_rect.stretch_mode = (
-			TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
-		icon_rect.mouse_filter = (
-			Control.MOUSE_FILTER_IGNORE)
-		send_container.add_child(icon_rect)
-
-	var send_label := Label.new()
-	send_label.text = tr("FRIENDS.SEND_REQUEST")
-	send_label.size_flags_horizontal = (
-		Control.SIZE_EXPAND_FILL)
-	send_container.add_child(send_label)
-
+	_send_row.setup_label(
+		tr("FRIENDS.SEND_REQUEST"),
+		_add_friend_icon)
 	_send_row.disabled = true
 	_row_container.add_child(_send_row)
 	_connect_row_clicked(_send_row)
@@ -128,6 +105,10 @@ func _on_code_changed(text: String) -> void:
 func _on_send_pressed() -> void:
 	if not is_instance_valid(_code_input):
 		return
+	if not is_instance_valid(_send_row):
+		return
+	if _send_row.disabled:
+		return
 	var code := (
 		_code_input.get_text()
 			.strip_edges()
@@ -165,8 +146,8 @@ func _on_friend_request_sent(
 func _on_request_failed(
 	_error: String,
 ) -> void:
-	# Re-enable the send button so the user can
-	# try again. FriendsPanel below in the stack
+	# Re-enable the send row so the user can try
+	# again. FriendsPanel below in the stack
 	# handles showing the error toast.
 	if is_instance_valid(_send_row):
 		_send_row.disabled = false

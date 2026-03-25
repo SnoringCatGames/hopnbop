@@ -56,6 +56,16 @@ func poll(delta: float) -> bool:
 	return false
 
 
+## Sets focus to the item at the given index
+## without playing the focus sound.
+func focus_index(index: int) -> void:
+	if _focusable.is_empty():
+		return
+	_focused_index = clampi(
+		index, 0, _focusable.size() - 1)
+	_update_focus()
+
+
 func _move_focus(direction: int) -> void:
 	if _focusable.is_empty():
 		return
