@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=4 uid="uid://clcub1mgr6shb"]
+[gd_scene load_steps=7 format=4 uid="uid://clcub1mgr6shb"]
 
 [ext_resource type="Script" uid="uid://cvuwfl2ng3kpn" path="res://src/level/networked_level.gd" id="1_2xb4r"]
 [ext_resource type="PackedScene" uid="uid://bo0yvrajk0ktn" path="res://src/level/background.tscn" id="2_qdib1"]
 [ext_resource type="TileSet" uid="uid://mtwu14d78k40" path="res://src/level/default_tile_set.tres" id="3_ui6nv"]
 [ext_resource type="Script" uid="uid://1roi8ff6ow47" path="res://src/level/spawn_point.gd" id="4_ensm3"]
-[ext_resource type="Texture2D" uid="uid://bqow4x7d0fw0u" path="res://assets/images/levels/level_0.png" id="4_qdib1"]
+[ext_resource type="Texture2D" uid="uid://b07dxsa2olhm0" path="res://assets/images/levels/level_0_main.png" id="4_ui6nv"]
+[ext_resource type="Texture2D" uid="uid://b2u8246tvge1a" path="res://assets/images/levels/level_0_occlusions.png" id="5_ensm3"]
 
 [node name="Level0" type="Node2D" node_paths=PackedStringArray("player_spawner", "blood_is_thicker_than_water_tiles", "collision_tiles", "level_camera", "spawn_points", "players_node")]
 script = ExtResource("1_2xb4r")
@@ -38,7 +39,7 @@ tile_set = ExtResource("3_ui6nv")
 
 [node name="MainLayerArt" type="Sprite2D" parent="."]
 position = Vector2(-128, -128)
-texture = ExtResource("4_qdib1")
+texture = ExtResource("4_ui6nv")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(-128, -94)
@@ -115,6 +116,10 @@ metadata/_custom_type_script = "uid://1roi8ff6ow47"
 position = Vector2(-265, -148)
 script = ExtResource("4_ensm3")
 metadata/_custom_type_script = "uid://1roi8ff6ow47"
+
+[node name="OcclusionLayerArt" type="Sprite2D" parent="."]
+position = Vector2(-128, -128)
+texture = ExtResource("5_ensm3")
 
 [node name="ColorRect" type="ColorRect" parent="."]
 offset_left = -384.0

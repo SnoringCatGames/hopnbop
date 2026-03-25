@@ -153,4 +153,3 @@ rollback_buffer_duration_sec = 2.0
 is_server_pause_enabled = true
 pause_request_cooldown_sec = 0.5
 preview_run_multiple_clients = true
-preview_connect_to_remote_server = true
