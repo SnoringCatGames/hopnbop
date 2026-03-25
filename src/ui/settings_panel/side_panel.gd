@@ -213,6 +213,14 @@ func _ensure_focused_visible() -> void:
 	_scroll_container.ensure_control_visible(row)
 
 
+func _is_descendant_focused() -> bool:
+	var focus_owner := (
+		get_viewport().gui_get_focus_owner())
+	return (
+		focus_owner != null
+		and is_ancestor_of(focus_owner))
+
+
 func _is_trigger_pressed() -> bool:
 	if (Input.is_physical_key_pressed(KEY_ENTER)
 			or Input.is_physical_key_pressed(
@@ -295,27 +303,34 @@ func _process(delta: float) -> void:
 		_held_direction = current_dir
 		_hold_timer = 0.0
 
-	# Process directional input.
-	if (up_just
-			or (should_repeat
-			and current_dir == "up")):
-		_move_focus(-1)
-	elif (down_just
-			or (should_repeat
-			and current_dir == "down")):
-		_move_focus(1)
-	elif (left_just
-			or (should_repeat
-			and current_dir == "left")):
-		if (_focused_index >= 0
-				and _focused_index < _rows.size()):
-			_rows[_focused_index].on_left()
-	elif (right_just
-			or (should_repeat
-			and current_dir == "right")):
-		if (_focused_index >= 0
-				and _focused_index < _rows.size()):
-			_rows[_focused_index].on_right()
+	# Skip directional navigation when a descendant
+	# node (e.g., a TextInputRow's LineEdit) holds
+	# Godot GUI focus so that held arrow keys do
+	# not interrupt text editing.
+	if not _is_descendant_focused():
+		# Process directional input.
+		if (up_just
+				or (should_repeat
+				and current_dir == "up")):
+			_move_focus(-1)
+		elif (down_just
+				or (should_repeat
+				and current_dir == "down")):
+			_move_focus(1)
+		elif (left_just
+				or (should_repeat
+				and current_dir == "left")):
+			if (_focused_index >= 0
+					and _focused_index
+					< _rows.size()):
+				_rows[_focused_index].on_left()
+		elif (right_just
+				or (should_repeat
+				and current_dir == "right")):
+			if (_focused_index >= 0
+					and _focused_index
+					< _rows.size()):
+				_rows[_focused_index].on_right()
 
 	# Trigger detection (Enter/Space/trigger_ui).
 	var trigger := _is_trigger_pressed()

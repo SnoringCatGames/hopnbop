@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" uid="uid://cituy42vfbopr" path="res://src/ui/hud/player_list.gd" id="1_list"]
+[ext_resource type="PackedScene" path="res://src/ui/hud/player_display.tscn" id="2_player_display"]
+
+[node name="PlayerListVertical" type="VBoxContainer"]
+process_mode = 3
+unique_name_in_owner = true
+mouse_filter = 2
+theme_override_constants/separation = 20
+script = ExtResource("1_list")
+_player_display_scene = ExtResource("2_player_display")

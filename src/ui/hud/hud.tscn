@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://bt1la6s52krxe"]
+[gd_scene load_steps=8 format=3 uid="uid://bt1la6s52krxe"]
 
 [ext_resource type="Theme" uid="uid://cg4peau6bmpdw" path="res://src/ui/hud_theme.tres" id="1_cio14"]
 [ext_resource type="Script" uid="uid://cvmchc2851mho" path="res://src/ui/hud/hud.gd" id="1_eqvli"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://dpq7x8nwmk2lf" path="res://src/ui/hud/match_end_countdown.tscn" id="4_countdown"]
 [ext_resource type="PackedScene" uid="uid://bsw2fyvgipqht" path="res://src/ui/hud/match_start_countdown.tscn" id="5_countdown_start"]
 [ext_resource type="PackedScene" uid="uid://dwispqdsk7si5" path="res://src/ui/hud/player_overhead_labels.tscn" id="6_labels"]
+[ext_resource type="PackedScene" path="res://src/ui/hud/player_list_vertical.tscn" id="7_player_list_vertical"]
 
 [node name="Hud" type="PanelContainer"]
 process_mode = 3
@@ -45,6 +46,10 @@ theme_override_font_sizes/font_size = 32
 layout_mode = 2
 size_flags_horizontal = 8
 mouse_filter = 2
+
+[node name="PlayerListVertical" parent="MarginContainer/RightContent" instance=ExtResource("7_player_list_vertical")]
+layout_mode = 2
+visible = false
 
 [node name="BottomContent" type="VBoxContainer" parent="MarginContainer"]
 layout_mode = 2

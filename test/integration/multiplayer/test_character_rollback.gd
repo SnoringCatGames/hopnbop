@@ -196,25 +196,32 @@ class TestCharacterMovementRollback:
 				.DEFAULT_POSITION_DIFF_ROLLBACK_THRESHOLD)
 		var drift_per_frame := 0.3
 		var accumulated_drift := 0.0
+		var frames_to_exceed := -1
 
 		for i in range(20):
 			Helpers.simulate_frames(character, 1)
 			accumulated_drift += drift_per_frame
 
-			if accumulated_drift > threshold:
-				# Drift now exceeds rollback threshold.
-				assert_gt(
-					accumulated_drift,
-					threshold,
-					"Accumulated drift should exceed"
-					+ " threshold",
-				)
-				return
+			if (
+				accumulated_drift > threshold
+				and frames_to_exceed < 0
+			):
+				frames_to_exceed = i + 1
+				break
 
-		assert_true(
-			false,
-			"Drift should have exceeded threshold"
-			+ " within 20 frames",
+		# 0.3 drift/frame should exceed the 2.0 threshold
+		# by frame 7 (7 * 0.3 = 2.1).
+		assert_gt(
+			frames_to_exceed,
+			0,
+			"Drift should exceed threshold within"
+			+ " 20 frames",
+		)
+		assert_gt(
+			accumulated_drift,
+			threshold,
+			"Accumulated drift should exceed"
+			+ " threshold",
 		)
 
 

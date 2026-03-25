@@ -9,6 +9,11 @@ extends SettingsRow
 var _on_left_action: Callable
 var _on_right_action: Callable
 
+var disabled := false:
+	set(value):
+		disabled = value
+		modulate.a = 0.4 if disabled else 1.0
+
 
 func setup_actions(
 	on_right_action: Callable = Callable(),
@@ -19,10 +24,14 @@ func setup_actions(
 
 
 func on_left() -> void:
+	if disabled:
+		return
 	if _on_left_action.is_valid():
 		_on_left_action.call()
 
 
 func on_right() -> void:
+	if disabled:
+		return
 	if _on_right_action.is_valid():
 		_on_right_action.call()

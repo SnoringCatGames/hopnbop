@@ -1,5 +1,5 @@
 class_name PlayerList
-extends HBoxContainer
+extends BoxContainer
 ## Horizontal container for all player displays.
 
 

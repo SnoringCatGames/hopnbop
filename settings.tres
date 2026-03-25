@@ -148,6 +148,7 @@ costumes = Array[ExtResource("3_htelm")]([ExtResource("9_costume")])
 crown_costume = ExtResource("10_crown")
 match_duration_sec = 45.0
 max_client_count = 8
+webrtc_state_send_fps = 30.0
 rollback_buffer_duration_sec = 2.0
 is_server_pause_enabled = true
 pause_request_cooldown_sec = 0.5

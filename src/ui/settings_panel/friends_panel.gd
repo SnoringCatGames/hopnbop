@@ -11,10 +11,10 @@ extends SidePanel
 @export var _loading_spinner_scene: PackedScene
 @export var _add_friend_icon: Texture2D
 @export var _remove_friend_icon: Texture2D
+@export var _sub_panel_trigger_row_scene: PackedScene
+@export var _add_friend_panel_scene: PackedScene
 
 var _friend_code_label: Label
-var _add_input: LineEdit
-var _add_button: Button
 var _is_loading := false
 var _loading_spinner: LoadingSpinner
 var _bottom_spacer: Control
@@ -49,8 +49,16 @@ func build_ui() -> void:
 		Vector2(0, 16))
 	_row_container.add_child(code_spacer)
 
-	# Add friend section.
-	_build_add_friend_section()
+	# Add friend trigger row — opens sub-panel.
+	var add_row: SubPanelTriggerRow = (
+		_sub_panel_trigger_row_scene.instantiate())
+	add_row.set_icon(_add_friend_icon)
+	add_row.setup(
+		tr("FRIENDS.ADD"),
+		_add_friend_panel_scene,
+		self)
+	_row_container.add_child(add_row)
+	_connect_row_clicked(add_row)
 
 	# Spacer.
 	var list_spacer := Control.new()
@@ -168,38 +176,6 @@ func _build_friend_code_section() -> void:
 	G.backend_api_client.fetch_player_profile()
 
 
-func _build_add_friend_section() -> void:
-	var add_row := ActionRow.new()
-	add_row.setup_actions(
-		_on_add_friend_pressed,
-		_on_add_friend_pressed)
-
-	var add_container := HBoxContainer.new()
-	add_container.add_theme_constant_override(
-		"separation", 8)
-	add_container.mouse_filter = (
-		Control.MOUSE_FILTER_IGNORE)
-	add_row.add_child(add_container)
-
-	_add_input = LineEdit.new()
-	_add_input.placeholder_text = (
-		tr("FRIENDS.ENTER_CODE"))
-	_add_input.size_flags_horizontal = (
-		Control.SIZE_EXPAND_FILL)
-	_add_input.max_length = 6
-	add_container.add_child(_add_input)
-
-	_add_button = Button.new()
-	_add_button.text = tr("FRIENDS.ADD")
-	_add_button.icon = _add_friend_icon
-	_add_button.expand_icon = true
-	_add_button.pressed.connect(
-		_on_add_friend_pressed)
-	add_container.add_child(_add_button)
-
-	_row_container.add_child(add_row)
-	_connect_row_clicked(add_row)
-
 
 func _refresh_friends() -> void:
 	_is_loading = true
@@ -231,35 +207,12 @@ func _on_copy_code_pressed() -> void:
 			tr("FRIENDS.CODE_COPIED"))
 
 
-func _on_add_friend_pressed() -> void:
-	var code := (
-		_add_input.text.strip_edges().to_upper())
-	if code.is_empty():
-		return
-	_add_button.disabled = true
-	G.friends_api_client.send_request_by_code(code)
-
-
 func _on_friend_request_sent(
-	data: Dictionary,
+	_data: Dictionary,
 ) -> void:
-	_add_button.disabled = false
-	_add_input.text = ""
-	var result: String = data.get("result", "")
-	if is_instance_valid(G.toast_overlay):
-		match result:
-			"request_sent":
-				G.toast_overlay.show_toast(
-					tr("FRIENDS.REQUEST_SENT"))
-			"auto_accepted":
-				G.toast_overlay.show_toast(
-					tr("FRIENDS.ADDED"))
-			"already_friends":
-				G.toast_overlay.show_toast(
-					tr("FRIENDS.ALREADY_FRIENDS"))
-			"already_pending":
-				G.toast_overlay.show_toast(
-					tr("FRIENDS.ALREADY_PENDING"))
+	# Toast and button handling are in
+	# AddFriendPanel. Refresh the list here so it
+	# is up to date when the sub-panel pops.
 	_refresh_friends()
 
 
@@ -318,8 +271,6 @@ func _on_request_failed(error: String) -> void:
 	_is_loading = false
 	if is_instance_valid(_loading_spinner):
 		_loading_spinner.visible = false
-	if is_instance_valid(_add_button):
-		_add_button.disabled = false
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
 			error, G.toast_overlay.Type.ERROR)
