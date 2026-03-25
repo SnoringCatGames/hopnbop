@@ -81,6 +81,7 @@ FRIENDS.ACCEPT,Accept,接受,Aceptar,स्वीकार करें,قبول
 FRIENDS.REJECT,Reject,拒绝,Rechazar,अस्वीकार करें,رفض,Refuser,Recusar,Отклонить,拒否,Ablehnen,거절,Rifiuta,ปฏิเสธ
 FRIENDS.CANCEL_REQUEST,Cancel,取消,Cancelar,रद्द करें,إلغاء,Annuler,Cancelar,Отменить,キャンセル,Abbrechen,취소,Annulla,ยกเลิก
 FRIENDS.PENDING,Pending,待处理,Pendiente,लंबित,قيد الانتظار,En attente,Pendente,Ожидание,保留中,Ausstehend,대기 중,In attesa,รอดำเนินการ
+FRIENDS.SEND_REQUEST,Send Request,发送请求,Enviar solicitud,अनुरोध भेजें,إرسال طلب,Envoyer la demande,Enviar pedido,Отправить запрос,リクエストを送る,Anfrage senden,요청 보내기,Invia richiesta,ส่งคำขอ
 PARTY.TITLE,Party,派对,Grupo,पार्टी,حفلة,Groupe,Grupo,Группа,パーティー,Gruppe,파티,Gruppo,ปาร์ตี้
 PARTY.INVITE,Invite Friend,邀请好友,Invitar amigo,मित्र आमंत्रित करें,دعوة صديق,Inviter un ami,Convidar amigo,Пригласить друга,フレンドを招待,Freund einladen,친구 초대,Invita amico,เชิญเพื่อน
 PARTY.START_MATCH,Start Match,开始比赛,Iniciar partida,मैच शुरू करें,بدء المباراة,Lancer la partie,Iniciar partida,Начать матч,マッチ開始,Spiel starten,매치 시작,Inizia partita,เริ่มแมตช์
