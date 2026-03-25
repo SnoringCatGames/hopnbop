@@ -363,6 +363,7 @@ func _network_process() -> void:
 		# every held frame (previous_bitmask = 0 from
 		# _apply_input_to_character), causing server/client
 		# divergence in AirJumpAction.
+		var did_restore_previous := false
 		if input_source._rollback_buffer.has_at(
 			frame_index - 1
 		):
@@ -377,6 +378,18 @@ func _network_process() -> void:
 						prev_input_state, &"actions"
 					)
 				)
+				did_restore_previous = true
+		if not did_restore_previous:
+			# Previous frame's input is missing from the
+			# buffer (common for forwarded input with
+			# packet loss). Default to current bitmask so
+			# no buttons register as "just pressed." This
+			# matches the extrapolation path and prevents
+			# false jump triggers for remote players
+			# holding UP.
+			character.actions.previous_bitmask = (
+				character.actions.bitmask
+			)
 
 		character.surfaces.update_actions()
 		if Netcode.log.is_verbose:
