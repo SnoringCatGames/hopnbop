@@ -80,6 +80,7 @@ FRIENDS.FRIENDS_LIST,Friends,好友,Amigos,मित्र,الأصدقاء,Amis
 FRIENDS.ACCEPT,Accept,接受,Aceptar,स्वीकार करें,قبول,Accepter,Aceitar,Принять,承認,Annehmen,수락,Accetta,ยอมรับ
 FRIENDS.REJECT,Reject,拒绝,Rechazar,अस्वीकार करें,رفض,Refuser,Recusar,Отклонить,拒否,Ablehnen,거절,Rifiuta,ปฏิเสธ
 FRIENDS.CANCEL_REQUEST,Cancel,取消,Cancelar,रद्द करें,إلغاء,Annuler,Cancelar,Отменить,キャンセル,Abbrechen,취소,Annulla,ยกเลิก
+FRIENDS.CAME_ONLINE,%s is now online,%s 现在在线,%s está en línea,%s अब ऑनलाइन है,%s الآن متصل,%s est maintenant en ligne,%s está online agora,%s теперь в сети,%s がオンラインになりました,%s ist jetzt online,%s이(가) 온라인 상태입니다,%s è ora online,%s ออนไลน์แล้ว
 FRIENDS.PENDING,Pending,待处理,Pendiente,लंबित,قيد الانتظار,En attente,Pendente,Ожидание,保留中,Ausstehend,대기 중,In attesa,รอดำเนินการ
 FRIENDS.SEND_REQUEST,Send Request,发送请求,Enviar solicitud,अनुरोध भेजें,إرسال طلب,Envoyer la demande,Enviar pedido,Отправить запрос,リクエストを送る,Anfrage senden,요청 보내기,Invia richiesta,ส่งคำขอ
 PARTY.TITLE,Party,派对,Grupo,पार्टी,حفلة,Groupe,Grupo,Группа,パーティー,Gruppe,파티,Gruppo,ปาร์ตี้
