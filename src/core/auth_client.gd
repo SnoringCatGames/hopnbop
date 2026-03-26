@@ -44,6 +44,10 @@ signal export_completed(
 	data: Dictionary,
 )
 
+## Emitted when an ephemeral guest JWT has been
+## obtained (or failed) for an anonymous player.
+signal guest_jwt_obtained(success: bool, error: String)
+
 ## Status updates for UI feedback.
 signal auth_status_changed(status: String)
 
@@ -80,6 +84,7 @@ const _HTTPS_REDIRECT_PROVIDERS := [
 const _REFRESH_COOLDOWN_SEC := 60.0
 const _AUTH_ENDPOINT := "/auth/login"
 const _ANON_ENDPOINT := "/auth/anon"
+const _GUEST_ENDPOINT := "/auth/guest"
 const _REFRESH_ENDPOINT := "/auth/refresh"
 const _LINK_ENDPOINT := "/auth/link"
 const _UNLINK_ENDPOINT := "/auth/unlink"
@@ -209,33 +214,66 @@ func submit_platform_token(
 	_send_auth_request(_AUTH_ENDPOINT, body)
 
 
-## Anonymous login using device ID.
+## Anonymous login — creates a local-only identity
+## without any backend call. No JWT is issued here.
+## An ephemeral guest JWT is obtained on-demand via
+## get_guest_jwt() when the player starts matchmaking.
 func login_anonymous() -> void:
-	auth_status_changed.emit("Signing in...")
-	var device_id := OS.get_unique_id()
-	if device_id.is_empty():
-		device_id = _generate_fallback_device_id()
-	# In preview mode, append client number so
-	# each instance gets a unique player identity.
-	if (
-		Netcode.is_preview
-		and Netcode.is_client
-		and Netcode.preview_client_number > 0
-	):
-		device_id += (
-			"_client%d"
-			% Netcode.preview_client_number)
+	var store := G.auth_token_store
+	store.is_anonymous = true
+	store.display_name = _generate_anonymous_name()
+	store.local_player_id = _generate_state_nonce()
+	store.save_tokens()
+	auth_completed.emit(true, "")
 
-	var body := {
-		"device_id": device_id,
-		"consent_accepted_at": (
-			G.auth_token_store.consent_accepted_at
-		),
-		"consent_legal_version": (
-			G.auth_token_store.consent_legal_version
-		),
-	}
-	_send_auth_request(_ANON_ENDPOINT, body)
+
+## Obtain an ephemeral guest JWT for the current
+## anonymous session. The token is stored in memory
+## only (never written to disk). Emits
+## guest_jwt_obtained when complete. If a valid
+## in-memory token already exists, emits immediately.
+func get_guest_jwt() -> void:
+	if G.auth_token_store.is_token_valid():
+		guest_jwt_obtained.emit(true, "")
+		return
+
+	var url := (
+		G.settings.gamelift_backend_api_url
+		+ _GUEST_ENDPOINT
+	)
+	G.log.print(
+		"[AuthClient] HTTP POST %s (guest JWT)"
+		% url
+	)
+
+	_http_request.cancel_request()
+
+	if _http_request.request_completed.is_connected(
+		_on_auth_response
+	):
+		_http_request.request_completed.disconnect(
+			_on_auth_response
+		)
+
+	_http_request.request_completed.connect(
+		_on_guest_jwt_response, CONNECT_ONE_SHOT
+	)
+
+	var err := _http_request.request(
+		url,
+		["Content-Type: application/json"],
+		HTTPClient.METHOD_POST,
+		"{}",
+	)
+	if err != OK:
+		G.log.warning(
+			"[AuthClient] Guest JWT request"
+			+ " error: %d" % err
+		)
+		guest_jwt_obtained.emit(
+			false,
+			"HTTP request failed: %d" % err,
+		)
 
 
 ## Refresh the current JWT using the stored refresh
@@ -1133,6 +1171,68 @@ func _build_facebook_auth_url(
 # =============================================================
 # Utilities
 # =============================================================
+
+
+func _on_guest_jwt_response(
+	result: int,
+	response_code: int,
+	_headers: PackedStringArray,
+	body: PackedByteArray,
+) -> void:
+	G.log.print(
+		"[AuthClient] Guest JWT response:"
+		+ " result=%d code=%d"
+		% [result, response_code]
+	)
+
+	if result != HTTPRequest.RESULT_SUCCESS:
+		guest_jwt_obtained.emit(
+			false, "Request failed: %d" % result
+		)
+		return
+
+	var json := JSON.new()
+	var parse_err := json.parse(
+		body.get_string_from_utf8()
+	)
+	if parse_err != OK:
+		guest_jwt_obtained.emit(
+			false, "Invalid server response"
+		)
+		return
+
+	var data: Dictionary = json.data
+
+	if response_code != 200:
+		var msg: String = data.get(
+			"message", "Guest auth failed"
+		)
+		guest_jwt_obtained.emit(false, msg)
+		return
+
+	# Store guest JWT in memory only. save_tokens()
+	# omits these fields for anonymous users, so they
+	# are never written to disk.
+	var store := G.auth_token_store
+	store.jwt_token = data.get("jwt_token", "")
+	store.player_id = data.get("player_id", "")
+	store.expires_at = data.get("expires_at", 0)
+	guest_jwt_obtained.emit(true, "")
+
+
+func _generate_anonymous_name() -> String:
+	# Produce a display name like "Bunny_4821" using
+	# the game's theme. Each session generates a new
+	# name; returning players keep their stored name.
+	var suffixes := [
+		"Dott", "Jiffy", "Fizz", "Pip",
+		"Zap", "Mop", "Nib", "Fuzz",
+		"Bop", "Hop",
+	]
+	var suffix: String = (
+		suffixes[randi() % suffixes.size()]
+	)
+	return suffix + "_" + str(randi() % 9000 + 1000)
 
 
 func _generate_state_nonce() -> String:

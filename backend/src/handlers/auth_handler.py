@@ -4,6 +4,7 @@ import json
 import os
 import secrets
 import asyncio
+import uuid
 from datetime import datetime, timedelta
 from typing import Dict, Any
 import boto3
@@ -318,6 +319,71 @@ def anonymous_login(
             value=1,
         )
         logger.exception("Anonymous login error")
+        return _error(
+            500, "INTERNAL_ERROR", "Internal server error"
+        )
+
+
+@tracer.capture_lambda_handler
+@logger.inject_lambda_context
+@metrics.log_metrics
+def guest_login(
+    event: Dict[str, Any], context: LambdaContext
+) -> Dict:
+    """POST /auth/guest - Issue an ephemeral guest JWT.
+
+    Creates a short-lived token for an anonymous player
+    without writing anything to the database. Used when
+    an anonymous client starts matchmaking.
+    """
+    try:
+        player_id = f"PL_guest_{uuid.uuid4().hex[:16]}"
+
+        now = datetime.now()
+        expires_at = now + timedelta(hours=1)
+        auth_token = AuthToken(
+            player_id=player_id,
+            display_name="",
+            provider="guest",
+            is_anonymous=True,
+            is_guest=True,
+            issued_at=now,
+            expires_at=expires_at,
+        )
+        jwt_secret = auth_service.jwt_secret
+        jwt_token = auth_token.to_jwt(jwt_secret)
+
+        logger.info(f"Guest login: {player_id}")
+        metrics.add_dimension(
+            name="provider", value="guest"
+        )
+        metrics.add_metric(
+            name="auth_success",
+            unit=MetricUnit.Count,
+            value=1,
+        )
+
+        return {
+            "statusCode": 200,
+            "headers": _HEADERS,
+            "body": json.dumps(
+                {
+                    "status": "success",
+                    "jwt_token": jwt_token,
+                    "player_id": player_id,
+                    "game_version": _GAME_VERSION,
+                    "protocol_version": (
+                        _PROTOCOL_VERSION
+                    ),
+                    "expires_at": int(
+                        expires_at.timestamp()
+                    ),
+                }
+            ),
+        }
+
+    except Exception:
+        logger.exception("Guest login error")
         return _error(
             500, "INTERNAL_ERROR", "Internal server error"
         )

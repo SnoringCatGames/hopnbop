@@ -670,6 +670,30 @@ class FriendsService:
                     "updated_at": now,
                 })
 
+    async def get_accepted_friend_ids(
+        self, player_id: str
+    ) -> List[str]:
+        """Return just the friend_ids of accepted
+        relationships for a player. Used by presence
+        to avoid fetching display names."""
+        response = self.friends_table.query(
+            KeyConditionExpression=(
+                boto3.dynamodb.conditions.Key(
+                    "player_id"
+                ).eq(player_id)
+            ),
+            FilterExpression=(
+                boto3.dynamodb.conditions.Attr(
+                    "status"
+                ).eq(STATUS_ACCEPTED)
+            ),
+            ProjectionExpression="friend_id",
+        )
+        return [
+            item["friend_id"]
+            for item in response["Items"]
+        ]
+
     async def get_friends_data_for_export(
         self, player_id: str
     ) -> List[dict]:

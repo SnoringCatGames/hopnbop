@@ -69,6 +69,26 @@ func client_request_session_ids(
 		request_body["session_preferences"] = (
 			session_prefs)
 
+	# Anonymous players do not have a persistent JWT.
+	# Obtain an ephemeral guest token now so the
+	# matchmaking request can include Authorization.
+	if (
+		is_instance_valid(G)
+		and G.auth_token_store != null
+		and G.auth_token_store.is_anonymous
+		and not G.auth_token_store.is_token_valid()
+	):
+		G.auth_client.get_guest_jwt()
+		var result: Array = (
+			await G.auth_client.guest_jwt_obtained)
+		var success: bool = result[0]
+		var error: String = result[1]
+		if not success:
+			session_request_failed.emit(
+				"Failed to get session token: "
+				+ error)
+			return
+
 	_start_matchmaking(request_body)
 
 

@@ -8,6 +8,11 @@ extends RefCounted
 ## identity collisions during matchmaking. Uses
 ## OS.get_unique_id() as the encryption passphrase for
 ## basic obfuscation.
+##
+## Anonymous players use a local-only identity. Their JWT
+## is never saved to disk. A short-lived guest JWT is
+## obtained on-demand before matchmaking and held only in
+## memory for the duration of the session.
 
 const LEGAL_VERSION := "1.1"
 
@@ -22,6 +27,7 @@ var player_id := ""
 var display_name := ""
 var provider := ""
 var is_anonymous := false
+var local_player_id := ""
 var expires_at := 0
 var rating := 1500
 var linked_providers: Array[String] = []
@@ -52,6 +58,13 @@ static func _get_preview_client_number() -> int:
 	return 0
 
 
+## Returns true when the player has a usable local
+## identity without needing a backend JWT. Anonymous
+## players can navigate to the lobby immediately.
+func is_anonymous_ready() -> bool:
+	return is_anonymous
+
+
 ## Returns true when a JWT exists and has not expired.
 func is_token_valid() -> bool:
 	if jwt_token.is_empty():
@@ -73,8 +86,11 @@ func has_valid_consent(
 
 
 ## Returns true when the JWT is close to expiring
-## but a refresh token is available.
+## but a refresh token is available. Anonymous users
+## never have a refresh token, so this returns false.
 func needs_refresh() -> bool:
+	if is_anonymous:
+		return false
 	if refresh_token.is_empty():
 		return false
 	if jwt_token.is_empty():
@@ -119,6 +135,7 @@ func clear_tokens() -> void:
 	display_name = ""
 	provider = ""
 	is_anonymous = false
+	local_player_id = ""
 	expires_at = 0
 	rating = 1500
 	linked_providers.clear()
@@ -131,25 +148,21 @@ func clear_tokens() -> void:
 
 
 ## Persist current auth state to encrypted file.
+##
+## For anonymous players, JWT fields are intentionally
+## omitted so the token is never written to disk.
+## If a previous anonymous account had JWT fields
+## (legacy), they are overwritten with empty values.
 func save_tokens() -> void:
 	var config := ConfigFile.new()
-	config.set_value(_SECTION, "jwt_token", jwt_token)
-	config.set_value(
-		_SECTION, "refresh_token", refresh_token
-	)
-	config.set_value(_SECTION, "player_id", player_id)
-	config.set_value(
-		_SECTION, "display_name", display_name
-	)
-	config.set_value(_SECTION, "provider", provider)
 	config.set_value(
 		_SECTION, "is_anonymous", is_anonymous
 	)
-	config.set_value(_SECTION, "expires_at", expires_at)
-	config.set_value(_SECTION, "rating", rating)
 	config.set_value(
-		_SECTION, "linked_providers",
-		linked_providers,
+		_SECTION, "display_name", display_name
+	)
+	config.set_value(
+		_SECTION, "local_player_id", local_player_id
 	)
 	config.set_value(
 		_SECTION, "consent_accepted_at",
@@ -159,10 +172,31 @@ func save_tokens() -> void:
 		_SECTION, "consent_legal_version",
 		consent_legal_version,
 	)
-	config.set_value(
-		_SECTION, "profile_image_url",
-		profile_image_url,
-	)
+	if not is_anonymous:
+		config.set_value(
+			_SECTION, "jwt_token", jwt_token
+		)
+		config.set_value(
+			_SECTION, "refresh_token", refresh_token
+		)
+		config.set_value(
+			_SECTION, "player_id", player_id
+		)
+		config.set_value(
+			_SECTION, "provider", provider
+		)
+		config.set_value(
+			_SECTION, "expires_at", expires_at
+		)
+		config.set_value(_SECTION, "rating", rating)
+		config.set_value(
+			_SECTION, "linked_providers",
+			linked_providers,
+		)
+		config.set_value(
+			_SECTION, "profile_image_url",
+			profile_image_url,
+		)
 	config.save_encrypted_pass(
 		_auth_file_path, _get_passphrase()
 	)
@@ -176,45 +210,52 @@ func load_tokens() -> void:
 	)
 	if err != OK:
 		return
-	jwt_token = config.get_value(
-		_SECTION, "jwt_token", ""
-	)
-	refresh_token = config.get_value(
-		_SECTION, "refresh_token", ""
-	)
-	player_id = config.get_value(
-		_SECTION, "player_id", ""
+	is_anonymous = config.get_value(
+		_SECTION, "is_anonymous", false
 	)
 	display_name = config.get_value(
 		_SECTION, "display_name", ""
 	)
-	provider = config.get_value(
-		_SECTION, "provider", ""
+	local_player_id = config.get_value(
+		_SECTION, "local_player_id", ""
 	)
-	is_anonymous = config.get_value(
-		_SECTION, "is_anonymous", false
-	)
-	expires_at = config.get_value(
-		_SECTION, "expires_at", 0
-	)
-	rating = config.get_value(
-		_SECTION, "rating", 1500
-	)
-	linked_providers.clear()
-	var lp: Array = config.get_value(
-		_SECTION, "linked_providers", []
-	)
-	for p in lp:
-		linked_providers.append(str(p))
 	consent_accepted_at = config.get_value(
 		_SECTION, "consent_accepted_at", 0
 	)
 	consent_legal_version = config.get_value(
 		_SECTION, "consent_legal_version", ""
 	)
-	profile_image_url = config.get_value(
-		_SECTION, "profile_image_url", ""
-	)
+	# JWT fields are only persisted for non-anonymous
+	# players. Anonymous players' tokens are ephemeral
+	# and obtained on-demand before matchmaking.
+	if not is_anonymous:
+		jwt_token = config.get_value(
+			_SECTION, "jwt_token", ""
+		)
+		refresh_token = config.get_value(
+			_SECTION, "refresh_token", ""
+		)
+		player_id = config.get_value(
+			_SECTION, "player_id", ""
+		)
+		provider = config.get_value(
+			_SECTION, "provider", ""
+		)
+		expires_at = config.get_value(
+			_SECTION, "expires_at", 0
+		)
+		rating = config.get_value(
+			_SECTION, "rating", 1500
+		)
+		linked_providers.clear()
+		var lp: Array = config.get_value(
+			_SECTION, "linked_providers", []
+		)
+		for p in lp:
+			linked_providers.append(str(p))
+		profile_image_url = config.get_value(
+			_SECTION, "profile_image_url", ""
+		)
 
 
 func _get_passphrase() -> String:

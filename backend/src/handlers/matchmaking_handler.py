@@ -143,12 +143,21 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             auth_token = AuthToken.from_jwt(jwt_token, jwt_secret)
 
         player_id = auth_token.player_id
+        is_guest = auth_token.is_guest
 
-        # Rate limiting.
-        if not rate_limiter.check_limit(player_id, "matchmaking", max_per_min=5):
-            return error_response(
-                429, "RATE_LIMIT", "Too many requests", retry_after=60
-            )
+        # Rate limiting (skip for guests — each has a
+        # unique ephemeral ID so rate limiting is
+        # ineffective; abuse is mitigated server-side).
+        if not is_guest:
+            if not rate_limiter.check_limit(
+                player_id, "matchmaking", max_per_min=5
+            ):
+                return error_response(
+                    429,
+                    "RATE_LIMIT",
+                    "Too many requests",
+                    retry_after=60,
+                )
 
         # Parse request body.
         body = json.loads(event.get("body", "{}"))
@@ -162,7 +171,9 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
 
         # Validate input.
         if player_count < 1 or player_count > 4:
-            return error_response(400, "INVALID_INPUT", "player_count must be 1-4")
+            return error_response(
+                400, "INVALID_INPUT", "player_count must be 1-4"
+            )
 
         # Parse session preferences.
         session_prefs = parse_session_preference(
@@ -176,58 +187,76 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             f"session prefs: {session_prefs_data}"
         )
 
-        # Get or create player profile.
-        player_profile = asyncio.run(
-            player_service.get_or_create_player(
-                player_id,
-                auth_token.display_name,
-                {},
+        # Guest players have no persistent profile.
+        # Use a default rating and skip DB operations.
+        if is_guest:
+            skill_rating = 1500
+        else:
+            player_profile = asyncio.run(
+                player_service.get_or_create_player(
+                    player_id,
+                    auth_token.display_name,
+                    {},
+                )
             )
-        )
+            skill_rating = player_profile.rating
 
         # Determine authentication status for FlexMatch
         # preference matching.
         is_authenticated = (
-            0 if auth_token.provider in ("anonymous", "debug") else 1
+            0
+            if auth_token.provider in (
+                "anonymous", "guest", "debug"
+            )
+            else 1
         )
 
         # Guard: reject if player is in an active match.
-        # Matchmaking-state sessions are overridable so
-        # players can re-queue after closing the page.
-        allowed, old_ticket, retry_after_seconds = (
-            active_session_service.try_start_matchmaking(
-                player_id, "pending"
-            )
-        )
-        if not allowed:
-            wait_msg = (
-                "Please wait %ds before re-queuing."
-                % retry_after_seconds
-                if retry_after_seconds > 0
-                else "Please finish or wait for it to end."
-            )
-            return error_response(
-                409,
-                "CONCURRENT_SESSION",
-                "You are already in an active match. "
-                + wait_msg,
-                retry_after_seconds=retry_after_seconds,
-            )
-        if old_ticket and old_ticket != "pending":
-            try:
-                asyncio.run(
-                    gamelift.cancel_matchmaking(old_ticket))
-            except Exception:
-                logger.warning(
-                    "Failed to cancel old ticket %s",
-                    old_ticket,
+        # Skip for guests — their IDs are ephemeral and
+        # they have no persistent session record.
+        if not is_guest:
+            allowed, old_ticket, retry_after_seconds = (
+                active_session_service.try_start_matchmaking(
+                    player_id, "pending"
                 )
+            )
+            if not allowed:
+                wait_msg = (
+                    "Please wait %ds before re-queuing."
+                    % retry_after_seconds
+                    if retry_after_seconds > 0
+                    else (
+                        "Please finish or wait for it"
+                        " to end."
+                    )
+                )
+                return error_response(
+                    409,
+                    "CONCURRENT_SESSION",
+                    "You are already in an active match. "
+                    + wait_msg,
+                    retry_after_seconds=(
+                        retry_after_seconds
+                    ),
+                )
+            if old_ticket and old_ticket != "pending":
+                try:
+                    asyncio.run(
+                        gamelift.cancel_matchmaking(
+                            old_ticket
+                        )
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to cancel old ticket %s",
+                        old_ticket,
+                    )
 
         # Create matchmaking players (one per local player).
         players = [
             MatchmakingPlayer(
                 player_id=f"{player_id}_{i}",
-                skill_rating=player_profile.rating,
+                skill_rating=skill_rating,
                 region="us-west-2",
                 latency_map={"us-west-2": 50},
                 platform=platform,
@@ -236,8 +265,9 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             for i in range(player_count)
         ]
 
-        # Start matchmaking. Clear the session lock on failure
-        # so the player is not stuck waiting for TTL expiry.
+        # Start matchmaking. Clear the session lock on
+        # failure so the player is not stuck waiting for
+        # TTL expiry (only applies to non-guest players).
         config_name = os.environ.get(
             "MATCHMAKING_CONFIG", "hopnbop-ffa-matchmaker"
         )
@@ -248,37 +278,48 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
                 )
             )
         except Exception:
-            active_session_service.clear_session(player_id)
+            if not is_guest:
+                active_session_service.clear_session(
+                    player_id
+                )
             raise
 
-        # Update the session record with the real ticket ID.
-        active_session_service.update_ticket_id(
-            player_id, ticket_id
-        )
+        if not is_guest:
+            # Update the session record with the real
+            # ticket ID.
+            active_session_service.update_ticket_id(
+                player_id, ticket_id
+            )
 
         logger.info(f"Started matchmaking: {ticket_id}")
 
         # Poll until complete (blocking call).
         try:
-            result = asyncio.run(gamelift.poll_matchmaking(ticket_id))
+            result = asyncio.run(
+                gamelift.poll_matchmaking(ticket_id)
+            )
 
-            logger.info(f"Matchmaking complete: {result.game_session_id}")
+            logger.info(
+                f"Matchmaking complete: "
+                f"{result.game_session_id}"
+            )
             metrics.add_metric(
                 name="player_connected",
                 unit=MetricUnit.Count,
                 value=1,
             )
 
-            # Transition session state to in_match now that
-            # the game session ID is known.
-            active_session_service.transition_to_in_match(
-                player_id, result.game_session_id
-            )
+            if not is_guest:
+                # Transition session state to in_match now
+                # that the game session ID is known.
+                active_session_service.transition_to_in_match(
+                    player_id, result.game_session_id
+                )
 
             # Select level based on player preferences.
-            # In a full implementation, we would aggregate preferences from
-            # all players in the match. For now, use this player's prefs.
-            selected_level_id = select_level_for_match([level_prefs])
+            selected_level_id = select_level_for_match(
+                [level_prefs]
+            )
             logger.info(f"Selected level: {selected_level_id}")
 
             server_address, server_port = (
@@ -291,29 +332,52 @@ def join_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
                 "body": json.dumps(
                     {
                         "status": "success",
-                        "server_version": os.environ.get("GAME_VERSION", "0.1.0"),
-                        "protocol_version": int(os.environ.get("PROTOCOL_VERSION", "1")),
-                        "game_session_id": result.game_session_id,
+                        "server_version": os.environ.get(
+                            "GAME_VERSION", "0.1.0"
+                        ),
+                        "protocol_version": int(
+                            os.environ.get(
+                                "PROTOCOL_VERSION", "1"
+                            )
+                        ),
+                        "game_session_id": (
+                            result.game_session_id
+                        ),
                         "server_ip": server_address,
                         "server_port": server_port,
-                        "player_session_ids": result.player_session_ids,
-                        "selected_level_id": selected_level_id,
-                        "transport_type": result.transport_type,
+                        "player_session_ids": (
+                            result.player_session_ids
+                        ),
+                        "selected_level_id": (
+                            selected_level_id
+                        ),
+                        "transport_type": (
+                            result.transport_type
+                        ),
                     }
                 ),
             }
 
         except TimeoutError as e:
-            logger.warning(f"Matchmaking timeout: {ticket_id}")
-            active_session_service.clear_session(player_id)
-            return error_response(408, "MATCHMAKING_TIMEOUT", str(e))
+            logger.warning(
+                f"Matchmaking timeout: {ticket_id}"
+            )
+            if not is_guest:
+                active_session_service.clear_session(
+                    player_id
+                )
+            return error_response(
+                408, "MATCHMAKING_TIMEOUT", str(e)
+            )
 
     except ValueError as e:
         logger.error(f"Validation error: {e}")
         return error_response(400, "VALIDATION_ERROR", str(e))
     except Exception as e:
         logger.exception("Matchmaking error")
-        return error_response(500, "INTERNAL_ERROR", "Internal server error")
+        return error_response(
+            500, "INTERNAL_ERROR", "Internal server error"
+        )
 
 
 @tracer.capture_lambda_handler
@@ -346,12 +410,19 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             auth_token = AuthToken.from_jwt(jwt_token, jwt_secret)
 
         player_id = auth_token.player_id
+        is_guest = auth_token.is_guest
 
-        # Rate limiting.
-        if not rate_limiter.check_limit(player_id, "matchmaking", max_per_min=5):
-            return error_response(
-                429, "RATE_LIMIT", "Too many requests", retry_after=60
-            )
+        # Rate limiting (skip for guests).
+        if not is_guest:
+            if not rate_limiter.check_limit(
+                player_id, "matchmaking", max_per_min=5
+            ):
+                return error_response(
+                    429,
+                    "RATE_LIMIT",
+                    "Too many requests",
+                    retry_after=60,
+                )
 
         # Parse request body.
         body = json.loads(event.get("body", "{}"))
@@ -360,60 +431,78 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
 
         # Validate input.
         if player_count < 1 or player_count > 4:
-            return error_response(400, "INVALID_INPUT", "player_count must be 1-4")
-
-        # Get player profile.
-        player_profile = asyncio.run(
-            player_service.get_or_create_player(
-                player_id,
-                auth_token.display_name,
-                {},
+            return error_response(
+                400, "INVALID_INPUT", "player_count must be 1-4"
             )
-        )
+
+        # Guest players have no persistent profile.
+        if is_guest:
+            skill_rating = 1500
+        else:
+            player_profile = asyncio.run(
+                player_service.get_or_create_player(
+                    player_id,
+                    auth_token.display_name,
+                    {},
+                )
+            )
+            skill_rating = player_profile.rating
 
         # Determine authentication status for FlexMatch
         # preference matching.
         is_authenticated = (
-            0 if auth_token.provider in ("anonymous", "debug") else 1
+            0
+            if auth_token.provider in (
+                "anonymous", "guest", "debug"
+            )
+            else 1
         )
 
         # Guard: reject if player is in an active match.
-        # Matchmaking-state sessions are overridable so
-        # players can re-queue after closing the page.
-        allowed, old_ticket, retry_after_seconds = (
-            active_session_service.try_start_matchmaking(
-                player_id, "pending"
-            )
-        )
-        if not allowed:
-            wait_msg = (
-                "Please wait %ds before re-queuing."
-                % retry_after_seconds
-                if retry_after_seconds > 0
-                else "Please finish or wait for it to end."
-            )
-            return error_response(
-                409,
-                "CONCURRENT_SESSION",
-                "You are already in an active match. "
-                + wait_msg,
-                retry_after_seconds=retry_after_seconds,
-            )
-        if old_ticket and old_ticket != "pending":
-            try:
-                asyncio.run(
-                    gamelift.cancel_matchmaking(old_ticket))
-            except Exception:
-                logger.warning(
-                    "Failed to cancel old ticket %s",
-                    old_ticket,
+        # Skip for guests.
+        if not is_guest:
+            allowed, old_ticket, retry_after_seconds = (
+                active_session_service.try_start_matchmaking(
+                    player_id, "pending"
                 )
+            )
+            if not allowed:
+                wait_msg = (
+                    "Please wait %ds before re-queuing."
+                    % retry_after_seconds
+                    if retry_after_seconds > 0
+                    else (
+                        "Please finish or wait for it"
+                        " to end."
+                    )
+                )
+                return error_response(
+                    409,
+                    "CONCURRENT_SESSION",
+                    "You are already in an active match. "
+                    + wait_msg,
+                    retry_after_seconds=(
+                        retry_after_seconds
+                    ),
+                )
+            if old_ticket and old_ticket != "pending":
+                try:
+                    asyncio.run(
+                        gamelift.cancel_matchmaking(
+                            old_ticket
+                        )
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to cancel old ticket %s",
+                        old_ticket,
+                    )
 
         # Create matchmaking players.
         players = [
             MatchmakingPlayer(
                 player_id=f"{player_id}_{i}",
-                skill_rating=player_profile.rating,
+                skill_rating=skill_rating,
                 region="us-west-2",
                 latency_map={"us-west-2": 50},
                 platform=platform,
@@ -427,8 +516,8 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
             "session_preferences", {}
         )
 
-        # Start matchmaking. Clear the session lock on failure
-        # so the player is not stuck waiting for TTL expiry.
+        # Start matchmaking. Clear the session lock on
+        # failure (only for non-guest players).
         config_name = os.environ.get(
             "MATCHMAKING_CONFIG", "hopnbop-ffa-matchmaker"
         )
@@ -439,19 +528,29 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
                 )
             )
         except Exception:
-            active_session_service.clear_session(player_id)
+            if not is_guest:
+                active_session_service.clear_session(
+                    player_id
+                )
             raise
 
-        # Update the session record with the real ticket ID.
-        active_session_service.update_ticket_id(
-            player_id, ticket_id
-        )
+        if not is_guest:
+            # Update the session record with the real
+            # ticket ID.
+            active_session_service.update_ticket_id(
+                player_id, ticket_id
+            )
 
-        logger.info(f"Started matchmaking for {player_id}: {ticket_id}")
+        logger.info(
+            f"Started matchmaking for {player_id}: "
+            f"{ticket_id}"
+        )
 
         # Store session preferences for level selection
         # when polling completes.
-        _pending_session_prefs[ticket_id] = session_prefs_data
+        _pending_session_prefs[ticket_id] = (
+            session_prefs_data
+        )
 
         return {
             "statusCode": 200,
@@ -469,7 +568,9 @@ def start_matchmaking(event: Dict[str, Any], context: LambdaContext) -> Dict:
         return error_response(400, "VALIDATION_ERROR", str(e))
     except Exception as e:
         logger.exception("Matchmaking error")
-        return error_response(500, "INTERNAL_ERROR", "Internal server error")
+        return error_response(
+            500, "INTERNAL_ERROR", "Internal server error"
+        )
 
 
 @tracer.capture_lambda_handler
@@ -487,22 +588,34 @@ def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dic
 
         # Accept debug tokens. Capture player_id for session
         # cleanup on terminal status.
+        is_guest = False
         if jwt_token.startswith("DEBUG_"):
             player_id = jwt_token
         else:
-            auth_token = AuthToken.from_jwt(jwt_token, jwt_secret)
+            auth_token = AuthToken.from_jwt(
+                jwt_token, jwt_secret
+            )
             player_id = auth_token.player_id
+            is_guest = auth_token.is_guest
 
         # Get ticket ID from path.
-        ticket_id = event.get("pathParameters", {}).get("ticket_id")
+        ticket_id = (
+            event.get("pathParameters", {}).get("ticket_id")
+        )
         if not ticket_id:
-            return error_response(400, "MISSING_TICKET", "Missing ticket_id")
+            return error_response(
+                400, "MISSING_TICKET", "Missing ticket_id"
+            )
 
         # Try non-blocking status check first.
-        status = asyncio.run(gamelift.get_ticket_status(ticket_id))
+        status = asyncio.run(
+            gamelift.get_ticket_status(ticket_id)
+        )
 
         # If still in progress, return current status.
-        if status["status"] in ["queued", "searching", "placing"]:
+        if status["status"] in [
+            "queued", "searching", "placing"
+        ]:
             return {
                 "statusCode": 200,
                 "headers": _HEADERS,
@@ -511,13 +624,17 @@ def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dic
 
         # If completed, do full poll to get connection info.
         if status["status"] == "completed":
-            result = asyncio.run(gamelift.poll_matchmaking(ticket_id))
-
-            # Transition session state from matchmaking to
-            # in_match now that the game session ID is known.
-            active_session_service.transition_to_in_match(
-                player_id, result.game_session_id
+            result = asyncio.run(
+                gamelift.poll_matchmaking(ticket_id)
             )
+
+            if not is_guest:
+                # Transition session state from matchmaking
+                # to in_match now that the session ID is
+                # known.
+                active_session_service.transition_to_in_match(
+                    player_id, result.game_session_id
+                )
 
             # Select level from stored session preferences.
             session_prefs_data = _pending_session_prefs.pop(
@@ -544,19 +661,33 @@ def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dic
                         "server_version": os.environ.get(
                             "GAME_VERSION", "0.1.0"
                         ),
-                        "protocol_version": int(os.environ.get("PROTOCOL_VERSION", "1")),
-                        "game_session_id": result.game_session_id,
+                        "protocol_version": int(
+                            os.environ.get(
+                                "PROTOCOL_VERSION", "1"
+                            )
+                        ),
+                        "game_session_id": (
+                            result.game_session_id
+                        ),
                         "server_ip": server_address,
                         "server_port": server_port,
-                        "player_session_ids": result.player_session_ids,
-                        "selected_level_id": selected_level_id,
-                        "transport_type": result.transport_type,
+                        "player_session_ids": (
+                            result.player_session_ids
+                        ),
+                        "selected_level_id": (
+                            selected_level_id
+                        ),
+                        "transport_type": (
+                            result.transport_type
+                        ),
                     }
                 ),
             }
 
-        # Failed/cancelled/timeout — release the session lock.
-        active_session_service.clear_session(player_id)
+        # Failed/cancelled/timeout.
+        # Release the session lock for non-guest players.
+        if not is_guest:
+            active_session_service.clear_session(player_id)
         return {
             "statusCode": 200,
             "headers": _HEADERS,

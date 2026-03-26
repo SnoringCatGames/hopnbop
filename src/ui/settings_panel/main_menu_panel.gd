@@ -44,6 +44,20 @@ func build_ui() -> void:
 		Vector2(0, 20))
 	_row_container.add_child(close_spacer)
 
+	# Account trigger.
+	_add_sub_panel_trigger_row(
+		tr("SETTINGS.ACCOUNT"),
+		_account_panel_scene,
+		icon_account)
+
+	# Friends trigger (hidden for anonymous players).
+	if not G.auth_token_store.is_anonymous:
+		var friends_row := _add_sub_panel_trigger_row(
+			tr("SETTINGS.FRIENDS"),
+			_friends_panel_scene,
+			icon_friends)
+		_connect_friends_badge(friends_row)
+
 	# Settings trigger.
 	_add_sub_panel_trigger_row(
 		tr("SETTINGS.SETTINGS"),
@@ -68,20 +82,6 @@ func build_ui() -> void:
 			tr("SETTINGS.MY_STATS"),
 			ScreensMain.ScreenType.MY_STATS,
 			icon_my_stats)
-
-	# Friends trigger (hidden for anonymous players).
-	if not G.auth_token_store.is_anonymous:
-		var friends_row := _add_sub_panel_trigger_row(
-			tr("SETTINGS.FRIENDS"),
-			_friends_panel_scene,
-			icon_friends)
-		_connect_friends_badge(friends_row)
-
-	# Account trigger.
-	_add_sub_panel_trigger_row(
-		tr("SETTINGS.ACCOUNT"),
-		_account_panel_scene,
-		icon_account)
 
 	# Info trigger.
 	_add_sub_panel_trigger_row(

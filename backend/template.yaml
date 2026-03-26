@@ -116,6 +116,21 @@ Resources:
             Path: /auth/anon
             Method: post
 
+  AuthGuestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.auth_handler.guest_login
+      Policies:
+        - !Ref SecretsManagerPolicy
+      Events:
+        GuestLogin:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /auth/guest
+            Method: post
+
   AuthRefreshFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -738,6 +753,26 @@ Resources:
             RestApiId: !Ref GameBackendAPI
             Path: /friends/search
             Method: get
+
+  # Presence Functions
+  PresenceHeartbeatFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.presence_handler.heartbeat
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FriendsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PlayersTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        PresenceHeartbeat:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /presence/heartbeat
+            Method: post
 
   # Party Functions
   CreatePartyFunction:

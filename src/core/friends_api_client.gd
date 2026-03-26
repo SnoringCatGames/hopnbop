@@ -1,8 +1,9 @@
 class_name FriendsApiClient
 extends Node
-## HTTP client for friends API calls. Has two
+## HTTP client for friends API calls. Has three
 ## HTTPRequest nodes: one for user-initiated
-## actions and one for background polling.
+## actions, one for notification polling, and one
+## for presence heartbeat polling.
 
 
 signal friends_received(data: Dictionary)
@@ -14,6 +15,7 @@ signal friend_removed(data: Dictionary)
 signal friend_search_result(data: Dictionary)
 signal notifications_received(data: Dictionary)
 signal friends_marked_seen(data: Dictionary)
+signal presence_received(online_ids: Array[String])
 signal request_failed(error: String)
 
 ## Cached relationship data, updated on every
@@ -22,10 +24,16 @@ var cached_friends: Array[Dictionary] = []
 var cached_sent_requests: Array[Dictionary] = []
 var cached_incoming_requests: Array[Dictionary] = []
 
+## Cached online friend IDs, updated on every
+## presence_received response.
+var cached_online_ids: Array[String] = []
+
 var _http_request: HTTPRequest
 var _poll_http_request: HTTPRequest
+var _presence_http_request: HTTPRequest
 var _pending_signal: StringName = ""
 var _poll_pending := false
+var _presence_pending := false
 
 
 func _ready() -> void:
@@ -40,6 +48,13 @@ func _ready() -> void:
 	add_child(_poll_http_request)
 	_poll_http_request.request_completed.connect(
 		_on_poll_request_completed)
+
+	_presence_http_request = HTTPRequest.new()
+	_presence_http_request.name = (
+		"PresenceHTTPRequest")
+	add_child(_presence_http_request)
+	_presence_http_request.request_completed.connect(
+		_on_presence_request_completed)
 
 
 func fetch_friends() -> void:
@@ -187,12 +202,37 @@ func fetch_notifications(
 		_poll_pending = false
 
 
+## Send a presence heartbeat and fetch the online
+## status of friends. Uses the dedicated presence
+## HTTPRequest node.
+func fetch_presence() -> void:
+	if not _check_presence_available():
+		return
+	_presence_pending = true
+	var url := (
+		G.settings.gamelift_backend_api_url
+		+ "/presence/heartbeat"
+	)
+	var error := _presence_http_request.request(
+		url,
+		_get_auth_headers(),
+		HTTPClient.METHOD_POST,
+		"{}",
+	)
+	if error != OK:
+		_presence_pending = false
+
+
 func is_busy() -> bool:
 	return not _pending_signal.is_empty()
 
 
 func is_poll_busy() -> bool:
 	return _poll_pending
+
+
+func is_presence_busy() -> bool:
+	return _presence_pending
 
 
 ## Check if a player ID is in the cached friends
@@ -239,6 +279,16 @@ func _check_poll_available() -> bool:
 	if not G.auth_token_store.is_token_valid():
 		return false
 	if is_poll_busy():
+		return false
+	return true
+
+
+func _check_presence_available() -> bool:
+	if not G.auth_token_store.is_token_valid():
+		return false
+	if G.auth_token_store.is_anonymous:
+		return false
+	if is_presence_busy():
 		return false
 	return true
 
@@ -347,6 +397,30 @@ func _on_poll_request_completed(
 		return
 
 	notifications_received.emit(parsed)
+
+
+func _on_presence_request_completed(
+	result: int,
+	response_code: int,
+	_headers: PackedStringArray,
+	body: PackedByteArray,
+) -> void:
+	_presence_pending = false
+
+	if result != HTTPRequest.RESULT_SUCCESS:
+		return
+	var response_text := (
+		body.get_string_from_utf8())
+	var parsed = JSON.parse_string(response_text)
+	if parsed == null or not parsed is Dictionary:
+		return
+	if response_code != 200:
+		return
+
+	cached_online_ids.clear()
+	for id in parsed.get("online_friend_ids", []):
+		cached_online_ids.append(id)
+	presence_received.emit(cached_online_ids)
 
 
 func _update_cache(data: Dictionary) -> void:

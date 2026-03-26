@@ -10,17 +10,21 @@ signal unseen_count_changed(count: int)
 
 const _POLL_INTERVAL_SEC := 10.0
 const _FIRST_POLL_TOAST_DELAY_SEC := 1.0
+const _PRESENCE_POLL_INTERVAL_SEC := 30.0
 
 var unseen_count := 0
 
 var _poll_timer := 0.0
+var _presence_poll_timer := 0.0
 var _is_polling := false
 var _last_poll_timestamp := 0
 var _is_first_poll := true
+var _is_first_presence_poll := true
 
 ## Track known IDs to detect new arrivals.
 var _known_incoming_ids: Dictionary = {}
 var _known_accepted_ids: Dictionary = {}
+var _known_online_ids: Dictionary = {}
 
 
 func _ready() -> void:
@@ -36,6 +40,13 @@ func _ready() -> void:
 	G.friends_api_client\
 		.friends_marked_seen.connect(
 			_on_friends_marked_seen)
+	G.friends_api_client\
+		.presence_received.connect(
+			_on_presence_received)
+	# Prefetch friends list on auth so the cache
+	# is warm before the panel ever opens.
+	G.auth_client.auth_completed.connect(
+		_on_auth_completed)
 
 
 func _process(delta: float) -> void:
@@ -54,11 +65,21 @@ func _process(delta: float) -> void:
 				.fetch_notifications(
 					_last_poll_timestamp)
 
+	_presence_poll_timer += delta
+	if _presence_poll_timer >= _PRESENCE_POLL_INTERVAL_SEC:
+		_presence_poll_timer = 0.0
+		if not G.friends_api_client\
+				.is_presence_busy():
+			G.friends_api_client.fetch_presence()
 
-## Start polling for friend notifications.
+
+## Start polling for friend notifications and
+## presence.
 func start_polling() -> void:
 	_is_polling = true
 	_poll_timer = 0.0
+	# Fire presence poll on the next process tick.
+	_presence_poll_timer = _PRESENCE_POLL_INTERVAL_SEC
 
 
 ## Stop polling.
@@ -69,9 +90,11 @@ func stop_polling() -> void:
 ## Reset state for a new session.
 func reset() -> void:
 	_is_first_poll = true
+	_is_first_presence_poll = true
 	_last_poll_timestamp = 0
 	_known_incoming_ids.clear()
 	_known_accepted_ids.clear()
+	_known_online_ids.clear()
 	_set_unseen_count(0)
 
 
@@ -182,3 +205,50 @@ func _show_toasts_delayed(
 	await get_tree().create_timer(
 		_FIRST_POLL_TOAST_DELAY_SEC).timeout
 	_show_toasts(incoming, accepted)
+
+
+func _on_auth_completed(
+	success: bool, _error: String,
+) -> void:
+	if not success:
+		return
+	if not G.auth_token_store.is_token_valid():
+		return
+	if G.auth_token_store.is_anonymous:
+		return
+	if G.friends_api_client.is_busy():
+		return
+	G.friends_api_client.fetch_friends()
+
+
+func _on_presence_received(
+	online_ids: Array[String],
+) -> void:
+	var new_online: Array[String] = []
+	for id in online_ids:
+		if not _known_online_ids.has(id):
+			new_online.append(id)
+
+	# Rebuild known set to exactly current list.
+	_known_online_ids.clear()
+	for id in online_ids:
+		_known_online_ids[id] = true
+
+	if _is_first_presence_poll:
+		_is_first_presence_poll = false
+		return
+
+	if not is_instance_valid(G.toast_overlay):
+		return
+	for id in new_online:
+		var display_name := ""
+		for entry in G.friends_api_client\
+				.cached_friends:
+			if entry.get("player_id", "") == id:
+				display_name = entry.get(
+					"display_name", "")
+				break
+		if not display_name.is_empty():
+			G.toast_overlay.show_toast(
+				tr("FRIENDS.CAME_ONLINE")
+				% display_name)

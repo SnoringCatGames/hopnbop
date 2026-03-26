@@ -37,6 +37,7 @@ class AuthToken:
     is_anonymous: bool
     issued_at: datetime
     expires_at: datetime
+    is_guest: bool = False
 
     def to_jwt(self, secret: str) -> str:
         """Encode as JWT."""
@@ -45,6 +46,7 @@ class AuthToken:
             "name": self.display_name,
             "provider": self.provider,
             "anon": self.is_anonymous,
+            "guest": self.is_guest,
             "iat": int(self.issued_at.timestamp()),
             "exp": int(self.expires_at.timestamp()),
         }
@@ -69,6 +71,7 @@ class AuthToken:
             is_anonymous=payload.get("anon", False),
             issued_at=datetime.fromtimestamp(payload["iat"]),
             expires_at=datetime.fromtimestamp(payload["exp"]),
+            is_guest=payload.get("guest", False),
         )
 
 

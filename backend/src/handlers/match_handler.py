@@ -118,16 +118,26 @@ def submit_match_result(
                         f"Missing field: {field}",
                     )
 
-        match_service.record_match_result(
-            game_session_id=game_session_id,
-            match_duration_sec=float(match_duration_sec),
-            level_id=level_id,
-            player_results=player_results,
-        )
+        # Guest player IDs are ephemeral and have no
+        # persistent profile. Record only non-guest players.
+        persistent_results = [
+            pr for pr in player_results
+            if not pr["player_id"].startswith("PL_guest_")
+        ]
+
+        if persistent_results:
+            match_service.record_match_result(
+                game_session_id=game_session_id,
+                match_duration_sec=float(match_duration_sec),
+                level_id=level_id,
+                player_results=persistent_results,
+            )
 
         # Release active session locks so players can
         # matchmake again. Non-fatal: TTL cleans up stragglers.
         for pr in player_results:
+            if pr["player_id"].startswith("PL_guest_"):
+                continue
             try:
                 active_session_service.clear_session(
                     pr["player_id"]

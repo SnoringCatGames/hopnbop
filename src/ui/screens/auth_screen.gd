@@ -32,12 +32,17 @@ func on_open() -> void:
 	# In preview mode, force secondary clients to
 	# use anonymous login so each gets a unique
 	# player identity for matchmaking. Clear any
-	# cached tokens first so auto-refresh does not
-	# race with the anonymous login request.
+	# cached tokens first so they start fresh.
 	if _should_force_anonymous():
 		G.auth_token_store.clear_tokens()
 		_start_login(
 			AuthClient.Provider.ANONYMOUS)
+		return
+
+	# Anonymous players have a local-only identity.
+	# No network call is needed to enter the lobby.
+	if G.auth_token_store.is_anonymous_ready():
+		_navigate_to_lobby()
 		return
 
 	# Check cached token.

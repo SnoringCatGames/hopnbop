@@ -100,6 +100,8 @@ func build_ui() -> void:
 		_on_friend_removed)
 	G.friends_api_client.request_failed.connect(
 		_on_request_failed)
+	G.friends_api_client.presence_received.connect(
+		_on_presence_received)
 
 	# Fetch friends list. mark_seen is called after
 	# the list loads to avoid blocking the shared
@@ -119,6 +121,7 @@ func _exit_tree() -> void:
 		client.friend_request_cancelled,
 		client.friend_removed,
 		client.request_failed,
+		client.presence_received,
 	]
 	var callbacks: Array[Callable] = [
 		_on_friends_received,
@@ -128,6 +131,7 @@ func _exit_tree() -> void:
 		_on_friend_request_cancelled,
 		_on_friend_removed,
 		_on_request_failed,
+		_on_presence_received,
 	]
 	for i in signals_to_disconnect.size():
 		if signals_to_disconnect[i].is_connected(
@@ -180,10 +184,26 @@ func _build_friend_code_section() -> void:
 
 
 func _refresh_friends() -> void:
-	_is_loading = true
-	if is_instance_valid(_loading_spinner):
-		_loading_spinner.visible = true
-	G.friends_api_client.fetch_friends()
+	var client := G.friends_api_client
+	var has_cache := (
+		not client.cached_friends.is_empty()
+		or not client.cached_sent_requests.is_empty()
+		or not client.cached_incoming_requests
+			.is_empty()
+	)
+	if has_cache:
+		# Show cached data immediately; the server
+		# response will re-populate silently.
+		_populate_all_sections(
+			client.cached_friends,
+			client.cached_sent_requests,
+			client.cached_incoming_requests,
+		)
+	else:
+		_is_loading = true
+		if is_instance_valid(_loading_spinner):
+			_loading_spinner.visible = true
+	client.fetch_friends()
 
 
 func _on_profile_received(
@@ -276,6 +296,18 @@ func _on_request_failed(error: String) -> void:
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
 			error, G.toast_overlay.Type.ERROR)
+
+
+func _on_presence_received(
+	_online_ids: Array[String],
+) -> void:
+	if _is_loading:
+		return
+	_populate_all_sections(
+		G.friends_api_client.cached_friends,
+		G.friends_api_client.cached_sent_requests,
+		G.friends_api_client.cached_incoming_requests,
+	)
 
 
 func _populate_all_sections(
@@ -426,6 +458,10 @@ func _add_friend_row(
 	var display_name: String = entry.get(
 		"display_name", "Unknown")
 
+	var is_online := (
+		G.friends_api_client.cached_online_ids
+		.has(friend_id))
+
 	var row := ActionRow.new()
 
 	var content := HBoxContainer.new()
@@ -435,16 +471,28 @@ func _add_friend_row(
 		Control.MOUSE_FILTER_IGNORE)
 	row.add_child(content)
 
+	var dot_label := Label.new()
+	dot_label.text = "●"
+	if is_online:
+		dot_label.add_theme_color_override(
+			"font_color", Color(0.3, 0.9, 0.3))
+	else:
+		dot_label.add_theme_color_override(
+			"font_color", Color(0.5, 0.5, 0.5))
+	content.add_child(dot_label)
+
 	var name_label := Label.new()
 	name_label.text = display_name
 	name_label.size_flags_horizontal = (
 		Control.SIZE_EXPAND_FILL)
 	content.add_child(name_label)
 
-	# Invite to party button.
+	# Invite to party button. Disabled when the
+	# friend is offline.
 	var invite_button := Button.new()
 	invite_button.text = (
 		tr("FRIENDS.INVITE_TO_PARTY"))
+	invite_button.disabled = not is_online
 	content.add_child(invite_button)
 
 	var remove_button := Button.new()
