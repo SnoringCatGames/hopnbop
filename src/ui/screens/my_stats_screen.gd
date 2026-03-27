@@ -6,6 +6,8 @@ extends Screen
 
 
 const _FONT_SIZE := 28
+const _RETRY_DELAY_SEC := 0.5
+const _MAX_RETRIES := 6
 
 @export var _focus_style: StyleBoxTexture
 @export var _unfocused_style: StyleBoxFlat
@@ -13,6 +15,8 @@ const _FONT_SIZE := 28
 
 var _return_screen_type := (
 	ScreensMain.ScreenType.UNKNOWN)
+var _navigator := ScreenFocusNavigator.new()
+var _retry_count := 0
 
 
 func _enter_tree() -> void:
@@ -32,10 +36,13 @@ func on_open() -> void:
 	super.on_open()
 	_clear_content()
 	%ScrollContainer.scroll_vertical = 0
+	var items: Array[Control] = [%CloseRow]
+	_navigator.set_focusable_list(items)
+	_navigator.prime()
 	if not G.auth_token_store.is_token_valid():
-		%StatusLabel.text = "Not logged in"
-		%StatusLabel.show()
+		_show_status("Not logged in")
 		return
+	_retry_count = 0
 	_set_loading(true)
 	G.backend_api_client.fetch_player_profile()
 
@@ -46,6 +53,13 @@ func set_return_screen(
 	screen_type: ScreensMain.ScreenType,
 ) -> void:
 	_return_screen_type = screen_type
+
+
+func _process(_delta: float) -> void:
+	if not visible:
+		return
+	if _navigator.poll(_delta):
+		_on_close_pressed()
 
 
 func _unhandled_input(
@@ -77,9 +91,10 @@ func _on_profile_received(
 	var profile: Dictionary = data.get(
 		"profile", {})
 	if profile.is_empty():
-		%StatusLabel.text = "No data"
-		%StatusLabel.show()
+		_show_status("No data")
 		return
+
+	%ScrollContainer.show()
 
 	# Profile summary.
 	_add_stat_row(
@@ -139,9 +154,23 @@ func _on_request_failed(
 ) -> void:
 	if not visible:
 		return
+	if (error == error_string(ERR_BUSY)
+			and _retry_count < _MAX_RETRIES):
+		_retry_count += 1
+		(get_tree()
+			.create_timer(_RETRY_DELAY_SEC)
+			.timeout
+			.connect(
+				_retry_fetch, CONNECT_ONE_SHOT))
+		return
 	_set_loading(false)
-	%StatusLabel.text = error
-	%StatusLabel.show()
+	_show_status(error)
+
+
+func _retry_fetch() -> void:
+	if not visible:
+		return
+	G.backend_api_client.fetch_player_profile()
 
 
 func _add_stat_row(
@@ -223,15 +252,13 @@ func _add_match_row(m: Dictionary) -> void:
 
 
 func _setup_close_row() -> void:
-	_update_close_row_style(false)
+	_update_close_row_style()
 	(%CloseRow.gui_input
 		.connect(_on_close_row_gui_input))
-	(%CloseRow.mouse_entered
-		.connect(func() -> void:
-			_update_close_row_style(true)))
-	(%CloseRow.mouse_exited
-		.connect(func() -> void:
-			_update_close_row_style(false)))
+	(%CloseRow.focus_entered
+		.connect(_update_close_row_style))
+	(%CloseRow.focus_exited
+		.connect(_update_close_row_style))
 	if _x_icon != null:
 		%CloseIcon.texture = _x_icon
 		%CloseIcon.custom_minimum_size = (
@@ -239,10 +266,8 @@ func _setup_close_row() -> void:
 		%CloseIcon.show()
 
 
-func _update_close_row_style(
-	is_hovered: bool,
-) -> void:
-	if is_hovered:
+func _update_close_row_style() -> void:
+	if %CloseRow.has_focus():
 		%CloseRow.add_theme_stylebox_override(
 			"panel", _focus_style)
 	else:
@@ -261,13 +286,23 @@ func _on_close_row_gui_input(
 			_on_close_pressed()
 
 
+func _show_status(text: String) -> void:
+	%ScrollContainer.hide()
+	%StatusLabel.text = text
+	%StatusLabel.show()
+
+
 func _clear_content() -> void:
 	for child in (
 		%ContentContainer.get_children()
 	):
 		child.queue_free()
 	%StatusLabel.hide()
+	%ScrollContainer.hide()
 
 
 func _set_loading(loading: bool) -> void:
 	%LoadingSpinner.visible = loading
+	if loading:
+		%ScrollContainer.hide()
+		%StatusLabel.hide()

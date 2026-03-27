@@ -302,11 +302,12 @@ def get_leaderboard(
                 )
             )
             your_rank = 0
-            your_rating = 1500
+            your_rating = 0
             if player:
                 your_rating = player.rating
                 your_rank = (
-                    match_service.get_player_rank(
+                    leaderboard_service.get_player_rank(
+                        lb_id,
                         token.player_id,
                         player.rating,
                     )

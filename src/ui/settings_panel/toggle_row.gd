@@ -12,6 +12,7 @@ var _icon_texture: Texture2D
 var _is_inverted := false
 
 @onready var _checkbox: TextureButton = %Checkbox
+@onready var _icon: TextureRect = %Icon
 @onready var _label: Label = %Label
 
 @export_group("Checked Textures")
@@ -33,7 +34,7 @@ func set_indent(pixels: int) -> void:
 	_indent_pixels = pixels
 
 
-## Set an icon to display instead of the label.
+## Set an icon to display before the label.
 ## Call before add_child().
 func set_icon(tex: Texture2D) -> void:
 	_icon_texture = tex
@@ -58,21 +59,8 @@ func setup(
 
 func _ready() -> void:
 	super()
-	if _icon_texture != null:
-		_label.hide()
-		var icon := TextureRect.new()
-		icon.texture = _icon_texture
-		icon.custom_minimum_size = (
-			_icon_texture.get_size()
-			* G.settings.icon_scale)
-		icon.stretch_mode = (
-			TextureRect
-				.STRETCH_KEEP_ASPECT_CENTERED)
-		icon.mouse_filter = (
-			Control.MOUSE_FILTER_IGNORE)
-		_checkbox.get_parent().add_child(icon)
-	else:
-		_label.text = _display_name
+	_apply_icon(_icon, _icon_texture)
+	_label.text = _display_name
 	if _indent_pixels > 0:
 		var spacer := Control.new()
 		spacer.custom_minimum_size.x = (

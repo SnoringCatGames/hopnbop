@@ -12,13 +12,16 @@ const _TYPE_PARAMS: Array[String] = [
 	"alltime", "weekly",
 ]
 const _FONT_SIZE := 28
+const _FILTER_FONT_SIZE := 22
+const _ROW_PADDING := 8
 const _STRIPE_COLOR := Color(1.0, 1.0, 1.0, 0.06)
-const _SELECTED_PREFIX := "\u25b8 "
 
 @export var _focus_style: StyleBoxTexture
 @export var _unfocused_style: StyleBoxFlat
 @export var _x_icon: Texture2D
 @export var _filter_icon: Texture2D
+@export var _checkmark_icon: Texture2D
+@export var _binary_toggle_scene: PackedScene
 
 var _return_screen_type := (
 	ScreensMain.ScreenType.UNKNOWN)
@@ -38,6 +41,8 @@ var _navigator := ScreenFocusNavigator.new()
 ## Maps filter sub-row PanelContainers to their
 ## selection callables.
 var _filter_row_actions: Dictionary = {}
+## The type binary toggle (All Time / Weekly).
+var _type_toggle: BinaryToggle = null
 
 
 func _enter_tree() -> void:
@@ -154,15 +159,7 @@ func _fetch_leaderboard() -> void:
 
 
 func _update_scope_label() -> void:
-	var scope_label_text := (
-		_scope_labels[_scope_index]
-		if _scope_labels.size() > _scope_index
-		else "Global")
-	%ScopeLabel.text = (
-		"Leaderboard: %s \u00b7 %s" % [
-			_TYPE_LABELS[_type_index],
-			scope_label_text,
-		])
+	%ScopeLabel.text = "Leaderboard"
 
 
 func _on_leaderboard_received(
@@ -221,6 +218,14 @@ func _add_leaderboard_row(
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override(
 		"separation", 12)
+	var margin := MarginContainer.new()
+	for key in [
+		"margin_top", "margin_bottom",
+		"margin_left", "margin_right",
+	]:
+		margin.add_theme_constant_override(
+			key, _ROW_PADDING)
+	margin.add_child(row)
 	if is_striped:
 		var panel := PanelContainer.new()
 		var style := StyleBoxFlat.new()
@@ -228,9 +233,9 @@ func _add_leaderboard_row(
 		panel.add_theme_stylebox_override(
 			"panel", style)
 		%ContentContainer.add_child(panel)
-		panel.add_child(row)
+		panel.add_child(margin)
 	else:
-		%ContentContainer.add_child(row)
+		%ContentContainer.add_child(margin)
 
 	var profile_image := ProfileImageDisplay.new()
 	profile_image.image_size = 48
@@ -288,6 +293,8 @@ func _build_focusable_list(
 	var items: Array[Control] = []
 	items.append(%FilterMasterRow)
 	if _is_filter_expanded:
+		if is_instance_valid(_type_toggle):
+			items.append(_type_toggle)
 		for child in (
 			%FilterSubRows.get_children()
 		):
@@ -309,6 +316,14 @@ func _activate_focused() -> void:
 		_on_close_pressed()
 	elif focused == %FilterMasterRow:
 		_toggle_filter()
+	elif (is_instance_valid(_type_toggle)
+			and focused == _type_toggle):
+		var direction := (
+			_navigator.last_activation_direction)
+		if direction < 0:
+			_type_toggle.on_left()
+		elif direction > 0:
+			_type_toggle.on_right()
 	elif _filter_row_actions.has(focused):
 		_filter_row_actions[focused].call()
 
@@ -329,6 +344,8 @@ func _setup_filter_master_row() -> void:
 	(%FilterMasterRow.focus_exited
 		.connect(func() -> void:
 			_update_filter_row_style(false)))
+	%FilterLabel.add_theme_font_size_override(
+		"font_size", _FILTER_FONT_SIZE)
 	if _filter_icon != null:
 		%FilterIcon.texture = _filter_icon
 		%FilterIcon.custom_minimum_size = (
@@ -391,35 +408,39 @@ func _update_filter_label() -> void:
 
 func _build_filter_rows() -> void:
 	_filter_row_actions.clear()
+	_type_toggle = null
 	for child in %FilterSubRows.get_children():
 		child.queue_free()
 
-	# Time period options.
-	for i in _TYPE_LABELS.size():
-		var prefix := (
-			_SELECTED_PREFIX
-			if i == _type_index
-			else "  ")
-		_add_filter_option_row(
-			prefix + _TYPE_LABELS[i],
-			_select_type.bind(i))
+	# Time period binary toggle.
+	if _binary_toggle_scene != null:
+		_type_toggle = (
+			_binary_toggle_scene.instantiate()
+			as BinaryToggle)
+		_type_toggle.setup(
+			_TYPE_LABELS[0],
+			_TYPE_LABELS[1],
+			_type_index,
+			_focus_style,
+			_unfocused_style)
+		_type_toggle.option_changed.connect(
+			_select_type)
+		%FilterSubRows.add_child(_type_toggle)
 
 	var sep := HSeparator.new()
 	%FilterSubRows.add_child(sep)
 
 	# Scope options.
 	for i in _scope_options.size():
-		var prefix := (
-			_SELECTED_PREFIX
-			if i == _scope_index
-			else "  ")
 		_add_filter_option_row(
-			prefix + _scope_labels[i],
+			_scope_labels[i],
+			i == _scope_index,
 			_select_scope.bind(i))
 
 
 func _add_filter_option_row(
 	label_text: String,
+	is_selected: bool,
 	on_click: Callable,
 ) -> void:
 	var row := PanelContainer.new()
@@ -429,11 +450,29 @@ func _add_filter_option_row(
 	%FilterSubRows.add_child(row)
 	_filter_row_actions[row] = on_click
 
+	var hbox := HBoxContainer.new()
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_theme_constant_override(
+		"separation", 6)
+	row.add_child(hbox)
+
+	if _checkmark_icon != null:
+		var check := TextureRect.new()
+		check.texture = (
+			_checkmark_icon if is_selected
+			else null)
+		check.custom_minimum_size = Vector2(22, 22)
+		check.stretch_mode = (
+			TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+		check.mouse_filter = (
+			Control.MOUSE_FILTER_IGNORE)
+		hbox.add_child(check)
+
 	var label := Label.new()
 	label.text = label_text
 	label.add_theme_font_size_override(
-		"font_size", _FONT_SIZE)
-	row.add_child(label)
+		"font_size", _FILTER_FONT_SIZE)
+	hbox.add_child(label)
 
 	row.gui_input.connect(
 		func(event: InputEvent) -> void:

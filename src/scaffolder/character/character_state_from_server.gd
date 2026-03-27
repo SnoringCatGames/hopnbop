@@ -93,6 +93,14 @@ var _synced_properties_and_rollback_diff_thresholds := {
 
 var _has_applied_remote_thresholds := false
 
+## Tracks the most recent server-authoritative
+## surfaces bitmask for this character. Used to
+## restore correct visual state (facing direction,
+## surface attachment) on remote players after
+## local movement re-simulation overwrites the
+## bitmask with divergent local physics results.
+var _last_server_surfaces := 0
+
 
 func _get_default_values() -> Array:
 	return [
@@ -125,6 +133,7 @@ func _should_accept_predicted_states() -> bool:
 func _pre_network_process() -> void:
 	_apply_remote_thresholds_if_needed()
 	super._pre_network_process()
+	_update_last_server_surfaces()
 
 
 ## Increases mismatch thresholds for remote
@@ -148,6 +157,63 @@ func _apply_remote_thresholds_if_needed() -> void:
 	)
 	t.position = _REMOTE_POSITION_THRESHOLD
 	t.velocity = _REMOTE_VELOCITY_THRESHOLD
+
+
+## Updates _last_server_surfaces from the best
+## available source. Called after
+## super._pre_network_process() has unpacked the
+## buffer. Checks:
+## 1. Buffer at the current frame (may have fresh
+##    server data from _pack_buffer_state_from_-
+##    network_state, not yet overwritten by resim).
+## 2. Buffer at frame N-1 (loaded by
+##    _unpack_buffer_state, reflected in
+##    frame_authority and self.surfaces).
+func _update_last_server_surfaces() -> void:
+	if not Netcode.is_client:
+		return
+	if is_authority_for_input_from_client:
+		return
+	if _rollback_buffer == null:
+		return
+
+	# Check if the current frame's buffer entry has
+	# server-authoritative surfaces. This catches
+	# fresh server data during rollback re-simulation
+	# before _pack_buffer_state_from_local_state()
+	# overwrites it.
+	if _rollback_buffer.has_at(frame_index):
+		var current_state: Array = (
+			_rollback_buffer.get_at(frame_index)
+		)
+		if current_state != null:
+			var authority: int = (
+				_get_frame_authority(current_state)
+			)
+			if (
+				authority
+					== FrameAuthority.AUTHORITATIVE
+				or authority
+					== FrameAuthority.SERVER_PREDICTED
+			):
+				_last_server_surfaces = (
+					_get_frame_property(
+						current_state,
+						&"surfaces",
+					)
+				)
+				return
+
+	# Fall back to the previous frame's data (loaded
+	# by _unpack_buffer_state into self.surfaces and
+	# frame_authority).
+	if (
+		frame_authority
+			== FrameAuthority.AUTHORITATIVE
+		or frame_authority
+			== FrameAuthority.SERVER_PREDICTED
+	):
+		_last_server_surfaces = surfaces
 
 
 func _uses_split_packed_state() -> bool:
@@ -571,6 +637,18 @@ func _network_process() -> void:
 			var vel_before := character.velocity
 			character._apply_movement()
 			frame_authority = ReconcilableState.FrameAuthority.CLIENT_PREDICTED
+			# For remote players, restore the last known
+			# server surfaces bitmask after local movement
+			# re-simulation. _apply_movement() overwrites
+			# the bitmask with local physics results
+			# which diverge from server state for facing
+			# direction and surface attachment. Position
+			# from local simulation is kept for smooth
+			# interpolation.
+			if is_remote_player_on_client:
+				character.surfaces.bitmask = (
+					_last_server_surfaces
+				)
 			if Netcode.log.is_verbose and (
 				character.position
 					.distance_squared_to(pos_before)

@@ -59,8 +59,12 @@ func build_ui() -> void:
 
 
 func _add_link_account_rows() -> void:
-	# Only show linking when authenticated.
-	if not G.auth_token_store.is_token_valid():
+	# Show sign-in options for anonymous users too,
+	# so they can upgrade to a persistent account.
+	if (
+		not G.auth_token_store.is_token_valid()
+		and not G.auth_token_store.is_anonymous
+	):
 		return
 
 	var linked: Array[String] = (

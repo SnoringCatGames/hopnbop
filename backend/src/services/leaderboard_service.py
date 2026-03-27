@@ -254,6 +254,37 @@ class LeaderboardService:
                 response["LastEvaluatedKey"]
             )
 
+    def get_player_rank(
+        self,
+        leaderboard_id: str,
+        player_id: str,
+        rating: int,
+    ) -> int:
+        """Return the 1-based rank for the player in
+        this specific leaderboard.
+
+        Returns 0 if the player has no entry in the
+        leaderboard (e.g. has not played this week for
+        a weekly leaderboard).
+        """
+        score_player = _make_score_player(
+            rating, player_id
+        )
+        check = self.table.get_item(
+            Key={
+                "leaderboard_id": leaderboard_id,
+                "score_player": score_player,
+            }
+        )
+        if not check.get("Item"):
+            return 0
+        return (
+            self._count_above(
+                leaderboard_id, score_player
+            )
+            + 1
+        )
+
     def _count_above(
         self,
         leaderboard_id: str,

@@ -841,8 +841,6 @@ func _cleanup_local_mode() -> void:
 ## frame driver. Does NOT open any screen or free
 ## levels.
 func _client_cleanup_after_match() -> void:
-	_has_transitioned_to_game_over = false
-
 	# Reset cheat state when leaving match.
 	if is_instance_valid(G.cheat_manager):
 		G.cheat_manager.reset()
@@ -981,6 +979,7 @@ func _client_free_levels_and_open_screen(
 ## Used for unexpected disconnects.
 func client_exit_match() -> void:
 	Netcode.check_is_client()
+	_has_transitioned_to_game_over = false
 
 	# Restore default physics tick rate.
 	Netcode.restore_default_physics_fps()
@@ -1019,6 +1018,7 @@ func _client_transition_to_game_over() -> void:
 ## without returning to the lobby first.
 func client_play_again() -> void:
 	Netcode.check_is_client()
+	_has_transitioned_to_game_over = false
 
 	# Restore player configs from last match.
 	G.client_session.local_device_configs = (

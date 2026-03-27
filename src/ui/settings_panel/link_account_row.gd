@@ -122,8 +122,11 @@ func _on_login_completed(
 	)
 	if success:
 		_is_busy = false
-		if is_instance_valid(_panel):
-			_panel.manager.pop_panel()
+		if (
+			is_instance_valid(_panel)
+			and is_instance_valid(_panel.manager)
+		):
+			_panel.manager.close_all()
 		return
 
 	_is_busy = false
@@ -148,7 +151,11 @@ func _on_link_completed(
 	if success:
 		_is_busy = false
 		_is_linked = true
-		_update_status()
+		if (
+			is_instance_valid(_panel)
+			and is_instance_valid(_panel.manager)
+		):
+			_panel.manager.close_all()
 		return
 
 	if error == "PROVIDER_CONFLICT":
@@ -200,6 +207,12 @@ func _on_merge_completed(
 	_is_busy = false
 	if success:
 		_is_linked = true
+		if (
+			is_instance_valid(_panel)
+			and is_instance_valid(_panel.manager)
+		):
+			_panel.manager.close_all()
+		return
 	_update_status()
 
 
@@ -211,6 +224,12 @@ func _on_unlink_completed(
 	_is_busy = false
 	if success:
 		_is_linked = false
+		if (
+			is_instance_valid(_panel)
+			and is_instance_valid(_panel.manager)
+		):
+			_panel.manager.close_all()
+		return
 	_update_status()
 
 

@@ -9,6 +9,9 @@ extends RefCounted
 var _poller := AnyDeviceInputPoller.new()
 var _focusable: Array[Control] = []
 var _focused_index := 0
+## Set when poll() returns true. -1 = left,
+## 1 = right, 0 = trigger.
+var last_activation_direction := 0
 
 
 ## Replaces the focusable list, resets focus to
@@ -48,9 +51,14 @@ func poll(delta: float) -> bool:
 		_move_focus(-1)
 	elif _poller.down_just:
 		_move_focus(1)
-	elif (_poller.left_just
-			or _poller.right_just
-			or _poller.trigger_just):
+	elif _poller.left_just:
+		last_activation_direction = -1
+		return true
+	elif _poller.right_just:
+		last_activation_direction = 1
+		return true
+	elif _poller.trigger_just:
+		last_activation_direction = 0
 		return true
 
 	return false

@@ -5,6 +5,7 @@ extends Screen
 ## Fixed width for the Add Friend button column
 ## and its balancing spacer on the opposite side.
 const _FRIEND_BUTTON_WIDTH := 48
+const _ROW_PADDING := 8
 const _STRIPE_COLOR := Color(1.0, 1.0, 1.0, 0.06)
 
 @export var _add_friend_icon: Texture2D
@@ -224,6 +225,14 @@ func _add_result_row(
 		"separation", 16)
 	row.alignment = (
 		BoxContainer.ALIGNMENT_CENTER)
+	var margin := MarginContainer.new()
+	for key in [
+		"margin_top", "margin_bottom",
+		"margin_left", "margin_right",
+	]:
+		margin.add_theme_constant_override(
+			key, _ROW_PADDING)
+	margin.add_child(row)
 	if is_striped:
 		var panel := PanelContainer.new()
 		var style := StyleBoxFlat.new()
@@ -231,9 +240,9 @@ func _add_result_row(
 		panel.add_theme_stylebox_override(
 			"panel", style)
 		%ResultsContainer.add_child(panel)
-		panel.add_child(row)
+		panel.add_child(margin)
 	else:
-		%ResultsContainer.add_child(row)
+		%ResultsContainer.add_child(margin)
 
 	# Left spacer to balance the Add Friend
 	# button on the right, keeping the core
