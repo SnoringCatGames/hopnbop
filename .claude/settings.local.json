@@ -49,7 +49,10 @@
       "Bash(dir:*)",
       "Bash(git restore:*)",
       "Bash(git show:*)",
-      "Bash(timeout 20:*)"
+      "Bash(timeout 20:*)",
+      "Bash(curl -s -L https://www.pixellab.ai/docs)",
+      "Bash(curl -s -L https://www.pixellab.ai/blog)",
+      "WebFetch(domain:www.pixellab.ai)"
     ]
   }
 }

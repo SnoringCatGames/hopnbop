@@ -99,7 +99,16 @@ var _has_applied_remote_thresholds := false
 ## surface attachment) on remote players after
 ## local movement re-simulation overwrites the
 ## bitmask with divergent local physics results.
+## Updated in _pack_buffer_state_from_network_state
+## which runs for every incoming server state.
 var _last_server_surfaces := 0
+
+## Frame index of the last server surfaces update.
+## Prevents out-of-order network deliveries
+## (e.g., authoritative for frame 90 arriving after
+## predicted for frame 100) from overwriting newer
+## data with stale data.
+var _last_server_surfaces_frame := -1
 
 
 func _get_default_values() -> Array:
@@ -133,7 +142,6 @@ func _should_accept_predicted_states() -> bool:
 func _pre_network_process() -> void:
 	_apply_remote_thresholds_if_needed()
 	super._pre_network_process()
-	_update_last_server_surfaces()
 
 
 ## Increases mismatch thresholds for remote
@@ -159,36 +167,35 @@ func _apply_remote_thresholds_if_needed() -> void:
 	t.velocity = _REMOTE_VELOCITY_THRESHOLD
 
 
-## Updates _last_server_surfaces from the best
-## available source. Called after
-## super._pre_network_process() has unpacked the
-## buffer. Checks:
-## 1. Buffer at the current frame (may have fresh
-##    server data from _pack_buffer_state_from_-
-##    network_state, not yet overwritten by resim).
-## 2. Buffer at frame N-1 (loaded by
-##    _unpack_buffer_state, reflected in
-##    frame_authority and self.surfaces).
-func _update_last_server_surfaces() -> void:
-	if not Netcode.is_client:
-		return
-	if is_authority_for_input_from_client:
-		return
-	if _rollback_buffer == null:
-		return
-
-	# Check if the current frame's buffer entry has
-	# server-authoritative surfaces. This catches
-	# fresh server data during rollback re-simulation
-	# before _pack_buffer_state_from_local_state()
-	# overwrites it.
-	if _rollback_buffer.has_at(frame_index):
-		var current_state: Array = (
-			_rollback_buffer.get_at(frame_index)
+## Captures _last_server_surfaces from every
+## incoming server state for remote players. This
+## override runs for all states that pass filtering
+## in _handle_new_state_from_network, including
+## past-frame data that _pre_network_process would
+## miss. This is critical because:
+## 1. surfaces has mismatch threshold -1 (disabled),
+##    so surface-only changes never trigger rollback.
+## 2. Remote player position/velocity thresholds are
+##    loose (10px/100px), so rollbacks are infrequent.
+## 3. Without rollback, buffer entries at the frames
+##    checked by _pre_network_process only contain
+##    CLIENT_PREDICTED data from local re-simulation.
+func _pack_buffer_state_from_network_state(
+	packed_network_state: Array,
+) -> void:
+	if (
+		Netcode.is_client
+		and not is_authority_for_input_from_client
+		and not _property_name_to_pack_index.is_empty()
+	):
+		var state_frame: int = (
+			_get_packed_frame_index(
+				packed_network_state)
 		)
-		if current_state != null:
+		if state_frame >= _last_server_surfaces_frame:
 			var authority: int = (
-				_get_frame_authority(current_state)
+				_get_packed_authority(
+					packed_network_state)
 			)
 			if (
 				authority
@@ -197,23 +204,18 @@ func _update_last_server_surfaces() -> void:
 					== FrameAuthority.SERVER_PREDICTED
 			):
 				_last_server_surfaces = (
-					_get_frame_property(
-						current_state,
-						&"surfaces",
-					)
+					packed_network_state[
+						_property_name_to_pack_index[
+							&"surfaces"
+						]
+					]
 				)
-				return
-
-	# Fall back to the previous frame's data (loaded
-	# by _unpack_buffer_state into self.surfaces and
-	# frame_authority).
-	if (
-		frame_authority
-			== FrameAuthority.AUTHORITATIVE
-		or frame_authority
-			== FrameAuthority.SERVER_PREDICTED
-	):
-		_last_server_surfaces = surfaces
+				_last_server_surfaces_frame = (
+					state_frame
+				)
+	super._pack_buffer_state_from_network_state(
+		packed_network_state,
+	)
 
 
 func _uses_split_packed_state() -> bool:

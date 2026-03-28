@@ -56,6 +56,13 @@ extends Node
 # This image uses placeholder dirt, rock, sand, and ice tiles. Please add a lot more variation to their textures. Also add more texture and shading to rocks, dirt, and sand. Keep the border rocks gradually transitioning out to a solid color. Also add grass and vegetation. Make the background clouds and mountains a bit more interesting, but also still faded.
 
 
+# Platformer level.
+# Border made of rough natural stone and rocks. Dark gray and brown stone with cracks, moss, and subtle lighting. The rocks gradually transition from detailed textured stone on the inside edge to a solid dark gray color on the outer edge.
+# Grass and dirt platforms on tree branches have rich brown soil with visible layers, small pebbles, and root textures, with bright green grass tufts on top with varied heights, with occasional small yellow wildflowers, and with warm natural lighting.
+# Sand platforms have yellow sand with visible layers and a grainy texture, with thick somewhat viney grass-like vegetation, with occasional bright red flowers.
+# Background has soft blue sky with layered fluffy white clouds at different heights. Faded blue-purple mountain silhouettes in the distance with subtle snow caps and ridgelines. Atmospheric perspective with lighter colors further away. Dreamy, serene mood.
+
+
 # - Test repsonsive layout with PlayerDisplay list.
 # - Test friends presence tracking.
 # - Test everything with anonymous users.
