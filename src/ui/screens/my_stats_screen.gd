@@ -32,6 +32,20 @@ func _ready() -> void:
 	_setup_close_row()
 
 
+func _exit_tree() -> void:
+	var client := G.backend_api_client
+	if not is_instance_valid(client):
+		return
+	if client.profile_received.is_connected(
+			_on_profile_received):
+		client.profile_received.disconnect(
+			_on_profile_received)
+	if client.request_failed.is_connected(
+			_on_request_failed):
+		client.request_failed.disconnect(
+			_on_request_failed)
+
+
 func on_open() -> void:
 	super.on_open()
 	_clear_content()
@@ -83,6 +97,8 @@ func _on_close_pressed() -> void:
 func _on_profile_received(
 	data: Dictionary,
 ) -> void:
+	if is_queued_for_deletion():
+		return
 	if not visible:
 		return
 	_set_loading(false)
@@ -152,6 +168,8 @@ func _on_profile_received(
 func _on_request_failed(
 	error: String,
 ) -> void:
+	if is_queued_for_deletion():
+		return
 	if not visible:
 		return
 	if (error == error_string(ERR_BUSY)

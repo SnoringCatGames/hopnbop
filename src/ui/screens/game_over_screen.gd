@@ -39,6 +39,29 @@ func _ready() -> void:
 			"icon_max_width", icon_width)
 
 
+func _exit_tree() -> void:
+	var client := G.friends_api_client
+	if not is_instance_valid(client):
+		return
+	if client.friends_received.is_connected(
+			_on_friends_data_refreshed):
+		client.friends_received.disconnect(
+			_on_friends_data_refreshed)
+	if client.friend_request_sent.is_connected(
+			_on_friend_request_result):
+		client.friend_request_sent.disconnect(
+			_on_friend_request_result)
+	if (client.friend_request_accepted
+			.is_connected(
+				_on_friend_accept_result)):
+		client.friend_request_accepted.disconnect(
+			_on_friend_accept_result)
+	if client.request_failed.is_connected(
+			_on_friend_action_failed):
+		client.request_failed.disconnect(
+			_on_friend_action_failed)
+
+
 func _unhandled_input(
 	event: InputEvent,
 ) -> void:
@@ -75,7 +98,8 @@ func on_open() -> void:
 	# reflect current state. The fetch is async,
 	# so we populate immediately with cached data
 	# and re-populate when fresh data arrives.
-	G.friends_api_client.fetch_friends()
+	if not G.friends_api_client.is_busy():
+		G.friends_api_client.fetch_friends()
 	if not (G.friends_api_client
 			.friends_received
 			.is_connected(
@@ -503,6 +527,10 @@ func _on_friend_action_failed(
 		G.friends_api_client\
 			.friend_request_accepted\
 			.disconnect(_on_friend_accept_result)
+	# "Request in progress" is expected when the
+	# friends API client is busy and not actionable.
+	if error == "Request in progress":
+		return
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
 			error, G.toast_overlay.Type.ERROR)
@@ -511,6 +539,8 @@ func _on_friend_action_failed(
 func _on_friends_data_refreshed(
 	_data: Dictionary,
 ) -> void:
+	if not visible:
+		return
 	_populate_results()
 	_build_focusable_list()
 	_navigator.prime()

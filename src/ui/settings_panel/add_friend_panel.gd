@@ -123,6 +123,8 @@ func _on_send_pressed() -> void:
 func _on_friend_request_sent(
 	data: Dictionary,
 ) -> void:
+	if is_queued_for_deletion():
+		return
 	if is_instance_valid(G.toast_overlay):
 		var result: String = (
 			data.get("result", ""))
@@ -146,6 +148,8 @@ func _on_friend_request_sent(
 func _on_request_failed(
 	_error: String,
 ) -> void:
+	if is_queued_for_deletion():
+		return
 	# Re-enable the send row so the user can try
 	# again. FriendsPanel below in the stack
 	# handles showing the error toast.
