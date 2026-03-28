@@ -1,14 +1,12 @@
-[gd_resource type="TileSet" load_steps=7 format=3 uid="uid://bvepcqe45mxdp"]
+[gd_resource type="TileSet" load_steps=6 format=3 uid="uid://bvepcqe45mxdp"]
 
 [ext_resource type="PackedScene" uid="uid://q1x52f28jpla" path="res://src/objects/spring/spring.tscn" id="1_b3csq"]
-[ext_resource type="Texture2D" uid="uid://8qja6ehruhbm" path="res://assets/images/tiles_old.png" id="2_yswe4"]
 [ext_resource type="Texture2D" uid="uid://dro62b7ms16nc" path="res://assets/images/tiles_placeholder.png" id="3_iy6id"]
 
 [sub_resource type="TileSetScenesCollectionSource" id="TileSetScenesCollectionSource_fo6ly"]
 scenes/1/scene = ExtResource("1_b3csq")
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_fo6ly"]
-texture = ExtResource("2_yswe4")
 0:1/0 = 0
 0:1/0/terrain_set = 0
 0:1/0/terrain = 5

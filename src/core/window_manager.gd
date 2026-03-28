@@ -192,9 +192,18 @@ func _generate_thumbnail_for_level(
 			"display/window/size/viewport_height",
 			648),
 	)
+	var tile := int(Level.TILE_SIZE)
 	var visible_size := Vector2i(
-		roundi(base_res.x / camera_zoom.x),
-		roundi(base_res.y / camera_zoom.y),
+		ceili(base_res.x / camera_zoom.x / Level.TILE_SIZE)
+			* tile,
+		ceili(base_res.y / camera_zoom.y / Level.TILE_SIZE)
+			* tile,
+	)
+	assert(
+		visible_size.x % tile == 0
+		and visible_size.y % tile == 0,
+		("Thumbnail size %s is not a multiple"
+		+ " of tile size %d") % [visible_size, tile],
 	)
 
 	Netcode.print(

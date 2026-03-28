@@ -87,6 +87,26 @@ func _on_window_resized() -> void:
 		return
 
 	var window_size := DisplayServer.window_get_size()
+
+	if is_thumbnail_snapshot_mode:
+		# Force exact pixel dimensions regardless of
+		# actual window size to avoid sub-pixel
+		# stretching from DPI or OS rounding.
+		current_scale = 1
+		container.stretch_shrink = 1
+		container.size = Vector2(_base_resolution)
+		container.position = Vector2(
+			(window_size.x
+				- _base_resolution.x) / 2.0,
+			(window_size.y
+				- _base_resolution.y) / 2.0,
+		)
+		if is_instance_valid(sub_viewport):
+			sub_viewport.size = _base_resolution
+		_zoom_scale = 1.0
+		_update_camera_zoom()
+		return
+
 	current_scale = _compute_integer_scale(
 		window_size, _base_resolution)
 
