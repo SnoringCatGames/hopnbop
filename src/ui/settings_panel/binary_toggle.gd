@@ -34,6 +34,7 @@ func _ready() -> void:
 	var extra_height := 2 * G.settings.icon_scale
 	for button: Button in [%LeftButton, %RightButton]:
 		button.custom_minimum_size.y += extra_height
+		button.focus_mode = Control.FOCUS_NONE
 	focus_entered.connect(_on_focus_changed)
 	focus_exited.connect(_on_focus_changed)
 	_update_button_styles()

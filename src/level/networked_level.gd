@@ -338,6 +338,13 @@ func _server_register_players_for_peer(
 		player.global_position = (
 			_get_player_spawn_position())
 
+		# DEBUG: Log actual position after assignment.
+		Netcode.print(
+			"SPAWN_DEBUG: player_%d pos=%s"
+			% [player_id, player.global_position],
+			NetworkLogger.CATEGORY_GAME_STATE,
+		)
+
 		# Initialize player_id and update
 		# authority after add_child. This ensures
 		# all child nodes are ready and sibling

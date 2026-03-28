@@ -47,6 +47,10 @@ extends Node
 
 # ---
 
+# Spring jump is still broken sometimes
+# Improve level0 art.
+# Add level5 art.
+# Add level4 art.
 # Player overhead labels are not at all centered over the players. And They are inconsistent on different clients.
 
 # Let's fix the leaderboard screen.
@@ -1964,9 +1968,18 @@ func queue_rollback(
 ## _physics_process.
 func _run_network_process(only_buffers := false) -> void:
 	if _queued_rollback_frame_index > 0:
-		_rollback_and_reprocess()
-		_queued_rollback_frame_index = 0
-		_queued_rollback_cause = ""
+		if only_buffers:
+			# Discard rollbacks during countdown.
+			# Re-simulation would overwrite correct
+			# server state in the buffer with wrong
+			# values derived from default-filled
+			# earlier frames.
+			_queued_rollback_frame_index = 0
+			_queued_rollback_cause = ""
+		else:
+			_rollback_and_reprocess()
+			_queued_rollback_frame_index = 0
+			_queued_rollback_cause = ""
 
 	if only_buffers:
 		_network_process_buffers_only()
@@ -2054,13 +2067,28 @@ func _network_process_buffers_only() -> void:
 		if not is_instance_valid(node):
 			_networked_state_nodes.remove_at(i)
 
-	# Sync state from buffers to scene (but game logic won't run, so positions don't change).
+	# SKIP _pre_network_process(). During countdown, scene
+	# state is set by the direct-apply path in
+	# receive_network_state (line 715). Calling
+	# _pre_network_process would load stale/default values
+	# from the rollback buffer and overwrite the correct
+	# scene positions, causing per-frame flicker between
+	# spawn position and world origin.
+
+	# SKIP _network_process() - no game logic during
+	# match start countdown.
+
+	# Update frame bookkeeping that _pre_network_process
+	# normally handles, so _post_network_process packs
+	# state at the correct buffer index.
 	for node in _networked_state_nodes:
-		node._pre_network_process()
+		node.frame_index = server_frame_index
+		node.frame_authority = (
+			ReconcilableState.FrameAuthority.UNKNOWN
+		)
 
-	# SKIP _network_process() - no game logic during match start countdown.
-
-	# Sync state back to buffers and send to network.
+	# Pack current scene state into rollback buffers.
+	# This flows one-way: scene -> buffer.
 	for node in _networked_state_nodes:
 		node._post_network_process()
 

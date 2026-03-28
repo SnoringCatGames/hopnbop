@@ -203,12 +203,19 @@ func _refresh_friends() -> void:
 		_is_loading = true
 		if is_instance_valid(_loading_spinner):
 			_loading_spinner.visible = true
-	client.fetch_friends()
+	# Skip the fetch if the client is already
+	# handling a request. This panel is connected
+	# to friends_received, so the in-flight
+	# response will arrive when it completes.
+	if not client.is_busy():
+		client.fetch_friends()
 
 
 func _on_profile_received(
 	data: Dictionary,
 ) -> void:
+	if is_queued_for_deletion():
+		return
 	var player: Dictionary = data.get("player", {})
 	var code: String = player.get("friend_code", "")
 	if not code.is_empty():
@@ -232,6 +239,8 @@ func _on_copy_code_pressed() -> void:
 func _on_friend_request_sent(
 	_data: Dictionary,
 ) -> void:
+	if is_queued_for_deletion():
+		return
 	# Toast and button handling are in
 	# AddFriendPanel. Refresh the list here so it
 	# is up to date when the sub-panel pops.
@@ -241,6 +250,8 @@ func _on_friend_request_sent(
 func _on_friend_request_accepted(
 	_data: Dictionary,
 ) -> void:
+	if is_queued_for_deletion():
+		return
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
 			tr("FRIENDS.ADDED"))
@@ -250,6 +261,8 @@ func _on_friend_request_accepted(
 func _on_friend_request_rejected(
 	_data: Dictionary,
 ) -> void:
+	if is_queued_for_deletion():
+		return
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
 			tr("FRIENDS.REMOVED"))
@@ -259,12 +272,16 @@ func _on_friend_request_rejected(
 func _on_friend_request_cancelled(
 	_data: Dictionary,
 ) -> void:
+	if is_queued_for_deletion():
+		return
 	_refresh_friends()
 
 
 func _on_friend_removed(
 	_data: Dictionary,
 ) -> void:
+	if is_queued_for_deletion():
+		return
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
 			tr("FRIENDS.REMOVED"))
@@ -274,6 +291,8 @@ func _on_friend_removed(
 func _on_friends_received(
 	data: Dictionary,
 ) -> void:
+	if is_queued_for_deletion():
+		return
 	_is_loading = false
 	if is_instance_valid(_loading_spinner):
 		_loading_spinner.visible = false
@@ -286,13 +305,20 @@ func _on_friends_received(
 		friends, sent, incoming)
 	# Mark notifications as seen now that the list
 	# has loaded and the HTTPRequest node is free.
-	G.friends_api_client.mark_seen()
+	if not G.friends_api_client.is_busy():
+		G.friends_api_client.mark_seen()
 
 
 func _on_request_failed(error: String) -> void:
+	if is_queued_for_deletion():
+		return
 	_is_loading = false
 	if is_instance_valid(_loading_spinner):
 		_loading_spinner.visible = false
+	# "Request in progress" is expected during
+	# rapid panel navigation and not actionable.
+	if error == "Request in progress":
+		return
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
 			error, G.toast_overlay.Type.ERROR)
@@ -301,6 +327,8 @@ func _on_request_failed(error: String) -> void:
 func _on_presence_received(
 	_online_ids: Array[String],
 ) -> void:
+	if is_queued_for_deletion():
+		return
 	if _is_loading:
 		return
 	_populate_all_sections(

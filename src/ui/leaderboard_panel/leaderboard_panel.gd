@@ -378,7 +378,7 @@ func _toggle_filter() -> void:
 func _update_filter_row_style(
 	is_hovered: bool,
 ) -> void:
-	if is_hovered or _is_filter_expanded:
+	if is_hovered or %FilterMasterRow.has_focus():
 		(%FilterMasterRow
 			.add_theme_stylebox_override(
 				"panel", _focus_style))
@@ -505,10 +505,7 @@ func _select_type(index: int) -> void:
 	if _is_loading:
 		return
 	_type_index = index
-	_is_filter_expanded = false
-	_build_filter_rows()
-	_update_filter_sub_rows_visibility()
-	_build_focusable_list()
+	_update_filter_label()
 	_fetch_leaderboard()
 
 
@@ -516,9 +513,8 @@ func _select_scope(index: int) -> void:
 	if _is_loading:
 		return
 	_scope_index = index
-	_is_filter_expanded = false
 	_build_filter_rows()
-	_update_filter_sub_rows_visibility()
+	_update_filter_label()
 	_build_focusable_list()
 	_fetch_leaderboard()
 

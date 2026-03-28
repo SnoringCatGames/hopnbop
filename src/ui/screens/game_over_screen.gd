@@ -33,7 +33,6 @@ func _ready() -> void:
 	for button: Button in [
 		%PlayAgainButton,
 		%ReturnToLobbyButton,
-		%LeaderboardButton,
 	]:
 		button.expand_icon = true
 		button.add_theme_constant_override(
@@ -97,7 +96,6 @@ func _build_focusable_list() -> void:
 		items.append(button)
 	items.append(%PlayAgainButton)
 	items.append(%ReturnToLobbyButton)
-	items.append(%LeaderboardButton)
 	_navigator.set_focusable_list(items)
 
 
@@ -109,8 +107,6 @@ func _activate_focused() -> void:
 		_on_play_again_pressed()
 	elif focused == %ReturnToLobbyButton:
 		_on_return_to_lobby_pressed()
-	elif focused == %LeaderboardButton:
-		_on_leaderboard_pressed()
 	elif focused is Button:
 		# Friend action button. Trigger its
 		# existing pressed callback.
@@ -155,6 +151,7 @@ func _populate_results() -> void:
 	# so they never show a button. Players we
 	# are already friends with are hidden.
 	var client := G.friends_api_client
+	var own_id := G.auth_token_store.player_id
 	var has_any_friend_button := (
 		not G.auth_token_store.is_anonymous
 		and participants.any(
@@ -165,6 +162,7 @@ func _populate_results() -> void:
 					not p.get(
 						"is_anonymous", true)
 					and not bid.is_empty()
+					and bid != own_id
 					and not client.is_friend(
 						bid))))
 
@@ -300,7 +298,9 @@ func _add_result_row(
 		var show_button := (
 			not is_anonymous
 			and not backend_player_id.is_empty()
-			and not G.auth_token_store.is_anonymous)
+			and not G.auth_token_store.is_anonymous
+			and backend_player_id
+				!= G.auth_token_store.player_id)
 		if show_button:
 			_add_friend_button(
 				row, backend_player_id)
@@ -527,16 +527,3 @@ func _on_return_to_lobby_pressed() -> void:
 		ScreensMain.ScreenType.LOBBY)
 
 
-func _on_leaderboard_pressed() -> void:
-	G.audio.play_sound("click")
-	var level_id := String(
-		G.client_session.selected_level_id)
-	var scope := (
-		level_id if not level_id.is_empty()
-		else "global")
-	G.leaderboard_screen.set_return_screen(
-		ScreensMain.ScreenType.GAME_OVER)
-	G.leaderboard_screen.set_default_filter(
-		"weekly", scope)
-	G.screens.client_open_screen(
-		ScreensMain.ScreenType.LEADERBOARD)

@@ -144,6 +144,19 @@ func _get_player_spawn_position() -> Vector2:
 	# Check for collision and adjust upward if needed.
 	var final_position := _find_collision_free_position(spawn_position)
 
+	# DEBUG: Log spawn position details.
+	Netcode.print(
+		("SPAWN_DEBUG: %s raw=%s snapped=%s"
+			+ " collision_free=%s")
+		% [
+			chosen_spawn_point.name,
+			chosen_spawn_point.global_position,
+			spawn_position,
+			final_position,
+		],
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+
 	return final_position
 
 

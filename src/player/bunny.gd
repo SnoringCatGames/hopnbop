@@ -21,6 +21,7 @@ const _SQUISH_DURATION_SEC := 0.09
 const _SKID_VELOCITY_THRESHOLD := 20.0
 const _LANDING_SKID_GRACE_SEC := 0.5
 const _WALK_SOUND_INTERVAL_SEC := 0.133
+const _AT_REST_VELOCITY_THRESHOLD := 50.0
 
 @export var _sprite_outline_shader: Shader
 @export var _bunny_animator_scene: PackedScene
@@ -1342,8 +1343,40 @@ func _is_kill_collision_happening(other_player: Player) -> bool:
 	)
 
 
+## Returns true if the directional relationship between
+## attacker and victim indicates a downward stomp.
+## Uses relative velocity as the primary check. Falls
+## back to a near-zero-velocity check for the case
+## where Area2D overlap begins a frame after landing
+## (both players at rest), which happens with round
+## collision shapes and horizontal offset.
+static func _is_downward_stomp(
+	attacker: Player,
+	victim: Player,
+) -> bool:
+	var relative_velocity := (
+		attacker.pre_movement_velocity
+		- victim.pre_movement_velocity)
+	if relative_velocity.y > 0:
+		return true
+	# Fallback: if both players have near-zero vertical
+	# velocity, the foot-on-head overlap alone is
+	# sufficient. This catches the case where the
+	# CharacterBody2D collision resolves one frame
+	# before the Area2D overlap begins, by which time
+	# move_and_slide() has zeroed both velocities.
+	# A player jumping upward has significant velocity
+	# and will not match this condition.
+	return (
+		absf(attacker.pre_movement_velocity.y)
+			< _AT_REST_VELOCITY_THRESHOLD
+		and absf(victim.pre_movement_velocity.y)
+			< _AT_REST_VELOCITY_THRESHOLD
+	)
+
+
 ## Checks if attacker's foot area overlaps victim's head
-## area with downward relative velocity.
+## area with a valid stomp direction.
 static func _is_foot_on_head(
 	attacker: Player,
 	victim: Player,
@@ -1358,14 +1391,7 @@ static func _is_foot_on_head(
 	if not foot_area.overlaps_area(head_area):
 		return false
 
-	# Use pre-movement velocity. This is called from
-	# Area2D/body callbacks that fire after physics,
-	# where move_and_slide() may have zeroed velocity.
-	var relative_velocity := (
-		attacker.pre_movement_velocity
-		- victim.pre_movement_velocity
-	)
-	return relative_velocity.y > 0
+	return _is_downward_stomp(attacker, victim)
 
 
 ## Checks if this player's foot passed through another player's head this
@@ -1552,18 +1578,7 @@ func _on_foot_area_area_entered(area: Area2D) -> void:
 	if other_player == self:
 		return
 
-	# Use pre-movement velocity for the relative velocity
-	# check. By the time this Area2D callback fires (after
-	# the physics step), move_and_slide() may have zeroed
-	# velocity.y due to CharacterBody2D collision with the
-	# victim, causing a false negative.
-	var relative_velocity := (
-		pre_movement_velocity
-		- other_player.pre_movement_velocity)
-	var is_relative_velocity_downward := (
-		relative_velocity.y > 0)
-
-	if not is_relative_velocity_downward:
+	if not _is_downward_stomp(self, other_player):
 		return
 
 	# Prevent double-counting (this frame was already processed from the other
@@ -1796,14 +1811,8 @@ func _process_deferred_collisions() -> void:
 				is_still_intersecting = foot_area.overlaps_area(other_head_area)
 
 			if is_still_intersecting:
-				# Check downward velocity requirement for
-				# kills. Use pre-movement velocity since
-				# move_and_slide() may have zeroed it.
-				var relative_velocity := (
-					pre_movement_velocity
-					- other_player
-						.pre_movement_velocity)
-				if relative_velocity.y > 0:
+				if _is_downward_stomp(
+					self, other_player):
 					Netcode.verbose(
 						"Deferred kill: %d killed %d" % [player_id, other_player_id],
 						NetworkLogger.CATEGORY_GAME_STATE,
