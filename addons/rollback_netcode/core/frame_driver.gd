@@ -2136,10 +2136,3 @@ func _maybe_send_bundles() -> void:
 		return
 	Netcode.state_bundler._send_bundles()
 
-
-## Backfill all rollback buffers after match start countdown ends.
-## During match start countdown, network processing was skipped, so buffers weren't updated.
-## This fills frames from spawn to current frame with the last known state.
-func _backfill_all_buffers_after_match_start_countdown() -> void:
-	for node in _networked_state_nodes:
-		node.backfill_buffer_to_current_frame()
