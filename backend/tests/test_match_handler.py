@@ -302,6 +302,9 @@ class TestGetLeaderboard:
     def test_includes_your_rank(self, aws_mock):
         from handlers.match_handler import get_leaderboard
         from services.player_service import PlayerService
+        from services.leaderboard_service import (
+            LeaderboardService,
+        )
 
         ps = PlayerService()
         asyncio.run(
@@ -319,6 +322,18 @@ class TestGetLeaderboard:
                 ":r": 1500,
                 ":all": "all",
             },
+        )
+
+        # Insert a leaderboard entry so
+        # leaderboard_service.get_player_rank can find
+        # the player.
+        ls = LeaderboardService()
+        ls.update_score(
+            leaderboard_id="alltime#global",
+            player_id="p_me",
+            old_rating=1500,
+            new_rating=1500,
+            display_name="Me",
         )
 
         event = _make_event(
