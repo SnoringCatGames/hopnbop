@@ -47,6 +47,18 @@ extends Node
 
 # ---
 
+# - FIX REMOTE PLAYER ANIMATION GLITCHES
+
+
+# - Test repsonsive layout with PlayerDisplay list.
+# - Test friends presence tracking.
+# - Test everything with anonymous users.
+# - Test party matchmaking.
+# - Test play again.
+# - Stats screen...
+# - Test sometimes being able to stand on players if approaching from an angle.
+# - Test leaderboard screen.
+
 # Spring jump is still broken sometimes
 # Improve level0 art.
 # Add level5 art.

@@ -15,10 +15,15 @@ const SNAP_Y := 16
 
 var spawn_position: Vector2:
 	get:
-		return Vector2(
-			roundf(global_position.x / SNAP_X) * SNAP_X,
-			ceilf(global_position.y / SNAP_Y) * SNAP_Y
+		# Snap in parent-local space so the grid aligns
+		# with the tile map (a sibling node). Using
+		# global_position would misalign the snap when
+		# the level has a non-zero world-space offset.
+		var snapped := Vector2(
+			roundf(position.x / SNAP_X) * SNAP_X,
+			ceilf(position.y / SNAP_Y) * SNAP_Y
 		)
+		return global_position + snapped - position
 
 var _previous_position: Vector2
 
