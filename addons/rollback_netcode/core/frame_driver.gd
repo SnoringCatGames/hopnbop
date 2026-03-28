@@ -56,6 +56,11 @@ extends Node
 # This image uses placeholder dirt, rock, sand, and ice tiles. Please add a lot more variation to their textures and tile-interior shapes. Also add more texture and shading to rocks, dirt, and sand. Also add moss to rocks. Keep the border rocks gradually transitioning out to a solid color. Also add grass and vegetation. Make the background clouds and mountains a bit more interesting, but also still faded.
 
 
+# This image uses placeholder dirt, rock, and grass shapes. Please give shape, texture, and shading to these regions. Also add moss to rocks. Keep the border rocks gradually transitioning out to a solid color.
+
+# Add grass and vegetation. Make the background clouds and mountains a bit more interesting, but also still faded.
+
+
 # Platformer level.
 # Border made of rough natural stone and rocks. Dark gray and brown stone with cracks, moss, and subtle lighting. The rocks gradually transition from detailed textured stone on the inside edge to a solid dark gray color on the outer edge.
 # Grass and dirt platforms on tree branches have rich brown soil with visible layers, small pebbles, and root textures, with bright green grass tufts on top with varied heights, with occasional small yellow wildflowers, and with warm natural lighting.
