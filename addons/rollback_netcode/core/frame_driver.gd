@@ -49,6 +49,12 @@ extends Node
 
 # - FIX REMOTE PLAYER ANIMATION GLITCHES
 
+# Image prompts:
+# - level_0:
+# Add more texture and shading to rocks, dirt, and sand. Keep the border rocks gradually transitioning out to a solid color. Add more vegetation. Make the background clouds and mountains a bit more interesting, but also still faded.
+# - level_4, with level_0 fixed-up as a reference:
+# This image uses placeholder dirt, rock, sand, and ice tiles. Please add a lot more variation to their textures. Also add more texture and shading to rocks, dirt, and sand. Keep the border rocks gradually transitioning out to a solid color. Also add grass and vegetation. Make the background clouds and mountains a bit more interesting, but also still faded.
+
 
 # - Test repsonsive layout with PlayerDisplay list.
 # - Test friends presence tracking.
@@ -2135,4 +2141,3 @@ func _maybe_send_bundles() -> void:
 	):
 		return
 	Netcode.state_bundler._send_bundles()
-
