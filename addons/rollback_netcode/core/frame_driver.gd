@@ -56,7 +56,7 @@ extends Node
 # This image uses placeholder dirt, rock, sand, and ice tiles. Please add a lot more variation to their textures and tile-interior shapes. Also add more texture and shading to rocks, dirt, and sand. Also add moss to rocks. Keep the border rocks gradually transitioning out to a solid color. Also add grass and vegetation. Make the background clouds and mountains a bit more interesting, but also still faded.
 
 
-# This image uses placeholder dirt, rock, and grass shapes. Please give shape, texture, and shading to these regions. Also add moss to rocks. Keep the border rocks gradually transitioning out to a solid color.
+# Give shape, texture, and shading to these placeholder rock, dirt, and grasse regions. Also add moss to rocks. Keep the border rocks gradually transitioning out to a solid color.
 
 # Add grass and vegetation. Make the background clouds and mountains a bit more interesting, but also still faded.
 
@@ -66,6 +66,18 @@ extends Node
 # Grass and dirt platforms on tree branches have rich brown soil with visible layers, small pebbles, and root textures, with bright green grass tufts on top with varied heights, with occasional small yellow wildflowers, and with warm natural lighting.
 # Sand platforms have yellow sand with visible layers and a grainy texture, with thick somewhat viney grass-like vegetation, with occasional bright red flowers.
 # Background has soft blue sky with layered fluffy white clouds at different heights. Faded blue-purple mountain silhouettes in the distance with subtle snow caps and ridgelines. Atmospheric perspective with lighter colors further away. Dreamy, serene mood.
+
+
+### PROMPT FOR MAIN LAYER:
+# - First, remove the decoration/occlusion layer.
+# Add more texture and shading to rocks, dirt, and sand. Keep the border rocks gradually transitioning out to a solid color. Add more moss to rocks. Make the background a bit more interesting, but also still faded. Keep colors across the level bright.
+
+### PROMPT FOR DECORATION/OCCLUSION LAYER:
+# - First, remove the background, and platform support layers.
+# Add more texture and shading to rocks, dirt, and sand. Keep the border rocks gradually transitioning out to a solid color. Add more moss to rocks. Add more vegetation. Keep colors across the level bright.
+
+
+
 
 
 # - Test repsonsive layout with PlayerDisplay list.
