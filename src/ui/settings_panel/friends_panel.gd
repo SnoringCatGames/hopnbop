@@ -14,6 +14,7 @@ extends SidePanel
 @export var _copy_icon: Texture2D
 @export var _sub_panel_trigger_row_scene: PackedScene
 @export var _add_friend_panel_scene: PackedScene
+@export var _friend_request_panel_scene: PackedScene
 
 var _friend_code_label: Label
 var _is_loading := false
@@ -437,6 +438,16 @@ func _add_incoming_row(
 
 	var row := ActionRow.new()
 
+	var open_action := func() -> void:
+		var panel: FriendRequestPanel = (
+			_friend_request_panel_scene
+				.instantiate())
+		panel.set_friend_data(
+			friend_id, display_name)
+		manager.push_panel(panel)
+
+	row.setup_actions(open_action, open_action)
+
 	var content := HBoxContainer.new()
 	content.add_theme_constant_override(
 		"separation", 8)
@@ -450,28 +461,16 @@ func _add_incoming_row(
 		Control.SIZE_EXPAND_FILL)
 	content.add_child(name_label)
 
-	var accept_button := Button.new()
-	accept_button.text = tr("FRIENDS.ACCEPT")
-	content.add_child(accept_button)
-
-	var reject_button := Button.new()
-	reject_button.text = tr("FRIENDS.REJECT")
-	content.add_child(reject_button)
-
-	var accept_action := func() -> void:
-		accept_button.disabled = true
-		G.friends_api_client.accept_request(
-			friend_id)
-
-	var reject_action := func() -> void:
-		reject_button.disabled = true
-		G.friends_api_client.reject_request(
-			friend_id)
-
-	accept_button.pressed.connect(accept_action)
-	reject_button.pressed.connect(reject_action)
-	row.setup_actions(
-		accept_action, reject_action)
+	var arrow := TextureRect.new()
+	arrow.expand_mode = (
+		TextureRect.EXPAND_IGNORE_SIZE)
+	arrow.stretch_mode = (
+		TextureRect
+			.STRETCH_KEEP_ASPECT_CENTERED)
+	arrow.mouse_filter = (
+		Control.MOUSE_FILTER_IGNORE)
+	content.add_child(arrow)
+	row._setup_chevron(arrow)
 
 	_row_container.add_child(row)
 	_connect_row_clicked(row)
