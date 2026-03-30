@@ -810,27 +810,41 @@ func _apply_interaction_collidability(interaction_type: int) -> void:
 
 
 ## Gets the bounce velocity for this frame from
-## the rollback buffer. Returns the velocity if the
-## previous frame has a bounce interaction (KILL,
-## BUMP, SPRING, SNAIL_CRUSH), or null otherwise.
+## the rollback buffer. Returns the velocity if
+## the current frame has a bounce interaction
+## (KILL, BUMP, SPRING, SNAIL_CRUSH), or null
+## otherwise.
 ##
-## Checks buffer[frame - 1] because Area2D callbacks
-## fire after a frame's physics step. The server
-## applies force_launch on the following frame via
-## _pending_bounce. This function mirrors that
-## timing so re-simulation matches.
+## Checks buffer[frame] because record_interaction
+## injects the interaction at the current frame
+## index. The server's pending path also applies
+## force_launch at the current frame (in
+## _process_movement_and_actions, after
+## _apply_movement). Matching this timing ensures
+## re-simulation and client prediction produce the
+## same trajectory as the server's forward
+## simulation.
+##
+## Previously checked buffer[frame - 1], which
+## caused a double bounce: the pending path applied
+## at frame N, and the buffer path applied again at
+## frame N+1. After rollback re-simulation (where
+## the pending path is skipped), only the buffer
+## path fires, producing a single bounce with lower
+## peak height. Checking buffer[frame] eliminates
+## this discrepancy.
 func get_current_frame_bounce_velocity():
 	if _rollback_buffer == null:
 		return null
 
-	var prev_frame := (
-		Netcode.server_frame_index - 1
+	var current_frame := (
+		Netcode.server_frame_index
 	)
-	if not _rollback_buffer.has_at(prev_frame):
+	if not _rollback_buffer.has_at(current_frame):
 		return null
 
 	var frame_state: Array = (
-		_rollback_buffer.get_at(prev_frame)
+		_rollback_buffer.get_at(current_frame)
 	)
 	if frame_state == null:
 		return null
@@ -843,9 +857,9 @@ func get_current_frame_bounce_velocity():
 	)
 
 	# Only match when the interaction is fresh at
-	# the previous frame. Stale carried-forward
+	# the current frame. Stale carried-forward
 	# values will not match.
-	if interaction_frame != prev_frame:
+	if interaction_frame != current_frame:
 		return null
 
 	var interaction_type: int = (
@@ -875,18 +889,18 @@ func get_current_frame_bounce_velocity():
 
 ## Returns the interaction type for this frame from
 ## the rollback buffer, or NONE if no interaction
-## applies. Uses the same prev-frame check as
+## applies. Uses the same current-frame check as
 ## get_current_frame_bounce_velocity().
 func get_current_frame_interaction_type() -> int:
 	if _rollback_buffer == null:
 		return ServerInteractionType.NONE
-	var prev_frame := (
-		Netcode.server_frame_index - 1
+	var current_frame := (
+		Netcode.server_frame_index
 	)
-	if not _rollback_buffer.has_at(prev_frame):
+	if not _rollback_buffer.has_at(current_frame):
 		return ServerInteractionType.NONE
 	var frame_state: Array = (
-		_rollback_buffer.get_at(prev_frame)
+		_rollback_buffer.get_at(current_frame)
 	)
 	if frame_state == null:
 		return ServerInteractionType.NONE
@@ -896,7 +910,7 @@ func get_current_frame_interaction_type() -> int:
 			&"last_interaction_frame_index",
 		)
 	)
-	if interaction_frame != prev_frame:
+	if interaction_frame != current_frame:
 		return ServerInteractionType.NONE
 	return _get_frame_property(
 		frame_state,

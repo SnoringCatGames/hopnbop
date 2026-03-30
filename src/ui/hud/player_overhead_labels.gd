@@ -18,6 +18,9 @@ var _labels_by_player_id := {}
 var _podium_labels: Array[PlayerOverheadLabel] = []
 var _podium_score_labels: Array[PlayerOverheadLabel] = []
 
+# Diagnostic timer for transform comparison logging.
+var _diagnostic_timer := 0.0
+
 # When true, the node stays invisible until the screen
 # transition finishes. Prevents the throttled visibility
 # timer from re-showing labels mid-wipe.
@@ -47,7 +50,9 @@ func set_up() -> void:
 	_update_labels()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_diagnostic_timer -= delta
+
 	# Restore visibility once the tile-wipe finishes.
 	if _hidden_for_transition:
 		if (
@@ -61,10 +66,40 @@ func _process(_delta: float) -> void:
 	# positions map correctly to the CanvasLayer's
 	# screen space.
 	if is_instance_valid(G.pixel_viewport_manager):
-		transform = (
+		var old_xform := (
 			G.pixel_viewport_manager
-				.get_world_to_screen_transform()
-		)
+				.get_world_to_screen_transform())
+		transform = old_xform
+		# Diagnostic: compare manual vs Godot-native
+		# transform to find the centering offset.
+		if (
+			is_instance_valid(
+				G.pixel_viewport_manager.sub_viewport)
+			and _diagnostic_timer <= 0.0
+		):
+			var svp := (
+				G.pixel_viewport_manager.sub_viewport)
+			var native_xform := (
+				svp.get_screen_transform()
+				* svp.get_canvas_transform())
+			if not old_xform.is_equal_approx(
+				native_xform
+			):
+				print(
+					"LABEL XFORM MISMATCH:"
+					+ " old_origin=%s"
+					+ " native_origin=%s"
+					+ " old_x=%s native_x=%s"
+					+ " old_y=%s native_y=%s"
+					% [
+						old_xform.origin,
+						native_xform.origin,
+						old_xform.x,
+						native_xform.x,
+						old_xform.y,
+						native_xform.y,
+					])
+			_diagnostic_timer = 2.0
 	else:
 		transform = (
 			get_viewport().get_canvas_transform()

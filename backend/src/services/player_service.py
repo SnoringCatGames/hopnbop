@@ -342,6 +342,7 @@ class PlayerService:
         if display_name:
             expr += (
                 ", provider_display_names.#prov = :dn"
+                ", display_name = :dn"
             )
             attr_values[":dn"] = display_name
         if profile_image_url:

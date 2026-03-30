@@ -1540,20 +1540,25 @@ func _server_check_auto_end_on_disconnect() -> void:
 	if not G.match_state.is_match_active:
 		return
 
-	var remaining_peers := (
-		multiplayer.get_peers().size())
-	if remaining_peers > 1:
+	var remaining_players := 0
+	for pid in G.match_state.players_by_id:
+		var ps: PlayerState = (
+			G.match_state.players_by_id[pid])
+		if ps.is_connected_to_server:
+			remaining_players += 1
+
+	if remaining_players > 1:
 		return
 
-	# 0 peers: nobody left. Existing
+	# 0 players: nobody left. Existing
 	# _server_on_all_clients_disconnected handles
 	# cleanup. Skip the celebration sequence since
 	# nobody would see it.
-	if remaining_peers == 0:
+	if remaining_players == 0:
 		return
 
 	Netcode.print(
-		"Only 1 peer remaining."
+		"Only 1 player remaining."
 		+ " Auto-ending match (forfeit win).",
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)

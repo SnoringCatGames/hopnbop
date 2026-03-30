@@ -314,6 +314,9 @@ func _delayed_burst(
 func _slam_winner_text(
 	is_forfeit := false,
 ) -> void:
+	if not is_instance_valid(_winner):
+		return
+
 	var gms := G.match_state as GameMatchState
 
 	if is_forfeit:
