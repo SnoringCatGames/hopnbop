@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://di7b1q8tpc53t" path="res://src/ui/settings_panel/credits_screen.gd" id="1_cv384"]
 [ext_resource type="Theme" uid="uid://cg4peau6bmpdw" path="res://src/ui/hud_theme.tres" id="2_theme"]
 [ext_resource type="StyleBox" uid="uid://co2x2prpygpfd" path="res://src/ui/settings_panel/focus_border_stylebox.tres" id="3_focus"]
-[ext_resource type="StyleBoxFlat" path="res://src/ui/settings_panel/unfocused_stylebox.tres" id="4_unfocused"]
+[ext_resource type="StyleBox" path="res://src/ui/settings_panel/unfocused_stylebox.tres" id="4_unfocused"]
 [ext_resource type="Texture2D" uid="uid://by380pc766eum" path="res://assets/images/gui/x_icon_enlarged.png" id="5_icon"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close"]
@@ -60,6 +60,7 @@ text = "Levi Lindsey"
 uri = "https://levi.dev"
 
 [node name="HBoxContainer2" type="HBoxContainer" parent="OuterVBox/CenterContainer/VBoxContainer"]
+visible = false
 custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
 
@@ -74,6 +75,7 @@ text = "Alden Witt"
 uri = "https://www.instagram.com/aldenwitty"
 
 [node name="HBoxContainer3" type="HBoxContainer" parent="OuterVBox/CenterContainer/VBoxContainer"]
+visible = false
 custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
 
@@ -92,6 +94,7 @@ custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 
 [node name="Playtesters" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer"]
+visible = false
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "Playtesters"
@@ -99,10 +102,12 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="Spacer2" type="Control" parent="OuterVBox/CenterContainer/VBoxContainer"]
+visible = false
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 
 [node name="GridContainer" type="GridContainer" parent="OuterVBox/CenterContainer/VBoxContainer"]
+visible = false
 layout_mode = 2
 columns = 2
 
@@ -116,11 +121,21 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "Amira Lindsey"
 
+[node name="Label3" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer/GridContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Jackie Lindsey"
+
+[node name="Label4" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer/GridContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Alden Witt"
+
 [node name="Spacer4" type="Control" parent="OuterVBox/CenterContainer/VBoxContainer"]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 
-[node name="Playtesters2" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer"]
+[node name="Thanks" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "Thanks for playing!"
@@ -128,15 +143,15 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="BottomSpacer" type="Control" parent="OuterVBox"]
-layout_mode = 2
 custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
 
 [node name="CloseRow" type="PanelContainer" parent="OuterVBox"]
 unique_name_in_owner = true
-layout_mode = 2
-focus_mode = 2
-size_flags_horizontal = 4
 custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+focus_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_close")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="OuterVBox/CloseRow"]
@@ -160,5 +175,5 @@ texture = ExtResource("5_icon")
 stretch_mode = 5
 
 [node name="ContentBottomSpacer" type="Control" parent="OuterVBox"]
-layout_mode = 2
 custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
