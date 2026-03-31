@@ -39,6 +39,9 @@ func build_ui() -> void:
 		Vector2(0, 20))
 	_row_container.add_child(back_spacer)
 
+	# Profile header (non-focusable).
+	_add_profile_header()
+
 	# Account linking section.
 	_add_link_account_rows()
 
@@ -56,6 +59,46 @@ func build_ui() -> void:
 	bottom_spacer.custom_minimum_size = (
 		Vector2(0, 30))
 	_row_container.add_child(bottom_spacer)
+
+
+func _add_profile_header() -> void:
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override(
+		"separation", 12)
+
+	var profile_image := ProfileImageDisplay.new()
+	profile_image.image_size = 48
+	row.add_child(profile_image)
+
+	var store := G.auth_token_store
+	if store.is_anonymous:
+		# ProfileImageDisplay defaults to the
+		# anonymous icon. No extra setup needed.
+		pass
+	else:
+		var url := store.profile_image_url
+		if not url.is_empty():
+			profile_image.set_from_url(
+				store.player_id.hash(),
+				url,
+				Color.GRAY,
+			)
+
+	var name_label := Label.new()
+	if store.is_anonymous:
+		name_label.text = tr("ACCOUNT.ANONYMOUS")
+	else:
+		name_label.text = store.display_name
+	row.add_child(name_label)
+
+	_row_container.add_child(row)
+
+	# Spacer below profile header.
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 12)
+	_row_container.add_child(spacer)
 
 
 func _add_link_account_rows() -> void:

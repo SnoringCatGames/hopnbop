@@ -218,7 +218,7 @@ func _on_merge_completed(
 
 func _on_unlink_completed(
 	success: bool,
-	_error: String,
+	error: String,
 	_provider_str: String,
 ) -> void:
 	_is_busy = false
@@ -230,6 +230,11 @@ func _on_unlink_completed(
 		):
 			_panel.manager.close_all()
 		return
+	if error == "LAST_PROVIDER":
+		G.toast_overlay.show_toast(
+			tr("LINK.LAST_PROVIDER"),
+			ToastOverlay.Type.ERROR,
+		)
 	_update_status()
 
 

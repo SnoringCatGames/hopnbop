@@ -35,6 +35,18 @@ func on_open() -> void:
 	# cached tokens first so they start fresh.
 	if _should_force_anonymous():
 		G.auth_token_store.clear_tokens()
+		G.profile_image_cache.clear()
+		G.friends_notification_poller.reset()
+		G.friends_api_client.cached_friends.clear()
+		G.friends_api_client\
+			.cached_sent_requests.clear()
+		G.friends_api_client\
+			.cached_incoming_requests.clear()
+		G.friends_api_client\
+			.cached_online_ids.clear()
+		G.party_manager.current_party.clear()
+		G.party_manager.pending_invites.clear()
+		G.client_session.clear_latest_state()
 		_start_login(
 			AuthClient.Provider.ANONYMOUS)
 		return
@@ -206,6 +218,18 @@ func _on_auto_refresh_completed(
 	else:
 		# Refresh failed. Show login buttons.
 		G.auth_token_store.clear_tokens()
+		G.profile_image_cache.clear()
+		G.friends_notification_poller.reset()
+		G.friends_api_client.cached_friends.clear()
+		G.friends_api_client\
+			.cached_sent_requests.clear()
+		G.friends_api_client\
+			.cached_incoming_requests.clear()
+		G.friends_api_client\
+			.cached_online_ids.clear()
+		G.party_manager.current_party.clear()
+		G.party_manager.pending_invites.clear()
+		G.client_session.clear_latest_state()
 		_show_buttons()
 		_build_focusable_list()
 		_navigator.prime()
