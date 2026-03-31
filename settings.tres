@@ -133,6 +133,7 @@ snail_scene = ExtResource("43_snail")
 fish_scene = ExtResource("44_fish")
 butterfly_scene = ExtResource("45_bfly")
 show_hud = false
+show_player_overhead_labels = false
 bunny_collision_shape = SubResource("CircleShape2D_woca2")
 gore_particle_scene = ExtResource("4_bav20")
 gore_kickable_scene = ExtResource("7_kickable")
