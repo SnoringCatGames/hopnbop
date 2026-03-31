@@ -402,6 +402,26 @@ Resources:
             Path: /matchmaking/leave
             Method: post
 
+  # Active Session Check
+  GetActiveSessionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.session_handler.get_active_session
+      MemorySize: 128
+      Timeout: 5
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ActiveSessionsTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        GetActiveSession:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /session/active
+            Method: get
+
   # Match Result Functions
   SubmitMatchResultFunction:
     Type: AWS::Serverless::Function

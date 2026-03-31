@@ -267,19 +267,32 @@ func _on_local_authority_added(
 	# Wait a tick to ensure state_from_server is populated.
 	await get_tree().process_frame
 
-	is_instance_valid(input_from_client)
-	is_instance_valid(input_from_client.state_from_server)
+	if not is_instance_valid(input_from_client):
+		return
+	if not is_instance_valid(input_from_client.state_from_server):
+		return
 
-	input_from_client.state_from_server.received_network_state.connect(
-		_character_state_from_server_updated,
-	)
+	input_from_client.state_from_server \
+		.received_network_state.connect(
+			_character_state_from_server_updated,
+		)
 
 
 func _on_local_authority_removed(
-		_input_from_client: ReconcilableState,
+		input_from_client: ReconcilableState,
 ) -> void:
-	# Do nothing.
-	pass
+	if (
+		is_instance_valid(input_from_client)
+		and is_instance_valid(
+			input_from_client.state_from_server)
+		and input_from_client.state_from_server
+			.received_network_state.is_connected(
+				_character_state_from_server_updated)
+	):
+		input_from_client.state_from_server \
+			.received_network_state.disconnect(
+				_character_state_from_server_updated,
+			)
 
 
 func _on_peer_connected(peer_id: int) -> void:

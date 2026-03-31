@@ -77,9 +77,6 @@ extends Node
 # Add more texture and shading to rocks, dirt, and sand. Keep the border rocks gradually transitioning out to a solid color. Add more moss to rocks. Add more vegetation. Keep colors across the level bright.
 
 
-
-
-
 # - Test repsonsive layout with PlayerDisplay list.
 # - Test friends presence tracking.
 # - Test everything with anonymous users.
@@ -201,147 +198,6 @@ extends Node
 
 # ---
 
-# Stable Diffusion workflow: Level Geometry → Game Art
-# ● Level Art Workflow with AUTOMATIC1111
-
-#   ---
-#   Setup Per Session
-
-#   1. Select SDXL base model in the top-left
-#   dropdown
-#   2. Enable ControlNet in the panel below the
-#    prompt
-#   3. Set ControlNet preprocessor to none
-#   (since you'll provide pre-made seg maps)
-#   4. Set ControlNet model to the Seg model
-#   5. Control weight: 0.7–1.0 (higher =
-#   stricter adherence to your regions)
-
-#   ---
-#   Step 1: Create Your Level Map
-
-#   In your image editor (with the ADE20K .gpl
-#   palette loaded):
-
-#   1. Draw your level geometry using flat
-#   ADE20K colors:
-#     - Platforms/stone: #FF290A (rock)
-#     - Ground/dirt: #787846 (earth)
-#     - Grass surfaces: #04FA07 (grass)
-#     - Sky/background: #06E6E6 (sky)
-#     - Water: #3DE6FA (water)
-#     - Trees/vegetation: #04C803 (tree)
-#     - Bridges: #FF5200 (bridge)
-#     - Walls: #787878 (wall)
-#     - etc.
-#   2. For non-standard materials (ice, lava,
-#   crystal, metal), pick the closest palette
-#   color and note which regions need custom
-#   prompts (see Step 2B).
-#   3. Export as PNG at your target aspect
-#   ratio (1024x1024 or 1024x576 for SDXL).
-
-#   ---
-#   Step 2: Generate — Choose Your Path
-
-#   Path A: Simple Levels (All Regions Suit the
-#    Palette)
-
-#   When your level only uses materials that
-#   map naturally to ADE20K categories:
-
-#   1. Go to the txt2img tab
-#   2. Upload your seg map to ControlNet
-#   3. Write a single prompt:
-#   2d platformer level, side view, mossy stone
-#    platforms,
-#   lush grass, clear blue sky, game art style
-#   4. Negative prompt:
-#   3d, realistic, blurry, watermark, UI, text
-#   5. Generate a batch of 4, pick the best
-
-#   Path B: Custom Materials (Ice, Lava,
-#   Crystal, etc.)
-
-#   When regions need materials the palette
-#   doesn't naturally represent:
-
-#   1. Go to the txt2img tab
-#   2. Upload your seg map to ControlNet
-#   3. Open the Regional Prompter panel
-#   4. Define regions and assign per-region
-#   prompts:
-#     - Water region → "frozen ice surface,
-#   translucent blue ice, frost"
-#     - Rock region → "glowing lava rock, magma
-#    cracks, ember"
-#     - Earth region → "dark metal platform,
-#   riveted steel, industrial"
-#   5. Each region gets its own concept
-#   regardless of what ADE20K color you used
-#   6. Generate a batch of 4, pick the best
-
-#   ---
-#   Step 3: Fix Problem Areas with Inpainting
-
-#   1. Switch to the img2img → Inpaint tab
-#   2. Load your best generation from Step 2
-#   3. Mask any areas that need fixing (bad
-#   transitions, artifacts, wrong textures)
-#   4. Write a prompt specific to that area
-#   (e.g., "seamless stone texture, mossy")
-#   5. Settings:
-#     - Mask blur: 4–8
-#     - Inpaint area: Only masked
-#     - Denoising strength: 0.5–0.7 (lower =
-#   more conservative changes)
-#   6. Generate and iterate
-
-#   ---
-#   Step 4: Upscale (If Needed)
-
-#   1. Go to the img2img tab
-#   2. Load your finished image
-#   3. Select Ultimate SD Upscale from the
-#   Scripts dropdown
-#   4. Set upscale factor (2x or 4x)
-#   5. Use a low denoising strength (0.2–0.35)
-#   to add detail without changing the
-#   composition
-
-#   ---
-#   Step 5: Refiner Pass (Optional)
-
-#   For extra detail and polish:
-
-#   1. Go to the img2img tab
-#   2. Load your image
-#   3. Switch to the SDXL Refiner model in the
-#   top-left dropdown
-#   4. Denoising strength: 0.2–0.3 (subtle
-#   refinement only)
-#   5. Generate — this adds fine detail and
-#   improves textures
-
-#   ---
-#   Tips for Consistency Across Levels
-
-#   - Lock the seed when generating variants of
-#    the same level — keeps the art style
-#   consistent
-#   - Save your prompts — reuse the same
-#   prompt/negative across level sections for
-#   visual coherence
-#   - Use the same ControlNet weight and
-#   denoising settings throughout a project
-#   - For tileable sections, add "seamless,
-#   tileable" to your prompt
-#   - Generate level sections with slight
-#   overlap so you can blend them together in
-#   your game engine
-
-# ---
-
 
 # All M3 code changes are complete. The remaining items are:
 # - Godot client test — Connect from the game client to the live fleet, play a match, verify match results post to backend
@@ -366,10 +222,7 @@ extends Node
 # ---
 
 
-# - Brave Player Name with multiple local players in Lobby.
-#   - Actually, this seems to be upon deregistering and registering.
-# - Change icon to new bunny art and logo.
-# - Get it water. Die. Respawn with a splash somewhere.
+# - Get in water. Die. Respawn with a splash somewhere.
 
 
 # - Look into the additional $100 from AWS.
@@ -893,11 +746,20 @@ extends Node
 #   - Plan through what all needs to change to support websockets
 #   - Send client type to the matchmaking backend? Have it prefer the same device type, but be willing to match with others
 #   - Mobile controls:
-#     - Divide screen into three regions: left, middle, right
-#     - Tap middle to jump
-#     - Pressed left right I move
+#     - YES
+#       - Vertical band for left
+#       - Vertical band for right
+#       - Possible vertical band for gap, depending on physical screen width
+#       - Vertical band for jump
+#     - NO
+#       - Divide screen into three regions: left, middle, right
+#         - Tap middle to jump
+#         - Pressed left right I move
 #     - Draw a semitransparent bar across the bottom to indicate the regions with an icon
 #     - Have a setting to disable the bar
+#     - For UI controls:
+#       - Have the left/right map to up/down.
+#       - Have the jump map to trigger/right (there is no left then; this shouldn't make any difference except for the trinary level-pref buttons).
 
 # - Take another pass at fixing any broken tests.
 # - Ask the AI to take another pass at ensuring we have clean decoupling between the frameworks and the game logic.

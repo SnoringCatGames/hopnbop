@@ -13,6 +13,19 @@ var is_level_fully_loaded := false
 
 var session_manager: GameSessionManager
 
+## Seconds between active-session polls during a
+## match. The poll detects if another device started
+## matchmaking for the same account.
+const _SESSION_POLL_INTERVAL_SEC := 15.0
+
+## True while the client is being kicked due to a
+## concurrent session override. Prevents re-entrant
+## disconnect handling and skips clear_session().
+var _is_session_override_kick := false
+
+var _session_poll_timer: Timer
+var _session_poll_http: HTTPRequest
+
 var match_state: GameMatchState:
 	get:
 		return %MatchStateSynchronizer.state
@@ -209,6 +222,9 @@ func _on_player_left(
 func _on_match_ended() -> void:
 	if not Netcode.is_client:
 		return
+	# Stop session polling. The match is ending
+	# normally so we do not need to detect overrides.
+	_stop_session_poll()
 	# Start a client-side timer to transition to
 	# game-over after the celebration sequence
 	# completes. This avoids depending on WebRTC
@@ -317,6 +333,11 @@ func _client_on_server_connected() -> void:
 
 	G.client_session.is_game_active = true
 
+	# Poll the backend to detect if another device
+	# overrides this session (same account starts
+	# matchmaking elsewhere).
+	_start_session_poll()
+
 	# Stay on the loading screen. We will
 	# transition to GAME when server unpauses
 	# (handled in _client_on_pause_state_changed).
@@ -401,6 +422,10 @@ func _on_connection_lost(
 ) -> void:
 	# Only clients handle connection loss UI.
 	if Netcode.is_client:
+		# Session override kick already handled
+		# the disconnect. Do not re-enter.
+		if _is_session_override_kick:
+			return
 		if is_expected:
 			Netcode.print(
 				"Match ended, showing results",
@@ -448,9 +473,18 @@ func _on_matchmaking_failed(reason: String) -> void:
 	G.client_session.is_game_loading = false
 
 	# Release the backend session lock so the
-	# player can re-queue immediately.
+	# player can re-queue immediately. Skip for
+	# concurrent session overrides: the session
+	# now belongs to another device, and clearing
+	# it would cancel their matchmaking.
+	var is_concurrent_override := (
+		reason == tr(
+			"TOAST.MATCHMAKING_CANCELLED"
+			+ "_OTHER_SESSION")
+	)
 	if (
-		Netcode.should_connect_to_remote_server
+		not is_concurrent_override
+		and Netcode.should_connect_to_remote_server
 		and session_manager.session_provider
 			.has_method("clear_session")
 	):
@@ -841,6 +875,8 @@ func _cleanup_local_mode() -> void:
 ## frame driver. Does NOT open any screen or free
 ## levels.
 func _client_cleanup_after_match() -> void:
+	_stop_session_poll()
+
 	# Reset cheat state when leaving match.
 	if is_instance_valid(G.cheat_manager):
 		G.cheat_manager.reset()
@@ -976,7 +1012,8 @@ func _client_free_levels_and_open_screen(
 
 
 ## Clean up after match and return to the lobby.
-## Used for unexpected disconnects.
+## Used for unexpected disconnects and session
+## override kicks.
 func client_exit_match() -> void:
 	Netcode.check_is_client()
 	_has_transitioned_to_game_over = false
@@ -985,13 +1022,18 @@ func client_exit_match() -> void:
 	Netcode.restore_default_physics_fps()
 
 	# Release the backend session lock so the
-	# player can re-queue immediately.
+	# player can re-queue immediately. Skip for
+	# session override kicks: the session belongs
+	# to another device now.
 	if (
-		Netcode.should_connect_to_remote_server
+		not _is_session_override_kick
+		and Netcode.should_connect_to_remote_server
 		and session_manager.session_provider
 			.has_method("clear_session")
 	):
 		session_manager.session_provider.clear_session()
+
+	_is_session_override_kick = false
 
 	_client_cleanup_after_match()
 	_client_free_levels_and_open_screen(
@@ -1007,6 +1049,10 @@ var _has_transitioned_to_game_over := false
 
 func _client_transition_to_game_over() -> void:
 	if _has_transitioned_to_game_over:
+		return
+	# Guard: session override kick already exited
+	# the match and freed levels.
+	if not G.client_session.is_game_active:
 		return
 	_has_transitioned_to_game_over = true
 	_client_cleanup_after_match()
@@ -1893,6 +1939,140 @@ func on_level_removed(level: Level) -> void:
 ## bunny configuration. Called by
 ## NetworkConnector when players declare their
 ## attributes.
+# --- Active Session Polling ---
+# Polls GET /session/active during a match to detect
+# if another device started matchmaking for the same
+# account. If the backend session is no longer
+# "in_match", the client disconnects.
+
+
+func _start_session_poll() -> void:
+	# Only poll during remote server matches with
+	# authenticated (non-anonymous) players who have
+	# active session records.
+	if not Netcode.should_connect_to_remote_server:
+		return
+	if Netcode.is_local_mode:
+		return
+	if G.auth_token_store == null:
+		return
+	if G.auth_token_store.is_anonymous:
+		return
+	if G.settings.gamelift_backend_api_url.is_empty():
+		return
+
+	if _session_poll_timer == null:
+		_session_poll_timer = Timer.new()
+		_session_poll_timer.name = (
+			"SessionPollTimer")
+		_session_poll_timer.process_mode = (
+			Node.PROCESS_MODE_ALWAYS)
+		_session_poll_timer.one_shot = false
+		_session_poll_timer.timeout.connect(
+			_poll_active_session)
+		add_child(_session_poll_timer)
+
+	if _session_poll_http == null:
+		_session_poll_http = HTTPRequest.new()
+		_session_poll_http.name = (
+			"SessionPollHTTP")
+		_session_poll_http.process_mode = (
+			Node.PROCESS_MODE_ALWAYS)
+		_session_poll_http.timeout = 10.0
+		add_child(_session_poll_http)
+
+	_session_poll_timer.start(
+		_SESSION_POLL_INTERVAL_SEC)
+
+
+func _stop_session_poll() -> void:
+	if _session_poll_timer != null:
+		_session_poll_timer.stop()
+
+
+func _poll_active_session() -> void:
+	if _session_poll_http == null:
+		return
+	# Skip if a request is already in flight.
+	if (
+		_session_poll_http
+			.request_completed
+			.is_connected(
+				_on_session_poll_response)
+	):
+		return
+
+	var url := (
+		G.settings.gamelift_backend_api_url
+		+ "/session/active")
+	var headers: PackedStringArray = [
+		"Content-Type: application/json",
+	]
+	if (
+		G.auth_token_store != null
+		and G.auth_token_store.is_token_valid()
+	):
+		headers.append(
+			"Authorization: Bearer %s"
+			% G.auth_token_store.jwt_token)
+
+	_session_poll_http.request_completed.connect(
+		_on_session_poll_response)
+	var error := _session_poll_http.request(
+		url, headers, HTTPClient.METHOD_GET)
+	if error != OK:
+		(_session_poll_http.request_completed
+			.disconnect(
+				_on_session_poll_response))
+
+
+func _on_session_poll_response(
+	result: int,
+	response_code: int,
+	_headers: PackedStringArray,
+	body: PackedByteArray,
+) -> void:
+	_session_poll_http.request_completed.disconnect(
+		_on_session_poll_response)
+
+	# Silently ignore errors. Only act on a positive
+	# "session changed" response.
+	if result != HTTPRequest.RESULT_SUCCESS:
+		return
+	if response_code != 200:
+		return
+
+	var parsed = JSON.parse_string(
+		body.get_string_from_utf8())
+	if parsed == null or not parsed is Dictionary:
+		return
+
+	var state = parsed.get("state")
+
+	# Session is still in_match. All good.
+	if state == "in_match":
+		return
+
+	# Session state changed (matchmaking, null,
+	# etc.). Another device overrode this session.
+	_stop_session_poll()
+	_is_session_override_kick = true
+
+	Netcode.print(
+		"Session overridden by another device"
+		+ " (state: %s)" % str(state),
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+	if is_instance_valid(G.toast_overlay):
+		G.toast_overlay.show_toast(
+			tr("TOAST.KICKED_OTHER_SESSION"),
+			ToastOverlay.Type.ERROR,
+		)
+
+	client_exit_match()
+
+
 func _validate_player_attributes(
 	attributes: Array,
 	expected_count: int,

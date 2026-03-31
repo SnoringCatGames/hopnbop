@@ -334,10 +334,18 @@ func _on_status_response(
 		return
 
 	# Failed or unknown status.
-	var error_msg: String = data.get(
-		"message",
-		"Matchmaking %s" % status,
-	)
+	var error_code: String = data.get(
+		"error_code", "")
+	var error_msg: String
+	if error_code == "CONCURRENT_SESSION_OVERRIDE":
+		error_msg = tr(
+			"TOAST.MATCHMAKING_CANCELLED"
+			+ "_OTHER_SESSION")
+	else:
+		error_msg = data.get(
+			"message",
+			"Matchmaking %s" % status,
+		)
 	session_request_failed.emit(error_msg)
 
 

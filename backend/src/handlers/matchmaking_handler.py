@@ -685,17 +685,52 @@ def get_matchmaking_status(event: Dict[str, Any], context: LambdaContext) -> Dic
             }
 
         # Failed/cancelled/timeout.
-        # Release the session lock for non-guest players.
-        if not is_guest:
-            active_session_service.clear_session(player_id)
+        error_code = status["status"].upper()
+        message = f"Matchmaking {status['status']}"
+
+        # Check if cancellation was caused by another
+        # device starting matchmaking for the same
+        # account. If so, do not clear the session
+        # (it belongs to the other device now).
+        is_concurrent_override = False
+        if (
+            not is_guest
+            and status["status"] == "cancelled"
+        ):
+            current = (
+                active_session_service
+                .get_active_session(player_id)
+            )
+            if (
+                current is not None
+                and current.get("session_id")
+                    != ticket_id
+                and current.get("session_id")
+                    != "pending"
+            ):
+                is_concurrent_override = True
+                error_code = (
+                    "CONCURRENT_SESSION_OVERRIDE"
+                )
+                message = (
+                    "Matchmaking cancelled because"
+                    " your account started"
+                    " matchmaking on another device."
+                )
+
+        if not is_guest and not is_concurrent_override:
+            active_session_service.clear_session(
+                player_id
+            )
+
         return {
             "statusCode": 200,
             "headers": _HEADERS,
             "body": json.dumps(
                 {
                     "status": "failed",
-                    "error_code": status["status"].upper(),
-                    "message": f"Matchmaking {status['status']}",
+                    "error_code": error_code,
+                    "message": message,
                 }
             ),
         }
