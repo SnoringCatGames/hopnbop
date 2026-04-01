@@ -1010,6 +1010,7 @@ func _handle_auth_success(data: Dictionary) -> void:
 		_is_linking = false
 		var provider_name := _link_provider_name
 		_link_provider_name = ""
+		_update_profile_from_response(data)
 		link_completed.emit(true, "", provider_name)
 		return
 
@@ -1060,9 +1061,27 @@ func _handle_merge_success(data: Dictionary) -> void:
 			G.auth_token_store.linked_providers.append(
 				str(p)
 			)
-		G.auth_token_store.save_tokens()
+	_update_profile_from_response(data)
 
 	merge_completed.emit(true, "", provider_name)
+
+
+## Update display_name and profile_image_url from a
+## link or merge response, if the server included
+## them. Always persists to disk.
+func _update_profile_from_response(
+	data: Dictionary,
+) -> void:
+	var new_name: String = data.get(
+		"display_name", "")
+	if not new_name.is_empty():
+		G.auth_token_store.display_name = new_name
+	var new_image: String = data.get(
+		"profile_image_url", "")
+	if not new_image.is_empty():
+		G.auth_token_store.profile_image_url = (
+			new_image)
+	G.auth_token_store.save_tokens()
 
 
 func _handle_delete_success() -> void:

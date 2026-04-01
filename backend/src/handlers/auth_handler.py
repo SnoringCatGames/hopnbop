@@ -626,6 +626,16 @@ def link_account(
                     "linked_providers": list(
                         updated_profile.auth_providers.keys()
                     ) if updated_profile else [],
+                    "display_name": (
+                        updated_profile.display_name
+                        if updated_profile
+                        else auth_result.display_name
+                    ),
+                    "profile_image_url": (
+                        updated_profile.profile_image_url
+                        if updated_profile
+                        else ""
+                    ),
                 }
             ),
         }
@@ -917,6 +927,12 @@ def merge_accounts(
                 "message": "Accounts merged",
                 "linked_providers": list(
                     merged_profile.auth_providers.keys()
+                ),
+                "display_name": (
+                    merged_profile.display_name
+                ),
+                "profile_image_url": (
+                    merged_profile.profile_image_url
                 ),
             }),
         }

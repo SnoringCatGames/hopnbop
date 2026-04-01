@@ -76,6 +76,13 @@ func _ready() -> void:
 				piu = (
 					G.auth_token_store
 						.profile_image_url)
+			var dn := ""
+			if (G.auth_token_store != null
+					and not G.auth_token_store
+						.display_name.is_empty()
+					and not G.auth_token_store
+						.is_anonymous):
+				dn = G.auth_token_store.display_name
 			return {
 				"session_ids":
 					G.client_session
@@ -88,6 +95,7 @@ func _ready() -> void:
 						.local_player_attributes,
 				"backend_player_id": bid,
 				"profile_image_url": piu,
+				"display_name": dn,
 			}
 	)
 
@@ -961,9 +969,14 @@ func _populate_match_participants() -> void:
 		var has_profile_image := (
 			G.client_session.profile_image_urls
 				.has(pid))
+		var name: String = (
+			G.client_session.auth_display_names
+				.get(pid, ""))
+		if name.is_empty():
+			name = String(ps.full_name)
 		var entry := {
 			"player_id": pid,
-			"display_name": String(ps.full_name),
+			"display_name": name,
 			"backend_player_id": backend_id,
 			"is_anonymous": (
 				backend_id.is_empty()
@@ -1244,6 +1257,29 @@ func _server_send_profile_images_to_clients(
 			.bind(packed_data))
 
 
+## Sends auth display names to all clients via
+## RPC. Packs as flat array [pid, name, ...].
+func _server_send_display_names_to_clients(
+) -> void:
+	var provider := (
+		session_manager.session_provider)
+	if not provider.has_method(
+			"get_display_name_map"):
+		return
+	var name_map: Dictionary = (
+		provider.get_display_name_map())
+	if name_map.is_empty():
+		return
+	var packed_data: Array = []
+	for player_id in name_map:
+		packed_data.append(player_id)
+		packed_data.append(name_map[player_id])
+	Netcode.call_client_rpc_with_local_support(
+		match_state_synchronizer
+			._rpc_client_receive_display_names
+			.bind(packed_data))
+
+
 ## Reports match results to the backend API.
 ## Only runs on GameLift servers (not preview).
 func _server_report_match_result() -> void:
@@ -1378,9 +1414,10 @@ func _server_on_all_players_connected() -> void:
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 
-	# Send profile images to clients now that all
-	# peers have declared their URLs.
+	# Send profile images and display names to
+	# clients now that all peers have declared.
 	_server_send_profile_images_to_clients()
+	_server_send_display_names_to_clients()
 
 	# Unpause frame driver to start simulation.
 	# The framework automatically triggers
@@ -1659,8 +1696,10 @@ func _server_initiate_match_end() -> void:
 	# so they can friend-add post-match.
 	_server_send_backend_ids_to_clients()
 
-	# Send profile image URLs to all clients.
+	# Send profile image URLs and display names
+	# to all clients.
 	_server_send_profile_images_to_clients()
+	_server_send_display_names_to_clients()
 
 	# Set flag to enable invincibility for all
 	# players and notify clients.

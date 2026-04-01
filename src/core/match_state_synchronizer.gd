@@ -394,3 +394,17 @@ func _rpc_client_receive_profile_images(
 		if not url.is_empty():
 			G.profile_image_cache.request_image(
 				player_id, url)
+
+
+## Receives auth display names from the server.
+## packed_data is [player_id, name, ...] pairs
+## (stride of 2).
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_GAME_EVENTS)
+func _rpc_client_receive_display_names(
+	packed_data: Array,
+) -> void:
+	for i in range(0, packed_data.size(), 2):
+		var player_id: int = packed_data[i]
+		var display_name: String = packed_data[i + 1]
+		G.client_session.auth_display_names[
+			player_id] = display_name

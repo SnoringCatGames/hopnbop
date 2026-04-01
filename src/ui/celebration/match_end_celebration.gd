@@ -325,7 +325,7 @@ func _slam_winner_text(
 		if ps:
 			%WinnerText.text = (
 				tr("CELEBRATION.WINS_BY_DEFAULT")
-				% ps.bunny_name.to_upper())
+				% _winner_name(ps).to_upper())
 		else:
 			%WinnerText.text = tr(
 				"CELEBRATION.WINNER_BY_DEFAULT")
@@ -345,7 +345,7 @@ func _slam_winner_text(
 			if ps:
 				%WinnerText.text = (
 					tr("CELEBRATION.WINS")
-					% ps.bunny_name.to_upper())
+					% _winner_name(ps).to_upper())
 			else:
 				%WinnerText.text = tr(
 					"CELEBRATION.WINNER")
@@ -583,6 +583,17 @@ func _spawn_adjective_popup(
 
 	popup.reveal(
 		adjective, label_color, outline_color)
+
+
+## Returns the auth display name for a player if
+## available, otherwise falls back to bunny_name.
+func _winner_name(ps: GamePlayerState) -> String:
+	var auth_name: String = (
+		G.client_session.auth_display_names
+			.get(ps.player_id, ""))
+	if not auth_name.is_empty():
+		return auth_name
+	return ps.bunny_name
 
 
 func reset() -> void:

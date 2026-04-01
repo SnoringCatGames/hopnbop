@@ -82,6 +82,7 @@ func server_validate_player_sessions(
 	session_ids: Array,
 	backend_player_id: String = "",
 	profile_image_url: String = "",
+	auth_display_name: String = "",
 ) -> void:
 	push_error("SessionProvider.server_validate_player_sessions not implemented")
 

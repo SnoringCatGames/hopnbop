@@ -43,6 +43,11 @@ var _player_to_backend_id: Dictionary = {}
 # Dictionary<int, String>
 var _player_to_profile_image_url: Dictionary = {}
 
+# Maps game player_id -> auth display name. Built from
+# client-declared data during session validation.
+# Dictionary<int, String>
+var _player_to_display_name: Dictionary = {}
+
 # Backend player IDs identified as anonymous from
 # matchmaker data (is_authenticated == 0).
 # Dictionary<String, bool>
@@ -93,6 +98,7 @@ func server_validate_player_sessions(
 	session_ids: Array,
 	backend_player_id: String = "",
 	profile_image_url: String = "",
+	auth_display_name: String = "",
 ) -> void:
 	var player_count := session_ids.size()
 
@@ -131,6 +137,8 @@ func server_validate_player_sessions(
 			player_ids, backend_player_id)
 		_store_profile_image_urls(
 			player_ids, profile_image_url)
+		_store_display_names(
+			player_ids, auth_display_name)
 		return
 
 	# Validate all session IDs for this peer.
@@ -184,6 +192,8 @@ func server_validate_player_sessions(
 		player_ids, backend_player_id)
 	_store_profile_image_urls(
 		player_ids, profile_image_url)
+	_store_display_names(
+		player_ids, auth_display_name)
 
 
 ## Returns the mapping from in-game int player_id
@@ -197,6 +207,12 @@ func get_backend_player_id_map() -> Dictionary:
 ## to profile image URL string.
 func get_profile_image_url_map() -> Dictionary:
 	return _player_to_profile_image_url
+
+
+## Returns the mapping from in-game int player_id
+## to auth display name string.
+func get_display_name_map() -> Dictionary:
+	return _player_to_display_name
 
 
 ## Returns backend player IDs identified as
@@ -236,6 +252,20 @@ func _store_profile_image_urls(
 	for i in range(player_ids.size()):
 		_player_to_profile_image_url[
 			player_ids[i]] = profile_image_url
+
+
+## Stores auth display name for each game player.
+## For couch co-op, multiple game players from the
+## same client share the same display name.
+func _store_display_names(
+	player_ids: Array[int],
+	auth_display_name: String,
+) -> void:
+	if auth_display_name.is_empty():
+		return
+	for i in range(player_ids.size()):
+		_player_to_display_name[
+			player_ids[i]] = auth_display_name
 
 
 func cleanup() -> void:

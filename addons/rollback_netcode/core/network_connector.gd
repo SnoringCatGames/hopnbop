@@ -379,6 +379,8 @@ func _client_send_player_declaration() -> void:
 		"backend_player_id", "")
 	var profile_image_url: String = session_data.get(
 		"profile_image_url", "")
+	var auth_display_name: String = session_data.get(
+		"display_name", "")
 
 	Netcode.log.check(
 		player_count == session_ids.size(),
@@ -406,6 +408,7 @@ func _client_send_player_declaration() -> void:
 		client_protocol_version,
 		backend_player_id,
 		profile_image_url,
+		auth_display_name,
 	)
 
 
@@ -495,6 +498,7 @@ func _server_rpc_declare_players(
 	client_version: String,
 	backend_player_id: String = "",
 	profile_image_url: String = "",
+	auth_display_name: String = "",
 ) -> void:
 	Netcode.check_is_server()
 
@@ -567,6 +571,7 @@ func _server_rpc_declare_players(
 			session_ids,
 			backend_player_id,
 			profile_image_url,
+			auth_display_name,
 		)
 
 	# Send assigned IDs back to client.
