@@ -771,6 +771,12 @@ func _on_local_mode_fallback() -> void:
 ## stays a client but also runs server-side
 ## game logic via is_local_mode.
 func _client_start_local_mode() -> void:
+	# Clear lobby player state from match state.
+	# The lobby writes directly to
+	# G.match_state.players_by_id, and queue_free
+	# on the lobby level does not remove them.
+	G.match_state.clear()
+
 	# Initialize local mode in session manager.
 	session_manager.start_local_mode()
 
@@ -1406,7 +1412,10 @@ func _server_on_all_players_connected() -> void:
 
 	# In preview mode, hot-reload settings and
 	# level from local storage before starting.
-	if Netcode.is_preview:
+	# Skip in local mode: hot-reload replays
+	# peer declarations via get_peers(), which
+	# is empty in local mode.
+	if Netcode.is_preview and not Netcode.is_local_mode:
 		_server_preview_hot_reload()
 
 	Netcode.print(

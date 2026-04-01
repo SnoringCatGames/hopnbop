@@ -16,6 +16,10 @@ from boto3.dynamodb.conditions import Key
 # Refresh tokens expire after 30 days.
 _REFRESH_TOKEN_DAYS = 30
 
+# Maximum number of concurrent refresh tokens per player
+# (one per device/session).
+_MAX_REFRESH_TOKENS = 5
+
 # Friend code length and max generation retries.
 _FRIEND_CODE_LENGTH = 6
 _FRIEND_CODE_MAX_RETRIES = 5
@@ -464,10 +468,14 @@ class PlayerService:
         player_id: str,
         refresh_token: str,
     ) -> int:
-        """Hash and store a refresh token. Returns expiry timestamp."""
+        """Hash and append a refresh token. Returns expiry
+        timestamp. Keeps up to _MAX_REFRESH_TOKENS entries,
+        evicting the oldest when full. Expired entries are
+        pruned on every write."""
         token_hash = bcrypt.hashpw(
             refresh_token.encode(), bcrypt.gensalt()
         ).decode()
+        now = int(datetime.now().timestamp())
         expires_at = int(
             (
                 datetime.now()
@@ -475,15 +483,35 @@ class PlayerService:
             ).timestamp()
         )
 
+        # Read existing tokens.
+        response = self.table.get_item(
+            Key={"player_id": player_id},
+            ProjectionExpression="refresh_tokens",
+        )
+        item = response.get("Item", {})
+        tokens: list = item.get("refresh_tokens", [])
+
+        # Prune expired entries.
+        tokens = [
+            t for t in tokens
+            if int(t.get("expires_at", 0)) > now
+        ]
+
+        # Append new entry.
+        tokens.append({
+            "hash": token_hash,
+            "expires_at": expires_at,
+        })
+
+        # Evict oldest if over the cap.
+        if len(tokens) > _MAX_REFRESH_TOKENS:
+            tokens = tokens[-_MAX_REFRESH_TOKENS:]
+
         self.table.update_item(
             Key={"player_id": player_id},
-            UpdateExpression=(
-                "SET refresh_token_hash = :hash,"
-                " refresh_token_expires_at = :exp"
-            ),
+            UpdateExpression="SET refresh_tokens = :tokens",
             ExpressionAttributeValues={
-                ":hash": token_hash,
-                ":exp": expires_at,
+                ":tokens": tokens,
             },
         )
         return expires_at
@@ -491,44 +519,43 @@ class PlayerService:
     async def verify_refresh_token(
         self, player_id: str, refresh_token: str
     ) -> bool:
-        """Verify a refresh token against the stored hash."""
+        """Verify a refresh token against all stored
+        hashes. Returns True if any non-expired entry
+        matches."""
         response = self.table.get_item(
             Key={"player_id": player_id},
-            ProjectionExpression=(
-                "refresh_token_hash,"
-                " refresh_token_expires_at"
-            ),
+            ProjectionExpression="refresh_tokens",
         )
         item = response.get("Item")
         if not item:
             return False
 
-        stored_hash = item.get("refresh_token_hash", "")
-        expires_at = item.get("refresh_token_expires_at", 0)
-
-        if not stored_hash:
+        tokens: list = item.get("refresh_tokens", [])
+        if not tokens:
             return False
 
-        # Check expiry.
         now = int(datetime.now().timestamp())
-        if now >= expires_at:
-            return False
-
-        # Verify hash.
-        return bcrypt.checkpw(
-            refresh_token.encode(), stored_hash.encode()
-        )
+        encoded = refresh_token.encode()
+        for entry in tokens:
+            expires_at = int(entry.get("expires_at", 0))
+            if now >= expires_at:
+                continue
+            stored_hash = entry.get("hash", "")
+            if not stored_hash:
+                continue
+            if bcrypt.checkpw(
+                encoded, stored_hash.encode()
+            ):
+                return True
+        return False
 
     async def clear_refresh_token(
         self, player_id: str
     ) -> None:
-        """Remove stored refresh token data."""
+        """Remove all stored refresh tokens."""
         self.table.update_item(
             Key={"player_id": player_id},
-            UpdateExpression=(
-                "REMOVE refresh_token_hash,"
-                " refresh_token_expires_at"
-            ),
+            UpdateExpression="REMOVE refresh_tokens",
         )
 
     async def get_player_by_friend_code(

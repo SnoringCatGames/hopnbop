@@ -11,6 +11,7 @@ from datetime import datetime
 STATUS_ACCEPTED = "accepted"
 STATUS_PENDING_SENT = "pending_sent"
 STATUS_PENDING_RECEIVED = "pending_received"
+STATUS_REJECTED = "rejected"
 
 
 @dataclass
@@ -277,8 +278,12 @@ class FriendsService:
         receiver_id: str,
         sender_id: str,
     ) -> bool:
-        """Reject a pending friend request by deleting
-        both rows.
+        """Reject a pending friend request.
+
+        Updates the sender's row to "rejected" so the
+        sender receives a notification. Deletes the
+        receiver's row. Rejected rows are cleaned up
+        in mark_friends_seen().
 
         Returns True if rejected, False if no pending
         request found.
@@ -294,19 +299,34 @@ class FriendsService:
         if status != STATUS_PENDING_RECEIVED:
             return False
 
-        with self.friends_table.batch_writer() as batch:
-            batch.delete_item(
-                Key={
-                    "player_id": receiver_id,
-                    "friend_id": sender_id,
-                }
-            )
-            batch.delete_item(
-                Key={
-                    "player_id": sender_id,
-                    "friend_id": receiver_id,
-                }
-            )
+        now = int(datetime.now().timestamp())
+
+        # Update sender's row to "rejected" so it
+        # appears in their notifications.
+        self.friends_table.update_item(
+            Key={
+                "player_id": sender_id,
+                "friend_id": receiver_id,
+            },
+            UpdateExpression=(
+                "SET #s = :rejected,"
+                " updated_at = :now"
+            ),
+            ExpressionAttributeNames={
+                "#s": "status",
+            },
+            ExpressionAttributeValues={
+                ":rejected": STATUS_REJECTED,
+                ":now": now,
+            },
+        )
+        # Delete the receiver's row.
+        self.friends_table.delete_item(
+            Key={
+                "player_id": receiver_id,
+                "friend_id": sender_id,
+            }
+        )
         return True
 
     async def cancel_friend_request(
@@ -434,6 +454,10 @@ class FriendsService:
                 sent_requests.append(rel)
             elif status == STATUS_PENDING_RECEIVED:
                 incoming_requests.append(rel)
+            elif status == STATUS_REJECTED:
+                # Rejected rows are excluded from all
+                # lists. Cleaned up in mark_friends_seen.
+                pass
             else:
                 # Legacy rows without status field.
                 friends.append(rel)
@@ -479,6 +503,7 @@ class FriendsService:
 
         incoming_requests = []
         accepted_requests = []
+        rejected_requests = []
 
         for item in items:
             fid = item["friend_id"]
@@ -506,10 +531,15 @@ class FriendsService:
                 # We sent the request and they
                 # accepted it.
                 accepted_requests.append(entry)
+            elif status == STATUS_REJECTED:
+                # We sent the request and they
+                # rejected it.
+                rejected_requests.append(entry)
 
         return {
             "incoming_requests": incoming_requests,
             "accepted_requests": accepted_requests,
+            "rejected_requests": rejected_requests,
         }
 
     async def get_unseen_count(
@@ -525,13 +555,14 @@ class FriendsService:
         return (
             len(notifications["incoming_requests"])
             + len(notifications["accepted_requests"])
+            + len(notifications["rejected_requests"])
         )
 
     async def mark_friends_seen(
         self, player_id: str
     ) -> None:
         """Update last_seen_friends_at on the player
-        record."""
+        record and clean up rejected rows."""
         now = int(datetime.now().timestamp())
         self.players_table.update_item(
             Key={"player_id": player_id},
@@ -542,6 +573,38 @@ class FriendsService:
                 ":now": now,
             },
         )
+
+        # Delete any rejected rows so they don't
+        # reappear in future notification polls.
+        response = self.friends_table.query(
+            KeyConditionExpression=(
+                boto3.dynamodb.conditions.Key(
+                    "player_id"
+                ).eq(player_id)
+            ),
+            FilterExpression=(
+                boto3.dynamodb.conditions.Attr(
+                    "status"
+                ).eq(STATUS_REJECTED)
+            ),
+            ProjectionExpression=(
+                "player_id, friend_id"
+            ),
+        )
+        if response["Items"]:
+            with self.friends_table.batch_writer() \
+                    as batch:
+                for item in response["Items"]:
+                    batch.delete_item(
+                        Key={
+                            "player_id": item[
+                                "player_id"
+                            ],
+                            "friend_id": item[
+                                "friend_id"
+                            ],
+                        }
+                    )
 
     async def get_last_seen_timestamp(
         self, player_id: str

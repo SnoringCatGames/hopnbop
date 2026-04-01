@@ -24,6 +24,7 @@ var _is_first_presence_poll := true
 ## Track known IDs to detect new arrivals.
 var _known_incoming_ids: Dictionary = {}
 var _known_accepted_ids: Dictionary = {}
+var _known_rejected_ids: Dictionary = {}
 var _known_online_ids: Dictionary = {}
 
 
@@ -94,6 +95,7 @@ func reset() -> void:
 	_last_poll_timestamp = 0
 	_known_incoming_ids.clear()
 	_known_accepted_ids.clear()
+	_known_rejected_ids.clear()
 	_known_online_ids.clear()
 	_set_unseen_count(0)
 
@@ -105,9 +107,12 @@ func _on_notifications_received(
 		"incoming_requests", [])
 	var accepted: Array = data.get(
 		"accepted_requests", [])
+	var rejected: Array = data.get(
+		"rejected_requests", [])
 
 	var new_incoming: Array[Dictionary] = []
 	var new_accepted: Array[Dictionary] = []
+	var new_rejected: Array[Dictionary] = []
 
 	for entry in incoming:
 		var fid: String = entry.get(
@@ -125,20 +130,29 @@ func _on_notifications_received(
 			_known_accepted_ids[fid] = true
 			new_accepted.append(entry)
 
+	for entry in rejected:
+		var fid: String = entry.get(
+			"friend_id", "")
+		if not fid.is_empty() \
+				and not _known_rejected_ids.has(fid):
+			_known_rejected_ids[fid] = true
+			new_rejected.append(entry)
+
 	# Update timestamp to the latest updated_at
 	# seen in any notification.
-	for entry in incoming:
-		var ts: int = entry.get("updated_at", 0)
-		if ts > _last_poll_timestamp:
-			_last_poll_timestamp = ts
-	for entry in accepted:
-		var ts: int = entry.get("updated_at", 0)
-		if ts > _last_poll_timestamp:
-			_last_poll_timestamp = ts
+	for entries in [incoming, accepted, rejected]:
+		for entry in entries:
+			var ts: int = entry.get(
+				"updated_at", 0)
+			if ts > _last_poll_timestamp:
+				_last_poll_timestamp = ts
 
 	# Update unseen count.
 	var total_new := (
-		new_incoming.size() + new_accepted.size())
+		new_incoming.size()
+		+ new_accepted.size()
+		+ new_rejected.size()
+	)
 	if total_new > 0:
 		_set_unseen_count(
 			unseen_count + total_new)
@@ -148,9 +162,22 @@ func _on_notifications_received(
 		_is_first_poll = false
 		if total_new > 0:
 			_show_toasts_delayed(
-				new_incoming, new_accepted)
+				new_incoming,
+				new_accepted,
+				new_rejected,
+			)
 	else:
-		_show_toasts(new_incoming, new_accepted)
+		_show_toasts(
+			new_incoming,
+			new_accepted,
+			new_rejected,
+		)
+
+	# Refresh the full friends list so any open
+	# panel reflects the changes immediately.
+	if total_new > 0:
+		if not G.friends_api_client.is_busy():
+			G.friends_api_client.fetch_friends()
 
 
 func _on_friends_received(
@@ -175,28 +202,37 @@ func _set_unseen_count(count: int) -> void:
 func _show_toasts(
 	incoming: Array[Dictionary],
 	accepted: Array[Dictionary],
+	rejected: Array[Dictionary],
 ) -> void:
 	if not is_instance_valid(G.toast_overlay):
 		return
 	for entry in incoming:
-		var name: String = entry.get(
+		var display_name: String = entry.get(
 			"display_name", "")
-		if not name.is_empty():
+		if not display_name.is_empty():
 			G.toast_overlay.show_toast(
 				tr("FRIENDS.REQUEST_RECEIVED")
-				% name)
+				% display_name)
 	for entry in accepted:
-		var name: String = entry.get(
+		var display_name: String = entry.get(
 			"display_name", "")
-		if not name.is_empty():
+		if not display_name.is_empty():
 			G.toast_overlay.show_toast(
 				tr("FRIENDS.REQUEST_ACCEPTED")
-				% name)
+				% display_name)
+	for entry in rejected:
+		var display_name: String = entry.get(
+			"display_name", "")
+		if not display_name.is_empty():
+			G.toast_overlay.show_toast(
+				tr("FRIENDS.REQUEST_REJECTED")
+				% display_name)
 
 
 func _show_toasts_delayed(
 	incoming: Array[Dictionary],
 	accepted: Array[Dictionary],
+	rejected: Array[Dictionary],
 ) -> void:
 	if not is_instance_valid(G.toast_overlay):
 		return
@@ -204,7 +240,7 @@ func _show_toasts_delayed(
 	# appear during loading.
 	await get_tree().create_timer(
 		_FIRST_POLL_TOAST_DELAY_SEC).timeout
-	_show_toasts(incoming, accepted)
+	_show_toasts(incoming, accepted, rejected)
 
 
 func _on_auth_completed(

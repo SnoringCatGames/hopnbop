@@ -12,6 +12,13 @@ extends "res://src/scaffolder/character/player_input_network_state.gd"
 ## bitmasks indexed by frame so delayed input can be retrieved.
 var input_delay_buffer := InputDelayBuffer.new()
 
+## Whether local_authority_added has been emitted
+## for this node. In local mode, the default
+## multiplayer authority already matches the local
+## peer, so the authority never "changes." This
+## flag ensures the signal fires once regardless.
+var _has_notified_local_authority := false
+
 
 func _get_send_interval() -> int:
 	# With bundling, input is sent at the same rate
@@ -71,17 +78,21 @@ func _exit_tree() -> void:
 	if not Netcode.is_connected_to_server:
 		return
 	if is_multiplayer_authority():
+		_has_notified_local_authority = false
 		Netcode.local_authority_removed.emit(self)
 
 
 func update_authority() -> void:
-	var was_multiplayer_authority := is_multiplayer_authority()
+	var was_multiplayer_authority := (
+		is_multiplayer_authority())
 	super.update_authority()
 	if (
 		is_multiplayer_authority()
-		and not was_multiplayer_authority
+		and (not was_multiplayer_authority
+			or not _has_notified_local_authority)
 	):
-		Netcode.local_authority_added.emit(self )
+		_has_notified_local_authority = true
+		Netcode.local_authority_added.emit(self)
 
 
 func _handle_new_state_from_network(p_state: Array) -> void:

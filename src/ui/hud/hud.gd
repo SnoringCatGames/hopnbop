@@ -2,13 +2,14 @@ class_name Hud
 extends PanelContainer
 
 
-const _ASPECT_RATIO_THRESHOLD := 2.0
-const _SIDE_PANEL_CAMERA_OFFSET_PX := 96.0
+const _ASPECT_RATIO_THRESHOLD := 1.3
 
 
 @onready var player_list: PlayerList = %PlayerList
 @onready var _player_list_vertical: PlayerList = (
 	%PlayerListVertical)
+
+var _is_vertical_layout := false
 @onready var match_start_countdown: MatchStartCountdown = (
 	$MatchStartCountdown)
 
@@ -82,14 +83,19 @@ func _apply_layout() -> void:
 	var window_size := DisplayServer.window_get_size()
 	var aspect_ratio := (
 		float(window_size.x) / float(window_size.y))
-	var use_vertical := aspect_ratio >= _ASPECT_RATIO_THRESHOLD
+	var use_vertical := (
+		aspect_ratio >= _ASPECT_RATIO_THRESHOLD)
+
+	if use_vertical != _is_vertical_layout:
+		_is_vertical_layout = use_vertical
+		var layout_name := (
+			"vertical (right)"
+			if use_vertical
+			else "horizontal (bottom)")
+		G.log.print(
+			"[Hud] Layout changed to %s"
+			% layout_name
+			+ " (aspect_ratio=%.2f)" % aspect_ratio)
 
 	player_list.visible = not use_vertical
 	_player_list_vertical.visible = use_vertical
-
-	var offset_px: float = (
-		_SIDE_PANEL_CAMERA_OFFSET_PX
-		if use_vertical
-		else 0.0)
-	G.pixel_viewport_manager.set_side_panel_offset(
-		offset_px)

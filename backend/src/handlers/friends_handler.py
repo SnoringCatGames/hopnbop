@@ -516,6 +516,9 @@ def get_notifications(
                     "accepted_requests": notifications[
                         "accepted_requests"
                     ],
+                    "rejected_requests": notifications[
+                        "rejected_requests"
+                    ],
                 }
             ),
         }

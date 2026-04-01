@@ -32,10 +32,6 @@ var _base_zooms := {}
 ## switches.
 var _last_camera: Camera2D
 
-## X offset for the side panel, in root viewport
-## pixels. Applied as a left shift when non-zero.
-var _side_panel_offset_px := 0.0
-
 ## When true, overrides camera base zoom to
 ## Vector2(1, 1) for 1:1 pixel rendering.
 var is_thumbnail_snapshot_mode := false
@@ -123,8 +119,8 @@ func _on_window_resized() -> void:
 	container.stretch_shrink = current_scale
 	container.size = Vector2(container_w, container_h)
 
-	# Center the tiny remaining margin (0 to N-1
-	# pixels per side).
+	# Center the remaining margin (0 to N-1 pixels
+	# per side).
 	container.position = Vector2(
 		(window_size.x - container_w) / 2.0,
 		(window_size.y - container_h) / 2.0,
@@ -194,13 +190,6 @@ func _update_camera_zoom() -> void:
 
 	camera.zoom = base_zoom * _zoom_scale
 
-	if is_thumbnail_snapshot_mode:
-		camera.offset.x = 0.0
-	else:
-		camera.offset.x = (
-			-(_side_panel_offset_px / float(current_scale))
-			/ camera.zoom.x)
-
 	_last_camera = camera
 
 
@@ -240,14 +229,6 @@ func get_world_to_screen_transform() -> Transform2D:
 			cx.origin.x * sf + cp.x,
 			cx.origin.y * sf + cp.y),
 	)
-
-
-## Sets the number of root viewport pixels by which the
-## camera shifts left to make room for the side panel.
-## Pass 0.0 to clear the offset.
-func set_side_panel_offset(px: float) -> void:
-	_side_panel_offset_px = px
-	_update_camera_zoom()
 
 
 ## Converts a world position to root viewport screen

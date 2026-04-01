@@ -122,7 +122,9 @@ func rebuild_row_list() -> void:
 
 	_rows.clear()
 	for child in _row_container.get_children():
-		if child is SettingsRow and child.visible:
+		if (child is SettingsRow
+				and child.visible
+				and not child.is_queued_for_deletion()):
 			_rows.append(child)
 
 	# Try to preserve focus on the same row.
