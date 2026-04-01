@@ -131,8 +131,10 @@ class TestCharacterMovementRollback:
 			predicted_positions.append(character.position)
 			Helpers.simulate_frames(character, 1)
 
-		# Server correction: position is different at frame 52
-		var server_pos := Vector2(120, 500)
+		# Server correction: position is far from predicted at frame 52.
+		# Use a large offset (500px) so the mismatch reliably exceeds
+		# the rollback threshold regardless of physics timing variance.
+		var server_pos := Vector2(600, 500)
 		var client_pos: Vector2 = predicted_positions[2]
 
 		# Verify mismatch detected
