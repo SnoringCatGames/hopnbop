@@ -466,7 +466,7 @@ Ref<GameLiftOutcome> GameLiftServer::accept_player_session(const String &player_
     Ref<GameLiftOutcome> outcome;
     outcome.instantiate();
 
-    auto result = Aws::GameLift::Server::AcceptPlayerSession(godot_string_to_aws(player_session_id));
+    auto result = Aws::GameLift::Server::AcceptPlayerSession(godot_string_to_aws(player_session_id).c_str());
 
     if (result.IsSuccess()) {
         outcome->set_success(true);
@@ -484,7 +484,7 @@ Ref<GameLiftOutcome> GameLiftServer::remove_player_session(const String &player_
     Ref<GameLiftOutcome> outcome;
     outcome.instantiate();
 
-    auto result = Aws::GameLift::Server::RemovePlayerSession(godot_string_to_aws(player_session_id));
+    auto result = Aws::GameLift::Server::RemovePlayerSession(godot_string_to_aws(player_session_id).c_str());
 
     if (result.IsSuccess()) {
         outcome->set_success(true);
