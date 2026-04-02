@@ -549,6 +549,67 @@ class PlayerService:
                 return True
         return False
 
+    async def rotate_refresh_token(
+        self,
+        player_id: str,
+        old_refresh_token: str,
+        new_refresh_token: str,
+    ) -> int:
+        """Atomically remove the old refresh token and
+        store a new one.  Returns expiry timestamp."""
+        # Read existing tokens.
+        response = self.table.get_item(
+            Key={"player_id": player_id},
+            ProjectionExpression="refresh_tokens",
+        )
+        item = response.get("Item", {})
+        tokens: list = item.get("refresh_tokens", [])
+
+        now = int(datetime.now().timestamp())
+        encoded_old = old_refresh_token.encode()
+
+        # Remove old token and prune expired entries.
+        kept: list = []
+        for t in tokens:
+            if int(t.get("expires_at", 0)) <= now:
+                continue
+            stored_hash = t.get("hash", "")
+            if stored_hash and bcrypt.checkpw(
+                encoded_old, stored_hash.encode()
+            ):
+                continue  # drop the old token
+            kept.append(t)
+
+        # Append new token.
+        token_hash = bcrypt.hashpw(
+            new_refresh_token.encode(), bcrypt.gensalt()
+        ).decode()
+        expires_at = int(
+            (
+                datetime.now()
+                + timedelta(days=_REFRESH_TOKEN_DAYS)
+            ).timestamp()
+        )
+        kept.append({
+            "hash": token_hash,
+            "expires_at": expires_at,
+        })
+
+        # Evict oldest if over the cap.
+        if len(kept) > _MAX_REFRESH_TOKENS:
+            kept = kept[-_MAX_REFRESH_TOKENS:]
+
+        self.table.update_item(
+            Key={"player_id": player_id},
+            UpdateExpression=(
+                "SET refresh_tokens = :tokens"
+            ),
+            ExpressionAttributeValues={
+                ":tokens": kept,
+            },
+        )
+        return expires_at
+
     async def clear_refresh_token(
         self, player_id: str
     ) -> None:

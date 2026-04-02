@@ -446,8 +446,8 @@ def refresh(
         )
         new_refresh = secrets.token_hex(32)
         asyncio.run(
-            player_service.store_refresh_token(
-                player_id, new_refresh
+            player_service.rotate_refresh_token(
+                player_id, refresh_token, new_refresh
             )
         )
 
