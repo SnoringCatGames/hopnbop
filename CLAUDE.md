@@ -936,6 +936,83 @@ continuation. When modifying lines in these files, convert
 them to the current style (`not`, parenthesized wrapping).
 Do not bulk-convert unrelated lines in the same commit.
 
+## Backend Testing (pytest)
+
+The backend uses pytest with moto for AWS service mocking.
+Tests live in `backend/tests/`.
+
+### Running Backend Tests
+
+```bash
+cd backend
+pip install -r tests/requirements.txt  # if needed
+python -m pytest tests/ -v
+python -m pytest tests/test_party.py -v  # single file
+```
+
+### Test Infrastructure
+
+- **`conftest.py`** provides shared fixtures:
+  - `_aws_env` (autouse): Sets environment variables for
+    all tests.
+  - `aws_mock`: Wraps tests in `moto.mock_aws()` with
+    pre-created DynamoDB tables and Secrets Manager secrets.
+    Re-initializes handler module-level service instances so
+    they use mocked clients.
+  - `mock_httpx_client(responses)`: Context manager for
+    mocking OAuth provider HTTP calls.
+  - `make_response(status_code, json_body)`: Builds fake
+    httpx responses.
+- **`constants.py`**: `TEST_JWT_SECRET`, `TEST_REGION`.
+
+### Test Patterns
+
+**Debug auth:** Use `DEBUG_` prefix tokens (e.g.,
+`"Bearer DEBUG_alice"`) to bypass JWT validation. The
+handler's `_authenticate()` returns an `AuthToken` with
+`player_id="DEBUG_alice"` for these tokens.
+
+**Helper conventions (per test file):**
+```python
+class _FakeLambdaContext:
+    function_name = "test-function"
+    ...
+
+def _make_event(body=None, headers=None, ...):
+    """Build a minimal API Gateway event."""
+
+def _parse_response(response):
+    """Return (status_code, body_dict)."""
+
+def _auth_headers(player_id):
+    """Return {'Authorization': 'Bearer DEBUG_...'}."""
+
+def _create_player(player_id, display_name, ...):
+    """Insert a player row into the test table."""
+
+def _run(coro):
+    """asyncio.run() wrapper."""
+```
+
+**Service tests** instantiate service classes directly
+within `aws_mock` and call async methods via `_run()`.
+
+**Handler tests** invoke Lambda handler functions with
+`_make_event()` and `_CONTEXT`, then assert on status
+code, error codes, and response body.
+
+### Adding New Handler Tests
+
+1. Add service reinitialization to
+   `conftest._reinit_handler_services()` if the handler
+   module is not already covered.
+2. Create `tests/test_<feature>.py` with the helper
+   pattern above.
+3. Use `_create_player()` and direct DynamoDB puts for
+   test data setup.
+4. Always use `aws_mock` fixture for DynamoDB/Secrets
+   Manager access.
+
 ## Testing with GUT
 
 This project uses GUT (Godot Unit Test) 9.x for testing. Tests are organized

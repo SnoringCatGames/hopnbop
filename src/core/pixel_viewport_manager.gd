@@ -180,6 +180,11 @@ func _update_camera_zoom() -> void:
 		# canvas_transform.
 		camera.process_mode = (
 			Node.PROCESS_MODE_ALWAYS)
+		# Ensure centered anchoring so extra viewport
+		# space (from non-base aspect ratios) is
+		# distributed equally on all sides.
+		camera.anchor_mode = (
+			Camera2D.ANCHOR_MODE_DRAG_CENTER)
 
 	var base_zoom: Vector2 = _base_zooms[camera]
 

@@ -1,7 +1,9 @@
 class_name PartyManager
 extends Node
 ## Manages party state and polls for updates.
-## Child of Global autoload.
+## Child of Global autoload. Starts idle polling
+## on authentication to discover pending invites.
+## Switches to active polling when in a party.
 
 
 signal party_updated(party_data: Dictionary)
@@ -9,13 +11,16 @@ signal party_disbanded
 signal matchmaking_started(ticket_id: String)
 signal invite_received(invite_data: Dictionary)
 
-const _POLL_INTERVAL_SEC := 3.0
+const _ACTIVE_POLL_INTERVAL_SEC := 3.0
+const _IDLE_POLL_INTERVAL_SEC := 10.0
 
 var current_party: Dictionary = {}
 var pending_invites: Array = []
 
 var _poll_timer := 0.0
 var _is_polling := false
+var _current_poll_interval := _IDLE_POLL_INTERVAL_SEC
+var _known_invite_ids: Dictionary = {}
 
 
 func _ready() -> void:
@@ -27,11 +32,17 @@ func _ready() -> void:
 		_on_party_joined)
 	G.party_api_client.party_left.connect(
 		_on_party_left)
+	G.party_api_client.party_kicked.connect(
+		_on_party_kicked)
 	G.party_api_client.party_status_received\
 		.connect(_on_party_status_received)
 	G.party_api_client\
 		.party_matchmaking_started.connect(
 			_on_matchmaking_started)
+	invite_received.connect(
+		_show_invite_dialog)
+	G.auth_client.auth_completed.connect(
+		_on_auth_completed)
 
 
 func _process(delta: float) -> void:
@@ -41,7 +52,7 @@ func _process(delta: float) -> void:
 		return
 
 	_poll_timer += delta
-	if _poll_timer >= _POLL_INTERVAL_SEC:
+	if _poll_timer >= _current_poll_interval:
 		_poll_timer = 0.0
 		if not G.party_api_client.is_busy():
 			G.party_api_client.fetch_party_status()
@@ -84,7 +95,9 @@ func create_party() -> void:
 
 
 ## Invite a friend to the current party.
-func invite_friend(friend_player_id: String) -> void:
+func invite_friend(
+	friend_player_id: String,
+) -> void:
 	if not is_in_party():
 		# Create party first, then invite.
 		G.party_api_client.create_party()
@@ -121,6 +134,16 @@ func leave_current_party() -> void:
 	G.party_api_client.leave_party(get_party_id())
 
 
+## Kick a member from the party (leader only).
+func kick_member(
+	target_player_id: String,
+) -> void:
+	if not is_leader():
+		return
+	G.party_api_client.kick_from_party(
+		get_party_id(), target_player_id)
+
+
 ## Start matchmaking for the party.
 func start_party_matchmaking() -> void:
 	if not is_leader():
@@ -129,22 +152,58 @@ func start_party_matchmaking() -> void:
 		get_party_id())
 
 
-func _on_party_created(data: Dictionary) -> void:
+## Reset all party state. Called on logout.
+func reset() -> void:
+	current_party.clear()
+	pending_invites.clear()
+	_known_invite_ids.clear()
+	_current_poll_interval = (
+		_IDLE_POLL_INTERVAL_SEC)
+	stop_polling()
+
+
+func _on_auth_completed(
+	success: bool, _error: String,
+) -> void:
+	if not success:
+		return
+	if not G.auth_token_store.is_token_valid():
+		return
+	if G.auth_token_store.is_anonymous:
+		return
+	_current_poll_interval = (
+		_IDLE_POLL_INTERVAL_SEC)
+	start_polling()
+
+
+func _on_party_created(
+	data: Dictionary,
+) -> void:
 	var party: Dictionary = data.get("party", {})
 	current_party = party
+	_current_poll_interval = (
+		_ACTIVE_POLL_INTERVAL_SEC)
+	_known_invite_ids.clear()
 	start_polling()
 	party_updated.emit(party)
 
 
-func _on_party_invited(data: Dictionary) -> void:
+func _on_party_invited(
+	data: Dictionary,
+) -> void:
 	var party: Dictionary = data.get("party", {})
 	current_party = party
 	party_updated.emit(party)
 
 
-func _on_party_joined(data: Dictionary) -> void:
+func _on_party_joined(
+	data: Dictionary,
+) -> void:
 	var party: Dictionary = data.get("party", {})
 	current_party = party
+	_current_poll_interval = (
+		_ACTIVE_POLL_INTERVAL_SEC)
+	_known_invite_ids.clear()
 	start_polling()
 	party_updated.emit(party)
 
@@ -154,13 +213,23 @@ func _on_party_left(data: Dictionary) -> void:
 		"disbanded", false)
 	if disbanded:
 		current_party.clear()
-		stop_polling()
+		_current_poll_interval = (
+			_IDLE_POLL_INTERVAL_SEC)
+		_known_invite_ids.clear()
 		party_disbanded.emit()
 	else:
 		var party: Dictionary = data.get(
 			"party", {})
 		current_party = party
 		party_updated.emit(party)
+
+
+func _on_party_kicked(
+	data: Dictionary,
+) -> void:
+	var party: Dictionary = data.get("party", {})
+	current_party = party
+	party_updated.emit(party)
 
 
 func _on_party_status_received(
@@ -173,12 +242,19 @@ func _on_party_status_received(
 		# No active party. Check invites.
 		if not current_party.is_empty():
 			current_party.clear()
+			_current_poll_interval = (
+				_IDLE_POLL_INTERVAL_SEC)
 			party_disbanded.emit()
 		var invites: Array = data.get(
 			"pending_invites", [])
-		if not invites.is_empty():
-			pending_invites = invites
-			for inv in invites:
+		pending_invites = invites
+		for inv in invites:
+			var pid: String = inv.get(
+				"party_id", "")
+			if (not pid.is_empty()
+					and not _known_invite_ids
+						.has(pid)):
+				_known_invite_ids[pid] = true
 				invite_received.emit(inv)
 		return
 
@@ -203,7 +279,37 @@ func _on_matchmaking_started(
 ) -> void:
 	var ticket_id: String = data.get(
 		"ticket_id", "")
-	var party_id: String = data.get(
-		"party_id", "")
 	if not ticket_id.is_empty():
 		matchmaking_started.emit(ticket_id)
+
+
+func _show_invite_dialog(
+	invite_data: Dictionary,
+) -> void:
+	if not is_instance_valid(G.toast_overlay):
+		return
+	var leader_name: String = invite_data.get(
+		"leader_display_name", "")
+	var party_id: String = invite_data.get(
+		"party_id", "")
+	if leader_name.is_empty():
+		leader_name = tr("PARTY.SOMEONE")
+	var message: String = (
+		tr("PARTY.INVITE_RECEIVED")
+		% leader_name)
+	G.toast_overlay.show_toast(message)
+	# Show confirm dialog for immediate
+	# accept/decline.
+	if not is_instance_valid(G.confirm_layer):
+		return
+	var dialog: ConfirmOverlay = (
+		G.settings.confirm_overlay_scene
+			.instantiate())
+	G.confirm_layer.add_child(dialog)
+	dialog.open(
+		message,
+		tr("PARTY.JOIN"),
+		func() -> void:
+			accept_invite(party_id),
+		tr("CONFIRM.CANCEL"),
+	)

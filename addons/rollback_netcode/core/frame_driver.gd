@@ -47,6 +47,20 @@ extends Node
 
 # ---
 
+# - Death gore particles seem to spawn at a third unrelated position when you die.
+#   - At neither the death position or the spawn position.
+#   - Consistent.
+#   - Only tested in level_4.
+# - Fix snail goo.
+#   - Sticks past edge for convex corners.
+#   - Cuts corners for concave.
+#   - Both cases are inconsistent.
+# - Fix level_0 water tiles are collidable.
+# - Fix level_0 art.
+#   - More detailed version.
+#   - Remove any sky blue color from the occlusion layer.
+# - Make ice sliding start faster from stopped.
+
 # - FIX REMOTE PLAYER ANIMATION GLITCHES
 
 # Image prompts:

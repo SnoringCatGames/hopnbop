@@ -8,6 +8,7 @@ signal party_created(data: Dictionary)
 signal party_invited(data: Dictionary)
 signal party_joined(data: Dictionary)
 signal party_left(data: Dictionary)
+signal party_kicked(data: Dictionary)
 signal party_status_received(data: Dictionary)
 signal party_matchmaking_started(data: Dictionary)
 signal request_failed(error: String)
@@ -86,6 +87,24 @@ func fetch_party_status() -> void:
 		+ "/party/status"
 	)
 	_send_get_request(url)
+
+
+func kick_from_party(
+	party_id: String,
+	player_id: String,
+) -> void:
+	if not _check_available():
+		return
+	_pending_signal = "party_kicked"
+	var url := (
+		G.settings.gamelift_backend_api_url
+		+ "/party/kick"
+	)
+	var body := {
+		"party_id": party_id,
+		"player_id": player_id,
+	}
+	_send_post_request(url, body)
 
 
 func start_matchmaking(
@@ -186,6 +205,8 @@ func _on_request_completed(
 			party_joined.emit(parsed)
 		"party_left":
 			party_left.emit(parsed)
+		"party_kicked":
+			party_kicked.emit(parsed)
 		"party_status_received":
 			party_status_received.emit(parsed)
 		"party_matchmaking_started":

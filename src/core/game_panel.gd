@@ -1169,7 +1169,12 @@ func server_start_match() -> void:
 
 
 func server_end_match() -> void:
-	Netcode.check_is_server()
+	# Guard against calls after local mode cleanup
+	# (delayed timer callbacks can fire after the
+	# client-side game-over flow already tore down
+	# local mode).
+	if not Netcode.runs_server_logic:
+		return
 
 	# Guard against multiple calls (from delayed
 	# timer callbacks).

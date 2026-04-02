@@ -867,6 +867,23 @@ Resources:
             Path: /party/leave
             Method: post
 
+  KickFromPartyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.party_handler.kick_from_party
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PartiesTable
+        - !Ref SecretsManagerPolicy
+      Events:
+        KickFromParty:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /party/kick
+            Method: post
+
   GetPartyStatusFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -875,6 +892,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PartiesTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref PlayersTable
         - !Ref SecretsManagerPolicy
       Events:
         GetPartyStatus:

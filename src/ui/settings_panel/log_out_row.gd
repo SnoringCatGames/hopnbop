@@ -67,9 +67,7 @@ func _do_logout() -> void:
 	G.friends_api_client.cached_incoming_requests\
 		.clear()
 	G.friends_api_client.cached_online_ids.clear()
-	G.party_manager.stop_polling()
-	G.party_manager.current_party.clear()
-	G.party_manager.pending_invites.clear()
+	G.party_manager.reset()
 	G.client_session.clear_latest_state()
 
 	if is_instance_valid(G.toast_overlay):

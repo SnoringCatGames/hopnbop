@@ -170,6 +170,33 @@ class PartyService:
         self._update_party(party)
         return party
 
+    async def kick_player(
+        self,
+        party_id: str,
+        leader_id: str,
+        target_id: str,
+    ) -> Party:
+        """Kick a player from the party. Only the
+        leader can kick. Returns the updated party.
+        """
+        party = await self.get_party(party_id)
+        if party is None:
+            raise ValueError("Party not found")
+        if party.leader_id != leader_id:
+            raise PermissionError(
+                "Only the leader can kick"
+            )
+        if target_id == leader_id:
+            raise ValueError("Cannot kick yourself")
+        if target_id not in party.members:
+            raise ValueError(
+                "Player is not a member"
+            )
+
+        party.members.remove(target_id)
+        self._update_party(party)
+        return party
+
     async def start_matchmaking(
         self,
         party_id: str,

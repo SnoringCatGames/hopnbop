@@ -170,10 +170,15 @@ def invite_to_party(
             )
 
         # Verify invitee is a friend.
-        friends = asyncio.run(
-            friends_service.list_friends(player_id)
+        relationships = asyncio.run(
+            friends_service.list_all_relationships(
+                player_id
+            )
         )
-        friend_ids = [f.friend_id for f in friends]
+        friend_ids = [
+            f.friend_id
+            for f in relationships.get("friends", [])
+        ]
         if invitee_id not in friend_ids:
             return _error_response(
                 400,
@@ -485,6 +490,61 @@ def start_party_matchmaking(
         )
 
 
+@tracer.capture_lambda_handler
+@logger.inject_lambda_context
+def kick_from_party(
+    event: Dict[str, Any], context: LambdaContext
+) -> Dict:
+    """POST /party/kick — Leader kicks a member."""
+    try:
+        auth_token = _authenticate(event)
+        player_id = auth_token.player_id
+
+        if not rate_limiter.check_limit(
+            player_id, "party_kick", max_per_min=10
+        ):
+            return _error_response(
+                429, "RATE_LIMIT", "Too many requests"
+            )
+
+        body = json.loads(event.get("body", "{}"))
+        party_id = body.get("party_id", "")
+        target_id = body.get("player_id", "")
+
+        if not party_id or not target_id:
+            return _error_response(
+                400,
+                "MISSING_INPUT",
+                "Provide party_id and player_id",
+            )
+
+        party = asyncio.run(
+            party_service.kick_player(
+                party_id, player_id, target_id
+            )
+        )
+        return _party_response(party)
+
+    except PermissionError as e:
+        msg = str(e)
+        if "leader" in msg.lower():
+            return _error_response(
+                403, "NOT_LEADER", msg
+            )
+        return _error_response(
+            401, "UNAUTHORIZED", "Invalid token"
+        )
+    except ValueError as e:
+        return _error_response(
+            400, "VALIDATION_ERROR", str(e)
+        )
+    except Exception as e:
+        logger.exception("Kick from party error")
+        return _error_response(
+            500, "INTERNAL_ERROR", "Internal server error"
+        )
+
+
 async def _get_pending_invites(
     player_id: str,
 ) -> list:
@@ -504,12 +564,42 @@ async def _get_pending_invites(
             ":pid": player_id,
         },
     )
+    items = response.get("Items", [])
+
+    # Resolve leader display names.
+    leader_ids = list(set(
+        item["leader_id"] for item in items
+    ))
+    name_map = {}
+    if leader_ids:
+        players_table_name = os.environ.get(
+            "PLAYERS_TABLE", "hopnbop-players"
+        )
+        players_table = dynamodb.Table(
+            players_table_name
+        )
+        for lid in leader_ids:
+            resp = players_table.get_item(
+                Key={"player_id": lid},
+                ProjectionExpression=(
+                    "player_id, display_name"
+                ),
+            )
+            item_data = resp.get("Item")
+            if item_data:
+                name_map[lid] = item_data.get(
+                    "display_name", ""
+                )
+
     invites = []
-    for item in response.get("Items", []):
+    for item in items:
         invites.append(
             {
                 "party_id": item["party_id"],
                 "leader_id": item["leader_id"],
+                "leader_display_name": name_map.get(
+                    item["leader_id"], ""
+                ),
                 "member_count": len(
                     item.get("members", [])
                 ),

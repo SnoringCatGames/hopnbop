@@ -232,6 +232,21 @@ def _reinit_handler_services():
             ps_mod.PlayerService()
         )
     except ImportError:
+        fs_mod = None
+
+    try:
+        from services import party_service as pty_mod
+        from handlers import party_handler
+
+        importlib.reload(pty_mod)
+        party_handler.party_service = (
+            pty_mod.PartyService()
+        )
+        if fs_mod is not None:
+            party_handler.friends_service = (
+                fs_mod.FriendsService()
+            )
+    except ImportError:
         pass
 
 

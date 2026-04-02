@@ -44,8 +44,7 @@ func on_open() -> void:
 			.cached_incoming_requests.clear()
 		G.friends_api_client\
 			.cached_online_ids.clear()
-		G.party_manager.current_party.clear()
-		G.party_manager.pending_invites.clear()
+		G.party_manager.reset()
 		G.client_session.clear_latest_state()
 		_start_login(
 			AuthClient.Provider.ANONYMOUS)
@@ -227,8 +226,7 @@ func _on_auto_refresh_completed(
 			.cached_incoming_requests.clear()
 		G.friends_api_client\
 			.cached_online_ids.clear()
-		G.party_manager.current_party.clear()
-		G.party_manager.pending_invites.clear()
+		G.party_manager.reset()
 		G.client_session.clear_latest_state()
 		_show_buttons()
 		_build_focusable_list()
