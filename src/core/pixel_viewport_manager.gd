@@ -195,6 +195,21 @@ func _update_camera_zoom() -> void:
 
 	camera.zoom = base_zoom * _zoom_scale
 
+	# Log camera state on camera switch to diagnose
+	# centering issues.
+	if camera != _last_camera:
+		var svp_size := sub_viewport.size
+		G.log.print(
+			"[PVM] Camera switched: %s"
+			% camera.name
+			+ " anchor=%d" % camera.anchor_mode
+			+ " pos=%s" % str(camera.global_position)
+			+ " zoom=%s" % str(camera.zoom)
+			+ " base_zoom=%s" % str(base_zoom)
+			+ " svp=%s" % str(svp_size)
+			+ " scale=%d" % current_scale
+			+ " zoom_scale=%.3f" % _zoom_scale)
+
 	_last_camera = camera
 
 
