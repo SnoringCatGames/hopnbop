@@ -788,8 +788,6 @@ func _set_up_camera() -> void:
 	)
 
 	%CharacterCamera.enabled = is_local_player
-	if is_local_player:
-		%CharacterCamera.make_current()
 
 
 func get_string() -> String:
