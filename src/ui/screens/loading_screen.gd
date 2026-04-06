@@ -23,7 +23,12 @@ func _exit_tree() -> void:
 	_disconnect_matchmaking_signal()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if (not _matchmaking_phase.is_empty()
+			and not _is_timed_out
+			and not Netcode.connector
+				.is_connected_to_server):
+		_matchmaking_elapsed_sec += delta
 	update_status_message()
 
 

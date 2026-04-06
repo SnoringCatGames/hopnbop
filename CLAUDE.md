@@ -298,11 +298,90 @@ deployment goes IMPAIRED.
 `settings.server_api_key`, used by `match_result_reporter.gd`
 to authenticate with the backend API.
 
+### Transport Architecture
+
+Three transport modes, selected per-match by the backend
+based on matched players' platforms:
+
+- **ENet** (native-only matches): UDP on container port
+  4433. Default. Lowest latency.
+- **WebRTC** (cross-play matches with web players): UDP
+  DataChannels via `webrtc-native` GDExtension. Signaling
+  uses a brief WebSocket through the nginx path. Provides
+  UDP-like semantics in the browser, avoiding TCP
+  head-of-line blocking.
+- **WebSocket** (legacy, not currently used): TCP through
+  nginx. Too slow for competitive play due to TCP
+  head-of-line blocking (~100ms ping, 13-25% perceived
+  packet loss).
+
+**Transport selection flow:**
+1. FlexMatch includes `is_web` player attribute.
+2. Backend `gamelift_service.py` reads `is_web` from
+   matchmaker data. Returns `transport_type` in
+   matchmaking response (`"enet"`, `"webrtc"`, or
+   `"websocket"`).
+3. Client sets `Netcode.settings.transport_type` from the
+   response before connecting.
+4. Server reads matchmaker data in
+   `_on_game_session_started` and sets transport. Only
+   switches away from ENet if web players are matched.
+
+#### WebRTC Architecture
+
+**Components:**
+- `WebRTCSignalingServer` (server-side): Lightweight
+  WebSocket server for SDP/ICE exchange. Listens on
+  container port 4433 TCP (same as ENet/UDP, no conflict).
+- `WebRTCSignalingClient` (client-side): Connects to
+  signaling server, exchanges SDP offer/answer, relays
+  ICE candidates. Retries up to 5 times with 10s timeout.
+- `WebRTCGamePeer` (both sides): Custom
+  `MultiplayerPeerExtension` using 2 negotiated
+  DataChannels (reliable + unreliable) instead of
+  `WebRTCMultiplayerPeer`'s 6-8 SCTP streams.
+
+**Signaling flow:**
+1. Client connects to signaling WS (through nginx).
+2. Client creates `WebRTCPeerConnection`, emits
+   `peer_created` → `WebRTCGamePeer.add_peer()` creates
+   negotiated DataChannels.
+3. Client creates SDP offer, sends via signaling WS.
+4. Server creates `WebRTCPeerConnection`, emits
+   `peer_signaled` → `WebRTCGamePeer.add_peer()` creates
+   matching DataChannels.
+5. Server sets remote description (client's offer),
+   generates SDP answer, sends via signaling WS.
+6. ICE candidates exchanged bidirectionally via
+   signaling WS.
+7. ICE connects (UDP), DataChannels open.
+8. Signaling WS is closed.
+
+**GDExtension:** `addons/webrtc/` provides
+`webrtc-native` (v1.0.9) which implements
+`WebRTCPeerConnection` using libwebrtc for native
+builds. Web builds use the browser's native WebRTC
+API (no GDExtension needed).
+
+**Physics tick rate:** WebRTC matches run at 30 FPS
+(vs 60 for ENet) to reduce bandwidth. Applied via
+`Netcode.apply_match_physics_fps()` before connection.
+
+**Known issue (2026-04-06):** WebRTC cross-play is
+currently broken on the live GameLift fleet. ICE
+negotiation times out after SDP exchange succeeds.
+The signaling WebSocket works (SDP offer/answer
+exchanged successfully), but ICE connectivity checks
+fail. Investigation is ongoing. The WebRTC code has
+not changed since it last worked (2026-04-02). The
+regression may be environmental (GameLift container
+networking, port mapping, or fleet state).
+
 ### WSS TLS Termination
 
 ```
-Web client --wss://s-{ip}.game.hopnbop.net:{Port+1}--> nginx (TLS detect) --> TLS terminate --> Godot (plain WS)
-Native client --ws://s-{ip}.game.hopnbop.net:{Port+1}--> nginx (TLS detect) --> pass-through --> Godot (plain WS)
+Web client --wss://s-{ip}.game.hopnbop.net:{Port+1}--> nginx (TLS detect) --> TLS terminate --> Godot WS/signaling (4433)
+Native client --ws://s-{ip}.game.hopnbop.net:{Port+1}--> nginx (TLS detect) --> pass-through --> Godot WS/signaling (4433)
 ENet-only match --enet://ip:{Port}/UDP--> Godot (unchanged)
 ```
 
@@ -311,9 +390,10 @@ whether the incoming connection is TLS (web `wss://`) or
 plain (native `ws://`). TLS connections are routed to an
 internal HTTP block (port 4435) that terminates SSL and
 strips the `Origin` header before proxying to Godot.
-Plain connections are passed directly to Godot. Godot runs
-a plain WebSocket server on port 4433 (same port as ENet
-but TCP, no conflict since ENet uses UDP).
+Plain connections are passed directly to Godot. In ENet/
+WebSocket mode, Godot runs a plain WebSocket server on
+port 4433. In WebRTC mode, the WebRTC signaling server
+listens on port 4433 TCP instead.
 
 **Critical nginx settings for real-time game traffic:**
 - `tcp_nodelay on` in the stream block (disables Nagle's
@@ -397,6 +477,9 @@ is also unencrypted UDP.
    assigned)
 5. Client connects to the server:
    - ENet match: `enet://IP:Port` (UDP)
+   - WebRTC match: `ws://` or `wss://` to
+     `hostname:Port+1` (signaling through nginx),
+     then DataChannels over UDP
    - WebSocket match: `ws://` or `wss://` to
      `hostname:Port+1` (TCP, through nginx)
 6. Server validates player session IDs via GameLift SDK
@@ -419,7 +502,7 @@ The networking system is frame-based with rollback support:
 - **ServerTimeTracker** - NTP-like clock sync between client and server. Server
   frame timing is based on physics ticks, with periodic wall-clock re-sync for
   accurate logging.
-- **NetworkConnector** - ENet/WebSocket peer management (default port 4433)
+- **NetworkConnector** - ENet/WebSocket/WebRTC peer management (default port 4433)
 
 **Frame Processing Flow:**
 1. `_pre_network_process()` - Sync scene state from rollback buffer

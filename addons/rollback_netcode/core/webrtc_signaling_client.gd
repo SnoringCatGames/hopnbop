@@ -322,6 +322,11 @@ func _handle_server_ice(data: Dictionary) -> void:
 	if candidate.is_empty():
 		return
 
+	Netcode.log.print(
+		"WebRTC: remote ICE candidate: %s"
+		% candidate,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
 	_rtc.add_ice_candidate(mid, index, candidate)
 
 

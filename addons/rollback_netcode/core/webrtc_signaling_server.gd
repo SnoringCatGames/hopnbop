@@ -238,10 +238,22 @@ func _handle_offer(
 
 	# Initialize ICE agent with STUN server.
 	# Must happen before add_peer.
+	#
+	# portRangeBegin/End constrain the UDP port
+	# the ICE agent binds to. On GameLift, only
+	# declared container ports are forwarded. The
+	# server must use container port 4433 (UDP)
+	# so ICE traffic reaches the host port that
+	# GameLift maps. Without this, libdatachannel
+	# picks an ephemeral port (e.g., 38335) that
+	# is unreachable from the internet.
+	var server_port: int = Netcode.server_port
 	var init_err := rtc.initialize({
 		"iceServers": [
 			{"urls": ["stun:stun.l.google.com:19302"]},
 		],
+		"portRangeBegin": server_port,
+		"portRangeEnd": server_port,
 	})
 	if init_err != OK:
 		Netcode.log.error(
@@ -331,12 +343,33 @@ func _on_server_ice_candidate(
 	ws_index: int,
 ) -> void:
 	if ws_index >= _ws_peers.size():
+		Netcode.log.warning(
+			"Signaling: server ICE candidate"
+			+ " dropped (ws_index %d >="
+			+ " peers.size %d): %s"
+			% [ws_index, _ws_peers.size(),
+				candidate_name],
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
 		return
 	var ws: WebSocketPeer = _ws_peers[ws_index]
 	if (ws.get_ready_state()
 			!= WebSocketPeer.STATE_OPEN):
+		Netcode.log.warning(
+			"Signaling: server ICE candidate"
+			+ " dropped (ws_state=%d): %s"
+			% [ws.get_ready_state(),
+				candidate_name],
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
 		return
 
+	Netcode.log.print(
+		"Signaling: sending server ICE"
+		+ " candidate to ws_index=%d: %s"
+		% [ws_index, candidate_name],
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
 	var msg := JSON.stringify({
 		"type": "ice",
 		"candidate": candidate_name,
@@ -362,6 +395,12 @@ func _handle_client_ice(
 	if candidate.is_empty():
 		return
 
+	Netcode.log.print(
+		"Signaling: received client ICE"
+		+ " from ws_index=%d: %s"
+		% [ws_index, candidate],
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
 	rtc.add_ice_candidate(mid, index, candidate)
 
 

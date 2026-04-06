@@ -86,7 +86,7 @@ hopnbop.net (purchased).
 | 1 | Identity backbone | Direct provider mapping in DynamoDB, custom JWT |
 | 2 | Anonymous players | Persistent device-based ID, can upgrade |
 | 3 | Network tick rate | 60 FPS uniform, all platforms |
-| 4 | Web transport | WebSocket first, architect for swappability |
+| 4 | Web transport | WebRTC DataChannels (replaced WebSocket 2026-03-19) |
 | 5 | AWS region | us-west-2 (Oregon), single region to start |
 | 6 | Scale | 10-50 concurrent at launch |
 | 7 | OAuth providers | Web: Google + Facebook. Platform: Steam, Epic, Apple, Android |
@@ -993,10 +993,11 @@ Spot instances and Anywhere mode for local testing.
   match or return players to lobby)
 
 **Server transport**:
-- Primary: ENet listener on port 4433 (native desktop clients)
-- Secondary: WebSocket listener on port 4434 (web/mobile clients)
-- Both listeners feed into the same Godot multiplayer API via
-  transport abstraction layer
+- ENet-only matches: ENet listener on port 4433/UDP
+- Cross-play matches (web player present): WebRTC
+  signaling on 4433/TCP, DataChannels over UDP
+- Transport selected per-match from FlexMatch `is_web`
+  player attribute
 
 **Key files to modify/create**:
 - `Dockerfile` (new) — Godot headless server container
@@ -1419,54 +1420,60 @@ FriendsTable:
 
 ### M10: Web Build & Cross-Play
 
-**Goal**: Web clients connect via WebSocket alongside native
-ENet clients in the same match.
+**Status**: Implemented. WebRTC transport replaced
+WebSocket for cross-play (2026-03-19). WebSocket was too
+slow for competitive play (~100ms ping, 13-25% perceived
+packet loss due to TCP head-of-line blocking).
 
-**What's included**:
+**Current architecture**:
 
-*Transport Abstraction Layer*:
-- New `TransportFactory` that creates the appropriate
-  MultiplayerPeer based on platform/config
-- Web builds: `WebSocketMultiplayerPeer`
-- Native builds: `ENetMultiplayerPeer`
-- Server: dual-listener (both protocols simultaneously)
-- Architect interface so WebRTC can replace WebSocket later
+*Transport modes* (selected per-match by backend):
+- **ENet**: Native-only matches. UDP on container port
+  4433. 60 FPS network tick.
+- **WebRTC**: Cross-play matches (any web player present).
+  UDP DataChannels via `webrtc-native` GDExtension.
+  Signaling over WebSocket through nginx. 30 FPS network
+  tick to reduce bandwidth.
+- **WebSocket**: Legacy, not currently used.
 
-*Dual-Listener Server*:
-- Option A (recommended): Use Godot's `SceneMultiplayer` to run
-  two multiplayer instances, bridge messages internally
-- Option B: Custom low-level networking that accepts both
-  protocols and unifies at the RPC layer
-- Both feed into the existing NetworkFrameDriver/rollback system
+*Key implementation details*:
+- `NetworkConnector` handles all three transports via
+  `match` on `NetworkSettings.TransportType`.
+- `WebRTCGamePeer` (custom `MultiplayerPeerExtension`):
+  2 negotiated DataChannels (reliable + unreliable)
+  instead of `WebRTCMultiplayerPeer`'s 6-8 SCTP streams.
+- `WebRTCSignalingServer`/`WebRTCSignalingClient`: Brief
+  WebSocket connection for SDP/ICE exchange. Server
+  listens on 4433 TCP (same port as ENet/UDP, no
+  conflict). Clients connect through nginx on 4434 TCP.
+- Web builds auto-select WebRTC transport in
+  `NetworkOrchestrator._ready()`.
+- Backend determines transport from FlexMatch `is_web`
+  player attribute.
 
-*Web Build Optimization*:
-- Export preset already exists for Web (HTML5/Emscripten)
-- CORS configuration on API Gateway (already enabled)
-- Asset compression for web delivery
-- Loading screen for web (show progress while WASM loads)
+*Known issue (2026-04-06)*:
+WebRTC ICE negotiation fails on the live GameLift fleet.
+Signaling succeeds (SDP offer/answer exchanged) but ICE
+connectivity checks never complete. The WebRTC code has
+not changed since it last worked (2026-04-02). Under
+investigation. The container only exposes 4433/UDP and
+4434/TCP. WebRTC DataChannels use ephemeral UDP ports.
+If GameLift's container networking changed to restrict
+outbound UDP to declared ports only, this would explain
+the regression.
 
-*Network Connector Changes*:
-- Replace hardcoded `ENetMultiplayerPeer.new()` at line 121-122
-  and 152-153 with `TransportFactory.create_peer()`
-- Add `transport_type` setting (AUTO, ENET, WEBSOCKET)
-- AUTO: detect platform → web=WebSocket, native=ENet
-- WebSocket port configuration (4434)
-
-**Key files to modify/create**:
-- `addons/rollback_netcode/core/network_connector.gd` — Transport
-  abstraction (the line 150 TODO)
-- `addons/rollback_netcode/core/transport_factory.gd` (new)
-- `addons/rollback_netcode/core/network_settings.gd` — Transport
-  config
-- `src/core/settings.gd` — WebSocket port, transport selection
-- Export presets — Verify web export works
-
-**Testing**:
-- Build web export, load in browser, connect to local server
-- Native client + web client in same match
-- Verify rollback/reconciliation works identically on both
-- Test under simulated packet loss (web should handle gracefully)
-- Performance profiling on web (60 FPS network tick feasible?)
+**Key files**:
+- `addons/rollback_netcode/core/network_connector.gd`
+- `addons/rollback_netcode/core/webrtc_game_peer.gd`
+- `addons/rollback_netcode/core/webrtc_signaling_server.gd`
+- `addons/rollback_netcode/core/webrtc_signaling_client.gd`
+- `addons/rollback_netcode/core/network_settings.gd`
+- `addons/gamelift_session_manager/server/gamelift_server.gd`
+  (`_set_transport_from_matchmaker`)
+- `backend/src/services/gamelift_service.py`
+  (`_determine_transport`)
+- `backend/src/handlers/matchmaking_handler.py`
+  (`_resolve_server_address`)
 
 ---
 
