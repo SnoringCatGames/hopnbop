@@ -180,6 +180,12 @@ func _update_camera_zoom() -> void:
 		# canvas_transform.
 		camera.process_mode = (
 			Node.PROCESS_MODE_ALWAYS)
+		# DRAG_CENTER distributes extra viewport
+		# space equally on all sides when the
+		# viewport aspect ratio differs from the
+		# base resolution.
+		camera.anchor_mode = (
+			Camera2D.ANCHOR_MODE_DRAG_CENTER)
 
 	var base_zoom: Vector2 = _base_zooms[camera]
 
@@ -189,28 +195,6 @@ func _update_camera_zoom() -> void:
 		base_zoom = Vector2.ONE
 
 	camera.zoom = base_zoom * _zoom_scale
-
-	# With FIXED_TOP_LEFT anchor mode, extra viewport
-	# space (when the viewport aspect ratio differs
-	# from the base) appears only on the right/bottom.
-	# Shift the camera so the extra space is split
-	# equally, keeping the designed view centered.
-	if is_thumbnail_snapshot_mode:
-		camera.offset = Vector2.ZERO
-	else:
-		var svp_size := sub_viewport.size
-		var visible_w := (
-			float(svp_size.x) / camera.zoom.x)
-		var visible_h := (
-			float(svp_size.y) / camera.zoom.y)
-		var base_visible_w := (
-			float(_base_resolution.x) / base_zoom.x)
-		var base_visible_h := (
-			float(_base_resolution.y) / base_zoom.y)
-		camera.offset = Vector2(
-			-(visible_w - base_visible_w) / 2.0,
-			-(visible_h - base_visible_h) / 2.0,
-		)
 
 	_last_camera = camera
 

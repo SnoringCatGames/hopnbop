@@ -64,8 +64,7 @@ func _process(delta: float) -> void:
 
 	if _shake_timer <= 0.0:
 		_shake_timer = 0.0
-		# PVM will restore the centering offset on
-		# its next _process frame.
+		camera.offset = Vector2.ZERO
 		return
 
 	# Decay from full intensity to zero with
@@ -75,9 +74,7 @@ func _process(delta: float) -> void:
 	var decay := pow(progress, _DECAY_EXPONENT)
 	var current := _shake_intensity * decay
 
-	# Layer shake displacement on top of whatever
-	# offset PVM has set (centering offset).
-	camera.offset += Vector2(
+	camera.offset = Vector2(
 		randf_range(-current, current),
 		randf_range(-current, current),
 	)
