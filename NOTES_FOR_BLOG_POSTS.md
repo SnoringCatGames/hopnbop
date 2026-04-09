@@ -227,3 +227,100 @@
 - RB/s (rollbacks): ~4-11/s, expected with WebRTC latency
 - PING: stable ~43-54ms (previously unstable due to oscillation)
 
+### ICE port nightmare on GameLift container fleets
+
+WebRTC worked perfectly in local testing and even on the
+live fleet initially (March 29). Then it silently broke
+after a fleet redeployment and stayed broken for a week.
+SDP exchange succeeded every time, but ICE connectivity
+checks timed out. The code hadn't changed.
+
+#### The root cause was three problems stacked on top of each other
+
+**Problem 1: Ephemeral ICE ports.**
+The webrtc-native GDExtension v1.0.9 ignores
+`portRangeBegin`/`portRangeEnd` in the `initialize()`
+config dictionary. The underlying libdatachannel library
+supports them, but the GDExtension's `_initialize()` C++
+method only parses `iceServers`. The ICE agent binds to
+an ephemeral UDP port (e.g., 38335). GameLift only
+forwards declared container ports (4433/UDP, 4434/TCP).
+Ephemeral ports are unreachable from the internet.
+
+Fix: Patch the GDExtension at Docker build time. A
+6-line C++ patch adds `portRangeBegin`, `portRangeEnd`,
+and `enableIceUdpMux` parsing. The patched .so is
+compiled from source in a Docker builder stage.
+
+**Problem 2: Container port != host port.**
+Even after pinning ICE to container port 4433, the
+STUN-reflected (srflx) candidate advertised
+`public_ip:4433`. But GameLift maps container port 4433
+to a dynamic host port (e.g., 4205) from the
+`InstanceConnectionPortRange` (4192-4211). Clients
+trying to reach port 4433 are blocked because GameLift
+uses port-preserving NAT for outbound STUN (the STUN
+server sees source port 4433, not the host port).
+Meanwhile, the inbound DNAT rule only forwards the
+host port (4205) to the container.
+
+Fix: The signaling server rewrites the srflx
+candidate's port from the container port to the
+GameLift host port before sending it to clients. The
+host port is derived from the WSS port that the client
+includes in its offer message (host_udp_port =
+wss_port - 1). Also had to add port 4433/UDP to the
+fleet's `InstanceInboundPermissions` for STUN return
+traffic.
+
+**Problem 3: libjuice mux mode not enabled.**
+Each WebRTCPeerConnection creates its own libjuice ICE
+agent. By default, libdatachannel v0.22.3 uses
+`JUICE_CONCURRENCY_MODE_POLL`, which creates a separate
+UDP socket per agent. The second PeerConnection fails
+`set_remote_description` because it can't bind to port
+4433 (already held by the first agent). Only the first
+client connected. Setting `config.enableIceUdpMux = true`
+switches to `JUICE_CONCURRENCY_MODE_MUX`, which creates
+a shared UDP socket that demultiplexes STUN traffic by
+username fragment. All clients then share port 4433.
+
+#### Why it worked on March 29 and then stopped
+
+Most likely: GameLift container networking previously
+allowed ephemeral UDP outbound/inbound (possibly via
+`--network host` or more permissive iptables). A fleet
+redeployment between March 29 and April 6 triggered an
+EC2 instance replacement or container agent update that
+tightened networking. The security group only allows
+4192-4211, but the March 29 test used ephemeral port
+38335. The fleet config, container definition, and
+application code were identical.
+
+#### What NOT to do
+
+- **Don't add more container ports.** Adding a third
+  `ContainerPortRanges` entry (e.g., 4435-4437/UDP)
+  caused GameLift to assign host ports beyond the
+  `InstanceConnectionPortRange` (got port 4212 outside
+  4192-4211). This broke the `Port+1` WSS offset that
+  the backend relies on.
+
+- **Don't rely on upstream webrtc-native supporting
+  portRange.** As of v1.1.0 (May 2026) it still doesn't
+  parse these config keys. Patch it yourself.
+
+#### Debugging approach
+
+- Node.js test client (using `node-datachannel`, same
+  library as the GDExtension) to create real ICE
+  connections from the CLI. Triggers matchmaking via
+  API, connects to signaling WS, does full SDP/ICE
+  exchange. This enabled testing without opening the
+  game client.
+- CloudWatch log analysis to correlate server-side ICE
+  candidate generation with client-side failures.
+- The `WebFetch` tool to read the webrtc-native
+  GDExtension source on GitHub and find the missing
+  `enableIceUdpMux` configuration.
+

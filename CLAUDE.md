@@ -258,12 +258,25 @@ If the changes require users to re-consent, also bump
 
 ### GameLift Architecture Notes
 
-**Multi-stage Docker build:** Stage 1 compiles GameLift Server
-SDK v5.2.0 from source with `GAMELIFT_USE_STD=1` and
-`BUILD_SHARED_LIBS=ON` on Ubuntu 24.04. Stage 2 is the runtime
-image. This is necessary because the GDExtension binary was
-built with `GAMELIFT_USE_STD=1` (std::string API) and requires
-a matching SDK build.
+**Multi-stage Docker build:** The Dockerfile has three stages:
+1. `webrtc-builder`: Compiles a patched webrtc-native
+   GDExtension from source (v1.0.9) with
+   `portRangeBegin`/`portRangeEnd` and `enableIceUdpMux`
+   support. Upstream v1.0.9 ignores these config keys.
+   The patch script is `gamelift-deploy/patch-webrtc-portrange.py`.
+2. `sdk-builder`: Compiles GameLift Server SDK v5.2.0
+   from source with `GAMELIFT_USE_STD=1` and
+   `BUILD_SHARED_LIBS=ON`.
+3. Runtime image (Ubuntu 24.04): Copies binaries from
+   both builder stages.
+
+The webrtc-builder stage is necessary because the
+upstream GDExtension silently ignores `portRangeBegin`,
+`portRangeEnd`, and `enableIceUdpMux` in the
+`initialize()` config dictionary. Without these, the
+ICE agent binds to ephemeral UDP ports that GameLift
+does not forward, and multiple PeerConnections cannot
+share a port.
 
 **SDK version pinning:** The fleet was created with SDK v5.2.0.
 The Docker build must pin `--branch v5.2.0` when cloning the
@@ -347,35 +360,66 @@ based on matched players' platforms:
    `peer_created` → `WebRTCGamePeer.add_peer()` creates
    negotiated DataChannels.
 3. Client creates SDP offer, sends via signaling WS.
-4. Server creates `WebRTCPeerConnection`, emits
-   `peer_signaled` → `WebRTCGamePeer.add_peer()` creates
-   matching DataChannels.
+   Includes `server_port` (the WSS port from the
+   matchmaking response) for host port derivation.
+4. Server creates `WebRTCPeerConnection` with
+   `portRangeBegin/End=4433` and
+   `enableIceUdpMux=true`. Emits `peer_signaled` →
+   `WebRTCGamePeer.add_peer()` creates matching
+   DataChannels.
 5. Server sets remote description (client's offer),
    generates SDP answer, sends via signaling WS.
 6. ICE candidates exchanged bidirectionally via
-   signaling WS.
-7. ICE connects (UDP), DataChannels open.
+   signaling WS. Server rewrites srflx candidate
+   port from 4433 to the GameLift host port.
+7. ICE connects (UDP on host port), DataChannels
+   open.
 8. Signaling WS is closed.
 
 **GDExtension:** `addons/webrtc/` provides
 `webrtc-native` (v1.0.9) which implements
-`WebRTCPeerConnection` using libwebrtc for native
-builds. Web builds use the browser's native WebRTC
-API (no GDExtension needed).
+`WebRTCPeerConnection` using libdatachannel (with
+libjuice for ICE) for native builds. Web builds use
+the browser's native WebRTC API (no GDExtension
+needed). The server uses a patched build (see
+"Multi-stage Docker build" above).
 
 **Physics tick rate:** WebRTC matches run at 30 FPS
 (vs 60 for ENet) to reduce bandwidth. Applied via
 `Netcode.apply_match_physics_fps()` before connection.
 
-**Known issue (2026-04-06):** WebRTC cross-play is
-currently broken on the live GameLift fleet. ICE
-negotiation times out after SDP exchange succeeds.
-The signaling WebSocket works (SDP offer/answer
-exchanged successfully), but ICE connectivity checks
-fail. Investigation is ongoing. The WebRTC code has
-not changed since it last worked (2026-04-02). The
-regression may be environmental (GameLift container
-networking, port mapping, or fleet state).
+**ICE port pinning:** On GameLift, only declared
+container ports are forwarded to the host. The server
+pins the ICE agent to container port 4433 via
+`portRangeBegin`/`portRangeEnd` in `initialize()`.
+Multiple PeerConnections share this port via libjuice
+mux mode (`enableIceUdpMux: true`), which
+demultiplexes STUN traffic by username fragment.
+
+**ICE candidate rewriting:** The ICE agent's
+STUN-reflected (srflx) candidate advertises the
+container port (4433), but clients must connect to
+the GameLift host port (e.g., 4205) which is in the
+`InstanceConnectionPortRange` and forwarded to the
+container. The signaling server rewrites the srflx
+candidate's port before sending it to the client.
+The host port is derived from the client's WSS port
+(which the backend returns as host_udp_port + 1).
+
+**ICE candidate buffering:** Client ICE candidates
+that arrive before the server processes the SDP offer
+are buffered and flushed after the
+`WebRTCPeerConnection` is created. Without this,
+early candidates are silently dropped.
+
+**Fleet inbound permissions:** Port 4433/UDP must be
+in the fleet's `InstanceInboundPermissions` in
+addition to the `InstanceConnectionPortRange`. The
+ICE agent's outbound STUN uses port-preserving NAT
+(container port 4433 appears as host port 4433 to
+STUN), so return traffic and client ICE checks
+arrive on host port 4433. This port must be allowed
+by the security group.
 
 ### WSS TLS Termination
 
@@ -416,10 +460,15 @@ session gets 2 consecutive host ports:
 
 GameLift documentation says port mapping is random, but with
 exactly 2 container ports the `Port+1` offset has been
-reliable across all testing. Do not add a third container
-port. GameLift requires different port numbers per entry,
-even for different protocols. Using the same number (e.g.,
-4433/UDP and 4433/TCP) causes GameLift to deduplicate.
+reliable across all testing. **Do not add more container
+ports.** Adding a third entry (e.g., 4435-4437/UDP) causes
+GameLift to assign host ports beyond the
+`InstanceConnectionPortRange`, breaking the `Port+1` WSS
+offset. This was verified in v0.27.0 where port 4212 was
+assigned outside the 4192-4211 range. GameLift requires
+different port numbers per entry, even for different
+protocols. Using the same number (e.g., 4433/UDP and
+4433/TCP) causes GameLift to deduplicate.
 
 **Important:** The port range must accommodate pairs. With 2
 container ports per session, ensure `ToPort - FromPort + 1`
@@ -1528,6 +1577,29 @@ any remote server. Worked around by having native clients
 use plain `ws://` through nginx's pass-through path. See
 "Godot Native WSS Limitation" in the WSS TLS Termination
 section.
+
+**WebRTC ICE Fails on GameLift (2026-04-02, resolved
+2026-04-09):** WebRTC cross-play stopped working after
+a fleet deployment. SDP exchange succeeded but ICE
+connectivity checks timed out. Three root causes:
+(1) The webrtc-native GDExtension v1.0.9 ignores
+`portRangeBegin`/`portRangeEnd` in `initialize()`, so
+the ICE agent bound to ephemeral UDP ports not
+forwarded by GameLift. Fixed by patching the
+GDExtension at Docker build time.
+(2) The STUN-reflected srflx candidate advertised the
+container port (4433) instead of the GameLift host
+port. Fixed by rewriting the candidate port in the
+signaling server before sending to clients.
+(3) Multiple PeerConnections could not share port 4433
+because libjuice's mux mode was not enabled
+(`JUICE_CONCURRENCY_MODE_POLL` default). Fixed by
+adding `enableIceUdpMux: true` to the initialize
+config, which sets `JUICE_CONCURRENCY_MODE_MUX`.
+Also required adding port 4433/UDP to the fleet's
+`InstanceInboundPermissions` (GameLift uses
+port-preserving NAT for outbound STUN, so return
+traffic arrives on host port 4433).
 
 **Buffer overflow on shutdown (2026-03-16, fixed):**
 Server did not disconnect clients when cancelling a match
