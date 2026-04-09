@@ -1,8 +1,12 @@
-"""Patch webrtc-native to support portRangeBegin/End.
+"""Patch webrtc-native to support portRange and UDP mux.
 
-Inserts port range parsing into _initialize() so that
-the libdatachannel ICE agent binds to a specific port
-instead of an ephemeral one.
+Inserts port range and ICE UDP mux parsing into
+_initialize() so that:
+1. The ICE agent binds to a specific port instead
+   of an ephemeral one.
+2. Multiple PeerConnections share the same UDP
+   socket via libjuice's mux mode (required for
+   multi-client WebRTC on a single port).
 """
 import pathlib
 import sys
@@ -16,6 +20,9 @@ PATCH = """\
 \tif (p_config.has("portRangeEnd")) {
 \t\tconfig.portRangeEnd = (uint16_t)(int)p_config["portRangeEnd"];
 \t}
+\tif (p_config.has("enableIceUdpMux")) {
+\t\tconfig.enableIceUdpMux = (bool)p_config["enableIceUdpMux"];
+\t}
 """
 
 src = SRC.read_text()
@@ -25,4 +32,4 @@ if MARKER not in src:
 
 src = src.replace(MARKER, PATCH + "\t" + MARKER, 1)
 SRC.write_text(src)
-print("Patched _initialize with portRange support")
+print("Patched _initialize with portRange + mux support")

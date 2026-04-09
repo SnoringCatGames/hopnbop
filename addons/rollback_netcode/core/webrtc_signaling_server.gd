@@ -292,6 +292,7 @@ func _handle_offer(
 		],
 		"portRangeBegin": _ice_port,
 		"portRangeEnd": _ice_port,
+		"enableIceUdpMux": true,
 	})
 	if init_err != OK:
 		Netcode.log.error(
