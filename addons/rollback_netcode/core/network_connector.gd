@@ -868,6 +868,22 @@ func _configure_enet_throttle(
 func _server_start_webrtc(
 	p_server_port: int,
 ) -> void:
+	# Close the existing multiplayer peer (ENet)
+	# to release the UDP socket on p_server_port.
+	# The WebRTC ICE agent needs to bind to this
+	# port so its candidates use a port that
+	# GameLift forwards. Without this, the ENet
+	# socket holds the port and the ICE agent
+	# picks an ephemeral port that is unreachable
+	# through GameLift's container port mapping.
+	var old_peer := multiplayer.multiplayer_peer
+	if (old_peer != null
+			and old_peer.get_connection_status()
+				!= MultiplayerPeer
+					.CONNECTION_DISCONNECTED):
+		old_peer.close()
+	multiplayer.multiplayer_peer = null
+
 	# Start signaling WebSocket server on the same
 	# port (TCP). WebRTC data flows over UDP, so
 	# there is no port conflict.
@@ -970,7 +986,7 @@ func _client_start_webrtc(
 		_on_webrtc_signaling_failed)
 
 	_webrtc_signaling_client.start(
-		ws_url, temp_peer_id)
+		ws_url, temp_peer_id, p_server_port)
 
 	Netcode.log.print(
 		"Started WebRTC client signaling: %s"

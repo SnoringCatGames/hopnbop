@@ -45,6 +45,22 @@ var _ws_signaled: Dictionary = {}
 # timeout detection.
 var _ws_connect_time: Dictionary = {}
 
+# Buffers client ICE candidates that arrive before
+# the offer is processed (before the
+# WebRTCPeerConnection exists). Applied after
+# _handle_offer creates the RTC.
+var _ws_buffered_ice: Dictionary = {}
+
+# GameLift base host port for UDP (derived from
+# the WSS port the client sends in its offer).
+# Zero means no rewriting.
+var _gamelift_base_host_port: int = 0
+
+## The single ICE container port. All
+## WebRTCPeerConnections share this port via
+## libdatachannel's libjuice mux mode.
+var _ice_port: int = 0
+
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -82,6 +98,9 @@ func stop() -> void:
 	_ws_to_rtc.clear()
 	_ws_signaled.clear()
 	_ws_connect_time.clear()
+	_ws_buffered_ice.clear()
+	_gamelift_base_host_port = 0
+	_ice_port = 0
 
 	if _tcp_server != null:
 		_tcp_server.stop()
@@ -201,6 +220,26 @@ func _handle_offer(
 	ws: WebSocketPeer,
 	data: Dictionary,
 ) -> void:
+	# Derive GameLift base host port from the client's
+	# WSS port. The backend returns WSS port =
+	# base_host_port + 1 for WebRTC matches. Additional
+	# ICE ports (4435-4437) map to base + 2, +3, +4.
+	var client_server_port: int = data.get(
+		"server_port", 0)
+	if (client_server_port > 0
+			and _gamelift_base_host_port == 0):
+		_gamelift_base_host_port = (
+			client_server_port - 1)
+		Netcode.log.print(
+			("Signaling: GameLift base host port"
+			+ " = %d (from client WSS port %d)")
+			% [
+				_gamelift_base_host_port,
+				client_server_port,
+			],
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+
 	var peer_id: int = data.get("peer_id", 0)
 	if peer_id <= 0:
 		Netcode.log.warning(
@@ -239,26 +278,33 @@ func _handle_offer(
 	# Initialize ICE agent with STUN server.
 	# Must happen before add_peer.
 	#
-	# portRangeBegin/End constrain the UDP port
-	# the ICE agent binds to. On GameLift, only
-	# declared container ports are forwarded. The
-	# server must use container port 4433 (UDP)
-	# so ICE traffic reaches the host port that
-	# GameLift maps. Without this, libdatachannel
-	# picks an ephemeral port (e.g., 38335) that
-	# is unreachable from the internet.
-	var server_port: int = Netcode.server_port
+	# All WebRTCPeerConnections share the same ICE
+	# port via libdatachannel's libjuice mux mode.
+	# When portRangeBegin == portRangeEnd, libjuice
+	# creates a shared UDP socket that multiplexes
+	# STUN traffic across agents using ufrag.
+	if _ice_port == 0:
+		_ice_port = Netcode.server_port
+
 	var init_err := rtc.initialize({
 		"iceServers": [
 			{"urls": ["stun:stun.l.google.com:19302"]},
 		],
-		"portRangeBegin": server_port,
-		"portRangeEnd": server_port,
+		"portRangeBegin": _ice_port,
+		"portRangeEnd": _ice_port,
 	})
 	if init_err != OK:
 		Netcode.log.error(
-			"Signaling: initialize failed: %d"
-			% init_err,
+			("Signaling: initialize failed"
+			+ " for ws_index=%d: %d")
+			% [ws_index, init_err],
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+	else:
+		Netcode.log.print(
+			("Signaling: RTC initialized for"
+			+ " ws_index=%d, ICE port=%d")
+			% [ws_index, _ice_port],
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
 
@@ -271,12 +317,29 @@ func _handle_offer(
 	_ws_signaled[ws_index] = true
 
 	# Set the remote description (client's offer).
+	# Log the SDP length and first line for
+	# debugging format differences between
+	# libdatachannel (native) and browser WebRTC.
+	Netcode.log.print(
+		("Signaling: calling"
+		+ " set_remote_description for"
+		+ " ws_index=%d, sdp_len=%d,"
+		+ " first_line='%s'")
+		% [
+			ws_index,
+			sdp.length(),
+			sdp.get_slice("\r\n", 0)
+				.left(60),
+		],
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
 	var desc_err := rtc.set_remote_description(
 		"offer", sdp)
 	if desc_err != OK:
 		Netcode.log.error(
 			("Signaling: set_remote_description"
-			+ " failed: %d") % desc_err,
+			+ " failed for ws_index=%d: %d")
+			% [ws_index, desc_err],
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
 	else:
@@ -291,6 +354,21 @@ func _handle_offer(
 			],
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
+
+	# Flush buffered client ICE candidates that
+	# arrived before the offer.
+	if _ws_buffered_ice.has(ws_index):
+		var buffered: Array = (
+			_ws_buffered_ice[ws_index])
+		_ws_buffered_ice.erase(ws_index)
+		Netcode.log.print(
+			"Signaling: flushing %d buffered"
+			+ " ICE candidates for ws_index=%d"
+			% [buffered.size(), ws_index],
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+		for ice_data in buffered:
+			_handle_client_ice(ws_index, ice_data)
 
 
 func _on_session_description(
@@ -364,15 +442,36 @@ func _on_server_ice_candidate(
 		)
 		return
 
+	# Rewrite the srflx candidate port to the GameLift
+	# host port. The ICE agent binds to container port
+	# 4433, but clients must connect to the GameLift
+	# host port (e.g., 4198) which is forwarded to the
+	# container.
+	var rewritten := candidate_name
+	if (_gamelift_base_host_port > 0
+			and "typ srflx" in candidate_name):
+		var parts := candidate_name.split(" ")
+		if parts.size() >= 6:
+			var old_port := parts[5]
+			parts[5] = str(_gamelift_base_host_port)
+			rewritten = " ".join(parts)
+			Netcode.log.print(
+				("Signaling: rewrote srflx port"
+				+ " %s -> %d")
+				% [old_port,
+					_gamelift_base_host_port],
+				NetworkLogger.CATEGORY_CONNECTIONS,
+			)
+
 	Netcode.log.print(
 		"Signaling: sending server ICE"
 		+ " candidate to ws_index=%d: %s"
-		% [ws_index, candidate_name],
+		% [ws_index, rewritten],
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 	var msg := JSON.stringify({
 		"type": "ice",
-		"candidate": candidate_name,
+		"candidate": rewritten,
 		"mid": media,
 		"index": index,
 	})
@@ -383,17 +482,29 @@ func _handle_client_ice(
 	ws_index: int,
 	data: Dictionary,
 ) -> void:
-	if not _ws_to_rtc.has(ws_index):
-		return
-
-	var rtc: WebRTCPeerConnection = (
-		_ws_to_rtc[ws_index])
 	var candidate: String = data.get("candidate", "")
 	var mid: String = data.get("mid", "")
 	var index: int = data.get("index", 0)
 
 	if candidate.is_empty():
 		return
+
+	# Buffer if the RTC connection does not exist
+	# yet (candidate arrived before the offer).
+	if not _ws_to_rtc.has(ws_index):
+		if not _ws_buffered_ice.has(ws_index):
+			_ws_buffered_ice[ws_index] = []
+		_ws_buffered_ice[ws_index].append(data)
+		Netcode.log.print(
+			"Signaling: buffered client ICE"
+			+ " from ws_index=%d (no RTC yet): %s"
+			% [ws_index, candidate],
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+		return
+
+	var rtc: WebRTCPeerConnection = (
+		_ws_to_rtc[ws_index])
 
 	Netcode.log.print(
 		"Signaling: received client ICE"

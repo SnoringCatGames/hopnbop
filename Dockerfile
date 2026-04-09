@@ -1,3 +1,45 @@
+FROM ubuntu:24.04 AS webrtc-builder
+
+# Build a patched webrtc-native GDExtension that
+# supports portRangeBegin/portRangeEnd in the
+# initialize() config. Upstream v1.0.9 ignores these
+# keys, but libdatachannel (the underlying library)
+# supports them. Without this patch, the ICE agent
+# binds to ephemeral UDP ports that GameLift does not
+# forward, breaking WebRTC on container fleets.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    cmake \
+    git \
+    libssl-dev \
+    pkg-config \
+    python3 \
+    python3-pip \
+    && pip3 install --break-system-packages scons \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone --recursive --branch 1.0.9-stable --depth 1 \
+    https://github.com/godotengine/webrtc-native.git \
+    /webrtc
+
+WORKDIR /webrtc
+
+# Patch _initialize to pass portRangeBegin/End to
+# libdatachannel's rtc::Configuration.
+COPY gamelift-deploy/patch-webrtc-portrange.py /tmp/
+RUN python3 /tmp/patch-webrtc-portrange.py
+
+# Build for Linux x86_64 release.
+RUN scons platform=linux target=template_release arch=x86_64 -j$(nproc)
+
+# Copy built .so to a known path for the runtime stage.
+RUN find /webrtc/bin -name "*.so" -type f \
+    && cp $(find /webrtc/bin -name "libwebrtc_native.linux.template_release.x86_64.so" -type f | head -1) \
+       /webrtc/libwebrtc_native.linux.template_release.x86_64.so
+
+# -----------------------------------------------
+
 FROM ubuntu:24.04 AS sdk-builder
 
 # Build the GameLift Server SDK shared library with
@@ -79,11 +121,12 @@ COPY addons/gamelift/gamelift.gdextension \
 COPY addons/gamelift/bin/libgamelift.linux.template_release.x86_64.so \
      /game/addons/gamelift/bin/
 
-# Copy WebRTC GDExtension manifest and Linux binary
-# (webrtc-native v1.0.9, OpenSSL-based).
+# Copy WebRTC GDExtension manifest and patched Linux
+# binary (built from source with portRange support).
 COPY addons/webrtc/webrtc.gdextension \
      /game/addons/webrtc/
-COPY addons/webrtc/lib/libwebrtc_native.linux.template_release.x86_64.so \
+COPY --from=webrtc-builder \
+     /webrtc/libwebrtc_native.linux.template_release.x86_64.so \
      /game/addons/webrtc/lib/
 
 # Copy the SDK shared library built in the builder stage
@@ -114,7 +157,7 @@ COPY gamelift-deploy/nginx.conf /etc/nginx/nginx.conf
 COPY gamelift-deploy/entrypoint.sh /game/entrypoint.sh
 RUN chmod +x /game/entrypoint.sh
 
-# Expose ENet UDP port and nginx WSS TCP port.
+# Expose ENet/ICE UDP port and nginx WSS TCP port.
 EXPOSE 4433/udp
 EXPOSE 4434/tcp
 

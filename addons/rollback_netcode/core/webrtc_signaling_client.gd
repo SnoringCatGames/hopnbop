@@ -35,6 +35,7 @@ var _rtc: WebRTCPeerConnection
 var _peer_added := false
 var _signaling_url := ""
 var _peer_id: int = 0
+var _server_port: int = 0
 var _attempt_count := 0
 var _attempt_start_msec := 0
 var _is_active := false
@@ -51,9 +52,11 @@ func _ready() -> void:
 func start(
 	url: String,
 	peer_id: int = 0,
+	server_port: int = 0,
 ) -> void:
 	_signaling_url = url
 	_peer_id = peer_id
+	_server_port = server_port
 	_attempt_count = 0
 	_is_completed = false
 	_attempt_connect()
@@ -240,11 +243,15 @@ func _on_session_description(
 	if type == "offer":
 		_rtc.set_local_description(type, sdp)
 
-		# Send offer to signaling server.
+		# Send offer to signaling server. Include
+		# the server's WSS port so the server can
+		# derive the GameLift host UDP port for ICE
+		# candidate rewriting.
 		var msg := JSON.stringify({
 			"type": "offer",
 			"sdp": sdp,
 			"peer_id": _peer_id,
+			"server_port": _server_port,
 		})
 		if (_ws != null
 				and _ws.get_ready_state()

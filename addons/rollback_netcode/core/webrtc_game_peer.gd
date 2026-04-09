@@ -22,6 +22,9 @@ class PeerState:
 	var reliable: WebRTCDataChannel
 	var unreliable: WebRTCDataChannel
 	var is_connected := false
+	## Tracks last logged ICE connection state for
+	## change detection.
+	var last_ice_state: int = -1
 
 ## Queued incoming packet.
 class IncomingPacket:
@@ -146,6 +149,19 @@ func _poll() -> void:
 
 		# Poll the WebRTCPeerConnection.
 		state.rtc.poll()
+
+		# Log ICE connection state changes for
+		# debugging port-mapping and NAT issues.
+		var ice_state := (
+			state.rtc.get_connection_state())
+		if ice_state != state.last_ice_state:
+			state.last_ice_state = ice_state
+			Netcode.log.print(
+				("WebRTCGamePeer: peer %d ICE"
+				+ " state -> %d") % [
+					peer_id, ice_state],
+				NetworkLogger.CATEGORY_CONNECTIONS,
+			)
 
 		# Check DataChannel readiness.
 		var was_connected := state.is_connected

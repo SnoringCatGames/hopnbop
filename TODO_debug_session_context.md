@@ -294,6 +294,156 @@ is ephemeral and not forwarded by GameLift.
    candidates being sent (confirms the logging deploy
    worked).
 
+## Session 2: Git History & CloudWatch Analysis (2026-04-06)
+
+### Confirmed: WebRTC Worked on March 29 (0.17.0)
+
+CloudWatch logs from log stream `23ed64741db14bdd933cb5df7ef52b5a`
+confirm a successful WebRTC session on 2026-03-29 ~06:37 UTC.
+The server was running image **0.17.0** (ECR push 2026-03-28
+15:39, container group def v82, fleet deployment 2026-03-28
+15:41).
+
+**Working session (March 29):**
+```
+[39239.828] Web player detected, using WebRTC transport
+[39239.828] WebRTC signaling server started on port 4433
+[39242.582] Signaling: received offer from peer_id=36052 (ws_index=0)
+[39242.587] WebRTCGamePeer: added peer 36052
+[39242.588] Signaling: set_remote_description OK for ws_index=0
+[39242.589] Signaling: sent answer to ws_index=0
+[39242.858] WebRTCGamePeer: peer 36052 channels open  ← ICE succeeded in ~270ms
+[39242.858] Client connected: 36052
+[39242.816] Signaling: received offer from peer_id=36330 (ws_index=1)
+[39243.071] WebRTCGamePeer: peer 36330 channels open
+[39243.064] Signaling: received offer from peer_id=75000 (ws_index=2)
+```
+
+Three clients connected via WebRTC, all successfully.
+Match had 4 players: 1 web (`is_web=1.0`, `p_14ed1225fdd3`)
++ 1 native with 2 local players (`PL_guest_87c5ca534d8f4388`).
+Server IP: `35.91.191.229`, GameLift port: 4198.
+
+**Failing session (April 6):**
+```
+[208925.908] Web player detected, using WebRTC transport
+[208925.908] WebRTC signaling server started on port 4433
+[208928.612] WebRTCGamePeer: added peer 21231
+[208938.391] WARNING: WebRTCGamePeer: peer 21231 already exists  ← retry after 10s timeout
+[208948.410] WARNING: peer 21231 already exists  ← retry 2
+[208958.443] WARNING: peer 21231 already exists  ← retry 3
+[208968.475] WARNING: peer 21231 already exists  ← retry 4
+```
+
+Server IP: `35.91.191.229` (same instance). No "channels
+open" or "Client connected" messages. Clients retry every
+~10 seconds (5 attempts) and never connect.
+
+### Confirmed: No Code Regression
+
+The signaling server code at 0.17.0 (`8d9ad2e`) is
+**identical** to 0.18.0 (`d837fb3`) for all WebRTC files.
+Both have:
+- `rtc.initialize()` with STUN, no `portRange`
+- Ephemeral ICE port binding
+- Same `WebRTCGamePeer` with same polling logic
+
+The only WebRTC code changes between the working 0.17.0
+and failing 0.22.0 are from commit `5722099` (April 6):
+ICE candidate logging + `portRangeBegin/End` fix attempt.
+These were added AFTER the failure was observed.
+
+**Full WebRTC file change history:**
+- `webrtc_signaling_server.gd`: 76b6097 (Mar 19), efe0b71
+  (Mar 20), 0a7de4d (Mar 20), 5722099 (Apr 6 debug)
+- `webrtc_signaling_client.gd`: 76b6097 (Mar 19), efe0b71
+  (Mar 20), 0a7de4d (Mar 20), 5722099 (Apr 6 debug)
+- `webrtc_game_peer.gd`: 0a7de4d (Mar 20), 084f545 (Mar
+  21 two-pass polling), f422c8f (Mar 23 STATE_DISCONNECTED)
+- `network_connector.gd` WebRTC sections: 76b6097 (Mar 19),
+  efe0b71 (Mar 20), 0a7de4d (Mar 20). No changes after.
+- `webrtc-native` GDExtension: added 76b6097 (Mar 19),
+  never changed.
+
+### Confirmed: Environmental Change, Not Code
+
+**Container group definition ports are identical** across
+all surviving versions (v84-v86): 4433/UDP + 4434/TCP.
+v82 (the working version) is deleted but the
+`container-group-definition.json` file hasn't changed
+since March 16 (`1ff0c80`), so v82 had the same ports.
+
+**Fleet instance inbound permissions:** Only ports
+4192-4211 are allowed (both UDP and TCP). An ephemeral
+port like 38335 is outside this range and should be
+blocked by the security group. This means ephemeral ICE
+ports should have NEVER worked, yet they did on March 29.
+
+**Fleet deployments between working and failing:**
+- 2026-03-28 15:41 — v82, image 0.17.0 (WORKING)
+- 2026-03-30 11:00 — v83(?), image 0.18.0
+- 2026-04-02 13:01 — v84, image 0.19.0
+- 2026-04-03 19:42 — v85, image 0.20.0
+- 2026-04-06 06:58 — v86, image 0.22.0 (FAILING)
+
+Any of the intermediate deployments could have triggered
+an EC2 instance replacement or container runtime update
+that changed networking behavior.
+
+### Fleet Configuration
+
+- Fleet ID: containerfleet-9836594e-0c96-4887-a8d5-be7f3541db36
+- Instance type: c5.large
+- Container groups per instance: 2
+- Port range: 4192-4211 (20 ports, 10 pairs)
+- Inbound: 0.0.0.0/0 UDP+TCP on 4192-4211
+- Same IP (35.91.191.229) for both sessions
+
+### Theories for Why March 29 Worked
+
+1. **GameLift container networking change.** AWS may have
+   updated the container agent or networking stack between
+   March 29 and April 6. An earlier version may have used
+   `--network host` or more permissive iptables rules that
+   allowed ephemeral UDP ports through.
+2. **EC2 instance replacement.** Fleet deployments replace
+   containers. If the underlying EC2 instance was replaced
+   between March 29 and April 6, the new instance may have
+   a different AMI or networking configuration.
+3. **NAT hairpin behavior.** Docker bridge NAT may have
+   previously allowed inbound UDP to ephemeral ports via
+   STUN-created NAT mappings (endpoint-independent NAT).
+   A kernel or Docker update could have tightened this.
+
+### What We Know For Certain
+
+- The code never constrained ICE ports (until the 4/6 fix)
+- The code never explicitly freed the ENet peer before
+  starting WebRTC (ENet holds 4433/UDP at startup, WebRTC
+  replaces the multiplayer peer reference but may not
+  immediately close the socket)
+- The container group definition only exposes 4433/UDP and
+  4434/TCP
+- The fleet security group only allows 4192-4211
+- Despite all of this, ICE connected in ~270ms on March 29
+- The same code fails on April 6 with ephemeral port 38335
+
+### Remaining Fix Approach
+
+The `portRangeBegin/End` fix (commit 5722099) is correct
+in principle. Pin ICE to 4433/UDP so it goes through
+GameLift's declared port mapping.
+
+**Open concerns:**
+1. ENet may still hold 4433/UDP when WebRTC starts.
+   Need to explicitly close ENet first. There is an
+   uncommitted change in `network_connector.gd` for this.
+2. Multiple WebRTCPeerConnection instances (one per
+   client) all trying to bind 4433. May work with
+   SO_REUSEPORT, may not. Needs testing.
+3. If port sharing fails, alternative: add more UDP ports
+   (4435-4438) to the container group definition.
+
 ## Earlier Issues (Resolved)
 
 ### RPC Argument Mismatch (fixed before this session)
