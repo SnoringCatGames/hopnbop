@@ -9,7 +9,7 @@ Globals:
     MemorySize: 512
     Environment:
       Variables:
-        GAME_VERSION: "0.20.0"
+        GAME_VERSION: "0.29.0"
         PROTOCOL_VERSION: "2"
         PLAYERS_TABLE: !Ref PlayersTable
         MATCH_HISTORY_TABLE: !Ref MatchHistoryTable
@@ -23,6 +23,9 @@ Globals:
         HOSTED_ZONE_ID: !Ref GameHostedZoneId
         POWERTOOLS_METRICS_NAMESPACE: HopNBop
         ACTIVE_SESSIONS_TABLE: !Ref ActiveSessionsTable
+        FLEET_STATE_TABLE: !Ref FleetStateTable
+        FLEET_ID: !Ref FleetId
+        GAMELIFT_LOCATION: !Ref AWS::Region
 
 Parameters:
   SteamAppID:
@@ -44,6 +47,11 @@ Parameters:
     Type: String
     Description: Route 53 hosted zone ID for hopnbop.net (used for game session DNS records)
     Default: 'Z05562172A1JF6AX39U2N'
+
+  FleetId:
+    Type: String
+    Description: GameLift container fleet ID for warmup/scale operations. Empty string disables fleet operations.
+    Default: ''
 
 Conditions:
   HasAlertEmail: !Not [!Equals [!Ref AlertEmail, '']]
@@ -73,6 +81,24 @@ Resources:
               - secretsmanager:GetSecretValue
             Resource:
               - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:hopnbop/*'
+
+  # Shared IAM policy for GameLift fleet capacity operations.
+  # Used by the fleet warmup/status/idle-check Lambdas and by the
+  # match-end hook that refreshes fleet activity timestamps.
+  GameLiftFleetPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - gamelift:DescribeFleetLocationCapacity
+              - gamelift:UpdateFleetCapacity
+              - gamelift:DescribeGameSessions
+              - gamelift:DescribeContainerFleet
+              - gamelift:ListFleets
+            Resource: '*'
 
   # Lambda Functions
   AuthLoginFunction:
@@ -437,6 +463,8 @@ Resources:
             TableName: !Ref LeaderboardTable
         - DynamoDBCrudPolicy:
             TableName: !Ref ActiveSessionsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FleetStateTable
         - !Ref SecretsManagerPolicy
       Events:
         SubmitResult:
@@ -927,6 +955,67 @@ Resources:
             Path: /party/start
             Method: post
 
+  # Fleet Warmup and Idle Shutdown Functions
+  FleetWarmupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.fleet_handler.warm_up_fleet
+      MemorySize: 256
+      Timeout: 15
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FleetStateTable
+        - !Ref GameLiftFleetPolicy
+      Events:
+        Warmup:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /fleet/warmup
+            Method: post
+
+  FleetStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.fleet_handler.get_fleet_status
+      MemorySize: 256
+      Timeout: 10
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref FleetStateTable
+        - !Ref GameLiftFleetPolicy
+      Events:
+        Status:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameBackendAPI
+            Path: /fleet/status
+            Method: get
+
+  FleetIdleCheckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handlers.fleet_handler.scheduled_idle_check
+      MemorySize: 256
+      Timeout: 30
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FleetStateTable
+        - !Ref GameLiftFleetPolicy
+      Events:
+        IdleCheckSchedule:
+          Type: Schedule
+          Properties:
+            # Runs every 5 minutes. Scales the fleet to 0 when
+            # no active game sessions and >30 min since last
+            # activity.
+            Schedule: rate(5 minutes)
+            Name: hopnbop-fleet-idle-check
+            Description: Periodic fleet idle check for scale-to-zero
+
   # Monitoring and Alerting
   AlarmNotificationTopic:
     Type: AWS::SNS::Topic
@@ -1097,6 +1186,8 @@ Resources:
     Properties:
       TableName: hopnbop-players
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: player_id
           AttributeType: S
@@ -1135,6 +1226,8 @@ Resources:
     Properties:
       TableName: hopnbop-provider-mappings
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: provider_composite
           AttributeType: S
@@ -1147,6 +1240,8 @@ Resources:
     Properties:
       TableName: hopnbop-match-history
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: player_id
           AttributeType: S
@@ -1163,6 +1258,8 @@ Resources:
     Properties:
       TableName: hopnbop-consent-audit
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: player_id
           AttributeType: S
@@ -1178,6 +1275,8 @@ Resources:
     Properties:
       TableName: hopnbop-settings
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: player_id
           AttributeType: S
@@ -1190,6 +1289,8 @@ Resources:
     Properties:
       TableName: hopnbop-leaderboard
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: leaderboard_id
           AttributeType: S
@@ -1206,6 +1307,8 @@ Resources:
     Properties:
       TableName: hopnbop-friends
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: player_id
           AttributeType: S
@@ -1222,6 +1325,8 @@ Resources:
     Properties:
       TableName: hopnbop-parties
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: party_id
           AttributeType: S
@@ -1237,6 +1342,8 @@ Resources:
     Properties:
       TableName: hopnbop-active-sessions
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: player_id
           AttributeType: S
@@ -1246,6 +1353,20 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: expires_at
         Enabled: true
+
+  FleetStateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: hopnbop-fleet-state
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      AttributeDefinitions:
+        - AttributeName: state_key
+          AttributeType: S
+      KeySchema:
+        - AttributeName: state_key
+          KeyType: HASH
 
 Outputs:
   ApiEndpoint:

@@ -79,8 +79,39 @@ if ($templateContent -match 'PROTOCOL_VERSION:\s*"(\d+)"') {
 
 Set-Content -Path $templatePath -Value $templateContent -NoNewline
 
-# Step 2: SAM build.
-Write-Host "[2/3] Running sam build..." -ForegroundColor Yellow
+# Step 2: Discover current GameLift container fleet ID.
+# Passed to the SAM deploy as a parameter override so the
+# fleet warmup and idle-check Lambdas know which fleet to
+# operate on. The fleet ID changes whenever the fleet is
+# recreated (e.g., to switch billing type), so we look it
+# up fresh on each deploy rather than hard-coding.
+#
+# Note: list-fleets returns managed EC2 fleets only, so
+# container fleets require the separate list-container-fleets
+# API.
+Write-Host "[2/4] Looking up fleet ID..." -ForegroundColor Yellow
+
+$FleetJson = aws gamelift list-container-fleets --profile $Profile --region $Region --output json
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "aws gamelift list-container-fleets failed"
+    exit 1
+}
+
+$FleetData = $FleetJson | ConvertFrom-Json
+$Fleets = $FleetData.ContainerFleets
+if ($null -eq $Fleets -or $Fleets.Count -eq 0) {
+    Write-Warning "No GameLift container fleets found. Deploying with empty FleetId (warmup will be disabled)."
+    $FleetId = ""
+} elseif ($Fleets.Count -gt 1) {
+    $FleetId = $Fleets[0].FleetId
+    Write-Warning "Multiple container fleets found. Using the first: $FleetId"
+} else {
+    $FleetId = $Fleets[0].FleetId
+    Write-Host "  Fleet ID: $FleetId" -ForegroundColor Green
+}
+
+# Step 3: SAM build.
+Write-Host "[3/4] Running sam build..." -ForegroundColor Yellow
 
 Push-Location backend
 try {
@@ -94,10 +125,13 @@ try {
     }
     Write-Host "Build complete." -ForegroundColor Green
 
-    # Step 3: SAM deploy.
-    Write-Host "[3/3] Running sam deploy..." -ForegroundColor Yellow
+    # Step 4: SAM deploy. Passes FleetId as a parameter
+    # override. AlertEmail is set via samconfig.toml (one-time
+    # configuration); it is intentionally not passed here.
+    Write-Host "[4/4] Running sam deploy..." -ForegroundColor Yellow
 
-    sam deploy --no-confirm-changeset --profile $Profile --region $Region
+    sam deploy --no-confirm-changeset --profile $Profile --region $Region `
+        --parameter-overrides "FleetId=$FleetId"
     if ($LASTEXITCODE -ne 0) {
         Write-Error "sam deploy failed"
         exit 1

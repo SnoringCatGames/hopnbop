@@ -87,10 +87,40 @@ func update_status_message() -> void:
 	if Netcode.connector.is_connected_to_server:
 		%Label.text = tr(
 			"LOADING.WAITING_FOR_PLAYERS")
-	elif not _matchmaking_phase.is_empty():
+		return
+
+	# If the fleet has not reached ready yet, surface
+	# the warming-up status. This covers the window
+	# between app open and the first match, where
+	# matchmaking would otherwise fail with "no match"
+	# because no instance is available.
+	if _is_fleet_warming_up():
+		%Label.text = _get_warming_up_text()
+		return
+
+	if not _matchmaking_phase.is_empty():
 		%Label.text = _get_matchmaking_text()
 	else:
 		%Label.text = tr("LOADING.CONNECTING")
+
+
+func _is_fleet_warming_up() -> bool:
+	if not is_instance_valid(G.backend_api_client):
+		return false
+	if G.settings.prefer_offline_mode:
+		return false
+	return G.backend_api_client.is_fleet_warming_up()
+
+
+func _get_warming_up_text() -> String:
+	var remaining: int = (
+		G.backend_api_client
+			.get_fleet_estimated_remaining_sec())
+	var base := tr("LOADING.WARMING_UP_SERVER")
+	if remaining <= 0:
+		return base
+	return base + " " + (
+		tr("LOADING.REMAINING") % remaining)
 
 
 func _get_matchmaking_text() -> String:

@@ -31,10 +31,27 @@ var _next_lobby_id_counter := 0
 
 func _ready() -> void:
 	super._ready()
-	if not Engine.is_editor_hint():
-		%HideSettingsTiles.visible = (
-			G.local_settings.get_rounds_played()
-			== 0)
+	if Engine.is_editor_hint():
+		return
+	%HideSettingsTiles.visible = (
+		G.local_settings.get_rounds_played()
+		== 0)
+
+	# Listen for fleet warmup updates so the lobby
+	# can display a countdown at the bottom-center.
+	if is_instance_valid(G.backend_api_client):
+		(G.backend_api_client
+			.fleet_status_updated.connect(
+				_on_fleet_status_updated))
+	_update_fleet_warmup_label()
+
+
+func _process(_delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
+	# Cheap enough to update every frame: lets the
+	# countdown tick down smoothly while waiting.
+	_update_fleet_warmup_label()
 
 
 func _physics_process(_delta: float) -> void:
@@ -42,6 +59,59 @@ func _physics_process(_delta: float) -> void:
 		return
 	_check_keyboard_inputs()
 	_check_gamepad_inputs()
+
+
+func _on_fleet_status_updated(_data: Dictionary) -> void:
+	_update_fleet_warmup_label()
+
+
+func _update_fleet_warmup_label() -> void:
+	var label := %FleetWarmupLabel as Label
+	if not is_instance_valid(label):
+		return
+
+	if G.settings.prefer_offline_mode:
+		label.text = ""
+		label.visible = false
+		return
+
+	if not is_instance_valid(G.backend_api_client):
+		label.text = ""
+		label.visible = false
+		return
+
+	if G.backend_api_client.is_fleet_ready():
+		label.text = tr("LOBBY.SERVER_READY")
+		label.visible = true
+		return
+
+	if not G.backend_api_client.is_fleet_warming_up():
+		label.text = ""
+		label.visible = false
+		return
+
+	var remaining := (
+		G.backend_api_client
+			.get_fleet_estimated_remaining_sec())
+	if remaining <= 0:
+		label.text = tr("LOBBY.SERVER_WARMING_UP")
+	else:
+		label.text = tr(
+			"LOBBY.SERVER_WARMING_UP_WITH_ESTIMATE"
+		) % _format_warmup_duration(remaining)
+	label.visible = true
+
+
+static func _format_warmup_duration(
+	seconds: int,
+) -> String:
+	if seconds < 60:
+		return "%ds" % seconds
+	var minutes := seconds / 60
+	var remainder := seconds % 60
+	if remainder == 0:
+		return "%dm" % minutes
+	return "%dm %ds" % [minutes, remainder]
 
 
 func _check_keyboard_inputs() -> void:

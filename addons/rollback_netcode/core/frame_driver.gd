@@ -47,10 +47,10 @@ extends Node
 
 # ---
 
-# - Death gore particles seem to spawn at a third unrelated position when you die.
-#   - At neither the death position or the spawn position.
-#   - Consistent.
-#   - Only tested in level_4.
+# - Finish working on the foobar image.
+#   - Reducing in-between shades.
+#   - Cleaning up rough shapes.
+
 # - Fix snail goo.
 #   - Sticks past edge for convex corners.
 #   - Cuts corners for concave.

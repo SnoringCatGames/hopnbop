@@ -604,7 +604,9 @@ func _handle_interaction_effects() -> void:
 			Netcode.fatal()
 
 
-func _spawn_gore_particles() -> void:
+func _spawn_gore_particles(
+	death_pos: Vector2,
+) -> void:
 	if not Netcode.is_client:
 		return
 	if (
@@ -613,8 +615,6 @@ func _spawn_gore_particles() -> void:
 			G.level.gore_manager)
 	):
 		return
-	var death_pos := (
-		state_from_server.last_interaction_position)
 	G.level.gore_manager.spawn_particles(death_pos)
 
 
@@ -670,6 +670,10 @@ func _spawn_squish_sprite() -> void:
 	if not is_instance_valid(G.level):
 		return
 
+	var death_pos := (
+		state_from_server
+			.last_interaction_position)
+
 	var anim_sprite := (
 		animator.animated_sprite
 		as AnimatedSprite2D)
@@ -677,13 +681,9 @@ func _spawn_squish_sprite() -> void:
 		anim_sprite.sprite_frames
 			.get_frame_texture("Squish", 0))
 	if squish_tex == null:
-		_spawn_gore_particles()
+		_spawn_gore_particles(death_pos)
 		G.camera_shaker.shake()
 		return
-
-	var death_pos := (
-		state_from_server
-			.last_interaction_position)
 
 	var sprite := Sprite2D.new()
 	sprite.texture = squish_tex
@@ -721,7 +721,7 @@ func _spawn_squish_sprite() -> void:
 		func() -> void:
 			if is_instance_valid(sprite):
 				sprite.queue_free()
-			_spawn_gore_particles()
+			_spawn_gore_particles(death_pos)
 			G.camera_shaker.shake()
 	)
 

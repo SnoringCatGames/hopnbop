@@ -241,7 +241,10 @@ If the changes require users to re-consent, also bump
 - **Account:** 270469481989
 - **Region:** us-west-2
 - **Profile:** hopnbop
-- **Fleet ID:** containerfleet-9836594e-0c96-4887-a8d5-be7f3541db36
+- **Fleet ID:** containerfleet-5568a04e-2984-4e77-9e24-fce721caa7c6
+  (current; `aws gamelift list-fleets` is authoritative)
+- **Fleet billing type:** SPOT (recreated 2026-04-11 from
+  ON_DEMAND to cut GameLift costs ~65-75%)
 - **ECR repo:** 270469481989.dkr.ecr.us-west-2.amazonaws.com/hopnbop-server
 - **S3 bucket:** hopnbop-website
 - **CloudFront:** E3LT833LSVTW9R
@@ -254,7 +257,12 @@ If the changes require users to re-consent, also bump
 - **TLS cert secret:** hopnbop/tls-wildcard-cert (expires
   2026-06-09)
 - **CloudWatch log group:**
-  gamelift-containerfleet-9836594e-0c96-4887-a8d5-be7f3541db36-us-west-2
+  gamelift-containerfleet-{fleet-id}-us-west-2 (auto-generated
+  per fleet; the current one is named after the fleet ID above)
+- **SNS alarms topic:** hopnbop-alarms (subscriptions:
+  admin@snoringcat.games)
+- **Fleet state table:** hopnbop-fleet-state (single-item
+  table tracking `last_activity_at` for the idle-check Lambda)
 
 ### GameLift Architecture Notes
 
@@ -310,6 +318,76 @@ deployment goes IMPAIRED.
 `EnvironmentOverride`. Read in `global.gd:_ready()`, stored in
 `settings.server_api_key`, used by `match_result_reporter.gd`
 to authenticate with the backend API.
+
+### Fleet Warmup and Idle Shutdown
+
+The fleet runs on Spot pricing with DESIRED=0 as the resting
+state to minimize instance-hour costs. Client-driven warmup
+brings it up on demand, and a scheduled Lambda scales it back
+to 0 after 30 minutes of no activity.
+
+**Client side (`src/core/backend_api_client.gd`):**
+- `warm_up_fleet(source)` posts to `/fleet/warmup` and starts
+  a 10-second polling timer for `/fleet/status`.
+- Fired automatically from `global.gd:_ready()` on app startup
+  unless `settings.prefer_offline_mode` is true.
+- Fired again when the player toggles offline mode off, via
+  the `LocalSettings.setting_override_changed` signal.
+- Exposes `is_fleet_ready()`, `is_fleet_warming_up()`, and
+  `get_fleet_estimated_remaining_sec()` for UI.
+- Polling stops when status reaches `"ready"` or after 10
+  minutes to avoid runaway retries.
+
+**Lobby UI:** `lobby_level.tscn` has a bottom-center
+`FleetWarmupLabel` that shows `LOBBY.SERVER_WARMING_UP_WITH_ESTIMATE`
+with a minutes-and-seconds countdown, or `LOBBY.SERVER_READY`
+once the fleet is live. Hidden in offline mode.
+
+**Loading screen:** `loading_screen.gd` checks
+`is_fleet_warming_up()` before falling through to the existing
+matchmaking phase label, so players see
+`LOADING.WARMING_UP_SERVER` during the cold-start wait instead
+of `LOADING.CONNECTING`.
+
+**Backend side:**
+- `services/fleet_service.py` — Wraps DescribeFleetLocationCapacity,
+  UpdateFleetCapacity, DescribeGameSessions, and reads/writes
+  `last_activity_at` in the `hopnbop-fleet-state` DynamoDB table.
+- `handlers/fleet_handler.py`:
+  - `POST /fleet/warmup` — Unauthenticated. Updates activity
+    timestamp and scales DESIRED to 1 if currently 0.
+  - `GET /fleet/status` — Unauthenticated. Reads capacity
+    without mutating anything.
+  - `scheduled_idle_check` — Invoked by EventBridge every 5
+    minutes. Scales DESIRED to 0 if no ACTIVE game sessions
+    AND `now - last_activity_at >= 30 minutes`. First run
+    seeds the timestamp instead of scaling down.
+- `handlers/match_handler.submit_match_result` — Calls
+  `fleet_service.update_activity("match_end")` after recording
+  a match, so the 30-minute idle window starts fresh whenever
+  a match ends.
+
+**Warmup latency:** Cold start from DESIRED=0 to ACTIVE with
+an IDLE game session slot takes roughly 3-5 minutes (EC2 boot
++ ECR image pull + GameLift health checks + game session
+activation). The estimate returned to the client starts at
+300 seconds and decrements as `now - last_activity_at`.
+
+**FleetId parameter:** `backend/template.yaml` takes a `FleetId`
+SAM parameter with an empty default. `scripts/deploy-backend.ps1`
+looks up the current fleet via `aws gamelift list-fleets` and
+passes it as a parameter override at deploy time. If the fleet
+is ever recreated, redeploying the backend picks up the new ID
+automatically. When `FleetId` is empty, the fleet service
+gracefully skips all GameLift API calls and returns a neutral
+status so tests pass without real AWS credentials.
+
+**Spot interruption handling:** Already implemented in
+`addons/gamelift_session_manager/server/gamelift_server.gd`
+via `_on_process_terminate_requested`, which listens to
+GameLift's 2-minute warning and calls
+`Netcode.connector.server_notify_shutdown()` so clients see a
+clean SERVER_SHUTDOWN rather than a hard disconnect.
 
 ### Transport Architecture
 

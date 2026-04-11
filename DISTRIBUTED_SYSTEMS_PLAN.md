@@ -981,16 +981,26 @@ backgrounding the app mid-match and returning.
 **Goal**: Deploy game server to GameLift container fleet with
 Spot instances and Anywhere mode for local testing.
 
+**Status** (as of 2026-04-11): Fleet runs on **Spot** billing,
+DESIRED=0 at rest, driven by a client-initiated warmup
+endpoint plus a scheduled idle-shutdown Lambda. See the
+"Fleet Warmup and Idle Shutdown" section in CLAUDE.md for
+the runtime flow. Original fleet was created ON_DEMAND on
+2026-03-06; recreated as SPOT on 2026-04-11 after an audit
+showed ON_DEMAND billing was consuming ~$78/month on an
+idle fleet.
+
 **What's included**:
 - Dockerfile for Godot headless server (Linux)
 - ECR repository for container images
-- GameLift container fleet definition
-- Mixed Spot + On-Demand fleet configuration
+- GameLift container fleet definition (Spot)
 - GameLift Anywhere fleet for local testing
 - Deployment script (build container → push to ECR → update fleet)
 - Server-side session validation (verify player JWT with backend)
 - Graceful shutdown on Spot reclamation (2-min warning → finish
   match or return players to lobby)
+- Client-driven fleet warmup at app startup
+- Scheduled idle shutdown (30 min after last activity)
 
 **Server transport**:
 - ENet-only matches: ENet listener on port 4433/UDP
@@ -1098,10 +1108,15 @@ collecting real user data in production.
 **Goal**: Production visibility into server health, player
 experience, and costs.
 
-**Status**: Code complete. 106 backend tests passing (10 new
-telemetry tests). Manual steps remain: deploy with AlertEmail
-parameter, confirm SNS subscription, enable DynamoDB PITR,
-create AWS Budgets.
+**Status** (as of 2026-04-11): Fully complete. Code was
+already deployed. On 2026-04-11 the remaining manual steps
+were closed: email `admin@snoringcat.games` subscribed to
+the `hopnbop-alarms` SNS topic (confirmation pending in
+inbox), DynamoDB PITR enabled on all 9 existing tables via
+CLI and added to the SAM template so it persists through
+future deploys, and AWS Budgets (`hopnbop-25`, `hopnbop-100`)
+already existed. CloudWatch costs are currently $0 because
+4 alarms + 1 dashboard fit within the AWS free tier.
 
 **What's included**:
 
@@ -1828,18 +1843,19 @@ custom URI scheme deep links and platform SDKs.
 - [x] Secrets Manager: JWT signing key
 - [ ] Secrets Manager: Google OAuth client secret
 - [ ] Secrets Manager: Facebook OAuth client secret
-- [ ] SNS topic for alarms, email subscription confirmed
-- [ ] S3 bucket for hopnbop.net (see web hosting setup guide)
-- [ ] CloudFront distribution with OAC
-- [ ] Route 53 hosted zone + DNS records
+- [x] SNS topic for alarms (`hopnbop-alarms`), subscription
+      pending email confirmation for `admin@snoringcat.games`
+- [x] S3 bucket for hopnbop.net (`hopnbop-website`)
+- [x] CloudFront distribution (`E3LT833LSVTW9R`)
+- [x] Route 53 hosted zone (`Z05562172A1JF6AX39U2N`)
 - [ ] ACM SSL certificate (us-east-1)
 - [ ] OAuth callback page deployed to S3
-- [ ] ECR repository for server containers
-- [ ] GameLift container fleet
+- [x] ECR repository for server containers (`hopnbop-server`)
+- [x] GameLift container fleet (Spot, scale-to-zero)
 - [ ] GameLift Anywhere fleet (for local dev)
-- [ ] DynamoDB PITR enabled on all tables
-- [ ] AWS Budgets alerts ($25, $50, $100)
-- [ ] CloudWatch dashboard
+- [x] DynamoDB PITR enabled on all 9 tables (2026-04-11)
+- [x] AWS Budgets alerts (`hopnbop-25`, `hopnbop-100` exist)
+- [x] CloudWatch dashboard (`hopnbop-monitoring`)
 
 ### Local Development
 - [ ] Docker installed (for container builds)

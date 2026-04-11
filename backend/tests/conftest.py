@@ -50,6 +50,12 @@ def _aws_env(monkeypatch):
     monkeypatch.setenv(
         "PARTIES_TABLE", "hopnbop-parties"
     )
+    monkeypatch.setenv(
+        "FLEET_STATE_TABLE", "hopnbop-fleet-state"
+    )
+    # Empty FLEET_ID disables real GameLift calls in tests.
+    monkeypatch.setenv("FLEET_ID", "")
+    monkeypatch.setenv("GAMELIFT_LOCATION", TEST_REGION)
 
 
 @pytest.fixture
@@ -437,6 +443,23 @@ def _create_dynamodb_tables():
                 "AttributeName": "score_player",
                 "AttributeType": "S",
             },
+        ],
+        BillingMode="PAY_PER_REQUEST",
+    )
+
+    dynamodb.create_table(
+        TableName="hopnbop-fleet-state",
+        KeySchema=[
+            {
+                "AttributeName": "state_key",
+                "KeyType": "HASH",
+            }
+        ],
+        AttributeDefinitions=[
+            {
+                "AttributeName": "state_key",
+                "AttributeType": "S",
+            }
         ],
         BillingMode="PAY_PER_REQUEST",
     )

@@ -29,12 +29,24 @@ MSYS_NO_PATHCONV=1 aws gamelift create-matchmaking-rule-set \
 # Step 2: Create container fleet.
 echo "[2/4] Creating container fleet..."
 echo "  Note: Fleet creation takes 10-30 minutes."
+# BillingType: SPOT. Spot pricing is roughly 65-75% cheaper
+# than On-Demand for c5.large. Spot reclamation is handled
+# gracefully by the server via GameLift's 2-minute warning
+# (see gamelift_server.gd _on_process_terminate_requested).
+# Ports: 4192-4211 is the host connection port range
+# (GameLift remaps container ports into this range). The
+# inbound permissions must cover 4192-4211 UDP/TCP plus
+# 4433-4434 UDP (container port that ICE srflx advertises
+# before the signaling server rewrites it).
 MSYS_NO_PATHCONV=1 aws gamelift create-container-fleet \
     --fleet-role-arn "arn:aws:iam::${ACCOUNT_ID}:role/GameLiftContainerFleetRole" \
-    --description "Hop n Bop game server fleet" \
+    --description "Hop n Bop game server fleet (Spot)" \
     --game-server-container-group-definition-name hopnbop-server-group \
     --instance-type c5.large \
-    --instance-connection-port-range "FromPort=4433,ToPort=4434" \
+    --billing-type SPOT \
+    --instance-connection-port-range "FromPort=4192,ToPort=4211" \
+    --instance-inbound-permissions '[{"FromPort":4192,"ToPort":4211,"IpRange":"0.0.0.0/0","Protocol":"UDP"},{"FromPort":4433,"ToPort":4434,"IpRange":"0.0.0.0/0","Protocol":"UDP"},{"FromPort":4192,"ToPort":4211,"IpRange":"0.0.0.0/0","Protocol":"TCP"}]' \
+    --game-server-container-groups-per-instance 2 \
     --region "$REGION" \
     --profile "$PROFILE" 2>&1
 

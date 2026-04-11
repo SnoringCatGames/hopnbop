@@ -8,6 +8,13 @@ extends RefCounted
 ## the resource default to keep the file minimal.
 
 
+## Emitted when a user-controlled setting changes via
+## set_override. Listeners (e.g. the fleet warmup
+## hook) can react to specific key changes.
+signal setting_override_changed(
+	key: StringName, value: Variant)
+
+
 const SETTINGS_PATH := "user://local_settings.cfg"
 const SECTION_SETTINGS := "settings"
 const SECTION_LEVEL_PREFS := "level_preferences"
@@ -111,6 +118,8 @@ func set_override(
 
 	# Apply to runtime settings immediately.
 	_defaults.set(key, value)
+
+	setting_override_changed.emit(key, value)
 
 
 ## Get the effective value for a setting key.

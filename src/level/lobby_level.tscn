@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=4 uid="uid://c7h8xaxryasdf"]
+[gd_scene load_steps=11 format=4 uid="uid://c7h8xaxryasdf"]
 
 [ext_resource type="Script" uid="uid://c0fbal5cscf2m" path="res://src/level/lobby_level.gd" id="1_lobby"]
 [ext_resource type="PackedScene" uid="uid://bo0yvrajk0ktn" path="res://src/level/background.tscn" id="2_6cujj"]
@@ -95,6 +95,28 @@ position = Vector2(-33, -127)
 [node name="AwardPodium" parent="." instance=ExtResource("7_podium")]
 unique_name_in_owner = true
 position = Vector2(101, -127)
+
+[node name="LobbyHud" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="HudRoot" type="Control" parent="LobbyHud"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="FleetWarmupLabel" type="Label" parent="LobbyHud/HudRoot"]
+unique_name_in_owner = true
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -80.0
+offset_bottom = -20.0
+mouse_filter = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+text = ""
 
 [connection signal="body_entered" from="SettingsCave" to="." method="_on_settings_cave_body_entered"]
 [connection signal="body_entered" from="RabbitHole" to="." method="_on_rabbit_hole_body_entered"]

@@ -387,7 +387,7 @@ var is_within_coyote_time: bool:
 
 const _ICE_FRICTION_MULTIPLIER := 0.04
 const _ICE_SPEED_MULTIPLIER := 1.5
-const _ICE_ACCELERATION_MULTIPLIER := 0.2
+const _ICE_ACCELERATION_MULTIPLIER := 0.5
 const _TERRAIN_SAMPLE_OFFSET := 4.0
 
 var surface_properties := SurfaceProperties.new()

@@ -22,6 +22,7 @@ from services.leaderboard_service import (
 )
 from services import secrets_service
 from services.active_session_service import ActiveSessionService
+from services.fleet_service import FleetService
 
 logger = Logger()
 tracer = Tracer()
@@ -32,6 +33,7 @@ match_service = MatchService()
 player_service = PlayerService()
 leaderboard_service = LeaderboardService()
 active_session_service = ActiveSessionService()
+fleet_service = FleetService()
 
 # CORS headers included in every response.
 _HEADERS = {
@@ -163,6 +165,16 @@ def submit_match_result(
             unit=MetricUnit.Count,
             value=1,
         )
+
+        # Refresh fleet activity timestamp. The scheduled
+        # idle-check Lambda uses this to delay scale-to-0
+        # for 30 minutes after the last match ends.
+        try:
+            fleet_service.update_activity("match_end")
+        except Exception:
+            logger.warning(
+                "Failed to update fleet activity"
+            )
 
         return {
             "statusCode": 200,

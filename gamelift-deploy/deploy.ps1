@@ -184,7 +184,17 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Container group definition updated." -ForegroundColor Green
 
 # Step 6: Update fleet to use new container group.
-$FleetId = "containerfleet-9836594e-0c96-4887-a8d5-be7f3541db36"
+# Fleet ID is looked up dynamically so this script survives
+# fleet recreations (e.g. Spot <-> On-Demand switches).
+# Note: list-fleets returns managed EC2 fleets only, so
+# container fleets require the list-container-fleets API.
+$FleetJson = aws gamelift list-container-fleets --profile $Profile --region $Region --output json
+$FleetData = $FleetJson | ConvertFrom-Json
+if ($null -eq $FleetData.ContainerFleets -or $FleetData.ContainerFleets.Count -eq 0) {
+    Write-Error "No GameLift container fleets found. Run gamelift-deploy/create-fleet.sh first."
+    exit 1
+}
+$FleetId = $FleetData.ContainerFleets[0].FleetId
 Write-Host "[6/6] Updating fleet $FleetId..." -ForegroundColor Yellow
 
 aws gamelift update-container-fleet `
