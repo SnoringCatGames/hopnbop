@@ -457,24 +457,64 @@ func _advance() -> bool:
 		progress = _CONCAVE_CORNER_INSET
 		return true
 
-	# Straight/convex need full tile size.
-	if progress < Level.TILE_SIZE:
+	# 2. Straight continuation (needs full tile).
+	if progress >= Level.TILE_SIZE:
+		var straight_tile := current_tile + forward
+		if not _has_tile(straight_tile):
+			# Try wrapping across level bounds.
+			straight_tile = _wrap_tile(
+				straight_tile, forward)
+		if _has_tile(straight_tile):
+			current_tile = straight_tile
+			progress -= Level.TILE_SIZE
+			return true
+
+	# 3. Convex corner. Walls ending at a ceiling
+	# exit _CEILING_INSET early so they meet the
+	# inset ceiling surface line instead of the
+	# nominal tile corner.
+	var next_face: int = _next_face_map[current_face]
+	var convex_threshold: float = Level.TILE_SIZE
+	if (
+		current_face != Face.BOTTOM
+		and next_face == Face.BOTTOM
+	):
+		convex_threshold -= _CEILING_INSET
+
+	if progress < convex_threshold:
 		return false
 
-	# 2. Straight continuation.
-	var straight_tile := current_tile + forward
-	if not _has_tile(straight_tile):
-		# Try wrapping across level bounds.
-		straight_tile = _wrap_tile(
-			straight_tile, forward)
-	if _has_tile(straight_tile):
-		current_tile = straight_tile
-		progress -= Level.TILE_SIZE
-		return true
+	# Record convex corner vertex for trail walks.
+	if _is_trail_initialized:
+		var tc := (
+			_collision_tiles.map_to_local(
+				current_tile))
+		var tg := (
+			_collision_tiles.to_global(tc))
+		var h := Level.TILE_SIZE / 2.0
+		var normal_h := h
+		var forward_h := h
+		if current_face == Face.BOTTOM:
+			normal_h -= _CEILING_INSET
+		elif next_face == Face.BOTTOM:
+			forward_h -= _CEILING_INSET
+		_pending_corner_positions.append(
+			tg + Vector2(forward) * forward_h
+			+ Vector2(normal) * normal_h)
 
-	# 3. Convex corner.
-	current_face = _next_face_map[current_face]
-	progress = 0.0
+	var new_progress: float = (
+		progress - convex_threshold)
+	# Leaving a ceiling onto a wall starts the
+	# snail _CEILING_INSET past the wall's corner
+	# so it lines up with the inset surface.
+	if (
+		current_face == Face.BOTTOM
+		and next_face != Face.BOTTOM
+	):
+		new_progress += _CEILING_INSET
+
+	current_face = next_face
+	progress = new_progress
 	return true
 
 

@@ -183,6 +183,35 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "Container group definition updated." -ForegroundColor Green
 
+# Poll for the container group definition to become READY
+# before attempting the fleet update. After an image update
+# the definition transitions through COPYING (typically
+# ~15 seconds) before reaching READY. Calling
+# update-container-fleet while still COPYING fails with
+# "ContainerGroupDefinition ... is not ready".
+Write-Host "  Waiting for definition to reach READY..." -ForegroundColor DarkGray
+$maxWaitSec = 120
+$elapsedSec = 0
+$pollIntervalSec = 5
+while ($elapsedSec -lt $maxWaitSec) {
+    $defStatus = aws gamelift describe-container-group-definition `
+        --name $definition.Name `
+        --region $Region `
+        --profile $Profile `
+        --query "ContainerGroupDefinition.Status" `
+        --output text 2>$null
+    if ($defStatus -eq "READY") {
+        Write-Host "  Definition READY after ${elapsedSec}s" -ForegroundColor DarkGray
+        break
+    }
+    Start-Sleep -Seconds $pollIntervalSec
+    $elapsedSec += $pollIntervalSec
+}
+if ($defStatus -ne "READY") {
+    Write-Error "Container group definition did not reach READY within ${maxWaitSec}s (still $defStatus)"
+    exit 1
+}
+
 # Step 6: Update fleet to use new container group.
 # Fleet ID is looked up dynamically so this script survives
 # fleet recreations (e.g. Spot <-> On-Demand switches).

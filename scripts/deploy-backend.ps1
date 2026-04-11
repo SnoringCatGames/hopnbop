@@ -130,11 +130,20 @@ try {
     # configuration); it is intentionally not passed here.
     Write-Host "[4/4] Running sam deploy..." -ForegroundColor Yellow
 
-    sam deploy --no-confirm-changeset --profile $Profile --region $Region `
-        --parameter-overrides "FleetId=$FleetId"
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "sam deploy failed"
-        exit 1
+    $deployOutput = sam deploy --no-confirm-changeset --profile $Profile --region $Region `
+        --parameter-overrides "FleetId=$FleetId" 2>&1 | Tee-Object -Variable stdoutCopy
+    $deployExit = $LASTEXITCODE
+    # sam deploy exits non-zero when there are no changes to
+    # deploy. That is a success outcome for our purposes, so
+    # match the specific message and treat it as a no-op.
+    if ($deployExit -ne 0) {
+        $joinedOutput = ($deployOutput | Out-String)
+        if ($joinedOutput -match "No changes to deploy") {
+            Write-Host "No changes to deploy (stack up to date)." -ForegroundColor DarkGray
+        } else {
+            Write-Error "sam deploy failed"
+            exit 1
+        }
     }
     Write-Host "Deploy complete." -ForegroundColor Green
 } finally {

@@ -47,6 +47,13 @@ extends Node
 
 # ---
 
+# - Test the new warm-up logic.
+#   - Test the warming-up label in the lobby.
+#   - Test the warming-up label in the loading screen.
+#   - Test that warming-up actually ends at the right amount of time.
+#   - Test that warming-up isn't needed after 15 minutes.
+#   - Test that warming-up IS needed after 45 minutes.
+
 # - Finish working on the foobar image.
 #   - Reducing in-between shades.
 #   - Cleaning up rough shapes.
