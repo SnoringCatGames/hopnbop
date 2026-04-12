@@ -44,6 +44,12 @@ var _fleet_http_request: HTTPRequest
 var _fleet_is_warming_up := false
 var _fleet_warmup_started_at_unix := 0.0
 var _fleet_last_status: Dictionary = {}
+## Unix timestamp when _fleet_last_status was received.
+## Used to decrement the backend-reported
+## estimated_seconds_remaining locally so the UI label
+## can tick down every frame between polls (which only
+## happen every 10 seconds).
+var _fleet_last_status_received_at_unix := 0.0
 var _fleet_status_poll_timer: Timer
 
 
@@ -324,16 +330,27 @@ func is_fleet_warming_up() -> bool:
 
 
 ## Estimated seconds remaining before the fleet is
-## ready. Returns 0 if ready or unknown.
+## ready. Returns 0 if ready or unknown. Decrements
+## locally between server polls so callers can update
+## labels every frame without waiting on the next poll.
 func get_fleet_estimated_remaining_sec() -> int:
 	if is_fleet_ready():
 		return 0
+
+	var now := Time.get_unix_time_from_system()
 	var from_backend: int = _fleet_last_status.get(
 		"estimated_seconds_remaining", -1)
 	if from_backend >= 0:
-		return from_backend
+		var since_receipt := (
+			now - _fleet_last_status_received_at_unix)
+		if since_receipt < 0.0:
+			since_receipt = 0.0
+		return maxi(
+			from_backend - int(since_receipt), 0)
+
 	# Fallback: backend default estimate minus local
-	# elapsed since warmup call.
+	# elapsed since warmup call. Used when a warmup
+	# has been requested but no response has arrived.
 	var default_estimate := 300
 	var elapsed := int(
 		get_fleet_warmup_elapsed_sec())
@@ -364,6 +381,8 @@ func _on_fleet_request_completed(
 		return
 
 	_fleet_last_status = parsed
+	_fleet_last_status_received_at_unix = (
+		Time.get_unix_time_from_system())
 	fleet_status_updated.emit(parsed)
 
 	if parsed.get("status", "") == "ready":

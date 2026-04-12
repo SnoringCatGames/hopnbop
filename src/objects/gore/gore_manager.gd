@@ -139,8 +139,13 @@ func _pick_type_index() -> int:
 func spawn_particles(
 	death_position: Vector2,
 ) -> void:
+	# Convert from global space (caller's coord
+	# system) to GoreManager-local. Child particles
+	# use `position` (local), so callers passing a
+	# global death position would otherwise be
+	# offset by GoreManager's global position.
 	var center := (
-		death_position
+		to_local(death_position)
 		+ G.settings.gore_spawn_offset)
 
 	var particle_count := (
@@ -197,6 +202,9 @@ func spawn_poop_particles(
 	else:
 		base_angle = 0.0
 
+	# Convert from global to GoreManager-local.
+	var local_center := to_local(spawn_position)
+
 	var count := randi_range(
 		POOP_MIN_COUNT, POOP_MAX_COUNT)
 	for i in count:
@@ -206,7 +214,7 @@ func spawn_poop_particles(
 		var angle := randf_range(0.0, TAU)
 		var dist := (
 			randf() * POOP_SPAWN_SCATTER_RADIUS)
-		var spawn_pos := spawn_position + Vector2(
+		var spawn_pos := local_center + Vector2(
 			cos(angle) * dist,
 			sin(angle) * dist)
 
@@ -279,6 +287,9 @@ func _on_poop_particle_exiting(
 func spawn_snail_goo_particles(
 	spawn_position: Vector2,
 ) -> void:
+	# Convert from global to GoreManager-local.
+	var local_center := to_local(spawn_position)
+
 	for i in SNAIL_GOO_COUNT:
 		var is_behind := i % 2 == 0
 
@@ -286,7 +297,7 @@ func spawn_snail_goo_particles(
 		var angle := randf_range(0.0, TAU)
 		var dist := (
 			randf() * SNAIL_GOO_SCATTER_RADIUS)
-		var spawn_pos := spawn_position + Vector2(
+		var spawn_pos := local_center + Vector2(
 			cos(angle) * dist,
 			sin(angle) * dist)
 
@@ -353,8 +364,11 @@ func _spawn_kickables(
 ) -> void:
 	if _particle_textures.is_empty():
 		return
+	# death_position is in global space. Convert to
+	# GoreManager-local since kickables are spawned
+	# as children using local `position`.
 	var center := (
-		death_position
+		to_local(death_position)
 		+ G.settings.gore_spawn_offset)
 
 	var kickable_count := (

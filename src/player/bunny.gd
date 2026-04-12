@@ -687,10 +687,6 @@ func _spawn_squish_sprite() -> void:
 
 	var sprite := Sprite2D.new()
 	sprite.texture = squish_tex
-
-	# Place at the death position (character
-	# origin, i.e. the feet).
-	sprite.global_position = death_pos
 	sprite.flip_h = anim_sprite.flip_h
 
 	# Create outline material for the standalone
@@ -712,6 +708,10 @@ func _spawn_squish_sprite() -> void:
 		sprite.material = mat
 
 	G.level.add_child(sprite)
+	# Set global position after add_child so the
+	# parent transform is applied correctly.
+	# Character origin is the feet.
+	sprite.global_position = death_pos
 
 	# After the squish duration, remove the
 	# sprite and spawn gore + camera shake.
