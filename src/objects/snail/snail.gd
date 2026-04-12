@@ -457,26 +457,34 @@ func _advance() -> bool:
 		progress = _CONCAVE_CORNER_INSET
 		return true
 
+	# Resolve straight continuation tile once so
+	# both the straight branch and the ceiling
+	# inset decision below can use it.
+	var straight_tile := forward_tile
+	if not _has_tile(straight_tile):
+		# Try wrapping across level bounds.
+		straight_tile = _wrap_tile(
+			straight_tile, forward)
+	var has_straight := _has_tile(straight_tile)
+
 	# 2. Straight continuation (needs full tile).
-	if progress >= Level.TILE_SIZE:
-		var straight_tile := current_tile + forward
-		if not _has_tile(straight_tile):
-			# Try wrapping across level bounds.
-			straight_tile = _wrap_tile(
-				straight_tile, forward)
-		if _has_tile(straight_tile):
-			current_tile = straight_tile
-			progress -= Level.TILE_SIZE
-			return true
+	if has_straight and progress >= Level.TILE_SIZE:
+		current_tile = straight_tile
+		progress -= Level.TILE_SIZE
+		return true
 
 	# 3. Convex corner. Walls ending at a ceiling
 	# exit _CEILING_INSET early so they meet the
 	# inset ceiling surface line instead of the
-	# nominal tile corner.
+	# nominal tile corner. Only applies when the
+	# BOTTOM face is actually the next surface;
+	# otherwise straight continuation handles this
+	# progress range.
 	var next_face: int = _next_face_map[current_face]
 	var convex_threshold: float = Level.TILE_SIZE
 	if (
-		current_face != Face.BOTTOM
+		not has_straight
+		and current_face != Face.BOTTOM
 		and next_face == Face.BOTTOM
 	):
 		convex_threshold -= _CEILING_INSET

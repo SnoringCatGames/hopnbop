@@ -196,6 +196,20 @@ func _update_camera_zoom() -> void:
 
 	camera.zoom = base_zoom * _zoom_scale
 
+	if camera != _last_camera:
+		var svp_size := sub_viewport.size
+		G.log.print(
+			"[PVM] Camera switched: %s"
+			% camera.name
+			+ " anchor=%d" % camera.anchor_mode
+			+ " pos=%s" % str(camera.global_position)
+			+ " zoom=%s" % str(camera.zoom)
+			+ " base_zoom=%s" % str(base_zoom)
+			+ " svp=%s" % str(svp_size)
+			+ " parent=%s"
+			% (camera.get_parent().name
+				if camera.get_parent() else "?"))
+
 	_last_camera = camera
 
 
