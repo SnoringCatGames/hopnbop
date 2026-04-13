@@ -34,7 +34,6 @@ const _CADENCE_DELAY_SEC := 1.0
 var _camera: Camera2D
 var _original_camera_zoom := Vector2.ONE
 var _winner: Player
-var _is_tracking_winner := false
 var _is_updating_iris := false
 var _active_tweens: Array[Tween] = []
 
@@ -66,9 +65,6 @@ func _connect_match_ended_deferred() -> void:
 func _process(_delta: float) -> void:
 	if not is_instance_valid(_winner):
 		return
-
-	if _is_tracking_winner:
-		_track_winner_position()
 
 	if _is_updating_iris:
 		_update_iris_center()
@@ -149,57 +145,7 @@ func _zoom_camera_to_winner() -> void:
 	_camera = G.level.level_camera
 	if not is_instance_valid(_camera):
 		return
-
 	_original_camera_zoom = _camera.zoom
-
-	# Compute offset to center on the winner.
-	var target_offset := (
-		_winner.global_position
-		- _camera.global_position)
-
-	var tween := create_tween()
-	_active_tweens.append(tween)
-	tween.set_pause_mode(
-		Tween.TWEEN_PAUSE_PROCESS)
-	tween.set_parallel(true)
-
-	tween.tween_property(
-		_camera,
-		"zoom",
-		_TARGET_ZOOM,
-		_CAMERA_ZOOM_DURATION,
-	).set_ease(
-		Tween.EASE_OUT
-	).set_trans(
-		Tween.TRANS_QUAD
-	)
-
-	tween.tween_property(
-		_camera,
-		"offset",
-		target_offset,
-		_CAMERA_ZOOM_DURATION,
-	).set_ease(
-		Tween.EASE_OUT
-	).set_trans(
-		Tween.TRANS_QUAD
-	)
-
-	tween.finished.connect(func():
-		_is_tracking_winner = true
-	)
-
-
-func _track_winner_position() -> void:
-	if (
-		not is_instance_valid(_camera)
-		or not is_instance_valid(_winner)
-	):
-		_is_tracking_winner = false
-		return
-	_camera.offset = (
-		_winner.global_position
-		- _camera.global_position)
 
 
 func _spawn_confetti() -> void:
@@ -554,7 +500,6 @@ func _winner_name(ps: GamePlayerState) -> String:
 
 
 func reset() -> void:
-	_is_tracking_winner = false
 	_is_updating_iris = false
 
 	# Kill any in-progress celebration tweens.

@@ -437,7 +437,12 @@ func _advance() -> bool:
 		_has_tile(concave_tile)
 		and _has_tile(forward_tile)
 	):
-		# Record corner vertex for trail.
+		# Record corner vertex for trail. The
+		# vertex is where the old and new surfaces
+		# intersect. Ceiling inset shifts this
+		# point along the old face's forward
+		# (entering ceiling) or normal (leaving
+		# ceiling).
 		if _is_trail_initialized:
 			var tc := (
 				_collision_tiles.map_to_local(
@@ -445,11 +450,17 @@ func _advance() -> bool:
 			var tg := (
 				_collision_tiles.to_global(tc))
 			var h := Level.TILE_SIZE / 2.0
+			var forward_h := h
 			var normal_h := h
 			if current_face == Face.BOTTOM:
 				normal_h -= _CEILING_INSET
+			if (
+				_concave_face_map[current_face]
+				== Face.BOTTOM
+			):
+				forward_h += _CEILING_INSET
 			_pending_corner_positions.append(
-				tg + Vector2(forward) * h
+				tg + Vector2(forward) * forward_h
 				+ Vector2(normal) * normal_h)
 		current_tile = concave_tile
 		current_face = (
