@@ -630,7 +630,6 @@ func _trail_walk_to(target: Vector2) -> void:
 func _spawn_trail_particle(
 	pos: Vector2,
 ) -> void:
-	pos = _clamp_to_surface_bounds(pos)
 	var particle := Sprite2D.new()
 	particle.texture = G.settings.white_pixel_texture
 	var alpha := randf_range(
@@ -657,37 +656,6 @@ func _spawn_trail_particle(
 		0.0, _TRAIL_FADE_DURATION_SEC)
 	tween.tween_callback(
 		particle.queue_free)
-
-
-## Clamps a position to the axis-aligned bounds
-## of the current tile face's surface line. This
-## prevents trail particles from floating past
-## the tile edge at convex corners.
-func _clamp_to_surface_bounds(
-	pos: Vector2,
-) -> Vector2:
-	if not is_instance_valid(_collision_tiles):
-		return pos
-	var tc := (
-		_collision_tiles.map_to_local(
-			current_tile))
-	var tg := (
-		_collision_tiles.to_global(tc))
-	var h := Level.TILE_SIZE / 2.0
-	match current_face:
-		Face.TOP:
-			pos.x = clampf(
-				pos.x, tg.x - h, tg.x + h)
-		Face.BOTTOM:
-			pos.x = clampf(
-				pos.x, tg.x - h, tg.x + h)
-		Face.RIGHT:
-			pos.y = clampf(
-				pos.y, tg.y - h, tg.y + h)
-		Face.LEFT:
-			pos.y = clampf(
-				pos.y, tg.y - h, tg.y + h)
-	return pos
 
 
 func _has_tile(cell: Vector2i) -> bool:

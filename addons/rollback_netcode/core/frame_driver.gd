@@ -62,7 +62,6 @@ extends Node
 #   - Sticks past edge for convex corners.
 #   - Cuts corners for concave.
 #   - Both cases are inconsistent.
-# - Fix level_0 water tiles are collidable.
 # - Fix level_0 art.
 #   - More detailed version.
 #   - Remove any sky blue color from the occlusion layer.

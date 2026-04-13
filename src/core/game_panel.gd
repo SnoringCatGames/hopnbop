@@ -295,6 +295,9 @@ func _client_on_level_spawned(
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
+	if is_instance_valid(level.level_camera):
+		level.level_camera.make_current()
+
 
 func _client_on_level_despawned(
 	p_level: Level,
@@ -1951,6 +1954,9 @@ func _server_spawn_level(
 	levels.append(level)
 	%Levels.add_child(level)
 	G.level = level
+
+	if is_instance_valid(level.level_camera):
+		level.level_camera.make_current()
 
 
 func _server_destroy_level(

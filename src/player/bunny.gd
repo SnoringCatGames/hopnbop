@@ -787,8 +787,6 @@ func _set_up_camera() -> void:
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
-	%CharacterCamera.enabled = is_local_player
-
 
 func get_string() -> String:
 	if is_instance_valid(match_state):

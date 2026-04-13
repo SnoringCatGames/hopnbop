@@ -32,9 +32,7 @@ const _CADENCE_DELAY_SEC := 1.0
 
 
 var _camera: Camera2D
-var _original_camera_parent: Node
 var _original_camera_zoom := Vector2.ONE
-var _was_camera_reparented := false
 var _winner: Player
 var _is_tracking_winner := false
 var _is_updating_iris := false
@@ -146,76 +144,50 @@ func _get_winner_player_id() -> int:
 
 
 func _zoom_camera_to_winner() -> void:
-	_camera = _get_local_camera()
+	if not is_instance_valid(G.level):
+		return
+	_camera = G.level.level_camera
 	if not is_instance_valid(_camera):
 		return
 
-	# Save original state for reset.
-	_original_camera_parent = _camera.get_parent()
 	_original_camera_zoom = _camera.zoom
 
-	var is_local_winner := (
-		_winner.peer_id == Netcode.local_peer_id
+	# Compute offset to center on the winner.
+	var target_offset := (
+		_winner.global_position
+		- _camera.global_position)
+
+	var tween := create_tween()
+	_active_tweens.append(tween)
+	tween.set_pause_mode(
+		Tween.TWEEN_PAUSE_PROCESS)
+	tween.set_parallel(true)
+
+	tween.tween_property(
+		_camera,
+		"zoom",
+		_TARGET_ZOOM,
+		_CAMERA_ZOOM_DURATION,
+	).set_ease(
+		Tween.EASE_OUT
+	).set_trans(
+		Tween.TRANS_QUAD
 	)
 
-	if is_local_winner:
-		# Camera already follows local player.
-		# Just zoom in.
-		var tween := create_tween()
-		_active_tweens.append(tween)
-		tween.set_pause_mode(
-			Tween.TWEEN_PAUSE_PROCESS)
-		tween.tween_property(
-			_camera,
-			"zoom",
-			_TARGET_ZOOM,
-			_CAMERA_ZOOM_DURATION,
-		).set_ease(
-			Tween.EASE_OUT
-		).set_trans(
-			Tween.TRANS_QUAD
-		)
-	else:
-		# Reparent camera to level so it detaches
-		# from local player.
-		_was_camera_reparented = true
-		var origin := _camera.global_position
-		_camera.get_parent().remove_child(_camera)
-		G.level.add_child(_camera)
-		_camera.global_position = origin
+	tween.tween_property(
+		_camera,
+		"offset",
+		target_offset,
+		_CAMERA_ZOOM_DURATION,
+	).set_ease(
+		Tween.EASE_OUT
+	).set_trans(
+		Tween.TRANS_QUAD
+	)
 
-		var tween := create_tween()
-		_active_tweens.append(tween)
-		tween.set_pause_mode(
-			Tween.TWEEN_PAUSE_PROCESS)
-		tween.set_parallel(true)
-
-		tween.tween_property(
-			_camera,
-			"zoom",
-			_TARGET_ZOOM,
-			_CAMERA_ZOOM_DURATION,
-		).set_ease(
-			Tween.EASE_OUT
-		).set_trans(
-			Tween.TRANS_QUAD
-		)
-
-		tween.tween_property(
-			_camera,
-			"global_position",
-			_winner.global_position,
-			_CAMERA_ZOOM_DURATION,
-		).set_ease(
-			Tween.EASE_OUT
-		).set_trans(
-			Tween.TRANS_QUAD
-		)
-
-		# After zoom, track winner each frame.
-		tween.finished.connect(func():
-			_is_tracking_winner = true
-		)
+	tween.finished.connect(func():
+		_is_tracking_winner = true
+	)
 
 
 func _track_winner_position() -> void:
@@ -225,24 +197,9 @@ func _track_winner_position() -> void:
 	):
 		_is_tracking_winner = false
 		return
-	_camera.global_position = _winner.global_position
-
-
-func _get_local_camera() -> Camera2D:
-	if not is_instance_valid(G.level):
-		return null
-	for player_id in G.level.players_by_id:
-		var player: Player = (
-			G.level.players_by_id[player_id]
-		)
-		if (
-			is_instance_valid(player)
-			and player.peer_id
-			== Netcode.local_peer_id
-		):
-			return player.get_node(
-				"%CharacterCamera")
-	return null
+	_camera.offset = (
+		_winner.global_position
+		- _camera.global_position)
 
 
 func _spawn_confetti() -> void:
@@ -611,8 +568,6 @@ func reset() -> void:
 
 	_winner = null
 	_camera = null
-	_original_camera_parent = null
-	_was_camera_reparented = false
 	visible = false
 	%WinnerText.visible = false
 	%IrisOverlay.visible = false
@@ -628,20 +583,5 @@ func _restore_camera() -> void:
 	if not is_instance_valid(_camera):
 		return
 
-	# Disable the old camera so it doesn't conflict
-	# with the new lobby camera. The old level (and
-	# this camera) will be queue_freed shortly after.
-	_camera.enabled = false
 	_camera.zoom = _original_camera_zoom
 	_camera.offset = Vector2.ZERO
-
-	# Reparent back if we moved it.
-	if (
-		_was_camera_reparented
-		and is_instance_valid(
-			_original_camera_parent)
-	):
-		var pos := _camera.global_position
-		_camera.get_parent().remove_child(_camera)
-		_original_camera_parent.add_child(_camera)
-		_camera.global_position = pos

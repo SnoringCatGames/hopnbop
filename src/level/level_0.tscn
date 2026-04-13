@@ -12,6 +12,7 @@
 script = ExtResource("1_2xb4r")
 player_spawner = NodePath("PlayerSpawner")
 blood_is_thicker_than_water_tiles = NodePath("BloodIsThickerThanWaterTiles")
+snail_count = 6
 collision_tiles = NodePath("CollisionTiles")
 level_camera = NodePath("Camera2D")
 spawn_points = NodePath("SpawnPoints")

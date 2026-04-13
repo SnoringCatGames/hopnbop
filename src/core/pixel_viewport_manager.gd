@@ -84,6 +84,13 @@ func _on_window_resized() -> void:
 
 	var window_size := DisplayServer.window_get_size()
 
+	G.log.print(
+		"[PVM] Resize: window=%s svp_before=%s"
+		% [str(window_size),
+			str(sub_viewport.size
+				if is_instance_valid(sub_viewport)
+				else "null")])
+
 	if is_thumbnail_snapshot_mode:
 		# Force exact pixel dimensions regardless of
 		# actual window size to avoid sub-pixel
@@ -172,6 +179,18 @@ func _update_camera_zoom() -> void:
 		_last_camera = null
 		return
 
+	var is_camera_change := camera != _last_camera
+
+	# Force a resize recalculation when the active
+	# camera changes (e.g. level transitions). The
+	# window size_changed signal can miss resizes
+	# that happen during scene teardown/setup.
+	# Set _last_camera before the call to prevent
+	# mutual recursion with _on_window_resized.
+	if is_camera_change:
+		_last_camera = camera
+		_on_window_resized()
+
 	# Record original zoom when we first see a camera.
 	if not _base_zooms.has(camera):
 		_base_zooms[camera] = camera.zoom
@@ -196,7 +215,7 @@ func _update_camera_zoom() -> void:
 
 	camera.zoom = base_zoom * _zoom_scale
 
-	if camera != _last_camera:
+	if is_camera_change:
 		var svp_size := sub_viewport.size
 		G.log.print(
 			"[PVM] Camera switched: %s"
@@ -209,8 +228,6 @@ func _update_camera_zoom() -> void:
 			+ " parent=%s"
 			% (camera.get_parent().name
 				if camera.get_parent() else "?"))
-
-	_last_camera = camera
 
 
 ## Configures thumbnail snapshot mode. Overrides
