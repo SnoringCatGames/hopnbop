@@ -245,6 +245,9 @@ func get_is_player_control_active() -> bool:
 func server_trigger_death() -> void:
 	Netcode.check_is_server()
 
+	if state_from_server.is_dead:
+		return
+
 	Netcode.verbose(
 		"Player %d triggered death, scheduling respawn in %s sec" % [
 			player_id,

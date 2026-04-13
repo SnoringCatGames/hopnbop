@@ -674,20 +674,6 @@ func _spawn_squish_sprite() -> void:
 		state_from_server
 			.last_interaction_position)
 
-	# DEBUG: Spawn a persistent red marker at
-	# death_pos so we can see if the position
-	# itself is wrong vs the gore offset.
-	var _dbg := Sprite2D.new()
-	_dbg.texture = G.settings.white_pixel_texture
-	_dbg.modulate = Color.RED
-	_dbg.scale = Vector2(4, 4)
-	_dbg.z_index = 100
-	G.level.add_child(_dbg)
-	_dbg.global_position = death_pos
-	Netcode.print(
-		"[DEBUG GORE] death_pos=%s player=%d"
-		% [str(death_pos), player_id])
-
 	var anim_sprite := (
 		animator.animated_sprite
 		as AnimatedSprite2D)
@@ -724,8 +710,11 @@ func _spawn_squish_sprite() -> void:
 	G.level.add_child(sprite)
 	# Set global position after add_child so the
 	# parent transform is applied correctly.
-	# Character origin is the feet.
-	sprite.global_position = death_pos
+	# Character origin is at the feet. The
+	# animator is offset upward from the origin
+	# to center the sprite on the character body.
+	sprite.global_position = (
+		death_pos + animator.position)
 
 	# After the squish duration, remove the
 	# sprite and spawn gore + camera shake.
