@@ -849,6 +849,40 @@ user-facing text, check the existing translation files in
 the project to determine supported languages and file
 format, then provide translations for all of them.
 
+### Viewport and Camera (src/core/pixel_viewport_manager.gd)
+
+`PixelViewportManager` sizes the `SubViewportContainer` to
+fill the window at the nearest integer pixel scale and adjusts
+the active camera's zoom so the base viewport area is always
+visible.
+
+**Camera anchor mode:** Godot 4.5 defaults Camera2D to
+`FIXED_TOP_LEFT`. PVM sets `ANCHOR_MODE_DRAG_CENTER` on
+first contact so extra viewport space is distributed
+equally on all sides. Do not use `camera.offset` to "fix"
+centering. `DRAG_CENTER` already centers the view.
+
+**Camera activation:** Each level has a static `level_camera`
+(Camera2D). Because `queue_free` on the previous level is
+deferred, the new level's camera enters the tree while the
+old camera is still alive and current. Auto-activation
+only triggers when no current camera exists, so the new
+camera must call `make_current()` explicitly. This is done
+in `_server_spawn_level` and `_client_on_level_spawned`.
+
+**Camera change detection:** PVM forces a
+`_on_window_resized()` call when the active camera changes
+(the `size_changed` signal can miss resizes during scene
+teardown/setup). `_last_camera` must be set before calling
+`_on_window_resized` to prevent mutual recursion
+(`_on_window_resized` → `_update_camera_zoom` →
+`_on_window_resized`).
+
+**No per-player camera:** The bunny has no Camera2D. The
+level camera is used for everything, including the
+end-of-match celebration (which tweens the level camera's
+`offset` to follow the winner).
+
 ## UI Patterns
 
 ### Navigation

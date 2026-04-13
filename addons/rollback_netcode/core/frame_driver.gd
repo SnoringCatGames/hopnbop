@@ -47,6 +47,10 @@ extends Node
 
 # ---
 
+# - level thumbnails...
+
+# - Test match-end zoom spotlight to winner.
+
 # - Test the new warm-up logic.
 #   - Test the warming-up label in the lobby.
 #   - Test the warming-up label in the loading screen.

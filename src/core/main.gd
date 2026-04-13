@@ -84,6 +84,8 @@ func _handle_preview_window_closing() -> void:
 		Netcode.is_server
 		and G.settings
 			.preview_connect_to_remote_server
+		and not G.settings
+			.generate_level_thumbnails
 	):
 		Netcode.print(
 			("Main._ready: Closing local server"
