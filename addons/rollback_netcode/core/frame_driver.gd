@@ -47,10 +47,6 @@ extends Node
 
 # ---
 
-# - level thumbnails...
-
-# - Test match-end zoom spotlight to winner.
-
 # - Test the new warm-up logic.
 #   - Test the warming-up label in the lobby.
 #   - Test the warming-up label in the loading screen.
@@ -62,14 +58,9 @@ extends Node
 #   - Reducing in-between shades.
 #   - Cleaning up rough shapes.
 
-# - Fix snail goo.
-#   - Sticks past edge for convex corners.
-#   - Cuts corners for concave.
-#   - Both cases are inconsistent.
 # - Fix level_0 art.
 #   - More detailed version.
 #   - Remove any sky blue color from the occlusion layer.
-# - Make ice sliding start faster from stopped.
 
 # - FIX REMOTE PLAYER ANIMATION GLITCHES
 
