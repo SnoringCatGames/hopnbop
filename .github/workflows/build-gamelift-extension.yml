@@ -130,7 +130,7 @@ jobs:
         with:
           name: gamelift-gdextension-linux
           path: gamelift-gdextension/bin/
-          retention-days: 30
+          retention-days: 1
 
   build-windows:
     runs-on: windows-latest
@@ -267,7 +267,7 @@ jobs:
         with:
           name: gamelift-gdextension-windows
           path: gamelift-gdextension/bin/
-          retention-days: 30
+          retention-days: 1
 
   build-macos:
     runs-on: macos-latest
@@ -382,7 +382,7 @@ jobs:
         with:
           name: gamelift-gdextension-macos
           path: gamelift-gdextension/bin/
-          retention-days: 30
+          retention-days: 1
 
   package-artifacts:
     needs: [build-linux, build-windows, build-macos]
@@ -435,7 +435,7 @@ jobs:
         with:
           name: gamelift-gdextension-all-platforms
           path: addons/gamelift/
-          retention-days: 30
+          retention-days: 7
 
       - name: Create summary
         run: |
