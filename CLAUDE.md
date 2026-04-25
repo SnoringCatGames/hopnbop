@@ -338,7 +338,7 @@ to 0 after 30 minutes of no activity.
 - Polling stops when status reaches `"ready"` or after 10
   minutes to avoid runaway retries.
 
-**Lobby UI:** `lobby_level.tscn` has a bottom-center
+**Lobby UI:** `lobby_level.tscn` has a bottom-right
 `FleetWarmupLabel` that shows `LOBBY.SERVER_WARMING_UP_WITH_ESTIMATE`
 with a minutes-and-seconds countdown, or `LOBBY.SERVER_READY`
 once the fleet is live. Hidden in offline mode.
