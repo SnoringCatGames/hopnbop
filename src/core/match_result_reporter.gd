@@ -4,6 +4,14 @@ extends Node
 ## game server to the backend API. Fire-and-forget.
 
 
+# Match result reporting lives on the
+# snoringcat-platform stack at /v1/matches/result.
+# This client runs inside the GameLift container, so
+# every change here requires a fleet redeploy.
+const _PLATFORM_API_URL := (
+	"https://r20b7wqop6.execute-api.us-west-2.amazonaws.com"
+	+ "/prod/v1"
+)
 const _ENDPOINT := "/matches/result"
 
 var _http_request: HTTPRequest
@@ -33,7 +41,7 @@ func report(
 		return
 
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ _ENDPOINT
 	)
 	var headers := [
