@@ -47,6 +47,11 @@ extends Node
 
 # ---
 
+# - Implement the big refactor to generalize multi-game architecture:
+# C:\Users\lsl\.claude\plans\in-general-i-ve-been-snoopy-pearl.md
+
+# - Update to Godot 4.7.
+
 # - Test the new warm-up logic.
 #   - Test the warming-up label in the lobby.
 #   - Test the warming-up label in the loading screen.
