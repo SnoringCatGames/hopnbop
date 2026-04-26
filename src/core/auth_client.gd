@@ -83,13 +83,12 @@ const _HTTPS_REDIRECT_PROVIDERS := [
 ]
 const _REFRESH_COOLDOWN_SEC := 60.0
 # Auth requests target the new snoringcat-platform stack at
-# /v1/auth/*. Other API clients (BackendApiClient, FriendsApiClient,
-# PartyApiClient, CrashReporter) still go through the legacy
-# gamelift_backend_api_url until they migrate too. The
-# dual-write in the new auth_handler keeps the legacy
-# hopnbop-players row in sync, so a user signing in via the new
-# stack still has a working profile when other (non-auth) calls
-# go to the legacy stack.
+# /v1/auth/*. The other client-facing API clients
+# (BackendApiClient, FriendsApiClient, PartyApiClient,
+# CrashReporter) have all been cut over to the platform stack
+# as well. The remaining legacy callers are server-side
+# (match_result_reporter) and the GDPR export endpoint, which
+# the platform stack does not yet expose.
 const _PLATFORM_API_URL := (
 	"https://r20b7wqop6.execute-api.us-west-2.amazonaws.com"
 	+ "/prod/v1"
