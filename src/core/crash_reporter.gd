@@ -5,6 +5,13 @@ extends Node
 ## block gameplay or require authentication.
 
 
+# Crash reports go to the new snoringcat-platform stack at
+# /v1/telemetry/crash. The legacy stack's /telemetry/crash is
+# left running but no longer receives traffic from this client.
+const _PLATFORM_API_URL := (
+	"https://r20b7wqop6.execute-api.us-west-2.amazonaws.com"
+	+ "/prod/v1"
+)
 const _ENDPOINT := "/telemetry/crash"
 const _MAX_MESSAGE_LENGTH := 4096
 const _COOLDOWN_SEC := 5.0
@@ -69,8 +76,7 @@ func report_crash(
 
 	var payload := _build_payload(
 		error_message, is_fatal)
-	var url := (
-		G.settings.gamelift_backend_api_url + _ENDPOINT)
+	var url := _PLATFORM_API_URL + _ENDPOINT
 	var headers := ["Content-Type: application/json"]
 	var body := JSON.stringify(payload)
 
