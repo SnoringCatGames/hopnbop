@@ -21,6 +21,7 @@ config/protocol_version=2
 
 G="*res://src/core/global.gd"
 Netcode="*res://addons/rollback_netcode/core/network_orchestrator.gd"
+Platform="*res://addons/snoringcat_platform_client/core/platform.gd"
 
 [debug]
 

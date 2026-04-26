@@ -5,19 +5,16 @@
 build/*
 
 # The platform client addon is consumed via the
-# third_party/snoringcat-platform submodule. The intended
-# integration is a directory junction at
-# addons/snoringcat_platform_client/ (see
-# scripts/setup-platform-junction.ps1), but as of this
-# writing Godot 4.6 reads stale content through the junction
-# and the integration is unverified end-to-end. Until that's
-# resolved, addons/snoringcat_platform_client/ is gitignored
-# so any local junction or copy stays out of source control.
+# third_party/snoringcat-platform submodule and copied into
+# addons/snoringcat_platform_client/ by
+# scripts/setup-platform-addon.ps1. The copy is gitignored
+# here; the canonical source lives in the submodule.
 /addons/snoringcat_platform_client/
 
-# Stray smoke-test artifacts.
-smoke3.log
+# Stray smoke-test / import artifacts.
+smoke*.log
 import.log
+diag*.log
 
 # =============================================================================
 # GameLift GDExtension Build Artifacts
