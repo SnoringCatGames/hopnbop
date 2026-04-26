@@ -120,7 +120,14 @@ func _get_warming_up_text() -> String:
 	if remaining <= 0:
 		return base
 	return base + " " + (
-		tr("LOADING.REMAINING") % remaining)
+		tr("LOADING.REMAINING_MMSS")
+		% _format_remaining_mmss(remaining))
+
+
+static func _format_remaining_mmss(seconds: int) -> String:
+	var minutes := seconds / 60
+	var remainder := seconds % 60
+	return "%d:%02d" % [minutes, remainder]
 
 
 func _get_matchmaking_text() -> String:
