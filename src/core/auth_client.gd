@@ -82,6 +82,18 @@ const _HTTPS_REDIRECT_PROVIDERS := [
 	Provider.FACEBOOK,
 ]
 const _REFRESH_COOLDOWN_SEC := 60.0
+# Auth requests target the new snoringcat-platform stack at
+# /v1/auth/*. Other API clients (BackendApiClient, FriendsApiClient,
+# PartyApiClient, CrashReporter) still go through the legacy
+# gamelift_backend_api_url until they migrate too. The
+# dual-write in the new auth_handler keeps the legacy
+# hopnbop-players row in sync, so a user signing in via the new
+# stack still has a working profile when other (non-auth) calls
+# go to the legacy stack.
+const _PLATFORM_API_URL := (
+	"https://r20b7wqop6.execute-api.us-west-2.amazonaws.com"
+	+ "/prod/v1"
+)
 const _AUTH_ENDPOINT := "/auth/login"
 const _ANON_ENDPOINT := "/auth/anon"
 const _GUEST_ENDPOINT := "/auth/guest"
@@ -90,6 +102,9 @@ const _LINK_ENDPOINT := "/auth/link"
 const _UNLINK_ENDPOINT := "/auth/unlink"
 const _MERGE_ENDPOINT := "/auth/merge"
 const _DELETE_ACCOUNT_ENDPOINT := "/auth/account"
+# Player export still lives on the legacy stack (no /v1/player/*
+# endpoints yet on the platform). Restore G.settings.gamelift_backend_api_url
+# for this one if needed.
 const _EXPORT_ENDPOINT := "/player/export"
 const _POPUP_TIMEOUT_SEC := 300.0
 
@@ -237,10 +252,7 @@ func get_guest_jwt() -> void:
 		guest_jwt_obtained.emit(true, "")
 		return
 
-	var url := (
-		G.settings.gamelift_backend_api_url
-		+ _GUEST_ENDPOINT
-	)
+	var url := _PLATFORM_API_URL + _GUEST_ENDPOINT
 	G.log.print(
 		"[AuthClient] HTTP POST %s (guest JWT)"
 		% url
@@ -827,9 +839,11 @@ func _send_auth_request(
 	body: Dictionary,
 	include_auth_header := false,
 ) -> void:
-	var url := (
-		G.settings.gamelift_backend_api_url + endpoint
-	)
+	# All endpoints reaching this helper are auth/* endpoints that
+	# now live on the platform stack. (Non-auth helpers in
+	# AuthClient — like _send_export_request — build their URL
+	# inline instead of going through this function.)
+	var url := _PLATFORM_API_URL + endpoint
 	var json_body := JSON.stringify(body)
 	G.log.print("[AuthClient] HTTP POST %s" % url)
 
@@ -874,10 +888,7 @@ func _send_auth_request(
 
 
 func _send_delete_request() -> void:
-	var url := (
-		G.settings.gamelift_backend_api_url
-		+ _DELETE_ACCOUNT_ENDPOINT
-	)
+	var url := _PLATFORM_API_URL + _DELETE_ACCOUNT_ENDPOINT
 
 	var headers := [
 		"Content-Type: application/json",
