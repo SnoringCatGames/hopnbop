@@ -18,6 +18,13 @@ var session_manager: GameSessionManager
 ## matchmaking for the same account.
 const _SESSION_POLL_INTERVAL_SEC := 15.0
 
+# Active-session polling now lives on the
+# snoringcat-platform stack at /v1/session/active.
+const _PLATFORM_API_URL := (
+	"https://r20b7wqop6.execute-api.us-west-2.amazonaws.com"
+	+ "/prod/v1"
+)
+
 ## True while the client is being kicked due to a
 ## concurrent session override. Prevents re-entrant
 ## disconnect handling and skips clear_session().
@@ -2017,7 +2024,7 @@ func _start_session_poll() -> void:
 		return
 	if G.auth_token_store.is_anonymous:
 		return
-	if G.settings.gamelift_backend_api_url.is_empty():
+	if _PLATFORM_API_URL.is_empty():
 		return
 
 	if _session_poll_timer == null:
@@ -2062,7 +2069,7 @@ func _poll_active_session() -> void:
 		return
 
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/session/active")
 	var headers: PackedStringArray = [
 		"Content-Type: application/json",

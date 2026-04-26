@@ -101,9 +101,6 @@ const _LINK_ENDPOINT := "/auth/link"
 const _UNLINK_ENDPOINT := "/auth/unlink"
 const _MERGE_ENDPOINT := "/auth/merge"
 const _DELETE_ACCOUNT_ENDPOINT := "/auth/account"
-# Player export still lives on the legacy stack (no /v1/player/*
-# endpoints yet on the platform). Restore G.settings.gamelift_backend_api_url
-# for this one if needed.
 const _EXPORT_ENDPOINT := "/player/export"
 const _POPUP_TIMEOUT_SEC := 300.0
 
@@ -401,7 +398,7 @@ func export_player_data() -> void:
 	_is_exporting = true
 
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ _EXPORT_ENDPOINT
 	)
 	var headers := [
