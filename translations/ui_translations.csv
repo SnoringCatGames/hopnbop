@@ -90,6 +90,7 @@ FRIENDS.CANCEL_REQUEST,Cancel,取消,Cancelar,रद्द करें,إلغا
 FRIENDS.CAME_ONLINE,%s is now online,%s 现在在线,%s está en línea,%s अब ऑनलाइन है,%s الآن متصل,%s est maintenant en ligne,%s está online agora,%s теперь в сети,%s がオンラインになりました,%s ist jetzt online,%s이(가) 온라인 상태입니다,%s è ora online,%s ออนไลน์แล้ว
 PRESENCE.IN_LOBBY,In lobby,大厅中,En el vestíbulo,लॉबी में,في الردهة,Dans le lobby,No lobby,В лобби,ロビーにいます,In der Lobby,로비에 있음,In lobby,อยู่ในล็อบบี้
 PRESENCE.IN_MATCH,In match,比赛中,En partida,मैच में,في المباراة,En partie,Em partida,В матче,試合中,Im Spiel,경기 중,In partita,อยู่ในการแข่งขัน
+PRESENCE.IN_OTHER_GAME,In %s,在 %s 中,En %s,%s में,في %s,Dans %s,Em %s,В %s,%s をプレイ中,In %s,%s 플레이 중,In %s,กำลังเล่น %s
 FRIENDS.PENDING,Pending,待处理,Pendiente,लंबित,قيد الانتظار,En attente,Pendente,Ожидание,保留中,Ausstehend,대기 중,In attesa,รอดำเนินการ
 FRIENDS.SEND_REQUEST,Send Request,发送请求,Enviar solicitud,अनुरोध भेजें,إرسال طلب,Envoyer la demande,Enviar pedido,Отправить запрос,リクエストを送る,Anfrage senden,요청 보내기,Invia richiesta,ส่งคำขอ
 PARTY.TITLE,Party,派对,Grupo,पार्टी,حفلة,Groupe,Grupo,Группа,パーティー,Gruppe,파티,Gruppo,ปาร์ตี้

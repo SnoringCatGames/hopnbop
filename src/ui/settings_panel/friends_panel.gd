@@ -478,6 +478,12 @@ func _add_incoming_row(
 	_dynamic_nodes.append(row)
 
 
+## Hopnbop's own game_id baked into the JWT. Used to compare
+## against friends' presence so we can show a different badge
+## color when a friend is online in another game.
+const _OWN_GAME_ID := "hopnbop"
+
+
 func _add_friend_row(
 	entry: Dictionary,
 ) -> void:
@@ -489,6 +495,24 @@ func _add_friend_row(
 	var is_online := (
 		G.friends_api_client.cached_online_ids
 		.has(friend_id))
+
+	# Rich presence (game_id, status, rich_presence string)
+	# is opportunistically populated by FriendsApiClient when
+	# the platform stack returns the rich response shape. Pre-
+	# rich-rollout deploys leave this as an empty Dictionary.
+	var rich: Dictionary = (
+		G.friends_api_client.cached_online_friends
+			.get(friend_id, {})
+	)
+	var friend_game_id: String = rich.get(
+		"game_id", "")
+	var friend_rich_text: String = rich.get(
+		"rich_presence", "")
+	var is_in_other_game := (
+		is_online
+		and not friend_game_id.is_empty()
+		and friend_game_id != _OWN_GAME_ID
+	)
 
 	var row := ActionRow.new()
 
@@ -511,7 +535,13 @@ func _add_friend_row(
 
 	var dot_label := Label.new()
 	dot_label.text = "●"
-	if is_online:
+	if is_in_other_game:
+		# Cyan: online but in a different game on the
+		# platform. Party invites to this friend will be
+		# rejected by the backend with CROSS_GAME_INVITE.
+		dot_label.add_theme_color_override(
+			"font_color", Color(0.3, 0.7, 1.0))
+	elif is_online:
 		dot_label.add_theme_color_override(
 			"font_color", Color(0.3, 0.9, 0.3))
 	else:
@@ -524,6 +554,27 @@ func _add_friend_row(
 	name_label.size_flags_horizontal = (
 		Control.SIZE_EXPAND_FILL)
 	content.add_child(name_label)
+
+	# Subtitle: rich_presence string ("In lobby", "In match")
+	# or the other-game label. Falls back to nothing for
+	# friends online in our game with no rich text.
+	var subtitle_text := ""
+	if is_in_other_game:
+		# Show the friend's current game_id until the
+		# games-config download lands; that will let us
+		# substitute the friendly display name.
+		subtitle_text = (
+			tr("PRESENCE.IN_OTHER_GAME")
+			% friend_game_id
+		)
+	elif is_online and not friend_rich_text.is_empty():
+		subtitle_text = friend_rich_text
+	if not subtitle_text.is_empty():
+		var subtitle := Label.new()
+		subtitle.text = subtitle_text
+		subtitle.add_theme_color_override(
+			"font_color", Color(0.6, 0.6, 0.6))
+		content.add_child(subtitle)
 
 	var arrow := TextureRect.new()
 	arrow.expand_mode = (
