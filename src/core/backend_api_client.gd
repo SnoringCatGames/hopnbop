@@ -27,6 +27,16 @@ signal version_checked(
 	server_game_version: String,
 )
 
+# All endpoints in this client now live on the new
+# snoringcat-platform stack at /v1/*. The legacy
+# gamelift_backend_api_url Setting is still consulted as the
+# offline/preview-mode guard (empty URL → skip the call), but
+# all live requests go to _PLATFORM_API_URL.
+const _PLATFORM_API_URL := (
+	"https://r20b7wqop6.execute-api.us-west-2.amazonaws.com"
+	+ "/prod/v1"
+)
+
 ## Polling interval for fleet status while a warmup
 ## is in progress. Keeps the lobby countdown fresh.
 const _FLEET_STATUS_POLL_INTERVAL_SEC := 10.0
@@ -90,7 +100,7 @@ func fetch_leaderboard(
 		return
 	_pending_signal = "leaderboard_received"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/leaderboard?type=%s&scope=%s&limit=%d"
 		% [type, scope, limit]
 	)
@@ -104,7 +114,7 @@ func fetch_player_stats(
 		return
 	_pending_signal = "player_stats_received"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/players/%s/stats" % player_id
 	)
 	_send_get_request(url)
@@ -115,7 +125,7 @@ func fetch_player_profile() -> void:
 		return
 	_pending_signal = "profile_received"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/player/profile"
 	)
 	_send_get_request(url)
@@ -126,7 +136,7 @@ func fetch_player_settings() -> void:
 		return
 	_pending_signal = "settings_received"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/player/settings"
 	)
 	_send_get_request(url)
@@ -139,7 +149,7 @@ func save_player_settings(
 		return
 	_pending_signal = "settings_saved"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/player/settings"
 	)
 	var body := {
@@ -155,7 +165,7 @@ func fetch_match_history() -> void:
 		return
 	_pending_signal = "match_history_received"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/player/history"
 	)
 	_send_get_request(url)
@@ -255,7 +265,7 @@ func warm_up_fleet(source: String = "client") -> void:
 		Time.get_unix_time_from_system())
 
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/fleet/warmup")
 	var body := JSON.stringify({"source": source})
 	var err := _fleet_http_request.request(
@@ -283,7 +293,7 @@ func fetch_fleet_status() -> void:
 		return
 
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/fleet/status")
 	var err := _fleet_http_request.request(
 		url,
@@ -413,7 +423,7 @@ func check_version() -> void:
 		CONNECT_ONE_SHOT,
 	)
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/version")
 	var error := http.request(
 		url,
