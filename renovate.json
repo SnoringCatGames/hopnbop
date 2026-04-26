@@ -1,0 +1,47 @@
+{
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": [
+		"config:recommended",
+		":semanticCommits"
+	],
+	"description": [
+		"Auto-bump the snoringcat-platform submodule pointer when the",
+		"upstream repo gets new commits on main. Renovate opens a PR;",
+		"if hopnbop's CI (which runs the GUT compliance suite via the",
+		"in-tree addon) is green, the bump is safe to merge.",
+		"",
+		"The other submodules (rollback_netcode, gamelift_session_manager)",
+		"are also tracked but follow tag releases instead of main, since",
+		"they're versioned more conservatively."
+	],
+	"git-submodules": {
+		"enabled": true
+	},
+	"timezone": "America/Los_Angeles",
+	"schedule": [
+		"after 6am and before 10am every weekday"
+	],
+	"prHourlyLimit": 4,
+	"prConcurrentLimit": 6,
+	"packageRules": [
+		{
+			"description": "snoringcat-platform: track main, auto-bump on green CI",
+			"matchManagers": ["git-submodules"],
+			"matchPaths": ["third_party/snoringcat-platform"],
+			"automerge": false,
+			"automergeStrategy": "squash",
+			"labels": ["platform-bump"],
+			"commitMessageTopic": "snoringcat-platform"
+		},
+		{
+			"description": "Vendored addons: track tags only",
+			"matchManagers": ["git-submodules"],
+			"matchPaths": [
+				"addons/rollback_netcode",
+				"addons/gamelift_session_manager"
+			],
+			"automerge": false,
+			"labels": ["addon-bump"]
+		}
+	]
+}
