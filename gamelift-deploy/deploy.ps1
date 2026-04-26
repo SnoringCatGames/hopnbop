@@ -111,12 +111,24 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Docker build complete." -ForegroundColor Green
 
 # Step 3: Login to ECR.
+# PS5.1 mangles the token when piping into --password-stdin
+# (encoding/CRLF on the stream). Write to a temp file with
+# explicit UTF-8 (no BOM, no trailing newline) and stream
+# from there. cmd /c keeps PS's NativeCommandError handling
+# from tripping on docker's WARNING noise.
 Write-Host "[3/5] Logging in to ECR..." -ForegroundColor Yellow
 $password = aws ecr get-login-password --region $Region --profile $Profile
-$password | docker login --username AWS --password-stdin $EcrUri
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "ECR login failed"
-    exit 1
+$ecrPwdFile = [System.IO.Path]::GetTempFileName()
+try {
+    [System.IO.File]::WriteAllText($ecrPwdFile, $password.Trim(),
+        [System.Text.UTF8Encoding]::new($false))
+    cmd /c "type `"$ecrPwdFile`" | docker login --username AWS --password-stdin $EcrUri"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "ECR login failed"
+        exit 1
+    }
+} finally {
+    Remove-Item $ecrPwdFile -ErrorAction SilentlyContinue
 }
 
 # Step 4: Tag and push.
