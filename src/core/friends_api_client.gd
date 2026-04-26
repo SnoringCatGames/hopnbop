@@ -18,6 +18,13 @@ signal friends_marked_seen(data: Dictionary)
 signal presence_received(online_ids: Array[String])
 signal request_failed(error: String)
 
+# All endpoints in this client now live on the new
+# snoringcat-platform stack at /v1/friends/* and /v1/presence/*.
+const _PLATFORM_API_URL := (
+	"https://r20b7wqop6.execute-api.us-west-2.amazonaws.com"
+	+ "/prod/v1"
+)
+
 ## Cached relationship data, updated on every
 ## friends_received response.
 var cached_friends: Array[Dictionary] = []
@@ -62,7 +69,7 @@ func fetch_friends() -> void:
 		return
 	_pending_signal = "friends_received"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/friends"
 	)
 	_send_get_request(url)
@@ -75,7 +82,7 @@ func send_request_by_code(
 		return
 	_pending_signal = "friend_request_sent"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/friends/add"
 	)
 	var body := {
@@ -93,7 +100,7 @@ func send_request_by_player_id(
 		return
 	_pending_signal = "friend_request_sent"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/friends/add"
 	)
 	var body := {
@@ -110,7 +117,7 @@ func accept_request(
 		return
 	_pending_signal = "friend_request_accepted"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/friends/accept"
 	)
 	var body := {"player_id": player_id}
@@ -124,7 +131,7 @@ func reject_request(
 		return
 	_pending_signal = "friend_request_rejected"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/friends/reject"
 	)
 	var body := {"player_id": player_id}
@@ -138,7 +145,7 @@ func cancel_request(
 		return
 	_pending_signal = "friend_request_cancelled"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/friends/cancel"
 	)
 	var body := {"player_id": player_id}
@@ -150,7 +157,7 @@ func remove_friend(player_id: String) -> void:
 		return
 	_pending_signal = "friend_removed"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/friends/remove"
 	)
 	var body := {"player_id": player_id}
@@ -162,7 +169,7 @@ func search_friend_code(code: String) -> void:
 		return
 	_pending_signal = "friend_search_result"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/friends/search?code=%s" % code
 	)
 	_send_get_request(url)
@@ -173,7 +180,7 @@ func mark_seen() -> void:
 		return
 	_pending_signal = "friends_marked_seen"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/friends/seen"
 	)
 	_send_post_request(url, {})
@@ -189,7 +196,7 @@ func fetch_notifications(
 		return
 	_poll_pending = true
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/friends/notifications?since=%d"
 		% since_timestamp
 	)
@@ -210,7 +217,7 @@ func fetch_presence() -> void:
 		return
 	_presence_pending = true
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/presence/heartbeat"
 	)
 	var error := _presence_http_request.request(
