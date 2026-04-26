@@ -13,6 +13,13 @@ signal party_status_received(data: Dictionary)
 signal party_matchmaking_started(data: Dictionary)
 signal request_failed(error: String)
 
+# All endpoints in this client now live on the new
+# snoringcat-platform stack at /v1/party/*.
+const _PLATFORM_API_URL := (
+	"https://r20b7wqop6.execute-api.us-west-2.amazonaws.com"
+	+ "/prod/v1"
+)
+
 var _http_request: HTTPRequest
 var _pending_signal: StringName = ""
 
@@ -30,7 +37,7 @@ func create_party() -> void:
 		return
 	_pending_signal = "party_created"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/party/create"
 	)
 	_send_post_request(url, {})
@@ -44,7 +51,7 @@ func invite_to_party(
 		return
 	_pending_signal = "party_invited"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/party/invite"
 	)
 	var body := {
@@ -59,7 +66,7 @@ func join_party(party_id: String) -> void:
 		return
 	_pending_signal = "party_joined"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/party/join"
 	)
 	var body := {"party_id": party_id}
@@ -71,7 +78,7 @@ func leave_party(party_id: String) -> void:
 		return
 	_pending_signal = "party_left"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/party/leave"
 	)
 	var body := {"party_id": party_id}
@@ -83,7 +90,7 @@ func fetch_party_status() -> void:
 		return
 	_pending_signal = "party_status_received"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/party/status"
 	)
 	_send_get_request(url)
@@ -97,7 +104,7 @@ func kick_from_party(
 		return
 	_pending_signal = "party_kicked"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/party/kick"
 	)
 	var body := {
@@ -114,7 +121,7 @@ func start_matchmaking(
 		return
 	_pending_signal = "party_matchmaking_started"
 	var url := (
-		G.settings.gamelift_backend_api_url
+		_PLATFORM_API_URL
 		+ "/party/start"
 	)
 	var body := {"party_id": party_id}
