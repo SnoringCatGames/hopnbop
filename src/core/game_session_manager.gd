@@ -49,6 +49,15 @@ signal local_mode_fallback_requested()
 ## container restarts with cold DNS.
 const _WSS_MAX_RETRIES := 3
 
+# Matchmaking now lives on the snoringcat-platform
+# stack at /v1/matchmaking/*. The GameLiftClient
+# addon receives this base URL and appends its own
+# paths (matchmaking/start, /status/{id}, /leave).
+const _PLATFORM_API_URL := (
+	"https://r20b7wqop6.execute-api.us-west-2.amazonaws.com"
+	+ "/prod/v1"
+)
+
 ## Seconds between WSS connection retry attempts.
 const _WSS_RETRY_INTERVAL_SEC := 3.0
 
@@ -105,9 +114,9 @@ func _setup_session_provider() -> void:
 		)
 	elif (Netcode.should_connect_to_remote_server
 			and Netcode.is_client):
-		# Client: use GameLift backend API.
+		# Client: use platform stack matchmaking API.
 		session_provider = GameLiftClient.new(
-			G.settings.gamelift_backend_api_url)
+			_PLATFORM_API_URL)
 	else:
 		# Preview mode or preview server with
 		# remote connection: no validation.
