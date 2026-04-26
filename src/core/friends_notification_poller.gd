@@ -27,6 +27,13 @@ var _known_accepted_ids: Dictionary = {}
 var _known_rejected_ids: Dictionary = {}
 var _known_online_ids: Dictionary = {}
 
+## Rich presence string surfaced on the friends UI of other
+## players. Updated from match lifecycle signals; sent on the
+## next presence heartbeat. Localized via tr() so the addon's
+## consumer game owns the actual labels.
+var _current_rich_presence := ""
+var _current_status := "online"
+
 
 func _ready() -> void:
 	G.friends_api_client\
@@ -48,6 +55,36 @@ func _ready() -> void:
 	# is warm before the panel ever opens.
 	G.auth_client.auth_completed.connect(
 		_on_auth_completed)
+	# Track lobby/match transitions to feed the
+	# rich-presence string sent on each heartbeat.
+	# match_state may not exist yet on first ready
+	# in some test contexts; defer the connection.
+	call_deferred("_connect_match_state_signals")
+
+
+func _connect_match_state_signals() -> void:
+	if G.match_state == null:
+		return
+	if not G.match_state.match_started.is_connected(
+		_on_match_started
+	):
+		G.match_state.match_started.connect(
+			_on_match_started)
+	if not G.match_state.match_ended.is_connected(
+		_on_match_ended
+	):
+		G.match_state.match_ended.connect(
+			_on_match_ended)
+
+
+func _on_match_started() -> void:
+	_current_rich_presence = tr("PRESENCE.IN_MATCH")
+	_current_status = "in_match"
+
+
+func _on_match_ended() -> void:
+	_current_rich_presence = tr("PRESENCE.IN_LOBBY")
+	_current_status = "online"
 
 
 func _process(delta: float) -> void:
@@ -71,7 +108,10 @@ func _process(delta: float) -> void:
 		_presence_poll_timer = 0.0
 		if not G.friends_api_client\
 				.is_presence_busy():
-			G.friends_api_client.fetch_presence()
+			G.friends_api_client.fetch_presence(
+				_current_rich_presence,
+				_current_status,
+			)
 
 
 ## Start polling for friend notifications and
