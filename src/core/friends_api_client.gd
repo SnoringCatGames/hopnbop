@@ -15,7 +15,14 @@ signal friend_removed(data: Dictionary)
 signal friend_search_result(data: Dictionary)
 signal notifications_received(data: Dictionary)
 signal friends_marked_seen(data: Dictionary)
+## Legacy: just the IDs of online friends. Kept so old call
+## sites that only need an "is friend X online?" check don't
+## have to migrate immediately.
 signal presence_received(online_ids: Array[String])
+## New: per-friend presence dictionary, keyed by player_id.
+## Each value has keys: game_id, status, rich_presence.
+## Use this for friends-UI badges and party-invite gating.
+signal presence_received_rich(online_friends: Dictionary)
 signal request_failed(error: String)
 
 # All endpoints in this client now live on the new
@@ -34,6 +41,11 @@ var cached_incoming_requests: Array[Dictionary] = []
 ## Cached online friend IDs, updated on every
 ## presence_received response.
 var cached_online_ids: Array[String] = []
+
+## Cached rich presence per friend, keyed by player_id, updated
+## alongside cached_online_ids. Each value is a Dictionary with
+## keys: game_id, status, rich_presence.
+var cached_online_friends: Dictionary = {}
 
 var _http_request: HTTPRequest
 var _poll_http_request: HTTPRequest
@@ -212,7 +224,15 @@ func fetch_notifications(
 ## Send a presence heartbeat and fetch the online
 ## status of friends. Uses the dedicated presence
 ## HTTPRequest node.
-func fetch_presence() -> void:
+##
+## Optional rich_presence: short string the friends UI shows
+## under the friend's name (e.g. "In lobby", "In match: Kingdom
+## of Bunnies"). Optional status: one of "online", "in_match",
+## "away".
+func fetch_presence(
+	rich_presence: String = "",
+	status: String = "online",
+) -> void:
 	if not _check_presence_available():
 		return
 	_presence_pending = true
@@ -220,11 +240,16 @@ func fetch_presence() -> void:
 		_PLATFORM_API_URL
 		+ "/presence/heartbeat"
 	)
+	var body := {
+		"status": status,
+	}
+	if not rich_presence.is_empty():
+		body["rich_presence"] = rich_presence
 	var error := _presence_http_request.request(
 		url,
 		_get_auth_headers(),
 		HTTPClient.METHOD_POST,
-		"{}",
+		JSON.stringify(body),
 	)
 	if error != OK:
 		_presence_pending = false
@@ -427,7 +452,25 @@ func _on_presence_request_completed(
 	cached_online_ids.clear()
 	for id in parsed.get("online_friend_ids", []):
 		cached_online_ids.append(id)
+
+	# Rich shape: per-friend game_id/status/rich_presence. The
+	# backend started returning this in the Phase 4 heartbeat
+	# migration; older deploys return only online_friend_ids,
+	# so build the rich dictionary opportunistically.
+	cached_online_friends.clear()
+	for entry in parsed.get("online_friends", []):
+		var pid: String = entry.get("player_id", "")
+		if pid.is_empty():
+			continue
+		cached_online_friends[pid] = {
+			"game_id": entry.get("game_id", ""),
+			"status": entry.get("status", "online"),
+			"rich_presence":
+				entry.get("rich_presence", ""),
+		}
+
 	presence_received.emit(cached_online_ids)
+	presence_received_rich.emit(cached_online_friends)
 
 
 func _update_cache(data: Dictionary) -> void:
