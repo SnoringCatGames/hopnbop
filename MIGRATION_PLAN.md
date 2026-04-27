@@ -776,23 +776,23 @@ setup.
      at Hetzner).
 4. Append: `CLOUDFLARE_API_TOKEN=<paste-token>`,
    `CLOUDFLARE_ACCOUNT_ID=<paste-from-dashboard-sidebar>`
-5. **Connect the `snoringcat-website` repo to Cloudflare Pages:**
+5. **Connect the `snoringcat.games` repo to Cloudflare Pages:**
    - Workers & Pages → Create application → Pages → Connect to
      Git.
    - Authorize the SnoringCatGames GitHub org.
-   - Pick `SnoringCatGames/snoringcat-website`.
+   - Pick `SnoringCatGames/snoringcat.games`.
    - Build configuration:
      - Framework preset: **None**
      - Build command: *(leave empty)*
      - Build output directory: `public`
    - Save and Deploy.
    - First deploy completes in ~30s; you get a preview URL like
-     `snoringcat-website.pages.dev`.
+     `snoringcat-games.pages.dev`.
 6. **Verify the preview URL** loads the landing page and the
    three legal pages
-   (`snoringcat-website.pages.dev/privacy/`, `/terms/`,
+   (`snoringcat-games.pages.dev/privacy/`, `/terms/`,
    `/data-deletion/`). Spot-check a redirect:
-   `snoringcat-website.pages.dev/squirrel-away/privacy` should
+   `snoringcat-games.pages.dev/squirrel-away/privacy` should
    308 to the Google Doc.
 7. **Add custom domains** in the Pages project: each of
    `snoringcat.games`, `www.snoringcat.games`,
@@ -805,9 +805,9 @@ setup.
    - Replace each record per Cloudflare's instructions:
      - Apex (`snoringcat.games`, `snoringcatgames.com`):
        ALIAS / ANAME (Hetzner calls this "CNAME at apex")
-       → `snoringcat-website.pages.dev`.
+       → `snoringcat-games.pages.dev`.
      - `www.*` subdomains: CNAME →
-       `snoringcat-website.pages.dev`.
+       `snoringcat-games.pages.dev`.
 9. **Wait for propagation** (typically 5-30 min with low TTL):
    ```bash
    dig +short snoringcat.games
@@ -1624,7 +1624,7 @@ $0/mo.
 
 #### 7. Migrate `hopnbop.net` to Cloudflare Pages
 
-This is a separate deploy target from `snoringcat-website`
+This is a separate deploy target from `snoringcat.games`
 because `hopnbop.net` serves the Godot 4 web export at root,
 which has different headers and a different deploy pipeline.
 
