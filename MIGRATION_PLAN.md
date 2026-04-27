@@ -752,14 +752,109 @@ New, copy URL, append.
 2. My Settings → API Settings → Main API Key.
 3. Append: `UPTIMEROBOT_API_KEY=<paste-key>`
 
-### 7. Google OAuth (for Google sign-in)
+### 7. Cloudflare account + Pages + studio website cutover
+
+This step ends with `snoringcat.games/privacy/`,
+`snoringcat.games/terms/`, and `snoringcat.games/data-deletion/`
+serving live pages on Cloudflare Pages. Both Google and Facebook
+OAuth (steps 8 and 9) reference those URLs in their consent
+screens, so they need to resolve before you can complete OAuth
+setup.
+
+1. https://dash.cloudflare.com → Sign up (use
+   `admin@snoringcat.games`).
+2. Confirm email + 2FA.
+3. **Generate an API token** for `wrangler` and CI use:
+   - My Profile → API Tokens → Create Token → "Custom token".
+   - Permissions:
+     - **Account → Cloudflare Pages → Edit**
+     - **Account → Account Settings → Read**
+     - **Zone → DNS → Edit** (only if you also move DNS to
+       Cloudflare; skip otherwise)
+   - Account Resources: include the snoringcat-games account.
+   - Zone Resources: include all zones (or none, if DNS stays
+     at Hetzner).
+4. Append: `CLOUDFLARE_API_TOKEN=<paste-token>`,
+   `CLOUDFLARE_ACCOUNT_ID=<paste-from-dashboard-sidebar>`
+5. **Connect the `snoringcat-website` repo to Cloudflare Pages:**
+   - Workers & Pages → Create application → Pages → Connect to
+     Git.
+   - Authorize the SnoringCatGames GitHub org.
+   - Pick `SnoringCatGames/snoringcat-website`.
+   - Build configuration:
+     - Framework preset: **None**
+     - Build command: *(leave empty)*
+     - Build output directory: `public`
+   - Save and Deploy.
+   - First deploy completes in ~30s; you get a preview URL like
+     `snoringcat-website.pages.dev`.
+6. **Verify the preview URL** loads the landing page and the
+   three legal pages
+   (`snoringcat-website.pages.dev/privacy/`, `/terms/`,
+   `/data-deletion/`). Spot-check a redirect:
+   `snoringcat-website.pages.dev/squirrel-away/privacy` should
+   308 to the Google Doc.
+7. **Add custom domains** in the Pages project: each of
+   `snoringcat.games`, `www.snoringcat.games`,
+   `snoringcatgames.com`, `www.snoringcatgames.com`. Cloudflare
+   gives you the DNS records to create.
+8. **DNS cutover at Hetzner Console** (this flips production
+   traffic from levi.dev's Heroku app to Cloudflare Pages):
+   - Lower TTL on the existing four records to 60s. Wait 24h if
+     possible (or accept 1-4h propagation).
+   - Replace each record per Cloudflare's instructions:
+     - Apex (`snoringcat.games`, `snoringcatgames.com`):
+       ALIAS / ANAME (Hetzner calls this "CNAME at apex")
+       → `snoringcat-website.pages.dev`.
+     - `www.*` subdomains: CNAME →
+       `snoringcat-website.pages.dev`.
+9. **Wait for propagation** (typically 5-30 min with low TTL):
+   ```bash
+   dig +short snoringcat.games
+   dig +short www.snoringcat.games
+   dig +short snoringcatgames.com
+   dig +short www.snoringcatgames.com
+   ```
+   Each should resolve to a Cloudflare IP.
+10. **Cloudflare auto-provisions TLS** within ~10-15 min after
+    DNS propagates. Verify:
+    ```bash
+    curl -sSI https://snoringcat.games/privacy/ | head -5
+    ```
+    Should show `HTTP/2 200`.
+11. **Don't forget:** edit `levi.dev`'s `package.json::domains`
+    array to remove the four `snoringcat.*` and
+    `snoringcatgames.*` entries. Re-deploy levi.dev so Heroku
+    stops trying to bind certs for those domains. (You can do
+    this any time post-cutover; not blocking the migration.)
+
+After this, your studio-level legal pages are live at
+`https://snoringcat.games/{privacy,terms,data-deletion}/`. You
+need them serving 200 before you finish steps 8 and 9, because
+both OAuth provider consent screens point at those URLs.
+
+> **Note: hopnbop.net stays on AWS for now.** It moves to
+> Cloudflare Pages in Phase F of the migration. Until then,
+> Hop 'n Bop's legal pages stay at `hopnbop.net/{privacy,
+> terms,data-deletion}/`.
+
+### 8. Google OAuth (for Google sign-in)
+
+**Prerequisite:** step 7 complete (snoringcat.games legal pages
+serving 200).
 
 1. https://console.cloud.google.com → create or pick project
    (e.g. "Snoring Cat Games").
 2. APIs & Services → OAuth consent screen → Configure.
    - User type: **External**.
    - App name: `Snoring Cat Games`. Support email + dev contact:
-     yours.
+     yours (`admin@snoringcat.games`).
+   - **Application home page:** `https://snoringcat.games/`.
+   - **Application privacy policy link:**
+     `https://snoringcat.games/privacy/`.
+   - **Application terms of service link:**
+     `https://snoringcat.games/terms/`.
+   - Authorized domains: `snoringcat.games`.
    - Scopes: `email`, `profile`, `openid` (default).
    - Test users: add your email until you publish.
 3. APIs & Services → Credentials → Create Credentials →
@@ -770,7 +865,11 @@ New, copy URL, append.
    - `GOOGLE_OAUTH_CLIENT_ID=<id>`
    - `GOOGLE_OAUTH_CLIENT_SECRET=<secret>`
 
-### 8. Facebook OAuth (for Facebook sign-in)
+### 9. Facebook OAuth (for Facebook sign-in)
+
+**Prerequisite:** step 7 complete (snoringcat.games legal pages
+serving 200). Facebook will spider the URLs during App Review;
+they must respond 200.
 
 1. https://developers.facebook.com → Log in (Facebook account).
 2. My Apps → Create App.
@@ -781,10 +880,11 @@ New, copy URL, append.
 3. Add product: **Facebook Login** → Web.
 4. Settings → Basic:
    - App Domains: `snoringcat.games`.
-   - Privacy Policy URL: `https://hopnbop.net/privacy/`.
-   - Terms URL: `https://hopnbop.net/terms/`.
+   - Privacy Policy URL:
+     `https://snoringcat.games/privacy/`.
+   - Terms URL: `https://snoringcat.games/terms/`.
    - User data deletion URL:
-     `https://hopnbop.net/data-deletion/`.
+     `https://snoringcat.games/data-deletion/`.
    - Save changes.
 5. Facebook Login → Settings:
    - Valid OAuth Redirect URIs:
@@ -798,7 +898,7 @@ New, copy URL, append.
    1-7 days. **Do this in parallel with the migration**, not
    blocking.
 
-### 9. Verify AWS access still works
+### 10. Verify AWS access still works
 
 ```bash
 aws sso login --profile hopnbop
@@ -810,7 +910,7 @@ re-prompts in a browser.
 (AWS credentials are managed by the AWS SSO flow on each machine
 — not in the credentials.env. The CLI handles caching.)
 
-### 10. Generate SSH keypairs
+### 11. Generate SSH keypairs
 
 Generate locally; we'll encrypt them in step 11.
 
@@ -823,7 +923,7 @@ chmod 600 ~/.hopnbop-migration/ssh/postgres
 
 Public keys (`*.pub`) are non-sensitive and stay readable.
 
-### 10b. Generate Pulumi state passphrase
+### 11b. Generate Pulumi state passphrase
 
 Pulumi encrypts the secrets it stores in its S3 state file
 (server IDs are non-sensitive but we'll also store generated
@@ -859,7 +959,7 @@ you can't decrypt Pulumi-stored secrets in the state file —
 re-create the stack from scratch (Hetzner resources still
 exist; Pulumi state can be rebuilt with `pulumi import`).
 
-### 11. Encrypt and push to claude-config
+### 12. Encrypt and push to claude-config
 
 Encrypt `credentials.env` and the two SSH private keys to the
 multi-recipient `.age` files:
@@ -899,10 +999,10 @@ git push
 ```bash
 age -d -i ~/.config/age/key.txt \
   ~/.claude/secrets/hopnbop-migration.env.age \
-  | grep -c "^[A-Z_]*=" # should print 12
+  | grep -c "^[A-Z_]*=" # should print 14
 ```
 
-### 12. On the laptop: pull and decrypt
+### 13. On the laptop: pull and decrypt
 
 After pulling the latest claude-config on the laptop:
 
@@ -1118,8 +1218,9 @@ configured. Admin console accessible from your IP only.
 
 1. **Source credentials** from
    `~/.hopnbop-migration/credentials.env` (decrypted in
-   pre-flight step 11/12). Validate all 12 expected vars are
-   non-empty (11 provider tokens + `PULUMI_CONFIG_PASSPHRASE`).
+   pre-flight step 12/13). Validate all 14 expected vars are
+   non-empty (11 provider tokens + `CLOUDFLARE_API_TOKEN` +
+   `CLOUDFLARE_ACCOUNT_ID` + `PULUMI_CONFIG_PASSPHRASE`).
    If file is missing, decrypt from
    `~/.claude/secrets/hopnbop-migration.env.age`.
    Export `PULUMI_CONFIG_PASSPHRASE` so subsequent `pulumi`
@@ -1697,18 +1798,20 @@ After Phase G, the migration is functionally complete. Then:
 
 | Between | What you do | Time |
 |---|---|---|
-| Pre-flight start | Browser session: 11 accounts/tokens | 60-90 min |
+| Pre-flight start | Browser session: 12 accounts/tokens + Cloudflare Pages setup + DNS cutover for snoringcat.games | 90-120 min |
+| Pre-flight DNS wait | Wait for `snoringcat.games` to flip to Cloudflare before doing OAuth steps 8-9 | 5-30 min (passive) |
 | Phase A → B | (optional) hit healthcheck URL in browser | 30 sec |
 | Phase B → C | none | — |
 | Phase C → D | click budget-alert thresholds in Edgegap UI | 2 min |
 | Phase D → E | smoke test in editor (1 server + 2 clients) | 5-10 min |
 | Phase E → F | approve data-migration counts in chat | 1 min |
 | Phase F start | **approve AWS decommission** in chat | 2 min |
+| Phase F middle | hopnbop.net DNS cutover to Cloudflare Pages | 5-30 min (passive) |
 | Phase G end | confirm CI green in GitHub UI | 2 min |
 | Soak | be reachable for triage | passive |
 
-Total active time on your end: ~80-110 min, all confined to
-pre-flight + 5 short interruption checkpoints.
+Total active time on your end: ~110-140 min, all confined to
+pre-flight + 6 short interruption checkpoints.
 
 ---
 
