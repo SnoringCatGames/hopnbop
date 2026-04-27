@@ -1742,23 +1742,49 @@ be true:
 The following haven't been settled yet. Defaults assumed; flag if
 you want to override.
 
-1. **Postgres backup destination.** Default: Hetzner Storage Box
-   ($3/mo, 1 TB). Alternatives: S3, Backblaze B2.
-2. **Cloudflare in front?** Default: no (Hetzner DNS + Caddy
-   sufficient at this scale). Add later if DDoS becomes a
-   concern.
-3. **Single-AZ tolerance?** Hillsboro is one DC. If Hetzner has a
+1. **Single-AZ tolerance?** Hillsboro is one DC. If Hetzner has a
    regional outage, the game is offline. Default: accept it
    (indie scale). Alternatives: replicate Postgres to a second
    region (~$10/mo extra), or accept downtime SLA.
-4. **Anonymous → permanent account upgrade UI.** In scope (per
+2. **Anonymous → permanent account upgrade UI.** In scope (per
    improvements list). Where in the game's settings flow?
    Default: a "Link account" row in the existing settings panel
    that opens Google/Facebook OAuth flow. Confirm.
-5. **Account deletion UI.** In scope. Default: a "Delete my
+3. **Account deletion UI.** In scope. Default: a "Delete my
    account" row in settings, with double-confirmation, that
    calls a Nakama RPC which schedules a deletion job (30-day
    grace period).
 
-When you've reviewed: confirm any overrides, then kick off Phase
-A.
+### Settled decisions (recorded for future reference)
+
+- **Postgres backup destination:** Hetzner Storage Box ($3/mo,
+  1 TB). Single-cloud simplicity wins; if it ever feels risky,
+  add a second backup target later.
+- **Cloudflare in front of Nakama:** no. Hetzner DNS + Caddy is
+  sufficient at indie scale. Cloudflare *is* used for static
+  hosting (Cloudflare Pages for `snoringcat.games` and
+  `hopnbop.net`) but does not proxy Nakama. Revisit if DDoS
+  becomes a concern.
+- **Static-site host:** Cloudflare Pages free tier for both
+  `snoringcat.games` (now) and `hopnbop.net` (Phase F migration
+  off S3+CloudFront). Cost: $0/mo at any plausible scale (no
+  bandwidth cap on Pages, only 500 builds/mo soft cap which we'll
+  never hit).
+- **Backend language:** Go for Nakama runtime modules. Rust would
+  require forking Nakama; not worth the maintenance burden. See
+  `STUDIO_ARCHITECTURE.md` &rarr; "Top-level architecture
+  decisions" for context.
+- **Credential storage:** age-encrypted in `claude-config`
+  dotfiles repo (not 1Password &mdash; user keeps personal
+  1Password account separate from studio work).
+- **Pulumi scope:** partial. Hetzner Cloud + Hetzner DNS + AWS
+  decommission only. Edgegap and Docker-Compose-on-a-box stay
+  CLI/API driven.
+- **OAuth providers (MVP):** Google + Facebook. Apple, Steam,
+  Epic deferred until those distribution platforms are in scope.
+- **Per-game protocol versioning:** in scope from day 1, even
+  with one game today &mdash; cheap to add now, painful to
+  retrofit later.
+
+When you've reviewed: confirm any overrides on the still-open
+items above, then kick off Phase A.
