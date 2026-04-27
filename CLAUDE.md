@@ -6,6 +6,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Hop 'n Bop is a multiplayer action game built with Godot 4.5. It implements client-side prediction with rollback reconciliation for networked gameplay.
 
+## Platform infrastructure (read on demand)
+
+Backend, auth, matchmaking, game-server allocation, and per-game
+config are handled by the shared Snoring Cat platform.
+**When working on any of these topics, read
+`third_party/snoringcat-platform/PLATFORM_ARCHITECTURE.md`** for
+the architecture reference. It covers Nakama runtime, Edgegap
+allocation, identity/account-linking/deletion, per-game config
+schema, per-game protocol versioning (bump procedure), ops
+runbook, and where things live.
+
+The migration from AWS GameLift to Nakama+Hetzner+Edgegap is
+in progress; see `MIGRATION_PLAN.md` for phase status. Until
+migration completes, the **AWS GameLift architecture** described
+later in this file is still authoritative for current production.
+
+**Per-game protocol versioning** (post-migration): each game has
+its own `protocol_version` integer in `game.yaml` and
+`project.godot`. Bump only the affected game's version when
+shipping a breaking network protocol change; do not bump other
+games' versions. Full procedure and "what counts as breaking"
+rules are in `PLATFORM_ARCHITECTURE.md`.
+
 ## Cloning
 
 This repo uses git submodules for the rollback netcode and

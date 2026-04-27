@@ -18,20 +18,6 @@
    add, given the goal of reusing this stack across future Godot
    multiplayer games?
 
-## Sister session context
-
-A separate active session (plan at
-`~/.claude/plans/in-general-i-ve-been-snoopy-pearl.md`) is mid-plan on a
-"Restructure into a reusable multi-game platform" effort. That plan is
-structured around AWS Lambda + DynamoDB + SAM, with three new repos
-(`snoringcat-platform`, `godot-rollback-netcode`,
-`godot-gamelift-session-manager`), an OpenAPI/oasdiff CI strategy, and a
-five-phase implementation. The user has decided to pivot the backend
-half of that plan; the disposition (pause vs. finish-then-migrate vs.
-hybrid) is delegated to the sister session.
-
----
-
 ## Verified AWS billing (April 2026)
 
 Pulled from `aws ce get-cost-and-usage` for the hopnbop account, April
@@ -227,7 +213,7 @@ knowledge) becomes deletable code.
 
 ---
 
-## Migration sequence (~7-9 person-weeks)
+## Migration sequence (~8-10 person-weeks)
 
 1. Set up Hetzner project, create 2× CAX11 (Nakama + Postgres). Install
    Docker on each, Caddy for TLS, set up firewalls. (~2 days)
@@ -239,16 +225,25 @@ knowledge) becomes deletable code.
    match-end RPC. (~1 week)
 4. Set up Edgegap account + push game server Docker image to their
    registry. Configure Edgegap-Nakama fleet manager plugin. (~2-3 days)
+4b. **Operations stack** (~3 days). Provision Prometheus + Grafana +
+   Loki + `postgres_exporter` + `node_exporter` via Docker Compose on
+   the Nakama box. Configure Grafana datasources, base dashboards,
+   alert rules, Discord notification channel. Set up UptimeRobot
+   synthetic monitors. Configure Edgegap budget alerts. Deploy daily
+   cost script as a systemd timer. See **Operations: monitoring,
+   alerts, billing** for the full design.
 5. Strip GameLift-specific code from the game server: remove
    `gamelift_session_manager` GameLift provider, replace with a thin
    "I'm a platform-allocated server, register with Nakama" client.
    Replace patched WebRTC GDExtension with vanilla v1.0.9. Delete
    nginx TLS termination, Route 53 logic, port-range gymnastics.
    (~1 week)
-6. Migrate client (Hop 'n Bop) to nakama-godot SDK. Replace
+6. Migrate client (Hop 'n Bop) to nakama-godot SDK. Swap
+   nakama-godot-backed implementations behind the existing
    `AuthClient` / `BackendApiClient` / `FriendsApiClient` /
-   `PartyApiClient` with thin wrappers around Nakama session. Delete
-   fleet warmup UI / countdown / polling entirely. (~2 weeks)
+   `PartyApiClient` SDK seams in `src/core/`. The seams already exist;
+   this is implementation-swap, not new-SDK-creation. Delete fleet
+   warmup UI / countdown / polling entirely. (~2 weeks)
 7. Migrate data: walk DynamoDB tables, write to Nakama via SQL or
    Storage RPCs. Friends graph, leaderboards, settings, players.
    (~1-2 weeks)
@@ -256,6 +251,12 @@ knowledge) becomes deletable code.
 9. Build the shared "snoringcat-platform" as Go modules in Nakama's
    server runtime, parametrized by `game_id`. Reusable across games.
    (~1 week)
+10. **CI migration** (~3-5 days). Author the three new GitHub Actions
+    workflows (`pr-validate.yml`, `nightly-smoke.yml`, `release.yml`).
+    Strip AWS-specific tests. Re-target the compliance suite from the
+    AWS API base URL to the Nakama base URL. Stand up a staging CX21
+    (~$5/mo) for nightly smoke runs. See **CI testing strategy** for
+    the full design.
 
 ---
 
@@ -335,27 +336,134 @@ server_pool_events     -- audit / telemetry
 
 ---
 
-## Open questions for the sister session
+## Operations: monitoring, alerts, billing
 
-The sister session has the context on how much of the AWS platform
-extraction is already executed, so it should pick the migration
-approach:
+### Monitoring stack
 
-- **Pause and pivot now**, abandoning recent AWS work in progress
-  but saving the most total effort.
-- **Finish a stable AWS milestone, then migrate**, accepting more
-  total work for less concurrent risk.
-- **Hybrid**: keep the recently-cut-over client API clients
-  (`BackendApiClient`, `FriendsApiClient`, `PartyApiClient`,
-  `AuthClient`, `CrashReporter`) as the integration seam. Re-point
-  them at nakama-godot inside the platform addon. The HTTP/auth
-  contracts shift but the call sites in the game don't change.
+| Source | Tool | Surface |
+|---|---|---|
+| Nakama runtime | Built-in Prometheus `/metrics` | Self-hosted Grafana on Nakama box |
+| Postgres | `postgres_exporter` sidecar | Prometheus scrape |
+| Hetzner box vitals | `node_exporter` (CPU/RAM/disk/net) | Prometheus scrape |
+| Caddy | Built-in `/metrics` endpoint | Prometheus scrape |
+| Game server (per match) | Loki via stdout | Grafana Explore |
+| Edgegap fleet | Edgegap REST API polled every 60s | Custom Grafana datasource |
+| Logs (centralized) | Loki on Nakama box | Grafana Explore |
+| Synthetic uptime | UptimeRobot free tier (50 monitors, 5-min interval) | UptimeRobot dashboard + Discord |
 
-The hybrid approach is probably cheapest given recent commits show
-those clients have just been cut over to the platform stack — they're
-already at the right abstraction layer to swap implementations.
+Self-host Prometheus + Grafana + Loki via Docker Compose on the
+Nakama box. Free, no per-event cost, no vendor lock-in.
+UptimeRobot supplements with external blackbox checks of Nakama
+HTTP, the game-server WS endpoint, and the website.
 
-Other questions to resolve:
+### Alerts
+
+Notification: **Discord webhook** primary (reuses
+`~/.claude/jobs/Send-Discord.ps1` and the webhook URL in
+`~/.claude/jobs/discord-config.json`), email fallback to
+`admin@snoringcat.games`. Rules in Grafana Alerting (no extra
+cost).
+
+**Critical (page immediately):**
+
+- Nakama process unreachable for >2 min.
+- Postgres connection saturation >90% for >5 min.
+- Synthetic uptime failure (any monitor down >2 consecutive
+  checks).
+- Game-server allocation failure rate >20% over 10 min.
+- Hetzner box disk >90%.
+- TLS cert expiry <14 days (Caddy auto-renews; alert if it
+  doesn't).
+
+**Warning (notify in channel):**
+
+- Hetzner box CPU >80% for 15 min.
+- Match abandonment rate spike >2× rolling 7-day baseline.
+- WebRTC ICE failure rate spike >2× rolling 7-day baseline.
+- Postgres slow-query log entries (>500ms) >10/min.
+- Cost alerts (see below).
+
+### Billing controls
+
+Hetzner has no native hard spend cap (the API supports usage
+queries only). Edgegap surfaces budget alerts via dashboard.
+Cloudflare/Discord/UptimeRobot are free tiers. Strategy:
+
+- **Daily cost script** as a systemd timer on the Nakama box.
+  Polls Hetzner Cloud API + Edgegap API for month-to-date spend
+  per provider. Posts daily summary to Discord. Triggers alert
+  if any provider exceeds threshold. Triggers **emergency
+  shutdown** (scale Edgegap fleet to 0, optionally power off
+  Hetzner game-server boxes) if grand total exceeds a
+  configurable hard limit (default $50/mo).
+- **Edgegap budget alerts** at $20, $40, $80/mo via their
+  dashboard.
+- **AWS residual budget alarm at $5/mo** (also in the
+  Verification plan); keep until 30 days post-decommission,
+  then delete the AWS account.
+- **Cost dashboard** in Grafana: time-series of daily spend per
+  provider, sourced from the daily cost script.
+
+---
+
+## CI testing strategy
+
+Three GitHub Actions workflows plus a migration of existing CI.
+
+### Per-PR validation (`pr-validate.yml`)
+
+Runs on every PR to `main`:
+
+- GDScript formatter check (`addons/gdscript_formatter`).
+- GUT unit tests, per-file invocation pattern (per CLAUDE.md the
+  `-gdir` flag is unreliable).
+- Backend Go-runtime-module tests (`go test`, `go vet`,
+  `staticcheck`).
+- Compliance suite from `third_party/snoringcat-platform` run
+  against an ephemeral Nakama+Postgres stack spun up in the
+  workflow runner via Docker Compose.
+
+### Nightly smoke (`nightly-smoke.yml`)
+
+Scheduled 03:00 UTC against a staging Nakama instance (small
+Hetzner CX21, separate from prod, ~$5/mo):
+
+- Full end-to-end: anonymous auth → matchmaking → Edgegap
+  allocation → game server connect → match end → result
+  reporting → leaderboard update.
+- 10-ticket sustained-load test (mirrors Verification plan
+  step 9).
+- Web client variant via headless Chromium.
+- Posts pass/fail summary to Discord; failures page.
+
+### Release pipeline (`release.yml`)
+
+On tag `v*.*.*`:
+
+- Build Linux server Docker image, push to Edgegap registry.
+- Build Godot web export, sync to S3, invalidate CloudFront.
+  (Website hosting stays on AWS — cheap and stable, out of
+  pivot scope.)
+- Build native exports for Windows / Mac / Linux / Steam.
+- Roll Nakama runtime modules (zero-downtime swap via Docker
+  Compose).
+- Bump fleet config in Edgegap.
+- Post release notes to Discord.
+
+### Migration of existing CI
+
+The current `.github/` workflows are AWS-aware (SAM build,
+moto-mocked DDB, GameLift integration tests). During the pivot:
+
+- Delete AWS-specific tests with their service code.
+- Re-target the compliance suite from the AWS API base URL to
+  the Nakama base URL.
+- Keep GUT integration tests as-is (transport unchanged from the
+  game's perspective).
+
+---
+
+## Open questions
 
 - Baseline pool size for Hop 'n Bop launch (recommend 0 — Edgegap
   scales to zero; DIY needs 1× CX21 if/when migrated).
@@ -366,55 +474,12 @@ Other questions to resolve:
   Edgegap; only relevant when migrating to DIY Hetzner).
 - Docker registry choice: Edgegap's registry initially; Docker Hub or
   self-hosted on CAX11 if migrating to DIY.
-- Monitoring: Better Stack / UptimeRobot free tier for synthetic
-  uptime checks, plus Nakama's built-in Prometheus metrics.
 - Postgres backup destination: Hetzner Storage Box ($3/mo for 1TB)
   vs S3 vs Backblaze B2. Recommend Hetzner Storage Box for
   single-cloud simplicity.
 
----
-
-## What from the sister plan survives
-
-The sister session's plan is structured around AWS Lambda + DynamoDB +
-SAM. The decision to pivot to Nakama + Hetzner means **the backend half
-of that plan does not survive** — Lambdas, SAM stack, DynamoDB schema,
-API Gateway routes, API versioning strategy, OpenAPI/oasdiff testing
-strategy. None of that applies to Nakama.
-
-What is still valuable:
-
-- The repo structure (3 new repos: `snoringcat-platform`,
-  `godot-rollback-netcode`, `godot-gamelift-session-manager`). Note:
-  `godot-gamelift-session-manager` is renamed/repurposed since
-  GameLift is no longer the host. Likely
-  `godot-platform-session-manager` with multiple providers (LocalOnly,
-  Preview, Edgegap-via-Nakama, Hetzner-via-Nakama).
-- The client-side SDK extraction (`auth_client.gd`,
-  `backend_api_client.gd`, `friends_api_client.gd`, etc.). Same files
-  move to the platform addon; only the implementation changes
-  (calling nakama-godot instead of HTTPRequest to API Gateway).
-- The `Platform.*` autoload pattern.
-- The compliance test suite concept (now tests the nakama-godot-backed
-  Platform API instead of the AWS API).
-- The repo split + submodule pattern.
-- The cross-game presence + party gating UX flows (now backed by
-  Nakama presence + matchmaker hooks).
-- The `games` config table concept (now lives in Postgres, not
-  DynamoDB).
-- The migration script (now migrates DDB → Postgres + Nakama Storage).
-
-What is replaced wholesale:
-
-- The SAM template, all Lambda handlers, all DynamoDB table
-  definitions.
-- The OpenAPI + oasdiff CI strategy (Nakama provides its own
-  gRPC-proto-derived API; client compatibility is enforced by
-  nakama-common version pinning).
-- The API versioning strategy.
-- The Lambda Function URLs / API Gateway optimization (n/a).
-- The synthetic monitoring against AWS endpoints (becomes synthetic
-  monitoring against the Nakama instance).
+Monitoring choice is no longer open. See the **Operations:
+monitoring, alerts, billing** section above for the full stack.
 
 ---
 
