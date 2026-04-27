@@ -511,11 +511,16 @@ credentials file. Then **6 autonomous phases (me, 2-4h each)** with
 manual gates between certain ones. Each phase reads a state file at
 start, writes at end, is idempotent on re-run.
 
-**State file:** `~/.hopnbop-migration/state.json`. See
-[State file format](#state-file-format) below.
+**State file:** `~/.hopnbop-migration/state.json` (non-sensitive
+infra IDs, IPs, phase status). See [State file format](#state-file-format)
+below.
 
-**Credentials:** `~/.hopnbop-migration/credentials.env`. **Never
-commit.** Add `~/.hopnbop-migration/` to your global gitignore.
+**Credentials:** stored in **1Password** (item: "Snoring Cat
+Platform Migration", in the Private vault). Synced across
+machines automatically. Materialized to a temp file at runtime
+via `op inject` and shredded after each phase. SSH keys stored
+as 1Password SSH Key items; private keys served via the
+1Password SSH agent (never written to disk in plaintext).
 
 **Kicking off phase N:**
 > Open Claude Code in `C:\Users\lsl\Repositories\hopnbop_private`,
@@ -535,16 +540,50 @@ exist.
 
 ## Pre-flight manual checklist (you do this once, ~60-90 min)
 
-Do these in order. Each step ends with a value to drop into
-`~/.hopnbop-migration/credentials.env`.
+Do these in order. Each step ends with a secret you paste into a
+**1Password item**, not a local file. 1Password syncs across your
+desktop and laptop automatically; the agent fetches secrets at
+runtime via the `op` CLI.
 
-```bash
-mkdir -p ~/.hopnbop-migration/ssh
-touch ~/.hopnbop-migration/credentials.env
-chmod 600 ~/.hopnbop-migration/credentials.env
-```
+### 0. 1Password CLI setup (one-time, both machines)
 
-Then add `~/.hopnbop-migration/` to your global gitignore.
+1. Make sure 1Password 8 desktop app is installed and signed in
+   on each machine you'll run the migration from.
+2. **Settings → Developer → Integrate with 1Password CLI:** turn
+   on. (Allows biometric / desktop-app-mediated auth instead of
+   typing master password every session.)
+3. Install the CLI:
+   - Windows: `winget install AgileBits.1Password.CLI` or
+     download from `developer.1password.com/docs/cli/get-started`.
+   - macOS: `brew install --cask 1password-cli`.
+4. Verify: `op account list` should show your account. If it
+   prompts you to sign in, do so once per machine.
+5. Create the migration vault item once (on either machine — it
+   syncs):
+   ```bash
+   op item create \
+     --category "API Credential" \
+     --title "Snoring Cat Platform Migration" \
+     --vault Private \
+     notes="Credentials for the AWS -> Nakama+Hetzner+Edgegap migration. See hopnbop_private/MIGRATION_PLAN.md."
+   ```
+   You'll add fields to it as you go through the steps below.
+6. **SSH agent setup** (used in Phase A to SSH into Hetzner
+   boxes):
+   - 1Password → Settings → Developer → **Use the SSH agent:**
+     turn on.
+   - Configure your SSH client to use the 1Password agent
+     (instructions in the same Settings panel; on Windows it
+     points to a named pipe, on macOS to a socket path).
+   - Verify: `ssh-add -l` should list "no identities" or any
+     keys you've already loaded; we'll add the Hetzner keys in
+     step 10.
+
+After this, all secrets live in 1Password under the
+**"Snoring Cat Platform Migration"** item. The migration agent
+reads them via `op read "op://Private/Snoring Cat Platform Migration/<field>"`.
+**Do not write these values to disk in plain text.** A working
+copy is materialized at runtime and deleted after each phase.
 
 ### 1. Hetzner Cloud account
 
@@ -553,7 +592,11 @@ Then add `~/.hopnbop-migration/` to your global gitignore.
 3. Create project: **`snoringcat-platform`**.
 4. Project → Security → API Tokens → Generate. Name: `migration`.
    Permissions: **Read & Write**.
-5. Save: `HCLOUD_TOKEN=...`
+5. Add to 1Password item, field name `HCLOUD_TOKEN` (concealed):
+   ```bash
+   op item edit "Snoring Cat Platform Migration" \
+     "HCLOUD_TOKEN[password]=<paste-token-here>"
+   ```
 
 ### 2. Hetzner DNS (free, separate from Cloud)
 
@@ -564,7 +607,8 @@ Then add `~/.hopnbop-migration/` to your global gitignore.
    `helium.ns.hetzner.de`. Propagation 1-24h. **Do this now** so
    it's done by the time Phase A runs.
 4. Hetzner DNS → API tokens → Create.
-5. Save: `HETZNER_DNS_TOKEN=...`
+5. Add to 1Password item, field name `HETZNER_DNS_TOKEN`
+   (concealed).
 
 ### 3. Edgegap account
 
@@ -574,29 +618,32 @@ Then add `~/.hopnbop-migration/` to your global gitignore.
    Approval typically <24h.)
 3. Add payment method.
 4. User → API Tokens → Create.
-5. Save: `EDGEGAP_TOKEN=...`
-6. Save: `EDGEGAP_ORG=...` (your org slug, visible in account
-   settings).
+5. Add to 1Password item:
+   - `EDGEGAP_TOKEN` (concealed)
+   - `EDGEGAP_ORG` (text — your org slug, visible in account
+     settings)
 
 ### 4. GitHub Personal Access Token
 
 1. https://github.com/settings/tokens → Generate new (classic).
 2. Scopes: `repo`, `workflow`, `admin:org` (if pushing to
    SnoringCatGames org).
-3. Save: `GITHUB_TOKEN=...`
+3. Add to 1Password item, field name `GITHUB_TOKEN` (concealed).
 
 ### 5. Discord webhook
 
-Already in `~/.claude/jobs/discord-config.json`? Confirm and copy:
-- Save: `DISCORD_WEBHOOK_URL=...`
+Already in `~/.claude/jobs/discord-config.json`? Copy the URL
+into the 1Password item as `DISCORD_WEBHOOK_URL` (concealed).
 
-If not: Discord server → channel → Integrations → Webhooks → New.
+If not: Discord server → channel → Integrations → Webhooks →
+New, copy URL, add to 1Password.
 
 ### 6. UptimeRobot (free)
 
 1. https://uptimerobot.com → Sign up.
 2. My Settings → API Settings → Main API Key.
-3. Save: `UPTIMEROBOT_API_KEY=...`
+3. Add to 1Password item, field name `UPTIMEROBOT_API_KEY`
+   (concealed).
 
 ### 7. Google OAuth (for Google sign-in)
 
@@ -612,9 +659,9 @@ If not: Discord server → channel → Integrations → Webhooks → New.
    OAuth client ID → **Web application**.
 4. Authorized redirect URIs:
    `https://nakama.snoringcat.games/v2/account/authenticate/google`.
-5. Copy Client ID and Client Secret.
-6. Save: `GOOGLE_OAUTH_CLIENT_ID=...`,
-   `GOOGLE_OAUTH_CLIENT_SECRET=...`
+5. Add to 1Password item:
+   - `GOOGLE_OAUTH_CLIENT_ID` (text)
+   - `GOOGLE_OAUTH_CLIENT_SECRET` (concealed)
 
 ### 8. Facebook OAuth (for Facebook sign-in)
 
@@ -636,7 +683,9 @@ If not: Discord server → channel → Integrations → Webhooks → New.
    - Valid OAuth Redirect URIs:
      `https://nakama.snoringcat.games/v2/account/authenticate/facebook`.
 6. Settings → Basic → copy App ID and App Secret.
-7. Save: `FACEBOOK_APP_ID=...`, `FACEBOOK_APP_SECRET=...`
+7. Add to 1Password item:
+   - `FACEBOOK_APP_ID` (text)
+   - `FACEBOOK_APP_SECRET` (concealed)
 8. **App Review:** when you go beyond test users, submit for
    review (Facebook requires this for production). Reviews take
    1-7 days. **Do this in parallel with the migration**, not
@@ -651,39 +700,83 @@ aws sts get-caller-identity --profile hopnbop
 Should print account `270469481989`. If expired, the SSO login
 re-prompts in a browser.
 
-### 10. Generate SSH keypairs
+(AWS credentials are managed by the AWS SSO flow on each machine
+— not in 1Password. The CLI handles caching.)
+
+### 10. Generate SSH keypairs (stored in 1Password)
+
+Use 1Password's **SSH Key** category (one item per keypair). They
+sync via 1Password and are served at runtime by the 1Password
+SSH agent — private keys never touch disk in plaintext.
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.hopnbop-migration/ssh/nakama -N "" -C "nakama"
-ssh-keygen -t ed25519 -f ~/.hopnbop-migration/ssh/postgres -N "" -C "postgres"
+op item create --category "SSH Key" \
+  --title "Hop 'n Bop Nakama SSH" \
+  --vault Private \
+  --generate-ssh-key
+
+op item create --category "SSH Key" \
+  --title "Hop 'n Bop Postgres SSH" \
+  --vault Private \
+  --generate-ssh-key
 ```
 
-Public keys get added to Hetzner servers in Phase A.
+Each command prints the public key. The Phase A agent will
+read these via `op read "op://Private/Hop 'n Bop Nakama SSH/public key"`
+and use them as Hetzner SSH keys. Private keys are accessed via
+the 1Password SSH agent during SSH connections.
 
-### 11. Confirm `credentials.env` is complete
+### 11. Confirm 1Password item is complete
 
-```
-HCLOUD_TOKEN=...
-HETZNER_DNS_TOKEN=...
-EDGEGAP_TOKEN=...
-EDGEGAP_ORG=...
-GITHUB_TOKEN=...
-DISCORD_WEBHOOK_URL=...
-UPTIMEROBOT_API_KEY=...
-GOOGLE_OAUTH_CLIENT_ID=...
-GOOGLE_OAUTH_CLIENT_SECRET=...
-FACEBOOK_APP_ID=...
-FACEBOOK_APP_SECRET=...
+```bash
+op item get "Snoring Cat Platform Migration" --format json \
+  | jq -r '.fields[] | "\(.label): \(if .value then "set" else "MISSING" end)"'
 ```
 
-When all 11 lines have values, you're done with pre-flight. Kick
-off Phase A.
+Expected: all 11 fields show `set`. Plus the two SSH Key items
+exist.
+
+When everything's set, kick off Phase A.
+
+### Runtime credential consumption (how the agent reads secrets)
+
+Each phase script begins by materializing a temp working file
+from 1Password, sourcing it, and unsetting it before exit:
+
+```bash
+# Phase startup: fetch all secrets via op inject
+TEMPDIR=$(mktemp -d)
+trap "rm -rf $TEMPDIR" EXIT
+op inject -i "$REPO/scripts/migration/credentials.env.tpl" \
+  > "$TEMPDIR/credentials.env"
+chmod 600 "$TEMPDIR/credentials.env"
+set -a
+source "$TEMPDIR/credentials.env"
+set +a
+```
+
+The template `scripts/migration/credentials.env.tpl` looks like:
+```
+HCLOUD_TOKEN={{ op://Private/Snoring Cat Platform Migration/HCLOUD_TOKEN }}
+HETZNER_DNS_TOKEN={{ op://Private/Snoring Cat Platform Migration/HETZNER_DNS_TOKEN }}
+# ... etc.
+```
+
+The temp file lives in a `mktemp` directory and gets shredded
+on exit. Secrets never persist on disk.
+
+For one-off uses, `op run --` is cleaner:
+```bash
+op run --env-file=scripts/migration/credentials.env.tpl -- \
+  pulumi up --stack snoringcat-platform/prod
+```
 
 ---
 
 ## State file format
 
-`~/.hopnbop-migration/state.json`:
+`~/.hopnbop-migration/state.json` (non-sensitive only — all
+secrets live in 1Password):
 
 ```json
 {
@@ -708,9 +801,7 @@ off Phase A.
     "hetzner_staging_ip": null,
     "hetzner_private_network_id": null,
     "nakama_url": "https://nakama.snoringcat.games",
-    "nakama_console_password": null,
     "nakama_version": null,
-    "postgres_password": null,
     "edgegap_app_name": "hopnbop-server",
     "edgegap_app_version": null,
     "edgegap_image_uri": null
@@ -750,8 +841,12 @@ configured. Admin console accessible from your IP only.
 
 ### Steps
 
-1. Read `credentials.env`, validate all 11 vars present.
-2. Initialize state file if missing.
+1. **Materialize credentials** from 1Password:
+   `op inject -i scripts/migration/credentials.env.tpl > $TEMPDIR/credentials.env`,
+   then `source` it. Validate all 11 expected vars are
+   non-empty. Trap on EXIT to shred temp file.
+2. Initialize state file at `~/.hopnbop-migration/state.json` if
+   missing.
 3. **Pulumi project setup** (one-time, idempotent):
    - Create directory `infra/pulumi/snoringcat-platform/`.
    - `pulumi new hetzner-go --name snoringcat-platform`.
@@ -760,8 +855,10 @@ configured. Admin console accessible from your IP only.
    - `pulumi config set hetzner:token $HCLOUD_TOKEN --secret`.
 4. **Declare Hetzner infra in Pulumi** (Go code under
    `infra/pulumi/snoringcat-platform/`):
-   - SSH keys (`nakama`, `postgres`) loaded from
-     `~/.hopnbop-migration/ssh/`.
+   - SSH key resources: read public keys via
+     `op read "op://Private/Hop 'n Bop Nakama SSH/public key"`
+     and `op read "op://Private/Hop 'n Bop Postgres SSH/public key"`,
+     register with Hetzner.
    - Private network `snoringcat-internal` (10.0.0.0/16).
    - Server `nakama-prod-1` (CAX11, Hillsboro, Ubuntu 24.04,
      attach to private network).
@@ -776,13 +873,17 @@ configured. Admin console accessible from your IP only.
    - Pulumi outputs: server IDs, public IPs, private IPs.
 5. `pulumi up`. State persists to S3. Outputs written to state
    file.
-6. SSH in to both boxes (poll until reachable):
+6. SSH in to both boxes (1Password SSH agent serves the private
+   keys; agent-forwarding optional). Poll until reachable, then:
    - `apt update && apt upgrade -y`
    - Install Docker + Docker Compose (`get.docker.com` script).
    - Install fail2ban, ufw (configure to match cloud firewall).
 7. **Postgres box** (`/opt/postgres/docker-compose.yml`):
    - Postgres 16, persistent volume `/var/lib/postgresql/data`.
-   - Generated strong password (write to state file).
+   - Generated strong password — stored in 1Password as a new
+     field on the migration item (`POSTGRES_PASSWORD`,
+     concealed); state file references it as
+     `op://Private/Snoring Cat Platform Migration/POSTGRES_PASSWORD`.
    - `pg_hba.conf` restricts to private network CIDR.
    - Bring up; verify `psql` connection from Nakama box over
      private network.
@@ -792,11 +893,15 @@ configured. Admin console accessible from your IP only.
      `nakama.snoringcat.games`.
    - Nakama config:
      - `database.address` → Postgres private IP.
-     - Console password from state file.
-     - Server-key set (random, written to state).
-     - Google + Facebook OAuth credentials from
-       `credentials.env`.
-     - Session encryption key (random).
+     - Console password generated and stored in 1Password as
+       `NAKAMA_CONSOLE_PASSWORD` field.
+     - Server-key generated and stored in 1Password as
+       `NAKAMA_SERVER_KEY` field.
+     - Google + Facebook OAuth credentials sourced from the
+       running shell (already populated from `op inject` in
+       step 1).
+     - Session encryption key generated and stored in 1Password
+       as `NAKAMA_SESSION_ENCRYPTION_KEY` field.
    - Bring up Caddy first; verify TLS issuance (poll Caddy logs
      until `certificate obtained successfully`).
    - Bring up Nakama; verify container healthy.
