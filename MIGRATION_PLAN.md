@@ -688,36 +688,23 @@ pushes.
 5. Append to `~/.hopnbop-migration/credentials.env`:
    `HCLOUD_TOKEN=<paste-token>`
 
-### 2. Hetzner DNS
+### 2. (skipped) Hetzner DNS &mdash; not used
 
-> **Heads-up (notice received 2026-04-27):** Hetzner is moving
-> DNS into the unified **Hetzner Console** (the same one as
-> Cloud). The standalone `dns.hetzner.com` console goes
-> **read-only on 2026-05-20**. Existing zones may have been
-> auto-migrated to projects named "DNS Migrated" or "konsoleH"
-> in the new console — check there first. New zones can only
-> be created in the Hetzner Console now.
+Originally this step set up Hetzner DNS for studio domains.
+That changed once we settled on Cloudflare Pages for static
+hosting: Cloudflare Pages requires the domain to be a
+**Cloudflare zone** (DNS managed by Cloudflare) before you can
+attach it as a custom domain. Trying to add a custom domain
+without a zone fails with "Only domains active on your
+Cloudflare account can be added."
 
-1. https://console.hetzner.com → sign in (same account as
-   Cloud).
-2. Look for an existing project named "DNS Migrated" or
-   "konsoleH" with your zones already in it. If so, you can
-   move those zones into the `snoringcat-platform` project
-   (recommended for one-project ops). If no zones exist, create
-   `snoringcat.games` in the `snoringcat-platform` project →
-   DNS section.
-3. **Update your domain registrar's nameservers** to:
-   `hydrogen.ns.hetzner.com`, `oxygen.ns.hetzner.com`,
-   `helium.ns.hetzner.de`. Propagation 1-24h. **Do this now** so
-   it's done by the time Phase A runs.
-4. API token: in the new console, the unified
-   `HCLOUD_TOKEN` from step 1 may already cover DNS
-   (preferred). If a separate DNS-scoped token is still needed
-   (verify in Project → Security → API Tokens, look for DNS
-   permissions), generate it there.
-5. Append: `HETZNER_DNS_TOKEN=<paste-token>` — set this to the
-   same value as `HCLOUD_TOKEN` if the unified token covers
-   DNS, otherwise the separate DNS-scoped token.
+So all studio DNS is on Cloudflare instead of Hetzner. See
+step 7 below for the Cloudflare zone + nameserver-change flow.
+Hetzner Cloud is still used for compute (Nakama box, Postgres
+box, staging box); Hetzner DNS is not used at all.
+
+**No `HETZNER_DNS_TOKEN` is needed.** The original step's
+output of that env var is removed from the credentials list.
 
 ### 3. Edgegap account
 
@@ -999,7 +986,7 @@ git push
 ```bash
 age -d -i ~/.config/age/key.txt \
   ~/.claude/secrets/hopnbop-migration.env.age \
-  | grep -c "^[A-Z_]*=" # should print 14
+  | grep -c "^[A-Z_]*=" # should print 13
 ```
 
 ### 13. On the laptop: pull and decrypt
@@ -1218,23 +1205,33 @@ configured. Admin console accessible from your IP only.
 
 1. **Source credentials** from
    `~/.hopnbop-migration/credentials.env` (decrypted in
-   pre-flight step 12/13). Validate all 14 expected vars are
-   non-empty (11 provider tokens + `CLOUDFLARE_API_TOKEN` +
+   pre-flight step 12/13). Validate all 13 expected vars are
+   non-empty (10 provider tokens + `CLOUDFLARE_API_TOKEN` +
    `CLOUDFLARE_ACCOUNT_ID` + `PULUMI_CONFIG_PASSPHRASE`).
+   `HETZNER_DNS_TOKEN` was dropped because Cloudflare manages
+   all studio DNS now (see pre-flight step 2).
    If file is missing, decrypt from
    `~/.claude/secrets/hopnbop-migration.env.age`.
-   Export `PULUMI_CONFIG_PASSPHRASE` so subsequent `pulumi`
-   commands can decrypt state.
+   Export `PULUMI_CONFIG_PASSPHRASE` and
+   `CLOUDFLARE_API_TOKEN` so subsequent `pulumi` commands can
+   manage Hetzner Cloud + Cloudflare DNS resources.
 2. Initialize state file at `~/.hopnbop-migration/state.json` if
    missing.
 3. **Pulumi project setup** (one-time, idempotent):
    - Create directory `infra/pulumi/snoringcat-platform/`.
    - `pulumi new hetzner-go --name snoringcat-platform`.
+   - Add Cloudflare provider too:
+     `cd infra/pulumi/snoringcat-platform && go get github.com/pulumi/pulumi-cloudflare/sdk/v5`.
    - State backend: S3 bucket `hopnbop-pulumi-state` (create if
      not exists, in `us-west-2`, versioning + encryption on).
-   - `pulumi config set hetzner:token $HCLOUD_TOKEN --secret`.
-4. **Declare Hetzner infra in Pulumi** (Go code under
-   `infra/pulumi/snoringcat-platform/`):
+   - Configure both providers' tokens:
+     - `pulumi config set hetzner:token $HCLOUD_TOKEN --secret`
+     - `pulumi config set cloudflare:apiToken $CLOUDFLARE_API_TOKEN --secret`
+4. **Declare infra in Pulumi** (Go code under
+   `infra/pulumi/snoringcat-platform/`). Two providers, one
+   stack:
+
+   **Hetzner Cloud (compute):**
    - SSH key resources: load `*.pub` files from
      `~/.hopnbop-migration/ssh/`, register with Hetzner.
    - Private network `snoringcat-internal` (10.0.0.0/16).
@@ -1246,9 +1243,21 @@ configured. Admin console accessible from your IP only.
      - Nakama: 22/tcp from your IP, 80+443/tcp from world.
      - Postgres: 22/tcp from your IP, 5432/tcp from Nakama
        private IP only.
-   - Hetzner DNS A record `nakama.snoringcat.games` → Nakama
-     public IP, TTL 60.
-   - Pulumi outputs: server IDs, public IPs, private IPs.
+
+   **Cloudflare DNS (records in the existing
+   `snoringcat.games` zone — created during pre-flight by
+   the user adopting the zone in Cloudflare):**
+   - A record `nakama.snoringcat.games` → Nakama public IP.
+     Proxied: **off** (gray cloud) &mdash; Nakama uses
+     long-lived WebSocket and gRPC, Cloudflare's free-tier
+     proxy has timeouts that don't fit, and we don't need
+     Cloudflare's caching for an API endpoint. TTL: Auto.
+   - (Phase B will add `grafana.snoringcat.games`; Phase G
+     will add `nakama-staging.snoringcat.games`. Both follow
+     the same DNS-only pattern.)
+
+   **Pulumi outputs:** server IDs, public IPs, private IPs,
+   DNS record IDs.
 5. `pulumi up`. State persists to S3. Outputs written to state
    file.
 6. SSH in to both boxes (using the private keys at
@@ -1624,9 +1633,12 @@ $0/mo.
 
 #### 7. Migrate `hopnbop.net` to Cloudflare Pages
 
-This is a separate deploy target from `snoringcat.games`
-because `hopnbop.net` serves the Godot 4 web export at root,
-which has different headers and a different deploy pipeline.
+Mirrors what we did for `snoringcat.games` in pre-flight:
+add the domain as a Cloudflare zone, change nameservers at the
+registrar, attach as a Pages custom domain. `hopnbop.net` is a
+separate Cloudflare Pages project from `snoringcat-games`
+because it serves the Godot 4 web export at root, which has
+different headers and a different deploy pipeline.
 
    a. **Add a `web/_headers` file** to `hopnbop_private` with
       the Godot 4 web requirements:
@@ -1651,17 +1663,37 @@ which has different headers and a different deploy pipeline.
       `aws s3 sync` + `aws cloudfront create-invalidation`
       steps with `wrangler pages deploy web/`. The Godot
       `--export-release "Web"` step stays as-is.
-   d. **Verify** that `hopnbop-website.pages.dev` loads the
-      game cleanly &mdash; specifically test that
-      `crossOriginIsolated === true` in the browser DevTools
-      console (means COOP/COEP are correct and SharedArrayBuffer
-      is available).
-   e. **Cutover DNS:** in Hetzner DNS for `hopnbop.net`, change
-      the apex A record (or ALIAS) and `www.hopnbop.net` CNAME
-      to point at Cloudflare Pages. Lower TTL 24h ahead.
-   f. **Verify in production:** game loads via
-      `https://hopnbop.net/`, leaderboards/blog/legal pages all
-      reachable.
+   d. **Verify** that `hopnbop-website.pages.dev` (or whatever
+      Pages-assigned URL) loads the game cleanly &mdash;
+      specifically test that `crossOriginIsolated === true` in
+      the browser DevTools console (means COOP/COEP are
+      correct and SharedArrayBuffer is available).
+   e. **Add `hopnbop.net` as a Cloudflare zone:**
+      - Cloudflare dashboard &rarr; Add Site &rarr; enter
+        `hopnbop.net` &rarr; Free plan.
+      - Cloudflare imports existing DNS records (currently
+        served by AWS Route 53 hosted zone
+        `Z05562172A1JF6AX39U2N`). Spot-check the import.
+      - Cloudflare gives you two nameservers.
+      - At the domain registrar (look up via WHOIS or check
+        records you have), change nameservers to Cloudflare's.
+      - Wait for Cloudflare to mark the zone active (5 min -
+        24h).
+   f. **Add `hopnbop.net` and `www.hopnbop.net` as Pages
+      custom domains** on the new `hopnbop-website` Pages
+      project. If you hit "domain already in use" errors,
+      delete the conflicting A / CNAME records in Cloudflare
+      DNS first (same procedure as during pre-flight for
+      `snoringcat.games`).
+   g. **Update the Pulumi Cloudflare DNS module** to manage
+      the `hopnbop.net` zone too, including any per-server A
+      records that survived the Edgegap cutover. Note that
+      the legacy `s-{ip}.game.hopnbop.net` per-server pattern
+      from the GameLift era is gone (Edgegap allocates with
+      its own hostnames).
+   h. **Verify in production:** game loads via
+      `https://hopnbop.net/`, leaderboards/blog/legal pages
+      all reachable.
 
 #### 8. AWS teardown via Pulumi adopt-and-destroy
 
@@ -1677,15 +1709,20 @@ by ARN, then destroys them in dependency order:
    - **then** S3 bucket `hopnbop-website` (now empty / not in
      use after step 7), CloudFront distribution
      `E3LT833LSVTW9R`
-   - finally, Route 53 records under `game.hopnbop.net`
+   - **then** Route 53 records under `game.hopnbop.net` and
+     the entire Route 53 hosted zone for `hopnbop.net`
+     (`Z05562172A1JF6AX39U2N`) &mdash; **only after** the
+     Cloudflare zone for `hopnbop.net` is active and
+     authoritative (verified by `whois hopnbop.net` showing
+     Cloudflare nameservers and `dig +trace hopnbop.net NS`
+     resolving via Cloudflare).
 
 Pulumi gives a clean diff of what was destroyed and a
 recoverable state if the teardown fails partway.
 
-   **Preserved (NOT in the destroy stack):** Route 53 zone
-   `hopnbop.net` (DNS still managed there for now &mdash; can be
-   moved to Hetzner DNS in a follow-up if you want
-   single-provider DNS).
+   **Preserved (NOT in the destroy stack):** none. All AWS
+   resources are destroyed in this phase, including the Route
+   53 zone for `hopnbop.net` (DNS now lives in Cloudflare).
 
 9. Set CloudWatch budget alarm at $5/mo (catches anything we
    missed; should never trigger if teardown was clean).
