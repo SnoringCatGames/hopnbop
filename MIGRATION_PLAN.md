@@ -586,6 +586,50 @@ Unix-style commands work as-is.
 The steps below show bash syntax; translate to PowerShell as
 above when needed.
 
+### Pre-flight security gate (run first, both machines)
+
+Before generating any keys or pasting any tokens, verify the
+following on each machine. If any check fails, fix it before
+continuing — don't just paper over.
+
+1. **`claude-config` repo is PRIVATE on GitHub.**
+   ```bash
+   gh repo view levilindsey/claude-config --json visibility
+   # expect: {"visibility":"PRIVATE"}
+   ```
+   If `PUBLIC`: encrypted `.age` blobs become world-readable.
+   Crypto is still strong, but defense-in-depth fails. Flip to
+   private at https://github.com/levilindsey/claude-config/settings.
+
+2. **Full-disk encryption is on** (mitigates "stolen unlocked
+   laptop" → all secrets exposed):
+   - **Windows:** Settings → Privacy & security → Device
+     encryption (Home) or BitLocker (Pro). Should show "On".
+     PowerShell check:
+     ```powershell
+     manage-bde -status C:
+     # look for: Conversion Status = Fully Encrypted
+     ```
+   - **macOS:** System Settings → Privacy & Security →
+     FileVault → On.
+   - **Linux:** LUKS on `/` partition.
+3. **Back up the age private key off-machine** *after* you
+   generate it (step 0 below). Recommended: print
+   `~/.config/age/key.txt` to paper, store in a drawer or
+   safe-deposit box. **Do not** sync the private key via
+   Dropbox, Google Drive, etc. — that defeats the "key never
+   leaves the machine" property and creates a third copy you
+   don't control. If your disk dies and you have no backup,
+   every credential ever encrypted to that key is unrecoverable
+   from this machine; you'd recover via the other machine's key
+   and rotate.
+4. **Edit `credentials.env` in a real editor (Notepad, VS
+   Code, vim), not via shell redirection.** Pasting tokens via
+   `>>` puts them in PowerShell / bash history, which is a
+   recoverable plaintext leak even after encryption.
+
+When all four checks pass, proceed to step 0.
+
 ### 0. age + dotfiles setup (one-time, both machines)
 
 **On each machine:**
@@ -779,6 +823,42 @@ chmod 600 ~/.hopnbop-migration/ssh/postgres
 
 Public keys (`*.pub`) are non-sensitive and stay readable.
 
+### 10b. Generate Pulumi state passphrase
+
+Pulumi encrypts the secrets it stores in its S3 state file
+(server IDs are non-sensitive but we'll also store generated
+secrets like the Hetzner project's API token cache there). The
+encryption uses a **passphrase** that needs to be available
+whenever `pulumi up` runs. Cleanest: store it in
+`credentials.env` so it's age-encrypted alongside everything
+else.
+
+Generate a strong passphrase and append:
+
+```bash
+# 32 random bytes, base64-encoded (~ 43 chars):
+PULUMI_PW=$(openssl rand -base64 32)
+echo "PULUMI_CONFIG_PASSPHRASE=$PULUMI_PW" \
+  >> ~/.hopnbop-migration/credentials.env
+unset PULUMI_PW
+```
+
+PowerShell equivalent:
+```powershell
+$bytes = New-Object byte[] 32
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+$pw = [Convert]::ToBase64String($bytes)
+"PULUMI_CONFIG_PASSPHRASE=$pw" |
+  Out-File -Append -Encoding ASCII $HOME\.hopnbop-migration\credentials.env
+Remove-Variable bytes, pw
+```
+
+Phase A's Pulumi commands set `PULUMI_CONFIG_PASSPHRASE` from
+the sourced `credentials.env`. If you ever lose this passphrase,
+you can't decrypt Pulumi-stored secrets in the state file —
+re-create the stack from scratch (Hetzner resources still
+exist; Pulumi state can be rebuilt with `pulumi import`).
+
 ### 11. Encrypt and push to claude-config
 
 Encrypt `credentials.env` and the two SSH private keys to the
@@ -819,7 +899,7 @@ git push
 ```bash
 age -d -i ~/.config/age/key.txt \
   ~/.claude/secrets/hopnbop-migration.env.age \
-  | grep -c "^[A-Z_]*=" # should print 11
+  | grep -c "^[A-Z_]*=" # should print 12
 ```
 
 ### 12. On the laptop: pull and decrypt
@@ -894,6 +974,78 @@ to `~/.hopnbop-migration/credentials.env`, re-encrypts to
 to the other machine. Pull on the other machine + re-decrypt to
 sync.
 
+### Key and credential rotation
+
+Three rotation scenarios. Run these procedures *before* the
+incident, not after.
+
+**A. Adding a new machine (e.g., a new laptop).**
+
+1. On the new machine: install `age`, run `age-keygen`, save the
+   public key.
+2. On any existing machine: pull `claude-config`, append the new
+   public key to `secrets/hopnbop-migration.recipients`, commit,
+   push.
+3. On any existing machine: re-encrypt `credentials.env` and
+   the SSH `.age` files using the updated recipients list (same
+   commands as pre-flight step 11). Commit, push.
+4. On the new machine: pull `claude-config`, decrypt to
+   `~/.hopnbop-migration/` (same commands as pre-flight step
+   12), create the `~/.claude/secrets` junction.
+
+No live credential rotation needed — the new key has access to
+the same secrets, that's the point.
+
+**B. A machine is lost / its age private key may be compromised.**
+
+This is serious. Old `.age` blobs in `claude-config` git
+history are decryptable forever by anyone holding that key, so
+you must assume **every credential ever encrypted to that key
+is exposed**. Procedure:
+
+1. Remove that machine's public key from
+   `secrets/hopnbop-migration.recipients`. Commit, push.
+2. Rotate **every** secret in `credentials.env`:
+   - Hetzner Cloud token: revoke at console.hetzner.com, create
+     new one.
+   - Hetzner DNS token: revoke + create.
+   - Edgegap token: revoke + create.
+   - GitHub PAT: revoke at github.com/settings/tokens, create
+     new.
+   - Discord webhook: delete + recreate at the channel.
+   - UptimeRobot API key: rotate.
+   - Google OAuth client secret: rotate at console.cloud.google.com.
+   - Facebook App Secret: rotate at developers.facebook.com.
+   - Pulumi passphrase: re-encrypt the Pulumi state with a new
+     passphrase via `pulumi stack change-secrets-provider`.
+   - Hetzner SSH keys: generate new pair, add to `authorized_keys`
+     on the boxes, remove old key.
+   - Postgres password, Nakama console password, server keys,
+     session encryption key: rotate by editing Nakama config and
+     restarting (use `pulumi up` if Pulumi-managed).
+3. Re-encrypt fresh `credentials.env` to a new `.age` blob using
+   the trimmed recipients list. Commit, push.
+4. Optionally: rewrite `claude-config` git history to remove old
+   `.age` blobs (`git filter-repo` or `bfg-repo-cleaner`). Note
+   that this is cosmetic — anyone who already cloned has them
+   forever. The cred rotation in step 2 is what actually
+   matters.
+
+**C. Routine rotation (annually, or after major project events).**
+
+Rotate the high-value subset on a schedule:
+- AWS-related: rotated automatically by SSO; nothing to do.
+- Hetzner / Edgegap / GitHub tokens: rotate annually. Same
+  procedure as B step 2 but only for those tokens.
+- Discord / UptimeRobot: low-value; rotate every couple of years.
+- Pulumi passphrase: rotate every couple of years.
+- age private keys: rotate when machines are replaced.
+
+**Rotation does NOT require:** revoking and reissuing the OAuth
+provider apps themselves (Google / Facebook). Those are stable
+across token rotations; you only rotate the *client secret*
+within the same app.
+
 ---
 
 ## State file format
@@ -966,9 +1118,12 @@ configured. Admin console accessible from your IP only.
 
 1. **Source credentials** from
    `~/.hopnbop-migration/credentials.env` (decrypted in
-   pre-flight step 11/12). Validate all 11 expected vars are
-   non-empty. If file is missing, decrypt from
+   pre-flight step 11/12). Validate all 12 expected vars are
+   non-empty (11 provider tokens + `PULUMI_CONFIG_PASSPHRASE`).
+   If file is missing, decrypt from
    `~/.claude/secrets/hopnbop-migration.env.age`.
+   Export `PULUMI_CONFIG_PASSPHRASE` so subsequent `pulumi`
+   commands can decrypt state.
 2. Initialize state file at `~/.hopnbop-migration/state.json` if
    missing.
 3. **Pulumi project setup** (one-time, idempotent):
