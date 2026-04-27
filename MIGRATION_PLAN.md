@@ -550,6 +550,42 @@ PostToolUse auto-push hook syncs the encrypted file to the
 laptop. Each machine decrypts to a local
 `~/.hopnbop-migration/credentials.env` when needed.
 
+### Shell notes (read first if on Windows / PowerShell)
+
+The shell commands below use Unix-style syntax (bash / zsh).
+**On native Windows PowerShell, three things differ:**
+
+1. **Tilde (`~`) does NOT expand** when passed as an argument
+   to external programs (it works in PowerShell cmdlets but not
+   when piped to `age`, `ssh-keygen`, etc.). **Use `$HOME`
+   instead:**
+   ```powershell
+   age-keygen -o $HOME\.config\age\key.txt          # works
+   age-keygen -o ~/.config/age/key.txt              # FAILS (literal ~)
+   ```
+2. **`chmod` does nothing useful in native PowerShell.** Skip
+   the `chmod 600` lines. Files in your user profile
+   (`C:\Users\<you>\`) are already private to your user via
+   NTFS ACLs. If you want to be extra-strict:
+   ```powershell
+   icacls $HOME\.config\age\key.txt /inheritance:r /grant:r "${env:USERNAME}:(F)"
+   ```
+3. **`touch` doesn't exist.** Use:
+   ```powershell
+   New-Item -ItemType File $HOME\.hopnbop-migration\credentials.env -Force
+   ```
+
+Other minor differences: line continuation is backtick (`` ` ``)
+not backslash (`\`); `mkdir -p` accepts `-p` as a no-op but
+errors if the directory already exists (vs. silent in bash) —
+ignore "already exists" errors.
+
+If you're using **Git Bash** or **WSL** on Windows, the
+Unix-style commands work as-is.
+
+The steps below show bash syntax; translate to PowerShell as
+above when needed.
+
 ### 0. age + dotfiles setup (one-time, both machines)
 
 **On each machine:**
