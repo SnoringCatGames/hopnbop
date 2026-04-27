@@ -515,12 +515,14 @@ start, writes at end, is idempotent on re-run.
 infra IDs, IPs, phase status). See [State file format](#state-file-format)
 below.
 
-**Credentials:** stored in **1Password** (item: "Snoring Cat
-Platform Migration", in the Private vault). Synced across
-machines automatically. Materialized to a temp file at runtime
-via `op inject` and shredded after each phase. SSH keys stored
-as 1Password SSH Key items; private keys served via the
-1Password SSH agent (never written to disk in plaintext).
+**Credentials:** stored as an **age-encrypted file** in your
+existing `claude-config` dotfiles repo (synced across
+desktop/laptop via the existing PostToolUse auto-push hook).
+Decrypted on demand to `~/.hopnbop-migration/credentials.env`
+(gitignored, mode 0600). SSH private keys for Hetzner stored
+the same way. age uses multi-recipient encryption so each
+machine has its own private key; private keys never leave the
+machine they were generated on.
 
 **Kicking off phase N:**
 > Open Claude Code in `C:\Users\lsl\Repositories\hopnbop_private`,
@@ -540,50 +542,61 @@ exist.
 
 ## Pre-flight manual checklist (you do this once, ~60-90 min)
 
-Do these in order. Each step ends with a secret you paste into a
-**1Password item**, not a local file. 1Password syncs across your
-desktop and laptop automatically; the agent fetches secrets at
-runtime via the `op` CLI.
+Do these in order. Secrets get written to a local
+`credentials.env` on the desktop you're running pre-flight from,
+then encrypted with **age** to a multi-recipient `.age` file in
+your `claude-config` dotfiles repo. The dotfiles repo's
+PostToolUse auto-push hook syncs the encrypted file to the
+laptop. Each machine decrypts to a local
+`~/.hopnbop-migration/credentials.env` when needed.
 
-### 0. 1Password CLI setup (one-time, both machines)
+### 0. age + dotfiles setup (one-time, both machines)
 
-1. Make sure 1Password 8 desktop app is installed and signed in
-   on each machine you'll run the migration from.
-2. **Settings → Developer → Integrate with 1Password CLI:** turn
-   on. (Allows biometric / desktop-app-mediated auth instead of
-   typing master password every session.)
-3. Install the CLI:
-   - Windows: `winget install AgileBits.1Password.CLI` or
-     download from `developer.1password.com/docs/cli/get-started`.
-   - macOS: `brew install --cask 1password-cli`.
-4. Verify: `op account list` should show your account. If it
-   prompts you to sign in, do so once per machine.
-5. Create the migration vault item once (on either machine — it
-   syncs):
+**On each machine:**
+
+1. Install `age`:
+   - Windows: `scoop install age` (or `winget install FiloSottile.age`).
+   - macOS: `brew install age`.
+   - Linux: `apt install age` or download from
+     `github.com/FiloSottile/age/releases`.
+2. Generate this machine's keypair:
    ```bash
-   op item create \
-     --category "API Credential" \
-     --title "Snoring Cat Platform Migration" \
-     --vault Private \
-     notes="Credentials for the AWS -> Nakama+Hetzner+Edgegap migration. See hopnbop_private/MIGRATION_PLAN.md."
+   mkdir -p ~/.config/age
+   age-keygen -o ~/.config/age/key.txt
+   chmod 600 ~/.config/age/key.txt
    ```
-   You'll add fields to it as you go through the steps below.
-6. **SSH agent setup** (used in Phase A to SSH into Hetzner
-   boxes):
-   - 1Password → Settings → Developer → **Use the SSH agent:**
-     turn on.
-   - Configure your SSH client to use the 1Password agent
-     (instructions in the same Settings panel; on Windows it
-     points to a named pipe, on macOS to a socket path).
-   - Verify: `ssh-add -l` should list "no identities" or any
-     keys you've already loaded; we'll add the Hetzner keys in
-     step 10.
+3. Copy this machine's **public** key (last line of the keygen
+   output, starts with `age1...`). You'll paste it into the
+   recipients file in step 4.
 
-After this, all secrets live in 1Password under the
-**"Snoring Cat Platform Migration"** item. The migration agent
-reads them via `op read "op://Private/Snoring Cat Platform Migration/<field>"`.
-**Do not write these values to disk in plain text.** A working
-copy is materialized at runtime and deleted after each phase.
+**On the desktop (where you'll run pre-flight):**
+
+4. In your `claude-config` dotfiles repo, create the recipients
+   list (public keys for both machines that should be able to
+   decrypt). The `~/.claude/secrets/` directory should be
+   tracked by claude-config so the encrypted file syncs:
+   ```bash
+   mkdir -p ~/.claude/secrets
+   cat > ~/.claude/secrets/hopnbop-migration.recipients <<EOF
+   # Desktop
+   age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   # Laptop
+   age1yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+   EOF
+   ```
+   (Public keys aren't sensitive; the recipients file is safe
+   in git.)
+5. Set up the local working directory (gitignored, machine-only):
+   ```bash
+   mkdir -p ~/.hopnbop-migration/ssh
+   touch ~/.hopnbop-migration/credentials.env
+   chmod 600 ~/.hopnbop-migration/credentials.env
+   ```
+6. Add `~/.hopnbop-migration/` to your global gitignore.
+
+After this, work through steps 1-10, populating the **local**
+`~/.hopnbop-migration/credentials.env`. Step 11 encrypts and
+pushes.
 
 ### 1. Hetzner Cloud account
 
@@ -592,23 +605,39 @@ copy is materialized at runtime and deleted after each phase.
 3. Create project: **`snoringcat-platform`**.
 4. Project → Security → API Tokens → Generate. Name: `migration`.
    Permissions: **Read & Write**.
-5. Add to 1Password item, field name `HCLOUD_TOKEN` (concealed):
-   ```bash
-   op item edit "Snoring Cat Platform Migration" \
-     "HCLOUD_TOKEN[password]=<paste-token-here>"
-   ```
+5. Append to `~/.hopnbop-migration/credentials.env`:
+   `HCLOUD_TOKEN=<paste-token>`
 
-### 2. Hetzner DNS (free, separate from Cloud)
+### 2. Hetzner DNS
 
-1. https://dns.hetzner.com → sign in (same account).
-2. Add zone for `snoringcat.games`.
+> **Heads-up (notice received 2026-04-27):** Hetzner is moving
+> DNS into the unified **Hetzner Console** (the same one as
+> Cloud). The standalone `dns.hetzner.com` console goes
+> **read-only on 2026-05-20**. Existing zones may have been
+> auto-migrated to projects named "DNS Migrated" or "konsoleH"
+> in the new console — check there first. New zones can only
+> be created in the Hetzner Console now.
+
+1. https://console.hetzner.com → sign in (same account as
+   Cloud).
+2. Look for an existing project named "DNS Migrated" or
+   "konsoleH" with your zones already in it. If so, you can
+   move those zones into the `snoringcat-platform` project
+   (recommended for one-project ops). If no zones exist, create
+   `snoringcat.games` in the `snoringcat-platform` project →
+   DNS section.
 3. **Update your domain registrar's nameservers** to:
    `hydrogen.ns.hetzner.com`, `oxygen.ns.hetzner.com`,
    `helium.ns.hetzner.de`. Propagation 1-24h. **Do this now** so
    it's done by the time Phase A runs.
-4. Hetzner DNS → API tokens → Create.
-5. Add to 1Password item, field name `HETZNER_DNS_TOKEN`
-   (concealed).
+4. API token: in the new console, the unified
+   `HCLOUD_TOKEN` from step 1 may already cover DNS
+   (preferred). If a separate DNS-scoped token is still needed
+   (verify in Project → Security → API Tokens, look for DNS
+   permissions), generate it there.
+5. Append: `HETZNER_DNS_TOKEN=<paste-token>` — set this to the
+   same value as `HCLOUD_TOKEN` if the unified token covers
+   DNS, otherwise the separate DNS-scoped token.
 
 ### 3. Edgegap account
 
@@ -618,32 +647,30 @@ copy is materialized at runtime and deleted after each phase.
    Approval typically <24h.)
 3. Add payment method.
 4. User → API Tokens → Create.
-5. Add to 1Password item:
-   - `EDGEGAP_TOKEN` (concealed)
-   - `EDGEGAP_ORG` (text — your org slug, visible in account
-     settings)
+5. Append:
+   - `EDGEGAP_TOKEN=<paste-token>`
+   - `EDGEGAP_ORG=<your-org-slug>` (visible in account settings)
 
 ### 4. GitHub Personal Access Token
 
 1. https://github.com/settings/tokens → Generate new (classic).
 2. Scopes: `repo`, `workflow`, `admin:org` (if pushing to
    SnoringCatGames org).
-3. Add to 1Password item, field name `GITHUB_TOKEN` (concealed).
+3. Append: `GITHUB_TOKEN=<paste-token>`
 
 ### 5. Discord webhook
 
-Already in `~/.claude/jobs/discord-config.json`? Copy the URL
-into the 1Password item as `DISCORD_WEBHOOK_URL` (concealed).
+Already in `~/.claude/jobs/discord-config.json`? Append the URL:
+`DISCORD_WEBHOOK_URL=<paste-url>`
 
 If not: Discord server → channel → Integrations → Webhooks →
-New, copy URL, add to 1Password.
+New, copy URL, append.
 
 ### 6. UptimeRobot (free)
 
 1. https://uptimerobot.com → Sign up.
 2. My Settings → API Settings → Main API Key.
-3. Add to 1Password item, field name `UPTIMEROBOT_API_KEY`
-   (concealed).
+3. Append: `UPTIMEROBOT_API_KEY=<paste-key>`
 
 ### 7. Google OAuth (for Google sign-in)
 
@@ -659,9 +686,9 @@ New, copy URL, add to 1Password.
    OAuth client ID → **Web application**.
 4. Authorized redirect URIs:
    `https://nakama.snoringcat.games/v2/account/authenticate/google`.
-5. Add to 1Password item:
-   - `GOOGLE_OAUTH_CLIENT_ID` (text)
-   - `GOOGLE_OAUTH_CLIENT_SECRET` (concealed)
+5. Append:
+   - `GOOGLE_OAUTH_CLIENT_ID=<id>`
+   - `GOOGLE_OAUTH_CLIENT_SECRET=<secret>`
 
 ### 8. Facebook OAuth (for Facebook sign-in)
 
@@ -683,9 +710,9 @@ New, copy URL, add to 1Password.
    - Valid OAuth Redirect URIs:
      `https://nakama.snoringcat.games/v2/account/authenticate/facebook`.
 6. Settings → Basic → copy App ID and App Secret.
-7. Add to 1Password item:
-   - `FACEBOOK_APP_ID` (text)
-   - `FACEBOOK_APP_SECRET` (concealed)
+7. Append:
+   - `FACEBOOK_APP_ID=<id>`
+   - `FACEBOOK_APP_SECRET=<secret>`
 8. **App Review:** when you go beyond test users, submit for
    review (Facebook requires this for production). Reviews take
    1-7 days. **Do this in parallel with the migration**, not
@@ -701,53 +728,115 @@ Should print account `270469481989`. If expired, the SSO login
 re-prompts in a browser.
 
 (AWS credentials are managed by the AWS SSO flow on each machine
-— not in 1Password. The CLI handles caching.)
+— not in the credentials.env. The CLI handles caching.)
 
-### 10. Generate SSH keypairs (stored in 1Password)
+### 10. Generate SSH keypairs
 
-Use 1Password's **SSH Key** category (one item per keypair). They
-sync via 1Password and are served at runtime by the 1Password
-SSH agent — private keys never touch disk in plaintext.
+Generate locally; we'll encrypt them in step 11.
 
 ```bash
-op item create --category "SSH Key" \
-  --title "Hop 'n Bop Nakama SSH" \
-  --vault Private \
-  --generate-ssh-key
-
-op item create --category "SSH Key" \
-  --title "Hop 'n Bop Postgres SSH" \
-  --vault Private \
-  --generate-ssh-key
+ssh-keygen -t ed25519 -f ~/.hopnbop-migration/ssh/nakama -N "" -C "nakama"
+ssh-keygen -t ed25519 -f ~/.hopnbop-migration/ssh/postgres -N "" -C "postgres"
+chmod 600 ~/.hopnbop-migration/ssh/nakama
+chmod 600 ~/.hopnbop-migration/ssh/postgres
 ```
 
-Each command prints the public key. The Phase A agent will
-read these via `op read "op://Private/Hop 'n Bop Nakama SSH/public key"`
-and use them as Hetzner SSH keys. Private keys are accessed via
-the 1Password SSH agent during SSH connections.
+Public keys (`*.pub`) are non-sensitive and stay readable.
 
-### 11. Confirm 1Password item is complete
+### 11. Encrypt and push to claude-config
+
+Encrypt `credentials.env` and the two SSH private keys to the
+multi-recipient `.age` files:
 
 ```bash
-op item get "Snoring Cat Platform Migration" --format json \
-  | jq -r '.fields[] | "\(.label): \(if .value then "set" else "MISSING" end)"'
+RECIPIENTS=~/.claude/secrets/hopnbop-migration.recipients
+
+age -R "$RECIPIENTS" \
+  -o ~/.claude/secrets/hopnbop-migration.env.age \
+  ~/.hopnbop-migration/credentials.env
+
+age -R "$RECIPIENTS" \
+  -o ~/.claude/secrets/hopnbop-migration-nakama-ssh.age \
+  ~/.hopnbop-migration/ssh/nakama
+
+age -R "$RECIPIENTS" \
+  -o ~/.claude/secrets/hopnbop-migration-postgres-ssh.age \
+  ~/.hopnbop-migration/ssh/postgres
 ```
 
-Expected: all 11 fields show `set`. Plus the two SSH Key items
-exist.
+Commit + push (your PostToolUse auto-push hook may handle this;
+if not, `cd` into your claude-config checkout and commit
+manually):
 
-When everything's set, kick off Phase A.
+```bash
+cd <your-claude-config-checkout>
+git add secrets/hopnbop-migration.recipients \
+        secrets/hopnbop-migration.env.age \
+        secrets/hopnbop-migration-nakama-ssh.age \
+        secrets/hopnbop-migration-postgres-ssh.age
+git commit -m "Add encrypted hopnbop migration credentials"
+git push
+```
+
+**Sanity check the encrypted file:**
+
+```bash
+age -d -i ~/.config/age/key.txt \
+  ~/.claude/secrets/hopnbop-migration.env.age \
+  | grep -c "^[A-Z_]*=" # should print 11
+```
+
+### 12. On the laptop: pull and decrypt
+
+After pulling the latest claude-config on the laptop:
+
+```bash
+mkdir -p ~/.hopnbop-migration/ssh
+
+age -d -i ~/.config/age/key.txt \
+  ~/.claude/secrets/hopnbop-migration.env.age \
+  > ~/.hopnbop-migration/credentials.env
+chmod 600 ~/.hopnbop-migration/credentials.env
+
+age -d -i ~/.config/age/key.txt \
+  ~/.claude/secrets/hopnbop-migration-nakama-ssh.age \
+  > ~/.hopnbop-migration/ssh/nakama
+chmod 600 ~/.hopnbop-migration/ssh/nakama
+
+age -d -i ~/.config/age/key.txt \
+  ~/.claude/secrets/hopnbop-migration-postgres-ssh.age \
+  > ~/.hopnbop-migration/ssh/postgres
+chmod 600 ~/.hopnbop-migration/ssh/postgres
+
+# Regenerate public keys (cheap, derived from private):
+ssh-keygen -y -f ~/.hopnbop-migration/ssh/nakama \
+  > ~/.hopnbop-migration/ssh/nakama.pub
+ssh-keygen -y -f ~/.hopnbop-migration/ssh/postgres \
+  > ~/.hopnbop-migration/ssh/postgres.pub
+```
+
+Now the laptop has a working copy. Both machines are in sync.
 
 ### Runtime credential consumption (how the agent reads secrets)
 
-Each phase script begins by materializing a temp working file
-from 1Password, sourcing it, and unsetting it before exit:
+Phase scripts source the already-decrypted file directly. No
+per-session decrypt needed:
 
 ```bash
-# Phase startup: fetch all secrets via op inject
+set -a
+source ~/.hopnbop-migration/credentials.env
+set +a
+```
+
+If you want the paranoid mode (decrypt fresh each phase, never
+sit on disk between sessions): the agent can re-decrypt to a
+`mktemp` directory, source from there, shred on EXIT trap:
+
+```bash
 TEMPDIR=$(mktemp -d)
-trap "rm -rf $TEMPDIR" EXIT
-op inject -i "$REPO/scripts/migration/credentials.env.tpl" \
+trap "shred -u $TEMPDIR/credentials.env 2>/dev/null; rm -rf $TEMPDIR" EXIT
+age -d -i ~/.config/age/key.txt \
+  ~/.claude/secrets/hopnbop-migration.env.age \
   > "$TEMPDIR/credentials.env"
 chmod 600 "$TEMPDIR/credentials.env"
 set -a
@@ -755,28 +844,26 @@ source "$TEMPDIR/credentials.env"
 set +a
 ```
 
-The template `scripts/migration/credentials.env.tpl` looks like:
-```
-HCLOUD_TOKEN={{ op://Private/Snoring Cat Platform Migration/HCLOUD_TOKEN }}
-HETZNER_DNS_TOKEN={{ op://Private/Snoring Cat Platform Migration/HETZNER_DNS_TOKEN }}
-# ... etc.
-```
+Default phase scripts use the simple persistent-decrypt approach
+(file at `~/.hopnbop-migration/credentials.env`, mode 0600,
+gitignored). Switch to paranoid mode by setting
+`MIGRATION_DECRYPT_FRESH=1` before running a phase.
 
-The temp file lives in a `mktemp` directory and gets shredded
-on exit. Secrets never persist on disk.
+### Adding new secrets generated during phases
 
-For one-off uses, `op run --` is cleaner:
-```bash
-op run --env-file=scripts/migration/credentials.env.tpl -- \
-  pulumi up --stack snoringcat-platform/prod
-```
+Phase A generates the Postgres password, Nakama console password,
+server key, and session encryption key. The agent appends those
+to `~/.hopnbop-migration/credentials.env`, re-encrypts to
+`hopnbop-migration.env.age`, and the auto-push hook propagates
+to the other machine. Pull on the other machine + re-decrypt to
+sync.
 
 ---
 
 ## State file format
 
 `~/.hopnbop-migration/state.json` (non-sensitive only — all
-secrets live in 1Password):
+secrets live in the age-encrypted credentials file):
 
 ```json
 {
@@ -841,10 +928,11 @@ configured. Admin console accessible from your IP only.
 
 ### Steps
 
-1. **Materialize credentials** from 1Password:
-   `op inject -i scripts/migration/credentials.env.tpl > $TEMPDIR/credentials.env`,
-   then `source` it. Validate all 11 expected vars are
-   non-empty. Trap on EXIT to shred temp file.
+1. **Source credentials** from
+   `~/.hopnbop-migration/credentials.env` (decrypted in
+   pre-flight step 11/12). Validate all 11 expected vars are
+   non-empty. If file is missing, decrypt from
+   `~/.claude/secrets/hopnbop-migration.env.age`.
 2. Initialize state file at `~/.hopnbop-migration/state.json` if
    missing.
 3. **Pulumi project setup** (one-time, idempotent):
@@ -855,10 +943,8 @@ configured. Admin console accessible from your IP only.
    - `pulumi config set hetzner:token $HCLOUD_TOKEN --secret`.
 4. **Declare Hetzner infra in Pulumi** (Go code under
    `infra/pulumi/snoringcat-platform/`):
-   - SSH key resources: read public keys via
-     `op read "op://Private/Hop 'n Bop Nakama SSH/public key"`
-     and `op read "op://Private/Hop 'n Bop Postgres SSH/public key"`,
-     register with Hetzner.
+   - SSH key resources: load `*.pub` files from
+     `~/.hopnbop-migration/ssh/`, register with Hetzner.
    - Private network `snoringcat-internal` (10.0.0.0/16).
    - Server `nakama-prod-1` (CAX11, Hillsboro, Ubuntu 24.04,
      attach to private network).
@@ -873,17 +959,20 @@ configured. Admin console accessible from your IP only.
    - Pulumi outputs: server IDs, public IPs, private IPs.
 5. `pulumi up`. State persists to S3. Outputs written to state
    file.
-6. SSH in to both boxes (1Password SSH agent serves the private
-   keys; agent-forwarding optional). Poll until reachable, then:
+6. SSH in to both boxes (using the private keys at
+   `~/.hopnbop-migration/ssh/`). Poll until reachable, then:
    - `apt update && apt upgrade -y`
    - Install Docker + Docker Compose (`get.docker.com` script).
    - Install fail2ban, ufw (configure to match cloud firewall).
 7. **Postgres box** (`/opt/postgres/docker-compose.yml`):
    - Postgres 16, persistent volume `/var/lib/postgresql/data`.
-   - Generated strong password — stored in 1Password as a new
-     field on the migration item (`POSTGRES_PASSWORD`,
-     concealed); state file references it as
-     `op://Private/Snoring Cat Platform Migration/POSTGRES_PASSWORD`.
+   - Strong password generated by the agent and appended to
+     `~/.hopnbop-migration/credentials.env` as
+     `POSTGRES_PASSWORD=...`. After Phase A completes, the
+     credentials file is re-encrypted to
+     `~/.claude/secrets/hopnbop-migration.env.age` and pushed
+     via the dotfiles auto-push hook (so the laptop gets the
+     new value on next pull + decrypt).
    - `pg_hba.conf` restricts to private network CIDR.
    - Bring up; verify `psql` connection from Nakama box over
      private network.
@@ -893,15 +982,13 @@ configured. Admin console accessible from your IP only.
      `nakama.snoringcat.games`.
    - Nakama config:
      - `database.address` → Postgres private IP.
-     - Console password generated and stored in 1Password as
-       `NAKAMA_CONSOLE_PASSWORD` field.
-     - Server-key generated and stored in 1Password as
-       `NAKAMA_SERVER_KEY` field.
+     - Console password, server key, session encryption key all
+       generated and appended to
+       `~/.hopnbop-migration/credentials.env` as
+       `NAKAMA_CONSOLE_PASSWORD`, `NAKAMA_SERVER_KEY`,
+       `NAKAMA_SESSION_ENCRYPTION_KEY`.
      - Google + Facebook OAuth credentials sourced from the
-       running shell (already populated from `op inject` in
-       step 1).
-     - Session encryption key generated and stored in 1Password
-       as `NAKAMA_SESSION_ENCRYPTION_KEY` field.
+       running shell (loaded in step 1).
    - Bring up Caddy first; verify TLS issuance (poll Caddy logs
      until `certificate obtained successfully`).
    - Bring up Nakama; verify container healthy.
@@ -911,10 +998,17 @@ configured. Admin console accessible from your IP only.
     password, verify console loads.
 11. Smoke test: `curl -X POST` Nakama anonymous-auth endpoint
     with a test device ID, verify session token returned.
-12. Update state: phase A `completed`, populate infrastructure
+12. **Re-encrypt updated credentials**:
+    `age -R ~/.claude/secrets/hopnbop-migration.recipients
+    -o ~/.claude/secrets/hopnbop-migration.env.age
+    ~/.hopnbop-migration/credentials.env`. The dotfiles
+    auto-push hook syncs to remote. (On laptop: pull
+    claude-config and re-decrypt to pick up Phase A's generated
+    secrets.)
+13. Update state: phase A `completed`, populate infrastructure
     fields.
-13. Post Discord summary: "Phase A complete. Nakama healthy at
-    {url}. Console password in state file."
+14. Post Discord summary: "Phase A complete. Nakama healthy at
+    {url}. Generated secrets re-encrypted to claude-config."
 
 ### Verification (autonomous)
 
