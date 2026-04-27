@@ -1478,14 +1478,16 @@ Postgres + Nakama Storage. Source of truth flips to Nakama.
 
 ## Phase F — DNS cutover + AWS decommission (GATED)
 
-**Estimated time:** ~2 hours.
+**Estimated time:** ~3 hours.
 **Manual gates:** **explicit "approve decommission" message
 required**.
 
 ### Goal
 
-Production traffic on Nakama+Edgegap. AWS resources deleted. Cost
-drops to ~$0/mo (website hosting only).
+Production traffic on Nakama+Edgegap. AWS resources deleted.
+`hopnbop.net` migrated to Cloudflare Pages (matching the host
+already chosen for `snoringcat.games`). Net AWS cost drops to
+$0/mo.
 
 ### Steps
 
@@ -1501,47 +1503,110 @@ drops to ~$0/mo (website hosting only).
      `hopnbop/server-api-key`
    - Route 53 records under `game.hopnbop.net` (per-server A
      records)
-   - **Preserved:** S3 bucket `hopnbop-website`, CloudFront
-     `E3LT833LSVTW9R`, Route 53 zone `hopnbop.net` (website
-     hosting stays on AWS).
+   - **Website hosting:** S3 bucket `hopnbop-website` and
+     CloudFront `E3LT833LSVTW9R` &mdash; will be migrated to
+     Cloudflare Pages first (steps 7-9 below), then deleted.
+   - **Preserved:** Route 53 zone `hopnbop.net` (DNS records
+     stay; only the apex / www records are repointed at
+     Cloudflare).
 2. **You approve in chat.** Without an explicit "yes proceed" or
    similar, I do not delete anything.
-3. Switch DNS A record `api.hopnbop.net` → Nakama (already
-   `nakama.snoringcat.games`, but keep `api.hopnbop.net` working
-   as a CNAME during the transition).
-4. Wait for propagation (poll DNS until both old and new resolve
-   to Nakama; typically 5-30 min).
+3. Switch DNS A record `api.hopnbop.net` &rarr; Nakama (already
+   `nakama.snoringcat.games`, but keep `api.hopnbop.net`
+   working as a CNAME during the transition).
+4. Wait for propagation (poll DNS until both old and new
+   resolve to Nakama; typically 5-30 min).
 5. Verify production traffic now hits Nakama (UptimeRobot +
    Grafana).
 6. Drain GameLift: set fleet DESIRED=0, wait for game-session
-   count → 0 (in-flight matches finish naturally).
-7. **AWS teardown via Pulumi adopt-and-destroy.** Create a new
-   Pulumi stack `aws-decommission` (separate from
-   `snoringcat-platform`) that imports the existing AWS
-   resources by ARN, then destroys them in dependency order:
-   matchmaker, queue, ruleset, fleet, container group
-   definition, ECR, Secrets Manager, then `sam delete` for the
-   SAM stack (DDB tables auto-deleted), and finally Route 53
-   records under `game.hopnbop.net`. Pulumi gives us a clean
-   diff of what was destroyed and a recoverable state if the
-   teardown fails partway. **Preserved (NOT in the destroy
-   stack):** S3 bucket `hopnbop-website`, CloudFront
-   distribution, Route 53 zone `hopnbop.net`.
-8. Set CloudWatch budget alarm at $5/mo.
-9. Update `hopnbop_private/CLAUDE.md`: remove the GameLift /
-   AWS resources section, replace with new Nakama+Edgegap
-   architecture notes (or replace with a pointer to
-   `third_party/snoringcat-platform/PLATFORM_ARCHITECTURE.md`).
-10. After 30 days, you decide whether to fully close the AWS
+   count &rarr; 0 (in-flight matches finish naturally).
+
+#### 7. Migrate `hopnbop.net` to Cloudflare Pages
+
+This is a separate deploy target from `snoringcat-website`
+because `hopnbop.net` serves the Godot 4 web export at root,
+which has different headers and a different deploy pipeline.
+
+   a. **Add a `web/_headers` file** to `hopnbop_private` with
+      the Godot 4 web requirements:
+      ```
+      /*
+        Cross-Origin-Opener-Policy: same-origin
+        Cross-Origin-Embedder-Policy: require-corp
+        Cross-Origin-Resource-Policy: same-origin
+      ```
+      Plus aggressive cache headers for the WASM/PCK blobs:
+      ```
+      /*.wasm
+        Cache-Control: public, max-age=31536000, immutable
+      /*.pck
+        Cache-Control: public, max-age=604800
+      ```
+   b. **Create a Cloudflare Pages project** pointing at
+      `SnoringCatGames/hopnbop_private`, branch `main`, build
+      output directory `web`. (Cloudflare Pages can deploy
+      from a private repo and a subdirectory.)
+   c. **Update `scripts/deploy-website.ps1`**: replace the
+      `aws s3 sync` + `aws cloudfront create-invalidation`
+      steps with `wrangler pages deploy web/`. The Godot
+      `--export-release "Web"` step stays as-is.
+   d. **Verify** that `hopnbop-website.pages.dev` loads the
+      game cleanly &mdash; specifically test that
+      `crossOriginIsolated === true` in the browser DevTools
+      console (means COOP/COEP are correct and SharedArrayBuffer
+      is available).
+   e. **Cutover DNS:** in Hetzner DNS for `hopnbop.net`, change
+      the apex A record (or ALIAS) and `www.hopnbop.net` CNAME
+      to point at Cloudflare Pages. Lower TTL 24h ahead.
+   f. **Verify in production:** game loads via
+      `https://hopnbop.net/`, leaderboards/blog/legal pages all
+      reachable.
+
+#### 8. AWS teardown via Pulumi adopt-and-destroy
+
+Create a new Pulumi stack `aws-decommission` (separate from
+`snoringcat-platform`) that imports the existing AWS resources
+by ARN, then destroys them in dependency order:
+
+   - matchmaker, queue, ruleset
+   - fleet, container group definition
+   - ECR repo, Secrets Manager secrets
+   - then `sam delete` for the SAM stack (DDB tables
+     auto-deleted)
+   - **then** S3 bucket `hopnbop-website` (now empty / not in
+     use after step 7), CloudFront distribution
+     `E3LT833LSVTW9R`
+   - finally, Route 53 records under `game.hopnbop.net`
+
+Pulumi gives a clean diff of what was destroyed and a
+recoverable state if the teardown fails partway.
+
+   **Preserved (NOT in the destroy stack):** Route 53 zone
+   `hopnbop.net` (DNS still managed there for now &mdash; can be
+   moved to Hetzner DNS in a follow-up if you want
+   single-provider DNS).
+
+9. Set CloudWatch budget alarm at $5/mo (catches anything we
+   missed; should never trigger if teardown was clean).
+10. Update `hopnbop_private/CLAUDE.md`: remove the GameLift /
+    AWS resources section, replace with Nakama+Edgegap +
+    Cloudflare-Pages architecture notes (or replace with a
+    pointer to
+    `third_party/snoringcat-platform/PLATFORM_ARCHITECTURE.md`).
+11. After 30 days, you decide whether to fully close the AWS
     account (separate manual step, not in this phase).
 
 ### Verification (autonomous)
 
-- AWS Cost Explorer: GameLift hours = 0 going forward.
+- AWS Cost Explorer: GameLift hours, S3 hopnbop-website,
+  CloudFront = 0 going forward.
 - UptimeRobot: all green.
 - Test match plays end-to-end on prod.
+- `https://hopnbop.net/` loads the Godot web export, browser
+  reports `crossOriginIsolated === true`.
 - `aws cloudformation describe-stacks --stack-name hopnbop-backend`
   returns `does not exist`.
+- `aws s3 ls hopnbop-website` returns `NoSuchBucket`.
 
 ---
 
@@ -1581,8 +1646,12 @@ AWS-aware tests stripped or re-pointed.
    - Trigger: tag matching `v*.*.*`.
    - Build Linux server image, push to Edgegap registry, bump
      fleet version.
-   - Build Godot web export, sync `web/` to S3, invalidate
-     CloudFront.
+   - Build Godot web export, deploy via
+     `wrangler pages deploy web/` to the `hopnbop-website`
+     Cloudflare Pages project (after Phase F migration; see
+     `web/_headers` for COOP/COEP requirements). Pre-Phase-F
+     this step still uses `aws s3 sync` + CloudFront
+     invalidation.
    - Build native exports for Windows / Mac / Linux / Steam.
    - Roll Nakama runtime modules (Docker Compose pull + restart).
    - Post release notes to Discord.
@@ -1655,8 +1724,9 @@ be true:
 - Hop 'n Bop production: anonymous + Google + Facebook auth
   works. Matchmaking → Edgegap allocation → match → result
   reporting → leaderboard update all functional.
-- AWS Cost Explorer: GameLift, Lambda, DDB, API Gateway = $0.
-  Only S3 + CloudFront for website.
+- AWS Cost Explorer: GameLift, Lambda, DDB, API Gateway, S3,
+  CloudFront = $0. (Website moved to Cloudflare Pages in
+  Phase F.)
 - GitHub Actions: `pr-validate` runs green on PRs.
   `nightly-smoke` runs green daily. `release.yml` triggers on
   tags.
