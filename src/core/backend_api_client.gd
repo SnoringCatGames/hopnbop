@@ -1,9 +1,14 @@
 class_name BackendApiClient
 extends Node
-## HTTP client for non-auth backend API calls.
-## Handles leaderboard, player stats, profile,
-## settings, match history queries, and GameLift
-## fleet warmup/status polling.
+## Nakama-backed client for non-auth backend operations:
+## leaderboards, player stats/profile/settings, match history,
+## and game-version compatibility check.
+##
+## The legacy GameLift fleet warmup methods (warm_up_fleet,
+## fetch_fleet_status, is_fleet_ready, etc.) are gone — Edgegap
+## allocates per-match on demand, so there's nothing to warm.
+## UI references to those have been removed (see lobby_level
+## and loading_screen).
 
 
 signal leaderboard_received(data: Dictionary)
@@ -14,470 +19,276 @@ signal settings_saved(data: Dictionary)
 signal match_history_received(data: Dictionary)
 signal request_failed(error: String)
 
-## Emitted whenever a fleet warmup or status response
-## arrives. Listeners use the latest dictionary for UI.
+## Deprecated. Kept so the legacy lobby-level warmup connection
+## still resolves. Never emitted now that Edgegap auto-allocates.
 signal fleet_status_updated(data: Dictionary)
 
 ## Emitted after the startup version check completes.
-## is_compatible is false only when the server
-## returned a different protocol_version.
+## is_compatible is false only when the server returned a
+## different protocol_version. Server values come from the
+## `version_check` Nakama RPC; pre-RPC deploys return -1 and
+## are treated as "compatible".
 signal version_checked(
 	is_compatible: bool,
 	server_protocol_version: int,
 	server_game_version: String,
 )
 
-# All endpoints in this client now live on the new
-# snoringcat-platform stack at /v1/*. The legacy
-# gamelift_backend_api_url Setting is still consulted as the
-# offline/preview-mode guard (empty URL → skip the call), but
-# all live requests go to _PLATFORM_API_URL.
-const _PLATFORM_API_URL := (
-	"https://r20b7wqop6.execute-api.us-west-2.amazonaws.com"
-	+ "/prod/v1"
-)
 
-## Polling interval for fleet status while a warmup
-## is in progress. Keeps the lobby countdown fresh.
-const _FLEET_STATUS_POLL_INTERVAL_SEC := 10.0
-
-## Maximum time to keep polling after a warmup. Even if
-## the fleet never reaches ready (bad Spot day), polling
-## stops so we do not spam the API forever.
-const _FLEET_STATUS_POLL_TIMEOUT_SEC := 600.0
-
-var _http_request: HTTPRequest
-var _pending_signal: StringName = ""
-
-# Fleet warmup state.
-var _fleet_http_request: HTTPRequest
-var _fleet_is_warming_up := false
-var _fleet_warmup_started_at_unix := 0.0
-var _fleet_last_status: Dictionary = {}
-## Unix timestamp when _fleet_last_status was received.
-## Used to decrement the backend-reported
-## estimated_seconds_remaining locally so the UI label
-## can tick down every frame between polls (which only
-## happen every 10 seconds).
-var _fleet_last_status_received_at_unix := 0.0
-var _fleet_status_poll_timer: Timer
-
-
-func _ready() -> void:
-	_http_request = HTTPRequest.new()
-	_http_request.name = "HTTPRequest"
-	add_child(_http_request)
-	_http_request.request_completed.connect(
-		_on_request_completed)
-
-	# Dedicated HTTPRequest for fleet warmup so it
-	# does not collide with leaderboard/profile calls.
-	_fleet_http_request = HTTPRequest.new()
-	_fleet_http_request.name = "FleetHTTPRequest"
-	_fleet_http_request.timeout = 15.0
-	add_child(_fleet_http_request)
-	_fleet_http_request.request_completed.connect(
-		_on_fleet_request_completed)
-
-	_fleet_status_poll_timer = Timer.new()
-	_fleet_status_poll_timer.name = (
-		"FleetStatusPollTimer")
-	_fleet_status_poll_timer.one_shot = false
-	_fleet_status_poll_timer.wait_time = (
-		_FLEET_STATUS_POLL_INTERVAL_SEC)
-	_fleet_status_poll_timer.autostart = false
-	add_child(_fleet_status_poll_timer)
-	_fleet_status_poll_timer.timeout.connect(
-		_on_fleet_status_poll_timeout)
-
-
-func fetch_leaderboard(
-	type: String = "alltime",
-	scope: String = "global",
-	limit: int = 50,
-) -> void:
-	if not _check_available():
-		return
-	_pending_signal = "leaderboard_received"
-	var url := (
-		_PLATFORM_API_URL
-		+ "/leaderboard?type=%s&scope=%s&limit=%d"
-		% [type, scope, limit]
-	)
-	_send_get_request(url)
-
-
-func fetch_player_stats(
-	player_id: String,
-) -> void:
-	if not _check_available():
-		return
-	_pending_signal = "player_stats_received"
-	var url := (
-		_PLATFORM_API_URL
-		+ "/players/%s/stats" % player_id
-	)
-	_send_get_request(url)
-
-
-func fetch_player_profile() -> void:
-	if not _check_available():
-		return
-	_pending_signal = "profile_received"
-	var url := (
-		_PLATFORM_API_URL
-		+ "/player/profile"
-	)
-	_send_get_request(url)
-
-
-func fetch_player_settings() -> void:
-	if not _check_available():
-		return
-	_pending_signal = "settings_received"
-	var url := (
-		_PLATFORM_API_URL
-		+ "/player/settings"
-	)
-	_send_get_request(url)
-
-
-func save_player_settings(
-	settings: Dictionary,
-) -> void:
-	if not _check_available():
-		return
-	_pending_signal = "settings_saved"
-	var url := (
-		_PLATFORM_API_URL
-		+ "/player/settings"
-	)
-	var body := {
-		"settings": settings,
-		"updated_at": int(
-			Time.get_unix_time_from_system()),
-	}
-	_send_put_request(url, body)
-
-
-func fetch_match_history() -> void:
-	if not _check_available():
-		return
-	_pending_signal = "match_history_received"
-	var url := (
-		_PLATFORM_API_URL
-		+ "/player/history"
-	)
-	_send_get_request(url)
-
-
-func _check_available() -> bool:
-	if not G.auth_token_store.is_token_valid():
-		request_failed.emit("Not authenticated")
-		return false
+## Public no-op stubs preserved so the existing UI code still
+## compiles. Phase D removed warmup, but a few call sites still
+## query these methods. They were kept inert (always
+## "ready, not warming") so the lobby/loading screens don't
+## hang waiting for a warmup that never happens.
+func is_fleet_ready() -> bool:
 	return true
 
 
-func _get_auth_headers() -> PackedStringArray:
-	return [
-		"Content-Type: application/json",
-		"Authorization: Bearer %s"
-		% G.auth_token_store.jwt_token,
-	]
-
-
-func _send_get_request(url: String) -> void:
-	var error := _http_request.request(
-		url,
-		_get_auth_headers(),
-		HTTPClient.METHOD_GET,
-	)
-	if error != OK:
-		request_failed.emit(error_string(error))
-
-
-func _send_put_request(
-	url: String, body: Dictionary,
-) -> void:
-	var json_body := JSON.stringify(body)
-	var error := _http_request.request(
-		url,
-		_get_auth_headers(),
-		HTTPClient.METHOD_PUT,
-		json_body,
-	)
-	if error != OK:
-		request_failed.emit(error_string(error))
-
-
-func _on_request_completed(
-	result: int,
-	response_code: int,
-	_headers: PackedStringArray,
-	body: PackedByteArray,
-) -> void:
-	if result != HTTPRequest.RESULT_SUCCESS:
-		request_failed.emit(
-			"HTTP error: %s" % result)
-		return
-
-	var response_text := (
-		body.get_string_from_utf8())
-	var parsed = JSON.parse_string(response_text)
-	if parsed == null or not parsed is Dictionary:
-		request_failed.emit("Invalid response")
-		return
-
-	if response_code != 200:
-		var msg: String = parsed.get(
-			"message", "Request failed")
-		request_failed.emit(msg)
-		return
-
-	var signal_name := _pending_signal
-	_pending_signal = ""
-	match signal_name:
-		"leaderboard_received":
-			leaderboard_received.emit(parsed)
-		"player_stats_received":
-			player_stats_received.emit(parsed)
-		"profile_received":
-			profile_received.emit(parsed)
-		"settings_received":
-			settings_received.emit(parsed)
-		"settings_saved":
-			settings_saved.emit(parsed)
-		"match_history_received":
-			match_history_received.emit(parsed)
-
-
-## Request the fleet be scaled up for an imminent
-## online session. Safe to call at app startup and
-## whenever the player toggles online mode. No auth
-## required, so it can run before the guest JWT is
-## obtained. Idempotent on the backend.
-func warm_up_fleet(source: String = "client") -> void:
-	if G.settings.gamelift_backend_api_url.is_empty():
-		return
-
-	_fleet_is_warming_up = true
-	_fleet_warmup_started_at_unix = (
-		Time.get_unix_time_from_system())
-
-	var url := (
-		_PLATFORM_API_URL
-		+ "/fleet/warmup")
-	var body := JSON.stringify({"source": source})
-	var err := _fleet_http_request.request(
-		url,
-		PackedStringArray([
-			"Content-Type: application/json",
-		]),
-		HTTPClient.METHOD_POST,
-		body,
-	)
-	if err != OK:
-		G.log.warning(
-			"[BackendApi] Fleet warmup request"
-			+ " failed: %d" % err)
-		return
-
-	if _fleet_status_poll_timer.is_stopped():
-		_fleet_status_poll_timer.start()
-
-
-## Fetch the current fleet status without triggering
-## scale-up. Used by the periodic poll timer.
-func fetch_fleet_status() -> void:
-	if G.settings.gamelift_backend_api_url.is_empty():
-		return
-
-	var url := (
-		_PLATFORM_API_URL
-		+ "/fleet/status")
-	var err := _fleet_http_request.request(
-		url,
-		PackedStringArray([
-			"Content-Type: application/json",
-		]),
-		HTTPClient.METHOD_GET,
-	)
-	if err != OK:
-		G.log.warning(
-			"[BackendApi] Fleet status request"
-			+ " failed: %d" % err)
-
-
-## Seconds elapsed since the most recent warmup call.
-## Returns 0 if no warmup has been requested.
-func get_fleet_warmup_elapsed_sec() -> float:
-	if _fleet_warmup_started_at_unix <= 0.0:
-		return 0.0
-	return (
-		Time.get_unix_time_from_system()
-		- _fleet_warmup_started_at_unix
-	)
-
-
-## Returns the most recent fleet status dictionary.
-## Empty until a response has been received.
-func get_fleet_status_data() -> Dictionary:
-	return _fleet_last_status
-
-
-## Whether the fleet currently has an ACTIVE instance
-## with at least one IDLE game session slot.
-func is_fleet_ready() -> bool:
-	return _fleet_last_status.get("status", "") == "ready"
-
-
-## Whether a warmup is in progress and we do not yet
-## know the fleet is ready.
 func is_fleet_warming_up() -> bool:
-	if is_fleet_ready():
-		return false
-	return _fleet_is_warming_up
+	return false
 
 
-## Estimated seconds remaining before the fleet is
-## ready. Returns 0 if ready or unknown. Decrements
-## locally between server polls so callers can update
-## labels every frame without waiting on the next poll.
 func get_fleet_estimated_remaining_sec() -> int:
-	if is_fleet_ready():
-		return 0
-
-	var now := Time.get_unix_time_from_system()
-	var from_backend: int = _fleet_last_status.get(
-		"estimated_seconds_remaining", -1)
-	if from_backend >= 0:
-		var since_receipt := (
-			now - _fleet_last_status_received_at_unix)
-		if since_receipt < 0.0:
-			since_receipt = 0.0
-		return maxi(
-			from_backend - int(since_receipt), 0)
-
-	# Fallback: backend default estimate minus local
-	# elapsed since warmup call. Used when a warmup
-	# has been requested but no response has arrived.
-	var default_estimate := 300
-	var elapsed := int(
-		get_fleet_warmup_elapsed_sec())
-	return maxi(default_estimate - elapsed, 0)
+	return 0
 
 
-func _on_fleet_request_completed(
-	result: int,
-	response_code: int,
-	_headers: PackedStringArray,
-	body: PackedByteArray,
+func get_fleet_warmup_elapsed_sec() -> float:
+	return 0.0
+
+
+func get_fleet_status_data() -> Dictionary:
+	return {"status": "ready"}
+
+
+func warm_up_fleet(_source: String = "client") -> void:
+	# No-op: Edgegap allocates per-match.
+	pass
+
+
+func fetch_fleet_status() -> void:
+	# No-op: see warm_up_fleet.
+	pass
+
+
+# --------------------------------------------------------------
+# Leaderboard
+# --------------------------------------------------------------
+
+func fetch_leaderboard(
+	board_id: String = "ffa",
+	limit: int = 50,
+	cursor: String = "",
 ) -> void:
-	if result != HTTPRequest.RESULT_SUCCESS:
-		G.log.warning(
-			"[BackendApi] Fleet request HTTP"
-			+ " result: %d" % result)
+	var session := await _ensure_session()
+	if session == null:
 		return
-
-	if response_code != 200:
-		G.log.warning(
-			"[BackendApi] Fleet request status:"
-			+ " %d" % response_code)
+	var result = await G.auth_client._get_nakama_client().list_leaderboard_records_async(
+		session, board_id, null, null, limit, cursor)
+	if result.is_exception():
+		request_failed.emit(_describe(result.get_exception()))
 		return
+	var entries := []
+	for r in result.records:
+		entries.append({
+			"rank": r.rank,
+			"player_id": r.owner_id,
+			"display_name": r.username,
+			"score": r.score,
+			"metadata": JSON.parse_string(r.metadata) \
+				if not r.metadata.is_empty() else {},
+		})
+	leaderboard_received.emit({
+		"leaderboard_id": board_id,
+		"entries": entries,
+		"cursor": result.next_cursor,
+	})
 
-	var parsed = JSON.parse_string(
-		body.get_string_from_utf8())
-	if parsed == null or not parsed is Dictionary:
+
+func fetch_player_stats(player_id: String = "") -> void:
+	var session := await _ensure_session()
+	if session == null:
 		return
-
-	_fleet_last_status = parsed
-	_fleet_last_status_received_at_unix = (
-		Time.get_unix_time_from_system())
-	fleet_status_updated.emit(parsed)
-
-	if parsed.get("status", "") == "ready":
-		_fleet_is_warming_up = false
-		_fleet_status_poll_timer.stop()
-
-
-func _on_fleet_status_poll_timeout() -> void:
-	var elapsed := get_fleet_warmup_elapsed_sec()
-	if elapsed > _FLEET_STATUS_POLL_TIMEOUT_SEC:
-		_fleet_status_poll_timer.stop()
-		_fleet_is_warming_up = false
+	var pid := player_id if player_id else session.user_id
+	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
+		session, "get_player_stats",
+		JSON.stringify({"player_id": pid}))
+	if rpc_result.is_exception():
+		# Pre-RPC deploys return method-not-found; surface as empty
+		# stats so the UI doesn't error.
+		player_stats_received.emit(
+			{"player_id": pid, "rating": 1500, "matches": 0})
 		return
-	fetch_fleet_status()
+	var data: Variant = JSON.parse_string(rpc_result.payload)
+	if data is Dictionary:
+		player_stats_received.emit(data)
+	else:
+		player_stats_received.emit({"player_id": pid})
 
 
-## Check protocol version against the backend.
-## No authentication required. Uses a separate
-## HTTPRequest so it does not block other calls.
-## Emits version_checked when done. On any error,
-## emits compatible=true so the app is not blocked.
+# --------------------------------------------------------------
+# Profile
+# --------------------------------------------------------------
+
+func fetch_player_profile() -> void:
+	var session := await _ensure_session()
+	if session == null:
+		return
+	var account = await G.auth_client._get_nakama_client().get_account_async(
+		session)
+	if account.is_exception():
+		request_failed.emit(_describe(account.get_exception()))
+		return
+	var u = account.user
+	profile_received.emit({
+		"player_id": u.id,
+		"display_name": u.display_name,
+		"avatar_url": u.avatar_url,
+		"lang_tag": u.lang_tag,
+		"location": u.location,
+		"timezone": u.timezone,
+		"linked_providers": _account_linked_providers(account),
+	})
+
+
+# --------------------------------------------------------------
+# Settings (Nakama Storage, collection="settings", key="user")
+# --------------------------------------------------------------
+
+func fetch_player_settings() -> void:
+	var session := await _ensure_session()
+	if session == null:
+		return
+	var ids := [NakamaStorageObjectId.new(
+		"settings", "user", session.user_id)]
+	var result = await G.auth_client._get_nakama_client().read_storage_objects_async(
+		session, ids)
+	if result.is_exception():
+		request_failed.emit(_describe(result.get_exception()))
+		return
+	if result.objects.size() == 0:
+		settings_received.emit({})
+		return
+	var raw: String = result.objects[0].value
+	var data: Variant = JSON.parse_string(raw)
+	settings_received.emit(data if data is Dictionary else {})
+
+
+func save_player_settings(settings: Dictionary) -> void:
+	var session := await _ensure_session()
+	if session == null:
+		return
+	var obj := NakamaWriteStorageObject.new(
+		"settings", "user", 1, 1, JSON.stringify(settings), "")
+	var result = await G.auth_client._get_nakama_client().write_storage_objects_async(
+		session, [obj])
+	if result.is_exception():
+		request_failed.emit(_describe(result.get_exception()))
+		return
+	settings_saved.emit(settings)
+
+
+# --------------------------------------------------------------
+# Match history (custom RPC backed by Nakama Storage / leaderboard
+# joins on the runtime side)
+# --------------------------------------------------------------
+
+func fetch_match_history() -> void:
+	var session := await _ensure_session()
+	if session == null:
+		return
+	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
+		session, "get_match_history", "{}")
+	if rpc_result.is_exception():
+		# Pre-RPC deploys: return empty.
+		match_history_received.emit({"matches": []})
+		return
+	var data: Variant = JSON.parse_string(rpc_result.payload)
+	if data is Dictionary:
+		match_history_received.emit(data)
+	else:
+		match_history_received.emit({"matches": []})
+
+
+# --------------------------------------------------------------
+# Version check (server-side runtime RPC)
+# --------------------------------------------------------------
+
 func check_version() -> void:
-	var http := HTTPRequest.new()
-	http.timeout = 10.0
-	add_child(http)
-	http.request_completed.connect(
-		_on_version_check_completed.bind(http),
-		CONNECT_ONE_SHOT,
-	)
-	var url := (
-		_PLATFORM_API_URL
-		+ "/version")
-	var error := http.request(
-		url,
-		PackedStringArray([
-			"Content-Type: application/json",
-		]),
-		HTTPClient.METHOD_GET,
-	)
-	if error != OK:
-		http.queue_free()
-		version_checked.emit(true, -1, "")
-
-
-func _on_version_check_completed(
-	result: int,
-	response_code: int,
-	_headers: PackedStringArray,
-	body: PackedByteArray,
-	http: HTTPRequest,
-) -> void:
-	http.queue_free()
-
-	if result != HTTPRequest.RESULT_SUCCESS:
-		version_checked.emit(true, -1, "")
+	var client_protocol: int = ProjectSettings.get_setting(
+		"application/config/protocol_version", 1)
+	var client_game_version: String = ProjectSettings.get_setting(
+		"application/config/version", "")
+	# version_check is unauthenticated — call without a session.
+	# Nakama supports HTTP key for unauthenticated RPCs; lacking
+	# one, we fall through to "compatible" so offline/preview
+	# instances don't fail at startup.
+	var session := await _ensure_session_optional()
+	if session == null:
+		version_checked.emit(true, -1, client_game_version)
 		return
-
-	var parsed = JSON.parse_string(
-		body.get_string_from_utf8())
-	if (
-		parsed == null
-		or not parsed is Dictionary
-		or response_code != 200
-	):
-		version_checked.emit(true, -1, "")
+	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
+		session, "version_check",
+		JSON.stringify({
+			"client_protocol_version": client_protocol,
+			"client_game_version": client_game_version,
+		}))
+	if rpc_result.is_exception():
+		# RPC missing / not yet deployed: assume compatible.
+		version_checked.emit(true, -1, client_game_version)
 		return
-
-	var server_protocol: int = parsed.get(
-		"protocol_version", -1)
-	if server_protocol < 0:
-		version_checked.emit(true, -1, "")
+	var data: Variant = JSON.parse_string(rpc_result.payload)
+	if not (data is Dictionary):
+		version_checked.emit(true, -1, client_game_version)
 		return
-
-	var server_game_version: String = parsed.get(
-		"game_version", "")
-
-	var client_protocol: int = (
-		ProjectSettings.get_setting(
-			"application/config/protocol_version",
-			1,
-		))
-	var is_compatible := (
-		server_protocol == client_protocol)
+	var server_protocol := int(data.get("protocol_version", -1))
+	var server_game_version := str(data.get("game_version", ""))
+	var compatible := (
+		server_protocol < 0
+		or server_protocol == client_protocol)
 	version_checked.emit(
-		is_compatible,
-		server_protocol,
-		server_game_version,
-	)
+		compatible, server_protocol, server_game_version)
+
+
+# --------------------------------------------------------------
+# Internals
+# --------------------------------------------------------------
+
+func _ensure_session() -> NakamaSession:
+	var s := G.auth_client._build_session_from_store()
+	if s == null:
+		await G.auth_client.get_guest_jwt()
+		s = G.auth_client._build_session_from_store()
+	if s == null:
+		request_failed.emit("Not authenticated")
+		return null
+	return s
+
+
+func _ensure_session_optional() -> NakamaSession:
+	var s := G.auth_client._build_session_from_store()
+	if s == null:
+		return null
+	return s
+
+
+func _describe(ex: NakamaException) -> String:
+	if ex == null:
+		return "Unknown Nakama error"
+	return "%s (status=%d)" % [ex.message, ex.status_code]
+
+
+func _account_linked_providers(account) -> Array:
+	var out: Array = []
+	if account.devices and account.devices.size() > 0:
+		out.append("anonymous")
+	if account.email and not account.email.is_empty():
+		out.append("email")
+	if account.google and account.google != null:
+		out.append("google")
+	if account.facebook and account.facebook != null:
+		out.append("facebook")
+	if account.apple and account.apple != null:
+		out.append("apple")
+	if account.steam and account.steam != null:
+		out.append("steam")
+	return out

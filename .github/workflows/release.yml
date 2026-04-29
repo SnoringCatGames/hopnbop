@@ -1,0 +1,140 @@
+name: Release
+
+# Triggered on v*.*.* tags. Builds the Linux server image, pushes
+# to Edgegap registry, bumps fleet version. Builds the Godot web
+# export, deploys via wrangler pages. Builds native exports.
+# Rolls Nakama runtime modules. Posts release notes to Discord.
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to release (e.g. v0.32.0)
+        required: true
+
+env:
+  GODOT_VERSION: 4.5.0-stable
+
+jobs:
+  game-server:
+    name: Game-server image → Edgegap
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+      - name: Export Linux server pck
+        run: |
+          mkdir -p build/linux
+          godot --headless --export-pack "Linux Server" \
+            build/linux/hopnbop_server.pck || true
+          test -s build/linux/hopnbop_server.pck
+      - name: Build Docker image
+        run: |
+          TAG="${{ github.ref_name }}"
+          docker build -f Dockerfile.edgegap \
+            -t registry.edgegap.com/${{ secrets.EDGEGAP_ORG }}/hopnbop-server:$TAG \
+            .
+      - name: Login to Edgegap registry
+        run: |
+          echo "${{ secrets.EDGEGAP_TOKEN }}" | docker login \
+            registry.edgegap.com -u token --password-stdin
+      - name: Push image
+        run: |
+          TAG="${{ github.ref_name }}"
+          docker push \
+            registry.edgegap.com/${{ secrets.EDGEGAP_ORG }}/hopnbop-server:$TAG
+      - name: Create Edgegap app version
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: token ${{ secrets.EDGEGAP_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg v "${{ github.ref_name }}" --arg image "registry.edgegap.com/${{ secrets.EDGEGAP_ORG }}/hopnbop-server:${{ github.ref_name }}" \
+              '{name:$v, image:$image, ports:[{port:4433, protocol:"UDP"}, {port:4434, protocol:"TCP"}]}')" \
+            "https://api.edgegap.com/v1/app/hopnbop-server/version"
+
+  web-client:
+    name: Godot web export → Cloudflare Pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+      - name: Export web build
+        run: |
+          mkdir -p build/web
+          godot --headless --export-release "Web" \
+            build/web/index.html || true
+          test -s build/web/index.html
+          cp -r build/web/* web/ 2>/dev/null || true
+      - name: Deploy to Cloudflare Pages
+        # Pre-Phase-F: still using S3+CloudFront. Once Phase F
+        # migrates hopnbop.net to Cloudflare Pages, swap this for
+        # `wrangler pages deploy web/`.
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          aws s3 sync web/ s3://hopnbop-website/ --delete
+          aws cloudfront create-invalidation \
+            --distribution-id E3LT833LSVTW9R \
+            --paths '/*'
+
+  nakama-runtime:
+    name: Roll Nakama runtime modules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build plugin .so
+        run: |
+          mkdir -p nakama-runtime/build
+          docker run --rm \
+            -v $PWD/nakama-runtime:/backend -w /backend \
+            heroiclabs/nakama-pluginbuilder:3.25.0 \
+            build -buildmode=plugin -trimpath \
+            -o ./build/snoringcat.so .
+      - name: Deploy via SSH
+        env:
+          SSH_KEY: ${{ secrets.NAKAMA_SSH_KEY }}
+          NAKAMA_HOST: ${{ secrets.NAKAMA_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          scp -o StrictHostKeyChecking=accept-new \
+            -i ~/.ssh/id_ed25519 \
+            nakama-runtime/build/snoringcat.so \
+            "root@$NAKAMA_HOST:/opt/nakama/modules/snoringcat.so"
+          ssh -o StrictHostKeyChecking=accept-new \
+            -i ~/.ssh/id_ed25519 "root@$NAKAMA_HOST" \
+            "cd /opt/nakama && docker compose restart nakama"
+
+  discord-notify:
+    name: Discord release notes
+    needs: [game-server, web-client, nakama-runtime]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Post to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          PREV=$(git tag --sort=-creatordate | sed -n '2p')
+          NOTES=$(git log "${PREV:-HEAD~10}..${{ github.ref_name }}" \
+            --pretty=format:"- %s (%h)" 2>/dev/null \
+            | head -20)
+          STATUS="${{ needs.game-server.result == 'success' && needs.web-client.result == 'success' && needs.nakama-runtime.result == 'success' && ':white_check_mark: deployed' || ':x: partial failure' }}"
+          curl -fsS -X POST \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg c "**${{ github.ref_name }}** $STATUS\n$NOTES" '{content:$c}')" \
+            "$DISCORD_WEBHOOK_URL"

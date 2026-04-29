@@ -23,6 +23,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
+    jq \
     libfontconfig1 \
     libxcursor1 \
     libxinerama1 \
@@ -60,4 +61,8 @@ EXPOSE 4434/tcp
 ENV PLATFORM=edgegap
 ENV TRANSPORT_PORT=4433
 
-ENTRYPOINT ["/usr/local/bin/godot", "--headless", "--main-pack", "/game/server.pck", "--", "--server"]
+# Thin wrapper that registers with Nakama, then exec's Godot.
+COPY infra/game-server/entrypoint.sh /game/entrypoint.sh
+RUN chmod +x /game/entrypoint.sh
+
+ENTRYPOINT ["/game/entrypoint.sh"]

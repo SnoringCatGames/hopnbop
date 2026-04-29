@@ -82,17 +82,27 @@ const _HTTPS_REDIRECT_PROVIDERS := [
 	Provider.FACEBOOK,
 ]
 const _REFRESH_COOLDOWN_SEC := 60.0
-# Auth requests target the new snoringcat-platform stack at
-# /v1/auth/*. The other client-facing API clients
-# (BackendApiClient, FriendsApiClient, PartyApiClient,
-# CrashReporter) have all been cut over to the platform stack
-# as well. The remaining legacy callers are server-side
-# (match_result_reporter) and the GDPR export endpoint, which
-# the platform stack does not yet expose.
-const _PLATFORM_API_URL := (
-	"https://r20b7wqop6.execute-api.us-west-2.amazonaws.com"
-	+ "/prod/v1"
-)
+# Authentication is now routed through Nakama instead of the
+# legacy AWS API Gateway. The OAuth browser/popup/loopback flows
+# below are unchanged — they still produce a Google or Facebook
+# ID token; the difference is what we do with that token.
+# Previously: HTTP POST to /auth/login on AWS. Now:
+# NakamaClient.authenticate_<provider>_async(token).
+const _NAKAMA_HOST := "nakama.snoringcat.games"
+const _NAKAMA_PORT := 443
+const _NAKAMA_SCHEME := "https"
+# Server key sent on every Nakama auth call. Match this against
+# the value Nakama is started with on the server side
+# (--socket.server_key in infra/remote/nakama/docker-compose.yml).
+# Currently using Nakama's default placeholder; tighten before
+# Phase F by either changing this constant or removing
+# --socket.server_key on the server (which falls back to
+# Nakama's literal "defaultkey").
+const _NAKAMA_SERVER_KEY := "defaultkey"
+
+# Endpoint constants are now opaque dispatch tags consumed by
+# _send_auth_request to pick the matching Nakama call. Their
+# string values are kept stable to minimize call-site churn.
 const _AUTH_ENDPOINT := "/auth/login"
 const _ANON_ENDPOINT := "/auth/anon"
 const _GUEST_ENDPOINT := "/auth/guest"
@@ -127,6 +137,11 @@ var _oauth_provider: Provider
 var _is_awaiting_oauth := false
 var _last_refresh_time := 0.0
 var _is_refreshing := false
+
+# Nakama client (lazily constructed). Sessions are not held here;
+# the JWT + refresh token live in G.auth_token_store, and we
+# rebuild a NakamaSession on demand from those.
+var _nakama_client: NakamaClient = null
 
 # Account linking state.
 var _is_linking := false
@@ -238,50 +253,18 @@ func login_anonymous() -> void:
 	auth_completed.emit(true, "")
 
 
-## Obtain an ephemeral guest JWT for the current
-## anonymous session. The token is stored in memory
-## only (never written to disk). Emits
-## guest_jwt_obtained when complete. If a valid
-## in-memory token already exists, emits immediately.
+## Obtain a Nakama session for the current anonymous
+## player. The session token is stored in
+## G.auth_token_store. Emits guest_jwt_obtained when
+## complete. If a valid token already exists, emits
+## immediately.
 func get_guest_jwt() -> void:
 	if G.auth_token_store.is_token_valid():
 		guest_jwt_obtained.emit(true, "")
 		return
-
-	var url := _PLATFORM_API_URL + _GUEST_ENDPOINT
-	G.log.print(
-		"[AuthClient] HTTP POST %s (guest JWT)"
-		% url
-	)
-
-	_http_request.cancel_request()
-
-	if _http_request.request_completed.is_connected(
-		_on_auth_response
-	):
-		_http_request.request_completed.disconnect(
-			_on_auth_response
-		)
-
-	_http_request.request_completed.connect(
-		_on_guest_jwt_response, CONNECT_ONE_SHOT
-	)
-
-	var err := _http_request.request(
-		url,
-		["Content-Type: application/json"],
-		HTTPClient.METHOD_POST,
-		"{}",
-	)
-	if err != OK:
-		G.log.warning(
-			"[AuthClient] Guest JWT request"
-			+ " error: %d" % err
-		)
-		guest_jwt_obtained.emit(
-			false,
-			"HTTP request failed: %d" % err,
-		)
+	# _do_anon_auth runs Nakama device auth and emits
+	# guest_jwt_obtained itself.
+	await _do_anon_auth()
 
 
 ## Refresh the current JWT using the stored refresh
@@ -381,7 +364,9 @@ func delete_account() -> void:
 	_send_delete_request()
 
 
-## Export all player data as JSON.
+## Export all player data as JSON. Routes through the Nakama
+## runtime RPC `export_player_data` (registered in
+## nakama-runtime/match_lifecycle.go — TODO).
 func export_player_data() -> void:
 	if _is_exporting:
 		return
@@ -397,89 +382,27 @@ func export_player_data() -> void:
 
 	_is_exporting = true
 
-	var url := (
-		_PLATFORM_API_URL
-		+ _EXPORT_ENDPOINT
-	)
-	var headers := [
-		"Content-Type: application/json",
-		"Authorization: Bearer %s"
-		% G.auth_token_store.jwt_token,
-	]
-
-	var export_signal := (
-		_export_http_request.request_completed
-	)
-	if export_signal.is_connected(
-		_on_export_response
-	):
-		export_signal.disconnect(
-			_on_export_response
-		)
-
-	_export_http_request.request_completed.connect(
-		_on_export_response, CONNECT_ONE_SHOT
-	)
-
-	var err := _export_http_request.request(
-		url,
-		headers,
-		HTTPClient.METHOD_GET,
-	)
-	if err != OK:
+	var session := _build_session_from_store()
+	if session == null:
 		_is_exporting = false
-		export_completed.emit(
-			false,
-			"HTTP request failed: %d" % err,
-			{},
-		)
+		export_completed.emit(false, "Not authenticated", {})
+		return
 
-
-func _on_export_response(
-	result: int,
-	response_code: int,
-	_headers: PackedStringArray,
-	body: PackedByteArray,
-) -> void:
+	var rpc_result: NakamaAPI.ApiRpc = (
+		await _get_nakama_client().rpc_async(
+			session, "export_player_data", "{}"))
 	_is_exporting = false
-
-	if result != HTTPRequest.RESULT_SUCCESS:
-		G.log.error(
-			"Export request failed: result=%d"
-			% result,
-		)
+	if rpc_result.is_exception():
+		var ex := rpc_result.get_exception()
 		export_completed.emit(
-			false, "Request failed", {},
-		)
+			false, _describe_nakama_exception(ex), {})
 		return
-
 	var json := JSON.new()
-	var parse_err := json.parse(
-		body.get_string_from_utf8()
-	)
-	if parse_err != OK:
-		G.log.error(
-			"Export: invalid server response",
-		)
+	if json.parse(rpc_result.payload) == OK and json.data is Dictionary:
+		export_completed.emit(true, "", json.data)
+	else:
 		export_completed.emit(
-			false, "Invalid server response", {},
-		)
-		return
-
-	var data: Dictionary = json.data
-
-	if response_code != 200:
-		var msg: String = data.get(
-			"message", "Export failed"
-		)
-		G.log.error(
-			"Export failed: %d %s"
-			% [response_code, msg],
-		)
-		export_completed.emit(false, msg, {})
-		return
-
-	export_completed.emit(true, "", data)
+			false, "Invalid export payload", {})
 
 
 # =============================================================
@@ -835,82 +758,253 @@ func _send_auth_request(
 	body: Dictionary,
 	include_auth_header := false,
 ) -> void:
-	# All endpoints reaching this helper are auth/* endpoints that
-	# now live on the platform stack. (Non-auth helpers in
-	# AuthClient — like _send_export_request — build their URL
-	# inline instead of going through this function.)
-	var url := _PLATFORM_API_URL + endpoint
-	var json_body := JSON.stringify(body)
-	G.log.print("[AuthClient] HTTP POST %s" % url)
-
-	var headers := [
-		"Content-Type: application/json",
-	]
-	if include_auth_header:
-		headers.append(
-			"Authorization: Bearer %s"
-			% G.auth_token_store.jwt_token
-		)
-
-	# Cancel any in-progress request (e.g. an
-	# auto-refresh that raced with a new login).
-	_http_request.cancel_request()
-
-	# Disconnect previous signal if any.
-	if _http_request.request_completed.is_connected(
-		_on_auth_response
-	):
-		_http_request.request_completed.disconnect(
-			_on_auth_response
-		)
-
-	_http_request.request_completed.connect(
-		_on_auth_response, CONNECT_ONE_SHOT
-	)
-
-	var err := _http_request.request(
-		url,
-		headers,
-		HTTPClient.METHOD_POST,
-		json_body,
-	)
-	if err != OK:
-		G.log.warning(
-			"[AuthClient] HTTP request error: %d"
-			% err
-		)
-		_is_refreshing = false
-		_emit_failure("HTTP request failed: %d" % err)
+	G.log.print("[AuthClient] Nakama auth dispatch: %s" % endpoint)
+	# Dispatch to the matching Nakama call. Each branch awaits the
+	# Nakama SDK, synthesizes an AWS-compat response dict so the
+	# downstream _handle_*_success helpers don't have to change,
+	# and re-emits via _on_auth_response.
+	if endpoint == _ANON_ENDPOINT or endpoint == _GUEST_ENDPOINT:
+		await _do_anon_auth()
+	elif endpoint == _AUTH_ENDPOINT:
+		await _do_provider_auth(body)
+	elif endpoint == _REFRESH_ENDPOINT:
+		await _do_session_refresh(body)
+	elif endpoint == _LINK_ENDPOINT:
+		await _do_link(body)
+	elif endpoint == _UNLINK_ENDPOINT:
+		await _do_unlink(body)
+	elif endpoint == _MERGE_ENDPOINT:
+		_emit_failure(
+			"Account merge is not yet wired to Nakama."
+			+ " Use unlink + re-auth as a workaround.")
+	else:
+		_emit_failure("Unknown auth endpoint: %s" % endpoint)
 
 
 func _send_delete_request() -> void:
-	var url := _PLATFORM_API_URL + _DELETE_ACCOUNT_ENDPOINT
-
-	var headers := [
-		"Content-Type: application/json",
-		"Authorization: Bearer %s"
-		% G.auth_token_store.jwt_token,
-	]
-
-	if _http_request.request_completed.is_connected(
-		_on_auth_response
-	):
-		_http_request.request_completed.disconnect(
-			_on_auth_response
-		)
-
-	_http_request.request_completed.connect(
-		_on_auth_response, CONNECT_ONE_SHOT
-	)
-
-	var err := _http_request.request(
-		url,
-		headers,
-		HTTPClient.METHOD_DELETE,
-	)
-	if err != OK:
+	var session := _build_session_from_store()
+	if session == null:
 		_is_deleting = false
-		_emit_failure("HTTP request failed: %d" % err)
+		_emit_failure("Not authenticated")
+		return
+	var result: NakamaAsyncResult = (
+		await _get_nakama_client().delete_account_async(session))
+	if result.is_exception():
+		_is_deleting = false
+		_emit_failure(_describe_nakama_exception(result.get_exception()))
+		return
+	_handle_delete_success()
+
+
+# --------------------------------------------------------------
+# Nakama client + session helpers.
+# --------------------------------------------------------------
+
+func _get_nakama_client() -> NakamaClient:
+	if _nakama_client == null:
+		_nakama_client = Nakama.create_client(
+			_NAKAMA_SERVER_KEY,
+			_NAKAMA_HOST,
+			_NAKAMA_PORT,
+			_NAKAMA_SCHEME)
+	return _nakama_client
+
+
+# Rebuilds a NakamaSession from the persisted JWT + refresh token
+# so we can attach it to authenticated calls (link, unlink, etc.).
+# Returns null when the store has no valid session.
+func _build_session_from_store() -> NakamaSession:
+	var store := G.auth_token_store
+	if store.jwt_token.is_empty():
+		return null
+	# NakamaSession.new(token, created, refresh_token, exception)
+	return NakamaSession.new(
+		store.jwt_token, false, store.refresh_token, null)
+
+
+# Translates a Nakama session into the dict shape that
+# _handle_auth_success expects (modeled after the legacy AWS
+# /auth/login response).
+func _session_to_response_dict(
+	session: NakamaSession,
+	provider_name: String,
+) -> Dictionary:
+	return {
+		"status": "success",
+		"player_id": session.user_id,
+		"jwt_token": session.token,
+		"refresh_token": session.refresh_token,
+		"expires_at": session.expire_time,
+		"provider": provider_name,
+		"is_anonymous": provider_name == "anonymous",
+		# Backfilled later via NakamaClient.get_account_async.
+		"display_name": G.auth_token_store.display_name,
+		"linked_providers": G.auth_token_store.linked_providers,
+		"rating": G.auth_token_store.rating,
+		"consent_accepted_at": G.auth_token_store.consent_accepted_at,
+		"consent_legal_version": (
+			G.auth_token_store.consent_legal_version),
+		"profile_image_url": G.auth_token_store.profile_image_url,
+		# Skip the protocol-version handshake on the Nakama path —
+		# Phase C runtime modules will gate on it server-side.
+		"protocol_version": -1,
+	}
+
+
+func _describe_nakama_exception(ex: NakamaException) -> String:
+	if ex == null:
+		return "Unknown Nakama error"
+	return "%s (status=%d, grpc=%d)" % [
+		ex.message, ex.status_code, ex.grpc_status_code]
+
+
+# --------------------------------------------------------------
+# Nakama auth dispatch implementations.
+# --------------------------------------------------------------
+
+func _do_anon_auth() -> void:
+	var store := G.auth_token_store
+	var device_id := store.local_player_id
+	if device_id.is_empty():
+		device_id = _generate_state_nonce()
+		store.local_player_id = device_id
+		store.save_tokens()
+	var session: NakamaSession = (
+		await _get_nakama_client().authenticate_device_async(device_id))
+	if session.is_exception():
+		_is_refreshing = false
+		guest_jwt_obtained.emit(
+			false,
+			_describe_nakama_exception(session.get_exception()))
+		return
+	var data := _session_to_response_dict(session, "anonymous")
+	store.store_from_response(data)
+	guest_jwt_obtained.emit(true, "")
+
+
+func _do_provider_auth(body: Dictionary) -> void:
+	var provider_name := str(body.get("provider", ""))
+	var token := str(body.get("auth_code", ""))
+	var client := _get_nakama_client()
+	var session: NakamaSession
+	match provider_name:
+		"google":
+			session = await client.authenticate_google_async(token)
+		"facebook":
+			session = await client.authenticate_facebook_async(token)
+		"apple":
+			session = await client.authenticate_apple_async(token)
+		"steam":
+			session = await client.authenticate_steam_async(token)
+		_:
+			_emit_failure(
+				"Unsupported provider: %s" % provider_name)
+			return
+	if session.is_exception():
+		_emit_failure(_describe_nakama_exception(
+			session.get_exception()))
+		return
+	_handle_auth_success(_session_to_response_dict(
+		session, provider_name))
+
+
+func _do_session_refresh(_body: Dictionary) -> void:
+	var current := _build_session_from_store()
+	if current == null or current.refresh_token.is_empty():
+		_is_refreshing = false
+		_emit_failure("No refresh token")
+		return
+	var session: NakamaSession = (
+		await _get_nakama_client().session_refresh_async(current))
+	if session.is_exception():
+		_is_refreshing = false
+		_emit_failure(_describe_nakama_exception(
+			session.get_exception()))
+		return
+	_handle_auth_success(_session_to_response_dict(
+		session, G.auth_token_store.provider))
+
+
+func _do_link(body: Dictionary) -> void:
+	var session := _build_session_from_store()
+	if session == null:
+		_emit_failure("Not authenticated")
+		return
+	var provider_name := str(body.get("provider", ""))
+	var token := str(body.get("auth_code", ""))
+	var client := _get_nakama_client()
+	var result: NakamaAsyncResult
+	match provider_name:
+		"google":
+			result = await client.link_google_async(session, token)
+		"facebook":
+			result = await client.link_facebook_async(session, token)
+		"apple":
+			result = await client.link_apple_async(session, token)
+		"steam":
+			result = await client.link_steam_async(session, token)
+		_:
+			_emit_failure(
+				"Unsupported link provider: %s" % provider_name)
+			return
+	if result.is_exception():
+		_emit_failure(_describe_nakama_exception(
+			result.get_exception()))
+		return
+	# Synthesize a success dict so the downstream handler updates
+	# linked_providers in the token store consistently.
+	var linked := G.auth_token_store.linked_providers.duplicate()
+	if not linked.has(provider_name):
+		linked.append(provider_name)
+	_handle_auth_success({
+		"status": "success",
+		"linked_providers": linked,
+		"player_id": G.auth_token_store.player_id,
+		"jwt_token": G.auth_token_store.jwt_token,
+		"refresh_token": G.auth_token_store.refresh_token,
+		"expires_at": G.auth_token_store.expires_at,
+		"display_name": G.auth_token_store.display_name,
+		"rating": G.auth_token_store.rating,
+		"protocol_version": -1,
+	})
+
+
+func _do_unlink(body: Dictionary) -> void:
+	var session := _build_session_from_store()
+	if session == null:
+		_emit_failure("Not authenticated")
+		return
+	var provider_name := str(body.get("provider", ""))
+	var client := _get_nakama_client()
+	var result: NakamaAsyncResult
+	# Nakama's unlink calls take a token (provider-issued) for
+	# providers that require it. We don't have one here, so we
+	# pass an empty string; Nakama will use the linked identity
+	# as recorded on the account.
+	match provider_name:
+		"google":
+			result = await client.unlink_google_async(session, "")
+		"facebook":
+			result = await client.unlink_facebook_async(session, "")
+		"apple":
+			result = await client.unlink_apple_async(session, "")
+		"steam":
+			result = await client.unlink_steam_async(session, "")
+		_:
+			_emit_failure(
+				"Unsupported unlink provider: %s" % provider_name)
+			return
+	if result.is_exception():
+		_emit_failure(_describe_nakama_exception(
+			result.get_exception()))
+		return
+	var linked := G.auth_token_store.linked_providers.duplicate()
+	linked.erase(provider_name)
+	_handle_unlink_success({
+		"status": "success",
+		"linked_providers": linked,
+		"player_id": G.auth_token_store.player_id,
+	})
 
 
 func _on_auth_response(

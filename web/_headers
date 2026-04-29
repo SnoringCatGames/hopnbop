@@ -1,0 +1,20 @@
+# Cloudflare Pages headers for the Godot 4 web export.
+#
+# Godot 4 web requires SharedArrayBuffer, which only works
+# under cross-origin isolation. Verify in the browser console
+# after deploy: `crossOriginIsolated === true`.
+
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: same-origin
+
+# Aggressive caching for the immutable WASM blob — Godot
+# regenerates filenames on rebuild, so stale caches are safe.
+/*.wasm
+  Cache-Control: public, max-age=31536000, immutable
+
+# PCK is regenerated per release; cache for a week so updates
+# propagate quickly without thrashing CDN.
+/*.pck
+  Cache-Control: public, max-age=604800

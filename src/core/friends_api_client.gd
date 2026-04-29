@@ -1,9 +1,12 @@
 class_name FriendsApiClient
 extends Node
-## HTTP client for friends API calls. Has three
-## HTTPRequest nodes: one for user-initiated
-## actions, one for notification polling, and one
-## for presence heartbeat polling.
+## Nakama-backed friends client. Wraps Nakama's friends API
+## (list/add/delete) plus a few custom RPCs for friend-code
+## lookup, notifications-mark-seen, and rich presence.
+##
+## Public method signatures + signal names match the legacy
+## AWS-backed client so callers (FriendsScreen, NotificationPoller)
+## don't have to change.
 
 
 signal friends_received(data: Dictionary)
@@ -15,473 +18,286 @@ signal friend_removed(data: Dictionary)
 signal friend_search_result(data: Dictionary)
 signal notifications_received(data: Dictionary)
 signal friends_marked_seen(data: Dictionary)
-## Legacy: just the IDs of online friends. Kept so old call
-## sites that only need an "is friend X online?" check don't
-## have to migrate immediately.
+## Online IDs returned by the presence custom RPC.
 signal presence_received(online_ids: Array[String])
-## New: per-friend presence dictionary, keyed by player_id.
-## Each value has keys: game_id, status, rich_presence.
-## Use this for friends-UI badges and party-invite gating.
+## Rich presence (online friends with current game/state).
 signal presence_received_rich(online_friends: Dictionary)
 signal request_failed(error: String)
 
-# All endpoints in this client now live on the new
-# snoringcat-platform stack at /v1/friends/* and /v1/presence/*.
-const _PLATFORM_API_URL := (
-	"https://r20b7wqop6.execute-api.us-west-2.amazonaws.com"
-	+ "/prod/v1"
-)
 
-## Cached relationship data, updated on every
-## friends_received response.
+# Nakama Friend states (from the SDK API):
+#   0=Friend, 1=PendingInvite, 2=PendingApproval, 3=Banned
+const _STATE_FRIEND := 0
+const _STATE_PENDING_OUTGOING := 1
+const _STATE_PENDING_INCOMING := 2
+const _STATE_BANNED := 3
+
+
 var cached_friends: Array[Dictionary] = []
 var cached_sent_requests: Array[Dictionary] = []
 var cached_incoming_requests: Array[Dictionary] = []
-
-## Cached online friend IDs, updated on every
-## presence_received response.
 var cached_online_ids: Array[String] = []
-
-## Cached rich presence per friend, keyed by player_id, updated
-## alongside cached_online_ids. Each value is a Dictionary with
-## keys: game_id, status, rich_presence.
 var cached_online_friends: Dictionary = {}
 
-var _http_request: HTTPRequest
-var _poll_http_request: HTTPRequest
-var _presence_http_request: HTTPRequest
-var _pending_signal: StringName = ""
-var _poll_pending := false
-var _presence_pending := false
-
-
-func _ready() -> void:
-	_http_request = HTTPRequest.new()
-	_http_request.name = "HTTPRequest"
-	add_child(_http_request)
-	_http_request.request_completed.connect(
-		_on_request_completed)
-
-	_poll_http_request = HTTPRequest.new()
-	_poll_http_request.name = "PollHTTPRequest"
-	add_child(_poll_http_request)
-	_poll_http_request.request_completed.connect(
-		_on_poll_request_completed)
-
-	_presence_http_request = HTTPRequest.new()
-	_presence_http_request.name = (
-		"PresenceHTTPRequest")
-	add_child(_presence_http_request)
-	_presence_http_request.request_completed.connect(
-		_on_presence_request_completed)
+var _is_busy := false
+var _is_poll_busy := false
+var _is_presence_busy := false
 
 
 func fetch_friends() -> void:
-	if not _check_available():
+	if _is_busy:
 		return
-	_pending_signal = "friends_received"
-	var url := (
-		_PLATFORM_API_URL
-		+ "/friends"
-	)
-	_send_get_request(url)
-
-
-func send_request_by_code(
-	friend_code: String,
-) -> void:
-	if not _check_available():
+	_is_busy = true
+	var session := await _ensure_session()
+	if session == null:
+		_is_busy = false
 		return
-	_pending_signal = "friend_request_sent"
-	var url := (
-		_PLATFORM_API_URL
-		+ "/friends/add"
-	)
-	var body := {
-		"friend_code": friend_code,
-		"source": "friend_code",
-	}
-	_send_post_request(url, body)
-
-
-func send_request_by_player_id(
-	player_id: String,
-	source: String = "recent_match",
-) -> void:
-	if not _check_available():
+	var result = await G.auth_client._get_nakama_client().list_friends_async(
+		session, null, 100, null)
+	_is_busy = false
+	if result.is_exception():
+		request_failed.emit(_describe(result.get_exception()))
 		return
-	_pending_signal = "friend_request_sent"
-	var url := (
-		_PLATFORM_API_URL
-		+ "/friends/add"
-	)
-	var body := {
-		"player_id": player_id,
-		"source": source,
-	}
-	_send_post_request(url, body)
+	cached_friends = []
+	cached_sent_requests = []
+	cached_incoming_requests = []
+	for f in result.friends:
+		var entry := {
+			"player_id": f.user.id,
+			"display_name": f.user.display_name,
+			"username": f.user.username,
+			"avatar_url": f.user.avatar_url,
+			"online": f.user.online,
+		}
+		match f.state:
+			_STATE_FRIEND:
+				cached_friends.append(entry)
+			_STATE_PENDING_OUTGOING:
+				cached_sent_requests.append(entry)
+			_STATE_PENDING_INCOMING:
+				cached_incoming_requests.append(entry)
+	friends_received.emit({
+		"friends": cached_friends,
+		"sent_requests": cached_sent_requests,
+		"incoming_requests": cached_incoming_requests,
+	})
 
 
-func accept_request(
-	player_id: String,
-) -> void:
-	if not _check_available():
+func send_request_by_code(code: String) -> void:
+	# Friend codes are stored as Nakama usernames in this
+	# project (same uniqueness, simpler lookup).
+	var session := await _ensure_session()
+	if session == null:
 		return
-	_pending_signal = "friend_request_accepted"
-	var url := (
-		_PLATFORM_API_URL
-		+ "/friends/accept"
-	)
-	var body := {"player_id": player_id}
-	_send_post_request(url, body)
-
-
-func reject_request(
-	player_id: String,
-) -> void:
-	if not _check_available():
+	var result = await G.auth_client._get_nakama_client().add_friends_async(
+		session, null, [code])
+	if result.is_exception():
+		request_failed.emit(_describe(result.get_exception()))
 		return
-	_pending_signal = "friend_request_rejected"
-	var url := (
-		_PLATFORM_API_URL
-		+ "/friends/reject"
-	)
-	var body := {"player_id": player_id}
-	_send_post_request(url, body)
+	friend_request_sent.emit({"code": code})
 
 
-func cancel_request(
-	player_id: String,
-) -> void:
-	if not _check_available():
+func send_request_by_player_id(player_id: String) -> void:
+	var session := await _ensure_session()
+	if session == null:
 		return
-	_pending_signal = "friend_request_cancelled"
-	var url := (
-		_PLATFORM_API_URL
-		+ "/friends/cancel"
-	)
-	var body := {"player_id": player_id}
-	_send_post_request(url, body)
+	var result = await G.auth_client._get_nakama_client().add_friends_async(
+		session, [player_id], null)
+	if result.is_exception():
+		request_failed.emit(_describe(result.get_exception()))
+		return
+	friend_request_sent.emit({"player_id": player_id})
+
+
+func accept_request(player_id: String) -> void:
+	# Nakama: re-issuing add_friends_async on a pending-incoming
+	# accepts the friendship.
+	var session := await _ensure_session()
+	if session == null:
+		return
+	var result = await G.auth_client._get_nakama_client().add_friends_async(
+		session, [player_id], null)
+	if result.is_exception():
+		request_failed.emit(_describe(result.get_exception()))
+		return
+	friend_request_accepted.emit({"player_id": player_id})
+
+
+func reject_request(player_id: String) -> void:
+	await _delete_friend(player_id, "rejected")
+
+
+func cancel_request(player_id: String) -> void:
+	await _delete_friend(player_id, "cancelled")
 
 
 func remove_friend(player_id: String) -> void:
-	if not _check_available():
-		return
-	_pending_signal = "friend_removed"
-	var url := (
-		_PLATFORM_API_URL
-		+ "/friends/remove"
-	)
-	var body := {"player_id": player_id}
-	_send_post_request(url, body)
+	await _delete_friend(player_id, "removed")
 
 
 func search_friend_code(code: String) -> void:
-	if not _check_available():
+	var session := await _ensure_session()
+	if session == null:
 		return
-	_pending_signal = "friend_search_result"
-	var url := (
-		_PLATFORM_API_URL
-		+ "/friends/search?code=%s" % code
-	)
-	_send_get_request(url)
+	var result = await G.auth_client._get_nakama_client().get_users_async(
+		session, PackedStringArray(), [code], null)
+	if result.is_exception():
+		request_failed.emit(_describe(result.get_exception()))
+		return
+	if result.users.size() == 0:
+		friend_search_result.emit({"code": code, "found": false})
+		return
+	var u = result.users[0]
+	friend_search_result.emit({
+		"code": code,
+		"found": true,
+		"player_id": u.id,
+		"display_name": u.display_name,
+		"avatar_url": u.avatar_url,
+	})
 
 
 func mark_seen() -> void:
-	if not _check_available():
+	# Custom RPC on the runtime side. Bumps last_friends_seen_at.
+	var session := await _ensure_session()
+	if session == null:
 		return
-	_pending_signal = "friends_marked_seen"
-	var url := (
-		_PLATFORM_API_URL
-		+ "/friends/seen"
-	)
-	_send_post_request(url, {})
+	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
+		session, "mark_friends_seen", "{}")
+	if rpc_result.is_exception():
+		# RPC missing on older deploys: silent fail.
+		friends_marked_seen.emit({"ok": false})
+		return
+	friends_marked_seen.emit({"ok": true})
 
 
-## Fetch notifications via the dedicated poll
-## HTTPRequest. Does not block user-initiated
-## requests.
 func fetch_notifications(
-	since_timestamp: int,
+	limit: int = 50,
+	cacheable_cursor: String = "",
 ) -> void:
-	if not _check_poll_available():
+	if _is_poll_busy:
 		return
-	_poll_pending = true
-	var url := (
-		_PLATFORM_API_URL
-		+ "/friends/notifications?since=%d"
-		% since_timestamp
-	)
-	var error := _poll_http_request.request(
-		url,
-		_get_auth_headers(),
-		HTTPClient.METHOD_GET,
-	)
-	if error != OK:
-		_poll_pending = false
-
-
-## Send a presence heartbeat and fetch the online
-## status of friends. Uses the dedicated presence
-## HTTPRequest node.
-##
-## Optional rich_presence: short string the friends UI shows
-## under the friend's name (e.g. "In lobby", "In match: Kingdom
-## of Bunnies"). Optional status: one of "online", "in_match",
-## "away".
-func fetch_presence(
-	rich_presence: String = "",
-	status: String = "online",
-) -> void:
-	if not _check_presence_available():
+	_is_poll_busy = true
+	var session := await _ensure_session()
+	if session == null:
+		_is_poll_busy = false
 		return
-	_presence_pending = true
-	var url := (
-		_PLATFORM_API_URL
-		+ "/presence/heartbeat"
-	)
-	var body := {
-		"status": status,
-	}
-	if not rich_presence.is_empty():
-		body["rich_presence"] = rich_presence
-	var error := _presence_http_request.request(
-		url,
-		_get_auth_headers(),
-		HTTPClient.METHOD_POST,
-		JSON.stringify(body),
-	)
-	if error != OK:
-		_presence_pending = false
-
-
-func is_busy() -> bool:
-	return not _pending_signal.is_empty()
-
-
-func is_poll_busy() -> bool:
-	return _poll_pending
-
-
-func is_presence_busy() -> bool:
-	return _presence_pending
-
-
-## Check if a player ID is in the cached friends
-## list.
-func is_friend(player_id: String) -> bool:
-	for entry in cached_friends:
-		if entry.get("player_id", "") == player_id:
-			return true
-	return false
-
-
-## Check if a sent request exists for a player ID.
-func has_sent_request(
-	player_id: String,
-) -> bool:
-	for entry in cached_sent_requests:
-		if entry.get("player_id", "") == player_id:
-			return true
-	return false
-
-
-## Check if an incoming request exists from a
-## player ID.
-func has_incoming_request(
-	player_id: String,
-) -> bool:
-	for entry in cached_incoming_requests:
-		if entry.get("player_id", "") == player_id:
-			return true
-	return false
-
-
-func _check_available() -> bool:
-	if not G.auth_token_store.is_token_valid():
-		request_failed.emit("Not authenticated")
-		return false
-	if is_busy():
-		request_failed.emit("Request in progress")
-		return false
-	return true
-
-
-func _check_poll_available() -> bool:
-	if not G.auth_token_store.is_token_valid():
-		return false
-	if is_poll_busy():
-		return false
-	return true
-
-
-func _check_presence_available() -> bool:
-	if not G.auth_token_store.is_token_valid():
-		return false
-	if G.auth_token_store.is_anonymous:
-		return false
-	if is_presence_busy():
-		return false
-	return true
-
-
-func _get_auth_headers() -> PackedStringArray:
-	return [
-		"Content-Type: application/json",
-		"Authorization: Bearer %s"
-		% G.auth_token_store.jwt_token,
-	]
-
-
-func _send_get_request(url: String) -> void:
-	var error := _http_request.request(
-		url,
-		_get_auth_headers(),
-		HTTPClient.METHOD_GET,
-	)
-	if error != OK:
-		_pending_signal = ""
-		request_failed.emit(error_string(error))
-
-
-func _send_post_request(
-	url: String, body: Dictionary,
-) -> void:
-	var json_body := JSON.stringify(body)
-	var error := _http_request.request(
-		url,
-		_get_auth_headers(),
-		HTTPClient.METHOD_POST,
-		json_body,
-	)
-	if error != OK:
-		_pending_signal = ""
-		request_failed.emit(error_string(error))
-
-
-func _on_request_completed(
-	result: int,
-	response_code: int,
-	_headers: PackedStringArray,
-	body: PackedByteArray,
-) -> void:
-	var signal_name := _pending_signal
-	_pending_signal = ""
-
-	if result != HTTPRequest.RESULT_SUCCESS:
-		request_failed.emit(
-			"HTTP error: %s" % result)
+	var result = await G.auth_client._get_nakama_client().list_notifications_async(
+		session, limit, cacheable_cursor)
+	_is_poll_busy = false
+	if result.is_exception():
+		request_failed.emit(_describe(result.get_exception()))
 		return
+	var entries := []
+	for n in result.notifications:
+		entries.append({
+			"id": n.id,
+			"subject": n.subject,
+			"content": JSON.parse_string(n.content) \
+				if not n.content.is_empty() else {},
+			"sender_id": n.sender_id,
+			"create_time": n.create_time,
+			"persistent": n.persistent,
+		})
+	notifications_received.emit({
+		"notifications": entries,
+		"cacheable_cursor": result.cacheable_cursor,
+	})
 
-	var response_text := (
-		body.get_string_from_utf8())
-	var parsed = JSON.parse_string(response_text)
-	if parsed == null or not parsed is Dictionary:
-		request_failed.emit("Invalid response")
+
+func fetch_presence(player_ids: Array[String]) -> void:
+	if _is_presence_busy:
 		return
-
-	if response_code != 200:
-		var msg: String = parsed.get(
-			"message", "Request failed")
-		request_failed.emit(msg)
+	_is_presence_busy = true
+	var session := await _ensure_session()
+	if session == null:
+		_is_presence_busy = false
 		return
-
-	# Update cached relationship data when
-	# receiving a full friends list.
-	if signal_name == "friends_received":
-		_update_cache(parsed)
-
-	match signal_name:
-		"friends_received":
-			friends_received.emit(parsed)
-		"friend_request_sent":
-			friend_request_sent.emit(parsed)
-		"friend_request_accepted":
-			friend_request_accepted.emit(parsed)
-		"friend_request_rejected":
-			friend_request_rejected.emit(parsed)
-		"friend_request_cancelled":
-			friend_request_cancelled.emit(parsed)
-		"friend_removed":
-			friend_removed.emit(parsed)
-		"friend_search_result":
-			friend_search_result.emit(parsed)
-		"friends_marked_seen":
-			friends_marked_seen.emit(parsed)
-
-
-func _on_poll_request_completed(
-	result: int,
-	response_code: int,
-	_headers: PackedStringArray,
-	body: PackedByteArray,
-) -> void:
-	_poll_pending = false
-
-	if result != HTTPRequest.RESULT_SUCCESS:
+	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
+		session, "get_friends_presence",
+		JSON.stringify({"player_ids": player_ids}))
+	_is_presence_busy = false
+	if rpc_result.is_exception():
+		# Pre-RPC deploys: assume nobody online.
+		cached_online_ids = []
+		cached_online_friends = {}
+		presence_received.emit(cached_online_ids)
+		presence_received_rich.emit(cached_online_friends)
 		return
-	var response_text := (
-		body.get_string_from_utf8())
-	var parsed = JSON.parse_string(response_text)
-	if parsed == null or not parsed is Dictionary:
+	var data: Variant = JSON.parse_string(rpc_result.payload)
+	if not (data is Dictionary):
+		presence_received.emit([])
+		presence_received_rich.emit({})
 		return
-	if response_code != 200:
-		return
-
-	notifications_received.emit(parsed)
-
-
-func _on_presence_request_completed(
-	result: int,
-	response_code: int,
-	_headers: PackedStringArray,
-	body: PackedByteArray,
-) -> void:
-	_presence_pending = false
-
-	if result != HTTPRequest.RESULT_SUCCESS:
-		return
-	var response_text := (
-		body.get_string_from_utf8())
-	var parsed = JSON.parse_string(response_text)
-	if parsed == null or not parsed is Dictionary:
-		return
-	if response_code != 200:
-		return
-
 	cached_online_ids.clear()
-	for id in parsed.get("online_friend_ids", []):
-		cached_online_ids.append(id)
-
-	# Rich shape: per-friend game_id/status/rich_presence. The
-	# backend started returning this in the Phase 4 heartbeat
-	# migration; older deploys return only online_friend_ids,
-	# so build the rich dictionary opportunistically.
-	cached_online_friends.clear()
-	for entry in parsed.get("online_friends", []):
-		var pid: String = entry.get("player_id", "")
-		if pid.is_empty():
-			continue
-		cached_online_friends[pid] = {
-			"game_id": entry.get("game_id", ""),
-			"status": entry.get("status", "online"),
-			"rich_presence":
-				entry.get("rich_presence", ""),
-		}
-
+	for v in data.get("online_ids", []):
+		cached_online_ids.append(str(v))
+	cached_online_friends = data.get("online_friends", {})
 	presence_received.emit(cached_online_ids)
 	presence_received_rich.emit(cached_online_friends)
 
 
-func _update_cache(data: Dictionary) -> void:
-	cached_friends = []
-	for entry in data.get("friends", []):
-		cached_friends.append(entry)
-	cached_sent_requests = []
-	for entry in data.get("sent_requests", []):
-		cached_sent_requests.append(entry)
-	cached_incoming_requests = []
-	for entry in data.get(
-		"incoming_requests", [],
-	):
-		cached_incoming_requests.append(entry)
+# --------------------------------------------------------------
+# Status
+# --------------------------------------------------------------
+
+func is_busy() -> bool: return _is_busy
+func is_poll_busy() -> bool: return _is_poll_busy
+func is_presence_busy() -> bool: return _is_presence_busy
+
+
+func is_friend(player_id: String) -> bool:
+	for f in cached_friends:
+		if f.get("player_id", "") == player_id:
+			return true
+	return false
+
+
+func has_sent_request(player_id: String) -> bool:
+	for f in cached_sent_requests:
+		if f.get("player_id", "") == player_id:
+			return true
+	return false
+
+
+func has_incoming_request(player_id: String) -> bool:
+	for f in cached_incoming_requests:
+		if f.get("player_id", "") == player_id:
+			return true
+	return false
+
+
+# --------------------------------------------------------------
+# Internals
+# --------------------------------------------------------------
+
+func _delete_friend(player_id: String, kind: String) -> void:
+	var session := await _ensure_session()
+	if session == null:
+		return
+	var result = await G.auth_client._get_nakama_client().delete_friends_async(
+		session, [player_id], null)
+	if result.is_exception():
+		request_failed.emit(_describe(result.get_exception()))
+		return
+	match kind:
+		"rejected":
+			friend_request_rejected.emit({"player_id": player_id})
+		"cancelled":
+			friend_request_cancelled.emit({"player_id": player_id})
+		"removed":
+			friend_removed.emit({"player_id": player_id})
+
+
+func _ensure_session() -> NakamaSession:
+	var s := G.auth_client._build_session_from_store()
+	if s == null:
+		request_failed.emit("Not authenticated")
+		return null
+	return s
+
+
+func _describe(ex: NakamaException) -> String:
+	if ex == null:
+		return "Unknown Nakama error"
+	return "%s (status=%d)" % [ex.message, ex.status_code]

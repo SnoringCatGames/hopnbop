@@ -67,6 +67,10 @@ func InitModule(
 	if err := initializer.RegisterRpc("match_end", lifecycle.MatchEndRpc); err != nil {
 		return err
 	}
+	// Phase E migration RPC.
+	if err := initializer.RegisterRpc("bulk_import", bulkImportRpc); err != nil {
+		return err
+	}
 
 	logger.Info("snoringcat-platform runtime loaded (app=%s version=%s)", appName, appVersion)
 	return nil

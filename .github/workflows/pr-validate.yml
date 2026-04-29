@@ -1,0 +1,129 @@
+name: PR Validate
+
+# Phase G replacement for the legacy AWS-flavored test workflow.
+# Runs on every PR targeting main:
+#   - GDScript formatter check (addons/gdscript_formatter)
+#   - GUT unit + integration (per-file, against ephemeral
+#     Nakama + Postgres docker-compose)
+#   - go test / go vet / staticcheck for the Nakama runtime
+#     modules in nakama-runtime/
+#   - go vet / build for the Pulumi project in
+#     infra/pulumi/snoringcat-platform/
+#
+# AWS-specific tests (SAM build, moto-mocked DDB, GameLift
+# integration) are intentionally absent — they're going away
+# with Phase F.
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: 4.5.0-stable
+
+jobs:
+  gdscript-format:
+    name: GDScript formatter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+      - name: Run gdscript_formatter --check
+        run: |
+          # The formatter addon is committed; running with --check
+          # produces a non-zero exit when formatting is off.
+          if [ -d addons/gdscript_formatter ]; then
+            godot --headless --path . \
+              --script addons/gdscript_formatter/cli.gd -- --check
+          else
+            echo "gdscript_formatter not vendored; skipping"
+          fi
+
+  godot-tests:
+    name: GUT unit + integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: nakama
+          POSTGRES_USER: nakama
+          POSTGRES_PASSWORD: ci-test-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nakama"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      nakama:
+        image: heroiclabs/nakama:3.25.0
+        env:
+          DATABASE_ADDRESS: nakama:ci-test-password@postgres:5432/nakama
+        ports: ["7350:7350", "7351:7351"]
+        options: >-
+          --entrypoint /bin/sh
+        # Trickier than a normal service — see the "Bring up
+        # Nakama in CI" step below for the actual launch.
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+      - name: Wait for Nakama healthcheck
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://localhost:7350/healthcheck; then
+              echo "Nakama up"; exit 0
+            fi
+            sleep 2
+          done
+          echo "Nakama did not come up"; exit 1
+      - name: Run GUT (per-file)
+        run: |
+          # Run one file at a time — directory mode misses
+          # discovery on this project (see hopnbop_private
+          # CLAUDE.md "Project-Specific Testing Notes").
+          set -e
+          for f in $(find test/unit test/integration -name "test_*.gd" 2>/dev/null); do
+            echo "== $f =="
+            godot --headless -s --path . \
+              addons/gut/gut_cmdln.gd \
+              -gtest=res://${f#./} -gexit
+          done
+
+  nakama-runtime-go:
+    name: Nakama runtime Go check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nakama-runtime
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.23' }
+      - run: go vet ./...
+      - run: go test ./...
+      - name: staticcheck
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+          staticcheck ./...
+
+  pulumi-go-build:
+    name: Pulumi project compile
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/pulumi/snoringcat-platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.25' }
+      - run: go vet ./...
+      - run: go build ./...
