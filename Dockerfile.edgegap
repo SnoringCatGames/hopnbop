@@ -1,0 +1,63 @@
+# Slim Edgegap-targeted game-server image. Compared to the
+# legacy GameLift Dockerfile this drops:
+#   - GameLift Server SDK builder stage (Edgegap doesn't need it)
+#   - webrtc-native v1.0.9 patch stage (Edgegap port-forwards
+#     declared container ports directly, so no portRangeBegin /
+#     portRangeEnd / enableIceUdpMux patches needed)
+#   - nginx config (no GameLift host-port remapping)
+#   - entrypoint.sh Route 53 logic (Edgegap assigns hostnames)
+#
+# Container ports declared:
+#   - 4433/UDP (ENet + WebRTC DataChannels)
+#   - 4434/TCP (WebRTC signaling, when transport_type=webrtc)
+#
+# The Godot Linux server .pck is built outside via:
+#   godot --headless --export-pack "Linux Server" \
+#     build/linux/hopnbop_server.pck
+# and copied into the image.
+
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    libfontconfig1 \
+    libxcursor1 \
+    libxinerama1 \
+    libxrandr2 \
+    libxi6 \
+    libgl1 \
+    libssl3 \
+    libstdc++6 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Godot Linux headless binary. Pin to the same version the
+# Windows export uses to avoid editor/server skew.
+ARG GODOT_VERSION=4.5.0-stable
+RUN curl -fsSL -o /tmp/godot.zip \
+    "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip" \
+    && cd /tmp && unzip godot.zip \
+    && mv "Godot_v${GODOT_VERSION}_linux.x86_64" /usr/local/bin/godot \
+    && chmod +x /usr/local/bin/godot \
+    && rm /tmp/godot.zip
+
+# webrtc-native GDExtension binaries. Vanilla v1.0.9 — no patch.
+COPY addons/webrtc /addons/webrtc
+
+# Server pck.
+COPY build/linux/hopnbop_server.pck /game/server.pck
+
+WORKDIR /game
+
+EXPOSE 4433/udp
+EXPOSE 4434/tcp
+
+# Edgegap injects $ARBITRARIUM_PUBLIC_IP, $ARBITRARIUM_PORT_4433_UDP_EXTERNAL,
+# etc. as env vars. Server reads these via project config to advertise
+# the right hostname/port back to clients.
+ENV PLATFORM=edgegap
+ENV TRANSPORT_PORT=4433
+
+ENTRYPOINT ["/usr/local/bin/godot", "--headless", "--main-pack", "/game/server.pck", "--", "--server"]
