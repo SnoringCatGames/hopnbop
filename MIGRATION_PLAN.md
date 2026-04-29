@@ -930,16 +930,6 @@ echo "PULUMI_CONFIG_PASSPHRASE=$PULUMI_PW" \
 unset PULUMI_PW
 ```
 
-PowerShell equivalent:
-```powershell
-$bytes = New-Object byte[] 32
-[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
-$pw = [Convert]::ToBase64String($bytes)
-"PULUMI_CONFIG_PASSPHRASE=$pw" |
-  Out-File -Append -Encoding ASCII $HOME\.hopnbop-migration\credentials.env
-Remove-Variable bytes, pw
-```
-
 Phase A's Pulumi commands set `PULUMI_CONFIG_PASSPHRASE` from
 the sourced `credentials.env`. If you ever lose this passphrase,
 you can't decrypt Pulumi-stored secrets in the state file —
