@@ -550,42 +550,6 @@ PostToolUse auto-push hook syncs the encrypted file to the
 laptop. Each machine decrypts to a local
 `~/.hopnbop-migration/credentials.env` when needed.
 
-### Shell notes (read first if on Windows / PowerShell)
-
-The shell commands below use Unix-style syntax (bash / zsh).
-**On native Windows PowerShell, three things differ:**
-
-1. **Tilde (`~`) does NOT expand** when passed as an argument
-   to external programs (it works in PowerShell cmdlets but not
-   when piped to `age`, `ssh-keygen`, etc.). **Use `$HOME`
-   instead:**
-   ```powershell
-   age-keygen -o $HOME\.config\age\key.txt          # works
-   age-keygen -o ~/.config/age/key.txt              # FAILS (literal ~)
-   ```
-2. **`chmod` does nothing useful in native PowerShell.** Skip
-   the `chmod 600` lines. Files in your user profile
-   (`C:\Users\<you>\`) are already private to your user via
-   NTFS ACLs. If you want to be extra-strict:
-   ```powershell
-   icacls $HOME\.config\age\key.txt /inheritance:r /grant:r "${env:USERNAME}:(F)"
-   ```
-3. **`touch` doesn't exist.** Use:
-   ```powershell
-   New-Item -ItemType File $HOME\.hopnbop-migration\credentials.env -Force
-   ```
-
-Other minor differences: line continuation is backtick (`` ` ``)
-not backslash (`\`); `mkdir -p` accepts `-p` as a no-op but
-errors if the directory already exists (vs. silent in bash) —
-ignore "already exists" errors.
-
-If you're using **Git Bash** or **WSL** on Windows, the
-Unix-style commands work as-is.
-
-The steps below show bash syntax; translate to PowerShell as
-above when needed.
-
 ### Pre-flight security gate (run first, both machines)
 
 Before generating any keys or pasting any tokens, verify the
@@ -593,7 +557,7 @@ following on each machine. If any check fails, fix it before
 continuing — don't just paper over.
 
 1. **`claude-config` repo is PRIVATE on GitHub.**
-   ```bash
+   ```powershell
    gh repo view levilindsey/claude-config --json visibility
    # expect: {"visibility":"PRIVATE"}
    ```
@@ -602,31 +566,27 @@ continuing — don't just paper over.
    private at https://github.com/levilindsey/claude-config/settings.
 
 2. **Full-disk encryption is on** (mitigates "stolen unlocked
-   laptop" → all secrets exposed):
-   - **Windows:** Settings → Privacy & security → Device
-     encryption (Home) or BitLocker (Pro). Should show "On".
-     PowerShell check:
-     ```powershell
-     manage-bde -status C:
-     # look for: Conversion Status = Fully Encrypted
-     ```
-   - **macOS:** System Settings → Privacy & Security →
-     FileVault → On.
-   - **Linux:** LUKS on `/` partition.
+   laptop" → all secrets exposed). Settings → Privacy & security
+   → Device encryption (Home) or BitLocker (Pro). Should show
+   "On". PowerShell check:
+   ```powershell
+   manage-bde -status C:
+   # look for: Conversion Status = Fully Encrypted
+   ```
 3. **Back up the age private key off-machine** *after* you
    generate it (step 0 below). Recommended: print
-   `~/.config/age/key.txt` to paper, store in a drawer or
+   `$HOME\.config\age\key.txt` to paper, store in a drawer or
    safe-deposit box. **Do not** sync the private key via
-   Dropbox, Google Drive, etc. — that defeats the "key never
+   OneDrive, Dropbox, etc. — that defeats the "key never
    leaves the machine" property and creates a third copy you
    don't control. If your disk dies and you have no backup,
    every credential ever encrypted to that key is unrecoverable
    from this machine; you'd recover via the other machine's key
    and rotate.
 4. **Edit `credentials.env` in a real editor (Notepad, VS
-   Code, vim), not via shell redirection.** Pasting tokens via
-   `>>` puts them in PowerShell / bash history, which is a
-   recoverable plaintext leak even after encryption.
+   Code), not via shell redirection.** Pasting tokens via `>>`
+   puts them in PowerShell history, which is a recoverable
+   plaintext leak even after encryption.
 
 When all four checks pass, proceed to step 0.
 
@@ -635,48 +595,67 @@ When all four checks pass, proceed to step 0.
 **On each machine:**
 
 1. Install `age`:
-   - Windows: `scoop install age` (or `winget install FiloSottile.age`).
-   - macOS: `brew install age`.
-   - Linux: `apt install age` or download from
-     `github.com/FiloSottile/age/releases`.
-2. Generate this machine's keypair:
-   ```bash
-   mkdir -p ~/.config/age
-   age-keygen -o ~/.config/age/key.txt
-   chmod 600 ~/.config/age/key.txt
+   ```powershell
+   winget install FiloSottile.age
    ```
+   (Restart PowerShell after install so PATH picks up.)
+
+   > **WinGet shim caveat:** the shim at
+   > `$env:LOCALAPPDATA\Microsoft\WinGet\Links\age.exe` is a
+   > 0-byte symbolic link that doesn't launch from PowerShell
+   > ("No application is associated…"). The real binary lives
+   > at `$env:LOCALAPPDATA\Microsoft\WinGet\Packages\FiloSottile.age_*\age\age.exe`.
+   > Phase scripts find and invoke the real binary directly.
+   > For interactive use, plain `age` and `age-keygen` usually
+   > work because the shell resolves them via PATH; if you hit
+   > the launch error, use `& "<full-path-to-real-age.exe>"`.
+
+2. Generate this machine's keypair:
+   ```powershell
+   New-Item -ItemType Directory -Path $HOME\.config\age -Force | Out-Null
+   age-keygen -o $HOME\.config\age\key.txt
+   ```
+   (`chmod 600` is a no-op on Windows; user-profile NTFS perms
+   already restrict the file to your user.)
+
 3. Copy this machine's **public** key (last line of the keygen
-   output, starts with `age1...`). You'll paste it into the
+   output, starts with `age1…`). You'll paste it into the
    recipients file in step 4.
 
 **On the desktop (where you'll run pre-flight):**
 
 4. In your `claude-config` dotfiles repo, create the recipients
    list (public keys for both machines that should be able to
-   decrypt). The `~/.claude/secrets/` directory should be
-   tracked by claude-config so the encrypted file syncs:
-   ```bash
-   mkdir -p ~/.claude/secrets
-   cat > ~/.claude/secrets/hopnbop-migration.recipients <<EOF
+   decrypt). `secrets/` is tracked by claude-config and synced
+   across machines, but `~/.claude/secrets` is a junction to
+   the real path. Use the real path here:
+   ```powershell
+   $secrets = "$HOME\Repositories\claude-config\secrets"
+   New-Item -ItemType Directory -Path $secrets -Force | Out-Null
+   @"
    # Desktop
    age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
    # Laptop
    age1yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
-   EOF
+   "@ | Out-File -Encoding ASCII "$secrets\hopnbop-migration.recipients"
    ```
    (Public keys aren't sensitive; the recipients file is safe
    in git.)
-5. Set up the local working directory (gitignored, machine-only):
-   ```bash
-   mkdir -p ~/.hopnbop-migration/ssh
-   touch ~/.hopnbop-migration/credentials.env
-   chmod 600 ~/.hopnbop-migration/credentials.env
+5. Create the `~/.claude/secrets` junction so the standard path
+   resolves to the synced claude-config dir:
+   ```powershell
+   cmd /c mklink /J $HOME\.claude\secrets $HOME\Repositories\claude-config\secrets
    ```
-6. Add `~/.hopnbop-migration/` to your global gitignore.
+6. Set up the local working directory (gitignored, machine-only):
+   ```powershell
+   New-Item -ItemType Directory -Path $HOME\.hopnbop-migration\ssh -Force | Out-Null
+   New-Item -ItemType File -Path $HOME\.hopnbop-migration\credentials.env -Force | Out-Null
+   ```
+7. Add `$HOME\.hopnbop-migration\` to your global gitignore.
 
 After this, work through steps 1-10, populating the **local**
-`~/.hopnbop-migration/credentials.env`. Step 11 encrypts and
-pushes.
+`$HOME\.hopnbop-migration\credentials.env`. Step 11 encrypts
+and pushes.
 
 ### 1. Hetzner Cloud account
 
@@ -796,17 +775,15 @@ setup.
      - `www.*` subdomains: CNAME →
        `snoringcat-games.pages.dev`.
 9. **Wait for propagation** (typically 5-30 min with low TTL):
-   ```bash
-   dig +short snoringcat.games
-   dig +short www.snoringcat.games
-   dig +short snoringcatgames.com
-   dig +short www.snoringcatgames.com
+   ```powershell
+   "snoringcat.games","www.snoringcat.games","snoringcatgames.com","www.snoringcatgames.com" |
+     ForEach-Object { Resolve-DnsName -Name $_ -Type A | Select-Object Name, IPAddress }
    ```
    Each should resolve to a Cloudflare IP.
 10. **Cloudflare auto-provisions TLS** within ~10-15 min after
     DNS propagates. Verify:
-    ```bash
-    curl -sSI https://snoringcat.games/privacy/ | head -5
+    ```powershell
+    curl.exe -sSI https://snoringcat.games/privacy/ | Select-Object -First 5
     ```
     Should show `HTTP/2 200`.
 11. **Don't forget:** edit `levi.dev`'s `package.json::domains`
@@ -887,28 +864,33 @@ they must respond 200.
 
 ### 10. Verify AWS access still works
 
-```bash
+```powershell
 aws sso login --profile hopnbop
 aws sts get-caller-identity --profile hopnbop
 ```
 Should print account `270469481989`. If expired, the SSO login
 re-prompts in a browser.
 
-(AWS credentials are managed by the AWS SSO flow on each machine
-— not in the credentials.env. The CLI handles caching.)
+(AWS credentials are managed by the AWS SSO flow on each
+machine — not in `credentials.env`. The CLI handles caching.)
 
 ### 11. Generate SSH keypairs
 
-Generate locally; we'll encrypt them in step 11.
+Generate locally; we'll encrypt them in step 12.
 
-```bash
-ssh-keygen -t ed25519 -f ~/.hopnbop-migration/ssh/nakama -N "" -C "nakama"
-ssh-keygen -t ed25519 -f ~/.hopnbop-migration/ssh/postgres -N "" -C "postgres"
-chmod 600 ~/.hopnbop-migration/ssh/nakama
-chmod 600 ~/.hopnbop-migration/ssh/postgres
+```powershell
+ssh-keygen -t ed25519 -f "$HOME\.hopnbop-migration\ssh\nakama"   -N '""' -C "nakama"
+ssh-keygen -t ed25519 -f "$HOME\.hopnbop-migration\ssh\postgres" -N '""' -C "postgres"
 ```
 
+Note the `-N '""'` (single-quoted double quotes) — that's the
+PowerShell incantation that passes a literal empty string for
+the passphrase to `ssh-keygen.exe`. Plain `-N ""` doesn't
+work; PowerShell drops the empty argument before the exe sees
+it.
+
 Public keys (`*.pub`) are non-sensitive and stay readable.
+NTFS user-profile perms already restrict the private keys.
 
 ### 11b. Generate Pulumi state passphrase
 
@@ -922,12 +904,13 @@ else.
 
 Generate a strong passphrase and append:
 
-```bash
-# 32 random bytes, base64-encoded (~ 43 chars):
-PULUMI_PW=$(openssl rand -base64 32)
-echo "PULUMI_CONFIG_PASSPHRASE=$PULUMI_PW" \
-  >> ~/.hopnbop-migration/credentials.env
-unset PULUMI_PW
+```powershell
+$bytes = New-Object byte[] 32
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+$pw = [Convert]::ToBase64String($bytes)
+"PULUMI_CONFIG_PASSPHRASE=$pw" |
+  Out-File -Append -Encoding ASCII $HOME\.hopnbop-migration\credentials.env
+Remove-Variable bytes, pw
 ```
 
 Phase A's Pulumi commands set `PULUMI_CONFIG_PASSPHRASE` from
@@ -939,114 +922,113 @@ exist; Pulumi state can be rebuilt with `pulumi import`).
 ### 12. Encrypt and push to claude-config
 
 Encrypt `credentials.env` and the two SSH private keys to the
-multi-recipient `.age` files:
+multi-recipient `.age` files. Use the real claude-config path
+(not the `~/.claude/secrets` junction — PowerShell sometimes
+refuses to traverse it as an "untrusted mount point"):
 
-```bash
-RECIPIENTS=~/.claude/secrets/hopnbop-migration.recipients
+```powershell
+$age = (Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\FiloSottile.age_*\age\age.exe" -ErrorAction Stop).FullName
+$secrets = "$HOME\Repositories\claude-config\secrets"
+$recipients = "$secrets\hopnbop-migration.recipients"
+$mig = "$HOME\.hopnbop-migration"
 
-age -R "$RECIPIENTS" \
-  -o ~/.claude/secrets/hopnbop-migration.env.age \
-  ~/.hopnbop-migration/credentials.env
-
-age -R "$RECIPIENTS" \
-  -o ~/.claude/secrets/hopnbop-migration-nakama-ssh.age \
-  ~/.hopnbop-migration/ssh/nakama
-
-age -R "$RECIPIENTS" \
-  -o ~/.claude/secrets/hopnbop-migration-postgres-ssh.age \
-  ~/.hopnbop-migration/ssh/postgres
+& $age -R $recipients -o "$secrets\hopnbop-migration.env.age"          "$mig\credentials.env"
+& $age -R $recipients -o "$secrets\hopnbop-migration-nakama-ssh.age"   "$mig\ssh\nakama"
+& $age -R $recipients -o "$secrets\hopnbop-migration-postgres-ssh.age" "$mig\ssh\postgres"
 ```
 
-Commit + push (your PostToolUse auto-push hook may handle this;
-if not, `cd` into your claude-config checkout and commit
-manually):
+Commit + push (the PostToolUse auto-push hook may handle this;
+if not, run manually):
 
-```bash
-cd <your-claude-config-checkout>
-git add secrets/hopnbop-migration.recipients \
-        secrets/hopnbop-migration.env.age \
-        secrets/hopnbop-migration-nakama-ssh.age \
+```powershell
+Push-Location $HOME\Repositories\claude-config
+git add secrets/hopnbop-migration.recipients `
+        secrets/hopnbop-migration.env.age `
+        secrets/hopnbop-migration-nakama-ssh.age `
         secrets/hopnbop-migration-postgres-ssh.age
 git commit -m "Add encrypted hopnbop migration credentials"
 git push
+Pop-Location
 ```
 
 **Sanity check the encrypted file:**
 
-```bash
-age -d -i ~/.config/age/key.txt \
-  ~/.claude/secrets/hopnbop-migration.env.age \
-  | grep -c "^[A-Z_]*=" # should print 13
+```powershell
+$count = (& $age -d -i "$HOME\.config\age\key.txt" "$secrets\hopnbop-migration.env.age" |
+          Select-String -Pattern "^[A-Z_]+=").Count
+"Decrypted line count: $count  (expected: 13)"
 ```
 
 ### 13. On the laptop: pull and decrypt
 
 After pulling the latest claude-config on the laptop:
 
-```bash
-mkdir -p ~/.hopnbop-migration/ssh
+```powershell
+$age = (Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\FiloSottile.age_*\age\age.exe" -ErrorAction Stop).FullName
+$key = "$HOME\.config\age\key.txt"
+$secrets = "$HOME\Repositories\claude-config\secrets"
+$mig = "$HOME\.hopnbop-migration"
 
-age -d -i ~/.config/age/key.txt \
-  ~/.claude/secrets/hopnbop-migration.env.age \
-  > ~/.hopnbop-migration/credentials.env
-chmod 600 ~/.hopnbop-migration/credentials.env
+New-Item -ItemType Directory -Path $mig\ssh -Force | Out-Null
 
-age -d -i ~/.config/age/key.txt \
-  ~/.claude/secrets/hopnbop-migration-nakama-ssh.age \
-  > ~/.hopnbop-migration/ssh/nakama
-chmod 600 ~/.hopnbop-migration/ssh/nakama
+# Decrypt with -o (avoids PowerShell `>` redirect adding a UTF-16 BOM
+# that would corrupt SSH keys).
+& $age -d -i $key -o $mig\credentials.env  "$secrets\hopnbop-migration.env.age"
+& $age -d -i $key -o $mig\ssh\nakama       "$secrets\hopnbop-migration-nakama-ssh.age"
+& $age -d -i $key -o $mig\ssh\postgres     "$secrets\hopnbop-migration-postgres-ssh.age"
 
-age -d -i ~/.config/age/key.txt \
-  ~/.claude/secrets/hopnbop-migration-postgres-ssh.age \
-  > ~/.hopnbop-migration/ssh/postgres
-chmod 600 ~/.hopnbop-migration/ssh/postgres
-
-# Regenerate public keys (cheap, derived from private):
-ssh-keygen -y -f ~/.hopnbop-migration/ssh/nakama \
-  > ~/.hopnbop-migration/ssh/nakama.pub
-ssh-keygen -y -f ~/.hopnbop-migration/ssh/postgres \
-  > ~/.hopnbop-migration/ssh/postgres.pub
+# Regenerate public keys (cheap, derived from private). Use Out-File
+# -Encoding ASCII so .pub files aren't UTF-16-with-BOM.
+ssh-keygen -y -f $mig\ssh\nakama   | Out-File -Encoding ASCII $mig\ssh\nakama.pub
+ssh-keygen -y -f $mig\ssh\postgres | Out-File -Encoding ASCII $mig\ssh\postgres.pub
 ```
 
 Now the laptop has a working copy. Both machines are in sync.
 
 ### Runtime credential consumption (how the agent reads secrets)
 
-Phase scripts source the already-decrypted file directly. No
-per-session decrypt needed:
+Phase scripts source the already-decrypted file directly into
+the current PowerShell session's environment. No per-session
+decrypt needed:
 
-```bash
-set -a
-source ~/.hopnbop-migration/credentials.env
-set +a
+```powershell
+Get-Content $HOME\.hopnbop-migration\credentials.env | ForEach-Object {
+  if ($_ -match '^([A-Z_]+)=(.*)$') {
+    Set-Item "Env:$($Matches[1])" $Matches[2]
+  }
+}
 ```
 
-If you want the paranoid mode (decrypt fresh each phase, never
-sit on disk between sessions): the agent can re-decrypt to a
-`mktemp` directory, source from there, shred on EXIT trap:
+If you want paranoid mode (decrypt fresh each phase, never sit
+on disk between sessions): re-decrypt to a temp directory,
+import to env, scrub on completion:
 
-```bash
-TEMPDIR=$(mktemp -d)
-trap "shred -u $TEMPDIR/credentials.env 2>/dev/null; rm -rf $TEMPDIR" EXIT
-age -d -i ~/.config/age/key.txt \
-  ~/.claude/secrets/hopnbop-migration.env.age \
-  > "$TEMPDIR/credentials.env"
-chmod 600 "$TEMPDIR/credentials.env"
-set -a
-source "$TEMPDIR/credentials.env"
-set +a
+```powershell
+$age = (Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\FiloSottile.age_*\age\age.exe" -ErrorAction Stop).FullName
+$temp = New-Item -ItemType Directory -Path "$env:TEMP\hopnbop-mig-$(New-Guid)" -Force
+try {
+  $envFile = "$($temp.FullName)\credentials.env"
+  & $age -d -i $HOME\.config\age\key.txt -o $envFile `
+        "$HOME\Repositories\claude-config\secrets\hopnbop-migration.env.age"
+  Get-Content $envFile | ForEach-Object {
+    if ($_ -match '^([A-Z_]+)=(.*)$') { Set-Item "Env:$($Matches[1])" $Matches[2] }
+  }
+  # ... do work ...
+} finally {
+  Remove-Item -Recurse -Force $temp.FullName
+}
 ```
 
-Default phase scripts use the simple persistent-decrypt approach
-(file at `~/.hopnbop-migration/credentials.env`, mode 0600,
+Default phase scripts use the persistent-decrypt approach
+(file at `$HOME\.hopnbop-migration\credentials.env`,
 gitignored). Switch to paranoid mode by setting
-`MIGRATION_DECRYPT_FRESH=1` before running a phase.
+`$env:MIGRATION_DECRYPT_FRESH = "1"` before running a phase.
 
 ### Adding new secrets generated during phases
 
 Phase A generates the Postgres password, Nakama console password,
 server key, and session encryption key. The agent appends those
-to `~/.hopnbop-migration/credentials.env`, re-encrypts to
+to `$HOME\.hopnbop-migration\credentials.env`, re-encrypts to
 `hopnbop-migration.env.age`, and the auto-push hook propagates
 to the other machine. Pull on the other machine + re-decrypt to
 sync.
