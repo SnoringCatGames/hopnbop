@@ -382,13 +382,22 @@ function Step-CostMonitor {
 	Invoke-Checked "scp timer" {
 		Scp-Up $ip $NakamaKey "$RemoteSrc\cost-monitor\cost-monitor.timer" "/opt/snoringcat/cost-monitor/"
 	}
-	# Render .env on remote.
+	# Render .env on remote. Thresholds match the original
+	# migration plan ($20/$40/$80 warn tiers + $50 emergency cap).
+	# DISCORD_USER_ID is optional; when set, threshold pings
+	# include an @-mention so they show up as a Discord
+	# notification (and an email if the user has those on).
 	$envLines = @(
 		"HCLOUD_TOKEN=$env:HCLOUD_TOKEN",
 		"EDGEGAP_TOKEN=$env:EDGEGAP_TOKEN",
 		"EDGEGAP_ORG=$env:EDGEGAP_ORG",
 		"DISCORD_WEBHOOK_URL=$env:DISCORD_WEBHOOK_URL",
-		"EMERGENCY_CAP=50"
+		"DISCORD_USER_ID=$([Environment]::GetEnvironmentVariable('DISCORD_USER_ID'))",
+		"BUDGET_WARN_LOW=20",
+		"BUDGET_WARN_MID=40",
+		"BUDGET_WARN_HIGH=80",
+		"EMERGENCY_CAP=50",
+		"DAILY_SUMMARY_HOUR_UTC=9"
 	)
 	$tmp = New-TemporaryFile
 	Write-LinuxFile $tmp.FullName (($envLines -join "`n") + "`n")
