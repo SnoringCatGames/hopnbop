@@ -138,13 +138,39 @@ Run "ensure R2 bucket $Bucket" {
 }
 
 # --------------------------------------------------------------
-# 3. Bucket CORS — r2.dev URLs ship permissive defaults
-#    (Access-Control-Allow-Origin: *) so the Godot loader's
-#    fetch() against them works without explicit config. We
-#    drop the page's COEP header below, so CORP isn't required
-#    either. If a future setup hits CORS issues we can configure
-#    bucket-level rules via the dashboard.
+# 3. Bucket CORS — r2.dev defaults block cross-origin reads
+# despite being "public", so Godot's fetch() from the Pages
+# origin fails with no ACAO header. Set bucket-level CORS rules
+# via the REST API (the wrangler `r2 bucket cors` subcommand
+# crashes with a heap-corruption exit on Windows wrangler 4.86;
+# direct API works). Idempotent — Cloudflare overwrites the
+# whole rule set with whatever we PUT.
 # --------------------------------------------------------------
+Run "configure R2 CORS" {
+	$corsHeaders = @{
+		Authorization = "Bearer $env:CLOUDFLARE_API_TOKEN"
+		"Content-Type" = "application/json"
+	}
+	$corsBody = @{
+		rules = @(
+			@{
+				allowed = @{
+					origins = @("*")
+					methods = @("GET", "HEAD")
+					headers = @("*")
+				}
+				exposeHeaders = @("Content-Length", "ETag")
+				maxAgeSeconds = 3600
+			}
+		)
+	} | ConvertTo-Json -Depth 6
+	$resp = Invoke-RestMethod -Method Put `
+		-Uri "https://api.cloudflare.com/client/v4/accounts/$env:CLOUDFLARE_ACCOUNT_ID/r2/buckets/$Bucket/cors" `
+		-Headers $corsHeaders -Body $corsBody
+	if (-not $resp.success) {
+		throw "CORS PUT failed: $($resp | ConvertTo-Json)"
+	}
+}
 
 # --------------------------------------------------------------
 # 4. Upload heavy assets to R2.
