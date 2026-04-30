@@ -79,20 +79,27 @@ function Get-MimeType {
 # 1. Optional: re-export the Godot web build.
 # --------------------------------------------------------------
 if (-not $SkipExport) {
-	Run "Godot web export" {
-		Push-Location $repoRoot
-		try {
-			New-Item -ItemType Directory -Force -Path "build\web" | Out-Null
-			godot --headless --export-release "Web" `
-				"build\web\index.html"
-			# Godot returns nonzero on cosmetic warnings; verify
-			# the artifact landed.
-			if (-not (Test-Path "build\web\index.wasm")) {
-				throw "Godot export didn't produce build\web\index.wasm"
-			}
-			Copy-Item "build\web\*" $web -Force -Recurse
-		} finally { Pop-Location }
-	}
+	Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Godot web export" -ForegroundColor Cyan
+	Push-Location $repoRoot
+	try {
+		New-Item -ItemType Directory -Force -Path "build\web" | Out-Null
+		# Godot frequently returns nonzero on cosmetic warnings
+		# (missing resources, GDExtension web-arch mismatches).
+		# Don't gate the script on $LASTEXITCODE — verify the
+		# real artifact landed instead.
+		& godot --headless --export-release "Web" "build\web\index.html"
+		if (-not (Test-Path "build\web\index.wasm")) {
+			throw "Godot export didn't produce build\web\index.wasm (genuine failure, not a cosmetic warning)"
+		}
+		# Confirm freshness — refuse to deploy a wasm that's
+		# more than a few minutes old (would mean export silently
+		# kept the previous artifact).
+		$age = (Get-Date) - (Get-Item "build\web\index.wasm").LastWriteTime
+		if ($age.TotalMinutes -gt 5) {
+			throw "build/web/index.wasm is $([int]$age.TotalMinutes) min old — export probably no-op'd. Investigate."
+		}
+		Copy-Item "build\web\*" $web -Force -Recurse
+	} finally { Pop-Location }
 }
 
 # --------------------------------------------------------------

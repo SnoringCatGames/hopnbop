@@ -38,12 +38,19 @@ func _format_message(message: String, category: StringName) -> String:
 		Netcode.time.get_time() if is_instance_valid(G) and is_instance_valid(Netcode.time) else -1.0
 	)
 
+	# Untyped local breaks the Godot 4.7 cyclic-class-resolution
+	# loop (ScaffolderLog references G.settings (Settings); G has
+	# `var log: ScaffolderLog`; the parser cycles unless the
+	# settings access is untyped here). Don't add a `: Settings`
+	# annotation.
+	var s = G.settings
+
 	var category_token := (
-		"[%s]" % get_category_prefix(category) if G.settings.include_category_in_logs else ""
+		"[%s]" % get_category_prefix(category) if s.include_category_in_logs else ""
 	)
 
 	var peer_id_value: String
-	if G.settings.include_peer_id_in_logs and Netcode.is_preview:
+	if s.include_peer_id_in_logs and Netcode.is_preview:
 		if Netcode.is_client:
 			if Netcode.is_connected_to_server:
 				# Client, connected to server.
@@ -61,7 +68,7 @@ func _format_message(message: String, category: StringName) -> String:
 		# Omit token.
 		peer_id_value = ""
 	var peer_id_token = (
-		"[%s]" % peer_id_value if G.settings.include_peer_id_in_logs else ""
+		"[%s]" % peer_id_value if s.include_peer_id_in_logs else ""
 	)
 
 	var frame_index_string := (

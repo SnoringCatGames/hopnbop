@@ -97,7 +97,14 @@ func send_request_by_code(code: String) -> void:
 	friend_request_sent.emit({"code": code})
 
 
-func send_request_by_player_id(player_id: String) -> void:
+func send_request_by_player_id(
+	player_id: String,
+	source: String = "recent_match",
+) -> void:
+	# `source` was an analytics tag in the legacy AWS path
+	# (recent_match, friend_code_search, etc.). Nakama's
+	# add_friends_async doesn't carry metadata, so we just
+	# log it for telemetry and pass through.
 	var session := await _ensure_session()
 	if session == null:
 		return
@@ -106,7 +113,10 @@ func send_request_by_player_id(player_id: String) -> void:
 	if result.is_exception():
 		request_failed.emit(_describe(result.get_exception()))
 		return
-	friend_request_sent.emit({"player_id": player_id})
+	friend_request_sent.emit({
+		"player_id": player_id,
+		"source": source,
+	})
 
 
 func accept_request(player_id: String) -> void:
@@ -205,7 +215,17 @@ func fetch_notifications(
 	})
 
 
-func fetch_presence(player_ids: Array[String]) -> void:
+func fetch_presence(
+	rich_presence: String = "",
+	status: String = "online",
+) -> void:
+	# Original AWS path was a write+read in one call: publish
+	# this player's own (rich_presence, status), get every
+	# friend's presence back. Nakama doesn't have a built-in
+	# rich-presence wire, so we route through a custom RPC
+	# `update_and_get_presence` in nakama-runtime/. The RPC
+	# stores the caller's presence in Storage(scope=presence)
+	# and returns the union of all friends' presence rows.
 	if _is_presence_busy:
 		return
 	_is_presence_busy = true
@@ -214,8 +234,11 @@ func fetch_presence(player_ids: Array[String]) -> void:
 		_is_presence_busy = false
 		return
 	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
-		session, "get_friends_presence",
-		JSON.stringify({"player_ids": player_ids}))
+		session, "update_and_get_presence",
+		JSON.stringify({
+			"rich_presence": rich_presence,
+			"status": status,
+		}))
 	_is_presence_busy = false
 	if rpc_result.is_exception():
 		# Pre-RPC deploys: assume nobody online.

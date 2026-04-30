@@ -75,15 +75,31 @@ func fetch_fleet_status() -> void:
 # --------------------------------------------------------------
 
 func fetch_leaderboard(
-	board_id: String = "ffa",
+	type: String = "alltime",
+	scope: String = "global",
 	limit: int = 50,
-	cursor: String = "",
 ) -> void:
+	# Original AWS-side took (type, scope, limit). Nakama
+	# leaderboards are per-id, so we map type → leaderboard id
+	# (`ffa_alltime`, `ffa_weekly`, ...) and apply scope as a
+	# post-filter on the returned records.
+	var board_id := "ffa_%s" % type
 	var session := await _ensure_session()
 	if session == null:
 		return
+	var owner_ids = null
+	if scope == "friends":
+		# Restrict the listing to records owned by the current
+		# user's friend graph.
+		var friends_resp = await G.auth_client._get_nakama_client().list_friends_async(
+			session, null, 100, null)
+		if not friends_resp.is_exception():
+			var ids := PackedStringArray()
+			for f in friends_resp.friends:
+				ids.append(f.user.id)
+			owner_ids = ids
 	var result = await G.auth_client._get_nakama_client().list_leaderboard_records_async(
-		session, board_id, null, null, limit, cursor)
+		session, board_id, owner_ids, null, limit, "")
 	if result.is_exception():
 		request_failed.emit(_describe(result.get_exception()))
 		return
@@ -98,6 +114,8 @@ func fetch_leaderboard(
 				if not r.metadata.is_empty() else {},
 		})
 	leaderboard_received.emit({
+		"type": type,
+		"scope": scope,
 		"leaderboard_id": board_id,
 		"entries": entries,
 		"cursor": result.next_cursor,
