@@ -5,21 +5,14 @@ extends Node
 # Note: This would be better stored on Main as an export var, so we don't have
 #       to reference the path in code. But, this must be set for tests to run
 #       correctly, and Main isn't run during tests.
-# Untyped (no `: Settings`). Godot 4.7's resolver hits a cyclic-
-# reference cascade across many files when this carries the
-# Settings class_name (Settings → NetworkSettings → ScaffolderLog
-# transitively → G). Untyped here makes downstream `G.settings.x`
-# accesses use duck typing — same shape, no cycle.
-var settings = preload("res://settings.tres")
+var settings: Settings = preload("res://settings.tres")
 
 # Note: This is shown at the top to assist with local debugging.
 var preview_instance_label := ""
 
 var args: Dictionary
 
-# Untyped — see the `settings` comment above. Same cycle-breaking
-# rationale.
-@warning_ignore("shadowed_global_identifier") var log = ScaffolderLog.new()
+@warning_ignore("shadowed_global_identifier") var log := ScaffolderLog.new()
 var utils := Utils.new()
 var geometry := Geometry.new()
 var draw_utils := DrawUtils.new()
