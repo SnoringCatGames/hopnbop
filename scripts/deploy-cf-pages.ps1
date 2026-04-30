@@ -96,7 +96,36 @@ if (-not $SkipExport) {
 }
 
 # --------------------------------------------------------------
-# 2. Ensure R2 bucket exists.
+# 2a. Pre-flight R2 hard cap. If the bucket is already at or
+# above $R2_HARD_GB (default 9.5 GB), refuse to upload more.
+# Free tier is 10 GB; this guards against silently slipping
+# into Cloudflare's paid tier.
+# --------------------------------------------------------------
+$r2HardGb = 9.5
+$listHeaders = @{ Authorization = "Bearer $env:CLOUDFLARE_API_TOKEN" }
+# /usage aggregates with lag; list-objects is real-time. Sum
+# object sizes. For >1000 objects we'd page; we don't.
+$listUrl = "https://api.cloudflare.com/client/v4/accounts/$env:CLOUDFLARE_ACCOUNT_ID/r2/buckets/$Bucket/objects?per_page=1000"
+try {
+	$listResp = Invoke-RestMethod -Uri $listUrl -Headers $listHeaders
+	$totalBytes = ($listResp.result | Measure-Object -Property size -Sum).Sum
+	if (-not $totalBytes) { $totalBytes = 0 }
+	$usedGb = [math]::Round($totalBytes / 1GB, 2)
+	Write-Host "[$(Get-Date -Format 'HH:mm:ss')] R2 usage: $usedGb GB / $r2HardGb GB hard / 10 GB free tier" -ForegroundColor Cyan
+	if ($usedGb -ge $r2HardGb) {
+		throw "R2 bucket $Bucket is at $usedGb GB (>= $r2HardGb GB hard cap). Refusing to upload. Free space first or raise the cap."
+	}
+} catch [Microsoft.PowerShell.Commands.HttpResponseException] {
+	# Bucket may not exist yet on first run — that's fine, the
+	# next step creates it. Any other HTTP error: surface and
+	# bail.
+	if ($_.Exception.Response.StatusCode -ne 404) {
+		throw
+	}
+}
+
+# --------------------------------------------------------------
+# 2b. Ensure R2 bucket exists.
 # --------------------------------------------------------------
 Run "ensure R2 bucket $Bucket" {
 	$existing = npx -y wrangler@latest r2 bucket list 2>&1 |

@@ -397,7 +397,15 @@ function Step-CostMonitor {
 		"BUDGET_WARN_MID=40",
 		"BUDGET_WARN_HIGH=80",
 		"EMERGENCY_CAP=50",
-		"DAILY_SUMMARY_HOUR_UTC=9"
+		"DAILY_SUMMARY_HOUR_UTC=9",
+		# Cloudflare R2 storage probe — token must have
+		# Workers R2 Storage:Read (or Edit). Account ID is hex,
+		# not slug.
+		"CLOUDFLARE_API_TOKEN=$([Environment]::GetEnvironmentVariable('CLOUDFLARE_PAGES_TOKEN'))",
+		"CLOUDFLARE_ACCOUNT_ID=c97b21157100dde27a8715fdfba1d22a",
+		"R2_BUCKET=hopnbop-assets",
+		"R2_WARN_GB=8",
+		"R2_HARD_GB=9.5"
 	)
 	$tmp = New-TemporaryFile
 	Write-LinuxFile $tmp.FullName (($envLines -join "`n") + "`n")
