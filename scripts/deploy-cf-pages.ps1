@@ -85,18 +85,39 @@ if (-not $SkipExport) {
 		New-Item -ItemType Directory -Force -Path "build\web" | Out-Null
 		# Godot frequently returns nonzero on cosmetic warnings
 		# (missing resources, GDExtension web-arch mismatches).
-		# Don't gate the script on $LASTEXITCODE — verify the
-		# real artifact landed instead.
-		& godot --headless --export-release "Web" "build\web\index.html"
-		if (-not (Test-Path "build\web\index.wasm")) {
-			throw "Godot export didn't produce build\web\index.wasm (genuine failure, not a cosmetic warning)"
+		# Stash pre-export pck mtime so the freshness check can
+		# tell "godot rewrote it" from "godot no-op'd". Use $null
+		# if the file doesn't exist yet.
+		$pckBefore = if (Test-Path "build\web\index.pck") {
+			(Get-Item "build\web\index.pck").LastWriteTime
+		} else { $null }
+		# Use Start-Process -Wait. `& godot` returns to PowerShell
+		# before godot's export finishes on this machine (godot
+		# v4.7-beta1 on Windows seems to detach), causing the
+		# freshness check to read the stale pck mtime. Don't gate
+		# the script on the exit code; verify the artifact landed
+		# instead.
+		$proc = Start-Process -FilePath "godot" `
+			-ArgumentList @(
+				"--headless",
+				"--export-release",
+				"Web",
+				"build\web\index.html"
+			) -NoNewWindow -Wait -PassThru
+		Write-Host "godot exit code: $($proc.ExitCode)"
+		foreach ($f in $heavyAssets) {
+			if (-not (Test-Path "build\web\$f")) {
+				throw "Godot export didn't produce build/web/$f (genuine failure, not a cosmetic warning)"
+			}
 		}
-		# Confirm freshness — refuse to deploy a wasm that's
-		# more than a few minutes old (would mean export silently
-		# kept the previous artifact).
-		$age = (Get-Date) - (Get-Item "build\web\index.wasm").LastWriteTime
-		if ($age.TotalMinutes -gt 5) {
-			throw "build/web/index.wasm is $([int]$age.TotalMinutes) min old — export probably no-op'd. Investigate."
+		# Confirm freshness on index.pck (the project content).
+		# index.wasm is the engine binary and is reused unchanged
+		# across exports, so its mtime says nothing about whether
+		# this export actually ran. index.pck is rewritten every
+		# real export.
+		$pckAfter = (Get-Item "build\web\index.pck").LastWriteTime
+		if ($pckBefore -ne $null -and $pckAfter -le $pckBefore) {
+			throw "build/web/index.pck mtime didn't advance ($pckBefore -> $pckAfter). Export no-op'd. Investigate."
 		}
 		Copy-Item "build\web\*" $web -Force -Recurse
 	} finally { Pop-Location }
@@ -123,7 +144,7 @@ try {
 		throw "R2 bucket $Bucket is at $usedGb GB (>= $r2HardGb GB hard cap). Refusing to upload. Free space first or raise the cap."
 	}
 } catch [Microsoft.PowerShell.Commands.HttpResponseException] {
-	# Bucket may not exist yet on first run — that's fine, the
+	# Bucket may not exist yet on first run ; that's fine, the
 	# next step creates it. Any other HTTP error: surface and
 	# bail.
 	if ($_.Exception.Response.StatusCode -ne 404) {
@@ -145,12 +166,12 @@ Run "ensure R2 bucket $Bucket" {
 }
 
 # --------------------------------------------------------------
-# 3. Bucket CORS — r2.dev defaults block cross-origin reads
+# 3. Bucket CORS ; r2.dev defaults block cross-origin reads
 # despite being "public", so Godot's fetch() from the Pages
 # origin fails with no ACAO header. Set bucket-level CORS rules
 # via the REST API (the wrangler `r2 bucket cors` subcommand
 # crashes with a heap-corruption exit on Windows wrangler 4.86;
-# direct API works). Idempotent — Cloudflare overwrites the
+# direct API works). Idempotent ; Cloudflare overwrites the
 # whole rule set with whatever we PUT.
 # --------------------------------------------------------------
 Run "configure R2 CORS" {
@@ -211,7 +232,7 @@ $r2BaseUrl = $Matches[1]
 Write-Host "R2 base URL: $r2BaseUrl" -ForegroundColor Green
 
 # --------------------------------------------------------------
-# 6. Build a staging copy of web/ — same files, minus the
+# 6. Build a staging copy of web/ ; same files, minus the
 #    heavies, with GODOT_CONFIG patched to absolute R2 URLs.
 # --------------------------------------------------------------
 if (Test-Path $staging) { Remove-Item -Recurse -Force $staging }
@@ -235,7 +256,7 @@ $content = $content -replace `
 	('"mainPack":"' + $r2BaseUrl + '/index.pck$1"')
 [IO.File]::WriteAllText($indexPath, $content, [Text.UTF8Encoding]::new($false))
 
-# Drop _headers — it's only relevant if the wasm is same-origin.
+# Drop _headers ; it's only relevant if the wasm is same-origin.
 # With wasm cross-origin from R2, the page no longer needs to be
 # crossOriginIsolated. Removing the COOP/COEP headers also avoids
 # blocking the cross-origin wasm fetch in some browsers.
@@ -248,9 +269,17 @@ Write-Host "Staging at $staging ready" -ForegroundColor Green
 # 7. Deploy staging to Cloudflare Pages.
 # --------------------------------------------------------------
 Run "wrangler pages deploy" {
-	npx -y wrangler@latest pages deploy $staging `
-		--project-name=$Project --branch=$Branch `
-		--commit-dirty=true | Out-Null
+	# Wrangler auto-discovers Pages Functions in `functions/`
+	# relative to CWD, NOT relative to the deploy-dir argument.
+	# So we cd into staging before calling wrangler ; otherwise
+	# functions/ silently doesn't ship and Pages serves a 405
+	# for the /api/* routes.
+	Push-Location $staging
+	try {
+		npx -y wrangler@latest pages deploy . `
+			--project-name=$Project --branch=$Branch `
+			--commit-dirty=true | Out-Null
+	} finally { Pop-Location }
 }
 
 Write-Host ""
