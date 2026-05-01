@@ -885,6 +885,106 @@ method pattern instead of `is` type checks. Access subclass
 properties through `ReconcilableState`-typed variables using
 `get()` or `call()` for dynamic dispatch.
 
+### Web Build Cyclic-Reference Parser Failures
+
+Godot 4.7-beta1's web exporter runs a stricter parser pass than
+the editor or desktop builds. Parse messages of this shape
+appear at boot in the web log:
+
+```
+SCRIPT ERROR: Parse Error: Could not resolve external class
+member "settings": Cyclic reference.
+   at: GDScript::reload (res://src/.../foo.gd:42)
+SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
+ERROR: Failed to load script "res://src/.../bar.gd"
+  with error "Compilation failed".
+```
+
+**These messages are NOT just noise on web.** They are load-
+fatal when they appear: the script at the originating line
+fails to register its `class_name`, and any `ClassName.new()`
+call later returns null silently. Symptoms surface much later
+at first instantiation, not at boot, which makes diagnosis
+hard:
+
+```
+ERROR: Error constructing a GDScriptInstance: '...::_init':
+   Cannot convert argument 1 from Nil to int
+```
+
+(Identified 2026-04-30 when `ScaffolderLog.new()` returned
+null on web because `scaffolder_log.gd:42` did
+`G.settings.include_category_in_logs` — direct typed access
+through the `G` autoload tripped the parser's cyclic-resolution
+pass. Symptom showed up much later as `RollbackBuffer.new()`
+crashing because `Netcode.log` was null and so
+`Netcode.initialize()` had bailed.)
+
+Desktop builds suppress the parser cascade entirely, which is
+why this never appears in desktop logs.
+
+#### Surgical fix pattern
+
+When a parse error of this shape originates inside a
+`class_name`'d script that accesses `G.<typed-autoload-prop>.<member>`,
+rewrite the access to use `Object.get()` for dynamic dispatch:
+
+```gdscript
+# Before (parser tries to statically resolve through cyclic
+# autoload graph, fails on web):
+if G.settings.include_category_in_logs:
+    ...
+
+# After (dynamic dispatch — parser doesn't chase the cycle;
+# desktop is unaffected, autocomplete is lost only at this
+# line):
+var include_category: bool = (
+    G.get("settings").get("include_category_in_logs"))
+if include_category:
+    ...
+```
+
+Cache the value into a typed local once at the top of the
+function so the rest of the function still reads cleanly. Only
+apply this at the specific lines named in the parse-error
+stack trace; keep typed access everywhere else.
+
+#### Other workarounds (use only if the surgical fix isn't
+viable)
+
+1. Replace `preload("res://...")` with `load("res://...")` at
+   the cycle-trigger site. Defers resolution past the parser's
+   check phase. Zero runtime cost for a one-shot autoload-init
+   load.
+2. Cast at access site: `(G as GlobalClass).settings.foo`.
+3. Static-instance singleton: declare `class_name GlobalClass`
+   with `static var I: GlobalClass; func _enter_tree(): I = self`,
+   reference as `GlobalClass.I.settings.foo`.
+
+Approach #3 is the cleanest long-term restructure; the
+surgical `.get()` rewrite is the safest narrow fix.
+
+#### Investigation playbook
+
+1. Web log shows `ERROR: Failed to load script ".../foo.gd"`
+   downstream of `Parse Error: Could not resolve external class
+   member` — the originating script is named in the
+   `at: GDScript::reload (.../bar.gd:N)` line just above the
+   parse error, NOT the script in the "Failed to load" line.
+2. The "Failed to load" scripts are just downstream casualties
+   of the originating parse failure.
+3. Look up the originating line and find the
+   `G.<autoload-prop>.<member>` or similar typed-autoload chain
+   access; apply the `.get()` rewrite there.
+4. If runtime errors appear far from boot (e.g., at first
+   spawn), trace back: what class did `.new()` on something?
+   Was that class registered? Search for parse failures naming
+   that class's source file in the boot log.
+
+Upstream Godot tracker:
+[godot#80877](https://github.com/godotengine/godot/issues/80877)
+(meta-issue, 40+ linked).
+
 ### Internationalization (i18n)
 
 All user-visible strings must be hooked up to Godot's

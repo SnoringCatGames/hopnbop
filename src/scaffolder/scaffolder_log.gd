@@ -34,16 +34,30 @@ func _ready() -> void:
 
 
 func _format_message(message: String, category: StringName) -> String:
+	# Use Object.get() instead of `G.settings.foo` for the next two
+	# fields. Direct `G.settings.foo` triggers the GDScript parser's
+	# class-member-resolution pass, which on Godot 4.7-beta1 web
+	# trips a cyclic-reference cascade through the autoload graph
+	# and prevents this whole script from parsing (which then makes
+	# `ScaffolderLog.new()` silently return null at autoload init).
+	# `.get()` is dynamic dispatch and bypasses the parse-time
+	# resolution. Desktop is unaffected; the values come back the
+	# same.
+	var include_category: bool = (
+		G.get("settings").get("include_category_in_logs"))
+	var include_peer_id: bool = (
+		G.get("settings").get("include_peer_id_in_logs"))
+
 	var play_time: float = (
 		Netcode.time.get_time() if is_instance_valid(G) and is_instance_valid(Netcode.time) else -1.0
 	)
 
 	var category_token := (
-		"[%s]" % get_category_prefix(category) if G.settings.include_category_in_logs else ""
+		"[%s]" % get_category_prefix(category) if include_category else ""
 	)
 
 	var peer_id_value: String
-	if G.settings.include_peer_id_in_logs and Netcode.is_preview:
+	if include_peer_id and Netcode.is_preview:
 		if Netcode.is_client:
 			if Netcode.is_connected_to_server:
 				# Client, connected to server.
@@ -61,7 +75,7 @@ func _format_message(message: String, category: StringName) -> String:
 		# Omit token.
 		peer_id_value = ""
 	var peer_id_token = (
-		"[%s]" % peer_id_value if G.settings.include_peer_id_in_logs else ""
+		"[%s]" % peer_id_value if include_peer_id else ""
 	)
 
 	var frame_index_string := (
