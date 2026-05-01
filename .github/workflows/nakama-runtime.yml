@@ -42,4 +42,5 @@ jobs:
             -i ~/.ssh/id_ed25519 "root@$NAKAMA_HOST" \
             "cd /opt/nakama && docker compose restart nakama"
       - name: Reason
-        run: echo "Reason: ${{ github.event.inputs.reason }}"
+        run: |
+          echo "Reason: ${{ github.event.inputs.reason }}"
