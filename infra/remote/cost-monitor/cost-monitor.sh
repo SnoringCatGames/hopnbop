@@ -186,35 +186,49 @@ if [[ -n "${CLOUDFLARE_API_TOKEN:-}" \
 fi
 
 # ---------------------------------------------------------------------
-# GitHub Actions billing for the org. Two endpoints:
-#   /orgs/{org}/settings/billing/actions       — minutes used + paid
-#   /orgs/{org}/settings/billing/shared-storage — storage GB + paid
-# Both require a token scoped to org plan/billing reads. If the
-# token lacks scope or the call fails, the block is skipped and
-# `gh_tracked` stays false; messages omit the GH line entirely.
+# GitHub Actions billing (new "enhanced billing" API, GA 2025).
+# Endpoint:
+#   /organizations/{org}/settings/billing/usage?year=Y&month=M
+# Returns an array of `usageItems` with one row per
+# (date, product, sku, repo) combination. We aggregate
+# client-side to derive:
+#   gh_minutes_used  — sum of quantity for unitType=Minutes
+#   gh_storage_gbh   — sum of quantity for unitType=GigabyteHours
+#   gh_paid_usd      — sum of netAmount across all rows (anything
+#                      past the included free tier)
+#
+# The legacy `/orgs/{org}/settings/billing/{actions,shared-storage}`
+# endpoints retired with HTTP 410 ("This endpoint has been moved",
+# https://gh.io/billing-api-updates-org).
+#
+# Required token scope: `admin:org` is sufficient for org-billed
+# accounts (the existing token has it). Block silently skips on
+# failure.
 # ---------------------------------------------------------------------
 gh_tracked=false
 gh_minutes_used=0
-gh_minutes_included=0
-gh_minutes_paid=0
-gh_storage_estimated_gb=0
-gh_storage_paid_gb=0
+gh_storage_gbh="0.00"
+gh_paid_usd="0.00"
 if [[ -n "${GITHUB_TOKEN:-}" && -n "${GITHUB_ORG:-}" ]]; then
-	if actions_resp=$(curl -fsS \
+	gh_year=$(date -u +%Y)
+	gh_month=$(date -u +%-m)
+	if usage_resp=$(curl -fsS \
 			-H "Authorization: Bearer $GITHUB_TOKEN" \
 			-H "Accept: application/vnd.github+json" \
-			"https://api.github.com/orgs/$GITHUB_ORG/settings/billing/actions" 2>/dev/null); then
-		gh_minutes_used=$(echo "$actions_resp" | jq -r '.total_minutes_used // 0')
-		gh_minutes_included=$(echo "$actions_resp" | jq -r '.included_minutes // 0')
-		gh_minutes_paid=$(echo "$actions_resp" | jq -r '.total_paid_minutes_used // 0')
-		gh_tracked=true
-	fi
-	if storage_resp=$(curl -fsS \
-			-H "Authorization: Bearer $GITHUB_TOKEN" \
-			-H "Accept: application/vnd.github+json" \
-			"https://api.github.com/orgs/$GITHUB_ORG/settings/billing/shared-storage" 2>/dev/null); then
-		gh_storage_estimated_gb=$(echo "$storage_resp" | jq -r '.estimated_storage_for_month // 0')
-		gh_storage_paid_gb=$(echo "$storage_resp" | jq -r '.estimated_paid_storage_for_month // 0')
+			"https://api.github.com/organizations/$GITHUB_ORG/settings/billing/usage?year=$gh_year&month=$gh_month" \
+			2>/dev/null); then
+		gh_minutes_used=$(echo "$usage_resp" | jq -r '
+			[.usageItems[]
+				| select(.product == "actions" and .unitType == "Minutes")
+				| .quantity] | add // 0 | floor')
+		gh_storage_gbh=$(echo "$usage_resp" | jq -r '
+			[.usageItems[]
+				| select(.product == "actions" and .unitType == "GigabyteHours")
+				| .quantity] | add // 0 | . * 100 | floor / 100')
+		gh_paid_usd=$(echo "$usage_resp" | jq -r '
+			[.usageItems[] | .netAmount] | add // 0
+			| . * 100 | floor / 100')
+		gh_paid_usd=$(awk -v p="$gh_paid_usd" 'BEGIN { printf "%.2f", p }')
 		gh_tracked=true
 	fi
 fi
@@ -252,24 +266,17 @@ for entry in "r2_warn:${R2_WARN_GB:-8}" "r2_hard:${R2_HARD_GB:-9.5}"; do
 	fi
 done
 
-# GitHub overage thresholds. We treat any nonzero paid usage
-# (minutes or storage) as a crossing — the org should sit
-# entirely inside the included free quota during normal
-# operation. State key gets reset with the rest on month
-# rollover.
+# GitHub overage threshold. The new billing API gives a single
+# `netAmount` per row (already discounted for included-tier
+# usage), so any positive total means we've gone past the free
+# quota on at least one SKU. The single threshold key covers
+# both compute (Minutes) and storage (GigabyteHours).
 if $gh_tracked; then
-	if awk -v m="$gh_minutes_paid" 'BEGIN { exit !(m > 0) }'; then
-		if ! echo "$already_crossed" | grep -qx "gh_actions_paid"; then
-			new_crossings+=("gh_actions_paid:${gh_minutes_paid}min")
+	if awk -v p="$gh_paid_usd" 'BEGIN { exit !(p > 0) }'; then
+		if ! echo "$already_crossed" | grep -qx "gh_paid"; then
+			new_crossings+=("gh_paid:\$${gh_paid_usd}")
 			state=$(echo "$state" | jq \
-				'.thresholds_crossed += ["gh_actions_paid"]')
-		fi
-	fi
-	if awk -v g="$gh_storage_paid_gb" 'BEGIN { exit !(g > 0) }'; then
-		if ! echo "$already_crossed" | grep -qx "gh_storage_paid"; then
-			new_crossings+=("gh_storage_paid:${gh_storage_paid_gb}GB")
-			state=$(echo "$state" | jq \
-				'.thresholds_crossed += ["gh_storage_paid"]')
+				'.thresholds_crossed += ["gh_paid"]')
 		fi
 	fi
 fi
@@ -334,12 +341,11 @@ provider_lines="- Hetzner: \$$hetzner_usd
 - R2 storage: ${r2_gb} GB / 10 GB free tier"
 if $gh_tracked; then
 	provider_lines+="
-- GH Actions: ${gh_minutes_used} / ${gh_minutes_included} min · ${gh_storage_estimated_gb} GB shared storage"
-	# Only call out paid-tier usage if there is any. Keeps the
-	# happy-path summary terse.
-	if awk -v m="$gh_minutes_paid" -v g="$gh_storage_paid_gb" \
-			'BEGIN { exit !(m > 0 || g > 0) }'; then
-		provider_lines+=" (paid: ${gh_minutes_paid} min · ${gh_storage_paid_gb} GB)"
+- GH Actions: ${gh_minutes_used} min · ${gh_storage_gbh} GB-h storage"
+	# Only call out paid-tier dollars if there are any. Keeps
+	# the happy-path summary terse.
+	if awk -v p="$gh_paid_usd" 'BEGIN { exit !(p > 0) }'; then
+		provider_lines+=" (paid: \$${gh_paid_usd})"
 	fi
 fi
 
@@ -391,4 +397,4 @@ fi
 # Persist state.
 echo "$state" > "$STATE_FILE"
 
-echo "[cost-monitor] $NOW_ISO total=\$$total_usd hetzner=\$$hetzner_usd edgegap=\$$edgegap_usd r2=${r2_gb}GB gh_min=${gh_minutes_used}/${gh_minutes_included} gh_paid_min=${gh_minutes_paid} gh_storage_gb=${gh_storage_estimated_gb} new_crossings=${new_crossings[*]:-none} summary=$should_summarize"
+echo "[cost-monitor] $NOW_ISO total=\$$total_usd hetzner=\$$hetzner_usd edgegap=\$$edgegap_usd r2=${r2_gb}GB gh_min=${gh_minutes_used} gh_storage_gbh=${gh_storage_gbh} gh_paid=\$${gh_paid_usd} new_crossings=${new_crossings[*]:-none} summary=$should_summarize"
