@@ -94,11 +94,21 @@ const _NAKAMA_SCHEME := "https"
 # Server key sent on every Nakama auth call. Match this against
 # the value Nakama is started with on the server side
 # (--socket.server_key in infra/remote/nakama/docker-compose.yml).
-# Currently using Nakama's default placeholder; tighten before
-# Phase F by either changing this constant or removing
-# --socket.server_key on the server (which falls back to
-# Nakama's literal "defaultkey").
-const _NAKAMA_SERVER_KEY := "defaultkey"
+# Not a real secret (extractable from the shipped .pck), it's a
+# soft gate that pairs with per-IP rate-limiting in Caddy.
+const _NAKAMA_SERVER_KEY := "p65qPwZ3vhnsIzNU8/9tw1gR6AbkjGJ7GpTmMQbJ5fs="
+
+# Cloudflare Pages Function that brokers the Google /token
+# exchange. The web/desktop client posts {code, redirect_uri,
+# code_verifier}; the function adds GOOGLE_OAUTH_CLIENT_SECRET
+# (Pages secret env var) and forwards to oauth2.googleapis.com.
+# Same-origin with the web Pages site, but the desktop loopback
+# hits it cross-origin (no CORS issue: server-to-server style POST,
+# default Fetch/HTTPRequest from a non-browser context).
+# Source: web/functions/api/oauth/google/exchange.js.
+const _GOOGLE_TOKEN_BROKER_URL := (
+	"https://hopnbop.net/api/oauth/google/exchange"
+)
 
 # Endpoint constants are now opaque dispatch tags consumed by
 # _send_auth_request to pick the matching Nakama call. Their
@@ -137,6 +147,11 @@ var _oauth_provider: Provider
 var _is_awaiting_oauth := false
 var _last_refresh_time := 0.0
 var _is_refreshing := false
+
+# PKCE verifier for the in-flight Google OAuth attempt. Set when
+# the OAuth URL is built, consumed by the post-callback token
+# exchange. Cleared after use.
+var _pkce_verifier := ""
 
 # Nakama client (lazily constructed). Sessions are not held here;
 # the JWT + refresh token live in G.auth_token_store, and we
@@ -858,6 +873,29 @@ func _describe_nakama_exception(ex: NakamaException) -> String:
 		ex.message, ex.status_code, ex.grpc_status_code]
 
 
+# After a successful link/login, fetches the Nakama account so
+# we can pick up display_name and avatar_url from whatever the
+# provider supplied (Google sends both via the id_token; Nakama
+# stores them on the user). Returns an empty dict on failure;
+# callers should treat missing fields as "leave existing values
+# alone" via _update_profile_from_response.
+func _fetch_account_profile_dict(
+	session: NakamaSession,
+) -> Dictionary:
+	var account = (
+		await _get_nakama_client().get_account_async(session))
+	if account.is_exception():
+		G.log.warning(
+			"[AuthClient] get_account_async failed: %s"
+			% _describe_nakama_exception(account.get_exception()))
+		return {}
+	var u = account.user
+	return {
+		"display_name": u.display_name,
+		"profile_image_url": u.avatar_url,
+	}
+
+
 # --------------------------------------------------------------
 # Nakama auth dispatch implementations.
 # --------------------------------------------------------------
@@ -884,18 +922,32 @@ func _do_anon_auth() -> void:
 
 func _do_provider_auth(body: Dictionary) -> void:
 	var provider_name := str(body.get("provider", ""))
-	var token := str(body.get("auth_code", ""))
+	var auth_code := str(body.get("auth_code", ""))
+	var redirect_uri := str(body.get("redirect_uri", ""))
 	var client := _get_nakama_client()
 	var session: NakamaSession
 	match provider_name:
 		"google":
-			session = await client.authenticate_google_async(token)
+			# Nakama validates Google ID tokens, not OAuth codes.
+			# Exchange code for id_token via Google's token
+			# endpoint (PKCE flow, no client_secret needed).
+			var id_token := await _exchange_google_code_for_id_token(
+				auth_code, redirect_uri)
+			if id_token.is_empty():
+				_emit_failure(
+					"Failed to exchange Google OAuth code for ID token")
+				return
+			session = await client.authenticate_google_async(id_token)
 		"facebook":
-			session = await client.authenticate_facebook_async(token)
+			# Facebook returns an access token (not an OAuth
+			# code) for the implicit-grant flow Nakama expects.
+			# If you switch Facebook to code flow, mirror the
+			# Google branch above.
+			session = await client.authenticate_facebook_async(auth_code)
 		"apple":
-			session = await client.authenticate_apple_async(token)
+			session = await client.authenticate_apple_async(auth_code)
 		"steam":
-			session = await client.authenticate_steam_async(token)
+			session = await client.authenticate_steam_async(auth_code)
 		_:
 			_emit_failure(
 				"Unsupported provider: %s" % provider_name)
@@ -904,8 +956,12 @@ func _do_provider_auth(body: Dictionary) -> void:
 		_emit_failure(_describe_nakama_exception(
 			session.get_exception()))
 		return
-	_handle_auth_success(_session_to_response_dict(
-		session, provider_name))
+	var data := _session_to_response_dict(session, provider_name)
+	# Pick up display_name + avatar_url from Nakama (which got
+	# them from the provider's id_token).
+	data.merge(
+		await _fetch_account_profile_dict(session), true)
+	_handle_auth_success(data)
 
 
 func _do_session_refresh(_body: Dictionary) -> void:
@@ -931,18 +987,31 @@ func _do_link(body: Dictionary) -> void:
 		_emit_failure("Not authenticated")
 		return
 	var provider_name := str(body.get("provider", ""))
-	var token := str(body.get("auth_code", ""))
+	var auth_code := str(body.get("auth_code", ""))
+	var redirect_uri := str(body.get("redirect_uri", ""))
 	var client := _get_nakama_client()
 	var result: NakamaAsyncResult
+	# Captured for the post-link account-update step (Google only).
+	var google_id_token := ""
 	match provider_name:
 		"google":
-			result = await client.link_google_async(session, token)
+			# Same exchange step as _do_provider_auth. Nakama's
+			# link_google_async wants an id_token, not an OAuth
+			# code.
+			var id_token := await _exchange_google_code_for_id_token(
+				auth_code, redirect_uri)
+			if id_token.is_empty():
+				_emit_failure(
+					"Failed to exchange Google OAuth code for ID token")
+				return
+			google_id_token = id_token
+			result = await client.link_google_async(session, id_token)
 		"facebook":
-			result = await client.link_facebook_async(session, token)
+			result = await client.link_facebook_async(session, auth_code)
 		"apple":
-			result = await client.link_apple_async(session, token)
+			result = await client.link_apple_async(session, auth_code)
 		"steam":
-			result = await client.link_steam_async(session, token)
+			result = await client.link_steam_async(session, auth_code)
 		_:
 			_emit_failure(
 				"Unsupported link provider: %s" % provider_name)
@@ -951,12 +1020,47 @@ func _do_link(body: Dictionary) -> void:
 		_emit_failure(_describe_nakama_exception(
 			result.get_exception()))
 		return
+	# Force display_name + avatar_url to the Google identity. Nakama
+	# only auto-fills these on link when the existing values are
+	# empty, so anonymous accounts that later link Google would
+	# otherwise keep the auto-generated handle (e.g. "pPALcZnDQj")
+	# instead of the player's real name.
+	if not google_id_token.is_empty():
+		var claims := _parse_jwt_claims(google_id_token)
+		var goog_name := str(claims.get("name", ""))
+		var goog_pic := str(claims.get("picture", ""))
+		if not goog_name.is_empty() or not goog_pic.is_empty():
+			# Nakama's update_account_async treats null as
+			# "leave alone" but "" as "set to empty", so we
+			# pass null for fields we don't want to touch
+			# (and for the provider fields if Google didn't
+			# include them). All params after p_session
+			# default to null per NakamaClient.gd.
+			var name_arg: Variant = (
+				goog_name if not goog_name.is_empty() else null)
+			var pic_arg: Variant = (
+				goog_pic if not goog_pic.is_empty() else null)
+			var update_result: NakamaAsyncResult = (
+				await client.update_account_async(
+					session,
+					null,  # username.
+					name_arg,
+					pic_arg,
+					null,  # lang_tag.
+					null,  # location.
+					null,  # timezone.
+				))
+			if update_result.is_exception():
+				G.log.warning(
+					"[AuthClient] update_account after link failed:"
+					+ " %s" % _describe_nakama_exception(
+						update_result.get_exception()))
 	# Synthesize a success dict so the downstream handler updates
 	# linked_providers in the token store consistently.
 	var linked := G.auth_token_store.linked_providers.duplicate()
 	if not linked.has(provider_name):
 		linked.append(provider_name)
-	_handle_auth_success({
+	var data := {
 		"status": "success",
 		"linked_providers": linked,
 		"player_id": G.auth_token_store.player_id,
@@ -966,7 +1070,13 @@ func _do_link(body: Dictionary) -> void:
 		"display_name": G.auth_token_store.display_name,
 		"rating": G.auth_token_store.rating,
 		"protocol_version": -1,
-	})
+	}
+	# Pick up display_name + avatar_url that Nakama just stored
+	# from the provider's id_token; without this the player's
+	# avatar wouldn't show up until the next session.
+	data.merge(
+		await _fetch_account_profile_dict(session), true)
+	_handle_auth_success(data)
 
 
 func _do_unlink(body: Dictionary) -> void:
@@ -1263,6 +1373,13 @@ func _build_google_auth_url(
 	state: String,
 ) -> String:
 	var client_id := G.settings.google_oauth_client_id
+	# PKCE: generate a fresh verifier per attempt and include the
+	# corresponding challenge in the auth URL. The verifier is
+	# stored on the client and posted back to Google's token
+	# endpoint after we receive the auth code. Avoids needing a
+	# Google client_secret embedded in the client.
+	_pkce_verifier = _generate_pkce_verifier()
+	var challenge := _pkce_challenge_s256(_pkce_verifier)
 	return (
 		"https://accounts.google.com/o/oauth2/v2/auth"
 		+ "?client_id=%s" % client_id
@@ -1270,7 +1387,124 @@ func _build_google_auth_url(
 		+ "&response_type=code"
 		+ "&scope=openid%20profile%20email"
 		+ "&state=%s" % state
+		+ "&code_challenge=%s" % challenge
+		+ "&code_challenge_method=S256"
 	)
+
+
+# Parse the payload (claims) section of a JWT without verifying
+# the signature. We use this to pull `name` and `picture` from
+# Google's id_token after link, so we can push them into Nakama's
+# user record (Nakama only auto-fills display_name when it was
+# previously empty, so anonymous users who later link Google keep
+# the auto-generated handle without this step). Returns an empty
+# dict if the token isn't a valid 3-segment JWT.
+func _parse_jwt_claims(jwt: String) -> Dictionary:
+	var parts := jwt.split(".")
+	if parts.size() != 3:
+		return {}
+	# base64url -> base64 (with padding) for Marshalls.
+	var payload: String = (
+		parts[1].replace("-", "+").replace("_", "/")
+	)
+	while payload.length() % 4 != 0:
+		payload += "="
+	var bytes := Marshalls.base64_to_raw(payload)
+	if bytes.is_empty():
+		return {}
+	var data: Variant = (
+		JSON.parse_string(bytes.get_string_from_utf8()))
+	if not (data is Dictionary):
+		return {}
+	return data
+
+
+# --------------------------------------------------------------
+# PKCE helpers (RFC 7636).
+# --------------------------------------------------------------
+
+func _generate_pkce_verifier() -> String:
+	# 32 random bytes encoded as base64url is 43 chars, well
+	# inside RFC 7636's 43..128 range.
+	var bytes := Crypto.new().generate_random_bytes(32)
+	return _base64url_encode(bytes)
+
+
+func _pkce_challenge_s256(verifier: String) -> String:
+	var ctx := HashingContext.new()
+	ctx.start(HashingContext.HASH_SHA256)
+	ctx.update(verifier.to_utf8_buffer())
+	return _base64url_encode(ctx.finish())
+
+
+func _base64url_encode(bytes: PackedByteArray) -> String:
+	# Marshalls.raw_to_base64 returns standard base64; convert to
+	# the URL-safe variant PKCE wants (no padding, +→-, /→_).
+	return Marshalls.raw_to_base64(bytes) \
+		.replace("+", "-") \
+		.replace("/", "_") \
+		.replace("=", "")
+
+
+# Posts the OAuth authorization code + PKCE verifier to our
+# Cloudflare Pages Function broker, which adds the Google
+# client_secret server-side and exchanges with Google's token
+# endpoint. Returns the id_token string, or empty on failure
+# (the failure is also logged).
+#
+# Why not call Google directly? Google's "Web Application" OAuth
+# client type requires client_secret on every code-exchange
+# request, even with PKCE. We don't want client_secret embedded
+# in either the web or desktop binary. The broker holds the
+# secret as a Pages env var; the client posts only what it has
+# (code + verifier). Same code path on both platforms.
+func _exchange_google_code_for_id_token(
+	code: String,
+	redirect_uri: String,
+) -> String:
+	if _pkce_verifier.is_empty():
+		G.log.warning("[AuthClient] PKCE verifier missing for token exchange")
+		return ""
+	var verifier := _pkce_verifier
+	_pkce_verifier = ""  # Single-use.
+
+	var http := HTTPRequest.new()
+	http.timeout = 30.0
+	add_child(http)
+
+	var payload := JSON.stringify({
+		"code": code,
+		"redirect_uri": redirect_uri,
+		"code_verifier": verifier,
+	})
+	var err := http.request(
+		_GOOGLE_TOKEN_BROKER_URL,
+		["Content-Type: application/json"],
+		HTTPClient.METHOD_POST,
+		payload,
+	)
+	if err != OK:
+		G.log.warning(
+			"[AuthClient] Broker request error: %d" % err
+		)
+		http.queue_free()
+		return ""
+
+	var result: Array = await http.request_completed
+	http.queue_free()
+	var response_code: int = result[1]
+	var body_bytes: PackedByteArray = result[3]
+	if response_code != 200:
+		G.log.warning(
+			"[AuthClient] Broker HTTP %d: %s"
+			% [response_code, body_bytes.get_string_from_utf8()]
+		)
+		return ""
+	var data: Variant = JSON.parse_string(body_bytes.get_string_from_utf8())
+	if not (data is Dictionary):
+		G.log.warning("[AuthClient] Broker returned non-JSON")
+		return ""
+	return str(data.get("id_token", ""))
 
 
 func _build_facebook_auth_url(
