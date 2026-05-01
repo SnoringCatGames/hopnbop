@@ -31,12 +31,19 @@ DAILY_SUMMARY_HOUR_UTC="${DAILY_SUMMARY_HOUR_UTC:-9}"
 DISCORD_USER_ID="${DISCORD_USER_ID:-}"
 STATE_FILE="${STATE_FILE:-$STATE_FILE_DEFAULT}"
 
+# GitHub Actions usage tracking (org-level). Requires a token
+# with `manage_billing:actions` scope (classic PAT) or fine-
+# grained PAT with Plan:read access on the org. Without these,
+# the GitHub block in this script is silently skipped.
+GITHUB_ORG="${GITHUB_ORG:-snoringcatgames}"
+
 CURRENT_MONTH="$(date -u +%Y-%m)"
 CURRENT_DAY="$(date -u +%Y-%m-%d)"
 CURRENT_HOUR_UTC="$(date -u +%-H)"
 NOW_ISO="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 NOW_EPOCH="$(date -u +%s)"
 MONTH_START_EPOCH="$(date -u -d "${CURRENT_MONTH}-01" +%s)"
+MONTH_LABEL="$(date -u -d "${CURRENT_MONTH}-01" "+%B %Y")"
 
 mkdir -p "$(dirname "$STATE_FILE")"
 
@@ -48,10 +55,42 @@ if [[ -f "$STATE_FILE" ]]; then
 	state=$(cat "$STATE_FILE")
 fi
 state_month=$(echo "$state" | jq -r '.month // ""')
+# Carry the previous summary's total into a sticky field. The
+# daily summary uses this to show day-over-day deltas so big
+# jumps (server recreates, pricing-API blips, month rollover)
+# are visible at a glance instead of looking like a fresh
+# monthly start.
+prev_summary_total_usd=$(echo "$state" | jq -r '.last_summary_total_usd // ""')
+prev_month_total_usd=""
+prev_month_label=""
 if [[ "$state_month" != "$CURRENT_MONTH" ]]; then
-	state=$(jq -n --arg m "$CURRENT_MONTH" \
-		'{month:$m, thresholds_crossed:[], last_summary_day:""}')
+	# Capture the just-closed month's last-known total before
+	# resetting state. Stored in `prev_month_*` and surfaced on
+	# the first daily summary of the new month.
+	if [[ -n "$state_month" ]]; then
+		prev_month_total_usd="$prev_summary_total_usd"
+		prev_month_label="$(date -u -d "${state_month}-01" "+%B %Y" 2>/dev/null || echo "$state_month")"
+	fi
+	state=$(jq -n \
+		--arg m "$CURRENT_MONTH" \
+		--arg pmt "$prev_month_total_usd" \
+		--arg pml "$prev_month_label" \
+		'{
+			month: $m,
+			thresholds_crossed: [],
+			last_summary_day: "",
+			last_summary_total_usd: "",
+			prev_month_total_usd: $pmt,
+			prev_month_label: $pml
+		}')
+	# After reset, prev_summary_total_usd is no longer meaningful
+	# for day-over-day comparison (different month).
+	prev_summary_total_usd=""
 fi
+# The first summary after a rollover surfaces the carried-over
+# values; later summaries within the same month don't need them.
+carry_prev_month_total_usd=$(echo "$state" | jq -r '.prev_month_total_usd // ""')
+carry_prev_month_label=$(echo "$state" | jq -r '.prev_month_label // ""')
 
 # ---------------------------------------------------------------------
 # Hetzner spend (MTD).
@@ -147,6 +186,40 @@ if [[ -n "${CLOUDFLARE_API_TOKEN:-}" \
 fi
 
 # ---------------------------------------------------------------------
+# GitHub Actions billing for the org. Two endpoints:
+#   /orgs/{org}/settings/billing/actions       — minutes used + paid
+#   /orgs/{org}/settings/billing/shared-storage — storage GB + paid
+# Both require a token scoped to org plan/billing reads. If the
+# token lacks scope or the call fails, the block is skipped and
+# `gh_tracked` stays false; messages omit the GH line entirely.
+# ---------------------------------------------------------------------
+gh_tracked=false
+gh_minutes_used=0
+gh_minutes_included=0
+gh_minutes_paid=0
+gh_storage_estimated_gb=0
+gh_storage_paid_gb=0
+if [[ -n "${GITHUB_TOKEN:-}" && -n "${GITHUB_ORG:-}" ]]; then
+	if actions_resp=$(curl -fsS \
+			-H "Authorization: Bearer $GITHUB_TOKEN" \
+			-H "Accept: application/vnd.github+json" \
+			"https://api.github.com/orgs/$GITHUB_ORG/settings/billing/actions" 2>/dev/null); then
+		gh_minutes_used=$(echo "$actions_resp" | jq -r '.total_minutes_used // 0')
+		gh_minutes_included=$(echo "$actions_resp" | jq -r '.included_minutes // 0')
+		gh_minutes_paid=$(echo "$actions_resp" | jq -r '.total_paid_minutes_used // 0')
+		gh_tracked=true
+	fi
+	if storage_resp=$(curl -fsS \
+			-H "Authorization: Bearer $GITHUB_TOKEN" \
+			-H "Accept: application/vnd.github+json" \
+			"https://api.github.com/orgs/$GITHUB_ORG/settings/billing/shared-storage" 2>/dev/null); then
+		gh_storage_estimated_gb=$(echo "$storage_resp" | jq -r '.estimated_storage_for_month // 0')
+		gh_storage_paid_gb=$(echo "$storage_resp" | jq -r '.estimated_paid_storage_for_month // 0')
+		gh_tracked=true
+	fi
+fi
+
+# ---------------------------------------------------------------------
 # Threshold crossings.
 # ---------------------------------------------------------------------
 already_crossed=$(echo "$state" | jq -r '.thresholds_crossed[]' 2>/dev/null \
@@ -178,6 +251,28 @@ for entry in "r2_warn:${R2_WARN_GB:-8}" "r2_hard:${R2_HARD_GB:-9.5}"; do
 		fi
 	fi
 done
+
+# GitHub overage thresholds. We treat any nonzero paid usage
+# (minutes or storage) as a crossing — the org should sit
+# entirely inside the included free quota during normal
+# operation. State key gets reset with the rest on month
+# rollover.
+if $gh_tracked; then
+	if awk -v m="$gh_minutes_paid" 'BEGIN { exit !(m > 0) }'; then
+		if ! echo "$already_crossed" | grep -qx "gh_actions_paid"; then
+			new_crossings+=("gh_actions_paid:${gh_minutes_paid}min")
+			state=$(echo "$state" | jq \
+				'.thresholds_crossed += ["gh_actions_paid"]')
+		fi
+	fi
+	if awk -v g="$gh_storage_paid_gb" 'BEGIN { exit !(g > 0) }'; then
+		if ! echo "$already_crossed" | grep -qx "gh_storage_paid"; then
+			new_crossings+=("gh_storage_paid:${gh_storage_paid_gb}GB")
+			state=$(echo "$state" | jq \
+				'.thresholds_crossed += ["gh_storage_paid"]')
+		fi
+	fi
+fi
 
 # ---------------------------------------------------------------------
 # Emergency action.
@@ -231,6 +326,40 @@ post_discord() {
 		"$DISCORD_WEBHOOK_URL" >/dev/null
 }
 
+# Common body lines shared between threshold-crossing and daily
+# summary messages. Each tracked provider gets its own line so
+# adding more later doesn't bunch up the formatting.
+provider_lines="- Hetzner: \$$hetzner_usd
+- Edgegap: \$$edgegap_usd
+- R2 storage: ${r2_gb} GB / 10 GB free tier"
+if $gh_tracked; then
+	provider_lines+="
+- GH Actions: ${gh_minutes_used} / ${gh_minutes_included} min · ${gh_storage_estimated_gb} GB shared storage"
+	# Only call out paid-tier usage if there is any. Keeps the
+	# happy-path summary terse.
+	if awk -v m="$gh_minutes_paid" -v g="$gh_storage_paid_gb" \
+			'BEGIN { exit !(m > 0 || g > 0) }'; then
+		provider_lines+=" (paid: ${gh_minutes_paid} min · ${gh_storage_paid_gb} GB)"
+	fi
+fi
+
+# Day-over-day delta annotation. Empty unless we have a previous
+# summary's total to compare against (skipped on the very first
+# summary or right after a month rollover).
+delta_line=""
+if [[ -n "$prev_summary_total_usd" ]]; then
+	delta_line=" (was \$$prev_summary_total_usd at last summary)"
+fi
+
+# First summary of a new month carries the closing total of the
+# previous month forward, so the headline drop from rollover
+# doesn't look mysterious.
+prev_month_line=""
+if [[ -n "$carry_prev_month_total_usd" \
+		&& -n "$carry_prev_month_label" ]]; then
+	prev_month_line=$'\n'"$carry_prev_month_label closed at \$$carry_prev_month_total_usd"
+fi
+
 # Threshold crossings → immediate ping.
 if (( ${#new_crossings[@]} > 0 )); then
 	crossed_str=""
@@ -240,20 +369,26 @@ if (( ${#new_crossings[@]} > 0 )); then
 	done
 	crossed_str="${crossed_str% | }"
 	post_discord "${mention}**Threshold crossed: $crossed_str**
-- AWS+Hetzner+Edgegap MTD: \$$total_usd ($CURRENT_MONTH)
-- Hetzner: \$$hetzner_usd · Edgegap: \$$edgegap_usd
-- R2 storage: ${r2_gb} GB / 10 GB free tier${emergency_msg}"
+- Hetzner+Edgegap MTD: \$$total_usd ($MONTH_LABEL)
+$provider_lines${emergency_msg}"
 fi
 
 # Daily summary.
 if (( should_summarize )); then
-	post_discord "**Daily cost: \$$total_usd MTD ($CURRENT_MONTH)**
-- Hetzner: \$$hetzner_usd · Edgegap: \$$edgegap_usd
-- R2 storage: ${r2_gb} GB / 10 GB free tier
+	post_discord "**Billing status — $MONTH_LABEL: \$$total_usd MTD$delta_line**$prev_month_line
+$provider_lines
 - Thresholds — low \$$BUDGET_WARN_LOW · mid \$$BUDGET_WARN_MID · high \$$BUDGET_WARN_HIGH · emergency \$$EMERGENCY_CAP · R2 warn ${R2_WARN_GB:-8}GB · R2 hard ${R2_HARD_GB:-9.5}GB"
+	# Capture this summary's headline number so the next
+	# summary can show a day-over-day delta. Also clear the
+	# carry-forward fields once they've been displayed.
+	state=$(echo "$state" | jq \
+		--arg t "$total_usd" \
+		'.last_summary_total_usd = $t
+		| .prev_month_total_usd = ""
+		| .prev_month_label = ""')
 fi
 
 # Persist state.
 echo "$state" > "$STATE_FILE"
 
-echo "[cost-monitor] $NOW_ISO total=\$$total_usd hetzner=\$$hetzner_usd edgegap=\$$edgegap_usd r2=${r2_gb}GB new_crossings=${new_crossings[*]:-none} summary=$should_summarize"
+echo "[cost-monitor] $NOW_ISO total=\$$total_usd hetzner=\$$hetzner_usd edgegap=\$$edgegap_usd r2=${r2_gb}GB gh_min=${gh_minutes_used}/${gh_minutes_included} gh_paid_min=${gh_minutes_paid} gh_storage_gb=${gh_storage_estimated_gb} new_crossings=${new_crossings[*]:-none} summary=$should_summarize"
