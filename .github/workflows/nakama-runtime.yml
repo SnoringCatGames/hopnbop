@@ -1,19 +1,10 @@
 name: Nakama Runtime Deploy
 
-# Standalone deploy of just the Nakama runtime plugin. Triggered
-# manually via `gh workflow run nakama-runtime.yml` (or the
-# Actions UI). Use this for runtime-only iterations that don't
-# need the rest of the release.yml jobs (web-client, game-server,
-# Discord notify) to fire.
-#
-# The full Release workflow still runs all four jobs together
-# when you push a v*.*.* tag.
-
 on:
   workflow_dispatch:
     inputs:
       reason:
-        description: Why are you rolling the runtime?
+        description: 'Reason for rolling the runtime'
         required: false
         default: 'Manual deploy'
 
