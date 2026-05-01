@@ -25,6 +25,10 @@ const _INTERACTION_DEDUPLICATION_WINDOW_SEC := 0.067
 
 # --- Game-Specific Signals ---
 
+## Emitted on the client when the server announces match start.
+## Symmetric with `match_ended` on the parent MatchState.
+signal match_started
+
 ## Emitted when a player kills another player.
 signal player_killed(killer: PlayerState, killee: PlayerState)
 
@@ -151,6 +155,7 @@ func client_notify_match_started(
 ) -> void:
 	match_start_frame_index = _match_start_frame_index
 	match_duration_usec = _match_duration_usec
+	match_started.emit()
 
 
 func client_notify_match_ended() -> void:
