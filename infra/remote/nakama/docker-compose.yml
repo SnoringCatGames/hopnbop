@@ -15,6 +15,9 @@ services:
           --console.password "$$NAKAMA_CONSOLE_PASSWORD" \
           --socket.server_key "$$NAKAMA_SERVER_KEY" \
           --session.encryption_key "$$NAKAMA_SESSION_ENCRYPTION_KEY" \
+          --session.refresh_encryption_key "$$NAKAMA_REFRESH_ENCRYPTION_KEY" \
+          --runtime.http_key "$$NAKAMA_HTTP_KEY" \
+          --console.signing_key "$$NAKAMA_CONSOLE_SIGNING_KEY" \
           --metrics.prometheus_port 9099
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -22,6 +25,9 @@ services:
       NAKAMA_CONSOLE_PASSWORD: ${NAKAMA_CONSOLE_PASSWORD}
       NAKAMA_SERVER_KEY: ${NAKAMA_SERVER_KEY}
       NAKAMA_SESSION_ENCRYPTION_KEY: ${NAKAMA_SESSION_ENCRYPTION_KEY}
+      NAKAMA_REFRESH_ENCRYPTION_KEY: ${NAKAMA_REFRESH_ENCRYPTION_KEY}
+      NAKAMA_HTTP_KEY: ${NAKAMA_HTTP_KEY}
+      NAKAMA_CONSOLE_SIGNING_KEY: ${NAKAMA_CONSOLE_SIGNING_KEY}
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID}
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET}
       FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
@@ -48,7 +54,11 @@ services:
       - nakama-net
 
   caddy:
-    image: caddy:2-alpine
+    # Custom build that bakes mholt/caddy-ratelimit. See
+    # ./caddy/Dockerfile. Built locally; no image registry.
+    build:
+      context: ./caddy
+    image: caddy-with-ratelimit:local
     container_name: caddy
     restart: unless-stopped
     ports:

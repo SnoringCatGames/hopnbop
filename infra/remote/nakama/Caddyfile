@@ -10,10 +10,25 @@
 	servers {
 		metrics
 	}
+	# Load global rate-limit zones (see github.com/mholt/caddy-ratelimit).
+	order rate_limit before basicauth
 }
 
 nakama.snoringcat.games {
 	encode gzip
+
+	# Per-IP rate limit on the unauthenticated authentication
+	# endpoints. 30 attempts per IP per 5 min is generous for
+	# legit (typo-and-retry) flows but kills brute-force quickly.
+	# Returns 429 with a Retry-After header.
+	@auth_endpoints path /v2/account/authenticate*
+	rate_limit @auth_endpoints {
+		zone authenticate {
+			key {remote_host}
+			events 30
+			window 5m
+		}
+	}
 
 	# Nakama HTTP API + WebSocket realtime endpoint (/ws).
 	# flush_interval -1 disables response buffering — required for
