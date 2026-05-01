@@ -4,19 +4,21 @@
 // image and mounted at /nakama/data/modules/snoringcat.so.
 // Nakama loads the plugin at startup and calls InitModule.
 //
-// Hooks registered:
+// Hooks registered (when EDGEGAP_TOKEN is set):
 //   - MatchmakerMatched: allocates an Edgegap deployment for the
 //     matched players and notifies them with connection info.
 //
 // RPCs registered:
 //   - register_server: game server checks in after boot.
 //   - match_end: game server posts match results.
+//   - bulk_import: Phase E migration RPC.
+//   - runtime_status: read-only probe of build + config (always
+//     registered, even when other init steps fall back).
 package main
 
 import (
 	"context"
 	"database/sql"
-	"errors"
 
 	"github.com/heroiclabs/nakama-common/runtime"
 )
@@ -36,9 +38,6 @@ func InitModule(
 	}
 
 	edgegapToken := env["EDGEGAP_TOKEN"]
-	if edgegapToken == "" {
-		return errors.New("EDGEGAP_TOKEN not set in runtime.env")
-	}
 	appName := env["EDGEGAP_APP_NAME"]
 	if appName == "" {
 		appName = "hopnbop-server"
@@ -48,16 +47,39 @@ func InitModule(
 		appVersion = "v1"
 	}
 
-	alloc := &fleetAllocator{
-		edgegap: &edgegapClient{
-			token: edgegapToken,
-		},
-		appName:    appName,
-		appVersion: appVersion,
+	// Register the status probe first so the runtime is
+	// diagnosable even if a downstream init step fails or is
+	// skipped because of missing config.
+	matchmakerHookEnabled := edgegapToken != ""
+	statusFn := statusRpcFactory(runtimeStatusConfig{
+		EdgegapAppName:       appName,
+		EdgegapAppVersion:    appVersion,
+		EdgegapTokenSet:      edgegapToken != "",
+		MatchmakerHookActive: matchmakerHookEnabled,
+	})
+	if err := initializer.RegisterRpc("runtime_status", statusFn); err != nil {
+		return err
 	}
 
-	if err := initializer.RegisterMatchmakerMatched(alloc.OnMatchmakerMatched); err != nil {
-		return err
+	if !matchmakerHookEnabled {
+		logger.Warn(
+			"EDGEGAP_TOKEN not set; matchmaker_matched hook is" +
+				" not registered. Players will pair but never" +
+				" receive match_ready notifications. Set the" +
+				" env var on the Nakama host and restart the" +
+				" container to recover.")
+	} else {
+		alloc := &fleetAllocator{
+			edgegap: &edgegapClient{
+				token: edgegapToken,
+			},
+			appName:    appName,
+			appVersion: appVersion,
+		}
+		if err := initializer.RegisterMatchmakerMatched(
+			alloc.OnMatchmakerMatched); err != nil {
+			return err
+		}
 	}
 
 	lifecycle := &matchLifecycle{}
@@ -72,6 +94,8 @@ func InitModule(
 		return err
 	}
 
-	logger.Info("snoringcat-platform runtime loaded (app=%s version=%s)", appName, appVersion)
+	logger.Info(
+		"snoringcat-platform runtime loaded (build=%s app=%s version=%s edgegap=%t)",
+		BuildID, appName, appVersion, matchmakerHookEnabled)
 	return nil
 }

@@ -10,11 +10,12 @@ import (
 )
 
 // matchLifecycle hosts RPCs called by the game-server containers.
-// These are unauthenticated (Nakama RPCs run with whatever session
-// the caller has). Game servers authenticate with a server-key
-// session; we validate by checking that the caller's user_id is
-// the platform service account. For now we accept any caller —
-// Phase D will add server auth via SERVER_API_KEY.
+// Both RPCs (`register_server`, `match_end`) are gated to
+// server-to-server callers via requireServerToServer — they post
+// authoritative state (server registration, leaderboard writes)
+// that would let a malicious client tamper with match results
+// otherwise. Game servers must call them with `?http_key=...`
+// (the value of NAKAMA_HTTP_KEY on the Nakama host).
 type matchLifecycle struct{}
 
 type registerServerArgs struct {
@@ -35,6 +36,9 @@ func (m *matchLifecycle) RegisterServerRpc(
 	nk runtime.NakamaModule,
 	payload string,
 ) (string, error) {
+	if err := requireServerToServer(ctx); err != nil {
+		return "", err
+	}
 	args := registerServerArgs{}
 	if err := json.Unmarshal([]byte(payload), &args); err != nil {
 		return "", runtime.NewError("invalid payload: "+err.Error(), 3)
@@ -87,6 +91,9 @@ func (m *matchLifecycle) MatchEndRpc(
 	nk runtime.NakamaModule,
 	payload string,
 ) (string, error) {
+	if err := requireServerToServer(ctx); err != nil {
+		return "", err
+	}
 	args := matchEndArgs{}
 	if err := json.Unmarshal([]byte(payload), &args); err != nil {
 		return "", runtime.NewError("invalid payload: "+err.Error(), 3)

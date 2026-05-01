@@ -46,6 +46,9 @@ func bulkImportRpc(
 	nk runtime.NakamaModule,
 	payload string,
 ) (string, error) {
+	if err := requireServerToServer(ctx); err != nil {
+		return "", err
+	}
 	req := bulkImportRequest{}
 	if err := json.Unmarshal([]byte(payload), &req); err != nil {
 		return "", runtime.NewError(
