@@ -93,6 +93,13 @@ func InitModule(
 	if err := initializer.RegisterRpc("bulk_import", bulkImportRpc); err != nil {
 		return err
 	}
+	// Pre-matchmaking client IP recorder. The client calls this
+	// right before joining the matchmaker so fleet_allocator can
+	// pull each matched user's public IP and feed it to
+	// Edgegap's ip_list. See client_ip.go.
+	if err := initializer.RegisterRpc("record_client_ip", recordClientIPRpc); err != nil {
+		return err
+	}
 
 	logger.Info(
 		"snoringcat-platform runtime loaded (build=%s app=%s version=%s edgegap=%t)",

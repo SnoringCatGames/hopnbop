@@ -139,22 +139,44 @@ func (a *fleetAllocator) OnMatchmakerMatched(
 	}
 	logger.Info("matchmaker matched %d players, allocating Edgegap deployment", len(entries))
 
-	// Collect player IPs (used by Edgegap for region selection).
+	// Collect player IPs from storage (the client calls
+	// `record_client_ip` right before joining the matchmaker —
+	// see client_ip.go). Edgegap requires at least one of
+	// {ip_list, geo_ip_list, location, filters}, so we fall
+	// back to a single fixed geography if no fresh IPs are
+	// available (which would only happen if every matched
+	// player skipped the pre-matchmaking RPC).
 	ipList := make([]string, 0, len(entries))
 	playerIDs := make([]string, 0, len(entries))
 	for _, e := range entries {
-		props := e.GetProperties()
-		if v, ok := props["client_ip"].(string); ok && v != "" {
-			ipList = append(ipList, v)
+		userID := e.GetPresence().GetUserId()
+		playerIDs = append(playerIDs, userID)
+		ip, err := readClientIP(ctx, nk, userID)
+		if err != nil {
+			logger.Warn("readClientIP for %s: %v", userID, err)
+			continue
 		}
-		playerIDs = append(playerIDs, e.GetPresence().GetUserId())
+		if ip != "" {
+			ipList = append(ipList, ip)
+		} else {
+			logger.Warn("no recorded client IP for %s; matchmaker fallback will use geography", userID)
+		}
 	}
 
-	deploy, err := a.edgegap.Deploy(ctx, edgegapDeployRequest{
+	deployReq := edgegapDeployRequest{
 		AppName:     a.appName,
 		VersionName: a.appVersion,
 		IPList:      ipList,
-	})
+	}
+	if len(ipList) == 0 {
+		// `north_america` is a published Edgegap continent tag.
+		// This keeps the deploy from 400-ing on missing region
+		// hints when nobody recorded an IP, at the cost of
+		// potentially-suboptimal placement. If you want a
+		// different default, change this list.
+		deployReq.Geographies = []string{"north_america"}
+	}
+	deploy, err := a.edgegap.Deploy(ctx, deployReq)
 	if err != nil {
 		logger.Error("edgegap deploy: %v", err)
 		return "", err

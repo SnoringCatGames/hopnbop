@@ -98,6 +98,14 @@ func client_request_session_ids(
 				% connect_ex.message)
 			return
 
+	# Record this client's public IP server-side before joining
+	# the pool. The runtime's MatchmakerMatched hook reads the
+	# recorded IPs and feeds them to Edgegap as `ip_list` for
+	# region selection. Best-effort: if the call fails the
+	# runtime falls back to a fixed geography, so we proceed
+	# either way.
+	await _record_client_ip()
+
 	var query := _build_query(session_prefs)
 	var string_props := _build_string_props(
 		player_count, session_prefs)
@@ -161,6 +169,26 @@ func cleanup() -> void:
 # --------------------------------------------------------------
 # Internals
 # --------------------------------------------------------------
+
+
+func _record_client_ip() -> void:
+	# Calls the runtime's record_client_ip RPC over the open
+	# socket. The runtime reads our public IP from
+	# RUNTIME_CTX_CLIENT_IP and writes it to storage under our
+	# user_id; the matchmaker hook reads it back when pairing.
+	# Failures here are non-fatal — the runtime falls back to a
+	# default geography when no IPs are recorded.
+	if _socket == null or not _socket.is_connected_to_host():
+		return
+	var result: NakamaAPI.ApiRpc = (
+		await _socket.rpc_async("record_client_ip", "{}"))
+	if result.is_exception():
+		var ex: NakamaException = result.get_exception()
+		Netcode.log.warning(
+			"[NakamaMatchmaker] record_client_ip failed: %s"
+			% ex.message,
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
 
 
 func _resolve_socket_session() -> NakamaSession:

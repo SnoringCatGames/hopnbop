@@ -84,6 +84,7 @@ func statusRpcFactory(cfg runtimeStatusConfig) func(
 				"match_end",
 				"bulk_import",
 				"runtime_status",
+				"record_client_ip",
 			},
 			RegisteredHooks: hooks,
 		}
