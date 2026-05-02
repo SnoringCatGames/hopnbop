@@ -35,8 +35,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Godot Linux headless binary. Pin to the same version the
-# Windows export uses to avoid editor/server skew.
-ARG GODOT_VERSION=4.5.0-stable
+# Windows export uses to avoid editor/server skew. Note:
+# Godot's release tag format drops the patch zero — use
+# `4.5-stable`, not `4.5.0-stable` (the latter 404s on the
+# release URL).
+ARG GODOT_VERSION=4.5-stable
 RUN curl -fsSL -o /tmp/godot.zip \
     "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip" \
     && cd /tmp && unzip godot.zip \
