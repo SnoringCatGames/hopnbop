@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/heroiclabs/nakama-common/runtime"
@@ -114,6 +116,14 @@ func (c *edgegapClient) Status(ctx context.Context, requestID string) (*edgegapS
 	return out, nil
 }
 
+// matchedPlayer pairs a Nakama user with the session IDs the
+// runtime issued for that user's local players. For 1:1 matches
+// (no couch co-op) SessionIDs has length 1.
+type matchedPlayer struct {
+	UserID     string
+	SessionIDs []string
+}
+
 // fleetAllocator hooks into MatchmakerMatched to spin up an Edgegap
 // deployment for the matched players.
 type fleetAllocator struct {
@@ -146,11 +156,44 @@ func (a *fleetAllocator) OnMatchmakerMatched(
 	// back to a single fixed geography if no fresh IPs are
 	// available (which would only happen if every matched
 	// player skipped the pre-matchmaking RPC).
+	//
+	// While walking entries, also generate per-player session
+	// IDs and tally the total expected player count. Each
+	// matchmaker entry corresponds to one Nakama user
+	// (presence); the optional `player_count` string property
+	// indicates couch co-op slots. The IDs flow two ways:
+	// (1) via Edgegap deploy EnvVars to the game server, where
+	// EdgegapServerProvider validates incoming connections
+	// against this allowlist; (2) per-player in the match_ready
+	// notification, so each client knows which IDs to declare
+	// when handshaking with the server.
 	ipList := make([]string, 0, len(entries))
-	playerIDs := make([]string, 0, len(entries))
+	matchedPlayers := make([]matchedPlayer, 0, len(entries))
+	allSessionIDs := make([]string, 0, len(entries))
+	totalPlayerCount := 0
 	for _, e := range entries {
 		userID := e.GetPresence().GetUserId()
-		playerIDs = append(playerIDs, userID)
+
+		localCount := 1
+		if props := e.GetProperties(); props != nil {
+			if raw, ok := props["player_count"].(string); ok {
+				if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+					localCount = parsed
+				}
+			}
+		}
+		sessionIDs := make([]string, 0, localCount)
+		for i := 0; i < localCount; i++ {
+			sid := fmt.Sprintf("%s_%d", userID, i)
+			sessionIDs = append(sessionIDs, sid)
+			allSessionIDs = append(allSessionIDs, sid)
+		}
+		matchedPlayers = append(matchedPlayers, matchedPlayer{
+			UserID:     userID,
+			SessionIDs: sessionIDs,
+		})
+		totalPlayerCount += localCount
+
 		ip, err := readClientIP(ctx, nk, userID)
 		if err != nil {
 			logger.Warn("readClientIP for %s: %v", userID, err)
@@ -167,6 +210,16 @@ func (a *fleetAllocator) OnMatchmakerMatched(
 		AppName:     a.appName,
 		VersionName: a.appVersion,
 		IPList:      ipList,
+		EnvVars: []edgegapEnvKV{
+			{
+				Key:   "EXPECTED_PLAYER_COUNT",
+				Value: strconv.Itoa(totalPlayerCount),
+			},
+			{
+				Key:   "EXPECTED_SESSION_IDS",
+				Value: strings.Join(allSessionIDs, ","),
+			},
+		},
 	}
 	if len(ipList) == 0 {
 		// `north_america` is a published Edgegap continent tag.
@@ -202,20 +255,26 @@ func (a *fleetAllocator) OnMatchmakerMatched(
 		return "", fmt.Errorf("edgegap deployment %s did not become ready in 90s", deploy.RequestID)
 	}
 
-	// Notify each matched player with connection info.
-	connInfo := map[string]any{
-		"server_ip":   status.PublicIP,
-		"server_fqdn": status.Fqdn,
-		"ports":       status.Ports,
-		"request_id":  status.RequestID,
-	}
-	connInfoJSON, _ := json.Marshal(connInfo)
+	// Notify each matched player with connection info. Each
+	// player gets only their own session_ids — the server
+	// holds the full allowlist via EXPECTED_SESSION_IDS env
+	// var. The client uses these IDs in the rollback_netcode
+	// player declaration; the server validates them against
+	// the allowlist.
 	subject := "match_ready"
-	for _, pid := range playerIDs {
-		if err := nk.NotificationSend(ctx, pid, subject, map[string]any{
+	for _, mp := range matchedPlayers {
+		connInfo := map[string]any{
+			"server_ip":   status.PublicIP,
+			"server_fqdn": status.Fqdn,
+			"ports":       status.Ports,
+			"request_id":  status.RequestID,
+			"session_ids": mp.SessionIDs,
+		}
+		connInfoJSON, _ := json.Marshal(connInfo)
+		if err := nk.NotificationSend(ctx, mp.UserID, subject, map[string]any{
 			"connection": string(connInfoJSON),
 		}, 100, "", true); err != nil {
-			logger.Warn("notify %s: %v", pid, err)
+			logger.Warn("notify %s: %v", mp.UserID, err)
 		}
 	}
 

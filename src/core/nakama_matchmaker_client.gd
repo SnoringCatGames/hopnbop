@@ -347,32 +347,42 @@ func _on_notification(p_notification) -> void:
 			"match_ready missing usable port")
 		return
 
-	# Use the Nakama user_id as the session id slot. The game
-	# server validates the player by their Nakama JWT, not by
-	# this id; it just keeps GameSessionManager's existing
-	# slot-tracking flow intact. Prefer the preview-instance
-	# uid when running per-slot identity so the slot tracker
-	# matches the user the runtime actually notified.
+	# Pull authoritative session_ids out of the match_ready
+	# payload. The Nakama runtime issues one ID per local
+	# player at allocation time and ships them in the
+	# connection blob. EdgegapServerProvider validates against
+	# this same allowlist (passed to the server via
+	# EXPECTED_SESSION_IDS env var).
 	#
-	# Generate one session_id per local player. The
-	# rollback_netcode `_client_send_player_declaration`
-	# validator requires `session_ids.size() ==
-	# local_player_count`; in split-screen / preview multi-slot
-	# scenarios this is >1. The IDs are unique per local slot
-	# but all derive from the same backend user — the server's
-	# per-session-id validation is currently a no-op on Edgegap
-	# anyway (PreviewSessionProvider auto-accepts).
-	var base_id: String = (
-		_preview_user_id
-		if not _preview_user_id.is_empty()
-		else G.auth_token_store.player_id
-	)
-	var local_count: int = G.client_session.local_player_count
-	if local_count < 1:
-		local_count = 1
+	# Older runtimes that don't ship session_ids fall back to
+	# locally-derived IDs so a deploy mid-rollout keeps working.
+	# The server's PreviewSessionProvider stand-in auto-accepts
+	# in that case; once every Nakama host runs the new plugin,
+	# the fallback path is dead code.
 	var session_ids: Array = []
-	for i in local_count:
-		session_ids.append("%s_%d" % [base_id, i])
+	var raw_session_ids: Variant = conn.get("session_ids", null)
+	if raw_session_ids is Array and raw_session_ids.size() > 0:
+		for sid in raw_session_ids:
+			session_ids.append(str(sid))
+	else:
+		Netcode.log.warning(
+			(
+				"[NakamaMatchmaker] match_ready missing"
+				+ " session_ids; using locally-derived"
+				+ " fallback (runtime out of date)"
+			),
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+		var base_id: String = (
+			_preview_user_id
+			if not _preview_user_id.is_empty()
+			else G.auth_token_store.player_id
+		)
+		var local_count: int = G.client_session.local_player_count
+		if local_count < 1:
+			local_count = 1
+		for i in local_count:
+			session_ids.append("%s_%d" % [base_id, i])
 
 	# Level was chosen client-side and stored on
 	# G.client_session before matchmaking began. The runtime

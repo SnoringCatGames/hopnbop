@@ -30,14 +30,18 @@ new-bug items left over.
 
 ## Live state (don't lose track)
 
-- Latest commit on `main`: **`d90be90`**
+- Latest commit on `main`: **`d90be90`** (P0+P1 work below
+  is uncommitted in the working tree as of 2026-05-01).
 - Nakama runtime plugin live on Hetzner:
-  build_id `local-42aa284-dirty` (one commit behind main; the
-  latest commit is a client-only fix that doesn't need the
-  runtime to redeploy).
-- Edgegap version registered: **v2** (active). v1 still exists
-  but is the broken pre-fix image; can be deleted from the
-  dashboard.
+  build_id `local-42aa284-dirty`. **Stale relative to local
+  source** — needs rebuild + scp + restart to pick up
+  fleet_allocator.go changes (EXPECTED_PLAYER_COUNT,
+  EXPECTED_SESSION_IDS, per-player session_ids).
+- Edgegap version registered: **v2** (active). The container
+  image is unchanged; v2 is still valid for the new runtime
+  contract because the new env vars are read at game-server
+  boot and are absent-tolerant (server falls back to 2
+  expected players + empty allowlist with warnings).
 - Nakama `/opt/nakama/config.yml` `runtime.env` adds:
   - `EDGEGAP_APP_VERSION=v2`
   - `NAKAMA_GAME_VERSION=0.31.0`
@@ -49,93 +53,112 @@ new-bug items left over.
 
 ## P0 — correctness gaps left from the unblock
 
-### 1. Hardcoded `expected_count = 2` breaks 3-4 player matches
+All three P0 items shipped together this session (single
+runtime/client/server change set). Awaiting redeploy of the
+Nakama runtime + Edgegap image to verify end-to-end.
 
-`src/core/game_panel.gd` `server_start_match()` (~line 1170)
-sets `session_manager.server_set_expected_players(2)` whenever
-`PLATFORM=edgegap`. The matchmaker is `min=2/max=4`, so when 3
-or 4 players are paired, `all_players_connected` fires
-prematurely (after 2 connect) and the match starts before
-everyone is in.
+### 1. ~~Hardcoded `expected_count = 2`~~ → injected via env
 
-**Fix:** have the Nakama runtime inject the matched player
-count via env at allocation time. In
-`nakama-runtime/fleet_allocator.go` `OnMatchmakerMatched`, add
-`{Key: "EXPECTED_PLAYER_COUNT", Value:
-fmt.Sprintf("%d", len(entries))}` to `EnvVars` on the deploy
-request. Server reads `OS.get_environment("EXPECTED_PLAYER_COUNT")`
-on boot and forwards to `session_manager.server_set_expected_players`.
+`nakama-runtime/fleet_allocator.go` now adds
+`EXPECTED_PLAYER_COUNT` to the Edgegap deploy `EnvVars` based
+on the sum of `player_count` properties across matchmaker
+entries (defaults to 1 per entry when unset).
+`src/core/game_panel.gd::server_start_match` reads
+`OS.get_environment("EXPECTED_PLAYER_COUNT")` and forwards to
+`session_manager.server_set_expected_players`. Falls back to 2
+with a warning if the env var is missing or unparseable.
 
-### 2. `PreviewSessionProvider` has no real session_id validation
+### 2. ~~PreviewSessionProvider stand-in~~ → EdgegapServerProvider
 
-`src/core/game_session_manager.gd` `_setup_session_provider()`
-detects `PLATFORM=edgegap` and instantiates
-`PreviewSessionProvider` as a stand-in. It auto-accepts any
-session_id, so currently the only thing stopping a malicious
-client from joining any active match is the obscurity of the
-Edgegap deployment URL.
+New file `src/core/edgegap_server_provider.gd`. Loads the
+allowlist from `EXPECTED_SESSION_IDS` env var on `_ready`,
+rejects any session_id outside the list, and rejects any
+already-claimed ID. Mirrors `GameLiftServerProvider`'s grace +
+idle timer pattern. Wired in `_setup_session_provider`'s
+edgegap branch (replaced the `PreviewSessionProvider` stand-in).
 
-**Fix:** write `addons/snoringcat_platform_client/server/edgegap_server_provider.gd`
-(or `src/core/edgegap_server_provider.gd`) that:
-- On `_ready`, register the server with Nakama and pull the
-  authoritative session_id list for the just-started match.
-- In `server_validate_player_sessions`, only accept session_ids
-  that match what Nakama allocated.
-- Wire it up in `_setup_session_provider`'s edgegap branch.
+**Out of scope this round (still gated to GameLift in
+`game_panel.gd`):**
+- `_server_send_backend_ids_to_clients` — friend-add post-match
+  is still no-op on Edgegap.
+- `_server_report_match_result` — still hits the dead AWS URL
+  and still gated to `GameLiftServerProvider`. Tracked under
+  P2 #8 and the broader AWS-decommission pass.
 
-The Nakama `register_server` RPC already exists; extend it
-(or add a new `claim_session` RPC) so the server can pull the
-matchmaker entry list back.
+### 3. ~~Client-invented session_ids~~ → authoritative IDs from runtime
 
-### 3. `client_session_ids` are derived locally, not authoritative
+`fleet_allocator.go` now generates one session_id per matched
+player (`<userID>_<index>`), passes the full list to the
+server via `EXPECTED_SESSION_IDS`, and ships each player their
+own subset in the `match_ready` notification's
+`connection.session_ids` field.
+`src/core/nakama_matchmaker_client.gd` now reads
+`session_ids` from the connection blob; falls back to the old
+locally-derived IDs (with a warning) if the runtime omits them
+so a mid-rollout deploy keeps working until every Nakama host
+runs the new plugin.
 
-`src/core/nakama_matchmaker_client.gd` ~line 356 generates
-`base_id_0`, `base_id_1`, ... per local player. The Nakama
-runtime doesn't actually issue these — they're placeholder
-strings the client invents to satisfy the
-`session_ids.size() == local_player_count` check. Pairs with
-#2: once the server validates session_ids, the runtime needs
-to also issue them and ship them in `match_ready`'s
-`connection` blob.
+**Couch co-op:** The matchmaker query still pairs per-presence
+(min/max=2/4), but the runtime honors a `player_count` string
+property if a future client populates it. End-to-end couch
+co-op is untested.
 
 ---
 
-## P1 — new bugs flagged in this session
+## P1 — bugs flagged last session
 
-### 4. ~47% packet loss in PERF stats during gameplay
+### 4. ~~~47% packet loss in PERF stats~~ → diagnosed, fix pending
 
-Test logs showed
-`PERF: ... LOSS:47% N:397.4 PING:30.2ms` for a Seattle-to-Seattle
-UDP path. Loss should be near-zero. Could be:
-- Genuine packet loss (Edgegap container network tuning,
-  outbound rate limit, MTU mismatch).
-- Perf tracker misreading (counts late frames as loss?).
+**Root cause:** `PerfTracker._update_packet_loss` in
+`addons/rollback_netcode/utils/perf_tracker.gd:815` treats
+every gap > 1 in `state_frame_index` as packet loss. But the
+server intentionally throttles state sends per
+`Netcode.frame_driver.state_send_interval`:
 
-**Investigate:** tcpdump on both the Edgegap container and
-client, compare sent vs received packet counts. Also check
-`Netcode.perf_tracker._current_packet_loss_percent`'s
-computation.
+- ENet: `enet_state_send_fps=30` vs `target_network_fps=60`
+  → `state_send_interval=2` → every event has gap=2 → metric
+  reports `(2-1)/2 = 50%` "loss" with zero real UDP loss.
+- WebRTC/WebSocket: `*_state_send_fps=20` → interval=3 →
+  reported ~67%.
 
-### 5. Client polls notifications with `limit=0`, Nakama 400s
+The 47% observation matches the ENet expectation almost
+exactly (slight noise from frame jitter).
 
-Pre-existing client bug. Every notification poll cycle prints:
+**Fix (deferred — submodule change):** subtract the expected
+gap (`state_send_interval`) from the actual gap before
+counting as loss in `_update_packet_loss`:
+
+```gdscript
+var send_interval := Netcode.frame_driver.state_send_interval
+var lost: int = maxi(0, gap - send_interval)
+_frames_expected_in_window += send_interval
+_frames_received_in_window += send_interval - lost
 ```
-Request N returned response code: 400, RPC code: 3,
-error: Invalid limit - limit must be between 1 and 100.
-```
-Find the poller (likely the friends or notification manager)
-and pass a sensible limit (e.g. 100).
 
-### 6. C1 preview client exits unexpectedly after match-over
+Pending submodule PR in `godot-rollback-netcode`.
 
-In the working test, `--client=1` exited itself after the
-`GAME_OVER` screen appeared (no `Main.close_app` log line,
-just `--- Debugging process stopped ---`). C2 stayed open.
+### 5. ~~Notification poller limit=0~~ → fixed
 
-Add `print_stack()` in `_client_transition_to_game_over` and
-in `Main`'s `NOTIFICATION_WM_CLOSE_REQUEST` handler to catch
-what's calling them. Could also be the Godot debugger
-disconnecting unrelated to the match.
+`src/core/friends_notification_poller.gd:103` was passing
+`_last_poll_timestamp` (a leftover from the AWS-era API that
+took `since_timestamp`) into the `limit` slot of
+`fetch_notifications(limit, cacheable_cursor)`. Default value
+0 tripped Nakama's `1 ≤ limit ≤ 100` check on every poll
+cycle. Fix: drop the now-dead `_last_poll_timestamp` field and
+its maintenance code; call `fetch_notifications()` with no
+args (default limit=50). Cursor-based pagination is a
+follow-up.
+
+### 6. C1 preview client exits unexpectedly → diagnostics added
+
+Logging added: `_client_transition_to_game_over` in
+`game_panel.gd` and the `NOTIFICATION_WM_CLOSE_REQUEST`
+branch in `main.gd::_notification` now both print a stack
+trace plus a `[diag]` prefix. Next test session should reveal
+whether C1's exit comes from the WM_CLOSE path (something
+posting a window-close event) or the game-over transition
+(something queue_free-ing the client). Strip the diagnostics
+once the cause is known.
 
 ---
 
@@ -241,6 +264,30 @@ Commits on `main`, in order:
   `PreviewSessionProvider`, hardcode `expected_count=2`).
 - `d90be90` nakama_matchmaker: emit one session_id per local
   player.
+
+## Working tree (uncommitted, 2026-05-01)
+
+P0.1 + P0.2 + P0.3 + P1.5 + P1.6 changes:
+- `nakama-runtime/fleet_allocator.go` — generates per-player
+  session_ids, injects EXPECTED_PLAYER_COUNT and
+  EXPECTED_SESSION_IDS env vars on the Edgegap deploy, ships
+  per-player session_ids in match_ready notification.
+- `src/core/edgegap_server_provider.gd` (new) — validates
+  incoming session_ids against env-loaded allowlist. Mirrors
+  GameLiftServerProvider's grace + idle timer pattern.
+- `src/core/game_session_manager.gd` — uses
+  EdgegapServerProvider on Edgegap (was PreviewSessionProvider).
+- `src/core/game_panel.gd` — reads EXPECTED_PLAYER_COUNT env
+  (was hardcoded to 2). Adds `[diag]` log + print_stack to
+  `_client_transition_to_game_over` (P1.6).
+- `src/core/nakama_matchmaker_client.gd` — reads session_ids
+  from the match_ready connection blob; falls back to
+  locally-derived IDs with a warning if missing.
+- `src/core/main.gd` — adds `[diag]` log + print_stack to
+  NOTIFICATION_WM_CLOSE_REQUEST (P1.6).
+- `src/core/friends_notification_poller.gd` — drops dead
+  `_last_poll_timestamp` arg from fetch_notifications call
+  (P1.5 limit=0 bug).
 
 Backend state changes (not in git):
 - Nakama runtime plugin rebuilt and `scp`'d to Hetzner;

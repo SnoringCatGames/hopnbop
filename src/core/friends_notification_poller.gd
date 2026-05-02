@@ -17,7 +17,6 @@ var unseen_count := 0
 var _poll_timer := 0.0
 var _presence_poll_timer := 0.0
 var _is_polling := false
-var _last_poll_timestamp := 0
 var _is_first_poll := true
 var _is_first_presence_poll := true
 
@@ -99,9 +98,7 @@ func _process(delta: float) -> void:
 	if _poll_timer >= _POLL_INTERVAL_SEC:
 		_poll_timer = 0.0
 		if not G.friends_api_client.is_poll_busy():
-			G.friends_api_client\
-				.fetch_notifications(
-					_last_poll_timestamp)
+			G.friends_api_client.fetch_notifications()
 
 	_presence_poll_timer += delta
 	if _presence_poll_timer >= _PRESENCE_POLL_INTERVAL_SEC:
@@ -132,7 +129,6 @@ func stop_polling() -> void:
 func reset() -> void:
 	_is_first_poll = true
 	_is_first_presence_poll = true
-	_last_poll_timestamp = 0
 	_known_incoming_ids.clear()
 	_known_accepted_ids.clear()
 	_known_rejected_ids.clear()
@@ -177,15 +173,6 @@ func _on_notifications_received(
 				and not _known_rejected_ids.has(fid):
 			_known_rejected_ids[fid] = true
 			new_rejected.append(entry)
-
-	# Update timestamp to the latest updated_at
-	# seen in any notification.
-	for entries in [incoming, accepted, rejected]:
-		for entry in entries:
-			var ts: int = entry.get(
-				"updated_at", 0)
-			if ts > _last_poll_timestamp:
-				_last_poll_timestamp = ts
 
 	# Update unseen count.
 	var total_new := (

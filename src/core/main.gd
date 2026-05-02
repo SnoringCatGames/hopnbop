@@ -324,6 +324,18 @@ func _notification(notification_type: int) -> void:
 				# TODO: Close the current screen/context.
 				pass
 		NOTIFICATION_WM_CLOSE_REQUEST:
+			# DIAGNOSTIC: log stack to identify what's
+			# triggering window close on the C1 preview
+			# client after match-over. (NEXT_STEPS.md
+			# P1.6, 2026-05-01)
+			Netcode.print(
+				(
+					"[diag] NOTIFICATION_WM_CLOSE_REQUEST"
+					+ " received"
+				),
+				NetworkLogger.CATEGORY_CORE_SYSTEMS,
+			)
+			print_stack()
 			_disconnect_peers_in_preview_mode()
 			close_app()
 		_:

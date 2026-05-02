@@ -1077,6 +1077,18 @@ func client_exit_match() -> void:
 var _has_transitioned_to_game_over := false
 
 func _client_transition_to_game_over() -> void:
+	# DIAGNOSTIC: C1 preview client has been observed
+	# exiting unexpectedly right after this transition
+	# (no Main.close_app log, just process exit). Log the
+	# call stack so we can attribute the cause when it
+	# reproduces. Remove once root cause is known.
+	# (NEXT_STEPS.md P1.6, 2026-05-01)
+	Netcode.print(
+		"[diag] _client_transition_to_game_over called",
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+	print_stack()
+
 	if _has_transitioned_to_game_over:
 		return
 	# Guard: session override kick already exited
@@ -1167,14 +1179,28 @@ func server_start_match() -> void:
 			.server_set_expected_players(
 				expected_client_count))
 	elif OS.get_environment("PLATFORM") == "edgegap":
-		# Smoke-test placeholder. The matchmaker can pair
-		# 2-4 players; hardcode 2 (the matchmaker's
-		# min_count) until the Nakama runtime injects the
-		# actual matched player count via env at allocation
-		# time. With expected_count==0 the
-		# all_players_connected signal would never fire and
-		# the match would never formally start.
-		session_manager.server_set_expected_players(2)
+		# Nakama runtime injects EXPECTED_PLAYER_COUNT into
+		# the Edgegap deploy when allocating this server. If
+		# missing or unparseable, fall back to the
+		# matchmaker's min_count so the match can still
+		# start (an unset count would leave
+		# all_players_connected stuck and the match would
+		# never begin).
+		var raw := OS.get_environment(
+			"EXPECTED_PLAYER_COUNT")
+		var expected_count := raw.to_int()
+		if expected_count <= 0:
+			Netcode.log.warning(
+				(
+					"EXPECTED_PLAYER_COUNT env missing"
+					+ " or invalid (raw=%s); falling"
+					+ " back to 2"
+				) % raw,
+				NetworkLogger.CATEGORY_CONNECTIONS,
+			)
+			expected_count = 2
+		session_manager.server_set_expected_players(
+			expected_count)
 
 	# Get selected level from session provider
 	# (GameLift or preview mode).
