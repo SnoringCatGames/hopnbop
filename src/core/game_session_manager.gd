@@ -77,7 +77,29 @@ func _ready() -> void:
 
 ## Set up the appropriate session provider (GameLift or Preview mode).
 func _setup_session_provider() -> void:
-	if (Netcode.should_connect_to_remote_server
+	# Detect Edgegap deployments via the PLATFORM env var that
+	# Dockerfile.edgegap sets. On Edgegap we cannot use the
+	# GameLift Server SDK — it tries to handshake with AWS and
+	# hangs the boot before ENet can bind. Use the auto-accept
+	# preview provider as a stand-in until a proper
+	# EdgegapServerProvider exists. Session-ID validation becomes
+	# a no-op; the security boundary is the Nakama matchmaker
+	# plus Edgegap's per-deployment isolation.
+	var is_edgegap_server := (
+		Netcode.is_server
+		and not Netcode.is_preview
+		and OS.get_environment("PLATFORM") == "edgegap"
+	)
+
+	if is_edgegap_server:
+		session_provider = PreviewSessionProvider.new(
+			Netcode.log,
+			{
+				"server_ip": "",
+				"server_port": Netcode.server_port,
+			}
+		)
+	elif (Netcode.should_connect_to_remote_server
 			and Netcode.is_server
 			and not Netcode.is_preview):
 		# Production server: use GameLift SDK.

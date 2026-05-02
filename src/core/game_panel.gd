@@ -1166,6 +1166,15 @@ func server_start_match() -> void:
 		(session_manager
 			.server_set_expected_players(
 				expected_client_count))
+	elif OS.get_environment("PLATFORM") == "edgegap":
+		# Smoke-test placeholder. The matchmaker can pair
+		# 2-4 players; hardcode 2 (the matchmaker's
+		# min_count) until the Nakama runtime injects the
+		# actual matched player count via env at allocation
+		# time. With expected_count==0 the
+		# all_players_connected signal would never fire and
+		# the match would never formally start.
+		session_manager.server_set_expected_players(2)
 
 	# Get selected level from session provider
 	# (GameLift or preview mode).
