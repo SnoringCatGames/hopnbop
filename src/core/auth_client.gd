@@ -93,7 +93,8 @@ const _NAKAMA_PORT := 443
 const _NAKAMA_SCHEME := "https"
 # Server key sent on every Nakama auth call. Match this against
 # the value Nakama is started with on the server side
-# (--socket.server_key in infra/remote/nakama/docker-compose.yml).
+# (--socket.server_key in
+# third_party/snoringcat-platform/infra/remote/nakama/docker-compose.yml).
 # Not a real secret (extractable from the shipped .pck), it's a
 # soft gate that pairs with per-IP rate-limiting in Caddy.
 const _NAKAMA_SERVER_KEY := "p65qPwZ3vhnsIzNU8/9tw1gR6AbkjGJ7GpTmMQbJ5fs="
@@ -381,7 +382,7 @@ func delete_account() -> void:
 
 ## Export all player data as JSON. Routes through the Nakama
 ## runtime RPC `export_player_data` (registered in
-## nakama-runtime/match_lifecycle.go — TODO).
+## snoringcat-platform's runtime/match_lifecycle.go — TODO).
 func export_player_data() -> void:
 	if _is_exporting:
 		return

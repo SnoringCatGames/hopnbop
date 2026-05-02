@@ -29,6 +29,20 @@ shipping a breaking network protocol change; do not bump other
 games' versions. Full procedure and "what counts as breaking"
 rules are in `PLATFORM_ARCHITECTURE.md`.
 
+### Cost monitor (daily Discord MTD summary)
+
+The Discord channel that receives this repo's morning-brief and
+ci-failure pings also gets a **daily MTD spend summary** plus
+threshold-crossing alerts. The source is in the snoringcat-platform
+repo, deployed to the Hetzner host by Pulumi:
+
+- Source files:
+  `third_party/snoringcat-platform/infra/remote/cost-monitor/`
+  (`cost-monitor.{sh, service, timer}`).
+- Deployed path: `/opt/snoringcat/cost-monitor/` on the Nakama box.
+- Trigger details, thresholds, emergency action, and inspection
+  commands: see `PLATFORM_ARCHITECTURE.md` → "Cost monitor".
+
 ## Cloning
 
 This repo uses git submodules for the rollback netcode and

@@ -14,14 +14,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          # Default GITHUB_TOKEN doesn't authenticate against
+          # sibling private SnoringCatGames repos, so the
+          # snoringcat-platform submodule clone 404s without a
+          # PAT. SUBMODULE_PAT is a classic PAT with `repo`
+          # scope across the org.
+          token: ${{ secrets.SUBMODULE_PAT }}
       - name: Build plugin .so
         run: |
-          mkdir -p nakama-runtime/build
+          RUNTIME_DIR="third_party/snoringcat-platform/runtime"
+          mkdir -p "$RUNTIME_DIR/build"
           BUILD_ID="${{ github.sha }}"
           BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           LDFLAGS="-X main.BuildID=${BUILD_ID} -X main.BuildTime=${BUILD_TIME}"
           docker run --rm \
-            -v $PWD/nakama-runtime:/backend -w /backend \
+            -v "$PWD/$RUNTIME_DIR:/backend" -w /backend \
             heroiclabs/nakama-pluginbuilder:3.25.0 \
             build -buildmode=plugin -trimpath \
             -ldflags "${LDFLAGS}" \
@@ -36,7 +45,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           scp -o StrictHostKeyChecking=accept-new \
             -i ~/.ssh/id_ed25519 \
-            nakama-runtime/build/snoringcat.so \
+            third_party/snoringcat-platform/runtime/build/snoringcat.so \
             "root@$NAKAMA_HOST:/opt/nakama/modules/snoringcat.so"
           ssh -o StrictHostKeyChecking=accept-new \
             -i ~/.ssh/id_ed25519 "root@$NAKAMA_HOST" \

@@ -223,7 +223,8 @@ func fetch_presence(
 	# this player's own (rich_presence, status), get every
 	# friend's presence back. Nakama doesn't have a built-in
 	# rich-presence wire, so we route through a custom RPC
-	# `update_and_get_presence` in nakama-runtime/. The RPC
+	# `update_and_get_presence` in snoringcat-platform's
+	# runtime/ module. The RPC
 	# stores the caller's presence in Storage(scope=presence)
 	# and returns the union of all friends' presence rows.
 	if _is_presence_busy:

@@ -1523,7 +1523,7 @@ Postgres + Nakama Storage. Source of truth flips to Nakama.
 
 ### Steps
 
-1. Author `scripts/migrate_ddb_to_nakama.py`:
+1. Author `third_party/snoringcat-platform/scripts/migrate_ddb_to_nakama.py`:
    - Reads `aws ddb scan` paginated for each table:
      `hopnbop-players`, `hopnbop-friends`, `hopnbop-parties`,
      `hopnbop-leaderboards`, `hopnbop-settings`,
@@ -1771,8 +1771,8 @@ AWS-aware tests stripped or re-pointed.
    - Re-target compliance suite from AWS API → Nakama API.
 6. Update `hopnbop_private/CLAUDE.md`:
    - Replace deploy sections with Edgegap deploy.
-   - Replace SAM/CDK with Docker Compose / `nakama-runtime go
-     build`.
+   - Replace SAM/CDK with Docker Compose / `runtime go build`
+     (under `third_party/snoringcat-platform/runtime/`).
    - Update AWS Resources section.
 
 ### Verification (autonomous)

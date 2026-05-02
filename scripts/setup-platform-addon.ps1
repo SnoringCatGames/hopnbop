@@ -58,4 +58,4 @@ Write-Host "Next steps:" -ForegroundColor Cyan
 Write-Host "  - Open the project in Godot (or run --import) to"
 Write-Host "    refresh the .godot/ caches with the new files."
 Write-Host "  - To verify end-to-end, run:"
-Write-Host "      godot --headless --path . -s scripts/platform_smoke_test.gd"
+Write-Host "      godot --headless --path . -s third_party/snoringcat-platform/scripts/platform_smoke_test.gd"

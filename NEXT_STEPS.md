@@ -59,8 +59,9 @@ Nakama runtime + Edgegap image to verify end-to-end.
 
 ### 1. ~~Hardcoded `expected_count = 2`~~ → injected via env
 
-`nakama-runtime/fleet_allocator.go` now adds
-`EXPECTED_PLAYER_COUNT` to the Edgegap deploy `EnvVars` based
+`third_party/snoringcat-platform/runtime/fleet_allocator.go`
+now adds `EXPECTED_PLAYER_COUNT` to the Edgegap deploy
+`EnvVars` based
 on the sum of `player_count` properties across matchmaker
 entries (defaults to 1 per entry when unset).
 `src/core/game_panel.gd::server_start_match` reads
@@ -268,7 +269,8 @@ Commits on `main`, in order:
 ## Working tree (uncommitted, 2026-05-01)
 
 P0.1 + P0.2 + P0.3 + P1.5 + P1.6 changes:
-- `nakama-runtime/fleet_allocator.go` — generates per-player
+- `third_party/snoringcat-platform/runtime/fleet_allocator.go`
+  — generates per-player
   session_ids, injects EXPECTED_PLAYER_COUNT and
   EXPECTED_SESSION_IDS env vars on the Edgegap deploy, ships
   per-player session_ids in match_ready notification.
@@ -339,7 +341,7 @@ gh run watch (gh run list --workflow=game-server.yml --limit 1 --json databaseId
 
 Rebuild Nakama runtime plugin and deploy:
 ```bash
-cd nakama-runtime
+cd third_party/snoringcat-platform/runtime
 BUILD_ID="local-$(git rev-parse --short HEAD)-dirty"
 BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS="-X main.BuildID=${BUILD_ID} -X main.BuildTime=${BUILD_TIME}"

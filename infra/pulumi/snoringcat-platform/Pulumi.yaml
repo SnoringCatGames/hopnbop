@@ -1,3 +1,0 @@
-name: snoringcat-platform
-runtime: go
-description: Snoring Cat platform infrastructure (Hetzner Cloud compute + Cloudflare DNS).

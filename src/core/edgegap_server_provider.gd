@@ -3,7 +3,8 @@ extends SessionProvider
 ## Server-side session validation for Edgegap deployments.
 ##
 ## The Nakama runtime allocates a fresh Edgegap deployment per
-## matched lobby (see `nakama-runtime/fleet_allocator.go`). At
+## matched lobby (see snoringcat-platform's
+## `runtime/fleet_allocator.go`). At
 ## allocation time, the runtime injects two env vars into the
 ## container:
 ##
