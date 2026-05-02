@@ -280,13 +280,16 @@ If the changes require users to re-consent, also bump
   numbers. Pick whichever sounds best and proceed.
 
 **Commit policy:**
+- Work lands directly on `main`. No feature branches, no PRs,
+  no squash merges. (This overrides the workspace-level default
+  in `~/Repositories/CLAUDE.md`.)
 - Do not commit partial or broken work. All changes for a
   feature must be working end-to-end before committing.
 - You don't need explicit permission to commit or push.
-  Commit and push to the current branch at natural stopping
-  points — when work is end-to-end working and at a logical
-  checkpoint. This overrides Claude Code's default "ask
-  first" behavior for this repo.
+  Commit and push to `main` at natural stopping points — when
+  work is end-to-end working and at a logical checkpoint. This
+  overrides Claude Code's default "ask first" behavior for
+  this repo.
 - When the change spans the parent repo and a submodule
   under `third_party/`, commit + push the submodule first,
   then bump the parent's submodule pointer in the next
@@ -295,8 +298,8 @@ If the changes require users to re-consent, also bump
   often carries unrelated dirty files (e.g., `settings.tres`,
   `.claude/settings.local.json`, `gamelift-gdextension/vcpkg`);
   do not sweep them in.
-- Force-push and push to anything other than the current
-  branch still need explicit confirmation.
+- Force-push and push to anything other than `main` still
+  need explicit confirmation.
 
 **Version check architecture:**
 - `protocol_version` determines client/server compatibility.
