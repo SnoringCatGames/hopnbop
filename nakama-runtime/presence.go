@@ -19,15 +19,19 @@ import (
 //   read perm  = 2 (public read so friends can see)
 //   write perm = 1 (owner write only)
 
+// rich_presence is a free-form opaque blob the client uses to
+// describe what the player is doing ("In Lobby", "In Match", etc).
+// The client treats it as a string; we store and forward it
+// verbatim without inspecting the contents.
 type presenceArgs struct {
-	RichPresence map[string]any `json:"rich_presence"`
-	Status       string         `json:"status"`
+	RichPresence string `json:"rich_presence"`
+	Status       string `json:"status"`
 }
 
 type presenceRecord struct {
-	RichPresence map[string]any `json:"rich_presence"`
-	Status       string         `json:"status"`
-	UpdatedAt    int64          `json:"updated_at"`
+	RichPresence string `json:"rich_presence"`
+	Status       string `json:"status"`
+	UpdatedAt    int64  `json:"updated_at"`
 }
 
 type presenceResponse struct {
