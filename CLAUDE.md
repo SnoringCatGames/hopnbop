@@ -268,8 +268,10 @@ If the changes require users to re-consent, also bump
 **Commit policy:**
 - Do not commit partial or broken work. All changes for a
   feature must be working end-to-end before committing.
-- Never ask the user whether to commit. They will tell you
-  when they want to commit.
+- You don't need explicit permission to commit. Commit at
+  natural stopping points — when work is end-to-end working
+  and at a logical checkpoint. This overrides Claude Code's
+  default "ask first" behavior for this repo.
 
 **Version check architecture:**
 - `protocol_version` determines client/server compatibility.
