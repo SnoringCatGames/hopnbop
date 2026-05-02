@@ -18,7 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { submodules: recursive }
+        with:
+          submodules: recursive
+          # Default GITHUB_TOKEN only authenticates against the
+          # current repo, so submodule clones from sibling
+          # private SnoringCatGames repos 404. SUBMODULE_PAT is
+          # a classic PAT with `repo` scope across the org.
+          token: ${{ secrets.SUBMODULE_PAT }}
       - uses: chickensoft-games/setup-godot@v2
         with:
           version: 4.5.0-stable
