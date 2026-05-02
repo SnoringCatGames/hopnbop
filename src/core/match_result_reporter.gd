@@ -62,16 +62,17 @@ func report(
 	var headers := PackedStringArray([
 		"Content-Type: application/json",
 	])
-	# Nakama wants the RPC payload as a JSON-encoded string in
-	# the request body (a JSON string, not the inner object),
-	# so we JSON.stringify twice.
-	var inner_payload := JSON.stringify({
+	# With ?unwrap=true, Nakama's HTTP gateway forwards the raw
+	# request body as the RPC payload — send the bare JSON
+	# object directly. Wrapping it as a JSON-encoded string
+	# silently fails parse on the runtime side (string-into-
+	# struct unmarshal error).
+	var body := JSON.stringify({
 		"request_id": request_id,
 		"winner_id": winner_id,
 		"players": players,
 		"stats": stats,
 	})
-	var body := JSON.stringify(inner_payload)
 
 	var http := HTTPRequest.new()
 	http.timeout = 10.0

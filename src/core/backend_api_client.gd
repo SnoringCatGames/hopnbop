@@ -249,14 +249,16 @@ func check_version() -> void:
 	var headers := PackedStringArray([
 		"Content-Type: application/json",
 	])
-	# Nakama wants the RPC payload as a JSON-encoded string in
-	# the body (a string, not the inner object), so we
-	# JSON.stringify twice.
-	var inner_payload := JSON.stringify({
+	# With ?unwrap=true, Nakama's HTTP gateway forwards the raw
+	# request body as the RPC payload. Encode as a bare JSON
+	# object — wrapping again (`JSON.stringify(JSON.stringify(…))`)
+	# silently falls through to default-valued args because
+	# the runtime's `_ = json.Unmarshal(payload, &args)` ignores
+	# the unmarshal error.
+	var body := JSON.stringify({
 		"client_protocol_version": client_protocol,
 		"client_game_version": client_game_version,
 	})
-	var body := JSON.stringify(inner_payload)
 
 	var http := HTTPRequest.new()
 	http.timeout = 5.0
