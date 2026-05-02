@@ -1,0 +1,97 @@
+name: Game Server Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Edgegap version name (e.g. v1)'
+        required: true
+        default: 'v1'
+      reason:
+        description: 'Reason for rolling the game server'
+        required: false
+        default: 'Manual deploy'
+
+jobs:
+  game-server:
+    name: Build and push Linux server to Edgegap
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.5.0-stable
+          use-dotnet: false
+      - name: Export Linux server pck
+        run: |
+          mkdir -p build/linux
+          godot --headless --export-pack "Linux Server" \
+            build/linux/hopnbop_server.pck || true
+          test -s build/linux/hopnbop_server.pck
+      - name: Build Docker image
+        run: |
+          VERSION="${{ inputs.version }}"
+          docker build -f Dockerfile.edgegap \
+            -t registry.edgegap.com/${{ secrets.EDGEGAP_ORG }}/hopnbop-server:$VERSION \
+            .
+      - name: Login to Edgegap registry
+        run: |
+          echo "${{ secrets.EDGEGAP_TOKEN }}" | docker login \
+            registry.edgegap.com -u token --password-stdin
+      - name: Push image
+        run: |
+          VERSION="${{ inputs.version }}"
+          docker push \
+            registry.edgegap.com/${{ secrets.EDGEGAP_ORG }}/hopnbop-server:$VERSION
+      - name: Register Edgegap version (delete-and-create for upsert)
+        run: |
+          VERSION="${{ inputs.version }}"
+          ORG="${{ secrets.EDGEGAP_ORG }}"
+          # Delete first so a re-run with the same version replaces
+          # the previous record. 404 is fine — means no prior
+          # version. Anything else (auth/server) gets surfaced.
+          DEL_HTTP=$(curl -sS -o /tmp/del.json -w '%{http_code}' \
+            -X DELETE \
+            -H "Authorization: token ${{ secrets.EDGEGAP_TOKEN }}" \
+            "https://api.edgegap.com/v1/app/hopnbop-server/version/$VERSION")
+          echo "DELETE returned HTTP $DEL_HTTP"
+          if [[ "$DEL_HTTP" != "200" && "$DEL_HTTP" != "204" \
+              && "$DEL_HTTP" != "404" ]]; then
+            cat /tmp/del.json
+            exit 1
+          fi
+          # Create with the schema Edgegap actually requires.
+          # docker_image is the registry path *without* the
+          # registry hostname; that lives in docker_repository.
+          # docker_tag is the image tag. ports declare what the
+          # container listens on (Edgegap port-forwards these
+          # to dynamic external ports per deployment).
+          # req_cpu is millicores; req_memory is MB.
+          curl -fsS -X POST \
+            -H "Authorization: token ${{ secrets.EDGEGAP_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg v "$VERSION" \
+              --arg img "$ORG/hopnbop-server" \
+              --arg repo "registry.edgegap.com" \
+              --arg tag "$VERSION" \
+              '{
+                name: $v,
+                docker_image: $img,
+                docker_repository: $repo,
+                docker_tag: $tag,
+                req_cpu: 1024,
+                req_memory: 1024,
+                ports: [
+                  {port: 4433, protocol: "UDP",
+                    name: "game", to_check: false},
+                  {port: 4434, protocol: "TCP",
+                    name: "signaling", to_check: false}
+                ]
+              }')" \
+            "https://api.edgegap.com/v1/app/hopnbop-server/version"
+      - name: Reason
+        run: |
+          echo "Version: ${{ inputs.version }}"
+          echo "Reason: ${{ inputs.reason }}"
