@@ -236,25 +236,63 @@ func check_version() -> void:
 		"application/config/protocol_version", 1)
 	var client_game_version: String = ProjectSettings.get_setting(
 		"application/config/version", "")
-	# version_check is unauthenticated — call without a session.
-	# Nakama supports HTTP key for unauthenticated RPCs; lacking
-	# one, we fall through to "compatible" so offline/preview
-	# instances don't fail at startup.
-	var session := await _ensure_session_optional()
-	if session == null:
+
+	# Hit the runtime's `version_check` RPC via Nakama's
+	# HTTP-key path so this works pre-auth (the boot-time call
+	# fires before any session exists). Nakama returns the
+	# RPC's `result` envelope by default; `unwrap=true` strips
+	# it down to the bare payload string.
+	var url := "%s/v2/rpc/version_check?http_key=%s&unwrap=true" % [
+		AuthClient.get_nakama_base_url(),
+		AuthClient.get_nakama_http_key().uri_encode(),
+	]
+	var headers := PackedStringArray([
+		"Content-Type: application/json",
+	])
+	# Nakama wants the RPC payload as a JSON-encoded string in
+	# the body (a string, not the inner object), so we
+	# JSON.stringify twice.
+	var inner_payload := JSON.stringify({
+		"client_protocol_version": client_protocol,
+		"client_game_version": client_game_version,
+	})
+	var body := JSON.stringify(inner_payload)
+
+	var http := HTTPRequest.new()
+	http.timeout = 5.0
+	add_child(http)
+	var err := http.request(
+		url, headers, HTTPClient.METHOD_POST, body)
+	if err != OK:
+		http.queue_free()
+		Netcode.warning(
+			"version_check request failed to start: %s"
+			% error_string(err),
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
 		version_checked.emit(true, -1, client_game_version)
 		return
-	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
-		session, "version_check",
-		JSON.stringify({
-			"client_protocol_version": client_protocol,
-			"client_game_version": client_game_version,
-		}))
-	if rpc_result.is_exception():
-		# RPC missing / not yet deployed: assume compatible.
+
+	var result: Array = await http.request_completed
+	http.queue_free()
+	# request_completed signature:
+	# (result, response_code, headers, body).
+	var status: int = result[1]
+	var response_body: PackedByteArray = result[3]
+
+	if status != 200:
+		# 0 = transport error, anything else = server-side
+		# failure (HTTP key wrong, RPC missing, etc.). Assume
+		# compatible so a bad probe doesn't lock players out.
+		Netcode.warning(
+			"version_check returned HTTP %d" % status,
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
 		version_checked.emit(true, -1, client_game_version)
 		return
-	var data: Variant = JSON.parse_string(rpc_result.payload)
+
+	var raw := response_body.get_string_from_utf8()
+	var data: Variant = JSON.parse_string(raw)
 	if not (data is Dictionary):
 		version_checked.emit(true, -1, client_game_version)
 		return

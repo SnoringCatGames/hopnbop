@@ -75,49 +75,31 @@ func _ready() -> void:
 	_connect_network_signals()
 
 
-## Set up the appropriate session provider (GameLift or Preview mode).
+## Set up the appropriate session provider (Edgegap or Preview mode).
 func _setup_session_provider() -> void:
-	# Detect Edgegap deployments via the PLATFORM env var that
-	# Dockerfile.edgegap sets. On Edgegap we cannot use the
-	# GameLift Server SDK — it tries to handshake with AWS and
-	# hangs the boot before ENet can bind. EdgegapServerProvider
-	# validates incoming peers against the session-id allowlist
-	# the Nakama runtime injects via EXPECTED_SESSION_IDS env
-	# var at allocation time.
-	var is_edgegap_server := (
+	# Edgegap is the only production-server target. The
+	# `PLATFORM=edgegap` env (set by Dockerfile.edgegap) is no
+	# longer load-bearing — every production server is an
+	# Edgegap container — but we keep it as a sanity log so a
+	# misconfigured deploy is obvious.
+	var is_production_server := (
 		Netcode.is_server
 		and not Netcode.is_preview
-		and OS.get_environment("PLATFORM") == "edgegap"
+		and Netcode.should_connect_to_remote_server
 	)
-
-	if is_edgegap_server:
-		session_provider = EdgegapServerProvider.new()
-	elif (Netcode.should_connect_to_remote_server
-			and Netcode.is_server
-			and not Netcode.is_preview):
-		# Production server: use GameLift SDK.
-		session_provider = GameLiftServerProvider.new(
-			{
-				"anywhere_mode":
-					G.settings.gamelift_anywhere_mode,
-				"anywhere_websocket":
-					G.settings
-						.gamelift_anywhere_websocket,
-				"anywhere_auth_token":
-					G.settings
-						.gamelift_anywhere_auth_token,
-				"anywhere_fleet_id":
-					G.settings
-						.gamelift_anywhere_fleet_id,
-				"anywhere_host_id":
-					G.settings
-						.gamelift_anywhere_host_id,
-				"anywhere_process_id":
-					G.settings
-						.gamelift_anywhere_process_id,
-				"server_port": Netcode.server_port,
-			}
+	if is_production_server and (
+			OS.get_environment("PLATFORM") != "edgegap"):
+		Netcode.log.warning(
+			(
+				"Production server detected without"
+				+ " PLATFORM=edgegap env — proceeding with"
+				+ " EdgegapServerProvider anyway"
+			),
+			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
+
+	if is_production_server:
+		session_provider = EdgegapServerProvider.new()
 	elif (Netcode.should_connect_to_remote_server
 			and Netcode.is_client):
 		# Client: drive the Nakama matchmaker. The

@@ -99,6 +99,18 @@ const _NAKAMA_SCHEME := "https"
 # soft gate that pairs with per-IP rate-limiting in Caddy.
 const _NAKAMA_SERVER_KEY := "p65qPwZ3vhnsIzNU8/9tw1gR6AbkjGJ7GpTmMQbJ5fs="
 
+# Nakama runtime HTTP key — used to call server-to-server RPCs
+# without a session. Embedded here so the pre-auth version check
+# (`check_version`) can run before the user has signed in.
+# Same caveat as `_NAKAMA_SERVER_KEY`: extractable from the
+# shipped binary, treat as a public token. The runtime gates
+# write RPCs (`match_end`, `register_server`, `bulk_import`) on
+# this key today; harden those with payload-validation /
+# rate-limiting before relying on its secrecy. Rotation requires
+# a client release.
+const _NAKAMA_HTTP_KEY := (
+	"VVU3A4AYzs1HIh83J5KLccM4Kt6kiY2/jq3qwZHPqzQ=")
+
 # Cloudflare Pages Function that brokers the Google /token
 # exchange. The web/desktop client posts {code, redirect_uri,
 # code_verifier}; the function adds GOOGLE_OAUTH_CLIENT_SECRET
@@ -815,6 +827,21 @@ func _send_delete_request() -> void:
 # --------------------------------------------------------------
 # Nakama client + session helpers.
 # --------------------------------------------------------------
+
+## Returns the public-facing Nakama base URL (e.g.
+## "https://nakama.snoringcat.games"). Centralized so callers
+## that need to hit raw HTTP endpoints (instead of the SDK)
+## reuse the same host config.
+static func get_nakama_base_url() -> String:
+	return "%s://%s" % [_NAKAMA_SCHEME, _NAKAMA_HOST]
+
+
+## Returns the runtime HTTP key used to call public, server-
+## to-server RPCs without a session. Treat as public — see the
+## constant declaration for the security caveats.
+static func get_nakama_http_key() -> String:
+	return _NAKAMA_HTTP_KEY
+
 
 func _get_nakama_client() -> NakamaClient:
 	if _nakama_client == null:

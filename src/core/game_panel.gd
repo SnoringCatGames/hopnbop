@@ -1259,16 +1259,21 @@ func server_end_match() -> void:
 func _server_send_backend_ids_to_clients() -> void:
 	var provider := (
 		session_manager.session_provider)
-	if not provider is GameLiftServerProvider:
+	if not provider.has_method(
+			"get_backend_player_id_map"):
 		return
 	var backend_id_map: Dictionary = (
 		provider.get_backend_player_id_map())
 	if backend_id_map.is_empty():
 		return
 	# Skip anonymous players so clients cannot
-	# friend-add them.
-	var anonymous_ids: Dictionary = (
-		provider.get_anonymous_backend_ids())
+	# friend-add them. Providers that don't track
+	# anonymity (e.g. EdgegapServerProvider today)
+	# return an empty dict, so every player is
+	# treated as a friend-addable identity.
+	var anonymous_ids: Dictionary = {}
+	if provider.has_method("get_anonymous_backend_ids"):
+		anonymous_ids = provider.get_anonymous_backend_ids()
 	var packed_data: Array = []
 	for player_id in backend_id_map:
 		var backend_id: String = (
@@ -1333,26 +1338,28 @@ func _server_send_display_names_to_clients(
 			.bind(packed_data))
 
 
-## Reports match results to the backend API.
-## Only runs on GameLift servers (not preview).
+## Reports match results to the Nakama runtime via the
+## match_end RPC. Only runs on production servers (preview
+## skipped: no match history written for local tests).
 func _server_report_match_result() -> void:
 	var provider := (
 		session_manager.session_provider)
-	if not provider is GameLiftServerProvider:
+	if not provider.has_method(
+			"get_backend_player_id_map"):
 		return
 	var backend_id_map: Dictionary = (
 		provider.get_backend_player_id_map())
 	if backend_id_map.is_empty():
 		Netcode.print(
 			"No backend player ID mapping."
-			+" Skipping match report.",
+			+ " Skipping match report.",
 			NetworkLogger.CATEGORY_GAME_STATE,
 		)
 		return
 
-	# Build one result per backend_player_id. When
-	# couch co-op players share an account, keep the
-	# entry with the best (lowest) rank.
+	# Build one result per backend_player_id. When couch
+	# co-op players share an account, keep the entry with
+	# the best (lowest) rank.
 	var best_by_backend_id: Dictionary = {}
 	for pid in G.match_state.players_by_id:
 		var ps: GamePlayerState = (
@@ -1366,33 +1373,48 @@ func _server_report_match_result() -> void:
 		if (not existing.is_empty()
 				and existing["rank"] <= ps.rank):
 			continue
-		var stats: PlayerMatchStats = (
+		var per_player_stats: PlayerMatchStats = (
 			G.match_state.get_player_stats(pid))
+		# Shape matches the runtime's matchEndPlayer
+		# struct: user_id + score + kills + bumps. Rank
+		# is consumed locally to derive winner_id.
 		var entry := {
-			"player_id": backend_id,
-			"rank": ps.rank,
+			"user_id": backend_id,
 			"score": ps.score,
+			"kills": (per_player_stats.kill_count
+				if per_player_stats != null else 0),
+			"bumps": (per_player_stats.bump_count
+				if per_player_stats != null else 0),
+			"_rank": ps.rank,
 		}
-		if stats != null:
-			entry.merge(
-				stats.to_report_dictionary())
 		best_by_backend_id[backend_id] = entry
-	var player_results: Array = (
-		best_by_backend_id.values())
 
-	var game_session_id: String = (
-		provider._game_session.game_session_id)
+	var winner_id := ""
+	var players: Array = []
+	for entry in best_by_backend_id.values():
+		if entry["_rank"] == 1:
+			winner_id = entry["user_id"]
+		entry.erase("_rank")
+		players.append(entry)
+
 	var duration_sec: float = (
 		G.match_state.match_duration_usec
 		/ 1_000_000.0)
 	var level_id: String = String(
 		provider.server_get_selected_level_id())
+	var request_id: String = (
+		OS.get_environment(
+			"ARBITRARIUM_DEPLOY_REQUEST_ID"))
+	var match_stats := {
+		"duration_sec": duration_sec,
+		"level_id": level_id,
+	}
 
 	G.match_result_reporter.report(
-		game_session_id,
-		duration_sec,
-		level_id,
-		player_results,
+		request_id,
+		winner_id,
+		players,
+		match_stats,
 	)
 
 

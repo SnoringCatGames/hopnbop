@@ -24,16 +24,12 @@ enum BumpMode {
 ## all thumbnails are saved.
 @export var generate_level_thumbnails := false
 
-# FIXME: Review this.
-@export_group("GameLift")
-@export var gamelift_anywhere_mode := false
-@export var gamelift_anywhere_websocket := ""
-@export var gamelift_anywhere_auth_token := ""
-@export var gamelift_anywhere_fleet_id := ""
-@export var gamelift_anywhere_host_id := ""
-@export var gamelift_anywhere_process_id := ""
-@export var gamelift_backend_api_url := "https://4xol3ejva9.execute-api.us-west-2.amazonaws.com/prod"
-@export var gamelift_matchmaking_timeout_sec := 30.0
+@export_group("Server auth")
+# Server-to-server API key for legacy AWS match-result reports.
+# Unused on Edgegap (see match_result_reporter.gd, which now
+# routes via Nakama HTTP key). Kept here only because settings.tres
+# may carry an inherited value; safe to delete once the AWS
+# decommission is complete.
 @export var server_api_key := ""
 @export_group("")
 

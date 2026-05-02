@@ -1,70 +1,92 @@
 class_name MatchResultReporter
 extends Node
-## Sends match results from the authoritative
-## game server to the backend API. Fire-and-forget.
+## Sends match results from the authoritative game server to
+## the Nakama runtime's `match_end` RPC. Fire-and-forget.
+##
+## Runs inside the Edgegap container; the runtime writes
+## leaderboard records and per-user match_history rows from
+## the payload. Calls Nakama via the HTTP-key path (no session)
+## using the key Edgegap injects as NAKAMA_HTTP_KEY.
 
 
-# Match result reporting lives on the
-# snoringcat-platform stack at /v1/matches/result.
-# This client runs inside the GameLift container, so
-# every change here requires a fleet redeploy.
-const _PLATFORM_API_URL := (
-	"https://r20b7wqop6.execute-api.us-west-2.amazonaws.com"
-	+ "/prod/v1"
-)
-const _ENDPOINT := "/matches/result"
-
-var _http_request: HTTPRequest
+const _RPC_PATH := "/v2/rpc/match_end?http_key=%s&unwrap=true"
 
 
-func _ready() -> void:
-	_http_request = HTTPRequest.new()
-	_http_request.name = "HTTPRequest"
-	add_child(_http_request)
-	_http_request.request_completed.connect(
-		_on_request_completed)
-
-
+## Reports match results to the platform runtime.
+##
+## - request_id: Edgegap deployment request ID (matches the one
+##   the runtime stamped on the match_ready notification, and
+##   what register_server posted at boot). Read at the call
+##   site from ARBITRARIUM_DEPLOY_REQUEST_ID.
+## - winner_id: backend (Nakama user_id) of the player at
+##   rank 1. Empty string if no clear winner.
+## - players: Array of Dictionaries shaped like
+##   { user_id: String, score: int, kills: int, bumps: int }.
+##   The runtime writes one match_history row + leaderboard
+##   record per entry; couch co-op players sharing an account
+##   should be deduped to one entry by the caller.
+## - stats: Optional Dictionary of free-form per-match stats
+##   (duration_sec, level_id, etc.). Forwarded to the runtime
+##   as the `stats` field.
 func report(
-	game_session_id: String,
-	match_duration_sec: float,
-	level_id: String,
-	player_results: Array,
+	request_id: String,
+	winner_id: String,
+	players: Array,
+	stats: Dictionary = {},
 ) -> void:
-	var api_key := G.settings.server_api_key
-	if api_key.is_empty():
+	var http_key := OS.get_environment("NAKAMA_HTTP_KEY")
+	if http_key.is_empty():
 		Netcode.print(
-			"No server API key configured."
-			+ " Skipping match report.",
+			"No NAKAMA_HTTP_KEY env var on this server."
+			+ " Skipping match_end RPC.",
+			NetworkLogger.CATEGORY_GAME_STATE,
+		)
+		return
+	if request_id.is_empty():
+		Netcode.print(
+			"No request_id (ARBITRARIUM_DEPLOY_REQUEST_ID)"
+			+ " for this match. Skipping match_end RPC.",
+			NetworkLogger.CATEGORY_GAME_STATE,
+		)
+		return
+	if players.is_empty():
+		Netcode.print(
+			"No player results to report. Skipping"
+			+ " match_end RPC.",
 			NetworkLogger.CATEGORY_GAME_STATE,
 		)
 		return
 
-	var url := (
-		_PLATFORM_API_URL
-		+ _ENDPOINT
-	)
-	var headers := [
+	var url := AuthClient.get_nakama_base_url() + (
+		_RPC_PATH % http_key.uri_encode())
+	var headers := PackedStringArray([
 		"Content-Type: application/json",
-		"X-Server-Key: %s" % api_key,
-	]
-	var body := JSON.stringify({
-		"game_session_id": game_session_id,
-		"match_duration_sec": match_duration_sec,
-		"level_id": level_id,
-		"player_results": player_results,
+	])
+	# Nakama wants the RPC payload as a JSON-encoded string in
+	# the request body (a JSON string, not the inner object),
+	# so we JSON.stringify twice.
+	var inner_payload := JSON.stringify({
+		"request_id": request_id,
+		"winner_id": winner_id,
+		"players": players,
+		"stats": stats,
 	})
+	var body := JSON.stringify(inner_payload)
 
-	var error := _http_request.request(
-		url,
-		headers,
-		HTTPClient.METHOD_POST,
-		body,
+	var http := HTTPRequest.new()
+	http.timeout = 10.0
+	add_child(http)
+	http.request_completed.connect(
+		_on_request_completed.bind(http),
+		CONNECT_ONE_SHOT,
 	)
-	if error != OK:
+	var err := http.request(
+		url, headers, HTTPClient.METHOD_POST, body)
+	if err != OK:
+		http.queue_free()
 		Netcode.print(
-			"Match report request failed: %s"
-			% error_string(error),
+			"match_end request failed to start: %s"
+			% error_string(err),
 			NetworkLogger.CATEGORY_GAME_STATE,
 		)
 
@@ -74,25 +96,23 @@ func _on_request_completed(
 	response_code: int,
 	_headers: PackedStringArray,
 	body: PackedByteArray,
+	http: HTTPRequest,
 ) -> void:
+	http.queue_free()
 	if result != HTTPRequest.RESULT_SUCCESS:
 		Netcode.print(
-			"Match report HTTP error: %s"
-			% result,
+			"match_end transport error: %s" % result,
 			NetworkLogger.CATEGORY_GAME_STATE,
 		)
 		return
-
 	if response_code == 200:
 		Netcode.print(
-			"Match result reported successfully.",
+			"Match result reported to Nakama runtime.",
 			NetworkLogger.CATEGORY_GAME_STATE,
 		)
-	else:
-		var response_text := (
-			body.get_string_from_utf8())
-		Netcode.print(
-			"Match report failed (%d): %s"
-			% [response_code, response_text],
-			NetworkLogger.CATEGORY_GAME_STATE,
-		)
+		return
+	Netcode.print(
+		"match_end RPC failed (%d): %s"
+		% [response_code, body.get_string_from_utf8()],
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
