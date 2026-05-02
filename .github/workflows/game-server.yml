@@ -56,6 +56,11 @@ jobs:
         with:
           version: 4.5.0-stable
           use-dotnet: false
+          # --export-release needs the Linux server template at
+          # ~/.local/share/godot/export_templates/4.5.stable/.
+          # Default for this action is false; without it, the
+          # export step fails with "No export template found".
+          include-templates: true
       - name: Bridge snoringcat_platform_client addon
         # The addon's tracked source lives in the
         # third_party/snoringcat-platform submodule; it gets
