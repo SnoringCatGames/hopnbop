@@ -36,38 +36,54 @@ jobs:
             build/linux/hopnbop_server.pck || true
           test -s build/linux/hopnbop_server.pck
       - name: Build Docker image
+        # The registry "project" is *not* EDGEGAP_ORG. Edgegap
+        # generates a Harbor project name like
+        # `<org>-cwtrbu4s6efi` (visible in the dashboard
+        # registry view). EDGEGAP_REGISTRY_PROJECT holds that
+        # value. EDGEGAP_ORG is still used for API calls
+        # (allocation, app management).
+        env:
+          VERSION: ${{ inputs.version }}
+          PROJECT: ${{ secrets.EDGEGAP_REGISTRY_PROJECT }}
         run: |
-          VERSION="${{ inputs.version }}"
           docker build -f Dockerfile.edgegap \
-            -t registry.edgegap.com/${{ secrets.EDGEGAP_ORG }}/hopnbop-server:$VERSION \
+            -t "registry.edgegap.com/${PROJECT}/hopnbop-server:${VERSION}" \
             .
       - name: Login to Edgegap registry
         # Edgegap's registry runs Harbor and requires its own
-        # credentials (separate from EDGEGAP_TOKEN, which is the
-        # API token). Generate them in the Edgegap dashboard at
-        # https://app.edgegap.com → Container Registry, then
-        # store as repo secrets EDGEGAP_REGISTRY_USERNAME and
-        # EDGEGAP_REGISTRY_PASSWORD.
+        # credentials (username + token), separate from
+        # EDGEGAP_TOKEN. The username contains a literal `$`
+        # (Harbor robot account convention), so we route it
+        # through env vars instead of inline ${{...}}
+        # substitution to avoid bash treating it as a variable
+        # expansion inside double quotes.
+        env:
+          REGISTRY_USERNAME: ${{ secrets.EDGEGAP_REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.EDGEGAP_REGISTRY_PASSWORD }}
         run: |
-          echo "${{ secrets.EDGEGAP_REGISTRY_PASSWORD }}" | docker login \
+          echo "$REGISTRY_PASSWORD" | docker login \
             registry.edgegap.com \
-            -u "${{ secrets.EDGEGAP_REGISTRY_USERNAME }}" \
+            -u "$REGISTRY_USERNAME" \
             --password-stdin
       - name: Push image
+        env:
+          VERSION: ${{ inputs.version }}
+          PROJECT: ${{ secrets.EDGEGAP_REGISTRY_PROJECT }}
         run: |
-          VERSION="${{ inputs.version }}"
           docker push \
-            registry.edgegap.com/${{ secrets.EDGEGAP_ORG }}/hopnbop-server:$VERSION
+            "registry.edgegap.com/${PROJECT}/hopnbop-server:${VERSION}"
       - name: Register Edgegap version (delete-and-create for upsert)
+        env:
+          VERSION: ${{ inputs.version }}
+          PROJECT: ${{ secrets.EDGEGAP_REGISTRY_PROJECT }}
+          EDGEGAP_TOKEN: ${{ secrets.EDGEGAP_TOKEN }}
         run: |
-          VERSION="${{ inputs.version }}"
-          ORG="${{ secrets.EDGEGAP_ORG }}"
           # Delete first so a re-run with the same version replaces
           # the previous record. 404 is fine — means no prior
           # version. Anything else (auth/server) gets surfaced.
           DEL_HTTP=$(curl -sS -o /tmp/del.json -w '%{http_code}' \
             -X DELETE \
-            -H "Authorization: token ${{ secrets.EDGEGAP_TOKEN }}" \
+            -H "Authorization: token $EDGEGAP_TOKEN" \
             "https://api.edgegap.com/v1/app/hopnbop-server/version/$VERSION")
           echo "DELETE returned HTTP $DEL_HTTP"
           if [[ "$DEL_HTTP" != "200" && "$DEL_HTTP" != "204" \
@@ -76,18 +92,18 @@ jobs:
             exit 1
           fi
           # Create with the schema Edgegap actually requires.
-          # docker_image is the registry path *without* the
-          # registry hostname; that lives in docker_repository.
+          # docker_image is the path-after-the-registry-host;
+          # docker_repository is the registry hostname.
           # docker_tag is the image tag. ports declare what the
           # container listens on (Edgegap port-forwards these
           # to dynamic external ports per deployment).
           # req_cpu is millicores; req_memory is MB.
           curl -fsS -X POST \
-            -H "Authorization: token ${{ secrets.EDGEGAP_TOKEN }}" \
+            -H "Authorization: token $EDGEGAP_TOKEN" \
             -H "Content-Type: application/json" \
             -d "$(jq -n \
               --arg v "$VERSION" \
-              --arg img "$ORG/hopnbop-server" \
+              --arg img "$PROJECT/hopnbop-server" \
               --arg repo "registry.edgegap.com" \
               --arg tag "$VERSION" \
               '{
