@@ -261,6 +261,12 @@ func check_version() -> void:
 	var http := HTTPRequest.new()
 	http.timeout = 5.0
 	add_child(http)
+	# Yield one frame so the HTTPRequest is fully inside the
+	# scene tree before request() runs. Without this, on Godot
+	# 4.7-beta1 the request fires before TLS init is ready and
+	# returns RESULT_TLS_HANDSHAKE_ERROR / response_code=0
+	# within milliseconds.
+	await get_tree().process_frame
 	var err := http.request(
 		url, headers, HTTPClient.METHOD_POST, body)
 	if err != OK:
@@ -277,13 +283,23 @@ func check_version() -> void:
 	http.queue_free()
 	# request_completed signature:
 	# (result, response_code, headers, body).
+	var transport_result: int = result[0]
 	var status: int = result[1]
 	var response_body: PackedByteArray = result[3]
 
+	if transport_result != HTTPRequest.RESULT_SUCCESS:
+		# Transport-level failure (DNS, TLS, no response).
+		# Assume compatible so a bad probe doesn't lock
+		# players out.
+		Netcode.warning(
+			"version_check transport error: result=%d"
+			% transport_result,
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+		version_checked.emit(true, -1, client_game_version)
+		return
+
 	if status != 200:
-		# 0 = transport error, anything else = server-side
-		# failure (HTTP key wrong, RPC missing, etc.). Assume
-		# compatible so a bad probe doesn't lock players out.
 		Netcode.warning(
 			"version_check returned HTTP %d" % status,
 			NetworkLogger.CATEGORY_CONNECTIONS,
