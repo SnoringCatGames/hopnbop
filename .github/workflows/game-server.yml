@@ -42,9 +42,17 @@ jobs:
             -t registry.edgegap.com/${{ secrets.EDGEGAP_ORG }}/hopnbop-server:$VERSION \
             .
       - name: Login to Edgegap registry
+        # Edgegap's registry runs Harbor and requires its own
+        # credentials (separate from EDGEGAP_TOKEN, which is the
+        # API token). Generate them in the Edgegap dashboard at
+        # https://app.edgegap.com → Container Registry, then
+        # store as repo secrets EDGEGAP_REGISTRY_USERNAME and
+        # EDGEGAP_REGISTRY_PASSWORD.
         run: |
-          echo "${{ secrets.EDGEGAP_TOKEN }}" | docker login \
-            registry.edgegap.com -u token --password-stdin
+          echo "${{ secrets.EDGEGAP_REGISTRY_PASSWORD }}" | docker login \
+            registry.edgegap.com \
+            -u "${{ secrets.EDGEGAP_REGISTRY_USERNAME }}" \
+            --password-stdin
       - name: Push image
         run: |
           VERSION="${{ inputs.version }}"
