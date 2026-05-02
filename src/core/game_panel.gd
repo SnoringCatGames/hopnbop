@@ -1077,18 +1077,6 @@ func client_exit_match() -> void:
 var _has_transitioned_to_game_over := false
 
 func _client_transition_to_game_over() -> void:
-	# DIAGNOSTIC: C1 preview client has been observed
-	# exiting unexpectedly right after this transition
-	# (no Main.close_app log, just process exit). Log the
-	# call stack so we can attribute the cause when it
-	# reproduces. Remove once root cause is known.
-	# (NEXT_STEPS.md P1.6, 2026-05-01)
-	Netcode.print(
-		"[diag] _client_transition_to_game_over called",
-		NetworkLogger.CATEGORY_GAME_STATE,
-	)
-	print_stack()
-
 	if _has_transitioned_to_game_over:
 		return
 	# Guard: session override kick already exited
@@ -1096,8 +1084,17 @@ func _client_transition_to_game_over() -> void:
 	if not G.client_session.is_game_active:
 		return
 	_has_transitioned_to_game_over = true
-	_client_cleanup_after_match()
-	_client_free_levels_and_open_screen(
+	# Defer cleanup so we don't tear down the multiplayer
+	# peer from inside its own peer_disconnected callback.
+	# Godot 4.7-beta1 crashes the preview client silently
+	# when `multiplayer.multiplayer_peer = null` fires
+	# while the multiplayer dispatcher is still processing
+	# the disconnect event (no error, no Main.close_app,
+	# process just exits ~60ms after the transition starts).
+	# Deferred runs from the next idle tick when the
+	# dispatcher is idle.
+	_client_cleanup_after_match.call_deferred()
+	_client_free_levels_and_open_screen.call_deferred(
 		ScreensMain.ScreenType.GAME_OVER)
 
 
