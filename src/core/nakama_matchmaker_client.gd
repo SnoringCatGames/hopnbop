@@ -353,11 +353,26 @@ func _on_notification(p_notification) -> void:
 	# slot-tracking flow intact. Prefer the preview-instance
 	# uid when running per-slot identity so the slot tracker
 	# matches the user the runtime actually notified.
-	var session_ids: Array
-	if not _preview_user_id.is_empty():
-		session_ids = [_preview_user_id]
-	else:
-		session_ids = [G.auth_token_store.player_id]
+	#
+	# Generate one session_id per local player. The
+	# rollback_netcode `_client_send_player_declaration`
+	# validator requires `session_ids.size() ==
+	# local_player_count`; in split-screen / preview multi-slot
+	# scenarios this is >1. The IDs are unique per local slot
+	# but all derive from the same backend user — the server's
+	# per-session-id validation is currently a no-op on Edgegap
+	# anyway (PreviewSessionProvider auto-accepts).
+	var base_id: String = (
+		_preview_user_id
+		if not _preview_user_id.is_empty()
+		else G.auth_token_store.player_id
+	)
+	var local_count: int = G.client_session.local_player_count
+	if local_count < 1:
+		local_count = 1
+	var session_ids: Array = []
+	for i in local_count:
+		session_ids.append("%s_%d" % [base_id, i])
 
 	# Level was chosen client-side and stored on
 	# G.client_session before matchmaking began. The runtime
