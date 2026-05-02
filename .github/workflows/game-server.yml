@@ -11,6 +11,33 @@ on:
         description: 'Reason for rolling the game server'
         required: false
         default: 'Manual deploy'
+  # Allow release.yml (or any other workflow) to invoke this
+  # build via `uses:` so the release pipeline doesn't need to
+  # duplicate the export/build/push steps.
+  workflow_call:
+    inputs:
+      version:
+        description: 'Edgegap version name'
+        required: true
+        type: string
+      reason:
+        description: 'Reason for rolling the game server'
+        required: false
+        type: string
+        default: 'workflow_call'
+    secrets:
+      SUBMODULE_PAT:
+        required: true
+      EDGEGAP_TOKEN:
+        required: true
+      EDGEGAP_REGISTRY_USERNAME:
+        required: true
+      EDGEGAP_REGISTRY_PASSWORD:
+        required: true
+      EDGEGAP_REGISTRY_PROJECT:
+        required: true
+      NAKAMA_HTTP_KEY:
+        required: true
 
 jobs:
   game-server:
@@ -29,11 +56,40 @@ jobs:
         with:
           version: 4.5.0-stable
           use-dotnet: false
-      - name: Export Linux server pck
+      - name: Bridge snoringcat_platform_client addon
+        # The addon's tracked source lives in the
+        # third_party/snoringcat-platform submodule; it gets
+        # copied into addons/ where Godot can find it. Locally
+        # we use scripts/setup-platform-addon.ps1 (Windows-only,
+        # uses xcopy). In CI we just `cp -r` the same files.
+        # Without this, the Platform autoload fails to load and
+        # the server can't start.
+        run: |
+          rm -rf addons/snoringcat_platform_client
+          cp -r \
+            third_party/snoringcat-platform/addons/snoringcat_platform_client \
+            addons/snoringcat_platform_client
+      - name: Import project assets
+        # Fresh checkouts have no .godot/ cache so the export
+        # step would otherwise fail to resolve uid:// references.
+        # `--import` is the official way to populate it. Godot
+        # always exits non-zero from --import if there are any
+        # warnings, so swallow the exit code.
+        run: |
+          godot --headless --import || true
+      - name: Export Linux server release binary
+        # Use --export-release (not --export-pack) to produce a
+        # standalone Linux server executable. Running the editor
+        # binary with --main-pack made `OS.has_feature("editor")`
+        # return true at runtime, which triggered preview-mode
+        # teardown mid-init and crashed the server with `double
+        # free or corruption`. The release export bakes in the
+        # right feature set.
         run: |
           mkdir -p build/linux
-          godot --headless --export-pack "Linux Server" \
-            build/linux/hopnbop_server.pck || true
+          godot --headless --export-release "Linux Server" \
+            build/linux/hopnbop_server.x86_64 || true
+          test -s build/linux/hopnbop_server.x86_64
           test -s build/linux/hopnbop_server.pck
       - name: Build Docker image
         # The registry "project" is *not* EDGEGAP_ORG. Edgegap
@@ -84,6 +140,13 @@ jobs:
           # account used for the docker login above.
           REGISTRY_USERNAME: ${{ secrets.EDGEGAP_REGISTRY_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.EDGEGAP_REGISTRY_PASSWORD }}
+          # Server-to-server key for unauthenticated Nakama RPCs
+          # (register_server, runtime_status). entrypoint.sh
+          # reads $NAKAMA_HTTP_KEY before posting to Nakama.
+          # Without it the entrypoint logs "skipping
+          # register_server" and Nakama can't route matched
+          # players to this container.
+          NAKAMA_HTTP_KEY: ${{ secrets.NAKAMA_HTTP_KEY }}
         run: |
           # Delete first so a re-run with the same version replaces
           # the previous record. 404 is fine — means no prior
@@ -105,6 +168,11 @@ jobs:
           # container listens on (Edgegap port-forwards these
           # to dynamic external ports per deployment).
           # req_cpu is millicores; req_memory is MB.
+          # `envs` injects per-deployment env vars into the
+          # container. is_injected=true forces them to be set
+          # even if the caller doesn't override at allocation
+          # time. The keys must already exist in the version
+          # record for runtime overrides to work later.
           curl -fsS -X POST \
             -H "Authorization: token $EDGEGAP_TOKEN" \
             -H "Content-Type: application/json" \
@@ -115,6 +183,7 @@ jobs:
               --arg tag "$VERSION" \
               --arg user "$REGISTRY_USERNAME" \
               --arg pass "$REGISTRY_PASSWORD" \
+              --arg http_key "$NAKAMA_HTTP_KEY" \
               '{
                 name: $v,
                 docker_image: $img,
@@ -129,6 +198,10 @@ jobs:
                     name: "game", to_check: false},
                   {port: 4434, protocol: "TCP",
                     name: "signaling", to_check: false}
+                ],
+                envs: [
+                  {key: "NAKAMA_HTTP_KEY", value: $http_key,
+                    is_injected: true}
                 ]
               }')" \
             "https://api.edgegap.com/v1/app/hopnbop-server/version"

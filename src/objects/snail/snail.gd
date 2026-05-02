@@ -642,7 +642,12 @@ func _spawn_trail_particle(
 	pos: Vector2,
 ) -> void:
 	var particle := Sprite2D.new()
-	particle.texture = G.settings.white_pixel_texture
+	# Use Object.get() to avoid the cyclic-reference parser
+	# failure on web/server exports. See CLAUDE.md "Web Build
+	# Cyclic-Reference Parser Failures".
+	var white_pixel: Texture2D = (
+		G.get("settings").get("white_pixel_texture"))
+	particle.texture = white_pixel
 	var alpha := randf_range(
 		_TRAIL_ALPHA_MIN,
 		_TRAIL_ALPHA_MAX)

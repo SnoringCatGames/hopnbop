@@ -20,50 +20,28 @@ env:
 jobs:
   game-server:
     name: Game-server image → Edgegap
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with: { submodules: recursive }
-      - uses: chickensoft-games/setup-godot@v2
-        with:
-          version: ${{ env.GODOT_VERSION }}
-          use-dotnet: false
-      - name: Export Linux server pck
-        run: |
-          mkdir -p build/linux
-          godot --headless --export-pack "Linux Server" \
-            build/linux/hopnbop_server.pck || true
-          test -s build/linux/hopnbop_server.pck
-      - name: Build Docker image
-        run: |
-          TAG="${{ github.ref_name }}"
-          docker build -f Dockerfile.edgegap \
-            -t registry.edgegap.com/${{ secrets.EDGEGAP_ORG }}/hopnbop-server:$TAG \
-            .
-      - name: Login to Edgegap registry
-        run: |
-          echo "${{ secrets.EDGEGAP_TOKEN }}" | docker login \
-            registry.edgegap.com -u token --password-stdin
-      - name: Push image
-        run: |
-          TAG="${{ github.ref_name }}"
-          docker push \
-            registry.edgegap.com/${{ secrets.EDGEGAP_ORG }}/hopnbop-server:$TAG
-      - name: Create Edgegap app version
-        run: |
-          curl -fsS -X POST \
-            -H "Authorization: token ${{ secrets.EDGEGAP_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d "$(jq -n --arg v "${{ github.ref_name }}" --arg image "registry.edgegap.com/${{ secrets.EDGEGAP_ORG }}/hopnbop-server:${{ github.ref_name }}" \
-              '{name:$v, image:$image, ports:[{port:4433, protocol:"UDP"}, {port:4434, protocol:"TCP"}]}')" \
-            "https://api.edgegap.com/v1/app/hopnbop-server/version"
+    # Delegate to the standalone workflow so the build and
+    # version-registration logic lives in one place.
+    uses: ./.github/workflows/game-server.yml
+    with:
+      version: ${{ github.ref_name }}
+      reason: 'release ${{ github.ref_name }}'
+    secrets:
+      SUBMODULE_PAT: ${{ secrets.SUBMODULE_PAT }}
+      EDGEGAP_TOKEN: ${{ secrets.EDGEGAP_TOKEN }}
+      EDGEGAP_REGISTRY_USERNAME: ${{ secrets.EDGEGAP_REGISTRY_USERNAME }}
+      EDGEGAP_REGISTRY_PASSWORD: ${{ secrets.EDGEGAP_REGISTRY_PASSWORD }}
+      EDGEGAP_REGISTRY_PROJECT: ${{ secrets.EDGEGAP_REGISTRY_PROJECT }}
+      NAKAMA_HTTP_KEY: ${{ secrets.NAKAMA_HTTP_KEY }}
 
   web-client:
     name: Godot web export → Cloudflare Pages
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { submodules: recursive }
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_PAT }}
       - uses: chickensoft-games/setup-godot@v2
         with:
           version: ${{ env.GODOT_VERSION }}

@@ -27,3 +27,19 @@ func requireServerToServer(ctx context.Context) error {
 	}
 	return nil
 }
+
+// requireClientSession returns the caller's user ID when the RPC
+// arrived through an authenticated client session, or an error
+// otherwise. Mirror of requireServerToServer for RPCs that act
+// on the calling player's own scope (presence, stats, history,
+// data export).
+//
+// Returns a runtime.Error with gRPC code UNAUTHENTICATED (16) on
+// missing session.
+func requireClientSession(ctx context.Context) (string, error) {
+	userID, _ := ctx.Value(runtime.RUNTIME_CTX_USER_ID).(string)
+	if userID == "" {
+		return "", runtime.NewError("client session required", 16)
+	}
+	return userID, nil
+}

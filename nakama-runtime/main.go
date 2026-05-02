@@ -9,16 +9,24 @@
 //     matched players and notifies them with connection info.
 //
 // RPCs registered:
-//   - register_server: game server checks in after boot.
-//   - match_end: game server posts match results.
-//   - bulk_import: Phase E migration RPC.
-//   - runtime_status: read-only probe of build + config (always
-//     registered, even when other init steps fall back).
+//   Server-to-server (HTTP-key gated):
+//   - register_server:     game server checks in after boot.
+//   - match_end:           game server posts match results.
+//   - bulk_import:         Phase E migration RPC.
+//   - runtime_status:      read-only probe of build + config.
+//   - record_client_ip:    pre-matchmaking IP recorder.
+//   Client session:
+//   - version_check:       client/server compatibility check.
+//   - update_and_get_presence: write own presence + read friends'.
+//   - get_player_stats:    rating + match count.
+//   - get_match_history:   recent matches for the caller.
+//   - export_player_data:  GDPR data export.
 package main
 
 import (
 	"context"
 	"database/sql"
+	"strconv"
 
 	"github.com/heroiclabs/nakama-common/runtime"
 )
@@ -101,8 +109,50 @@ func InitModule(
 		return err
 	}
 
+	// Client-session RPCs. The client surfaces these in the
+	// lobby UI; the AWS-era backend served them as REST endpoints.
+	verCfg := versionConfig{
+		GameVersion:     env["NAKAMA_GAME_VERSION"],
+		ProtocolVersion: parseEnvInt(env, "NAKAMA_PROTOCOL_VERSION", 0),
+	}
+	if err := initializer.RegisterRpc(
+		"version_check", versionCheckRpcFactory(verCfg)); err != nil {
+		return err
+	}
+	if err := initializer.RegisterRpc(
+		"update_and_get_presence", updateAndGetPresenceRpc); err != nil {
+		return err
+	}
+	if err := initializer.RegisterRpc(
+		"get_player_stats", getPlayerStatsRpc); err != nil {
+		return err
+	}
+	if err := initializer.RegisterRpc(
+		"get_match_history", getMatchHistoryRpc); err != nil {
+		return err
+	}
+	if err := initializer.RegisterRpc(
+		"export_player_data", exportPlayerDataRpc); err != nil {
+		return err
+	}
+
 	logger.Info(
 		"snoringcat-platform runtime loaded (build=%s app=%s version=%s edgegap=%t)",
 		BuildID, appName, appVersion, matchmakerHookEnabled)
 	return nil
+}
+
+// parseEnvInt reads an int env var with a fallback default.
+// Empty or unparseable values use the default rather than failing
+// init.
+func parseEnvInt(env map[string]string, key string, def int) int {
+	raw := env[key]
+	if raw == "" {
+		return def
+	}
+	v, err := strconv.Atoi(raw)
+	if err != nil {
+		return def
+	}
+	return v
 }

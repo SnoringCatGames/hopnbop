@@ -111,7 +111,12 @@ func _check_for_cheats() -> void:
 func _activate_cheat(cheat_name: String) -> void:
 	var cheat: Dictionary = _cheats[cheat_name]
 
-	if not G.settings.are_cheats_enabled:
+	# Use Object.get() to avoid the cyclic-reference parser
+	# failure on web/server exports. See CLAUDE.md "Web Build
+	# Cyclic-Reference Parser Failures".
+	var are_cheats_enabled: bool = (
+		G.get("settings").get("are_cheats_enabled"))
+	if not are_cheats_enabled:
 		Netcode.print(
 			"Cheat '%s' denied:"
 			+ " cheats not enabled"

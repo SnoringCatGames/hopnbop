@@ -85,6 +85,11 @@ func statusRpcFactory(cfg runtimeStatusConfig) func(
 				"bulk_import",
 				"runtime_status",
 				"record_client_ip",
+				"version_check",
+				"update_and_get_presence",
+				"get_player_stats",
+				"get_match_history",
+				"export_player_data",
 			},
 			RegisteredHooks: hooks,
 		}

@@ -144,8 +144,13 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	# If critters are disabled mid-game, despawn.
+	# Use Object.get() to avoid the cyclic-reference parser
+	# failure on web/server exports. See CLAUDE.md "Web Build
+	# Cyclic-Reference Parser Failures".
+	var are_critters_enabled: bool = (
+		G.get("settings").get("are_critters_enabled"))
 	if (
-		not G.settings.are_critters_enabled
+		not are_critters_enabled
 		and _state != State.WAITING
 		and _state != State.DESPAWNING
 	):
@@ -422,7 +427,9 @@ func _on_despawn_complete() -> void:
 
 
 func _respawn() -> void:
-	if not G.settings.are_critters_enabled:
+	var are_critters_enabled: bool = (
+		G.get("settings").get("are_critters_enabled"))
+	if not are_critters_enabled:
 		_state = State.WAITING
 		return
 

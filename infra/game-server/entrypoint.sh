@@ -40,7 +40,6 @@ else
 	echo "WARN: Edgegap or Nakama env vars missing; skipping register_server."
 fi
 
-exec /usr/local/bin/godot \
+exec /game/hopnbop_server.x86_64 \
 	--headless \
-	--main-pack /game/server.pck \
 	-- --server

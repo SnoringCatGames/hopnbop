@@ -103,7 +103,12 @@ func (m *matchLifecycle) MatchEndRpc(
 	}
 	logger.Info("match ended: request_id=%s winner=%s players=%d", args.RequestID, args.WinnerID, len(args.Players))
 
-	// Write leaderboard records. Per-game leaderboard "ffa".
+	// Write leaderboard records and a per-user match_history row
+	// in one pass. The history row is what get_match_history
+	// reads back; the leaderboard record is what
+	// get_player_stats / the global FFA board read.
+	endedAt := nowUnix()
+	historyWrites := make([]*runtime.StorageWrite, 0, len(args.Players))
 	for _, p := range args.Players {
 		if p.UserID == "" {
 			continue
@@ -121,6 +126,29 @@ func (m *matchLifecycle) MatchEndRpc(
 			nil)
 		if err != nil {
 			logger.Warn("leaderboard write for %s: %v", p.UserID, err)
+		}
+
+		entry := map[string]any{
+			"match_id":  args.RequestID,
+			"ended_at":  endedAt,
+			"is_winner": p.UserID == args.WinnerID,
+			"score":     p.Score,
+			"kills":     p.Kills,
+			"bumps":     p.Bumps,
+		}
+		value, _ := json.Marshal(entry)
+		historyWrites = append(historyWrites, &runtime.StorageWrite{
+			Collection:      "match_history",
+			Key:             args.RequestID,
+			UserID:          p.UserID,
+			Value:           string(value),
+			PermissionRead:  1, // owner-only.
+			PermissionWrite: 0, // server-only writes.
+		})
+	}
+	if len(historyWrites) > 0 {
+		if _, err := nk.StorageWrite(ctx, historyWrites); err != nil {
+			logger.Warn("match_history write: %v", err)
 		}
 	}
 

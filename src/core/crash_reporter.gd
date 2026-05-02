@@ -29,8 +29,15 @@ func report_crash(
 	error_message: String,
 	is_fatal := false,
 ) -> void:
-	# Skip in offline / preview mode (no backend wired up yet).
-	if G.settings.gamelift_backend_api_url.is_empty():
+	# Skip in offline / preview mode (no Nakama session to
+	# authenticate the RPC). Use Object.get() to avoid the
+	# cyclic-reference parser failure on web/server exports.
+	# See CLAUDE.md "Web Build Cyclic-Reference Parser Failures".
+	var token_store = G.get("auth_token_store")
+	if (
+		not is_instance_valid(token_store)
+		or token_store.player_id.is_empty()
+	):
 		return
 	# Rate limiting.
 	if _report_count >= _MAX_REPORTS_PER_SESSION:

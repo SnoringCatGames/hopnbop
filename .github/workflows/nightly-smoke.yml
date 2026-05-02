@@ -22,7 +22,13 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with: { submodules: recursive }
+        with:
+          submodules: recursive
+          # SUBMODULE_PAT has cross-repo access to the
+          # SnoringCatGames org so submodule clones succeed.
+          # Without this the workflow dies trying to clone
+          # godot-rollback-netcode etc.
+          token: ${{ secrets.SUBMODULE_PAT }}
 
       - name: Health probe
         run: |
