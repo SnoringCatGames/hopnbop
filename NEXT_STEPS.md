@@ -1,345 +1,257 @@
 # Next Steps
 
-Captured end-of-session 2026-05-01 (UTC 2026-05-02). Phase D
-matchmaking is fully working end-to-end against production
-Nakama + Edgegap. This file tracks the cleanup, polish, and
-new-bug items left over.
+Captured end-of-session 2026-05-02 (UTC 2026-05-02 evening).
+The platform migration is functionally complete: AWS GameLift is
+out, Edgegap + Nakama (Hetzner) are running production matches,
+the platform-shared infra and runtime live in
+`snoringcat-platform/`, and AWS resources are queued for
+teardown via `phase-f-destroy.ps1`.
 
 ## Status snapshot (what works now)
 
 | Layer | Status |
 |---|---|
-| Client matchmaker (`NakamaMatchmakerClient`) | ✅ |
-| Per-preview-instance Nakama identity | ✅ |
-| `record_client_ip` RPC | ✅ |
-| Nakama matchmaker pairs | ✅ |
-| Runtime `MatchmakerMatched` hook fires | ✅ |
-| Edgegap allocate + image pull | ✅ |
-| Edgegap deployment `READY` | ✅ |
-| `match_ready` notification reaches both clients | ✅ |
-| Clients receive session IDs and start ENet | ✅ |
-| Server inside container boots and binds 4433 | ✅ |
-| ENet handshake | ✅ |
-| Player declarations validated | ✅ |
-| Match starts (countdown, level loads) | ✅ |
-| Gameplay events (kills, bumps) | ✅ |
-| Match end → GAME_OVER screen | ✅ |
-| 5 new client-session Nakama RPCs registered | ✅ |
-
----
+| Nakama runtime (build `local-pending-172017-dirty`) | ✅ |
+| Edgegap server image v8 (active) | ✅ |
+| Matchmaker → Edgegap allocation → match_ready → ENet handshake | ✅ |
+| Per-player session_id allocation by runtime; server validates | ✅ |
+| 3-4 player matches (was hardcoded =2 before today) | ✅ |
+| Pre-auth `version_check` via HTTP key | ✅ |
+| `match_end` RPC writes leaderboard + match_history | ✅ |
+| Runtime hardening: match_end ↔ server_registrations, winner validation, score clamping, register_server idempotency, bulk_import gated behind env var | ✅ |
+| Cloudflare Pages web client at v0.33.0 | ✅ |
+| Pulumi stack parameterized (zone / location / serverType / image as config keys) | ✅ |
+| `perf_tracker` reports realistic packet loss (state_send_interval-aware) | ✅ |
 
 ## Live state (don't lose track)
 
-- Latest commit on `main`: **`d90be90`** (P0+P1 work below
-  is uncommitted in the working tree as of 2026-05-01).
-- Nakama runtime plugin live on Hetzner:
-  build_id `local-42aa284-dirty`. **Stale relative to local
-  source** — needs rebuild + scp + restart to pick up
-  fleet_allocator.go changes (EXPECTED_PLAYER_COUNT,
-  EXPECTED_SESSION_IDS, per-player session_ids).
-- Edgegap version registered: **v2** (active). The container
-  image is unchanged; v2 is still valid for the new runtime
-  contract because the new env vars are read at game-server
-  boot and are absent-tolerant (server falls back to 2
-  expected players + empty allowlist with warnings).
-- Nakama `/opt/nakama/config.yml` `runtime.env` adds:
-  - `EDGEGAP_APP_VERSION=v2`
-  - `NAKAMA_GAME_VERSION=0.31.0`
-  - `NAKAMA_PROTOCOL_VERSION=2`
-- GitHub secret `NAKAMA_HTTP_KEY` is set.
-- All test Edgegap deployments terminated.
+- **Latest commit on `main`:** `3eb8389` (fix Nakama RPC body shape).
+- **Nakama runtime plugin:** build_id `local-pending-172017-dirty`,
+  built from platform commit `ae914c6` (runtime hardening). Live
+  on Hetzner.
+- **Edgegap registry:** `v8` is the live tag (active deploy
+  source). Older tags `v2`-`v7` should be cleaned up via dashboard
+  or the Edgegap API — they're now obsolete.
+- **Nakama `runtime.env`:** `EDGEGAP_APP_VERSION=v8`,
+  `NAKAMA_GAME_VERSION=0.32.0`. (Game version drifted from the
+  current `0.33.0` — see follow-ups.)
+- **`addons/gamelift_session_manager/` + `addons/gamelift/` +
+  `gamelift-deploy/` + `gamelift-gdextension/`:** all deleted.
+  `class_name SessionProvider`, `PreviewSessionProvider`,
+  `LocalOnlySessionProvider` moved to `src/core/`.
+- **AWS Phase F:** queued. Dry-run clean. Real run blocked on
+  `aws sso login --profile hopnbop` token refresh.
+- **Cloudflare Pages:** redeployed at v0.33.0. Heavies (.wasm,
+  .pck) on R2; rest on Pages.
 
----
+## Open follow-ups
 
-## P0 — correctness gaps left from the unblock
+### Phase F (AWS teardown) — finish
 
-All three P0 items shipped together this session (single
-runtime/client/server change set). Awaiting redeploy of the
-Nakama runtime + Edgegap image to verify end-to-end.
+`scripts/phase-f-destroy.ps1` errored at the first delete with
+exit 255 because the `hopnbop` SSO session expired. Re-auth
+and re-run:
 
-### 1. ~~Hardcoded `expected_count = 2`~~ → injected via env
-
-`third_party/snoringcat-platform/runtime/fleet_allocator.go`
-now adds `EXPECTED_PLAYER_COUNT` to the Edgegap deploy
-`EnvVars` based
-on the sum of `player_count` properties across matchmaker
-entries (defaults to 1 per entry when unset).
-`src/core/game_panel.gd::server_start_match` reads
-`OS.get_environment("EXPECTED_PLAYER_COUNT")` and forwards to
-`session_manager.server_set_expected_players`. Falls back to 2
-with a warning if the env var is missing or unparseable.
-
-### 2. ~~PreviewSessionProvider stand-in~~ → EdgegapServerProvider
-
-New file `src/core/edgegap_server_provider.gd`. Loads the
-allowlist from `EXPECTED_SESSION_IDS` env var on `_ready`,
-rejects any session_id outside the list, and rejects any
-already-claimed ID. Mirrors `GameLiftServerProvider`'s grace +
-idle timer pattern. Wired in `_setup_session_provider`'s
-edgegap branch (replaced the `PreviewSessionProvider` stand-in).
-
-**Out of scope this round (still gated to GameLift in
-`game_panel.gd`):**
-- `_server_send_backend_ids_to_clients` — friend-add post-match
-  is still no-op on Edgegap.
-- `_server_report_match_result` — still hits the dead AWS URL
-  and still gated to `GameLiftServerProvider`. Tracked under
-  P2 #8 and the broader AWS-decommission pass.
-
-### 3. ~~Client-invented session_ids~~ → authoritative IDs from runtime
-
-`fleet_allocator.go` now generates one session_id per matched
-player (`<userID>_<index>`), passes the full list to the
-server via `EXPECTED_SESSION_IDS`, and ships each player their
-own subset in the `match_ready` notification's
-`connection.session_ids` field.
-`src/core/nakama_matchmaker_client.gd` now reads
-`session_ids` from the connection blob; falls back to the old
-locally-derived IDs (with a warning) if the runtime omits them
-so a mid-rollout deploy keeps working until every Nakama host
-runs the new plugin.
-
-**Couch co-op:** The matchmaker query still pairs per-presence
-(min/max=2/4), but the runtime honors a `player_count` string
-property if a future client populates it. End-to-end couch
-co-op is untested.
-
----
-
-## P1 — bugs flagged last session
-
-### 4. ~~~47% packet loss in PERF stats~~ → diagnosed, fix pending
-
-**Root cause:** `PerfTracker._update_packet_loss` in
-`addons/rollback_netcode/utils/perf_tracker.gd:815` treats
-every gap > 1 in `state_frame_index` as packet loss. But the
-server intentionally throttles state sends per
-`Netcode.frame_driver.state_send_interval`:
-
-- ENet: `enet_state_send_fps=30` vs `target_network_fps=60`
-  → `state_send_interval=2` → every event has gap=2 → metric
-  reports `(2-1)/2 = 50%` "loss" with zero real UDP loss.
-- WebRTC/WebSocket: `*_state_send_fps=20` → interval=3 →
-  reported ~67%.
-
-The 47% observation matches the ENet expectation almost
-exactly (slight noise from frame jitter).
-
-**Fix (deferred — submodule change):** subtract the expected
-gap (`state_send_interval`) from the actual gap before
-counting as loss in `_update_packet_loss`:
-
-```gdscript
-var send_interval := Netcode.frame_driver.state_send_interval
-var lost: int = maxi(0, gap - send_interval)
-_frames_expected_in_window += send_interval
-_frames_received_in_window += send_interval - lost
+```powershell
+aws sso login --profile hopnbop
+.\scripts\phase-f-destroy.ps1 -Confirm
 ```
 
-Pending submodule PR in `godot-rollback-netcode`.
+Targets (from the dry-run): matchmaker, queue, 2 rulesets,
+container group def, ECR repo, 5 Secrets Manager entries
+(forced delete), CloudFront distribution, S3 website bucket.
+**Skips Route 53 zone** (no `-IncludeRoute53Zone` flag) — that
+zone exists but Cloudflare is authoritative for hopnbop.net,
+so it's harmless to leave for now.
 
-### 5. ~~Notification poller limit=0~~ → fixed
+The script also creates a CloudWatch billing alarm at the end —
+useful tripwire if any AWS resource creeps back in.
 
-`src/core/friends_notification_poller.gd:103` was passing
-`_last_poll_timestamp` (a leftover from the AWS-era API that
-took `since_timestamp`) into the `limit` slot of
-`fetch_notifications(limit, cacheable_cursor)`. Default value
-0 tripped Nakama's `1 ≤ limit ≤ 100` check on every poll
-cycle. Fix: drop the now-dead `_last_poll_timestamp` field and
-its maintenance code; call `fetch_notifications()` with no
-args (default limit=50). Cursor-based pagination is a
-follow-up.
+### Bump `NAKAMA_GAME_VERSION` to 0.33.0
 
-### 6. C1 preview client exits unexpectedly → diagnostics added
+Currently `0.32.0` in Nakama config; client is at `0.33.0` after
+today's gamelift-removal version bump. Mismatch is informational
+only (compat check uses `protocol_version`, which both sides
+have at `2`), but worth keeping in sync.
 
-Logging added: `_client_transition_to_game_over` in
-`game_panel.gd` and the `NOTIFICATION_WM_CLOSE_REQUEST`
-branch in `main.gd::_notification` now both print a stack
-trace plus a `[diag]` prefix. Next test session should reveal
-whether C1's exit comes from the WM_CLOSE path (something
-posting a window-close event) or the game-over transition
-(something queue_free-ing the client). Strip the diagnostics
-once the cause is known.
+```bash
+ssh root@5.78.137.83 \
+  "sed -i 's/NAKAMA_GAME_VERSION=0.32.0/NAKAMA_GAME_VERSION=0.33.0/' \
+   /opt/nakama/config.yml && \
+   cd /opt/nakama && docker compose restart nakama"
+```
 
----
+### Clean up stale Edgegap image tags
 
-## P2 — housekeeping
+Registry has `v2` through `v8`. Only `v8` is referenced. Delete
+the obsolete tags via the Edgegap dashboard or:
 
-### 7. Stop shipping the gamelift addon in Edgegap images
+```bash
+EDGEGAP_TOKEN=...  # in /opt/nakama/.env on Hetzner
+for v in v2 v3 v4 v5 v6 v7; do
+  curl -X DELETE -H "Authorization: token $EDGEGAP_TOKEN" \
+    "https://api.edgegap.com/v1/app/hopnbop-server/version/$v"
+done
+```
 
-`Dockerfile.edgegap` `COPY addons/gamelift /game/addons/gamelift`
-exists to satisfy `extension_list.cfg` (Godot scans for
-`.gdextension` manifests at startup). With the GameLift SDK
-skip in `_setup_session_provider`, the extension just loads
-its `.so` binaries pointlessly (~5MB).
+### Fix `runtime_status.go` static RPC list
 
-Two paths:
-- **(a)** Remove the addon from the project entirely once
-  GameLift is fully decommissioned.
-- **(b)** Add the addon to the Linux Server preset's
-  `exclude_filter` and stop COPYing in Dockerfile.
+`registered_rpcs` in the status response is hardcoded — still
+lists `bulk_import` even when the env-gate skips its
+registration. Cosmetic but confusing for an operator probe.
+Either build the list dynamically from the initializer state
+or pass a `bulkImportRegistered` flag through
+`runtimeStatusConfig` like the matchmaker hook does. Triggers a
+runtime rebuild when fixed.
 
-(b) is the smaller change and lets the preset stay valid for
-desktop/web exports.
+### Cyclic-ref preventative `.get()` rewrites (NEXT_STEPS #11)
 
-### 8. Stale `_PLATFORM_API_URL` in `src/core/game_panel.gd`
-
-Line ~23 still hardcodes
-`https://r20b7wqop6.execute-api.us-west-2.amazonaws.com/prod/v1`
-for "active session" polling. The endpoint is dead (or about
-to be once AWS is decommissioned). Either rewire to Nakama or
-delete the polling path entirely.
-
-### 9. Settings field cleanup (`gamelift_*`)
-
-`src/core/settings.gd` still has `gamelift_backend_api_url`
-(line 35), `gamelift_anywhere_host_id`,
-`gamelift_anywhere_process_id`,
-`gamelift_matchmaking_timeout_sec`. The `crash_reporter` call
-site that referenced `gamelift_backend_api_url` was retargeted
-this session, so the field is unused. Drop during the broader
-AWS-decommission pass.
-
-### 10. Route `version_check` through Nakama HTTP key
-
-`backend_api_client.gd:check_version()` only fires after a
-client session exists. The original AWS endpoint was
-unauthenticated so version-check could happen before login.
-Now that the runtime has HTTP-key support and a registered
-`version_check` RPC, route the app-startup version check
-through the HTTP key path so it doesn't need a session.
-
-### 11. Skipped cyclic-ref preventative fixes
-
-The pre-Phase-D punch list called out
+Still skipped from May 1:
 `src/objects/splash/splash.gd`, `src/objects/fish/fish.gd`,
 `src/ui/confirm_overlay/confirm_overlay.gd`,
-`src/level/networked_level.gd:2` for the `.get()` rewrite.
-They weren't actually triggering parse errors after our fixes
-(no direct `G.settings.*` access) so they were skipped. Keep
-an eye out: if web-build cyclic-ref errors reappear in CI,
-these are the next files to patch.
+`src/level/networked_level.gd`. Apply only if web build starts
+emitting "Could not resolve external class member ... Cyclic
+reference" parse errors again.
 
-### 12. Set up CI for Nakama runtime deployment
+### Post-Phase-F CLAUDE.md cleanup
 
-`release.yml`'s `nakama-runtime` job wants
-`NAKAMA_SSH_KEY` / `NAKAMA_HOST` repo secrets, which are not
-set. So the runtime deploy flow is currently manual:
-- Build `.so` locally via `heroiclabs/nakama-pluginbuilder`
-  Docker.
-- `scp` to `/opt/nakama/modules/snoringcat.so`.
-- `ssh root@5.78.137.83 'cd /opt/nakama && docker compose
-  restart nakama'`.
+Once Phase F runs clean, the CLAUDE.md "AWS Resources" section,
+the "Deployment > GameLift Server" section, and the entire
+"GameLift Architecture Notes" section are all describing
+demolished infra. Replace with a brief "Production deployment"
+section that points at:
 
-Once the secrets are populated, the release pipeline runs
-this automatically on tag push.
+- `gh workflow run game-server.yml -f version=vN` for image
+  builds,
+- `nakama-runtime.yml` workflow (or its successor in the
+  platform repo) for runtime rolls,
+- `scripts/deploy-cf-pages.ps1` for web client.
 
-### 13. Stale `v1` Edgegap image
+### Documentation: update PLATFORM_ARCHITECTURE.md
 
-`v1` tag in the Edgegap registry still points to the broken
-pre-fix image. Either re-tag v2 as v1 (and revert the Nakama
-config.yml `EDGEGAP_APP_VERSION` back to v1) or just delete
-v1 from the Edgegap dashboard and stay on v2 indefinitely.
+Several sections in the snoringcat-platform repo still describe
+the planned/transitional state ("post-migration target",
+"snoringcat-platform/backend/runtime/*.go" — runtime is at
+`snoringcat-platform/runtime/` now). Worth a sweep once the
+above docs cleanup happens in hopnbop.
+
+### Move `phase-f-destroy.ps1` out (eventually)
+
+After Phase F runs and stays clean for a while, this script
+becomes dead weight in `hopnbop_private/scripts/`. Either delete
+or move to a generic `scripts/decommission/aws/` directory in
+case another game ever needs to do the same migration.
 
 ---
 
-## Already shipped this session
+## Already shipped this session (2026-05-02)
 
-Commits on `main`, in order:
-- `999432a` phase-d unblock: Dockerfile.edgegap, entrypoint,
-  cyclic-ref `.get()` fixes on 4 GD scripts, CI workflow_call
-  + NAKAMA_HTTP_KEY env, snoringcat_platform_client bridge,
-  release.yml refactor, SUBMODULE_PAT in 3 workflows, 5 new
-  Nakama runtime RPCs (`version_check`,
-  `update_and_get_presence`, `get_player_stats`,
-  `get_match_history`, `export_player_data`), match_history
-  write in match_end, `requireClientSession` helper.
-- `0b648b3` CLAUDE.md: drop the wait-for-explicit-commit-permission
-  rule.
-- `42aa284` ci(game-server): install Godot export templates so
-  `--export-release` works.
-- `3ca8465` nakama-runtime: `rich_presence` is a string, not
-  a dict.
-- `eca5925` edgegap: skip GameLift SDK on Edgegap servers
-  (`PLATFORM=edgegap` env detection, instantiate
-  `PreviewSessionProvider`, hardcode `expected_count=2`).
-- `d90be90` nakama_matchmaker: emit one session_id per local
-  player.
+Many commits across three repos. Highlights, in roughly the
+order they landed:
 
-## Working tree (uncommitted, 2026-05-01)
+**hopnbop_private:**
+- `68ef668` edgegap: real session validation, env-driven
+  expected count (P0 trio: EXPECTED_PLAYER_COUNT,
+  EdgegapServerProvider, runtime-issued session_ids; P1.5
+  notification poller fix; P1.6 silent-exit diagnostics).
+- `59396d2` game_panel: defer match-end cleanup to next idle
+  tick (silent C1/C2 exit bug, root cause was multiplayer-
+  peer teardown from inside the peer-disconnected callback).
+- `55e02dc` Move platform-shared infra to snoringcat-platform
+  submodule (cost-monitor, runtime, Pulumi, remote configs,
+  scripts).
+- `0611b42` deps: bump rollback_netcode (perf-loss fix) +
+  platform (pulumi parameterization).
+- `4aecd49` cleanup: route version_check + match_end through
+  Nakama, drop gamelift from Edgegap export.
+- `cf0942c` fix: restore gamelift addon binaries on Edgegap
+  container; debug check_version transport (the
+  `extension_list.cfg` regression).
+- `4163c2a` fix: revert Linux Server export-filter — gamelift
+  addon hosts SessionProvider base class (the
+  parse-time-undefined-class bug).
+- `0b9b059` gamelift: remove the addon, the build env, the
+  deploy scripts, the tests (~28k-line deletion).
+- `3eb8389` fix: Nakama RPC body shape — bare JSON, not
+  JSON-encoded string (the silent-pass version_check bug).
 
-P0.1 + P0.2 + P0.3 + P1.5 + P1.6 changes:
-- `third_party/snoringcat-platform/runtime/fleet_allocator.go`
-  — generates per-player
-  session_ids, injects EXPECTED_PLAYER_COUNT and
-  EXPECTED_SESSION_IDS env vars on the Edgegap deploy, ships
-  per-player session_ids in match_ready notification.
-- `src/core/edgegap_server_provider.gd` (new) — validates
-  incoming session_ids against env-loaded allowlist. Mirrors
-  GameLiftServerProvider's grace + idle timer pattern.
-- `src/core/game_session_manager.gd` — uses
-  EdgegapServerProvider on Edgegap (was PreviewSessionProvider).
-- `src/core/game_panel.gd` — reads EXPECTED_PLAYER_COUNT env
-  (was hardcoded to 2). Adds `[diag]` log + print_stack to
-  `_client_transition_to_game_over` (P1.6).
-- `src/core/nakama_matchmaker_client.gd` — reads session_ids
-  from the match_ready connection blob; falls back to
-  locally-derived IDs with a warning if missing.
-- `src/core/main.gd` — adds `[diag]` log + print_stack to
-  NOTIFICATION_WM_CLOSE_REQUEST (P1.6).
-- `src/core/friends_notification_poller.gd` — drops dead
-  `_last_poll_timestamp` arg from fetch_notifications call
-  (P1.5 limit=0 bug).
+**snoringcat-platform (submodule):**
+- `0731de1` Migrate platform-shared infra in from
+  hopnbop_private.
+- `790b75b` pulumi: extract zone/location/server-type into
+  stack config.
+- `4b8b2f7` cost-monitor: track CF Pages builds, simplify
+  daily summary (parallel work stream).
+- `ae914c6` runtime: harden write RPCs against forged calls
+  from client builds (match_end ↔ registrations dedup,
+  winner validation, stat clamping, register_server
+  idempotency, bulk_import env gate).
 
-Backend state changes (not in git):
-- Nakama runtime plugin rebuilt and `scp`'d to Hetzner;
-  build_id `local-42aa284-dirty`.
-- Nakama `/opt/nakama/config.yml` `runtime.env` updated.
-- Edgegap registry: v1 (broken) and v2 (working) image tags.
-- Edgegap version v1 and v2 records both registered.
-- GitHub secret `NAKAMA_HTTP_KEY` set.
-- All test deployments terminated.
+**rollback_netcode (submodule):**
+- `6065de3` perf_tracker: compensate for state_send_interval
+  in loss metric.
+
+Live state changes (not in git): GitHub repo secrets
+`NAKAMA_HOST` + `NAKAMA_SSH_KEY` populated; Edgegap registry
+`v1` deleted, `v2` through `v8` still present (`v8` live);
+Nakama runtime plugin scp'd + restarted multiple times during
+the day; Hetzner runtime config bumped through `v3 → v4 → v5
+→ v6 → v7 → v8`.
 
 ---
 
 ## Useful diagnostic commands (preserve)
 
 Decrypt Nakama SSH key (one-shot, cleans up at end):
+
 ```powershell
 $keyDir = "$env:TEMP\nakama-deploy"
 New-Item -ItemType Directory $keyDir -Force | Out-Null
-age -d -i $HOME\.config\age\key.txt `
-    $HOME\Repositories\claude-config\secrets\hopnbop-migration-nakama-ssh.age `
-    | Out-File -FilePath $keyDir\id_ed25519 -Encoding ASCII -NoNewline
+age -d -i $HOME\.config\age\key.txt -o $keyDir\id_ed25519 `
+    $HOME\Repositories\claude-config\secrets\hopnbop-migration-nakama-ssh.age
 icacls $keyDir\id_ed25519 /inheritance:r /grant:r "${env:USERNAME}:(R)" | Out-Null
 # ... use it ...
+icacls $keyDir\id_ed25519 /grant "${env:USERNAME}:(F)" | Out-Null
 Remove-Item -Recurse -Force $keyDir
 ```
 
 Probe Nakama runtime status:
+
 ```powershell
-# (after decrypting the SSH key as above into $keyDir)
 $line = & ssh -i $keyDir\id_ed25519 root@5.78.137.83 "grep '^NAKAMA_HTTP_KEY=' /opt/nakama/.env"
 $HTTP_KEY = $line.Split('=', 2)[1]
 curl.exe -sS -X POST "https://nakama.snoringcat.games/v2/rpc/runtime_status?http_key=$HTTP_KEY&unwrap=true" `
   -H "Content-Type: application/json" -d '""' | python -m json.tool
 ```
 
+Verify runtime hardening (match_end with fake request_id should
+return HTTP 404 "unknown request_id"):
+
+```bash
+HTTP_KEY=...
+curl -sS -X POST \
+  "https://nakama.snoringcat.games/v2/rpc/match_end?http_key=$HTTP_KEY&unwrap=true" \
+  -H "Content-Type: application/json" \
+  -d '{"request_id":"fake","winner_id":"x","players":[{"user_id":"x","score":1,"kills":0,"bumps":0}]}'
+```
+
 Check Edgegap deployment status (`REQ_ID` from `match_ready`):
+
 ```powershell
-# EDGEGAP_TOKEN lives in /opt/nakama/config.yml runtime.env on Hetzner.
-$EDGEGAP_TOKEN = ...
+$EDGEGAP_TOKEN = ...  # /opt/nakama/.env on Hetzner
 curl.exe -sS -H "Authorization: token $EDGEGAP_TOKEN" `
   "https://api.edgegap.com/v1/status/REQ_ID" | python -m json.tool
 ```
 
 Trigger game-server build + watch:
+
 ```powershell
-gh workflow run game-server.yml -f version=v2
+gh workflow run game-server.yml -f version=v9
 gh run watch (gh run list --workflow=game-server.yml --limit 1 --json databaseId -q '.[0].databaseId')
 ```
 
 Rebuild Nakama runtime plugin and deploy:
+
 ```bash
 cd third_party/snoringcat-platform/runtime
 BUILD_ID="local-$(git rev-parse --short HEAD)-dirty"
