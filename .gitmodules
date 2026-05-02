@@ -1,12 +1,6 @@
-[submodule "gamelift-gdextension/vcpkg"]
-	path = gamelift-gdextension/vcpkg
-	url = https://github.com/microsoft/vcpkg.git
 [submodule "addons/rollback_netcode"]
 	path = addons/rollback_netcode
 	url = https://github.com/SnoringCatGames/godot-rollback-netcode.git
-[submodule "addons/gamelift_session_manager"]
-	path = addons/gamelift_session_manager
-	url = https://github.com/SnoringCatGames/godot-gamelift-session-manager.git
 [submodule "third_party/snoringcat-platform"]
 	path = third_party/snoringcat-platform
 	url = https://github.com/SnoringCatGames/snoringcat-platform.git

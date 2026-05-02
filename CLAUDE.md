@@ -45,24 +45,25 @@ repo, deployed to the Hetzner host by Pulumi:
 
 ## Cloning
 
-This repo uses git submodules for the rollback netcode and
-GameLift session manager addons (extracted Phase 3 of the
-platform refactor). After cloning, run:
+This repo uses git submodules for shared Snoring Cat platform
+code and the rollback-netcode framework. After cloning, run:
 
 ```bash
 git submodule update --init --recursive
 ```
 
-Submoduled addons:
+Submodules:
 - `addons/rollback_netcode/` →
   [godot-rollback-netcode](https://github.com/SnoringCatGames/godot-rollback-netcode)
-- `addons/gamelift_session_manager/` →
-  [godot-gamelift-session-manager](https://github.com/SnoringCatGames/godot-gamelift-session-manager)
-- `gamelift-gdextension/vcpkg/` → upstream Microsoft vcpkg.
+- `third_party/snoringcat-platform/` →
+  [snoringcat-platform](https://github.com/SnoringCatGames/snoringcat-platform).
+  Vendored as a submodule and consumed at
+  `addons/snoringcat_platform_client/` (symlink to the
+  submodule's addon directory).
 
-To bump an addon to a newer version, `cd` into the submodule,
-`git fetch && git checkout vX.Y.Z`, then commit the new SHA in
-this repo.
+To bump a submodule to a newer version, `cd` into it,
+`git fetch && git checkout vX.Y.Z` (or `main`), then commit
+the new SHA in this repo.
 
 ## Claude Code Settings
 

@@ -40,16 +40,9 @@ COPY build/linux/hopnbop_server.pck /game/hopnbop_server.pck
 RUN chmod +x /game/hopnbop_server.x86_64
 
 # GDExtension manifests + .so binaries must live on disk
-# (Godot can't load them from inside the pck). Both extensions
-# remain referenced from the project's `extension_list.cfg`
-# even though gamelift code paths are dead on Edgegap, so we
-# still ship the binaries here. The Linux Server export's
-# exclude_filter drops the addon's GDScript wrappers from the
-# pck (~100KB savings + no test-file parse failures); deleting
-# the .gdextension entry from the project is a follow-up that
-# requires regenerating extension_list.cfg.
+# (Godot can't load them from inside the pck). Only webrtc
+# remains after the gamelift addon removal.
 COPY addons/webrtc /game/addons/webrtc
-COPY addons/gamelift /game/addons/gamelift
 
 WORKDIR /game
 
