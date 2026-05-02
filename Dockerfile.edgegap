@@ -32,6 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libssl3 \
     libstdc++6 \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Godot Linux headless binary. Pin to the same version the
