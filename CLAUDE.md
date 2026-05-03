@@ -9,13 +9,22 @@ Hop 'n Bop is a multiplayer action game built with Godot 4.5. It implements clie
 ## Platform infrastructure (read on demand)
 
 Backend, auth, matchmaking, game-server allocation, and per-game
-config are handled by the shared Snoring Cat platform.
-**When working on any of these topics, read
-`third_party/snoringcat-platform/PLATFORM_ARCHITECTURE.md`** for
-the architecture reference. It covers Nakama runtime, Edgegap
-allocation, identity/account-linking/deletion, per-game config
-schema, per-game protocol versioning (bump procedure), ops
-runbook, and where things live.
+config are handled by the shared Snoring Cat platform. The
+authoritative docs (in priority of relevance to most tasks):
+
+- **`third_party/snoringcat-platform/PLATFORM_ARCHITECTURE.md`** —
+  depth-first runtime detail: Nakama runtime, Edgegap allocation,
+  identity/account-linking/deletion, per-game config schema,
+  per-game protocol versioning (bump procedure), ops runbook.
+  Read when implementing or debugging anything platform-side.
+- **`third_party/snoringcat-platform/STUDIO_ARCHITECTURE.md`** —
+  breadth-first studio overview: every service we use (Hetzner,
+  Edgegap, Cloudflare, GitHub, Discord, UptimeRobot, Google
+  OAuth, Meta), the repo map across the studio, the rationale
+  for each top-level architecture decision, and standard
+  operator procedures (new dev machine, rotate creds, oncall).
+  Read when the question is "what services do we use and how
+  do they fit together" or "where does <thing> live".
 
 The platform migration from AWS GameLift to
 Nakama+Hetzner+Edgegap completed 2026-05-03 (Phase F). Live
