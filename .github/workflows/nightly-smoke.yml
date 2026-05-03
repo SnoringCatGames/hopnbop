@@ -12,12 +12,17 @@ on:
   workflow_dispatch:
 
 env:
-  STAGING_NAKAMA_URL: https://nakama-staging.snoringcat.games
+  # Points at PROD Nakama. Staging (nakama-staging.snoringcat.games)
+  # was the original target but isn't provisioned yet (Phase G).
+  # The auth probe uses an ephemeral device_id that auto-expires,
+  # so it's safe to run against prod nightly. Swap back to
+  # nakama-staging when the staging stack is up.
+  NAKAMA_URL: https://nakama.snoringcat.games
   GODOT_VERSION: 4.5.0-stable
 
 jobs:
   smoke:
-    name: E2E smoke (staging Nakama + Edgegap)
+    name: E2E smoke (prod Nakama + Edgegap)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -32,7 +37,7 @@ jobs:
 
       - name: Health probe
         run: |
-          curl -fsS "${{ env.STAGING_NAKAMA_URL }}/healthcheck"
+          curl -fsS "${{ env.NAKAMA_URL }}/healthcheck"
 
       - name: Anonymous-auth smoke
         run: |
@@ -45,7 +50,7 @@ jobs:
             -H "Authorization: Basic $BASIC" \
             -H "Content-Type: application/json" \
             -d "$BODY" \
-            "${{ env.STAGING_NAKAMA_URL }}/v2/account/authenticate/device?create=true")
+            "${{ env.NAKAMA_URL }}/v2/account/authenticate/device?create=true")
           TOKEN=$(echo "$RESP" | jq -r .token)
           [ -n "$TOKEN" ] || { echo "no token"; exit 1; }
           echo "::add-mask::$TOKEN"
