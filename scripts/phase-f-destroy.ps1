@@ -48,8 +48,21 @@ function Step {
 	param([string]$desc, [scriptblock]$cmd)
 	Write-Host "[$(if ($Confirm) {'EXEC'} else {'DRY '})] $desc" -ForegroundColor Cyan
 	if ($Confirm) {
-		& $cmd
-		if ($LASTEXITCODE -ne 0) { throw "$desc failed (exit $LASTEXITCODE)" }
+		# Capture stderr alongside the exit code so we can tell
+		# "resource was already gone" from a real failure. AWS CLI
+		# returns 254 (or 255) for NotFound on most services and
+		# 1 for "no such bucket"-style errors; the message text
+		# is the most reliable signal.
+		$stderr = (& $cmd 2>&1) | Out-String
+		Write-Host $stderr
+		if ($LASTEXITCODE -ne 0) {
+			$missing = $stderr -match 'NotFoundException|ResourceNotFoundException|NoSuchEntity|NoSuchBucket|does not exist|not found|NoSuchHostedZone|NoSuchDistribution'
+			if ($missing) {
+				Write-Host "  (already gone — continuing)" -ForegroundColor DarkGray
+			} else {
+				throw "$desc failed (exit $LASTEXITCODE)"
+			}
+		}
 	}
 }
 
@@ -107,8 +120,13 @@ foreach ($secret in @(
 # WARNING: only after Cloudflare Pages is serving hopnbop.net.
 # ---------------------------------------------------------
 Step "disable CloudFront E3LT833LSVTW9R" {
-	$cfg = aws cloudfront get-distribution-config --id E3LT833LSVTW9R `
-		| ConvertFrom-Json
+	$raw = aws cloudfront get-distribution-config --id E3LT833LSVTW9R 2>&1
+	if ($LASTEXITCODE -ne 0) {
+		Write-Output "$raw"  # surfaces NoSuchDistribution to Step's
+		                       # error-tolerance regex.
+		return
+	}
+	$cfg = $raw | ConvertFrom-Json
 	$cfg.DistributionConfig.Enabled = $false
 	$cfg.DistributionConfig | ConvertTo-Json -Depth 30 -Compress `
 		| Out-File -Encoding ASCII -FilePath "$env:TEMP\cf-cfg.json"
@@ -119,8 +137,12 @@ Step "disable CloudFront E3LT833LSVTW9R" {
 Step "wait + delete CloudFront E3LT833LSVTW9R (re-run later)" {
 	# CloudFront takes ~15 min to fully disable. Re-run this
 	# script after that to finish the deletion.
-	$d = aws cloudfront get-distribution --id E3LT833LSVTW9R `
-		| ConvertFrom-Json
+	$raw = aws cloudfront get-distribution --id E3LT833LSVTW9R 2>&1
+	if ($LASTEXITCODE -ne 0) {
+		Write-Output "$raw"
+		return
+	}
+	$d = $raw | ConvertFrom-Json
 	if ($d.Distribution.Status -eq "Deployed" -and `
 			-not $d.Distribution.DistributionConfig.Enabled) {
 		aws cloudfront delete-distribution --id E3LT833LSVTW9R `
