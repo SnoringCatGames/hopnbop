@@ -17,10 +17,12 @@ allocation, identity/account-linking/deletion, per-game config
 schema, per-game protocol versioning (bump procedure), ops
 runbook, and where things live.
 
-The migration from AWS GameLift to Nakama+Hetzner+Edgegap is
-in progress; see `MIGRATION_PLAN.md` for phase status. Until
-migration completes, the **AWS GameLift architecture** described
-later in this file is still authoritative for current production.
+The platform migration from AWS GameLift to
+Nakama+Hetzner+Edgegap completed 2026-05-03 (Phase F). Live
+production runs on Hetzner CPX11 (Nakama + Postgres) with
+Edgegap-allocated game-server containers. Historical migration
+notes for archeology are in `MIGRATION_PLAN.md` and
+`platform-pivot-discussion.md`.
 
 **Per-game protocol versioning** (post-migration): each game has
 its own `protocol_version` integer in `game.yaml` and
@@ -86,147 +88,69 @@ Launch flags:
 
 ## Deployment
 
-### Deploy Order
+The platform layer (Nakama, Postgres, Caddy/TLS, observability,
+cost-monitor) runs on Hetzner; game-server containers run on
+Edgegap, allocated on demand by Nakama's matchmaker hook.
+Operational details for the platform itself are in
+`third_party/snoringcat-platform/PLATFORM_ARCHITECTURE.md` and
+the provisioning scripts at
+`third_party/snoringcat-platform/scripts/phase-{a,b}.ps1`.
 
-1. **Backend (SAM)** first. API changes must be live
-   before clients or servers reference them.
-2. **GameLift server** second. Server code may depend
-   on new backend endpoints.
-3. **Website (web client)** last. Client needs both
-   backend and server to be ready.
+### Deploy targets in this repo
 
-### Backend (SAM)
+| Target | Trigger | Where |
+|---|---|---|
+| Game server (Edgegap registry) | manual workflow_dispatch | `.github/workflows/game-server.yml` |
+| Web client (Cloudflare Pages + R2) | tag push or manual | `.github/workflows/release.yml` (CI) or `scripts/deploy-cf-pages.ps1` (local) |
+| Nakama runtime plugin | manual workflow_dispatch | `.github/workflows/nakama-runtime.yml` |
+| Tagged release (game server + web + runtime) | push to `v*` tag | `.github/workflows/release.yml` |
 
-**Script:** `scripts/deploy-backend.ps1`
+### Game server deploy (Edgegap)
 
-Syncs `GAME_VERSION` and `PROTOCOL_VERSION` in `template.yaml`
-from `project.godot`, runs `sam build --use-container`, runs
-`sam deploy --no-confirm-changeset`.
+`game-server.yml` builds `Dockerfile.edgegap`, pushes to the
+Edgegap registry as `v<N>`, and is then registered as a new
+Edgegap app version via the dashboard. Bump
+`EDGEGAP_APP_VERSION` on the Nakama host's `runtime.env` (see
+"Versioning drift" in `NEXT_STEPS.md`) so the matchmaker hook
+allocates the new version.
 
-```powershell
-.\scripts\deploy-backend.ps1
-```
+Required GH secrets: `EDGEGAP_TOKEN`, `EDGEGAP_REGISTRY_*`,
+`EDGEGAP_REGISTRY_PROJECT`, `SUBMODULE_PAT`. The Harbor robot
+credentials in `EDGEGAP_REGISTRY_USERNAME`/`PASSWORD` need
+rotation when they expire (failure mode: HTTP 401 on docker
+login).
 
-**Common issues:**
-- `sam deploy` hangs without `--no-confirm-changeset` (waits
-  for interactive confirmation).
-- Never pass `--template-file template.yaml` to `sam deploy`.
-  That bypasses the build output and deploys raw source without
-  pip dependencies (73KB instead of ~17MB), causing
-  `No module named 'aws_lambda_powertools'` Lambda init errors.
-- Build container pulls `public.ecr.aws/sam/build-python3.12`.
-  Docker Desktop must be running.
-- Delete `backend/.aws-sam/` (not the repo root) if build
-  cache is stale (causes "Unresolved resource dependencies"
-  error).
-- **"No changes to deploy" when code changed:** SAM uses
-  content-addressed S3 keys. If the zip hash matches what
-  is already in S3, CloudFormation sees no diff. This can
-  happen when a previous `--force-upload` already pushed
-  the new code, or due to Docker mount caching on Windows.
-  Fix: use `aws lambda update-function-code` to force
-  Lambda to reload from S3:
-  ```bash
-  aws lambda update-function-code \
-    --function-name <full-function-name-with-suffix> \
-    --s3-bucket <sam-managed-bucket> \
-    --s3-key hopnbop-backend/<hash> \
-    --profile hopnbop --region us-west-2
-  ```
-  Get the function names with `aws lambda list-functions`
-  and the S3 key from the SAM deploy output. Only update
-  the functions whose code you changed.
+### Web client deploy (Cloudflare Pages + R2)
 
-### CLI Tool Availability
+`scripts/deploy-cf-pages.ps1` (local) or the `web-client` job
+in `release.yml` (CI):
 
-Deploy scripts (`.ps1`) must be run via PowerShell.
-`sam`, `godot`, and other deploy tools are only in the
-PowerShell PATH, not the bash PATH. **Never run `sam`
-or `godot` directly from bash.** Always use
-`powershell -ExecutionPolicy Bypass -File <script>` or
-`powershell -Command "<command>"` when invoking them.
+1. Godot exports `web/`.
+2. Heavy assets (`.wasm` ~38 MB, `.pck`, `.audio.worklet.js`,
+   `.audio.position.worklet.js`) upload to R2
+   (`hopnbop-assets` bucket). Pages caps individual files at
+   25 MiB, so the wasm doesn't fit on Pages.
+3. `index.html`'s `GODOT_CONFIG` is patched in a staging copy
+   to point at absolute R2 URLs.
+4. Remaining files deploy to Cloudflare Pages
+   (`hopnbop-website` project).
 
-SAM deploy with 36+ Lambda functions can take 5-10
-minutes with no console output during the CloudFormation
-changeset phase. Do not kill it prematurely. Check
-`aws cloudformation describe-stacks` for current status
-before assuming it is stuck. If deploy hangs for env-var-
-only changes (same code hash), retry with `--force-upload`.
+R2 bucket CORS is configured open for `GET`/`HEAD` from any
+origin so the cross-origin wasm fetch works from the Pages
+domain. The deploy script + the GHA both set CORS idempotently.
 
-### GameLift Server
+Required GH secrets: `CLOUDFLARE_API_TOKEN` (with Pages:Edit +
+Workers R2 Storage:Edit + Account Settings:Read),
+`CLOUDFLARE_ACCOUNT_ID`.
 
-**Script:** `gamelift-deploy/deploy.ps1`
+### Web export gotcha
 
-Exports Godot Linux .pck, builds Docker image, pushes to ECR,
-updates container group definition, triggers fleet deployment.
-
-```powershell
-.\gamelift-deploy\deploy.ps1              # full
-.\gamelift-deploy\deploy.ps1 -SkipExport  # skip Godot export
-```
-
-**Common issues:**
-- Godot `--export-pack` returns non-zero due to GDExtension
-  DLL copy warnings (non-fatal on Windows). The deploy
-  script treats this as a failure. Workaround: run the
-  export manually, verify `.pck` exists, then re-run with
-  `-SkipExport`:
-  ```bash
-  mkdir -p build/linux
-  godot --headless --export-pack "Linux Server" \
-    build/linux/hopnbop_server.pck
-  ls -la build/linux/hopnbop_server.pck  # verify ~24MB
-  .\gamelift-deploy\deploy.ps1 -SkipExport
-  ```
-- Container group definition limit is 4 versions. Delete old
-  versions before updating:
-  ```bash
-  aws gamelift delete-container-group-definition \
-    --name hopnbop-server-group --version-number N \
-    --region us-west-2 --profile hopnbop
-  ```
-- Definition stays in COPYING state for ~15 seconds after
-  update. Fleet update fails if definition is not yet READY.
-- Fleet deployment takes 5-15 minutes after container group
-  definition update.
-- Always use `docker build --no-cache` to avoid BuildKit
-  serving a stale .pck from layer cache.
-
-**Monitor fleet rollout:**
-```bash
-aws gamelift list-fleet-deployments \
-  --fleet-id containerfleet-9836594e-0c96-4887-a8d5-be7f3541db36 \
-  --region us-west-2 --profile hopnbop
-```
-
-### Website (Web Client)
-
-**Script:** `scripts/deploy-website.ps1`
-
-Exports Godot web build, copies export files into `web/`,
-syncs `web/` to S3, invalidates CloudFront cache.
-
-```powershell
-.\scripts\deploy-website.ps1              # full (includes game export)
-.\scripts\deploy-website.ps1 -SkipExport  # skip export
-```
-
-**Common issues:**
-- Godot `--export-release "Web"` returns non-zero due to
-  missing resource warnings. The deploy script treats this
-  as a failure. Workaround: export manually, copy to
-  `web/`, then run with `-SkipExport`:
-  ```bash
-  mkdir -p build/web
-  godot --headless --export-release "Web" \
-    build/web/index.html
-  cp build/web/* web/
-  .\scripts\deploy-website.ps1 -SkipExport
-  ```
-- `-SkipExport` also skips the copy step. If you exported
-  manually, copy `build/web/*` to `web/` before running the
-  S3 sync.
-- CloudFront invalidation takes 1-2 minutes to propagate.
+Godot `--export-release "Web"` returns non-zero on missing-
+resource warnings. The CI step uses `|| true` plus a sanity
+`test -s build/web/index.html` to distinguish a real failure
+from a cosmetic one. If you export locally and the script
+treats a non-zero exit as failure, do the export by hand,
+verify the artifact landed, then run with `-SkipExport`.
 
 **Website structure:**
 - Root page loads the Godot web export directly (no landing
@@ -254,9 +178,16 @@ If the changes require users to re-consent, also bump
 
 ### Prerequisites (All Deploys)
 
-- AWS SSO login: `aws sso login --profile hopnbop`
-- Docker Desktop running (backend build + GameLift)
-- Godot CLI on PATH (GameLift + website export)
+- Docker Desktop running (Edgegap server-image build + local
+  smoke).
+- Godot CLI on PATH (server + web exports).
+- For local Cloudflare deploys: `CLOUDFLARE_PAGES_TOKEN` in
+  `~/.hopnbop-migration/credentials.env` and `npm`/`npx`
+  available (the script invokes `npx wrangler@latest`).
+- For Edgegap deploys: an Edgegap account with the
+  `hopnbop-server` app registered. Push images via
+  `game-server.yml`, then bump the version in the dashboard
+  + on the Nakama host's `runtime.env`.
 
 ### Version Management
 
@@ -267,13 +198,14 @@ If the changes require users to re-consent, also bump
   client/server protocol changes)
 
 **Synced locations:**
-- `backend/template.yaml` `GAME_VERSION` and
-  `PROTOCOL_VERSION` (synced automatically by
-  `deploy-backend.ps1`)
-- ECR image tag (set automatically by
-  `gamelift-deploy/deploy.ps1`)
+- Edgegap registry image tag (set by `game-server.yml`'s
+  workflow input).
+- Nakama host's `runtime.env` `NAKAMA_GAME_VERSION` and
+  `EDGEGAP_APP_VERSION` (manual; bump after each deploy).
+  Surfaced by the `version_check` runtime RPC and exercised
+  by client startup.
 - `export_presets.cfg` `file_version`/`product_version`
-  (optional, currently empty)
+  (optional, currently empty).
 
 **Version bumping policy:**
 - When in doubt, bump the version. Always bump on redeploy.
@@ -297,7 +229,7 @@ If the changes require users to re-consent, also bump
   parent commit.
 - Stage only files relevant to the change. The parent repo
   often carries unrelated dirty files (e.g., `settings.tres`,
-  `.claude/settings.local.json`, `gamelift-gdextension/vcpkg`);
+  `.claude/settings.local.json`);
   do not sweep them in.
 - Force-push and push to anything other than `main` still
   need explicit confirmation.
@@ -311,158 +243,62 @@ If the changes require users to re-consent, also bump
   `GET /version` (unauthenticated). Also checked in auth
   response, matchmaking response, and server RPC.
 
-### AWS Resources
+### Production resources
 
-- **Account:** 270469481989
-- **Region:** us-west-2
-- **Profile:** hopnbop
-- **Fleet ID:** containerfleet-5568a04e-2984-4e77-9e24-fce721caa7c6
-  (current; `aws gamelift list-fleets` is authoritative)
-- **Fleet billing type:** SPOT (recreated 2026-04-11 from
-  ON_DEMAND to cut GameLift costs ~65-75%)
-- **ECR repo:** 270469481989.dkr.ecr.us-west-2.amazonaws.com/hopnbop-server
-- **S3 bucket:** hopnbop-website
-- **CloudFront:** E3LT833LSVTW9R
-- **Container group def:** hopnbop-server-group
-- **Matchmaker:** hopnbop-ffa-matchmaker
-- **Game session queue:** hopnbop-game-queue
-- **FlexMatch ruleset:** hopnbop-ffa-ruleset
-- **IAM role:** GameLiftContainerFleetRole
-- **Hosted zone:** Z05562172A1JF6AX39U2N (game.hopnbop.net)
-- **TLS cert secret:** hopnbop/tls-wildcard-cert (expires
-  2026-06-09)
-- **CloudWatch log group:**
-  gamelift-containerfleet-{fleet-id}-us-west-2 (auto-generated
-  per fleet; the current one is named after the fleet ID above)
-- **SNS alarms topic:** hopnbop-alarms (subscriptions:
-  admin@snoringcat.games)
-- **Fleet state table:** hopnbop-fleet-state (single-item
-  table tracking `last_activity_at` for the idle-check Lambda)
+**Hetzner platform tier** (Pulumi-managed in
+`third_party/snoringcat-platform/infra/pulumi/snoringcat-platform/`):
+- **Project:** `snoringcat-platform`, stack `prod`, state in S3
+  `hopnbop-pulumi-state` (us-west-2 — last AWS dependency).
+- **nakama-prod-1:** CPX11 in Hillsboro, Nakama + Caddy +
+  Prometheus/Grafana/Loki/Promtail + cost-monitor systemd timer.
+- **postgres-prod-1:** CPX11 in Hillsboro, Postgres 16 + node-
+  exporter + postgres-exporter.
+- **DNS:** Cloudflare-managed; `nakama.snoringcat.games` and
+  `grafana.snoringcat.games` records bound to the Hetzner public
+  IPs.
+- **Cost:** ~$15/mo for the pair (capped). See cost-monitor.
 
-### GameLift Architecture Notes
+**Edgegap game-server fleet:**
+- **App:** `hopnbop-server` (registered in Edgegap dashboard).
+- **Active version:** stored on the Nakama host's
+  `runtime.env` as `EDGEGAP_APP_VERSION=v<N>`. Bump after
+  pushing a new image via `game-server.yml`.
+- **Allocation:** on demand by Nakama's matchmaker hook; no
+  always-on fleet.
 
-**Multi-stage Docker build:** The Dockerfile has three stages:
-1. `webrtc-builder`: Compiles a patched webrtc-native
-   GDExtension from source (v1.0.9) with
-   `portRangeBegin`/`portRangeEnd` and `enableIceUdpMux`
-   support. Upstream v1.0.9 ignores these config keys.
-   The patch script is `gamelift-deploy/patch-webrtc-portrange.py`.
-2. `sdk-builder`: Compiles GameLift Server SDK v5.2.0
-   from source with `GAMELIFT_USE_STD=1` and
-   `BUILD_SHARED_LIBS=ON`.
-3. Runtime image (Ubuntu 24.04): Copies binaries from
-   both builder stages.
+**Cloudflare:**
+- **Pages project:** `hopnbop-website` (auto-deploy via
+  `release.yml`).
+- **R2 bucket:** `hopnbop-assets` (heavies > 25 MiB live here).
+- **Cost-monitor thresholds:** R2 warn 8 GB / hard 9.5 GB, Pages
+  builds warn 400 / hard 475 of the 500/mo free tier.
 
-The webrtc-builder stage is necessary because the
-upstream GDExtension silently ignores `portRangeBegin`,
-`portRangeEnd`, and `enableIceUdpMux` in the
-`initialize()` config dictionary. Without these, the
-ICE agent binds to ephemeral UDP ports that GameLift
-does not forward, and multiple PeerConnections cannot
-share a port.
+**Legacy AWS:** torn down 2026-05-03 (Phase F). The only AWS
+dependency that remains is the S3 bucket holding Pulumi state
+(`hopnbop-pulumi-state`); migrate Pulumi state off S3 if you
+ever want to be fully AWS-free.
 
-**SDK version pinning:** The fleet was created with SDK v5.2.0.
-The Docker build must pin `--branch v5.2.0` when cloning the
-SDK source. Using `main` (v5.4.0+) causes WebSocket handshake
-failures.
+### Game-server allocation (Edgegap)
 
-**Ubuntu 24.04 requirement:** The GDExtension binary requires
-GLIBCXX_3.4.32 which is only available in Ubuntu 24.04+.
+Allocation is on-demand: when Nakama's matchmaker matches
+players, the runtime hook calls Edgegap's deployment API to
+spin up a `hopnbop-server` container in a region close to the
+matched players. There's no always-on fleet — cold start to
+ready is typically a few seconds (Edgegap holds warm pools
+internally). Once the match ends or the deploy idles, Edgegap
+tears the container down automatically and we're billed only
+for active session minutes.
 
-**GDExtension files outside .pck:** The `.gdextension` manifest
-and `.so` binaries must exist on the filesystem. They cannot be
-inside the `.pck` file.
+The matchmaker hook lives in
+`third_party/snoringcat-platform/runtime/fleet_allocator.go`
+and reads `EDGEGAP_TOKEN`, `EDGEGAP_APP_NAME`, and
+`EDGEGAP_APP_VERSION` from the Nakama runtime env (configured
+in `infra/remote/nakama/config.yml`'s `runtime.env` block).
 
-**GDExtension type inference:** GDExtension methods return
-`Variant` to GDScript. Using `:=` causes "Cannot infer type"
-errors. Always use explicit type annotations:
-```gdscript
-# Wrong.
-var count := session.maximum_player_session_count
-# Correct.
-var count: int = session.maximum_player_session_count
-```
-
-**Critical:** The server MUST call
-`_gamelift.activate_game_session()` in the
-`_on_game_session_started` callback. Without it, FlexMatch
-times out with GAME_SESSION_ACTIVATION_TIMEOUT and the
-deployment goes IMPAIRED.
-
-**SERVER_API_KEY:** Set via the container group definition's
-`EnvironmentOverride`. Read in `global.gd:_ready()`, stored in
-`settings.server_api_key`, used by `match_result_reporter.gd`
-to authenticate with the backend API.
-
-### Fleet Warmup and Idle Shutdown
-
-The fleet runs on Spot pricing with DESIRED=0 as the resting
-state to minimize instance-hour costs. Client-driven warmup
-brings it up on demand, and a scheduled Lambda scales it back
-to 0 after 30 minutes of no activity.
-
-**Client side (`src/core/backend_api_client.gd`):**
-- `warm_up_fleet(source)` posts to `/fleet/warmup` and starts
-  a 10-second polling timer for `/fleet/status`.
-- Fired automatically from `global.gd:_ready()` on app startup
-  unless `settings.prefer_offline_mode` is true.
-- Fired again when the player toggles offline mode off, via
-  the `LocalSettings.setting_override_changed` signal.
-- Exposes `is_fleet_ready()`, `is_fleet_warming_up()`, and
-  `get_fleet_estimated_remaining_sec()` for UI.
-- Polling stops when status reaches `"ready"` or after 10
-  minutes to avoid runaway retries.
-
-**Lobby UI:** `lobby_level.tscn` has a bottom-right
-`FleetWarmupLabel` that shows `LOBBY.SERVER_WARMING_UP_WITH_ESTIMATE`
-with a minutes-and-seconds countdown, or `LOBBY.SERVER_READY`
-once the fleet is live. Hidden in offline mode.
-
-**Loading screen:** `loading_screen.gd` checks
-`is_fleet_warming_up()` before falling through to the existing
-matchmaking phase label, so players see
-`LOADING.WARMING_UP_SERVER` during the cold-start wait instead
-of `LOADING.CONNECTING`.
-
-**Backend side:**
-- `services/fleet_service.py` — Wraps DescribeFleetLocationCapacity,
-  UpdateFleetCapacity, DescribeGameSessions, and reads/writes
-  `last_activity_at` in the `hopnbop-fleet-state` DynamoDB table.
-- `handlers/fleet_handler.py`:
-  - `POST /fleet/warmup` — Unauthenticated. Updates activity
-    timestamp and scales DESIRED to 1 if currently 0.
-  - `GET /fleet/status` — Unauthenticated. Reads capacity
-    without mutating anything.
-  - `scheduled_idle_check` — Invoked by EventBridge every 5
-    minutes. Scales DESIRED to 0 if no ACTIVE game sessions
-    AND `now - last_activity_at >= 30 minutes`. First run
-    seeds the timestamp instead of scaling down.
-- `handlers/match_handler.submit_match_result` — Calls
-  `fleet_service.update_activity("match_end")` after recording
-  a match, so the 30-minute idle window starts fresh whenever
-  a match ends.
-
-**Warmup latency:** Cold start from DESIRED=0 to ACTIVE with
-an IDLE game session slot takes roughly 3-5 minutes (EC2 boot
-+ ECR image pull + GameLift health checks + game session
-activation). The estimate returned to the client starts at
-300 seconds and decrements as `now - last_activity_at`.
-
-**FleetId parameter:** `backend/template.yaml` takes a `FleetId`
-SAM parameter with an empty default. `scripts/deploy-backend.ps1`
-looks up the current fleet via `aws gamelift list-fleets` and
-passes it as a parameter override at deploy time. If the fleet
-is ever recreated, redeploying the backend picks up the new ID
-automatically. When `FleetId` is empty, the fleet service
-gracefully skips all GameLift API calls and returns a neutral
-status so tests pass without real AWS credentials.
-
-**Spot interruption handling:** Already implemented in
-`addons/gamelift_session_manager/server/gamelift_server.gd`
-via `_on_process_terminate_requested`, which listens to
-GameLift's 2-minute warning and calls
-`Netcode.connector.server_notify_shutdown()` so clients see a
-clean SERVER_SHUTDOWN rather than a hard disconnect.
+The previous AWS GameLift-based fleet (with cold-start warmup,
+fleet state DynamoDB table, and Lambda idle-checker) was
+decommissioned in Phase F. The historical detail is in
+`MIGRATION_PLAN.md` if needed for archeology.
 
 ### Transport Architecture
 
@@ -482,16 +318,16 @@ based on matched players' platforms:
   packet loss).
 
 **Transport selection flow:**
-1. FlexMatch includes `is_web` player attribute.
-2. Backend `gamelift_service.py` reads `is_web` from
-   matchmaker data. Returns `transport_type` in
-   matchmaking response (`"enet"`, `"webrtc"`, or
-   `"websocket"`).
+1. Nakama matchmaker takes an `is_web` player attribute.
+2. The runtime's `matchmaker_matched` hook reads `is_web`
+   from the matched players' properties and sets
+   `transport_type` in the match-ready payload it pushes
+   to clients (`"enet"`, `"webrtc"`, or `"websocket"`).
 3. Client sets `Netcode.settings.transport_type` from the
-   response before connecting.
-4. Server reads matchmaker data in
-   `_on_game_session_started` and sets transport. Only
-   switches away from ENet if web players are matched.
+   match-ready payload before connecting.
+4. Server reads matchmaker data on session-start and sets
+   transport. Only switches away from ENet if web players
+   are matched.
 
 #### WebRTC Architecture
 
@@ -524,7 +360,7 @@ based on matched players' platforms:
    generates SDP answer, sends via signaling WS.
 6. ICE candidates exchanged bidirectionally via
    signaling WS. Server rewrites srflx candidate
-   port from 4433 to the GameLift host port.
+   port from 4433 to the Edgegap host port.
 7. ICE connects (UDP on host port), DataChannels
    open.
 8. Signaling WS is closed.
@@ -541,23 +377,22 @@ needed). The server uses a patched build (see
 (vs 60 for ENet) to reduce bandwidth. Applied via
 `Netcode.apply_match_physics_fps()` before connection.
 
-**ICE port pinning:** On GameLift, only declared
-container ports are forwarded to the host. The server
-pins the ICE agent to container port 4433 via
+**ICE port pinning:** Only declared container ports get
+forwarded to the host (Edgegap maps each declared port to a
+dynamic host port at allocation time). The server pins the
+ICE agent to container port 4433 via
 `portRangeBegin`/`portRangeEnd` in `initialize()`.
-Multiple PeerConnections share this port via libjuice
-mux mode (`enableIceUdpMux: true`), which
-demultiplexes STUN traffic by username fragment.
+Multiple PeerConnections share this port via libjuice mux
+mode (`enableIceUdpMux: true`), which demultiplexes STUN
+traffic by username fragment.
 
-**ICE candidate rewriting:** The ICE agent's
-STUN-reflected (srflx) candidate advertises the
-container port (4433), but clients must connect to
-the GameLift host port (e.g., 4205) which is in the
-`InstanceConnectionPortRange` and forwarded to the
-container. The signaling server rewrites the srflx
-candidate's port before sending it to the client.
-The host port is derived from the client's WSS port
-(which the backend returns as host_udp_port + 1).
+**ICE candidate rewriting:** The ICE agent's STUN-reflected
+(srflx) candidate advertises the container port (4433), but
+clients must connect to the Edgegap host port (e.g., 4205).
+The signaling server rewrites the srflx candidate's port
+before sending it to the client. The host port is derived
+from the client's WSS port (which the runtime hook returns
+as `host_udp_port + 1` in the match-ready payload).
 
 **ICE candidate buffering:** Client ICE candidates
 that arrive before the server processes the SDP offer
@@ -604,52 +439,32 @@ listens on port 4433 TCP instead.
 2048). The default buffer overflows within seconds on web
 clients during 4-player matches.
 
-GameLift remaps container ports to dynamic host ports from the
-fleet's `InstanceConnectionPortRange` (4192-4211). Each game
-session gets 2 consecutive host ports:
+Edgegap allocates 2 contiguous host ports per deployment, one
+mapped to each declared container port:
 
 - `Port+0` → container `4433 UDP` (ENet, returned as `Port`)
 - `Port+1` → container `4434 TCP` (nginx TLS detection)
 
-GameLift documentation says port mapping is random, but with
-exactly 2 container ports the `Port+1` offset has been
-reliable across all testing. **Do not add more container
-ports.** Adding a third entry (e.g., 4435-4437/UDP) causes
-GameLift to assign host ports beyond the
-`InstanceConnectionPortRange`, breaking the `Port+1` WSS
-offset. This was verified in v0.27.0 where port 4212 was
-assigned outside the 4192-4211 range. GameLift requires
-different port numbers per entry, even for different
-protocols. Using the same number (e.g., 4433/UDP and
-4433/TCP) causes GameLift to deduplicate.
-
-**Important:** The port range must accommodate pairs. With 2
-container ports per session, ensure `ToPort - FromPort + 1`
-is even. An odd range wastes the last port and can cause
-the WSS port to fall outside the range.
+The runtime hook reads both host ports from Edgegap's
+deployment response and includes them in the match-ready
+payload. **Do not add more container ports** to
+`Dockerfile.edgegap` — the `Port+1` offset assumption breaks
+once a third container port enters the picture.
 
 #### DNS Pre-Warming
 
 DNS hostnames are derived deterministically from the server
 IP: `35.91.191.229` → `s-35-91-191-229.game.hopnbop.net`.
-The `entrypoint.sh` creates this Route 53 A record at
-container startup (via EC2 IMDS for the public IP), minutes
-before any game session is placed. By the time clients
-connect, DNS is fully propagated. No per-session DNS
-creation needed.
-
-The backend derives the same hostname from the server IP
-(in `_hostname_from_ip()`) and returns it to clients in the
-matchmaking response. Both sides compute the hostname
-independently from the IP.
+The container's `entrypoint.sh` creates the Cloudflare DNS
+A record at container startup (using the public IP from
+Edgegap's deployment metadata), seconds before any client
+needs to connect. Both sides compute the same hostname from
+the IP, so the runtime can include it in the match-ready
+payload without round-tripping the container.
 
 Wildcard cert for `*.game.hopnbop.net` via Let's Encrypt
-DNS-01. Stored in Secrets Manager (`hopnbop/tls-wildcard-cert`).
-Expires **2026-06-09**. Renewal needed before then.
-
-The `GameLiftContainerFleetRole` IAM role has an inline
-policy (`Route53DnsWarmup`) granting
-`route53:ChangeResourceRecordSets` on the hosted zone.
+DNS-01. Stored on the container image at build time (or
+mounted via Edgegap secret). Renewal cadence: 60-90 days.
 
 #### Godot Native WSS Limitation (2026-03-17)
 
@@ -671,23 +486,30 @@ is also unencrypted UDP.
 
 ### End-to-End Matchmaking Flow
 
-1. Client calls `POST /auth/anon` to get JWT
-2. Client calls `POST /matchmaking/start` with JWT
-3. Client polls `GET /matchmaking/status/{ticket_id}`
-4. Response includes `server_ip`, `server_port`,
-   `player_session_ids`, `transport_type` (all dynamically
-   assigned)
+1. Client authenticates with Nakama (anonymous device-id or
+   linked OAuth provider) and gets a session token.
+2. Client adds itself to the matchmaker via the Nakama socket
+   API with platform attributes (e.g. `is_web`).
+3. Nakama matches players and fires the `matchmaker_matched`
+   hook in the runtime plugin.
+4. The hook calls Edgegap to deploy a `hopnbop-server`
+   container near the matched players, then notifies all
+   matched clients with the allocated server endpoint
+   (`server_ip`, `server_port`, `transport_type`,
+   per-player session ticket).
 5. Client connects to the server:
-   - ENet match: `enet://IP:Port` (UDP)
-   - WebRTC match: `ws://` or `wss://` to
-     `hostname:Port+1` (signaling through nginx),
-     then DataChannels over UDP
+   - ENet match: `enet://IP:Port` (UDP).
+   - WebRTC match: `ws://` or `wss://` to `hostname:Port+1`
+     for signaling, then DataChannels over UDP.
    - WebSocket match: `ws://` or `wss://` to
-     `hostname:Port+1` (TCP, through nginx)
-6. Server validates player session IDs via GameLift SDK
+     `hostname:Port+1` (TCP, through nginx).
+6. Server validates the per-player session ticket against the
+   match-ready payload Nakama sent it during allocation.
 
-API Gateway has a 29-second hard timeout. Use the two-step
-start+poll approach, not a single blocking join endpoint.
+The Edgegap allocation typically completes in a few seconds.
+There is no longer a 29-second API-Gateway timeout to dance
+around — the realtime socket pushes the allocation result
+when ready, no client polling.
 
 ## Architecture
 
@@ -777,21 +599,24 @@ Action handlers in `src/scaffolder/character/action_handlers/` modify velocity a
 
 ### Web Build Cross-Play
 
-FlexMatch uses an `is_web` player attribute for platform
-preference matching (relaxes after 15 seconds). The backend
-determines `transport_type` ("enet" or "websocket") from
-matched players and includes it in the matchmaking response.
+The Nakama matchmaker takes an `is_web` player attribute for
+platform-preference matching (relaxes after the configured
+backoff). The runtime hook then chooses `transport_type`
+(`"enet"`, `"webrtc"`, or `"websocket"`) based on which
+platforms made it into the match, and includes it in the
+match-ready payload pushed to clients.
 
 - Client sets `Netcode.settings.transport_type` from the
-  response before connecting.
-- Server sets transport from matchmaker data in
-  `_on_game_session_started`. Only switches to WebSocket
-  if the match includes a web player. ENet-only matches
-  stay on ENet.
-- Backend returns `s-{ip}.game.hopnbop.net` hostname for
-  WebSocket matches (DNS pre-warmed at container startup).
+  match-ready payload before connecting.
+- Server reads matchmaker data from Edgegap's deployment
+  context and sets transport on session-start. Only switches
+  away from ENet if a web client is in the match — ENet-only
+  matches stay on ENet.
+- Edgegap returns the public IP at allocation time; the
+  runtime derives the `s-{ip}.game.hopnbop.net` hostname
+  (DNS pre-warmed by the container's entrypoint).
 - Web clients connect via `wss://hostname:Port+1` (through
-  nginx TLS termination).
+  nginx TLS termination on the container).
 - Native clients connect via `ws://hostname:Port+1` (through
   nginx pass-through, no TLS).
 - Local/preview always uses `ws://`.
@@ -1355,82 +1180,14 @@ continuation. When modifying lines in these files, convert
 them to the current style (`not`, parenthesized wrapping).
 Do not bulk-convert unrelated lines in the same commit.
 
-## Backend Testing (pytest)
+## Backend Testing
 
-The backend uses pytest with moto for AWS service mocking.
-Tests live in `backend/tests/`.
-
-### Running Backend Tests
-
-```bash
-cd backend
-pip install -r tests/requirements.txt  # if needed
-python -m pytest tests/ -v
-python -m pytest tests/test_party.py -v  # single file
-```
-
-### Test Infrastructure
-
-- **`conftest.py`** provides shared fixtures:
-  - `_aws_env` (autouse): Sets environment variables for
-    all tests.
-  - `aws_mock`: Wraps tests in `moto.mock_aws()` with
-    pre-created DynamoDB tables and Secrets Manager secrets.
-    Re-initializes handler module-level service instances so
-    they use mocked clients.
-  - `mock_httpx_client(responses)`: Context manager for
-    mocking OAuth provider HTTP calls.
-  - `make_response(status_code, json_body)`: Builds fake
-    httpx responses.
-- **`constants.py`**: `TEST_JWT_SECRET`, `TEST_REGION`.
-
-### Test Patterns
-
-**Debug auth:** Use `DEBUG_` prefix tokens (e.g.,
-`"Bearer DEBUG_alice"`) to bypass JWT validation. The
-handler's `_authenticate()` returns an `AuthToken` with
-`player_id="DEBUG_alice"` for these tokens.
-
-**Helper conventions (per test file):**
-```python
-class _FakeLambdaContext:
-    function_name = "test-function"
-    ...
-
-def _make_event(body=None, headers=None, ...):
-    """Build a minimal API Gateway event."""
-
-def _parse_response(response):
-    """Return (status_code, body_dict)."""
-
-def _auth_headers(player_id):
-    """Return {'Authorization': 'Bearer DEBUG_...'}."""
-
-def _create_player(player_id, display_name, ...):
-    """Insert a player row into the test table."""
-
-def _run(coro):
-    """asyncio.run() wrapper."""
-```
-
-**Service tests** instantiate service classes directly
-within `aws_mock` and call async methods via `_run()`.
-
-**Handler tests** invoke Lambda handler functions with
-`_make_event()` and `_CONTEXT`, then assert on status
-code, error codes, and response body.
-
-### Adding New Handler Tests
-
-1. Add service reinitialization to
-   `conftest._reinit_handler_services()` if the handler
-   module is not already covered.
-2. Create `tests/test_<feature>.py` with the helper
-   pattern above.
-3. Use `_create_player()` and direct DynamoDB puts for
-   test data setup.
-4. Always use `aws_mock` fixture for DynamoDB/Secrets
-   Manager access.
+The AWS SAM Lambda backend was decommissioned 2026-05-03 along
+with its pytest+moto suite. Server-side logic now lives in the
+Nakama runtime plugin at
+`third_party/snoringcat-platform/runtime/`. For testing patterns
+there see the snoringcat-platform repo's CI workflows and the
+in-tree GUT compliance suite for the client SDK.
 
 ## Testing with GUT
 

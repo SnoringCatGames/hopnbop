@@ -53,18 +53,72 @@ jobs:
             build/web/index.html || true
           test -s build/web/index.html
           cp -r build/web/* web/ 2>/dev/null || true
-      - name: Deploy to Cloudflare Pages
-        # Pre-Phase-F: still using S3+CloudFront. Once Phase F
-        # migrates hopnbop.net to Cloudflare Pages, swap this for
-        # `wrangler pages deploy web/`.
+      - name: Deploy to Cloudflare Pages + R2
+        # Heavy engine assets (.wasm ~38 MB, .pck) bypass Pages'
+        # 25 MiB/file cap by living on R2; the rest goes to Pages.
+        # Mirrors scripts/deploy-cf-pages.ps1 which does the same
+        # split for local deploys.
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_BUCKET: hopnbop-assets
+          PAGES_PROJECT: hopnbop-website
         run: |
-          aws s3 sync web/ s3://hopnbop-website/ --delete
-          aws cloudfront create-invalidation \
-            --distribution-id E3LT833LSVTW9R \
-            --paths '/*'
+          set -euo pipefail
+          HEAVIES=(index.wasm index.pck index.audio.worklet.js index.audio.position.worklet.js)
+
+          # 1. R2 CORS (Pages origin needs to fetch the wasm/pck;
+          #    r2.dev defaults block cross-origin reads).
+          curl -fsS -X PUT \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"rules":[{"allowed":{"origins":["*"],"methods":["GET","HEAD"],"headers":["*"]},"exposeHeaders":["Content-Length","ETag"],"maxAgeSeconds":3600}]}' \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets/$R2_BUCKET/cors" \
+            > /dev/null
+
+          # 2. Upload heavies to R2 (--remote: wrangler 4.x
+          #    defaults to a local dev simulator otherwise).
+          for f in "${HEAVIES[@]}"; do
+            [[ -f "web/$f" ]] || { echo "skip (missing): $f"; continue; }
+            mime="application/octet-stream"
+            [[ "$f" == *.wasm ]] && mime="application/wasm"
+            [[ "$f" == *.js ]]   && mime="application/javascript"
+            echo "uploading $f ($mime) to r2://$R2_BUCKET"
+            npx -y wrangler@latest r2 object put \
+              "$R2_BUCKET/$f" --file "web/$f" \
+              --content-type "$mime" --remote
+          done
+
+          # 3. Discover the bucket's public r2.dev URL.
+          R2_URL_OUT=$(npx -y wrangler@latest r2 bucket dev-url get $R2_BUCKET 2>&1)
+          R2_BASE=$(echo "$R2_URL_OUT" | grep -oE 'https://[a-z0-9-]+\.r2\.dev' | head -1)
+          [[ -n "$R2_BASE" ]] || {
+            echo "::error::could not parse r2.dev URL"
+            echo "$R2_URL_OUT"
+            exit 1
+          }
+          echo "R2 base URL: $R2_BASE"
+
+          # 4. Stage: copy web/ minus heavies, patch GODOT_CONFIG
+          #    in index.html so Godot's loader fetches heavies
+          #    from R2 instead of looking for them on Pages.
+          rm -rf staging
+          cp -r web staging
+          for f in "${HEAVIES[@]}"; do rm -f "staging/$f"; done
+          sed -i \
+            -e 's|"executable":"index"|"executable":"'"$R2_BASE"'/index"|g' \
+            -e 's|"mainPack":"index\.pck\([^"]*\)"|"mainPack":"'"$R2_BASE"'/index.pck\1"|g' \
+            staging/index.html
+          # _headers (COOP/COEP) no longer needed once wasm is
+          # cross-origin and crossOriginIsolated isn't required.
+          rm -f staging/_headers
+
+          # 5. Deploy. cd into staging so wrangler picks up any
+          #    Pages Functions in functions/ (it discovers them
+          #    relative to CWD, not the deploy-dir argument).
+          cd staging
+          npx -y wrangler@latest pages deploy . \
+            --project-name=$PAGES_PROJECT --branch=main
 
   nakama-runtime:
     name: Roll Nakama runtime modules
