@@ -45,14 +45,25 @@ jobs:
           # session token back.
           BODY=$(jq -n --arg id "ci-smoke-$(date +%s)" \
             '{id:$id}')
-          BASIC=$(printf '%s:' "${{ secrets.NAKAMA_SERVER_KEY }}" | base64)
-          RESP=$(curl -fsS -X POST \
+          # base64 -w0 to avoid 76-char line-wrap on long keys.
+          BASIC=$(printf '%s:' "${{ secrets.NAKAMA_SERVER_KEY }}" | base64 -w0)
+          # -f drops the body on 4xx, so capture body + status
+          # separately so a 401 still tells us why.
+          tmp=$(mktemp)
+          status=$(curl -sS -m 10 -o "$tmp" -w '%{http_code}' \
+            -X POST \
             -H "Authorization: Basic $BASIC" \
             -H "Content-Type: application/json" \
             -d "$BODY" \
             "${{ env.NAKAMA_URL }}/v2/account/authenticate/device?create=true")
-          TOKEN=$(echo "$RESP" | jq -r .token)
-          [ -n "$TOKEN" ] || { echo "no token"; exit 1; }
+          if [ "$status" != "200" ]; then
+            echo "::error::auth returned HTTP $status"
+            echo "body: $(cat "$tmp")"
+            exit 1
+          fi
+          TOKEN=$(jq -r .token < "$tmp")
+          rm -f "$tmp"
+          [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ] || { echo "no token"; exit 1; }
           echo "::add-mask::$TOKEN"
           echo "TOKEN=$TOKEN" >> $GITHUB_ENV
 
