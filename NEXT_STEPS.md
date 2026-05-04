@@ -1,11 +1,62 @@
 # Next Steps
 
-Captured end-of-session 2026-05-02 (UTC 2026-05-02 evening).
-The platform migration is functionally complete: AWS GameLift is
-out, Edgegap + Nakama (Hetzner) are running production matches,
-the platform-shared infra and runtime live in
-`snoringcat-platform/`, and AWS resources are queued for
-teardown via `phase-f-destroy.ps1`.
+Captured 2026-05-02; addendum 2026-05-03. The platform migration
+is functionally complete: AWS GameLift is out and torn down,
+Edgegap + Nakama (Hetzner) are running production matches, the
+platform-shared infra and runtime live in `snoringcat-platform/`,
+and Pulumi state lives on Cloudflare R2.
+
+## 2026-05-03 addendum: status sweep + new findings
+
+**Resolved since 2026-05-02:**
+
+- Phase F AWS teardown — done (commit `4f8cfe3`); zero AWS
+  resources remain.
+- Pulumi state migrated to Cloudflare R2 (`hopnbop-pulumi-state-r2`).
+- `runtime_status` static RPC list — done (commit `63affdd`);
+  list is now built from a `&registered` slice.
+- `NAKAMA_GAME_VERSION` on Hetzner host — already at `0.33.0`
+  (probed via `version_check` RPC).
+- Edgegap stale image cleanup — already complete; only `v8`
+  exists in the registry.
+- Compliance test suite — rewritten + expanded for the
+  Nakama-backed platform: 33 tests across 14 files (commits
+  `43db749`, `da8a389`).
+- `addons/gamelift_session_manager` global-class registry leak
+  — wiped + rebuilt the local `.godot/global_script_class_cache.cfg`;
+  cascading parse errors gone.
+- `CLAUDE.md` symlink claim + `src/networking/` path — corrected
+  to reflect that the addon is a copy via
+  `scripts/setup-platform-addon.ps1`, and that networking lives
+  in `addons/rollback_netcode/core/`.
+
+**New findings (2026-05-03):**
+
+- **Protocol version drift.** Client sends `protocol_version=2`
+  (`project.godot`); Nakama runtime env has `NAKAMA_PROTOCOL_VERSION`
+  unset → server reports `0`. The `version_check` RPC computes
+  `is_compatible = client==0 || client==server`, so real
+  clients (sending 2) get back `is_compatible=false`. Production
+  is still functioning, suggesting the client UI doesn't gate
+  on this signal — but it should. Either bump the runtime env
+  to 2 or relax the compat rule. Verify which path the client
+  takes on `is_compatible=false` before deciding.
+- **WebRTC cross-play silently broken** during the Edgegap
+  migration. Full audit + fix path in `docs/test-architecture-plan.md`
+  §3. Short version: `fleet_allocator.go` never reads `platform`
+  from matchmaker properties and never sets `transport_type` in
+  the match-ready payload.
+
+**Still open (lower-priority):**
+
+- Cyclic-ref `.get()` rewrites for 4 files
+  (`src/objects/splash/splash.gd`, `src/objects/fish/fish.gd`,
+  `src/ui/confirm_overlay/confirm_overlay.gd`,
+  `src/level/networked_level.gd`). Preventative-only —
+  apply only if web build emits "Could not resolve external
+  class member ... Cyclic reference" parse errors.
+- `MIGRATION_PLAN.md` is now archeology; consider moving to
+  `docs/archive/` like `platform-pivot-discussion.md`.
 
 ## Status snapshot (what works now)
 

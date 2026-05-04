@@ -262,6 +262,43 @@ match attempt confirms what the entrypoint actually does.
 Layer 2 e2e test slots into §4's integration suite when we
 build it.
 
+### Doc sweep after the fix lands
+
+Once the runtime + client + entrypoint changes ship, walk back
+through the project docs and update them to describe what
+actually exists, not the migration-intermediate state. Specific
+items:
+
+- `CLAUDE.md` § "Web Build Cross-Play" describes the
+  `is_web` matchmaker property and the runtime hook reading it
+  to set `transport_type`. The actual property name is
+  `platform` (`"web"`/`"native"`), and at the time the fix
+  lands, the runtime hook will be doing the read for the first
+  time. Match the prose to the shipped behavior.
+- `CLAUDE.md` § "Transport Architecture" → "Transport selection
+  flow" needs the same property-name correction and a refresh
+  of the step ordering against the post-Phase-F runtime.
+- `CLAUDE.md` § "End-to-End Matchmaking Flow" similarly
+  references `is_web`.
+- `third_party/snoringcat-platform/PLATFORM_ARCHITECTURE.md`
+  may have stale references to the AWS-era transport-selection
+  flow; sweep for `is_web` / GameLift port-mapping language and
+  rewrite for Edgegap.
+- The compliance suite README's `test_matchmaking.gd` row should
+  be expanded once the new transport-selection regression test
+  lands (Layer 1).
+- `MIGRATION_PLAN.md` is the historical record. Don't try to
+  bring it forward — instead, retire it to `docs/archive/` once
+  the post-migration system stabilizes (already noted as a
+  follow-up in NEXT_STEPS.md).
+
+The principle: docs should describe the system as it works
+today, with archival material kept under `docs/archive/` for
+archeology. Drift between code and docs caused at least one of
+the bugs we just shipped (the transport_type regression went
+unnoticed partly because CLAUDE.md still confidently described
+the AWS-era behavior).
+
 ---
 
 ## 4. Long-game: distributed test architecture (placeholder)

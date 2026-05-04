@@ -68,9 +68,12 @@ Submodules:
   [godot-rollback-netcode](https://github.com/SnoringCatGames/godot-rollback-netcode)
 - `third_party/snoringcat-platform/` →
   [snoringcat-platform](https://github.com/SnoringCatGames/snoringcat-platform).
-  Vendored as a submodule and consumed at
-  `addons/snoringcat_platform_client/` (symlink to the
-  submodule's addon directory).
+  Vendored as a submodule. The addon directory inside the
+  submodule is **copied** into `addons/snoringcat_platform_client/`
+  by `scripts/setup-platform-addon.ps1` (gitignored copy; copy
+  rather than junction because Godot 4.6 reads stale parser-
+  cache content through directory junctions on Windows). Re-run
+  the script after every submodule bump.
 
 To bump a submodule to a newer version, `cd` into it,
 `git fetch && git checkout vX.Y.Z` (or `main`), then commit
@@ -527,20 +530,31 @@ when ready, no client polling.
 
 ## Architecture
 
-### Networking Layer (src/networking/)
+### Networking Layer (addons/rollback_netcode/core/)
+
+The networking framework was extracted out of this repo into
+the shared `godot-rollback-netcode` submodule. The classes
+described below all live there now (not under `src/networking/`,
+which no longer exists). Game-specific networked entities and
+session glue live in `src/core/` (e.g. `nakama_matchmaker_client.gd`,
+`game_session_manager.gd`, `match_state.gd`).
 
 The networking system is frame-based with rollback support:
 
-- **NetworkMain** - Top-level controller, accessed via `G.network` singleton
-- **NetworkFrameDriver** - Core frame simulation at 60 FPS. Increments
-  `server_frame_index` directly on each physics tick for deterministic frame
-  progression. Manages rollback buffer and reconciliation.
-- **ReconcilableNetworkedState** - Base class for all networked entities;
-  implements client prediction + server authoritative reconciliation
-- **ServerTimeTracker** - NTP-like clock sync between client and server. Server
-  frame timing is based on physics ticks, with periodic wall-clock re-sync for
-  accurate logging.
-- **NetworkConnector** - ENet/WebSocket/WebRTC peer management (default port 4433)
+- **NetworkMain** - Top-level controller, accessed via the
+  `Netcode` autoload (was `G.network` pre-extraction).
+- **NetworkFrameDriver** - Core frame simulation at 60 FPS.
+  Increments `server_frame_index` directly on each physics tick
+  for deterministic frame progression. Manages rollback buffer
+  and reconciliation.
+- **ReconcilableNetworkedState** - Base class for all networked
+  entities; implements client prediction + server authoritative
+  reconciliation.
+- **ServerTimeTracker** - NTP-like clock sync between client and
+  server. Server frame timing is based on physics ticks, with
+  periodic wall-clock re-sync for accurate logging.
+- **NetworkConnector** - ENet/WebSocket/WebRTC peer management
+  (default port 4433).
 
 **Frame Processing Flow:**
 1. `_pre_network_process()` - Sync scene state from rollback buffer
