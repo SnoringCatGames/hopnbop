@@ -11,9 +11,36 @@ func _enter_tree() -> void:
 		G.settings.force_include_log_warnings,
 	)
 
+	# Server-side: the snoringcat-platform runtime sets
+	# TRANSPORT_TYPE in the Edgegap deploy env to indicate the
+	# transport for this allocation (enet for native-only
+	# matches, webrtc when any web player is in the lobby).
+	# Client-side this env var is unset, so this is a no-op
+	# there.
+	_apply_transport_from_env()
+
 	randomize()
 
 	Scaffolder.set_up()
+
+
+func _apply_transport_from_env() -> void:
+	var raw: String = OS.get_environment("TRANSPORT_TYPE")
+	if raw.is_empty():
+		return
+	match raw.to_lower():
+		"enet":
+			Netcode.settings.transport_type = (
+				NetworkSettings.TransportType.ENET)
+		"webrtc":
+			Netcode.settings.transport_type = (
+				NetworkSettings.TransportType.WEBRTC)
+		"websocket":
+			Netcode.settings.transport_type = (
+				NetworkSettings.TransportType.WEBSOCKET)
+		_:
+			push_warning(
+				"Unknown TRANSPORT_TYPE env value: %s" % raw)
 
 
 func _ready() -> void:

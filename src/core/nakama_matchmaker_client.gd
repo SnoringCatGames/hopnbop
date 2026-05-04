@@ -341,7 +341,18 @@ func _on_notification(p_notification) -> void:
 		if not server_fqdn.is_empty()
 		else server_ip)
 
-	var server_port := _pick_port(ports_dict)
+	# Read transport_type from match_ready and apply it before
+	# we connect. The runtime picks "webrtc" when any web
+	# player is in the lobby, "enet" otherwise. Older runtimes
+	# don't include this field — fall back to whatever the
+	# client already had configured.
+	var transport_type_str: String = str(
+		conn.get("transport_type", ""))
+	if not transport_type_str.is_empty():
+		_apply_transport_type(transport_type_str)
+
+	var server_port := _pick_port(
+		ports_dict, Netcode.settings.transport_type)
 	if server_port <= 0:
 		session_request_failed.emit(
 			"match_ready missing usable port")
@@ -406,14 +417,24 @@ func _on_notification(p_notification) -> void:
 	)
 
 
-func _pick_port(ports: Variant) -> int:
+func _pick_port(
+	ports: Variant,
+	transport_type: int = NetworkSettings.TransportType.ENET,
+) -> int:
 	# Edgegap status response shape:
 	#   {"<name>": {"external": int, "internal": int,
 	#               "protocol": "UDP"|"TCP"}, ...}
-	# Pick the first UDP port (typical for ENet); fall back
-	# to whatever's there if none are UDP.
+	# Pick UDP for ENet (game traffic) and TCP for WebRTC or
+	# WebSocket (signaling / TCP transport). The Edgegap app
+	# declares both 4433/UDP and 4434/TCP and forwards them to
+	# host ports; we return the host port matching the
+	# transport's protocol.
 	if not (ports is Dictionary):
 		return 0
+	var want_protocol: String = "UDP"
+	if (transport_type == NetworkSettings.TransportType.WEBRTC
+			or transport_type == NetworkSettings.TransportType.WEBSOCKET):
+		want_protocol = "TCP"
 	var fallback := 0
 	for key in ports.keys():
 		var entry: Variant = ports[key]
@@ -426,9 +447,29 @@ func _pick_port(ports: Variant) -> int:
 			fallback = ext
 		var protocol: String = str(
 			entry.get("protocol", "")).to_upper()
-		if protocol == "UDP":
+		if protocol == want_protocol:
 			return ext
 	return fallback
+
+
+func _apply_transport_type(raw: String) -> void:
+	match raw.to_lower():
+		"enet":
+			Netcode.settings.transport_type = (
+				NetworkSettings.TransportType.ENET)
+		"webrtc":
+			Netcode.settings.transport_type = (
+				NetworkSettings.TransportType.WEBRTC)
+		"websocket":
+			Netcode.settings.transport_type = (
+				NetworkSettings.TransportType.WEBSOCKET)
+		_:
+			Netcode.log.warning(
+				("[NakamaMatchmaker] unknown transport_type"
+				+ " '%s' from match_ready; keeping current"
+				+ " setting") % raw,
+				NetworkLogger.CATEGORY_CONNECTIONS,
+			)
 
 
 func _on_elapsed_tick() -> void:

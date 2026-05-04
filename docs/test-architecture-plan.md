@@ -188,33 +188,59 @@ not that transport selection is wired.
 
 ### Fix list
 
-Ordered by what unblocks what:
+Ordered by what unblocks what. **Status updated 2026-05-03:
+plumbing-layer fixes shipped; deeper rollback_netcode change
+remains.**
 
-1. **Runtime: read `platform` and set `transport_type`.**
-   In `fleet_allocator.go::OnMatchmakerMatched`, walk
-   `entries[*].GetProperties()["platform"]`. Compute:
-   - All `native` → `transport_type = "enet"`.
-   - Any `web` present → `transport_type = "webrtc"`
-     (or `"websocket"` if we want a fallback flag).
-   Add `transport_type` to the `connInfo` map.
-2. **Runtime: set Edgegap deploy env vars conditionally.**
-   When `transport_type == "webrtc"`, also set
-   `TRANSPORT_TYPE=webrtc` (or similar) in the Edgegap
-   `EnvVars`, so the game-server's entrypoint knows to start
-   the signaling server on 4434/TCP.
-3. **Server entrypoint: branch on TRANSPORT_TYPE.** I haven't
-   audited `entrypoint.sh` — the next step is to confirm it
-   already conditions nginx + signaling startup on a transport
-   env var, or to wire it up.
-4. **Client: read `transport_type` from match_ready.**
-   `nakama_matchmaker_client.gd` currently only pulls
-   `server_ip`/`server_fqdn`/`ports`/`session_ids`. It needs
-   to read `transport_type` and propagate to
-   `Netcode.settings.transport_type` before the connect call.
-5. **Client: derive the right port for the transport.**
-   For WebRTC: use `Port+1` (4434/TCP) for signaling.
-   For ENet: use `Port` (4433/UDP). The ports dict has both;
-   pick the right one based on transport.
+1. ✅ **Runtime: read `platform` and set `transport_type`.**
+   `fleet_allocator.go::OnMatchmakerMatched` now walks
+   `entries[*].GetProperties()["platform"]` and computes
+   `transport_type = "enet"` (default) or `"webrtc"` (any web
+   player present). The choice is added to the `connInfo` map.
+2. ✅ **Runtime: set Edgegap deploy env vars conditionally.**
+   `TRANSPORT_TYPE` is added to the Edgegap deploy `EnvVars`
+   alongside `EXPECTED_PLAYER_COUNT` / `EXPECTED_SESSION_IDS`.
+   Always set (never empty), so the server can branch on it.
+3. ✅ **Server-side: read TRANSPORT_TYPE on boot.**
+   `Main._enter_tree` now reads `OS.get_environment("TRANSPORT_TYPE")`
+   and sets `Netcode.settings.transport_type` before the
+   network connector starts. (No nginx involvement — that was
+   GameLift-era; Edgegap port-forwards directly.)
+4. ✅ **Client: read `transport_type` from match_ready.**
+   `nakama_matchmaker_client.gd::_handle_match_ready` reads
+   `transport_type` from the connection blob and applies it
+   via `_apply_transport_type()` before computing the port
+   and connecting.
+5. ✅ **Client: derive the right port for the transport.**
+   `_pick_port()` now takes a `transport_type` argument and
+   picks UDP (ENet) or TCP (WebRTC/WebSocket) based on it.
+
+**Still open (the deeper part):**
+
+6. ⚠️ **rollback_netcode WebRTC signaling port mismatch.**
+   The container exposes 4433/UDP (game data) and 4434/TCP
+   (signaling). But `network_connector.gd::_server_start_webrtc`
+   starts the signaling WebSocket server on `p_server_port`
+   (= 4433), not 4434. This worked on GameLift's flexible port
+   mapping but doesn't on Edgegap's strict declared-port model.
+   Fix: split signaling onto a separate port arg in the
+   rollback_netcode API; have the game-server pass 4434 (or a
+   `signaling_port` env var). Touches the rollback_netcode
+   submodule, not just this repo.
+7. ⚠️ **WSS termination for web clients.** Pre-Phase-F nginx
+   in the container terminated TLS for the WebRTC signaling
+   WSS connections. The post-Phase-F entrypoint dropped nginx.
+   Web clients need TLS-terminated signaling; either
+   re-introduce a TLS terminator in the container, or have the
+   Godot signaling server listen WSS directly using a cert
+   mounted at deploy time. Native clients can use plain ws://
+   per CLAUDE.md's "Godot Native WSS Limitation" workaround.
+8. ⚠️ **Layer 1 regression test** for transport selection.
+   The compliance suite now has socket-rig support (§2);
+   adding `test_transport_selection.gd` is straightforward
+   once the port mismatch (#6) is fixed enough that the test
+   can actually drive a match end-to-end. Today the test would
+   succeed at `transport_type` selection but fail at handshake.
 
 ### Regression test design
 
