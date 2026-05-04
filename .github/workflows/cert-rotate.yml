@@ -109,7 +109,10 @@ jobs:
       - name: Issue ECDSA wildcard cert via certbot
         if: steps.decide.outputs.renew == 'true'
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Dedicated DNS-01 token (Zone:DNS:Edit on
+          # snoringcat.games). Separate from CLOUDFLARE_API_TOKEN
+          # which is scoped for Pages/R2 deploys only.
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_DNS_TOKEN }}
         run: |
           # Stage Cloudflare credentials in a 600-perm file so
           # certbot's complaint about loose permissions stays
