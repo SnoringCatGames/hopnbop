@@ -173,7 +173,7 @@ jobs:
           NOTES=$(git log "${PREV:-HEAD~10}..${{ github.ref_name }}" \
             --pretty=format:"- %s (%h)" 2>/dev/null \
             | head -20)
-          STATUS="${{ needs.game-server.result == 'success' && needs.web-client.result == 'success' && needs.nakama-runtime.result == 'success' && ':white_check_mark: deployed' || ':x: partial failure' }}"
+          STATUS="${{ needs.game-server.result == 'success' && needs.web-client.result == 'success' && needs.nakama-runtime.result == 'success' && '✅ deployed' || '❌ partial failure' }}"
           curl -fsS -X POST \
             -H "Content-Type: application/json" \
             -d "$(jq -n --arg c "**${{ github.ref_name }}** $STATUS\n$NOTES" '{content:$c}')" \

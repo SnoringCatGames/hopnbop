@@ -316,26 +316,11 @@ func _auto_start_game() -> void:
 func _notification(notification_type: int) -> void:
 	match notification_type:
 		NOTIFICATION_WM_GO_BACK_REQUEST:
-			# Handle the Android back button to navigate within the app instead of
-			# quitting the app.
-			if false:
-				close_app()
-			else:
-				# TODO: Close the current screen/context.
-				pass
+			# Android back button. We don't have an in-app
+			# navigation stack to pop yet; treat as quit until
+			# screen-stack handling exists.
+			close_app()
 		NOTIFICATION_WM_CLOSE_REQUEST:
-			# DIAGNOSTIC: log stack to identify what's
-			# triggering window close on the C1 preview
-			# client after match-over. (NEXT_STEPS.md
-			# P1.6, 2026-05-01)
-			Netcode.print(
-				(
-					"[diag] NOTIFICATION_WM_CLOSE_REQUEST"
-					+ " received"
-				),
-				NetworkLogger.CATEGORY_CORE_SYSTEMS,
-			)
-			print_stack()
 			_disconnect_peers_in_preview_mode()
 			close_app()
 		_:

@@ -1,10 +1,12 @@
 name: Nightly Smoke
 
-# Runs the full Nakama + Edgegap E2E flow against the staging
-# Nakama every night. Pings Discord on failure.
+# Smoke tests prod Nakama + Edgegap config + the public web
+# client deploy every night. Pings Discord on failure.
 #
-# Replaces the legacy nightly test.yml — kept as
-# Run Tests until that file is removed in a follow-up commit.
+# Originally written to target a staging Nakama instance but
+# Phase G's staging step was scoped out; production is the
+# authoritative target. All probes are read-only or use
+# ephemeral data that doesn't pollute live state.
 
 on:
   schedule:
@@ -12,11 +14,6 @@ on:
   workflow_dispatch:
 
 env:
-  # Points at PROD Nakama. Staging (nakama-staging.snoringcat.games)
-  # was the original target but isn't provisioned yet (Phase G).
-  # The auth probe uses an ephemeral device_id that auto-expires,
-  # so it's safe to run against prod nightly. Swap back to
-  # nakama-staging when the staging stack is up.
   NAKAMA_URL: https://nakama.snoringcat.games
   GODOT_VERSION: 4.5.0-stable
 
@@ -67,20 +64,79 @@ jobs:
           echo "::add-mask::$TOKEN"
           echo "TOKEN=$TOKEN" >> $GITHUB_ENV
 
-      - name: 10-ticket sustained matchmaking
+      - name: Runtime config probe
+        env:
+          NAKAMA_HTTP_KEY: ${{ secrets.NAKAMA_HTTP_KEY }}
         run: |
-          # TODO Phase G: enqueue 10 tickets against the staging
-          # matchmaker and confirm Edgegap allocates within the
-          # 30-second SLA. Stubbed for now — the auth probe is
-          # sufficient to detect a fully-down stack.
-          echo "TODO: implement matchmaking smoke"
+          # The runtime_status RPC is server-to-server (HTTP-key
+          # auth, no session token). It returns the runtime's
+          # snapshot of EDGEGAP_APP_NAME / EDGEGAP_APP_VERSION /
+          # matchmaker_hook_active / build_id. Catches a class of
+          # silent regressions where the runtime loaded but lost
+          # its env vars (e.g. config.yml render dropped a
+          # placeholder).
+          # Nakama's REST RPC endpoint expects EITHER an empty
+          # body OR a JSON-quoted string ("{}"). A bare JSON
+          # object ({}) returns HTTP 400.
+          tmp=$(mktemp)
+          status=$(curl -sS -m 10 -o "$tmp" -w '%{http_code}' \
+            -X POST \
+            "${{ env.NAKAMA_URL }}/v2/rpc/runtime_status?http_key=$NAKAMA_HTTP_KEY")
+          if [ "$status" != "200" ]; then
+            echo "::error::runtime_status returned HTTP $status"
+            echo "body: $(cat "$tmp")"
+            exit 1
+          fi
+          # Response shape: {"payload":"<json-string>"} where the
+          # string itself is the runtime's status JSON.
+          INNER=$(jq -r .payload < "$tmp")
+          rm -f "$tmp"
+          echo "$INNER" | jq .
+          APP=$(echo "$INNER" | jq -r '.edgegap_app_name // ""')
+          [ -n "$APP" ] && [[ "$APP" != *'${'* ]] || {
+            echo "::error::edgegap_app_name is empty or unsubstituted placeholder: '$APP'"
+            exit 1
+          }
+          # matchmaker_hook_active appears as a top-level boolean
+          # (named differently across versions; tolerate both
+          # spellings until the field stabilizes).
+          HOOKED=$(echo "$INNER" | jq -r '.matchmaker_hook_active // .edgegap_token_set // false')
+          [ "$HOOKED" = "true" ] || {
+            echo "::error::matchmaker hook not active (HOOKED=$HOOKED)"
+            exit 1
+          }
+          echo "OK: app=$APP, matchmaker hook active"
 
-      - name: Headless web client variant
+      - name: Web client smoke
         run: |
-          # TODO Phase G: pull the Cloudflare Pages preview
-          # deployment, run a Playwright/Puppeteer headless run
-          # that joins a match. Stubbed.
-          echo "TODO: implement web smoke"
+          # Curl-based smoke against the live Cloudflare Pages
+          # deploy. Note: COOP/COEP headers are intentionally
+          # ABSENT from hopnbop.net post-migration (the deploy
+          # script drops _headers because heavies are
+          # cross-origin on R2 and the page doesn't need
+          # crossOriginIsolated). What we DO validate:
+          #  - HTTP 200 from the Pages root
+          #  - GODOT_CONFIG was patched to absolute R2 URLs
+          #    (literal "executable":"index" means the deploy's
+          #    patch step was skipped — the build will 404 on
+          #    the wasm)
+          #  - R2 heavies are HEAD-able with CORS open
+          #    (otherwise the cross-origin wasm fetch fails)
+          set -e
+          curl -fsS -o /dev/null -w 'hopnbop.net: HTTP %{http_code}\n' https://hopnbop.net/
+
+          html=$(curl -fsS https://hopnbop.net/)
+          echo "$html" | grep -qE '"executable":"https://[a-z0-9-]+\.r2\.dev/index"' \
+            || { echo "::error::GODOT_CONFIG executable isn't an R2 URL — deploy patch step likely skipped"; exit 1; }
+
+          r2_base=$(echo "$html" | grep -oE '"executable":"https://[a-z0-9-]+\.r2\.dev/index"' \
+            | sed -E 's|.*"(https://[a-z0-9-]+\.r2\.dev)/index"|\1|')
+          for asset in index.wasm index.pck; do
+            curl -fsSI -H "Origin: https://hopnbop.net" "$r2_base/$asset" \
+              | grep -qiE '^access-control-allow-origin' \
+              || { echo "::error::R2 $asset missing ACAO header (CORS broken)"; exit 1; }
+          done
+          echo "OK: hopnbop.net serving + GODOT_CONFIG patched + R2 heavies have CORS"
 
       - name: Discord ping on failure
         if: failure()
@@ -89,6 +145,6 @@ jobs:
         run: |
           curl -fsS -X POST \
             -H "Content-Type: application/json" \
-            -d "$(jq -n --arg c ":x: nightly smoke failed - $GITHUB_RUN_URL" \
+            -d "$(jq -n --arg c "❌ nightly smoke failed — $GITHUB_RUN_URL" \
               '{content:$c}')" \
             "$DISCORD_WEBHOOK_URL"

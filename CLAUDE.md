@@ -31,7 +31,7 @@ Nakama+Hetzner+Edgegap completed 2026-05-03 (Phase F). Live
 production runs on Hetzner CPX11 (Nakama + Postgres) with
 Edgegap-allocated game-server containers. Historical migration
 notes for archeology are in `MIGRATION_PLAN.md` and
-`platform-pivot-discussion.md`.
+`docs/archive/platform-pivot-discussion.md`.
 
 **Per-game protocol versioning** (post-migration): each game has
 its own `protocol_version` integer in `game.yaml` and
