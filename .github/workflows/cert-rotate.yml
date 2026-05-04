@@ -197,11 +197,11 @@ jobs:
                 and .key != "TLS_ISSUED_AT"
               )))
               + [
-                # Edgegap's API uses `is_secret`, not `is_hidden`
-                # — the docs say `is_hidden` but live responses
-                # use `is_secret` (verified 2026-05-04). Both
-                # cert env vars MUST be is_secret=true so the
-                # private key isn't readable via GET.
+                # Edgegap API uses is_secret (the docs use
+                # is_hidden but live responses confirm
+                # is_secret as of 2026-05-04). Cert vars MUST
+                # be is_secret=true so the private key is not
+                # exposed via GET.
                 {key: "TLS_FULLCHAIN", value: $fullchain, is_secret: true},
                 {key: "TLS_PRIVKEY",   value: $privkey,   is_secret: true},
                 {key: "TLS_ISSUED_AT", value: $issued_at, is_secret: false}
