@@ -26,21 +26,31 @@ func _enter_tree() -> void:
 
 func _apply_transport_from_env() -> void:
 	var raw: String = OS.get_environment("TRANSPORT_TYPE")
-	if raw.is_empty():
-		return
-	match raw.to_lower():
-		"enet":
-			Netcode.settings.transport_type = (
-				NetworkSettings.TransportType.ENET)
-		"webrtc":
-			Netcode.settings.transport_type = (
-				NetworkSettings.TransportType.WEBRTC)
-		"websocket":
-			Netcode.settings.transport_type = (
-				NetworkSettings.TransportType.WEBSOCKET)
-		_:
-			push_warning(
-				"Unknown TRANSPORT_TYPE env value: %s" % raw)
+	if not raw.is_empty():
+		match raw.to_lower():
+			"enet":
+				Netcode.settings.transport_type = (
+					NetworkSettings.TransportType.ENET)
+			"webrtc":
+				Netcode.settings.transport_type = (
+					NetworkSettings.TransportType.WEBRTC)
+			"websocket":
+				Netcode.settings.transport_type = (
+					NetworkSettings.TransportType.WEBSOCKET)
+			_:
+				push_warning(
+					"Unknown TRANSPORT_TYPE env value: %s"
+					% raw)
+	# Optional override for the signaling port. Edgegap declares
+	# 4434/TCP for signaling separate from 4433/UDP for game
+	# data; the runtime injects SIGNALING_PORT=4434 when
+	# allocating a webrtc-mode container.
+	var signaling_raw: String = OS.get_environment(
+		"SIGNALING_PORT")
+	if not signaling_raw.is_empty():
+		var parsed := int(signaling_raw)
+		if parsed > 0:
+			Netcode.settings.signaling_port = parsed
 
 
 func _ready() -> void:
