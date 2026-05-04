@@ -213,9 +213,15 @@ foreach ($f in $heavyAssets) {
 		# --remote: wrangler 4.x defaults `r2 object put` to a
 		# local dev simulator; without --remote, the upload
 		# silently lands in ~/.wrangler/ instead of R2.
+		# --cache-control: force browsers to revalidate via
+		# ETag on every load. Without this, R2 sent no cache
+		# header and browsers cached the wasm/pck for hours by
+		# heuristic, so users kept loading old builds across
+		# deploys until they manually cleared the cache.
 		npx -y wrangler@latest r2 object put `
 			"${Bucket}/${f}" --file "$path" `
 			--content-type (Get-MimeType $f) `
+			--cache-control "no-cache, must-revalidate" `
 			--remote | Out-Null
 	}
 }

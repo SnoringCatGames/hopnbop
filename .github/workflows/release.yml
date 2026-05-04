@@ -84,9 +84,15 @@ jobs:
             [[ "$f" == *.wasm ]] && mime="application/wasm"
             [[ "$f" == *.js ]]   && mime="application/javascript"
             echo "uploading $f ($mime) to r2://$R2_BUCKET"
+            # --cache-control: force browsers to revalidate
+            # via ETag on every load. Without this, R2 sent no
+            # cache header and browsers cached for hours
+            # heuristically, so users kept loading old builds.
             npx -y wrangler@latest r2 object put \
               "$R2_BUCKET/$f" --file "web/$f" \
-              --content-type "$mime" --remote
+              --content-type "$mime" \
+              --cache-control "no-cache, must-revalidate" \
+              --remote
           done
 
           # 3. Discover the bucket's public r2.dev URL.
