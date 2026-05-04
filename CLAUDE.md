@@ -256,8 +256,11 @@ If the changes require users to re-consent, also bump
 
 **Hetzner platform tier** (Pulumi-managed in
 `third_party/snoringcat-platform/infra/pulumi/snoringcat-platform/`):
-- **Project:** `snoringcat-platform`, stack `prod`, state in S3
-  `hopnbop-pulumi-state` (us-west-2 — last AWS dependency).
+- **Project:** `snoringcat-platform`, stack `prod`, state in
+  Cloudflare R2 bucket `hopnbop-pulumi-state-r2`. Pulumi
+  authenticates via S3-compat keys in `R2_ACCESS_KEY_ID` /
+  `R2_SECRET_ACCESS_KEY` / `R2_ENDPOINT` (sourced from
+  `~/.hopnbop-migration/credentials.env`).
 - **nakama-prod-1:** CPX11 in Hillsboro, Nakama + Caddy +
   Prometheus/Grafana/Loki/Promtail + cost-monitor systemd timer.
 - **postgres-prod-1:** CPX11 in Hillsboro, Postgres 16 + node-
@@ -282,10 +285,12 @@ If the changes require users to re-consent, also bump
 - **Cost-monitor thresholds:** R2 warn 8 GB / hard 9.5 GB, Pages
   builds warn 400 / hard 475 of the 500/mo free tier.
 
-**Legacy AWS:** torn down 2026-05-03 (Phase F). The only AWS
-dependency that remains is the S3 bucket holding Pulumi state
-(`hopnbop-pulumi-state`); migrate Pulumi state off S3 if you
-ever want to be fully AWS-free.
+**Legacy AWS:** fully torn down. Phase F (2026-05-03) deleted the
+hopnbop-* GameLift / Lambda / S3 / CloudFront / Route 53 surface;
+the orphan `snoringcat-platform-backend` SAM stack and Pulumi-
+state S3 bucket were cleaned up the next day. **Zero AWS
+resources remain in the account.** Pulumi state migrated to
+Cloudflare R2.
 
 ### Game-server allocation (Edgegap)
 
