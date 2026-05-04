@@ -461,9 +461,18 @@ func _start_browser_oauth(
 	# Providers that require HTTPS redirect URIs use the
 	# hosted callback page, which then forwards the code
 	# to the loopback server via a client-side redirect.
+	#
+	# Use .get() instead of `G.settings.oauth_callback_url`.
+	# Direct typed access trips Godot 4.7-beta1's web parser
+	# in a cyclic-reference cascade through the autoload graph
+	# and prevents this whole script from parsing — which then
+	# silently breaks every web auth flow (the symptom is
+	# "stuck at resuming session", verified 2026-05-04). See
+	# CLAUDE.md "Web Build Cyclic-Reference Parser Failures".
 	var redirect_uri: String
 	if provider in _HTTPS_REDIRECT_PROVIDERS:
-		redirect_uri = G.settings.oauth_callback_url
+		redirect_uri = str(
+			G.get("settings").get("oauth_callback_url"))
 	else:
 		redirect_uri = (
 			"http://%s:%d"

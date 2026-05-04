@@ -39,7 +39,7 @@ window/size/viewport_height=765
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/gamelift_session_manager/plugin.cfg", "res://addons/gut/plugin.cfg", "res://addons/rollback_netcode/plugin.cfg")
+enabled=PackedStringArray("res://addons/gut/plugin.cfg", "res://addons/rollback_netcode/plugin.cfg")
 
 [input]
 
