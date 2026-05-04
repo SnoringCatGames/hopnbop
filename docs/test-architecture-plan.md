@@ -229,12 +229,80 @@ remains.**
    submodule, not just this repo.
 7. ⚠️ **WSS termination for web clients.** Pre-Phase-F nginx
    in the container terminated TLS for the WebRTC signaling
-   WSS connections. The post-Phase-F entrypoint dropped nginx.
-   Web clients need TLS-terminated signaling; either
-   re-introduce a TLS terminator in the container, or have the
-   Godot signaling server listen WSS directly using a cert
-   mounted at deploy time. Native clients can use plain ws://
-   per CLAUDE.md's "Godot Native WSS Limitation" workaround.
+   WSS connections; the post-Phase-F entrypoint dropped nginx.
+   Web clients need TLS-terminated signaling.
+
+   ### Constraint that drives the design
+
+   - Web clients MUST connect via `wss://` (browser policy
+     blocks plain `ws://` from an HTTPS page).
+   - Native clients MUST connect via plain `ws://` per
+     CLAUDE.md's "Godot Native WSS Limitation" (Godot 4.5's
+     native client can't establish wss:// to remote servers).
+   - **Both client types coexist in the same WebRTC match**,
+     so we need both protocols available on the server.
+
+   ### Options
+
+   **A. Re-introduce nginx with `ssl_preread`** (matches
+   pre-Phase-F). One declared port (4434), nginx sniffs TLS:
+   wss → TLS-terminate → forward to Godot at a private port;
+   ws → pass through. Proven config; the historical
+   `nginx.conf` is in git history.
+   - Pros: single declared port, both clients work, zero
+     Godot/netcode changes from here.
+   - Cons: adds nginx + a process supervisor to the container;
+     extra binary; cert mounting/rotation logistics.
+
+   **B. Caddy with auto-Let's-Encrypt.** Same shape as A,
+   simpler config. Can issue cert at startup via DNS-01 if
+   we hand it a Cloudflare API token.
+   - Pros: simpler config, automated cert rotation.
+   - Cons: still two processes; ACME during boot adds startup
+     latency + a Cloudflare API dependency on every cold
+     start.
+
+   **C. Godot WebSocketMultiplayerPeer with `TLSOptions.server()`.**
+   Two separate declared ports — 4434/TCP for wss (web),
+   4435/TCP for plain ws (native). Each client picks based on
+   `platform`.
+   - Pros: single process; no extra binary; cleanest with the
+     rollback_netcode design.
+   - Cons: requires adding a third declared port to the
+     Edgegap app + plumbing in the matchmaker hook to
+     advertise both signaling ports; cert-rotation problem
+     unchanged.
+
+   **D. Drop native-cross-play; web-only WebRTC.** Force
+   native clients in cross-play matches to use WebSocket
+   (TCP, accepts the head-of-line latency hit) and only web
+   gets a WebRTC connection. Server still terminates TLS for
+   web; native goes through plain ws.
+   - Pros: simpler than B/C in code.
+   - Cons: degrades native cross-play perf — but CLAUDE.md
+     already documents that WebSocket cross-play at 100ms
+     ping with TCP HOL is "playable but noticeably less
+     smooth". This is a product call.
+
+   ### Cert provisioning (orthogonal)
+
+   Independent of A/B/C/D, the cert has to come from somewhere:
+   1. Baked into the container image at build time (manual
+      Let's Encrypt DNS-01 every 60-90 days).
+   2. Mounted via an Edgegap secret at deploy time (same
+      cadence; cert lives on the platform side, not in the
+      image).
+   3. Auto-issued at container startup (Caddy/B; or a
+      cert-manager script for A/C). Requires a Cloudflare API
+      token in the container.
+
+   ### Recommendation
+
+   **A (nginx with ssl_preread) + cert mounted via Edgegap
+   secret.** Closest to the working pre-Phase-F path; preserves
+   single-port-per-client; defers ACME plumbing. The user
+   should confirm before implementation since this brings
+   nginx back into the game-server container.
 8. ⚠️ **Layer 1 regression test** for transport selection.
    The compliance suite now has socket-rig support (§2);
    adding `test_transport_selection.gd` is straightforward
