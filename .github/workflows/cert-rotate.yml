@@ -142,6 +142,11 @@ jobs:
             --key-type ecdsa \
             --elliptic-curve secp256r1 \
             -d "$LE_DOMAIN"
+          # certbot inside docker runs as root, writes root-
+          # owned files into the bind mount. Hand the workspace
+          # back to the runner user so the inspection + read
+          # commands below work.
+          sudo chown -R "$(id -u):$(id -g)" tls-config tls-work tls-logs
           # Confirm it's there.
           ls -la tls-config/archive/game.hopnbop.net/
           # Resolve the symlink to find the latest archive
