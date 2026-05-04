@@ -1,15 +1,20 @@
-# Slim Edgegap-targeted game-server image. Compared to the
-# legacy GameLift Dockerfile this drops:
+# Edgegap-targeted game-server image. Compared to the legacy
+# GameLift Dockerfile this drops:
 #   - GameLift Server SDK builder stage (Edgegap doesn't need it)
 #   - webrtc-native v1.0.9 patch stage (Edgegap port-forwards
 #     declared container ports directly, so no portRangeBegin /
 #     portRangeEnd / enableIceUdpMux patches needed)
-#   - nginx config (no GameLift host-port remapping)
 #   - entrypoint.sh Route 53 logic (Edgegap assigns hostnames)
+#
+# nginx is here for WebRTC signaling TLS termination — the
+# entrypoint writes TLS_FULLCHAIN / TLS_PRIVKEY env vars to
+# /game/tls/ and starts nginx, which fronts 4434/TCP and
+# proxies plain WebSocket to Godot's signaling on 4433/TCP.
+# Browser wss:// gets terminated; native ws:// passes through.
 #
 # Container ports declared:
 #   - 4433/UDP (ENet + WebRTC DataChannels)
-#   - 4434/TCP (WebRTC signaling, when transport_type=webrtc)
+#   - 4434/TCP (WebRTC signaling via nginx)
 #
 # The Godot Linux server binary + pck are built outside via:
 #   godot --headless --export-release "Linux Server" \
@@ -32,7 +37,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libssl3 \
     libstdc++6 \
+    libnginx-mod-stream \
+    nginx \
+    openssl \
     && rm -rf /var/lib/apt/lists/*
+
+# nginx config for WebRTC signaling TLS termination.
+COPY infra/game-server/nginx.conf /etc/nginx/nginx.conf
 
 # Standalone Godot server binary + sibling pck.
 COPY build/linux/hopnbop_server.x86_64 /game/hopnbop_server.x86_64
