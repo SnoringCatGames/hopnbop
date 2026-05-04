@@ -227,10 +227,49 @@ remains.**
    rollback_netcode API; have the game-server pass 4434 (or a
    `signaling_port` env var). Touches the rollback_netcode
    submodule, not just this repo.
-7. ⚠️ **WSS termination for web clients.** Pre-Phase-F nginx
-   in the container terminated TLS for the WebRTC signaling
-   WSS connections; the post-Phase-F entrypoint dropped nginx.
-   Web clients need TLS-terminated signaling.
+7. ✅ **WSS termination for web clients** (code) **/ cert
+   rotation** (automation). Code: nginx is back in the
+   game-server container with `ssl_preread`, terminating wss://
+   for web clients on 4434/TCP and pass-throughing native
+   ws://. Decision: Option A (nginx) + Auto-Option 2 (Edgegap
+   secret rotation, ECDSA cert).
+
+   Shipped in:
+   - `9dd5a18` (parent): `Dockerfile.edgegap` adds nginx,
+     `infra/game-server/nginx.conf` (new), `entrypoint.sh`
+     writes `TLS_FULLCHAIN`/`TLS_PRIVKEY` to `/game/tls/` and
+     starts nginx before exec'ing Godot.
+   - `553825b` (platform): runtime drops the `SIGNALING_PORT`
+     env var since Godot signaling is co-located on 4433/TCP
+     internally and nginx fronts 4434/TCP.
+   - First wildcard ECDSA cert issued via certbot
+     `dns-cloudflare`, expiring 2026-08-02.
+   - `.github/workflows/cert-rotate.yml`: weekly cron checks
+     `TLS_ISSUED_AT` companion env var, renews via DNS-01 if
+     within 30 days of expiry, PATCHes every active Edgegap
+     version's env vars, Discord-pings.
+
+   Verified locally: `docker build` succeeds; container boots;
+   nginx terminates TLS 1.3 against the issued cert
+   (`subject: CN=*.game.hopnbop.net`, issuer Let's Encrypt
+   E7); ssl_preread routes wss → terminate → proxy and ws →
+   pass-through. The Godot binary in my local `build/linux/`
+   is stale (predates the gamelift addon removal) and crashes,
+   but CI rebuild will produce a fresh one — that's a build
+   pipeline concern, not a transport concern.
+
+   **Remaining (deploy steps, gated on user direction):**
+   1. Trigger `game-server.yml` CI workflow to build + push
+      image as `v9`.
+   2. Register `v9` in Edgegap (dashboard) so it appears in
+      the active-versions list.
+   3. Run `cert-rotate.yml` once (workflow_dispatch with
+      `force_renew=true`) to populate cert env vars on `v9`.
+   4. SSH to Hetzner, bump `EDGEGAP_APP_VERSION=v9` in
+      `/opt/nakama/config.yml` (or via the same redeploy path
+      as `NAKAMA_PROTOCOL_VERSION` was hot-fixed), restart
+      Nakama.
+   5. Real-world verify with a `web + native` test match.
 
    ### Constraint that drives the design
 

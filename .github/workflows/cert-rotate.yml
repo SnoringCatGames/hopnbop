@@ -1,0 +1,233 @@
+name: Rotate WebRTC TLS cert
+
+# Issues an ECDSA wildcard cert for *.game.hopnbop.net via
+# Let's Encrypt DNS-01 (Cloudflare DNS) and pushes it to every
+# active Edgegap app version's env vars (TLS_FULLCHAIN /
+# TLS_PRIVKEY, is_hidden=true). New game-server allocations
+# pick up the rotated cert; running matches keep their existing
+# cert until they finish (which is what we want — no rolling
+# restart needed).
+#
+# Cadence: weekly check, renews when within 30 days of expiry
+# OR when the Edgegap version reports no TLS_ISSUED_AT yet
+# (first-time setup).
+#
+# Edgegap env-var size limit is 4 KB. ECDSA-P-256 fullchain is
+# ~2.9 KB; private key is ~250 B. Comfortable headroom.
+
+on:
+  schedule:
+    # Sunday 05:00 UTC. Off-peak; weekly check is overkill for
+    # 90-day certs but cheap insurance.
+    - cron: '0 5 * * 0'
+  workflow_dispatch:
+    inputs:
+      force_renew:
+        description: 'Renew even if not within threshold'
+        type: boolean
+        default: false
+
+env:
+  EDGEGAP_APP: hopnbop-server
+  LE_DOMAIN: '*.game.hopnbop.net'
+  LE_EMAIL: levisl176@gmail.com
+  RENEW_THRESHOLD_DAYS: 30
+
+jobs:
+  rotate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Find active Edgegap version(s)
+        id: list
+        env:
+          EDGEGAP_TOKEN: ${{ secrets.EDGEGAP_TOKEN }}
+        run: |
+          # Pull versions; collect names where is_active=true.
+          resp=$(curl -fsS -H "Authorization: token $EDGEGAP_TOKEN" \
+            "https://api.edgegap.com/v1/app/${EDGEGAP_APP}/versions")
+          versions=$(echo "$resp" | jq -r \
+            '.versions[] | select(.is_active==true) | .name')
+          if [ -z "$versions" ]; then
+            echo "::error::No active Edgegap versions found for $EDGEGAP_APP"
+            exit 1
+          fi
+          echo "Active versions:"
+          echo "$versions"
+          {
+            echo "versions<<EOF"
+            echo "$versions"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Decide whether to renew
+        id: decide
+        env:
+          EDGEGAP_TOKEN: ${{ secrets.EDGEGAP_TOKEN }}
+          VERSIONS: ${{ steps.list.outputs.versions }}
+          FORCE: ${{ inputs.force_renew }}
+        run: |
+          if [ "$FORCE" = "true" ]; then
+            echo "Forced renewal."
+            echo "renew=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Pick the first active version's TLS_ISSUED_AT for
+          # the freshness check. All active versions are
+          # rotated together, so one is representative.
+          first_version=$(echo "$VERSIONS" | head -1)
+          version_resp=$(curl -fsS \
+            -H "Authorization: token $EDGEGAP_TOKEN" \
+            "https://api.edgegap.com/v1/app/${EDGEGAP_APP}/version/${first_version}")
+          issued_at=$(echo "$version_resp" | jq -r \
+            '.envs[] | select(.key=="TLS_ISSUED_AT") | .value' \
+            || true)
+          if [ -z "$issued_at" ] || [ "$issued_at" = "null" ]; then
+            echo "TLS_ISSUED_AT missing on $first_version; first-run renewal."
+            echo "renew=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Compare to "now - 60 days" (Let's Encrypt 90-day
+          # cert with 30-day threshold = renew at 60 days).
+          issued_epoch=$(date -d "$issued_at" +%s 2>/dev/null || echo 0)
+          if [ "$issued_epoch" = "0" ]; then
+            echo "Couldn't parse TLS_ISSUED_AT='$issued_at'; renewing."
+            echo "renew=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          now_epoch=$(date +%s)
+          age_days=$(( (now_epoch - issued_epoch) / 86400 ))
+          renew_after=$(( 90 - RENEW_THRESHOLD_DAYS ))
+          echo "Cert age: ${age_days}d (renew threshold: ${renew_after}d)"
+          if [ "$age_days" -ge "$renew_after" ]; then
+            echo "renew=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Cert still fresh — skipping."
+            echo "renew=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Issue ECDSA wildcard cert via certbot
+        if: steps.decide.outputs.renew == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          # Stage Cloudflare credentials in a 600-perm file so
+          # certbot's complaint about loose permissions stays
+          # cosmetic.
+          mkdir -p creds tls-config tls-work tls-logs
+          cat > creds/cloudflare.ini <<EOF
+          dns_cloudflare_api_token = $CLOUDFLARE_API_TOKEN
+          EOF
+          chmod 600 creds/cloudflare.ini
+          # Run certbot in the official Docker image. The
+          # working dir gets bind-mounted so the cert files
+          # appear at ./tls-config/live/game.hopnbop.net/.
+          docker run --rm \
+            -v "$(pwd)/tls-config:/etc/letsencrypt" \
+            -v "$(pwd)/tls-work:/var/lib/letsencrypt" \
+            -v "$(pwd)/tls-logs:/var/log/letsencrypt" \
+            -v "$(pwd)/creds:/creds:ro" \
+            certbot/dns-cloudflare:latest \
+            certonly \
+            --non-interactive \
+            --dns-cloudflare \
+            --dns-cloudflare-credentials /creds/cloudflare.ini \
+            --dns-cloudflare-propagation-seconds 30 \
+            --email "$LE_EMAIL" \
+            --agree-tos \
+            --no-eff-email \
+            --key-type ecdsa \
+            --elliptic-curve secp256r1 \
+            -d "$LE_DOMAIN"
+          # Confirm it's there.
+          ls -la tls-config/archive/game.hopnbop.net/
+          # Resolve the symlink to find the latest archive
+          # files. The deploy step reads from archive/ to avoid
+          # following symlinks across the docker bind mount.
+          ls tls-config/archive/game.hopnbop.net/fullchain*.pem \
+            | sort | tail -1 > .fullchain_path
+          ls tls-config/archive/game.hopnbop.net/privkey*.pem \
+            | sort | tail -1 > .privkey_path
+          fullchain_size=$(stat -c%s "$(cat .fullchain_path)")
+          privkey_size=$(stat -c%s "$(cat .privkey_path)")
+          echo "fullchain: ${fullchain_size}B  privkey: ${privkey_size}B"
+          if [ "$fullchain_size" -gt 4096 ] || [ "$privkey_size" -gt 4096 ]; then
+            echo "::error::Cert exceeds Edgegap 4KB env-var limit"
+            exit 1
+          fi
+
+      - name: PATCH Edgegap envs on every active version
+        if: steps.decide.outputs.renew == 'true'
+        env:
+          EDGEGAP_TOKEN: ${{ secrets.EDGEGAP_TOKEN }}
+          VERSIONS: ${{ steps.list.outputs.versions }}
+        run: |
+          fullchain=$(cat "$(cat .fullchain_path)")
+          privkey=$(cat "$(cat .privkey_path)")
+          issued_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          # Build the JSON body. The PATCH endpoint replaces
+          # the envs array, so we have to read the existing
+          # envs, splice in/replace TLS_*, and write back.
+          while IFS= read -r version; do
+            [ -z "$version" ] && continue
+            echo "Patching ${version}..."
+            existing=$(curl -fsS \
+              -H "Authorization: token $EDGEGAP_TOKEN" \
+              "https://api.edgegap.com/v1/app/${EDGEGAP_APP}/version/${version}" \
+              | jq '.envs // []')
+            new_envs=$(jq -n \
+              --argjson existing "$existing" \
+              --arg fullchain "$fullchain" \
+              --arg privkey "$privkey" \
+              --arg issued_at "$issued_at" \
+              '
+              # Strip existing TLS_* keys, append the fresh ones.
+              ($existing | map(select(
+                .key != "TLS_FULLCHAIN"
+                and .key != "TLS_PRIVKEY"
+                and .key != "TLS_ISSUED_AT"
+              )))
+              + [
+                {key: "TLS_FULLCHAIN", value: $fullchain, is_hidden: true},
+                {key: "TLS_PRIVKEY",   value: $privkey,   is_hidden: true},
+                {key: "TLS_ISSUED_AT", value: $issued_at, is_hidden: false}
+              ]
+              ')
+            body=$(jq -n --argjson envs "$new_envs" '{envs: $envs}')
+            curl -fsS -X PATCH \
+              -H "Authorization: token $EDGEGAP_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$body" \
+              "https://api.edgegap.com/v1/app/${EDGEGAP_APP}/version/${version}" \
+              >/dev/null
+            echo "OK ${version}"
+          done <<< "$VERSIONS"
+
+      - name: Discord ping (success)
+        if: success()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RENEWED: ${{ steps.decide.outputs.renew }}
+          VERSIONS: ${{ steps.list.outputs.versions }}
+        run: |
+          if [ "$RENEWED" = "true" ]; then
+            msg="✅ TLS cert rotated for *.game.hopnbop.net"
+            msg="$msg ($(echo "$VERSIONS" | tr '\n' ' '))"
+          else
+            msg="ℹ️ TLS cert still fresh — no rotation this run"
+          fi
+          curl -fsS -X POST \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg c "$msg" '{content:$c}')" \
+            "$DISCORD_WEBHOOK_URL"
+
+      - name: Discord ping (failure)
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -fsS -X POST \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg c "❌ TLS cert rotation failed — $GITHUB_RUN_URL" '{content:$c}')" \
+            "$DISCORD_WEBHOOK_URL"
