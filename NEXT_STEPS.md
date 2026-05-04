@@ -1,10 +1,212 @@
 # Next Steps
 
-Captured 2026-05-02; addendum 2026-05-03. The platform migration
-is functionally complete: AWS GameLift is out and torn down,
-Edgegap + Nakama (Hetzner) are running production matches, the
-platform-shared infra and runtime live in `snoringcat-platform/`,
-and Pulumi state lives on Cloudflare R2.
+Captured 2026-05-02; addenda 2026-05-03 + 2026-05-04. The
+platform migration is functionally complete: AWS GameLift is
+out and torn down, Edgegap + Nakama (Hetzner) are running
+production matches, the platform-shared infra and runtime live
+in `snoringcat-platform/`, and Pulumi state lives on Cloudflare
+R2.
+
+## 2026-05-04 addendum: WebRTC cross-play deploy + web debug
+
+A long session that took the WebRTC cross-play work from "code
+shipped, not deployed" all the way through to live production
+v0.34.0 + new runtime + cert + nginx + auto-rotation, then
+debugged why the web build was hanging at "Resuming session…"
+and shipped the real fix.
+
+### What's live in production now
+
+| Layer | Version | How shipped |
+|---|---|---|
+| Game-server image (Edgegap registry) | `v9` (2026-05-04T04:44Z) | `gh workflow run game-server.yml -f version=v9` |
+| Edgegap app version registered | v8 + v9 both active | auto-registered by `game-server.yml` |
+| Nakama runtime plugin | build `d8ecedb` (2026-05-04T~05:00Z) | `gh workflow run nakama-runtime.yml` |
+| Hetzner Nakama runtime.env | `EDGEGAP_APP_VERSION=v9`, `NAKAMA_GAME_VERSION=0.34.0`, `NAKAMA_PROTOCOL_VERSION=2` | SSH hot-fix to `/opt/nakama/config.yml` + `docker compose restart nakama` |
+| Cloudflare Pages (hopnbop.net) | 0.34.0 | `scripts/deploy-cf-pages.ps1` (3 deploys this session) |
+| R2 wasm/pck Cache-Control | `no-cache, must-revalidate` | re-uploaded 2026-05-04T08:43Z |
+| TLS cert for `*.game.hopnbop.net` | ECDSA-P-256, expires 2026-08-02 | issued via certbot DNS-01; cert-rotate workflow renews automatically |
+| Edgegap version env vars (TLS_FULLCHAIN/TLS_PRIVKEY/TLS_ISSUED_AT) | populated on v8 + v9 | `gh workflow run cert-rotate.yml -f force_renew=true` (after fixing 4 workflow bugs along the way) |
+| `project.godot` `config/version` | 0.34.0 | commit `74b065e` |
+
+### Major work shipped this session
+
+**Compliance test suite (44 tests / 20 files now)** — rewritten
+top-to-bottom for the Nakama backend; previous suite targeted
+the deleted AWS REST API:
+
+- HTTP-side suite: version, auth_anon, auth_link, account,
+  account_delete, friends, party, settings, presence,
+  player_stats, data_export, token_refresh, matchmaking,
+  match_loopback, api_surface, transport_selection.
+- Realtime-socket rig (`compliance_socket_helper.gd`) + 4
+  socket tests (auth, matchmaker, presence, chat).
+- Helper bug found + fixed: RPC bodies need `?unwrap=true` to
+  avoid Nakama's JSON-string-double-encoding requirement.
+- Run-isolated, all four key files green:
+  `test_version` 3/3, `test_transport_selection` 5/5,
+  `test_match_loopback` 3/3, `test_api_surface` 2/2.
+
+**Plan doc** (`docs/test-architecture-plan.md`) — single
+source of truth for the WebRTC fix plan, socket rig design,
+and (placeholder) distributed-test architecture.
+
+**Protocol-version drift** — fixed `config.yml` to pass
+`NAKAMA_PROTOCOL_VERSION` through to the runtime, set the env
+var to `2` on Hetzner so `version_check` returns
+`is_compatible: true` for real clients.
+
+**WebRTC cross-play, all 8 plan-doc items**:
+
+1-5. transport_type plumbing through runtime → match_ready →
+   client → server.
+6. rollback_netcode `signaling_port` escape hatch (kept as
+   future flexibility; nginx makes it inert today).
+7. nginx `ssl_preread` re-introduced for WSS termination on
+   4434/TCP; new `infra/game-server/nginx.conf` + entrypoint
+   updated to write `TLS_*` env vars to disk + start nginx
+   before the Godot server.
+8. `transport_select` runtime RPC + Layer 1 compliance test
+   (5 cases — native-only, mixed, all-web, empty strings,
+   empty list).
+
+**Cert + auto-rotation**:
+
+- One-shot ECDSA wildcard cert via certbot dns-cloudflare.
+- New GitHub secret `CLOUDFLARE_DNS_TOKEN` (Zone:DNS:Edit on
+  snoringcat.games — separate from the broader
+  `CLOUDFLARE_API_TOKEN` used for Pages/R2).
+- `.github/workflows/cert-rotate.yml`: weekly cron, renews at
+  60-day mark via certbot DNS-01, PATCHes every active
+  Edgegap app version's env vars (`is_secret: true` on the
+  cert/key, plain `TLS_ISSUED_AT` for the freshness check).
+
+**Web debug saga (the actual prod-fixing portion)**:
+
+- Symptom: web build stuck at "Sign in / resuming session…".
+- Red herring (~1h): suspected service worker (no), suspected
+  R2 cache (partially true — fixed by adding
+  `Cache-Control: no-cache, must-revalidate` to wrangler
+  uploads in both `scripts/deploy-cf-pages.ps1` and
+  `release.yml`).
+- Real cause: `addons/gamelift/` directory survived Phase F.
+  It's the GameLift Server SDK GDExtension binaries (separate
+  from `addons/gamelift_session_manager/` which WAS removed).
+  No `web.wasm32` library in the `.gdextension` config →
+  Godot's web export errored on load → cascade triggered the
+  Godot 4.7-beta1 cyclic-reference parser bug at
+  `src/core/auth_client.gd:466`
+  (`G.settings.oauth_callback_url`) → auth_client.gd failed
+  to compile → `refresh_token()` was a no-op → "Resuming
+  session…" never resolved.
+- Fix (`275a416`): deleted `gamelift.gdextension` config + 7
+  of 9 native binaries (2 Windows DLLs locked by running
+  Godot editor); applied `Object.get()` rewrite at
+  auth_client.gd:466 per CLAUDE.md's documented surgical fix
+  pattern; removed dead `gamelift_session_manager/plugin.cfg`
+  reference from `project.godot`.
+
+### Open — immediate next steps
+
+1. **Verify the web build works end-to-end.** Browser cache
+   cleared (or Incognito) → load hopnbop.net → confirm
+   sign-in flow completes → reach lobby. Should "just work"
+   now; if "Resuming session…" persists, the new build still
+   has a parse cascade and we need fresh logs to diagnose.
+2. **Verify a real cross-play match** (web + native client in
+   same lobby). The transport_type now propagates end-to-end,
+   nginx terminates wss for the web client, ICE handshake
+   should complete. This is the first time the full path has
+   been deployed; Layer 1 covers the runtime selection logic
+   but not the actual handshake.
+3. **Two locked Windows DLLs** in `addons/gamelift/bin/`
+   (`libcrypto-3-x64.dll`, `libssl-3-x64.dll`) couldn't be
+   deleted because the Godot 4.7-beta1 editor process was
+   running. Close the editor and `Remove-Item -Recurse -Force
+   addons/gamelift` to nuke the directory entirely. ~6MB of
+   dead weight in the export pck until then.
+4. **Optional cert hygiene**: cert A (issued in cert-rotate
+   run `25301578756`) was briefly stored as `is_secret: false`
+   for ~3 minutes before being superseded by cert C. Theoretical
+   leak — anyone with `EDGEGAP_TOKEN` could read it during the
+   window. Cert is no longer in use; revoke at Let's Encrypt
+   for hygiene if paranoid.
+
+### Open — lower priority
+
+- **Layer 2 e2e cross-play test** (multi-process). Plan-doc §2
+  Shape B + §3 #8's deferred "real ICE handshake" verification.
+  Burns Edgegap quota per run; defer to integration tier.
+- **Distributed test architecture research** (plan-doc §4).
+  An open-web research agent was launched in the background
+  during this session and may have completed; check
+  `claude/projects/.../tasks/aee46b61e97dcb98f.output` if
+  the new session wants to fold it in.
+- **Compliance suite rate limit**: running all 44 tests
+  back-to-back hits Nakama's auth rate limit (429s on `~17`
+  tests). Need per-test pacing or backoff before the suite
+  can be a regular CI gate.
+- **Cyclic-ref preventative `.get()` rewrites** for
+  `splash.gd`, `fish.gd`, `confirm_overlay.gd`,
+  `networked_level.gd` — only apply if web exports flag them.
+  `auth_client.gd:466` was promoted from "preventative" to
+  "fixed" today after seeing the actual cascade.
+- **Doc sweep** in CLAUDE.md (per plan-doc §3's "Doc sweep
+  after the fix lands"): "Web Build Cross-Play",
+  "Transport Architecture" → "Transport selection flow",
+  and "End-to-End Matchmaking Flow" still describe the
+  pre-Phase-F intermediate state with `is_web` (the actual
+  property name is `platform`). PLATFORM_ARCHITECTURE.md in
+  the platform repo also has stale GameLift transport refs.
+- **Retire `MIGRATION_PLAN.md`** to `docs/archive/` once the
+  post-migration system has been stable for a while.
+
+### Pointers
+
+- Plan doc: `docs/test-architecture-plan.md` (the deeper
+  detail behind the WebRTC + tests work).
+- Compliance suite: `third_party/snoringcat-platform/addons/snoringcat_platform_client/test/compliance/`
+  (canonical source) + the `addons/snoringcat_platform_client/`
+  copy in this repo refreshed by
+  `scripts/setup-platform-addon.ps1` (re-run after every
+  submodule bump).
+- Platform-runtime build + deploy: `gh workflow run nakama-runtime.yml`.
+- Game-server build + Edgegap registry push: `gh workflow run game-server.yml -f version=vN`.
+- Cert rotation manual trigger: `gh workflow run cert-rotate.yml -f force_renew=true`.
+- Web client deploy: `scripts/deploy-cf-pages.ps1` (local) or
+  the `web-client` job in `release.yml` (CI).
+- Hetzner Nakama config: `/opt/nakama/config.yml` (env vars
+  in `runtime.env` block); restart with
+  `cd /opt/nakama && docker compose restart nakama`.
+
+### Key commits this session
+
+```
+275a416 gamelift: remove dead addon + fix web auth cyclic-ref parse error
+2230f6e web deploy: force revalidation on R2 wasm/pck heavies
+5d55f35 bump snoringcat-platform: transport_select RPC + Layer 1 regression test
+9eae649 ci: add cert-rotate workflow for WebRTC signaling TLS
+9dd5a18 webrtc cross-play: re-introduce nginx for WSS termination (#7)
+e9b19d7 webrtc: read SIGNALING_PORT env on game-server boot (#6)
+140143f webrtc cross-play: plumb transport_type through match_ready (#1-5)
+0e84a15 bump snoringcat-platform: realtime-socket test rig + 4 tests
+20b4ad8 bump snoringcat-platform: pass NAKAMA_PROTOCOL_VERSION
+9737cf5 docs: test architecture plan
+da8a389 bump snoringcat-platform: 5 more compliance tests
+43db749 bump snoringcat-platform: rewrite compliance test suite
+74b065e bump version: 0.33.0 -> 0.34.0
+```
+
+Submodule (`snoringcat-platform`) commits: `88d1603` (HEAD;
+helper unwrap + party assert), `d8ecedb` (transport_select),
+`b935514` (socket rig), `c023b82` (5 more tests), `ffd2c56`
+(suite rewrite), `553825b` (drop SIGNALING_PORT), `cfe3499`,
+`95ea183`, `2461026`. The runtime plugin currently live on
+Hetzner is built from `d8ecedb`; the parent submodule pointer
+is at `88d1603` (one commit ahead — only the helper/test
+changes that don't touch runtime code).
+
+
 
 ## 2026-05-03 addendum: status sweep + new findings
 
