@@ -215,18 +215,20 @@ remains.**
    `_pick_port()` now takes a `transport_type` argument and
    picks UDP (ENet) or TCP (WebRTC/WebSocket) based on it.
 
-**Still open (the deeper part):**
+**Resolved:**
 
-6. ⚠️ **rollback_netcode WebRTC signaling port mismatch.**
-   The container exposes 4433/UDP (game data) and 4434/TCP
-   (signaling). But `network_connector.gd::_server_start_webrtc`
-   starts the signaling WebSocket server on `p_server_port`
-   (= 4433), not 4434. This worked on GameLift's flexible port
-   mapping but doesn't on Edgegap's strict declared-port model.
-   Fix: split signaling onto a separate port arg in the
-   rollback_netcode API; have the game-server pass 4434 (or a
-   `signaling_port` env var). Touches the rollback_netcode
-   submodule, not just this repo.
+6. ✅ **rollback_netcode WebRTC signaling port mismatch.**
+   Two complementary fixes shipped:
+   - `signaling_port` field added to `NetworkSettings` (escape
+     hatch for non-nginx deployments). When set non-zero, the
+     signaling server listens on it instead of the game-data
+     port. (rollback_netcode commit `51305ba`.)
+   - With nginx restored in #7, the runtime no longer needs to
+     inject `SIGNALING_PORT` — Godot signaling stays on internal
+     4433/TCP, nginx fronts external 4434/TCP via `ssl_preread`,
+     and Edgegap forwards 4434/TCP to the host. The "mismatch"
+     is bridged by nginx, not eliminated at the netcode layer.
+     (snoringcat-platform commit `553825b`.)
 7. ✅ **WSS termination for web clients** (code) **/ cert
    rotation** (automation). Code: nginx is back in the
    game-server container with `ssl_preread`, terminating wss://
