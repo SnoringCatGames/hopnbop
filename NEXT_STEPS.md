@@ -1,11 +1,89 @@
 # Next Steps
 
-Captured 2026-05-02; addenda 2026-05-03 + 2026-05-04. The
-platform migration is functionally complete: AWS GameLift is
-out and torn down, Edgegap + Nakama (Hetzner) are running
-production matches, the platform-shared infra and runtime live
-in `snoringcat-platform/`, and Pulumi state lives on Cloudflare
-R2.
+Captured 2026-05-02; addenda 2026-05-03 + 2026-05-04 +
+2026-05-05. The platform migration is functionally complete:
+AWS GameLift is out and torn down, Edgegap + Nakama (Hetzner)
+are running production matches, the platform-shared infra and
+runtime live in `snoringcat-platform/`, and Pulumi state lives
+on Cloudflare R2.
+
+## 2026-05-05 addendum: web boot cascade fixed + WSS hostname
+
+Two distinct issues, both shipped end-to-end on the code side
+but the second still needs operator deploy steps before web
+cross-play actually works.
+
+### Boot cascade (fixed end-to-end)
+
+Web build was crashing at every page load with
+`Cannot get class ''` → `Could not resolve external class
+member 'settings'` → spawn-time RuntimeError. Root cause was
+`var settings: Settings = preload("res://settings.tres")` in
+`src/core/global.gd` running at parse time, before all
+class_name registrations finished. settings.tres references
+class_name'd resource scripts, those lookups returned empty,
+and Settings.* became unresolvable across the project.
+
+Fix (commit `834fdcc`): switched to `load()` (CLAUDE.md
+"approach #1"). Type annotation stays Settings — no
+intellisense loss. Also excluded `addons/webrtc/*` from the
+Web preset and deleted 11 orphan `.gd.uid` files for files
+that were removed in earlier refactors.
+
+CLAUDE.md "Web Build Cyclic-Reference Parser Failures"
+section was rewritten — the previous "cyclic reference"
+framing was a misdiagnosis that led to .get() rewrites that
+destroy intellisense without fixing the root cause. The new
+section directs investigation top-down through the boot log.
+
+### WSS hostname mismatch (code shipped, deploy pending)
+
+After the boot fix, matchmaking joined and matched, but the
+post-allocation WSS handshake failed: the runtime sent
+Edgegap's `*.pr.edgegap.net` FQDN to the client, the wildcard
+cert is for `*.game.hopnbop.net`, browser rejected the
+handshake on cert mismatch.
+
+Code shipped:
+
+| Repo | Commit | What |
+|---|---|---|
+| `snoringcat-platform` | `cbd64ee` | runtime computes `s-<ip>.<SERVER_DNS_BASE>` from PublicIP, sends as `server_fqdn`. New `infra/remote/dns-watchdog/` systemd timer. `scripts/phase-b.ps1` grows a Step-DnsWatchdog. |
+| `hopnbop_private` | `7fd3dcb` | `infra/game-server/entrypoint.sh` POSTs the matching A record to Cloudflare on startup, deletes on EXIT/TERM/INT. Submodule pointer bumped. |
+
+**Operator steps remaining for end-to-end web cross-play:**
+
+1. **Set Edgegap app-version env vars** (Edgegap dashboard or
+   PATCH API):
+   - `CLOUDFLARE_DNS_TOKEN` — same token as cert-rotate
+     (Zone:DNS:Edit on the SERVER_DNS_BASE zone), `is_secret: true`.
+   - `CLOUDFLARE_DNS_ZONE_ID` — CF zone ID for the
+     SERVER_DNS_BASE zone, `is_secret: true`.
+   - (Optional) `SERVER_DNS_BASE` — defaults to
+     `game.hopnbop.net` if unset; only set if you want a
+     different apex.
+2. **Build + push new game-server image:**
+   `gh workflow run game-server.yml -f version=v10`.
+3. **Register v10 as a new Edgegap app version** (dashboard).
+   Set the env vars from step 1 on it.
+4. **Bump `EDGEGAP_APP_VERSION=v10`** on the Nakama host's
+   `/opt/nakama/config.yml` runtime.env block, then
+   `cd /opt/nakama && docker compose restart nakama`.
+5. **Build + deploy new runtime plugin:**
+   `gh workflow run nakama-runtime.yml`. The matchmaker hook
+   needs the new fleet_allocator that emits the IP-derived
+   FQDN.
+6. **Deploy dns-watchdog to Hetzner** (one-time):
+   ```powershell
+   cd third_party/snoringcat-platform/scripts
+   $env:CLOUDFLARE_DNS_TOKEN = "..."
+   $env:CLOUDFLARE_DNS_ZONE_ID = "..."
+   .\phase-b.ps1 -StartAt DnsWatchdog -StopAt DnsWatchdog
+   ```
+7. **Smoke test:** open hopnbop.net in two browsers, both join
+   matchmaking with `platform=web`, verify they see each other
+   in the lobby. Watch the Hetzner systemd journal for the
+   dns-watchdog timer firing hourly.
 
 ## 2026-05-04 addendum: WebRTC cross-play deploy + web debug
 
