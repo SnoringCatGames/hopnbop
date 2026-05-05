@@ -70,12 +70,53 @@ TLS_FULLCHAIN (secret), TLS_PRIVKEY (secret), TLS_ISSUED_AT.
 
 Open hopnbop.net in two browsers, both join matchmaking with
 `platform=web`, verify they see each other in the lobby. The
-allocated game server should publish an A record under
-`s-<ip-with-dashes>.game.hopnbop.net` for the duration of the
-match; the WSS handshake should succeed against the wildcard
-cert. Watch the Hetzner systemd journal at
-`journalctl -u dns-watchdog.service` to confirm the hourly
-timer is sweeping.
+runtime hook should publish `s-<ip>.game.hopnbop.net` -> the
+deploy IP just before sending match_ready, the wildcard cert
+will match, WSS handshake completes. Watch
+`journalctl -u dns-watchdog.service` on the Nakama box to
+confirm the hourly sweep also fires.
+
+### 2026-05-05 follow-up: DNS pre-warm moved into the runtime
+
+First end-to-end test surfaced an issue with the original
+plan. After the runtime started sending the right
+`s-<ip>.game.hopnbop.net` hostname, the WSS handshake still
+failed because the *DNS A record itself wasn't created*.
+Manually adding the record made the handshake work (HTTP 101
+Switching Protocols) — so the cert / nginx / runtime hostname
+were all fine; the entrypoint pre-warm was just silently
+failing.
+
+I tried to debug from the container side: dumped the v11
+image's entrypoint via a workflow probe (it had the latest
+code), confirmed CF env vars were on the version (`is_secret:
+true`, value lengths matched), confirmed CF API was reachable
+from Hetzner. But Edgegap doesn't expose container stdout via
+API and the deploy never reached register_server (which would
+imply the entrypoint ran past DNS), so something between
+"container start" and "DNS POST" was failing without a way
+to see what.
+
+Pivoted: moved DNS pre-warm into the runtime
+(`fleet_allocator.go preWarmDNS`). Same logic, same TTL +
+comment shape, but it runs on Hetzner where logs are visible
+and the CF creds come from `runtime.env` instead of having to
+go through Edgegap's env-var injection. Container `entrypoint.sh`
+is now back to its pre-pivot shape (no DNS code).
+
+Code shipped:
+- `snoringcat-platform 82135ea / 279472c` — `preWarmDNS()` +
+  doc sync.
+- `hopnbop_private 0371c98 / 0429761` — entrypoint revert,
+  game-server.yml cleanup, submodule pointer bump.
+
+Live:
+- Hetzner `runtime.env`: `CLOUDFLARE_DNS_TOKEN` +
+  `CLOUDFLARE_DNS_ZONE_ID` added (token same as cert-rotate).
+- New runtime plugin deployed via `nakama-runtime.yml`
+  (build_id `0371c98...`). Hooks + RPCs registered.
+- dns-watchdog systemd timer unchanged (cleanup mechanism is
+  the same regardless of who creates the record).
 
 ## 2026-05-04 addendum: WebRTC cross-play deploy + web debug
 
