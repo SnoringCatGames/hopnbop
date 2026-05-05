@@ -51,39 +51,31 @@ Code shipped:
 | `snoringcat-platform` | `cbd64ee` | runtime computes `s-<ip>.<SERVER_DNS_BASE>` from PublicIP, sends as `server_fqdn`. New `infra/remote/dns-watchdog/` systemd timer. `scripts/phase-b.ps1` grows a Step-DnsWatchdog. |
 | `hopnbop_private` | `7fd3dcb` | `infra/game-server/entrypoint.sh` POSTs the matching A record to Cloudflare on startup, deletes on EXIT/TERM/INT. Submodule pointer bumped. |
 
-**Operator steps remaining for end-to-end web cross-play:**
+**Operator steps — done 2026-05-05:**
 
-1. **Set Edgegap app-version env vars** (Edgegap dashboard or
-   PATCH API):
-   - `CLOUDFLARE_DNS_TOKEN` — same token as cert-rotate
-     (Zone:DNS:Edit on the SERVER_DNS_BASE zone), `is_secret: true`.
-   - `CLOUDFLARE_DNS_ZONE_ID` — CF zone ID for the
-     SERVER_DNS_BASE zone, `is_secret: true`.
-   - (Optional) `SERVER_DNS_BASE` — defaults to
-     `game.hopnbop.net` if unset; only set if you want a
-     different apex.
-2. **Build + push new game-server image:**
-   `gh workflow run game-server.yml -f version=v10`.
-3. **Register v10 as a new Edgegap app version** (dashboard).
-   Set the env vars from step 1 on it.
-4. **Bump `EDGEGAP_APP_VERSION=v10`** on the Nakama host's
-   `/opt/nakama/config.yml` runtime.env block, then
-   `cd /opt/nakama && docker compose restart nakama`.
-5. **Build + deploy new runtime plugin:**
-   `gh workflow run nakama-runtime.yml`. The matchmaker hook
-   needs the new fleet_allocator that emits the IP-derived
-   FQDN.
-6. **Deploy dns-watchdog to Hetzner** (one-time):
-   ```powershell
-   cd third_party/snoringcat-platform/scripts
-   $env:CLOUDFLARE_DNS_TOKEN = "..."
-   $env:CLOUDFLARE_DNS_ZONE_ID = "..."
-   .\phase-b.ps1 -StartAt DnsWatchdog -StopAt DnsWatchdog
-   ```
-7. **Smoke test:** open hopnbop.net in two browsers, both join
-   matchmaking with `platform=web`, verify they see each other
-   in the lobby. Watch the Hetzner systemd journal for the
-   dns-watchdog timer firing hourly.
+| Step | What | When |
+|---|---|---|
+| 1. CF env vars | `CLOUDFLARE_DNS_ZONE_ID` GH secret added (`0d5df9dd7cfdf0b3e46f9f37c83488a7` = hopnbop.net zone). `CLOUDFLARE_DNS_TOKEN` already existed (same token cert-rotate uses). Plumbed into `game-server.yml`'s Edgegap envs (commits `569cfed`, `042f0cc`). | 22:48-23:00 UTC |
+| 2. game-server.yml v10 | `gh workflow run game-server.yml -f version=v10`. First run failed on an apostrophe inside the jq comment block; fixed in `042f0cc` and re-ran successfully. | 22:55, 23:01 UTC |
+| 3. cert-rotate v10 | `gh workflow run cert-rotate.yml -f force_renew=true` — added TLS_FULLCHAIN/TLS_PRIVKEY/TLS_ISSUED_AT to v10. | 23:08 UTC |
+| 4. Hetzner runtime.env bump | sed `EDGEGAP_APP_VERSION=v9` → `v10` on `/opt/nakama/config.yml`, `docker compose restart nakama`. | 23:08 UTC |
+| 5. nakama-runtime.yml | `gh workflow run nakama-runtime.yml` — built + scp'd `snoringcat.so` (build_id `569cfed79b...`). Runtime healthy, all 10 RPCs registered, matchmaker_matched hook present. | 22:55 UTC |
+| 6. dns-watchdog deploy | `phase-b.ps1 -StartAt DnsWatchdog -StopAt DnsWatchdog`. Systemd timer enabled on the Nakama host; first test run scanned 0 records (expected, no live deploys at the time). Next fire 23:17 UTC. | 22:57 UTC |
+
+v10 envs verified via `GET /v1/app/hopnbop-server/version/v10`:
+NAKAMA_HTTP_KEY, CLOUDFLARE_DNS_TOKEN (secret), CLOUDFLARE_DNS_ZONE_ID,
+TLS_FULLCHAIN (secret), TLS_PRIVKEY (secret), TLS_ISSUED_AT.
+
+**Step 7 — smoke test (user, pending):**
+
+Open hopnbop.net in two browsers, both join matchmaking with
+`platform=web`, verify they see each other in the lobby. The
+allocated game server should publish an A record under
+`s-<ip-with-dashes>.game.hopnbop.net` for the duration of the
+match; the WSS handshake should succeed against the wildcard
+cert. Watch the Hetzner systemd journal at
+`journalctl -u dns-watchdog.service` to confirm the hourly
+timer is sweeping.
 
 ## 2026-05-04 addendum: WebRTC cross-play deploy + web debug
 
