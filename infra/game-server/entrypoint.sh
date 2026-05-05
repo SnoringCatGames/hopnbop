@@ -54,6 +54,9 @@ SERVER_DNS_BASE="${SERVER_DNS_BASE:-game.hopnbop.net}"
 # --------------------------------------------------------------
 DNS_RECORD_ID=""
 HOSTNAME=""
+echo "DNS pre-warm: token_set=$([[ -n "${CLOUDFLARE_DNS_TOKEN:-}" ]] && echo yes || echo no)" \
+	"zone_set=$([[ -n "${CLOUDFLARE_DNS_ZONE_ID:-}" ]] && echo yes || echo no)" \
+	"public_ip=${PUBLIC_IP:-(unset)} base=${SERVER_DNS_BASE}"
 if [[ -n "${CLOUDFLARE_DNS_TOKEN:-}" \
 		&& -n "${CLOUDFLARE_DNS_ZONE_ID:-}" \
 		&& -n "$PUBLIC_IP" ]]; then
@@ -66,12 +69,14 @@ if [[ -n "${CLOUDFLARE_DNS_TOKEN:-}" \
 		--arg ip      "$PUBLIC_IP" \
 		--arg comment "edgegap deploy=${REQUEST_ID:-unknown} created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 		'{type:"A",name:$name,content:$ip,ttl:60,proxied:false,comment:$comment}')
-	create_response=$(curl -fsS --max-time 10 -X POST \
+	# Capture stderr too — when --fsS hides the body on non-2xx,
+	# we still want stderr in the log for diagnosis.
+	create_response=$(curl -sS --max-time 10 -X POST \
 		"https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_DNS_ZONE_ID}/dns_records" \
 		-H "Authorization: Bearer ${CLOUDFLARE_DNS_TOKEN}" \
 		-H "Content-Type: application/json" \
-		-d "$create_body" \
-		2>/dev/null) || true
+		-d "$create_body" 2>&1) || true
+	echo "DNS pre-warm: CF API response: $create_response"
 	DNS_RECORD_ID=$(printf '%s' "$create_response" | jq -r '.result.id // empty' 2>/dev/null || true)
 	if [[ -n "$DNS_RECORD_ID" ]]; then
 		echo "DNS A record created: $HOSTNAME -> $PUBLIC_IP (id=$DNS_RECORD_ID)"
@@ -92,10 +97,9 @@ if [[ -n "${CLOUDFLARE_DNS_TOKEN:-}" \
 		trap cleanup_dns EXIT TERM INT
 	else
 		echo "WARN: DNS A record creation failed; web cross-play may not connect."
-		echo "WARN: response: $create_response"
 	fi
 else
-	echo "INFO: CLOUDFLARE_DNS_TOKEN / CLOUDFLARE_DNS_ZONE_ID / PUBLIC_IP not all set; skipping DNS pre-warm."
+	echo "INFO: required env vars not all set; skipping DNS pre-warm."
 fi
 
 # --------------------------------------------------------------
