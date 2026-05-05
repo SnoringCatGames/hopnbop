@@ -38,6 +38,16 @@ on:
         required: true
       NAKAMA_HTTP_KEY:
         required: true
+      # Container's entrypoint.sh creates a Cloudflare DNS A
+      # record `s-<ip>.<SERVER_DNS_BASE>` -> $PUBLIC_IP at
+      # startup so web clients can hit a hostname covered by
+      # the wildcard cert. Both vars must be plumbed onto the
+      # Edgegap app version (is_secret: true) before the
+      # entrypoint can do this.
+      CLOUDFLARE_DNS_TOKEN:
+        required: true
+      CLOUDFLARE_DNS_ZONE_ID:
+        required: true
 
 jobs:
   game-server:
@@ -152,6 +162,13 @@ jobs:
           # register_server" and Nakama can't route matched
           # players to this container.
           NAKAMA_HTTP_KEY: ${{ secrets.NAKAMA_HTTP_KEY }}
+          # Cloudflare DNS pre-warming (Zone:DNS:Edit on the
+          # SERVER_DNS_BASE zone — same token as cert-rotate).
+          # Read by entrypoint.sh to register/delete the
+          # `s-<ip>.<base>` A record around the container's
+          # lifetime.
+          CLOUDFLARE_DNS_TOKEN: ${{ secrets.CLOUDFLARE_DNS_TOKEN }}
+          CLOUDFLARE_DNS_ZONE_ID: ${{ secrets.CLOUDFLARE_DNS_ZONE_ID }}
         run: |
           # Delete first so a re-run with the same version replaces
           # the previous record. 404 is fine — means no prior
@@ -189,6 +206,8 @@ jobs:
               --arg user "$REGISTRY_USERNAME" \
               --arg pass "$REGISTRY_PASSWORD" \
               --arg http_key "$NAKAMA_HTTP_KEY" \
+              --arg cf_token "$CLOUDFLARE_DNS_TOKEN" \
+              --arg cf_zone "$CLOUDFLARE_DNS_ZONE_ID" \
               '{
                 name: $v,
                 docker_image: $img,
@@ -206,7 +225,19 @@ jobs:
                 ],
                 envs: [
                   {key: "NAKAMA_HTTP_KEY", value: $http_key,
-                    is_injected: true}
+                    is_injected: true},
+                  # entrypoint.sh creates an A record for
+                  # `s-<ip>.<SERVER_DNS_BASE>` -> public IP.
+                  # is_secret on the token, plain on the zone
+                  # ID (it's not sensitive). is_injected to
+                  # make sure they're set even if a caller
+                  # overrides the version at deploy time.
+                  {key: "CLOUDFLARE_DNS_TOKEN",
+                    value: $cf_token,
+                    is_secret: true, is_injected: true},
+                  {key: "CLOUDFLARE_DNS_ZONE_ID",
+                    value: $cf_zone,
+                    is_secret: false, is_injected: true}
                 ]
               }')" \
             "https://api.edgegap.com/v1/app/hopnbop-server/version"
