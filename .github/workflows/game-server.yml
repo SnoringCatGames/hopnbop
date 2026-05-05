@@ -227,11 +227,13 @@ jobs:
                   {key: "NAKAMA_HTTP_KEY", value: $http_key,
                     is_injected: true},
                   # entrypoint.sh creates an A record for
-                  # `s-<ip>.<SERVER_DNS_BASE>` -> public IP.
-                  # is_secret on the token, plain on the zone
-                  # ID (it's not sensitive). is_injected to
-                  # make sure they're set even if a caller
-                  # overrides the version at deploy time.
+                  # s-<ip>.<SERVER_DNS_BASE> pointing at the
+                  # deploy public IP. is_secret on the token;
+                  # plain on the zone ID (not sensitive).
+                  # is_injected forces both to be present
+                  # even when callers do not pass them.
+                  # NOTE: comment kept apostrophe-free so the
+                  # outer single-quoted jq program parses.
                   {key: "CLOUDFLARE_DNS_TOKEN",
                     value: $cf_token,
                     is_secret: true, is_injected: true},
