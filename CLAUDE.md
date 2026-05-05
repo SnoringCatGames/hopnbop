@@ -769,101 +769,102 @@ method pattern instead of `is` type checks. Access subclass
 properties through `ReconcilableState`-typed variables using
 `get()` or `call()` for dynamic dispatch.
 
-### Web Build Cyclic-Reference Parser Failures
+### Web Build Parse Errors — DO NOT chase with `.get()` rewrites
 
-Godot 4.7-beta1's web exporter runs a stricter parser pass than
-the editor or desktop builds. Parse messages of this shape
-appear at boot in the web log:
+Web exports sometimes fail at boot with cascading parse errors
+of this shape:
 
 ```
+ERROR: Cannot get class ''.
+   at: _instantiate_internal (core/object/class_db.cpp:587)
+ERROR: Parameter "obj" is null.
+   at: ensure_resource_ref_override_for_outer_load
+       (core/io/resource_loader.cpp:1013)
 SCRIPT ERROR: Parse Error: Could not resolve external class
-member "settings": Cyclic reference.
+member "settings".
    at: GDScript::reload (res://src/.../foo.gd:42)
 SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
 ERROR: Failed to load script "res://src/.../bar.gd"
   with error "Compilation failed".
 ```
 
-**These messages are NOT just noise on web.** They are load-
-fatal when they appear: the script at the originating line
-fails to register its `class_name`, and any `ClassName.new()`
-call later returns null silently. Symptoms surface much later
-at first instantiation, not at boot, which makes diagnosis
-hard:
+**The parse errors at the bottom are symptoms. The root cause
+is the `Cannot get class ''` / `Parameter "obj" is null` block
+at the very top of the boot log.** Every `Could not resolve
+external class member "settings"` parse error downstream is a
+consequence of `settings.tres` (or some other class-typed
+resource) failing to load, which makes
+`var settings: Settings = preload(...)` fail at parse time,
+which makes every `G.settings.X` access fail.
 
-```
-ERROR: Error constructing a GDScriptInstance: '...::_init':
-   Cannot convert argument 1 from Nil to int
-```
+**DO NOT "fix" these by rewriting `G.settings.X` to
+`G.get("settings").get("X")`**. That destroys autocomplete,
+intellisense, and static type checking project-wide and does
+*not* address the root cause. We need typed GDScript; treat
+the `.get()` pattern as an atrocity, not a fix.
 
-(Identified 2026-04-30 when `ScaffolderLog.new()` returned
-null on web because `scaffolder_log.gd:42` did
-`G.settings.include_category_in_logs` — direct typed access
-through the `G` autoload tripped the parser's cyclic-resolution
-pass. Symptom showed up much later as `RollbackBuffer.new()`
-crashing because `Netcode.log` was null and so
-`Netcode.initialize()` had bailed.)
+The original "cyclic reference" framing (which used to live in
+this section) was a misdiagnosis. The Godot 4.7-beta1 parser
+DOES emit a real `Cyclic reference.` suffix when it detects an
+actual class-resolution cycle — but that's a *different* error
+than the bare `Could not resolve external class member`
+messages we usually see. If the message says ``: Cyclic
+reference.`` literally at the end, treat it as cyclic; if it
+doesn't, look upstream for the `Cannot get class ''` block.
 
-Desktop builds suppress the parser cascade entirely, which is
-why this never appears in desktop logs.
+#### Real causes seen so far
 
-#### Surgical fix pattern
-
-When a parse error of this shape originates inside a
-`class_name`'d script that accesses `G.<typed-autoload-prop>.<member>`,
-rewrite the access to use `Object.get()` for dynamic dispatch:
-
-```gdscript
-# Before (parser tries to statically resolve through cyclic
-# autoload graph, fails on web):
-if G.settings.include_category_in_logs:
-    ...
-
-# After (dynamic dispatch — parser doesn't chase the cycle;
-# desktop is unaffected, autocomplete is lost only at this
-# line):
-var include_category: bool = (
-    G.get("settings").get("include_category_in_logs"))
-if include_category:
-    ...
-```
-
-Cache the value into a typed local once at the top of the
-function so the rest of the function still reads cleanly. Only
-apply this at the specific lines named in the parse-error
-stack trace; keep typed access everywhere else.
-
-#### Other workarounds (use only if the surgical fix isn't
-viable)
-
-1. Replace `preload("res://...")` with `load("res://...")` at
-   the cycle-trigger site. Defers resolution past the parser's
-   check phase. Zero runtime cost for a one-shot autoload-init
-   load.
-2. Cast at access site: `(G as GlobalClass).settings.foo`.
-3. Static-instance singleton: declare `class_name GlobalClass`
-   with `static var I: GlobalClass; func _enter_tree(): I = self`,
-   reference as `GlobalClass.I.settings.foo`.
-
-Approach #3 is the cleanest long-term restructure; the
-surgical `.get()` rewrite is the safest narrow fix.
+- **Stale GDExtension declaration.** `addons/X/X.gdextension`
+  declares native libraries for desktop platforms but no
+  `web.wasm32`, and `extensions_support=false` on the Web
+  preset. On web load, Godot tries to instantiate the missing
+  extension's classes from cached resource refs and emits the
+  `Cannot get class ''` cascade. Fix: either remove the addon
+  entirely (if it's no longer used — see the gamelift removal
+  in commit `0b9b059`) or add an `exclude_filter` line for
+  the addon directory in the Web preset of
+  `export_presets.cfg` (see the webrtc exclude added in
+  2026-05-04 — webrtc's classes are provided natively by the
+  browser at runtime, so the GDExtension binaries shouldn't
+  ship to web at all).
+- **Stale `.godot/global_script_class_cache.cfg`.** A
+  `class_name` was renamed or removed but the cache still
+  carries the old entry; resource files referencing the old
+  name fail with `Cannot get class ''`. Fix: close the editor,
+  delete `.godot/global_script_class_cache.cfg`, reopen, let
+  Godot rebuild. (Done in 2026-05-03 for the gamelift_session_
+  manager registry leak.)
+- **Resource file with broken script ref.** A `.tres` or
+  `.tscn` `[ext_resource type="Script" ...]` block points at
+  a UID/path whose script no longer registers the same
+  `class_name`. Fix the resource file or the script.
 
 #### Investigation playbook
 
-1. Web log shows `ERROR: Failed to load script ".../foo.gd"`
-   downstream of `Parse Error: Could not resolve external class
-   member` — the originating script is named in the
-   `at: GDScript::reload (.../bar.gd:N)` line just above the
-   parse error, NOT the script in the "Failed to load" line.
-2. The "Failed to load" scripts are just downstream casualties
-   of the originating parse failure.
-3. Look up the originating line and find the
-   `G.<autoload-prop>.<member>` or similar typed-autoload chain
-   access; apply the `.get()` rewrite there.
-4. If runtime errors appear far from boot (e.g., at first
-   spawn), trace back: what class did `.new()` on something?
-   Was that class registered? Search for parse failures naming
-   that class's source file in the boot log.
+1. **Read the web log top-down, not bottom-up.** Find the
+   *first* error in boot output. If it's `Cannot get class ''`
+   at `_instantiate_internal`, that's your root cause — every
+   `Could not resolve external class member` parse error
+   below it is downstream noise.
+2. Identify what class is being looked up empty. The wasm
+   stack frames don't give source line info, so work backward
+   from clues: which `[ext_resource]` or `[node type="..."]`
+   in recently-changed `.tres`/`.tscn` files might reference a
+   class that disappeared, was renamed, or comes from a
+   GDExtension that isn't shipped on web.
+3. Check for stale GDExtension declarations (`grep -r
+   gdextension addons/`) and verify each is either web-
+   compatible or excluded from the Web export preset.
+4. If nothing in source/resources is suspicious, the cache is
+   stale: regenerate `.godot/global_script_class_cache.cfg`.
+5. Only after the upstream cascade is gone should you treat
+   any remaining parse errors as real. They'll generally
+   either disappear with the upstream fix or point at a real
+   bug (e.g., a syntax error you can fix without touching the
+   typed access pattern).
+
+Desktop builds tolerate a lot more breakage than web does, so
+"works in editor" is no signal. Always read the web boot log.
 
 Upstream Godot tracker:
 [godot#80877](https://github.com/godotengine/godot/issues/80877)

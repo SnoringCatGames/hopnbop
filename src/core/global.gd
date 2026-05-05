@@ -5,7 +5,7 @@ extends Node
 # Note: This would be better stored on Main as an export var, so we don't have
 #       to reference the path in code. But, this must be set for tests to run
 #       correctly, and Main isn't run during tests.
-var settings: Settings = preload("res://settings.tres")
+var settings: Settings = load("res://settings.tres")
 
 # Note: This is shown at the top to assist with local debugging.
 var preview_instance_label := ""
