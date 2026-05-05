@@ -33,8 +33,6 @@ jobs:
       EDGEGAP_REGISTRY_PASSWORD: ${{ secrets.EDGEGAP_REGISTRY_PASSWORD }}
       EDGEGAP_REGISTRY_PROJECT: ${{ secrets.EDGEGAP_REGISTRY_PROJECT }}
       NAKAMA_HTTP_KEY: ${{ secrets.NAKAMA_HTTP_KEY }}
-      CLOUDFLARE_DNS_TOKEN: ${{ secrets.CLOUDFLARE_DNS_TOKEN }}
-      CLOUDFLARE_DNS_ZONE_ID: ${{ secrets.CLOUDFLARE_DNS_ZONE_ID }}
 
   web-client:
     name: Godot web export → Cloudflare Pages
