@@ -59,33 +59,70 @@ else
 	echo "WARN: Edgegap or Nakama env vars missing; skipping register_server."
 fi
 
-# WebRTC signaling TLS termination via nginx. Only runs when
-# both cert env vars are populated (they live on the Edgegap
-# app version as is_hidden=true secrets, written there by the
-# cert-rotate workflow).
+# WebRTC signaling proxy via nginx. Always runs (so port 4434
+# is alive for native ws:// pass-through). The TLS termination
+# drop-in is only added when the cert env vars are populated;
+# otherwise web wss:// is unavailable but native cross-play
+# still works.
+mkdir -p /game/tls /game/logs /etc/nginx/conf.d
+# Wipe any stale drop-in that the base image shipped (Ubuntu's
+# nginx package puts a default placeholder there).
+rm -f /etc/nginx/conf.d/*.conf
+
 if [[ -n "${TLS_FULLCHAIN:-}" && -n "${TLS_PRIVKEY:-}" ]]; then
-	mkdir -p /game/tls /game/logs
 	# Use printf to preserve newlines verbatim. echo -e mangles
 	# multi-line PEM on some shells.
 	printf '%s' "$TLS_FULLCHAIN" > /game/tls/fullchain.pem
 	printf '%s' "$TLS_PRIVKEY"   > /game/tls/privkey.pem
 	chmod 600 /game/tls/privkey.pem
 
-	# Validate the cert+key match before starting nginx — a
-	# mismatch here is a config error that nginx would
-	# otherwise mask as a runtime failure mid-match.
+	# Validate the cert+key before enabling the TLS drop-in. A
+	# parse error here would otherwise mask as a runtime failure
+	# mid-match.
 	if ! openssl x509 -in /game/tls/fullchain.pem -noout >/dev/null 2>&1; then
-		echo "ERROR: TLS_FULLCHAIN doesn't parse as a cert; nginx skipped"
+		echo "ERROR: TLS_FULLCHAIN doesn't parse; web wss:// disabled"
 	elif ! openssl pkey -in /game/tls/privkey.pem -noout >/dev/null 2>&1; then
-		echo "ERROR: TLS_PRIVKEY doesn't parse as a private key; nginx skipped"
+		echo "ERROR: TLS_PRIVKEY doesn't parse; web wss:// disabled"
 	else
-		nginx -c /etc/nginx/nginx.conf -g 'daemon off;' &
-		nginx_pid=$!
-		echo "Started nginx (PID=$nginx_pid) for TLS termination on 4434/TCP"
+		cat > /etc/nginx/conf.d/tls.conf <<'TLS_CONF'
+# Loaded by /etc/nginx/nginx.conf's http { include } when the
+# entrypoint dropped fullchain.pem + privkey.pem at /game/tls/.
+# Strips the Origin header because Godot's WebSocket server
+# rejects HTTP upgrade requests that include it (browsers
+# always send Origin).
+server {
+    listen 4435 ssl;
+
+    ssl_certificate     /game/tls/fullchain.pem;
+    ssl_certificate_key /game/tls/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    location / {
+        proxy_pass http://127.0.0.1:4433;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header Origin "";
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+
+        # Disable buffering for real-time game traffic.
+        proxy_buffering off;
+        tcp_nodelay on;
+    }
+}
+TLS_CONF
+		echo "Wrote /etc/nginx/conf.d/tls.conf for wss:// on 4435."
 	fi
 else
-	echo "TLS_FULLCHAIN / TLS_PRIVKEY not set; nginx skipped (web cross-play unavailable)."
+	echo "TLS_FULLCHAIN / TLS_PRIVKEY not set; wss:// disabled (web cross-play unavailable). Native ws:// pass-through still works."
 fi
+
+nginx -c /etc/nginx/nginx.conf -g 'daemon off;' &
+nginx_pid=$!
+echo "Started nginx (PID=$nginx_pid) on 4434/TCP for WebRTC signaling."
 
 exec /game/hopnbop_server.x86_64 \
 	--headless \
