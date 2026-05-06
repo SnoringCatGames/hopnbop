@@ -120,9 +120,23 @@ else
 	echo "TLS_FULLCHAIN / TLS_PRIVKEY not set; wss:// disabled (web cross-play unavailable). Native ws:// pass-through still works."
 fi
 
+# Validate config first so a syntax error fails loudly here
+# instead of nginx silently dying after backgrounding.
+if ! nginx -c /etc/nginx/nginx.conf -t; then
+	echo "ERROR: nginx config invalid; signaling will be unavailable" >&2
+fi
+
 nginx -c /etc/nginx/nginx.conf -g 'daemon off;' &
 nginx_pid=$!
-echo "Started nginx (PID=$nginx_pid) on 4434/TCP for WebRTC signaling."
+# Give nginx a beat to either bind or die, then assert it's still
+# alive. Without this, a bind failure is invisible — exec wipes
+# the shell and the dying nginx loses its parent.
+sleep 0.5
+if kill -0 "$nginx_pid" 2>/dev/null; then
+	echo "Started nginx (PID=$nginx_pid) on 4434/TCP for WebRTC signaling."
+else
+	echo "ERROR: nginx exited immediately (PID=$nginx_pid). WebRTC signaling unavailable." >&2
+fi
 
 exec /game/hopnbop_server.x86_64 \
 	--headless \
