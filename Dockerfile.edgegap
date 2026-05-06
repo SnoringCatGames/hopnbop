@@ -1,10 +1,17 @@
-# Edgegap-targeted game-server image. Compared to the legacy
-# GameLift Dockerfile this drops:
+# Edgegap-targeted game-server image.
+#
+# Compared to the legacy GameLift Dockerfile this drops:
 #   - GameLift Server SDK builder stage (Edgegap doesn't need it)
-#   - webrtc-native v1.0.9 patch stage (Edgegap port-forwards
-#     declared container ports directly, so no portRangeBegin /
-#     portRangeEnd / enableIceUdpMux patches needed)
-#   - entrypoint.sh Route 53 logic (Edgegap assigns hostnames)
+#   - entrypoint.sh Route 53 logic (per-deploy DNS now lives in
+#     the Nakama runtime hook)
+#
+# But it KEEPS the webrtc-native patch stage that the original
+# AWS-migration commit erroneously dropped (the comment claimed
+# Edgegap port-forwards declared ports directly, but in practice
+# the unpatched GDExtension binds ICE to an ephemeral port, the
+# STUN sends fail with ENETUNREACH, and ICE never completes).
+# See NOTES_FOR_BLOG_POSTS.md "ICE port nightmare" for the
+# original symptom + fix.
 #
 # nginx is here for WebRTC signaling TLS termination — the
 # entrypoint writes TLS_FULLCHAIN / TLS_PRIVKEY env vars to
@@ -21,6 +28,50 @@
 #     build/linux/hopnbop_server.x86_64
 # and copied into the image.
 
+# -----------------------------------------------------------------
+# webrtc-native patch stage. Builds a v1.0.9 GDExtension that
+# parses portRangeBegin / portRangeEnd / enableIceUdpMux from
+# the initialize() config. Upstream ignores those keys, but the
+# underlying libdatachannel supports them. Without this patch
+# the ICE agent binds to ephemeral UDP ports that Edgegap
+# doesn't forward, and STUN sends fail with ENETUNREACH. See
+# infra/game-server/patch-webrtc-portrange.py for the actual
+# 6-line C++ insertion.
+# -----------------------------------------------------------------
+FROM ubuntu:24.04 AS webrtc-builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    cmake \
+    git \
+    libssl-dev \
+    pkg-config \
+    python3 \
+    python3-pip \
+    && pip3 install --break-system-packages scons \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone --recursive --branch 1.0.9-stable --depth 1 \
+    https://github.com/godotengine/webrtc-native.git \
+    /webrtc
+
+WORKDIR /webrtc
+
+COPY infra/game-server/patch-webrtc-portrange.py /tmp/
+RUN python3 /tmp/patch-webrtc-portrange.py
+
+RUN scons platform=linux target=template_release arch=x86_64 -j$(nproc)
+
+# Resolve the built .so to a known location for the runtime stage.
+RUN cp $(find /webrtc/bin -name "libwebrtc_native.linux.template_release.x86_64.so" -type f | head -1) \
+       /webrtc/libwebrtc_native.linux.template_release.x86_64.so
+
+# -----------------------------------------------------------------
+# Runtime stage.
+# -----------------------------------------------------------------
 FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -54,6 +105,14 @@ RUN chmod +x /game/hopnbop_server.x86_64
 # (Godot can't load them from inside the pck). Only webrtc
 # remains after the gamelift addon removal.
 COPY addons/webrtc /game/addons/webrtc
+
+# Overwrite the stock Linux .so with our patched build. The
+# stock binary in addons/webrtc/lib/ is what the editor uses;
+# the runtime stage replaces it with the port-range / mux-mode
+# variant.
+COPY --from=webrtc-builder \
+     /webrtc/libwebrtc_native.linux.template_release.x86_64.so \
+     /game/addons/webrtc/lib/libwebrtc_native.linux.template_release.x86_64.so
 
 WORKDIR /game
 
