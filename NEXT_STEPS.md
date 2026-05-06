@@ -76,6 +76,55 @@ will match, WSS handshake completes. Watch
 `journalctl -u dns-watchdog.service` on the Nakama box to
 confirm the hourly sweep also fires.
 
+### 2026-05-06 follow-up: ICE port regression — patch restored
+
+Once DNS pre-warm landed and the WSS handshake started reaching
+the container, both native and web clients still failed with
+the same fingerprint as the actual matchmaking attempt: WS
+opens, offer is sent, no answer, 10 s timeout, 5 retries, give
+up. The new `scripts/edgegap-logs.ps1` (see below) pulled
+container stdout via `GET /v1/deployment/<id>/container-logs`
+and the actual cause was visible immediately:
+
+```
+[ICE init] ICE port=4433
+[ICE candidate] candidate:1 1 UDP ... 10.4.11.30 38645 typ host
+WARNING: rtc::impl::IceTransport::LogCallback@390:
+  juice: Send failed, errno=101
+WARNING: rtc::impl::IceTransport::LogCallback@390:
+  juice: STUN message send failed
+```
+
+The GDExtension binary ignored `portRangeBegin/End` and bound
+ICE to ephemeral port 38645 instead of the declared 4433.
+Edgegap doesn't forward arbitrary ports → STUN sends fail
+with ENETUNREACH (errno 101) → ICE never completes.
+
+This is the exact same regression NOTES_FOR_BLOG_POSTS.md
+"ICE port nightmare on GameLift container fleets" documents
+from March/April 2026. The pre-AWS-migration setup had a
+multi-stage Dockerfile that compiled a patched webrtc-native
+v1.0.9 from source (`patch-webrtc-portrange.py` adds 6 lines
+to `_initialize()` parsing portRangeBegin/End/enableIceUdpMux
+into libdatachannel's rtc::Configuration). The migration to
+`Dockerfile.edgegap` (commit `70d3e6d`) dropped that stage
+under the assumption "Edgegap port-forwards declared
+container ports directly, so no patches needed." The
+container logs disagree.
+
+`5a70367` recovers `infra/game-server/patch-webrtc-portrange.py`
+from `70d3e6d^` and adds the matching builder stage back to
+`Dockerfile.edgegap`. v12 builds in CI now (slower than usual
+because the webrtc-native compile takes 5-10 min). Once v12
+is registered + Hetzner's `EDGEGAP_APP_VERSION` is bumped,
+the next match should ICE successfully.
+
+Also added permanent log-collection tooling:
+`scripts/edgegap-logs.ps1 [-RequestId X] [-Latest]` wraps
+`GET /v1/deployment/<id>/container-logs`. Without it we had
+no way to see container stdout from outside the dashboard.
+This is keeper tooling, not temp instrumentation.
+
 ### 2026-05-05 follow-up: DNS pre-warm moved into the runtime
 
 First end-to-end test surfaced an issue with the original
