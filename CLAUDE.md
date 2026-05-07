@@ -27,11 +27,18 @@ authoritative docs (in priority of relevance to most tasks):
   do they fit together" or "where does <thing> live".
 
 The platform migration from AWS GameLift to
-Nakama+Hetzner+Edgegap completed 2026-05-03 (Phase F). Live
-production runs on Hetzner CPX11 (Nakama + Postgres) with
-Edgegap-allocated game-server containers. Historical migration
-notes for archeology are in `MIGRATION_PLAN.md` and
-`docs/archive/platform-pivot-discussion.md`.
+Nakama+Hetzner+Edgegap completed 2026-05-03 (Phase F).
+Single-host consolidation 2026-05-06 collapsed the original
+two CPX11 (Nakama + separate Postgres + full
+Prometheus/Grafana/Loki/Promtail observability) into one CPX11
+with Postgres co-tenanted alongside Nakama and the obs stack
+stripped — visibility is now via the daily Claude
+prod-health-check job + UptimeRobot + cost-monitor Discord
+summary + `journalctl`. Live production runs on a single
+Hetzner CPX11 with Edgegap-allocated game-server containers.
+Historical migration notes for archeology are in
+`MIGRATION_PLAN.md` and `docs/archive/platform-pivot-
+discussion.md`.
 
 **Per-game protocol versioning** (post-migration): each game has
 its own `protocol_version` integer in `game.yaml` and
@@ -264,14 +271,26 @@ If the changes require users to re-consent, also bump
   authenticates via S3-compat keys in `R2_ACCESS_KEY_ID` /
   `R2_SECRET_ACCESS_KEY` / `R2_ENDPOINT` (sourced from
   `~/.hopnbop-migration/credentials.env`).
-- **nakama-prod-1:** CPX11 in Hillsboro, Nakama + Caddy +
-  Prometheus/Grafana/Loki/Promtail + cost-monitor systemd timer.
-- **postgres-prod-1:** CPX11 in Hillsboro, Postgres 16 + node-
-  exporter + postgres-exporter.
-- **DNS:** Cloudflare-managed; `nakama.snoringcat.games` and
-  `grafana.snoringcat.games` records bound to the Hetzner public
-  IPs.
-- **Cost:** ~$15/mo for the pair (capped). See cost-monitor.
+- **nakama-prod-1:** CPX11 in Hillsboro, runs Postgres 16 +
+  Nakama + Caddy in a single docker compose stack.
+  cost-monitor + dns-watchdog + pg-backup systemd timers on
+  the host. Observability (Prometheus/Grafana/Loki/Promtail/
+  node-exporter/postgres-exporter) was removed in the
+  2026-05-06 consolidation; the config files
+  (`prometheus.yml`, `loki-config.yml`, etc.) are kept in
+  `infra/remote/nakama/` so the stack can be re-introduced
+  later via a docker-compose toggle.
+- **DNS:** Cloudflare-managed; `nakama.snoringcat.games`
+  bound to the Hetzner public IP. (`grafana.snoringcat.games`
+  was removed in the consolidation.)
+- **Cost:** ~$8/mo CPX11 cap + cents of R2 backups. See
+  cost-monitor.
+- **Backups:** `pg-backup.timer` runs nightly at 03:11 UTC,
+  `pg_dumpall` → `s3://hopnbop-pulumi-state-r2/pg-backups/
+  postgres-YYYY-MM-DD.sql.gz`, 7-day retention. Restore:
+  pipe the gzipped dump through `psql -U nakama -d nakama`
+  on the postgres container after dropping the existing
+  schema.
 
 **Edgegap game-server fleet:**
 - **App:** `hopnbop-server` (registered in Edgegap dashboard).
