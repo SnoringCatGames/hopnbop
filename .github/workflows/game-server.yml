@@ -54,10 +54,10 @@ jobs:
           token: ${{ secrets.SUBMODULE_PAT }}
       - uses: chickensoft-games/setup-godot@v2
         with:
-          version: 4.5.0-stable
+          version: 4.7.0-beta1
           use-dotnet: false
           # --export-release needs the Linux server template at
-          # ~/.local/share/godot/export_templates/4.5.stable/.
+          # ~/.local/share/godot/export_templates/4.7.beta1/.
           # Default for this action is false; without it, the
           # export step fails with "No export template found".
           include-templates: true

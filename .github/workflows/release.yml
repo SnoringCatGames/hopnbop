@@ -15,7 +15,7 @@ on:
         required: true
 
 env:
-  GODOT_VERSION: 4.5.0-stable
+  GODOT_VERSION: 4.7.0-beta1
 
 jobs:
   game-server:
