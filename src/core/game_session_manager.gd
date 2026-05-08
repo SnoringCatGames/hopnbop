@@ -469,7 +469,15 @@ func _server_on_all_clients_disconnected() -> void:
 			"Production mode: Exiting server",
 			NetworkLogger.CATEGORY_CORE_SYSTEMS
 		)
-		await get_tree().create_timer(1.0).timeout
+		# Wait long enough for the match_end RPC's HTTP request
+		# (10s timeout in match_result_reporter.gd) to complete
+		# before tearing down the scene tree. Without this, the
+		# in-flight HTTPRequest is freed mid-flight, the runtime
+		# never sees match_end, never calls Edgegap's Stop
+		# endpoint, and the deployment leaks until the 24h
+		# max_duration cap. Observed empirically: 1s was not
+		# enough on a remote container with TLS handshake.
+		await get_tree().create_timer(12.0).timeout
 		get_tree().quit()
 
 
