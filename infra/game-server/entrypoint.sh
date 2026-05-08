@@ -33,9 +33,23 @@
 set -euo pipefail
 
 NAKAMA_URL="${NAKAMA_URL:-https://nakama.snoringcat.games}"
-REQUEST_ID="${ARBITRARIUM_DEPLOY_REQUEST_ID:-}"
-PUBLIC_IP="${ARBITRARIUM_PUBLIC_IP:-}"
-PORT="${ARBITRARIUM_PORT_4433_UDP_EXTERNAL:-4433}"
+
+# Edgegap renamed Arbitrium env vars at some point: the older
+# convention used ARBITRARIUM_* (extra "AR"), the current SDK
+# docs show ARBITRIUM_*. Try both so this script keeps working
+# across the rename. First match wins.
+REQUEST_ID="${ARBITRIUM_DEPLOY_REQUEST_ID:-${ARBITRARIUM_DEPLOY_REQUEST_ID:-}}"
+PUBLIC_IP="${ARBITRIUM_PUBLIC_IP:-${ARBITRARIUM_PUBLIC_IP:-}}"
+PORT="${ARBITRIUM_PORT_4433_UDP_EXTERNAL:-${ARBITRARIUM_PORT_4433_UDP_EXTERNAL:-4433}}"
+
+# One-shot env diagnostic so we can confirm the actual var
+# names Edgegap injects without another redeploy. Filtered to
+# ARBITR* + EDGEGAP* + a few others; full env would leak the
+# NAKAMA_HTTP_KEY into stdout.
+echo "=== entrypoint env (filtered) ==="
+env | grep -E '^(ARBITRIUM|ARBITRARIUM|EDGEGAP|EXPECTED|TRANSPORT|SIGNALING)_' \
+    | sed -E 's/(NAKAMA_HTTP_KEY|TLS_PRIVKEY|TLS_FULLCHAIN)=.*/\1=<redacted>/' || true
+echo "================================="
 
 # --------------------------------------------------------------
 # Register this allocation with the Nakama runtime so its

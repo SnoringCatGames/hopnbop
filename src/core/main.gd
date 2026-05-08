@@ -59,8 +59,14 @@ func _apply_transport_from_env() -> void:
 	# external port the client dials). Reading it directly from
 	# env keeps rollback_netcode platform-agnostic — the addon
 	# just reads Netcode.settings.host_udp_port.
+	#
+	# Edgegap renamed Arbitrium env vars at some point (older:
+	# ARBITRARIUM_*, current: ARBITRIUM_*). Try both.
 	var udp_external: String = OS.get_environment(
-		"ARBITRARIUM_PORT_4433_UDP_EXTERNAL")
+		"ARBITRIUM_PORT_4433_UDP_EXTERNAL")
+	if udp_external.is_empty():
+		udp_external = OS.get_environment(
+			"ARBITRARIUM_PORT_4433_UDP_EXTERNAL")
 	if not udp_external.is_empty():
 		var udp_port := int(udp_external)
 		if udp_port > 0:
