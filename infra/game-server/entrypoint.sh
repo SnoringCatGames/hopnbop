@@ -5,10 +5,19 @@
 # signaling (when cert env vars are set), then exec's the Godot
 # Linux server.
 #
-# Edgegap injects deployment context as env vars:
-#   ARBITRARIUM_PUBLIC_IP                  Server's public IPv4
-#   ARBITRARIUM_PORT_4433_UDP_EXTERNAL     External UDP port (game)
-#   ARBITRARIUM_DEPLOY_REQUEST_ID          Edgegap deployment ID
+# Edgegap injects deployment context as env vars (Arbitrium):
+#   ARBITRIUM_PUBLIC_IP                    Server's public IPv4
+#   ARBITRIUM_PORT_GAME_EXTERNAL           Host UDP port mapped
+#                                          to the "game" declared
+#                                          container port (4433)
+#   ARBITRIUM_PORT_SIGNALING_EXTERNAL      Host TCP port mapped to
+#                                          the "signaling" declared
+#                                          container port (4434)
+#   ARBITRIUM_REQUEST_ID                   Edgegap deployment ID
+#
+# Variable names use the declared port NAME (game / signaling),
+# not the container port number — confirmed empirically against a
+# v16 deploy via the env-dump diagnostic on 2026-05-08.
 #
 # Required from the runtime config:
 #   NAKAMA_URL       Public Nakama URL (https://nakama.snoringcat.games).
@@ -33,23 +42,9 @@
 set -euo pipefail
 
 NAKAMA_URL="${NAKAMA_URL:-https://nakama.snoringcat.games}"
-
-# Edgegap renamed Arbitrium env vars at some point: the older
-# convention used ARBITRARIUM_* (extra "AR"), the current SDK
-# docs show ARBITRIUM_*. Try both so this script keeps working
-# across the rename. First match wins.
-REQUEST_ID="${ARBITRIUM_DEPLOY_REQUEST_ID:-${ARBITRARIUM_DEPLOY_REQUEST_ID:-}}"
-PUBLIC_IP="${ARBITRIUM_PUBLIC_IP:-${ARBITRARIUM_PUBLIC_IP:-}}"
-PORT="${ARBITRIUM_PORT_4433_UDP_EXTERNAL:-${ARBITRARIUM_PORT_4433_UDP_EXTERNAL:-4433}}"
-
-# One-shot env diagnostic so we can confirm the actual var
-# names Edgegap injects without another redeploy. Filtered to
-# ARBITR* + EDGEGAP* + a few others; full env would leak the
-# NAKAMA_HTTP_KEY into stdout.
-echo "=== entrypoint env (filtered) ==="
-env | grep -E '^(ARBITRIUM|ARBITRARIUM|EDGEGAP|EXPECTED|TRANSPORT|SIGNALING)_' \
-    | sed -E 's/(NAKAMA_HTTP_KEY|TLS_PRIVKEY|TLS_FULLCHAIN)=.*/\1=<redacted>/' || true
-echo "================================="
+REQUEST_ID="${ARBITRIUM_REQUEST_ID:-}"
+PUBLIC_IP="${ARBITRIUM_PUBLIC_IP:-}"
+PORT="${ARBITRIUM_PORT_GAME_EXTERNAL:-4433}"
 
 # --------------------------------------------------------------
 # Register this allocation with the Nakama runtime so its

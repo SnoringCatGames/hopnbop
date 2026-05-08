@@ -1403,10 +1403,7 @@ func _server_report_match_result() -> void:
 	var level_id: String = String(
 		provider.server_get_selected_level_id())
 	var request_id: String = OS.get_environment(
-		"ARBITRIUM_DEPLOY_REQUEST_ID")
-	if request_id.is_empty():
-		request_id = OS.get_environment(
-			"ARBITRARIUM_DEPLOY_REQUEST_ID")
+		"ARBITRIUM_REQUEST_ID")
 	var match_stats := {
 		"duration_sec": duration_sec,
 		"level_id": level_id,

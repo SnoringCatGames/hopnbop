@@ -17,7 +17,7 @@ const _RPC_PATH := "/v2/rpc/match_end?http_key=%s&unwrap=true"
 ## - request_id: Edgegap deployment request ID (matches the one
 ##   the runtime stamped on the match_ready notification, and
 ##   what register_server posted at boot). Read at the call
-##   site from ARBITRARIUM_DEPLOY_REQUEST_ID.
+##   site from ARBITRIUM_REQUEST_ID.
 ## - winner_id: backend (Nakama user_id) of the player at
 ##   rank 1. Empty string if no clear winner.
 ## - players: Array of Dictionaries shaped like
@@ -44,7 +44,7 @@ func report(
 		return
 	if request_id.is_empty():
 		Netcode.print(
-			"No request_id (ARBITRARIUM_DEPLOY_REQUEST_ID)"
+			"No request_id (ARBITRIUM_REQUEST_ID)"
 			+ " for this match. Skipping match_end RPC.",
 			NetworkLogger.CATEGORY_GAME_STATE,
 		)
