@@ -335,12 +335,6 @@ func _on_notification(p_notification) -> void:
 			"match_ready missing server address")
 		return
 
-	# Prefer FQDN over raw IP (TLS cert matching for WSS).
-	var server_address := (
-		server_fqdn
-		if not server_fqdn.is_empty()
-		else server_ip)
-
 	# Read transport_type from match_ready and apply it before
 	# we connect. The runtime picks "webrtc" when any web
 	# player is in the lobby, "enet" otherwise. Older runtimes
@@ -350,6 +344,23 @@ func _on_notification(p_notification) -> void:
 		conn.get("transport_type", ""))
 	if not transport_type_str.is_empty():
 		_apply_transport_type(transport_type_str)
+
+	# signaling_url is the stable-FQDN WS URL the runtime
+	# pre-signs when it's configured with SIGNALING_DOMAIN +
+	# SIGNALING_HMAC_SECRET. Use it for WebRTC/WebSocket
+	# transports; ENet ignores it (UDP path is direct to IP).
+	var signaling_url: String = str(
+		conn.get("signaling_url", ""))
+
+	# server_address is the upstream address for ENet (UDP).
+	# For WebRTC/WS, the connector prefers signaling_url when
+	# set; this still falls back to FQDN-based URL construction
+	# for clients hitting older runtimes that don't emit
+	# signaling_url.
+	var server_address := (
+		server_fqdn
+		if not server_fqdn.is_empty()
+		else server_ip)
 
 	var server_port := _pick_port(
 		ports_dict, Netcode.settings.transport_type)
@@ -414,6 +425,7 @@ func _on_notification(p_notification) -> void:
 		server_address,
 		server_port,
 		level_id,
+		signaling_url,
 	)
 
 

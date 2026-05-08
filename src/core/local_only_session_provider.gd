@@ -50,6 +50,7 @@ func client_request_session_ids(
 		"",
 		0,
 		String(_selected_level_id),
+		"",
 	)
 
 

@@ -316,13 +316,15 @@ func _on_session_ids_received(
 	session_ids: Array,
 	server_ip: String,
 	server_port: int,
-	selected_level_id: String = ""
+	selected_level_id: String,
+	signaling_url: String,
 ) -> void:
 	Netcode.print(
-		"Session IDs received, connecting to %s:%d%s" % [
+		"Session IDs received, connecting to %s:%d%s%s" % [
 			server_ip,
 			server_port,
-			", level: " + selected_level_id if not selected_level_id.is_empty() else ""
+			", level: " + selected_level_id if not selected_level_id.is_empty() else "",
+			", signaling_url=" + signaling_url if not signaling_url.is_empty() else "",
 		],
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
@@ -335,25 +337,24 @@ func _on_session_ids_received(
 	# Store selected level ID (client may use this for UI/preview).
 	G.client_session.selected_level_id = StringName(selected_level_id)
 
-	# Enable WSS retry for DNS-based hostnames.
-	# The Route 53 record may still be propagating.
-	if (Netcode.settings.transport_type
-			== NetworkSettings.TransportType.WEBSOCKET
+	# WSS retry was for the legacy per-deploy DNS pattern that
+	# could still be propagating at connection time. The
+	# stable-FQDN signaling proxy makes this unnecessary; leave
+	# the retry path armed only when we don't have a
+	# signaling_url (older runtime).
+	if (signaling_url.is_empty()
+			and Netcode.settings.transport_type
+				== NetworkSettings.TransportType.WEBSOCKET
 			and not server_ip.is_valid_ip_address()):
 		_wss_retry_address = server_ip
 		_wss_retry_port = server_port
 		_wss_retry_count = 0
-
-		# No DNS pre-resolution needed. DNS records
-		# are created at server startup (minutes
-		# before any match), so they are already
-		# propagated by the time clients connect.
 	else:
 		_wss_retry_address = ""
 
 	# Connect to server.
 	Netcode.connector.client_connect_to_server(
-		server_ip, server_port)
+		server_ip, server_port, signaling_url)
 
 
 func _on_session_request_failed(error_message: String) -> void:

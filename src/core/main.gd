@@ -52,6 +52,20 @@ func _apply_transport_from_env() -> void:
 		if parsed > 0:
 			Netcode.settings.signaling_port = parsed
 
+	# Edgegap injects the external host port for each declared
+	# container port. The signaling server uses this for ICE
+	# candidate rewriting (port-preserving NAT inside the
+	# container means STUN reflects the container port, not the
+	# external port the client dials). Reading it directly from
+	# env keeps rollback_netcode platform-agnostic — the addon
+	# just reads Netcode.settings.host_udp_port.
+	var udp_external: String = OS.get_environment(
+		"ARBITRARIUM_PORT_4433_UDP_EXTERNAL")
+	if not udp_external.is_empty():
+		var udp_port := int(udp_external)
+		if udp_port > 0:
+			Netcode.settings.host_udp_port = udp_port
+
 
 func _ready() -> void:
 	G.log.log_system_ready("Main")

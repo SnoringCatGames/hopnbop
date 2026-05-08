@@ -55,7 +55,8 @@ func client_request_session_ids(
 		debug_session_ids,
 		server_ip,
 		server_port,
-		String(_selected_level_id)
+		String(_selected_level_id),
+		"",
 	)
 
 

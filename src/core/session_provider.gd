@@ -15,14 +15,19 @@ extends Node
 
 ## Emitted when client successfully retrieves session IDs from backend.
 ## session_ids: Array[String] - Session identifiers for local players
-## server_ip: String - Server IP address to connect to
-## server_port: int - Server port number
+## server_ip: String - Server IP address (used for ENet/native UDP)
+## server_port: int - Server port (TCP for WS/WebRTC, UDP for ENet)
 ## selected_level_id: String - Level ID selected by server/backend (may be empty)
+## signaling_url: String - Pre-built wss:// URL for WebRTC/WS signaling
+##     when the backend fronts the deploy with a stable proxy (see
+##     snoringcat-platform's signaling-proxy). Empty when the backend
+##     wants the client to construct the URL from server_ip/_port.
 signal session_ids_received(
 	session_ids: Array,
 	server_ip: String,
 	server_port: int,
-	selected_level_id: String
+	selected_level_id: String,
+	signaling_url: String,
 )
 
 ## Emitted when session ID request fails.
