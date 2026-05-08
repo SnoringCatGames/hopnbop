@@ -327,40 +327,26 @@ func _on_notification(p_notification) -> void:
 		return
 
 	var server_ip: String = str(conn.get("server_ip", ""))
-	var server_fqdn: String = str(
-		conn.get("server_fqdn", ""))
 	var ports_dict: Variant = conn.get("ports", {})
-	if server_ip.is_empty() and server_fqdn.is_empty():
+	if server_ip.is_empty():
 		session_request_failed.emit(
-			"match_ready missing server address")
+			"match_ready missing server_ip")
 		return
 
 	# Read transport_type from match_ready and apply it before
 	# we connect. The runtime picks "webrtc" when any web
-	# player is in the lobby, "enet" otherwise. Older runtimes
-	# don't include this field — fall back to whatever the
-	# client already had configured.
+	# player is in the lobby, "enet" otherwise.
 	var transport_type_str: String = str(
 		conn.get("transport_type", ""))
 	if not transport_type_str.is_empty():
 		_apply_transport_type(transport_type_str)
 
 	# signaling_url is the stable-FQDN WS URL the runtime
-	# pre-signs when it's configured with SIGNALING_DOMAIN +
-	# SIGNALING_HMAC_SECRET. Use it for WebRTC/WebSocket
-	# transports; ENet ignores it (UDP path is direct to IP).
+	# pre-signs (e.g. wss://signaling.<zone>/connect/<token>).
+	# Used for WebRTC/WebSocket transports; ENet ignores it
+	# (UDP path is direct to IP).
 	var signaling_url: String = str(
 		conn.get("signaling_url", ""))
-
-	# server_address is the upstream address for ENet (UDP).
-	# For WebRTC/WS, the connector prefers signaling_url when
-	# set; this still falls back to FQDN-based URL construction
-	# for clients hitting older runtimes that don't emit
-	# signaling_url.
-	var server_address := (
-		server_fqdn
-		if not server_fqdn.is_empty()
-		else server_ip)
 
 	var server_port := _pick_port(
 		ports_dict, Netcode.settings.transport_type)
@@ -416,13 +402,13 @@ func _on_notification(p_notification) -> void:
 		(
 			"[NakamaMatchmaker] match_ready %s:%d"
 			+ " (level=%s)"
-		) % [server_address, server_port, level_id],
+		) % [server_ip, server_port, level_id],
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 
 	session_ids_received.emit(
 		session_ids,
-		server_address,
+		server_ip,
 		server_port,
 		level_id,
 		signaling_url,

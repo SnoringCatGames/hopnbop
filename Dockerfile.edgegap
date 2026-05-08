@@ -88,13 +88,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libssl3 \
     libstdc++6 \
-    libnginx-mod-stream \
-    nginx \
-    openssl \
     && rm -rf /var/lib/apt/lists/*
-
-# nginx config for WebRTC signaling TLS termination.
-COPY infra/game-server/nginx.conf /etc/nginx/nginx.conf
 
 # Standalone Godot server binary + sibling pck.
 COPY build/linux/hopnbop_server.x86_64 /game/hopnbop_server.x86_64
@@ -119,8 +113,9 @@ WORKDIR /game
 EXPOSE 4433/udp
 EXPOSE 4434/tcp
 
-# Edgegap injects $ARBITRARIUM_PUBLIC_IP, $ARBITRARIUM_PORT_4433_UDP_EXTERNAL,
-# etc. as env vars. Server reads these via project config to advertise
+# Edgegap injects $ARBITRIUM_PUBLIC_IP,
+# $ARBITRIUM_PORT_GAME_EXTERNAL, $ARBITRIUM_REQUEST_ID, etc. as
+# env vars. Server reads these via project config to advertise
 # the right hostname/port back to clients.
 ENV PLATFORM=edgegap
 ENV TRANSPORT_PORT=4433

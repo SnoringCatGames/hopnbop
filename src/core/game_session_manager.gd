@@ -42,27 +42,11 @@ signal matchmaking_failed(reason: String)
 ## to offline mode.
 signal local_mode_fallback_requested()
 
-## Maximum WebSocket connection retries (safety
-## net only). DNS is pre-warmed at server startup,
-## so connections should succeed on the first
-## attempt. Retries handle rare edge cases like
-## container restarts with cold DNS.
-const _WSS_MAX_RETRIES := 3
-
-## Seconds between WSS connection retry attempts.
-const _WSS_RETRY_INTERVAL_SEC := 3.0
-
 var session_provider: SessionProvider
 
 ## The original session provider set up in _ready().
 ## Stored so it can be restored after local mode.
 var _original_session_provider: SessionProvider
-
-## Tracks WSS connection retry state. Cleared on
-## successful connection or after max retries.
-var _wss_retry_address: String = ""
-var _wss_retry_port: int = 0
-var _wss_retry_count: int = 0
 
 
 func _ready() -> void:
@@ -337,21 +321,6 @@ func _on_session_ids_received(
 	# Store selected level ID (client may use this for UI/preview).
 	G.client_session.selected_level_id = StringName(selected_level_id)
 
-	# WSS retry was for the legacy per-deploy DNS pattern that
-	# could still be propagating at connection time. The
-	# stable-FQDN signaling proxy makes this unnecessary; leave
-	# the retry path armed only when we don't have a
-	# signaling_url (older runtime).
-	if (signaling_url.is_empty()
-			and Netcode.settings.transport_type
-				== NetworkSettings.TransportType.WEBSOCKET
-			and not server_ip.is_valid_ip_address()):
-		_wss_retry_address = server_ip
-		_wss_retry_port = server_port
-		_wss_retry_count = 0
-	else:
-		_wss_retry_address = ""
-
 	# Connect to server.
 	Netcode.connector.client_connect_to_server(
 		server_ip, server_port, signaling_url)
@@ -395,9 +364,6 @@ func _on_session_request_failed(error_message: String) -> void:
 
 
 func _on_player_ids_assigned(assigned_ids: Array[int]) -> void:
-	# Connection succeeded. Clear WSS retry state.
-	_wss_retry_address = ""
-
 	Netcode.print(
 		"Player IDs assigned: %s" % str(assigned_ids),
 		NetworkLogger.CATEGORY_CONNECTIONS
@@ -441,33 +407,6 @@ func _client_on_server_disconnected(reason: int) -> void:
 		"Disconnected from server: %s" % reason_name,
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
-
-	# Retry WSS connections that fail immediately
-	# (likely DNS not yet propagated).
-	if (reason
-			== NetworkConnector
-				.DisconnectReason.CONNECTION_FAILED
-			and not _wss_retry_address.is_empty()
-			and _wss_retry_count < _WSS_MAX_RETRIES):
-		_wss_retry_count += 1
-		Netcode.print(
-			("WSS connect failed, retrying"
-			+ " (%d/%d) in %.0fs")
-			% [
-				_wss_retry_count,
-				_WSS_MAX_RETRIES,
-				_WSS_RETRY_INTERVAL_SEC,
-			],
-			NetworkLogger.CATEGORY_CONNECTIONS,
-		)
-		await get_tree().create_timer(
-			_WSS_RETRY_INTERVAL_SEC).timeout
-		Netcode.connector.client_connect_to_server(
-			_wss_retry_address, _wss_retry_port)
-		return
-
-	# Clear retry state on terminal disconnect.
-	_wss_retry_address = ""
 
 	# Check if this was an expected disconnect (match ended normally).
 	var is_expected := (

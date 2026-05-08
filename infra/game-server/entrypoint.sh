@@ -1,44 +1,27 @@
 #!/bin/bash
 # Game-server entrypoint for Edgegap deployments. Registers the
 # server with Nakama (so the platform knows how to route matched
-# players here), boots an nginx TLS-termination layer for WebRTC
-# signaling (when cert env vars are set), then exec's the Godot
-# Linux server.
+# players here), then exec's the Godot Linux server. Godot binds
+# 4433/UDP for ENet game data and 4434/TCP for WebRTC signaling
+# (via SIGNALING_PORT env from the runtime hook); the
+# signaling-proxy on the platform host fronts wss:// and bridges
+# plain ws:// in to that port. No nginx, no per-container TLS.
 #
 # Edgegap injects deployment context as env vars (Arbitrium):
-#   ARBITRIUM_PUBLIC_IP                    Server's public IPv4
-#   ARBITRIUM_PORT_GAME_EXTERNAL           Host UDP port mapped
-#                                          to the "game" declared
-#                                          container port (4433)
-#   ARBITRIUM_PORT_SIGNALING_EXTERNAL      Host TCP port mapped to
-#                                          the "signaling" declared
-#                                          container port (4434)
-#   ARBITRIUM_REQUEST_ID                   Edgegap deployment ID
+#   ARBITRIUM_PUBLIC_IP                Server's public IPv4
+#   ARBITRIUM_PORT_GAME_EXTERNAL       Host UDP port mapped to
+#                                      the "game" declared port
+#   ARBITRIUM_PORT_SIGNALING_EXTERNAL  Host TCP port mapped to
+#                                      the "signaling" declared
+#                                      port
+#   ARBITRIUM_REQUEST_ID               Edgegap deployment ID
 #
-# Variable names use the declared port NAME (game / signaling),
-# not the container port number — confirmed empirically against a
-# v16 deploy via the env-dump diagnostic on 2026-05-08.
+# Variable names use the declared port NAME (game / signaling).
 #
 # Required from the runtime config:
-#   NAKAMA_URL       Public Nakama URL (https://nakama.snoringcat.games).
-#   NAKAMA_HTTP_KEY  Server-to-server key for unauthenticated RPCs.
-#
-# Optional (set on the Edgegap app version, is_hidden=true):
-#   TLS_FULLCHAIN    PEM-encoded fullchain for *.game.hopnbop.net.
-#   TLS_PRIVKEY      PEM-encoded private key for the cert above.
-#   When both are present, nginx is started for wss://
-#   termination on 4434/TCP. When absent (e.g. ENet-only test
-#   builds), nginx is skipped and the server runs without TLS
-#   termination — clients in WebRTC mode would fail to connect,
-#   but ENet-only matches still work.
-#
-# Note: per-deploy DNS pre-warming (`s-<ip>.game.hopnbop.net`)
-# happens inside Nakama's matchmaker_matched hook, NOT here.
-# We tried it from the container first; turns out Edgegap
-# doesn't reliably inject CF creds at deploy time, and there
-# is no clean way to view container stdout for diagnosis. The
-# runtime has the same data (PublicIP from Edgegap status) and
-# easier-to-read logs, so it owns the DNS lifecycle.
+#   NAKAMA_URL       Public Nakama URL.
+#   NAKAMA_HTTP_KEY  Server-to-server key for unauthenticated
+#                    RPCs (register_server, match_end).
 set -euo pipefail
 
 NAKAMA_URL="${NAKAMA_URL:-https://nakama.snoringcat.games}"
@@ -66,85 +49,6 @@ EOF
 		|| echo "WARN: register_server RPC failed; continuing"
 else
 	echo "WARN: Edgegap or Nakama env vars missing; skipping register_server."
-fi
-
-# WebRTC signaling proxy via nginx. Always runs (so port 4434
-# is alive for native ws:// pass-through). The TLS termination
-# drop-in is only added when the cert env vars are populated;
-# otherwise web wss:// is unavailable but native cross-play
-# still works.
-mkdir -p /game/tls /game/logs /etc/nginx/conf.d
-# Wipe any stale drop-in that the base image shipped (Ubuntu's
-# nginx package puts a default placeholder there).
-rm -f /etc/nginx/conf.d/*.conf
-
-if [[ -n "${TLS_FULLCHAIN:-}" && -n "${TLS_PRIVKEY:-}" ]]; then
-	# Use printf to preserve newlines verbatim. echo -e mangles
-	# multi-line PEM on some shells.
-	printf '%s' "$TLS_FULLCHAIN" > /game/tls/fullchain.pem
-	printf '%s' "$TLS_PRIVKEY"   > /game/tls/privkey.pem
-	chmod 600 /game/tls/privkey.pem
-
-	# Validate the cert+key before enabling the TLS drop-in. A
-	# parse error here would otherwise mask as a runtime failure
-	# mid-match.
-	if ! openssl x509 -in /game/tls/fullchain.pem -noout >/dev/null 2>&1; then
-		echo "ERROR: TLS_FULLCHAIN doesn't parse; web wss:// disabled"
-	elif ! openssl pkey -in /game/tls/privkey.pem -noout >/dev/null 2>&1; then
-		echo "ERROR: TLS_PRIVKEY doesn't parse; web wss:// disabled"
-	else
-		cat > /etc/nginx/conf.d/tls.conf <<'TLS_CONF'
-# Loaded by /etc/nginx/nginx.conf's http { include } when the
-# entrypoint dropped fullchain.pem + privkey.pem at /game/tls/.
-# Strips the Origin header because Godot's WebSocket server
-# rejects HTTP upgrade requests that include it (browsers
-# always send Origin).
-server {
-    listen 4435 ssl;
-
-    ssl_certificate     /game/tls/fullchain.pem;
-    ssl_certificate_key /game/tls/privkey.pem;
-    ssl_protocols       TLSv1.2 TLSv1.3;
-    ssl_ciphers         HIGH:!aNULL:!MD5;
-
-    location / {
-        proxy_pass http://127.0.0.1:4433;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header Origin "";
-        proxy_read_timeout 86400s;
-        proxy_send_timeout 86400s;
-
-        # Disable buffering for real-time game traffic.
-        proxy_buffering off;
-        tcp_nodelay on;
-    }
-}
-TLS_CONF
-		echo "Wrote /etc/nginx/conf.d/tls.conf for wss:// on 4435."
-	fi
-else
-	echo "TLS_FULLCHAIN / TLS_PRIVKEY not set; wss:// disabled (web cross-play unavailable). Native ws:// pass-through still works."
-fi
-
-# Validate config first so a syntax error fails loudly here
-# instead of nginx silently dying after backgrounding.
-if ! nginx -c /etc/nginx/nginx.conf -t; then
-	echo "ERROR: nginx config invalid; signaling will be unavailable" >&2
-fi
-
-nginx -c /etc/nginx/nginx.conf -g 'daemon off;' &
-nginx_pid=$!
-# Give nginx a beat to either bind or die, then assert it's still
-# alive. Without this, a bind failure is invisible — exec wipes
-# the shell and the dying nginx loses its parent.
-sleep 0.5
-if kill -0 "$nginx_pid" 2>/dev/null; then
-	echo "Started nginx (PID=$nginx_pid) on 4434/TCP for WebRTC signaling."
-else
-	echo "ERROR: nginx exited immediately (PID=$nginx_pid). WebRTC signaling unavailable." >&2
 fi
 
 exec /game/hopnbop_server.x86_64 \
