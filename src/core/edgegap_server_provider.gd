@@ -66,6 +66,110 @@ func _ready() -> void:
 	_start_idle_timer()
 
 
+## Posts the register_server RPC to the Nakama runtime so the
+## matchmaker hook can confirm the in-container WS port is bound
+## and accepting connections. Call AFTER the signaling server's
+## listen() returns ok — the matchmaker hook uses the storage
+## row's existence as the readiness signal that gates match_ready
+## notifications, so calling this before the bind would race the
+## clients in.
+func register_with_runtime() -> void:
+	var nakama_url := OS.get_environment("NAKAMA_URL")
+	if nakama_url.is_empty():
+		nakama_url = "https://nakama.snoringcat.games"
+	var http_key := OS.get_environment("NAKAMA_HTTP_KEY")
+	if http_key.is_empty():
+		Netcode.log.warning(
+			"[Edgegap] NAKAMA_HTTP_KEY not set; skipping"
+			+ " register_server (matchmaker hook will time"
+			+ " out waiting for server registration)",
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+		return
+	var request_id := OS.get_environment("ARBITRIUM_REQUEST_ID")
+	var public_ip := OS.get_environment("ARBITRIUM_PUBLIC_IP")
+	var port_str := OS.get_environment(
+		"ARBITRIUM_PORT_GAME_EXTERNAL")
+	if (request_id.is_empty()
+			or public_ip.is_empty()
+			or port_str.is_empty()):
+		Netcode.log.warning(
+			(
+				"[Edgegap] Arbitrium env vars missing"
+				+ " (request_id=%s public_ip=%s port=%s);"
+				+ " skipping register_server"
+			) % [request_id, public_ip, port_str],
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+		return
+
+	# JSON body wrapped in a JSON string per Nakama's RPC over
+	# HTTP convention.
+	var body := JSON.stringify({
+		"request_id": request_id,
+		"server_ip": public_ip,
+		"server_port": int(port_str),
+	})
+	var url := (
+		"%s/v2/rpc/register_server?http_key=%s"
+		% [
+			nakama_url,
+			http_key.uri_encode(),
+		])
+	var headers := PackedStringArray([
+		"Content-Type: application/json",
+	])
+	var req := HTTPRequest.new()
+	add_child(req)
+	req.request_completed.connect(
+		_on_register_server_completed.bind(req))
+	var err := req.request(
+		url,
+		headers,
+		HTTPClient.METHOD_POST,
+		JSON.stringify(body))
+	if err != OK:
+		Netcode.log.warning(
+			"[Edgegap] register_server request failed to"
+			+ " start: error=%d" % err,
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+		req.queue_free()
+		return
+	Netcode.log.print(
+		"[Edgegap] register_server posted (request_id=%s)"
+		% request_id,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+
+func _on_register_server_completed(
+	result: int,
+	response_code: int,
+	_headers: PackedStringArray,
+	body: PackedByteArray,
+	req: HTTPRequest,
+) -> void:
+	req.queue_free()
+	if result != HTTPRequest.RESULT_SUCCESS or response_code >= 300:
+		Netcode.log.warning(
+			(
+				"[Edgegap] register_server failed:"
+				+ " result=%d code=%d body=%s"
+			) % [
+				result,
+				response_code,
+				body.get_string_from_utf8(),
+			],
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+		return
+	Netcode.log.print(
+		"[Edgegap] register_server ok (code=%d)" % response_code,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+
 func is_active() -> bool:
 	# This provider validates against a real allowlist. Reports
 	# active so peers route through real validation rather than

@@ -1209,6 +1209,15 @@ func server_start_match() -> void:
 	Netcode.connector.server_enable_connections(
 		Netcode.server_port)
 
+	# WS / signaling port is now bound. Post register_server
+	# to the runtime so the matchmaker hook can release the
+	# match_ready notifications it's holding back. Production
+	# Edgegap deployments only — preview / local runs don't
+	# touch the runtime.
+	var provider := G.session_manager.session_provider
+	if provider is EdgegapServerProvider:
+		(provider as EdgegapServerProvider).register_with_runtime()
+
 
 func server_end_match() -> void:
 	# Guard against calls after local mode cleanup
