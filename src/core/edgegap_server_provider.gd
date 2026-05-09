@@ -423,6 +423,15 @@ func _on_idle_timeout() -> void:
 		) % _SESSION_IDLE_TIMEOUT_SEC,
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
+	# Tell the runtime to terminate the Edgegap deployment
+	# before quitting. Without this, Edgegap auto-restarts the
+	# container after exit and the deployment keeps spinning
+	# (idle → quit → restart → idle → ...) until the 24h
+	# max_duration cap fires.
+	var request_id := OS.get_environment("ARBITRIUM_REQUEST_ID")
+	if not request_id.is_empty():
+		await G.match_result_reporter.cancel(
+			request_id, "idle_timeout")
 	get_tree().quit()
 
 
@@ -474,6 +483,14 @@ func _on_grace_timeout() -> void:
 		(Netcode.connector
 			.server_close_multiplayer_session
 			.call_deferred())
+		# Same rationale as _on_idle_timeout: tell the runtime
+		# to Stop the Edgegap deployment before exit so it
+		# doesn't auto-restart-cycle until max_duration.
+		var request_id := OS.get_environment(
+			"ARBITRIUM_REQUEST_ID")
+		if not request_id.is_empty():
+			await G.match_result_reporter.cancel(
+				request_id, "grace_only_one_peer")
 		get_tree().quit.call_deferred()
 		return
 
