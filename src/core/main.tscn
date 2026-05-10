@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3 uid="uid://bpnl5pn3ydite"]
+[gd_scene format=3 uid="uid://bpnl5pn3ydite"]
 
 [ext_resource type="Script" uid="uid://cb3gdybtwy0ry" path="res://src/core/main.gd" id="1_avv2o"]
 [ext_resource type="PackedScene" uid="uid://bt1la6s52krxe" path="res://src/ui/hud/hud.tscn" id="2_ukt3u"]
@@ -11,18 +11,18 @@
 [ext_resource type="Script" uid="uid://dusd766l5y455" path="res://src/core/pixel_viewport_manager.gd" id="10_pvm"]
 [ext_resource type="PackedScene" path="res://src/ui/toast/toast_overlay.tscn" id="11_toast"]
 
-[node name="Main" type="Node2D"]
+[node name="Main" type="Node2D" unique_id=2125701248]
 process_mode = 3
 script = ExtResource("1_avv2o")
 
-[node name="AudioMain" parent="." instance=ExtResource("3_nlf45")]
+[node name="AudioMain" parent="." unique_id=890889940 instance=ExtResource("3_nlf45")]
 
-[node name="GameViewportContainer" type="SubViewportContainer" parent="."]
+[node name="GameViewportContainer" type="SubViewportContainer" parent="." unique_id=111409058]
 offset_right = 1152.0
 offset_bottom = 648.0
 stretch = true
 
-[node name="GameViewport" type="SubViewport" parent="GameViewportContainer"]
+[node name="GameViewport" type="SubViewport" parent="GameViewportContainer" unique_id=1312298192]
 unique_name_in_owner = true
 handle_input_locally = false
 canvas_item_default_texture_filter = 0
@@ -30,46 +30,46 @@ audio_listener_enable_2d = true
 size = Vector2i(1152, 648)
 render_target_update_mode = 4
 
-[node name="GamePanel" parent="GameViewportContainer/GameViewport" instance=ExtResource("3_x62ka")]
+[node name="GamePanel" parent="GameViewportContainer/GameViewport" unique_id=52159257 instance=ExtResource("3_x62ka")]
 position = Vector2(0, -7)
 
-[node name="Screens" type="CanvasLayer" parent="."]
+[node name="Screens" type="CanvasLayer" parent="." unique_id=1474982552]
 layer = 210
 
-[node name="ScreensMain" parent="Screens" instance=ExtResource("6_q2b63")]
+[node name="ScreensMain" parent="Screens" unique_id=2008292011 instance=ExtResource("6_q2b63")]
 
-[node name="Hud" type="CanvasLayer" parent="."]
+[node name="Hud" type="CanvasLayer" parent="." unique_id=276031388]
 layer = 200
 
-[node name="Hud" parent="Hud" instance=ExtResource("2_ukt3u")]
+[node name="Hud" parent="Hud" unique_id=1284179675 instance=ExtResource("2_ukt3u")]
 
-[node name="SidePanelLayer" type="CanvasLayer" parent="."]
+[node name="SidePanelLayer" type="CanvasLayer" parent="." unique_id=935541085]
 unique_name_in_owner = true
 layer = 260
 
-[node name="ConfirmLayer" type="CanvasLayer" parent="."]
+[node name="ConfirmLayer" type="CanvasLayer" parent="." unique_id=1826463672]
 unique_name_in_owner = true
 layer = 280
 
-[node name="CelebrationLayer" type="CanvasLayer" parent="."]
+[node name="CelebrationLayer" type="CanvasLayer" parent="." unique_id=206127002]
 layer = 250
 
-[node name="MatchEndCelebration" parent="CelebrationLayer" instance=ExtResource("9_celeb")]
+[node name="MatchEndCelebration" parent="CelebrationLayer" unique_id=1708353767 instance=ExtResource("9_celeb")]
 
-[node name="SuperHud" type="CanvasLayer" parent="."]
+[node name="SuperHud" type="CanvasLayer" parent="." unique_id=1761697794]
 layer = 300
 
-[node name="SuperHud" parent="SuperHud" instance=ExtResource("7_nxx65")]
+[node name="SuperHud" parent="SuperHud" unique_id=18227966 instance=ExtResource("7_nxx65")]
 
-[node name="ToastLayer" type="CanvasLayer" parent="."]
+[node name="ToastLayer" type="CanvasLayer" parent="." unique_id=2081438543]
 layer = 350
 
-[node name="ToastOverlay" parent="ToastLayer" instance=ExtResource("11_toast")]
+[node name="ToastOverlay" parent="ToastLayer" unique_id=1584053471 instance=ExtResource("11_toast")]
 
-[node name="TransitionLayer" type="CanvasLayer" parent="."]
+[node name="TransitionLayer" type="CanvasLayer" parent="." unique_id=803359961]
 layer = 400
 
-[node name="ScreenTransition" parent="TransitionLayer" instance=ExtResource("8_2uitn")]
+[node name="ScreenTransition" parent="TransitionLayer" unique_id=1378606411 instance=ExtResource("8_2uitn")]
 
-[node name="PixelViewportManager" type="Node" parent="."]
+[node name="PixelViewportManager" type="Node" parent="." unique_id=1050256531]
 script = ExtResource("10_pvm")

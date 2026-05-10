@@ -161,7 +161,7 @@ func _refresh_ui() -> void:
 		var member_label := Label.new()
 		# Show player_id for now. Could resolve
 		# display names via profile API.
-		var is_current := (
+		var is_current: bool = (
 			member_id
 			== G.auth_token_store.player_id)
 		var prefix := (

@@ -1,4 +1,4 @@
-[gd_resource type="TileSet" load_steps=5 format=3 uid="uid://mtwu14d78k40"]
+[gd_resource type="TileSet" format=3 uid="uid://mtwu14d78k40"]
 
 [ext_resource type="PackedScene" uid="uid://q1x52f28jpla" path="res://src/objects/spring/spring.tscn" id="1_ns5eo"]
 [ext_resource type="Texture2D" uid="uid://dro62b7ms16nc" path="res://assets/images/tiles_placeholder.png" id="3_fo6ly"]
