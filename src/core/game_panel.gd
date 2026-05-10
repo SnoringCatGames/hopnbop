@@ -30,6 +30,16 @@ const _PLATFORM_API_URL := (
 ## disconnect handling and skips clear_session().
 var _is_session_override_kick := false
 
+## Set in server_start_match, consumed in _on_match_ready.
+## We pick the level scene up-front so the matchmaker hook
+## can use the selected_level_id, but we don't add it to the
+## tree until every expected peer is connected — otherwise
+## replication of nested MultiplayerSpawners (PlayerSpawner,
+## ObjectSpawner inside Level5) races the parent Level5
+## spawn on WebRTC's SCTP multi-stream transport, and late-
+## joining peers see "Node not found: Levels/Level5/...".
+var _pending_level_scene: PackedScene
+
 var _session_poll_timer: Timer
 var _session_poll_http: HTTPRequest
 
@@ -538,6 +548,22 @@ func _on_match_ready() -> void:
 		"Match ready, all players validated",
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
+
+	# Spawn the level NOW that every peer is connected.
+	# Doing this earlier (in server_start_match, before
+	# server_enable_connections) means peers connect with
+	# a level already in the server tree, and the engine
+	# replicates the level + its nested spawners' children
+	# on per-spawner SCTP streams that arrive in arbitrary
+	# order — a child Player_1 spawn racing a parent Level5
+	# spawn on the wire is what triggers the
+	# "Node not found: Levels/Level5/..." flood. By
+	# spawning here, the parent goes out FIRST to all
+	# already-connected peers, then children replicate as
+	# normal in the next frames.
+	if _pending_level_scene != null:
+		_server_spawn_level(_pending_level_scene)
+		_pending_level_scene = null
 
 	# Set expected player count for color
 	# assignment. This tells
@@ -1199,12 +1225,13 @@ func server_start_match() -> void:
 		session_manager.server_set_expected_players(
 			expected_count)
 
-	# Get selected level from session provider
-	# (GameLift or preview mode).
-	var level_scene := (
+	# Pick the level now (so the selected_level_id is
+	# stable from this point), but DON'T add it to the tree
+	# yet. The actual spawn happens in _on_match_ready, by
+	# which point every expected peer has connected and gets
+	# a clean parent-then-child replication ordering.
+	_pending_level_scene = (
 		_server_get_selected_level_scene())
-
-	_server_spawn_level(level_scene)
 
 	Netcode.connector.server_enable_connections(
 		Netcode.server_port)
