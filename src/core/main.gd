@@ -76,7 +76,14 @@ func _ready() -> void:
 
 	await get_tree().process_frame
 
-	_handle_preview_window_closing()
+	# _handle_preview_window_closing() may call close_app()
+	# (deferred quit). When it does we must skip _start_app —
+	# otherwise the level spawn / ENet bind / register_server
+	# all run for one frame before quit fires, which is what
+	# was making the local-server preview window briefly
+	# appear in remote-matchmaking mode.
+	if _handle_preview_window_closing():
+		return
 
 	var is_generating_thumbnails := (
 		Netcode.is_preview
@@ -99,9 +106,16 @@ func _ready() -> void:
 
 
 
-func _handle_preview_window_closing() -> void:
+## Returns true if this preview process should shut down
+## immediately (close_app() has been called and the caller
+## must NOT continue with _start_app()). Returns false for
+## any other case. Calling close_app() from _ready() alone
+## isn't enough — quit is deferred to end-of-frame, so
+## _start_app would still run and partially boot a server
+## that's about to die.
+func _handle_preview_window_closing() -> bool:
 	if not Netcode.is_preview:
-		return
+		return false
 
 	# In thumbnail generation mode, close all
 	# client windows. Only the server stays.
@@ -115,7 +129,7 @@ func _handle_preview_window_closing() -> void:
 				.CATEGORY_CORE_SYSTEMS,
 		)
 		close_app()
-		return
+		return true
 
 	if (
 		Netcode.preview_client_number > 1
@@ -131,7 +145,7 @@ func _handle_preview_window_closing() -> void:
 			NetworkLogger.CATEGORY_CORE_SYSTEMS,
 		)
 		close_app()
-		return
+		return true
 
 	if (
 		Netcode.is_server
@@ -149,7 +163,9 @@ func _handle_preview_window_closing() -> void:
 			NetworkLogger.CATEGORY_CORE_SYSTEMS,
 		)
 		close_app()
-		return
+		return true
+
+	return false
 
 
 func _start_app() -> void:
