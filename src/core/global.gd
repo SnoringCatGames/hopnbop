@@ -277,8 +277,14 @@ func get_peer_anonymous_color(
 ) -> Color:
 	if peer_id in _peer_color_cache:
 		return _peer_color_cache[peer_id]
+	# Game-over screen calls this AFTER disconnect, when
+	# multiplayer.multiplayer_peer is null and get_unique_id()
+	# errors. Treat any peer as remote in that case (random hue).
+	var local_id := 0
+	if multiplayer.multiplayer_peer != null:
+		local_id = multiplayer.get_unique_id()
 	var hue: float
-	if peer_id == multiplayer.get_unique_id():
+	if peer_id == local_id and local_id != 0:
 		hue = local_settings.get_anonymous_color_hue()
 	else:
 		hue = randf()
