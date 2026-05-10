@@ -1214,8 +1214,7 @@ func server_start_match() -> void:
 	# match_ready notifications it's holding back. Production
 	# Edgegap deployments only — preview / local runs don't
 	# touch the runtime.
-	var provider: SessionProvider = (
-		G.session_manager.session_provider)
+	var provider: SessionProvider = session_manager.session_provider
 	if provider is EdgegapServerProvider:
 		(provider as EdgegapServerProvider).register_with_runtime()
 
