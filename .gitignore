@@ -113,6 +113,10 @@ test_results/
 # VSCode local settings (user-specific)
 .vscode/settings.local.json
 
+# Claude Code per-machine state (session lock + permission allowlist)
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
+
 # Vim
 *.swp
 *.swo

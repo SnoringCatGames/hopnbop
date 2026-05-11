@@ -247,8 +247,7 @@ If the changes require users to re-consent, also bump
   then bump the parent's submodule pointer in the next
   parent commit.
 - Stage only files relevant to the change. The parent repo
-  often carries unrelated dirty files (e.g., `settings.tres`,
-  `.claude/settings.local.json`);
+  often carries unrelated dirty files (e.g., `settings.tres`);
   do not sweep them in.
 - Force-push and push to anything other than `main` still
   need explicit confirmation.
