@@ -324,3 +324,242 @@ application code were identical.
   GDExtension source on GitHub and find the missing
   `enableIceUdpMux` configuration.
 
+
+## Post: ntfy + claude remote-control as a phone-controlled fix-prod button
+
+### Problem
+
+- Prod blows up while I'm away from the desk.
+- I want a Claude Code session running on my desktop with the
+  desktop's full state — the repo, creds in `~/.claude/`, SSH
+  keys, deploy scripts, per-project CLAUDE.md files.
+- Anthropic ships `claude remote-control` for exactly this:
+  spawns a local server, prints a
+  `https://claude.ai/code?environment=env_<id>` URL, the URL
+  connects the phone/web app to the running session.
+- Catch: the URL is printed to a TUI exactly once at startup.
+  No file on disk, no local HTTP endpoint, no `--print-url`,
+  no env var to pin it ahead of launch. Restart the server
+  and you have to be physically at the desktop to copy the
+  new URL.
+
+### Setup
+
+- Free [ntfy.sh](https://ntfy.sh) topic. Phone app subscribed
+  with a saved "restart" button.
+- Desktop has a Windows Task Scheduler entry running
+  `ntfy-subscribe.vbs`, which is just `ntfy.exe subscribe
+  <topic> trigger.cmd` wrapped in WSH so the window stays
+  hidden.
+- `trigger.cmd` branches on `%NTFY_MESSAGE%`:
+  - empty / anything else → idempotent startup VBS that
+    launches `claude remote-control` if not already alive,
+    or just republishes the URL if it is.
+  - `stop` / `shutdown` / `kill` → shutdown VBS that
+    terminates the launcher shell and `claude.exe`.
+- Startup VBS is idempotent: WMI-checks for a `claude.exe`
+  whose command line includes `remote-control`. If alive,
+  just runs the URL-republish helper. If not, reaps any
+  zombie launcher shells from previous Ctrl+C'd sessions and
+  spawns fresh.
+
+### Capturing the URL: things that didn't work
+
+- **PowerShell 5.1 `Start-Transcript`** — doesn't capture
+  native-command stdout. Transcript file ends up containing
+  only the `Start-Transcript` boilerplate header.
+- **PowerShell 7.5 `Start-Transcript`** — also doesn't, for
+  Ink TUIs. Ink switches to the alternate screen buffer
+  (ANSI `\e[?1049h`), which bypasses PowerShell's host UI
+  hooks entirely.
+- **Win32 `AttachConsole(claudePid)` + `ReadConsoleOutput
+  Character`** — returns an empty buffer under Windows
+  Terminal because conhost is fronted by ConPTY now. The
+  legacy console-buffer APIs see an empty surface.
+- **`~/.claude/sessions/<pid>.json`** — has a Claude session
+  ID and cwd, but no remote-control environment ID.
+
+### Capturing the URL: what worked
+
+- `claude remote-control --debug-file <path>`. Writes
+  structured Node debug logs to the file. Includes lines
+  like `[bridge:init] Registered, server environmentId=
+  env_01S2qWGqg4c3MySMW1xepU3d`.
+- URL is then trivially
+  `https://claude.ai/code?environment=<env_id>`.
+- Wrapper:
+  1. Truncate the debug file.
+  2. Background a watcher Job that polls every 500ms with a
+     2-minute deadline. Regex `env_[A-Za-z0-9]{20,}`. As
+     soon as it matches, POST the URL to the same ntfy
+     topic with `Title: claude remote-control`,
+     `Click: <url>`, `Priority: 5`. Then `return`.
+  3. Foreground the actual `claude remote-control
+     --debug-file <path>` so the user can still interact
+     with the TUI locally.
+
+### The feedback loop trap
+
+- Publishing the URL on the same topic the desktop is
+  subscribed to means the local subscriber receives its own
+  publish and fires `trigger.cmd` with the URL as the
+  message body.
+- Default branch is "restart" → idempotent VBS sees claude
+  alive → calls URL-republish helper → POSTs again. Loop.
+- I shipped a naive version and produced 240 notifications
+  in 2 minutes before noticing.
+- Fix: `trigger.cmd` ignores any message whose
+  `%NTFY_TITLE%` is `claude remote-control`. Phone-
+  originated commands have no title; outgoing status
+  notifications always do. One-line guard, total fix.
+
+### Windows pitfalls
+
+- `Start-Job` + `& script.ps1` + `exit 0` + `$LASTEXITCODE`
+  is unreliable across the job process boundary. Don't
+  write watchers that use `if ($LASTEXITCODE -eq 0)
+  { return }`. Inline the publish in the scriptblock and
+  `return` directly.
+- PowerShell 7.6 ships as MSIX. `winget upgrade 7.5 → 7.6`
+  errors with "install technology is different — uninstall
+  first." Binary path moves from
+  `C:\Program Files\PowerShell\7\pwsh.exe` to
+  `C:\Users\<user>\AppData\Local\Microsoft\WindowsApps\
+  pwsh.exe`. Anything pinned to the old absolute path
+  silently breaks.
+- WMI process matching has to update when the launcher's
+  command line changes. Both the zombie-reap loop in the
+  startup VBS and the shutdown VBS match on
+  `start-claude-remote-control.ps1` in the command line;
+  bumping that filename without updating the matchers
+  leaves orphan shells around.
+
+### Why it's worth the effort
+
+- ~15 seconds from phone tap to live Claude session: tap
+  saved "restart" → wait for URL push → tap URL → type
+  prompt.
+- Claude sees the desktop's full state — repo, running
+  services, editor-open files, creds in `~/.claude/`. From
+  the phone, it can run any command, including SSH to prod,
+  redeploys, migrations.
+- The "Anthropic's tech is buggy" caveat isn't gratuitous:
+  every assumption about programmatic introspection of
+  `claude remote-control` failed. The URL exists for one
+  second on a TUI and then it's gone. Until they expose it
+  via a stable side channel — a file, a localhost endpoint,
+  anything queryable — debug-file scraping is the way.
+
+
+## Post: Scheduled jobs as the entire monitoring layer
+
+### Premise
+
+- I run the backend on a single small Hetzner box (CPX11)
+  and an Edgegap game-server fleet, with Cloudflare R2 +
+  Pages on the edge.
+- No Prometheus, no Grafana, no Loki, no Datadog — all
+  stripped during the 2026-05-06 single-host consolidation.
+- All operational visibility is what the scheduled jobs
+  produce.
+
+### Architecture
+
+- Each job is its own Windows Task Scheduler entry on my
+  desktop. No master tick. Off-round-minute offsets to
+  avoid clock-edge contention.
+- Two flavours:
+  - **Deterministic scripts** (`claude-config/jobs/scripts/
+    <id>.ps1`) — talk to APIs, summarize, write status
+    entries.
+  - **LLM jobs** — prompt-driven, executed via
+    `run-job.ps1` which spins up a one-shot Claude Code
+    session against a CLAUDE.md-shaped working directory.
+- All jobs append to a "Service status" tab in a Google Doc
+  instead of DMing Discord directly.
+- Two LLM jobs (`daily-consolidator` 08:13,
+  `weekly-consolidator` Sun 09:13) drain that tab and post
+  one digest to Discord.
+- Anything actually broken bypasses the queue and pages
+  Discord directly.
+- Steady-state Discord noise: 2 messages/day on weekdays,
+  4 on Sundays.
+
+### The inventory (PT)
+
+| Job | Type | When | Purpose |
+|---|---|---|---|
+| job-watchdog | script | daily 02:09 | verify other jobs are still scheduled |
+| activity-log | LLM | daily 04:13 | summarize yesterday's commits across repos |
+| prod-liveness-ping | script | hourly :07 | HTTP/TCP probe of nakama, postgres, public sites |
+| edgegap-leak-sweep | script | hourly :23 | kill orphan game-server containers |
+| weekly-stories | LLM | Sun 05:33 | weekly narrative from daily snippets |
+| postgres-deep-dive | script | Sun 06:23 | table sizes, index bloat, slow-query log |
+| backup-restore-smoke | script | Sun 06:37 | restore last night's `pg_dumpall` to scratch DB |
+| cert-expiry | script | Sun 06:43 | warn ≥30 days before any TLS cert expires |
+| resource-trend | script | Sun 06:47 | week-over-week disk/CPU/cost trajectory |
+| prod-health-check | script | daily 06:51 | deep status of nakama, postgres, edgegap |
+| weekly-devlog | LLM | Sun 07:13 | first-person devlog draft from the week |
+| weekly-cost-review | LLM | Sun 07:31 | Hetzner + Edgegap + Cloudflare spend summary |
+| daily-consolidator | LLM | daily 08:13 | drain Service-status → one Discord post |
+| weekly-meta-audit | LLM | Sun 08:31 | audit the audit jobs themselves |
+| weekly-consolidator | LLM | Sun 09:13 | weekly digest to Discord |
+
+### Critically useful for distributed-system monitoring
+
+- **`prod-liveness-ping`** (hourly) — cheapest possible "is
+  the box up" check. Fires Discord when DNS is wrong, TLS
+  expired, docker stack is wedged. The thing I get paged on.
+- **`prod-health-check`** (daily) — goes deeper. Container
+  CPU/memory, Postgres connection counts, Caddy reload
+  state, `journalctl` errors, current Nakama match counts,
+  current Edgegap deployment count. Catches gradual drift
+  that liveness misses.
+- **`edgegap-leak-sweep`** (hourly) — the matchmaker hook
+  allocates game-server containers and Edgegap auto-tears
+  them down on idle, but bugs on either side leak
+  deployments at fractions of a cent per minute each. The
+  script lists current Edgegap deployments, cross-
+  references the Nakama match table, and aggressively
+  deletes anything idle for 10+ minutes with no associated
+  match. ~1 leak/week on average.
+- **`backup-restore-smoke`** (weekly) — `pg-backup.timer`
+  runs nightly to R2. The restore was untested for the
+  first three months — that's just a backup-shaped piece of
+  disk until something proves it can be restored. The smoke
+  test pulls last night's gzipped dump, restores into a
+  scratch container, asserts row counts match a known
+  baseline. Already caught one corrupted-dump incident.
+- **`cert-expiry`** (weekly) — Caddy auto-renews via
+  Let's Encrypt, but the wildcard cert for
+  `*.game.hopnbop.net` is DNS-01 on a separate path.
+  Weekly check, alert at 30 days. Saved one expiry already.
+- **`resource-trend`** (weekly) — the only forward-looking
+  job. R2 storage trend, Pages build-minutes trend, CPX11
+  disk usage trend. Plots a curve and shouts if it's going
+  to hit a free-tier ceiling within 60 days.
+- **`daily-consolidator`** (daily) — not a probe itself,
+  but the thing that lets the others stay quiet. By
+  batching all the deterministic scripts' status entries
+  into one Discord post per day, it avoids the alarm-
+  fatigue trap of "ignore the channel, it's all green
+  checkmarks."
+
+### What this buys
+
+- The previous two-host setup with
+  Prometheus/Grafana/Loki/Promtail cost ~$16/mo of host
+  plus a couple hours/month of attention.
+- The scheduled-jobs setup costs ~$8/mo and roughly the
+  same attention, but the failure modes I notice are
+  different.
+- Loki was good at "what happened in this 60-second
+  window" — rarely the question outside an incident.
+- Scheduled jobs are better at "is anything quietly
+  drifting" — the question 99% of the time.
+- You don't need Datadog. You need a small handful of
+  cheap deterministic probes on a clock, a place to dump
+  their output that you actually read, and a noise filter
+  so Discord only fires when something needs your
+  attention.
+
