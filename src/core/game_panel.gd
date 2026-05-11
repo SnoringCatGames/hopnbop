@@ -561,9 +561,32 @@ func _on_match_ready() -> void:
 	# spawning here, the parent goes out FIRST to all
 	# already-connected peers, then children replicate as
 	# normal in the next frames.
+	#
+	# Side effect of deferring: peer_players_declared has
+	# already fired for every already-connected peer, and
+	# the level's _enter_tree handler missed those one-
+	# shot signals. Replay each peer's declaration through
+	# the level's handler directly so it registers their
+	# players. We can't re-emit the signal — MatchState-
+	# Synchronizer's handler is already connected and
+	# would double-add and trip its dedup assert.
 	if _pending_level_scene != null:
 		_server_spawn_level(_pending_level_scene)
 		_pending_level_scene = null
+		var declarations := (
+			Netcode.connector
+				.server_get_peer_declarations())
+		var connected_peers := multiplayer.get_peers()
+		for peer_id in declarations:
+			if peer_id not in connected_peers:
+				continue
+			var decl: Dictionary = declarations[peer_id]
+			(G.level
+				._server_on_peer_players_declared(
+					peer_id,
+					decl["assigned_ids"],
+					decl["attributes"],
+				))
 
 	# Set expected player count for color
 	# assignment. This tells
