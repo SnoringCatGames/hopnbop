@@ -34,7 +34,9 @@ See also:
 - **Last updated:** 2026-05-12.
 - **Stages complete:** Stage 0 (prerequisites — platform infra
   extraction; verify open items on Stage 1 kickoff).
-- **Stages in progress:** none yet.
+- **Stages in progress:** Stage 1 — task 1.1 server-side landed
+  (`party_start_matchmaking` RPC registered, snoringcat-platform
+  `a9a19cb`); client-side wiring (1.1b) pending.
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -93,23 +95,47 @@ stay correct when Stages 2–3 scope everything by `game_id`.
 
 ### Tasks
 
-- [ ] **1.1 Implement `party_start_matchmaking` RPC**
-  - Where: new file
-    `third_party/snoringcat-platform/runtime/party.go`; register
-    in `runtime/main.go` after the existing `addRpc` calls.
-  - What: accept `{party_id, game_mode}` JSON; validate caller is in
-    `party_id` group via Nakama groups API; for each member call
-    `MatchmakerAdd` with a `party_id` property in the matchmaker
-    metadata.
-  - Hook update: `runtime/fleet_allocator.go` `OnMatchmakerMatched`
-    reads `party_id` from each matched user's properties; if all
-    members share a `party_id`, route them to one Edgegap deployment.
-  - Client: `src/core/party_api_client.gd:131-153` already calls the
-    RPC — no client change needed once registered.
+- [-] **1.1a Server-side `party_start_matchmaking` RPC** (2026-05-12)
+  - Done: new `third_party/snoringcat-platform/runtime/party.go`;
+    registered in `runtime/main.go`. Validates caller is the party
+    group's creator (leader), enumerates members, dispatches
+    persistent `party_matchmaking_start` notifications to non-leader
+    members, returns matchmaker_properties (incl. `party_id`) +
+    leader_id + member_ids to the caller. Build verified via
+    pluginbuilder Docker. Landed: snoringcat-platform `a9a19cb`.
+  - Audit's original framing assumed server-side `nk.MatchmakerAdd`
+    on behalf of members. The Nakama Go runtime can't add tickets
+    without active session/presence info — so the design is
+    notification-dispatch + client-driven enqueue instead.
+
+- [ ] **1.1b Client-side party-matchmaking listener + matchmaker
+      integration**
+  - Where:
+    - `src/core/party_api_client.gd:131-153` — pass RPC response's
+      `matchmaker_properties` through `party_matchmaking_started`
+      signal so PartyManager can act on it.
+    - `src/core/nakama_matchmaker_client.gd` — accept `party_id` /
+      `matchmaker_properties` in `session_prefs`; merge into
+      `_build_string_props` so each ticket carries the shared
+      `party_id`.
+    - new: persistent-notification poller (or extend
+      `friends_notification_poller.gd`) that listens for
+      `party_matchmaking_start` notifications and triggers a
+      matchmaker enqueue with the supplied properties.
+    - `src/core/party_manager.gd` — on
+      `party_matchmaking_started`, call
+      `G.nakama_matchmaker_client.client_request_session_ids(...)`
+      with `party_id` in `session_prefs`. Hook the leader's path
+      first; followers join via the notification poller.
+  - Hook update (later, after 1.1b lands): `fleet_allocator.go`
+    `OnMatchmakerMatched` can read `party_id` from each entry's
+    properties to surface party_id in logs / synthetic-probe
+    detection. The single-Edgegap-deploy routing is already
+    implicit — all matched entries land on one deploy regardless.
   - Verification: new compliance test
-    `test_party_to_matchmaking.gd` — create party, all members call
-    start_matchmaking, assert all receive the same `match_ready`
-    notification.
+    `test_party_to_matchmaking.gd` — create party, leader calls
+    start_matchmaking, assert all members receive the same
+    `match_ready` notification.
 
 - [ ] **1.2 Populate party member list in `fetch_party_status`**
   - Where: `src/core/party_api_client.gd:91-110`.
@@ -528,6 +554,12 @@ Security:
   `delete_account` not implemented, `game.yaml` / `per_game_config.go`
   / `games` table all absent, Platform autoload subsystems not
   defined).
+- **2026-05-12:** Task 1.1 split into 1.1a (server RPC, done) and
+  1.1b (client wiring, pending). Audit's framing assumed server-
+  side `nk.MatchmakerAdd` on behalf of party members, but the
+  Nakama Go runtime API can't add tickets without active
+  session/presence — followers must self-enqueue via a notification
+  listener instead.
 
 ## How to use this document
 
