@@ -151,8 +151,14 @@ func _connect_network_signals() -> void:
 ## CLIENT: Request session IDs from backend.
 ## session_prefs: Optional SessionPreferences
 ## for matchmaking hints.
+## extra_props: Optional dict merged into the
+## flattened prefs dict after to_dict(). Used by
+## the party flow to inject party_id /
+## matchmaker_properties without having to extend
+## SessionPreferences for every consumer.
 func client_request_session(
 	session_prefs: SessionPreferences = null,
+	extra_props: Dictionary = {},
 ) -> void:
 	Netcode.check_is_client()
 
@@ -189,6 +195,8 @@ func client_request_session(
 		{}
 		if session_prefs == null
 		else session_prefs.to_dict())
+	for key in extra_props:
+		prefs_dict[key] = extra_props[key]
 
 	Netcode.print(
 		"Requesting session for"

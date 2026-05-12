@@ -275,6 +275,14 @@ func _build_string_props(
 	if session_prefs.has("selected_level_id"):
 		props["level_id"] = str(
 			session_prefs["selected_level_id"])
+	# Party matchmaking: PartyManager seeds session_prefs with the
+	# matchmaker_properties echoed by `party_start_matchmaking`. The
+	# shared `party_id` flows into Nakama as a ticket property so
+	# the fleet allocator (and future per-game-mode logic) can tell
+	# matched players came from the same party.
+	for key in ["party_id", "game_mode"]:
+		if session_prefs.has(key):
+			props[key] = str(session_prefs[key])
 	return props
 
 

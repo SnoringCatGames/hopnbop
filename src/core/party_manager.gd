@@ -17,6 +17,13 @@ const _IDLE_POLL_INTERVAL_SEC := 10.0
 var current_party: Dictionary = {}
 var pending_invites: Array = []
 
+## Set when party_start_matchmaking succeeds (leader path) or when
+## a `party_matchmaking_start` notification arrives (follower path).
+## Consumed by `GamePanel._client_client_request_session_ids` so the
+## resulting matchmaker ticket carries the shared `party_id`. Keys:
+## `party_id`, `game_mode`, `matchmaker_properties`.
+var pending_party_match_context: Dictionary = {}
+
 var _poll_timer := 0.0
 var _is_polling := false
 var _current_poll_interval := _IDLE_POLL_INTERVAL_SEC
@@ -156,6 +163,7 @@ func start_party_matchmaking() -> void:
 func reset() -> void:
 	current_party.clear()
 	pending_invites.clear()
+	pending_party_match_context.clear()
 	_known_invite_ids.clear()
 	_current_poll_interval = (
 		_IDLE_POLL_INTERVAL_SEC)
@@ -277,10 +285,61 @@ func _on_party_status_received(
 func _on_matchmaking_started(
 	data: Dictionary,
 ) -> void:
+	# Leader's RPC-response path. Server doesn't currently issue a
+	# Nakama ticket on the caller's behalf (session presence isn't
+	# available server-side), so `ticket_id` is usually empty.
+	# Stash the matchmaker_properties echoed by the server and
+	# trigger the existing client-side matchmaker enqueue flow.
+	_start_party_matchmaking(data)
 	var ticket_id: String = data.get(
 		"ticket_id", "")
 	if not ticket_id.is_empty():
 		matchmaking_started.emit(ticket_id)
+	else:
+		matchmaking_started.emit(
+			data.get("party_id", ""))
+
+
+## Follower path: a `party_matchmaking_start` notification arrived
+## via the friends_notification_poller. The payload mirrors the
+## leader's RPC response, so we use the same kickoff path.
+func on_party_matchmaking_notification(
+	content: Dictionary,
+) -> void:
+	_start_party_matchmaking(content)
+	matchmaking_started.emit(
+		content.get("party_id", ""))
+
+
+## Shared kickoff used by both leader and follower paths. Stores
+## the party context so `GamePanel._client_client_request_session_ids`
+## can pick up the `party_id` matchmaker property, then transitions
+## the client into the same "playing online" flow a solo Play
+## button would.
+##
+## Skips when a match is already loading or active so re-fetched
+## persistent notifications (or a leader+follower race) don't double-
+## trigger and don't stash a stale party_id that would attach to the
+## next solo match.
+func _start_party_matchmaking(
+	data: Dictionary,
+) -> void:
+	if (G.client_session.is_game_loading
+			or G.client_session.is_game_active):
+		return
+	pending_party_match_context = {
+		"party_id": data.get("party_id", ""),
+		"game_mode": data.get("game_mode", ""),
+		"matchmaker_properties": data.get(
+			"matchmaker_properties", {}),
+	}
+	if not is_instance_valid(G.game_panel):
+		# Notification arrived before the game panel
+		# was ready (e.g., during early bootstrap).
+		# Context is stashed; whoever drives the next
+		# match-start will pick it up.
+		return
+	G.game_panel.client_load_game()
 
 
 func _show_invite_dialog(

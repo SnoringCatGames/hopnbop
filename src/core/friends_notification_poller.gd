@@ -25,6 +25,10 @@ var _known_incoming_ids: Dictionary = {}
 var _known_accepted_ids: Dictionary = {}
 var _known_rejected_ids: Dictionary = {}
 var _known_online_ids: Dictionary = {}
+## Dedupe persistent `party_matchmaking_start` notifications so a
+## follower doesn't re-enqueue every poll cycle. Keyed by Nakama
+## notification id.
+var _known_party_match_start_ids: Dictionary = {}
 
 ## Rich presence string surfaced on the friends UI of other
 ## players. Updated from match lifecycle signals; sent on the
@@ -133,12 +137,26 @@ func reset() -> void:
 	_known_accepted_ids.clear()
 	_known_rejected_ids.clear()
 	_known_online_ids.clear()
+	_known_party_match_start_ids.clear()
 	_set_unseen_count(0)
 
 
 func _on_notifications_received(
 	data: Dictionary,
 ) -> void:
+	# FriendsApiClient.fetch_notifications emits the raw Nakama
+	# notification list under the `notifications` key. Dispatch by
+	# subject so non-friend subjects (party_matchmaking_start, etc.)
+	# get routed to the right manager. Friend-request subjects fall
+	# through to the existing incoming_requests / accepted_requests
+	# / rejected_requests path below, which is fed by a different
+	# emit shape (kept in place for compatibility with the
+	# pre-multi-subject handler contract).
+	var notifications: Array = data.get(
+		"notifications", [])
+	for n in notifications:
+		_dispatch_notification(n)
+
 	var incoming: Array = data.get(
 		"incoming_requests", [])
 	var accepted: Array = data.get(
@@ -205,6 +223,30 @@ func _on_notifications_received(
 	if total_new > 0:
 		if not G.friends_api_client.is_busy():
 			G.friends_api_client.fetch_friends()
+
+
+## Dispatch a single Nakama notification by subject. Friend-related
+## subjects are handled by the legacy incoming_requests path; new
+## subjects route here.
+func _dispatch_notification(n: Dictionary) -> void:
+	var subj: String = n.get("subject", "")
+	var nid: String = n.get("id", "")
+	match subj:
+		"party_matchmaking_start":
+			if nid.is_empty() \
+					or _known_party_match_start_ids \
+						.has(nid):
+				return
+			_known_party_match_start_ids[nid] = true
+			var content_raw: Variant = n.get(
+				"content", {})
+			if not (content_raw is Dictionary):
+				return
+			if not is_instance_valid(G.party_manager):
+				return
+			G.party_manager\
+				.on_party_matchmaking_notification(
+					content_raw)
 
 
 func _on_friends_received(

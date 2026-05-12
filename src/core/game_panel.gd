@@ -815,8 +815,22 @@ func _client_client_request_session_ids() -> void:
 		session_prefs.are_cheats_enabled = (
 			G.local_settings.get_value(
 				&"are_cheats_enabled"))
+	# Consume any pending party matchmaking context so the resulting
+	# ticket carries the shared party_id. Cleared after use so a
+	# subsequent solo match doesn't inherit the property.
+	var extra_props: Dictionary = {}
+	if is_instance_valid(G.party_manager):
+		var ctx: Dictionary = (
+			G.party_manager.pending_party_match_context)
+		if not ctx.is_empty():
+			var props_raw: Variant = ctx.get(
+				"matchmaker_properties", {})
+			if props_raw is Dictionary:
+				for key in props_raw:
+					extra_props[key] = props_raw[key]
+			G.party_manager.pending_party_match_context = {}
 	session_manager.client_request_session(
-		session_prefs)
+		session_prefs, extra_props)
 
 
 func _on_local_mode_fallback() -> void:

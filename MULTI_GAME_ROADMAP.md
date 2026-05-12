@@ -30,13 +30,14 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 1 (P0 broken contracts).
+- **Current focus:** Stage 1 (P0 broken contracts). Task 1.1 done
+  end-to-end; next is 1.2 (populate party member list in
+  `fetch_party_status`).
 - **Last updated:** 2026-05-12.
 - **Stages complete:** Stage 0 (prerequisites — platform infra
   extraction; verify open items on Stage 1 kickoff).
-- **Stages in progress:** Stage 1 — task 1.1 server-side landed
-  (`party_start_matchmaking` RPC registered, snoringcat-platform
-  `a9a19cb`); client-side wiring (1.1b) pending.
+- **Stages in progress:** Stage 1 — tasks 1.1a (server RPC) and
+  1.1b (client wiring) landed. Remaining: 1.2, 1.3, 1.4, 1.5.
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -108,34 +109,53 @@ stay correct when Stages 2–3 scope everything by `game_id`.
     without active session/presence info — so the design is
     notification-dispatch + client-driven enqueue instead.
 
-- [ ] **1.1b Client-side party-matchmaking listener + matchmaker
-      integration**
-  - Where:
-    - `src/core/party_api_client.gd:131-153` — pass RPC response's
-      `matchmaker_properties` through `party_matchmaking_started`
-      signal so PartyManager can act on it.
-    - `src/core/nakama_matchmaker_client.gd` — accept `party_id` /
-      `matchmaker_properties` in `session_prefs`; merge into
-      `_build_string_props` so each ticket carries the shared
-      `party_id`.
-    - new: persistent-notification poller (or extend
-      `friends_notification_poller.gd`) that listens for
-      `party_matchmaking_start` notifications and triggers a
-      matchmaker enqueue with the supplied properties.
-    - `src/core/party_manager.gd` — on
-      `party_matchmaking_started`, call
-      `G.nakama_matchmaker_client.client_request_session_ids(...)`
-      with `party_id` in `session_prefs`. Hook the leader's path
-      first; followers join via the notification poller.
-  - Hook update (later, after 1.1b lands): `fleet_allocator.go`
-    `OnMatchmakerMatched` can read `party_id` from each entry's
-    properties to surface party_id in logs / synthetic-probe
-    detection. The single-Edgegap-deploy routing is already
-    implicit — all matched entries land on one deploy regardless.
-  - Verification: new compliance test
-    `test_party_to_matchmaking.gd` — create party, leader calls
-    start_matchmaking, assert all members receive the same
-    `match_ready` notification.
+- [x] **1.1b Client-side party-matchmaking listener + matchmaker
+      integration** (2026-05-12)
+  - Done:
+    - `src/core/nakama_matchmaker_client.gd` `_build_string_props`
+      passes through `party_id` and `game_mode` when present in
+      `session_prefs`.
+    - `src/core/game_session_manager.gd` `client_request_session`
+      gains an `extra_props: Dictionary` arg that merges into the
+      flattened prefs dict (no SessionPreferences class change).
+    - `src/core/game_panel.gd`
+      `_client_client_request_session_ids` consumes
+      `G.party_manager.pending_party_match_context` and passes
+      `matchmaker_properties` through as `extra_props`. Cleared
+      after use so the next solo match doesn't inherit the
+      property.
+    - `src/core/party_manager.gd` gains
+      `pending_party_match_context`, an
+      `on_party_matchmaking_notification(content)` follower entry
+      point, and a shared `_start_party_matchmaking(data)` that
+      drives `G.game_panel.client_load_game()`. Both the leader's
+      RPC-response handler and the follower's notification handler
+      converge on this. Guarded against re-trigger when a match is
+      already loading/active.
+    - `src/core/friends_notification_poller.gd`
+      `_on_notifications_received` now iterates the
+      `notifications` array and dispatches by subject; for
+      `party_matchmaking_start`, calls
+      `G.party_manager.on_party_matchmaking_notification(content)`
+      with per-notification-id dedup
+      (`_known_party_match_start_ids`).
+  - Hook update (still pending — future stage):
+    `fleet_allocator.go` `OnMatchmakerMatched` can read `party_id`
+    from each entry's properties to surface party context in logs
+    / synthetic-probe detection. The single-Edgegap-deploy routing
+    is already implicit — all matched entries land on one deploy
+    regardless.
+  - Known limitation: matchmaker query stays `*`, so party members
+    have a `party_id` property but aren't a true matchmaker-party
+    block. They tend to pair together but timing-dependent matches
+    can split them. A proper fix uses Nakama's
+    `MatchmakerAddParty` realtime API or a `+properties.party_id`
+    filter; defer until Stage 3.8 lands per-game
+    `matchmaker_rules`.
+  - Verification (still pending): new compliance test
+    `test_party_to_matchmaking.gd` — create party of 2, leader
+    calls start_matchmaking, assert both receive `match_ready` for
+    the same Edgegap deploy.
 
 - [ ] **1.2 Populate party member list in `fetch_party_status`**
   - Where: `src/core/party_api_client.gd:91-110`.
@@ -554,12 +574,25 @@ Security:
   `delete_account` not implemented, `game.yaml` / `per_game_config.go`
   / `games` table all absent, Platform autoload subsystems not
   defined).
-- **2026-05-12:** Task 1.1 split into 1.1a (server RPC, done) and
-  1.1b (client wiring, pending). Audit's framing assumed server-
-  side `nk.MatchmakerAdd` on behalf of party members, but the
-  Nakama Go runtime API can't add tickets without active
-  session/presence — followers must self-enqueue via a notification
-  listener instead.
+- **2026-05-12:** Task 1.1 split into 1.1a (server RPC) and 1.1b
+  (client wiring). Audit's framing assumed server-side
+  `nk.MatchmakerAdd` on behalf of party members, but the Nakama Go
+  runtime API can't add tickets without active session/presence —
+  followers must self-enqueue via a notification listener instead.
+- **2026-05-12:** 1.1b landed. Followers receive
+  `party_matchmaking_start` via `friends_notification_poller`'s
+  existing 10s HTTP poll (Nakama persistent notifications); chose
+  HTTP poll over an always-on socket to avoid the larger refactor
+  required to add a shared client-side notification socket. Tradeoff:
+  up to 10s of join lag for followers, but the matchmaker's own
+  120s timeout absorbs that. Revisit if Stage 5.4 (real-time party
+  updates) lands a socket bus we can reuse.
+- **2026-05-12:** Party matchmaker query stays `*` for now; party
+  members carry a `party_id` string property but the matchmaker
+  doesn't enforce block-pairing. Acceptable for the small player
+  pool today; true party-block matching (Nakama's MatchmakerAddParty
+  realtime API or a `+properties.party_id` query) deferred to
+  Stage 3.8 when per-game `matchmaker_rules` lands.
 
 ## How to use this document
 
