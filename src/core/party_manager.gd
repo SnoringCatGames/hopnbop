@@ -1,9 +1,17 @@
 class_name PartyManager
 extends Node
-## Manages party state and polls for updates.
-## Child of Global autoload. Starts idle polling
-## on authentication to discover pending invites.
-## Switches to active polling when in a party.
+## Manages party state. Real-time updates flow over the long-lived
+## Nakama notification socket (NotificationSocketClient) via the
+## `party_state_changed` subject the platform runtime emits on every
+## group lifecycle hook (invite / join / leave / kick). A slow
+## catch-up HTTP poll runs alongside as a fallback for windows when
+## the socket is down or transient notifications were dropped before
+## the client reconnected.
+##
+## Stage 5.4: replaced the previous 3 s active / 10 s idle polling
+## cadence. The poll cadence is now a single ~60 s catch-up regardless
+## of in-party state because the socket carries the latency-sensitive
+## events.
 
 
 signal party_updated(party_data: Dictionary)
@@ -11,8 +19,15 @@ signal party_disbanded
 signal matchmaking_started(ticket_id: String)
 signal invite_received(invite_data: Dictionary)
 
-const _ACTIVE_POLL_INTERVAL_SEC := 3.0
-const _IDLE_POLL_INTERVAL_SEC := 10.0
+## Catch-up cadence when the socket is healthy. Long enough that
+## it's not a meaningful drain in steady state; short enough that
+## a hung socket recovers within a minute.
+const _CATCH_UP_POLL_INTERVAL_SEC := 60.0
+
+## Subject the runtime fans out on every party group hook. Mirrors
+## third_party/snoringcat-platform/runtime/party.go
+## :partyStateChangedSubject.
+const _PARTY_STATE_CHANGED_SUBJECT := "party_state_changed"
 
 var current_party: Dictionary = {}
 var pending_invites: Array = []
@@ -26,8 +41,12 @@ var pending_party_match_context: Dictionary = {}
 
 var _poll_timer := 0.0
 var _is_polling := false
-var _current_poll_interval := _IDLE_POLL_INTERVAL_SEC
 var _known_invite_ids: Dictionary = {}
+## Dedup transient-notification deliveries. Most party_state_changed
+## notifications are unique by id, but the matchmaker socket
+## (NakamaMatchmakerClient) and the notification socket can both
+## receive the same id when matchmaking is also active.
+var _known_state_changed_ids: Dictionary = {}
 
 
 func _ready() -> void:
@@ -50,6 +69,13 @@ func _ready() -> void:
 		_show_invite_dialog)
 	G.auth_client.auth_completed.connect(
 		_on_auth_completed)
+	# Stage 5.4: real-time updates over the long-lived notification
+	# socket. The catch-up poll below handles socket-down windows.
+	G.notification_socket_client\
+		.notification_received.connect(
+			_on_socket_notification)
+	G.notification_socket_client\
+		.socket_connected.connect(_on_socket_connected)
 
 
 func _process(delta: float) -> void:
@@ -59,7 +85,7 @@ func _process(delta: float) -> void:
 		return
 
 	_poll_timer += delta
-	if _poll_timer >= _current_poll_interval:
+	if _poll_timer >= _CATCH_UP_POLL_INTERVAL_SEC:
 		_poll_timer = 0.0
 		if not G.party_api_client.is_busy():
 			G.party_api_client.fetch_party_status()
@@ -215,8 +241,7 @@ func reset() -> void:
 	pending_invites.clear()
 	pending_party_match_context.clear()
 	_known_invite_ids.clear()
-	_current_poll_interval = (
-		_IDLE_POLL_INTERVAL_SEC)
+	_known_state_changed_ids.clear()
 	stop_polling()
 
 
@@ -229,8 +254,6 @@ func _on_auth_completed(
 		return
 	if G.auth_token_store.is_anonymous:
 		return
-	_current_poll_interval = (
-		_IDLE_POLL_INTERVAL_SEC)
 	start_polling()
 
 
@@ -257,8 +280,6 @@ func _on_party_created(
 		"members": [],
 		"viewer_role": "leader",
 	}
-	_current_poll_interval = (
-		_ACTIVE_POLL_INTERVAL_SEC)
 	_known_invite_ids.clear()
 	start_polling()
 	_request_immediate_fetch()
@@ -287,8 +308,6 @@ func _on_party_joined(
 		"members": [],
 		"viewer_role": "member",
 	}
-	_current_poll_interval = (
-		_ACTIVE_POLL_INTERVAL_SEC)
 	_known_invite_ids.clear()
 	start_polling()
 	_request_immediate_fetch()
@@ -300,14 +319,10 @@ func _on_party_left(data: Dictionary) -> void:
 		"disbanded", false)
 	if disbanded:
 		current_party.clear()
-		_current_poll_interval = (
-			_IDLE_POLL_INTERVAL_SEC)
 		_known_invite_ids.clear()
 		party_disbanded.emit()
 	else:
 		current_party.clear()
-		_current_poll_interval = (
-			_IDLE_POLL_INTERVAL_SEC)
 		party_updated.emit({})
 
 
@@ -359,8 +374,6 @@ func _on_party_status_received(
 	if not has_active_party:
 		if not current_party.is_empty():
 			current_party.clear()
-			_current_poll_interval = (
-				_IDLE_POLL_INTERVAL_SEC)
 			party_disbanded.emit()
 		else:
 			# Pending invites can still have changed —
@@ -369,11 +382,6 @@ func _on_party_status_received(
 		return
 
 	current_party = party_raw as Dictionary
-	# Polling discovered an active party (e.g., the
-	# user joined from another device). Switch to the
-	# faster cadence so member changes propagate.
-	_current_poll_interval = (
-		_ACTIVE_POLL_INTERVAL_SEC)
 
 	# Check if matchmaking started.
 	var status: String = current_party.get(
@@ -477,3 +485,52 @@ func _show_invite_dialog(
 			accept_invite(party_id),
 		tr("CONFIRM.CANCEL"),
 	)
+
+
+## Real-time push from the platform runtime on every party group
+## membership change. Triggers an immediate refetch; the actual
+## state-applying logic is shared with the catch-up poll via
+## `_on_party_status_received`.
+##
+## The notification is transient — Nakama doesn't store it — so we
+## only see it while the socket is connected. Catch-up after a
+## socket drop is handled by the periodic poll in `_process` plus
+## the immediate fetch on `socket_connected`.
+func _on_socket_notification(
+	subject: String,
+	content: Dictionary,
+	notification_id: String,
+) -> void:
+	if subject != _PARTY_STATE_CHANGED_SUBJECT:
+		return
+	# Dedup. The matchmaker socket and the notification socket may
+	# both deliver the same Nakama notification id while matchmaking
+	# is in flight — only fan out the first one.
+	if (not notification_id.is_empty()
+			and _known_state_changed_ids.has(notification_id)):
+		return
+	if not notification_id.is_empty():
+		_known_state_changed_ids[notification_id] = true
+		# Trim the dedup map opportunistically so it doesn't grow
+		# unbounded across long sessions. 64 is generous — party
+		# events for any one viewer are sparse.
+		if _known_state_changed_ids.size() > 64:
+			var keys: Array = (
+				_known_state_changed_ids.keys())
+			for i in keys.size() - 64:
+				_known_state_changed_ids.erase(keys[i])
+	# `content.event` (invited / joined / left / kicked) is
+	# unused today — we always refetch to get the canonical state.
+	# Kept on the wire so a future UI can render a per-event toast
+	# without a second roundtrip.
+	_request_immediate_fetch()
+
+
+## Refresh local state when the notification socket reconnects, so
+## any party events that fired while we were disconnected get
+## reflected. The catch-up poll would catch them too, just on the
+## next ~60 s tick.
+func _on_socket_connected() -> void:
+	if not G.auth_token_store.is_token_valid():
+		return
+	_request_immediate_fetch()

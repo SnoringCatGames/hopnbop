@@ -34,6 +34,7 @@ var backend_api_client: BackendApiClient
 var friends_api_client: FriendsApiClient
 var party_api_client: PartyApiClient
 var party_manager: PartyManager
+var notification_socket_client: NotificationSocketClient
 var friends_notification_poller: FriendsNotificationPoller
 var crash_reporter: CrashReporter
 var profile_image_cache: ProfileImageCache
@@ -145,6 +146,17 @@ func _enter_tree() -> void:
 	party_api_client = PartyApiClient.new()
 	party_api_client.name = "PartyApiClient"
 	add_child(party_api_client)
+
+	# NotificationSocketClient must enter the tree before its
+	# consumers (PartyManager, FriendsNotificationPoller) so their
+	# _ready calls can connect to its signals. The socket itself
+	# stays closed until auth_completed fires for a non-anonymous
+	# user.
+	notification_socket_client = (
+		NotificationSocketClient.new())
+	notification_socket_client.name = (
+		"NotificationSocketClient")
+	add_child(notification_socket_client)
 
 	party_manager = PartyManager.new()
 	party_manager.name = "PartyManager"

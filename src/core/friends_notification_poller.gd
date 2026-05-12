@@ -58,6 +58,13 @@ func _ready() -> void:
 	# is warm before the panel ever opens.
 	G.auth_client.auth_completed.connect(
 		_on_auth_completed)
+	# Stage 5.4: party_matchmaking_start arrives over the long-lived
+	# notification socket near-instantly. The 10 s HTTP poll below
+	# stays as a fallback for socket-down windows; dedup by
+	# Nakama notification id makes duplicate deliveries idempotent.
+	G.notification_socket_client\
+		.notification_received.connect(
+			_on_socket_notification)
 	# Track lobby/match transitions to feed the
 	# rich-presence string sent on each heartbeat.
 	# match_state may not exist yet on first ready
@@ -233,20 +240,41 @@ func _dispatch_notification(n: Dictionary) -> void:
 	var nid: String = n.get("id", "")
 	match subj:
 		"party_matchmaking_start":
-			if nid.is_empty() \
-					or _known_party_match_start_ids \
-						.has(nid):
-				return
-			_known_party_match_start_ids[nid] = true
 			var content_raw: Variant = n.get(
 				"content", {})
 			if not (content_raw is Dictionary):
 				return
-			if not is_instance_valid(G.party_manager):
-				return
-			G.party_manager\
-				.on_party_matchmaking_notification(
-					content_raw)
+			_handle_party_matchmaking_start(
+				nid, content_raw)
+
+
+## Push from the long-lived notification socket. Same dispatch
+## table as the HTTP poll path; dedup by Nakama notification id
+## keeps duplicate deliveries idempotent.
+func _on_socket_notification(
+	subject: String,
+	content: Dictionary,
+	notification_id: String,
+) -> void:
+	match subject:
+		"party_matchmaking_start":
+			_handle_party_matchmaking_start(
+				notification_id, content)
+
+
+func _handle_party_matchmaking_start(
+	notification_id: String,
+	content: Dictionary,
+) -> void:
+	if (notification_id.is_empty()
+			or _known_party_match_start_ids
+				.has(notification_id)):
+		return
+	_known_party_match_start_ids[notification_id] = true
+	if not is_instance_valid(G.party_manager):
+		return
+	G.party_manager.on_party_matchmaking_notification(
+		content)
 
 
 func _on_friends_received(

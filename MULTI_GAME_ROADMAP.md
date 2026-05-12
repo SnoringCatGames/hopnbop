@@ -30,23 +30,26 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 5 first wave shipped today
-  (5.1/5.2/5.3/5.11). PartyLobbyPanel refactored to SidePanel
-  + ActionRow nav, reachable from MainMenuPanel's new Party
-  entry. Found and fixed two root-cause bugs along the way:
-  `fetch_party_status` emit/receive signature mismatch
-  (polling never actually populated `current_party`) and
-  state=3 invitees being treated as full members (no invite
-  UI ever fired). PartyLobbyPanel's Main Menu icon still uses
-  friends_icon.png as a placeholder — replace with a real
-  party_icon.png when ready. Stage 5 remainders (5.4-5.10)
-  still pending: real-time socket updates, ready toggle,
-  leader transfer, mode picker, chat, persistence, deep link.
-  Stage 3 still has 3.5 / 3.9 open; Stage 4 still has
-  4.3/4.7/4.8 deferred behind game.yaml schema extensions.
-  Next focus is more Stage 5 (real-time socket updates 5.4
-  feels highest value, replacing the 3-10 s polling lag) or
-  Stage 6 (Platform SDK extraction).
+- **Current focus:** Stage 5.4 shipped today. The 3 s / 10 s
+  party polling loop in `party_manager.gd` is gone; party
+  state now flows over a long-lived Nakama realtime socket
+  (`NotificationSocketClient`) driven by four new
+  `AfterAddGroupUsers` / `AfterJoinGroup` / `AfterLeaveGroup`
+  / `AfterKickGroupUsers` runtime hooks that fan out a
+  transient `party_state_changed` notification on every
+  membership change. The notification socket is shared:
+  `FriendsNotificationPoller` also consumes
+  `party_matchmaking_start` over it (near-instant) and keeps
+  its 10 s HTTP poll as a fallback for socket-down windows.
+  A 60 s catch-up `fetch_party_status` poll runs alongside
+  for transient-notification gaps. Stage 5 remainders
+  (5.5-5.10) still pending: ready toggle, leader transfer,
+  mode picker, chat, persistence, deep link. Stage 3 still
+  has 3.5 / 3.9 open; Stage 4 still has 4.3/4.7/4.8 deferred
+  behind game.yaml schema extensions. Next focus is more
+  Stage 5 (5.5 ready toggle is a small bite that unblocks
+  the leader's "everyone ready?" UX, 5.6 leader transfer
+  follows naturally) or Stage 6 (Platform SDK extraction).
 - **Last updated:** 2026-05-12.
 - **Stages complete:**
   - Stage 0 (platform infra extraction — including the kickoff
@@ -66,10 +69,10 @@ See also:
     4.5, 4.6). Open: 4.3 (needs `matchmaker_rules.require_accept`
     in game.yaml), 4.7 (needs `matchmaker_rules.modes` schema),
     4.8 (region picker; optional, needs Edgegap region list).
-  - Stage 5 — 4/11 tasks shipped 2026-05-12 (5.1, 5.2, 5.3,
-    5.11). Open: 5.4 real-time socket, 5.5 ready toggle,
-    5.6 leader transfer, 5.7 game-mode picker, 5.8 chat,
-    5.9 persist across launches, 5.10 deep-link/join-by-code.
+  - Stage 5 — 5/11 tasks shipped 2026-05-12 (5.1, 5.2, 5.3,
+    5.4, 5.11). Open: 5.5 ready toggle, 5.6 leader transfer,
+    5.7 game-mode picker, 5.8 chat, 5.9 persist across launches,
+    5.10 deep-link/join-by-code.
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -100,8 +103,9 @@ Stage 3 (mostly done, 2026-05-12) — game_id scoping: presence
    │   refactored to SidePanel + ActionRow nav and reachable
    │   from MainMenuPanel; pending-invite acceptance UI;
    │   fetch_party_status emit shape + state=3 distinction
-   │   fixed. Open: real-time socket updates (5.4), party
-   │   ergonomics (5.5-5.10).
+   │   fixed; real-time socket updates via party_state_changed
+   │   notification subject + long-lived NotificationSocketClient
+   │   (5.4). Open: party ergonomics (5.5-5.10).
    └─→ Stage 6 — Platform SDK extraction (src/core/*_api_client.gd → Platform.*)
    ↓
 Stage 7 — Resilience (retries, notifications, observability)
@@ -775,8 +779,64 @@ invitees were silently treated as accepted members.
     it directly with a username → user_id fallback.
     Was de-facto working before this stage; checked
     off explicitly so it doesn't get re-audited.
-- [ ] 5.4 Real-time party updates via Nakama socket
-  (replace 3–10s polling in `party_manager.gd`).
+- [x] **5.4 Real-time party updates via Nakama socket**
+      (2026-05-12)
+  - Done — server: four new lifecycle hooks
+    (`AfterAddGroupUsers`, `AfterJoinGroup`,
+    `AfterLeaveGroup`, `AfterKickGroupUsers`) in
+    `third_party/snoringcat-platform/runtime/party.go`
+    fan out a transient `party_state_changed`
+    notification (`code=101`, `persistent=false`) to
+    every current member of the affected group plus
+    the freshly-invited / -kicked / -left target.
+    Each hook gates on the group name starting with
+    `party-` so non-party groups don't spam. Wired
+    via new `registerPartyGroupHooks` in `main.go`.
+    Landed: snoringcat-platform `8069796`; parent bump
+    in the same parent commit as the client wiring.
+  - Done — client: new
+    `src/core/notification_socket_client.gd`
+    (`NotificationSocketClient`) maintains a long-
+    lived Nakama realtime socket on
+    `auth_completed` for non-anonymous users. Emits
+    `notification_received(subject, content, id)`
+    on every persistent or transient notification +
+    `socket_connected` / `socket_disconnected` for
+    lifecycle. Exponential-backoff reconnect (1 s →
+    30 s cap) on `closed` / `connection_error`.
+    Wired into `G` ahead of `PartyManager` and
+    `FriendsNotificationPoller` so consumer
+    `_ready()` calls can connect to its signals.
+  - Done — `PartyManager`: previous 3 s / 10 s
+    interval-based polling collapsed to a single
+    60 s catch-up tick. Real-time refresh path is
+    `_on_socket_notification("party_state_changed",
+    ...)` → `_request_immediate_fetch()` (with
+    notification-id dedup so a stray duplicate from
+    the matchmaker socket doesn't double-fire), and
+    `socket_connected` triggers an immediate fetch
+    so any party events missed while the socket was
+    down get reconciled. Removed
+    `_current_poll_interval` + the
+    `_ACTIVE_POLL_INTERVAL_SEC` /
+    `_IDLE_POLL_INTERVAL_SEC` constants.
+  - Done — `FriendsNotificationPoller`: subscribes
+    to the same socket and routes
+    `party_matchmaking_start` deliveries through a
+    shared `_handle_party_matchmaking_start(id,
+    content)` helper. The existing 10 s HTTP poll
+    keeps running as a fallback for socket-down
+    windows; the existing notification-id dedup
+    (`_known_party_match_start_ids`) handles dual-
+    delivery between paths. This eliminates the
+    "up to 10 s join lag for followers" tradeoff
+    flagged in the 2026-05-12 decision log when
+    1.1b shipped.
+  - Compliance test for the new socket dispatch
+    still pending; needs the Stage 8.11 socket
+    harness + 8.12 multi-session helper to assert
+    that party member join/leave fans out to all
+    other members in under a second.
 - [ ] 5.5 Ready / not-ready toggle per member.
 - [ ] 5.6 Leader transfer / kick-and-promote.
 - [ ] 5.7 Game-mode selection by leader before queuing.
@@ -1267,6 +1327,67 @@ Security:
     without parse errors and the autoload chain
     drives auth refresh cleanly), not by an
     automated test.
+- **2026-05-12:** Stage 5.4 landed. Four decisions
+  worth recording:
+  - **Transient notifications, not persistent.**
+    `party_state_changed` uses `persistent=false`, so
+    Nakama doesn't store the message — it's delivered
+    only to currently-open sockets and discarded
+    otherwise. Persistent (the path
+    `party_matchmaking_start` uses) would accumulate
+    rows in every party member's notification inbox
+    on every membership change, and the value of that
+    inbox row is near-zero because the client always
+    refetches state on socket reconnect anyway. The
+    catch-up fetch on `socket_connected` + the 60 s
+    catch-up poll absorb any missed events.
+  - **Group-lifecycle hooks, not a custom RPC for
+    every party op.** The audit's framing implied
+    swapping `party_api_client.gd`'s direct
+    `add_group_users_async` / `join_group_async` /
+    etc. calls for server-side RPCs that bundle the
+    Nakama write with the fan-out. Nakama already
+    provides AfterX hooks for these specific
+    operations; using them keeps the client API
+    surface unchanged and means the fan-out
+    automatically picks up any future caller (e.g.,
+    a future games-admin console managing parties
+    via direct Nakama API). Tradeoff: the hook
+    fires after the Nakama write commits, so a
+    failed write doesn't fan out. Acceptable —
+    failure cases don't need notifications.
+  - **One shared long-lived socket, not per-feature
+    sockets.** `NotificationSocketClient` is the
+    canonical bus; `PartyManager` and
+    `FriendsNotificationPoller` both consume from
+    it. The pre-existing
+    `NakamaMatchmakerClient` socket remains
+    separate (short-lived, scoped to active
+    matchmaking) — folding it in would have been a
+    larger refactor without paying back today. Two
+    sockets to the same Nakama instance receive the
+    same persistent-notification stream, so each
+    consumer dedups by notification id (cheap, and
+    `_known_party_match_start_ids` already existed
+    on the HTTP-poll path).
+  - **Catch-up poll stays, but at 60 s.** Removing
+    polling entirely would leave a window between
+    socket drop and reconnect where transient
+    `party_state_changed` events are lost forever
+    (Nakama doesn't replay non-persistent
+    notifications on reconnect). The 60 s poll is
+    cheap, never user-visible in latency (the
+    `socket_connected`-triggered fetch handles the
+    immediate-reconnect case), and provides a safety
+    net that doesn't depend on the socket-event
+    semantics being perfect. The 2026-05-12 1.1b
+    decision log entry noting "Revisit if Stage 5.4
+    lands a socket bus we can reuse" is now closed:
+    `FriendsNotificationPoller` routes
+    `party_matchmaking_start` over the new bus, so
+    the 10 s join lag for party followers is gone in
+    the happy path while the HTTP poll continues to
+    cover socket-down windows.
 - **2026-05-12:** Stage 2.5/2.6 closed out the foundation.
   Four design calls worth recording:
   - **`game_id` lives in Nakama's `vars` map, not as a
