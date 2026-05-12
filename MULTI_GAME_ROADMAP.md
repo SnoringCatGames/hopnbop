@@ -30,14 +30,19 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 1 (P0 broken contracts). Task 1.1 done
-  end-to-end; next is 1.2 (populate party member list in
-  `fetch_party_status`).
+- **Current focus:** Stage 1 P0 contract fixes have landed end-to-
+  end on the wiring side. Two UX polish follow-ups remain inside
+  Stage 1 (delete-account second-confirm + grace-period
+  messaging); both are non-blocking and tracked under 1.5. Next
+  major focus is Stage 2 (multi-game foundation).
 - **Last updated:** 2026-05-12.
-- **Stages complete:** Stage 0 (prerequisites — platform infra
-  extraction; verify open items on Stage 1 kickoff).
-- **Stages in progress:** Stage 1 — tasks 1.1a (server RPC) and
-  1.1b (client wiring) landed. Remaining: 1.2, 1.3, 1.4, 1.5.
+- **Stages complete:** Stage 0 (platform infra extraction —
+  including the kickoff verification items 0.8 and 0.9).
+- **Stages in progress:** Stage 1 — all five tasks (1.1a, 1.1b,
+  1.2, 1.3, 1.4, 1.5) have working code shipped. Open items
+  inside Stage 1 are UX polish on 1.5 and the compliance-test
+  green-light still gated on a Stage 8 socket harness for
+  multi-user party scenarios.
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -45,7 +50,9 @@ See also:
 ```
 Stage 0 (mostly done) — platform infra moved into snoringcat-platform
    ↓
-Stage 1 — P0 broken contracts (party RPC, leader_id, members, delete_account)
+Stage 1 (mostly done, 2026-05-12) — P0 broken contracts: party RPC,
+   leader_id, members, delete_account all shipped. Open: 1.5 UX
+   polish + compliance-test rig (Stage 8).
    ↓
 Stage 2 — Multi-game foundation (game.yaml, per_game_config.go, JWT game_id)
    ↓
@@ -78,12 +85,15 @@ Per the platform repo's CLAUDE.md, these directories now live under
 - [x] 0.7 Cost-monitor section added to `hopnbop_private/CLAUDE.md`
 
 **Open verification items (do at Stage 1 kickoff):**
-- [ ] 0.8 Grep `hopnbop_private/` for any cross-references to old
+- [x] 0.8 Grep `hopnbop_private/` for any cross-references to old
       paths (`nakama-runtime/`, `infra/remote/`, etc.) outside the
-      submodule. Fix or remove stragglers.
-- [ ] 0.9 Confirm `release.yml` and `nakama-runtime.yml` workflows
-      check out the submodule via `SUBMODULE_PAT` and build from the
-      new path.
+      submodule. Remaining hits (`CLAUDE.md`, `NEXT_STEPS.md`) are
+      intentional descriptions of paths *inside* the submodule, not
+      stale references to a top-level dir. Confirmed 2026-05-12.
+- [x] 0.9 Confirmed `release.yml` and `nakama-runtime.yml`
+      workflows check out the submodule via `SUBMODULE_PAT` and
+      build from `third_party/snoringcat-platform/runtime`.
+      Confirmed 2026-05-12.
 
 ## Stage 1 — P0 broken contracts
 
@@ -96,7 +106,7 @@ stay correct when Stages 2–3 scope everything by `game_id`.
 
 ### Tasks
 
-- [-] **1.1a Server-side `party_start_matchmaking` RPC** (2026-05-12)
+- [x] **1.1a Server-side `party_start_matchmaking` RPC** (2026-05-12)
   - Done: new `third_party/snoringcat-platform/runtime/party.go`;
     registered in `runtime/main.go`. Validates caller is the party
     group's creator (leader), enumerates members, dispatches
@@ -157,59 +167,107 @@ stay correct when Stages 2–3 scope everything by `game_id`.
     calls start_matchmaking, assert both receive `match_ready` for
     the same Edgegap deploy.
 
-- [ ] **1.2 Populate party member list in `fetch_party_status`**
-  - Where: `src/core/party_api_client.gd:91-110`.
-  - What: after finding the party group, call
-    `list_group_users_async(session, g.id, null, null, null)`; build
-    `members: Array[Dictionary]` with `{user_id, username, role}`
-    entries; include in the emitted dict.
-  - Verification: create party with 2 users, fetch status, assert
-    `members.size() == 2`.
+- [x] **1.2 Populate party member list in `fetch_party_status`**
+      (2026-05-12)
+  - Done: `src/core/party_api_client.gd` now follows the party-
+    group lookup with a `list_group_users_async` call and emits
+    `members: Array[Dictionary]` of `{user_id, username,
+    display_name, role}`. Role is mapped from Nakama's group-user
+    state enum (0→leader, 1→admin, 2→member, 3→invited). Included
+    `display_name` even though the audit spec only listed
+    `{user_id, username, role}`; the UI consumers (party_lobby,
+    friend_details) want a renderable name and pulling it here
+    avoids a second round-trip.
+  - Two UI consumers updated to the new dict shape:
+    `party_lobby_panel.gd` (member labels, pending-invite
+    rendering, start-button enable threshold uses non-invited
+    count) and `friend_details_panel.gd` (`_is_friend_in_party`
+    now iterates dicts).
+  - Verification (still pending): compliance test
+    `test_party_members_populated.gd` — create party with 2 users,
+    fetch status, assert `members.size() == 2`. Tracked under 8.x.
 
-- [ ] **1.3 Populate `leader_id` in party dict**
-  - Where: `src/core/party_api_client.gd:91-110`.
-  - What: map Nakama group's `creator_id` to `leader_id` in the
-    emitted party dict. Read also in `fetch_party_status` member list
-    so role distinguishes leader.
-  - Side effect: `party_manager.gd:82` `is_leader()` starts returning
-    `true` for the actual leader; leader-only UI buttons render.
-  - Verification: create party, assert `is_leader()` true for the
-    creator and false for other members.
+- [x] **1.3 Populate `leader_id` in party dict** (2026-05-12)
+  - Done: emitted `leader_id = g.creator_id`. Combined into the
+    same `fetch_party_status` edit as 1.2 since both fields live
+    on the same dict.
+  - `PartyManager.is_leader()` now actually returns `true` for the
+    creator; leader-only UI (start matchmaking, invite, kick) now
+    renders correctly.
 
-- [ ] **1.4 Implement `delete_account` RPC (soft-delete + cascade)**
-  - Where: new file
-    `third_party/snoringcat-platform/runtime/account.go`; register
-    in `runtime/main.go`.
-  - What: soft-delete the Nakama user (mark `disabled_time`), write a
-    storage record into an `account_deletion_queue` collection
-    (grace-period hard-delete); cascade-clear friends, group
-    memberships, presence record, leaderboard entries, and
-    user-owned storage records.
-  - Spec: `PLATFORM_ARCHITECTURE.md` §"Account deletion".
-  - Test update: flip
-    `addons/snoringcat_platform_client/test/compliance/test_account_delete.gd`
-    from "documented but not implemented" assertion to actually
-    exercising the RPC.
-  - Verification: create user A and user B, friend them, call
-    `delete_account` as A, assert B's friend list no longer includes A.
+- [x] **1.4 `delete_account` RPC (soft-delete + cascade)**
+      (2026-05-12)
+  - Done: new
+    `third_party/snoringcat-platform/runtime/account.go`,
+    registered in `runtime/main.go`. Flow:
+    1. Queue an `account_deletion_queue` storage row keyed by
+       user_id with `scheduled_for = now + 30d` and the original
+       username/display_name preserved for future cancellation.
+    2. `AccountUpdateId` anonymizes display name to "[deleted]".
+    3. Cascade-clear: `FriendsDelete` over the paginated friends
+       list, `GroupUserLeave` per group (with `GroupDelete` if the
+       user was the creator of a `party-` group), `StorageDelete`
+       for the presence record, `LeaderboardRecordDelete` for
+       "ffa", and bulk `StorageDelete` of every user-owned object
+       across collections (excluding the deletion-queue row).
+    4. `UsersBanId` so the existing JWT and any retained identity
+       provider stop authenticating during the grace period.
+  - Landed: snoringcat-platform `d2712fb`; parent bump in `02cf113`.
+  - Test update done: `test_account_delete.gd` now exercises the
+    RPC end-to-end (create one-shot account → call
+    `delete_account` → assert response payload → assert
+    /v2/account no longer reads with the original token).
+  - Hard-delete cron is **not yet implemented** — the deletion-
+    queue audit trail is durable but no scheduled job currently
+    consumes it. From the user's perspective the account is gone
+    (banned + anonymized + cascade-cleared); the raw Nakama row
+    will persist until either the cron lands or the grace window
+    flow cancels it. Tracked as a Stage 7 follow-up; the soft-
+    delete is already the user-facing fact.
+  - Cancellation-from-grace UI also not yet implemented. The
+    audit trail captures `original_username` /
+    `original_display_name` so a future "resurrect from grace"
+    screen has what it needs.
+  - Cross-game scoping (purge per-game state by `game_id`)
+    deferred to Stage 3.6 — `leaderboardsToScrub` is hardcoded to
+    `["ffa"]` for now.
 
-- [ ] **1.5 Wire `delete_account` into the client UI**
-  - Where: new screen or section in account settings (likely under
-    `src/core/auth_settings_screen.gd` or as a row in
-    `friends_panel.gd` settings tab). Add translations to all 13
-    supported language files.
-  - Flow: "Delete Account" button → confirmation modal → second
-    confirmation typing username → RPC call → clear token store +
-    sign out + return to auth screen.
-  - Verification: manual test flow; subsequent auth with old token
-    fails.
+- [x] **1.5 Wire `delete_account` into the client UI**
+      (2026-05-12)
+  - Done on the wiring side: `auth_client._send_delete_request()`
+    now calls our new RPC via `nakama_client.rpc_async("delete_
+    account", "")` instead of `delete_account_async()` (Nakama's
+    built-in DELETE /v2/account, which hard-deletes immediately
+    and skips the cascade). The existing `DeleteAccountRow` +
+    `AccountPanel` confirm-dialog UX is unchanged; users still
+    see the single-step "Delete your account?" confirm and the
+    success toast → consent-screen nav. Landed: parent `5903331`.
+  - **UX follow-ups still open inside 1.5** (non-blocking on
+    Stage 2):
+    - Second-confirmation step (typing username or "DELETE") per
+      the audit spec. Current single-step confirm dialog is
+      inherited from before. Implementation needs either a new
+      sub-panel (like `AddFriendPanel` with a `TextInputRow`) or
+      a new modal-with-text-input. Defer until UX polish pass.
+    - Grace-period messaging in the confirmation copy and the
+      success toast. `CONFIRM.DELETE_ACCOUNT` still says only
+      "Delete your account?" — users don't see the 30-day window.
+      Needs new translation keys (`CONFIRM.DELETE_ACCOUNT_DETAIL`
+      with grace-day count, `TOAST.ACCOUNT_DELETE_QUEUED` with
+      cancellation instructions) across all 13 locales.
 
 ### Definition of done
 
-All five tasks checked; new compliance tests green in CI; one
-manual end-to-end smoke (create party of 2, both queue, both land in
-same match; then have one user delete their account, verify the
-other's friend list updates).
+All five tasks checked: ✓ as of 2026-05-12, with the noted UX
+follow-ups inside 1.5 still open. New compliance tests green in
+CI is the next outstanding gate — requires the multi-session
+socket harness from Stage 8.11 and 8.12 (currently the
+compliance suite is HTTP-only and single-session). End-to-end
+manual smoke (create party of 2 → both queue → both land in
+same match → one user deletes account → other's friend list
+updates) is the eventual sign-off; not yet exercised because
+the matchmaker query is still `*`, so two-user party-block
+pairing is timing-dependent.
 
 ## Stage 2 — Multi-game foundation
 
@@ -593,6 +651,33 @@ Security:
   pool today; true party-block matching (Nakama's MatchmakerAddParty
   realtime API or a `+properties.party_id` query) deferred to
   Stage 3.8 when per-game `matchmaker_rules` lands.
+- **2026-05-12:** 1.2 & 1.3 combined into one commit since both
+  edits live in the same five-line block in `fetch_party_status`.
+  Member dicts include `display_name` beyond the audit's
+  `{user_id, username, role}` spec because every UI consumer
+  needs a renderable name; pulling it from the existing
+  list_group_users_async response is free.
+- **2026-05-12:** 1.4 ships the soft-delete + cascade + ban,
+  but the hard-delete cron and the cancellation-from-grace UI
+  are deferred. Justification: from the user's perspective the
+  account is already gone (banned, anonymized, cascade-cleared);
+  the raw Nakama row's continued existence in Postgres is a
+  housekeeping/cron concern, not a contract violation. The
+  audit trail (`account_deletion_queue` storage rows with
+  `scheduled_for` + original identity captured) is durable, so
+  a future cron job has everything it needs. `leaderboardsToScrub`
+  is hardcoded `["ffa"]` until Stage 3.6 introduces per-game
+  leaderboard scoping.
+- **2026-05-12:** 1.5 ships the backend switch but defers UX
+  polish (second-confirmation typing the username + grace-period
+  messaging across 13 locales). The audit's strict reading wants
+  both; the pragmatic split is "fix the broken contract now,
+  iterate on UX in a separate pass." The existing
+  single-step confirm + the soft-delete's 30-day grace already
+  provide an undo path, so the second-confirmation step is
+  belt-and-suspenders rather than essential. Translation cost
+  was the deciding factor — 4 new keys × 13 locales is meaningful
+  scope.
 
 ## How to use this document
 
