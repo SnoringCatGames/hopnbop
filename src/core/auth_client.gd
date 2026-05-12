@@ -819,16 +819,26 @@ func _send_auth_request(
 
 
 func _send_delete_request() -> void:
+	# Routes through the custom `delete_account` Nakama RPC
+	# (snoringcat-platform runtime/account.go) so the soft-delete-
+	# with-grace-period flow runs: queue audit-trail row, anonymize
+	# display name, cascade-clear friends / groups / presence /
+	# leaderboards / storage, then ban so the existing JWT stops
+	# authenticating. Nakama's built-in DELETE /v2/account would
+	# hard-delete immediately and skip the cascade, leaving stale
+	# rows in friends/groups/storage pointing at a missing user.
 	var session := _build_session_from_store()
 	if session == null:
 		_is_deleting = false
 		_emit_failure("Not authenticated")
 		return
-	var result: NakamaAsyncResult = (
-		await _get_nakama_client().delete_account_async(session))
-	if result.is_exception():
+	var rpc_result = await _get_nakama_client().rpc_async(
+		session, "delete_account", "")
+	if rpc_result.is_exception():
 		_is_deleting = false
-		_emit_failure(_describe_nakama_exception(result.get_exception()))
+		_emit_failure(
+			_describe_nakama_exception(
+				rpc_result.get_exception()))
 		return
 	_handle_delete_success()
 
