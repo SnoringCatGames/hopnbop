@@ -12,10 +12,16 @@ signal party_left(data: Dictionary)
 signal party_kicked(data: Dictionary)
 signal party_status_received(data: Dictionary)
 signal party_matchmaking_started(data: Dictionary)
+signal party_ready_updated(data: Dictionary)
 signal request_failed(error: String)
 
 
 const _PARTY_GROUP_PREFIX := "party-"
+
+## Storage collection name for per-member ready rows. Mirrors
+## third_party/snoringcat-platform/runtime/party.go
+## :partyReadyCollection.
+const _PARTY_READY_COLLECTION := "party_ready"
 
 
 var _is_busy := false
@@ -154,7 +160,49 @@ func fetch_party_status() -> void:
 				"username": u.username,
 				"display_name": u.display_name,
 				"role": _group_state_to_role(gu.state),
+				"ready": false,
 			})
+		# Batch-read every active member's ready row. Each row is
+		# owned by the corresponding member; pending invitees
+		# (state=3) are skipped because they can't ready up until
+		# they accept the invite. Skipping the read entirely when
+		# there are no active members keeps the call count off
+		# the empty-party path.
+		var ready_ids: Array[NakamaStorageObjectId] = []
+		for m in members:
+			if m.get("role", "") == "invited":
+				continue
+			ready_ids.append(NakamaStorageObjectId.new(
+				_PARTY_READY_COLLECTION,
+				party["party_id"],
+				m["user_id"],
+			))
+		if not ready_ids.is_empty():
+			var ready_result = (
+				await G.auth_client._get_nakama_client()
+					.read_storage_objects_async(
+						session, ready_ids)
+			)
+			if ready_result.is_exception():
+				# Ready state is non-critical — log via the
+				# error signal but still surface the party so
+				# the panel can render. Most likely cause is a
+				# transient network blip; the next poll picks
+				# the readies up.
+				request_failed.emit(
+					_describe(ready_result.get_exception()))
+			else:
+				var ready_by_user: Dictionary = {}
+				for obj in ready_result.objects:
+					var parsed: Variant = JSON.parse_string(
+						obj.value)
+					if parsed is Dictionary:
+						ready_by_user[obj.user_id] = (
+							bool(parsed.get("ready", false)))
+				for m in members:
+					m["ready"] = bool(
+						ready_by_user.get(
+							m["user_id"], false))
 		party["members"] = members
 	# Wrapped emit so PartyManager._on_party_status_received can read
 	# both surfaces. The pre-wrap shape (bare party Dict) silently
@@ -183,6 +231,30 @@ func kick_from_party(
 		"party_id": party_id,
 		"player_id": player_id,
 	})
+
+
+## Toggle the caller's per-party ready flag. Calls the
+## party_set_ready runtime RPC, which validates membership,
+## writes the storage row server-side, and fans out a
+## party_state_changed notification so every member's UI
+## refreshes without waiting for the catch-up poll.
+func set_ready(party_id: String, ready: bool) -> void:
+	var session := await _ensure_session()
+	if session == null:
+		return
+	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
+		session, "party_set_ready",
+		JSON.stringify({
+			"party_id": party_id,
+			"ready": ready,
+		}))
+	if rpc_result.is_exception():
+		request_failed.emit(_describe(rpc_result.get_exception()))
+		return
+	var data: Variant = JSON.parse_string(rpc_result.payload)
+	party_ready_updated.emit(
+		data if data is Dictionary else
+		{"party_id": party_id, "ready": ready})
 
 
 func start_matchmaking(

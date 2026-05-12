@@ -16,6 +16,8 @@ extends SidePanel
 @export var _leave_icon: Texture2D
 @export var _kick_icon: Texture2D
 @export var _open_friends_icon: Texture2D
+@export var _ready_icon: Texture2D
+@export var _not_ready_icon: Texture2D
 
 var _status_label: Label
 var _bottom_spacer: Control
@@ -271,15 +273,46 @@ func _render_active_party() -> void:
 	_row_container.add_child(actions_spacer)
 	_dynamic_nodes.append(actions_spacer)
 
+	# Self-ready toggle (visible to every viewer, not
+	# just the leader). Hidden while matchmaking is in
+	# flight because changing ready state mid-queue
+	# doesn't do anything — the ticket is already
+	# enqueued.
+	if not is_matchmaking:
+		var is_ready := G.party_manager.is_self_ready()
+		var ready_row := ActionRow.new()
+		var ready_action := _on_ready_toggle_pressed.bind(
+			not is_ready)
+		ready_row.setup_actions(
+			ready_action, ready_action)
+		var ready_label := (
+			tr("PARTY.MARK_NOT_READY")
+			if is_ready
+			else tr("PARTY.MARK_READY"))
+		var ready_icon := (
+			_not_ready_icon
+			if is_ready
+			else _ready_icon)
+		ready_row.setup_label(ready_label, ready_icon)
+		_row_container.add_child(ready_row)
+		_connect_row_clicked(ready_row)
+		_dynamic_nodes.append(ready_row)
+
 	if is_leader and not is_matchmaking:
 		var start_row := ActionRow.new()
 		start_row.setup_actions(
 			_on_start_match_pressed,
 			_on_start_match_pressed)
+		var all_ready := (
+			G.party_manager.all_active_members_ready())
+		var start_label := (
+			tr("PARTY.START_MATCH")
+			if all_ready
+			else tr("PARTY.WAITING_FOR_READY"))
 		start_row.setup_label(
-			tr("PARTY.START_MATCH"),
-			_start_match_icon)
-		start_row.disabled = active_count < 2
+			start_label, _start_match_icon)
+		start_row.disabled = (
+			active_count < 2 or not all_ready)
 		_row_container.add_child(start_row)
 		_connect_row_clicked(start_row)
 		_dynamic_nodes.append(start_row)
@@ -379,6 +412,18 @@ func _add_member_row(
 		suffix.mouse_filter = (
 			Control.MOUSE_FILTER_IGNORE)
 		content.add_child(suffix)
+
+	# Ready badge for accepted members. Pending invitees
+	# can't ready up; everyone else carries a small green
+	# "Ready" tag once they've toggled.
+	if not is_pending and bool(member.get("ready", false)):
+		var badge := Label.new()
+		badge.text = "[%s]" % tr("PARTY.READY")
+		badge.add_theme_color_override(
+			"font_color", Color(0.5, 1.0, 0.5))
+		badge.mouse_filter = (
+			Control.MOUSE_FILTER_IGNORE)
+		content.add_child(badge)
 
 	if is_kickable:
 		var chevron := TextureRect.new()
@@ -480,6 +525,10 @@ func _on_request_failed(error: String) -> void:
 
 func _on_start_match_pressed() -> void:
 	G.party_manager.start_party_matchmaking()
+
+
+func _on_ready_toggle_pressed(ready: bool) -> void:
+	G.party_manager.set_ready(ready)
 
 
 func _on_leave_pressed() -> void:

@@ -30,26 +30,31 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 5.4 shipped today. The 3 s / 10 s
-  party polling loop in `party_manager.gd` is gone; party
-  state now flows over a long-lived Nakama realtime socket
-  (`NotificationSocketClient`) driven by four new
-  `AfterAddGroupUsers` / `AfterJoinGroup` / `AfterLeaveGroup`
-  / `AfterKickGroupUsers` runtime hooks that fan out a
-  transient `party_state_changed` notification on every
-  membership change. The notification socket is shared:
-  `FriendsNotificationPoller` also consumes
-  `party_matchmaking_start` over it (near-instant) and keeps
-  its 10 s HTTP poll as a fallback for socket-down windows.
-  A 60 s catch-up `fetch_party_status` poll runs alongside
-  for transient-notification gaps. Stage 5 remainders
-  (5.5-5.10) still pending: ready toggle, leader transfer,
-  mode picker, chat, persistence, deep link. Stage 3 still
-  has 3.5 / 3.9 open; Stage 4 still has 4.3/4.7/4.8 deferred
-  behind game.yaml schema extensions. Next focus is more
-  Stage 5 (5.5 ready toggle is a small bite that unblocks
-  the leader's "everyone ready?" UX, 5.6 leader transfer
-  follows naturally) or Stage 6 (Platform SDK extraction).
+- **Current focus:** Stage 5.5 shipped today. Party members
+  (including the leader) now have a Ready / Not Ready toggle
+  in the lobby panel, and the leader's Start Match button is
+  gated on every active member being ready (in addition to
+  the pre-existing >= 2 active-member threshold). Server-
+  side: new `party_set_ready` RPC writes a per-member storage
+  row at `(party_ready, party_id, user_id)` with
+  PermissionRead=2/Write=0, fans out the existing
+  `party_state_changed` notification with `event=ready_changed`,
+  and the AfterJoinGroup / AfterLeaveGroup /
+  AfterKickGroupUsers hooks now also clear every ready row
+  for the affected party so a roster change invalidates stale
+  readies. The account.go cascade already scrubs every
+  user-owned storage row, so per-member ready rows clear
+  automatically on delete_account. Stage 5 remainders
+  (5.6-5.10) still pending: leader transfer, mode picker,
+  chat, persistence, deep link. Stage 3 still has 3.5 / 3.9
+  open; Stage 4 still has 4.3/4.7/4.8 deferred behind
+  game.yaml schema extensions. Next focus is either 5.6
+  (leader transfer / kick-and-promote — non-trivial because
+  Nakama doesn't expose a transfer-creator-id API, so we'd
+  need an RPC that promotes a member to superadmin and demotes
+  the old leader) or jumping to Stage 6 (Platform SDK
+  extraction) to start moving the api_client.gd files into
+  the addon.
 - **Last updated:** 2026-05-12.
 - **Stages complete:**
   - Stage 0 (platform infra extraction — including the kickoff
@@ -69,10 +74,10 @@ See also:
     4.5, 4.6). Open: 4.3 (needs `matchmaker_rules.require_accept`
     in game.yaml), 4.7 (needs `matchmaker_rules.modes` schema),
     4.8 (region picker; optional, needs Edgegap region list).
-  - Stage 5 — 5/11 tasks shipped 2026-05-12 (5.1, 5.2, 5.3,
-    5.4, 5.11). Open: 5.5 ready toggle, 5.6 leader transfer,
-    5.7 game-mode picker, 5.8 chat, 5.9 persist across launches,
-    5.10 deep-link/join-by-code.
+  - Stage 5 — 6/11 tasks shipped 2026-05-12 (5.1, 5.2, 5.3,
+    5.4, 5.5, 5.11). Open: 5.6 leader transfer, 5.7 game-mode
+    picker, 5.8 chat, 5.9 persist across launches, 5.10
+    deep-link/join-by-code.
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -105,7 +110,8 @@ Stage 3 (mostly done, 2026-05-12) — game_id scoping: presence
    │   fetch_party_status emit shape + state=3 distinction
    │   fixed; real-time socket updates via party_state_changed
    │   notification subject + long-lived NotificationSocketClient
-   │   (5.4). Open: party ergonomics (5.5-5.10).
+   │   (5.4); ready toggle + all-ready gate (5.5).
+   │   Open: party ergonomics (5.6-5.10).
    └─→ Stage 6 — Platform SDK extraction (src/core/*_api_client.gd → Platform.*)
    ↓
 Stage 7 — Resilience (retries, notifications, observability)
@@ -837,7 +843,64 @@ invitees were silently treated as accepted members.
     harness + 8.12 multi-session helper to assert
     that party member join/leave fans out to all
     other members in under a second.
-- [ ] 5.5 Ready / not-ready toggle per member.
+- [x] **5.5 Ready / not-ready toggle per member**
+      (2026-05-12)
+  - Done — server: new `party_set_ready` RPC in
+    `third_party/snoringcat-platform/runtime/party.go`.
+    Validates session + game_id, rejects pending invitees
+    (state=3), then writes / deletes the caller's row at
+    `(party_ready, party_id, user_id)` with
+    PermissionRead=2/Write=0 (server-only write so the
+    RPC is the sole entry point and the fan-out
+    notification can't be bypassed). Reuses the existing
+    `party_state_changed` subject with a new
+    `partyEventReadyChanged` event tag.
+  - Done — server: AfterJoinGroup / AfterLeaveGroup /
+    AfterKickGroupUsers now also call
+    `clearPartyReadyRows` so any roster change drops the
+    party's ready rows. The deliberate omission is
+    AfterAddGroupUsers — inviting a friend doesn't
+    change the active roster (the invitee is state=3
+    until they accept), so the existing members' readies
+    are preserved.
+  - Done — client: `party_api_client.gd` `fetch_party_status`
+    follows the list_group_users response with a batched
+    `read_storage_objects_async` for every active
+    member's ready row and merges `ready: bool` into
+    each member dict. `set_ready(party_id, ready)`
+    method calls the new RPC. `set_ready` is best-effort
+    on the read path: a storage-read failure surfaces
+    via `request_failed` but still emits the party so
+    the panel can render with `ready=false` everywhere.
+  - Done — client: `PartyManager` gains `set_ready`
+    (optimistically patches the local member entry so
+    the UI flips immediately rather than waiting on the
+    RPC round-trip + notification refetch),
+    `is_self_ready`, `all_active_members_ready`.
+  - Done — UI: `PartyLobbyPanel` renders a Mark Ready /
+    Mark Not Ready toggle ActionRow for every viewer
+    (not just the leader) with checkmark + x icons.
+    Each active member's row gets a green `[Ready]`
+    badge once they toggle on. Leader's Start Match
+    button shows `PARTY.WAITING_FOR_READY` and stays
+    disabled until every active member is ready (in
+    addition to the pre-existing >= 2 active-member
+    threshold). The toggle is hidden during
+    `status="matchmaking"` because changing ready mid-
+    queue doesn't affect the already-enqueued ticket.
+  - 4 new translation keys × 13 locales: `PARTY.READY`,
+    `PARTY.MARK_READY`, `PARTY.MARK_NOT_READY`,
+    `PARTY.WAITING_FOR_READY`. CSV verified — every
+    line still has 14 fields.
+  - Cascade story: `account.go`'s delete path scans
+    every collection for user-owned rows and deletes
+    them, so per-member ready rows are scrubbed
+    automatically on `delete_account`. No additional
+    code change needed.
+  - Known limitation: there's no compliance test for
+    the ready toggle yet (Stage 8.11/8.12 socket
+    harness still pending). The flow is verified by
+    code inspection + headless Godot autoload boot.
 - [ ] 5.6 Leader transfer / kick-and-promote.
 - [ ] 5.7 Game-mode selection by leader before queuing.
 - [ ] 5.8 Party chat.
@@ -1388,6 +1451,42 @@ Security:
     the 10 s join lag for party followers is gone in
     the happy path while the HTTP poll continues to
     cover socket-down windows.
+- **2026-05-12:** Stage 5.5 landed. Three design calls
+  worth recording:
+  - **Per-member rows, not a single party-wide blob.**
+    Each ready row is `(party_ready, party_id, user_id)`
+    with the user as owner. The alternative — a single
+    storage row owned by the leader holding a
+    `{user_id: bool}` map — would have needed a server
+    round-trip for every read (the leader's owner_id
+    isn't durable across transfer, so client batched
+    reads couldn't target it cleanly). Per-member rows
+    cost N batched reads on fetch_party_status but
+    those run alongside the existing list_group_users
+    response and parties cap at 4 members, so the call
+    count is bounded.
+  - **PermissionWrite=0, not Owner-writable.** Even
+    though each user owns their own ready row, write
+    permission is locked to server-only so
+    `party_set_ready` is the sole entry point. A
+    malicious client can't bypass the validation
+    (active-member check, pending-invite rejection)
+    or skip the fan-out notification by writing to
+    their own storage row directly.
+  - **Roster changes invalidate every ready row, not
+    just the leaver's.** When a member joins, leaves,
+    or is kicked, `clearPartyReadyRows` deletes
+    everyone's ready entry. The alternative (only
+    clear the affected user's) would leave existing
+    members ready for a roster they no longer agree
+    with — e.g., Alice and Bob are both ready, Carol
+    joins, Alice and Bob remain "ready" without ever
+    acknowledging Carol's presence. Clearing all
+    forces a fresh "is this group still right?" beat.
+    AfterAddGroupUsers (invite) is deliberately *not*
+    in the clear set because the invitee is state=3
+    until they accept; the active roster hasn't
+    actually changed.
 - **2026-05-12:** Stage 2.5/2.6 closed out the foundation.
   Four design calls worth recording:
   - **`game_id` lives in Nakama's `vars` map, not as a

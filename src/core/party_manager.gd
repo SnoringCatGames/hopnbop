@@ -227,6 +227,69 @@ func kick_member(
 		get_party_id(), target_player_id)
 
 
+## Toggle the viewer's own ready state for the current
+## party. No-op when the viewer isn't in a party.
+##
+## Optimistically patches the local `current_party.members`
+## entry so the UI reflects the change immediately rather
+## than waiting for the catch-up fetch the server-side
+## party_state_changed notification triggers.
+func set_ready(ready: bool) -> void:
+	if not is_in_party():
+		return
+	var self_id := G.auth_token_store.player_id
+	_patch_member_ready(self_id, ready)
+	party_updated.emit(current_party)
+	G.party_api_client.set_ready(
+		get_party_id(), ready)
+
+
+## Whether the viewer is currently marked ready in this
+## party. False when not in a party.
+func is_self_ready() -> bool:
+	if not is_in_party():
+		return false
+	var self_id := G.auth_token_store.player_id
+	for m in current_party.get("members", []):
+		if m is Dictionary and m.get("user_id", "") == self_id:
+			return bool(m.get("ready", false))
+	return false
+
+
+## Whether every active (non-invited) member of the
+## current party is marked ready. Used by the leader to
+## gate the Start Match button.
+##
+## Returns false when there are no active members so the
+## leader doesn't see Start Match enabled in a 1-member
+## degenerate party (the start-button enable threshold
+## elsewhere already requires >= 2 active members, but
+## this method is also called from the gate condition).
+func all_active_members_ready() -> bool:
+	if not is_in_party():
+		return false
+	var active_count := 0
+	for m in current_party.get("members", []):
+		if not (m is Dictionary):
+			continue
+		if m.get("role", "") == "invited":
+			continue
+		active_count += 1
+		if not bool(m.get("ready", false)):
+			return false
+	return active_count > 0
+
+
+func _patch_member_ready(
+	user_id: String,
+	ready: bool,
+) -> void:
+	for m in current_party.get("members", []):
+		if m is Dictionary and m.get("user_id", "") == user_id:
+			m["ready"] = ready
+			return
+
+
 ## Start matchmaking for the party.
 func start_party_matchmaking() -> void:
 	if not is_leader():
