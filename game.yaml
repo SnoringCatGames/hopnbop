@@ -27,6 +27,16 @@ game_id: hopnbop
 display_name: "Hop 'n Bop"
 edgegap_app_slug: hopnbop-server
 
+# Edgegap registry version tag (`hopnbop-server:v<N>`). Bumped
+# after each successful game-server deploy via
+# `.github/workflows/game-server.yml`. Stage 3.7 reads this
+# per-match from the games table, replacing the manual
+# `EDGEGAP_APP_VERSION=v<N>` env var on the Nakama host. Until
+# the CI wiring adds an auto-bump step, this value must be
+# updated by hand in lockstep with the dashboard's "active
+# version" pin.
+edgegap_app_version: v8
+
 # Network protocol. Bump only when client/server wire format
 # changes (new RPC, changed message shape, new replicated
 # property). Cosmetic / server-internal changes do NOT need a

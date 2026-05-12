@@ -478,12 +478,6 @@ func _add_incoming_row(
 	_dynamic_nodes.append(row)
 
 
-## Hopnbop's own game_id baked into the JWT. Used to compare
-## against friends' presence so we can show a different badge
-## color when a friend is online in another game.
-const _OWN_GAME_ID := "hopnbop"
-
-
 func _add_friend_row(
 	entry: Dictionary,
 ) -> void:
@@ -508,10 +502,16 @@ func _add_friend_row(
 		"game_id", "")
 	var friend_rich_text: String = rich.get(
 		"rich_presence", "")
+	# Compare against the addon-resolved Platform.game_id
+	# (Stage 3.4) so a friend in a different game gets the
+	# "in another game" badge color. Falls back to "" when the
+	# Platform autoload hasn't initialized yet — in that case
+	# every same-game friend would render as "other game",
+	# which is preferable to mis-rendering as same-game.
 	var is_in_other_game := (
 		is_online
 		and not friend_game_id.is_empty()
-		and friend_game_id != _OWN_GAME_ID
+		and friend_game_id != Platform.game_id
 	)
 
 	var row := ActionRow.new()

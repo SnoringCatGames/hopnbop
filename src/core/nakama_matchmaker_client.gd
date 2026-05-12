@@ -9,9 +9,15 @@ extends SessionProvider
 ## happens in the Nakama runtime module (fleet_allocator.go) on
 ## the MatchmakerMatched hook.
 
-const _MATCHMAKER_QUERY := "*"
-const _MIN_COUNT := 2
-const _MAX_COUNT := 4
+## Compile-time fallbacks for the matchmaker rules. Stage 3.8
+## prefers the runtime-reported values surfaced via
+## BackendApiClient.server_matchmaker_* (which come from
+## game.yaml's matchmaker_rules block). Keep these in sync with
+## game.yaml so an offline / pre-version-check matchmaker still
+## queues against the right pool shape.
+const _DEFAULT_MATCHMAKER_QUERY := "*"
+const _DEFAULT_MIN_COUNT := 2
+const _DEFAULT_MAX_COUNT := 4
 const _MATCH_TIMEOUT_SEC := 120.0
 const _MATCH_READY_SUBJECT := "match_ready"
 const _PROGRESS_TICK_SEC := 1.0
@@ -107,6 +113,8 @@ func client_request_session_ids(
 	await _record_client_ip()
 
 	var query := _build_query(session_prefs)
+	var min_count := _resolve_min_count()
+	var max_count := _resolve_max_count()
 	var string_props := _build_string_props(
 		player_count, session_prefs)
 	var numeric_props := _build_numeric_props(
@@ -116,15 +124,15 @@ func client_request_session_ids(
 		(
 			"[NakamaMatchmaker] Joining matchmaker"
 			+ " query=%s min=%d max=%d"
-		) % [query, _MIN_COUNT, _MAX_COUNT],
+		) % [query, min_count, max_count],
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 
 	var ticket_result: NakamaRTAPI.MatchmakerTicket = (
 		await _socket.add_matchmaker_async(
 			query,
-			_MIN_COUNT,
-			_MAX_COUNT,
+			min_count,
+			max_count,
 			string_props,
 			numeric_props,
 		))
@@ -253,10 +261,35 @@ func _authenticate_preview_instance() -> NakamaSession:
 
 
 func _build_query(_session_prefs: Dictionary) -> String:
-	# Wide-open FFA query for now. Per-level / per-region
-	# matchmaking can refine this once the runtime echoes the
-	# selected level back through the match_ready payload.
-	return _MATCHMAKER_QUERY
+	# Stage 3.8: prefer the runtime-reported query (from
+	# game.yaml's matchmaker_rules) over the compile-time
+	# default. Empty means "no override; use the default".
+	# Per-level / per-region matchmaking can layer onto either
+	# source once the runtime echoes the selected level back
+	# through the match_ready payload.
+	if (is_instance_valid(G.backend_api_client)
+			and not G.backend_api_client
+				.server_matchmaker_query.is_empty()):
+		return G.backend_api_client.server_matchmaker_query
+	return _DEFAULT_MATCHMAKER_QUERY
+
+
+func _resolve_min_count() -> int:
+	if (is_instance_valid(G.backend_api_client)
+			and G.backend_api_client
+				.server_matchmaker_min_players > 0):
+		return (G.backend_api_client
+			.server_matchmaker_min_players)
+	return _DEFAULT_MIN_COUNT
+
+
+func _resolve_max_count() -> int:
+	if (is_instance_valid(G.backend_api_client)
+			and G.backend_api_client
+				.server_matchmaker_max_players > 0):
+		return (G.backend_api_client
+			.server_matchmaker_max_players)
+	return _DEFAULT_MAX_COUNT
 
 
 func _build_string_props(
@@ -272,6 +305,14 @@ func _build_string_props(
 			"web" if OS.has_feature("web") else "native"),
 		"player_count": str(player_count),
 	}
+	# game_id is read by fleet_allocator.go to scope match
+	# metadata (and downstream leaderboard writes via Stage 3.6)
+	# to the correct game. Empty Platform.game_id falls back to
+	# the legacy bare leaderboard ID on the server — should
+	# never happen in production because Platform.initialize is
+	# called from global.gd._ready().
+	if not Platform.game_id.is_empty():
+		props["game_id"] = Platform.game_id
 	if session_prefs.has("selected_level_id"):
 		props["level_id"] = str(
 			session_prefs["selected_level_id"])

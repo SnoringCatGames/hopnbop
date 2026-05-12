@@ -19,6 +19,21 @@ signal settings_saved(data: Dictionary)
 signal match_history_received(data: Dictionary)
 signal request_failed(error: String)
 
+# Cached legal_version reported by the runtime's version_check
+# response. Empty until the first successful check_version call.
+# Stage 3.10: clients call get_current_legal_version() which
+# prefers this value and falls back to AuthTokenStore.LEGAL_VERSION
+# when the runtime hasn't responded yet (offline boot, pre-fetch).
+var server_legal_version: String = ""
+
+# Cached matchmaker rules surfaced by the runtime's version_check
+# response (read from game.yaml's `matchmaker_rules` block).
+# Zero / empty mean "no override; use the matchmaker's compile-
+# time fallback". Stage 3.8.
+var server_matchmaker_min_players: int = 0
+var server_matchmaker_max_players: int = 0
+var server_matchmaker_query: String = ""
+
 ## Deprecated. Kept so the legacy lobby-level warmup connection
 ## still resolves. Never emitted now that Edgegap auto-allocates.
 signal fleet_status_updated(data: Dictionary)
@@ -79,11 +94,18 @@ func fetch_leaderboard(
 	scope: String = "global",
 	limit: int = 50,
 ) -> void:
-	# Original AWS-side took (type, scope, limit). Nakama
-	# leaderboards are per-id, so we map type → leaderboard id
-	# (`ffa_alltime`, `ffa_weekly`, ...) and apply scope as a
-	# post-filter on the returned records.
-	var board_id := "ffa_%s" % type
+	# Stage 3.6: read the per-game leaderboard the runtime
+	# writes (`{game_id}_ffa`). The `type` parameter is echoed
+	# back in the leaderboard_received payload below so the UI
+	# can label which tab it came from. We don't have per-window
+	# boards on the server today; when they land, switch this
+	# to `"%s_ffa_%s" % [game_id, type]`.
+	var game_id: String = Platform.game_id
+	var board_id := (
+		"%s_ffa" % game_id
+		if not game_id.is_empty()
+		else "ffa"
+	)
 	var session := await _ensure_session()
 	if session == null:
 		return
@@ -258,6 +280,12 @@ func check_version() -> void:
 	var body := JSON.stringify({
 		"client_protocol_version": client_protocol,
 		"client_game_version": client_game_version,
+		# Stage 3.10: include game_id so the runtime returns
+		# this game's protocol_version + legal_version from the
+		# `games` table instead of the env-var-supplied
+		# defaults. Empty game_id falls back to legacy
+		# (env-var-only) response.
+		"game_id": Platform.game_id,
 	})
 
 	var http := HTTPRequest.new()
@@ -316,6 +344,22 @@ func check_version() -> void:
 		return
 	var server_protocol := int(data.get("protocol_version", -1))
 	var server_game_version := str(data.get("game_version", ""))
+	# Stage 3.10: cache the runtime's per-game legal_version so
+	# AuthTokenStore.get_current_legal_version() can hand it to
+	# the consent screen. Empty (runtime didn't supply one,
+	# e.g. bootstrap window before the first register_game
+	# sync) leaves the compile-time fallback in effect.
+	server_legal_version = str(data.get("legal_version", ""))
+	# Stage 3.8: cache the runtime's per-game matchmaker rules
+	# so nakama_matchmaker_client.gd can override its compile-
+	# time _MIN_COUNT / _MAX_COUNT / _MATCHMAKER_QUERY without
+	# a rebuild when game.yaml changes.
+	server_matchmaker_min_players = int(
+		data.get("matchmaker_min_players", 0))
+	server_matchmaker_max_players = int(
+		data.get("matchmaker_max_players", 0))
+	server_matchmaker_query = str(
+		data.get("matchmaker_query", ""))
 	var compatible := (
 		server_protocol < 0
 		or server_protocol == client_protocol)

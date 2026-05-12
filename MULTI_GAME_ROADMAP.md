@@ -30,14 +30,14 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 2 complete end-to-end (2026-05-12).
-  game_id now rides every authenticate / refresh call as a
-  Nakama vars field, propagates into the session token, and is
-  read+enforced by every stateful client-session RPC. Next
-  focus is Stage 3 — applying that game_id to actually scope
-  presence storage, leaderboards, party groups, Edgegap
-  allocation, and the legal-version / matchmaker-rules
-  hardcodes the runtime still has.
+- **Current focus:** Stage 3 substantially done (8/10 tasks
+  shipped 2026-05-12). game_id now scopes presence storage,
+  leaderboards, Edgegap app coordinates, matchmaker rules, and
+  the legal-version consent gate. The two deferred Stage 3
+  tasks (3.5 settings split, 3.9 protocol-version pre-check)
+  need product/design judgement calls before they're worth
+  starting; they don't block Stages 4–6. Next focus is either
+  closing 3.5/3.9 or starting Stage 4 (matchmaking UX).
 - **Last updated:** 2026-05-12.
 - **Stages complete:**
   - Stage 0 (platform infra extraction — including the kickoff
@@ -48,6 +48,11 @@ See also:
     have working code shipped. Open items: UX polish on 1.5 and
     the compliance-test green-light still gated on a Stage 8
     socket harness for multi-user party scenarios.
+  - Stage 3 — 8/10 tasks shipped 2026-05-12 (3.1, 3.2, 3.3,
+    3.4, 3.6, 3.7, 3.8, 3.10). Open: 3.5 settings split
+    (needs global-vs-per-game taxonomy decision) and 3.9
+    protocol-version pre-check (needs matchmaker-entry session-
+    vars access pattern).
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -64,7 +69,11 @@ Stage 2 (done, 2026-05-12) — game.yaml, games table,
    BeforeAuthenticate* hooks, game_id-in-vars JWT claim, RPC
    plumbing all shipped.
    ↓
-Stage 3 — Apply game_id scoping (presence, settings, leaderboards, Edgegap)
+Stage 3 (mostly done, 2026-05-12) — game_id scoping: presence
+   (storage + record field + friend filter), leaderboards
+   (`{game_id}_ffa`), Edgegap app coords from games table,
+   matchmaker rules + legal_version surfaced via version_check.
+   Deferred: 3.5 (settings split), 3.9 (pre-allocate proto check).
    ↓
    ├─→ Stage 4 — Matchmaking UX
    ├─→ Stage 5 — Party UX
@@ -435,33 +444,147 @@ two games can coexist on one Nakama instance.
 
 ### Tasks
 
-- [ ] **3.1 Scope presence storage by `game_id`**
-  (`runtime/presence.go:26-145`). Collection/key currently
-  `presence/current` → `presence/{game_id}/current`.
-- [ ] **3.2 Add explicit `game_id` field to presence record**
-  (not just opaque `rich_presence` text).
-- [ ] **3.3 Server-side friend-in-game filter** so the client can ask
-  "which friends are in game X". Used by `update_and_get_presence`
-  callers.
-- [ ] **3.4 Remove `_OWN_GAME_ID := "hopnbop"` hardcode**
-  in `friends_panel.gd:484`; read from `Platform.game_id` (or the
-  initialized addon value).
+- [x] **3.1 Scope presence storage by `game_id`** (2026-05-12)
+  - Done: `presence.go` keeps `collection="presence"` but the
+    key flips to `"{game_id}/current"`. The legacy bare
+    `"current"` key is retained as a fallback for offline /
+    bootstrap callers via `presenceKey("")`.
+  - `account.go` cascade now iterates `games.GameIDs()` and
+    deletes both per-game keys and the legacy key, so a
+    grace-period soft-delete clears presence everywhere.
+- [x] **3.2 Add explicit `game_id` field to presence record**
+      (2026-05-12)
+  - Done: `presenceRecord` JSON adds `game_id`. Friends
+    consumers (e.g. `friends_panel.gd`'s "in another game"
+    badge) read this directly instead of parsing
+    `rich_presence` opaque text.
+- [x] **3.3 Server-side friend-in-game filter** (2026-05-12)
+  - Done: `update_and_get_presence` defaults to same-game-only
+    reads (batched StorageRead keyed on the caller's game_id).
+    Optional `include_other_games` arg fans the read out across
+    every registered game's collection so a future "friends
+    everywhere" UI can opt in. Dedup keeps the first row per
+    user (caller's game wins when present).
+- [x] **3.4 Remove `_OWN_GAME_ID := "hopnbop"` hardcode**
+      (2026-05-12)
+  - Done: `friends_panel.gd` compares `friend_game_id` against
+    `Platform.game_id` (Stage 2.5 wired Platform.initialize at
+    boot, so this is non-empty in production).
 - [ ] **3.5 Scope settings into `global` vs `game#{id}`** in
   `src/core/settings_cloud_sync.gd`.
-- [ ] **3.6 Scope leaderboards by `{game_id}_ffa` prefix** instead of
-  bare `"ffa"` in `runtime/match_lifecycle.go:293-338`.
-- [ ] **3.7 Per-game `EDGEGAP_APP_NAME`/`EDGEGAP_APP_VERSION` from
-      `games` table**, not single env vars in
-      `runtime/fleet_allocator.go:52`. Eliminates the manual
-      `runtime.env` bump after each game-server deploy.
-- [ ] **3.8 Per-game `matchmaker_rules` from `game.yaml`** read by
-  `src/core/nakama_matchmaker_client.gd:12-14` (currently hardcoded
-  `_MIN_COUNT=2`, `_MAX_COUNT=4`, `query="*"`).
+  - Deferred 2026-05-12. Needs an explicit taxonomy decision
+    (which settings are global — locale, anonymous_color_hue —
+    vs per-game) plus a one-shot migration step for existing
+    rows. The current single-blob path keeps working; no
+    user-visible bug. Revisit when a second game's
+    requirements force the split.
+- [x] **3.6 Scope leaderboards by `{game_id}_ffa` prefix**
+      (2026-05-12)
+  - Done — server: new `gameScopedLeaderboardID` helper turns
+    bare `"ffa"` into `"{game_id}_ffa"`. `match_lifecycle.go`
+    `MatchEndRpc` reads game_id from a new `match_metadata`
+    storage row fleet_allocator writes at deploy time;
+    `player_data.go` `get_player_stats` and
+    `export_player_data` use the session-scoped game_id.
+    `account.go` `leaderboardIDsToScrub` derives the cascade
+    list from each game's `game.yaml.leaderboards[]` plus the
+    legacy bare `"ffa"`.
+  - Done — fleet_allocator: votes `game_id` from each matched
+    entry's properties (clients pass `Platform.game_id` as a
+    string property; unregistered ids dropped; ties broken
+    deterministically by alphabetical winner). Pre-update
+    clients (no vote) leave the match's game_id empty and
+    fall back to the legacy bare board so a rollout doesn't
+    drop results.
+  - Done — client: `backend_api_client.gd` reads
+    `"{game_id}_ffa"` instead of the pre-existing buggy
+    `"ffa_%s" % type` (which never matched the server's bare
+    write). The `type` parameter is retained for future per-
+    window boards (`{game_id}_ffa_weekly`, ...) but currently
+    routes both UI tabs to the same data.
+  - Known limitation: pre-Stage-3.6 leaderboard records on
+    bare `"ffa"` are not migrated. They're now invisible to
+    `fetch_leaderboard` (which reads `"hopnbop_ffa"`). If
+    surfacing them matters, write a one-shot RPC that copies
+    `LeaderboardRecord("ffa", *)` → `LeaderboardRecord
+    ("hopnbop_ffa", *)`; today the small live-player pool
+    makes the data loss acceptable.
+- [x] **3.7 Per-game `EDGEGAP_APP_NAME`/`EDGEGAP_APP_VERSION`
+      from `games` table** (2026-05-12)
+  - Done — schema: `GameConfig` gains `EdgegapAppVersion` field
+    (read from `game.yaml.edgegap_app_version`). No DDL change
+    needed; the field lives in the JSONB `config` column and is
+    parsed into the typed struct at cache refresh. `game.yaml`
+    now declares `edgegap_app_version: v8` (current prod pin).
+  - Done — fleet_allocator: per-match `appName`/`appVersion`
+    resolved from the games cache via `matchGameID`, falling
+    back to env-var-supplied `a.appName`/`a.appVersion` when
+    bootstrap or fields blank. Eliminates the manual
+    `EDGEGAP_APP_NAME`/`EDGEGAP_APP_VERSION` env bump after
+    each game-server image push.
+  - Open: the CI workflow (`game-server.yml`) doesn't yet
+    auto-bump `game.yaml::edgegap_app_version` after a
+    successful image push. Until that lands, this value must
+    be updated by hand in lockstep with the Edgegap dashboard's
+    "active version" pin.
+- [x] **3.8 Per-game `matchmaker_rules` from `game.yaml`**
+      (2026-05-12)
+  - Done — server: `version_check` response gains
+    `matchmaker_min_players` / `matchmaker_max_players` /
+    `matchmaker_query`, sourced from
+    `game.yaml.matchmaker_rules` when the caller supplies a
+    known `game_id` in the request payload. Empty values mean
+    "no override; client uses compile-time defaults".
+  - Done — client: `BackendApiClient.check_version` passes
+    `Platform.game_id` in the request and caches the response
+    on `server_matchmaker_{min_players,max_players,query}`.
+    `nakama_matchmaker_client.gd` reads these via new
+    `_resolve_min_count()` / `_resolve_max_count()` helpers and
+    a server-aware `_build_query()`; the existing
+    `_DEFAULT_MIN_COUNT=2/_DEFAULT_MAX_COUNT=4/
+    _DEFAULT_MATCHMAKER_QUERY="*"` constants remain as
+    fallbacks.
+  - Implementation note: this surface piggybacks on
+    `version_check` rather than introducing a new pre-auth
+    config RPC. version_check already runs at boot,
+    unauthenticated via HTTP key, so this is the cheapest
+    place to hang static game-config values that the matchmaker
+    needs before a session exists.
 - [ ] **3.9 Per-game `protocol_version` pre-check at queue start**
-  (before allocating Edgegap, so version mismatches don't burn ~$0.01
-  per failed allocation).
-- [ ] **3.10 Per-game `LEGAL_VERSION` from `games` table**
-  (currently hardcoded constant in `auth_token_store.gd:17`).
+  - Deferred 2026-05-12. fleet_allocator can't access matched
+    players' session vars through `runtime.MatchmakerEntry` —
+    only ticket properties are visible. To wire this without
+    trusting client-supplied values, we'd either (a) have the
+    client pass `client_protocol_version` as a ticket property
+    and cross-check on the runtime side (still client-trusted,
+    but the server can at least short-circuit allocation when
+    mismatched), or (b) extend Nakama with a session lookup
+    helper. The current client-side boot check
+    (`backend_api_client.check_version`) already gates entry
+    into the matchmaking flow, so the failed-allocation cost
+    today is bounded by whatever clients lie or whose check
+    races a deploy. Revisit when this becomes load-bearing.
+- [x] **3.10 Per-game `LEGAL_VERSION` from `games` table**
+      (2026-05-12)
+  - Done — server: `version_check` response gains
+    `legal_version` parsed from `game.yaml.legal.legal_version`
+    when the caller's payload supplies a known `game_id`.
+  - Done — client: `BackendApiClient.check_version` caches the
+    response on `server_legal_version`.
+    `AuthTokenStore.get_current_legal_version()` returns this
+    value when populated, falling back to the in-script
+    constant `LEGAL_VERSION = "1.1"` for offline / pre-fetch
+    callers. `consent_screen.gd` routes both call sites
+    (consent gate + on-accept persist) through the resolver.
+  - Implementation note: the compile-time constant is retained
+    deliberately so the consent screen works pre-network. The
+    contract is "if the server reports a value, use it; else
+    use ours". A mismatch surfaces as the consent screen
+    forcing a re-consent on first online boot, which is
+    annoying but safe. CI doesn't yet guard
+    `game.yaml::legal_version` == `LEGAL_VERSION` parity; a
+    parallel check to Stage 2.7's protocol_version guard would
+    catch the mismatch at PR time.
 
 ## Stage 4 — Matchmaking UX
 
@@ -820,6 +943,63 @@ Security:
   the script manually after the Stage 2 deploy, which is also
   the only way to populate the (initially empty) `games` table.
   Re-revisit once the secret is configured.
+- **2026-05-12:** Stage 3 substantially landed (3.1, 3.2, 3.3,
+  3.4, 3.6, 3.7, 3.8, 3.10 — 8/10 tasks). Five design calls
+  worth recording:
+  - **Presence key, not collection, carries game_id.** The
+    audit's literal proposal was
+    `collection="presence/{game_id}", key="current"`. We did
+    `collection="presence", key="{game_id}/current"` instead.
+    Same uniqueness guarantee on the (collection, key,
+    user_id) primary key; better ergonomics for the cascade
+    scrub and any future `StorageList(collection="presence",
+    user=X)` call that wants every game's presence row for a
+    user in one read.
+  - **`match_metadata` collection threads game_id to
+    match_end.** The game server (Godot, in-container) doesn't
+    know its game_id — it just runs whatever Edgegap booted.
+    We need game_id at `match_end` time to scope the
+    leaderboard write. Rather than push the value to the game
+    server (and re-introduce a manual env-var coupling
+    Stage 3.7 just removed), fleet_allocator stashes
+    `{game_id, allocated_at}` in a new `match_metadata`
+    storage row at deploy time. `match_end` reads it back.
+    Missing rows fall back to bare leaderboard ID so a rollout
+    doesn't drop results.
+  - **Mixed-game matchmaker pool defaults: dominant vote, not
+    reject.** Until Stage 3.8's query filter lands (the
+    current query is still `*`), the pool can theoretically
+    contain players from different games. The fleet allocator
+    counts game_id votes from matchmaker entries' properties
+    and picks the highest-vote winner; ties break
+    alphabetically. Unregistered game_ids are dropped before
+    voting. The alternative (reject mixed-game matches) felt
+    worse — better to write a leaderboard record to *some*
+    game's board than to drop a real player's result. The
+    query filter (a future 3.8 follow-up or Stage 3.9 rev)
+    will eliminate the ambiguity at the source.
+  - **Static game config piggybacks on `version_check`, not a
+    new pre-auth RPC.** `version_check` already runs at boot
+    over the HTTP-key (unauthenticated) path. Stage 3.10's
+    legal_version, Stage 3.8's matchmaker rules, and Stage
+    3.7's effective Edgegap pins all flow through the
+    `version_check` response now. Single round-trip; the
+    client caches everything on `BackendApiClient`. The
+    alternative (`get_public_game_config` RPC) would be
+    cleaner long-term, but adds a second pre-auth surface
+    without a clear caller story.
+  - **3.5 and 3.9 deferred deliberately, not blocked.** 3.5
+    (settings split) needs a global-vs-per-game taxonomy
+    decision plus a one-shot migration; the existing single-
+    blob save path keeps working and there's no user-visible
+    bug. 3.9 (pre-allocate protocol check) needs a way for the
+    matchmaker hook to read session vars off matchmaker
+    entries, which Nakama-common doesn't expose. The client-
+    side boot version_check already gates entry into the
+    matchmaking flow, so the cost of a stale-client mismatch
+    today is one failed allocation. Both items are clearly
+    Stage 3-flavored but neither is on the critical path to
+    Stages 4–6.
 - **2026-05-12:** Stage 2.5/2.6 closed out the foundation.
   Four design calls worth recording:
   - **`game_id` lives in Nakama's `vars` map, not as a

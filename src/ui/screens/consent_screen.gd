@@ -121,7 +121,7 @@ func on_open() -> void:
 
 	# Already consented for current legal version.
 	if G.auth_token_store.has_valid_consent(
-		AuthTokenStore.LEGAL_VERSION,
+		AuthTokenStore.get_current_legal_version(),
 	):
 		_navigate_to_auth()
 		return
@@ -353,7 +353,7 @@ func _on_continue_pressed() -> void:
 	G.auth_token_store.consent_accepted_at = (
 		int(Time.get_unix_time_from_system()))
 	G.auth_token_store.consent_legal_version = (
-		AuthTokenStore.LEGAL_VERSION)
+		AuthTokenStore.get_current_legal_version())
 	G.auth_token_store.save_tokens()
 	_navigate_to_auth()
 
@@ -391,6 +391,6 @@ func _auto_consent_and_skip() -> void:
 	G.auth_token_store.consent_accepted_at = (
 		int(Time.get_unix_time_from_system()))
 	G.auth_token_store.consent_legal_version = (
-		AuthTokenStore.LEGAL_VERSION)
+		AuthTokenStore.get_current_legal_version())
 	G.auth_token_store.save_tokens()
 	_navigate_to_auth()
