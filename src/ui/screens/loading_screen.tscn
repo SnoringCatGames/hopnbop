@@ -45,4 +45,14 @@ layout_mode = 2
 size_flags_horizontal = 4
 text = "LOADING.RETRY"
 
+[node name="CancelButton" type="Button" parent="CenterContainer/VBoxContainer"]
+unique_name_in_owner = true
+visible = false
+process_mode = 3
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "LOADING.CANCEL"
+
 [connection signal="pressed" from="CenterContainer/VBoxContainer/RetryButton" to="." method="_on_retry_pressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/CancelButton" to="." method="_on_cancel_pressed"]

@@ -30,14 +30,17 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 3 substantially done (8/10 tasks
-  shipped 2026-05-12). game_id now scopes presence storage,
-  leaderboards, Edgegap app coordinates, matchmaker rules, and
-  the legal-version consent gate. The two deferred Stage 3
-  tasks (3.5 settings split, 3.9 protocol-version pre-check)
-  need product/design judgement calls before they're worth
-  starting; they don't block Stages 4–6. Next focus is either
-  closing 3.5/3.9 or starting Stage 4 (matchmaking UX).
+- **Current focus:** Stage 4 cleared the actionable items
+  (4.1/4.2/4.4/4.5/4.6 shipped 2026-05-12). Cancel-queue button
+  + recoverable-failure classifier landed today; queue/connect/
+  version-mismatch surfaces were already in place pre-stage.
+  4.3/4.7/4.8 deferred behind game.yaml extensions (no
+  `require_accept`, no `modes` declared) and Edgegap region
+  selection — none on a critical path. Stage 3 still has
+  3.5 (settings split) and 3.9 (protocol-version pre-check)
+  open pending design calls. Next focus is Stage 5 (Party UX
+  — refactor PartyLobbyPanel to SidePanel + nav-friendly
+  members list) or Stage 6 (Platform SDK extraction).
 - **Last updated:** 2026-05-12.
 - **Stages complete:**
   - Stage 0 (platform infra extraction — including the kickoff
@@ -53,6 +56,10 @@ See also:
     (needs global-vs-per-game taxonomy decision) and 3.9
     protocol-version pre-check (needs matchmaker-entry session-
     vars access pattern).
+  - Stage 4 — 5/8 tasks shipped 2026-05-12 (4.1, 4.2, 4.4,
+    4.5, 4.6). Open: 4.3 (needs `matchmaker_rules.require_accept`
+    in game.yaml), 4.7 (needs `matchmaker_rules.modes` schema),
+    4.8 (region picker; optional, needs Edgegap region list).
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -75,7 +82,10 @@ Stage 3 (mostly done, 2026-05-12) — game_id scoping: presence
    matchmaker rules + legal_version surfaced via version_check.
    Deferred: 3.5 (settings split), 3.9 (pre-allocate proto check).
    ↓
-   ├─→ Stage 4 — Matchmaking UX
+   ├─→ Stage 4 (mostly done, 2026-05-12) — Cancel button +
+   │   recoverable-failure classifier; queue status / connect /
+   │   version mismatch already in place. Deferred: 4.3
+   │   (require_accept), 4.7 (modes), 4.8 (region picker).
    ├─→ Stage 5 — Party UX
    └─→ Stage 6 — Platform SDK extraction (src/core/*_api_client.gd → Platform.*)
    ↓
@@ -593,17 +603,80 @@ calls out near-zero UI for queue status, cancel, errors.
 
 ### Tasks
 
-- [ ] 4.1 Queue status screen (time waiting, queue size estimate, ETA).
-- [ ] 4.2 Cancel-queue button (sends `MatchmakerRemove`; returns to
-  lobby).
+- [x] **4.1 Queue status screen (time waiting, ETA)** (2026-05-12,
+      pre-stage)
+  - Done pre-stage: `LoadingScreen` shows the matchmaker phase
+    (authenticating / queued / searching / expanding_search /
+    placing), elapsed seconds, and (when provided) estimated
+    remaining via `LOADING.REMAINING`. `NakamaMatchmakerClient`
+    emits `matchmaking_progress_updated(phase, elapsed,
+    estimated)` on every `_on_elapsed_tick` and on matched.
+  - Open sub-item: queue-size estimate. The runtime doesn't
+    currently expose matchmaker pool depth — adding it would
+    require either a periodic Nakama `ListMatchmakerEntries`
+    call or a counter exposed via `version_check`. Not a
+    blocker; deferred.
+- [x] **4.2 Cancel-queue button** (2026-05-12)
+  - Done: new `CancelButton` in
+    `src/ui/screens/loading_screen.tscn`. Visible only during
+    `queued` / `searching` phases (hidden during
+    `authenticating` / `placing` / warmup / when connected /
+    when a retry-on-failure is showing). Pressing it calls
+    `G.game_panel.client_cancel_matchmaking()` which routes
+    through `session_provider.clear_session()` (NakamaMatchmaker
+    calls `remove_matchmaker_async(_ticket)`) and reopens the
+    lobby screen. 3 new translation keys × 13 locales added.
+  - The intentional "Cancel hidden during placing" rule avoids
+    cancelling a match the fleet allocator already deployed —
+    the other matched peers would still get the deploy, but
+    this client would no-show. Hitting Back on the controller
+    is still available as an escape hatch (handled higher up).
 - [ ] 4.3 Match-found dialog with accept/decline timer (only if
   `matchmaker_rules.require_accept`).
-- [ ] 4.4 Connecting-to-server / spinner screen.
-- [ ] 4.5 Version-mismatch error screen with "update" CTA.
-- [ ] 4.6 Allocation-failure / no-servers error screen with retry.
+  - Deferred: `game.yaml.matchmaker_rules` doesn't yet expose a
+    `require_accept` flag, and there's no runtime support for
+    the accept/decline round-trip in `fleet_allocator.go`.
+    Both ends would have to land before this UI work pays off.
+- [x] **4.4 Connecting-to-server / spinner screen** (2026-05-12,
+      pre-stage)
+  - Done pre-stage: `LoadingScreen` handles the post-match-
+    ready window via `LOADING.WAITING_FOR_PLAYERS` once
+    `Netcode.connector.is_connected_to_server` flips true.
+    `LOADING.CONNECTING` is the pre-matchmaker fallback.
+- [x] **4.5 Version-mismatch error screen with "update" CTA**
+      (2026-05-12, pre-stage)
+  - Done pre-stage: `src/core/main.gd` opens a confirm dialog
+    with `VERSION.UPDATE_REQUIRED` body + `VERSION.CLOSE_GAME`
+    CTA when `backend_api_client.check_version` reports a
+    server version mismatch. Anonymous web clients reload the
+    page with a loop-breaker query param to bust the SW cache.
+- [x] **4.6 Allocation-failure / no-servers error screen with retry**
+      (2026-05-12)
+  - Done: `game_panel._on_matchmaking_failed` now routes through
+    `_classify_matchmaking_failure(reason)` which picks one of
+    three recoverable translation keys (`LOADING.NO_MATCH_FOUND`
+    for timeouts, `LOADING.ALLOCATION_FAILED` for Edgegap /
+    fleet allocation paths, `LOADING.CONNECTION_FAILED` for
+    socket/disconnect/matchmaker-add failures). Recoverable
+    failures pin the loading screen with a retry button;
+    fatal cases (auth invalid, match_ready malformed,
+    concurrent-session override) keep the old toast + back-to-
+    lobby behavior. New `LoadingScreen.show_matchmaking_failure
+    (key)` generalizes the old `show_matchmaking_timeout()`
+    (kept as a delegating alias for older callers).
 - [ ] 4.7 Game-mode picker (reads `matchmaker_rules.modes` from
   `game.yaml`).
+  - Deferred: `game.yaml.matchmaker_rules` doesn't yet carry a
+    `modes` list. The current single-mode pipeline (one
+    matchmaker query, one fleet) keeps working; adding modes
+    requires schema + runtime + UI in one go.
 - [ ] 4.8 Region picker (optional; reads from Edgegap's region list).
+  - Deferred: low priority. Edgegap's
+    `Geo-IP → region` selection is automatic via the
+    `client_ip` matchmaker property the matchmaker hook
+    already reads. A manual override would only help cross-
+    region parties, and parties don't yet land on the same
+    fleet deploy reliably (Stage 1.1b limitation).
 
 ## Stage 5 — Party UX
 
@@ -1000,6 +1073,34 @@ Security:
     today is one failed allocation. Both items are clearly
     Stage 3-flavored but neither is on the critical path to
     Stages 4–6.
+- **2026-05-12:** Stage 4 landed 4.2 + 4.6. Three decisions
+  worth recording:
+  - **"Recoverable failure" is a closed allowlist, not a
+    catch-all.** `_classify_matchmaking_failure` returns a
+    translation key only for substring matches against three
+    bins (timeout / allocation-shaped / network-shaped).
+    Anything else (auth invalid, match_ready malformed,
+    concurrent-session override) still toasts + bounces to
+    lobby. The alternative ("anything not-fatal is
+    recoverable") would let the user retry into a loop on
+    deterministic server-side bugs. The classifier is small
+    and easy to extend when new failure shapes come up.
+  - **Cancel button hides during `placing` phase.** Once the
+    matchmaker has matched and `fleet_allocator.go` is
+    waking up an Edgegap deploy, cancelling client-side just
+    no-shows the deploy for the other matched peers. Hiding
+    the button is the cheapest correctness fix; a fuller
+    answer (notify the runtime so it tears down a deploy
+    with no remaining peers) is Stage 7.2 territory.
+  - **`LoadingScreen.show_matchmaking_failure(key)` is the new
+    surface; `show_matchmaking_timeout()` delegates.**
+    `game_panel` was already calling `show_matchmaking_timeout`
+    based on a substring sniff; rather than introduce a
+    parallel `show_matchmaking_failure` API and migrate the
+    one caller, the old method now forwards to the new one
+    with `LOADING.NO_MATCH_FOUND`. Single chokepoint for any
+    future failure surface (e.g. "match-decline timed out"
+    if 4.3 ever lands).
 - **2026-05-12:** Stage 2.5/2.6 closed out the foundation.
   Four design calls worth recording:
   - **`game_id` lives in Nakama's `vars` map, not as a

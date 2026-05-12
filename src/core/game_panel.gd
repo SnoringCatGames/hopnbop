@@ -518,16 +518,16 @@ func _on_matchmaking_failed(reason: String) -> void:
 	):
 		session_manager.session_provider.clear_session()
 
-	# On timeout, stay on loading screen and show
-	# a retry button instead of returning to lobby.
-	var is_timeout := (
-		"timeout" in reason.to_lower()
-		or "timed out" in reason.to_lower()
-	)
-	if is_timeout and is_instance_valid(
-		G.loading_screen
-	):
-		G.loading_screen.show_matchmaking_timeout()
+	# Classify the failure so recoverable cases stay
+	# on the loading screen with a retry button.
+	# Fatal cases (auth invalid, concurrent override,
+	# match_ready malformed) toast + return to lobby.
+	var failure_key := _classify_matchmaking_failure(
+		reason)
+	if (not failure_key.is_empty()
+			and is_instance_valid(G.loading_screen)):
+		G.loading_screen.show_matchmaking_failure(
+			failure_key)
 		return
 
 	if is_instance_valid(G.toast_overlay):
@@ -536,6 +536,48 @@ func _on_matchmaking_failed(reason: String) -> void:
 			ToastOverlay.Type.INFO,
 		)
 
+	G.screens.client_open_screen(
+		ScreensMain.ScreenType.LOBBY)
+
+
+## Maps a session-failure reason to a recoverable
+## translation key, or "" for fatal failures that
+## should bounce to the lobby with a toast.
+func _classify_matchmaking_failure(
+	reason: String,
+) -> String:
+	var lower := reason.to_lower()
+	if "timeout" in lower or "timed out" in lower:
+		return "LOADING.NO_MATCH_FOUND"
+	# Edgegap allocation surfaced via
+	# edgegap_server_provider.gd / fleet_allocator.go.
+	if ("edgegap" in lower
+			or "allocation" in lower
+			or "deploy" in lower
+			or "no servers" in lower
+			or "no_servers" in lower):
+		return "LOADING.ALLOCATION_FAILED"
+	# Network-shaped failures from
+	# nakama_matchmaker_client.gd.
+	if ("socket" in lower
+			or "connect" in lower
+			or "disconnected" in lower
+			or "matchmaker add failed" in lower):
+		return "LOADING.CONNECTION_FAILED"
+	return ""
+
+
+## Cancel an in-flight matchmaker ticket and return
+## to the lobby. Triggered by the Cancel button on
+## the loading screen. No-op if not actively
+## matchmaking.
+func client_cancel_matchmaking() -> void:
+	Netcode.check_is_client()
+	G.client_session.is_game_loading = false
+	if (Netcode.should_connect_to_remote_server
+			and session_manager.session_provider
+				.has_method("clear_session")):
+		session_manager.session_provider.clear_session()
 	G.screens.client_open_screen(
 		ScreensMain.ScreenType.LOBBY)
 

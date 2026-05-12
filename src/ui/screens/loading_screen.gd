@@ -11,7 +11,8 @@ var _matchmaking_phase := ""
 var _matchmaking_elapsed_sec := 0.0
 var _matchmaking_estimated_sec := -1.0
 var _is_matchmaking_connected := false
-var _is_timed_out := false
+var _has_recoverable_failure := false
+var _failure_text_key := ""
 
 
 func _enter_tree() -> void:
@@ -25,11 +26,12 @@ func _exit_tree() -> void:
 
 func _process(delta: float) -> void:
 	if (not _matchmaking_phase.is_empty()
-			and not _is_timed_out
+			and not _has_recoverable_failure
 			and not Netcode.connector
 				.is_connected_to_server):
 		_matchmaking_elapsed_sec += delta
 	update_status_message()
+	_update_action_buttons()
 
 
 func on_open() -> void:
@@ -39,10 +41,13 @@ func on_open() -> void:
 	_matchmaking_phase = ""
 	_matchmaking_elapsed_sec = 0.0
 	_matchmaking_estimated_sec = -1.0
-	_is_timed_out = false
+	_has_recoverable_failure = false
+	_failure_text_key = ""
 
 	if is_instance_valid(%RetryButton):
 		%RetryButton.visible = false
+	if is_instance_valid(%CancelButton):
+		%CancelButton.visible = false
 
 	# If game is no longer loading (disconnect
 	# during transition), skip setup. The screen
@@ -61,6 +66,7 @@ func on_open() -> void:
 
 	# Set initial message.
 	update_status_message()
+	_update_action_buttons()
 
 
 func on_close() -> void:
@@ -80,8 +86,13 @@ func update_status_message() -> void:
 	if not is_instance_valid(%Label):
 		return
 
-	if _is_timed_out:
-		%Label.text = tr("LOADING.NO_MATCH_FOUND")
+	if _has_recoverable_failure:
+		var key := (
+			_failure_text_key
+			if not _failure_text_key.is_empty()
+			else "LOADING.NO_MATCH_FOUND"
+		)
+		%Label.text = tr(key)
 		return
 
 	if Netcode.connector.is_connected_to_server:
@@ -177,9 +188,22 @@ func _get_matchmaking_text() -> String:
 
 
 ## Called by GamePanel when matchmaking times out.
-## Shows the timeout message and retry button.
+## Shows "no match found" + retry button.
 func show_matchmaking_timeout() -> void:
-	_is_timed_out = true
+	show_matchmaking_failure("LOADING.NO_MATCH_FOUND")
+
+
+## Called by GamePanel for any recoverable matchmaking
+## failure (timeout, allocation failure, socket drop).
+## Pins the status text to failure_text_key and shows
+## the retry button. The Cancel button is hidden — the
+## flow is "retry on this screen, or hit Back on the
+## controller to bail out."
+func show_matchmaking_failure(failure_text_key: String) -> void:
+	_has_recoverable_failure = true
+	_failure_text_key = failure_text_key
+	if is_instance_valid(%CancelButton):
+		%CancelButton.visible = false
 	if is_instance_valid(%RetryButton):
 		%RetryButton.visible = true
 		%RetryButton.grab_focus()
@@ -188,11 +212,42 @@ func show_matchmaking_timeout() -> void:
 
 func _on_retry_pressed() -> void:
 	G.audio.play_sound("click")
-	_is_timed_out = false
+	_has_recoverable_failure = false
+	_failure_text_key = ""
 	if is_instance_valid(%RetryButton):
 		%RetryButton.visible = false
 	G.client_session.is_game_loading = true
 	G.game_panel._client_client_request_session_ids()
+
+
+func _on_cancel_pressed() -> void:
+	G.audio.play_sound("click")
+	if is_instance_valid(%CancelButton):
+		%CancelButton.visible = false
+	G.game_panel.client_cancel_matchmaking()
+
+
+func _update_action_buttons() -> void:
+	if not is_instance_valid(%CancelButton):
+		return
+	# Cancel is only meaningful while a matchmaker
+	# ticket is live: we're past auth, not yet
+	# connected to a game server, and no failure is
+	# being retried. Hidden during fleet warmup (no
+	# ticket exists yet) and during "placing" (the
+	# match is allocated; cancelling now wastes the
+	# Edgegap deploy for matched peers).
+	var phase_active := (
+		_matchmaking_phase == "queued"
+		or _matchmaking_phase == "searching"
+	)
+	var should_show := (
+		phase_active
+		and not _has_recoverable_failure
+		and not Netcode.connector
+			.is_connected_to_server
+	)
+	%CancelButton.visible = should_show
 
 
 func _connect_matchmaking_signal() -> void:
