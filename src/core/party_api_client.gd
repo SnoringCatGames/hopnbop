@@ -104,9 +104,38 @@ func fetch_party_status() -> void:
 			party = {
 				"party_id": g.id,
 				"name": g.name,
+				"leader_id": g.creator_id,
 				"member_count": g.edge_count,
+				"members": [],
 			}
 			break
+	if not party.is_empty():
+		var members_result = (
+			await G.auth_client._get_nakama_client()
+				.list_group_users_async(
+					session,
+					party["party_id"],
+					null,
+					null,
+					null,
+				)
+		)
+		if members_result.is_exception():
+			request_failed.emit(
+				_describe(members_result.get_exception()))
+			return
+		var members: Array[Dictionary] = []
+		for gu in members_result.group_users:
+			var u = gu.user
+			if u == null:
+				continue
+			members.append({
+				"user_id": u.id,
+				"username": u.username,
+				"display_name": u.display_name,
+				"role": _group_state_to_role(gu.state),
+			})
+		party["members"] = members
 	party_status_received.emit(party)
 
 
@@ -172,3 +201,22 @@ func _describe(ex: NakamaException) -> String:
 
 func _short_id(uuid: String) -> String:
 	return uuid.replace("-", "").substr(0, 8)
+
+
+# Nakama group_user state enum:
+#   0 = Superadmin (creator/owner)
+#   1 = Admin
+#   2 = Member
+#   3 = JoinRequest (pending invite the user has not yet accepted).
+func _group_state_to_role(state: int) -> String:
+	match state:
+		0:
+			return "leader"
+		1:
+			return "admin"
+		2:
+			return "member"
+		3:
+			return "invited"
+		_:
+			return "unknown"

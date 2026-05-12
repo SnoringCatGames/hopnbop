@@ -169,7 +169,10 @@ func _is_friend_in_party() -> bool:
 	var members: Array = (
 		G.party_manager.current_party
 			.get("members", []))
-	return members.has(_friend_id)
+	for m in members:
+		if m is Dictionary and m.get("user_id", "") == _friend_id:
+			return true
+	return false
 
 
 func _on_invite_pressed() -> void:

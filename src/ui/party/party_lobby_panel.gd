@@ -139,9 +139,14 @@ func _refresh_ui() -> void:
 	_start_button.visible = is_leader
 	_invite_button.visible = is_leader
 
-	# Check member count for start button.
+	# Check active-member count for start button. Pending invites
+	# (role == "invited") don't count toward the queue minimum.
 	var members: Array = party.get("members", [])
-	_start_button.disabled = members.size() < 2
+	var active_count := 0
+	for m in members:
+		if m is Dictionary and m.get("role", "") != "invited":
+			active_count += 1
+	_start_button.disabled = active_count < 2
 
 	var status: String = party.get("status", "")
 	if status == "matchmaking":
@@ -157,34 +162,30 @@ func _refresh_ui() -> void:
 	):
 		child.queue_free()
 
-	for member_id in members:
+	for member in members:
+		var member_id: String = member.get("user_id", "")
+		var display: String = member.get("display_name", "")
+		if display.is_empty():
+			display = member.get("username", "")
+		if display.is_empty():
+			display = member_id
+		var role: String = member.get("role", "member")
+		var is_pending := role == "invited"
 		var member_label := Label.new()
-		# Show player_id for now. Could resolve
-		# display names via profile API.
 		var is_current: bool = (
 			member_id
 			== G.auth_token_store.player_id)
-		var prefix := (
-			"★ " if member_id
-			== party.get("leader_id", "")
-			else "  ")
-		var suffix := (
-			" (" + tr("PARTY.YOU") + ")"
-			if is_current else "")
-		member_label.text = (
-			prefix + str(member_id) + suffix)
+		var prefix := "★ " if role == "leader" else "  "
+		var suffix := ""
+		if is_pending:
+			suffix = " (" + tr("PARTY.PENDING") + ")"
+		elif is_current:
+			suffix = " (" + tr("PARTY.YOU") + ")"
+		member_label.text = prefix + display + suffix
+		if is_pending:
+			member_label.add_theme_color_override(
+				"font_color", Color(0.6, 0.6, 0.6))
 		_members_container.add_child(member_label)
-
-	# Show invited players.
-	var invited: Array = party.get("invited", [])
-	for invitee_id in invited:
-		var invite_label := Label.new()
-		invite_label.text = (
-			"  " + str(invitee_id) + " ("
-			+ tr("PARTY.PENDING") + ")")
-		invite_label.add_theme_color_override(
-			"font_color", Color(0.6, 0.6, 0.6))
-		_members_container.add_child(invite_label)
 
 
 func _on_party_updated(
