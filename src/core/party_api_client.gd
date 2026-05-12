@@ -97,18 +97,38 @@ func fetch_party_status() -> void:
 	if result.is_exception():
 		request_failed.emit(_describe(result.get_exception()))
 		return
+	# Nakama parties are closed groups. The viewer can be either an
+	# active member (state 0/1/2) or a pending invitee (state 3) for
+	# the same group shape. Split the two so the UI can render an
+	# accept/decline path for invites instead of falsely showing the
+	# user as "in a party" before they've accepted.
 	var party: Dictionary = {}
+	var pending_invites: Array[Dictionary] = []
 	for ug in result.user_groups:
 		var g = ug.group
-		if g.name.begins_with(_PARTY_GROUP_PREFIX):
+		if not g.name.begins_with(_PARTY_GROUP_PREFIX):
+			continue
+		var state := int(ug.state)
+		if state == 3:
+			pending_invites.append({
+				"party_id": g.id,
+				"party_name": g.name,
+				"leader_id": g.creator_id,
+				# leader_display_name resolved by the
+				# UI from cached friends/members; the
+				# list_user_groups response doesn't
+				# carry it.
+			})
+			continue
+		if party.is_empty():
 			party = {
 				"party_id": g.id,
 				"name": g.name,
 				"leader_id": g.creator_id,
 				"member_count": g.edge_count,
 				"members": [],
+				"viewer_role": _group_state_to_role(state),
 			}
-			break
 	if not party.is_empty():
 		var members_result = (
 			await G.auth_client._get_nakama_client()
@@ -136,7 +156,15 @@ func fetch_party_status() -> void:
 				"role": _group_state_to_role(gu.state),
 			})
 		party["members"] = members
-	party_status_received.emit(party)
+	# Wrapped emit so PartyManager._on_party_status_received can read
+	# both surfaces. The pre-wrap shape (bare party Dict) silently
+	# never matched the receiver's `data.get("party")` lookup, which
+	# is why polling-cycle updates appeared to do nothing in
+	# production.
+	party_status_received.emit({
+		"party": party,
+		"pending_invites": pending_invites,
+	})
 
 
 func kick_from_party(

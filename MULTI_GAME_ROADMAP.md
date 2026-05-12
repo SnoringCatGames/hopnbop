@@ -30,17 +30,23 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 4 cleared the actionable items
-  (4.1/4.2/4.4/4.5/4.6 shipped 2026-05-12). Cancel-queue button
-  + recoverable-failure classifier landed today; queue/connect/
-  version-mismatch surfaces were already in place pre-stage.
-  4.3/4.7/4.8 deferred behind game.yaml extensions (no
-  `require_accept`, no `modes` declared) and Edgegap region
-  selection — none on a critical path. Stage 3 still has
-  3.5 (settings split) and 3.9 (protocol-version pre-check)
-  open pending design calls. Next focus is Stage 5 (Party UX
-  — refactor PartyLobbyPanel to SidePanel + nav-friendly
-  members list) or Stage 6 (Platform SDK extraction).
+- **Current focus:** Stage 5 first wave shipped today
+  (5.1/5.2/5.3/5.11). PartyLobbyPanel refactored to SidePanel
+  + ActionRow nav, reachable from MainMenuPanel's new Party
+  entry. Found and fixed two root-cause bugs along the way:
+  `fetch_party_status` emit/receive signature mismatch
+  (polling never actually populated `current_party`) and
+  state=3 invitees being treated as full members (no invite
+  UI ever fired). PartyLobbyPanel's Main Menu icon still uses
+  friends_icon.png as a placeholder — replace with a real
+  party_icon.png when ready. Stage 5 remainders (5.4-5.10)
+  still pending: real-time socket updates, ready toggle,
+  leader transfer, mode picker, chat, persistence, deep link.
+  Stage 3 still has 3.5 / 3.9 open; Stage 4 still has
+  4.3/4.7/4.8 deferred behind game.yaml schema extensions.
+  Next focus is more Stage 5 (real-time socket updates 5.4
+  feels highest value, replacing the 3-10 s polling lag) or
+  Stage 6 (Platform SDK extraction).
 - **Last updated:** 2026-05-12.
 - **Stages complete:**
   - Stage 0 (platform infra extraction — including the kickoff
@@ -60,6 +66,10 @@ See also:
     4.5, 4.6). Open: 4.3 (needs `matchmaker_rules.require_accept`
     in game.yaml), 4.7 (needs `matchmaker_rules.modes` schema),
     4.8 (region picker; optional, needs Edgegap region list).
+  - Stage 5 — 4/11 tasks shipped 2026-05-12 (5.1, 5.2, 5.3,
+    5.11). Open: 5.4 real-time socket, 5.5 ready toggle,
+    5.6 leader transfer, 5.7 game-mode picker, 5.8 chat,
+    5.9 persist across launches, 5.10 deep-link/join-by-code.
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -86,7 +96,12 @@ Stage 3 (mostly done, 2026-05-12) — game_id scoping: presence
    │   recoverable-failure classifier; queue status / connect /
    │   version mismatch already in place. Deferred: 4.3
    │   (require_accept), 4.7 (modes), 4.8 (region picker).
-   ├─→ Stage 5 — Party UX
+   ├─→ Stage 5 (partial, 2026-05-12) — PartyLobbyPanel
+   │   refactored to SidePanel + ActionRow nav and reachable
+   │   from MainMenuPanel; pending-invite acceptance UI;
+   │   fetch_party_status emit shape + state=3 distinction
+   │   fixed. Open: real-time socket updates (5.4), party
+   │   ergonomics (5.5-5.10).
    └─→ Stage 6 — Platform SDK extraction (src/core/*_api_client.gd → Platform.*)
    ↓
 Stage 7 — Resilience (retries, notifications, observability)
@@ -680,22 +695,88 @@ calls out near-zero UI for queue status, cancel, errors.
 
 ## Stage 5 — Party UX
 
-**Goal:** Make the party flow usable. Per the audit, the current
-`PartyLobbyPanel` is a `CanvasLayer` overlay with raw `Button.new()`
-widgets and no gamepad nav — breaks the project's `SidePanel`
-pattern.
+**Goal:** Make the party flow usable. Per the audit, the original
+`PartyLobbyPanel` was a `CanvasLayer` overlay with raw `Button.new()`
+widgets, no gamepad nav, AND completely unreferenced (no scene
+instantiated it). The 2026-05-12 first wave converted it to the
+project's `SidePanel` pattern, wired it to the main settings menu,
+and fixed two root-cause bugs that meant party state replication
+was effectively dead before any UI work: the polling pipeline never
+populated `current_party` (signature mismatch) and Nakama state=3
+invitees were silently treated as accepted members.
 
 ### Tasks
 
-- [ ] 5.1 Refactor `PartyLobbyPanel` to `SidePanel` +
-  `ScreenFocusNavigator` (gamepad U/D/L/R nav per the project's UI
-  conventions in `CLAUDE.md`).
-- [ ] 5.2 Party invite acceptance UI (notification toast → screen →
-  accept/decline).
-- [ ] 5.3 Friend display names in member list (instead of raw
-  `player_id`).
-- [ ] 5.4 Real-time party updates via Nakama socket (replace 3–10s
-  polling in `party_manager.gd`).
+- [x] **5.1 Refactor `PartyLobbyPanel` to `SidePanel`** (2026-05-12)
+  - Rewrote `src/ui/party/party_lobby_panel.gd` as
+    `extends SidePanel`; replaced the `CanvasLayer` +
+    raw `Button.new()` widgets with `ActionRow` rows
+    using the base class's `_row_container` /
+    `_set_focus` / `rebuild_row_list` ergonomics.
+    Members render in a custom `HBoxContainer` to fit
+    the crown + name + status-suffix + kick chevron
+    layout that `setup_label()` can't express.
+  - New scene `src/ui/party/party_lobby_panel.tscn`
+    inheriting from `side_panel.tscn` with seven icon
+    exports (accept, decline, start_match, invite,
+    leave, kick, open_friends) wired from existing
+    `assets/images/gui/` PNGs.
+  - `MainMenuPanel` adds a `SETTINGS.PARTY` trigger
+    row gated on `not is_anonymous`, with a badge that
+    surfaces a pending invite when polling discovers
+    one. Uses `friends_icon.png` as a placeholder —
+    a dedicated `party_icon.png` is a follow-up
+    asset task (TODO in `main_menu_panel.gd`).
+  - 11 new translation keys across 13 locales:
+    `SETTINGS.PARTY`, `PARTY.MEMBERS`,
+    `PARTY.EMPTY_STATE_HINT`,
+    `PARTY.HAS_PENDING_INVITES`,
+    `PARTY.PENDING_INVITES_HEADER`,
+    `PARTY.ACCEPT_INVITE`, `PARTY.DECLINE_INVITE`,
+    `PARTY.HANDLE_INVITE_FIRST`,
+    `CONFIRM.LEAVE_PARTY`,
+    `CONFIRM.DECLINE_INVITE` (the last is overlap
+    with the accept-invite confirm copy path).
+- [x] **5.2 Party invite acceptance UI** (2026-05-12)
+  - The audit framing assumed this was greenfield UX
+    work. In practice the existing
+    `PartyManager._show_invite_dialog` was correctly
+    wired to a ConfirmOverlay path but the
+    `invite_received` signal it listens for never
+    fired in production because `_on_party_status_
+    received` couldn't read invites out of the
+    flat-dict emit (see 5.11). After fixing that, the
+    legacy toast + ConfirmOverlay path lights up by
+    itself — instant notification + one-tap join with
+    no panel navigation required.
+  - The refactored panel also renders a dedicated
+    pending-invites section: per-invite Accept row
+    ("Accept invite from %s", checkmark icon) +
+    Decline row (X icon, opens a confirm dialog). The
+    panel is the canonical surface for handling
+    multiple concurrent invites and for users who
+    dismissed the popup.
+  - Leader name resolution falls back to
+    `tr("PARTY.SOMEONE")` when the friends cache
+    doesn't have the leader as an accepted friend.
+    Cross-game / non-friend leaders therefore show as
+    "Someone" in the accept row; revisit when
+    `pending_invite` entries can carry
+    `leader_display_name` (would require either a
+    server-side fan-out from
+    `_user_groups[invite].creator_id` →
+    `Users` lookup or a client-side
+    `list_group_users_async` per invite).
+- [x] **5.3 Friend display names in member list** (2026-05-12)
+  - Verified already-correct: `PartyApiClient.
+    fetch_party_status`'s `list_group_users_async`
+    response carries `u.display_name` per-member, and
+    the new `PartyLobbyPanel._add_member_row` reads
+    it directly with a username → user_id fallback.
+    Was de-facto working before this stage; checked
+    off explicitly so it doesn't get re-audited.
+- [ ] 5.4 Real-time party updates via Nakama socket
+  (replace 3–10s polling in `party_manager.gd`).
 - [ ] 5.5 Ready / not-ready toggle per member.
 - [ ] 5.6 Leader transfer / kick-and-promote.
 - [ ] 5.7 Game-mode selection by leader before queuing.
@@ -703,8 +784,40 @@ pattern.
 - [ ] 5.9 Persist party across launches / reconnects ("rejoin your
   last party?").
 - [ ] 5.10 Deep-link / join-by-code invite link.
-- [ ] 5.11 Pending-invite state in client (Nakama
-  `add_group_users_async` adds immediately — currently faked locally).
+- [x] **5.11 Pending-invite state in client** (2026-05-12)
+  - The audit's "currently faked locally" framing
+    undersold the issue: state=3 (Nakama JoinRequest,
+    i.e. unaccepted invite) entries from
+    `list_user_groups_async` were silently treated as
+    full memberships. The viewer ended up with
+    `current_party` populated for a party they hadn't
+    actually accepted, the never-fired `_show_invite_
+    dialog` couldn't recover, and the user's only
+    options were "leave the party" (= decline) or
+    "wait it out".
+  - Fix: `PartyApiClient.fetch_party_status` now reads
+    each `UserGroupListUserGroup.state` and splits
+    state=3 entries into a `pending_invites` array
+    while only state-0/1/2 rows seed `current_party`.
+    The emit is wrapped: `{party, pending_invites}` so
+    `PartyManager._on_party_status_received`'s pre-
+    existing `data.get("party")` lookup (which never
+    matched the flat shape) actually finds the data.
+    Adds `viewer_role` to the party dict.
+  - `PartyManager` gains `has_pending_invite()`,
+    `accept_invite()`, `decline_invite()` with
+    optimistic local-array updates, and a
+    `_request_immediate_fetch()` helper that
+    `_on_party_created/joined/kicked/invited` now use
+    to backfill members from the next poll rather
+    than clobbering `current_party` with the minimal
+    server-response shape (a separate latent bug — every
+    party signal was effectively emptying
+    `current_party` until polling cycled).
+  - The `invite_friend` auto-create flow now also
+    short-circuits when the caller has a pending
+    invite (don't silently leave the invite stranded
+    by spinning up a competing party).
 
 ## Stage 6 — Platform SDK extraction
 
@@ -1101,6 +1214,59 @@ Security:
     with `LOADING.NO_MATCH_FOUND`. Single chokepoint for any
     future failure surface (e.g. "match-decline timed out"
     if 4.3 ever lands).
+- **2026-05-12:** Stage 5 first wave (5.1/5.2/5.3/5.11)
+  surfaced and fixed two latent bugs in the party data
+  flow that meant party state replication had never
+  actually worked end-to-end:
+  - **`fetch_party_status` emit/receive shape mismatch.**
+    `PartyApiClient.fetch_party_status` was emitting the
+    bare party Dict; `PartyManager._on_party_status_
+    received` was reading `data.get("party")` which
+    always returned null. The else branch (no active
+    party) ran on every poll, clearing `current_party`.
+    Parties only persisted in the client because the
+    party_created/joined/etc. signal handlers kept
+    re-setting it — but those handlers had their own
+    bug (they ran `current_party = data.get("party",
+    {})` and the emit payload had no "party" key
+    either), so `current_party` was effectively
+    cleared on every party event and never repopulated
+    until the next user action.
+  - **State=3 entries treated as active membership.**
+    Nakama exposes a closed-group invite as the
+    invitee being associated with the group in state=3
+    (JoinRequest). The old `fetch_party_status`
+    iterated user_groups without checking state, so
+    invitees got `current_party` populated as if they
+    were a real member. The `invite_received` signal
+    + `_show_invite_dialog` ConfirmOverlay flow was
+    wired but never fired because the dispatch path
+    (else-branch of the receiver) only runs when the
+    party dict is empty, which never happened.
+  - Both fixes are necessary to make 5.1's panel work
+    at all — without them the panel renders nonsense.
+    Bundled together for that reason; the audit had
+    them as separate Stage 5 tasks (5.1, 5.2, 5.11)
+    that turned out to share a fix surface.
+  - **Main Menu icon: friends_icon as placeholder.**
+    The CLAUDE.md "no buttons without icons" rule
+    applies; no party_icon asset exists yet, and the
+    refactor needed an entry point to validate
+    reachability. Chose to reuse `friends_icon.png`
+    in the meantime with a TODO so the work isn't
+    blocked on an art task. Replace when a dedicated
+    icon lands.
+  - **Compliance test for the new shape still
+    pending.** The fetched-emit shape (`{party,
+    pending_invites}`) and the state=3 split are
+    untested today; needs the Stage 8.11 socket
+    harness + 8.12 multi-session helper to exercise
+    leader-invites-invitee + invitee-accepts in a
+    repeatable suite. The fixes are validated by
+    code inspection + load-time smoke (Godot opens
+    without parse errors and the autoload chain
+    drives auth refresh cleanly), not by an
+    automated test.
 - **2026-05-12:** Stage 2.5/2.6 closed out the foundation.
   Four design calls worth recording:
   - **`game_id` lives in Nakama's `vars` map, not as a

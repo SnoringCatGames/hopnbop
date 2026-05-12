@@ -11,6 +11,7 @@ extends SidePanel
 @export var _settings_panel_scene: PackedScene
 @export var _level_pref_panel_scene: PackedScene
 @export var _friends_panel_scene: PackedScene
+@export var _party_lobby_panel_scene: PackedScene
 @export var _account_panel_scene: PackedScene
 @export var _info_panel_scene: PackedScene
 
@@ -18,6 +19,10 @@ extends SidePanel
 @export var icon_settings: Texture2D
 @export var icon_levels: Texture2D
 @export var icon_friends: Texture2D
+# TODO: replace with a dedicated party_icon.png asset.
+# Currently reuses friends_icon.png as a placeholder
+# per the multi-game roadmap Stage 5 sign-off.
+@export var icon_party: Texture2D
 @export var icon_account: Texture2D
 @export var icon_info: Texture2D
 @export var icon_leaderboard: Texture2D
@@ -57,6 +62,14 @@ func build_ui() -> void:
 			_friends_panel_scene,
 			icon_friends)
 		_connect_friends_badge(friends_row)
+
+		# Party trigger. Same anonymous gate as
+		# Friends since parties are friend-driven.
+		var party_row := _add_sub_panel_trigger_row(
+			tr("SETTINGS.PARTY"),
+			_party_lobby_panel_scene,
+			icon_party)
+		_connect_party_badge(party_row)
 
 	# Settings trigger.
 	_add_sub_panel_trigger_row(
@@ -130,6 +143,36 @@ func _connect_friends_badge(
 		func(count: int) -> void:
 			if is_instance_valid(row):
 				row.set_badge_visible(count > 0))
+
+
+func _connect_party_badge(
+	row: SubPanelTriggerRow,
+) -> void:
+	if not is_instance_valid(row):
+		return
+	var pm := G.party_manager
+	if not is_instance_valid(pm):
+		return
+	row.set_badge_visible(
+		pm.has_pending_invite())
+	# party_updated also fires when the pending-
+	# invite list changes (see PartyManager.
+	# _remove_pending_invite and
+	# _on_party_status_received).
+	pm.party_updated.connect(
+		func(_data: Dictionary) -> void:
+			if is_instance_valid(row):
+				row.set_badge_visible(
+					pm.has_pending_invite()))
+	pm.party_disbanded.connect(
+		func() -> void:
+			if is_instance_valid(row):
+				row.set_badge_visible(
+					pm.has_pending_invite()))
+	pm.invite_received.connect(
+		func(_inv: Dictionary) -> void:
+			if is_instance_valid(row):
+				row.set_badge_visible(true))
 
 
 func _add_screen_trigger_row(

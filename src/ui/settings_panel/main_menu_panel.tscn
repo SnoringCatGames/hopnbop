@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=22 format=3]
 
 [ext_resource type="Script" path="res://src/ui/settings_panel/main_menu_panel.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/side_panel.tscn" id="2_base"]
@@ -19,6 +19,8 @@
 [ext_resource type="Texture2D" path="res://assets/images/gui/stats_icon.png" id="19_my_stats"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/quit_row.tscn" id="20_quit_row"]
 [ext_resource type="Texture2D" path="res://assets/images/gui/quit_icon.png" id="21_quit_icon"]
+[ext_resource type="PackedScene" path="res://src/ui/party/party_lobby_panel.tscn" id="22_party"]
+[ext_resource type="Texture2D" path="res://assets/images/gui/friends_icon.png" id="23_party_icon"]
 
 [node name="MainMenuPanel" instance=ExtResource("2_base")]
 script = ExtResource("1_script")
@@ -28,11 +30,13 @@ _screen_trigger_row_scene = ExtResource("17_screen_trigger_row")
 _settings_panel_scene = ExtResource("5_settings")
 _level_pref_panel_scene = ExtResource("6_level_pref")
 _friends_panel_scene = ExtResource("8_friends")
+_party_lobby_panel_scene = ExtResource("22_party")
 _account_panel_scene = ExtResource("9_account")
 _info_panel_scene = ExtResource("10_info")
 icon_settings = ExtResource("13_settings")
 icon_levels = ExtResource("14_levels")
 icon_friends = ExtResource("15_friends")
+icon_party = ExtResource("23_party_icon")
 icon_account = ExtResource("16_account")
 icon_info = ExtResource("12_info")
 icon_leaderboard = ExtResource("18_leaderboard")
