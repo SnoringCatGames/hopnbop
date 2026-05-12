@@ -1,0 +1,100 @@
+# Hop 'n Bop per-game config.
+#
+# This file is the declarative source of truth for hopnbop's
+# slot on the shared snoringcat-platform Nakama runtime. It is
+# synced into the `games` Postgres table at deploy time via
+# `scripts/sync-game-config.ps1` (which POSTs to the runtime's
+# server-to-server `register_game` RPC).
+#
+# Schema, semantics, and the multi-game design principles are
+# in `third_party/snoringcat-platform/PLATFORM_ARCHITECTURE.md`
+# §"Per-game configuration".
+#
+# Update rules:
+#   - `protocol_version` MUST match
+#     `project.godot::application/config/protocol_version`. CI
+#     guards this in `.github/workflows/pr-validate.yml`.
+#   - `display_version` SHOULD match `project.godot::application/
+#     config/version`. Cosmetic only; not CI-guarded.
+#   - `edgegap_app_slug` MUST match the registered app name in
+#     Edgegap. Used by `fleet_allocator.go` to allocate deploys.
+#   - Bumps to `legal_version` invalidate active sessions
+#     (forces players through the consent flow on next launch).
+
+schema_version: 1
+
+game_id: hopnbop
+display_name: "Hop 'n Bop"
+edgegap_app_slug: hopnbop-server
+
+# Network protocol. Bump only when client/server wire format
+# changes (new RPC, changed message shape, new replicated
+# property). Cosmetic / server-internal changes do NOT need a
+# bump. See PLATFORM_ARCHITECTURE.md §"Per-game protocol
+# versioning" for the bump procedure.
+protocol_version: 2
+
+# Display version surfaced via `version_check` and shown in
+# title-screen build stamps. Bumped on every release.
+display_version: "0.39.0"
+
+# Container-side ports declared on the game-server image. Each
+# port maps to an Edgegap-assigned host port at allocation
+# time. Port+1 is the signaling port by convention; see
+# CLAUDE.md §"WSS TLS Termination".
+ports:
+  game: 4433/udp
+  signaling: 4434/tcp
+
+# Transport modes the matchmaker hook may select between. The
+# actual pick is per-match, based on matched players'
+# `is_web` attribute (see CLAUDE.md §"Web Build Cross-Play").
+transports:
+  - enet
+  - webrtc
+
+auth_providers:
+  - anonymous
+  - google
+  - facebook
+
+# Matchmaker behavior. Stage 3.8 wires the runtime to read
+# these instead of the hardcoded `_MIN_COUNT=2`/`_MAX_COUNT=4`/
+# `query="*"` in nakama_matchmaker_client.gd.
+matchmaker_rules:
+  min_players: 2
+  max_players: 4
+  # How long a ticket waits before the matchmaker relaxes
+  # criteria (drops `is_web` preference, etc.) and pairs
+  # whoever's queued.
+  ticket_expiry_seconds: 60
+  # When true, web and native players can match together
+  # (transport falls back to WebRTC or WebSocket).
+  cross_play: true
+  # Free-form rule blocks the matchmaker can apply per-bucket.
+  # Reserved for future filters (skill bands, region pinning,
+  # block-list enforcement). Empty list = no extra rules.
+  rules: []
+
+# Leaderboards owned by this game. Stage 3.6 prefixes these
+# with `{game_id}_` so two games on one Nakama instance can
+# have a leaderboard of the same logical name without
+# colliding. Today the runtime still references a bare "ffa";
+# until that lands, do not rename this entry.
+leaderboards:
+  - id: ffa
+    sort: desc
+    operator: best
+    reset_schedule: null
+
+# Legal documents shipped in the client. Paths are relative to
+# the game's project root. Bumping `legal_version` invalidates
+# the cached consent token in `auth_token_store.gd` (see
+# `LEGAL_VERSION` constant) and forces re-consent on next
+# launch. Stage 3.10 will read this from the `games` table
+# instead of the in-script constant.
+legal:
+  terms_path: legal/en/terms.txt
+  privacy_path: legal/en/privacy.txt
+  data_deletion_path: legal/en/data_deletion.txt
+  legal_version: "1.1"

@@ -30,19 +30,24 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 1 P0 contract fixes have landed end-to-
-  end on the wiring side. Two UX polish follow-ups remain inside
-  Stage 1 (delete-account second-confirm + grace-period
-  messaging); both are non-blocking and tracked under 1.5. Next
-  major focus is Stage 2 (multi-game foundation).
+- **Current focus:** Stage 2 foundation tasks (2.1, 2.2, 2.3,
+  2.4, 2.7) landed end-to-end. Runtime now has a `games`
+  Postgres table, in-process cache, `register_game` +
+  `get_game_config` RPCs; hopnbop ships a `game.yaml`; a
+  `sync-game-config.ps1` script pushes it to the runtime; CI
+  guards protocol_version parity. Next focus is the back-half of
+  Stage 2 (2.5 game_id JWT claim and 2.6 RPC plumbing), which
+  unlock Stage 3 scoping.
 - **Last updated:** 2026-05-12.
 - **Stages complete:** Stage 0 (platform infra extraction —
   including the kickoff verification items 0.8 and 0.9).
-- **Stages in progress:** Stage 1 — all five tasks (1.1a, 1.1b,
-  1.2, 1.3, 1.4, 1.5) have working code shipped. Open items
-  inside Stage 1 are UX polish on 1.5 and the compliance-test
-  green-light still gated on a Stage 8 socket harness for
-  multi-user party scenarios.
+- **Stages in progress:**
+  - Stage 1 — all five tasks (1.1a, 1.1b, 1.2, 1.3, 1.4, 1.5)
+    have working code shipped. Open items: UX polish on 1.5 and
+    the compliance-test green-light still gated on a Stage 8
+    socket harness for multi-user party scenarios.
+  - Stage 2 — 2.1, 2.2, 2.3, 2.4, 2.7 shipped (2026-05-12).
+    Open: 2.5 (game_id JWT claim) and 2.6 (RPC plumbing).
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -54,7 +59,9 @@ Stage 1 (mostly done, 2026-05-12) — P0 broken contracts: party RPC,
    leader_id, members, delete_account all shipped. Open: 1.5 UX
    polish + compliance-test rig (Stage 8).
    ↓
-Stage 2 — Multi-game foundation (game.yaml, per_game_config.go, JWT game_id)
+Stage 2 (front half done, 2026-05-12) — game.yaml, games table,
+   per_game_config.go, register_game RPC, sync script, CI guard
+   all shipped. Open: 2.5 game_id JWT claim and 2.6 RPC plumbing.
    ↓
 Stage 3 — Apply game_id scoping (presence, settings, leaderboards, Edgegap)
    ↓
@@ -279,37 +286,69 @@ else hangs off of.
 
 ### Tasks
 
-- [ ] **2.1 Create `runtime/per_game_config.go`**
-  - Struct `GameConfig` with `{game_id, name, protocol_version,
-    matchmaker_rules, edgegap_app_name, edgegap_app_version,
-    legal_version, ...}`.
-  - Loader reads from `games` Postgres table at startup; caches with
-    60s TTL or explicit invalidation.
-  - Verification: `runtime_status` RPC reports the loaded games map.
+- [x] **2.1 Create `runtime/per_game_config.go`** (2026-05-12)
+  - Done: new `third_party/snoringcat-platform/runtime/
+    per_game_config.go`. `GameConfig` struct + `perGameConfig`
+    cache + Postgres-backed loader with `Refresh`, `Get`, `List`,
+    `GameIDs`, `upsert`. `register_game` RPC (server-to-server)
+    accepts game.yaml-as-JSON, validates required fields, upserts
+    via `INSERT ... ON CONFLICT ... DO UPDATE`, refreshes cache.
+    `get_game_config` RPC (client session) returns a public
+    projection.
+  - Verification: `runtime_status` now includes
+    `registered_games: ["hopnbop"]` after first sync.
+  - Cache strategy: no TTL — load-all at module init, full cache
+    refresh on every `register_game` write. Simple and
+    sufficient until out-of-band Postgres edits are a real
+    concern. Re-evaluate when adding a games-admin console.
 
-- [ ] **2.2 Create `games` Postgres table**
-  - Schema per `PLATFORM_ARCHITECTURE.md:316-326`.
-  - Migration: SQL run via Nakama's startup migration hook or via a
-    separate one-shot. Decide which during execution.
-  - Verification: `psql -c "select game_id, name from games"`
-    returns rows after deploy.
+- [x] **2.2 Create `games` Postgres table** (2026-05-12)
+  - Done: DDL in `per_game_config.go`'s `gamesTableDDL` constant,
+    run via `db.ExecContext(...IF NOT EXISTS...)` at module
+    init. Idempotent — safe to re-run on every plugin reload.
+    Schema matches `PLATFORM_ARCHITECTURE.md:316-326`.
+  - No separate migration tooling needed; Nakama's plugin
+    `*sql.DB` is sufficient and there's no name collision with
+    the stock Nakama schema (verified against heroiclabs/nakama
+    schema).
+  - Verification: after a runtime restart, `psql -c "\d games"`
+    will show the table; before any sync the row count is 0.
 
-- [ ] **2.3 Create `hopnbop_private/game.yaml`**
-  - Declarative source of truth for hopnbop's per-game config:
-    `game_id`, `name`, `protocol_version` (must match
-    `project.godot` `config/protocol_version`), `edgegap_app_name`,
-    `edgegap_app_version`, `matchmaker_rules` (min=2, max=4,
-    query="*"), `legal_version`.
-  - Verification: YAML schema check passes; manual review.
+- [x] **2.3 Create `hopnbop_private/game.yaml`** (2026-05-12)
+  - Done: `game.yaml` at repo root with `schema_version`,
+    `game_id: hopnbop`, `display_name`, `edgegap_app_slug`,
+    `protocol_version: 2` (matches `project.godot`),
+    `display_version: 0.39.0`, `ports`, `transports`,
+    `auth_providers`, `matchmaker_rules` (min=2/max=4/cross_play),
+    `leaderboards: [ffa]` (matches current runtime hardcode),
+    `legal` block including `legal_version: "1.1"` (matches
+    `auth_token_store.gd:LEGAL_VERSION`).
+  - Deviations from `PLATFORM_ARCHITECTURE.md` example: keeping
+    `legal_version` as the string `"1.1"` (the current
+    in-script constant) rather than the example's `4`; using
+    bare `ffa` for the leaderboard ID (Stage 3.6 will prefix
+    with `{game_id}_`). Both are honest reflections of current
+    runtime state.
 
-- [ ] **2.4 Sync `game.yaml` → `games` table**
-  - Approach option A: new script `scripts/sync-game-config.ps1`
-    POSTs game.yaml to a privileged `register_game` RPC.
-  - Approach option B: `scripts/sync-game-config.ps1` upserts via
-    `psql` directly.
-  - Decide at execution time; A is more uniform, B is simpler.
-  - Run on each runtime deploy.
-  - Verification: after deploy, `games` table contents match game.yaml.
+- [x] **2.4 Sync `game.yaml` → `games` table** (2026-05-12)
+  - Done: new `scripts/sync-game-config.ps1`. Parses YAML via
+    `powershell-yaml` (installs on demand to CurrentUser scope
+    so the script runs without prereq install in CI), validates
+    required fields locally, cross-checks `protocol_version`
+    against `project.godot`, POSTs the JSON to
+    `/v2/rpc/register_game?http_key=...&unwrap=true`. Supports
+    `-DryRun` for parse-and-validate without POST.
+  - Chose Option A (`register_game` RPC) over Option B (direct
+    psql) because it lets the runtime own validation + cache
+    refresh; the script needs no DB credentials, only the
+    Nakama HTTP key. Dry-run verified locally 2026-05-12 (YAML
+    → JSON conversion + field validation pass).
+  - **CI wiring deferred.** Adding a step to
+    `nakama-runtime.yml` or `release.yml` requires a new
+    `NAKAMA_HTTP_KEY` GitHub secret. Until that secret is
+    configured, this script runs as a manual post-deploy step.
+    The first Stage 2 deploy needs a manual `sync-game-
+    config.ps1` invocation regardless (no row exists yet).
 
 - [ ] **2.5 Add `game_id` JWT claim**
   - Where: `runtime/auth.go` (authenticate hooks) and every client
@@ -325,11 +364,14 @@ else hangs off of.
   - Verification: RPC-level unit tests assert `game_id` is extracted
     correctly and rejected when missing.
 
-- [ ] **2.7 CI guard: `game.yaml::protocol_version` ==
-      `project.godot::config/protocol_version`**
-  - Where: `.github/workflows/pr-validate.yml` (or new workflow).
-  - What: parse both files, fail PR on mismatch.
-  - Verification: intentional mismatch PR → CI red.
+- [x] **2.7 CI guard: `game.yaml::protocol_version` ==
+      `project.godot::config/protocol_version`** (2026-05-12)
+  - Done: new `game-config-parity` job in `pr-validate.yml`.
+    Parses both files via grep/awk, fails the workflow with a
+    GitHub annotation on mismatch. Verified locally that the
+    grep/awk extracts `2` from both files cleanly.
+  - The sync script also re-checks this at run time (defense in
+    depth).
 
 ## Stage 3 — Apply game_id scoping
 
@@ -678,6 +720,38 @@ Security:
   belt-and-suspenders rather than essential. Translation cost
   was the deciding factor — 4 new keys × 13 locales is meaningful
   scope.
+- **2026-05-12:** Stage 2 front half landed (2.1/2.2/2.3/2.4/2.7).
+  Three design calls worth recording for the back half:
+  - **Sync model: RPC-push, not filesystem-read.** The
+    `PLATFORM_ARCHITECTURE.md` original framing had
+    `per_game_config.go` read each game's `game.yaml` from the
+    filesystem at module init. That's impractical — the Nakama
+    container has no access to game repos. Instead, each game's
+    release pipeline POSTs its config to a server-to-server
+    `register_game` RPC. Updated the architecture doc to
+    match. Bonus: per-game registration becomes a deploy-time
+    event Nakama can log, not a startup-only operation.
+  - **Cache invalidation: write-through only, no TTL.** Cache
+    is refreshed on every `register_game` write. No background
+    refresh, no TTL. Sufficient until out-of-band `UPDATE games
+    ...` becomes a real workflow (games-admin console / dashboard).
+  - **`legal_version` kept as the string `"1.1"`.** The
+    architecture doc's example uses an integer, but the live
+    constant in `auth_token_store.gd` is `"1.1"`. Game.yaml is
+    the source of truth — diverging it from the code would
+    invite the divergence the file is supposed to prevent.
+    Stage 3.10 (read `legal_version` from games table) will
+    decide the canonical type then.
+- **2026-05-12:** Stage 2.4's CI wiring deferred. The sync
+  script ships and works locally, but adding a `sync-game-
+  config.ps1` step to `nakama-runtime.yml` needs a new
+  `NAKAMA_HTTP_KEY` GitHub secret. Doing it in this session
+  would either (a) ship a workflow that 401s until the secret
+  exists, or (b) gate the step behind an `if: secrets.X != ''`
+  guard that silently skips. Both are worse than just running
+  the script manually after the Stage 2 deploy, which is also
+  the only way to populate the (initially empty) `games` table.
+  Re-revisit once the secret is configured.
 
 ## How to use this document
 

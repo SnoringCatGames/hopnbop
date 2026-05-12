@@ -46,6 +46,41 @@ jobs:
             echo "gdscript_formatter not vendored; skipping"
           fi
 
+  game-config-parity:
+    name: game.yaml ↔ project.godot parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check protocol_version parity
+        run: |
+          # game.yaml::protocol_version MUST equal
+          # project.godot::application/config/protocol_version,
+          # or the runtime's version_check RPC will start
+          # rejecting every client right after deploy.
+          # See MULTI_GAME_ROADMAP.md Stage 2.7 and
+          # PLATFORM_ARCHITECTURE.md "Per-game protocol versioning".
+          set -e
+          if [ ! -f game.yaml ]; then
+            echo "::error::game.yaml missing at repo root"
+            exit 1
+          fi
+          yaml_v=$(grep -E '^protocol_version:' game.yaml \
+            | head -n1 | awk '{print $2}')
+          godot_v=$(grep -E '^config/protocol_version' \
+            project.godot | head -n1 | awk -F'=' '{print $2}' \
+            | tr -d ' \r')
+          echo "game.yaml::protocol_version    = $yaml_v"
+          echo "project.godot::protocol_version = $godot_v"
+          if [ -z "$yaml_v" ] || [ -z "$godot_v" ]; then
+            echo "::error::could not parse protocol_version from one of the files"
+            exit 1
+          fi
+          if [ "$yaml_v" != "$godot_v" ]; then
+            echo "::error::protocol_version mismatch: game.yaml=$yaml_v vs project.godot=$godot_v"
+            exit 1
+          fi
+          echo "ok: protocol_version matches ($yaml_v)"
+
   godot-tests:
     name: GUT unit + integration
     runs-on: ubuntu-latest
