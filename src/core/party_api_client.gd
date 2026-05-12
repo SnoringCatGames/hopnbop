@@ -13,6 +13,8 @@ signal party_kicked(data: Dictionary)
 signal party_status_received(data: Dictionary)
 signal party_matchmaking_started(data: Dictionary)
 signal party_ready_updated(data: Dictionary)
+signal party_invite_code_received(data: Dictionary)
+signal party_invite_code_redeemed(data: Dictionary)
 signal request_failed(error: String)
 
 
@@ -255,6 +257,61 @@ func set_ready(party_id: String, ready: bool) -> void:
 	party_ready_updated.emit(
 		data if data is Dictionary else
 		{"party_id": party_id, "ready": ready})
+
+
+## Fetch (or generate) the shareable 6-char invite code for the
+## given party. Any active member can call; pending invitees are
+## rejected by the runtime. Emits `party_invite_code_received`
+## with `{party_id, code}` on success.
+func get_invite_code(party_id: String) -> void:
+	var session := await _ensure_session()
+	if session == null:
+		return
+	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
+		session, "party_get_invite_code",
+		JSON.stringify({
+			"party_id": party_id,
+		}))
+	if rpc_result.is_exception():
+		request_failed.emit(_describe(rpc_result.get_exception()))
+		return
+	var data: Variant = JSON.parse_string(rpc_result.payload)
+	if data is Dictionary:
+		party_invite_code_received.emit(data)
+	else:
+		party_invite_code_received.emit({
+			"party_id": party_id, "code": ""})
+
+
+## Join a party by previously-issued invite code. Server validates
+## the code, confirms the party still exists and has room, then
+## adds the caller as an active member (state=2). Emits both
+## `party_invite_code_redeemed` (so UI can show success copy) and
+## `party_joined` (so PartyManager runs its standard join-state
+## machinery).
+func join_by_code(code: String) -> void:
+	var session := await _ensure_session()
+	if session == null:
+		return
+	var normalized := code.strip_edges().to_upper()
+	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
+		session, "party_join_by_code",
+		JSON.stringify({
+			"code": normalized,
+		}))
+	if rpc_result.is_exception():
+		request_failed.emit(_describe(rpc_result.get_exception()))
+		return
+	var data: Variant = JSON.parse_string(rpc_result.payload)
+	if not (data is Dictionary):
+		data = {"party_id": "", "code": normalized}
+	party_invite_code_redeemed.emit(data)
+	# Routing the success through party_joined keeps PartyManager's
+	# state machine simple: the join-by-code path is just another
+	# way of becoming a party member, so the same post-join
+	# bookkeeping (seed current_party, immediate refetch, kick off
+	# polling) applies.
+	party_joined.emit({"party_id": data.get("party_id", "")})
 
 
 func start_matchmaking(

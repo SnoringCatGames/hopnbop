@@ -1,0 +1,14 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/ui/party/join_by_code_panel.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/side_panel.tscn" id="2_base"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/back_row.tscn" id="3_back_row"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/text_input_row.tscn" id="4_text_input_row"]
+[ext_resource type="Texture2D" path="res://assets/images/gui/checkmark_icon.png" id="5_join"]
+
+[node name="JoinByCodePanel" instance=ExtResource("2_base")]
+process_mode = 3
+script = ExtResource("1_script")
+_back_row_scene = ExtResource("3_back_row")
+_text_input_row_scene = ExtResource("4_text_input_row")
+_join_icon = ExtResource("5_join")

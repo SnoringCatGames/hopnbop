@@ -1,9 +1,11 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://src/ui/party/party_lobby_panel.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/side_panel.tscn" id="2_base"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/back_row.tscn" id="3_back_row"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/friends_panel.tscn" id="4_friends_panel"]
+[ext_resource type="PackedScene" path="res://src/ui/party/join_by_code_panel.tscn" id="4b_join_by_code_panel"]
+[ext_resource type="PackedScene" path="res://src/ui/party/party_chat_panel.tscn" id="4c_chat_panel"]
 [ext_resource type="Texture2D" path="res://assets/images/gui/checkmark_icon.png" id="5_accept"]
 [ext_resource type="Texture2D" path="res://assets/images/gui/x_icon.png" id="6_decline"]
 [ext_resource type="Texture2D" path="res://assets/images/gui/add_friend_icon.png" id="7_invite"]
@@ -15,6 +17,8 @@ process_mode = 3
 script = ExtResource("1_script")
 _back_row_scene = ExtResource("3_back_row")
 _friends_panel_scene = ExtResource("4_friends_panel")
+_join_by_code_panel_scene = ExtResource("4b_join_by_code_panel")
+_chat_panel_scene = ExtResource("4c_chat_panel")
 _accept_icon = ExtResource("5_accept")
 _decline_icon = ExtResource("6_decline")
 _start_match_icon = ExtResource("5_accept")
@@ -24,3 +28,6 @@ _kick_icon = ExtResource("8_kick")
 _open_friends_icon = ExtResource("9_open_friends")
 _ready_icon = ExtResource("5_accept")
 _not_ready_icon = ExtResource("6_decline")
+_share_code_icon = ExtResource("7_invite")
+_join_by_code_icon = ExtResource("5_accept")
+_chat_icon = ExtResource("9_open_friends")

@@ -30,31 +30,25 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 5.5 shipped today. Party members
-  (including the leader) now have a Ready / Not Ready toggle
-  in the lobby panel, and the leader's Start Match button is
-  gated on every active member being ready (in addition to
-  the pre-existing >= 2 active-member threshold). Server-
-  side: new `party_set_ready` RPC writes a per-member storage
-  row at `(party_ready, party_id, user_id)` with
-  PermissionRead=2/Write=0, fans out the existing
-  `party_state_changed` notification with `event=ready_changed`,
-  and the AfterJoinGroup / AfterLeaveGroup /
-  AfterKickGroupUsers hooks now also clear every ready row
-  for the affected party so a roster change invalidates stale
-  readies. The account.go cascade already scrubs every
-  user-owned storage row, so per-member ready rows clear
-  automatically on delete_account. Stage 5 remainders
-  (5.6-5.10) still pending: leader transfer, mode picker,
-  chat, persistence, deep link. Stage 3 still has 3.5 / 3.9
-  open; Stage 4 still has 4.3/4.7/4.8 deferred behind
-  game.yaml schema extensions. Next focus is either 5.6
-  (leader transfer / kick-and-promote — non-trivial because
-  Nakama doesn't expose a transfer-creator-id API, so we'd
-  need an RPC that promotes a member to superadmin and demotes
-  the old leader) or jumping to Stage 6 (Platform SDK
-  extraction) to start moving the api_client.gd files into
-  the addon.
+- **Current focus:** Stages 5.8 / 5.9 / 5.10 shipped today.
+  Party chat (live Nakama group-channel messages over the
+  existing notification socket, in a new `PartyChatPanel`
+  sub-panel); persist-across-launches "still in a party?"
+  rejoin prompt fired on the first post-auth party fetch;
+  and join-by-code (6-char alphanumeric codes via two new
+  server RPCs `party_get_invite_code` /
+  `party_join_by_code`, surfaced in `PartyLobbyPanel` as a
+  share row + a `JoinByCodePanel` for inbound). Stage 5
+  now has 5.6 (leader transfer) and 5.7 (mode picker)
+  open, both flagged as non-trivial. Stage 3 still has
+  3.5 / 3.9 open; Stage 4 still has 4.3/4.7/4.8 deferred.
+  Next focus is either tackling 5.6 (the remaining
+  party-UX item flagged "non-trivial because Nakama
+  doesn't expose a transfer-creator-id API, so we'd need
+  an RPC that promotes a member to superadmin and
+  demotes the old leader") or jumping to Stage 6
+  (Platform SDK extraction) to start moving the
+  api_client.gd files into the addon.
 - **Last updated:** 2026-05-12.
 - **Stages complete:**
   - Stage 0 (platform infra extraction — including the kickoff
@@ -74,10 +68,9 @@ See also:
     4.5, 4.6). Open: 4.3 (needs `matchmaker_rules.require_accept`
     in game.yaml), 4.7 (needs `matchmaker_rules.modes` schema),
     4.8 (region picker; optional, needs Edgegap region list).
-  - Stage 5 — 6/11 tasks shipped 2026-05-12 (5.1, 5.2, 5.3,
-    5.4, 5.5, 5.11). Open: 5.6 leader transfer, 5.7 game-mode
-    picker, 5.8 chat, 5.9 persist across launches, 5.10
-    deep-link/join-by-code.
+  - Stage 5 — 9/11 tasks shipped 2026-05-12 (5.1, 5.2, 5.3,
+    5.4, 5.5, 5.8, 5.9, 5.10, 5.11). Open: 5.6 leader
+    transfer, 5.7 game-mode picker.
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -110,8 +103,11 @@ Stage 3 (mostly done, 2026-05-12) — game_id scoping: presence
    │   fetch_party_status emit shape + state=3 distinction
    │   fixed; real-time socket updates via party_state_changed
    │   notification subject + long-lived NotificationSocketClient
-   │   (5.4); ready toggle + all-ready gate (5.5).
-   │   Open: party ergonomics (5.6-5.10).
+   │   (5.4); ready toggle + all-ready gate (5.5);
+   │   party chat over the same notification socket (5.8);
+   │   boot-time "still in a party?" rejoin prompt (5.9);
+   │   join-by-code with two new server RPCs (5.10).
+   │   Open: 5.6 leader transfer, 5.7 game-mode picker.
    └─→ Stage 6 — Platform SDK extraction (src/core/*_api_client.gd → Platform.*)
    ↓
 Stage 7 — Resilience (retries, notifications, observability)
@@ -903,10 +899,118 @@ invitees were silently treated as accepted members.
     code inspection + headless Godot autoload boot.
 - [ ] 5.6 Leader transfer / kick-and-promote.
 - [ ] 5.7 Game-mode selection by leader before queuing.
-- [ ] 5.8 Party chat.
-- [ ] 5.9 Persist party across launches / reconnects ("rejoin your
-  last party?").
-- [ ] 5.10 Deep-link / join-by-code invite link.
+- [x] **5.8 Party chat** (2026-05-12)
+  - Done — socket: `NotificationSocketClient` extended with
+    `join_chat_group(group_id) -> channel_id`,
+    `leave_chat(channel_id)`, `send_chat_message
+    (channel_id, content)`, and a new
+    `received_channel_message(message)` signal that
+    flattens Nakama's `ApiChannelMessage` into a dict
+    consumers can read without depending on the SDK types.
+    The chat connection rides the long-lived notification
+    socket — no second socket.
+  - Done — manager: `PartyManager` owns `chat_channel_id`
+    + `chat_history` (capped at 200 messages, oldest
+    dropped). `_reconcile_chat_subscription()` runs on
+    every `_on_party_status_received` and on
+    `socket_connected` to ensure we're subscribed to the
+    current party's channel (and to switch when the party
+    changes). `load_chat_history()` async-fetches the last
+    50 messages from the HTTP API on subscription so a
+    freshly-opened panel has backlog. Sends route through
+    `send_party_chat_message(text)` with a 500-char
+    defensive cap.
+  - Done — UI: new `PartyChatPanel` (`SidePanel` subclass).
+    Renders message rows above a `TextInputRow` +
+    Send `ActionRow`. Message rows are non-focusable
+    `VBoxContainer`s with a sender header + autowrapped
+    body label, so the SidePanel U/D navigation skips them
+    and lands on the input/send pair. Auto-scrolls to the
+    bottom on every render. New "Open Chat" row in
+    `PartyLobbyPanel` triggers the push.
+  - 7 new translation keys × 13 locales: `PARTY.OPEN_CHAT`,
+    `PARTY.CHAT_HEADER`, `PARTY.CHAT_PLACEHOLDER`,
+    `PARTY.CHAT_SEND`, `PARTY.CHAT_EMPTY`,
+    `PARTY.CHAT_SEND_FAILED`. CSV verified at 14 columns
+    per line.
+- [x] **5.9 Persist party across launches** (2026-05-12)
+  - Done — `PartyManager` tracks
+    `_initial_party_check_done` (cleared on every
+    `auth_completed`) and `_local_party_action_taken`
+    (set in `_on_party_created` /
+    `_on_party_joined`). On the first
+    `_on_party_status_received` since auth, if the user
+    is in an active party and *didn't* just create or
+    join one this session, `_show_rejoin_dialog(party)`
+    pops a `ConfirmOverlay` with accept = stay (no-op),
+    reject = leave.
+  - Pending invites take priority — the rejoin prompt
+    suppresses when `pending_invites` is non-empty so
+    the user resolves invites via their own dialog
+    flow first. The dialog re-fetches `party_id` off
+    `current_party` at button-tap time to defend
+    against the user already leaving the party
+    through some other surface between fetch and tap.
+  - 2 new translation keys × 13 locales:
+    `PARTY.REJOIN_PROMPT` and `PARTY.CONTINUE`.
+- [x] **5.10 Deep-link / join-by-code** (2026-05-12)
+  - Done — server: two new client-session RPCs in
+    `third_party/snoringcat-platform/runtime/party.go`:
+    - `party_get_invite_code`: any active member of the
+      party can fetch (or generate on first call) the
+      shareable 6-character code. Lazy-generates on
+      demand; reuses on subsequent calls via a
+      reverse-lookup row keyed by `party:<party_id>`.
+    - `party_join_by_code`: validates the code,
+      confirms the party still exists and has room,
+      then calls `nk.GroupUsersAdd(ctx, "",
+      groupID, []string{callerID})` — empty callerID
+      invokes server authority, bypassing the
+      closed-group invite-and-accept dance and adding
+      the caller as state=2 directly.
+    - Bidirectional storage rows in a new
+      `party_invite_codes` collection, both
+      server-owned (UserID="") with PermissionRead=0 /
+      PermissionWrite=0 so the RPCs are the only
+      access path. Forward row collision retries
+      bounded at 5; alphabet excludes I/O/0/1 for
+      readability. Stale rows (party disbanded since
+      issuance) cleaned lazily on
+      `party_join_by_code`.
+  - Done — client RPC layer: `PartyApiClient` gains
+    `get_invite_code(party_id)` and `join_by_code
+    (code)` plus two new signals
+    (`party_invite_code_received`,
+    `party_invite_code_redeemed`). The redeem path
+    also fires `party_joined` so `PartyManager`'s
+    existing state machine takes over.
+  - Done — `PartyManager`: passthrough
+    `request_invite_code()` and
+    `join_party_by_code(code)`.
+  - Done — UI: `PartyLobbyPanel` empty state now
+    surfaces a "Join by Code" row that pushes a new
+    `JoinByCodePanel` (text input + length-gated
+    Join button, modeled on `AddFriendPanel`).
+    Active-party state surfaces a "Show Invite Code"
+    row that flips to displaying the code once
+    fetched; pressing it again copies to the
+    clipboard via `DisplayServer.clipboard_set`.
+  - 8 new translation keys × 13 locales:
+    `PARTY.JOIN_BY_CODE`, `PARTY.JOIN_BY_CODE_HINT`,
+    `PARTY.ENTER_CODE`, `PARTY.SHOW_INVITE_CODE`,
+    `PARTY.FETCHING_INVITE_CODE`,
+    `PARTY.INVITE_CODE_LABEL`,
+    `PARTY.INVITE_CODE_COPIED`,
+    `PARTY.JOINED_VIA_CODE`.
+  - Deferred: the literal "deep-link" half of the
+    audit's framing — a URL like
+    `https://hopnbop.net/?code=ABC123` that pre-fills
+    the join-by-code panel on web boot — isn't wired
+    yet. The code surface alone covers the
+    Discord-share-a-code use case, which is the
+    primary value. URL handling requires touching
+    the web export's `index.html` patch and the
+    Godot bootstrap; deferred for a separate pass.
 - [x] **5.11 Pending-invite state in client** (2026-05-12)
   - The audit's "currently faked locally" framing
     undersold the issue: state=3 (Nakama JoinRequest,
@@ -1487,6 +1591,56 @@ Security:
     in the clear set because the invitee is state=3
     until they accept; the active roster hasn't
     actually changed.
+- **2026-05-12:** Stage 5 second wave (5.8 / 5.9 / 5.10)
+  closed out the bulk of the party-UX backlog. Four design
+  calls worth recording:
+  - **Chat rides the existing notification socket, not a
+    dedicated chat socket.** Nakama's realtime socket
+    multiplexes notifications and channel messages on one
+    connection. Adding chat to `NotificationSocketClient`
+    instead of spinning a new `ChatSocketClient` kept the
+    connection budget at one. The cost is a slight scope
+    creep on the notification-socket abstraction — it's now
+    the realtime-socket. Acceptable. Future stages that
+    need other socket-side surfaces (matchmaker presence,
+    typing indicators) hang off the same node.
+  - **Chat history is in-memory only, server-paginated on
+    demand.** PartyManager keeps the last 200 messages
+    cached so re-opening the chat panel after closing it
+    doesn't re-fetch. The HTTP API's
+    `list_channel_messages_async` fetches the latest 50 on
+    subscription. Older history is reachable only by adding
+    a paging API to PartyManager and a "load earlier" row
+    to the panel — deferred until users ask.
+  - **Join-by-code uses two storage rows in one collection
+    for O(1) lookup either direction.** Forward
+    (`code:<CODE>` → party_id) for the join path; reverse
+    (`party:<party_id>` → code) for the share path. Both
+    rows server-owned with PermissionRead/Write=0 so the
+    RPCs are the only access surface. The alternative —
+    storing the code on the group's metadata via
+    `GroupUpdate` — would have meant a heavier write op
+    and a partial mirror of an opaque field. Two cheap
+    rows in our own collection is simpler.
+  - **Server-authority `GroupUsersAdd` bypasses the
+    closed-group join-request dance.** Calling
+    `nk.GroupUsersAdd(ctx, "", groupID, []string{userID})`
+    with empty `callerID` lets the runtime add a user as
+    state=2 (Member) directly, regardless of the group's
+    open/closed flag. This is what makes join-by-code work
+    without first issuing an invite. Without it, the code
+    holder would land as state=3 (pending invite) and need
+    a leader-side accept step — defeating the
+    "frictionless join" goal.
+  - **5.9 rejoin prompt suppresses when invites are
+    pending.** Two competing dialog flows would otherwise
+    pop simultaneously on boot. The invite dialog has
+    actionable state changes (accept/decline), so it
+    wins; the rejoin prompt can resurface on the *next*
+    poll once invites have been resolved (though in
+    practice users either accept-into the same party or
+    decline-and-stay, so the prompt would be moot
+    afterward).
 - **2026-05-12:** Stage 2.5/2.6 closed out the foundation.
   Four design calls worth recording:
   - **`game_id` lives in Nakama's `vars` map, not as a

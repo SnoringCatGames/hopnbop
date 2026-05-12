@@ -9,6 +9,8 @@ extends SidePanel
 
 @export var _back_row_scene: PackedScene
 @export var _friends_panel_scene: PackedScene
+@export var _join_by_code_panel_scene: PackedScene
+@export var _chat_panel_scene: PackedScene
 @export var _accept_icon: Texture2D
 @export var _decline_icon: Texture2D
 @export var _start_match_icon: Texture2D
@@ -18,10 +20,15 @@ extends SidePanel
 @export var _open_friends_icon: Texture2D
 @export var _ready_icon: Texture2D
 @export var _not_ready_icon: Texture2D
+@export var _share_code_icon: Texture2D
+@export var _join_by_code_icon: Texture2D
+@export var _chat_icon: Texture2D
 
 var _status_label: Label
 var _bottom_spacer: Control
 var _dynamic_nodes: Array[Node] = []
+var _cached_invite_code := ""
+var _is_fetching_invite_code := false
 
 
 func build_ui() -> void:
@@ -75,6 +82,10 @@ func build_ui() -> void:
 		_on_party_left)
 	G.party_api_client.party_kicked.connect(
 		_on_party_kicked)
+	G.party_api_client.party_invite_code_received\
+		.connect(_on_invite_code_received)
+	G.party_api_client.party_invite_code_redeemed\
+		.connect(_on_invite_code_redeemed)
 	G.party_api_client.request_failed.connect(
 		_on_request_failed)
 
@@ -123,6 +134,14 @@ func _exit_tree() -> void:
 				_on_party_kicked):
 			pac.party_kicked.disconnect(
 				_on_party_kicked)
+		if pac.party_invite_code_received.is_connected(
+				_on_invite_code_received):
+			pac.party_invite_code_received.disconnect(
+				_on_invite_code_received)
+		if pac.party_invite_code_redeemed.is_connected(
+				_on_invite_code_redeemed):
+			pac.party_invite_code_redeemed.disconnect(
+				_on_invite_code_redeemed)
 		if pac.request_failed.is_connected(
 				_on_request_failed):
 			pac.request_failed.disconnect(
@@ -143,6 +162,12 @@ func _refresh() -> void:
 	var in_party := G.party_manager.is_in_party()
 	var has_invites := (
 		G.party_manager.has_pending_invite())
+
+	# Drop a stale invite code if the party changed
+	# (e.g. user left and joined a different party in
+	# the same panel session).
+	if not in_party:
+		_cached_invite_code = ""
 
 	if has_invites:
 		_render_pending_invites()
@@ -172,6 +197,23 @@ func _render_empty_state() -> void:
 	_row_container.add_child(open_friends_row)
 	_connect_row_clicked(open_friends_row)
 	_dynamic_nodes.append(open_friends_row)
+
+	# Join-by-code path. Lets a player paste a 6-char
+	# code from a teammate without sending a friend
+	# request first — the simplest way to set up a
+	# party with someone you're meeting in a Discord
+	# voice channel.
+	if _join_by_code_panel_scene != null:
+		var join_row := ActionRow.new()
+		join_row.setup_actions(
+			_on_join_by_code_pressed,
+			_on_join_by_code_pressed)
+		join_row.setup_label(
+			tr("PARTY.JOIN_BY_CODE"),
+			_join_by_code_icon)
+		_row_container.add_child(join_row)
+		_connect_row_clicked(join_row)
+		_dynamic_nodes.append(join_row)
 
 
 func _render_pending_invites() -> void:
@@ -327,6 +369,49 @@ func _render_active_party() -> void:
 		_row_container.add_child(invite_row)
 		_connect_row_clicked(invite_row)
 		_dynamic_nodes.append(invite_row)
+
+	# Chat row. Available to every active member while not in
+	# matchmaking. Drops into a sub-panel that streams the party's
+	# group channel.
+	if not is_matchmaking and _chat_panel_scene != null:
+		var chat_row := ActionRow.new()
+		chat_row.setup_actions(
+			_on_open_chat_pressed,
+			_on_open_chat_pressed)
+		chat_row.setup_label(
+			tr("PARTY.OPEN_CHAT"),
+			_chat_icon)
+		_row_container.add_child(chat_row)
+		_connect_row_clicked(chat_row)
+		_dynamic_nodes.append(chat_row)
+
+	# Share invite code row. Available to every active member, not
+	# just the leader — invitations are a social action and any
+	# member should be able to bring a friend in. The label flips
+	# between "Show invite code" (before fetching) and the literal
+	# 6-char code (once resolved); pressing while the code is shown
+	# copies it to the clipboard.
+	if not is_matchmaking:
+		var share_label: String
+		var share_action: Callable
+		if _cached_invite_code.is_empty():
+			share_label = (
+				tr("PARTY.SHOW_INVITE_CODE")
+				if not _is_fetching_invite_code
+				else tr("PARTY.FETCHING_INVITE_CODE"))
+			share_action = _on_show_invite_code_pressed
+		else:
+			share_label = (
+				tr("PARTY.INVITE_CODE_LABEL")
+				% _cached_invite_code)
+			share_action = _on_copy_invite_code_pressed
+		var share_row := ActionRow.new()
+		share_row.setup_actions(share_action, share_action)
+		share_row.setup_label(share_label, _share_code_icon)
+		share_row.disabled = _is_fetching_invite_code
+		_row_container.add_child(share_row)
+		_connect_row_clicked(share_row)
+		_dynamic_nodes.append(share_row)
 
 	var leave_row := ActionRow.new()
 	leave_row.setup_actions(
@@ -578,3 +663,56 @@ func _on_decline_pressed(
 			G.party_manager.decline_invite(party_id),
 		tr("CONFIRM.CANCEL"),
 	)
+
+
+func _on_join_by_code_pressed() -> void:
+	if _join_by_code_panel_scene == null:
+		return
+	if not is_instance_valid(manager):
+		return
+	var panel := _join_by_code_panel_scene.instantiate()
+	manager.push_panel(panel)
+
+
+func _on_open_chat_pressed() -> void:
+	if _chat_panel_scene == null:
+		return
+	if not is_instance_valid(manager):
+		return
+	var panel := _chat_panel_scene.instantiate()
+	manager.push_panel(panel)
+
+
+func _on_show_invite_code_pressed() -> void:
+	if _is_fetching_invite_code:
+		return
+	_is_fetching_invite_code = true
+	_refresh()
+	G.party_manager.request_invite_code()
+
+
+func _on_copy_invite_code_pressed() -> void:
+	if _cached_invite_code.is_empty():
+		return
+	DisplayServer.clipboard_set(_cached_invite_code)
+	if is_instance_valid(G.toast_overlay):
+		G.toast_overlay.show_toast(
+			tr("PARTY.INVITE_CODE_COPIED"))
+
+
+func _on_invite_code_received(data: Dictionary) -> void:
+	if is_queued_for_deletion():
+		return
+	_is_fetching_invite_code = false
+	var code: String = data.get("code", "")
+	if not code.is_empty():
+		_cached_invite_code = code
+	_refresh()
+
+
+func _on_invite_code_redeemed(_data: Dictionary) -> void:
+	# The redeem flow only fires for the joining client (PartyManager's
+	# party_joined handler covers the rest of the state machine). This
+	# panel doesn't react directly — the party_updated signal that
+	# fires shortly after will trigger _refresh().
+	pass

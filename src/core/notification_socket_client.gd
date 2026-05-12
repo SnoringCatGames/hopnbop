@@ -35,6 +35,19 @@ signal socket_connected
 ## the auth token is valid.
 signal socket_disconnected
 
+## Fires once per chat message delivered over the socket. The
+## payload is a flat dict shaped from ApiChannelMessage:
+##   {channel_id, group_id, sender_id, username, content,
+##    create_time, message_id, persistent}
+## Consumers (PartyManager today) filter by `channel_id` /
+## `group_id` so they only react to their own channel.
+signal received_channel_message(message: Dictionary)
+
+
+## Nakama channel-type enum. Mirrors the upstream
+## ChannelJoin.ChannelType: 1=Room, 2=DirectMessage, 3=Group.
+const CHANNEL_TYPE_GROUP := 3
+
 
 const _RECONNECT_INITIAL_DELAY_SEC := 1.0
 const _RECONNECT_MAX_DELAY_SEC := 30.0
@@ -123,6 +136,8 @@ func _attempt_connect() -> void:
 		G.auth_client._get_nakama_client())
 	_socket.received_notification.connect(
 		_on_received_notification)
+	_socket.received_channel_message.connect(
+		_on_received_channel_message)
 	_socket.closed.connect(_on_socket_closed)
 	_socket.connection_error.connect(
 		_on_socket_connection_error)
@@ -163,6 +178,100 @@ func _schedule_reconnect() -> void:
 		_reconnect_delay_sec * _RECONNECT_BACKOFF_MULTIPLIER,
 		_RECONNECT_MAX_DELAY_SEC,
 	)
+
+
+## Join the Nakama group channel for the given party / group id.
+## Returns the channel id on success, "" on failure. The socket
+## must already be connected — call after `socket_connected` has
+## fired. Persistent=true so the server retains message history;
+## hidden=false so other members see the join presence event.
+func join_chat_group(group_id: String) -> String:
+	if group_id.is_empty():
+		return ""
+	if not is_socket_connected():
+		return ""
+	var result = await _socket.join_chat_async(
+		group_id, CHANNEL_TYPE_GROUP, true, false)
+	if result.is_exception():
+		Netcode.log.warning(
+			(
+				"[NotificationSocket] join chat failed:"
+				+ " group=%s err=%s"
+			) % [group_id, result.get_exception().message],
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+		return ""
+	return result.id
+
+
+## Leave the named chat channel. Best-effort; failures are
+## logged but not bubbled because the caller no longer wants the
+## subscription anyway.
+func leave_chat(channel_id: String) -> void:
+	if channel_id.is_empty():
+		return
+	if not is_socket_connected():
+		return
+	var result = await _socket.leave_chat_async(channel_id)
+	if result.is_exception():
+		Netcode.log.warning(
+			(
+				"[NotificationSocket] leave chat failed:"
+				+ " channel=%s err=%s"
+			) % [channel_id, result.get_exception().message],
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+
+
+## Send a chat message dict on the given channel. Nakama serializes
+## the dict to JSON on the wire; we wrap a `{text}` key so future
+## additions (e.g. system messages, reactions) can ride alongside
+## without breaking the contract.
+func send_chat_message(
+	channel_id: String,
+	content: Dictionary,
+) -> bool:
+	if channel_id.is_empty():
+		return false
+	if not is_socket_connected():
+		return false
+	var result = await _socket.write_chat_message_async(
+		channel_id, content)
+	if result.is_exception():
+		Netcode.log.warning(
+			(
+				"[NotificationSocket] send chat failed:"
+				+ " channel=%s err=%s"
+			) % [channel_id, result.get_exception().message],
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+		return false
+	return true
+
+
+func _on_received_channel_message(p_message) -> void:
+	# Flatten the Nakama ApiChannelMessage into a plain dict so
+	# downstream consumers don't have to depend on the SDK type.
+	# `content` is a JSON string on the wire; parse it if possible
+	# and pass both the raw string and the parsed dict (consumers
+	# typically care about the parsed shape).
+	var raw_content: String = str(p_message.content)
+	var parsed_content: Dictionary = {}
+	if not raw_content.is_empty():
+		var parsed: Variant = JSON.parse_string(raw_content)
+		if parsed is Dictionary:
+			parsed_content = parsed
+	received_channel_message.emit({
+		"channel_id": str(p_message.channel_id),
+		"group_id": str(p_message.group_id),
+		"sender_id": str(p_message.sender_id),
+		"username": str(p_message.username),
+		"content_raw": raw_content,
+		"content": parsed_content,
+		"create_time": str(p_message.create_time),
+		"message_id": str(p_message.message_id),
+		"persistent": bool(p_message.persistent),
+	})
 
 
 func _on_received_notification(p_notification) -> void:

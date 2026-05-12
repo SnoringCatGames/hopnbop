@@ -29,6 +29,13 @@ func get_text() -> String:
 	return _line_edit.text
 
 
+## Reset the field to empty. Used by the chat panel after a
+## send so the user can type the next message without manually
+## clearing the LineEdit.
+func clear_text() -> void:
+	_line_edit.text = ""
+
+
 func _ready() -> void:
 	super()
 	_line_edit.placeholder_text = _placeholder
