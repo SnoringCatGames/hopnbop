@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://src/ui/party/party_lobby_panel.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/side_panel.tscn" id="2_base"]
@@ -11,6 +11,7 @@
 [ext_resource type="Texture2D" path="res://assets/images/gui/add_friend_icon.png" id="7_invite"]
 [ext_resource type="Texture2D" path="res://assets/images/gui/remove_friend_icon.png" id="8_kick"]
 [ext_resource type="Texture2D" path="res://assets/images/gui/friends_icon.png" id="9_open_friends"]
+[ext_resource type="Texture2D" path="res://assets/images/gui/leaderboard_icon.png" id="10_transfer_leadership"]
 
 [node name="PartyLobbyPanel" instance=ExtResource("2_base")]
 process_mode = 3
@@ -31,3 +32,4 @@ _not_ready_icon = ExtResource("6_decline")
 _share_code_icon = ExtResource("7_invite")
 _join_by_code_icon = ExtResource("5_accept")
 _chat_icon = ExtResource("9_open_friends")
+_transfer_leadership_icon = ExtResource("10_transfer_leadership")

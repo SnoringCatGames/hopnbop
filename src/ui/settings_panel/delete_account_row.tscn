@@ -1,10 +1,12 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/ui/settings_panel/delete_account_row.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/delete_account_confirm_panel.tscn" id="2_confirm_panel"]
 
 [node name="DeleteAccountRow" type="PanelContainer"]
 process_mode = 3
 script = ExtResource("1_script")
+_confirm_panel_scene = ExtResource("2_confirm_panel")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
 layout_mode = 2

@@ -30,25 +30,28 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stages 5.8 / 5.9 / 5.10 shipped today.
-  Party chat (live Nakama group-channel messages over the
-  existing notification socket, in a new `PartyChatPanel`
-  sub-panel); persist-across-launches "still in a party?"
-  rejoin prompt fired on the first post-auth party fetch;
-  and join-by-code (6-char alphanumeric codes via two new
-  server RPCs `party_get_invite_code` /
-  `party_join_by_code`, surfaced in `PartyLobbyPanel` as a
-  share row + a `JoinByCodePanel` for inbound). Stage 5
-  now has 5.6 (leader transfer) and 5.7 (mode picker)
-  open, both flagged as non-trivial. Stage 3 still has
-  3.5 / 3.9 open; Stage 4 still has 4.3/4.7/4.8 deferred.
-  Next focus is either tackling 5.6 (the remaining
-  party-UX item flagged "non-trivial because Nakama
-  doesn't expose a transfer-creator-id API, so we'd need
-  an RPC that promotes a member to superadmin and
-  demotes the old leader") or jumping to Stage 6
-  (Platform SDK extraction) to start moving the
-  api_client.gd files into the addon.
+- **Current focus:** Stages 5.6 (leader transfer) and the 1.5 UX
+  polish shipped today. Leader transfer lives in a new
+  `party_transfer_leadership` server RPC backed by a `party_leader`
+  storage override (PermissionRead=2 so clients fold it into
+  `fetch_party_status`); the new leader is also promoted to Nakama
+  group-admin so client-side kick / invite paths keep working.
+  AfterLeaveGroup / AfterKickGroupUsers hooks auto-transfer to the
+  first remaining active member when the current leader departs,
+  covering both manual leave and the account-delete cascade. UI
+  renders a "Make %s the leader" ActionRow per eligible target in
+  PartyLobbyPanel (max 3 rows; parties cap at 4). 1.5 polish:
+  delete-account flow now pushes a dedicated
+  `DeleteAccountConfirmPanel` sub-panel with body copy that spells
+  out the 30-day grace period and a type-the-localized-word
+  verification step before the Confirm button enables; success
+  toast now reads "Account scheduled for deletion. Sign in within
+  30 days to cancel." 9 new translation keys × 13 locales.
+  Stage 5 now has 5.7 (mode picker) as the last open item; Stage 3
+  still has 3.5 / 3.9 open; Stage 4 still has 4.3/4.7/4.8
+  deferred. Next focus is most likely Stage 6 (Platform SDK
+  extraction) — moving the `src/core/*_api_client.gd` files into
+  `addons/snoringcat_platform_client/`.
 - **Last updated:** 2026-05-12.
 - **Stages complete:**
   - Stage 0 (platform infra extraction — including the kickoff
@@ -56,9 +59,11 @@ See also:
   - Stage 2 (all seven tasks shipped 2026-05-12).
 - **Stages in progress:**
   - Stage 1 — all five tasks (1.1a, 1.1b, 1.2, 1.3, 1.4, 1.5)
-    have working code shipped. Open items: UX polish on 1.5 and
-    the compliance-test green-light still gated on a Stage 8
-    socket harness for multi-user party scenarios.
+    have working code shipped. 1.5 UX polish (type-the-word
+    confirmation + grace-period messaging) now also shipped via
+    the new `DeleteAccountConfirmPanel`. Compliance-test green-
+    light still gated on a Stage 8 socket harness for multi-user
+    party scenarios.
   - Stage 3 — 8/10 tasks shipped 2026-05-12 (3.1, 3.2, 3.3,
     3.4, 3.6, 3.7, 3.8, 3.10). Open: 3.5 settings split
     (needs global-vs-per-game taxonomy decision) and 3.9
@@ -68,9 +73,10 @@ See also:
     4.5, 4.6). Open: 4.3 (needs `matchmaker_rules.require_accept`
     in game.yaml), 4.7 (needs `matchmaker_rules.modes` schema),
     4.8 (region picker; optional, needs Edgegap region list).
-  - Stage 5 — 9/11 tasks shipped 2026-05-12 (5.1, 5.2, 5.3,
-    5.4, 5.5, 5.8, 5.9, 5.10, 5.11). Open: 5.6 leader
-    transfer, 5.7 game-mode picker.
+  - Stage 5 — 10/11 tasks shipped 2026-05-12 (5.1, 5.2, 5.3,
+    5.4, 5.5, 5.6, 5.8, 5.9, 5.10, 5.11). Open: 5.7 game-mode
+    picker (deferred until game.yaml schema gains a `modes`
+    list, mirrored by Stage 4.7).
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -104,9 +110,11 @@ Stage 3 (mostly done, 2026-05-12) — game_id scoping: presence
    │   fixed; real-time socket updates via party_state_changed
    │   notification subject + long-lived NotificationSocketClient
    │   (5.4); ready toggle + all-ready gate (5.5);
-   │   party chat over the same notification socket (5.8);
-   │   boot-time "still in a party?" rejoin prompt (5.9);
-   │   join-by-code with two new server RPCs (5.10).
+   │   leader transfer via party_transfer_leadership RPC +
+   │   party_leader storage override (5.6); party chat over the
+   │   same notification socket (5.8); boot-time "still in a
+   │   party?" rejoin prompt (5.9); join-by-code with two new
+   │   server RPCs (5.10).
    │   Open: 5.6 leader transfer, 5.7 game-mode picker.
    └─→ Stage 6 — Platform SDK extraction (src/core/*_api_client.gd → Platform.*)
    ↓
@@ -290,19 +298,32 @@ stay correct when Stages 2–3 scope everything by `game_id`.
     `AccountPanel` confirm-dialog UX is unchanged; users still
     see the single-step "Delete your account?" confirm and the
     success toast → consent-screen nav. Landed: parent `5903331`.
-  - **UX follow-ups still open inside 1.5** (non-blocking on
-    Stage 2):
-    - Second-confirmation step (typing username or "DELETE") per
-      the audit spec. Current single-step confirm dialog is
-      inherited from before. Implementation needs either a new
-      sub-panel (like `AddFriendPanel` with a `TextInputRow`) or
-      a new modal-with-text-input. Defer until UX polish pass.
-    - Grace-period messaging in the confirmation copy and the
-      success toast. `CONFIRM.DELETE_ACCOUNT` still says only
-      "Delete your account?" — users don't see the 30-day window.
-      Needs new translation keys (`CONFIRM.DELETE_ACCOUNT_DETAIL`
-      with grace-day count, `TOAST.ACCOUNT_DELETE_QUEUED` with
-      cancellation instructions) across all 13 locales.
+  - **UX polish shipped 2026-05-12** (second pass):
+    - New `DeleteAccountConfirmPanel` (extends `SidePanel`,
+      pattern lifted from `AddFriendPanel`). `DeleteAccountRow`
+      now pushes this sub-panel via `manager.push_panel(...)`
+      instead of calling `open_confirm_dialog`. The original
+      single-step confirm dialog is gone.
+    - Sub-panel renders three labels (header + grace-period
+      body + type-the-word prompt) above a `TextInputRow` that
+      accepts the localized verify word (`CONFIRM.DELETE_
+      ACCOUNT_VERIFY_WORD`, uppercased for Latin-script locales
+      and unchanged for non-Latin scripts where casing is a no-
+      op). The Confirm Deletion `ActionRow` stays disabled
+      until the input matches.
+    - Success toast switched from `TOAST.ACCOUNT_DELETED`
+      ("Account deleted") to `TOAST.ACCOUNT_DELETE_QUEUED`
+      ("Account scheduled for deletion. Sign in within 30 days
+      to cancel.") so the user sees the grace-period framing.
+      `TOAST.ACCOUNT_DELETED` is retained in the CSV for
+      historical strings still referenced from older entries
+      (e.g. analytics dashboards), but no live code path emits
+      it anymore.
+    - 5 new translation keys × 13 locales: `CONFIRM.DELETE_
+      ACCOUNT_DETAIL`, `CONFIRM.DELETE_ACCOUNT_TYPE_PROMPT`,
+      `CONFIRM.DELETE_ACCOUNT_VERIFY_WORD`, `CONFIRM.DELETE_
+      ACCOUNT_CONFIRM_BUTTON`, `TOAST.ACCOUNT_DELETE_QUEUED`.
+      CSV verified at 14 fields per line.
 
 ### Definition of done
 
@@ -897,8 +918,88 @@ invitees were silently treated as accepted members.
     the ready toggle yet (Stage 8.11/8.12 socket
     harness still pending). The flow is verified by
     code inspection + headless Godot autoload boot.
-- [ ] 5.6 Leader transfer / kick-and-promote.
+- [x] **5.6 Leader transfer / kick-and-promote** (2026-05-12)
+  - Done — server:
+    `third_party/snoringcat-platform/runtime/party.go` gains
+    a new `party_leader` storage collection storing the
+    optional `{user_id, transferred_at, transferred_by}`
+    override row at `(party_leader, party_id, "")`,
+    server-owned (UserID="") with PermissionRead=2 (clients
+    fold it into their local view of leader_id) /
+    PermissionWrite=0 (the transfer RPC is the sole mutation
+    path). `resolvePartyLeader` reads the override and falls
+    back to `group.CreatorId` when absent, keeping
+    pre-existing parties working without migration. The new
+    `party_transfer_leadership` RPC validates that the caller
+    is the current leader, confirms the target is an active
+    member (non-pending), writes the override, promotes the
+    target to Nakama group-admin via `GroupUsersPromote` so
+    the client's direct-Nakama kick / invite paths work for
+    the new leader, then fans out `party_state_changed` with
+    the `leader_changed` event tag. Previous leader is NOT
+    demoted (Nakama can't demote the creator, and an
+    ad-hoc demote of a non-creator previous leader would
+    prevent them ever taking leadership back via another
+    transfer).
+  - Done — server: `partyStartMatchmakingRpc`'s leader
+    check now consults `resolvePartyLeader` instead of
+    comparing `group.CreatorId` directly, so a
+    transferred-leader can start matchmaking.
+    AfterLeaveGroup / AfterKickGroupUsers also call a new
+    `autoTransferIfLeaderDeparted` helper: when the current
+    leader leaves or is kicked, the runtime picks the first
+    remaining active member, writes a new override pointing
+    at them, and promotes them to admin. Covers manual
+    leave, kicks, and the account-delete cascade
+    (`account.go`'s flow calls `GroupUserLeave` which fires
+    AfterLeaveGroup). When no remaining active members
+    exist (everyone gone), the override row is dropped so
+    a future reuse of the same `party_id` doesn't read a
+    stale override.
+  - Done — client: `PartyApiClient.fetch_party_status`
+    batches the `(party_leader, party_id, "")` row into the
+    existing `read_storage_objects_async` call alongside
+    each member's ready row, then folds any returned
+    `{user_id}` into `party["leader_id"]`, replacing the
+    creator-id default. Per-member `role` and the viewer's
+    `viewer_role` are recomputed against the resolved
+    leader_id so the panel's crown / leader-only
+    affordances reflect the override even when the original
+    Nakama state hasn't been promoted (e.g., the new leader
+    is still state=2 Member from Nakama's perspective).
+    New `transfer_leadership(party_id, target_user_id)`
+    method calls the RPC; new
+    `party_leader_transferred(data)` signal echoes the
+    response so consumers can react.
+  - Done — client: `PartyManager.transfer_leadership(
+    target_player_id)` passthrough that no-ops when the
+    caller isn't the leader or the target is invalid /
+    self.
+  - Done — UI: `PartyLobbyPanel` renders a "Make %s the
+    leader" ActionRow per eligible target (non-self, non-
+    pending active member) when the viewer is the leader
+    and the party isn't matchmaking. Tap opens a confirm
+    dialog ("Make %s the new party leader? You will no
+    longer be the leader."). On success the panel surfaces
+    a toast ("Made %s the new leader") — the dropping of
+    the leader-only rows on the next refetch would
+    otherwise be silent. Leadership-transfer rows use
+    `leaderboard_icon.png` as a placeholder icon; a
+    dedicated promote icon is a small follow-up asset
+    task.
+  - 4 new translation keys × 13 locales: `PARTY.MAKE_LEADER`,
+    `PARTY.MAKE_LEADER_CONFIRM`, `PARTY.LEADERSHIP_TRANSFERRED`,
+    `CONFIRM.TRANSFER_LEADERSHIP`. CSV verified at 14 fields
+    per line.
+  - Compliance test for the transfer flow still pending;
+    needs the Stage 8.11 socket harness + 8.12 multi-
+    session helper.
 - [ ] 5.7 Game-mode selection by leader before queuing.
+  - Deferred 2026-05-12. Needs `matchmaker_rules.modes`
+    schema in `game.yaml` plus per-mode matchmaker query /
+    fleet routing in the runtime (mirrors Stage 4.7 with a
+    UI surface). Single-mode pipeline keeps working; no
+    user-visible blocker.
 - [x] **5.8 Party chat** (2026-05-12)
   - Done — socket: `NotificationSocketClient` extended with
     `join_chat_group(group_id) -> channel_id`,
@@ -1679,6 +1780,62 @@ Security:
     `api_base_url` arg is set to the live Nakama URL even
     though nothing reads it yet — `Platform.initialize` asserts
     it's non-empty, so we satisfy the contract.
+- **2026-05-12:** Stage 5.6 leader transfer + 1.5 UX polish
+  shipped. Five design calls worth recording:
+  - **Override row, not Nakama group mutation.** Nakama's
+    `creator_id` is immutable on the group, and demoting an
+    existing superadmin is either impossible (creator) or a
+    one-way street that prevents takebacks (admin). The
+    cleanest reassignment surface is a separate storage row
+    keyed by `party_id`. `resolvePartyLeader` reads the row
+    first, falls back to `group.CreatorId` when absent. This
+    keeps every existing party (no override row) working
+    without a migration step.
+  - **Override row is publicly readable.** PermissionRead=2
+    (anyone can read), PermissionWrite=0 (only the runtime
+    can write). The transfer RPC is the sole mutation
+    surface; the client batched-reads the row in
+    `fetch_party_status` alongside the per-member ready rows
+    and folds the result into the existing `leader_id`
+    field. Party_id isn't sensitive (it's already exposable
+    via friends-list "in party" badges), so leaking "user X
+    is the current leader of party Y" to a session that
+    holds the party_id is acceptable.
+  - **Promote the new leader, don't demote the old one.**
+    `nk.GroupUsersPromote(target)` runs alongside the
+    storage write so the new leader has Nakama-side admin
+    rights for the standard kick / invite client paths. The
+    previous leader is left at whatever Nakama state they
+    were at — typically state=0 superadmin if they were the
+    original creator. This leaves a "stealth admin" surface
+    (a malicious previous-creator client could kick via
+    direct Nakama API even after transfer) but the
+    in-app UI hides those affordances and a fuller fix
+    (move kicks behind a server-authoritative RPC) is
+    Stage 6 / 7 territory.
+  - **Auto-transfer on leader-departed.** When the current
+    leader leaves or is kicked,
+    `autoTransferIfLeaderDeparted` picks the first
+    remaining active member, writes a new override, and
+    promotes them. The alternative — disband the party
+    when the leader leaves — would punish the other members
+    for someone else's quit. Account deletion routes
+    through the same hook (the cascade calls
+    `GroupUserLeave` → `AfterLeaveGroup`), so a leader
+    whose account is deleted hands off cleanly. When no
+    members remain, the override is dropped so a future
+    reuse of the same `party_id` doesn't read a stale row.
+  - **1.5 polish lives in a sub-panel, not a tweaked
+    confirm overlay.** The audit's strict reading wanted
+    type-the-word verification + grace-period messaging in
+    a single confirm dialog. ConfirmOverlay doesn't have a
+    text-input field, and bolting one on would have added
+    a generic affordance whose only caller was this one
+    flow. The sub-panel pattern matches `AddFriendPanel`
+    (already in the codebase) and keeps the confirm-
+    dialog surface focused on yes/no choices. The
+    delete-account row now does `manager.push_panel(...)`
+    instead of `open_confirm_dialog(...)`.
 
 ## How to use this document
 

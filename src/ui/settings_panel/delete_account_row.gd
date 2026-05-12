@@ -1,11 +1,16 @@
 class_name DeleteAccountRow
 extends SettingsRow
-## A row that triggers account deletion via a
-## ConfirmOverlay modal dialog.
+## A row that opens a dedicated confirmation sub-panel for
+## account deletion. The sub-panel handles the grace-period
+## messaging and the type-the-word verification step; this row
+## just routes there. The previous in-row delete flow (single
+## ConfirmOverlay → RPC → toast) was insufficient for
+## app-store deletion-confirmation expectations.
 
+
+@export var _confirm_panel_scene: PackedScene
 
 var _panel: SidePanel
-var _is_busy := false
 var _icon_texture: Texture2D
 
 @onready var _icon: TextureRect = %Icon
@@ -37,54 +42,11 @@ func on_right() -> void:
 
 
 func _activate() -> void:
-	if _is_busy:
-		return
 	if not is_instance_valid(_panel):
 		return
-
-	_panel.open_confirm_dialog(
-		tr("CONFIRM.DELETE_ACCOUNT"),
-		tr("CONFIRM.DELETE"),
-		_do_delete,
-		tr("CONFIRM.CANCEL"),
-	)
-
-
-func _do_delete() -> void:
-	_is_busy = true
-
-	G.auth_client.delete_completed.connect(
-		_on_delete_completed, CONNECT_ONE_SHOT,
-	)
-	G.auth_client.delete_account()
-
-
-func _on_delete_completed(
-	success: bool,
-	error: String,
-) -> void:
-	_is_busy = false
-
-	if (is_instance_valid(_panel)
-			and is_instance_valid(_panel.manager)):
-		_panel.manager.close_all()
-
-	if success:
-		if is_instance_valid(G.toast_overlay):
-			G.toast_overlay.show_toast(
-				tr("TOAST.ACCOUNT_DELETED"),
-				ToastOverlay.Type.SUCCESS,
-			)
-		G.screens.client_open_screen(
-			ScreensMain.ScreenType.CONSENT,
-		)
-	else:
-		G.log.error(
-			"Account deletion failed: %s"
-			% error,
-		)
-		if is_instance_valid(G.toast_overlay):
-			G.toast_overlay.show_toast(
-				tr("TOAST.DELETE_FAILED") % error,
-				ToastOverlay.Type.ERROR,
-			)
+	if _confirm_panel_scene == null:
+		return
+	if not is_instance_valid(_panel.manager):
+		return
+	_panel.manager.push_panel(
+		_confirm_panel_scene.instantiate())

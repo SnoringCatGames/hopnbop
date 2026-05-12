@@ -288,6 +288,24 @@ func kick_member(
 		get_party_id(), target_player_id)
 
 
+## Transfer party leadership to another active member (leader only).
+## The actual leader_id flip happens on the next fetch_party_status
+## refresh — the runtime's `party_state_changed` notification fires
+## immediately so every member's UI refreshes without waiting for
+## the catch-up poll.
+func transfer_leadership(
+	target_player_id: String,
+) -> void:
+	if not is_leader():
+		return
+	if target_player_id.is_empty():
+		return
+	if target_player_id == G.auth_token_store.player_id:
+		return
+	G.party_api_client.transfer_leadership(
+		get_party_id(), target_player_id)
+
+
 ## Toggle the viewer's own ready state for the current
 ## party. No-op when the viewer isn't in a party.
 ##

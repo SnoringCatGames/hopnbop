@@ -15,6 +15,7 @@ signal party_matchmaking_started(data: Dictionary)
 signal party_ready_updated(data: Dictionary)
 signal party_invite_code_received(data: Dictionary)
 signal party_invite_code_redeemed(data: Dictionary)
+signal party_leader_transferred(data: Dictionary)
 signal request_failed(error: String)
 
 
@@ -24,6 +25,16 @@ const _PARTY_GROUP_PREFIX := "party-"
 ## third_party/snoringcat-platform/runtime/party.go
 ## :partyReadyCollection.
 const _PARTY_READY_COLLECTION := "party_ready"
+
+## Storage collection name for the party-leader override. Each
+## party can have one row at (collection, party_id, "") owned by
+## the server; the runtime writes it via
+## `party_transfer_leadership` and reads it via
+## `resolvePartyLeader`. Read permission is server-only so the row
+## is opaque to clients, but `fetch_party_status` resolves the
+## current leader through the runtime's existing party_status
+## payload — clients never read this row directly.
+const _PARTY_LEADER_COLLECTION := "party_leader"
 
 
 var _is_busy := false
@@ -164,47 +175,107 @@ func fetch_party_status() -> void:
 				"role": _group_state_to_role(gu.state),
 				"ready": false,
 			})
-		# Batch-read every active member's ready row. Each row is
+		# Batch-read every active member's ready row + the
+		# (optional) party-leader override row in a single
+		# read_storage_objects_async call. Each ready row is
 		# owned by the corresponding member; pending invitees
 		# (state=3) are skipped because they can't ready up until
-		# they accept the invite. Skipping the read entirely when
-		# there are no active members keeps the call count off
-		# the empty-party path.
-		var ready_ids: Array[NakamaStorageObjectId] = []
+		# they accept the invite. The leader-override row is
+		# server-owned (user_id=""); a present row carries
+		# `{user_id: <new_leader>}` and supersedes the group's
+		# immutable creator_id; an absent row leaves
+		# `party.leader_id` set to creator_id (the default).
+		var storage_ids: Array[NakamaStorageObjectId] = []
+		var ready_user_ids: Dictionary = {}
 		for m in members:
 			if m.get("role", "") == "invited":
 				continue
-			ready_ids.append(NakamaStorageObjectId.new(
+			var ready_id := NakamaStorageObjectId.new(
 				_PARTY_READY_COLLECTION,
 				party["party_id"],
 				m["user_id"],
-			))
-		if not ready_ids.is_empty():
-			var ready_result = (
+			)
+			storage_ids.append(ready_id)
+			ready_user_ids[m["user_id"]] = true
+		# Leader override read. The empty user_id ("" string)
+		# targets the server-owned row. PermissionRead=2 on the
+		# row makes this readable by any session.
+		var leader_override_id := NakamaStorageObjectId.new(
+			_PARTY_LEADER_COLLECTION,
+			party["party_id"],
+			"",
+		)
+		storage_ids.append(leader_override_id)
+		if not storage_ids.is_empty():
+			var storage_result = (
 				await G.auth_client._get_nakama_client()
 					.read_storage_objects_async(
-						session, ready_ids)
+						session, storage_ids)
 			)
-			if ready_result.is_exception():
-				# Ready state is non-critical — log via the
-				# error signal but still surface the party so
-				# the panel can render. Most likely cause is a
-				# transient network blip; the next poll picks
-				# the readies up.
+			if storage_result.is_exception():
+				# Ready / leader-override state is non-critical
+				# — log via the error signal but still surface
+				# the party so the panel can render with
+				# defaults. Most likely cause is a transient
+				# network blip; the next poll picks them up.
 				request_failed.emit(
-					_describe(ready_result.get_exception()))
+					_describe(storage_result.get_exception()))
 			else:
 				var ready_by_user: Dictionary = {}
-				for obj in ready_result.objects:
-					var parsed: Variant = JSON.parse_string(
-						obj.value)
-					if parsed is Dictionary:
-						ready_by_user[obj.user_id] = (
-							bool(parsed.get("ready", false)))
+				for obj in storage_result.objects:
+					if obj.collection == _PARTY_LEADER_COLLECTION:
+						var leader_parsed: Variant = (
+							JSON.parse_string(obj.value))
+						if leader_parsed is Dictionary:
+							var override_id: String = (
+								leader_parsed.get(
+									"user_id", ""))
+							if not override_id.is_empty():
+								party["leader_id"] = (
+									override_id)
+						continue
+					if ready_user_ids.has(obj.user_id):
+						var parsed: Variant = JSON.parse_string(
+							obj.value)
+						if parsed is Dictionary:
+							ready_by_user[obj.user_id] = (
+								bool(parsed.get(
+									"ready", false)))
 				for m in members:
 					m["ready"] = bool(
 						ready_by_user.get(
 							m["user_id"], false))
+		# Recompute viewer_role from the (possibly overridden)
+		# leader_id so the panel surfaces leader affordances for
+		# the post-transfer leader. The original
+		# `_group_state_to_role(state)` reflected Nakama's group-
+		# user state at fetch time, which doesn't change on
+		# leader transfer (the override is app-level, not
+		# Nakama-level group state).
+		var resolved_leader: String = party.get(
+			"leader_id", "")
+		var viewer_id: String = G.auth_token_store.player_id
+		if not resolved_leader.is_empty():
+			if resolved_leader == viewer_id:
+				party["viewer_role"] = "leader"
+			elif party.get("viewer_role", "") == "leader":
+				# Viewer was the original creator (state=0) but
+				# is no longer the resolved leader; demote the
+				# in-memory role to "member" so the panel hides
+				# leader-only rows.
+				party["viewer_role"] = "member"
+		# Tag the role on each member dict too so the
+		# panel's per-member crown / kick affordances
+		# match the resolved leader, not Nakama state.
+		for m in members:
+			if m["user_id"] == resolved_leader:
+				m["role"] = "leader"
+			elif m.get("role", "") == "leader":
+				# Original Nakama creator who's no longer the
+				# resolved leader. Demote the displayed role
+				# to "member" so the crown shows next to the
+				# right person.
+				m["role"] = "member"
 		party["members"] = members
 	# Wrapped emit so PartyManager._on_party_status_received can read
 	# both surfaces. The pre-wrap shape (bare party Dict) silently
@@ -312,6 +383,39 @@ func join_by_code(code: String) -> void:
 	# bookkeeping (seed current_party, immediate refetch, kick off
 	# polling) applies.
 	party_joined.emit({"party_id": data.get("party_id", "")})
+
+
+## Hand off party leadership to another active member. Calls the
+## party_transfer_leadership runtime RPC, which validates the
+## caller is the current leader, writes an override storage row
+## that subsequent fetch_party_status calls fold into `leader_id`,
+## and fans out a party_state_changed notification so every
+## member's UI refreshes.
+##
+## On success emits both `party_leader_transferred` (for callers
+## that want to react specifically to a leader change, e.g. a
+## toast) and `party_status_received` indirectly via the
+## notification → refetch path.
+func transfer_leadership(
+	party_id: String,
+	target_user_id: String,
+) -> void:
+	var session := await _ensure_session()
+	if session == null:
+		return
+	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
+		session, "party_transfer_leadership",
+		JSON.stringify({
+			"party_id": party_id,
+			"target_user_id": target_user_id,
+		}))
+	if rpc_result.is_exception():
+		request_failed.emit(_describe(rpc_result.get_exception()))
+		return
+	var data: Variant = JSON.parse_string(rpc_result.payload)
+	party_leader_transferred.emit(
+		data if data is Dictionary else
+		{"party_id": party_id, "leader_id": target_user_id})
 
 
 func start_matchmaking(

@@ -23,6 +23,7 @@ extends SidePanel
 @export var _share_code_icon: Texture2D
 @export var _join_by_code_icon: Texture2D
 @export var _chat_icon: Texture2D
+@export var _transfer_leadership_icon: Texture2D
 
 var _status_label: Label
 var _bottom_spacer: Control
@@ -86,6 +87,8 @@ func build_ui() -> void:
 		.connect(_on_invite_code_received)
 	G.party_api_client.party_invite_code_redeemed\
 		.connect(_on_invite_code_redeemed)
+	G.party_api_client.party_leader_transferred\
+		.connect(_on_leader_transferred)
 	G.party_api_client.request_failed.connect(
 		_on_request_failed)
 
@@ -142,6 +145,10 @@ func _exit_tree() -> void:
 				_on_invite_code_redeemed):
 			pac.party_invite_code_redeemed.disconnect(
 				_on_invite_code_redeemed)
+		if pac.party_leader_transferred.is_connected(
+				_on_leader_transferred):
+			pac.party_leader_transferred.disconnect(
+				_on_leader_transferred)
 		if pac.request_failed.is_connected(
 				_on_request_failed):
 			pac.request_failed.disconnect(
@@ -308,6 +315,22 @@ func _render_active_party() -> void:
 
 	for member in members:
 		_add_member_row(member, is_leader)
+
+	# Leader-only "promote member to leader" section. Rendered as a
+	# row per eligible target so the user can transfer in one tap
+	# without an intermediate picker. Parties cap at 4 members, so
+	# at most 3 rows here.
+	if is_leader and not is_matchmaking:
+		for member in members:
+			if not (member is Dictionary):
+				continue
+			if member.get("role", "") == "invited":
+				continue
+			var mid: String = member.get("user_id", "")
+			if (mid.is_empty()
+					or mid == G.auth_token_store.player_id):
+				continue
+			_add_transfer_leadership_row(member)
 
 	var actions_spacer := Control.new()
 	actions_spacer.custom_minimum_size = (
@@ -526,6 +549,30 @@ func _add_member_row(
 	_dynamic_nodes.append(row)
 
 
+## Add a leader-only "Make %s the leader" action row for a single
+## eligible target. The caller is expected to have already filtered
+## down to non-self, non-pending members.
+func _add_transfer_leadership_row(
+	member: Dictionary,
+) -> void:
+	var target_id: String = member.get("user_id", "")
+	var display: String = member.get("display_name", "")
+	if display.is_empty():
+		display = member.get("username", "")
+	if display.is_empty():
+		display = target_id
+	var row := ActionRow.new()
+	var action := _on_transfer_leadership_pressed.bind(
+		target_id, display)
+	row.setup_actions(action, action)
+	row.setup_label(
+		tr("PARTY.MAKE_LEADER") % display,
+		_transfer_leadership_icon)
+	_row_container.add_child(row)
+	_connect_row_clicked(row)
+	_dynamic_nodes.append(row)
+
+
 ## Resolve a player_id to a display name via the
 ## friends cache. Returns "" if not in cache; the
 ## caller falls back to PARTY.SOMEONE.
@@ -639,6 +686,19 @@ func _on_kick_pressed(
 	)
 
 
+func _on_transfer_leadership_pressed(
+	target_id: String,
+	display_name: String,
+) -> void:
+	open_confirm_dialog(
+		tr("CONFIRM.TRANSFER_LEADERSHIP") % display_name,
+		tr("PARTY.MAKE_LEADER_CONFIRM"),
+		func() -> void:
+			G.party_manager.transfer_leadership(target_id),
+		tr("CONFIRM.CANCEL"),
+	)
+
+
 func _on_open_friends_pressed() -> void:
 	if _friends_panel_scene == null:
 		return
@@ -708,6 +768,48 @@ func _on_invite_code_received(data: Dictionary) -> void:
 	if not code.is_empty():
 		_cached_invite_code = code
 	_refresh()
+
+
+func _on_leader_transferred(data: Dictionary) -> void:
+	# The runtime's party_state_changed fan-out triggers an
+	# immediate refetch in PartyManager, so the panel re-renders
+	# with the new leader_id without anything to do here.  We do
+	# show a toast so the (now-former) leader has visible
+	# confirmation their transfer landed — the row they tapped
+	# disappears on refresh, which is otherwise ambiguous.
+	if is_queued_for_deletion():
+		return
+	if not is_instance_valid(G.toast_overlay):
+		return
+	var new_leader_id: String = data.get("leader_id", "")
+	if new_leader_id.is_empty():
+		return
+	var display := _resolve_member_display_name(new_leader_id)
+	if display.is_empty():
+		display = _resolve_friend_display_name(new_leader_id)
+	if display.is_empty():
+		display = tr("PARTY.SOMEONE")
+	G.toast_overlay.show_toast(
+		tr("PARTY.LEADERSHIP_TRANSFERRED") % display)
+
+
+## Look up a member's display name from the cached party members
+## dict. Returns "" when the id isn't a known member.
+func _resolve_member_display_name(
+	player_id: String,
+) -> String:
+	if player_id.is_empty():
+		return ""
+	for m in G.party_manager.current_party.get("members", []):
+		if not (m is Dictionary):
+			continue
+		if m.get("user_id", "") != player_id:
+			continue
+		var name: String = m.get("display_name", "")
+		if not name.is_empty():
+			return name
+		return m.get("username", "")
+	return ""
 
 
 func _on_invite_code_redeemed(_data: Dictionary) -> void:
