@@ -178,6 +178,27 @@ func _ready() -> void:
 	# Initialize Netcode now that the scene tree is available.
 	Netcode.initialize()
 
+	# Wire the snoringcat-platform addon's autoload with this
+	# game's identity. The Stage 6 SDK extraction will move the
+	# *_api_client.gd surface into Platform.*; today this just
+	# populates `Platform.game_id` so the compliance helper and
+	# any post-Stage-2.5 code that reads it (or wants the addon
+	# to mediate auth) can find it. `api_base_url` is unused
+	# right now because hopnbop still talks to Nakama directly
+	# via auth_client.gd; supplied to satisfy initialize()'s
+	# required-arg contract.
+	if not Platform.is_initialized:
+		Platform.initialize({
+			"game_id": str(
+				ProjectSettings.get_setting(
+					"application/config/game_id", "hopnbop")),
+			"api_base_url": (
+				"https://nakama.snoringcat.games"),
+			"sdk_version": str(
+				ProjectSettings.get_setting(
+					"application/config/version", "0.0.0")),
+		})
+
 	# Read server API key from environment variable
 	# (set via GameLift container group definition).
 	var env_api_key := OS.get_environment(

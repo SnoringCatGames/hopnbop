@@ -30,38 +30,39 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 2 foundation tasks (2.1, 2.2, 2.3,
-  2.4, 2.7) landed end-to-end. Runtime now has a `games`
-  Postgres table, in-process cache, `register_game` +
-  `get_game_config` RPCs; hopnbop ships a `game.yaml`; a
-  `sync-game-config.ps1` script pushes it to the runtime; CI
-  guards protocol_version parity. Next focus is the back-half of
-  Stage 2 (2.5 game_id JWT claim and 2.6 RPC plumbing), which
-  unlock Stage 3 scoping.
+- **Current focus:** Stage 2 complete end-to-end (2026-05-12).
+  game_id now rides every authenticate / refresh call as a
+  Nakama vars field, propagates into the session token, and is
+  read+enforced by every stateful client-session RPC. Next
+  focus is Stage 3 — applying that game_id to actually scope
+  presence storage, leaderboards, party groups, Edgegap
+  allocation, and the legal-version / matchmaker-rules
+  hardcodes the runtime still has.
 - **Last updated:** 2026-05-12.
-- **Stages complete:** Stage 0 (platform infra extraction —
-  including the kickoff verification items 0.8 and 0.9).
+- **Stages complete:**
+  - Stage 0 (platform infra extraction — including the kickoff
+    verification items 0.8 and 0.9).
+  - Stage 2 (all seven tasks shipped 2026-05-12).
 - **Stages in progress:**
   - Stage 1 — all five tasks (1.1a, 1.1b, 1.2, 1.3, 1.4, 1.5)
     have working code shipped. Open items: UX polish on 1.5 and
     the compliance-test green-light still gated on a Stage 8
     socket harness for multi-user party scenarios.
-  - Stage 2 — 2.1, 2.2, 2.3, 2.4, 2.7 shipped (2026-05-12).
-    Open: 2.5 (game_id JWT claim) and 2.6 (RPC plumbing).
 - **Stages blocked:** none.
 
 ## Stage dependency graph
 
 ```
-Stage 0 (mostly done) — platform infra moved into snoringcat-platform
+Stage 0 (done) — platform infra moved into snoringcat-platform
    ↓
 Stage 1 (mostly done, 2026-05-12) — P0 broken contracts: party RPC,
    leader_id, members, delete_account all shipped. Open: 1.5 UX
    polish + compliance-test rig (Stage 8).
    ↓
-Stage 2 (front half done, 2026-05-12) — game.yaml, games table,
-   per_game_config.go, register_game RPC, sync script, CI guard
-   all shipped. Open: 2.5 game_id JWT claim and 2.6 RPC plumbing.
+Stage 2 (done, 2026-05-12) — game.yaml, games table,
+   per_game_config.go, register_game RPC, sync script, CI guard,
+   BeforeAuthenticate* hooks, game_id-in-vars JWT claim, RPC
+   plumbing all shipped.
    ↓
 Stage 3 — Apply game_id scoping (presence, settings, leaderboards, Edgegap)
    ↓
@@ -350,19 +351,73 @@ else hangs off of.
     The first Stage 2 deploy needs a manual `sync-game-
     config.ps1` invocation regardless (no row exists yet).
 
-- [ ] **2.5 Add `game_id` JWT claim**
-  - Where: `runtime/auth.go` (authenticate hooks) and every client
-    auth path in `src/core/auth_client.gd`.
-  - What: client passes `game_id` as a vars/metadata field; runtime
-    asserts `game_id` exists in `games` table; mint JWT with
-    `game_id` claim per `docs/api-spec.md`.
-  - Verification: decode JWT, assert `game_id` claim present.
+- [x] **2.5 Add `game_id` JWT claim** (2026-05-12)
+  - Done — server: new `validateGameIDInVars` helper +
+    BeforeAuthenticate{Device,Google,Facebook,Apple,Steam} +
+    BeforeSessionRefresh hooks registered in `main.go`.
+    Each hook reads `game_id` from the inbound request's vars
+    map and rejects unknown ids. Bootstrap exemption: when
+    the `games` cache is empty (immediately after first
+    deploy, before `sync-game-config.ps1` runs), all auths
+    pass through so the runtime stays usable.
+  - Done — client: `application/config/game_id="hopnbop"`
+    added to `project.godot`; `auth_client.gd` builds a
+    `{"game_id": ...}` vars dict from project settings and
+    passes it on every `authenticate_*_async` + `session_
+    refresh_async` call. Verified live: the refresh request
+    body in a real run carried `"vars":{"game_id":"hopnbop"}`.
+  - Done — addon plumbing: `Platform.initialize(...)` is now
+    called from `global.gd._ready()` with `game_id` from
+    project settings, so the autoload's `game_id` field is
+    populated. Compliance helper's `_resolve_game_id()` reads
+    this (or the `PLATFORM_GAME_ID` env var as fallback) when
+    building the auth POST body, so every compliance test
+    that hits `/v2/account/authenticate/device` directly now
+    sends `vars`.
+  - Implementation note (deviation from the audit's spec):
+    the audit framed this as "mint JWT with `game_id` claim".
+    Nakama's session-token JWT shape is fixed (it carries
+    Nakama-defined claims like `uid`/`tid`/`exp`); the vars
+    map is the platform-provided extension surface and gets
+    propagated to runtime context as `RUNTIME_CTX_VARS`. So
+    `game_id` lives there, not as a top-level JWT claim.
+    Verification is reading `ctx.Value(RUNTIME_CTX_VARS)
+    ["game_id"]` server-side, which `requireGameID` does.
+  - Verification: live editor smoke confirms the outgoing
+    refresh body carries the vars. End-to-end RPC verification
+    is per-RPC (see 2.6).
 
-- [ ] **2.6 Pass `game_id` through all client→runtime RPCs**
-  - Every RPC that touches state reads `game_id` from the session
-    token (not from client-passed params — don't trust the client).
-  - Verification: RPC-level unit tests assert `game_id` is extracted
-    correctly and rejected when missing.
+- [x] **2.6 Pass `game_id` through all client→runtime RPCs**
+      (2026-05-12)
+  - Done — added `requireGameID(ctx, games)` helper in
+    `auth.go`. Same bootstrap exemption as the auth hooks:
+    when `games` is empty, the helper returns whatever vars
+    the session carried (possibly "") without rejecting.
+    Once the table is populated, missing or unknown game_id
+    is INVALID_ARGUMENT (3).
+  - Done — every stateful client-session RPC now calls it:
+    - `update_and_get_presence` (presence.go)
+    - `get_player_stats`, `get_match_history`,
+      `export_player_data` (player_data.go)
+    - `party_start_matchmaking` (party.go)
+    - `delete_account` (account.go)
+    - `get_game_config` (per_game_config.go) — defaults to
+      session game_id when the payload doesn't override
+  - Each affected RPC has been wrapped in a `xxxRpcFactory`
+    that closes over `games`, so the dependency is explicit
+    at registration time rather than via a package-level
+    global.
+  - Game-side reads/writes are not yet scoped to game_id —
+    presence key is still `presence/current`, leaderboard is
+    still bare `"ffa"`, etc. That's Stage 3. The session
+    game_id is read at every entry point; how it's *used* is
+    Stage 3's job.
+  - Verification: `go vet ./... && go build ./...` clean;
+    Docker pluginbuilder image produces a 19 MB
+    `snoringcat.so`. RPC-level unit tests for game_id
+    extraction (Stage 8.x) still pending; covered by manual
+    smoke + the compliance suite once it runs against the
+    deployed runtime.
 
 - [x] **2.7 CI guard: `game.yaml::protocol_version` ==
       `project.godot::config/protocol_version`** (2026-05-12)
@@ -662,6 +717,19 @@ Security:
   2026-05-06. Configs preserved in
   `third_party/snoringcat-platform/infra/remote/nakama/` for
   re-introduction. Cover in 7.11.
+- **Stage 2.5/2.6 rollout ordering (one-time, post-deploy
+  step):** the BeforeAuthenticate* hooks are bootstrap-graceful
+  (pass through when `games` is empty), so deploying the new
+  runtime to prod by itself does not break clients. The
+  expected sequence is: (1) ship the runtime via
+  `nakama-runtime.yml`, (2) ship the client release, (3) run
+  `scripts/sync-game-config.ps1 -NakamaHttpKey <key>` once to
+  populate the `games` table. After step 3 the hooks flip to
+  strict; any client that authenticated against the runtime
+  *before* step 2 (i.e., with no game_id in vars) will be
+  rejected on next RPC and forced to re-authenticate. The
+  client's auto-refresh path handles that path transparently
+  because we pass vars on refresh too.
 
 ### Decisions log
 
@@ -752,6 +820,44 @@ Security:
   the script manually after the Stage 2 deploy, which is also
   the only way to populate the (initially empty) `games` table.
   Re-revisit once the secret is configured.
+- **2026-05-12:** Stage 2.5/2.6 closed out the foundation.
+  Four design calls worth recording:
+  - **`game_id` lives in Nakama's `vars` map, not as a
+    top-level JWT claim.** The audit framing implied minting
+    a custom claim into the JWT, but the Nakama session token
+    has a fixed shape (`uid`/`tid`/`exp`/etc.). The
+    platform-provided extension point is the `vars` field on
+    every `Authenticate*Request`, which Nakama bakes into
+    the issued session and exposes server-side via
+    `RUNTIME_CTX_VARS`. So game_id rides there. The semantic
+    effect ("session carries game_id, every RPC can read it")
+    is identical; the encoding differs.
+  - **Bootstrap-graceful auth hooks.** Both
+    `validateGameIDInVars` (auth-time) and `requireGameID`
+    (RPC-time) pass through unchecked when the `games` cache
+    is empty. This makes the rollout safe: deploy the runtime
+    first, deploy the client second, run sync-game-config
+    third — at no point are existing clients locked out. Once
+    the first game registers, validation flips to strict
+    automatically. Cost: a small window of "trust whatever
+    the client sent" right after a from-scratch deploy. Worth
+    it for the simpler rollout story.
+  - **RPC factory pattern over a package-level `games` global.**
+    Each stateful RPC that needs the cache is now registered
+    via `xxxRpcFactory(games)` that returns a closure. The
+    extra ceremony makes the dependency explicit at
+    registration time, which both reads better and makes
+    future unit tests (Stage 8.x) easy to inject mocks into
+    without touching package globals.
+  - **`Platform.initialize()` wired from `global.gd._ready()`.**
+    The autoload's `game_id` field is now populated in
+    hopnbop. The actual `Platform.{auth,friends,...}` API
+    surface is still empty (Stage 6 extraction is later); for
+    now this just lets the compliance helper read
+    `Platform.game_id` instead of hardcoding "hopnbop". The
+    `api_base_url` arg is set to the live Nakama URL even
+    though nothing reads it yet — `Platform.initialize` asserts
+    it's non-empty, so we satisfy the contract.
 
 ## How to use this document
 

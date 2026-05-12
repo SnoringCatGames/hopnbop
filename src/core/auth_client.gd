@@ -872,6 +872,26 @@ func _get_nakama_client() -> NakamaClient:
 	return _nakama_client
 
 
+# Vars bundled into every authenticate / refresh call so they ride
+# along in the issued session token. The snoringcat-platform
+# runtime's BeforeAuthenticate* hooks read `game_id` here to
+# validate the call, and every stateful RPC reads it back off the
+# session via RUNTIME_CTX_VARS to scope reads/writes per game.
+# See MULTI_GAME_ROADMAP.md §"Stage 2.5".
+func _build_session_vars() -> Dictionary:
+	# `application/config/game_id` is declared in project.godot
+	# alongside the protocol_version and display version. CI
+	# parity with `game.yaml::game_id` is enforced at deploy
+	# time (the sync script reads game.yaml; the runtime reads
+	# the JWT vars; both must agree).
+	var game_id := str(
+		ProjectSettings.get_setting(
+			"application/config/game_id", "hopnbop"))
+	return {
+		"game_id": game_id,
+	}
+
+
 # Rebuilds a NakamaSession from the persisted JWT + refresh token
 # so we can attach it to authenticated calls (link, unlink, etc.).
 # Returns null when the store has no valid session.
@@ -955,7 +975,8 @@ func _do_anon_auth() -> void:
 		store.local_player_id = device_id
 		store.save_tokens()
 	var session: NakamaSession = (
-		await _get_nakama_client().authenticate_device_async(device_id))
+		await _get_nakama_client().authenticate_device_async(
+			device_id, null, true, _build_session_vars()))
 	if session.is_exception():
 		_is_refreshing = false
 		guest_jwt_obtained.emit(
@@ -973,6 +994,7 @@ func _do_provider_auth(body: Dictionary) -> void:
 	var redirect_uri := str(body.get("redirect_uri", ""))
 	var client := _get_nakama_client()
 	var session: NakamaSession
+	var vars := _build_session_vars()
 	match provider_name:
 		"google":
 			# Nakama validates Google ID tokens, not OAuth codes.
@@ -984,17 +1006,21 @@ func _do_provider_auth(body: Dictionary) -> void:
 				_emit_failure(
 					"Failed to exchange Google OAuth code for ID token")
 				return
-			session = await client.authenticate_google_async(id_token)
+			session = await client.authenticate_google_async(
+				id_token, null, true, vars)
 		"facebook":
 			# Facebook returns an access token (not an OAuth
 			# code) for the implicit-grant flow Nakama expects.
 			# If you switch Facebook to code flow, mirror the
 			# Google branch above.
-			session = await client.authenticate_facebook_async(auth_code)
+			session = await client.authenticate_facebook_async(
+				auth_code, null, true, true, vars)
 		"apple":
-			session = await client.authenticate_apple_async(auth_code)
+			session = await client.authenticate_apple_async(
+				auth_code, null, true, vars)
 		"steam":
-			session = await client.authenticate_steam_async(auth_code)
+			session = await client.authenticate_steam_async(
+				auth_code, null, true, vars)
 		_:
 			_emit_failure(
 				"Unsupported provider: %s" % provider_name)
@@ -1017,8 +1043,13 @@ func _do_session_refresh(_body: Dictionary) -> void:
 		_is_refreshing = false
 		_emit_failure("No refresh token")
 		return
+	# Pass vars on refresh too so an old token minted before the
+	# game_id-vars rollout picks up the value at next refresh.
+	# Nakama merges the request's vars onto the existing
+	# session's vars; the new session carries the merged map.
 	var session: NakamaSession = (
-		await _get_nakama_client().session_refresh_async(current))
+		await _get_nakama_client().session_refresh_async(
+			current, _build_session_vars()))
 	if session.is_exception():
 		_is_refreshing = false
 		_emit_failure(_describe_nakama_exception(
