@@ -331,6 +331,15 @@ func _ready() -> void:
 	(Platform.auth as PlatformAuthApiClient).auth_completed.connect(
 		_on_auth_completed_for_cloud_sync)
 
+	# Stage 1.5 cancellation prompt. AccountDeletionPrompt
+	# subscribes to auth_completed and, when the user has a
+	# pending account_deletion_queue row, opens a ConfirmOverlay
+	# offering to cancel the soft-delete before the hourly cron
+	# hard-deletes it.
+	var deletion_prompt := AccountDeletionPrompt.new()
+	deletion_prompt.name = "AccountDeletionPrompt"
+	add_child(deletion_prompt)
+
 	# Configure font fallbacks for non-Latin scripts.
 	FontFallbackConfig.configure_fallbacks()
 

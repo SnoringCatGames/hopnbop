@@ -373,6 +373,37 @@ stay correct when Stages 2–3 scope everything by `game_id`.
       `CONFIRM.DELETE_ACCOUNT_VERIFY_WORD`, `CONFIRM.DELETE_
       ACCOUNT_CONFIRM_BUTTON`, `TOAST.ACCOUNT_DELETE_QUEUED`.
       CSV verified at 14 fields per line.
+  - **Cancellation path shipped 2026-05-13** (third pass):
+    - Server: `account.go`'s delete flow no longer calls
+      `UsersBanId` — the user remains able to authenticate
+      during the 30-day grace window so the cancellation
+      surface is reachable. The boot-time
+      `get_account_deletion_status` RPC is now the gate.
+    - Server: new `get_account_deletion_status` RPC returns
+      `{pending, scheduled_for, original_username,
+      original_display_name}` for the caller's queue row, or
+      `{pending: false}` when no row exists.
+      `cancel_account_deletion` RPC validates the row exists,
+      restores the original username/display_name via
+      `AccountUpdateId`, deletes the queue row, and returns
+      the restored identity. Both registered in `main.go`.
+    - Game: new `src/core/account_deletion_prompt.gd` node,
+      instantiated from `global.gd._enter_tree`. Subscribes to
+      `Platform.auth.auth_completed` and, on a non-anonymous
+      successful auth, queries `get_account_deletion_status`.
+      A pending row opens a `ConfirmOverlay` ("Your account is
+      scheduled for deletion on YYYY-MM-DD. Cancel?"). Tapping
+      Cancel calls `cancel_account_deletion` and toasts on
+      success/failure. Within-session dedup so a JWT refresh
+      doesn't re-pop the dialog.
+    - 6 new translation keys × 13 locales:
+      `CONFIRM.ACCOUNT_DELETION_PENDING`,
+      `CONFIRM.ACCOUNT_DELETION_PENDING_NO_DATE`,
+      `CONFIRM.CANCEL_DELETION`, `CONFIRM.KEEP_DELETION`,
+      `TOAST.ACCOUNT_DELETION_CANCELLED`,
+      `TOAST.ACCOUNT_DELETION_CANCEL_FAILED`. Non-English
+      translations are best-effort and worth a native-speaker
+      review pass before a release.
 
 ### Definition of done
 
