@@ -32,19 +32,23 @@ See also:
 
 - **Current focus:** Stage 8 test foundation. 8.1 + 8.2 deploy
   gate shipped 2026-05-13 (first pass). 8.11 reusable socket
-  harness + 8.12 multi-session helper + first canary multi-user
-  test (`test_friends_multiuser.gd`) shipped 2026-05-13 (second
-  pass). 8.11's primitives turned out to be already-landed in
-  `compliance_socket_helper.gd` from an earlier session;
-  flipping that to done revealed 8.12 as the actual gating
-  item, now closed. **Next:** convert the ~10 "compliance test
-  still pending" notes (1.5, 3.5, 3.9, 5.4–5.11, 6.5b) to real
-  multi-user tests against the new harness — pick from 8.17
-  party-invite-flow, 8.18 party-to-matchmaking, or 8.22
-  presence game-filter as the next highest-payoff entries.
-  Stage 7 resilience (13 open items) and Stage 6.11 screens
-  (greenfield, 3 screens, needs design call) are the parallel
-  tracks.
+  harness + 8.12 multi-session helper + 8.14 first canary
+  multi-user friends test shipped 2026-05-13 (second pass).
+  8.17 party-invite-flow + 8.22 presence game-filter shipped
+  2026-05-13 (third pass) — two more multi-user tests against
+  the harness, validated against live Nakama (54 asserts
+  across 6 tests, all green). 8.17's run also surfaced a
+  Nakama-behavior contradiction with the codebase's
+  `afterAddGroupUsersHook` comment (Nakama 3.25.0 admin-adds
+  on closed groups land at state=2 directly, not state=3 as
+  the runtime comment claims); test is tolerant of both
+  shapes but documents the observation. **Next:** more
+  multi-user tests from the backlog — 8.18 party-to-
+  matchmaking (covers the 1.1b party-block matchmaker path),
+  8.15 friends block-list (after 7.4), 8.16 friends-cascade-
+  on-account-delete (after 1.4 cron). Stage 7 resilience
+  (13 open items) and Stage 6.11 screens (greenfield, 3
+  screens, needs design call) are the parallel tracks.
 - **2026-05-13 audit follow-up — drift items resolved later
   the same day:**
   - **Runtime backlog flushed:** the deployed runtime was 24
@@ -117,8 +121,10 @@ See also:
   audit-surfaced drift fully resolved, 24-commit runtime backlog
   deployed, first games-cache sync, Phase F finished, stale
   Edgegap tags pruned, script relocations + doc cleanup,
-  8.11/8.12 socket + multi-session compliance harness landed
-  with first canary multi-user test).
+  8.11/8.12/8.14 socket + multi-session compliance harness
+  landed with first canary multi-user friends test, then
+  8.17 party-invite-flow + 8.22 presence game-filter as the
+  next two multi-user tests against the harness).
 - **Stages complete:**
   - Stage 0 — platform infra extraction (kickoff verification
     items 0.8 + 0.9 confirmed 2026-05-12).
@@ -148,14 +154,17 @@ See also:
     templates** (greenfield, 3 screens — design decision
     needed on base-class vs full-scene vs components pattern).
 - **Stages in progress:**
-  - Stage 8 — 5/31 shipped 2026-05-13 (8.1 deploy-time
+  - Stage 8 — 7/31 shipped 2026-05-13 (8.1 deploy-time
     `go test` gate, 8.2 staticcheck already running in
     `pr-validate.yml`, 8.11 socket harness, 8.12
     multi-session helper, 8.14 first canary multi-user
-    friends test). The blocked-on-harness backlog of
+    friends test, 8.17 party-invite-flow multi-user
+    lifecycle, 8.22 presence game-filter mutual-only
+    check). The blocked-on-harness backlog of
     ~10 "compliance test still pending" notes (1.5, 3.5,
-    3.9, 5.4–5.11, 6.5b) is now unblocked — next pass
-    converts them into real tests.
+    3.9, 5.4–5.11, 6.5b) is now partly converted — keep
+    chipping at the multi-user backlog (8.18 party-to-
+    matchmaking next).
 - **Stages not yet started:**
   - Stage 7 — Resilience (13 open items).
 - **Stages blocked:** none.
@@ -203,10 +212,11 @@ Stage 7 — Resilience (retries, notifications, observability).
    13 items, all open.
 
 Stage 8 — Tests (parallel track, doesn't block features).
-   5/31 shipped 2026-05-13 (8.1 deploy-time go test gate; 8.2
-   staticcheck already running; 8.11 socket harness already
-   shipped, marked done; 8.12 multi_session_anon helper; 8.14
-   first multi-user friends test as canary).
+   7/31 shipped 2026-05-13 (8.1 deploy-time go test gate; 8.2
+   staticcheck already running; 8.11 socket harness; 8.12
+   multi_session_anon helper; 8.14 first multi-user friends
+   test as canary; 8.17 party invite lifecycle; 8.22 presence
+   mutual-only filter).
 ```
 
 ## Stage 0 — Platform infra extraction (mostly done)
@@ -2215,13 +2225,69 @@ prioritize tests that protect work landing in the current stage.
     the same pattern.
 - [ ] 8.15 `test_friends_block.gd` (after 7.4).
 - [ ] 8.16 `test_friends_account_delete_cascade.gd` (after 1.4).
-- [ ] 8.17 `test_party_invite_flow.gd`.
+- [x] **8.17 `test_party_invite_flow.gd`** (2026-05-13).
+  - Done: new two-user compliance test under
+    `addons/snoringcat_platform_client/test/compliance/
+    test_party_invite_flow.gd`. Mints A + B via
+    `multi_session_anon(2)`, walks the lifecycle:
+    A creates a closed party group, A invites B via
+    `POST /v2/group/{id}/add`, asserts B observes the
+    party in `GET /v2/user/{id}/group`, asserts A is
+    SUPERADMIN(0), accepts via `/join` if Nakama returned
+    state=3 (or skips the accept step if state=2),
+    asserts `GET /v2/group/{id}/user` returns both users
+    with the right roles, B leaves, B no longer in list.
+    Validated against live Nakama (15 asserts green).
+  - Decision worth recording: test tolerates either
+    state=2 or state=3 as the post-invite state. Nakama
+    3.25.0 admin-add on closed groups was observed to
+    land B at state=2 directly (no pending step), which
+    contradicts the `party.go::afterAddGroupUsersHook`
+    comment claiming state=3. The test asserts that
+    either is valid and exercises the accept path only
+    when state=3 was actually returned. Lifecycle still
+    cleanly verifies the membership contract that
+    `PartyApiClient.fetch_party_status` reads back. The
+    Nakama-behavior contradiction is documented inline
+    in the test so a future Nakama upgrade flipping the
+    contract back to state=3 surfaces here cleanly.
+  - Compliance: real consumer of `multi_session_anon` +
+    its `delete_one_shot_account` cleanup. Confirms the
+    helper handles the after_each teardown across two
+    concurrent users without races.
 - [ ] 8.18 `test_party_to_matchmaking.gd` (after 1.1).
 - [ ] 8.19 Un-pend `test_matchmaking.gd`
   (`pending("realtime-socket test rig not implemented yet")`).
 - [ ] 8.20 `test_matchmaking_cancel_race.gd`.
 - [ ] 8.21 `test_matchmaking_failure_modes.gd`.
-- [ ] 8.22 `test_presence_game_filter.gd` (after 3.3).
+- [x] **8.22 `test_presence_game_filter.gd`** (2026-05-13).
+  - Done: new three-user compliance test under
+    `addons/snoringcat_platform_client/test/compliance/
+    test_presence_game_filter.gd`. Mints A + B + C via
+    `multi_session_anon(3)`, makes A↔B mutual friends,
+    leaves A→C as a pending invite (state=1 / state=2 on
+    the friend state enum), each user calls
+    `update_and_get_presence` to publish "online", then A
+    reads back. Asserts B appears in both
+    `online_ids` and `online_friends` (mutual-friend
+    visibility), asserts C does NOT appear (pending
+    relationship must not leak presence), asserts
+    `b_record.game_id` equals the caller's session
+    game_id (Stage 3.2's record-shape contract), and
+    asserts `rich_presence: "In Lobby"` round-trips.
+    Validated against live Nakama (17 asserts green).
+  - Decision worth recording: doesn't try to test the
+    cross-game filter (`include_other_games`) because
+    only one game ("hopnbop") is registered on prod; an
+    `include_other_games=true` call scans the same set
+    of game_ids and produces an identical response on a
+    single-game install. The mutual-vs-pending filter
+    (3.3's primary contract) and the per-record game_id
+    field (3.2) are testable and tested.
+  - Compliance: second multi-user test after 8.17; first
+    consumer of `multi_session_anon(3)` (the friends and
+    party tests use 2). Confirms the helper scales to a
+    three-user run without races in CI.
 
 ### Tier 3 — client unit tests (GUT with doubles)
 
@@ -3461,6 +3527,62 @@ Security:
     are the template for the rest. The addon-class round-trip
     tests live under Tier 3 (8.23+ unit tests with doubles),
     not Tier 2 compliance.
+
+- **2026-05-13:** Stage 8.17 + 8.22 shipped together (third
+  pass of the day's Stage 8 work). Four design calls worth
+  recording:
+  - **Tolerate Nakama state ambiguity, don't lock to one
+    value.** 8.17 originally asserted `state=3` immediately
+    after `POST /v2/group/{id}/add` (the production "invite"
+    path), keying on the 5.11 narrative and on
+    `party.go::afterAddGroupUsersHook`'s comment ("Nakama
+    hasn't returned them through GroupUsersList as state=3
+    yet"). Running it against live Nakama 3.25.0 returned
+    state=2 instead — closed-group admin-add lands the
+    invitee as a Member directly, no pending step. Rather
+    than hardcode either value, the test now asserts
+    `state in {2, 3}` and exercises the `/join` accept step
+    only when state=3 was returned. Lifecycle assertions
+    (members list contains both with right roles, B leaves
+    cleanly) hold regardless. A future Nakama upgrade that
+    flips the behavior back to state=3 will still pass; a
+    behavior change to state=0 or 1 (i.e., elevating the
+    invitee to admin/superadmin, which would be a security
+    issue) fails loudly.
+  - **Doc the Nakama-vs-runtime-comment contradiction in the
+    test, not in a separate issue.** The
+    `afterAddGroupUsersHook` comment claims state=3, the live
+    behavior is state=2. The test's inline comments call out
+    the observation so the next reader knows the apparent
+    accept-via-`joinGroup` step in `PartyManager.accept_invite`
+    is dead code on this Nakama version. Filing a separate
+    audit item would just rot; the test is where someone
+    would naturally look when revisiting party semantics.
+  - **8.22 tests mutual-vs-pending, skips the cross-game
+    angle on single-game prod.** The 3.3 contract has two
+    halves: (a) only state=0 (MUTUAL) friends contribute to
+    `online_friends`, and (b) the default-false
+    `include_other_games` flag scopes the read to the
+    caller's own game's collection key. Half (a) is testable
+    on prod by setting up A↔B mutual + A→C pending, then
+    asserting C is invisible. Half (b) isn't testable
+    against single-game prod (only "hopnbop" is registered,
+    so `include_other_games=true` reads the same set as
+    `false`). Test covers half (a) plus the per-record
+    `game_id` field (3.2) and round-trips `rich_presence`.
+    Half (b) needs a second registered game; deferred until
+    one exists.
+  - **Three-user runs work without race.**
+    `multi_session_anon(3)` was the largest call so far
+    (friends + party tests used 2). One full sequence
+    (auth all 3, friend A↔B + A→C, presence write × 3,
+    presence read by A) completes in ~3-4 seconds against
+    live Nakama and `after_each` `delete_one_shot_account`
+    cleans every account before the next test. No flake
+    observed across the ad-hoc validation runs. Confirms
+    the helper's parallelization assumption (one-shot
+    device_ids prevent inter-run collision) holds at this
+    user count.
 
 ## How to use this document
 
