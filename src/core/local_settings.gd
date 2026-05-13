@@ -46,6 +46,18 @@ const OVERRIDABLE_KEYS: Array[StringName] = [
 	&"prefer_offline_mode",
 ]
 
+## Subset of OVERRIDABLE_KEYS whose values are global to the
+## player (not game-specific). Cloud-synced under the "global"
+## scope; the remainder go under "game/{game_id}". `locale` is
+## also global but is handled separately via get_locale /
+## set_locale + the SECTION_SETTINGS key.
+const GLOBAL_OVERRIDABLE_KEYS: Array[StringName] = [
+	&"full_screen",
+	&"mute_music",
+	&"mute_sfx",
+	&"prefer_offline_mode",
+]
+
 var _config := ConfigFile.new()
 var _defaults: Settings
 
@@ -281,6 +293,12 @@ func clear_user_state() -> void:
 		_config.erase_section(SECTION_LEVEL_PREFS)
 	_config.erase_section_key(
 		SECTION_META, "cloud_sync_at")
+	_config.erase_section_key(
+		SECTION_META, "cloud_sync_at_global")
+	_config.erase_section_key(
+		SECTION_META, "cloud_sync_at_game")
+	_config.erase_section_key(
+		SECTION_META, "cloud_legacy_migrated")
 	_config.erase_section_key(
 		SECTION_META, "rounds_played")
 	save_settings()

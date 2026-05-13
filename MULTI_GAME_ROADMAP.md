@@ -30,35 +30,33 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 6 cleanup landed. 6.10 (mass consumer
-  migration) verified done 2026-05-12 — grep across `src/` shows
-  zero live callsites still referencing the removed `G.auth_client`
-  / `G.auth_token_store` / `G.friends_api_client` /
-  `G.party_api_client` / `G.notification_socket_client` /
-  `G.matchmaker_client` shapes; the only remaining
-  `G.*_api_client` reference is `G.backend_api_client`, kept
-  game-side intentionally (caches per-game values from
-  `version_check`; could become a `Platform.backend` subsystem
-  later but the payoff is small until a second game needs the
-  same surface). Closed-out 3.10's open CI gap by adding a
-  `legal_version` parity step to `pr-validate.yml`'s
-  `game-config-parity` job, sibling to the existing
-  `protocol_version` check. Extraction works locally
-  (both files yield `"1.1"`). Next focus options, in roughly
-  ascending cost: (a) Stage 3.5 taxonomy decision + 6.8
-  settings_cloud_sync (paired pass; needs a global-vs-per-game
-  split decision + one-shot storage migration); (b) Stage 6.9
-  game_session_manager (large refactor — manager reaches into
-  Netcode autoload, NetworkLogger, EdgegapServerProvider,
-  PreviewSessionProvider, UI screens, so the realistic move is
-  a thin `Platform.session` API delegating layer with the
-  coordinator staying game-side, mirroring the
-  party_manager / friends_notification_poller pattern); (c)
-  Stage 6.11 screen templates (greenfield, 3 screens, needs an
-  upfront design decision on the template vs base-class pattern
-  given the heavy `G.*` UI coupling — see scoping notes added
-  below). All three are tractable but none are obviously next;
-  pick by priority of consuming-game launch timeline.
+- **Current focus:** Stage 3.5 + 6.8 paired pass landed 2026-05-12.
+  Settings split into two cloud rows (`"global"` + `"game/{game_id}"`)
+  per a new `LocalSettings.GLOBAL_OVERRIDABLE_KEYS` constant. Cross-
+  game prefs (`locale`, `full_screen`, `mute_music`, `mute_sfx`,
+  `prefer_offline_mode`) ride the global row; every hopnbop-specific
+  gameplay modifier (`is_gore_enabled`, `are_critters_enabled`,
+  `is_jetpack_enabled`, ...) rides the per-game row. New
+  `PlatformSettingsApiClient` in the addon owns the Nakama storage
+  round-trips and emits per-scope `settings_received(scope, payload,
+  updated_at)` so the game-side `SettingsCloudSync` can apply a
+  cloud-wins-by-timestamp merge independently per scope. One-shot
+  legacy migration reads the pre-split `key="user"` row on first
+  fetch, applies its values to local overrides, marks migrated, and
+  proceeds through the normal merge path so another device's newer
+  partitioned rows can't be clobbered. `BackendApiClient` stripped
+  of its now-unused `save_player_settings` / `fetch_player_settings`
+  / `settings_received` / `settings_saved` surface. Next focus
+  options, in roughly ascending cost: (a) Stage 6.9
+  game_session_manager (realistic move is a thin passive-observer
+  `Platform.session` slot per its scoping notes, since the full
+  coordinator lift would require dragging Netcode into the addon —
+  wrong direction); (b) Stage 6.11 screen templates (greenfield, 3
+  screens, needs an upfront design decision on the template vs
+  base-class pattern given the heavy `G.*` UI coupling — see
+  scoping notes); (c) pivot to Stage 7 resilience (13 open items
+  including allocation retry, friend pagination, anonymous-upgrade
+  UI, account-merge UI, observability re-introduction).
 - **Last updated:** 2026-05-12.
 - **Stages complete:**
   - Stage 0 (platform infra extraction — including the kickoff
@@ -71,12 +69,10 @@ See also:
     the new `DeleteAccountConfirmPanel`. Compliance-test green-
     light still gated on a Stage 8 socket harness for multi-user
     party scenarios.
-  - Stage 3 — 8/10 tasks shipped 2026-05-12 (3.1, 3.2, 3.3,
-    3.4, 3.6, 3.7, 3.8, 3.10 including the `legal_version`
-    parity CI guard). Open: 3.5 settings split
-    (needs global-vs-per-game taxonomy decision) and 3.9
-    protocol-version pre-check (needs matchmaker-entry session-
-    vars access pattern).
+  - Stage 3 — 9/10 tasks shipped 2026-05-12 (3.1, 3.2, 3.3,
+    3.4, 3.5, 3.6, 3.7, 3.8, 3.10 including the `legal_version`
+    parity CI guard). Open: 3.9 protocol-version pre-check
+    (needs matchmaker-entry session-vars access pattern).
   - Stage 4 — 5/8 tasks shipped 2026-05-12 (4.1, 4.2, 4.4,
     4.5, 4.6). Open: 4.3 (needs `matchmaker_rules.require_accept`
     in game.yaml), 4.7 (needs `matchmaker_rules.modes` schema),
@@ -85,7 +81,7 @@ See also:
     5.4, 5.5, 5.6, 5.8, 5.9, 5.10, 5.11). Open: 5.7 game-mode
     picker (deferred until game.yaml schema gains a `modes`
     list, mirrored by Stage 4.7).
-  - Stage 6 — 9/11 tasks shipped 2026-05-12 (6.1 subsystem
+  - Stage 6 — 10/11 tasks shipped 2026-05-12 (6.1 subsystem
     slots + register_subsystem helper, 6.2 auth_client →
     PlatformAuthApiClient + nakama / OAuth constants on
     Platform, 6.3 auth_token_store reconciliation + Platform.
@@ -94,15 +90,19 @@ See also:
     6.5b PlatformNotificationSocketClient, 6.6
     PlatformMatchmakingClient split + game-side adapter, 6.7
     PlatformPresenceApiClient split out from the old friends
-    client, 6.10 mass consumer migration verified clean via
+    client, 6.8 PlatformSettingsApiClient + dual-scope cloud
+    sync, 6.10 mass consumer migration verified clean via
     grep sweep). 6.5 partially completed — only the API client
     extracted; party_manager.gd stays game-side (UI-dialog
     coupling). 6.6 partially completed —
     `EdgegapServerProvider` deliberately stays game-side
-    (in-container `Netcode.connector` entanglement). Open:
-    6.8 (settings_cloud_sync — needs Stage 3.5 taxonomy
-    decision), 6.9 (game_session_manager — heavy
-    coordinator-with-Netcode-coupling refactor), 6.11
+    (in-container `Netcode.connector` entanglement). 6.8 also
+    partially completed — `SettingsCloudSync` stays game-side
+    as a thin ~240-line adapter that owns the LocalSettings
+    serialize / apply mapping; the addon owns just the Nakama
+    storage round-trips and per-scope envelope. Open: 6.9
+    (game_session_manager — likely a trivial passive-observer
+    `Platform.session` slot per scoping notes), 6.11
     (screen templates — greenfield, see scoping notes under
     the task entry).
 - **Stages blocked:** none.
@@ -124,8 +124,9 @@ Stage 2 (done, 2026-05-12) — game.yaml, games table,
 Stage 3 (mostly done, 2026-05-12) — game_id scoping: presence
    (storage + record field + friend filter), leaderboards
    (`{game_id}_ffa`), Edgegap app coords from games table,
-   matchmaker rules + legal_version surfaced via version_check.
-   Deferred: 3.5 (settings split), 3.9 (pre-allocate proto check).
+   matchmaker rules + legal_version surfaced via version_check,
+   settings split into "global" + "game/{id}" cloud rows.
+   Deferred: 3.9 (pre-allocate proto check).
    ↓
    ├─→ Stage 4 (mostly done, 2026-05-12) — Cancel button +
    │   recoverable-failure classifier; queue status / connect /
@@ -153,11 +154,13 @@ Stage 3 (mostly done, 2026-05-12) — game_id scoping: presence
        PlatformNotificationSocketClient, 6.6
        PlatformMatchmakingClient (split out of
        NakamaMatchmakerClient; EdgegapServerProvider stays
-       game-side), 6.7 PlatformPresenceApiClient, and 6.10
+       game-side), 6.7 PlatformPresenceApiClient, 6.8
+       PlatformSettingsApiClient (game-side SettingsCloudSync
+       reduced to a ~240-line dual-scope adapter), and 6.10
        grep-sweep verification of mass consumer migration all
-       shipped. Remaining: 6.8 settings (needs 3.5 taxonomy),
-       6.9 session (heavy refactor — coordinator coupling), 6.11
-       screens (greenfield, 3 screens — design decision needed).
+       shipped. Remaining: 6.9 session (likely passive observer
+       per scoping notes), 6.11 screens (greenfield, 3 screens —
+       design decision needed).
    ↓
 Stage 7 — Resilience (retries, notifications, observability)
 
@@ -563,14 +566,34 @@ two games can coexist on one Nakama instance.
   - Done: `friends_panel.gd` compares `friend_game_id` against
     `Platform.game_id` (Stage 2.5 wired Platform.initialize at
     boot, so this is non-empty in production).
-- [ ] **3.5 Scope settings into `global` vs `game#{id}`** in
-  `src/core/settings_cloud_sync.gd`.
-  - Deferred 2026-05-12. Needs an explicit taxonomy decision
-    (which settings are global — locale, anonymous_color_hue —
-    vs per-game) plus a one-shot migration step for existing
-    rows. The current single-blob path keeps working; no
-    user-visible bug. Revisit when a second game's
-    requirements force the split.
+- [x] **3.5 Scope settings into `global` vs `game/{game_id}`** in
+      `src/core/settings_cloud_sync.gd` (2026-05-12).
+  - Done — paired with 6.8. New
+    `LocalSettings.GLOBAL_OVERRIDABLE_KEYS` constant declares the
+    cross-game subset: `full_screen`, `mute_music`, `mute_sfx`,
+    `prefer_offline_mode`. Plus the pre-existing `locale` (special-
+    cased via `get_locale` / `set_locale` rather than living in
+    OVERRIDABLE_KEYS). Everything else in `OVERRIDABLE_KEYS` is
+    game-specific by default (every entry is a hopnbop gameplay
+    modifier — `is_gore_enabled`, `are_critters_enabled`,
+    `are_cheats_enabled`, `is_jetpack_enabled`,
+    `is_bloodisthickerthanwater_enabled`,
+    `is_lordoftheflies_enabled`, `is_pogostick_enabled`,
+    `is_bunniesinspace_enabled`, `is_moregore_enabled`).
+  - Done — storage rows split: `(collection="settings",
+    key="global")` and `(collection="settings",
+    key="game/{game_id}")`. The legacy single-blob row
+    `(collection="settings", key="user")` is read once on first
+    fetch after the client upgrade and partitioned; subsequent
+    boots use the new rows directly. The legacy row is *not*
+    deleted (small cost; preserves a fallback for any future
+    fresh-install of a pre-6.8 client on the same Nakama
+    account during the transition window).
+  - Done — `anonymous_color_hue` not synced. It lives in
+    `LocalSettings.SECTION_APPEARANCE` and was never part of
+    cloud sync to begin with; folding it into the new global
+    scope would have been scope creep. The current behavior
+    (auto-generated, device-local) is acceptable.
 - [x] **3.6 Scope leaderboards by `{game_id}_ffa` prefix**
       (2026-05-12)
   - Done — server: new `gameScopedLeaderboardID` helper turns
@@ -1697,40 +1720,63 @@ Extract clean code, not bug-laden code.
     Nakama smoke (the boot-time presence call against live
     `nakama.snoringcat.games` succeeds), not from an automated
     test.
-- [ ] 6.8 Extract `settings_cloud_sync.gd` → `Platform.settings.*`.
-  - **Blocked on Stage 3.5's global-vs-per-game taxonomy
-    decision** — extracting the class as-is would lock in
-    today's "one blob per user, all settings together"
-    storage shape, which is exactly the limitation 3.5 wants
-    to unwind. Cleanest pass is 3.5 + 6.8 in one session.
-  - Scoping notes for the next pass:
-    - File is small (111 lines, RefCounted). The only
-      game-side reach-backs are `G.local_settings` (read +
-      write) and `G.backend_api_client.{save_player_settings,
-      fetch_player_settings, settings_received,
-      request_failed}` (RPC plumbing). The first stays
-      game-side (LocalSettings is a game-specific config
-      schema); the second points at the still-game-side
-      `backend_api_client.gd` — which means 6.8 can't be a
-      pure addon move until `backend_api_client.gd` is
-      either also extracted or its settings methods are
-      lifted into a new addon-side `Platform.settings`
-      client that hits the same Nakama storage collection
-      directly.
-    - Likely path: new `PlatformSettingsApiClient` in the
-      addon that owns the `save_player_settings` /
-      `fetch_player_settings` storage round-trips, takes a
-      "serialize / apply" callback pair so the game-side
-      mapping to/from `LocalSettings` stays out of the
-      addon. The cloud_sync class itself reduces to a
-      ~30-line game-side adapter that wires the callbacks
-      to `G.local_settings`.
-    - Migration: when 3.5 lands the global-vs-per-game
-      split, the addon's settings client should accept the
-      scope key (`"global"` vs `"game/{game_id}"`) as a
-      parameter on each call. Existing storage rows
-      (collection=`player_settings`, key=`current`) stay
-      readable; new writes go to two rows.
+- [x] **6.8 Extract `settings_cloud_sync.gd` → `Platform.settings.*`**
+      (2026-05-12). Paired with Stage 3.5 in one session.
+  - Done — submodule: new
+    `addons/snoringcat_platform_client/core/settings_api_client.gd`
+    with `class_name PlatformSettingsApiClient`. Surface: 3 signals
+    (`settings_received(scope, payload, updated_at)`,
+    `settings_saved(scope)`, `request_failed(scope, error)`) and
+    2 methods (`fetch(scope)`, `save(scope, payload)`). `scope` is
+    a free-form string the consuming game chooses
+    (`"global"` / `"game/{game_id}"` / legacy `"user"`); the addon
+    just maps it to `(collection="settings", key=scope,
+    user_id=session.user_id)`. Returns Nakama's storage-row
+    `update_time` parsed to unix seconds (RFC3339 string with
+    fractional seconds + trailing Z is stripped before
+    `Time.get_unix_time_from_datetime_string`).
+  - Done — parent: `src/core/settings_cloud_sync.gd` rewritten as
+    a ~240-line dual-scope adapter (was ~111 lines pre-refactor).
+    Owns the LocalSettings serialize / apply mapping per scope,
+    the cloud-wins-by-timestamp merge logic per scope, and the
+    one-shot legacy-blob migration. The `_pending_fetch_scopes`
+    dictionary gates `_on_settings_received` callbacks so a
+    delayed or unrelated emit doesn't apply.
+  - Done — parent: `BackendApiClient` lost
+    `save_player_settings`, `fetch_player_settings`,
+    `settings_received`, and `settings_saved`. They were the
+    sole settings cloud surface pre-extraction; nothing else
+    referenced them.
+  - Done — parent: `LocalSettings.clear_user_state()` extended
+    to erase the three new meta keys
+    (`cloud_sync_at_global`, `cloud_sync_at_game`,
+    `cloud_legacy_migrated`) alongside the pre-existing
+    `cloud_sync_at` so a logout-and-relogin path doesn't leak
+    cross-account state.
+  - Done — parent: `global.gd._enter_tree` instantiates
+    `PlatformSettingsApiClient` and calls
+    `Platform.register_subsystem("settings", ...)`. Slot was
+    already declared in 6.1's allowlist; this is the first
+    registration that actually populates it.
+  - Verification: editor pass refreshed
+    `.godot/global_script_class_cache.cfg` with the new
+    `PlatformSettingsApiClient` entry. Plain headless boot clean
+    (Main._ready reaches close-app, JWT refresh fires with
+    `vars: {game_id: hopnbop}` against live Nakama; the
+    settings cloud sync itself doesn't fire in the preview-
+    close path because the user is anonymous at this boot
+    step and `Platform.token_store.is_token_valid()` guards
+    the entry point). No compliance test for the dual-scope
+    merge yet (Stage 8.28 placeholder).
+  - Known limitation: there's a small race window when a save
+    is in flight against a stale-but-pending fetch. If a fetch
+    response arrives between when `save()` is dispatched and
+    when its storage write commits, the fetch can apply older
+    cloud values to local, overwriting the user's in-progress
+    change. Eventual consistency reconciles on the next
+    fetch-and-merge cycle. A more correct fix tracks in-flight
+    saves and ignores fetch responses against the same scope
+    while a save is pending; not worth the complexity today.
 - [ ] 6.9 Extract `game_session_manager.gd` → `Platform.session.*`
   (delegating layer; game-specific session-provider stays in
   `src/core/`).
@@ -2894,6 +2940,80 @@ Security:
     triggers a one-time re-consent rather than locking
     players out), so failing the PR early is the right
     severity.
+
+- **2026-05-12:** Stage 3.5 + 6.8 paired pass landed. Six
+  design calls worth recording:
+  - **Taxonomy lives in `LocalSettings`, not in the addon.**
+    A new `GLOBAL_OVERRIDABLE_KEYS` constant declares which
+    keys are global; everything else in `OVERRIDABLE_KEYS` is
+    per-game. The addon stays game-agnostic — it takes a scope
+    string parameter from the caller and maps it to a Nakama
+    storage key. Putting the taxonomy on the game side keeps
+    the rule colocated with the key declarations themselves
+    and means a second game can ship its own split without
+    rewriting the addon. The default-per-game rule (keys not
+    listed in GLOBAL_OVERRIDABLE_KEYS go to the per-game scope)
+    is the safer fallback — a key added without explicit
+    classification stays scoped to the game that defined it,
+    rather than leaking cross-game.
+  - **Scope as a free-form string, not an enum.** The addon's
+    `fetch(scope)` / `save(scope)` accept any string and map
+    it 1:1 to the Nakama storage key. The game-side adapter
+    chooses `"global"` / `"game/{game_id}"` / legacy `"user"`.
+    An enum would have meant either constraining the addon to
+    only-the-current-known-scopes (forcing every future split
+    through the addon) or duplicating the conversion logic in
+    each consumer. String pass-through is the simplest
+    contract that lets a future game add new scopes (e.g.,
+    `"profile"` for per-player profile-card config) without
+    addon changes.
+  - **Cloud-wins-by-timestamp uses Nakama's storage row
+    update_time, not a sentinel field in the payload.** The
+    pre-extraction code expected `{updated_at, settings}`
+    envelopes but never actually wrote that shape — it wrote
+    the bare flat dict, and the timestamp comparison silently
+    no-op'd. The refactored client reads the storage row's
+    update_time (string, RFC3339) and converts it to unix
+    seconds at the addon boundary. The game-side adapter sees
+    a plain `int` timestamp it can compare against the locally
+    recorded sync-at. Side benefit: a future games-admin
+    console editing the row out-of-band still produces a fresh
+    update_time, so the merge logic doesn't need to know about
+    the editor surface.
+  - **Legacy migration applies locally, never writes.** Earlier
+    drafts had the migration partition the legacy blob,
+    apply-locally, AND push to the new cloud rows. That broke
+    multi-device fan-out: device D2 fresh-migrating after
+    device D1 has been writing new rows for a week would
+    overwrite D1's recent values with D2's interpretation of
+    the (now-stale) legacy. The shipped path is apply-locally
+    + mark-migrated + proceed to the normal fetch-merge cycle.
+    If newer rows exist in the cloud, they win on update_time
+    and overwrite the just-applied legacy values; if not, the
+    empty-cloud-empty-local branch pushes the (legacy-applied)
+    local values up. Either way, no clobber.
+  - **Legacy `key="user"` row is not deleted.** A small (a few
+    hundred bytes) dead row is the cost of not breaking any
+    future fresh-install of a pre-6.8 client on the same
+    Nakama account during the transition window. Once a future
+    release confirms every active client is post-6.8 (mostly
+    a function of forced version-mismatch deployments), a
+    one-shot RPC could sweep `(settings, user, *)` rows; not
+    worth the complexity until then.
+  - **`BackendApiClient` lost its settings surface entirely.**
+    The previous indirection (game-side `BackendApiClient`
+    wrapped Nakama storage calls; `SettingsCloudSync` consumed
+    them) added a hop without paying back — the methods were
+    only ever called from one place and the Nakama SDK is
+    perfectly callable from the addon. After 6.8, the addon
+    hits `Platform.get_nakama_client().write_storage_objects_async`
+    directly. `BackendApiClient` shrinks to just the
+    leaderboard / player-stats / profile / match-history /
+    version-check surface it had before settings was bolted
+    on. A future "Platform.backend" subsystem could absorb
+    the rest, but the version-check caching it does (per-game
+    legal_version + matchmaker rules) keeps it usefully
+    game-side for now.
 
 ## How to use this document
 

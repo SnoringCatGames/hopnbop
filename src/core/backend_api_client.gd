@@ -14,8 +14,6 @@ extends Node
 signal leaderboard_received(data: Dictionary)
 signal player_stats_received(data: Dictionary)
 signal profile_received(data: Dictionary)
-signal settings_received(data: Dictionary)
-signal settings_saved(data: Dictionary)
 signal match_history_received(data: Dictionary)
 signal request_failed(error: String)
 
@@ -188,43 +186,6 @@ func fetch_player_profile() -> void:
 		"timezone": u.timezone,
 		"linked_providers": _account_linked_providers(account),
 	})
-
-
-# --------------------------------------------------------------
-# Settings (Nakama Storage, collection="settings", key="user")
-# --------------------------------------------------------------
-
-func fetch_player_settings() -> void:
-	var session := await _ensure_session()
-	if session == null:
-		return
-	var ids := [NakamaStorageObjectId.new(
-		"settings", "user", session.user_id)]
-	var result = await Platform.get_nakama_client().read_storage_objects_async(
-		session, ids)
-	if result.is_exception():
-		request_failed.emit(_describe(result.get_exception()))
-		return
-	if result.objects.size() == 0:
-		settings_received.emit({})
-		return
-	var raw: String = result.objects[0].value
-	var data: Variant = JSON.parse_string(raw)
-	settings_received.emit(data if data is Dictionary else {})
-
-
-func save_player_settings(settings: Dictionary) -> void:
-	var session := await _ensure_session()
-	if session == null:
-		return
-	var obj := NakamaWriteStorageObject.new(
-		"settings", "user", 1, 1, JSON.stringify(settings), "")
-	var result = await Platform.get_nakama_client().write_storage_objects_async(
-		session, [obj])
-	if result.is_exception():
-		request_failed.emit(_describe(result.get_exception()))
-		return
-	settings_saved.emit(settings)
 
 
 # --------------------------------------------------------------

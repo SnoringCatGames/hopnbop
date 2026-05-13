@@ -252,6 +252,16 @@ func _enter_tree() -> void:
 	add_child(matchmaking)
 	Platform.register_subsystem("matchmaking", matchmaking)
 
+	# Stage 6.8: cloud-backed settings split into two scopes
+	# ("global" + "game/{game_id}"). Game code reads via
+	# Platform.settings; SettingsCloudSync (still game-side) wraps
+	# it with the LocalSettings serialize / apply mapping and a
+	# one-shot legacy-blob migration.
+	var settings_client := PlatformSettingsApiClient.new()
+	settings_client.name = "SettingsApiClient"
+	add_child(settings_client)
+	Platform.register_subsystem("settings", settings_client)
+
 	party_manager = PartyManager.new()
 	party_manager.name = "PartyManager"
 	add_child(party_manager)
