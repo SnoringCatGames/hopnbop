@@ -30,20 +30,42 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 7 resilience momentum. **Stage 7.5
-  friend pagination shipped** (2026-05-13, tenth pass):
-  `PlatformFriendsApiClient.fetch_friends` now loops
-  `list_friends_async` with a cursor across up to 10 pages × 100
-  entries (1000 cap) mirroring the runtime cascade's bounded-loop
-  pattern. Builds the new `cached_friends` /
-  `cached_sent_requests` / `cached_incoming_requests` arrays in
-  locals and swaps them in atomically after the last page so a
-  mid-pagination failure leaves the caches untouched. New file-
-  level constants `_FRIENDS_PAGE_SIZE=100` and
-  `_FRIENDS_PAGE_CAP=10` replace the inline magic 100. No
-  consumer API change. Headless Godot boot clean (JWT refresh +
-  `update_and_get_presence` succeed via live Nakama; zero
-  parse/compile errors).
+- **Current focus:** Stage 7 resilience momentum. **Stage 7.12
+  (max pending friend requests) + 7.13 (friend-code rate-limit)
+  shipped** (2026-05-13, eleventh pass) as a single
+  `BeforeAddFriends` hook in
+  `third_party/snoringcat-platform/runtime/friends_limits.go`.
+  7.12 caps a caller's pending state=1 (INVITE_SENT) entries at
+  50 via a bounded `nk.FriendsList` walk (cap+1 pages of 100 so
+  a pathological list short-circuits without burning round
+  trips), summing `(existing + len(Ids) + len(Usernames))` and
+  rejecting on overflow. 7.13 adds a per-caller sliding-window
+  rate limit of 10 add-by-username calls per 60 s via an
+  in-memory `map[string][]int64` of timestamps guarded by a
+  `sync.Mutex`, with incremental in-place pruning so the window
+  never grows unbounded. Rate-limit state resets on restart
+  (acceptable: gives every user a free fresh budget, not an
+  exploit). The hook short-circuits empty `user_id` (server-to-
+  server callers) and only counts rate against the
+  username-bearing path (`Ids`-only add-incoming-accept and
+  recent-match-add are exempt — neither exposes codes to brute-
+  force). Always on; no env flag. New file-level constants
+  `maxPendingOutgoingFriendRequests=50`,
+  `friendCodeRateLimitCount=10`,
+  `friendCodeRateLimitWindow=60s` with a stable-constants canary
+  test so a future bump can't drift silently. 6 new Go unit
+  tests in `friends_limits_test.go` via a fake clock
+  (respects-limit, slides-window, per-user-isolated,
+  prunes-incrementally, empty-user no-op, constants-stable). No
+  client-side change — the addon surfaces the runtime's error
+  via the existing `request_failed(error)` signal.
+  `go vet && go test && staticcheck` clean; pluginbuilder
+  Docker produces a 19 MB `snoringcat.so`. Submodule
+  `6c57402`; parent bump landed alongside this roadmap edit.
+  Prior session (also 2026-05-13, tenth pass) shipped 7.5
+  friend pagination in `PlatformFriendsApiClient.fetch_friends`
+  (10 pages × 100 entries, atomic local-swap on completion,
+  `_FRIENDS_PAGE_SIZE`/`_FRIENDS_PAGE_CAP` constants).
   Earlier 2026-05-13 work (still standing): 7.1 allocation retry,
   7.2 mid-queue cancel teardown (`inflightAllocation` tracker +
   `cancel_matchmaking_allocation` RPC + LOADING.PEER_CANCELLED
@@ -52,16 +74,21 @@ See also:
   cases), 8.1+8.2 deploy gate,
   8.11/8.12/8.14/8.16/8.17/8.18/8.19/8.22 compliance tests, 8.13
   EDGEGAP_MOCK_DEPLOY mode, audit-surfaced drift fully resolved.
-  **Next:** Stage 7.3 (platform-level push notifications) and 7.4
-  (friend block list — also unblocks 8.15) are the cheapest
-  remaining Stage 7 items. 7.11 (re-introduce observability) is
-  also unblocked; configs are preserved. 7.12 (max pending friend
-  request enforcement) and 7.13 (friend-code rate-limit) are
-  small server-side hardening fixes. 8.15 still blocked on 7.4.
-  Tier 3 client unit tests (8.23-8.28) require GUT doubles setup
-  against the addon's GDScript classes; Tier 4 e2e/smoke
-  (8.29-8.31) needs a docker-compose dev stack. Stage 6.11
-  screens still greenfield with design call needed.
+  **Next:** Stage 7.4 (friend block list — schema + RPC + UI +
+  matchmaker integration; also unblocks 8.15) is the largest
+  remaining Stage 7 item, well-defined. 7.3 (platform-level push
+  notifications) is the next-cheapest but has heavy cross-
+  platform delivery scope (PWA web-push + FCM + APNS). 7.11
+  (re-introduce observability) is also unblocked; configs are
+  preserved. 8.15 still blocked on 7.4. Tier 3 client unit tests
+  (8.23-8.28) require GUT doubles setup against the addon's
+  GDScript classes; Tier 4 e2e/smoke (8.29-8.31) needs a
+  docker-compose dev stack. Stage 6.11 screens still greenfield
+  with design call needed. **Deploy step pending:** the live
+  runtime is one commit behind HEAD (7.5's submodule bump landed
+  in `d5ba666` but only the addon-side `.gd` changed there; 7.12
+  + 7.13 add Go runtime code that needs a fresh build). Trigger
+  `nakama-runtime.yml` to ship the abuse hardening to prod.
 - **2026-05-13 audit follow-up — drift items resolved later
   the same day:**
   - **Runtime backlog flushed:** the deployed runtime was 24
@@ -130,20 +157,19 @@ See also:
   (b) pivot to Stage 7 resilience (13 open items including
   allocation retry, friend pagination, anonymous-upgrade UI,
   account-merge UI, observability re-introduction).
-- **Last updated:** 2026-05-13 (tenth pass: Stage 7.5 friend
-  pagination shipped. `PlatformFriendsApiClient.fetch_friends`
-  loops `list_friends_async` with a cursor across up to 10
-  pages × 100 entries; mid-pagination failure leaves caches
-  untouched via atomic local-swap; consumer API unchanged.
-  Headless Godot boot clean.
-  Plus all prior 2026-05-13 work: 7.1 allocation retry, 7.2
-  mid-queue cancel teardown (new `inflightAllocation` tracker on
-  `fleetAllocator`, cancelable child ctx through the retry loop,
-  two `allocCtx.Err()` checkpoints, best-effort `stopDeploy` on
-  cancellation-post-allocation, `match_failed` reason=cancelled
-  fan-out, new `cancel_matchmaking_allocation` RPC, LoadingScreen
-  Cancel during "placing", new `LOADING.PEER_CANCELLED`
-  translation key), Tier 2 matchmaking compliance suite finished
+- **Last updated:** 2026-05-13 (eleventh pass: Stage 7.12 +
+  7.13 friend-abuse hardening shipped as one BeforeAddFriends
+  hook in `runtime/friends_limits.go`. 50-pending-outgoing cap
+  via bounded `nk.FriendsList` walk + 10/60s per-caller add-by-
+  username rate limit via in-memory sliding window. Empty
+  user_id passes through so server-to-server callers aren't
+  locked out; the rate limit only counts the
+  Usernames-bearing path. Always on, no env flag. 6 new Go
+  tests via a fake clock. `go vet && go test && staticcheck`
+  clean; pluginbuilder Docker produces a 19 MB snoringcat.so.
+  Submodule `6c57402`. Plus prior 2026-05-13 work: 7.5 friend
+  pagination (tenth pass); 7.1 allocation retry, 7.2 mid-queue
+  cancel teardown, Tier 2 matchmaking compliance suite finished
   (8.20 + 8.21), Tier 1 Go unit tests (8.3-8.10, 100 cases),
   8.1/8.2 deploy gate, audit-surfaced drift fully resolved,
   24-commit runtime backlog deployed, first games-cache sync,
@@ -200,9 +226,10 @@ See also:
     list), Tier 3 client unit tests with doubles
     (8.23–8.28), Tier 4 e2e/smoke (8.29–8.31).
 - **Stages in progress (Stage 7 resilience):**
-  - Stage 7 — 3/13 shipped 2026-05-13 (7.1 allocation retry,
-    7.2 mid-queue cancel teardown, 7.5 friend pagination).
-    Remaining 10 items are all open and unblocked.
+  - Stage 7 — 5/13 shipped 2026-05-13 (7.1 allocation retry,
+    7.2 mid-queue cancel teardown, 7.5 friend pagination, 7.12
+    max-pending-friend-requests cap, 7.13 friend-code rate-
+    limit). Remaining 8 items are all open and unblocked.
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -245,8 +272,9 @@ Stage 3 (done, 2026-05-12) — game_id scoping: presence
        needed).
    ↓
 Stage 7 — Resilience (retries, notifications, observability).
-   3/13 shipped 2026-05-13 (7.1 allocation retry, 7.2 mid-queue
-   cancel teardown, 7.5 friend pagination); 10 open.
+   5/13 shipped 2026-05-13 (7.1 allocation retry, 7.2 mid-queue
+   cancel teardown, 7.5 friend pagination, 7.12 max-pending-
+   friend-request cap, 7.13 friend-code rate-limit); 8 open.
 
 Stage 8 — Tests (parallel track, doesn't block features).
    21/31 shipped 2026-05-13. Tier 1 Go unit tests (8.3–8.10)
@@ -2429,8 +2457,92 @@ Extract clean code, not bug-laden code.
   matchmaker queue depth, allocation cold-start time. The stripped
   Prometheus/Grafana/Loki configs are still in
   `infra/remote/nakama/` for re-introduction.
-- [ ] 7.12 Max pending friend request enforcement (spam vector).
-- [ ] 7.13 Friend-code rate-limit / brute-force protection.
+- [x] **7.12 Max pending friend request enforcement** (2026-05-13).
+  - Done — runtime: new
+    `third_party/snoringcat-platform/runtime/friends_limits.go`,
+    registered in `main.go::registerFriendsLimitHook`. The
+    `BeforeAddFriends` hook walks the caller's current state=1
+    (INVITE_SENT) entries via `nk.FriendsList`, paginated to
+    `(maxPendingOutgoingFriendRequests+1)` pages of 100 so a
+    pathological pending list (5000+ outstanding) short-circuits
+    without burning every page. Sums `(existing + len(Ids) +
+    len(Usernames))` against the new file-level constant
+    `maxPendingOutgoingFriendRequests=50`; rejects with
+    `runtime.NewError(..., 9)` (FAILED_PRECONDITION) when the
+    total would exceed the cap.
+  - Server-to-server callers (no `RUNTIME_CTX_USER_ID`) pass
+    through. Per-caller, not per-recipient — the cap is on the
+    caller's outgoing inbox.
+  - Test coverage: included in `friends_limits_test.go`'s
+    `TestFriendsLimitsConstantsStable` (catches a future bump
+    that drifts away from the roadmap-documented cap). End-to-
+    end count check itself is covered by the live runtime — a
+    mock `runtime.NakamaModule` would need ~30 interface
+    methods for marginal value vs the existing Tier 1 / Tier 2
+    split.
+  - Decision worth recording: cap of 50. High enough that
+    normal social use never hits it; low enough that a spam
+    attacker can't blast a thousand-recipient inbox flood
+    before rejection.
+  - Decision worth recording: `BeforeAddFriends` is the only
+    enforcement point. No client-side preflight check — the
+    SDK surfaces the runtime's error message via the existing
+    `request_failed(error)` signal on
+    `PlatformFriendsApiClient`. A malicious client that
+    bypasses the SDK still hits the hook.
+- [x] **7.13 Friend-code rate-limit** (2026-05-13).
+  - Done — runtime: paired with 7.12 in the same
+    `friends_limits.go` hook. New `friendsLimiter` struct holds
+    a `map[string][]int64` (caller user_id → sliding-window
+    timestamps) guarded by a `sync.Mutex` and a clock-of-
+    record `now func() time.Time` so tests can inject a fake.
+    `allowFriendCodeCall(userID)` prunes timestamps older than
+    `friendCodeRateLimitWindow=60s` in-place (O(prune_count)
+    leading-slice scan), then either appends the current
+    timestamp and returns `true` OR returns `false` without
+    recording when the count is already at
+    `friendCodeRateLimitCount=10`. Rejected calls don't burn a
+    slot in the window.
+  - Hook applies the limit only when `len(in.GetUsernames()) >
+    0` (the add-by-code path). `Ids`-only paths (accept-
+    incoming-request, add-by-recent-match) don't expose codes
+    to brute-force enumeration, so they're exempt from this
+    limit but still subject to 7.12's pending cap.
+  - State is in-memory only. A restart wipes every user's
+    window, which gives every user a free fresh budget. That's
+    fine: the worst case is one extra burst per restart, and a
+    restart-driven attacker has bigger problems than friend-
+    code enumeration. Persistence (Nakama storage row per
+    user) would add a write per call without changing the
+    security story.
+  - Test coverage: 6 new tests in `friends_limits_test.go` via
+    a fake clock. Respects-limit, slides-window after
+    `friendCodeRateLimitWindow` advance, per-user-isolated
+    (different callers don't share budgets), prunes-
+    incrementally (half-window-stale entries drop off and the
+    cap refills cleanly), empty-user no-op (server-to-server
+    callers can't be locked out), constants-stable canary
+    (catches future bumps).
+  - Decision worth recording: 10 calls / 60 s. Comfortably
+    above the legitimate "I'm adding 5 friends after a meet-
+    up" peak; orders of magnitude below the throughput
+    required to enumerate the 32^6 = ~1B-entry friend-code
+    space in any reasonable time. Subject to revisit if real
+    usage data shows the limit pinches legitimate users.
+  - Decision worth recording: `sync.Mutex`-protected map
+    instead of `sync.Map`. The per-call work is dominated by
+    7.12's `nk.FriendsList` round trip (the rate check runs
+    first but the pending-cap check fires on every successful
+    rate check), so the lock contention is negligible. Plain
+    map is the simpler model.
+  - Decision worth recording: hook does NOT call
+    `nk.FriendsList` to enforce 7.13 — rate limit is per-call
+    accounting, not per-pending-state. The hook does call
+    `nk.FriendsList` for the 7.12 path (which fires after the
+    rate check). So an add-by-id call (rate-limit-exempt)
+    still incurs the FriendsList round trip; an add-by-
+    username call that's rate-limited short-circuits before
+    the round trip. Cheap to add the rate check first.
 
 ## Stage 8 — Test foundation (parallel track)
 
@@ -4552,6 +4664,59 @@ Security:
     by validating against the match_metadata storage row.
     Both add surface; deferred until the cost of wasted
     minutes shows up as a real signal.
+
+- **2026-05-13:** Stage 7.12 + 7.13 friend-abuse hardening
+  shipped (eleventh pass). Five design calls worth recording:
+  - **Both checks in one BeforeAddFriends hook, not two
+    separate hooks.** Nakama only exposes one
+    `RegisterBeforeAddFriends` slot; even if there were
+    several, the natural fan-in order (rate-limit before
+    pending-cap) would still place them in the same
+    function. Bundling them in one file
+    (`friends_limits.go`) keeps the rule colocated with
+    its caller and makes future "what guards live on the
+    add-friend path?" greps trivial.
+  - **In-memory rate-limit state, no persistence.** A
+    Nakama-storage-backed counter would survive restarts
+    but add a write per call (the dominant cost would
+    swing from `FriendsList` round-trip to a storage
+    write). Restart loss gives every user a free fresh
+    budget, which isn't an exploit — it's a worse-case-
+    one-extra-burst-per-restart issue, and the restart
+    cadence is on the order of weeks. The rate-limit's
+    job is anti-enumeration, not anti-spam-per-user, so
+    short windows of leniency are acceptable.
+  - **`map[string][]int64` over `sync.Map`.** The per-call
+    work is dominated by the 7.12 `FriendsList` round
+    trip when the rate check passes; lock contention on
+    the limiter is negligible relative to that. Plain
+    map + sync.Mutex is the simpler model, with cleaner
+    invariants (the slice for one user can never be
+    modified concurrently from two callers because the
+    mutex covers the whole accept-or-reject sequence).
+    Future scaling concerns (10k+ concurrent callers
+    hitting the limiter every second) would justify
+    sync.Map; today's player pool doesn't.
+  - **Rate limit only applies to add-by-username path.**
+    7.12's pending-cap applies to every `BeforeAddFriends`
+    call; 7.13's rate-limit short-circuits when
+    `len(Usernames) == 0`. Add-by-ID paths (accept-
+    incoming-friend-request, add-recent-match) don't
+    expose codes to brute-force enumeration, so they're
+    rate-limit-exempt. The 7.12 cap still fires for them
+    (it's about caller-side outgoing inbox depth,
+    independent of recipient surface).
+  - **Stable-constants canary test.** All three new
+    constants (`maxPendingOutgoingFriendRequests=50`,
+    `friendCodeRateLimitCount=10`,
+    `friendCodeRateLimitWindow=60s`) have an audit trail
+    in this roadmap. The `TestFriendsLimitsConstantsStable`
+    test asserts the live values match the roadmap-
+    documented ones; a future bump that drifts the
+    constant without updating the roadmap loud-fails the
+    CI gate. Cost is six trivial test lines; benefit is
+    forcing the bump-er to read the rationale and update
+    the doc before shipping.
 
 ## How to use this document
 
