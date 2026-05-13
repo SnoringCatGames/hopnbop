@@ -30,8 +30,31 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 7 resilience momentum. **Stage 7.4
-  (friend block list) shipped** (2026-05-13, twelfth pass) as a
+- **Current focus:** Stage 8 compliance fill-in. **Stage 8.15
+  (`test_friends_block.gd`) shipped** (2026-05-13, thirteenth
+  pass) — the Stage 7.4 follow-up compliance test landed end-to-
+  end. Two tests in one file: (1) single-user block-list
+  lifecycle (`test_block_list_lifecycle_bidirectional_add_rejection`):
+  walks block_user → list_blocked_users contains B → self-block
+  rejected → A→B add_friend silently no-ops AND A's view of B
+  stays state=3 BANNED → B→A add_friend silently no-ops AND
+  B's row never reaches state=1 INVITE_SENT (verifies the
+  bidirectional rejection contract via friend-state assertions
+  rather than HTTP-status; Nakama returns 200 OK even when
+  every target is silently skipped — caught in the first test
+  run, fixed by switching the assertion to read the actual
+  friend state via /v2/friend) → unblock → list_blocked_users
+  no longer contains B → A→B add_friend now creates state=1
+  on A's side. 20 asserts green against live Nakama.
+  (2) `test_blocked_pair_aborts_matchmaker_fanout`: full
+  matchmaker abort path, mock-mode gated. A blocks B, both
+  open sockets, both enqueue min=max=2 tickets, asserts both
+  receive `match_failed reason=blocked_pair` AND neither
+  receives `match_ready`. Pends correctly against live prod
+  (no EDGEGAP_MOCK_DEPLOY). Test file uses the existing
+  `_Capture` inner-class pattern from
+  `test_party_to_matchmaking.gd`. **Prior pass (Stage 7.4
+  friend block list) shipped** (2026-05-13, twelfth pass) as a
   full end-to-end feature spanning runtime + client SDK + UI.
   Server side adds `runtime/block_list.go` with three RPCs
   (`block_user`, `unblock_user`, `list_blocked_users`) layered
@@ -85,23 +108,22 @@ See also:
   (8.3-8.10, 100 cases), 8.1+8.2 deploy gate,
   8.11/8.12/8.14/8.16/8.17/8.18/8.19/8.22 compliance tests,
   8.13 EDGEGAP_MOCK_DEPLOY mode, audit-surfaced drift fully
-  resolved. **Next:** **8.15 (`test_friends_block.gd`)** is
-  now unblocked — write a multi-user compliance test that
-  covers add → block → re-add-fails → list-blocked → unblock
-  → re-add-succeeds. 7.3 (push notifications) is the next-
-  cheapest open Stage 7 item but has heavy cross-platform
+  resolved. **Next:** **7.3 (push notifications)** is the
+  next-cheapest open Stage 7 item but has heavy cross-platform
   delivery scope (PWA web-push + FCM + APNS). 7.11
   (observability re-introduction) is also unblocked; configs
-  preserved in `infra/remote/nakama/`. Tier 3 client unit
+  preserved in `infra/remote/nakama/`. 7.6 (recent-players
+  list), 7.7 (GDPR cascade verification), 7.8 (account-merge
+  UI), 7.9 (anonymous-upgrade UI), and 7.10 (mid-match rejoin
+  — design call required) are all open. Tier 3 client unit
   tests (8.23-8.28) require GUT doubles setup against the
   addon's GDScript classes; Tier 4 e2e/smoke (8.29-8.31)
   needs a docker-compose dev stack. Stage 6.11 screens still
-  greenfield with design call needed. **Deploy step pending:**
-  the live runtime is one commit behind HEAD — 7.4 adds Go
-  runtime code (new `block_list.go` + `fleet_allocator.go`
-  blocked-pair branch) that needs a fresh build. Trigger
-  `nakama-runtime.yml` once the parent submodule pointer bump
-  lands.
+  greenfield with design call needed. **Deploy status:** the
+  live runtime is current — Nakama Runtime Deploy at
+  2026-05-13T22:16:11Z ran parent SHA `a35c76c` (Stage 7.4
+  submodule bump commit), so block_list.go + the
+  fleet_allocator blocked-pair branch are now live.
 - **2026-05-13 audit follow-up — drift items resolved later
   the same day:**
   - **Runtime backlog flushed:** the deployed runtime was 24
@@ -170,8 +192,18 @@ See also:
   (b) pivot to Stage 7 resilience (13 open items including
   allocation retry, friend pagination, anonymous-upgrade UI,
   account-merge UI, observability re-introduction).
-- **Last updated:** 2026-05-13 (twelfth pass: Stage 7.4 friend
-  block list shipped end-to-end. Runtime: new `block_list.go`
+- **Last updated:** 2026-05-13 (thirteenth pass: Stage 8.15
+  `test_friends_block.gd` shipped — two-test compliance file
+  covering (a) single-user block-list lifecycle with
+  bidirectional add-rejection verified via friend-state reads,
+  (b) matchmaker blocked-pair abort fan-out, mock-mode gated.
+  20 asserts green against live Nakama; second test pends
+  correctly on prod. Plus the 7.4 runtime deploy was confirmed
+  live — Nakama Runtime Deploy at 2026-05-13T22:16:11Z ran
+  parent SHA `a35c76c` so block_list.go + the fleet_allocator
+  blocked-pair branch are now in prod. Prior twelfth pass:
+  Stage 7.4 friend block list shipped end-to-end. Runtime:
+  new `block_list.go`
   with block_user/unblock_user/list_blocked_users RPCs over
   Nakama's native state=3 BANNED state (bidirectional add-
   rejection comes free from Nakama's FriendsAdd). Matchmaker:
@@ -232,7 +264,7 @@ See also:
     templates** (greenfield, 3 screens — design decision
     needed on base-class vs full-scene vs components pattern).
 - **Stages in progress:**
-  - Stage 8 — 21/31 shipped 2026-05-13. Tier 1 Go unit
+  - Stage 8 — 22/31 shipped 2026-05-13. Tier 1 Go unit
     tests (8.3–8.10) all green: transport_select_test.go,
     version_test.go, match_lifecycle_test.go (with new
     `clampPlayerStats` helper extracted for testability),
@@ -241,16 +273,17 @@ See also:
     earlier 8.1 deploy-time gate, 8.2 staticcheck (already
     in pr-validate.yml), 8.11 socket harness, 8.12 multi-
     session helper, 8.13 EDGEGAP_MOCK_DEPLOY mode, 8.14
-    first canary multi-user friends test, 8.16 friends-
-    cascade-on-account-delete, 8.17 party-invite-flow
-    multi-user lifecycle, 8.18 party-to-matchmaking mock-
-    mode flow, 8.19 solo-matchmaking match_ready flow,
-    8.20 matchmaking cancel-race (cancel-before-match +
-    post-match cancel safety), 8.21 protocol-mismatch
-    failure mode, 8.22 presence game-filter mutual-only
-    check. Remaining: Tier 2 8.15 (NOW UNBLOCKED — 7.4
-    landed 2026-05-13), Tier 3 client unit tests with
-    doubles (8.23–8.28), Tier 4 e2e/smoke (8.29–8.31).
+    first canary multi-user friends test, 8.15 block-list
+    lifecycle + blocked-pair matchmaker abort, 8.16
+    friends-cascade-on-account-delete, 8.17 party-invite-
+    flow multi-user lifecycle, 8.18 party-to-matchmaking
+    mock-mode flow, 8.19 solo-matchmaking match_ready
+    flow, 8.20 matchmaking cancel-race (cancel-before-
+    match + post-match cancel safety), 8.21 protocol-
+    mismatch failure mode, 8.22 presence game-filter
+    mutual-only check. Remaining: Tier 3 client unit
+    tests with doubles (8.23–8.28), Tier 4 e2e/smoke
+    (8.29–8.31).
 - **Stages in progress (Stage 7 resilience):**
   - Stage 7 — 6/13 shipped 2026-05-13 (7.1 allocation retry,
     7.2 mid-queue cancel teardown, 7.4 friend block list, 7.5
@@ -305,10 +338,10 @@ Stage 7 — Resilience (retries, notifications, observability).
    limit); 7 open.
 
 Stage 8 — Tests (parallel track, doesn't block features).
-   21/31 shipped 2026-05-13. Tier 1 Go unit tests (8.3–8.10)
-   all green; Tier 2 compliance suite has 8.11–8.14 + 8.16–8.22
-   shipped (only 8.15 open, NOW UNBLOCKED by 7.4); Tier 3
-   (8.23–8.28) and Tier 4 (8.29–8.31) not yet started.
+   22/31 shipped 2026-05-13. Tier 1 Go unit tests (8.3–8.10)
+   all green; Tier 2 compliance suite has 8.11–8.22 all
+   shipped; Tier 3 (8.23–8.28) and Tier 4 (8.29–8.31) not yet
+   started.
 ```
 
 ## Stage 0 — Platform infra extraction (mostly done)
@@ -2535,14 +2568,16 @@ Extract clean code, not bug-laden code.
     by game_id. If a future game wants per-game block lists
     we can layer that as a separate scoped collection
     without disturbing the cross-game core.
-  - Known limitation: no end-to-end compliance test yet.
-    Stage 8.15 (`test_friends_block.gd`) is now unblocked
-    and should cover: A authenticates → A blocks B → A
-    `add_friend(B)` fails → A lists blocked → A unblocks B
-    → A re-adds B succeeds → both in a match → matchmaker
-    fan-out `match_failed reason=blocked_pair`. Tier 2
-    socket-harness mock-mode test against the live
-    runtime is the natural fit.
+  - Compliance: Stage 8.15 (`test_friends_block.gd`) shipped
+    2026-05-13 as the end-to-end compliance test. Covers the
+    block_user/unblock_user/list_blocked_users RPC contract,
+    Nakama's bidirectional FriendsAdd rejection (via friend-
+    state assertions; Nakama returns 200 OK with silent-skip
+    semantics rather than an HTTP error), and the matchmaker
+    blocked-pair abort fan-out under mock mode. 20 asserts
+    green against live Nakama for the lifecycle test; the
+    matchmaker test pends on prod (no EDGEGAP_MOCK_DEPLOY)
+    consistently with the rest of Stage 8.
   - Known limitation: ships with a reused
     `remove_friend_icon.png` for the Block action and
     Blocked Users entry. A dedicated block / no-entry icon
@@ -2924,13 +2959,45 @@ prioritize tests that protect work landing in the current stage.
     party-to-matchmaking, 8.22 presence-game-filter, 8.15
     block-list, 8.16 friends-cascade-on-account-delete) reads
     the same pattern.
-- [ ] 8.15 `test_friends_block.gd` (now unblocked — 7.4 landed
-  2026-05-13). Coverage target: A blocks B → A
-  add_friend(B) fails → A list_blocked → A unblocks B → A
-  add_friend(B) succeeds → matchmaker fan-out
-  `match_failed reason=blocked_pair` when both are matched.
-  Tier 2 socket-harness mock-mode test against the live
-  runtime is the natural fit.
+- [x] **8.15 `test_friends_block.gd`** (2026-05-13).
+  - Done: new two-test compliance file under
+    `addons/snoringcat_platform_client/test/compliance/
+    test_friends_block.gd`.
+    `test_block_list_lifecycle_bidirectional_add_rejection`
+    walks A blocks B → list_blocked_users contains B → self-
+    block rejected (INVALID_ARGUMENT) → A→B add_friend
+    silently no-ops AND A's view of B stays state=3 BANNED
+    → B→A add_friend silently no-ops AND B's row never
+    reaches state=1 INVITE_SENT → A unblocks B →
+    list_blocked_users no longer contains B → A→B
+    add_friend succeeds with state=1 row materialized on A's
+    side. 20 asserts green against live Nakama.
+    `test_blocked_pair_aborts_matchmaker_fanout` mints A + B
+    via `multi_session_anon(2)`, A blocks B, both open
+    sockets, both add min=max=2 matchmaker tickets, asserts
+    both receive `match_failed reason=blocked_pair` with a
+    populated `message` AND neither receives `match_ready`
+    (verifies the runtime hook's blocked-pair branch returns
+    "" before allocation). Mock-mode gated; pends correctly
+    on live prod (no EDGEGAP_MOCK_DEPLOY there).
+  - Decision worth recording: contract assertions verify
+    friend-row state via `GET /v2/friend`, not HTTP status.
+    Nakama's `POST /v2/friend?ids=X` returns 200 OK even
+    when every target is silently skipped due to a BANNED
+    relationship — caught on the first test run by the
+    "expected status >= 400" assertion failing. The
+    bidirectional rejection contract is "no fresh state=1
+    row is written" rather than "the HTTP call errors",
+    which is what the test now asserts via
+    `_fetch_friend_state` helper.
+  - Decision worth recording: the matchmaker-abort test
+    uses the inner `_Capture` class pattern lifted from
+    `test_party_to_matchmaking.gd` (8.18). Captures both
+    `received_matchmaker_matched` and `received_notification`
+    on each user's socket and parses the flat-JSON
+    match_failed content (different shape than match_ready's
+    double-encoded `{connection: "<inner-json>"}`). Same
+    `_cleanup_sockets` helper pattern too.
 - [x] **8.16 `test_friends_account_delete_cascade.gd`** (2026-05-13).
   - Done: new two-user compliance test under
     `addons/snoringcat_platform_client/test/compliance/
