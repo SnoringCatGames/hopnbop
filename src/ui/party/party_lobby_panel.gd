@@ -24,6 +24,9 @@ extends SidePanel
 @export var _join_by_code_icon: Texture2D
 @export var _chat_icon: Texture2D
 @export var _transfer_leadership_icon: Texture2D
+# TODO: replace with a dedicated game_mode_icon.png asset.
+# Currently reuses levels_icon.png per the Stage 5.7 sign-off.
+@export var _mode_icon: Texture2D
 
 var _status_label: Label
 var _bottom_spacer: Control
@@ -382,6 +385,16 @@ func _render_active_party() -> void:
 		_connect_row_clicked(start_row)
 		_dynamic_nodes.append(start_row)
 
+		# Stage 5.7 game-mode picker row. Leader-only and only
+		# meaningful when the server reported >1 mode. Cycles to
+		# the next mode on tap; followers see the change on the
+		# next party_state_changed fan-out. Hidden during
+		# matchmaking — changing modes mid-queue would require
+		# re-issuing every member's ticket and the runtime
+		# doesn't support that without a full leave/re-enqueue
+		# round trip.
+		_add_mode_cycle_row()
+
 		var invite_row := ActionRow.new()
 		invite_row.setup_actions(
 			_on_open_friends_pressed,
@@ -661,6 +674,84 @@ func _on_start_match_pressed() -> void:
 
 func _on_ready_toggle_pressed(ready: bool) -> void:
 	G.party_manager.set_ready(ready)
+
+
+## Adds the leader-only "Mode: <name>" row that cycles through
+## available modes on tap. Skipped when the server reports fewer
+## than 2 modes (single-mode game; no choice to make). Stage 5.7.
+func _add_mode_cycle_row() -> void:
+	if not is_instance_valid(G.backend_api_client):
+		return
+	var modes: Array = (
+		G.backend_api_client.server_matchmaker_modes)
+	if modes.size() < 2:
+		return
+	var current_id := G.party_manager.get_party_mode()
+	if current_id.is_empty():
+		for m in modes:
+			if (m is Dictionary
+					and bool(m.get("is_default", false))):
+				current_id = str(m.get("id", ""))
+				break
+	var display_name := current_id.capitalize()
+	for m in modes:
+		if not (m is Dictionary):
+			continue
+		if str(m.get("id", "")) != current_id:
+			continue
+		var key := str(m.get("display_name_key", ""))
+		if not key.is_empty():
+			display_name = tr(key)
+		break
+	var row := ActionRow.new()
+	row.setup_actions(
+		_on_cycle_mode_pressed,
+		_on_cycle_mode_pressed)
+	row.setup_label(
+		tr("PARTY.MODE_LABEL") % display_name, _mode_icon)
+	_row_container.add_child(row)
+	_connect_row_clicked(row)
+	_dynamic_nodes.append(row)
+
+
+func _on_cycle_mode_pressed() -> void:
+	if not is_instance_valid(G.backend_api_client):
+		return
+	var modes: Array = (
+		G.backend_api_client.server_matchmaker_modes)
+	if modes.size() < 2:
+		return
+	var current_id := G.party_manager.get_party_mode()
+	if current_id.is_empty():
+		for m in modes:
+			if (m is Dictionary
+					and bool(m.get("is_default", false))):
+				current_id = str(m.get("id", ""))
+				break
+	var current_index := -1
+	for i in modes.size():
+		var m: Variant = modes[i]
+		if m is Dictionary and str(m.get("id", "")) == current_id:
+			current_index = i
+			break
+	var next_index := (
+		(current_index + 1) % modes.size()
+		if current_index >= 0
+		else 0)
+	var next_mode: Variant = modes[next_index]
+	if not (next_mode is Dictionary):
+		return
+	var next_id := str(next_mode.get("id", ""))
+	if next_id.is_empty():
+		return
+	G.party_manager.set_party_mode(next_id)
+	if is_instance_valid(G.toast_overlay):
+		var key := str(next_mode.get("display_name_key", ""))
+		var name := (
+			tr(key) if not key.is_empty()
+			else next_id.capitalize())
+		G.toast_overlay.show_toast(
+			tr("PARTY.MODE_CHANGED") % name)
 
 
 func _on_leave_pressed() -> void:

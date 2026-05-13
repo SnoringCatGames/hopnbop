@@ -70,14 +70,13 @@ See also:
     3.4, 3.5, 3.6, 3.7, 3.8, 3.9 protocol pre-check via
     ticket-property route, 3.10 including the `legal_version`
     parity CI guard). Stage complete.
-  - Stage 4 — 5/8 tasks shipped 2026-05-12 (4.1, 4.2, 4.4,
-    4.5, 4.6). Open: 4.3 (needs `matchmaker_rules.require_accept`
-    in game.yaml), 4.7 (needs `matchmaker_rules.modes` schema),
-    4.8 (region picker; optional, needs Edgegap region list).
-  - Stage 5 — 10/11 tasks shipped 2026-05-12 (5.1, 5.2, 5.3,
-    5.4, 5.5, 5.6, 5.8, 5.9, 5.10, 5.11). Open: 5.7 game-mode
-    picker (deferred until game.yaml schema gains a `modes`
-    list, mirrored by Stage 4.7).
+  - Stage 4 — 6/8 tasks shipped (4.1, 4.2, 4.4, 4.5, 4.6
+    2026-05-12; 4.7 game-mode picker 2026-05-13). Open: 4.3
+    (needs `matchmaker_rules.require_accept` in game.yaml), 4.8
+    (region picker; optional, needs Edgegap region list).
+  - Stage 5 — 11/11 tasks shipped (5.1–5.6, 5.8–5.11
+    2026-05-12; 5.7 leader game-mode 2026-05-13). Stage
+    complete.
   - Stage 6 — 11/11 baseline tasks shipped 2026-05-12 (6.1
     subsystem slots + register_subsystem helper, 6.2
     auth_client → PlatformAuthApiClient + nakama / OAuth
@@ -820,12 +819,38 @@ calls out near-zero UI for queue status, cancel, errors.
     lobby behavior. New `LoadingScreen.show_matchmaking_failure
     (key)` generalizes the old `show_matchmaking_timeout()`
     (kept as a delegating alias for older callers).
-- [ ] 4.7 Game-mode picker (reads `matchmaker_rules.modes` from
-  `game.yaml`).
-  - Deferred: `game.yaml.matchmaker_rules` doesn't yet carry a
-    `modes` list. The current single-mode pipeline (one
-    matchmaker query, one fleet) keeps working; adding modes
-    requires schema + runtime + UI in one go.
+- [x] **4.7 Game-mode picker (reads `matchmaker_rules.modes` from
+      `game.yaml`)** (2026-05-13)
+  - Done — schema: `game.yaml.matchmaker_rules.modes` now lists
+    {id, display_name_key, description_key, min_players,
+    max_players, query, is_default}. Hopnbop ships two modes
+    (`ffa` default 2-4 player FFA, `duo` 1v1) so the picker has
+    actual options.
+  - Done — runtime: `parseModesFromConfig` reads the list out of
+    the per-game `Raw` config blob. `version_check` response gains
+    `matchmaker_modes` so the client can populate the picker
+    pre-auth (HTTP-key only). Empty list ⇒ single-mode game.
+  - Done — client: `BackendApiClient.server_matchmaker_modes`
+    caches the list; `LocalSettings.get_selected_game_mode`
+    persists the device-local pick at
+    `SECTION_SETTINGS::selected_game_mode`.
+    `NakamaMatchmakerClient` resolves the mode from
+    session_prefs > LocalSettings > server-default, then uses the
+    mode's `query` / `min_players` / `max_players` to override
+    `BackendApiClient.server_matchmaker_*` and adds `game_mode`
+    as a ticket property for the fleet allocator.
+  - Done — UI: new `GameModePickerPanel` (SidePanel) lists each
+    mode as an ActionRow with the selected mode showing a
+    checkmark. Hidden from `MainMenuPanel` when the server
+    reports no modes (single-mode game / pre-4.7 runtime).
+  - Translation keys added: `SETTINGS.GAME_MODE`,
+    `GAME_MODE.PICKER_HEADER`, `GAME_MODE.EMPTY`,
+    `MODE.FFA_NAME`, `MODE.FFA_DESC`, `MODE.DUO_NAME`,
+    `MODE.DUO_DESC` (13 locales each; non-English are best-
+    effort translations to be reviewed).
+  - Known limitation: the picker icon is `levels_icon.png` as a
+    placeholder (no dedicated art exists; same TODO pattern as
+    party / promote rows).
 - [ ] 4.8 Region picker (optional; reads from Edgegap's region list).
   - Deferred: low priority. Edgegap's
     `Geo-IP → region` selection is automatic via the
@@ -1108,12 +1133,34 @@ invitees were silently treated as accepted members.
   - Compliance test for the transfer flow still pending;
     needs the Stage 8.11 socket harness + 8.12 multi-
     session helper.
-- [ ] 5.7 Game-mode selection by leader before queuing.
-  - Deferred 2026-05-12. Needs `matchmaker_rules.modes`
-    schema in `game.yaml` plus per-mode matchmaker query /
-    fleet routing in the runtime (mirrors Stage 4.7 with a
-    UI surface). Single-mode pipeline keeps working; no
-    user-visible blocker.
+- [x] **5.7 Game-mode selection by leader before queuing**
+      (2026-05-13)
+  - Done — server: new `party_mode` storage collection
+    (server-owned; PermissionRead=2 / PermissionWrite=0) holds
+    `{mode_id, set_by, set_at}` per party. New `party_set_mode`
+    RPC validates the caller is the resolved leader, writes the
+    override, and fans out `party_state_changed` with
+    `event=mode_changed`. `partyStartMatchmakingRpc` reads the
+    override as the default when the leader's RPC call doesn't
+    supply `game_mode` (so followers pick up the leader's
+    choice automatically via the matchmaking notification).
+  - Done — addon: `PlatformPartyApiClient.set_mode(party_id,
+    mode_id)` + new `party_mode_set` signal.
+    `fetch_party_status` batch-reads the override row alongside
+    the leader and ready overrides; the resolved value folds
+    into the emitted party dict as `game_mode`.
+  - Done — game: `PartyManager.set_party_mode` /
+    `get_party_mode` passthroughs. `PartyLobbyPanel` shows a
+    leader-only cycle row labeled "Mode: <name>" that flips
+    through available modes on tap, calls `set_party_mode`, and
+    surfaces a toast on each change. Hidden during matchmaking
+    (changing mid-queue would require re-issuing every member's
+    ticket, which the runtime doesn't support). Hidden when the
+    server reports fewer than 2 modes.
+  - 3 new translation keys × 13 locales: `PARTY.SELECT_MODE`,
+    `PARTY.MODE_LABEL`, `PARTY.MODE_CHANGED`.
+  - Known limitation: the cycle row's icon is `levels_icon.png`
+    as a placeholder (same TODO pattern as the 4.7 picker).
 - [x] **5.8 Party chat** (2026-05-12)
   - Done — socket: `NotificationSocketClient` extended with
     `join_chat_group(group_id) -> channel_id`,

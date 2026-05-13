@@ -323,6 +323,33 @@ func set_ready(ready: bool) -> void:
 		get_party_id(), ready)
 
 
+## Set the party's matchmaker game mode (leader-only; the
+## runtime enforces the leader check). Optimistically patches
+## `current_party.game_mode` so the lobby UI flips immediately;
+## the next fetch_party_status round-trip + the fan-out
+## party_state_changed notification reconcile against the
+## server. Stage 5.7.
+func set_party_mode(mode_id: String) -> void:
+	if not is_in_party():
+		return
+	if mode_id.is_empty():
+		return
+	if str(current_party.get("game_mode", "")) == mode_id:
+		return
+	current_party["game_mode"] = mode_id
+	party_updated.emit(current_party)
+	Platform.party.set_mode(get_party_id(), mode_id)
+
+
+## Returns the party's currently-selected matchmaker game mode,
+## or "" when no override has been written yet (so callers fall
+## back to the server's default-flagged mode). Stage 5.7.
+func get_party_mode() -> String:
+	if not is_in_party():
+		return ""
+	return str(current_party.get("game_mode", ""))
+
+
 ## Whether the viewer is currently marked ready in this
 ## party. False when not in a party.
 func is_self_ready() -> bool:

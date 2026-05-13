@@ -104,8 +104,8 @@ func client_request_session_ids(
 
 	var preview_device_id := _resolve_preview_device_id()
 	var query := _build_query(session_prefs)
-	var min_count := _resolve_min_count()
-	var max_count := _resolve_max_count()
+	var min_count := _resolve_min_count(session_prefs)
+	var max_count := _resolve_max_count(session_prefs)
 	var string_props := _build_string_props(
 		player_count, session_prefs)
 	var numeric_props := _build_numeric_props(
@@ -158,7 +158,14 @@ func _resolve_preview_device_id() -> String:
 	return _preview_device_id
 
 
-func _build_query(_session_prefs: Dictionary) -> String:
+func _build_query(session_prefs: Dictionary) -> String:
+	# Stage 4.7 / 5.7: prefer the selected mode's query first
+	# so a duo ticket only matches other duo tickets. Empty
+	# mode_query falls through to the game-level default below.
+	var mode := _resolve_mode_dict(session_prefs)
+	if (mode.has("query")
+			and not str(mode.get("query", "")).is_empty()):
+		return str(mode["query"])
 	# Stage 3.8: prefer the runtime-reported query (from
 	# game.yaml's matchmaker_rules) over the compile-time
 	# default. Empty means "no override; use the default".
@@ -172,7 +179,10 @@ func _build_query(_session_prefs: Dictionary) -> String:
 	return _DEFAULT_MATCHMAKER_QUERY
 
 
-func _resolve_min_count() -> int:
+func _resolve_min_count(session_prefs: Dictionary = {}) -> int:
+	var mode := _resolve_mode_dict(session_prefs)
+	if int(mode.get("min_players", 0)) > 0:
+		return int(mode["min_players"])
 	if (is_instance_valid(G.backend_api_client)
 			and G.backend_api_client
 				.server_matchmaker_min_players > 0):
@@ -181,13 +191,48 @@ func _resolve_min_count() -> int:
 	return _DEFAULT_MIN_COUNT
 
 
-func _resolve_max_count() -> int:
+func _resolve_max_count(session_prefs: Dictionary = {}) -> int:
+	var mode := _resolve_mode_dict(session_prefs)
+	if int(mode.get("max_players", 0)) > 0:
+		return int(mode["max_players"])
 	if (is_instance_valid(G.backend_api_client)
 			and G.backend_api_client
 				.server_matchmaker_max_players > 0):
 		return (G.backend_api_client
 			.server_matchmaker_max_players)
 	return _DEFAULT_MAX_COUNT
+
+
+## Returns the selected mode dict (with keys: id, query,
+## min_players, max_players, ...) for the current request, or an
+## empty dict when no mode is selected and no server modes are
+## known. Resolution order:
+##   1. session_prefs.game_mode (party flow injects this).
+##   2. LocalSettings.get_selected_game_mode() (solo picker).
+##   3. server_matchmaker_modes' is_default entry.
+##   4. {} (no mode; caller falls back to game-level rules).
+## Stage 4.7 / 5.7.
+func _resolve_mode_dict(session_prefs: Dictionary) -> Dictionary:
+	if not is_instance_valid(G.backend_api_client):
+		return {}
+	var modes: Array = G.backend_api_client.server_matchmaker_modes
+	if modes.is_empty():
+		return {}
+	var picked_id := ""
+	if session_prefs.has("game_mode"):
+		picked_id = str(session_prefs["game_mode"])
+	if picked_id.is_empty() and is_instance_valid(G.local_settings):
+		picked_id = G.local_settings.get_selected_game_mode()
+	if picked_id.is_empty():
+		for m in modes:
+			if (m is Dictionary
+					and bool(m.get("is_default", false))):
+				return m
+		return {}
+	for m in modes:
+		if m is Dictionary and str(m.get("id", "")) == picked_id:
+			return m
+	return {}
 
 
 func _build_string_props(
@@ -238,6 +283,17 @@ func _build_string_props(
 	for key in ["party_id", "game_mode"]:
 		if session_prefs.has(key):
 			props[key] = str(session_prefs[key])
+	# Stage 4.7 / 5.7: when no explicit game_mode rode in via
+	# session_prefs, fall back to the device's solo pick (or the
+	# server's default-flagged mode). The resolved id is also the
+	# mode that drove _build_query / _resolve_min/max above, so
+	# the ticket property and the query stay coherent.
+	if not props.has("game_mode"):
+		var fallback_mode := _resolve_mode_dict(session_prefs)
+		if not fallback_mode.is_empty():
+			var mode_id := str(fallback_mode.get("id", ""))
+			if not mode_id.is_empty():
+				props["game_mode"] = mode_id
 	return props
 
 

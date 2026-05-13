@@ -85,6 +85,30 @@ matchmaker_rules:
   # Reserved for future filters (skill bands, region pinning,
   # block-list enforcement). Empty list = no extra rules.
   rules: []
+  # Stage 4.7 / 5.7 game modes. The client picks one before
+  # queuing; the runtime surfaces this list via version_check so
+  # the picker can populate without authenticating. Each mode
+  # overrides min/max/query for the matchmaker ticket. When the
+  # client passes no `game_mode` ticket property, the matchmaker
+  # falls back to the top-level min_players/max_players above
+  # (rollout backstop for pre-4.7 clients). The default-flagged
+  # entry is the initial pick if the user has never opened the
+  # picker.
+  modes:
+    - id: ffa
+      display_name_key: MODE.FFA_NAME
+      description_key: MODE.FFA_DESC
+      min_players: 2
+      max_players: 4
+      query: "+properties.game_mode:ffa"
+      is_default: true
+    - id: duo
+      display_name_key: MODE.DUO_NAME
+      description_key: MODE.DUO_DESC
+      min_players: 2
+      max_players: 2
+      query: "+properties.game_mode:duo"
+      is_default: false
 
 # Leaderboards owned by this game. Stage 3.6 prefixes these
 # with `{game_id}_` so two games on one Nakama instance can

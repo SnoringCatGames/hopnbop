@@ -32,6 +32,14 @@ var server_matchmaker_min_players: int = 0
 var server_matchmaker_max_players: int = 0
 var server_matchmaker_query: String = ""
 
+# Cached game-mode list surfaced by version_check
+# (game.yaml `matchmaker_rules.modes`). Each entry is a
+# Dictionary with keys: id (String), display_name_key (String),
+# description_key (String), min_players (int), max_players (int),
+# query (String), is_default (bool). Empty array means "no
+# modes; hide the picker". Stage 4.7 / 5.7.
+var server_matchmaker_modes: Array = []
+
 ## Deprecated. Kept so the legacy lobby-level warmup connection
 ## still resolves. Never emitted now that Edgegap auto-allocates.
 signal fleet_status_updated(data: Dictionary)
@@ -321,6 +329,17 @@ func check_version() -> void:
 		data.get("matchmaker_max_players", 0))
 	server_matchmaker_query = str(
 		data.get("matchmaker_query", ""))
+	# Stage 4.7 / 5.7: cache the runtime's per-game mode list so
+	# the picker UI and NakamaMatchmakerClient can route by
+	# selected mode. Empty array (game declares no modes or pre-
+	# 4.7 runtime) hides the picker and leaves the matchmaker on
+	# its top-level rules.
+	var raw_modes: Variant = data.get(
+		"matchmaker_modes", null)
+	if raw_modes is Array:
+		server_matchmaker_modes = raw_modes
+	else:
+		server_matchmaker_modes = []
 	var compatible := (
 		server_protocol < 0
 		or server_protocol == client_protocol)

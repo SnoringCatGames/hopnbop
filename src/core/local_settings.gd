@@ -23,6 +23,13 @@ const SECTION_META := "meta"
 const META_KEY_VERSION := "game_version"
 const KEY_LOCALE := "locale"
 const KEY_ANONYMOUS_HUE := "anonymous_color_hue"
+## Selected matchmaker game-mode id (Stage 4.7). Persisted
+## device-local so a user's choice survives restarts but does
+## not sync to other devices — different devices can prefer
+## different modes (web vs desktop input). Empty string means
+## "no choice yet; the picker UI shows the server's default-
+## flagged mode highlighted, and the matchmaker uses that mode."
+const KEY_SELECTED_GAME_MODE := "selected_game_mode"
 
 const SUPPORTED_LOCALES: Array[String] = [
 	"ar", "zh", "en", "fr", "de", "hi",
@@ -193,6 +200,34 @@ func set_locale(locale: String) -> void:
 		SECTION_SETTINGS, KEY_LOCALE, locale)
 	TranslationServer.set_locale(locale)
 	LocalizedNameConfig.clear_cache()
+	save_settings()
+
+
+## Returns the device-local selected game-mode id, or empty
+## string when the user has never opened the picker. Callers
+## should fall back to the server's default-flagged mode in
+## that case (see `BackendApiClient.server_matchmaker_modes`).
+## Stage 4.7.
+func get_selected_game_mode() -> String:
+	if _config.has_section_key(
+			SECTION_SETTINGS, KEY_SELECTED_GAME_MODE):
+		return str(_config.get_value(
+			SECTION_SETTINGS, KEY_SELECTED_GAME_MODE))
+	return ""
+
+
+## Persist the user's game-mode pick. Empty string clears the
+## device's preference and reverts to the server default on
+## next queue. Stage 4.7.
+func set_selected_game_mode(mode_id: String) -> void:
+	if mode_id.is_empty():
+		if _config.has_section_key(
+				SECTION_SETTINGS, KEY_SELECTED_GAME_MODE):
+			_config.erase_section_key(
+				SECTION_SETTINGS, KEY_SELECTED_GAME_MODE)
+	else:
+		_config.set_value(
+			SECTION_SETTINGS, KEY_SELECTED_GAME_MODE, mode_id)
 	save_settings()
 
 	# Refresh overhead labels so names update.

@@ -14,6 +14,7 @@ extends SidePanel
 @export var _party_lobby_panel_scene: PackedScene
 @export var _account_panel_scene: PackedScene
 @export var _info_panel_scene: PackedScene
+@export var _game_mode_panel_scene: PackedScene
 
 @export_group("Row Icons")
 @export var icon_settings: Texture2D
@@ -27,6 +28,9 @@ extends SidePanel
 @export var icon_info: Texture2D
 @export var icon_leaderboard: Texture2D
 @export var icon_my_stats: Texture2D
+# TODO: replace with a dedicated game_mode_icon.png asset.
+# Currently reuses levels_icon.png per the Stage 4.7 sign-off.
+@export var icon_game_mode: Texture2D
 @export var icon_quit: Texture2D
 
 
@@ -82,6 +86,19 @@ func build_ui() -> void:
 		tr("SETTINGS.LEVELS"),
 		_level_pref_panel_scene,
 		icon_levels)
+
+	# Game-mode picker trigger. Hidden when the server hasn't
+	# reported any modes (single-mode game, or pre-4.7 runtime),
+	# so the row only appears when there's an actual choice to
+	# make. Stage 4.7.
+	if (_game_mode_panel_scene != null
+			and is_instance_valid(G.backend_api_client)
+			and not G.backend_api_client
+				.server_matchmaker_modes.is_empty()):
+		_add_sub_panel_trigger_row(
+			tr("SETTINGS.GAME_MODE"),
+			_game_mode_panel_scene,
+			icon_game_mode)
 
 	# Leaderboard screen trigger (all players).
 	_add_screen_trigger_row(
