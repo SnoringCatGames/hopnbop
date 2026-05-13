@@ -80,6 +80,44 @@ jobs:
             exit 1
           fi
           echo "ok: protocol_version matches ($yaml_v)"
+      - name: Check legal_version parity
+        run: |
+          # game.yaml::legal.legal_version MUST equal
+          # src/core/legal_version.gd::LEGAL_VERSION, or the
+          # consent screen will force re-consent on first online
+          # boot (the runtime-reported value wins when present;
+          # the constant is only the offline / pre-fetch fallback,
+          # so a mismatch is annoying-but-safe rather than a hard
+          # outage — still worth catching at PR time).
+          # See MULTI_GAME_ROADMAP.md Stage 3.10.
+          set -e
+          if [ ! -f src/core/legal_version.gd ]; then
+            echo "::error::src/core/legal_version.gd missing"
+            exit 1
+          fi
+          # game.yaml block:
+          #   legal:
+          #     legal_version: "1.1"
+          # Extract the value (strip quotes / whitespace / CR).
+          yaml_v=$(grep -E '^[[:space:]]+legal_version:' game.yaml \
+            | head -n1 | awk -F':' '{print $2}' \
+            | tr -d ' "\r')
+          # legal_version.gd:
+          #   const LEGAL_VERSION := "1.1"
+          godot_v=$(grep -E '^const LEGAL_VERSION' \
+            src/core/legal_version.gd | head -n1 \
+            | awk -F':=' '{print $2}' | tr -d ' "\r')
+          echo "game.yaml::legal.legal_version = $yaml_v"
+          echo "legal_version.gd::LEGAL_VERSION = $godot_v"
+          if [ -z "$yaml_v" ] || [ -z "$godot_v" ]; then
+            echo "::error::could not parse legal_version from one of the files"
+            exit 1
+          fi
+          if [ "$yaml_v" != "$godot_v" ]; then
+            echo "::error::legal_version mismatch: game.yaml=$yaml_v vs legal_version.gd=$godot_v"
+            exit 1
+          fi
+          echo "ok: legal_version matches ($yaml_v)"
 
   godot-tests:
     name: GUT unit + integration

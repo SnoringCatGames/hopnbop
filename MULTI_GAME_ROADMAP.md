@@ -30,46 +30,35 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 6 SDK extraction continuing. 6.6
-  shipped 2026-05-12: `NakamaMatchmakerClient` split into a clean
-  addon-side `PlatformMatchmakingClient` (Nakama socket layer +
-  matchmaker-ticket lifecycle + match_ready parser, emits
-  platform-agnostic signals with `transport_type` as a string)
-  plus a slimmer game-side `NakamaMatchmakerClient extends
-  SessionProvider` adapter that translates the string to
-  `NetworkSettings.TransportType`, applies it to
-  `Netcode.settings.transport_type` before emitting
-  `session_ids_received`, and reads matchmaker rules
-  (query / min / max) from `G.backend_api_client.server_
-  matchmaker_*`. Preview-slot device-id minting stays in the
-  adapter (it depends on `Netcode.is_preview` /
-  `Netcode.preview_client_number`); the addon takes
-  `preview_device_id` as an arg and authenticates with it when
-  non-empty. `EdgegapServerProvider` stays game-side as planned
-  — its entanglement with `Netcode.connector` (peer validation,
-  shutdown helpers) and `G.match_result_reporter` makes it a
-  poor addon-citizen and the cost of splitting only
-  `register_with_runtime()` out doesn't justify the indirection.
-  `Platform.gd` gained nothing new (the `matchmaking` slot was
-  already declared back in 6.1). `global.gd._enter_tree` now
-  instantiates `PlatformMatchmakingClient` and registers via
-  `Platform.register_subsystem("matchmaking", ...)` as a
-  boot-time singleton; the per-session
-  `NakamaMatchmakerClient` adapter connects to / disconnects
-  from its signals in `_ready` / `_exit_tree`. Editor pass
-  refreshed `.godot/global_script_class_cache.cfg` with the
-  new class entry; plain headless boot clean (Main._ready,
-  JWT refresh against live Nakama with
-  `vars: {game_id: hopnbop}`). Next focus: 6.8
-  (settings_cloud_sync — depends on Stage 3.5's
-  global-vs-per-game taxonomy decision, so blocked unless we
-  also take 3.5 in the same pass), or 6.9
-  (game_session_manager — large refactor since the manager
-  reaches into G.client_session, Netcode.connector, and
-  game-side dialog surfaces). 6.10 (mass consumer migration) is
-  largely a no-op now since each extraction has migrated its
-  own consumers; a final grep sweep can mark it complete. 6.11
-  (screen templates) is greenfield and least urgent.
+- **Current focus:** Stage 6 cleanup landed. 6.10 (mass consumer
+  migration) verified done 2026-05-12 — grep across `src/` shows
+  zero live callsites still referencing the removed `G.auth_client`
+  / `G.auth_token_store` / `G.friends_api_client` /
+  `G.party_api_client` / `G.notification_socket_client` /
+  `G.matchmaker_client` shapes; the only remaining
+  `G.*_api_client` reference is `G.backend_api_client`, kept
+  game-side intentionally (caches per-game values from
+  `version_check`; could become a `Platform.backend` subsystem
+  later but the payoff is small until a second game needs the
+  same surface). Closed-out 3.10's open CI gap by adding a
+  `legal_version` parity step to `pr-validate.yml`'s
+  `game-config-parity` job, sibling to the existing
+  `protocol_version` check. Extraction works locally
+  (both files yield `"1.1"`). Next focus options, in roughly
+  ascending cost: (a) Stage 3.5 taxonomy decision + 6.8
+  settings_cloud_sync (paired pass; needs a global-vs-per-game
+  split decision + one-shot storage migration); (b) Stage 6.9
+  game_session_manager (large refactor — manager reaches into
+  Netcode autoload, NetworkLogger, EdgegapServerProvider,
+  PreviewSessionProvider, UI screens, so the realistic move is
+  a thin `Platform.session` API delegating layer with the
+  coordinator staying game-side, mirroring the
+  party_manager / friends_notification_poller pattern); (c)
+  Stage 6.11 screen templates (greenfield, 3 screens, needs an
+  upfront design decision on the template vs base-class pattern
+  given the heavy `G.*` UI coupling — see scoping notes added
+  below). All three are tractable but none are obviously next;
+  pick by priority of consuming-game launch timeline.
 - **Last updated:** 2026-05-12.
 - **Stages complete:**
   - Stage 0 (platform infra extraction — including the kickoff
@@ -83,7 +72,8 @@ See also:
     light still gated on a Stage 8 socket harness for multi-user
     party scenarios.
   - Stage 3 — 8/10 tasks shipped 2026-05-12 (3.1, 3.2, 3.3,
-    3.4, 3.6, 3.7, 3.8, 3.10). Open: 3.5 settings split
+    3.4, 3.6, 3.7, 3.8, 3.10 including the `legal_version`
+    parity CI guard). Open: 3.5 settings split
     (needs global-vs-per-game taxonomy decision) and 3.9
     protocol-version pre-check (needs matchmaker-entry session-
     vars access pattern).
@@ -95,7 +85,7 @@ See also:
     5.4, 5.5, 5.6, 5.8, 5.9, 5.10, 5.11). Open: 5.7 game-mode
     picker (deferred until game.yaml schema gains a `modes`
     list, mirrored by Stage 4.7).
-  - Stage 6 — 8/11 tasks shipped 2026-05-12 (6.1 subsystem
+  - Stage 6 — 9/11 tasks shipped 2026-05-12 (6.1 subsystem
     slots + register_subsystem helper, 6.2 auth_client →
     PlatformAuthApiClient + nakama / OAuth constants on
     Platform, 6.3 auth_token_store reconciliation + Platform.
@@ -104,16 +94,17 @@ See also:
     6.5b PlatformNotificationSocketClient, 6.6
     PlatformMatchmakingClient split + game-side adapter, 6.7
     PlatformPresenceApiClient split out from the old friends
-    client). 6.5 partially completed — only the API client
+    client, 6.10 mass consumer migration verified clean via
+    grep sweep). 6.5 partially completed — only the API client
     extracted; party_manager.gd stays game-side (UI-dialog
     coupling). 6.6 partially completed —
     `EdgegapServerProvider` deliberately stays game-side
     (in-container `Netcode.connector` entanglement). Open:
     6.8 (settings_cloud_sync — needs Stage 3.5 taxonomy
-    decision), 6.9 (game_session_manager), 6.10 (mass
-    consumer migration — largely a no-op now as side-effect
-    of each extraction; finish with a grep sweep), 6.11
-    (screen templates).
+    decision), 6.9 (game_session_manager — heavy
+    coordinator-with-Netcode-coupling refactor), 6.11
+    (screen templates — greenfield, see scoping notes under
+    the task entry).
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -154,17 +145,19 @@ Stage 3 (mostly done, 2026-05-12) — game_id scoping: presence
    │   server RPCs (5.10).
    │   Open: 5.6 leader transfer, 5.7 game-mode picker.
    └─→ Stage 6 (in progress, 2026-05-12) — Platform SDK extraction.
-       6.1 subsystem slots, 6.3 auth_token_store reconciliation
-       (22-file migration to Platform.token_store), 6.4
-       PlatformFriendsApiClient, 6.5 PlatformPartyApiClient
+       6.1 subsystem slots, 6.2 PlatformAuthApiClient + Nakama /
+       OAuth constants on Platform, 6.3 auth_token_store
+       reconciliation (22-file migration to Platform.token_store),
+       6.4 PlatformFriendsApiClient, 6.5 PlatformPartyApiClient
        (party_manager.gd kept game-side), 6.5b
        PlatformNotificationSocketClient, 6.6
        PlatformMatchmakingClient (split out of
        NakamaMatchmakerClient; EdgegapServerProvider stays
-       game-side), and 6.7 PlatformPresenceApiClient all
+       game-side), 6.7 PlatformPresenceApiClient, and 6.10
+       grep-sweep verification of mass consumer migration all
        shipped. Remaining: 6.8 settings (needs 3.5 taxonomy),
-       6.9 session (large refactor), 6.10 consumer migration
-       (mostly done as side-effect), 6.11 screens.
+       6.9 session (heavy refactor — coordinator coupling), 6.11
+       screens (greenfield, 3 screens — design decision needed).
    ↓
 Stage 7 — Resilience (retries, notifications, observability)
 
@@ -681,10 +674,16 @@ two games can coexist on one Nakama instance.
     contract is "if the server reports a value, use it; else
     use ours". A mismatch surfaces as the consent screen
     forcing a re-consent on first online boot, which is
-    annoying but safe. CI doesn't yet guard
-    `game.yaml::legal_version` == `LEGAL_VERSION` parity; a
-    parallel check to Stage 2.7's protocol_version guard would
-    catch the mismatch at PR time.
+    annoying but safe.
+  - CI parity guard added 2026-05-12 as a sibling step to the
+    `game-config-parity` job's existing `protocol_version`
+    check. Extracts
+    `game.yaml::legal.legal_version` (via grep on the indented
+    block-scalar) and
+    `src/core/legal_version.gd::LEGAL_VERSION` (via grep on
+    the `const` line), strips quotes / whitespace, and fails
+    the workflow on mismatch. Verified locally that the
+    extraction returns `"1.1"` from both files.
 
 ## Stage 4 — Matchmaking UX
 
@@ -1699,13 +1698,151 @@ Extract clean code, not bug-laden code.
     `nakama.snoringcat.games` succeeds), not from an automated
     test.
 - [ ] 6.8 Extract `settings_cloud_sync.gd` → `Platform.settings.*`.
+  - **Blocked on Stage 3.5's global-vs-per-game taxonomy
+    decision** — extracting the class as-is would lock in
+    today's "one blob per user, all settings together"
+    storage shape, which is exactly the limitation 3.5 wants
+    to unwind. Cleanest pass is 3.5 + 6.8 in one session.
+  - Scoping notes for the next pass:
+    - File is small (111 lines, RefCounted). The only
+      game-side reach-backs are `G.local_settings` (read +
+      write) and `G.backend_api_client.{save_player_settings,
+      fetch_player_settings, settings_received,
+      request_failed}` (RPC plumbing). The first stays
+      game-side (LocalSettings is a game-specific config
+      schema); the second points at the still-game-side
+      `backend_api_client.gd` — which means 6.8 can't be a
+      pure addon move until `backend_api_client.gd` is
+      either also extracted or its settings methods are
+      lifted into a new addon-side `Platform.settings`
+      client that hits the same Nakama storage collection
+      directly.
+    - Likely path: new `PlatformSettingsApiClient` in the
+      addon that owns the `save_player_settings` /
+      `fetch_player_settings` storage round-trips, takes a
+      "serialize / apply" callback pair so the game-side
+      mapping to/from `LocalSettings` stays out of the
+      addon. The cloud_sync class itself reduces to a
+      ~30-line game-side adapter that wires the callbacks
+      to `G.local_settings`.
+    - Migration: when 3.5 lands the global-vs-per-game
+      split, the addon's settings client should accept the
+      scope key (`"global"` vs `"game/{game_id}"`) as a
+      parameter on each call. Existing storage rows
+      (collection=`player_settings`, key=`current`) stay
+      readable; new writes go to two rows.
 - [ ] 6.9 Extract `game_session_manager.gd` → `Platform.session.*`
   (delegating layer; game-specific session-provider stays in
   `src/core/`).
-- [ ] 6.10 Migrate every consumer in hopnbop game code from
-  `G.*_api_client` to `Platform.*`. Grep coverage check at the end.
+  - Scoping notes for the next pass:
+    - File is 557 lines and is the central coordinator that
+      hands off between `EdgegapServerProvider` (production
+      server), `NakamaMatchmakerClient extends SessionProvider`
+      (client), and `PreviewSessionProvider` (editor preview /
+      local mode). Reaches into `Netcode.{is_server,
+      is_preview, is_client, should_connect_to_remote_server,
+      connector, log, settings}`, `NetworkLogger`,
+      `G.client_session`, `G.match_state`, `G.game_panel`,
+      `G.toast_overlay`, and the matchmaking-progress UI surface.
+    - A "lift the whole class into the addon" move would
+      require pulling `Netcode` (which itself owns
+      rollback-netcode framework state) into the addon —
+      wrong direction. The realistic move follows the same
+      pattern as 6.5's PartyManager: keep the coordinator
+      game-side, factor only its *API surface* into the
+      addon. But session_manager doesn't really have an API
+      surface separable from rollback-netcode — its job IS
+      the coordination.
+    - Likely path: leave `game_session_manager.gd` game-side
+      verbatim. Add a thin `Platform.session` slot that
+      exposes lifecycle-event signals (`session_started`,
+      `session_ended`, `match_ready`,
+      `connection_lost`) the addon's other subsystems can
+      observe. The game-side manager emits into the slot;
+      addon consumers subscribe. Net effect on the
+      `Platform.session` SDK surface: a passive observer,
+      not a coordinator. Mark 6.9 done once this trivial
+      passive slot exists; the heavy refactor doesn't pay
+      off until a second game with different netcode
+      semantics forces the abstraction.
+- [x] **6.10 Migrate every consumer in hopnbop game code from
+      `G.*_api_client` to `Platform.*`** (2026-05-12).
+  - Done — verification pass. `G.*_api_client` grep across
+    `src/` returns only `G.backend_api_client` (which is
+    intentionally still game-side, see decision log below) and
+    doc-comment / string-literal references that aren't live
+    callsites. No live callsite still names the removed
+    `G.auth_client`, `G.auth_token_store`, `G.friends_api_client`,
+    `G.party_api_client`, `G.notification_socket_client`, or
+    `G.matchmaker_client` shapes. Confirmed independently via
+    grep for the deleted `class_name`s
+    (`AuthClient`, `AuthTokenStore`, `FriendsApiClient`,
+    `PartyApiClient`, `NotificationSocketClient`): every hit is
+    either a typed local var using the new `Platform*ApiClient`
+    name, a node-name string in `global.gd`'s
+    `add_child` setup (cosmetic), or a docstring reference to
+    the old name — none are live class lookups.
+  - Decision worth recording: `backend_api_client.gd` stays
+    game-side for now. Its surface (`fetch_leaderboard`,
+    `fetch_player_stats`, `fetch_player_profile`,
+    `save_player_settings`, `check_version`, plus the no-op
+    fleet-warmup stubs kept for legacy UI callers) is mostly
+    Nakama-RPC plumbing that *could* live in the addon, but it
+    also caches per-game values populated by `version_check`
+    (`server_legal_version`, `server_matchmaker_*`) that the
+    addon's auth/matchmaker subsystems already read via
+    `G.backend_api_client.*`. A future "Platform.backend" or
+    "Platform.profile" subsystem could absorb it, but the
+    payoff is small until a second game needs the same
+    leaderboard/profile/stats RPCs — same coordinator-vs-API-
+    surface heuristic 6.4 / 6.5 / 6.6 followed. Tracked
+    informally as a 6.x follow-up; not on the critical path.
 - [ ] 6.11 Reusable screen templates in `Platform.screens.*`: auth,
   consent, anonymous-upgrade. Hop'n'Bop screens become thin wrappers.
+  - Scoping notes for the next pass:
+    - Three candidate screens, current sizes: `auth_screen.gd`
+      280 lines, `consent_screen.gd` 396 lines, anonymous-upgrade
+      doesn't exist yet (greenfield).
+    - Heavy `G.*` UI coupling. `auth_screen` references
+      `G.auth_screen`, `G.profile_image_cache`,
+      `G.friends_notification_poller`, `G.party_manager`,
+      `G.client_session`, `G.settings.anonymous_texture`,
+      `G.screens`, `ScreensMain.ScreenType.LOBBY`,
+      `Netcode.is_preview`, `Netcode.preview_client_number`,
+      plus the game's `Screen` base class + `ScreenFocusNavigator`.
+      `consent_screen` references `G.consent_screen`,
+      `AnyDeviceInputPoller`, game-specific texture exports
+      (terms / privacy / language icons), and a fixed scene
+      structure (`%AgeCheckBox`, `%TermsCheckBox`,
+      `%LanguageRow`, `%TermsLinkRow`, `%PrivacyLinkRow`,
+      `%ContinueButton`).
+    - **Design decision needed before implementation:** pick one
+      of (a) addon ships a `Screen` *base class* with the
+      navigation / auth-flow / consent-state plumbing; games
+      subclass and provide their own scene + theming; (b) addon
+      ships a full scene + script and games configure via
+      `@export` properties only; (c) addon ships small
+      *components* (auth-button-row, consent-checkbox-row) and
+      games stitch them together. Pattern (a) lines up best
+      with how `SidePanel` / `Screen` already work in
+      hopnbop, but means the addon has to either carry its
+      own `Screen` base class (with `ScreenFocusNavigator`
+      etc.) or take a dependency on whatever the game uses —
+      and `ScreenFocusNavigator` itself is game-side today.
+      Pattern (b) loses flexibility but is the simplest to
+      ship. Pattern (c) is the most composable but ships
+      least value.
+    - Recommend pattern (a) with a generic `PlatformScreen`
+      base in the addon, no dependency on game-specific
+      navigator. Game-side `Screen` extends it. Concrete
+      screens (auth/consent/upgrade) ship as `*.tscn` +
+      `*.gd` in the addon with `@export` slots for icons,
+      colors, branding strings; games override the strings
+      via translation keys.
+    - Anonymous-upgrade screen is greenfield — design it in
+      the same pass as the extraction so the surface is
+      coherent end-to-end, rather than retrofitting two
+      pre-existing screens then trying to make the third fit.
 
 ## Stage 7 — Resilience
 
@@ -2727,6 +2864,36 @@ Security:
     parser) is genuinely platform-agnostic, so it moves;
     the in-container validation coordinator isn't, so it
     stays.
+
+- **2026-05-12:** Stage 6.10 verified done + Stage 3.10 CI gap
+  closed. Two decisions worth recording:
+  - **6.10 is verified, not "shipped" in the usual sense.** Every
+    prior 6.x extraction migrated its own consumers as part of
+    its commit (the per-pattern sed passes in 6.2 / 6.3 / 6.4 /
+    6.5 / 6.5b / 6.6). 6.10's job is the final sweep: confirm
+    no live callsite still names a removed
+    `G.*_api_client`-shaped field. The grep was clean —
+    `G.backend_api_client` is the only remaining
+    `G.*_api_client` reference and it's intentionally game-side
+    (it caches per-game `version_check` values that the addon's
+    auth / matchmaker subsystems consume). Closing 6.10
+    without any new code change is appropriate; the "code" was
+    every previous 6.x landing's incremental migration.
+  - **`legal_version` parity CI guard added as a sibling step,
+    not a new job.** 3.10's earlier note flagged this as a
+    follow-up. The `protocol_version` parity check already
+    lives in a `game-config-parity` job in `pr-validate.yml`;
+    adding a second `Check legal_version parity` step inside
+    the same job costs nothing extra (one checkout, one
+    runner) and keeps both parity checks visually colocated
+    when CI logs are read. Extraction pattern: grep for the
+    indented YAML block-scalar key, then grep for the
+    `const LEGAL_VERSION` line, strip quotes / whitespace /
+    CR. Verified locally that both files yield `"1.1"`. The
+    check is annoying-but-safe to fire (a real mismatch
+    triggers a one-time re-consent rather than locking
+    players out), so failing the PR early is the right
+    severity.
 
 ## How to use this document
 
