@@ -30,13 +30,15 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 8 test foundation, starting with the
-  cheapest win — 8.1 (`go test ./runtime/...` step in
-  `nakama-runtime.yml`). Picked after a 2026-05-13 audit that
-  confirmed three Stage 8 entry points (cheapest: 8.1; highest
-  leverage: 8.11 socket harness + 8.12 multi-session helper,
-  which retroactively unblocks the ~10 "compliance test still
-  pending" notes on landings 1.5, 3.5, 3.9, 5.4-5.11, 6.5b).
+- **Current focus:** Stage 8 test foundation. 8.1 (deploy-time
+  `go test ./runtime/...` gate in `nakama-runtime.yml`) + 8.2
+  (staticcheck — was already running in PR validate) shipped
+  2026-05-13. **Next:** highest-leverage path is 8.11 reusable
+  socket harness + 8.12 multi-session helper, which
+  retroactively unblocks the ~10 "compliance test still pending"
+  notes on landings 1.5, 3.5, 3.9, 5.4-5.11, 6.5b. Stage 7
+  resilience (13 open items) and Stage 6.11 screens (greenfield,
+  3 screens, needs design call) are the parallel tracks.
 - **2026-05-13 audit follow-up — drift items resolved later
   the same day:**
   - **Runtime backlog flushed:** the deployed runtime was 24
@@ -68,7 +70,21 @@ See also:
     earlier teardowns). After-state verified empty across
     every AWS service. CLAUDE.md's "Zero AWS resources remain"
     is now literally accurate. Script bug on the trailing
-    CloudWatch-billing-alarm placeholder also fixed.
+    CloudWatch-billing-alarm placeholder also fixed. Script
+    moved to `scripts/decommission/aws/phase-f-destroy.ps1`
+    so it's parked alongside any future game's AWS-migration
+    template.
+  - **Stale Edgegap image tags:** also closed 2026-05-13.
+    Deleted v8 through v26 (19 versions) via Edgegap's
+    `DELETE /v1/app/<app>/version/<name>` API. Verified
+    after-state: `total=1`, only v27 remains (the current
+    live pin in both `game.yaml::edgegap_app_version` and the
+    runtime env on prod).
+  - **`runtime_status.go` hardcoded RPC list:** the NEXT_STEPS
+    note was stale — the file was already refactored to use
+    `*[]string` and `main.go::addRpc` appends as each RPC
+    registers. `bulk_import` only appears when
+    `BULK_IMPORT_ENABLED=true`. Verified live; note updated.
 - **Prior session (also 2026-05-13) closed every remaining
   deferred item from Stages 1–5:**
   - **1.4 hard-delete cron** (`runtime/account_cron.go`).
@@ -91,7 +107,10 @@ See also:
   (b) pivot to Stage 7 resilience (13 open items including
   allocation retry, friend pagination, anonymous-upgrade UI,
   account-merge UI, observability re-introduction).
-- **Last updated:** 2026-05-13 (audit + 8.1 in-progress).
+- **Last updated:** 2026-05-13 (multi-pass: 8.1/8.2 deploy gate,
+  audit-surfaced drift fully resolved, 24-commit runtime backlog
+  deployed, first games-cache sync, Phase F finished, stale
+  Edgegap tags pruned, script relocations + doc cleanup).
 - **Stages complete:**
   - Stage 0 — platform infra extraction (kickoff verification
     items 0.8 + 0.9 confirmed 2026-05-12).

@@ -504,36 +504,40 @@ does — Stage 3.7 already wires `edgegap_app_version` through
 that route; a parallel "game_version" field would let the
 runtime drop the env var.
 
-### Clean up stale Edgegap image tags
+### Clean up stale Edgegap image tags (RESOLVED 2026-05-13)
 
-Active version is now `v27` (game.yaml + host env, both bumped
-2026-05-13). All older tags `v2`–`v26` are likely stale. Delete
-via the Edgegap dashboard or:
+Deleted v8 through v26 (19 versions) via Edgegap's
+`DELETE /v1/app/hopnbop-server/version/{name}` API. Verified
+after-state: `total=1`, only v27 remains. v27 is the live pin
+in both `game.yaml::edgegap_app_version` and the runtime env
+on prod.
+
+Recipe to repeat next time (e.g., after a few more deploys
+have accumulated stale tags):
 
 ```bash
-EDGEGAP_TOKEN=...  # in /opt/nakama/.env on Hetzner
-for v in $(seq 2 26); do
-  curl -X DELETE -H "Authorization: token $EDGEGAP_TOKEN" \
-    "https://api.edgegap.com/v1/app/hopnbop-server/version/v$v"
-done
-```
-
-Verify which versions are actually present before deleting:
-```bash
+EDGEGAP_TOKEN=$(ssh -i $HOME/.hopnbop-migration/ssh/nakama \
+  root@5.78.137.83 \
+  "grep 'EDGEGAP_TOKEN' /opt/nakama/config.yml | head -1 | \
+   sed 's/.*EDGEGAP_TOKEN=//; s/\"$//'")
+# list:
 curl -fsS -H "Authorization: Token $EDGEGAP_TOKEN" \
-  "https://api.edgegap.com/v1/app/hopnbop-server/versions" \
-  | python3 -c "import sys,json;d=json.load(sys.stdin); print('\n'.join(v['name'] for v in d.get('versions', [])))"
+  "https://api.edgegap.com/v1/app/hopnbop-server/versions?limit=100" \
+  | python3 -c "import sys,json;d=json.load(sys.stdin);[print(v['name']) for v in d.get('versions', [])]"
+# delete one by name:
+curl -X DELETE -H "Authorization: Token $EDGEGAP_TOKEN" \
+  "https://api.edgegap.com/v1/app/hopnbop-server/version/v<N>"
 ```
 
-### Fix `runtime_status.go` static RPC list
+### Fix `runtime_status.go` static RPC list (already done; stale note)
 
-`registered_rpcs` in the status response is hardcoded — still
-lists `bulk_import` even when the env-gate skips its
-registration. Cosmetic but confusing for an operator probe.
-Either build the list dynamically from the initializer state
-or pass a `bulkImportRegistered` flag through
-`runtimeStatusConfig` like the matchmaker hook does. Triggers a
-runtime rebuild when fixed.
+This note pre-dated the refactor that made the list dynamic.
+`runtime_status.go` now declares `RegisteredRpcs *[]string` in
+`runtimeStatusConfig` and `main.go` `addRpc(...)` appends as
+each RPC registers (`main.go:124-136`). The status RPC reads
+the slice at call time, so `bulk_import` appears only when
+`BULK_IMPORT_ENABLED=true`. Verified 2026-05-13 against the
+deployed runtime: `bulk_import` is absent from the response.
 
 ### Cyclic-ref preventative `.get()` rewrites (NEXT_STEPS #11)
 
@@ -566,12 +570,12 @@ the planned/transitional state ("post-migration target",
 `snoringcat-platform/runtime/` now). Worth a sweep once the
 above docs cleanup happens in hopnbop.
 
-### Move `phase-f-destroy.ps1` out (eventually)
+### Move `phase-f-destroy.ps1` (RESOLVED 2026-05-13)
 
-After Phase F runs and stays clean for a while, this script
-becomes dead weight in `hopnbop_private/scripts/`. Either delete
-or move to a generic `scripts/decommission/aws/` directory in
-case another game ever needs to do the same migration.
+Moved to `scripts/decommission/aws/phase-f-destroy.ps1`. Kept
+(not deleted) so a future game migrating off AWS has a starting
+template. The path move is git-tracked as a rename; references
+in MULTI_GAME_ROADMAP.md and NEXT_STEPS.md updated.
 
 ---
 
