@@ -30,38 +30,44 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 7 resilience kickoff. **Stage 7.1
-  Edgegap allocation retry shipped** (2026-05-13, eighth pass):
-  new `tryAllocate` method per attempt + retry loop in
-  `OnMatchmakerMatched` (3 attempts), exponential backoff
-  (1s→2s→4s, capped at 8s), and continent rotation
-  (north_america→europe→asia, wraps) on each retry. Failed
-  attempts call best-effort `stopDeploy` to avoid leaking
-  container-hours. Exhausted retries emit a
-  `match_failed` notification (`reason=allocation_failed`)
-  whose message contains "allocation" so the game-side
-  classifier routes it through `LOADING.ALLOCATION_FAILED`
-  (recoverable + retry button). 3 new Go unit tests (14
-  sub-cases total) cover the pure retry-policy helpers
-  (`allocationFallbackGeographies`, `allocationBackoff`,
-  `sleepOrCtxDone`). `go vet && go test && staticcheck` clean;
-  pluginbuilder Docker produces a 19 MB `snoringcat.so`.
-  Earlier 2026-05-13 work (still standing): Tier 2 matchmaking
-  compliance suite (8.20 cancel-race + 8.21 protocol-mismatch),
-  Tier 1 Go unit tests (8.3-8.10, 100 cases), 8.1+8.2 deploy
-  gate, 8.11/8.12/8.14/8.16/8.17/8.18/8.19/8.22 compliance
-  tests, 8.13 EDGEGAP_MOCK_DEPLOY mode, audit-surfaced drift
-  fully resolved.
-  **Next:** Stage 7.2 (mid-queue cancel cleanly tears down
-  Edgegap deploy) is the natural follow-up — needs a new
-  client-side cancel RPC + in-flight allocation tracking so a
-  cancel mid-polling can stop the deploy. 7.5 (friend
-  pagination), 7.3 (push notifications), 7.4 (block list) are
-  also self-contained. 8.15 still blocked on 7.4. Tier 3 client
-  unit tests (8.23-8.28) require GUT doubles setup against the
-  addon's GDScript classes; Tier 4 e2e/smoke (8.29-8.31) needs
-  a docker-compose dev stack. Stage 6.11 screens still
-  greenfield with design call needed.
+- **Current focus:** Stage 7 resilience momentum. **Stage 7.2
+  mid-queue cancel teardown shipped** (2026-05-13, ninth pass):
+  new `inflightAllocation` struct + `sync.Map` tracker on
+  `fleetAllocator`; `OnMatchmakerMatched` derives a cancelable
+  child context, registers each matched user_id, and defers
+  deregister + allocCancel. New client-session RPC
+  `cancel_matchmaking_allocation` looks up the caller's inflight
+  and invokes the cancel func; the hook goroutine observes
+  `allocCtx.Err() != nil` at two checkpoints and either skips the
+  storage-write/notify path (cancelled-during-retry) or calls
+  `stopDeploy` on the freshly-allocated deploy
+  (cancelled-after-success), then fans out `match_failed`
+  reason=cancelled to all matched players via the new
+  `sendMatchCancelled` helper. Addon-side
+  `PlatformMatchmakingClient.cancel_matchmaking()` now fires the
+  new RPC alongside `remove_matchmaker_async`. LoadingScreen
+  unhides the Cancel button during "placing". Game-side classifier
+  routes `reason=cancelled` to new `LOADING.PEER_CANCELLED` key (13
+  locales). 2 new Go unit tests (8 sub-cases) cover register/
+  deregister/cancel propagation + the multi-user shared-inflight
+  contract. `go vet && go test && staticcheck` clean; pluginbuilder
+  Docker produces 19 MB `snoringcat.so`. Headless Godot boot clean
+  (zero parse/compile errors).
+  Earlier 2026-05-13 work (still standing): 7.1 allocation retry,
+  Tier 2 matchmaking compliance suite (8.20 cancel-race + 8.21
+  protocol-mismatch), Tier 1 Go unit tests (8.3-8.10, 100 cases),
+  8.1+8.2 deploy gate, 8.11/8.12/8.14/8.16/8.17/8.18/8.19/8.22
+  compliance tests, 8.13 EDGEGAP_MOCK_DEPLOY mode, audit-surfaced
+  drift fully resolved.
+  **Next:** Stage 7.5 (friend pagination — silently truncates at 100
+  today), 7.3 (platform-level push notifications), 7.4 (friend
+  block list — also unblocks 8.15) are all self-contained. 7.11
+  (re-introduce observability) is also unblocked; configs are
+  preserved. 8.15 still blocked on 7.4. Tier 3 client unit tests
+  (8.23-8.28) require GUT doubles setup against the addon's
+  GDScript classes; Tier 4 e2e/smoke (8.29-8.31) needs a
+  docker-compose dev stack. Stage 6.11 screens still greenfield
+  with design call needed.
 - **2026-05-13 audit follow-up — drift items resolved later
   the same day:**
   - **Runtime backlog flushed:** the deployed runtime was 24
@@ -130,23 +136,29 @@ See also:
   (b) pivot to Stage 7 resilience (13 open items including
   allocation retry, friend pagination, anonymous-upgrade UI,
   account-merge UI, observability re-introduction).
-- **Last updated:** 2026-05-13 (eighth pass: Stage 7 resilience
-  kickoff — 7.1 Edgegap allocation retry shipped. Retry loop
-  in `OnMatchmakerMatched` with 3 attempts, exponential backoff
-  capped at 8s, continent rotation on retry, best-effort Stop
-  on failed attempts, `match_failed` allocation_failed
-  notification when all attempts exhausted. 3 new Go unit
-  tests (14 sub-cases). `go vet && go test && staticcheck`
-  clean; pluginbuilder Docker produces 19 MB `snoringcat.so`.
-  Plus all prior 2026-05-13 work: Tier 2 matchmaking
-  compliance suite finished (8.20 + 8.21), Tier 1 Go unit
-  tests (8.3-8.10, 100 cases), 8.1/8.2 deploy gate,
-  audit-surfaced drift fully resolved, 24-commit runtime
-  backlog deployed, first games-cache sync, Phase F finished,
-  stale Edgegap tags pruned, 8.11/8.12/8.14 multi-user
-  compliance harness, 8.16/8.17/8.22 multi-user tests,
-  EDGEGAP_MOCK_DEPLOY mode + 8.18/8.19 mock-mode matchmaking
-  tests).
+- **Last updated:** 2026-05-13 (ninth pass: Stage 7.2 mid-queue
+  cancel teardown shipped. New `inflightAllocation` tracker on
+  `fleetAllocator`, cancelable child ctx through the retry loop,
+  two `allocCtx.Err()` checkpoints in `OnMatchmakerMatched`,
+  best-effort `stopDeploy` on cancellation-post-allocation,
+  `match_failed` reason=cancelled fan-out via
+  `sendMatchCancelled`. New client-session RPC
+  `cancel_matchmaking_allocation` registered alongside the
+  matchmaker hook. Addon's `cancel_matchmaking()` fires the new
+  RPC + existing `remove_matchmaker_async`. LoadingScreen Cancel
+  button now visible during "placing". Game-side classifier routes
+  `reason=cancelled` to new `LOADING.PEER_CANCELLED` translation
+  key (13 locales). 2 new Go unit tests (8 sub-cases).
+  `go vet && go test && staticcheck` clean; pluginbuilder Docker
+  produces 19 MB `snoringcat.so`. Headless Godot boot clean.
+  Plus all prior 2026-05-13 work: 7.1 allocation retry, Tier 2
+  matchmaking compliance suite finished (8.20 + 8.21), Tier 1 Go
+  unit tests (8.3-8.10, 100 cases), 8.1/8.2 deploy gate,
+  audit-surfaced drift fully resolved, 24-commit runtime backlog
+  deployed, first games-cache sync, Phase F finished, stale Edgegap
+  tags pruned, 8.11/8.12/8.14 multi-user compliance harness,
+  8.16/8.17/8.22 multi-user tests, EDGEGAP_MOCK_DEPLOY mode +
+  8.18/8.19 mock-mode matchmaking tests).
 - **Stages complete:**
   - Stage 0 — platform infra extraction (kickoff verification
     items 0.8 + 0.9 confirmed 2026-05-12).
@@ -196,8 +208,9 @@ See also:
     list), Tier 3 client unit tests with doubles
     (8.23–8.28), Tier 4 e2e/smoke (8.29–8.31).
 - **Stages in progress (Stage 7 resilience):**
-  - Stage 7 — 1/13 shipped 2026-05-13 (7.1 allocation retry).
-    Remaining 12 items are all open and unblocked.
+  - Stage 7 — 2/13 shipped 2026-05-13 (7.1 allocation retry,
+    7.2 mid-queue cancel teardown). Remaining 11 items are all
+    open and unblocked.
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -240,7 +253,8 @@ Stage 3 (done, 2026-05-12) — game_id scoping: presence
        needed).
    ↓
 Stage 7 — Resilience (retries, notifications, observability).
-   1/13 shipped 2026-05-13 (7.1 allocation retry); 12 open.
+   2/13 shipped 2026-05-13 (7.1 allocation retry, 7.2 mid-queue
+   cancel teardown); 11 open.
 
 Stage 8 — Tests (parallel track, doesn't block features).
    21/31 shipped 2026-05-13. Tier 1 Go unit tests (8.3–8.10)
@@ -2222,8 +2236,145 @@ Extract clean code, not bug-laden code.
     env var that synthesizeMockDeploy honours by returning
     errors on the first N calls; deferred until 7.x retry needs
     are tested in CI rather than via manual smoke.
-- [ ] 7.2 Mid-queue cancel cleanly tears down Edgegap deploy if it
-  has already started (currently fire-and-forget at client side).
+- [x] **7.2 Mid-queue cancel cleanly tears down Edgegap deploy if
+      it has already started** (2026-05-13).
+  - Done — runtime: new `inflightAllocation` struct (holds just
+    the cancel func) + `sync.Map` `inflightByUserID` on
+    `fleetAllocator`. `OnMatchmakerMatched` derives a cancelable
+    child context (`allocCtx, allocCancel := context.WithCancel
+    (ctx)`), registers the inflight against every matched
+    user_id, and defers deregister + allocCancel. The retry loop
+    + `sleepOrCtxDone` backoff now use `allocCtx` so a user-
+    initiated cancel propagates through both
+    `a.edgegap.Status` polling and the inter-attempt sleep.
+  - Done — runtime: two `allocCtx.Err() != nil` checkpoints in
+    the hook. (1) After the retry loop, distinguishes "user
+    cancelled" (sends `match_failed` reason=cancelled, returns
+    nil) from "all retries failed" (existing
+    `sendAllocationFailed` path). (2) After successful
+    allocation, before writing storage rows or sending
+    `match_ready`: if cancelled, calls `stopDeploy` on the
+    freshly-allocated deploy and fans out match_failed
+    reason=cancelled. Storage writes are skipped in the cancel
+    path so we don't leave orphan rows.
+  - Done — runtime: new `sendMatchCancelled` helper notifies
+    every matched player with `match_failed`,
+    `reason="cancelled"`, `message="Match cancelled by another
+    player."`. The canceller's own client already cleared
+    `_is_searching` in `cancel_matchmaking()` so their
+    `_handle_match_failed` no-ops on receipt; the notification
+    matters for OTHER matched players, who learn a peer bailed
+    and can re-queue.
+  - Done — runtime: new client-session RPC
+    `cancel_matchmaking_allocation` registered via
+    `cancelAllocationRpcFactory(alloc, games)`. Looks up the
+    caller's inflight via user_id and invokes the cancel func.
+    Returns `{ok: true, cancelled: bool}`; `cancelled=false`
+    means no in-flight allocation existed (cancel arrived
+    pre-OnMatchmakerMatched or post-point-of-no-return) and is
+    treated as a silent success. Requires `requireClientSession`
+    + `requireGameID` like every other game-scoped RPC.
+  - Done — addon: `PlatformMatchmakingClient.cancel_matchmaking()`
+    now fires the new RPC via `_socket.rpc_async(
+    "cancel_matchmaking_allocation", "{}")` alongside the
+    existing `remove_matchmaker_async(_ticket)`. Both are
+    fire-and-forget (no await). The pool-removal handles the
+    "still queued" case; the new RPC handles the "matched, mid-
+    allocation" case. Calling both is cheap (each is a no-op on
+    the server when the corresponding state doesn't exist).
+  - Done — game: `LoadingScreen._update_action_buttons` now
+    includes `"placing"` in the cancelable-phase allowlist
+    (was `queued`+`searching` only). The original comment block
+    flagging this as a Stage 7.2 follow-up was updated.
+  - Done — game: `game_panel._classify_matchmaking_failure` now
+    matches `"cancelled"` substring and routes to
+    `LOADING.PEER_CANCELLED` so the OTHER matched players (not
+    the canceller; they've already left the matchmaking flow)
+    see a recoverable "match cancelled by another player"
+    prompt with a retry button instead of toast-and-bounce.
+  - Done — i18n: 1 new translation key × 13 locales:
+    `LOADING.PEER_CANCELLED`. CSV verified at 14 fields;
+    `.translation` binaries re-imported via `godot --headless
+    --import`.
+  - Done — tests: 2 new test functions in `fleet_allocator_test
+    .go` (8 sub-tests total). `TestRegisterAndDeregisterInflight`
+    covers register-all-users, deregister-removes-all, empty-
+    userID-skipped, deregister-respects-newer-entry (the
+    CompareAndDelete guard against stale defers).
+    `TestCancelInflightForUser` covers registered-user-cancels,
+    unregistered-user-noops, cancels-shared-inflight-from-any-
+    user (multi-user match propagation), and propagates-ctx-
+    cancel (end-to-end allocCtx.Done() observation under 100ms).
+    `go vet && go test && staticcheck` clean; pluginbuilder
+    Docker produces a 19 MB `snoringcat.so`.
+  - Decision worth recording: cancel RPC only signals; teardown
+    happens in the matchmaker hook goroutine. The alternative
+    (RPC reads request_id from the inflight, calls stopDeploy
+    directly, sends match_failed inline) would have split the
+    teardown surface across two goroutines and made the
+    cancel-vs-success race trickier to reason about. With the
+    signal-only model, the hook goroutine is the sole owner of
+    all teardown state — RPC just sets a tripwire.
+  - Decision worth recording: same `inflightAllocation` is
+    shared by every matched user in the same match (party
+    members + matchmaker-paired strangers alike). Calling
+    cancel via any one user's tracker entry propagates to all.
+    Semantics: any one matched player cancelling = whole match
+    aborts. If a 4-player FFA has one bailer, the other 3 see
+    `LOADING.PEER_CANCELLED` and re-queue. The matchmaker had
+    already certified the 4 as a valid match; losing one player
+    invalidates that, so we don't try to salvage a 3-player
+    match from the wreckage.
+  - Decision worth recording: two cancel checkpoints, not one.
+    The naive design has one check after allocation; this
+    leaves a window between "allocation succeeded" and
+    "storage rows written + match_ready sent" where a cancel
+    has to clean up additional state. Two checkpoints — one
+    before the retry loop succeeds and one after — keep the
+    "cancelled with storage-row cleanup" path off the critical
+    path. The window between checkpoint #2 and the actual
+    `NotificationSend` is microseconds; a cancel that sneaks
+    in there is best-effort lost (deploy stays alive, peers
+    get match_ready, the in-container Godot's idle timer
+    eventually tears it down). Acceptable.
+  - Decision worth recording: `LOADING.PEER_CANCELLED` is a
+    new key, not a re-use of `LOADING.NO_MATCH_FOUND`. "No
+    match found" implies "we couldn't pair you with anyone";
+    `PEER_CANCELLED` is "we paired you, but a peer pulled
+    out". The user-facing distinction matters — under
+    NO_MATCH_FOUND, retrying might just expand the search;
+    under PEER_CANCELLED, retrying might pair the same
+    peers (who could bail again) or different ones. Distinct
+    framing lets the retry button's mental model stay
+    accurate. Cost: 13 new translations (best-effort, worth
+    a native-speaker review pass).
+  - Known limitation: post-`match_ready` cancel is still
+    fire-and-forget. The client side ignores match_ready when
+    `_is_searching` is already false, so a cancel that arrives
+    AFTER the deploy was completed and notifications sent
+    silently leaves the deploy running. The game server's
+    idle/grace timer tears it down (typically within 30 s).
+    A tighter answer would have the client call the existing
+    `match_cancel` RPC against the deploy's request_id, but
+    that surface currently rejects non-server callers except
+    for synthetic matches; expanding it requires the matchmaker
+    metadata to flow into the client (currently it doesn't —
+    `match_ready` payload would need the request_id surfaced
+    and the cancel call wired with a permission check that
+    confirms the caller was a matched player). Deferred until
+    the wasted Edgegap minutes actually show up as a cost
+    signal.
+  - Known limitation: no compliance test exercises the
+    cancel-mid-allocation path end-to-end. Unit tests cover
+    the pure helpers (register/deregister/cancel propagation);
+    end-to-end would need a Tier 2 mock-mode test that fires
+    `cancel_matchmaking_allocation` during the synthesized
+    deploy window. With mock mode's deploy completing in
+    microseconds (no real poll loop), the timing window for
+    a meaningful cancel is too tight to test reliably. A
+    real test would need either an injectable poll-delay env
+    var or fault-injection equivalent — same blocker as the
+    7.1 retry compliance test gap. Deferred.
 - [ ] 7.3 Push notification for friend online / party invite / match
   found (currently UI-only toasts; no platform-level push).
 - [ ] 7.4 Friend block list (schema + RPC + UI + matchmaker
@@ -4285,6 +4436,86 @@ Security:
     and reinforced by `reason="allocation_failed"` for any
     future classifier that wants to switch from substring to
     reason-code matching.
+
+- **2026-05-13:** Stage 7.2 mid-queue cancel teardown shipped
+  (ninth pass). Six design calls worth recording:
+  - **Cancel RPC only signals; teardown stays in the matchmaker
+    hook goroutine.** Alternative had the RPC read request_id
+    off the inflight, call `stopDeploy` directly, and send
+    match_failed inline. That splits teardown across two
+    goroutines and makes the cancel-vs-success race trickier
+    (the RPC could observe state in the middle of a hook step).
+    Signal-only model: hook goroutine is the sole owner of all
+    teardown state; the RPC just sets a tripwire by invoking
+    `inflightAllocation.cancel`. The hook then observes
+    `allocCtx.Err() != nil` at known checkpoints and runs the
+    cleanup path linearly. Easier to reason about; easier to
+    test (the helpers split cleanly into pure functions).
+  - **One `inflightAllocation` per match, shared across every
+    matched user_id.** A multi-user match (party, or any
+    matchmaker pairing) has N tracker entries pointing at the
+    same struct. Any one user's cancel propagates to all (the
+    cancel func is `context.CancelFunc` — idempotent, fires
+    once). Semantics: any matched player cancelling = whole
+    match aborts. The alternative (per-user cancel state with
+    "what fraction of players cancelled" logic) would have
+    invented a policy question (does 1-of-4 abort the match?
+    2-of-4? majority?) with no clean answer for Hop'n'Bop's
+    small-pool today. Whole-match abort is simple and matches
+    the matchmaker's atomicity (the 4 were certified as a
+    valid match; losing 1 invalidates that).
+  - **Two `allocCtx.Err()` checkpoints, not one.** Checkpoint
+    A: after the retry loop. Distinguishes "user cancelled
+    during the polling" (`sendMatchCancelled` + return nil)
+    from "all retries failed" (`sendAllocationFailed` +
+    return error). Checkpoint B: after successful allocation,
+    before storage writes. If cancelled here,
+    `stopDeploy(deploy.RequestID)` cleans up the freshly-
+    allocated deploy and `sendMatchCancelled` notifies peers.
+    Storage writes are skipped on this branch so we don't
+    leave orphan rows. The window between B and the actual
+    `NotificationSend match_ready` is microseconds; a cancel
+    that sneaks in there is best-effort lost (deploy lives,
+    in-container Godot's idle timer tears it down). Acceptable
+    given the tiny window.
+  - **`sync.Map` + `CompareAndDelete` guards stale defers.**
+    The tracker is a `sync.Map` because reads dominate
+    (cancel RPC may or may not fire per match). The defer in
+    `OnMatchmakerMatched` uses `CompareAndDelete(uid,
+    inflight)` rather than `Delete(uid)` so a stale defer
+    from an older match for the same user_id can't clobber a
+    newer match's tracker entry. Locked in by
+    `TestRegisterAndDeregisterInflight/deregister-respects-
+    newer-entry`.
+  - **`LOADING.PEER_CANCELLED` is a new translation key, not
+    reuse of `LOADING.NO_MATCH_FOUND`.** "No match found"
+    implies "couldn't pair you with anyone"; `PEER_CANCELLED`
+    is "we paired you, but a peer pulled out". The
+    user-facing distinction matters — under NO_MATCH_FOUND
+    retrying might expand the search; under PEER_CANCELLED
+    retrying might re-pair the same peers (who could bail
+    again) or different ones. Distinct framing keeps the
+    retry button's mental model accurate. Cost: 13 new
+    translations (best-effort, worth a native-speaker review
+    pass before a release; same caveat as Stage 1.5's
+    cancellation strings and 5.7's mode names).
+  - **Post-match_ready cancel intentionally fire-and-forget on
+    the deploy.** Once `match_ready` is sent, the canceller's
+    client already cleared `_is_searching` and silently
+    ignores the deploy connection info; other matched players
+    receive `match_ready` and connect. The deploy is "wasted"
+    from the canceller's perspective but useful for everyone
+    else, so we don't tear it down. The game server's idle/
+    grace timer fires within ~30 s if no one connects (the
+    everyone-cancelled edge case); in the more common case at
+    least one peer connects and the match runs normally.
+    Tighter handling would require either (a) reverse-flow
+    "I'm dropping out" notification from the canceller's
+    client to the game server before connection, or (b)
+    expanding the `match_cancel` RPC to admit matched players
+    by validating against the match_metadata storage row.
+    Both add surface; deferred until the cost of wasted
+    minutes shows up as a real signal.
 
 ## How to use this document
 

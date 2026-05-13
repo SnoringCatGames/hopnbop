@@ -547,6 +547,14 @@ func _classify_matchmaking_failure(
 	reason: String,
 ) -> String:
 	var lower := reason.to_lower()
+	# Stage 7.2: a peer in the match invoked
+	# cancel_matchmaking_allocation. The cancelling
+	# user's own client already cleared
+	# `_is_searching` and never reaches this
+	# classifier; only the other matched users see
+	# the "cancelled by another player" message.
+	if "cancelled" in lower or "cancelled by" in lower:
+		return "LOADING.PEER_CANCELLED"
 	if "timeout" in lower or "timed out" in lower:
 		return "LOADING.NO_MATCH_FOUND"
 	# Edgegap allocation surfaced via

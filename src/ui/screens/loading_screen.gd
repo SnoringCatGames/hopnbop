@@ -234,12 +234,19 @@ func _update_action_buttons() -> void:
 	# ticket is live: we're past auth, not yet
 	# connected to a game server, and no failure is
 	# being retried. Hidden during fleet warmup (no
-	# ticket exists yet) and during "placing" (the
-	# match is allocated; cancelling now wastes the
-	# Edgegap deploy for matched peers).
+	# ticket exists yet).
+	#
+	# Stage 7.2: "placing" is now cancelable too —
+	# the runtime tracks in-flight Edgegap allocations
+	# and the cancel_matchmaking_allocation RPC tears
+	# down the deploy + fans out match_failed to peers
+	# so they see a recoverable "match cancelled by a
+	# peer" prompt instead of waiting on the 120 s
+	# client timeout.
 	var phase_active := (
 		_matchmaking_phase == "queued"
 		or _matchmaking_phase == "searching"
+		or _matchmaking_phase == "placing"
 	)
 	var should_show := (
 		phase_active
