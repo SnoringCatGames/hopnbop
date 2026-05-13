@@ -65,14 +65,14 @@ func _send_async(
 	is_fatal: bool,
 ) -> void:
 	_in_flight = true
-	var session = G.auth_client._build_session_from_store()
+	var session = Platform.build_session_from_store()
 	if session == null:
 		_in_flight = false
 		return
 	var payload := _build_payload(error_message, is_fatal)
 	# Fire-and-forget RPC. We don't act on errors — that's the
 	# whole point of a crash reporter that can't itself crash.
-	var _result = await G.auth_client._get_nakama_client().rpc_async(
+	var _result = await Platform.get_nakama_client().rpc_async(
 		session, "crash_report", JSON.stringify(payload))
 	_in_flight = false
 

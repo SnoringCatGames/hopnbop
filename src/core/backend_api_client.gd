@@ -113,14 +113,14 @@ func fetch_leaderboard(
 	if scope == "friends":
 		# Restrict the listing to records owned by the current
 		# user's friend graph.
-		var friends_resp = await G.auth_client._get_nakama_client().list_friends_async(
+		var friends_resp = await Platform.get_nakama_client().list_friends_async(
 			session, null, 100, null)
 		if not friends_resp.is_exception():
 			var ids := PackedStringArray()
 			for f in friends_resp.friends:
 				ids.append(f.user.id)
 			owner_ids = ids
-	var result = await G.auth_client._get_nakama_client().list_leaderboard_records_async(
+	var result = await Platform.get_nakama_client().list_leaderboard_records_async(
 		session, board_id, owner_ids, null, limit, "")
 	if result.is_exception():
 		request_failed.emit(_describe(result.get_exception()))
@@ -149,7 +149,7 @@ func fetch_player_stats(player_id: String = "") -> void:
 	if session == null:
 		return
 	var pid := player_id if player_id else session.user_id
-	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
+	var rpc_result = await Platform.get_nakama_client().rpc_async(
 		session, "get_player_stats",
 		JSON.stringify({"player_id": pid}))
 	if rpc_result.is_exception():
@@ -173,7 +173,7 @@ func fetch_player_profile() -> void:
 	var session := await _ensure_session()
 	if session == null:
 		return
-	var account = await G.auth_client._get_nakama_client().get_account_async(
+	var account = await Platform.get_nakama_client().get_account_async(
 		session)
 	if account.is_exception():
 		request_failed.emit(_describe(account.get_exception()))
@@ -200,7 +200,7 @@ func fetch_player_settings() -> void:
 		return
 	var ids := [NakamaStorageObjectId.new(
 		"settings", "user", session.user_id)]
-	var result = await G.auth_client._get_nakama_client().read_storage_objects_async(
+	var result = await Platform.get_nakama_client().read_storage_objects_async(
 		session, ids)
 	if result.is_exception():
 		request_failed.emit(_describe(result.get_exception()))
@@ -219,7 +219,7 @@ func save_player_settings(settings: Dictionary) -> void:
 		return
 	var obj := NakamaWriteStorageObject.new(
 		"settings", "user", 1, 1, JSON.stringify(settings), "")
-	var result = await G.auth_client._get_nakama_client().write_storage_objects_async(
+	var result = await Platform.get_nakama_client().write_storage_objects_async(
 		session, [obj])
 	if result.is_exception():
 		request_failed.emit(_describe(result.get_exception()))
@@ -236,7 +236,7 @@ func fetch_match_history() -> void:
 	var session := await _ensure_session()
 	if session == null:
 		return
-	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
+	var rpc_result = await Platform.get_nakama_client().rpc_async(
 		session, "get_match_history", "{}")
 	if rpc_result.is_exception():
 		# Pre-RPC deploys: return empty.
@@ -265,8 +265,8 @@ func check_version() -> void:
 	# RPC's `result` envelope by default; `unwrap=true` strips
 	# it down to the bare payload string.
 	var url := "%s/v2/rpc/version_check?http_key=%s&unwrap=true" % [
-		AuthClient.get_nakama_base_url(),
-		AuthClient.get_nakama_http_key().uri_encode(),
+		Platform.get_nakama_base_url(),
+		Platform.nakama_http_key.uri_encode(),
 	]
 	var headers := PackedStringArray([
 		"Content-Type: application/json",
@@ -372,10 +372,10 @@ func check_version() -> void:
 # --------------------------------------------------------------
 
 func _ensure_session() -> NakamaSession:
-	var s := G.auth_client._build_session_from_store()
+	var s := Platform.build_session_from_store()
 	if s == null:
-		await G.auth_client.get_guest_jwt()
-		s = G.auth_client._build_session_from_store()
+		await Platform.auth.get_guest_jwt()
+		s = Platform.build_session_from_store()
 	if s == null:
 		request_failed.emit("Not authenticated")
 		return null
@@ -383,7 +383,7 @@ func _ensure_session() -> NakamaSession:
 
 
 func _ensure_session_optional() -> NakamaSession:
-	var s := G.auth_client._build_session_from_store()
+	var s := Platform.build_session_from_store()
 	if s == null:
 		return null
 	return s

@@ -47,7 +47,7 @@ func on_open() -> void:
 		G.party_manager.reset()
 		G.client_session.clear_latest_state()
 		_start_login(
-			AuthClient.Provider.ANONYMOUS)
+			PlatformAuthApiClient.Provider.ANONYMOUS)
 		return
 
 	# Anonymous players have a local-only identity.
@@ -64,21 +64,21 @@ func on_open() -> void:
 	# Try auto-refresh.
 	if Platform.token_store.needs_refresh():
 		_show_loading(tr("AUTH.RESUMING_SESSION"))
-		G.auth_client.auth_completed.connect(
+		Platform.auth.auth_completed.connect(
 			_on_auto_refresh_completed,
 			CONNECT_ONE_SHOT,
 		)
-		G.auth_client.refresh_token()
+		Platform.auth.refresh_token()
 		return
 
 	# On platforms with implied auth, auto-login.
 	var platform_provider := (
-		AuthClient.get_platform_provider()
+		PlatformAuthApiClient.get_platform_provider()
 	)
 	if platform_provider >= 0:
 		_start_login(
 			platform_provider
-			as AuthClient.Provider)
+			as PlatformAuthApiClient.Provider)
 		return
 
 	_build_focusable_list()
@@ -137,7 +137,7 @@ func _show_buttons() -> void:
 
 	# Hide buttons not relevant to this platform.
 	var has_platform := (
-		AuthClient.get_platform_provider() >= 0
+		PlatformAuthApiClient.get_platform_provider() >= 0
 	)
 	%OAuthRow.visible = not has_platform
 	%AnonButton.visible = not has_platform
@@ -168,33 +168,33 @@ func _navigate_to_lobby() -> void:
 
 
 func _on_google_pressed() -> void:
-	_start_login(AuthClient.Provider.GOOGLE)
+	_start_login(PlatformAuthApiClient.Provider.GOOGLE)
 
 
 func _on_facebook_pressed() -> void:
-	_start_login(AuthClient.Provider.FACEBOOK)
+	_start_login(PlatformAuthApiClient.Provider.FACEBOOK)
 
 
 func _on_anonymous_pressed() -> void:
-	_start_login(AuthClient.Provider.ANONYMOUS)
+	_start_login(PlatformAuthApiClient.Provider.ANONYMOUS)
 
 
 func _start_login(
-	provider: AuthClient.Provider,
+	provider: PlatformAuthApiClient.Provider,
 ) -> void:
 	if _is_authenticating:
 		return
 
 	_show_loading(tr("AUTH.SIGNING_IN"))
 
-	G.auth_client.auth_completed.connect(
+	Platform.auth.auth_completed.connect(
 		_on_login_completed,
 		CONNECT_ONE_SHOT,
 	)
-	G.auth_client.auth_status_changed.connect(
+	Platform.auth.auth_status_changed.connect(
 		_on_status_changed,
 	)
-	G.auth_client.login_with_provider(provider)
+	Platform.auth.login_with_provider(provider)
 
 
 func _on_login_completed(
@@ -239,16 +239,16 @@ func _on_status_changed(status: String) -> void:
 
 func _disconnect_signals() -> void:
 	_disconnect_status_signal()
-	if G.auth_client.auth_completed.is_connected(
+	if Platform.auth.auth_completed.is_connected(
 		_on_login_completed,
 	):
-		G.auth_client.auth_completed.disconnect(
+		Platform.auth.auth_completed.disconnect(
 			_on_login_completed,
 		)
-	if G.auth_client.auth_completed.is_connected(
+	if Platform.auth.auth_completed.is_connected(
 		_on_auto_refresh_completed,
 	):
-		G.auth_client.auth_completed.disconnect(
+		Platform.auth.auth_completed.disconnect(
 			_on_auto_refresh_completed,
 		)
 
@@ -262,10 +262,10 @@ func _should_force_anonymous() -> bool:
 
 
 func _disconnect_status_signal() -> void:
-	if G.auth_client.auth_status_changed.is_connected(
+	if Platform.auth.auth_status_changed.is_connected(
 		_on_status_changed,
 	):
-		G.auth_client.auth_status_changed.disconnect(
+		Platform.auth.auth_status_changed.disconnect(
 			_on_status_changed,
 		)
 

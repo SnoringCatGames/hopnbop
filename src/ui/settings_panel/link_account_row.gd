@@ -6,7 +6,7 @@ extends SettingsRow
 ## unlink flow (with confirmation) when already linked.
 
 
-var _provider: AuthClient.Provider
+var _provider: PlatformAuthApiClient.Provider
 var _provider_name: String
 var _is_linked := false
 var _is_busy := false
@@ -30,7 +30,7 @@ func set_icon(
 
 
 func setup(
-	provider: AuthClient.Provider,
+	provider: PlatformAuthApiClient.Provider,
 	display_name: String,
 	is_linked: bool,
 	panel: SidePanel,
@@ -75,16 +75,16 @@ func _try_link() -> void:
 
 	if Platform.token_store.is_anonymous:
 		_status_label.text = tr("LINK.LOGGING_IN")
-		G.auth_client.auth_completed.connect(
+		Platform.auth.auth_completed.connect(
 			_on_login_completed, CONNECT_ONE_SHOT
 		)
-		G.auth_client.login_with_provider(_provider)
+		Platform.auth.login_with_provider(_provider)
 	else:
 		_status_label.text = tr("LINK.LINKING")
-		G.auth_client.link_completed.connect(
+		Platform.auth.link_completed.connect(
 			_on_link_completed, CONNECT_ONE_SHOT
 		)
-		G.auth_client.link_provider(_provider)
+		Platform.auth.link_provider(_provider)
 
 
 func _try_unlink() -> void:
@@ -104,10 +104,10 @@ func _do_unlink() -> void:
 	_is_busy = true
 	_status_label.text = tr("LINK.UNLINKING")
 
-	G.auth_client.unlink_completed.connect(
+	Platform.auth.unlink_completed.connect(
 		_on_unlink_completed, CONNECT_ONE_SHOT
 	)
-	G.auth_client.unlink_provider(_provider)
+	Platform.auth.unlink_provider(_provider)
 
 
 func _on_login_completed(
@@ -187,15 +187,15 @@ func _offer_merge() -> void:
 
 func _do_merge() -> void:
 	_status_label.text = tr("LINK.MERGING")
-	G.auth_client.merge_completed.connect(
+	Platform.auth.merge_completed.connect(
 		_on_merge_completed, CONNECT_ONE_SHOT
 	)
-	G.auth_client.confirm_merge()
+	Platform.auth.confirm_merge()
 
 
 func _on_merge_cancelled() -> void:
 	_is_busy = false
-	G.auth_client.cancel_merge()
+	Platform.auth.cancel_merge()
 	_update_status()
 
 

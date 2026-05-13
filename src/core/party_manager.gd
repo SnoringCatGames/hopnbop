@@ -122,7 +122,7 @@ func _ready() -> void:
 			_on_matchmaking_started)
 	invite_received.connect(
 		_show_invite_dialog)
-	G.auth_client.auth_completed.connect(
+	Platform.auth.auth_completed.connect(
 		_on_auth_completed)
 	# Stage 5.4: real-time updates over the long-lived notification
 	# socket. The catch-up poll below handles socket-down windows.
@@ -893,12 +893,12 @@ func _tear_down_chat() -> void:
 func load_chat_history() -> void:
 	if chat_channel_id.is_empty():
 		return
-	var session := G.auth_client._build_session_from_store()
+	var session := Platform.build_session_from_store()
 	if session == null:
 		return
 	var fetched_for := chat_channel_id
 	var result = (
-		await G.auth_client._get_nakama_client()
+		await Platform.get_nakama_client()
 			.list_channel_messages_async(
 				session,
 				chat_channel_id,

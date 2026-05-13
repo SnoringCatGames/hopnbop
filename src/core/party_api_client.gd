@@ -53,7 +53,7 @@ func create_party() -> void:
 		_is_busy = false
 		return
 	var name := _PARTY_GROUP_PREFIX + _short_id(session.user_id)
-	var result = await G.auth_client._get_nakama_client().create_group_async(
+	var result = await Platform.get_nakama_client().create_group_async(
 		session, name, "", "", "en", false, 4)
 	_is_busy = false
 	if result.is_exception():
@@ -72,7 +72,7 @@ func invite_to_party(
 	var session := await _ensure_session()
 	if session == null:
 		return
-	var result = await G.auth_client._get_nakama_client().add_group_users_async(
+	var result = await Platform.get_nakama_client().add_group_users_async(
 		session, party_id, [player_id])
 	if result.is_exception():
 		request_failed.emit(_describe(result.get_exception()))
@@ -87,7 +87,7 @@ func join_party(party_id: String) -> void:
 	var session := await _ensure_session()
 	if session == null:
 		return
-	var result = await G.auth_client._get_nakama_client().join_group_async(
+	var result = await Platform.get_nakama_client().join_group_async(
 		session, party_id)
 	if result.is_exception():
 		request_failed.emit(_describe(result.get_exception()))
@@ -99,7 +99,7 @@ func leave_party(party_id: String) -> void:
 	var session := await _ensure_session()
 	if session == null:
 		return
-	var result = await G.auth_client._get_nakama_client().leave_group_async(
+	var result = await Platform.get_nakama_client().leave_group_async(
 		session, party_id)
 	if result.is_exception():
 		request_failed.emit(_describe(result.get_exception()))
@@ -111,7 +111,7 @@ func fetch_party_status() -> void:
 	var session := await _ensure_session()
 	if session == null:
 		return
-	var result = await G.auth_client._get_nakama_client().list_user_groups_async(
+	var result = await Platform.get_nakama_client().list_user_groups_async(
 		session, session.user_id, null, null, null)
 	if result.is_exception():
 		request_failed.emit(_describe(result.get_exception()))
@@ -150,7 +150,7 @@ func fetch_party_status() -> void:
 			}
 	if not party.is_empty():
 		var members_result = (
-			await G.auth_client._get_nakama_client()
+			await Platform.get_nakama_client()
 				.list_group_users_async(
 					session,
 					party["party_id"],
@@ -208,7 +208,7 @@ func fetch_party_status() -> void:
 		storage_ids.append(leader_override_id)
 		if not storage_ids.is_empty():
 			var storage_result = (
-				await G.auth_client._get_nakama_client()
+				await Platform.get_nakama_client()
 					.read_storage_objects_async(
 						session, storage_ids)
 			)
@@ -295,7 +295,7 @@ func kick_from_party(
 	var session := await _ensure_session()
 	if session == null:
 		return
-	var result = await G.auth_client._get_nakama_client().kick_group_users_async(
+	var result = await Platform.get_nakama_client().kick_group_users_async(
 		session, party_id, [player_id])
 	if result.is_exception():
 		request_failed.emit(_describe(result.get_exception()))
@@ -315,7 +315,7 @@ func set_ready(party_id: String, ready: bool) -> void:
 	var session := await _ensure_session()
 	if session == null:
 		return
-	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
+	var rpc_result = await Platform.get_nakama_client().rpc_async(
 		session, "party_set_ready",
 		JSON.stringify({
 			"party_id": party_id,
@@ -338,7 +338,7 @@ func get_invite_code(party_id: String) -> void:
 	var session := await _ensure_session()
 	if session == null:
 		return
-	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
+	var rpc_result = await Platform.get_nakama_client().rpc_async(
 		session, "party_get_invite_code",
 		JSON.stringify({
 			"party_id": party_id,
@@ -365,7 +365,7 @@ func join_by_code(code: String) -> void:
 	if session == null:
 		return
 	var normalized := code.strip_edges().to_upper()
-	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
+	var rpc_result = await Platform.get_nakama_client().rpc_async(
 		session, "party_join_by_code",
 		JSON.stringify({
 			"code": normalized,
@@ -403,7 +403,7 @@ func transfer_leadership(
 	var session := await _ensure_session()
 	if session == null:
 		return
-	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
+	var rpc_result = await Platform.get_nakama_client().rpc_async(
 		session, "party_transfer_leadership",
 		JSON.stringify({
 			"party_id": party_id,
@@ -427,7 +427,7 @@ func start_matchmaking(
 	var session := await _ensure_session()
 	if session == null:
 		return
-	var rpc_result = await G.auth_client._get_nakama_client().rpc_async(
+	var rpc_result = await Platform.get_nakama_client().rpc_async(
 		session, "party_start_matchmaking",
 		JSON.stringify({
 			"party_id": party_id,
@@ -447,7 +447,7 @@ func start_matchmaking(
 # --------------------------------------------------------------
 
 func _ensure_session() -> NakamaSession:
-	var s := G.auth_client._build_session_from_store()
+	var s := Platform.build_session_from_store()
 	if s == null:
 		request_failed.emit("Not authenticated")
 		return null

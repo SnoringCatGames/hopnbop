@@ -30,39 +30,44 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 6 SDK extraction continuing. 6.4 + 6.7
-  landed 2026-05-12 (same day as 6.1/6.3). 6.4 moved
-  `friends_api_client.gd` into the addon as `PlatformFriendsApiClient`
-  (friends list / requests / search / mark_seen / notifications).
-  6.7 split rich-presence out of the old combined client into a
-  separate `PlatformPresenceApiClient` (Platform.presence subsystem
-  slot, distinct from Platform.friends per the platform.gd design
-  intent). Both addon classes read `Platform.nakama_client` (new
-  shared slot, populated by the game-side `auth_client._get_nakama_
-  client()` until Stage 6.2 moves the constants in) and
-  `Platform.build_session_from_store()` (new helper on Platform
-  that constructs a NakamaSession from token_store's JWT +
-  refresh token). 85 callsites across 10 files migrated:
-  presence-shaped names (`fetch_presence`, `cached_online_ids`,
-  `cached_online_friends`, `is_presence_busy`, `presence_received`,
-  `presence_received_rich`) routed to `Platform.presence.*`;
-  everything else to `Platform.friends.*`. Game-side
-  `src/core/friends_api_client.gd` deleted. `friends_notification_
-  poller.gd` stays game-side (too entangled with toast_overlay /
-  match_state / party_manager to be a clean addon citizen) but
-  now reads `Platform.friends` + `Platform.presence` instead of
-  `G.friends_api_client`. `Platform.initialize()` moved from
-  `global.gd._ready()` to the top of `global.gd._enter_tree()` so
-  addon subsystems can be instantiated and registered inline (the
-  consuming game's `_ready` was a bad fit because subsystem
-  `_process` callbacks could fire before token_store existed).
-  Headless boot green; the very first outgoing Nakama request
-  (`update_and_get_presence`) succeeds against live Nakama using
-  the new path. Next focus: Stage 6.2 (`auth_client.gd` →
-  `Platform.auth.*`) — the big one. Unblocks 6.5 / 6.6 / 6.8 / 6.9
-  cleanly (those all currently lean on `G.auth_client` for the
-  nakama_client + session-builder; once those move into
-  `Platform.auth`, subsequent extractions become straightforward).
+- **Current focus:** Stage 6 SDK extraction continuing. 6.2
+  landed 2026-05-12, completing the auth extraction the
+  previous 6.4/6.7 wave was waiting on. `src/core/auth_client.gd`
+  is gone; the new `PlatformAuthApiClient` lives in
+  `addons/snoringcat_platform_client/core/auth_api_client.gd`
+  (mirrored in the submodule). The Nakama host / port / scheme /
+  server_key / http_key constants — Snoring Cat platform
+  infrastructure, not game-specific — moved out of the auth
+  class entirely onto `Platform.{nakama_host, nakama_port,
+  nakama_scheme, nakama_server_key, nakama_http_key}` and are
+  passed in via `Platform.initialize`. The OAuth surface
+  (`oauth_callback_url`, `google_token_broker_url`,
+  `google_oauth_client_id`, `facebook_oauth_client_id`) is also
+  on Platform now, fed in from `settings.tres` at boot. NakamaClient
+  lazy-creation lives on `Platform.get_nakama_client()` so any
+  addon subsystem that needs the client reads it from the same
+  singleton; `Platform.get_nakama_base_url()` replaces the static
+  `AuthClient.get_nakama_base_url()` helper. The post-login cloud-
+  settings fetch (previously called from inside `_handle_auth_
+  success`) moved into a `Platform.auth.auth_completed` listener
+  in `global.gd._ready()` so the addon class doesn't reach back
+  into `G.settings_cloud_sync`. ~70 callsites across 14 files
+  migrated via sed: `G.auth_client.X` → `Platform.auth.X`,
+  `G.auth_client._get_nakama_client()` → `Platform.get_nakama_
+  client()`, `G.auth_client._build_session_from_store()` →
+  `Platform.build_session_from_store()`, and the static
+  `AuthClient.{Provider, PLATFORM_PROVIDERS, is_web_platform,
+  get_platform_provider, get_nakama_base_url, get_nakama_http_
+  key}` references rewrote to `PlatformAuthApiClient.*` /
+  `Platform.*`. Editor pass refreshed
+  `.godot/global_script_class_cache.cfg` with the new
+  `PlatformAuthApiClient` entry; headless boot green (zero parse
+  errors, autoloads initialize cleanly, the boot-time
+  `update_and_get_presence` RPC fires against live Nakama via
+  the new path with `game_id=hopnbop` in the JWT vars). Next
+  focus: Stage 6.5 (`party_api_client.gd` + `party_manager.gd` →
+  `Platform.party.*`) or Stage 6.6 (matchmaker + edgegap server
+  provider → `Platform.matchmaking.*`). Both are now unblocked.
 - **Last updated:** 2026-05-12.
 - **Stages complete:**
   - Stage 0 (platform infra extraction — including the kickoff
@@ -88,12 +93,13 @@ See also:
     5.4, 5.5, 5.6, 5.8, 5.9, 5.10, 5.11). Open: 5.7 game-mode
     picker (deferred until game.yaml schema gains a `modes`
     list, mirrored by Stage 4.7).
-  - Stage 6 — 4/11 tasks shipped 2026-05-12 (6.1 subsystem
-    slots + register_subsystem helper, 6.3 auth_token_store
-    reconciliation + Platform.token_store migration across 22
-    files, 6.4 PlatformFriendsApiClient, 6.7
-    PlatformPresenceApiClient split out from the old friends
-    client). Open: 6.2 (auth_client + nakama constants), 6.5
+  - Stage 6 — 5/11 tasks shipped 2026-05-12 (6.1 subsystem
+    slots + register_subsystem helper, 6.2 auth_client →
+    PlatformAuthApiClient + nakama / OAuth constants on
+    Platform, 6.3 auth_token_store reconciliation + Platform.
+    token_store migration across 22 files, 6.4
+    PlatformFriendsApiClient, 6.7 PlatformPresenceApiClient
+    split out from the old friends client). Open: 6.5
     (party_api_client + party_manager), 6.6 (matchmaker +
     edgegap_server_provider), 6.8 (settings_cloud_sync), 6.9
     (game_session_manager), 6.10 (mass consumer migration —
@@ -1204,9 +1210,95 @@ Extract clean code, not bug-laden code.
     while extractions are pending (`if Platform.friends != null:
     Platform.friends.foo(...)` — falls back to `G.*` until the
     Stage 6.x for that slot lands).
-- [ ] 6.2 Extract `auth_client.gd` → `Platform.auth.*`; parameterize
-  the hardcoded `hopnbop.net` OAuth callback host and
-  `nakama.snoringcat.games` host.
+- [x] **6.2 Extract `auth_client.gd` → `Platform.auth.*`;
+      parameterize hardcoded Nakama + OAuth hosts** (2026-05-12).
+  - Done — submodule: new
+    `addons/snoringcat_platform_client/core/auth_api_client.gd`
+    with `class_name PlatformAuthApiClient`. Surface: signals
+    (`auth_completed`, `link_completed`, `unlink_completed`,
+    `delete_completed`, `merge_completed`, `export_completed`,
+    `guest_jwt_obtained`, `auth_status_changed`,
+    `version_mismatch`), `Provider` enum + `PLATFORM_PROVIDERS`
+    constant, static `is_web_platform()` /
+    `get_platform_provider()`, instance methods
+    `login_with_provider`, `submit_platform_token`,
+    `login_anonymous`, `get_guest_jwt`, `refresh_token`,
+    `link_provider`, `submit_platform_link`, `unlink_provider`,
+    `confirm_merge`, `cancel_merge`, `delete_account`,
+    `export_player_data`. OAuth flows (loopback / popup / platform-
+    token) all preserved verbatim. `G.log.print` →
+    `print()`, `G.log.warning` → `push_warning()` so the addon
+    has no game-side dependencies.
+  - Done — platform.gd: new fields `nakama_host`,
+    `nakama_port`, `nakama_scheme`, `nakama_server_key`,
+    `nakama_http_key`, `oauth_callback_url`,
+    `google_token_broker_url`, `google_oauth_client_id`,
+    `facebook_oauth_client_id`. New `get_nakama_base_url()`
+    helper. New `get_nakama_client()` lazily creates the
+    NakamaClient on first access and caches it on
+    `Platform.nakama_client` (the same field every other addon
+    subsystem reads). `Platform.initialize()` accepts all new
+    keys.
+  - Done — game-side bootstrap: `global.gd._enter_tree()` now
+    passes the new keys to `Platform.initialize()` (Nakama host
+    pinned to `nakama.snoringcat.games`, server_key + http_key
+    are the same "soft secrets" as before; OAuth keys read from
+    `settings.tres`). Replaced
+    `auth_client = AuthClient.new()` with
+    `var auth := PlatformAuthApiClient.new(); add_child(auth);
+    Platform.register_subsystem("auth", auth)`. Replaced eager
+    `auth_client._get_nakama_client()` with
+    `Platform.get_nakama_client()`. Game-side `auth_client`
+    field on `G` removed.
+  - Done — post-login cloud-settings fetch: previously called
+    from inside `_handle_auth_success`, moved into a
+    `Platform.auth.auth_completed` listener in
+    `global.gd._ready()` (gated on success + non-null
+    `settings_cloud_sync`). Keeps the addon free of
+    `G.settings_cloud_sync` reach-back.
+  - Done — mass migration: ~70 callsites across 14 files via
+    sed, in this order so the catch-all doesn't capture
+    pre-specific patterns: (1)
+    `G.auth_client._build_session_from_store()` →
+    `Platform.build_session_from_store()`, (2)
+    `G.auth_client._get_nakama_client()` →
+    `Platform.get_nakama_client()`, (3) `G.auth_client` →
+    `Platform.auth` (catch-all),
+    (4) `AuthClient.get_nakama_base_url()` →
+    `Platform.get_nakama_base_url()`,
+    (5) `AuthClient.get_nakama_http_key()` →
+    `Platform.nakama_http_key`,
+    (6/7/8/9) `AuthClient.{is_web_platform,
+    get_platform_provider, PLATFORM_PROVIDERS, Provider}` →
+    `PlatformAuthApiClient.*`. Files touched:
+    `backend_api_client.gd`, `crash_reporter.gd`,
+    `friends_notification_poller.gd`,
+    `game_session_manager.gd`, `match_result_reporter.gd`,
+    `nakama_matchmaker_client.gd`,
+    `notification_socket_client.gd`, `party_api_client.gd`,
+    `party_manager.gd`, `auth_screen.gd`, `account_panel.gd`,
+    `delete_account_confirm_panel.gd`, `export_data_row.gd`,
+    `link_account_row.gd`.
+  - Done — old file removed: `src/core/auth_client.gd` +
+    `.uid` deleted.
+  - Verification: editor pass refreshed
+    `.godot/global_script_class_cache.cfg` with the new
+    `PlatformAuthApiClient` entry (the prior `AuthClient`
+    entry dropped). Headless boot clean (zero parse / compile
+    errors); the first outgoing Nakama request after boot is
+    `update_and_get_presence` against live Nakama, succeeding
+    via the new path (Authorization Bearer from
+    `Platform.build_session_from_store()`, RPC dispatch via
+    `Platform.get_nakama_client()`, JWT vars carrying
+    `game_id=hopnbop`).
+  - Known limitation: no automated compliance test for the new
+    class path (Stage 8.x client-unit-tests track not live).
+    Confidence is from headless boot + live RPC smoke, not from
+    a regression test. The HTTPRequest-callback-shaped dead
+    code (`_on_auth_response`, `_on_guest_jwt_response`) was
+    preserved verbatim during the extraction — they were
+    dead before the move too (no `connect` to either) and
+    cleaning them up is separate-PR work.
 - [x] **6.3 Reconcile `auth_token_store.gd` with the addon's
   `PlatformAuthTokenStore`; migrate `G.auth_token_store` references
   to `Platform.token_store`** (2026-05-12).
@@ -2179,6 +2271,72 @@ Security:
     passes: always grep for backslash-continuation residuals
     when the migration splits one source into multiple
     destinations.
+
+- **2026-05-12:** Stage 6.2 auth extraction shipped. Six design
+  calls worth recording:
+  - **Nakama host / port / scheme / server_key / http_key moved
+    to Platform, not duplicated per subsystem.** The previous
+    pattern (constants on `auth_client.gd`, exposed via static
+    `get_nakama_base_url()` / `get_nakama_http_key()` helpers
+    that other code reached for) had two problems: every
+    consumer needed to know "ask the auth client for the
+    Nakama URL" (wrong responsibility), and a future second
+    game would have to ship its own copy of those constants if
+    the auth class moved into the addon as-is. The cleaner
+    surface is `Platform.{nakama_host, nakama_port,
+    nakama_scheme, nakama_server_key, nakama_http_key}` as
+    plain fields populated by `Platform.initialize`. `Platform.
+    get_nakama_base_url()` replaces the static helper.
+  - **`Platform.get_nakama_client()` owns NakamaClient lifecycle,
+    not the auth subsystem.** Stage 6.4 had auth_client lazy-
+    create and side-effect-write `Platform.nakama_client`. With
+    6.2 in place, lazy creation lives on Platform itself — any
+    subsystem reads `Platform.get_nakama_client()` (or the
+    cached `Platform.nakama_client` field, populated by the
+    same call). Centralizes ownership and means the auth class
+    isn't a special "must-be-first" subsystem; if a future game
+    needs friends but not auth UI, presence still works.
+  - **OAuth client IDs and callback URL pass through
+    `Platform.initialize`, not read from `G.settings` by the
+    addon.** The values still live on `settings.tres` (where
+    they're editor-editable as `@export` vars), but
+    `global.gd._enter_tree()` reads them at boot and passes
+    into `Platform.initialize`. The addon class reads
+    `Platform.oauth_callback_url`, `Platform.google_oauth_
+    client_id`, `Platform.facebook_oauth_client_id`,
+    `Platform.google_token_broker_url`. Keeps the
+    addon→game dependency at zero.
+  - **`G.log.print` / `G.log.warning` → `print` /
+    `push_warning` in the addon.** The friends/presence
+    extractions kept logging out entirely (they only emit
+    signals on failure). The auth class has more pervasive
+    diagnostic logs (OAuth state transitions, redirect parse
+    results, broker HTTP responses) that aren't worth dropping.
+    Replacing with the GDScript stdlib `print` and
+    `push_warning` loses the `ScaffolderLog` categorization
+    (network / system / etc.) but keeps the diagnostic value.
+    A future "platform logger" abstraction could let games
+    inject their own logger; not worth doing speculatively.
+  - **Post-login cloud-settings fetch moved out to a
+    `global.gd._ready()` listener.** The old
+    `_handle_auth_success` called
+    `G.settings_cloud_sync.fetch_and_merge_from_cloud()`
+    directly. That's game-specific behavior — the addon's
+    auth class shouldn't know that this game uses cloud
+    settings or that the trigger is post-login. Moving the
+    call to a `Platform.auth.auth_completed` listener in
+    `global.gd._ready()` keeps the contract intact (cloud
+    fetch fires after every successful non-link auth) while
+    letting the addon class be game-agnostic.
+  - **Dead HTTPRequest-callback code preserved verbatim.**
+    `_on_auth_response` and `_on_guest_jwt_response` are
+    callback shapes for `HTTPRequest.request_completed`. The
+    flow that would have connected them died with the AWS
+    decommission; nothing in the current code reaches them.
+    They were preserved verbatim during the extraction so
+    this change is a pure move-and-rename. Pruning them is
+    separate-PR work — small, low-risk, and easier to review
+    in isolation.
 
 ## How to use this document
 

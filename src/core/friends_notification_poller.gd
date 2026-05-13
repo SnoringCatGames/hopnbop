@@ -56,7 +56,7 @@ func _ready() -> void:
 			_on_presence_received)
 	# Prefetch friends list on auth so the cache
 	# is warm before the panel ever opens.
-	G.auth_client.auth_completed.connect(
+	Platform.auth.auth_completed.connect(
 		_on_auth_completed)
 	# Stage 5.4: party_matchmaking_start arrives over the long-lived
 	# notification socket near-instantly. The 10 s HTTP poll below

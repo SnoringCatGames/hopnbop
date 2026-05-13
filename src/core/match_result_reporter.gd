@@ -131,7 +131,7 @@ func _post_with_retry(
 	body: String,
 	tag: String,
 ) -> void:
-	var url := AuthClient.get_nakama_base_url() + rpc_path
+	var url := Platform.get_nakama_base_url() + rpc_path
 	var headers := PackedStringArray([
 		"Content-Type: application/json",
 	])

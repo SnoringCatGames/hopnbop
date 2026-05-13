@@ -138,9 +138,9 @@ func _on_confirm_pressed() -> void:
 	_is_busy = true
 	_confirm_row.disabled = true
 
-	G.auth_client.delete_completed.connect(
+	Platform.auth.delete_completed.connect(
 		_on_delete_completed, CONNECT_ONE_SHOT)
-	G.auth_client.delete_account()
+	Platform.auth.delete_account()
 
 
 func _on_delete_completed(

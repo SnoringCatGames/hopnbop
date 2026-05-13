@@ -40,10 +40,10 @@ func _activate() -> void:
 		return
 	_is_busy = true
 
-	G.auth_client.export_completed.connect(
+	Platform.auth.export_completed.connect(
 		_on_export_completed, CONNECT_ONE_SHOT,
 	)
-	G.auth_client.export_player_data()
+	Platform.auth.export_player_data()
 
 
 func _on_export_completed(

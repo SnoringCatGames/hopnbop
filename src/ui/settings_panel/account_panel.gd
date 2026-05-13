@@ -121,7 +121,7 @@ func _add_link_account_rows() -> void:
 	if icon_google != null:
 		google_row.set_icon(icon_google, 1)
 	google_row.setup(
-		AuthClient.Provider.GOOGLE,
+		PlatformAuthApiClient.Provider.GOOGLE,
 		"Google",
 		"google" in linked,
 		self,
@@ -136,7 +136,7 @@ func _add_link_account_rows() -> void:
 	if icon_facebook != null:
 		fb_row.set_icon(icon_facebook, 1)
 	fb_row.setup(
-		AuthClient.Provider.FACEBOOK,
+		PlatformAuthApiClient.Provider.FACEBOOK,
 		"Facebook",
 		"facebook" in linked,
 		self,
@@ -181,7 +181,7 @@ func _add_export_data_row() -> void:
 func _add_log_out_row() -> void:
 	if not Platform.token_store.is_token_valid():
 		return
-	if AuthClient.get_platform_provider() >= 0:
+	if PlatformAuthApiClient.get_platform_provider() >= 0:
 		return
 
 	var row: LogOutRow = (

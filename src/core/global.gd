@@ -27,7 +27,6 @@ var hud: Hud
 var super_hud: SuperHud
 var screens: ScreensMain
 
-var auth_client: AuthClient
 var match_result_reporter: MatchResultReporter
 var backend_api_client: BackendApiClient
 var party_api_client: PartyApiClient
@@ -98,18 +97,18 @@ func _enter_tree() -> void:
 
 	# Wire the snoringcat-platform addon's autoload with this
 	# game's identity. Must run before any subsystem creation so
-	# Platform.token_store / Platform.nakama_client / etc. exist
-	# by the time addon subsystems are instantiated and registered
-	# below.
+	# Platform.token_store / Platform.nakama_client / Platform.auth
+	# / etc. exist by the time addon subsystems are instantiated
+	# and registered below.
 	#
 	# Stage 6.3 pinned auth_file_path = user://auth.cfg so existing
 	# players' encrypted credentials remain readable across the
 	# upgrade (the addon's default of user://%s_auth.cfg % game_id
 	# would orphan every existing install).
 	#
-	# api_base_url is currently unused by the game (hopnbop still
-	# talks to Nakama directly via auth_client.gd); supplied to
-	# satisfy initialize()'s required-arg contract.
+	# Stage 6.2 added the nakama_* and OAuth config keys so the
+	# addon's PlatformAuthApiClient can read them without reaching
+	# into game-side `settings.tres` or hardcoded constants.
 	if not Platform.is_initialized:
 		Platform.initialize({
 			"game_id": str(
@@ -121,6 +120,29 @@ func _enter_tree() -> void:
 				ProjectSettings.get_setting(
 					"application/config/version", "0.0.0")),
 			"auth_file_path": "user://auth.cfg",
+			# Nakama connection. Server key + http key are "soft
+			# secrets" (extractable from the shipped .pck) — they
+			# pair with per-IP rate-limiting in Caddy. Rotation
+			# requires a client release.
+			"nakama_host": "nakama.snoringcat.games",
+			"nakama_port": 443,
+			"nakama_scheme": "https",
+			"nakama_server_key": (
+				"p65qPwZ3vhnsIzNU8/9tw1gR6AbkjGJ7GpTmMQbJ5fs="),
+			"nakama_http_key": (
+				"VVU3A4AYzs1HIh83J5KLccM4Kt6kiY2/jq3qwZHPqzQ="),
+			# OAuth surface (game-specific URLs / IDs). The
+			# token-broker URL points at the Cloudflare Pages
+			# Function that adds GOOGLE_OAUTH_CLIENT_SECRET
+			# server-side; source at
+			# web/functions/api/oauth/google/exchange.js.
+			"oauth_callback_url": settings.oauth_callback_url,
+			"google_token_broker_url": (
+				"https://hopnbop.net/api/oauth/google/exchange"),
+			"google_oauth_client_id": (
+				settings.google_oauth_client_id),
+			"facebook_oauth_client_id": (
+				settings.facebook_oauth_client_id),
 		})
 
 	log.name = "Log"
@@ -150,18 +172,21 @@ func _enter_tree() -> void:
 	input_handler.name = "InputHandler"
 	add_child(input_handler)
 
-	auth_client = AuthClient.new()
-	auth_client.name = "AuthClient"
-	add_child(auth_client)
+	# Stage 6.2: auth client lives in the addon as
+	# PlatformAuthApiClient. Game code reads it via Platform.auth.
+	# The class extends Node so we own its lifecycle via add_child;
+	# register_subsystem stores the reference for consumer access.
+	var auth := PlatformAuthApiClient.new()
+	auth.name = "AuthApiClient"
+	add_child(auth)
+	Platform.register_subsystem("auth", auth)
 
 	# Eagerly create the Nakama client so Platform.nakama_client is
 	# populated before addon subsystems (Platform.friends,
 	# Platform.presence, ...) are instantiated and registered below.
-	# auth_client._get_nakama_client() lazy-creates a NakamaClient
-	# object (no network I/O) and writes it to Platform.nakama_client
-	# as a side effect — see auth_client.gd. Stage 6.2 will move the
-	# nakama_client constants + creation into the addon itself.
-	auth_client._get_nakama_client()
+	# Platform.get_nakama_client() lazy-creates a NakamaClient
+	# object (no network I/O) and caches it on Platform.nakama_client.
+	Platform.get_nakama_client()
 
 	match_result_reporter = MatchResultReporter.new()
 	match_result_reporter.name = "MatchResultReporter"
@@ -257,8 +282,13 @@ func _ready() -> void:
 	local_settings.setting_override_changed.connect(
 		_on_local_setting_override_changed)
 
-	# Cloud settings sync manager.
+	# Cloud settings sync manager. Stage 6.2 moved the post-login
+	# trigger out of the auth client (the addon shouldn't reach
+	# back into game-side `G.settings_cloud_sync`) so connect it
+	# here instead.
 	settings_cloud_sync = SettingsCloudSync.new()
+	(Platform.auth as PlatformAuthApiClient).auth_completed.connect(
+		_on_auth_completed_for_cloud_sync)
 
 	# Configure font fallbacks for non-Latin scripts.
 	FontFallbackConfig.configure_fallbacks()
@@ -280,6 +310,13 @@ func _ready() -> void:
 	if (not Netcode.is_server
 			and not settings.prefer_offline_mode):
 		backend_api_client.warm_up_fleet("startup")
+
+
+func _on_auth_completed_for_cloud_sync(
+	success: bool, _error: String,
+) -> void:
+	if success and settings_cloud_sync != null:
+		settings_cloud_sync.fetch_and_merge_from_cloud()
 
 
 func _on_local_setting_override_changed(

@@ -176,8 +176,8 @@ func client_request_session(
 			+ " matchmaking",
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
-		G.auth_client.refresh_token()
-		await G.auth_client.auth_completed
+		Platform.auth.refresh_token()
+		await Platform.auth.auth_completed
 		if not Platform.token_store.is_token_valid():
 			Netcode.error(
 				"Auth token refresh failed,"

@@ -70,7 +70,7 @@ func _ready() -> void:
 	_reconnect_timer.timeout.connect(_attempt_connect)
 	add_child(_reconnect_timer)
 
-	G.auth_client.auth_completed.connect(_on_auth_completed)
+	Platform.auth.auth_completed.connect(_on_auth_completed)
 
 
 ## Whether the socket is currently connected to Nakama.
@@ -126,14 +126,14 @@ func _attempt_connect() -> void:
 		return
 
 	var session: NakamaSession = (
-		G.auth_client._build_session_from_store())
+		Platform.build_session_from_store())
 	if session == null:
 		_schedule_reconnect()
 		return
 
 	_is_connecting = true
 	_socket = Nakama.create_socket_from(
-		G.auth_client._get_nakama_client())
+		Platform.get_nakama_client())
 	_socket.received_notification.connect(
 		_on_received_notification)
 	_socket.received_channel_message.connect(

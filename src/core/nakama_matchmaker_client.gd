@@ -85,7 +85,7 @@ func client_request_session_ids(
 	# Open the realtime socket if it isn't already.
 	if _socket == null or not _socket.is_connected_to_host():
 		_socket = Nakama.create_socket_from(
-			G.auth_client._get_nakama_client())
+			Platform.get_nakama_client())
 		_socket.received_matchmaker_matched.connect(
 			_on_matchmaker_matched)
 		_socket.received_notification.connect(
@@ -205,9 +205,9 @@ func _resolve_socket_session() -> NakamaSession:
 
 	var store: PlatformAuthTokenStore = Platform.token_store
 	if store.is_anonymous and not store.is_token_valid():
-		G.auth_client.get_guest_jwt()
+		Platform.auth.get_guest_jwt()
 		var result: Array = (
-			await G.auth_client.guest_jwt_obtained)
+			await Platform.auth.guest_jwt_obtained)
 		var success: bool = result[0]
 		var error: String = result[1]
 		if not success:
@@ -216,7 +216,7 @@ func _resolve_socket_session() -> NakamaSession:
 			return null
 
 	var session: NakamaSession = (
-		G.auth_client._build_session_from_store())
+		Platform.build_session_from_store())
 	if session == null:
 		session_request_failed.emit("Not authenticated")
 	return session
@@ -234,7 +234,7 @@ func _authenticate_preview_instance() -> NakamaSession:
 		_preview_device_id = "preview_%s_C%d" % [
 			base, Netcode.preview_client_number]
 
-	var client := G.auth_client._get_nakama_client()
+	var client := Platform.get_nakama_client()
 	var session: NakamaSession = (
 		await client.authenticate_device_async(
 			_preview_device_id))
