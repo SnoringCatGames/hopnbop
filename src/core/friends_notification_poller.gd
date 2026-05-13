@@ -62,7 +62,7 @@ func _ready() -> void:
 	# notification socket near-instantly. The 10 s HTTP poll below
 	# stays as a fallback for socket-down windows; dedup by
 	# Nakama notification id makes duplicate deliveries idempotent.
-	G.notification_socket_client\
+	Platform.notification_socket\
 		.notification_received.connect(
 			_on_socket_notification)
 	# Track lobby/match transitions to feed the

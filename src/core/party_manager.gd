@@ -1,7 +1,7 @@
 class_name PartyManager
 extends Node
 ## Manages party state. Real-time updates flow over the long-lived
-## Nakama notification socket (NotificationSocketClient) via the
+## Nakama notification socket (PlatformNotificationSocketClient) via the
 ## `party_state_changed` subject the platform runtime emits on every
 ## group lifecycle hook (invite / join / leave / kick). A slow
 ## catch-up HTTP poll runs alongside as a fallback for windows when
@@ -126,15 +126,15 @@ func _ready() -> void:
 		_on_auth_completed)
 	# Stage 5.4: real-time updates over the long-lived notification
 	# socket. The catch-up poll below handles socket-down windows.
-	G.notification_socket_client\
+	Platform.notification_socket\
 		.notification_received.connect(
 			_on_socket_notification)
-	G.notification_socket_client\
+	Platform.notification_socket\
 		.socket_connected.connect(_on_socket_connected)
 	# Stage 5.8: party chat rides the same socket. Messages arrive
 	# here when the panel is closed too — `chat_history` stays
 	# warm so opening the panel mid-session shows backlog.
-	G.notification_socket_client\
+	Platform.notification_socket\
 		.received_channel_message.connect(
 			_on_socket_channel_message)
 
@@ -836,7 +836,8 @@ func _reconcile_chat_subscription() -> void:
 		return
 	# Defer until the socket is up. socket_connected handler
 	# re-enters this method.
-	var socket := G.notification_socket_client
+	var socket: PlatformNotificationSocketClient = (
+		Platform.notification_socket)
 	if not is_instance_valid(socket):
 		return
 	if not socket.is_socket_connected():
@@ -849,14 +850,14 @@ func _reconcile_chat_subscription() -> void:
 ## just left.
 func _join_chat_for(party_id: String) -> void:
 	var channel: String = (
-		await G.notification_socket_client
+		await Platform.notification_socket
 			.join_chat_group(party_id))
 	if channel.is_empty():
 		return
 	# Party id may have changed while we were awaiting the join
 	# response.
 	if get_party_id() != party_id:
-		await G.notification_socket_client.leave_chat(channel)
+		await Platform.notification_socket.leave_chat(channel)
 		return
 	chat_channel_id = channel
 	_chat_joined_party_id = party_id
@@ -880,7 +881,8 @@ func _tear_down_chat() -> void:
 	chat_history_reset.emit()
 	if not prev.is_empty():
 		# Fire-and-forget; socket may already be closed.
-		var socket := G.notification_socket_client
+		var socket: PlatformNotificationSocketClient = (
+			Platform.notification_socket)
 		if (is_instance_valid(socket)
 				and socket.is_socket_connected()):
 			socket.leave_chat(prev)
@@ -935,13 +937,13 @@ func send_party_chat_message(text: String) -> bool:
 	# defend against accidental paste-of-a-novel.
 	if trimmed.length() > _CHAT_MESSAGE_MAX_LENGTH:
 		trimmed = trimmed.substr(0, _CHAT_MESSAGE_MAX_LENGTH)
-	return await G.notification_socket_client.send_chat_message(
+	return await Platform.notification_socket.send_chat_message(
 		chat_channel_id,
 		{"text": trimmed},
 	)
 
 
-## Live-message hook from NotificationSocketClient. Filters by
+## Live-message hook from PlatformNotificationSocketClient. Filters by
 ## channel and appends to history; the panel listens to
 ## `chat_message_received` to draw the new line.
 func _on_socket_channel_message(message: Dictionary) -> void:

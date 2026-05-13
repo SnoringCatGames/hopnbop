@@ -30,7 +30,6 @@ var screens: ScreensMain
 var match_result_reporter: MatchResultReporter
 var backend_api_client: BackendApiClient
 var party_manager: PartyManager
-var notification_socket_client: NotificationSocketClient
 var friends_notification_poller: FriendsNotificationPoller
 var crash_reporter: CrashReporter
 var profile_image_cache: ProfileImageCache
@@ -226,16 +225,19 @@ func _enter_tree() -> void:
 	add_child(party)
 	Platform.register_subsystem("party", party)
 
-	# NotificationSocketClient must enter the tree before its
+	# Stage 6.5b: realtime notification socket lives in the addon as
+	# PlatformNotificationSocketClient. Game code reads it via
+	# Platform.notification_socket. Must enter the tree before its
 	# consumers (PartyManager, FriendsNotificationPoller) so their
 	# _ready calls can connect to its signals. The socket itself
 	# stays closed until auth_completed fires for a non-anonymous
 	# user.
-	notification_socket_client = (
-		NotificationSocketClient.new())
-	notification_socket_client.name = (
-		"NotificationSocketClient")
-	add_child(notification_socket_client)
+	var notification_socket := (
+		PlatformNotificationSocketClient.new())
+	notification_socket.name = "NotificationSocketClient"
+	add_child(notification_socket)
+	Platform.register_subsystem(
+		"notification_socket", notification_socket)
 
 	party_manager = PartyManager.new()
 	party_manager.name = "PartyManager"

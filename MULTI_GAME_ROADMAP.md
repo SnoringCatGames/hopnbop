@@ -30,35 +30,34 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 6 SDK extraction continuing. 6.5
-  shipped 2026-05-12: `src/core/party_api_client.gd` is gone;
-  the new `PlatformPartyApiClient` lives in
-  `addons/snoringcat_platform_client/core/party_api_client.gd`
-  (mirrored in the submodule). Scope was narrowed from the
-  audit's framing — `party_manager.gd` stayed game-side
-  (same precedent as 6.4's `friends_notification_poller.gd`)
-  because of its UI-dialog coupling to `G.toast_overlay`,
-  `G.confirm_layer`, `G.client_session`, `G.game_panel`, and
-  `G.notification_socket_client`. Decoupling those would be a
-  refactor with no payoff today. The 18+ `G.party_api_client.X`
-  sites in `party_manager.gd` plus the 3 UI files
-  (`party_lobby_panel.gd`, `friend_details_panel.gd`,
-  `join_by_code_panel.gd`) migrated via `sed s/G\.party_api_client/
-  Platform.party/g`. Three local-handle declarations
-  (`var pac := Platform.party`, `var client := Platform.party`,
-  `var party_client := Platform.party`) got explicit
-  `PlatformPartyApiClient` type annotations because
-  `Platform.party` is untyped on the autoload (parser-cache
-  bug workaround inherited from 6.3/6.4). `global.gd` now
-  instantiates `PlatformPartyApiClient` and registers via
-  `Platform.register_subsystem("party", party)`; the old
-  `G.party_api_client` field is dropped. Editor pass refreshed
-  `.godot/global_script_class_cache.cfg`; headless boot clean
-  (Main._ready reached, JWT refresh fires with
-  `vars: {game_id: hopnbop}` through the new
-  `Platform.party`-registered path). Next focus: Stage 6.6
-  (matchmaker + edgegap server provider → `Platform.matchmaking.*`)
-  or 6.8 (settings_cloud_sync). Both unblocked.
+- **Current focus:** Stage 6 SDK extraction continuing. 6.5b
+  shipped 2026-05-12 immediately after 6.5: `NotificationSocketClient`
+  extracted to the addon as `PlatformNotificationSocketClient`.
+  The class was a clean addon citizen already — only `Netcode.log
+  .print/warning` reach-backs (8 sites) needed swapping for
+  `print` / `push_warning`. Everything else (signals, reconnect
+  state machine, chat helpers, channel-message flattening) lifted
+  verbatim. `Platform.gd` gained a `notification_socket` field +
+  allowlist entry. The 6 callsites in `party_manager.gd` and
+  `friends_notification_poller.gd` migrated via
+  `sed s/G\.notification_socket_client/Platform.notification_socket/g`;
+  two `var socket := Platform.notification_socket` declarations got
+  explicit `PlatformNotificationSocketClient` type annotations
+  (same pattern as 6.4/6.5). `global.gd` now instantiates the
+  addon class and registers via
+  `Platform.register_subsystem("notification_socket", ...)`;
+  the `G.notification_socket_client` field is dropped. Game-side
+  `notification_socket_client.gd` + `.uid` deleted.
+  Editor pass refreshed `.godot/global_script_class_cache.cfg`
+  with the new class entry; plain headless boot clean (Main._ready,
+  JWT refresh against live Nakama with
+  `vars: {game_id: hopnbop}`). Next focus: 6.6 (matchmaker +
+  edgegap server provider — needs the heavier refactor of
+  splitting NakamaMatchmakerClient into a clean addon-side
+  Nakama-socket layer + a game-side SessionProvider adapter that
+  bridges to Netcode.settings.transport_type and NetworkLogger),
+  or 6.8 (settings_cloud_sync, which also depends on Stage 3.5's
+  global-vs-per-game taxonomy decision).
 - **Last updated:** 2026-05-12.
 - **Stages complete:**
   - Stage 0 (platform infra extraction — including the kickoff
@@ -84,16 +83,17 @@ See also:
     5.4, 5.5, 5.6, 5.8, 5.9, 5.10, 5.11). Open: 5.7 game-mode
     picker (deferred until game.yaml schema gains a `modes`
     list, mirrored by Stage 4.7).
-  - Stage 6 — 6/11 tasks shipped 2026-05-12 (6.1 subsystem
+  - Stage 6 — 7/11 tasks shipped 2026-05-12 (6.1 subsystem
     slots + register_subsystem helper, 6.2 auth_client →
     PlatformAuthApiClient + nakama / OAuth constants on
     Platform, 6.3 auth_token_store reconciliation + Platform.
     token_store migration across 22 files, 6.4
     PlatformFriendsApiClient, 6.5 PlatformPartyApiClient,
-    6.7 PlatformPresenceApiClient split out from the old
-    friends client). 6.5 partially completed — only the API
-    client extracted; party_manager.gd stays game-side
-    (UI-dialog coupling). Open: 6.6 (matchmaker +
+    6.5b PlatformNotificationSocketClient, 6.7
+    PlatformPresenceApiClient split out from the old friends
+    client). 6.5 partially completed — only the API client
+    extracted; party_manager.gd stays game-side (UI-dialog
+    coupling). Open: 6.6 (matchmaker +
     edgegap_server_provider), 6.8 (settings_cloud_sync), 6.9
     (game_session_manager), 6.10 (mass consumer migration —
     partially done as a side-effect of each extraction), 6.11
@@ -141,7 +141,8 @@ Stage 3 (mostly done, 2026-05-12) — game_id scoping: presence
        6.1 subsystem slots, 6.3 auth_token_store reconciliation
        (22-file migration to Platform.token_store), 6.4
        PlatformFriendsApiClient, 6.5 PlatformPartyApiClient
-       (party_manager.gd kept game-side), and 6.7
+       (party_manager.gd kept game-side), 6.5b
+       PlatformNotificationSocketClient, and 6.7
        PlatformPresenceApiClient all shipped. Remaining: 6.6
        matchmaking, 6.8 settings, 6.9 session, 6.10 consumer
        migration, 6.11 screens.
@@ -1480,14 +1481,52 @@ Extract clean code, not bug-laden code.
     smoke (the boot-time `update_and_get_presence` succeeds
     via the auth/presence path; party RPCs themselves are
     exercised only when a user actively creates a party).
-  - 6.5b candidate (future): extract
-    `NotificationSocketClient` to the addon as
-    `PlatformNotificationSocketClient`. It already reads only
-    `Platform.{auth, token_store, build_session_from_store,
-    get_nakama_client}` and Nakama types. The only non-addon
-    refs are `Netcode.log.print/warning` (replaceable with
-    `print`/`push_warning` like 6.2 did for the auth class).
-    Deferred so 6.5 stays focused on the party API surface.
+- [x] **6.5b Extract `notification_socket_client.gd` →
+      `Platform.notification_socket.*`** (2026-05-12). Follow-up
+      to 6.5 immediately.
+  - Done — submodule: new
+    `addons/snoringcat_platform_client/core/notification_socket_client.gd`
+    with `class_name PlatformNotificationSocketClient`. Surface
+    preserved verbatim: 4 signals (`notification_received`,
+    `socket_connected`, `socket_disconnected`,
+    `received_channel_message`), 5 methods (`is_socket_connected`,
+    `start`, `stop`, `join_chat_group`, `leave_chat`,
+    `send_chat_message`) plus the `CHANNEL_TYPE_GROUP` constant.
+    Reads `Platform.auth`, `Platform.token_store`,
+    `Platform.build_session_from_store()`,
+    `Platform.get_nakama_client()`. 8 `Netcode.log.{print,warning}`
+    callsites replaced with `print` / `push_warning` (same
+    pattern 6.2 used for the auth class). No other game-side
+    reach-backs.
+  - Done — platform.gd: new `notification_socket` field +
+    allowlist entry in `register_subsystem`. Subsystem docstring
+    updated to include the slot.
+  - Done — parent: 6 callsites across two files
+    (`party_manager.gd`, `friends_notification_poller.gd`)
+    migrated via `sed s/G\.notification_socket_client/Platform.notification_socket/g`.
+    Two `var socket := Platform.notification_socket` declarations
+    got explicit `PlatformNotificationSocketClient` type
+    annotations because `Platform.notification_socket` is
+    untyped on the autoload (parser-cache workaround inherited).
+    Two prose mentions of "NotificationSocketClient" in
+    `party_manager.gd` docstrings updated to "PlatformNotificationSocketClient".
+  - Done — `global.gd._enter_tree()` instantiates
+    `PlatformNotificationSocketClient` and calls
+    `Platform.register_subsystem("notification_socket", ...)`.
+    The `G.notification_socket_client` field is removed. The
+    "must enter the tree before its consumers" comment block
+    is preserved (PartyManager and FriendsNotificationPoller
+    both `_ready`-connect to its signals).
+  - Done — game-side `src/core/notification_socket_client.gd`
+    + `.uid` deleted.
+  - Verification: editor pass refreshed
+    `.godot/global_script_class_cache.cfg` with the new class
+    entry; plain headless boot clean (Main._ready,
+    JWT refresh fires with `vars: {game_id: hopnbop}` through
+    the existing PlatformAuthApiClient path; the realtime
+    socket itself doesn't open in this preview path because
+    the user is anonymous at this boot step, but the
+    auth_completed → start() wiring is in place and registered).
 - [ ] 6.6 Extract `nakama_matchmaker_client.gd` +
   `edgegap_server_provider.gd` → `Platform.matchmaking.*`.
 - [x] **6.7 Extract presence read/write into `Platform.presence.*`**
@@ -2449,6 +2488,37 @@ Security:
     but the payoff is small until a second consuming game
     needs the same realtime-socket bus; deferred without
     blocking 6.6 / 6.8 / 6.9 work.
+
+- **2026-05-12:** Stage 6.5b followed 6.5 immediately. The
+  6.5b note above bumped to "shipped" the same day. Two design
+  calls worth recording:
+  - **`notification_socket` is its own subsystem slot, not a
+    sub-slot of `auth` or a Platform-owned (non-subsystem)
+    object.** It owns its own lifecycle (open/close on
+    auth_completed transitions), so binding the lifetime to
+    Platform itself (like `nakama_client` is bound) would have
+    meant tearing the socket up/down inside `Platform.initialize`
+    rather than in the consuming game's bootstrap. Subsystem
+    pattern keeps the addon's autoload passive — only the
+    consuming game decides when to wire each piece. Same
+    rationale as 6.1's original case for keeping subsystems
+    slot-based rather than preload-and-instantiate.
+  - **The 6.6 extraction is now the heaviest remaining 6.x.**
+    With 6.5b done, the SDK has clean addon-side ownership of
+    every Nakama-specific HTTP RPC and realtime-socket
+    surface. The matchmaker extraction (6.6) is the
+    remaining piece that touches Nakama directly, but it's
+    entangled with game-side Netcode autoload, transport-type
+    enum, and BackendApiClient (server_matchmaker_* cache).
+    Likely path: split `NakamaMatchmakerClient` into a clean
+    `PlatformMatchmakingClient` (Nakama socket + add_matchmaker
+    + match_ready listener, emitting platform-agnostic signals
+    with `transport_type` as a string) plus a game-side
+    `NakamaMatchmakerClient extends SessionProvider` adapter
+    that translates the string to `NetworkSettings.TransportType`
+    and bridges to Netcode. `EdgegapServerProvider` stays
+    entirely game-side because it integrates with the in-
+    container Netcode.connector for peer validation.
 
 ## How to use this document
 
