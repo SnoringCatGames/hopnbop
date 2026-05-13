@@ -30,15 +30,21 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 8 test foundation. 8.1 (deploy-time
-  `go test ./runtime/...` gate in `nakama-runtime.yml`) + 8.2
-  (staticcheck — was already running in PR validate) shipped
-  2026-05-13. **Next:** highest-leverage path is 8.11 reusable
-  socket harness + 8.12 multi-session helper, which
-  retroactively unblocks the ~10 "compliance test still pending"
-  notes on landings 1.5, 3.5, 3.9, 5.4-5.11, 6.5b. Stage 7
-  resilience (13 open items) and Stage 6.11 screens (greenfield,
-  3 screens, needs design call) are the parallel tracks.
+- **Current focus:** Stage 8 test foundation. 8.1 + 8.2 deploy
+  gate shipped 2026-05-13 (first pass). 8.11 reusable socket
+  harness + 8.12 multi-session helper + first canary multi-user
+  test (`test_friends_multiuser.gd`) shipped 2026-05-13 (second
+  pass). 8.11's primitives turned out to be already-landed in
+  `compliance_socket_helper.gd` from an earlier session;
+  flipping that to done revealed 8.12 as the actual gating
+  item, now closed. **Next:** convert the ~10 "compliance test
+  still pending" notes (1.5, 3.5, 3.9, 5.4–5.11, 6.5b) to real
+  multi-user tests against the new harness — pick from 8.17
+  party-invite-flow, 8.18 party-to-matchmaking, or 8.22
+  presence game-filter as the next highest-payoff entries.
+  Stage 7 resilience (13 open items) and Stage 6.11 screens
+  (greenfield, 3 screens, needs design call) are the parallel
+  tracks.
 - **2026-05-13 audit follow-up — drift items resolved later
   the same day:**
   - **Runtime backlog flushed:** the deployed runtime was 24
@@ -110,7 +116,9 @@ See also:
 - **Last updated:** 2026-05-13 (multi-pass: 8.1/8.2 deploy gate,
   audit-surfaced drift fully resolved, 24-commit runtime backlog
   deployed, first games-cache sync, Phase F finished, stale
-  Edgegap tags pruned, script relocations + doc cleanup).
+  Edgegap tags pruned, script relocations + doc cleanup,
+  8.11/8.12 socket + multi-session compliance harness landed
+  with first canary multi-user test).
 - **Stages complete:**
   - Stage 0 — platform infra extraction (kickoff verification
     items 0.8 + 0.9 confirmed 2026-05-12).
@@ -140,13 +148,14 @@ See also:
     templates** (greenfield, 3 screens — design decision
     needed on base-class vs full-scene vs components pattern).
 - **Stages in progress:**
-  - Stage 8 — 2/31 shipped 2026-05-13 (8.1 `go test` step in
-    `nakama-runtime.yml`; 8.2 `staticcheck` discovered already
-    running in `pr-validate.yml`). Highest-leverage next item
-    is 8.11 reusable socket harness + 8.12 multi-session
-    helper, which retroactively unblocks the ~10
-    "compliance test still pending" notes on landings 1.5,
-    3.5, 3.9, 5.4–5.11, 6.5b.
+  - Stage 8 — 5/31 shipped 2026-05-13 (8.1 deploy-time
+    `go test` gate, 8.2 staticcheck already running in
+    `pr-validate.yml`, 8.11 socket harness, 8.12
+    multi-session helper, 8.14 first canary multi-user
+    friends test). The blocked-on-harness backlog of
+    ~10 "compliance test still pending" notes (1.5, 3.5,
+    3.9, 5.4–5.11, 6.5b) is now unblocked — next pass
+    converts them into real tests.
 - **Stages not yet started:**
   - Stage 7 — Resilience (13 open items).
 - **Stages blocked:** none.
@@ -194,8 +203,10 @@ Stage 7 — Resilience (retries, notifications, observability).
    13 items, all open.
 
 Stage 8 — Tests (parallel track, doesn't block features).
-   2/31 shipped 2026-05-13 (8.1 deploy-time go test gate; 8.2
-   staticcheck already running). Picking up here next.
+   5/31 shipped 2026-05-13 (8.1 deploy-time go test gate; 8.2
+   staticcheck already running; 8.11 socket harness already
+   shipped, marked done; 8.12 multi_session_anon helper; 8.14
+   first multi-user friends test as canary).
 ```
 
 ## Stage 0 — Platform infra extraction (mostly done)
@@ -2155,14 +2166,53 @@ prioritize tests that protect work landing in the current stage.
 
 ### Tier 2 — compliance suite expansion (GUT against live Nakama)
 
-- [ ] 8.11 Reusable socket harness in
-  `addons/snoringcat_platform_client/test/compliance/compliance_helper.gd`
-  (currently HTTP-only).
-- [ ] 8.12 Multi-session helper that spins up N concurrent auth
-  sessions in one test.
+- [x] **8.11 Reusable socket harness** (2026-05-13).
+  - Done: the roadmap's "currently HTTP-only" framing was
+    stale — `compliance_socket_helper.gd` already shipped in
+    an earlier session and is consumed by
+    `test_socket_auth.gd`, `test_socket_matchmaker.gd`,
+    `test_socket_presence.gd`, `test_socket_chat.gd`. Surface:
+    `session_from_token(jwt)` (builds a NakamaSession without
+    re-auth), `create_socket(host, port, scheme)`,
+    `connect_with_timeout(sock, session, sec)` (awaitable +
+    timeout-bounded), `wait_for_signal_with_timeout(obj,
+    name, sec)` (generic signal wait used for matchmaker /
+    chat fan-out asserts). README now documents the socket
+    helper alongside the HTTP helper.
+- [x] **8.12 Multi-session helper** (2026-05-13).
+  - Done: new `multi_session_anon(count, prefix)` on
+    `compliance_helper.gd`. Mints `count` independently-
+    authenticated anonymous Nakama sessions with one-shot
+    device_ids (prefix `compliance-multi-` + run-timestamp +
+    random + index) so concurrent CI runs don't collide and a
+    single run doesn't leave addressable state. Returns
+    `Array[Dictionary]` of `{token, refresh_token, user_id,
+    username, device_id}` so multi-user tests can address each
+    other via Nakama user_ids (needed for friend / party /
+    matchmaker flows). Paired `delete_one_shot_account(user)`
+    for strict cleanup via Nakama's built-in
+    `DELETE /v2/account` (bypasses the platform's 30-day
+    soft-delete grace).
+  - Decision worth recording: helper is plain HTTP (not
+    socket). Multi-user socket tests construct one socket per
+    user via the existing `compliance_socket_helper`, sharing
+    the session-from-token primitive. Keeps each helper
+    focused on its concern.
 - [ ] 8.13 `EDGEGAP_MOCK_DEPLOY=1` mode in runtime so tests don't
   burn real allocations.
-- [ ] 8.14 `test_friends_multiuser.gd`.
+- [x] **8.14 `test_friends_multiuser.gd`** (2026-05-13) —
+  canary for 8.12.
+  - Done: new compliance test exercises the
+    A-request-B-accepts friends flow with two real anonymous
+    accounts. Asserts Nakama's friend-state enum transitions
+    correctly (caller=INVITE_SENT(1), receiver=INVITE_RECEIVED
+    (2), both=FRIEND(0) after mutual-accept). Per-user
+    cleanup in `after_each` via `delete_one_shot_account`.
+    First concrete consumer of `multi_session_anon` — the rest
+    of the multi-user backlog (8.17 party-invite, 8.18
+    party-to-matchmaking, 8.22 presence-game-filter, 8.15
+    block-list, 8.16 friends-cascade-on-account-delete) reads
+    the same pattern.
 - [ ] 8.15 `test_friends_block.gd` (after 7.4).
 - [ ] 8.16 `test_friends_account_delete_cascade.gd` (after 1.4).
 - [ ] 8.17 `test_party_invite_flow.gd`.
@@ -3362,6 +3412,55 @@ Security:
     Same pattern existing `Platform.X != null` consumer code
     uses (e.g. `friends_panel.gd`'s game_id comparison). Cheap
     and consistent.
+
+- **2026-05-13:** Stage 8.11 + 8.12 + 8.14 shipped together.
+  Four design calls worth recording:
+  - **8.11 was already done.** The original roadmap framing
+    called for a "reusable socket harness" addition to the
+    compliance helpers; in practice
+    `compliance_socket_helper.gd` already existed from an
+    earlier session (session_from_token, create_socket,
+    connect_with_timeout, wait_for_signal_with_timeout) and
+    was actively consumed by `test_socket_*.gd`. Reading the
+    helper before writing new code surfaced the stale framing.
+    Marked done with the consumer list pinned in the entry so
+    a future audit doesn't re-open it.
+  - **8.12 helper is HTTP-only; sockets layer on top.**
+    `multi_session_anon(count)` issues `count` parallel
+    `/v2/account/authenticate/device` calls and returns
+    `{token, refresh_token, user_id, username, device_id}`
+    per user. Tests that need a per-user socket use the
+    existing socket helper's `session_from_token(token) +
+    create_socket() + connect_with_timeout(sock, session)`
+    per user. Splitting the concerns kept each helper focused
+    and avoided a "do-everything" multi-user-multi-socket
+    primitive whose shape would still vary per-test (some
+    flows need 1 socket, some need N).
+  - **One-shot device_ids, not stable.** The single-user
+    helper `nakama_anon_session` uses fixed device_ids
+    (`compliance-anon-fixed-1`) deliberately, to reuse the
+    same Nakama account across runs and not bloat the users
+    table. Multi-user can't do that — if two CI runs ran in
+    parallel against the same prod Nakama, they'd race on the
+    same user pair's friend / party state and produce
+    flake. So `multi_session_anon` mints fresh
+    `compliance-multi-<timestamp>-<rand>-<index>` device_ids
+    per call. The new `delete_one_shot_account` helper opts
+    callers into strict cleanup; lazy callers let the rows
+    linger for ops sweep.
+  - **Canary test goes through Nakama state semantics, not the
+    platform RPCs.** The first multi-user test
+    (`test_friends_multiuser.gd`) asserts on the Nakama friend-
+    state enum transitions (0/1/2) directly via `/v2/friend`,
+    not through the addon's `PlatformFriendsApiClient`. Two
+    reasons: (a) the harness is the unit under test, so the
+    fewer layers between it and the assertion the better;
+    (b) every other Stage 8.x multi-user candidate (party,
+    presence, matchmaking) wants similar low-level state
+    assertions on Nakama contracts. Patterns from this test
+    are the template for the rest. The addon-class round-trip
+    tests live under Tier 3 (8.23+ unit tests with doubles),
+    not Tier 2 compliance.
 
 ## How to use this document
 
