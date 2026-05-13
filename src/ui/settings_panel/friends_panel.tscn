@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://src/ui/settings_panel/friends_panel.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/side_panel.tscn" id="2_base"]
@@ -12,6 +12,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/friend_request_panel.tscn" id="10_friend_request_panel"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/friend_details_panel.tscn" id="11_friend_details"]
 [ext_resource type="PackedScene" path="res://src/ui/settings_panel/blocked_users_panel.tscn" id="12_blocked_users"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/recent_players_panel.tscn" id="13_recent_players"]
 
 [node name="FriendsPanel" instance=ExtResource("2_base")]
 process_mode = 3
@@ -27,3 +28,4 @@ _add_friend_panel_scene = ExtResource("8_add_friend_panel")
 _friend_request_panel_scene = ExtResource("10_friend_request_panel")
 _friend_details_panel_scene = ExtResource("11_friend_details")
 _blocked_users_panel_scene = ExtResource("12_blocked_users")
+_recent_players_panel_scene = ExtResource("13_recent_players")

@@ -18,6 +18,7 @@ extends SidePanel
 @export var _friend_request_panel_scene: PackedScene
 @export var _friend_details_panel_scene: PackedScene
 @export var _blocked_users_panel_scene: PackedScene
+@export var _recent_players_panel_scene: PackedScene
 
 var _friend_code_label: Label
 var _is_loading := false
@@ -64,6 +65,20 @@ func build_ui() -> void:
 		self)
 	_row_container.add_child(add_row)
 	_connect_row_clicked(add_row)
+
+	# Recent players trigger row — opens sub-panel (Stage 7.6).
+	# Sits between Add Friend and Blocked Users in the action
+	# stack so the most-likely "find people to add" entry is
+	# adjacent to the manual-add entry.
+	var recent_row: SubPanelTriggerRow = (
+		_sub_panel_trigger_row_scene.instantiate())
+	recent_row.set_icon(_add_friend_icon)
+	recent_row.setup(
+		tr("FRIENDS.RECENT_PLAYERS"),
+		_recent_players_panel_scene,
+		self)
+	_row_container.add_child(recent_row)
+	_connect_row_clicked(recent_row)
 
 	# Blocked users trigger row — opens sub-panel (Stage 7.4).
 	var blocked_row: SubPanelTriggerRow = (
