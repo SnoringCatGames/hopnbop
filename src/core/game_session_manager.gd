@@ -5,6 +5,11 @@ extends Node
 ## Coordinates session provider setup, connection flow, player ID assignment,
 ## and disconnect handling. Emits high-level events that game logic can respond
 ## to without directly handling network signals.
+##
+## Stage 6.9: in addition to emitting on its own signals, this
+## manager forwards lifecycle events into `Platform.session`
+## (a `PlatformSessionObserver`) so addon-side / future-second-game
+## consumers can subscribe without depending on this class.
 
 ## Emitted when local player IDs are assigned by the server.
 signal session_established(player_ids: Array[int])
@@ -171,6 +176,9 @@ func client_request_session(
 		# is in progress.
 		matchmaking_progress.emit(
 			"authenticating", 0.0, -1.0)
+		if Platform.session != null:
+			Platform.session.matchmaking_progress.emit(
+				"authenticating", 0.0, -1.0)
 		Netcode.print(
 			"Refreshing auth token before"
 			+ " matchmaking",
@@ -187,6 +195,9 @@ func client_request_session(
 			connection_lost.emit(
 				"Auth token expired", false
 			)
+			if Platform.session != null:
+				Platform.session.connection_lost.emit(
+					"Auth token expired", false)
 			return
 
 	var player_count := (
@@ -369,6 +380,8 @@ func _on_session_request_failed(error_message: String) -> void:
 	# is not a connection loss. Signal matchmaking
 	# failure so the client returns to the lobby.
 	matchmaking_failed.emit(error_message)
+	if Platform.session != null:
+		Platform.session.matchmaking_failed.emit(error_message)
 
 
 func _on_player_ids_assigned(assigned_ids: Array[int]) -> void:
@@ -390,6 +403,8 @@ func _on_player_ids_assigned(assigned_ids: Array[int]) -> void:
 
 	# Emit high-level event for game logic.
 	session_established.emit(assigned_ids)
+	if Platform.session != null:
+		Platform.session.session_started.emit(assigned_ids)
 
 
 func _on_all_players_connected() -> void:
@@ -400,6 +415,8 @@ func _on_all_players_connected() -> void:
 
 	# Emit high-level event for game logic.
 	match_ready.emit()
+	if Platform.session != null:
+		Platform.session.match_ready.emit()
 
 
 func _on_disconnected(peer_id: int, reason: int) -> void:
@@ -436,6 +453,9 @@ func _client_on_server_disconnected(reason: int) -> void:
 
 	# Emit high-level event for game logic.
 	connection_lost.emit(reason_name, is_expected)
+	if Platform.session != null:
+		Platform.session.connection_lost.emit(
+			reason_name, is_expected)
 
 
 func _server_on_client_disconnected(peer_id: int, reason: int) -> void:
@@ -540,6 +560,9 @@ func _on_matchmaking_progress(
 ) -> void:
 	matchmaking_progress.emit(
 		phase, elapsed_sec, estimated_total_sec)
+	if Platform.session != null:
+		Platform.session.matchmaking_progress.emit(
+			phase, elapsed_sec, estimated_total_sec)
 
 
 func _on_shutdown_requested(

@@ -30,33 +30,25 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 3.5 + 6.8 paired pass landed 2026-05-12.
-  Settings split into two cloud rows (`"global"` + `"game/{game_id}"`)
-  per a new `LocalSettings.GLOBAL_OVERRIDABLE_KEYS` constant. Cross-
-  game prefs (`locale`, `full_screen`, `mute_music`, `mute_sfx`,
-  `prefer_offline_mode`) ride the global row; every hopnbop-specific
-  gameplay modifier (`is_gore_enabled`, `are_critters_enabled`,
-  `is_jetpack_enabled`, ...) rides the per-game row. New
-  `PlatformSettingsApiClient` in the addon owns the Nakama storage
-  round-trips and emits per-scope `settings_received(scope, payload,
-  updated_at)` so the game-side `SettingsCloudSync` can apply a
-  cloud-wins-by-timestamp merge independently per scope. One-shot
-  legacy migration reads the pre-split `key="user"` row on first
-  fetch, applies its values to local overrides, marks migrated, and
-  proceeds through the normal merge path so another device's newer
-  partitioned rows can't be clobbered. `BackendApiClient` stripped
-  of its now-unused `save_player_settings` / `fetch_player_settings`
-  / `settings_received` / `settings_saved` surface. Next focus
-  options, in roughly ascending cost: (a) Stage 6.9
-  game_session_manager (realistic move is a thin passive-observer
-  `Platform.session` slot per its scoping notes, since the full
-  coordinator lift would require dragging Netcode into the addon —
-  wrong direction); (b) Stage 6.11 screen templates (greenfield, 3
-  screens, needs an upfront design decision on the template vs
-  base-class pattern given the heavy `G.*` UI coupling — see
-  scoping notes); (c) pivot to Stage 7 resilience (13 open items
-  including allocation retry, friend pagination, anonymous-upgrade
-  UI, account-merge UI, observability re-introduction).
+- **Current focus:** Stage 6.9 PlatformSessionObserver landed
+  2026-05-12. Passive lifecycle bus in the addon
+  (`session_started`, `match_ready`, `connection_lost`,
+  `matchmaking_failed`, `matchmaking_progress`); game-side
+  `GameSessionManager` forwards each emit into `Platform.session`
+  alongside its own signal so existing direct-connect consumers
+  (`GamePanel`, `LoadingScreen`) keep working unchanged. Hopnbop-
+  specific events (`local_mode_fallback_requested`,
+  `server_should_reset`, `server_shutdown_imminent`) deliberately
+  stay game-side only. Next focus options, in ascending cost:
+  (a) Stage 6.11 screen templates (greenfield, 3 screens, needs
+  an upfront design decision on the template vs base-class pattern
+  given the heavy `G.*` UI coupling — see scoping notes);
+  (b) pivot to Stage 7 resilience (13 open items including
+  allocation retry, friend pagination, anonymous-upgrade UI,
+  account-merge UI, observability re-introduction); (c) Stage 8
+  compliance-test rig (socket harness + multi-session helper)
+  which unblocks regression coverage on every Stage 1/3/5/6
+  landing's "compliance test still pending" note.
 - **Last updated:** 2026-05-12.
 - **Stages complete:**
   - Stage 0 (platform infra extraction — including the kickoff
@@ -81,18 +73,19 @@ See also:
     5.4, 5.5, 5.6, 5.8, 5.9, 5.10, 5.11). Open: 5.7 game-mode
     picker (deferred until game.yaml schema gains a `modes`
     list, mirrored by Stage 4.7).
-  - Stage 6 — 10/11 tasks shipped 2026-05-12 (6.1 subsystem
-    slots + register_subsystem helper, 6.2 auth_client →
-    PlatformAuthApiClient + nakama / OAuth constants on
-    Platform, 6.3 auth_token_store reconciliation + Platform.
-    token_store migration across 22 files, 6.4
-    PlatformFriendsApiClient, 6.5 PlatformPartyApiClient,
-    6.5b PlatformNotificationSocketClient, 6.6
+  - Stage 6 — 11/11 baseline tasks shipped 2026-05-12 (6.1
+    subsystem slots + register_subsystem helper, 6.2
+    auth_client → PlatformAuthApiClient + nakama / OAuth
+    constants on Platform, 6.3 auth_token_store reconciliation
+    + Platform.token_store migration across 22 files, 6.4
+    PlatformFriendsApiClient, 6.5 PlatformPartyApiClient, 6.5b
+    PlatformNotificationSocketClient, 6.6
     PlatformMatchmakingClient split + game-side adapter, 6.7
     PlatformPresenceApiClient split out from the old friends
     client, 6.8 PlatformSettingsApiClient + dual-scope cloud
-    sync, 6.10 mass consumer migration verified clean via
-    grep sweep). 6.5 partially completed — only the API client
+    sync, 6.9 PlatformSessionObserver passive lifecycle bus,
+    6.10 mass consumer migration verified clean via grep
+    sweep). 6.5 partially completed — only the API client
     extracted; party_manager.gd stays game-side (UI-dialog
     coupling). 6.6 partially completed —
     `EdgegapServerProvider` deliberately stays game-side
@@ -100,11 +93,12 @@ See also:
     partially completed — `SettingsCloudSync` stays game-side
     as a thin ~240-line adapter that owns the LocalSettings
     serialize / apply mapping; the addon owns just the Nakama
-    storage round-trips and per-scope envelope. Open: 6.9
-    (game_session_manager — likely a trivial passive-observer
-    `Platform.session` slot per scoping notes), 6.11
-    (screen templates — greenfield, see scoping notes under
-    the task entry).
+    storage round-trips and per-scope envelope. 6.9 partially
+    completed by design — `GameSessionManager` stays game-side
+    verbatim; the addon-side `Platform.session` is a passive
+    `PlatformSessionObserver` the game-side manager forwards
+    into. Open: 6.11 (screen templates — greenfield, see
+    scoping notes under the task entry).
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -156,11 +150,12 @@ Stage 3 (mostly done, 2026-05-12) — game_id scoping: presence
        NakamaMatchmakerClient; EdgegapServerProvider stays
        game-side), 6.7 PlatformPresenceApiClient, 6.8
        PlatformSettingsApiClient (game-side SettingsCloudSync
-       reduced to a ~240-line dual-scope adapter), and 6.10
-       grep-sweep verification of mass consumer migration all
-       shipped. Remaining: 6.9 session (likely passive observer
-       per scoping notes), 6.11 screens (greenfield, 3 screens —
-       design decision needed).
+       reduced to a ~240-line dual-scope adapter), 6.9
+       PlatformSessionObserver passive lifecycle bus (game-side
+       GameSessionManager stays put and forwards emits), and
+       6.10 grep-sweep verification of mass consumer migration
+       all shipped. Remaining: 6.11 screens (greenfield, 3
+       screens — design decision needed).
    ↓
 Stage 7 — Resilience (retries, notifications, observability)
 
@@ -1777,40 +1772,68 @@ Extract clean code, not bug-laden code.
     fetch-and-merge cycle. A more correct fix tracks in-flight
     saves and ignores fetch responses against the same scope
     while a save is pending; not worth the complexity today.
-- [ ] 6.9 Extract `game_session_manager.gd` → `Platform.session.*`
-  (delegating layer; game-specific session-provider stays in
-  `src/core/`).
-  - Scoping notes for the next pass:
-    - File is 557 lines and is the central coordinator that
-      hands off between `EdgegapServerProvider` (production
-      server), `NakamaMatchmakerClient extends SessionProvider`
-      (client), and `PreviewSessionProvider` (editor preview /
-      local mode). Reaches into `Netcode.{is_server,
-      is_preview, is_client, should_connect_to_remote_server,
-      connector, log, settings}`, `NetworkLogger`,
-      `G.client_session`, `G.match_state`, `G.game_panel`,
-      `G.toast_overlay`, and the matchmaking-progress UI surface.
-    - A "lift the whole class into the addon" move would
-      require pulling `Netcode` (which itself owns
-      rollback-netcode framework state) into the addon —
-      wrong direction. The realistic move follows the same
-      pattern as 6.5's PartyManager: keep the coordinator
-      game-side, factor only its *API surface* into the
-      addon. But session_manager doesn't really have an API
-      surface separable from rollback-netcode — its job IS
-      the coordination.
-    - Likely path: leave `game_session_manager.gd` game-side
-      verbatim. Add a thin `Platform.session` slot that
-      exposes lifecycle-event signals (`session_started`,
-      `session_ended`, `match_ready`,
-      `connection_lost`) the addon's other subsystems can
-      observe. The game-side manager emits into the slot;
-      addon consumers subscribe. Net effect on the
-      `Platform.session` SDK surface: a passive observer,
-      not a coordinator. Mark 6.9 done once this trivial
-      passive slot exists; the heavy refactor doesn't pay
-      off until a second game with different netcode
-      semantics forces the abstraction.
+- [x] **6.9 Passive `Platform.session` lifecycle bus** (2026-05-12).
+      `game_session_manager.gd` stays game-side verbatim.
+  - Done — submodule: new
+    `addons/snoringcat_platform_client/core/session_observer.gd`
+    with `class_name PlatformSessionObserver`. Surface: 5 signals
+    (`session_started(player_ids: Array[int])`, `match_ready()`,
+    `connection_lost(reason_name: String, is_expected: bool)`,
+    `matchmaking_failed(reason: String)`,
+    `matchmaking_progress(phase: String, elapsed_sec: float,
+    estimated_total_sec: float)`). No methods, no internal state,
+    no game-side reach-backs — just a bus. The 5-signal subset is
+    the union of the cross-game-meaningful events on the existing
+    `GameSessionManager`; hopnbop-specific events
+    (`local_mode_fallback_requested`, `server_should_reset`,
+    `server_shutdown_imminent`) stay game-side only because they
+    describe deployment-shape internals (offline-mode fallback,
+    preview-mode reset, server-side shutdown indicator) that a
+    second game would model differently if at all.
+  - Done — parent: `src/core/game_session_manager.gd` adds a
+    one-line `if Platform.session != null: Platform.session.X.emit
+    (...)` forward next to each existing game-side emit. Every
+    forwarded site is paired with the matching name (the
+    `session_established` → `session_started` rename happens at
+    the forward, not on the game-side signal — existing direct
+    connect callers in `game_panel.gd` keep the old name). The
+    `Platform.session != null` guard tolerates the trivially-
+    impossible case where the slot isn't registered yet (it's
+    registered in `global.gd._enter_tree` alongside the other
+    addon-side subsystems, before `GamePanel` instantiates a
+    `GameSessionManager`).
+  - Done — `global.gd._enter_tree`: instantiates
+    `PlatformSessionObserver` and calls
+    `Platform.register_subsystem("session", session_observer)`.
+    Slot was already declared in 6.1's `register_subsystem`
+    allowlist; this is the first registration that actually
+    populates it.
+  - Decision worth recording: passive observer, not coordinator.
+    The audit-derived framing had `Platform.session` owning the
+    session-provider switching + connection flow. In practice
+    that role is irreducibly entangled with `Netcode.*` (the
+    rollback-netcode autoload, a separate submodule), the
+    matchmaker's `SessionProvider` extension, and game-specific
+    UI / fallback state. Lifting the coordinator into the addon
+    would force the addon to depend on rollback-netcode and the
+    game's UI surfaces — wrong direction. The passive-observer
+    move keeps the dependency arrow pointing addon→Platform and
+    game→Platform, never addon→game, and unblocks the "second
+    game can drop in the addon and get the same lifecycle
+    surface" goal without the heavy refactor. The heavy refactor
+    doesn't pay off until a second game with different netcode
+    semantics forces the abstraction.
+  - Verification: editor pass refreshed
+    `.godot/global_script_class_cache.cfg` with the new
+    `PlatformSessionObserver` entry. Plain headless boot clean
+    (zero parse / compile errors; JWT refresh fires with
+    `vars: {game_id: hopnbop}` through the existing
+    PlatformAuthApiClient path). The session-lifecycle forwards
+    themselves don't exercise in this preview-close path
+    (no user-driven matchmaking is exercised) but the bus is
+    registered and the game-side emits will fan out once a real
+    session lands. No compliance test for the forward path
+    (Stage 8 socket-harness track not live).
 - [x] **6.10 Migrate every consumer in hopnbop game code from
       `G.*_api_client` to `Platform.*`** (2026-05-12).
   - Done — verification pass. `G.*_api_client` grep across
@@ -3014,6 +3037,59 @@ Security:
     the rest, but the version-check caching it does (per-game
     legal_version + matchmaker rules) keeps it usefully
     game-side for now.
+
+- **2026-05-12:** Stage 6.9 PlatformSessionObserver landed. Four
+  design calls worth recording:
+  - **Passive observer, not coordinator.** The audit-derived task
+    framing had `Platform.session` owning the session-provider
+    switching + connection flow. In practice that role is
+    irreducibly entangled with `Netcode.*` (the rollback-netcode
+    autoload, a separate submodule), the matchmaker's
+    `SessionProvider` extension, and game-specific UI / fallback
+    state. Lifting the coordinator into the addon would force the
+    addon to depend on rollback-netcode and the game's UI
+    surfaces — wrong direction. The passive observer keeps the
+    dependency arrow pointing addon→Platform and game→Platform,
+    never addon→game. Game-side `GameSessionManager` stays
+    verbatim and just forwards each emit; addon-side / future-
+    second-game code subscribes to `Platform.session.*` for the
+    same lifecycle picture without taking a hard dependency on
+    the hopnbop class. Same pattern as 6.5's PartyManager and
+    6.6's EdgegapServerProvider: keep the coordinator game-side,
+    factor only the cross-game-meaningful surface into the addon.
+  - **5-signal surface, not 8.** The game-side manager emits 8
+    signals today (`session_established`, `match_ready`,
+    `connection_lost`, `matchmaking_progress`, `matchmaking_failed`,
+    `local_mode_fallback_requested`, `server_should_reset`,
+    `server_shutdown_imminent`). The 5 forwarded to the addon are
+    the cross-game-meaningful ones (lifecycle + progress + pre-
+    connect failure). The 3 omitted ones describe deployment-
+    shape internals (offline-mode fallback, preview-mode reset,
+    server-side shutdown indicator) that a second game would
+    model differently or skip entirely. Forwarding all 8 would
+    leak hopnbop's deployment shape into the addon contract; a
+    second game would either implement no-op emits or rename
+    them and break parity.
+  - **`session_established` → `session_started` on the bus.** The
+    addon-side bus uses the more conventional name (`started`,
+    not `established`) so a second game reading the SDK doesn't
+    inherit a hopnbop-specific verb. The game-side signal keeps
+    its original name to preserve backwards compatibility with
+    the existing direct-connect call sites in `game_panel.gd`.
+    The rename happens at the forwarding line. Cheap aliasing
+    and the right separation between game-side legacy and
+    addon-side canonical names.
+  - **One-line `if Platform.session != null` guard at each
+    forward.** The slot is registered in
+    `global.gd._enter_tree` before `GamePanel` instantiates a
+    `GameSessionManager`, so the guard is trivially-impossible
+    in production. But the alternative (assume non-null) means
+    a future refactor that moves session_manager instantiation
+    earlier (or a test harness that bypasses global.gd's
+    enter_tree) would null-deref instead of silently no-op.
+    Same pattern existing `Platform.X != null` consumer code
+    uses (e.g. `friends_panel.gd`'s game_id comparison). Cheap
+    and consistent.
 
 ## How to use this document
 

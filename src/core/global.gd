@@ -262,6 +262,16 @@ func _enter_tree() -> void:
 	add_child(settings_client)
 	Platform.register_subsystem("settings", settings_client)
 
+	# Stage 6.9: passive session-lifecycle bus. The game-side
+	# GameSessionManager (instantiated per-match by GamePanel) owns
+	# the coordinator role and forwards each lifecycle event into
+	# this node's signals so addon-side consumers can observe
+	# without taking a hard dependency on the game-side class.
+	var session_observer := PlatformSessionObserver.new()
+	session_observer.name = "SessionObserver"
+	add_child(session_observer)
+	Platform.register_subsystem("session", session_observer)
+
 	party_manager = PartyManager.new()
 	party_manager.name = "PartyManager"
 	add_child(party_manager)
