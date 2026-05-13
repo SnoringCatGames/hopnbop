@@ -84,25 +84,25 @@ func build_ui() -> void:
 	_row_container.add_child(_bottom_spacer)
 
 	# Connect API signals.
-	G.friends_api_client.friends_received.connect(
+	Platform.friends.friends_received.connect(
 		_on_friends_received)
-	G.friends_api_client\
+	Platform.friends\
 		.friend_request_sent.connect(
 			_on_friend_request_sent)
-	G.friends_api_client\
+	Platform.friends\
 		.friend_request_accepted.connect(
 			_on_friend_request_accepted)
-	G.friends_api_client\
+	Platform.friends\
 		.friend_request_rejected.connect(
 			_on_friend_request_rejected)
-	G.friends_api_client\
+	Platform.friends\
 		.friend_request_cancelled.connect(
 			_on_friend_request_cancelled)
-	G.friends_api_client.friend_removed.connect(
+	Platform.friends.friend_removed.connect(
 		_on_friend_removed)
-	G.friends_api_client.request_failed.connect(
+	Platform.friends.request_failed.connect(
 		_on_request_failed)
-	G.friends_api_client.presence_received.connect(
+	Platform.presence.presence_received.connect(
 		_on_presence_received)
 
 	# Fetch friends list. mark_seen is called after
@@ -112,7 +112,9 @@ func build_ui() -> void:
 
 
 func _exit_tree() -> void:
-	var client := G.friends_api_client
+	var client: PlatformFriendsApiClient = Platform.friends
+	var presence: PlatformPresenceApiClient = (
+		Platform.presence)
 	if not is_instance_valid(client):
 		return
 	var signals_to_disconnect: Array[Signal] = [
@@ -123,7 +125,7 @@ func _exit_tree() -> void:
 		client.friend_request_cancelled,
 		client.friend_removed,
 		client.request_failed,
-		client.presence_received,
+		presence.presence_received,
 	]
 	var callbacks: Array[Callable] = [
 		_on_friends_received,
@@ -186,7 +188,7 @@ func _build_friend_code_section() -> void:
 
 
 func _refresh_friends() -> void:
-	var client := G.friends_api_client
+	var client: PlatformFriendsApiClient = Platform.friends
 	var has_cache := (
 		not client.cached_friends.is_empty()
 		or not client.cached_sent_requests.is_empty()
@@ -307,8 +309,8 @@ func _on_friends_received(
 		friends, sent, incoming)
 	# Mark notifications as seen now that the list
 	# has loaded and the HTTPRequest node is free.
-	if not G.friends_api_client.is_busy():
-		G.friends_api_client.mark_seen()
+	if not Platform.friends.is_busy():
+		Platform.friends.mark_seen()
 
 
 func _on_request_failed(error: String) -> void:
@@ -334,9 +336,9 @@ func _on_presence_received(
 	if _is_loading:
 		return
 	_populate_all_sections(
-		G.friends_api_client.cached_friends,
-		G.friends_api_client.cached_sent_requests,
-		G.friends_api_client.cached_incoming_requests,
+		Platform.friends.cached_friends,
+		Platform.friends.cached_sent_requests,
+		Platform.friends.cached_incoming_requests,
 	)
 
 
@@ -486,16 +488,16 @@ func _add_friend_row(
 	var display_name: String = entry.get(
 		"display_name", "Unknown")
 
-	var is_online := (
-		G.friends_api_client.cached_online_ids
+	var is_online: bool = (
+		Platform.presence.cached_online_ids
 		.has(friend_id))
 
 	# Rich presence (game_id, status, rich_presence string)
-	# is opportunistically populated by FriendsApiClient when
+	# is opportunistically populated by PlatformPresenceApiClient when
 	# the platform stack returns the rich response shape. Pre-
 	# rich-rollout deploys leave this as an empty Dictionary.
 	var rich: Dictionary = (
-		G.friends_api_client.cached_online_friends
+		Platform.presence.cached_online_friends
 			.get(friend_id, {})
 	)
 	var friend_game_id: String = rich.get(
@@ -622,7 +624,7 @@ func _add_sent_row(
 
 	var cancel_action := func() -> void:
 		cancel_button.disabled = true
-		G.friends_api_client.cancel_request(
+		Platform.friends.cancel_request(
 			friend_id)
 
 	cancel_button.pressed.connect(cancel_action)

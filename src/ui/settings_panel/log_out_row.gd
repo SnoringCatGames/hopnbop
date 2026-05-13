@@ -62,11 +62,11 @@ func _do_logout() -> void:
 	G.profile_image_cache.clear()
 	G.friends_notification_poller.stop_polling()
 	G.friends_notification_poller.reset()
-	G.friends_api_client.cached_friends.clear()
-	G.friends_api_client.cached_sent_requests.clear()
-	G.friends_api_client.cached_incoming_requests\
+	Platform.friends.cached_friends.clear()
+	Platform.friends.cached_sent_requests.clear()
+	Platform.friends.cached_incoming_requests\
 		.clear()
-	G.friends_api_client.cached_online_ids.clear()
+	Platform.presence.cached_online_ids.clear()
 	G.party_manager.reset()
 	G.client_session.clear_latest_state()
 

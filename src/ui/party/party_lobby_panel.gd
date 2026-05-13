@@ -581,9 +581,9 @@ func _resolve_friend_display_name(
 ) -> String:
 	if player_id.is_empty():
 		return ""
-	if not is_instance_valid(G.friends_api_client):
+	if not is_instance_valid(Platform.friends):
 		return ""
-	for entry in G.friends_api_client.cached_friends:
+	for entry in Platform.friends.cached_friends:
 		if entry.get("player_id", "") == player_id:
 			return entry.get("display_name", "")
 	return ""

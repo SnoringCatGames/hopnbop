@@ -37,12 +37,12 @@ func on_open() -> void:
 		Platform.token_store.clear_tokens()
 		G.profile_image_cache.clear()
 		G.friends_notification_poller.reset()
-		G.friends_api_client.cached_friends.clear()
-		G.friends_api_client\
+		Platform.friends.cached_friends.clear()
+		Platform.friends\
 			.cached_sent_requests.clear()
-		G.friends_api_client\
+		Platform.friends\
 			.cached_incoming_requests.clear()
-		G.friends_api_client\
+		Platform.presence\
 			.cached_online_ids.clear()
 		G.party_manager.reset()
 		G.client_session.clear_latest_state()
@@ -219,12 +219,12 @@ func _on_auto_refresh_completed(
 		Platform.token_store.clear_tokens()
 		G.profile_image_cache.clear()
 		G.friends_notification_poller.reset()
-		G.friends_api_client.cached_friends.clear()
-		G.friends_api_client\
+		Platform.friends.cached_friends.clear()
+		Platform.friends\
 			.cached_sent_requests.clear()
-		G.friends_api_client\
+		Platform.friends\
 			.cached_incoming_requests.clear()
-		G.friends_api_client\
+		Platform.presence\
 			.cached_online_ids.clear()
 		G.party_manager.reset()
 		G.client_session.clear_latest_state()

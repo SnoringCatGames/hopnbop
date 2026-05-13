@@ -40,7 +40,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
-	var client := G.friends_api_client
+	var client: PlatformFriendsApiClient = Platform.friends
 	if not is_instance_valid(client):
 		return
 	if client.friends_received.is_connected(
@@ -98,13 +98,13 @@ func on_open() -> void:
 	# reflect current state. The fetch is async,
 	# so we populate immediately with cached data
 	# and re-populate when fresh data arrives.
-	if not G.friends_api_client.is_busy():
-		G.friends_api_client.fetch_friends()
-	if not (G.friends_api_client
+	if not Platform.friends.is_busy():
+		Platform.friends.fetch_friends()
+	if not (Platform.friends
 			.friends_received
 			.is_connected(
 				_on_friends_data_refreshed)):
-		G.friends_api_client\
+		Platform.friends\
 			.friends_received.connect(
 				_on_friends_data_refreshed,
 				CONNECT_ONE_SHOT)
@@ -174,7 +174,7 @@ func _populate_results() -> void:
 	# Anonymous participants have no backend ID,
 	# so they never show a button. Players we
 	# are already friends with are hidden.
-	var client := G.friends_api_client
+	var client: PlatformFriendsApiClient = Platform.friends
 	var own_id: String = Platform.token_store.player_id
 	var has_any_friend_button: bool = (
 		not Platform.token_store.is_anonymous
@@ -358,7 +358,7 @@ func _add_friend_button(
 	row: HBoxContainer,
 	backend_player_id: String,
 ) -> void:
-	var client := G.friends_api_client
+	var client: PlatformFriendsApiClient = Platform.friends
 
 	var icon_width := int(
 		G.settings.get_icon_display_width())
@@ -430,19 +430,19 @@ func _on_add_friend_pressed(
 	button.disabled = true
 	button.icon = _request_sent_icon
 
-	G.friends_api_client\
+	Platform.friends\
 		.send_request_by_player_id(
 			backend_player_id, "recent_match")
 
-	if not (G.friends_api_client
+	if not (Platform.friends
 			.friend_request_sent
 			.is_connected(
 				_on_friend_request_result)):
-		G.friends_api_client\
+		Platform.friends\
 			.friend_request_sent.connect(
 				_on_friend_request_result,
 				CONNECT_ONE_SHOT)
-		G.friends_api_client.request_failed\
+		Platform.friends.request_failed\
 			.connect(
 				_on_friend_action_failed,
 				CONNECT_ONE_SHOT)
@@ -464,18 +464,18 @@ func _on_accept_friend_pressed(
 		int(G.settings
 			.get_icon_display_width()))
 
-	G.friends_api_client.accept_request(
+	Platform.friends.accept_request(
 		backend_player_id)
 
-	if not (G.friends_api_client
+	if not (Platform.friends
 			.friend_request_accepted
 			.is_connected(
 				_on_friend_accept_result)):
-		G.friends_api_client\
+		Platform.friends\
 			.friend_request_accepted.connect(
 				_on_friend_accept_result,
 				CONNECT_ONE_SHOT)
-		G.friends_api_client.request_failed\
+		Platform.friends.request_failed\
 			.connect(
 				_on_friend_action_failed,
 				CONNECT_ONE_SHOT)
@@ -484,10 +484,10 @@ func _on_accept_friend_pressed(
 func _on_friend_request_result(
 	data: Dictionary,
 ) -> void:
-	if (G.friends_api_client.request_failed
+	if (Platform.friends.request_failed
 			.is_connected(
 				_on_friend_action_failed)):
-		G.friends_api_client.request_failed\
+		Platform.friends.request_failed\
 			.disconnect(_on_friend_action_failed)
 	var result: String = data.get("result", "")
 	if is_instance_valid(G.toast_overlay):
@@ -509,10 +509,10 @@ func _on_friend_request_result(
 func _on_friend_accept_result(
 	_data: Dictionary,
 ) -> void:
-	if (G.friends_api_client.request_failed
+	if (Platform.friends.request_failed
 			.is_connected(
 				_on_friend_action_failed)):
-		G.friends_api_client.request_failed\
+		Platform.friends.request_failed\
 			.disconnect(_on_friend_action_failed)
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
@@ -522,16 +522,16 @@ func _on_friend_accept_result(
 func _on_friend_action_failed(
 	error: String,
 ) -> void:
-	if (G.friends_api_client.friend_request_sent
+	if (Platform.friends.friend_request_sent
 			.is_connected(
 				_on_friend_request_result)):
-		G.friends_api_client.friend_request_sent\
+		Platform.friends.friend_request_sent\
 			.disconnect(_on_friend_request_result)
-	if (G.friends_api_client
+	if (Platform.friends
 			.friend_request_accepted
 			.is_connected(
 				_on_friend_accept_result)):
-		G.friends_api_client\
+		Platform.friends\
 			.friend_request_accepted\
 			.disconnect(_on_friend_accept_result)
 	# "Request in progress" is expected when the

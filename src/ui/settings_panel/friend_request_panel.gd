@@ -82,18 +82,18 @@ func build_ui() -> void:
 	_row_container.add_child(bottom_spacer)
 
 	# Connect API signals to pop panel on response.
-	G.friends_api_client\
+	Platform.friends\
 		.friend_request_accepted.connect(
 			_on_response)
-	G.friends_api_client\
+	Platform.friends\
 		.friend_request_rejected.connect(
 			_on_response)
-	G.friends_api_client.request_failed.connect(
+	Platform.friends.request_failed.connect(
 		_on_request_failed)
 
 
 func _exit_tree() -> void:
-	var client := G.friends_api_client
+	var client: PlatformFriendsApiClient = Platform.friends
 	if not is_instance_valid(client):
 		return
 	if client.friend_request_accepted.is_connected(
@@ -115,7 +115,7 @@ func _on_accept_pressed() -> void:
 		_accept_row.disabled = true
 	if is_instance_valid(_reject_row):
 		_reject_row.disabled = true
-	G.friends_api_client.accept_request(
+	Platform.friends.accept_request(
 		_friend_id)
 
 
@@ -124,7 +124,7 @@ func _on_reject_pressed() -> void:
 		_accept_row.disabled = true
 	if is_instance_valid(_reject_row):
 		_reject_row.disabled = true
-	G.friends_api_client.reject_request(
+	Platform.friends.reject_request(
 		_friend_id)
 
 

@@ -39,19 +39,19 @@ var _current_status := "online"
 
 
 func _ready() -> void:
-	G.friends_api_client\
+	Platform.friends\
 		.notifications_received.connect(
 			_on_notifications_received)
 	# Also update unseen count when the full
 	# friends list is fetched.
-	G.friends_api_client\
+	Platform.friends\
 		.friends_received.connect(
 			_on_friends_received)
 	# Clear unseen state when user views friends.
-	G.friends_api_client\
+	Platform.friends\
 		.friends_marked_seen.connect(
 			_on_friends_marked_seen)
-	G.friends_api_client\
+	Platform.presence\
 		.presence_received.connect(
 			_on_presence_received)
 	# Prefetch friends list on auth so the cache
@@ -108,15 +108,15 @@ func _process(delta: float) -> void:
 	_poll_timer += delta
 	if _poll_timer >= _POLL_INTERVAL_SEC:
 		_poll_timer = 0.0
-		if not G.friends_api_client.is_poll_busy():
-			G.friends_api_client.fetch_notifications()
+		if not Platform.friends.is_poll_busy():
+			Platform.friends.fetch_notifications()
 
 	_presence_poll_timer += delta
 	if _presence_poll_timer >= _PRESENCE_POLL_INTERVAL_SEC:
 		_presence_poll_timer = 0.0
-		if not G.friends_api_client\
+		if not Platform.presence\
 				.is_presence_busy():
-			G.friends_api_client.fetch_presence(
+			Platform.presence.fetch_presence(
 				_current_rich_presence,
 				_current_status,
 			)
@@ -151,7 +151,7 @@ func reset() -> void:
 func _on_notifications_received(
 	data: Dictionary,
 ) -> void:
-	# FriendsApiClient.fetch_notifications emits the raw Nakama
+	# PlatformFriendsApiClient.fetch_notifications emits the raw Nakama
 	# notification list under the `notifications` key. Dispatch by
 	# subject so non-friend subjects (party_matchmaking_start, etc.)
 	# get routed to the right manager. Friend-request subjects fall
@@ -228,8 +228,8 @@ func _on_notifications_received(
 	# Refresh the full friends list so any open
 	# panel reflects the changes immediately.
 	if total_new > 0:
-		if not G.friends_api_client.is_busy():
-			G.friends_api_client.fetch_friends()
+		if not Platform.friends.is_busy():
+			Platform.friends.fetch_friends()
 
 
 ## Dispatch a single Nakama notification by subject. Friend-related
@@ -349,9 +349,9 @@ func _on_auth_completed(
 		return
 	if Platform.token_store.is_anonymous:
 		return
-	if G.friends_api_client.is_busy():
+	if Platform.friends.is_busy():
 		return
-	G.friends_api_client.fetch_friends()
+	Platform.friends.fetch_friends()
 
 
 func _on_presence_received(
@@ -375,7 +375,7 @@ func _on_presence_received(
 		return
 	for id in new_online:
 		var display_name := ""
-		for entry in G.friends_api_client\
+		for entry in Platform.friends\
 				.cached_friends:
 			if entry.get("player_id", "") == id:
 				display_name = entry.get(

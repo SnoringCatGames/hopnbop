@@ -73,15 +73,15 @@ func build_ui() -> void:
 	_row_container.add_child(bottom_spacer)
 
 	# Connect API signals.
-	G.friends_api_client\
+	Platform.friends\
 		.friend_request_sent.connect(
 			_on_friend_request_sent)
-	G.friends_api_client.request_failed.connect(
+	Platform.friends.request_failed.connect(
 		_on_request_failed)
 
 
 func _exit_tree() -> void:
-	var client := G.friends_api_client
+	var client: PlatformFriendsApiClient = Platform.friends
 	if not is_instance_valid(client):
 		return
 	if client.friend_request_sent.is_connected(
@@ -116,7 +116,7 @@ func _on_send_pressed() -> void:
 	if code.length() < _MIN_CODE_LENGTH:
 		return
 	_send_row.disabled = true
-	G.friends_api_client.send_request_by_code(
+	Platform.friends.send_request_by_code(
 		code)
 
 

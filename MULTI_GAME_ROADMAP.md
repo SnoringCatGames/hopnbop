@@ -30,30 +30,39 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 6 kickoff. 6.1 and 6.3 landed 2026-05-12.
-  6.1 added the `Platform.{auth, account, friends, party, presence,
-  settings, matchmaking, session, screens}` subsystem property slots
-  to the addon's `platform.gd`, plus a `register_subsystem(name,
-  value)` helper for the consuming game to wire its own
-  implementations into the slots once each extraction lands. All
-  slots default to null until the corresponding Stage 6.x lands.
-  6.3 deleted the game-side `AuthTokenStore` class in favor of the
-  addon's `PlatformAuthTokenStore`, migrated all 22 consumer files
-  off `G.auth_token_store` and onto `Platform.token_store` (mass
-  find-replace + a handful of type-inference fixes where the
-  untyped `Platform.token_store` broke `:=` inference), pulled the
-  game-specific `LEGAL_VERSION` constant + resolver out into a new
-  `LegalVersion` static helper at `src/core/legal_version.gd`,
-  pinned `auth_file_path = "user://auth.cfg"` in `Platform.initialize`
-  so existing players' encrypted credentials survive the upgrade,
-  and switched the `Platform` autoload reference in `project.godot`
-  from a stale UID to a `res://` path (the UID drift on re-import
-  was actually breaking the autoload silently — never noticed
-  before today because no game code read `Platform.token_store`
-  before the migration). Live Nakama smoke (JWT refresh, presence,
-  groups, settings storage) confirmed green via headless boot.
-  Next focus: Stage 6.2 (`auth_client.gd` → `Platform.auth.*`) or
-  one of the smaller extractions (6.4 friends, 6.7 presence).
+- **Current focus:** Stage 6 SDK extraction continuing. 6.4 + 6.7
+  landed 2026-05-12 (same day as 6.1/6.3). 6.4 moved
+  `friends_api_client.gd` into the addon as `PlatformFriendsApiClient`
+  (friends list / requests / search / mark_seen / notifications).
+  6.7 split rich-presence out of the old combined client into a
+  separate `PlatformPresenceApiClient` (Platform.presence subsystem
+  slot, distinct from Platform.friends per the platform.gd design
+  intent). Both addon classes read `Platform.nakama_client` (new
+  shared slot, populated by the game-side `auth_client._get_nakama_
+  client()` until Stage 6.2 moves the constants in) and
+  `Platform.build_session_from_store()` (new helper on Platform
+  that constructs a NakamaSession from token_store's JWT +
+  refresh token). 85 callsites across 10 files migrated:
+  presence-shaped names (`fetch_presence`, `cached_online_ids`,
+  `cached_online_friends`, `is_presence_busy`, `presence_received`,
+  `presence_received_rich`) routed to `Platform.presence.*`;
+  everything else to `Platform.friends.*`. Game-side
+  `src/core/friends_api_client.gd` deleted. `friends_notification_
+  poller.gd` stays game-side (too entangled with toast_overlay /
+  match_state / party_manager to be a clean addon citizen) but
+  now reads `Platform.friends` + `Platform.presence` instead of
+  `G.friends_api_client`. `Platform.initialize()` moved from
+  `global.gd._ready()` to the top of `global.gd._enter_tree()` so
+  addon subsystems can be instantiated and registered inline (the
+  consuming game's `_ready` was a bad fit because subsystem
+  `_process` callbacks could fire before token_store existed).
+  Headless boot green; the very first outgoing Nakama request
+  (`update_and_get_presence`) succeeds against live Nakama using
+  the new path. Next focus: Stage 6.2 (`auth_client.gd` →
+  `Platform.auth.*`) — the big one. Unblocks 6.5 / 6.6 / 6.8 / 6.9
+  cleanly (those all currently lean on `G.auth_client` for the
+  nakama_client + session-builder; once those move into
+  `Platform.auth`, subsequent extractions become straightforward).
 - **Last updated:** 2026-05-12.
 - **Stages complete:**
   - Stage 0 (platform infra extraction — including the kickoff
@@ -79,14 +88,17 @@ See also:
     5.4, 5.5, 5.6, 5.8, 5.9, 5.10, 5.11). Open: 5.7 game-mode
     picker (deferred until game.yaml schema gains a `modes`
     list, mirrored by Stage 4.7).
-  - Stage 6 — 2/11 tasks shipped 2026-05-12 (6.1 subsystem
+  - Stage 6 — 4/11 tasks shipped 2026-05-12 (6.1 subsystem
     slots + register_subsystem helper, 6.3 auth_token_store
     reconciliation + Platform.token_store migration across 22
-    files). Open: 6.2 (auth_client), 6.4 (friends_api_client),
-    6.5 (party_api_client + party_manager), 6.6 (matchmaker +
-    edgegap_server_provider), 6.7 (presence), 6.8
-    (settings_cloud_sync), 6.9 (game_session_manager), 6.10
-    (mass consumer migration), 6.11 (screen templates).
+    files, 6.4 PlatformFriendsApiClient, 6.7
+    PlatformPresenceApiClient split out from the old friends
+    client). Open: 6.2 (auth_client + nakama constants), 6.5
+    (party_api_client + party_manager), 6.6 (matchmaker +
+    edgegap_server_provider), 6.8 (settings_cloud_sync), 6.9
+    (game_session_manager), 6.10 (mass consumer migration —
+    partially done as a side-effect of each extraction), 6.11
+    (screen templates).
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -127,11 +139,12 @@ Stage 3 (mostly done, 2026-05-12) — game_id scoping: presence
    │   server RPCs (5.10).
    │   Open: 5.6 leader transfer, 5.7 game-mode picker.
    └─→ Stage 6 (in progress, 2026-05-12) — Platform SDK extraction.
-       6.1 subsystem slots + 6.3 auth_token_store reconciliation
-       shipped (22-file migration to Platform.token_store).
-       Remaining: 6.2 auth, 6.4 friends, 6.5 party, 6.6
-       matchmaking, 6.7 presence, 6.8 settings, 6.9 session, 6.10
-       consumer migration, 6.11 screens.
+       6.1 subsystem slots, 6.3 auth_token_store reconciliation
+       (22-file migration to Platform.token_store), 6.4
+       PlatformFriendsApiClient, and 6.7 PlatformPresenceApiClient
+       all shipped. Remaining: 6.2 auth, 6.5 party, 6.6
+       matchmaking, 6.8 settings, 6.9 session, 6.10 consumer
+       migration, 6.11 screens.
    ↓
 Stage 7 — Resilience (retries, notifications, observability)
 
@@ -1245,12 +1258,118 @@ Extract clean code, not bug-laden code.
   - Compliance test still pending (Stage 8 socket harness). The
     confidence today comes from headless boot + live RPCs
     succeeding through the new path, not from an automated test.
-- [ ] 6.4 Extract `friends_api_client.gd` → `Platform.friends.*`.
+- [x] **6.4 Extract `friends_api_client.gd` → `Platform.friends.*`**
+      (2026-05-12).
+  - Done — submodule: new
+    `addons/snoringcat_platform_client/core/friends_api_client.gd`
+    with `class_name PlatformFriendsApiClient`. Surface: friends
+    list / requests / search / mark_seen / notifications. Reads
+    `Platform.nakama_client` (new shared slot) and
+    `Platform.build_session_from_store()` (new helper that
+    constructs a NakamaSession from token_store's JWT + refresh
+    token). Cached fields (`cached_friends`,
+    `cached_sent_requests`, `cached_incoming_requests`) preserved
+    so existing consumers keep working without API churn. All
+    method names + signal names match the pre-extraction surface
+    so the migration is a pure pointer swap.
+  - Done — parent: `auth_client._get_nakama_client()` now also
+    writes the new client to `Platform.nakama_client` on first
+    create, making it the canonical shared reference (until
+    Stage 6.2 moves the constants + creation into Platform
+    itself). `global.gd._enter_tree()` calls
+    `auth_client._get_nakama_client()` eagerly right after
+    `add_child(auth_client)` so `Platform.nakama_client` is
+    populated before any addon subsystem is registered.
+  - Done — parent: 85 callsites across 10 files migrated.
+    Presence-shaped names (`fetch_presence`, `cached_online_ids`,
+    `cached_online_friends`, `is_presence_busy`,
+    `presence_received`, `presence_received_rich`) routed to
+    `Platform.presence.*`; everything else to `Platform.friends.*`.
+    Multi-line `G.friends_api_client\` continuations had to be
+    fixed by hand after the sed pass — the per-pattern map only
+    matched single-line references, so the fallback `G.friends_
+    api_client → Platform.friends` rewrote line 1 of split calls
+    that should have routed to `Platform.presence` (e.g.,
+    `Platform.friends\\\n.is_presence_busy()` and `Platform.friends\\\n
+    .cached_online_ids.clear()`). Found via a follow-up grep
+    for `Platform\.friends.*\\$` and corrected manually.
+  - Done — parent: explicit type annotations added at every
+    `var client := Platform.friends` callsite
+    (`var client: PlatformFriendsApiClient = Platform.friends`)
+    because `Platform.friends` is untyped on the autoload (the
+    parser-cache bug workaround inherited from 6.3). Without
+    the annotation, `:=` infers Variant and downstream `.X`
+    reads fail strict-typing checks in Godot 4.7.
+  - Done — parent: game-side `src/core/friends_api_client.gd`
+    + `.uid` deleted. `friends_notification_poller.gd` kept
+    game-side (too entangled with `G.toast_overlay`,
+    `G.match_state`, `G.party_manager` to be a clean addon
+    citizen) but updated to read `Platform.friends` +
+    `Platform.presence`.
+  - Done — parent: `Platform.initialize()` moved from
+    `global.gd._ready()` to the top of `global.gd._enter_tree()`
+    so addon subsystems can be instantiated and registered
+    inline. The old position would have token_store null when
+    addon subsystems' `_process` callbacks fired on frame N+1.
+  - Verification: headless boot clean (zero parse / compile
+    errors); the very first outgoing Nakama request after boot
+    is `update_and_get_presence` against live Nakama, succeeding
+    end-to-end through the new path (Authorization Bearer header
+    from `Platform.build_session_from_store()`, RPC dispatch via
+    `Platform.nakama_client`).
+  - Known limitation: the addon class needed an editor-mode
+    headless run (`godot --headless --editor --quit-after 15`)
+    to register `PlatformFriendsApiClient` / `PlatformPresenceApiClient`
+    in `.godot/global_script_class_cache.cfg` before plain
+    `--headless` could resolve the type names. First-deploy
+    instructions: run setup-platform-addon.ps1 → editor scan →
+    plain headless. Documented inline in this task entry; not
+    a recurring issue once the cache is populated.
 - [ ] 6.5 Extract `party_api_client.gd` + `party_manager.gd` →
   `Platform.party.*`.
 - [ ] 6.6 Extract `nakama_matchmaker_client.gd` +
   `edgegap_server_provider.gd` → `Platform.matchmaking.*`.
-- [ ] 6.7 Extract presence read/write into `Platform.presence.*`.
+- [x] **6.7 Extract presence read/write into `Platform.presence.*`**
+      (2026-05-12).
+  - Done — submodule: new
+    `addons/snoringcat_platform_client/core/presence_api_client.gd`
+    with `class_name PlatformPresenceApiClient`. Surface:
+    `fetch_presence(rich_presence, status)` writes the caller's
+    presence row and reads back every online friend's presence
+    via the runtime's `update_and_get_presence` RPC (one round
+    trip). Cached fields `cached_online_ids` (Array[String]) +
+    `cached_online_friends` (Dictionary, rich-presence payload).
+    `is_presence_busy()` busy-flag + `clear_cache()` helper for
+    log-out reset paths (currently unused — callers `clear()`
+    the array fields directly, but the helper is there for any
+    future caller that wants both fields cleared in one call).
+  - Done — parent: shipped jointly with 6.4 (see above). The
+    presence/friends split was naturally enforced by the
+    addon-side split: callsites for presence-shaped names
+    (`fetch_presence`, `cached_online_*`, `is_presence_busy`,
+    `presence_received*`) routed to `Platform.presence`,
+    everything else to `Platform.friends`.
+  - Design call worth recording: the underlying RPC
+    (`update_and_get_presence`) bundles a write (caller's
+    presence) + a read (friends' presence) in one trip. The
+    client-side split into two subsystems (Platform.presence
+    writes/reads, Platform.friends manages list) matches the
+    platform.gd subsystem-slot intent without changing the
+    server contract. A game with no friend feature can still
+    use `Platform.presence` for its own status indicator;
+    conversely, a game that wants friends but not rich-presence
+    can null out the timer in `friends_notification_poller`
+    (currently game-side, will follow Platform.friends one day).
+  - Compliance verification: the existing addon compliance test
+    `test_presence.gd` is HTTP-only — it hits
+    `/v2/rpc/update_and_get_presence` directly via the helper,
+    independent of the new client class. Still green.
+  - Known limitation: no GUT unit test exercising the new
+    GDScript class (no Stage 8.x client-unit-tests track is
+    live yet). Confidence today is from headless boot + live
+    Nakama smoke (the boot-time presence call against live
+    `nakama.snoringcat.games` succeeds), not from an automated
+    test.
 - [ ] 6.8 Extract `settings_cloud_sync.gd` → `Platform.settings.*`.
 - [ ] 6.9 Extract `game_session_manager.gd` → `Platform.session.*`
   (delegating layer; game-specific session-provider stays in
@@ -1980,6 +2099,86 @@ Security:
     autoloads (G, Netcode, Nakama) already used path
     references; Platform was the outlier. Path references are
     stable across imports.
+- **2026-05-12:** Stage 6.4 + 6.7 friends + presence extraction
+  shipped. Six design calls worth recording:
+  - **`Platform.nakama_client` as a shared slot, populated by
+    game-side auth_client until 6.2.** The cleanest long-term
+    fix is to move the Nakama host/port/scheme/server_key
+    constants into Platform itself (they're snoringcat-platform
+    infrastructure, not game-specific), and have Platform own
+    the lazy creation of the NakamaClient. But that's
+    explicitly Stage 6.2 work. For 6.4/6.7, the smaller move
+    is a Platform.nakama_client field populated by
+    auth_client._get_nakama_client() as a side effect of its
+    existing lazy-create path. Addon subsystems read it. After
+    6.2, auth_client's `_get_nakama_client()` becomes a thin
+    delegate to `Platform.auth.get_nakama_client()` and the
+    constants live on Platform. Path-incremental.
+  - **`Platform.build_session_from_store()` as a shared helper
+    on the autoload.** The session-reconstruction logic was
+    private inside auth_client (`_build_session_from_store`).
+    Both friends and presence clients need it. Duplicating
+    the 5-line helper into each subsystem class would have
+    worked but accreted. Centralizing it on Platform (where
+    token_store lives) is cleaner and means future subsystems
+    don't need to reinvent it.
+  - **Presence split into its own subsystem, even though one
+    RPC covers both write and read.** The underlying
+    `update_and_get_presence` RPC is one round trip: it writes
+    the caller's row and returns every online friend's row.
+    The client-side split into PlatformFriendsApiClient (list
+    management) and PlatformPresenceApiClient (write/read of
+    rich-presence) matches the platform.gd subsystem-slot
+    design intent without changing the server contract. The
+    payoff is that a game with no friends feature can still
+    ship presence (or vice versa) without dead code. Tradeoff:
+    two classes carrying their own busy-flag + cache fields
+    instead of one. Acceptable given the conceptual separation.
+  - **`friends_notification_poller` stays game-side.** Reading
+    `Platform.friends` and `Platform.presence` is straightforward;
+    the entanglement with `G.toast_overlay` (UI),
+    `G.match_state` (game state), `G.party_manager` (game-side
+    coordination), and `G.notification_socket_client` (also
+    game-side for now) makes the poller a coordination layer
+    rather than a clean addon citizen. Moving it would force
+    the addon to take dependencies on game-specific UI / state
+    surfaces. The right pattern is: keep the *coordinator* (the
+    poller) game-side, but factor each *API surface* it
+    coordinates over into the addon. Same pattern friends_panel
+    follows on the UI side: lives in the game, reads
+    Platform.friends / Platform.presence directly.
+  - **`Platform.initialize` moved from `_ready()` to top of
+    `_enter_tree()`.** The old position (in
+    `global.gd._ready()`) post-dated subsystem creation in
+    `_enter_tree()`. Subsystem `_process` callbacks could
+    therefore fire on frame N+1 with `Platform.token_store ==
+    null` and crash. The new position runs Platform.initialize
+    before any subsystem is created, so addon subsystems can be
+    instantiated and registered inline within `_enter_tree()`
+    with all Platform fields available. Side benefit: the
+    "where do I register a new subsystem" mental model becomes
+    "in `_enter_tree`, right after `add_child`" — one place,
+    not two.
+  - **Sed pattern map needs per-pattern routing for split
+    extractions.** Stage 6.3's mass migration was a uniform
+    `G.auth_token_store → Platform.token_store`. Stage 6.4's
+    is heterogeneous: 85 callsites split across two
+    destinations (`Platform.friends` vs `Platform.presence`)
+    depending on which API/field. Solved by an iterative sed
+    over the presence-shaped name list first
+    (`G.friends_api_client.fetch_presence` → `Platform.presence
+    .fetch_presence`, etc.) and a catch-all
+    `G.friends_api_client → Platform.friends` second. Caught
+    one class of misses: multi-line `\\`-continuation calls
+    where pattern 1 only matched the leaf reference, not the
+    `G.friends_api_client\\` line, so pattern 2 rewrote that
+    line as `Platform.friends\\` and the leaf became
+    `Platform.friends\n.is_presence_busy()` — wrong subsystem.
+    Found via a `Platform\\.friends.*\\$` grep after the sed
+    pass, fixed by hand. Lesson for future Stage 6.x sed
+    passes: always grep for backslash-continuation residuals
+    when the migration splits one source into multiple
+    destinations.
 
 ## How to use this document
 

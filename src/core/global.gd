@@ -30,7 +30,6 @@ var screens: ScreensMain
 var auth_client: AuthClient
 var match_result_reporter: MatchResultReporter
 var backend_api_client: BackendApiClient
-var friends_api_client: FriendsApiClient
 var party_api_client: PartyApiClient
 var party_manager: PartyManager
 var notification_socket_client: NotificationSocketClient
@@ -97,6 +96,33 @@ func _enter_tree() -> void:
 
 	args = Utils.parse_command_line_args()
 
+	# Wire the snoringcat-platform addon's autoload with this
+	# game's identity. Must run before any subsystem creation so
+	# Platform.token_store / Platform.nakama_client / etc. exist
+	# by the time addon subsystems are instantiated and registered
+	# below.
+	#
+	# Stage 6.3 pinned auth_file_path = user://auth.cfg so existing
+	# players' encrypted credentials remain readable across the
+	# upgrade (the addon's default of user://%s_auth.cfg % game_id
+	# would orphan every existing install).
+	#
+	# api_base_url is currently unused by the game (hopnbop still
+	# talks to Nakama directly via auth_client.gd); supplied to
+	# satisfy initialize()'s required-arg contract.
+	if not Platform.is_initialized:
+		Platform.initialize({
+			"game_id": str(
+				ProjectSettings.get_setting(
+					"application/config/game_id", "hopnbop")),
+			"api_base_url": (
+				"https://nakama.snoringcat.games"),
+			"sdk_version": str(
+				ProjectSettings.get_setting(
+					"application/config/version", "0.0.0")),
+			"auth_file_path": "user://auth.cfg",
+		})
+
 	log.name = "Log"
 	add_child(log)
 
@@ -128,6 +154,15 @@ func _enter_tree() -> void:
 	auth_client.name = "AuthClient"
 	add_child(auth_client)
 
+	# Eagerly create the Nakama client so Platform.nakama_client is
+	# populated before addon subsystems (Platform.friends,
+	# Platform.presence, ...) are instantiated and registered below.
+	# auth_client._get_nakama_client() lazy-creates a NakamaClient
+	# object (no network I/O) and writes it to Platform.nakama_client
+	# as a side effect — see auth_client.gd. Stage 6.2 will move the
+	# nakama_client constants + creation into the addon itself.
+	auth_client._get_nakama_client()
+
 	match_result_reporter = MatchResultReporter.new()
 	match_result_reporter.name = "MatchResultReporter"
 	add_child(match_result_reporter)
@@ -136,9 +171,25 @@ func _enter_tree() -> void:
 	backend_api_client.name = "BackendApiClient"
 	add_child(backend_api_client)
 
-	friends_api_client = FriendsApiClient.new()
-	friends_api_client.name = "FriendsApiClient"
-	add_child(friends_api_client)
+	# Stage 6.4: friends client lives in the addon as
+	# PlatformFriendsApiClient. Game code reads it via
+	# Platform.friends. The class still extends Node so we own its
+	# lifecycle via add_child; register_subsystem stores the
+	# reference for consumer access.
+	var friends := PlatformFriendsApiClient.new()
+	friends.name = "FriendsApiClient"
+	add_child(friends)
+	Platform.register_subsystem("friends", friends)
+
+	# Stage 6.7: presence (rich-presence write + online-friends
+	# read) was previously bundled inside FriendsApiClient. Now its
+	# own subsystem so a future game with no friend feature can
+	# still ship presence (or vice versa). The platform-side RPC
+	# (`update_and_get_presence`) is the same.
+	var presence := PlatformPresenceApiClient.new()
+	presence.name = "PresenceApiClient"
+	add_child(presence)
+	Platform.register_subsystem("presence", presence)
 
 	party_api_client = PartyApiClient.new()
 	party_api_client.name = "PartyApiClient"
@@ -186,30 +237,6 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	# Initialize Netcode now that the scene tree is available.
 	Netcode.initialize()
-
-	# Wire the snoringcat-platform addon's autoload with this
-	# game's identity. After Stage 6.3, `Platform.token_store` is
-	# the canonical auth-token surface (the game-side
-	# `AuthTokenStore` class was deleted). `auth_file_path` is
-	# pinned to the historical `user://auth.cfg` path so existing
-	# players' encrypted credentials remain readable across the
-	# upgrade — the addon's default of `user://%s_auth.cfg %
-	# game_id` would orphan every existing install.
-	# `api_base_url` is currently unused by the game (hopnbop
-	# still talks to Nakama directly via auth_client.gd); supplied
-	# to satisfy initialize()'s required-arg contract.
-	if not Platform.is_initialized:
-		Platform.initialize({
-			"game_id": str(
-				ProjectSettings.get_setting(
-					"application/config/game_id", "hopnbop")),
-			"api_base_url": (
-				"https://nakama.snoringcat.games"),
-			"sdk_version": str(
-				ProjectSettings.get_setting(
-					"application/config/version", "0.0.0")),
-			"auth_file_path": "user://auth.cfg",
-		})
 
 	# Read server API key from environment variable
 	# (set via GameLift container group definition).

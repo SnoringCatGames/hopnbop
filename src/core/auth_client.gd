@@ -869,6 +869,12 @@ func _get_nakama_client() -> NakamaClient:
 			_NAKAMA_HOST,
 			_NAKAMA_PORT,
 			_NAKAMA_SCHEME)
+		# Publish the singleton so addon subsystems (Platform.friends,
+		# Platform.presence, etc.) read the same instance. Stage 6.2
+		# will move the creation itself into Platform.auth; until
+		# then, auth_client owns the constants and writes the result
+		# here.
+		Platform.nakama_client = _nakama_client
 	return _nakama_client
 
 

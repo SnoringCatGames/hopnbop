@@ -118,11 +118,11 @@ func build_ui() -> void:
 		_on_invite_response)
 	G.party_api_client.party_kicked.connect(
 		_on_kick_response)
-	G.friends_api_client.friend_removed.connect(
+	Platform.friends.friend_removed.connect(
 		_on_remove_response)
 	G.party_api_client.request_failed.connect(
 		_on_party_request_failed)
-	G.friends_api_client.request_failed.connect(
+	Platform.friends.request_failed.connect(
 		_on_friends_request_failed)
 
 
@@ -146,7 +146,8 @@ func _exit_tree() -> void:
 				.disconnect(
 					_on_party_request_failed)
 
-	var friends_client := G.friends_api_client
+	var friends_client: PlatformFriendsApiClient = (
+		Platform.friends)
 	if is_instance_valid(friends_client):
 		if friends_client.friend_removed\
 				.is_connected(
@@ -203,7 +204,7 @@ func _on_remove_pressed() -> void:
 		tr("FRIENDS.REMOVE"),
 		func() -> void:
 			_remove_row.disabled = true
-			G.friends_api_client.remove_friend(
+			Platform.friends.remove_friend(
 				_friend_id),
 		tr("CONFIRM.CANCEL"),
 	)
