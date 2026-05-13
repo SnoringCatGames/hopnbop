@@ -239,6 +239,19 @@ func _enter_tree() -> void:
 	Platform.register_subsystem(
 		"notification_socket", notification_socket)
 
+	# Stage 6.6: Nakama matchmaker socket layer lives in the addon
+	# as PlatformMatchmakingClient. Game code reads it via
+	# Platform.matchmaking, with the game-side NakamaMatchmakerClient
+	# SessionProvider adapter (instantiated per-session by
+	# GameSessionManager) translating its platform-agnostic signals
+	# into rollback-netcode session events and applying transport_type.
+	# Registered here as a boot-time singleton so the same socket /
+	# ticket lifecycle survives across GameSessionManager teardowns.
+	var matchmaking := PlatformMatchmakingClient.new()
+	matchmaking.name = "MatchmakingClient"
+	add_child(matchmaking)
+	Platform.register_subsystem("matchmaking", matchmaking)
+
 	party_manager = PartyManager.new()
 	party_manager.name = "PartyManager"
 	add_child(party_manager)

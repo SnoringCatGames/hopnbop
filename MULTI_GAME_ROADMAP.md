@@ -30,34 +30,46 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 6 SDK extraction continuing. 6.5b
-  shipped 2026-05-12 immediately after 6.5: `NotificationSocketClient`
-  extracted to the addon as `PlatformNotificationSocketClient`.
-  The class was a clean addon citizen already — only `Netcode.log
-  .print/warning` reach-backs (8 sites) needed swapping for
-  `print` / `push_warning`. Everything else (signals, reconnect
-  state machine, chat helpers, channel-message flattening) lifted
-  verbatim. `Platform.gd` gained a `notification_socket` field +
-  allowlist entry. The 6 callsites in `party_manager.gd` and
-  `friends_notification_poller.gd` migrated via
-  `sed s/G\.notification_socket_client/Platform.notification_socket/g`;
-  two `var socket := Platform.notification_socket` declarations got
-  explicit `PlatformNotificationSocketClient` type annotations
-  (same pattern as 6.4/6.5). `global.gd` now instantiates the
-  addon class and registers via
-  `Platform.register_subsystem("notification_socket", ...)`;
-  the `G.notification_socket_client` field is dropped. Game-side
-  `notification_socket_client.gd` + `.uid` deleted.
-  Editor pass refreshed `.godot/global_script_class_cache.cfg`
-  with the new class entry; plain headless boot clean (Main._ready,
+- **Current focus:** Stage 6 SDK extraction continuing. 6.6
+  shipped 2026-05-12: `NakamaMatchmakerClient` split into a clean
+  addon-side `PlatformMatchmakingClient` (Nakama socket layer +
+  matchmaker-ticket lifecycle + match_ready parser, emits
+  platform-agnostic signals with `transport_type` as a string)
+  plus a slimmer game-side `NakamaMatchmakerClient extends
+  SessionProvider` adapter that translates the string to
+  `NetworkSettings.TransportType`, applies it to
+  `Netcode.settings.transport_type` before emitting
+  `session_ids_received`, and reads matchmaker rules
+  (query / min / max) from `G.backend_api_client.server_
+  matchmaker_*`. Preview-slot device-id minting stays in the
+  adapter (it depends on `Netcode.is_preview` /
+  `Netcode.preview_client_number`); the addon takes
+  `preview_device_id` as an arg and authenticates with it when
+  non-empty. `EdgegapServerProvider` stays game-side as planned
+  — its entanglement with `Netcode.connector` (peer validation,
+  shutdown helpers) and `G.match_result_reporter` makes it a
+  poor addon-citizen and the cost of splitting only
+  `register_with_runtime()` out doesn't justify the indirection.
+  `Platform.gd` gained nothing new (the `matchmaking` slot was
+  already declared back in 6.1). `global.gd._enter_tree` now
+  instantiates `PlatformMatchmakingClient` and registers via
+  `Platform.register_subsystem("matchmaking", ...)` as a
+  boot-time singleton; the per-session
+  `NakamaMatchmakerClient` adapter connects to / disconnects
+  from its signals in `_ready` / `_exit_tree`. Editor pass
+  refreshed `.godot/global_script_class_cache.cfg` with the
+  new class entry; plain headless boot clean (Main._ready,
   JWT refresh against live Nakama with
-  `vars: {game_id: hopnbop}`). Next focus: 6.6 (matchmaker +
-  edgegap server provider — needs the heavier refactor of
-  splitting NakamaMatchmakerClient into a clean addon-side
-  Nakama-socket layer + a game-side SessionProvider adapter that
-  bridges to Netcode.settings.transport_type and NetworkLogger),
-  or 6.8 (settings_cloud_sync, which also depends on Stage 3.5's
-  global-vs-per-game taxonomy decision).
+  `vars: {game_id: hopnbop}`). Next focus: 6.8
+  (settings_cloud_sync — depends on Stage 3.5's
+  global-vs-per-game taxonomy decision, so blocked unless we
+  also take 3.5 in the same pass), or 6.9
+  (game_session_manager — large refactor since the manager
+  reaches into G.client_session, Netcode.connector, and
+  game-side dialog surfaces). 6.10 (mass consumer migration) is
+  largely a no-op now since each extraction has migrated its
+  own consumers; a final grep sweep can mark it complete. 6.11
+  (screen templates) is greenfield and least urgent.
 - **Last updated:** 2026-05-12.
 - **Stages complete:**
   - Stage 0 (platform infra extraction — including the kickoff
@@ -83,20 +95,24 @@ See also:
     5.4, 5.5, 5.6, 5.8, 5.9, 5.10, 5.11). Open: 5.7 game-mode
     picker (deferred until game.yaml schema gains a `modes`
     list, mirrored by Stage 4.7).
-  - Stage 6 — 7/11 tasks shipped 2026-05-12 (6.1 subsystem
+  - Stage 6 — 8/11 tasks shipped 2026-05-12 (6.1 subsystem
     slots + register_subsystem helper, 6.2 auth_client →
     PlatformAuthApiClient + nakama / OAuth constants on
     Platform, 6.3 auth_token_store reconciliation + Platform.
     token_store migration across 22 files, 6.4
     PlatformFriendsApiClient, 6.5 PlatformPartyApiClient,
-    6.5b PlatformNotificationSocketClient, 6.7
+    6.5b PlatformNotificationSocketClient, 6.6
+    PlatformMatchmakingClient split + game-side adapter, 6.7
     PlatformPresenceApiClient split out from the old friends
     client). 6.5 partially completed — only the API client
     extracted; party_manager.gd stays game-side (UI-dialog
-    coupling). Open: 6.6 (matchmaker +
-    edgegap_server_provider), 6.8 (settings_cloud_sync), 6.9
-    (game_session_manager), 6.10 (mass consumer migration —
-    partially done as a side-effect of each extraction), 6.11
+    coupling). 6.6 partially completed —
+    `EdgegapServerProvider` deliberately stays game-side
+    (in-container `Netcode.connector` entanglement). Open:
+    6.8 (settings_cloud_sync — needs Stage 3.5 taxonomy
+    decision), 6.9 (game_session_manager), 6.10 (mass
+    consumer migration — largely a no-op now as side-effect
+    of each extraction; finish with a grep sweep), 6.11
     (screen templates).
 - **Stages blocked:** none.
 
@@ -142,10 +158,13 @@ Stage 3 (mostly done, 2026-05-12) — game_id scoping: presence
        (22-file migration to Platform.token_store), 6.4
        PlatformFriendsApiClient, 6.5 PlatformPartyApiClient
        (party_manager.gd kept game-side), 6.5b
-       PlatformNotificationSocketClient, and 6.7
-       PlatformPresenceApiClient all shipped. Remaining: 6.6
-       matchmaking, 6.8 settings, 6.9 session, 6.10 consumer
-       migration, 6.11 screens.
+       PlatformNotificationSocketClient, 6.6
+       PlatformMatchmakingClient (split out of
+       NakamaMatchmakerClient; EdgegapServerProvider stays
+       game-side), and 6.7 PlatformPresenceApiClient all
+       shipped. Remaining: 6.8 settings (needs 3.5 taxonomy),
+       6.9 session (large refactor), 6.10 consumer migration
+       (mostly done as side-effect), 6.11 screens.
    ↓
 Stage 7 — Resilience (retries, notifications, observability)
 
@@ -1527,8 +1546,117 @@ Extract clean code, not bug-laden code.
     socket itself doesn't open in this preview path because
     the user is anonymous at this boot step, but the
     auth_completed → start() wiring is in place and registered).
-- [ ] 6.6 Extract `nakama_matchmaker_client.gd` +
-  `edgegap_server_provider.gd` → `Platform.matchmaking.*`.
+- [x] **6.6 Extract `nakama_matchmaker_client.gd` →
+      `Platform.matchmaking.*` (split-and-adapter)** (2026-05-12).
+      `edgegap_server_provider.gd` deliberately stays game-side.
+  - Done — submodule: new
+    `addons/snoringcat_platform_client/core/matchmaker_api_client.gd`
+    with `class_name PlatformMatchmakingClient`. Surface: 3
+    signals (`match_ready_received(payload: Dictionary)`,
+    `matchmaking_failed(error: String)`,
+    `progress_updated(phase: String, elapsed_sec: float,
+    estimated_total_sec: float)`); 4 methods
+    (`start_matchmaking(query, min_count, max_count,
+    string_props, numeric_props, preview_device_id,
+    local_player_count)`, `cancel_matchmaking()`, `cleanup()`,
+    `is_searching()`). Owns the `NakamaSocket`, matchmaker
+    ticket, elapsed timer (60 s timeout, 1 s tick), and
+    match_ready notification parser (port-pick by
+    UDP/TCP-protocol matching for ENet vs WebRTC/WS).
+    Reads `Platform.{auth, token_store, build_session_
+    from_store(), get_nakama_client(), game_id}`; the only
+    "game-shaped" knob is `preview_device_id`, which when
+    non-empty makes the addon authenticate that device id as
+    a separate Nakama account (used by the editor's
+    multi-instance preview so each slot looks like a distinct
+    user to the matchmaker pool). 8 `Netcode.log.print/warning`
+    callsites replaced with `print` / `push_warning` (same
+    pattern as 6.2 / 6.5b). The class is otherwise a
+    line-for-line lift of the existing matchmaker except:
+    transport_type stays a string, port-pick takes a string
+    instead of `NetworkSettings.TransportType`, and
+    `_local_player_count` is parameterized through
+    `start_matchmaking` instead of read from
+    `G.client_session.local_player_count`.
+  - Done — parent: `src/core/nakama_matchmaker_client.gd`
+    rewritten as a slim adapter (~210 lines, down from 550).
+    Keeps `class_name NakamaMatchmakerClient` /
+    `extends SessionProvider` so every existing call site
+    (`GameSessionManager._setup_session_provider` instantiation,
+    `client_request_session_ids`, `clear_session`, etc.) keeps
+    working with no migration. New responsibilities:
+    (a) resolve matchmaker rules from
+    `G.backend_api_client.server_matchmaker_*` with compile-
+    time fallbacks; (b) mint `preview_device_id` from
+    `Netcode.is_preview` + `Netcode.preview_client_number` +
+    `OS.get_unique_id()`; (c) build the matchmaker properties
+    dict (platform=web|native, player_count, game_id, level_id,
+    party_id, game_mode); (d) translate the match_ready
+    `transport_type` string to `NetworkSettings.TransportType`
+    and apply it to `Netcode.settings.transport_type` before
+    emitting `session_ids_received`; (e) connect to /
+    disconnect from `Platform.matchmaking`'s signals in
+    `_ready` / `_exit_tree` so the boot-time-singleton's
+    lifetime doesn't trap stale handlers from prior
+    session-providers.
+  - Done — `global.gd._enter_tree`: instantiates
+    `PlatformMatchmakingClient` and calls
+    `Platform.register_subsystem("matchmaking", ...)` as a
+    boot-time singleton, alongside the other 6.x subsystems.
+    The `Platform.matchmaking` slot was already declared in
+    6.1's `register_subsystem` allowlist; this is the first
+    registration that actually populates it.
+  - Decision worth recording: `EdgegapServerProvider` stays
+    game-side. The audit-derived task title included it but
+    the file is deeply entangled with
+    `Netcode.connector.{get_peer_id_from_player_id,
+    server_notify_shutdown, server_close_multiplayer_session}`
+    for peer validation, `Netcode.log` + `NetworkLogger`
+    for diagnostics, and `G.match_result_reporter.cancel` for
+    Edgegap deployment teardown on idle / grace timeouts.
+    Moving it would force either constructor-injecting every
+    one of those surfaces or adding new
+    `Platform.{connector, match_results, logger}` slots —
+    both heavy refactors with no payoff today. The only
+    self-contained piece is `register_with_runtime()` (an
+    HTTP RPC to Nakama's `register_server`), but factoring
+    just that out would create an awkward straddle. Same
+    pattern as PartyManager (6.5) and FriendsNotificationPoller
+    (6.4): keep the coordinator game-side, factor each
+    *API surface* into the addon. The matchmaker's API
+    surface (Nakama socket lifecycle + matchmaker ticket +
+    match_ready parser) is now in the addon; the validation
+    coordinator stays where it is.
+  - Decision worth recording: `Platform.matchmaking` is a
+    boot-time singleton, not a per-session object. The
+    SessionProvider adapter `NakamaMatchmakerClient` is
+    per-session (instantiated by `GameSessionManager`).
+    Multiple adapters across time can share the same
+    addon-side client because the client services at most one
+    ticket at a time and the adapter is responsible for
+    disconnecting its signal handlers in `_exit_tree`. The
+    alternative (per-session addon client too) would mean
+    `Platform.matchmaking` is null between sessions, which
+    breaks the "consumers tolerate null until extraction
+    lands" pattern — once an extraction lands, the slot
+    should stay non-null for the rest of the boot.
+  - Verification: editor pass refreshed
+    `.godot/global_script_class_cache.cfg` with the new
+    `PlatformMatchmakingClient` entry. Plain headless boot
+    clean (Main._ready, JWT refresh fires with
+    `vars: {game_id: hopnbop}` against live Nakama via the
+    existing `PlatformAuthApiClient` path; the matchmaker
+    itself doesn't open a socket in the preview-close path
+    because no user-driven matchmaking is exercised, but the
+    subsystem is registered and the adapter wires its
+    signals).
+  - Compliance verification: the existing
+    `test_socket_matchmaker.gd` compliance test exercises the
+    Nakama matchmaker socket directly via the SDK, not via
+    `PlatformMatchmakingClient`, so it's an independent
+    canary that doesn't break with the extraction. No new
+    GUT unit test for the addon class (Stage 8.x client-unit
+    track not live).
 - [x] **6.7 Extract presence read/write into `Platform.presence.*`**
       (2026-05-12).
   - Done — submodule: new
@@ -2519,6 +2647,86 @@ Security:
     and bridges to Netcode. `EdgegapServerProvider` stays
     entirely game-side because it integrates with the in-
     container Netcode.connector for peer validation.
+
+- **2026-05-12:** Stage 6.6 matchmaker extraction shipped along
+  the path 6.5b's note predicted. Five design calls worth
+  recording:
+  - **Split-and-adapter, not lift-as-is.** Unlike 6.5's pure
+    move-and-rename of the party API client (which only
+    reached into already-Platform-owned surfaces),
+    `NakamaMatchmakerClient` had real game-side dependencies:
+    `Netcode.settings.transport_type`,
+    `NetworkSettings.TransportType` enum,
+    `G.backend_api_client.server_matchmaker_*`,
+    `G.client_session.local_player_count`, `Netcode.is_preview`
+    + `Netcode.preview_client_number` for the per-instance
+    preview auth path, `Netcode.log` for diagnostics. A clean
+    lift would have either pulled all of that into the addon
+    (wrong direction) or stripped it (broke the feature).
+    Split lets the addon own the Nakama socket / ticket /
+    match_ready parser (the platform-agnostic core) while the
+    adapter owns the integration with rollback-netcode + the
+    game-specific config sources.
+  - **`transport_type` stays a string at the addon boundary,
+    not an int enum.** The match_ready payload from the
+    runtime carries `transport_type` as one of "enet" /
+    "webrtc" / "websocket". `NetworkSettings.TransportType` is
+    defined in the rollback-netcode addon (a separate
+    submodule); the snoringcat-platform addon can't depend on
+    it. Keeping the value as a string at the boundary means
+    `PlatformMatchmakingClient` can pick the right Edgegap
+    port (UDP for ENet, TCP for WebRTC/WS) by string-matching
+    on the protocol field, without ever importing the enum.
+    The adapter translates string → enum + applies it to
+    `Netcode.settings.transport_type` before re-emitting.
+  - **Boot-time singleton + per-session adapter.** The addon
+    client is registered once in `global.gd._enter_tree` as
+    `Platform.matchmaking`; the game-side
+    `NakamaMatchmakerClient extends SessionProvider` is
+    instantiated per-session by `GameSessionManager` and
+    connects to / disconnects from the singleton's signals in
+    `_ready` / `_exit_tree`. The alternative (per-session
+    addon client too) would mean `Platform.matchmaking` is
+    null between sessions, breaking the "once an extraction
+    lands, the slot stays non-null for the rest of the boot"
+    pattern every other 6.x extraction follows. The cost
+    (signal handler hygiene in adapter's `_exit_tree`) is
+    minor and explicit. The benefit (consumers can do
+    `if Platform.matchmaking != null` once at boot rather
+    than per-call) is real.
+  - **`preview_device_id` is a parameter, not a Netcode reach-
+    back.** The addon class accepts `preview_device_id` as
+    an arg to `start_matchmaking`; when non-empty, it
+    authenticates that device id as a separate Nakama
+    account. The adapter computes the id from
+    `Netcode.is_preview` + `Netcode.preview_client_number` +
+    `OS.get_unique_id()` and passes it through. Same
+    pattern for `local_player_count` (used by the
+    session_ids fallback when match_ready predates the
+    runtime's session_ids surface): adapter reads
+    `G.client_session.local_player_count`, addon takes the
+    int as an arg. Pushes every game-shaped knob to the
+    addon's caller; the addon itself has zero game-side
+    dependencies.
+  - **`EdgegapServerProvider` stays game-side.** The
+    audit-derived task title bundled
+    `edgegap_server_provider.gd` into 6.6, but the file is
+    deeply entangled with `Netcode.connector.{get_peer_id_
+    from_player_id, server_notify_shutdown,
+    server_close_multiplayer_session}` for peer validation,
+    `Netcode.log` for diagnostics, and
+    `G.match_result_reporter.cancel` for Edgegap deployment
+    teardown on idle / grace timeouts. Splitting only
+    `register_with_runtime()` out would create an awkward
+    straddle (one HTTP RPC in the addon, the rest of the
+    class in the game). The closer analog is
+    `friends_notification_poller.gd` (kept game-side under
+    6.4): coordination layers stay where the surfaces they
+    coordinate over live. The matchmaker's API surface
+    (Nakama socket + matchmaker ticket + match_ready
+    parser) is genuinely platform-agnostic, so it moves;
+    the in-container validation coordinator isn't, so it
+    stays.
 
 ## How to use this document
 

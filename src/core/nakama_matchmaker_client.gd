@@ -1,53 +1,85 @@
 class_name NakamaMatchmakerClient
 extends SessionProvider
-## Client-side matchmaker that drives the Snoring Cat platform
-## stack: opens a Nakama socket, calls add_matchmaker_async, and
-## waits for the runtime's "match_ready" notification to arrive
-## with Edgegap connection info.
+## Game-side SessionProvider adapter that bridges
+## `Platform.matchmaking` (the addon's Nakama matchmaker socket
+## layer) to the rollback-netcode `SessionProvider` contract.
 ##
-## Replaces the legacy GameLiftClient. Server-side allocation
-## happens in the Nakama runtime module (fleet_allocator.go) on
-## the MatchmakerMatched hook.
+## Responsibilities:
+##   - Resolve matchmaker rules (query / min / max) from
+##     BackendApiClient (set by version_check, sourced from
+##     `game.yaml.matchmaker_rules`) with compile-time fallbacks.
+##   - Build the matchmaker properties dict, including
+##     game-specific keys (platform, player_count, game_id,
+##     level_id, party_id, game_mode).
+##   - Translate the match_ready `transport_type` string to
+##     `NetworkSettings.TransportType` and apply it before
+##     emitting `session_ids_received`.
+##   - Mint a per-instance preview device id when running
+##     Netcode preview slot > 0 so each editor preview instance
+##     looks like a distinct user to the matchmaker pool.
+##
+## The Nakama socket lifecycle and matchmaker ticket lifecycle
+## both live in `Platform.matchmaking` (a boot-time singleton
+## registered from `global.gd._enter_tree`). This adapter is
+## instantiated per-session by `GameSessionManager` and is
+## responsible for cleanly connecting / disconnecting its
+## signal handlers from the singleton.
 
-## Compile-time fallbacks for the matchmaker rules. Stage 3.8
-## prefers the runtime-reported values surfaced via
-## BackendApiClient.server_matchmaker_* (which come from
-## game.yaml's matchmaker_rules block). Keep these in sync with
+
+## Compile-time fallbacks for matchmaker rules. Stage 3.8
+## prefers runtime-reported values surfaced via
+## BackendApiClient.server_matchmaker_* (from
+## `game.yaml.matchmaker_rules`). Keep these in sync with
 ## game.yaml so an offline / pre-version-check matchmaker still
 ## queues against the right pool shape.
 const _DEFAULT_MATCHMAKER_QUERY := "*"
 const _DEFAULT_MIN_COUNT := 2
 const _DEFAULT_MAX_COUNT := 4
-const _MATCH_TIMEOUT_SEC := 120.0
-const _MATCH_READY_SUBJECT := "match_ready"
-const _PROGRESS_TICK_SEC := 1.0
 
-var _socket: NakamaSocket = null
-var _ticket: String = ""
-var _is_searching := false
-var _elapsed_timer: Timer = null
-var _elapsed_sec := 0.0
 
-# When non-empty, the matchmaker socket authenticates with a
-# per-instance Nakama identity instead of the shared
-# auth_token_store. Used in preview mode to give each editor
-# preview slot a distinct uid so the matchmaker pool can pair
-# them. Empty otherwise.
+## Stable per (machine, preview slot). Empty for the primary
+## instance and for production. When non-empty, the addon-side
+## matchmaker authenticates this device id as a separate Nakama
+## account so each preview slot is a distinct matchmaker entry.
 var _preview_device_id := ""
-# Cached Nakama user_id from the per-instance auth call. Used
-# as the session_id slot in match_ready emissions when we're
-# running with a preview identity.
-var _preview_user_id := ""
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
-	_elapsed_timer = Timer.new()
-	_elapsed_timer.wait_time = _PROGRESS_TICK_SEC
-	_elapsed_timer.one_shot = false
-	_elapsed_timer.timeout.connect(_on_elapsed_tick)
-	add_child(_elapsed_timer)
+	var client: PlatformMatchmakingClient = Platform.matchmaking
+	if client == null:
+		Netcode.log.warning(
+			(
+				"[NakamaMatchmaker] Platform.matchmaking not"
+				+ " registered; matchmaking will fail until"
+				+ " bootstrap wires it up"
+			),
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+		return
+	client.match_ready_received.connect(
+		_on_match_ready_received)
+	client.matchmaking_failed.connect(_on_matchmaking_failed)
+	client.progress_updated.connect(_on_progress_updated)
+
+
+func _exit_tree() -> void:
+	var client: PlatformMatchmakingClient = Platform.matchmaking
+	if client == null:
+		return
+	if client.match_ready_received.is_connected(
+			_on_match_ready_received):
+		client.match_ready_received.disconnect(
+			_on_match_ready_received)
+	if client.matchmaking_failed.is_connected(
+			_on_matchmaking_failed):
+		client.matchmaking_failed.disconnect(
+			_on_matchmaking_failed)
+	if client.progress_updated.is_connected(
+			_on_progress_updated):
+		client.progress_updated.disconnect(
+			_on_progress_updated)
 
 
 func is_active() -> bool:
@@ -58,60 +90,19 @@ func client_request_session_ids(
 	player_count: int,
 	session_prefs: Dictionary = {},
 ) -> void:
-	if _is_searching:
+	var client: PlatformMatchmakingClient = Platform.matchmaking
+	if client == null:
+		session_request_failed.emit(
+			"Platform.matchmaking not registered")
+		return
+	if client.is_searching():
 		Netcode.log.warning(
 			"[NakamaMatchmaker] Already searching",
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
 		return
 
-	# Resolve the Nakama session for the socket. Two paths:
-	#   - Preview multi-client (instance > 0): mint a fresh
-	#     per-instance device identity so each preview slot
-	#     looks like a distinct user to Nakama. Without this
-	#     all preview clients share auth_token_store under a
-	#     single user:// directory and the matchmaker pool
-	#     sees one user holding multiple tickets, never
-	#     reaching min_count.
-	#   - Production / preview slot 0: use the persisted
-	#     auth_token_store session (and obtain a guest JWT if
-	#     anonymous).
-	var session: NakamaSession = (
-		await _resolve_socket_session())
-	if session == null:
-		# _resolve_socket_session emits the failure already.
-		return
-
-	# Open the realtime socket if it isn't already.
-	if _socket == null or not _socket.is_connected_to_host():
-		_socket = Nakama.create_socket_from(
-			Platform.get_nakama_client())
-		_socket.received_matchmaker_matched.connect(
-			_on_matchmaker_matched)
-		_socket.received_notification.connect(
-			_on_notification)
-		_socket.closed.connect(_on_socket_closed)
-		_socket.connection_error.connect(
-			_on_socket_connection_error)
-		var connect_result: NakamaAsyncResult = (
-			await _socket.connect_async(session))
-		if connect_result.is_exception():
-			var connect_ex: NakamaException = (
-				connect_result.get_exception())
-			_socket = null
-			session_request_failed.emit(
-				"Nakama socket connect failed: %s"
-				% connect_ex.message)
-			return
-
-	# Record this client's public IP server-side before joining
-	# the pool. The runtime's MatchmakerMatched hook reads the
-	# recorded IPs and feeds them to Edgegap as `ip_list` for
-	# region selection. Best-effort: if the call fails the
-	# runtime falls back to a fixed geography, so we proceed
-	# either way.
-	await _record_client_ip()
-
+	var preview_device_id := _resolve_preview_device_id()
 	var query := _build_query(session_prefs)
 	var min_count := _resolve_min_count()
 	var max_count := _resolve_max_count()
@@ -120,58 +111,29 @@ func client_request_session_ids(
 	var numeric_props := _build_numeric_props(
 		player_count, session_prefs)
 
-	Netcode.log.print(
-		(
-			"[NakamaMatchmaker] Joining matchmaker"
-			+ " query=%s min=%d max=%d"
-		) % [query, min_count, max_count],
-		NetworkLogger.CATEGORY_CONNECTIONS,
+	client.start_matchmaking(
+		query,
+		min_count,
+		max_count,
+		string_props,
+		numeric_props,
+		preview_device_id,
+		player_count,
 	)
-
-	var ticket_result: NakamaRTAPI.MatchmakerTicket = (
-		await _socket.add_matchmaker_async(
-			query,
-			min_count,
-			max_count,
-			string_props,
-			numeric_props,
-		))
-	if ticket_result.is_exception():
-		var ticket_ex: NakamaException = (
-			ticket_result.get_exception())
-		session_request_failed.emit(
-			"Matchmaker add failed: %s" % ticket_ex.message)
-		return
-
-	_ticket = ticket_result.ticket
-	_is_searching = true
-	_elapsed_sec = 0.0
-	_elapsed_timer.start()
-
-	Netcode.log.print(
-		"[NakamaMatchmaker] Ticket: %s" % _ticket,
-		NetworkLogger.CATEGORY_CONNECTIONS,
-	)
-
-	matchmaking_progress_updated.emit(
-		"queued", 0.0, -1.0)
 
 
 func clear_session() -> void:
-	if not _is_searching:
+	var client: PlatformMatchmakingClient = Platform.matchmaking
+	if client == null:
 		return
-	_is_searching = false
-	_elapsed_timer.stop()
-	if _socket != null and not _ticket.is_empty():
-		_socket.remove_matchmaker_async(_ticket)
-	_ticket = ""
+	client.cancel_matchmaking()
 
 
 func cleanup() -> void:
-	clear_session()
-	if _socket != null:
-		_socket.close()
-		_socket = null
+	var client: PlatformMatchmakingClient = Platform.matchmaking
+	if client == null:
+		return
+	client.cleanup()
 
 
 # --------------------------------------------------------------
@@ -179,85 +141,21 @@ func cleanup() -> void:
 # --------------------------------------------------------------
 
 
-func _record_client_ip() -> void:
-	# Calls the runtime's record_client_ip RPC over the open
-	# socket. The runtime reads our public IP from
-	# RUNTIME_CTX_CLIENT_IP and writes it to storage under our
-	# user_id; the matchmaker hook reads it back when pairing.
-	# Failures here are non-fatal — the runtime falls back to a
-	# default geography when no IPs are recorded.
-	if _socket == null or not _socket.is_connected_to_host():
-		return
-	var result: NakamaAPI.ApiRpc = (
-		await _socket.rpc_async("record_client_ip", "{}"))
-	if result.is_exception():
-		var ex: NakamaException = result.get_exception()
-		Netcode.log.warning(
-			"[NakamaMatchmaker] record_client_ip failed: %s"
-			% ex.message,
-			NetworkLogger.CATEGORY_CONNECTIONS,
-		)
-
-
-func _resolve_socket_session() -> NakamaSession:
-	if Netcode.is_preview and Netcode.preview_client_number > 0:
-		return await _authenticate_preview_instance()
-
-	var store: PlatformAuthTokenStore = Platform.token_store
-	if store.is_anonymous and not store.is_token_valid():
-		Platform.auth.get_guest_jwt()
-		var result: Array = (
-			await Platform.auth.guest_jwt_obtained)
-		var success: bool = result[0]
-		var error: String = result[1]
-		if not success:
-			session_request_failed.emit(
-				"Failed to get session token: " + error)
-			return null
-
-	var session: NakamaSession = (
-		Platform.build_session_from_store())
-	if session == null:
-		session_request_failed.emit("Not authenticated")
-	return session
-
-
-func _authenticate_preview_instance() -> NakamaSession:
-	# Stable per (machine, preview slot) so re-runs reuse the
-	# same Nakama account and don't sprawl test users across
-	# Nakama. Distinct between preview slots and between
-	# machines.
+func _resolve_preview_device_id() -> String:
+	if not (Netcode.is_preview
+			and Netcode.preview_client_number > 0):
+		return ""
 	if _preview_device_id.is_empty():
+		# Stable per (machine, preview slot) so re-runs reuse
+		# the same Nakama account and don't sprawl test users
+		# across Nakama. Distinct between preview slots and
+		# between machines.
 		var base := OS.get_unique_id()
 		if base.is_empty():
 			base = "preview"
 		_preview_device_id = "preview_%s_C%d" % [
 			base, Netcode.preview_client_number]
-
-	var client := Platform.get_nakama_client()
-	var session: NakamaSession = (
-		await client.authenticate_device_async(
-			_preview_device_id))
-	if session.is_exception():
-		var ex: NakamaException = session.get_exception()
-		session_request_failed.emit(
-			"Preview matchmaker auth failed: %s"
-			% ex.message)
-		return null
-
-	_preview_user_id = session.user_id
-	Netcode.log.print(
-		(
-			"[NakamaMatchmaker] Preview C%d device_id=%s"
-			+ " uid=%s"
-		) % [
-			Netcode.preview_client_number,
-			_preview_device_id,
-			_preview_user_id,
-		],
-		NetworkLogger.CATEGORY_CONNECTIONS,
-	)
-	return session
+	return _preview_device_id
 
 
 func _build_query(_session_prefs: Dictionary) -> String:
@@ -296,31 +194,34 @@ func _build_string_props(
 	player_count: int,
 	session_prefs: Dictionary,
 ) -> Dictionary:
-	# `client_ip` is consumed by fleet_allocator.go to hint
-	# Edgegap region selection; the runtime reads it off
-	# entry.GetProperties() and falls back gracefully when
-	# absent.
+	# `client_ip` is recorded server-side by the addon's
+	# `record_client_ip` RPC call inside start_matchmaking;
+	# fleet_allocator.go reads it back from storage. The
+	# remaining keys ride as matchmaker ticket properties so
+	# the allocator (and future per-game-mode logic) can see
+	# them on the runtime.MatchmakerEntry.
 	var props := {
 		"platform": (
 			"web" if OS.has_feature("web") else "native"),
 		"player_count": str(player_count),
 	}
 	# game_id is read by fleet_allocator.go to scope match
-	# metadata (and downstream leaderboard writes via Stage 3.6)
-	# to the correct game. Empty Platform.game_id falls back to
-	# the legacy bare leaderboard ID on the server — should
-	# never happen in production because Platform.initialize is
-	# called from global.gd._ready().
+	# metadata (and downstream leaderboard writes via
+	# Stage 3.6) to the correct game. Empty Platform.game_id
+	# falls back to the legacy bare leaderboard ID on the
+	# server — shouldn't happen in production because
+	# Platform.initialize is called from global.gd._enter_tree.
 	if not Platform.game_id.is_empty():
 		props["game_id"] = Platform.game_id
 	if session_prefs.has("selected_level_id"):
 		props["level_id"] = str(
 			session_prefs["selected_level_id"])
-	# Party matchmaking: PartyManager seeds session_prefs with the
-	# matchmaker_properties echoed by `party_start_matchmaking`. The
-	# shared `party_id` flows into Nakama as a ticket property so
-	# the fleet allocator (and future per-game-mode logic) can tell
-	# matched players came from the same party.
+	# Party matchmaking: PartyManager seeds session_prefs with
+	# the matchmaker_properties echoed by
+	# `party_start_matchmaking`. The shared `party_id` flows
+	# into Nakama as a ticket property so the fleet allocator
+	# (and future per-game-mode logic) can tell matched
+	# players came from the same party.
 	for key in ["party_id", "game_mode"]:
 		if session_prefs.has(key):
 			props[key] = str(session_prefs[key])
@@ -335,125 +236,22 @@ func _build_numeric_props(
 	return {}
 
 
-func _on_matchmaker_matched(matched) -> void:
-	Netcode.log.print(
-		(
-			"[NakamaMatchmaker] Matched match_id=%s"
-			+ " users=%d"
-		) % [matched.match_id, matched.users.size()],
-		NetworkLogger.CATEGORY_CONNECTIONS,
-	)
-	matchmaking_progress_updated.emit(
-		"placing", _elapsed_sec, -1.0)
-
-
-func _on_notification(p_notification) -> void:
-	if p_notification.subject != _MATCH_READY_SUBJECT:
-		return
-	if not _is_searching:
-		# Stale notification arriving after we already
-		# cancelled or moved on.
-		return
-	_is_searching = false
-	_elapsed_timer.stop()
-
-	# p_notification.content is a JSON string the runtime
-	# built from `map[string]any{"connection": <json>}`. The
-	# inner `connection` value was JSON-stringified before
-	# wrapping, so we have to parse twice.
-	var outer: Variant = JSON.parse_string(
-		p_notification.content)
-	if not (outer is Dictionary):
-		session_request_failed.emit(
-			"Invalid match_ready payload (outer)")
-		return
-	var conn_raw: String = str(
-		outer.get("connection", ""))
-	var conn: Variant = JSON.parse_string(conn_raw)
-	if not (conn is Dictionary):
-		session_request_failed.emit(
-			"Invalid match_ready payload (connection)")
-		return
-
-	var server_ip: String = str(conn.get("server_ip", ""))
-	var ports_dict: Variant = conn.get("ports", {})
-	if server_ip.is_empty():
-		session_request_failed.emit(
-			"match_ready missing server_ip")
-		return
-
-	# Read transport_type from match_ready and apply it before
-	# we connect. The runtime picks "webrtc" when any web
-	# player is in the lobby, "enet" otherwise.
+func _on_match_ready_received(payload: Dictionary) -> void:
+	# Apply transport_type before emitting session_ids_received
+	# so GameSessionManager's connect step picks the right
+	# transport. The runtime sends "enet" for ENet-only pools
+	# and "webrtc" once any web player is in the match.
 	var transport_type_str: String = str(
-		conn.get("transport_type", ""))
+		payload.get("transport_type", ""))
 	if not transport_type_str.is_empty():
 		_apply_transport_type(transport_type_str)
 
-	# signaling_url is the stable-FQDN WS URL the runtime
-	# pre-signs (e.g. wss://signaling.<zone>/connect/<token>).
-	# Used for WebRTC/WebSocket transports; ENet ignores it
-	# (UDP path is direct to IP).
+	var session_ids: Array = payload.get("session_ids", [])
+	var server_ip: String = str(payload.get("server_ip", ""))
+	var server_port: int = int(payload.get("server_port", 0))
 	var signaling_url: String = str(
-		conn.get("signaling_url", ""))
-
-	var server_port := _pick_port(
-		ports_dict, Netcode.settings.transport_type)
-	if server_port <= 0:
-		session_request_failed.emit(
-			"match_ready missing usable port")
-		return
-
-	# Pull authoritative session_ids out of the match_ready
-	# payload. The Nakama runtime issues one ID per local
-	# player at allocation time and ships them in the
-	# connection blob. EdgegapServerProvider validates against
-	# this same allowlist (passed to the server via
-	# EXPECTED_SESSION_IDS env var).
-	#
-	# Older runtimes that don't ship session_ids fall back to
-	# locally-derived IDs so a deploy mid-rollout keeps working.
-	# The server's PreviewSessionProvider stand-in auto-accepts
-	# in that case; once every Nakama host runs the new plugin,
-	# the fallback path is dead code.
-	var session_ids: Array = []
-	var raw_session_ids: Variant = conn.get("session_ids", null)
-	if raw_session_ids is Array and raw_session_ids.size() > 0:
-		for sid in raw_session_ids:
-			session_ids.append(str(sid))
-	else:
-		Netcode.log.warning(
-			(
-				"[NakamaMatchmaker] match_ready missing"
-				+ " session_ids; using locally-derived"
-				+ " fallback (runtime out of date)"
-			),
-			NetworkLogger.CATEGORY_CONNECTIONS,
-		)
-		var base_id: String = (
-			_preview_user_id
-			if not _preview_user_id.is_empty()
-			else Platform.token_store.player_id
-		)
-		var local_count: int = G.client_session.local_player_count
-		if local_count < 1:
-			local_count = 1
-		for i in local_count:
-			session_ids.append("%s_%d" % [base_id, i])
-
-	# Level was chosen client-side and stored on
-	# G.client_session before matchmaking began. The runtime
-	# doesn't echo it yet, so leave it empty here and let the
-	# existing local copy stand.
-	var level_id := ""
-
-	Netcode.log.print(
-		(
-			"[NakamaMatchmaker] match_ready %s:%d"
-			+ " (level=%s)"
-		) % [server_ip, server_port, level_id],
-		NetworkLogger.CATEGORY_CONNECTIONS,
-	)
+		payload.get("signaling_url", ""))
+	var level_id: String = str(payload.get("level_id", ""))
 
 	session_ids_received.emit(
 		session_ids,
@@ -464,39 +262,17 @@ func _on_notification(p_notification) -> void:
 	)
 
 
-func _pick_port(
-	ports: Variant,
-	transport_type: int = NetworkSettings.TransportType.ENET,
-) -> int:
-	# Edgegap status response shape:
-	#   {"<name>": {"external": int, "internal": int,
-	#               "protocol": "UDP"|"TCP"}, ...}
-	# Pick UDP for ENet (game traffic) and TCP for WebRTC or
-	# WebSocket (signaling / TCP transport). The Edgegap app
-	# declares both 4433/UDP and 4434/TCP and forwards them to
-	# host ports; we return the host port matching the
-	# transport's protocol.
-	if not (ports is Dictionary):
-		return 0
-	var want_protocol: String = "UDP"
-	if (transport_type == NetworkSettings.TransportType.WEBRTC
-			or transport_type == NetworkSettings.TransportType.WEBSOCKET):
-		want_protocol = "TCP"
-	var fallback := 0
-	for key in ports.keys():
-		var entry: Variant = ports[key]
-		if not (entry is Dictionary):
-			continue
-		var ext: int = int(entry.get("external", 0))
-		if ext <= 0:
-			continue
-		if fallback == 0:
-			fallback = ext
-		var protocol: String = str(
-			entry.get("protocol", "")).to_upper()
-		if protocol == want_protocol:
-			return ext
-	return fallback
+func _on_matchmaking_failed(error: String) -> void:
+	session_request_failed.emit(error)
+
+
+func _on_progress_updated(
+	phase: String,
+	elapsed_sec: float,
+	estimated_total_sec: float,
+) -> void:
+	matchmaking_progress_updated.emit(
+		phase, elapsed_sec, estimated_total_sec)
 
 
 func _apply_transport_type(raw: String) -> void:
@@ -512,39 +288,10 @@ func _apply_transport_type(raw: String) -> void:
 				NetworkSettings.TransportType.WEBSOCKET)
 		_:
 			Netcode.log.warning(
-				("[NakamaMatchmaker] unknown transport_type"
-				+ " '%s' from match_ready; keeping current"
-				+ " setting") % raw,
+				(
+					"[NakamaMatchmaker] unknown"
+					+ " transport_type '%s' from match_ready;"
+					+ " keeping current setting"
+				) % raw,
 				NetworkLogger.CATEGORY_CONNECTIONS,
 			)
-
-
-func _on_elapsed_tick() -> void:
-	_elapsed_sec += _PROGRESS_TICK_SEC
-	if _elapsed_sec > _MATCH_TIMEOUT_SEC:
-		clear_session()
-		session_request_failed.emit(
-			"Matchmaking timed out after %.0f seconds"
-			% _MATCH_TIMEOUT_SEC)
-		return
-	matchmaking_progress_updated.emit(
-		"searching", _elapsed_sec, -1.0)
-
-
-func _on_socket_closed() -> void:
-	Netcode.log.print(
-		"[NakamaMatchmaker] Socket closed",
-		NetworkLogger.CATEGORY_CONNECTIONS,
-	)
-
-
-func _on_socket_connection_error(error) -> void:
-	Netcode.log.warning(
-		"[NakamaMatchmaker] Socket error: %s" % error,
-		NetworkLogger.CATEGORY_CONNECTIONS,
-	)
-	if _is_searching:
-		_is_searching = false
-		_elapsed_timer.stop()
-		session_request_failed.emit(
-			"Matchmaker socket disconnected")
