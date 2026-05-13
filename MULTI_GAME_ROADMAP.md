@@ -30,44 +30,38 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 7 resilience momentum. **Stage 7.2
-  mid-queue cancel teardown shipped** (2026-05-13, ninth pass):
-  new `inflightAllocation` struct + `sync.Map` tracker on
-  `fleetAllocator`; `OnMatchmakerMatched` derives a cancelable
-  child context, registers each matched user_id, and defers
-  deregister + allocCancel. New client-session RPC
-  `cancel_matchmaking_allocation` looks up the caller's inflight
-  and invokes the cancel func; the hook goroutine observes
-  `allocCtx.Err() != nil` at two checkpoints and either skips the
-  storage-write/notify path (cancelled-during-retry) or calls
-  `stopDeploy` on the freshly-allocated deploy
-  (cancelled-after-success), then fans out `match_failed`
-  reason=cancelled to all matched players via the new
-  `sendMatchCancelled` helper. Addon-side
-  `PlatformMatchmakingClient.cancel_matchmaking()` now fires the
-  new RPC alongside `remove_matchmaker_async`. LoadingScreen
-  unhides the Cancel button during "placing". Game-side classifier
-  routes `reason=cancelled` to new `LOADING.PEER_CANCELLED` key (13
-  locales). 2 new Go unit tests (8 sub-cases) cover register/
-  deregister/cancel propagation + the multi-user shared-inflight
-  contract. `go vet && go test && staticcheck` clean; pluginbuilder
-  Docker produces 19 MB `snoringcat.so`. Headless Godot boot clean
-  (zero parse/compile errors).
+- **Current focus:** Stage 7 resilience momentum. **Stage 7.5
+  friend pagination shipped** (2026-05-13, tenth pass):
+  `PlatformFriendsApiClient.fetch_friends` now loops
+  `list_friends_async` with a cursor across up to 10 pages × 100
+  entries (1000 cap) mirroring the runtime cascade's bounded-loop
+  pattern. Builds the new `cached_friends` /
+  `cached_sent_requests` / `cached_incoming_requests` arrays in
+  locals and swaps them in atomically after the last page so a
+  mid-pagination failure leaves the caches untouched. New file-
+  level constants `_FRIENDS_PAGE_SIZE=100` and
+  `_FRIENDS_PAGE_CAP=10` replace the inline magic 100. No
+  consumer API change. Headless Godot boot clean (JWT refresh +
+  `update_and_get_presence` succeed via live Nakama; zero
+  parse/compile errors).
   Earlier 2026-05-13 work (still standing): 7.1 allocation retry,
-  Tier 2 matchmaking compliance suite (8.20 cancel-race + 8.21
-  protocol-mismatch), Tier 1 Go unit tests (8.3-8.10, 100 cases),
-  8.1+8.2 deploy gate, 8.11/8.12/8.14/8.16/8.17/8.18/8.19/8.22
-  compliance tests, 8.13 EDGEGAP_MOCK_DEPLOY mode, audit-surfaced
-  drift fully resolved.
-  **Next:** Stage 7.5 (friend pagination — silently truncates at 100
-  today), 7.3 (platform-level push notifications), 7.4 (friend
-  block list — also unblocks 8.15) are all self-contained. 7.11
-  (re-introduce observability) is also unblocked; configs are
-  preserved. 8.15 still blocked on 7.4. Tier 3 client unit tests
-  (8.23-8.28) require GUT doubles setup against the addon's
-  GDScript classes; Tier 4 e2e/smoke (8.29-8.31) needs a
-  docker-compose dev stack. Stage 6.11 screens still greenfield
-  with design call needed.
+  7.2 mid-queue cancel teardown (`inflightAllocation` tracker +
+  `cancel_matchmaking_allocation` RPC + LOADING.PEER_CANCELLED
+  fan-out), Tier 2 matchmaking compliance suite (8.20 cancel-race
+  + 8.21 protocol-mismatch), Tier 1 Go unit tests (8.3-8.10, 100
+  cases), 8.1+8.2 deploy gate,
+  8.11/8.12/8.14/8.16/8.17/8.18/8.19/8.22 compliance tests, 8.13
+  EDGEGAP_MOCK_DEPLOY mode, audit-surfaced drift fully resolved.
+  **Next:** Stage 7.3 (platform-level push notifications) and 7.4
+  (friend block list — also unblocks 8.15) are the cheapest
+  remaining Stage 7 items. 7.11 (re-introduce observability) is
+  also unblocked; configs are preserved. 7.12 (max pending friend
+  request enforcement) and 7.13 (friend-code rate-limit) are
+  small server-side hardening fixes. 8.15 still blocked on 7.4.
+  Tier 3 client unit tests (8.23-8.28) require GUT doubles setup
+  against the addon's GDScript classes; Tier 4 e2e/smoke
+  (8.29-8.31) needs a docker-compose dev stack. Stage 6.11
+  screens still greenfield with design call needed.
 - **2026-05-13 audit follow-up — drift items resolved later
   the same day:**
   - **Runtime backlog flushed:** the deployed runtime was 24
@@ -136,29 +130,27 @@ See also:
   (b) pivot to Stage 7 resilience (13 open items including
   allocation retry, friend pagination, anonymous-upgrade UI,
   account-merge UI, observability re-introduction).
-- **Last updated:** 2026-05-13 (ninth pass: Stage 7.2 mid-queue
-  cancel teardown shipped. New `inflightAllocation` tracker on
+- **Last updated:** 2026-05-13 (tenth pass: Stage 7.5 friend
+  pagination shipped. `PlatformFriendsApiClient.fetch_friends`
+  loops `list_friends_async` with a cursor across up to 10
+  pages × 100 entries; mid-pagination failure leaves caches
+  untouched via atomic local-swap; consumer API unchanged.
+  Headless Godot boot clean.
+  Plus all prior 2026-05-13 work: 7.1 allocation retry, 7.2
+  mid-queue cancel teardown (new `inflightAllocation` tracker on
   `fleetAllocator`, cancelable child ctx through the retry loop,
-  two `allocCtx.Err()` checkpoints in `OnMatchmakerMatched`,
-  best-effort `stopDeploy` on cancellation-post-allocation,
-  `match_failed` reason=cancelled fan-out via
-  `sendMatchCancelled`. New client-session RPC
-  `cancel_matchmaking_allocation` registered alongside the
-  matchmaker hook. Addon's `cancel_matchmaking()` fires the new
-  RPC + existing `remove_matchmaker_async`. LoadingScreen Cancel
-  button now visible during "placing". Game-side classifier routes
-  `reason=cancelled` to new `LOADING.PEER_CANCELLED` translation
-  key (13 locales). 2 new Go unit tests (8 sub-cases).
-  `go vet && go test && staticcheck` clean; pluginbuilder Docker
-  produces 19 MB `snoringcat.so`. Headless Godot boot clean.
-  Plus all prior 2026-05-13 work: 7.1 allocation retry, Tier 2
-  matchmaking compliance suite finished (8.20 + 8.21), Tier 1 Go
-  unit tests (8.3-8.10, 100 cases), 8.1/8.2 deploy gate,
-  audit-surfaced drift fully resolved, 24-commit runtime backlog
-  deployed, first games-cache sync, Phase F finished, stale Edgegap
-  tags pruned, 8.11/8.12/8.14 multi-user compliance harness,
-  8.16/8.17/8.22 multi-user tests, EDGEGAP_MOCK_DEPLOY mode +
-  8.18/8.19 mock-mode matchmaking tests).
+  two `allocCtx.Err()` checkpoints, best-effort `stopDeploy` on
+  cancellation-post-allocation, `match_failed` reason=cancelled
+  fan-out, new `cancel_matchmaking_allocation` RPC, LoadingScreen
+  Cancel during "placing", new `LOADING.PEER_CANCELLED`
+  translation key), Tier 2 matchmaking compliance suite finished
+  (8.20 + 8.21), Tier 1 Go unit tests (8.3-8.10, 100 cases),
+  8.1/8.2 deploy gate, audit-surfaced drift fully resolved,
+  24-commit runtime backlog deployed, first games-cache sync,
+  Phase F finished, stale Edgegap tags pruned, 8.11/8.12/8.14
+  multi-user compliance harness, 8.16/8.17/8.22 multi-user tests,
+  EDGEGAP_MOCK_DEPLOY mode + 8.18/8.19 mock-mode matchmaking
+  tests).
 - **Stages complete:**
   - Stage 0 — platform infra extraction (kickoff verification
     items 0.8 + 0.9 confirmed 2026-05-12).
@@ -208,9 +200,9 @@ See also:
     list), Tier 3 client unit tests with doubles
     (8.23–8.28), Tier 4 e2e/smoke (8.29–8.31).
 - **Stages in progress (Stage 7 resilience):**
-  - Stage 7 — 2/13 shipped 2026-05-13 (7.1 allocation retry,
-    7.2 mid-queue cancel teardown). Remaining 11 items are all
-    open and unblocked.
+  - Stage 7 — 3/13 shipped 2026-05-13 (7.1 allocation retry,
+    7.2 mid-queue cancel teardown, 7.5 friend pagination).
+    Remaining 10 items are all open and unblocked.
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -253,8 +245,8 @@ Stage 3 (done, 2026-05-12) — game_id scoping: presence
        needed).
    ↓
 Stage 7 — Resilience (retries, notifications, observability).
-   2/13 shipped 2026-05-13 (7.1 allocation retry, 7.2 mid-queue
-   cancel teardown); 11 open.
+   3/13 shipped 2026-05-13 (7.1 allocation retry, 7.2 mid-queue
+   cancel teardown, 7.5 friend pagination); 10 open.
 
 Stage 8 — Tests (parallel track, doesn't block features).
    21/31 shipped 2026-05-13. Tier 1 Go unit tests (8.3–8.10)
@@ -2379,8 +2371,52 @@ Extract clean code, not bug-laden code.
   found (currently UI-only toasts; no platform-level push).
 - [ ] 7.4 Friend block list (schema + RPC + UI + matchmaker
   integration).
-- [ ] 7.5 Friend pagination (>100 friends; currently silently
-  truncated at `friends_api_client.gd:56`).
+- [x] **7.5 Friend pagination (>100 friends; currently silently
+  truncated at `friends_api_client.gd:56`)** (2026-05-13).
+  - Done — addon: `PlatformFriendsApiClient.fetch_friends`
+    now loops `Platform.nakama_client.list_friends_async` with
+    a cursor across up to 10 pages × 100 entries (1000 cap),
+    mirroring the runtime `account.go` cascade's bounded-loop
+    pattern. Builds the new `cached_friends` /
+    `cached_sent_requests` / `cached_incoming_requests` arrays
+    in locals and swaps them in atomically after the last page,
+    so a mid-pagination failure leaves the caches untouched.
+    Cursor is read as String with a null-guard for the Nakama
+    SDK's empty-string-vs-null inconsistency on the final page.
+    Two new file-level constants (`_FRIENDS_PAGE_SIZE=100`,
+    `_FRIENDS_PAGE_CAP=10`) replace the inline magic 100.
+  - No consumer API change. `cached_*` fields are still
+    `Array[Dictionary]` with the same per-entry shape (every
+    consumer in `src/ui/`, `src/core/friends_notification_poller.gd`,
+    etc. continues to read them without modification).
+  - Verification: headless Godot boot clean (JWT refresh +
+    `update_and_get_presence` succeed via live Nakama, zero
+    parse/compile errors). No compliance test for the
+    cursor-loop path itself — the existing
+    `test_friends_multiuser.gd` (Stage 8.14) exercises
+    `list_friends_async` indirectly via the HTTP API, and the
+    sub-100-friend test pair short-circuits on the first page
+    so a cursor-loop regression wouldn't surface there. A
+    proper test would need to mint 101+ accounts and friend
+    them all, which is heavy for compliance; deferred to a
+    Tier 3 unit test with doubles (8.23) when that track
+    lands.
+  - Decision worth recording: hard cap at 1000 entries, not
+    unbounded. A truly pathological friend list (10k+) would
+    take 100+ HTTP round-trips to drain and produce a
+    UI-unusable cached list anyway. The 1000 cap matches the
+    runtime cascade's existing bound (10×100) and means
+    fetch_friends has a predictable upper bound on round-trips
+    even in adversarial cases. Future high-cap accounts that
+    actually need >1000 visible friends would warrant a
+    paged-UI redesign, not just a higher constant.
+  - Decision worth recording: atomic swap on completion, not
+    incremental append to `cached_friends`. The pre-extraction
+    code reset and then appended page-by-page; that would have
+    left a partially-populated cache visible if a mid-loop
+    exception hit. Swapping locals in at the end keeps the
+    cache consistent across the entire pagination — either the
+    full list (capped) is visible or the prior state is.
 - [ ] 7.6 Recent-players list.
 - [ ] 7.7 Full GDPR cascade verification (1.4 covers RPC; this
   verifies every state surface clears).
