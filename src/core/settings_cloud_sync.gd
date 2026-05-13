@@ -40,7 +40,7 @@ func _apply_cloud_settings(
 
 ## Push current local settings to the cloud.
 func save_to_cloud() -> void:
-	if not G.auth_token_store.is_token_valid():
+	if not Platform.token_store.is_token_valid():
 		return
 	var data := _serialize_local_settings()
 	G.backend_api_client.save_player_settings(data)
@@ -49,7 +49,7 @@ func save_to_cloud() -> void:
 ## Fetch cloud settings and merge them locally.
 ## Cloud wins when its timestamp is newer.
 func fetch_and_merge_from_cloud() -> void:
-	if not G.auth_token_store.is_token_valid():
+	if not Platform.token_store.is_token_valid():
 		return
 	if not G.backend_api_client.settings_received.is_connected(
 			_on_settings_received):

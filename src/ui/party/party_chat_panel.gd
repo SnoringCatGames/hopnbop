@@ -165,7 +165,7 @@ func _append_message_row(
 		_message_row_nodes.clear()
 
 	var sender_id: String = message.get("sender_id", "")
-	var self_id := G.auth_token_store.player_id
+	var self_id: String = Platform.token_store.player_id
 	var display_name := _resolve_sender_display_name(message)
 	var body: String = ""
 	var content_dict: Variant = message.get("content", {})
@@ -216,7 +216,7 @@ func _resolve_sender_display_name(
 ) -> String:
 	var sender_id: String = message.get(
 		"sender_id", "")
-	if sender_id == G.auth_token_store.player_id:
+	if sender_id == Platform.token_store.player_id:
 		# Self — display the local username if we have it,
 		# else the literal "You" fallback handled by the
 		# caller.

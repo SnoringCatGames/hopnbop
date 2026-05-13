@@ -85,10 +85,10 @@ func _build_payload(
 		"application/config/version", "unknown")
 	var player_id := ""
 	if (
-		is_instance_valid(G.auth_token_store)
-		and not G.auth_token_store.player_id.is_empty()
+		is_instance_valid(Platform.token_store)
+		and not Platform.token_store.player_id.is_empty()
 	):
-		player_id = G.auth_token_store.player_id
+		player_id = Platform.token_store.player_id
 	var render_fps := 0.0
 	var physics_fps := 0.0
 	var network_ping_ms := 0.0

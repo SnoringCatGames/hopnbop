@@ -175,9 +175,9 @@ func _populate_results() -> void:
 	# so they never show a button. Players we
 	# are already friends with are hidden.
 	var client := G.friends_api_client
-	var own_id := G.auth_token_store.player_id
-	var has_any_friend_button := (
-		not G.auth_token_store.is_anonymous
+	var own_id: String = Platform.token_store.player_id
+	var has_any_friend_button: bool = (
+		not Platform.token_store.is_anonymous
 		and participants.any(
 			func(p: Dictionary) -> bool:
 				var bid: String = p.get(
@@ -326,12 +326,12 @@ func _add_result_row(
 
 	# Friend action button or spacer.
 	if reserve_friend_column:
-		var show_button := (
+		var show_button: bool = (
 			not is_anonymous
 			and not backend_player_id.is_empty()
-			and not G.auth_token_store.is_anonymous
+			and not Platform.token_store.is_anonymous
 			and backend_player_id
-				!= G.auth_token_store.player_id)
+				!= Platform.token_store.player_id)
 		if show_button:
 			_add_friend_button(
 				row, backend_player_id)

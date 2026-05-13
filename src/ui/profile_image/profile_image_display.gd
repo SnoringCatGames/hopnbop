@@ -125,9 +125,9 @@ func _try_load_cached() -> void:
 				or _player_id in
 					G.client_session
 						.local_player_ids)
-			and not G.auth_token_store
+			and not Platform.token_store
 				.profile_image_url.is_empty()):
-		url = G.auth_token_store.profile_image_url
+		url = Platform.token_store.profile_image_url
 	if not url.is_empty():
 		G.profile_image_cache.request_image(
 			_player_id, url)

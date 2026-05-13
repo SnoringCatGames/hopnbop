@@ -167,7 +167,7 @@ var _is_refreshing := false
 var _pkce_verifier := ""
 
 # Nakama client (lazily constructed). Sessions are not held here;
-# the JWT + refresh token live in G.auth_token_store, and we
+# the JWT + refresh token live in Platform.token_store, and we
 # rebuild a NakamaSession on demand from those.
 var _nakama_client: NakamaClient = null
 
@@ -259,10 +259,10 @@ func submit_platform_token(
 		"provider": _PROVIDER_NAMES[provider],
 		"auth_code": token,
 		"consent_accepted_at": (
-			G.auth_token_store.consent_accepted_at
+			Platform.token_store.consent_accepted_at
 		),
 		"consent_legal_version": (
-			G.auth_token_store.consent_legal_version
+			Platform.token_store.consent_legal_version
 		),
 	}
 	_send_auth_request(_AUTH_ENDPOINT, body)
@@ -273,7 +273,7 @@ func submit_platform_token(
 ## An ephemeral guest JWT is obtained on-demand via
 ## get_guest_jwt() when the player starts matchmaking.
 func login_anonymous() -> void:
-	var store := G.auth_token_store
+	var store: PlatformAuthTokenStore = Platform.token_store
 	store.is_anonymous = true
 	store.display_name = _generate_anonymous_name()
 	store.local_player_id = _generate_state_nonce()
@@ -283,11 +283,11 @@ func login_anonymous() -> void:
 
 ## Obtain a Nakama session for the current anonymous
 ## player. The session token is stored in
-## G.auth_token_store. Emits guest_jwt_obtained when
+## Platform.token_store. Emits guest_jwt_obtained when
 ## complete. If a valid token already exists, emits
 ## immediately.
 func get_guest_jwt() -> void:
-	if G.auth_token_store.is_token_valid():
+	if Platform.token_store.is_token_valid():
 		guest_jwt_obtained.emit(true, "")
 		return
 	# _do_anon_auth runs Nakama device auth and emits
@@ -301,7 +301,7 @@ func refresh_token() -> void:
 	if _is_refreshing:
 		return
 
-	var store := G.auth_token_store
+	var store: PlatformAuthTokenStore = Platform.token_store
 	if store.refresh_token.is_empty():
 		auth_completed.emit(false, "No refresh token")
 		return
@@ -399,7 +399,7 @@ func export_player_data() -> void:
 	if _is_exporting:
 		return
 
-	if not G.auth_token_store.is_token_valid():
+	if not Platform.token_store.is_token_valid():
 		G.log.warning(
 			"Export failed: not authenticated",
 		)
@@ -595,10 +595,10 @@ func _poll_oauth_redirect() -> void:
 	}
 	if endpoint == _AUTH_ENDPOINT:
 		body["consent_accepted_at"] = (
-			G.auth_token_store.consent_accepted_at
+			Platform.token_store.consent_accepted_at
 		)
 		body["consent_legal_version"] = (
-			G.auth_token_store.consent_legal_version
+			Platform.token_store.consent_legal_version
 		)
 
 	_send_auth_request(
@@ -739,10 +739,10 @@ func _poll_web_oauth() -> void:
 
 	if endpoint == _AUTH_ENDPOINT:
 		body["consent_accepted_at"] = (
-			G.auth_token_store.consent_accepted_at
+			Platform.token_store.consent_accepted_at
 		)
 		body["consent_legal_version"] = (
-			G.auth_token_store.consent_legal_version
+			Platform.token_store.consent_legal_version
 		)
 
 	_send_auth_request(
@@ -896,7 +896,7 @@ func _build_session_vars() -> Dictionary:
 # so we can attach it to authenticated calls (link, unlink, etc.).
 # Returns null when the store has no valid session.
 func _build_session_from_store() -> NakamaSession:
-	var store := G.auth_token_store
+	var store: PlatformAuthTokenStore = Platform.token_store
 	if store.jwt_token.is_empty():
 		return null
 	# NakamaSession.new(token, created, refresh_token, exception)
@@ -920,13 +920,13 @@ func _session_to_response_dict(
 		"provider": provider_name,
 		"is_anonymous": provider_name == "anonymous",
 		# Backfilled later via NakamaClient.get_account_async.
-		"display_name": G.auth_token_store.display_name,
-		"linked_providers": G.auth_token_store.linked_providers,
-		"rating": G.auth_token_store.rating,
-		"consent_accepted_at": G.auth_token_store.consent_accepted_at,
+		"display_name": Platform.token_store.display_name,
+		"linked_providers": Platform.token_store.linked_providers,
+		"rating": Platform.token_store.rating,
+		"consent_accepted_at": Platform.token_store.consent_accepted_at,
 		"consent_legal_version": (
-			G.auth_token_store.consent_legal_version),
-		"profile_image_url": G.auth_token_store.profile_image_url,
+			Platform.token_store.consent_legal_version),
+		"profile_image_url": Platform.token_store.profile_image_url,
 		# Skip the protocol-version handshake on the Nakama path —
 		# Phase C runtime modules will gate on it server-side.
 		"protocol_version": -1,
@@ -968,7 +968,7 @@ func _fetch_account_profile_dict(
 # --------------------------------------------------------------
 
 func _do_anon_auth() -> void:
-	var store := G.auth_token_store
+	var store: PlatformAuthTokenStore = Platform.token_store
 	var device_id := store.local_player_id
 	if device_id.is_empty():
 		device_id = _generate_state_nonce()
@@ -1056,7 +1056,7 @@ func _do_session_refresh(_body: Dictionary) -> void:
 			session.get_exception()))
 		return
 	_handle_auth_success(_session_to_response_dict(
-		session, G.auth_token_store.provider))
+		session, Platform.token_store.provider))
 
 
 func _do_link(body: Dictionary) -> void:
@@ -1135,18 +1135,18 @@ func _do_link(body: Dictionary) -> void:
 						update_result.get_exception()))
 	# Synthesize a success dict so the downstream handler updates
 	# linked_providers in the token store consistently.
-	var linked := G.auth_token_store.linked_providers.duplicate()
+	var linked: Array = Platform.token_store.linked_providers.duplicate()
 	if not linked.has(provider_name):
 		linked.append(provider_name)
 	var data := {
 		"status": "success",
 		"linked_providers": linked,
-		"player_id": G.auth_token_store.player_id,
-		"jwt_token": G.auth_token_store.jwt_token,
-		"refresh_token": G.auth_token_store.refresh_token,
-		"expires_at": G.auth_token_store.expires_at,
-		"display_name": G.auth_token_store.display_name,
-		"rating": G.auth_token_store.rating,
+		"player_id": Platform.token_store.player_id,
+		"jwt_token": Platform.token_store.jwt_token,
+		"refresh_token": Platform.token_store.refresh_token,
+		"expires_at": Platform.token_store.expires_at,
+		"display_name": Platform.token_store.display_name,
+		"rating": Platform.token_store.rating,
 		"protocol_version": -1,
 	}
 	# Pick up display_name + avatar_url that Nakama just stored
@@ -1186,12 +1186,12 @@ func _do_unlink(body: Dictionary) -> void:
 		_emit_failure(_describe_nakama_exception(
 			result.get_exception()))
 		return
-	var linked := G.auth_token_store.linked_providers.duplicate()
+	var linked: Array = Platform.token_store.linked_providers.duplicate()
 	linked.erase(provider_name)
 	_handle_unlink_success({
 		"status": "success",
 		"linked_providers": linked,
-		"player_id": G.auth_token_store.player_id,
+		"player_id": Platform.token_store.player_id,
 	})
 
 
@@ -1287,13 +1287,13 @@ func _handle_auth_success(data: Dictionary) -> void:
 
 	# Update linked providers from response.
 	if data.has("linked_providers"):
-		G.auth_token_store.linked_providers.clear()
+		Platform.token_store.linked_providers.clear()
 		var lp: Array = data.get("linked_providers", [])
 		for p in lp:
-			G.auth_token_store.linked_providers.append(
+			Platform.token_store.linked_providers.append(
 				str(p)
 			)
-		G.auth_token_store.save_tokens()
+		Platform.token_store.save_tokens()
 
 	if _is_linking:
 		_is_linking = false
@@ -1305,7 +1305,7 @@ func _handle_auth_success(data: Dictionary) -> void:
 
 	# Store tokens.
 	if data.has("jwt_token"):
-		G.auth_token_store.store_from_response(data)
+		Platform.token_store.store_from_response(data)
 		_last_refresh_time = (
 			Time.get_unix_time_from_system()
 		)
@@ -1326,13 +1326,13 @@ func _handle_unlink_success(data: Dictionary) -> void:
 
 	# Update linked providers from response.
 	if data.has("linked_providers"):
-		G.auth_token_store.linked_providers.clear()
+		Platform.token_store.linked_providers.clear()
 		var lp: Array = data.get("linked_providers", [])
 		for p in lp:
-			G.auth_token_store.linked_providers.append(
+			Platform.token_store.linked_providers.append(
 				str(p)
 			)
-		G.auth_token_store.save_tokens()
+		Platform.token_store.save_tokens()
 
 	unlink_completed.emit(true, "", provider_name)
 
@@ -1344,10 +1344,10 @@ func _handle_merge_success(data: Dictionary) -> void:
 	_pending_merge_provider_name = ""
 
 	if data.has("linked_providers"):
-		G.auth_token_store.linked_providers.clear()
+		Platform.token_store.linked_providers.clear()
 		var lp: Array = data.get("linked_providers", [])
 		for p in lp:
-			G.auth_token_store.linked_providers.append(
+			Platform.token_store.linked_providers.append(
 				str(p)
 			)
 	_update_profile_from_response(data)
@@ -1364,18 +1364,18 @@ func _update_profile_from_response(
 	var new_name: String = data.get(
 		"display_name", "")
 	if not new_name.is_empty():
-		G.auth_token_store.display_name = new_name
+		Platform.token_store.display_name = new_name
 	var new_image: String = data.get(
 		"profile_image_url", "")
 	if not new_image.is_empty():
-		G.auth_token_store.profile_image_url = (
+		Platform.token_store.profile_image_url = (
 			new_image)
-	G.auth_token_store.save_tokens()
+	Platform.token_store.save_tokens()
 
 
 func _handle_delete_success() -> void:
 	_is_deleting = false
-	G.auth_token_store.clear_tokens()
+	Platform.token_store.clear_tokens()
 	delete_completed.emit(true, "")
 
 
@@ -1413,7 +1413,7 @@ func _emit_failure(error: String) -> void:
 
 
 func _check_auto_refresh() -> void:
-	if not G.auth_token_store.needs_refresh():
+	if not Platform.token_store.needs_refresh():
 		return
 	if _is_refreshing:
 		return
@@ -1645,7 +1645,7 @@ func _on_guest_jwt_response(
 	# Store guest JWT in memory only. save_tokens()
 	# omits these fields for anonymous users, so they
 	# are never written to disk.
-	var store := G.auth_token_store
+	var store: PlatformAuthTokenStore = Platform.token_store
 	store.jwt_token = data.get("jwt_token", "")
 	store.player_id = data.get("player_id", "")
 	store.expires_at = data.get("expires_at", 0)

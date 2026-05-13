@@ -508,7 +508,7 @@ func _add_friend_row(
 	# Platform autoload hasn't initialized yet — in that case
 	# every same-game friend would render as "other game",
 	# which is preferable to mis-rendering as same-game.
-	var is_in_other_game := (
+	var is_in_other_game: bool = (
 		is_online
 		and not friend_game_id.is_empty()
 		and friend_game_id != Platform.game_id

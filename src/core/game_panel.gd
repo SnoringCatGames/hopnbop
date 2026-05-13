@@ -81,25 +81,25 @@ func _ready() -> void:
 	Netcode.connector.client_session_provider = (
 		func() -> Dictionary:
 			var bid := ""
-			if (G.auth_token_store != null
-					and not G.auth_token_store
+			if (Platform.token_store != null
+					and not Platform.token_store
 						.player_id.is_empty()):
-				bid = G.auth_token_store.player_id
+				bid = Platform.token_store.player_id
 			var piu := ""
-			if (G.auth_token_store != null
-					and not G.auth_token_store
+			if (Platform.token_store != null
+					and not Platform.token_store
 						.profile_image_url
 						.is_empty()):
 				piu = (
-					G.auth_token_store
+					Platform.token_store
 						.profile_image_url)
 			var dn := ""
-			if (G.auth_token_store != null
-					and not G.auth_token_store
+			if (Platform.token_store != null
+					and not Platform.token_store
 						.display_name.is_empty()
-					and not G.auth_token_store
+					and not Platform.token_store
 						.is_anonymous):
-				dn = G.auth_token_store.display_name
+				dn = Platform.token_store.display_name
 			return {
 				"session_ids":
 					G.client_session
@@ -2188,9 +2188,9 @@ func _start_session_poll() -> void:
 		return
 	if Netcode.is_local_mode:
 		return
-	if G.auth_token_store == null:
+	if Platform.token_store == null:
 		return
-	if G.auth_token_store.is_anonymous:
+	if Platform.token_store.is_anonymous:
 		return
 	if _PLATFORM_API_URL.is_empty():
 		return
@@ -2243,12 +2243,12 @@ func _poll_active_session() -> void:
 		"Content-Type: application/json",
 	]
 	if (
-		G.auth_token_store != null
-		and G.auth_token_store.is_token_valid()
+		Platform.token_store != null
+		and Platform.token_store.is_token_valid()
 	):
 		headers.append(
 			"Authorization: Bearer %s"
-			% G.auth_token_store.jwt_token)
+			% Platform.token_store.jwt_token)
 
 	_session_poll_http.request_completed.connect(
 		_on_session_poll_response)

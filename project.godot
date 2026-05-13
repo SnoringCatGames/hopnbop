@@ -30,7 +30,7 @@ buses/default_bus_layout="uid://ixpa4aivrfqd"
 
 G="*res://src/core/global.gd"
 Netcode="*res://addons/rollback_netcode/core/network_orchestrator.gd"
-Platform="*uid://8yq6f46dmf44"
+Platform="*res://addons/snoringcat_platform_client/core/platform.gd"
 Nakama="*res://addons/nakama/Nakama.gd"
 
 [debug]

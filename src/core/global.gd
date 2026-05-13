@@ -27,7 +27,6 @@ var hud: Hud
 var super_hud: SuperHud
 var screens: ScreensMain
 
-var auth_token_store: AuthTokenStore
 var auth_client: AuthClient
 var match_result_reporter: MatchResultReporter
 var backend_api_client: BackendApiClient
@@ -125,8 +124,6 @@ func _enter_tree() -> void:
 	input_handler.name = "InputHandler"
 	add_child(input_handler)
 
-	auth_token_store = AuthTokenStore.new()
-
 	auth_client = AuthClient.new()
 	auth_client.name = "AuthClient"
 	add_child(auth_client)
@@ -191,14 +188,16 @@ func _ready() -> void:
 	Netcode.initialize()
 
 	# Wire the snoringcat-platform addon's autoload with this
-	# game's identity. The Stage 6 SDK extraction will move the
-	# *_api_client.gd surface into Platform.*; today this just
-	# populates `Platform.game_id` so the compliance helper and
-	# any post-Stage-2.5 code that reads it (or wants the addon
-	# to mediate auth) can find it. `api_base_url` is unused
-	# right now because hopnbop still talks to Nakama directly
-	# via auth_client.gd; supplied to satisfy initialize()'s
-	# required-arg contract.
+	# game's identity. After Stage 6.3, `Platform.token_store` is
+	# the canonical auth-token surface (the game-side
+	# `AuthTokenStore` class was deleted). `auth_file_path` is
+	# pinned to the historical `user://auth.cfg` path so existing
+	# players' encrypted credentials remain readable across the
+	# upgrade — the addon's default of `user://%s_auth.cfg %
+	# game_id` would orphan every existing install.
+	# `api_base_url` is currently unused by the game (hopnbop
+	# still talks to Nakama directly via auth_client.gd); supplied
+	# to satisfy initialize()'s required-arg contract.
 	if not Platform.is_initialized:
 		Platform.initialize({
 			"game_id": str(
@@ -209,6 +208,7 @@ func _ready() -> void:
 			"sdk_version": str(
 				ProjectSettings.get_setting(
 					"application/config/version", "0.0.0")),
+			"auth_file_path": "user://auth.cfg",
 		})
 
 	# Read server API key from environment variable

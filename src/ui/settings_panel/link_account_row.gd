@@ -73,7 +73,7 @@ func _try_link() -> void:
 	)
 	_is_busy = true
 
-	if G.auth_token_store.is_anonymous:
+	if Platform.token_store.is_anonymous:
 		_status_label.text = tr("LINK.LOGGING_IN")
 		G.auth_client.auth_completed.connect(
 			_on_login_completed, CONNECT_ONE_SHOT
@@ -242,7 +242,7 @@ func _update_status() -> void:
 	if _is_linked:
 		_status_label.text = tr("LINK.LINKED")
 		_status_label.modulate = Color(0.6, 1.0, 0.6)
-	elif G.auth_token_store.is_anonymous:
+	elif Platform.token_store.is_anonymous:
 		_status_label.text = tr("LINK.LOG_IN")
 		_status_label.modulate = Color.WHITE
 	else:

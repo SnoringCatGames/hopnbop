@@ -30,28 +30,30 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stages 5.6 (leader transfer) and the 1.5 UX
-  polish shipped today. Leader transfer lives in a new
-  `party_transfer_leadership` server RPC backed by a `party_leader`
-  storage override (PermissionRead=2 so clients fold it into
-  `fetch_party_status`); the new leader is also promoted to Nakama
-  group-admin so client-side kick / invite paths keep working.
-  AfterLeaveGroup / AfterKickGroupUsers hooks auto-transfer to the
-  first remaining active member when the current leader departs,
-  covering both manual leave and the account-delete cascade. UI
-  renders a "Make %s the leader" ActionRow per eligible target in
-  PartyLobbyPanel (max 3 rows; parties cap at 4). 1.5 polish:
-  delete-account flow now pushes a dedicated
-  `DeleteAccountConfirmPanel` sub-panel with body copy that spells
-  out the 30-day grace period and a type-the-localized-word
-  verification step before the Confirm button enables; success
-  toast now reads "Account scheduled for deletion. Sign in within
-  30 days to cancel." 9 new translation keys × 13 locales.
-  Stage 5 now has 5.7 (mode picker) as the last open item; Stage 3
-  still has 3.5 / 3.9 open; Stage 4 still has 4.3/4.7/4.8
-  deferred. Next focus is most likely Stage 6 (Platform SDK
-  extraction) — moving the `src/core/*_api_client.gd` files into
-  `addons/snoringcat_platform_client/`.
+- **Current focus:** Stage 6 kickoff. 6.1 and 6.3 landed 2026-05-12.
+  6.1 added the `Platform.{auth, account, friends, party, presence,
+  settings, matchmaking, session, screens}` subsystem property slots
+  to the addon's `platform.gd`, plus a `register_subsystem(name,
+  value)` helper for the consuming game to wire its own
+  implementations into the slots once each extraction lands. All
+  slots default to null until the corresponding Stage 6.x lands.
+  6.3 deleted the game-side `AuthTokenStore` class in favor of the
+  addon's `PlatformAuthTokenStore`, migrated all 22 consumer files
+  off `G.auth_token_store` and onto `Platform.token_store` (mass
+  find-replace + a handful of type-inference fixes where the
+  untyped `Platform.token_store` broke `:=` inference), pulled the
+  game-specific `LEGAL_VERSION` constant + resolver out into a new
+  `LegalVersion` static helper at `src/core/legal_version.gd`,
+  pinned `auth_file_path = "user://auth.cfg"` in `Platform.initialize`
+  so existing players' encrypted credentials survive the upgrade,
+  and switched the `Platform` autoload reference in `project.godot`
+  from a stale UID to a `res://` path (the UID drift on re-import
+  was actually breaking the autoload silently — never noticed
+  before today because no game code read `Platform.token_store`
+  before the migration). Live Nakama smoke (JWT refresh, presence,
+  groups, settings storage) confirmed green via headless boot.
+  Next focus: Stage 6.2 (`auth_client.gd` → `Platform.auth.*`) or
+  one of the smaller extractions (6.4 friends, 6.7 presence).
 - **Last updated:** 2026-05-12.
 - **Stages complete:**
   - Stage 0 (platform infra extraction — including the kickoff
@@ -77,6 +79,14 @@ See also:
     5.4, 5.5, 5.6, 5.8, 5.9, 5.10, 5.11). Open: 5.7 game-mode
     picker (deferred until game.yaml schema gains a `modes`
     list, mirrored by Stage 4.7).
+  - Stage 6 — 2/11 tasks shipped 2026-05-12 (6.1 subsystem
+    slots + register_subsystem helper, 6.3 auth_token_store
+    reconciliation + Platform.token_store migration across 22
+    files). Open: 6.2 (auth_client), 6.4 (friends_api_client),
+    6.5 (party_api_client + party_manager), 6.6 (matchmaker +
+    edgegap_server_provider), 6.7 (presence), 6.8
+    (settings_cloud_sync), 6.9 (game_session_manager), 6.10
+    (mass consumer migration), 6.11 (screen templates).
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -116,7 +126,12 @@ Stage 3 (mostly done, 2026-05-12) — game_id scoping: presence
    │   party?" rejoin prompt (5.9); join-by-code with two new
    │   server RPCs (5.10).
    │   Open: 5.6 leader transfer, 5.7 game-mode picker.
-   └─→ Stage 6 — Platform SDK extraction (src/core/*_api_client.gd → Platform.*)
+   └─→ Stage 6 (in progress, 2026-05-12) — Platform SDK extraction.
+       6.1 subsystem slots + 6.3 auth_token_store reconciliation
+       shipped (22-file migration to Platform.token_store).
+       Remaining: 6.2 auth, 6.4 friends, 6.5 party, 6.6
+       matchmaking, 6.7 presence, 6.8 settings, 6.9 session, 6.10
+       consumer migration, 6.11 screens.
    ↓
 Stage 7 — Resilience (retries, notifications, observability)
 
@@ -1159,15 +1174,77 @@ Extract clean code, not bug-laden code.
 
 ### Tasks
 
-- [ ] 6.1 Define `Platform.{auth,account,friends,party,
-  matchmaking,presence,settings,session,screens}` autoload subsystem
-  properties in `addons/snoringcat_platform_client/core/platform.gd`.
+- [x] **6.1 Define `Platform.{auth,account,friends,party,
+  matchmaking,presence,settings,session,screens}` subsystem
+  property slots** (2026-05-12).
+  - Done — submodule: added nine null-default subsystem slots to
+    `addons/snoringcat_platform_client/core/platform.gd`, plus
+    a `register_subsystem(subsystem_name, value)` helper the
+    consuming game calls during bootstrap to wire its own
+    implementations into each slot once an extraction lands.
+    The helper validates against a closed allowlist of known
+    names so typos surface at the call site rather than turning
+    into silent nulls. Re-registration is allowed (last call
+    wins) so a future test harness can swap an implementation
+    without restarting.
+  - All slots default to null; consuming code uses null-guards
+    while extractions are pending (`if Platform.friends != null:
+    Platform.friends.foo(...)` — falls back to `G.*` until the
+    Stage 6.x for that slot lands).
 - [ ] 6.2 Extract `auth_client.gd` → `Platform.auth.*`; parameterize
   the hardcoded `hopnbop.net` OAuth callback host and
   `nakama.snoringcat.games` host.
-- [ ] 6.3 Reconcile `auth_token_store.gd` with the addon's existing
+- [x] **6.3 Reconcile `auth_token_store.gd` with the addon's
   `PlatformAuthTokenStore`; migrate `G.auth_token_store` references
-  to `Platform.token_store`.
+  to `Platform.token_store`** (2026-05-12).
+  - Done — game side: deleted `src/core/auth_token_store.gd` (the
+    duplicate class — addon's `PlatformAuthTokenStore` was already
+    field-for-field identical save for the configurable file path
+    and the omitted game-specific `LEGAL_VERSION` constant).
+    Moved the constant + `get_current_legal_version()` static
+    helper out into a new game-side `src/core/legal_version.gd`
+    (`class_name LegalVersion`, static `get_current()`) so the
+    consent screen and the runtime version_check resolver still
+    have a game-owned home for "what version of terms do we
+    require accepted". Migrated all 22 consumer files via sed
+    find-replace: `G.auth_token_store` → `Platform.token_store`
+    across `auth_client.gd` (45 sites), `game_panel.gd` (15),
+    `party_manager.gd` (10), `account_panel.gd` + `consent_screen.gd`
+    (7 each), and 17 more files with smaller counts.
+  - Done — global.gd: removed the `var auth_token_store:
+    AuthTokenStore` field declaration and the `auth_token_store =
+    AuthTokenStore.new()` line from `_enter_tree`. Updated the
+    `Platform.initialize` call in `_ready` to pass
+    `auth_file_path = "user://auth.cfg"` so existing players'
+    encrypted credentials remain readable across the upgrade —
+    the addon's default of `user://%s_auth.cfg % game_id` would
+    orphan every existing install.
+  - Done — autoload UID bug fix: `project.godot`'s `Platform`
+    autoload referenced `*uid://8yq6f46dmf44`, which was stale
+    after the addon copy regenerated UIDs on import. The
+    autoload was silently broken (Platform was `Nil`) — never
+    surfaced before today because no game code actually read
+    `Platform.token_store`. Switched the reference to a `res://`
+    path. All other autoloads (G, Netcode, Nakama) already use
+    path references; Platform was the outlier. The submodule
+    intentionally ships without `.gd.uid` files, so any future
+    re-import would have re-triggered the same drift.
+  - Done — type-inference fixes: `Platform.token_store` is
+    declared untyped on `Platform.gd` (the parser-cache bug
+    workaround). That makes `var X := Platform.token_store.Y`
+    fail the strict-typing check in Godot 4.7. Three patterns
+    needed explicit annotations: (a) `var X: String =
+    Platform.token_store.player_id` etc. for typed-field reads;
+    (b) `var store: PlatformAuthTokenStore = Platform.token_store`
+    in the five sites where a local handle was already used (so
+    every downstream `store.X` infers cleanly); (c) `var is_self:
+    bool = ...` for `==` comparisons against `Platform.token_store
+    .player_id`. Headless boot + live Nakama smoke (JWT refresh,
+    presence RPC, group list, settings storage read/write) all
+    green after the fixes.
+  - Compliance test still pending (Stage 8 socket harness). The
+    confidence today comes from headless boot + live RPCs
+    succeeding through the new path, not from an automated test.
 - [ ] 6.4 Extract `friends_api_client.gd` → `Platform.friends.*`.
 - [ ] 6.5 Extract `party_api_client.gd` + `party_manager.gd` →
   `Platform.party.*`.
@@ -1836,6 +1913,73 @@ Security:
     dialog surface focused on yes/no choices. The
     delete-account row now does `manager.push_panel(...)`
     instead of `open_confirm_dialog(...)`.
+- **2026-05-12:** Stage 6 kickoff — 6.1 + 6.3 shipped. Six
+  design calls worth recording:
+  - **Subsystem slots are passive properties + a
+    `register_subsystem` writer, not preload-and-instantiate.**
+    The addon could in principle preload each subsystem
+    implementation and instantiate it from inside
+    `Platform.initialize`, but every concrete subsystem so
+    far still lives game-side (the Stage 6.4+ extractions
+    haven't landed). Making the slots passive lets the
+    consuming game wire its own implementations as each
+    extraction lands incrementally — first `friends_api_client`
+    as `Platform.friends`, then `party_api_client` as
+    `Platform.party`, etc. — without rewriting the addon's
+    `initialize` each time. The `register_subsystem` allowlist
+    prevents typos from turning into silent nulls.
+  - **`LEGAL_VERSION` is game-side, not addon-side.** Different
+    games will eventually publish different terms/privacy/data-
+    deletion text and so need different consent versions. The
+    addon's `PlatformAuthTokenStore` already documented this
+    intent (the file's preamble notes that the LEGAL_VERSION
+    constant was deliberately *not* carried over from the
+    game-side version). Stage 6.3 makes that real: the new
+    `LegalVersion` static helper lives in `src/core/`, and
+    `version_check` still flows the per-game server-side value
+    through `BackendApiClient.server_legal_version` as before.
+  - **Auth file path pinned to `user://auth.cfg` for backward
+    compatibility.** `Platform.initialize`'s default is
+    `user://%s_auth.cfg % game_id` = `user://hopnbop_auth.cfg`,
+    which would orphan every existing player's encrypted
+    credentials on first boot after the migration. Pinning
+    the path preserves the upgrade path. A future migration
+    step could move the file to the new convention, but the
+    cost (forcing every player to re-sign-in) is unjustified
+    for the cosmetic benefit of "the filename matches the
+    game_id" — and now that the path is explicit in
+    `global.gd`'s initialize call, the contract is documented.
+  - **Mass find-replace via sed, not 22 Edit-tool round-trips.**
+    `G.auth_token_store` → `Platform.token_store` is a
+    mechanical substitution. Doing it via 22 Read+Edit calls
+    would have been slow and error-prone (matching identical
+    strings repeatedly). One `sed -i` across the file list is
+    cleaner; the tradeoff is no per-file diff context in the
+    conversation, but the substitution is uniform enough that
+    a single command + a grep for residual references is
+    sufficient verification.
+  - **`Platform.token_store` is untyped on the autoload, typed
+    at the call site.** The addon's `Platform.gd` keeps
+    `var token_store` untyped (the parser-cache bug workaround
+    documented in the file's preamble). Consuming game code
+    that needs typed access uses `var store:
+    PlatformAuthTokenStore = Platform.token_store` to bind a
+    typed local handle; subsequent `store.X` reads then infer
+    cleanly. The `class_name PlatformAuthTokenStore` IS
+    registered in the global script class cache so the type
+    name resolves outside the addon — just not in the addon's
+    own files where the parser-cache bug fires.
+  - **`project.godot`'s `Platform` autoload reference switched
+    from UID to `res://` path.** The submodule intentionally
+    ships without `.gd.uid` files (no game can pin a UID to
+    a file it's about to copy into its own resource tree),
+    which means each consuming game's import generates a fresh
+    UID. Pinning the autoload to a specific UID in
+    `project.godot` was a latent bug that only became visible
+    when game code actually depended on the autoload. Other
+    autoloads (G, Netcode, Nakama) already used path
+    references; Platform was the outlier. Path references are
+    stable across imports.
 
 ## How to use this document
 

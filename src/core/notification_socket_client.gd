@@ -117,12 +117,12 @@ func _attempt_connect() -> void:
 		return
 	# Don't attempt when there's no valid token; defer until
 	# _on_auth_completed fires again.
-	if not G.auth_token_store.is_token_valid():
+	if not Platform.token_store.is_token_valid():
 		return
 	# Anonymous users don't have a Nakama JWT we can authenticate
 	# the socket with. Skip silently; the socket re-evaluates on
 	# the next auth_completed.
-	if G.auth_token_store.is_anonymous:
+	if Platform.token_store.is_anonymous:
 		return
 
 	var session: NakamaSession = (
@@ -314,10 +314,10 @@ func _on_auth_completed(
 	if not success:
 		stop()
 		return
-	if not G.auth_token_store.is_token_valid():
+	if not Platform.token_store.is_token_valid():
 		stop()
 		return
-	if G.auth_token_store.is_anonymous:
+	if Platform.token_store.is_anonymous:
 		# Anonymous users don't have a Nakama JWT; the platform-
 		# level features that rely on this socket (party state,
 		# friend notifications) all require a non-anonymous

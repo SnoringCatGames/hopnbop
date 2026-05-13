@@ -142,7 +142,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not _is_polling:
 		return
-	if not G.auth_token_store.is_token_valid():
+	if not Platform.token_store.is_token_valid():
 		return
 
 	_poll_timer += delta
@@ -186,7 +186,7 @@ func is_leader() -> bool:
 		return false
 	return (
 		current_party.get("leader_id", "")
-		== G.auth_token_store.player_id
+		== Platform.token_store.player_id
 	)
 
 
@@ -300,7 +300,7 @@ func transfer_leadership(
 		return
 	if target_player_id.is_empty():
 		return
-	if target_player_id == G.auth_token_store.player_id:
+	if target_player_id == Platform.token_store.player_id:
 		return
 	G.party_api_client.transfer_leadership(
 		get_party_id(), target_player_id)
@@ -316,7 +316,7 @@ func transfer_leadership(
 func set_ready(ready: bool) -> void:
 	if not is_in_party():
 		return
-	var self_id := G.auth_token_store.player_id
+	var self_id: String = Platform.token_store.player_id
 	_patch_member_ready(self_id, ready)
 	party_updated.emit(current_party)
 	G.party_api_client.set_ready(
@@ -328,7 +328,7 @@ func set_ready(ready: bool) -> void:
 func is_self_ready() -> bool:
 	if not is_in_party():
 		return false
-	var self_id := G.auth_token_store.player_id
+	var self_id: String = Platform.token_store.player_id
 	for m in current_party.get("members", []):
 		if m is Dictionary and m.get("user_id", "") == self_id:
 			return bool(m.get("ready", false))
@@ -413,9 +413,9 @@ func _on_auth_completed(
 ) -> void:
 	if not success:
 		return
-	if not G.auth_token_store.is_token_valid():
+	if not Platform.token_store.is_token_valid():
 		return
-	if G.auth_token_store.is_anonymous:
+	if Platform.token_store.is_anonymous:
 		return
 	# Re-arm the boot-time "still in a party?" detector on every
 	# fresh auth (initial sign-in or sign-out-then-back-in within
@@ -444,7 +444,7 @@ func _on_party_created(
 	current_party = {
 		"party_id": party_id,
 		"name": data.get("name", ""),
-		"leader_id": G.auth_token_store.player_id,
+		"leader_id": Platform.token_store.player_id,
 		"members": [],
 		"viewer_role": "leader",
 	}
@@ -667,7 +667,7 @@ func _show_rejoin_dialog(
 	if party.is_empty():
 		return
 	var leader_id: String = party.get("leader_id", "")
-	var self_id: String = G.auth_token_store.player_id
+	var self_id: String = Platform.token_store.player_id
 	var who: String
 	if leader_id == self_id:
 		# Viewer is the party's creator. Phrase the prompt
@@ -798,7 +798,7 @@ func _on_socket_notification(
 ## reflected. The catch-up poll would catch them too, just on the
 ## next ~60 s tick.
 func _on_socket_connected() -> void:
-	if not G.auth_token_store.is_token_valid():
+	if not Platform.token_store.is_token_valid():
 		return
 	_request_immediate_fetch()
 	# If we're in a party but didn't manage to subscribe to chat

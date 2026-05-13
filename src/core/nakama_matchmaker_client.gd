@@ -203,7 +203,7 @@ func _resolve_socket_session() -> NakamaSession:
 	if Netcode.is_preview and Netcode.preview_client_number > 0:
 		return await _authenticate_preview_instance()
 
-	var store := G.auth_token_store
+	var store: PlatformAuthTokenStore = Platform.token_store
 	if store.is_anonymous and not store.is_token_valid():
 		G.auth_client.get_guest_jwt()
 		var result: Array = (
@@ -433,7 +433,7 @@ func _on_notification(p_notification) -> void:
 		var base_id: String = (
 			_preview_user_id
 			if not _preview_user_id.is_empty()
-			else G.auth_token_store.player_id
+			else Platform.token_store.player_id
 		)
 		var local_count: int = G.client_session.local_player_count
 		if local_count < 1:

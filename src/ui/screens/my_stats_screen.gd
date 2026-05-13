@@ -53,7 +53,7 @@ func on_open() -> void:
 	var items: Array[Control] = [%CloseRow]
 	_navigator.set_focusable_list(items)
 	_navigator.prime()
-	if not G.auth_token_store.is_token_valid():
+	if not Platform.token_store.is_token_valid():
 		_show_status("Not logged in")
 		return
 	_retry_count = 0

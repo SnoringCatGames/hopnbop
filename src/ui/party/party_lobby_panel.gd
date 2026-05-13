@@ -328,7 +328,7 @@ func _render_active_party() -> void:
 				continue
 			var mid: String = member.get("user_id", "")
 			if (mid.is_empty()
-					or mid == G.auth_token_store.player_id):
+					or mid == Platform.token_store.player_id):
 				continue
 			_add_transfer_leadership_row(member)
 
@@ -463,8 +463,8 @@ func _add_member_row(
 	var role: String = member.get(
 		"role", "member")
 	var is_pending := role == "invited"
-	var is_self := (
-		member_id == G.auth_token_store.player_id)
+	var is_self: bool = (
+		member_id == Platform.token_store.player_id)
 	# Leader can revoke a pending invite or kick a
 	# member via the same Nakama group-kick endpoint.
 	var is_kickable := (

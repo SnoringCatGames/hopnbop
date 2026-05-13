@@ -254,7 +254,7 @@ func fetch_party_status() -> void:
 		# Nakama-level group state).
 		var resolved_leader: String = party.get(
 			"leader_id", "")
-		var viewer_id: String = G.auth_token_store.player_id
+		var viewer_id: String = Platform.token_store.player_id
 		if not resolved_leader.is_empty():
 			if resolved_leader == viewer_id:
 				party["viewer_role"] = "leader"

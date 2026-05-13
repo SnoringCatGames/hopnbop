@@ -56,7 +56,7 @@ func build_ui() -> void:
 		icon_account)
 
 	# Friends trigger (hidden for anonymous players).
-	if not G.auth_token_store.is_anonymous:
+	if not Platform.token_store.is_anonymous:
 		var friends_row := _add_sub_panel_trigger_row(
 			tr("SETTINGS.FRIENDS"),
 			_friends_panel_scene,
@@ -90,7 +90,7 @@ func build_ui() -> void:
 		icon_leaderboard)
 
 	# My Stats trigger (non-anonymous only).
-	if not G.auth_token_store.is_anonymous:
+	if not Platform.token_store.is_anonymous:
 		_add_screen_trigger_row(
 			tr("SETTINGS.MY_STATS"),
 			ScreensMain.ScreenType.MY_STATS,

@@ -100,9 +100,9 @@ func _on_match_ended() -> void:
 func _process(delta: float) -> void:
 	if not _is_polling:
 		return
-	if not G.auth_token_store.is_token_valid():
+	if not Platform.token_store.is_token_valid():
 		return
-	if G.auth_token_store.is_anonymous:
+	if Platform.token_store.is_anonymous:
 		return
 
 	_poll_timer += delta
@@ -345,9 +345,9 @@ func _on_auth_completed(
 ) -> void:
 	if not success:
 		return
-	if not G.auth_token_store.is_token_valid():
+	if not Platform.token_store.is_token_valid():
 		return
-	if G.auth_token_store.is_anonymous:
+	if Platform.token_store.is_anonymous:
 		return
 	if G.friends_api_client.is_busy():
 		return

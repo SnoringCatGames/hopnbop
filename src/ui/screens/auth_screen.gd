@@ -34,7 +34,7 @@ func on_open() -> void:
 	# player identity for matchmaking. Clear any
 	# cached tokens first so they start fresh.
 	if _should_force_anonymous():
-		G.auth_token_store.clear_tokens()
+		Platform.token_store.clear_tokens()
 		G.profile_image_cache.clear()
 		G.friends_notification_poller.reset()
 		G.friends_api_client.cached_friends.clear()
@@ -52,17 +52,17 @@ func on_open() -> void:
 
 	# Anonymous players have a local-only identity.
 	# No network call is needed to enter the lobby.
-	if G.auth_token_store.is_anonymous_ready():
+	if Platform.token_store.is_anonymous_ready():
 		_navigate_to_lobby()
 		return
 
 	# Check cached token.
-	if G.auth_token_store.is_token_valid():
+	if Platform.token_store.is_token_valid():
 		_navigate_to_lobby()
 		return
 
 	# Try auto-refresh.
-	if G.auth_token_store.needs_refresh():
+	if Platform.token_store.needs_refresh():
 		_show_loading(tr("AUTH.RESUMING_SESSION"))
 		G.auth_client.auth_completed.connect(
 			_on_auto_refresh_completed,
@@ -216,7 +216,7 @@ func _on_auto_refresh_completed(
 		_navigate_to_lobby()
 	else:
 		# Refresh failed. Show login buttons.
-		G.auth_token_store.clear_tokens()
+		Platform.token_store.clear_tokens()
 		G.profile_image_cache.clear()
 		G.friends_notification_poller.reset()
 		G.friends_api_client.cached_friends.clear()

@@ -120,8 +120,8 @@ func on_open() -> void:
 		return
 
 	# Already consented for current legal version.
-	if G.auth_token_store.has_valid_consent(
-		AuthTokenStore.get_current_legal_version(),
+	if Platform.token_store.has_valid_consent(
+		LegalVersion.get_current(),
 	):
 		_navigate_to_auth()
 		return
@@ -350,11 +350,11 @@ func _apply_texture(
 
 
 func _on_continue_pressed() -> void:
-	G.auth_token_store.consent_accepted_at = (
+	Platform.token_store.consent_accepted_at = (
 		int(Time.get_unix_time_from_system()))
-	G.auth_token_store.consent_legal_version = (
-		AuthTokenStore.get_current_legal_version())
-	G.auth_token_store.save_tokens()
+	Platform.token_store.consent_legal_version = (
+		LegalVersion.get_current())
+	Platform.token_store.save_tokens()
 	_navigate_to_auth()
 
 
@@ -388,9 +388,9 @@ func _navigate_to_auth() -> void:
 
 
 func _auto_consent_and_skip() -> void:
-	G.auth_token_store.consent_accepted_at = (
+	Platform.token_store.consent_accepted_at = (
 		int(Time.get_unix_time_from_system()))
-	G.auth_token_store.consent_legal_version = (
-		AuthTokenStore.get_current_legal_version())
-	G.auth_token_store.save_tokens()
+	Platform.token_store.consent_legal_version = (
+		LegalVersion.get_current())
+	Platform.token_store.save_tokens()
 	_navigate_to_auth()

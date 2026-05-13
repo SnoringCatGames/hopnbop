@@ -21,9 +21,9 @@ signal request_failed(error: String)
 
 # Cached legal_version reported by the runtime's version_check
 # response. Empty until the first successful check_version call.
-# Stage 3.10: clients call get_current_legal_version() which
-# prefers this value and falls back to AuthTokenStore.LEGAL_VERSION
-# when the runtime hasn't responded yet (offline boot, pre-fetch).
+# Stage 3.10: clients call LegalVersion.get_current() which prefers
+# this value and falls back to LegalVersion.LEGAL_VERSION when the
+# runtime hasn't responded yet (offline boot, pre-fetch).
 var server_legal_version: String = ""
 
 # Cached matchmaker rules surfaced by the runtime's version_check
@@ -345,10 +345,10 @@ func check_version() -> void:
 	var server_protocol := int(data.get("protocol_version", -1))
 	var server_game_version := str(data.get("game_version", ""))
 	# Stage 3.10: cache the runtime's per-game legal_version so
-	# AuthTokenStore.get_current_legal_version() can hand it to
-	# the consent screen. Empty (runtime didn't supply one,
-	# e.g. bootstrap window before the first register_game
-	# sync) leaves the compile-time fallback in effect.
+	# LegalVersion.get_current() can hand it to the consent
+	# screen. Empty (runtime didn't supply one, e.g. bootstrap
+	# window before the first register_game sync) leaves the
+	# compile-time fallback in effect.
 	server_legal_version = str(data.get("legal_version", ""))
 	# Stage 3.8: cache the runtime's per-game matchmaker rules
 	# so nakama_matchmaker_client.gd can override its compile-

@@ -58,7 +58,7 @@ func _do_logout() -> void:
 		_panel.manager.close_all()
 
 	G.local_settings.clear_user_state()
-	G.auth_token_store.clear_tokens()
+	Platform.token_store.clear_tokens()
 	G.profile_image_cache.clear()
 	G.friends_notification_poller.stop_polling()
 	G.friends_notification_poller.reset()

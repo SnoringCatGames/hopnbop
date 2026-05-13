@@ -164,8 +164,8 @@ func client_request_session(
 
 	# Refresh auth token if needed before matchmaking.
 	if (
-		G.auth_token_store != null
-		and G.auth_token_store.needs_refresh()
+		Platform.token_store != null
+		and Platform.token_store.needs_refresh()
 	):
 		# Notify loading screen that authentication
 		# is in progress.
@@ -178,7 +178,7 @@ func client_request_session(
 		)
 		G.auth_client.refresh_token()
 		await G.auth_client.auth_completed
-		if not G.auth_token_store.is_token_valid():
+		if not Platform.token_store.is_token_valid():
 			Netcode.error(
 				"Auth token refresh failed,"
 				+ " cannot matchmake",
@@ -383,10 +383,10 @@ func _on_player_ids_assigned(assigned_ids: Array[int]) -> void:
 	# Populate profile image URLs for local players
 	# from auth store so they are available in the
 	# lobby before the server broadcasts them.
-	if not G.auth_token_store.profile_image_url.is_empty():
+	if not Platform.token_store.profile_image_url.is_empty():
 		for pid in assigned_ids:
 			G.client_session.profile_image_urls[pid] = (
-				G.auth_token_store.profile_image_url)
+				Platform.token_store.profile_image_url)
 
 	# Emit high-level event for game logic.
 	session_established.emit(assigned_ids)

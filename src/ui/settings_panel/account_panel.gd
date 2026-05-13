@@ -72,7 +72,7 @@ func _add_profile_header() -> void:
 	profile_image.image_size = 48
 	row.add_child(profile_image)
 
-	var store := G.auth_token_store
+	var store: PlatformAuthTokenStore = Platform.token_store
 	if store.is_anonymous:
 		# ProfileImageDisplay defaults to the
 		# anonymous icon. No extra setup needed.
@@ -105,13 +105,13 @@ func _add_link_account_rows() -> void:
 	# Show sign-in options for anonymous users too,
 	# so they can upgrade to a persistent account.
 	if (
-		not G.auth_token_store.is_token_valid()
-		and not G.auth_token_store.is_anonymous
+		not Platform.token_store.is_token_valid()
+		and not Platform.token_store.is_anonymous
 	):
 		return
 
 	var linked: Array[String] = (
-		G.auth_token_store.linked_providers
+		Platform.token_store.linked_providers
 	)
 
 	# Google link row.
@@ -147,7 +147,7 @@ func _add_link_account_rows() -> void:
 
 func _add_delete_account_row() -> void:
 	# Only show when authenticated.
-	if not G.auth_token_store.is_token_valid():
+	if not Platform.token_store.is_token_valid():
 		return
 
 	var spacer := Control.new()
@@ -165,7 +165,7 @@ func _add_delete_account_row() -> void:
 
 
 func _add_export_data_row() -> void:
-	if not G.auth_token_store.is_token_valid():
+	if not Platform.token_store.is_token_valid():
 		return
 
 	var row: ExportDataRow = (
@@ -179,7 +179,7 @@ func _add_export_data_row() -> void:
 
 
 func _add_log_out_row() -> void:
-	if not G.auth_token_store.is_token_valid():
+	if not Platform.token_store.is_token_valid():
 		return
 	if AuthClient.get_platform_provider() >= 0:
 		return
