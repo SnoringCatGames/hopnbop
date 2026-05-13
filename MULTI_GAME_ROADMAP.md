@@ -35,20 +35,24 @@ See also:
   harness + 8.12 multi-session helper + 8.14 first canary
   multi-user friends test shipped 2026-05-13 (second pass).
   8.17 party-invite-flow + 8.22 presence game-filter shipped
-  2026-05-13 (third pass) — two more multi-user tests against
-  the harness, validated against live Nakama (54 asserts
-  across 6 tests, all green). 8.17's run also surfaced a
-  Nakama-behavior contradiction with the codebase's
-  `afterAddGroupUsersHook` comment (Nakama 3.25.0 admin-adds
-  on closed groups land at state=2 directly, not state=3 as
-  the runtime comment claims); test is tolerant of both
-  shapes but documents the observation. **Next:** more
-  multi-user tests from the backlog — 8.18 party-to-
-  matchmaking (covers the 1.1b party-block matchmaker path),
-  8.15 friends block-list (after 7.4), 8.16 friends-cascade-
-  on-account-delete (after 1.4 cron). Stage 7 resilience
-  (13 open items) and Stage 6.11 screens (greenfield, 3
-  screens, needs design call) are the parallel tracks.
+  2026-05-13 (third pass). 8.16 friends-cascade-on-account-
+  delete shipped 2026-05-13 (fourth pass) — fourth multi-user
+  test against the harness, validated against live Nakama
+  (21 asserts green; verifies Stage 1.4 friends scrub
+  bidirectionality + Stage 1.5 sign-in-during-grace).
+  8.17's earlier run surfaced a Nakama-behavior contradiction
+  with the codebase's `afterAddGroupUsersHook` comment
+  (Nakama 3.25.0 admin-adds on closed groups land at state=2
+  directly, not state=3 as the runtime comment claims); test
+  is tolerant of both shapes but documents the observation.
+  **Next:** more multi-user tests from the backlog — 8.18
+  party-to-matchmaking (covers the 1.1b party-block
+  matchmaker path; needs 8.13 mock mode first to avoid
+  burning Edgegap allocations), 8.15 friends block-list
+  (after 7.4). 8.13 mock-Edgegap mode unblocks 8.18 + 8.19.
+  Stage 7 resilience (13 open items) and Stage 6.11 screens
+  (greenfield, 3 screens, needs design call) are the
+  parallel tracks.
 - **2026-05-13 audit follow-up — drift items resolved later
   the same day:**
   - **Runtime backlog flushed:** the deployed runtime was 24
@@ -124,7 +128,10 @@ See also:
   8.11/8.12/8.14 socket + multi-session compliance harness
   landed with first canary multi-user friends test, then
   8.17 party-invite-flow + 8.22 presence game-filter as the
-  next two multi-user tests against the harness).
+  next two multi-user tests against the harness, then 8.16
+  friends-cascade-on-account-delete as the fourth multi-user
+  test — bidirectional FriendsDelete + display-name
+  anonymization + sign-in-during-grace verified live).
 - **Stages complete:**
   - Stage 0 — platform infra extraction (kickoff verification
     items 0.8 + 0.9 confirmed 2026-05-12).
@@ -154,17 +161,18 @@ See also:
     templates** (greenfield, 3 screens — design decision
     needed on base-class vs full-scene vs components pattern).
 - **Stages in progress:**
-  - Stage 8 — 7/31 shipped 2026-05-13 (8.1 deploy-time
+  - Stage 8 — 8/31 shipped 2026-05-13 (8.1 deploy-time
     `go test` gate, 8.2 staticcheck already running in
     `pr-validate.yml`, 8.11 socket harness, 8.12
     multi-session helper, 8.14 first canary multi-user
-    friends test, 8.17 party-invite-flow multi-user
-    lifecycle, 8.22 presence game-filter mutual-only
-    check). The blocked-on-harness backlog of
-    ~10 "compliance test still pending" notes (1.5, 3.5,
-    3.9, 5.4–5.11, 6.5b) is now partly converted — keep
-    chipping at the multi-user backlog (8.18 party-to-
-    matchmaking next).
+    friends test, 8.16 friends-cascade-on-account-delete,
+    8.17 party-invite-flow multi-user lifecycle, 8.22
+    presence game-filter mutual-only check). The
+    blocked-on-harness backlog of ~10 "compliance test
+    still pending" notes (1.5, 3.5, 3.9, 5.4–5.11, 6.5b)
+    is now partly converted — keep chipping at the multi-
+    user backlog (next candidate: 8.13 EDGEGAP_MOCK_DEPLOY
+    mode to unblock 8.18 + 8.19).
 - **Stages not yet started:**
   - Stage 7 — Resilience (13 open items).
 - **Stages blocked:** none.
@@ -212,11 +220,12 @@ Stage 7 — Resilience (retries, notifications, observability).
    13 items, all open.
 
 Stage 8 — Tests (parallel track, doesn't block features).
-   7/31 shipped 2026-05-13 (8.1 deploy-time go test gate; 8.2
+   8/31 shipped 2026-05-13 (8.1 deploy-time go test gate; 8.2
    staticcheck already running; 8.11 socket harness; 8.12
    multi_session_anon helper; 8.14 first multi-user friends
-   test as canary; 8.17 party invite lifecycle; 8.22 presence
-   mutual-only filter).
+   test as canary; 8.16 friends cascade on account delete;
+   8.17 party invite lifecycle; 8.22 presence mutual-only
+   filter).
 ```
 
 ## Stage 0 — Platform infra extraction (mostly done)
@@ -2224,7 +2233,34 @@ prioritize tests that protect work landing in the current stage.
     block-list, 8.16 friends-cascade-on-account-delete) reads
     the same pattern.
 - [ ] 8.15 `test_friends_block.gd` (after 7.4).
-- [ ] 8.16 `test_friends_account_delete_cascade.gd` (after 1.4).
+- [x] **8.16 `test_friends_account_delete_cascade.gd`** (2026-05-13).
+  - Done: new two-user compliance test under
+    `addons/snoringcat_platform_client/test/compliance/
+    test_friends_account_delete_cascade.gd`. Mints A + B via
+    `multi_session_anon(2)`, makes them mutual friends,
+    confirms pre-state, then A invokes the `delete_account`
+    RPC. Asserts: (a) response shape (`ok=true`,
+    `scheduled_for>0`, `grace_days=30`); (b) B's
+    `/v2/friend` no longer contains A (Nakama's
+    `FriendsDelete` cascade is bidirectional, so the
+    deleter's side scrubs the surviving friend's row too);
+    (c) A's own `/v2/friend` is empty; (d) A's
+    `/v2/account` still authenticates and reports
+    `display_name = "[deleted]"` (Stage 1.5 dropped the ban
+    so cancellation surface is reachable); (e)
+    `get_account_deletion_status` returns `pending=true`
+    with a populated `scheduled_for`. Validated against
+    live Nakama (21 asserts green).
+  - Cleanup: `delete_one_shot_account` hard-deletes both A
+    (still authenticated post soft-delete) and B in
+    `after_each`, which collaterally clears the audit-trail
+    queue row.
+  - Compliance: third real consumer of `multi_session_anon`
+    + first consumer of the `delete_account` /
+    `get_account_deletion_status` RPCs in the compliance
+    suite. Guards the contracts Stage 1.4 introduced
+    (bidirectional friends scrub) and Stage 1.5 reaffirmed
+    (no-ban-during-grace).
 - [x] **8.17 `test_party_invite_flow.gd`** (2026-05-13).
   - Done: new two-user compliance test under
     `addons/snoringcat_platform_client/test/compliance/
@@ -3583,6 +3619,52 @@ Security:
     the helper's parallelization assumption (one-shot
     device_ids prevent inter-run collision) holds at this
     user count.
+
+- **2026-05-13:** Stage 8.16 friends-cascade-on-account-delete
+  shipped. Four design calls worth recording:
+  - **Both sides of the cascade asserted in one test.** The
+    cascade in `account.go` pulls A's friends list, then calls
+    `nk.FriendsDelete(ctx, A, A's username, friendIDs, nil)` —
+    Nakama's documented behavior is bidirectional removal, so
+    B's row pointing at A is scrubbed as a side effect of
+    deleting A's row pointing at B. Single test asserts both:
+    `_fetch_friend_state(B, A)` returns -1 AND
+    `_fetch_friend_state(A, B)` returns -1. Splitting these
+    into two tests would have doubled the
+    `multi_session_anon(2)` setup cost (~700ms of /v2/account
+    auth round-trips per pair) without adding signal — the
+    failure mode is the same FriendsDelete call.
+  - **Asserts on Stage 1.5's no-ban contract via A's continued
+    auth, not via a separate sign-in attempt.** The 1.5
+    decision was "drop UsersBanId from the cascade so the
+    cancellation UX is reachable." Easiest live check: after
+    `delete_account`, use A's same pre-cascade token to hit
+    `/v2/account` and `/v2/rpc/get_account_deletion_status`
+    and assert both succeed. A separate re-auth round-trip
+    (POST /v2/account/authenticate/device for A's device_id)
+    would test the same thing but cost an extra request and
+    a refresh dance. The shared-token path is the production
+    flow: the client's session stays valid through the
+    grace window.
+  - **`display_name = "[deleted]"` is the production
+    anonymization marker, asserted by literal string match.**
+    The cascade hard-codes `anonymizedDisplayName = "[deleted]"`.
+    A future i18n pass might want the marker localized, but
+    that's a separate decision; locking the test to the
+    current literal surfaces accidental drift loudly. If the
+    marker ever changes, this test fires alongside whatever
+    code-side change made it.
+  - **`delete_one_shot_account` on A still works post-soft-
+    delete.** Cleanup in `after_each` hard-deletes both users
+    via `DELETE /v2/account` with their pre-cascade tokens.
+    A's token still authenticates (no ban), so the hard-delete
+    succeeds and collaterally removes the audit-trail queue
+    row (Nakama's user delete cascades through user-owned
+    storage). Without this, every CI run would leave a queue
+    row that the cron eventually consumes ~30 days later;
+    fine functionally, but it'd accrete in `account_deletion_
+    queue` storage in the meantime. Strict cleanup keeps the
+    table small.
 
 ## How to use this document
 
