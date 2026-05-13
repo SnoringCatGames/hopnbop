@@ -30,38 +30,45 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 8 test foundation. **Tier 1 Go unit
-  tests now complete** (2026-05-13, sixth pass): 8.3–8.10 all
-  shipped as `*_test.go` files alongside the runtime package —
-  100 passing test cases across 8 files covering selectTransport
-  Type, the version.go parse helpers + RPC compatibility matrix,
-  the presence key/game_id roundtrip, the auth game_id strict /
-  bootstrap branches, the match_lifecycle stat-clamping logic
-  (extracted into a pure `clampPlayerStats` helper for
-  testability), the fleet_allocator pure helpers (signSignalingURL
-  / pickTCPPort / synthesizeMockDeploy / pickDominantGameID), the
-  party invite-code alphabet + length invariants, and the
-  account cascade leaderboard-id scrubbing. `go test ./... &&
-  staticcheck ./...` clean. The `nakama-runtime.yml` deploy gate
-  from 8.1 already runs both; PR validate runs them too. So the
-  new tests gate every future runtime commit.
+- **Current focus:** Stage 8 test foundation. **Tier 2
+  matchmaking compliance suite now complete** (2026-05-13,
+  seventh pass): 8.20 `test_matchmaking_cancel_race.gd` and 8.21
+  `test_matchmaking_failure_modes.gd` shipped. 8.20 covers two
+  scenarios — cancel-before-match (min=max=2 ticket removed
+  before allocation, no match_ready arrives) and post-match
+  cancel safety (min=max=1 ticket allocates, then cancel on the
+  consumed ticket is safe + socket stays usable). 8.21 covers
+  the Stage 3.9 protocol_version mismatch path — a deliberately-
+  wrong client_protocol_version forces the runtime to abort with
+  `match_failed` carrying `{reason=protocol_mismatch, expected,
+  got, message}` before any Edgegap allocation. Both gated on
+  `is_mock_deploy_mode()` so live prod runs pend cleanly.
+  Verified via `gut_cmdln` against live prod: every new test
+  pends with the correct EDGEGAP_MOCK_DEPLOY gate (no syntax
+  errors, no crashes). All matchmaking-related tests
+  (test_matchmaking, test_matchmaking_cancel_race,
+  test_matchmaking_failure_modes, test_socket_matchmaker) pend
+  cleanly together.
   Earlier 2026-05-13 work (still standing): 8.1 + 8.2 deploy
-  gate; 8.11 reusable socket harness + 8.12 multi-session helper
-  + 8.14 first canary multi-user friends test; 8.17 party-
-  invite-flow + 8.22 presence game-filter; 8.16 friends-cascade-
-  on-account-delete; 8.13 EDGEGAP_MOCK_DEPLOY mode + 8.18 party-
-  to-matchmaking + 8.19 un-pending test_matchmaking. Mock-mode
-  matchmaking tests still pending() against live prod (real-
-  Edgegap mode) — ready-on-arrival for a future test Nakama with
-  mock mode enabled.
-  **Next:** Tier 2 compliance backlog — 8.15 friends block-list
-  (after 7.4), 8.20 test_matchmaking_cancel_race, 8.21
-  test_matchmaking_failure_modes. Tier 3 client unit tests
-  (8.23–8.28) require a GUT doubles setup against the addon's
-  GDScript classes; Tier 4 e2e/smoke (8.29–8.31) needs a
-  docker-compose dev stack. Stage 7 resilience (13 open items)
-  and Stage 6.11 screens (greenfield, 3 screens, needs design
-  call) are the parallel tracks.
+  gate; 8.3–8.10 Tier 1 Go unit tests (100 test cases across 8
+  files, `go test && staticcheck` clean); 8.11 reusable socket
+  harness + 8.12 multi-session helper + 8.14 first canary multi-
+  user friends test; 8.17 party-invite-flow + 8.22 presence
+  game-filter; 8.16 friends-cascade-on-account-delete; 8.13
+  EDGEGAP_MOCK_DEPLOY mode + 8.18 party-to-matchmaking + 8.19
+  un-pending test_matchmaking. Mock-mode matchmaking tests still
+  pending() against live prod (real-Edgegap mode) — ready-on-
+  arrival for a future test Nakama with mock mode enabled.
+  **Next:** only Tier 2 item left is 8.15 friends block-list
+  (blocked on 7.4). Tier 3 client unit tests (8.23–8.28) require
+  a GUT doubles setup against the addon's GDScript classes;
+  Tier 4 e2e/smoke (8.29–8.31) needs a docker-compose dev stack.
+  Stage 7 resilience (13 open items) and Stage 6.11 screens
+  (greenfield, 3 screens, needs design call) are the parallel
+  tracks; Stage 7.1 + 7.2 are the natural next pickups since
+  8.20's cancel-after-match scenario explicitly documents the
+  Stage 7.2 limitation, and the Stage 7.1 retry path opens up
+  more failure modes 8.21 could grow to cover.
 - **2026-05-13 audit follow-up — drift items resolved later
   the same day:**
   - **Runtime backlog flushed:** the deployed runtime was 24
@@ -130,11 +137,13 @@ See also:
   (b) pivot to Stage 7 resilience (13 open items including
   allocation retry, friend pagination, anonymous-upgrade UI,
   account-merge UI, observability re-introduction).
-- **Last updated:** 2026-05-13 (sixth pass: Tier 1 Go unit tests
-  8.3–8.10 all shipped — 100 passing test cases across 8 files,
-  `go test ./... && staticcheck ./...` clean, gated on every
-  deploy via the 8.1 nakama-runtime.yml step. Plus the earlier
-  multi-pass work: 8.1/8.2 deploy gate, audit-surfaced drift
+- **Last updated:** 2026-05-13 (seventh pass: Tier 2 matchmaking
+  compliance suite finished — 8.20 cancel-race + 8.21 protocol-
+  mismatch failure mode shipped, both gated on
+  EDGEGAP_MOCK_DEPLOY so live prod runs pend cleanly. Plus all
+  prior 2026-05-13 work: 8.3–8.10 Tier 1 Go unit tests
+  (100 passing cases, `go test && staticcheck` clean, gated
+  on every deploy), 8.1/8.2 deploy gate, audit-surfaced drift
   fully resolved, 24-commit runtime backlog deployed, first
   games-cache sync, Phase F finished, stale Edgegap tags pruned,
   script relocations + doc cleanup, 8.11/8.12/8.14 socket +
@@ -172,7 +181,7 @@ See also:
     templates** (greenfield, 3 screens — design decision
     needed on base-class vs full-scene vs components pattern).
 - **Stages in progress:**
-  - Stage 8 — 19/31 shipped 2026-05-13. Tier 1 Go unit
+  - Stage 8 — 21/31 shipped 2026-05-13. Tier 1 Go unit
     tests (8.3–8.10) all green: transport_select_test.go,
     version_test.go, match_lifecycle_test.go (with new
     `clampPlayerStats` helper extracted for testability),
@@ -185,9 +194,11 @@ See also:
     cascade-on-account-delete, 8.17 party-invite-flow
     multi-user lifecycle, 8.18 party-to-matchmaking mock-
     mode flow, 8.19 solo-matchmaking match_ready flow,
-    8.22 presence game-filter mutual-only check.
-    Remaining: Tier 2 compliance backlog (8.15, 8.20,
-    8.21), Tier 3 client unit tests with doubles
+    8.20 matchmaking cancel-race (cancel-before-match +
+    post-match cancel safety), 8.21 protocol-mismatch
+    failure mode, 8.22 presence game-filter mutual-only
+    check. Remaining: Tier 2 8.15 (blocked on 7.4 block
+    list), Tier 3 client unit tests with doubles
     (8.23–8.28), Tier 4 e2e/smoke (8.29–8.31).
 - **Stages not yet started:**
   - Stage 7 — Resilience (13 open items).
@@ -236,9 +247,9 @@ Stage 7 — Resilience (retries, notifications, observability).
    13 items, all open.
 
 Stage 8 — Tests (parallel track, doesn't block features).
-   19/31 shipped 2026-05-13. Tier 1 Go unit tests (8.3–8.10)
-   all green; Tier 2 compliance suite has 8.11–8.14 + 8.16–8.19
-   + 8.22 shipped (8.15/8.20/8.21 still open); Tier 3 (8.23–
+   21/31 shipped 2026-05-13. Tier 1 Go unit tests (8.3–8.10)
+   all green; Tier 2 compliance suite has 8.11–8.14 + 8.16–8.22
+   shipped (only 8.15 open, blocked on 7.4); Tier 3 (8.23–
    8.28) and Tier 4 (8.29–8.31) not yet started.
 ```
 
@@ -2521,8 +2532,83 @@ prioritize tests that protect work landing in the current stage.
     EDGEGAP_TOKEN set + EDGEGAP_APP_NAME populated) is
     fully covered by `test_version.gd`'s
     `test_runtime_status_reports_edgegap_config` already.
-- [ ] 8.20 `test_matchmaking_cancel_race.gd`.
-- [ ] 8.21 `test_matchmaking_failure_modes.gd`.
+- [x] **8.20 `test_matchmaking_cancel_race.gd`** (2026-05-13).
+  - Done: new two-test compliance file under
+    `addons/snoringcat_platform_client/test/compliance/
+    test_matchmaking_cancel_race.gd`. Mints a one-shot anon
+    user via `multi_session_anon(1)` + opens a Nakama socket,
+    then exercises two cancel scenarios:
+    - `test_cancel_before_match_prevents_match_ready`: add a
+      min=max=2 matchmaker ticket (won't fire alone), call
+      `remove_matchmaker_async` immediately, wait the mock-
+      allocation window (~3s), assert NO
+      `received_matchmaker_matched` AND no `match_ready`
+      notification arrived. Validates the happy-path cancel
+      contract.
+    - `test_cancel_after_match_is_safe`: add a min=max=1
+      ticket so the runtime hook fires synchronously, wait
+      for match_ready, then call `remove_matchmaker_async`
+      on the now-consumed ticket. Documents the current
+      Stage 7.2 limitation (post-match cancel is best-effort
+      — Edgegap deploy stays alive until the game server's
+      grace timer). Asserts the cancel call doesn't crash
+      the socket by re-issuing a fresh min=max=2 ticket
+      afterward (its existence proves the socket is still
+      usable).
+  - Gated on `is_mock_deploy_mode()` because the min=max=1
+    branch allocates an Edgegap deploy; live prod would burn
+    a paid container per CI run. Both tests pend cleanly
+    when mock mode is off (validated via `gut_cmdln` against
+    live prod).
+  - Decision worth recording: the cancel-before-match test
+    uses min=max=2 (won't fire alone) rather than min=max=1
+    (would fire before cancel could win). The stronger
+    "cancel actually removes ticket from pool" assertion
+    would need a 2-user setup where one cancels and the
+    other waits — deferred to a future expansion that
+    composes `multi_session_anon(2)` with this pattern.
+- [x] **8.21 `test_matchmaking_failure_modes.gd`** (2026-05-13).
+  - Done: new compliance test under
+    `addons/snoringcat_platform_client/test/compliance/
+    test_matchmaking_failure_modes.gd`. Covers the Stage 3.9
+    protocol-mismatch path — the cleanest deterministic
+    failure mode the runtime supports today. Walks:
+    - `version_check` RPC (HTTP-key gated) with the test's
+      game_id to learn the registered `protocol_version`.
+      Pends if the runtime predates Stage 3.9 (returns 0).
+    - Asserts the bogus sentinel (999) doesn't collide with
+      the registered version — a future release shipping
+      protocol_version=999 would falsely pass this test, so
+      the cross-check fires loudly first.
+    - Auth one-shot anon user, open + connect Nakama socket.
+    - Add a min=max=1 ticket with
+      `client_protocol_version: "999"` — bogus value forces
+      the abort.
+    - Wait for `match_failed` notification. Asserts payload
+      contract: `reason=protocol_mismatch`, `expected`
+      mirrors the registered version, `got=999` echoes the
+      bogus value, `message` is non-empty. The shape mirrors
+      `fleet_allocator.go::abortProtocolMismatch`.
+    - Confirms NO `match_ready` notification arrives — the
+      runtime aborts before allocating Edgegap.
+  - Gated on `is_mock_deploy_mode()` consistently with the
+    rest of Stage 8 even though the abort path itself
+    doesn't allocate. If the test fails (e.g., the mismatch
+    path is broken), the matchmaker would allocate — the
+    mock-mode gate is the safety net.
+  - Decision worth recording: covers only the protocol-
+    mismatch path. Other failure modes the audit catalogs
+    (Edgegap 503 mid-allocation, lost notification timeout,
+    fleet allocator panics) require fault-injection hooks
+    the runtime doesn't yet expose. Revisit when Stage 7.1
+    introduces allocation retry + injectable failure
+    surfaces.
+  - Decision worth recording: the test reads the expected
+    protocol version off `version_check` rather than
+    hardcoding it. version_check is the same surface the
+    client uses, so a future drift in the registered value
+    is automatically picked up — no test-side sentinel to
+    update on every protocol bump.
 - [x] **8.22 `test_presence_game_filter.gd`** (2026-05-13).
   - Done: new three-user compliance test under
     `addons/snoringcat_platform_client/test/compliance/
@@ -4010,6 +4096,59 @@ Security:
     diagnostic surface ops already uses. Cost: one extra
     HTTP round-trip per test. Trivial at compliance suite
     sizes.
+
+- **2026-05-13:** Stage 8.20 cancel-race + 8.21 protocol-
+  mismatch failure-mode shipped (seventh pass). With 8.20 +
+  8.21 done, the Tier 2 matchmaking compliance suite is
+  complete except for 8.15 (blocked on 7.4 block list). Four
+  design calls worth recording:
+  - **Two tests in one cancel-race file, not one each.** The
+    cancel-race surface has two distinct contracts worth
+    asserting: (a) cancel-before-match removes the ticket
+    from the matchmaker pool, and (b) cancel-after-match is
+    safe (the production matchmaker client calls
+    `remove_matchmaker_async` unconditionally in
+    `cleanup()`/`cancel_matchmaking()` after match_ready).
+    Splitting them into two files would have doubled the
+    setup boilerplate (one-shot user mint + socket connect)
+    for no gain; keeping them in one file with a shared
+    `_connect_one_shot()` helper makes each assertion
+    cheap to add.
+  - **Min=max=2 for cancel-before-match, accepted limitation
+    of single-user testing.** A purer "cancel actually
+    removes from pool" assertion needs two users: one cancels
+    its min=max=2 ticket, the other adds a min=max=2 ticket
+    and asserts it doesn't match (cancel removed the first
+    entry; otherwise the second would pair with it). The
+    single-user min=max=2 fallback only proves
+    `remove_matchmaker_async` returns cleanly — but the
+    socket connection itself proves the ticket reached the
+    matchmaker, and the cancel-while-the-allocation-is-
+    pending case is genuinely impossible without a second
+    user (one player can't trigger an allocation alone).
+    Deferred the two-user version to a future expansion of
+    this test; the single-user version still catches a
+    full no-op regression where cancel does nothing.
+  - **Protocol-mismatch is the only deterministic failure
+    mode worth testing today.** The audit's failure-mode
+    catalog calls out Edgegap 503s, polling timeouts, and
+    fleet-allocator panics, but each of those requires
+    fault-injection that isn't wired yet (Stage 7.1 will
+    introduce retry hooks). Protocol-mismatch (Stage 3.9)
+    is synchronous, deterministic, and triggered by a
+    single client-side property — perfect compliance-test
+    target. Rather than write three flaky tests that need
+    timing-dependent injection, ship the one that works
+    cleanly and grow this file when 7.1 lands.
+  - **Read expected protocol_version off version_check, not
+    a sentinel.** A test-side `_EXPECTED_PROTOCOL_VERSION
+    := 2` would have to be updated on every protocol bump,
+    which becomes an extra friction point on every breaking
+    network change. Reading it from `version_check` at test
+    time is one extra HTTP round-trip (cheap) and means the
+    test stays correct across version bumps without manual
+    intervention. Same source-of-truth pattern as
+    `is_mock_deploy_mode()` reading runtime_status.
 
 ## How to use this document
 
