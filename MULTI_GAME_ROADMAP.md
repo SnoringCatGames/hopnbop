@@ -30,19 +30,31 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 3.9 protocol_version pre-check landed
-  2026-05-12, closing Stage 3 entirely (10/10 tasks). Game-side
-  `NakamaMatchmakerClient` declares `client_protocol_version` as a
-  ticket property (sourced from `application/config/protocol_version`).
-  Runtime's `fleet_allocator.go` walks the matched entries, looks
-  up the dominant game's registered `ProtocolVersion` from the
-  games cache, and short-circuits with a `match_failed` per-player
-  notification when any entry mismatches — Edgegap allocation is
-  skipped, no orphaned deploy. Addon's `PlatformMatchmakingClient`
-  handles the new `match_failed` subject and emits
-  `matchmaking_failed(message)` immediately so the client bails
-  rather than waiting on the 120s timeout. Pre-3.9 clients (no
-  declared property) pass through, so the rollout is graceful.
+- **Current focus:** 2026-05-13 closed every remaining deferred
+  item from Stages 1–5. New work shipped today:
+  - **1.4 hard-delete cron** (`runtime/account_cron.go`): hourly
+    background goroutine consumes elapsed `account_deletion_
+    queue` rows via `nk.AccountDeleteId(recorded=true)` + drops
+    the queue row.
+  - **1.5 cancellation path:** `delete_account` no longer bans;
+    new `get_account_deletion_status` + `cancel_account_
+    deletion` RPCs + new game-side `AccountDeletionPrompt`
+    node that pops a `ConfirmOverlay` on `auth_completed` when
+    a queue row exists.
+  - **4.7 solo game-mode picker:** `game.yaml.matchmaker_
+    rules.modes` schema + `parseModesFromConfig` surfacing via
+    `version_check` + `BackendApiClient.server_matchmaker_
+    modes` cache + `LocalSettings.{get,set}_selected_game_mode`
+    + new `GameModePickerPanel` + `NakamaMatchmakerClient`
+    routes the selected mode's query/min/max overrides.
+  - **5.7 party leader game-mode selection:** `party_mode`
+    server-owned storage collection + `party_set_mode` RPC
+    (leader-only, fans out `party_state_changed`) +
+    `PlatformPartyApiClient.set_mode` + `PartyManager.set_
+    party_mode` + `PartyLobbyPanel` leader-only "Mode: <name>"
+    cycle row.
+  - Hopnbop ships two modes — `ffa` (default 2-4 FFA) and
+    `duo` (1v1) — so the picker has actual options.
   Next focus options, in ascending cost:
   (a) Stage 6.11 screen templates (greenfield, 3 screens, needs
   an upfront design decision on the template vs base-class pattern
@@ -53,19 +65,18 @@ See also:
   compliance-test rig (socket harness + multi-session helper)
   which unblocks regression coverage on every Stage 1/3/5/6
   landing's "compliance test still pending" note.
-- **Last updated:** 2026-05-12.
+- **Last updated:** 2026-05-13.
 - **Stages complete:**
   - Stage 0 (platform infra extraction — including the kickoff
     verification items 0.8 and 0.9).
   - Stage 2 (all seven tasks shipped 2026-05-12).
   - Stage 3 (10/10 tasks shipped 2026-05-12).
 - **Stages in progress:**
-  - Stage 1 — all five tasks (1.1a, 1.1b, 1.2, 1.3, 1.4, 1.5)
-    have working code shipped. 1.5 UX polish (type-the-word
-    confirmation + grace-period messaging) now also shipped via
-    the new `DeleteAccountConfirmPanel`. Compliance-test green-
-    light still gated on a Stage 8 socket harness for multi-user
-    party scenarios.
+  - Stage 1 — all five tasks shipped end-to-end. 1.4 hard-delete
+    cron (2026-05-13) and 1.5 cancellation path (2026-05-13)
+    closed the open follow-ups. Compliance-test green-light
+    still gated on a Stage 8 socket harness for multi-user party
+    scenarios.
   - Stage 3 — 10/10 tasks shipped 2026-05-12 (3.1, 3.2, 3.3,
     3.4, 3.5, 3.6, 3.7, 3.8, 3.9 protocol pre-check via
     ticket-property route, 3.10 including the `legal_version`
@@ -3164,6 +3175,56 @@ Security:
     the rest, but the version-check caching it does (per-game
     legal_version + matchmaker rules) keeps it usefully
     game-side for now.
+
+- **2026-05-13:** Cleared Stage 1/4/5 deferred items in one
+  session (1.4 cron, 1.5 cancellation, 4.7 solo picker, 5.7
+  party leader picker). Five design calls worth recording:
+  - **Drop the ban in delete_account.** The original 1.4 design
+    called `UsersBanId` so the existing JWT + linked identity
+    providers couldn't re-authenticate during the grace period.
+    That made the 1.5 cancellation surface unreachable —
+    banned users can't sign in to cancel. The post-1.5 model
+    leans on cascade-anonymize (display name flips to
+    "[deleted]") + cron-eventual-hard-delete instead; the
+    boot-time `get_account_deletion_status` check is now the
+    gate that surfaces the prompt. The user-visible promise
+    ("you have 30 days to cancel") was always premised on the
+    cancel path working, so this is a bugfix rather than a
+    policy change.
+  - **Cron uses `context.Background()`, not the InitModule
+    context.** Nakama's InitModule context is the boot context;
+    it gets cancelled the moment InitModule returns. A
+    long-lived goroutine reading from that context would die on
+    the first tick. `context.Background()` outlives the boot;
+    plugin reload tears the goroutine down by recreating the
+    plugin, so no shutdown plumbing is needed.
+  - **Per-mode query enforces mode separation in the
+    matchmaker, fleet allocator stays mode-agnostic.** Game
+    modes (ffa / duo) need real player-pool separation — a duo
+    ticket pairing with three FFA tickets is nonsense. Solved
+    by per-mode `query` (e.g. `+properties.game_mode:duo`); the
+    matchmaker only matches mode-mates. fleet_allocator stays
+    unchanged: it reads `player_count` from ticket properties
+    to size `EXPECTED_PLAYER_COUNT` for the game server, so
+    1v1 vs 4-player matches Just Work. Tradeoff: a sparsely-
+    populated mode might never match; that's the cost of
+    giving players choice, accepted by the user as part of the
+    feature's framing.
+  - **Mode picker icon stays a placeholder.** Same TODO
+    pattern as the party row (`friends_icon.png`) and the
+    promote-leader row (`leaderboard_icon.png`). Picker reuses
+    `levels_icon.png`. Replacing requires dedicated art and
+    isn't on the critical path.
+  - **Cycle-on-tap, not a sub-panel, for the party mode
+    picker.** The solo path uses a full `GameModePickerPanel`
+    (one row per mode, checkmark on selection). The party path
+    flips the current mode via a single ActionRow that cycles
+    through. The cycle is simpler to build and natural for a
+    2-mode lineup; a future game with >3 modes would want to
+    swap the cycle row for a `PartyGameModePickerPanel` that
+    mirrors the solo path but writes through the
+    `party_set_mode` RPC. Defer until that's the load-bearing
+    case.
 
 - **2026-05-12:** Stage 3.9 protocol_version pre-check landed,
   closing Stage 3. Four design calls worth recording:
