@@ -75,21 +75,21 @@ func build_ui() -> void:
 		_on_party_disbanded)
 	G.party_manager.matchmaking_started.connect(
 		_on_matchmaking_started)
-	G.party_api_client.party_invited.connect(
+	Platform.party.party_invited.connect(
 		_on_party_invited)
-	G.party_api_client.party_joined.connect(
+	Platform.party.party_joined.connect(
 		_on_party_joined)
-	G.party_api_client.party_left.connect(
+	Platform.party.party_left.connect(
 		_on_party_left)
-	G.party_api_client.party_kicked.connect(
+	Platform.party.party_kicked.connect(
 		_on_party_kicked)
-	G.party_api_client.party_invite_code_received\
+	Platform.party.party_invite_code_received\
 		.connect(_on_invite_code_received)
-	G.party_api_client.party_invite_code_redeemed\
+	Platform.party.party_invite_code_redeemed\
 		.connect(_on_invite_code_redeemed)
-	G.party_api_client.party_leader_transferred\
+	Platform.party.party_leader_transferred\
 		.connect(_on_leader_transferred)
-	G.party_api_client.request_failed.connect(
+	Platform.party.request_failed.connect(
 		_on_request_failed)
 
 	# Ensure polling is active and fire an immediate
@@ -97,8 +97,8 @@ func build_ui() -> void:
 	# 10 seconds while the existing poll timer winds
 	# down.
 	G.party_manager.start_polling()
-	if not G.party_api_client.is_busy():
-		G.party_api_client.fetch_party_status()
+	if not Platform.party.is_busy():
+		Platform.party.fetch_party_status()
 
 	_refresh()
 
@@ -119,7 +119,7 @@ func _exit_tree() -> void:
 			pm.matchmaking_started.disconnect(
 				_on_matchmaking_started)
 
-	var pac := G.party_api_client
+	var pac: PlatformPartyApiClient = Platform.party
 	if is_instance_valid(pac):
 		if pac.party_invited.is_connected(
 				_on_party_invited):

@@ -105,19 +105,19 @@ var _chat_joined_party_id := ""
 
 
 func _ready() -> void:
-	G.party_api_client.party_created.connect(
+	Platform.party.party_created.connect(
 		_on_party_created)
-	G.party_api_client.party_invited.connect(
+	Platform.party.party_invited.connect(
 		_on_party_invited)
-	G.party_api_client.party_joined.connect(
+	Platform.party.party_joined.connect(
 		_on_party_joined)
-	G.party_api_client.party_left.connect(
+	Platform.party.party_left.connect(
 		_on_party_left)
-	G.party_api_client.party_kicked.connect(
+	Platform.party.party_kicked.connect(
 		_on_party_kicked)
-	G.party_api_client.party_status_received\
+	Platform.party.party_status_received\
 		.connect(_on_party_status_received)
-	G.party_api_client\
+	Platform.party\
 		.party_matchmaking_started.connect(
 			_on_matchmaking_started)
 	invite_received.connect(
@@ -148,8 +148,8 @@ func _process(delta: float) -> void:
 	_poll_timer += delta
 	if _poll_timer >= _CATCH_UP_POLL_INTERVAL_SEC:
 		_poll_timer = 0.0
-		if not G.party_api_client.is_busy():
-			G.party_api_client.fetch_party_status()
+		if not Platform.party.is_busy():
+			Platform.party.fetch_party_status()
 
 
 ## Start polling for party status updates.
@@ -174,7 +174,7 @@ func is_in_party() -> bool:
 ## pending party invite they haven't accepted or
 ## declined. Nakama exposes a closed-group invite as
 ## the user being associated with the group in state=3;
-## `PartyApiClient.fetch_party_status` separates those
+## `PlatformPartyApiClient.fetch_party_status` separates those
 ## from active membership.
 func has_pending_invite() -> bool:
 	return not pending_invites.is_empty()
@@ -197,7 +197,7 @@ func get_party_id() -> String:
 
 ## Create a new party.
 func create_party() -> void:
-	G.party_api_client.create_party()
+	Platform.party.create_party()
 
 
 ## Invite a friend to the current party. Creates a
@@ -206,7 +206,7 @@ func invite_friend(
 	friend_player_id: String,
 ) -> void:
 	if is_in_party():
-		G.party_api_client.invite_to_party(
+		Platform.party.invite_to_party(
 			get_party_id(), friend_player_id)
 		return
 	if has_pending_invite():
@@ -219,7 +219,7 @@ func invite_friend(
 				tr("PARTY.HANDLE_INVITE_FIRST"))
 		return
 	# Create party first, then invite.
-	G.party_api_client.create_party()
+	Platform.party.create_party()
 	# Queue the invite after creation. `party_created`
 	# now emits `{party_id, name}` per the wider event-
 	# shape cleanup, so read party_id off the top
@@ -230,9 +230,9 @@ func invite_friend(
 		var party_id: String = data.get(
 			"party_id", "")
 		if not party_id.is_empty():
-			G.party_api_client.invite_to_party(
+			Platform.party.invite_to_party(
 				party_id, friend_player_id)
-	G.party_api_client.party_created.connect(
+	Platform.party.party_created.connect(
 		connection, CONNECT_ONE_SHOT)
 
 
@@ -242,7 +242,7 @@ func invite_friend(
 ## list so the UI refreshes without waiting for the
 ## next 3 s poll cycle to confirm the server state.
 func accept_invite(party_id: String) -> void:
-	G.party_api_client.join_party(party_id)
+	Platform.party.join_party(party_id)
 	_remove_pending_invite(party_id)
 
 
@@ -251,7 +251,7 @@ func accept_invite(party_id: String) -> void:
 ## wrapped in a named helper so the UI call site reads
 ## correctly and the local list updates optimistically.
 func decline_invite(party_id: String) -> void:
-	G.party_api_client.leave_party(party_id)
+	Platform.party.leave_party(party_id)
 	_remove_pending_invite(party_id)
 
 
@@ -275,7 +275,7 @@ func _remove_pending_invite(party_id: String) -> void:
 func leave_current_party() -> void:
 	if not is_in_party():
 		return
-	G.party_api_client.leave_party(get_party_id())
+	Platform.party.leave_party(get_party_id())
 
 
 ## Kick a member from the party (leader only).
@@ -284,7 +284,7 @@ func kick_member(
 ) -> void:
 	if not is_leader():
 		return
-	G.party_api_client.kick_from_party(
+	Platform.party.kick_from_party(
 		get_party_id(), target_player_id)
 
 
@@ -302,7 +302,7 @@ func transfer_leadership(
 		return
 	if target_player_id == Platform.token_store.player_id:
 		return
-	G.party_api_client.transfer_leadership(
+	Platform.party.transfer_leadership(
 		get_party_id(), target_player_id)
 
 
@@ -319,7 +319,7 @@ func set_ready(ready: bool) -> void:
 	var self_id: String = Platform.token_store.player_id
 	_patch_member_ready(self_id, ready)
 	party_updated.emit(current_party)
-	G.party_api_client.set_ready(
+	Platform.party.set_ready(
 		get_party_id(), ready)
 
 
@@ -373,26 +373,26 @@ func _patch_member_ready(
 func start_party_matchmaking() -> void:
 	if not is_leader():
 		return
-	G.party_api_client.start_matchmaking(
+	Platform.party.start_matchmaking(
 		get_party_id())
 
 
 ## Request the shareable invite code for the current party. The
-## response arrives via PartyApiClient.party_invite_code_received.
+## response arrives via PlatformPartyApiClient.party_invite_code_received.
 ## No-op when the caller isn't in a party (the panel only
 ## surfaces the action while is_in_party() is true, but defend in
 ## depth in case the polling cadence races a leave).
 func request_invite_code() -> void:
 	if not is_in_party():
 		return
-	G.party_api_client.get_invite_code(get_party_id())
+	Platform.party.get_invite_code(get_party_id())
 
 
 ## Join a party by code. Routes through party_api_client; the
 ## party_joined signal it emits on success drives the rest of
 ## the state machine via the existing _on_party_joined handler.
 func join_party_by_code(code: String) -> void:
-	G.party_api_client.join_by_code(code)
+	Platform.party.join_by_code(code)
 
 
 ## Reset all party state. Called on logout.
@@ -511,9 +511,9 @@ func _on_party_kicked(
 
 
 func _request_immediate_fetch() -> void:
-	if (is_instance_valid(G.party_api_client)
-			and not G.party_api_client.is_busy()):
-		G.party_api_client.fetch_party_status()
+	if (is_instance_valid(Platform.party)
+			and not Platform.party.is_busy()):
+		Platform.party.fetch_party_status()
 
 
 func _on_party_status_received(
@@ -699,7 +699,7 @@ func _show_rejoin_dialog(
 				if not current_party.is_empty()
 				else party_id)
 			if not pid.is_empty():
-				G.party_api_client.leave_party(pid),
+				Platform.party.leave_party(pid),
 	)
 
 

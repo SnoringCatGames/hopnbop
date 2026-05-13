@@ -91,15 +91,15 @@ func build_ui() -> void:
 	_row_container.add_child(bottom_spacer)
 
 	# Connect API signals.
-	G.party_api_client\
+	Platform.party\
 		.party_invite_code_redeemed.connect(
 			_on_invite_code_redeemed)
-	G.party_api_client.request_failed.connect(
+	Platform.party.request_failed.connect(
 		_on_request_failed)
 
 
 func _exit_tree() -> void:
-	var client := G.party_api_client
+	var client: PlatformPartyApiClient = Platform.party
 	if not is_instance_valid(client):
 		return
 	if client.party_invite_code_redeemed.is_connected(

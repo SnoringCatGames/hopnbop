@@ -30,44 +30,35 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 6 SDK extraction continuing. 6.2
-  landed 2026-05-12, completing the auth extraction the
-  previous 6.4/6.7 wave was waiting on. `src/core/auth_client.gd`
-  is gone; the new `PlatformAuthApiClient` lives in
-  `addons/snoringcat_platform_client/core/auth_api_client.gd`
-  (mirrored in the submodule). The Nakama host / port / scheme /
-  server_key / http_key constants — Snoring Cat platform
-  infrastructure, not game-specific — moved out of the auth
-  class entirely onto `Platform.{nakama_host, nakama_port,
-  nakama_scheme, nakama_server_key, nakama_http_key}` and are
-  passed in via `Platform.initialize`. The OAuth surface
-  (`oauth_callback_url`, `google_token_broker_url`,
-  `google_oauth_client_id`, `facebook_oauth_client_id`) is also
-  on Platform now, fed in from `settings.tres` at boot. NakamaClient
-  lazy-creation lives on `Platform.get_nakama_client()` so any
-  addon subsystem that needs the client reads it from the same
-  singleton; `Platform.get_nakama_base_url()` replaces the static
-  `AuthClient.get_nakama_base_url()` helper. The post-login cloud-
-  settings fetch (previously called from inside `_handle_auth_
-  success`) moved into a `Platform.auth.auth_completed` listener
-  in `global.gd._ready()` so the addon class doesn't reach back
-  into `G.settings_cloud_sync`. ~70 callsites across 14 files
-  migrated via sed: `G.auth_client.X` → `Platform.auth.X`,
-  `G.auth_client._get_nakama_client()` → `Platform.get_nakama_
-  client()`, `G.auth_client._build_session_from_store()` →
-  `Platform.build_session_from_store()`, and the static
-  `AuthClient.{Provider, PLATFORM_PROVIDERS, is_web_platform,
-  get_platform_provider, get_nakama_base_url, get_nakama_http_
-  key}` references rewrote to `PlatformAuthApiClient.*` /
-  `Platform.*`. Editor pass refreshed
-  `.godot/global_script_class_cache.cfg` with the new
-  `PlatformAuthApiClient` entry; headless boot green (zero parse
-  errors, autoloads initialize cleanly, the boot-time
-  `update_and_get_presence` RPC fires against live Nakama via
-  the new path with `game_id=hopnbop` in the JWT vars). Next
-  focus: Stage 6.5 (`party_api_client.gd` + `party_manager.gd` →
-  `Platform.party.*`) or Stage 6.6 (matchmaker + edgegap server
-  provider → `Platform.matchmaking.*`). Both are now unblocked.
+- **Current focus:** Stage 6 SDK extraction continuing. 6.5
+  shipped 2026-05-12: `src/core/party_api_client.gd` is gone;
+  the new `PlatformPartyApiClient` lives in
+  `addons/snoringcat_platform_client/core/party_api_client.gd`
+  (mirrored in the submodule). Scope was narrowed from the
+  audit's framing — `party_manager.gd` stayed game-side
+  (same precedent as 6.4's `friends_notification_poller.gd`)
+  because of its UI-dialog coupling to `G.toast_overlay`,
+  `G.confirm_layer`, `G.client_session`, `G.game_panel`, and
+  `G.notification_socket_client`. Decoupling those would be a
+  refactor with no payoff today. The 18+ `G.party_api_client.X`
+  sites in `party_manager.gd` plus the 3 UI files
+  (`party_lobby_panel.gd`, `friend_details_panel.gd`,
+  `join_by_code_panel.gd`) migrated via `sed s/G\.party_api_client/
+  Platform.party/g`. Three local-handle declarations
+  (`var pac := Platform.party`, `var client := Platform.party`,
+  `var party_client := Platform.party`) got explicit
+  `PlatformPartyApiClient` type annotations because
+  `Platform.party` is untyped on the autoload (parser-cache
+  bug workaround inherited from 6.3/6.4). `global.gd` now
+  instantiates `PlatformPartyApiClient` and registers via
+  `Platform.register_subsystem("party", party)`; the old
+  `G.party_api_client` field is dropped. Editor pass refreshed
+  `.godot/global_script_class_cache.cfg`; headless boot clean
+  (Main._ready reached, JWT refresh fires with
+  `vars: {game_id: hopnbop}` through the new
+  `Platform.party`-registered path). Next focus: Stage 6.6
+  (matchmaker + edgegap server provider → `Platform.matchmaking.*`)
+  or 6.8 (settings_cloud_sync). Both unblocked.
 - **Last updated:** 2026-05-12.
 - **Stages complete:**
   - Stage 0 (platform infra extraction — including the kickoff
@@ -93,14 +84,16 @@ See also:
     5.4, 5.5, 5.6, 5.8, 5.9, 5.10, 5.11). Open: 5.7 game-mode
     picker (deferred until game.yaml schema gains a `modes`
     list, mirrored by Stage 4.7).
-  - Stage 6 — 5/11 tasks shipped 2026-05-12 (6.1 subsystem
+  - Stage 6 — 6/11 tasks shipped 2026-05-12 (6.1 subsystem
     slots + register_subsystem helper, 6.2 auth_client →
     PlatformAuthApiClient + nakama / OAuth constants on
     Platform, 6.3 auth_token_store reconciliation + Platform.
     token_store migration across 22 files, 6.4
-    PlatformFriendsApiClient, 6.7 PlatformPresenceApiClient
-    split out from the old friends client). Open: 6.5
-    (party_api_client + party_manager), 6.6 (matchmaker +
+    PlatformFriendsApiClient, 6.5 PlatformPartyApiClient,
+    6.7 PlatformPresenceApiClient split out from the old
+    friends client). 6.5 partially completed — only the API
+    client extracted; party_manager.gd stays game-side
+    (UI-dialog coupling). Open: 6.6 (matchmaker +
     edgegap_server_provider), 6.8 (settings_cloud_sync), 6.9
     (game_session_manager), 6.10 (mass consumer migration —
     partially done as a side-effect of each extraction), 6.11
@@ -147,8 +140,9 @@ Stage 3 (mostly done, 2026-05-12) — game_id scoping: presence
    └─→ Stage 6 (in progress, 2026-05-12) — Platform SDK extraction.
        6.1 subsystem slots, 6.3 auth_token_store reconciliation
        (22-file migration to Platform.token_store), 6.4
-       PlatformFriendsApiClient, and 6.7 PlatformPresenceApiClient
-       all shipped. Remaining: 6.2 auth, 6.5 party, 6.6
+       PlatformFriendsApiClient, 6.5 PlatformPartyApiClient
+       (party_manager.gd kept game-side), and 6.7
+       PlatformPresenceApiClient all shipped. Remaining: 6.6
        matchmaking, 6.8 settings, 6.9 session, 6.10 consumer
        migration, 6.11 screens.
    ↓
@@ -1417,8 +1411,83 @@ Extract clean code, not bug-laden code.
     instructions: run setup-platform-addon.ps1 → editor scan →
     plain headless. Documented inline in this task entry; not
     a recurring issue once the cache is populated.
-- [ ] 6.5 Extract `party_api_client.gd` + `party_manager.gd` →
-  `Platform.party.*`.
+- [x] **6.5 Extract `party_api_client.gd` → `Platform.party.*`**
+      (2026-05-12). Scope narrowed: `party_manager.gd` stays
+      game-side.
+  - Done — submodule: new
+    `addons/snoringcat_platform_client/core/party_api_client.gd`
+    with `class_name PlatformPartyApiClient`. Surface preserved
+    verbatim (12 signals: party_created, party_invited,
+    party_joined, party_left, party_kicked,
+    party_status_received, party_matchmaking_started,
+    party_ready_updated, party_invite_code_received,
+    party_invite_code_redeemed, party_leader_transferred,
+    request_failed; methods: create_party, invite_to_party,
+    join_party, leave_party, fetch_party_status,
+    kick_from_party, set_ready, get_invite_code, join_by_code,
+    transfer_leadership, start_matchmaking, is_busy). Reads
+    `Platform.nakama_client`, `Platform.token_store.player_id`,
+    `Platform.build_session_from_store()`. No `G.*`
+    reach-backs in the source class so the extraction was a
+    pure move-and-rename.
+  - Done — parent: 18+ `G.party_api_client.X` callsites across
+    4 files (`party_manager.gd`, `friend_details_panel.gd`,
+    `party_lobby_panel.gd`, `join_by_code_panel.gd`) migrated
+    via `sed s/G\.party_api_client/Platform.party/g`. Three
+    local-handle declarations got explicit type annotations
+    (`var pac: PlatformPartyApiClient = Platform.party` and
+    two siblings) because `Platform.party` is untyped on the
+    autoload (parser-cache bug workaround inherited from 6.3
+    /6.4). Direct one-shot calls like `Platform.party.X()`
+    work fine on Variant without type annotation.
+  - Done — `global.gd._enter_tree()` instantiates
+    `PlatformPartyApiClient` and calls
+    `Platform.register_subsystem("party", party)` in the same
+    slot that previously held `G.party_api_client`. The
+    field-declaration `var party_api_client: PartyApiClient`
+    on `G` is removed.
+  - Done — game-side `src/core/party_api_client.gd` + `.uid`
+    deleted. The two prose mentions of "PartyApiClient" in
+    `party_manager.gd`'s docstrings updated to
+    `PlatformPartyApiClient`.
+  - Verification: headless boot clean (Main._ready reaches
+    close-app, JWT refresh fires with
+    `vars: {game_id: hopnbop}` against live Nakama). Editor
+    pass needed first to register `PlatformPartyApiClient` in
+    `.godot/global_script_class_cache.cfg` (same precedent as
+    6.4's note on first-time class registration).
+  - Decision worth recording: `party_manager.gd` kept
+    game-side. The audit framing had it migrating alongside
+    the API client. In practice it has the same kind of
+    UI-coordinator coupling that kept
+    `friends_notification_poller.gd` game-side under 6.4: it
+    reaches into `G.toast_overlay` (notification toasts),
+    `G.confirm_layer` + `G.settings.confirm_overlay_scene`
+    (invite / rejoin dialogs), `G.client_session` +
+    `G.game_panel` (matchmaking kickoff to
+    `client_load_game`), and `G.notification_socket_client`
+    (real-time socket — itself game-side for now, see 6.5b
+    candidate below). Moving it would require either passing
+    these surfaces in via constructor / setter or adding new
+    `Platform.{notification_socket, toast, confirm}` slots
+    plus signal-emit-instead-of-call refactor — both heavy
+    for no payoff today. PartyManager updates its
+    `G.party_api_client.X` calls to `Platform.party.X`; the
+    rest stays.
+  - Compliance verification: no GUT test exercising the new
+    class (no Stage 8.x client-unit-tests track live yet).
+    Confidence today is from headless boot + live Nakama
+    smoke (the boot-time `update_and_get_presence` succeeds
+    via the auth/presence path; party RPCs themselves are
+    exercised only when a user actively creates a party).
+  - 6.5b candidate (future): extract
+    `NotificationSocketClient` to the addon as
+    `PlatformNotificationSocketClient`. It already reads only
+    `Platform.{auth, token_store, build_session_from_store,
+    get_nakama_client}` and Nakama types. The only non-addon
+    refs are `Netcode.log.print/warning` (replaceable with
+    `print`/`push_warning` like 6.2 did for the auth class).
+    Deferred so 6.5 stays focused on the party API surface.
 - [ ] 6.6 Extract `nakama_matchmaker_client.gd` +
   `edgegap_server_provider.gd` → `Platform.matchmaking.*`.
 - [x] **6.7 Extract presence read/write into `Platform.presence.*`**
@@ -2337,6 +2406,49 @@ Security:
     this change is a pure move-and-rename. Pruning them is
     separate-PR work — small, low-risk, and easier to review
     in isolation.
+
+- **2026-05-12:** Stage 6.5 party API extraction shipped, with
+  scope narrowed from the original roadmap framing. Three
+  design calls worth recording:
+  - **`party_manager.gd` stays game-side.** The audit-derived
+    task framing had both `party_api_client.gd` AND
+    `party_manager.gd` migrating to the addon together. In
+    practice the manager has the same UI-coordinator coupling
+    that kept `friends_notification_poller.gd` game-side
+    under 6.4: it reaches into `G.toast_overlay`,
+    `G.confirm_layer` / `G.settings.confirm_overlay_scene`,
+    `G.client_session`, `G.game_panel`, and
+    `G.notification_socket_client`. Moving it would mean
+    either constructor-injecting all those surfaces or
+    refactoring the manager to emit signals the game listens
+    to and decides what to do with — both heavy refactors
+    with no payoff today. The manager just rewrote its
+    `G.party_api_client.X` calls to `Platform.party.X` and
+    otherwise stays put. Same pattern friends_panel /
+    friends_notification_poller follow: keep the coordinator
+    game-side, factor each *API surface* into the addon.
+  - **Pure move-and-rename for the API client.** Unlike 6.2's
+    auth extraction (which had to also lift Nakama / OAuth
+    config out of the class and into Platform fields), 6.5's
+    `party_api_client.gd` already reached only into Platform-
+    owned surfaces (`Platform.get_nakama_client()`,
+    `Platform.token_store.player_id`,
+    `Platform.build_session_from_store()`). The extraction
+    was a class_name rename + relocation; no per-game config
+    threading needed. Tells us 6.2 paid its dues — every
+    subsequent client extraction (6.4 friends, 6.7 presence,
+    6.5 party) inherits the now-available Platform helpers.
+  - **No deferred companions this round.** 6.4's extraction
+    also surfaced two companion classes that needed game-side
+    homes (`friends_notification_poller.gd`) or design
+    decisions about where they belong (the still-game-side
+    `notification_socket_client.gd`). 6.5 added one similar
+    candidate — `NotificationSocketClient` itself — noted as
+    6.5b for a future pass. It's clean enough to move (only
+    `Netcode.log.warning/print` are non-Platform reach-backs)
+    but the payoff is small until a second consuming game
+    needs the same realtime-socket bus; deferred without
+    blocking 6.6 / 6.8 / 6.9 work.
 
 ## How to use this document
 

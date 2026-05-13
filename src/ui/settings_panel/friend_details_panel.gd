@@ -114,20 +114,20 @@ func build_ui() -> void:
 	_row_container.add_child(bottom_spacer)
 
 	# Connect API signals.
-	G.party_api_client.party_invited.connect(
+	Platform.party.party_invited.connect(
 		_on_invite_response)
-	G.party_api_client.party_kicked.connect(
+	Platform.party.party_kicked.connect(
 		_on_kick_response)
 	Platform.friends.friend_removed.connect(
 		_on_remove_response)
-	G.party_api_client.request_failed.connect(
+	Platform.party.request_failed.connect(
 		_on_party_request_failed)
 	Platform.friends.request_failed.connect(
 		_on_friends_request_failed)
 
 
 func _exit_tree() -> void:
-	var party_client := G.party_api_client
+	var party_client: PlatformPartyApiClient = Platform.party
 	if is_instance_valid(party_client):
 		if party_client.party_invited\
 				.is_connected(

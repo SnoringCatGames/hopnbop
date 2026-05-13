@@ -29,7 +29,6 @@ var screens: ScreensMain
 
 var match_result_reporter: MatchResultReporter
 var backend_api_client: BackendApiClient
-var party_api_client: PartyApiClient
 var party_manager: PartyManager
 var notification_socket_client: NotificationSocketClient
 var friends_notification_poller: FriendsNotificationPoller
@@ -216,9 +215,16 @@ func _enter_tree() -> void:
 	add_child(presence)
 	Platform.register_subsystem("presence", presence)
 
-	party_api_client = PartyApiClient.new()
-	party_api_client.name = "PartyApiClient"
-	add_child(party_api_client)
+	# Stage 6.5: party client lives in the addon as
+	# PlatformPartyApiClient. Game code reads it via Platform.party.
+	# PartyManager (still game-side, kept that way like
+	# friends_notification_poller because of its UI-dialog coupling
+	# to G.toast_overlay / G.confirm_layer / G.game_panel) consumes
+	# Platform.party for the underlying RPC surface.
+	var party := PlatformPartyApiClient.new()
+	party.name = "PartyApiClient"
+	add_child(party)
+	Platform.register_subsystem("party", party)
 
 	# NotificationSocketClient must enter the tree before its
 	# consumers (PartyManager, FriendsNotificationPoller) so their
