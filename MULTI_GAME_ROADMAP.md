@@ -317,13 +317,19 @@ stay correct when Stages 2–3 scope everything by `game_id`.
     RPC end-to-end (create one-shot account → call
     `delete_account` → assert response payload → assert
     /v2/account no longer reads with the original token).
-  - Hard-delete cron is **not yet implemented** — the deletion-
-    queue audit trail is durable but no scheduled job currently
-    consumes it. From the user's perspective the account is gone
-    (banned + anonymized + cascade-cleared); the raw Nakama row
-    will persist until either the cron lands or the grace window
-    flow cancels it. Tracked as a Stage 7 follow-up; the soft-
-    delete is already the user-facing fact.
+  - **Hard-delete cron shipped 2026-05-12** as
+    `runtime/account_cron.go`. `startAccountCron` launches an
+    hourly background goroutine from `InitModule` that scans
+    `account_deletion_queue` across all users via
+    `nk.StorageList`, calls `nk.AccountDeleteId(recorded=true)`
+    for each row whose `scheduled_for` has elapsed, and drops the
+    queue row. Uses `context.Background()` (not the InitModule
+    context, which is cancelled on return). Tolerates malformed
+    rows (skip + warn, don't delete) and "user already gone"
+    (warn + still clear queue row so the cron doesn't get stuck).
+    First tick fires immediately on boot so a host that was down
+    past a `scheduled_for` boundary doesn't wait a full interval
+    to catch up.
   - Cancellation-from-grace UI also not yet implemented. The
     audit trail captures `original_username` /
     `original_display_name` so a future "resurrect from grace"
