@@ -30,90 +30,85 @@ See also:
 
 ## Status summary
 
-- **Current focus:** 2026-05-13 closed every remaining deferred
-  item from Stages 1–5. New work shipped today:
-  - **1.4 hard-delete cron** (`runtime/account_cron.go`): hourly
-    background goroutine consumes elapsed `account_deletion_
-    queue` rows via `nk.AccountDeleteId(recorded=true)` + drops
-    the queue row.
-  - **1.5 cancellation path:** `delete_account` no longer bans;
-    new `get_account_deletion_status` + `cancel_account_
-    deletion` RPCs + new game-side `AccountDeletionPrompt`
-    node that pops a `ConfirmOverlay` on `auth_completed` when
-    a queue row exists.
-  - **4.7 solo game-mode picker:** `game.yaml.matchmaker_
-    rules.modes` schema + `parseModesFromConfig` surfacing via
-    `version_check` + `BackendApiClient.server_matchmaker_
-    modes` cache + `LocalSettings.{get,set}_selected_game_mode`
-    + new `GameModePickerPanel` + `NakamaMatchmakerClient`
-    routes the selected mode's query/min/max overrides.
-  - **5.7 party leader game-mode selection:** `party_mode`
-    server-owned storage collection + `party_set_mode` RPC
-    (leader-only, fans out `party_state_changed`) +
-    `PlatformPartyApiClient.set_mode` + `PartyManager.set_
-    party_mode` + `PartyLobbyPanel` leader-only "Mode: <name>"
-    cycle row.
+- **Current focus:** Stage 8 test foundation, starting with the
+  cheapest win — 8.1 (`go test ./runtime/...` step in
+  `nakama-runtime.yml`). Picked after a 2026-05-13 audit that
+  confirmed three Stage 8 entry points (cheapest: 8.1; highest
+  leverage: 8.11 socket harness + 8.12 multi-session helper,
+  which retroactively unblocks the ~10 "compliance test still
+  pending" notes on landings 1.5, 3.5, 3.9, 5.4-5.11, 6.5b).
+- **2026-05-13 audit, non-roadmap items worth tracking
+  (logged in `NEXT_STEPS.md`, not here):**
+  - Phase F AWS teardown unfinished — `phase-f-destroy.ps1`
+    SSO-expired and never re-ran; CLAUDE.md still claims
+    "Zero AWS resources remain", which is doc drift
+    (`NEXT_STEPS.md:462-481`).
+  - Possible `NAKAMA_GAME_VERSION` / `EDGEGAP_APP_VERSION`
+    drift on the prod Nakama host — last logged at 0.32.0
+    vs a much newer client (`NEXT_STEPS.md:483-495`).
+  - WSS hostname-mismatch fix may not have been deployed to
+    the running stack (`NEXT_STEPS.md:39`).
+- **Prior session (also 2026-05-13) closed every remaining
+  deferred item from Stages 1–5:**
+  - **1.4 hard-delete cron** (`runtime/account_cron.go`).
+  - **1.5 cancellation path** (`delete_account` no longer
+    bans + `get_account_deletion_status` /
+    `cancel_account_deletion` RPCs + game-side
+    `AccountDeletionPrompt` node).
+  - **4.7 solo game-mode picker** (`game.yaml.matchmaker_
+    rules.modes` + `version_check` surfacing + new
+    `GameModePickerPanel`).
+  - **5.7 party leader game-mode selection** (`party_mode`
+    server-owned storage + `party_set_mode` RPC + leader-only
+    cycle row).
   - Hopnbop ships two modes — `ffa` (default 2-4 FFA) and
     `duo` (1v1) — so the picker has actual options.
-  Next focus options, in ascending cost:
+- **Other next-focus options, in ascending cost:**
   (a) Stage 6.11 screen templates (greenfield, 3 screens, needs
   an upfront design decision on the template vs base-class pattern
   given the heavy `G.*` UI coupling — see scoping notes);
   (b) pivot to Stage 7 resilience (13 open items including
   allocation retry, friend pagination, anonymous-upgrade UI,
-  account-merge UI, observability re-introduction); (c) Stage 8
-  compliance-test rig (socket harness + multi-session helper)
-  which unblocks regression coverage on every Stage 1/3/5/6
-  landing's "compliance test still pending" note.
-- **Last updated:** 2026-05-13.
+  account-merge UI, observability re-introduction).
+- **Last updated:** 2026-05-13 (audit + 8.1 in-progress).
 - **Stages complete:**
-  - Stage 0 (platform infra extraction — including the kickoff
-    verification items 0.8 and 0.9).
-  - Stage 2 (all seven tasks shipped 2026-05-12).
-  - Stage 3 (10/10 tasks shipped 2026-05-12).
-- **Stages in progress:**
-  - Stage 1 — all five tasks shipped end-to-end. 1.4 hard-delete
-    cron (2026-05-13) and 1.5 cancellation path (2026-05-13)
-    closed the open follow-ups. Compliance-test green-light
-    still gated on a Stage 8 socket harness for multi-user party
-    scenarios.
-  - Stage 3 — 10/10 tasks shipped 2026-05-12 (3.1, 3.2, 3.3,
-    3.4, 3.5, 3.6, 3.7, 3.8, 3.9 protocol pre-check via
-    ticket-property route, 3.10 including the `legal_version`
-    parity CI guard). Stage complete.
-  - Stage 4 — 6/8 tasks shipped (4.1, 4.2, 4.4, 4.5, 4.6
-    2026-05-12; 4.7 game-mode picker 2026-05-13). Open: 4.3
-    (needs `matchmaker_rules.require_accept` in game.yaml), 4.8
-    (region picker; optional, needs Edgegap region list).
+  - Stage 0 — platform infra extraction (kickoff verification
+    items 0.8 + 0.9 confirmed 2026-05-12).
+  - Stage 1 — all 5 tasks shipped end-to-end (2026-05-12 +
+    2026-05-13: 1.4 hard-delete cron, 1.5 cancellation path).
+    Compliance-test green-light still gated on Stage 8 socket
+    harness for multi-user party scenarios.
+  - Stage 2 — all 7 tasks shipped 2026-05-12.
+  - Stage 3 — 10/10 tasks shipped 2026-05-12 (including 3.9
+    protocol pre-check via ticket-property route and 3.10
+    `legal_version` parity CI guard).
   - Stage 5 — 11/11 tasks shipped (5.1–5.6, 5.8–5.11
-    2026-05-12; 5.7 leader game-mode 2026-05-13). Stage
-    complete.
-  - Stage 6 — 11/11 baseline tasks shipped 2026-05-12 (6.1
-    subsystem slots + register_subsystem helper, 6.2
-    auth_client → PlatformAuthApiClient + nakama / OAuth
-    constants on Platform, 6.3 auth_token_store reconciliation
-    + Platform.token_store migration across 22 files, 6.4
-    PlatformFriendsApiClient, 6.5 PlatformPartyApiClient, 6.5b
-    PlatformNotificationSocketClient, 6.6
-    PlatformMatchmakingClient split + game-side adapter, 6.7
-    PlatformPresenceApiClient split out from the old friends
-    client, 6.8 PlatformSettingsApiClient + dual-scope cloud
-    sync, 6.9 PlatformSessionObserver passive lifecycle bus,
-    6.10 mass consumer migration verified clean via grep
-    sweep). 6.5 partially completed — only the API client
-    extracted; party_manager.gd stays game-side (UI-dialog
-    coupling). 6.6 partially completed —
-    `EdgegapServerProvider` deliberately stays game-side
-    (in-container `Netcode.connector` entanglement). 6.8 also
-    partially completed — `SettingsCloudSync` stays game-side
-    as a thin ~240-line adapter that owns the LocalSettings
-    serialize / apply mapping; the addon owns just the Nakama
-    storage round-trips and per-scope envelope. 6.9 partially
-    completed by design — `GameSessionManager` stays game-side
-    verbatim; the addon-side `Platform.session` is a passive
-    `PlatformSessionObserver` the game-side manager forwards
-    into. Open: 6.11 (screen templates — greenfield, see
-    scoping notes under the task entry).
+    2026-05-12; 5.7 leader game-mode 2026-05-13).
+- **Stages partially shipped (remaining items are
+  intentionally deferred or low-priority):**
+  - Stage 4 — 6/8 shipped (4.1, 4.2, 4.4, 4.5, 4.6 2026-05-12;
+    4.7 game-mode picker 2026-05-13). Deferred: 4.3 (needs
+    `matchmaker_rules.require_accept` in game.yaml + runtime
+    support for the accept/decline round-trip), 4.8 (region
+    picker; optional, needs Edgegap region list).
+  - Stage 6 — 10/11 shipped 2026-05-12 (6.1–6.10 plus 6.5b).
+    Several 6.x landings were partial-by-design: party_manager
+    (6.5), EdgegapServerProvider (6.6), SettingsCloudSync
+    (6.8 game-side adapter), GameSessionManager (6.9) all
+    stay game-side — see each task entry for the
+    coordination-coupling rationale. Open: **6.11 screen
+    templates** (greenfield, 3 screens — design decision
+    needed on base-class vs full-scene vs components pattern).
+- **Stages in progress:**
+  - Stage 8 — 2/31 shipped 2026-05-13 (8.1 `go test` step in
+    `nakama-runtime.yml`; 8.2 `staticcheck` discovered already
+    running in `pr-validate.yml`). Highest-leverage next item
+    is 8.11 reusable socket harness + 8.12 multi-session
+    helper, which retroactively unblocks the ~10
+    "compliance test still pending" notes on landings 1.5,
+    3.5, 3.9, 5.4–5.11, 6.5b.
+- **Stages not yet started:**
+  - Stage 7 — Resilience (13 open items).
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -121,9 +116,10 @@ See also:
 ```
 Stage 0 (done) — platform infra moved into snoringcat-platform
    ↓
-Stage 1 (mostly done, 2026-05-12) — P0 broken contracts: party RPC,
-   leader_id, members, delete_account all shipped. Open: 1.5 UX
-   polish + compliance-test rig (Stage 8).
+Stage 1 (done, 2026-05-12 + 2026-05-13) — P0 broken contracts:
+   party RPC, leader_id, members, delete_account, hard-delete
+   cron, cancellation path all shipped. Compliance-test rig
+   pending (Stage 8.11/8.12).
    ↓
 Stage 2 (done, 2026-05-12) — game.yaml, games table,
    per_game_config.go, register_game RPC, sync script, CI guard,
@@ -137,44 +133,29 @@ Stage 3 (done, 2026-05-12) — game_id scoping: presence
    settings split into "global" + "game/{id}" cloud rows,
    pre-allocate protocol check via ticket-property route.
    ↓
-   ├─→ Stage 4 (mostly done, 2026-05-12) — Cancel button +
-   │   recoverable-failure classifier; queue status / connect /
-   │   version mismatch already in place. Deferred: 4.3
-   │   (require_accept), 4.7 (modes), 4.8 (region picker).
-   ├─→ Stage 5 (partial, 2026-05-12) — PartyLobbyPanel
-   │   refactored to SidePanel + ActionRow nav and reachable
-   │   from MainMenuPanel; pending-invite acceptance UI;
-   │   fetch_party_status emit shape + state=3 distinction
-   │   fixed; real-time socket updates via party_state_changed
-   │   notification subject + long-lived NotificationSocketClient
-   │   (5.4); ready toggle + all-ready gate (5.5);
-   │   leader transfer via party_transfer_leadership RPC +
-   │   party_leader storage override (5.6); party chat over the
-   │   same notification socket (5.8); boot-time "still in a
-   │   party?" rejoin prompt (5.9); join-by-code with two new
-   │   server RPCs (5.10).
-   │   Open: 5.6 leader transfer, 5.7 game-mode picker.
-   └─→ Stage 6 (in progress, 2026-05-12) — Platform SDK extraction.
-       6.1 subsystem slots, 6.2 PlatformAuthApiClient + Nakama /
-       OAuth constants on Platform, 6.3 auth_token_store
-       reconciliation (22-file migration to Platform.token_store),
-       6.4 PlatformFriendsApiClient, 6.5 PlatformPartyApiClient
-       (party_manager.gd kept game-side), 6.5b
-       PlatformNotificationSocketClient, 6.6
-       PlatformMatchmakingClient (split out of
-       NakamaMatchmakerClient; EdgegapServerProvider stays
-       game-side), 6.7 PlatformPresenceApiClient, 6.8
-       PlatformSettingsApiClient (game-side SettingsCloudSync
-       reduced to a ~240-line dual-scope adapter), 6.9
-       PlatformSessionObserver passive lifecycle bus (game-side
-       GameSessionManager stays put and forwards emits), and
-       6.10 grep-sweep verification of mass consumer migration
-       all shipped. Remaining: 6.11 screens (greenfield, 3
-       screens — design decision needed).
+   ├─→ Stage 4 (6/8 shipped, 2026-05-12 + 2026-05-13) — Cancel
+   │   button, queue status, connect/version-mismatch screens,
+   │   allocation-failure retry, game-mode picker. Deferred:
+   │   4.3 (require_accept dialog), 4.8 (region picker).
+   ├─→ Stage 5 (done, 2026-05-12 + 2026-05-13) — PartyLobbyPanel
+   │   refactor + invite UI + real-time socket updates + ready
+   │   toggle + leader transfer + party chat + rejoin prompt +
+   │   join-by-code + leader game-mode selection.
+   └─→ Stage 6 (10/11 shipped, 2026-05-12) — Platform SDK
+       extraction: 6.1–6.10 + 6.5b (auth, token store,
+       friends, party, notification socket, matchmaking,
+       presence, settings, session observer). Several landings
+       are partial-by-design (coordinators stay game-side, only
+       API surfaces move into the addon). Remaining: 6.11
+       screen templates (greenfield, 3 screens — design call
+       needed).
    ↓
-Stage 7 — Resilience (retries, notifications, observability)
+Stage 7 — Resilience (retries, notifications, observability).
+   13 items, all open.
 
-Stage 8 — Tests (parallel track from day one; doesn't block features)
+Stage 8 — Tests (parallel track, doesn't block features).
+   2/31 shipped 2026-05-13 (8.1 deploy-time go test gate; 8.2
+   staticcheck already running). Picking up here next.
 ```
 
 ## Stage 0 — Platform infra extraction (mostly done)
@@ -2089,10 +2070,24 @@ prioritize tests that protect work landing in the current stage.
 
 ### Tier 1 — runtime unit tests (Go)
 
-- [ ] 8.1 Add `go test ./runtime/...` step to
-  `.github/workflows/nakama-runtime.yml` (passes with 0 tests
-  initially).
-- [ ] 8.2 Add `staticcheck` if not already running.
+- [x] **8.1 Add `go test ./runtime/...` step to
+  `.github/workflows/nakama-runtime.yml`** (2026-05-13).
+  - Done: new `test` job in `nakama-runtime.yml` runs
+    `go vet ./... && go test ./... && staticcheck ./...` in
+    the runtime working directory. The `nakama-runtime`
+    deploy job gains `needs: test` so a failing gate blocks
+    the SCP-to-host step. Passes with 0 tests today (Go
+    treats "no test files" as exit 0); the gate exists for
+    Stage 8.3–8.10 fill-in.
+  - Mirrors the existing `nakama-runtime-go` job in
+    `pr-validate.yml` exactly (same Go version, same three
+    commands, same working dir). The deploy-time copy is
+    the real safety net for this repo's direct-to-main
+    workflow — PRs are rare per the repo's commit policy.
+- [x] **8.2 Add `staticcheck` if not already running**
+  (already shipped pre-8.1). `pr-validate.yml`'s
+  `nakama-runtime-go` job runs `staticcheck ./...`; 8.1
+  extends the same command to the deploy gate.
 - [ ] 8.3 `runtime/fleet_allocator_test.go` — session-ID derivation,
   geo-list construction, env injection, transport routing,
   synthetic-probe detection, polling state machine.
