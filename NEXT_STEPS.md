@@ -36,7 +36,12 @@ framing was a misdiagnosis that led to .get() rewrites that
 destroy intellisense without fixing the root cause. The new
 section directs investigation top-down through the boot log.
 
-### WSS hostname mismatch (code shipped, deploy pending)
+### WSS hostname mismatch (RESOLVED 2026-05-05; smoke pending)
+
+All 6 operator steps below logged green with timestamps. Only the
+user-driven two-browser smoke test (Step 7) remains. Confirmed
+2026-05-13 via prod-health-check: dns-watchdog timer 2/2 fresh,
+no failed systemd units, 4/4 containers healthy.
 
 After the boot fix, matchmaking joined and matched, but the
 post-allocation WSS handshake failed: the runtime sent
@@ -480,31 +485,39 @@ so it's harmless to leave for now.
 The script also creates a CloudWatch billing alarm at the end —
 useful tripwire if any AWS resource creeps back in.
 
-### Bump `NAKAMA_GAME_VERSION` to 0.33.0
+### Bump `NAKAMA_GAME_VERSION` (RESOLVED 2026-05-13)
 
-Currently `0.32.0` in Nakama config; client is at `0.33.0` after
-today's gamelift-removal version bump. Mismatch is informational
-only (compat check uses `protocol_version`, which both sides
-have at `2`), but worth keeping in sync.
+Bumped from `0.34.0` → `0.39.0` to match the client's current
+`config/version`. Verified via `version_check` RPC:
+`{"game_version": "0.39.0", "is_compatible": true}`.
 
-```bash
-ssh root@5.78.137.83 \
-  "sed -i 's/NAKAMA_GAME_VERSION=0.32.0/NAKAMA_GAME_VERSION=0.33.0/' \
-   /opt/nakama/config.yml && \
-   cd /opt/nakama && docker compose restart nakama"
-```
+Followups for future bumps: this is a manual sed + restart
+(picked up automatically when `nakama-runtime.yml` triggers
+`docker compose restart nakama`). A cleaner long-term path is
+to read this from the `games` table the way `display_version`
+does — Stage 3.7 already wires `edgegap_app_version` through
+that route; a parallel "game_version" field would let the
+runtime drop the env var.
 
 ### Clean up stale Edgegap image tags
 
-Registry has `v2` through `v8`. Only `v8` is referenced. Delete
-the obsolete tags via the Edgegap dashboard or:
+Active version is now `v27` (game.yaml + host env, both bumped
+2026-05-13). All older tags `v2`–`v26` are likely stale. Delete
+via the Edgegap dashboard or:
 
 ```bash
 EDGEGAP_TOKEN=...  # in /opt/nakama/.env on Hetzner
-for v in v2 v3 v4 v5 v6 v7; do
+for v in $(seq 2 26); do
   curl -X DELETE -H "Authorization: token $EDGEGAP_TOKEN" \
-    "https://api.edgegap.com/v1/app/hopnbop-server/version/$v"
+    "https://api.edgegap.com/v1/app/hopnbop-server/version/v$v"
 done
+```
+
+Verify which versions are actually present before deleting:
+```bash
+curl -fsS -H "Authorization: Token $EDGEGAP_TOKEN" \
+  "https://api.edgegap.com/v1/app/hopnbop-server/versions" \
+  | python3 -c "import sys,json;d=json.load(sys.stdin); print('\n'.join(v['name'] for v in d.get('versions', [])))"
 ```
 
 ### Fix `runtime_status.go` static RPC list

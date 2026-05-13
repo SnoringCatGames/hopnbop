@@ -37,17 +37,33 @@ See also:
   leverage: 8.11 socket harness + 8.12 multi-session helper,
   which retroactively unblocks the ~10 "compliance test still
   pending" notes on landings 1.5, 3.5, 3.9, 5.4-5.11, 6.5b).
-- **2026-05-13 audit, non-roadmap items worth tracking
-  (logged in `NEXT_STEPS.md`, not here):**
-  - Phase F AWS teardown unfinished — `phase-f-destroy.ps1`
-    SSO-expired and never re-ran; CLAUDE.md still claims
-    "Zero AWS resources remain", which is doc drift
-    (`NEXT_STEPS.md:462-481`).
-  - Possible `NAKAMA_GAME_VERSION` / `EDGEGAP_APP_VERSION`
-    drift on the prod Nakama host — last logged at 0.32.0
-    vs a much newer client (`NEXT_STEPS.md:483-495`).
-  - WSS hostname-mismatch fix may not have been deployed to
-    the running stack (`NEXT_STEPS.md:39`).
+- **2026-05-13 audit follow-up — drift items resolved later
+  the same day:**
+  - **Runtime backlog flushed:** the deployed runtime was 24
+    submodule commits behind HEAD (`b5b94ee`); the gap
+    silently broke every Stage 1.4/1.5/2.x/3.x/5.5-5.10
+    client-side feature because the corresponding server
+    RPCs (`delete_account`, `get_account_deletion_status`,
+    `party_set_ready`, `party_set_mode`, `party_join_by_code`,
+    `register_game`, etc.) weren't registered. Triggered
+    `nakama-runtime.yml`; new build (parent `4235b4c`) ships
+    all 11 missing RPCs.
+  - **First games-cache sync:** ran `sync-game-config.ps1`
+    once, `registered_games` flipped `[]` → `['hopnbop']`.
+    Stage 2.4's "first deploy needs manual sync" note now
+    closed.
+  - **Version drift:** `game.yaml::edgegap_app_version`
+    bumped `v8 → v27` to match live env; host's
+    `NAKAMA_GAME_VERSION` bumped `0.34.0 → 0.39.0` via
+    direct sed on `/opt/nakama/config.yml` (picked up by
+    the runtime-deploy's `docker compose restart`). Verified
+    via `version_check` RPC: `is_compatible: true`.
+  - **WSS hostname-mismatch:** confirmed not actually a gap
+    — operator steps shipped 2026-05-05 (per
+    `NEXT_STEPS.md:54-77`). Only the user-driven two-browser
+    smoke test remains, which requires Levi at the keyboard.
+  - **Still open from the audit:** Phase F AWS teardown
+    (needs interactive `aws sso login --profile hopnbop`).
 - **Prior session (also 2026-05-13) closed every remaining
   deferred item from Stages 1–5:**
   - **1.4 hard-delete cron** (`runtime/account_cron.go`).
@@ -483,6 +499,13 @@ else hangs off of.
     configured, this script runs as a manual post-deploy step.
     The first Stage 2 deploy needs a manual `sync-game-
     config.ps1` invocation regardless (no row exists yet).
+  - **First sync done 2026-05-13** alongside the 24-commit
+    backlog runtime deploy. `runtime_status.registered_games`
+    flipped from `[]` to `['hopnbop']`. From here, every
+    runtime restart preserves the row (it's in Postgres,
+    cache rebuilds on boot). Future game.yaml edits still
+    need a manual `sync-game-config.ps1` until the GH secret
+    + CI step land.
 
 - [x] **2.5 Add `game_id` JWT claim** (2026-05-12)
   - Done — server: new `validateGameIDInVars` helper +
