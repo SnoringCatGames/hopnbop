@@ -30,45 +30,38 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 8 test foundation. **Tier 2
-  matchmaking compliance suite now complete** (2026-05-13,
-  seventh pass): 8.20 `test_matchmaking_cancel_race.gd` and 8.21
-  `test_matchmaking_failure_modes.gd` shipped. 8.20 covers two
-  scenarios — cancel-before-match (min=max=2 ticket removed
-  before allocation, no match_ready arrives) and post-match
-  cancel safety (min=max=1 ticket allocates, then cancel on the
-  consumed ticket is safe + socket stays usable). 8.21 covers
-  the Stage 3.9 protocol_version mismatch path — a deliberately-
-  wrong client_protocol_version forces the runtime to abort with
-  `match_failed` carrying `{reason=protocol_mismatch, expected,
-  got, message}` before any Edgegap allocation. Both gated on
-  `is_mock_deploy_mode()` so live prod runs pend cleanly.
-  Verified via `gut_cmdln` against live prod: every new test
-  pends with the correct EDGEGAP_MOCK_DEPLOY gate (no syntax
-  errors, no crashes). All matchmaking-related tests
-  (test_matchmaking, test_matchmaking_cancel_race,
-  test_matchmaking_failure_modes, test_socket_matchmaker) pend
-  cleanly together.
-  Earlier 2026-05-13 work (still standing): 8.1 + 8.2 deploy
-  gate; 8.3–8.10 Tier 1 Go unit tests (100 test cases across 8
-  files, `go test && staticcheck` clean); 8.11 reusable socket
-  harness + 8.12 multi-session helper + 8.14 first canary multi-
-  user friends test; 8.17 party-invite-flow + 8.22 presence
-  game-filter; 8.16 friends-cascade-on-account-delete; 8.13
-  EDGEGAP_MOCK_DEPLOY mode + 8.18 party-to-matchmaking + 8.19
-  un-pending test_matchmaking. Mock-mode matchmaking tests still
-  pending() against live prod (real-Edgegap mode) — ready-on-
-  arrival for a future test Nakama with mock mode enabled.
-  **Next:** only Tier 2 item left is 8.15 friends block-list
-  (blocked on 7.4). Tier 3 client unit tests (8.23–8.28) require
-  a GUT doubles setup against the addon's GDScript classes;
-  Tier 4 e2e/smoke (8.29–8.31) needs a docker-compose dev stack.
-  Stage 7 resilience (13 open items) and Stage 6.11 screens
-  (greenfield, 3 screens, needs design call) are the parallel
-  tracks; Stage 7.1 + 7.2 are the natural next pickups since
-  8.20's cancel-after-match scenario explicitly documents the
-  Stage 7.2 limitation, and the Stage 7.1 retry path opens up
-  more failure modes 8.21 could grow to cover.
+- **Current focus:** Stage 7 resilience kickoff. **Stage 7.1
+  Edgegap allocation retry shipped** (2026-05-13, eighth pass):
+  new `tryAllocate` method per attempt + retry loop in
+  `OnMatchmakerMatched` (3 attempts), exponential backoff
+  (1s→2s→4s, capped at 8s), and continent rotation
+  (north_america→europe→asia, wraps) on each retry. Failed
+  attempts call best-effort `stopDeploy` to avoid leaking
+  container-hours. Exhausted retries emit a
+  `match_failed` notification (`reason=allocation_failed`)
+  whose message contains "allocation" so the game-side
+  classifier routes it through `LOADING.ALLOCATION_FAILED`
+  (recoverable + retry button). 3 new Go unit tests (14
+  sub-cases total) cover the pure retry-policy helpers
+  (`allocationFallbackGeographies`, `allocationBackoff`,
+  `sleepOrCtxDone`). `go vet && go test && staticcheck` clean;
+  pluginbuilder Docker produces a 19 MB `snoringcat.so`.
+  Earlier 2026-05-13 work (still standing): Tier 2 matchmaking
+  compliance suite (8.20 cancel-race + 8.21 protocol-mismatch),
+  Tier 1 Go unit tests (8.3-8.10, 100 cases), 8.1+8.2 deploy
+  gate, 8.11/8.12/8.14/8.16/8.17/8.18/8.19/8.22 compliance
+  tests, 8.13 EDGEGAP_MOCK_DEPLOY mode, audit-surfaced drift
+  fully resolved.
+  **Next:** Stage 7.2 (mid-queue cancel cleanly tears down
+  Edgegap deploy) is the natural follow-up — needs a new
+  client-side cancel RPC + in-flight allocation tracking so a
+  cancel mid-polling can stop the deploy. 7.5 (friend
+  pagination), 7.3 (push notifications), 7.4 (block list) are
+  also self-contained. 8.15 still blocked on 7.4. Tier 3 client
+  unit tests (8.23-8.28) require GUT doubles setup against the
+  addon's GDScript classes; Tier 4 e2e/smoke (8.29-8.31) needs
+  a docker-compose dev stack. Stage 6.11 screens still
+  greenfield with design call needed.
 - **2026-05-13 audit follow-up — drift items resolved later
   the same day:**
   - **Runtime backlog flushed:** the deployed runtime was 24
@@ -137,21 +130,23 @@ See also:
   (b) pivot to Stage 7 resilience (13 open items including
   allocation retry, friend pagination, anonymous-upgrade UI,
   account-merge UI, observability re-introduction).
-- **Last updated:** 2026-05-13 (seventh pass: Tier 2 matchmaking
-  compliance suite finished — 8.20 cancel-race + 8.21 protocol-
-  mismatch failure mode shipped, both gated on
-  EDGEGAP_MOCK_DEPLOY so live prod runs pend cleanly. Plus all
-  prior 2026-05-13 work: 8.3–8.10 Tier 1 Go unit tests
-  (100 passing cases, `go test && staticcheck` clean, gated
-  on every deploy), 8.1/8.2 deploy gate, audit-surfaced drift
-  fully resolved, 24-commit runtime backlog deployed, first
-  games-cache sync, Phase F finished, stale Edgegap tags pruned,
-  script relocations + doc cleanup, 8.11/8.12/8.14 socket +
-  multi-session compliance harness with first canary multi-user
-  friends test, 8.17 party-invite-flow + 8.22 presence game-
-  filter, 8.16 friends-cascade-on-account-delete, 8.13
-  EDGEGAP_MOCK_DEPLOY mode + 8.18 party-to-matchmaking + 8.19
-  solo-matchmaking-flow).
+- **Last updated:** 2026-05-13 (eighth pass: Stage 7 resilience
+  kickoff — 7.1 Edgegap allocation retry shipped. Retry loop
+  in `OnMatchmakerMatched` with 3 attempts, exponential backoff
+  capped at 8s, continent rotation on retry, best-effort Stop
+  on failed attempts, `match_failed` allocation_failed
+  notification when all attempts exhausted. 3 new Go unit
+  tests (14 sub-cases). `go vet && go test && staticcheck`
+  clean; pluginbuilder Docker produces 19 MB `snoringcat.so`.
+  Plus all prior 2026-05-13 work: Tier 2 matchmaking
+  compliance suite finished (8.20 + 8.21), Tier 1 Go unit
+  tests (8.3-8.10, 100 cases), 8.1/8.2 deploy gate,
+  audit-surfaced drift fully resolved, 24-commit runtime
+  backlog deployed, first games-cache sync, Phase F finished,
+  stale Edgegap tags pruned, 8.11/8.12/8.14 multi-user
+  compliance harness, 8.16/8.17/8.22 multi-user tests,
+  EDGEGAP_MOCK_DEPLOY mode + 8.18/8.19 mock-mode matchmaking
+  tests).
 - **Stages complete:**
   - Stage 0 — platform infra extraction (kickoff verification
     items 0.8 + 0.9 confirmed 2026-05-12).
@@ -200,8 +195,9 @@ See also:
     check. Remaining: Tier 2 8.15 (blocked on 7.4 block
     list), Tier 3 client unit tests with doubles
     (8.23–8.28), Tier 4 e2e/smoke (8.29–8.31).
-- **Stages not yet started:**
-  - Stage 7 — Resilience (13 open items).
+- **Stages in progress (Stage 7 resilience):**
+  - Stage 7 — 1/13 shipped 2026-05-13 (7.1 allocation retry).
+    Remaining 12 items are all open and unblocked.
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -244,7 +240,7 @@ Stage 3 (done, 2026-05-12) — game_id scoping: presence
        needed).
    ↓
 Stage 7 — Resilience (retries, notifications, observability).
-   13 items, all open.
+   1/13 shipped 2026-05-13 (7.1 allocation retry); 12 open.
 
 Stage 8 — Tests (parallel track, doesn't block features).
    21/31 shipped 2026-05-13. Tier 1 Go unit tests (8.3–8.10)
@@ -2140,8 +2136,92 @@ Extract clean code, not bug-laden code.
 
 ### Tasks
 
-- [ ] 7.1 Edgegap allocation-failure retry with exponential backoff
-  + alternate region (`fleet_allocator.go:473-505`).
+- [x] **7.1 Edgegap allocation-failure retry with exponential backoff
+      + alternate region** (2026-05-13).
+  - Done — runtime: new `tryAllocate` method on `*fleetAllocator`
+    encapsulates one full attempt (Deploy → poll Status → validate
+    IP/port → wait for register_server). Returns
+    `(*edgegapDeployResponse, *edgegapStatusResponse, error)`.
+    On any post-Deploy failure, calls a best-effort `stopDeploy`
+    helper so retries don't leak Edgegap container-hours.
+  - Done — runtime: retry loop in `OnMatchmakerMatched` (real-mode
+    path only) wraps `tryAllocate` with up to
+    `maxAllocationAttempts=3` attempts. Each retry applies
+    `allocationBackoff(n)` (exponential 1s → 2s → 4s, capped at
+    `maxAllocationBackoff=8s`) and rotates `deployReq.Geographies`
+    through `allocationGeographyRotation` (north_america → europe
+    → asia, wraps). IP list is dropped on retry because geo-routing
+    already failed by definition. The backoff uses
+    `sleepOrCtxDone` so a matchmaker context cancelled mid-retry
+    exits cleanly.
+  - Done — runtime: new `sendAllocationFailed` helper emits a
+    `match_failed` notification (`reason=allocation_failed`,
+    `attempts`, `message`, optional `last_error`) to every matched
+    player when all attempts are exhausted. The message contains
+    the "allocation" substring so the game-side
+    `_classify_matchmaking_failure` routes it to
+    `LOADING.ALLOCATION_FAILED` (recoverable + retry button on
+    the loading screen, not toast-and-bounce).
+  - Done — tests: 3 new test functions in `fleet_allocator_test.go`
+    covering the pure retry-policy helpers.
+    `TestAllocationFallbackGeographies` (5 sub-tests) locks the
+    rotation contract: index 0 → nil, index 1+ → single-continent
+    slice, wraps past rotation length so a future bump to
+    `maxAllocationAttempts` is safe.
+    `TestAllocationBackoff` (5 sub-tests) covers the
+    zero-at-index-0, base-at-index-1, monotonic-up-to-cap,
+    saturates-eventually, and exact-doubling contract.
+    `TestSleepOrCtxDone` (4 sub-tests) covers zero/negative
+    duration short-circuit, normal timer elapse, and ctx-cancel
+    interruption. All passing; `go vet ./... && go test ./... &&
+    staticcheck ./...` clean; pluginbuilder Docker image produces
+    a 19 MB `snoringcat.so`.
+  - Decision worth recording: validation of `status.PublicIP` and
+    `pickTCPPort(status.Ports)!=0` moved INSIDE `tryAllocate`
+    (was at the call site after polling). A "successful" deploy
+    with missing IP/port is unusable; treating it as a failed
+    attempt lets the retry loop rotate region instead of failing
+    the match outright. The alternative (fail-fast on missing
+    fields) would have wasted the user's match on what's almost
+    certainly a transient Edgegap API hiccup.
+  - Decision worth recording: continent rotation order is
+    `north_america → europe → asia`. Biases retries toward the
+    busiest known regions first. Subject to revisit when player
+    geographic distribution data exists; today's player pool is
+    small enough that any region's capacity ceiling is very far
+    above typical concurrent-match counts, so the rotation order
+    is mostly cosmetic.
+  - Decision worth recording: mock mode is exempt from the retry
+    loop. `synthesizeMockDeploy` is deterministic and synchronous;
+    retrying it would just produce a different request_id with
+    the same shape. Mock mode's purpose is the contract-level
+    fan-out test, not exercising the retry policy. Future tests
+    that DO want to exercise retry can compose a fault-injecting
+    Edgegap client (Stage 8 / 7.x followup).
+  - Decision worth recording: validation happens before
+    `waitForServerRegistered` so a deploy with bad data doesn't
+    eat a 30s register timeout. The previous order (status
+    polling → register wait → IP/port validation) had the
+    validation in the call site after register wait completed,
+    which meant a missing-IP deploy would block for 30s before
+    being stopped. The new order fast-fails the attempt and
+    moves on to the retry.
+  - Known limitation: the retry policy is uniform — every
+    failure mode triggers the same backoff + region rotation.
+    A future expansion could classify errors (e.g., 401/403
+    from Edgegap should never retry, while 5xx and timeouts
+    should). The current "always retry" stance is safer
+    pre-classification (more retries are wasteful but not
+    incorrect), and the classifier extension point is the
+    `lastErr` value already carried through the loop.
+  - Known limitation: no compliance test exercises the retry
+    path end-to-end. Stage 8.21's failure-modes test covers only
+    the protocol-mismatch path because the other failure modes
+    require fault-injection hooks the runtime doesn't yet expose.
+    A future 8.21 expansion could wire an `EDGEGAP_FAULT_INJECT`
+    env var that synthesizeMockDeploy honours by returning
+    errors on the first N calls; deferred until 7.x retry needs
+    are tested in CI rather than via manual smoke.
 - [ ] 7.2 Mid-queue cancel cleanly tears down Edgegap deploy if it
   has already started (currently fire-and-forget at client side).
 - [ ] 7.3 Push notification for friend online / party invite / match
@@ -4149,6 +4229,62 @@ Security:
     test stays correct across version bumps without manual
     intervention. Same source-of-truth pattern as
     `is_mock_deploy_mode()` reading runtime_status.
+
+- **2026-05-13:** Stage 7.1 Edgegap allocation retry shipped
+  (eighth pass; Stage 7 kickoff). Five design calls worth
+  recording:
+  - **`tryAllocate` owns the per-attempt sequence; the retry
+    loop in `OnMatchmakerMatched` owns the policy.** Splitting
+    "what one attempt does" from "how many times we retry and
+    what changes between attempts" lets the test suite cover
+    the policy (rotation, backoff, ctx-cancel) with pure
+    functions while the per-attempt I/O stays untestable
+    without a full `runtime.NakamaModule` mock. Same Tier-1-vs-
+    Tier-2 split as Stage 8.3-8.10: unit tests gate the deploy
+    on policy regressions, compliance tests gate on contract
+    drift against live Nakama.
+  - **Validation moved INSIDE `tryAllocate`.** The PublicIP /
+    TCP-port checks were at the call site after polling
+    completed. A "successful" deploy with missing fields is
+    unusable; treating it as a failed attempt lets the retry
+    loop rotate region instead of failing the match outright.
+    The alternative (fail-fast on missing fields) would have
+    burned the user's match on what's almost certainly a
+    transient Edgegap API hiccup. Also reordered so validation
+    happens BEFORE `waitForServerRegistered` — a deploy with
+    bad data shouldn't eat the 30s register timeout before
+    being stopped.
+  - **Mock mode exempt from the retry loop.** `synthesizeMock-
+    Deploy` is deterministic and synchronous; retrying it just
+    produces a different request_id with the same shape. Mock
+    mode's purpose is contract-level fan-out testing, not
+    exercising the retry policy. A future fault-injecting mock
+    (Stage 7.x or 8.21 expansion) could land an
+    `EDGEGAP_FAULT_INJECT` env var that returns errors on the
+    first N calls; deferred until retry compliance testing is
+    on the critical path.
+  - **Continent rotation order is north_america → europe →
+    asia.** Biases retries toward the busiest known regions
+    first so a sparse-pool region failure doesn't trap the
+    user on a series of also-sparse fallbacks. Subject to
+    revisit when player geographic distribution data exists;
+    today's player pool makes any region's capacity ceiling
+    very far above typical concurrent-match counts, so the
+    rotation order is mostly cosmetic. Wrap-on-overflow is
+    locked in by `TestAllocationFallbackGeographies/wraps-
+    past-rotation-length` so a future bump to
+    `maxAllocationAttempts` > rotation length is safe.
+  - **`match_failed` allocation_failed message must contain
+    "allocation".** The game-side `_classify_matchmaking_
+    failure` in `game_panel.gd` does substring matching to
+    decide between recoverable (`LOADING.ALLOCATION_FAILED` +
+    retry button on loading screen) and fatal (toast + back-
+    to-lobby). The literal substring "allocation" in the
+    message is the routing key. Locked in by the message
+    template ("Edgegap allocation failed after %d attempts.")
+    and reinforced by `reason="allocation_failed"` for any
+    future classifier that wants to switch from substring to
+    reason-code matching.
 
 ## How to use this document
 
