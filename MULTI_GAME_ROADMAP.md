@@ -62,8 +62,13 @@ See also:
     — operator steps shipped 2026-05-05 (per
     `NEXT_STEPS.md:54-77`). Only the user-driven two-browser
     smoke test remains, which requires Levi at the keyboard.
-  - **Still open from the audit:** Phase F AWS teardown
-    (needs interactive `aws sso login --profile hopnbop`).
+  - **Phase F AWS teardown:** also closed 2026-05-13. Ran
+    `phase-f-destroy.ps1 -Confirm`; 5 Secrets Manager entries
+    actually deleted today (the rest was already gone from
+    earlier teardowns). After-state verified empty across
+    every AWS service. CLAUDE.md's "Zero AWS resources remain"
+    is now literally accurate. Script bug on the trailing
+    CloudWatch-billing-alarm placeholder also fixed.
 - **Prior session (also 2026-05-13) closed every remaining
   deferred item from Stages 1–5:**
   - **1.4 hard-delete cron** (`runtime/account_cron.go`).

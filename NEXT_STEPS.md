@@ -464,26 +464,31 @@ changes that don't touch runtime code).
 
 ## Open follow-ups
 
-### Phase F (AWS teardown) — finish
+### Phase F (AWS teardown) — RESOLVED 2026-05-13
 
-`scripts/phase-f-destroy.ps1` errored at the first delete with
-exit 255 because the `hopnbop` SSO session expired. Re-auth
-and re-run:
+Re-ran `scripts/phase-f-destroy.ps1 -Confirm` after refreshing
+SSO. The 5 Secrets Manager entries (`hopnbop/jwt-signing-key`,
+`hopnbop/oauth/google`, `hopnbop/oauth/facebook`,
+`hopnbop/server-api-key`, `hopnbop/tls-wildcard-cert`) actually
+deleted; everything else was already gone from earlier teardowns
+(matchmaker, queue, 2 rulesets, container group, ECR repo,
+CloudFront E3LT833LSVTW9R, S3 bucket `hopnbop-website`). Route
+53 zone for hopnbop.net is also gone (not deleted by this
+script — must have been removed previously).
 
-```powershell
-aws sso login --profile hopnbop
-.\scripts\phase-f-destroy.ps1 -Confirm
-```
+Verified after-state: zero secrets matching `hopnbop/`, zero
+ECR repos, zero matchmaking configs, zero Route 53 hosted
+zones, zero CloudFront distributions, zero S3 buckets. The
+AWS account is now completely empty of resources. CLAUDE.md's
+"Zero AWS resources remain" claim is now literally accurate.
 
-Targets (from the dry-run): matchmaker, queue, 2 rulesets,
-container group def, ECR repo, 5 Secrets Manager entries
-(forced delete), CloudFront distribution, S3 website bucket.
-**Skips Route 53 zone** (no `-IncludeRoute53Zone` flag) — that
-zone exists but Cloudflare is authoritative for hopnbop.net,
-so it's harmless to leave for now.
-
-The script also creates a CloudWatch billing alarm at the end —
-useful tripwire if any AWS resource creeps back in.
+Script bug fixed in passing: the final CloudWatch-billing-alarm
+step was a Write-Host placeholder wrapped in Step{} that tripped
+`$LASTEXITCODE` from the previous command and surfaced as a
+script failure AFTER all the actual destruction succeeded.
+Replaced with a plain `Write-Host` outside any Step wrapper
+(commit landing alongside this update). Cost-monitor systemd
+timer on the Nakama host already covers the tripwire intent.
 
 ### Bump `NAKAMA_GAME_VERSION` (RESOLVED 2026-05-13)
 

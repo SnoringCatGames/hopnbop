@@ -194,12 +194,17 @@ if ($IncludeRoute53Zone) {
 }
 
 # ---------------------------------------------------------
-# 7. CloudWatch budget alarm at $5/mo (residual catch).
+# 7. CloudWatch budget alarm at $5/mo (TODO; not a real step).
+# Tripwire intent is already covered by the cost-monitor
+# systemd timer on the Nakama host, which tracks Hetzner +
+# Edgegap + R2 + GitHub spend and pings Discord on threshold
+# crossings. Wrap this in a plain Write-Host (NOT a Step{ ... })
+# because a placeholder Write-Host inside Step leaves
+# $LASTEXITCODE bleeding from the previous external command,
+# which trips the error-detection check and fails the script
+# AFTER all the actual destruction work has already succeeded.
 # ---------------------------------------------------------
-Step "create CloudWatch billing alarm at \$5/mo" {
-	# Budgets API requires the account ID. Use a safe stub.
-	Write-Host "TODO: aws budgets create-budget ... (manual)"
-}
+Write-Host "[skip] CloudWatch billing alarm (TODO; cost-monitor covers spend tripwire)" -ForegroundColor DarkGray
 
 Write-Host ""
 if ($Confirm) {
