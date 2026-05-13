@@ -30,16 +30,20 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 6.9 PlatformSessionObserver landed
-  2026-05-12. Passive lifecycle bus in the addon
-  (`session_started`, `match_ready`, `connection_lost`,
-  `matchmaking_failed`, `matchmaking_progress`); game-side
-  `GameSessionManager` forwards each emit into `Platform.session`
-  alongside its own signal so existing direct-connect consumers
-  (`GamePanel`, `LoadingScreen`) keep working unchanged. Hopnbop-
-  specific events (`local_mode_fallback_requested`,
-  `server_should_reset`, `server_shutdown_imminent`) deliberately
-  stay game-side only. Next focus options, in ascending cost:
+- **Current focus:** Stage 3.9 protocol_version pre-check landed
+  2026-05-12, closing Stage 3 entirely (10/10 tasks). Game-side
+  `NakamaMatchmakerClient` declares `client_protocol_version` as a
+  ticket property (sourced from `application/config/protocol_version`).
+  Runtime's `fleet_allocator.go` walks the matched entries, looks
+  up the dominant game's registered `ProtocolVersion` from the
+  games cache, and short-circuits with a `match_failed` per-player
+  notification when any entry mismatches — Edgegap allocation is
+  skipped, no orphaned deploy. Addon's `PlatformMatchmakingClient`
+  handles the new `match_failed` subject and emits
+  `matchmaking_failed(message)` immediately so the client bails
+  rather than waiting on the 120s timeout. Pre-3.9 clients (no
+  declared property) pass through, so the rollout is graceful.
+  Next focus options, in ascending cost:
   (a) Stage 6.11 screen templates (greenfield, 3 screens, needs
   an upfront design decision on the template vs base-class pattern
   given the heavy `G.*` UI coupling — see scoping notes);
@@ -54,6 +58,7 @@ See also:
   - Stage 0 (platform infra extraction — including the kickoff
     verification items 0.8 and 0.9).
   - Stage 2 (all seven tasks shipped 2026-05-12).
+  - Stage 3 (10/10 tasks shipped 2026-05-12).
 - **Stages in progress:**
   - Stage 1 — all five tasks (1.1a, 1.1b, 1.2, 1.3, 1.4, 1.5)
     have working code shipped. 1.5 UX polish (type-the-word
@@ -61,10 +66,10 @@ See also:
     the new `DeleteAccountConfirmPanel`. Compliance-test green-
     light still gated on a Stage 8 socket harness for multi-user
     party scenarios.
-  - Stage 3 — 9/10 tasks shipped 2026-05-12 (3.1, 3.2, 3.3,
-    3.4, 3.5, 3.6, 3.7, 3.8, 3.10 including the `legal_version`
-    parity CI guard). Open: 3.9 protocol-version pre-check
-    (needs matchmaker-entry session-vars access pattern).
+  - Stage 3 — 10/10 tasks shipped 2026-05-12 (3.1, 3.2, 3.3,
+    3.4, 3.5, 3.6, 3.7, 3.8, 3.9 protocol pre-check via
+    ticket-property route, 3.10 including the `legal_version`
+    parity CI guard). Stage complete.
   - Stage 4 — 5/8 tasks shipped 2026-05-12 (4.1, 4.2, 4.4,
     4.5, 4.6). Open: 4.3 (needs `matchmaker_rules.require_accept`
     in game.yaml), 4.7 (needs `matchmaker_rules.modes` schema),
@@ -115,12 +120,12 @@ Stage 2 (done, 2026-05-12) — game.yaml, games table,
    BeforeAuthenticate* hooks, game_id-in-vars JWT claim, RPC
    plumbing all shipped.
    ↓
-Stage 3 (mostly done, 2026-05-12) — game_id scoping: presence
+Stage 3 (done, 2026-05-12) — game_id scoping: presence
    (storage + record field + friend filter), leaderboards
    (`{game_id}_ffa`), Edgegap app coords from games table,
    matchmaker rules + legal_version surfaced via version_check,
-   settings split into "global" + "game/{id}" cloud rows.
-   Deferred: 3.9 (pre-allocate proto check).
+   settings split into "global" + "game/{id}" cloud rows,
+   pre-allocate protocol check via ticket-property route.
    ↓
    ├─→ Stage 4 (mostly done, 2026-05-12) — Cancel button +
    │   recoverable-failure classifier; queue status / connect /
@@ -661,20 +666,58 @@ two games can coexist on one Nakama instance.
     unauthenticated via HTTP key, so this is the cheapest
     place to hang static game-config values that the matchmaker
     needs before a session exists.
-- [ ] **3.9 Per-game `protocol_version` pre-check at queue start**
-  - Deferred 2026-05-12. fleet_allocator can't access matched
-    players' session vars through `runtime.MatchmakerEntry` —
-    only ticket properties are visible. To wire this without
-    trusting client-supplied values, we'd either (a) have the
-    client pass `client_protocol_version` as a ticket property
-    and cross-check on the runtime side (still client-trusted,
-    but the server can at least short-circuit allocation when
-    mismatched), or (b) extend Nakama with a session lookup
-    helper. The current client-side boot check
-    (`backend_api_client.check_version`) already gates entry
-    into the matchmaking flow, so the failed-allocation cost
-    today is bounded by whatever clients lie or whose check
-    races a deploy. Revisit when this becomes load-bearing.
+- [x] **3.9 Per-game `protocol_version` pre-check at queue start**
+      (2026-05-12)
+  - Done — client (game-side): `src/core/nakama_matchmaker_client.gd`
+    `_build_string_props` now declares `client_protocol_version`
+    (string of the int from `ProjectSettings.get_setting(
+    "application/config/protocol_version")`) as a ticket property.
+    Same source the existing CI parity guard cross-checks against
+    `game.yaml::protocol_version`, so no new sync point.
+  - Done — server: `fleet_allocator.go` `OnMatchmakerMatched`
+    walks each entry's properties to collect `protocolByUser`
+    alongside the existing `gameIDVotes` pass. After
+    `pickDominantGameID` resolves the match's game_id, looks up
+    the registered `ProtocolVersion` from the games cache. Any
+    declared entry whose version differs from the registered
+    value triggers `abortProtocolMismatch`, which sends a
+    per-player `match_failed` notification (reason
+    "protocol_mismatch", with `expected` / `got` / human-readable
+    `message`) and returns `("", nil)` without allocating
+    Edgegap. Mismatched players get the actionable "your client
+    is out of date" copy; compatible matched players get a
+    generic "another player's client is out of date" copy so
+    they don't sit on the 120s client timeout.
+  - Done — addon: `PlatformMatchmakingClient` recognizes the new
+    `match_failed` subject (flat JSON, single-encoded — distinct
+    from `match_ready`'s double-encoded shape because there's no
+    nested connection blob). On receipt, clears the searching
+    state, stops the elapsed timer, and emits
+    `matchmaking_failed(message)`. The game-side adapter forwards
+    through `session_request_failed` and the existing classifier
+    in `game_panel._classify_matchmaking_failure` falls through
+    to fatal (toast + back to lobby), which is right for a stale-
+    version case — retry won't fix it.
+  - Implementation note: chose approach (a) from the original
+    deferral framing (ticket-property route, client-trusted).
+    The client value can in principle be forged, but the boot-
+    time `backend_api_client.check_version` is still the primary
+    gate, and a malicious client that lies about both surfaces
+    will still fail at the network-layer protocol negotiation
+    inside the rollback-netcode handshake. Defense-in-depth;
+    not a security boundary.
+  - Implementation note: the check is graceful for the rollout
+    window. Pre-3.9 clients omit the `client_protocol_version`
+    property entirely; their entries pass through (we only
+    abort when a declared version mismatches). A two-client
+    match where one is pre-3.9 and the other declares the
+    correct version still allocates normally.
+  - No new compliance test (Stage 8.x not yet live for the
+    matchmaker socket); confidence is from `go vet ./...`
+    clean, `go test ./...` clean, the pluginbuilder Docker
+    image producing a 19 MB `snoringcat.so`, and a headless
+    Godot boot of the game side with the new ticket-property
+    code path parsing cleanly.
 - [x] **3.10 Per-game `LEGAL_VERSION` from `games` table**
       (2026-05-12)
   - Done — server: `version_check` response gains
@@ -3037,6 +3080,48 @@ Security:
     the rest, but the version-check caching it does (per-game
     legal_version + matchmaker rules) keeps it usefully
     game-side for now.
+
+- **2026-05-12:** Stage 3.9 protocol_version pre-check landed,
+  closing Stage 3. Four design calls worth recording:
+  - **Approach (a): ticket-property route, not Nakama session
+    lookup.** The original deferral framing offered two paths:
+    (a) client passes `client_protocol_version` as a ticket
+    property and the server cross-checks; (b) extend Nakama with
+    a session-vars-on-MatchmakerEntry helper. (b) would be the
+    cleaner answer but requires upstream Nakama work and we have
+    no internal fork. (a) is client-trusted but the boot-time
+    `check_version` is still the primary gate, and a forged value
+    still fails at the rollback-netcode handshake. Defense-in-
+    depth, not a security boundary.
+  - **`match_failed` is flat JSON, not double-encoded like
+    `match_ready`.** The legacy `match_ready` carries
+    `{"connection": "<inner-json>"}` (double-encoded) because the
+    original parser shape needed the nested unwrap. The new
+    `match_failed` payload has no nested blob to wrap, so we send
+    `{reason, message, expected, got}` directly. Addon parses
+    once instead of twice. Future failure notifications should
+    follow this shape too.
+  - **Mismatched-vs-compatible players get different copy.**
+    Both groups get a `match_failed` notification so neither
+    sits on the 120s client timeout. The mismatched player gets
+    "your client is out of date" (actionable: restart to update);
+    other matched players get "another player's client is out
+    of date" (less actionable, but at least tells them why the
+    match aborted). Alternative (uniform copy) would have
+    blamed the wrong player visibly.
+  - **Graceful rollout: pre-3.9 clients pass through.** The
+    check fires only when an entry *declares* a
+    `client_protocol_version`. Pre-3.9 clients omit the property
+    entirely, so the rollout window where some clients
+    declare and others don't doesn't lock anyone out. A
+    pre-3.9-only match passes through with no check; a mixed
+    match passes when the post-3.9 client's declared value is
+    right; a post-3.9-only match enforces strictly. After
+    enough release cycles to assume every client is post-3.9
+    (typically tracked by a forced-mismatch deploy), the
+    graceful path becomes dead and could be tightened to "any
+    missing declaration is a failure", but the cost of leaving
+    it is bounded.
 
 - **2026-05-12:** Stage 6.9 PlatformSessionObserver landed. Four
   design calls worth recording:

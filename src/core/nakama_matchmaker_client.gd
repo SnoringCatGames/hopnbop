@@ -213,6 +213,19 @@ func _build_string_props(
 	# Platform.initialize is called from global.gd._enter_tree.
 	if not Platform.game_id.is_empty():
 		props["game_id"] = Platform.game_id
+	# Stage 3.9: declare our protocol_version so the fleet
+	# allocator can short-circuit a stale-client match before
+	# burning an Edgegap deploy. The value is the integer the
+	# CI parity guard already keeps in lockstep with
+	# game.yaml::protocol_version. Stringified per the
+	# matchmaker-property contract (Nakama matchmaker entries
+	# carry string properties only). Server-side validation is
+	# graceful: pre-Stage-3.9 clients omit the key and pass
+	# through, so the rollout doesn't lock anyone out.
+	var protocol_version := int(ProjectSettings.get_setting(
+		"application/config/protocol_version", 0))
+	if protocol_version > 0:
+		props["client_protocol_version"] = str(protocol_version)
 	if session_prefs.has("selected_level_id"):
 		props["level_id"] = str(
 			session_prefs["selected_level_id"])
