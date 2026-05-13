@@ -36,20 +36,29 @@ See also:
   multi-user friends test shipped 2026-05-13 (second pass).
   8.17 party-invite-flow + 8.22 presence game-filter shipped
   2026-05-13 (third pass). 8.16 friends-cascade-on-account-
-  delete shipped 2026-05-13 (fourth pass) — fourth multi-user
-  test against the harness, validated against live Nakama
-  (21 asserts green; verifies Stage 1.4 friends scrub
-  bidirectionality + Stage 1.5 sign-in-during-grace).
+  delete shipped 2026-05-13 (fourth pass). 8.13
+  EDGEGAP_MOCK_DEPLOY mode + 8.18 party-to-matchmaking +
+  8.19 un-pending test_matchmaking landed 2026-05-13 (fifth
+  pass) — runtime now synthesizes Edgegap responses when
+  `EDGEGAP_MOCK_DEPLOY=true` so compliance tests exercise
+  the full matchmaker → match_ready fan-out without burning
+  paid container-hours. Tests gate on `runtime_status`'s
+  new `edgegap_mock_deploy` bool and pending() against live
+  prod (still in real-Edgegap mode), so today they're a
+  ready-on-arrival placeholder for a future test Nakama
+  instance with mock mode enabled.
   8.17's earlier run surfaced a Nakama-behavior contradiction
   with the codebase's `afterAddGroupUsersHook` comment
   (Nakama 3.25.0 admin-adds on closed groups land at state=2
   directly, not state=3 as the runtime comment claims); test
   is tolerant of both shapes but documents the observation.
-  **Next:** more multi-user tests from the backlog — 8.18
-  party-to-matchmaking (covers the 1.1b party-block
-  matchmaker path; needs 8.13 mock mode first to avoid
-  burning Edgegap allocations), 8.15 friends block-list
-  (after 7.4). 8.13 mock-Edgegap mode unblocks 8.18 + 8.19.
+  **Next:** more multi-user tests from the backlog — 8.15
+  friends block-list (after 7.4), 8.20
+  test_matchmaking_cancel_race, 8.21
+  test_matchmaking_failure_modes. Tier 1 Go unit tests
+  (8.3–8.10) are now the lowest-friction Stage 8 work
+  remaining (no env / deployment dependencies — pure Go
+  tests run by `go test ./...` on every PR + deploy).
   Stage 7 resilience (13 open items) and Stage 6.11 screens
   (greenfield, 3 screens, needs design call) are the
   parallel tracks.
@@ -130,8 +139,12 @@ See also:
   8.17 party-invite-flow + 8.22 presence game-filter as the
   next two multi-user tests against the harness, then 8.16
   friends-cascade-on-account-delete as the fourth multi-user
-  test — bidirectional FriendsDelete + display-name
-  anonymization + sign-in-during-grace verified live).
+  test, then 8.13 EDGEGAP_MOCK_DEPLOY mode + 8.18 party-to-
+  matchmaking + 8.19 solo-matchmaking-flow as the fifth pass
+  — runtime can now mock Edgegap allocations, both
+  matchmaking tests pending() safely when prod is in real
+  mode and run end-to-end when a test instance has
+  EDGEGAP_MOCK_DEPLOY=true).
 - **Stages complete:**
   - Stage 0 — platform infra extraction (kickoff verification
     items 0.8 + 0.9 confirmed 2026-05-12).
@@ -161,18 +174,20 @@ See also:
     templates** (greenfield, 3 screens — design decision
     needed on base-class vs full-scene vs components pattern).
 - **Stages in progress:**
-  - Stage 8 — 8/31 shipped 2026-05-13 (8.1 deploy-time
+  - Stage 8 — 11/31 shipped 2026-05-13 (8.1 deploy-time
     `go test` gate, 8.2 staticcheck already running in
     `pr-validate.yml`, 8.11 socket harness, 8.12
-    multi-session helper, 8.14 first canary multi-user
-    friends test, 8.16 friends-cascade-on-account-delete,
-    8.17 party-invite-flow multi-user lifecycle, 8.22
-    presence game-filter mutual-only check). The
-    blocked-on-harness backlog of ~10 "compliance test
+    multi-session helper, 8.13 EDGEGAP_MOCK_DEPLOY mode,
+    8.14 first canary multi-user friends test, 8.16
+    friends-cascade-on-account-delete, 8.17 party-invite-
+    flow multi-user lifecycle, 8.18 party-to-matchmaking
+    mock-mode flow, 8.19 solo-matchmaking match_ready
+    flow, 8.22 presence game-filter mutual-only check).
+    The blocked-on-harness backlog of ~10 "compliance test
     still pending" notes (1.5, 3.5, 3.9, 5.4–5.11, 6.5b)
-    is now partly converted — keep chipping at the multi-
-    user backlog (next candidate: 8.13 EDGEGAP_MOCK_DEPLOY
-    mode to unblock 8.18 + 8.19).
+    is now partly converted — Tier 1 Go unit tests
+    (8.3–8.10) are the lowest-friction remaining work in
+    Stage 8 (no env/deployment dependencies).
 - **Stages not yet started:**
   - Stage 7 — Resilience (13 open items).
 - **Stages blocked:** none.
@@ -220,11 +235,13 @@ Stage 7 — Resilience (retries, notifications, observability).
    13 items, all open.
 
 Stage 8 — Tests (parallel track, doesn't block features).
-   8/31 shipped 2026-05-13 (8.1 deploy-time go test gate; 8.2
+   11/31 shipped 2026-05-13 (8.1 deploy-time go test gate; 8.2
    staticcheck already running; 8.11 socket harness; 8.12
-   multi_session_anon helper; 8.14 first multi-user friends
-   test as canary; 8.16 friends cascade on account delete;
-   8.17 party invite lifecycle; 8.22 presence mutual-only
+   multi_session_anon helper; 8.13 EDGEGAP_MOCK_DEPLOY mode;
+   8.14 first multi-user friends test as canary; 8.16 friends
+   cascade on account delete; 8.17 party invite lifecycle;
+   8.18 party-to-matchmaking mock-mode flow; 8.19 solo
+   matchmaking match_ready flow; 8.22 presence mutual-only
    filter).
 ```
 
@@ -2217,8 +2234,57 @@ prioritize tests that protect work landing in the current stage.
     user via the existing `compliance_socket_helper`, sharing
     the session-from-token primitive. Keeps each helper
     focused on its concern.
-- [ ] 8.13 `EDGEGAP_MOCK_DEPLOY=1` mode in runtime so tests don't
-  burn real allocations.
+- [x] **8.13 `EDGEGAP_MOCK_DEPLOY=true` mode in runtime**
+      (2026-05-13).
+  - Done — runtime: new `EDGEGAP_MOCK_DEPLOY` env var on
+    `runtime/main.go`. When set to `true`/`1`:
+    - Matchmaker hook registers even when `EDGEGAP_TOKEN` is
+      unset (so a bare test Nakama with just the mock flag
+      boots fully usable).
+    - `EDGEGAP_APP_NAME` / `EDGEGAP_APP_VERSION` / `SIGNALING_
+      DOMAIN` / `SIGNALING_HMAC_SECRET` get reasonable
+      defaults instead of fail-fast on empty (real mode still
+      requires them).
+    - `fleetAllocator.mockDeploy=true` flag short-circuits
+      the real Edgegap API calls. New `synthesizeMockDeploy
+      (now)` helper returns a canned `(deploy, status)` pair
+      with `request_id="mock-<unix_nanos>"`, `public_ip=
+      127.0.0.1`, and a ports map mirroring the real
+      `Dockerfile.edgegap` declaration (4433/UDP +
+      4434/TCP).
+    - The polling loop (`a.edgegap.Status`) and the
+      `waitForServerRegistered` step are skipped; the
+      synthesized status flows straight to the `match_ready`
+      payload builder.
+    - `match_ready` notifications carry a new `"mock": true`
+      field so compliance tests can sanity-check that they
+      really ran against a mock-enabled runtime.
+    - `stopOnErr` and other Edgegap `Stop` calls no-op when
+      `mockDeploy` is true (no real deploy to stop).
+  - Done — runtime_status: new `edgegap_mock_deploy bool`
+    field on the response shape so daily prod-health-check
+    catches a misconfigured prod (mock flipped on by
+    accident). Loud `logger.Warn` block at boot too.
+  - Done — compliance helper: new `is_mock_deploy_mode()`
+    method on `compliance_helper.gd` that calls
+    `runtime_status` and returns the bool. Tests gate on it
+    and pending() against live prod so they never burn paid
+    container-hours.
+  - Decision worth recording: env-var-gated runtime-wide
+    mock mode (Option A from the design call), not per-
+    ticket opt-in. Simpler to reason about; production never
+    sets the env var; test instances flip it on.
+  - Decision worth recording: bare test Nakama with just
+    `EDGEGAP_MOCK_DEPLOY=true` (no `EDGEGAP_TOKEN`) boots
+    cleanly. Without that, every test infra setup would
+    need to fake an Edgegap token + signaling secret. Mock
+    mode short-circuits the real-mode fail-fast and uses
+    placeholder defaults (`mock-app`, `v0`,
+    `mock-signaling.test`, `mock-hmac-secret`).
+  - Decision worth recording: synthetic `request_id` embeds
+    `time.Now().UnixNano()` to avoid storage-row collision
+    when two concurrent mock matches run on the same test
+    Nakama instance.
 - [x] **8.14 `test_friends_multiuser.gd`** (2026-05-13) —
   canary for 8.12.
   - Done: new compliance test exercises the
@@ -2291,9 +2357,84 @@ prioritize tests that protect work landing in the current stage.
     its `delete_one_shot_account` cleanup. Confirms the
     helper handles the after_each teardown across two
     concurrent users without races.
-- [ ] 8.18 `test_party_to_matchmaking.gd` (after 1.1).
-- [ ] 8.19 Un-pend `test_matchmaking.gd`
-  (`pending("realtime-socket test rig not implemented yet")`).
+- [x] **8.18 `test_party_to_matchmaking.gd`** (2026-05-13).
+  - Done: new two-user compliance test under
+    `addons/snoringcat_platform_client/test/compliance/
+    test_party_to_matchmaking.gd`. Walks the full Stage
+    1.1a/1.1b contract:
+    - Mint A + B via `multi_session_anon(2)`.
+    - A creates closed party group, A invites B; test
+      tolerates Nakama 3.25's state=2-direct or state=3-
+      pending shapes (same allowance as 8.17), accepting B
+      via `/join` if state=3.
+    - Both users open Nakama realtime sockets and connect.
+    - A calls `party_start_matchmaking` RPC; test asserts
+      response shape (`ok`, `party_id`, `leader_id`,
+      `member_ids[2]`, `matchmaker_properties.party_id`).
+    - B's socket receives a persistent
+      `party_matchmaking_start` notification; test parses
+      out `matchmaker_properties`.
+    - Both sockets add matchmaker tickets with the shared
+      `party_id` + each user's `game_id` +
+      `client_protocol_version` + `game_mode` (min=max=2).
+    - Both sockets receive `received_matchmaker_matched`
+      then `received_notification` with subject
+      `match_ready`. Test asserts BOTH payloads have the
+      SAME `request_id` (the core party-block guarantee:
+      fleet_allocator allocates one deploy per fan-out, so
+      a same-request-id pair proves no split occurred).
+    - Asserts `request_id` starts with `mock-` and
+      `mock: true` flag is present (sanity-checks mock-mode
+      actually ran).
+    - Asserts per-user `session_ids` differ (each user only
+      gets their own IDs per the fleet_allocator loop).
+    - `after_each` `delete_one_shot_account` for both users
+      hard-deletes via `/v2/account` so the per-run state
+      (party group, matchmaker tickets, match_metadata +
+      synthetic_matches rows) cascades cleanly.
+  - Gated on `is_mock_deploy_mode()` so this never runs
+    against a real prod runtime (would burn 1 paid Edgegap
+    container per test invocation otherwise).
+  - Decision worth recording: inner `_Capture` class for
+    per-user signal capture instead of two parallel pairs
+    of file-scope state vars. Two concurrent test
+    receivers want independent mutable state; the inner
+    class is cleaner than `Dictionary` flags juggled in
+    the test body and lets each capture's signal handlers
+    be ordinary methods.
+- [x] **8.19 Un-pend `test_matchmaking.gd`** (2026-05-13).
+  - Done: replaced the placeholder `pending("realtime-socket
+    test rig not implemented yet")` with a real end-to-end
+    solo-matchmaking test. Walks:
+    - Authenticate one one-shot anonymous user (so
+      concurrent CI runs don't fight over a shared device
+      id's presence row).
+    - Open a Nakama socket and connect.
+    - Wire `received_matchmaker_matched` +
+      `received_notification` handlers BEFORE adding the
+      ticket so a fast matchmaker fire doesn't race.
+    - Add a matchmaker ticket with `min=max=1` (the
+      matchmaker pool fires immediately, exercising the
+      runtime hook + match_ready notification path).
+    - Wait up to ~13s combined for matchmaker_matched +
+      match_ready notification.
+    - Assert payload contract: `mock=true`,
+      `request_id` starts with `mock-`, `server_ip`
+      non-empty, `session_ids` is `[<one>]`,
+      `transport_type` is one of enet/webrtc/websocket,
+      `signaling_url` begins with `wss://`, `ports` non-
+      empty Dictionary.
+  - Gated on `is_mock_deploy_mode()` — same rationale as
+    8.18. Real-mode allocation would burn a paid container
+    even with min=max=1 (the allocator doesn't size-gate
+    on entry count, just walks every entry and allocates
+    a deploy).
+  - Replaces the old `test_matchmaker_hook_registered_via_
+    runtime_status` placeholder test entirely. The check
+    it claimed to do (matchmaker hook registered iff
+    EDGEGAP_TOKEN set + EDGEGAP_APP_NAME populated) is
+    fully covered by `test_version.gd`'s
+    `test_runtime_status_reports_edgegap_config` already.
 - [ ] 8.20 `test_matchmaking_cancel_race.gd`.
 - [ ] 8.21 `test_matchmaking_failure_modes.gd`.
 - [x] **8.22 `test_presence_game_filter.gd`** (2026-05-13).
@@ -3665,6 +3806,69 @@ Security:
     fine functionally, but it'd accrete in `account_deletion_
     queue` storage in the meantime. Strict cleanup keeps the
     table small.
+
+- **2026-05-13:** Stage 8.13 EDGEGAP_MOCK_DEPLOY mode + 8.18
+  party-to-matchmaking + 8.19 solo-matchmaking shipped together
+  (fifth pass). Six design calls worth recording:
+  - **Env-var-gated runtime-wide mock, not per-ticket opt-in.**
+    The design call was between (A) one env var that mocks
+    every allocation runtime-wide, (B) a per-ticket
+    `mock_deploy:"true"` property that opts individual matches
+    in, (C) a hybrid requiring both. Picked (A) for the
+    simpler reasoning surface: prod never sets the env var,
+    test instances flip it on. (B)'s mixed-match semantics
+    (some entries opt in, some don't) would have invented a
+    "what does the allocator do?" question with no clean
+    answer. The price is needing a separate test Nakama for
+    the tests to actually fire, but Stage 8.29's planned
+    docker-compose dev stack covers that.
+  - **Match_ready carries `mock=true`, not just the
+    request_id prefix.** The runtime synthesizes
+    `request_id="mock-<unix_nanos>"`, but a future change to
+    that format would silently break the test's prefix
+    assertion. The `mock: true` flag is the canonical signal;
+    the prefix assertion is belt-and-suspenders. Both fire
+    when present, so a misconfigured prod that flipped the
+    env on by accident would loud-fail at TWO different
+    points client-side (in addition to the
+    `edgegap_mock_deploy` field in runtime_status that the
+    daily prod-health-check job alerts on).
+  - **Bare test Nakama works with just `EDGEGAP_MOCK_DEPLOY=
+    true`.** The real-mode boot requires `EDGEGAP_TOKEN +
+    EDGEGAP_APP_NAME + EDGEGAP_APP_VERSION + SIGNALING_
+    DOMAIN + SIGNALING_HMAC_SECRET` — five env vars. Mock
+    mode falls back to canned defaults for each so a fresh
+    test instance boots without operator pre-config. Real-
+    mode strictness is preserved (any missing var fails
+    fast); only the mock path relaxes.
+  - **`stopOnErr` no-ops in mock mode.** Originally the
+    `a.edgegap.Stop(ctx, deploy.RequestID)` call would have
+    hit a nil pointer in mock mode (the edgegap client is
+    `nil` when no real token is set). Branch added to skip
+    the call. Side benefit: a future audit that finds a
+    mock-mode test producing storage rows can grep on the
+    `mock-` prefix to find them; no real `Stop` ever ran so
+    nothing happened on the Edgegap side either way.
+  - **Per-user `_Capture` inner class for 8.18.** Two
+    concurrent test receivers want independent mutable
+    state. File-scope variables with `_a_` / `_b_` prefixes
+    would have worked but accreted: 8.18 captures
+    `matched_seen`, `match_ready_payload`,
+    `party_matchmaking_start_props`, `failed_subject` per
+    user. The inner class keeps each pair of handlers
+    composable and means the cleanup function takes only the
+    capture object, not 8 separate args. Same pattern any
+    future N-user test will follow.
+  - **`is_mock_deploy_mode()` reads runtime_status, doesn't
+    require a flag-cache.** The test could have read the
+    env directly (impossible — env is on the runtime, not
+    the test) or required a separate `PLATFORM_MOCK_DEPLOY=
+    true` env on the test runner. Instead, the helper hits
+    runtime_status's new `edgegap_mock_deploy` bool. Source
+    of truth is the runtime; test mirrors it via the same
+    diagnostic surface ops already uses. Cost: one extra
+    HTTP round-trip per test. Trivial at compliance suite
+    sizes.
 
 ## How to use this document
 
