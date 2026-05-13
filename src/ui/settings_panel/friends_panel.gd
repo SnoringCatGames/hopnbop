@@ -11,11 +11,13 @@ extends SidePanel
 @export var _loading_spinner_scene: PackedScene
 @export var _add_friend_icon: Texture2D
 @export var _remove_friend_icon: Texture2D
+@export var _block_icon: Texture2D
 @export var _copy_icon: Texture2D
 @export var _sub_panel_trigger_row_scene: PackedScene
 @export var _add_friend_panel_scene: PackedScene
 @export var _friend_request_panel_scene: PackedScene
 @export var _friend_details_panel_scene: PackedScene
+@export var _blocked_users_panel_scene: PackedScene
 
 var _friend_code_label: Label
 var _is_loading := false
@@ -62,6 +64,17 @@ func build_ui() -> void:
 		self)
 	_row_container.add_child(add_row)
 	_connect_row_clicked(add_row)
+
+	# Blocked users trigger row — opens sub-panel (Stage 7.4).
+	var blocked_row: SubPanelTriggerRow = (
+		_sub_panel_trigger_row_scene.instantiate())
+	blocked_row.set_icon(_block_icon)
+	blocked_row.setup(
+		tr("FRIENDS.BLOCKED_USERS"),
+		_blocked_users_panel_scene,
+		self)
+	_row_container.add_child(blocked_row)
+	_connect_row_clicked(blocked_row)
 
 	# Spacer.
 	var list_spacer := Control.new()

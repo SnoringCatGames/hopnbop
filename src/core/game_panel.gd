@@ -555,6 +555,12 @@ func _classify_matchmaking_failure(
 	# the "cancelled by another player" message.
 	if "cancelled" in lower or "cancelled by" in lower:
 		return "LOADING.PEER_CANCELLED"
+	# Stage 7.4: matchmaker aborted because two matched
+	# players have blocked each other. Recoverable; the
+	# user can re-queue and the matchmaker will pair them
+	# with different players.
+	if "blocked" in lower:
+		return "LOADING.BLOCKED_PAIR"
 	if "timeout" in lower or "timed out" in lower:
 		return "LOADING.NO_MATCH_FOUND"
 	# Edgegap allocation surfaced via

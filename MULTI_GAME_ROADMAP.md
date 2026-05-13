@@ -30,65 +30,78 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 7 resilience momentum. **Stage 7.12
-  (max pending friend requests) + 7.13 (friend-code rate-limit)
-  shipped** (2026-05-13, eleventh pass) as a single
-  `BeforeAddFriends` hook in
-  `third_party/snoringcat-platform/runtime/friends_limits.go`.
-  7.12 caps a caller's pending state=1 (INVITE_SENT) entries at
-  50 via a bounded `nk.FriendsList` walk (cap+1 pages of 100 so
-  a pathological list short-circuits without burning round
-  trips), summing `(existing + len(Ids) + len(Usernames))` and
-  rejecting on overflow. 7.13 adds a per-caller sliding-window
-  rate limit of 10 add-by-username calls per 60 s via an
-  in-memory `map[string][]int64` of timestamps guarded by a
-  `sync.Mutex`, with incremental in-place pruning so the window
-  never grows unbounded. Rate-limit state resets on restart
-  (acceptable: gives every user a free fresh budget, not an
-  exploit). The hook short-circuits empty `user_id` (server-to-
-  server callers) and only counts rate against the
-  username-bearing path (`Ids`-only add-incoming-accept and
-  recent-match-add are exempt — neither exposes codes to brute-
-  force). Always on; no env flag. New file-level constants
-  `maxPendingOutgoingFriendRequests=50`,
-  `friendCodeRateLimitCount=10`,
-  `friendCodeRateLimitWindow=60s` with a stable-constants canary
-  test so a future bump can't drift silently. 6 new Go unit
-  tests in `friends_limits_test.go` via a fake clock
-  (respects-limit, slides-window, per-user-isolated,
-  prunes-incrementally, empty-user no-op, constants-stable). No
-  client-side change — the addon surfaces the runtime's error
-  via the existing `request_failed(error)` signal.
-  `go vet && go test && staticcheck` clean; pluginbuilder
-  Docker produces a 19 MB `snoringcat.so`. Submodule
-  `6c57402`; parent bump landed alongside this roadmap edit.
-  Prior session (also 2026-05-13, tenth pass) shipped 7.5
-  friend pagination in `PlatformFriendsApiClient.fetch_friends`
-  (10 pages × 100 entries, atomic local-swap on completion,
-  `_FRIENDS_PAGE_SIZE`/`_FRIENDS_PAGE_CAP` constants).
-  Earlier 2026-05-13 work (still standing): 7.1 allocation retry,
-  7.2 mid-queue cancel teardown (`inflightAllocation` tracker +
+- **Current focus:** Stage 7 resilience momentum. **Stage 7.4
+  (friend block list) shipped** (2026-05-13, twelfth pass) as a
+  full end-to-end feature spanning runtime + client SDK + UI.
+  Server side adds `runtime/block_list.go` with three RPCs
+  (`block_user`, `unblock_user`, `list_blocked_users`) layered
+  over Nakama's native state=3 (BANNED) friend state — Nakama's
+  built-in `FriendsBlock`/`FriendsAdd` semantics give us
+  bidirectional friend-add rejection for free (caller-blocks-
+  target and target-blocks-caller both reject in `AddFriends`
+  without us writing a separate hook). The matchmaker hook
+  (`fleet_allocator.go::OnMatchmakerMatched`) now fires a
+  blocked-pair check before the Edgegap allocation: walks each
+  matched user's BANNED list, runs `findBlockedPairs` over
+  the N×N pair space, and if any directed (A blocked B) edge
+  exists between two matched users, calls
+  `abortBlockedPair` (mirrors `abortProtocolMismatch`) to
+  fan-out per-player `match_failed reason=blocked_pair` so the
+  game-side classifier routes to `LOADING.BLOCKED_PAIR` (new
+  recoverable copy with retry button, not toast-and-bounce).
+  Skipped for solo (<2-player) matches. New constants
+  `blockListPageSize=100` / `blockListPageCap=10` (matches the
+  account-cascade pattern); shared `listBlockedUserIDs` helper
+  drives both the list RPC and the matchmaker filter so both
+  read the same view. Client SDK gains
+  `Platform.friends.block_user/unblock_user/fetch_blocked_users`
+  + `cached_blocked_users` + three new signals
+  (`user_blocked`/`user_unblocked`/`blocked_users_received`) +
+  `is_blocked()` helper. UI: new `FriendDetailsPanel` Block
+  action with type-the-word-style confirm; new
+  `BlockedUsersPanel` sub-panel (lists blocked users with
+  one-tap unblock); FriendsPanel gets a "Blocked Users" entry
+  in the top action stack alongside Add Friend. 8 new
+  translation keys × 13 locales
+  (`FRIENDS.BLOCK`/`UNBLOCK`/`BLOCKED_USERS`/`NO_BLOCKED_USERS`,
+  `CONFIRM.BLOCK_USER`, `TOAST.USER_BLOCKED`/`USER_UNBLOCKED`,
+  `LOADING.BLOCKED_PAIR`). Server tests: 1 new test function
+  in `block_list_test.go` (`TestFindBlockedPairs`) with 8
+  sub-tests locking the pair-detection contract
+  (empty-match, no-blocks, one-way detected, two-way de-dup,
+  pair-order-stable, out-of-match-ignored, self-block-filtered,
+  multiple-pairs-larger-match). `go vet && go test &&
+  staticcheck` clean; pluginbuilder Docker produces a 19 MB
+  `snoringcat.so`. **7.12 + 7.13 abuse hardening shipped to
+  prod** earlier in the same session (build
+  `1bd61db978bc50f87a151e7ceef483aaf496ed42` per the
+  `snoringcat-platform runtime loaded` log line; healthcheck
+  green). Prior 2026-05-13 work (still standing): 7.5 friend
+  pagination, 7.1 allocation retry, 7.2 mid-queue cancel
+  teardown (`inflightAllocation` tracker +
   `cancel_matchmaking_allocation` RPC + LOADING.PEER_CANCELLED
-  fan-out), Tier 2 matchmaking compliance suite (8.20 cancel-race
-  + 8.21 protocol-mismatch), Tier 1 Go unit tests (8.3-8.10, 100
-  cases), 8.1+8.2 deploy gate,
-  8.11/8.12/8.14/8.16/8.17/8.18/8.19/8.22 compliance tests, 8.13
-  EDGEGAP_MOCK_DEPLOY mode, audit-surfaced drift fully resolved.
-  **Next:** Stage 7.4 (friend block list — schema + RPC + UI +
-  matchmaker integration; also unblocks 8.15) is the largest
-  remaining Stage 7 item, well-defined. 7.3 (platform-level push
-  notifications) is the next-cheapest but has heavy cross-
-  platform delivery scope (PWA web-push + FCM + APNS). 7.11
-  (re-introduce observability) is also unblocked; configs are
-  preserved. 8.15 still blocked on 7.4. Tier 3 client unit tests
-  (8.23-8.28) require GUT doubles setup against the addon's
-  GDScript classes; Tier 4 e2e/smoke (8.29-8.31) needs a
-  docker-compose dev stack. Stage 6.11 screens still greenfield
-  with design call needed. **Deploy step pending:** the live
-  runtime is one commit behind HEAD (7.5's submodule bump landed
-  in `d5ba666` but only the addon-side `.gd` changed there; 7.12
-  + 7.13 add Go runtime code that needs a fresh build). Trigger
-  `nakama-runtime.yml` to ship the abuse hardening to prod.
+  fan-out), Tier 2 matchmaking compliance suite (8.20
+  cancel-race + 8.21 protocol-mismatch), Tier 1 Go unit tests
+  (8.3-8.10, 100 cases), 8.1+8.2 deploy gate,
+  8.11/8.12/8.14/8.16/8.17/8.18/8.19/8.22 compliance tests,
+  8.13 EDGEGAP_MOCK_DEPLOY mode, audit-surfaced drift fully
+  resolved. **Next:** **8.15 (`test_friends_block.gd`)** is
+  now unblocked — write a multi-user compliance test that
+  covers add → block → re-add-fails → list-blocked → unblock
+  → re-add-succeeds. 7.3 (push notifications) is the next-
+  cheapest open Stage 7 item but has heavy cross-platform
+  delivery scope (PWA web-push + FCM + APNS). 7.11
+  (observability re-introduction) is also unblocked; configs
+  preserved in `infra/remote/nakama/`. Tier 3 client unit
+  tests (8.23-8.28) require GUT doubles setup against the
+  addon's GDScript classes; Tier 4 e2e/smoke (8.29-8.31)
+  needs a docker-compose dev stack. Stage 6.11 screens still
+  greenfield with design call needed. **Deploy step pending:**
+  the live runtime is one commit behind HEAD — 7.4 adds Go
+  runtime code (new `block_list.go` + `fleet_allocator.go`
+  blocked-pair branch) that needs a fresh build. Trigger
+  `nakama-runtime.yml` once the parent submodule pointer bump
+  lands.
 - **2026-05-13 audit follow-up — drift items resolved later
   the same day:**
   - **Runtime backlog flushed:** the deployed runtime was 24
@@ -157,24 +170,37 @@ See also:
   (b) pivot to Stage 7 resilience (13 open items including
   allocation retry, friend pagination, anonymous-upgrade UI,
   account-merge UI, observability re-introduction).
-- **Last updated:** 2026-05-13 (eleventh pass: Stage 7.12 +
-  7.13 friend-abuse hardening shipped as one BeforeAddFriends
-  hook in `runtime/friends_limits.go`. 50-pending-outgoing cap
-  via bounded `nk.FriendsList` walk + 10/60s per-caller add-by-
-  username rate limit via in-memory sliding window. Empty
-  user_id passes through so server-to-server callers aren't
-  locked out; the rate limit only counts the
-  Usernames-bearing path. Always on, no env flag. 6 new Go
-  tests via a fake clock. `go vet && go test && staticcheck`
-  clean; pluginbuilder Docker produces a 19 MB snoringcat.so.
-  Submodule `6c57402`. Plus prior 2026-05-13 work: 7.5 friend
-  pagination (tenth pass); 7.1 allocation retry, 7.2 mid-queue
-  cancel teardown, Tier 2 matchmaking compliance suite finished
-  (8.20 + 8.21), Tier 1 Go unit tests (8.3-8.10, 100 cases),
-  8.1/8.2 deploy gate, audit-surfaced drift fully resolved,
-  24-commit runtime backlog deployed, first games-cache sync,
-  Phase F finished, stale Edgegap tags pruned, 8.11/8.12/8.14
-  multi-user compliance harness, 8.16/8.17/8.22 multi-user tests,
+- **Last updated:** 2026-05-13 (twelfth pass: Stage 7.4 friend
+  block list shipped end-to-end. Runtime: new `block_list.go`
+  with block_user/unblock_user/list_blocked_users RPCs over
+  Nakama's native state=3 BANNED state (bidirectional add-
+  rejection comes free from Nakama's FriendsAdd). Matchmaker:
+  `fleet_allocator.go::OnMatchmakerMatched` walks each matched
+  user's BANNED list via the shared `listBlockedUserIDs` helper,
+  detects directed pairs via `findBlockedPairs`, and aborts the
+  match before Edgegap allocation via `abortBlockedPair`
+  (mirrors `abortProtocolMismatch`). Client: new
+  Platform.friends.block_user/unblock_user/fetch_blocked_users
+  methods + cached_blocked_users + 3 new signals + is_blocked()
+  helper. UI: Block action row on FriendDetailsPanel +
+  BlockedUsersPanel + Blocked Users entry in FriendsPanel. 8
+  new translation keys × 13 locales. Game-side
+  `_classify_matchmaking_failure` routes `"blocked"` substring
+  to new LOADING.BLOCKED_PAIR (recoverable). 1 new Go test
+  function (`TestFindBlockedPairs`) with 8 sub-tests locking
+  the pair-detection contract. `go vet && go test &&
+  staticcheck` clean. Plus the prior 2026-05-13 hardening
+  deploy: 7.12 + 7.13 (max-pending cap + friend-code rate
+  limit) shipped to prod build
+  `1bd61db978bc50f87a151e7ceef483aaf496ed42`; live runtime
+  green. Prior passes still standing: 7.5 friend pagination,
+  7.1 allocation retry, 7.2 mid-queue cancel teardown, Tier 2
+  matchmaking compliance suite finished (8.20 + 8.21), Tier 1
+  Go unit tests (8.3-8.10, 100 cases), 8.1/8.2 deploy gate,
+  audit-surfaced drift fully resolved, 24-commit runtime
+  backlog deployed, first games-cache sync, Phase F finished,
+  stale Edgegap tags pruned, 8.11/8.12/8.14 multi-user
+  compliance harness, 8.16/8.17/8.22 multi-user tests,
   EDGEGAP_MOCK_DEPLOY mode + 8.18/8.19 mock-mode matchmaking
   tests).
 - **Stages complete:**
@@ -222,14 +248,15 @@ See also:
     8.20 matchmaking cancel-race (cancel-before-match +
     post-match cancel safety), 8.21 protocol-mismatch
     failure mode, 8.22 presence game-filter mutual-only
-    check. Remaining: Tier 2 8.15 (blocked on 7.4 block
-    list), Tier 3 client unit tests with doubles
-    (8.23–8.28), Tier 4 e2e/smoke (8.29–8.31).
+    check. Remaining: Tier 2 8.15 (NOW UNBLOCKED — 7.4
+    landed 2026-05-13), Tier 3 client unit tests with
+    doubles (8.23–8.28), Tier 4 e2e/smoke (8.29–8.31).
 - **Stages in progress (Stage 7 resilience):**
-  - Stage 7 — 5/13 shipped 2026-05-13 (7.1 allocation retry,
-    7.2 mid-queue cancel teardown, 7.5 friend pagination, 7.12
-    max-pending-friend-requests cap, 7.13 friend-code rate-
-    limit). Remaining 8 items are all open and unblocked.
+  - Stage 7 — 6/13 shipped 2026-05-13 (7.1 allocation retry,
+    7.2 mid-queue cancel teardown, 7.4 friend block list, 7.5
+    friend pagination, 7.12 max-pending-friend-requests cap,
+    7.13 friend-code rate-limit). Remaining 7 items are all
+    open and unblocked.
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -272,15 +299,16 @@ Stage 3 (done, 2026-05-12) — game_id scoping: presence
        needed).
    ↓
 Stage 7 — Resilience (retries, notifications, observability).
-   5/13 shipped 2026-05-13 (7.1 allocation retry, 7.2 mid-queue
-   cancel teardown, 7.5 friend pagination, 7.12 max-pending-
-   friend-request cap, 7.13 friend-code rate-limit); 8 open.
+   6/13 shipped 2026-05-13 (7.1 allocation retry, 7.2 mid-queue
+   cancel teardown, 7.4 friend block list, 7.5 friend pagination,
+   7.12 max-pending-friend-request cap, 7.13 friend-code rate-
+   limit); 7 open.
 
 Stage 8 — Tests (parallel track, doesn't block features).
    21/31 shipped 2026-05-13. Tier 1 Go unit tests (8.3–8.10)
    all green; Tier 2 compliance suite has 8.11–8.14 + 8.16–8.22
-   shipped (only 8.15 open, blocked on 7.4); Tier 3 (8.23–
-   8.28) and Tier 4 (8.29–8.31) not yet started.
+   shipped (only 8.15 open, NOW UNBLOCKED by 7.4); Tier 3
+   (8.23–8.28) and Tier 4 (8.29–8.31) not yet started.
 ```
 
 ## Stage 0 — Platform infra extraction (mostly done)
@@ -2397,8 +2425,130 @@ Extract clean code, not bug-laden code.
     7.1 retry compliance test gap. Deferred.
 - [ ] 7.3 Push notification for friend online / party invite / match
   found (currently UI-only toasts; no platform-level push).
-- [ ] 7.4 Friend block list (schema + RPC + UI + matchmaker
-  integration).
+- [x] **7.4 Friend block list (schema + RPC + UI + matchmaker
+  integration)** (2026-05-13).
+  - Done — runtime: new
+    `third_party/snoringcat-platform/runtime/block_list.go`
+    registers three client-session RPCs over Nakama's native
+    state=3 (BANNED) friend state. `block_user` calls
+    `nk.FriendsBlock` (server-side: removes any prior
+    friendship/pending state and writes the BANNED row);
+    `unblock_user` calls `nk.FriendsDelete` against the
+    state=3 row (idempotent — no-op if the row is missing);
+    `list_blocked_users` walks `nk.FriendsList(state=3)`
+    paginated to `blockListPageCap=10` pages × 100 entries.
+    All three require `requireClientSession` +
+    `requireGameID` like every other game-scoped RPC. The
+    shared `listBlockedUserIDs` helper drives both the list
+    RPC and the matchmaker filter so both read the same
+    view; `blockedUserIDSet` is a thin set-only wrapper for
+    the matchmaker hot path. New page-cap constants
+    (`blockListPageSize=100`, `blockListPageCap=10`) mirror
+    the existing account-cascade pattern.
+  - Done — runtime: matchmaker hook
+    `fleet_allocator.go::OnMatchmakerMatched` fires a
+    blocked-pair check after the protocol-mismatch check
+    and before the Edgegap allocation. Walks each matched
+    user's BANNED list once (N reads for an N-player
+    match), feeds the resulting `map[string]map[string]struct{}`
+    into `findBlockedPairs`, and if any directed (A blocked B)
+    edge exists between two matched users, calls the new
+    `abortBlockedPair` helper. Skipped for solo (<2-player)
+    matches so the synthetic-probe path stays clean.
+    `abortBlockedPair` mirrors `abortProtocolMismatch`:
+    fans `match_failed reason=blocked_pair` to every matched
+    user with per-player tailoring (named-in-pair users get
+    "you and another player have blocked each other"; bystanders
+    get "two matched players have blocked each other"). On the
+    game side `_classify_matchmaking_failure` routes the
+    `"blocked"` substring to `LOADING.BLOCKED_PAIR` (recoverable
+    + retry button on the loading screen, not toast-and-bounce).
+  - Done — addon: `PlatformFriendsApiClient` adds three new
+    methods (`block_user`, `unblock_user`, `fetch_blocked_users`)
+    each wrapping the corresponding RPC; new
+    `cached_blocked_users: Array[Dictionary]` field; three new
+    signals (`user_blocked` / `user_unblocked` /
+    `blocked_users_received`); new `is_blocked()` helper.
+    `block_user` proactively prunes the blocked user from
+    `cached_friends` / `cached_sent_requests` /
+    `cached_incoming_requests` and inserts into
+    `cached_blocked_users` so the UI updates without a round
+    trip.
+  - Done — UI: `FriendDetailsPanel` gets a Block action row
+    (after Remove) with a confirm dialog quoting the friend's
+    display name. New `BlockedUsersPanel` (extends `SidePanel`)
+    lists blocked users with one-tap unblock; entry from
+    `FriendsPanel` via a `SubPanelTriggerRow` ("Blocked Users")
+    in the top action stack alongside Add Friend.
+  - Done — i18n: 8 new translation keys × 13 locales:
+    `FRIENDS.BLOCK`, `FRIENDS.UNBLOCK`, `FRIENDS.BLOCKED_USERS`,
+    `FRIENDS.NO_BLOCKED_USERS`, `CONFIRM.BLOCK_USER`,
+    `TOAST.USER_BLOCKED`, `TOAST.USER_UNBLOCKED`,
+    `LOADING.BLOCKED_PAIR`. CSV validated at 14 fields per
+    line for the new entries (the pre-existing legacy line 119
+    with comma drift is untouched); .translation binaries
+    re-imported via `godot --headless --import`. Non-English
+    translations are best-effort and worth a native-speaker
+    review pass.
+  - Done — tests: 1 new test function in
+    `block_list_test.go` (`TestFindBlockedPairs`) with 8
+    sub-tests locking the pair-detection contract:
+    empty-match → no pairs, no-blocks → no pairs, one-way
+    block detected, two-way block de-duplicated to single
+    pair, pair order stable (lower user_id first regardless
+    of which direction was issued), block outside match
+    ignored, self-block filtered out, multiple pairs in a
+    larger match. `go vet ./... && go test ./... &&
+    staticcheck ./...` clean; pluginbuilder Docker produces
+    a 19 MB `snoringcat.so`.
+  - Decision worth recording: use Nakama's built-in state=3
+    BANNED rather than a custom storage schema. The
+    `FriendsBlock`/`FriendsDelete`/`FriendsList(state=3)`
+    primitives give us persistence + bidirectional add-
+    rejection for free; a custom schema would need its own
+    BeforeAddFriends hook and a separate cascade clean-up in
+    `account.go`. Nakama's existing friends-cascade in
+    `delete_account` already deletes state=3 rows alongside
+    state=0/1/2 because it uses `FriendsDelete` (state-
+    agnostic), so the block list cleanly inherits GDPR
+    compliance without extra plumbing.
+  - Decision worth recording: blocked-pair check fires
+    *after* protocol-mismatch and *before* Edgegap
+    allocation. The protocol check is cheaper (no I/O —
+    reads from the games cache) so it should short-circuit
+    first when a stale client is in the mix. The block
+    check is N reads against Nakama's friends table; cheap
+    relative to an Edgegap allocation (which takes seconds
+    of real time) but expensive enough that we wouldn't
+    want it in the matchmaker query itself. Future
+    optimization could push the block list into ticket
+    properties so the matchmaker rejects pairings without
+    even reaching `OnMatchmakerMatched`, but that requires
+    serializing the list into a query-friendly form and
+    re-pushing on every block/unblock — not worth the
+    complexity until block lists become a hot path.
+  - Decision worth recording: cross-game, not per-game.
+    Blocking is conceptually about avoiding a person, not a
+    game; matches Nakama's friends-are-cross-game model.
+    Sessions still need a valid `game_id` to call any
+    block-list RPC, but the storage row itself isn't scoped
+    by game_id. If a future game wants per-game block lists
+    we can layer that as a separate scoped collection
+    without disturbing the cross-game core.
+  - Known limitation: no end-to-end compliance test yet.
+    Stage 8.15 (`test_friends_block.gd`) is now unblocked
+    and should cover: A authenticates → A blocks B → A
+    `add_friend(B)` fails → A lists blocked → A unblocks B
+    → A re-adds B succeeds → both in a match → matchmaker
+    fan-out `match_failed reason=blocked_pair`. Tier 2
+    socket-harness mock-mode test against the live
+    runtime is the natural fit.
+  - Known limitation: ships with a reused
+    `remove_friend_icon.png` for the Block action and
+    Blocked Users entry. A dedicated block / no-entry icon
+    would be a tighter visual signal but isn't blocking;
+    flagged as a future polish pass alongside the broader
+    icon-audit work.
 - [x] **7.5 Friend pagination (>100 friends; currently silently
   truncated at `friends_api_client.gd:56`)** (2026-05-13).
   - Done — addon: `PlatformFriendsApiClient.fetch_friends`
@@ -2774,7 +2924,13 @@ prioritize tests that protect work landing in the current stage.
     party-to-matchmaking, 8.22 presence-game-filter, 8.15
     block-list, 8.16 friends-cascade-on-account-delete) reads
     the same pattern.
-- [ ] 8.15 `test_friends_block.gd` (after 7.4).
+- [ ] 8.15 `test_friends_block.gd` (now unblocked — 7.4 landed
+  2026-05-13). Coverage target: A blocks B → A
+  add_friend(B) fails → A list_blocked → A unblocks B → A
+  add_friend(B) succeeds → matchmaker fan-out
+  `match_failed reason=blocked_pair` when both are matched.
+  Tier 2 socket-harness mock-mode test against the live
+  runtime is the natural fit.
 - [x] **8.16 `test_friends_account_delete_cascade.gd`** (2026-05-13).
   - Done: new two-user compliance test under
     `addons/snoringcat_platform_client/test/compliance/

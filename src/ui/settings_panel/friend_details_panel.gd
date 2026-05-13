@@ -9,6 +9,7 @@ extends SidePanel
 @export var _invite_icon: Texture2D
 @export var _kick_icon: Texture2D
 @export var _remove_icon: Texture2D
+@export var _block_icon: Texture2D
 
 var _friend_id: String
 var _display_name: String
@@ -16,6 +17,7 @@ var _is_online: bool
 var _invite_row: ActionRow
 var _kick_row: ActionRow
 var _remove_row: ActionRow
+var _block_row: ActionRow
 
 
 func set_friend_data(
@@ -107,6 +109,15 @@ func build_ui() -> void:
 	_row_container.add_child(_remove_row)
 	_connect_row_clicked(_remove_row)
 
+	# Block user row (Stage 7.4).
+	_block_row = ActionRow.new()
+	_block_row.setup_actions(
+		_on_block_pressed, _on_block_pressed)
+	_block_row.setup_label(
+		tr("FRIENDS.BLOCK"), _block_icon)
+	_row_container.add_child(_block_row)
+	_connect_row_clicked(_block_row)
+
 	# Bottom padding.
 	var bottom_spacer := Control.new()
 	bottom_spacer.custom_minimum_size = (
@@ -120,6 +131,8 @@ func build_ui() -> void:
 		_on_kick_response)
 	Platform.friends.friend_removed.connect(
 		_on_remove_response)
+	Platform.friends.user_blocked.connect(
+		_on_block_response)
 	Platform.party.request_failed.connect(
 		_on_party_request_failed)
 	Platform.friends.request_failed.connect(
@@ -154,6 +167,10 @@ func _exit_tree() -> void:
 					_on_remove_response):
 			friends_client.friend_removed\
 				.disconnect(_on_remove_response)
+		if friends_client.user_blocked\
+				.is_connected(_on_block_response):
+			friends_client.user_blocked\
+				.disconnect(_on_block_response)
 		if friends_client.request_failed\
 				.is_connected(
 					_on_friends_request_failed):
@@ -210,6 +227,18 @@ func _on_remove_pressed() -> void:
 	)
 
 
+func _on_block_pressed() -> void:
+	open_confirm_dialog(
+		tr("CONFIRM.BLOCK_USER")
+		% _display_name,
+		tr("FRIENDS.BLOCK"),
+		func() -> void:
+			_block_row.disabled = true
+			Platform.friends.block_user(_friend_id),
+		tr("CONFIRM.CANCEL"),
+	)
+
+
 func _on_invite_response(
 	_data: Dictionary,
 ) -> void:
@@ -237,6 +266,19 @@ func _on_remove_response(
 		manager.pop_panel()
 
 
+func _on_block_response(
+	_data: Dictionary,
+) -> void:
+	if is_queued_for_deletion():
+		return
+	if is_instance_valid(G.toast_overlay):
+		G.toast_overlay.show_toast(
+			tr("TOAST.USER_BLOCKED")
+			% _display_name)
+	if is_instance_valid(manager):
+		manager.pop_panel()
+
+
 func _on_party_request_failed(
 	_error: String,
 ) -> void:
@@ -255,3 +297,5 @@ func _on_friends_request_failed(
 		return
 	if is_instance_valid(_remove_row):
 		_remove_row.disabled = false
+	if is_instance_valid(_block_row):
+		_block_row.disabled = false
