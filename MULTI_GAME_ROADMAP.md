@@ -30,32 +30,59 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 8 compliance fill-in. **Stage 8.15
-  (`test_friends_block.gd`) shipped** (2026-05-13, thirteenth
-  pass) — the Stage 7.4 follow-up compliance test landed end-to-
-  end. Two tests in one file: (1) single-user block-list
-  lifecycle (`test_block_list_lifecycle_bidirectional_add_rejection`):
-  walks block_user → list_blocked_users contains B → self-block
-  rejected → A→B add_friend silently no-ops AND A's view of B
-  stays state=3 BANNED → B→A add_friend silently no-ops AND
-  B's row never reaches state=1 INVITE_SENT (verifies the
-  bidirectional rejection contract via friend-state assertions
-  rather than HTTP-status; Nakama returns 200 OK even when
-  every target is silently skipped — caught in the first test
-  run, fixed by switching the assertion to read the actual
-  friend state via /v2/friend) → unblock → list_blocked_users
-  no longer contains B → A→B add_friend now creates state=1
-  on A's side. 20 asserts green against live Nakama.
-  (2) `test_blocked_pair_aborts_matchmaker_fanout`: full
-  matchmaker abort path, mock-mode gated. A blocks B, both
-  open sockets, both enqueue min=max=2 tickets, asserts both
-  receive `match_failed reason=blocked_pair` AND neither
-  receives `match_ready`. Pends correctly against live prod
-  (no EDGEGAP_MOCK_DEPLOY). Test file uses the existing
-  `_Capture` inner-class pattern from
-  `test_party_to_matchmaking.gd`. **Prior pass (Stage 7.4
-  friend block list) shipped** (2026-05-13, twelfth pass) as a
-  full end-to-end feature spanning runtime + client SDK + UI.
+- **Current focus:** Stage 7 resilience fill-in. **Stage 7.7
+  (GDPR cascade verification) + 7.6 (recent-players list)
+  shipped** (2026-05-13, fourteenth pass). 7.7 added a new
+  compliance test `test_account_delete_cascade_surfaces.gd`
+  that seeds presence + a party-prefixed group + 2 user-owned
+  storage rows for a fresh account, calls `delete_account`,
+  and asserts every surface clears while the
+  `account_deletion_queue` audit row is preserved. The test
+  exposed a real GDPR bug in the cascade and in
+  `export_player_data`: both passed empty collection to
+  `nk.StorageList`, whose underlying SQL has
+  `WHERE collection = $1`, so the calls silently no-op'd
+  for "list all collections" semantics. User-owned storage
+  rows survived every account deletion since Stage 1.4
+  shipped. Fixed via a direct SQL DELETE in the cascade
+  (preserving the audit row via `collection != $2`) and a
+  direct SQL SELECT in the export (capped at 1000 rows,
+  explicit `::uuid` cast on user_id for driver-portability).
+  20/20 cascade asserts green post-fix against live runtime;
+  prior 8.16 friends cascade still green. **7.6 (recent-
+  players list)** shipped as a full feature in the same
+  pass: new `runtime/recent_players.go` with
+  `writeRecentPlayersForMatch` hook on `match_end` (records
+  N×(N-1) per-pair rows keyed by other-user-id so re-matching
+  the same player overwrites cleanly) + new
+  `list_recent_players` client RPC (sorted by matched_at
+  desc, capped at 50). Synthetic-match gating removed from
+  the recent-players write so mock-deploy and any future
+  synthetic multi-player flow records too; helper already
+  short-circuits on solo matches. Client SDK additions on
+  `PlatformFriendsApiClient`: `cached_recent_players`,
+  `fetch_recent_players()`, `recent_players_received` signal,
+  `is_recent_players_busy()` guard. UI: new
+  `RecentPlayersPanel` sub-panel (Add Friend per row,
+  already-friends / pending-request / blocked rows filtered
+  out client-side) + `FRIENDS.RECENT_PLAYERS` trigger row in
+  the FriendsPanel action stack between Add Friend and
+  Blocked Users. 2 new translation keys × 13 locales. 5 new
+  Go test functions (24 sub-tests) lock the pair-count,
+  dedup, [deleted]-other filtering, value-shape, sort, and
+  cap contracts. New compliance test `test_recent_players.gd`
+  with 2 tests / 66 asserts covers the empty-list contract
+  for fresh users and the desc-sort + cap behavior on
+  seeded rows (writes directly via `/v2/storage` with
+  `permission_write=1` divergence documented in the test).
+  Both submodule deploys ran cleanly (build `628fc3a` live);
+  4 cascade + recent-players tests green. **Prior pass
+  (Stage 8.15) shipped** (2026-05-13, thirteenth pass) —
+  two-test compliance file covering (a) single-user block-
+  list lifecycle with bidirectional add-rejection verified
+  via friend-state reads and (b) matchmaker blocked-pair
+  abort fan-out, mock-mode gated. **Stage 7.4
+  friend block list (twelfth pass)** shipped end-to-end
   Server side adds `runtime/block_list.go` with three RPCs
   (`block_user`, `unblock_user`, `list_blocked_users`) layered
   over Nakama's native state=3 (BANNED) friend state — Nakama's
@@ -112,8 +139,7 @@ See also:
   next-cheapest open Stage 7 item but has heavy cross-platform
   delivery scope (PWA web-push + FCM + APNS). 7.11
   (observability re-introduction) is also unblocked; configs
-  preserved in `infra/remote/nakama/`. 7.6 (recent-players
-  list), 7.7 (GDPR cascade verification), 7.8 (account-merge
+  preserved in `infra/remote/nakama/`. 7.8 (account-merge
   UI), 7.9 (anonymous-upgrade UI), and 7.10 (mid-match rejoin
   — design call required) are all open. Tier 3 client unit
   tests (8.23-8.28) require GUT doubles setup against the
@@ -121,9 +147,9 @@ See also:
   needs a docker-compose dev stack. Stage 6.11 screens still
   greenfield with design call needed. **Deploy status:** the
   live runtime is current — Nakama Runtime Deploy at
-  2026-05-13T22:16:11Z ran parent SHA `a35c76c` (Stage 7.4
-  submodule bump commit), so block_list.go + the
-  fleet_allocator blocked-pair branch are now live.
+  2026-05-13T23:27:48Z ran parent SHA `628fc3a` (Stage 7.6
+  submodule bump commit), so the recent_players RPC + the
+  GDPR storage scrub fix are now live.
 - **2026-05-13 audit follow-up — drift items resolved later
   the same day:**
   - **Runtime backlog flushed:** the deployed runtime was 24
@@ -192,16 +218,31 @@ See also:
   (b) pivot to Stage 7 resilience (13 open items including
   allocation retry, friend pagination, anonymous-upgrade UI,
   account-merge UI, observability re-introduction).
-- **Last updated:** 2026-05-13 (thirteenth pass: Stage 8.15
-  `test_friends_block.gd` shipped — two-test compliance file
-  covering (a) single-user block-list lifecycle with
-  bidirectional add-rejection verified via friend-state reads,
-  (b) matchmaker blocked-pair abort fan-out, mock-mode gated.
-  20 asserts green against live Nakama; second test pends
-  correctly on prod. Plus the 7.4 runtime deploy was confirmed
-  live — Nakama Runtime Deploy at 2026-05-13T22:16:11Z ran
-  parent SHA `a35c76c` so block_list.go + the fleet_allocator
-  blocked-pair branch are now in prod. Prior twelfth pass:
+- **Last updated:** 2026-05-13 (fourteenth pass: Stage 7.7
+  GDPR cascade verification + 7.6 recent-players list shipped.
+  7.7's `test_account_delete_cascade_surfaces.gd` caught a
+  real bug (`nk.StorageList` with empty collection silently
+  no-op'd because Nakama's SQL has WHERE collection = $1, so
+  the cascade's user-storage scrub AND the GDPR export both
+  silently dropped every user-owned game-side row since 1.4
+  shipped). Fixed via direct SQL DELETE in account.go and
+  direct SQL SELECT in player_data.go, both with explicit
+  ::uuid cast. 7.6 ships the full recent-opponents feature
+  end-to-end: runtime hook on match_end writes N*(N-1)
+  per-pair rows, new list_recent_players RPC returns sorted
+  + capped, client SDK adds fetch + cache + signal,
+  RecentPlayersPanel + FriendsPanel entry, 2 translation
+  keys × 13 locales, 5 Go test functions (24 sub-tests),
+  new compliance test (2 tests / 66 asserts). Live runtime
+  on build `628fc3a`; 4 compliance tests across 7.7 + 7.6 +
+  8.16 regression pass green. Prior thirteenth pass: Stage
+  8.15 `test_friends_block.gd` shipped — two-test compliance
+  file covering (a) single-user block-list lifecycle with
+  bidirectional add-rejection verified via friend-state
+  reads, (b) matchmaker blocked-pair abort fan-out, mock-
+  mode gated. 20 asserts green against live Nakama; second
+  test pends correctly on prod. Plus the 7.4 runtime deploy
+  confirmed live. Prior twelfth pass:
   Stage 7.4 friend block list shipped end-to-end. Runtime:
   new `block_list.go`
   with block_user/unblock_user/list_blocked_users RPCs over
@@ -285,11 +326,12 @@ See also:
     tests with doubles (8.23–8.28), Tier 4 e2e/smoke
     (8.29–8.31).
 - **Stages in progress (Stage 7 resilience):**
-  - Stage 7 — 6/13 shipped 2026-05-13 (7.1 allocation retry,
+  - Stage 7 — 8/13 shipped 2026-05-13 (7.1 allocation retry,
     7.2 mid-queue cancel teardown, 7.4 friend block list, 7.5
-    friend pagination, 7.12 max-pending-friend-requests cap,
-    7.13 friend-code rate-limit). Remaining 7 items are all
-    open and unblocked.
+    friend pagination, 7.6 recent-players list, 7.7 GDPR
+    cascade verification + fix, 7.12 max-pending-friend-
+    requests cap, 7.13 friend-code rate-limit). Remaining 5
+    items are all open and unblocked.
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -332,10 +374,11 @@ Stage 3 (done, 2026-05-12) — game_id scoping: presence
        needed).
    ↓
 Stage 7 — Resilience (retries, notifications, observability).
-   6/13 shipped 2026-05-13 (7.1 allocation retry, 7.2 mid-queue
+   8/13 shipped 2026-05-13 (7.1 allocation retry, 7.2 mid-queue
    cancel teardown, 7.4 friend block list, 7.5 friend pagination,
+   7.6 recent-players list, 7.7 GDPR cascade verification + fix,
    7.12 max-pending-friend-request cap, 7.13 friend-code rate-
-   limit); 7 open.
+   limit); 5 open (7.3, 7.8, 7.9, 7.10, 7.11).
 
 Stage 8 — Tests (parallel track, doesn't block features).
    22/31 shipped 2026-05-13. Tier 1 Go unit tests (8.3–8.10)
@@ -2630,9 +2673,163 @@ Extract clean code, not bug-laden code.
     exception hit. Swapping locals in at the end keeps the
     cache consistent across the entire pagination — either the
     full list (capped) is visible or the prior state is.
-- [ ] 7.6 Recent-players list.
-- [ ] 7.7 Full GDPR cascade verification (1.4 covers RPC; this
-  verifies every state surface clears).
+- [x] **7.6 Recent-players list** (2026-05-13).
+  - Done — runtime: new
+    `third_party/snoringcat-platform/runtime/recent_players.go`.
+    `writeRecentPlayersForMatch` hooks into `MatchEndRpc`
+    (outside the `if !synthetic` block — the helper short-
+    circuits on solo matches so the synthetic-probe path
+    stays a no-op without explicit gating). Resolves matched
+    users' display names + usernames via one `UsersGetId`
+    call, then composes N×(N-1) per-pair `StorageWrite`s.
+    Each row is keyed by the OTHER user's id and owned by
+    THIS user, so re-matching the same player just overwrites
+    `matched_at` rather than appending a duplicate row.
+    Soft-deleted users (`display_name == anonymizedDisplayName`)
+    are filtered as the `other` side so a player mid-cascade
+    doesn't get ghost rows in fresh recent-players lists.
+  - Done — runtime: new `list_recent_players` client-session
+    RPC (`requireClientSession` + `requireGameID` like every
+    other game-scoped RPC). Paginates the caller's
+    `recent_players` storage via `nk.StorageList` (collection
+    is non-empty here, unlike the cascade scrub bug 7.7 fixed)
+    capped at 5 pages × 100 = 500 rows, then sorts by
+    `matched_at` desc and truncates to `recentPlayersCap=50`.
+    Response shape: `{recent_players: [{user_id, username,
+    display_name, matched_at}]}`.
+  - Done — addon: `PlatformFriendsApiClient` adds
+    `cached_recent_players: Array[Dictionary]`,
+    `fetch_recent_players()` method, `recent_players_received`
+    signal, and `is_recent_players_busy()` concurrency guard.
+    Follows the same shape as the existing
+    `fetch_blocked_users` flow.
+  - Done — UI: new `src/ui/settings_panel/recent_players_panel.{gd,tscn}`
+    (extends `SidePanel`). Each row renders display_name + an
+    Add Friend action via `ActionRow` + the existing
+    `_add_friend_icon`. Client-side filter excludes rows
+    already in `cached_friends` / `cached_sent_requests` /
+    `cached_blocked_users` so the list stays focused on
+    actionable opponents. `FriendsPanel` gets a new
+    "Recent Players" `SubPanelTriggerRow` between Add Friend
+    and Blocked Users in the top action stack.
+  - Done — i18n: 2 new translation keys × 13 locales
+    (`FRIENDS.RECENT_PLAYERS`, `FRIENDS.NO_RECENT_PLAYERS`).
+    CSV verified at 14 fields per line; `.translation`
+    binaries regenerated via `godot --headless --import`.
+    Non-English translations are best-effort and worth a
+    native-speaker review pass.
+  - Done — tests: 5 new Go test functions in
+    `recent_players_test.go` (24 sub-tests) lock the pure
+    helpers: `uniqueUserIDs` (dedup, drops-empty, preserves-
+    order, empty-input), `buildRecentPlayerWritesPairCount`
+    (2-player → 2 writes, 4-player → 12 writes, solo → 0,
+    missing-other dropped, [deleted]-other dropped, self-pair
+    skipped), `buildRecentPlayerWritesValueShape` (locks the
+    JSON shape + collection + permission contract), and
+    `sortAndCapRecentPlayers` (desc by matched_at, cap
+    truncation, under-cap no-op, stable on ties, empty input).
+    `TestRecentPlayersCapConstantStable` canary guards the
+    50-row cap against silent bumps. `go vet && go test &&
+    staticcheck` clean; pluginbuilder Docker produces a
+    19 MB `snoringcat.so`.
+  - Done — compliance: new
+    `addons/snoringcat_platform_client/test/compliance/test_recent_players.gd`
+    with 2 tests / 66 asserts.
+    `test_list_recent_players_returns_empty_for_fresh_user`
+    locks the empty-list contract; `test_list_recent_players_sorts_by_matched_at_desc_and_caps`
+    seeds `recentPlayersCap + 3 = 53` fake rows directly via
+    `/v2/storage` and asserts the response is exactly 50
+    entries with the newest seeded row first and the oldest
+    truncated. The seeded rows use `permission_write=1`
+    (owner-writable) to bypass the production `0` (server-
+    only) since `/v2/storage` only accepts bearer-auth user
+    writes; the test code documents the divergence in
+    `_seed_row`'s comment.
+  - Decision worth recording: per-pair writes happen even on
+    synthetic matches because the synthetic-probe flow is
+    1-player and the helper's `if len(ids) < 2` already
+    short-circuits. Gating on `synthetic` would have
+    foreclosed future synthetic multi-player flows from
+    recording recent-players without an extra plumbing pass.
+  - Decision worth recording: key = OTHER user's id (not a
+    request_id or timestamp). The natural-dedup behavior is
+    the point — playing someone twice should refresh their
+    row, not duplicate it. Sorting/capping happens at read
+    time so the storage itself isn't pruned; the cap is a
+    response-shaping concern, and storage rows survive until
+    the GDPR cascade scrubs them on account delete.
+  - Decision worth recording: cap of 50 entries. High enough
+    to capture a decent session's worth of opponents; low
+    enough that the response fits in a single render pass on
+    the side panel. Subject to revisit if real usage shows
+    players want a longer list.
+  - Decision worth recording: client filters already-friends
+    / pending-request / blocked players out of the rendered
+    list rather than the server pruning them from the
+    response. Keeps the server response stable (same shape
+    regardless of who's reading), and the filter logic
+    re-runs on every panel paint so a fresh add-friend
+    accept immediately removes that row.
+- [x] **7.7 Full GDPR cascade verification** (2026-05-13).
+  - Done — compliance: new
+    `addons/snoringcat_platform_client/test/compliance/test_account_delete_cascade_surfaces.gd`
+    (single test, 20 asserts) extends 8.16 (friends cascade)
+    to cover every other state surface the cascade should
+    clear. Seeds: presence row via `update_and_get_presence`,
+    a party-prefixed group with the user as creator, and 2
+    user-owned storage rows in a custom collection. Asserts
+    each surface clears post-`delete_account` AND the
+    `account_deletion_queue` audit row is preserved via
+    `get_account_deletion_status` returning `pending=true`.
+  - Done — runtime fix: the test exposed a real GDPR bug.
+    `account.go`'s cascade and `player_data.go`'s
+    `export_player_data` both called
+    `nk.StorageList(ctx, "", userID, "", limit, cursor)`
+    expecting "all collections" semantics. Nakama's
+    underlying SQL has `WHERE collection = $1`, so an empty
+    collection matches zero rows — user-owned storage was
+    silently surviving every account deletion since Stage
+    1.4 shipped, and GDPR data exports returned empty
+    `storage_objects` regardless of the user's real rows.
+    Fixed both via direct SQL in the same pass:
+    - `account.go::deleteAccountRpc` now runs a single
+      `DELETE FROM storage WHERE user_id = $1::uuid AND
+      collection != $2` with `accountDeletionCollection`
+      as the carve-out. Threaded `db` through the factory.
+    - `player_data.go::exportPlayerDataRpc` now runs
+      `SELECT collection, key, value, create_time, update_time
+      FROM storage WHERE user_id = $1::uuid ORDER BY
+      collection, key LIMIT 1000`. Same threading.
+    Both casts are explicit `::uuid` to avoid relying on
+    implicit text-to-uuid coercion across pg-driver
+    versions.
+  - Verification: pre-fix the test had 19/20 asserts green
+    with only the storage-row count failing (2 survived);
+    post-fix 20/20 green against the deployed runtime
+    (build `628fc3a`). 8.16 friend cascade re-run also
+    green so the SQL fix didn't regress the friends side.
+  - Decision worth recording: direct SQL rather than
+    `nk.StorageList` → `nk.StorageDelete` per-collection.
+    The list-then-delete loop would require enumerating
+    every collection any game has ever written to (the
+    test caught the bug specifically because the cascade
+    didn't know about arbitrary collection names); a single
+    SQL DELETE scrubs all of them in one round trip and is
+    safe to do bypassing nk because storage has no Nakama-
+    side cache layer to invalidate.
+  - Decision worth recording: 1000-row cap on the export
+    SELECT. A pathological account with > 1000 rows would
+    have an export response too large to be useful anyway,
+    and the cap keeps a single export call from blocking
+    Nakama for a long time on Postgres.
+  - Known limitation: the leaderboard cascade isn't
+    exercised by the new test (it would require seeding a
+    leaderboard record, which compliance tests can't do
+    cleanly without a real match). The existing Go unit
+    test `TestLeaderboardIDsToScrubPrefixesAndLegacy`
+    already locks the cascade's leaderboard ID derivation;
+    end-to-end leaderboard clearing remains exercised only
+    by manual smoke + the live `delete_account` execution.
 - [ ] 7.8 Account-merge flow UI (referenced by `_pending_merge_token`
   but no UI exists today).
 - [ ] 7.9 Anonymous → permanent upgrade UI.
