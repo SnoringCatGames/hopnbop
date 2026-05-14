@@ -43,10 +43,11 @@ var _pending_level_scene: PackedScene
 var _session_poll_timer: Timer
 var _session_poll_http: HTTPRequest
 
-## Stage 7.10: handles client-side reconnect during the
-## server-side grace window. Captures connection params from
-## the most recent match-ready, listens for unexpected
-## disconnects, and drives the retry loop. ENet-only in v1.
+## Stage 7.10 + 7.10b: handles client-side reconnect during
+## the server-side grace window. Captures connection params
+## from the most recent match-ready, listens for unexpected
+## disconnects, and drives the retry loop. Supports all
+## three transports.
 var reconnect_handler: ReconnectHandler
 
 var match_state: GameMatchState:
@@ -544,11 +545,11 @@ func _on_connection_lost(
 				and not G.match_state
 					.is_match_active
 			)
-			# Stage 7.10: if the disconnect is mid-match
-			# AND we have valid match params AND the
-			# transport supports reconnect (ENet-only in
-			# v1), defer the exit and start a reconnect
-			# loop instead. Server holds the slot for 30s.
+			# Stage 7.10 + 7.10b: if the disconnect is
+			# mid-match AND we have valid match params,
+			# defer the exit and start a reconnect loop
+			# instead. Server holds the slot for 30s. All
+			# three transports are supported as of 7.10b.
 			# A failed reconnect cycle fans out via
 			# _on_reconnect_failed which routes back
 			# through the normal exit-match path.

@@ -1,7 +1,7 @@
 class_name ReconnectHandler
 extends Node
 ## Drives the client-side reconnect loop during the 30s
-## server-side grace window (Stage 7.10).
+## server-side grace window (Stage 7.10 + 7.10b).
 ##
 ## Captures the latest match-ready connection params
 ## (server_ip, server_port, signaling_url, session_ids) so a
@@ -12,8 +12,13 @@ extends Node
 ## reconnecting client's PlayerState slot + score survive
 ## the disconnect.
 ##
-## ENet-only in v1. WebRTC + WebSocket reconnect needs
-## signaling re-negotiation and is deferred to a follow-up.
+## Supports all three transports (ENet, WebSocket, WebRTC)
+## as of 7.10b. The NetworkConnector's transport-specific
+## re-dial paths handle their own setup (WebRTC re-runs
+## signaling, WebSocket re-handshakes TLS). The retry
+## interval is shared across transports; WebRTC reconnects
+## may use most of a 5s window on the signaling exchange
+## while ENet redials in milliseconds.
 
 ## Emitted when a reconnect attempt cycle begins (i.e., an
 ## unexpected disconnect arrived during an active match and
@@ -107,14 +112,11 @@ func is_reconnecting() -> bool:
 
 
 ## Can we usefully retry? True iff we have valid match
-## params AND the transport is ENet (v1 limitation).
+## params. All three transports (ENet, WebSocket, WebRTC)
+## route through the same `client_connect_to_server` path
+## which handles their respective re-dial mechanics.
 func can_attempt_reconnect() -> bool:
 	if _server_ip.is_empty() or _server_port <= 0:
-		return false
-	# Web/WebRTC clients are deferred to a follow-up
-	# because their reconnect needs signaling re-
-	# negotiation (a deeper transport-specific path).
-	if _transport_type != NetworkSettings.TransportType.ENET:
 		return false
 	return true
 

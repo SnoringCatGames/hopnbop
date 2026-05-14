@@ -30,9 +30,45 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 7 resilience fill-in. **Stage 7.10
+- **Current focus:** Stage 7 resilience fill-in. **Stage
+  7.10b (mid-match rejoin transport parity: WebRTC +
+  WebSocket) shipped end-to-end** (2026-05-14, eighteenth
+  pass). Drops the `_transport_type != ENET` short-circuit
+  in `src/core/reconnect_handler.gd::can_attempt_reconnect()`
+  so the reconnect loop fires for all three transports.
+  Framework-side (`rollback_netcode` submodule),
+  `network_connector.gd::_client_start_webrtc` gains a
+  parallel close-and-null cleanup on any stale
+  `_webrtc_peer` left over from the dropped match (mirrors
+  the existing `_webrtc_signaling_client` cleanup); without
+  this the dropped match's `WebRTCPeerConnection` +
+  DataChannels would linger until GC and could hold UDP
+  socket bindings the new ICE agent needs to claim. The
+  override `MultiplayerPeerExtension._close()` in
+  `webrtc_game_peer.gd` already cascades `remove_peer` to
+  each PeerState, so the cleanup is a one-line call.
+  Stale "ENet-only in v1" comments refreshed in
+  `reconnect_handler.gd` class docstring + `game_panel.gd`
+  (field doc + `_on_connection_lost`). Verified via
+  `godot --headless --import` (exit 0, no parse/compile
+  errors). No end-to-end smoke for the transport-parity
+  reconnect path itself — same blocker as 7.10 (mid-match
+  disconnect against a live deployment isn't easily
+  automatable against prod); Tier 4 docker-compose e2e
+  (8.29) is the natural home. Decision worth recording:
+  shared retry interval (5s × 6 attempts) across transports
+  rather than transport-aware. ENet redials in
+  milliseconds; WebRTC signaling typically completes in
+  2–3s of the 5s budget (server already bound so
+  WebRTCSignalingClient's 12 × 750ms internal retry
+  succeeds on attempt 1 in the happy path). If a WebRTC
+  signaling cycle is still mid-flight when the outer 5s
+  timer fires, the next `_attempt_reconnect` tears down
+  the in-progress signaling client and starts fresh.
+  Wasteful but not broken; per-transport tuning is polish.
+  Prior seventeenth pass: **Stage 7.10
   (mid-match rejoin, reconnect flavor) shipped end-to-end**
-  (2026-05-14, seventeenth pass). Locked design call:
+  (2026-05-14). Locked design call:
   reconnect (same player resumes, not backfill), slot+score
   only (treat gap as died-and-respawning), 30s grace
   window. Framework change (`rollback_netcode` submodule
@@ -50,9 +86,8 @@ See also:
   (5s × 6 attempts within 30s) on unexpected mid-match
   disconnect. UI: programmatic ReconnectingOverlay with
   spinner + countdown + TOAST.RECONNECT_FAILED /
-  TOAST.RECONNECTED. ENet-only in v1; WebRTC + WebSocket
-  reconnect deferred to 7.10b because each transport's
-  signaling re-negotiation is heavier. 4 new translation
+  TOAST.RECONNECTED. ENet-only at 7.10 ship time; 7.10b
+  lifted the transport gate. 4 new translation
   keys × 13 locales. Headless boot clean (no parse/compile
   errors after the change). Prior sixteenth pass: **Stage
   7.11 lightweight observability re-introduction**
@@ -243,15 +278,14 @@ See also:
   (8.3-8.10, 100 cases), 8.1+8.2 deploy gate,
   8.11/8.12/8.14/8.16/8.17/8.18/8.19/8.22 compliance tests,
   8.13 EDGEGAP_MOCK_DEPLOY mode, audit-surfaced drift fully
-  resolved. **Next:** the two remaining open Stage 7 items
-  are 7.10 mid-match rejoin (design call locked in for this
-  pass — user wants the feature) and 7.3 push notifications
-  (heavy 3-platform scope — PWA web-push + FCM + APNS;
-  deferred behind 7.10). Tier 3 client unit
-  tests (8.23-8.28) require GUT doubles setup against the
-  addon's GDScript classes; Tier 4 e2e/smoke (8.29-8.31)
-  needs a docker-compose dev stack. Stage 6.11 screens still
-  greenfield with design call needed. **Deploy status:** the
+  resolved. **Next:** the only remaining open Stage 7
+  item is 7.3 push notifications (heavy 3-platform scope
+  — PWA web-push + FCM + APNS; explicitly deferred). Tier
+  3 client unit tests (8.23-8.28) require GUT doubles
+  setup against the addon's GDScript classes; Tier 4
+  e2e/smoke (8.29-8.31) needs a docker-compose dev stack.
+  Stage 6.11 screens still greenfield with design call
+  needed. **Deploy status:** the
   live runtime is current — Nakama Runtime Deploy at
   2026-05-13T23:27:48Z ran parent SHA `628fc3a` (Stage 7.6
   submodule bump commit), so the recent_players RPC + the
@@ -318,13 +352,36 @@ See also:
   - Hopnbop ships two modes — `ffa` (default 2-4 FFA) and
     `duo` (1v1) — so the picker has actual options.
 - **Other next-focus options, in ascending cost:**
-  (a) Stage 6.11 screen templates (greenfield, 3 screens, needs
-  an upfront design decision on the template vs base-class pattern
-  given the heavy `G.*` UI coupling — see scoping notes);
-  (b) finish the remaining 2 Stage 7 items: 7.10 mid-match
-  rejoin (locked in for this session), 7.3 push notifications
-  (3-platform scope, deferred behind 7.10).
-- **Last updated:** 2026-05-14 (seventeenth pass: Stage 7.10
+  (a) Stage 8 Tier 3 client unit tests (8.23–8.28; six
+  GUT doubles-based test files against the addon's
+  GDScript classes — bounded, bite-sized, builds on the
+  existing GUT infra);
+  (b) Stage 6.11 screen templates (greenfield, 3 screens,
+  needs an upfront design decision on the template vs
+  base-class pattern given the heavy `G.*` UI coupling —
+  see scoping notes);
+  (c) Stage 8 Tier 4 e2e/smoke (8.29–8.31; docker-compose
+  dev stack + local smoke + CI matrix — heavier infra
+  scaffolding work);
+  (d) Stage 7.3 push notifications (heavy 3-platform
+  scope — PWA web-push + FCM + APNS; the largest remaining
+  single item).
+- **Last updated:** 2026-05-14 (eighteenth pass: Stage
+  7.10b mid-match rejoin transport parity shipped —
+  drops the ENet-only gate in `can_attempt_reconnect()`
+  so the reconnect loop fires for WebRTC + WebSocket
+  too. Framework `rollback_netcode` submodule gains a
+  stale-`_webrtc_peer` cleanup in `_client_start_webrtc`
+  (mirrors the existing `_webrtc_signaling_client`
+  cleanup) so the dropped match's RTC stack is closed
+  before the fresh peer is built. Stale "ENet-only in
+  v1" comments refreshed in reconnect_handler /
+  game_panel. Headless `--import` boot clean (exit 0,
+  no parse errors). No e2e smoke for the transport-
+  parity reconnect path itself — same blocker as 7.10
+  (mid-match disconnect against live prod isn't easily
+  automatable); Tier 4 docker-compose e2e remains the
+  natural home. Prior seventeenth pass: Stage 7.10
   mid-match rejoin shipped — reconnect flavor, lightweight
   slot+score preservation, 30s grace, ENet-only v1.
   Framework `rollback_netcode` submodule bumped to `02c65b0`
@@ -481,18 +538,17 @@ See also:
     tests with doubles (8.23–8.28), Tier 4 e2e/smoke
     (8.29–8.31).
 - **Stages in progress (Stage 7 resilience):**
-  - Stage 7 — 12/13 shipped (7.1 allocation retry, 7.2 mid-
+  - Stage 7 — 13/14 shipped (7.1 allocation retry, 7.2 mid-
     queue cancel teardown, 7.4 friend block list, 7.5
     friend pagination, 7.6 recent-players list, 7.7 GDPR
     cascade verification + fix, 7.8 account-merge UI, 7.9
     anonymous-upgrade UI, 7.10 mid-match rejoin (reconnect
-    flavor, ENet-only v1), 7.11 lightweight obs
-    re-introduction, 7.12 max-pending-friend-requests cap,
-    7.13 friend-code rate-limit). Remaining 1 item:
-    7.3 push notifications (heavy 3-platform scope —
-    PWA web-push + FCM + APNS). Plus a 7.10b follow-up
-    pending: WebRTC + WebSocket reconnect (the v1
-    client-side ReconnectHandler is ENet-only).
+    flavor, ENet only at ship time), 7.10b mid-match
+    rejoin transport parity (WebRTC + WebSocket reconnect),
+    7.11 lightweight obs re-introduction, 7.12 max-pending-
+    friend-requests cap, 7.13 friend-code rate-limit).
+    Remaining 1 item: 7.3 push notifications (heavy
+    3-platform scope — PWA web-push + FCM + APNS).
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -535,14 +591,15 @@ Stage 3 (done, 2026-05-12) — game_id scoping: presence
        needed).
    ↓
 Stage 7 — Resilience (retries, notifications, observability).
-   12/13 shipped (7.1 allocation retry, 7.2 mid-queue cancel
+   13/14 shipped (7.1 allocation retry, 7.2 mid-queue cancel
    teardown, 7.4 friend block list, 7.5 friend pagination,
    7.6 recent-players list, 7.7 GDPR cascade verification +
    fix, 7.8 account-merge UI, 7.9 anonymous-upgrade UI, 7.10
-   mid-match rejoin (ENet-only v1), 7.11 lightweight
-   observability re-introduction, 7.12 max-pending-friend-
-   request cap, 7.13 friend-code rate-limit); 1 open (7.3
-   push notifications).
+   mid-match rejoin (ENet at ship time), 7.10b mid-match
+   rejoin transport parity (WebRTC + WebSocket reconnect),
+   7.11 lightweight observability re-introduction, 7.12
+   max-pending-friend-request cap, 7.13 friend-code
+   rate-limit); 1 open (7.3 push notifications).
 
 Stage 8 — Tests (parallel track, doesn't block features).
    22/31 shipped 2026-05-13. Tier 1 Go unit tests (8.3–8.10)
@@ -3185,9 +3242,10 @@ Extract clean code, not bug-laden code.
     game_panel routes to `notify_reconnected()`; if all
     attempts fail, `reconnect_failed` fires and game_panel
     falls through to the normal `client_exit_match()` path.
-    ENet-only in v1 (`can_attempt_reconnect()` short-
-    circuits non-ENet transports because WebRTC + WS need
-    signaling re-negotiation, deferred to a follow-up).
+    ENet-only at 7.10 ship time; the
+    `can_attempt_reconnect()` transport gate was lifted in
+    7.10b (2026-05-14, eighteenth pass) so all three
+    transports use the same loop now.
   - Done — UI (`src/ui/reconnecting_overlay/`, new):
     `ReconnectingOverlay` is a CanvasLayer overlay that
     shows a `LoadingSpinner` + "Reconnecting..." header
@@ -3241,15 +3299,16 @@ Extract clean code, not bug-laden code.
     Score is preserved on PlayerState (which stays in
     `players_by_id` throughout grace), so the rejoining
     player still sees their kill/bump counts.
-  - Decision worth recording: ENet-only in v1. WebRTC +
-    WebSocket reconnect needs signaling re-negotiation
-    (each transport's TLS handshake / DataChannel setup
-    is heavier than ENet's UDP redial). Deferred to a
-    7.10b follow-up that touches the transport-specific
-    code paths. Web clients (which always use
-    WebRTC/WebSocket on hopnbop today) will see the
-    existing immediate exit-match path until 7.10b
-    lands.
+  - Decision worth recording: ENet-only in v1 (shipped
+    2026-05-14, seventeenth pass). WebRTC + WebSocket
+    reconnect was deferred to 7.10b because each
+    transport's signaling re-negotiation (WebRTC SDP+ICE,
+    WebSocket TLS) is heavier than ENet's UDP redial.
+    7.10b shipped 2026-05-14 (eighteenth pass) by dropping
+    the `can_attempt_reconnect()` transport gate and
+    adding a stale-`_webrtc_peer` cleanup in the
+    framework's `_client_start_webrtc` so re-dial doesn't
+    leak the dropped match's RTC stack.
   - Known limitation: no compliance test for the
     reconnect path. End-to-end testing means simulating
     a mid-match disconnect on a live deployment, which
@@ -3273,6 +3332,71 @@ Extract clean code, not bug-laden code.
     `server_clear_session_id_mapping()` hook exists
     for a future caller; the v1 code just doesn't
     invoke it.
+- [x] **7.10b Mid-match rejoin transport parity (WebRTC +
+      WebSocket)** (2026-05-14, eighteenth pass).
+  - Done — game: dropped the `_transport_type !=
+    NetworkSettings.TransportType.ENET` short-circuit in
+    `src/core/reconnect_handler.gd::can_attempt_reconnect()`.
+    The reconnect loop now fires for all three transports;
+    the framework's `client_connect_to_server` path handles
+    transport-specific re-dial mechanics (WebRTC re-runs
+    signaling, WebSocket re-handshakes TLS, ENet re-creates
+    the UDP peer). Refreshed the class docstring + the
+    inline "ENet-only in v1" comments in `game_panel.gd`
+    (field doc + `_on_connection_lost` block) to reflect
+    full transport coverage.
+  - Done — framework (`rollback_netcode` submodule):
+    `network_connector.gd::_client_start_webrtc` now mirrors
+    the existing `_webrtc_signaling_client` cleanup with a
+    parallel close-and-null on any stale `_webrtc_peer` left
+    over from a prior connection. Without this, the
+    PeerStates from the dropped match (and their underlying
+    `WebRTCPeerConnection` / DataChannels) would linger
+    until the next garbage-collection cycle freed
+    `WebRTCGamePeer` — defensible on first-connect (always a
+    no-op) and load-bearing on reconnect. Uses the existing
+    `MultiplayerPeerExtension._close()` override which
+    iterates `_peers` and calls `remove_peer` on each
+    (already implemented in `webrtc_game_peer.gd`).
+  - Verification: `godot --headless --import` exits cleanly
+    (3037 bytes of output, zero parse/compile errors). No
+    end-to-end smoke test for the reconnect path itself —
+    same blocker as 7.10's: simulating a mid-match
+    disconnect on a live deployment isn't easily
+    automatable against prod. Tier 4 docker-compose e2e
+    (8.29) remains the natural home for transport-parity
+    integration coverage.
+  - Decision worth recording: shared retry interval (5s
+    × 6 attempts within the 30s grace), not transport-
+    aware. ENet redials in milliseconds; WebRTC signaling
+    needs ~2–3s in the happy path (server already bound,
+    so the WebRTCSignalingClient's 12 × 750ms internal
+    retry typically succeeds on attempt 1). With a 5s
+    outer interval, each WebRTC reconnect attempt gets a
+    full ~5s budget for its signaling cycle; if the cycle
+    is still mid-flight when the outer timer fires, the
+    next `_attempt_reconnect` tears down the in-progress
+    signaling client and starts fresh. Wasteful but not
+    broken; tuning per-transport intervals would be polish.
+  - Decision worth recording: defense-in-depth close on
+    the stale `_webrtc_peer` (vs trusting RefCounted GC).
+    `WebRTCGamePeer` extends `MultiplayerPeerExtension`
+    (RefCounted-ish) and DOES override `_close()` to
+    cascade `remove_peer` to each entry, but Godot's
+    PREDELETE notification path doesn't invoke `_close`
+    automatically — only `multiplayer.multiplayer_peer =
+    new_peer` and dropping the `_webrtc_peer` reference
+    would. The dropped `WebRTCPeerConnection`s might
+    still hold UDP socket bindings momentarily, which
+    the new peer's ICE agent needs to claim. Explicit
+    `close()` makes the order deterministic.
+  - Known limitation: same as 7.10's compliance gap. The
+    transport-parity claim is verified by static read of
+    `client_connect_to_server`'s transport switch + the
+    headless boot's parser pass. End-to-end transport-
+    parity proof would need a 2-browser smoke (web client
+    drops + reconnects via WebRTC + match completes)
+    which is operator-driven, not CI.
 - [x] **7.11 Re-introduce lightweight observability** (2026-05-13).
   - Done — infra: `infra/remote/nakama/docker-compose.yml`
     re-adds four services on the single-host CPX11:
@@ -5910,6 +6034,52 @@ Security:
     the design needs more flexibility later, swap to
     `reconnecting_overlay.tscn` then; today the
     programmatic version is ~70 lines total.
+
+- **2026-05-14:** Stage 7.10b mid-match rejoin transport
+  parity shipped (eighteenth pass, same day as 7.10).
+  Three design calls worth recording:
+  - **Drop the gate, don't add per-transport logic.** The
+    7.10 client-side `ReconnectHandler.can_attempt_reconnect()`
+    had a `_transport_type != ENET` short-circuit because
+    the seventeenth-pass scope deliberately deferred the
+    transport-specific work. The 7.10b investigation found
+    that the framework's `NetworkConnector.client_connect_
+    to_server` already correctly dispatches per-transport
+    on re-dial (ENet recreates the UDP peer, WebSocket
+    re-handshakes TLS, WebRTC re-runs signaling), so the
+    transport-aware re-dial doesn't need to live in the
+    `ReconnectHandler` — dropping the gate is sufficient.
+    The reconnect loop is genuinely transport-agnostic at
+    the handler level; only timings differ.
+  - **Defense-in-depth `_webrtc_peer` cleanup.** Godot's
+    RefCounted-based `MultiplayerPeerExtension` doesn't
+    auto-invoke `_close()` on PREDELETE — only on explicit
+    `peer.close()` or when the framework reassigns
+    `multiplayer.multiplayer_peer`. The 7.10 reconnect path
+    on ENet/WebSocket worked because Godot's
+    `multiplayer.multiplayer_peer = new_peer` line in
+    `client_connect_to_server` triggers the close. WebRTC's
+    `_client_start_webrtc` instead overwrites the
+    `_webrtc_peer` variable and only assigns
+    `multiplayer.multiplayer_peer` AFTER the signaling
+    completes — so the dropped match's `WebRTCGamePeer`
+    could linger holding UDP socket bindings the new ICE
+    agent wants to claim. Mirroring the existing
+    `_webrtc_signaling_client` cleanup with a parallel
+    `if _webrtc_peer != null: _webrtc_peer.close(); ...`
+    makes the teardown deterministic.
+  - **Shared retry interval, not transport-aware.** ENet
+    redials in milliseconds; WebRTC signaling needs
+    ~2–3s in the happy path. The current 5s × 6 attempts
+    in the 30s grace window gives WebRTC a full ~5s budget
+    per attempt — enough for the happy-path signaling to
+    complete on the first attempt (server already bound,
+    so `WebRTCSignalingClient`'s 12 × 750ms internal retry
+    typically succeeds at attempt 1). If a WebRTC cycle is
+    still mid-flight when the outer 5s timer fires, the
+    next `_attempt_reconnect` tears down the in-progress
+    signaling and starts fresh. Wasteful but not broken;
+    per-transport interval tuning would be polish.
 
 ## How to use this document
 
