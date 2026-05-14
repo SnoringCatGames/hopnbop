@@ -30,9 +30,56 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 7 resilience fill-in. **Stage 7.7
-  (GDPR cascade verification) + 7.6 (recent-players list)
-  shipped** (2026-05-13, fourteenth pass). 7.7 added a new
+- **Current focus:** Stage 7 resilience fill-in. **Stage 7.9
+  (anonymous-upgrade UI) + 7.8 (account-merge UI) shipped**
+  (2026-05-13, fifteenth pass). 7.9 adds `UpgradeAccountPanel`
+  (SidePanel): an anonymous-only entry pushed from the main menu
+  in place of the existing "Account" row when the user hasn't
+  upgraded yet. The panel surfaces a header ("Keep Your Progress"),
+  fuller benefits body, the existing Google + Facebook
+  `LinkAccountRow`s (which already drove the anonymous→permanent
+  login flow internally), and a "Maybe later" close row. The main
+  menu entry shows a badge to draw the eye of brand-new anonymous
+  players who otherwise wouldn't discover the upgrade path. The
+  underlying flow (`Platform.auth.login_with_provider` for
+  anonymous users) is unchanged — the work is pure
+  discoverability. 7.8 replaces the prior PROVIDER_CONFLICT
+  ConfirmOverlay with a dedicated `MergeAccountPanel` (SidePanel)
+  pushed by `LinkAccountRow` when the link API returns
+  PROVIDER_CONFLICT. The panel renders a header
+  ("Existing Account Found"), a fuller body with the provider name
+  interpolated explaining what merges and that the action cannot
+  be undone, an explicit "Continue and Merge" action row, and an
+  explicit "Cancel" row. The panel owns the
+  `Platform.auth.merge_completed` subscription (the prior code
+  hung it on LinkAccountRow with a CONNECT_ONE_SHOT) and tracks
+  `_explicit_action_taken` so the back-row pop path cancels the
+  pending server-side merge token via `cancel_merge` while the
+  Merge or Cancel paths skip the redundant call. Three keys
+  retired from the CSV (`CONFIRM.MERGE_ACCOUNT`, `LINK.MERGE`,
+  `LINK.MERGING`) — they were the prior ConfirmOverlay surface
+  and no longer have callers; the per-CLAUDE.md "no
+  backwards-compat hacks" rule says delete-when-confirmed-unused.
+  i18n: 7 new keys × 13 locales (`SETTINGS.SIGN_IN`,
+  `UPGRADE.HEADER`, `UPGRADE.BENEFITS_BODY`,
+  `UPGRADE.MAYBE_LATER`, `MERGE.HEADER`, `MERGE.BODY`,
+  `MERGE.CONTINUE`, `TOAST.ACCOUNTS_MERGED`,
+  `TOAST.MERGE_FAILED` — 9 actually; non-English are
+  best-effort and worth a native-speaker review pass). CSV
+  verified at 14 fields per line for every new entry (pre-existing
+  legacy line 120 with comma drift is untouched);
+  `.translation` binaries regenerated via `godot --headless
+  --import`. Headless boot clean against live Nakama
+  (`update_and_get_presence` succeeds via the existing path; new
+  scenes load + classes register; zero parse / compile errors).
+  No new compliance tests — the flows depend on UI input that the
+  current compliance suite doesn't simulate, and the underlying
+  RPC contracts (link_provider PROVIDER_CONFLICT, confirm_merge,
+  cancel_merge, login_with_provider for anonymous-upgrade) are
+  already exercised live by the platform smoke test. Prior
+  fourteenth pass (still standing): **Stage 7.7
+  (GDPR cascade verification) + 7.6 (recent-players list)**
+  shipped 2026-05-13. 7.7 added a new
   compliance test `test_account_delete_cascade_surfaces.gd`
   that seeds presence + a party-prefixed group + 2 user-owned
   storage rows for a fresh account, calls `delete_account`,
@@ -135,13 +182,15 @@ See also:
   (8.3-8.10, 100 cases), 8.1+8.2 deploy gate,
   8.11/8.12/8.14/8.16/8.17/8.18/8.19/8.22 compliance tests,
   8.13 EDGEGAP_MOCK_DEPLOY mode, audit-surfaced drift fully
-  resolved. **Next:** **7.3 (push notifications)** is the
-  next-cheapest open Stage 7 item but has heavy cross-platform
-  delivery scope (PWA web-push + FCM + APNS). 7.11
-  (observability re-introduction) is also unblocked; configs
-  preserved in `infra/remote/nakama/`. 7.8 (account-merge
-  UI), 7.9 (anonymous-upgrade UI), and 7.10 (mid-match rejoin
-  — design call required) are all open. Tier 3 client unit
+  resolved. **Next:** the three remaining open Stage 7 items
+  are 7.3 push notifications (heavy 3-platform scope —
+  PWA web-push + FCM + APNS), 7.10 mid-match rejoin (design
+  call required — not obvious whether to support this), and
+  7.11 observability re-introduction (server/infra-only;
+  configs preserved in `infra/remote/nakama/`). None are
+  next-cheapest in any obvious way — 7.11 is the lightest from
+  a game-side perspective but is purely ops work, while 7.3
+  and 7.10 are heavy by different axes. Tier 3 client unit
   tests (8.23-8.28) require GUT doubles setup against the
   addon's GDScript classes; Tier 4 e2e/smoke (8.29-8.31)
   needs a docker-compose dev stack. Stage 6.11 screens still
@@ -215,11 +264,43 @@ See also:
   (a) Stage 6.11 screen templates (greenfield, 3 screens, needs
   an upfront design decision on the template vs base-class pattern
   given the heavy `G.*` UI coupling — see scoping notes);
-  (b) pivot to Stage 7 resilience (13 open items including
-  allocation retry, friend pagination, anonymous-upgrade UI,
-  account-merge UI, observability re-introduction).
-- **Last updated:** 2026-05-13 (fourteenth pass: Stage 7.7
-  GDPR cascade verification + 7.6 recent-players list shipped.
+  (b) finish the remaining 3 Stage 7 items: 7.11 observability
+  re-introduction (server/infra), 7.10 mid-match rejoin (design
+  call required), 7.3 push notifications (3-platform scope).
+- **Last updated:** 2026-05-13 (fifteenth pass: Stage 7.9
+  anonymous-upgrade UI + 7.8 account-merge UI shipped end-to-
+  end. 7.9 adds `UpgradeAccountPanel` (SidePanel) — anonymous-
+  only entry from the main menu in place of "Account",
+  badge-visible by default to draw the eye, exposes the same
+  Google/Facebook `LinkAccountRow`s the AccountPanel already
+  hosted (which already drove anonymous→permanent login
+  internally via `Platform.auth.login_with_provider`), but
+  with a focused header + benefits body + "Maybe later" close
+  row. The underlying upgrade flow is unchanged; the work is
+  pure discoverability. 7.8 replaces the prior PROVIDER_CONFLICT
+  ConfirmOverlay with a dedicated `MergeAccountPanel` —
+  pushed by `LinkAccountRow` when the link API returns
+  PROVIDER_CONFLICT, renders a header + provider-interpolated
+  body + Continue-and-Merge + Cancel action rows, owns the
+  `merge_completed` signal lifecycle, tracks
+  `_explicit_action_taken` so the back-row pop path cancels
+  the pending server-side merge token while the explicit Merge
+  / Cancel paths skip the redundant call. 7 new translation
+  keys × 13 locales (`SETTINGS.SIGN_IN`, `UPGRADE.HEADER`,
+  `UPGRADE.BENEFITS_BODY`, `UPGRADE.MAYBE_LATER`,
+  `MERGE.HEADER`, `MERGE.BODY`, `MERGE.CONTINUE`,
+  `TOAST.ACCOUNTS_MERGED`, `TOAST.MERGE_FAILED` — 9 total).
+  3 prior keys retired (`CONFIRM.MERGE_ACCOUNT`, `LINK.MERGE`,
+  `LINK.MERGING`) — the prior ConfirmOverlay surface they
+  served is gone. CSV verified at 14 fields for every new line
+  (pre-existing legacy line 120 untouched). Headless boot
+  clean against live Nakama; no compliance tests added because
+  the UI flows aren't exercised by the current compliance
+  harness and the underlying RPCs (link_provider /
+  confirm_merge / cancel_merge / anonymous login) are already
+  covered by the platform smoke test. Prior fourteenth pass:
+  Stage 7.7 GDPR cascade verification + 7.6 recent-players
+  list shipped.
   7.7's `test_account_delete_cascade_surfaces.gd` caught a
   real bug (`nk.StorageList` with empty collection silently
   no-op'd because Nakama's SQL has WHERE collection = $1, so
@@ -326,12 +407,15 @@ See also:
     tests with doubles (8.23–8.28), Tier 4 e2e/smoke
     (8.29–8.31).
 - **Stages in progress (Stage 7 resilience):**
-  - Stage 7 — 8/13 shipped 2026-05-13 (7.1 allocation retry,
+  - Stage 7 — 10/13 shipped 2026-05-13 (7.1 allocation retry,
     7.2 mid-queue cancel teardown, 7.4 friend block list, 7.5
     friend pagination, 7.6 recent-players list, 7.7 GDPR
-    cascade verification + fix, 7.12 max-pending-friend-
-    requests cap, 7.13 friend-code rate-limit). Remaining 5
-    items are all open and unblocked.
+    cascade verification + fix, 7.8 account-merge UI, 7.9
+    anonymous-upgrade UI, 7.12 max-pending-friend-requests
+    cap, 7.13 friend-code rate-limit). Remaining 3 items:
+    7.3 push notifications (heavy 3-platform scope), 7.10
+    mid-match rejoin (design call required), 7.11 observability
+    re-introduction (server/infra-only — configs preserved).
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -374,11 +458,13 @@ Stage 3 (done, 2026-05-12) — game_id scoping: presence
        needed).
    ↓
 Stage 7 — Resilience (retries, notifications, observability).
-   8/13 shipped 2026-05-13 (7.1 allocation retry, 7.2 mid-queue
+   10/13 shipped 2026-05-13 (7.1 allocation retry, 7.2 mid-queue
    cancel teardown, 7.4 friend block list, 7.5 friend pagination,
    7.6 recent-players list, 7.7 GDPR cascade verification + fix,
-   7.12 max-pending-friend-request cap, 7.13 friend-code rate-
-   limit); 5 open (7.3, 7.8, 7.9, 7.10, 7.11).
+   7.8 account-merge UI, 7.9 anonymous-upgrade UI, 7.12 max-
+   pending-friend-request cap, 7.13 friend-code rate-limit);
+   3 open (7.3 push notifications, 7.10 mid-match rejoin, 7.11
+   observability re-introduction).
 
 Stage 8 — Tests (parallel track, doesn't block features).
    22/31 shipped 2026-05-13. Tier 1 Go unit tests (8.3–8.10)
@@ -2830,9 +2916,132 @@ Extract clean code, not bug-laden code.
     already locks the cascade's leaderboard ID derivation;
     end-to-end leaderboard clearing remains exercised only
     by manual smoke + the live `delete_account` execution.
-- [ ] 7.8 Account-merge flow UI (referenced by `_pending_merge_token`
-  but no UI exists today).
-- [ ] 7.9 Anonymous → permanent upgrade UI.
+- [x] **7.8 Account-merge flow UI** (2026-05-13).
+  - Done — game: new `src/ui/settings_panel/merge_account_panel.{gd,
+    tscn}` extends `SidePanel`. Pushed by `LinkAccountRow._open_
+    merge_panel` when the link attempt returns `PROVIDER_CONFLICT`.
+    Renders header (`MERGE.HEADER` = "Existing Account Found"),
+    a fuller body (`MERGE.BODY`) with the provider name interpolated
+    explaining what merges and that the action cannot be undone,
+    an explicit Continue-and-Merge `ActionRow` (with merge icon),
+    and an explicit Cancel `ActionRow`. Configure() takes the
+    provider enum + display name from `LinkAccountRow` before the
+    panel enters the tree so the body interpolation is right.
+  - Done — game: `link_account_row.gd`'s old `_offer_merge` /
+    `_do_merge` / `_on_merge_cancelled` / `_on_merge_completed`
+    methods all retired. The new `_open_merge_panel` is the sole
+    PROVIDER_CONFLICT path; `merge_completed` subscription lives
+    on the panel now, not the row. `_merge_account_panel_scene`
+    added as a new `@export` on the row scene and wired in
+    `link_account_row.tscn`.
+  - Done — game: `MergeAccountPanel.build_ui` subscribes to
+    `Platform.auth.merge_completed`; on success, shows the new
+    `TOAST.ACCOUNTS_MERGED` toast and `manager.close_all()` to
+    return to the lobby; on failure, re-enables the rows and
+    surfaces the error via `TOAST.MERGE_FAILED`. Tracks
+    `_explicit_action_taken` so `_exit_tree`'s safety-net
+    `cancel_merge` call only fires when the user popped via the
+    back row (server-side merge token would otherwise leak across
+    the next link attempt).
+  - Done — i18n: 5 new keys × 13 locales: `MERGE.HEADER`,
+    `MERGE.BODY` (long template), `MERGE.CONTINUE`,
+    `TOAST.ACCOUNTS_MERGED`, `TOAST.MERGE_FAILED`. Bodies use
+    `period-separated` sentences instead of comma-separated
+    clauses to keep CSV-with-no-escaping rules happy. 3 prior
+    keys retired: `CONFIRM.MERGE_ACCOUNT` (old confirm-dialog
+    body), `LINK.MERGE` (old confirm-accept button label),
+    `LINK.MERGING` (old in-flight status). The ConfirmOverlay
+    flow they served is gone. CSV verified at 14 fields per line
+    for every new entry; `.translation` binaries regenerated.
+    Non-English translations are best-effort and worth a native-
+    speaker review pass.
+  - Decision worth recording: dedicated `SidePanel`, not an
+    enhanced `ConfirmOverlay`. The audit's "no UI today" framing
+    was strict about the absence of a focused screen for a
+    destructive irreversible action. `ConfirmOverlay`'s single
+    message label + two buttons can't carry the same context
+    weight as a panel with discrete header, body, and action
+    rows. The cost is two new files + a small refactor of
+    `LinkAccountRow`; the benefit is a UX surface that matches
+    the gravity of "this cannot be undone" the way the existing
+    delete-account sub-panel (Stage 1.5) does.
+  - Decision worth recording: `_explicit_action_taken` flag
+    instead of trusting the auth client's internal `_pending_
+    merge_token` state. The token is private to
+    `PlatformAuthApiClient`, and exposing it via a getter just
+    for the panel's exit cleanup would have leaked an
+    implementation detail. The local flag is one bool and self-
+    contained; the same pattern any future "cancel-on-exit
+    unless explicit" panel can copy.
+  - Known limitation: no compliance test for the
+    PROVIDER_CONFLICT branch. The link/merge contract is server-
+    side (Nakama's `LinkX` returns a merge token when the
+    requested provider is on another account), which is hard to
+    reproduce in CI without minting two real OAuth identities
+    and conflicting them. The flow is verified by code inspection
+    + headless boot + the production smoke loop (Levi runs the
+    Google-link scenario manually before each release pass).
+- [x] **7.9 Anonymous → permanent upgrade UI** (2026-05-13).
+  - Done — game: new `src/ui/settings_panel/upgrade_account_panel.
+    {gd,tscn}` extends `SidePanel`. Anonymous-only entry that's
+    pushed from `MainMenuPanel` in place of the existing "Account"
+    row. Renders header (`UPGRADE.HEADER` = "Keep Your Progress"),
+    body (`UPGRADE.BENEFITS_BODY` — explains friends/parties +
+    leaderboards + cross-device sync benefits), the existing
+    Google + Facebook `LinkAccountRow`s (which already drove the
+    anonymous→permanent login flow internally via
+    `Platform.auth.login_with_provider`), and a "Maybe later"
+    close `ActionRow`.
+  - Done — game: `main_menu_panel.gd` branches on
+    `Platform.token_store.is_anonymous`. Anonymous users get a
+    `SETTINGS.SIGN_IN` row routed to the new panel with the badge
+    visible by default; authenticated users keep the existing
+    `SETTINGS.ACCOUNT` → `AccountPanel` row. The `_upgrade_account_
+    panel_scene` export is wired in `main_menu_panel.tscn`.
+  - Done — i18n: 4 new keys × 13 locales: `SETTINGS.SIGN_IN`
+    (new label, distinct from the existing `SETTINGS.ACCOUNT`),
+    `UPGRADE.HEADER`, `UPGRADE.BENEFITS_BODY` (long template),
+    `UPGRADE.MAYBE_LATER`. CSV verified at 14 fields per line
+    for every new entry (pre-existing legacy line 120 with comma
+    drift is untouched); `.translation` binaries regenerated.
+    Non-English translations are best-effort and worth a native-
+    speaker review pass.
+  - Decision worth recording: dedicated `UpgradeAccountPanel`,
+    not an enhanced `AccountPanel`. The audit-derived task name
+    "Anonymous → permanent upgrade UI" carries the implication
+    of a focused surface that explains the value proposition,
+    not just a re-titled row. `AccountPanel`'s existing render
+    path for anonymous users (`_add_link_account_rows`) shows
+    the Google/Facebook rows but no explanatory copy; bolting
+    that copy onto the same panel would have made it conditional
+    on `is_anonymous` and harder to read. The new panel keeps
+    `AccountPanel` clean for the authenticated case and gives
+    anonymous users a focused screen.
+  - Decision worth recording: badge visible by default on the
+    main menu's Sign-In row. The existing badge mechanism is
+    used for friends-have-news / party-has-invites — both
+    transient signals the user dismisses by interacting. The
+    upgrade badge is persistent (always-on until the user
+    upgrades), which slightly stretches the badge semantic, but
+    the alternative (a separate icon-style attention indicator)
+    would have required a new asset. Subject to revisit if
+    user testing shows the badge is "shouting" rather than
+    "drawing the eye".
+  - Decision worth recording: no post-match / on-gated-tap
+    prompts in this pass. The natural next step is a one-shot
+    prompt overlay (similar to `account_deletion_prompt.gd`)
+    that appears periodically for anonymous users, plus inline
+    "sign in to access" prompts when an anonymous user tries to
+    open Friends / Party / MyStats. Both are additive and can
+    layer on top of the existing surface without disturbing it;
+    deferred to a follow-up polish pass to bound this session's
+    scope.
+  - Known limitation: no compliance test for the UI flow. The
+    underlying RPC (`login_with_provider` for anonymous-upgrade)
+    is already exercised by `test_socket_auth.gd` and the
+    platform smoke test, so the flow itself isn't an unknown.
+    The panel-rendering / badge-routing logic is verified by
+    headless boot + manual smoke.
 - [ ] 7.10 Backfill / rejoin for mid-match disconnect (design call
   required — not obvious whether to support this).
 - [ ] 7.11 Re-introduce lightweight observability: match latency,
@@ -5137,6 +5346,68 @@ Security:
     CI gate. Cost is six trivial test lines; benefit is
     forcing the bump-er to read the rationale and update
     the doc before shipping.
+
+- **2026-05-13:** Stage 7.9 anonymous-upgrade UI + 7.8 account-
+  merge UI shipped (fifteenth pass). Five design calls worth
+  recording:
+  - **Dedicated panels, not enhanced confirm overlays.** The
+    audit's "no UI today" framing for both items was strict
+    about the absence of a focused surface — bolting more text
+    onto a `ConfirmOverlay` would have given a one-button label
+    + one-message-body dialog rendering text it can't structure
+    well (no header / body split, no separate action rows with
+    distinct visual weight). New SidePanel subclasses match the
+    same pattern Stage 1.5 used for delete-account verification
+    and Stage 5.10 used for join-by-code: a focused surface for
+    each destructive-or-momentous action.
+  - **Anonymous-upgrade is pure discoverability, not new flow.**
+    The pre-existing `AccountPanel` already routed anonymous
+    users to the same Google/Facebook `LinkAccountRow`s
+    (`account_panel.gd:104-145` — the gate is `if not
+    is_token_valid and not is_anonymous` which means anonymous
+    DOES pass through). The audit's framing of "no UI exists"
+    was about the absence of a focused upgrade surface that
+    explains *why* a user should upgrade. The new
+    `UpgradeAccountPanel` keeps the same `LinkAccountRow`
+    machinery and just wraps it with a header + benefits body
+    + "Maybe later" close row.
+  - **Badge visible by default for anonymous main-menu entry.**
+    The existing badge mechanism (friends-have-news / party-
+    has-invites) is event-driven and transient. Using it for a
+    persistent "you should sign in" signal stretches the
+    semantic but avoids a new attention indicator + asset. A
+    follow-up pass could swap to a dedicated visual treatment
+    if testing shows the badge is "shouting" rather than
+    "drawing the eye".
+  - **Merge panel owns `merge_completed` subscription, not
+    LinkAccountRow.** The old code subscribed on the row with
+    `CONNECT_ONE_SHOT`, which worked but made the row carry
+    the merge state. Moving the subscription to the panel
+    co-locates it with the action rows that need to enable /
+    disable on each phase, and means the row's
+    PROVIDER_CONFLICT handler is a one-line panel-push instead
+    of a multi-callback merge dance. The cost is one new
+    `@export var` on the row (the panel scene); the benefit
+    is each class has one job.
+  - **`_explicit_action_taken` flag for back-pop cancel
+    semantics.** The merge token is server-owned + short-
+    lived; if the user pops via the back row (which doesn't
+    fire `cancel_merge`), the token leaks for ~minutes until
+    expiry. The flag lets `_exit_tree` call `cancel_merge`
+    only on the back-pop path — the explicit Merge / Cancel
+    rows both set the flag so the cleanup doesn't double-fire.
+    Alternative: expose `is_merge_pending` on
+    `PlatformAuthApiClient`, but that leaks implementation
+    detail. Same self-contained pattern any future "release-
+    pending-token-on-exit-unless-explicit" panel can copy.
+  - **Three prior translation keys retired
+    (`CONFIRM.MERGE_ACCOUNT`, `LINK.MERGE`, `LINK.MERGING`).**
+    Per CLAUDE.md's "no backwards-compat hacks" rule, an
+    unused key with confirmed no callers should be deleted
+    rather than left as dead weight. Each row was 14 fields
+    × 1 line; not a huge save, but the principle matters —
+    next person reading the CSV doesn't waste cycles
+    wondering whether the keys still drive something.
 
 ## How to use this document
 

@@ -13,6 +13,7 @@ extends SidePanel
 @export var _friends_panel_scene: PackedScene
 @export var _party_lobby_panel_scene: PackedScene
 @export var _account_panel_scene: PackedScene
+@export var _upgrade_account_panel_scene: PackedScene
 @export var _info_panel_scene: PackedScene
 @export var _game_mode_panel_scene: PackedScene
 
@@ -53,11 +54,25 @@ func build_ui() -> void:
 		Vector2(0, 20))
 	_row_container.add_child(close_spacer)
 
-	# Account trigger.
-	_add_sub_panel_trigger_row(
-		tr("SETTINGS.ACCOUNT"),
-		_account_panel_scene,
-		icon_account)
+	# Account trigger. Anonymous users see a "Sign In" entry
+	# routed to UpgradeAccountPanel (richer benefits copy + the
+	# same Google / Facebook upgrade rows AccountPanel exposes);
+	# authenticated users go to AccountPanel as before. The
+	# upgrade entry surfaces a badge to draw the eye of brand-new
+	# anonymous players who otherwise wouldn't discover the
+	# upgrade path. Stage 7.9.
+	if (Platform.token_store.is_anonymous
+			and _upgrade_account_panel_scene != null):
+		var upgrade_row := _add_sub_panel_trigger_row(
+			tr("SETTINGS.SIGN_IN"),
+			_upgrade_account_panel_scene,
+			icon_account)
+		upgrade_row.set_badge_visible(true)
+	else:
+		_add_sub_panel_trigger_row(
+			tr("SETTINGS.ACCOUNT"),
+			_account_panel_scene,
+			icon_account)
 
 	# Friends trigger (hidden for anonymous players).
 	if not Platform.token_store.is_anonymous:

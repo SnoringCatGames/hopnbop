@@ -1,0 +1,12 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/ui/settings_panel/merge_account_panel.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/side_panel.tscn" id="2_base"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/back_row.tscn" id="3_back_row"]
+[ext_resource type="Texture2D" uid="uid://cfynyrgf7rf06" path="res://assets/images/gui/account_icon.png" id="4_merge_icon"]
+
+[node name="MergeAccountPanel" instance=ExtResource("2_base")]
+process_mode = 3
+script = ExtResource("1_script")
+_back_row_scene = ExtResource("3_back_row")
+icon_merge = ExtResource("4_merge_icon")

@@ -1,0 +1,16 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://src/ui/settings_panel/upgrade_account_panel.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/side_panel.tscn" id="2_base"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/back_row.tscn" id="3_back_row"]
+[ext_resource type="PackedScene" path="res://src/ui/settings_panel/link_account_row.tscn" id="4_link_account"]
+[ext_resource type="Texture2D" uid="uid://dmo5odxt0xwf0" path="res://assets/images/gui/social_icons/google_32.png" id="5_google"]
+[ext_resource type="Texture2D" uid="uid://ctng3e31xuyki" path="res://assets/images/gui/social_icons/facebook_32.png" id="6_facebook"]
+
+[node name="UpgradeAccountPanel" instance=ExtResource("2_base")]
+process_mode = 3
+script = ExtResource("1_script")
+_back_row_scene = ExtResource("3_back_row")
+_link_account_row_scene = ExtResource("4_link_account")
+icon_google = ExtResource("5_google")
+icon_facebook = ExtResource("6_facebook")

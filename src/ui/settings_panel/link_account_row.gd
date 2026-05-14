@@ -6,6 +6,8 @@ extends SettingsRow
 ## unlink flow (with confirmation) when already linked.
 
 
+@export var _merge_account_panel_scene: PackedScene
+
 var _provider: PlatformAuthApiClient.Provider
 var _provider_name: String
 var _is_linked := false
@@ -159,8 +161,15 @@ func _on_link_completed(
 		return
 
 	if error == "PROVIDER_CONFLICT":
-		# Keep _is_busy true while the dialog is shown.
-		_offer_merge()
+		# Hand off to MergeAccountPanel. It owns the
+		# confirm_merge / cancel_merge round-trip + the
+		# merge_completed signal lifecycle. We release _is_busy
+		# here because the merge panel now drives the flow; if the
+		# user cancels and returns, _update_status reflects the
+		# unchanged unlinked state.
+		_is_busy = false
+		_update_status()
+		_open_merge_panel()
 		return
 
 	_is_busy = false
@@ -171,49 +180,20 @@ func _on_link_completed(
 	_update_status()
 
 
-func _offer_merge() -> void:
+func _open_merge_panel() -> void:
+	if _merge_account_panel_scene == null:
+		push_warning(
+			"[LinkAccountRow] No merge panel scene configured"
+		)
+		return
 	if not is_instance_valid(_panel):
-		_is_busy = false
-		_update_status()
 		return
-	_panel.open_confirm_dialog(
-		tr("CONFIRM.MERGE_ACCOUNT") % _provider_name,
-		tr("LINK.MERGE"),
-		_do_merge,
-		tr("CONFIRM.CANCEL"),
-		_on_merge_cancelled,
-	)
-
-
-func _do_merge() -> void:
-	_status_label.text = tr("LINK.MERGING")
-	Platform.auth.merge_completed.connect(
-		_on_merge_completed, CONNECT_ONE_SHOT
-	)
-	Platform.auth.confirm_merge()
-
-
-func _on_merge_cancelled() -> void:
-	_is_busy = false
-	Platform.auth.cancel_merge()
-	_update_status()
-
-
-func _on_merge_completed(
-	success: bool,
-	_error: String,
-	_provider_str: String,
-) -> void:
-	_is_busy = false
-	if success:
-		_is_linked = true
-		if (
-			is_instance_valid(_panel)
-			and is_instance_valid(_panel.manager)
-		):
-			_panel.manager.close_all()
+	if not is_instance_valid(_panel.manager):
 		return
-	_update_status()
+	var panel: MergeAccountPanel = (
+		_merge_account_panel_scene.instantiate())
+	panel.configure(_provider, _provider_name)
+	_panel.manager.push_panel(panel)
 
 
 func _on_unlink_completed(
