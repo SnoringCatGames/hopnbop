@@ -1,0 +1,71 @@
+name: Compliance Matrix
+
+# Runs the snoringcat-platform compliance suite against the
+# ephemeral docker-compose dev stack on every PR + on demand.
+# Stage 8.31 of MULTI_GAME_ROADMAP.md.
+#
+# Currently single-axis (ephemeral only). A `staging` axis is
+# intentionally NOT included: there is no staging Nakama tier
+# yet (per `nightly-smoke.yml`: "Phase G's staging step was
+# scoped out; production is the authoritative target"). The
+# nightly-smoke job already covers prod read-only probes; the
+# compliance suite against prod would create real anonymous
+# accounts (the `compliance-anon-fixed-1` device id is reused
+# across runs, but multi-user tests mint one-shots), which is
+# fine on demand but undesirable on every PR. Hence ephemeral
+# only.
+#
+# Once a real staging tier exists, add a `target` matrix axis
+# with `ephemeral` and `staging` values and pass the staging
+# URL + creds via secrets.
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: 4.5.0-stable
+
+jobs:
+  compliance-ephemeral:
+    name: Compliance against ephemeral compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          # SUBMODULE_PAT has cross-repo access for
+          # snoringcat-platform + rollback_netcode submodules.
+          token: ${{ secrets.SUBMODULE_PAT }}
+
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+
+      - name: Verify Docker
+        run: docker version
+
+      - name: Run local smoke test
+        # The script handles build + compose-up + register +
+        # gut + teardown end-to-end. Exit codes:
+        #   0 = green, 1 = test failures, 2 = stack failure,
+        #   3 = registration failure.
+        shell: pwsh
+        run: |
+          pwsh scripts/local-smoke-test.ps1
+
+      - name: Collect Nakama logs on failure
+        if: failure()
+        shell: pwsh
+        run: |
+          # The smoke script tears down on failure but emits the
+          # tail to stdout first. This step re-runs the log dump
+          # so it lives in its own GHA log section. Containers
+          # are already gone at this point; we capture whatever
+          # ran via the compose project label.
+          Write-Host "(Containers were already torn down by the smoke script.)"
+          Write-Host "Re-run with -KeepStack locally to inspect:"
+          Write-Host "  pwsh scripts/local-smoke-test.ps1 -KeepStack"

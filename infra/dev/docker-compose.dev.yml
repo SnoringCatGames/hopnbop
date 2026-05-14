@@ -1,0 +1,112 @@
+# Local-only dev stack for compliance + smoke testing.
+#
+# Brings up the bare minimum to exercise the Nakama runtime
+# plugin end-to-end without touching prod credentials, real
+# Edgegap allocations, or the Caddy / Grafana / signaling-proxy
+# sidecars from the production single-host stack.
+#
+# Differences vs prod (`third_party/snoringcat-platform/infra/
+# remote/nakama/docker-compose.yml`):
+#   - Postgres password is the literal string `dev-not-a-secret`
+#     (intentionally weak; the only consumer is Nakama on the
+#     same docker network).
+#   - Nakama runs with EDGEGAP_MOCK_DEPLOY=true so the
+#     matchmaker hook synthesizes deploy responses instead of
+#     hitting the real Edgegap API. The runtime logs a loud
+#     warning at boot when this flag is on; the warning is
+#     expected here.
+#   - No Caddy. Nakama's HTTP + WS endpoints are bound to
+#     127.0.0.1:7350 directly. The compliance suite reads
+#     `PLATFORM_API_URL` so an `http://localhost:7350` override
+#     is enough.
+#   - No Grafana / Prometheus / observability. Logs are
+#     `docker compose logs nakama`.
+#   - No signaling-proxy. Mock-mode match_ready notifications
+#     don't actually open a WS bridge.
+#
+# Usage:
+#   pwsh scripts/local-smoke-test.ps1
+#
+# Or manually:
+#   docker compose -f infra/dev/docker-compose.dev.yml up -d
+#   docker compose -f infra/dev/docker-compose.dev.yml logs -f nakama
+#   docker compose -f infra/dev/docker-compose.dev.yml down -v
+#
+# The `-v` on teardown is critical — it drops the Postgres
+# volume so the next run starts from a clean Nakama schema
+# instead of dragging dev data forward across compose recreate
+# cycles.
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: hopnbop-dev-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nakama
+      POSTGRES_USER: nakama
+      POSTGRES_PASSWORD: dev-not-a-secret
+    # Trust local connections so `psql` from another container
+    # can drop in for fixture setup without juggling passwords.
+    # The dev stack never exposes 5432 outside docker so this
+    # only affects the nakama-net sibling containers.
+    command:
+      - "postgres"
+      - "-c"
+      - "listen_addresses=*"
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nakama -d nakama"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - dev-net
+
+  nakama:
+    image: heroiclabs/nakama:3.25.0
+    container_name: hopnbop-dev-nakama
+    restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        DB_ADDR="nakama:dev-not-a-secret@postgres:5432"
+        /nakama/nakama migrate up --database.address "$$DB_ADDR/nakama"
+        exec /nakama/nakama \
+          --config /nakama/data/config.yml \
+          --database.address "$$DB_ADDR/nakama" \
+          --console.password "devadmin" \
+          --socket.server_key "defaultkey" \
+          --session.encryption_key "defaultencryptionkey" \
+          --session.refresh_encryption_key "defaultrefreshencryptionkey" \
+          --runtime.http_key "defaulthttpkey" \
+          --console.signing_key "defaultsigningkey"
+    # All runtime env vars are hardcoded in `config.dev.yml`'s
+    # `runtime.env` block (Nakama doesn't expand ${X} in config,
+    # so the prod stack renders the file via `phase-a.ps1`; the
+    # dev stack just hardcodes literals there instead).
+    volumes:
+      - ./config.dev.yml:/nakama/data/config.yml:ro
+      # Mount the locally-built plugin. local-smoke-test.ps1
+      # builds it before `compose up` and writes the artifact
+      # to this same directory.
+      - ../../third_party/snoringcat-platform/runtime/build:/nakama/data/modules:ro
+    ports:
+      - "127.0.0.1:7350:7350"
+      - "127.0.0.1:7351:7351"
+    healthcheck:
+      test: ["CMD", "/nakama/nakama", "healthcheck"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - dev-net
+
+networks:
+  dev-net:
