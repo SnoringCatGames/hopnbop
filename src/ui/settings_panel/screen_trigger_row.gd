@@ -49,7 +49,7 @@ func on_right() -> void:
 func _open_screen() -> void:
 	if _screen_type == ScreensMain.ScreenType.UNKNOWN:
 		return
-	var screen: Screen = (
+	var screen: PlatformScreen = (
 		G.screens.get_screen_from_type(
 			_screen_type))
 	if not is_instance_valid(screen):

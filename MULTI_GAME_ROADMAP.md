@@ -30,32 +30,71 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 6.11 reusable screen templates.
-  **Stage 6.11a foundation migration shipped** (2026-05-14,
-  twentieth pass). Game-side `Screen` / `ScreenFocusNavigator` /
-  `AnyDeviceInputPoller` now extend their `Platform*` addon
-  equivalents (`PlatformScreen` / `PlatformScreenFocusNavigator`
-  / `PlatformAnyDeviceInputPoller`) instead of being independent
-  duplicates. The platform base classes were extracted to the
-  addon in earlier passes but had no consumers; this sub-task
-  closes that gap. `Screen` overrides `_enter_tree` for the
-  `Netcode.is_server` early-out + `_set_default_styling` for
-  hopnbop's theme/stylebox; `ScreenFocusNavigator` auto-wires
-  `G.audio.play_sound("focus")` via the platform navigator's
-  callback hook in `_init`; `AnyDeviceInputPoller` collapses to
-  a pure 3-line alias. All 12 `extends Screen` consumers + 6
-  `ScreenFocusNavigator` consumers + 4 `AnyDeviceInputPoller`
-  consumers inherit the platform infrastructure transparently —
-  no caller-site changes. Verified via `godot --headless
+- **Current focus:** Stage 6.11 reusable screen templates
+  **complete**. **Stage 6.11b concrete-screen extraction
+  shipped** (2026-05-14, twenty-first pass). Three full
+  `*.tscn` + `*.gd` screens now live in the addon under
+  `addons/snoringcat_platform_client/ui/screens/`:
+  `PlatformAuthScreen` (auth provider buttons + focus nav),
+  `PlatformConsentScreen` (age + ToS / privacy gate),
+  `PlatformAnonymousUpgradeScreen` (greenfield — screen-
+  shaped equivalent of hopnbop's `UpgradeAccountPanel`
+  SidePanel, for future games that want a hard-gate variant;
+  not integrated into hopnbop). Hopnbop's `auth_screen.tscn`
+  + `consent_screen.tscn` became inherited scenes from the
+  addon's, with @export branding overrides on the root node
+  (theme, panel stylebox, logo, provider icons, checkbox
+  textures, chevron, focus / unfocused styleboxes). Game-side
+  `AuthScreen` / `ConsentScreen` scripts (~40-80 lines each)
+  extend `PlatformAuthScreen` / `PlatformConsentScreen` and
+  wire the addon screens' navigation + state-reset signals
+  to hopnbop's `G.*` autoloads and `ScreensMain.ScreenType`
+  enum. Signal contracts: `PlatformAuthScreen` exposes
+  `lobby_navigation_requested` +
+  `force_anonymous_state_reset_requested`;
+  `PlatformConsentScreen` exposes `consent_accepted` +
+  `language_picker_requested` + `terms_link_requested` +
+  `privacy_link_requested`; `PlatformAnonymousUpgradeScreen`
+  exposes `upgrade_completed` + `dismiss_requested`. Virtual
+  hooks let game subclasses inject behavior the addon can't
+  know about: `_create_navigator()` /
+  `_create_input_poller()` (audio-wired variants),
+  `_should_force_anonymous()` / `_should_auto_consent()` (the
+  Netcode-preview-secondary-client gates),
+  `_get_current_legal_version()` (game-side
+  `LegalVersion.get_current()` over `G.backend_api_client`),
+  `_get_icon_scale()` / `_get_icon_padding()` (G.settings
+  values), `_play_focus_sound()` / `_play_select_sound()`
+  (G.audio). Return-type widening: `ScreensMain.
+  get_screen_from_type()` now returns `PlatformScreen` (the
+  common ancestor of `Screen` and the new platform screen
+  classes) so callsites accept both branches; the one
+  `var screen: Screen` callsite in
+  `screen_trigger_row.gd::_open_screen()` widened to
+  `PlatformScreen`. Verified via `godot --headless --import`
+  (no parse / compile errors, all 5 classes registered) +
+  ad-hoc scene-instantiation smoke (all 5 scenes load + carry
+  the expected class through the inheritance chain). No
+  end-to-end UI flow exercised (auth screen → consent → lobby
+  needs Levi at the keyboard or a Tier-4 docker-compose dev
+  stack; same blocker as 7.10b). Hopnbop's behavior is
+  preserved by the wrappers: scene-level theme + stylebox +
+  branding overrides replace the runtime
+  `Screen._set_default_styling()` calls, signal subscribers
+  duplicate the prior direct `G.screens.client_open_screen()`
+  + cache-clear paths. The anonymous-upgrade screen is the
+  only intentionally-not-wired-up surface — kept as a future-
+  game reference implementation without a concrete second
+  consumer; design will likely need a refinement pass once a
+  second game actually adopts it. Prior twentieth pass:
+  **Stage 6.11a foundation migration shipped** (2026-05-14).
+  Game-side `Screen` /
+  `ScreenFocusNavigator` / `AnyDeviceInputPoller` now extend
+  their `Platform*` addon equivalents instead of being
+  independent duplicates. Verified via `godot --headless
   --import` (clean) and `godot --headless --client=1` boot
   (auth screen → consent flow → lobby transitions all work).
-  Concrete-screen extraction (6.11b: auth / consent / new
-  anonymous-upgrade as full `*.tscn` + `*.gd` in the addon)
-  still open and tracked as a separate sub-task — needs a
-  signal-based contract for force-anonymous local-state
-  reset + navigation before extraction makes sense, and the
-  anonymous-upgrade screen is greenfield without a concrete
-  second-consumer to validate against. Prior nineteenth pass: **Stage 8
+  Prior nineteenth pass: **Stage 8
   Tier 3 client unit tests (8.23–8.28) shipped end-to-end**
   (2026-05-14). Six new test files under
   `test/unit/platform/` cover the pure-logic helpers of every
@@ -400,32 +439,52 @@ See also:
   - Hopnbop ships two modes — `ffa` (default 2-4 FFA) and
     `duo` (1v1) — so the picker has actual options.
 - **Other next-focus options, in ascending cost:**
-  (a) Stage 6.11b concrete-screen extraction (auth /
-  consent / greenfield anonymous-upgrade as full `*.tscn` +
-  `*.gd` in the addon; pattern (a)+(b) hybrid recommended —
-  see 6.11 scoping notes; foundation already done in 6.11a);
-  (b) Stage 8 Tier 4 e2e/smoke (8.29–8.31; docker-compose
+  (a) Stage 8 Tier 4 e2e/smoke (8.29–8.31; docker-compose
   dev stack + local smoke + CI matrix — heavier infra
-  scaffolding work);
-  (c) Stage 7.3 push notifications (heavy 3-platform
+  scaffolding work; would also unblock end-to-end smoke
+  for 7.10b transport-parity reconnect + 7.1 retry +
+  7.2 cancel-mid-allocation);
+  (b) Stage 7.3 push notifications (heavy 3-platform
   scope — PWA web-push + FCM + APNS; the largest remaining
-  single item).
-- **Last updated:** 2026-05-14 (twentieth pass: Stage 6.11a
-  foundation migration shipped — game-side `Screen` /
-  `ScreenFocusNavigator` / `AnyDeviceInputPoller` now extend
-  their `Platform*` addon equivalents instead of being
-  independent duplicates. The platform base classes had been
-  extracted to the addon in earlier passes but had no
-  consumers; this sub-task closes that gap. Thin-subclass
-  pattern keeps all 12 `extends Screen` + 6
-  `ScreenFocusNavigator` + 4 `AnyDeviceInputPoller`
-  consumers unchanged. Verified via headless `--import` +
-  `--client=1` boot (auth → consent → lobby flows clean).
-  Stage 6.11b concrete-screen extraction (auth / consent /
-  greenfield anonymous-upgrade as full `*.tscn` + `*.gd` in
-  the addon) still open and tracked separately — needs a
-  signal-based contract for force-anonymous state reset +
-  navigation before extraction makes sense. Prior nineteenth pass: Stage 8
+  single item);
+  (c) Stage 4.3 require_accept dialog (small, but needs
+  `matchmaker_rules.require_accept` schema + runtime
+  accept/decline round-trip in `fleet_allocator.go` before
+  the UI pays off);
+  (d) Stage 4.8 region picker (low priority; manual
+  override of Edgegap's automatic geo-IP selection).
+- **Last updated:** 2026-05-14 (twenty-first pass: Stage
+  6.11b concrete-screen extraction shipped. Three full
+  `*.tscn` + `*.gd` screens — `PlatformAuthScreen`,
+  `PlatformConsentScreen`, `PlatformAnonymousUpgradeScreen`
+  (greenfield) — now live in the addon under
+  `addons/snoringcat_platform_client/ui/screens/`.
+  Hopnbop's `auth_screen.tscn` + `consent_screen.tscn` are
+  now inherited scenes from the addon's, with @export
+  branding overrides on the root (theme, panel stylebox,
+  logo, provider / row icons, checkbox textures, chevron,
+  focus / unfocused styleboxes). Game-side `AuthScreen` /
+  `ConsentScreen` scripts (~40-80 lines each) extend the
+  addon classes and wire navigation + state-reset signals
+  to hopnbop's `G.*` autoloads. Virtual hooks let the
+  addon stay decoupled from Netcode, `LegalVersion`, and
+  `G.audio`. `ScreensMain.get_screen_from_type()` return
+  type widened to `PlatformScreen` (the common ancestor
+  of `Screen` and the addon screen classes) so the single
+  `var screen: Screen` callsite in
+  `screen_trigger_row.gd` widened accordingly. Verified
+  via headless `--import` (no parse errors, all 5 classes
+  registered) + ad-hoc scene-instantiation smoke (all 5
+  scenes load + carry expected class through inheritance).
+  The anonymous-upgrade screen is intentionally not wired
+  into hopnbop — hopnbop has `UpgradeAccountPanel`
+  (SidePanel) for the non-blocking flavor; the addon
+  screen is reference-implementation for a future game
+  that wants a hard-gate variant. Prior twentieth pass:
+  Stage 6.11a foundation migration shipped — game-side
+  `Screen` / `ScreenFocusNavigator` /
+  `AnyDeviceInputPoller` started extending their
+  `Platform*` addon equivalents. Prior nineteenth pass: Stage 8
   Tier 3 client unit tests 8.23–8.28 all shipped — six
   test files under `test/unit/platform/` covering the
   pure-logic helpers of every Stage 6 platform SDK
@@ -580,6 +639,16 @@ See also:
     `legal_version` parity CI guard).
   - Stage 5 — 11/11 tasks shipped (5.1–5.6, 5.8–5.11
     2026-05-12; 5.7 leader game-mode 2026-05-13).
+  - Stage 6 — 11/11 tasks shipped + 6.5b (6.1–6.10 2026-05-12;
+    6.11a foundation migration + 6.11b concrete-screen
+    extraction 2026-05-14). Several 6.x landings were
+    partial-by-design: party_manager (6.5),
+    EdgegapServerProvider (6.6), SettingsCloudSync (6.8
+    game-side adapter), GameSessionManager (6.9) all stay
+    game-side — see each task entry for the
+    coordination-coupling rationale. 6.11b's
+    `PlatformAnonymousUpgradeScreen` is intentionally greenfield
+    without a concrete in-tree consumer.
 - **Stages partially shipped (remaining items are
   intentionally deferred or low-priority):**
   - Stage 4 — 6/8 shipped (4.1, 4.2, 4.4, 4.5, 4.6 2026-05-12;
@@ -587,14 +656,6 @@ See also:
     `matchmaker_rules.require_accept` in game.yaml + runtime
     support for the accept/decline round-trip), 4.8 (region
     picker; optional, needs Edgegap region list).
-  - Stage 6 — 10/11 shipped 2026-05-12 (6.1–6.10 plus 6.5b).
-    Several 6.x landings were partial-by-design: party_manager
-    (6.5), EdgegapServerProvider (6.6), SettingsCloudSync
-    (6.8 game-side adapter), GameSessionManager (6.9) all
-    stay game-side — see each task entry for the
-    coordination-coupling rationale. Open: **6.11 screen
-    templates** (greenfield, 3 screens — design decision
-    needed on base-class vs full-scene vs components pattern).
 - **Stages in progress:**
   - Stage 8 — 28/31 shipped (Tiers 1+2 2026-05-13, Tier 3
     2026-05-14). Tier 1 Go unit tests (8.3–8.10) all green:
@@ -663,14 +724,17 @@ Stage 3 (done, 2026-05-12) — game_id scoping: presence
    │   refactor + invite UI + real-time socket updates + ready
    │   toggle + leader transfer + party chat + rejoin prompt +
    │   join-by-code + leader game-mode selection.
-   └─→ Stage 6 (10/11 shipped, 2026-05-12) — Platform SDK
-       extraction: 6.1–6.10 + 6.5b (auth, token store,
+   └─→ Stage 6 (done, 2026-05-12 + 2026-05-14) — Platform SDK
+       extraction: 6.1–6.11 + 6.5b (auth, token store,
        friends, party, notification socket, matchmaking,
-       presence, settings, session observer). Several landings
-       are partial-by-design (coordinators stay game-side, only
-       API surfaces move into the addon). Remaining: 6.11
-       screen templates (greenfield, 3 screens — design call
-       needed).
+       presence, settings, session observer, screens). Several
+       landings are partial-by-design (coordinators stay
+       game-side, only API surfaces move into the addon). 6.11
+       screen templates shipped 2026-05-14 as a-then-b: 6.11a
+       foundation migration (existing Platform* base classes
+       getting consumed), 6.11b concrete extraction (full
+       auth / consent / anonymous-upgrade scenes in the addon
+       + hopnbop inherited scenes).
    ↓
 Stage 7 — Resilience (retries, notifications, observability).
    13/14 shipped (7.1 allocation retry, 7.2 mid-queue cancel
@@ -2526,8 +2590,9 @@ Extract clean code, not bug-laden code.
     leaderboard/profile/stats RPCs — same coordinator-vs-API-
     surface heuristic 6.4 / 6.5 / 6.6 followed. Tracked
     informally as a 6.x follow-up; not on the critical path.
-- [ ] 6.11 Reusable screen templates in `Platform.screens.*`: auth,
-  consent, anonymous-upgrade. Hop'n'Bop screens become thin wrappers.
+- [x] **6.11 Reusable screen templates in `Platform.screens.*`:
+      auth, consent, anonymous-upgrade. Hop'n'Bop screens
+      become thin wrappers.** (6.11a + 6.11b shipped 2026-05-14)
   - [x] **6.11a Foundation migration** (2026-05-14, twentieth pass).
     - Done — game-side `Screen` (`src/ui/screens/screen.gd`)
       now extends `PlatformScreen` instead of being a duplicate
@@ -2596,14 +2661,123 @@ Extract clean code, not bug-laden code.
       orthogonal to 6.11's "reusable screen templates"
       framing. Tracked informally for whoever picks up the
       next platform-infra cleanup pass.
-  - [ ] **6.11b Concrete screen extraction** — extract
-    auth_screen + consent_screen + greenfield
-    anonymous-upgrade screen into
-    `addons/snoringcat_platform_client/ui/screens/` as full
-    `*.tscn` + `*.gd` per the pattern (a)+(b) recommendation
-    below. Hop'n'Bop scenes become thin wrappers that
-    instantiate the platform scene + assign `@export`
-    branding slots.
+  - [x] **6.11b Concrete screen extraction** (2026-05-14, twenty-
+    first pass).
+    - Done — three new full `*.tscn` + `*.gd` screens in
+      `addons/snoringcat_platform_client/ui/screens/`:
+      `PlatformAuthScreen` (extends `PlatformScreen`,
+      `class_name PlatformAuthScreen`), `PlatformConsentScreen`
+      (extends `PlatformScreen`), `PlatformAnonymousUpgradeScreen`
+      (extends `PlatformScreen`, greenfield). Each scene root is
+      a `PanelContainer` with the script attached + @export
+      branding slots populated to null by default (concrete
+      games override via inherited scenes).
+    - Done — hopnbop's `src/ui/screens/auth_screen.tscn` and
+      `src/ui/screens/consent_screen.tscn` rewritten as
+      *inherited scenes* from the addon scenes
+      (`[node ... instance=ExtResource("addon_scene")]`),
+      with @export overrides on the root for theme, panel
+      stylebox, logo, provider / row icons, checkbox textures,
+      chevron icon, focus / unfocused styleboxes. Game-side
+      `auth_screen.gd` (~40 lines) extends `PlatformAuthScreen`
+      and overrides `_create_navigator()` (returns audio-wired
+      `ScreenFocusNavigator`), `_should_force_anonymous()`
+      (Netcode preview check), `_enter_tree()` (G.auth_screen
+      registration + Netcode.is_server guard), plus signal
+      subscribers for `lobby_navigation_requested` /
+      `force_anonymous_state_reset_requested`. Game-side
+      `consent_screen.gd` (~80 lines) follows the same pattern
+      with `_create_input_poller()` / `_should_auto_consent()`
+      / `_get_current_legal_version()` / `_get_icon_scale()` /
+      `_get_icon_padding()` / `_play_focus_sound()` /
+      `_play_select_sound()` virtuals + signal subscribers for
+      `consent_accepted` / `language_picker_requested` /
+      `terms_link_requested` / `privacy_link_requested`.
+    - Done — `ScreensMain.get_screen_from_type()` return type
+      widened from `Screen` to `PlatformScreen` (the common
+      ancestor of the original `Screen` subclasses and the new
+      `PlatformAuthScreen` / `PlatformConsentScreen` sibling
+      branches). One callsite in
+      `screen_trigger_row.gd::_open_screen()` updated for the
+      same widening. `global.gd`'s `var auth_screen: AuthScreen`
+      / `var consent_screen: ConsentScreen` typing stays — the
+      narrowed game-side classes still extend the addon classes.
+    - Done — `PlatformAnonymousUpgradeScreen` greenfield surface
+      shipped as a screen-shaped equivalent of hopnbop's
+      `UpgradeAccountPanel` (SidePanel, Stage 7.9). Emits
+      `upgrade_completed` (on `Platform.auth.auth_completed
+      (success=true)`) and `dismiss_requested` (on "Maybe
+      Later"). Hopnbop doesn't integrate it — the panel
+      flavor is its established UX; the screen flavor is
+      reference-implementation for a future game with a
+      hard-gate variant. Surface design intentionally
+      inferential without a second consumer.
+    - Verification: `godot --headless --import` clean (no
+      parse / compile errors; class registration table shows
+      `PlatformAuthScreen` / `AuthScreen` /
+      `PlatformConsentScreen` / `ConsentScreen` /
+      `PlatformAnonymousUpgradeScreen` all registered).
+      Ad-hoc smoke test instantiated all 5 scenes (4
+      hopnbop-side + 5 addon-side including greenfield) and
+      confirmed each carried the expected class through the
+      inheritance chain. No end-to-end UI flow exercised
+      against live Nakama; that needs Levi at the keyboard
+      or the Tier-4 docker-compose stack (8.29).
+    - Decision worth recording: signal-driven navigation
+      contracts (not callable properties or virtual methods).
+      Each addon screen emits intent signals
+      (`lobby_navigation_requested`, `consent_accepted`,
+      `language_picker_requested`, etc.); the game-side
+      wrapper connects them and routes to `G.screens.*` +
+      `ScreensMain.ScreenType.*`. Signal emission is
+      synchronous in Godot, so the contract behaves like a
+      function call but inverts the dependency direction:
+      addon → game becomes game subscribing to addon. Two
+      benefits: (1) addon stays decoupled from the game's
+      navigation enum / autoload graph; (2) future games can
+      hook the same signals without subclassing if they
+      prefer a composition style.
+    - Decision worth recording: virtual hooks for the
+      Netcode / `LegalVersion` / `G.settings` /
+      `G.audio` reach-throughs that don't fit cleanly into
+      @export slots. `_should_force_anonymous()` /
+      `_should_auto_consent()` (Netcode), 
+      `_get_current_legal_version()` (`LegalVersion.get_current()`
+      over `G.backend_api_client`), `_get_icon_scale()` /
+      `_get_icon_padding()` (G.settings numerics),
+      `_play_focus_sound()` / `_play_select_sound()`
+      (`G.audio.play_sound`), `_create_navigator()` /
+      `_create_input_poller()` (audio-wired variants). Each
+      virtual has a no-op default in the addon. Mixing
+      signals + virtuals is intentional: signals model
+      bidirectional intent (screen → game), virtuals model
+      query/factory contracts (game → addon).
+    - Decision worth recording: replace runtime
+      `Screen._set_default_styling()` (which read
+      `G.settings.default_theme` / `G.settings.screen_style_box`
+      at runtime) with scene-level `theme` / 
+      `theme_override_styles/panel` overrides on the inherited
+      scene root. Static-in-scene is simpler than reaching into
+      G at _enter_tree time and survives the cross-extends
+      sibling problem (AuthScreen extends PlatformAuthScreen,
+      not Screen, so it doesn't inherit Screen's runtime
+      styling override).
+    - Known limitation: the anonymous-upgrade screen ships
+      without a concrete consumer. The surface design is
+      inferential and will likely need a refinement pass once
+      a second game actually adopts it. Particularly the
+      navigation contract (`upgrade_completed` vs
+      `dismiss_requested` is binary; a real consumer might
+      need a third "error and route back" state, or
+      finer-grained provider events).
+    - Known limitation: no end-to-end UI smoke against live
+      Nakama. The compliance suite tests the underlying RPC
+      contracts (auth, consent storage on token_store via
+      `has_valid_consent` / `consent_legal_version`) but the
+      UI signal flow is exercised only by manual play.
+      Tier-4 (8.29-8.31) docker-compose stack is the natural
+      home for a smoke that boots `--client=1`, exercises
+      auth → consent → lobby, and asserts screen transitions.
   - Scoping notes for the 6.11b pass:
     - Three candidate screens, current sizes: `auth_screen.gd`
       280 lines, `consent_screen.gd` 396 lines, anonymous-upgrade

@@ -210,8 +210,15 @@ func _perform_screen_switch(
 	G.hud.update_visibility()
 
 
-func get_screen_from_type(screen_type: ScreenType) -> Screen:
-	var screen: Screen = null
+func get_screen_from_type(
+	screen_type: ScreenType,
+) -> PlatformScreen:
+	# Returns PlatformScreen (the common ancestor) so the
+	# function can surface both Screen subclasses (loading,
+	# game_over, my_stats, etc.) and PlatformAuthScreen /
+	# PlatformConsentScreen subclasses, which are sibling
+	# branches under PlatformScreen.
+	var screen: PlatformScreen = null
 	match screen_type:
 		ScreenType.GODOT_SPLASH:
 			screen = G.godot_splash_screen
