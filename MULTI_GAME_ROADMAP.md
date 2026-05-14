@@ -31,9 +31,9 @@ See also:
 ## Status summary
 
 - **Current focus:** Stage 7 resilience fill-in. **Stage 7.11
-  (lightweight observability re-introduction) shipped**
-  (2026-05-13, sixteenth pass). Re-added Prometheus +
-  Grafana + node-exporter + postgres-exporter to the
+  (lightweight observability re-introduction) shipped end-
+  to-end** (2026-05-13, sixteenth pass). Re-added Prometheus
+  + Grafana + node-exporter + postgres-exporter to the
   consolidated single-host CPX11; Loki + Promtail stayed off
   to preserve RAM headroom (configs preserved for a future
   re-introduction). New `snoringcat_alloc_seconds` custom
@@ -43,12 +43,31 @@ See also:
   `nk.MetricsTimerRecord` (tags `game_id` + `mock`),
   surfaced on the same `:9099` endpoint Prometheus already
   scrapes. Caddyfile re-added `grafana.snoringcat.games`
-  with auto-TLS. Pulumi re-added the matching A record +
-  exports `grafana_url`. Live deploy is operator work (SCP
-  + `docker compose up -d --build` + `pulumi up`); not yet
-  executed against prod. Headroom check pre-deploy: 603 MB
-  used + 1.3 GB available on the 2 GB box; lightweight obs
-  lands in ~350 MB resident. Prior pass (still standing):
+  with auto-TLS + a follow-up `admin 0.0.0.0:2019` patch so
+  Prometheus could scrape Caddy `/metrics` from a sibling
+  container. Pulumi re-added the matching A record +
+  exports `grafana_url`. **Deploy executed against live
+  prod 2026-05-13:** SCP'd configs + `docker compose up -d
+  --build --remove-orphans` (all 8 containers up, postgres
+  + nakama healthy), `pulumi up` (grafana-a Cloudflare
+  record created, ID `a12f0c50...`), `nakama-runtime.yml`
+  workflow run 25838774053 succeeded (build_id `526c038`
+  carries the new instrumentation), Grafana `/api/health`
+  returns 200, all 5 Prometheus scrape targets up (caddy /
+  nakama / node / postgres / prometheus), 6 alert rules
+  provisioned (nakama-down / postgres-down / postgres-conn-
+  saturation / disk-usage-high / cpu-sustained-high /
+  postgres-slow-queries-placeholder). Memory post-deploy:
+  692 MB used / 1.2 GB available; obs services land at
+  ~340 MB combined (prometheus 112 + grafana 187 + node-
+  exporter 20 + postgres-exporter 19), bang on the pre-
+  deploy 350 MB estimate. Caught one live-deploy gotcha:
+  Grafana container runs as UID 472 and couldn't read
+  `/etc/grafana/provisioning` SCP'd as root-600;
+  `chmod -R a+rX` + restart fixed it (provisioning files
+  are non-secret config except `contactpoints.yml` which
+  carries the Discord webhook URL — already in
+  `/opt/nakama/.env` as a soft secret). Prior pass (still standing):
   **Stage 7.9 (anonymous-upgrade UI) + 7.8 (account-merge
   UI) shipped** (2026-05-13, fifteenth pass). 7.9 adds `UpgradeAccountPanel`
   (SidePanel): an anonymous-only entry pushed from the main menu
@@ -282,10 +301,16 @@ See also:
   rejoin (locked in for this session), 7.3 push notifications
   (3-platform scope, deferred behind 7.10).
 - **Last updated:** 2026-05-13 (sixteenth pass: Stage 7.11
-  lightweight obs re-introduction shipped code-side — infra
-  configs + Pulumi DNS + runtime custom timer all landed,
-  but live deploy to the prod box is operator work and not
-  yet executed. Prior fifteenth pass: Stage 7.9
+  lightweight obs re-introduction shipped end-to-end —
+  infra configs + Pulumi DNS + runtime custom timer all
+  landed AND the live deploy executed (SCP + docker compose
+  up + pulumi up + nakama-runtime.yml). All 8 containers
+  up, all 5 Prometheus targets healthy, 6 Grafana alerts
+  provisioned, https://grafana.snoringcat.games live with
+  TLS. Two follow-up patches required during live deploy:
+  Caddyfile `admin 0.0.0.0:2019` for Prometheus scrape,
+  and `chmod -R a+rX` on the SCP'd `grafana/provisioning`
+  tree so Grafana's UID 472 could read it. Prior fifteenth pass: Stage 7.9
   anonymous-upgrade UI + 7.8 account-merge UI shipped end-to-
   end. 7.9 adds `UpgradeAccountPanel` (SidePanel) — anonymous-
   only entry from the main menu in place of "Account",
@@ -3180,18 +3205,37 @@ Extract clean code, not bug-laden code.
     docker-compose track) could assert
     `snoringcat_alloc_seconds_count` increments after a
     mock match.
-  - Known limitation: deploy of the new compose + new
-    `.env` `GRAFANA_ADMIN_PASSWORD` to the live
-    nakama-prod-1 box is operator work (SCP +
-    `docker compose up -d --build` + `pulumi up`);
-    `nakama-runtime.yml` GH Actions only pushes the
-    `snoringcat.so` plugin. Procedure: SCP the new
-    `docker-compose.yml`, `prometheus.yml`, `Caddyfile`,
-    + `grafana/provisioning/` tree to `/opt/nakama/`;
-    append `GRAFANA_ADMIN_PASSWORD=<random base64-24>` to
-    `/opt/nakama/.env`; run `docker compose up -d --build`
-    on the host; run `pulumi up` from the operator
-    workstation to apply the grafana DNS record.
+  - Live deploy executed 2026-05-13. Procedure followed:
+    SCP'd `docker-compose.yml`, `prometheus.yml`,
+    `Caddyfile`, `grafana/provisioning/` tree to
+    `/opt/nakama/`; rendered `contactpoints.yml` with the
+    Discord webhook URL before SCP (Grafana doesn't
+    interpolate `${ENV}` at provision time); appended
+    `GRAFANA_ADMIN_PASSWORD` + `DISCORD_WEBHOOK_URL` to
+    `/opt/nakama/.env`; ran `docker compose up -d --build
+    --pull always --remove-orphans` on the host; ran
+    `pulumi up` from the operator workstation (created the
+    grafana-a Cloudflare A record); triggered
+    `nakama-runtime.yml` to deploy the
+    instrumentation-bearing runtime plugin.
+  - Live-deploy follow-ups (both committed as a separate
+    patch alongside this entry's main commit):
+    - `Caddyfile`: added `admin 0.0.0.0:2019` to the
+      global block. Default `localhost:2019` is
+      unreachable from sibling containers across docker-
+      network namespaces; the prometheus scrape job to
+      `caddy:2019` reported "connection refused" until
+      this patch. Cloud firewall still blocks 2019/tcp
+      from the public internet (only nakama-net peers
+      reach it).
+    - Host-side `chmod -R a+rX
+      /opt/nakama/grafana/provisioning`. SCP defaults to
+      root-owned + 600 perms; Grafana's container runs as
+      UID 472 and couldn't read the directory. The
+      provisioning files are non-secret config except
+      `contactpoints.yml` which carries the Discord
+      webhook URL (already exposed in `/opt/nakama/.env`
+      as a soft secret).
 - [x] **7.12 Max pending friend request enforcement** (2026-05-13).
   - Done — runtime: new
     `third_party/snoringcat-platform/runtime/friends_limits.go`,
