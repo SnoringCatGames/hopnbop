@@ -30,9 +30,27 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 7 resilience fill-in. **Stage 7.9
-  (anonymous-upgrade UI) + 7.8 (account-merge UI) shipped**
-  (2026-05-13, fifteenth pass). 7.9 adds `UpgradeAccountPanel`
+- **Current focus:** Stage 7 resilience fill-in. **Stage 7.11
+  (lightweight observability re-introduction) shipped**
+  (2026-05-13, sixteenth pass). Re-added Prometheus +
+  Grafana + node-exporter + postgres-exporter to the
+  consolidated single-host CPX11; Loki + Promtail stayed off
+  to preserve RAM headroom (configs preserved for a future
+  re-introduction). New `snoringcat_alloc_seconds` custom
+  Nakama timer instrumented in
+  `fleet_allocator.go::OnMatchmakerMatched` records
+  allocation cold-start latency via
+  `nk.MetricsTimerRecord` (tags `game_id` + `mock`),
+  surfaced on the same `:9099` endpoint Prometheus already
+  scrapes. Caddyfile re-added `grafana.snoringcat.games`
+  with auto-TLS. Pulumi re-added the matching A record +
+  exports `grafana_url`. Live deploy is operator work (SCP
+  + `docker compose up -d --build` + `pulumi up`); not yet
+  executed against prod. Headroom check pre-deploy: 603 MB
+  used + 1.3 GB available on the 2 GB box; lightweight obs
+  lands in ~350 MB resident. Prior pass (still standing):
+  **Stage 7.9 (anonymous-upgrade UI) + 7.8 (account-merge
+  UI) shipped** (2026-05-13, fifteenth pass). 7.9 adds `UpgradeAccountPanel`
   (SidePanel): an anonymous-only entry pushed from the main menu
   in place of the existing "Account" row when the user hasn't
   upgraded yet. The panel surfaces a header ("Keep Your Progress"),
@@ -182,15 +200,11 @@ See also:
   (8.3-8.10, 100 cases), 8.1+8.2 deploy gate,
   8.11/8.12/8.14/8.16/8.17/8.18/8.19/8.22 compliance tests,
   8.13 EDGEGAP_MOCK_DEPLOY mode, audit-surfaced drift fully
-  resolved. **Next:** the three remaining open Stage 7 items
-  are 7.3 push notifications (heavy 3-platform scope —
-  PWA web-push + FCM + APNS), 7.10 mid-match rejoin (design
-  call required — not obvious whether to support this), and
-  7.11 observability re-introduction (server/infra-only;
-  configs preserved in `infra/remote/nakama/`). None are
-  next-cheapest in any obvious way — 7.11 is the lightest from
-  a game-side perspective but is purely ops work, while 7.3
-  and 7.10 are heavy by different axes. Tier 3 client unit
+  resolved. **Next:** the two remaining open Stage 7 items
+  are 7.10 mid-match rejoin (design call locked in for this
+  pass — user wants the feature) and 7.3 push notifications
+  (heavy 3-platform scope — PWA web-push + FCM + APNS;
+  deferred behind 7.10). Tier 3 client unit
   tests (8.23-8.28) require GUT doubles setup against the
   addon's GDScript classes; Tier 4 e2e/smoke (8.29-8.31)
   needs a docker-compose dev stack. Stage 6.11 screens still
@@ -264,10 +278,14 @@ See also:
   (a) Stage 6.11 screen templates (greenfield, 3 screens, needs
   an upfront design decision on the template vs base-class pattern
   given the heavy `G.*` UI coupling — see scoping notes);
-  (b) finish the remaining 3 Stage 7 items: 7.11 observability
-  re-introduction (server/infra), 7.10 mid-match rejoin (design
-  call required), 7.3 push notifications (3-platform scope).
-- **Last updated:** 2026-05-13 (fifteenth pass: Stage 7.9
+  (b) finish the remaining 2 Stage 7 items: 7.10 mid-match
+  rejoin (locked in for this session), 7.3 push notifications
+  (3-platform scope, deferred behind 7.10).
+- **Last updated:** 2026-05-13 (sixteenth pass: Stage 7.11
+  lightweight obs re-introduction shipped code-side — infra
+  configs + Pulumi DNS + runtime custom timer all landed,
+  but live deploy to the prod box is operator work and not
+  yet executed. Prior fifteenth pass: Stage 7.9
   anonymous-upgrade UI + 7.8 account-merge UI shipped end-to-
   end. 7.9 adds `UpgradeAccountPanel` (SidePanel) — anonymous-
   only entry from the main menu in place of "Account",
@@ -407,15 +425,16 @@ See also:
     tests with doubles (8.23–8.28), Tier 4 e2e/smoke
     (8.29–8.31).
 - **Stages in progress (Stage 7 resilience):**
-  - Stage 7 — 10/13 shipped 2026-05-13 (7.1 allocation retry,
+  - Stage 7 — 11/13 shipped 2026-05-13 (7.1 allocation retry,
     7.2 mid-queue cancel teardown, 7.4 friend block list, 7.5
     friend pagination, 7.6 recent-players list, 7.7 GDPR
     cascade verification + fix, 7.8 account-merge UI, 7.9
-    anonymous-upgrade UI, 7.12 max-pending-friend-requests
-    cap, 7.13 friend-code rate-limit). Remaining 3 items:
+    anonymous-upgrade UI, 7.11 lightweight obs
+    re-introduction, 7.12 max-pending-friend-requests cap,
+    7.13 friend-code rate-limit). Remaining 2 items:
     7.3 push notifications (heavy 3-platform scope), 7.10
-    mid-match rejoin (design call required), 7.11 observability
-    re-introduction (server/infra-only — configs preserved).
+    mid-match rejoin (design + implementation, locked in for
+    the next pass).
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -458,13 +477,13 @@ Stage 3 (done, 2026-05-12) — game_id scoping: presence
        needed).
    ↓
 Stage 7 — Resilience (retries, notifications, observability).
-   10/13 shipped 2026-05-13 (7.1 allocation retry, 7.2 mid-queue
+   11/13 shipped 2026-05-13 (7.1 allocation retry, 7.2 mid-queue
    cancel teardown, 7.4 friend block list, 7.5 friend pagination,
    7.6 recent-players list, 7.7 GDPR cascade verification + fix,
-   7.8 account-merge UI, 7.9 anonymous-upgrade UI, 7.12 max-
-   pending-friend-request cap, 7.13 friend-code rate-limit);
-   3 open (7.3 push notifications, 7.10 mid-match rejoin, 7.11
-   observability re-introduction).
+   7.8 account-merge UI, 7.9 anonymous-upgrade UI, 7.11
+   lightweight observability re-introduction, 7.12 max-pending-
+   friend-request cap, 7.13 friend-code rate-limit); 2 open
+   (7.3 push notifications, 7.10 mid-match rejoin).
 
 Stage 8 — Tests (parallel track, doesn't block features).
    22/31 shipped 2026-05-13. Tier 1 Go unit tests (8.3–8.10)
@@ -3044,10 +3063,135 @@ Extract clean code, not bug-laden code.
     headless boot + manual smoke.
 - [ ] 7.10 Backfill / rejoin for mid-match disconnect (design call
   required — not obvious whether to support this).
-- [ ] 7.11 Re-introduce lightweight observability: match latency,
-  matchmaker queue depth, allocation cold-start time. The stripped
-  Prometheus/Grafana/Loki configs are still in
-  `infra/remote/nakama/` for re-introduction.
+- [x] **7.11 Re-introduce lightweight observability** (2026-05-13).
+  - Done — infra: `infra/remote/nakama/docker-compose.yml`
+    re-adds four services on the single-host CPX11:
+    `prometheus` (v2.55.1, 30d TSDB retention, scrapes Nakama
+    metrics + caddy admin + node-exporter + postgres-exporter),
+    `grafana` (v11.4.0, fronted by Caddy at
+    `grafana.snoringcat.games` with TLS via Let's Encrypt),
+    `node-exporter` (v1.8.2, host vitals, pid=host, fs mount
+    excludes), `postgres-exporter` (v0.16.0, connects to the
+    co-tenanted postgres container via the nakama-net network).
+    Loki + Promtail intentionally left off — logs stay on
+    `journalctl` / `docker logs`; their configs are preserved
+    in the same directory so a future need can flip them on
+    without reconstruction.
+  - Done — Nakama config: added `--metrics.prometheus_port 9099`
+    to the entrypoint CLI flags. `9099` exposed on the
+    nakama-net network; prometheus.yml has a `nakama` job
+    scraping `nakama:9099` with `metrics_path: /` (Nakama
+    publishes Prometheus-format metrics at the root path on
+    that port).
+  - Done — prometheus.yml: dropped the stale `node-postgres` +
+    `postgres` jobs that pointed at `10.0.1.20:9100` /
+    `10.0.1.20:9187` (the pre-consolidation separate Postgres
+    box that no longer exists). Both jobs collapse into the
+    co-tenanted setup. Also dropped the `loki` scrape job
+    (not running Loki). All remaining jobs label
+    `instance: nakama-prod-1`.
+  - Done — Grafana provisioning: kept the existing
+    `provisioning/{datasources,alerting,dashboards}` tree
+    intact. Datasources auto-provision Prometheus (the
+    "Loki" entry is preserved but inert; no datasource health
+    check fails because Grafana lazy-validates on first
+    query). Five alert rules in `alerting/rules.yml`
+    auto-load: `nakama-down`, `postgres-down`,
+    `postgres-conn-saturation`, `disk-usage-high`,
+    `cpu-sustained-high` (plus a placeholder slow-queries
+    rule). Discord contact point in
+    `alerting/contactpoints.yml` routes all alerts; the
+    policy in `alerting/policies.yml` groups by alertname +
+    instance with 30s wait / 5m group / 4h repeat.
+    Dashboards directory was empty before the consolidation
+    and stays empty — operators build them in the UI as
+    needs surface (the obs stack's purpose today is
+    primarily alerting on quantifiable failure, not
+    dashboard polish).
+  - Done — Caddyfile: re-added the `grafana.snoringcat.games`
+    site block. Proxies to `grafana:3000` with TLS auto-
+    provisioned via Let's Encrypt. Header forwarding matches
+    the nakama block; gzip enabled.
+  - Done — Pulumi
+    (`infra/pulumi/snoringcat-platform/main.go`): re-added
+    `cloudflare.NewRecord` for `grafana-a` (Cloudflare DNS A
+    record pointing at the nakama-prod-1 public IP,
+    proxied=false) + matching `grafana_dns_record_id` +
+    `grafana_url` exports. Updated the CPX11 const-block
+    comment to record the Stage 7.11 re-introduction
+    rationale and the headroom check (603 MB used + 1.3 GB
+    available pre-deploy; lightweight obs lands in ~350 MB
+    resident).
+  - Done — runtime instrumentation
+    (`runtime/fleet_allocator.go`): `OnMatchmakerMatched`
+    now starts a `matchStart := time.Now()` after the
+    early-return on empty entries, and records a
+    `snoringcat_alloc_seconds` Nakama custom timer via
+    `nk.MetricsTimerRecord` after the post-allocation
+    cancel checkpoint (so cancelled allocations don't skew
+    the success-path histogram). Tags `game_id` +
+    `mock=true|false` keep mock-mode test runs from
+    polluting real-mode dashboards. Recorded via Nakama's
+    built-in custom-metrics surface which fans out through
+    the same `:9099` Prometheus endpoint Prometheus already
+    scrapes — no separate HTTP server needed.
+  - Done — docs: PLATFORM_ARCHITECTURE.md operations diagram
+    + STUDIO_ARCHITECTURE.md Hetzner section + hopnbop
+    CLAUDE.md "production resources" + status preamble all
+    refreshed to reflect the new lightweight obs subset.
+  - Verification: `go vet ./... && go test ./... &&
+    staticcheck ./...` all clean. Pluginbuilder Docker
+    image deferred to the CI runtime workflow; local Go
+    build path is sufficient signal for the test gate.
+  - Decision worth recording: lightweight subset, not full
+    stack. The original strip (2026-05-06) was forced by the
+    2 GB CPX11 RAM cap after collapsing the 2-host stack
+    onto one. The live host check before re-enable showed
+    1.3 GB available with the consolidated stack. The
+    lightweight subset (Prometheus + Grafana + 2 exporters)
+    fits in ~350 MB resident with comfortable margin; adding
+    Loki + Promtail would land ~150 MB more — feasible but
+    pushes the box into uncomfortable-under-load territory
+    without a clear payoff today. journalctl + docker logs
+    cover the ops use case. The Loki/Promtail configs stay
+    in-tree so a future "queryable logs would actually help
+    here" moment doesn't require rebuilding from scratch.
+  - Decision worth recording: custom metric is a single
+    Nakama-side timer, not a separate Prometheus HTTP
+    server. `nk.MetricsTimerRecord` fans out through
+    Nakama's built-in `:9099` endpoint as a histogram with
+    the same prefix Nakama uses for its own metrics. Cheap
+    (one nakama-common API call per match), no extra port
+    surface to firewall, and the metric inherits the same
+    scrape cadence + alerting reach as everything else.
+  - Decision worth recording: `game_id` + `mock` are the
+    only tags. Per-attempt or per-region tags would add
+    cardinality without payoff today — a single rolling
+    histogram across all attempts answers "is allocation
+    latency drifting?" and the retry-count is already in
+    `logger.Info` lines for any debug deep-dive. Subject to
+    revisit if dashboards need per-region heatmaps.
+  - Known limitation: no compliance test for the new metric
+    surface. End-to-end testing means querying Prometheus
+    after a live allocation, which requires the obs stack
+    actually running. The 8.13 mock-mode allocation in
+    `test_party_to_matchmaking.gd` exercises the
+    instrumented code path — a future Tier 4 e2e (8.29–8.31
+    docker-compose track) could assert
+    `snoringcat_alloc_seconds_count` increments after a
+    mock match.
+  - Known limitation: deploy of the new compose + new
+    `.env` `GRAFANA_ADMIN_PASSWORD` to the live
+    nakama-prod-1 box is operator work (SCP +
+    `docker compose up -d --build` + `pulumi up`);
+    `nakama-runtime.yml` GH Actions only pushes the
+    `snoringcat.so` plugin. Procedure: SCP the new
+    `docker-compose.yml`, `prometheus.yml`, `Caddyfile`,
+    + `grafana/provisioning/` tree to `/opt/nakama/`;
+    append `GRAFANA_ADMIN_PASSWORD=<random base64-24>` to
+    `/opt/nakama/.env`; run `docker compose up -d --build`
+    on the host; run `pulumi up` from the operator
+    workstation to apply the grafana DNS record.
 - [x] **7.12 Max pending friend request enforcement** (2026-05-13).
   - Done — runtime: new
     `third_party/snoringcat-platform/runtime/friends_limits.go`,
@@ -3732,11 +3876,19 @@ Security:
   table per request, eliminating the manual step.
 - No staging Nakama at parity with prod. Stage 8.31 introduces this.
 - DNS-watchdog and `pg-backup` systemd timers have no automated
-  fail-safe / alerting. Cover in 7.11.
-- Observability stack (Prometheus/Grafana/Loki/Promtail) stripped
-  2026-05-06. Configs preserved in
-  `third_party/snoringcat-platform/infra/remote/nakama/` for
-  re-introduction. Cover in 7.11.
+  fail-safe / alerting. Stage 7.11 (2026-05-13) restored the
+  Grafana alerting surface but the timers themselves don't emit
+  metrics yet — failure is still surfaced by the systemd service
+  status (visible in the `journalctl` / watchdog Discord pings)
+  rather than a queryable counter. A future expansion could
+  publish a textfile-collector entry on each successful run for
+  `node-exporter` to pick up.
+- Observability stack: re-introduced (lightweight subset)
+  2026-05-13 in Stage 7.11. Prometheus + Grafana +
+  node-exporter + postgres-exporter live on the same single-
+  host CPX11; Loki + Promtail intentionally stayed off (configs
+  preserved in `third_party/snoringcat-platform/infra/remote/nakama/`
+  for a future re-introduction).
 - **Stage 2.5/2.6 rollout ordering (one-time, post-deploy
   step):** the BeforeAuthenticate* hooks are bootstrap-graceful
   (pass through when `games` is empty), so deploying the new
@@ -5408,6 +5560,61 @@ Security:
     × 1 line; not a huge save, but the principle matters —
     next person reading the CSV doesn't waste cycles
     wondering whether the keys still drive something.
+
+- **2026-05-13:** Stage 7.11 lightweight observability
+  re-introduction shipped (sixteenth pass). Five design calls
+  worth recording:
+  - **Lightweight subset, not full stack.** Prometheus +
+    Grafana + node-exporter + postgres-exporter were re-added;
+    Loki + Promtail were intentionally left off. The 2026-05-06
+    consolidation stripped the full stack to fit 2 GB CPX11;
+    the live-host probe before re-enable showed 1.3 GB
+    available, so the lightweight subset (~350 MB resident)
+    has comfortable margin while the full stack (~500 MB)
+    would have left the box tight under load. journalctl +
+    docker logs cover the ops use case the Loki configs were
+    serving; preserving the configs in-tree means a future
+    "queryable logs would actually help here" moment doesn't
+    require reconstruction.
+  - **Custom allocation timer rides Nakama's metrics
+    surface, not a separate HTTP server.**
+    `nk.MetricsTimerRecord("snoringcat_alloc_seconds", ...)`
+    fans out through the same `:9099` Prometheus endpoint
+    Prometheus already scrapes. Cheap (one nakama-common API
+    call per match), no extra firewall surface, inherits
+    the same scrape cadence + alerting reach as everything
+    else. The alternative (a separate HTTP server in the
+    plugin) would have added a second listener that
+    Prometheus would need a separate scrape job for, with
+    no upside.
+  - **Two tags only: `game_id` + `mock`.** Per-attempt or
+    per-region tags would add cardinality without payoff
+    today. A single rolling histogram across all attempts
+    answers "is allocation latency drifting?"; the
+    retry-count is already in `logger.Info` lines for any
+    debug deep-dive. Subject to revisit if dashboards
+    eventually need per-region heatmaps.
+  - **Timer recorded after the post-allocation cancel
+    checkpoint.** Cancelled allocations have a meaningful
+    "I waited for X seconds before the cancel landed"
+    duration but it's not the same distribution as
+    successful allocations. Recording after the cancel
+    check keeps the histogram clean — only successful
+    allocations contribute. Cancellations show up as the
+    `match_failed reason=cancelled` notification fan-out;
+    their latency is a different statistic.
+  - **Deploy is operator work, not GH Actions.** The
+    `nakama-runtime.yml` workflow only pushes the
+    `snoringcat.so` plugin to the host. The new
+    `docker-compose.yml` + `prometheus.yml` + `Caddyfile` +
+    `grafana/provisioning/` tree need an SCP + `docker
+    compose up -d --build` from the operator workstation,
+    plus `pulumi up` to apply the grafana DNS record. The
+    `nakama-runtime.yml` could be expanded to push the
+    compose too, but the operator-driven path is what
+    every prior infra change uses and the new dependencies
+    (GRAFANA_ADMIN_PASSWORD env var) need credentials.env
+    co-located with the operator anyway.
 
 ## How to use this document
 

@@ -31,14 +31,19 @@ Nakama+Hetzner+Edgegap completed 2026-05-03 (Phase F).
 Single-host consolidation 2026-05-06 collapsed the original
 two CPX11 (Nakama + separate Postgres + full
 Prometheus/Grafana/Loki/Promtail observability) into one CPX11
-with Postgres co-tenanted alongside Nakama and the obs stack
-stripped — visibility is now via the daily Claude
-prod-health-check job + UptimeRobot + cost-monitor Discord
-summary + `journalctl`. Live production runs on a single
-Hetzner CPX11 with Edgegap-allocated game-server containers.
-Historical migration notes for archeology are in
-`MIGRATION_PLAN.md` and `docs/archive/platform-pivot-
-discussion.md`.
+with Postgres co-tenanted alongside Nakama. Stage 7.11
+(2026-05-13) re-introduced a lightweight obs subset
+(Prometheus + Grafana + node-exporter + postgres-exporter) on
+the same single-host stack; Loki + Promtail stayed off (logs
+remain on `journalctl` / `docker logs`). Visibility is now a
+mix of Grafana dashboards + Discord alerts (5 baseline rules:
+nakama-down, postgres-down, postgres-conn-saturation,
+disk>90%, CPU>80% 15m), the daily Claude prod-health-check
+job, UptimeRobot, and the cost-monitor Discord summary. Live
+production runs on a single Hetzner CPX11 with Edgegap-
+allocated game-server containers. Historical migration notes
+for archeology are in `MIGRATION_PLAN.md` and
+`docs/archive/platform-pivot-discussion.md`.
 
 **Per-game protocol versioning** (post-migration): each game has
 its own `protocol_version` integer in `game.yaml` and
@@ -271,17 +276,18 @@ If the changes require users to re-consent, also bump
   `R2_SECRET_ACCESS_KEY` / `R2_ENDPOINT` (sourced from
   `~/.hopnbop-migration/credentials.env`).
 - **nakama-prod-1:** CPX11 in Hillsboro, runs Postgres 16 +
-  Nakama + Caddy in a single docker compose stack.
+  Nakama + Caddy + Prometheus + Grafana + node-exporter +
+  postgres-exporter in a single docker compose stack.
   cost-monitor + dns-watchdog + pg-backup systemd timers on
-  the host. Observability (Prometheus/Grafana/Loki/Promtail/
-  node-exporter/postgres-exporter) was removed in the
-  2026-05-06 consolidation; the config files
-  (`prometheus.yml`, `loki-config.yml`, etc.) are kept in
-  `infra/remote/nakama/` so the stack can be re-introduced
-  later via a docker-compose toggle.
-- **DNS:** Cloudflare-managed; `nakama.snoringcat.games`
-  bound to the Hetzner public IP. (`grafana.snoringcat.games`
-  was removed in the consolidation.)
+  the host. Loki + Promtail (log shipping) were intentionally
+  left off in the Stage 7.11 (2026-05-13) lightweight
+  re-introduction; their configs remain in
+  `infra/remote/nakama/` so they can be flipped on without
+  reconstruction. Logs stay on `journalctl` / `docker logs`.
+- **DNS:** Cloudflare-managed; `nakama.snoringcat.games`,
+  `grafana.snoringcat.games`, and `signaling.snoringcat.games`
+  all point at the Hetzner public IP (Caddy multiplexes by
+  Host header).
 - **Cost:** ~$8/mo CPX11 cap + cents of R2 backups. See
   cost-monitor.
 - **Backups:** `pg-backup.timer` runs nightly at 03:11 UTC,
