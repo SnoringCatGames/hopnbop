@@ -30,9 +30,33 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 7 resilience fill-in. **Stage 7.11
-  (lightweight observability re-introduction) shipped end-
-  to-end** (2026-05-13, sixteenth pass). Re-added Prometheus
+- **Current focus:** Stage 7 resilience fill-in. **Stage 7.10
+  (mid-match rejoin, reconnect flavor) shipped end-to-end**
+  (2026-05-14, seventeenth pass). Locked design call:
+  reconnect (same player resumes, not backfill), slot+score
+  only (treat gap as died-and-respawning), 30s grace
+  window. Framework change (`rollback_netcode` submodule
+  `02c65b0`): NetworkConnector reuses player_id when an
+  incoming session_id matches a previous declaration, so a
+  reconnecting client keeps their slot. Game-side:
+  GameMatchState gains `player_reconnected` signal +
+  `server_on_player_reconnected` method;
+  MatchStateSynchronizer adds 30s grace timers per
+  player_id plus `reconnect_grace_started/expired` signals;
+  game_panel defers `_server_check_auto_end_on_disconnect`
+  until grace expires. Client-side ReconnectHandler
+  (`src/core/reconnect_handler.gd`) captures match-ready
+  params on first connect and runs a backoff retry loop
+  (5s × 6 attempts within 30s) on unexpected mid-match
+  disconnect. UI: programmatic ReconnectingOverlay with
+  spinner + countdown + TOAST.RECONNECT_FAILED /
+  TOAST.RECONNECTED. ENet-only in v1; WebRTC + WebSocket
+  reconnect deferred to 7.10b because each transport's
+  signaling re-negotiation is heavier. 4 new translation
+  keys × 13 locales. Headless boot clean (no parse/compile
+  errors after the change). Prior sixteenth pass: **Stage
+  7.11 lightweight observability re-introduction**
+  (2026-05-13). Re-added Prometheus
   + Grafana + node-exporter + postgres-exporter to the
   consolidated single-host CPX11; Loki + Promtail stayed off
   to preserve RAM headroom (configs preserved for a future
@@ -300,8 +324,15 @@ See also:
   (b) finish the remaining 2 Stage 7 items: 7.10 mid-match
   rejoin (locked in for this session), 7.3 push notifications
   (3-platform scope, deferred behind 7.10).
-- **Last updated:** 2026-05-13 (sixteenth pass: Stage 7.11
-  lightweight obs re-introduction shipped end-to-end —
+- **Last updated:** 2026-05-14 (seventeenth pass: Stage 7.10
+  mid-match rejoin shipped — reconnect flavor, lightweight
+  slot+score preservation, 30s grace, ENet-only v1.
+  Framework `rollback_netcode` submodule bumped to `02c65b0`
+  for the session_id -> player_id reuse. Game-side adds
+  reconnect grace timers (server), reconnect loop +
+  ReconnectingOverlay (client), 4 i18n keys. Prior
+  sixteenth pass: Stage 7.11 lightweight obs re-introduction
+  shipped end-to-end —
   infra configs + Pulumi DNS + runtime custom timer all
   landed AND the live deploy executed (SCP + docker compose
   up + pulumi up + nakama-runtime.yml). All 8 containers
@@ -450,16 +481,18 @@ See also:
     tests with doubles (8.23–8.28), Tier 4 e2e/smoke
     (8.29–8.31).
 - **Stages in progress (Stage 7 resilience):**
-  - Stage 7 — 11/13 shipped 2026-05-13 (7.1 allocation retry,
-    7.2 mid-queue cancel teardown, 7.4 friend block list, 7.5
+  - Stage 7 — 12/13 shipped (7.1 allocation retry, 7.2 mid-
+    queue cancel teardown, 7.4 friend block list, 7.5
     friend pagination, 7.6 recent-players list, 7.7 GDPR
     cascade verification + fix, 7.8 account-merge UI, 7.9
-    anonymous-upgrade UI, 7.11 lightweight obs
+    anonymous-upgrade UI, 7.10 mid-match rejoin (reconnect
+    flavor, ENet-only v1), 7.11 lightweight obs
     re-introduction, 7.12 max-pending-friend-requests cap,
-    7.13 friend-code rate-limit). Remaining 2 items:
-    7.3 push notifications (heavy 3-platform scope), 7.10
-    mid-match rejoin (design + implementation, locked in for
-    the next pass).
+    7.13 friend-code rate-limit). Remaining 1 item:
+    7.3 push notifications (heavy 3-platform scope —
+    PWA web-push + FCM + APNS). Plus a 7.10b follow-up
+    pending: WebRTC + WebSocket reconnect (the v1
+    client-side ReconnectHandler is ENet-only).
 - **Stages blocked:** none.
 
 ## Stage dependency graph
@@ -502,13 +535,14 @@ Stage 3 (done, 2026-05-12) — game_id scoping: presence
        needed).
    ↓
 Stage 7 — Resilience (retries, notifications, observability).
-   11/13 shipped 2026-05-13 (7.1 allocation retry, 7.2 mid-queue
-   cancel teardown, 7.4 friend block list, 7.5 friend pagination,
-   7.6 recent-players list, 7.7 GDPR cascade verification + fix,
-   7.8 account-merge UI, 7.9 anonymous-upgrade UI, 7.11
-   lightweight observability re-introduction, 7.12 max-pending-
-   friend-request cap, 7.13 friend-code rate-limit); 2 open
-   (7.3 push notifications, 7.10 mid-match rejoin).
+   12/13 shipped (7.1 allocation retry, 7.2 mid-queue cancel
+   teardown, 7.4 friend block list, 7.5 friend pagination,
+   7.6 recent-players list, 7.7 GDPR cascade verification +
+   fix, 7.8 account-merge UI, 7.9 anonymous-upgrade UI, 7.10
+   mid-match rejoin (ENet-only v1), 7.11 lightweight
+   observability re-introduction, 7.12 max-pending-friend-
+   request cap, 7.13 friend-code rate-limit); 1 open (7.3
+   push notifications).
 
 Stage 8 — Tests (parallel track, doesn't block features).
    22/31 shipped 2026-05-13. Tier 1 Go unit tests (8.3–8.10)
@@ -3086,8 +3120,159 @@ Extract clean code, not bug-laden code.
     platform smoke test, so the flow itself isn't an unknown.
     The panel-rendering / badge-routing logic is verified by
     headless boot + manual smoke.
-- [ ] 7.10 Backfill / rejoin for mid-match disconnect (design call
-  required — not obvious whether to support this).
+- [x] **7.10 Mid-match rejoin (reconnect flavor, lightweight)**
+      (2026-05-14).
+  - Design lockdown (with user, before any code):
+    **(a) Reconnect** (same player resumes), not backfill;
+    **(b) slot + score only** preserved (treat the gap as
+    died-and-respawning — the bunny entity is despawned on
+    disconnect and re-spawned fresh on reconnect with full
+    HP, but the PlayerState slot + kills/bumps counters
+    carry over); **(c) 30s grace window**, fixed (not per-
+    game.yaml).
+  - Done — framework (`addons/rollback_netcode`,
+    submodule `02c65b0`): NetworkConnector adds a server-
+    side `_session_id_to_player_id` map.
+    `_server_rpc_declare_players` and `local_mode_setup`
+    both look up the incoming session_id before assigning
+    a fresh `_next_player_id` — a client that reconnects
+    with the same session_id receives the same player_id
+    they had before the disconnect. New public method
+    `server_clear_session_id_mapping(session_id)` lets the
+    game side drop a mapping when it decides the player
+    is truly gone. `reset_local_mode` also clears the map.
+  - Done — game-side server: `GameMatchState` gains a
+    `signal player_reconnected(player: PlayerState)` and a
+    `server_on_player_reconnected(player)` method that
+    re-adds the player to the `_connected_players` set and
+    fires both `player_reconnected` + `players_updated`.
+    `MatchStateSynchronizer` gains
+    `RECONNECT_GRACE_SEC=30.0`, a `_grace_timers` dict
+    keyed by player_id, two new signals
+    (`reconnect_grace_started` + `reconnect_grace_expired`),
+    plus `_server_start_grace_timer` /
+    `_server_cancel_grace_timer` /
+    `_server_on_grace_expired` helpers.
+    `_server_on_peer_disconnected` calls
+    `_server_start_grace_timer` after the existing
+    despawn flow.
+    `_server_on_peer_players_declared` detects the
+    reconnect case (`state.players_by_id.has(player_id)`
+    with `is_connected_to_server=false`), refreshes the
+    existing PlayerState's peer_id / local_player_index /
+    connect_frame_index, cancels the grace timer, and
+    fires `player_reconnected` instead of `player_joined`.
+    `server_cancel_all_grace_timers()` for match teardown.
+  - Done — game-side game_panel: `_on_player_left` no
+    longer immediately runs
+    `_server_check_auto_end_on_disconnect`. The check is
+    deferred to the new
+    `_on_reconnect_grace_expired(player_id)` handler that
+    fires 30s post-disconnect (unless the player
+    reconnects). New `_on_player_reconnected(player)`
+    logs the resume.
+  - Done — client-side reconnect loop
+    (`src/core/reconnect_handler.gd`, new): a
+    ReconnectHandler node owned by GamePanel that captures
+    match-ready connection params
+    (server_ip / server_port / signaling_url /
+    transport_type) on `_on_session_ids_received` and, when
+    `game_panel._on_connection_lost` fires unexpectedly
+    mid-match, replaces the immediate exit-match with a
+    backoff retry loop. Retry interval 5s, max 6 attempts
+    within the 30s window. Each successful reconnection
+    triggers the framework's `connected` signal, which
+    game_panel routes to `notify_reconnected()`; if all
+    attempts fail, `reconnect_failed` fires and game_panel
+    falls through to the normal `client_exit_match()` path.
+    ENet-only in v1 (`can_attempt_reconnect()` short-
+    circuits non-ENet transports because WebRTC + WS need
+    signaling re-negotiation, deferred to a follow-up).
+  - Done — UI (`src/ui/reconnecting_overlay/`, new):
+    `ReconnectingOverlay` is a CanvasLayer overlay that
+    shows a `LoadingSpinner` + "Reconnecting..." header
+    + "(Xs remaining)" countdown. Programmatic layout
+    (no .tscn) because the structure is trivial. GamePanel
+    spawns it on `reconnect_started`, updates the
+    countdown on `reconnect_attempt`, and frees it on
+    `reconnect_succeeded` / `reconnect_failed`. Plus
+    toast messages: `TOAST.RECONNECTED` (success) and
+    `TOAST.RECONNECT_FAILED` (fail).
+  - Done — i18n: 4 new translation keys × 13 locales
+    (`RECONNECT.HEADER`, `RECONNECT.COUNTDOWN`,
+    `TOAST.RECONNECT_FAILED`, `TOAST.RECONNECTED`). CSV
+    verified at 14 fields per line for every new entry.
+    `.translation` binaries regenerated via
+    `godot --headless --import`. Non-English translations
+    are best-effort and worth a native-speaker review pass
+    (same caveat as every other recent i18n add).
+  - Decision worth recording: the framework's
+    session_id -> player_id map is the right scope (not
+    PlayerState, not a game-side dict). Each session is
+    one match's reservation; the map's lifetime is one
+    match (game-server container restarts at match end).
+    Putting it on PlayerState would require a framework
+    schema change AND would replicate the session_id to
+    other clients — overkill for a server-only lookup. A
+    game-side dict would have to mirror the framework's
+    own player_id assignment logic, which is brittle.
+    The framework owns player_id assignment, so the
+    framework owns the session_id mapping.
+  - Decision worth recording: 30s grace is fixed, not
+    per-game.yaml configurable. The user explicitly
+    picked "30 seconds" over "configurable per game.yaml"
+    in the design call. A future game with different
+    pacing can re-evaluate.
+  - Decision worth recording: programmatic
+    ReconnectingOverlay layout, not a .tscn. The
+    structure is one ColorRect + CenterContainer +
+    VBoxContainer + 3 widgets — adding a separate scene
+    file would add maintenance surface (export var
+    wiring, scene-instance bugs on hot reload) without
+    payoff. Easy to swap to a .tscn later if the design
+    needs more flexibility.
+  - Decision worth recording: the despawn happens
+    immediately on disconnect (not deferred to grace
+    expiry). The "lightweight slot + score only"
+    framing the user picked is functionally
+    "treat the gap as died-and-respawning"; deferring
+    despawn would mean the bunny entity lingers without
+    input, which is a weirder UX than a fresh respawn.
+    Score is preserved on PlayerState (which stays in
+    `players_by_id` throughout grace), so the rejoining
+    player still sees their kill/bump counts.
+  - Decision worth recording: ENet-only in v1. WebRTC +
+    WebSocket reconnect needs signaling re-negotiation
+    (each transport's TLS handshake / DataChannel setup
+    is heavier than ENet's UDP redial). Deferred to a
+    7.10b follow-up that touches the transport-specific
+    code paths. Web clients (which always use
+    WebRTC/WebSocket on hopnbop today) will see the
+    existing immediate exit-match path until 7.10b
+    lands.
+  - Known limitation: no compliance test for the
+    reconnect path. End-to-end testing means simulating
+    a mid-match disconnect on a live deployment, which
+    isn't easily automatable against prod. Tier 4
+    docker-compose e2e (8.29) is the natural place for
+    it; deferred.
+  - Known limitation: spectator-side disconnected
+    badge in the in-match HUD not implemented in v1.
+    Other players currently see the disconnected
+    player's bunny vanish but don't get an explicit
+    indicator that they're disconnected (vs. just
+    out of view). Follow-up; the PlayerState's
+    `is_connected_to_server` getter is the read source.
+  - Known limitation: framework's
+    `_session_id_to_player_id` map isn't cleared on
+    grace expiry in v1. The lookup-stale-mapping case
+    is theoretically possible but practically
+    impossible (session_ids are per-match-allocation
+    so collision within the same match-server-container
+    lifetime is near-zero). The
+    `server_clear_session_id_mapping()` hook exists
+    for a future caller; the v1 code just doesn't
+    invoke it.
 - [x] **7.11 Re-introduce lightweight observability** (2026-05-13).
   - Done — infra: `infra/remote/nakama/docker-compose.yml`
     re-adds four services on the single-host CPX11:
@@ -5659,6 +5844,72 @@ Security:
     every prior infra change uses and the new dependencies
     (GRAFANA_ADMIN_PASSWORD env var) need credentials.env
     co-located with the operator anyway.
+
+- **2026-05-14:** Stage 7.10 mid-match rejoin shipped
+  (seventeenth pass). Six design calls worth recording:
+  - **Framework-side session_id reuse, not game-side
+    merge.** The rollback-netcode `NetworkConnector`
+    already owns player_id assignment (sequential
+    `_next_player_id`). For reconnect we need a
+    reconnecting client to get THEIR OWN player_id, not a
+    fresh one — otherwise the existing PlayerState slot +
+    score on the game side gets orphaned. Cleanest fix is
+    a server-only `_session_id_to_player_id` map in the
+    framework. The alternative (game-side detects "new
+    player_id has the same session_id as an existing one,
+    merge their PlayerStates") would require either a
+    framework signal change (passing session_ids through
+    `peer_players_declared`) or a heavyweight server-side
+    bookkeeping layer. Framework change is small (~70
+    lines) and backward-compatible.
+  - **30s grace, fixed.** User explicitly picked this in
+    the design call over "configurable per game.yaml".
+    Hopnbop's pacing fits a 30s window cleanly: long
+    enough to cover a typical WiFi drop or browser tab
+    reload, short enough that 3 other players aren't
+    sitting watching an empty slot. A future game with
+    different pacing can re-evaluate and either bump the
+    const or thread it through game.yaml.
+  - **Treat the gap as died-and-respawning.** "Lightweight
+    slot+score only" (user's design choice) is functionally
+    "preserve PlayerState slot + score counter; despawn
+    the bunny entity; respawn fresh on reconnect with full
+    HP at a spawn point". The despawn happens immediately
+    on disconnect — deferring it would mean the bunny
+    lingers without input, which is weirder UX than a
+    clean respawn. Score lives on PlayerState (kept in
+    `players_by_id` throughout grace via the existing
+    `is_connected_to_server=false` semantic) so the
+    rejoining player still sees their kill/bump counts.
+  - **ENet-only in v1, not full transport parity.** WebRTC
+    and WebSocket reconnect each need transport-specific
+    signaling re-negotiation (WebRTC: new SDP offer +
+    ICE re-gathering through the signaling-proxy;
+    WebSocket: full TLS handshake + buffer overflow risk
+    on web clients). Each path is a multi-day pass on its
+    own and would have stretched 7.10 into multiple
+    sessions. The v1 cut covers native desktop matches
+    cleanly; web/WebRTC players see the existing
+    immediate exit-match path until 7.10b lands. The
+    `can_attempt_reconnect()` gate makes the limit
+    explicit.
+  - **Server-side grace is just a SceneTreeTimer.** Not a
+    rollback-deterministic frame counter, not a coalesced
+    timer manager. The grace timer is real-wall-clock
+    (30s) and one per disconnected player. SceneTreeTimers
+    can't be cancelled directly, so the implementation
+    tracks them in `_grace_timers: Dictionary` keyed by
+    player_id and disconnects the timeout handler before
+    fire (effectively cancelling). Simpler than spawning
+    Timer node children per-player.
+  - **Programmatic ReconnectingOverlay, not a .tscn.** The
+    structure is one ColorRect + CenterContainer + VBox
+    with two labels + a spinner. A separate scene file
+    would add maintenance surface (export var wiring,
+    scene-instance bugs on hot reload) without payoff. If
+    the design needs more flexibility later, swap to
+    `reconnecting_overlay.tscn` then; today the
+    programmatic version is ~70 lines total.
 
 ## How to use this document
 

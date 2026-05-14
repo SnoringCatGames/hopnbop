@@ -340,6 +340,19 @@ func _on_session_ids_received(
 	# Store selected level ID (client may use this for UI/preview).
 	G.client_session.selected_level_id = StringName(selected_level_id)
 
+	# Stage 7.10: hand the connection params to the
+	# ReconnectHandler so a subsequent unexpected disconnect
+	# can retry without re-running matchmaking.
+	if (is_instance_valid(G.game_panel)
+			and is_instance_valid(
+				G.game_panel.reconnect_handler)):
+		G.game_panel.reconnect_handler.capture_match_params(
+			server_ip,
+			server_port,
+			signaling_url,
+			Netcode.settings.transport_type,
+		)
+
 	# Connect to server.
 	Netcode.connector.client_connect_to_server(
 		server_ip, server_port, signaling_url)

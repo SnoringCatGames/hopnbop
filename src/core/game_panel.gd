@@ -43,6 +43,12 @@ var _pending_level_scene: PackedScene
 var _session_poll_timer: Timer
 var _session_poll_http: HTTPRequest
 
+## Stage 7.10: handles client-side reconnect during the
+## server-side grace window. Captures connection params from
+## the most recent match-ready, listens for unexpected
+## disconnects, and drives the retry loop. ENet-only in v1.
+var reconnect_handler: ReconnectHandler
+
 var match_state: GameMatchState:
 	get:
 		return %MatchStateSynchronizer.state
@@ -70,6 +76,32 @@ func _ready() -> void:
 		if level_info.scene != null:
 			%LevelSpawner.add_spawnable_scene(
 				level_info.scene.resource_path)
+
+	# Set up reconnect handler before session manager so
+	# GameSessionManager.client_request_session sees a
+	# valid reference when it captures match params.
+	reconnect_handler = ReconnectHandler.new()
+	reconnect_handler.name = "ReconnectHandler"
+	add_child(reconnect_handler)
+	reconnect_handler.reconnect_started.connect(
+		_on_reconnect_started)
+	reconnect_handler.reconnect_attempt.connect(
+		_on_reconnect_attempt)
+	reconnect_handler.reconnect_failed.connect(
+		_on_reconnect_failed)
+	reconnect_handler.reconnect_succeeded.connect(
+		_on_reconnect_succeeded)
+
+	# Stage 7.10: when the framework re-establishes the
+	# peer connection after a mid-match drop, the
+	# ReconnectHandler needs to know so it can stop
+	# retrying and emit reconnect_succeeded. The
+	# `_client_send_player_declaration` call inside
+	# `_on_peer_connected` re-runs the framework's declare
+	# path, which on the server side reuses our player_id
+	# via the session_id -> player_id mapping.
+	Netcode.connector.connected.connect(
+		_on_connector_connected)
 
 	# Set up session manager for network coordination.
 	session_manager = GameSessionManager.new()
@@ -197,12 +229,22 @@ func _ready() -> void:
 		_on_player_joined)
 	G.match_state.player_left.connect(
 		_on_player_left)
+	G.match_state.player_reconnected.connect(
+		_on_player_reconnected)
 	G.match_state.player_killed.connect(
 		_on_player_killed)
 	G.match_state.players_bumped.connect(
 		_on_players_bumped)
 	G.match_state.match_ended.connect(
 		_on_match_ended)
+
+	# Stage 7.10: defer the auto-end-on-disconnect
+	# check until the reconnect grace window expires.
+	# The signal fires on the server only.
+	if match_state_synchronizer != null:
+		(match_state_synchronizer
+			.reconnect_grace_expired.connect(
+				_on_reconnect_grace_expired))
 
 	# Set up PerfTracker callback for level
 	# ready state.
@@ -240,6 +282,32 @@ func _on_player_left(
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
+	# Stage 7.10: the auto-end-on-disconnect check used to
+	# fire here, ending the match within ~one frame of a
+	# disconnect. Now it's deferred until
+	# `reconnect_grace_expired` fires (30s after the
+	# disconnect) so a transient drop doesn't kill the
+	# match. If the player reconnects within the window,
+	# `_on_player_reconnected` will fire and no auto-end is
+	# triggered.
+
+
+func _on_player_reconnected(
+	player: PlayerState,
+) -> void:
+	Netcode.print(
+		"Player reconnected: %s" % player.get_string(),
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
+
+
+func _on_reconnect_grace_expired(player_id: int) -> void:
+	Netcode.print(
+		"Reconnect grace expired for player %d;"
+		% player_id
+		+ " running deferred auto-end check",
+		NetworkLogger.CATEGORY_GAME_STATE,
+	)
 	if Netcode.runs_server_logic:
 		_server_check_auto_end_on_disconnect()
 
@@ -476,6 +544,30 @@ func _on_connection_lost(
 				and not G.match_state
 					.is_match_active
 			)
+			# Stage 7.10: if the disconnect is mid-match
+			# AND we have valid match params AND the
+			# transport supports reconnect (ENet-only in
+			# v1), defer the exit and start a reconnect
+			# loop instead. Server holds the slot for 30s.
+			# A failed reconnect cycle fans out via
+			# _on_reconnect_failed which routes back
+			# through the normal exit-match path.
+			if (G.match_state.is_match_active
+					and not is_pre_match_shutdown
+					and reconnect_handler != null
+					and reconnect_handler.can_attempt_reconnect()
+					and not reconnect_handler.is_reconnecting()):
+				Netcode.print(
+					"Mid-match disconnect; starting"
+					+ " reconnect loop (reason=%s)"
+					% reason_name,
+					NetworkLogger.CATEGORY_CONNECTIONS,
+				)
+				reconnect_handler.start()
+				return
+
+			# Reconnect not feasible or already failed —
+			# fall through to the normal exit path.
 			var toast_message: String
 			if is_pre_match_shutdown:
 				toast_message = tr(
@@ -490,6 +582,76 @@ func _on_connection_lost(
 					ToastOverlay.Type.ERROR,
 				)
 			client_exit_match()
+
+
+## Stage 7.10: reconnect loop exhausted without success.
+## Falls through to the normal exit-match path.
+func _on_reconnect_failed(reason: String) -> void:
+	Netcode.print(
+		"Reconnect failed (%s); exiting match" % reason,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+	_close_reconnecting_overlay()
+	G.client_session.latest_server_message = (
+		"Disconnected (reconnect failed: %s)" % reason)
+	if is_instance_valid(G.toast_overlay):
+		G.toast_overlay.show_toast(
+			tr("TOAST.RECONNECT_FAILED"),
+			ToastOverlay.Type.ERROR,
+		)
+	client_exit_match()
+
+
+## Stage 7.10: client reconnected successfully within the
+## grace window. Server has us back in match state with our
+## original player_id (framework reused via session_id
+## mapping). Just log; the normal connection-restored flow
+## resumes naturally as the framework re-declares us.
+func _on_reconnect_succeeded() -> void:
+	Netcode.print(
+		"Reconnect succeeded; resuming match",
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+	_close_reconnecting_overlay()
+	if is_instance_valid(G.toast_overlay):
+		G.toast_overlay.show_toast(
+			tr("TOAST.RECONNECTED"),
+			ToastOverlay.Type.SUCCESS,
+		)
+
+
+func _on_connector_connected(_local_peer_id: int) -> void:
+	if (reconnect_handler != null
+			and reconnect_handler.is_reconnecting()):
+		reconnect_handler.notify_reconnected()
+
+
+## Stage 7.10: reconnect_handler signals — show + update +
+## free the modal overlay during the 30s grace window.
+var _reconnecting_overlay: ReconnectingOverlay
+
+
+func _on_reconnect_started(_grace_sec: float) -> void:
+	if _reconnecting_overlay != null:
+		_reconnecting_overlay.queue_free()
+	_reconnecting_overlay = ReconnectingOverlay.new()
+	get_tree().root.add_child(_reconnecting_overlay)
+
+
+func _on_reconnect_attempt(
+	_attempt: int,
+	_max_attempts: int,
+	sec_remaining: float,
+) -> void:
+	if _reconnecting_overlay != null:
+		_reconnecting_overlay.update_countdown(
+			sec_remaining)
+
+
+func _close_reconnecting_overlay() -> void:
+	if _reconnecting_overlay != null:
+		_reconnecting_overlay.queue_free()
+		_reconnecting_overlay = null
 
 
 func _on_matchmaking_failed(reason: String) -> void:

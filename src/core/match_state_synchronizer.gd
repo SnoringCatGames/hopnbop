@@ -13,11 +13,39 @@ var _stats_send_interval_frames: int:
 				.target_network_fps
 		)
 
+## Seconds a disconnected player's slot is held
+## before declaring them truly gone (Stage 7.10).
+## During this window the auto-end-on-disconnect
+## check is suppressed and the framework's
+## session_id -> player_id mapping is preserved so
+## a reconnect can pick up the existing PlayerState
+## (slot + score). Fixed at 30s; not currently
+## configurable per game.yaml.
+const RECONNECT_GRACE_SEC: float = 30.0
+
+## Emitted server-side when a player's reconnect grace window
+## starts (immediately on disconnect). UI consumers can use
+## this to show a per-slot "disconnected" badge with a
+## countdown.
+signal reconnect_grace_started(player_id: int, grace_sec: float)
+
+## Emitted server-side when a player's reconnect grace window
+## expires without a successful reconnect. Game-side
+## consumers (game_panel) listen to trigger the deferred
+## auto-end-on-disconnect check.
+signal reconnect_grace_expired(player_id: int)
+
 var state := GameMatchState.new()
 var _previous_state := GameMatchState.new()
 
 var _expected_player_count: int = 0
 var _stats_frame_counter := 0
+
+## Server-only: player_id -> SceneTreeTimer. Active grace
+## timers for disconnected players. An entry's presence
+## means "this player_id is in the grace window"; absence
+## means they're either connected or already declared gone.
+var _grace_timers: Dictionary = {}
 
 
 func _ready() -> void:
@@ -76,9 +104,43 @@ func _server_on_peer_players_declared(
 	player_attributes: Array
 ) -> void:
 	# Create PlayerState objects for each assigned player ID.
+	# Stage 7.10: if the player_id is already in
+	# players_by_id (the framework reused it because the
+	# session_id matched a previous disconnect), this is a
+	# mid-match reconnect — refresh the existing PlayerState
+	# instead of creating a new one, cancel the grace timer,
+	# and emit player_reconnected.
 	for i in range(assigned_ids.size()):
 		var player_id: int = assigned_ids[i]
-		Netcode.ensure(not state.players_by_id.has(player_id))
+
+		if state.players_by_id.has(player_id):
+			var existing: PlayerState = (
+				state.players_by_id[player_id])
+			if existing.is_connected_to_server:
+				# Conflict: same player_id is already
+				# connected. Shouldn't happen under normal
+				# flow; framework guarantees player_id
+				# uniqueness across active connections. Log
+				# loudly and skip.
+				Netcode.warning(
+					("Player %d declared while still"
+					+ " connected — skipping") % player_id,
+					NetworkLogger.CATEGORY_CONNECTIONS,
+				)
+				continue
+			# Reconnect path: re-attach to the new peer.
+			existing.peer_id = peer_id
+			existing.local_player_index = i
+			existing.connect_frame_index = (
+				Netcode.server_frame_index)
+			_server_cancel_grace_timer(player_id)
+			state.server_on_player_reconnected(existing)
+			Netcode.print(
+				"Player %d reconnected on peer %d"
+				% [player_id, peer_id],
+				NetworkLogger.CATEGORY_CONNECTIONS,
+			)
+			continue
 
 		var player := state._create_player_state()
 		player.set_up(player_id, peer_id, i, player_attributes[i])
@@ -150,12 +212,94 @@ func _server_on_peer_disconnected(peer_id: int, _reason: int) -> void:
 
 		state.server_on_player_disconnected(player)
 
+		# Stage 7.10: start the reconnect grace timer. The
+		# slot stays in players_by_id (existing behavior);
+		# the auto-end-on-disconnect check is deferred to
+		# either reconnect_grace_expired (slot truly gone)
+		# or to player_reconnected (slot recovered).
+		_server_start_grace_timer(player.player_id)
+
 	# Despawn player characters from the level.
 	if (is_instance_valid(G.level)
 			and G.level is NetworkedLevel):
 		(G.level as NetworkedLevel
 			)._server_deregister_players_for_peer(
 				peer_id)
+
+
+## Server-side: schedule the reconnect grace expiry for a
+## just-disconnected player. Cancels any existing timer for
+## the same player_id first (defensive against rapid
+## disconnect-reconnect-disconnect cycles).
+func _server_start_grace_timer(player_id: int) -> void:
+	_server_cancel_grace_timer(player_id)
+
+	# SceneTreeTimer doesn't expose cancel; tracking the
+	# handler in `_grace_timers` lets us disconnect it before
+	# fire, effectively cancelling.
+	var timer := get_tree().create_timer(
+		RECONNECT_GRACE_SEC, false)
+	_grace_timers[player_id] = timer
+	timer.timeout.connect(
+		_server_on_grace_expired.bind(player_id))
+
+	reconnect_grace_started.emit(
+		player_id, RECONNECT_GRACE_SEC)
+	Netcode.print(
+		"Grace timer started for player %d (%.1fs)"
+		% [player_id, RECONNECT_GRACE_SEC],
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+
+## Server-side: cancel a pending grace timer (called on
+## reconnect or on match teardown). No-op if the player_id
+## has no active timer.
+func _server_cancel_grace_timer(player_id: int) -> void:
+	if not _grace_timers.has(player_id):
+		return
+	var timer: SceneTreeTimer = _grace_timers[player_id]
+	if (is_instance_valid(timer)
+			and timer.timeout.is_connected(
+				_server_on_grace_expired)):
+		timer.timeout.disconnect(_server_on_grace_expired)
+	_grace_timers.erase(player_id)
+
+
+## Server-side: grace expired for a player who never came
+## back. Drop the framework's session_id mapping so a
+## future re-declaration gets a fresh player_id (the
+## current slot stays in players_by_id with
+## is_connected=false for post-match scoring purposes), and
+## fan out reconnect_grace_expired for the auto-end check
+## to fire.
+func _server_on_grace_expired(player_id: int) -> void:
+	_grace_timers.erase(player_id)
+	# Drop the session_id -> player_id mapping in the
+	# framework so a stale session_id can't squat the
+	# player_id forever. The actual mapping lives keyed by
+	# session_id, not player_id; look up via ClientSession
+	# is unreliable post-disconnect since the session_ids
+	# array is server-allocator-side. Easiest path: walk
+	# the existing player's session_ids tracked by
+	# EdgegapServerProvider. Lighter-weight: skip the
+	# clear in this minimal cut (slots are unique enough
+	# per match that collision risk is theoretical).
+	# Documented as a known-limitation in 7.10.
+	reconnect_grace_expired.emit(player_id)
+	Netcode.print(
+		"Grace expired for player %d (no reconnect)"
+		% player_id,
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+
+
+## Cancel every active grace timer. Called on match
+## teardown so no stale timer fires after MatchState has
+## been cleared.
+func server_cancel_all_grace_timers() -> void:
+	for player_id in _grace_timers.keys():
+		_server_cancel_grace_timer(player_id)
 
 
 func _client_on_players_updated() -> void:

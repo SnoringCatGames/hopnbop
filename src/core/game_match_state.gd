@@ -29,6 +29,13 @@ const _INTERACTION_DEDUPLICATION_WINDOW_SEC := 0.067
 ## Symmetric with `match_ended` on the parent MatchState.
 signal match_started
 
+## Emitted when a player rejoins the match within their
+## disconnect grace window. Counterpart to the parent
+## `player_left` (which fires immediately on disconnect, even
+## during grace — listeners check `is_connected_to_server` to
+## tell the two states apart).
+signal player_reconnected(player: PlayerState)
+
 ## Emitted when a player kills another player.
 signal player_killed(killer: PlayerState, killee: PlayerState)
 
@@ -326,6 +333,19 @@ func emit_bump_event(a: PlayerState, b: PlayerState) -> void:
 func server_on_player_disconnected(player: PlayerState) -> void:
 	_connected_players.erase(player.player_id)
 	player_left.emit(player)
+	players_updated.emit()
+
+
+## Counterpart to server_on_player_disconnected. Called by
+## MatchStateSynchronizer when a previously-disconnected
+## player redeclares within the reconnect grace window and
+## the framework reuses their player_id. Re-adds them to the
+## connected-set, emits the `player_reconnected` signal for
+## UI / coordination listeners, and fires `players_updated`
+## so any cached "connected players" view rebuilds.
+func server_on_player_reconnected(player: PlayerState) -> void:
+	_connected_players[player.player_id] = true
+	player_reconnected.emit(player)
 	players_updated.emit()
 
 
