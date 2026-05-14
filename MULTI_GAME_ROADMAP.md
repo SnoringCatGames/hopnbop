@@ -30,10 +30,33 @@ See also:
 
 ## Status summary
 
-- **Current focus:** Stage 7 resilience fill-in. **Stage
-  7.10b (mid-match rejoin transport parity: WebRTC +
-  WebSocket) shipped end-to-end** (2026-05-14, eighteenth
-  pass). Drops the `_transport_type != ENET` short-circuit
+- **Current focus:** Stage 8 test foundation fill-in. **Stage 8
+  Tier 3 client unit tests (8.23–8.28) shipped end-to-end**
+  (2026-05-14, nineteenth pass). Six new test files under
+  `test/unit/platform/` cover the pure-logic helpers of every
+  Stage 6 platform SDK class: `friends_api_client` (13 tests),
+  `party_api_client` (11), `party_manager` (31),
+  `nakama_matchmaker_client` (28),
+  `friends_notification_poller` (20), `settings_cloud_sync`
+  (16). 119 tests / 212 asserts pass via `gut_cmdln.gd
+  -gdir=res://test/unit/platform` in ~0.5 s. Approach diverged
+  from the audit's "GUT doubles" framing: since each class is
+  mostly network-coupled (Platform.nakama_client / HTTP)
+  *and* the network paths are already exercised live by the
+  compliance suite, the units target the deterministic
+  resolvers, state inspectors, and dispatch helpers instead —
+  snapshotting / restoring autoload state (G.backend_api_client,
+  G.local_settings overrides, Platform.game_id /
+  token_store.player_id, Netcode.settings.transport_type) per
+  test rather than doubling Nakama. Second divergence: GUT
+  9.5.0 + Godot 4.7-beta1's cmdline path silently fails to
+  discover inner-class tests, so tests are flat top-level
+  methods grouped by name prefix — documented in each file's
+  docstring so a future contributor doesn't trip over the same
+  thing. Prior eighteenth pass: **Stage 7.10b (mid-match
+  rejoin transport parity: WebRTC + WebSocket) shipped**
+  (2026-05-14). Dropped the `_transport_type != ENET`
+  short-circuit
   in `src/core/reconnect_handler.gd::can_attempt_reconnect()`
   so the reconnect loop fires for all three transports.
   Framework-side (`rollback_netcode` submodule),
@@ -352,21 +375,37 @@ See also:
   - Hopnbop ships two modes — `ffa` (default 2-4 FFA) and
     `duo` (1v1) — so the picker has actual options.
 - **Other next-focus options, in ascending cost:**
-  (a) Stage 8 Tier 3 client unit tests (8.23–8.28; six
-  GUT doubles-based test files against the addon's
-  GDScript classes — bounded, bite-sized, builds on the
-  existing GUT infra);
-  (b) Stage 6.11 screen templates (greenfield, 3 screens,
+  (a) Stage 6.11 screen templates (greenfield, 3 screens,
   needs an upfront design decision on the template vs
   base-class pattern given the heavy `G.*` UI coupling —
   see scoping notes);
-  (c) Stage 8 Tier 4 e2e/smoke (8.29–8.31; docker-compose
+  (b) Stage 8 Tier 4 e2e/smoke (8.29–8.31; docker-compose
   dev stack + local smoke + CI matrix — heavier infra
   scaffolding work);
-  (d) Stage 7.3 push notifications (heavy 3-platform
+  (c) Stage 7.3 push notifications (heavy 3-platform
   scope — PWA web-push + FCM + APNS; the largest remaining
   single item).
-- **Last updated:** 2026-05-14 (eighteenth pass: Stage
+- **Last updated:** 2026-05-14 (nineteenth pass: Stage 8
+  Tier 3 client unit tests 8.23–8.28 all shipped — six
+  test files under `test/unit/platform/` covering the
+  pure-logic helpers of every Stage 6 platform SDK
+  class: friends_api_client (13 tests), party_api_client
+  (11), party_manager (31), nakama_matchmaker_client
+  (28), friends_notification_poller (20),
+  settings_cloud_sync (16). 119 tests / 212 asserts pass
+  via `gut_cmdln.gd -gdir=res://test/unit/platform`
+  in ~0.5 s. Approach diverged from the audit's "GUT
+  doubles" framing: tests target deterministic
+  resolvers / state inspectors / dispatch helpers (with
+  autoload-state snapshot/restore in before_each /
+  after_each) rather than doubling Nakama — the
+  network paths are already exercised live by the
+  compliance suite. Second divergence: GUT 9.5.0 +
+  Godot 4.7-beta1 silently fails to discover inner-
+  class tests via cmdline, so tests are flat top-level
+  methods grouped by name prefix; documented in each
+  file's docstring so a future contributor doesn't
+  trip over the same thing. Prior eighteenth pass: Stage
   7.10b mid-match rejoin transport parity shipped —
   drops the ENet-only gate in `can_attempt_reconnect()`
   so the reconnect loop fires for WebRTC + WebSocket
@@ -517,10 +556,11 @@ See also:
     templates** (greenfield, 3 screens — design decision
     needed on base-class vs full-scene vs components pattern).
 - **Stages in progress:**
-  - Stage 8 — 22/31 shipped 2026-05-13. Tier 1 Go unit
-    tests (8.3–8.10) all green: transport_select_test.go,
-    version_test.go, match_lifecycle_test.go (with new
-    `clampPlayerStats` helper extracted for testability),
+  - Stage 8 — 28/31 shipped (Tiers 1+2 2026-05-13, Tier 3
+    2026-05-14). Tier 1 Go unit tests (8.3–8.10) all green:
+    transport_select_test.go, version_test.go,
+    match_lifecycle_test.go (with new `clampPlayerStats`
+    helper extracted for testability),
     fleet_allocator_test.go, presence_test.go,
     auth_test.go, party_test.go, account_test.go. Plus the
     earlier 8.1 deploy-time gate, 8.2 staticcheck (already
@@ -534,9 +574,11 @@ See also:
     flow, 8.20 matchmaking cancel-race (cancel-before-
     match + post-match cancel safety), 8.21 protocol-
     mismatch failure mode, 8.22 presence game-filter
-    mutual-only check. Remaining: Tier 3 client unit
-    tests with doubles (8.23–8.28), Tier 4 e2e/smoke
-    (8.29–8.31).
+    mutual-only check, 8.23–8.28 Tier 3 client unit tests
+    (6 files / 119 tests / 212 asserts under
+    `test/unit/platform/`). Remaining: Tier 4 e2e/smoke
+    (8.29–8.31; docker-compose dev stack + local smoke +
+    GHA matrix).
 - **Stages in progress (Stage 7 resilience):**
   - Stage 7 — 13/14 shipped (7.1 allocation retry, 7.2 mid-
     queue cancel teardown, 7.4 friend block list, 7.5
@@ -602,10 +644,12 @@ Stage 7 — Resilience (retries, notifications, observability).
    rate-limit); 1 open (7.3 push notifications).
 
 Stage 8 — Tests (parallel track, doesn't block features).
-   22/31 shipped 2026-05-13. Tier 1 Go unit tests (8.3–8.10)
-   all green; Tier 2 compliance suite has 8.11–8.22 all
-   shipped; Tier 3 (8.23–8.28) and Tier 4 (8.29–8.31) not yet
-   started.
+   28/31 shipped (Tiers 1+2 2026-05-13, Tier 3 2026-05-14).
+   Tier 1 Go unit tests (8.3–8.10) all green; Tier 2 compliance
+   suite has 8.11–8.22 all shipped; Tier 3 (8.23–8.28) shipped
+   2026-05-14 (119 tests / 212 asserts under
+   `test/unit/platform/`). Remaining: Tier 4 (8.29–8.31)
+   docker-compose dev stack + local smoke + GHA matrix.
 ```
 
 ## Stage 0 — Platform infra extraction (mostly done)
@@ -4145,12 +4189,107 @@ prioritize tests that protect work landing in the current stage.
 
 ### Tier 3 — client unit tests (GUT with doubles)
 
-- [ ] 8.23 `test/unit/platform/test_friends_api_client.gd`.
-- [ ] 8.24 `test/unit/platform/test_party_api_client.gd`.
-- [ ] 8.25 `test/unit/platform/test_party_manager.gd`.
-- [ ] 8.26 `test/unit/platform/test_nakama_matchmaker_client.gd`.
-- [ ] 8.27 `test/unit/platform/test_friends_notification_poller.gd`.
-- [ ] 8.28 `test/unit/platform/test_settings_cloud_sync.gd`.
+All six shipped 2026-05-14 (nineteenth pass). Suite-wide: 119
+tests, 212 asserts, 0 failures via
+`godot --headless -s --path . addons/gut/gut_cmdln.gd
+-gdir=res://test/unit/platform -gexit` in 0.5 s.
+
+Realized scope diverged from the audit's "GUT doubles" framing
+in two pragmatic ways:
+1. **Pure-logic focus over network doubling.** Each platform
+   class is mostly network-coupled; the testable seam is the
+   deterministic resolver / state-inspector / dispatch helper
+   that doesn't touch Nakama. The HTTP/SDK-driven paths are
+   already exercised live by the compliance suite under
+   `addons/snoringcat_platform_client/test/compliance/`. So
+   the unit tests target pure helpers + state inspectors and
+   snapshot/restore autoload state (G.backend_api_client,
+   G.local_settings overrides, Platform.game_id, Netcode.settings
+   .transport_type, Platform.token_store.player_id) rather than
+   double Nakama itself.
+2. **Flat test methods over inner classes.** The GUT 9.5.0 +
+   Godot 4.7-beta1 cmdline path in this repo silently fails to
+   discover inner-class tests when running a single file via
+   `-gtest=` (only top-level `test_*` functions in an `extends
+   GutTest` file are surfaced). Tests are grouped by name prefix
+   (e.g. `test_build_query_*`, `test_resolve_min_max_*`) instead.
+   Documented in each file's class docstring.
+
+- [x] **8.23 `test/unit/platform/test_friends_api_client.gd`**
+  (2026-05-14). 13 tests / 32 asserts. Covers cache inspectors
+  (`is_friend` / `has_sent_request` / `has_incoming_request` /
+  `is_blocked`), busy-flag round-trip, malformed-entry tolerance
+  (one documented quirk: empty-string lookup matches entries
+  missing `player_id`), Nakama Friend.State enum constants
+  (0/1/2/3 — protocol-critical, drift silently misroutes entries
+  in `fetch_friends`), and pagination caps (100 × 10 mirror the
+  runtime account.go cascade pattern).
+- [x] **8.24 `test/unit/platform/test_party_api_client.gd`**
+  (2026-05-14). 11 tests / 17 asserts. Covers the
+  `_group_state_to_role` enum mapping (0→leader / 1→admin / 2→
+  member / 3→invited / 42→unknown — protocol-critical, gates
+  leader-only UI), `_short_id` UUID-to-prefix helper (strips
+  hyphens + substr(0,8), handles short/empty input), `is_busy`
+  flag, `_describe(null)` safety, and the three storage-collection
+  constants (`party_ready` / `party_leader` / `party_mode` —
+  must stay in lockstep with the platform runtime's party.go
+  constants).
+- [x] **8.25 `test/unit/platform/test_party_manager.gd`**
+  (2026-05-14). 31 tests / 44 asserts. Covers
+  `is_in_party` / `has_pending_invite` / `get_party_id` /
+  `get_party_mode` / `is_leader` (with viewer-id pinned via
+  `Platform.token_store.player_id` snapshot/restore) /
+  `is_self_ready` / `all_active_members_ready` (including the
+  invited-role-ignored contract and zero-active-degenerate
+  case) / `_patch_member_ready` (in-place mutation + ghost-id
+  no-op) / `_remove_pending_invite` (strip + `party_updated`
+  emit) / `reset` (clears every tracked surface) /
+  `_resolve_member_display_name` (display→username fallback) /
+  `_on_party_status_received` (initial-check flag) /
+  `set_party_mode` (no-op when not in party / unchanged) /
+  polling lifecycle.
+- [x] **8.26 `test/unit/platform/test_nakama_matchmaker_client.gd`**
+  (2026-05-14). 28 tests / 38 asserts. Covers `_build_query`
+  (mode-query > server-query > compile-time default cascade),
+  `_resolve_min_count` / `_resolve_max_count` (mode > server > 2
+  / 4 defaults, partial-override-only-min), `_resolve_mode_dict`
+  (explicit-id from session_prefs > LocalSettings selected mode
+  > server is_default-flagged mode > {}), `_build_string_props`
+  (baseline keys, empty Platform.game_id omits key,
+  protocol_version stringification, level_id / party_id /
+  game_mode passthrough, game_mode-from-resolved fallback),
+  `_build_numeric_props` ({} reserved), `_apply_transport_type`
+  (enet / webrtc / websocket / case-insensitive / unknown-value
+  preserves current — match_ready malformed-input safety).
+- [x] **8.27 `test/unit/platform/test_friends_notification_poller.gd`**
+  (2026-05-14). 20 tests / 41 asserts. Covers `reset` (all 5
+  known-id maps + first-poll flags), `_set_unseen_count`
+  (emit-on-change / skip-on-unchanged / multi-change),
+  `_on_friends_received` / `_on_friends_marked_seen` (unseen
+  count round-trip), `_on_notifications_received` (per-bucket
+  dedup, empty-friend-id skip), `_handle_party_matchmaking_start`
+  (notification-id dedup, empty-id ignore),
+  `_dispatch_notification` (non-Dict-content safety, unknown-
+  subject ignore), `_on_presence_received` (first-poll
+  suppression, set-rebuild-to-current-list contract),
+  `_on_match_started` / `_on_match_ended` (rich-presence /
+  status transitions), polling lifecycle.
+- [x] **8.28 `test/unit/platform/test_settings_cloud_sync.gd`**
+  (2026-05-14). 16 tests / 40 asserts. Covers `_game_scope`
+  (game/{id} or game/unknown fallback), `_partition_legacy`
+  (locale → global, GLOBAL_OVERRIDABLE_KEYS → global,
+  OVERRIDABLE_KEYS-minus-global → game, unknown keys dropped,
+  mixed payload splits), `_serialize_global` /
+  `_serialize_per_game` (no leak across scope, default-locale
+  omitted, no-overrides → {}), `_apply_scope` (known keys
+  written, unknown keys ignored), `_has_legacy_migrated` /
+  `_mark_legacy_migrated` round-trip, `_get_sync_at` /
+  `_set_sync_at` per-scope round-trip. Note: the test's
+  `before_each` also resets `G.settings` values to the
+  resource defaults each iteration; without this,
+  `LocalSettings.set_override`'s "value matches current
+  default → clear override" branch breaks subsequent tests'
+  assumptions about a clean baseline.
 
 ### Tier 4 — end-to-end / smoke
 
