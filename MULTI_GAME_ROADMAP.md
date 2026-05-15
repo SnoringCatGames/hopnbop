@@ -993,6 +993,70 @@ See also:
   schema/runtime work (4.3), low-priority polish (4.8),
   or declined outright (7.3).
 
+## Post-completion debugging log
+
+The roadmap above reached functional completion 2026-05-14 / 25th
+pass. Bugs found and fixed *after* that point are logged here in
+chronological order so future sessions can see the full story
+without diffing 7000-line commit messages. Each entry:
+
+- One-line headline.
+- Root cause (what was actually wrong, not just the symptom).
+- Fix (what changed, and the file:line of the change).
+- Verification (what we tested or visually confirmed; if a fix
+  ships without end-to-end verification, say so explicitly).
+
+### 2026-05-15 — Preview-mode matchmaker auth rejected with HTTP 400
+
+**Symptom.** Local preview mode (Debug → Customize Run Instances,
+3-window flow) reached the lobby on both clients, but pressing
+"Play" failed instantly: `Request 1 returned response code: 400,
+RPC code: 3, error: game_id required in authenticate vars`.
+Loading screen bounced back to the lobby with toast "Preview
+matchmaker auth failed: game_id required in authenticate vars".
+Repro is C1 and C2 both hitting the failure on the
+`/v2/account/authenticate/device` POST that the preview-mode
+matchmaker path issues. Captured in
+`DO_NOT_SUBMIT_desktop_logs.txt` 2026-05-15 17:43 UTC.
+
+**Root cause.** Stage 3 game_id scoping (commits `d909271` /
+`f1ccae9`, 2026-04-2x) enforces that every authenticate call
+carry `game_id` in session vars so the runtime's
+`BeforeAuthenticate*` hook accepts the request and downstream
+stateful RPCs can read it back via `RUNTIME_CTX_VARS`. The
+mainline auth path threads this through
+`auth_api_client._build_session_vars()` (called at line 890 of
+`auth_api_client.gd`). The **preview-mode** branch in
+`matchmaker_api_client._authenticate_preview_instance()` mints a
+per-instance device session outside that flow (so each preview
+window appears as a distinct user to Nakama and can be matched
+against its siblings), and it was added before Stage 3 — the
+4-arg form of `authenticate_device_async(id, username, create,
+vars)` was never updated to pass the vars dict, so the request
+went out with `Body: {"id":"preview_{...}_C2"}` and no `vars`.
+Live regular-auth POSTs in the same log session (line 38) show
+the working shape: `"vars":{"game_id":"hopnbop"}`.
+
+**Fix.** Submodule
+`addons/snoringcat_platform_client/core/matchmaker_api_client.gd::
+_authenticate_preview_instance()` now passes
+`{"game_id": Platform.game_id}` as the 4th arg to
+`authenticate_device_async`, mirroring the mainline path. Inlined
+the dict rather than reaching across modules to
+`Platform.auth._build_session_vars()` because the helper is
+private and the preview path is the only non-auth caller — pulling
+it out into a public shared helper is more refactor than the bug
+warrants.
+
+**Verification.** Headless `godot --import` parses clean (the
+only reported errors are unrelated `webrtc-native` missing-dll
+warnings from the local checkout, which always appear in headless
+runs of the parent repo). No end-to-end preview-mode smoke run
+yet — that requires Levi at the keyboard. The fix is mechanical
+enough (matches a known-working call shape elsewhere in the
+SDK) that shipping ahead of the manual smoke is acceptable; the
+next preview-mode launch will be the de facto smoke.
+
 ## Stage dependency graph
 
 ```
