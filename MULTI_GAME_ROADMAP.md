@@ -6860,18 +6860,23 @@ already tripped an audit pass into nearly re-doing solved work.
 If still latent, fold into the appropriate stage above and
 strike here; if resolved, strike here.
 
-- **Compliance suite rate-limit** (from the old
-  `NEXT_STEPS.md` "Open — lower priority" section before that
-  file was retired 2026-05-15). Running all 44 tests under
-  `addons/snoringcat_platform_client/test/compliance/` back-
-  to-back hits Nakama's auth rate-limit (HTTP 429 on ~17 of
-  the 44). Tests pass individually + in small batches. The
-  Stage 8.31 `compliance-matrix.yml` workflow uses the
-  ephemeral docker-compose stack so isn't affected; the rate
-  limit hits only against prod / shared tiers. Verify whether
-  the limit is still tight given current Nakama config before
-  designing a fix (per-test pacing vs. exponential backoff vs.
-  tier-split). Date noted: 2026-05-04.
+- **Compliance suite rate-limit — verified-and-not-applicable
+  2026-05-15.** Caddy rate-limits
+  `/v2/account/authenticate*` at 30 events / 5 min / source
+  IP (`infra/remote/nakama/Caddyfile:25-31`). The suite makes
+  ~80 auth POSTs (61 call sites in `test_*.gd`, plus
+  `multi_session_anon(count, ...)` mints `count` users per
+  call). 80 ≫ 30 ⇒ ~50 calls hit 429 if run back-to-back.
+  Original 2026-05-04 framing: "before the suite can be a
+  regular CI gate, add pacing or backoff." That premise is
+  now obsolete — Stage 8.31 (shipped 2026-05-14) put the CI
+  gate on the ephemeral docker-compose stack which has no
+  Caddy in front and no rate limit. The remaining
+  manual-run-against-prod use case is one-off debugging
+  where the operator can run subsets via
+  `gut_cmdln.gd -gtest=<file>` or wait 5 min between batches.
+  Not worth designing pacing/backoff for that. Don't
+  re-investigate; this entry is the audit trail.
 - **Cert hygiene — verified-and-skipped 2026-05-15.** Cert A
   from cert-rotate run `25301578756` (2026-05-04 04:48) was
   uploaded with `is_hidden: true` (a typo for the Edgegap API
