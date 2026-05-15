@@ -376,17 +376,23 @@ func _describe(ex: NakamaException) -> String:
 
 
 func _account_linked_providers(account) -> Array:
+	# Provider IDs live on `account.user` (ApiUser), not directly
+	# on ApiAccount. ApiAccount only carries `devices`, `email`,
+	# and `user`; the social provider linkages are
+	# `user.google_id` / `facebook_id` / `apple_id` / `steam_id`,
+	# each a String that's empty when unlinked.
 	var out: Array = []
 	if account.devices and account.devices.size() > 0:
 		out.append("anonymous")
 	if account.email and not account.email.is_empty():
 		out.append("email")
-	if account.google and account.google != null:
+	var u = account.user
+	if u and not u.google_id.is_empty():
 		out.append("google")
-	if account.facebook and account.facebook != null:
+	if u and not u.facebook_id.is_empty():
 		out.append("facebook")
-	if account.apple and account.apple != null:
+	if u and not u.apple_id.is_empty():
 		out.append("apple")
-	if account.steam and account.steam != null:
+	if u and not u.steam_id.is_empty():
 		out.append("steam")
 	return out

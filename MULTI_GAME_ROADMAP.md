@@ -1079,6 +1079,41 @@ submodule bump is *not* sufficient to prove the fix is live
 locally — verify the copy contains the fix (`grep` for the
 expected change in `addons/snoringcat_platform_client/...`).
 
+### 2026-05-15 — `BackendApiClient._account_linked_providers` reads non-existent ApiAccount properties
+
+**Symptom.** After web deploy (v0.40.0), browser console reported
+`Invalid access to property or key 'google' on a base object of
+type 'RefCounted (ApiAccount)'.` at
+`src/core/backend_api_client.gd:384`. Same line would have failed
+identically on the desktop client, but the runtime path that
+calls it (`fetch_player_profile`) hadn't been exercised in
+recent local smoke.
+
+**Root cause.** `_account_linked_providers(account)` was written
+against an imagined ApiAccount shape with `.google` / `.facebook`
+/ `.apple` / `.steam` sub-objects. The real Nakama `ApiAccount`
+class (`addons/nakama/api/NakamaAPI.gd:187`) only carries
+`custom_id` / `devices` / `disable_time` / `email` / `user` /
+`verify_time` / `wallet`. Social provider linkages live on
+`account.user` (the nested `ApiUser` model) as the String fields
+`google_id` / `facebook_id` / `apple_id` / `steam_id`, each
+empty when unlinked. The misshaped accessors had been dormant
+because the function is only called from
+`fetch_player_profile()`, which surfaces in the in-game profile
+panel — easy to miss in local play-through testing.
+
+**Fix.** Rewrote `_account_linked_providers` at
+`src/core/backend_api_client.gd:378-396` to read
+`account.user.<provider>_id` and check `.is_empty()` instead of
+truthiness on a phantom sub-object. Also pulled `var u =
+account.user` to a local so each provider check doesn't re-walk
+the getter.
+
+**Verification.** No headless smoke for the profile-panel flow.
+Mechanical fix that matches the documented Nakama
+`ApiUser`/`ApiAccount` schema; will be exercised the next time
+the profile panel is opened in-game (browser or desktop).
+
 ## Stage dependency graph
 
 ```
