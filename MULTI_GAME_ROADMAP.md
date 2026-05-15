@@ -1223,6 +1223,75 @@ the lobby settings and the pause menu), so the in-match case is
 real but unverified. Tagged here as a follow-up; the immediate
 bug was the lobby-only case and that's what shipped.
 
+### 2026-05-15 — Discord noise sweep: cf-pages-build-watch + player-metrics-daily
+
+Not a hopnbop bug per se — captured here because the sweep
+landed mid-session as part of the same debugging cycle, and
+the Discord-noise pattern these jobs surfaced has been ongoing
+for days (every hour and every morning respectively).
+
+**Symptom.** Hourly `cf-pages-build-watch` posts yellow with
+"API query failed: 404 (Not Found)" for both projects. Daily
+`player-metrics-daily` posts red with all 8 metrics
+(`total_users`, `dau`, `wau`, `mau`, `new_24h`, `new_7d`,
+`active_now`, `matches_now`) reported `<missing>`.
+
+**Root causes.**
+- cf-pages-build-watch: `credentials.env` had
+  `CLOUDFLARE_ACCOUNT_ID=snoringcatgames` (a slug, not a hex
+  ID); the CF API needs `c97b21157100dde27a8715fdfba1d22a`. The
+  hopnbop project is named `hopnbop-website` in the dashboard,
+  not `hopnbop-net`. And `levi-dev` lives under a separate
+  personal CF account (`7ffa3f982c11a7b588f5500cdb8bc692`) with
+  its own token in `~/.claude/secrets/personal-cloudflare.ps1`
+  — unreachable with the snoringcat token under any account.
+- player-metrics-daily: the SQL union queried `SELECT count(*)
+  FROM match` for `matches_now`. Nakama doesn't persist active
+  matches to SQL; they live in the runtime's in-memory
+  `MatchRegistry` and are only readable via runtime API. The
+  missing-table error aborted the whole UNION ALL, so every
+  other metric came back empty too. Even after dropping
+  `matches_now`, the line-parser regex `^([a-z_]+):(\d+)$`
+  didn't allow digits in the key so `new_24h:2` and `new_7d:8`
+  were silently skipped.
+
+**Fix.** Both scripts live in `claude-config/jobs/scripts/`
+(commit `8edae4c`). cf-pages-build-watch rewritten with
+per-project `(Name, AccountId, Token)` triples; sources
+personal-cloudflare.ps1 after credentials.env so it can capture
+the personal token before $env:CLOUDFLARE_API_TOKEN gets
+rebound. Restores the snoringcat token to ambient before
+exiting so anything downstream in the session sees the same
+value it would have. player-metrics-daily drops the `match`
+table reference (with a comment pointing future implementers
+at `runtime_status` as the right surface for active match
+count), drops `matches_now` from the expected-keys list, and
+widens the line-parser regex to `^([a-z0-9_]+):(\d+)$`.
+credentials.env updated locally too (the file isn't tracked,
+so the laptop will need the same edit next time it runs the
+jobs).
+
+**Verification.** Smoke-ran both scripts.
+cf-pages-build-watch reports `info - Pages builds across 2
+projects ok` with 5 successes each for hopnbop-website + 3 for
+levi-dev. player-metrics-daily reports `info - DAU=2 MAU=57`
+with all 7 metrics populated. Next scheduled runs (:41 hourly
+and 10:33 UTC daily) will exit info instead of yellow/red and
+the daily-consolidator will stop surfacing them in the morning
+brief.
+
+**Open follow-up, not actioned here.**
+`nakama-runtime-version-drift` posted yellow this morning
+(`deployed=526c038 main=b3158c7`) but the submodule commits
+ahead of the deployed runtime SHA are all SDK / addon changes,
+not Go-runtime changes. The drift check compares hashes only;
+it can't tell that the runtime build artifact would be
+identical. Either re-deploy the runtime to eat the yellow (the
+build hash would change but functionally nothing would), or
+teach the script to filter the commit range by changed paths
+under `runtime/`. Both options are scoped beyond the immediate
+session.
+
 ## Stage dependency graph
 
 ```
