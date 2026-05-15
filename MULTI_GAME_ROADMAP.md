@@ -30,8 +30,20 @@ See also:
 
 ## Status summary
 
-- **Current focus:** **Stage 8 Tier 4 e2e/smoke shipped**
-  end-to-end (2026-05-14, twenty-second pass). 8.29
+- **Current focus:** **Roadmap functionally complete**
+  (2026-05-14, twenty-third pass). Twenty-third pass was a
+  cleanup pass: Stage 7.3 push notifications **declined as a
+  product decision** (no platform-level push for any trigger;
+  in-app toasts via the 10s `friends_notification_poller`
+  remain the only surface), submodule `runtime/build/` added
+  to the platform `.gitignore` (local-smoke-test artifact
+  was showing up as untracked content in the parent repo
+  every time the dev stack was exercised). With 7.3 declined,
+  the only remaining open items (4.3 require_accept dialog,
+  4.8 region picker) are both deferred behind upstream
+  schema/runtime work that isn't yet justified by use. **Prior
+  twenty-second pass: Stage 8 Tier 4 e2e/smoke shipped**
+  end-to-end (2026-05-14). 8.29
   `infra/dev/docker-compose.dev.yml` brings up Nakama +
   Postgres locally with `EDGEGAP_MOCK_DEPLOY=true` so the
   full matchmaker hook + every platform-runtime RPC are
@@ -414,18 +426,18 @@ See also:
   (8.3-8.10, 100 cases), 8.1+8.2 deploy gate,
   8.11/8.12/8.14/8.16/8.17/8.18/8.19/8.22 compliance tests,
   8.13 EDGEGAP_MOCK_DEPLOY mode, audit-surfaced drift fully
-  resolved. **Next:** the only remaining open Stage 7
-  item is 7.3 push notifications (heavy 3-platform scope
-  — PWA web-push + FCM + APNS; explicitly deferred). Tier
-  3 client unit tests (8.23-8.28) require GUT doubles
-  setup against the addon's GDScript classes; Tier 4
-  e2e/smoke (8.29-8.31) needs a docker-compose dev stack.
-  Stage 6.11 screens still greenfield with design call
-  needed. **Deploy status:** the
-  live runtime is current — Nakama Runtime Deploy at
-  2026-05-13T23:27:48Z ran parent SHA `628fc3a` (Stage 7.6
-  submodule bump commit), so the recent_players RPC + the
-  GDPR storage scrub fix are now live.
+  resolved. **Roadmap functionally complete as of 2026-05-14
+  (twenty-third pass): 7.3 push notifications declined as a
+  product decision (no platform-level push for any trigger).**
+  Remaining items 4.3 and 4.8 stay deferred with concrete
+  rationales (4.3 needs `matchmaker_rules.require_accept`
+  schema + runtime round-trip first; 4.8 region picker is
+  low priority because Edgegap's automatic geo-IP routing
+  is good enough for the current player pool). **Deploy
+  status:** the live runtime is current — Nakama Runtime
+  Deploy at 2026-05-13T23:27:48Z ran parent SHA `628fc3a`
+  (Stage 7.6 submodule bump commit), so the recent_players
+  RPC + the GDPR storage scrub fix are now live.
 - **2026-05-13 audit follow-up — drift items resolved later
   the same day:**
   - **Runtime backlog flushed:** the deployed runtime was 24
@@ -487,10 +499,16 @@ See also:
     cycle row).
   - Hopnbop ships two modes — `ffa` (default 2-4 FFA) and
     `duo` (1v1) — so the picker has actual options.
-- **Other next-focus options, in ascending cost:**
-  (a) Stage 7.3 push notifications (heavy 3-platform
-  scope — PWA web-push + FCM + APNS; the largest remaining
-  single item);
+- **Remaining open items (all explicitly deferred or declined):**
+  (a) **Stage 7.3 push notifications — declined 2026-05-14**.
+  Product call: no platform-level push for any trigger
+  (friend-online / party-invite / match-found stay as
+  in-app toasts driven by the existing 10s notification
+  poller). Rationale: hopnbop's session pattern doesn't
+  benefit from background notifications enough to justify
+  the SW + VAPID + per-platform credentialling surface.
+  Re-open if a future game in the platform fleet has a
+  stronger case (e.g., async / turn-based);
   (b) Stage 4.3 require_accept dialog (small, but needs
   `matchmaker_rules.require_accept` schema + runtime
   accept/decline round-trip in `fleet_allocator.go` before
@@ -505,8 +523,29 @@ See also:
   now because the HTTP-only path covers the bulk of the
   surface and the socket tests pend gracefully; future
   fix would unlock the full Tier 4 matrix.
-- **Last updated:** 2026-05-14 (twenty-second pass: Stage 8
-  Tier 4 e2e/smoke shipped end-to-end. 8.29
+- **Last updated:** 2026-05-14 (twenty-third pass: cleanup
+  pass. Stage 7.3 push notifications declined as a product
+  decision — no platform-level push for any trigger; the
+  existing 10s `friends_notification_poller` + in-app toasts
+  remain the only notification surface. Rationale recorded
+  in both the status summary and the 7.3 task entry: hopnbop's
+  session pattern doesn't benefit from background push enough
+  to justify the SW + VAPID + per-platform credentialling
+  surface, and push permission prompts have become widely
+  treated as anti-features for sync-only play. Re-open
+  trigger documented (future game with async / turn-based
+  play, or daily-streak retention loops). Also a housekeeping
+  cleanup in the same pass: added `runtime/build/` to the
+  platform submodule's `.gitignore` (local-smoke-test
+  artifact directory containing `build.log` was showing up
+  as untracked content in the parent repo's git status every
+  time the dev stack was exercised; `*.so` already gitignored
+  `snoringcat.so` inside the same dir but the log file kept
+  it visible). With 7.3 closed out, the roadmap is
+  functionally complete — the only remaining items (4.3, 4.8)
+  are both deferred behind upstream schema/runtime work that
+  isn't yet justified by use. **Prior twenty-second pass:
+  Stage 8 Tier 4 e2e/smoke shipped end-to-end.** 8.29
   `infra/dev/docker-compose.dev.yml` — minimal two-service
   stack (Nakama + Postgres) with the locally-built
   `snoringcat.so` plugin mounted, mock-Edgegap via the
@@ -776,19 +815,27 @@ See also:
     `matchmaker_rules.require_accept` in game.yaml + runtime
     support for the accept/decline round-trip), 4.8 (region
     picker; optional, needs Edgegap region list).
-- **Stages in progress (Stage 7 resilience):**
-  - Stage 7 — 13/14 shipped (7.1 allocation retry, 7.2 mid-
-    queue cancel teardown, 7.4 friend block list, 7.5
-    friend pagination, 7.6 recent-players list, 7.7 GDPR
-    cascade verification + fix, 7.8 account-merge UI, 7.9
-    anonymous-upgrade UI, 7.10 mid-match rejoin (reconnect
-    flavor, ENet only at ship time), 7.10b mid-match
-    rejoin transport parity (WebRTC + WebSocket reconnect),
-    7.11 lightweight obs re-introduction, 7.12 max-pending-
-    friend-requests cap, 7.13 friend-code rate-limit).
-    Remaining 1 item: 7.3 push notifications (heavy
-    3-platform scope — PWA web-push + FCM + APNS).
+- **Stage 7 resilience (13/14 shipped, 1 declined):**
+  - Shipped: 7.1 allocation retry, 7.2 mid-queue cancel
+    teardown, 7.4 friend block list, 7.5 friend pagination,
+    7.6 recent-players list, 7.7 GDPR cascade verification
+    + fix, 7.8 account-merge UI, 7.9 anonymous-upgrade UI,
+    7.10 mid-match rejoin (reconnect flavor, ENet only at
+    ship time), 7.10b mid-match rejoin transport parity
+    (WebRTC + WebSocket reconnect), 7.11 lightweight obs
+    re-introduction, 7.12 max-pending-friend-requests cap,
+    7.13 friend-code rate-limit.
+  - **Declined 2026-05-14:** 7.3 push notifications. Product
+    call to not ship platform-level push for any trigger;
+    friend-online / party-invite / match-found stay as in-
+    app toasts driven by the 10s notification poller. See
+    the 7.3 task entry for the full rationale.
 - **Stages blocked:** none.
+- **Roadmap functionally complete.** Remaining open items
+  (4.3 require_accept dialog, 4.8 region picker, 7.3 push
+  notifications) are either deferred behind upstream
+  schema/runtime work (4.3), low-priority polish (4.8),
+  or declined outright (7.3).
 
 ## Stage dependency graph
 
@@ -841,7 +888,7 @@ Stage 7 — Resilience (retries, notifications, observability).
    rejoin transport parity (WebRTC + WebSocket reconnect),
    7.11 lightweight observability re-introduction, 7.12
    max-pending-friend-request cap, 7.13 friend-code
-   rate-limit); 1 open (7.3 push notifications).
+   rate-limit); 1 declined (7.3 push notifications).
 
 Stage 8 — Tests (parallel track, doesn't block features).
    31/31 shipped. Tier 1 Go unit tests (8.3–8.10) all green;
@@ -3166,8 +3213,41 @@ Extract clean code, not bug-laden code.
     real test would need either an injectable poll-delay env
     var or fault-injection equivalent — same blocker as the
     7.1 retry compliance test gap. Deferred.
-- [ ] 7.3 Push notification for friend online / party invite / match
-  found (currently UI-only toasts; no platform-level push).
+- [ ] **7.3 Push notification for friend online / party invite /
+  match found** — **declined 2026-05-14**.
+  - Product call: no platform-level push for any trigger. Friend-
+    online / party-invite / match-found stay as in-app toasts
+    driven by the existing 10s `friends_notification_poller.gd`
+    cadence. The audit's framing (`audit §P3.24`) carried an
+    implicit assumption that push notifications would meaningfully
+    improve engagement; the call here is that hopnbop's session
+    pattern (synchronous match-based play, primarily web + native
+    desktop, no async / turn-based loops) doesn't benefit enough
+    to justify the cost.
+  - Cost of doing it would have been substantial: PWA web-push
+    (Service Worker + Web Push API + VAPID keypair + push event
+    handler) for web; either native OS notification APIs or
+    deferral for desktop; FCM + Firebase project for any future
+    Android build; APNS + Apple Developer credentials for any
+    future iOS build. Each surface has its own permission UX,
+    subscription storage, and dispatch path. Across all four,
+    realistically a multi-session implementation pass plus
+    ongoing credential rotation surface.
+  - Decision worth recording: defaulting to "no push" is also
+    the friendlier UX for the kind of player who installs a game
+    once and plays it for short bursts. Push permission prompts
+    are now widely treated as anti-features when they don't
+    correspond to time-sensitive content, and the in-app toast
+    surface already covers the cases that matter (you can't get
+    a match-found push if your app is closed anyway — push only
+    helps the "tab-backgrounded mid-queue" window, which is a
+    small fraction of matchmaking activity).
+  - Re-open trigger: if a future game in the platform fleet has
+    a stronger case (e.g., turn-based / async play, or daily-
+    streak retention loops), this task can be revived. The
+    scaffolding work would still be from scratch since nothing
+    has been built; this entry exists as a no-op placeholder
+    plus the rationale above.
 - [x] **7.4 Friend block list (schema + RPC + UI + matchmaker
   integration)** (2026-05-13).
   - Done — runtime: new
