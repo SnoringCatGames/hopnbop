@@ -1057,6 +1057,28 @@ enough (matches a known-working call shape elsewhere in the
 SDK) that shipping ahead of the manual smoke is acceptable; the
 next preview-mode launch will be the de facto smoke.
 
+**Propagation gotcha (worth remembering).** First re-run of
+preview mode after the submodule-bump commit reproduced the
+HTTP 400 *identically*. Root cause: per the parent repo's
+CLAUDE.md, the addon under `addons/snoringcat_platform_client/`
+is a **gitignored copy** of the submodule's
+`addons/snoringcat_platform_client/`, refreshed by running
+`scripts/setup-platform-addon.ps1`. The submodule pointer bumped,
+but nobody had re-run the propagation script, so Godot was still
+loading the pre-fix script from the local copy. The script
+exists because Godot 4.6+ on Windows reads stale parser-cache
+content through directory junctions, so we copy instead of
+symlink. Running `scripts/setup-platform-addon.ps1` after the
+parent commit made the fix take effect. **Lesson for future
+debug sessions:** any submodule-side fix needs
+`setup-platform-addon.ps1` before the local Godot editor sees
+it, even if the parent submodule pointer has been bumped and
+committed. Headless `--import` against the parent reads the
+local copy too, so a "headless import clean" check after a
+submodule bump is *not* sufficient to prove the fix is live
+locally — verify the copy contains the fix (`grep` for the
+expected change in `addons/snoringcat_platform_client/...`).
+
 ## Stage dependency graph
 
 ```
