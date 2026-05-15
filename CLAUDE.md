@@ -42,7 +42,7 @@ disk>90%, CPU>80% 15m), the daily Claude prod-health-check
 job, UptimeRobot, and the cost-monitor Discord summary. Live
 production runs on a single Hetzner CPX11 with Edgegap-
 allocated game-server containers. Historical migration notes
-for archeology are in `MIGRATION_PLAN.md` and
+for archeology are in `docs/archive/MIGRATION_PLAN.md` and
 `docs/archive/platform-pivot-discussion.md`.
 
 **Per-game protocol versioning** (post-migration): each game has
@@ -339,7 +339,7 @@ in `infra/remote/nakama/config.yml`'s `runtime.env` block).
 The previous AWS GameLift-based fleet (with cold-start warmup,
 fleet state DynamoDB table, and Lambda idle-checker) was
 decommissioned in Phase F. The historical detail is in
-`MIGRATION_PLAN.md` if needed for archeology.
+`docs/archive/MIGRATION_PLAN.md` if needed for archeology.
 
 ### Transport Architecture
 

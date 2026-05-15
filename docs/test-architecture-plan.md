@@ -422,10 +422,9 @@ items:
 - The compliance suite README's `test_matchmaking.gd` row should
   be expanded once the new transport-selection regression test
   lands (Layer 1).
-- `MIGRATION_PLAN.md` is the historical record. Don't try to
-  bring it forward — instead, retire it to `docs/archive/` once
-  the post-migration system stabilizes (already noted as a
-  follow-up in NEXT_STEPS.md).
+- `docs/archive/MIGRATION_PLAN.md` is the historical record
+  (moved to archive 2026-05-15 once the post-migration system
+  had stabilized). Don't try to bring it forward.
 
 The principle: docs should describe the system as it works
 today, with archival material kept under `docs/archive/` for
