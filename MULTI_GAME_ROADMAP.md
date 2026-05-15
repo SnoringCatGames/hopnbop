@@ -2,11 +2,12 @@
 
 ## Context
 
-`FRIENDS_PARTY_MATCHMAKING_AUDIT.md` (2026-05-12) catalogs the gap
-between the platform's design ("one Nakama runtime, N games") and
-reality ("one Nakama runtime, one game's worth of config baked into
-env vars, plus several broken user-facing contracts"). This document
-stages the work to close that gap.
+`docs/archive/FRIENDS_PARTY_MATCHMAKING_AUDIT.md` (2026-05-12, archived
+2026-05-15 once this roadmap reached functional completion) catalogs
+the gap between the platform's design ("one Nakama runtime, N games")
+and reality ("one Nakama runtime, one game's worth of config baked
+into env vars, plus several broken user-facing contracts"). This
+document stages the work to close that gap.
 
 The audit's TL;DR: the single-game Hop'n'Bop matchmaking pipeline is
 live and largely working, but the multi-game refactor — the whole
@@ -21,7 +22,8 @@ task checkboxes inline as work lands; add notes under tasks as you
 discover sub-items or blockers.
 
 See also:
-- `FRIENDS_PARTY_MATCHMAKING_AUDIT.md` — diagnostic gap inventory.
+- `docs/archive/FRIENDS_PARTY_MATCHMAKING_AUDIT.md` — diagnostic gap
+  inventory (historical; archived 2026-05-15).
 - `third_party/snoringcat-platform/PLATFORM_ARCHITECTURE.md` —
   runtime detail / target topology.
 - `third_party/snoringcat-platform/STUDIO_ARCHITECTURE.md` — service
@@ -30,18 +32,70 @@ See also:
 ## Status summary
 
 - **Current focus:** **Roadmap functionally complete**
-  (2026-05-14, twenty-third pass). Twenty-third pass was a
-  cleanup pass: Stage 7.3 push notifications **declined as a
-  product decision** (no platform-level push for any trigger;
-  in-app toasts via the 10s `friends_notification_poller`
-  remain the only surface), submodule `runtime/build/` added
-  to the platform `.gitignore` (local-smoke-test artifact
-  was showing up as untracked content in the parent repo
-  every time the dev stack was exercised). With 7.3 declined,
-  the only remaining open items (4.3 require_accept dialog,
-  4.8 region picker) are both deferred behind upstream
-  schema/runtime work that isn't yet justified by use. **Prior
-  twenty-second pass: Stage 8 Tier 4 e2e/smoke shipped**
+  (2026-05-15, twenty-fourth pass). Twenty-fourth pass was a
+  doc-archive sweep: ran the audit-followups skill against the
+  current repo state to confirm no implementation gaps were
+  hiding behind the recent suspect-list cleanups, then archived
+  four stale top-level docs that the roadmap had fully
+  superseded. Moved to `docs/archive/`:
+  `DISTRIBUTED_SYSTEMS_PLAN.md` (1973 lines of AWS-era
+  Lambda/DynamoDB/GameLift/CloudFront plan — every component
+  retired in Phase F), `BUILD.md` (GameLift-GDExtension build
+  instructions — addon deleted commit `69264c1`),
+  `FRIENDS_PARTY_MATCHMAKING_AUDIT.md` (the 2026-05-12 audit
+  that motivated this roadmap — referenced from the Context
+  section above, link updated to point at the archive copy),
+  and `docs/test-architecture-plan.md` (every actionable item
+  has landed: §1 socket helper + four socket tests
+  (`test_socket_auth/chat/matchmaker/presence.gd`) live in the
+  compliance suite, §2 WebRTC fix list items 1-7 all ✅ and
+  item 8 ⚠️ regression test exists at
+  `compliance/test_transport_selection.gd`, §3 was a
+  placeholder for a research report that never materialized).
+  Reference updates: roadmap Context section + `See also`
+  list now point at the archived audit doc; submodule
+  `STUDIO_ARCHITECTURE.md` "Key docs" list refreshed to drop
+  the dangling pointers (`MIGRATION_PLAN.md`,
+  `platform-pivot-discussion.md`, `BUILD.md` — all archived)
+  and add a "Historical / archived" pointer to the full
+  archive directory; `.vscode/README.md` dropped its dangling
+  `BUILD.md` link. Items the audit-followups pass surfaced
+  but explicitly **did not** act on, captured here as future
+  follow-ups if they become load-bearing:
+  (i) Nightly Smoke had a transient HTTP 400 on the prod
+  `/v2/account/authenticate/device` endpoint at 2026-05-14
+  04:20 UTC; next run (2026-05-15 01:18 UTC) succeeded with
+  no code change — treating as transient prod hiccup.
+  (ii) The new `Compliance Matrix` workflow (8.31) has zero
+  runs to date because it's PR-triggered and this repo
+  commits direct to main — a `workflow_dispatch` smoke run
+  on a fresh checkout would confirm the gate actually works
+  end-to-end; deferred until someone has reason to open a
+  PR.
+  (iii) Submodule `.github/workflows/client-sdk-ci.yml:50`
+  carries a TODO about standing up a fixture Godot project
+  so the Client SDK CI can actually run GUT against the
+  addon in isolation; today the addon is exercised
+  end-to-end via the consuming game's compliance suite
+  (Tier 4 dev-stack covers everything that fixture would).
+  (iv) Top-level `README.md` is still a one-word "TODO"
+  stub — private repo, cosmetic.
+  With the doc archive in place the working tree is fully
+  aligned with the live system: no top-level doc references
+  AWS-era infrastructure, every "Open" / "Verification gate"
+  bullet has either shipped or is explicitly deferred with
+  rationale. **Prior twenty-third pass: Stage 7.3 push
+  notifications declined as a product decision** (no
+  platform-level push for any trigger; in-app toasts via the
+  10s `friends_notification_poller` remain the only surface),
+  submodule `runtime/build/` added to the platform
+  `.gitignore` (local-smoke-test artifact was showing up as
+  untracked content in the parent repo every time the dev
+  stack was exercised). With 7.3 declined, the only remaining
+  open items (4.3 require_accept dialog, 4.8 region picker)
+  are both deferred behind upstream schema/runtime work that
+  isn't yet justified by use. **Prior twenty-second pass:
+  Stage 8 Tier 4 e2e/smoke shipped**
   end-to-end (2026-05-14). 8.29
   `infra/dev/docker-compose.dev.yml` brings up Nakama +
   Postgres locally with `EDGEGAP_MOCK_DEPLOY=true` so the
@@ -522,8 +576,39 @@ See also:
   now because the HTTP-only path covers the bulk of the
   surface and the socket tests pend gracefully; future
   fix would unlock the full Tier 4 matrix.
-- **Last updated:** 2026-05-14 (twenty-third pass: cleanup
-  pass. Stage 7.3 push notifications declined as a product
+- **Last updated:** 2026-05-15 (twenty-fourth pass: doc-
+  archive sweep. Audit-followups pass against the current
+  repo state confirmed no implementation gaps were hiding
+  behind the prior pass's suspect-list cleanups; the
+  follow-up was instead four top-level docs that the
+  roadmap had fully superseded but the audit had not yet
+  swept off the tree: `DISTRIBUTED_SYSTEMS_PLAN.md` (the
+  1973-line AWS-era plan — every component retired in
+  Phase F), `BUILD.md` (GameLift GDExtension build
+  instructions — addon deleted commit `69264c1`),
+  `FRIENDS_PARTY_MATCHMAKING_AUDIT.md` (the 2026-05-12
+  audit that motivated this roadmap), and
+  `docs/test-architecture-plan.md` (every actionable item
+  had landed; verified `test_socket_*.gd`,
+  `compliance_socket_helper.gd`, and
+  `test_transport_selection.gd` all live in the compliance
+  suite). All four moved to `docs/archive/` via `git mv`.
+  Reference updates: roadmap Context section + `See also`
+  list point at the archive copy of the audit; submodule
+  `STUDIO_ARCHITECTURE.md` "Key docs" refreshed (drops the
+  three already-archived pointers, adds a single
+  "Historical / archived: `docs/archive/`" pointer);
+  `.vscode/README.md` drops its dangling `BUILD.md` link.
+  Items the audit surfaced but explicitly **did not** act
+  on, recorded in the status summary above so the next
+  audit pass doesn't burn cycles re-investigating: the
+  transient 2026-05-14 04:20 UTC Nightly Smoke 400 (next
+  run succeeded), the as-yet-untriggered `Compliance
+  Matrix` workflow (PR-only; this repo commits direct to
+  main), the submodule `client-sdk-ci.yml` fixture-Godot-
+  project TODO, and the top-level `README.md` "TODO" stub.
+  Prior twenty-third pass: cleanup pass.
+  Stage 7.3 push notifications declined as a product
   decision — no platform-level push for any trigger; the
   existing 10s `friends_notification_poller` + in-app toasts
   remain the only notification surface. Rationale recorded

@@ -239,4 +239,3 @@ Edit `.vscode/tasks.json` and add new task objects following the existing patter
 
 - [VSCode Tasks Documentation](https://code.visualstudio.com/docs/editor/tasks)
 - [Godot VSCode Integration](https://docs.godotengine.org/en/stable/tutorials/editor/external_editor.html)
-- [Project BUILD.md](../BUILD.md) - Detailed build instructions
