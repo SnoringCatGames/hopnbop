@@ -22,7 +22,6 @@ discover sub-items or blockers.
 
 See also:
 - `FRIENDS_PARTY_MATCHMAKING_AUDIT.md` — diagnostic gap inventory.
-- `NEXT_STEPS.md` — short-horizon session log (post-Phase F work).
 - `third_party/snoringcat-platform/PLATFORM_ARCHITECTURE.md` —
   runtime detail / target topology.
 - `third_party/snoringcat-platform/STUDIO_ARCHITECTURE.md` — service
@@ -6855,13 +6854,15 @@ Items below came from outside this roadmap (older session-notes,
 pre-multi-game `NEXT_STEPS.md` entries) and may have been
 silently resolved by the multi-game work without their source
 docs being updated. **Always verify the current state before
-acting on these** — at least one such item (`VIEWPORT_CENTERING_SESSION_NOTES.md`)
+acting on these** — at least one such item (viewport
+centering, captured in the "already burned" note at the bottom)
 already tripped an audit pass into nearly re-doing solved work.
 If still latent, fold into the appropriate stage above and
-strike here; if resolved, archive the source doc and strike here.
+strike here; if resolved, strike here.
 
-- **Compliance suite rate-limit** (from old NEXT_STEPS.md
-  "Open — lower priority"). Running all 44 tests under
+- **Compliance suite rate-limit** (from the old
+  `NEXT_STEPS.md` "Open — lower priority" section before that
+  file was retired 2026-05-15). Running all 44 tests under
   `addons/snoringcat_platform_client/test/compliance/` back-
   to-back hits Nakama's auth rate-limit (HTTP 429 on ~17 of
   the 44). Tests pass individually + in small batches. The
@@ -6870,25 +6871,24 @@ strike here; if resolved, archive the source doc and strike here.
   limit hits only against prod / shared tiers. Verify whether
   the limit is still tight given current Nakama config before
   designing a fix (per-test pacing vs. exponential backoff vs.
-  tier-split). Date noted: 2026-05-04. Captured anew in the
-  consolidated `NEXT_STEPS.md` 2026-05-15.
-- **Cert hygiene** (from old NEXT_STEPS.md "Open — immediate").
-  Cert A from cert-rotate run `25301578756` was briefly stored
-  as `is_secret: false` for ~3 minutes before being superseded
-  by cert C. Theoretical leak window for anyone with
-  `EDGEGAP_TOKEN`. The cert is no longer in use; revoke at
-  Let's Encrypt for hygiene if paranoid. Verify cert A still
-  isn't anywhere live before deciding it's safe to revoke.
-  Date noted: 2026-05-04.
-- **Remote-player-state glitches** (from
-  `REMOTE_PLAYER_STATE_GLITCHES_session_context.md`,
-  2026-03-28, pre-multi-game). Investigation into a remote-
-  player visual-state bug. Unverified whether it still
-  reproduces — multi-client smoke needed before either re-
-  investigating or archiving the source doc. Could easily
-  have been resolved silently by any of the Stage-6 SDK
-  extractions, Stage-7.10 reconnect work, or rollback_netcode
-  submodule changes.
+  tier-split). Date noted: 2026-05-04.
+- **Cert hygiene** (from the old `NEXT_STEPS.md` "Open —
+  immediate" section). Cert A from cert-rotate run
+  `25301578756` was briefly stored as `is_secret: false` for
+  ~3 minutes before being superseded by cert C. Theoretical
+  leak window for anyone with `EDGEGAP_TOKEN`. The cert is no
+  longer in use; revoke at Let's Encrypt for hygiene if
+  paranoid. Verify cert A still isn't anywhere live before
+  deciding it's safe to revoke. Date noted: 2026-05-04.
+- **Remote-player-state glitches** (source doc archived to
+  `docs/archive/REMOTE_PLAYER_STATE_GLITCHES_session_context.md`
+  2026-05-15, originally captured 2026-03-28 pre-multi-game).
+  Investigation into a remote-player visual-state bug.
+  Unverified whether it still reproduces — multi-client smoke
+  needed before either re-investigating or considering it
+  resolved. Could easily have been resolved silently by any
+  of the Stage-6 SDK extractions, Stage-7.10 reconnect work,
+  or rollback_netcode submodule changes.
 
 **Items NOT in this list** (because they're already in the
 roadmap above):
@@ -6899,6 +6899,6 @@ roadmap above):
 
 **Already burned by this pattern (resolved 2026-05-15):**
 - `VIEWPORT_CENTERING_SESSION_NOTES.md` was archived to
-  `docs/archive/` after the audit pass nearly re-applied
+  `docs/archive/` after an audit pass nearly re-applied
   stale `+(227,128)` camera-position shifts to scenes that
   had already been corrected through a different approach.

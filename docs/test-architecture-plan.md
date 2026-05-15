@@ -1,55 +1,17 @@
 # Test architecture plan
 
-Captured 2026-05-03. Covers four threads the user asked to plan:
+Captured 2026-05-03. Covers three threads the user asked to plan:
 
-1. Outstanding tasks accumulated this session.
-2. Realtime-socket test rig (currently `pending()` in
+1. Realtime-socket test rig (currently `pending()` in
    `test_matchmaking.gd`).
-3. WebRTC cross-play state + fix list + regression test.
-4. Long-game: extensible distributed test architecture for our
+2. WebRTC cross-play state + fix list + regression test.
+3. Long-game: extensible distributed test architecture for our
    networked games. Internet research is queued via a background
-   agent and will land in section 4 when it returns.
+   agent and will land in section 3 when it returns.
 
 ---
 
-## 1. Outstanding tasks from this session
-
-Beyond the compliance tests (now landed across two parent commits
-`43db749` + `da8a389` and submodule commits `ffd2c56` + `c023b82`),
-the open items I'm aware of are:
-
-- **`addons/gamelift_session_manager` global-class registry leak.**
-  The directory was deleted in commit `0b9b059`, but
-  `.godot/global_script_class_cache.cfg` still references
-  `SessionProvider` / `LocalOnlySessionProvider` /
-  `PreviewSessionProvider`. Headless runs spit cascading parse
-  errors that block compilation of `src/core/settings.gd`,
-  `src/level/lobby_level.gd`, `src/objects/settings_book.gd`.
-  Fix: open the project in the editor (which rewrites the cache),
-  or wipe `.godot/`. Doesn't affect the compliance suite (which
-  runs anyway), but does affect any other GUT run + the editor.
-- **NEXT_STEPS.md is stale** (snapshot from 2026-05-02). Of the
-  open follow-ups listed there:
-  - Phase F teardown: ✅ done (commit `4f8cfe3`).
-  - `runtime_status` static RPC list: ✅ done (commit `63affdd`).
-  - Bump `NAKAMA_GAME_VERSION=0.33.0`: status unknown — likely
-    still 0.32.0 on the Hetzner host.
-  - Edgegap stale image cleanup (`v2`–`v7`): unknown.
-  - Cyclic-ref `.get()` rewrites for 4 files: still open per the
-    May 1 list.
-  - CLAUDE.md cleanup post-Phase-F: partial — file paths and the
-    `addons/snoringcat_platform_client` symlink claim are stale
-    (it's a copy via `scripts/setup-platform-addon.ps1`, not a
-    symlink).
-- **Email containing R2 API key** still in the user's inbox.
-- **Laptop bootstrap** to pick up new skills + the
-  weekly-cost-review job: user task.
-
-A `/audit-followups` run would surface anything I'm missing here.
-
----
-
-## 2. Realtime-socket test rig
+## 1. Realtime-socket test rig
 
 ### What we need it for
 
@@ -128,7 +90,7 @@ allocation and handshake.
 
 This is what the user is hinting at with the "client driver /
 mock system" question — it's the realtime-multi-client rig.
-Section 4 covers the architectural choices around this.
+Section 3 covers the architectural choices around this.
 
 ### Recommended path
 
@@ -139,7 +101,7 @@ outside the compliance bundle (because the cost is much higher).
 
 ---
 
-## 3. WebRTC cross-play
+## 2. WebRTC cross-play
 
 ### Current state (audit findings)
 
@@ -345,7 +307,7 @@ remains.**
    should confirm before implementation since this brings
    nginx back into the game-server container.
 8. ⚠️ **Layer 1 regression test** for transport selection.
-   The compliance suite now has socket-rig support (§2);
+   The compliance suite now has socket-rig support (§1);
    adding `test_transport_selection.gd` is straightforward
    once the port mismatch (#6) is fixed enough that the test
    can actually drive a match end-to-end. Today the test would
@@ -365,7 +327,7 @@ of what the runtime *would* send for given platform mixes, then
 asserts the `transport_type` field is present and correct.
 
 If we don't want to add that probe RPC, an alternative is to
-hit the matchmaker via socket (Shape A from §2), have a single
+hit the matchmaker via socket (Shape A from §1), have a single
 fake "web" player join, then either:
 - Fail open (1-player ticket gets matched immediately because
   we set `min_count=1`).
@@ -394,7 +356,7 @@ transport_type) and ship a Layer 1 test. That alone unblocks
 WebRTC cross-play and gives us the regression tripwire. Steps
 2-3 (entrypoint env-var wiring) come after a real cross-play
 match attempt confirms what the entrypoint actually does.
-Layer 2 e2e test slots into §4's integration suite when we
+Layer 2 e2e test slots into §3's integration suite when we
 build it.
 
 ### Doc sweep after the fix lands
@@ -435,7 +397,7 @@ the AWS-era behavior).
 
 ---
 
-## 4. Long-game: distributed test architecture (placeholder)
+## 3. Long-game: distributed test architecture (placeholder)
 
 A research agent is searching the open web for industry
 patterns (Riot/Blizzard/Epic playbooks, testcontainers, replay

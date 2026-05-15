@@ -134,9 +134,8 @@ the provisioning scripts at
 `game-server.yml` builds `Dockerfile.edgegap`, pushes to the
 Edgegap registry as `v<N>`, and is then registered as a new
 Edgegap app version via the dashboard. Bump
-`EDGEGAP_APP_VERSION` on the Nakama host's `runtime.env` (see
-"Versioning drift" in `NEXT_STEPS.md`) so the matchmaker hook
-allocates the new version.
+`EDGEGAP_APP_VERSION` on the Nakama host's `runtime.env` so the
+matchmaker hook allocates the new version.
 
 Required GH secrets: `EDGEGAP_TOKEN`, `EDGEGAP_REGISTRY_*`,
 `EDGEGAP_REGISTRY_PROJECT`, `SUBMODULE_PAT`. The Harbor robot
