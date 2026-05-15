@@ -39,9 +39,11 @@ jobs:
       - name: Anonymous-auth smoke
         run: |
           # Authenticate as an ephemeral device id, expect a
-          # session token back.
+          # session token back. game_id in vars is required by
+          # the runtime's BeforeAuthenticateDevice hook (Stage
+          # 2.5) once the games cache is non-empty.
           BODY=$(jq -n --arg id "ci-smoke-$(date +%s)" \
-            '{id:$id}')
+            '{id:$id, vars:{game_id:"hopnbop"}}')
           # base64 -w0 to avoid 76-char line-wrap on long keys.
           BASIC=$(printf '%s:' "${{ secrets.NAKAMA_SERVER_KEY }}" | base64 -w0)
           # -f drops the body on 4xx, so capture body + status

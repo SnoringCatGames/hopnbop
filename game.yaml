@@ -58,7 +58,7 @@ ports:
 
 # Transport modes the matchmaker hook may select between. The
 # actual pick is per-match, based on matched players'
-# `is_web` attribute (see CLAUDE.md §"Web Build Cross-Play").
+# `platform` attribute (see CLAUDE.md §"Web Build Cross-Play").
 transports:
   - enet
   - webrtc
@@ -75,7 +75,7 @@ matchmaker_rules:
   min_players: 2
   max_players: 4
   # How long a ticket waits before the matchmaker relaxes
-  # criteria (drops `is_web` preference, etc.) and pairs
+  # criteria (drops `platform` preference, etc.) and pairs
   # whoever's queued.
   ticket_expiry_seconds: 60
   # When true, web and native players can match together

@@ -359,16 +359,19 @@ based on matched players' platforms:
   packet loss).
 
 **Transport selection flow:**
-1. Nakama matchmaker takes an `is_web` player attribute.
-2. The runtime's `matchmaker_matched` hook reads `is_web`
-   from the matched players' properties and sets
-   `transport_type` in the match-ready payload it pushes
-   to clients (`"enet"`, `"webrtc"`, or `"websocket"`).
+1. Nakama matchmaker takes a `platform` string player
+   attribute (`"web"`, `"windows"`, `"linux"`, `"macos"`,
+   `"android"`, `"ios"`).
+2. The runtime's `matchmaker_matched` hook reads `platform`
+   from each matched player's properties, calls
+   `selectTransportType(platforms)` in `transport_select.go`,
+   and sets `transport_type` in the match-ready payload it
+   pushes to clients (`"enet"`, `"webrtc"`, or `"websocket"`).
 3. Client sets `Netcode.settings.transport_type` from the
    match-ready payload before connecting.
 4. Server reads matchmaker data on session-start and sets
-   transport. Only switches away from ENet if web players
-   are matched.
+   transport. Only switches away from ENet if a web player
+   is in the match.
 
 #### WebRTC Architecture
 
@@ -530,7 +533,8 @@ is also unencrypted UDP.
 1. Client authenticates with Nakama (anonymous device-id or
    linked OAuth provider) and gets a session token.
 2. Client adds itself to the matchmaker via the Nakama socket
-   API with platform attributes (e.g. `is_web`).
+   API with platform attributes (e.g. `platform: "web"` or
+   `platform: "windows"`).
 3. Nakama matches players and fires the `matchmaker_matched`
    hook in the runtime plugin.
 4. The hook calls Edgegap to deploy a `hopnbop-server`
@@ -651,12 +655,14 @@ Action handlers in `src/scaffolder/character/action_handlers/` modify velocity a
 
 ### Web Build Cross-Play
 
-The Nakama matchmaker takes an `is_web` player attribute for
-platform-preference matching (relaxes after the configured
-backoff). The runtime hook then chooses `transport_type`
-(`"enet"`, `"webrtc"`, or `"websocket"`) based on which
-platforms made it into the match, and includes it in the
-match-ready payload pushed to clients.
+The Nakama matchmaker takes a `platform` string player
+attribute (`"web"`, `"windows"`, `"linux"`, `"macos"`,
+`"android"`, `"ios"`) for platform-preference matching
+(relaxes after the configured backoff). The runtime hook
+then chooses `transport_type` (`"enet"`, `"webrtc"`, or
+`"websocket"`) based on which platforms made it into the
+match, and includes it in the match-ready payload pushed
+to clients.
 
 - Client sets `Netcode.settings.transport_type` from the
   match-ready payload before connecting.
