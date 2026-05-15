@@ -6895,15 +6895,28 @@ strike here; if resolved, strike here.
   revoke. Not worth the work given the 79-day natural-expiry
   horizon and the low reach. Don't re-investigate; this entry
   is the audit trail.
-- **Remote-player-state glitches** (source doc archived to
+- **Remote-player-state glitches — verified-likely-resolved
+  -in-code 2026-05-15.** Source doc archived to
   `docs/archive/REMOTE_PLAYER_STATE_GLITCHES_session_context.md`
-  2026-05-15, originally captured 2026-03-28 pre-multi-game).
-  Investigation into a remote-player visual-state bug.
-  Unverified whether it still reproduces — multi-client smoke
-  needed before either re-investigating or considering it
-  resolved. Could easily have been resolved silently by any
-  of the Stage-6 SDK extractions, Stage-7.10 reconnect work,
-  or rollback_netcode submodule changes.
+  (originally captured 2026-03-28 pre-multi-game). The
+  "Attempt 2 (UNVERIFIED, LOW confidence)" fix proposed in
+  the doc has shipped and been substantially refined: the
+  current `character_state_from_server.gd::_pack_buffer_state_from_network_state`
+  override (line 183-218) captures `surfaces` from every
+  incoming server state — not just buffer-read entries —
+  and the docstring explicitly addresses the original LOW-
+  confidence concern about buffer entries only carrying
+  CLIENT_PREDICTED data without a rollback. Additionally,
+  the `perf_tracker` fix in `rollback_netcode 6065de3`
+  (state_send_interval compensation) revealed that the
+  50-92% perceived packet loss the bug investigation was
+  reasoning over was a measurement artifact — real loss is
+  much lower. Combined: the proposed fix is in place AND
+  the symptom-reporting that motivated it was distorted.
+  Multi-client smoke at the keyboard would confirm; until
+  then, treating this as resolved. Don't re-investigate
+  unless visual glitches resurface in a real session;
+  this entry is the audit trail.
 
 **Items NOT in this list** (because they're already in the
 roadmap above):
