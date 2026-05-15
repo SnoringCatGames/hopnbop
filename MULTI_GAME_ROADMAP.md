@@ -32,8 +32,45 @@ See also:
 ## Status summary
 
 - **Current focus:** **Roadmap functionally complete**
-  (2026-05-15, twenty-fourth pass). Twenty-fourth pass was a
-  doc-archive sweep: ran the audit-followups skill against the
+  (2026-05-15, twenty-fifth pass). Twenty-fifth pass was a
+  follow-up AWS-era script archive sweep complementing the
+  24th pass's doc-archive sweep: archived the last two stale
+  one-shot AWS-migration scripts that the 24th pass missed
+  because they lived under `scripts/` rather than at the top
+  level. Moved to `docs/archive/`:
+  `phase-f-destroy.ps1` (parent repo, one-shot AWS teardown
+  that ran 2026-05-13; unrunnable now because the AWS account
+  is empty — kept as archeology in case a future game needs
+  an AWS-migration teardown template; was at
+  `scripts/decommission/aws/phase-f-destroy.ps1`, parent
+  `scripts/decommission/` tree removed since the script was
+  its sole inhabitant) and
+  `migrate_ddb_to_nakama.py` (submodule, one-shot Phase E
+  DDB→Nakama migration; unrunnable because the source DDB
+  tables no longer exist — kept as archeology in case a future
+  game wants to reuse the bulk_import RPC pattern; was at
+  `third_party/snoringcat-platform/scripts/migrate_ddb_to_nakama.py`).
+  Reference updates: submodule `README.md` repo-layout block
+  drops the script entry and adds a `docs/archive/` line;
+  submodule `CLAUDE.md` scripts list drops the
+  `migrate_ddb_to_nakama.py` entry; submodule
+  `runtime/bulk_import.go` comment points at the archive
+  path and notes the RPC remains gated behind
+  `BULK_IMPORT_ENABLED=true` for future-game reuse; this
+  roadmap's Phase F closure note (line 519) updated to point
+  at the archive path with a brief breadcrumb. The
+  `bulk_import` RPC itself stays in the live runtime —
+  archiving the script doesn't pull the gated RPC out
+  because reusing the migration pattern for a future game's
+  legacy-data import is the most likely future need. Audit
+  pass before the archive confirmed the four 24th-pass
+  non-acted items (Nightly Smoke transient 400, Compliance
+  Matrix zero-runs, client-sdk-ci.yml fixture-Godot TODO,
+  top-level `README.md` "TODO" stub) are still non-blocking
+  and no new actionable items have emerged. Working tree is
+  now fully aligned: no AWS-era code or scripts outside
+  `docs/archive/`. **Prior twenty-fourth pass:** doc-archive
+  sweep. Ran the audit-followups skill against the
   current repo state to confirm no implementation gaps were
   hiding behind the recent suspect-list cleanups, then archived
   four stale top-level docs that the roadmap had fully
@@ -523,9 +560,11 @@ See also:
     every AWS service. CLAUDE.md's "Zero AWS resources remain"
     is now literally accurate. Script bug on the trailing
     CloudWatch-billing-alarm placeholder also fixed. Script
-    moved to `scripts/decommission/aws/phase-f-destroy.ps1`
-    so it's parked alongside any future game's AWS-migration
-    template.
+    moved to `docs/archive/phase-f-destroy.ps1` (twenty-fifth
+    pass, 2026-05-15 — was at
+    `scripts/decommission/aws/phase-f-destroy.ps1` between
+    ship and archive). Kept as archeology in case a future
+    game needs an AWS-migration teardown template.
   - **Stale Edgegap image tags:** also closed 2026-05-13.
     Deleted v8 through v26 (19 versions) via Edgegap's
     `DELETE /v1/app/<app>/version/<name>` API. Verified
@@ -576,7 +615,40 @@ See also:
   now because the HTTP-only path covers the bulk of the
   surface and the socket tests pend gracefully; future
   fix would unlock the full Tier 4 matrix.
-- **Last updated:** 2026-05-15 (twenty-fourth pass: doc-
+- **Last updated:** 2026-05-15 (twenty-fifth pass: AWS-era
+  script archive sweep. Follow-up to the 24th pass that
+  swept stale top-level *docs*: this pass swept the two
+  remaining stale one-shot AWS-migration *scripts* the 24th
+  pass missed because they lived under `scripts/` rather than
+  at the top level. Moved
+  `scripts/decommission/aws/phase-f-destroy.ps1` (parent
+  repo, one-shot AWS teardown that ran 2026-05-13;
+  unrunnable because the AWS account is empty) and
+  `third_party/snoringcat-platform/scripts/migrate_ddb_to_nakama.py`
+  (submodule, one-shot Phase E DDB→Nakama migration;
+  unrunnable because the source DDB tables no longer exist)
+  to their respective `docs/archive/` directories. Kept the
+  `bulk_import` Go RPC in the live runtime — it's gated
+  behind `BULK_IMPORT_ENABLED=true` and is the most likely
+  reusable artifact if a future game in the platform fleet
+  needs to import legacy data; the script archive includes
+  the payload-shape contract via the existing RPC docstring.
+  Reference updates: submodule `README.md` repo-layout block
+  + scripts section, submodule `CLAUDE.md` scripts list,
+  submodule `runtime/bulk_import.go` calling-script comment,
+  and this roadmap's Phase F closure note (line 519). The
+  empty `scripts/decommission/aws/` + `scripts/decommission/`
+  parent dirs were removed since the script was their sole
+  inhabitant. Submodule committed first per project rule
+  (`5e1bd44`), parent commit follows with the submodule
+  pointer bump. Audit pass before the archive confirmed the
+  four 24th-pass non-acted items remain non-blocking: the
+  transient 2026-05-14 Nightly Smoke 400 (still resolved by
+  the next run), Compliance Matrix zero-runs (still PR-only
+  on a direct-to-main repo), client-sdk-ci.yml fixture-Godot
+  TODO (still deferred — addon exercised via Tier 4
+  dev-stack), top-level `README.md` "TODO" stub (still
+  cosmetic for a private repo). Prior twenty-fourth pass: doc-
   archive sweep. Audit-followups pass against the current
   repo state confirmed no implementation gaps were hiding
   behind the prior pass's suspect-list cleanups; the
