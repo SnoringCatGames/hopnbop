@@ -50,23 +50,18 @@ pend gracefully via `pending(...)`. Fixing it would unlock
 the full Tier 4 socket matrix. Investigation is unbounded
 (could be a Godot WS-stack bug).
 
-### Old pre-multi-game session-notes
+### Remote-player-state glitches (verify-or-archive)
 
-Two docs from earlier investigations may have unresolved
-work:
+`REMOTE_PLAYER_STATE_GLITCHES_session_context.md` (2026-03-28)
+captures an investigation into a remote-player visual-state
+bug. Unverified whether it still reproduces — multi-client
+test session needed to confirm before either re-investigating
+or moving the doc to `docs/archive/`.
 
-- `VIEWPORT_CENTERING_SESSION_NOTES.md` (2026-04-13).
-  Confirmed still latent: `level_0.tscn:51` (and the other
-  5 match levels) still carry `FIXED_TOP_LEFT`-era camera
-  positions while `pixel_viewport_manager.gd` sets
-  `ANCHOR_MODE_DRAG_CENTER`. The doc has the proposed
-  `+(227,128)` shift per level in a table. Needs visual
-  smoke after.
-- `REMOTE_PLAYER_STATE_GLITCHES_session_context.md`
-  (2026-03-28). Unverified whether the remote-player visual-
-  state bug still reproduces; the doc has investigation
-  notes + 3 suggested next steps. Multi-client test needed
-  to verify before either fixing or archiving.
+Sibling doc `VIEWPORT_CENTERING_SESSION_NOTES.md` was
+archived 2026-05-15 (centering was painstakingly fixed
+through a different approach than the doc proposed; the doc
+was misleading on the current state of the level cameras).
 
 ## Pointers
 
