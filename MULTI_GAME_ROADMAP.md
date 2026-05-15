@@ -6848,3 +6848,57 @@ Security:
   feature branches. Commit + push at natural stopping points when
   work is end-to-end functional.
 - Cross-repo work (parent + submodule) commits the submodule first.
+
+## Suspect / verify-before-acting list
+
+Items below came from outside this roadmap (older session-notes,
+pre-multi-game `NEXT_STEPS.md` entries) and may have been
+silently resolved by the multi-game work without their source
+docs being updated. **Always verify the current state before
+acting on these** — at least one such item (`VIEWPORT_CENTERING_SESSION_NOTES.md`)
+already tripped an audit pass into nearly re-doing solved work.
+If still latent, fold into the appropriate stage above and
+strike here; if resolved, archive the source doc and strike here.
+
+- **Compliance suite rate-limit** (from old NEXT_STEPS.md
+  "Open — lower priority"). Running all 44 tests under
+  `addons/snoringcat_platform_client/test/compliance/` back-
+  to-back hits Nakama's auth rate-limit (HTTP 429 on ~17 of
+  the 44). Tests pass individually + in small batches. The
+  Stage 8.31 `compliance-matrix.yml` workflow uses the
+  ephemeral docker-compose stack so isn't affected; the rate
+  limit hits only against prod / shared tiers. Verify whether
+  the limit is still tight given current Nakama config before
+  designing a fix (per-test pacing vs. exponential backoff vs.
+  tier-split). Date noted: 2026-05-04. Captured anew in the
+  consolidated `NEXT_STEPS.md` 2026-05-15.
+- **Cert hygiene** (from old NEXT_STEPS.md "Open — immediate").
+  Cert A from cert-rotate run `25301578756` was briefly stored
+  as `is_secret: false` for ~3 minutes before being superseded
+  by cert C. Theoretical leak window for anyone with
+  `EDGEGAP_TOKEN`. The cert is no longer in use; revoke at
+  Let's Encrypt for hygiene if paranoid. Verify cert A still
+  isn't anywhere live before deciding it's safe to revoke.
+  Date noted: 2026-05-04.
+- **Remote-player-state glitches** (from
+  `REMOTE_PLAYER_STATE_GLITCHES_session_context.md`,
+  2026-03-28, pre-multi-game). Investigation into a remote-
+  player visual-state bug. Unverified whether it still
+  reproduces — multi-client smoke needed before either re-
+  investigating or archiving the source doc. Could easily
+  have been resolved silently by any of the Stage-6 SDK
+  extractions, Stage-7.10 reconnect work, or rollback_netcode
+  submodule changes.
+
+**Items NOT in this list** (because they're already in the
+roadmap above):
+- Godot 4.5 `WebSocketPeer` localhost quirk → status summary
+  item (d) under "Remaining open items".
+- 4.3 require_accept dialog → Stage 4 task entry.
+- 4.8 region picker → Stage 4 task entry.
+
+**Already burned by this pattern (resolved 2026-05-15):**
+- `VIEWPORT_CENTERING_SESSION_NOTES.md` was archived to
+  `docs/archive/` after the audit pass nearly re-applied
+  stale `+(227,128)` camera-position shifts to scenes that
+  had already been corrected through a different approach.
