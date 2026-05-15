@@ -944,6 +944,22 @@ func _client_spawn_lobby() -> void:
 		.restore_players_from_previous_match())
 
 
+## Tear down every active level (lobby, game). Used
+## by the logout flow to prevent the previous user's
+## lobby state (spawned bunnies + cached profile-image
+## attributes) from leaking into the next user's
+## session. Callers are expected to have already
+## cleared the relevant client_session / token_store
+## state.
+func client_clear_all_levels() -> void:
+	Netcode.check_is_client()
+	for level in levels.duplicate():
+		levels.erase(level)
+		if is_instance_valid(level):
+			level.queue_free()
+	G.level = null
+
+
 ## Despawn lobby level before connecting to
 ## server.
 func _client_despawn_lobby_if_present() -> void:

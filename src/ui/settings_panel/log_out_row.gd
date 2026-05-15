@@ -69,6 +69,13 @@ func _do_logout() -> void:
 	Platform.presence.cached_online_ids.clear()
 	G.party_manager.reset()
 	G.client_session.clear_latest_state()
+	# Tear down the live lobby/game level too, otherwise
+	# the next user inherits the previous user's spawned
+	# bunnies (Profile-image / display-name attributes are
+	# captured into the lobby player nodes at spawn, so
+	# clearing client_session is not enough on its own).
+	if is_instance_valid(G.game_panel):
+		G.game_panel.client_clear_all_levels()
 
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(

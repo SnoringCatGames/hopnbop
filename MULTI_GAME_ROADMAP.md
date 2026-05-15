@@ -1114,6 +1114,115 @@ Mechanical fix that matches the documented Nakama
 `ApiUser`/`ApiAccount` schema; will be exercised the next time
 the profile panel is opened in-game (browser or desktop).
 
+### 2026-05-15 — Account-panel Link/Unlink rows always say "Link" after a fresh sign-in
+
+**Symptom.** On v0.41.0 web build, signed in with Google, the
+in-game Account panel still rendered both the Google and Facebook
+rows as "Link" (Google should have said "Unlink"). Browser logs
+showed normal `/v2/account` GET succeeding, no exceptions.
+
+**Root cause.** `Platform.token_store.linked_providers` is the
+single source of truth for the Account panel
+(`src/ui/settings_panel/account_panel.gd:114`); it stays `[]`
+after a fresh OAuth sign-in. The flow:
+`_do_provider_auth` (Google branch) calls Nakama
+`authenticate_google_async`, then builds a response dict via
+`_session_to_response_dict(session, "google")` whose
+`"linked_providers"` field is hardcoded to
+`Platform.token_store.linked_providers` (i.e., the *pre-login*
+value, which is `[]` for a brand-new session). It then merges
+in `_fetch_account_profile_dict(session)` which returns
+`{display_name, profile_image_url}` only. `_handle_auth_success`
+sees `data.has("linked_providers")` is true, clears the store,
+and writes back the empty list. The Account panel reads `[]`
+and rendering defaults to "Link" everywhere. Link / unlink /
+merge response paths already populate the store correctly (lines
+1127-1133, 1161-1167, 1179-1185 of `auth_api_client.gd`);
+fresh-sign-in was the missing path.
+
+**Fix.** Submodule
+`addons/snoringcat_platform_client/core/auth_api_client.gd`:
+`_fetch_account_profile_dict` now also returns
+`"linked_providers"` computed from a new helper
+`_account_to_provider_list(account)` that mirrors the same
+provider-detection rules the game-side
+`backend_api_client._account_linked_providers` uses (devices →
+"anonymous", email → "email", each `account.user.<provider>_id`
+→ provider name). The existing `data.merge(profile_dict, true)`
+overwrites the stale empty list from `_session_to_response_dict`,
+so `_handle_auth_success` then writes the correct list to the
+store.
+
+**Verification.** Headless `godot --import` parses clean (modulo
+the standing `webrtc-native` missing-dll warnings on the local
+checkout). The fix is mechanical; will be smoked on the next web
+deploy by signing in and opening Account panel.
+
+**Adjacent dead code noted, not touched.** The game-side
+`backend_api_client._account_linked_providers` now duplicates
+logic shipped from the SDK; its only caller emits it via
+`profile_received`, but the two consumers of that signal
+(`my_stats_screen`, `friends_panel`) read a different,
+unrelated dict shape (`data.profile.rating`, `data.player.
+friend_code`) that `fetch_player_profile` doesn't emit. Both
+those screens are quietly non-functional and want their own
+investigation. Out of scope here.
+
+### 2026-05-15 — Lobby players survive logout and bleed previous user's identity into the new session
+
+**Symptom.** On the same web session: signed in with Google
+account A, ended up in lobby with two local-controller bunnies
+spawned. Hit Log Out → got bumped to consent screen, signed in
+with a different Google account B. Lobby came back up with the
+same two bunnies in the same positions, still wearing account
+A's profile image. New session is account B (different `uid`
+in the Nakama JWT and a fresh user_id in storage / RPC calls),
+but the visible lobby is account A's.
+
+**Root cause.** `log_out_row._do_logout()` clears every piece of
+user-identity state (`Platform.token_store`,
+`G.local_settings`, `G.profile_image_cache`,
+`G.friends_notification_poller`, friend caches,
+`G.party_manager`, `G.client_session.clear_latest_state()`)
+but does **not** tear down the live `LobbyLevel` scene that's
+currently a child of `%Levels`. Screens then transition
+LOBBY → CONSENT, and `on_left_lobby_to_screen()` is a no-op (by
+design — keeping the lobby alive across settings-menu visits is
+intentional). The level instance survives the round-trip through
+CONSENT and AUTH. When the user re-auths and lands back on
+LOBBY, `_client_spawn_lobby()` early-returns on `if
+G.is_lobby_active: return` (true, because `G.level` still
+references the previous level), so no fresh spawn happens. The
+old bunnies are still in the tree, still bound to the previous
+user's `latest_local_player_attributes`-derived appearance.
+
+**Fix.** Two changes in the parent repo:
+- `src/core/game_panel.gd`: added public
+  `client_clear_all_levels()` that walks the `levels` array,
+  `queue_free`s each entry, and sets `G.level = null`. Distinct
+  from `_client_despawn_lobby_if_present()` because the logout
+  path could in principle be hit from in-match too, and we want
+  to tear down whatever level is live.
+- `src/ui/settings_panel/log_out_row.gd::_do_logout()`: calls
+  `G.game_panel.client_clear_all_levels()` after the existing
+  client_session clear. Order matters: client_session.clear
+  releases attribute references that the level nodes were
+  holding, then we free the nodes.
+
+**Verification.** Headless `godot --import` parses clean. The
+fix is small and trace-friendly; will be smoked on the next web
+deploy by signing out and signing back in with a different
+account and confirming a fresh lobby spawns.
+
+**Open follow-up.** If logout is invoked while a real match is
+running, `client_clear_all_levels()` will queue_free the live
+game level — there's no separate "leave match cleanly via
+Netcode disconnect" step on the logout path. The Log Out row is
+only shown in the AccountPanel (which is reachable from both
+the lobby settings and the pause menu), so the in-match case is
+real but unverified. Tagged here as a follow-up; the immediate
+bug was the lobby-only case and that's what shipped.
+
 ## Stage dependency graph
 
 ```
