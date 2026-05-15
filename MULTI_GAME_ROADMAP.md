@@ -6872,14 +6872,24 @@ strike here; if resolved, strike here.
   the limit is still tight given current Nakama config before
   designing a fix (per-test pacing vs. exponential backoff vs.
   tier-split). Date noted: 2026-05-04.
-- **Cert hygiene** (from the old `NEXT_STEPS.md` "Open —
-  immediate" section). Cert A from cert-rotate run
-  `25301578756` was briefly stored as `is_secret: false` for
-  ~3 minutes before being superseded by cert C. Theoretical
-  leak window for anyone with `EDGEGAP_TOKEN`. The cert is no
-  longer in use; revoke at Let's Encrypt for hygiene if
-  paranoid. Verify cert A still isn't anywhere live before
-  deciding it's safe to revoke. Date noted: 2026-05-04.
+- **Cert hygiene — verified-and-skipped 2026-05-15.** Cert A
+  from cert-rotate run `25301578756` (2026-05-04 04:48) was
+  uploaded with `is_hidden: true` (a typo for the Edgegap API
+  field `is_secret: true`), so `TLS_FULLCHAIN` / `TLS_PRIVKEY`
+  defaulted to public on Edgegap env vars for ~3 minutes
+  before the immediate follow-up run `25301673425` (04:51)
+  fixed the field name. Cert expires 2026-08-02. Verified
+  superseded multiple times since (latest live cert is from
+  run `25501621027`, 2026-05-07, expires 2026-08-05).
+  Skipping revocation: reach was bounded to `EDGEGAP_TOKEN`
+  holders (who could rotate the cert themselves anyway,
+  making the marginal risk near-zero), and the cert-rotate
+  workflow doesn't persist a Let's Encrypt account, so
+  revoking would require either the cert's PEM (long gone)
+  or a new revoke-cert.yml workflow doing DNS-01 re-issue +
+  revoke. Not worth the work given the 79-day natural-expiry
+  horizon and the low reach. Don't re-investigate; this entry
+  is the audit trail.
 - **Remote-player-state glitches** (source doc archived to
   `docs/archive/REMOTE_PLAYER_STATE_GLITCHES_session_context.md`
   2026-05-15, originally captured 2026-03-28 pre-multi-game).
