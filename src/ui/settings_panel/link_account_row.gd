@@ -1,7 +1,7 @@
 class_name LinkAccountRow
-extends SettingsRow
+extends MenuRow
 ## A row for linking or unlinking an OAuth provider.
-## Shows provider name and linked status. Left/right
+## Shows provider name and linked status. Activating
 ## triggers the link flow when not yet linked, or the
 ## unlink flow (with confirmation) when already linked.
 
@@ -50,11 +50,7 @@ func _ready() -> void:
 	_update_status()
 
 
-func on_left() -> void:
-	_toggle()
-
-
-func on_right() -> void:
+func on_trigger() -> void:
 	_toggle()
 
 

@@ -69,7 +69,7 @@ func build_ui() -> void:
 	_connect_row_clicked(cheats_row)
 
 	# Cheat sub-rows.
-	var cheat_sub_rows: Array[SettingsRow] = []
+	var cheat_sub_rows: Array[MenuRow] = []
 
 	var cheat_indent := 24
 	cheat_sub_rows.append(

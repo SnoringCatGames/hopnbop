@@ -1,5 +1,5 @@
 class_name DeleteAccountRow
-extends SettingsRow
+extends MenuRow
 ## A row that opens a dedicated confirmation sub-panel for
 ## account deletion. The sub-panel handles the grace-period
 ## messaging and the type-the-word verification step; this row
@@ -33,11 +33,7 @@ func _ready() -> void:
 	_apply_icon(_icon, _icon_texture)
 
 
-func on_left() -> void:
-	_activate()
-
-
-func on_right() -> void:
+func on_trigger() -> void:
 	_activate()
 
 

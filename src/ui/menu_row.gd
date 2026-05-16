@@ -1,14 +1,37 @@
-class_name SettingsRow
+class_name MenuRow
 extends PanelContainer
-## Base class for rows in the settings panel.
-## Each row can be focused and responds to
-## left/right input. Shows focus border on
-## keyboard focus or mouse hover.
+## Focusable, triggerable row widget. Used in both
+## SidePanel rows and Screen buttons.
+##
+## Input contract (driven by SidePanel._process and the
+## ScreenFocusNavigator polling loop):
+##
+##   - Trigger button + Right input: `on_trigger()` fires.
+##   - Left input: NOT routed to this row — instead routed
+##     by the panel/screen as a "back" action. Exception:
+##     rows whose Left and Right have distinct semantics
+##     override `consumes_horizontal_input()` to return
+##     true, in which case the panel/screen calls
+##     `on_left()` / `on_right()` directly.
+##   - Mouse click: `on_trigger()` fires.
+##
+## The base class fires the `triggered` signal on
+## `on_trigger()` and on mouse-click; subclasses can either
+## override `on_trigger()` or connect to the signal.
+##
+## Visual chrome:
+##   - Left-side icon: configurable via `set_icon(tex)`
+##     pattern in subclasses; uses `_apply_icon()` helper.
+##   - Right-side chevron: configurable via `show_chevron`.
+##     Subclasses that have a child `TextureRect` with the
+##     unique name `%Chevron` will see it shown/hidden
+##     based on the flag. Subclasses without a chevron
+##     node just leave the flag at its default (false).
 
 
 @warning_ignore("unused_signal")
 signal value_changed
-signal clicked
+signal triggered
 
 var _focus_style: StyleBox
 var _unfocused_style: StyleBox
@@ -20,6 +43,18 @@ var is_focused := false:
 		is_focused = value
 		_update_focus_style()
 
+## When true, a child TextureRect with unique name
+## `%Chevron` (if present) is shown; otherwise hidden.
+## Subclasses that navigate forward (SubPanelTriggerRow,
+## ScreenTriggerRow, CreditsRow) set this to true in
+## their `_ready()`. Programmatic callers (e.g.,
+## ActionRow instances used as sub-panel triggers in
+## party_lobby_panel.gd) can set it per-instance.
+var show_chevron := false:
+	set(value):
+		show_chevron = value
+		_apply_chevron_visibility()
+
 
 func _ready() -> void:
 	_focus_style = G.settings.focus_border_stylebox
@@ -27,14 +62,35 @@ func _ready() -> void:
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
 	_update_focus_style()
+	_apply_chevron_visibility()
 
 
-## Called when the player presses left.
+## Override in subclasses whose Left and Right have
+## distinct semantics. Defaults to false. When false, the
+## panel/screen routes Left to its back action and Right
+## to `on_trigger()`. When true, the panel/screen calls
+## `on_left()` / `on_right()` directly and Trigger still
+## calls `on_trigger()` (which subclasses typically alias
+## to the Right behavior for keyboard-trigger parity).
+func consumes_horizontal_input() -> bool:
+	return false
+
+
+## Universal action method. Fired by Right input, Trigger
+## input, and mouse-click. Subclasses override to perform
+## their primary action.
+func on_trigger() -> void:
+	pass
+
+
+## Used by horizontal-selector subclasses
+## (LevelPrefRow, BinaryToggle). Default no-op.
 func on_left() -> void:
 	pass
 
 
-## Called when the player presses right.
+## Used by horizontal-selector subclasses
+## (LevelPrefRow, BinaryToggle). Default no-op.
 func on_right() -> void:
 	pass
 
@@ -64,7 +120,16 @@ func _gui_input(event: InputEvent) -> void:
 				and mb.button_index
 				== MOUSE_BUTTON_LEFT):
 			accept_event()
-			clicked.emit()
+			triggered.emit()
+			# Horizontal-selector rows have their own
+			# sub-button click handlers (e.g., the three
+			# X / check / heart buttons of LevelPrefRow,
+			# the two side-by-side buttons of
+			# BinaryToggle). Clicking the row background
+			# itself should only set focus, not cycle the
+			# state — the sub-buttons own activation.
+			if not consumes_horizontal_input():
+				on_trigger()
 
 
 func _update_focus_style() -> void:
@@ -116,6 +181,20 @@ func _setup_chevron(rect: TextureRect) -> void:
 	if is_layout_rtl():
 		rect.pivot_offset = icon_size / 2.0
 		rect.scale.x = -1.0
+
+
+## Toggle the chevron node's visibility based on the
+## `show_chevron` flag. Subclasses opt in by declaring
+## a child TextureRect with unique name `%Chevron`.
+## No-op when no chevron node is present.
+func _apply_chevron_visibility() -> void:
+	if not is_inside_tree():
+		return
+	if not has_node("%Chevron"):
+		return
+	var chevron := get_node("%Chevron") as TextureRect
+	if is_instance_valid(chevron):
+		chevron.visible = show_chevron
 
 
 ## Wraps icon_rect in a MarginContainer if not already

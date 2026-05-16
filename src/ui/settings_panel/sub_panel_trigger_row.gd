@@ -1,7 +1,8 @@
 class_name SubPanelTriggerRow
-extends SettingsRow
+extends MenuRow
 ## A row that opens a sub-panel when activated.
-## Displays a label and a ">" arrow indicator.
+## Displays a label and the standard chevron
+## affordance.
 
 
 var _display_name := ""
@@ -12,7 +13,6 @@ var _icon_texture: Texture2D
 @onready var _icon: TextureRect = %Icon
 @onready var _label: Label = %Label
 @onready var _badge: Panel = %Badge
-@onready var _arrow: TextureRect = %Arrow
 
 
 ## Set an icon to display before the label. Call
@@ -35,7 +35,9 @@ func _ready() -> void:
 	super()
 	_label.text = _display_name
 	_apply_icon(_icon, _icon_texture)
-	_setup_chevron(_arrow)
+	# Navigates forward into a sub-panel — show the
+	# chevron affordance.
+	show_chevron = true
 	_badge.visible = false
 	_setup_badge_style()
 
@@ -59,11 +61,7 @@ func _setup_badge_style() -> void:
 		"panel", style)
 
 
-func on_left() -> void:
-	_open_sub_panel()
-
-
-func on_right() -> void:
+func on_trigger() -> void:
 	_open_sub_panel()
 
 

@@ -1,7 +1,16 @@
 class_name LevelPrefRow
-extends SettingsRow
+extends MenuRow
 ## Row showing a level name and tri-toggle
 ## aggregate button (X / checkmark / heart).
+##
+## One of two row classes whose Left and Right have
+## distinct semantics (the other is the standalone
+## `BinaryToggle`). `consumes_horizontal_input()`
+## returns true so the SidePanel does NOT route Left
+## to its back action while a LevelPrefRow is focused.
+## `on_trigger()` is aliased to `on_right()` so the
+## gamepad trigger button cycles the state forward
+## the same way the Right direction does.
 
 
 enum LevelPrefState {
@@ -84,6 +93,10 @@ func _ready() -> void:
 	_update_button_styles()
 
 
+func consumes_horizontal_input() -> bool:
+	return true
+
+
 func on_left() -> void:
 	# Move toward EXCLUDED (leftward).
 	match _state:
@@ -104,6 +117,15 @@ func on_right() -> void:
 			set_state(LevelPrefState.PREFERRED)
 		LevelPrefState.PREFERRED:
 			pass # Already at rightmost.
+
+
+## Trigger button (gamepad A / Enter / Space) cycles
+## forward — same as Right. Mouse-click on the row
+## background is suppressed by the SidePanel because
+## consumes_horizontal_input() returns true (the row's
+## three sub-buttons handle their own clicks).
+func on_trigger() -> void:
+	on_right()
 
 
 func set_state(new_state: LevelPrefState) -> void:

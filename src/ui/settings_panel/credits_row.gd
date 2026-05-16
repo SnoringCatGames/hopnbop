@@ -1,5 +1,5 @@
 class_name CreditsRow
-extends SettingsRow
+extends MenuRow
 ## A row that opens the credits screen.
 ## Closes the settings menu before showing
 ## the screen.
@@ -11,7 +11,6 @@ var _icon_texture: Texture2D
 
 @onready var _icon: TextureRect = %Icon
 @onready var _label: Label = %Label
-@onready var _arrow: TextureRect = %Arrow
 
 
 ## Set an icon to display before the label. Call
@@ -32,14 +31,12 @@ func _ready() -> void:
 	super()
 	_label.text = _display_name
 	_apply_icon(_icon, _icon_texture)
-	_setup_chevron(_arrow)
+	# Navigates forward into the Credits screen — show
+	# the chevron affordance.
+	show_chevron = true
 
 
-func on_left() -> void:
-	_open_credits()
-
-
-func on_right() -> void:
+func on_trigger() -> void:
 	_open_credits()
 
 

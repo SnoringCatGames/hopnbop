@@ -102,7 +102,7 @@ func _add_body() -> void:
 
 func _add_merge_row() -> void:
 	_merge_row = ActionRow.new()
-	_merge_row.setup_actions(_on_merge_pressed, _on_merge_pressed)
+	_merge_row.setup_action(_on_merge_pressed)
 	_merge_row.setup_label(tr("MERGE.CONTINUE"), icon_merge)
 	_row_container.add_child(_merge_row)
 	_connect_row_clicked(_merge_row)
@@ -114,7 +114,7 @@ func _add_cancel_row() -> void:
 	_row_container.add_child(spacer)
 
 	_cancel_row = ActionRow.new()
-	_cancel_row.setup_actions(_on_cancel_pressed, _on_cancel_pressed)
+	_cancel_row.setup_action(_on_cancel_pressed)
 	_cancel_row.setup_label(tr("CONFIRM.CANCEL"))
 	_row_container.add_child(_cancel_row)
 	_connect_row_clicked(_cancel_row)

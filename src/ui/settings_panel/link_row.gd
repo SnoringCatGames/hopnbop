@@ -1,5 +1,5 @@
 class_name LinkRow
-extends SettingsRow
+extends MenuRow
 ## A row that opens a URL in the browser.
 
 
@@ -10,7 +10,6 @@ var _icon_scale := -1
 
 @onready var _icon: TextureRect = %Icon
 @onready var _label: Label = %Label
-@onready var _arrow: TextureRect = %Arrow
 
 
 ## Set an icon to display before the label. Call
@@ -35,14 +34,12 @@ func _ready() -> void:
 	super()
 	_label.text = _display_name
 	_apply_icon(_icon, _icon_texture, _icon_scale)
-	_setup_chevron(_arrow)
+	# Navigates forward (out to the browser) — show the
+	# chevron affordance.
+	show_chevron = true
 
 
-func on_left() -> void:
-	_open()
-
-
-func on_right() -> void:
+func on_trigger() -> void:
 	_open()
 
 

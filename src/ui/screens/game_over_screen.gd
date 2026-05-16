@@ -69,7 +69,7 @@ func _unhandled_input(
 		return
 	if event.is_action_pressed(&"close_menu"):
 		get_viewport().set_input_as_handled()
-		_on_return_to_lobby_pressed()
+		on_back()
 
 
 func _process(_delta: float) -> void:
@@ -77,7 +77,20 @@ func _process(_delta: float) -> void:
 		return
 
 	if _navigator.poll(_delta):
-		_activate_focused()
+		# Right + Trigger activate the focused button; Left
+		# routes to `on_back()` which returns to the lobby.
+		if _navigator.last_activation_direction == -1:
+			on_back()
+		else:
+			_activate_focused()
+
+
+## Return to the lobby. Triggered by Left input on
+## any focused button, by close_menu (Escape /
+## B-button), and by the Return To Lobby button
+## itself.
+func on_back() -> void:
+	_on_return_to_lobby_pressed()
 
 
 func on_open() -> void:

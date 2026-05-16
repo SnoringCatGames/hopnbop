@@ -1,5 +1,5 @@
 class_name ScreenTriggerRow
-extends SettingsRow
+extends MenuRow
 ## A row that opens a full Screen when activated.
 ## Used to display in-game legal doc screens from
 ## the info side-panel.
@@ -12,7 +12,6 @@ var _icon_texture: Texture2D
 
 @onready var _icon: TextureRect = %Icon
 @onready var _label: Label = %Label
-@onready var _arrow: TextureRect = %Arrow
 
 
 ## Set an icon to display before the label. Call
@@ -35,14 +34,12 @@ func _ready() -> void:
 	super()
 	_label.text = _display_name
 	_apply_icon(_icon, _icon_texture)
-	_setup_chevron(_arrow)
+	# Navigates forward into a full Screen — show the
+	# chevron affordance.
+	show_chevron = true
 
 
-func on_left() -> void:
-	_open_screen()
-
-
-func on_right() -> void:
+func on_trigger() -> void:
 	_open_screen()
 
 

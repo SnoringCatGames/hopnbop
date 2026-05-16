@@ -4,6 +4,14 @@ extends PanelContainer
 ## right). The selected option is highlighted.
 ## Modeled after LevelPrefRow but with two text
 ## buttons instead of three icon buttons.
+##
+## Distinct from MenuRow: this widget is used standalone
+## inside Screens (leaderboard_panel) and is not part of
+## the SettingsRow / MenuRow inheritance chain. It still
+## advertises `consumes_horizontal_input()` so that the
+## screen-side input dispatcher (ScreenFocusNavigator
+## consumer) can route Left/Right to its own handlers
+## instead of treating Left as "back".
 
 
 signal option_changed(index: int)
@@ -64,6 +72,14 @@ func get_option() -> int:
 	return _selected_index
 
 
+## Duck-typed by screen-side dispatchers (parallel to
+## `MenuRow.consumes_horizontal_input`). Returns true so
+## screens that route Left to their `on_back()` skip
+## doing so while a BinaryToggle has focus.
+func consumes_horizontal_input() -> bool:
+	return true
+
+
 func on_left() -> void:
 	if _selected_index == 0:
 		return
@@ -80,6 +96,12 @@ func on_right() -> void:
 	if is_instance_valid(G.audio):
 		G.audio.play_sound("select")
 	option_changed.emit(1)
+
+
+## Trigger button parity: picks option 1 (same as
+## Right) for keyboard / gamepad trigger.
+func on_trigger() -> void:
+	on_right()
 
 
 func _on_left_button_pressed() -> void:

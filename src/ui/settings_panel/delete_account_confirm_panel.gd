@@ -99,8 +99,7 @@ func build_ui() -> void:
 
 	# Confirm row. Disabled until input matches verify word.
 	_confirm_row = ActionRow.new()
-	_confirm_row.setup_actions(
-		_on_confirm_pressed, _on_confirm_pressed)
+	_confirm_row.setup_action(_on_confirm_pressed)
 	_confirm_row.setup_label(
 		tr("CONFIRM.DELETE_ACCOUNT_CONFIRM_BUTTON"),
 		_delete_icon)

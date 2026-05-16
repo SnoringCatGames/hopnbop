@@ -112,9 +112,7 @@ func _build_mode_rows() -> void:
 		row.setup_label(
 			label,
 			_selected_icon if is_selected else null)
-		row.setup_actions(
-			_make_select_callable(mode_id),
-			_make_select_callable(mode_id))
+		row.setup_action(_make_select_callable(mode_id))
 		_row_container.add_child(row)
 		_connect_row_clicked(row)
 

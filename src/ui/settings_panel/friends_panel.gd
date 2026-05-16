@@ -174,9 +174,7 @@ func _exit_tree() -> void:
 
 func _build_friend_code_section() -> void:
 	var code_row := ActionRow.new()
-	code_row.setup_actions(
-		_on_copy_code_pressed,
-		_on_copy_code_pressed)
+	code_row.setup_action(_on_copy_code_pressed)
 
 	var code_container := HBoxContainer.new()
 	code_container.alignment = (
@@ -477,7 +475,7 @@ func _add_incoming_row(
 			friend_id, display_name)
 		manager.push_panel(panel)
 
-	row.setup_actions(open_action, open_action)
+	row.setup_action(open_action)
 
 	var content := HBoxContainer.new()
 	content.add_theme_constant_override(
@@ -554,7 +552,7 @@ func _add_friend_row(
 			friend_id, display_name, is_online)
 		manager.push_panel(panel)
 
-	row.setup_actions(open_action, open_action)
+	row.setup_action(open_action)
 
 	var content := HBoxContainer.new()
 	content.add_theme_constant_override(
@@ -656,7 +654,7 @@ func _add_sent_row(
 			friend_id)
 
 	cancel_button.pressed.connect(cancel_action)
-	row.setup_actions(cancel_action, cancel_action)
+	row.setup_action(cancel_action)
 
 	_row_container.add_child(row)
 	_connect_row_clicked(row)

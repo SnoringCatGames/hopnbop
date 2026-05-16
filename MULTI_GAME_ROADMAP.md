@@ -1292,6 +1292,90 @@ teach the script to filter the commit range by changed paths
 under `runtime/`. Both options are scoped beyond the immediate
 session.
 
+### 2026-05-15 — `MenuRow` widget + Left=back input refactor
+
+Not a debugging fix per se — a large architectural refactor
+landed in the same session. Logged here so future sessions can
+see the full Sunday narrative without diffing through 30+ file
+changes.
+
+**Motivation.** Every SidePanel row implemented both `on_left()`
+and `on_right()`, and 16 of 18 implemented them identically.
+The "asymmetric callable" surface on `ActionRow`
+(`setup_actions(on_right, on_left)`) was dead code — every
+callsite passed the same callable for both args. Screen
+buttons were a parallel family using stock `Godot.Button` over
+`PlatformScreenFocusNavigator`. The user wanted a single
+reusable widget across panels and screens with explicit
+intent: Trigger + Right = act, Left = back, declarative
+left-icon + right-chevron.
+
+**Shape of the change.**
+- `SettingsRow` renamed to `MenuRow` (file moved to
+  `src/ui/menu_row.gd`). New virtuals
+  `consumes_horizontal_input() -> bool` and `on_trigger()`
+  replace the symmetric `on_left/on_right` pair. Adds a
+  declarative `show_chevron` flag that toggles a child node
+  with unique name `%Chevron`.
+- 16 action-row subclasses (`BackRow`, `CloseRow`,
+  `ToggleRow`, `LinkAccountRow`, etc.) extend `MenuRow`,
+  collapse their twin handlers into a single `on_trigger`.
+- `LevelPrefRow` and `BinaryToggle` keep their asymmetric
+  Left/Right (and add `consumes_horizontal_input() -> true`).
+  `BinaryToggle` is NOT in the MenuRow inheritance chain
+  (standalone PanelContainer used by leaderboard) but
+  duck-types the method for screen-side dispatch.
+- `ActionRow.setup_actions(on_right, on_left)` → narrowed to
+  `setup_action(callback)`. 20+ callsites updated across
+  party_lobby_panel, friend_*, blocked_users, recent_players,
+  merge / upgrade / delete-account-confirm, etc.
+- `SidePanel._process` rewritten with three explicit helpers
+  (`_handle_trigger_input` / `_handle_right_input` /
+  `_handle_left_input`). Left input on non-horizontal-
+  consumer rows calls `manager.pop_panel()` (which
+  auto-falls-through to `close_all` at stack depth 1).
+- Submodule `PlatformScreen` gains `on_back()` virtual.
+  Submodule screens `auth_screen` + `anonymous_upgrade_screen`
+  route Left to `on_back()` (auth = no-op; upgrade =
+  dismiss). Parent screens `game_over` + `leaderboard_panel`
+  do the same (game_over = return to lobby; leaderboard =
+  close, except when the type-toggle BinaryToggle has focus —
+  it consumes horizontal input and routes to its own
+  on_left/on_right).
+- Scenes for the four chevron-bearing row subclasses had
+  their `Arrow` nodes renamed to `Chevron` (unique name) so
+  the base class's `_apply_chevron_visibility` can find them
+  generically.
+
+**Verification.** Headless `godot --import` parses clean after
+the addon-copy refresh. No end-to-end manual smoke for the
+input flows yet — that requires Levi at the keyboard. The
+refactor is mechanical enough (every code path either does
+what its old code path did, or replaces a redundant symmetric
+handler with an explicit one) that shipping ahead of manual
+smoke is acceptable.
+
+**Out-of-scope follow-ups, recorded here so they don't get
+lost.**
+- `ConsentScreen` uses its own bespoke input poller (not the
+  shared `ScreenFocusNavigator`); the Left=back wiring there
+  is genuinely complex (the checkbox→checkbox→continue chain
+  is its own state machine). Left untouched; the consent
+  screen's Left input currently does nothing on focused
+  controls, which is the same as before the refactor.
+- `PauseScreen`, `LegalDocScreen`, `LanguageScreen`,
+  `LoadingScreen`, `CreditsScreen`, `MyStatsScreen` don't use
+  the navigator (mouse buttons or "any-input-closes" semantics
+  on `_navigator.poll`); no behavior change needed.
+- Per-row `.tscn` files for the 16 simple action rows are
+  still independent of `menu_row.tscn` — a future cleanup
+  could collapse them to inherited scenes for cosmetic
+  consistency, but the function is the same.
+- The `disabled` field on `ActionRow` is a programmatic
+  setter that just dims the modulate. A future cleanup could
+  promote it to `MenuRow` base (or use Godot's built-in
+  `Button.disabled` if MenuRow ever extends Button).
+
 ## Stage dependency graph
 
 ```

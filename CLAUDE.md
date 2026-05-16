@@ -949,18 +949,47 @@ All interactive UI elements must be navigable with U/D and
 L/R controls. Players use gamepads or keyboard. UI that only
 responds to mouse/touch is not acceptable.
 
-**Side panels** (`SidePanel` subclasses): Every interactive
-element (button, toggle, link) must be a `SettingsRow`
-subclass added directly to `_row_container`. The base class
-scans `_row_container.get_children()` for `SettingsRow`
-instances. Non-SettingsRow children (spacers, labels) are
-ignored. Call `_connect_row_clicked(row)` for each row and
-`rebuild_row_list()` after dynamic content changes.
+### Input contract (Trigger / Right / Left)
+
+`MenuRow` (`src/ui/menu_row.gd`) is the universal focusable
+row widget. It's used by SidePanel rows AND, increasingly, by
+Screen buttons (auth, anonymous-upgrade, game-over). The
+contract is:
+
+- **Trigger button** (Enter / Space / gamepad trigger): fires
+  the row's `on_trigger()`.
+- **Right input**: fires `on_trigger()` (same as Trigger).
+- **Left input**: routes to the **panel/screen back action**,
+  NOT the row. SidePanel calls `manager.pop_panel()`; Screens
+  call `on_back()` (default no-op; subclasses override —
+  game-over returns to lobby, anonymous-upgrade dismisses,
+  leaderboard closes, etc.).
+- **Mouse click** on the row body: fires `triggered` signal
+  + `on_trigger()`.
+
+Two exceptions opt out of the "Left = back" rule by overriding
+`consumes_horizontal_input() -> true`:
+
+- `LevelPrefRow` (tristate cycle): Left cycles state backward
+  (PREFERRED → INCLUDED → EXCLUDED), Right cycles forward.
+- `BinaryToggle` (standalone PanelContainer used in screens):
+  Left picks option 0, Right picks option 1.
+
+Both define `on_trigger()` as an alias for `on_right()` so the
+keyboard trigger key still works.
+
+### Side panels
+
+`SidePanel` subclasses scan `_row_container.get_children()`
+for `MenuRow` instances; non-MenuRow children (spacers,
+labels) are ignored. Call `_connect_row_clicked(row)` for
+each row and `rebuild_row_list()` after dynamic content
+changes.
 
 For dynamically generated rows that don't need a scene file,
-use `ActionRow` (extends `SettingsRow`). Call
-`setup_actions(on_right, on_left)` with callables for L/R
-input. Right/trigger is the primary action. Example:
+use `ActionRow` (extends `MenuRow`). Call
+`setup_action(callback)` with a single callable for the
+row's `on_trigger()` action. Example:
 
 ```gdscript
 var row := ActionRow.new()
@@ -968,16 +997,38 @@ var content := HBoxContainer.new()
 content.mouse_filter = Control.MOUSE_FILTER_IGNORE
 row.add_child(content)
 # ... add labels/buttons to content ...
-row.setup_actions(primary_action, secondary_action)
+row.setup_action(action_callback)
 _row_container.add_child(row)
 _connect_row_clicked(row)
 ```
 
-**Screens** (`Screen` subclasses using `ScreenFocusNavigator`):
+### Right-side chevron affordance
+
+Set `row.show_chevron = true` on rows that navigate forward
+into a sub-view (sub-panel, sub-screen, URL). The base class
+toggles a child `TextureRect` with unique name `%Chevron` if
+present. `SubPanelTriggerRow`, `ScreenTriggerRow`, `LinkRow`,
+and `CreditsRow` set this in their `_ready()` by default.
+Programmatic ActionRow callers can also set it per-instance.
+
+### Screens
+
+`Screen` subclasses using `ScreenFocusNavigator` route input
+through `_navigator.poll(delta)`. After a true return,
+inspect `_navigator.last_activation_direction`:
+
+- `0` (Trigger) → `_activate_focused()` (fire focused button).
+- `1` (Right) → same as Trigger for non-horizontal-consumer
+  controls; for horizontal-consumer controls (e.g., the
+  leaderboard's BinaryToggle), call the control's
+  `on_right()`.
+- `-1` (Left) → `on_back()` (or the focused control's
+  `on_left()` if it consumes horizontal input).
+
 All interactive buttons must be in the focusable list via
 `_navigator.set_focusable_list(items)`. Dynamically created
-buttons (e.g., friend action buttons in result rows) must also
-be added.
+buttons (e.g., friend action buttons in result rows) must
+also be added.
 
 ### Button Icons
 

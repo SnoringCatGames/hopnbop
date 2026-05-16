@@ -1,9 +1,11 @@
 class_name TextInputRow
-extends SettingsRow
+extends MenuRow
 ## A settings row containing a LineEdit for text
-## input. Triggering (L/R or named action) toggles
-## keyboard focus within the LineEdit independently
-## of the outer row focus used for panel navigation.
+## input. Activating toggles keyboard focus within
+## the LineEdit independently of the outer row
+## focus used for panel navigation. While the
+## LineEdit has GUI focus, the SidePanel's directional
+## input is suppressed so arrow keys edit text.
 
 
 signal text_changed(new_text: String)
@@ -51,11 +53,7 @@ func _ready() -> void:
 		_on_focus_exited)
 
 
-func on_left() -> void:
-	_toggle_editing()
-
-
-func on_right() -> void:
+func on_trigger() -> void:
 	_toggle_editing()
 
 

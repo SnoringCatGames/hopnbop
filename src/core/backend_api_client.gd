@@ -186,13 +186,17 @@ func fetch_player_profile() -> void:
 		return
 	var u = account.user
 	profile_received.emit({
-		"player_id": u.id,
-		"display_name": u.display_name,
-		"avatar_url": u.avatar_url,
-		"lang_tag": u.lang_tag,
-		"location": u.location,
-		"timezone": u.timezone,
-		"linked_providers": _account_linked_providers(account),
+		"player": {
+			"player_id": u.id,
+			"display_name": u.display_name,
+			"friend_code": u.username,
+			"avatar_url": u.avatar_url,
+			"lang_tag": u.lang_tag,
+			"location": u.location,
+			"timezone": u.timezone,
+			"linked_providers": (
+				_account_linked_providers(account)),
+		},
 	})
 
 

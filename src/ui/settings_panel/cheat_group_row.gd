@@ -4,12 +4,12 @@ extends ToggleRow
 ## nested cheat sub-rows.
 
 
-var _sub_rows: Array[SettingsRow] = []
+var _sub_rows: Array[MenuRow] = []
 var _panel: SidePanel
 
 
 func set_sub_rows(
-	sub_rows: Array[SettingsRow],
+	sub_rows: Array[MenuRow],
 	panel: SidePanel,
 ) -> void:
 	_sub_rows = sub_rows

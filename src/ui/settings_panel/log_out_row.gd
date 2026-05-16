@@ -1,5 +1,5 @@
 class_name LogOutRow
-extends SettingsRow
+extends MenuRow
 ## A row that logs the player out via a
 ## ConfirmOverlay modal dialog.
 
@@ -28,11 +28,7 @@ func _ready() -> void:
 	_apply_icon(_icon, _icon_texture)
 
 
-func on_left() -> void:
-	_activate()
-
-
-func on_right() -> void:
+func on_trigger() -> void:
 	_activate()
 
 

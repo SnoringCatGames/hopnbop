@@ -75,8 +75,7 @@ func build_ui() -> void:
 	# Join row. Disabled until the input has the right
 	# number of characters.
 	_join_row = ActionRow.new()
-	_join_row.setup_actions(
-		_on_join_pressed, _on_join_pressed)
+	_join_row.setup_action(_on_join_pressed)
 	_join_row.setup_label(
 		tr("PARTY.JOIN_BY_CODE"),
 		_join_icon)

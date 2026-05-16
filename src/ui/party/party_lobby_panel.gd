@@ -198,9 +198,7 @@ func _render_empty_state() -> void:
 	_status_label.visible = true
 
 	var open_friends_row := ActionRow.new()
-	open_friends_row.setup_actions(
-		_on_open_friends_pressed,
-		_on_open_friends_pressed)
+	open_friends_row.setup_action(_on_open_friends_pressed)
 	open_friends_row.setup_label(
 		tr("SETTINGS.FRIENDS"),
 		_open_friends_icon)
@@ -215,9 +213,7 @@ func _render_empty_state() -> void:
 	# voice channel.
 	if _join_by_code_panel_scene != null:
 		var join_row := ActionRow.new()
-		join_row.setup_actions(
-			_on_join_by_code_pressed,
-			_on_join_by_code_pressed)
+		join_row.setup_action(_on_join_by_code_pressed)
 		join_row.setup_label(
 			tr("PARTY.JOIN_BY_CODE"),
 			_join_by_code_icon)
@@ -265,8 +261,7 @@ func _add_invite_row(invite: Dictionary) -> void:
 	var accept_row := ActionRow.new()
 	var accept_action := _on_accept_pressed.bind(
 		party_id)
-	accept_row.setup_actions(
-		accept_action, accept_action)
+	accept_row.setup_action(accept_action)
 	accept_row.setup_label(
 		tr("PARTY.ACCEPT_INVITE") % leader_name,
 		_accept_icon)
@@ -278,8 +273,7 @@ func _add_invite_row(invite: Dictionary) -> void:
 	var decline_row := ActionRow.new()
 	var decline_action := _on_decline_pressed.bind(
 		party_id, leader_name)
-	decline_row.setup_actions(
-		decline_action, decline_action)
+	decline_row.setup_action(decline_action)
 	decline_row.setup_label(
 		tr("PARTY.DECLINE_INVITE"),
 		_decline_icon)
@@ -351,8 +345,7 @@ func _render_active_party() -> void:
 		var ready_row := ActionRow.new()
 		var ready_action := _on_ready_toggle_pressed.bind(
 			not is_ready)
-		ready_row.setup_actions(
-			ready_action, ready_action)
+		ready_row.setup_action(ready_action)
 		var ready_label := (
 			tr("PARTY.MARK_NOT_READY")
 			if is_ready
@@ -368,9 +361,7 @@ func _render_active_party() -> void:
 
 	if is_leader and not is_matchmaking:
 		var start_row := ActionRow.new()
-		start_row.setup_actions(
-			_on_start_match_pressed,
-			_on_start_match_pressed)
+		start_row.setup_action(_on_start_match_pressed)
 		var all_ready := (
 			G.party_manager.all_active_members_ready())
 		var start_label := (
@@ -396,9 +387,7 @@ func _render_active_party() -> void:
 		_add_mode_cycle_row()
 
 		var invite_row := ActionRow.new()
-		invite_row.setup_actions(
-			_on_open_friends_pressed,
-			_on_open_friends_pressed)
+		invite_row.setup_action(_on_open_friends_pressed)
 		invite_row.setup_label(
 			tr("PARTY.INVITE"),
 			_invite_icon)
@@ -411,9 +400,7 @@ func _render_active_party() -> void:
 	# group channel.
 	if not is_matchmaking and _chat_panel_scene != null:
 		var chat_row := ActionRow.new()
-		chat_row.setup_actions(
-			_on_open_chat_pressed,
-			_on_open_chat_pressed)
+		chat_row.setup_action(_on_open_chat_pressed)
 		chat_row.setup_label(
 			tr("PARTY.OPEN_CHAT"),
 			_chat_icon)
@@ -442,7 +429,7 @@ func _render_active_party() -> void:
 				% _cached_invite_code)
 			share_action = _on_copy_invite_code_pressed
 		var share_row := ActionRow.new()
-		share_row.setup_actions(share_action, share_action)
+		share_row.setup_action(share_action)
 		share_row.setup_label(share_label, _share_code_icon)
 		share_row.disabled = _is_fetching_invite_code
 		_row_container.add_child(share_row)
@@ -450,9 +437,7 @@ func _render_active_party() -> void:
 		_dynamic_nodes.append(share_row)
 
 	var leave_row := ActionRow.new()
-	leave_row.setup_actions(
-		_on_leave_pressed,
-		_on_leave_pressed)
+	leave_row.setup_action(_on_leave_pressed)
 	leave_row.setup_label(
 		tr("PARTY.LEAVE"),
 		_leave_icon)
@@ -489,7 +474,7 @@ func _add_member_row(
 	if is_kickable:
 		var kick_action := _on_kick_pressed.bind(
 			member_id, display)
-		row.setup_actions(kick_action, kick_action)
+		row.setup_action(kick_action)
 	else:
 		row.disabled = true
 
@@ -577,7 +562,7 @@ func _add_transfer_leadership_row(
 	var row := ActionRow.new()
 	var action := _on_transfer_leadership_pressed.bind(
 		target_id, display)
-	row.setup_actions(action, action)
+	row.setup_action(action)
 	row.setup_label(
 		tr("PARTY.MAKE_LEADER") % display,
 		_transfer_leadership_icon)
@@ -704,9 +689,7 @@ func _add_mode_cycle_row() -> void:
 			display_name = tr(key)
 		break
 	var row := ActionRow.new()
-	row.setup_actions(
-		_on_cycle_mode_pressed,
-		_on_cycle_mode_pressed)
+	row.setup_action(_on_cycle_mode_pressed)
 	row.setup_label(
 		tr("PARTY.MODE_LABEL") % display_name, _mode_icon)
 	_row_container.add_child(row)

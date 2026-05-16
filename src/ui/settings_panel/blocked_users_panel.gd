@@ -171,7 +171,7 @@ func _add_row(entry: Dictionary) -> void:
 		row.disabled = true
 		Platform.friends.unblock_user(blocked_id)
 
-	row.setup_actions(unblock_action, unblock_action)
+	row.setup_action(unblock_action)
 	row.setup_label(
 		"%s — %s" % [display_name, tr("FRIENDS.UNBLOCK")],
 		_unblock_icon)

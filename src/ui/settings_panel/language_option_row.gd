@@ -1,5 +1,5 @@
 class_name LanguageOptionRow
-extends SettingsRow
+extends MenuRow
 ## A row displaying a single locale option.
 ## Shows the native language name and a checkmark
 ## icon indicator for the currently active locale.
@@ -45,11 +45,7 @@ func _ready() -> void:
 		_checkmark_icon if _is_current else null)
 
 
-func on_left() -> void:
-	_select()
-
-
-func on_right() -> void:
+func on_trigger() -> void:
 	_select()
 
 

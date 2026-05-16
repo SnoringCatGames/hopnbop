@@ -1,9 +1,10 @@
 class_name ActionRow
-extends SettingsRow
-## A row that delegates left and right actions
-## to callables. Built programmatically without
-## a scene file. Used for dynamically generated
-## interactive rows in side panels.
+extends MenuRow
+## A row that delegates its primary action to a
+## single Callable. Built programmatically without a
+## scene file. Used for dynamically generated
+## interactive rows in side panels (friend rows,
+## party-member rows, blocked-user rows, etc.).
 ##
 ## Call setup_label() to get a standard icon +
 ## label layout. Uses the same TextureRect +
@@ -11,8 +12,7 @@ extends SettingsRow
 ## so icons and padding are consistent.
 
 
-var _on_left_action: Callable
-var _on_right_action: Callable
+var _callback: Callable
 
 var disabled := false:
 	set(value):
@@ -20,12 +20,10 @@ var disabled := false:
 		modulate.a = 0.4 if disabled else 1.0
 
 
-func setup_actions(
-	on_right_action: Callable = Callable(),
-	on_left_action: Callable = Callable(),
-) -> void:
-	_on_right_action = on_right_action
-	_on_left_action = on_left_action
+## Set the action to fire on `on_trigger()` (Right
+## input, gamepad trigger, Enter/Space, mouse-click).
+func setup_action(callback: Callable) -> void:
+	_callback = callback
 
 
 ## Builds a standard HBoxContainer with an
@@ -65,15 +63,8 @@ func setup_label(
 	container.add_child(label)
 
 
-func on_left() -> void:
+func on_trigger() -> void:
 	if disabled:
 		return
-	if _on_left_action.is_valid():
-		_on_left_action.call()
-
-
-func on_right() -> void:
-	if disabled:
-		return
-	if _on_right_action.is_valid():
-		_on_right_action.call()
+	if _callback.is_valid():
+		_callback.call()

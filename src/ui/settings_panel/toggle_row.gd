@@ -1,7 +1,7 @@
 class_name ToggleRow
-extends SettingsRow
+extends MenuRow
 ## A row with a label and custom checkbox toggle.
-## Left/right both toggle the value.
+## Activating flips the value.
 
 
 var _setting_key: StringName
@@ -78,11 +78,7 @@ func _ready() -> void:
 	_update_checkbox_textures()
 
 
-func on_left() -> void:
-	_toggle()
-
-
-func on_right() -> void:
+func on_trigger() -> void:
 	_toggle()
 
 

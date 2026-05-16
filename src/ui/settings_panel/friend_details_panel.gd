@@ -82,8 +82,7 @@ func build_ui() -> void:
 
 	# Invite to party row.
 	_invite_row = ActionRow.new()
-	_invite_row.setup_actions(
-		_on_invite_pressed, _on_invite_pressed)
+	_invite_row.setup_action(_on_invite_pressed)
 	_invite_row.setup_label(
 		tr("PARTY.INVITE_TO_PARTY"), _invite_icon)
 	_invite_row.disabled = not _is_online
@@ -92,8 +91,7 @@ func build_ui() -> void:
 
 	# Kick from party row (conditional).
 	_kick_row = ActionRow.new()
-	_kick_row.setup_actions(
-		_on_kick_pressed, _on_kick_pressed)
+	_kick_row.setup_action(_on_kick_pressed)
 	_kick_row.setup_label(
 		tr("PARTY.KICK"), _kick_icon)
 	_kick_row.visible = _is_friend_in_party()
@@ -102,8 +100,7 @@ func build_ui() -> void:
 
 	# Remove friend row.
 	_remove_row = ActionRow.new()
-	_remove_row.setup_actions(
-		_on_remove_pressed, _on_remove_pressed)
+	_remove_row.setup_action(_on_remove_pressed)
 	_remove_row.setup_label(
 		tr("FRIENDS.REMOVE"), _remove_icon)
 	_row_container.add_child(_remove_row)
@@ -111,8 +108,7 @@ func build_ui() -> void:
 
 	# Block user row (Stage 7.4).
 	_block_row = ActionRow.new()
-	_block_row.setup_actions(
-		_on_block_pressed, _on_block_pressed)
+	_block_row.setup_action(_on_block_pressed)
 	_block_row.setup_label(
 		tr("FRIENDS.BLOCK"), _block_icon)
 	_row_container.add_child(_block_row)

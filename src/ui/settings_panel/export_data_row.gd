@@ -1,5 +1,5 @@
 class_name ExportDataRow
-extends SettingsRow
+extends MenuRow
 ## A row that exports all player data as JSON.
 
 
@@ -27,11 +27,7 @@ func _ready() -> void:
 	_apply_icon(_icon, _icon_texture)
 
 
-func on_left() -> void:
-	_activate()
-
-
-func on_right() -> void:
+func on_trigger() -> void:
 	_activate()
 
 

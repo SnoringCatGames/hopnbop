@@ -75,7 +75,43 @@ func _process(delta: float) -> void:
 	if not visible:
 		return
 	if _navigator.poll(delta):
-		_activate_focused()
+		# Left on a non-horizontal-consumer control routes
+		# to the screen's `on_back()` (close). The type
+		# toggle consumes Left/Right (cycles between All
+		# Time / Weekly), so when focused on it, fall
+		# through to `_activate_focused` which routes the
+		# direction to the toggle's on_left/on_right.
+		var focused := _navigator.get_focused()
+		var direction := _navigator.last_activation_direction
+		if (direction == -1
+				and not _focused_consumes_horizontal(focused)):
+			on_back()
+		else:
+			_activate_focused()
+
+
+## True iff the focused control wants Left/Right
+## input itself (e.g., the All-Time/Weekly
+## BinaryToggle). Other focused controls let Left
+## fall through to `on_back()`.
+func _focused_consumes_horizontal(
+	focused: Control,
+) -> bool:
+	if focused == null:
+		return false
+	if (is_instance_valid(_type_toggle)
+			and focused == _type_toggle):
+		return true
+	return false
+
+
+## Close the leaderboard and return to the screen
+## set via `set_return_screen()`. Triggered by Left
+## input on non-type-toggle rows, by close_menu /
+## ui_cancel (Escape / B-button), and by the
+## CloseRow at the bottom of the list.
+func on_back() -> void:
+	_on_close_pressed()
 
 
 ## Set where the back button navigates to.

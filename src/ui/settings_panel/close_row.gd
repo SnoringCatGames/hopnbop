@@ -1,8 +1,10 @@
 class_name CloseRow
-extends SettingsRow
+extends MenuRow
 ## Special row at the top of the main menu
-## panel. Pressing left or right closes the
-## entire side-panel stack.
+## panel. Activating it closes the entire side-
+## panel stack. (Left input at the SidePanel
+## level also closes when the stack is at the
+## root via pop_panel's auto-fall-through.)
 
 
 var _panel: SidePanel
@@ -25,9 +27,5 @@ func _ready() -> void:
 	_update_focus_style()
 
 
-func on_left() -> void:
-	_panel.manager.close_all()
-
-
-func on_right() -> void:
+func on_trigger() -> void:
 	_panel.manager.close_all()

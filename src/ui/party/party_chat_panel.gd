@@ -77,8 +77,7 @@ func build_ui() -> void:
 
 	# Send action row.
 	_send_row = ActionRow.new()
-	_send_row.setup_actions(
-		_on_send_pressed, _on_send_pressed)
+	_send_row.setup_action(_on_send_pressed)
 	_send_row.setup_label(
 		tr("PARTY.CHAT_SEND"),
 		_send_icon)

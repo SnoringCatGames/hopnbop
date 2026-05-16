@@ -194,7 +194,7 @@ func _add_row(entry: Dictionary) -> void:
 		row.disabled = true
 		Platform.friends.send_request_by_player_id(player_id)
 
-	row.setup_actions(add_action, add_action)
+	row.setup_action(add_action)
 	row.setup_label(
 		"%s — %s" % [display_name, tr("FRIENDS.ADD")],
 		_add_friend_icon)

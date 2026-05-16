@@ -1,5 +1,5 @@
 class_name QuitRow
-extends SettingsRow
+extends MenuRow
 ## A row that quits the application when activated.
 
 
@@ -21,11 +21,7 @@ func _ready() -> void:
 	_apply_icon(_icon, _icon_texture)
 
 
-func on_left() -> void:
-	_quit()
-
-
-func on_right() -> void:
+func on_trigger() -> void:
 	_quit()
 
 

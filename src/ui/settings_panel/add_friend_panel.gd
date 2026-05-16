@@ -57,8 +57,7 @@ func build_ui() -> void:
 	# Send request row. Disabled until code is
 	# long enough.
 	_send_row = ActionRow.new()
-	_send_row.setup_actions(
-		_on_send_pressed, _on_send_pressed)
+	_send_row.setup_action(_on_send_pressed)
 	_send_row.setup_label(
 		tr("FRIENDS.SEND_REQUEST"),
 		_add_friend_icon)

@@ -1,8 +1,10 @@
 class_name BackRow
-extends SettingsRow
-## Row at the top of sub-panels. Pressing left
-## or right pops the current panel, returning
-## to the previous one.
+extends MenuRow
+## Row at the top of sub-panels. Activating it
+## pops the current panel back to its parent.
+## The panel's Left input is also routed to pop
+## (at the SidePanel level), so this row is
+## primarily a clickable / focusable affordance.
 
 
 var _panel: SidePanel
@@ -25,9 +27,5 @@ func _ready() -> void:
 	_update_focus_style()
 
 
-func on_left() -> void:
-	_panel.manager.pop_panel()
-
-
-func on_right() -> void:
+func on_trigger() -> void:
 	_panel.manager.pop_panel()

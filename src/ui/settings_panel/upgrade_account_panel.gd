@@ -103,8 +103,7 @@ func _add_maybe_later_row() -> void:
 	_row_container.add_child(spacer)
 
 	var later_row := ActionRow.new()
-	later_row.setup_actions(
-		_on_maybe_later_pressed, _on_maybe_later_pressed)
+	later_row.setup_action(_on_maybe_later_pressed)
 	later_row.setup_label(tr("UPGRADE.MAYBE_LATER"))
 	_row_container.add_child(later_row)
 	_connect_row_clicked(later_row)

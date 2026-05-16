@@ -59,8 +59,7 @@ func build_ui() -> void:
 
 	# Accept row.
 	_accept_row = ActionRow.new()
-	_accept_row.setup_actions(
-		_on_accept_pressed, _on_accept_pressed)
+	_accept_row.setup_action(_on_accept_pressed)
 	_accept_row.setup_label(
 		tr("FRIENDS.ACCEPT"), _accept_icon)
 	_row_container.add_child(_accept_row)
@@ -68,8 +67,7 @@ func build_ui() -> void:
 
 	# Reject row.
 	_reject_row = ActionRow.new()
-	_reject_row.setup_actions(
-		_on_reject_pressed, _on_reject_pressed)
+	_reject_row.setup_action(_on_reject_pressed)
 	_reject_row.setup_label(
 		tr("FRIENDS.REJECT"), _reject_icon)
 	_row_container.add_child(_reject_row)

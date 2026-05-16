@@ -1,14 +1,32 @@
 class_name SidePanel
 extends Control
 ## Base class for side-panel content. Manages a
-## scrollable list of SettingsRow children with
+## scrollable list of MenuRow children with
 ## focus navigation and device-specific input.
+##
+## Input dispatch contract:
+##   - Trigger button (Enter/Space/gamepad trigger)
+##     → focused row's `on_trigger()`.
+##   - Right input → focused row's `on_trigger()`
+##     UNLESS the row consumes horizontal input
+##     (LevelPrefRow, BinaryToggle), in which case
+##     `on_right()` is called instead.
+##   - Left input → `manager.pop_panel()` UNLESS
+##     the row consumes horizontal input, in which
+##     case `on_left()` is called. At stack depth 1,
+##     pop_panel auto-falls-through to close_all so
+##     "Left at root = close everything".
+##   - Up / Down → focus movement.
+##   - Mouse-click on a row → fires its `triggered`
+##     signal (which this panel uses to set focus)
+##     and, for non-horizontal rows, the row's
+##     `_gui_input` calls `on_trigger()` directly.
 
 
 var manager: SidePanelManager
 var _player: Player
 var _device_config: DeviceConfig
-var _rows: Array[SettingsRow] = []
+var _rows: Array[MenuRow] = []
 var _focused_index := 0
 var is_input_active := true:
 	set(value):
@@ -113,16 +131,16 @@ func prime_input_state() -> void:
 
 
 ## Rebuild the navigable row list from visible
-## SettingsRow children.
+## MenuRow children.
 func rebuild_row_list() -> void:
-	var old_focused: SettingsRow = null
+	var old_focused: MenuRow = null
 	if (_focused_index >= 0
 			and _focused_index < _rows.size()):
 		old_focused = _rows[_focused_index]
 
 	_rows.clear()
 	for child in _row_container.get_children():
-		if (child is SettingsRow
+		if (child is MenuRow
 				and child.visible
 				and not child.is_queued_for_deletion()):
 			_rows.append(child)
@@ -140,21 +158,24 @@ func rebuild_row_list() -> void:
 
 
 func _connect_row_clicked(
-	row: SettingsRow,
+	row: MenuRow,
 ) -> void:
-	row.clicked.connect(
-		_on_row_clicked.bind(row))
+	row.triggered.connect(
+		_on_row_triggered.bind(row))
 
 
-func _on_row_clicked(row: SettingsRow) -> void:
+## Fired by MenuRow's `_gui_input` on left-mouse-
+## click. The row itself decides whether to fire
+## its `on_trigger()` (it does for non-horizontal-
+## consumer rows; horizontal-consumer rows like
+## LevelPrefRow leave activation to their sub-
+## buttons). This panel just makes sure focus
+## tracks the clicked row.
+func _on_row_triggered(row: MenuRow) -> void:
 	var index := _rows.find(row)
 	if index < 0:
 		return
 	_set_focus(index)
-	# LevelPrefRow has its own sub-buttons;
-	# don't toggle on row click.
-	if not row is LevelPrefRow:
-		row.on_right()
 
 
 func _set_focus(
@@ -206,7 +227,7 @@ func _ensure_focused_visible() -> void:
 	if _rows.is_empty():
 		return
 
-	var row: SettingsRow = _rows[_focused_index]
+	var row: MenuRow = _rows[_focused_index]
 
 	# Wait a frame for layout to settle.
 	await get_tree().process_frame
@@ -341,26 +362,51 @@ func _process(delta: float) -> void:
 		elif (left_just
 				or (should_repeat
 				and current_dir == "left")):
-			if (_focused_index >= 0
-					and _focused_index
-					< _rows.size()):
-				_rows[_focused_index].on_left()
+			_handle_left_input()
 		elif (right_just
 				or (should_repeat
 				and current_dir == "right")):
-			if (_focused_index >= 0
-					and _focused_index
-					< _rows.size()):
-				_rows[_focused_index].on_right()
+			_handle_right_input()
 
 	# Trigger detection (Enter/Space/trigger_ui).
 	var trigger := _is_trigger_pressed()
 	var trigger_just := trigger and not _prev_trigger
 	_prev_trigger = trigger
 	if trigger_just:
-		if (_focused_index >= 0
-				and _focused_index < _rows.size()):
-			_rows[_focused_index].on_right()
+		_handle_trigger_input()
+
+
+func _handle_trigger_input() -> void:
+	if _focused_index < 0 or _focused_index >= _rows.size():
+		return
+	_rows[_focused_index].on_trigger()
+
+
+func _handle_right_input() -> void:
+	if _focused_index < 0 or _focused_index >= _rows.size():
+		return
+	var row: MenuRow = _rows[_focused_index]
+	if row.consumes_horizontal_input():
+		row.on_right()
+	else:
+		# Right input on a row that doesn't consume
+		# horizontal input fires its primary action,
+		# same as Trigger.
+		row.on_trigger()
+
+
+func _handle_left_input() -> void:
+	if _focused_index < 0 or _focused_index >= _rows.size():
+		return
+	var row: MenuRow = _rows[_focused_index]
+	if row.consumes_horizontal_input():
+		row.on_left()
+	elif is_instance_valid(manager):
+		# Left on a non-horizontal-consumer row pops
+		# the panel. At stack depth 1, pop_panel
+		# auto-falls-through to close_all (see
+		# SidePanelManager.pop_panel).
+		manager.pop_panel()
 
 
 func _unhandled_input(event: InputEvent) -> void:
