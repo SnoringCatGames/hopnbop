@@ -69,10 +69,15 @@ var _dumps: Array = []
 
 func _enter_tree() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_enabled = (
-		OS.is_debug_build()
-		and OS.has_feature("web")
-	)
+	# Web-only. We previously also gated on
+	# OS.is_debug_build() but `--export-release` (which the
+	# deploy script uses) makes that false, leaving the
+	# watchdog half-on (process loop runs but the
+	# breadcrumb / dump_now API silently no-ops). For an
+	# active investigation it's more useful to have this
+	# always on for web. Tighten the gate before shipping
+	# for real.
+	_enabled = OS.has_feature("web")
 	if not _enabled:
 		set_process(false)
 		return
@@ -86,6 +91,11 @@ func _enter_tree() -> void:
 
 
 func _process(_delta: float) -> void:
+	# Defensive: set_process(false) called from _enter_tree
+	# doesn't reliably stick under all Godot lifecycle
+	# orderings.
+	if not _enabled:
+		return
 	# Use wall-clock delta, not the engine's `_delta` (which
 	# is clamped and useless for hitch detection).
 	var now := Time.get_ticks_msec()

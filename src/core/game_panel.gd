@@ -1199,6 +1199,17 @@ func _cleanup_local_mode() -> void:
 ## levels.
 func _client_cleanup_after_match() -> void:
 	G.web_debug_watchdog.breadcrumb("game_panel._client_cleanup_after_match.start")  # FIXME(end-of-match-debug)
+	# Reset the game-over transition guard. Without this,
+	# the "Return to Lobby" button path on the game-over
+	# screen leaves the flag stuck `true` (it bypasses both
+	# client_exit_match and client_play_again, the only
+	# other reset sites). The next match's
+	# _client_transition_to_game_over then guards out → no
+	# cleanup, no screen switch, black-screen-after-match.
+	# Safe to reset here because the is_game_active guard
+	# below catches any re-entry from a synchronous
+	# connection_lost during disconnect.
+	_has_transitioned_to_game_over = false
 	_stop_session_poll()
 
 	# Reset cheat state when leaving match.

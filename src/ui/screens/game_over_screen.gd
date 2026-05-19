@@ -68,6 +68,7 @@ func _unhandled_input(
 	if not visible:
 		return
 	if event.is_action_pressed(&"close_menu"):
+		G.web_debug_watchdog.breadcrumb("game_over_screen._unhandled_input.close_menu")  # FIXME(end-of-match-debug)
 		get_viewport().set_input_as_handled()
 		on_back()
 
@@ -77,6 +78,9 @@ func _process(_delta: float) -> void:
 		return
 
 	if _navigator.poll(_delta):
+		G.web_debug_watchdog.breadcrumb(  # FIXME(end-of-match-debug)
+			"game_over_screen._process.navigator_poll_returned_true",
+			{"direction": _navigator.last_activation_direction})
 		# Right + Trigger activate the focused button; Left
 		# routes to `on_back()` which returns to the lobby.
 		if _navigator.last_activation_direction == -1:
@@ -90,10 +94,12 @@ func _process(_delta: float) -> void:
 ## B-button), and by the Return To Lobby button
 ## itself.
 func on_back() -> void:
+	G.web_debug_watchdog.breadcrumb("game_over_screen.on_back")  # FIXME(end-of-match-debug)
 	_on_return_to_lobby_pressed()
 
 
 func on_open() -> void:
+	G.web_debug_watchdog.breadcrumb("game_over_screen.on_open")  # FIXME(end-of-match-debug)
 	super.on_open()
 	_acted_friend_ids.clear()
 
@@ -140,6 +146,16 @@ func _activate_focused() -> void:
 	var focused := _navigator.get_focused()
 	if focused == null:
 		return
+	var focused_label := ""
+	if focused == %PlayAgainButton:
+		focused_label = "PlayAgainButton"
+	elif focused == %ReturnToLobbyButton:
+		focused_label = "ReturnToLobbyButton"
+	elif focused is Button:
+		focused_label = "FriendActionButton:" + focused.name
+	G.web_debug_watchdog.breadcrumb(  # FIXME(end-of-match-debug)
+		"game_over_screen._activate_focused",
+		{"focused": focused_label})
 	if focused == %PlayAgainButton:
 		_on_play_again_pressed()
 	elif focused == %ReturnToLobbyButton:
@@ -572,6 +588,7 @@ func _on_play_again_pressed() -> void:
 
 
 func _on_return_to_lobby_pressed() -> void:
+	G.web_debug_watchdog.breadcrumb("game_over_screen._on_return_to_lobby_pressed")  # FIXME(end-of-match-debug)
 	G.audio.play_sound("click")
 	G.screens.client_open_screen(
 		ScreensMain.ScreenType.LOBBY)
