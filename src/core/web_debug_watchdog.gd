@@ -82,6 +82,15 @@ func _enter_tree() -> void:
 		set_process(false)
 		return
 	_last_frame_msec = Time.get_ticks_msec()
+	# Repopulate the in-memory mirrors from the persisted
+	# stash BEFORE writing anything. Without this, a tab
+	# kill + reload (which is how users recover from a
+	# WASM-thread hang) would overwrite the prior session's
+	# breadcrumbs on the very first flush of the new
+	# session, destroying the evidence of the bug we're
+	# trying to capture.
+	_breadcrumbs = _load_persisted_array(_LS_BREADCRUMBS_KEY)
+	_dumps = _load_persisted_array(_LS_DUMPS_KEY)
 	# Mark the new session so users can tell where one run
 	# ends and the next begins in the persistent stash.
 	breadcrumb("web_debug_watchdog.session_start", {
@@ -188,6 +197,21 @@ func _flush(key: String, value: Array) -> void:
 			_to_js_string(JSON.stringify(value)),
 		],
 	)
+
+
+# Read a JSON-array-valued localStorage key. Returns []
+# when the key is missing or unparseable. The ring-buffer
+# caps in breadcrumb() / _dump() handle the case where the
+# persisted array is at or above the configured size.
+func _load_persisted_array(key: String) -> Array:
+	var raw = JavaScriptBridge.eval(
+		"localStorage.getItem('%s') || ''" % key)
+	if not raw is String or (raw as String).is_empty():
+		return []
+	var parsed = JSON.parse_string(raw)
+	if parsed is Array:
+		return parsed
+	return []
 
 
 # Wraps a string for safe embedding as a single-quoted JS
