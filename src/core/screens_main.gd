@@ -108,6 +108,12 @@ func _perform_screen_switch(
 	previous_screen_type: ScreenType,
 	screen_type: ScreenType
 ) -> void:
+	G.web_debug_watchdog.breadcrumb(  # FIXME(end-of-match-debug)
+		"screens_main._perform_screen_switch.start",
+		{
+			"from": ScreenType.keys()[previous_screen_type],
+			"to": ScreenType.keys()[screen_type],
+		})
 	current_screen = screen_type
 
 	Netcode.print(
@@ -208,6 +214,7 @@ func _perform_screen_switch(
 		previous_screen.on_close()
 
 	G.hud.update_visibility()
+	G.web_debug_watchdog.breadcrumb("screens_main._perform_screen_switch.end")  # FIXME(end-of-match-debug)
 
 
 func get_screen_from_type(

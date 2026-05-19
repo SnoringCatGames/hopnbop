@@ -32,6 +32,7 @@ var backend_api_client: BackendApiClient
 var party_manager: PartyManager
 var friends_notification_poller: FriendsNotificationPoller
 var crash_reporter: CrashReporter
+var web_debug_watchdog: WebDebugWatchdog
 var profile_image_cache: ProfileImageCache
 var auth_screen: AuthScreen
 var consent_screen: ConsentScreen
@@ -286,6 +287,10 @@ func _enter_tree() -> void:
 	crash_reporter = CrashReporter.new()
 	crash_reporter.name = "CrashReporter"
 	add_child(crash_reporter)
+
+	web_debug_watchdog = WebDebugWatchdog.new()
+	web_debug_watchdog.name = "WebDebugWatchdog"
+	add_child(web_debug_watchdog)
 
 	profile_image_cache = ProfileImageCache.new()
 	profile_image_cache.name = "ProfileImageCache"

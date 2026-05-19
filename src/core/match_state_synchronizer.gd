@@ -458,6 +458,7 @@ func _rpc_client_notify_match_started(
 
 @rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_GAME_EVENTS)
 func _rpc_client_notify_match_ended() -> void:
+	G.web_debug_watchdog.breadcrumb("match_state_synchronizer._rpc_client_notify_match_ended")  # FIXME(end-of-match-debug)
 	state.client_notify_match_ended()
 
 

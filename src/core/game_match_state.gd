@@ -166,8 +166,10 @@ func client_notify_match_started(
 
 
 func client_notify_match_ended() -> void:
+	G.web_debug_watchdog.breadcrumb("game_match_state.client_notify_match_ended")  # FIXME(end-of-match-debug)
 	is_match_ended = true
 	match_ended.emit()
+	G.web_debug_watchdog.breadcrumb("game_match_state.client_notify_match_ended.end")  # FIXME(end-of-match-debug)
 
 
 func duplicate() -> GameMatchState:

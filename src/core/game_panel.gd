@@ -314,6 +314,7 @@ func _on_reconnect_grace_expired(player_id: int) -> void:
 
 
 func _on_match_ended() -> void:
+	G.web_debug_watchdog.breadcrumb("game_panel._on_match_ended")  # FIXME(end-of-match-debug)
 	if not Netcode.is_client:
 		return
 	# Stop session polling. The match is ending
@@ -1197,6 +1198,7 @@ func _cleanup_local_mode() -> void:
 ## frame driver. Does NOT open any screen or free
 ## levels.
 func _client_cleanup_after_match() -> void:
+	G.web_debug_watchdog.breadcrumb("game_panel._client_cleanup_after_match.start")  # FIXME(end-of-match-debug)
 	_stop_session_poll()
 
 	# Reset cheat state when leaving match.
@@ -1209,12 +1211,15 @@ func _client_cleanup_after_match() -> void:
 	if Netcode.is_local_mode:
 		_cleanup_local_mode()
 	else:
+		G.web_debug_watchdog.breadcrumb("game_panel._client_cleanup_after_match.before_client_disconnect")  # FIXME(end-of-match-debug)
 		Netcode.connector.client_disconnect()
+		G.web_debug_watchdog.breadcrumb("game_panel._client_cleanup_after_match.after_client_disconnect")  # FIXME(end-of-match-debug)
 		# Null out the peer so persistent
 		# MultiplayerSynchronizer nodes (e.g.
 		# MatchStateSynchronizer) stop trying to
 		# sync on an inactive ENet peer.
 		multiplayer.multiplayer_peer = null
+		G.web_debug_watchdog.breadcrumb("game_panel._client_cleanup_after_match.after_peer_null")  # FIXME(end-of-match-debug)
 	G.client_session.copy_latest_state(
 		G.match_state)
 
@@ -1264,6 +1269,7 @@ func _client_cleanup_after_match() -> void:
 	# Reset match timer state for next game.
 	G.match_state.match_start_frame_index = -1
 	G.match_state.is_match_ended = false
+	G.web_debug_watchdog.breadcrumb("game_panel._client_cleanup_after_match.end")  # FIXME(end-of-match-debug)
 
 
 ## Populate latest_match_participants from match
@@ -1306,6 +1312,9 @@ func _populate_match_participants() -> void:
 func _client_free_levels_and_open_screen(
 	screen_type: ScreensMain.ScreenType,
 ) -> void:
+	G.web_debug_watchdog.breadcrumb(  # FIXME(end-of-match-debug)
+		"game_panel._client_free_levels_and_open_screen.start",
+		{"screen_type": ScreensMain.ScreenType.keys()[screen_type]})
 	# Snapshot existing levels before switching
 	# screens. _client_spawn_lobby() will add
 	# the new lobby to the levels array, so we
@@ -1336,12 +1345,14 @@ func _client_free_levels_and_open_screen(
 	for level in old_levels:
 		levels.erase(level)
 		level.queue_free()
+	G.web_debug_watchdog.breadcrumb("game_panel._client_free_levels_and_open_screen.end")  # FIXME(end-of-match-debug)
 
 
 ## Clean up after match and return to the lobby.
 ## Used for unexpected disconnects and session
 ## override kicks.
 func client_exit_match() -> void:
+	G.web_debug_watchdog.breadcrumb("game_panel.client_exit_match")  # FIXME(end-of-match-debug)
 	Netcode.check_is_client()
 	_has_transitioned_to_game_over = false
 
@@ -1375,6 +1386,7 @@ func client_exit_match() -> void:
 var _has_transitioned_to_game_over := false
 
 func _client_transition_to_game_over() -> void:
+	G.web_debug_watchdog.breadcrumb("game_panel._client_transition_to_game_over")  # FIXME(end-of-match-debug)
 	if _has_transitioned_to_game_over:
 		return
 	# Guard: session override kick already exited
@@ -1399,6 +1411,7 @@ func _client_transition_to_game_over() -> void:
 ## Start a new match from the game over screen
 ## without returning to the lobby first.
 func client_play_again() -> void:
+	G.web_debug_watchdog.breadcrumb("game_panel.client_play_again")  # FIXME(end-of-match-debug)
 	Netcode.check_is_client()
 	_has_transitioned_to_game_over = false
 
