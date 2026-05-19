@@ -2,8 +2,8 @@
 #
 # Compared to the legacy GameLift Dockerfile this drops:
 #   - GameLift Server SDK builder stage (Edgegap doesn't need it)
-#   - entrypoint.sh Route 53 logic (per-deploy DNS now lives in
-#     the Nakama runtime hook)
+#   - entrypoint.sh Route 53 logic (no per-deploy DNS in the
+#     current arch — see "WebRTC signaling" below)
 #
 # But it KEEPS the webrtc-native patch stage that the original
 # AWS-migration commit erroneously dropped (the comment claimed
@@ -13,15 +13,22 @@
 # See NOTES_FOR_BLOG_POSTS.md "ICE port nightmare" for the
 # original symptom + fix.
 #
-# nginx is here for WebRTC signaling TLS termination — the
-# entrypoint writes TLS_FULLCHAIN / TLS_PRIVKEY env vars to
-# /game/tls/ and starts nginx, which fronts 4434/TCP and
-# proxies plain WebSocket to Godot's signaling on 4433/TCP.
-# Browser wss:// gets terminated; native ws:// passes through.
+# WebRTC signaling: this image runs Godot's plain WebSocket
+# signaling server on container 4434/TCP — no in-container
+# nginx, no per-deploy TLS, no per-deploy DNS. TLS terminates
+# upstream at the Caddy-managed signaling.snoringcat.games on
+# the Hetzner platform host; the stateless signaling-proxy
+# there validates a signed HMAC token in the URL path and
+# bridges plain WebSocket frames to (this deploy's IP,
+# 4434/TCP). The Nakama runtime hook builds the
+# wss://signaling.snoringcat.games/connect/<token> URL at
+# match_ready time. See third_party/snoringcat-platform/
+# infra/remote/signaling-proxy/main.go for the proxy.
 #
 # Container ports declared:
 #   - 4433/UDP (ENet + WebRTC DataChannels)
-#   - 4434/TCP (WebRTC signaling via nginx)
+#   - 4434/TCP (plain WebSocket signaling — TLS terminates
+#              upstream at signaling.snoringcat.games)
 #
 # The Godot Linux server binary + pck are built outside via:
 #   godot --headless --export-release "Linux Server" \

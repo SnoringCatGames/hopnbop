@@ -349,13 +349,14 @@ based on matched players' platforms:
   4433. Default. Lowest latency.
 - **WebRTC** (cross-play matches with web players): UDP
   DataChannels via `webrtc-native` GDExtension. Signaling
-  uses a brief WebSocket through the nginx path. Provides
-  UDP-like semantics in the browser, avoiding TCP
-  head-of-line blocking.
+  is a brief WebSocket through the Caddy-fronted
+  `signaling.snoringcat.games` proxy. Provides UDP-like
+  semantics in the browser, avoiding TCP head-of-line
+  blocking.
 - **WebSocket** (legacy, not currently used): TCP through
-  nginx. Too slow for competitive play due to TCP
-  head-of-line blocking (~100ms ping, 13-25% perceived
-  packet loss).
+  the same signaling proxy path. Too slow for competitive
+  play due to TCP head-of-line blocking (~100ms ping, 13-25%
+  perceived packet loss).
 
 **Transport selection flow:**
 1. Nakama matchmaker takes a `platform` string player
@@ -387,25 +388,31 @@ based on matched players' platforms:
   `WebRTCMultiplayerPeer`'s 6-8 SCTP streams.
 
 **Signaling flow:**
-1. Client connects to signaling WS (through nginx).
+1. Client connects to the signed `signaling_url` from the
+   match_ready payload — a
+   `wss://signaling.snoringcat.games/connect/<token>` URL
+   where `<token>` is a base64url-encoded
+   `<deploy-ip>:<tcp-port>:<expiry>:<hmac>` blob the runtime
+   signed with `SIGNALING_HMAC_SECRET`. Caddy terminates TLS;
+   the stateless signaling-proxy decodes the token, verifies
+   the HMAC, and opens a plain-WS upstream to the encoded
+   `(ip, tcp-port)` pair, then bridges frames bidirectionally.
+   Token TTL is 5 min.
 2. Client creates `WebRTCPeerConnection`, emits
    `peer_created` → `WebRTCGamePeer.add_peer()` creates
    negotiated DataChannels.
 3. Client creates SDP offer, sends via signaling WS.
-   Includes `server_port` (the WSS port from the
-   matchmaking response) for host port derivation.
 4. Server creates `WebRTCPeerConnection` with
-   `portRangeBegin/End=4433` and
-   `enableIceUdpMux=true`. Emits `peer_signaled` →
-   `WebRTCGamePeer.add_peer()` creates matching
-   DataChannels.
+   `portRangeBegin/End=4433` and `enableIceUdpMux=true`.
+   Emits `peer_signaled` → `WebRTCGamePeer.add_peer()`
+   creates matching DataChannels.
 5. Server sets remote description (client's offer),
    generates SDP answer, sends via signaling WS.
-6. ICE candidates exchanged bidirectionally via
-   signaling WS. Server rewrites srflx candidate
-   port from 4433 to the Edgegap host port.
-7. ICE connects (UDP on host port), DataChannels
-   open.
+6. ICE candidates exchanged bidirectionally via signaling
+   WS. Server rewrites srflx candidate port from container
+   4433 to the Edgegap UDP host port (looked up from
+   `ARBITRIUM_PORT_GAME_EXTERNAL`).
+7. ICE connects (UDP on host port), DataChannels open.
 8. Signaling WS is closed.
 
 **GDExtension:** `addons/webrtc/` provides
@@ -431,11 +438,11 @@ traffic by username fragment.
 
 **ICE candidate rewriting:** The ICE agent's STUN-reflected
 (srflx) candidate advertises the container port (4433), but
-clients must connect to the Edgegap host port (e.g., 4205).
-The signaling server rewrites the srflx candidate's port
-before sending it to the client. The host port is derived
-from the client's WSS port (which the runtime hook returns
-as `host_udp_port + 1` in the match-ready payload).
+clients must connect to the Edgegap UDP host port (e.g.,
+4205). The signaling server rewrites the srflx candidate's
+port before sending it to the client. The host port is read
+from `ARBITRIUM_PORT_GAME_EXTERNAL` (Edgegap injects this
+env at deploy time, alongside `ARBITRIUM_PUBLIC_IP`).
 
 **ICE candidate buffering:** Client ICE candidates
 that arrive before the server processes the SDP offer
@@ -452,29 +459,41 @@ STUN), so return traffic and client ICE checks
 arrive on host port 4433. This port must be allowed
 by the security group.
 
-### WSS TLS Termination
+### WebRTC Signaling Proxy
 
 ```
-Web client --wss://s-{ip}.game.hopnbop.net:{Port+1}--> nginx (TLS detect) --> TLS terminate --> Godot WS/signaling (4433)
-Native client --ws://s-{ip}.game.hopnbop.net:{Port+1}--> nginx (TLS detect) --> pass-through --> Godot WS/signaling (4433)
-ENet-only match --enet://ip:{Port}/UDP--> Godot (unchanged)
+Web/native client --wss://signaling.snoringcat.games/connect/<token>--> Caddy (TLS terminate) --> signaling-proxy --(plain WS)--> Godot signaling (deploy-ip:4434/TCP)
+ENet-only match  --enet://ip:{UDP-port}/UDP--> Godot (unchanged, direct to Edgegap deploy)
+WebRTC data plane --UDP DataChannels--> Godot (deploy-ip:{UDP-port}/UDP, after ICE)
 ```
 
-nginx uses `ssl_preread` on container port 4434 to detect
-whether the incoming connection is TLS (web `wss://`) or
-plain (native `ws://`). TLS connections are routed to an
-internal HTTP block (port 4435) that terminates SSL and
-strips the `Origin` header before proxying to Godot.
-Plain connections are passed directly to Godot. In ENet/
-WebSocket mode, Godot runs a plain WebSocket server on
-port 4433. In WebRTC mode, the WebRTC signaling server
-listens on port 4433 TCP instead.
+The stateless `signaling-proxy` (Go, sibling docker-compose
+service on the Hetzner host) puts a stable, always-resolvable
+FQDN in front of dynamic Edgegap deploys. Caddy terminates
+TLS once for the whole signaling tier; the proxy validates
+the URL token then opens a plain-WS upstream to the encoded
+`(deploy-ip, 4434/TCP)` pair and bridges frames.
 
-**Critical nginx settings for real-time game traffic:**
-- `tcp_nodelay on` in the stream block (disables Nagle's
-  algorithm; without this, latency jumps to 3-10 seconds)
-- `proxy_buffering off` in the HTTP block
-- `proxy_socket_keepalive on` in the stream block
+**Why a stable FQDN proxy** (vs the previous per-deploy
+`s-<ip>.game.hopnbop.net` + per-container nginx + wildcard
+cert): home-router/ISP DNS resolvers often cache NXDOMAIN
+for a hostname created seconds before the client tries to
+resolve it, then keep serving NXDOMAIN until the negative-
+cache TTL expires — clients saw "DNS name does not exist"
+and the WebSocket failed in <50 ms with no chance to
+handshake. The stateless proxy removes per-deploy DNS from
+the connect path entirely. See
+`third_party/snoringcat-platform/infra/remote/signaling-
+proxy/main.go` for the protocol.
+
+**Signed URL token:** The runtime hook's `signSignalingURL`
+builds the URL with `base64url(<ip>:<tcp-port>:<expiry>:<
+hmac-sha256>)`, signed with `SIGNALING_HMAC_SECRET` (shared
+with the proxy's `SIGNALING_HMAC_SECRET` env). TTL is
+5 minutes — generous enough for retries, short enough that
+a leaked URL is useless quickly. No registration step, no
+shared in-memory state between Nakama and the proxy; the
+token IS the state.
 
 **WebSocket buffer sizes:** Both client and server set
 `inbound_buffer_size` and `outbound_buffer_size` to 1MB
@@ -482,50 +501,44 @@ listens on port 4433 TCP instead.
 2048). The default buffer overflows within seconds on web
 clients during 4-player matches.
 
-Edgegap allocates 2 contiguous host ports per deployment, one
-mapped to each declared container port:
+**Container ports:** Edgegap allocates one host port per
+declared container port (independent UDP and TCP host port
+maps). The runtime hook reads both from Edgegap's deployment
+status:
 
-- `Port+0` → container `4433 UDP` (ENet, returned as `Port`)
-- `Port+1` → container `4434 TCP` (nginx TLS detection)
+- `4433/UDP` (ENet payload + WebRTC DataChannel data
+  plane) — host UDP port returned to ENet clients as
+  `server_port`; the WebRTC ICE agent advertises this same
+  port via the rewritten srflx candidate.
+- `4434/TCP` (Godot's plain-WS signaling server) — host
+  TCP port included in the signed signaling URL token;
+  never exposed to clients directly.
 
-The runtime hook reads both host ports from Edgegap's
-deployment response and includes them in the match-ready
-payload. **Do not add more container ports** to
-`Dockerfile.edgegap` — the `Port+1` offset assumption breaks
-once a third container port enters the picture.
+The runtime hook picks the TCP port via `pickTCPPort
+(status.Ports)`; no positional `Port+1` assumption.
 
-#### DNS Pre-Warming
+#### Godot Native WSS Limitation (2026-03-17, status
+unverified in current arch)
 
-DNS hostnames are derived deterministically from the server
-IP: `35.91.191.229` → `s-35-91-191-229.game.hopnbop.net`.
-The container's `entrypoint.sh` creates the Cloudflare DNS
-A record at container startup (using the public IP from
-Edgegap's deployment metadata), seconds before any client
-needs to connect. Both sides compute the same hostname from
-the IP, so the runtime can include it in the match-ready
-payload without round-tripping the container.
-
-Wildcard cert for `*.game.hopnbop.net` via Let's Encrypt
-DNS-01. Stored on the container image at build time (or
-mounted via Edgegap secret). Renewal cadence: 60-90 days.
-
-#### Godot Native WSS Limitation (2026-03-17)
-
-Godot 4.5's native `WebSocketMultiplayerPeer` cannot
-connect via `wss://` to any remote server. Every
-configuration was tested with no success: default TLS,
-`TLSOptions.client_unsafe()`, Godot TLS server, nginx TLS
-proxy, with and without `supported_protocols`. The
-connection fails instantly (not a timeout). Browser `wss://`
-works fine (different TLS stack). Related Godot issues:
+Godot 4.5's native `WebSocketMultiplayerPeer` historically
+could not establish `wss://` to remote servers (every TLS
+config tested failed instantly, not on timeout). Browser
+`wss://` worked fine. Related Godot issues:
 [#34083](https://github.com/godotengine/godot/issues/34083),
 [#95217](https://github.com/godotengine/godot/issues/95217).
 
-**Workaround:** Native clients use plain `ws://` (no TLS).
-nginx's `ssl_preread` detects the lack of TLS and passes
-the connection through to Godot without encryption. This
-is acceptable because native ENet (the default transport)
-is also unencrypted UDP.
+Previous workaround: native clients connected to plain
+`ws://` through an in-container nginx `ssl_preread`
+pass-through. That nginx path no longer exists — all
+signaling now goes through `wss://signaling.snoringcat.
+games`. The native WSS path is therefore on a Caddy-
+managed Let's Encrypt cert (not a self-signed/mismatched
+one), which may sidestep the original failure mode (the
+2026-03-17 testing was against a custom TLS endpoint).
+**Status unverified for native+web cross-play under the
+current arch.** Native-only matches use ENet (no
+signaling), so the question only matters when a web
+player joins a cross-play match with native peers.
 
 ### End-to-End Matchmaking Flow
 
@@ -538,15 +551,20 @@ is also unencrypted UDP.
    hook in the runtime plugin.
 4. The hook calls Edgegap to deploy a `hopnbop-server`
    container near the matched players, then notifies all
-   matched clients with the allocated server endpoint
-   (`server_ip`, `server_port`, `transport_type`,
-   per-player session ticket).
+   matched clients with the connection payload:
+   `server_ip`, `ports` (Edgegap port map),
+   `transport_type`, `signaling_url` (signed
+   `wss://signaling.snoringcat.games/connect/<token>` for
+   non-ENet transports), per-player `session_ids`.
 5. Client connects to the server:
-   - ENet match: `enet://IP:Port` (UDP).
-   - WebRTC match: `ws://` or `wss://` to `hostname:Port+1`
-     for signaling, then DataChannels over UDP.
-   - WebSocket match: `ws://` or `wss://` to
-     `hostname:Port+1` (TCP, through nginx).
+   - ENet match: `enet://server_ip:UDP-port` (UDP, direct
+     to the Edgegap deploy).
+   - WebRTC match: connects to `signaling_url` for the
+     brief SDP/ICE exchange, then UDP DataChannels direct
+     to the deploy.
+   - WebSocket match: connects to `signaling_url` for the
+     full game stream (TCP, bridged plain-WS through the
+     signaling proxy).
 6. Server validates the per-player session ticket against the
    match-ready payload Nakama sent it during allocation.
 
@@ -669,14 +687,20 @@ to clients.
   context and sets transport on session-start. Only switches
   away from ENet if a web client is in the match — ENet-only
   matches stay on ENet.
-- Edgegap returns the public IP at allocation time; the
-  runtime derives the `s-{ip}.game.hopnbop.net` hostname
-  (DNS pre-warmed by the container's entrypoint).
-- Web clients connect via `wss://hostname:Port+1` (through
-  nginx TLS termination on the container).
-- Native clients connect via `ws://hostname:Port+1` (through
-  nginx pass-through, no TLS).
-- Local/preview always uses `ws://`.
+- Edgegap returns the public IP and per-port host port map
+  at allocation time. The runtime hook signs a
+  `wss://signaling.snoringcat.games/connect/<token>` URL
+  whose token encodes `(deploy-ip, host-TCP-port, expiry)`
+  and ships it in the match_ready payload as
+  `signaling_url`. The Caddy-fronted signaling-proxy on
+  the Hetzner host validates the token and bridges to the
+  deploy's plain-WS server on container 4434/TCP.
+- All non-local clients use the `signaling_url` as-is
+  (web `wss://` works through the browser TLS stack; native
+  wss support is the open question — see "Godot Native WSS
+  Limitation").
+- Local/preview bypasses the proxy and connects directly
+  to `ws://server_ip:server_port`.
 
 ## Networking Concepts Reference
 
