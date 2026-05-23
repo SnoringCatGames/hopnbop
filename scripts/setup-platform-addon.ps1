@@ -22,8 +22,12 @@ $ErrorActionPreference = "Continue"
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Definition)
 Set-Location $RepoRoot
 
-$Source = "third_party\snoringcat-platform\addons\snoringcat_platform_client"
-$Dest   = "addons\snoringcat_platform_client"
+$Source = "third_party/snoringcat-platform/addons/snoringcat_platform_client"
+$Dest   = "addons/snoringcat_platform_client"
+
+# $IsWindows is $null on Windows PowerShell 5.1 (which is
+# Windows-only by definition); default to true in that case.
+$IsWin = if ($null -eq $IsWindows) { $true } else { $IsWindows }
 
 Write-Host "=== Platform addon setup ===" -ForegroundColor Cyan
 Write-Host "Source: $Source"
@@ -36,21 +40,39 @@ if (-not (Test-Path $Source)) {
     exit 1
 }
 
-# If a directory exists at $Dest, drop it. cmd's rmdir handles
-# both real directories and lingering junctions cleanly.
 if (Test-Path $Dest) {
     Write-Host "Removing existing $Dest..." -ForegroundColor Yellow
-    cmd /c "rmdir /S /Q `"$Dest`""
+    if ($IsWin) {
+        # cmd's rmdir handles both real directories AND
+        # lingering junctions/reparse points from prior
+        # junction-based bridges that Remove-Item can't.
+        cmd /c "rmdir /S /Q `"$($Dest -replace '/', '\')`""
+    } else {
+        Remove-Item -Recurse -Force -Path $Dest
+    }
 }
 
-# xcopy from cmd: PowerShell's Copy-Item misbehaves with the
-# reparse points sometimes left behind from prior junction-based
-# bridges.
 Write-Host "Copying addon files..." -ForegroundColor Yellow
-cmd /c "xcopy /E /I /Y /Q `"$Source`" `"$Dest`""
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "xcopy failed (exit $LASTEXITCODE)"
-    exit 1
+if ($IsWin) {
+    # xcopy: PowerShell's Copy-Item misbehaves with the
+    # reparse points sometimes left behind from prior
+    # junction-based bridges on Windows. xcopy works through
+    # them.
+    $SourceWin = $Source -replace '/', '\'
+    $DestWin = $Dest -replace '/', '\'
+    cmd /c "xcopy /E /I /Y /Q `"$SourceWin`" `"$DestWin`""
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "xcopy failed (exit $LASTEXITCODE)"
+        exit 1
+    }
+} else {
+    # Linux/macOS: no junctions or reparse points to worry
+    # about. The CI runner takes this path.
+    & cp -r $Source $Dest
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "cp failed (exit $LASTEXITCODE)"
+        exit 1
+    }
 }
 Write-Host "Done." -ForegroundColor Green
 Write-Host ""
