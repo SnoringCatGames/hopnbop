@@ -26,8 +26,6 @@ on:
         type: string
         default: 'workflow_call'
     secrets:
-      SUBMODULE_PAT:
-        required: true
       EDGEGAP_TOKEN:
         required: true
       EDGEGAP_REGISTRY_USERNAME:
@@ -47,11 +45,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          # Default GITHUB_TOKEN only authenticates against the
-          # current repo, so submodule clones from sibling
-          # private SnoringCatGames repos 404. SUBMODULE_PAT is
-          # a classic PAT with `repo` scope across the org.
-          token: ${{ secrets.SUBMODULE_PAT }}
       - uses: chickensoft-games/setup-godot@v2
         with:
           version: 4.7.0-beta1
