@@ -145,9 +145,10 @@ try {
             Write-Host ""
             Write-Host "Diagnosis: register_game RPC isn't"
             Write-Host "registered on the live runtime. Either"
-            Write-Host "the plugin predates Stage 2 (deploy a"
-            Write-Host "fresh build via nakama-runtime.yml) or"
-            Write-Host "the plugin failed to load."
+            Write-Host "the plugin predates Stage 2 (push a"
+            Write-Host "runtime change to snoringcat-platform/main"
+            Write-Host "to trigger the nakama-runtime workflow)"
+            Write-Host "or the plugin failed to load."
         } elseif ($errBody -match "invalid http key") {
             Write-Host ""
             Write-Host "Diagnosis: HTTP key mismatch. Verify"

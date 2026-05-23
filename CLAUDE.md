@@ -126,8 +126,8 @@ the provisioning scripts at
 |---|---|---|
 | Game server (Edgegap registry) | manual workflow_dispatch | `.github/workflows/game-server.yml` |
 | Web client (Cloudflare Pages + R2) | tag push or manual | `.github/workflows/release.yml` (CI) or `scripts/deploy-cf-pages.ps1` (local) |
-| Nakama runtime plugin | manual workflow_dispatch | `.github/workflows/nakama-runtime.yml` |
-| Tagged release (game server + web + runtime) | push to `v*` tag | `.github/workflows/release.yml` |
+| Nakama runtime plugin | push to `runtime/**` on `snoringcat-platform/main` or manual | `SnoringCatGames/snoringcat-platform/.github/workflows/nakama-runtime.yml` |
+| Tagged release (game server + web) | push to `v*` tag | `.github/workflows/release.yml` |
 
 ### Game server deploy (Edgegap)
 

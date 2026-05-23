@@ -3,7 +3,13 @@ name: Release
 # Triggered on v*.*.* tags. Builds the Linux server image, pushes
 # to Edgegap registry, bumps fleet version. Builds the Godot web
 # export, deploys via wrangler pages. Builds native exports.
-# Rolls Nakama runtime modules. Posts release notes to Discord.
+# Posts release notes to Discord.
+#
+# Nakama runtime rolls happen out-of-band via
+# SnoringCatGames/snoringcat-platform/.github/workflows/nakama-runtime.yml
+# (push-triggered on runtime/** changes there). A release tag does
+# NOT redeploy the runtime — bump the submodule pointer and let
+# the platform workflow roll if needed.
 
 on:
   push:
@@ -124,45 +130,9 @@ jobs:
           npx -y wrangler@latest pages deploy . \
             --project-name=$PAGES_PROJECT --branch=main
 
-  nakama-runtime:
-    name: Roll Nakama runtime modules
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Build plugin .so
-        run: |
-          RUNTIME_DIR="third_party/snoringcat-platform/runtime"
-          mkdir -p "$RUNTIME_DIR/build"
-          BUILD_ID="${{ github.sha }}"
-          BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          LDFLAGS="-X main.BuildID=${BUILD_ID} -X main.BuildTime=${BUILD_TIME}"
-          docker run --rm \
-            -v "$PWD/$RUNTIME_DIR:/backend" -w /backend \
-            heroiclabs/nakama-pluginbuilder:3.25.0 \
-            build -buildmode=plugin -trimpath \
-            -ldflags "${LDFLAGS}" \
-            -o ./build/snoringcat.so .
-      - name: Deploy via SSH
-        env:
-          SSH_KEY: ${{ secrets.NAKAMA_SSH_KEY }}
-          NAKAMA_HOST: ${{ secrets.NAKAMA_HOST }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          scp -o StrictHostKeyChecking=accept-new \
-            -i ~/.ssh/id_ed25519 \
-            third_party/snoringcat-platform/runtime/build/snoringcat.so \
-            "root@$NAKAMA_HOST:/opt/nakama/modules/snoringcat.so"
-          ssh -o StrictHostKeyChecking=accept-new \
-            -i ~/.ssh/id_ed25519 "root@$NAKAMA_HOST" \
-            "cd /opt/nakama && docker compose restart nakama"
-
   discord-notify:
     name: Discord release notes
-    needs: [game-server, web-client, nakama-runtime]
+    needs: [game-server, web-client]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -176,7 +146,7 @@ jobs:
           NOTES=$(git log "${PREV:-HEAD~10}..${{ github.ref_name }}" \
             --pretty=format:"- %s (%h)" 2>/dev/null \
             | head -20)
-          STATUS="${{ needs.game-server.result == 'success' && needs.web-client.result == 'success' && needs.nakama-runtime.result == 'success' && '✅ deployed' || '❌ partial failure' }}"
+          STATUS="${{ needs.game-server.result == 'success' && needs.web-client.result == 'success' && '✅ deployed' || '❌ partial failure' }}"
           curl -fsS -X POST \
             -H "Content-Type: application/json" \
             -d "$(jq -n --arg c "**${{ github.ref_name }}** $STATUS\n$NOTES" '{content:$c}')" \
