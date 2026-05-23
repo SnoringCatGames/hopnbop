@@ -98,7 +98,7 @@ before retrying IPv4. Use 127.0.0.1 to keep test runs fast.
 
 The compliance tests live in the snoringcat-platform submodule
 at `addons/snoringcat_platform_client/test/compliance/`. When
-run from `hopnbop_private/` the addon path resolves through
+run from `hopnbop/` the addon path resolves through
 the platform-addon copy at
 `addons/snoringcat_platform_client/` (created by
 `scripts/setup-platform-addon.ps1`). `scripts/local-smoke-test.ps1`

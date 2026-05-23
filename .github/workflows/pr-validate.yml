@@ -165,8 +165,8 @@ jobs:
       - name: Run GUT (per-file)
         run: |
           # Run one file at a time — directory mode misses
-          # discovery on this project (see hopnbop_private
-          # CLAUDE.md "Project-Specific Testing Notes").
+          # discovery on this project (see hopnbop CLAUDE.md
+          # "Project-Specific Testing Notes").
           set -e
           for f in $(find test/unit test/integration -name "test_*.gd" 2>/dev/null); do
             echo "== $f =="

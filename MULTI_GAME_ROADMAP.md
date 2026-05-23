@@ -1456,10 +1456,10 @@ Per the platform repo's CLAUDE.md, these directories now live under
 - [x] 0.5 `infra/pulumi/snoringcat-platform/`
 - [x] 0.6 `scripts/` (phase-a.ps1, phase-b.ps1, probe-runtime-status.ps1,
       migrate_ddb_to_nakama.py, test-google-auth.py, platform_smoke_test.gd)
-- [x] 0.7 Cost-monitor section added to `hopnbop_private/CLAUDE.md`
+- [x] 0.7 Cost-monitor section added to `hopnbop/CLAUDE.md`
 
 **Open verification items (do at Stage 1 kickoff):**
-- [x] 0.8 Grep `hopnbop_private/` for any cross-references to old
+- [x] 0.8 Grep `hopnbop/` for any cross-references to old
       paths (`nakama-runtime/`, `infra/remote/`, etc.) outside the
       submodule. Remaining hits (`CLAUDE.md`, `NEXT_STEPS.md`) are
       intentional descriptions of paths *inside* the submodule, not
@@ -1731,7 +1731,7 @@ else hangs off of.
   - Verification: after a runtime restart, `psql -c "\d games"`
     will show the table; before any sync the row count is 0.
 
-- [x] **2.3 Create `hopnbop_private/game.yaml`** (2026-05-12)
+- [x] **2.3 Create `hopnbop/game.yaml`** (2026-05-12)
   - Done: `game.yaml` at repo root with `schema_version`,
     `game_id: hopnbop`, `display_name`, `edgegap_app_slug`,
     `protocol_version: 2` (matches `project.godot`),
@@ -2623,7 +2623,7 @@ invitees were silently treated as accepted members.
 
 ## Stage 6 — Platform SDK extraction
 
-**Goal:** Move `*_api_client.gd` from `hopnbop_private/src/core/`
+**Goal:** Move `*_api_client.gd` from `hopnbop/src/core/`
 into `addons/snoringcat_platform_client/`. After this, a second game
 can drop in the addon and get the same API surface.
 
