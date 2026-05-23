@@ -954,6 +954,26 @@ func _client_spawn_lobby() -> void:
 ## state.
 func client_clear_all_levels() -> void:
 	Netcode.check_is_client()
+
+	# If a real match is active (typically the logout-mid-match
+	# case), disconnect cleanly before tearing down the level so
+	# the server sees a graceful peer drop instead of an abrupt
+	# connection loss. Mirrors the in-match teardown of
+	# _client_cleanup_after_match minus the match_state
+	# copy-back (callers that hit this path have usually
+	# already cleared G.client_session state and don't want it
+	# repopulated).
+	if (G.client_session.is_game_active
+			or G.client_session.is_game_loading):
+		_stop_session_poll()
+		G.client_session.is_game_active = false
+		G.client_session.is_game_loading = false
+		if Netcode.is_local_mode:
+			_cleanup_local_mode()
+		else:
+			Netcode.connector.client_disconnect()
+			multiplayer.multiplayer_peer = null
+
 	for level in levels.duplicate():
 		levels.erase(level)
 		if is_instance_valid(level):
