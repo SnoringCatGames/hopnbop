@@ -11,6 +11,20 @@ on:
         description: 'Reason for rolling the game server'
         required: false
         default: 'Manual deploy'
+      req_cpu:
+        description: 'Edgegap req_cpu (millicores). Tier 1.1 right-sized 1024 -> 512 after profiling.'
+        required: false
+        default: '512'
+      req_memory:
+        description: 'Edgegap req_memory (MB). Same right-size cap as req_cpu.'
+        required: false
+        default: '512'
+
+permissions:
+  # GHCR mirror push requires package write at workflow scope.
+  packages: write
+  # Implicit contents:read for checkout.
+  contents: read
   # Allow release.yml (or any other workflow) to invoke this
   # build via `uses:` so the release pipeline doesn't need to
   # duplicate the export/build/push steps.
@@ -25,6 +39,16 @@ on:
         required: false
         type: string
         default: 'workflow_call'
+      req_cpu:
+        description: 'Edgegap req_cpu (millicores)'
+        required: false
+        type: string
+        default: '512'
+      req_memory:
+        description: 'Edgegap req_memory (MB)'
+        required: false
+        type: string
+        default: '512'
     secrets:
       EDGEGAP_TOKEN:
         required: true
@@ -119,13 +143,35 @@ jobs:
             registry.edgegap.com \
             -u "$REGISTRY_USERNAME" \
             --password-stdin
-      - name: Push image
+      - name: Push image to Edgegap registry
         env:
           VERSION: ${{ inputs.version }}
           PROJECT: ${{ secrets.EDGEGAP_REGISTRY_PROJECT }}
         run: |
           docker push \
             "registry.edgegap.com/${PROJECT}/hopnbop-server:${VERSION}"
+      # GHCR mirror push so the Nakama host's local Docker
+      # allocator can pull the same image (allocator_mode=local
+      # or =hybrid in game.yaml). GITHUB_TOKEN has package:write
+      # by default when packages.write permission is granted to
+      # the workflow. The image name uses lowercase org/repo per
+      # GHCR convention.
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tag + push image to GHCR
+        env:
+          VERSION: ${{ inputs.version }}
+          PROJECT: ${{ secrets.EDGEGAP_REGISTRY_PROJECT }}
+        run: |
+          docker tag \
+            "registry.edgegap.com/${PROJECT}/hopnbop-server:${VERSION}" \
+            "ghcr.io/snoringcatgames/hopnbop-server:${VERSION}"
+          docker push \
+            "ghcr.io/snoringcatgames/hopnbop-server:${VERSION}"
       - name: Register Edgegap version (delete-and-create for upsert)
         env:
           VERSION: ${{ inputs.version }}
@@ -182,6 +228,8 @@ jobs:
               --arg user "$REGISTRY_USERNAME" \
               --arg pass "$REGISTRY_PASSWORD" \
               --arg http_key "$NAKAMA_HTTP_KEY" \
+              --argjson req_cpu "${{ inputs.req_cpu }}" \
+              --argjson req_memory "${{ inputs.req_memory }}" \
               '{
                 name: $v,
                 docker_image: $img,
@@ -189,8 +237,8 @@ jobs:
                 docker_tag: $tag,
                 private_username: $user,
                 private_token: $pass,
-                req_cpu: 1024,
-                req_memory: 1024,
+                req_cpu: $req_cpu,
+                req_memory: $req_memory,
                 ports: [
                   {port: 4433, protocol: "UDP",
                     name: "game", to_check: false},

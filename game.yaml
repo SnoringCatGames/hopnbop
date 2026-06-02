@@ -37,6 +37,35 @@ edgegap_app_slug: hopnbop-server
 # version" pin.
 edgegap_app_version: v27
 
+# Fleet-allocator backend (see runtime/allocator.go for the full
+# set). Cost-reduction work (June 2026) added "local" and
+# "hybrid" alongside "edgegap":
+#   - "edgegap": every match goes to Edgegap. Default; current
+#     state during rollout.
+#   - "local": every match runs on the Nakama host's local Docker
+#     daemon. Requires LocalImageRef + LOCAL_PUBLIC_IP env on the
+#     runtime.
+#   - "hybrid": local for matches whose players are all NA-IP,
+#     Edgegap for any non-NA player. Per-match decision in
+#     hybridAllocatorChoice; replace static CIDR map with MaxMind
+#     GeoLite before depending on it for non-trivial geography
+#     accuracy.
+#
+# Rollout plan: keep "edgegap" until LocalImageRef is reliably
+# pushed to GHCR by CI AND the Nakama host has been confirmed to
+# pull successfully. Then flip to "hybrid" so most matches save
+# the Deployment Compute charge while the Edgegap fallback
+# remains available for distant players.
+allocator_mode: edgegap
+
+# GHCR-hosted game-server image (mirror of the Edgegap registry
+# push). The local Docker allocator pulls this tag when
+# allocator_mode is "local" or "hybrid". Empty / omitted = local
+# allocator is not eligible for this game. See
+# .github/workflows/game-server.yml for the CI step that
+# publishes this tag alongside the Edgegap registry push.
+local_image_ref: "ghcr.io/snoringcatgames/hopnbop-server:v27"
+
 # Network protocol. Bump only when client/server wire format
 # changes (new RPC, changed message shape, new replicated
 # property). Cosmetic / server-internal changes do NOT need a
