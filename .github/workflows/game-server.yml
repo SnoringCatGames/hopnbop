@@ -20,11 +20,6 @@ on:
         required: false
         default: '512'
 
-permissions:
-  # GHCR mirror push requires package write at workflow scope.
-  packages: write
-  # Implicit contents:read for checkout.
-  contents: read
   # Allow release.yml (or any other workflow) to invoke this
   # build via `uses:` so the release pipeline doesn't need to
   # duplicate the export/build/push steps.
@@ -60,6 +55,12 @@ permissions:
         required: true
       NAKAMA_HTTP_KEY:
         required: true
+
+permissions:
+  # GHCR mirror push requires package write at workflow scope.
+  packages: write
+  # Implicit contents:read for checkout.
+  contents: read
 
 jobs:
   game-server:
