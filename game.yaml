@@ -49,7 +49,7 @@ edgegap_app_version: v28
 #     hybridAllocatorChoice. Currently uses a coarse static
 #     ARIN /8 CIDR map; a real GeoIP path (DB-IP CSV or sidecar)
 #     is a follow-up.
-allocator_mode: hybrid
+allocator_mode: edgegap
 
 # GHCR-hosted game-server image (mirror of the Edgegap registry
 # push). The local Docker allocator pulls this tag when
