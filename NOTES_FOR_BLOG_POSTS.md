@@ -455,7 +455,7 @@ application code were identical.
 
 ### Premise
 
-- I run the backend on a single small Hetzner box (CPX11)
+- I run the backend on a single small Hetzner box (CPX21)
   and an Edgegap game-server fleet, with Cloudflare R2 +
   Pages on the edge.
 - No Prometheus, no Grafana, no Loki, no Datadog — all
@@ -535,7 +535,7 @@ application code were identical.
   `*.game.hopnbop.net` is DNS-01 on a separate path.
   Weekly check, alert at 30 days. Saved one expiry already.
 - **`resource-trend`** (weekly) — the only forward-looking
-  job. R2 storage trend, Pages build-minutes trend, CPX11
+  job. R2 storage trend, Pages build-minutes trend, CPX21
   disk usage trend. Plots a curve and shouts if it's going
   to hit a free-tier ceiling within 60 days.
 - **`daily-consolidator`** (daily) — not a probe itself,

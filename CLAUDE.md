@@ -40,8 +40,11 @@ mix of Grafana dashboards + Discord alerts (5 baseline rules:
 nakama-down, postgres-down, postgres-conn-saturation,
 disk>90%, CPU>80% 15m), the daily Claude prod-health-check
 job, UptimeRobot, and the cost-monitor Discord summary. Live
-production runs on a single Hetzner CPX11 with Edgegap-
-allocated game-server containers. Historical migration notes
+production runs on a single Hetzner CPX21 (3 vCPU / 4 GB /
+80 GB) with Edgegap-allocated game-server containers.
+(Upsized in-place from CPX11 on 2026-06-01, ahead of the
+2026-06-15 Hetzner price hike and to make room for cohabiting
+local game-server containers.) Historical migration notes
 for archeology are in `docs/archive/MIGRATION_PLAN.md` and
 `docs/archive/platform-pivot-discussion.md`.
 
@@ -274,8 +277,10 @@ If the changes require users to re-consent, also bump
   authenticates via S3-compat keys in `R2_ACCESS_KEY_ID` /
   `R2_SECRET_ACCESS_KEY` / `R2_ENDPOINT` (sourced from
   `~/.hopnbop-migration/credentials.env`).
-- **nakama-prod-1:** CPX11 in Hillsboro, runs Postgres 16 +
-  Nakama + Caddy + Prometheus + Grafana + node-exporter +
+- **nakama-prod-1:** CPX21 (3 vCPU / 4 GB / 80 GB; upsized
+  in-place from CPX11 on 2026-06-01) in Hillsboro, runs
+  Postgres 16 + Nakama + Caddy + Prometheus + Grafana +
+  node-exporter +
   postgres-exporter in a single docker compose stack.
   cost-monitor + dns-watchdog + pg-backup systemd timers on
   the host. Loki + Promtail (log shipping) were intentionally
@@ -287,8 +292,9 @@ If the changes require users to re-consent, also bump
   `grafana.snoringcat.games`, and `signaling.snoringcat.games`
   all point at the Hetzner public IP (Caddy multiplexes by
   Host header).
-- **Cost:** ~$8/mo CPX11 cap + cents of R2 backups. See
-  cost-monitor.
+- **Cost:** ~$8/mo CPX21 cap (pre-hike rate locked in on
+  2026-06-01; cost-monitor MTD is authoritative) + cents of
+  R2 backups. See cost-monitor.
 - **Backups:** `pg-backup.timer` runs nightly at 03:11 UTC,
   `pg_dumpall` → `s3://hopnbop-pulumi-state-r2/pg-backups/
   postgres-YYYY-MM-DD.sql.gz`, 7-day retention. Restore:
