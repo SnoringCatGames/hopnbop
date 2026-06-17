@@ -108,8 +108,16 @@ func _create_player_state() -> PlayerState:
 func clear() -> void:
 	players_by_id.clear()
 	packed_players.clear()
-	kills.clear()
-	bumps.clear()
+	# Reassign rather than `.clear()` in place so the
+	# property setters fire kills_updated /
+	# bumps_updated. The synchronizer's
+	# `_previous_state` tracker re-syncs from those
+	# signals; without this, _previous_state retains
+	# stale entries from the prior match and the
+	# size-grew ensure in _client_on_kills_updated
+	# fails on match 2's first kill.
+	kills = PackedInt32Array()
+	bumps = PackedInt32Array()
 	pauses_used_by_peer.clear()
 	_total_kills_by_player_id.clear()
 	_total_deaths_by_player_id.clear()

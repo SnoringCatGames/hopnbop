@@ -1577,16 +1577,30 @@ func server_end_match() -> void:
 	if not is_instance_valid(G.level):
 		return
 
+	if Netcode.is_local_mode:
+		# Local mode: the deferred cleanup scheduled by
+		# match_ended → _on_match_ended →
+		# _client_transition_to_game_over handles
+		# cleanup, level free, and the GAME_OVER
+		# transition. Returning early here avoids
+		# racing that flow: a synchronous
+		# client_exit_match() would run cleanup once
+		# (snapshotting latest_local_device_configs
+		# correctly) and then the deferred cleanup
+		# would re-run and overwrite the snapshot with
+		# empty arrays (also double-incrementing
+		# rounds_played). Leaving is_game_active and
+		# is_match_ended set until the deferred
+		# cleanup runs keeps the guard in
+		# _client_transition_to_game_over passing
+		# regardless of timer ordering.
+		return
+
 	G.client_session.is_game_active = false
 	G.match_state.match_start_frame_index = -1
 	G.match_state.is_match_ended = false
 
-	if Netcode.is_local_mode:
-		# Local mode: client_exit_match handles
-		# cleanup, level free, and lobby transition.
-		client_exit_match()
-		return
-	elif Netcode.is_preview:
+	if Netcode.is_preview:
 		# Preview mode: disconnect clients but
 		# keep session open for next match.
 		(Netcode.connector
