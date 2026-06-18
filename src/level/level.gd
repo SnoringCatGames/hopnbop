@@ -8,6 +8,13 @@ const _SPAWN_POSITION_MIN_SPAWN_DISTANCE := 200.0
 const _SPAWN_POSITION_COLLISION_CHECK_STEP := 4.0
 const _SPAWN_POSITION_MAX_UPWARD_SHIFT := 200.0
 
+## Physics layers the spawn probe checks against: the player
+## layer (4) only. Terrain layers (1 normal_surfaces, 2
+## fall_through_floors, 3 walk_through_walls) are deliberately
+## excluded so the probe only nudges spawns apart from other
+## players and never lifts one off the floor it rests on.
+const _SPAWN_CHECK_COLLISION_MASK := 1 << 3
+
 ## Terrain set for solid/collision tiles
 ## (ice, spring, etc.).
 const TERRAIN_SET_COLLISION := 0
@@ -141,7 +148,10 @@ func _get_player_spawn_position() -> Vector2:
 
 	var spawn_position := chosen_spawn_point.spawn_position
 
-	# Check for collision and adjust upward if needed.
+	# Nudge the spawn off any overlapping player (e.g. when
+	# spawn points are scarcer than players). Terrain is excluded
+	# from the probe mask, so this never lifts the bunny off the
+	# floor it rests on.
 	var final_position := _find_collision_free_position(spawn_position)
 
 	return final_position
@@ -151,7 +161,7 @@ func _find_collision_free_position(initial_position: Vector2) -> Vector2:
 	# Create a shape query to check for collisions.
 	var query := PhysicsShapeQueryParameters2D.new()
 	query.shape = G.settings.bunny_collision_shape.duplicate()
-	query.collision_mask = 7 # Match player collision mask.
+	query.collision_mask = _SPAWN_CHECK_COLLISION_MASK
 
 	# Test initial position.
 	query.transform = Transform2D(0.0, initial_position)
@@ -190,11 +200,9 @@ func _is_position_collision_free(
 	space_state: PhysicsDirectSpaceState2D,
 	query: PhysicsShapeQueryParameters2D,
 ) -> bool:
-	var result := space_state.intersect_shape(query)
-	for collision in result:
-		if collision.collider != collision_tiles:
-			return false
-	return true
+	# Terrain is excluded via the query's collision_mask, so any
+	# hit here is a real obstacle (another player).
+	return space_state.intersect_shape(query).is_empty()
 
 
 ## Called when a player is added to this level.
