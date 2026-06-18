@@ -164,6 +164,21 @@ func server_set_expected_player_count(count: int) -> void:
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
 
+	# Players may already all be declared by the time the
+	# expected count reaches this synchronizer. Local mode and
+	# the production match-ready path declare players first and
+	# set the count afterward (via game_panel._on_match_ready),
+	# whereas preview hot-reload sets the count first and
+	# replays declarations after. Assign colors here if the
+	# count completes the precondition; _server_on_peer_players_
+	# declared covers the opposite ordering. Without this,
+	# declare-then-count flows (e.g. offline play) never assign
+	# colors and bunnies render with the default white outline.
+	if (_expected_player_count > 0
+			and state.players_by_id.size()
+				>= _expected_player_count):
+		_server_assign_outline_colors()
+
 
 func _server_on_all_players_connected() -> void:
 	Netcode.print(

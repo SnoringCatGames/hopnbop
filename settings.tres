@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Settings" load_steps=59 format=3 uid="uid://dv60bmaw1pdx6"]
+[gd_resource type="Resource" script_class="Settings" format=3 uid="uid://dv60bmaw1pdx6"]
 
 [ext_resource type="Script" uid="uid://bklo1tgck1vmm" path="res://src/player/body_type_config.gd" id="1_7ybur"]
 [ext_resource type="Script" uid="uid://cqomr88ncj2d3" path="res://src/core/settings.gd" id="1_krfic"]
@@ -111,7 +111,7 @@ metadata/_custom_type_script = "uid://l1of4ibugkpt"
 
 [resource]
 script = ExtResource("1_krfic")
-level_override_for_preview = 4
+level_override_for_preview = 0
 google_oauth_client_id = "905161168547-bqhiksqqdur94s4ta83pke5lnrpnreu6.apps.googleusercontent.com"
 facebook_oauth_client_id = "4346465752288719"
 skip_splash = true
@@ -147,7 +147,7 @@ player_scenes = Array[PackedScene]([ExtResource("3_woca2")])
 body_types = Array[ExtResource("1_7ybur")]([ExtResource("8_bodytype"), ExtResource("11_wbody"), ExtResource("12_bbody"), ExtResource("13_brbody"), ExtResource("14_bsbody"), ExtResource("15_blsbody"), ExtResource("16_grbody"), ExtResource("17_ylbody"), ExtResource("18_lbsbody"), ExtResource("20_ysbody"), ExtResource("21_bbsbody")])
 costumes = Array[ExtResource("3_htelm")]([ExtResource("9_costume")])
 crown_costume = ExtResource("10_crown")
-match_duration_sec = 15.0
+match_duration_sec = 10.0
 max_client_count = 8
 webrtc_state_send_fps = 30.0
 rollback_buffer_duration_sec = 2.0
