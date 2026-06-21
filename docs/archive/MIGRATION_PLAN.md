@@ -1069,6 +1069,15 @@ is exposed**. Procedure:
      new one.
    - Hetzner DNS token: revoke + create.
    - Edgegap token: revoke + create.
+   - Cloudflare R2 API token (`R2_ACCESS_KEY_ID` /
+     `R2_SECRET_ACCESS_KEY`): create a new token in the Cloudflare
+     dashboard (R2, "Manage R2 API Tokens"), scoped to the
+     `hopnbop-pulumi-state-r2` bucket with object_read_and_write,
+     then delete the old one. Dual-use: gates BOTH the pg-backup
+     `.env` (nightly Postgres dump) and the Pulumi state backend.
+     After rotating, update `credentials.env`, redeploy the
+     pg-backup `.env` (phase-b `Step-PgBackup`), and re-run
+     `pulumi login` (phase-a `Step-PulumiLogin`).
    - GitHub PAT: revoke at github.com/settings/tokens, create
      new.
    - Discord webhook: delete + recreate at the channel.
@@ -1093,7 +1102,11 @@ is exposed**. Procedure:
 **C. Routine rotation (annually, or after major project events).**
 
 Rotate the high-value subset on a schedule:
-- AWS-related: rotated automatically by SSO; nothing to do.
+- Cloudflare R2 token: rotate annually with the infra tokens
+  (the `AWS_*`-named env vars hold R2 creds, not AWS). Dual-use
+  for pg-backup + Pulumi state (see B step 2). The old "AWS SSO
+  auto-rotates" note here was stale; AWS was fully torn down in
+  Phase F.
 - Hetzner / Edgegap / GitHub tokens: rotate annually. Same
   procedure as B step 2 but only for those tokens.
 - Discord / UptimeRobot: low-value; rotate every couple of years.
