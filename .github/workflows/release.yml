@@ -14,11 +14,19 @@ name: Release
 on:
   push:
     tags: ['v*.*.*']
+  # To re-run a release manually, dispatch this workflow **against
+  # the tag ref** (pick the tag in the "Use workflow from" dropdown,
+  # not a branch). `github.ref_name` is then the tag, every job
+  # checks out the tagged commit, and the release notes cover the
+  # right range.
+  #
+  # There used to be a `tag` input here ("Tag to release (e.g.
+  # v0.32.0)"). Nothing ever read it — every step used
+  # `github.ref_name` — so dispatching from `main` and typing a tag
+  # would have built main's HEAD, deployed it, and labelled the
+  # result with that tag. Dispatching against the tag ref is the
+  # thing that actually works, and needs no input.
   workflow_dispatch:
-    inputs:
-      tag:
-        description: Tag to release (e.g. v0.32.0)
-        required: true
 
 env:
   GODOT_VERSION: 4.7.1-stable

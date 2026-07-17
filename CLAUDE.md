@@ -322,6 +322,17 @@ These are generated from `project.godot` at deploy/sync time.
   `display_version` instead (above). It drifted to 0.39.0
   against a 0.47.0 client precisely because the old note here
   claimed it was the surfaced value.
+
+  **It is currently unset in production, and that is fine.**
+  Measured 2026-07-16: `version_check` with no `game_id` returns
+  `game_version: ""`, `protocol_version: 0`, `is_compatible:
+  false`. Every real client passes `game_id`
+  (`backend_api_client.gd` — Stage 3.10), so the fallback is
+  inert. Do **not** "fix" it by setting the env var: that
+  re-creates the hand-maintained value with no guard that caused
+  the 0.39.0 drift in the first place. The env knob is vestigial
+  and should eventually be deleted from `main.go` /
+  `docker-compose.yml` / `config.yml` rather than populated.
 - Nakama host's `runtime.env` `EDGEGAP_APP_VERSION` — **only the
   bootstrap fallback**, for allocations before any `game.yaml`
   has been synced. Superseded per-game by the config's
