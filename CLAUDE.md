@@ -154,9 +154,20 @@ deploys before any `game.yaml` has been synced). Bumping the
 env var alone does nothing for hopnbop.
 
 `game-server.yml` pushes the image tag but does NOT write
-`edgegap_app_version` back, and nothing CI-checks it. Bump it
-in the same change that runs the workflow, or the allocator
-keeps pulling the old tag.
+`edgegap_app_version` back. Bump `game.yaml` **before** running
+the workflow: its first step fails the run if `game.yaml`'s
+`edgegap_app_version` or `local_image_ref` tag doesn't match the
+version being pushed. That guard is why a forgotten bump now
+costs you a fast CI failure instead of an allocator silently
+deploying the previous version forever.
+
+**Known gap:** `release.yml` invokes this workflow with
+`version: ${{ github.ref_name }}` — the *git tag* (`v0.48.0`) —
+while every real deploy has used the sequential Edgegap name
+(`v28`). `release.yml` has never actually run, so this has never
+fired. The guard above will fail the first tagged release rather
+than register an Edgegap version nothing allocates. Decide the
+convention before cutting a release tag.
 
 Required GH secrets: `EDGEGAP_TOKEN`, `EDGEGAP_REGISTRY_*`,
 `EDGEGAP_REGISTRY_PROJECT`, `SUBMODULE_PAT`. The Harbor robot
@@ -253,7 +264,7 @@ new ones; add a row here first.
 | `config/version` | `project.godot` | every redeploy | derived into `web/version.json` + `game.yaml::display_version` at deploy |
 | `config/protocol_version` | `project.godot` | breaking realtime protocol change only | `pr-validate` (must not reappear in `game.yaml`) |
 | `legal_version` | `game.yaml::legal.legal_version` **and** `src/core/legal_version.gd` | legal text changes needing re-consent | `pr-validate` parity check (hard fail) |
-| `edgegap_app_version` | `game.yaml` | every game-server image push | **nothing — hand-maintained, see below** |
+| `edgegap_app_version` + `local_image_ref` | `game.yaml` | every game-server image push | `game-server.yml` fails if `game.yaml` doesn't declare the tag being pushed |
 | `schema_version` | `game.yaml` | only when the platform's per-game config schema changes (platform-driven) | runtime rejects non-positive |
 | `file_version` / `product_version` | `export_presets.cfg` | never (intentionally empty) | — |
 | `rollback_netcode` / `snoringcat_platform_client` | their own repos | see those repos' CLAUDE.md | submodule SHA pin |

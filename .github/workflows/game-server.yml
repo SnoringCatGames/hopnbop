@@ -70,6 +70,49 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Check game.yaml declares the version being pushed
+        # game.yaml is the source of truth for edgegap_app_version
+        # and local_image_ref: fleet_allocator.go prefers the
+        # per-game config over the host's EDGEGAP_APP_VERSION env
+        # var, and the local/hybrid allocator pulls local_image_ref.
+        # This workflow pushes the image tag but does NOT write
+        # either field back, so a forgotten bump means we publish
+        # v<N> while the allocator keeps deploying v<N-1> — silently,
+        # because nothing else compares them.
+        #
+        # This is the same failure shape as game.yaml's
+        # display_version, which sat at 0.39.0 against a 0.47.0
+        # client for months because it was hand-maintained and
+        # unguarded. The other versions are derived from
+        # project.godot and can't drift; these two can't be derived
+        # (the tag is chosen at dispatch time), so they get a guard
+        # instead.
+        #
+        # Fails before any build work, so a missed bump costs
+        # seconds rather than a wasted registry push.
+        run: |
+          set -e
+          want='${{ inputs.version }}'
+          yaml_ver=$(grep -E '^edgegap_app_version:' game.yaml \
+            | head -n1 | awk -F':' '{print $2}' | tr -d ' "\r')
+          yaml_img=$(grep -E '^local_image_ref:' game.yaml \
+            | head -n1 | sed -E 's/^local_image_ref:[[:space:]]*//' \
+            | tr -d '"\r')
+          img_tag="${yaml_img##*:}"
+          echo "workflow input         = $want"
+          echo "game.yaml edgegap_app_version = $yaml_ver"
+          echo "game.yaml local_image_ref tag = $img_tag"
+          fail=0
+          if [ "$yaml_ver" != "$want" ]; then
+            echo "::error file=game.yaml::edgegap_app_version is '$yaml_ver' but this run pushes '$want'. Bump game.yaml (and run scripts/sync-game-config.ps1 after the deploy) or the allocator keeps deploying the old version."
+            fail=1
+          fi
+          if [ "$img_tag" != "$want" ]; then
+            echo "::error file=game.yaml::local_image_ref is tagged '$img_tag' but this run pushes '$want'. allocator_mode is hybrid, so the local Docker allocator would pull the stale tag."
+            fail=1
+          fi
+          [ "$fail" -eq 0 ] || exit 1
+          echo "ok: game.yaml declares $want"
       - uses: chickensoft-games/setup-godot@v2
         with:
           version: 4.7.1-stable
