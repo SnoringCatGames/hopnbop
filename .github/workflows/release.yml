@@ -24,13 +24,51 @@ env:
   GODOT_VERSION: 4.7.1-stable
 
 jobs:
+  resolve-edgegap-version:
+    name: Resolve Edgegap version from game.yaml
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: read
+        # The Edgegap version name is NOT the release tag. Edgegap
+        # app versions are sequential (v27, v28, ...) and game.yaml
+        # is their source of truth: fleet_allocator.go prefers the
+        # per-game config's edgegap_app_version over the host env
+        # var, so whatever we register here is inert unless
+        # game.yaml names it.
+        #
+        # This used to pass `github.ref_name`, which is the git tag
+        # on a tag push (v0.48.0) and the *branch* on
+        # workflow_dispatch (main) — neither is an Edgegap version
+        # name. It would have registered an app version nothing
+        # allocates, and looked like a successful deploy. It never
+        # fired because release.yml has never run.
+        #
+        # So: bump game.yaml's edgegap_app_version + local_image_ref
+        # to the next v<N> as part of preparing a release. The
+        # game-server workflow re-checks this value and fails if the
+        # two fields disagree with the tag it is pushing.
+        run: |
+          set -e
+          v=$(grep -E '^edgegap_app_version:' game.yaml \
+            | head -n1 | awk -F':' '{print $2}' | tr -d ' "\r')
+          if [ -z "$v" ]; then
+            echo "::error file=game.yaml::could not read edgegap_app_version"
+            exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Edgegap version from game.yaml: $v"
+
   game-server:
     name: Game-server image → Edgegap
     # Delegate to the standalone workflow so the build and
     # version-registration logic lives in one place.
+    needs: resolve-edgegap-version
     uses: ./.github/workflows/game-server.yml
     with:
-      version: ${{ github.ref_name }}
+      version: ${{ needs.resolve-edgegap-version.outputs.version }}
       reason: 'release ${{ github.ref_name }}'
     secrets:
       EDGEGAP_TOKEN: ${{ secrets.EDGEGAP_TOKEN }}

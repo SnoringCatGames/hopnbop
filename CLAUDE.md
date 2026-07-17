@@ -161,13 +161,21 @@ version being pushed. That guard is why a forgotten bump now
 costs you a fast CI failure instead of an allocator silently
 deploying the previous version forever.
 
-**Known gap:** `release.yml` invokes this workflow with
-`version: ${{ github.ref_name }}` — the *git tag* (`v0.48.0`) —
-while every real deploy has used the sequential Edgegap name
-(`v28`). `release.yml` has never actually run, so this has never
-fired. The guard above will fail the first tagged release rather
-than register an Edgegap version nothing allocates. Decide the
-convention before cutting a release tag.
+**Edgegap version names are sequential (`v27`, `v28`, ...) and
+are NOT the release tag.** `release.yml` reads
+`edgegap_app_version` out of `game.yaml` (its
+`resolve-edgegap-version` job) and passes that to this workflow,
+so the tag-push and manual-dispatch paths agree.
+
+It used to pass `github.ref_name` — the git tag (`v0.48.0`) on a
+tag push, and the *branch* (`main`) on `workflow_dispatch`.
+Neither is an Edgegap version name, so a release would have
+registered an app version nothing allocates while reporting
+success. It never fired: `release.yml` has never run.
+
+**So: bumping `edgegap_app_version` + `local_image_ref` to the
+next `v<N>` is part of preparing a release**, not an afterthought
+— a release does not invent a new Edgegap version for you.
 
 Required GH secrets: `EDGEGAP_TOKEN`, `EDGEGAP_REGISTRY_*`,
 `EDGEGAP_REGISTRY_PROJECT`, `SUBMODULE_PAT`. The Harbor robot
