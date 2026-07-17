@@ -10,14 +10,34 @@
 # in `third_party/snoringcat-platform/PLATFORM_ARCHITECTURE.md`
 # §"Per-game configuration".
 #
+# WHO OWNS WHAT (2026-07-16)
+#
+# This file owns everything below EXCEPT the two version fields,
+# which are injected at sync time from project.godot:
+#
+#   - `protocol_version`  <- project.godot::config/protocol_version
+#   - `display_version`   <- project.godot::config/version
+#
+# They used to be duplicated here. `protocol_version` was kept
+# honest by a CI parity check; `display_version` was documented as
+# "SHOULD match project.godot. Cosmetic only; not CI-guarded" — and
+# it duly drifted, sitting at 0.39.0 while the shipped client reached
+# 0.47.0, so `version_check` reported a version that hadn't existed
+# for months. project.godot is the single source of truth for both
+# (see CLAUDE.md "Version Management"); deriving them here removes
+# the duplication rather than adding a second guard to police it.
+#
+# Do not re-add them to this file. sync-game-config.ps1 injects them
+# and fails if project.godot can't be read.
+#
 # Update rules:
-#   - `protocol_version` MUST match
-#     `project.godot::application/config/protocol_version`. CI
-#     guards this in `.github/workflows/pr-validate.yml`.
-#   - `display_version` SHOULD match `project.godot::application/
-#     config/version`. Cosmetic only; not CI-guarded.
 #   - `edgegap_app_slug` MUST match the registered app name in
 #     Edgegap. Used by `fleet_allocator.go` to allocate deploys.
+#   - `edgegap_app_version` / `local_image_ref` are hand-maintained
+#     here and this file is their source of truth: game-server.yml
+#     pushes the image tag but does NOT write them back. Bump them
+#     here in the same change that runs the workflow, or the
+#     allocator keeps pulling the old tag.
 #   - Bumps to `legal_version` invalidate active sessions
 #     (forces players through the consent flow on next launch).
 
@@ -58,16 +78,10 @@ allocator_mode: hybrid
 # publishes this tag alongside the Edgegap registry push.
 local_image_ref: "ghcr.io/snoringcatgames/hopnbop-server:v28"
 
-# Network protocol. Bump only when client/server wire format
-# changes (new RPC, changed message shape, new replicated
-# property). Cosmetic / server-internal changes do NOT need a
-# bump. See PLATFORM_ARCHITECTURE.md §"Per-game protocol
-# versioning" for the bump procedure.
-protocol_version: 2
-
-# Display version surfaced via `version_check` and shown in
-# title-screen build stamps. Bumped on every release.
-display_version: "0.39.0"
+# protocol_version and display_version are intentionally absent.
+# sync-game-config.ps1 injects them from project.godot at sync
+# time — see "WHO OWNS WHAT" at the top of this file. Bump them in
+# project.godot (config/protocol_version, config/version).
 
 # Container-side ports declared on the game-server image. Each
 # port maps to an Edgegap-assigned host port at allocation

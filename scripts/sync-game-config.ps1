@@ -7,33 +7,25 @@
 # its in-process cache. This script parses game.yaml, converts
 # to JSON, and POSTs it.
 #
-# STATUS 2026-07-16: NOT OPERATIONAL. This script cannot run as-is.
-#   - `game.yaml` does not exist in this repo and never has (no
-#     commit has ever added it), so the -GameYamlPath default
-#     always misses and the script exits 2.
-#   - It is NOT wired into release.yml. The line below claiming
-#     otherwise was aspirational and is left corrected, not
-#     deleted, because the design intent is still sound.
+# Version fields are NOT read from game.yaml. `protocol_version` and
+# `display_version` are injected here from project.godot, which is
+# the single source of truth for both (CLAUDE.md "Version
+# Management"). game.yaml used to duplicate them; display_version
+# drifted to 0.39.0 against a 0.47.0 client because nothing guarded
+# it, so the drift is now structurally impossible instead of policed.
 #
-#   Consequence: the per-game row was hand-registered once and
-#   nothing has updated it since. display_version drifted to
-#   0.39.0 against a 0.47.0 client. See scripts/sync-game-version.ps1,
-#   which currently keeps display_version honest by patching the
-#   live config in place (read-modify-write), no game.yaml needed.
+# Everything else — including edgegap_app_version and
+# local_image_ref — comes from game.yaml verbatim. game.yaml is
+# genuinely their source of truth: game-server.yml pushes the image
+# tag but never writes them back, so nothing else can clobber them.
 #
-#   To finish this script instead: seed game.yaml from the live
-#   config (`get_game_config` for hopnbop), wire this into
-#   release.yml, and decide what owns `edgegap_app_version` /
-#   `local_image_ref` — the game-server deploy flow bumps those,
-#   so a git-sourced full-config sync can silently revert a newer
-#   server image. That unresolved question is why the safe partial
-#   sync exists in the meantime.
-#
-# When to run (once the above is resolved):
-#   - After every runtime redeploy that bumped game.yaml content
-#     (since the cache is in-process and lost on container
-#     restart, the row in Postgres is the durable source — but
-#     no harm in re-running on every deploy).
+# When to run:
+#   - The web deploy (scripts/deploy-cf-pages.ps1) calls this.
+#   - Standalone after a server-only deploy that bumped
+#     edgegap_app_version / local_image_ref in game.yaml.
+#   - Any time game.yaml changes. The runtime's cache is in-process
+#     and lost on container restart; the Postgres row is durable, so
+#     re-running is cheap and idempotent.
 #
 # Usage:
 #   pwsh scripts/sync-game-config.ps1
@@ -70,9 +62,49 @@ Write-Host "Parsing $GameYamlPath"
 $yamlText = Get-Content -Path $GameYamlPath -Raw
 $config = ConvertFrom-Yaml $yamlText
 
-# Required-field sanity check before we POST. The runtime
-# validates the same fields server-side, but catching it locally
-# gives a clearer error in CI logs.
+# game.yaml must NOT carry the derived version fields. If someone
+# re-adds them, fail loudly rather than silently letting a stale
+# literal win over project.godot — that is the exact failure this
+# design removes.
+foreach ($derived in @("protocol_version", "display_version")) {
+    if ($config.ContainsKey($derived)) {
+        Write-Error @"
+game.yaml must not define $derived — it is injected from
+project.godot at sync time. Remove it from game.yaml and bump it in
+project.godot instead. See "WHO OWNS WHAT" at the top of game.yaml.
+"@
+        exit 2
+    }
+}
+
+# Inject the versions from project.godot (single source of truth).
+$projectGodot = Join-Path `
+    (Split-Path -Parent $PSScriptRoot) "project.godot"
+if (-not (Test-Path $projectGodot)) {
+    Write-Error "project.godot not found at: $projectGodot"
+    exit 2
+}
+$protoLine = Select-String -Path $projectGodot `
+    -Pattern '^config/protocol_version\s*=\s*(\d+)'
+if (-not $protoLine) {
+    Write-Error "could not read config/protocol_version from project.godot"
+    exit 2
+}
+$verLine = Select-String -Path $projectGodot `
+    -Pattern '^config/version="(.+)"$'
+if (-not $verLine) {
+    Write-Error "could not read config/version from project.godot"
+    exit 2
+}
+$config["protocol_version"] = [int]$protoLine.Matches[0].Groups[1].Value
+$config["display_version"] = $verLine.Matches[0].Groups[1].Value
+Write-Host ("injected from project.godot: protocol_version=" +
+    "$($config['protocol_version']) display_version=" +
+    "$($config['display_version'])")
+
+# Required-field sanity check, post-injection. The runtime validates
+# the same fields server-side, but catching it locally gives a
+# clearer error in CI logs.
 $required = @(
     "schema_version", "game_id", "display_name",
     "edgegap_app_slug", "protocol_version", "display_version"
@@ -81,33 +113,25 @@ foreach ($field in $required) {
     if (-not $config.ContainsKey($field) -or
             $null -eq $config[$field] -or
             "$($config[$field])" -eq "") {
-        Write-Error "game.yaml is missing required field: $field"
+        Write-Error "resolved config is missing required field: $field"
         exit 2
     }
 }
 
-# protocol_version-vs-project.godot cross-check. CI also enforces
-# this independently (pr-validate.yml), but doing it here means a
-# manual `sync-game-config.ps1` run flags drift too.
-$projectGodot = Join-Path `
-    (Split-Path -Parent $PSScriptRoot) "project.godot"
-if (Test-Path $projectGodot) {
-    $protoLine = Select-String -Path $projectGodot `
-        -Pattern '^config/protocol_version\s*=\s*(\d+)' `
-        -ErrorAction SilentlyContinue
-    if ($protoLine) {
-        $projectProto = [int]$protoLine.Matches[0].Groups[1].Value
-        $yamlProto = [int]$config["protocol_version"]
-        if ($projectProto -ne $yamlProto) {
-            Write-Error @"
-protocol_version mismatch:
-  game.yaml          = $yamlProto
-  project.godot      = $projectProto
-Both must match. Bump whichever is behind, then re-run.
+# register_game REPLACES the whole config blob, so a field missing
+# from this payload is a field deleted from production. Guard the
+# fields whose loss would break live matchmaking or allocation.
+$mustSurvive = @(
+    "matchmaker_rules", "allocator_mode", "edgegap_app_slug",
+    "transports", "ports", "legal", "leaderboards", "auth_providers"
+)
+$missing = $mustSurvive | Where-Object { -not $config.ContainsKey($_) }
+if ($missing) {
+    Write-Error @"
+Refusing to POST — game.yaml is missing field(s) that register_game
+would then delete from the live config: $($missing -join ', ')
 "@
-            exit 2
-        }
-    }
+    exit 2
 }
 
 $json = $config | ConvertTo-Json -Depth 20 -Compress

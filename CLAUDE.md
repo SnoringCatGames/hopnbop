@@ -237,13 +237,27 @@ If the changes require users to re-consent, also bump
   table), field `display_version`. This is what `version_check`
   actually reports: `runtime/version.go` overrides the env-var
   value with the per-game config whenever the caller passes a
-  `game_id`, and every real client does. Synced by
-  `scripts/sync-game-version.ps1`, which the web deploy runs;
-  run it standalone after a server-only deploy. It is
-  read-modify-write on purpose — `register_game` replaces the
-  whole config blob (matchmaker modes, allocator_mode,
-  `edgegap_app_version`, legal paths), so never hand-build that
-  payload.
+  `game_id`, and every real client does.
+
+  **You don't hand-maintain this.** `game.yaml` deliberately does
+  not define `display_version` or `protocol_version`;
+  `scripts/sync-game-config.ps1` injects both from `project.godot`
+  and POSTs the merged config to the `register_game` RPC. The web
+  deploy runs it; run it standalone after a server-only deploy or
+  any other `game.yaml` change. `pr-validate` fails the build if
+  either field reappears in `game.yaml`.
+
+  `game.yaml` used to carry `display_version`, annotated "cosmetic
+  only; not CI-guarded" — it drifted to 0.39.0 while the shipped
+  client reached 0.47.0, so the backend reported a version that
+  hadn't existed for months. Deriving it removed the duplication
+  instead of adding a second guard to police it.
+
+  Note `register_game` **replaces the whole config blob**
+  (matchmaker modes, `allocator_mode`, `edgegap_app_version`,
+  legal paths). Never hand-POST it; a field missing from the
+  payload is deleted from production. The script guards the
+  load-bearing keys before it writes.
 - Nakama host's `runtime.env` `NAKAMA_GAME_VERSION` — **only the
   fallback** for `version_check` calls that pass no `game_id`.
   Bumping it does NOT change what clients see; fix

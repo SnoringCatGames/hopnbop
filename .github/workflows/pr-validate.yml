@@ -50,35 +50,48 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check protocol_version parity
+      - name: Check game.yaml does not define derived versions
         run: |
-          # game.yaml::protocol_version MUST equal
-          # project.godot::application/config/protocol_version,
-          # or the runtime's version_check RPC will start
-          # rejecting every client right after deploy.
-          # See MULTI_GAME_ROADMAP.md Stage 2.7 and
-          # PLATFORM_ARCHITECTURE.md "Per-game protocol versioning".
+          # This used to check that game.yaml::protocol_version
+          # equalled project.godot's. That parity check existed only
+          # because the value was duplicated in both files — and its
+          # unguarded sibling, display_version, duly drifted to
+          # 0.39.0 against a 0.47.0 client.
+          #
+          # Both are now injected from project.godot by
+          # scripts/sync-game-config.ps1, so the duplication is gone
+          # and there is nothing to keep in parity. What's worth
+          # guarding instead is the ownership rule: if someone
+          # re-adds either field to game.yaml, a stale literal would
+          # silently win over project.godot and we'd be back to
+          # square one.
+          #
+          # See "WHO OWNS WHAT" at the top of game.yaml.
           set -e
           if [ ! -f game.yaml ]; then
             echo "::error::game.yaml missing at repo root"
             exit 1
           fi
-          yaml_v=$(grep -E '^protocol_version:' game.yaml \
-            | head -n1 | awk '{print $2}')
-          godot_v=$(grep -E '^config/protocol_version' \
+          fail=0
+          for field in protocol_version display_version; do
+            if grep -qE "^${field}:" game.yaml; then
+              echo "::error::game.yaml must not define ${field} — it is injected from project.godot at sync time. Remove it from game.yaml and bump it in project.godot instead."
+              fail=1
+            fi
+          done
+          [ "$fail" -eq 0 ] || exit 1
+          # Both must still be readable from project.godot, since the
+          # sync now depends on them entirely.
+          godot_proto=$(grep -E '^config/protocol_version' \
             project.godot | head -n1 | awk -F'=' '{print $2}' \
             | tr -d ' \r')
-          echo "game.yaml::protocol_version    = $yaml_v"
-          echo "project.godot::protocol_version = $godot_v"
-          if [ -z "$yaml_v" ] || [ -z "$godot_v" ]; then
-            echo "::error::could not parse protocol_version from one of the files"
+          godot_ver=$(sed -nE 's/^config\/version="(.+)"$/\1/p' \
+            project.godot | head -n1)
+          if [ -z "$godot_proto" ] || [ -z "$godot_ver" ]; then
+            echo "::error::could not read config/protocol_version or config/version from project.godot"
             exit 1
           fi
-          if [ "$yaml_v" != "$godot_v" ]; then
-            echo "::error::protocol_version mismatch: game.yaml=$yaml_v vs project.godot=$godot_v"
-            exit 1
-          fi
-          echo "ok: protocol_version matches ($yaml_v)"
+          echo "ok: game.yaml defers to project.godot (protocol=$godot_proto version=$godot_ver)"
       - name: Check legal_version parity
         run: |
           # game.yaml::legal.legal_version MUST equal

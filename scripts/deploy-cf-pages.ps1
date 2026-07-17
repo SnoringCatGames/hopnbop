@@ -316,19 +316,28 @@ Run "wrangler pages deploy" {
 }
 
 # --------------------------------------------------------------
-# 8. Push config/version into the platform's per-game config as
-#    display_version, so version_check stops reporting a stale
-#    version. Same manual-step-that-rotted problem as version.json
-#    above: this drifted to 0.39.0 against a 0.46.0 client because
-#    nothing automated it.
+# 8. Sync game.yaml into the platform's per-game config, with
+#    protocol_version / display_version injected from project.godot.
+#
+#    Same manual-step-that-rotted problem as version.json above:
+#    game.yaml's display_version was documented "cosmetic only; not
+#    CI-guarded" and drifted to 0.39.0 while the shipped client
+#    reached 0.47.0, so version_check reported a version that hadn't
+#    existed for months. Nothing ran this script.
 #
 #    Runs after the Pages deploy: if it fails, the web deploy has
 #    already landed and is fine, and the fix is to re-run
-#    sync-game-version.ps1 on its own. Deliberately not swallowed
-#    — a silent warning here is exactly how the drift went
-#    unnoticed for months.
+#    sync-game-config.ps1 on its own. Deliberately not swallowed —
+#    a silent warning here is exactly how the drift went unnoticed.
 # --------------------------------------------------------------
-& "$PSScriptRoot\sync-game-version.ps1"
+#    NAKAMA_HTTP_KEY comes from the credentials.env load above.
+if (-not $env:NAKAMA_HTTP_KEY) {
+	throw "NAKAMA_HTTP_KEY missing in credentials.env (needed to sync game.yaml)"
+}
+& "$PSScriptRoot\sync-game-config.ps1"
+if ($LASTEXITCODE -ne 0) {
+	throw "game-config sync failed (web deploy itself succeeded). Fix and re-run scripts/sync-game-config.ps1."
+}
 
 Write-Host ""
 Write-Host "Deploy done. Verify:" -ForegroundColor Green
