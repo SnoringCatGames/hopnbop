@@ -206,3 +206,14 @@ try {
 Write-Host ""
 Write-Host "=== register_game response ==="
 $response | ConvertTo-Json -Depth 5
+
+# Explicit success exit — do not remove.
+#
+# `& script.ps1` does NOT reset $LASTEXITCODE when the script returns
+# normally; it leaves whatever the last native command set, and it is
+# $null in a fresh session. Callers therefore cannot distinguish
+# "succeeded" from "left a stale 2 lying around", and `if
+# ($LASTEXITCODE -ne 0)` is true for $null. Both callers
+# (deploy-cf-pages.ps1 and release.yml) gate on $LASTEXITCODE, so
+# without this they'd report a false failure on a clean sync.
+exit 0

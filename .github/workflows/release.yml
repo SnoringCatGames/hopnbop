@@ -152,6 +152,36 @@ jobs:
           npx -y wrangler@latest pages deploy . \
             --project-name=$PAGES_PROJECT --branch=main
 
+      - name: Sync game.yaml into the platform per-game config
+        # Mirrors the same step in scripts/deploy-cf-pages.ps1, which
+        # is what the LOCAL deploy runs. This job has its own inline
+        # deploy rather than calling that script, so without this step
+        # a tagged release ships a web build with a correct
+        # version.json while the backend keeps reporting the previous
+        # display_version — reintroducing exactly the drift that left
+        # version_check on 0.39.0 against a 0.47.0 client.
+        #
+        # Also picks up any game.yaml change in the release (e.g. a
+        # hand-bumped edgegap_app_version / local_image_ref, which the
+        # game-server job pushes an image for but never writes back).
+        #
+        # Runs after the Pages deploy: a failure here means the web
+        # build is live but the config didn't sync, and the fix is to
+        # run scripts/sync-game-config.ps1 standalone.
+        shell: pwsh
+        env:
+          NAKAMA_HTTP_KEY: ${{ secrets.NAKAMA_HTTP_KEY }}
+        run: |
+          if (-not $env:NAKAMA_HTTP_KEY) {
+            Write-Error "NAKAMA_HTTP_KEY secret not available to this job"
+            exit 1
+          }
+          ./scripts/sync-game-config.ps1
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "game-config sync failed (the web deploy itself succeeded)"
+            exit 1
+          }
+
   discord-notify:
     name: Discord release notes
     needs: [game-server, web-client]
