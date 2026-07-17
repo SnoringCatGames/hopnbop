@@ -233,10 +233,27 @@ If the changes require users to re-consent, also bump
 **Synced locations:**
 - Edgegap registry image tag (set by `game-server.yml`'s
   workflow input).
-- Nakama host's `runtime.env` `NAKAMA_GAME_VERSION` and
-  `EDGEGAP_APP_VERSION` (manual; bump after each deploy).
-  Surfaced by the `version_check` runtime RPC and exercised
-  by client startup.
+- The platform's **per-game config row** (Postgres `games`
+  table), field `display_version`. This is what `version_check`
+  actually reports: `runtime/version.go` overrides the env-var
+  value with the per-game config whenever the caller passes a
+  `game_id`, and every real client does. Synced by
+  `scripts/sync-game-version.ps1`, which the web deploy runs;
+  run it standalone after a server-only deploy. It is
+  read-modify-write on purpose — `register_game` replaces the
+  whole config blob (matchmaker modes, allocator_mode,
+  `edgegap_app_version`, legal paths), so never hand-build that
+  payload.
+- Nakama host's `runtime.env` `NAKAMA_GAME_VERSION` — **only the
+  fallback** for `version_check` calls that pass no `game_id`.
+  Bumping it does NOT change what clients see; fix
+  `display_version` instead (above). It drifted to 0.39.0
+  against a 0.47.0 client precisely because the old note here
+  claimed it was the surfaced value.
+- Nakama host's `runtime.env` `EDGEGAP_APP_VERSION` (manual).
+  Also superseded per-game by the config's
+  `edgegap_app_version`, which the runtime prefers and falls
+  back to the env var only when blank.
 - `export_presets.cfg` `file_version`/`product_version`
   (optional, currently empty).
 
@@ -1265,13 +1282,20 @@ in scripts:
 
 **Editing `.tscn` files directly (without the Godot editor):**
 Scene files can be edited as text. The key fields are:
-- `load_steps=N` in the header — increment N for each new
-  `[ext_resource]` entry added. **Only applies to scenes last
-  saved by Godot 4.5 or earlier.** Godot 4.6 dropped
-  `load_steps` from the TSCN format (and added unique node
-  IDs), so a scene the current editor has re-saved won't have
-  the field at all. If it's absent, don't add it back; if it's
-  present, keep it accurate until Godot rewrites the file.
+- `load_steps=N` in the header — **ignore it. Do not maintain
+  it.** Godot 4.6 removed `load_steps` from the TSCN format
+  (and added unique node IDs). It only ever fed a load-time
+  progress bar, was never validated, and upstream dropped it
+  precisely because it churned on every rebase. Progress now
+  comes from `ResourceLoader.load_threaded_get_status()`.
+  Verified on 4.7.1: a scene declaring `load_steps=999` with
+  one resource, and a scene with no `load_steps` at all, both
+  load with zero errors. `src/core/screens_main.tscn` already
+  carries a wrong value (14, should be 15) and has shipped
+  that way for months. If the field is absent, don't add it;
+  if present, leave it alone — Godot drops it the next time it
+  saves the file. Don't do a bulk normalization pass; that's
+  98 files of pure churn for no behavior change.
 - `[ext_resource type="PackedScene" path="res://..." id="X"]`
   — declares a scene dependency. Use a unique `id` string.
   `uid=` is optional; omit it if the scene has no UID yet.

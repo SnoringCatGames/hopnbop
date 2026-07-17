@@ -315,6 +315,21 @@ Run "wrangler pages deploy" {
 	} finally { Pop-Location }
 }
 
+# --------------------------------------------------------------
+# 8. Push config/version into the platform's per-game config as
+#    display_version, so version_check stops reporting a stale
+#    version. Same manual-step-that-rotted problem as version.json
+#    above: this drifted to 0.39.0 against a 0.46.0 client because
+#    nothing automated it.
+#
+#    Runs after the Pages deploy: if it fails, the web deploy has
+#    already landed and is fine, and the fix is to re-run
+#    sync-game-version.ps1 on its own. Deliberately not swallowed
+#    — a silent warning here is exactly how the drift went
+#    unnoticed for months.
+# --------------------------------------------------------------
+& "$PSScriptRoot\sync-game-version.ps1"
+
 Write-Host ""
 Write-Host "Deploy done. Verify:" -ForegroundColor Green
 Write-Host "  https://$Project.pages.dev"
