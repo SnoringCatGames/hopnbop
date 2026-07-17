@@ -7,13 +7,33 @@
 # its in-process cache. This script parses game.yaml, converts
 # to JSON, and POSTs it.
 #
-# When to run:
+# STATUS 2026-07-16: NOT OPERATIONAL. This script cannot run as-is.
+#   - `game.yaml` does not exist in this repo and never has (no
+#     commit has ever added it), so the -GameYamlPath default
+#     always misses and the script exits 2.
+#   - It is NOT wired into release.yml. The line below claiming
+#     otherwise was aspirational and is left corrected, not
+#     deleted, because the design intent is still sound.
+#
+#   Consequence: the per-game row was hand-registered once and
+#   nothing has updated it since. display_version drifted to
+#   0.39.0 against a 0.47.0 client. See scripts/sync-game-version.ps1,
+#   which currently keeps display_version honest by patching the
+#   live config in place (read-modify-write), no game.yaml needed.
+#
+#   To finish this script instead: seed game.yaml from the live
+#   config (`get_game_config` for hopnbop), wire this into
+#   release.yml, and decide what owns `edgegap_app_version` /
+#   `local_image_ref` — the game-server deploy flow bumps those,
+#   so a git-sourced full-config sync can silently revert a newer
+#   server image. That unresolved question is why the safe partial
+#   sync exists in the meantime.
+#
+# When to run (once the above is resolved):
 #   - After every runtime redeploy that bumped game.yaml content
 #     (since the cache is in-process and lost on container
 #     restart, the row in Postgres is the durable source — but
 #     no harm in re-running on every deploy).
-#   - Wired into release.yml so a tagged release syncs config
-#     automatically.
 #
 # Usage:
 #   pwsh scripts/sync-game-config.ps1

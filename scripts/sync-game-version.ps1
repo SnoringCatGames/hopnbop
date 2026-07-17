@@ -11,12 +11,22 @@
     is only the no-game_id fallback, so bumping that env var does
     NOT fix a stale version_check response.
 
-    That per-game row is hand-registered: nothing in this repo or
-    the platform repo calls `register_game`. It drifted to 0.39.0
-    while project.godot reached 0.47.0. Nothing breaks (compatibility
-    keys off protocol_version, and the client ignores the reported
+    That per-game row is effectively hand-registered. A fuller
+    mechanism was designed — scripts/sync-game-config.ps1 POSTs a
+    whole game.yaml to `register_game` — but it never became
+    operational: `game.yaml` has never existed in this repo, and the
+    script was never wired into release.yml despite its header once
+    claiming so. So the row was registered by hand once and nothing
+    could move it: display_version drifted to 0.39.0 while
+    project.godot reached 0.47.0. Nothing breaks (compatibility keys
+    off protocol_version, and the client ignores the reported
     game_version) but every ops surface reporting the live version is
-    wrong. This script removes the manual step.
+    wrong.
+
+    This script is the narrow, safe half of that job: keep
+    display_version derived from project.godot, and touch nothing
+    else. If sync-game-config.ps1 is ever finished, this becomes
+    redundant and should be folded into it.
 
     Read-modify-write, deliberately:
 
