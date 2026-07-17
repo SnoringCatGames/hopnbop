@@ -1,4 +1,4 @@
-extends Object
+extends Logger
 class_name GutErrorTracker
 
 # ------------------------------------------------------------------------------
@@ -11,15 +11,13 @@ static var register_loggers = true
 
 static func register_logger(which):
 	if(register_loggers and !registered_loggers.has(which)):
-		# Note: Engine.add_logger() was removed in Godot 4.x
-		# Error tracking in headless mode works without explicit logger registration
+		OS.add_logger(which)
 		registered_loggers[which] = get_stack()
 
 
 static func deregister_logger(which):
 	if(registered_loggers.has(which)):
-		# Note: Engine.remove_logger() was removed in Godot 4.x
-		# Error tracking cleanup works without explicit logger deregistration
+		OS.remove_logger(which)
 		registered_loggers.erase(which)
 
 
@@ -77,6 +75,17 @@ func _is_error_failable(error : GutTrackedError):
 			is_it = treat_engine_errors_as == GutUtils.TREAT_AS.FAILURE
 	return is_it
 
+
+# Marks any errors that GUT should not fail a test for based on internal,
+# non-alterable rules.  This is idealogically differnet than _is_error_failable.
+func _auto_handle_error(err : GutTrackedError):
+	# Issue 842, when the source has an await and a declared return type this
+	# error can occur when doubling.  It does not appear to affect anything.
+	if(err.file == 'modules/gdscript/gdscript_byte_codegen.cpp' and err.function == 'write_return'):
+		err.handled = true
+		print("[GUT]  \"Unresolved return\" has been ignored.  See https://github.com/bitwes/Gut/issues/842 for details.")
+
+
 # ----------------
 #endregion
 #region Godot's Logger Overrides
@@ -85,8 +94,7 @@ func _is_error_failable(error : GutTrackedError):
 # Godot's Logger virtual method for errors
 func _log_error(function: String, file: String, line: int,
 	code: String, rationale: String, editor_notify: bool,
-	error_type: int, script_backtraces: Array) -> void:
-
+	error_type: int, script_backtraces: Array[ScriptBacktrace]) -> void:
 		add_error(function, file, line,
 			code, rationale, editor_notify,
 			error_type, script_backtraces)
@@ -189,7 +197,10 @@ func add_error(function: String, file: String, line: int,
 		err.line = line
 
 		errors.add(_current_test_id, err)
+		_auto_handle_error(err)
 
 		_mutex.unlock()
 
 		return err
+
+

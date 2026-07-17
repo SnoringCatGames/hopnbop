@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------
 # It keeps track of the orphans...so this is best name it could ever have.
 # ------------------------------------------------------------------------------
-class Orphanage:
+class GutOrphanage:
 	const UNGROUPED = "Outside Tests"
 	const SUBGROUP_SEP = '->'
 
@@ -11,10 +11,7 @@ class Orphanage:
 
 	# wrapper for stubbing
 	func _get_system_orphan_node_ids():
-		# Note: Node.get_orphan_node_ids() was added in Godot 4.4+
-		# For Godot 4.3 compatibility, return empty array
-		# Orphan tracking still works via Performance.OBJECT_ORPHAN_NODE_COUNT monitor
-		return []
+		return Node.get_orphan_node_ids()
 
 
 	func _make_group_key(group=null, subgroup=null):
@@ -85,7 +82,7 @@ class Orphanage:
 # ------------------------------------------------------------------------------
 var _strutils = GutStringUtils.new()
 
-var orphanage : Orphanage = Orphanage.new()
+var orphanage : GutOrphanage = GutOrphanage.new()
 var logger = GutUtils.get_logger()
 var autofree = GutUtils.AutoFree.new()
 

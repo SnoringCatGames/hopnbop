@@ -1342,15 +1342,32 @@ in-tree GUT compliance suite for the client SDK.
 
 ## Testing with GUT
 
-This project uses GUT (Godot Unit Test) 9.x for testing. Tests are organized
+This project uses GUT (Godot Unit Test) for testing. Tests are organized
 in `res://test/` with separate directories for unit and integration tests.
+
+**GUT is version-matched to the engine — keep them in lockstep.**
+GUT ships a release per Godot minor (9.5.0 → 4.5, 9.6.0 → 4.6,
+9.7.x → 4.7), and a mismatch does not fail loudly. On 4.7.1 with
+GUT 9.5.0, `gut_loader.gd`'s `_static_init` dies assigning a Nil
+`ProjectSettings.get(...)` to a typed bool, GUT reports "Nothing
+was run", **and still exits 0** — so `pr-validate`'s per-file loop
+goes green having executed zero tests. Vendored at `addons/gut/`
+(not a submodule); currently **9.7.1** for Godot 4.7.1. When you
+bump the engine, bump GUT in the same change and confirm a real
+test count, not just a zero exit code.
+
+After swapping the addon, delete `.godot/global_script_class_cache.cfg`
+and re-import. A stale cache surfaces as `Parse Error: Identifier
+"GutConstants" not declared` — see "Web Build Parse Errors" for
+the same failure class.
 
 ### Test File Structure
 
 - Files must start with `test_` prefix (e.g., `test_rollback_buffer.gd`)
 - Extend `GutTest` base class
 - Use `func test_*()` naming for test methods
-- Configuration in `res://.gutconfig.json`
+- No `.gutconfig.json` exists in this repo; CI and local runs pass
+  flags explicitly on the command line.
 
 ### Common Assertions
 
@@ -1665,8 +1682,13 @@ godot --headless -s --path . addons/gut/gut_cmdln.gd \
 - Run specific test files rather than directories for reliability:
   ```bash
   godot --headless -s --path . addons/gut/gut_cmdln.gd \
-	-gtest=res://test/unit/scaffolder/test_circular_buffer.gd -gexit
+	-gtest=res://test/unit/core/test_match_state_get_player_score.gd -gexit
   ```
+  (The old example here pointed at
+  `res://test/unit/scaffolder/test_circular_buffer.gd`, which moved
+  into the `rollback_netcode` submodule when the netcode was
+  extracted. A `-gtest=` path that doesn't exist reports "Could not
+  find script" and still exits 0.)
 - Directory-based runs (`-gdir=res://test/unit`) sometimes fail to
   discover tests
 - Always use `-gexit` flag for CI/CD to get proper exit codes

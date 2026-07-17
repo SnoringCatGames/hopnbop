@@ -124,12 +124,17 @@ func _make_info(editor, script, test_script_flag):
 # Events
 # -------------
 
-# Fired whenever the script changes.  This does not fire if you select something
-# other than a script from the tree.  So if you click a help file and then
-# back to the same file, then this will fire for the same script
+# Fired whenever the script changes.  This does not fire for help files.  If
+# you click a help file and then back to the same file, then this will fire
+# for the same script
+#
+# This does fire for some non-script files such as .cfg, .json and .md files,
+# but the passed in value will be null.
 #
 # This can fire multiple times for the same script when a script is opened.
 func _on_editor_script_changed(script):
+	if(script == null):
+		return
 	_last_line = -1
 	_current_script = script
 	_current_editor_base = _current_script_editor.get_current_editor()
@@ -173,8 +178,6 @@ var _scripts_that_have_been_warned_about = []
 var _we_have_warned_enough = false
 var _max_warnings = 5
 func is_test_script(script):
-	if script == null:
-		return false
 	var base = script.get_base_script()
 	if(base == null and script.get_script_method_list().size() == 0 and _could_be_test_script(script)):
 		if(OS.is_stdout_verbose() or (!_scripts_that_have_been_warned_about.has(script.resource_path) and !_we_have_warned_enough)):

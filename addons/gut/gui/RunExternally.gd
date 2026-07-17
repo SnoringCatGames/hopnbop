@@ -146,8 +146,7 @@ func _read_non_blocking_stdio():
 
 
 func _run_non_blocking(options):
-	# Note: execute_with_pipe() only takes 2 params in Godot 4.x (removed blocking param)
-	_pipe_results = OS.execute_with_pipe(OS.get_executable_path(), options)
+	_pipe_results = OS.execute_with_pipe(OS.get_executable_path(), options, false)
 	_std_thread = Thread.new()
 	_std_thread.start(_read_non_blocking_stdio)
 	btn_kill_it.visible = true
