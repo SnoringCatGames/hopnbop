@@ -32,9 +32,21 @@ extends Node
 ##
 ## === Active investigation (clean up when resolved) ===
 ##
-## Breadcrumbs are currently planted around the end-of-
-## match flow to diagnose an intermittent web-client
-## infinite loop. Every planted call carries the marker
+## Status as of 2026-07-16: still open, not abandoned.
+## Breadcrumbs went in 2026-05-18 and development paused
+## shortly after, so the lack of movement since is a
+## development gap, not evidence the bug is gone.
+##
+## Two symptoms were under investigation. The
+## black-screen-after-match one was root-caused to a sticky
+## `_has_transitioned_to_game_over` flag and fixed in
+## f2fc40ea. The other, a GAME_OVER -> LOBBY 0.5s
+## auto-dismiss, was never reproduced with breadcrumbs
+## attached and remains unexplained. That is what the
+## planted calls are still waiting for.
+##
+## Breadcrumbs are planted around the end-of-match flow.
+## Every planted call carries the marker
 ## `FIXME(end-of-match-debug)` on the line where the
 ## expression starts. To locate and remove:
 ##

@@ -72,7 +72,7 @@ jobs:
           submodules: recursive
       - uses: chickensoft-games/setup-godot@v2
         with:
-          version: 4.7.0-beta1
+          version: 4.7.1-stable
           use-dotnet: false
           # --export-release needs the Linux server template at
           # ~/.local/share/godot/export_templates/4.7.beta1/.

@@ -4,7 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Hop 'n Bop is a multiplayer action game built with Godot 4.5. It implements client-side prediction with rollback reconciliation for networked gameplay.
+Hop 'n Bop is a multiplayer action game built with Godot 4.7.1. It implements client-side prediction with rollback reconciliation for networked gameplay.
+
+**Engine version:** `project.godot` declares
+`config/features=PackedStringArray("4.7", ...)`, and every CI
+workflow across this repo and both submodules pins
+`4.7.1-stable`. Keep those in sync when upgrading. Historical
+notes below that say "Godot 4.5" describe when a behavior was
+first observed, not the current engine.
 
 ## Platform infrastructure (read on demand)
 
@@ -1259,7 +1266,12 @@ in scripts:
 **Editing `.tscn` files directly (without the Godot editor):**
 Scene files can be edited as text. The key fields are:
 - `load_steps=N` in the header — increment N for each new
-  `[ext_resource]` entry added.
+  `[ext_resource]` entry added. **Only applies to scenes last
+  saved by Godot 4.5 or earlier.** Godot 4.6 dropped
+  `load_steps` from the TSCN format (and added unique node
+  IDs), so a scene the current editor has re-saved won't have
+  the field at all. If it's absent, don't add it back; if it's
+  present, keep it accurate until Godot rewrites the file.
 - `[ext_resource type="PackedScene" path="res://..." id="X"]`
   — declares a scene dependency. Use a unique `id` string.
   `uid=` is optional; omit it if the scene has no UID yet.

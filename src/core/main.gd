@@ -104,6 +104,20 @@ func _ready() -> void:
 	(G.window_manager
 		.position_window_in_preview_mode())
 
+	_set_web_boot_beacon()
+
+
+## Sets a JS flag that the nightly web smoke check polls to
+## confirm the client actually booted. Reaching the end of
+## _ready proves the engine started, GDScript compiled, the
+## autoloads resolved, and settings.tres loaded. That is the
+## exact surface the web parse-error cascades break, and it
+## is invisible to an HTTP probe of the page. See
+## .github/workflows/nightly-smoke.yml.
+func _set_web_boot_beacon() -> void:
+	if not OS.has_feature("web"):
+		return
+	JavaScriptBridge.eval("window.__hopnbop_booted = true;")
 
 
 ## Returns true if this preview process should shut down

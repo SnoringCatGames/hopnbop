@@ -124,6 +124,33 @@ if (-not $SkipExport) {
 }
 
 # --------------------------------------------------------------
+# 1b. Regenerate web/version.json from project.godot.
+#
+# The client fetches this at boot (main.gd::_check_web_build_version)
+# and hard-refreshes itself when it doesn't match the version baked
+# into the build, which is how a stale cached client gets pushed onto
+# a new deploy. It only works if this file tracks project.godot.
+#
+# It used to be hand-maintained, and drifted: it sat at 0.30.0 from
+# 2026-04-11 while the deployed build reached 0.46.0, so every visitor
+# read it, concluded *itself* stale, and burned one spurious hard
+# refresh on first load (the ?v_refreshed= loop breaker kept it to
+# one). Deriving it here removes the manual step that rotted.
+#
+# Runs unconditionally, outside the -SkipExport block: the file must
+# match project.godot on every deploy, not just re-exporting ones.
+# --------------------------------------------------------------
+$versionLine = Select-String -Path "$repoRoot\project.godot" `
+	-Pattern '^config/version="(.+)"$'
+if (-not $versionLine) {
+	throw "Couldn't read config/version from project.godot — refusing to deploy a client whose version.json would be wrong."
+}
+$gameVersion = $versionLine.Matches[0].Groups[1].Value
+@{ game_version = $gameVersion } | ConvertTo-Json |
+	Set-Content "$web\version.json" -Encoding UTF8
+Write-Host "version.json -> $gameVersion"
+
+# --------------------------------------------------------------
 # 2a. Pre-flight R2 hard cap. If the bucket is already at or
 # above $R2_HARD_GB (default 9.5 GB), refuse to upload more.
 # Free tier is 10 GB; this guards against silently slipping

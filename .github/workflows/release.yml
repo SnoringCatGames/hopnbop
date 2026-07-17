@@ -21,7 +21,7 @@ on:
         required: true
 
 env:
-  GODOT_VERSION: 4.7.0-beta1
+  GODOT_VERSION: 4.7.1-stable
 
 jobs:
   game-server:
@@ -57,6 +57,28 @@ jobs:
             build/web/index.html || true
           test -s build/web/index.html
           cp -r build/web/* web/ 2>/dev/null || true
+
+      - name: Regenerate version.json from project.godot
+        # The client fetches this at boot and hard-refreshes itself
+        # when it doesn't match the version baked into the build,
+        # which is how a stale cached client gets pushed onto a new
+        # deploy. It only works if this tracks project.godot.
+        #
+        # It used to be hand-maintained and drifted: stuck at 0.30.0
+        # from 2026-04-11 while the deployed build reached 0.46.0, so
+        # every visitor read it, concluded *itself* stale, and burned
+        # a spurious hard refresh on first load. Mirrors the same step
+        # in scripts/deploy-cf-pages.ps1.
+        run: |
+          VERSION=$(sed -nE 's/^config\/version="(.+)"$/\1/p' project.godot)
+          if [ -z "$VERSION" ]; then
+            echo "::error::couldn't read config/version from project.godot"
+            exit 1
+          fi
+          jq -n --arg v "$VERSION" '{game_version: $v}' > web/version.json
+          echo "version.json -> $VERSION"
+          cat web/version.json
+
       - name: Deploy to Cloudflare Pages + R2
         # Heavy engine assets (.wasm ~38 MB, .pck) bypass Pages'
         # 25 MiB/file cap by living on R2; the rest goes to Pages.
