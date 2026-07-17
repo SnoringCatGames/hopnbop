@@ -143,9 +143,20 @@ the provisioning scripts at
 
 `game-server.yml` builds `Dockerfile.edgegap`, pushes to the
 Edgegap registry as `v<N>`, and is then registered as a new
-Edgegap app version via the dashboard. Bump
-`EDGEGAP_APP_VERSION` on the Nakama host's `runtime.env` so the
-matchmaker hook allocates the new version.
+Edgegap app version via the dashboard.
+
+Then bump `edgegap_app_version` in **`game.yaml`** to the new
+`v<N>` and run `scripts/sync-game-config.ps1`. That file is the
+source of truth: `fleet_allocator.go` prefers the per-game
+config's value and only falls back to the host's
+`EDGEGAP_APP_VERSION` env var when it is blank (bootstrap
+deploys before any `game.yaml` has been synced). Bumping the
+env var alone does nothing for hopnbop.
+
+`game-server.yml` pushes the image tag but does NOT write
+`edgegap_app_version` back, and nothing CI-checks it. Bump it
+in the same change that runs the workflow, or the allocator
+keeps pulling the old tag.
 
 Required GH secrets: `EDGEGAP_TOKEN`, `EDGEGAP_REGISTRY_*`,
 `EDGEGAP_REGISTRY_PROJECT`, `SUBMODULE_PAT`. The Harbor robot
@@ -206,8 +217,17 @@ locations:
    `legal/en/privacy.txt`, `legal/en/data_deletion.txt`
    (and any translated variants in `legal/{locale}/`)
 
-If the changes require users to re-consent, also bump
-`LEGAL_VERSION` in `src/core/auth_token_store.gd`.
+If the changes require users to re-consent, bump the legal
+version in **both** places, in the same commit:
+
+1. `game.yaml` → `legal.legal_version` (the authoritative value;
+   the runtime surfaces it via `version_check`).
+2. `src/core/legal_version.gd` → `const LEGAL_VERSION` (the
+   offline / pre-fetch fallback).
+
+They must match: `pr-validate.yml` fails the build if they
+drift. Run `scripts/sync-game-config.ps1` afterwards, or the
+`games` table keeps serving the old value.
 
 ### Prerequisites (All Deploys)
 
@@ -223,6 +243,25 @@ If the changes require users to re-consent, also bump
   + on the Nakama host's `runtime.env`.
 
 ### Version Management
+
+**Every version in this repo, who owns it, when it bumps.** If a
+version is not in this table, it does not exist. Do not invent
+new ones; add a row here first.
+
+| Version | Owner (edit here) | Bump when | Enforced by |
+|---|---|---|---|
+| `config/version` | `project.godot` | every redeploy | derived into `web/version.json` + `game.yaml::display_version` at deploy |
+| `config/protocol_version` | `project.godot` | breaking realtime protocol change only | `pr-validate` (must not reappear in `game.yaml`) |
+| `legal_version` | `game.yaml::legal.legal_version` **and** `src/core/legal_version.gd` | legal text changes needing re-consent | `pr-validate` parity check (hard fail) |
+| `edgegap_app_version` | `game.yaml` | every game-server image push | **nothing — hand-maintained, see below** |
+| `schema_version` | `game.yaml` | only when the platform's per-game config schema changes (platform-driven) | runtime rejects non-positive |
+| `file_version` / `product_version` | `export_presets.cfg` | never (intentionally empty) | — |
+| `rollback_netcode` / `snoringcat_platform_client` | their own repos | see those repos' CLAUDE.md | submodule SHA pin |
+| `addons/gut` | vendored upstream (9.7.1) | only when re-vendoring GUT | — |
+
+**Derived — never hand-edit:** `web/version.json`,
+`game.yaml::display_version`, `game.yaml::protocol_version`.
+These are generated from `project.godot` at deploy/sync time.
 
 **Single source of truth:** `project.godot`
 - `config/version="X.Y.Z"` (display version, bump on
@@ -264,10 +303,13 @@ If the changes require users to re-consent, also bump
   `display_version` instead (above). It drifted to 0.39.0
   against a 0.47.0 client precisely because the old note here
   claimed it was the surfaced value.
-- Nakama host's `runtime.env` `EDGEGAP_APP_VERSION` (manual).
-  Also superseded per-game by the config's
+- Nakama host's `runtime.env` `EDGEGAP_APP_VERSION` — **only the
+  bootstrap fallback**, for allocations before any `game.yaml`
+  has been synced. Superseded per-game by the config's
   `edgegap_app_version`, which the runtime prefers and falls
-  back to the env var only when blank.
+  back to the env var only when blank. Do not bump this after a
+  game-server deploy; bump `game.yaml` (see "Game server deploy
+  (Edgegap)") and sync.
 - `export_presets.cfg` `file_version`/`product_version`
   (optional, currently empty).
 
