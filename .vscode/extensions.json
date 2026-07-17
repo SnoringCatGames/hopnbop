@@ -3,17 +3,10 @@
         // Godot development
         "geequlim.godot-tools",
 
-        // C++ for GDExtension development
-        "ms-vscode.cpptools",
-        "ms-vscode.cpptools-extension-pack",
-
-        // WSL integration
-        "ms-vscode-remote.remote-wsl",
-
         // Git integration
         "eamodio.gitlens",
 
-        // Python (for build scripts)
+        // Python — infra/game-server/patch-webrtc-portrange.py
         "ms-python.python",
 
         // Markdown preview

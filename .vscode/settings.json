@@ -50,29 +50,24 @@
 			"icon": "terminal-linux"
 		}
 	},
-	// C++ settings for GDExtension development
-	"[cpp]": {
-		"editor.tabSize": 4,
-		"editor.insertSpaces": false
-	},
-	"C_Cpp.default.includePath": [
-		"${workspaceFolder}/gamelift-gdextension/src",
-		"${workspaceFolder}/gamelift-gdextension/godot-cpp/include",
-		"${workspaceFolder}/gamelift-gdextension/gamelift-server-sdk/cmake-build/prefix/include"
-	],
-	"C_Cpp.default.compilerPath": "/usr/bin/g++",
-	"C_Cpp.default.cppStandard": "c++17",
+	// No C++/CMake settings here on purpose. The C_Cpp includePath
+	// and cmake.sourceDirectory that used to live here pointed into
+	// gamelift-gdextension/, which was deleted with the rest of the
+	// GameLift surface in Phase F (2026-05-03). They outlived it by
+	// two months, pointing at paths that don't exist, which is just
+	// IntelliSense and CMake-extension errors on every open. This
+	// repo has no local C++ source: the only GDExtension it consumes
+	// is addons/webrtc/ (prebuilt binaries), and the patched
+	// webrtc-native build happens inside Dockerfile.edgegap, not in
+	// the editor.
 	// Search settings
 	"search.exclude": {
 		"**/.godot": true,
 		"**/bin": true,
-		"**/.scons_cache": true,
-		"**/godot-cpp/gen": true,
-		"**/cmake-build": true
+		"**/.scons_cache": true
 	},
 	"chat.tools.terminal.autoApprove": {
 		"godot": true,
 		"Out-File": true
-	},
-	"cmake.sourceDirectory": "C:/Users/lsl/Repositories/hopnbop/gamelift-gdextension/vcpkg/ports/b64"
+	}
 }

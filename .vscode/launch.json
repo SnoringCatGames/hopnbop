@@ -13,7 +13,7 @@
             "additional_options": "--server --preview"
         },
         {
-            "name": "Godot: Debug Server (GameLift Mode)",
+            "name": "Godot: Debug Server (Standalone, no preview)",
             "type": "godot",
             "request": "launch",
             "project": "${workspaceFolder}",
@@ -62,27 +62,6 @@
             "request": "attach",
             "port": 6007,
             "address": "127.0.0.1"
-        },
-        {
-            "name": "Build: GameLift GDExtension",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "echo 'Building GameLift GDExtension...'",
-            "preLaunchTask": "GameLift: Build GDExtension (Release)"
-        },
-        {
-            "name": "GameLift: Setup Anywhere Fleet",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "echo 'See task output for Anywhere fleet setup instructions'",
-            "preLaunchTask": "GameLift: Setup Anywhere Fleet"
-        },
-        {
-            "name": "GameLift: Deploy to Cloud",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "echo 'GameLift deployment complete. Check task output for build ID and fleet creation instructions.'",
-            "preLaunchTask": "GameLift: Upload Build"
         }
     ],
     "compounds": [
