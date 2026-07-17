@@ -418,6 +418,15 @@ func close_app() -> void:
 			child.close_all()
 			break
 
+	# Best-effort "I'm leaving" so friends' lists drop us now
+	# rather than after the runtime's staleness window. Fire-and-
+	# forget: awaiting it would stall the quit behind a network
+	# round trip, and a hard kill or a closed browser tab never
+	# reaches this line anyway — the staleness TTL is the real
+	# backstop, this is just the fast path.
+	if not Platform.token_store.is_anonymous:
+		Platform.presence.announce_offline()
+
 	if G.utils.were_screenshots_taken:
 		Utils.open_screenshot_folder()
 	Netcode.print("Main.close_app", NetworkLogger.CATEGORY_CORE_SYSTEMS)

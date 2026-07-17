@@ -516,17 +516,30 @@ func _on_party_joined(
 	party_updated.emit(current_party)
 
 
+## A leave_party call succeeded. Nakama models "decline a pending
+## invite" as leaving the (state=3) group, so this fires for both
+## "I left my party" and "I declined an invite to some other
+## party" — the party_id is the only thing that tells them apart.
+##
+## Guarding on it matters: declining an invite to party B while an
+## active member of party A used to clear `current_party`
+## unconditionally, blanking the party UI until the ~60 s catch-up
+## poll restored it.
 func _on_party_left(data: Dictionary) -> void:
-	var disbanded: bool = data.get(
-		"disbanded", false)
+	var left_party_id: String = data.get("party_id", "")
+	# A declined invite never touches active-party state. Drop the
+	# invite locally and re-render; `_remove_pending_invite` already
+	# ran optimistically from decline_invite(), so this is just the
+	# confirmation path.
+	if (not left_party_id.is_empty()
+			and not current_party.is_empty()
+			and left_party_id != get_party_id()):
+		_remove_pending_invite(left_party_id)
+		return
 	_tear_down_chat()
-	if disbanded:
-		current_party.clear()
-		_known_invite_ids.clear()
-		party_disbanded.emit()
-	else:
-		current_party.clear()
-		party_updated.emit({})
+	current_party.clear()
+	_known_invite_ids.clear()
+	party_updated.emit({})
 
 
 func _on_party_kicked(
@@ -791,12 +804,12 @@ func _show_invite_dialog(
 ## socket drop is handled by the periodic poll in `_process` plus
 ## the immediate fetch on `socket_connected`.
 func _on_socket_notification(
-	subject: String,
-	content: Dictionary,
-	notification_id: String,
+	notification: Dictionary,
 ) -> void:
+	var subject: String = notification.get("subject", "")
 	if subject != _PARTY_STATE_CHANGED_SUBJECT:
 		return
+	var notification_id: String = notification.get("id", "")
 	# Dedup. The matchmaker socket and the notification socket may
 	# both deliver the same Nakama notification id while matchmaking
 	# is in flight — only fan out the first one.
