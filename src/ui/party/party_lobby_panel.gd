@@ -359,7 +359,10 @@ func _render_active_party() -> void:
 		_connect_row_clicked(ready_row)
 		_dynamic_nodes.append(ready_row)
 
-	if is_leader and not is_matchmaking:
+	# Start Match: available to every active member, not just the
+	# leader. The leader's mode / level / cheat prefs stay
+	# authoritative for the match regardless of who starts.
+	if not is_matchmaking:
 		var start_row := ActionRow.new()
 		start_row.setup_action(_on_start_match_pressed)
 		var all_ready := (
@@ -376,16 +379,19 @@ func _render_active_party() -> void:
 		_connect_row_clicked(start_row)
 		_dynamic_nodes.append(start_row)
 
-		# Stage 5.7 game-mode picker row. Leader-only and only
-		# meaningful when the server reported >1 mode. Cycles to
-		# the next mode on tap; followers see the change on the
-		# next party_state_changed fan-out. Hidden during
-		# matchmaking — changing modes mid-queue would require
-		# re-issuing every member's ticket and the runtime
-		# doesn't support that without a full leave/re-enqueue
-		# round trip.
+	# Stage 5.7 game-mode picker row. Leader-only (the mode is
+	# leader-authoritative for the match) and only meaningful when the
+	# server reported >1 mode. Cycles to the next mode on tap;
+	# followers see the change on the next party_state_changed
+	# fan-out. Hidden during matchmaking — changing modes mid-queue
+	# would require re-issuing every member's ticket and the runtime
+	# doesn't support that without a full leave/re-enqueue round trip.
+	if is_leader and not is_matchmaking:
 		_add_mode_cycle_row()
 
+	# Invite: available to every active member (the party_invite RPC
+	# performs the add server-side, so members don't need admin).
+	if not is_matchmaking:
 		var invite_row := ActionRow.new()
 		invite_row.setup_action(_on_open_friends_pressed)
 		invite_row.setup_label(

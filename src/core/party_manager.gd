@@ -413,11 +413,14 @@ func _patch_member_ready(
 			return
 
 
-## Start matchmaking for the whole party (leader only).
+## Start matchmaking for the whole party. Any active member may start,
+## not just the leader — but the leader's mode / level / cheat prefs
+## stay authoritative for the match (the runtime sources them
+## server-side regardless of who starts).
 ##
-## The leader creates a Nakama realtime party FIRST, then hands its
+## The starter creates a Nakama realtime party FIRST, then hands its
 ## id to the runtime, which tells every member to join it. Once the
-## roster is present the leader submits a single matchmaker ticket
+## roster is present the starter submits a single matchmaker ticket
 ## covering the group — see NakamaMatchmakerClient, which owns the
 ## wait-and-submit half because that's where the query and
 ## min/max rules live.
@@ -426,7 +429,7 @@ func _patch_member_ready(
 ## exist yet, so party creation can't be folded into the normal
 ## client_load_game() path.
 func start_party_matchmaking() -> void:
-	if not is_leader():
+	if not is_in_party():
 		return
 	if _is_starting_matchmaking:
 		return
@@ -443,8 +446,9 @@ func start_party_matchmaking() -> void:
 	# Re-check: creating the party awaited a round trip, and the
 	# user could have left (or been kicked) in the meantime. Firing
 	# the RPC now would either fail server-side or drag a party we
-	# no longer belong to into a match.
-	if not is_leader():
+	# no longer belong to into a match. Membership, not leadership —
+	# any member may start.
+	if not is_in_party():
 		await Platform.matchmaking.leave_rt_party()
 		_is_starting_matchmaking = false
 		return
