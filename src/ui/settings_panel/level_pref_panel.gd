@@ -98,3 +98,8 @@ func save_level_preferences() -> void:
 				prefs.set_preferred(
 					row.get_level_id())
 	G.local_settings.save_level_preferences(prefs)
+	# If the viewer leads a party, keep the party's stored level
+	# prefs in sync so a match started by any member uses the
+	# leader's choices.
+	if is_instance_valid(G.party_manager):
+		G.party_manager.sync_leader_prefs_to_party()

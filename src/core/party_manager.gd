@@ -120,6 +120,13 @@ var _local_party_action_taken := false
 ## party B" so we can switch channels.
 var _chat_joined_party_id := ""
 
+## True once we've pushed the leader's match prefs to the party since
+## gaining leadership. Reset whenever we're not the leader, so the
+## sync re-fires on the next false->true leadership transition. Keeps
+## the party's stored level + cheat prefs current with the leader's
+## for whichever member starts matchmaking.
+var _did_sync_leader_prefs := false
+
 
 func _ready() -> void:
 	Platform.party.party_created.connect(
@@ -365,6 +372,45 @@ func get_party_mode() -> String:
 	if not is_in_party():
 		return ""
 	return str(current_party.get("game_mode", ""))
+
+
+## Push the leader's current level + gameplay-cheat prefs to the
+## party so any member's matchmaking start (and the resulting match)
+## reflects the leader's choices. No-op when the viewer isn't the
+## leader. Called on gaining leadership and whenever the leader edits
+## their level prefs.
+func sync_leader_prefs_to_party() -> void:
+	if not is_in_party() or not is_leader():
+		return
+	var party_id := get_party_id()
+	if party_id.is_empty():
+		return
+	if is_instance_valid(G.local_settings):
+		var prefs := G.local_settings.load_level_preferences()
+		if prefs != null:
+			Platform.party.set_level_prefs(
+				party_id, prefs.to_dict())
+	Platform.party.set_cheat_prefs(
+		party_id,
+		G.settings.are_cheats_enabled,
+		_enabled_gameplay_cheats())
+
+
+## The gameplay-affecting cheats currently enabled in this client's
+## settings: gravity (bunniesinspace) and jump (pogostick, jetpack).
+## These are the ones the party leader controls for the match.
+## "lordoftheflies" (flies attraction) is is_networked in the cheat
+## registry but is treated as aesthetic here, so it is NOT
+## party-scoped — each client keeps its own.
+func _enabled_gameplay_cheats() -> Array:
+	var enabled := []
+	if G.settings.is_jetpack_enabled:
+		enabled.append("jetpack")
+	if G.settings.is_pogostick_enabled:
+		enabled.append("pogostick")
+	if G.settings.is_bunniesinspace_enabled:
+		enabled.append("bunniesinspace")
+	return enabled
 
 
 ## Whether the viewer is currently marked ready in this
@@ -677,6 +723,17 @@ func _on_party_status_received(
 		return
 
 	current_party = party_raw as Dictionary
+
+	# Keep the party's stored level + cheat prefs in sync with the
+	# leader's, so any member's matchmaking start reflects the
+	# leader's choices. Fire once per (re)gained leadership;
+	# level_pref_panel also re-syncs on edit.
+	if is_leader():
+		if not _did_sync_leader_prefs:
+			_did_sync_leader_prefs = true
+			sync_leader_prefs_to_party()
+	else:
+		_did_sync_leader_prefs = false
 
 	# Check if matchmaking started.
 	var status: String = current_party.get(

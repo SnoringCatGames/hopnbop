@@ -1867,6 +1867,13 @@ func _server_on_all_players_connected() -> void:
 	_server_send_profile_images_to_clients()
 	_server_send_display_names_to_clients()
 
+	# Apply the party leader's gameplay-cheat prefs (party matches
+	# only), overriding clients' local settings for the match. No-op
+	# for solo matches. Runs before the sim unpauses so the cheats
+	# are in effect from frame 0 (and clients apply them the same way,
+	# keeping prediction consistent).
+	G.cheat_manager.server_apply_match_cheats()
+
 	# Unpause frame driver to start simulation.
 	# The framework automatically triggers
 	# countdown if enabled in settings.
@@ -2274,6 +2281,23 @@ func _server_get_selected_level_scene() -> PackedScene:
 				NetworkLogger
 					.CATEGORY_GAME_STATE,
 			)
+
+	# Party leader's level prefs, forwarded by the runtime at
+	# allocation (SELECTED_LEVEL_PREFS deploy env). Leader-
+	# authoritative for a party match, and takes precedence over the
+	# server container's own (empty) local settings. Absent for solo
+	# matches — those fall through to the paths below.
+	var env_prefs_raw := (
+		OS.get_environment("SELECTED_LEVEL_PREFS"))
+	if not env_prefs_raw.is_empty():
+		var parsed: Variant = JSON.parse_string(env_prefs_raw)
+		if parsed is Dictionary:
+			var env_prefs := LevelPreferences.from_dict(parsed)
+			if env_prefs.has_preferences():
+				var env_selected := (
+					_server_select_from_prefs(env_prefs))
+				if env_selected != null:
+					return env_selected
 
 	# Check local settings for level preferences
 	# (shared filesystem in preview mode).

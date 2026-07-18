@@ -20,6 +20,14 @@ var _max_buffer_length := 0
 ## its configuration.
 var _cheats := {}
 
+## Set when a party match has forced the leader's gameplay cheats on
+## this client, with the client's own are_cheats_enabled value at that
+## moment. reset() (called on match cleanup) already zeroes the
+## networked cheat flags; it also restores are_cheats_enabled from
+## here, so forced cheats never leak into a later solo match.
+var _forced_cheats_this_match := false
+var _pre_force_cheats_enabled := false
+
 
 func _ready() -> void:
 	_cheats = {
@@ -285,6 +293,75 @@ func _get_networked_cheat_state(
 	return false
 
 
+# --------------------------------------------------------------
+# Leader-authoritative match cheats (party matches)
+# --------------------------------------------------------------
+
+
+## Apply the party leader's gameplay-cheat prefs for this match,
+## server-side. Reads MATCH_CHEAT_PREFS (set by the runtime on the
+## Edgegap deploy env at allocation), enables the named networked
+## (gameplay) cheats on the server, and broadcasts each to clients so
+## it overrides their local settings for the match. Aesthetic (local)
+## cheats are never forced. No-op for solo matches (env absent) or
+## when cheats aren't enabled.
+func server_apply_match_cheats() -> void:
+	if not Netcode.runs_server_logic:
+		return
+	var raw := OS.get_environment("MATCH_CHEAT_PREFS")
+	if raw.is_empty():
+		return
+	var parsed: Variant = JSON.parse_string(raw)
+	if not (parsed is Dictionary):
+		return
+	if not bool(parsed.get("are_cheats_enabled", false)):
+		return
+	G.settings.are_cheats_enabled = true
+	var names: Variant = parsed.get("networked_cheats", [])
+	if not (names is Array):
+		return
+	for n in names:
+		var cheat_name := str(n)
+		if not _cheats.has(cheat_name):
+			continue
+		if not _cheats[cheat_name].is_networked:
+			# Only gameplay (networked) cheats are leader-
+			# authoritative; aesthetic ones stay per-client.
+			continue
+		_set_networked_cheat_setting(cheat_name, true)
+		# call_remote broadcast (the server set its own state above).
+		_client_apply_match_cheat.rpc(cheat_name, true)
+		Netcode.print(
+			"Forced leader match cheat '%s' ON" % cheat_name)
+
+
+## Client receipt of a leader-forced match cheat. Unlike
+## _client_on_networked_cheat_toggled this does NOT persist to local
+## settings: the forced value is match-scoped and reverted on match
+## cleanup via reset_networked_cheats_to_local. Snapshots the client's
+## own state on the first force so it can be restored.
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_DEBUG)
+func _client_apply_match_cheat(
+	cheat_name: String,
+	is_active: bool,
+) -> void:
+	if not _cheats.has(cheat_name):
+		return
+	# Snapshot are_cheats_enabled on the first force so reset() can
+	# restore it (the cheat flags themselves are zeroed by reset()).
+	if not _forced_cheats_this_match:
+		_forced_cheats_this_match = true
+		_pre_force_cheats_enabled = G.settings.are_cheats_enabled
+	# The effect check (is_*_cheat_active) also requires the master
+	# flag, so force it on for the match.
+	G.settings.are_cheats_enabled = true
+	_set_networked_cheat_setting(cheat_name, is_active)
+	Netcode.print(
+		"Match cheat '%s': %s" % [
+			cheat_name, "ON" if is_active else "OFF"])
+	cheat_toggled.emit(cheat_name, is_active)
+
+
 ## Returns true if the jetpack cheat is currently
 ## active. Safe to call even when Settings hasn't
 ## been loaded yet.
@@ -360,4 +437,10 @@ func reset() -> void:
 	G.settings.is_lordoftheflies_enabled = false
 	G.settings.is_pogostick_enabled = false
 	G.settings.is_bunniesinspace_enabled = false
+	# If a party match forced the leader's cheats on this client,
+	# restore the client's own are_cheats_enabled (the forced value
+	# was applied in-memory only, never persisted).
+	if _forced_cheats_this_match:
+		G.settings.are_cheats_enabled = _pre_force_cheats_enabled
+		_forced_cheats_this_match = false
 	_input_buffer = ""
