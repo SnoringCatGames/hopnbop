@@ -18,6 +18,7 @@ const _BORDER_WIDTH := 3
 var _player_id: int = 0
 var _fallback_color := Color.BLACK
 var _is_image_set := false
+var _is_url_mode := false
 var _current_texture: Texture2D
 
 
@@ -33,6 +34,12 @@ func _ready() -> void:
 			.get_anonymous_texture())
 	G.profile_image_cache.image_loaded.connect(
 		_on_image_loaded)
+	Platform.auth.auth_completed.connect(
+		_on_auth_completed)
+	Platform.auth.link_completed.connect(
+		_on_link_completed)
+	Platform.auth.merge_completed.connect(
+		_on_link_completed)
 
 
 func _draw() -> void:
@@ -67,6 +74,7 @@ func set_player(
 	_player_id = player_id
 	_fallback_color = fallback_color
 	_is_image_set = false
+	_is_url_mode = false
 	_current_texture = (
 		G.profile_image_cache
 			.get_anonymous_texture())
@@ -84,6 +92,7 @@ func set_from_url(
 	_player_id = cache_key
 	_fallback_color = fallback_color
 	_is_image_set = false
+	_is_url_mode = true
 	_current_texture = (
 		G.profile_image_cache
 			.get_anonymous_texture())
@@ -145,3 +154,39 @@ func _on_image_loaded(player_id: int) -> void:
 		_current_texture = texture
 		_is_image_set = true
 		queue_redraw()
+
+
+func _on_auth_completed(
+	success: bool,
+	_error: String,
+) -> void:
+	if not success:
+		return
+	_retry_load_after_account_change()
+
+
+func _on_link_completed(
+	success: bool,
+	_error: String,
+	_provider: String,
+) -> void:
+	if not success:
+		return
+	_retry_load_after_account_change()
+
+
+## Re-run the image lookup after the local account
+## changes (anonymous log-in, provider link, or account
+## merge). The initial _try_load_cached may have run
+## while the token store had no image URL, so no
+## download was ever requested. URL-mode displays are
+## skipped: their URL belongs to a specific account
+## that is not necessarily the local one.
+func _retry_load_after_account_change() -> void:
+	if _is_url_mode:
+		return
+	if _is_image_set:
+		return
+	if _player_id == 0:
+		return
+	_try_load_cached()
