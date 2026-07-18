@@ -223,6 +223,14 @@ func _move_focus(
 		G.audio.play_sound("focus")
 
 
+## Advance focus to the next row. Used by rows that auto-advance once
+## their input is complete (e.g. a code field that just reached its
+## expected length). No-wrap so a completed field at the bottom of the
+## list doesn't jump back to the top.
+func focus_next_row() -> void:
+	_move_focus(1, false)
+
+
 func _ensure_focused_visible() -> void:
 	if _rows.is_empty():
 		return
@@ -245,9 +253,13 @@ func _is_descendant_focused() -> bool:
 
 
 func _is_trigger_pressed() -> bool:
-	if (Input.is_physical_key_pressed(KEY_ENTER)
-			or Input.is_physical_key_pressed(
-				KEY_SPACE)):
+	# While a text field owns the keyboard, Enter/Space belong to it
+	# (submit / type), not to row activation. Skip the keyboard
+	# trigger so it can't fire the focused row underneath the open
+	# field. The gamepad trigger stays live for other players.
+	if (not G.input_device_manager.is_text_input_captured
+			and (Input.is_physical_key_pressed(KEY_ENTER)
+				or Input.is_physical_key_pressed(KEY_SPACE))):
 		return true
 	if (_device_config != null
 			and _device_config.type

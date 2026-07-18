@@ -185,11 +185,17 @@ func fetch_player_profile() -> void:
 		request_failed.emit(_describe(account.get_exception()))
 		return
 	var u = account.user
+	# The friend code is generated per-account and is NOT the Nakama
+	# username (runtime/friend_code.go). Falls back to "" when the
+	# runtime predates the RPC, so the UI shows a placeholder rather
+	# than a bogus username-as-code.
+	var friend_code: String = (
+		await Platform.friends.get_my_friend_code())
 	profile_received.emit({
 		"player": {
 			"player_id": u.id,
 			"display_name": u.display_name,
-			"friend_code": u.username,
+			"friend_code": friend_code,
 			"avatar_url": u.avatar_url,
 			"lang_tag": u.lang_tag,
 			"location": u.location,

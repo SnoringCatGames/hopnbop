@@ -40,6 +40,16 @@ const _CATCH_UP_POLL_INTERVAL_SEC := 60.0
 ## :partyStateChangedSubject.
 const _PARTY_STATE_CHANGED_SUBJECT := "party_state_changed"
 
+## Subject the leader fans out when it gives up on a matchmaking
+## attempt. Mirrors runtime/party.go :partyMatchmakingAbortSubject.
+const _PARTY_MATCHMAKING_ABORT_SUBJECT := "party_matchmaking_abort"
+
+## Max realtime-party size handed to Nakama at create time. Matches
+## the social party's cap (create_party's max_count in
+## PlatformPartyApiClient), so the two can't disagree about who
+## fits.
+const _RT_PARTY_MAX_SIZE := 4
+
 var current_party: Dictionary = {}
 var pending_invites: Array = []
 
@@ -71,13 +81,20 @@ const _CHAT_MESSAGE_MAX_LENGTH := 500
 
 ## Set when party_start_matchmaking succeeds (leader path) or when
 ## a `party_matchmaking_start` notification arrives (follower path).
-## Consumed by `GamePanel._client_client_request_session_ids` so the
-## resulting matchmaker ticket carries the shared `party_id`. Keys:
-## `party_id`, `game_mode`, `matchmaker_properties`.
+## Consumed by NakamaMatchmakerClient, which reads it to decide
+## whether to submit a solo ticket, submit the party's single
+## ticket, or submit nothing and wait.
+##
+## Keys: `party_id`, `rt_party_id`, `game_mode`,
+## `matchmaker_properties`, `is_rt_leader`, `expected_others`.
 var pending_party_match_context: Dictionary = {}
 
 var _poll_timer := 0.0
 var _is_polling := false
+## Guards the leader's create-party-then-RPC sequence, which spans
+## two awaited round trips. Without it, a double-tap on Start Match
+## creates two realtime parties and orphans the first.
+var _is_starting_matchmaking := false
 var _known_invite_ids: Dictionary = {}
 ## Dedup transient-notification deliveries. Most party_state_changed
 ## notifications are unique by id, but the matchmaker socket
@@ -396,12 +413,68 @@ func _patch_member_ready(
 			return
 
 
-## Start matchmaking for the party.
+## Start matchmaking for the whole party (leader only).
+##
+## The leader creates a Nakama realtime party FIRST, then hands its
+## id to the runtime, which tells every member to join it. Once the
+## roster is present the leader submits a single matchmaker ticket
+## covering the group — see NakamaMatchmakerClient, which owns the
+## wait-and-submit half because that's where the query and
+## min/max rules live.
+##
+## The ordering is forced: the RPC can't fan out an id that doesn't
+## exist yet, so party creation can't be folded into the normal
+## client_load_game() path.
 func start_party_matchmaking() -> void:
 	if not is_leader():
 		return
+	if _is_starting_matchmaking:
+		return
+	if not is_instance_valid(Platform.matchmaking):
+		return
+	_is_starting_matchmaking = true
+	var rt_party_id: String = (
+		await Platform.matchmaking.create_rt_party(
+			_RT_PARTY_MAX_SIZE))
+	if rt_party_id.is_empty():
+		# create_rt_party already surfaced the failure.
+		_is_starting_matchmaking = false
+		return
+	# Re-check: creating the party awaited a round trip, and the
+	# user could have left (or been kicked) in the meantime. Firing
+	# the RPC now would either fail server-side or drag a party we
+	# no longer belong to into a match.
+	if not is_leader():
+		await Platform.matchmaking.leave_rt_party()
+		_is_starting_matchmaking = false
+		return
 	Platform.party.start_matchmaking(
-		get_party_id())
+		get_party_id(), rt_party_id, get_party_mode())
+	_is_starting_matchmaking = false
+
+
+## Abandon an in-flight party matchmaking attempt and tell every
+## member to stand down.
+##
+## Called when the leader's wait for the roster times out: at least
+## one member never got their socket into the realtime party. We
+## abort rather than matchmaking with whoever showed up, because
+## starting a match the party didn't agree to is worse than
+## starting none — the absent member is left in the lobby while
+## their friends play without them.
+##
+## Safe to call from any state; no-ops when not in a party.
+func abort_party_matchmaking(
+	reason: String = "aborted",
+) -> void:
+	pending_party_match_context.clear()
+	if is_instance_valid(Platform.matchmaking):
+		await Platform.matchmaking.leave_rt_party()
+	if not is_in_party():
+		return
+	if not is_leader():
+		return
+	Platform.party.abort_matchmaking(get_party_id(), reason)
 
 
 ## Request the shareable invite code for the current party. The
@@ -431,6 +504,7 @@ func reset() -> void:
 	_known_state_changed_ids.clear()
 	_initial_party_check_done = false
 	_local_party_action_taken = false
+	_is_starting_matchmaking = false
 	_tear_down_chat()
 	stop_polling()
 
@@ -632,53 +706,70 @@ func _on_party_status_received(
 func _on_matchmaking_started(
 	data: Dictionary,
 ) -> void:
-	# Leader's RPC-response path. Server doesn't currently issue a
-	# Nakama ticket on the caller's behalf (session presence isn't
-	# available server-side), so `ticket_id` is usually empty.
-	# Stash the matchmaker_properties echoed by the server and
-	# trigger the existing client-side matchmaker enqueue flow.
-	_start_party_matchmaking(data)
-	var ticket_id: String = data.get(
-		"ticket_id", "")
-	if not ticket_id.is_empty():
-		matchmaking_started.emit(ticket_id)
-	else:
-		matchmaking_started.emit(
-			data.get("party_id", ""))
+	# Leader's RPC-response path. The server can't ticket on our
+	# behalf (that needs our live socket), so there's no ticket_id
+	# here — the leader submits the party's ticket itself once the
+	# roster is present. The RPC response is just confirmation that
+	# every member has been told to join the realtime party.
+	var member_ids: Array = data.get("member_ids", [])
+	# Everyone but us. The leader waits for exactly this many
+	# presences before ticketing; a member missing from the roster
+	# aborts the attempt.
+	var expected_others: int = max(0, member_ids.size() - 1)
+	_start_party_matchmaking(data, true, expected_others)
+	matchmaking_started.emit(data.get("party_id", ""))
 
 
 ## Follower path: a `party_matchmaking_start` notification arrived
-## via the friends_notification_poller. The payload mirrors the
-## leader's RPC response, so we use the same kickoff path.
+## over the socket. Carries the leader's rt_party_id; we join it
+## and wait, submitting no ticket of our own.
 func on_party_matchmaking_notification(
 	content: Dictionary,
 ) -> void:
-	_start_party_matchmaking(content)
+	_start_party_matchmaking(content, false, 0)
 	matchmaking_started.emit(
 		content.get("party_id", ""))
 
 
-## Shared kickoff used by both leader and follower paths. Stores
-## the party context so `GamePanel._client_client_request_session_ids`
-## can pick up the `party_id` matchmaker property, then transitions
-## the client into the same "playing online" flow a solo Play
-## button would.
+## Shared kickoff for both leader and follower. Stores the party
+## context NakamaMatchmakerClient reads, then transitions the
+## client into the same "playing online" flow the solo Play button
+## uses.
 ##
-## Skips when a match is already loading or active so re-fetched
-## persistent notifications (or a leader+follower race) don't double-
-## trigger and don't stash a stale party_id that would attach to the
-## next solo match.
+## Skips when a match is already loading or active so a
+## leader+follower race can't double-trigger or stash a stale
+## party_id that would then attach to the next solo match.
 func _start_party_matchmaking(
 	data: Dictionary,
+	is_rt_leader: bool,
+	expected_others: int,
 ) -> void:
-	if (G.client_session.is_game_loading
-			or G.client_session.is_game_active):
+	# Guarded rather than accessed directly: a party notification
+	# can land before bootstrap has built the session (the socket
+	# opens on auth_completed, which precedes it), and the
+	# game_panel check below already assumes that ordering isn't
+	# guaranteed.
+	if is_instance_valid(G.client_session):
+		if (G.client_session.is_game_loading
+				or G.client_session.is_game_active):
+			return
+	var rt_party_id: String = data.get("rt_party_id", "")
+	if rt_party_id.is_empty():
+		# A start without a realtime party can't keep the group
+		# together, and silently degrading to solo tickets is
+		# exactly the bug this flow exists to fix. Fail loudly.
+		push_warning(
+			"[PartyManager] party matchmaking start with no"
+			+ " rt_party_id; ignoring")
 		return
 	pending_party_match_context = {
 		"party_id": data.get("party_id", ""),
+		"rt_party_id": rt_party_id,
 		"game_mode": data.get("game_mode", ""),
 		"matchmaker_properties": data.get(
 			"matchmaker_properties", {}),
+		"is_rt_leader": is_rt_leader,
+		"expected_others": expected_others,
 	}
 	if not is_instance_valid(G.game_panel):
 		# Notification arrived before the game panel
@@ -687,6 +778,24 @@ func _start_party_matchmaking(
 		# match-start will pick it up.
 		return
 	G.game_panel.client_load_game()
+
+
+## A `party_matchmaking_abort` notification arrived: the leader
+## gave up (usually because someone never joined). Drop out of the
+## waiting state so we're not left on a loading screen for a match
+## that will never come.
+func _on_party_matchmaking_abort(
+	content: Dictionary,
+) -> void:
+	if content.get("party_id", "") != get_party_id():
+		return
+	pending_party_match_context.clear()
+	if is_instance_valid(Platform.matchmaking):
+		await Platform.matchmaking.leave_rt_party()
+		Platform.matchmaking.cancel_matchmaking()
+	if is_instance_valid(G.toast_overlay):
+		G.toast_overlay.show_toast(
+			tr("PARTY.MATCHMAKING_ABORTED"))
 
 
 ## Show a "still in a party from last session?" confirm dialog
@@ -807,6 +916,10 @@ func _on_socket_notification(
 	notification: Dictionary,
 ) -> void:
 	var subject: String = notification.get("subject", "")
+	if subject == _PARTY_MATCHMAKING_ABORT_SUBJECT:
+		_on_party_matchmaking_abort(
+			notification.get("content", {}))
+		return
 	if subject != _PARTY_STATE_CHANGED_SUBJECT:
 		return
 	var notification_id: String = notification.get("id", "")

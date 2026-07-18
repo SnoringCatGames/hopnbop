@@ -36,6 +36,16 @@ const _DEFAULT_MATCHMAKER_QUERY := "*"
 const _DEFAULT_MIN_COUNT := 2
 const _DEFAULT_MAX_COUNT := 4
 
+## How long the party leader waits for every member's realtime
+## presence before giving up and aborting the attempt.
+##
+## Covers: the member receiving a notification, opening a
+## matchmaker socket, and joining the party. Generous enough for a
+## cold socket on a slow link; short enough that a party whose
+## member has quietly closed the game isn't left staring at a
+## loading screen.
+const _PARTY_JOIN_TIMEOUT_SEC := 20.0
+
 
 ## Stable per (machine, preview slot). Empty for the primary
 ## instance and for production. When non-empty, the addon-side
@@ -111,6 +121,23 @@ func client_request_session_ids(
 	var numeric_props := _build_numeric_props(
 		player_count, session_prefs)
 
+	# Consume the party context here rather than in GamePanel:
+	# the rt-party half of matchmaking is this adapter's job, and
+	# clearing it on every request (party or solo) is what stops a
+	# stale party_id from riding along into a later solo match.
+	var party_context := _consume_party_context()
+	if not party_context.is_empty():
+		await _request_party_session_ids(
+			party_context,
+			query,
+			min_count,
+			max_count,
+			string_props,
+			numeric_props,
+			player_count,
+		)
+		return
+
 	client.start_matchmaking(
 		query,
 		min_count,
@@ -134,6 +161,101 @@ func cleanup() -> void:
 	if client == null:
 		return
 	client.cleanup()
+
+
+# --------------------------------------------------------------
+# Party matchmaking
+# --------------------------------------------------------------
+
+
+## Take (and clear) PartyManager's pending party context. Returns
+## {} when this is an ordinary solo request.
+func _consume_party_context() -> Dictionary:
+	if not is_instance_valid(G.party_manager):
+		return {}
+	var context: Dictionary = (
+		G.party_manager.pending_party_match_context)
+	if context.is_empty():
+		return {}
+	G.party_manager.pending_party_match_context = {}
+	return context
+
+
+## Matchmake as a party rather than as an individual.
+##
+## Only the leader submits a ticket, and it's a single ticket
+## covering the whole realtime party — that is the entire point.
+## Followers join the party and hold, contributing their presence
+## (and their client IP, for region selection) but no ticket of
+## their own.
+##
+## Previously every member submitted an independent ticket tagged
+## with `party_id`, which no query ever read, so a party queuing
+## against other players could be split across separate matches.
+func _request_party_session_ids(
+	context: Dictionary,
+	query: String,
+	min_count: int,
+	max_count: int,
+	string_props: Dictionary,
+	numeric_props: Dictionary,
+	player_count: int,
+) -> void:
+	var client: PlatformMatchmakingClient = Platform.matchmaking
+	var rt_party_id: String = context.get("rt_party_id", "")
+	var is_rt_leader: bool = bool(
+		context.get("is_rt_leader", false))
+
+	if not is_rt_leader:
+		if not await client.join_rt_party(rt_party_id):
+			# join_rt_party already emitted the detail; this is the
+			# session-level surface the game listens on.
+			session_request_failed.emit(
+				tr("PARTY.JOIN_MATCHMAKING_FAILED"))
+			return
+		await client.begin_rt_party_wait(player_count)
+		return
+
+	# Leader. The realtime party already exists — PartyManager
+	# created it before the RPC, because the RPC has to carry its
+	# id to the members.
+	var expected_others: int = int(
+		context.get("expected_others", 0))
+	var party_size := expected_others + 1
+
+	# A party bigger than the mode allows can never be matched:
+	# Nakama would hold the ticket forever looking for a match that
+	# fits everyone. Catch it here rather than letting the party sit
+	# in a queue until the 120 s timeout. Reachable today by a trio
+	# whose leader picks Duo (max_players 2).
+	if party_size > max_count:
+		await G.party_manager.abort_party_matchmaking(
+			"party_larger_than_mode")
+		session_request_failed.emit(
+			tr("PARTY.TOO_LARGE_FOR_MODE") % [
+				party_size, max_count])
+		return
+
+	var all_present: bool = await client.wait_for_rt_party_members(
+		expected_others, _PARTY_JOIN_TIMEOUT_SEC)
+	if not all_present:
+		# Someone never got their socket into the party. Abort
+		# rather than matchmaking with whoever turned up: silently
+		# leaving a member behind is worse than starting no match.
+		await G.party_manager.abort_party_matchmaking(
+			"members_never_joined")
+		session_request_failed.emit(
+			tr("PARTY.MEMBERS_NEVER_JOINED"))
+		return
+
+	client.start_rt_party_matchmaking(
+		query,
+		min_count,
+		max_count,
+		string_props,
+		numeric_props,
+		player_count,
+	)
 
 
 # --------------------------------------------------------------

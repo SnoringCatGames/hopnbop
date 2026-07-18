@@ -58,11 +58,15 @@ func build_ui() -> void:
 		_text_input_row_scene.instantiate())
 	_code_input.setup(
 		tr("PARTY.ENTER_CODE"),
-		_CODE_LENGTH)
+		_CODE_LENGTH,
+		_CODE_LENGTH,
+		true)
 	_code_input.text_changed.connect(
 		_on_code_changed)
 	_code_input.submitted.connect(
 		_on_join_pressed)
+	# When the code hits its full length, hand focus to the Join row.
+	_code_input.input_complete.connect(focus_next_row)
 	_row_container.add_child(_code_input)
 	_connect_row_clicked(_code_input)
 

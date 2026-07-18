@@ -10,7 +10,11 @@ extends SidePanel
 @export var _text_input_row_scene: PackedScene
 @export var _add_friend_icon: Texture2D
 
-const _MIN_CODE_LENGTH := 6
+# Friend codes are exactly friendCodeLength chars server-side (see
+# snoringcat-platform/runtime/friend_code.go). The field caps at this
+# length, gates the Send button on an exact match, and auto-advances
+# focus once it's reached.
+const _FRIEND_CODE_LENGTH := 8
 
 var _code_input: TextInputRow
 var _send_row: ActionRow
@@ -40,11 +44,15 @@ func build_ui() -> void:
 		_text_input_row_scene.instantiate())
 	_code_input.setup(
 		tr("FRIENDS.ENTER_CODE"),
-		_MIN_CODE_LENGTH)
+		_FRIEND_CODE_LENGTH,
+		_FRIEND_CODE_LENGTH,
+		true)
 	_code_input.text_changed.connect(
 		_on_code_changed)
 	_code_input.submitted.connect(
 		_on_send_pressed)
+	# When the code hits its full length, hand focus to the Send row.
+	_code_input.input_complete.connect(focus_next_row)
 	_row_container.add_child(_code_input)
 	_connect_row_clicked(_code_input)
 
@@ -98,7 +106,7 @@ func _on_code_changed(text: String) -> void:
 		return
 	_send_row.disabled = (
 		text.strip_edges().length()
-		< _MIN_CODE_LENGTH)
+		!= _FRIEND_CODE_LENGTH)
 
 
 func _on_send_pressed() -> void:
@@ -112,7 +120,7 @@ func _on_send_pressed() -> void:
 		_code_input.get_text()
 			.strip_edges()
 			.to_upper())
-	if code.length() < _MIN_CODE_LENGTH:
+	if code.length() != _FRIEND_CODE_LENGTH:
 		return
 	_send_row.disabled = true
 	Platform.friends.send_request_by_code(
@@ -124,9 +132,18 @@ func _on_friend_request_sent(
 ) -> void:
 	if is_queued_for_deletion():
 		return
+	var result: String = data.get("result", "")
+	if result == "not_found":
+		# The code resolved to nobody. Keep the panel open so the
+		# user can fix the code, and re-enable Send.
+		if is_instance_valid(G.toast_overlay):
+			G.toast_overlay.show_toast(
+				tr("FRIENDS.CODE_NOT_FOUND"),
+				ToastOverlay.Type.ERROR)
+		if is_instance_valid(_send_row):
+			_send_row.disabled = false
+		return
 	if is_instance_valid(G.toast_overlay):
-		var result: String = (
-			data.get("result", ""))
 		match result:
 			"request_sent":
 				G.toast_overlay.show_toast(

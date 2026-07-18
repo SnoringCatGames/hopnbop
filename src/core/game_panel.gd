@@ -1071,9 +1071,15 @@ func _client_client_request_session_ids() -> void:
 		session_prefs.are_cheats_enabled = (
 			G.local_settings.get_value(
 				&"are_cheats_enabled"))
-	# Consume any pending party matchmaking context so the resulting
-	# ticket carries the shared party_id. Cleared after use so a
-	# subsequent solo match doesn't inherit the property.
+	# Copy any pending party matchmaking context into the ticket
+	# properties so the resulting ticket carries the shared
+	# party_id.
+	#
+	# Deliberately does NOT clear the context: NakamaMatchmakerClient
+	# needs the rest of it (rt_party_id, leader flag, roster size) to
+	# matchmake the party as one ticket, and it consumes and clears
+	# the context itself — on solo requests too, so a stale party_id
+	# still can't leak into a later solo match.
 	var extra_props: Dictionary = {}
 	if is_instance_valid(G.party_manager):
 		var ctx: Dictionary = (
@@ -1084,7 +1090,6 @@ func _client_client_request_session_ids() -> void:
 			if props_raw is Dictionary:
 				for key in props_raw:
 					extra_props[key] = props_raw[key]
-			G.party_manager.pending_party_match_context = {}
 	session_manager.client_request_session(
 		session_prefs, extra_props)
 

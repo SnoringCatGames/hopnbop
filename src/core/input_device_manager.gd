@@ -47,6 +47,14 @@ const KEYBOARD_PARTITION_BINDINGS := [
 ## Dictionary<int, DeviceConfig>
 var player_device_map := {}
 
+## True while a text field (friend code, party code, chat) has grabbed
+## the physical keyboard. While set, get_is_action_pressed reports no
+## keyboard action as pressed, so typing can't leak into character
+## control or side-panel navigation. Gamepad input is unaffected, so
+## other local players keep playing. TextInputRow toggles this on
+## focus in/out.
+var is_text_input_captured := false
+
 
 func _ready() -> void:
 	G.log.log_system_ready("InputDeviceManager")
@@ -80,6 +88,13 @@ func has_device_for_player(local_player_index: int) -> bool:
 func get_is_action_pressed(action: StringName, device_config: DeviceConfig) -> bool:
 	match device_config.type:
 		DeviceConfig.DeviceType.KEYBOARD:
+			# While a text field has captured the keyboard, it owns
+			# every physical key: suppress keyboard actions so typing
+			# a code or chat message can't also move a character or
+			# navigate a panel. Gamepad players (branch below) keep
+			# control.
+			if is_text_input_captured:
+				return false
 			# Use physical key code from bindings.
 			if device_config.key_bindings.has(action):
 				var key_code: int = device_config.key_bindings[action]
