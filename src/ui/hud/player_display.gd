@@ -29,6 +29,13 @@ var _score_update_timer: float = 0.0
 var _has_initialized_score: bool = false
 var _profile_image: ProfileImageDisplay
 var _is_profile_image_set := false
+var _crown_label: Label
+
+# Display-only mode: render from party-member data instead of live
+# match state. Used for remote party members shown in the lobby, who
+# have no spawned player / match state on this client.
+var _is_display_only := false
+var _party_member: Dictionary = {}
 
 
 func _ready() -> void:
@@ -39,11 +46,40 @@ func _ready() -> void:
 	$VBoxContainer.add_child(_profile_image)
 	$VBoxContainer.move_child(_profile_image, 0)
 
+	# Party-leader crown, sits above the profile image. Hidden
+	# unless this display's player is the current party's leader.
+	# Matches the ★ used in the party side panel.
+	_crown_label = Label.new()
+	_crown_label.text = "★"
+	_crown_label.horizontal_alignment = (
+		HORIZONTAL_ALIGNMENT_CENTER)
+	_crown_label.add_theme_color_override(
+		"font_color", Color(1.0, 0.85, 0.3))
+	_crown_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_crown_label.visible = false
+	$VBoxContainer.add_child(_crown_label)
+	$VBoxContainer.move_child(_crown_label, 0)
+
 
 func set_player_id(p_player_id: int) -> void:
 	player_id = p_player_id
+	_is_display_only = false
 	_has_initialized_score = false
 	_is_profile_image_set = false
+
+
+## Render this display from party-member data (user_id, display_name /
+## username, role) rather than a live match player. Used for remote
+## party members shown in the lobby nameplate row. No score; leader
+## crown driven by the member's role; anonymous avatar (remote members
+## carry no avatar URL in party state).
+func set_party_member(member: Dictionary) -> void:
+	_is_display_only = true
+	_party_member = member
+	player_id = 0
+	# Render immediately so the nameplate appears at once; _process
+	# keeps it current after that.
+	_update_display_only()
 
 
 func _process(delta: float) -> void:
@@ -51,6 +87,9 @@ func _process(delta: float) -> void:
 
 
 func _update_display(delta: float) -> void:
+	if _is_display_only:
+		_update_display_only()
+		return
 	if player_id == 0:
 		return
 
@@ -72,6 +111,9 @@ func _update_display(delta: float) -> void:
 		%Adjective.text = (
 			player_match_state.adjective)
 	%Adjective.visible = not is_adjective_hidden
+
+	# Crown the party leader's nameplate.
+	_crown_label.visible = _resolve_is_display_leader()
 
 	# Hide score in lobby.
 	%Score.visible = not G.is_lobby_active
@@ -132,6 +174,68 @@ func _update_display(delta: float) -> void:
 		"font_outline_color", outline_color)
 	%Score.add_theme_color_override(
 		"font_outline_color", outline_color)
+
+
+## Whether this display's player belongs to the current party's
+## leader account. Drives the leader crown.
+func _resolve_is_display_leader() -> bool:
+	if not is_instance_valid(G.party_manager):
+		return false
+	if not G.party_manager.is_in_party():
+		return false
+	var leader_id: String = (
+		G.party_manager.current_party.get("leader_id", ""))
+	if leader_id.is_empty():
+		return false
+	var account_id := _resolve_account_id()
+	return not account_id.is_empty() and account_id == leader_id
+
+
+## The Nakama account id backing this display's player, or "" when it
+## can't be resolved. In a networked match the server distributes a
+## player_id -> backend account map; in the lobby every player is
+## local and shares this client's account.
+func _resolve_account_id() -> String:
+	if (G.is_networked_level_active
+			and is_instance_valid(G.client_session)):
+		return str(
+			G.client_session.backend_player_id_map.get(
+				player_id, ""))
+	if G.is_lobby_active:
+		return Platform.token_store.player_id
+	return ""
+
+
+func _update_display_only() -> void:
+	var display_name: String = _party_member.get("display_name", "")
+	if display_name.is_empty():
+		display_name = _party_member.get("username", "")
+	if display_name.is_empty():
+		display_name = _party_member.get("user_id", "")
+	%Name.text = display_name
+	%Name.add_theme_color_override("font_color", Color.WHITE)
+	%Name.add_theme_color_override(
+		"font_outline_color", Color.TRANSPARENT)
+	%Adjective.visible = false
+	%Score.visible = false
+	# The member's role tells us the leader directly (no account-id
+	# resolution needed for a party member).
+	_crown_label.visible = (
+		_party_member.get("role", "") == "leader")
+	# Anonymous, per-member-tinted avatar: remote party members carry
+	# no avatar URL in party state, so we can't show their real image.
+	if not _is_profile_image_set:
+		var uid: String = _party_member.get("user_id", "")
+		_profile_image.set_from_url(
+			hash(uid), "", _member_color(uid))
+		_is_profile_image_set = true
+
+
+func _member_color(uid: String) -> Color:
+	if uid.is_empty():
+		return Color(0.5, 0.5, 0.5)
+	var hue := float(hash(uid) % 360) / 360.0
+	return Color.from_hsv(hue, 0.5, 0.9)
 
 
 func _spawn_score_popup(score_delta: int) -> void:

@@ -6,6 +6,11 @@ extends BoxContainer
 # Dictionary<int, PlayerDisplay>
 var _player_displays := {}
 
+# Dictionary<String user_id, PlayerDisplay> — display-only nameplates
+# for remote party members shown in the lobby (they have no local
+# spawned player).
+var _party_member_displays := {}
+
 @export var _player_display_scene: PackedScene
 
 const _MAX_PLAYER_LIST_SIZE := 8
@@ -24,6 +29,11 @@ func _ready() -> void:
 	G.match_state.players_updated.connect(_update_displays)
 	G.game_panel.lobby_players_updated.connect(
 		_update_displays)
+	# Refresh the remote-party-member nameplates when party
+	# membership changes (join / leave / kick / leader transfer).
+	if is_instance_valid(G.party_manager):
+		G.party_manager.party_updated.connect(
+			_on_party_updated)
 	_update_displays()
 
 
@@ -50,6 +60,51 @@ func _update_displays() -> void:
 			display.set_player_id(player_id)
 			_player_displays[player_id] = display
 			add_child(display)
+
+	_update_party_member_displays()
+
+
+func _on_party_updated(_party_data: Dictionary) -> void:
+	_update_party_member_displays()
+
+
+## Show display-only nameplates for the OTHER active party members
+## (remote accounts) while in the lobby, so a party sees each other
+## before the match. In a match those members are real match players
+## and already appear via the normal path. Self (covered by the local
+## player displays) and pending invitees are excluded.
+func _update_party_member_displays() -> void:
+	var wanted := {}
+	if (G.is_lobby_active
+			and is_instance_valid(G.party_manager)
+			and G.party_manager.is_in_party()):
+		var self_id: String = Platform.token_store.player_id
+		for m in G.party_manager.current_party.get("members", []):
+			if not (m is Dictionary):
+				continue
+			var uid: String = m.get("user_id", "")
+			if uid.is_empty() or uid == self_id:
+				continue
+			if m.get("role", "") == "invited":
+				continue
+			wanted[uid] = m
+
+	# Drop displays for members no longer present.
+	for uid in _party_member_displays.keys():
+		if not wanted.has(uid):
+			_party_member_displays[uid].queue_free()
+			_party_member_displays.erase(uid)
+
+	# Add / refresh.
+	for uid in wanted:
+		var display: PlayerDisplay
+		if _party_member_displays.has(uid):
+			display = _party_member_displays[uid]
+		else:
+			display = _player_display_scene.instantiate()
+			_party_member_displays[uid] = display
+			add_child(display)
+		display.set_party_member(wanted[uid])
 
 
 func _get_current_player_ids() -> Array[int]:
