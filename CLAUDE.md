@@ -407,10 +407,26 @@ These are generated from `project.godot` at deploy/sync time.
   R2 backups. See cost-monitor.
 - **Backups:** `pg-backup.timer` runs nightly at 03:11 UTC,
   `pg_dumpall` → `s3://hopnbop-pulumi-state-r2/pg-backups/
-  postgres-YYYY-MM-DD.sql.gz`, 7-day retention. Restore:
-  pipe the gzipped dump through `psql -U nakama -d nakama`
-  on the postgres container after dropping the existing
-  schema.
+  postgres-YYYY-MM-DD.sql.gz`, 7-day retention. Restore —
+  order matters, and because the dump is `pg_dumpall` output
+  (it re-CREATEs the `nakama` DB and `\connect`s into it),
+  psql must target the `postgres` maintenance DB, **not**
+  `-d nakama`:
+  1. `cd /opt/nakama && docker compose stop nakama` —
+     Nakama must not migrate/write during the restore.
+  2. `docker exec -e PGPASSWORD=<pw> postgres psql
+     --no-password -h 127.0.0.1 -U nakama -d postgres -c
+     'DROP DATABASE IF EXISTS nakama WITH (FORCE)'`
+  3. `gunzip -c postgres-YYYY-MM-DD.sql.gz | docker exec -i
+     -e PGPASSWORD=<pw> postgres psql --no-password -h
+     127.0.0.1 -U nakama -d postgres` — role-exists errors
+     are expected noise; verify afterwards with a table
+     count on the restored `nakama` DB.
+  4. `docker compose start nakama` (migrate-up is a no-op
+     on a same-version restore).
+  Full-host rebuild: `phase-a.ps1 -RestoreBackup` (in
+  `third_party/snoringcat-platform/scripts/`) runs this
+  automatically before Nakama first boots.
 
 **Edgegap game-server fleet:**
 - **App:** `hopnbop-server` (registered in Edgegap dashboard).
