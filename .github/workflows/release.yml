@@ -239,13 +239,47 @@ jobs:
       - name: Post to Discord
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          TAG: ${{ github.ref_name }}
+          SERVER_RESULT: ${{ needs.game-server.result }}
+          WEB_RESULT: ${{ needs.web-client.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          PREV=$(git tag --sort=-creatordate | sed -n '2p')
-          NOTES=$(git log "${PREV:-HEAD~10}..${{ github.ref_name }}" \
-            --pretty=format:"- %s (%h)" 2>/dev/null \
-            | head -20)
-          STATUS="${{ needs.game-server.result == 'success' && needs.web-client.result == 'success' && '✅ deployed' || '❌ partial failure' }}"
+          set -euo pipefail
+          if [ -z "${DISCORD_WEBHOOK_URL:-}" ]; then
+            echo "::warning::DISCORD_WEBHOOK_URL unset; skipping release notes"
+            exit 0
+          fi
+
+          # Previous tag *reachable from this one*. The old
+          # `git tag --sort=-creatordate | sed -n 2p` took the
+          # second-newest tag in the whole repo, which is the wrong
+          # range whenever a release is re-run against an older tag
+          # or two tags share a creation date.
+          PREV=$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || true)
+          NOTES=$(git log "${PREV:+$PREV..}$TAG" \
+            --pretty=format:'- %s (%h)' | head -20)
+
+          if [ "$SERVER_RESULT" = success ] && [ "$WEB_RESULT" = success ]; then
+            STATUS="✅ deployed"
+          else
+            STATUS="❌ partial failure (game-server: $SERVER_RESULT, web-client: $WEB_RESULT) — $RUN_URL"
+          fi
+
+          # printf, not "$STATUS\n$NOTES": inside double quotes bash
+          # leaves `\n` as a literal backslash-n, and `jq --arg`
+          # faithfully escapes it to `\\n`, so Discord rendered the
+          # headline and the first bullet glued together by a visible
+          # "\n" instead of a line break.
+          CONTENT=$(printf '**%s** %s\n%s' "$TAG" "$STATUS" "$NOTES")
+
+          # Discord rejects content over 2000 chars with HTTP 400,
+          # which `curl -f` turns into a failed step and no
+          # notification at all. Trim the notes, keep the headline.
+          if [ "${#CONTENT}" -gt 1900 ]; then
+            CONTENT="${CONTENT:0:1900}"$'\n'"…truncated — full notes: $RUN_URL"
+          fi
+
           curl -fsS -X POST \
             -H "Content-Type: application/json" \
-            -d "$(jq -n --arg c "**${{ github.ref_name }}** $STATUS\n$NOTES" '{content:$c}')" \
+            -d "$(jq -n --arg c "$CONTENT" '{content:$c}')" \
             "$DISCORD_WEBHOOK_URL"

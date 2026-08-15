@@ -151,9 +151,20 @@ jobs:
         if: failure()
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          # GITHUB_RUN_URL is not a thing. Actions defines
+          # GITHUB_SERVER_URL / GITHUB_REPOSITORY / GITHUB_RUN_ID and
+          # nothing else, so the old message interpolated an empty
+          # string and every nightly failure ping arrived as
+          # "nightly smoke failed — " with no way to reach the logs.
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          set -euo pipefail
+          if [ -z "${DISCORD_WEBHOOK_URL:-}" ]; then
+            echo "::warning::DISCORD_WEBHOOK_URL unset; skipping Discord ping"
+            exit 0
+          fi
           curl -fsS -X POST \
             -H "Content-Type: application/json" \
-            -d "$(jq -n --arg c "❌ nightly smoke failed — $GITHUB_RUN_URL" \
+            -d "$(jq -n --arg c "❌ nightly smoke failed — $RUN_URL" \
               '{content:$c}')" \
             "$DISCORD_WEBHOOK_URL"
