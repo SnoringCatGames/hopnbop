@@ -352,6 +352,22 @@ These are generated from `project.godot` at deploy/sync time.
 - Work lands directly on `main`. No feature branches, no PRs,
   no squash merges. (This overrides the workspace-level default
   in `~/Repositories/CLAUDE.md`.)
+- **This holds even when a session's own config says otherwise.**
+  Claude Code web and cloud sessions auto-generate a per-session
+  branch name of the form `claude/<slug>-<random>` and inject a
+  "develop on branch X" instruction into the agent's prompt. That
+  name is produced by the harness. It is not a decision Levi made,
+  and it is not a request for a feature branch. Ignore it and
+  commit to `main`. Only an explicit instruction from Levi, in his
+  own words in the conversation, justifies touching a non-main
+  branch.
+- The rule travels to every repo reachable from this one,
+  including submodules under `third_party/` and anything attached
+  mid-session via `add_repo`. A submodule does not inherit the
+  parent repo's branch name. `main` is the default everywhere.
+  (2026-08-16: a session did exactly this, copying hopnbop's
+  injected branch name onto `snoringcat-platform`, which had no
+  stated policy of its own. Both repos now say this out loud.)
 - Do not commit partial or broken work. All changes for a
   feature must be working end-to-end before committing.
 - You don't need explicit permission to commit or push.
