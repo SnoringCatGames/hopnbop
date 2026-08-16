@@ -142,8 +142,16 @@ the provisioning scripts at
 ### Game server deploy (Edgegap)
 
 `game-server.yml` builds `Dockerfile.edgegap`, pushes to the
-Edgegap registry as `v<N>`, and is then registered as a new
-Edgegap app version via the dashboard.
+Edgegap registry as `v<N>`, and registers the app version
+itself: a DELETE-then-POST against
+`https://api.edgegap.com/v1/app/hopnbop-server/version` that
+carries `docker_repository`, `docker_tag`, `req_cpu`,
+`req_memory`, the 4433/UDP + 4434/TCP port pair, and the
+injected `NAKAMA_HTTP_KEY`. DELETE-first makes a re-run with
+the same version replace the old record; 404 is treated as
+"no prior version". **No dashboard step is involved.** (This
+section used to say registration happened "via the dashboard",
+which predated the automation.)
 
 Then bump `edgegap_app_version` in **`game.yaml`** to the new
 `v<N>` and run `scripts/sync-game-config.ps1`. That file is the
@@ -257,9 +265,15 @@ drift. Run `scripts/sync-game-config.ps1` afterwards, or the
   `~/.hopnbop-migration/credentials.env` and `npm`/`npx`
   available (the script invokes `npx wrangler@latest`).
 - For Edgegap deploys: an Edgegap account with the
-  `hopnbop-server` app registered. Push images via
-  `game-server.yml`, then bump the version in the dashboard
-  + on the Nakama host's `runtime.env`.
+  `hopnbop-server` app registered. `game-server.yml` pushes the
+  image and registers the app version over the API in the same
+  run. What is left to you is bumping `edgegap_app_version` +
+  `local_image_ref` in `game.yaml` (do it *before* the run; the
+  workflow's first step fails if they disagree with the tag
+  being pushed) and running `scripts/sync-game-config.ps1`.
+  Do not bump the dashboard or the Nakama host's `runtime.env`
+  for this. See "Game server deploy (Edgegap)" and the
+  `EDGEGAP_APP_VERSION` row under "Synced locations".
 
 ### Version Management
 
