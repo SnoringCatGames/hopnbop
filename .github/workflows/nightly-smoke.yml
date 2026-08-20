@@ -134,6 +134,22 @@ jobs:
           done
           echo "OK: hopnbop.net serving + GODOT_CONFIG patched + R2 heavies have CORS"
 
+      # Split out from the boot check, and time-boxed, because
+      # `--with-deps` shells out to apt: on 2026-08-19 the runner's
+      # azure.archive.ubuntu.com mirror stopped answering, apt sat
+      # there, and the step burned the job's entire 20-minute budget
+      # in one go. A step that outlives its own timeout-minutes is
+      # reported as a step *failure*; one that outlives the job's is
+      # a job *cancellation*, which is why that night went unnoticed
+      # (see the Discord step below). Bound it well under the job
+      # budget so a wedged mirror is a legible failure with time left
+      # to report it.
+      - name: Install headless Chromium
+        timeout-minutes: 8
+        run: |
+          npm install --no-save playwright@1.48.0
+          npx playwright install --with-deps chromium
+
       - name: Web client boot check
         # The curl smoke above proves the page is *served* and wired
         # correctly. It never executes the wasm, so the parse-error
@@ -142,15 +158,22 @@ jobs:
         # client is dead on arrival. This step boots the client in
         # headless Chromium and waits for Main._ready to set
         # window.__hopnbop_booted.
-        run: |
-          npm install --no-save playwright@1.48.0
-          npx playwright install --with-deps chromium
-          node scripts/web-boot-check.mjs
+        timeout-minutes: 5
+        run: node scripts/web-boot-check.mjs
 
       - name: Discord ping on failure
-        if: failure()
+        # `failure()` alone is not enough. A job killed by its own
+        # timeout-minutes ends as *cancelled*, not failed, so on
+        # 2026-08-19 the boot check hung for the full 20 minutes,
+        # the job died, and this step evaluated `failure()` as false
+        # and skipped: the nightly smoke went down and Discord heard
+        # nothing. `cancelled()` also covers a human cancelling a
+        # run, which is rare enough on a 03:00 UTC cron to be worth
+        # the occasional extra ping.
+        if: failure() || cancelled()
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          JOB_STATUS: ${{ job.status }}
           # GITHUB_RUN_URL is not a thing. Actions defines
           # GITHUB_SERVER_URL / GITHUB_REPOSITORY / GITHUB_RUN_ID and
           # nothing else, so the old message interpolated an empty
@@ -163,8 +186,15 @@ jobs:
             echo "::warning::DISCORD_WEBHOOK_URL unset; skipping Discord ping"
             exit 0
           fi
+          # A timed-out run and a failed probe want different first
+          # moves, so say which one this was rather than calling
+          # every non-success "failed".
+          case "${JOB_STATUS:-failure}" in
+            cancelled) headline="⏱️ nightly smoke timed out or was cancelled" ;;
+            *)         headline="❌ nightly smoke failed" ;;
+          esac
           curl -fsS -X POST \
             -H "Content-Type: application/json" \
-            -d "$(jq -n --arg c "❌ nightly smoke failed — $RUN_URL" \
+            -d "$(jq -n --arg c "$headline — $RUN_URL" \
               '{content:$c}')" \
             "$DISCORD_WEBHOOK_URL"
