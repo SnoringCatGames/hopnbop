@@ -4,10 +4,11 @@ extends Character
 
 
 const _PLAYER_COLLISION_LAYER := 4
-## Layer that level triggers (springs) use to detect
-## players. Invincibility only toggles
+## Layer that level objects (springs, kickable gore, flies)
+## use to detect players. Invincibility only toggles
 ## _PLAYER_COLLISION_LAYER, so invincible players stay on
-## this layer and still hit springs. Only death clears it.
+## this layer and still interact with them. Only death
+## clears it.
 const _PLAYER_TRIGGER_COLLISION_LAYER := 11
 
 @export var input_from_client: PlayerInputFromClient:

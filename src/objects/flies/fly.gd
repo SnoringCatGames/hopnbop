@@ -20,8 +20,9 @@ func _ready() -> void:
 	# Nothing collides with the fly.
 	collision_layer = 0
 	# Fly collides against normal_surfaces (bit 0)
-	# and player bodies (bit 3).
-	collision_mask = (1 << 0) | (1 << 3)
+	# and player bodies on the player_trigger layer
+	# (bit 10), which stays on while invincible.
+	collision_mask = (1 << 0) | (1 << 10)
 	up_direction = Vector2.UP
 	floor_stop_on_slope = false
 
