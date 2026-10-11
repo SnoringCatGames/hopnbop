@@ -29,7 +29,7 @@ on:
   workflow_dispatch:
 
 env:
-  GODOT_VERSION: 4.7.1-stable
+  GODOT_VERSION: 4.7.2-stable
 
 jobs:
   resolve-edgegap-version:

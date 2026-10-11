@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Hop 'n Bop is a multiplayer action game built with Godot 4.7.1. It implements client-side prediction with rollback reconciliation for networked gameplay.
+Hop 'n Bop is a multiplayer action game built with Godot 4.7.2. It implements client-side prediction with rollback reconciliation for networked gameplay.
 
 **Engine version:** `project.godot` declares
 `config/features=PackedStringArray("4.7", ...)`, and every CI
 workflow across this repo and both submodules pins
-`4.7.1-stable`. Keep those in sync when upgrading. Historical
+`4.7.2-stable`. Keep those in sync when upgrading. Historical
 notes below that say "Godot 4.5" describe when a behavior was
 first observed, not the current engine.
 
@@ -419,11 +419,13 @@ These are generated from `project.godot` at deploy/sync time.
   `~/.hopnbop-migration/credentials.env`).
 - **nakama-prod-1:** CPX21 (3 vCPU / 4 GB / 80 GB; upsized
   in-place from CPX11 on 2026-06-01) in Hillsboro, runs
-  Postgres 16 + Nakama + Caddy + Prometheus + Grafana +
-  node-exporter +
-  postgres-exporter in a single docker compose stack.
-  cost-monitor + dns-watchdog + pg-backup systemd timers on
-  the host. Loki + Promtail (log shipping) were intentionally
+  10 containers in a single docker compose stack: Postgres 16,
+  Nakama, Caddy, signaling-proxy, geoip-sidecar (GeoIP lookups
+  for the hybrid allocator), Prometheus, Grafana, node-exporter,
+  postgres-exporter, and cadvisor (container metrics for
+  Prometheus). cost-monitor + dns-watchdog + pg-backup +
+  geoip-refresh systemd timers on the host. Loki + Promtail
+  (log shipping) were intentionally
   left off in the Stage 7.11 (2026-05-13) lightweight
   re-introduction; their configs remain in
   `infra/remote/nakama/` so they can be flipped on without
@@ -432,9 +434,10 @@ These are generated from `project.godot` at deploy/sync time.
   `grafana.snoringcat.games`, and `signaling.snoringcat.games`
   all point at the Hetzner public IP (Caddy multiplexes by
   Host header).
-- **Cost:** ~$8/mo CPX21 cap (pre-hike rate locked in on
-  2026-06-01; cost-monitor MTD is authoritative) + cents of
-  R2 backups. See cost-monitor.
+- **Cost:** ~$14.59/mo, the CPX21 monthly cap at the pre-hike
+  rate locked in on 2026-06-01 (September 2026 actual; this line
+  said ~$8 until 2026-10-11, which was never right). cost-monitor
+  MTD is authoritative. Plus cents of R2 backups.
 - **Backups:** `pg-backup.timer` runs nightly at 03:11 UTC,
   `pg_dumpall` → `s3://hopnbop-pulumi-state-r2/pg-backups/
   postgres-YYYY-MM-DD.sql.gz`, 7-day retention. Restore —
@@ -460,9 +463,11 @@ These are generated from `project.godot` at deploy/sync time.
 
 **Edgegap game-server fleet:**
 - **App:** `hopnbop-server` (registered in Edgegap dashboard).
-- **Active version:** stored on the Nakama host's
-  `runtime.env` as `EDGEGAP_APP_VERSION=v<N>`. Bump after
-  pushing a new image via `game-server.yml`.
+- **Active version:** `game.yaml`'s `edgegap_app_version`,
+  synced into the per-game config by
+  `scripts/sync-game-config.ps1`. The host's `runtime.env`
+  `EDGEGAP_APP_VERSION` is only the bootstrap fallback; see
+  "Game server deploy (Edgegap)".
 - **Allocation:** on demand by Nakama's matchmaker hook; no
   always-on fleet.
 
@@ -1508,7 +1513,7 @@ GUT 9.5.0, `gut_loader.gd`'s `_static_init` dies assigning a Nil
 `ProjectSettings.get(...)` to a typed bool, GUT reports "Nothing
 was run", **and still exits 0** — so `pr-validate`'s per-file loop
 goes green having executed zero tests. Vendored at `addons/gut/`
-(not a submodule); currently **9.7.1** for Godot 4.7.1. When you
+(not a submodule); currently **9.7.1** for Godot 4.7.2. When you
 bump the engine, bump GUT in the same change and confirm a real
 test count, not just a zero exit code.
 

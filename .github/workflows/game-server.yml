@@ -115,7 +115,7 @@ jobs:
           echo "ok: game.yaml declares $want"
       - uses: chickensoft-games/setup-godot@v2
         with:
-          version: 4.7.1-stable
+          version: 4.7.2-stable
           use-dotnet: false
           # --export-release needs the Linux server template at
           # ~/.local/share/godot/export_templates/4.7.beta1/.
