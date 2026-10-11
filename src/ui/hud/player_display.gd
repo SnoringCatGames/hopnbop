@@ -1,6 +1,7 @@
 class_name PlayerDisplay
 extends PanelContainer
-## Individual player info panel showing adjective, name, and score.
+## Individual player info panel showing the profile image, the
+## player's resting bunny, adjective, name, and score.
 
 # Floating score popup settings.
 const _POPUP_MIN_SCORE_CHANGE := 10
@@ -19,6 +20,21 @@ const _POPUP_SLIDE_OFFSET := Vector2(15.0, -25.0) # Drift right and up.
 const _SCORE_INCREMENT_INTERVAL_SEC := 0.02
 const _PROFILE_IMAGE_SIZE := 32
 
+# Bunny portrayal settings.
+## Integer scale for the bunny's art pixels. At 2 the bunny is about
+## as tall as the profile image, so it barely grows the card. The
+## right-side player list has no height to spare at the default
+## window size.
+const _BUNNY_PIXEL_SCALE := 2
+## The part of the bunny's 18x22 sprite frame that the card reserves,
+## in art pixels. It covers the Rest and Eat poses plus their
+## one-pixel outline, and crops the frame's empty top and bottom rows.
+const _BUNNY_REGION := Rect2(1.0, 3.0, 16.0, 17.0)
+## Where PlayerPortrayal's origin sits relative to the top-left of the
+## sprite frame, in art pixels. Its animator centers the frame 9.5
+## pixels above the origin.
+const _BUNNY_ORIGIN := Vector2(9.0, 20.5)
+
 var player_id: int = 0
 var is_adjective_hidden := false
 var is_adjective_frozen := false
@@ -30,6 +46,9 @@ var _has_initialized_score: bool = false
 var _profile_image: ProfileImageDisplay
 var _is_profile_image_set := false
 var _crown_label: Label
+# The appearance last applied to the bunny portrayal. Compared each
+# frame so the portrayal is only rebuilt when it changes.
+var _bunny_appearance: Array = []
 
 # Display-only mode: render from party-member data instead of live
 # match state. Used for remote party members shown in the lobby, who
@@ -41,12 +60,20 @@ var _party_member: Dictionary = {}
 func _ready() -> void:
 	_profile_image = ProfileImageDisplay.new()
 	_profile_image.image_size = _PROFILE_IMAGE_SIZE
-	_profile_image.size_flags_horizontal = (
+	_profile_image.size_flags_vertical = (
 		Control.SIZE_SHRINK_CENTER)
-	$VBoxContainer.add_child(_profile_image)
-	$VBoxContainer.move_child(_profile_image, 0)
+	%AvatarRow.add_child(_profile_image)
+	%AvatarRow.move_child(_profile_image, 0)
 
-	# Party-leader crown, sits above the profile image. Hidden
+	# Scale the bunny up by whole pixels so its pixel art stays crisp.
+	%BunnyFrame.custom_minimum_size = (
+		_BUNNY_REGION.size * _BUNNY_PIXEL_SCALE)
+	%Bunny.scale = Vector2.ONE * _BUNNY_PIXEL_SCALE
+	%Bunny.position = (
+		(_BUNNY_ORIGIN - _BUNNY_REGION.position)
+		* _BUNNY_PIXEL_SCALE)
+
+	# Party-leader crown, sits above the profile image and bunny. Hidden
 	# unless this display's player is the current party's leader.
 	# Matches the ★ used in the party side panel.
 	_crown_label = Label.new()
@@ -66,6 +93,7 @@ func set_player_id(p_player_id: int) -> void:
 	_is_display_only = false
 	_has_initialized_score = false
 	_is_profile_image_set = false
+	_bunny_appearance = []
 
 
 ## Render this display from party-member data (user_id, display_name /
@@ -104,6 +132,8 @@ func _update_display(delta: float) -> void:
 			G.get_peer_anonymous_color(
 				player_match_state.peer_id))
 		_is_profile_image_set = true
+
+	_update_bunny(player_match_state)
 
 	# Update name and adjective.
 	%Name.text = player_match_state.bunny_name
@@ -176,6 +206,43 @@ func _update_display(delta: float) -> void:
 		"font_outline_color", outline_color)
 
 
+## Shows the player's bunny resting, dressed as their in-world bunny
+## is. Polled like the rest of the display, but only re-applied when
+## the appearance changes, since applying rebuilds the portrayal's
+## sprite frames.
+func _update_bunny(player_match_state: GamePlayerState) -> void:
+	# Mirror the in-world bunny, whose crown (worn by the kill leader)
+	# and outline only appear in networked matches. The level check
+	# also matters for the crown: lobby player ids count down from -1,
+	# which is what get_crown_player_id() returns for "nobody".
+	var is_crowned := (
+		G.is_networked_level_active
+		and G.match_state.get_crown_player_id(
+			G.settings.crown_kill_lead)
+		== player_id
+	)
+	var is_outlined := (
+		G.is_networked_level_active
+		and G.settings.show_player_outlines
+	)
+	var appearance := [
+		player_match_state.body_type_index,
+		player_match_state.costume_index,
+		player_match_state.base_color,
+		is_crowned,
+		is_outlined,
+	]
+	if appearance == _bunny_appearance:
+		return
+	_bunny_appearance = appearance
+
+	%Bunny.apply_player_state(player_match_state)
+	%Bunny.set_outline_enabled(is_outlined)
+	%Bunny.set_crown_visible(is_crowned)
+	%Bunny.visible = true
+	%BunnyFrame.visible = true
+
+
 ## Whether this display's player belongs to the current party's
 ## leader account. Drives the leader crown.
 func _resolve_is_display_leader() -> bool:
@@ -218,6 +285,9 @@ func _update_display_only() -> void:
 		"font_outline_color", Color.TRANSPARENT)
 	%Adjective.visible = false
 	%Score.visible = false
+	# Party state doesn't carry a member's bunny appearance, so there
+	# is no bunny to show.
+	%BunnyFrame.visible = false
 	# The member's role tells us the leader directly (no account-id
 	# resolution needed for a party member).
 	_crown_label.visible = (

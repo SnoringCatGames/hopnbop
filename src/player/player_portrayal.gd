@@ -81,6 +81,23 @@ func set_crown_visible(p_is_visible: bool) -> void:
 		_animator.set_crown_visible(p_is_visible)
 
 
+## Shows or hides the outline. Call after
+## apply_player_state(), which enables it and gives
+## this portrayal its own outline material.
+func set_outline_enabled(p_is_enabled: bool) -> void:
+	if not is_instance_valid(_animator):
+		return
+	var group := _animator.outline_group
+	if not is_instance_valid(group):
+		return
+	var shader_material := (
+		group.material as ShaderMaterial)
+	if not is_instance_valid(shader_material):
+		return
+	shader_material.set_shader_parameter(
+		"outline_enabled", p_is_enabled)
+
+
 func _apply_outline_color() -> void:
 	# Apply outline to the CanvasGroup so the shader
 	# sees the combined silhouette of all layers.
