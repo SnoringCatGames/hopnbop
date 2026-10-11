@@ -161,6 +161,16 @@ config's value and only falls back to the host's
 deploys before any `game.yaml` has been synced). Bumping the
 env var alone does nothing for hopnbop.
 
+**Pull the new image onto the Nakama host before you sync.**
+`allocator_mode: hybrid` sends North American matches to the
+host's local Docker allocator, which starts `local_image_ref`
+through the Docker Engine API. That API never pulls, and a failed
+local allocation fails the match (no Edgegap fallback). Once
+`sync-game-config.ps1` points the config at a tag the host lacks,
+those matches fail until someone runs
+`docker pull ghcr.io/snoringcatgames/hopnbop-server:v<N>` on the
+host. Nothing automates this yet (found 2026-10-11).
+
 `game-server.yml` pushes the image tag but does NOT write
 `edgegap_app_version` back. Bump `game.yaml` **before** running
 the workflow: its first step fails the run if `game.yaml`'s
@@ -461,9 +471,10 @@ These are generated from `project.godot` at deploy/sync time.
   `third_party/snoringcat-platform/scripts/`) runs this
   automatically before Nakama first boots. Its HostKeys step
   re-pins the SSH host keys once you confirm the new ed25519
-  fingerprint in the Hetzner console. RTO/RPO targets and one
-  known gap (the rebuild doesn't yet write the allocator entries
-  of `/opt/nakama/.env`, so matchmaking stays off) are in
+  fingerprint in the Hetzner console. It also renders the whole
+  `/opt/nakama/.env` (Edgegap and local-allocator entries
+  included) and pulls the local game-server image, so the rebuilt
+  host matchmakes. RTO/RPO targets are in
   `PLATFORM_ARCHITECTURE.md` "Backups and disaster recovery".
 
 **Edgegap game-server fleet:**
