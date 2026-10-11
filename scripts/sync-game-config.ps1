@@ -27,6 +27,14 @@
 #     and lost on container restart; the Postgres row is durable, so
 #     re-running is cheap and idempotent.
 #
+# Before registering, it pulls `local_image_ref` onto the Nakama host
+# (allocator_mode local or hybrid). The local allocator starts game
+# servers through the Docker Engine API, which never pulls, and a
+# failed local allocation fails the match outright (no Edgegap
+# fallback). So a config naming a tag the host lacks fails every match
+# routed local until someone pulls by hand. The pull needs the
+# operator's SSH key; CI has none, so release.yml passes -SkipImagePull.
+#
 # Usage:
 #   pwsh scripts/sync-game-config.ps1
 #   pwsh scripts/sync-game-config.ps1 -DryRun
@@ -37,7 +45,10 @@ param(
     [string]$GameYamlPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "game.yaml"),
     [string]$NakamaHost = "https://nakama.snoringcat.games",
     [string]$HttpKey = $env:NAKAMA_HTTP_KEY,
-    [switch]$DryRun
+    [switch]$DryRun,
+    # Register without pulling local_image_ref on the host first. Only
+    # for callers that cannot SSH to it (CI); pull it there by hand.
+    [switch]$SkipImagePull
 )
 
 $ErrorActionPreference = "Stop"
@@ -140,7 +151,16 @@ Write-Host "=== resolved game config ==="
 $config | ConvertTo-Json -Depth 20
 Write-Host ""
 
+# See the header: the host must have the image before the config names it.
+$imageRef = "$($config['local_image_ref'])"
+$needsPull = ($config['allocator_mode'] -in @("local", "hybrid")) -and $imageRef
+$hostName = ([Uri]$NakamaHost).Host
+$isLocalStack = $hostName -in @("localhost", "127.0.0.1", "::1")
+
 if ($DryRun) {
+    if ($needsPull -and -not $isLocalStack -and -not $SkipImagePull) {
+        Write-Host "[DryRun] would first docker pull $imageRef on $hostName"
+    }
     Write-Host "[DryRun] not POSTing. JSON payload would be:"
     Write-Host $json
     exit 0
@@ -164,6 +184,36 @@ Or pass inline:
   pwsh scripts/sync-game-config.ps1 -HttpKey '...'
 "@
     exit 2
+}
+
+if ($needsPull -and $isLocalStack) {
+    Write-Host "Local stack ($hostName): skipping the host image pull."
+} elseif ($needsPull -and $SkipImagePull) {
+    Write-Warning ("-SkipImagePull: not pulling $imageRef on $hostName. " +
+        "Every match the local allocator takes fails until it is there.")
+} elseif ($needsPull) {
+    $sshKey = Join-Path $HOME ".hopnbop-migration/ssh/nakama"
+    $knownHosts = Join-Path $HOME "Repositories/claude-config/jobs/known_hosts"
+    foreach ($required in @($sshKey, $knownHosts)) {
+        if (-not (Test-Path $required)) {
+            Write-Error ("Can't pull $imageRef on ${hostName}: $required is " +
+                "missing. Pull it there by hand, then re-run with -SkipImagePull.")
+            exit 2
+        }
+    }
+    Write-Host "docker pull $imageRef on $hostName"
+    $PSNativeCommandUseErrorActionPreference = $false
+    & ssh -i $sshKey `
+        -o StrictHostKeyChecking=yes `
+        -o "UserKnownHostsFile=$knownHosts" `
+        -o BatchMode=yes `
+        -o ConnectTimeout=15 `
+        "root@$hostName" "docker pull -q '$imageRef'"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error ("docker pull failed on $hostName (exit $LASTEXITCODE). " +
+            "Not registering a config that names an image the host lacks.")
+        exit 1
+    }
 }
 
 $uri = "$NakamaHost/v2/rpc/register_game" +

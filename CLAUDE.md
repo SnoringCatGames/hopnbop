@@ -161,15 +161,17 @@ config's value and only falls back to the host's
 deploys before any `game.yaml` has been synced). Bumping the
 env var alone does nothing for hopnbop.
 
-**Pull the new image onto the Nakama host before you sync.**
-`allocator_mode: hybrid` sends North American matches to the
-host's local Docker allocator, which starts `local_image_ref`
-through the Docker Engine API. That API never pulls, and a failed
-local allocation fails the match (no Edgegap fallback). Once
-`sync-game-config.ps1` points the config at a tag the host lacks,
-those matches fail until someone runs
-`docker pull ghcr.io/snoringcatgames/hopnbop-server:v<N>` on the
-host. Nothing automates this yet (found 2026-10-11).
+**`sync-game-config.ps1` pulls the new image onto the Nakama host
+before it registers the config.** `allocator_mode: hybrid` sends
+North American matches to the host's local Docker allocator, which
+starts `local_image_ref` through the Docker Engine API. That API
+never pulls, and a failed local allocation fails the match (no
+Edgegap fallback), so a registered tag the host lacks would fail
+every match routed local. A failed pull aborts the sync before
+anything is registered. The pull needs the operator's SSH key
+(`~/.hopnbop-migration/ssh/nakama`). CI has none, so `release.yml`
+syncs with `-SkipImagePull` and warns; after a CI release, run
+`docker pull <local_image_ref>` on the host by hand.
 
 `game-server.yml` pushes the image tag but does NOT write
 `edgegap_app_version` back. Bump `game.yaml` **before** running

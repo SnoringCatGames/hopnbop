@@ -214,6 +214,10 @@ jobs:
         # Runs after the Pages deploy: a failure here means the web
         # build is live but the config didn't sync, and the fix is to
         # run scripts/sync-game-config.ps1 standalone.
+        #
+        # -SkipImagePull: this runner has no SSH key to the Nakama
+        # host, so it can't pull local_image_ref there before
+        # registering. A run from the operator's machine does both.
         shell: pwsh
         env:
           NAKAMA_HTTP_KEY: ${{ secrets.NAKAMA_HTTP_KEY }}
@@ -222,11 +226,12 @@ jobs:
             Write-Error "NAKAMA_HTTP_KEY secret not available to this job"
             exit 1
           }
-          ./scripts/sync-game-config.ps1
+          ./scripts/sync-game-config.ps1 -SkipImagePull
           if ($LASTEXITCODE -ne 0) {
             Write-Error "game-config sync failed (the web deploy itself succeeded)"
             exit 1
           }
+          echo "::warning::local_image_ref was registered without a host pull. Run 'docker pull <local_image_ref>' on the Nakama host, or local-allocator matches fail."
 
   discord-notify:
     name: Discord release notes
