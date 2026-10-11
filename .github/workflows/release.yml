@@ -96,6 +96,19 @@ jobs:
         with:
           version: ${{ env.GODOT_VERSION }}
           use-dotnet: false
+          # The Web export template. Without it the export fails with
+          # "No export template found".
+          include-templates: true
+      # These two match game-server.yml. This job had neither until
+      # 2026-10-11, so a release would have exported without the
+      # Platform SDK (addons/ is gitignored) and with no .godot cache
+      # to resolve uid:// references. pr-validate's export-smoke job
+      # runs the same steps.
+      - name: Bridge snoringcat_platform_client addon
+        run: bash scripts/ci/bridge-platform-addon.sh
+      - name: Import project assets
+        # Exits non-zero on harmless warnings.
+        run: godot --headless --import || true
       - name: Export web build
         run: |
           mkdir -p build/web

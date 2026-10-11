@@ -125,16 +125,13 @@ jobs:
       - name: Bridge snoringcat_platform_client addon
         # The addon's tracked source lives in the
         # third_party/snoringcat-platform submodule; it gets
-        # copied into addons/ where Godot can find it. Locally
-        # we use scripts/setup-platform-addon.ps1 (Windows-only,
-        # uses xcopy). In CI we just `cp -r` the same files.
-        # Without this, the Platform autoload fails to load and
-        # the server can't start.
-        run: |
-          rm -rf addons/snoringcat_platform_client
-          cp -r \
-            third_party/snoringcat-platform/addons/snoringcat_platform_client \
-            addons/snoringcat_platform_client
+        # copied into addons/ where Godot can find it (locally,
+        # scripts/setup-platform-addon.ps1 does this). Without it
+        # the Platform autoload fails to load and the server can't
+        # start. The script also fails if the autoload's UID
+        # doesn't resolve, which a Linux checkout hit until the SDK
+        # started tracking its .uid files.
+        run: bash scripts/ci/bridge-platform-addon.sh
       - name: Import project assets
         # Fresh checkouts have no .godot/ cache so the export
         # step would otherwise fail to resolve uid:// references.

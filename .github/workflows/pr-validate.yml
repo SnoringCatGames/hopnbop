@@ -152,31 +152,12 @@ jobs:
           version: ${{ env.GODOT_VERSION }}
           use-dotnet: false
       - name: Bridge snoringcat_platform_client addon
-        # Same as game-server.yml. The addon's source lives in the
-        # submodule and is copied into addons/ (gitignored) by
-        # scripts/setup-platform-addon.ps1 locally. Without it the
-        # Platform autoload doesn't load and global.gd fails to
-        # compile, so most test files fail.
-        #
-        # The copy alone isn't enough. The submodule doesn't track
-        # the addon's .uid files, so --import mints them from each
-        # script's path and contents, and project.godot names the
-        # Platform autoload only by UID. That UID was minted on
-        # Windows, where the submodule checks out with CRLF
-        # endings. This LF checkout mints a different one
-        # (uid://dpe7koncinbw2, not uid://ct6lgui116ppb), and the
-        # autoload stops resolving. Give platform.gd whatever UID
-        # project.godot names, as a Windows checkout would.
-        run: |
-          rm -rf addons/snoringcat_platform_client
-          cp -r \
-            third_party/snoringcat-platform/addons/snoringcat_platform_client \
-            addons/snoringcat_platform_client
-          uid=$(sed -nE 's|^Platform="\*(uid://[a-z0-9]+)"$|\1|p' project.godot)
-          if [ -n "$uid" ]; then
-            echo "$uid" > addons/snoringcat_platform_client/core/platform.gd.uid
-            echo "platform.gd pinned to $uid (from project.godot)"
-          fi
+        # Copies the SDK out of the submodule (gitignored under
+        # addons/) and fails if the Platform autoload's UID doesn't
+        # resolve. Without the addon, global.gd fails to compile and
+        # most test files fail. Same script as game-server.yml and
+        # release.yml.
+        run: bash scripts/ci/bridge-platform-addon.sh
       - name: Import project
         # A fresh checkout has no .godot/ cache, so no class_name is
         # registered. GUT checks for its own classes first and, when
@@ -261,6 +242,54 @@ jobs:
             for x in "${failed[@]}"; do echo "- $x"; done
           } >> "$GITHUB_STEP_SUMMARY"
           [ "${#failed[@]}" -eq 0 ]
+
+  export-smoke:
+    name: Export smoke (Web + Linux server)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # The export steps game-server.yml and release.yml run, minus any
+    # push or deploy. release.yml has never run. Until 2026-10-11 its
+    # web job had no export templates, no addon bridge, and no import
+    # step, and only a real tagged release would have found out.
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+          include-templates: true
+      - name: Bridge snoringcat_platform_client addon
+        run: bash scripts/ci/bridge-platform-addon.sh
+      - name: Import project
+        # Exits non-zero on harmless warnings; the exports below are
+        # the real check.
+        run: godot --headless --import || true
+      - name: Export Web and Linux server
+        # --export-release exits non-zero on missing-resource warnings
+        # (CLAUDE.md "Web export gotcha"), so judge each export by its
+        # artifact and by script errors in its log.
+        run: |
+          set -uo pipefail
+          status=0
+          export_one() {
+            local preset="$1" out="$2" log="$RUNNER_TEMP/export-${1// /_}.log"
+            mkdir -p "$(dirname "$out")"
+            godot --headless --export-release "$preset" "$out" 2>&1 | tee "$log" || true
+            if [ ! -s "$out" ]; then
+              echo "::error::$preset export produced no $out"
+              status=1
+            elif grep -qE 'SCRIPT ERROR|Parse Error|Failed to load script' "$log"; then
+              echo "::error::$preset export logged script errors (see the log above)"
+              status=1
+            else
+              echo "$preset: ok ($(du -h "$out" | cut -f1))"
+            fi
+          }
+          export_one "Web" build/web/index.html
+          export_one "Linux Server" build/linux/hopnbop_server.x86_64
+          exit $status
 
   nakama-runtime-go:
     name: Nakama runtime Go check
