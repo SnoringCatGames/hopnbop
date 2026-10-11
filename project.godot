@@ -204,6 +204,7 @@ locale/locale_filter=PackedStringArray("en", "zh", "es", "hi", "ar", "fr", "pt",
 2d_physics/layer_8="foot"
 2d_physics/layer_9="head"
 2d_physics/layer_10="water"
+2d_physics/layer_11="player_trigger"
 
 [physics]
 

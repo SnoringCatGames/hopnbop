@@ -2,7 +2,10 @@ class_name Spring
 extends StaticBody2D
 ## A spring tile that bounces players upward.
 ## Uses Area2D detection instead of terrain
-## sampling.
+## sampling. The trigger masks the player_trigger
+## layer, not the player layer, because invincibility
+## clears the player layer and springs must still
+## work while invincible.
 
 
 func _on_trigger_area_body_entered(

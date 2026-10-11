@@ -4,6 +4,11 @@ extends Character
 
 
 const _PLAYER_COLLISION_LAYER := 4
+## Layer that level triggers (springs) use to detect
+## players. Invincibility only toggles
+## _PLAYER_COLLISION_LAYER, so invincible players stay on
+## this layer and still hit springs. Only death clears it.
+const _PLAYER_TRIGGER_COLLISION_LAYER := 11
 
 @export var input_from_client: PlayerInputFromClient:
 	set(value):
@@ -365,7 +370,12 @@ func set_is_collidable(is_collidable: bool) -> void:
 		# Player is alive - show and enable collision.
 		if not animator.visible:
 			animator.visible = true
-		if collision_layer == 0:
+		# The player layer is off after death (all layers
+		# cleared) or while invincible (Bunny clears only
+		# this bit and re-applies it right after this
+		# call). Test the bit, not the whole layer, since
+		# the trigger layer stays on while invincible.
+		if not get_collision_layer_value(_PLAYER_COLLISION_LAYER):
 			collision_layer = _original_collision_layer
 			collision_mask = _original_collision_mask
 			# Also restore Area2D children collision.
