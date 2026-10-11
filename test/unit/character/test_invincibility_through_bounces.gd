@@ -1,9 +1,9 @@
 extends GutTest
-## Post-respawn invincibility must survive a SPRING. The SPRING
-## overwrites the SPAWN in the single last-interaction slot,
-## which used to end invincibility (and re-enable player-player
-## bumps and kills) the moment an invincible bunny hit a spring.
-## Every other interaction, including SNAIL_CRUSH, still ends it.
+## Post-respawn invincibility must survive SPRING and
+## SNAIL_CRUSH bounces. Both overwrite the SPAWN in the single
+## last-interaction slot, which used to end invincibility (and
+## re-enable player-player bumps and kills) the moment an
+## invincible bunny bounced.
 
 
 const _SPAWN_FRAME := 20
@@ -77,24 +77,35 @@ func test_spring_bounce_keeps_invincibility() -> void:
 	)
 
 
-func test_snail_crush_still_ends_invincibility() -> void:
-	# Unchanged behavior: unlike a spring, a snail crush during
-	# invincibility ends it.
+func test_snail_crush_bounce_keeps_invincibility() -> void:
 	_record(_spawn_type(), _SPAWN_FRAME)
 	_record(
 		CharacterStateFromServer.ServerInteractionType.SNAIL_CRUSH,
 		_SPAWN_FRAME + 10,
 	)
 
-	assert_false(
+	assert_eq(
+		_state.last_interaction_type,
+		CharacterStateFromServer.ServerInteractionType.SNAIL_CRUSH,
+		"The snail crush replaces the spawn in the interaction slot",
+	)
+	assert_true(
 		_is_invincible_at(_SPAWN_FRAME + 10),
-		"A snail crush ends invincibility",
+		"Still invincible on the crush frame",
+	)
+	assert_true(
+		_is_invincible_at(_invincibility_end_frame() - 1),
+		"Still invincible until the original window ends",
+	)
+	assert_false(
+		_is_invincible_at(_invincibility_end_frame()),
+		"The crush does not extend the window",
 	)
 
 
 func test_bump_after_spawn_is_not_invincible() -> void:
 	# Bumps are deferred until invincibility ends, so a recorded
-	# bump means the bunny is vulnerable. Only springs are exempt.
+	# bump means the bunny is vulnerable. Only bounces are exempt.
 	_record(_spawn_type(), _SPAWN_FRAME)
 	_record(
 		CharacterStateFromServer.ServerInteractionType.BUMP,
@@ -120,15 +131,18 @@ func test_death_after_spring_is_not_invincible() -> void:
 	assert_false(_is_invincible_at(_SPAWN_FRAME + 20))
 
 
-func test_spring_from_previous_life_is_not_invincible() -> void:
-	# Rollback re-simulation can load a spring from before the
+func test_bounce_from_previous_life_is_not_invincible() -> void:
+	# Rollback re-simulation can load a bounce from before the
 	# remembered spawn. It belongs to a previous life.
 	_record(_spawn_type(), _SPAWN_FRAME)
-	_state.last_interaction_type = (
-		CharacterStateFromServer.ServerInteractionType.SPRING)
-	_state.last_interaction_frame_index = _SPAWN_FRAME - 15
+	for bounce_type in [
+		CharacterStateFromServer.ServerInteractionType.SPRING,
+		CharacterStateFromServer.ServerInteractionType.SNAIL_CRUSH,
+	]:
+		_state.last_interaction_type = bounce_type
+		_state.last_interaction_frame_index = _SPAWN_FRAME - 15
 
-	assert_false(_is_invincible_at(_SPAWN_FRAME - 10))
+		assert_false(_is_invincible_at(_SPAWN_FRAME - 10))
 
 
 func test_client_keeps_invincibility_through_reconciled_spring() -> void:

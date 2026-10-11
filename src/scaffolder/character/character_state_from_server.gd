@@ -54,16 +54,16 @@ var is_dead: bool:
 var is_invincible: bool:
 	get:
 		# Player is invincible after SPAWN for the invincibility duration.
-		# A SPRING replaces the SPAWN in the single last-interaction
-		# slot but must not end invincibility, so fall back to the
-		# remembered spawn frame for it. Any other interaction,
-		# including SNAIL_CRUSH, ends invincibility as before.
+		# Invincibility only gates player-player interactions, so a
+		# SPRING or SNAIL_CRUSH bounce must not end it. Those bounces
+		# replace the SPAWN in the single last-interaction slot, so
+		# fall back to the remembered spawn frame for them.
 		var spawn_frame_index := -1
 		match last_interaction_type:
 			ServerInteractionType.SPAWN:
 				spawn_frame_index = last_interaction_frame_index
-			ServerInteractionType.SPRING:
-				# A spring from before the remembered spawn (seen
+			ServerInteractionType.SPRING, ServerInteractionType.SNAIL_CRUSH:
+				# A bounce from before the remembered spawn (seen
 				# during rollback re-simulation) is a previous life.
 				if (last_interaction_frame_index
 						< _last_spawn_frame_index):
@@ -89,11 +89,11 @@ var is_invincible: bool:
 var _last_confirmed_sent_frame := -1
 
 ## Frame of the most recent SPAWN this state has seen. Lets
-## is_invincible survive a SPRING that overwrites the SPAWN in
-## the last-interaction slot. Not replicated: the server sets
-## it when recording the SPAWN, and clients set it when
-## reconciling the SPAWN from the buffer, which happens before
-## they reach a later spring.
+## is_invincible survive a SPRING or SNAIL_CRUSH that
+## overwrites the SPAWN in the last-interaction slot. Not
+## replicated: the server sets it when recording the SPAWN,
+## and clients set it when reconciling the SPAWN from the
+## buffer, which happens before they reach a later bounce.
 var _last_spawn_frame_index := -1
 
 ## Looser position threshold for remote players.
@@ -1191,7 +1191,7 @@ func _reconcile_server_interaction() -> void:
 	last_interaction_velocity = _get_frame_property(
 		frame_state, &"last_interaction_velocity")
 	# Clients never record SPAWN themselves. Remember it here so
-	# invincibility survives a later spring (see is_invincible).
+	# invincibility survives a later bounce (see is_invincible).
 	if buffer_interaction_type == ServerInteractionType.SPAWN:
 		_last_spawn_frame_index = buffer_interaction_frame
 
@@ -1487,7 +1487,7 @@ func record_interaction(
 	)
 
 	# Remember the spawn so invincibility survives a later
-	# spring (see is_invincible).
+	# bounce (see is_invincible).
 	if interaction_type == ServerInteractionType.SPAWN:
 		_last_spawn_frame_index = last_interaction_frame_index
 
