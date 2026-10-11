@@ -155,13 +155,28 @@ jobs:
         # Same as game-server.yml. The addon's source lives in the
         # submodule and is copied into addons/ (gitignored) by
         # scripts/setup-platform-addon.ps1 locally. Without it the
-        # Platform autoload's uid doesn't resolve and global.gd
-        # fails to compile, so every test file errors out.
+        # Platform autoload doesn't load and global.gd fails to
+        # compile, so most test files fail.
+        #
+        # The copy alone isn't enough. The submodule doesn't track
+        # the addon's .uid files, so --import mints them from each
+        # script's path and contents, and project.godot names the
+        # Platform autoload only by UID. That UID was minted on
+        # Windows, where the submodule checks out with CRLF
+        # endings. This LF checkout mints a different one
+        # (uid://dpe7koncinbw2, not uid://ct6lgui116ppb), and the
+        # autoload stops resolving. Give platform.gd whatever UID
+        # project.godot names, as a Windows checkout would.
         run: |
           rm -rf addons/snoringcat_platform_client
           cp -r \
             third_party/snoringcat-platform/addons/snoringcat_platform_client \
             addons/snoringcat_platform_client
+          uid=$(sed -nE 's|^Platform="\*(uid://[a-z0-9]+)"$|\1|p' project.godot)
+          if [ -n "$uid" ]; then
+            echo "$uid" > addons/snoringcat_platform_client/core/platform.gd.uid
+            echo "platform.gd pinned to $uid (from project.godot)"
+          fi
       - name: Import project
         # A fresh checkout has no .godot/ cache, so no class_name is
         # registered. GUT checks for its own classes first and, when
