@@ -672,6 +672,15 @@ func _network_process() -> void:
 				)
 
 		character._process_movement_and_actions()
+	else:
+		# A dead character skips movement, but its death
+		# already moved it to the respawn position. Keep
+		# the location-dependent in-water bit in sync with
+		# that position. Otherwise the bit from the death
+		# location survives until respawn, and the first
+		# alive frame reads it as a water exit, spawning a
+		# splash at the respawn x and the old water y.
+		character._update_water_state()
 
 	# Process client-side effects (sounds, particles) regardless of
 	# death state. This must be outside the is_dead guard so that
