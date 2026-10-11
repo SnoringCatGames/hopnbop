@@ -707,14 +707,17 @@ func _spawn_squish_sprite() -> void:
 			and G.settings.show_player_outlines)
 		sprite.material = mat
 
-	G.level.add_child(sprite)
-	# Set global position after add_child so the
-	# parent transform is applied correctly.
 	# Character origin is at the feet. The
 	# animator is offset upward from the origin
 	# to center the sprite on the character body.
-	sprite.global_position = (
+	# Position the sprite before add_child. Entering
+	# the tree snapshots the transform as the physics
+	# interpolation start, so a sprite added at its
+	# default (0, 0) and moved afterwards renders
+	# sliding out of the level origin for one tick.
+	sprite.position = G.level.to_local(
 		death_pos + animator.position)
+	G.level.add_child(sprite)
 
 	# After the squish duration, remove the
 	# sprite and spawn gore + camera shake.
