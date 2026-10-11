@@ -423,8 +423,8 @@ These are generated from `project.godot` at deploy/sync time.
   Nakama, Caddy, signaling-proxy, geoip-sidecar (GeoIP lookups
   for the hybrid allocator), Prometheus, Grafana, node-exporter,
   postgres-exporter, and cadvisor (container metrics for
-  Prometheus). cost-monitor + dns-watchdog + pg-backup +
-  geoip-refresh systemd timers on the host. Loki + Promtail
+  Prometheus). cost-monitor + pg-backup + geoip-refresh +
+  desktop-drain-watch systemd timers on the host. Loki + Promtail
   (log shipping) were intentionally
   left off in the Stage 7.11 (2026-05-13) lightweight
   re-introduction; their configs remain in
@@ -459,7 +459,12 @@ These are generated from `project.godot` at deploy/sync time.
      on a same-version restore).
   Full-host rebuild: `phase-a.ps1 -RestoreBackup` (in
   `third_party/snoringcat-platform/scripts/`) runs this
-  automatically before Nakama first boots.
+  automatically before Nakama first boots. Its HostKeys step
+  re-pins the SSH host keys once you confirm the new ed25519
+  fingerprint in the Hetzner console. RTO/RPO targets and one
+  known gap (the rebuild doesn't yet write the allocator entries
+  of `/opt/nakama/.env`, so matchmaking stays off) are in
+  `PLATFORM_ARCHITECTURE.md` "Backups and disaster recovery".
 
 **Edgegap game-server fleet:**
 - **App:** `hopnbop-server` (registered in Edgegap dashboard).
