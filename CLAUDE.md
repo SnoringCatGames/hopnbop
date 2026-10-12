@@ -214,13 +214,14 @@ as the wrapper does. A process fails on a missing result line, a
 failed step or assert, a `CrashHandlerException`, or a `SCRIPT ERROR`.
 `ERROR:` lines are counted (`top_errors`, plus `teardown_errors` after
 the result) but do not fail a run, because local mode and preview
-matches log known RPC and replication errors today. Every preview
-process used to exit 0xC0000005: rollback_netcode's `PerfTracker`
-registers lambda-backed `Performance` custom monitors and never
-removes them (the engine evidently frees them after GDScript has shut
-down). `agent_bootstrap.gd` removes them in `_finalize`, so harness
-exit codes are real (0 pass, 1 fail, 2 bad scenario, 3 refused).
-Plain editor runs still crash on exit until PerfTracker cleans up.
+matches log known RPC and replication errors today. About half of all
+lobby runs also end with an `AudioStreamWAV` (`pause_menu.wav`) leak
+warning at exit; that is known teardown noise.
+Exit codes are real: 0 pass, 1 fail, 2 bad scenario, 3 refused. Every
+preview process, harness or not, used to exit 0xC0000005 because
+rollback_netcode's `PerfTracker` never removed its lambda-backed
+`Performance` custom monitors. Since rollback_netcode 1.0.2 it removes
+them in `_exit_tree`, so the harness no longer works around it.
 
 **Files.** `scripts/agent/agent_bootstrap.gd` is the `-s` main loop.
 It must not name an autoload (a `-s` script compiles before the

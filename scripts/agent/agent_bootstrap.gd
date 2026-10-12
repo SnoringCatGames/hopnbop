@@ -29,15 +29,3 @@ func _initialize() -> void:
 	# Platform config before G._enter_tree and G._ready read them.
 	driver.call("configure")
 	root.add_child(driver)
-
-
-func _finalize() -> void:
-	# Works around a crash on exit (0xC0000005) in every preview-mode
-	# process. rollback_netcode's PerfTracker registers Performance
-	# custom monitors backed by lambdas and never removes them, and the
-	# engine evidently frees those callables after GDScript has shut
-	# down. Removing them here, while GDScript is still alive, keeps the
-	# exit code meaningful. A no-op once PerfTracker cleans up after
-	# itself.
-	for monitor_id in Performance.get_custom_monitor_names():
-		Performance.remove_custom_monitor(monitor_id)
