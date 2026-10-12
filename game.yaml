@@ -38,8 +38,9 @@
 #     pushes the image tag but does NOT write them back. Bump them
 #     here in the same change that runs the workflow, or the
 #     allocator keeps pulling the old tag.
-#   - Bumps to `legal_version` invalidate active sessions
-#     (forces players through the consent flow on next launch).
+#   - A bump to `legal_version` sends every player back through
+#     the consent screen on their next launch. See the `legal:`
+#     block at the bottom for when to sync one.
 
 schema_version: 1
 
@@ -157,13 +158,23 @@ leaderboards:
     reset_schedule: null
 
 # Legal documents shipped in the client. Paths are relative to
-# the game's project root. Bumping `legal_version` invalidates
-# the cached consent token in `auth_token_store.gd` (see
-# `LEGAL_VERSION` constant) and forces re-consent on next
-# launch. Stage 3.10 will read this from the `games` table
-# instead of the in-script constant.
+# the game's project root.
+#
+# `legal_version` is the consent version. The runtime serves it
+# to clients through `version_check`, and the consent screen
+# re-prompts any player whose stored consent names a different
+# version. `LEGAL_VERSION` in `src/core/legal_version.gd` is the
+# client's offline fallback. Bump both in the same commit:
+# pr-validate's "Check legal_version parity" step fails the build
+# when they differ.
+#
+# Sync a bump with `scripts/sync-game-config.ps1` only after a
+# client that bundles the new legal text has shipped. Syncing
+# earlier makes clients that still bundle the old text ask
+# players to accept that old text under the new version, and
+# those players are then never shown the new text.
 legal:
   terms_path: legal/en/terms.txt
   privacy_path: legal/en/privacy.txt
   data_deletion_path: legal/en/data_deletion.txt
-  legal_version: "1.1"
+  legal_version: "1.2"

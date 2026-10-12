@@ -19,10 +19,10 @@ extends Object
 ##
 ## Keep this constant aligned with `game.yaml`'s
 ## `legal.legal_version` so offline boots / pre-version-check
-## flows present the right copy. CI doesn't currently guard this
-## parity; a mismatch surfaces as the consent screen forcing a
-## re-consent on first online boot, which is annoying but safe.
-const LEGAL_VERSION := "1.1"
+## flows present the right copy. pr-validate.yml's "Check
+## legal_version parity" step fails the build when the two
+## differ, so bump both in the same commit.
+const LEGAL_VERSION := "1.2"
 
 
 ## Returns the legal-consent version the consent gate should

@@ -1,5 +1,5 @@
 PRIVACY POLICY
-Last updated: March 11, 2026 — Version 1.1
+Last updated: October 11, 2026 — Version 1.2
 
 Hop 'n Bop ("the Game") is published by Snoring Cat LLC ("we", "us", "our").
 This policy describes how we collect, use, and protect your information.
@@ -9,13 +9,25 @@ This policy describes how we collect, use, and protect your information.
 
 - Account information: When you sign in via Google, Facebook, Steam, Epic,
   Apple, or Game Center, we receive your display name, profile image URL, and
-  a provider-specific user ID. We do not receive or store your password.
+  a provider-specific user ID. If you sign in with Google, we also receive
+  your email address and store it with your account. We do not receive or
+  store your password.
 - Device identifier: If you play anonymously, we generate a random device ID
-  stored locally on your device.
+  stored locally on your device. When you use online features, we also store
+  it on our servers to identify your account.
 - Gameplay data: Match results, scores, kills, deaths, and other in-game
   statistics.
-- Technical data: Game version, platform, and crash reports (stack traces, no
-  personal data).
+- Social data and settings: Your friends, blocked players, parties, players
+  you recently played with, online status, and settings synced across your
+  devices.
+- IP address: We receive your IP address when the Game connects to our
+  servers or to a game server. When you look for a match, we store it with
+  your account, replacing any earlier one, and use it to choose a game
+  server near you.
+- Technical data: Game version, platform, operating system, and crash
+  reports. Crash reports contain error messages and excerpts from the Game's
+  logs, with sign-in tokens and account identifiers removed. We do not store
+  your player ID, IP address, or device ID with crash reports.
 - Consent records: Timestamp and legal document version of your agreement to
   our Terms and Privacy Policy.
 
@@ -25,25 +37,57 @@ This policy describes how we collect, use, and protect your information.
 - Authenticate your identity and maintain your account.
 - Track gameplay statistics, display leaderboards, and show your profile image
   to other players in-game and on leaderboards.
-- Match you with other players.
+- Provide friends, parties, online status, and settings sync.
+- Match you with other players and choose a game server near you.
 - Diagnose crashes and improve the Game.
+- Keep our servers secure and working.
 
 
 3. INFORMATION SHARING
 
-We do not sell, rent, or share your personal information with third parties.
-We comply with the EU General Data Protection Regulation (GDPR) and the
-California Consumer Privacy Act (CCPA). Your data is stored on Amazon Web
-Services (AWS) infrastructure in the United States. Authentication providers
-(Google, Facebook, etc.) are contacted only during sign-in and receive no
-gameplay data from us.
+We do not sell or rent your personal information. We share it only as
+described below, with service providers that run parts of the Game for us and
+with the sign-in providers you choose to use. We comply with the EU General
+Data Protection Regulation (GDPR) and the California Consumer Privacy Act
+(CCPA).
+
+- Hosting: Our backend runs on a cloud server from Hetzner Online GmbH in
+  Hillsboro, Oregon, United States. That server stores your account and game
+  data, including your sign-in IDs, friends, online status, settings,
+  statistics, and leaderboard entries.
+- Game servers: Edgegap runs a game server for each match in a data center
+  chosen to be near its players, which may be outside your country. Edgegap
+  receives the players' IP addresses to choose the location, and their player
+  IDs so the server knows who may join. If everyone in a match is in the
+  United States or Canada, the match may run on our own server instead. We
+  check this with a DB-IP country database on our server, so your IP address
+  is not sent to anyone else for that check. During a match, the game server
+  receives your IP address, player ID, display name, profile image URL, and
+  gameplay data.
+- Website and backups: Cloudflare hosts our website and the browser version
+  of the Game, and sees visitors' IP addresses. It also stores our nightly
+  database backups. For Google sign-in, a small service we run on Cloudflare
+  exchanges Google's one-time code for your sign-in token, and stores
+  neither.
+- Sign-in: Google and Facebook are contacted when you sign in or link an
+  account, and receive no gameplay data from us. When the Game shows a
+  profile image, it loads the image from Google's or Facebook's servers,
+  which can see the IP address of the device loading it.
 
 
 4. DATA RETENTION
 
 Gameplay data is retained for the lifetime of your account. Consent records
-are retained for 3 years after account deletion for legal compliance. All
-other data is deleted immediately upon account deletion.
+are retained for 3 years after account deletion for legal compliance. When you
+delete your account, we immediately remove your display name from your public
+profile and delete your friends, leaderboard entries, match history, settings,
+and other game data. We keep the rest of your account, including your sign-in
+IDs, device ID, email address, and original display name, for 30 days so you
+can cancel the deletion by signing back in. After that, your account is
+permanently deleted. Deleted data can remain in our database backups for up
+to 8 days after it is deleted. Crash reports are deleted after 30 days.
+Server logs, which can include IP addresses, are kept only as long as needed
+for security and troubleshooting.
 
 
 5. YOUR RIGHTS
@@ -75,9 +119,10 @@ data from a child under 13, we will delete it promptly.
 
 7. SECURITY
 
-We use industry-standard encryption (HTTPS/TLS) for all data in transit and
-encrypt sensitive data at rest. Access to player data is restricted to
-authorized systems.
+We use industry-standard encryption (HTTPS/TLS) for our website, for sign-in,
+and for data sent between the Game and our backend server. Gameplay traffic
+during a match is not always encrypted. Our database backups are encrypted at
+rest. Access to player data is restricted to authorized systems.
 
 
 8. CHANGES TO THIS POLICY

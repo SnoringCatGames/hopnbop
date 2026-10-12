@@ -1,5 +1,5 @@
 DATA DELETION POLICY
-Last updated: March 11, 2026 — Version 1.1
+Last updated: October 11, 2026 — Version 1.2
 
 You have the right to request deletion of all data associated with your
 Hop 'n Bop account.
@@ -11,8 +11,8 @@ Before deleting your account, you may export your data via
 Settings > Account > Export My Data.
 
 Open Settings in the game, go to Account, and select "Delete Account". Your
-account and all associated data will be deleted immediately. This action
-cannot be undone.
+account will be scheduled for deletion, and you have 30 days to cancel by
+signing back in. After that, the deletion is permanent and cannot be undone.
 
 If you are unable to access the game, email privacy@hopnbop.net with the
 subject "Data Deletion Request" and include your player ID so we can locate
@@ -23,19 +23,28 @@ WHAT GETS DELETED
 
 When you delete your account, we permanently delete:
 - Your player profile (display name, player ID, profile image URL).
-- All linked authentication provider mappings.
+- All linked authentication provider mappings, and your email address if you
+  signed in with Google.
 - Gameplay statistics and match history.
 - Cloud-synced settings.
 - Friend connections (removed from both sides).
+- Party memberships, online status, and the list of players you recently
+  played with.
 - Leaderboard entries.
+- Your stored IP address.
 - Consent records (after a 3-year retention period for legal compliance).
 
 
 TIMELINE
 
-In-game deletion is processed immediately. Email requests are processed
-within 30 days. Once processed, the deletion is permanent and cannot be
-undone.
+When you delete your account in the game, your display name is removed from
+your public profile and your friends, leaderboard entries, match history,
+settings, and other game data are deleted immediately. The rest of your
+account, including your sign-in IDs, device ID, email address, and original
+display name, is permanently deleted 30 days later unless you sign back in to
+cancel. Email requests are processed within 30 days. Deleted data can remain
+in our database backups for up to 8 days after it is deleted. Once your
+account is permanently deleted, it cannot be recovered.
 
 
 DATA WE CANNOT DELETE
