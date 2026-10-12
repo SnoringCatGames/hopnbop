@@ -1409,6 +1409,15 @@ screen, the one a fresh launch shows:
 Harness scenarios: `sign-out-lobby`, `sign-out-local-match`,
 `sign-out-play-again`.
 
+At launch, the auth screen refreshes an expired session before
+letting the player in. Only a refresh token that Nakama rejects
+signs them out there (SDK 0.5.6). Any other failure (network
+error, timeout, 5xx, a response that isn't from Nakama) keeps the
+session: the screen emits `continued_offline`, AuthScreen toasts
+`TOAST.SESSION_KEPT_OFFLINE`, the player continues to the lobby,
+and the auth client keeps retrying in the background. Harness
+scenario: `session-kept-offline`.
+
 ### Button Icons
 
 Use pixel-art icons in most buttons. All icon buttons must use

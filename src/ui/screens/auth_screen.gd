@@ -2,8 +2,8 @@ class_name AuthScreen
 extends PlatformAuthScreen
 ## Game-side thin wrapper around `PlatformAuthScreen`.
 ##
-## Subscribes to the addon screen's navigation +
-## state-reset signals and routes them through hopnbop's
+## Subscribes to the addon screen's navigation, state-reset,
+## and offline signals and routes them through hopnbop's
 ## `G.*` autoloads. Plugs in hopnbop's audio-wired focus
 ## navigator and the Netcode preview-mode force-anonymous
 ## check.
@@ -20,6 +20,7 @@ func _enter_tree() -> void:
 		_on_lobby_navigation_requested)
 	force_anonymous_state_reset_requested.connect(
 		_on_force_anonymous_state_reset)
+	continued_offline.connect(_on_continued_offline)
 
 
 func _create_navigator() -> PlatformScreenFocusNavigator:
@@ -44,3 +45,13 @@ func _on_force_anonymous_state_reset() -> void:
 	G.friends_notification_poller.reset()
 	G.party_manager.reset()
 	G.client_session.clear_latest_state()
+
+
+## The session could not be refreshed at launch, but the failure
+## may be transient, so the player keeps the session and goes on to
+## the lobby. Online features come back once a background refresh
+## gets through.
+func _on_continued_offline(_error: String) -> void:
+	if is_instance_valid(G.toast_overlay):
+		G.toast_overlay.show_toast(
+			tr("TOAST.SESSION_KEPT_OFFLINE"))

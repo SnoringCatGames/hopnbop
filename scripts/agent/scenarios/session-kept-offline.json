@@ -1,0 +1,18 @@
+{
+  "name": "session-kept-offline",
+  "mode": "lobby",
+  "timeout_sec": 40,
+  "steps": [
+    {"do": "wait_ready"},
+    {"do": "eval", "name": "sign_in", "expr": "Platform.token_store.store_from_response({'jwt_token': 'agent.e30.harness', 'refresh_token': 'agent.' + Engine.get_singleton('Marshalls').utf8_to_base64('{\"exp\": 4102444800, \"uid\": \"agent-harness\"}') + '.harness', 'player_id': 'agent-harness', 'provider': 'google', 'display_name': 'Agent', 'expires_at': 1, 'linked_providers': ['google']})", "comment": "A signed-in session with an expired access token and a refresh token good until 2100. Every refresh goes to the harness's blackhole backend and fails to connect, which is a transient failure."},
+    {"do": "eval", "expr": "G.screens.client_open_screen(4)", "comment": "ScreenType.AUTH, as the boot flow opens it after consent: it must refresh before letting the player in"},
+    {"do": "assert", "expr": "screen() == 'AUTH'", "message": "the auth screen is resuming the session"},
+    {"do": "wait_until", "expr": "screen() == 'LOBBY'", "timeout_sec": 20, "comment": "nakama-godot retries the refresh until it times out (about 9 s here), then the auth screen continues with the stored session"},
+    {"do": "assert", "expr": "Platform.token_store.jwt_token == 'agent.e30.harness' and Platform.token_store.refresh_token.begins_with('agent.')", "message": "the session survived the failed refresh"},
+    {"do": "assert", "expr": "G.is_lobby_active", "message": "the lobby is still there"},
+    {"do": "wait", "sec": 0.3},
+    {"do": "assert", "expr": "ui_labels(str(G.toast_overlay.get_path())).has(G.tr('TOAST.SESSION_KEPT_OFFLINE'))", "message": "a toast says the server is unreachable"},
+    {"do": "wait", "sec": 0.7, "comment": "let the screen transition finish"},
+    {"do": "screenshot", "name": "lobby-offline"}
+  ]
+}
