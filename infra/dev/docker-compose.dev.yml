@@ -16,8 +16,8 @@
 #     warning at boot when this flag is on; the warning is
 #     expected here.
 #   - No Caddy. Nakama's HTTP + WS endpoints are bound to
-#     127.0.0.1:7350 directly. The compliance suite reads
-#     `PLATFORM_API_URL` so an `http://localhost:7350` override
+#     127.0.0.1 directly. The compliance suite reads
+#     `PLATFORM_API_URL` so an `http://127.0.0.1:7350` override
 #     is enough.
 #   - No Grafana / Prometheus / observability. Logs are
 #     `docker compose logs nakama`.
@@ -27,7 +27,7 @@
 # Usage:
 #   pwsh scripts/local-smoke-test.ps1
 #
-# Or manually:
+# Or manually (see infra/dev/README.md for the full sequence):
 #   docker compose -f infra/dev/docker-compose.dev.yml up -d
 #   docker compose -f infra/dev/docker-compose.dev.yml logs -f nakama
 #   docker compose -f infra/dev/docker-compose.dev.yml down -v
@@ -36,11 +36,24 @@
 # volume so the next run starts from a clean Nakama schema
 # instead of dragging dev data forward across compose recreate
 # cycles.
+#
+# Several stacks can run side by side (one per agent or
+# worktree). There are no fixed container names, so each
+# `docker compose -p <project>` gets its own containers and
+# volume, and these variables move the host ports and the plugin
+# mount:
+#   HOPNBOP_DEV_NAKAMA_PORT    Nakama HTTP + WS (default 7350)
+#   HOPNBOP_DEV_CONSOLE_PORT   Nakama console (default 7351)
+#   HOPNBOP_DEV_POSTGRES_PORT  Postgres (default 5432)
+#   HOPNBOP_DEV_PLUGIN_DIR     directory holding snoringcat.so
+#                              (default: the submodule's
+#                              gitignored runtime/build)
+# local-smoke-test.ps1 picks free ports, builds the plugin into a
+# temp directory, and uses a fresh project name on every run.
 
 services:
   postgres:
     image: postgres:16
-    container_name: hopnbop-dev-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: nakama
@@ -55,7 +68,7 @@ services:
       - "-c"
       - "listen_addresses=*"
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${HOPNBOP_DEV_POSTGRES_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U nakama -d nakama"]
       interval: 5s
@@ -65,8 +78,10 @@ services:
       - dev-net
 
   nakama:
+    # local-smoke-test.ps1 builds the runtime plugin with the
+    # nakama-pluginbuilder image of this same tag (Go plugins only
+    # load into the Nakama build they were compiled against).
     image: heroiclabs/nakama:3.25.0
-    container_name: hopnbop-dev-nakama
     restart: unless-stopped
     entrypoint:
       - /bin/sh
@@ -90,12 +105,12 @@ services:
     volumes:
       - ./config.dev.yml:/nakama/data/config.yml:ro
       # Mount the locally-built plugin. local-smoke-test.ps1
-      # builds it before `compose up` and writes the artifact
-      # to this same directory.
-      - ../../third_party/snoringcat-platform/runtime/build:/nakama/data/modules:ro
+      # builds it into a temp directory before `compose up` and
+      # points HOPNBOP_DEV_PLUGIN_DIR there.
+      - ${HOPNBOP_DEV_PLUGIN_DIR:-../../third_party/snoringcat-platform/runtime/build}:/nakama/data/modules:ro
     ports:
-      - "127.0.0.1:7350:7350"
-      - "127.0.0.1:7351:7351"
+      - "127.0.0.1:${HOPNBOP_DEV_NAKAMA_PORT:-7350}:7350"
+      - "127.0.0.1:${HOPNBOP_DEV_CONSOLE_PORT:-7351}:7351"
     healthcheck:
       test: ["CMD", "/nakama/nakama", "healthcheck"]
       interval: 5s

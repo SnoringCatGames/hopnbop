@@ -1611,6 +1611,15 @@ Nakama runtime plugin at
 there see the snoringcat-platform repo's CI workflows and the
 in-tree GUT compliance suite for the client SDK.
 
+**To verify backend + SDK behavior against a local Nakama, run
+`pwsh scripts/local-smoke-test.ps1`.** It builds the runtime
+plugin from the submodule, starts `infra/dev/`'s mock-deploy
+Nakama + Postgres on free ports, runs the compliance suite, and
+tears down: about a minute, exit 0 only if every test ran and
+passed. Flags and manual steps: `infra/dev/README.md`. The suite
+refuses any non-loopback `PLATFORM_API_URL` without
+`ALLOW_PROD_COMPLIANCE=1`; never point it at production.
+
 ## Testing with GUT
 
 This project uses GUT (Godot Unit Test) for testing. Tests are organized
