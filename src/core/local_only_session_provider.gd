@@ -32,8 +32,10 @@ func client_request_session_ids(
 		_select_level_locally(session_prefs))
 
 	Netcode.print(
-		"Local mode: Generated %d session ID(s),"
-		+ " level: %s" % [
+		(
+			"Local mode: Generated %d session ID(s),"
+			+ " level: %s"
+		) % [
 			player_count,
 			_selected_level_id
 			if not _selected_level_id.is_empty()
@@ -88,8 +90,7 @@ func server_validate_player_sessions(
 			and _validated_player_count
 				>= _expected_player_count):
 		Netcode.print(
-			"Local mode: All %d players"
-			+ " connected"
+			"Local mode: All %d players connected"
 			% _expected_player_count,
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
