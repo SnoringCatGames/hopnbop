@@ -1,0 +1,27 @@
+{
+  "name": "offline-move-jump",
+  "mode": "offline",
+  "level": "level_4",
+  "timeout_sec": 45,
+  "steps": [
+    {"do": "wait_ready"},
+    {"do": "wait_match_start"},
+    {"do": "wait_until", "expr": "local_player().surfaces.is_touching_floor", "timeout_sec": 5},
+    {"do": "state", "name": "before"},
+    {"do": "tap", "key": "jump", "hold_sec": 0.15},
+    {"do": "wait", "sec": 0.15},
+    {"do": "state", "name": "jump"},
+    {"do": "assert", "expr": "snap('jump').players[0].y < snap('before').players[0].y - 4", "message": "the bunny rose after jump"},
+    {"do": "wait_until", "expr": "local_player().surfaces.is_touching_floor", "timeout_sec": 3},
+    {"do": "press", "key": "move_right"},
+    {"do": "wait", "sec": 0.6},
+    {"do": "tap", "key": "jump", "hold_sec": 0.2},
+    {"do": "wait", "sec": 0.1},
+    {"do": "screenshot", "name": "run-jump"},
+    {"do": "wait", "sec": 0.4},
+    {"do": "release", "key": "move_right"},
+    {"do": "state", "name": "after"},
+    {"do": "assert", "expr": "snap('after').players[0].x > snap('before').players[0].x + 20", "message": "the bunny moved right"},
+    {"do": "assert", "expr": "snap('after').match.active and not snap('after').match.ended", "message": "the match is running"}
+  ]
+}

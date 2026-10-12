@@ -1,0 +1,15 @@
+{
+  "name": "lobby",
+  "mode": "lobby",
+  "timeout_sec": 40,
+  "steps": [
+    {"do": "wait_ready"},
+    {"do": "wait", "sec": 1.5},
+    {"do": "screenshot", "name": "lobby"},
+    {"do": "tap", "key": "move_up", "player": 1, "hold_sec": 0.3},
+    {"do": "wait", "sec": 2.0},
+    {"do": "screenshot", "name": "lobby-joined"},
+    {"do": "state", "name": "lobby"},
+    {"do": "assert", "expr": "player_count() == 1", "message": "W joined one lobby bunny"}
+  ]
+}

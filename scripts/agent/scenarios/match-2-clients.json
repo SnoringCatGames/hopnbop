@@ -1,0 +1,28 @@
+{
+  "name": "match-2-clients",
+  "mode": "match",
+  "clients": 2,
+  "level": "level_4",
+  "timeout_sec": 60,
+  "steps": [
+    {"do": "wait_ready"},
+    {"do": "wait_match_start"},
+    {"do": "state", "name": "ready"},
+    {"do": "assert", "expr": "local_player() != null", "message": "this client has its own bunny"},
+    {"do": "assert", "expr": "player_count() == 2", "message": "both bunnies are in the level"},
+    {"do": "assert", "expr": "snap('ready').players[0].id != snap('ready').players[1].id", "message": "the bunnies have distinct player ids"},
+    {"do": "assert", "expr": "match_state.players_by_id.size() == 2", "message": "match state lists two players"},
+    {"do": "screenshot", "name": "match"}
+  ],
+  "processes": {
+    "server": {
+      "steps": [
+        {"do": "wait_ready"},
+        {"do": "wait_match_start"},
+        {"do": "state", "name": "ready"},
+        {"do": "assert", "expr": "player_count() == 2 and player(1) != null and player(2) != null", "message": "server spawned players 1 and 2"},
+        {"do": "wait_until", "expr": "peer_count() == 0", "timeout_sec": 60}
+      ]
+    }
+  }
+}
