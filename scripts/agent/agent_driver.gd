@@ -27,6 +27,8 @@ const _EXIT_HARNESS_ERROR := 2
 const _EXIT_REFUSED := 3
 
 const _MODES: Array[String] = ["offline", "level", "lobby", "match"]
+## Used when a scenario has no "seed". "seed": null opts out.
+const _DEFAULT_SEED := 1
 const _DEFAULT_TIMEOUT_SEC := 60.0
 ## The server outlives its clients so that it never drops them first.
 const _SERVER_EXTRA_TIMEOUT_SEC := 15.0
@@ -97,8 +99,15 @@ var _port := 0
 var _window_rect := Rect2i()
 var _has_window_rect := false
 var _is_network_allowed := false
+var _base_settings_path := ""
 var _timeout_sec := _DEFAULT_TIMEOUT_SEC
 var _steps: Array = []
+var _is_seeded := true
+## The scenario seed plus this process's --client number (0 for the
+## server), so two clients do not draw identical random bunnies.
+var _process_seed := 0
+## Settings whose working-copy value differed from the committed one.
+var _settings_reset: Array[String] = []
 
 var _refusal := ""
 var _config_error := ""
@@ -118,19 +127,9 @@ var _held_keys: Dictionary = {}
 var _key_reassert_count := 0
 
 
-func _ready() -> void:
-	process_mode = Node.PROCESS_MODE_ALWAYS
-	if not _refusal.is_empty():
-		_finish(_EXIT_REFUSED, "refused: " + _refusal)
-		return
-	if _config_error.is_empty():
-		_config_error = _check_role()
-	if not _config_error.is_empty():
-		_finish(_EXIT_HARNESS_ERROR, _config_error)
-		return
-	get_tree().create_timer(_timeout_sec).timeout.connect(
-		_on_watchdog_timeout)
-	_run.call_deferred()
+func _enter_tree() -> void:
+	if _is_seeded:
+		get_tree().node_added.connect(_on_node_added)
 
 
 func _exit_tree() -> void:
@@ -144,6 +143,21 @@ func _exit_tree() -> void:
 		"error": "the game quit before the scenario finished",
 	})
 	print(_RESULT_PREFIX + JSON.stringify(_build_result(_EXIT_FAILED)))
+
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	if not _refusal.is_empty():
+		_finish(_EXIT_REFUSED, "refused: " + _refusal)
+		return
+	if _config_error.is_empty():
+		_config_error = _check_role()
+	if not _config_error.is_empty():
+		_finish(_EXIT_HARNESS_ERROR, _config_error)
+		return
+	get_tree().create_timer(_timeout_sec).timeout.connect(
+		_on_watchdog_timeout)
+	_run.call_deferred()
 
 
 func _physics_process(_delta: float) -> void:
@@ -173,10 +187,15 @@ func configure() -> void:
 	_refusal = _check_sandbox()
 	if not _is_network_allowed or not _refusal.is_empty():
 		_initialize_offline_platform()
+	var is_runnable := _config_error.is_empty() and _refusal.is_empty()
+	if is_runnable:
+		_config_error = _reset_settings_to_committed()
 	G.settings.preview_connect_to_remote_server = false
 	G.settings.generate_level_thumbnails = false
-	if _config_error.is_empty() and _refusal.is_empty():
+	if is_runnable and _config_error.is_empty():
 		_config_error = _apply_settings_overrides()
+	if _is_seeded:
+		seed(_process_seed)
 
 
 # --- Helpers that expression steps can call -------------------------------
@@ -269,6 +288,7 @@ func build_snapshot(snapshot_name: String) -> Dictionary:
 		"name": snapshot_name,
 		"process": _process_name,
 		"role": _role(),
+		"seed": _process_seed if _is_seeded else null,
 		"preview_client_number": Netcode.preview_client_number,
 		"local_mode": Netcode.is_local_mode,
 		"connected": Netcode.is_connected_to_server,
@@ -327,6 +347,8 @@ func _parse_arguments() -> String:
 				_has_window_rect = true
 			"--agent-allow-network":
 				_is_network_allowed = true
+			"--agent-base-settings":
+				_base_settings_path = value.replace("\\", "/")
 	if _scenario_path.is_empty():
 		return "missing --agent-scenario"
 	if _process_name.is_empty():
@@ -359,6 +381,13 @@ func _load_scenario() -> String:
 	_client_count = int(_scenario.get("clients", default_clients))
 	if _mode == "match" and (_client_count < 1 or _client_count > 2):
 		return "'clients' must be 1 or 2 (preview_client_count caps it)"
+
+	var raw_seed: Variant = _scenario.get("seed", _DEFAULT_SEED)
+	_is_seeded = raw_seed != null
+	if _is_seeded:
+		if not (raw_seed is float or raw_seed is int):
+			return "'seed' must be an integer or null"
+		_process_seed = int(raw_seed) + _client_number()
 
 	var processes: Variant = _scenario.get("processes", {})
 	if not processes is Dictionary:
@@ -454,6 +483,35 @@ func _check_sandbox() -> String:
 		var lowered := file_name.to_lower()
 		if lowered.begins_with("auth") and lowered.ends_with(".cfg"):
 			return "%s is visible in the user data dir" % file_name
+	return ""
+
+
+## Copies every stored setting from the committed settings.tres, which
+## run-game.ps1 extracts with git, over the working copy that G
+## loaded. A run then never depends on local edits to settings.tres.
+## Simple values that differed are recorded for the result.
+func _reset_settings_to_committed() -> String:
+	if _base_settings_path.is_empty():
+		return ""
+	var committed: Resource = ResourceLoader.load(
+		_base_settings_path, "", ResourceLoader.CACHE_MODE_IGNORE)
+	if not committed is Settings:
+		return "cannot load committed settings from %s" % _base_settings_path
+	for property: Dictionary in committed.get_property_list():
+		var usage: int = property["usage"]
+		if (
+			(usage & PROPERTY_USAGE_SCRIPT_VARIABLE) == 0
+			or (usage & PROPERTY_USAGE_STORAGE) == 0
+		):
+			continue
+		var property_name: String = property["name"]
+		var value: Variant = committed.get(property_name)
+		var current: Variant = G.settings.get(property_name)
+		if (typeof(value) < TYPE_OBJECT
+				and (typeof(value) != typeof(current) or value != current)):
+			_settings_reset.append(
+				"%s: %s -> %s" % [property_name, current, value])
+		G.settings.set(property_name, value)
 	return ""
 
 
@@ -574,6 +632,27 @@ func _coerce_setting(current: Variant, value: Variant) -> Variant:
 	return value
 
 
+## This process's --client number, or 0 for the server. Netcode has not
+## parsed the command line yet when configure() runs, so this reads the
+## process name.
+func _client_number() -> int:
+	return _process_name.trim_prefix("client").to_int()
+
+
+## Main._enter_tree calls randomize(), and level setup plus the spawns
+## it makes should replay identically however many frames came before.
+## So the seed is applied again right after main.tscn, and each level,
+## enters the tree: node_added fires after the node's own _enter_tree
+## and before its children enter.
+func _on_node_added(node: Node) -> void:
+	if node is Main or node is Level:
+		seed(_process_seed)
+		_print("seeded the RNG with %d as %s entered the tree" % [
+			_process_seed,
+			node.name,
+		])
+
+
 ## The editor binary decides the role from --client=N (Netcode reads
 ## it in _enter_tree), so the process name has to agree with it.
 func _check_role() -> String:
@@ -590,13 +669,19 @@ func _check_role() -> String:
 
 
 func _run() -> void:
-	_print("process=%s mode=%s role=%s steps=%d user_dir=%s" % [
+	_print("process=%s mode=%s role=%s steps=%d seed=%s user_dir=%s" % [
 		_process_name,
 		_mode,
 		_role(),
 		_steps.size(),
+		_process_seed if _is_seeded else "none",
 		OS.get_user_data_dir(),
 	])
+	if _base_settings_path.is_empty():
+		_print("settings: the working copy of settings.tres")
+	else:
+		_print("settings: committed settings.tres; reset %s" % [
+			_settings_reset])
 	var error := get_tree().change_scene_to_file(_MAIN_SCENE_PATH)
 	if error != OK:
 		_finish(
@@ -1020,6 +1105,10 @@ func _build_result(exit_code: int) -> Dictionary:
 		"process": _process_name,
 		"mode": _mode,
 		"role": _role(),
+		"seed": _process_seed if _is_seeded else null,
+		"settings_source": (
+			"working copy" if _base_settings_path.is_empty() else "committed"),
+		"settings_reset": _settings_reset,
 		"steps_total": _steps.size(),
 		"steps_run": _steps_run,
 		"elapsed_sec": _elapsed_sec(),

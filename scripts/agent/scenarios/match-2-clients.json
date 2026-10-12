@@ -3,6 +3,8 @@
   "mode": "match",
   "clients": 2,
   "level": "level_4",
+  "seed": 1,
+  "settings": {"match_duration_sec": 60},
   "timeout_sec": 60,
   "steps": [
     {"do": "wait_ready"},

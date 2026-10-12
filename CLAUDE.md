@@ -138,8 +138,9 @@ scripts/agent/run-game.ps1 -Scenario match-2-clients    # server + 2 clients
 Flags: `-Headless` (no windows, so no screenshots), `-Visible`
 (windows on the primary screen; the default is off-screen at
 x=20000, which still renders), `-Steps '<json array>'`, `-TimeoutSec`,
-`-OutDir` (default `$env:TEMP\hopnbop-agent-runs`), `-Import`
-(re-import first), `-Json` (print only the summary), `-AllowNetwork`.
+`-Seed <int|none>`, `-UseWorkingSettings`, `-OutDir` (default
+`$env:TEMP\hopnbop-agent-runs`), `-Import` (re-import first), `-Json`
+(print only the summary), `-AllowNetwork`.
 
 **Modes.** `offline`: one local-mode process (`--client=1`, running
 client and server logic). `level`: offline with a required `level`.
@@ -148,13 +149,26 @@ server plus 1-2 clients on a free UDP port (2 is the cap, from
 `preview_client_count`). `headless` combines with any mode.
 
 **Scenario JSON.** Top level: `name`, `mode`, `level` (id such as
-`level_4` or an index; omit it to keep settings.tres's override),
-`clients`, `timeout_sec` (per process, default 60), `headless`,
-`settings` (in-memory `Settings` overrides such as
+`level_4` or an index; omit it for the committed override), `seed`,
+`clients`, `timeout_sec` (per process, default 60),
+`headless`, `settings` (in-memory `Settings` overrides such as
 `{"match_duration_sec": 120}`; the committed match is 10 s), `steps`
 (run by every client), and `processes.<server|client|clientN>` with
 its own `steps`, `settings`, `headless`, `timeout_sec`. A process
 with no steps waits until ready, then screenshots and snapshots.
+
+**Reproducibility.** Runs start from the committed settings.tres (the
+wrapper extracts `HEAD:settings.tres` with git), so an operator's
+local edits never change a result; `-UseWorkingSettings` opts out,
+and `settings_reset` in the summary lists what was ignored. `seed`
+(default 1; `null` or `-Seed none` keeps the game random) fixes the
+global RNG, which spawn points, bunny names, and critters draw from.
+Each process seeds with `seed` plus its `--client` number (server 0)
+at boot, again right after main.tscn's `randomize()`, and again
+whenever a level enters the tree, so level setup and the spawns it
+makes replay identically. Anything later depends on how many frames
+ran, which is wall-clock time; in a match, which client connects
+first is timing too, though the seeded start delays make it stable.
 
 **Steps** are `{"do": ...}` objects. A failing step stops the process
 unless it is an `assert` or sets `"fatal": false`.

@@ -59,6 +59,10 @@ param(
     [string]$OutDir,
     # UDP port for match mode. 0 picks a free one.
     [int]$Port = 0,
+    # RNG seed override: an integer, or 'none' to keep the game random.
+    [string]$Seed,
+    # Use the working copy of settings.tres instead of the committed one.
+    [switch]$UseWorkingSettings,
     [switch]$AllowNetwork,
     # Do not fail a process for SCRIPT ERROR lines.
     [switch]$AllowScriptErrors,
@@ -133,6 +137,22 @@ function ConvertTo-ArgumentString([string[]]$Arguments) {
 
 function Write-Utf8File([string]$Path, [string]$Text) {
     [System.IO.File]::WriteAllText($Path, $Text, (New-Object System.Text.UTF8Encoding $false))
+}
+
+# Writes a file's committed (HEAD) bytes, untouched by console encoding.
+function Save-CommittedFile([string]$RelativePath, [string]$Destination) {
+    $info = New-Object System.Diagnostics.ProcessStartInfo 'git', ('-C "{0}" show "HEAD:{1}"' -f $RepoRoot, $RelativePath)
+    $info.UseShellExecute = $false
+    $info.CreateNoWindow = $true
+    $info.RedirectStandardOutput = $true
+    $info.RedirectStandardError = $true
+    try { $process = [System.Diagnostics.Process]::Start($info) } catch { return $false }
+    $errors = $process.StandardError.ReadToEndAsync()
+    $stream = [System.IO.File]::Create($Destination)
+    try { $process.StandardOutput.BaseStream.CopyTo($stream) } finally { $stream.Close() }
+    $process.WaitForExit()
+    $null = $errors.Result
+    return ($process.ExitCode -eq 0 -and (Get-Item $Destination).Length -gt 0)
 }
 
 function Get-FreeUdpPort {
@@ -246,6 +266,15 @@ if ($Level) {
 }
 if ($Clients -gt 0) { Set-Prop $spec 'clients' $Clients }
 if ($TimeoutSec -gt 0) { Set-Prop $spec 'timeout_sec' $TimeoutSec }
+if ($Seed) {
+    if ($Seed -eq 'none') {
+        Set-Prop $spec 'seed' $null
+    } elseif ($Seed -match '^-?\d+$') {
+        Set-Prop $spec 'seed' ([long]$Seed)
+    } else {
+        throw "-Seed must be an integer or 'none'."
+    }
+}
 if ($Headless) { Set-Prop $spec 'headless' $true }
 if ($Steps) {
     $stepsText = $Steps
@@ -299,6 +328,26 @@ if ($mode -eq 'match') {
     if ($Port -gt 0) { $runPort = $Port } else { $runPort = Get-FreeUdpPort }
 }
 
+# Runs start from the committed settings.tres so that local edits (an
+# operator's level override, match length, ...) never change a result.
+$baseSettings = $null
+$settingsSource = 'working copy'
+if (-not $UseWorkingSettings) {
+    $candidate = Join-Path $runDir 'settings.committed.tres'
+    if (Save-CommittedFile 'settings.tres' $candidate) {
+        $baseSettings = $candidate
+        $settingsSource = 'committed'
+    } else {
+        Write-Warning 'git show HEAD:settings.tres failed; using the working copy of settings.tres.'
+    }
+}
+$seedText = 'none'
+if ($null -ne $spec.PSObject.Properties['seed']) {
+    if ($null -ne $spec.seed) { $seedText = [string]$spec.seed }
+} else {
+    $seedText = 'default'
+}
+
 # --- Launch -------------------------------------------------------------------
 
 function Start-GameProcess([string]$Name, [int]$WindowIndex) {
@@ -339,6 +388,7 @@ function Start-GameProcess([string]$Name, [int]$WindowIndex) {
     $arguments.Add("--agent-sandbox=$sandbox")
     if ($runPort -gt 0) { $arguments.Add("--agent-port=$runPort") }
     if ($window) { $arguments.Add("--agent-window=$window") }
+    if ($baseSettings) { $arguments.Add("--agent-base-settings=$baseSettings") }
     if ($AllowNetwork) { $arguments.Add('--agent-allow-network') }
 
     $logPath = Join-Path $processDir 'process.log'
@@ -355,7 +405,8 @@ function Start-GameProcess([string]$Name, [int]$WindowIndex) {
     }
 }
 
-Write-Info ("hopnbop agent run '{0}' (mode={1}{2})" -f $scenarioName, $mode, $(if ($runPort) { ", port=$runPort" } else { '' }))
+Write-Info ("hopnbop agent run '{0}' (mode={1}, seed={2}, settings={3}{4})" -f `
+    $scenarioName, $mode, $seedText, $settingsSource, $(if ($runPort) { ", port=$runPort" } else { '' }))
 Write-Info "run dir: $runDir"
 if ($AllowNetwork) { Write-Warning '-AllowNetwork: this run may talk to production.' }
 
@@ -497,10 +548,20 @@ $summaries = foreach ($entry in $processes) {
 }
 $summaries = @($summaries)
 $allOk = @($summaries | Where-Object { -not $_.ok }).Count -eq 0
+$settingsReset = @()
+foreach ($process in $summaries) {
+    if ($process.result -and $process.result.settings_reset) {
+        $settingsReset = @($process.result.settings_reset)
+        break
+    }
+}
 $summary = [pscustomobject]@{
     ok = $allOk
     scenario = $scenarioName
     mode = $mode
+    seed = $seedText
+    settings = $settingsSource
+    settings_reset = $settingsReset
     port = $runPort
     elapsed_sec = [math]::Round(((Get-Date) - $started).TotalSeconds, 1)
     run_dir = $runDir
@@ -515,6 +576,9 @@ if ($Json) {
     $verdict = if ($allOk) { 'PASS' } else { 'FAIL' }
     Write-Host ''
     Write-Host ("{0}  {1} ({2})  {3}s" -f $verdict, $scenarioName, $mode, $summary.elapsed_sec)
+    if ($settingsReset.Count -gt 0) {
+        Write-Host ('  ignored local settings.tres edits: ' + ($settingsReset -join ', '))
+    }
     foreach ($process in $summaries) {
         $result = $process.result
         $stepsText = if ($result) { '{0}/{1} steps' -f $result.steps_run, $result.steps_total } else { 'no result' }
