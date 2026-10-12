@@ -1767,6 +1767,14 @@ passed. Flags and manual steps: `infra/dev/README.md`. The suite
 refuses any non-loopback `PLATFORM_API_URL` without
 `ALLOW_PROD_COMPLIANCE=1`; never point it at production.
 
+**Google sign-in has no automated coverage.** The suite signs in
+with device ids, and a Google login needs a person at a browser.
+To check it by hand, run
+`python third_party/snoringcat-platform/scripts/test-google-auth.py`.
+It goes from a real browser login through `hopnbop.net`'s token
+broker (`web/functions/api/oauth/google/exchange.js`) to a
+production Nakama session, the way the desktop client does.
+
 ## Testing with GUT
 
 This project uses GUT (Godot Unit Test) for testing. Tests are organized
