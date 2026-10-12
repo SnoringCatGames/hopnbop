@@ -33,8 +33,10 @@ This policy describes how we collect, use, and protect your information.
   your player ID, IP address, or device ID with crash reports.
 - Consent records: When you accept our Terms and Privacy Policy, the Game
   saves the date and time and the legal document version you accepted. This
-  record is stored only on your device, not on our servers, and is removed
-  when you sign out or your account is deleted.
+  record is stored only on your device, not on our servers. It is removed
+  when you log out or delete your account. If the Game signs you out on its
+  own, for example because your session expired, the record stays so you are
+  not asked again. You are asked again whenever these documents change.
 
 
 2. HOW WE USE YOUR INFORMATION
@@ -94,7 +96,7 @@ Data Protection Regulation (GDPR) and the California Consumer Privacy Act
 4. DATA RETENTION
 
 Gameplay data is retained for the lifetime of your account. Consent records
-stay on your device until you sign out or your account is deleted. Your
+stay on your device until you log out or delete your account. Your
 stored IP address is deleted within two hours of being stored.
 
 When you delete your account, we immediately delete your profile details
