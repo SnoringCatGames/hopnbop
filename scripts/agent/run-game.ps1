@@ -85,6 +85,7 @@ $KillMarginSec = 30
 $ServerGraceSec = 20
 $ServerReadyTimeoutSec = 30
 $ServerReadyPattern = 'Started ENet multiplayer server'
+$ClientConnectedPattern = 'Connected to server'
 $OffscreenOriginX = 20000
 $OffscreenY = 100
 $VisibleOriginX = 40
@@ -414,19 +415,23 @@ $started = Get-Date
 $processes = New-Object System.Collections.Generic.List[object]
 try {
     $windowIndex = 0
-    foreach ($name in $processNames) {
+    for ($index = 0; $index -lt $processNames.Count; $index++) {
+        $name = $processNames[$index]
         $entry = Start-GameProcess $name $windowIndex
         $processes.Add($entry)
         if (-not $entry.Headless) { $windowIndex++ }
-        if ($name -eq 'server') {
-            # Clients dial once at boot, so the server must be listening first.
-            $readyBy = (Get-Date).AddSeconds($ServerReadyTimeoutSec)
-            while ((Get-Date) -lt $readyBy -and -not $entry.Launched.Process.HasExited) {
-                if ((Test-Path $entry.Log) -and (Select-String -Path $entry.Log -Pattern $ServerReadyPattern -SimpleMatch -Quiet)) { break }
-                Start-Sleep -Milliseconds 200
-            }
-            if ($entry.Launched.Process.HasExited) { break }
+        if ($index -eq $processNames.Count - 1) { break }
+        # Clients dial once at boot, so the server must be listening
+        # first. Each client also connects before the next one starts:
+        # the server hands out player ids in connection order, so client
+        # N is always player N.
+        $pattern = if ($name -eq 'server') { $ServerReadyPattern } else { $ClientConnectedPattern }
+        $readyBy = (Get-Date).AddSeconds($ServerReadyTimeoutSec)
+        while ((Get-Date) -lt $readyBy -and -not $entry.Launched.Process.HasExited) {
+            if ((Test-Path $entry.Log) -and (Select-String -Path $entry.Log -Pattern $pattern -SimpleMatch -Quiet)) { break }
+            Start-Sleep -Milliseconds 200
         }
+        if ($entry.Launched.Process.HasExited) { break }
     }
 
     # --- Wait -----------------------------------------------------------------

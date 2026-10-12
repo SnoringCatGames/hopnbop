@@ -166,9 +166,10 @@ global RNG, which spawn points, bunny names, and critters draw from.
 Each process seeds with `seed` plus its `--client` number (server 0)
 at boot, again right after main.tscn's `randomize()`, and again
 whenever a level enters the tree, so level setup and the spawns it
-makes replay identically. Anything later depends on how many frames
-ran, which is wall-clock time; in a match, which client connects
-first is timing too, though the seeded start delays make it stable.
+makes replay identically. In a match the wrapper starts each client
+after the previous one connects, so client N is always player N.
+Anything that happens later depends on how many frames ran, which is
+wall-clock time.
 
 **Steps** are `{"do": ...}` objects. A failing step stops the process
 unless it is an `assert` or sets `"fatal": false`.
