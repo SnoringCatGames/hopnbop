@@ -332,7 +332,9 @@ domain. The deploy script + the GHA both set CORS idempotently.
 
 Required GH secrets: `CLOUDFLARE_API_TOKEN` (with Pages:Edit +
 Workers R2 Storage:Edit + Account Settings:Read),
-`CLOUDFLARE_ACCOUNT_ID`.
+`CLOUDFLARE_ACCOUNT_ID`, plus `NAKAMA_HTTP_KEY` and
+`GAME_ADMIN_KEY` for the job's game.yaml sync step
+(`register_game` needs both; see "Synced locations").
 
 ### Web export gotcha
 
@@ -391,8 +393,11 @@ them together.
 - Docker Desktop running (Edgegap server-image build + local
   smoke).
 - Godot CLI on PATH (server + web exports).
-- For local Cloudflare deploys: `CLOUDFLARE_PAGES_TOKEN` in
-  `~/.hopnbop-migration/credentials.env` and `npm`/`npx`
+- For local Cloudflare deploys: `CLOUDFLARE_PAGES_TOKEN`,
+  `NAKAMA_HTTP_KEY` and `GAME_ADMIN_KEY` in
+  `~/.hopnbop-migration/credentials.env` (the last two for the
+  closing game.yaml sync; the script stops before deploying
+  anything if `GAME_ADMIN_KEY` is missing), and `npm`/`npx`
   available (the script invokes `npx wrangler@latest`).
 - For Edgegap deploys: an Edgegap account with the
   `hopnbop-server` app registered. `game-server.yml` pushes the
@@ -460,6 +465,18 @@ These are generated from `project.godot` at deploy/sync time.
   legal paths). Never hand-POST it; a field missing from the
   payload is deleted from production. The script guards the
   load-bearing keys before it writes.
+
+  `register_game` is operator-only: it needs the runtime's
+  `GAME_ADMIN_KEY` (sent as `admin_key`) on top of
+  `NAKAMA_HTTP_KEY`, and refuses every call while the runtime has
+  no `GAME_ADMIN_KEY`. The HTTP key alone used to be enough, but it
+  shipped in every client up to 0.47.0, so anyone could have
+  replaced the live config. The script takes `-AdminKey`, default
+  `$env:GAME_ADMIN_KEY` (`deploy-cf-pages.ps1` loads it from
+  `credentials.env`; `release.yml` passes the `GAME_ADMIN_KEY`
+  secret), falls back to the dev stack's fixed key for loopback
+  hosts, and prints neither key. Model and key locations:
+  `PLATFORM_ARCHITECTURE.md` → "Runtime keys and RPC auth".
 - Nakama host's `runtime.env` `NAKAMA_GAME_VERSION` — **only the
   fallback** for `version_check` calls that pass no `game_id`.
   Bumping it does NOT change what clients see; fix

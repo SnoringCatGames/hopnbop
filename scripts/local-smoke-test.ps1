@@ -84,10 +84,12 @@ $ComplianceRes = "res://addons/snoringcat_platform_client/test/compliance"
 $ComplianceDir = Join-Path $RepoRoot "addons/snoringcat_platform_client/test/compliance"
 $TrafficHook = "res://test/hooks/fail_on_nakama_traffic.gd"
 $WindowsGodot = "C:\Program Files\Godot\Godot_v4.7.2-stable_win64_console.exe"
-# Nakama's placeholder keys. The dev stack starts with exactly
-# these and listens only on 127.0.0.1, so they are not secrets.
+# Nakama's placeholder keys, plus the runtime's GAME_ADMIN_KEY from
+# infra/dev/config.dev.yml. The dev stack starts with exactly these
+# and listens only on 127.0.0.1, so they are not secrets.
 $ServerKey = "defaultkey"
 $HttpKey = "defaulthttpkey"
+$AdminKey = "defaultadminkey"
 # $IsWindows is $null on Windows PowerShell 5.1.
 $IsWin = if ($null -eq $IsWindows) { $true } else { $IsWindows }
 
@@ -379,7 +381,7 @@ try {
     # without a registered game_id, so seed the row first.
     Write-Step "Register game.yaml"
     & pwsh -NoProfile -File (Join-Path $RepoRoot "scripts/sync-game-config.ps1") `
-        -NakamaHost $nakamaUrl -HttpKey $HttpKey |
+        -NakamaHost $nakamaUrl -HttpKey $HttpKey -AdminKey $AdminKey |
         Out-File (Join-Path $LogDir "sync-game-config.log")
     if ($LASTEXITCODE -ne 0) {
         Get-Content (Join-Path $LogDir "sync-game-config.log") -Tail 20 | Out-Host
@@ -423,6 +425,7 @@ try {
     Set-ScopedEnv "PLATFORM_API_URL" $nakamaUrl
     Set-ScopedEnv "NAKAMA_SERVER_KEY" $ServerKey
     Set-ScopedEnv "NAKAMA_HTTP_KEY" $HttpKey
+    Set-ScopedEnv "GAME_ADMIN_KEY" $AdminKey
     Set-ScopedEnv "PLATFORM_COMPLIANCE_MODE" "live"
     Set-ScopedEnv "ALLOW_PROD_COMPLIANCE" $null
 

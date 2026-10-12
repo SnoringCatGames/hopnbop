@@ -231,12 +231,21 @@ jobs:
         # -SkipImagePull: this runner has no SSH key to the Nakama
         # host, so it can't pull local_image_ref there before
         # registering. A run from the operator's machine does both.
+        #
+        # register_game needs GAME_ADMIN_KEY as well as the HTTP key
+        # (the runtime refuses HTTP-key-only calls). The script reads
+        # both from the environment and prints neither.
         shell: pwsh
         env:
           NAKAMA_HTTP_KEY: ${{ secrets.NAKAMA_HTTP_KEY }}
+          GAME_ADMIN_KEY: ${{ secrets.GAME_ADMIN_KEY }}
         run: |
           if (-not $env:NAKAMA_HTTP_KEY) {
             Write-Error "NAKAMA_HTTP_KEY secret not available to this job"
+            exit 1
+          }
+          if (-not $env:GAME_ADMIN_KEY) {
+            Write-Error "GAME_ADMIN_KEY secret not available to this job"
             exit 1
           }
           ./scripts/sync-game-config.ps1 -SkipImagePull

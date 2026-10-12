@@ -82,7 +82,9 @@ docker compose -p hopnbop-dev -f infra/dev/docker-compose.dev.yml up -d
 # 3. Wait for Nakama.
 curl http://127.0.0.1:7350/healthcheck
 
-# 4. Register hopnbop in the runtime's games table.
+# 4. Register hopnbop in the runtime's games table. register_game
+#    also needs the stack's GAME_ADMIN_KEY; for a loopback host the
+#    script falls back to defaultadminkey, or pass -AdminKey.
 pwsh scripts/sync-game-config.ps1 `
   -NakamaHost http://127.0.0.1:7350 `
   -HttpKey defaulthttpkey
@@ -94,6 +96,7 @@ $env:APPDATA = Join-Path ([IO.Path]::GetTempPath()) "hopnbop-userdata"
 $env:PLATFORM_API_URL = "http://127.0.0.1:7350"
 $env:NAKAMA_SERVER_KEY = "defaultkey"
 $env:NAKAMA_HTTP_KEY = "defaulthttpkey"
+$env:GAME_ADMIN_KEY = "defaultadminkey"
 & "C:\Program Files\Godot\Godot_v4.7.2-stable_win64_console.exe" `
   --headless -s --path . addons/gut/gut_cmdln.gd `
   -gdir=res://addons/snoringcat_platform_client/test/compliance -gexit
@@ -113,9 +116,11 @@ stacks can run side by side under different `-p` project names:
 | `HOPNBOP_DEV_PLUGIN_DIR` | the submodule's gitignored `runtime/build` |
 
 The keys (`defaultkey`, `defaulthttpkey`) are the literal
-placeholders Nakama uses when run without keys specified. They're
-hardcoded on purpose: the dev stack never listens outside
-`127.0.0.1`, so the lack of secrecy is fine.
+placeholders Nakama uses when run without keys specified, and
+`defaultadminkey` is the runtime's `GAME_ADMIN_KEY` from
+`config.dev.yml` (`register_game` needs it on top of the HTTP
+key). They're hardcoded on purpose: the dev stack never listens
+outside `127.0.0.1`, so the lack of secrecy is fine.
 
 ## What this is NOT
 

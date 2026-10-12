@@ -45,3 +45,8 @@ runtime:
     - "NAKAMA_PROTOCOL_VERSION=2"
     - "SIGNALING_DOMAIN=dev.invalid"
     - "SIGNALING_HMAC_SECRET=dev-not-a-secret"
+    # register_game needs it (with the HTTP key). Fixed dev value,
+    # like the placeholder keys in docker-compose.dev.yml; the
+    # smoke script and sync-game-config.ps1 send it to loopback
+    # stacks.
+    - "GAME_ADMIN_KEY=defaultadminkey"

@@ -54,6 +54,12 @@ Get-Content "$HOME\.hopnbop-migration\credentials.env" | ForEach-Object {
 if (-not $env:CLOUDFLARE_PAGES_TOKEN) {
 	throw "CLOUDFLARE_PAGES_TOKEN missing in credentials.env"
 }
+# The game.yaml sync at the end (step 8) needs it to call
+# register_game. Checked now so a missing key stops the run before
+# anything deploys, rather than after the web build is live.
+if (-not $env:GAME_ADMIN_KEY) {
+	throw "GAME_ADMIN_KEY missing in credentials.env (register_game needs it to sync game.yaml)"
+}
 $env:CLOUDFLARE_API_TOKEN = $env:CLOUDFLARE_PAGES_TOKEN
 $env:CLOUDFLARE_ACCOUNT_ID = "c97b21157100dde27a8715fdfba1d22a"
 
@@ -330,7 +336,8 @@ Run "wrangler pages deploy" {
 #    sync-game-config.ps1 on its own. Deliberately not swallowed —
 #    a silent warning here is exactly how the drift went unnoticed.
 # --------------------------------------------------------------
-#    NAKAMA_HTTP_KEY comes from the credentials.env load above.
+#    NAKAMA_HTTP_KEY and GAME_ADMIN_KEY come from the credentials.env
+#    load above; sync-game-config.ps1 reads both from the environment.
 if (-not $env:NAKAMA_HTTP_KEY) {
 	throw "NAKAMA_HTTP_KEY missing in credentials.env (needed to sync game.yaml)"
 }

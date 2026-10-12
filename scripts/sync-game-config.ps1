@@ -2,10 +2,14 @@
 # Sync this game's `game.yaml` into the snoringcat-platform
 # Nakama runtime's `games` Postgres table.
 #
-# The runtime exposes a server-to-server `register_game` RPC
-# (gated by NAKAMA_HTTP_KEY) that upserts the row and refreshes
-# its in-process cache. This script parses game.yaml, converts
-# to JSON, and POSTs it.
+# The runtime exposes an operator-only `register_game` RPC that
+# upserts the row and refreshes its in-process cache. It needs two
+# keys: NAKAMA_HTTP_KEY (Nakama's runtime HTTP key) and
+# GAME_ADMIN_KEY (sent as the `admin_key` query parameter). The
+# HTTP key alone used to be enough, but it shipped in client builds
+# up to 0.47.0, so anyone could have replaced the live config. This
+# script parses game.yaml, converts to JSON, and POSTs it. It never
+# prints either key.
 #
 # Version fields are NOT read from game.yaml. `protocol_version` and
 # `display_version` are injected here from project.godot, which is
@@ -45,6 +49,10 @@ param(
     [string]$GameYamlPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "game.yaml"),
     [string]$NakamaHost = "https://nakama.snoringcat.games",
     [string]$HttpKey = $env:NAKAMA_HTTP_KEY,
+    # The runtime's GAME_ADMIN_KEY. deploy-cf-pages.ps1 loads it from
+    # credentials.env; release.yml passes the GAME_ADMIN_KEY secret.
+    # A loopback stack falls back to the dev stack's fixed value.
+    [string]$AdminKey = $env:GAME_ADMIN_KEY,
     [switch]$DryRun,
     # Register without pulling local_image_ref on the host first. Only
     # for callers that cannot SSH to it (CI); pull it there by hand.
@@ -52,6 +60,11 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+# infra/dev/config.dev.yml starts the local stack with this
+# GAME_ADMIN_KEY. Like the stack's other placeholder keys it is not a
+# secret: the stack listens only on 127.0.0.1.
+$DevStackAdminKey = "defaultadminkey"
 
 if (-not (Test-Path $GameYamlPath)) {
     Write-Error "game.yaml not found at: $GameYamlPath"
@@ -186,6 +199,27 @@ Or pass inline:
     exit 2
 }
 
+$AdminKey = "$AdminKey".Trim()
+if (-not $AdminKey -and $isLocalStack) {
+    $AdminKey = $DevStackAdminKey
+}
+if (-not $AdminKey) {
+    Write-Error @"
+GAME_ADMIN_KEY is required to register with $hostName (or pass
+-AdminKey).
+
+register_game refuses calls that carry only the HTTP key. The value
+must match GAME_ADMIN_KEY in the Nakama container's environment
+(/opt/nakama/.env, rendered from credentials.env by
+third_party/snoringcat-platform/scripts/lib/nakama-env.ps1).
+
+Load it the way deploy-cf-pages.ps1 does, by reading
+~/.hopnbop-migration/credentials.env into the environment, or set
+`$env:GAME_ADMIN_KEY yourself. CI passes the GAME_ADMIN_KEY secret.
+"@
+    exit 2
+}
+
 if ($needsPull -and $isLocalStack) {
     Write-Host "Local stack ($hostName): skipping the host image pull."
 } elseif ($needsPull -and $SkipImagePull) {
@@ -216,11 +250,19 @@ if ($needsPull -and $isLocalStack) {
     }
 }
 
-$uri = "$NakamaHost/v2/rpc/register_game" +
+# Print a template of the URI, never the URI itself. Replacing the
+# raw keys in the real URI can't redact them: they appear there
+# percent-encoded (a base64 key's /, + and = are escaped), so a
+# String.Replace of the raw value matches nothing and prints the key.
+# That is how this line used to print the HTTP key in cleartext.
+$rpcPath = "/v2/rpc/register_game"
+$uri = "$NakamaHost$rpcPath" +
     "?http_key=$([Uri]::EscapeDataString($HttpKey))" +
+    "&admin_key=$([Uri]::EscapeDataString($AdminKey))" +
     "&unwrap=true"
 
-Write-Host "POST $($uri.Replace($HttpKey, '<redacted>'))"
+Write-Host ("POST $NakamaHost$rpcPath" +
+    "?http_key=<redacted>&admin_key=<redacted>&unwrap=true")
 try {
     $response = Invoke-RestMethod `
         -Method POST `
@@ -248,6 +290,18 @@ try {
             Write-Host "Diagnosis: HTTP key mismatch. Verify"
             Write-Host "NAKAMA_HTTP_KEY matches the live"
             Write-Host "container's --runtime.http_key."
+        } elseif ($errBody -match "GAME_ADMIN_KEY is not set") {
+            Write-Host ""
+            Write-Host "Diagnosis: the runtime has no GAME_ADMIN_KEY,"
+            Write-Host "so register_game refuses every call. Add it to"
+            Write-Host "credentials.env, re-render /opt/nakama/.env"
+            Write-Host "(phase-b.ps1 -StartAt NakamaStack -StopAt"
+            Write-Host "NakamaStack) and recreate the nakama container."
+        } elseif ($errBody -match "admin_key") {
+            Write-Host ""
+            Write-Host "Diagnosis: admin key missing or wrong. Verify"
+            Write-Host "GAME_ADMIN_KEY matches the value in the live"
+            Write-Host "container's environment."
         }
     }
     exit 1
