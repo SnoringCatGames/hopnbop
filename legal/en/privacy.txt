@@ -7,11 +7,11 @@ This policy describes how we collect, use, and protect your information.
 
 1. INFORMATION WE COLLECT
 
-- Account information: When you sign in via Google, Facebook, Steam, Epic,
-  Apple, or Game Center, we receive your display name, profile image URL, and
-  a provider-specific user ID. If you sign in with Google, we also receive
-  your email address and store it with your account. We do not receive or
-  store your password.
+- Account information: When you sign in through a third-party provider the
+  Game offers (currently Google or Facebook), we receive your display name,
+  profile image URL, and a provider-specific user ID. If you sign in with
+  Google, we also receive your email address and store it with your account.
+  We do not receive or store your password.
 - Device identifier: If you play anonymously, we generate a random device ID
   stored locally on your device. When you use online features, we also store
   it on our servers to identify your account.
@@ -28,8 +28,10 @@ This policy describes how we collect, use, and protect your information.
   reports. Crash reports contain error messages and excerpts from the Game's
   logs, with sign-in tokens and account identifiers removed. We do not store
   your player ID, IP address, or device ID with crash reports.
-- Consent records: Timestamp and legal document version of your agreement to
-  our Terms and Privacy Policy.
+- Consent records: When you accept our Terms and Privacy Policy, the Game
+  saves the date and time and the legal document version you accepted. This
+  record is stored only on your device, not on our servers, and is removed
+  when you sign out or your account is deleted.
 
 
 2. HOW WE USE YOUR INFORMATION
@@ -78,7 +80,7 @@ Data Protection Regulation (GDPR) and the California Consumer Privacy Act
 4. DATA RETENTION
 
 Gameplay data is retained for the lifetime of your account. Consent records
-are retained for 3 years after account deletion for legal compliance. When you
+stay on your device until you sign out or your account is deleted. When you
 delete your account, we immediately remove your display name from your public
 profile and delete your friends, leaderboard entries, match history, settings,
 and other game data. We keep the rest of your account, including your sign-in

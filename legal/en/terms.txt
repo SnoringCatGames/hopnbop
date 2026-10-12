@@ -1,5 +1,5 @@
 TERMS OF SERVICE
-Last updated: March 8, 2026 — Version 1.0
+Last updated: October 11, 2026 — Version 1.2
 
 These Terms of Service ("Terms") govern your use of Hop 'n Bop ("the Game"),
 published by Snoring Cat LLC ("we", "us", "our"). By using the Game you agree
@@ -21,10 +21,11 @@ of charge.
 
 3. ACCOUNT
 
-You may sign in using a third-party provider (Google, Facebook, Steam, Epic,
-Apple, Game Center) or play anonymously. You are responsible for maintaining
-the security of your third-party account credentials. We are not liable for
-unauthorized access resulting from compromised third-party accounts.
+You may sign in with a third-party provider where the Game offers one
+(currently Google or Facebook), or play anonymously. You are responsible for
+maintaining the security of your third-party account credentials. We are not
+liable for unauthorized access resulting from compromised third-party
+accounts.
 
 
 4. CONDUCT

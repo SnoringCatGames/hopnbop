@@ -32,7 +32,7 @@ When you delete your account, we permanently delete:
   played with.
 - Leaderboard entries.
 - Your stored IP address.
-- Consent records (after a 3-year retention period for legal compliance).
+- The consent record stored on your device.
 
 
 TIMELINE
