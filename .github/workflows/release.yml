@@ -107,8 +107,8 @@ jobs:
       - name: Bridge snoringcat_platform_client addon
         run: bash scripts/ci/bridge-platform-addon.sh
       - name: Import project assets
-        # Exits non-zero on harmless warnings.
-        run: godot --headless --import || true
+        # Retries an importer crash; see scripts/ci/godot-import.sh.
+        run: bash scripts/ci/godot-import.sh
       - name: Export web build
         run: |
           mkdir -p build/web

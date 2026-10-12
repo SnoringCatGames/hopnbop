@@ -137,9 +137,9 @@ jobs:
         # step would otherwise fail to resolve uid:// references.
         # `--import` is the official way to populate it. Godot
         # always exits non-zero from --import if there are any
-        # warnings, so swallow the exit code.
-        run: |
-          godot --headless --import || true
+        # warnings, so the script retries only an importer crash and
+        # then checks the class cache.
+        run: bash scripts/ci/godot-import.sh
       - name: Export Linux server release binary
         # Use --export-release (not --export-pack) to produce a
         # standalone Linux server executable. Running the editor
