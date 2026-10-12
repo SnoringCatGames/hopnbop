@@ -1386,6 +1386,29 @@ All interactive buttons must be in the focusable list via
 buttons (e.g., friend action buttons in result rows) must
 also be added.
 
+### Mid-session sign-out
+
+The platform SDK signs the player out on its own when Nakama
+rejects the stored refresh token (expired or revoked session,
+banned or deleted account) and emits `Platform.auth.signed_out`.
+`SignOutRouter` (`src/core/sign_out_router.gd`, owned by
+ScreensMain on clients) then sends the player to the auth
+screen, the one a fresh launch shows:
+
+- From the lobby, or a screen opened over it: at once. The
+  lobby is torn down, as on log-out.
+- During a match, local or online, or matchmaking: nothing is
+  interrupted, and the results screen still shows. The auth
+  screen then opens instead of the lobby
+  (`ScreensMain.client_open_screen` runs every switch through
+  `SignOutRouter.resolve_screen`) and instead of any new online
+  match (`GamePanel._client_client_request_session_ids` checks
+  `G.screens.is_sign_in_required()`).
+- From splash, consent, or auth: the boot flow gets there.
+
+Harness scenarios: `sign-out-lobby`, `sign-out-local-match`,
+`sign-out-play-again`.
+
 ### Button Icons
 
 Use pixel-art icons in most buttons. All icon buttons must use

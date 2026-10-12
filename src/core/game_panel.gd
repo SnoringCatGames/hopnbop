@@ -1026,6 +1026,12 @@ func client_load_game() -> void:
 
 func _client_client_request_session_ids() -> void:
 	Netcode.check_is_client()
+	# Online play needs a session, and the platform SDK has signed the
+	# player out. Send them to sign in instead (see SignOutRouter).
+	if is_instance_valid(G.screens) and G.screens.is_sign_in_required():
+		G.client_session.is_game_loading = false
+		G.screens.client_open_screen(ScreensMain.ScreenType.AUTH)
+		return
 	var session_prefs: SessionPreferences = null
 	if G.local_settings != null:
 		session_prefs = SessionPreferences.new()

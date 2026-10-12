@@ -1,0 +1,20 @@
+{
+  "name": "sign-out-lobby",
+  "mode": "lobby",
+  "timeout_sec": 40,
+  "steps": [
+    {"do": "wait_ready"},
+    {"do": "tap", "key": "move_up", "player": 1, "hold_sec": 0.3},
+    {"do": "wait_until", "expr": "player_count() == 1", "timeout_sec": 5, "comment": "a bunny joined the lobby"},
+    {"do": "eval", "name": "sign_in", "expr": "Platform.token_store.store_from_response({'jwt_token': 'agent.e30.harness', 'refresh_token': 'agent.e30.harness', 'player_id': 'agent-harness', 'provider': 'google', 'display_name': 'Agent', 'expires_at': 1, 'linked_providers': ['google']})", "comment": "A signed-in session with an expired access token and a refresh token Nakama's session parser cannot read. The SDK's auto-refresh treats that like a refresh token Nakama rejects, with no request: it clears the store and emits signed_out."},
+    {"do": "wait_until", "expr": "screen() == 'AUTH'", "timeout_sec": 5},
+    {"do": "state", "name": "auth"},
+    {"do": "assert", "expr": "Platform.token_store.refresh_token.is_empty() and Platform.token_store.jwt_token.is_empty()", "message": "the SDK signed the player out"},
+    {"do": "assert", "expr": "not G.is_lobby_active and player_count() == 0", "message": "the lobby and its bunny are gone"},
+    {"do": "assert", "expr": "not G.screens.is_sign_in_required()", "message": "opening the auth screen settled the sign-out"},
+    {"do": "assert", "expr": "G.auth_screen.get_node('%ButtonsContainer').visible", "message": "the auth screen offers sign-in"},
+    {"do": "wait", "sec": 0.5},
+    {"do": "assert", "expr": "ui_labels(str(G.toast_overlay.get_path())).has(G.tr('TOAST.SIGNED_OUT'))", "message": "a toast says why"},
+    {"do": "screenshot", "name": "auth"}
+  ]
+}

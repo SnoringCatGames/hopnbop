@@ -1,0 +1,21 @@
+{
+  "name": "sign-out-play-again",
+  "mode": "offline",
+  "level": "level_4",
+  "timeout_sec": 60,
+  "steps": [
+    {"do": "wait_ready"},
+    {"do": "wait_match_start"},
+    {"do": "eval", "name": "sign_in", "expr": "Platform.token_store.store_from_response({'jwt_token': 'agent.e30.harness', 'refresh_token': 'agent.e30.harness', 'player_id': 'agent-harness', 'provider': 'google', 'display_name': 'Agent', 'expires_at': 1, 'linked_providers': ['google']})", "comment": "A session the SDK's auto-refresh signs out on the next frame. See sign-out-lobby."},
+    {"do": "wait_until", "expr": "Platform.token_store.refresh_token.is_empty()", "timeout_sec": 5, "comment": "the SDK signed the player out"},
+    {"do": "wait_until", "expr": "screen() == 'GAME_OVER'", "timeout_sec": 40, "comment": "the committed match lasts 10 s"},
+    {"do": "wait", "sec": 1.0},
+    {"do": "eval", "expr": "G.local_settings.set_override('prefer_offline_mode', false)", "comment": "the next match would be online"},
+    {"do": "eval", "expr": "G.game_panel.client_play_again()", "comment": "Play Again"},
+    {"do": "wait_until", "expr": "screen() == 'AUTH'", "timeout_sec": 5, "comment": "no online match without a session"},
+    {"do": "assert", "expr": "not G.client_session.is_game_loading and not G.client_session.is_game_active", "message": "no match is loading"},
+    {"do": "assert", "expr": "not G.screens.is_sign_in_required()", "message": "opening the auth screen settled the sign-out"},
+    {"do": "wait", "sec": 0.5},
+    {"do": "screenshot", "name": "auth"}
+  ]
+}

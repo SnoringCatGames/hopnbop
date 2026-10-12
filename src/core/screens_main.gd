@@ -23,6 +23,10 @@ enum ScreenType {
 
 var current_screen := ScreenType.UNKNOWN
 
+## Clients only: sends the player to the auth screen after the platform
+## SDK signs them out mid-session.
+var sign_out_router: SignOutRouter
+
 
 func _enter_tree() -> void:
 	G.screens = self
@@ -44,6 +48,10 @@ func _ready() -> void:
 			child.queue_free()
 		return
 
+	sign_out_router = SignOutRouter.new()
+	sign_out_router.name = "SignOutRouter"
+	add_child(sign_out_router)
+
 	Netcode.print(
 		"ScreensMain._ready() - visible=%s" % visible,
 		NetworkLogger.CATEGORY_GAME_STATE
@@ -52,6 +60,9 @@ func _ready() -> void:
 
 func client_open_screen(screen_type: ScreenType) -> void:
 	Netcode.check_is_client()
+
+	if sign_out_router != null:
+		screen_type = sign_out_router.resolve_screen(screen_type)
 
 	if screen_type == current_screen:
 		# Already there!
@@ -73,6 +84,15 @@ func client_open_screen(screen_type: ScreenType) -> void:
 		)
 	else:
 		_perform_screen_switch(previous_screen_type, screen_type)
+
+
+## True from the moment the platform SDK signs the player out until the
+## auth screen opens. Online play must not start meanwhile.
+func is_sign_in_required() -> bool:
+	return (
+		sign_out_router != null
+		and sign_out_router.is_sign_in_required
+	)
 
 
 func _should_play_transition(

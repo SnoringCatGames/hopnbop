@@ -81,6 +81,8 @@ var _client: PlatformAuthApiClient
 var _nakama: FakeNakamaClient
 var _store: PlatformAuthTokenStore
 var _completions: Array = []
+## auth_completed and signed_out, in the order they fired.
+var _signals: Array = []
 var _jwt_serial := 0
 var _original_token_store
 var _original_nakama_client
@@ -109,7 +111,9 @@ func before_each() -> void:
 
 	_client = PlatformAuthApiClient.new()
 	_completions = []
+	_signals = []
 	_client.auth_completed.connect(_on_auth_completed)
+	_client.signed_out.connect(_on_signed_out)
 
 
 func after_each() -> void:
@@ -140,6 +144,20 @@ func test_rejected_refresh_token_signs_out() -> void:
 	assert_true(
 		_store.refresh_token.is_empty(), "refresh token cleared")
 	assert_eq(_completions, [false], "failure reported once")
+
+
+func test_rejected_refresh_token_emits_signed_out() -> void:
+	# After auth_completed, so callers awaiting the refresh (the auth
+	# screen, matchmaking) finish before the game reroutes the player.
+	_nakama.next_result = _failure(
+		"Refresh token invalid or expired.",
+		401,
+		_GRPC_UNAUTHENTICATED,
+	)
+
+	_client._check_auto_refresh()
+
+	assert_eq(_signals, ["auth_completed", "signed_out"])
 
 
 func test_rejected_refresh_token_is_not_retried() -> void:
@@ -188,6 +206,7 @@ func test_late_rejection_keeps_newer_session() -> void:
 	assert_eq(_store.refresh_token, newer_refresh_token)
 	assert_false(_store.jwt_token.is_empty())
 	assert_eq(_completions, [false])
+	assert_eq(_signals, ["auth_completed"], "the new session stays")
 
 
 func test_unreadable_refresh_token_signs_out_without_request() -> void:
@@ -201,6 +220,7 @@ func test_unreadable_refresh_token_signs_out_without_request() -> void:
 	assert_eq(_nakama.refresh_calls, 0)
 	assert_true(_store.refresh_token.is_empty())
 	assert_eq(_completions, [false])
+	assert_eq(_signals, ["auth_completed", "signed_out"])
 
 
 # ------------------------------------------------------------------
@@ -218,6 +238,7 @@ func test_transient_failure_keeps_session() -> void:
 	assert_eq(_store.refresh_token, refresh_token_before)
 	assert_false(_store.jwt_token.is_empty())
 	assert_eq(_completions, [false], "failure reported")
+	assert_eq(_signals, ["auth_completed"], "still signed in")
 
 
 func test_transient_failure_holds_retries_until_backoff_ends() -> void:
@@ -412,6 +433,11 @@ func test_other_failures_are_transient() -> void:
 
 func _on_auth_completed(success: bool, _error: String) -> void:
 	_completions.append(success)
+	_signals.append("auth_completed")
+
+
+func _on_signed_out(_error: String) -> void:
+	_signals.append("signed_out")
 
 
 ## Pretends the scheduled retry time has passed.
