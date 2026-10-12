@@ -5,6 +5,9 @@ extends SessionProvider
 ## Used for local multi-instance testing without GameLift backend.
 ## Generates debug session IDs and auto-accepts all connections.
 
+## Stand-in session id: preview client number, then local player index.
+const _DEBUG_SESSION_ID_FORMAT := "DEBUG_SESSION_C%d_%d"
+
 var logger: NetworkLogger
 var config: Dictionary
 
@@ -28,10 +31,10 @@ func client_request_session_ids(
 	player_count: int,
 	session_prefs: Dictionary = {},
 ) -> void:
-	# Generate debug session IDs.
-	var debug_session_ids: Array[String] = []
-	for i in range(player_count):
-		debug_session_ids.append("DEBUG_SESSION_%d" % i)
+	var debug_session_ids := make_debug_session_ids(
+		_get_instance_number(),
+		player_count,
+	)
 
 	var server_ip: String = config.get("server_ip", "127.0.0.1")
 	var server_port: int = config.get("server_port", 4433)
@@ -122,6 +125,33 @@ func get_profile_image_url_map() -> Dictionary:
 
 func get_display_name_map() -> Dictionary:
 	return _player_to_display_name
+
+
+## Returns one stand-in session id per local player. The ids must be
+## unique across every client in the match. NetworkConnector maps
+## session_id to player_id so that a reconnecting client keeps its
+## slot, so two clients sending the same id end up sharing one
+## player_id and the second client never gets a bunny. Keying the id
+## by the instance number keeps clients apart while staying stable
+## across a reconnect of the same client.
+static func make_debug_session_ids(
+	instance_number: int,
+	player_count: int,
+) -> Array[String]:
+	var session_ids: Array[String] = []
+	for local_player_index in range(player_count):
+		session_ids.append(
+			_DEBUG_SESSION_ID_FORMAT % [instance_number, local_player_index])
+	return session_ids
+
+
+## The --client=N instance number. Falls back to the process id so a
+## client launched without --client still mints ids no other client
+## shares.
+func _get_instance_number() -> int:
+	if Netcode.preview_client_number > 0:
+		return Netcode.preview_client_number
+	return OS.get_process_id()
 
 
 ## Select a level locally based on client preferences.
