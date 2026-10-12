@@ -1,6 +1,6 @@
 extends GutTest
-## Unit tests for PlatformAuthApiClient's session-refresh retry
-## policy.
+## Unit tests for PlatformAuthApiClient's session refresh: its retry
+## policy, and what a successful refresh keeps.
 ##
 ## A failed refresh used to be retried as fast as each request
 ## completed, forever: _check_auto_refresh runs every frame, and its
@@ -9,6 +9,9 @@ extends GutTest
 ## refresh requests that reach it. A failure that may be transient
 ## backs off exponentially. A refresh token that Nakama rejects
 ## signs the player out, which ends the retries.
+##
+## A successful refresh used to empty the player's linked accounts,
+## so the account panel showed Google as unlinked after every one.
 ##
 ## The client under test is constructed via .new() and never added
 ## to the scene tree, so its own _process() never runs. Each test
@@ -41,6 +44,7 @@ const _GRPC_PERMISSION_DENIED := 7
 const _GRPC_INTERNAL := 13
 const _GRPC_UNAVAILABLE := 14
 const _GRPC_UNAUTHENTICATED := 16
+const _LINKED_PROVIDERS := ["anonymous", "google"]
 
 
 ## Stands in for Platform.nakama_client. Answers
@@ -306,6 +310,45 @@ func test_refresh_runs_again_after_success() -> void:
 	_client._check_auto_refresh()
 
 	assert_eq(_nakama.refresh_calls, 2)
+
+
+# ------------------------------------------------------------------
+# Linked providers
+# ------------------------------------------------------------------
+
+
+func test_success_keeps_linked_providers() -> void:
+	# The refresh response dict held the store's own list, which the
+	# store cleared before copying from it.
+	_store.linked_providers.assign(_LINKED_PROVIDERS)
+	_nakama.next_result = _success()
+
+	_client._check_auto_refresh()
+
+	assert_eq(_completions, [true])
+	assert_eq(Array(_store.linked_providers), _LINKED_PROVIDERS)
+
+
+func test_success_saves_linked_providers() -> void:
+	_store.linked_providers.assign(_LINKED_PROVIDERS)
+	_nakama.next_result = _success()
+
+	_client._check_auto_refresh()
+
+	var reloaded := PlatformAuthTokenStore.new(_TEST_AUTH_FILE)
+	assert_eq(Array(reloaded.linked_providers), _LINKED_PROVIDERS)
+
+
+func test_store_from_response_keeps_its_own_list() -> void:
+	_store.linked_providers.assign(_LINKED_PROVIDERS)
+
+	_store.store_from_response({
+		"jwt_token": _store.jwt_token,
+		"refresh_token": _store.refresh_token,
+		"linked_providers": _store.linked_providers,
+	})
+
+	assert_eq(Array(_store.linked_providers), _LINKED_PROVIDERS)
 
 
 # ------------------------------------------------------------------
