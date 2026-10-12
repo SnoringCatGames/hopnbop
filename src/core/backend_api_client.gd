@@ -47,8 +47,9 @@ signal fleet_status_updated(data: Dictionary)
 ## Emitted after the startup version check completes.
 ## is_compatible is false only when the server returned a
 ## different protocol_version. Server values come from the
-## `version_check` Nakama RPC; pre-RPC deploys return -1 and
-## are treated as "compatible".
+## runtime's unauthenticated version-check route (the
+## `version_check` RPC's answer); a failed or unreachable check
+## reports -1 and is treated as "compatible".
 signal version_checked(
 	is_compatible: bool,
 	server_protocol_version: int,
@@ -238,34 +239,24 @@ func check_version() -> void:
 	var client_game_version: String = ProjectSettings.get_setting(
 		"application/config/version", "")
 
-	# Hit the runtime's `version_check` RPC via Nakama's
-	# HTTP-key path so this works pre-auth (the boot-time call
-	# fires before any session exists). Nakama returns the
-	# RPC's `result` envelope by default; `unwrap=true` strips
-	# it down to the bare payload string.
-	var url := "%s/v2/rpc/version_check?http_key=%s&unwrap=true" % [
-		Platform.get_nakama_base_url(),
-		Platform.nakama_http_key.uri_encode(),
-	]
+	# The runtime's unauthenticated version-check route, which
+	# answers like the `version_check` RPC with no session and no
+	# key, so it works before sign-in (this call fires at boot,
+	# before any session exists). Up to 0.47.0 this called the RPC
+	# with Nakama's runtime HTTP key embedded in the client. That
+	# key lets any holder call every runtime RPC as a trusted
+	# server, so it must never ship in a build.
+	var url := get_version_check_url()
 	var headers := PackedStringArray([
 		"Content-Type: application/json",
 	])
-	# With ?unwrap=true, Nakama's HTTP gateway forwards the raw
-	# request body as the RPC payload. Encode as a bare JSON
-	# object — wrapping again (`JSON.stringify(JSON.stringify(…))`)
-	# silently falls through to default-valued args because
-	# the runtime's `_ = json.Unmarshal(payload, &args)` ignores
-	# the unmarshal error.
-	var body := JSON.stringify({
-		"client_protocol_version": client_protocol,
-		"client_game_version": client_game_version,
-		# Stage 3.10: include game_id so the runtime returns
-		# this game's protocol_version + legal_version from the
-		# `games` table instead of the env-var-supplied
-		# defaults. Empty game_id falls back to legacy
-		# (env-var-only) response.
-		"game_id": Platform.game_id,
-	})
+	# A bare JSON object, the same body the RPC takes with
+	# ?unwrap=true. Wrapping it again
+	# (`JSON.stringify(JSON.stringify(…))`) silently falls through
+	# to default-valued args, because the runtime ignores a body it
+	# can't decode.
+	var body := build_version_check_body(
+		client_protocol, client_game_version)
 
 	var http := HTTPRequest.new()
 	http.timeout = 5.0
@@ -355,6 +346,28 @@ func check_version() -> void:
 		or server_protocol == client_protocol)
 	version_checked.emit(
 		compatible, server_protocol, server_game_version)
+
+
+## Returns the URL check_version() requests: the runtime's
+## unauthenticated version-check route. It carries no credential.
+func get_version_check_url() -> String:
+	return Platform.get_version_check_url()
+
+
+## Returns the JSON body check_version() sends.
+func build_version_check_body(
+	client_protocol: int,
+	client_game_version: String,
+) -> String:
+	return JSON.stringify({
+		"client_protocol_version": client_protocol,
+		"client_game_version": client_game_version,
+		# Stage 3.10: include game_id so the runtime returns this
+		# game's protocol_version + legal_version from the `games`
+		# table instead of the env-var-supplied defaults. Empty
+		# game_id falls back to the legacy (env-var-only) response.
+		"game_id": Platform.game_id,
+	})
 
 
 # --------------------------------------------------------------

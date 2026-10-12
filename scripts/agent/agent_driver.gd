@@ -533,7 +533,6 @@ func _initialize_offline_platform() -> void:
 		"nakama_port": _BLACKHOLE_PORT,
 		"nakama_scheme": "http",
 		"nakama_server_key": _OFFLINE_KEY,
-		"nakama_http_key": _OFFLINE_KEY,
 		"oauth_callback_url": blackhole_url,
 		"google_token_broker_url": blackhole_url,
 		"google_oauth_client_id": "",

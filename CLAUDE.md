@@ -551,9 +551,21 @@ These are generated from `project.godot` at deploy/sync time.
   Only bump when the network protocol actually changes.
 - `config/version` is for display only. Hotfix deploys can
   bump this without breaking existing clients.
-- Client checks `protocol_version` at app startup via
-  `GET /version` (unauthenticated). Also checked in auth
-  response, matchmaking response, and server RPC.
+- Client checks `protocol_version` at app startup through the
+  runtime's unauthenticated `/snoringcat/version_check` route
+  (`BackendApiClient.check_version`, URL from
+  `Platform.get_version_check_url()`). It answers like the
+  `version_check` RPC and needs no session or key. Also checked
+  in the matchmaker ticket (the runtime aborts a mismatched
+  match before allocating).
+- **The client never holds the runtime HTTP key.** Up to 0.47.0
+  `global.gd` embedded it for that version check, which let anyone
+  call every runtime RPC as a trusted server. Only dedicated
+  servers use it, read from their `NAKAMA_HTTP_KEY` environment
+  variable (Edgegap app env, local allocator).
+  `Platform.initialize` refuses a `nakama_http_key` entry, and
+  `test/unit/platform/test_client_http_key.gd` fails CI if a
+  shipped script or resource embeds or sends the key.
 
 ### Production resources
 

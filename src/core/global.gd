@@ -130,17 +130,19 @@ func _enter_tree() -> void:
 				ProjectSettings.get_setting(
 					"application/config/version", "0.0.0")),
 			"auth_file_path": _get_auth_file_path(),
-			# Nakama connection. Server key + http key are "soft
-			# secrets" (extractable from the shipped .pck) — they
-			# pair with per-IP rate-limiting in Caddy. Rotation
-			# requires a client release.
+			# Nakama connection. The server key is public by design
+			# (anyone can extract it from the shipped .pck): it only
+			# opens the authenticate endpoints, which Caddy
+			# rate-limits per IP. Never add Nakama's runtime HTTP key
+			# here. It authenticates game servers as trusted callers
+			# of every runtime RPC; dedicated servers read it from
+			# their NAKAMA_HTTP_KEY environment variable instead, and
+			# test_client_http_key.gd fails the build if it returns.
 			"nakama_host": "nakama.snoringcat.games",
 			"nakama_port": 443,
 			"nakama_scheme": "https",
 			"nakama_server_key": (
 				"p65qPwZ3vhnsIzNU8/9tw1gR6AbkjGJ7GpTmMQbJ5fs="),
-			"nakama_http_key": (
-				"VVU3A4AYzs1HIh83J5KLccM4Kt6kiY2/jq3qwZHPqzQ="),
 			# OAuth surface (game-specific URLs / IDs). The
 			# token-broker URL points at the Cloudflare Pages
 			# Function that adds GOOGLE_OAUTH_CLIENT_SECRET
