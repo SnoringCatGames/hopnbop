@@ -65,6 +65,16 @@ const GLOBAL_OVERRIDABLE_KEYS: Array[StringName] = [
 	&"prefer_offline_mode",
 ]
 
+## SECTION_META keys that belong to the signed-in player, which
+## clear_user_state() drops.
+const _USER_META_KEYS: Array[String] = [
+	"cloud_sync_at",
+	"cloud_sync_at_global",
+	"cloud_sync_at_game",
+	"cloud_legacy_migrated",
+	"rounds_played",
+]
+
 var _config := ConfigFile.new()
 var _defaults: Settings
 
@@ -320,22 +330,18 @@ func get_anonymous_color_hue() -> float:
 
 
 ## Clear all local user state. Called on logout
-## so the next session starts clean.
+## and account deletion so the next session starts
+## clean.
 func clear_user_state() -> void:
 	if _config.has_section(SECTION_SETTINGS):
 		_config.erase_section(SECTION_SETTINGS)
 	if _config.has_section(SECTION_LEVEL_PREFS):
 		_config.erase_section(SECTION_LEVEL_PREFS)
-	_config.erase_section_key(
-		SECTION_META, "cloud_sync_at")
-	_config.erase_section_key(
-		SECTION_META, "cloud_sync_at_global")
-	_config.erase_section_key(
-		SECTION_META, "cloud_sync_at_game")
-	_config.erase_section_key(
-		SECTION_META, "cloud_legacy_migrated")
-	_config.erase_section_key(
-		SECTION_META, "rounds_played")
+	# erase_section_key logs an engine error for a key
+	# that isn't there, which a guest never syncs.
+	for key in _USER_META_KEYS:
+		if _config.has_section_key(SECTION_META, key):
+			_config.erase_section_key(SECTION_META, key)
 	save_settings()
 
 

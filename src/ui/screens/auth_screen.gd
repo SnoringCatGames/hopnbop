@@ -40,11 +40,11 @@ func _on_lobby_navigation_requested() -> void:
 		ScreensMain.ScreenType.LOBBY)
 
 
+## The boot-time refresh was rejected, or a preview client is about to
+## sign in anonymously: the same teardown as every other sign-out. The
+## addon screen clears its own Platform caches after this returns.
 func _on_force_anonymous_state_reset() -> void:
-	G.profile_image_cache.clear()
-	G.friends_notification_poller.reset()
-	G.party_manager.reset()
-	G.client_session.clear_latest_state()
+	G.screens.sign_out_router.clear_session_state()
 
 
 ## The session could not be refreshed at launch, but the failure

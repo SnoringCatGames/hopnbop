@@ -4,6 +4,13 @@ extends Node
 ## requests, accepted requests) and emits signals
 ## for toasts and badge updates. Follows the
 ## PartyManager polling pattern.
+##
+## Runs from sign-in to sign-out. Every sign-out
+## (log-out, account deletion, an automatic sign-out)
+## calls stop_polling() and reset(), and every
+## successful sign-in, guest or provider, starts it
+## again. While stopped it drops what still arrives
+## for the old session.
 
 
 signal unseen_count_changed(count: int)
@@ -19,6 +26,10 @@ var _presence_poll_timer := 0.0
 var _is_polling := false
 var _is_first_poll := true
 var _is_first_presence_poll := true
+## Counts reset() calls, one per sign-out. A toast
+## batch that waits across one belongs to the old
+## session and is dropped.
+var _session_generation := 0
 
 var _known_online_ids: Dictionary = {}
 ## Dedupe persistent `party_matchmaking_start` notifications so a
@@ -153,21 +164,29 @@ func _process(delta: float) -> void:
 
 
 ## Start polling for friend notifications and
-## presence.
+## presence. A call while already polling changes
+## nothing, so a token refresh, which also completes
+## a sign-in, neither doubles the polling nor moves
+## its schedule.
 func start_polling() -> void:
+	if _is_polling:
+		return
 	_is_polling = true
 	_poll_timer = 0.0
 	# Fire presence poll on the next process tick.
 	_presence_poll_timer = _PRESENCE_POLL_INTERVAL_SEC
 
 
-## Stop polling.
+## Stop polling until the next sign-in. Responses
+## and pushes that arrive meanwhile belong to the
+## session that ended, and are dropped.
 func stop_polling() -> void:
 	_is_polling = false
 
 
 ## Reset state for a new session.
 func reset() -> void:
+	_session_generation += 1
 	_is_first_poll = true
 	_is_first_presence_poll = true
 	_known_online_ids.clear()
@@ -183,6 +202,8 @@ func reset() -> void:
 func _on_notifications_received(
 	data: Dictionary,
 ) -> void:
+	if not _is_polling:
+		return
 	# PlatformFriendsApiClient.fetch_notifications emits the raw
 	# Nakama notification list under the `notifications` key, and
 	# nothing else — this handler previously read `incoming_requests`
@@ -269,6 +290,8 @@ func _friend_toast_key(code: int) -> String:
 func _on_socket_notification(
 	notification: Dictionary,
 ) -> void:
+	if not _is_polling:
+		return
 	_dispatch_notification(notification)
 	if not _queue_friend_toast(notification):
 		return
@@ -304,6 +327,8 @@ func _handle_party_matchmaking_start(
 func _on_friends_received(
 	data: Dictionary,
 ) -> void:
+	if not _is_polling:
+		return
 	_recompute_unseen(data.get("incoming_requests", []))
 	_flush_pending_friend_toasts()
 
@@ -373,10 +398,16 @@ func _flush_pending_friend_toasts() -> void:
 	_pending_friend_toasts.clear()
 	if _is_first_poll:
 		_is_first_poll = false
+		var generation := _session_generation
 		# Hold the first batch back so a backlog of persistent
 		# notifications doesn't land on top of the loading screen.
 		await get_tree().create_timer(
 			_FIRST_POLL_TOAST_DELAY_SEC).timeout
+		# A sign-out during the wait ended the session these came
+		# from. Showing them now would credit them to whoever signs
+		# in next.
+		if generation != _session_generation:
+			return
 	if not is_instance_valid(G.toast_overlay):
 		return
 	for event in events:
@@ -419,11 +450,17 @@ func _resolve_sender_display_name(
 	return ""
 
 
+## Every successful sign-in, guest or provider,
+## starts polling again after a sign-out stopped it.
+## Polling itself waits for a provider session with
+## a valid token (see _process), so a guest's poller
+## idles until they sign in with a provider.
 func _on_auth_completed(
 	success: bool, _error: String,
 ) -> void:
 	if not success:
 		return
+	start_polling()
 	if not Platform.token_store.is_token_valid():
 		return
 	if Platform.token_store.is_anonymous:
@@ -436,6 +473,8 @@ func _on_auth_completed(
 func _on_presence_received(
 	online_ids: Array[String],
 ) -> void:
+	if not _is_polling:
+		return
 	var new_online: Array[String] = []
 	for id in online_ids:
 		if not _known_online_ids.has(id):

@@ -154,14 +154,9 @@ func _on_delete_completed(
 		manager.close_all()
 
 	if success:
-		if is_instance_valid(G.toast_overlay):
-			G.toast_overlay.show_toast(
-				tr("TOAST.ACCOUNT_DELETE_QUEUED"),
-				ToastOverlay.Type.SUCCESS,
-			)
-		G.screens.client_open_screen(
-			ScreensMain.ScreenType.CONSENT,
-		)
+		# Tears the session down as a log-out does, so the next player
+		# on this device inherits nothing from the deleted account.
+		G.screens.sign_out_router.finish_account_deletion()
 	else:
 		G.log.error(
 			"Account deletion failed: %s" % error)

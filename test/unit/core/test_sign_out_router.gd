@@ -1,15 +1,19 @@
 extends GutTest
-## Unit tests for SignOutRouter, which sends the player to the auth
-## screen after the platform SDK signs them out mid-session.
+## Unit tests for SignOutRouter, which ends a signed-in session on this
+## device: after the platform SDK signs the player out mid-session, on
+## log-out, and after an account deletion.
 ##
 ## GUT runs without main.tscn, so there is no ScreensMain, lobby, or
 ## match here, and the router waits, as it does during a match, for
 ## the next request to open the lobby. The agent-harness scenarios
-## sign-out-lobby and sign-out-local-match cover the screen flow.
+## sign-out-lobby, sign-out-local-match, and log-out-sign-in-cycles
+## cover the screen flow.
 ##
 ## Each test swaps a fresh auth client, a throwaway token store, and a
 ## fake Nakama client into Platform, and pauses the live auth node,
-## which would otherwise refresh the throwaway store itself.
+## which would otherwise refresh the throwaway store itself. Every
+## sign-out stops the live friends poller, which after_each restarts as
+## the next sign-in would.
 
 
 const _TEST_AUTH_FILE := "user://test_sign_out_router.cfg"
@@ -21,6 +25,7 @@ const _GRPC_UNAVAILABLE := 14
 const _GRPC_UNAUTHENTICATED := 16
 const _HTTP_UNAUTHORIZED := 401
 const _HTTP_SERVICE_UNAVAILABLE := 503
+const _ANNOUNCE_OFFLINE_RPC := "update_and_get_presence"
 ## Screens that never give way to the auth screen.
 const _SCREENS_LEFT_ALONE := [
 	ScreensMain.ScreenType.GAME,
@@ -32,9 +37,10 @@ const _SCREENS_LEFT_ALONE := [
 
 
 ## Stands in for Platform.nakama_client. Answers session_refresh_async
-## with a canned result, without network I/O.
+## with a canned result and RPCs with success, without network I/O.
 class FakeNakamaClient extends NakamaClient:
 	var next_result: NakamaSession
+	var rpc_ids: Array = []
 
 	func _init() -> void:
 		super(
@@ -51,6 +57,14 @@ class FakeNakamaClient extends NakamaClient:
 		_p_vars = null,
 	) -> NakamaSession:
 		return next_result
+
+	func rpc_async(
+		_p_session: NakamaSession,
+		p_id: String,
+		_p_payload = null,
+	):
+		rpc_ids.append(p_id)
+		return NakamaAPI.ApiRpc.new()
 
 
 var _router: SignOutRouter
@@ -102,6 +116,7 @@ func after_each() -> void:
 	_store.clear_tokens()
 	Platform.token_store = _original_token_store
 	Platform.nakama_client = _original_nakama_client
+	G.friends_notification_poller.start_polling()
 
 
 # ------------------------------------------------------------------
@@ -206,9 +221,74 @@ func test_opening_auth_clears_the_old_session_caches() -> void:
 	assert_true(Platform.presence.cached_online_ids.is_empty())
 
 
+func test_opening_auth_stops_the_friends_poller_and_its_socket() -> void:
+	_start_friends_notifications()
+	_client.signed_out.emit("Refresh token invalid or expired.")
+
+	_router.resolve_screen(ScreensMain.ScreenType.LOBBY)
+
+	_assert_friends_notifications_stopped()
+
+
+# ------------------------------------------------------------------
+# Log-out and account deletion
+# ------------------------------------------------------------------
+
+
+func test_log_out_announces_offline_first() -> void:
+	await _router.log_out()
+
+	assert_eq(_nakama.rpc_ids, [_ANNOUNCE_OFFLINE_RPC])
+
+
+func test_log_out_stops_the_friends_poller_and_its_socket() -> void:
+	_start_friends_notifications()
+
+	await _router.log_out()
+
+	_assert_friends_notifications_stopped()
+
+
+func test_log_out_clears_the_old_session_caches() -> void:
+	Platform.friends.cached_friends.append({"user_id": "friend"})
+	Platform.presence.cached_online_ids.append("friend")
+
+	await _router.log_out()
+
+	assert_true(Platform.friends.cached_friends.is_empty())
+	assert_true(Platform.presence.cached_online_ids.is_empty())
+
+
+func test_account_deletion_stops_the_friends_poller_and_its_socket() -> void:
+	_start_friends_notifications()
+	Platform.friends.cached_friends.append({"user_id": "friend"})
+
+	_router.finish_account_deletion()
+
+	_assert_friends_notifications_stopped()
+	assert_true(Platform.friends.cached_friends.is_empty())
+
+
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
+
+
+## A signed-in session's poller and socket. The socket makes no
+## connection attempt: the store's access token has expired.
+func _start_friends_notifications() -> void:
+	G.friends_notification_poller.start_polling()
+	Platform.notification_socket.start()
+
+
+## Both stay stopped until the next sign-in starts them again.
+func _assert_friends_notifications_stopped() -> void:
+	assert_false(
+		G.friends_notification_poller._is_polling, "friends poller stopped")
+	assert_false(
+		Platform.notification_socket._wants_connection,
+		"notification socket closed",
+	)
 
 
 func _failure(

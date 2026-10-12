@@ -53,42 +53,6 @@ func _do_logout() -> void:
 			and is_instance_valid(_panel.manager)):
 		_panel.manager.close_all()
 
-	# Tell the platform we're going offline before dropping the
-	# token — announce_offline needs a live session to write the
-	# row as. Without it the user lingers on friends' lists until
-	# the runtime's staleness window expires.
-	await Platform.presence.announce_offline()
-
-	G.local_settings.clear_user_state()
-	Platform.token_store.clear_tokens()
-	G.profile_image_cache.clear()
-	G.friends_notification_poller.stop_polling()
-	G.friends_notification_poller.reset()
-	Platform.friends.cached_friends.clear()
-	Platform.friends.cached_sent_requests.clear()
-	Platform.friends.cached_incoming_requests\
-		.clear()
-	# clear_cache() drops cached_online_friends too. Clearing only
-	# cached_online_ids left the rich-presence map behind, so the
-	# next user to sign in on this device inherited the previous
-	# user's friends' presence text.
-	Platform.presence.clear_cache()
-	G.party_manager.reset()
-	G.client_session.clear_latest_state()
-	# Tear down the live lobby/game level too, otherwise
-	# the next user inherits the previous user's spawned
-	# bunnies (Profile-image / display-name attributes are
-	# captured into the lobby player nodes at spawn, so
-	# clearing client_session is not enough on its own).
-	if is_instance_valid(G.game_panel):
-		G.game_panel.client_clear_all_levels()
-
-	if is_instance_valid(G.toast_overlay):
-		G.toast_overlay.show_toast(
-			tr("TOAST.LOGGED_OUT"),
-			ToastOverlay.Type.INFO,
-		)
-
-	G.screens.client_open_screen(
-		ScreensMain.ScreenType.CONSENT,
-	)
+	# The same teardown as an account deletion, plus the consent and
+	# credentials a log-out forgets.
+	await G.screens.sign_out_router.log_out()

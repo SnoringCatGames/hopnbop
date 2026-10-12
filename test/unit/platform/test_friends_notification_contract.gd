@@ -17,6 +17,8 @@ var _emitted_counts: Array[int]
 
 func before_each() -> void:
 	_poller = FriendsNotificationPoller.new()
+	# G starts its poller at boot. A stopped one drops what arrives.
+	_poller.start_polling()
 	_emitted_counts = []
 	_poller.unseen_count_changed.connect(
 		func(count: int) -> void:

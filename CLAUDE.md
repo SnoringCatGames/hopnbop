@@ -1480,6 +1480,21 @@ screen, the one a fresh launch shows:
 Harness scenarios: `sign-out-lobby`, `sign-out-local-match`,
 `sign-out-play-again`.
 
+Every way out ends the session the same way. Log-out
+(`SignOutRouter.log_out()`, behind Settings, Log Out), account
+deletion (`finish_account_deletion()`), an automatic sign-out
+(when the auth screen opens), and the auth screen's launch-time
+rejection all run `SignOutRouter.clear_session_state()`. It
+closes menus and dialogs, drops profile pictures and the friend
+and presence caches, resets the party, stops the friends poller,
+and closes the realtime notification socket, which is
+authenticated as the old account. The next successful sign-in,
+guest or provider, starts the poller again
+(`FriendsNotificationPoller._on_auth_completed`); while stopped
+it drops whatever still arrives for the old session. The next
+provider sign-in opens a socket for the new account. Harness
+scenario: `log-out-sign-in-cycles`.
+
 At launch, the auth screen refreshes an expired session before
 letting the player in. Only a refresh token that Nakama rejects
 signs them out there (SDK 0.5.6). Any other failure (network
@@ -2138,6 +2153,11 @@ godot --headless -s --path . addons/gut/gut_cmdln.gd \
 - Directory-based runs (`-gdir=res://test/unit`) sometimes fail to
   discover tests
 - Always use `-gexit` flag for CI/CD to get proper exit codes
+- **Don't await GUT's `wait_seconds`.** The scene tree is paused
+  during GUT runs here, so GUT's awaiter never ticks and the test
+  hangs until the process is killed. Await
+  `get_tree().create_timer(sec).timeout`, which runs while
+  paused, or `get_tree().process_frame` instead.
 
 **Critical Test Setup Patterns:**
 - **ArrayPool management is mandatory** - Every test that uses ArrayPool
