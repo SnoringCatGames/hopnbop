@@ -168,11 +168,13 @@ leaderboards:
 # pr-validate's "Check legal_version parity" step fails the build
 # when they differ.
 #
-# Sync a bump with `scripts/sync-game-config.ps1` only after a
-# client that bundles the new legal text has shipped. Syncing
-# earlier makes clients that still bundle the old text ask
-# players to accept that old text under the new version, and
-# those players are then never shown the new text.
+# Sync a bump (`scripts/sync-game-config.ps1`) with the release
+# that ships the new legal text, never before. Synced early, it
+# makes clients that still bundle the old text ask players to
+# re-consent to that old text, and those players are then never
+# shown the new text. Every sync posts this whole file, so a sync
+# for any other reason (a server-only deploy, say) publishes a
+# pending bump too.
 legal:
   terms_path: legal/en/terms.txt
   privacy_path: legal/en/privacy.txt

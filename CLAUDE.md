@@ -373,8 +373,18 @@ version in **both** places, in the same commit:
    offline / pre-fetch fallback).
 
 They must match: `pr-validate.yml` fails the build if they
-drift. Run `scripts/sync-game-config.ps1` afterwards, or the
-`games` table keeps serving the old value.
+drift.
+
+Sync the bump (`scripts/sync-game-config.ps1`) with the release
+that ships the new text, never before. The runtime serves
+`legal_version` to every client through `version_check`, so a
+bump synced early makes clients that still bundle the old text
+ask players to re-consent to that old text, and those players
+are then never shown the new text. Every sync posts all of
+`game.yaml`, so a sync for any other reason (a server-only
+deploy, an `edgegap_app_version` bump) publishes a pending
+legal bump too: hold such syncs until the client ships, or ship
+them together.
 
 ### Prerequisites (All Deploys)
 
