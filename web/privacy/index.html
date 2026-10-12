@@ -25,9 +25,11 @@ use, and protect your information.</p>
   <li><strong>Account information:</strong> When you sign in
     through a third-party provider the Game offers (currently
     Google or Facebook), we receive your display name, profile
-    image URL, and a provider-specific user ID. If you sign in
-    with Google, we also receive your email address and store
-    it with your account. We do not receive or store your
+    image URL, and a provider-specific user ID. The Game does
+    not ask sign-in providers for your email address, and we do
+    not keep it. If an earlier version of the Game received your
+    email address from Google, it is deleted the next time you
+    sign in, or sooner. We do not receive or store your
     password.</li>
   <li><strong>Device identifier:</strong> If you play
     anonymously, we generate a random device ID stored locally
@@ -36,14 +38,15 @@ use, and protect your information.</p>
   <li><strong>Gameplay data:</strong> Match results, scores,
     kills, deaths, and other in-game statistics.</li>
   <li><strong>Social data and settings:</strong> Your friends,
-    blocked players, parties, players you recently played with,
-    online status, and settings synced across your
-    devices.</li>
+    blocked players, parties, party chat messages, players you
+    recently played with, online status, in-game notifications
+    (such as friend requests and the details of matches you
+    join), and settings synced across your devices.</li>
   <li><strong>IP address:</strong> We receive your IP address
     when the Game connects to our servers or to a game server.
-    When you look for a match, we store it with your account,
-    replacing any earlier one, and use it to choose a game
-    server near you.</li>
+    When you look for a match, we store it with your account to
+    choose a game server near you, and delete it within two
+    hours.</li>
   <li><strong>Technical data:</strong> Game version, platform,
     operating system, and crash reports. Crash reports contain
     error messages and excerpts from the Game's logs, with
@@ -60,11 +63,11 @@ use, and protect your information.</p>
 <h2>2. How We Use Your Information</h2>
 <ul>
   <li>Authenticate your identity and maintain your account.</li>
-  <li>Track gameplay statistics, display leaderboards, and
-    show your profile image to other players in-game and on
-    leaderboards.</li>
-  <li>Provide friends, parties, online status, and settings
-    sync.</li>
+  <li>Track gameplay statistics and display leaderboards.</li>
+  <li>Show your display name and profile image to other players
+    in the Game.</li>
+  <li>Provide friends, parties, party chat, online status, and
+    settings sync.</li>
   <li>Match you with other players and choose a game server
     near you.</li>
   <li>Diagnose crashes and improve the Game.</li>
@@ -79,11 +82,27 @@ choose to use. We comply with the EU General Data Protection
 Regulation (GDPR) and the California Consumer Privacy Act
 (CCPA).</p>
 <ul>
+  <li><strong>Other players and the public:</strong> Other
+    players see your display name, profile image, and online
+    status in the Game. Public leaderboards, in the Game and at
+    <a href="/leaderboard/">hopnbop.net/leaderboard</a>, show
+    anyone, without signing in, each listed player's rank,
+    display name, and best single-match score of all time. They
+    never show player IDs, usernames, profile images, device
+    IDs, IP addresses, email addresses, when a score was set, or
+    other match statistics. Only accounts with a display name
+    are listed: guest accounts have none and never appear, and
+    banned accounts and accounts being deleted are left out. If
+    you signed in with Google or Facebook, your display name is
+    the name on that account's profile, which may be your real
+    name, and it is the name shown on these public
+    leaderboards.</li>
   <li><strong>Hosting:</strong> Our backend runs on a cloud
     server from Hetzner Online GmbH in Hillsboro, Oregon, United
     States. That server stores your account and game data,
     including your sign-in IDs, friends, online status,
-    settings, statistics, and leaderboard entries.</li>
+    settings, statistics, leaderboard entries, and party chat
+    messages.</li>
   <li><strong>Game servers:</strong> Edgegap runs a game server
     for each match in a data center chosen to be near its
     players, which may be outside your country. Edgegap receives
@@ -112,25 +131,43 @@ Regulation (GDPR) and the California Consumer Privacy Act
 <h2>4. Data Retention</h2>
 <p>Gameplay data is retained for the lifetime of your account.
 Consent records stay on your device until you sign out or your
-account is deleted. When you delete your account, we
-immediately remove your display name from your public profile
-and delete your friends, leaderboard entries, match history,
-settings, and other game data. We keep the rest of your
-account, including your sign-in IDs, device ID, email address,
-and original display name, for 30 days so you can cancel the
-deletion by signing back in. After that, your account is
-permanently deleted. Deleted data can remain in our database
-backups for up to 8 days after it is deleted. Crash reports
-are deleted after 30 days. Server logs, which can include IP
-addresses, are kept only as long as needed for security and
-troubleshooting.</p>
+account is deleted. Your stored IP address is deleted within
+two hours of being stored.</p>
+<p>When you delete your account, we immediately delete your
+profile details (display name, profile image URL, any email
+address we hold, language, location, and time zone), your
+stored IP address, friend code, friends and blocked players,
+parties, party chat messages, notifications, leaderboard
+entries, match history, settings, and other game data, and
+remove you from other players' recent players lists. The public
+leaderboard at hopnbop.net/leaderboard can take up to about a
+minute to stop showing you, or longer only while our database is
+down. We keep only what lets you sign back in to cancel the
+deletion: your sign-in IDs (your device ID and the IDs of the
+providers you signed in with). If you cancel, you keep your account, but the
+data we deleted does not come back. Otherwise, your account and
+sign-in IDs are permanently deleted after 30 days, along with
+anything you add if you keep playing in the meantime. Deleted
+data can remain in our database backups for up to 8 days after
+it is deleted. Crash reports are deleted after 30 days. Server
+logs, which can include IP addresses, are kept only as long as
+needed for security and troubleshooting.</p>
 
 <h2>5. Your Rights</h2>
 <ul>
   <li><strong>Access:</strong> Request a copy of your data
     via in-game settings or email.</li>
-  <li><strong>Portability/export:</strong> Download your data
-    in JSON format via in-game settings.</li>
+  <li><strong>Portability/export:</strong> Download all the
+    data we store about you, in JSON format, via in-game
+    settings (Settings &gt; Account &gt; Export My Data). The
+    export holds your account details and sign-in IDs, any email
+    address we hold, your stored IP address, friend code,
+    friends and blocked players, parties, party chat messages,
+    notifications, leaderboard entries, match history, players
+    you recently played with, online status, settings, and
+    whether your account is scheduled for deletion. Crash
+    reports are not linked to your account, so they cannot be
+    included.</li>
   <li><strong>Deletion:</strong> Delete your account and all
     associated data via in-game settings or email. See our
     <a href="/data-deletion/">Data Deletion Policy</a>.</li>

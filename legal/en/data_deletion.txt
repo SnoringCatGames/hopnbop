@@ -21,37 +21,45 @@ your account.
 
 WHAT GETS DELETED
 
-When you delete your account, we permanently delete:
-- Your player profile (display name, player ID, profile image URL).
-- All linked authentication provider mappings, and your email address if you
-  signed in with Google.
-- Gameplay statistics and match history.
+When you delete your account in the game, we immediately delete:
+- Your profile details: display name, profile image URL, any email address
+  we hold, language, location, and time zone.
+- Your stored IP address and your friend code.
+- Gameplay statistics, match history, and leaderboard entries. The public
+  leaderboard at hopnbop.net/leaderboard can take up to about a minute to
+  stop showing you, or longer only while our database is down.
 - Cloud-synced settings.
-- Friend connections (removed from both sides).
-- Party memberships, online status, and the list of players you recently
-  played with.
-- Leaderboard entries.
-- Your stored IP address.
+- Friend connections and blocked players (removed from both sides).
+- Party memberships (parties you created are deleted), party chat messages,
+  online status, and notifications.
+- The list of players you recently played with, and your entry in other
+  players' lists.
 - The consent record stored on your device.
+
+30 days later, unless you sign back in to cancel, we permanently delete:
+- Your account and player ID.
+- Your sign-in IDs: your device ID and your linked sign-in provider IDs.
+- Anything you added by playing after you asked for the deletion.
 
 
 TIMELINE
 
-When you delete your account in the game, your display name is removed from
-your public profile and your friends, leaderboard entries, match history,
-settings, and other game data are deleted immediately. The rest of your
-account, including your sign-in IDs, device ID, email address, and original
-display name, is permanently deleted 30 days later unless you sign back in to
-cancel. Email requests are processed within 30 days. Deleted data can remain
-in our database backups for up to 8 days after it is deleted. Once your
-account is permanently deleted, it cannot be recovered.
+The first list above is deleted the moment you delete your account in the
+game, and you disappear from the public leaderboard within about a minute.
+We keep only your sign-in IDs, so that you can sign back in within 30 days
+to cancel. If you cancel, you keep your account, but the data already
+deleted does not come back. Otherwise, the rest is permanently deleted 30
+days after your request. Email requests are processed within 30 days.
+Deleted data can remain in our database backups for up to 8 days after it is
+deleted. Once your account is permanently deleted, it cannot be recovered.
 
 
 DATA WE CANNOT DELETE
 
 Aggregated, anonymized analytics data (e.g., total matches played across all
 players) does not contain personally identifiable information and is not
-subject to deletion.
+subject to deletion. Crash reports are not linked to your account, so we
+cannot find yours to delete it; they are deleted automatically after 30 days.
 
 
 CONTACT
