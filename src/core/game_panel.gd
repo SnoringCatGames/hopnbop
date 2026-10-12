@@ -13,23 +13,6 @@ var is_level_fully_loaded := false
 
 var session_manager: GameSessionManager
 
-## Seconds between active-session polls during a
-## match. The poll detects if another device started
-## matchmaking for the same account.
-const _SESSION_POLL_INTERVAL_SEC := 15.0
-
-# Active-session polling now lives on the
-# snoringcat-platform stack at /v1/session/active.
-const _PLATFORM_API_URL := (
-	"https://r20b7wqop6.execute-api.us-west-2.amazonaws.com"
-	+ "/prod/v1"
-)
-
-## True while the client is being kicked due to a
-## concurrent session override. Prevents re-entrant
-## disconnect handling and skips clear_session().
-var _is_session_override_kick := false
-
 ## Set in server_start_match, consumed in _on_match_ready.
 ## We pick the level scene up-front so the matchmaker hook
 ## can use the selected_level_id, but we don't add it to the
@@ -39,9 +22,6 @@ var _is_session_override_kick := false
 ## spawn on WebRTC's SCTP multi-stream transport, and late-
 ## joining peers see "Node not found: Levels/Level5/...".
 var _pending_level_scene: PackedScene
-
-var _session_poll_timer: Timer
-var _session_poll_http: HTTPRequest
 
 ## Stage 7.10 + 7.10b: handles client-side reconnect during
 ## the server-side grace window. Captures connection params
@@ -317,9 +297,6 @@ func _on_match_ended() -> void:
 	G.web_debug_watchdog.breadcrumb("game_panel._on_match_ended")  # FIXME(end-of-match-debug)
 	if not Netcode.is_client:
 		return
-	# Stop session polling. The match is ending
-	# normally so we do not need to detect overrides.
-	_stop_session_poll()
 	# Start a client-side timer to transition to
 	# game-over after the celebration sequence
 	# completes. This avoids depending on WebRTC
@@ -431,11 +408,6 @@ func _client_on_server_connected() -> void:
 
 	G.client_session.is_game_active = true
 
-	# Poll the backend to detect if another device
-	# overrides this session (same account starts
-	# matchmaking elsewhere).
-	_start_session_poll()
-
 	# Stay on the loading screen. We will
 	# transition to GAME when server unpauses
 	# (handled in _client_on_pause_state_changed).
@@ -520,10 +492,6 @@ func _on_connection_lost(
 ) -> void:
 	# Only clients handle connection loss UI.
 	if Netcode.is_client:
-		# Session override kick already handled
-		# the disconnect. Do not re-enter.
-		if _is_session_override_kick:
-			return
 		if is_expected:
 			Netcode.print(
 				"Match ended, showing results",
@@ -965,7 +933,6 @@ func client_clear_all_levels() -> void:
 	# repopulated).
 	if (G.client_session.is_game_active
 			or G.client_session.is_game_loading):
-		_stop_session_poll()
 		G.client_session.is_game_active = false
 		G.client_session.is_game_loading = false
 		if Netcode.is_local_mode:
@@ -1235,7 +1202,6 @@ func _client_cleanup_after_match() -> void:
 	# below catches any re-entry from a synchronous
 	# connection_lost during disconnect.
 	_has_transitioned_to_game_over = false
-	_stop_session_poll()
 
 	# Reset cheat state when leaving match.
 	if is_instance_valid(G.cheat_manager):
@@ -1385,8 +1351,8 @@ func _client_free_levels_and_open_screen(
 
 
 ## Clean up after match and return to the lobby.
-## Used for unexpected disconnects and session
-## override kicks.
+## Used for unexpected disconnects and failed
+## reconnects.
 func client_exit_match() -> void:
 	G.web_debug_watchdog.breadcrumb("game_panel.client_exit_match")  # FIXME(end-of-match-debug)
 	Netcode.check_is_client()
@@ -1396,18 +1362,13 @@ func client_exit_match() -> void:
 	Netcode.restore_default_physics_fps()
 
 	# Release the backend session lock so the
-	# player can re-queue immediately. Skip for
-	# session override kicks: the session belongs
-	# to another device now.
+	# player can re-queue immediately.
 	if (
-		not _is_session_override_kick
-		and Netcode.should_connect_to_remote_server
+		Netcode.should_connect_to_remote_server
 		and session_manager.session_provider
 			.has_method("clear_session")
 	):
 		session_manager.session_provider.clear_session()
-
-	_is_session_override_kick = false
 
 	_client_cleanup_after_match()
 	_client_free_levels_and_open_screen(
@@ -1425,8 +1386,9 @@ func _client_transition_to_game_over() -> void:
 	G.web_debug_watchdog.breadcrumb("game_panel._client_transition_to_game_over")  # FIXME(end-of-match-debug)
 	if _has_transitioned_to_game_over:
 		return
-	# Guard: session override kick already exited
-	# the match and freed levels.
+	# Guard: client_exit_match (an unexpected
+	# disconnect or a failed reconnect) already
+	# left the match and freed the levels.
 	if not G.client_session.is_game_active:
 		return
 	_has_transitioned_to_game_over = true
@@ -2453,140 +2415,6 @@ func on_level_removed(level: Level) -> void:
 ## bunny configuration. Called by
 ## NetworkConnector when players declare their
 ## attributes.
-# --- Active Session Polling ---
-# Polls GET /session/active during a match to detect
-# if another device started matchmaking for the same
-# account. If the backend session is no longer
-# "in_match", the client disconnects.
-
-
-func _start_session_poll() -> void:
-	# Only poll during remote server matches with
-	# authenticated (non-anonymous) players who have
-	# active session records.
-	if not Netcode.should_connect_to_remote_server:
-		return
-	if Netcode.is_local_mode:
-		return
-	if Platform.token_store == null:
-		return
-	if Platform.token_store.is_anonymous:
-		return
-	if _PLATFORM_API_URL.is_empty():
-		return
-
-	if _session_poll_timer == null:
-		_session_poll_timer = Timer.new()
-		_session_poll_timer.name = (
-			"SessionPollTimer")
-		_session_poll_timer.process_mode = (
-			Node.PROCESS_MODE_ALWAYS)
-		_session_poll_timer.one_shot = false
-		_session_poll_timer.timeout.connect(
-			_poll_active_session)
-		add_child(_session_poll_timer)
-
-	if _session_poll_http == null:
-		_session_poll_http = HTTPRequest.new()
-		_session_poll_http.name = (
-			"SessionPollHTTP")
-		_session_poll_http.process_mode = (
-			Node.PROCESS_MODE_ALWAYS)
-		_session_poll_http.timeout = 10.0
-		add_child(_session_poll_http)
-
-	_session_poll_timer.start(
-		_SESSION_POLL_INTERVAL_SEC)
-
-
-func _stop_session_poll() -> void:
-	if _session_poll_timer != null:
-		_session_poll_timer.stop()
-
-
-func _poll_active_session() -> void:
-	if _session_poll_http == null:
-		return
-	# Skip if a request is already in flight.
-	if (
-		_session_poll_http
-			.request_completed
-			.is_connected(
-				_on_session_poll_response)
-	):
-		return
-
-	var url := (
-		_PLATFORM_API_URL
-		+ "/session/active")
-	var headers: PackedStringArray = [
-		"Content-Type: application/json",
-	]
-	if (
-		Platform.token_store != null
-		and Platform.token_store.is_token_valid()
-	):
-		headers.append(
-			"Authorization: Bearer %s"
-			% Platform.token_store.jwt_token)
-
-	_session_poll_http.request_completed.connect(
-		_on_session_poll_response)
-	var error := _session_poll_http.request(
-		url, headers, HTTPClient.METHOD_GET)
-	if error != OK:
-		(_session_poll_http.request_completed
-			.disconnect(
-				_on_session_poll_response))
-
-
-func _on_session_poll_response(
-	result: int,
-	response_code: int,
-	_headers: PackedStringArray,
-	body: PackedByteArray,
-) -> void:
-	_session_poll_http.request_completed.disconnect(
-		_on_session_poll_response)
-
-	# Silently ignore errors. Only act on a positive
-	# "session changed" response.
-	if result != HTTPRequest.RESULT_SUCCESS:
-		return
-	if response_code != 200:
-		return
-
-	var parsed = JSON.parse_string(
-		body.get_string_from_utf8())
-	if parsed == null or not parsed is Dictionary:
-		return
-
-	var state = parsed.get("state")
-
-	# Session is still in_match. All good.
-	if state == "in_match":
-		return
-
-	# Session state changed (matchmaking, null,
-	# etc.). Another device overrode this session.
-	_stop_session_poll()
-	_is_session_override_kick = true
-
-	Netcode.print(
-		"Session overridden by another device"
-		+ " (state: %s)" % str(state),
-		NetworkLogger.CATEGORY_CONNECTIONS,
-	)
-
-	if is_instance_valid(G.toast_overlay):
-		G.toast_overlay.show_toast(
-			tr("TOAST.KICKED_OTHER_SESSION"),
-			ToastOverlay.Type.ERROR,
-		)
-
-	client_exit_match()
-
-
 func _validate_player_attributes(
 	attributes: Array,
 	expected_count: int,
