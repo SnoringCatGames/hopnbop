@@ -1308,6 +1308,21 @@ user-facing text, check the existing translation files in
 the project to determine supported languages and file
 format, then provide translations for all of them.
 
+`translations/ui_translations.csv` is real CSV: quote any
+cell that contains a comma (`"Hello, world"`) and double any
+quote inside a quoted cell. Godot's importer assigns cells by
+position, so one unquoted comma shifts the rest of the row
+into the next locales (Japanese players once saw half a
+Russian sentence). After editing it, run `godot --headless
+--import` and commit the regenerated
+`ui_translations.*.translation` files with the CSV. The
+adjective and name lists are read line by line, so they may
+hold neither commas inside a value nor quotes.
+`test/unit/i18n/test_translation_csvs.gd` checks every CSV
+under `translations/` (cell counts with Godot's own parser,
+placeholders against English, a writing-system heuristic per
+locale, and that the compiled tables match the CSV).
+
 ### Viewport and Camera (src/core/pixel_viewport_manager.gd)
 
 `PixelViewportManager` sizes the `SubViewportContainer` to
