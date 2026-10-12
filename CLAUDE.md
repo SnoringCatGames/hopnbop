@@ -1332,7 +1332,9 @@ hold neither commas inside a value nor quotes.
 `test/unit/i18n/test_translation_csvs.gd` checks every CSV
 under `translations/` (cell counts with Godot's own parser,
 placeholders against English, a writing-system heuristic per
-locale, and that the compiled tables match the CSV).
+locale, and that the compiled tables match the CSV). The harness
+scenario `i18n-party-strings` shows the strings the comma once
+shifted, in five locales, and screenshots each.
 
 ### Viewport and Camera (src/core/pixel_viewport_manager.gd)
 
