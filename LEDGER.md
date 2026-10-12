@@ -16,16 +16,12 @@ states its facts, so it stands on its own after the transcript is gone.
   reference left), so the reporter always takes its no-session path and
   never sends a report. Found by the pr-validate CI agent (session
   530145bc, agent aab30fcb, 2026-10-11 13:52). Still true at 18:20 the
-  same day.
-- **H2** · Local test runs authenticate against PRODUCTION Nakama. The
-  game boot loads the real token store (`%APPDATA%`), and the auth
-  client refreshes that session against nakama.snoringcat.games on the
-  first frame, before any test runs. snoringcat-platform 8b891cd (refresh
-  backoff, bumped here in 50cc1087) cut an 8 s GUT run from 6 refreshes
-  (5 came back 401) to 1, but a test run still contacts prod. Pointing
-  APPDATA at an empty dir gave 0 requests. The real fix belongs in game
-  boot (`src/core/global.gd`) or the addon: tests must never load the
-  real token store. Same report as H1.
+  same day. The server half is missing too: the runtime never
+  registered a `crash_report` RPC (the AWS `/telemetry/crash` endpoint
+  went with the SAM backend in platform 21e6fb7). In progress as of
+  19:00 in this repo's session, worktree `agent-a1d23375521d94902`
+  (client rewrite plus runtime `crash_report.go`). Review notes:
+  `docs/design/crash_report_review.md`.
 
 ## Waiting on Levi
 
@@ -47,6 +43,9 @@ states its facts, so it stands on its own after the transcript is gone.
   `settings.tres` 10 s debug match length (Levi: "that's for debugging
   purposes"; CLAUDE.md documents the committed 10 s match for the test
   harness). (Session 530145bc, report 2026-10-11 12:00 and reply 13:06.)
+- **H13** · After H1 lands: nothing surfaces crash reports. Put daily
+  counts where Levi already looks (the morning follow-ups digest or a
+  daily job). See `docs/design/crash_report_review.md` point 14.
 
 ## Residuals (known, not fixed)
 
@@ -83,5 +82,11 @@ states its facts, so it stands on its own after the transcript is gone.
 
 ## Done
 
+- **H2** · Local GUT runs loaded the real token store and refreshed that
+  session against PRODUCTION Nakama on the first frame; a rejected
+  refresh also signed the developer out. Done in the commit that moved
+  this item here (2026-10-11): under GUT, in editor builds only, G hands
+  Platform `user://test_auth.cfg`, deleted at boot, so every run starts
+  signed out. Guarded by `test/unit/core/test_auth_file_isolation.gd`.
 - **H12** · `upgrade_levels.tscn` failed to parse (dead ld58 content
   that broke exports). Done in b998107d (2026-10-11).

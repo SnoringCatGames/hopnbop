@@ -2,6 +2,16 @@
 extends Node
 ## Add global state here for easy access.
 
+## The player's credentials file. Stage 6.3 pinned the pre-SDK name so
+## existing installs stay signed in.
+const AUTH_FILE_PATH := "user://auth.cfg"
+## Test runs boot this autoload too. They get a credentials file of
+## their own, emptied at boot, so they never load the developer's real
+## session. With the real one loaded, the auth client refreshed it
+## against production Nakama before any test ran, and a rejected
+## refresh signed the developer out.
+const TEST_AUTH_FILE_PATH := "user://test_auth.cfg"
+
 # Note: This would be better stored on Main as an export var, so we don't have
 #       to reference the path in code. But, this must be set for tests to run
 #       correctly, and Main isn't run during tests.
@@ -103,7 +113,8 @@ func _enter_tree() -> void:
 	# Stage 6.3 pinned auth_file_path = user://auth.cfg so existing
 	# players' encrypted credentials remain readable across the
 	# upgrade (the addon's default of user://%s_auth.cfg % game_id
-	# would orphan every existing install).
+	# would orphan every existing install). Test runs use their own
+	# file (see TEST_AUTH_FILE_PATH).
 	#
 	# Stage 6.2 added the nakama_* and OAuth config keys so the
 	# addon's PlatformAuthApiClient can read them without reaching
@@ -118,7 +129,7 @@ func _enter_tree() -> void:
 			"sdk_version": str(
 				ProjectSettings.get_setting(
 					"application/config/version", "0.0.0")),
-			"auth_file_path": "user://auth.cfg",
+			"auth_file_path": _get_auth_file_path(),
 			# Nakama connection. Server key + http key are "soft
 			# secrets" (extractable from the shipped .pck) — they
 			# pair with per-IP rate-limiting in Caddy. Rotation
@@ -398,6 +409,22 @@ func _initialize_level_registry() -> void:
 		"Level registry initialized with %d levels" % level_registry.get_level_count(),
 		NetworkLogger.CATEGORY_SYSTEM_INITIALIZATION
 	)
+
+
+## Returns the credentials file Platform should load. A test run gets
+## TEST_AUTH_FILE_PATH, deleted first so every run starts signed out
+## and nothing a test saved can carry into the next run.
+func _get_auth_file_path() -> String:
+	# Exported builds never have the editor feature, so a detector
+	# misfire can never sign a player out.
+	if (
+		not OS.has_feature("editor")
+		or not TestEnvironmentDetector.is_running_in_test_env(self)
+	):
+		return AUTH_FILE_PATH
+	if FileAccess.file_exists(TEST_AUTH_FILE_PATH):
+		DirAccess.remove_absolute(TEST_AUTH_FILE_PATH)
+	return TEST_AUTH_FILE_PATH
 
 
 func get_player_match_state(
