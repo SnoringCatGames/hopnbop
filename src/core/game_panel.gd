@@ -141,6 +141,8 @@ func _ready() -> void:
 		_on_connection_lost)
 	session_manager.matchmaking_failed.connect(
 		_on_matchmaking_failed)
+	session_manager.session_refresh_failed.connect(
+		_on_session_refresh_failed)
 	(session_manager
 		.local_mode_fallback_requested
 		.connect(_on_local_mode_fallback))
@@ -664,12 +666,50 @@ func _on_matchmaking_failed(reason: String) -> void:
 
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
-			reason,
+			_get_fatal_failure_message(reason),
 			ToastOverlay.Type.INFO,
 		)
 
 	G.screens.client_open_screen(
 		ScreensMain.ScreenType.LOBBY)
+
+
+## The session refresh that has to come before matchmaking failed, so
+## no match was requested. A player who is still signed in goes back to
+## the lobby, told what the launch-time refresh tells them in the same
+## case. A player the platform SDK signed out goes to the auth screen
+## instead: SignOutRouter turns the lobby into it and says why.
+func _on_session_refresh_failed(is_signed_out: bool) -> void:
+	G.client_session.is_game_loading = false
+	if (
+		Netcode.should_connect_to_remote_server
+		and session_manager.session_provider.has_method("clear_session")
+	):
+		session_manager.session_provider.clear_session()
+	if not is_signed_out and is_instance_valid(G.toast_overlay):
+		G.toast_overlay.show_toast(tr("TOAST.SESSION_KEPT_OFFLINE"))
+	# The lobby brings its players back from the latest_* copies, which
+	# client_load_game cleared and no match has refilled. A sign-out's
+	# teardown clears them again before the auth screen opens.
+	G.client_session.copy_latest_state(G.match_state)
+	G.screens.client_open_screen(ScreensMain.ScreenType.LOBBY)
+
+
+## Returns the toast for a matchmaking failure that sends the player
+## back to the lobby. The game's own reasons are already translated.
+## The platform SDK's are English diagnostics, so the ones a player can
+## meet are translated here.
+func _get_fatal_failure_message(reason: String) -> String:
+	var lower := reason.to_lower()
+	# A party member's matchmaking ended when the leader cancelled or
+	# closed the realtime party.
+	if "party stopped matchmaking" in lower:
+		return tr("PARTY.MATCHMAKING_ABORTED")
+	# The realtime party behind party matchmaking could not be created
+	# or joined, nearly always because the server was unreachable.
+	if "party create failed" in lower or "party join failed" in lower:
+		return tr("LOADING.CONNECTION_FAILED")
+	return reason
 
 
 ## Maps a session-failure reason to a recoverable
@@ -693,6 +733,12 @@ func _classify_matchmaking_failure(
 	# with different players.
 	if "blocked" in lower:
 		return "LOADING.BLOCKED_PAIR"
+	# Another matched player runs a client too old for the server (the
+	# runtime's protocol_mismatch abort). Their own message starts with
+	# "Your client is out of date" and GameSessionManager stops it
+	# before this point. Re-queueing matches different players.
+	if "out of date" in lower:
+		return "LOADING.PEER_OUT_OF_DATE"
 	if "timeout" in lower or "timed out" in lower:
 		return "LOADING.NO_MATCH_FOUND"
 	# Edgegap allocation surfaced via
@@ -709,6 +755,12 @@ func _classify_matchmaking_failure(
 			or "connect" in lower
 			or "disconnected" in lower
 			or "matchmaker add failed" in lower):
+		return "LOADING.CONNECTION_FAILED"
+	# A guest's session for matchmaking could not be fetched
+	# (PlatformMatchmakingClient._resolve_socket_session), nearly
+	# always because the server was unreachable. It used to reach the
+	# player as an English diagnostic.
+	if "session token" in lower:
 		return "LOADING.CONNECTION_FAILED"
 	return ""
 

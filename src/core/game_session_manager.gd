@@ -47,6 +47,25 @@ signal matchmaking_failed(reason: String)
 ## to offline mode.
 signal local_mode_fallback_requested()
 
+## Emitted when the session refresh that has to come
+## before matchmaking failed with the access token
+## expired, so no ticket was submitted (client only).
+## is_signed_out is true when Nakama rejected the
+## refresh token and the platform SDK signed the
+## player out, false when the failure may be
+## transient and the SDK kept the session.
+signal session_refresh_failed(is_signed_out: bool)
+
+## Reasons forwarded to Platform.session.matchmaking_failed
+## when the refresh before matchmaking fails.
+const _SIGNED_OUT_REASON := "signed_out"
+const _SESSION_REFRESH_FAILED_REASON := "session_refresh_failed"
+## How the runtime's protocol_mismatch abort
+## (fleet_allocator.go) starts its message to the
+## player whose client is too old. The others in the
+## match get a different one.
+const _CLIENT_OUT_OF_DATE_PREFIX := "Your client is out of date"
+
 var session_provider: SessionProvider
 
 ## The original session provider set up in _ready().
@@ -184,20 +203,21 @@ func client_request_session(
 			+ " matchmaking",
 			NetworkLogger.CATEGORY_CONNECTIONS,
 		)
+		# Listen before asking. A refresh that fails without a request
+		# (a stored refresh token the SDK cannot read) reports back
+		# before refresh_token() returns, and a plain await would then
+		# wait for a signal that already fired.
+		var completions: Array[bool] = []
+		Platform.auth.auth_completed.connect(
+			func(success: bool, _error: String) -> void:
+				completions.append(success),
+			CONNECT_ONE_SHOT,
+		)
 		Platform.auth.refresh_token()
-		await Platform.auth.auth_completed
+		if completions.is_empty():
+			await Platform.auth.auth_completed
 		if not Platform.token_store.is_token_valid():
-			Netcode.error(
-				"Auth token refresh failed,"
-				+ " cannot matchmake",
-				NetworkLogger.CATEGORY_CONNECTIONS,
-			)
-			connection_lost.emit(
-				"Auth token expired", false
-			)
-			if Platform.session != null:
-				Platform.session.connection_lost.emit(
-					"Auth token expired", false)
+			_client_fail_session_refresh()
 			return
 
 	var player_count := (
@@ -358,24 +378,51 @@ func _on_session_ids_received(
 		server_ip, server_port, signaling_url)
 
 
+## CLIENT: the refresh that has to come before matchmaking failed, and
+## the stored access token has expired, so no ticket can go out. The
+## platform SDK keeps the session through a failure that may be
+## transient (network error, timeout, 5xx, a response that isn't from
+## Nakama), and clears it when Nakama rejects the refresh token.
+func _client_fail_session_refresh() -> void:
+	var is_signed_out: bool = Platform.token_store.refresh_token.is_empty()
+	# A warning, not an error: G.log.error files a crash report, and a
+	# dropped connection or an expired session is not a bug.
+	Netcode.warning(
+		"Session refresh before matchmaking failed; %s"
+		% ("signed out" if is_signed_out else "session kept"),
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+	# Deferred: the SDK emits signed_out right after the auth_completed
+	# that resumed this coroutine, and SignOutRouter has to hear it
+	# before the player is sent anywhere.
+	session_refresh_failed.emit.call_deferred(is_signed_out)
+	if Platform.session != null:
+		Platform.session.matchmaking_failed.emit.call_deferred(
+			_SIGNED_OUT_REASON
+			if is_signed_out
+			else _SESSION_REFRESH_FAILED_REASON
+		)
+
+
 func _on_session_request_failed(error_message: String) -> void:
 	Netcode.print(
 		"Session request failed: %s" % error_message,
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 
-	# Version mismatch is a terminal error. Show a
-	# blocking dialog with no way to proceed.
-	if error_message.begins_with("Version mismatch"):
+	# The runtime refused to match a client this old. Nothing but an
+	# update helps, so show the same blocking dialog as the version
+	# check at launch.
+	if error_message.begins_with(_CLIENT_OUT_OF_DATE_PREFIX):
 		var dialog: ConfirmOverlay = (
 			G.settings.confirm_overlay_scene
 				.instantiate())
 		G.confirm_layer.add_child(dialog)
 		dialog.open(
-			error_message,
-			"Close Game",
+			tr("VERSION.UPDATE_REQUIRED"),
+			tr("VERSION.CLOSE_GAME"),
 			func() -> void:
-				get_tree().quit(),
+				G.main.close_app(),
 		)
 		return
 

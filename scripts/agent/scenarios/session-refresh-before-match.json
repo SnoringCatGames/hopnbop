@@ -1,0 +1,26 @@
+{
+  "name": "session-refresh-before-match",
+  "mode": "lobby",
+  "timeout_sec": 60,
+  "steps": [
+    {"do": "wait_ready"},
+    {"do": "tap", "key": "move_up", "player": 1, "hold_sec": 0.3},
+    {"do": "wait_until", "expr": "player_count() == 1", "timeout_sec": 5, "comment": "a bunny joined the lobby"},
+    {"do": "eval", "name": "sign_in", "expr": "Platform.token_store.store_from_response({'jwt_token': 'agent.e30.harness', 'refresh_token': 'agent.' + Engine.get_singleton('Marshalls').utf8_to_base64('{\"exp\": 4102444800, \"uid\": \"agent-harness\"}') + '.harness', 'player_id': 'agent-harness', 'provider': 'google', 'display_name': 'Agent', 'expires_at': 1, 'linked_providers': ['google']})", "comment": "A signed-in session with an expired access token and a refresh token good until 2100. Every refresh goes to the harness's blackhole backend and fails to connect, which is a transient failure."},
+    {"do": "eval", "expr": "G.local_settings.set_override('prefer_offline_mode', false)", "comment": "the next match is online"},
+    {"do": "eval", "expr": "level.start_match()", "comment": "the lobby starts an online match, which refreshes the session first"},
+    {"do": "wait_until", "expr": "screen() == 'LOADING'", "timeout_sec": 5},
+    {"do": "wait", "sec": 1.0},
+    {"do": "screenshot", "name": "loading-refreshing"},
+    {"do": "wait_until", "expr": "screen() == 'LOBBY' and G.is_lobby_active", "timeout_sec": 30, "comment": "nakama-godot retries the refresh until it times out (about 9 s here)"},
+    {"do": "assert", "expr": "Platform.token_store.jwt_token == 'agent.e30.harness' and Platform.token_store.refresh_token.begins_with('agent.')", "message": "the session survived the failed refresh"},
+    {"do": "assert", "expr": "not G.client_session.is_game_loading and not G.client_session.is_game_active", "message": "no match is loading"},
+    {"do": "assert", "expr": "not G.screens.is_sign_in_required()", "message": "the player is still signed in"},
+    {"do": "wait_until", "expr": "player_count() == 1", "timeout_sec": 3, "comment": "the bunny that was in the lobby is back"},
+    {"do": "wait", "sec": 0.3},
+    {"do": "assert", "expr": "ui_labels(str(G.toast_overlay.get_path())).has(G.tr('TOAST.SESSION_KEPT_OFFLINE'))", "message": "a toast says the server is unreachable and the player is still signed in"},
+    {"do": "assert", "expr": "not ui_labels(str(G.toast_overlay.get_path())).has('Auth token expired')", "message": "not the old untranslated text"},
+    {"do": "wait", "sec": 0.5, "comment": "let the screen transition finish"},
+    {"do": "screenshot", "name": "lobby-session-kept"}
+  ]
+}

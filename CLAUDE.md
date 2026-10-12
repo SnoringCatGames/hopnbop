@@ -1504,6 +1504,14 @@ session: the screen emits `continued_offline`, AuthScreen toasts
 and the auth client keeps retrying in the background. Harness
 scenario: `session-kept-offline`.
 
+Starting an online match refreshes an expired session first
+(`GameSessionManager.client_request_session`). A failure that
+may be transient sends the player back to the lobby, still
+signed in, with the same `TOAST.SESSION_KEPT_OFFLINE`. A
+rejection signs them out, and the lobby gives way to the auth
+screen, which toasts `TOAST.SIGNED_OUT`. Harness scenario:
+`session-refresh-before-match`.
+
 ### Button Icons
 
 Use pixel-art icons in most buttons. All icon buttons must use
