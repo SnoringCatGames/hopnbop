@@ -90,6 +90,12 @@ $WindowsGodot = "C:\Program Files\Godot\Godot_v4.7.2-stable_win64_console.exe"
 $ServerKey = "defaultkey"
 $HttpKey = "defaulthttpkey"
 $AdminKey = "defaultadminkey"
+# The dev stack's console login (docker-compose.dev.yml and
+# config.dev.yml), loopback-only like the keys above. The
+# crash_report test reads its stored report back through the
+# console, because no client can read that collection.
+$ConsoleUser = "admin"
+$ConsolePassword = "devadmin"
 # $IsWindows is $null on Windows PowerShell 5.1.
 $IsWin = if ($null -eq $IsWindows) { $true } else { $IsWindows }
 
@@ -341,8 +347,10 @@ try {
         $NakamaPort = Get-FreeTcpPort
     }
     $nakamaUrl = "http://127.0.0.1:$NakamaPort"
+    $consolePort = Get-FreeTcpPort
+    $consoleUrl = "http://127.0.0.1:$consolePort"
     Set-ScopedEnv "HOPNBOP_DEV_NAKAMA_PORT" "$NakamaPort"
-    Set-ScopedEnv "HOPNBOP_DEV_CONSOLE_PORT" "$(Get-FreeTcpPort)"
+    Set-ScopedEnv "HOPNBOP_DEV_CONSOLE_PORT" "$consolePort"
     Set-ScopedEnv "HOPNBOP_DEV_POSTGRES_PORT" "$(Get-FreeTcpPort)"
     Set-ScopedEnv "HOPNBOP_DEV_PLUGIN_DIR" (ConvertTo-DockerPath $PluginDir)
 
@@ -426,6 +434,9 @@ try {
     Set-ScopedEnv "NAKAMA_SERVER_KEY" $ServerKey
     Set-ScopedEnv "NAKAMA_HTTP_KEY" $HttpKey
     Set-ScopedEnv "GAME_ADMIN_KEY" $AdminKey
+    Set-ScopedEnv "NAKAMA_CONSOLE_URL" $consoleUrl
+    Set-ScopedEnv "NAKAMA_CONSOLE_USERNAME" $ConsoleUser
+    Set-ScopedEnv "NAKAMA_CONSOLE_PASSWORD" $ConsolePassword
     Set-ScopedEnv "PLATFORM_COMPLIANCE_MODE" "live"
     Set-ScopedEnv "ALLOW_PROD_COMPLIANCE" $null
 
