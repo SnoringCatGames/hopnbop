@@ -395,6 +395,17 @@ verify the artifact landed, then run with `-SkipExport`.
   page).
 - Supporting pages: `/leaderboard/`, `/blog/`, `/privacy/`,
   `/terms/`, `/data-deletion/`.
+- `/leaderboard/` (`web/leaderboard/index.html`) reads the
+  platform runtime's public route, `GET
+  https://nakama.snoringcat.games/snoringcat/leaderboard?game_id=hopnbop&leaderboard=ffa&limit=100`.
+  No credential (the page must never carry one); it gets each
+  listed player's rank, display name and best single-match score,
+  refreshed at most once a minute. Guests, accounts queued for
+  deletion, and probe accounts are never listed. Names are
+  player-chosen, so the page builds rows with `textContent`, never
+  `innerHTML`. Contract and privacy rules:
+  `PLATFORM_ARCHITECTURE.md` → "Leaderboards". It replaced the AWS
+  API Gateway URL, which died with Phase F.
 - Discord invite link: `https://discord.gg/QX939SF7nb`.
 - Update `web/blog/index.html` with patch notes when making
   new releases.

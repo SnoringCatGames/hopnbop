@@ -146,11 +146,15 @@ matchmaker_rules:
       query: "+properties.game_mode:duo"
       is_default: false
 
-# Leaderboards owned by this game. Stage 3.6 prefixes these
-# with `{game_id}_` so two games on one Nakama instance can
-# have a leaderboard of the same logical name without
-# colliding. Today the runtime still references a bare "ffa";
-# until that lands, do not rename this entry.
+# Leaderboards owned by this game. The runtime creates each one in
+# Nakama as `{game_id}_{id}` (hopnbop_ffa) at boot and on every
+# register_game, authoritative: only match_end writes records, one
+# per matched player, with their in-match score. Nakama never
+# changes a board that already exists, so a change to sort,
+# operator, or reset_schedule needs the board (and every record on
+# it) deleted to be recreated. match_end writes `ffa` and the
+# website's public leaderboard (web/leaderboard/) reads it, so
+# don't rename it. See PLATFORM_ARCHITECTURE.md "Leaderboards".
 leaderboards:
   - id: ffa
     sort: desc
