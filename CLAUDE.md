@@ -1512,6 +1512,15 @@ rejection signs them out, and the lobby gives way to the auth
 screen, which toasts `TOAST.SIGNED_OUT`. Harness scenario:
 `session-refresh-before-match`.
 
+Consent (the acceptance time and the legal version accepted)
+lives on the device, in the token store's encrypted file. Log-out
+and account deletion forget it
+(`PlatformAuthTokenStore.clear_tokens()`), so whoever plays next
+on the device is asked. An automatic sign-out keeps it
+(`clear_session()`, SDK 0.6.2), so the same player is not asked
+again. It is asked for again whenever the legal version changes.
+Harness scenario: `consent-kept-after-sign-out`.
+
 ### Button Icons
 
 Use pixel-art icons in most buttons. All icon buttons must use

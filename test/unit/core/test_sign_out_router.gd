@@ -25,6 +25,8 @@ const _GRPC_UNAVAILABLE := 14
 const _GRPC_UNAUTHENTICATED := 16
 const _HTTP_UNAUTHORIZED := 401
 const _HTTP_SERVICE_UNAVAILABLE := 503
+const _CONSENT_ACCEPTED_AT := 1760000000
+const _LEGAL_VERSION := "1.2"
 const _ANNOUNCE_OFFLINE_RPC := "update_and_get_presence"
 ## Screens that never give way to the auth screen.
 const _SCREENS_LEFT_ALONE := [
@@ -94,6 +96,9 @@ func before_each() -> void:
 	_store.expires_at = now - _ACCESS_TOKEN_EXPIRED_AGO_SEC
 	_store.jwt_token = _fake_jwt(_store.expires_at)
 	_store.refresh_token = _fake_jwt(now + _REFRESH_TOKEN_LIFETIME_SEC)
+	_store.consent_accepted_at = _CONSENT_ACCEPTED_AT
+	_store.consent_legal_version = _LEGAL_VERSION
+	_store.save_tokens()
 	Platform.token_store = _store
 
 	_nakama = FakeNakamaClient.new()
@@ -231,8 +236,38 @@ func test_opening_auth_stops_the_friends_poller_and_its_socket() -> void:
 
 
 # ------------------------------------------------------------------
+# Consent
+# ------------------------------------------------------------------
+
+
+func test_automatic_sign_out_keeps_consent() -> void:
+	_nakama.next_result = _failure(
+		"Refresh token invalid or expired.",
+		_HTTP_UNAUTHORIZED,
+		_GRPC_UNAUTHENTICATED,
+	)
+
+	_client._check_auto_refresh()
+	_router.resolve_screen(ScreensMain.ScreenType.LOBBY)
+
+	assert_true(_store.refresh_token.is_empty(), "signed out")
+	assert_true(_store.has_valid_consent(_LEGAL_VERSION), "consent kept")
+	var reloaded := PlatformAuthTokenStore.new(_TEST_AUTH_FILE)
+	assert_true(reloaded.has_valid_consent(_LEGAL_VERSION), "kept on disk")
+
+
+# ------------------------------------------------------------------
 # Log-out and account deletion
 # ------------------------------------------------------------------
+
+
+func test_log_out_forgets_consent_and_credentials() -> void:
+	await _router.log_out()
+
+	assert_true(_store.refresh_token.is_empty(), "signed out")
+	assert_eq(_store.consent_accepted_at, 0, "consent forgotten")
+	assert_eq(_store.consent_legal_version, "")
+	assert_false(FileAccess.file_exists(_TEST_AUTH_FILE), "auth file gone")
 
 
 func test_log_out_announces_offline_first() -> void:

@@ -1,0 +1,28 @@
+{
+  "name": "consent-kept-after-sign-out",
+  "mode": "lobby",
+  "timeout_sec": 40,
+  "steps": [
+    {"do": "wait_ready"},
+    {"do": "tap", "key": "move_up", "player": 1, "hold_sec": 0.3},
+    {"do": "wait_until", "expr": "player_count() == 1", "timeout_sec": 5, "comment": "a bunny joined the lobby"},
+    {"do": "eval", "name": "sign_in", "expr": "Platform.token_store.store_from_response({'jwt_token': 'agent.e30.harness', 'refresh_token': 'agent.e30.harness', 'player_id': 'agent-harness', 'provider': 'google', 'display_name': 'Agent', 'expires_at': 1, 'linked_providers': ['google'], 'consent_accepted_at': 1760000000, 'consent_legal_version': G.consent_screen._get_current_legal_version()})", "comment": "A player who consented to the current legal version, with a session the SDK's auto-refresh signs out on the next frame (see sign-out-lobby)."},
+    {"do": "wait_until", "expr": "screen() == 'AUTH'", "timeout_sec": 5},
+    {"do": "assert", "expr": "Platform.token_store.jwt_token.is_empty() and Platform.token_store.refresh_token.is_empty()", "message": "the SDK signed the player out"},
+    {"do": "assert", "expr": "Platform.token_store.has_valid_consent(G.consent_screen._get_current_legal_version())", "message": "an automatic sign-out keeps consent"},
+    {"do": "eval", "expr": "[Platform.token_store.set('consent_accepted_at', 0), Platform.token_store.load_tokens()]", "comment": "forget it in memory and read the auth file back"},
+    {"do": "assert", "expr": "Platform.token_store.consent_accepted_at == 1760000000 and Platform.token_store.has_valid_consent(G.consent_screen._get_current_legal_version())", "message": "kept on disk"},
+    {"do": "assert", "expr": "Platform.token_store.refresh_token.is_empty() and Platform.token_store.player_id.is_empty()", "message": "the file holds the consent alone"},
+    {"do": "wait", "sec": 0.3},
+    {"do": "assert", "expr": "ui_labels(str(G.toast_overlay.get_path())).has(G.tr('TOAST.SIGNED_OUT'))", "message": "a toast says why"},
+    {"do": "screenshot", "name": "auth"},
+    {"do": "eval", "expr": "G.screens.client_open_screen(3)", "comment": "ScreenType.CONSENT, where the next launch starts"},
+    {"do": "wait_until", "expr": "screen() == 'LOBBY'", "timeout_sec": 5, "comment": "consent is not asked for again; the harness then skips the auth screen"},
+    {"do": "assert", "expr": "Platform.token_store.consent_accepted_at == 1760000000", "message": "the original consent stands"},
+    {"do": "eval", "expr": "G.backend_api_client.set('server_legal_version', '9.9')", "comment": "the server now serves a newer legal version"},
+    {"do": "eval", "expr": "G.screens.client_open_screen(3)"},
+    {"do": "wait", "sec": 0.8},
+    {"do": "assert", "expr": "screen() == 'CONSENT' and G.consent_screen.get_node('%ContinueButton').disabled", "message": "consent is asked for again for the new version"},
+    {"do": "screenshot", "name": "consent-new-legal-version"}
+  ]
+}
