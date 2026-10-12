@@ -403,12 +403,12 @@ func _account_linked_providers(account) -> Array:
 	# on ApiAccount. ApiAccount only carries `devices`, `email`,
 	# and `user`; the social provider linkages are
 	# `user.google_id` / `facebook_id` / `apple_id` / `steam_id`,
-	# each a String that's empty when unlinked.
+	# each a String that's empty when unlinked. The email is not a
+	# provider: the platform offers no email sign-in, so an email on
+	# an account only ever came from a provider's profile.
 	var out: Array = []
 	if account.devices and account.devices.size() > 0:
 		out.append("anonymous")
-	if account.email and not account.email.is_empty():
-		out.append("email")
 	var u = account.user
 	if u and not u.google_id.is_empty():
 		out.append("google")

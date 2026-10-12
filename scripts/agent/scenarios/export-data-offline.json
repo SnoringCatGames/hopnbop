@@ -1,0 +1,23 @@
+{
+  "name": "export-data-offline",
+  "mode": "lobby",
+  "timeout_sec": 60,
+  "steps": [
+    {"do": "wait_ready"},
+    {"do": "tap", "key": "move_up", "player": 1, "hold_sec": 0.3},
+    {"do": "wait_until", "expr": "player_count() == 1", "timeout_sec": 5, "comment": "a bunny joined the lobby"},
+    {"do": "eval", "name": "sign_in", "expr": "Platform.token_store.store_from_response({'jwt_token': 'agent.' + Engine.get_singleton('Marshalls').utf8_to_base64('{\"exp\": 4102444800, \"uid\": \"agent-harness\"}') + '.harness', 'refresh_token': 'agent.' + Engine.get_singleton('Marshalls').utf8_to_base64('{\"exp\": 4102444800, \"uid\": \"agent-harness\"}') + '.harness', 'player_id': 'agent-harness', 'provider': 'google', 'display_name': 'Agent', 'expires_at': 4102444800, 'linked_providers': ['google']})", "comment": "A signed-in session good until 2100, so the account panel offers Export My Data and nothing refreshes. The harness's backend is unreachable, so the export fails."},
+    {"do": "eval", "expr": "level.get_node('SettingsBook')._show_settings_ui(players()[0])", "comment": "what landing on the settings book does, for the lobby bunny (local_player() is null in the lobby, where bunnies have negative ids)"},
+    {"do": "wait", "sec": 0.5},
+    {"do": "eval", "expr": "G.side_panel_layer.get_node('SidePanelManager').push_panel(G.side_panel_layer.get_node('SidePanelManager')._panel_stack[0]._account_panel_scene.instantiate())", "comment": "the main menu's Account row"},
+    {"do": "wait", "sec": 0.5},
+    {"do": "assert", "expr": "ui_labels(str(G.side_panel_layer.get_path())).has(G.tr('SETTINGS.EXPORT_DATA'))", "message": "the account panel offers Export My Data"},
+    {"do": "screenshot", "name": "account-panel"},
+    {"do": "eval", "expr": "G.side_panel_layer.find_child('ExportDataRow*', true, false).on_trigger()", "comment": "the Export My Data row"},
+    {"do": "wait_until", "expr": "str(ui_labels(str(G.toast_overlay.get_path()))).contains(G.tr('TOAST.EXPORT_FAILED').split('%')[0])", "timeout_sec": 30, "comment": "the export RPC fails against the unreachable backend once nakama-godot gives up retrying"},
+    {"do": "assert", "expr": "Platform.auth.last_export_json == ''", "message": "a failed export leaves no export text"},
+    {"do": "assert", "expr": "not G.is_settings_ui_shown", "message": "the export closed the settings menu"},
+    {"do": "wait", "sec": 0.3},
+    {"do": "screenshot", "name": "export-failed"}
+  ]
+}

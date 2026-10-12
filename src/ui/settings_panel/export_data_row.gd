@@ -1,7 +1,16 @@
 class_name ExportDataRow
 extends MenuRow
-## A row that exports all player data as JSON.
+## A row that exports all player data as JSON. On desktop the file
+## is saved to user://export and the folder opened; on web, where
+## user:// is browser storage the player can't reach, the browser
+## downloads it.
 
+## Where desktop exports are saved.
+const EXPORT_DIR := "user://export"
+const _EXPORT_FILE_FORMAT := "hopnbop_export_%d.json"
+const _EXPORT_MIME_TYPE := "application/json"
+## Indent for the fallback re-encoding below.
+const _JSON_INDENT := "\t"
 
 var _panel: SidePanel
 var _is_busy := false
@@ -29,6 +38,33 @@ func _ready() -> void:
 
 func on_trigger() -> void:
 	_activate()
+
+
+## The export file's name for a unix time.
+static func export_file_name(unix_time: int) -> String:
+	return _EXPORT_FILE_FORMAT % unix_time
+
+
+## The export's text: the server's JSON exactly as sent. Re-encoding
+## `data` is the fallback for an SDK that doesn't keep the text; it
+## loses no fields, but Godot's JSON turns every number into a float.
+static func export_text(server_json: String, data: Dictionary) -> String:
+	if not server_json.is_empty():
+		return server_json
+	return JSON.stringify(data, _JSON_INDENT)
+
+
+## Writes the export into EXPORT_DIR. Returns the saved path, or ""
+## when the file couldn't be written.
+static func save_export(text: String, file_name: String) -> String:
+	DirAccess.make_dir_recursive_absolute(EXPORT_DIR)
+	var path := "%s/%s" % [EXPORT_DIR, file_name]
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return ""
+	file.store_string(text)
+	file.close()
+	return path
 
 
 func _activate() -> void:
@@ -64,20 +100,17 @@ func _on_export_completed(
 			)
 		return
 
-	# Save JSON to user://export/.
-	var dir_path := "user://export"
-	DirAccess.make_dir_recursive_absolute(dir_path)
-	var timestamp := int(
-		Time.get_unix_time_from_system()
-	)
-	var file_name := (
-		"hopnbop_export_%d.json" % timestamp
-	)
-	var file_path := "%s/%s" % [dir_path, file_name]
-	var file := FileAccess.open(
-		file_path, FileAccess.WRITE,
-	)
-	if file == null:
+	var text := export_text(Platform.auth.last_export_json, data)
+	var file_name := export_file_name(
+		int(Time.get_unix_time_from_system()))
+
+	if OS.has_feature("web"):
+		JavaScriptBridge.download_buffer(
+			text.to_utf8_buffer(), file_name, _EXPORT_MIME_TYPE)
+		_show_success_toast()
+		return
+
+	if save_export(text, file_name).is_empty():
 		G.log.error("Export: failed to save file")
 		if is_instance_valid(G.toast_overlay):
 			G.toast_overlay.show_toast(
@@ -86,19 +119,13 @@ func _on_export_completed(
 			)
 		return
 
-	file.store_string(
-		JSON.stringify(data, "\t")
-	)
-	file.close()
+	_show_success_toast()
+	OS.shell_open(ProjectSettings.globalize_path(EXPORT_DIR))
 
+
+func _show_success_toast() -> void:
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
 			tr("TOAST.EXPORT_SUCCESS"),
 			ToastOverlay.Type.SUCCESS,
 		)
-
-	# Open the export folder.
-	var global_path := (
-		ProjectSettings.globalize_path(dir_path)
-	)
-	OS.shell_open(global_path)

@@ -93,13 +93,18 @@ func _show_prompt(status: Dictionary) -> void:
 
 
 func _on_cancel_pressed() -> void:
-	var session: NakamaSession = (
-		Platform.build_session_from_store())
-	if session == null:
-		return
-	var result = await (Platform.get_nakama_client()
-		.rpc_async(session, "cancel_account_deletion", ""))
-	if result.is_exception():
+	# Through the SDK rather than the bare RPC: the deletion request
+	# cleared the player's profile on the server, and the SDK puts
+	# back the display name and picture from this session's Google
+	# sign-in and refreshes the token store, so the player doesn't
+	# keep showing as "[deleted]".
+	Platform.auth.deletion_cancel_completed.connect(
+		_on_cancel_completed, CONNECT_ONE_SHOT)
+	Platform.auth.cancel_account_deletion()
+
+
+func _on_cancel_completed(success: bool, _error: String) -> void:
+	if not success:
 		if is_instance_valid(G.toast_overlay):
 			G.toast_overlay.show_toast(
 				tr("TOAST.ACCOUNT_DELETION_CANCEL_FAILED"),
