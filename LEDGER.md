@@ -33,22 +33,6 @@ states its facts, so it stands on its own after the transcript is gone.
 
 ## In progress
 
-- **H14** · Rotate the Nakama runtime HTTP key (step 3 of the leak plan)
-  now that H4 shipped the keyless client (15498835). The key was
-  committed in this public repo from 12a93325 (2026-05-12) until
-  15498835. Rotate it in `credentials.env`; `/opt/nakama/.env` plus a
-  nakama recreate (the local allocator picks it up from there); the
-  Edgegap app version's env (re-register v29); the hopnbop
-  `NAKAMA_HTTP_KEY` Actions secret. Then delete the host's old
-  `/var/log/caddy/access.log*`, which hold the key in request URIs from
-  before the log filter (2026-10-12). 0.47.0 clients' version check then
-  fails open. Steps 1 and 2 are done: platform b6c67ec and 9b28b3b,
-  hopnbop 15498835, and the prod admin key (claude-config 52e1352).
-  - owner: session 98f895dd (laptop), active; started 2026-10-12 right
-    after the 0.54.0 deploy
-  - branch: mainline
-  - next: rotate per the steps above, then re-verify with the
-    check-prod steps and a synthetic match on each allocator path
 
 ## Next
 
@@ -162,6 +146,18 @@ states its facts, so it stands on its own after the transcript is gone.
 
 ## Done
 
+- **H14** · Runtime HTTP key rotated 2026-10-12, right after H4
+  shipped (leak plan step 3, closing the key committed here from
+  12a93325 until 15498835). Rotated in `credentials.env` (blob
+  re-encrypted, claude-config 6279e62), `/opt/nakama/.env` + nakama
+  recreate (healthy; new key 200, old key 401), the Edgegap v29 env
+  (PATCH), and a hopnbop repo-level `NAKAMA_HTTP_KEY` Actions secret.
+  Caddy `access.log` truncated (no rotated files existed). Verified:
+  synthetic matches green on both allocator paths (servers
+  authenticated with the new key) and nightly-smoke green from CI
+  (run 38325468725). Residue: the desktop re-decrypts (CC31), and gh
+  here lacks admin:org, so if an org-level `NAKAMA_HTTP_KEY` exists it
+  still holds the dead old key; hopnbop's repo secret shadows it.
 - **H4** · Release 0.54.0 shipped and verified 2026-10-12 (laptop
   session). Levi confirmed the shipping values; exported builds now
   enforce them in code (180 s matches, HUD and overhead labels on,
