@@ -11,30 +11,22 @@ states its facts, so it stands on its own after the transcript is gone.
 
 ## Urgent
 
-- **H4** · Release 0.54.0 is prepared but **blocked on shipping settings**
-  (Levi asked for the release 2026-10-12; nothing is deployed yet). Main
-  is 0.53.0 plus 2026-10-11/12's work; live is web 0.47.0 and game
-  server v28. Exported builds read `settings.tres` as-is, and its
-  committed debug values would ship:
-  - `match_duration_sec` (server-authoritative, `game_panel.gd:2074`):
-    committed 10 s; live server v28 (built 2026-06-02 from 4c85619c) has
-    run **15 s matches** since June; Levi's working copy 180 s;
-    `settings.gd` default 60 s. Levi called the committed 10 s "for
-    debugging purposes" (2026-10-11).
-  - `show_hud = false` (since c89bbda9, 2026-03-07): `hud.gd:34` hides
-    the in-game HUD until the player presses F1. Also
-    `show_player_overhead_labels = false` and `skip_splash = true`.
-  Recommended fix: release builds (not `OS.has_feature("editor")`) apply
-  explicit release values in code, so settings edits can't ship. Levi to
-  confirm the values (match length; HUD and name labels on; splash).
-  Then the plan: bump to 0.54.0; `game.yaml` `edgegap_app_version` and
-  `local_image_ref` to v29; patch notes in `web/blog/index.html`;
-  `game-server.yml -f version=v29`; local web export plus a boot check;
-  `scripts/deploy-cf-pages.ps1 -SkipExport` (its sync pulls v29 onto the
-  host and publishes legal 1.2, so every player re-consents); verify
-  with synthetic-match-probe, nightly-smoke and the check-prod skill. Do
-  NOT push a `v*` tag: `release.yml` would redeploy. Then H14. Also
-  ships the rebuilt website leaderboard (6c37fd59). (Session 530145bc.)
+- **H4** · Release 0.54.0 **underway** (laptop session, 2026-10-12).
+  Levi confirmed the shipping values: 180 s matches, HUD and overhead
+  labels on, splash plays. b370a2d9 lands the fix (exported builds
+  apply explicit release values in code, `settings.gd`
+  `apply_release_overrides()` called from `G._enter_tree`; GUT
+  `test_settings_release_values.gd`), the 0.54.0 bump, game.yaml v29,
+  and patch notes.
+  - owner: session 98f895dd (laptop), active
+  - branch: mainline; last commit: `b370a2d9` (pushed)
+  - next: `game-server.yml` v29 run 38313778919 (dispatched, in
+    progress); then local web export + boot check (4.7.2 templates
+    downloading), `scripts/deploy-cf-pages.ps1 -SkipExport` (its sync
+    pulls v29 onto the host and publishes legal 1.2, so every player
+    re-consents); verify with synthetic-match-probe and the check-prod
+    skill. Do NOT push a `v*` tag: `release.yml` would redeploy. Then
+    H14. Also ships the rebuilt website leaderboard (6c37fd59).
 
 ## Waiting on Levi
 
