@@ -102,6 +102,11 @@ var _peer_color_cache: Dictionary = {}
 func _enter_tree() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
+	# Exported builds must not inherit settings.tres's development
+	# values (10 s debug matches, hidden HUD). G is the first
+	# autoload, so this runs before any subsystem reads settings.
+	settings.apply_release_overrides()
+
 	args = Utils.parse_command_line_args()
 
 	# Wire the snoringcat-platform addon's autoload with this

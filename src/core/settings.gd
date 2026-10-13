@@ -12,6 +12,16 @@ enum BumpMode {
 	MOMENTUM_TRANSFER, ## Velocity-based momentum transfer.
 }
 
+# Values exported builds always ship with, no matter what the
+# committed settings.tres carries. The .tres doubles as the
+# development scratchpad (short debug matches, hidden HUD), so
+# release builds apply these in code instead of trusting it.
+# Confirmed by Levi 2026-10-12.
+const RELEASE_MATCH_DURATION_SEC := 180.0
+const RELEASE_SHOW_HUD := true
+const RELEASE_SHOW_PLAYER_OVERHEAD_LABELS := true
+const RELEASE_SKIP_SPLASH := false
+
 ## When >= 0 and in preview mode, forces the
 ## server to load the level at this index from
 ## the registry. Clamped to the maximum valid
@@ -341,6 +351,17 @@ const GORE_FAST_TYPE_END := 3
 @export_group("")
 
 
+## Applies the shipping values in exported builds. Editor runs
+## (previews, GUT, the agent harness) keep settings.tres as-is.
+## Called by G before any subsystem reads settings; dedicated
+## servers run it too, so match length is enforced server-side.
+func apply_release_overrides() -> void:
+	if OS.has_feature("editor"):
+		return
+	_apply_release_values()
+	print("Applied release settings overrides.")
+
+
 func gore_is_fast_type(type_index: int) -> bool:
 	return type_index <= GORE_FAST_TYPE_END
 
@@ -359,3 +380,10 @@ func gore_get_active_sprite_radii() -> Array[float]:
 
 func get_icon_display_width() -> float:
 	return BASE_ICON_WIDTH * icon_scale
+
+
+func _apply_release_values() -> void:
+	match_duration_sec = RELEASE_MATCH_DURATION_SEC
+	show_hud = RELEASE_SHOW_HUD
+	show_player_overhead_labels = RELEASE_SHOW_PLAYER_OVERHEAD_LABELS
+	skip_splash = RELEASE_SKIP_SPLASH
