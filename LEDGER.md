@@ -56,14 +56,15 @@ states its facts, so it stands on its own after the transcript is gone.
   "not vendored; skipping" because `addons/gdscript_formatter` isn't in
   the repo, though CLAUDE.md says it is. (Session 530145bc, agent
   aab30fcb, 13:52.)
-- **H10** · No Android export preset: `export_presets.cfg` has no
-  `platform="Android"` entry. Both machines' Godot 4.7.2 Android
-  toolchains are ready: the desktop since 2026-10-11, the laptop since
-  2026-10-12 (claude-config `tools/Setup-GodotAndroid.ps1`, exports
-  verified). webrtc-native ships arm64 and x86_64 Android libraries.
-  Offered: add the preset and get the game running on the Pixel;
-  unanswered. (Session c56311ec-2461-4905-a9f4-40d79be7d055, 2026-10-11
-  15:45; offer restated by the 2026-10-12 transcript audit.)
+- **H10** · Android: run the game on the Pixel. The export preset
+  half is done in 4c04e908 (2026-10-13): preset.3 "Android" (arm64,
+  template export, INTERNET, `games.snoringcat.hopnbop`) plus the
+  ETC2/ASTC import flag; a signed 67.7 MB debug APK built and
+  verified on the laptop (`--export-debug "Android"
+  build/android/hopnbop.apk`; webrtc arm64 lib included). Remaining:
+  install/run on the Pixel — needs the phone on USB (`adb install`,
+  then Godot one-click deploy for iteration) and a touch-input pass
+  (the UI is gamepad/keyboard-driven; H10's original scope).
 - **H17** · `EdgegapServerProvider` trusts each player's declared backend
   user ID instead of checking it against the validated session ID. The
   runtime now drops outsiders from `match_end` (platform 8ede126), but a
