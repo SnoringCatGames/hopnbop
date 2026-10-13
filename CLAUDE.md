@@ -1,297 +1,130 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code in this repo. It stays under the context
+budget (claude-config `rules/context-budget.md`): lore auto-loads
+from path-scoped `.claude/rules/` files, history lives in commits
+and `docs/history.md`. See "Lore and history" before adding here.
 
 ## Project Overview
 
-Hop 'n Bop is a multiplayer action game built with Godot 4.7.2. It implements client-side prediction with rollback reconciliation for networked gameplay.
+Hop 'n Bop is a multiplayer action game built with Godot 4.7.2,
+with client-side prediction and rollback reconciliation.
 
 **Engine version:** `project.godot` declares
 `config/features=PackedStringArray("4.7", ...)`, and every CI
-workflow across this repo and both submodules pins
-`4.7.2-stable`. Keep those in sync when upgrading. Historical
-notes below that say "Godot 4.5" describe when a behavior was
-first observed, not the current engine.
+workflow across this repo and both submodules pins `4.7.2-stable`;
+keep those in sync when upgrading. Historical notes that say
+"Godot 4.5" describe when a behavior was first observed.
 
 ## Platform infrastructure (read on demand)
 
 Backend, auth, matchmaking, game-server allocation, and per-game
-config are handled by the shared Snoring Cat platform. The
-authoritative docs (in priority of relevance to most tasks):
+config are the shared Snoring Cat platform:
 
 - **`third_party/snoringcat-platform/PLATFORM_ARCHITECTURE.md`** —
-  depth-first runtime detail: Nakama runtime, Edgegap allocation,
-  identity/account-linking/deletion, per-game config schema,
-  per-game protocol versioning (bump procedure), ops runbook.
-  Read when implementing or debugging anything platform-side.
+  depth-first runtime detail: Nakama, Edgegap allocation, identity,
+  per-game config schema, protocol-version bump procedure,
+  crash-report and leaderboard contracts, ops runbook.
 - **`third_party/snoringcat-platform/STUDIO_ARCHITECTURE.md`** —
-  breadth-first studio overview: every service we use (Hetzner,
-  Edgegap, Cloudflare, GitHub, Discord, UptimeRobot, Google
-  OAuth, Meta), the repo map across the studio, the rationale
-  for each top-level architecture decision, and standard
-  operator procedures (new dev machine, rotate creds, oncall).
-  Read when the question is "what services do we use and how
-  do they fit together" or "where does <thing> live".
+  breadth-first: every service, the repo map, rationale per
+  decision, operator procedures ("where does <thing> live").
 
-The platform migration from AWS GameLift to
-Nakama+Hetzner+Edgegap completed 2026-05-03 (Phase F).
-Single-host consolidation 2026-05-06 collapsed the original
-two CPX11 (Nakama + separate Postgres + full
-Prometheus/Grafana/Loki/Promtail observability) into one CPX11
-with Postgres co-tenanted alongside Nakama. Stage 7.11
-(2026-05-13) re-introduced a lightweight obs subset
-(Prometheus + Grafana + node-exporter + postgres-exporter) on
-the same single-host stack; Loki + Promtail stayed off (logs
-remain on `journalctl` / `docker logs`). Visibility is now a
-mix of Grafana dashboards + Discord alerts (5 baseline rules:
-nakama-down, postgres-down, postgres-conn-saturation,
-disk>90%, CPU>80% 15m), the daily Claude prod-health-check
-job, UptimeRobot, and the cost-monitor Discord summary. Live
-production runs on a single Hetzner CPX21 (3 vCPU / 4 GB /
-80 GB) with Edgegap-allocated game-server containers.
-(Upsized in-place from CPX11 on 2026-06-01, ahead of the
-2026-06-15 Hetzner price hike and to make room for cohabiting
-local game-server containers.) Historical migration notes
-for archeology are in `docs/archive/MIGRATION_PLAN.md` and
-`docs/archive/platform-pivot-discussion.md`.
-
-**Per-game protocol versioning** (post-migration): each game has
-its own `protocol_version` integer in `game.yaml` and
-`project.godot`. Bump only the affected game's version when
-shipping a breaking network protocol change; do not bump other
-games' versions. Full procedure and "what counts as breaking"
-rules are in `PLATFORM_ARCHITECTURE.md`.
-
-### Cost monitor (daily Discord MTD summary)
-
-The Discord channel that receives this repo's morning-brief and
-ci-failure pings also gets a **daily MTD spend summary** plus
-threshold-crossing alerts. The source is in the snoringcat-platform
-repo, deployed to the Hetzner host by Pulumi:
-
-- Source files:
-  `third_party/snoringcat-platform/infra/remote/cost-monitor/`
-  (`cost-monitor.{sh, service, timer}`).
-- Deployed path: `/opt/snoringcat/cost-monitor/` on the Nakama box.
-- Trigger details, thresholds, emergency action, and inspection
-  commands: see `PLATFORM_ARCHITECTURE.md` → "Cost monitor".
+The AWS GameLift era ended 2026-05-03 (Phase F). Production is one
+Hetzner CPX21 (Nakama + Postgres + Caddy + light observability in
+one compose stack) plus Edgegap-allocated game-server containers;
+timeline in `docs/history.md`, inventory in
+`.claude/rules/deploy.md`. **Per-game protocol versioning:** bump
+only the affected game's `protocol_version`, only for a breaking
+network protocol change (procedure: `PLATFORM_ARCHITECTURE.md`).
 
 ## Cloning
 
-This repo uses git submodules for shared Snoring Cat platform
-code and the rollback-netcode framework. After cloning, run:
+Submodules (`git submodule update --init --recursive` after clone):
 
-```bash
-git submodule update --init --recursive
-```
-
-Submodules:
 - `addons/rollback_netcode/` →
   [godot-rollback-netcode](https://github.com/SnoringCatGames/godot-rollback-netcode)
 - `third_party/snoringcat-platform/` →
   [snoringcat-platform](https://github.com/SnoringCatGames/snoringcat-platform).
-  Vendored as a submodule. The addon directory inside the
-  submodule is **copied** into `addons/snoringcat_platform_client/`
-  by `scripts/setup-platform-addon.ps1` (gitignored copy; copy
-  rather than junction because Godot 4.6 reads stale parser-
-  cache content through directory junctions on Windows). Re-run
-  the script after every submodule bump.
+  Its addon directory is **copied** into
+  `addons/snoringcat_platform_client/` by
+  `scripts/setup-platform-addon.ps1` (gitignored copy, not a
+  junction: Godot reads stale parser-cache content through
+  junctions on Windows). Re-run after every bump.
 
-To bump a submodule to a newer version, `cd` into it,
-`git fetch && git checkout vX.Y.Z` (or `main`), then commit
-the new SHA in this repo.
+To bump a submodule: `cd` in, `git fetch && git checkout <ref>`,
+commit the new SHA in this repo.
 
 ## Claude Code Settings
 
-Do NOT use the local memory system (`~/.claude/projects/*/memory/`).
-This project is worked on across multiple machines. All persistent
-context belongs in this file so it stays in sync via git.
+Do NOT use the local memory system (`~/.claude/projects/*/memory/`):
+this project is worked on across multiple machines, so persistent
+context belongs in this file, synced via git.
 
 ## Running the Game
 
-Test multiplayer locally in Godot editor:
-1. Debug > Customize Run Instances
-2. Enable 3 instances with launch args:
-   - Instance 1: `--server`
-   - Instance 2: `--client=1`
-   - Instance 3: `--client=2`
+Test multiplayer locally in the editor via Debug > Customize Run
+Instances, with 3 instances: `--server`, `--client=1`, `--client=2`.
 
-Launch flags:
-- `--server` - Run as server
-- `--client=N` - Run as client N (1, 2, etc.)
+## Configuration
+
+**settings.tres** - runtime settings; debug toggles `dev_mode`,
+`draw_annotations`, `perf_tracker_enabled`,
+`debug_console_enabled`. **project.godot** - input actions, physics
+layers, rendering, the authoritative versions.
 
 ## Agent harness
 
-`scripts/agent/run-game.ps1` runs the game for an agent (or you): it
-launches one or more Godot processes, drives them with scripted key
-presses, and collects logs, screenshots, state snapshots, and a
+`scripts/agent/run-game.ps1` runs the game for an agent (or you):
+it launches one or more Godot processes, drives them with scripted
+key presses, and collects logs, screenshots, state snapshots, and a
 pass/fail verdict in one run directory. Use it to see a change
-working instead of hand-rolling `-s` bootstraps.
+working instead of hand-rolling `-s` bootstraps. E.g.
+`scripts/agent/run-game.ps1 -Scenario offline-move-jump`
+(`scenarios/*.json`), `-Mode lobby`, `-Mode level -Level level_2
+-Headless`, `-Scenario match-2-clients` (server + 2 clients).
+Judge by the `AGENT_RESULT {...}` line, as the wrapper does; exit
+codes are real (0 pass, 1 fail, 2 bad scenario, 3 refused). Every
+process is sandboxed (throwaway `APPDATA`, backend URLs blackholed,
+audio muted); `-Backend` accepts loopback only, so a run can never
+reach production. Full reference: **`scripts/agent/README.md`**.
 
-```powershell
-scripts/agent/run-game.ps1 -Scenario offline-move-jump  # scenarios/*.json
-scripts/agent/run-game.ps1 -Mode lobby                  # default steps
-scripts/agent/run-game.ps1 -Mode level -Level level_2 -Headless
-scripts/agent/run-game.ps1 -Scenario match-2-clients    # server + 2 clients
-```
+## Testing
 
-Flags: `-Headless` (no windows, so no screenshots), `-Visible`
-(windows on the primary screen; the default is off-screen at
-x=20000, which still renders), `-Steps '<json array>'`, `-TimeoutSec`,
-`-Seed <int|none>`, `-UseWorkingSettings`, `-OutDir` (default
-`$env:TEMP\hopnbop-agent-runs`), `-Import` (re-import first), `-Json`
-(print only the summary), `-AllowNetwork`, `-Backend <url>` (see
-"Prod safety").
+GUT (vendored at `addons/gut/`, **9.7.1**) with tests in
+`res://test/`. Run specific files rather than directories
+(directory runs sometimes miss tests), always with `-gexit`:
+`godot --headless -s --path . addons/gut/gut_cmdln.gd
+-gtest=res://test/unit/<area>/test_<name>.gd -gexit`.
 
-**Modes.** `offline`: one local-mode process (`--client=1`, running
-client and server logic). `level`: offline with a required `level`.
-`lobby`: the lobby screen, nobody joined. `match`: a headless preview
-server plus 1-2 clients on a free UDP port (2 is the cap, from
-`preview_client_count`). `headless` combines with any mode.
+**GUT is version-matched to the engine; keep them in lockstep.** A
+mismatch does not fail loudly: GUT reports "Nothing was run" and
+still exits 0, so CI goes green having run zero tests. Bump GUT
+with the engine in one change and confirm a real test count. A
+nonexistent `-gtest=` path also exits 0. The GUT reference and
+test patterns auto-load from `.claude/rules/testing.md`.
 
-**Scenario JSON.** Top level: `name`, `mode`, `level` (id such as
-`level_4` or an index; omit it for the committed override), `seed`,
-`clients`, `timeout_sec` (per process, default 60),
-`headless`, `settings` (in-memory `Settings` overrides such as
-`{"match_duration_sec": 120}`; the committed match is 10 s), `steps`
-(run by every client), and `processes.<server|client|clientN>` with
-its own `steps`, `settings`, `headless`, `timeout_sec`. A process
-with no steps waits until ready, then screenshots and snapshots.
-
-**Reproducibility.** Runs start from the committed settings.tres (the
-wrapper extracts `HEAD:settings.tres` with git), so an operator's
-local edits never change a result; `-UseWorkingSettings` opts out,
-and `settings_reset` in the summary lists what was ignored. `seed`
-(default 1; `null` or `-Seed none` keeps the game random) fixes the
-global RNG, which spawn points, bunny names, and critters draw from.
-Each process seeds with `seed` plus its `--client` number (server 0)
-at boot, again right after main.tscn's `randomize()`, and again
-whenever a level enters the tree, so level setup and the spawns it
-makes replay identically. In a match the wrapper starts each client
-after the previous one connects, so client N is always player N.
-Anything that happens later depends on how many frames ran, which is
-wall-clock time.
-
-**Steps** are `{"do": ...}` objects. A failing step stops the process
-unless it is an `assert` or sets `"fatal": false`.
-- `wait` (`sec` or physics `frames`), `wait_until` (`expr`,
-  `timeout_sec`), `wait_ready` (level loaded with the local bunny,
-  the lobby screen, or on the server every player in),
-  `wait_match_start` (countdown over).
-- `press`, `release`, `tap` (`hold_sec` or `hold_frames`) take `key`
-  or `keys`. Movement names (`move_left` or `left`, `jump`, ...) map
-  to keyboard partition `player` 1-4 (WASD+Space, IJKL+Shift,
-  arrows+Enter, numpad); anything else is a Godot key name such as
-  `Escape`. Held keys are re-sent if the OS releases them.
-- `screenshot` (`name`, `target`: `window` or `game`), `state`
-  (`name`: players, match, HUD labels, screen, level, frame).
-- `eval` (`expr`, `name`), `call` (`node`, `method`, `args`),
-  `assert` (`expr`, `message`), `log`, `quit`.
-
-Expressions are Godot `Expression`s with `G`, `Netcode`, `Platform`,
-`level`, `match_state`, `snapshots`, `driver`, `OS`, `Engine`,
-`Input`, and `Time` in scope, plus the driver's helpers: `players()`,
-`player(id)`, `local_player(i)`, `player_count()`, `peer_count()`,
-`screen()`, `level_id()`, `snap(name)`, `ui_labels(path)`. For
-example:
-`"snap('after').players[0].x > snap('before').players[0].x + 20"`.
-
-**Output.** `<run>/scenario.json`, `<run>/summary.json`, and per
-process `<run>/<name>/`: `process.log` (stdout and stderr merged in
-order), `result.json`, `<shot>.png`, `state-<name>.json`, and
-`appdata/` (the sandbox, holding `user://logs/godot.log`). The wrapper
-prints one PASS/FAIL line per process and exits 0 or 1.
-
-**Prod safety.** Every process gets a throwaway `APPDATA`, and the
-driver refuses to run (exit 3) unless `user://` is inside it and no
-`auth*.cfg` is visible. It initializes `Platform` before `G` does,
-with every backend URL at `127.0.0.1:9`, forces
-`preview_connect_to_remote_server=false`, mutes audio, and never
-writes settings.tres. `-AllowNetwork` lifts only the network block;
-the wrapper deletes any `auth*.cfg` a run wrote.
-
-`-Backend http://127.0.0.1:<port>` points Nakama, and only Nakama,
-at a local stack, such as one `scripts/local-smoke-test.ps1
--KeepStack` left up (`-BackendServerKey`, default the dev stack's
-`defaultkey`). The host must be loopback; anything else is refused
-(exit 3), with or without `-AllowNetwork`, so a run can never reach
-production. OAuth and the token broker stay blackholed.
-`scenarios/leaderboard-local-backend.json` opens the in-game
-leaderboard against such a stack and needs recorded scores in it.
-
-**Pass/fail and exit codes.** Judge by the `AGENT_RESULT {...}` line,
-as the wrapper does. A process fails on a missing result line, a
-failed step or assert, a `CrashHandlerException`, or a `SCRIPT ERROR`.
-`ERROR:` lines are counted (`top_errors`, plus `teardown_errors` after
-the result) but do not fail a run, because local mode and preview
-matches log known RPC and replication errors today. About half of all
-lobby runs also end with an `AudioStreamWAV` (`pause_menu.wav`) leak
-warning at exit; that is known teardown noise.
-Exit codes are real: 0 pass, 1 fail, 2 bad scenario, 3 refused. Every
-preview process, harness or not, used to exit 0xC0000005 because
-rollback_netcode's `PerfTracker` never removed its lambda-backed
-`Performance` custom monitors. Since rollback_netcode 1.0.2 it removes
-them in `_exit_tree`, so the harness no longer works around it.
-
-**Files.** `scripts/agent/agent_bootstrap.gd` is the `-s` main loop.
-It must not name an autoload (a `-s` script compiles before the
-autoload globals exist), so it loads `agent_driver.gd`, which does
-the work. `scripts/` has a `.gdignore`, so neither ships.
+**Backend + SDK against a local Nakama:** `pwsh
+scripts/local-smoke-test.ps1` builds the runtime plugin, starts
+`infra/dev/`'s mock-deploy stack on free ports, runs the compliance
+suite, tears down (~1 min; exit 0 only if every test ran and
+passed). It refuses non-loopback `PLATFORM_API_URL`.
+**Google sign-in has no automated coverage** (needs a browser):
+`python third_party/snoringcat-platform/scripts/test-google-auth.py`
+(browser login → hopnbop.net token broker → prod Nakama session).
 
 ## Crash reporting
 
-`src/core/crash_reporter.gd` (`G.crash_reporter`) sends reports to
-the platform runtime's `crash_report` RPC; the text helpers
-(redaction, signatures, crash detection) are in
-`src/core/crash_report_text.gd`. RPC contract, storage, retention
-(30 days), and SQL recipes: `PLATFORM_ARCHITECTURE.md` → "Crash
-reports".
-
-- **Sources:** `G.log.error`, and so `G.log.ensure` and
-  `G.log.check`; plus a Godot crash found at boot in the previous
-  session's log. Godot 4 copies the last `godot.log` to
-  `godot<local time>.log` (e.g. `godot2026-10-11T13.25.20.log`), and
-  the crash text is `CrashHandlerException: Program crashed with
-  signal N` on Windows, `handle_crash: Program crashed ...` on Linux
-  and macOS. Both were checked against a real 4.7.2 crash
-  (`OS.crash`). Plain engine `ERROR:` lines are not reported.
-- **Queue:** every report is redacted (tokens, account values,
-  UUIDs, device ids, signaling-URL tokens, emails, IPs,
-  home-directory user names) and
-  written to `user://crash_reports.json` (at most 5) before any
-  send. A player's reports go out once a live Nakama session exists:
-  anonymous players get one only when they go online. Dedicated
-  servers send with `NAKAMA_HTTP_KEY` from their environment and
-  queue nothing without it. An entry leaves the queue when the
-  server accepts it, rejects it as invalid, fails 5 times, or is 7
-  days old; a crash's log is marked handled only then. At most 5
-  reports per run, each signature once. A fatal error's report
-  waits for the next run.
-- **Editor builds never send.** Running from the editor (preview
-  instances, the agent harness, GUT) uses
-  `user://crash_reports_editor.json` and only queues, so
-  development errors stay out of production's reports. Set
-  `HOPNBOP_SEND_CRASH_REPORTS=1` to let an editor build send (point
-  it at a local stack first). GUT runs skip the boot-time reporter
-  entirely.
-- **Reading them:** claude-config's daily `prod-health-check` has
-  a `crashes:` line (24h count, new signatures, top signatures);
-  the SQL to dig into one is in `PLATFORM_ARCHITECTURE.md`.
-- **Tests:** `test/unit/core/test_crash_reporter.gd` and
-  `test_crash_report_text.gd` (SDK and network doubled); the
-  platform compliance suite's `test_crash_report.gd` posts reports
-  to the local stack and reads them back through the Nakama
-  console.
+`src/core/crash_reporter.gd` (`G.crash_reporter`) reports crashes
+and logged errors to the runtime's `crash_report` RPC; redaction
+and signatures in `src/core/crash_report_text.gd`. Editor builds
+only queue, never send. Daily counts: prod-health-check's
+`crashes:` line. Contract: `.claude/rules/crash-reporting.md`.
 
 ## Deployment
 
-The platform layer (Nakama, Postgres, Caddy/TLS, observability,
-cost-monitor) runs on Hetzner; game-server containers run on
-Edgegap, allocated on demand by Nakama's matchmaker hook.
-Operational details for the platform itself are in
-`third_party/snoringcat-platform/PLATFORM_ARCHITECTURE.md` and
-the provisioning scripts at
-`third_party/snoringcat-platform/scripts/phase-{a,b}.ps1`.
+Full procedures, the production-resource inventory, and the why
+behind each rule: **`.claude/rules/deploy.md`** (auto-loads with
+`game.yaml`, workflows, deploy scripts, `web/**`, `legal/**`).
 
 ### Deploy targets in this repo
 
@@ -299,199 +132,40 @@ the provisioning scripts at
 |---|---|---|
 | Game server (Edgegap registry) | manual workflow_dispatch | `.github/workflows/game-server.yml` |
 | Web client (Cloudflare Pages + R2) | tag push or manual | `.github/workflows/release.yml` (CI) or `scripts/deploy-cf-pages.ps1` (local) |
-| Nakama runtime plugin | push to `runtime/**` on `snoringcat-platform/main` or manual | `SnoringCatGames/snoringcat-platform/.github/workflows/nakama-runtime.yml` |
+| Nakama runtime plugin | push to `runtime/**` on `snoringcat-platform/main` or manual | that repo's `nakama-runtime.yml` |
 | Tagged release (game server + web) | push to `v*` tag | `.github/workflows/release.yml` |
 
-### Game server deploy (Edgegap)
+### Release rules (binding)
 
-`game-server.yml` builds `Dockerfile.edgegap`, pushes to the
-Edgegap registry as `v<N>`, and registers the app version
-itself: a DELETE-then-POST against
-`https://api.edgegap.com/v1/app/hopnbop-server/version` that
-carries `docker_repository`, `docker_tag`, `req_cpu`,
-`req_memory`, the 4433/UDP + 4434/TCP port pair, and the
-injected `NAKAMA_HTTP_KEY`. DELETE-first makes a re-run with
-the same version replace the old record; 404 is treated as
-"no prior version". **No dashboard step is involved.** (This
-section used to say registration happened "via the dashboard",
-which predated the automation.)
-
-Then bump `edgegap_app_version` in **`game.yaml`** to the new
-`v<N>` and run `scripts/sync-game-config.ps1`. That file is the
-source of truth: `fleet_allocator.go` prefers the per-game
-config's value and only falls back to the host's
-`EDGEGAP_APP_VERSION` env var when it is blank (bootstrap
-deploys before any `game.yaml` has been synced). Bumping the
-env var alone does nothing for hopnbop.
-
-**`sync-game-config.ps1` pulls the new image onto the Nakama host
-before it registers the config.** `allocator_mode: hybrid` sends
-North American matches to the host's local Docker allocator, which
-starts `local_image_ref` through the Docker Engine API. That API
-never pulls, and a failed local allocation fails the match (no
-Edgegap fallback), so a registered tag the host lacks would fail
-every match routed local. A failed pull aborts the sync before
-anything is registered. The pull needs the operator's SSH key
-(`~/.hopnbop-migration/ssh/nakama`). CI has none, so `release.yml`
-syncs with `-SkipImagePull` and warns; after a CI release, run
-`docker pull <local_image_ref>` on the host by hand.
-
-`game-server.yml` pushes the image tag but does NOT write
-`edgegap_app_version` back. Bump `game.yaml` **before** running
-the workflow: its first step fails the run if `game.yaml`'s
-`edgegap_app_version` or `local_image_ref` tag doesn't match the
-version being pushed. That guard is why a forgotten bump now
-costs you a fast CI failure instead of an allocator silently
-deploying the previous version forever.
-
-**Edgegap version names are sequential (`v27`, `v28`, ...) and
-are NOT the release tag.** `release.yml` reads
-`edgegap_app_version` out of `game.yaml` (its
-`resolve-edgegap-version` job) and passes that to this workflow,
-so the tag-push and manual-dispatch paths agree.
-
-It used to pass `github.ref_name` — the git tag (`v0.48.0`) on a
-tag push, and the *branch* (`main`) on `workflow_dispatch`.
-Neither is an Edgegap version name, so a release would have
-registered an app version nothing allocates while reporting
-success. It never fired: `release.yml` has never run.
-
-**So: bumping `edgegap_app_version` + `local_image_ref` to the
-next `v<N>` is part of preparing a release**, not an afterthought
-— a release does not invent a new Edgegap version for you.
-
-Required GH secrets: `EDGEGAP_TOKEN`, `EDGEGAP_REGISTRY_*`,
-`EDGEGAP_REGISTRY_PROJECT`, `SUBMODULE_PAT`. The Harbor robot
-credentials in `EDGEGAP_REGISTRY_USERNAME`/`PASSWORD` need
-rotation when they expire (failure mode: HTTP 401 on docker
-login).
-
-### Web client deploy (Cloudflare Pages + R2)
-
-`scripts/deploy-cf-pages.ps1` (local) or the `web-client` job
-in `release.yml` (CI):
-
-1. Godot exports `web/`.
-2. Heavy assets (`.wasm` ~38 MB, `.pck`, `.audio.worklet.js`,
-   `.audio.position.worklet.js`) upload to R2
-   (`hopnbop-assets` bucket). Pages caps individual files at
-   25 MiB, so the wasm doesn't fit on Pages.
-3. `index.html`'s `GODOT_CONFIG` is patched in a staging copy
-   to point at absolute R2 URLs.
-4. Remaining files deploy to Cloudflare Pages
-   (`hopnbop-website` project).
-
-R2 bucket CORS is configured open for `GET`/`HEAD` from any
-origin so the cross-origin wasm fetch works from the Pages
-domain. The deploy script + the GHA both set CORS idempotently.
-
-Required GH secrets: `CLOUDFLARE_API_TOKEN` (with Pages:Edit +
-Workers R2 Storage:Edit + Account Settings:Read),
-`CLOUDFLARE_ACCOUNT_ID`, plus `NAKAMA_HTTP_KEY` and
-`GAME_ADMIN_KEY` for the job's game.yaml sync step
-(`register_game` needs both; see "Synced locations").
-
-### Web export gotcha
-
-Godot `--export-release "Web"` returns non-zero on missing-
-resource warnings. The CI step uses `|| true` plus a sanity
-`test -s build/web/index.html` to distinguish a real failure
-from a cosmetic one. If you export locally and the script
-treats a non-zero exit as failure, do the export by hand,
-verify the artifact landed, then run with `-SkipExport`.
-
-**Website structure:**
-- Root page loads the Godot web export directly (no landing
-  page).
-- Supporting pages: `/leaderboard/`, `/blog/`, `/privacy/`,
-  `/terms/`, `/data-deletion/`.
-- `/leaderboard/` (`web/leaderboard/index.html`) reads the
-  platform runtime's public route, `GET
-  https://nakama.snoringcat.games/snoringcat/leaderboard?game_id=hopnbop&leaderboard=ffa&limit=100`.
-  No credential (the page must never carry one); it gets each
-  listed player's rank, display name and best single-match score,
-  refreshed at most once a minute. Guests, accounts queued for
-  deletion, and probe accounts are never listed. Names are
-  player-chosen, so the page builds rows with `textContent`, never
-  `innerHTML`. Contract and privacy rules:
-  `PLATFORM_ARCHITECTURE.md` → "Leaderboards". It replaced the AWS
-  API Gateway URL, which died with Phase F.
-
-  The in-game leaderboard (`src/ui/leaderboard_panel/`, through
-  `BackendApiClient.fetch_leaderboard`) reads the same route, so the
-  game and the site always list the same players with the same
-  ranks; a signed-in player also sees their rank, from
-  `get_player_stats`, and an anonymous one is told why they aren't
-  listed. My Stats (`src/ui/screens/my_stats_screen.gd`) shows
-  `get_player_stats`' best score and rank and `get_match_history`'s
-  totals and latest matches. Before 2026-10-12 the panel listed raw
-  Nakama records by username and My Stats read the account profile,
-  so both showed nothing useful.
-- Discord invite link: `https://discord.gg/QX939SF7nb`.
-- Update `web/blog/index.html` with patch notes when making
-  new releases.
-
-### Legal Documents
-
-The game bundles plain-text copies of the legal docs for
-offline access. When updating legal content, update **both**
-locations:
-
-1. **Web pages:** `web/terms/index.html`,
-   `web/privacy/index.html`, `web/data-deletion/index.html`
-2. **In-game text:** `legal/en/terms.txt`,
-   `legal/en/privacy.txt`, `legal/en/data_deletion.txt`
-   (and any translated variants in `legal/{locale}/`)
-
-If the changes require users to re-consent, bump the legal
-version in **both** places, in the same commit:
-
-1. `game.yaml` → `legal.legal_version` (the authoritative value;
-   the runtime surfaces it via `version_check`).
-2. `src/core/legal_version.gd` → `const LEGAL_VERSION` (the
-   offline / pre-fetch fallback).
-
-They must match: `pr-validate.yml` fails the build if they
-drift.
-
-Sync the bump (`scripts/sync-game-config.ps1`) with the release
-that ships the new text, never before. The runtime serves
-`legal_version` to every client through `version_check`, so a
-bump synced early makes clients that still bundle the old text
-ask players to re-consent to that old text, and those players
-are then never shown the new text. Every sync posts all of
-`game.yaml`, so a sync for any other reason (a server-only
-deploy, an `edgegap_app_version` bump) publishes a pending
-legal bump too: hold such syncs until the client ships, or ship
-them together.
-
-### Prerequisites (All Deploys)
-
-- Docker Desktop running (Edgegap server-image build + local
-  smoke).
-- Godot CLI on PATH (server + web exports).
-- For local Cloudflare deploys: `CLOUDFLARE_PAGES_TOKEN`,
-  `NAKAMA_HTTP_KEY` and `GAME_ADMIN_KEY` in
-  `~/.hopnbop-migration/credentials.env` (the last two for the
-  closing game.yaml sync; the script stops before deploying
-  anything if `GAME_ADMIN_KEY` is missing), and `npm`/`npx`
-  available (the script invokes `npx wrangler@latest`).
-- For Edgegap deploys: an Edgegap account with the
-  `hopnbop-server` app registered. `game-server.yml` pushes the
-  image and registers the app version over the API in the same
-  run. What is left to you is bumping `edgegap_app_version` +
-  `local_image_ref` in `game.yaml` (do it *before* the run; the
-  workflow's first step fails if they disagree with the tag
-  being pushed) and running `scripts/sync-game-config.ps1`.
-  Do not bump the dashboard or the Nakama host's `runtime.env`
-  for this. See "Game server deploy (Edgegap)" and the
-  `EDGEGAP_APP_VERSION` row under "Synced locations".
+- **Bump `edgegap_app_version` + `local_image_ref` in `game.yaml`
+  BEFORE running `game-server.yml`** (its first step fails on
+  disagreement). Edgegap names are sequential (`v27`, `v28`, ...),
+  NOT the release tag.
+- After a game-server push, run `scripts/sync-game-config.ps1`. It
+  pulls the new image onto the Nakama host first (the hybrid
+  allocator's local path never pulls; a missing image fails every
+  NA match); CI syncs with `-SkipImagePull`, so after a CI release
+  pull the image by hand. Deactivate the superseded Edgegap
+  version.
+- Web deploys ship heavy assets (wasm/pck) to R2, the rest to
+  Cloudflare Pages. Godot's web export exits non-zero on cosmetic
+  warnings (verify the artifact, not the exit code). Releases get
+  patch notes in `web/blog/index.html`.
+- Legal text lives in **both** `web/{terms,privacy,data-deletion}/`
+  and `legal/<locale>/`. A re-consent bump changes
+  `game.yaml::legal.legal_version` AND `src/core/legal_version.gd`
+  in the same commit (`pr-validate` enforces parity), synced only
+  with the release that ships the new text — every sync posts all
+  of `game.yaml`, so an early sync publishes a pending bump too.
+- **Never hand-POST `register_game`**: it replaces the whole
+  config blob (a missing field is deleted from production). Only
+  `sync-game-config.ps1` calls it (`GAME_ADMIN_KEY` + HTTP key).
 
 ### Version Management
 
 **Every version in this repo, who owns it, when it bumps.** If a
-version is not in this table, it does not exist. Do not invent
-new ones; add a row here first.
+version is not in this table, it does not exist. Do not invent new
+ones; add a row here first.
 
 | Version | Owner (edit here) | Bump when | Enforced by |
 |---|---|---|---|
@@ -499,1834 +173,228 @@ new ones; add a row here first.
 | `config/protocol_version` | `project.godot` | breaking realtime protocol change only | `pr-validate` (must not reappear in `game.yaml`) |
 | `legal_version` | `game.yaml::legal.legal_version` **and** `src/core/legal_version.gd` | legal text changes needing re-consent | `pr-validate` parity check (hard fail) |
 | `edgegap_app_version` + `local_image_ref` | `game.yaml` | every game-server image push | `game-server.yml` fails if `game.yaml` doesn't declare the tag being pushed |
-| `schema_version` | `game.yaml` | only when the platform's per-game config schema changes (platform-driven) | runtime rejects non-positive |
+| `schema_version` | `game.yaml` | only when the platform's per-game config schema changes | runtime rejects non-positive |
 | `file_version` / `product_version` | `export_presets.cfg` | never (intentionally empty) | — |
 | `rollback_netcode` / `snoringcat_platform_client` | their own repos | see those repos' CLAUDE.md | submodule SHA pin |
 | `addons/gut` | vendored upstream (9.7.1) | only when re-vendoring GUT | — |
 
 **Derived — never hand-edit:** `web/version.json`,
-`game.yaml::display_version`, `game.yaml::protocol_version`.
-These are generated from `project.godot` at deploy/sync time.
+`game.yaml::display_version`, `game.yaml::protocol_version` are
+generated from `project.godot` (the single source of truth) at
+deploy/sync time; `sync-game-config.ps1` injects them into the
+per-game config, which is what `version_check` reports. The Nakama
+host's `NAKAMA_GAME_VERSION` and `EDGEGAP_APP_VERSION` env vars are
+inert/bootstrap fallbacks — do not "fix" anything by setting them
+(`.claude/rules/deploy.md` has the drift story). **Bumping policy:**
+when in doubt, bump; always bump on redeploy; prefer minor over
+patch. Do not ask about version numbers.
 
-**Single source of truth:** `project.godot`
-- `config/version="X.Y.Z"` (display version, bump on
-  redeploy)
-- `config/protocol_version=N` (integer, bump only when
-  client/server protocol changes)
+**Client startup version check:** `protocol_version` is checked at
+startup through the runtime's unauthenticated
+`/snoringcat/version_check` route (`BackendApiClient.check_version`)
+and again in the matchmaker ticket. **The client never holds the
+runtime HTTP key** (up to 0.47.0 it did, letting anyone call every
+runtime RPC as a trusted server); only dedicated servers use it,
+from their `NAKAMA_HTTP_KEY` environment. `Platform.initialize`
+refuses a `nakama_http_key` entry, and
+`test/unit/platform/test_client_http_key.gd` fails CI if anything
+shipped embeds or sends it.
 
-**Synced locations:**
-- Edgegap registry image tag (set by `game-server.yml`'s
-  workflow input).
-- The platform's **per-game config row** (Postgres `games`
-  table), field `display_version`. This is what `version_check`
-  actually reports: `runtime/version.go` overrides the env-var
-  value with the per-game config whenever the caller passes a
-  `game_id`, and every real client does.
+### Commit policy
 
-  **You don't hand-maintain this.** `game.yaml` deliberately does
-  not define `display_version` or `protocol_version`;
-  `scripts/sync-game-config.ps1` injects both from `project.godot`
-  and POSTs the merged config to the `register_game` RPC. The web
-  deploy runs it; run it standalone after a server-only deploy or
-  any other `game.yaml` change. `pr-validate` fails the build if
-  either field reappears in `game.yaml`.
-
-  `game.yaml` used to carry `display_version`, annotated "cosmetic
-  only; not CI-guarded" — it drifted to 0.39.0 while the shipped
-  client reached 0.47.0, so the backend reported a version that
-  hadn't existed for months. Deriving it removed the duplication
-  instead of adding a second guard to police it.
-
-  Note `register_game` **replaces the whole config blob**
-  (matchmaker modes, `allocator_mode`, `edgegap_app_version`,
-  legal paths). Never hand-POST it; a field missing from the
-  payload is deleted from production. The script guards the
-  load-bearing keys before it writes.
-
-  `register_game` is operator-only: it needs the runtime's
-  `GAME_ADMIN_KEY` (sent as `admin_key`) on top of
-  `NAKAMA_HTTP_KEY`, and refuses every call while the runtime has
-  no `GAME_ADMIN_KEY`. The HTTP key alone used to be enough, but it
-  shipped in every client up to 0.47.0, so anyone could have
-  replaced the live config. The script takes `-AdminKey`, default
-  `$env:GAME_ADMIN_KEY` (`deploy-cf-pages.ps1` loads it from
-  `credentials.env`; `release.yml` passes the `GAME_ADMIN_KEY`
-  secret), falls back to the dev stack's fixed key for loopback
-  hosts, and prints neither key. Model and key locations:
-  `PLATFORM_ARCHITECTURE.md` → "Runtime keys and RPC auth".
-- Nakama host's `runtime.env` `NAKAMA_GAME_VERSION` — **only the
-  fallback** for `version_check` calls that pass no `game_id`.
-  Bumping it does NOT change what clients see; fix
-  `display_version` instead (above). It drifted to 0.39.0
-  against a 0.47.0 client precisely because the old note here
-  claimed it was the surfaced value.
-
-  **It is currently unset in production, and that is fine.**
-  Measured 2026-07-16: `version_check` with no `game_id` returns
-  `game_version: ""`, `protocol_version: 0`, `is_compatible:
-  false`. Every real client passes `game_id`
-  (`backend_api_client.gd` — Stage 3.10), so the fallback is
-  inert. Do **not** "fix" it by setting the env var: that
-  re-creates the hand-maintained value with no guard that caused
-  the 0.39.0 drift in the first place. The env knob is vestigial
-  and should eventually be deleted from `main.go` /
-  `docker-compose.yml` / `config.yml` rather than populated.
-- Nakama host's `runtime.env` `EDGEGAP_APP_VERSION` — **only the
-  bootstrap fallback**, for allocations before any `game.yaml`
-  has been synced. Superseded per-game by the config's
-  `edgegap_app_version`, which the runtime prefers and falls
-  back to the env var only when blank. Do not bump this after a
-  game-server deploy; bump `game.yaml` (see "Game server deploy
-  (Edgegap)") and sync.
-- `export_presets.cfg` `file_version`/`product_version`
-  (optional, currently empty).
-
-**Version bumping policy:**
-- When in doubt, bump the version. Always bump on redeploy.
-- Prefer bumping minor over patch. Do not ask about version
-  numbers. Pick whichever sounds best and proceed.
-
-**Commit policy:**
-- Work lands directly on `main`. No feature branches, no PRs,
-  no squash merges. (This overrides the workspace-level default
-  in `~/Repositories/CLAUDE.md`.)
+- Work lands directly on `main`. No feature branches, no PRs, no
+  squash merges. (Overrides the workspace-level default.)
 - **This holds even when a session's own config says otherwise.**
-  Claude Code web and cloud sessions auto-generate a per-session
-  branch name of the form `claude/<slug>-<random>` and inject a
-  "develop on branch X" instruction into the agent's prompt. That
-  name is produced by the harness. It is not a decision Levi made,
-  and it is not a request for a feature branch. Ignore it and
-  commit to `main`. Only an explicit instruction from Levi, in his
-  own words in the conversation, justifies touching a non-main
-  branch.
-- The rule travels to every repo reachable from this one,
-  including submodules under `third_party/` and anything attached
-  mid-session via `add_repo`. A submodule does not inherit the
-  parent repo's branch name. `main` is the default everywhere.
-  (2026-08-16: a session did exactly this, copying hopnbop's
-  injected branch name onto `snoringcat-platform`, which had no
-  stated policy of its own. Both repos now say this out loud.)
-- Do not commit partial or broken work. All changes for a
-  feature must be working end-to-end before committing.
-- You don't need explicit permission to commit or push.
-  Commit and push to `main` at natural stopping points — when
-  work is end-to-end working and at a logical checkpoint. This
-  overrides Claude Code's default "ask first" behavior for
-  this repo.
-- When the change spans the parent repo and a submodule
-  under `third_party/`, commit + push the submodule first,
-  then bump the parent's submodule pointer in the next
+  Claude Code web and cloud sessions auto-generate a
+  `claude/<slug>-<random>` branch name and inject a "develop on
+  branch X" instruction. That name is produced by the harness; it
+  is not a decision Levi made and not a request for a feature
+  branch. Ignore it and commit to `main`. Only an explicit
+  instruction from Levi, in his own words, justifies a non-main
+  branch. The rule travels to every repo reachable from this one
+  (submodules, `add_repo`): a submodule does not inherit the
+  parent's branch name; `main` is the default everywhere
+  (incident: `docs/history.md`).
+- Do not commit partial or broken work; changes must work
+  end-to-end before committing.
+- You don't need permission to commit or push: commit and push to
+  `main` at natural stopping points. This overrides Claude Code's
+  default "ask first" behavior for this repo.
+- When a change spans this repo and a submodule, commit + push the
+  submodule first, then bump the parent's pointer in the next
   parent commit.
-- Stage only files relevant to the change. The parent repo
-  often carries unrelated dirty files (e.g., `settings.tres`);
-  do not sweep them in.
-- Force-push and push to anything other than `main` still
-  need explicit confirmation.
-
-**Version check architecture:**
-- `protocol_version` determines client/server compatibility.
-  Only bump when the network protocol actually changes.
-- `config/version` is for display only. Hotfix deploys can
-  bump this without breaking existing clients.
-- Client checks `protocol_version` at app startup through the
-  runtime's unauthenticated `/snoringcat/version_check` route
-  (`BackendApiClient.check_version`, URL from
-  `Platform.get_version_check_url()`). It answers like the
-  `version_check` RPC and needs no session or key. Also checked
-  in the matchmaker ticket (the runtime aborts a mismatched
-  match before allocating).
-- **The client never holds the runtime HTTP key.** Up to 0.47.0
-  `global.gd` embedded it for that version check, which let anyone
-  call every runtime RPC as a trusted server. Only dedicated
-  servers use it, read from their `NAKAMA_HTTP_KEY` environment
-  variable (Edgegap app env, local allocator).
-  `Platform.initialize` refuses a `nakama_http_key` entry, and
-  `test/unit/platform/test_client_http_key.gd` fails CI if a
-  shipped script or resource embeds or sends the key.
-
-### Production resources
-
-**Hetzner platform tier** (Pulumi-managed in
-`third_party/snoringcat-platform/infra/pulumi/snoringcat-platform/`):
-- **Project:** `snoringcat-platform`, stack `prod`, state in
-  Cloudflare R2 bucket `hopnbop-pulumi-state-r2`. Pulumi
-  authenticates via S3-compat keys in `R2_ACCESS_KEY_ID` /
-  `R2_SECRET_ACCESS_KEY` / `R2_ENDPOINT` (sourced from
-  `~/.hopnbop-migration/credentials.env`).
-- **nakama-prod-1:** CPX21 (3 vCPU / 4 GB / 80 GB; upsized
-  in-place from CPX11 on 2026-06-01) in Hillsboro, runs
-  10 containers in a single docker compose stack: Postgres 16,
-  Nakama, Caddy, signaling-proxy, geoip-sidecar (GeoIP lookups
-  for the hybrid allocator), Prometheus, Grafana, node-exporter,
-  postgres-exporter, and cadvisor (container metrics for
-  Prometheus). cost-monitor + pg-backup + geoip-refresh +
-  desktop-drain-watch systemd timers on the host. Loki + Promtail
-  (log shipping) were intentionally
-  left off in the Stage 7.11 (2026-05-13) lightweight
-  re-introduction; their configs remain in
-  `infra/remote/nakama/` so they can be flipped on without
-  reconstruction. Logs stay on `journalctl` / `docker logs`.
-- **DNS:** Cloudflare-managed; `nakama.snoringcat.games`,
-  `grafana.snoringcat.games`, and `signaling.snoringcat.games`
-  all point at the Hetzner public IP (Caddy multiplexes by
-  Host header).
-- **Cost:** ~$14.59/mo, the CPX21 monthly cap at the pre-hike
-  rate locked in on 2026-06-01 (September 2026 actual; this line
-  said ~$8 until 2026-10-11, which was never right). cost-monitor
-  MTD is authoritative. Plus cents of R2 backups.
-- **Backups:** `pg-backup.timer` runs nightly at 03:11 UTC,
-  `pg_dumpall` → `s3://hopnbop-pulumi-state-r2/pg-backups/
-  postgres-YYYY-MM-DD.sql.gz`, 7-day retention. Restore —
-  order matters, and because the dump is `pg_dumpall` output
-  (it re-CREATEs the `nakama` DB and `\connect`s into it),
-  psql must target the `postgres` maintenance DB, **not**
-  `-d nakama`:
-  1. `cd /opt/nakama && docker compose stop nakama` —
-     Nakama must not migrate/write during the restore.
-  2. `docker exec -e PGPASSWORD=<pw> postgres psql
-     --no-password -h 127.0.0.1 -U nakama -d postgres -c
-     'DROP DATABASE IF EXISTS nakama WITH (FORCE)'`
-  3. `gunzip -c postgres-YYYY-MM-DD.sql.gz | docker exec -i
-     -e PGPASSWORD=<pw> postgres psql --no-password -h
-     127.0.0.1 -U nakama -d postgres` — role-exists errors
-     are expected noise; verify afterwards with a table
-     count on the restored `nakama` DB.
-  4. `docker compose start nakama` (migrate-up is a no-op
-     on a same-version restore).
-  Full-host rebuild: `phase-a.ps1 -RestoreBackup` (in
-  `third_party/snoringcat-platform/scripts/`) runs this
-  automatically before Nakama first boots. Its HostKeys step
-  re-pins the SSH host keys once you confirm the new ed25519
-  fingerprint in the Hetzner console. It also renders the whole
-  `/opt/nakama/.env` (Edgegap and local-allocator entries
-  included) and pulls the local game-server image, so the rebuilt
-  host matchmakes. RTO/RPO targets are in
-  `PLATFORM_ARCHITECTURE.md` "Backups and disaster recovery".
-
-**Edgegap game-server fleet:**
-- **App:** `hopnbop-server` (registered in Edgegap dashboard).
-- **Active version:** `game.yaml`'s `edgegap_app_version`,
-  synced into the per-game config by
-  `scripts/sync-game-config.ps1`. The host's `runtime.env`
-  `EDGEGAP_APP_VERSION` is only the bootstrap fallback; see
-  "Game server deploy (Edgegap)".
-- **Allocation:** on demand by Nakama's matchmaker hook; no
-  always-on fleet.
-
-**Cloudflare:**
-- **Pages project:** `hopnbop-website` (auto-deploy via
-  `release.yml`).
-- **R2 bucket:** `hopnbop-assets` (heavies > 25 MiB live here).
-- **Cost-monitor thresholds:** R2 warn 8 GB / hard 9.5 GB, Pages
-  builds warn 400 / hard 475 of the 500/mo free tier.
-
-**Legacy AWS:** fully torn down. Phase F (2026-05-03) deleted the
-hopnbop-* GameLift / Lambda / S3 / CloudFront / Route 53 surface;
-the orphan `snoringcat-platform-backend` SAM stack and Pulumi-
-state S3 bucket were cleaned up the next day. **Zero AWS
-resources remain in the account.** Pulumi state migrated to
-Cloudflare R2.
-
-### Game-server allocation (Edgegap)
-
-Allocation is on-demand: when Nakama's matchmaker matches
-players, the runtime hook calls Edgegap's deployment API to
-spin up a `hopnbop-server` container in a region close to the
-matched players. There's no always-on fleet — cold start to
-ready is typically a few seconds (Edgegap holds warm pools
-internally). Once the match ends or the deploy idles, Edgegap
-tears the container down automatically and we're billed only
-for active session minutes.
-
-The matchmaker hook lives in
-`third_party/snoringcat-platform/runtime/fleet_allocator.go`
-and reads `EDGEGAP_TOKEN`, `EDGEGAP_APP_NAME`, and
-`EDGEGAP_APP_VERSION` from the Nakama runtime env (configured
-in `infra/remote/nakama/config.yml`'s `runtime.env` block).
-
-The previous AWS GameLift-based fleet (with cold-start warmup,
-fleet state DynamoDB table, and Lambda idle-checker) was
-decommissioned in Phase F. The historical detail is in
-`docs/archive/MIGRATION_PLAN.md` if needed for archeology.
-
-### Transport Architecture
-
-Three transport modes, selected per-match by the backend
-based on matched players' platforms:
-
-- **ENet** (native-only matches): UDP on container port
-  4433. Default. Lowest latency.
-- **WebRTC** (cross-play matches with web players): UDP
-  DataChannels via `webrtc-native` GDExtension. Signaling
-  is a brief WebSocket through the Caddy-fronted
-  `signaling.snoringcat.games` proxy. Provides UDP-like
-  semantics in the browser, avoiding TCP head-of-line
-  blocking.
-- **WebSocket** (legacy, not currently used): TCP through
-  the same signaling proxy path. Too slow for competitive
-  play due to TCP head-of-line blocking (~100ms ping, 13-25%
-  perceived packet loss).
-
-**Transport selection flow:**
-1. Nakama matchmaker takes a `platform` string player
-   attribute (`"web"`, `"windows"`, `"linux"`, `"macos"`,
-   `"android"`, `"ios"`).
-2. The runtime's `matchmaker_matched` hook reads `platform`
-   from each matched player's properties, calls
-   `selectTransportType(platforms)` in `transport_select.go`,
-   and sets `transport_type` in the match-ready payload it
-   pushes to clients (`"enet"`, `"webrtc"`, or `"websocket"`).
-3. Client sets `Netcode.settings.transport_type` from the
-   match-ready payload before connecting.
-4. Server reads matchmaker data on session-start and sets
-   transport. Only switches away from ENet if a web player
-   is in the match.
-
-#### WebRTC Architecture
-
-**Components:**
-- `WebRTCSignalingServer` (server-side): Lightweight
-  WebSocket server for SDP/ICE exchange. Listens on
-  container port 4433 TCP (same as ENet/UDP, no conflict).
-- `WebRTCSignalingClient` (client-side): Connects to
-  signaling server, exchanges SDP offer/answer, relays
-  ICE candidates. Retries up to 5 times with 10s timeout.
-- `WebRTCGamePeer` (both sides): Custom
-  `MultiplayerPeerExtension` using 2 negotiated
-  DataChannels (reliable + unreliable) instead of
-  `WebRTCMultiplayerPeer`'s 6-8 SCTP streams.
-
-**Signaling flow:**
-1. Client connects to the signed `signaling_url` from the
-   match_ready payload — a
-   `wss://signaling.snoringcat.games/connect/<token>` URL
-   where `<token>` is a base64url-encoded
-   `<deploy-ip>:<tcp-port>:<expiry>:<hmac>` blob the runtime
-   signed with `SIGNALING_HMAC_SECRET`. Caddy terminates TLS;
-   the stateless signaling-proxy decodes the token, verifies
-   the HMAC, and opens a plain-WS upstream to the encoded
-   `(ip, tcp-port)` pair, then bridges frames bidirectionally.
-   Token TTL is 5 min.
-2. Client creates `WebRTCPeerConnection`, emits
-   `peer_created` → `WebRTCGamePeer.add_peer()` creates
-   negotiated DataChannels.
-3. Client creates SDP offer, sends via signaling WS.
-4. Server creates `WebRTCPeerConnection` with
-   `portRangeBegin/End=4433` and `enableIceUdpMux=true`.
-   Emits `peer_signaled` → `WebRTCGamePeer.add_peer()`
-   creates matching DataChannels.
-5. Server sets remote description (client's offer),
-   generates SDP answer, sends via signaling WS.
-6. ICE candidates exchanged bidirectionally via signaling
-   WS. Server rewrites srflx candidate port from container
-   4433 to the Edgegap UDP host port (looked up from
-   `ARBITRIUM_PORT_GAME_EXTERNAL`).
-7. ICE connects (UDP on host port), DataChannels open.
-8. Signaling WS is closed.
-
-**GDExtension:** `addons/webrtc/` provides
-`webrtc-native` (v1.0.9) which implements
-`WebRTCPeerConnection` using libdatachannel (with
-libjuice for ICE) for native builds. Web builds use
-the browser's native WebRTC API (no GDExtension
-needed). The server uses a patched build (see
-"Multi-stage Docker build" above).
-
-**Physics tick rate:** WebRTC matches run at 30 FPS
-(vs 60 for ENet) to reduce bandwidth. Applied via
-`Netcode.apply_match_physics_fps()` before connection.
-
-**ICE port pinning:** Only declared container ports get
-forwarded to the host (Edgegap maps each declared port to a
-dynamic host port at allocation time). The server pins the
-ICE agent to container port 4433 via
-`portRangeBegin`/`portRangeEnd` in `initialize()`.
-Multiple PeerConnections share this port via libjuice mux
-mode (`enableIceUdpMux: true`), which demultiplexes STUN
-traffic by username fragment.
-
-**ICE candidate rewriting:** The ICE agent's STUN-reflected
-(srflx) candidate advertises the container port (4433), but
-clients must connect to the Edgegap UDP host port (e.g.,
-4205). The signaling server rewrites the srflx candidate's
-port before sending it to the client. The host port is read
-from `ARBITRIUM_PORT_GAME_EXTERNAL` (Edgegap injects this
-env at deploy time, alongside `ARBITRIUM_PUBLIC_IP`).
-
-**ICE candidate buffering:** Client ICE candidates
-that arrive before the server processes the SDP offer
-are buffered and flushed after the
-`WebRTCPeerConnection` is created. Without this,
-early candidates are silently dropped.
-
-**Fleet inbound permissions:** Port 4433/UDP must be
-in the fleet's `InstanceInboundPermissions` in
-addition to the `InstanceConnectionPortRange`. The
-ICE agent's outbound STUN uses port-preserving NAT
-(container port 4433 appears as host port 4433 to
-STUN), so return traffic and client ICE checks
-arrive on host port 4433. This port must be allowed
-by the security group.
-
-### WebRTC Signaling Proxy
-
-```
-Web/native client --wss://signaling.snoringcat.games/connect/<token>--> Caddy (TLS terminate) --> signaling-proxy --(plain WS)--> Godot signaling (deploy-ip:4434/TCP)
-ENet-only match  --enet://ip:{UDP-port}/UDP--> Godot (unchanged, direct to Edgegap deploy)
-WebRTC data plane --UDP DataChannels--> Godot (deploy-ip:{UDP-port}/UDP, after ICE)
-```
-
-The stateless `signaling-proxy` (Go, sibling docker-compose
-service on the Hetzner host) puts a stable, always-resolvable
-FQDN in front of dynamic Edgegap deploys. Caddy terminates
-TLS once for the whole signaling tier; the proxy validates
-the URL token then opens a plain-WS upstream to the encoded
-`(deploy-ip, 4434/TCP)` pair and bridges frames.
-
-**Why a stable FQDN proxy** (vs the previous per-deploy
-`s-<ip>.game.hopnbop.net` + per-container nginx + wildcard
-cert): home-router/ISP DNS resolvers often cache NXDOMAIN
-for a hostname created seconds before the client tries to
-resolve it, then keep serving NXDOMAIN until the negative-
-cache TTL expires — clients saw "DNS name does not exist"
-and the WebSocket failed in <50 ms with no chance to
-handshake. The stateless proxy removes per-deploy DNS from
-the connect path entirely. See
-`third_party/snoringcat-platform/infra/remote/signaling-
-proxy/main.go` for the protocol.
-
-**Signed URL token:** The runtime hook's `signSignalingURL`
-builds the URL with `base64url(<ip>:<tcp-port>:<expiry>:<
-hmac-sha256>)`, signed with `SIGNALING_HMAC_SECRET` (shared
-with the proxy's `SIGNALING_HMAC_SECRET` env). TTL is
-5 minutes — generous enough for retries, short enough that
-a leaked URL is useless quickly. No registration step, no
-shared in-memory state between Nakama and the proxy; the
-token IS the state.
-
-**WebSocket buffer sizes:** Both client and server set
-`inbound_buffer_size` and `outbound_buffer_size` to 1MB
-(default 64KB) and `max_queued_packets` to 16384 (default
-2048). The default buffer overflows within seconds on web
-clients during 4-player matches.
-
-**Container ports:** Edgegap allocates one host port per
-declared container port (independent UDP and TCP host port
-maps). The runtime hook reads both from Edgegap's deployment
-status:
-
-- `4433/UDP` (ENet payload + WebRTC DataChannel data
-  plane) — host UDP port returned to ENet clients as
-  `server_port`; the WebRTC ICE agent advertises this same
-  port via the rewritten srflx candidate.
-- `4434/TCP` (Godot's plain-WS signaling server) — host
-  TCP port included in the signed signaling URL token;
-  never exposed to clients directly.
-
-The runtime hook picks the TCP port via `pickTCPPort
-(status.Ports)`; no positional `Port+1` assumption.
-
-#### Godot Native WSS Limitation (2026-03-17, status
-unverified in current arch)
-
-Godot 4.5's native `WebSocketMultiplayerPeer` historically
-could not establish `wss://` to remote servers (every TLS
-config tested failed instantly, not on timeout). Browser
-`wss://` worked fine. Related Godot issues:
-[#34083](https://github.com/godotengine/godot/issues/34083),
-[#95217](https://github.com/godotengine/godot/issues/95217).
-
-Previous workaround: native clients connected to plain
-`ws://` through an in-container nginx `ssl_preread`
-pass-through. That nginx path no longer exists — all
-signaling now goes through `wss://signaling.snoringcat.
-games`. The native WSS path is therefore on a Caddy-
-managed Let's Encrypt cert (not a self-signed/mismatched
-one), which may sidestep the original failure mode (the
-2026-03-17 testing was against a custom TLS endpoint).
-**Status unverified for native+web cross-play under the
-current arch.** Native-only matches use ENet (no
-signaling), so the question only matters when a web
-player joins a cross-play match with native peers.
-
-### End-to-End Matchmaking Flow
-
-1. Client authenticates with Nakama (anonymous device-id or
-   linked OAuth provider) and gets a session token.
-2. Client adds itself to the matchmaker via the Nakama socket
-   API with platform attributes (e.g. `platform: "web"` or
-   `platform: "windows"`).
-3. Nakama matches players and fires the `matchmaker_matched`
-   hook in the runtime plugin.
-4. The hook calls Edgegap to deploy a `hopnbop-server`
-   container near the matched players, then notifies all
-   matched clients with the connection payload:
-   `server_ip`, `ports` (Edgegap port map),
-   `transport_type`, `signaling_url` (signed
-   `wss://signaling.snoringcat.games/connect/<token>` for
-   non-ENet transports), per-player `session_ids`.
-5. Client connects to the server:
-   - ENet match: `enet://server_ip:UDP-port` (UDP, direct
-     to the Edgegap deploy).
-   - WebRTC match: connects to `signaling_url` for the
-     brief SDP/ICE exchange, then UDP DataChannels direct
-     to the deploy.
-   - WebSocket match: connects to `signaling_url` for the
-     full game stream (TCP, bridged plain-WS through the
-     signaling proxy).
-6. Server validates the per-player session ticket against the
-   match-ready payload Nakama sent it during allocation.
-
-The Edgegap allocation typically completes in a few seconds.
-There is no longer a 29-second API-Gateway timeout to dance
-around — the realtime socket pushes the allocation result
-when ready, no client polling.
+- Stage only files relevant to the change; the tree often carries
+  unrelated dirty files (e.g., `settings.tres`).
+- Force-push and pushes to anything other than `main` still need
+  explicit confirmation.
 
 ## Architecture
 
-### Networking Layer (addons/rollback_netcode/core/)
+### Networking layer (addons/rollback_netcode/core/)
 
-The networking framework was extracted out of this repo into
-the shared `godot-rollback-netcode` submodule. The classes
-described below all live there now (not under `src/networking/`,
-which no longer exists). Game-specific networked entities and
-session glue live in `src/core/` (e.g. `nakama_matchmaker_client.gd`,
-`game_session_manager.gd`, `match_state.gd`).
+The networking framework was extracted into the
+`godot-rollback-netcode` submodule (`src/networking/` is gone).
+Game-specific networked entities and session glue live in
+`src/core/` (`nakama_matchmaker_client.gd`,
+`game_session_manager.gd`, `match_state.gd`, ...).
 
-The networking system is frame-based with rollback support:
+- **NetworkMain** - top-level controller, the `Netcode` autoload.
+- **NetworkFrameDriver** - frame simulation at 60 FPS; increments
+  `server_frame_index` each physics tick; manages the rollback
+  buffer (default 1.5 s / ~90 frames) and reconciliation.
+- **ReconcilableNetworkedState** - base class for all networked
+  entities: client prediction + server reconciliation.
+  **ServerTimeTracker** - NTP-like clock sync.
+  **NetworkConnector** - ENet/WebSocket/WebRTC peers (port 4433).
 
-- **NetworkMain** - Top-level controller, accessed via the
-  `Netcode` autoload (was `G.network` pre-extraction).
-- **NetworkFrameDriver** - Core frame simulation at 60 FPS.
-  Increments `server_frame_index` directly on each physics tick
-  for deterministic frame progression. Manages rollback buffer
-  and reconciliation.
-- **ReconcilableNetworkedState** - Base class for all networked
-  entities; implements client prediction + server authoritative
-  reconciliation.
-- **ServerTimeTracker** - NTP-like clock sync between client and
-  server. Server frame timing is based on physics ticks, with
-  periodic wall-clock re-sync for accurate logging.
-- **NetworkConnector** - ENet/WebSocket/WebRTC peer management
-  (default port 4433).
+**Frame processing flow:** `_pre_network_process()` (sync state
+from rollback buffer) → `_network_process()` (game logic) →
+`_post_network_process()` (pack state for replication). Networked
+entities extend ReconcilableNetworkedState and join this cycle:
+define `_get_packed_state()` / `_apply_packed_state()`, set
+mismatch thresholds; the scene tree registers them.
 
-**Frame Processing Flow:**
-1. `_pre_network_process()` - Sync scene state from rollback buffer
-2. `_network_process()` - Game logic executes (frame-synchronous)
-3. `_post_network_process()` - Pack state for replication
+### Game state (src/core/)
 
-All networked entities must extend ReconcilableNetworkedState and participate in this cycle.
+- **MatchState/MatchStateSynchronizer** - replicated match data.
+  **MatchState is the single source of truth for match events:**
+  low-level signals (`players_updated`, `kills_updated`,
+  `bumps_updated`) and high-level ones (`player_joined`,
+  `player_left`, `player_killed`, `players_bumped`); connect to
+  `G.match_state`. **PlayerState** - per-player metadata.
+  **GamePanel** - lifecycle. **ClientSession** - session state.
 
-### Game State (src/core/)
+### Local mode (offline/local-only)
 
-- **MatchState/MatchStateSynchronizer** - Replicated match data (players, kills, bumps)
-- **PlayerState** - Per-player metadata (name, connection status)
-- **GamePanel** - Game lifecycle orchestrator, handles level spawning
-- **ClientSession** - Per-client session state
-
-#### Signal Architecture
-
-**MatchState is the single source of truth for all match events:**
-- Low-level state change signals: `players_updated`, `kills_updated`, `bumps_updated`
-- High-level game event signals: `player_joined`, `player_left`, `player_killed`, `players_bumped`
-- MatchStateSynchronizer acts as a replication coordinator that triggers these signals
-- All external code should connect to `G.match_state` signals for match events
-
-#### Local Mode (Offline/Local-Only)
-
-The game supports an offline local-only mode where the same
-process acts as both server and client. The process stays
-`is_server = false` (so client UI continues working) but sets
-`Netcode.is_local_mode = true`. The property
-`Netcode.runs_server_logic` (`is_server or is_local_mode`)
-replaces `is_server` checks where server-side game logic must
-also run locally.
-
-**Local Mode RPC Pattern:** RPCs annotated with `call_remote`
-do not reach the local process. Use `Netcode.call_client_rpc_with_local_support()`
-to send the RPC and also call it directly in local mode. Bind
-arguments before passing.
+The same process acts as both server and client: `is_server` stays
+false (client UI keeps working) but `Netcode.is_local_mode = true`;
+use `Netcode.runs_server_logic` (`is_server or is_local_mode`)
+where server-side game logic must also run locally.
+**Local mode RPC pattern:** RPCs annotated `call_remote` do not
+reach the local process. For server-to-client RPCs the client must
+receive (match ended, unpause, stats), use:
 
 ```gdscript
 Netcode.call_client_rpc_with_local_support(
     _client_rpc_foo.bind(arg1, arg2))
 ```
 
-Not all RPCs need this treatment. Only server-to-client RPCs
-where the client needs to receive the call (e.g., match ended,
-unpause, stats). Server-side functions that already apply state
-locally before sending the RPC (e.g., snail crush/respawn) do
-not need it.
+(Functions that already apply state locally first don't need it.)
 
-### Character System (src/scaffolder/character/)
+### Character, player, level
 
-Reusable character framework:
+- **Character** (`src/scaffolder/character/`) - CharacterBody2D
+  framework: velocity, collision, action state, surface contact
+  (**CharacterSurfaceState** raycasts). **CharacterActionState**
+  runs 17+ action handlers (`action_handlers/`) that modify
+  velocity per frame; add an action by creating a handler there
+  and registering it. **CharacterStateFromServer** is the
+  networked character state.
+- **Bunny** (`src/player/`) - the player; **PlayerActionSource**
+  translates input to action commands. **Level** (`src/level/`) -
+  scene container managing `players_by_id` and the
+  MultiplayerSpawner; the server instantiates players, clients
+  receive spawned instances.
 
-- **Character** - Extends CharacterBody2D; manages velocity, collision, action state, surface contact
-- **CharacterActionState** - State machine for movement (17+ action handlers for floor/wall/ceiling/air states)
-- **CharacterStateFromServer** - Networked character state with rollback support
-- **CharacterSurfaceState** - Tracks platform contact via raycasts
+### Transport
 
-Action handlers in `src/scaffolder/character/action_handlers/` modify velocity and physics per frame.
+Three transports, selected per-match by the backend from matched
+players' `platform` attributes: **ENet** (native-only matches; UDP,
+default), **WebRTC** (cross-play with web players; UDP DataChannels
+— browser API on web, `webrtc-native` GDExtension on native; brief
+WebSocket signaling via the Caddy-fronted
+`signaling.snoringcat.games` proxy; 30 FPS physics instead of 60),
+**WebSocket** (legacy, unused). The runtime's `matchmaker_matched`
+hook allocates an Edgegap (or local Docker) game server and pushes
+the connection payload (`transport_type`, ports, signed
+`signaling_url`, `session_ids`) over the realtime socket; the
+server validates each player's session ticket against it. All
+deeper detail (signaling, ICE, ports, native WSS, the full flow,
+live issues): **`.claude/rules/transport.md`**.
 
-### Player Implementation (src/player/)
-
-- **Bunny** - Game-specific player extending the character system
-- **PlayerActionSource** - Translates player input to action commands
-
-### Level System (src/level/)
-
-- **Level** - Scene container managing players_by_id dictionary and MultiplayerSpawner
-- Server instantiates players for connected clients; clients receive spawned instances
-
-### Web Build Cross-Play
-
-The Nakama matchmaker takes a `platform` string player
-attribute (`"web"`, `"windows"`, `"linux"`, `"macos"`,
-`"android"`, `"ios"`) for platform-preference matching
-(relaxes after the configured backoff). The runtime hook
-then chooses `transport_type` (`"enet"`, `"webrtc"`, or
-`"websocket"`) based on which platforms made it into the
-match, and includes it in the match-ready payload pushed
-to clients.
-
-- Client sets `Netcode.settings.transport_type` from the
-  match-ready payload before connecting.
-- Server reads matchmaker data from Edgegap's deployment
-  context and sets transport on session-start. Only switches
-  away from ENet if a web client is in the match — ENet-only
-  matches stay on ENet.
-- Edgegap returns the public IP and per-port host port map
-  at allocation time. The runtime hook signs a
-  `wss://signaling.snoringcat.games/connect/<token>` URL
-  whose token encodes `(deploy-ip, host-TCP-port, expiry)`
-  and ships it in the match_ready payload as
-  `signaling_url`. The Caddy-fronted signaling-proxy on
-  the Hetzner host validates the token and bridges to the
-  deploy's plain-WS server on container 4434/TCP.
-- All non-local clients use the `signaling_url` as-is
-  (web `wss://` works through the browser TLS stack; native
-  wss support is the open question — see "Godot Native WSS
-  Limitation").
-- Local/preview bypasses the proxy and connects directly
-  to `ws://server_ip:server_port`.
-
-## Networking Concepts Reference
-
-This section documents game networking patterns used in this project. These concepts apply broadly to multiplayer game development.
-
-### Client-Side Prediction
-
-Without prediction, players experience input delay equal to their round-trip latency (e.g., 100ms ping = 100ms delay before seeing movement). Client-side prediction solves this by immediately simulating the predicted result of player inputs locally, providing instant visual feedback while the server validates those inputs in parallel.
-
-**How it works:**
-1. Player presses input → client immediately simulates the action locally
-2. Input is sent to server with a sequence number
-3. Client continues predicting future frames while awaiting confirmation
-4. Server processes input and sends authoritative state back
-
-### Server Reconciliation
-
-When the server's authoritative state differs from the client's prediction, reconciliation corrects the client without visible stuttering.
-
-**Reconciliation algorithm:**
-1. Client receives server state with last-processed input sequence number
-2. Client resets to server's confirmed state
-3. Client replays all unacknowledged inputs on top of server state
-4. Result becomes new prediction baseline
-
-**Snap vs. Smooth reconciliation:**
-- Snap: Instantly teleport to corrected position (causes visible jitter)
-- Smooth: Gradually interpolate toward corrected position over several frames (this project uses smooth reconciliation via rollback buffer)
-
-### Rollback Netcode
-
-Rollback extends reconciliation by maintaining a buffer of historical states. When a mismatch is detected:
-1. "Roll back" game state to the mismatched frame
-2. Re-simulate all frames from that point with corrected data
-3. Fast-forward back to present
-
-This project's `NetworkFrameDriver` implements rollback with configurable buffer duration (default 1.5 seconds / ~90 frames at 60 FPS).
-
-### Frame Synchronization
-
-Deterministic simulation requires all clients to process the same inputs on the same frame numbers. This project uses:
-- Fixed 60 FPS network tick rate (independent of render framerate)
-- Server-authoritative frame numbering
-- NTP-like clock synchronization (`ServerTimeTracker`) to estimate server time
-
-### Lag Compensation
-
-For hit detection in latency-sensitive actions (shooting), the server can "rewind" entity positions to where they appeared from the shooter's perspective, accounting for round-trip latency. This ensures high-ping players can still hit targets they visually aimed at.
-
-### Authority Models
-
-**Server-authoritative (used here):** Server is the source of truth. Clients predict locally but defer to server corrections. Prevents cheating but requires reconciliation.
-
-**Client-authoritative:** Each client owns their character's state. Simpler but vulnerable to cheating. Sometimes used for non-competitive games.
-
-**Hybrid:** Server authoritative for game logic, but clients have authority over their input timing.
-
-## Godot Multiplayer Patterns
-
-### MultiplayerSynchronizer
-
-Continuously replicates configured properties from authority to other peers. Key concepts:
-- Each synchronized entity needs its own MultiplayerSynchronizer instance
-- Configure which properties to sync via the Replication panel
-- Default authority is server (peer 1); can be changed per-node
-- Visibility filters control which peers receive updates
-
-**Dual Synchronizer Pattern:** Use separate synchronizers for spawn state (server authority) and input/player state (peer authority) to maintain proper isolation.
-
-### MultiplayerSpawner
-
-Replicates node instantiation/deletion across peers (including mid-game joins). Key concepts:
-- Set `spawn_path` to define where spawned nodes appear in tree
-- Configure Auto Spawn List for scenes to replicate automatically
-- Only replicates creation/deletion, not ongoing state (use MultiplayerSynchronizer for that)
-- Use `spawn_limit` to constrain maximum instances
-
-### Input Isolation Pattern
-
-For player characters, use a dedicated child node for player inputs while keeping character node authority with the server. This separates control handling from game logic, reducing synchronization errors.
-
-### Replicated State Sub-node Pattern
-
-Create a sub-node within entities specifically for replicated state. Other scripts reference this node, maintaining clear separation between networked and local-only state. This project uses this pattern with `CharacterStateFromServer`.
-
-### Physics Considerations
-
-Godot's physics engine doesn't natively support rewinding/re-simulation. Options:
-1. Server-only physics with position sync (simple but high bandwidth)
-2. Custom physics stepping (this project's approach via frame-based simulation)
-3. External libraries (Netfox, MonkeNet) that provide rollback-compatible physics
-
-## Key Patterns
-
-### Adding Networked Entities
-
-1. Extend ReconcilableNetworkedState
-2. Define synced properties in `_get_packed_state()` and `_apply_packed_state()`
-3. Set mismatch thresholds for rollback detection
-4. Register with NetworkFrameDriver (automatic via scene tree)
-
-### Adding Character Actions
-
-1. Create handler in `src/scaffolder/character/action_handlers/`
-2. Follow pattern: modify velocity based on surface state and input
-3. Register in CharacterActionState
-
-### Circular Dependency Prevention
+### Circular dependency prevention
 
 `ReconcilableState` (base class) must never reference subclass
-`class_name`s (`PlayerInputFromClient`,
-`CharacterStateFromServer`,
-`ForwardedPlayerInputFromServer`) as type annotations. This
-creates circular compile-time dependencies that break exported
-builds.
-
-Use the `ReconcilableStateType` enum and `_get_type()` virtual
-method pattern instead of `is` type checks. Access subclass
-properties through `ReconcilableState`-typed variables using
-`get()` or `call()` for dynamic dispatch.
-
-### Web Build Parse Errors — DO NOT chase with `.get()` rewrites
-
-Web exports sometimes fail at boot with cascading parse errors
-of this shape:
-
-```
-ERROR: Cannot get class ''.
-   at: _instantiate_internal (core/object/class_db.cpp:587)
-ERROR: Parameter "obj" is null.
-   at: ensure_resource_ref_override_for_outer_load
-       (core/io/resource_loader.cpp:1013)
-SCRIPT ERROR: Parse Error: Could not resolve external class
-member "settings".
-   at: GDScript::reload (res://src/.../foo.gd:42)
-SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
-ERROR: Failed to load script "res://src/.../bar.gd"
-  with error "Compilation failed".
-```
-
-**The parse errors at the bottom are symptoms. The root cause
-is the `Cannot get class ''` / `Parameter "obj" is null` block
-at the very top of the boot log.** Every `Could not resolve
-external class member "settings"` parse error downstream is a
-consequence of `settings.tres` (or some other class-typed
-resource) failing to load, which makes
-`var settings: Settings = preload(...)` fail at parse time,
-which makes every `G.settings.X` access fail.
-
-**DO NOT "fix" these by rewriting `G.settings.X` to
-`G.get("settings").get("X")`**. That destroys autocomplete,
-intellisense, and static type checking project-wide and does
-*not* address the root cause. We need typed GDScript; treat
-the `.get()` pattern as an atrocity, not a fix.
-
-The original "cyclic reference" framing (which used to live in
-this section) was a misdiagnosis. The Godot 4.7-beta1 parser
-DOES emit a real `Cyclic reference.` suffix when it detects an
-actual class-resolution cycle — but that's a *different* error
-than the bare `Could not resolve external class member`
-messages we usually see. If the message says ``: Cyclic
-reference.`` literally at the end, treat it as cyclic; if it
-doesn't, look upstream for the `Cannot get class ''` block.
-
-#### Real causes seen so far
-
-- **Stale GDExtension declaration.** `addons/X/X.gdextension`
-  declares native libraries for desktop platforms but no
-  `web.wasm32`, and `extensions_support=false` on the Web
-  preset. On web load, Godot tries to instantiate the missing
-  extension's classes from cached resource refs and emits the
-  `Cannot get class ''` cascade. Fix: either remove the addon
-  entirely (if it's no longer used — see the gamelift removal
-  in commit `0b9b059`) or add an `exclude_filter` line for
-  the addon directory in the Web preset of
-  `export_presets.cfg` (see the webrtc exclude added in
-  2026-05-04 — webrtc's classes are provided natively by the
-  browser at runtime, so the GDExtension binaries shouldn't
-  ship to web at all).
-- **Stale `.godot/global_script_class_cache.cfg`.** A
-  `class_name` was renamed or removed but the cache still
-  carries the old entry; resource files referencing the old
-  name fail with `Cannot get class ''`. Fix: close the editor,
-  delete `.godot/global_script_class_cache.cfg`, reopen, let
-  Godot rebuild. (Done in 2026-05-03 for the gamelift_session_
-  manager registry leak.)
-- **Resource file with broken script ref.** A `.tres` or
-  `.tscn` `[ext_resource type="Script" ...]` block points at
-  a UID/path whose script no longer registers the same
-  `class_name`. Fix the resource file or the script.
-
-#### Investigation playbook
-
-1. **Read the web log top-down, not bottom-up.** Find the
-   *first* error in boot output. If it's `Cannot get class ''`
-   at `_instantiate_internal`, that's your root cause — every
-   `Could not resolve external class member` parse error
-   below it is downstream noise.
-2. Identify what class is being looked up empty. The wasm
-   stack frames don't give source line info, so work backward
-   from clues: which `[ext_resource]` or `[node type="..."]`
-   in recently-changed `.tres`/`.tscn` files might reference a
-   class that disappeared, was renamed, or comes from a
-   GDExtension that isn't shipped on web.
-3. Check for stale GDExtension declarations (`grep -r
-   gdextension addons/`) and verify each is either web-
-   compatible or excluded from the Web export preset.
-4. If nothing in source/resources is suspicious, the cache is
-   stale: regenerate `.godot/global_script_class_cache.cfg`.
-5. Only after the upstream cascade is gone should you treat
-   any remaining parse errors as real. They'll generally
-   either disappear with the upstream fix or point at a real
-   bug (e.g., a syntax error you can fix without touching the
-   typed access pattern).
-
-Desktop builds tolerate a lot more breakage than web does, so
-"works in editor" is no signal. Always read the web boot log.
-
-Upstream Godot tracker:
-[godot#80877](https://github.com/godotengine/godot/issues/80877)
-(meta-issue, 40+ linked).
-
-### Internationalization (i18n)
-
-All user-visible strings must be hooked up to Godot's
-translation system using `tr()`. When adding or modifying
-user-facing text, check the existing translation files in
-the project to determine supported languages and file
-format, then provide translations for all of them.
-
-`translations/ui_translations.csv` is real CSV: quote any
-cell that contains a comma (`"Hello, world"`) and double any
-quote inside a quoted cell. Godot's importer assigns cells by
-position, so one unquoted comma shifts the rest of the row
-into the next locales (Japanese players once saw half a
-Russian sentence). After editing it, run `godot --headless
---import` and commit the regenerated
-`ui_translations.*.translation` files with the CSV. The
-adjective and name lists are read line by line, so they may
-hold neither commas inside a value nor quotes.
-`test/unit/i18n/test_translation_csvs.gd` checks every CSV
-under `translations/` (cell counts with Godot's own parser,
-placeholders against English, a writing-system heuristic per
-locale, and that the compiled tables match the CSV). The harness
-scenario `i18n-party-strings` shows the strings the comma once
-shifted, in five locales, and screenshots each.
-
-### Viewport and Camera (src/core/pixel_viewport_manager.gd)
-
-`PixelViewportManager` sizes the `SubViewportContainer` to
-fill the window at the nearest integer pixel scale and adjusts
-the active camera's zoom so the base viewport area is always
-visible.
-
-**Camera anchor mode:** Godot 4.5 defaults Camera2D to
-`FIXED_TOP_LEFT`. PVM sets `ANCHOR_MODE_DRAG_CENTER` on
-first contact so extra viewport space is distributed
-equally on all sides. Do not use `camera.offset` to "fix"
-centering. `DRAG_CENTER` already centers the view.
-
-**Camera activation:** Each level has a static `level_camera`
-(Camera2D). Because `queue_free` on the previous level is
-deferred, the new level's camera enters the tree while the
-old camera is still alive and current. Auto-activation
-only triggers when no current camera exists, so the new
-camera must call `make_current()` explicitly. This is done
-in `_server_spawn_level` and `_client_on_level_spawned`.
-
-**Camera change detection:** PVM forces a
-`_on_window_resized()` call when the active camera changes
-(the `size_changed` signal can miss resizes during scene
-teardown/setup). `_last_camera` must be set before calling
-`_on_window_resized` to prevent mutual recursion
-(`_on_window_resized` → `_update_camera_zoom` →
-`_on_window_resized`).
-
-**No per-player camera:** The bunny has no Camera2D. The
-level camera is used for everything, including the
-end-of-match celebration (which tweens the level camera's
-`offset` to follow the winner).
-
-## UI Patterns
-
-### Navigation
-
-All interactive UI elements must be navigable with U/D and
-L/R controls. Players use gamepads or keyboard. UI that only
-responds to mouse/touch is not acceptable.
-
-### Input contract (Trigger / Right / Left)
-
-`MenuRow` (`src/ui/menu_row.gd`) is the universal focusable
-row widget. It's used by SidePanel rows AND, increasingly, by
-Screen buttons (auth, anonymous-upgrade, game-over). The
-contract is:
-
-- **Trigger button** (Enter / Space / gamepad trigger): fires
-  the row's `on_trigger()`.
-- **Right input**: fires `on_trigger()` (same as Trigger).
-- **Left input**: routes to the **panel/screen back action**,
-  NOT the row. SidePanel calls `manager.pop_panel()`; Screens
-  call `on_back()` (default no-op; subclasses override —
-  game-over returns to lobby, anonymous-upgrade dismisses,
-  leaderboard closes, etc.).
-- **Mouse click** on the row body: fires `triggered` signal
-  + `on_trigger()`.
-
-Two exceptions opt out of the "Left = back" rule by overriding
-`consumes_horizontal_input() -> true`:
-
-- `LevelPrefRow` (tristate cycle): Left cycles state backward
-  (PREFERRED → INCLUDED → EXCLUDED), Right cycles forward.
-- `BinaryToggle` (standalone PanelContainer used in screens):
-  Left picks option 0, Right picks option 1.
-
-Both define `on_trigger()` as an alias for `on_right()` so the
-keyboard trigger key still works.
-
-### Side panels
-
-`SidePanel` subclasses scan `_row_container.get_children()`
-for `MenuRow` instances; non-MenuRow children (spacers,
-labels) are ignored. Call `_connect_row_clicked(row)` for
-each row and `rebuild_row_list()` after dynamic content
-changes.
-
-For dynamically generated rows that don't need a scene file,
-use `ActionRow` (extends `MenuRow`). Call
-`setup_action(callback)` with a single callable for the
-row's `on_trigger()` action. Example:
-
-```gdscript
-var row := ActionRow.new()
-var content := HBoxContainer.new()
-content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-row.add_child(content)
-# ... add labels/buttons to content ...
-row.setup_action(action_callback)
-_row_container.add_child(row)
-_connect_row_clicked(row)
-```
-
-### Right-side chevron affordance
-
-Set `row.show_chevron = true` on rows that navigate forward
-into a sub-view (sub-panel, sub-screen, URL). The base class
-toggles a child `TextureRect` with unique name `%Chevron` if
-present. `SubPanelTriggerRow`, `ScreenTriggerRow`, `LinkRow`,
-and `CreditsRow` set this in their `_ready()` by default.
-Programmatic ActionRow callers can also set it per-instance.
-
-### Screens
-
-`Screen` subclasses using `ScreenFocusNavigator` route input
-through `_navigator.poll(delta)`. After a true return,
-inspect `_navigator.last_activation_direction`:
-
-- `0` (Trigger) → `_activate_focused()` (fire focused button).
-- `1` (Right) → same as Trigger for non-horizontal-consumer
-  controls; for horizontal-consumer controls (e.g., a
-  BinaryToggle), call the control's `on_right()`.
-- `-1` (Left) → `on_back()` (or the focused control's
-  `on_left()` if it consumes horizontal input).
-
-All interactive buttons must be in the focusable list via
-`_navigator.set_focusable_list(items)`. Dynamically created
-buttons (e.g., friend action buttons in result rows) must
-also be added.
-
-### Mid-session sign-out
-
-The platform SDK signs the player out on its own when Nakama
-rejects the stored refresh token (expired or revoked session,
-banned or deleted account) and emits `Platform.auth.signed_out`.
-`SignOutRouter` (`src/core/sign_out_router.gd`, owned by
-ScreensMain on clients) then sends the player to the auth
-screen, the one a fresh launch shows:
-
-- From the lobby, or a screen opened over it: at once. The
-  lobby is torn down, as on log-out.
-- During a match, local or online, or matchmaking: nothing is
-  interrupted, and the results screen still shows. The auth
-  screen then opens instead of the lobby
-  (`ScreensMain.client_open_screen` runs every switch through
-  `SignOutRouter.resolve_screen`) and instead of any new online
-  match (`GamePanel._client_client_request_session_ids` checks
-  `G.screens.is_sign_in_required()`).
-- From splash, consent, or auth: the boot flow gets there.
-
-Harness scenarios: `sign-out-lobby`, `sign-out-local-match`,
-`sign-out-play-again`.
-
-Every way out ends the session the same way. Log-out
-(`SignOutRouter.log_out()`, behind Settings, Log Out), account
-deletion (`finish_account_deletion()`), an automatic sign-out
-(when the auth screen opens), and the auth screen's launch-time
-rejection all run `SignOutRouter.clear_session_state()`. It
-closes menus and dialogs, drops profile pictures and the friend
-and presence caches, resets the party, stops the friends poller,
-and closes the realtime notification socket, which is
-authenticated as the old account. The next successful sign-in,
-guest or provider, starts the poller again
-(`FriendsNotificationPoller._on_auth_completed`); while stopped
-it drops whatever still arrives for the old session. The next
-provider sign-in opens a socket for the new account. Harness
-scenario: `log-out-sign-in-cycles`.
-
-At launch, the auth screen refreshes an expired session before
-letting the player in. Only a refresh token that Nakama rejects
-signs them out there (SDK 0.5.6). Any other failure (network
-error, timeout, 5xx, a response that isn't from Nakama) keeps the
-session: the screen emits `continued_offline`, AuthScreen toasts
-`TOAST.SESSION_KEPT_OFFLINE`, the player continues to the lobby,
-and the auth client keeps retrying in the background. Harness
-scenario: `session-kept-offline`.
-
-Starting an online match refreshes an expired session first
-(`GameSessionManager.client_request_session`). A failure that
-may be transient sends the player back to the lobby, still
-signed in, with the same `TOAST.SESSION_KEPT_OFFLINE`. A
-rejection signs them out, and the lobby gives way to the auth
-screen, which toasts `TOAST.SIGNED_OUT`. Harness scenario:
-`session-refresh-before-match`.
-
-Consent (the acceptance time and the legal version accepted)
-lives on the device, in the token store's encrypted file. Log-out
-and account deletion forget it
-(`PlatformAuthTokenStore.clear_tokens()`), so whoever plays next
-on the device is asked. An automatic sign-out keeps it
-(`clear_session()`, SDK 0.6.2), so the same player is not asked
-again. It is asked for again whenever the legal version changes.
-Harness scenario: `consent-kept-after-sign-out`.
-
-### Button Icons
-
-Use pixel-art icons in most buttons. All icon buttons must use
-the same scale from Settings:
-
-```gdscript
-button.expand_icon = true
-button.add_theme_constant_override(
-    "icon_max_width",
-    int(G.settings.get_icon_display_width()))
-```
-
-Icon assets live in `assets/images/gui/`. When a new feature
-needs an icon that doesn't exist yet, ask for one. Do not
-ship buttons without icons or use placeholder text where an
-icon is expected.
-
-## Configuration
-
-- **settings.tres** - Runtime settings (network, debug, gameplay)
-- **project.godot** - Input actions, physics layers, rendering config
-
-Debug toggles in settings: `dev_mode`, `draw_annotations`, `perf_tracker_enabled`, `debug_console_enabled`
-
-## Code Style
-
-Follow the
-[Godot GDScript style guide](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html)
-with the project-specific additions below.
-
-### Formatting
-
-- **Indentation:** Tabs (4-space width), enforced by
-  `.editorconfig`.
-- **Line length:** 80 characters maximum.
-- **Blank lines:** Two blank lines between functions/methods.
-- **Line wrapping:** Prefer parentheses over backslashes for
-  line continuation. Conversely, unwrap lines onto a single
-  line when they fit within the 80-character limit.
-- **Operator placement:** When wrapping expressions across
-  multiple lines, place operators at the start of the next
-  line, not the end of the previous line.
-- **Trailing commas:** Include trailing commas in multi-line
-  function calls, arrays, and dictionaries.
-
-```gdscript
-# Correct: parens for wrapping, operator at start of line.
-var is_valid := (
-	is_instance_valid(node)
-	and node.is_inside_tree()
-	and not node.is_queued_for_deletion()
-)
-
-# Correct: trailing comma in multi-line call.
-some_function(
-	first_arg,
-	second_arg,
-)
-
-# Wrong: backslash continuation.
-var is_valid := is_instance_valid(node) \
-	and node.is_inside_tree()
-
-# Wrong: operator at end of line.
-var is_valid := (
-	is_instance_valid(node) and
-	node.is_inside_tree()
-)
-```
-
-### Naming Conventions
-
-- **Classes/enums:** `PascalCase`
-- **Functions/variables:** `snake_case`
-- **Constants:** `UPPER_SNAKE_CASE`
-- **Private members:** Prefix with underscore (`_my_var`,
-  `_my_method`)
-- **Signals:** Past tense (`player_died`, `match_started`)
-- **Booleans:** Prefix with `is_`, `can_`, `has_`
-- **No prefixes:** Avoid prefixes in variable names (e.g.,
-  use `speed` not `player_speed` when already inside a player
-  class). The underscore prefix for private members is the
-  exception.
-- **No abbreviations:** Use full words in identifiers (e.g.,
-  `diagnostic` not `diag`, `configuration` not `config`,
-  `information` not `info`). Standard domain abbreviations
-  (`rtt`, `fps`, `rpc`, `usec`, `id`) are acceptable.
-
-### Type Annotations
-
-- Use `:=` for inferred types on variable declarations.
-- Always specify return types on functions.
-- Use explicit type hints for `@export` vars and function
-  parameters.
-
-```gdscript
-var speed := 10.0
-const _MAX_SPEED := 200.0
-@export var jump_height: float = 64.0
-
-func get_speed() -> float:
-	return speed
-```
-
-### Negation
-
-- Prefer `not` over `!` for boolean negation.
-- Do use `!=` for inequality comparisons.
-
-```gdscript
-# Correct.
-if not is_alive:
-	return
-if count != 0:
-	process()
-
-# Wrong.
-if !is_alive:
-	return
-```
-
-### Comments and Prose
-
-- End all comments with a period.
-- Use `##` for doc comments (Godot documentation comments),
-  `#` for regular comments.
-- Never use em dashes, en dashes, or hyphens as grammatical
-  em dashes. Use a period and start a new sentence instead.
-- Wrap comments at 80 characters, matching the code line
-  limit.
-
-```gdscript
-## Advances the snail by the given number of
-## network frames. Each frame applies a fixed
-## movement step.
-func _simulate_frames(count: int) -> void:
-
-# Wrong: em dash in comment.
-# The snail moves forward — unless blocked.
-
-# Correct: period and new sentence.
-# The snail moves forward. It stops when blocked.
-```
-
-### File Structure
-
-Follow the Godot-recommended ordering within each script:
-
-1. `@tool`
-2. `class_name`
-3. `extends`
-4. Doc comment (`##`)
-5. `signal` declarations
-6. `enum` declarations
-7. `const` declarations
-8. `@export` variables
-9. Public variables
-10. Private variables (`_`-prefixed)
-11. `@onready` variables
-12. `_init()`, `_enter_tree()`, `_exit_tree()`, `_ready()`
-13. `_process()`, `_physics_process()`
-14. Other virtual/callback methods
-15. Public methods
-16. Private methods
-
-### Constants Over Inline Values
-
-Use file-level `const` declarations instead of hard-coding
-static values inline in functions. Private constants use
-underscore prefix.
-
-```gdscript
-# Correct: file-level constant.
-const _RESPAWN_DELAY_FRAMES := 30
-
-func _respawn() -> void:
-	timer = _RESPAWN_DELAY_FRAMES
-
-# Wrong: magic number inline.
-func _respawn() -> void:
-	timer = 30
-```
-
-### Scene Templates Over Scripts
-
-Prefer configuring state in `.tscn` scene files rather than
-in scripts:
-
-- **Animations:** Configure `AnimatedSprite2D.sprite_frames`
-  animations in the scene editor, not in code.
-- **Resource references:** Use `@export` vars and assign
-  resources in the scene inspector. NEVER use `preload()` or
-  `load()` for resource references in scripts.
-- **Node references:** Use `%NodeName` unique-name syntax in
-  scenes when referencing sibling/child nodes.
-
-**Editing `.tscn` files directly (without the Godot editor):**
-Scene files can be edited as text. The key fields are:
-- `load_steps=N` in the header — **ignore it. Do not maintain
-  it.** Godot 4.6 removed `load_steps` from the TSCN format
-  (and added unique node IDs). It only ever fed a load-time
-  progress bar, was never validated, and upstream dropped it
-  precisely because it churned on every rebase. Progress now
-  comes from `ResourceLoader.load_threaded_get_status()`.
-  Verified on 4.7.1: a scene declaring `load_steps=999` with
-  one resource, and a scene with no `load_steps` at all, both
-  load with zero errors. `src/core/screens_main.tscn` already
-  carries a wrong value (14, should be 15) and has shipped
-  that way for months. If the field is absent, don't add it;
-  if present, leave it alone — Godot drops it the next time it
-  saves the file. Don't do a bulk normalization pass; that's
-  98 files of pure churn for no behavior change.
-- `[ext_resource type="PackedScene" path="res://..." id="X"]`
-  — declares a scene dependency. Use a unique `id` string.
-  `uid=` is optional; omit it if the scene has no UID yet.
-- `[node name="Foo" parent="." instance=ExtResource("X")]`
-  — instantiates the scene as a child node.
-- Export vars on an instanced node are set directly on the
-  node entry, e.g. `doc_type = 0`. Enum values are integers
-  (0, 1, 2…) matching declaration order.
-
-```gdscript
-# Correct: export var assigned in scene inspector.
-@export var death_effect: PackedScene
-
-# Wrong: preload in script.
-const _DEATH_EFFECT := preload(
-	"res://src/effects/death_effect.tscn"
-)
-```
-
-### Direct Access Over Local Copies
-
-Do not assign local or class-level variable copies of
-autoload properties (`G`, `Netcode`) or unique-name nodes
-(`%`). Access them directly where needed.
-
-```gdscript
-# Correct: access autoload properties directly.
-if G.match_state.is_match_active:
-	Netcode.server_frame_index += 1
-
-# Wrong: local copy of autoload property.
-var match_state := G.match_state
-if match_state.is_match_active:
-	pass
-
-# Correct: access unique-name node directly.
-%AnimatedSprite2D.play("idle")
-
-# Wrong: local or class-level copy.
-@onready var sprite := %AnimatedSprite2D
-```
-
-### Performance
-
-- Prefer `distance_squared_to()` over `distance_to()` when
-  feasible, to avoid unnecessary `sqrt` calculations.
-
-### GDScript Formatter
-
-The GDScript formatter addon is installed
-(`addons/gdscript_formatter`). Format code before committing.
-
-### Legacy Code Migration
-
-Some older files use `!` for negation or backslash line
-continuation. When modifying lines in these files, convert
-them to the current style (`not`, parenthesized wrapping).
-Do not bulk-convert unrelated lines in the same commit.
-
-## Backend Testing
-
-The AWS SAM Lambda backend was decommissioned 2026-05-03 along
-with its pytest+moto suite. Server-side logic now lives in the
-Nakama runtime plugin at
-`third_party/snoringcat-platform/runtime/`. For testing patterns
-there see the snoringcat-platform repo's CI workflows and the
-in-tree GUT compliance suite for the client SDK.
-
-**To verify backend + SDK behavior against a local Nakama, run
-`pwsh scripts/local-smoke-test.ps1`.** It builds the runtime
-plugin from the submodule, starts `infra/dev/`'s mock-deploy
-Nakama + Postgres on free ports, runs the compliance suite, and
-tears down: about a minute, exit 0 only if every test ran and
-passed. Flags and manual steps: `infra/dev/README.md`. The suite
-refuses any non-loopback `PLATFORM_API_URL` without
-`ALLOW_PROD_COMPLIANCE=1`; never point it at production.
-
-**Google sign-in has no automated coverage.** The suite signs in
-with device ids, and a Google login needs a person at a browser.
-To check it by hand, run
-`python third_party/snoringcat-platform/scripts/test-google-auth.py`.
-It goes from a real browser login through `hopnbop.net`'s token
-broker (`web/functions/api/oauth/google/exchange.js`) to a
-production Nakama session, the way the desktop client does.
-
-## Testing with GUT
-
-This project uses GUT (Godot Unit Test) for testing. Tests are organized
-in `res://test/` with separate directories for unit and integration tests.
-
-**GUT is version-matched to the engine — keep them in lockstep.**
-GUT ships a release per Godot minor (9.5.0 → 4.5, 9.6.0 → 4.6,
-9.7.x → 4.7), and a mismatch does not fail loudly. On 4.7.1 with
-GUT 9.5.0, `gut_loader.gd`'s `_static_init` dies assigning a Nil
-`ProjectSettings.get(...)` to a typed bool, GUT reports "Nothing
-was run", **and still exits 0** — so `pr-validate`'s per-file loop
-goes green having executed zero tests. Vendored at `addons/gut/`
-(not a submodule); currently **9.7.1** for Godot 4.7.2. When you
-bump the engine, bump GUT in the same change and confirm a real
-test count, not just a zero exit code.
-
-After swapping the addon, delete `.godot/global_script_class_cache.cfg`
-and re-import. A stale cache surfaces as `Parse Error: Identifier
-"GutConstants" not declared` — see "Web Build Parse Errors" for
-the same failure class.
-
-### Test File Structure
-
-- Files must start with `test_` prefix (e.g., `test_rollback_buffer.gd`)
-- Extend `GutTest` base class
-- Use `func test_*()` naming for test methods
-- No `.gutconfig.json` exists in this repo; CI and local runs pass
-  flags explicitly on the command line.
-
-### Common Assertions
-
-```gdscript
-# Equality
-assert_eq(actual, expected, "optional message")
-assert_ne(actual, expected)
-
-# Null checks
-assert_null(value)
-assert_not_null(value)
-
-# Boolean
-assert_true(condition, "message")
-assert_false(condition)
-
-# Numeric comparisons
-assert_gt(value, threshold)  # greater than
-assert_lt(value, threshold)  # less than
-assert_almost_eq(actual, expected, tolerance)
-
-# Godot types
-assert_almost_eq(vector1, vector2, tolerance)
-assert_has(array_or_dict, value)
-assert_does_not_have(array_or_dict, value)
-
-# Signals
-watch_signals(object)
-assert_signal_emitted(object, "signal_name")
-assert_signal_not_emitted(object, "signal_name")
-```
-
-### Test Lifecycle Methods
-
-```gdscript
-extends GutTest
-
-# Run once before any tests in this script
-func before_all():
-	pass
-
-# Run before each test
-func before_each():
-	pass
-
-# Run after each test
-func after_each():
-	pass
-
-# Run once after all tests
-func after_all():
-	pass
-```
-
-### Test Doubles (Mocking)
-
-**Creating Doubles:**
-```gdscript
-# Double a script
-var MyClass = preload("res://src/my_class.gd")
-var DoubledClass = double(MyClass)
-var instance = DoubledClass.new()
-
-# Double a scene
-var MyScene = load("res://scenes/my_scene.tscn")
-var DoubledScene = double(MyScene)
-var instance = DoubledScene.instantiate()
-```
-
-**Stubbing Methods:**
-```gdscript
-# Return a specific value
-stub(instance, 'method_name').to_return(42)
-
-# Call original implementation
-stub(instance, 'method_name').to_call_super()
-
-# Stub with parameters
-stub(instance, 'method_name').param_count(2).to_return(value)
-```
-
-**Spies (Verifying Calls):**
-```gdscript
-# Check if method was called
-assert_called(instance, 'method_name')
-assert_not_called(instance, 'method_name')
-
-# Check call count
-assert_call_count(instance, 'method_name', 3)
-
-# Check parameters
-assert_called_with(instance, 'method_name', [arg1, arg2])
-```
-
-**Important Notes:**
-- Inner classes need `register_inner_classes(ClassName)` before doubling
-- Doubles are freed automatically after each test
-- Don't create doubles in `before_all()` - use `before_each()`
-- Use `partial_double()` to keep some original functionality
-
-### Parameterized Tests
-
-Run the same test with different inputs:
-
-```gdscript
-var test_cases = [
-    [0, 0],        # input, expected
-    [5, 25],
-    [-3, 9],
-]
-
-func test_square(params=use_parameters(test_cases)):
-    var input = params[0]
-    var expected = params[1]
-    assert_eq(square(input), expected)
-```
-
-**Named Parameters (more readable):**
-```gdscript
-var test_cases = ParameterFactory.named_parameters(
-	['input', 'expected'],
-    [
-        [0, 0],
-        [5, 25],
-    ]
-)
-
-func test_square(p=use_parameters(test_cases)):
-    assert_eq(square(p.input), p.expected)
-```
-
-### Inner Test Classes
-
-Organize related tests with shared setup:
-
-```gdscript
-extends GutTest
-
-class TestWhenEmpty:
-    extends GutTest
-
-    var buffer
-
-    func before_each():
-        buffer = Buffer.new()
-
-    func test_size_is_zero():
-        assert_eq(buffer.size(), 0)
-
-    func test_pop_returns_null():
-        assert_null(buffer.pop())
-
-class TestWhenFull:
-    extends GutTest
-
-    var buffer
-
-    func before_each():
-        buffer = Buffer.new(capacity=3)
-        buffer.push(1)
-        buffer.push(2)
-        buffer.push(3)
-
-    func test_size_is_capacity():
-        assert_eq(buffer.size(), 3)
-```
-
-### Async Testing
-
-For testing signals and coroutines:
-
-```gdscript
-func test_async_operation():
-    var obj = MyClass.new()
-    add_child_autofree(obj)
-
-    watch_signals(obj)
-    obj.start_async_operation()
-
-    # Wait for signal
-    await wait_for_signal(obj.completed, 2.0)  # 2 second timeout
-
-    assert_signal_emitted(obj, "completed")
-
-func test_with_frames():
-    var obj = MyClass.new()
-    add_child_autofree(obj)
-
-    obj.start()
-
-    # Wait for next frame
-    await wait_frames(1)
-
-    assert_true(obj.is_running)
-```
-
-### Scene Testing
-
-```gdscript
-func test_scene_interaction():
-    var scene = load(
-        "res://test/fixtures/test_scene.tscn"
-    ).instantiate()
-    add_child_autofree(scene)
-
-    # Scene is now in tree and can be tested
-    var button = scene.get_node("Button")
-    button.pressed.emit()
-
-    # Cleanup happens automatically via autofree
-```
-
-### Common Patterns for This Project
-
-**Testing Networking Code:**
-```gdscript
-# Mock NetworkMain
-var MockNetworkMain = double(NetworkMain)
-stub(MockNetworkMain, 'is_server').to_return(true)
-stub(MockNetworkMain, 'get_current_tick').to_return(100)
-
-# Mock multiplayer API
-var MockMultiplayer = double(MultiplayerAPI)
-stub(MockMultiplayer, 'get_unique_id').to_return(1)
-```
-
-**Testing Rollback Logic:**
-```gdscript
-# Create fixture states
-var state_frame_10 = {"x": 100, "y": 200}
-var state_frame_20 = {"x": 150, "y": 250}
-
-buffer.store_state(10, state_frame_10)
-buffer.store_state(20, state_frame_20)
-
-# Test rollback
-var retrieved = buffer.get_state(10)
-assert_eq(retrieved.x, state_frame_10.x)
-```
-
-**Testing Character Actions:**
-```gdscript
-# Create test character with mocked dependencies
-var character = partial_double(Character)
-character.velocity = Vector2.ZERO
-character.surface_state = create_floor_surface_state()
-
-# Test action handler
-var action = FloorWalkAction.new()
-action.process(character, delta, instructions)
-
-assert_gt(character.velocity.x, 0, "Should move right")
-```
-
-### Running Tests
-
-**Editor:**
-- Open GUT panel (bottom dock)
-- Select test file or directory
-- Click "Run All" or specific test
-
-**Command Line:**
-```bash
-# Run all tests
-godot --headless -s --path . addons/gut/gut_cmdln.gd -gexit
-
-# Run unit tests only
-godot --headless -s --path . addons/gut/gut_cmdln.gd \
-  -gdir=res://test/unit -gexit
-
-# Run specific test
-godot --headless -s --path . addons/gut/gut_cmdln.gd \
-  -gtest=res://test/unit/networking/test_rollback_buffer.gd -gexit
-
-# Export results
-godot --headless -s --path . addons/gut/gut_cmdln.gd \
-  -gexit -gjunit_xml_file=results.xml
-```
-
-**Exit codes:** 0 = success, 1 = failures
-
-### Best Practices
-
-1. **One concept per test** - Test one behavior in each test method
-2. **Descriptive names** -
-   `test_rollback_triggers_on_mismatch_above_threshold` not
-   `test_rollback`
-3. **AAA pattern** - Arrange (setup), Act (execute), Assert (verify)
-4. **Use fixtures** - Create reusable test data in `before_each`
-5. **Mock external dependencies** - Don't rely on file I/O, network, etc.
-6. **Test edge cases** - Empty, null, boundary values, error conditions
-7. **Keep tests fast** - Unit tests should run in milliseconds
-8. **Deterministic tests** - No randomness, no timing dependencies
-   (in unit tests)
-9. **Clean up** - Use `add_child_autofree()` for nodes, GUT handles
-   the rest
-
-### Common Pitfalls
-
-- **Forgetting to extend GutTest** - Tests won't be discovered
-- **Missing `test_` prefix** - Method won't run as a test
-- **Creating doubles in before_all()** - Use before_each() instead
-- **Not registering inner classes** - Call `register_inner_classes()`
-  first
-- **Assuming execution order** - Tests can run in any order
-- **Testing implementation details** - Test behavior, not internals
-- **Integration tests in unit test dir** - Keep them separated
-
-### Project-Specific Testing Notes
-
-**Running Tests Successfully:**
-- Run specific test files rather than directories for reliability:
-  ```bash
-  godot --headless -s --path . addons/gut/gut_cmdln.gd \
-	-gtest=res://test/unit/core/test_match_state_get_player_score.gd -gexit
-  ```
-  (The old example here pointed at
-  `res://test/unit/scaffolder/test_circular_buffer.gd`, which moved
-  into the `rollback_netcode` submodule when the netcode was
-  extracted. A `-gtest=` path that doesn't exist reports "Could not
-  find script" and still exits 0.)
-- Directory-based runs (`-gdir=res://test/unit`) sometimes fail to
-  discover tests
-- Always use `-gexit` flag for CI/CD to get proper exit codes
-- **Don't await GUT's `wait_seconds`.** The scene tree is paused
-  during GUT runs here, so GUT's awaiter never ticks and the test
-  hangs until the process is killed. Await
-  `get_tree().create_timer(sec).timeout`, which runs while
-  paused, or `get_tree().process_frame` instead.
-
-**Critical Test Setup Patterns:**
-- **ArrayPool management is mandatory** - Every test that uses ArrayPool
-  (directly or indirectly through CircularBuffer/RollbackBuffer) MUST call
-  `ArrayPool.clear_all_pools()` in both `before_each()` and `after_each()`
-- **Type hints for Arrays** - GDScript tests require explicit type hints
-  when retrieving arrays:
-  ```gdscript
-  var state: Array = buffer.get_at(5)  # Correct
-  var state = buffer.get_at(5)         # May fail type checking
-  ```
-
-**Testing Networking Components:**
-- The `G` singleton (Global) is auto-loaded and initializes networking
-  subsystems
-- Tests run with full autoload context - NetworkMain, NetworkFrameDriver,
-  etc. are active
-- Frame-based simulation uses `NetworkFrameDriver.TARGET_NETWORK_TIME_STEP_SEC`
-  (1/60 = 0.01666... seconds)
-- Use `ReconcilableNetworkedState.FrameAuthority` enum values (UNKNOWN=0,
-  AUTHORITATIVE=1, PREDICTED=2)
-
-**Accessing Internal State:**
-- Avoid accessing private members like `buffer._data[i]` in tests when
-  possible
-- Use public API methods (`get_at()`, `set_at()`) for better encapsulation
-- If internal access is necessary, understand it couples tests to
-  implementation
-
-**Known Test Failures:**
-- A few tests check array instance equality which fails due to GDScript's
-  array semantics
-- Some tests access RollbackBuffer internal state for validation - these
-  may break if implementation changes
-- Type coercion in assertions: use explicit types to avoid GDScript type
-  inference issues
-
-**Test Coverage:**
-- Unit tests: CircularBuffer (47 tests), ArrayPool (13 tests),
-  RollbackBuffer (20 tests), ServerTimeTracker (12 tests)
-- Integration tests: Rollback flow (10 tests), state synchronization
-  (10+ tests), frame timing (14+ tests)
-- Total: 90+ tests covering core networking infrastructure
-
-## References
-
-Networking concepts and patterns:
-- [Gabriel Gambetta's Client-Side Prediction and Server Reconciliation](https://www.gabrielgambetta.com/client-side-prediction-server-reconciliation.html) - Definitive explanation of prediction/reconciliation
-- [Godot High-Level Multiplayer Docs](https://docs.godotengine.org/en/stable/tutorials/networking/high_level_multiplayer.html) - Official Godot networking documentation
-- [Godot Scene Replication (4.0)](https://godotengine.org/article/multiplayer-in-godot-4-0-scene-replication/) - MultiplayerSynchronizer/Spawner introduction
-
-Godot networking addons (for reference, not used in this project):
-- [Netfox](https://forum.godotengine.org/t/netfox-addons-for-online-multiplayer-games/36066) - Client-side prediction and server reconciliation addon
-- [MonkeNet](https://github.com/grazianobolla/godot-monke-net) - C# addon with prediction, interpolation, lag compensation
-
-## Known Issues
-
-### Web Client WebSocket Buffer Overflow (2026-03-17)
-
-Web clients in cross-play matches eventually hit "Buffer
-payload full! Dropping data" errors. The server replicates
-state for all players via MultiplayerSynchronizer nodes,
-generating ~150-500 state updates per second. The web
-client's single-threaded WASM runtime cannot always drain
-the inbound buffer fast enough.
-
-**Mitigation:** WebSocket buffers increased to 1MB
-(default 64KB) and max queued packets to 16384 (default
-2048). This provides ~7-30 seconds of headroom before
-overflow. A proper fix would be reducing the server's
-send rate for web peers (e.g., 30 FPS state updates
-instead of 60), but that is an architectural change.
-
-### WebSocket Cross-Play Latency (2026-03-17)
-
-Desktop clients in WebSocket cross-play matches see
-~100ms ping and 13-25% perceived packet loss, compared
-to ~25ms ping and 0% loss with ENet-only matches. This
-is inherent to TCP vs UDP: WebSocket over TCP has
-head-of-line blocking (a single lost packet stalls the
-entire stream until retransmitted). The "packet loss" in
-PERF stats measures late/missed frame updates, not actual
-TCP drops. Gameplay is playable but noticeably less smooth
-than ENet.
-
-### Resolved Issues
-
-**Server Stuck on "Waiting for Players" (2026-03-11,
-resolved 2026-03-17):** Godot's WebSocket server rejects
-HTTP upgrade requests with an `Origin` header (all
-browsers send one), and GameLift port mapping is
-unpredictable with 3+ container ports. Fixed by using
-nginx with `ssl_preread` for TLS detection on 2 container
-ports, with Origin stripping in the TLS termination path.
-
-**Native Clients Cannot Connect via WSS (2026-03-16,
-resolved 2026-03-17):** Godot 4.5's native mbedTLS-based
-WebSocket client cannot establish `wss://` connections to
-any remote server. Worked around by having native clients
-use plain `ws://` through nginx's pass-through path. See
-"Godot Native WSS Limitation" in the WSS TLS Termination
-section.
-
-**WebRTC ICE Fails on GameLift (2026-04-02, resolved
-2026-04-09):** WebRTC cross-play stopped working after
-a fleet deployment. SDP exchange succeeded but ICE
-connectivity checks timed out. Three root causes:
-(1) The webrtc-native GDExtension v1.0.9 ignores
-`portRangeBegin`/`portRangeEnd` in `initialize()`, so
-the ICE agent bound to ephemeral UDP ports not
-forwarded by GameLift. Fixed by patching the
-GDExtension at Docker build time.
-(2) The STUN-reflected srflx candidate advertised the
-container port (4433) instead of the GameLift host
-port. Fixed by rewriting the candidate port in the
-signaling server before sending to clients.
-(3) Multiple PeerConnections could not share port 4433
-because libjuice's mux mode was not enabled
-(`JUICE_CONCURRENCY_MODE_POLL` default). Fixed by
-adding `enableIceUdpMux: true` to the initialize
-config, which sets `JUICE_CONCURRENCY_MODE_MUX`.
-Also required adding port 4433/UDP to the fleet's
-`InstanceInboundPermissions` (GameLift uses
-port-preserving NAT for outbound STUN, so return
-traffic arrives on host port 4433).
-
-**Buffer overflow on shutdown (2026-03-16, fixed):**
-Server did not disconnect clients when cancelling a match
-(grace period expiry) or during process termination with
-no active match. Client did not close the WebSocket on
-receiving the shutdown notification. Both fixed in
-`gamelift_server.gd`, `game_panel.gd`, and
-`network_connector.gd`.
+`class_name`s (`PlayerInputFromClient`, `CharacterStateFromServer`,
+`ForwardedPlayerInputFromServer`) as type annotations: circular
+compile-time dependencies break exported builds. Use the
+`ReconcilableStateType` enum + `_get_type()` instead of `is`
+checks; access subclass properties through
+`ReconcilableState`-typed variables with `get()`/`call()`.
+
+### Web build parse errors — DO NOT chase with `.get()` rewrites
+
+When a web export fails at boot with cascading
+`Could not resolve external class member` parse errors, those are
+symptoms; the root cause is the `Cannot get class ''` /
+`Parameter "obj" is null` block at the very TOP of the boot log (a
+class-typed resource failed to load: stale GDExtension declaration
+or class cache, or a broken script ref). Read the log top-down and
+fix the first error. **Never "fix" the parse errors by rewriting
+`G.settings.X` to `G.get("settings").get("X")`** — that destroys
+typing project-wide and does not address the cause. "Works in
+editor" is no signal. Playbook: `docs/web-parse-errors.md`.
+
+## Internationalization (i18n)
+
+All user-visible strings go through `tr()`, with translations for
+every supported locale. `translations/ui_translations.csv` is real
+CSV: quote cells containing commas, double inner quotes — one
+unquoted comma shifts the rest of the row into the next locales.
+After editing, run `godot --headless --import` and commit the
+regenerated `.translation` files with the CSV. The adjective/name
+lists may hold neither commas nor quotes.
+`test/unit/i18n/test_translation_csvs.gd` checks all of this;
+harness scenario `i18n-party-strings` screenshots five locales.
+
+## UI
+
+All interactive UI must be navigable with U/D + L/R (gamepad or
+keyboard); mouse-only UI is not acceptable. `MenuRow` is the
+universal focusable row: Trigger/Right fire `on_trigger()`, Left
+routes to the panel/screen back action (two opt-outs via
+`consumes_horizontal_input()`). Buttons use pixel-art icons at the
+Settings icon scale; ask for missing icons, never ship without.
+Full contracts, sign-out flows, camera: **`.claude/rules/ui.md`**.
+
+## Code style
+
+Follow the Godot GDScript style guide plus the project rules in
+**`.claude/rules/gdscript-style.md`** (auto-loads with `.gd`,
+`.tscn`, `.tres` files): tabs, 80 cols, `not` over `!`, parens over
+backslashes, trailing commas, typed everything, no `preload()` for
+resource refs (use `@export`), direct autoload access, comments end
+with periods, no em dashes, never maintain `load_steps` in `.tscn`.
+When modifying legacy lines, convert them; never bulk-convert.
+
+## Known issues
+
+Live transport issues (web buffer overflow, WebSocket latency):
+`.claude/rules/transport.md`. Open work lives in `LEDGER.md`.
+
+## Lore and history
+
+Subsystem lore loads on demand: each `.claude/rules/*.md` file has
+a `paths:` list and loads when a matching file is read or edited;
+`docs/history.md` is never imported. New lore goes to the area's
+rules file, new history to `docs/history.md` or the commit, never
+here.
+
+- `.claude/rules/deploy.md` (`game.yaml`, workflows, deploy
+  scripts, `web/**`, `legal/**`): procedures, synced versions,
+  production resources, backup restore, cost monitor.
+- `.claude/rules/transport.md` (netcode submodule, runtime,
+  signaling proxy, session glue): WebRTC/signaling, ports,
+  native WSS, matchmaking flow, live issues.
+- `.claude/rules/testing.md` (`test/**`, `addons/gut/**`): GUT
+  reference, ArrayPool and `wait_seconds` traps, known failures.
+- `.claude/rules/gdscript-style.md` (`*.gd`, `*.tscn`, `*.tres`):
+  full style rules and tscn text-editing notes.
+- `.claude/rules/ui.md` (`src/ui/**`, `src/level/**`, PVM,
+  SignOutRouter): input contracts, sign-out flows, camera rules.
+- `.claude/rules/crash-reporting.md` (`src/core/crash_*`):
+  queue/redaction contract.
+- `scripts/agent/README.md`: full agent-harness reference.
+- `docs/web-parse-errors.md`: web-boot diagnosis playbook.
+- `docs/networking-concepts.md`: educational netcode reference.
+- `docs/history.md`: migration timeline, resolved issues, incidents.
