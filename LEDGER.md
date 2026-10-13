@@ -79,6 +79,15 @@ states its facts, so it stands on its own after the transcript is gone.
   CSVs at runtime, but they are imported as translations, so exported
   builds likely lack the source files and fall back to English. Check
   against an export. (Session 530145bc, agent abdbfdf9.)
+- **H34** · Slim `CLAUDE.md` (2,332 lines, ~24k tokens, loaded into every
+  session and subagent) to about 400 lines / 10k tokens under
+  claude-config `rules/context-budget.md`. Keep binding rules,
+  invariants, the architecture map and how to run and test. History goes
+  to commit messages (or `docs/history.md`, never imported), design to
+  `docs/design/`, and subsystem lore to path-scoped `.claude/rules/<area>.md`
+  (commit `.claude/rules/`). Biggest sections: Deployment (~700 lines),
+  Testing with GUT (~400), Code Style (~250). The daily follow-ups
+  report tracks the size.
 
 ## Residuals (known, not fixed)
 
