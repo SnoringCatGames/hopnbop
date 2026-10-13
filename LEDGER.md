@@ -35,12 +35,6 @@ states its facts, so it stands on its own after the transcript is gone.
 
 
 ## Next
-
-- **H16** · Localized bunny names and adjectives probably don't ship.
-  The game reads the `translations/adjectives` and `translations/names`
-  CSVs at runtime, but they are imported as translations, so exported
-  builds likely lack the source files and fall back to English. Check
-  against an export. (Session 530145bc, agent abdbfdf9.)
 - **H34** · Slim `CLAUDE.md` (2,332 lines, ~24k tokens, loaded into every
   session and subagent) to about 400 lines / 10k tokens under
   claude-config `rules/context-budget.md`. Keep binding rules,
@@ -146,6 +140,13 @@ states its facts, so it stands on its own after the transcript is gone.
 
 ## Done
 
+- **H16** · Checked 2026-10-12 against the real 0.54.0 web export:
+  mounted `index.pck` with `ProjectSettings.load_resource_pack` and
+  probed `FileAccess.file_exists` on the exact paths
+  `localized_name_config.gd` reads. All `translations/names/*` and
+  `translations/adjectives/*` CSVs ship, so localized bunny names and
+  adjectives work in exports. The suspicion (sources stripped by the
+  translation importer) was wrong; nothing to fix.
 - **H14** · Runtime HTTP key rotated 2026-10-12, right after H4
   shipped (leak plan step 3, closing the key committed here from
   12a93325 until 15498835). Rotated in `credentials.env` (blob
