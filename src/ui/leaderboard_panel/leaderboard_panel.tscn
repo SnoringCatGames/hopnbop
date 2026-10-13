@@ -5,10 +5,7 @@
 [ext_resource type="StyleBox" uid="uid://co2x2prpygpfd" path="res://src/ui/settings_panel/focus_border_stylebox.tres" id="3_focus"]
 [ext_resource type="StyleBoxFlat" path="res://src/ui/settings_panel/unfocused_stylebox.tres" id="4_unfocused"]
 [ext_resource type="Texture2D" path="res://assets/images/gui/x_icon_enlarged.png" id="5_x_icon"]
-[ext_resource type="Texture2D" path="res://assets/images/gui/filter_icon.png" id="6_filter_icon"]
 [ext_resource type="PackedScene" path="res://src/ui/loading_spinner/loading_spinner.tscn" id="7_spinner"]
-[ext_resource type="Texture2D" uid="uid://crfyeraq1bldu" path="res://assets/images/gui/checkmark_icon.png" id="8_check"]
-[ext_resource type="PackedScene" path="res://src/ui/settings_panel/binary_toggle.tscn" id="9_binary_toggle"]
 
 [node name="LeaderboardScreen" type="PanelContainer"]
 process_mode = 3
@@ -18,9 +15,6 @@ script = ExtResource("2_script")
 _focus_style = ExtResource("3_focus")
 _unfocused_style = ExtResource("4_unfocused")
 _x_icon = ExtResource("5_x_icon")
-_filter_icon = ExtResource("6_filter_icon")
-_checkmark_icon = ExtResource("8_check")
-_binary_toggle_scene = ExtResource("9_binary_toggle")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 2
@@ -44,39 +38,6 @@ size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 28
 horizontal_alignment = 1
 
-[node name="FilterMasterRow" type="PanelContainer" parent="VBoxContainer/MarginContainer/InnerVBox"]
-unique_name_in_owner = true
-layout_mode = 2
-focus_mode = 2
-
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/MarginContainer/InnerVBox/FilterMasterRow"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 8
-
-[node name="FilterIcon" type="TextureRect" parent="VBoxContainer/MarginContainer/InnerVBox/FilterMasterRow/HBoxContainer"]
-unique_name_in_owner = true
-layout_mode = 2
-mouse_filter = 2
-expand_mode = 1
-stretch_mode = 5
-visible = false
-
-[node name="FilterLabel" type="Label" parent="VBoxContainer/MarginContainer/InnerVBox/FilterMasterRow/HBoxContainer"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 28
-
-[node name="FilterSubRows" type="VBoxContainer" parent="VBoxContainer/MarginContainer/InnerVBox"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="HSeparator" type="HSeparator" parent="VBoxContainer/MarginContainer/InnerVBox"]
-layout_mode = 2
-
 [node name="RankLabel" type="Label" parent="VBoxContainer/MarginContainer/InnerVBox"]
 unique_name_in_owner = true
 visible = false
@@ -84,6 +45,43 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
 horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="HSeparator" type="HSeparator" parent="VBoxContainer/MarginContainer/InnerVBox"]
+layout_mode = 2
+
+[node name="HeaderMargin" type="MarginContainer" parent="VBoxContainer/MarginContainer/InnerVBox"]
+modulate = Color(1, 1, 1, 0.7)
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_right = 8
+
+[node name="HeaderRow" type="HBoxContainer" parent="VBoxContainer/MarginContainer/InnerVBox/HeaderMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="RankHeader" type="Label" parent="VBoxContainer/MarginContainer/InnerVBox/HeaderMargin/HeaderRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "#"
+horizontal_alignment = 2
+
+[node name="PlayerHeader" type="Label" parent="VBoxContainer/MarginContainer/InnerVBox/HeaderMargin/HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "LEADERBOARD.PLAYER"
+
+[node name="ScoreHeader" type="Label" parent="VBoxContainer/MarginContainer/InnerVBox/HeaderMargin/HeaderRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "LEADERBOARD.BEST_SCORE"
+horizontal_alignment = 2
 
 [node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/MarginContainer/InnerVBox"]
 unique_name_in_owner = true
@@ -95,10 +93,6 @@ horizontal_scroll_mode = 0
 [node name="WrapperVBox" type="VBoxContainer" parent="VBoxContainer/MarginContainer/InnerVBox/ScrollContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="TopSpacer" type="Control" parent="VBoxContainer/MarginContainer/InnerVBox/ScrollContainer/WrapperVBox"]
-layout_mode = 2
 size_flags_vertical = 3
 
 [node name="ContentContainer" type="VBoxContainer" parent="VBoxContainer/MarginContainer/InnerVBox/ScrollContainer/WrapperVBox"]

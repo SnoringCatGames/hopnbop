@@ -406,6 +406,17 @@ verify the artifact landed, then run with `-SkipExport`.
   `innerHTML`. Contract and privacy rules:
   `PLATFORM_ARCHITECTURE.md` → "Leaderboards". It replaced the AWS
   API Gateway URL, which died with Phase F.
+
+  The in-game leaderboard (`src/ui/leaderboard_panel/`, through
+  `BackendApiClient.fetch_leaderboard`) reads the same route, so the
+  game and the site always list the same players with the same
+  ranks; a signed-in player also sees their rank, from
+  `get_player_stats`, and an anonymous one is told why they aren't
+  listed. My Stats (`src/ui/screens/my_stats_screen.gd`) shows
+  `get_player_stats`' best score and rank and `get_match_history`'s
+  totals and latest matches. Before 2026-10-12 the panel listed raw
+  Nakama records by username and My Stats read the account profile,
+  so both showed nothing useful.
 - Discord invite link: `https://discord.gg/QX939SF7nb`.
 - Update `web/blog/index.html` with patch notes when making
   new releases.
@@ -1448,9 +1459,8 @@ inspect `_navigator.last_activation_direction`:
 
 - `0` (Trigger) → `_activate_focused()` (fire focused button).
 - `1` (Right) → same as Trigger for non-horizontal-consumer
-  controls; for horizontal-consumer controls (e.g., the
-  leaderboard's BinaryToggle), call the control's
-  `on_right()`.
+  controls; for horizontal-consumer controls (e.g., a
+  BinaryToggle), call the control's `on_right()`.
 - `-1` (Left) → `on_back()` (or the focused control's
   `on_left()` if it consumes horizontal input).
 

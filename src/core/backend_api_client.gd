@@ -11,11 +11,38 @@ extends Node
 ## and loading_screen).
 
 
+## Emitted by fetch_leaderboard() with parse_public_leaderboard()'s
+## data.
 signal leaderboard_received(data: Dictionary)
+## Emitted when fetch_leaderboard() fails. The reason is for logs,
+## never for players.
+signal leaderboard_failed(reason: String)
+## Emitted by fetch_own_standing() with parse_player_standing()'s
+## data.
+signal own_standing_received(data: Dictionary)
+## Emitted by fetch_my_stats() with build_my_stats()'s data.
+signal my_stats_received(data: Dictionary)
+## Emitted when fetch_my_stats() fails: NOT_SIGNED_IN without a
+## session, otherwise a reason for logs.
+signal my_stats_failed(reason: String)
 signal player_stats_received(data: Dictionary)
 signal profile_received(data: Dictionary)
 signal match_history_received(data: Dictionary)
 signal request_failed(error: String)
+
+## The board the leaderboards show: game.yaml's `ffa`, each player's
+## best single-match score.
+const LEADERBOARD_ID := "ffa"
+## Players the in-game leaderboard lists: as many as the website.
+const LEADERBOARD_LIMIT := 100
+## Matches My Stats lists.
+const MY_STATS_RECENT_MATCHES := 10
+## my_stats_failed's reason when the player has no session.
+const NOT_SIGNED_IN := "not_signed_in"
+## The public leaderboard reply's schema version this client reads.
+const _PUBLIC_LEADERBOARD_VERSION := 1
+const _HTTP_TIMEOUT_SEC := 10.0
+const _HTTP_OK := 200
 
 # Cached legal_version reported by the runtime's version_check
 # response. Empty until the first successful check_version call.
@@ -39,6 +66,10 @@ var server_matchmaker_query: String = ""
 # query (String), is_default (bool). Empty array means "no
 # modes; hide the picker". Stage 4.7 / 5.7.
 var server_matchmaker_modes: Array = []
+
+## Counts fetch_leaderboard() calls, so a slow reply can't overwrite
+## a newer one.
+var _leaderboard_request_count := 0
 
 ## Deprecated. Kept so the legacy lobby-level warmup connection
 ## still resolves. Never emitted now that Edgegap auto-allocates.
@@ -96,59 +127,179 @@ func fetch_fleet_status() -> void:
 # Leaderboard
 # --------------------------------------------------------------
 
-func fetch_leaderboard(
-	type: String = "alltime",
-	scope: String = "global",
-	limit: int = 50,
-) -> void:
-	# Stage 3.6: read the per-game leaderboard the runtime
-	# writes (`{game_id}_ffa`). The `type` parameter is echoed
-	# back in the leaderboard_received payload below so the UI
-	# can label which tab it came from. We don't have per-window
-	# boards on the server today; when they land, switch this
-	# to `"%s_ffa_%s" % [game_id, type]`.
-	var game_id: String = Platform.game_id
-	var board_id := (
-		"%s_ffa" % game_id
-		if not game_id.is_empty()
-		else "ffa"
-	)
-	var session := await _ensure_session()
+## Fetches the game's public leaderboard from the platform runtime's
+## unauthenticated route: the same players, ranks, and listing rules
+## as hopnbop.net/leaderboard/ (only accounts with a display name; no
+## account queued for deletion; no probe account). It needs no
+## session, so opening the leaderboard never creates a guest account.
+## Emits leaderboard_received, or leaderboard_failed.
+##
+## Until 2026-10-12 this listed raw Nakama records with a session,
+## emitted them under a key the screen didn't read, and named each
+## player by the record's username, which match_end never sets.
+func fetch_leaderboard() -> void:
+	_leaderboard_request_count += 1
+	var request_number := _leaderboard_request_count
+	var url: String = Platform.get_public_leaderboard_url(
+		LEADERBOARD_ID, LEADERBOARD_LIMIT)
+	var reply: Dictionary = await _http_get(url)
+	if request_number != _leaderboard_request_count:
+		return
+	var parsed := parse_public_leaderboard(reply.status, reply.body)
+	if not parsed.ok:
+		leaderboard_failed.emit(parsed.error)
+		return
+	leaderboard_received.emit(parsed)
+
+
+## Reads a public leaderboard reply. Returns {ok: true, entries:
+## [{rank: int, display_name: String, score: int}] in board order,
+## operator: String, sort_order: String, generated_at: String}, or
+## {ok: false, error: String}. An entry with a malformed field is
+## dropped rather than shown half-read.
+func parse_public_leaderboard(status: int, body: String) -> Dictionary:
+	if status != _HTTP_OK:
+		return {"ok": false, "error": "HTTP %d" % status}
+	var data: Variant = _parse_json(body)
+	if not (data is Dictionary):
+		return {"ok": false, "error": "the reply is not a JSON object"}
+	var version: Variant = data.get("version")
+	if (
+		not _is_number(version)
+		or int(version) != _PUBLIC_LEADERBOARD_VERSION
+		or not (data.get("entries") is Array)
+	):
+		return {"ok": false, "error": "unexpected leaderboard version"}
+	var entries: Array[Dictionary] = []
+	for raw: Variant in data.entries:
+		if not (raw is Dictionary):
+			continue
+		var rank: Variant = raw.get("rank")
+		var score: Variant = raw.get("score")
+		var display_name: Variant = raw.get("display_name")
+		if (
+			not _is_number(rank)
+			or not _is_number(score)
+			or not (display_name is String)
+			or (display_name as String).strip_edges().is_empty()
+		):
+			continue
+		entries.append({
+			"rank": int(rank),
+			"display_name": (display_name as String).strip_edges(),
+			"score": int(score),
+		})
+	return {
+		"ok": true,
+		"entries": entries,
+		"operator": str(data.get("operator", "")),
+		"sort_order": str(data.get("sort_order", "")),
+		"generated_at": str(data.get("generated_at", "")),
+	}
+
+
+## Fetches the caller's own standing through get_player_stats, only
+## with a session the player already has: it never signs a guest in
+## just to ask. Emits own_standing_received. A failure emits nothing.
+func fetch_own_standing() -> void:
+	var session := _ensure_session_optional()
 	if session == null:
 		return
-	var owner_ids = null
-	if scope == "friends":
-		# Restrict the listing to records owned by the current
-		# user's friend graph.
-		var friends_resp = await Platform.get_nakama_client().list_friends_async(
-			session, null, 100, null)
-		if not friends_resp.is_exception():
-			var ids := PackedStringArray()
-			for f in friends_resp.friends:
-				ids.append(f.user.id)
-			owner_ids = ids
-	var result = await Platform.get_nakama_client().list_leaderboard_records_async(
-		session, board_id, owner_ids, null, limit, "")
+	var result = await Platform.get_nakama_client().rpc_async(
+		session, "get_player_stats", "{}")
 	if result.is_exception():
-		request_failed.emit(_describe(result.get_exception()))
 		return
-	var entries := []
-	for r in result.records:
-		entries.append({
-			"rank": r.rank,
-			"player_id": r.owner_id,
-			"display_name": r.username,
-			"score": r.score,
-			"metadata": JSON.parse_string(r.metadata) \
-				if not r.metadata.is_empty() else {},
+	own_standing_received.emit(
+		parse_player_standing(_parse_json(result.payload)))
+
+
+## Reads get_player_stats' reply into {rank: int, 0 when the player
+## isn't on the public leaderboard; best_score: int, -1 before their
+## first recorded match}. A runtime older than its best_score and
+## rank fields reads as {rank: 0, best_score: -1}.
+func parse_player_standing(data: Variant) -> Dictionary:
+	var standing := {"rank": 0, "best_score": -1}
+	if not (data is Dictionary):
+		return standing
+	var rank: Variant = data.get("rank")
+	if _is_number(rank) and int(rank) > 0:
+		standing.rank = int(rank)
+	var best_score: Variant = data.get("best_score")
+	if _is_number(best_score) and int(best_score) >= 0:
+		standing.best_score = int(best_score)
+	return standing
+
+
+## Fetches the caller's stats for My Stats: get_player_stats (best
+## score, rank) and get_match_history (totals, recent matches), with
+## the player's own session. Emits my_stats_received, or
+## my_stats_failed (NOT_SIGNED_IN without a session).
+func fetch_my_stats() -> void:
+	var session := _ensure_session_optional()
+	if session == null:
+		my_stats_failed.emit(NOT_SIGNED_IN)
+		return
+	var client := Platform.get_nakama_client()
+	var stats = await client.rpc_async(session, "get_player_stats", "{}")
+	if stats.is_exception():
+		my_stats_failed.emit(_describe(stats.get_exception()))
+		return
+	var history = await client.rpc_async(
+		session, "get_match_history", "{}")
+	if history.is_exception():
+		my_stats_failed.emit(_describe(history.get_exception()))
+		return
+	my_stats_received.emit(build_my_stats(
+		_parse_json(stats.payload), _parse_json(history.payload)))
+
+
+## Combines get_player_stats' and get_match_history's replies into My
+## Stats' data: {best_score: int, -1 before the first match; rank:
+## int, 0 when not listed; matches, wins, kills, bumps: int totals;
+## recent_matches: [{is_winner: bool, score: int, kills: int, bumps:
+## int}], newest first, at most MY_STATS_RECENT_MATCHES}. A runtime
+## without totals is totalled from the matches it listed.
+func build_my_stats(stats: Variant, history: Variant) -> Dictionary:
+	var standing := parse_player_standing(stats)
+	var listed: Array[Dictionary] = []
+	var totals: Variant = null
+	if history is Dictionary:
+		var matches: Variant = history.get("matches")
+		if matches is Array:
+			for match_entry: Variant in matches:
+				if match_entry is Dictionary:
+					listed.append(match_entry)
+		totals = history.get("totals")
+	listed.sort_custom(
+		func(a: Dictionary, b: Dictionary) -> bool:
+			return _number(a, "ended_at") > _number(b, "ended_at"))
+	var recent: Array[Dictionary] = []
+	for match_entry in listed.slice(0, MY_STATS_RECENT_MATCHES):
+		recent.append({
+			"is_winner": match_entry.get("is_winner") == true,
+			"score": _number(match_entry, "score"),
+			"kills": _number(match_entry, "kills"),
+			"bumps": _number(match_entry, "bumps"),
 		})
-	leaderboard_received.emit({
-		"type": type,
-		"scope": scope,
-		"leaderboard_id": board_id,
-		"entries": entries,
-		"cursor": result.next_cursor,
-	})
+	var result := {
+		"best_score": standing.best_score,
+		"rank": standing.rank,
+		"recent_matches": recent,
+	}
+	if totals is Dictionary:
+		for key in ["matches", "wins", "kills", "bumps"]:
+			result[key] = _number(totals, key)
+	else:
+		result.matches = listed.size()
+		result.wins = listed.filter(
+			func(m: Dictionary) -> bool: return m.get("is_winner") == true
+		).size()
+		result.kills = 0
+		result.bumps = 0
+		for match_entry in listed:
+			result.kills += _number(match_entry, "kills")
+			result.bumps += _number(match_entry, "bumps")
+	return result
 
 
 func fetch_player_stats(player_id: String = "") -> void:
@@ -396,6 +547,48 @@ func _describe(ex: NakamaException) -> String:
 	if ex == null:
 		return "Unknown Nakama error"
 	return "%s (status=%d)" % [ex.message, ex.status_code]
+
+
+## GETs `url` with no credential. Returns {status: int, body: String};
+## status 0 means no response arrived.
+func _http_get(url: String) -> Dictionary:
+	var http := HTTPRequest.new()
+	http.timeout = _HTTP_TIMEOUT_SEC
+	add_child(http)
+	# Let the HTTPRequest finish entering the tree first; see
+	# check_version() for the TLS failure an immediate request hits.
+	await get_tree().process_frame
+	var err := http.request(
+		url, PackedStringArray(["Accept: application/json"]))
+	if err != OK:
+		http.queue_free()
+		return {"status": 0, "body": ""}
+	var result: Array = await http.request_completed
+	http.queue_free()
+	if result[0] != HTTPRequest.RESULT_SUCCESS:
+		return {"status": 0, "body": ""}
+	var body: PackedByteArray = result[3]
+	return {"status": result[1], "body": body.get_string_from_utf8()}
+
+
+## Parses JSON quietly (JSON.parse_string logs an engine error on bad
+## input). Returns null when `text` isn't JSON.
+func _parse_json(text: String) -> Variant:
+	var json := JSON.new()
+	if json.parse(text) != OK:
+		return null
+	return json.data
+
+
+## True for a JSON number, which Godot's parser yields as a float.
+func _is_number(value: Variant) -> bool:
+	return value is float or value is int
+
+
+## Returns `data[key]` as an int, or 0 when it isn't a number.
+func _number(data: Dictionary, key: String) -> int:
+	var value: Variant = data.get(key)
+	return int(value) if _is_number(value) else 0
 
 
 func _account_linked_providers(account) -> Array:
