@@ -35,15 +35,6 @@ states its facts, so it stands on its own after the transcript is gone.
 
 
 ## Next
-- **H34** · Slim `CLAUDE.md` (2,332 lines, ~24k tokens, loaded into every
-  session and subagent) to about 400 lines / 10k tokens under
-  claude-config `rules/context-budget.md`. Keep binding rules,
-  invariants, the architecture map and how to run and test. History goes
-  to commit messages (or `docs/history.md`, never imported), design to
-  `docs/design/`, and subsystem lore to path-scoped `.claude/rules/<area>.md`
-  (commit `.claude/rules/`). Biggest sections: Deployment (~700 lines),
-  Testing with GUT (~400), Code Style (~250). The daily follow-ups
-  report tracks the size.
 
 ## Residuals (known, not fixed)
 
@@ -138,6 +129,15 @@ states its facts, so it stands on its own after the transcript is gone.
 
 ## Done
 
+- **H34** · CLAUDE.md slimmed to the context budget: 2,333 lines /
+  ~24k tokens → 400 lines / ~4.8k, the same split knotmaze used for
+  K45. Binding rules stay; lore moved verbatim to path-scoped
+  `.claude/rules/` (deploy, transport, testing, gdscript-style, ui,
+  crash-reporting), the harness reference to
+  `scripts/agent/README.md`, playbooks and the netcode explainer to
+  `docs/`, history to `docs/history.md`. Done in 34971411
+  (2026-10-13); Measure-ContextBudget now lists hopnbop within
+  budget.
 - **H36** · Edgegap v27 and v28 deactivated 2026-10-12 (API PATCH
   `is_active=false`); only v29 is active. Edgegap-side state, no commit.
   `game-server.yml` still leaves the prior version active after every
