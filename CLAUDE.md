@@ -140,7 +140,8 @@ Flags: `-Headless` (no windows, so no screenshots), `-Visible`
 x=20000, which still renders), `-Steps '<json array>'`, `-TimeoutSec`,
 `-Seed <int|none>`, `-UseWorkingSettings`, `-OutDir` (default
 `$env:TEMP\hopnbop-agent-runs`), `-Import` (re-import first), `-Json`
-(print only the summary), `-AllowNetwork`.
+(print only the summary), `-AllowNetwork`, `-Backend <url>` (see
+"Prod safety").
 
 **Modes.** `offline`: one local-mode process (`--client=1`, running
 client and server logic). `level`: offline with a required `level`.
@@ -208,6 +209,15 @@ with every backend URL at `127.0.0.1:9`, forces
 `preview_connect_to_remote_server=false`, mutes audio, and never
 writes settings.tres. `-AllowNetwork` lifts only the network block;
 the wrapper deletes any `auth*.cfg` a run wrote.
+
+`-Backend http://127.0.0.1:<port>` points Nakama, and only Nakama,
+at a local stack, such as one `scripts/local-smoke-test.ps1
+-KeepStack` left up (`-BackendServerKey`, default the dev stack's
+`defaultkey`). The host must be loopback; anything else is refused
+(exit 3), with or without `-AllowNetwork`, so a run can never reach
+production. OAuth and the token broker stay blackholed.
+`scenarios/leaderboard-local-backend.json` opens the in-game
+leaderboard against such a stack and needs recorded scores in it.
 
 **Pass/fail and exit codes.** Judge by the `AGENT_RESULT {...}` line,
 as the wrapper does. A process fails on a missing result line, a

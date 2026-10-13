@@ -20,6 +20,12 @@ const _LOG_PREFIX := "[agent] "
 const _BLACKHOLE_HOST := "127.0.0.1"
 const _BLACKHOLE_PORT := 9
 const _OFFLINE_KEY := "agent-harness-offline"
+## Hosts --agent-backend may name: a local stack, never production.
+const _LOOPBACK_HOSTS: Array[String] = ["127.0.0.1", "localhost", "::1"]
+const _BACKEND_SCHEMES: Array[String] = ["http", "https"]
+## The dev stack's server key (infra/dev/docker-compose.dev.yml), used
+## when --agent-backend-key is not given.
+const _DEV_SERVER_KEY := "defaultkey"
 
 const _EXIT_OK := 0
 const _EXIT_FAILED := 1
@@ -99,6 +105,11 @@ var _port := 0
 var _window_rect := Rect2i()
 var _has_window_rect := false
 var _is_network_allowed := false
+## A local Nakama (--agent-backend) the game talks to instead of the
+## blackhole: {scheme, host, port}, empty when none was given.
+var _backend: Dictionary = {}
+var _backend_url := ""
+var _backend_key := _DEV_SERVER_KEY
 var _base_settings_path := ""
 var _timeout_sec := _DEFAULT_TIMEOUT_SEC
 var _steps: Array = []
@@ -185,7 +196,11 @@ func configure() -> void:
 	# Safety comes first and is unconditional: even a refused or
 	# misconfigured run boots the autoloads for a frame before it quits.
 	_refusal = _check_sandbox()
-	if not _is_network_allowed or not _refusal.is_empty():
+	if _refusal.is_empty() and not _backend_url.is_empty():
+		_refusal = _check_backend()
+	if not _backend.is_empty() and _refusal.is_empty():
+		_initialize_local_platform()
+	elif not _is_network_allowed or not _refusal.is_empty():
 		_initialize_offline_platform()
 	var is_runnable := _config_error.is_empty() and _refusal.is_empty()
 	if is_runnable:
@@ -347,6 +362,10 @@ func _parse_arguments() -> String:
 				_has_window_rect = true
 			"--agent-allow-network":
 				_is_network_allowed = true
+			"--agent-backend":
+				_backend_url = value
+			"--agent-backend-key":
+				_backend_key = value
 			"--agent-base-settings":
 				_base_settings_path = value.replace("\\", "/")
 	if _scenario_path.is_empty():
@@ -513,6 +532,66 @@ func _reset_settings_to_committed() -> String:
 				"%s: %s -> %s" % [property_name, current, value])
 		G.settings.set(property_name, value)
 	return ""
+
+
+## Returns why --agent-backend can't be used, or "" when it names a
+## local stack: an http or https URL on a loopback host, with a port.
+## Production is refused even with --agent-allow-network.
+func _check_backend() -> String:
+	var parsed := _parse_backend_url(_backend_url)
+	if parsed.is_empty():
+		return "--agent-backend must be scheme://host:port, not %s" % (
+			_backend_url)
+	if not (parsed.host in _LOOPBACK_HOSTS):
+		return (
+			"--agent-backend must be a loopback stack (%s), not %s"
+			% [", ".join(_LOOPBACK_HOSTS), parsed.host]
+		)
+	_backend = parsed
+	return ""
+
+
+## Splits scheme://host:port (no path) into {scheme, host, port}, or
+## returns {} when the URL has another shape.
+func _parse_backend_url(url: String) -> Dictionary:
+	var scheme_end := url.find("://")
+	if scheme_end <= 0:
+		return {}
+	var scheme := url.substr(0, scheme_end).to_lower()
+	var authority := url.substr(scheme_end + 3).trim_suffix("/")
+	var colon := authority.rfind(":")
+	if not (scheme in _BACKEND_SCHEMES) or colon <= 0:
+		return {}
+	var host := authority.substr(0, colon).trim_prefix("[").trim_suffix("]")
+	var port_text := authority.substr(colon + 1)
+	if host.is_empty() or not port_text.is_valid_int():
+		return {}
+	return {"scheme": scheme, "host": host, "port": port_text.to_int()}
+
+
+## Initializes Platform before G does, pointing Nakama at the local
+## stack --agent-backend names and every other backend URL (OAuth,
+## token broker) at the blackhole.
+func _initialize_local_platform() -> void:
+	if Platform.is_initialized:
+		return
+	var blackhole_url := "http://%s:%d" % [_BLACKHOLE_HOST, _BLACKHOLE_PORT]
+	Platform.initialize({
+		"game_id": str(ProjectSettings.get_setting(
+			"application/config/game_id", "hopnbop")),
+		"api_base_url": _backend_url,
+		"sdk_version": str(ProjectSettings.get_setting(
+			"application/config/version", "0.0.0")),
+		"auth_file_path": "user://auth.cfg",
+		"nakama_host": _backend.host,
+		"nakama_port": _backend.port,
+		"nakama_scheme": _backend.scheme,
+		"nakama_server_key": _backend_key,
+		"oauth_callback_url": blackhole_url,
+		"google_token_broker_url": blackhole_url,
+		"google_oauth_client_id": "",
+		"facebook_oauth_client_id": "",
+	})
 
 
 ## Initializes Platform before G does (G skips its own call when

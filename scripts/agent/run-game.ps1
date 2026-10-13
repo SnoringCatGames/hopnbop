@@ -16,7 +16,7 @@
     (so it cannot see the real auth.cfg or local settings), the driver
     refuses to run if an auth file is visible anyway, and every backend
     URL is pointed at 127.0.0.1:9. Pass -AllowNetwork to lift the
-    network block.
+    network block, or -Backend to point Nakama at a local stack.
 
     Pass/fail comes from each process's `AGENT_RESULT {...}` line, not
     from exit codes alone.
@@ -33,6 +33,10 @@
 .EXAMPLE
     scripts/agent/run-game.ps1 -Mode level -Level level_2 -Steps '[
         {"do": "wait_ready"}, {"do": "screenshot", "name": "spawn"}]'
+
+.EXAMPLE
+    scripts/agent/run-game.ps1 -Scenario leaderboard-local-backend `
+        -Backend http://127.0.0.1:7350
 #>
 [CmdletBinding()]
 param(
@@ -64,6 +68,13 @@ param(
     # Use the working copy of settings.tres instead of the committed one.
     [switch]$UseWorkingSettings,
     [switch]$AllowNetwork,
+    # A local Nakama (scheme://host:port on a loopback host) to point
+    # the game at instead of the blackhole, e.g. a stack left up by
+    # local-smoke-test.ps1 -KeepStack. Other backend URLs stay
+    # blackholed. Anything but loopback is refused.
+    [string]$Backend,
+    # The server key -Backend's stack takes; the dev stack's by default.
+    [string]$BackendServerKey = 'defaultkey',
     # Do not fail a process for SCRIPT ERROR lines.
     [switch]$AllowScriptErrors,
     # Run a headless --import first (after pulling new assets).
@@ -240,6 +251,17 @@ if ((Split-Path $Godot -Leaf) -notmatch 'console') {
 if (-not (Test-Path (Join-Path $RepoRoot 'addons\snoringcat_platform_client\plugin.cfg'))) {
     throw 'addons/snoringcat_platform_client is missing. Run scripts/setup-platform-addon.ps1 first.'
 }
+if ($Backend) {
+    # The driver checks again; refusing here fails before any launch.
+    $backendUri = $null
+    if (-not [Uri]::TryCreate($Backend, [UriKind]::Absolute, [ref]$backendUri) -or
+        $backendUri.Scheme -notin @('http', 'https') -or
+        -not $backendUri.IsLoopback -or
+        $backendUri.AbsolutePath -ne '/') {
+        throw "-Backend must be http(s)://<loopback host>:<port>, not $Backend."
+    }
+    $Backend = $backendUri.GetLeftPart([UriPartial]::Authority)
+}
 
 # --- Scenario -----------------------------------------------------------------
 
@@ -391,6 +413,10 @@ function Start-GameProcess([string]$Name, [int]$WindowIndex) {
     if ($window) { $arguments.Add("--agent-window=$window") }
     if ($baseSettings) { $arguments.Add("--agent-base-settings=$baseSettings") }
     if ($AllowNetwork) { $arguments.Add('--agent-allow-network') }
+    if ($Backend) {
+        $arguments.Add("--agent-backend=$Backend")
+        $arguments.Add("--agent-backend-key=$BackendServerKey")
+    }
 
     $logPath = Join-Path $processDir 'process.log'
     $launched = [HopnbopAgent.LaunchedProcess]::Start(
@@ -410,6 +436,7 @@ Write-Info ("hopnbop agent run '{0}' (mode={1}, seed={2}, settings={3}{4})" -f `
     $scenarioName, $mode, $seedText, $settingsSource, $(if ($runPort) { ", port=$runPort" } else { '' }))
 Write-Info "run dir: $runDir"
 if ($AllowNetwork) { Write-Warning '-AllowNetwork: this run may talk to production.' }
+if ($Backend) { Write-Info "backend: $Backend (local Nakama; other backend URLs blackholed)" }
 
 $started = Get-Date
 $processes = New-Object System.Collections.Generic.List[object]

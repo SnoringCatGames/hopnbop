@@ -1,0 +1,19 @@
+{
+  "name": "leaderboard-local-backend",
+  "mode": "lobby",
+  "timeout_sec": 60,
+  "steps": [
+    {"do": "wait_ready", "comment": "Run with -Backend http://127.0.0.1:<port>: a local stack with recorded scores, e.g. left up by scripts/local-smoke-test.ps1 -KeepStack. The leaderboard reads the runtime's public route, so it needs no session."},
+    {"do": "eval", "name": "anonymous", "expr": "Platform.token_store.set('is_anonymous', true)", "comment": "Plays as an anonymous player, the common case: the panel lists the board and says why they aren't on it."},
+    {"do": "eval", "name": "return_screen", "expr": "G.leaderboard_screen.set_return_screen(8)", "comment": "8 is ScreensMain.ScreenType.LOBBY"},
+    {"do": "eval", "name": "open", "expr": "G.screens.client_open_screen(13)", "comment": "13 is ScreensMain.ScreenType.LEADERBOARD"},
+    {"do": "wait_until", "expr": "screen() == 'LEADERBOARD' and not G.leaderboard_screen.get_node('%LoadingSpinner').visible", "timeout_sec": 20},
+    {"do": "wait", "sec": 0.5},
+    {"do": "screenshot", "name": "leaderboard"},
+    {"do": "eval", "name": "rows", "expr": "G.leaderboard_screen.get_node('%ContentContainer').get_child_count()"},
+    {"do": "eval", "name": "labels", "expr": "ui_labels(str(G.leaderboard_screen.get_path()))"},
+    {"do": "assert", "expr": "not G.leaderboard_screen.get_node('%StatusLabel').visible", "message": "the leaderboard loaded instead of showing a status"},
+    {"do": "assert", "expr": "G.leaderboard_screen.get_node('%ContentContainer').get_child_count() > 0", "message": "the leaderboard lists the stack's players"},
+    {"do": "assert", "expr": "G.leaderboard_screen.get_node('%RankLabel').visible and G.leaderboard_screen.get_node('%RankLabel').text == tr('LEADERBOARD.GUEST_HINT')", "message": "an anonymous player is told why they aren't listed"}
+  ]
+}
