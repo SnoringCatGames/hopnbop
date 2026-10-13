@@ -66,10 +66,13 @@ states its facts, so it stands on its own after the transcript is gone.
   the repo, though CLAUDE.md says it is. (Session 530145bc, agent
   aab30fcb, 13:52.)
 - **H10** · No Android export preset: `export_presets.cfg` has no
-  `platform="Android"` entry. The desktop's toolchain for Godot 4.7.2 is
-  ready and verified since 2026-10-11 (SDK 36, build-tools 36.1.0, NDK
-  r29, JDK 17.0.20); the laptop's is not (claude-config CC12). (Session
-  c56311ec-2461-4905-a9f4-40d79be7d055, 2026-10-11 15:45.)
+  `platform="Android"` entry. Both machines' Godot 4.7.2 Android
+  toolchains are ready: the desktop since 2026-10-11, the laptop since
+  2026-10-12 (claude-config `tools/Setup-GodotAndroid.ps1`, exports
+  verified). webrtc-native ships arm64 and x86_64 Android libraries.
+  Offered: add the preset and get the game running on the Pixel;
+  unanswered. (Session c56311ec-2461-4905-a9f4-40d79be7d055, 2026-10-11
+  15:45; offer restated by the 2026-10-12 transcript audit.)
 - **H17** · `EdgegapServerProvider` trusts each player's declared backend
   user ID instead of checking it against the validated session ID. The
   runtime now drops outsiders from `match_end` (platform 8ede126), but a
@@ -126,11 +129,6 @@ states its facts, so it stands on its own after the transcript is gone.
   11/11 alone: state bleed from earlier scripts, not a product bug
   (2026-10-12, Godot 4.7.2 + GUT 9.7.1, suite otherwise 485/492).
   pr-validate's per-file loop doesn't hit it.
-- **H36** · Edgegap app versions v27 and v28 are still `is_active=true`
-  alongside v29. `game-server.yml`'s DELETE-then-POST only replaces the
-  version it pushes, so superseded versions accumulate active.
-  Deactivate or delete old versions after each release (check-prod
-  step 10 flags multiple actives). (2026-10-12.)
 
 ## Ideas (not scheduled)
 
@@ -140,6 +138,11 @@ states its facts, so it stands on its own after the transcript is gone.
 
 ## Done
 
+- **H36** · Edgegap v27 and v28 deactivated 2026-10-12 (API PATCH
+  `is_active=false`); only v29 is active. Edgegap-side state, no commit.
+  `game-server.yml` still leaves the prior version active after every
+  release, so deactivate the superseded one as part of each release;
+  check-prod step 10 flags actives piling up again.
 - **H16** · Checked 2026-10-12 against the real 0.54.0 web export:
   mounted `index.pck` with `ProjectSettings.load_resource_pack` and
   probed `FileAccess.file_exists` on the exact paths
