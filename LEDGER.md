@@ -9,25 +9,6 @@ Session pointers like "session 530145bc, agent aab30fcb" refer to Claude
 Code transcripts under `~/.claude/projects/` (kept 30 days). Each item
 states its facts, so it stands on its own after the transcript is gone.
 
-## Urgent
-
-- **H4** · Release 0.54.0 **underway** (laptop session, 2026-10-12).
-  Levi confirmed the shipping values: 180 s matches, HUD and overhead
-  labels on, splash plays. b370a2d9 lands the fix (exported builds
-  apply explicit release values in code, `settings.gd`
-  `apply_release_overrides()` called from `G._enter_tree`; GUT
-  `test_settings_release_values.gd`), the 0.54.0 bump, game.yaml v29,
-  and patch notes.
-  - owner: session 98f895dd (laptop), active
-  - branch: mainline; last commit: `b370a2d9` (pushed)
-  - next: `game-server.yml` v29 run 38313778919 (dispatched, in
-    progress); then local web export + boot check (4.7.2 templates
-    downloading), `scripts/deploy-cf-pages.ps1 -SkipExport` (its sync
-    pulls v29 onto the host and publishes legal 1.2, so every player
-    re-consents); verify with synthetic-match-probe and the check-prod
-    skill. Do NOT push a `v*` tag: `release.yml` would redeploy. Then
-    H14. Also ships the rebuilt website leaderboard (6c37fd59).
-
 ## Waiting on Levi
 
 - **H3** · The bunny reappears 1-2 frames before respawn. "Dead" ends on
@@ -53,8 +34,8 @@ states its facts, so it stands on its own after the transcript is gone.
 ## In progress
 
 - **H14** · Rotate the Nakama runtime HTTP key (step 3 of the leak plan)
-  once the release from H4 ships the keyless client (15498835). The key
-  was committed in this public repo from 12a93325 (2026-05-12) until
+  now that H4 shipped the keyless client (15498835). The key was
+  committed in this public repo from 12a93325 (2026-05-12) until
   15498835. Rotate it in `credentials.env`; `/opt/nakama/.env` plus a
   nakama recreate (the local allocator picks it up from there); the
   Edgegap app version's env (re-register v29); the hopnbop
@@ -63,6 +44,11 @@ states its facts, so it stands on its own after the transcript is gone.
   before the log filter (2026-10-12). 0.47.0 clients' version check then
   fails open. Steps 1 and 2 are done: platform b6c67ec and 9b28b3b,
   hopnbop 15498835, and the prod admin key (claude-config 52e1352).
+  - owner: session 98f895dd (laptop), active; started 2026-10-12 right
+    after the 0.54.0 deploy
+  - branch: mainline
+  - next: rotate per the steps above, then re-verify with the
+    check-prod steps and a synthetic match on each allocator path
 
 ## Next
 
@@ -157,6 +143,16 @@ states its facts, so it stands on its own after the transcript is gone.
 - **H32** · Anonymous players only get a session once they go online, so
   an offline-only player's crash reports expire unsent after 7 days.
   (Crash agent a1d23375.)
+- **H35** · `test_party_matchmaking_context.gd` fails 7 of its 11 tests
+  under a full `-gdir=res://test/unit -ginclude_subdirs` run but passes
+  11/11 alone: state bleed from earlier scripts, not a product bug
+  (2026-10-12, Godot 4.7.2 + GUT 9.7.1, suite otherwise 485/492).
+  pr-validate's per-file loop doesn't hit it.
+- **H36** · Edgegap app versions v27 and v28 are still `is_active=true`
+  alongside v29. `game-server.yml`'s DELETE-then-POST only replaces the
+  version it pushes, so superseded versions accumulate active.
+  Deactivate or delete old versions after each release (check-prod
+  step 10 flags multiple actives). (2026-10-12.)
 
 ## Ideas (not scheduled)
 
@@ -166,6 +162,17 @@ states its facts, so it stands on its own after the transcript is gone.
 
 ## Done
 
+- **H4** · Release 0.54.0 shipped and verified 2026-10-12 (laptop
+  session). Levi confirmed the shipping values; exported builds now
+  enforce them in code (180 s matches, HUD and overhead labels on,
+  splash plays: `Settings.apply_release_overrides()` from
+  `G._enter_tree`, GUT `test_settings_release_values.gd`) in 8ca156e7,
+  boot page in 2abf477c. Game server v29 built and registered (run
+  38313778919); web 0.54.0 on Pages + R2; `register_game` serves
+  0.54.0 / v29 / legal 1.2. Verified: live hopnbop.net boot check
+  (overrides applied, splash plays, no script errors), version_check,
+  the check-prod checks all green, synthetic-match-probe green on both
+  allocator paths with clean Edgegap teardown. No `v*` tag pushed.
 - **H1** · Crash reporting was dead (no client session lookup, and the
   runtime never had a `crash_report` RPC). Done in hopnbop 6b0dc6d7 and
   platform af566b9 (2026-10-11), live on prod; design review in
