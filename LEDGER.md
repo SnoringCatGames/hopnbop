@@ -5,9 +5,11 @@ Levi, and ideas. Convention: claude-config `rules/ledger.md`. IDs (`H<n>`)
 are stable and never reused. Platform items (SDK, runtime, prod host
 scripts) live in `third_party/snoringcat-platform/LEDGER.md`.
 
-Session pointers like "session 530145bc, agent aab30fcb" refer to Claude
-Code transcripts under `~/.claude/projects/` (kept 30 days). Each item
-states its facts, so it stands on its own after the transcript is gone.
+Session pointers name their tool: "claude session 530145bc" refers to
+Claude Code transcripts under `~/.claude/projects/` (kept 30 days),
+"muse session 01a1390a" to Muse transcripts under
+`~/.local/share/muse/sessions/`. Each item states its facts, so it
+stands on its own after the transcript is gone.
 
 ## Waiting on Levi
 
