@@ -77,10 +77,19 @@ const _USER_META_KEYS: Array[String] = [
 
 var _config := ConfigFile.new()
 var _defaults: Settings
+# Pristine snapshot of the settings as constructed, never
+# mutated after _init. set_override compares against this:
+# comparing against the live _defaults erases overrides that
+# a cloud echo re-applies (the live resource already holds
+# the echoed value, so it looks like "matches default") —
+# that was H67, settings reverting two launches later.
+var _pristine_defaults: Settings
 
 
 func _init(defaults: Settings = null) -> void:
 	_defaults = defaults
+	if defaults != null:
+		_pristine_defaults = defaults.duplicate()
 
 
 ## Load settings from disk. Logs previous version
@@ -133,7 +142,10 @@ func save_settings() -> void:
 func set_override(
 	key: StringName, value: Variant,
 ) -> void:
-	var default_value: Variant = _defaults.get(key)
+	var default_value: Variant = (
+		_pristine_defaults.get(key)
+		if _pristine_defaults != null
+		else _defaults.get(key))
 	if (typeof(value) == typeof(default_value)
 			and value == default_value):
 		# Matches default. Clear override.

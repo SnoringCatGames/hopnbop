@@ -38,6 +38,7 @@ func _connect_signals_once() -> void:
 		if _client == null:
 			return
 	_client.settings_received.connect(_on_settings_received)
+	_client.settings_saved.connect(_on_settings_saved)
 	_client.request_failed.connect(_on_request_failed)
 	_signals_connected = true
 
@@ -94,6 +95,17 @@ func _on_settings_received(
 	elif updated_at == 0 and local_sync_at == 0:
 		# No cloud row exists yet for this scope. Push local.
 		_push_scope(scope)
+
+
+## A successful save makes the cloud row at least as new as
+## this moment, so advance the scope's sync-at: otherwise the
+## next fetch sees our own save as "newer cloud" and re-applies
+## it as an echo (H67). The save ack carries no server
+## timestamp, so local unix time is the closest honest value.
+func _on_settings_saved(scope: String) -> void:
+	if scope == _LEGACY_SCOPE:
+		return
+	_set_sync_at(scope, int(Time.get_unix_time_from_system()))
 
 
 func _on_request_failed(scope: String, _error: String) -> void:
