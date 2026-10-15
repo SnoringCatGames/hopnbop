@@ -44,8 +44,6 @@ stands on its own after the transcript is gone.
   from code, not reproduced. (Session 530145bc, client-fixes agent
   abdbfdf9, 2026-10-12.) H37 (10-14): Broken, Verified end to end in 2
   runs (verify item 4d); a sign-in over a guest hits it too (AN-1b).
-- **H39** · Networked pause ships enabled (T107) (XS once decided; batch
-  1; `docs/design/H37_systems_audit.md` 3.3, section 7 row 3)
 - **H59** · The Google profile name is the public display name (DN-1,
   TODO L50) (M; batch 4; `docs/design/H37_systems_audit.md` 3.1, section
   7 row 4)
@@ -62,6 +60,9 @@ stands on its own after the transcript is gone.
 
 ## Next
 
+- **H39** · Networked pause ships enabled (T107). Levi, 2026-10-14:
+  off in release (report section 7 row 3, option a) (XS; batch 1;
+  `docs/design/H37_systems_audit.md` 3.3)
 - **H38** · Clients crash (signal 11) when the server goes away
   mid-match; defer both peer changes. Supersedes H25. Urgent candidate
   (report section 7 row 1) (S; batch 1;
