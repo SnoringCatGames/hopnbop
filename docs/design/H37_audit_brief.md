@@ -698,3 +698,68 @@ for depth instead of copying them.
 The stop rule above applies (2 h). Your final message: at most 60
 lines, covering the sections written, the redactions, any judgment
 calls, and anything you could not resolve.
+
+## Phase 2b: more verification (added 11:00)
+
+At 10:55 Levi lifted the usage limit for this audit ("finish this audit
+regardless of usage limits"). Two changes follow.
+
+**h37-verify runs for 2 h**, until about 12:45, instead of 75 minutes.
+After items 0 to 3 it takes these on the local stack it holds, in
+order, as sections 4a to 4f of `h37-verify.md`:
+
+- 4a. h37-social finding 3: can a party's creator leave, and can
+  anything disband a party?
+- 4b. h37-social finding 4 (its F6; pairs with SP14): with more than 50
+  notifications stored for one user, does the HTTP poll the client uses
+  ever return a newer one?
+- 4c. h37-social finding 5: a member whose client is gone. Does
+  `party_start_matchmaking` wait, fail or go ahead, and what do the
+  others see?
+- 4d. H15 end to end (h37-account AN-1b, h37-social F10): after a
+  client logs out, does its realtime socket stay open and keep
+  receiving the old user's notifications or presence?
+- 4e. h37-matchmaking finding 10 (its F12): when every client drops and
+  the server quits 12 s later, does the runtime get `match_end` or a
+  cancel, and what does the match row keep? Pairs with h37-stats-ops
+  RT1.
+- 4f. Item 2 without an exported release client: say exactly what
+  blocks the sandbox for an exported binary, and whether a debug export
+  run under the harness is a fair stand-in for the pause question. Run
+  it only if it can be sandboxed.
+
+**h37-verify2 (Opus, 2 h)** takes the high-severity findings that are
+still Believed, starting with those that need no running stack.
+Findings file `h37-verify2.md`, scratch files in `h37-verify2/`, the
+rules above. Go and GUT tests that start no Nakama stack and no game
+server need no lock. Exports, the stack, Docker and fixed ports wait
+for `net.lock`, which h37-verify holds until about 12:45: take it once
+the file is gone.
+
+1. **G1.2, guessable session ids** (h37-matchmaking finding 2). Trace
+   how the `matchmaker_matched` hook mints the session ids in the
+   connection payload, and how the game server checks them
+   (`network_connector.gd:602-642`). Can another player read or compute
+   a valid id? Prove it either way with a Go or GUT probe, and say how
+   the answer changes the fix for G1.1 and G1.3.
+2. **No match forms while an allocation runs** (h37-matchmaking finding
+   3). Probe it in a runtime copy with a slow fake allocator, the way
+   h37-matchmaking's `runtime-copy/` probe works: while one matched set
+   allocates, can a second set match and allocate? Then finding 4 (the
+   120 s timeout cancels the matched set) the same way.
+3. **AN-1, the guest upgrade signs in instead of linking**
+   (h37-account). Trace the client flow down to the SDK and runtime
+   calls, and prove with a GUT test against a fake client whether the
+   guest's account, stats and friends survive the upgrade. DEL-2 as
+   well, if it is cheap.
+4. **LG-1 on every export preset** (h37-account LG-1, h37-stats-ops
+   C7; the web pack is already Verified). Once `net.lock` is free,
+   export only the pack for each preset in `export_presets.cfg` into
+   `h37-verify2/export/` (`--export-pack`; a `.zip` target is easier
+   to list) and record whether `legal/` is inside. If the export fails
+   for want of templates, record that and drop the item; don't download
+   them.
+5. **On the stack**, once `net.lock` is free: whichever of 4a to 4e
+   h37-verify did not reach, in that order. Read `h37-verify.md` first.
+
+Hand off the same way as the other agents.
