@@ -1,0 +1,35 @@
+{
+  "name": "h37v-prod-quit",
+  "comment": "H37 verify item 1: a 2-client match to GAME_OVER with the server on the production end-of-match path (is_preview flipped false mid-match: server_close_multiplayer_session at match end, then 'Production mode: Exiting server' and quit 12 s after the last peer). Do the clients crash?",
+  "mode": "match",
+  "clients": 2,
+  "level": "level_4",
+  "seed": 1,
+  "timeout_sec": 120,
+  "settings": {"match_duration_sec": 10},
+  "steps": [
+    {"do": "wait_ready"},
+    {"do": "wait_match_start"},
+    {"do": "wait", "sec": 1.0},
+    {"do": "eval", "name": "flip", "fatal": false, "expr": "[Netcode.set('is_preview', false), Netcode.is_preview, OS.has_feature('editor'), OS.has_feature('template_release')]"},
+    {"do": "wait_until", "expr": "screen() == 'GAME_OVER'", "timeout_sec": 45},
+    {"do": "eval", "name": "at_game_over", "fatal": false, "expr": "[screen(), G.match_state.is_match_ended, Netcode.connector.last_disconnect_reason, Netcode.is_preview]"},
+    {"do": "wait", "sec": 18.0},
+    {"do": "eval", "name": "after_server_quit", "fatal": false, "expr": "[screen(), Netcode.connector.last_disconnect_reason]"},
+    {"do": "state", "name": "end"}
+  ],
+  "processes": {
+    "server": {
+      "steps": [
+        {"do": "wait_ready"},
+        {"do": "wait_match_start"},
+        {"do": "wait", "sec": 1.0},
+        {"do": "eval", "name": "s_flip", "fatal": false, "expr": "[Netcode.set('is_preview', false), Netcode.is_preview, OS.has_feature('editor'), OS.has_feature('template_release')]"},
+        {"do": "wait_until", "expr": "peer_count() == 0", "timeout_sec": 60},
+        {"do": "eval", "name": "s_no_peers", "fatal": false, "expr": "[Netcode.is_preview, peer_count(), G.match_state.is_match_ended]"},
+        {"do": "wait", "sec": 25.0, "comment": "production quits 12 s after the last peer leaves; this wait must not finish first"},
+        {"do": "state", "name": "s_end_should_not_reach"}
+      ]
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "offline-labels",
+  "mode": "offline",
+  "level": "level_4",
+  "timeout_sec": 60,
+  "steps": [
+    { "do": "wait_ready" },
+    { "do": "wait_match_start" },
+    { "do": "wait", "sec": 3.0 },
+    { "do": "eval", "name": "xform_manual", "expr": "str(G.pixel_viewport_manager.get_world_to_screen_transform())" },
+    { "do": "eval", "name": "xform_native", "expr": "str(G.pixel_viewport_manager.sub_viewport.get_screen_transform() * G.pixel_viewport_manager.sub_viewport.get_canvas_transform())" },
+    { "do": "screenshot", "name": "labels" },
+    { "do": "wait", "sec": 2.5 }
+  ],
+  "settings": { "show_player_overhead_labels": true, "match_duration_sec": 60 }
+}

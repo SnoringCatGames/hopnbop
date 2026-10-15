@@ -1,0 +1,27 @@
+{
+  "name": "offline-play-again-colors",
+  "mode": "offline",
+  "level": "level_4",
+  "timeout_sec": 90,
+  "steps": [
+    { "do": "wait_ready" },
+    { "do": "wait_match_start" },
+    { "do": "wait", "sec": 1.0 },
+    { "do": "eval", "name": "players_match1", "expr": "G.match_state.players_by_id.size()" },
+    { "do": "eval", "name": "color_match1", "expr": "str(G.match_state.players_by_id.values()[0].base_color)" },
+    { "do": "screenshot", "name": "match1" },
+    { "do": "wait_until", "expr": "screen() == 'GAME_OVER'", "timeout_sec": 40, "comment": "10 s match" },
+    { "do": "wait", "sec": 1.0 },
+    { "do": "eval", "expr": "G.local_settings.set_override('prefer_offline_mode', true)", "comment": "play again stays offline" },
+    { "do": "eval", "expr": "G.game_panel.client_play_again()", "comment": "Play Again" },
+    { "do": "wait_until", "expr": "screen() == 'GAME' and G.client_session.is_game_active", "timeout_sec": 20 },
+    { "do": "wait", "sec": 1.5 },
+    { "do": "eval", "name": "players_match2", "expr": "G.match_state.players_by_id.size()" },
+    { "do": "eval", "name": "color_match2", "expr": "str(G.match_state.players_by_id.values()[0].base_color)" },
+    { "do": "screenshot", "name": "match2" },
+    { "do": "assert", "expr": "G.match_state.players_by_id.values()[0].base_color != Color(1, 1, 1, 1)", "message": "outline color assigned after offline play again" }
+  ],
+  "settings": {
+    "match_duration_sec": 10
+  }
+}

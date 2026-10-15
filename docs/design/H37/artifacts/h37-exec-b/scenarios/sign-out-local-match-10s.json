@@ -1,0 +1,90 @@
+{
+  "name": "sign-out-local-match-10s",
+  "mode": "offline",
+  "level": "level_4",
+  "timeout_sec": 60,
+  "steps": [
+    {
+      "do": "wait_ready"
+    },
+    {
+      "do": "wait_match_start"
+    },
+    {
+      "do": "eval",
+      "name": "sign_in",
+      "expr": "Platform.token_store.store_from_response({'jwt_token': 'agent.e30.harness', 'refresh_token': 'agent.e30.harness', 'player_id': 'agent-harness', 'provider': 'google', 'display_name': 'Agent', 'expires_at': 1, 'linked_providers': ['google']})",
+      "comment": "A session the SDK's auto-refresh signs out on the next frame. See sign-out-lobby."
+    },
+    {
+      "do": "wait_until",
+      "expr": "Platform.token_store.refresh_token.is_empty()",
+      "timeout_sec": 5,
+      "comment": "the SDK signed the player out"
+    },
+    {
+      "do": "wait",
+      "sec": 1.0
+    },
+    {
+      "do": "assert",
+      "expr": "screen() == 'GAME' and match_state.is_match_active",
+      "message": "local play goes on"
+    },
+    {
+      "do": "assert",
+      "expr": "G.screens.is_sign_in_required()",
+      "message": "the auth screen waits for the lobby"
+    },
+    {
+      "do": "wait_until",
+      "expr": "screen() == 'GAME_OVER'",
+      "timeout_sec": 40,
+      "comment": "the committed match lasts 10 s"
+    },
+    {
+      "do": "wait",
+      "sec": 1.0
+    },
+    {
+      "do": "assert",
+      "expr": "screen() == 'GAME_OVER'",
+      "message": "the results still show after local play"
+    },
+    {
+      "do": "screenshot",
+      "name": "game-over"
+    },
+    {
+      "do": "eval",
+      "expr": "G.game_over_screen.on_back()",
+      "comment": "Return to Lobby"
+    },
+    {
+      "do": "wait_until",
+      "expr": "screen() == 'AUTH'",
+      "timeout_sec": 5
+    },
+    {
+      "do": "assert",
+      "expr": "not G.is_lobby_active",
+      "message": "the lobby never opened"
+    },
+    {
+      "do": "assert",
+      "expr": "not G.screens.is_sign_in_required()",
+      "message": "opening the auth screen settled the sign-out"
+    },
+    {
+      "do": "wait",
+      "sec": 0.5
+    },
+    {
+      "do": "screenshot",
+      "name": "auth"
+    }
+  ],
+  "settings": {
+    "match_duration_sec": 10
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "name": "h37-pause",
+  "comment": "H37 exec-b, coordinator's extra check: client1 presses Escape mid-match. Do the server and client2 pause? Can client2 undo it? Does client1's second pause hit max_pauses_per_client? Copy of match-2-clients plus pause steps.",
+  "mode": "match",
+  "clients": 2,
+  "level": "level_4",
+  "seed": 1,
+  "timeout_sec": 120,
+  "settings": {"match_duration_sec": 60},
+  "steps": [
+    {"do": "wait_ready"},
+    {"do": "wait_match_start"},
+    {"do": "state", "name": "start"}
+  ],
+  "processes": {
+    "client1": {
+      "steps": [
+        {"do": "wait_ready"},
+        {"do": "wait_match_start"},
+        {"do": "wait", "sec": 2.0},
+        {"do": "eval", "name": "c1_gates", "fatal": false, "expr": "[G.settings.is_server_pause_enabled, G.settings.max_pauses_per_client, G.settings.max_pause_duration_sec, Netcode.is_debug, OS.has_feature('editor'), OS.is_debug_build(), G.is_networked_level_active]"},
+        {"do": "eval", "name": "c1_before", "fatal": false, "expr": "[Netcode.frame_driver.is_paused, Netcode.frame_driver.server_frame_index]"},
+        {"do": "tap", "key": "Escape", "hold_sec": 0.1, "comment": "pause request"},
+        {"do": "wait", "sec": 1.5},
+        {"do": "eval", "name": "c1_after_esc", "fatal": false, "expr": "[Netcode.frame_driver.is_paused, Netcode.frame_driver.server_frame_index, screen()]"},
+        {"do": "screenshot", "name": "c1-paused"},
+        {"do": "wait", "sec": 5.5},
+        {"do": "eval", "name": "c1_still", "fatal": false, "expr": "[Netcode.frame_driver.is_paused, Netcode.frame_driver.server_frame_index]"},
+        {"do": "tap", "key": "Escape", "hold_sec": 0.1, "comment": "the initiator unpauses"},
+        {"do": "wait", "sec": 1.5},
+        {"do": "eval", "name": "c1_after_unpause", "fatal": false, "expr": "[Netcode.frame_driver.is_paused, Netcode.frame_driver.server_frame_index]"},
+        {"do": "tap", "key": "Escape", "hold_sec": 0.1, "comment": "second pause request: over max_pauses_per_client"},
+        {"do": "wait", "sec": 1.5},
+        {"do": "eval", "name": "c1_second_pause", "fatal": false, "expr": "[Netcode.frame_driver.is_paused, Netcode.frame_driver.server_frame_index]"},
+        {"do": "state", "name": "c1_end"}
+      ]
+    },
+    "client2": {
+      "steps": [
+        {"do": "wait_ready"},
+        {"do": "wait_match_start"},
+        {"do": "wait", "sec": 5.0},
+        {"do": "eval", "name": "c2_paused_a", "fatal": false, "expr": "[Netcode.frame_driver.is_paused, Netcode.frame_driver.server_frame_index, screen()]"},
+        {"do": "wait", "sec": 0.5},
+        {"do": "eval", "name": "c2_paused_b", "fatal": false, "expr": "[Netcode.frame_driver.is_paused, Netcode.frame_driver.server_frame_index]"},
+        {"do": "screenshot", "name": "c2-paused"},
+        {"do": "tap", "key": "Escape", "hold_sec": 0.1, "comment": "a non-initiator tries to unpause"},
+        {"do": "wait", "sec": 1.5},
+        {"do": "eval", "name": "c2_after_own_esc", "fatal": false, "expr": "[Netcode.frame_driver.is_paused, Netcode.frame_driver.server_frame_index]"},
+        {"do": "wait", "sec": 4.0},
+        {"do": "eval", "name": "c2_after_c1_unpause", "fatal": false, "expr": "[Netcode.frame_driver.is_paused, Netcode.frame_driver.server_frame_index]"},
+        {"do": "wait", "sec": 2.5},
+        {"do": "eval", "name": "c2_end", "fatal": false, "expr": "[Netcode.frame_driver.is_paused, Netcode.frame_driver.server_frame_index]"},
+        {"do": "state", "name": "c2_end"}
+      ]
+    },
+    "server": {
+      "steps": [
+        {"do": "wait_ready"},
+        {"do": "wait_match_start"},
+        {"do": "wait", "sec": 4.5},
+        {"do": "eval", "name": "s_paused", "fatal": false, "expr": "[Netcode.frame_driver.is_paused, Netcode.frame_driver.server_frame_index, G.match_state.pauses_used_by_peer]"},
+        {"do": "wait", "sec": 3.5},
+        {"do": "eval", "name": "s_after_c2_esc", "fatal": false, "expr": "[Netcode.frame_driver.is_paused, Netcode.frame_driver.server_frame_index]"},
+        {"do": "wait", "sec": 3.0},
+        {"do": "eval", "name": "s_after_unpause", "fatal": false, "expr": "[Netcode.frame_driver.is_paused, Netcode.frame_driver.server_frame_index]"},
+        {"do": "wait", "sec": 2.5},
+        {"do": "eval", "name": "s_end", "fatal": false, "expr": "[Netcode.frame_driver.is_paused, Netcode.frame_driver.server_frame_index, G.match_state.pauses_used_by_peer]"},
+        {"do": "state", "name": "s_end"},
+        {"do": "wait_until", "expr": "peer_count() == 0", "timeout_sec": 60, "comment": "outlive the clients: a server that leaves mid-match crashes them"}
+      ]
+    }
+  }
+}

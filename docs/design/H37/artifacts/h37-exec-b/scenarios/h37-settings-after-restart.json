@@ -1,0 +1,138 @@
+{
+  "name": "h37-settings-after-restart",
+  "mode": "lobby",
+  "timeout_sec": 90,
+  "steps": [
+    {
+      "do": "wait_ready"
+    },
+    {
+      "do": "wait",
+      "sec": 1.0
+    },
+    {
+      "name": "after_restart",
+      "expr": "{'mute_music': G.settings.mute_music, 'mute_sfx': G.settings.mute_sfx, 'gore': G.settings.is_gore_enabled, 'sfx_bus_muted': Engine.get_singleton('AudioServer').is_bus_mute(2), 'overrides': [G.local_settings.has_override('mute_music'), G.local_settings.has_override('mute_sfx'), G.local_settings.has_override('is_gore_enabled')]}",
+      "do": "eval"
+    },
+    {
+      "expr": "G.settings.is_gore_enabled and not G.settings.mute_music and not G.settings.mute_sfx and not Engine.get_singleton('AudioServer').is_bus_mute(2)",
+      "do": "assert",
+      "message": "Gore on, music and SFX unmuted after a restart, despite the harness forcing mute before load"
+    },
+    {
+      "hold_sec": 0.3,
+      "key": "move_up",
+      "player": 1,
+      "do": "tap"
+    },
+    {
+      "expr": "players().size() == 1 and players()[0].surfaces.is_attaching_to_floor",
+      "timeout_sec": 8,
+      "do": "wait_until"
+    },
+    {
+      "key": "move_left",
+      "player": 1,
+      "do": "press"
+    },
+    {
+      "expr": "G.is_settings_ui_shown",
+      "timeout_sec": 8,
+      "do": "wait_until"
+    },
+    {
+      "key": "move_left",
+      "player": 1,
+      "do": "release"
+    },
+    {
+      "do": "wait",
+      "sec": 0.8
+    },
+    {
+      "hold_sec": 0.12,
+      "key": "move_down",
+      "player": 1,
+      "do": "tap"
+    },
+    {
+      "do": "wait",
+      "sec": 0.3
+    },
+    {
+      "hold_sec": 0.12,
+      "key": "move_down",
+      "player": 1,
+      "do": "tap"
+    },
+    {
+      "do": "wait",
+      "sec": 0.3
+    },
+    {
+      "hold_sec": 0.12,
+      "key": "move_down",
+      "player": 1,
+      "do": "tap"
+    },
+    {
+      "do": "wait",
+      "sec": 0.3
+    },
+    {
+      "hold_sec": 0.12,
+      "key": "move_down",
+      "player": 1,
+      "do": "tap"
+    },
+    {
+      "do": "wait",
+      "sec": 0.3
+    },
+    {
+      "hold_sec": 0.12,
+      "key": "move_right",
+      "player": 1,
+      "do": "tap"
+    },
+    {
+      "do": "wait",
+      "sec": 0.8
+    },
+    {
+      "name": "rows_after_restart",
+      "expr": "{'gore_row': [str(G.side_panel_layer.get_child(-1)._panel_stack.back()._rows[2].get('_setting_key')), G.side_panel_layer.get_child(-1)._panel_stack.back()._rows[2].get_toggle_value()], 'music_row': [str(G.side_panel_layer.get_child(-1)._panel_stack.back()._rows[12].get('_setting_key')), G.side_panel_layer.get_child(-1)._panel_stack.back()._rows[12].get_toggle_value()], 'sfx_row': [str(G.side_panel_layer.get_child(-1)._panel_stack.back()._rows[13].get('_setting_key')), G.side_panel_layer.get_child(-1)._panel_stack.back()._rows[13].get_toggle_value()]}",
+      "do": "eval"
+    },
+    {
+      "do": "screenshot",
+      "name": "restart-settings-panel"
+    },
+    {
+      "hold_sec": 0.12,
+      "key": "move_left",
+      "player": 1,
+      "do": "tap"
+    },
+    {
+      "do": "wait",
+      "sec": 0.6
+    },
+    {
+      "hold_sec": 0.12,
+      "key": "move_left",
+      "player": 1,
+      "do": "tap"
+    },
+    {
+      "do": "wait",
+      "sec": 0.8
+    },
+    {
+      "expr": "not G.is_settings_ui_shown",
+      "do": "assert",
+      "message": "backed out again"
+    }
+  ]
+}

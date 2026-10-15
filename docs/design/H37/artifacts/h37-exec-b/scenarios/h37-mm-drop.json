@@ -1,0 +1,36 @@
+{
+  "name": "h37-mm-drop",
+  "comment": "H37 exec-b: the server quits 3 s into the FIRST matchmade match. Do the clients crash as they did when it quit during the second match?",
+  "mode": "match",
+  "clients": 2,
+  "level": "level_4",
+  "seed": 1,
+  "timeout_sec": 220,
+  "settings": {"match_duration_sec": 60},
+  "steps": [
+    {"do": "wait_ready", "timeout_sec": 170},
+    {"do": "wait_match_start", "timeout_sec": 30},
+    {"do": "state", "name": "match"},
+    {"do": "assert", "expr": "player_count() == 2", "message": "both matchmade bunnies are in the level"},
+    {"do": "wait_until", "fatal": false, "expr": "Netcode.connector.last_disconnect_reason != 0", "timeout_sec": 20},
+    {"do": "wait", "sec": 3.0},
+    {"do": "state", "name": "after_drop"},
+    {"do": "screenshot", "name": "01-after-drop"},
+    {"do": "wait", "sec": 8.0},
+    {"do": "state", "name": "later"},
+    {"do": "screenshot", "name": "02-later"}
+  ],
+  "processes": {
+    "client": {
+      "settings": {"preview_connect_to_remote_server": true}
+    },
+    "server": {
+      "steps": [
+        {"do": "wait_ready", "timeout_sec": 170},
+        {"do": "wait_match_start", "timeout_sec": 30},
+        {"do": "wait", "sec": 3.0},
+        {"do": "state", "name": "before_quit"}
+      ]
+    }
+  }
+}

@@ -1,0 +1,379 @@
+{
+  "name": "h37-settings-menu",
+  "mode": "lobby",
+  "timeout_sec": 90,
+  "steps": [
+    {
+      "do": "wait_ready"
+    },
+    {
+      "do": "wait",
+      "sec": 1.0
+    },
+    {
+      "name": "before",
+      "do": "eval",
+      "expr": "{'mute_music': G.settings.mute_music, 'mute_sfx': G.settings.mute_sfx, 'gore': G.settings.is_gore_enabled, 'sfx_bus_muted': Engine.get_singleton('AudioServer').is_bus_mute(2), 'overrides': [G.local_settings.has_override('mute_music'), G.local_settings.has_override('mute_sfx'), G.local_settings.has_override('is_gore_enabled')], 'anonymous': Platform.token_store.is_anonymous, 'locale': G.local_settings.get_locale()}"
+    },
+    {
+      "hold_sec": 0.3,
+      "player": 1,
+      "do": "tap",
+      "key": "move_up"
+    },
+    {
+      "timeout_sec": 8,
+      "expr": "players().size() == 1 and players()[0].surfaces.is_attaching_to_floor",
+      "do": "wait_until"
+    },
+    {
+      "do": "wait",
+      "sec": 0.5
+    },
+    {
+      "do": "screenshot",
+      "name": "01-joined"
+    },
+    {
+      "player": 1,
+      "do": "press",
+      "key": "move_left"
+    },
+    {
+      "timeout_sec": 8,
+      "expr": "G.is_settings_ui_shown",
+      "do": "wait_until"
+    },
+    {
+      "player": 1,
+      "do": "release",
+      "key": "move_left"
+    },
+    {
+      "do": "wait",
+      "sec": 0.8
+    },
+    {
+      "do": "screenshot",
+      "name": "02-main-menu"
+    },
+    {
+      "name": "main_menu",
+      "do": "eval",
+      "expr": "{'depth': G.side_panel_layer.get_child(-1)._panel_stack.size(), 'focus': G.side_panel_layer.get_child(-1)._panel_stack.back()._focused_index, 'rows': G.side_panel_layer.get_child(-1)._panel_stack.back()._rows.size(), 'labels': ui_labels(str(G.side_panel_layer.get_child(-1)._panel_stack.back().get_path())), 'bunny': players()[0].global_position}"
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_down"
+    },
+    {
+      "do": "wait",
+      "sec": 0.3
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_down"
+    },
+    {
+      "do": "wait",
+      "sec": 0.3
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_down"
+    },
+    {
+      "do": "wait",
+      "sec": 0.3
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_down"
+    },
+    {
+      "do": "wait",
+      "sec": 0.3
+    },
+    {
+      "name": "main_focus",
+      "do": "eval",
+      "expr": "[G.side_panel_layer.get_child(-1)._panel_stack.back()._focused_index, G.side_panel_layer.get_child(-1)._panel_stack.back()._rows[G.side_panel_layer.get_child(-1)._panel_stack.back()._focused_index].get('_display_name')]"
+    },
+    {
+      "message": "S x4 focuses the Settings row",
+      "expr": "str(G.side_panel_layer.get_child(-1)._panel_stack.back()._rows[G.side_panel_layer.get_child(-1)._panel_stack.back()._focused_index].get('_display_name')) == G.tr('SETTINGS.SETTINGS')",
+      "do": "assert"
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_right"
+    },
+    {
+      "do": "wait",
+      "sec": 0.8
+    },
+    {
+      "do": "screenshot",
+      "name": "03-settings-panel"
+    },
+    {
+      "name": "settings_panel",
+      "do": "eval",
+      "expr": "{'depth': G.side_panel_layer.get_child(-1)._panel_stack.size(), 'focus': G.side_panel_layer.get_child(-1)._panel_stack.back()._focused_index, 'rows': G.side_panel_layer.get_child(-1)._panel_stack.back()._rows.size(), 'labels': ui_labels(str(G.side_panel_layer.get_child(-1)._panel_stack.back().get_path()))}"
+    },
+    {
+      "message": "D (Right) opened the Settings sub-panel",
+      "expr": "G.side_panel_layer.get_child(-1)._panel_stack.size() == 2",
+      "do": "assert"
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_down"
+    },
+    {
+      "do": "wait",
+      "sec": 0.3
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_down"
+    },
+    {
+      "do": "wait",
+      "sec": 0.3
+    },
+    {
+      "message": "S x2 focuses Gore",
+      "expr": "str(G.side_panel_layer.get_child(-1)._panel_stack.back()._rows[G.side_panel_layer.get_child(-1)._panel_stack.back()._focused_index].get('_setting_key')) == 'is_gore_enabled'",
+      "do": "assert"
+    },
+    {
+      "hold_sec": 0.12,
+      "do": "tap",
+      "key": "Space"
+    },
+    {
+      "do": "wait",
+      "sec": 0.4
+    },
+    {
+      "message": "Space toggled Gore on",
+      "expr": "G.settings.is_gore_enabled == true",
+      "do": "assert"
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_down"
+    },
+    {
+      "do": "wait",
+      "sec": 0.25
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_down"
+    },
+    {
+      "do": "wait",
+      "sec": 0.25
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_down"
+    },
+    {
+      "do": "wait",
+      "sec": 0.25
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_down"
+    },
+    {
+      "do": "wait",
+      "sec": 0.25
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_down"
+    },
+    {
+      "do": "wait",
+      "sec": 0.25
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_down"
+    },
+    {
+      "do": "wait",
+      "sec": 0.25
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_down"
+    },
+    {
+      "do": "wait",
+      "sec": 0.25
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_down"
+    },
+    {
+      "do": "wait",
+      "sec": 0.25
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_down"
+    },
+    {
+      "do": "wait",
+      "sec": 0.25
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_down"
+    },
+    {
+      "do": "wait",
+      "sec": 0.25
+    },
+    {
+      "message": "S x10 more focuses Music",
+      "expr": "str(G.side_panel_layer.get_child(-1)._panel_stack.back()._rows[G.side_panel_layer.get_child(-1)._panel_stack.back()._focused_index].get('_setting_key')) == 'mute_music'",
+      "do": "assert"
+    },
+    {
+      "hold_sec": 0.12,
+      "do": "tap",
+      "key": "Space"
+    },
+    {
+      "do": "wait",
+      "sec": 0.4
+    },
+    {
+      "message": "Space unmuted music",
+      "expr": "G.settings.mute_music == false",
+      "do": "assert"
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_down"
+    },
+    {
+      "do": "wait",
+      "sec": 0.3
+    },
+    {
+      "message": "S focuses SFX",
+      "expr": "str(G.side_panel_layer.get_child(-1)._panel_stack.back()._rows[G.side_panel_layer.get_child(-1)._panel_stack.back()._focused_index].get('_setting_key')) == 'mute_sfx'",
+      "do": "assert"
+    },
+    {
+      "hold_sec": 0.12,
+      "do": "tap",
+      "key": "Space"
+    },
+    {
+      "do": "wait",
+      "sec": 0.4
+    },
+    {
+      "message": "Space unmuted SFX and the SFX bus",
+      "expr": "G.settings.mute_sfx == false and not Engine.get_singleton('AudioServer').is_bus_mute(2)",
+      "do": "assert"
+    },
+    {
+      "do": "screenshot",
+      "name": "04-toggled"
+    },
+    {
+      "name": "toggled",
+      "do": "eval",
+      "expr": "{'mute_music': G.settings.mute_music, 'mute_sfx': G.settings.mute_sfx, 'gore': G.settings.is_gore_enabled, 'sfx_bus_muted': Engine.get_singleton('AudioServer').is_bus_mute(2), 'overrides': [G.local_settings.has_override('mute_music'), G.local_settings.has_override('mute_sfx'), G.local_settings.has_override('is_gore_enabled')], 'anonymous': Platform.token_store.is_anonymous, 'locale': G.local_settings.get_locale()}"
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_left"
+    },
+    {
+      "do": "wait",
+      "sec": 0.6
+    },
+    {
+      "message": "A (Left) popped back to the main menu",
+      "expr": "G.side_panel_layer.get_child(-1)._panel_stack.size() == 1",
+      "do": "assert"
+    },
+    {
+      "hold_sec": 0.12,
+      "player": 1,
+      "do": "tap",
+      "key": "move_left"
+    },
+    {
+      "do": "wait",
+      "sec": 0.8
+    },
+    {
+      "message": "A (Left) at the main menu closed the panel",
+      "expr": "not G.is_settings_ui_shown",
+      "do": "assert"
+    },
+    {
+      "do": "screenshot",
+      "name": "05-closed"
+    },
+    {
+      "name": "after_close",
+      "do": "eval",
+      "expr": "{'mute_music': G.settings.mute_music, 'mute_sfx': G.settings.mute_sfx, 'gore': G.settings.is_gore_enabled, 'sfx_bus_muted': Engine.get_singleton('AudioServer').is_bus_mute(2), 'overrides': [G.local_settings.has_override('mute_music'), G.local_settings.has_override('mute_sfx'), G.local_settings.has_override('is_gore_enabled')], 'anonymous': Platform.token_store.is_anonymous, 'locale': G.local_settings.get_locale()}"
+    },
+    {
+      "do": "state",
+      "name": "end"
+    }
+  ]
+}

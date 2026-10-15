@@ -1,0 +1,36 @@
+{
+  "name": "h37-mm-kill",
+  "comment": "H37 exec-b: kill-run.ps1 kills the server process 3 s into the first matchmade match, so the clients only notice by ENet timeout, as after a real server crash.",
+  "mode": "match",
+  "clients": 2,
+  "level": "level_4",
+  "seed": 1,
+  "timeout_sec": 260,
+  "settings": {"match_duration_sec": 150},
+  "steps": [
+    {"do": "wait_ready", "timeout_sec": 170},
+    {"do": "wait_match_start", "timeout_sec": 30},
+    {"do": "state", "name": "match"},
+    {"do": "wait_until", "fatal": false, "expr": "Netcode.connector.last_disconnect_reason != 0", "timeout_sec": 70},
+    {"do": "state", "name": "after_drop"},
+    {"do": "wait", "sec": 3.0},
+    {"do": "state", "name": "after_drop_3s"},
+    {"do": "screenshot", "name": "01-after-drop"},
+    {"do": "wait", "sec": 10.0},
+    {"do": "state", "name": "later"},
+    {"do": "screenshot", "name": "02-later"}
+  ],
+  "processes": {
+    "client": {
+      "settings": {"preview_connect_to_remote_server": true}
+    },
+    "server": {
+      "steps": [
+        {"do": "wait_ready", "timeout_sec": 170},
+        {"do": "wait_match_start", "timeout_sec": 30},
+        {"do": "state", "name": "match"},
+        {"do": "wait", "sec": 150.0}
+      ]
+    }
+  }
+}

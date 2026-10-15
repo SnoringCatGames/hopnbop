@@ -1,0 +1,37 @@
+{
+  "name": "h37v-prematch-abort",
+  "comment": "H37 verify item 1 extra: production pre-match abort. Server on the production path (is_preview flipped false once the game is active), client2 quits while loading, so _should_abort_pre_match -> _server_abort_not_enough_players -> SERVER_SHUTDOWN + close. Does client1 crash in client_exit_match()?",
+  "mode": "match",
+  "clients": 2,
+  "level": "level_4",
+  "seed": 1,
+  "timeout_sec": 120,
+  "settings": {"match_duration_sec": 60},
+  "steps": [
+    {"do": "wait_ready"},
+    {"do": "wait", "sec": 25.0},
+    {"do": "eval", "name": "c1_after", "fatal": false, "expr": "[screen(), Netcode.connector.last_disconnect_reason, G.match_state.is_match_active]"},
+    {"do": "state", "name": "c1_end"}
+  ],
+  "processes": {
+    "client2": {
+      "steps": [
+        {"do": "wait_ready"},
+        {"do": "wait_until", "expr": "G.client_session.is_game_active", "timeout_sec": 60},
+        {"do": "eval", "name": "c2_before_quit", "fatal": false, "expr": "[screen(), G.client_session.is_game_active, G.match_state.is_match_active]"},
+        {"do": "eval", "name": "c2_quit", "fatal": false, "expr": "Engine.get_main_loop().quit()"},
+        {"do": "wait", "sec": 10.0}
+      ]
+    },
+    "server": {
+      "steps": [
+        {"do": "wait_ready"},
+        {"do": "wait_until", "expr": "G.client_session.is_game_active", "timeout_sec": 60},
+        {"do": "eval", "name": "s_flip", "fatal": false, "expr": "[Netcode.set('is_preview', false), Netcode.is_preview, G.match_state.is_match_active, peer_count()]"},
+        {"do": "wait_until", "expr": "peer_count() == 0", "timeout_sec": 60},
+        {"do": "eval", "name": "s_no_peers", "fatal": false, "expr": "[G.match_state.is_match_active, G.match_state.is_match_ended]"},
+        {"do": "wait", "sec": 25.0}
+      ]
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "h37-party-guest",
+  "comment": "H37 exec-b: can a harness client (signed-out guest) create a party against the local stack?",
+  "mode": "lobby",
+  "seed": 1,
+  "timeout_sec": 60,
+  "steps": [
+    {"do": "wait_until", "expr": "screen() == 'LOBBY'", "timeout_sec": 30},
+    {"do": "eval", "name": "auth_before", "fatal": false, "expr": "[Platform.token_store.is_anonymous, Platform.token_store.is_token_valid(), Platform.build_session_from_store() == null]"},
+    {"do": "eval", "name": "create", "fatal": false, "expr": "G.party_manager.create_party()"},
+    {"do": "wait", "sec": 4.0},
+    {"do": "eval", "name": "in_party", "fatal": false, "expr": "G.party_manager.is_in_party()"},
+    {"do": "eval", "name": "auth_after", "fatal": false, "expr": "[Platform.token_store.is_anonymous, Platform.token_store.is_token_valid()]"},
+    {"do": "state", "name": "after"}
+  ]
+}

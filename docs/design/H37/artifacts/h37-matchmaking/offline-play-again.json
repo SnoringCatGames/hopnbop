@@ -1,0 +1,24 @@
+{
+  "name": "h37-offline-play-again",
+  "mode": "offline",
+  "level": "level_4",
+  "settings": {"match_duration_sec": 10},
+  "timeout_sec": 90,
+  "steps": [
+    {"do": "wait_ready"},
+    {"do": "wait_match_start"},
+    {"do": "wait", "sec": 0.5},
+    {"do": "assert", "expr": "match_state.players_by_id.size() >= 1 and match_state.players_by_id.values()[0].base_color != Color(1, 1, 1, 1)", "message": "match 1: outline colors assigned offline (TODO-scratch 23)"},
+    {"do": "state", "name": "m1"},
+    {"do": "wait_until", "expr": "screen() == 'GAME_OVER'", "timeout_sec": 40},
+    {"do": "wait", "sec": 1.0},
+    {"do": "eval", "expr": "G.game_panel.client_play_again()", "comment": "Play Again, still offline"},
+    {"do": "wait_until", "expr": "screen() == 'GAME' and match_state.is_match_active", "timeout_sec": 20},
+    {"do": "wait", "sec": 0.5},
+    {"do": "assert", "expr": "match_state.players_by_id.size() >= 1 and match_state.players_by_id.values()[0].base_color != Color(1, 1, 1, 1)", "message": "match 2: outline colors assigned after Play Again"},
+    {"do": "state", "name": "m2"},
+    {"do": "screenshot", "name": "match-2"},
+    {"do": "wait_until", "expr": "screen() == 'GAME_OVER'", "timeout_sec": 40},
+    {"do": "assert", "expr": "not G.client_session.is_game_loading", "message": "match 2 ended cleanly"}
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "name": "h37-mm-e2e",
+  "mode": "match",
+  "clients": 2,
+  "level": "level_4",
+  "seed": 1,
+  "timeout_sec": 260,
+  "settings": {"match_duration_sec": 10},
+  "steps": [
+    {"do": "eval", "name": "boot", "fatal": false, "expr": "[Netcode.should_connect_to_remote_server, Netcode.is_preview, Netcode.preview_client_number, G.local_settings.get_value(&'prefer_offline_mode')]"},
+    {"do": "wait", "sec": 4.0},
+    {"do": "eval", "name": "provider", "fatal": false, "expr": "G.game_panel.session_manager.session_provider.get_script().resource_path"},
+    {"do": "screenshot", "name": "01-matchmaking"},
+    {"do": "wait_ready", "timeout_sec": 170},
+    {"do": "state", "name": "ready"},
+    {"do": "wait_match_start", "timeout_sec": 30},
+    {"do": "assert", "expr": "player_count() == 2", "message": "both matchmade bunnies are in the level"},
+    {"do": "assert", "expr": "match_state.players_by_id.size() == 2", "message": "match state lists two players"},
+    {"do": "screenshot", "name": "02-match"},
+    {"do": "wait_until", "expr": "screen() == 'GAME_OVER'", "timeout_sec": 45},
+    {"do": "state", "name": "game_over"},
+    {"do": "screenshot", "name": "03-game-over"},
+    {"do": "wait", "sec": 1.5},
+    {"do": "eval", "name": "play_again", "expr": "G.game_panel.client_play_again()"},
+    {"do": "wait", "sec": 3.0},
+    {"do": "state", "name": "after_play_again"},
+    {"do": "screenshot", "name": "04-after-play-again"},
+    {"do": "wait_until", "fatal": false, "expr": "G.client_session.is_game_active and not G.client_session.is_game_loading and match_state.is_match_active", "timeout_sec": 90},
+    {"do": "state", "name": "second"},
+    {"do": "screenshot", "name": "05-second"}
+  ],
+  "processes": {
+    "client": {
+      "settings": {"preview_connect_to_remote_server": true}
+    },
+    "server": {
+      "steps": [
+        {"do": "wait_ready", "timeout_sec": 170},
+        {"do": "wait_match_start", "timeout_sec": 30},
+        {"do": "state", "name": "ready"},
+        {"do": "wait_until", "fatal": false, "expr": "match_state.is_match_ended", "timeout_sec": 45},
+        {"do": "state", "name": "ended"},
+        {"do": "wait_until", "fatal": false, "expr": "peer_count() == 0", "timeout_sec": 30},
+        {"do": "state", "name": "peers_gone"},
+        {"do": "wait_until", "fatal": false, "expr": "peer_count() > 0", "timeout_sec": 90},
+        {"do": "state", "name": "second"}
+      ]
+    }
+  }
+}

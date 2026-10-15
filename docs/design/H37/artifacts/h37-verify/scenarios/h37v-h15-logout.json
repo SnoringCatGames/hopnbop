@@ -1,0 +1,146 @@
+{
+  "name": "h37v-h15-logout",
+  "mode": "lobby",
+  "timeout_sec": 120,
+  "steps": [
+    {
+      "do": "wait_ready"
+    },
+    {
+      "comment": "player 1 plays as a guest",
+      "do": "eval",
+      "expr": "Platform.auth.login_anonymous()"
+    },
+    {
+      "do": "eval",
+      "expr": "G.set_meta('h37rec', Engine.get_singleton('ResourceLoader').load('res://.claude/probes/H37/h37-verify/d4/rec.gd').new())"
+    },
+    {
+      "comment": "what Quick Match or a party start does first; gets a guest JWT from the local stack",
+      "do": "eval",
+      "expr": "Platform.matchmaking.ensure_socket()"
+    },
+    {
+      "timeout_sec": 20,
+      "do": "wait_until",
+      "expr": "Platform.matchmaking._socket != null"
+    },
+    {
+      "timeout_sec": 20,
+      "do": "wait_until",
+      "expr": "Platform.matchmaking._socket.is_connected_to_host()"
+    },
+    {
+      "do": "eval",
+      "expr": "Platform.matchmaking._socket.received_notification.connect(Callable(G.get_meta('h37rec'), 'on_note'))"
+    },
+    {
+      "do": "eval",
+      "expr": "Platform.matchmaking._socket.received_party_presence.connect(Callable(G.get_meta('h37rec'), 'on_party_presence'))"
+    },
+    {
+      "do": "eval",
+      "expr": "Platform.matchmaking._socket.closed.connect(Callable(G.get_meta('h37rec'), 'on_closed'))"
+    },
+    {
+      "do": "eval",
+      "expr": "print('H37SOCK1 ' + str(Platform.matchmaking._socket))"
+    },
+    {
+      "do": "eval",
+      "expr": "print('H37UID1 ' + Platform.build_session_from_store().user_id)"
+    },
+    {
+      "sec": 10,
+      "do": "wait",
+      "comment": "phase 1: the probe script sends player 1 a notification (control)"
+    },
+    {
+      "do": "eval",
+      "expr": "print('H37PHASE1 count=' + str(G.get_meta('h37rec').count))"
+    },
+    {
+      "comment": "Settings, Log Out",
+      "do": "eval",
+      "expr": "G.screens.sign_out_router.log_out()"
+    },
+    {
+      "timeout_sec": 25,
+      "do": "wait_until",
+      "expr": "screen() == 'CONSENT'"
+    },
+    {
+      "do": "wait",
+      "sec": 1
+    },
+    {
+      "do": "eval",
+      "expr": "print('H37AFTER sock=' + str(Platform.matchmaking._socket) + ' jwt_empty=' + str(Platform.token_store.jwt_token.is_empty()) + ' notif_socket_wants=' + str(Platform.notification_socket._wants_connection))"
+    },
+    {
+      "fatal": false,
+      "do": "eval",
+      "expr": "print('H37AFTER connected=' + str(Platform.matchmaking._socket.is_connected_to_host()))"
+    },
+    {
+      "sec": 14,
+      "do": "wait",
+      "comment": "phase 2: the probe script sends player 1 more notifications after the log-out"
+    },
+    {
+      "do": "eval",
+      "expr": "print('H37PHASE2 count=' + str(G.get_meta('h37rec').count))"
+    },
+    {
+      "comment": "the next player consents",
+      "do": "eval",
+      "expr": "G.consent_screen._on_continue_pressed()"
+    },
+    {
+      "timeout_sec": 5,
+      "do": "wait_until",
+      "expr": "screen() == 'LOBBY'"
+    },
+    {
+      "comment": "and plays as a new guest (new device id)",
+      "do": "eval",
+      "expr": "Platform.auth.login_anonymous()"
+    },
+    {
+      "do": "eval",
+      "expr": "Platform.matchmaking.ensure_socket()"
+    },
+    {
+      "do": "wait",
+      "sec": 3
+    },
+    {
+      "do": "eval",
+      "expr": "print('H37RESIGN sock=' + str(Platform.matchmaking._socket) + ' new_jwt_empty=' + str(Platform.token_store.jwt_token.is_empty()))"
+    },
+    {
+      "fatal": false,
+      "do": "eval",
+      "expr": "print('H37RESIGN connected=' + str(Platform.matchmaking._socket.is_connected_to_host()))"
+    },
+    {
+      "sec": 8,
+      "do": "wait",
+      "comment": "phase 3: the probe script sends player 1 a notification while player 2 is signed in"
+    },
+    {
+      "do": "eval",
+      "expr": "print('H37PHASE3 count=' + str(G.get_meta('h37rec').count))"
+    },
+    {
+      "do": "eval",
+      "expr": "Platform.matchmaking.create_rt_party(4)",
+      "comment": "player 2 starts a party: the SDK creates a realtime party over the reused socket"
+    },
+    {
+      "do": "wait",
+      "sec": 8,
+      "comment": "phase 4: the probe script joins that party as A and reads who leads it"
+    }
+  ]
+}

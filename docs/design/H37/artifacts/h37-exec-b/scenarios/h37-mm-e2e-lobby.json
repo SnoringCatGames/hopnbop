@@ -1,0 +1,73 @@
+{
+  "name": "h37-mm-e2e-lobby",
+  "mode": "match",
+  "clients": 2,
+  "level": "level_4",
+  "seed": 1,
+  "timeout_sec": 280,
+  "settings": {"match_duration_sec": 10},
+  "steps": [
+    {"do": "wait_until", "expr": "screen() == 'LOBBY'", "timeout_sec": 30},
+    {"do": "wait", "sec": 2.0},
+    {"do": "tap", "key": "move_up", "hold_sec": 0.15, "comment": "W joins a bunny"},
+    {"do": "wait", "sec": 1.5},
+    {"do": "state", "name": "joined"},
+    {"do": "screenshot", "name": "01-lobby-joined"},
+    {"do": "press", "key": "move_right"},
+    {"do": "wait", "sec": 0.8},
+    {"do": "tap", "key": "jump", "hold_sec": 0.3},
+    {"do": "wait", "sec": 0.8},
+    {"do": "tap", "key": "jump", "hold_sec": 0.3},
+    {"do": "wait", "sec": 0.8},
+    {"do": "tap", "key": "jump", "hold_sec": 0.3},
+    {"do": "wait_until", "fatal": false, "expr": "screen() != 'LOBBY' or G.client_session.is_game_loading", "timeout_sec": 8},
+    {"do": "release", "key": "move_right"},
+    {"do": "state", "name": "after_walk"},
+    {"do": "assert", "expr": "G.client_session.is_game_loading or screen() == 'LOADING'", "message": "walking into the rabbit hole started an online match request"},
+    {"do": "eval", "name": "provider", "fatal": false, "expr": "G.game_panel.session_manager.session_provider.get_script().resource_path"},
+    {"do": "wait", "sec": 1.0},
+    {"do": "screenshot", "name": "02-matchmaking"},
+    {"do": "wait_until", "expr": "level_id() == 'level_4' and player_count() == 2", "timeout_sec": 170},
+    {"do": "wait_match_start", "timeout_sec": 30},
+    {"do": "state", "name": "match"},
+    {"do": "assert", "expr": "local_player() != null", "message": "this client has its own bunny"},
+    {"do": "assert", "expr": "match_state.players_by_id.size() == 2", "message": "match state lists two players"},
+    {"do": "screenshot", "name": "03-match"},
+    {"do": "wait_until", "expr": "screen() == 'GAME_OVER'", "timeout_sec": 45},
+    {"do": "wait", "sec": 1.5},
+    {"do": "state", "name": "game_over"},
+    {"do": "screenshot", "name": "04-game-over"},
+    {"do": "eval", "name": "play_again", "expr": "G.game_panel.client_play_again()"},
+    {"do": "wait", "sec": 2.0},
+    {"do": "state", "name": "after_play_again"},
+    {"do": "wait_until", "expr": "G.client_session.is_game_active and not G.client_session.is_game_loading and match_state.is_match_active", "timeout_sec": 100},
+    {"do": "state", "name": "second_match"},
+    {"do": "assert", "expr": "player_count() == 2", "message": "both bunnies are back for the second match"},
+    {"do": "screenshot", "name": "05-second-match"},
+    {"do": "wait_until", "expr": "screen() == 'GAME_OVER'", "timeout_sec": 45},
+    {"do": "wait", "sec": 1.5},
+    {"do": "state", "name": "second_game_over"},
+    {"do": "screenshot", "name": "06-second-game-over"}
+  ],
+  "processes": {
+    "client": {
+      "settings": {"preview_connect_to_remote_server": true, "start_in_game": false}
+    },
+    "server": {
+      "steps": [
+        {"do": "wait_until", "expr": "peer_count() == 2", "timeout_sec": 200},
+        {"do": "wait_match_start", "timeout_sec": 40},
+        {"do": "state", "name": "match"},
+        {"do": "wait_until", "fatal": false, "expr": "match_state.is_match_ended", "timeout_sec": 45},
+        {"do": "state", "name": "ended"},
+        {"do": "wait_until", "fatal": false, "expr": "peer_count() == 0", "timeout_sec": 30},
+        {"do": "wait_until", "fatal": false, "expr": "peer_count() == 2", "timeout_sec": 100},
+        {"do": "wait_until", "fatal": false, "expr": "match_state.is_match_active", "timeout_sec": 40},
+        {"do": "state", "name": "second_match"},
+        {"do": "wait_until", "fatal": false, "expr": "match_state.is_match_ended", "timeout_sec": 45},
+        {"do": "state", "name": "second_ended"},
+        {"do": "wait_until", "fatal": false, "expr": "peer_count() == 0", "timeout_sec": 40}
+      ]
+    }
+  }
+}
