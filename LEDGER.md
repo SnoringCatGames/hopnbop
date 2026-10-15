@@ -39,9 +39,9 @@ stands on its own after the transcript is gone.
   triage (Levi, 2026-10-14). Report-only; the report becomes
   `docs/design/H37_systems_audit.md`.
   - owner: claude 40ecd3b7-60b2-4364-9b2a-122aa3afad90. Phase 1: eight
-    Opus agents (09:35), all reported by 10:55. Phase 2: h37-verify
-    (10:45, cap raised to about 12:45) and h37-verify2 (11:05). Phase 3:
-    h37-report (10:46).
+    Opus agents (09:35), all reported by 10:55. Phase 2: h37-verify and
+    h37-verify2, both finished 11:46. Phase 3: h37-report (10:46),
+    running.
   - branch: mainline; last commit: the latest one touching the brief
     (`git log -1 -- docs/design/H37_audit_brief.md`)
   - evidence: `.claude/probes/H37/`: one `<agent>.md` findings file per
@@ -49,10 +49,11 @@ stands on its own after the transcript is gone.
     Final reports go in `handbacks/`. The report is drafted, uncommitted,
     in `docs/design/H37_systems_audit.md` (its `Status:` line names the
     finished sections) and `docs/design/H37/`.
-  - next: fold the phase 2 results into the report, review it, commit
-    the report and appendices, and file the ledger items it proposes.
-    In a fresh session, restart from the brief any agent whose findings
-    file has no `Done` line.
+  - next: review the report, commit it with the appendices, and file the
+    ledger items it proposes. Then delete `h37-verify2/export/` and
+    `h37-verify2/nakama-src/` (about 108 MB). In a fresh session,
+    restart h37-report from the brief if the report's `Status:` line
+    does not list every section.
   - brief: `docs/design/H37_audit_brief.md`
 
 ## Next
