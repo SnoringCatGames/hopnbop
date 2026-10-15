@@ -11,6 +11,15 @@ Claude Code transcripts under `~/.claude/projects/` (kept 30 days),
 `~/.local/share/muse/sessions/`. Each item states its facts, so it
 stands on its own after the transcript is gone.
 
+## Urgent
+
+- **H40** · Legal texts missing from every export (LG-1, ops C7) (S;
+  batch 1; `docs/design/H37_systems_audit.md` 3.1, 0.1 row 1)
+- **H41** · The game server does not enforce session validation (G1.1,
+  G1.3). Ship with the G1.3 re-claim rule, never alone. Lands after
+  platform SP70 and SP27 (M; batch 2; `docs/design/H37_systems_audit.md`
+  3.3, 0.1 row 4)
+
 ## Waiting on Levi
 
 - **H3** · The bunny reappears 1-2 frames before respawn. "Dead" ends on
@@ -25,38 +34,160 @@ stands on its own after the transcript is gone.
   `workflow_dispatch`, and work lands straight on main, so none of their
   checks (GUT, export smoke, the translation-CSV check, the compliance
   suite) run unless someone dispatches them. Actions are free on this
-  public repo. (Session 530145bc.)
+  public repo. (Session 530145bc.) H37 (10-14): still true, now 25
+  commits (`3b7f5743..9bbaa7ee`, the 0.54.0 release `8ca156e7` among
+  them); the legal parity check (C1) depends on it.
 - **H15** · Offered: the realtime matchmaking socket survives log-out
   still signed in as the old account, and the next account would reuse
   it for its tickets; nothing calls `Platform.matchmaking.cleanup()`.
   Likely a one-line fix in `SignOutRouter`'s shared cleanup. Inferred
   from code, not reproduced. (Session 530145bc, client-fixes agent
-  abdbfdf9, 2026-10-12.)
+  abdbfdf9, 2026-10-12.) H37 (10-14): Broken, Verified end to end in 2
+  runs (verify item 4d); a sign-in over a guest hits it too (AN-1b).
+- **H39** · Networked pause ships enabled (T107) (XS once decided; batch
+  1; `docs/design/H37_systems_audit.md` 3.3, section 7 row 3)
+- **H59** · The Google profile name is the public display name (DN-1,
+  TODO L50) (M; batch 4; `docs/design/H37_systems_audit.md` 3.1, section
+  7 row 4)
+- **H92** · One 2-client networked session with Levi (T02 to T07, T16,
+  T25, T27, T29) (S; batch 7; `docs/design/H37_systems_audit.md` section
+  5 row 3, section 7 row 9)
+- **H71** · Decoupling: which seams to build (decision;
+  `docs/design/H37_systems_audit.md` 1.3, section 7 row 6)
+- **H79** · Check the org-level `NAKAMA_HTTP_KEY` Actions secret (needs
+  admin:org) (XS; `docs/design/H37_systems_audit.md` 3.5, section 7 row
+  8)
 
 ## In progress
 
-- **H37** · Systems audit, test run, history recap and TODO-scratch.md
-  triage (Levi, 2026-10-14). Report-only; the report becomes
-  `docs/design/H37_systems_audit.md`.
-  - owner: claude 40ecd3b7-60b2-4364-9b2a-122aa3afad90. Phase 1: eight
-    Opus agents (09:35), all reported by 10:55. Phase 2: h37-verify and
-    h37-verify2, both finished 11:46. Phase 3: h37-report (10:46),
-    running.
-  - branch: mainline; last commit: the latest one touching the brief
-    (`git log -1 -- docs/design/H37_audit_brief.md`)
-  - evidence: `.claude/probes/H37/`: one `<agent>.md` findings file per
-    agent, plus `<agent>/` for logs, run dirs and probe scenarios.
-    Final reports go in `handbacks/`. The report is drafted, uncommitted,
-    in `docs/design/H37_systems_audit.md` (its `Status:` line names the
-    finished sections) and `docs/design/H37/`.
-  - next: review the report, commit it with the appendices, and file the
-    ledger items it proposes. Then delete `h37-verify2/export/` and
-    `h37-verify2/nakama-src/` (about 108 MB). In a fresh session,
-    restart h37-report from the brief if the report's `Status:` line
-    does not list every section.
-  - brief: `docs/design/H37_audit_brief.md`
-
 ## Next
+
+- **H38** · Clients crash (signal 11) when the server goes away
+  mid-match; defer both peer changes. Supersedes H25. Urgent candidate
+  (report section 7 row 1) (S; batch 1;
+  `docs/design/H37_systems_audit.md` 3.3, 0.1 row 3)
+- **H67** · A settings change reverts two launches later (ST1) (S; batch
+  1; `docs/design/H37_systems_audit.md` 3.4, 0.1 row 6)
+- **H70** · A signed signaling URL is logged; files the 10-13 inbox
+  entry. At `src/core/game_session_manager.gd:345-353`; fix: log the
+  host only, or strip the query (XS; batch 1;
+  `docs/design/H37_systems_audit.md` 3.5, 2.2)
+- **H69** · `sign-out-local-match` and `sign-out-play-again` fail since
+  88e3089b raised the match length to 180 s. acct, exec-b: copies with
+  10 s pass. Fix: a 10 s match length in both scenarios (XS; batch 1;
+  `docs/design/H37_systems_audit.md` 3.1 coverage, section 4 step 2)
+- **H43** · Reconnect stale-peer race (F8) (S; batch 2;
+  `docs/design/H37_systems_audit.md` 3.3)
+- **H42** · A disconnected leader keeps the win on a normal match end
+  (G2.1) (S; batch 3; `docs/design/H37_systems_audit.md` 3.3)
+- **H45** · The server self-quits inside the reconnect window and
+  nothing reaches the runtime (S; batch 3;
+  `docs/design/H37_systems_audit.md` 3.3)
+- **H48** · The 10 s server grace may be too short for WebRTC signaling.
+  mm: not measured. Fix: time signaling in a WebRTC run; start the grace
+  after signaling (S; batch 3; `docs/design/H37_systems_audit.md` 3.3
+  list)
+- **H44** · Play Again splits a party; there is no rematch (M; batch 3;
+  `docs/design/H37_systems_audit.md` 3.3)
+- **H51** · The loading screen has no connecting or waiting phase (TODO
+  330 to 333, half done). mm. Fix: add the two phases (S; batch 3;
+  `docs/design/H37_systems_audit.md` 3.3 list, section 5)
+- **H57** · The guest upgrade signs in instead of linking (AN-1); a
+  linked guest keeps `is_anonymous=true` (M; batch 4;
+  `docs/design/H37_systems_audit.md` 3.1)
+- **H62** · Link errors match AWS-era codes, so the merge path is dead
+  (LK-4, LK-2). acct: LK-4 Broken by code.
+  `link_account_row.gd:159,209`; `sdk:core/auth_api_client.gd:871-874`
+  (prefix inferred). Fix: match Nakama's codes; route AlreadyExists to
+  H57's merge decision (S; batch 4; `docs/design/H37_systems_audit.md`
+  3.1 list)
+- **H58** · Guests cannot export, delete or forget (AN-2) (M; batch 4;
+  `docs/design/H37_systems_audit.md` 3.1)
+- **H64** · A guest's server calls go out with an expired JWT after 2 h
+  (AN-3). acct: Believed, low. `backend_api_client.gd:528-536`. Fix:
+  refresh the guest JWT when it expires, not only when none is stored
+  (S; batch 4; `docs/design/H37_systems_audit.md` 3.1 list)
+- **H55** · One absent member stalls the party. Waits for the
+  party-control decision (SP34) (M; batch 4;
+  `docs/design/H37_systems_audit.md` 3.2)
+- **H54** · The notification poll is frozen on the oldest 50 rows
+  (client half; SP40 is the server half) (M; batch 4;
+  `docs/design/H37_systems_audit.md` 3.2)
+- **H60** · Names and avatar URLs are never validated; any avatar URL is
+  fetched (PI-1, DN-2; client half) (M; batch 4;
+  `docs/design/H37_systems_audit.md` 3.1)
+- **H61** · Avatars from an earlier match show on the wrong players
+  (PI-2) (S; batch 4; `docs/design/H37_systems_audit.md` 3.1)
+- **H63** · The Log Out row is hidden when the access token has expired
+  (AP-1), with DEL-1. acct: AP-1 Believed, low-medium. Fix: always offer
+  Log Out; clear locally when the server call fails (S; batch 4;
+  `docs/design/H37_systems_audit.md` 3.1 list)
+- **H53** · Party client races: a follower cannot abort matchmaking; two
+  Start presses split the party (M; batch 4;
+  `docs/design/H37_systems_audit.md` 3.2)
+- **H56** · Controller players cannot enter codes (M; batch 4;
+  `docs/design/H37_systems_audit.md` 3.2)
+- **H86** · Script and engine errors that do not crash are never
+  reported (CR6) (S to M; batch 5; `docs/design/H37_systems_audit.md`
+  3.4)
+- **H87** · A dedicated server's fatal error or engine crash is never
+  reported (CR1, CR7) (M; batch 5; `docs/design/H37_systems_audit.md`
+  3.4)
+- **H88** · Nightly smoke makes a new account each run, and player
+  metrics count them (OP3; the workflow half) (S; batch 5;
+  `docs/design/H37_systems_audit.md` 3.5)
+- **H89** · The final match stats ride one unreliable RPC (S11) (S;
+  batch 5; `docs/design/H37_systems_audit.md` 3.4)
+- **H90** · Failed cloud saves are dropped (ST2, ST3) (M; batch 5;
+  `docs/design/H37_systems_audit.md` 3.4)
+- **H77** · Land the H37 probes as tests, each with its fix (XS each;
+  batch 6; `docs/design/H37_systems_audit.md` section 4 step 2)
+- **H65** · Tests for the sign-out router's party reset and avatar-cache
+  clear. acct (no test). `sign_out_router.gd:103,111`. Fix: two GUT
+  tests (S; batch 6; `docs/design/H37_systems_audit.md` 3.1 coverage)
+- **H74** · `scripts/dev-stack.ps1` from exec-b's `stack.ps1`, with seed
+  and restart steps (S; batch 6; `docs/design/H37_systems_audit.md` 1.2
+  gaps, section 4 step 3)
+- **H73** · Harness friction: loopback runs warn of production; client 2
+  starts 30 s late in matchmaker runs; screenshots are black for about
+  0.7 s after a screen change (S; batch 6;
+  `docs/design/H37_systems_audit.md` 1.2 gaps, section 4 step 3)
+- **H75** · Harness sign-in plus `publish` and `wait_shared` steps; a
+  fake `Platform.party` for GUT (M; batch 6;
+  `docs/design/H37_systems_audit.md` 1.2 gaps, 1.3 rows 6 and 7, section
+  4 step 3)
+- **H72** · Exported-build runs for the harness (a custom 4.7.2
+  template) (M; batch 6; `docs/design/H37_systems_audit.md` section 4
+  step 4)
+- **H82** · Pin staticcheck in `pr-validate.yml:305` (XS; batch 6;
+  `docs/design/H37_systems_audit.md` 3.5)
+- **H68** · Legal parity is checked only by pr-validate, which never
+  runs on push (C2); `edgegap_app_version` is not in the sync's
+  mustSurvive list (C3) (S; batch 6; `docs/design/H37_systems_audit.md`
+  3.4)
+- **H83** · `release.yml` has never run and no `v*` tag exists. Waits on
+  Levi (report section 7 row 13) (S; batch 6;
+  `docs/design/H37_systems_audit.md` 1.1)
+- **H66** · V17: 22 broken format strings, among them the refused-pause
+  ERROR at `game_panel.gd:1854` (exec-b #10). 17 here; RN7 and SP49 hold
+  the rest (S to M; batch 7; `docs/design/H37_systems_audit.md` section
+  5 row 2, 3.3 list)
+- **H93** · The overhead label offset (T29). After H92 (S to M; batch 7;
+  `docs/design/H37_systems_audit.md` section 5 row 4)
+- **H91** · A short input grace on the game-over screen (T79). After H92
+  (M; batch 7; `docs/design/H37_systems_audit.md` section 5 row 5)
+- **H94** · A controller pass by hand, with two local players (T45, T08,
+  T09) (S; batch 7; `docs/design/H37_systems_audit.md` section 5 row 6)
+- **H95** · A click sound on every MenuRow trigger (T42) (S; batch 7;
+  `docs/design/H37_systems_audit.md` section 5 row 7)
+- **H96** · Alt+Enter fullscreen (T10) (S; batch 7;
+  `docs/design/H37_systems_audit.md` section 5)
+- **H97** · Finish T12; delete the 9 Stale notes (with SP53) (S; batch
+  7; `docs/design/H37_systems_audit.md` section 5)
+- **H98** · Finish T43; verify, then fix, T19 (M; batch 7;
+  `docs/design/H37_systems_audit.md` section 5)
+- **H99** · Finish T48 (M; batch 7; `docs/design/H37_systems_audit.md`
+  section 5)
 
 ## Residuals (known, not fixed)
 
@@ -77,7 +208,8 @@ stands on its own after the transcript is gone.
 - **H9** · pr-validate's "GDScript formatter" job is a no-op. It logs
   "not vendored; skipping" because `addons/gdscript_formatter` isn't in
   the repo, though CLAUDE.md says it is. (Session 530145bc, agent
-  aab30fcb, 13:52.)
+  aab30fcb, 13:52.) H37 (10-14): still true; the formatter job is green
+  but skips everything.
 - **H10** · Android: run the game on the Pixel. The export preset
   half is done in 4c04e908 (2026-10-13): preset.3 "Android" (arm64,
   template export, INTERNET, `games.snoringcat.hopnbop`) plus the
@@ -89,69 +221,124 @@ stands on its own after the transcript is gone.
   (the UI is gamepad/keyboard-driven; H10's original scope).
 - **H17** · `EdgegapServerProvider` trusts each player's declared backend
   user ID instead of checking it against the validated session ID. The
-  runtime now drops outsiders from `match_end` (platform 8ede126), but a
+  runtime now drops outsiders from `match_end` (platform f4424d5), but a
   player can still claim a fellow match player's ID. (Session 530145bc,
-  admin-key agent a654b0d8, 2026-10-12.)
+  admin-key agent a654b0d8, 2026-10-12.) H37 (10-14): a probe confirmed
+  it (report 3.3, G1.1 to G1.3); SP27 and H41 fix it.
 - **H18** · Raw SDK error text reaches players: the party panel shows
   SDK errors as-is (a "Not authenticated" toast), and the delete, export
-  and merge failure toasts append raw errors. (Agent abdbfdf9.)
+  and merge failure toasts append raw errors. (Agent abdbfdf9.) H37
+  (10-14): also the social R4 repro, the export toast
+  (`export_data_row.gd:96-99`) and the poll toast
+  (`friends_panel.gd:342-354`).
 - **H19** · After a recoverable matchmaking failure the loading screen
   offers only "Try Again", with no way back to the lobby. (Agent
-  abdbfdf9.)
+  abdbfdf9.) H37 (10-14): still true.
 - **H20** · Cancelling matchmaking, or a fatal matchmaking failure,
   returns to a lobby without the player's bunny. Inferred from code.
-  (Agent abdbfdf9.)
+  (Agent abdbfdf9.) H37 (10-14): still true. Fix: `copy_latest_state` at
+  `game_panel.gd:673` and `779`, as at 694.
 - **H21** · A party follower whose join fails gets two toasts for it.
-  (Agent abdbfdf9.)
+  (Agent abdbfdf9.) H37 (10-14): still true.
 - **H22** · Log-out first tells the server the player went offline, so
   with no connection the consent screen appears only after that times
-  out (about 9 s in the harness). (Agent abdbfdf9.)
+  out (about 9 s in the harness). (Agent abdbfdf9.) H37 (10-14): still
+  true, about 9 s measured.
 - **H23** · The notification socket stops on any failed sign-in result,
   transient refresh failures included, until the next successful
-  refresh. (Agent abdbfdf9.)
+  refresh. (Agent abdbfdf9.) H37 (10-14): still true; a failed
+  `delete_account` (DEL-2, SP41) is one more trigger.
 - **H24** · `Player._enter_tree` registers the player before its id is
   set, leaving a stale `players_by_id[0]` entry on the server; the code
   comment there says the id is set first. (Session 530145bc, harness
-  agent a9dc5b3c, 2026-10-11.)
-- **H25** · Quitting during the mid-match reconnect loop crashes with
-  signal 11. The game's own exit paths avoid it, and so does the
-  harness. (Agent a9dc5b3c.)
+  agent a9dc5b3c, 2026-10-11.) H37 (10-14): still true, low.
 - **H26** · After a preview server hot-reload, levels get
   auto-generated names (`@Node2D@39`), so each client logs about 35
   replication errors (Snail_0 not found, ids missing from the cache).
-  (Agent a9dc5b3c.)
+  (Agent a9dc5b3c.) H37 (10-14): it reaches players (exec-b run 2:
+  Verified; the production scope Believed; report 3.3).
 - **H27** · Local/offline mode logs "RPC on yourself is not allowed"
-  errors (`_server_rpc_ping`, `_rpc_init`). (Agent a9dc5b3c.)
+  errors (`_server_rpc_ping`, `_rpc_init`). (Agent a9dc5b3c.) H37
+  (10-14): still present, Verified. Fix: an `is_local_mode` guard at
+  `frame_synchronizer.gd:120`, and skip the local peer at
+  `networked_level.gd:307`.
 - **H28** · About half of lobby runs log an `AudioStreamWAV`
   (`pause_menu.wav`) leak warning at exit, before and after the
-  PerfTracker fix. Noted in CLAUDE.md. (Agent a55477032.)
+  PerfTracker fix. Noted in CLAUDE.md. (Agent a55477032.) H37 (10-14):
+  see H86 (CR6).
 - **H29** · Unused code: `BinaryToggle`, and `fetch_player_stats`,
   `fetch_match_history` and their signals in `backend_api_client.gd`
-  since the leaderboard and My Stats rewrite (2c8cb82e). (Leaderboard
-  agent abbaef7c.)
+  since the leaderboard and My Stats rewrite (f77828e8). (Leaderboard
+  agent abbaef7c.) H37 (10-14): still true.
 - **H30** · `scripts/agent/run-game.ps1 -Backend` accepts a URL with no
   port; the driver then refuses it with exit 3. (Agent abbaef7c.)
 - **H31** · The credits screen's existing labels ("Made by", "Sound",
   "Credits", "Thanks for playing!") have no translation keys, so other
   locales show English next to the translated DB-IP row (87523bb3).
-  (Privacy agent a834b111.)
+  (Privacy agent a834b111.) H37 (10-14): the labels are at
+  `credits_screen.tscn:40,55,70,85,114`.
 - **H32** · Anonymous players only get a session once they go online, so
   an offline-only player's crash reports expire unsent after 7 days.
-  (Crash agent a1d23375.)
+  (Crash agent a1d23375.) H37 (10-14): still true.
 - **H35** · `test_party_matchmaking_context.gd` fails 7 of its 11 tests
   under a full `-gdir=res://test/unit -ginclude_subdirs` run but passes
   11/11 alone: state bleed from earlier scripts, not a product bug
   (2026-10-12, Godot 4.7.2 + GUT 9.7.1, suite otherwise 485/492).
-  pr-validate's per-file loop doesn't hit it.
+  pr-validate's per-file loop doesn't hit it. H37 (10-14): 11/11 per
+  file again (exec-a); the full-directory run was not repeated.
+- **H52** · Inert `game.yaml` `matchmaker_rules` fields; the same-device
+  preference its comment claims does not exist. mm (read). Fix: delete
+  `ticket_expiry_seconds`, `cross_play` and `rules`, or wire them; fix
+  the comment (XS; batch 3; `docs/design/H37_systems_audit.md` 3.3 list)
+- **H49** · `level_id` always empty in `match_stats` (ops S3). mm; ops
+  "lower". `edgegap_server_provider.gd:266-270`. Fix: pass the level id
+  (XS; batch 5; `docs/design/H37_systems_audit.md` 3.3 list)
+- **H81** · `local-smoke-test.ps1` rewrites the checkout it runs in;
+  "several runs at once" holds only per worktree (S; batch 6;
+  `docs/design/H37_systems_audit.md` 3.5)
+- **H46** · `test_network_connector.gd` crashed on exit. mm: crashed in
+  1 of 3 runs. Fix: run the file 10 times and find what outlives the
+  test (S; batch 6; `docs/design/H37_systems_audit.md` 3.3 list)
+- **H50** · Delete the warm-up stubs (TODO 33 to 38, obsolete). mm.
+  `backend_api_client.gd:7-122`, `loading_screen.gd:115-135` (XS; batch
+  7; `docs/design/H37_systems_audit.md` 3.3 list)
+- **H85** · CLAUDE.md names the debug toggles wrongly; `dev_mode` is
+  read nowhere (ST5, triage V27) (XS; batch 7;
+  `docs/design/H37_systems_audit.md` 3.4)
+- **H47** · transport.md drift: the retry count, port 4433 vs the real
+  4434/TCP, a GameLift fleet paragraph. mm (read).
+  `.claude/rules/transport.md`. Fix: correct all three (XS; batch 7;
+  `docs/design/H37_systems_audit.md` 3.3 list)
+- **H80** · Textures orphaned by b998107d, `foobar.png` once T14 is
+  answered, orphan `.import` files (XS; batch 7;
+  `docs/design/H37_systems_audit.md` 2.2, section 5)
 
 ## Ideas (not scheduled)
 
 - **H33** · An optional `occurred_at` on crash reports, clamped
   server-side, would date reports that sat queued for days. Needs a
   privacy-text check first. (Agent a1d23375.)
+- **H76** · More than 2 clients and gamepad input in the harness (M to
+  L; `docs/design/H37_systems_audit.md` section 4 step 7)
+- **H78** · Golden screenshots (build item 7) (M;
+  `docs/design/H37_systems_audit.md` 2.2, section 4 step 7)
+- **H84** · Test fixtures log "no animation 'Rest'" 37 times per run.
+  exec-a (seen in every run). Fix: give the fixtures a `Rest` animation,
+  or stop playing it (XS; `docs/design/H37_systems_audit.md` 3.5 list)
+- **H100** · Level art (T15, T28, T14) (L each;
+  `docs/design/H37_systems_audit.md` section 5)
 
 ## Done
 
+- **H37** · Systems audit, test run, history recap and TODO-scratch.md
+  triage (Levi, 2026-10-14). Report `docs/design/H37_systems_audit.md`,
+  appendices and reusable probes in `docs/design/H37/`. Its items are
+  filed: H38-H100 here, SP26-SP71, RN6-RN8 and CC51-CC57. Done in
+  6910dce4 (2026-10-14).
+- **H25** · Quitting during the mid-match reconnect loop crashes with
+  signal 11. The game's own exit paths avoid it, and so does the
+  harness. (Agent a9dc5b3c.) Dropped: superseded by H38, which has the
+  full trigger set and the fix (H37).
 - **H34** · CLAUDE.md slimmed to the context budget: 2,333 lines /
   ~24k tokens → 400 lines / ~4.8k, the same split knotmaze used for
   K45. Binding rules stay; lore moved verbatim to path-scoped
@@ -198,7 +385,7 @@ stands on its own after the transcript is gone.
   allocator paths with clean Edgegap teardown. No `v*` tag pushed.
 - **H1** · Crash reporting was dead (no client session lookup, and the
   runtime never had a `crash_report` RPC). Done in hopnbop 6b0dc6d7 and
-  platform af566b9 (2026-10-11), live on prod; design review in
+  platform 6081b82 (2026-10-11), live on prod; design review in
   `docs/design/crash_report_review.md`.
 - **H2** · Local GUT runs loaded the real token store and refreshed that
   session against PRODUCTION Nakama on the first frame; a rejected

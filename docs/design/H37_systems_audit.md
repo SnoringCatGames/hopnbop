@@ -22,8 +22,9 @@ How to read it:
   `third_party/snoringcat-platform/`, `rt:` its `runtime/`, `sdk:` its
   client addon, `net:` is `addons/rollback_netcode/`, `nakama:` is the
   Nakama 3.25.0 source. Bare paths are hopnbop.
-- **IDs** (H38+, SP26+, RN6+, CC50+) were proposed here and are filed in
-  each repo ledger; section 8 lists them.
+- **IDs** (H38+, SP26+, RN6+, CC51+) were proposed here and are filed in
+  each repo ledger; section 8 lists them. Another session filed CC50
+  first, so the claude-config items are CC51 to CC57.
 - **Sizes**: XS under 30 min, S under 2 h, M half a day to a day, L
   several days.
 - **Appendices** (`docs/design/H37/<agent>.md`) are the agents' findings
@@ -93,8 +94,8 @@ Believed). It is one line once Levi decides (section 7).
   outage.** Its scenario, Caddy's certificate renewal failing for 14 days,
   did not happen: cert-expiry ran at 05:43 PT on 10-14 and all three
   production certificates have 45 to 50 days left. The drill's gaps are
-  still real proposals; G1, nothing pages while renewal fails, is CC50.
-- **The weekly usage limit** (history; CC53). The week was at 72% at 08:51
+  still real proposals; G1, nothing pages while renewal fails, is CC51.
+- **The weekly usage limit** (history; CC54). The week was at 72% at 08:51
   UTC on 10-14, and weekly-meta-audit expected the limit late 10-14 or
   early 10-15. LLM jobs then fail with no report and no status entry until
   10-19 19:00 UTC, so a missing digest in that window is the limit, not a
@@ -114,7 +115,7 @@ Levi's decisions are collected in section 7.
 | Compliance suite (`sdk:test/compliance/`, via `scripts/local-smoke-test.ps1`) | The SDK against a real local Nakama with the runtime plugin: auth, friends, party, matchmaking with mock allocation, export, delete. | 80/80 in 35 files, 79 s, clean teardown (exec-a). | Almost every case is single-user, so cross-user bugs (forced party join, start checks, block scope) pass; the invite test accepts membership state 2 or 3. Platform "Client SDK CI" runs no tests (63 green runs, zero tests). `local-smoke-test.ps1` rewrites the checkout it runs in. Compliance Matrix is dispatch-only (H11). |
 | Agent harness (`scripts/agent/run-game.ps1`) | Real game processes driven by key presses: offline play, local matches, sign-out flows, consent, export, i18n, local-backend leaderboards. | Committed scenarios: 10 of 13 pass. `sign-out-local-match` and `sign-out-play-again` fail since 88e3089b raised `match_duration_sec` to 180 (H69); `leaderboard-local-backend` fails because nothing seeds scores. exec-b's 8 new scenarios: settings menu 77/77, persistence 27/27, pause, party-guest pass; the 4 matchmaking ones end with both clients crashing (H38). | See 1.2 for the gaps. |
 | CI (GitHub Actions) | hopnbop: PR Validate (formatter, export smoke, Pulumi compile, parity, GUT, runtime Go), Compliance Matrix, Nightly Smoke, Game Server Deploy, Release. Platform: Client SDK CI, Nakama Runtime Deploy. Netcode: Parse check. | Newest runs all green (exec-a table, appendix `h37-exec-a.md` section 3). Nightly Smoke runs on schedule at 03:00 UTC. | PR Validate and Compliance Matrix trigger only on `pull_request` and dispatch, and work lands on main (H11). The formatter job skips everything (H9). `release.yml` has never run and no `v*` tag exists (H83). Two stale workflows still listed by `gh`. |
-| Production probes and jobs (claude-config `jobs/`) | Synthetic match probe (local allocation 6 days a week, Edgegap on Wednesdays), prod-health-check (runtime build, crash counts), nightly smoke, player metrics, caddy-access-analytics, Edgegap deploy success rate, cost monitor, cert expiry, UptimeRobot, and a weekly DR drill, which is a tabletop exercise. | Green. The 10-14 DR drill reported red, but its scenario (Caddy's certificate renewal failing for 14 days) was a tabletop exercise, not a failure: cert-expiry ran at 05:43 PT on 10-14 and all three production certs have 45 to 50 days left. | Nothing exercises match_end, the leaderboard or the public route (OP2, SP58). caddy-access-analytics has reported nothing real since at least 10-01 (OP1, CC54). Player-metrics DAU counts the nightly-smoke accounts (OP3, H88, CC55). Grafana has no 5xx, 429 or RPC-error rules (OP6, SP65). The drill's gap G1 is real: nothing pages while renewal fails (CC50). The port-pool leak would show only as the probe going red (SP26). The probe cannot run against a local stack (CC52). Section 3.5 has the detail. |
+| Production probes and jobs (claude-config `jobs/`) | Synthetic match probe (local allocation 6 days a week, Edgegap on Wednesdays), prod-health-check (runtime build, crash counts), nightly smoke, player metrics, caddy-access-analytics, Edgegap deploy success rate, cost monitor, cert expiry, UptimeRobot, and a weekly DR drill, which is a tabletop exercise. | Green. The 10-14 DR drill reported red, but its scenario (Caddy's certificate renewal failing for 14 days) was a tabletop exercise, not a failure: cert-expiry ran at 05:43 PT on 10-14 and all three production certs have 45 to 50 days left. | Nothing exercises match_end, the leaderboard or the public route (OP2, SP58). caddy-access-analytics has reported nothing real since at least 10-01 (OP1, CC55). Player-metrics DAU counts the nightly-smoke accounts (OP3, H88, CC56). Grafana has no 5xx, 429 or RPC-error rules (OP6, SP65). The drill's gap G1 is real: nothing pages while renewal fails (CC51). The port-pool leak would show only as the probe going red (SP26). The probe cannot run against a local stack (CC53). Section 3.5 has the detail. |
 
 ### 1.2 Can Claude run the real game end to end?
 
@@ -250,12 +251,12 @@ this desktop. Times are UTC.
   (247be983), the compliance helper (platform 55889b3), the local-smoke
   repair (f8706a76) and `-Backend` (3b7f5743). Four build items were
   never built or ledgered: 5b (a dev stack with the local allocator,
-  SP55), 5c (`-AllowMock` on the synthetic probe, CC52), 6 (keep
-  game-server logs, SP54, and a read-only SQL wrapper, CC51) and 7
+  SP55), 5c (`-AllowMock` on the synthetic probe, CC53), 6 (keep
+  game-server logs, SP54, and a read-only SQL wrapper, CC52) and 7
   (golden screenshots, H78). The decoupling question was never answered;
   section 1.3 answers it.
 - **Usage.** The 10-12 transcript-audit run hit the weekly limit and left
-  no report and no status entry (CC53). Levi lifted the limit for this
+  no report and no status entry (CC54). Levi lifted the limit for this
   audit at 10:55 PDT on 10-14.
 
 ### 2.2 Loose threads
@@ -289,9 +290,9 @@ this report picks it up.
 | Textures orphaned by b998107d | Unledgered | H80 |
 | The DR rebuild path was never run for real | Unledgered | SP57 |
 | Signed signaling URL in the client log | In the `LEDGERS.md` inbox since 10-13, with a stale line (`:325`, now `game_session_manager.gd:345-353`) | H70 |
-| Testability build items 5b, 5c, 6, 7 | Unledgered | SP55, CC52, SP54 and CC51, H78 |
-| 10-14 DR drill, a tabletop exercise that scored red | Not a failure (certs green, 45 to 50 days left); its gaps are real | SP56, CC50 |
-| Limit-hit jobs leave no record | Unledgered | CC53 |
+| Testability build items 5b, 5c, 6, 7 | Unledgered | SP55, CC53, SP54 and CC52, H78 |
+| 10-14 DR drill, a tabletop exercise that scored red | Not a failure (certs green, 45 to 50 days left); its gaps are real | SP56, CC51 |
+| Limit-hit jobs leave no record | Unledgered | CC54 |
 | Ledger SHAs killed by timestamp-sweep | Unledgered beyond CC34's submodule case | CC34 update, section 8 |
 
 **Dead SHAs.** timestamp-sweep rewrote platform history after 530145bc,
@@ -612,17 +613,17 @@ the first is G1, nothing pages while renewal fails.
 | **`local-smoke-test.ps1` rewrites the checkout it runs in** (deletes and re-copies the SDK addon, re-imports); its "several runs at once" holds only with one run per worktree. | Verified (exec-a) | `scripts/local-smoke-test.ps1` | Fix the header, or stage into a temp project | S | H81 |
 | **gofmt and docs.** SP10's unformatted set is now friends_limits, helpers_test, local_allocator, main and party; no workflow runs gofmt. The platform CLAUDE.md says there are no per-package tests (there are 181) and that a workflow runs gofmt (none does). | Verified (exec-a, ops) | `plat:CLAUDE.md` | gofmt in CI plus `*.go eol=lf`; fix the two CLAUDE.md claims and the dead plan path (triage) | S | SP10 update, SP53 |
 | **`staticcheck@latest` is unpinned** in the runtime deploy gate and in pr-validate. | Verified (exec-a) | `plat:.github/workflows/nakama-runtime.yml:44`; `.github/workflows/pr-validate.yml:305` | Pin a version | XS | SP51, H82 |
-| **OP1.** caddy-access-analytics has reported nothing real since at least 10-01 (`jq -c` where it needs `-r`), so 429s and 5xx go unwatched. | Verified | claude-config `jobs/scripts/caddy-access-analytics.ps1:46-48` | `jq -r`; fix the stale comment | XS | CC54 |
-| **OP3.** player-metrics' DAU equals the nightly smoke runs: each run leaves a new account. Same class as SP23. | Verified | `.github/workflows/nightly-smoke.yml:39,51` | Reuse one fixed `probe-` device id, or delete the account at the end; exclude probe accounts from metrics | S | H88, CC55 |
+| **OP1.** caddy-access-analytics has reported nothing real since at least 10-01 (`jq -c` where it needs `-r`), so 429s and 5xx go unwatched. | Verified | claude-config `jobs/scripts/caddy-access-analytics.ps1:46-48` | `jq -r`; fix the stale comment | XS | CC55 |
+| **OP3.** player-metrics' DAU equals the nightly smoke runs: each run leaves a new account. Same class as SP23. | Verified | `.github/workflows/nightly-smoke.yml:39,51` | Reuse one fixed `probe-` device id, or delete the account at the end; exclude probe accounts from metrics | S | H88, CC56 |
 | **OP6.** Grafana watches only infrastructure: no rules for Caddy 5xx or 429 rates or Nakama RPC errors, though Prometheus already scrapes them. | low-medium | ops "6." | Add the three rules | S | SP65 |
 | **RL3.** Any authenticated session can write unbounded storage; filling the one host's disk takes everything down. | Suspect, medium-low | ops "8." | A `BeforeWriteStorageObjects` allowlist with a size cap, and a per-IP Caddy zone on `/v2/storage` and `/v2/rpc` | M | SP59 |
 | **RL5, RL6.** Nothing validates the Caddyfile before deploy or reloads it on deploy, and the Caddy build is unpinned. | RL5 Believed, low | ops "8." | `caddy validate` in CI, reload on deploy, pin the build; a dev-stack Caddy so local-smoke can assert 429s, CORS and log masking | S (M with the dev Caddy) | SP64 |
 | **RT3, RT4, OP4, OP7.** RT3: disk is the only backstop for three unbounded stores (game-server images, container logs, per-match rows). RT4: account_cron has no test. OP4: prod-health-check's Postgres error count is small but not zero (1, 2, 1 on 10-07, 10-12, 10-14), and its source needs SSH. OP7: `get_match_history` reads every history row of the caller on each call. | RT3 Believed, low; OP4 Observed, low; OP7 Believed, low | ops "6.", "7." | Pruning; a test; read the Postgres log; paginate | S each | SP67, SP63, SP66, SP68 |
-| **DR drill gaps** (tabletop, above). G1: nothing pages while renewal fails; cert-expiry only writes a status entry. 15 more gaps in the drill report. The DR rebuild path (built 10-11) has never been run for real; SP7 only compared the `.env` against production's 27 values. | Tabletop result; certs green | history "Loose threads" | Page on renewal failure; work the gap list; one real rebuild | S; M; M | CC50, SP56, SP57 |
+| **DR drill gaps** (tabletop, above). G1: nothing pages while renewal fails; cert-expiry only writes a status entry. 15 more gaps in the drill report. The DR rebuild path (built 10-11) has never been run for real; SP7 only compared the `.env` against production's 27 values. | Tabletop result; certs green | history "Loose threads" | Page on renewal failure; work the gap list; one real rebuild | S; M; M | CC51, SP56, SP57 |
 | **A signed signaling URL is logged**: a 5-minute match token. The 10-13 `LEDGERS.md` inbox entry points at the old line 325. | Read in code (history) | `src/core/game_session_manager.gd:345-353` | Log the host only, or strip the query | XS | H70 |
 | **Rotated key, possibly stored twice.** CC31 is open (the desktop's credentials file still holds the old key); the org-level `NAKAMA_HTTP_KEY` Actions secret is unchecked (needs admin:org) and in no ledger. | From the ledger; not checked | history | Levi checks the org secret | XS | H79, CC31 |
-| **Jobs that hit the weekly usage limit leave no record**: the 10-12 transcript-audit run left no report and no status entry. | Seen in the status trail and that run's transcript | history | Write a status entry when a run hits the limit | S | CC53 |
-| **Ops tooling for audits.** `Invoke-RemoteSql` defaults to the nakama user with no read-only guard; the synthetic probe fails any mock-mode match, so it can't run against a local stack; `AutoRemove: true` discards game-server container logs. | Read in code (history) | claude-config `jobs/scripts/_lib/Invoke-RemoteSql.ps1:34`, `jobs/scripts/_synthetic-match-probe-bin/probe.go:203-211`; `rt:local_allocator.go:219` | A read-only guard; `-AllowMock`; keep the logs | S each | CC51, CC52, SP54 |
+| **Jobs that hit the weekly usage limit leave no record**: the 10-12 transcript-audit run left no report and no status entry. | Seen in the status trail and that run's transcript | history | Write a status entry when a run hits the limit | S | CC54 |
+| **Ops tooling for audits.** `Invoke-RemoteSql` defaults to the nakama user with no read-only guard; the synthetic probe fails any mock-mode match, so it can't run against a local stack; `AutoRemove: true` discards game-server container logs. | Read in code (history) | claude-config `jobs/scripts/_lib/Invoke-RemoteSql.ps1:34`, `jobs/scripts/_synthetic-match-probe-bin/probe.go:203-211`; `rt:local_allocator.go:219` | A read-only guard; `-AllowMock`; keep the logs | S each | CC52, CC53, SP54 |
 
 Also: signaling-proxy and geoip-sidecar have no tests (vet clean; SP52); H9
 still true, the formatter job is green but skips everything ("gdscript_formatter
@@ -649,7 +650,7 @@ is wasted while CI never runs on main.
 | 3. A local backend Claude can bring up alone | `scripts/dev-stack.ps1` from exec-b's `stack.ps1`, with seed and restart steps; no `-AllowNetwork` for loopback, no 30 s client 2 delay; then the dev stack with the local allocator; then harness sign-in plus `publish` and `wait_shared` steps for parties | `leaderboard-local-backend`; matchmade runs without hand setup; the port leak end to end; parties end to end (SP34, H54, H55, H15) | S, then M, then M | H74, H73, SP55, H75 |
 | 4. Exported-build runs | The shipped 4.7.2 templates refuse `--path`, `--main-pack` and `-s` (verify item 4f). First choice: a 4.7.2 template built with `disable_path_overrides=no` (debug for pause, release for crashes), driven by `run-game.ps1 -Godot <its console exe>` under the full driver sandbox; plus a published-mode recipe (windowed clients, the local matchmaker, a server on the mock-deploy port). An agent export preset touches shipped code, so it comes last | The client crash (H38) in a shipped build; LG-1's missing legal files; release-only settings such as pause and the debug toggles | M | H72, H40 |
 | 5. Multi-user backend tests | Go fake-`nk` harness for runtime hooks; two- and three-user compliance cases | Forced join (SP32), start checks (SP33), leadership (SP34), rate limits (SP35), block scope (SP36), notification fan-out | S to M | SP38, SP39 |
-| 6. Narrow seams | Pure functions for server-side match decisions; provider grace and idle timers with a stubbed HTTP layer; the signaling-proxy token table; the transport classifier table; runtime tests for match_end failure, `validateGameConfig`, `abortProtocolMismatch` and account_cron; `-AllowMock` on the synthetic probe | G2.1 (H42), the self-quit (H45), the grace window (H48), S1 (SP58), C4 (SP62) | S each | H42, H45, H48, SP63, CC52 |
+| 6. Narrow seams | Pure functions for server-side match decisions; provider grace and idle timers with a stubbed HTTP layer; the signaling-proxy token table; the transport classifier table; runtime tests for match_end failure, `validateGameConfig`, `abortProtocolMismatch` and account_cron; `-AllowMock` on the synthetic probe | G2.1 (H42), the self-quit (H45), the grace window (H48), S1 (SP58), C4 (SP62) | S each | H42, H45, H48, SP63, CC53 |
 | 7. Later | More than 2 clients and gamepad input in the harness; golden screenshots | 3 and 4 player HUD and spawns; controller navigation (T45); layout regressions (T19, T29) | M to L | H76, H78 |
 
 Checks that are not tests but belong in the same pipeline: the V17
@@ -785,13 +786,13 @@ can reorder batches 1, 2 and 4.
 
 | # | Batch | Items, in order | Rough total | Notes |
 |---|---|---|---|---|
-| 1 | Urgent and cheap | H40, H38, SP26, H67, H11, H70, H69, RN6, CC54; H39 once Levi decides | 1 to 2 days | H40 is the one item proposed as Urgent. H38's fix defers both peer changes; check it on a release template once H72 exists. SP26 is Next, not Urgent (verify item 0: latent, about 16 to 17 weeks to exhaustion with no real players). |
+| 1 | Urgent and cheap | H40, H38, SP26, H67, H11, H70, H69, RN6, CC55; H39 once Levi decides | 1 to 2 days | H40 is the one item proposed as Urgent. H38's fix defers both peer changes; check it on a release template once H72 exists. SP26 is Next, not Urgent (verify item 0: latent, about 16 to 17 weeks to exhaustion with no real players). |
 | 2 | Security and trust | SP70 and SP27 first; then H41 together with H43; then SP32 (with its compliance test), SP33, H15, SP41, SP43, SP35, SP36, SP44, SP47 | about 1.5 weeks | G1.1 must not ship alone: it would kick the owner and keep the thief. SP70 is S and closes the discovery link of the 0.1 chain at once. SP32, SP33 and SP34 share `rt:party.go`; H41 and H43 share `net:core/network_connector.gd`. |
 | 3 | Matchmaking | SP30, SP29, SP28, H42, H45, SP71, SP58, H48, H44, H51, H52, SP31 | about 1 week | SP30 and SP29 are one change across the hook and the SDK. SP71 and SP58 share the stale-row sweep (RT1). |
 | 4 | Account and social | H57, H62, H58, H64; then H59, SP34 and SP69 after section 7; H55, H54 with SP40, H23, H18, H60 with SP42, H61, H63, H53, SP37, SP45, SP46, SP48, H56 | 2 to 3 weeks | H57 needs H62's error mapping and a merge decision (Nakama answers AlreadyExists for a Google id another account holds). |
-| 5 | Observability | CC50, H86, H87, H88 with CC55, SP65, SP56, SP61, SP64, SP59, SP60, H89, H90, H49, SP54, SP66, SP67, SP68, CC51, CC53 | about 1.5 weeks | CC50 is the DR drill's gap G1. The drill was a tabletop exercise; the certificates have 45 to 50 days left. |
-| 6 | Testability | H77, H65, H74, H73, SP55, H75, H72, SP38, SP39, SP63, SP50, RN3, H9, H82, SP51, H68, H83, H81, H46, CC52 | 1.5 to 2 weeks | Section 4 steps 1 and 2 first. H72 needs a 4.7.2 template built with path overrides (verify item 4f). |
-| 7 | Polish | H92 first, then H66 with RN7 and SP49, H93, H91, H94, H95, H96, H97 with SP53, H98, H99, H50, H85, H47, H80, SP62, RN8, CC56 | about 1.5 weeks | H92 is one 2-client session with Levi; H93 and H91 fix what it reproduces. |
+| 5 | Observability | CC51, H86, H87, H88 with CC56, SP65, SP56, SP61, SP64, SP59, SP60, H89, H90, H49, SP54, SP66, SP67, SP68, CC52, CC54 | about 1.5 weeks | CC51 is the DR drill's gap G1. The drill was a tabletop exercise; the certificates have 45 to 50 days left. |
+| 6 | Testability | H77, H65, H74, H73, SP55, H75, H72, SP38, SP39, SP63, SP50, RN3, H9, H82, SP51, H68, H83, H81, H46, CC53 | 1.5 to 2 weeks | Section 4 steps 1 and 2 first. H72 needs a 4.7.2 template built with path overrides (verify item 4f). |
+| 7 | Polish | H92 first, then H66 with RN7 and SP49, H93, H91, H94, H95, H96, H97 with SP53, H98, H99, H50, H85, H47, H80, SP62, RN8, CC57 | about 1.5 weeks | H92 is one 2-client session with Levi; H93 and H91 fix what it reproduces. |
 | 8 | Ideas | H76, H78, H84, H100, SP52, SP57 | not scheduled | |
 
 H71 and H79 are decisions, in section 7.
@@ -818,7 +819,7 @@ H71 and H79 are decisions, in section 7.
 ## 8. Proposed ledger items
 
 IDs continue each ledger's numbering as of 10-14: hopnbop after H37,
-platform after SP25, netcode after RN5, claude-config after CC49.
+platform after SP25, netcode after RN5, claude-config after CC50.
 Re-check each ledger's highest ID before filing, since another session may
 have filed items since. New items: 119 (hopnbop 63, platform 46, netcode
 3, claude-config 7).
@@ -954,17 +955,17 @@ Items that appear only in a one-line list carry those cells here.
 | RN7 | Next | V17: 4 broken format strings | S | section 5 row 2 |
 | RN8 | Residuals | Pause stats always read 0 frames | XS | 3.3 list. exec-b: Observed in run 7's log ("paused for 0 frames"); cause Believed. `net:core/frame_driver.gd:711-712`. Fix: find why the count reads 0, then log the real length |
 
-### 8.4 claude-config (CC50 to CC56)
+### 8.4 claude-config (CC51 to CC57)
 
 | ID | Ledger section | Item | Size | Row |
 |---|---|---|---|---|
-| CC50 | Next | Page when certificate renewal fails (DR drill gap G1; the certificates are fine today) | S | 3.5; 2.2 |
-| CC51 | Residuals | `Invoke-RemoteSql` defaults to the nakama user with no read-only guard | S | 3.5 |
-| CC52 | Next | `-AllowMock` on the synthetic probe, so it can run against a local stack | S | 3.5; section 4 step 6 |
-| CC53 | Next | Jobs that hit the weekly usage limit leave no report and no status entry | S | 3.5 |
-| CC54 | Next | caddy-access-analytics has reported nothing real since at least 10-01 | XS | 3.5 |
-| CC55 | Next | Exclude probe accounts from player metrics (OP3; the metrics half) | S | 3.5 |
-| CC56 | Next | A lessons.md entry: PowerShell variable names ignore case. In this audit's phase 3, `$T` overwrote `$t` and truncated a copied file | XS | phase 3 (this report); claude-config `rules/lessons.md` |
+| CC51 | Next | Page when certificate renewal fails (DR drill gap G1; the certificates are fine today) | S | 3.5; 2.2 |
+| CC52 | Residuals | `Invoke-RemoteSql` defaults to the nakama user with no read-only guard | S | 3.5 |
+| CC53 | Next | `-AllowMock` on the synthetic probe, so it can run against a local stack | S | 3.5; section 4 step 6 |
+| CC54 | Next | Jobs that hit the weekly usage limit leave no report and no status entry | S | 3.5 |
+| CC55 | Next | caddy-access-analytics has reported nothing real since at least 10-01 | XS | 3.5 |
+| CC56 | Next | Exclude probe accounts from player metrics (OP3; the metrics half) | S | 3.5 |
+| CC57 | Next | A lessons.md entry: PowerShell variable names ignore case. In this audit's phase 3, `$T` overwrote `$t` and truncated a copied file | XS | phase 3 (this report); claude-config `rules/lessons.md` |
 
 ### 8.5 Updates to existing items
 
