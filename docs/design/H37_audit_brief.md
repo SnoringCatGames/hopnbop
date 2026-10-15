@@ -499,3 +499,202 @@ of `core/frame_driver.gd` at netcode commit 6022552.
 Findings file: `h37-triage.md`. It holds the item table in file order,
 then a proposed order: low-hanging and high-priority first, large and
 aspirational last.
+
+## Phase 2: h37-verify (Opus, 75 min)
+
+Added 10:40, after six of the phase 1 reports. It confirms the findings
+that may hurt production, in the order below, and records each one as
+Verified, Broken or Suspect, with evidence. The rules above apply:
+read-only, files in `.claude/probes/H37/h37-verify/`, PowerShell, no
+production. h37-exec-a and h37-exec-b are done, so hold `net.lock` for
+the whole run and delete it at the end. Docker is allowed. Start from
+h37-exec-b's findings file and its `h37-exec-b/` folder: its
+`stack.ps1` brings up the local Nakama stack, and its scenarios drive
+matchmade and preview matches.
+
+0. **How close production is to the port-pool leak** (h37-matchmaking
+   finding 1, Broken and Verified by a Go probe). After about 100 NA
+   matches since the last Nakama restart, every NA match fails to
+   allocate. Use local records only:
+   - the repo's config, to see whether production runs hybrid
+     allocation;
+   - prod-health-check and other job records in
+     `C:\Users\lsl\Repositories\claude-config\jobs\status\2026-10.jsonl`
+     (`Get-StatusEntries`) and `jobs\reports\`, for match counts and
+     the last Nakama restart or deploy.
+
+   As soon as you have an estimate, send the coordinator one line with
+   SendMessage to `main`: NA matches since the last restart, and how
+   sure you are. Then go on.
+1. **Clients crash (signal 11) when the server goes away mid-match**
+   (h37-exec-b finding 1, Verified on the editor binary). First, size
+   it.
+   - In the normal production flow, does the server quit
+     (`game_session_manager.gd:554-569`) while clients are still
+     connected?
+   - Does that reach the crash path?
+     1. `network_connector.gd:363` in `peer_disconnected`;
+     2. `game_panel._on_connection_lost`;
+     3. `reconnect_handler.gd:137` and `:193`;
+     4. `network_connector.gd:293`, which replaces the peer while the
+        old peer is still dispatching.
+
+   Trace it. Then run a 2-client match to GAME_OVER, with the server
+   set to quit after one match the way production does, and record
+   whether the clients crash.
+
+   Then repeat with exported release clients, if Godot 4.7.2 export
+   templates are installed (don't download them):
+   - Export the Windows preset with `--export-release` into
+     `h37-verify/export/`.
+   - Run the exported clients under the harness sandbox: throwaway
+     `APPDATA` and blackholed backend URLs. Read `run-game.ps1` for how.
+   - If you can't reproduce that sandbox for an exported binary, don't
+     run it, and record why.
+
+   Finally, compare with H25 in `LEDGER.md`: is it the same crash?
+2. **Networked pause in a release build** (h37-exec-b finding 2,
+   Verified on the debug path only). With the exported clients from 1,
+   press Escape on client 1 mid-match. Record whether the server and
+   client 2 pause.
+3. **A party invite is a forced join** (h37-social finding 1, Believed
+   from the Nakama source). On the local stack, create users A, B and C
+   by device auth, over loopback REST only.
+   1. A creates a party and invites B. B has never accepted anything
+      and is not A's friend. Read B's membership state.
+   2. B blocks C. C creates a party and invites B. Read B's state
+      again.
+   3. With A and B in A's party, A calls `party_start_matchmaking`.
+      Record what B is sent (notifications, socket messages), and
+      whether anything asks B first.
+
+   Record the raw responses.
+4. If time remains, any finding the coordinator sends you while you
+   run.
+
+Stop at 75 minutes, because the week is near Levi's usage limit. Hand
+off the same way as the other agents. Findings file: `h37-verify.md`,
+one section per item above.
+
+## Phase 3: h37-report (Opus, 2 h)
+
+Writes the report from the findings. It starts once every phase 1 agent
+has reported. h37-verify's results come later, as a message or as
+`h37-verify.md`.
+
+Inputs:
+- the findings files, `.claude/probes/H37/<agent>.md`;
+- each agent's final report, extracted to
+  `.claude/probes/H37/handbacks/<agent>.md`;
+- Levi's request at the top of this brief;
+- for current IDs, and to avoid duplicates, the ledgers:
+  - hopnbop `LEDGER.md`;
+  - `third_party/snoringcat-platform/LEDGER.md`;
+  - `addons/rollback_netcode/LEDGER.md`;
+  - `C:\Users\lsl\Repositories\claude-config\LEDGER.md`, plus the inbox
+    in `LEDGERS.md`.
+
+The findings files hold about 4,700 lines, more than one context can
+hold. Work in this order:
+1. Read the handbacks first.
+2. Then read each file's Summary and Proposals.
+3. Open the flow sections only when a section of the report needs
+   them.
+
+Write the report one section at a time, appending to the file. Keep a
+`Status:` line at its top that names the finished sections, so a
+restart after a compaction can carry on from there.
+
+Outputs. Leave them uncommitted; the coordinator reviews and commits
+them.
+1. `docs/design/H37_systems_audit.md`, the report. It is written for a
+   later Claude session that will split it into tasks, and for Levi.
+   Every item carries:
+   - its verdict, exactly as the source agent gave it. Never upgrade
+     Believed to Verified. Where agents disagree, say so.
+   - a `path:line` or appendix pointer;
+   - a fix sketch and a rough size;
+   - its proposed ledger ID.
+2. `docs/design/H37/<agent>.md`: each findings file copied as an
+   appendix, changed only by redactions.
+3. `docs/design/H37/artifacts/<agent>/`: copies of the reusable text
+   artifacts a follow-up needs, such as scenarios, `stack.ps1`, scan
+   scripts and probe tests. No logs, run directories or app data.
+
+The report's sections:
+0. **Read first.** The most severe findings across all domains, each
+   with its verdict. Several agents found the same bug from different
+   sides, so deduplicate.
+1. **How we test, execute and verify** (Levi's first question).
+   - Cover every layer: runtime Go tests; SDK and game GUT; netcode
+     tests; the compliance suite; harness scenarios; CI workflows;
+     production probes and jobs. For each, say what it covers, its
+     current state and what is broken.
+   - Then answer directly: can Claude run the real game end to end,
+     start a match and use the settings menu? Use h37-exec-b's
+     capability table and recipes.
+   - Then answer directly: is decoupling worth it?
+     - Nobody had analysed this before (h37-history).
+     - Answer it from the domain files' Testability lines and
+       h37-exec-b's harness gaps.
+     - Name the seams, fakes or harness features that would let Claude
+       test each system unattended, ranked by value and cost.
+     - Name the refactors that are not worth doing.
+2. **Where we left off** (h37-history): the recap, and the
+   loose-threads table with current status.
+3. **The audit by domain:**
+   - account;
+   - friends, parties and presence;
+   - matchmaking, sessions and transport;
+   - stats, leaderboards and settings;
+   - operations, CI and disaster recovery.
+
+   For each, give: the flows and cases covered; the top findings; test
+   coverage; and whether the archived audits' findings are resolved.
+4. **Making the non-gameplay systems testable by Claude:** an ordered
+   roadmap.
+5. **TODO-scratch triage** (h37-triage). The per-note table stays in
+   the appendix. Here, give:
+   - the ordered list;
+   - quick wins;
+   - stale notes, and what replaced them;
+   - notes that need Levi's intent;
+   - the bucket held back until everything else is polished.
+6. **One ordered work plan.** Merge 0, 3, 4 and 5 into batches that a
+   session can take one at a time. Count both priority and effort.
+7. **Decisions waiting on Levi.**
+8. **Proposed ledger items**, one table per ledger, with these columns:
+   - the proposed ID, the next free number in that ledger, counting
+     Done items;
+   - the section;
+   - the bullet text, in the ledger's format;
+   - a pointer into the report.
+
+   Also list:
+   - updates to existing items: H11, SP10, the dead SHAs h37-history
+     mapped, and every existing item an agent re-checked;
+   - the `LEDGERS.md` inbox entries to file.
+
+   The coordinator files all of these as written, because subagents
+   don't edit ledgers.
+9. **What this audit did not check.**
+10. **Appendix index.**
+
+The repo is public. The report, the appendices and the artifacts must
+not contain:
+- secrets, keys or tokens;
+- signed URLs;
+- email addresses;
+- production player ids or names;
+- IP addresses the repo doesn't already publish.
+
+Scan every file you copy and replace any such text with `[redacted]`.
+List each redaction in your final report.
+
+Style: plain sentences, no em dashes, and tables where they help. Be
+thorough but keep the report easy to navigate: link to the appendices
+for depth instead of copying them.
+
+The stop rule above applies (2 h). Your final message: at most 60
+lines, covering the sections written, the redactions, any judgment
+calls, and anything you could not resolve.

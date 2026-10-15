@@ -38,17 +38,19 @@ stands on its own after the transcript is gone.
 - **H37** · Systems audit, test run, history recap and TODO-scratch.md
   triage (Levi, 2026-10-14). Report-only; the report becomes
   `docs/design/H37_systems_audit.md`.
-  - owner: claude 40ecd3b7-60b2-4364-9b2a-122aa3afad90, coordinating
-    eight Opus agents (h37-history, h37-exec-a, h37-exec-b,
-    h37-account, h37-social, h37-matchmaking, h37-stats-ops,
-    h37-triage), launched 2026-10-14 09:35
-  - branch: mainline; last commit: `44f0093e` (the brief)
-  - evidence: `.claude/probes/H37/` (one `<agent>.md` findings file per
-    agent, plus `<agent>/` logs, run dirs and probe scenarios)
-  - next: when the agents report, run phase 2 (probes on the Suspect
-    findings), then write the report and commit the findings files as
-    `docs/design/H37/`. In a fresh session, restart from the brief any
-    agent whose findings file has no `Done` line.
+  - owner: claude 40ecd3b7-60b2-4364-9b2a-122aa3afad90. Phase 1, eight
+    Opus agents launched 09:35: six reported by 10:32; h37-account and
+    h37-stats-ops still running. Phase 2, agent h37-verify: launched
+    10:45.
+  - branch: mainline; last commit: the latest one touching the brief
+    (`git log -1 -- docs/design/H37_audit_brief.md`)
+  - evidence: `.claude/probes/H37/`: one `<agent>.md` findings file per
+    agent, plus `<agent>/` for logs, run dirs and probe scenarios.
+    Final reports go in `handbacks/`.
+  - next: once phase 1 is in, launch h37-report (the brief's
+    "Phase 3"). Then review, commit the report and appendices, and
+    file the ledger items it proposes. In a fresh session, restart
+    from the brief any agent whose findings file has no `Done` line.
   - brief: `docs/design/H37_audit_brief.md`
 
 ## Next
