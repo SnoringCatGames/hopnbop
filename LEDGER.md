@@ -27,14 +27,6 @@ stands on its own after the transcript is gone.
   and in local mode it drifts about 2 px before the respawn records its
   position. Decide whether to align the two. (Session 530145bc, agent
   a6c0fbc6 "Fix death blink and splash", 2026-10-11 ~11:39.)
-- **H11** · Offered: add `push: main` triggers to `pr-validate.yml` and
-  `compliance-matrix.yml`. Both run only on `pull_request` and
-  `workflow_dispatch`, and work lands straight on main, so none of their
-  checks (GUT, export smoke, the translation-CSV check, the compliance
-  suite) run unless someone dispatches them. Actions are free on this
-  public repo. (Session 530145bc.) H37 (10-14): still true, now 25
-  commits (`3b7f5743..9bbaa7ee`, the 0.54.0 release `8ca156e7` among
-  them); the legal parity check (C1) depends on it.
 - **H15** · Offered: the realtime matchmaking socket survives log-out
   still signed in as the old account, and the next account would reuse
   it for its tickets; nothing calls `Platform.matchmaking.cleanup()`.
@@ -58,16 +50,6 @@ stands on its own after the transcript is gone.
 
 ## Next
 
-- **H67** · A settings change reverts two launches later (ST1) (S; batch
-  1; `docs/design/H37_systems_audit.md` 3.4, 0.1 row 6)
-- **H70** · A signed signaling URL is logged; files the 10-13 inbox
-  entry. At `src/core/game_session_manager.gd:345-353`; fix: log the
-  host only, or strip the query (XS; batch 1;
-  `docs/design/H37_systems_audit.md` 3.5, 2.2)
-- **H69** · `sign-out-local-match` and `sign-out-play-again` fail since
-  88e3089b raised the match length to 180 s. acct, exec-b: copies with
-  10 s pass. Fix: a 10 s match length in both scenarios (XS; batch 1;
-  `docs/design/H37_systems_audit.md` 3.1 coverage, section 4 step 2)
 - **H43** · Reconnect stale-peer race (F8) (S; batch 2;
   `docs/design/H37_systems_audit.md` 3.3)
 - **H42** · A disconnected leader keeps the win on a normal match end
@@ -321,6 +303,21 @@ stands on its own after the transcript is gone.
   `docs/design/H37_systems_audit.md` section 5)
 
 ## Done
+
+- **H11** · CI never ran on push to main. Fixed: `push:
+  branches: [main]` triggers on pr-validate and
+  compliance-matrix (2026-10-14).
+- **H67** · Settings reverted two launches later. Fixed in
+  `678af560`: pristine-defaults comparison in LocalSettings,
+  sync-at advanced on successful save, echo regression test
+  promoted into test/unit/platform (1/1, sync suite 16/16).
+- **H70** · Signed signaling URL was logged verbatim. Fixed:
+  the log line strips the query (token) in
+  `game_session_manager.gd`.
+- **H69** · `sign-out-local-match` and `sign-out-play-again`
+  scenarios timed out at the 180 s match length. Fixed: both
+  pin `match_duration_sec: 10`; harness-verified PASS
+  (2026-10-14).
 
 - **H38** · Clients crashed (signal 11) when the server went
   away mid-match. Fixed: the reconnect start, the first
