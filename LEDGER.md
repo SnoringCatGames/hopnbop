@@ -35,6 +35,21 @@ stands on its own after the transcript is gone.
 
 ## In progress
 
+- **H37** · Systems audit, test run, history recap and TODO-scratch.md
+  triage (Levi, 2026-10-14). Report-only; the report becomes
+  `docs/design/H37_systems_audit.md`.
+  - owner: claude 40ecd3b7-60b2-4364-9b2a-122aa3afad90, coordinating
+    eight Opus agents (h37-history, h37-exec-a, h37-exec-b,
+    h37-account, h37-social, h37-matchmaking, h37-stats-ops,
+    h37-triage), launched 2026-10-14 09:35
+  - branch: mainline; last commit: `44f0093e` (the brief)
+  - evidence: `.claude/probes/H37/` (one `<agent>.md` findings file per
+    agent, plus `<agent>/` logs, run dirs and probe scenarios)
+  - next: when the agents report, run phase 2 (probes on the Suspect
+    findings), then write the report and commit the findings files as
+    `docs/design/H37/`. In a fresh session, restart from the brief any
+    agent whose findings file has no `Done` line.
+  - brief: `docs/design/H37_audit_brief.md`
 
 ## Next
 
