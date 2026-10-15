@@ -285,6 +285,23 @@ jobs:
           export_one "Web" build/web/index.html
           export_one "Linux Server" build/linux/hopnbop_server.x86_64
           exit $status
+      - name: Verify legal texts are packed (H40)
+        # The consent screen loads res://legal/<locale>/*.txt at runtime;
+        # plain .txt files are only packed via include_filter, and a
+        # missing text renders as a blank page in every export.
+        run: |
+          set -uo pipefail
+          status=0
+          for pck in build/web/index.pck build/linux/hopnbop_server.pck; do
+            for doc in terms privacy data_deletion; do
+              if ! grep -a -q "legal/en/${doc}.txt" "$pck"; then
+                echo "::error::$pck does not contain legal/en/${doc}.txt"
+                status=1
+              fi
+            done
+          done
+          [ "$status" -eq 0 ] && echo "legal texts present in both packs"
+          exit $status
 
   nakama-runtime-go:
     name: Nakama runtime Go check

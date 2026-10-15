@@ -13,8 +13,6 @@ stands on its own after the transcript is gone.
 
 ## Urgent
 
-- **H40** · Legal texts missing from every export (LG-1, ops C7) (S;
-  batch 1; `docs/design/H37_systems_audit.md` 3.1, 0.1 row 1)
 - **H41** · The game server does not enforce session validation (G1.1,
   G1.3). Ship with the G1.3 re-claim rule, never alone. Lands after
   platform SP70 and SP27 (M; batch 2; `docs/design/H37_systems_audit.md`
@@ -331,6 +329,11 @@ stands on its own after the transcript is gone.
 
 ## Done
 
+- **H40** · Legal texts missing from every export (LG-1, ops C7).
+  Fixed: `include_filter="legal/*"` on all four presets, plus a
+  pr-validate export-smoke step that fails if either pack lacks
+  `legal/en/{terms,privacy,data_deletion}.txt`. Verified locally: web
+  export pack contains all three (2026-10-14).
 - **H37** · Systems audit, test run, history recap and TODO-scratch.md
   triage (Levi, 2026-10-14). Report `docs/design/H37_systems_audit.md`,
   appendices and reusable probes in `docs/design/H37/`. Its items are
