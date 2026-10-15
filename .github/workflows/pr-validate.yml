@@ -16,6 +16,10 @@ name: PR Validate
 on:
   pull_request:
     branches: [main]
+  # Work lands directly on main (no PRs), so without a push
+  # trigger these checks never run (H11).
+  push:
+    branches: [main]
   workflow_dispatch:
 
 env:

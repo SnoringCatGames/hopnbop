@@ -2,6 +2,7 @@
   "name": "sign-out-play-again",
   "mode": "offline",
   "level": "level_4",
+  "settings": {"match_duration_sec": 10},
   "timeout_sec": 60,
   "steps": [
     {"do": "wait_ready"},

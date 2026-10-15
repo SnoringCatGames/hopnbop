@@ -347,7 +347,9 @@ func _on_session_ids_received(
 			server_ip,
 			server_port,
 			", level: " + selected_level_id if not selected_level_id.is_empty() else "",
-			", signaling_url=" + signaling_url if not signaling_url.is_empty() else "",
+			# The signaling URL carries a signed token in
+			# its query; log it stripped (H70).
+			", signaling_url=" + signaling_url.split("?")[0] if not signaling_url.is_empty() else "",
 		],
 		NetworkLogger.CATEGORY_CONNECTIONS
 	)
