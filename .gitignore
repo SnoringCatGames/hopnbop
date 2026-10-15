@@ -116,6 +116,8 @@ test_results/
 # Claude Code per-machine state (session lock + permission allowlist)
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
+# Agent probes and evidence (claude-config rules/ledger.md)
+.claude/probes/
 
 # Vim
 *.swp
