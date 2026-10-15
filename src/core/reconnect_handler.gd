@@ -133,8 +133,12 @@ func start() -> void:
 	_attempt = 0
 	reconnect_started.emit(_GRACE_SEC)
 	_tick_timer.start()
-	# Try immediately, then retry on a timer.
-	_attempt_reconnect()
+	# Try immediately, then retry on a timer. Deferred:
+	# start() is called from the disconnect signal chain,
+	# and re-dialling replaces multiplayer_peer; doing that
+	# synchronously inside the peer_disconnected dispatch
+	# crashes the client (H38).
+	_attempt_reconnect.call_deferred()
 
 
 ## Stop any in-flight reconnect. Called on successful

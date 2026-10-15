@@ -18,6 +18,7 @@ func test_release_values_replace_debug_values() -> void:
 	settings.show_hud = false
 	settings.show_player_overhead_labels = false
 	settings.skip_splash = true
+	settings.is_server_pause_enabled = true
 
 	settings._apply_release_values()
 
@@ -31,6 +32,9 @@ func test_release_values_replace_debug_values() -> void:
 		settings.show_player_overhead_labels,
 		"Release builds show overhead labels.")
 	assert_false(settings.skip_splash, "Release builds play the splash.")
+	assert_false(
+		settings.is_server_pause_enabled,
+		"Release builds disable networked pause (H39).")
 
 
 func test_editor_runs_keep_settings_as_is() -> void:

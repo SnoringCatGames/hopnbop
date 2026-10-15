@@ -21,6 +21,10 @@ const RELEASE_MATCH_DURATION_SEC := 180.0
 const RELEASE_SHOW_HUD := true
 const RELEASE_SHOW_PLAYER_OVERHEAD_LABELS := true
 const RELEASE_SKIP_SPLASH := false
+# Networked pause ships off (H39, Levi 2026-10-14): one player
+# freezing everyone's match is a griefing vector; the editor and
+# harness keep the settings.tres value for debugging.
+const RELEASE_IS_SERVER_PAUSE_ENABLED := false
 
 ## When >= 0 and in preview mode, forces the
 ## server to load the level at this index from
@@ -387,3 +391,4 @@ func _apply_release_values() -> void:
 	show_hud = RELEASE_SHOW_HUD
 	show_player_overhead_labels = RELEASE_SHOW_PLAYER_OVERHEAD_LABELS
 	skip_splash = RELEASE_SKIP_SPLASH
+	is_server_pause_enabled = RELEASE_IS_SERVER_PAUSE_ENABLED

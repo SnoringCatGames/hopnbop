@@ -535,7 +535,11 @@ func _on_connection_lost(
 					% reason_name,
 					NetworkLogger.CATEGORY_CONNECTIONS,
 				)
-				reconnect_handler.start()
+				# Defer: this handler runs inside the
+				# multiplayer peer_disconnected dispatch,
+				# and starting the loop would replace
+				# multiplayer_peer synchronously (H38).
+				reconnect_handler.start.call_deferred()
 				return
 
 			# Reconnect not feasible or already failed —
@@ -553,7 +557,11 @@ func _on_connection_lost(
 					toast_message,
 					ToastOverlay.Type.ERROR,
 				)
-			client_exit_match()
+			# Deferred for the same reason as the
+			# reconnect start above: exiting here would
+			# tear down the peer inside its own dispatch
+			# (H38).
+			client_exit_match.call_deferred()
 
 
 ## Stage 7.10: reconnect loop exhausted without success.
@@ -571,7 +579,9 @@ func _on_reconnect_failed(reason: String) -> void:
 			tr("TOAST.RECONNECT_FAILED"),
 			ToastOverlay.Type.ERROR,
 		)
-	client_exit_match()
+	# Deferred: a failed attempt can surface through the
+	# peer dispatch, where a synchronous exit crashes (H38).
+	client_exit_match.call_deferred()
 
 
 ## Stage 7.10: client reconnected successfully within the
