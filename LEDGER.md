@@ -58,13 +58,6 @@ stands on its own after the transcript is gone.
 
 ## Next
 
-- **H39** · Networked pause ships enabled (T107). Levi, 2026-10-14:
-  off in release (report section 7 row 3, option a) (XS; batch 1;
-  `docs/design/H37_systems_audit.md` 3.3)
-- **H38** · Clients crash (signal 11) when the server goes away
-  mid-match; defer both peer changes. Supersedes H25. Urgent candidate
-  (report section 7 row 1) (S; batch 1;
-  `docs/design/H37_systems_audit.md` 3.3, 0.1 row 3)
 - **H67** · A settings change reverts two launches later (ST1) (S; batch
   1; `docs/design/H37_systems_audit.md` 3.4, 0.1 row 6)
 - **H70** · A signed signaling URL is logged; files the 10-13 inbox
@@ -328,6 +321,21 @@ stands on its own after the transcript is gone.
   `docs/design/H37_systems_audit.md` section 5)
 
 ## Done
+
+- **H38** · Clients crashed (signal 11) when the server went
+  away mid-match. Fixed: the reconnect start, the first
+  reconnect attempt, and both exit-match calls on the
+  disconnect paths are now deferred out of the
+  peer_disconnected dispatch, mirroring the normal match-end
+  cleanup. Editor-path verified (connector GUT 3/3, harness
+  offline-move-jump PASS); the release-template check still
+  waits on H72, since the editor hides this crash family.
+- **H39** · Networked pause shipped enabled. Decided by Levi
+  2026-10-14 (off in release): `_apply_release_values` now sets
+  `is_server_pause_enabled` from
+  `RELEASE_IS_SERVER_PAUSE_ENABLED = false`; editor and harness
+  keep the settings.tres value. Covered by
+  `test_settings_release_values.gd` (2/2).
 
 - **H40** · Legal texts missing from every export (LG-1, ops C7).
   Fixed: `include_filter="legal/*"` on all four presets, plus a
