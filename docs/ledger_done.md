@@ -160,3 +160,19 @@ entries go at the bottom.
 - **H13** · Nothing surfaced crash reports. Done in claude-config
   ad8c6ca (2026-10-11): prod-health-check's `crashes:` line (24 h count,
   new signatures, top 5) and step 9 of the hopnbop-check-prod skill.
+
+## H4 (Done 2026-10-12)
+
+- **H4** · Release 0.54.0 shipped and verified: exported builds enforce the shipping values in code, game server v29, no `v*` tag. Done in 8ca156e7 + 2abf477c (2026-10-12).
+
+## H14 (Done 2026-10-12)
+
+- **H14** · Runtime HTTP key rotated right after H4 shipped (credentials blob, Nakama, Edgegap v29 env, repo secret); the desktop re-decrypt is CC31. Done 2026-10-12 (claude-config 6279e62).
+
+## H16 (Done 2026-10-12)
+
+- **H16** · Verified against the real 0.54.0 web export: the name and adjective CSVs ship, so localized bunny names work; nothing to fix. Done 2026-10-12.
+
+## H36 (Done 2026-10-12)
+
+- **H36** · Edgegap v27 and v28 deactivated, only v29 active (Edgegap-side, no commit); `game-server.yml` leaves prior versions active, so deactivate the superseded one at each release. Done 2026-10-12.
