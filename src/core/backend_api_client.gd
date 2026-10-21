@@ -557,9 +557,14 @@ func build_version_check_body(
 
 func _ensure_session() -> NakamaSession:
 	var s := Platform.build_session_from_store()
-	if s == null:
-		await Platform.auth.get_guest_jwt()
-		s = Platform.build_session_from_store()
+	if s == null or not Platform.token_store.is_token_valid():
+		# No session yet, or the stored JWT has expired
+		# (H64): a guest re-authenticates with their device
+		# id. Signed-in players renew through the SDK's own
+		# refresh, so only guests are asked here.
+		if Platform.token_store.is_anonymous:
+			await Platform.auth.get_guest_jwt()
+			s = Platform.build_session_from_store()
 	if s == null:
 		request_failed.emit("Not authenticated")
 		return null
