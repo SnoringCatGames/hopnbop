@@ -359,6 +359,14 @@ func server_on_player_reconnected(player: PlayerState) -> void:
 	players_updated.emit()
 
 
+## True when any player in the match has disconnected.
+func server_has_disconnected_players() -> bool:
+	for pid in players_by_id:
+		if not players_by_id[pid].is_connected_to_server:
+			return true
+	return false
+
+
 ## Re-ranks players so that all connected players
 ## outrank all disconnected players. Within each
 ## group, the original score ordering is preserved.

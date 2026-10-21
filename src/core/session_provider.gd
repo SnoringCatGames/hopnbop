@@ -77,19 +77,35 @@ func client_request_session_ids(
 	push_error("SessionProvider.client_request_session_ids not implemented")
 
 
-## SERVER: Validate session IDs for a connecting peer.
-## peer_id: int - Network peer identifier
-## player_ids: Array[int] - Game-assigned player IDs
-## session_ids: Array[String] - Backend session identifiers to validate
+## SERVER: Vet session IDs for a connecting peer before the
+## connector assigns player ids (H41). Returns a Dictionary:
+## "accepted" (bool) and "backend_player_ids" (Array of String,
+## one derived backend id per session id; empty when the provider
+## cannot derive them and the declared id stands). A provider
+## that implements server_commit_player_sessions gets this gate;
+## the connector disconnects a rejected peer without assigning,
+## sending, or announcing any player id.
 func server_validate_player_sessions(
+	peer_id: int,
+	session_ids: Array,
+	backend_player_id: String = "",
+) -> Dictionary:
+	push_error("SessionProvider.server_validate_player_sessions not implemented")
+	return {"accepted": false, "backend_player_ids": []}
+
+
+## SERVER: Record sessions that passed validation, once the
+## connector has assigned player ids. backend_player_ids carries
+## the per-player ids derived during validation (may be empty).
+func server_commit_player_sessions(
 	peer_id: int,
 	player_ids: Array[int],
 	session_ids: Array,
-	backend_player_id: String = "",
+	backend_player_ids: Array,
 	profile_image_url: String = "",
 	auth_display_name: String = "",
 ) -> void:
-	push_error("SessionProvider.server_validate_player_sessions not implemented")
+	push_error("SessionProvider.server_commit_player_sessions not implemented")
 
 
 ## SERVER: Set expected total player count for this match.

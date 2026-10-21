@@ -5,9 +5,11 @@ extends GutTest
 ##     never reported as a sign-in provider.
 ##   - cancel_account_deletion(): a deletion request clears the
 ##     profile on the server and keeps no copy, so a successful
-##     cancel puts back the display name and picture from this
-##     session's Google sign-in (only for the account that signed
-##     in), then refreshes the token store from the account.
+##     cancel puts back the picture from this session's Google
+##     sign-in (only for the account that signed in), then
+##     refreshes the token store from the account. Display names
+##     are generated (H59), never taken from the provider, so a
+##     cancel never writes the Google profile name.
 ##   - export_player_data() keeps the server's JSON text in
 ##     last_export_json, so the game saves it as sent instead of
 ##     re-encoding Godot's float-only parse of it.
@@ -25,6 +27,7 @@ const _OTHER_PLAYER_ID := "someone-else"
 const _ACCESS_TOKEN_LIFETIME_SEC := 7200
 const _GOOGLE_NAME := "Ada Lovelace"
 const _GOOGLE_PICTURE := "https://example.invalid/ada.png"
+const _GENERATED_NAME := "SwiftOtter_4821"
 const _DELETED_MARKER := "[deleted]"
 const _CANCEL_RPC := "cancel_account_deletion"
 const _EXPORT_RPC := "export_player_data"
@@ -168,8 +171,9 @@ func test_provider_profile_comes_from_id_token_claims() -> void:
 	var profile := _client._provider_profile_from_claims(
 		_client._parse_jwt_claims(id_token))
 
+	# H59: the `name` claim is dropped. Display names are
+	# generated, never the provider's (often a real name).
 	assert_eq(profile, {
-		"display_name": _GOOGLE_NAME,
 		"profile_image_url": _GOOGLE_PICTURE,
 	})
 
@@ -179,23 +183,24 @@ func test_provider_profile_comes_from_id_token_claims() -> void:
 # ------------------------------------------------------------------
 
 
-func test_cancel_restores_this_sessions_google_profile() -> void:
+func test_cancel_restores_picture_keeps_generated_name() -> void:
 	_client._provider_profile = {
 		"user_id": _TEST_PLAYER_ID,
-		"display_name": _GOOGLE_NAME,
 		"profile_image_url": _GOOGLE_PICTURE,
 	}
-	_nakama.account = _account(_GOOGLE_NAME, _GOOGLE_PICTURE)
+	_nakama.account = _account(_GENERATED_NAME, _GOOGLE_PICTURE)
 
 	await _client.cancel_account_deletion()
 
 	assert_eq(_nakama.rpc_calls, [_CANCEL_RPC])
+	# H59: the restore writes the picture only; display_name is
+	# null (leave alone), never the Google profile name.
 	assert_eq(_nakama.updates, [{
 		"username": null,
-		"display_name": _GOOGLE_NAME,
+		"display_name": null,
 		"avatar_url": _GOOGLE_PICTURE,
 	}])
-	assert_eq(_store.display_name, _GOOGLE_NAME)
+	assert_eq(_store.display_name, _GENERATED_NAME)
 	assert_eq(_store.profile_image_url, _GOOGLE_PICTURE)
 	assert_eq(_cancel_results, [true])
 
@@ -215,7 +220,6 @@ func test_cancel_without_a_google_sign_in_restores_nothing() -> void:
 func test_cancel_never_applies_another_accounts_profile() -> void:
 	_client._provider_profile = {
 		"user_id": _OTHER_PLAYER_ID,
-		"display_name": _GOOGLE_NAME,
 		"profile_image_url": _GOOGLE_PICTURE,
 	}
 	_nakama.account = _account("", "")
@@ -229,7 +233,6 @@ func test_cancel_never_applies_another_accounts_profile() -> void:
 func test_failed_cancel_reports_and_changes_nothing() -> void:
 	_client._provider_profile = {
 		"user_id": _TEST_PLAYER_ID,
-		"display_name": _GOOGLE_NAME,
 		"profile_image_url": _GOOGLE_PICTURE,
 	}
 	_nakama.rpc_results[_CANCEL_RPC] = _failure()

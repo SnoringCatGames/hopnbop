@@ -1521,7 +1521,20 @@ func client_play_again() -> void:
 		if is_instance_valid(G.toast_overlay):
 			G.toast_overlay.show_toast(
 				tr("TOAST.PLAYING_ONLINE"))
-		_client_client_request_session_ids()
+		if (is_instance_valid(G.party_manager)
+				and G.party_manager.is_in_party()):
+			# Play Again must not split the party (H44): a solo
+			# ticket per member scatters the group across
+			# matches. Route through party matchmaking instead
+			# — the starter files the party's one ticket and
+			# every other member is pulled in by notification.
+			# Clear the loading flag set above so the party
+			# kickoff's own client_load_game() can drive the
+			# transition (it re-sets it).
+			G.client_session.is_game_loading = false
+			G.party_manager.start_party_matchmaking()
+		else:
+			_client_client_request_session_ids()
 
 
 func server_start_match() -> void:
@@ -2147,6 +2160,13 @@ func _server_initiate_match_end() -> void:
 		not G.match_state.is_match_ended,
 		"Match end already initiated",
 	)
+
+	# A disconnected player must not keep the win on a
+	# normal match end (G2.1, H42). The forfeit path demotes
+	# before calling here; doing it at this choke point covers
+	# every end (timer, shutdown, forfeit) and is idempotent.
+	if G.match_state.server_has_disconnected_players():
+		G.match_state.server_demote_disconnected_players()
 
 	Netcode.print(
 		"Match time expired"

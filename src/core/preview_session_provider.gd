@@ -64,10 +64,18 @@ func client_request_session_ids(
 
 
 func server_validate_player_sessions(
+	_peer_id: int,
+	_session_ids: Array,
+	_backend_player_id: String = "",
+) -> Dictionary:
+	return {"accepted": true, "backend_player_ids": []}
+
+
+func server_commit_player_sessions(
 	peer_id: int,
 	player_ids: Array[int],
 	_session_ids: Array,
-	_backend_player_id: String = "",
+	_backend_player_ids: Array,
 	profile_image_url: String = "",
 	auth_display_name: String = "",
 ) -> void:

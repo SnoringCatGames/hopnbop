@@ -117,14 +117,28 @@ func _server_on_peer_players_declared(
 			var existing: PlayerState = (
 				state.players_by_id[player_id])
 			if existing.is_connected_to_server:
-				# Conflict: same player_id is already
-				# connected. Shouldn't happen under normal
-				# flow; framework guarantees player_id
-				# uniqueness across active connections. Log
-				# loudly and skip.
-				Netcode.warning(
-					("Player %d declared while still"
-					+ " connected — skipping") % player_id,
+				if existing.peer_id == peer_id:
+					# Duplicate declaration from the peer that
+					# already owns the slot. Nothing to move.
+					Netcode.warning(
+						("Player %d re-declared by its own"
+						+ " peer %d — skipping")
+						% [player_id, peer_id],
+						NetworkLogger.CATEGORY_CONNECTIONS,
+					)
+					continue
+				# Session re-claim (H43): the slot's new peer
+				# takes ownership now, while the connector
+				# disconnects the stale peer. Transferring here
+				# means the stale peer's late disconnect finds
+				# no players still owned by it and cannot
+				# despawn or demote the reconnected player.
+				existing.peer_id = peer_id
+				existing.local_player_index = i
+				Netcode.print(
+					("Player %d transferred to peer %d"
+					+ " (session re-claim)")
+					% [player_id, peer_id],
 					NetworkLogger.CATEGORY_CONNECTIONS,
 				)
 				continue

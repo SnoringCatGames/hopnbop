@@ -540,6 +540,22 @@ func _server_on_client_disconnected(peer_id: int, reason: int) -> void:
 		_server_abort_not_enough_players()
 
 
+## What the production server does when every client has
+## dropped (H45): an unfinished match is cancelled with the
+## runtime and the server waits out the reconnect grace before
+## quitting; a finished match only needs the match_end flush.
+## Static so the decision is unit-testable without a scene tree.
+static func all_clients_disconnected_action(
+	is_match_ended: bool,
+) -> Dictionary:
+	if is_match_ended:
+		return {"cancel": false, "wait_sec": 12.0}
+	return {
+		"cancel": true,
+		"wait_sec": MatchStateSynchronizer.RECONNECT_GRACE_SEC,
+	}
+
+
 func _server_on_all_clients_disconnected() -> void:
 	Netcode.print(
 		"All clients disconnected",
@@ -559,15 +575,26 @@ func _server_on_all_clients_disconnected() -> void:
 			"Production mode: Exiting server",
 			NetworkLogger.CATEGORY_CORE_SYSTEMS
 		)
-		# Wait long enough for the match_end RPC's HTTP request
-		# (10s timeout in match_result_reporter.gd) to complete
-		# before tearing down the scene tree. Without this, the
-		# in-flight HTTPRequest is freed mid-flight, the runtime
-		# never sees match_end, never calls Edgegap's Stop
-		# endpoint, and the deployment leaks until the 24h
-		# max_duration cap. Observed empirically: 1s was not
-		# enough on a remote container with TLS handshake.
-		await get_tree().create_timer(12.0).timeout
+		var action := all_clients_disconnected_action(
+			G.match_state.is_match_ended)
+		if bool(action["cancel"]):
+			# Tell the runtime before quitting (H45): without
+			# a match_cancel it never stops the deployment and
+			# the match_metadata rows stay forever. A finished
+			# match already reported match_end, so it skips this.
+			var request_id := OS.get_environment(
+				"ARBITRIUM_REQUEST_ID")
+			if not request_id.is_empty():
+				await G.match_result_reporter.cancel(
+					request_id, "all_clients_dropped")
+		# Wait out the reconnect grace (an unfinished match) so
+		# a client can still reconnect instead of finding the
+		# server gone inside its 30s window (G2.2, G2.3); a
+		# finished match only waits for the match_end RPC's HTTP
+		# request (10s timeout in match_result_reporter.gd) to
+		# complete before the scene tree tears down.
+		await get_tree().create_timer(
+			float(action["wait_sec"])).timeout
 		get_tree().quit()
 
 

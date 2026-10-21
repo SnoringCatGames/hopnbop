@@ -30,10 +30,24 @@ const _SESSION_IDLE_TIMEOUT_SEC := 60.0
 const _CONNECTION_GRACE_SEC := 10.0
 
 
-# Allowlist of valid session IDs as parsed from
-# EXPECTED_SESSION_IDS env var. Uses a Dictionary as a set
-# (key=session_id, value=true).
+# Allowlist of valid session tokens as parsed from the env.
+# Uses a Dictionary as a set (key=token, value=true).
 var _allowed_session_ids: Dictionary = {}
+
+# Token -> Nakama user id, parsed from EXPECTED_SESSION_TOKENS
+# (SP27). The server derives each player's backend id from the
+# token they present instead of trusting the id a client
+# declares (H17). Empty in list-only mode (pre-SP27 runtime),
+# where derivation is impossible and the declared id stands.
+# Dictionary<String, String>
+var _session_id_to_user_id: Dictionary = {}
+
+# Token -> peer that currently holds the claim. A re-claim from
+# a new peer transfers the claim (the connector disconnects the
+# stale peer, H43); the validated count does not grow twice for
+# one slot.
+# Dictionary<String, int>
+var _session_to_peer: Dictionary = {}
 
 # Session IDs that have been claimed by a connecting peer. A
 # given allowed ID can only be used once.
@@ -59,11 +73,47 @@ var _validated_player_count: int = 0
 
 var _idle_timer: Timer
 var _grace_timer: Timer
+var _grace_active := false
+
+# H48: when each peer's transport finished signaling (server
+# clock, msec), and when this provider booted. The connection
+# grace used to tick from the first validation while later
+# peers were still signaling (WebRTC setup can eat most of
+# the 10s window); the grace now restarts when a peer's
+# signaling completes, and these stamps let a WebRTC run's
+# log show the measured signaling times.
+var _boot_msec := 0
+# Dictionary<int, int>
+var _peer_signaling_msec: Dictionary = {}
 
 
 func _ready() -> void:
+	_boot_msec = Time.get_ticks_msec()
 	_load_allowlist_from_env()
 	_start_idle_timer()
+	if not multiplayer.peer_connected.is_connected(
+		_on_peer_connected
+	):
+		multiplayer.peer_connected.connect(_on_peer_connected)
+
+
+## Records a peer's signaling completion (its transport came
+## up) and, once validation has begun, restarts the connection
+## grace so the 10s window starts after signaling instead of
+## being consumed by it (H48).
+func _on_peer_connected(peer_id: int) -> void:
+	var now := Time.get_ticks_msec()
+	_peer_signaling_msec[peer_id] = now
+	Netcode.log.print(
+		(
+			"[Edgegap] Peer %d signaling complete"
+			+ " %dms after server boot"
+		) % [peer_id, now - _boot_msec],
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+	if _grace_active and _validated_player_count > 0:
+		_stop_grace_timer()
+		_start_grace_timer()
 
 
 ## Posts the register_server RPC to the Nakama runtime so the
@@ -187,20 +237,15 @@ func server_set_expected_player_count(count: int) -> void:
 
 func server_validate_player_sessions(
 	peer_id: int,
-	player_ids: Array[int],
 	session_ids: Array,
 	backend_player_id: String = "",
-	profile_image_url: String = "",
-	auth_display_name: String = "",
-) -> void:
-	var player_count := session_ids.size()
-
+) -> Dictionary:
 	Netcode.log.print(
 		(
 			"[Edgegap] Validating %d session(s) for peer %d"
 			+ " (expected=%d, validated=%d)"
 		) % [
-			player_count,
+			session_ids.size(),
 			peer_id,
 			_expected_player_count,
 			_validated_player_count,
@@ -208,57 +253,99 @@ func server_validate_player_sessions(
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 
-	# All-or-nothing: validate every declared ID before
-	# committing any. Half-accepted peers leave _claimed_*
-	# inconsistent and confuse the validated_count.
-	var resolved_ids: Array[String] = []
-	resolved_ids.resize(player_count)
-	for i in range(player_count):
-		if i >= session_ids.size():
-			Netcode.log.warning(
-				(
-					"[Edgegap] Missing session ID for"
-					+ " player %d (peer %d)"
-				) % [player_ids[i], peer_id],
-				NetworkLogger.CATEGORY_CONNECTIONS,
-			)
-			session_request_failed.emit(
-				"Player session validation failed")
-			return
-
+	# All-or-nothing: vet every declared token before the
+	# connector assigns anything. A token already claimed is not
+	# a rejection: the same slot may be re-claimed by a new peer
+	# (the connector disconnects the stale peer, H43), and with
+	# unguessable tokens (SP27) possession is the credential.
+	var derived_ids: Array = []
+	var seen: Dictionary = {}
+	var derived_user := ""
+	for i in range(session_ids.size()):
 		var session_id: String = str(session_ids[i])
+		if session_id.is_empty() or seen.has(session_id):
+			return _reject(peer_id, session_id, "empty or duplicate")
+		seen[session_id] = true
 		if not _allowed_session_ids.has(session_id):
-			Netcode.log.warning(
-				(
-					"[Edgegap] Rejecting session_id %s"
-					+ " (not on allowlist) for peer %d"
-				) % [session_id, peer_id],
-				NetworkLogger.CATEGORY_CONNECTIONS,
-			)
-			session_request_failed.emit(
-				"Player session validation failed")
-			return
-		if _claimed_session_ids.has(session_id):
-			Netcode.log.warning(
-				(
-					"[Edgegap] Rejecting session_id %s"
-					+ " (already claimed) for peer %d"
-				) % [session_id, peer_id],
-				NetworkLogger.CATEGORY_CONNECTIONS,
-			)
-			session_request_failed.emit(
-				"Player session validation failed")
-			return
-		resolved_ids[i] = session_id
+			return _reject(peer_id, session_id, "not on allowlist")
+		var owner: String = str(
+			_session_id_to_user_id.get(session_id, ""))
+		if not owner.is_empty():
+			if derived_user.is_empty():
+				derived_user = owner
+			elif derived_user != owner:
+				return _reject(
+					peer_id, session_id, "tokens for two accounts")
+			derived_ids.append(owner)
+		else:
+			# List-only mode (pre-SP27 runtime): no owner map,
+			# so the declared id stands, as before SP27.
+			derived_ids.append(backend_player_id)
 
-	# All IDs valid. Commit and notify.
-	for i in range(player_count):
+	# Bind the claim to its account (H17): when the runtime's
+	# token map is present, a declared backend id that is not
+	# the token's owner is a forgery, not a fallback.
+	if (not derived_user.is_empty()
+			and not backend_player_id.is_empty()
+			and backend_player_id != derived_user):
+		Netcode.log.warning(
+			(
+				"[Edgegap] Rejecting peer %d: declared backend"
+				+ " id is not the session owner"
+			) % peer_id,
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
+		session_request_failed.emit(
+			"Player session validation failed")
+		return {"accepted": false, "backend_player_ids": []}
+
+	return {
+		"accepted": true,
+		"backend_player_ids": derived_ids,
+	}
+
+
+func _reject(
+	peer_id: int,
+	session_id: String,
+	reason: String,
+) -> Dictionary:
+	Netcode.log.warning(
+		(
+			"[Edgegap] Rejecting session_id %s"
+			+ " (%s) for peer %d"
+		) % [session_id, reason, peer_id],
+		NetworkLogger.CATEGORY_CONNECTIONS,
+	)
+	session_request_failed.emit(
+		"Player session validation failed")
+	return {"accepted": false, "backend_player_ids": []}
+
+
+func server_commit_player_sessions(
+	peer_id: int,
+	player_ids: Array[int],
+	session_ids: Array,
+	backend_player_ids: Array,
+	profile_image_url: String = "",
+	auth_display_name: String = "",
+) -> void:
+	for i in range(session_ids.size()):
 		var player_id: int = player_ids[i]
-		var session_id: String = resolved_ids[i]
+		var session_id: String = str(session_ids[i])
+		var first_claim := not _claimed_session_ids.has(session_id)
 		_claimed_session_ids[session_id] = true
-		_on_validation_success(player_id, session_id)
+		_session_to_peer[session_id] = peer_id
+		if first_claim:
+			_on_validation_success(player_id, session_id)
+		else:
+			# Re-claim of the same slot: keep the maps current
+			# without counting the player twice.
+			_player_to_session[player_id] = session_id
+			_session_to_player[session_id] = player_id
+			player_session_validated.emit(player_id, session_id)
 
-	_store_backend_ids(player_ids, backend_player_id)
+	_store_backend_ids(player_ids, backend_player_ids)
 	_store_profile_image_urls(player_ids, profile_image_url)
 	_store_display_names(player_ids, auth_display_name)
 
@@ -299,6 +386,29 @@ func cleanup() -> void:
 
 
 func _load_allowlist_from_env() -> void:
+	# SP27: the token -> user_id map is authoritative when the
+	# runtime provides it; backend ids are derived from it.
+	var raw_map := OS.get_environment("EXPECTED_SESSION_TOKENS")
+	if not raw_map.is_empty():
+		var parsed: Variant = JSON.parse_string(raw_map)
+		if parsed is Dictionary:
+			for token in parsed:
+				var trimmed: String = str(token).strip_edges()
+				if not trimmed.is_empty():
+					_allowed_session_ids[trimmed] = true
+					_session_id_to_user_id[trimmed] = str(
+						parsed[token])
+			Netcode.log.print(
+				"[Edgegap] Loaded %d session token(s) with owners"
+					% _allowed_session_ids.size(),
+				NetworkLogger.CATEGORY_CONNECTIONS,
+			)
+			return
+		Netcode.log.warning(
+			"[Edgegap] EXPECTED_SESSION_TOKENS is not a JSON"
+			+ " object; falling back to the id list",
+			NetworkLogger.CATEGORY_CONNECTIONS,
+		)
 	var raw := OS.get_environment("EXPECTED_SESSION_IDS")
 	if raw.is_empty():
 		Netcode.log.warning(
@@ -368,13 +478,18 @@ func _on_all_players_ready() -> void:
 
 func _store_backend_ids(
 	player_ids: Array[int],
-	backend_player_id: String,
+	backend_player_ids: Array,
 ) -> void:
-	if backend_player_id.is_empty():
-		return
-	for player_id in player_ids:
-		_player_to_backend_id[player_id] = (
-			backend_player_id)
+	# Derived ids (SP27) win per player; the single declared id
+	# reaches here only as an already-derived element because the
+	# connector passes validation's output through.
+	for i in range(player_ids.size()):
+		if i >= backend_player_ids.size():
+			return
+		var backend_id: String = str(backend_player_ids[i])
+		if backend_id.is_empty():
+			continue
+		_player_to_backend_id[player_ids[i]] = backend_id
 
 
 func _store_profile_image_urls(
@@ -436,6 +551,7 @@ func _on_idle_timeout() -> void:
 
 
 func _start_grace_timer() -> void:
+	_grace_active = true
 	_grace_timer = Timer.new()
 	_grace_timer.one_shot = true
 	_grace_timer.wait_time = _CONNECTION_GRACE_SEC
@@ -450,6 +566,7 @@ func _start_grace_timer() -> void:
 
 
 func _stop_grace_timer() -> void:
+	_grace_active = false
 	if is_instance_valid(_grace_timer):
 		_grace_timer.stop()
 		_grace_timer.queue_free()

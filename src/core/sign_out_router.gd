@@ -108,6 +108,11 @@ func clear_session_state() -> void:
 	# delivering its notifications. The next provider sign-in opens one
 	# for the new account.
 	Platform.notification_socket.stop()
+	# The matchmaking socket is authenticated as the old account
+	# too (H15): left open, the next account's tickets and party
+	# calls go out as the previous player. cleanup() closes it;
+	# the next sign-in opens a fresh one via ensure_socket().
+	Platform.matchmaking.cleanup()
 	G.party_manager.reset()
 	if G.client_session != null:
 		G.client_session.clear_latest_state()

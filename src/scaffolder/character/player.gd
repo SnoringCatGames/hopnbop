@@ -30,6 +30,10 @@ var player_id: int:
 var _original_collision_layer := 0
 var _original_collision_mask := 0
 
+## Frame index at which the pending respawn fires (H3);
+## -1 when no respawn is scheduled.
+var _respawn_frame_index := -1
+
 # Store original collision layers for all Area2D children
 # (BodyArea, FootArea, HeadArea).
 var _original_area_collision_layers := {}
@@ -119,6 +123,14 @@ func _physics_process(_delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	super._physics_process(_delta)
+	# Frame-scheduled respawn (H3): fire on the same frame
+	# boundary that ends the Dead state, not on a wall clock.
+	if (_respawn_frame_index >= 0
+			and Netcode.runs_server_logic
+			and Netcode.server_frame_index
+				>= _respawn_frame_index):
+		_respawn_frame_index = -1
+		server_execute_respawn()
 
 
 ## Called by the server after spawning to initialize player_id and update
@@ -303,11 +315,13 @@ func server_trigger_death() -> void:
 		NetworkLogger.CATEGORY_GAME_STATE,
 	)
 
-	# Schedule respawn.
-	Netcode.time.set_timeout(
-		server_execute_respawn,
-		G.settings.player_respawn_cooldown_sec
-	)
+	# Schedule the respawn on the frame clock (H3): it fires
+	# in _physics_process on the frame is_dead ends, so the
+	# hidden period and the Dead state share one boundary. A
+	# wall-clock timer disagreed with that boundary by 1-2
+	# frames (and kept ticking through a networked pause).
+	_respawn_frame_index = (
+		state_from_server.get_respawn_frame_index())
 
 
 func server_execute_respawn() -> void:

@@ -35,21 +35,29 @@ var velocity := Vector2.ZERO
 ## A bitmask representing the player's surface state.
 var surfaces := 0
 
+## The frame at which a dead player respawns (H3): death and
+## respawn share this one frame boundary, so the bunny cannot
+## reappear before the respawn records its SPAWN. Before H3 the
+## respawn ran on a wall-clock timer while "Dead" ended on this
+## frame count, and the two disagreed by 1-2 frames.
+func get_respawn_frame_index() -> int:
+	return (
+		last_interaction_frame_index
+		+ int(
+			G.settings.player_respawn_cooldown_sec
+			* Netcode.frame_driver
+				.target_network_fps
+		)
+	)
+
+
 var is_dead: bool:
 	get:
 		# Player is dead only while DIE interaction is active (before SPAWN).
 		if (last_interaction_type != ServerInteractionType.DIE
 				or last_interaction_frame_index < 0):
 			return false
-		var respawn_frame: int = (
-			last_interaction_frame_index
-			+ int(
-				G.settings.player_respawn_cooldown_sec
-				* Netcode.frame_driver
-					.target_network_fps
-			)
-		)
-		return Netcode.server_frame_index < respawn_frame
+		return Netcode.server_frame_index < get_respawn_frame_index()
 
 var is_invincible: bool:
 	get:
