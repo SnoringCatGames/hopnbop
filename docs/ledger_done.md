@@ -176,3 +176,7 @@ entries go at the bottom.
 ## H36 (Done 2026-10-12)
 
 - **H36** · Edgegap v27 and v28 deactivated, only v29 active (Edgegap-side, no commit); `game-server.yml` leaves prior versions active, so deactivate the superseded one at each release. Done 2026-10-12.
+
+## H34 (Done 2026-10-13)
+
+- **H34** · CLAUDE.md slimmed to the context budget, 2,333 lines to 400; lore moved to path-scoped `.claude/rules/`, history to `docs/history.md`. Done in 34971411 (2026-10-13).

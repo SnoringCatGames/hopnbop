@@ -227,4 +227,3 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 - **H40** · Legal texts missing from every export (LG-1, ops C7): `include_filter="legal/*"` on all four presets, plus a pr-validate pack check. Done in 41f29a07 (2026-10-14).
 - **H37** · Systems audit, test run and history recap: report `docs/design/H37_systems_audit.md`, appendices and probes in `docs/design/H37/`; items filed H38-H100, SP26-SP71, RN6-RN8 and CC51-CC57. Done in 6910dce4 (2026-10-14).
-- **H34** · CLAUDE.md slimmed to the context budget, 2,333 lines to 400; lore moved to path-scoped `.claude/rules/`, history to `docs/history.md`. Done in 34971411 (2026-10-13).
