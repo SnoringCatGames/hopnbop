@@ -146,8 +146,13 @@ func _add_link_account_rows() -> void:
 
 
 func _add_delete_account_row() -> void:
-	# Only show when authenticated.
-	if not Platform.token_store.is_token_valid():
+	# Signed-in players, and guests: deletion applies to a
+	# guest's device account too (H58). The SDK starts the
+	# guest session when the row is used.
+	if (
+		not Platform.token_store.is_token_valid()
+		and not Platform.token_store.is_anonymous
+	):
 		return
 
 	var spacer := Control.new()
@@ -165,7 +170,11 @@ func _add_delete_account_row() -> void:
 
 
 func _add_export_data_row() -> void:
-	if not Platform.token_store.is_token_valid():
+	# Guests included (H58), like the delete row above.
+	if (
+		not Platform.token_store.is_token_valid()
+		and not Platform.token_store.is_anonymous
+	):
 		return
 
 	var row: ExportDataRow = (
@@ -179,7 +188,12 @@ func _add_export_data_row() -> void:
 
 
 func _add_log_out_row() -> void:
-	if not Platform.token_store.is_token_valid():
+	# For a guest this is forget-this-device: log_out clears
+	# the local identity either way (H58).
+	if (
+		not Platform.token_store.is_token_valid()
+		and not Platform.token_store.is_anonymous
+	):
 		return
 	if PlatformAuthApiClient.get_platform_provider() >= 0:
 		return
