@@ -68,8 +68,8 @@ Instances, with 3 instances: `--server`, `--client=1`, `--client=2`.
 ## Configuration
 
 **settings.tres** - runtime settings; debug toggles `dev_mode`,
-`draw_annotations`, `perf_tracker_enabled`,
-`debug_console_enabled`. **project.godot** - input actions, physics
+`draw_annotations`, `show_perf_tracker`,
+`show_debug_console`. **project.godot** - input actions, physics
 layers, rendering, the authoritative versions.
 
 ## Agent harness

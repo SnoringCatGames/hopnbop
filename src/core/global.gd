@@ -343,8 +343,6 @@ func _ready() -> void:
 	local_settings.apply_all_overrides()
 	local_settings.apply_locale()
 
-	local_settings.setting_override_changed.connect(
-		_on_local_setting_override_changed)
 
 	# Cloud settings sync manager. Stage 6.2 moved the post-login
 	# trigger out of the auth client (the addon shouldn't reach
@@ -376,33 +374,11 @@ func _ready() -> void:
 	else:
 		preview_instance_label = ""
 
-	# Warm up the GameLift fleet for imminent online
-	# play. Skip on dedicated server processes and
-	# when the player has persisted offline-only
-	# preference.
-	if (not Netcode.is_server
-			and not settings.prefer_offline_mode):
-		backend_api_client.warm_up_fleet("startup")
-
-
 func _on_auth_completed_for_cloud_sync(
 	success: bool, _error: String,
 ) -> void:
 	if success and settings_cloud_sync != null:
 		settings_cloud_sync.fetch_and_merge_from_cloud()
-
-
-func _on_local_setting_override_changed(
-	key: StringName, value: Variant,
-) -> void:
-	# When the player toggles off offline mode,
-	# fire a warmup so the fleet is ready by the
-	# time they queue for a match.
-	if (key == &"prefer_offline_mode"
-			and value == false
-			and not Netcode.is_server):
-		backend_api_client.warm_up_fleet(
-			"offline_toggle_off")
 
 
 func _initialize_level_registry() -> void:

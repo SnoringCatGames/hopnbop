@@ -56,10 +56,11 @@ to `ws://server_ip:server_port`.
 **Components:**
 - `WebRTCSignalingServer` (server-side): Lightweight
   WebSocket server for SDP/ICE exchange. Listens on
-  container port 4433 TCP (same as ENet/UDP, no conflict).
+  container port 4434 TCP (declared as `signaling` in
+  `game.yaml`, separate from 4433/UDP).
 - `WebRTCSignalingClient` (client-side): Connects to
   signaling server, exchanges SDP offer/answer, relays
-  ICE candidates. Retries up to 5 times with 10s timeout.
+  ICE candidates. Retries up to 12 times, 750 ms apart.
 - `WebRTCGamePeer` (both sides): Custom
   `MultiplayerPeerExtension` using 2 negotiated
   DataChannels (reliable + unreliable) instead of
@@ -130,14 +131,13 @@ are buffered and flushed after the
 `WebRTCPeerConnection` is created. Without this,
 early candidates are silently dropped.
 
-**Fleet inbound permissions:** Port 4433/UDP must be
-in the fleet's `InstanceInboundPermissions` in
-addition to the `InstanceConnectionPortRange`. The
-ICE agent's outbound STUN uses port-preserving NAT
-(container port 4433 appears as host port 4433 to
+**Declared ports:** Edgegap forwards only the ports
+declared in `game.yaml` (`game: 4433/udp`,
+`signaling: 4434/tcp`), each to a dynamic host port.
+The ICE agent's outbound STUN uses port-preserving
+NAT (container port 4433 appears as host port 4433 to
 STUN), so return traffic and client ICE checks
-arrive on host port 4433. This port must be allowed
-by the security group.
+arrive on the declared UDP port.
 
 ## WebRTC signaling proxy
 
@@ -197,7 +197,7 @@ status:
 The runtime hook picks the TCP port via `pickTCPPort
 (status.Ports)`; no positional `Port+1` assumption.
 
-## Godot native WSS limitation (2026-03-17, status unverified in current arch)
+## Godot native WSS limitation (2026-03-17; setup superseded)
 
 Godot 4.5's native `WebSocketMultiplayerPeer` historically
 could not establish `wss://` to remote servers (every TLS
@@ -214,10 +214,15 @@ games`. The native WSS path is therefore on a Caddy-
 managed Let's Encrypt cert (not a self-signed/mismatched
 one), which may sidestep the original failure mode (the
 2026-03-17 testing was against a custom TLS endpoint).
-**Status unverified for native+web cross-play under the
-current arch.** Native-only matches use ENet (no
-signaling), so the question only matters when a web
-player joins a cross-play match with native peers.
+**Superseded by the current arch.** The 2026-03-17
+failure was against a custom TLS endpoint, which no
+longer exists: native clients now signal over this
+same `wss://` path behind Caddy's Let's Encrypt cert
+whenever a web player is in the match, and cross-play
+runs in production. No dedicated probe has re-run the
+original 4.5 test, so treat a cross-play signaling
+failure on native as this section's regression shape.
+Native-only matches still use ENet (no signaling).
 
 ## End-to-end matchmaking flow
 

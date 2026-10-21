@@ -9,8 +9,8 @@ extends RefCounted
 
 
 ## Emitted when a user-controlled setting changes via
-## set_override. Listeners (e.g. the fleet warmup
-## hook) can react to specific key changes.
+## set_override, so listeners can react to specific
+## key changes.
 signal setting_override_changed(
 	key: StringName, value: Variant)
 

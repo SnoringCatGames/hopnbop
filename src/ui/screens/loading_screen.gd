@@ -138,10 +138,6 @@ func update_status_message() -> void:
 	# between app open and the first match, where
 	# matchmaking would otherwise fail with "no match"
 	# because no instance is available.
-	if _is_fleet_warming_up():
-		%Label.text = _get_warming_up_text()
-		return
-
 	if not _matchmaking_phase.is_empty():
 		%Label.text = _get_matchmaking_text()
 	else:
@@ -172,32 +168,6 @@ func _get_waiting_text() -> String:
 		return "%s (%d/%d)" % [
 			base, arrived, _connection_total]
 	return base
-
-
-func _is_fleet_warming_up() -> bool:
-	if not is_instance_valid(G.backend_api_client):
-		return false
-	if G.settings.prefer_offline_mode:
-		return false
-	return G.backend_api_client.is_fleet_warming_up()
-
-
-func _get_warming_up_text() -> String:
-	var remaining: int = (
-		G.backend_api_client
-			.get_fleet_estimated_remaining_sec())
-	var base := tr("LOADING.WARMING_UP_SERVER")
-	if remaining <= 0:
-		return base
-	return base + " " + (
-		tr("LOADING.REMAINING_MMSS")
-		% _format_remaining_mmss(remaining))
-
-
-static func _format_remaining_mmss(seconds: int) -> String:
-	var minutes := seconds / 60
-	var remainder := seconds % 60
-	return "%d:%02d" % [minutes, remainder]
 
 
 func _get_matchmaking_text() -> String:

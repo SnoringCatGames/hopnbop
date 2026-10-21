@@ -71,10 +71,6 @@ var server_matchmaker_modes: Array = []
 ## a newer one.
 var _leaderboard_request_count := 0
 
-## Deprecated. Kept so the legacy lobby-level warmup connection
-## still resolves. Never emitted now that Edgegap auto-allocates.
-signal fleet_status_updated(data: Dictionary)
-
 ## Emitted after the startup version check completes.
 ## is_compatible is false only when the server returned a
 ## different protocol_version. Server values come from the
@@ -86,41 +82,6 @@ signal version_checked(
 	server_protocol_version: int,
 	server_game_version: String,
 )
-
-
-## Public no-op stubs preserved so the existing UI code still
-## compiles. Phase D removed warmup, but a few call sites still
-## query these methods. They were kept inert (always
-## "ready, not warming") so the lobby/loading screens don't
-## hang waiting for a warmup that never happens.
-func is_fleet_ready() -> bool:
-	return true
-
-
-func is_fleet_warming_up() -> bool:
-	return false
-
-
-func get_fleet_estimated_remaining_sec() -> int:
-	return 0
-
-
-func get_fleet_warmup_elapsed_sec() -> float:
-	return 0.0
-
-
-func get_fleet_status_data() -> Dictionary:
-	return {"status": "ready"}
-
-
-func warm_up_fleet(_source: String = "client") -> void:
-	# No-op: Edgegap allocates per-match.
-	pass
-
-
-func fetch_fleet_status() -> void:
-	# No-op: see warm_up_fleet.
-	pass
 
 
 # --------------------------------------------------------------
