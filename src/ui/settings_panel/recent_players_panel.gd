@@ -187,6 +187,12 @@ func _add_row(entry: Dictionary) -> void:
 	var display_name: String = entry.get("display_name", "")
 	if display_name.is_empty():
 		display_name = entry.get("username", player_id)
+	var spawn_label: String = (
+		DynamicAdjectiveConfig
+			.localized_full_name_from_spawn(
+				entry.get("spawn_name", {})))
+	if not spawn_label.is_empty():
+		display_name = spawn_label
 
 	var row := ActionRow.new()
 

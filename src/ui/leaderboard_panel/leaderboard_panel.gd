@@ -220,10 +220,18 @@ func _add_leaderboard_row(
 			"font_color", _PODIUM_COLORS[rank - 1])
 	row.add_child(rank_label)
 
-	# A player-chosen name: a plain Label never parses markup, and
-	# the TextServer lays out right-to-left names on its own.
+	# The bunny name from the match that set the score when the
+	# entry carries one (H59), else the account's generated name.
+	# A plain Label never parses markup, and the TextServer lays
+	# out right-to-left names on its own.
+	var player_name: String = (
+		DynamicAdjectiveConfig
+			.localized_full_name_from_spawn(
+				entry.get("spawn_name", {})))
+	if player_name.is_empty():
+		player_name = str(entry.get("display_name", ""))
 	var name_label := _make_label(
-		str(entry.get("display_name", "")),
+		player_name,
 		0.0,
 		HORIZONTAL_ALIGNMENT_LEFT,
 	)

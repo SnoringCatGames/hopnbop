@@ -49,7 +49,10 @@ var rank: int:
 # Computed properties.
 var full_name: StringName:
 	get:
-		return "%s %s" % [adjective, bunny_name]
+		return (
+			DynamicAdjectiveConfig
+				.get_localized_full_name(
+					name_index, adj_list_id, adj_index))
 
 var outline_color: Color:
 	get:

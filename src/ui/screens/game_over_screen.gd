@@ -318,16 +318,10 @@ func _add_result_row(
 	rank_label.custom_minimum_size.x = 40
 	row.add_child(rank_label)
 
-	# Player name (colored). Prefer auth display
-	# name over procedural in-game name.
-	var auth_name: String = (
-		G.client_session.auth_display_names
-			.get(ps.player_id, ""))
+	# Player name (colored): the bunny name generated
+	# at spawn. Account names are never shown (H59).
 	var name_label := Label.new()
-	name_label.text = (
-		auth_name
-		if not auth_name.is_empty()
-		else String(ps.full_name))
+	name_label.text = String(ps.full_name)
 	name_label.modulate = ps.label_color
 	name_label.size_flags_horizontal = (
 		Control.SIZE_EXPAND_FILL)

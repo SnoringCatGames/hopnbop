@@ -994,6 +994,42 @@ static func get_localized_adjective(
 	return adj_list[index % adj_list.size()]
 
 
+## Resolves name-list indices (as generated at spawn and
+## captured by the backend at match end) to the localized
+## full bunny name: adjective + bunny name.
+static func get_localized_full_name(
+		name_index: int,
+		adj_list_id: int,
+		adj_index: int,
+) -> String:
+	return "%s %s" % [
+		get_localized_adjective(adj_list_id, adj_index),
+		get_localized_name(name_index),
+	]
+
+
+## Same as get_localized_full_name, from a backend spawn_name
+## value. Returns "" when the value is not a Dictionary with
+## valid (non-negative number) indices.
+static func localized_full_name_from_spawn(
+		spawn: Variant,
+) -> String:
+	if not (spawn is Dictionary):
+		return ""
+	var keys: Array[String] = [
+		"name_index", "adj_list_id", "adj_index"]
+	var indices: Array[int] = []
+	for key in keys:
+		var value: Variant = (spawn as Dictionary).get(key)
+		if not (value is int or value is float):
+			return ""
+		if int(value) < 0:
+			return ""
+		indices.append(int(value))
+	return get_localized_full_name(
+		indices[0], indices[1], indices[2])
+
+
 ## Returns the AdjectiveListType for a given adjective
 ## array reference.
 static func _get_adj_list_id(

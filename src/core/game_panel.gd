@@ -1359,11 +1359,7 @@ func _populate_match_participants() -> void:
 		var has_profile_image := (
 			G.client_session.profile_image_urls
 				.has(pid))
-		var name: String = (
-			G.client_session.auth_display_names
-				.get(pid, ""))
-		if name.is_empty():
-			name = String(ps.full_name)
+		var name: String = String(ps.full_name)
 		var entry := {
 			"player_id": pid,
 			"display_name": name,
@@ -1729,29 +1725,6 @@ func _server_send_profile_images_to_clients(
 			.bind(packed_data))
 
 
-## Sends auth display names to all clients via
-## RPC. Packs as flat array [pid, name, ...].
-func _server_send_display_names_to_clients(
-) -> void:
-	var provider := (
-		session_manager.session_provider)
-	if not provider.has_method(
-			"get_display_name_map"):
-		return
-	var name_map: Dictionary = (
-		provider.get_display_name_map())
-	if name_map.is_empty():
-		return
-	var packed_data: Array = []
-	for player_id in name_map:
-		packed_data.append(player_id)
-		packed_data.append(name_map[player_id])
-	Netcode.call_client_rpc_with_local_support(
-		match_state_synchronizer
-			._rpc_client_receive_display_names
-			.bind(packed_data))
-
-
 ## Reports match results to the Nakama runtime via the
 ## match_end RPC. Only runs on production servers (preview
 ## skipped: no match history written for local tests).
@@ -1790,8 +1763,9 @@ func _server_report_match_result() -> void:
 		var per_player_stats: PlayerMatchStats = (
 			G.match_state.get_player_stats(pid))
 		# Shape matches the runtime's matchEndPlayer
-		# struct: user_id + score + kills + bumps. Rank
-		# is consumed locally to derive winner_id.
+		# struct: user_id + score + kills + bumps +
+		# spawn_name. Rank is consumed locally to
+		# derive winner_id.
 		var entry := {
 			"user_id": backend_id,
 			"score": ps.score,
@@ -1799,6 +1773,11 @@ func _server_report_match_result() -> void:
 				if per_player_stats != null else 0),
 			"bumps": (per_player_stats.bump_count
 				if per_player_stats != null else 0),
+			"spawn_name": {
+				"name_index": ps.name_index,
+				"adj_list_id": ps.adj_list_id,
+				"adj_index": ps.adj_index,
+			},
 			"_rank": ps.rank,
 		}
 		best_by_backend_id[backend_id] = entry
@@ -1905,10 +1884,9 @@ func _server_on_all_players_connected() -> void:
 		NetworkLogger.CATEGORY_CONNECTIONS,
 	)
 
-	# Send profile images and display names to
-	# clients now that all peers have declared.
+	# Send profile images to clients now that all
+	# peers have declared.
 	_server_send_profile_images_to_clients()
-	_server_send_display_names_to_clients()
 
 	# Apply the party leader's gameplay-cheat prefs (party matches
 	# only), overriding clients' local settings for the match. No-op
@@ -2201,10 +2179,8 @@ func _server_initiate_match_end() -> void:
 	# so they can friend-add post-match.
 	_server_send_backend_ids_to_clients()
 
-	# Send profile image URLs and display names
-	# to all clients.
+	# Send profile image URLs to all clients.
 	_server_send_profile_images_to_clients()
-	_server_send_display_names_to_clients()
 
 	# Set flag to enable invincibility for all
 	# players and notify clients.

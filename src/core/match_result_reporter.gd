@@ -36,8 +36,13 @@ const _RETRY_BACKOFF_SEC := 1.0
 ## - winner_id: backend (Nakama user_id) of the player at
 ##   rank 1. Empty string if no clear winner.
 ## - players: Array of Dictionaries shaped like
-##   { user_id: String, score: int, kills: int, bumps: int }.
-##   The runtime writes one match_history row + leaderboard
+##   { user_id: String, score: int, kills: int, bumps: int,
+##   spawn_name: Dictionary }. spawn_name holds the player's
+##   bunny-name indices (name_index, adj_list_id, adj_index);
+##   the runtime stores them on the leaderboard record and
+##   the recent_players rows so clients show that match's
+##   bunny name instead of the account name (H59). The
+##   runtime writes one match_history row + leaderboard
 ##   record per entry; couch co-op players sharing an account
 ##   should be deduped to one entry by the caller.
 ## - stats: Optional Dictionary of free-form per-match stats

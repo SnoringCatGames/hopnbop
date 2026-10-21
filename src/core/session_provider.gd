@@ -103,7 +103,7 @@ func server_commit_player_sessions(
 	session_ids: Array,
 	backend_player_ids: Array,
 	profile_image_url: String = "",
-	auth_display_name: String = "",
+	_auth_display_name: String = "",
 ) -> void:
 	push_error("SessionProvider.server_commit_player_sessions not implemented")
 

@@ -59,14 +59,12 @@ var _player_to_session: Dictionary = {}
 # Dictionary<String, int>
 var _session_to_player: Dictionary = {}
 
-# Maps game player_id -> backend player_id, profile image URL,
-# and display name, populated from each peer's declaration.
+# Maps game player_id -> backend player_id and profile image
+# URL, populated from each peer's declaration.
 # Dictionary<int, String>
 var _player_to_backend_id: Dictionary = {}
 # Dictionary<int, String>
 var _player_to_profile_image_url: Dictionary = {}
-# Dictionary<int, String>
-var _player_to_display_name: Dictionary = {}
 
 var _expected_player_count: int = 0
 var _validated_player_count: int = 0
@@ -328,7 +326,7 @@ func server_commit_player_sessions(
 	session_ids: Array,
 	backend_player_ids: Array,
 	profile_image_url: String = "",
-	auth_display_name: String = "",
+	_auth_display_name: String = "",
 ) -> void:
 	for i in range(session_ids.size()):
 		var player_id: int = player_ids[i]
@@ -347,7 +345,6 @@ func server_commit_player_sessions(
 
 	_store_backend_ids(player_ids, backend_player_ids)
 	_store_profile_image_urls(player_ids, profile_image_url)
-	_store_display_names(player_ids, auth_display_name)
 
 
 func server_get_selected_level_id() -> StringName:
@@ -363,10 +360,6 @@ func get_backend_player_id_map() -> Dictionary:
 
 func get_profile_image_url_map() -> Dictionary:
 	return _player_to_profile_image_url
-
-
-func get_display_name_map() -> Dictionary:
-	return _player_to_display_name
 
 
 func get_anonymous_backend_ids() -> Dictionary:
@@ -501,17 +494,6 @@ func _store_profile_image_urls(
 	for player_id in player_ids:
 		_player_to_profile_image_url[player_id] = (
 			profile_image_url)
-
-
-func _store_display_names(
-	player_ids: Array[int],
-	auth_display_name: String,
-) -> void:
-	if auth_display_name.is_empty():
-		return
-	for player_id in player_ids:
-		_player_to_display_name[player_id] = (
-			auth_display_name)
 
 
 func _start_idle_timer() -> void:

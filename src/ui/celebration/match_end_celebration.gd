@@ -488,14 +488,9 @@ func _spawn_adjective_popup(
 		adjective, label_color, outline_color)
 
 
-## Returns the auth display name for a player if
-## available, otherwise falls back to bunny_name.
+## Returns the winner's bunny name. Account names are
+## never shown (H59).
 func _winner_name(ps: GamePlayerState) -> String:
-	var auth_name: String = (
-		G.client_session.auth_display_names
-			.get(ps.player_id, ""))
-	if not auth_name.is_empty():
-		return auth_name
 	return ps.bunny_name
 
 

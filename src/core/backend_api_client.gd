@@ -153,10 +153,13 @@ func fetch_leaderboard() -> void:
 
 
 ## Reads a public leaderboard reply. Returns {ok: true, entries:
-## [{rank: int, display_name: String, score: int}] in board order,
-## operator: String, sort_order: String, generated_at: String}, or
-## {ok: false, error: String}. An entry with a malformed field is
-## dropped rather than shown half-read.
+## [{rank: int, display_name: String, score: int, spawn_name:
+## Dictionary}] in board order, operator: String, sort_order:
+## String, generated_at: String}, or {ok: false, error: String}.
+## An entry with a malformed field is dropped rather than shown
+## half-read. spawn_name (the scoring match's bunny-name indices,
+## H59) is present only on records written since its capture; an
+## entry needs a display name or a valid spawn_name to be kept.
 func parse_public_leaderboard(status: int, body: String) -> Dictionary:
 	if status != _HTTP_OK:
 		return {"ok": false, "error": "HTTP %d" % status}
@@ -177,18 +180,27 @@ func parse_public_leaderboard(status: int, body: String) -> Dictionary:
 		var rank: Variant = raw.get("rank")
 		var score: Variant = raw.get("score")
 		var display_name: Variant = raw.get("display_name")
+		var spawn := _parse_spawn_name(raw.get("spawn_name"))
+		var has_name := (
+			display_name is String
+			and not (display_name as String)
+				.strip_edges().is_empty())
 		if (
 			not _is_number(rank)
 			or not _is_number(score)
-			or not (display_name is String)
-			or (display_name as String).strip_edges().is_empty()
+			or (not has_name and spawn.is_empty())
 		):
 			continue
-		entries.append({
+		var entry := {
 			"rank": int(rank),
-			"display_name": (display_name as String).strip_edges(),
+			"display_name": (
+				(display_name as String).strip_edges()
+				if has_name else ""),
 			"score": int(score),
-		})
+		}
+		if not spawn.is_empty():
+			entry["spawn_name"] = spawn
+		entries.append(entry)
 	return {
 		"ok": true,
 		"entries": entries,
@@ -196,6 +208,24 @@ func parse_public_leaderboard(status: int, body: String) -> Dictionary:
 		"sort_order": str(data.get("sort_order", "")),
 		"generated_at": str(data.get("generated_at", "")),
 	}
+
+
+## Reads a spawn_name value (the scoring match's bunny-name
+## indices, H59) into {name_index, adj_list_id, adj_index} with
+## int values. Returns {} when the value is absent or malformed;
+## negative indices are malformed.
+func _parse_spawn_name(value: Variant) -> Dictionary:
+	if not (value is Dictionary):
+		return {}
+	var out := {}
+	var keys: Array[String] = [
+		"name_index", "adj_list_id", "adj_index"]
+	for key in keys:
+		var index: Variant = (value as Dictionary).get(key)
+		if not _is_number(index) or int(index) < 0:
+			return {}
+		out[key] = int(index)
+	return out
 
 
 ## Fetches the caller's own standing through get_player_stats, only

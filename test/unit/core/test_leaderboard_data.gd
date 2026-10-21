@@ -250,3 +250,41 @@ func _match(
 		"kills": float(kills),
 		"bumps": float(bumps),
 	}
+
+
+func test_parse_keeps_spawn_named_entries_without_a_name() -> void:
+	# Records written since H59 carry the scoring match's
+	# bunny-name indices; the account name may be empty.
+	var parsed := _client.parse_public_leaderboard(_HTTP_OK, JSON.stringify({
+		"version": 1,
+		"entries": [
+			{"rank": 1, "display_name": "", "score": 9,
+				"spawn_name": {
+					"name_index": 3, "adj_list_id": 1,
+					"adj_index": 2}},
+			{"rank": 2, "score": 8,
+				"spawn_name": {
+					"name_index": 0, "adj_list_id": 0,
+					"adj_index": 0}},
+			{"rank": 3, "score": 7,
+				"spawn_name": {
+					"name_index": -1, "adj_list_id": 0,
+					"adj_index": 0}},
+			{"rank": 4, "display_name": "Kept", "score": 6,
+				"spawn_name": {
+					"name_index": "x", "adj_list_id": 0,
+					"adj_index": 0}},
+		],
+	}))
+	assert_true(parsed.ok)
+	assert_eq(parsed.entries, [
+		{"rank": 1, "display_name": "", "score": 9,
+			"spawn_name": {
+				"name_index": 3, "adj_list_id": 1,
+				"adj_index": 2}},
+		{"rank": 2, "display_name": "", "score": 8,
+			"spawn_name": {
+				"name_index": 0, "adj_list_id": 0,
+				"adj_index": 0}},
+		{"rank": 4, "display_name": "Kept", "score": 6},
+	])
