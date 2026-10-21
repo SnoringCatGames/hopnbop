@@ -27,9 +27,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   5 row 3, section 7 row 9)
 - **H71** · Decoupling: which seams to build (decision;
   `docs/design/H37_systems_audit.md` 1.3, section 7 row 6)
-- **H79** · Check the org-level `NAKAMA_HTTP_KEY` Actions secret (needs
-  admin:org) (XS; `docs/design/H37_systems_audit.md` 3.5, section 7 row
-  8)
 
 ## In progress
 
@@ -210,6 +207,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   4433 vs the real 4434/TCP, a GameLift fleet paragraph. Fix: correct
   all three (XS; batch 7; `docs/design/H37_systems_audit.md` 3.3 list)
 - **H80** · Textures orphaned by b998107d, `foobar.png` once T14 is
+- **H101** · Device/guest accounts still get an empty `display_name` at creation (H59's hook covers social providers only); they surface via username/"Unknown" fallbacks. Fix: generate on device/custom auth creation too (XS; platform runtime).
   answered, orphan `.import` files (XS; batch 7;
   `docs/design/H37_systems_audit.md` 2.2, section 5)
 
@@ -234,11 +232,12 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H43** · Reconnect stale-peer race: re-claim transfers ownership, stale peer disconnected deferred. Done in 6b399d03 (2026-10-20).
 - **H42** · Disconnected players demoted on every match end (G2.1). Done in 6b399d03 (2026-10-20).
 - **H45** · Unfinished all-dropped matches cancel with runtime; server waits out reconnect grace. Done in 6b399d03 (2026-10-20).
-- **H48** · Connection grace restarts after each peer's signaling; signaling stamps logged. Done in 6b399d03 (2026-10-20).
+- **H48** · Connection grace restarts after each peer's signaling; signaling stamps logged. Done in 6b399d03 (2026-10-20). Measured same day (Levi: do it; synthetic probes on the local and Edgegap paths): signaling takes ~65 ms per player (server log: WS connect 0.279 s, answers+ICE done 0.346 s after boot; DataChannel open ≤ 0.65 s), so the 10 s window was never signaling-bound.
 - **H44** · Play Again routes through party matchmaking (one party ticket). Done in 6b399d03 (2026-10-20).
 - **H3** · Respawn aligned to the frame clock (same boundary as Dead). Done in 6b399d03 (2026-10-20).
 - **H15** · Matchmaking socket closed on sign-out; SDK rebuilds sockets owned by another account. Done in 6b399d03, platform 886aa10 (2026-10-20).
-- **H59** · Generated display names only (runtime hook at creation; SDK drops provider name). Done in 6b399d03, platform 886aa10 (2026-10-20).
+- **H59** · Generated display names only (runtime hook at creation; SDK drops provider name). Done in 6b399d03, platform 886aa10 (2026-10-20). Follow-through (Levi, same day): 225 prod accounts renamed to generated names; match UI shows bunny names only (auth-name broadcast removed); spawn names captured at match end for the board and recent players (platform SP72). Done in a310422, platform e5538cc, netcode b98d490; deployed runtime + server v30 + web 0.55.0 (2026-10-20).
+- **H79** · Org-level `NAKAMA_HTTP_KEY` Actions secret held the pre-rotation key; updated to the live key and verified against `runtime_status`. Done 2026-10-20 (no code commit).
 
 - **H11** · CI never ran on push to main; now `push: branches: [main]` triggers pr-validate and compliance-matrix. Done in 7dcb7cb8 (2026-10-14).
 - **H69** · The `sign-out-local-match` and `sign-out-play-again` scenarios timed out at the 180 s match length; both now pin `match_duration_sec: 10`, harness-verified. Done in 7dcb7cb8 (2026-10-14).
