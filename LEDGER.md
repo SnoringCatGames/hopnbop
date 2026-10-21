@@ -27,25 +27,12 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   5 row 3, section 7 row 9)
 - **H71** · Decoupling: which seams to build (decision;
   `docs/design/H37_systems_audit.md` 1.3, section 7 row 6)
+- **H102** · Real account merge for the PROVIDER_CONFLICT case: since H62 the game tells the player instead. Merging two accounts' stats/friends/boards is a platform feature; needs Levi's call on whether 'tell' is enough. (L)
 
 ## In progress
 
 ## Next
 
-- **H51** · The loading screen has no connecting or waiting phase (TODO
-  330 to 333, half done). mm. Fix: add the two phases (S; batch 3;
-  `docs/design/H37_systems_audit.md` 3.3 list, section 5)
-- **H57** · The guest upgrade signs in instead of linking (AN-1); a
-  linked guest keeps `is_anonymous=true` (M; batch 4;
-  `docs/design/H37_systems_audit.md` 3.1)
-- **H62** · Link errors match AWS-era codes: merge is dead (LK-4;
-  `link_account_row.gd:159,209`). Fix: use Nakama's, route AlreadyExists
-  to H57 (S; batch 4; `docs/design/H37_systems_audit.md` 3.1)
-- **H58** · Guests cannot export, delete or forget (AN-2) (M; batch 4;
-  `docs/design/H37_systems_audit.md` 3.1)
-- **H64** · A guest's server calls use an expired JWT after 2 h (AN-3;
-  `backend_api_client.gd:528-536`). Fix: refresh a guest JWT on expiry
-  (S; batch 4; `docs/design/H37_systems_audit.md` 3.1 list)
 - **H55** · One absent member stalls the party. Waits for the
   party-control decision (SP34) (M; batch 4;
   `docs/design/H37_systems_audit.md` 3.2)
@@ -95,8 +82,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H72** · Exported-build runs for the harness (custom 4.7.2 template);
   H38's release check waits on it (M; batch 6;
   `docs/design/H37_systems_audit.md` section 4 step 4)
-- **H82** · Pin staticcheck in `pr-validate.yml:305` (XS; batch 6;
-  `docs/design/H37_systems_audit.md` 3.5)
 - **H68** · Legal parity is checked only by pr-validate, which never
   runs on push (C2); `edgegap_app_version` is not in the sync's
   mustSurvive (C3) (S; batch 6; `docs/design/H37_systems_audit.md` 3.4)
@@ -188,28 +173,13 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H52** · Inert `game.yaml` `matchmaker_rules` fields
   (`ticket_expiry_seconds`, `cross_play`, `rules`): delete or wire them,
   fix the comment (XS; batch 3; `docs/design/H37_systems_audit.md` 3.3)
-- **H49** · `level_id` always empty in `match_stats` (ops S3). mm; ops
-  "lower". `edgegap_server_provider.gd:266-270`. Fix: pass the level id
-  (XS; batch 5; `docs/design/H37_systems_audit.md` 3.3 list)
 - **H81** · `local-smoke-test.ps1` rewrites the checkout it runs in;
   "several runs at once" holds only per worktree (S; batch 6;
   `docs/design/H37_systems_audit.md` 3.5)
 - **H46** · `test_network_connector.gd` crashed on exit. mm: crashed in
   1 of 3 runs. Fix: run the file 10 times and find what outlives the
   test (S; batch 6; `docs/design/H37_systems_audit.md` 3.3 list)
-- **H50** · Delete the warm-up stubs (TODO 33 to 38, obsolete). mm.
-  `backend_api_client.gd:7-122`, `loading_screen.gd:115-135` (XS; batch
-  7; `docs/design/H37_systems_audit.md` 3.3 list)
-- **H85** · CLAUDE.md names the debug toggles wrongly; `dev_mode` is
-  read nowhere (ST5, triage V27) (XS; batch 7;
-  `docs/design/H37_systems_audit.md` 3.4)
-- **H47** · `.claude/rules/transport.md` drift: the retry count, port
-  4433 vs the real 4434/TCP, a GameLift fleet paragraph. Fix: correct
-  all three (XS; batch 7; `docs/design/H37_systems_audit.md` 3.3 list)
 - **H80** · Textures orphaned by b998107d, `foobar.png` once T14 is
-- **H101** · Device/guest accounts still get an empty `display_name` at creation (H59's hook covers social providers only); they surface via username/"Unknown" fallbacks. Fix: generate on device/custom auth creation too (XS; platform runtime).
-  answered, orphan `.import` files (XS; batch 7;
-  `docs/design/H37_systems_audit.md` 2.2, section 5)
 
 ## Ideas (not scheduled)
 
@@ -238,6 +208,17 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H15** · Matchmaking socket closed on sign-out; SDK rebuilds sockets owned by another account. Done in 6b399d03, platform 886aa10 (2026-10-20).
 - **H59** · Generated display names only (runtime hook at creation; SDK drops provider name). Done in 6b399d03, platform 886aa10 (2026-10-20). Follow-through (Levi, same day): 225 prod accounts renamed to generated names; match UI shows bunny names only (auth-name broadcast removed); spawn names captured at match end for the board and recent players (platform SP72). Done in a310422, platform e5538cc, netcode b98d490; deployed runtime + server v30 + web 0.55.0 (2026-10-20).
 - **H79** · Org-level `NAKAMA_HTTP_KEY` Actions secret held the pre-rotation key; updated to the live key and verified against `runtime_status`. Done 2026-10-20 (no code commit).
+- **H49** · `match_history` rows carry `level_id` (runtime write + read). Done in platform aa60b94 (SP76) (2026-10-20).
+- **H50** · Warm-up stubs, lobby countdown, and loading warm-up branch deleted. Done in ac4d2a9b (2026-10-20).
+- **H51** · Loading screen CONNECTING/WAITING phases, driven by GameSessionManager. Done in a2e8f049 (2026-10-20).
+- **H57** · Guest upgrade links onto the device account; `is_anonymous` cleared on link. Done in 0dbdcef5, platform a8de879 (SP73) (2026-10-20).
+- **H58** · Guests reach export, delete, and log out (SDK starts the guest session). Done in b0389aad, platform 4914f54 (SP75) (2026-10-20).
+- **H62** · Link errors match Nakama codes (PROVIDER_CONFLICT/LAST_PROVIDER); conflict tells the player; dead merge flow removed. Done in 0dbdcef5, platform a8de879 (SP73) (2026-10-20).
+- **H64** · Guest JWT refreshed on expiry in `BackendApiClient._ensure_session`. Done in d8389b8b (2026-10-20).
+- **H82** · staticcheck pinned to 2025.1.1 (CI Go 1.25) in both runtime gates. Done in ac4d2a9b, platform 9139b38 (2026-10-20).
+- **H85** · CLAUDE.md toggles corrected to `show_perf_tracker`/`show_debug_console`. Done in ac4d2a9b (2026-10-20).
+- **H47** · transport.md drift fixed (4434 signaling, 12×750 ms retries, declared ports, WSS superseded). Done in ac4d2a9b (2026-10-20).
+- **H101** · Device/custom accounts get generated display names at creation. Done in platform bca5a69 (SP74) (2026-10-20).
 
 - **H11** · CI never ran on push to main; now `push: branches: [main]` triggers pr-validate and compliance-matrix. Done in 7dcb7cb8 (2026-10-14).
 - **H69** · The `sign-out-local-match` and `sign-out-play-again` scenarios timed out at the 180 s match length; both now pin `match_duration_sec: 10`, harness-verified. Done in 7dcb7cb8 (2026-10-14).
