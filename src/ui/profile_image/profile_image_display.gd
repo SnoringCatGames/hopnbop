@@ -38,8 +38,6 @@ func _ready() -> void:
 		_on_auth_completed)
 	Platform.auth.link_completed.connect(
 		_on_link_completed)
-	Platform.auth.merge_completed.connect(
-		_on_link_completed)
 
 
 func _draw() -> void:
