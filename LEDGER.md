@@ -19,21 +19,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Urgent
 
-- **H41** · Game server does not enforce session validation (G1.1,
-  G1.3); ship with the G1.3 re-claim rule, never alone, after SP70 and
-  SP27 (M; batch 2; `docs/design/H37_systems_audit.md` 3.3, 0.1 row 4)
 
 ## Waiting on Levi
 
-- **H3** · The bunny reappears 1-2 frames before respawn: "Dead" ends on
-  a frame count (`character_state_from_server.gd:38-52`), respawn on a
-  wall-clock timer (`player.gd:301`). Decide whether to align the two.
-- **H15** · Offered: log-out leaves the matchmaking socket signed in as
-  the old account; call `Platform.matchmaking.cleanup()` in
-  `SignOutRouter`'s shared cleanup (verified, H37 4d). Do it?
-- **H59** · The Google profile name is the public display name (DN-1,
-  TODO L50) (M; batch 4; `docs/design/H37_systems_audit.md` 3.1, section
-  7 row 4)
 - **H92** · One 2-client networked session with Levi (T02 to T07, T16,
   T25, T27, T29) (S; batch 7; `docs/design/H37_systems_audit.md` section
   5 row 3, section 7 row 9)
@@ -47,18 +35,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Next
 
-- **H43** · Reconnect stale-peer race (F8) (S; batch 2;
-  `docs/design/H37_systems_audit.md` 3.3)
-- **H42** · A disconnected leader keeps the win on a normal match end
-  (G2.1) (S; batch 3; `docs/design/H37_systems_audit.md` 3.3)
-- **H45** · The server self-quits inside the reconnect window and
-  nothing reaches the runtime (S; batch 3;
-  `docs/design/H37_systems_audit.md` 3.3)
-- **H48** · The 10 s server grace may be too short for WebRTC signaling
-  (unmeasured): time signaling in a WebRTC run, start the grace after it
-  (S; batch 3; `docs/design/H37_systems_audit.md` 3.3 list)
-- **H44** · Play Again splits a party; there is no rematch (M; batch 3;
-  `docs/design/H37_systems_audit.md` 3.3)
 - **H51** · The loading screen has no connecting or waiting phase (TODO
   330 to 333, half done). mm. Fix: add the two phases (S; batch 3;
   `docs/design/H37_systems_audit.md` 3.3 list, section 5)
@@ -169,9 +145,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H10** · Android: run the game on the Pixel. Export preset done in
   4c04e908 (`--export-debug "Android" build/android/hopnbop.apk`
   builds). Left: install over USB, then a touch-input pass.
-- **H17** · `EdgegapServerProvider` trusts a player's declared backend
-  user ID over the validated session ID, so one can claim a fellow
-  player's ID (confirmed, G1.1-G1.3). Fix: SP27 and H41.
 - **H18** · Raw SDK error text reaches players: the party panel ("Not
   authenticated" toast), delete, export (`export_data_row.gd:96-99`),
   merge and poll (`friends_panel.gd:342-354`) toasts.
