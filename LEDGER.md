@@ -230,6 +230,16 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H41** · Session validation enforced: SP27 tokens + netcode gate + derived backend ids (closes H17, with H43). Done in 6b399d03, netcode 6ae6765, platform 886aa10 (2026-10-20).
+- **H43** · Reconnect stale-peer race: re-claim transfers ownership, stale peer disconnected deferred. Done in 6b399d03 (2026-10-20).
+- **H42** · Disconnected players demoted on every match end (G2.1). Done in 6b399d03 (2026-10-20).
+- **H45** · Unfinished all-dropped matches cancel with runtime; server waits out reconnect grace. Done in 6b399d03 (2026-10-20).
+- **H48** · Connection grace restarts after each peer's signaling; signaling stamps logged. Done in 6b399d03 (2026-10-20).
+- **H44** · Play Again routes through party matchmaking (one party ticket). Done in 6b399d03 (2026-10-20).
+- **H3** · Respawn aligned to the frame clock (same boundary as Dead). Done in 6b399d03 (2026-10-20).
+- **H15** · Matchmaking socket closed on sign-out; SDK rebuilds sockets owned by another account. Done in 6b399d03, platform 886aa10 (2026-10-20).
+- **H59** · Generated display names only (runtime hook at creation; SDK drops provider name). Done in 6b399d03, platform 886aa10 (2026-10-20).
+
 - **H11** · CI never ran on push to main; now `push: branches: [main]` triggers pr-validate and compliance-matrix. Done in 7dcb7cb8 (2026-10-14).
 - **H69** · The `sign-out-local-match` and `sign-out-play-again` scenarios timed out at the 180 s match length; both now pin `match_duration_sec: 10`, harness-verified. Done in 7dcb7cb8 (2026-10-14).
 
