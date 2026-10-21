@@ -7,12 +7,25 @@ extends Screen
 ## player requirement relaxes.
 const _EXPANSION_WAIT_SEC := 30.0
 
+## Post-matchmaking phases, driven by GameSessionManager
+## through start_phase: CONNECTING while this client
+## connects to the game server, then WAITING while the
+## other players arrive.
+enum ConnectionPhase {
+	NONE,
+	CONNECTING,
+	WAITING,
+}
+
 var _matchmaking_phase := ""
 var _matchmaking_elapsed_sec := 0.0
 var _matchmaking_estimated_sec := -1.0
 var _is_matchmaking_connected := false
 var _has_recoverable_failure := false
 var _failure_text_key := ""
+var _connection_phase := ConnectionPhase.NONE
+var _connection_total := 0
+var _connection_elapsed_sec := 0.0
 
 
 func _enter_tree() -> void:
@@ -30,6 +43,11 @@ func _process(delta: float) -> void:
 			and not Netcode.connector
 				.is_connected_to_server):
 		_matchmaking_elapsed_sec += delta
+	if (
+		_connection_phase != ConnectionPhase.NONE
+		and not _has_recoverable_failure
+	):
+		_connection_elapsed_sec += delta
 	update_status_message()
 	_update_action_buttons()
 
@@ -43,6 +61,9 @@ func on_open() -> void:
 	_matchmaking_estimated_sec = -1.0
 	_has_recoverable_failure = false
 	_failure_text_key = ""
+	_connection_phase = ConnectionPhase.NONE
+	_connection_total = 0
+	_connection_elapsed_sec = 0.0
 
 	if is_instance_valid(%RetryButton):
 		%RetryButton.visible = false
@@ -71,6 +92,7 @@ func on_open() -> void:
 
 func on_close() -> void:
 	_disconnect_matchmaking_signal()
+	_connection_phase = ConnectionPhase.NONE
 
 
 # Override the parent method, so we can force
@@ -95,6 +117,17 @@ func update_status_message() -> void:
 		%Label.text = tr(key)
 		return
 
+	if _connection_phase == ConnectionPhase.CONNECTING:
+		%Label.text = "%s (%ds)" % [
+			tr("LOADING.CONNECTING"),
+			ceili(_connection_elapsed_sec),
+		]
+		return
+
+	if _connection_phase == ConnectionPhase.WAITING:
+		%Label.text = _get_waiting_text()
+		return
+
 	if Netcode.connector.is_connected_to_server:
 		%Label.text = tr(
 			"LOADING.WAITING_FOR_PLAYERS")
@@ -113,6 +146,32 @@ func update_status_message() -> void:
 		%Label.text = _get_matchmaking_text()
 	else:
 		%Label.text = tr("LOADING.CONNECTING")
+
+
+## Starts a connection phase with the expected player
+## count, and restarts its clock. GameSessionManager
+## calls this as the connection milestones pass:
+## CONNECTING when the server address arrives, WAITING
+## when this client's player IDs are assigned.
+func start_phase(
+	phase: ConnectionPhase,
+	total: int,
+) -> void:
+	_connection_phase = phase
+	_connection_total = total
+	_connection_elapsed_sec = 0.0
+	update_status_message()
+
+
+func _get_waiting_text() -> String:
+	var base := tr("LOADING.WAITING_FOR_PLAYERS")
+	var arrived := 0
+	if G.match_state != null:
+		arrived = G.match_state.players_by_id.size()
+	if _connection_total > 1 and arrived > 0:
+		return "%s (%d/%d)" % [
+			base, arrived, _connection_total]
+	return base
 
 
 func _is_fleet_warming_up() -> bool:

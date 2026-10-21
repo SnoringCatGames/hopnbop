@@ -375,7 +375,12 @@ func _on_session_ids_received(
 			Netcode.settings.transport_type,
 		)
 
-	# Connect to server.
+	# Connect to server. The loading screen names this
+	# stretch CONNECTING until the IDs come back (H51).
+	if is_instance_valid(G.loading_screen):
+		G.loading_screen.start_phase(
+			LoadingScreen.ConnectionPhase.CONNECTING,
+			session_ids.size())
 	Netcode.connector.client_connect_to_server(
 		server_ip, server_port, signaling_url)
 
@@ -462,6 +467,13 @@ func _on_player_ids_assigned(assigned_ids: Array[int]) -> void:
 		for pid in assigned_ids:
 			G.client_session.profile_image_urls[pid] = (
 				Platform.token_store.profile_image_url)
+
+	# This client is in; the rest of the loading wait is
+	# for the other players and the match start (H51).
+	if is_instance_valid(G.loading_screen):
+		G.loading_screen.start_phase(
+			LoadingScreen.ConnectionPhase.WAITING,
+			G.client_session.client_session_ids.size())
 
 	# Emit high-level event for game logic.
 	session_established.emit(assigned_ids)
