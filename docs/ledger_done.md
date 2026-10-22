@@ -180,3 +180,23 @@ entries go at the bottom.
 ## H34 (Done 2026-10-13)
 
 - **H34** · CLAUDE.md slimmed to the context budget, 2,333 lines to 400; lore moved to path-scoped `.claude/rules/`, history to `docs/history.md`. Done in 34971411 (2026-10-13).
+
+## H37 (Done 2026-10-14)
+
+- **H37** · Systems audit, test run and history recap: report `docs/design/H37_systems_audit.md`, appendices and probes in `docs/design/H37/`; items filed H38-H100, SP26-SP71, RN6-RN8 and CC51-CC57. Done in 6910dce4 (2026-10-14).
+
+## H40 (Done 2026-10-14)
+
+- **H40** · Legal texts missing from every export (LG-1, ops C7): `include_filter="legal/*"` on all four presets, plus a pr-validate pack check. Done in 41f29a07 (2026-10-14).
+
+## H39 (Done 2026-10-14)
+
+- **H39** · Networked pause shipped enabled; off in release (Levi decided): `RELEASE_IS_SERVER_PAUSE_ENABLED = false`, editor and harness keep the settings.tres value. Done in a11e2223 (2026-10-14).
+
+## H69 (Done 2026-10-14)
+
+- **H69** · The `sign-out-local-match` and `sign-out-play-again` scenarios timed out at the 180 s match length; both now pin `match_duration_sec: 10`, harness-verified. Done in 7dcb7cb8 (2026-10-14).
+
+## H11 (Done 2026-10-14)
+
+- **H11** · CI never ran on push to main; now `push: branches: [main]` triggers pr-validate and compliance-matrix. Done in 7dcb7cb8 (2026-10-14).
