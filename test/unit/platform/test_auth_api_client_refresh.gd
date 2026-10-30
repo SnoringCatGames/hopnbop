@@ -290,6 +290,49 @@ func test_explicit_refresh_skips_backoff() -> void:
 
 
 # ------------------------------------------------------------------
+# Refresh waits out link and delete flows (SP43, LK-1)
+# ------------------------------------------------------------------
+
+
+func test_auto_refresh_waits_while_linking() -> void:
+	var jwt_before := _store.jwt_token
+	_nakama.next_result = _success()
+	_client._is_linking = true
+	_client._link_provider_name = "google"
+
+	_client._check_auto_refresh()
+
+	assert_eq(_nakama.refresh_calls, 0, "no refresh sent")
+	assert_true(_client._is_linking, "link still pending")
+	assert_eq(_store.jwt_token, jwt_before, "session kept")
+	assert_true(_completions.is_empty(), "nothing reported")
+
+
+func test_auto_refresh_waits_while_deleting() -> void:
+	_nakama.next_result = _success()
+	_client._is_deleting = true
+
+	_client._check_auto_refresh()
+
+	assert_eq(_nakama.refresh_calls, 0, "no refresh sent")
+	assert_true(_client._is_deleting, "delete still pending")
+	assert_true(_completions.is_empty(), "nothing reported")
+
+
+func test_refresh_runs_once_the_link_finishes() -> void:
+	_nakama.next_result = _success()
+	_client._is_linking = true
+	_client._check_auto_refresh()
+	assert_eq(_nakama.refresh_calls, 0)
+
+	_client._is_linking = false
+	_client._check_auto_refresh()
+
+	assert_eq(_nakama.refresh_calls, 1, "refresh follows")
+	assert_eq(_completions, [true])
+
+
+# ------------------------------------------------------------------
 # Success
 # ------------------------------------------------------------------
 
