@@ -172,9 +172,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H52** · Inert `game.yaml` `matchmaker_rules` fields
   (`ticket_expiry_seconds`, `cross_play`, `rules`): delete or wire them,
   fix the comment (XS; batch 3; `docs/design/H37_systems_audit.md` 3.3)
-- **H81** · `local-smoke-test.ps1` rewrites the checkout it runs in;
-  "several runs at once" holds only per worktree (S; batch 6;
-  `docs/design/H37_systems_audit.md` 3.5)
 - **H46** · `test_network_connector.gd` crashed on exit. mm: crashed in
   1 of 3 runs. Fix: run the file 10 times and find what outlives the
   test (S; batch 6; `docs/design/H37_systems_audit.md` 3.3 list)
@@ -203,6 +200,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H81** · `local-smoke-test.ps1` rewrites the checkout it runs in; "several runs at once" holds only per worktree (S; batch 6; `docs/design/H37_systems_audit.md` 3.5). Done in 1dd09ce (2026-10-29).
 - **H55** · One absent member stalls the party. Done in acd5bcb (2026-10-29).
 - **H53** · Party client races: a follower cannot abort matchmaking; two Start presses split the party (M; batch 4; `docs/design/H37_systems_audit.md` 3.2). Done in 7483f45 (2026-10-29).
 - **H60** · Names and avatar URLs are never validated; any avatar URL is fetched (PI-1, DN-2; client half) (M; batch 4; `docs/design/H37_systems_audit.md` 3.1). Done in afe43e2 (2026-10-29).
