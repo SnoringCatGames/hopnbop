@@ -258,6 +258,10 @@ func _queue_friend_toast(n: Dictionary) -> bool:
 	var nid: String = n.get("id", "")
 	if nid.is_empty():
 		return false
+	# Never toast about yourself (H53): an event the player
+	# caused on another device is not news here.
+	if str(n.get("sender_id", "")) == Platform.token_store.player_id:
+		return false
 	if _known_friend_event_ids.has(nid):
 		return false
 	var key := _friend_toast_key(int(n.get("code", 0)))
@@ -477,6 +481,8 @@ func _on_presence_received(
 		return
 	var new_online: Array[String] = []
 	for id in online_ids:
+		if id == Platform.token_store.player_id:
+			continue
 		if not _known_online_ids.has(id):
 			new_online.append(id)
 

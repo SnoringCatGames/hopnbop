@@ -230,6 +230,19 @@ func test_friend_toast_dedups_by_notification_id() -> void:
 	assert_eq(_poller._pending_friend_toasts.size(), 1)
 
 
+func test_self_sent_event_is_not_toasted() -> void:
+	var prev_id: String = Platform.token_store.player_id
+	Platform.token_store.player_id = "self-1"
+	var queued := _poller._queue_friend_toast(
+		_friend_notification(
+			"n-self",
+			PlatformFriendsApiClient.CODE_FRIEND_REQUEST_ACCEPTED,
+			"self-1"))
+	Platform.token_store.player_id = prev_id
+	assert_false(queued, "own event queued no toast")
+	assert_eq(_poller._pending_friend_toasts.size(), 0)
+
+
 func test_friend_toast_ignores_unrelated_codes() -> void:
 	# 100 is our runtime's own code (match_ready /
 	# party_matchmaking_start); it must not queue a friend toast.

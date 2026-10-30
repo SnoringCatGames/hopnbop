@@ -713,6 +713,12 @@ func _on_party_status_received(
 
 	if not has_active_party:
 		if not current_party.is_empty():
+			# A transient empty fetch must not end a live
+			# match (H53): keep the party while one runs.
+			if (is_instance_valid(G.client_session)
+					and (G.client_session.is_game_loading
+						or G.client_session.is_game_active)):
+				return
 			current_party.clear()
 			_tear_down_chat()
 			party_disbanded.emit()
@@ -734,15 +740,6 @@ func _on_party_status_received(
 			sync_leader_prefs_to_party()
 	else:
 		_did_sync_leader_prefs = false
-
-	# Check if matchmaking started.
-	var status: String = current_party.get(
-		"status", "")
-	if status == "matchmaking":
-		var ticket_id: String = current_party.get(
-			"matchmaking_ticket_id", "")
-		if not ticket_id.is_empty():
-			matchmaking_started.emit(ticket_id)
 
 	party_updated.emit(current_party)
 
@@ -787,6 +784,13 @@ func _on_matchmaking_started(
 func on_party_matchmaking_notification(
 	content: Dictionary,
 ) -> void:
+	# Ignore starts for a party we are not in (H53): a stale
+	# notification must not pull us into someone else's load.
+	var start_party_id: String = content.get("party_id", "")
+	if (not start_party_id.is_empty()
+			and not current_party.is_empty()
+			and start_party_id != get_party_id()):
+		return
 	_start_party_matchmaking(content, false, 0)
 	matchmaking_started.emit(
 		content.get("party_id", ""))

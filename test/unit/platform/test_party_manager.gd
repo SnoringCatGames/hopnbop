@@ -356,6 +356,17 @@ func test_set_party_mode_noop_when_unchanged() -> void:
 # ------------------------------------------------------------------
 
 
+func test_stale_party_start_is_ignored() -> void:
+	_pm.current_party = {"party_id": "party-a"}
+	_pm.on_party_matchmaking_notification({
+		"party_id": "party-b",
+		"rt_party_id": "rt-b",
+	})
+	assert_true(
+		_pm.pending_party_match_context.is_empty(),
+		"stale start stashed no context")
+
+
 func test_start_polling_arms_state() -> void:
 	_pm.start_polling()
 	assert_true(_pm._is_polling)
