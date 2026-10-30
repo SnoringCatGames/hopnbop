@@ -18,6 +18,31 @@ func test_http_and_unknown_hosts_are_never_queued() -> void:
 	cache.free()
 
 
+func test_reused_id_with_a_new_url_evicts_the_old_image() -> void:
+	# H61 (PI-2): player ids are per-server and reused by the
+	# next match, so an id-keyed hit must not survive a URL
+	# change, or the new player wears the old one's avatar.
+	var cache := ProfileImageCache.new()
+	var url_a := "https://lh3.googleusercontent.com/a/first.png"
+	var url_b := "https://lh3.googleusercontent.com/a/second.png"
+	cache.request_image(2, url_a)
+	# Pretend the first download landed.
+	cache._textures[2] = Texture2D.new()
+	cache._queue.clear()
+
+	cache.request_image(2, url_b)
+
+	assert_null(
+		cache.get_texture(2),
+		"the old player's image is evicted on a URL change",
+	)
+	assert_eq(
+		cache._queue, [[2, url_b]],
+		"the new URL is queued in its place",
+	)
+	cache.free()
+
+
 func test_allowlisted_https_is_queued() -> void:
 	var cache := ProfileImageCache.new()
 	cache.request_image(

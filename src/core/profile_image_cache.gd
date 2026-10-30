@@ -41,6 +41,10 @@ var _textures: Dictionary = {}
 ## Dictionary<int, bool>
 var _downloading: Dictionary = {}
 
+## URL each player_id's cache entry belongs to (H61).
+## Dictionary<int, String>
+var _requested_urls: Dictionary = {}
+
 ## Queued downloads waiting for a free slot.
 ## Array of [player_id, url].
 var _queue: Array = []
@@ -67,14 +71,29 @@ func _ready() -> void:
 func request_image(
 	player_id: int, url: String,
 ) -> void:
-	if _textures.has(player_id):
-		return
-	if _downloading.has(player_id):
-		return
 	if url.is_empty():
 		return
 	if not is_allowed_avatar_url(url):
 		return
+	# Player ids are per-server and reused across matches
+	# (H61): a cached image only counts for the URL it was
+	# fetched from. A new URL for the same id evicts the old
+	# binding instead of showing the previous player.
+	if _requested_urls.get(player_id, "") == url:
+		if (
+			_textures.has(player_id)
+			or _downloading.has(player_id)
+		):
+			return
+		for entry in _queue:
+			if entry[0] == player_id:
+				return
+	else:
+		_requested_urls[player_id] = url
+		_textures.erase(player_id)
+		_queue = _queue.filter(
+			func(entry: Array) -> bool:
+				return entry[0] != player_id)
 	_queue.append([player_id, url])
 	_process_queue()
 
@@ -94,6 +113,7 @@ func get_anonymous_texture() -> Texture2D:
 func clear() -> void:
 	_textures.clear()
 	_downloading.clear()
+	_requested_urls.clear()
 	_queue.clear()
 
 
@@ -127,7 +147,7 @@ func _start_download(
 	_downloading[player_id] = true
 	request.request_completed.connect(
 		_on_request_completed.bind(
-			request, player_id),
+			request, player_id, url),
 		CONNECT_ONE_SHOT,
 	)
 	var error := request.request(url)
@@ -145,8 +165,18 @@ func _on_request_completed(
 	body: PackedByteArray,
 	request: HTTPRequest,
 	player_id: int,
+	url: String = "",
 ) -> void:
 	_downloading.erase(player_id)
+
+	# A newer URL for this id superseded this download
+	# (H61); drop its result on the floor.
+	if (
+		not url.is_empty()
+		and _requested_urls.get(player_id, "") != url
+	):
+		_process_queue()
+		return
 
 	if (result != HTTPRequest.RESULT_SUCCESS
 			or response_code != 200
