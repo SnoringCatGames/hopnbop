@@ -213,6 +213,7 @@ func _render_empty_state() -> void:
 	# voice channel.
 	if _join_by_code_panel_scene != null:
 		var join_row := ActionRow.new()
+		join_row.show_chevron = true
 		join_row.setup_action(_on_join_by_code_pressed)
 		join_row.setup_label(
 			tr("PARTY.JOIN_BY_CODE"),

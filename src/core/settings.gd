@@ -71,6 +71,9 @@ const RELEASE_IS_SERVER_PAUSE_ENABLED := false
 @export var show_perf_tracker := false
 @export var show_network_simulation := false
 @export var are_cheats_enabled := true
+## On-screen symbol keyboard in the code-entry panels
+## (H56). Off until Levi accepts it by eye.
+@export var is_code_keyboard_enabled := false
 @export var is_jetpack_enabled := false
 @export var jetpack_acceleration := 1000.0
 @export var jetpack_max_upward_speed := 270.0

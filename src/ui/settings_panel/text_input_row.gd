@@ -52,6 +52,12 @@ func get_text() -> String:
 	return _line_edit.text
 
 
+## Replaces the field's text (H56's symbol keyboard types
+## through here so the panel's text_changed path sees it).
+func set_text(value: String) -> void:
+	_line_edit.text = value
+
+
 ## Reset the field to empty. Used by the chat panel after a
 ## send so the user can type the next message without manually
 ## clearing the LineEdit.

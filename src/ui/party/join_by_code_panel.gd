@@ -18,6 +18,13 @@ extends SidePanel
 ## before round-tripping.
 const _CODE_LENGTH := 6
 
+## The party invite alphabet (runtime/party.go, 32
+## symbols) in rows of four for the on-screen keyboard.
+const _KEYBOARD_ROWS: Array = [
+	"2345", "6789", "ABCD", "EFGH",
+	"JKLM", "NPQR", "STUV", "WXYZ",
+]
+
 var _code_input: TextInputRow
 var _join_row: ActionRow
 
@@ -70,6 +77,26 @@ func build_ui() -> void:
 	_row_container.add_child(_code_input)
 	_connect_row_clicked(_code_input)
 
+	# On-screen symbol keyboard (H56), behind a setting
+	# that defaults off: gamepad players can type the
+	# code without a physical keyboard.
+	if G.settings.is_code_keyboard_enabled:
+		for symbols in _KEYBOARD_ROWS:
+			var keyboard_row := CodeKeyboardRow.new()
+			var row_symbols: Array[String] = []
+			for i in symbols.length():
+				row_symbols.append(symbols[i])
+			keyboard_row.setup(row_symbols)
+			keyboard_row.symbol_chosen.connect(
+				_on_keyboard_symbol)
+			_row_container.add_child(keyboard_row)
+			_connect_row_clicked(keyboard_row)
+		var delete_row := ActionRow.new()
+		delete_row.setup_action(_on_keyboard_delete)
+		delete_row.setup_label("<-", null)
+		_row_container.add_child(delete_row)
+		_connect_row_clicked(delete_row)
+
 	# Small spacer.
 	var input_spacer := Control.new()
 	input_spacer.custom_minimum_size = (
@@ -113,6 +140,24 @@ func _exit_tree() -> void:
 			_on_request_failed):
 		client.request_failed.disconnect(
 			_on_request_failed)
+
+
+func _on_keyboard_symbol(symbol: String) -> void:
+	if not is_instance_valid(_code_input):
+		return
+	var text := _code_input.get_text()
+	if text.length() >= _CODE_LENGTH:
+		return
+	_code_input.set_text(text + symbol)
+
+
+func _on_keyboard_delete() -> void:
+	if not is_instance_valid(_code_input):
+		return
+	var text := _code_input.get_text()
+	if text.is_empty():
+		return
+	_code_input.set_text(text.left(text.length() - 1))
 
 
 func _on_code_changed(text: String) -> void:
