@@ -34,9 +34,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H103** · Muse works the agreed backlog tier by tier (H37 batches 2 to
   7, platform inbox, Pulumi pins, HG1) while Claude is near its limit.
   - owner: muse 01a1896a (took over 2026-10-29 after 01a188af was cancelled mid-turn)
-  - branch: mainline in every repo; last commit: 6c5974b (H29)
+  - branch: mainline in every repo; last commit: 97805e5 (H95)
   - evidence: `git log --grep Muse-Session` here and in both submodules; shelved patches in `.claude/probes/<ID>/wip.patch`
-  - next: Tier 5: H95, then H96
+  - next: Tier 5: H96, then H97+SP53
   - brief: `docs/design/H103_muse_backlog.md` (section 5 is the handoff log)
 
 ## Next
@@ -84,8 +84,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   (M; batch 7; `docs/design/H37_systems_audit.md` section 5 row 5)
 - **H94** · A controller pass by hand, with two local players (T45, T08,
   T09) (S; batch 7; `docs/design/H37_systems_audit.md` section 5 row 6)
-- **H95** · A click sound on every MenuRow trigger (T42) (S; batch 7;
-  `docs/design/H37_systems_audit.md` section 5 row 7)
+
 - **H96** · Alt+Enter fullscreen (T10) (S; batch 7;
   `docs/design/H37_systems_audit.md` section 5)
 - **H97** · Finish T12; delete the 9 Stale notes (with SP53) (S; batch
@@ -156,6 +155,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H95** · A click sound on every MenuRow trigger (T42). Done in 97805e5 (2026-10-29).
 - **H29** · Unused code: `BinaryToggle`, and `fetch_player_stats`, `fetch_match_history` and their signals. Done in 6c5974b (2026-10-29).
 - **H66** · V17: 22 broken format strings, 17 here; RN7 and SP49 held the rest. Done in b5f6446, netcode a7b001d, platform 6987291 (2026-10-29).
 - **H18** · Raw SDK error text reached players in party, delete, export and friends toasts. Done in 9da8a21 (2026-10-29).
