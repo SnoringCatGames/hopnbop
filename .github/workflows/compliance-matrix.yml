@@ -234,6 +234,9 @@ jobs:
             exit 1
           }
           Write-Host "Released suite: no unclassified failures."
+          # GUT exits 1 when the 4 allowlisted tests fail; that
+          # must not leak into this step's exit code.
+          exit 0
 
       - name: Tear down the stack
         if: always()
