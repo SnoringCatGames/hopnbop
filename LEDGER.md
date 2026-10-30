@@ -34,9 +34,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H103** · Muse works the agreed backlog tier by tier (H37 batches 2 to
   7, platform inbox, Pulumi pins, HG1) while Claude is near its limit.
   - owner: muse 01a188af-3ed2-72f1-8241-348fdaf97e78
-  - branch: mainline in every repo; last commit: hopnbop 7483f45 (H53)
+  - branch: mainline in every repo; last commit: platform acd5bcb (H55), deployed
   - evidence: `git log --grep Muse-Session` here and in both submodules; shelved patches in `.claude/probes/<ID>/wip.patch`
-  - next: Tier 1 party set: H55, then SP44
+  - next: Tier 1 item 11 (SP44)
   - brief: `docs/design/H103_muse_backlog.md` (section 5 is the handoff log)
 
 ## Next
@@ -44,9 +44,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H104** · Claude reviews Muse's H103 commits after the weekly reset,
   security first (SP32, SP33, SP36, SP41 to SP44, SP47, SP59, H60):
   `git log --grep Muse-Session` here and in both submodules.
-- **H55** · One absent member stalls the party. Waits for the
-  party-control decision (SP34) (M; batch 4;
-  `docs/design/H37_systems_audit.md` 3.2)
 - **H54** · The notification poll is frozen on the oldest 50 rows
   (client half; SP40 is the server half) (M; batch 4;
   `docs/design/H37_systems_audit.md` 3.2)
@@ -206,6 +203,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H55** · One absent member stalls the party. Done in acd5bcb (2026-10-29).
 - **H53** · Party client races: a follower cannot abort matchmaking; two Start presses split the party (M; batch 4; `docs/design/H37_systems_audit.md` 3.2). Done in 7483f45 (2026-10-29).
 - **H60** · Names and avatar URLs are never validated; any avatar URL is fetched (PI-1, DN-2; client half) (M; batch 4; `docs/design/H37_systems_audit.md` 3.1). Done in afe43e2 (2026-10-29).
 - **H23** · The notification socket stops on any failed sign-in result, transient refresh failures included, until the next successful refresh; a failed `delete_account` (DEL-2, SP41) is one more trigger. Done in ac95413 (2026-10-29).

@@ -385,13 +385,17 @@ func sync_leader_prefs_to_party() -> void:
 	var party_id := get_party_id()
 	if party_id.is_empty():
 		return
+	var level_prefs := {}
 	if is_instance_valid(G.local_settings):
 		var prefs := G.local_settings.load_level_preferences()
 		if prefs != null:
-			Platform.party.set_level_prefs(
-				party_id, prefs.to_dict())
-	Platform.party.set_cheat_prefs(
+			level_prefs = prefs.to_dict()
+	# One atomic write for mode, level and cheats (H55), so a
+	# start can never observe a mix of old and new prefs.
+	Platform.party.set_prefs(
 		party_id,
+		get_party_mode(),
+		level_prefs,
 		G.settings.are_cheats_enabled,
 		_enabled_gameplay_cheats())
 
