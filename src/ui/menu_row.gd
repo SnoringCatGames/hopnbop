@@ -76,9 +76,21 @@ func consumes_horizontal_input() -> bool:
 	return false
 
 
+## Shared dispatch for one activation (Trigger input, Right
+## input on a row that doesn't consume it, mouse click):
+## the click sound (H95), the `triggered` signal, then the
+## subclass's `on_trigger()`. Callers activate a row through
+## here, never by calling `on_trigger()` directly.
+func trigger() -> void:
+	if is_instance_valid(G.audio):
+		G.audio.play_sound("click")
+	triggered.emit()
+	on_trigger()
+
+
 ## Universal action method. Fired by Right input, Trigger
-## input, and mouse-click. Subclasses override to perform
-## their primary action.
+## input, and mouse-click through `trigger()`. Subclasses
+## override to perform their primary action.
 func on_trigger() -> void:
 	pass
 
@@ -120,15 +132,16 @@ func _gui_input(event: InputEvent) -> void:
 				and mb.button_index
 				== MOUSE_BUTTON_LEFT):
 			accept_event()
-			triggered.emit()
 			# Horizontal-selector rows have their own
 			# sub-button click handlers (e.g., the three
 			# X / check / heart buttons of LevelPrefRow).
 			# Clicking the row background
 			# itself should only set focus, not cycle the
 			# state — the sub-buttons own activation.
-			if not consumes_horizontal_input():
-				on_trigger()
+			if consumes_horizontal_input():
+				triggered.emit()
+			else:
+				trigger()
 
 
 func _update_focus_style() -> void:

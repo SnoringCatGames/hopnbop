@@ -391,7 +391,7 @@ func _process(delta: float) -> void:
 func _handle_trigger_input() -> void:
 	if _focused_index < 0 or _focused_index >= _rows.size():
 		return
-	_rows[_focused_index].on_trigger()
+	_rows[_focused_index].trigger()
 
 
 func _handle_right_input() -> void:
@@ -404,7 +404,7 @@ func _handle_right_input() -> void:
 		# Right input on a row that doesn't consume
 		# horizontal input fires its primary action,
 		# same as Trigger.
-		row.on_trigger()
+		row.trigger()
 
 
 func _handle_left_input() -> void:
