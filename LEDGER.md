@@ -105,9 +105,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H7** · The check that keeps new spawns off other players can't see
   bunnies that are still blinking, so a respawn can land on one. Left
   alone as a player-versus-player rule.
-- **H8** · Possible one-tick origin slide at first spawn in local mode
-  (unverified): `networked_level.gd:337-339` adds the player before
-  positioning it; same pattern as 7215b1d5.
 - **H9** · pr-validate's "GDScript formatter" job is a no-op: it logs
   "not vendored; skipping" because `addons/gdscript_formatter` isn't in
   the repo, though CLAUDE.md says it is.
@@ -155,6 +152,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H8** · Spawned players entered the tree at the origin for one tick; they are positioned before `add_child` now. Done in 005e823 (2026-10-29).
 - **H6** · Splashes and landing skids fired twice per transition; effects now consume each transition once. Done in 1f1ff5d (2026-10-29).
 - **H24** · Server registered players under id 0 before assigning the real id; registration now waits for the id. Done in fc90a3c (2026-10-29).
 - **H108** · Released client's suite against HEAD's runtime, locally and as the `compliance-released` CI job (76/80; 4 intended failures). Done in c11191e8, 51d7eb8b (2026-10-29).
