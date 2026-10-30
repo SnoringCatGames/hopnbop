@@ -41,6 +41,10 @@ common), and prefers the `*_console.exe` build on Windows.
 
 CI runs the same script: `.github/workflows/compliance-matrix.yml`.
 
+To leave a stack running for harness or manual runs instead:
+`pwsh scripts/dev-stack.ps1` (then `-Action Status|Seed|Restart|Down`).
+It prints the loopback URL to pass to `run-game.ps1 -Backend`.
+
 ## It never touches production
 
 The compliance suite creates accounts, friendships, groups, and
