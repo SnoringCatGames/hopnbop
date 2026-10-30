@@ -7,6 +7,17 @@ extends RefCounted
 ## need without modifying production code.
 
 
+## An AnimatedSprite2D whose SpriteFrames define the Rest
+## animation the character animator plays when idle. Without
+## it every fixture logs "no animation 'Rest'" (H84).
+static func _rest_animated_sprite() -> AnimatedSprite2D:
+	var frames := SpriteFrames.new()
+	frames.add_animation(&"Rest")
+	var sprite := AnimatedSprite2D.new()
+	sprite.sprite_frames = frames
+	return sprite
+
+
 ## Set up mock game_panel in G singleton.
 ## Provides minimal mock with is_level_fully_loaded property for tests.
 ## Note: Does not add to tree since it only needs to exist for property access.
@@ -68,7 +79,7 @@ static func setup_test_player_minimal() -> Player:
 
 	# Initialize animator with required AnimatedSprite2D
 	player.animator = CharacterAnimator.new()
-	player.animator.animated_sprite = AnimatedSprite2D.new()
+	player.animator.animated_sprite = _rest_animated_sprite()
 	player.animator.name = "Animator"
 	player.add_child(player.animator)
 
@@ -95,7 +106,7 @@ static func setup_test_player(parent_node: Node) -> Player:
 
 	# Initialize animator with required AnimatedSprite2D
 	player.animator = CharacterAnimator.new()
-	player.animator.animated_sprite = AnimatedSprite2D.new()
+	player.animator.animated_sprite = _rest_animated_sprite()
 	player.animator.name = "Animator"
 	player.add_child(player.animator)
 
