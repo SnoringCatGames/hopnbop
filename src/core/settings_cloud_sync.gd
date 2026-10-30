@@ -25,6 +25,15 @@ var _client
 var _pending_fetch_scopes: Dictionary = {}
 var _signals_connected := false
 
+## Save-failure handling (H90, ST2): a failed save used to
+## be dropped for good. Transient failures retry (below);
+## permanent ones (the storage allowlist or the 32 KiB cap
+## rejecting the write) never will succeed, so they are not
+## retried, only left dirty for the next explicit save.
+const _SAVE_RETRY_DELAYS_SEC: Array = [2.0, 5.0]
+var _save_retry_counts: Dictionary = {}
+var _save_retry_scheduled: Dictionary = {}
+
 
 func _init() -> void:
 	_client = Platform.settings
@@ -65,6 +74,12 @@ func fetch_and_merge_from_cloud() -> void:
 	if Platform.settings == null:
 		return
 	_connect_signals_once()
+	# A save that failed in an earlier session is still
+	# owed (H90): push dirty scopes before fetching, so the
+	# merge below compares against what we meant to save.
+	for dirty_scope in [_GLOBAL_SCOPE, _game_scope()]:
+		if _is_save_dirty(dirty_scope):
+			_push_scope(dirty_scope)
 	if not _has_legacy_migrated():
 		_pending_fetch_scopes[_LEGACY_SCOPE] = true
 		Platform.settings.fetch(_LEGACY_SCOPE)
@@ -90,7 +105,7 @@ func _on_settings_received(
 
 	var local_sync_at: int = _get_sync_at(scope)
 	if updated_at > local_sync_at:
-		_apply_scope(scope, payload)
+		_apply_scope(scope, payload, updated_at)
 		_set_sync_at(scope, updated_at)
 	elif updated_at == 0 and local_sync_at == 0:
 		# No cloud row exists yet for this scope. Push local.
@@ -105,15 +120,87 @@ func _on_settings_received(
 func _on_settings_saved(scope: String) -> void:
 	if scope == _LEGACY_SCOPE:
 		return
+	_save_retry_counts.erase(scope)
+	_set_save_dirty(scope, false)
 	_set_sync_at(scope, int(Time.get_unix_time_from_system()))
 
 
-func _on_request_failed(scope: String, _error: String) -> void:
-	if not _pending_fetch_scopes.has(scope):
+static func _is_permanent_save_error(error: String) -> bool:
+	return (
+		"status=400" in error
+		or "status=403" in error
+		or "not client-writable" in error
+		or "exceeds" in error
+	)
+
+
+func _on_request_failed(scope: String, error: String) -> void:
+	if _pending_fetch_scopes.has(scope):
+		_pending_fetch_scopes.erase(scope)
+		# Soft-fail: leave local overrides as-is. The next
+		# save_to_cloud will reconcile if the network comes
+		# back.
 		return
-	_pending_fetch_scopes.erase(scope)
-	# Soft-fail: leave local overrides as-is. The next save_to_cloud
-	# will reconcile if the network comes back.
+	if scope == _LEGACY_SCOPE:
+		return
+	# A save failed (H90): keep the scope dirty and retry
+	# transient failures; a permanent rejection stays dirty
+	# for the next explicit save instead of burning retries.
+	_set_save_dirty(scope, true)
+	if _is_permanent_save_error(error):
+		push_warning(
+			"SettingsCloudSync: cloud save for %s rejected "
+			% scope
+			+ "permanently (%s); keeping local settings"
+			% error)
+		return
+	var attempts: int = _save_retry_counts.get(scope, 0)
+	if attempts >= _SAVE_RETRY_DELAYS_SEC.size():
+		push_warning(
+			"SettingsCloudSync: cloud save for %s failed "
+			% scope
+			+ "after retries (%s); keeping local settings"
+			% error)
+		return
+	_save_retry_counts[scope] = attempts + 1
+	_schedule_save_retry(
+		scope, _SAVE_RETRY_DELAYS_SEC[attempts])
+
+
+func _schedule_save_retry(
+	scope: String, delay_sec: float,
+) -> void:
+	if _save_retry_scheduled.get(scope, false):
+		return
+	_save_retry_scheduled[scope] = true
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		_save_retry_scheduled[scope] = false
+		return
+	tree.create_timer(delay_sec).timeout.connect(
+		_on_save_retry_timer.bind(scope))
+
+
+func _on_save_retry_timer(scope: String) -> void:
+	_save_retry_scheduled[scope] = false
+	if not Platform.token_store.is_token_valid():
+		return
+	_push_scope(scope)
+
+
+func _is_save_dirty(scope: String) -> bool:
+	return bool(G.local_settings._config.get_value(
+		LocalSettings.SECTION_META,
+		"cloud_save_dirty_" + scope.replace("/", "_"),
+		false))
+
+
+func _set_save_dirty(scope: String, dirty: bool) -> void:
+	G.local_settings._config.set_value(
+		LocalSettings.SECTION_META,
+		"cloud_save_dirty_" + scope.replace("/", "_"),
+		dirty)
+	G.local_settings.save_settings()
 
 
 ## One-shot migration from the pre-split single-blob row. Apply
@@ -176,38 +263,99 @@ func _push_scope(scope: String) -> void:
 
 func _serialize_global() -> Dictionary:
 	var result := {}
+	var key_times := {}
 	for key in LocalSettings.GLOBAL_OVERRIDABLE_KEYS:
 		if G.local_settings.has_override(key):
 			result[String(key)] = (
 				G.local_settings.get_value(key))
+			key_times[String(key)] = (
+				G.local_settings.get_override_time(key))
 	var locale := G.local_settings.get_locale()
 	if locale != "en":
 		result["locale"] = locale
+	# Per-key change times (H90): the merge key, skipped by
+	# _apply_scope and ignored by older clients.
+	if not key_times.is_empty():
+		result["_key_times"] = key_times
 	return result
 
 
 func _serialize_per_game() -> Dictionary:
 	var result := {}
+	var key_times := {}
 	for key in LocalSettings.OVERRIDABLE_KEYS:
 		if key in LocalSettings.GLOBAL_OVERRIDABLE_KEYS:
 			continue
 		if G.local_settings.has_override(key):
 			result[String(key)] = (
 				G.local_settings.get_value(key))
+			key_times[String(key)] = (
+				G.local_settings.get_override_time(key))
+	if not key_times.is_empty():
+		result["_key_times"] = key_times
 	return result
 
 
 func _apply_scope(
 	scope: String,
 	payload: Dictionary,
+	updated_at: int = 0,
 ) -> void:
+	# Per-key merge (H90, ST3): with _key_times present, a
+	# key applies only when the cloud changed it after this
+	# device did, and a key the cloud no longer carries was
+	# cleared on the other device (propagated when the row
+	# is newer than our last change). Payloads without
+	# _key_times come from older clients: apply as before,
+	# never delete.
+	var key_times: Dictionary = payload.get(
+		"_key_times", {})
+	var has_key_times := payload.has("_key_times")
 	for key in payload:
+		if key == "_key_times":
+			continue
 		var string_name := StringName(key)
 		if key == "locale":
 			G.local_settings.set_locale(payload[key])
 		elif string_name in LocalSettings.OVERRIDABLE_KEYS:
-			G.local_settings.set_override(
-				string_name, payload[key])
+			if has_key_times:
+				var cloud_time := int(
+					key_times.get(key, 0))
+				if (
+					cloud_time > 0
+					and cloud_time
+						< G.local_settings
+							.get_override_time(string_name)
+				):
+					continue
+				G.local_settings.set_override(
+					string_name, payload[key])
+				if cloud_time > 0:
+					G.local_settings.set_override_time(
+						string_name, cloud_time)
+			else:
+				G.local_settings.set_override(
+					string_name, payload[key])
+	if has_key_times and updated_at > 0:
+		var scope_keys: Array = (
+			LocalSettings.GLOBAL_OVERRIDABLE_KEYS
+			if scope == _GLOBAL_SCOPE
+			else LocalSettings.OVERRIDABLE_KEYS)
+		for key in scope_keys:
+			if scope != _GLOBAL_SCOPE and (
+				key in LocalSettings
+					.GLOBAL_OVERRIDABLE_KEYS
+			):
+				continue
+			if payload.has(String(key)):
+				continue
+			if not G.local_settings.has_override(key):
+				continue
+			if updated_at > G.local_settings\
+					.get_override_time(key):
+				G.local_settings.clear_override(key)
+				G.local_settings.set_override_time(
+					key, updated_at)
 	G.local_settings.save_settings()
 
 

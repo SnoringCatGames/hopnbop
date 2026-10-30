@@ -267,3 +267,73 @@ func test_sync_at_round_trip_per_scope() -> void:
 	G.local_settings._config.set_value(
 		LocalSettings.SECTION_META,
 		"cloud_sync_at_game", snap_game)
+
+
+# ------------------------------------------------------------------
+# H90: save failures and the per-key merge
+# ------------------------------------------------------------------
+
+
+func test_permanent_save_errors_are_not_retried() -> void:
+	assert_true(SettingsCloudSync._is_permanent_save_error(
+		"storage write failed (status=403)"))
+	assert_true(SettingsCloudSync._is_permanent_save_error(
+		"payload exceeds 32 KiB (status=400)"))
+	assert_true(SettingsCloudSync._is_permanent_save_error(
+		"settings: not client-writable"))
+	assert_false(SettingsCloudSync._is_permanent_save_error(
+		"Service unavailable (status=503)"))
+	assert_false(SettingsCloudSync._is_permanent_save_error(
+		"Connection timed out (status=0)"))
+
+
+func test_apply_keeps_a_locally_newer_key() -> void:
+	G.local_settings.set_override(&"is_gore_enabled", true)
+	G.local_settings.set_override_time(
+		&"is_gore_enabled", 2000)
+
+	_sync._apply_scope("game/hopnbop", {
+		"is_gore_enabled": false,
+		"_key_times": {"is_gore_enabled": 1000},
+	}, 3000)
+
+	assert_eq(
+		G.local_settings.get_value(&"is_gore_enabled"), true,
+		"the local change is newer than the cloud one",
+	)
+
+
+func test_apply_propagates_a_clear_from_another_device() -> void:
+	G.local_settings.set_override(&"is_gore_enabled", true)
+	G.local_settings.set_override_time(
+		&"is_gore_enabled", 1000)
+
+	_sync._apply_scope("game/hopnbop", {
+		"_key_times": {},
+	}, 3000)
+
+	assert_false(
+		G.local_settings.has_override(&"is_gore_enabled"),
+		"cleared on the other device, cleared here",
+	)
+
+
+func test_apply_from_an_old_client_never_deletes() -> void:
+	G.local_settings.set_override(&"is_gore_enabled", true)
+
+	_sync._apply_scope("game/hopnbop", {
+		"is_jetpack_enabled": true,
+	}, 3000)
+
+	assert_true(
+		G.local_settings.has_override(&"is_gore_enabled"),
+		"a payload without _key_times deletes nothing",
+	)
+
+
+func test_failed_save_marks_the_scope_dirty() -> void:
+	_sync._on_request_failed(
+		"global", "Service unavailable (status=503)")
+	assert_true(_sync._is_save_dirty("global"))
+	_sync._on_settings_saved("global")
+	assert_false(_sync._is_save_dirty("global"))

@@ -136,12 +136,38 @@ func save_settings() -> void:
 			+ " (error %d)" % err)
 
 
+const META_OVERRIDE_TIMES := "override_times"
+
+
+## When this device last changed an override (H90), unix
+## seconds; 0 when never recorded. The cloud sync merges
+## per key against these.
+func get_override_time(key: StringName) -> int:
+	var times: Dictionary = _config.get_value(
+		SECTION_META, META_OVERRIDE_TIMES, {})
+	return int(times.get(String(key), 0))
+
+
+func set_override_time(key: StringName, unix_sec: int) -> void:
+	var times: Dictionary = _config.get_value(
+		SECTION_META, META_OVERRIDE_TIMES, {})
+	times[String(key)] = unix_sec
+	_config.set_value(
+		SECTION_META, META_OVERRIDE_TIMES, times)
+
+
+func _stamp_override_time(key: StringName) -> void:
+	set_override_time(
+		key, int(Time.get_unix_time_from_system()))
+
+
 ## Store a setting override. If the value matches
 ## the resource default, the override is cleared
 ## instead.
 func set_override(
 	key: StringName, value: Variant,
 ) -> void:
+	_stamp_override_time(key)
 	var default_value: Variant = (
 		_pristine_defaults.get(key)
 		if _pristine_defaults != null
@@ -182,6 +208,7 @@ func has_override(key: StringName) -> bool:
 
 ## Remove an override for a key.
 func clear_override(key: StringName) -> void:
+	_stamp_override_time(key)
 	if _config.has_section_key(
 			SECTION_SETTINGS, key):
 		_config.erase_section_key(
