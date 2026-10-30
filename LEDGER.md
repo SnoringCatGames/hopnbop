@@ -52,9 +52,8 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   Muse-Session` here and in both submodules. Leads
   from a first check: `docs/design/H103_muse_backlog.md` section 5,
   Claude's 2026-10-29 entry. Reviewed 2026-10-29: the CI fixes
-  (8bb5873, c1590c7, netcode 9c3c0b5) and H56's keyboard (H111).
-  Lead: the H109 entry's "H108 gate same 4 known failures" are
-  tracked nowhere.
+  (8bb5873, c1590c7, netcode 9c3c0b5) and H56's keyboard (H111,
+  H112).
 - **H56** · Controller players cannot enter codes: design in
   `docs/design/H56_code_entry.md`; the symbol keyboard is built
   behind `is_code_keyboard_enabled` (off) for Levi's acceptance.
