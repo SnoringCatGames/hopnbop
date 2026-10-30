@@ -42,6 +42,22 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - next: nothing in this brief; Tier D docs await Levi (H56
     acceptance and icon, H87, H72, H98), H104 is Claude's review
   - brief: `docs/design/H109_muse_run2.md`
+- **H111** · H56's on-screen keyboard can't enable Join:
+  `TextInputRow.set_text` sets `LineEdit.text`, which emits no
+  `text_changed` in Godot 4.7.2, so `_on_code_changed` never runs and
+  Join stays disabled (the caret also resets to 0). Plus a doc comment
+  netcode 9c3c0b5 displaced.
+  - owner: muse 01a189f7 (run 2, paseo `18c92be`), sent by claude
+    0cfd9cf1 on 2026-10-29 21:50 PT
+  - branch: mainline (hopnbop, netcode); last commit: 8cec88a1
+  - evidence: `.claude/probes/H111/le_probe/` (`godot --headless
+    --path <dir> -s probe.gd` prints `text_changed fired=[]`,
+    `caret=0`); the H56 probe only takes a screenshot
+  - next: `set_text` moves the caret to the end and calls
+    `_on_text_changed`; a panel test types six symbols and checks
+    Join; the H56 probe types a code; netcode: the unpause doc line
+    goes back above `_server_execute_unpause`
+  - brief: this item; run context `docs/design/H109_muse_run2.md`
 
 
 ## Next
@@ -51,11 +67,14 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   Tier C), plus H109's Tier D design docs: `git log --grep
   Muse-Session` here and in both submodules. Leads
   from a first check: `docs/design/H103_muse_backlog.md` section 5,
-  Claude's 2026-10-29 entry.
+  Claude's 2026-10-29 entry. Reviewed 2026-10-29: the CI fixes
+  (8bb5873, c1590c7, netcode 9c3c0b5) and H56's keyboard (H111).
+  Lead: the H109 entry's "H108 gate same 4 known failures" are
+  tracked nowhere.
 - **H56** · Controller players cannot enter codes: design in
   `docs/design/H56_code_entry.md`; the symbol keyboard is built
   behind `is_code_keyboard_enabled` (off) for Levi's acceptance.
-  The Join-with-code icon is still to ask Levi for.
+  The Join-with-code and delete-key icons are still to ask Levi for.
 - **H87** · A dedicated server's fatal error or engine crash is never
   reported (CR1, CR7): design in
   `docs/design/H87_server_crash_reporting.md`, awaiting Levi.
