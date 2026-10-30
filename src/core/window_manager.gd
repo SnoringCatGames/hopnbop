@@ -12,6 +12,28 @@ func _ready() -> void:
 	_update_window_title()
 
 
+## Alt+Enter toggles fullscreen (H96), like flipping the
+## Settings toggle without opening the panel.
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey):
+		return
+	var key_event: InputEventKey = event
+	if (not key_event.pressed or key_event.echo
+			or not key_event.alt_pressed):
+		return
+	if (key_event.keycode != KEY_ENTER
+			and key_event.keycode != KEY_KP_ENTER):
+		return
+	get_viewport().set_input_as_handled()
+	toggle_fullscreen()
+
+
+## Flips the fullscreen setting and applies it.
+func toggle_fullscreen() -> void:
+	G.settings.full_screen = not G.settings.full_screen
+	update_window_mode()
+
+
 func update_window_mode() -> void:
 	## Sets window mode based on settings
 	## and network role.
