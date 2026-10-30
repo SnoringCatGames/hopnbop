@@ -44,7 +44,8 @@ func test_reset_clears_known_ids_and_unseen() -> void:
 	assert_eq(_poller.unseen_count, 0)
 	assert_eq(_poller._known_online_ids.size(), 0)
 	assert_eq(_poller._known_party_match_start_ids.size(), 0)
-	assert_eq(_poller._known_friend_event_ids.size(), 0)
+	# Toast dedup is not session state (H54): it survives.
+	assert_eq(_poller._notification_cursor, "")
 	assert_eq(_poller._seen_request_ids.size(), 0)
 	assert_eq(_poller._pending_friend_toasts.size(), 0)
 	assert_true(_poller._is_first_poll)
@@ -401,3 +402,43 @@ func test_stop_polling_disarms() -> void:
 	_poller.start_polling()
 	_poller.stop_polling()
 	assert_false(_poller._is_polling)
+
+
+# ------------------------------------------------------------------
+# H54: cursor, and dedup across launches
+# ------------------------------------------------------------------
+
+
+func test_poll_cursor_advances_and_resets() -> void:
+	_poller._on_notifications_received({
+		"notifications": [],
+		"cacheable_cursor": "cursor-2",
+	})
+	assert_eq(_poller._notification_cursor, "cursor-2")
+
+	_poller.reset()
+	assert_eq(_poller._notification_cursor, "")
+
+
+func test_toast_dedup_survives_a_new_poller() -> void:
+	var path := ProjectSettings.globalize_path(
+		"user://notification_toasts_seen.cfg")
+	DirAccess.remove_absolute(path)
+
+	var notification := {
+		"id": "h54-note-1",
+		"code": PlatformFriendsApiClient
+			.CODE_FRIEND_REQUEST_RECEIVED,
+		"sender_id": "someone-else",
+	}
+	assert_true(_poller._queue_friend_toast(notification))
+	_poller.reset()
+
+	var fresh := FriendsNotificationPoller.new()
+	fresh._load_seen_toasts()
+	assert_false(
+		fresh._queue_friend_toast(notification),
+		"a later launch does not toast the same row again",
+	)
+	fresh.free()
+	DirAccess.remove_absolute(path)

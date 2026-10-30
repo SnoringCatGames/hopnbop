@@ -38,10 +38,20 @@ var _known_online_ids: Dictionary = {}
 var _known_party_match_start_ids: Dictionary = {}
 ## Dedupe friend-event toasts across poll cycles and across the
 ## socket/HTTP delivery paths. Keyed by Nakama notification id.
-## Nakama keeps friend notifications persistent until read, and we
-## always re-list from a blank cursor, so the same id resurfaces on
-## every poll.
+## Persisted to disk (H54) so a backlog the cursor replays on a
+## later launch doesn't toast all over again.
 var _known_friend_event_ids: Dictionary = {}
+
+const _SEEN_TOASTS_PATH := "user://notification_toasts_seen.cfg"
+const _SEEN_TOASTS_CAP := 200
+## Order _known_friend_event_ids were first seen in, oldest
+## first; caps the persisted store.
+var _seen_toast_order: Array = []
+
+## Nakama notification-list cursor (H54). Stored per session
+## and passed back on the next poll so the list advances past
+## rows already delivered instead of replaying the oldest 50.
+var _notification_cursor := ""
 ## Player ids whose pending friend request the user has already
 ## looked at. Subtracted from the pending-request count to produce
 ## `unseen_count`. In-memory only: on a fresh launch a still-
@@ -67,6 +77,7 @@ var _current_status := PlatformPresenceApiClient.STATUS_ONLINE
 
 
 func _ready() -> void:
+	_load_seen_toasts()
 	Platform.friends\
 		.notifications_received.connect(
 			_on_notifications_received)
@@ -149,8 +160,16 @@ func _process(delta: float) -> void:
 	_poll_timer += delta
 	if _poll_timer >= _POLL_INTERVAL_SEC:
 		_poll_timer = 0.0
-		if not Platform.friends.is_poll_busy():
-			Platform.friends.fetch_notifications()
+		# The HTTP poll is the socket's fallback (H54): while
+		# the notification socket is up it delivers these
+		# near-instantly, and polling only doubles the work.
+		if (
+			not Platform.notification_socket
+				.is_socket_connected()
+			and not Platform.friends.is_poll_busy()
+		):
+			Platform.friends.fetch_notifications(
+				50, _notification_cursor)
 
 	_presence_poll_timer += delta
 	if _presence_poll_timer >= _PRESENCE_POLL_INTERVAL_SEC:
@@ -161,6 +180,30 @@ func _process(delta: float) -> void:
 				_current_rich_presence,
 				_current_status,
 			)
+
+
+## Loads the persisted toast dedup (H54). A missing or
+## unreadable file just means every backlog row toasts
+## once, as before.
+func _load_seen_toasts() -> void:
+	var config := ConfigFile.new()
+	if config.load(_SEEN_TOASTS_PATH) != OK:
+		return
+	var ids: Array = config.get_value(
+		"toasts", "seen_ids", [])
+	for id in ids:
+		var nid := str(id)
+		if nid.is_empty():
+			continue
+		_known_friend_event_ids[nid] = true
+		_seen_toast_order.append(nid)
+
+
+func _save_seen_toasts() -> void:
+	var config := ConfigFile.new()
+	config.set_value(
+		"toasts", "seen_ids", _seen_toast_order)
+	config.save(_SEEN_TOASTS_PATH)
 
 
 ## Start polling for friend notifications and
@@ -189,9 +232,11 @@ func reset() -> void:
 	_session_generation += 1
 	_is_first_poll = true
 	_is_first_presence_poll = true
+	_notification_cursor = ""
 	_known_online_ids.clear()
 	_known_party_match_start_ids.clear()
-	_known_friend_event_ids.clear()
+	# _known_friend_event_ids survives reset (H54): it is the
+	# toast dedup persisted across launches, not session state.
 	_seen_request_ids.clear()
 	_pending_friend_toasts.clear()
 	_current_rich_presence = ""
@@ -210,6 +255,12 @@ func _on_notifications_received(
 	# / `accepted_requests` / `rejected_requests`, keys no emitter in
 	# the codebase produces, so every friend toast and badge silently
 	# no-opped.
+	# Advance the poll cursor (H54) so the next list starts
+	# past these rows instead of replaying the oldest 50.
+	var next_cursor: String = data.get(
+		"cacheable_cursor", "")
+	if not next_cursor.is_empty():
+		_notification_cursor = next_cursor
 	var notifications: Array = data.get(
 		"notifications", [])
 	var queued := 0
@@ -268,6 +319,11 @@ func _queue_friend_toast(n: Dictionary) -> bool:
 	if key.is_empty():
 		return false
 	_known_friend_event_ids[nid] = true
+	_seen_toast_order.append(nid)
+	while _seen_toast_order.size() > _SEEN_TOASTS_CAP:
+		_known_friend_event_ids.erase(
+			_seen_toast_order.pop_front())
+	_save_seen_toasts()
 	_pending_friend_toasts.append({
 		"sender_id": str(n.get("sender_id", "")),
 		"key": key,
