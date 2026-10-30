@@ -34,9 +34,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H103** · Muse works the agreed backlog tier by tier (H37 batches 2 to
   7, platform inbox, Pulumi pins, HG1) while Claude is near its limit.
   - owner: muse 01a188af-3ed2-72f1-8241-348fdaf97e78
-  - branch: mainline in every repo; last commit: platform d1768f2 (SP34), SDK a3f0b5a
+  - branch: mainline in every repo; last commit: platform 0499a41 (SP33 gate), SP32 held
   - evidence: `git log --grep Muse-Session` here and in both submodules; shelved patches in `.claude/probes/<ID>/wip.patch`
-  - next: Tier 1 party set: SP33, then SP32 hold check, H53, H55
+  - next: Tier 1 party set: H53, then H55
   - brief: `docs/design/H103_muse_backlog.md` (section 5 is the handoff log)
 
 ## Next
