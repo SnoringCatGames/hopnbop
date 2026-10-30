@@ -31,8 +31,19 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## In progress
 
+- **H103** · Muse works the agreed backlog tier by tier (H37 batches 2 to
+  7, platform inbox, Pulumi pins, HG1) while Claude is near its limit.
+  - owner: nobody yet (brief by claude session 0cfd9cf1, 2026-10-29); Muse sets `muse <session-id>` when it starts
+  - branch: mainline in every repo; last commit: none yet
+  - evidence: `git log --grep Muse-Session` here and in both submodules; shelved patches in `.claude/probes/<ID>/wip.patch`
+  - next: Tier 0 (close SP51, file the platform inbox lines), then Tier 1
+  - brief: `docs/design/H103_muse_backlog.md` (section 5 is the handoff log)
+
 ## Next
 
+- **H104** · Claude reviews Muse's H103 commits after the weekly reset,
+  security first (SP32, SP33, SP36, SP41 to SP44, SP47, SP59, H60):
+  `git log --grep Muse-Session` here and in both submodules.
 - **H55** · One absent member stalls the party. Waits for the
   party-control decision (SP34) (M; batch 4;
   `docs/design/H37_systems_audit.md` 3.2)
@@ -180,6 +191,12 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   1 of 3 runs. Fix: run the file 10 times and find what outlives the
   test (S; batch 6; `docs/design/H37_systems_audit.md` 3.3 list)
 - **H80** · Textures orphaned by b998107d, `foobar.png` once T14 is
+  answered, orphan `.import` files (XS; `docs/design/H37_systems_audit.md`
+  2.2, section 5, and V15 at row 709)
+- **H105** · Nothing prunes superseded game-server images on the prod
+  host: disk +1.72 GB on 10-20 (v30, v31 pulled by `sync-game-config.ps1`),
+  +0.86 GB on 10-13. Run `docker system df` there, then add a prune
+  (weekly-cost-review 2026-10-21).
 
 ## Ideas (not scheduled)
 
