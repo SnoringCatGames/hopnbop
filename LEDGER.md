@@ -34,9 +34,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H103** · Muse works the agreed backlog tier by tier (H37 batches 2 to
   7, platform inbox, Pulumi pins, HG1) while Claude is near its limit.
   - owner: muse 01a1896a (took over 2026-10-29 after 01a188af was cancelled mid-turn)
-  - branch: mainline in every repo; last commit: d1dafc5 (H20)
+  - branch: mainline in every repo; last commit: f5f2268 (H27)
   - evidence: `git log --grep Muse-Session` here and in both submodules; shelved patches in `.claude/probes/<ID>/wip.patch`
-  - next: Tier 4: H27 (netcode first), then H63
+  - next: Tier 4: H63, then H21
   - brief: `docs/design/H103_muse_backlog.md` (section 5 is the handoff log)
 
 ## Next
@@ -134,9 +134,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H26** · After a preview server hot-reload, levels get auto-generated
   names (`@Node2D@39`), so each client logs about 35 replication errors;
   it reaches players (H37 3.3, verified).
-- **H27** · Local mode logs "RPC on yourself is not allowed"
-  (`_server_rpc_ping`, `_rpc_init`). Fix: `is_local_mode` guard
-  (`frame_synchronizer.gd:120`), skip self at `networked_level.gd:307`.
 - **H28** · About half of lobby runs log an `AudioStreamWAV`
   (`pause_menu.wav`) leak warning at exit, before and after the
   PerfTracker fix; noted in CLAUDE.md; see H86 (CR6).
@@ -159,6 +156,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   host: disk +1.72 GB on 10-20 (v30, v31 pulled by `sync-game-config.ps1`),
   +0.86 GB on 10-13. Run `docker system df` there, then add a prune
   (weekly-cost-review 2026-10-21).
+- **H106** · Local mode also logs "RPC on yourself is not allowed" for
+  `_rpc_server_update_critter_stats` (seen in an offline-move-jump log,
+  2026-10-29; not one of H27's named pair). Same fix shape when touched.
 
 ## Ideas (not scheduled)
 
@@ -174,6 +174,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H27** · Local mode logged "RPC on yourself is not allowed" for `_server_rpc_ping` and `_rpc_init`. Done in netcode d13ec20, f5f2268 (2026-10-29).
 - **H20** · Cancelling matchmaking, or a fatal matchmaking failure, returned to a lobby without the player's bunny. Done in d1dafc5 (2026-10-29).
 - **H75** · Harness sign-in plus `publish` and `wait_shared` steps; a fake `Platform.party` for GUT. Done in ed00d83 (2026-10-29).
 - **H99** · Finish T48 (M; batch 7; `docs/design/H37_systems_audit.md` section 5). Done in f10044e (2026-10-29).
