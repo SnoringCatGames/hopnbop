@@ -168,9 +168,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H32** · Anonymous players only get a session once they go online, so
   an offline-only player's crash reports expire unsent after 7 days.
   (Crash agent a1d23375.) H37 (10-14): still true.
-- **H35** · `test_party_matchmaking_context.gd` fails 7 of 11 tests in a
-  full `-gdir=res://test/unit -ginclude_subdirs` run, passes alone
-  (state bleed); pr-validate's per-file loop doesn't hit it.
 - **H52** · Inert `game.yaml` `matchmaker_rules` fields
   (`ticket_expiry_seconds`, `cross_play`, `rules`): delete or wire them,
   fix the comment (XS; batch 3; `docs/design/H37_systems_audit.md` 3.3)
@@ -202,6 +199,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H35** · `test_party_matchmaking_context.gd` fails 7 of 11 tests in a full `-gdir=res://test/unit -ginclude_subdirs` run, passes alone (state bleed); pr-validate's per-file loop doesn't hit it. Done in 8d2a7fe (2026-10-29).
 - **H65** · Tests for the sign-out router's party reset and avatar-cache clear. acct (no test). Done in 7e17dce (2026-10-29).
 - **H81** · `local-smoke-test.ps1` rewrites the checkout it runs in; "several runs at once" holds only per worktree (S; batch 6; `docs/design/H37_systems_audit.md` 3.5). Done in 1dd09ce (2026-10-29).
 - **H55** · One absent member stalls the party. Done in acd5bcb (2026-10-29).
