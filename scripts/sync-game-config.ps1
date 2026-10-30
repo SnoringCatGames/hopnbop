@@ -147,6 +147,7 @@ foreach ($field in $required) {
 # fields whose loss would break live matchmaking or allocation.
 $mustSurvive = @(
     "matchmaker_rules", "allocator_mode", "edgegap_app_slug",
+    "edgegap_app_version", "local_image_ref",
     "transports", "ports", "legal", "leaderboards", "auth_providers"
 )
 $missing = $mustSurvive | Where-Object { -not $config.ContainsKey($_) }
