@@ -14,6 +14,22 @@ signal image_loaded(player_id: int)
 
 const _MAX_CONCURRENT_DOWNLOADS := 3
 
+## Avatar downloads are capped and timed out (H60): one slow
+## or endless response must not hold a download slot for good,
+## and a huge body must not decode unbounded in memory.
+const _AVATAR_MAX_BYTES := 2 * 1024 * 1024
+const _AVATAR_TIMEOUT_SEC := 10.0
+
+## Only provider CDN hosts are fetched (H60). Any other URL
+## would leak the viewer's IP to whoever set it and is never
+## queued. Suffixes match the host or any subdomain.
+const _ALLOWED_AVATAR_HOST_SUFFIXES: Array[String] = [
+	"googleusercontent.com",
+	"fbcdn.net",
+	"fbsbx.com",
+	"steamstatic.com",
+]
+
 ## Anonymous fallback icon loaded once on ready.
 var _anonymous_texture: Texture2D
 
@@ -40,6 +56,8 @@ func _ready() -> void:
 		request.name = (
 			"ImageRequest%d" % i)
 		request.use_threads = true
+		request.body_size_limit = _AVATAR_MAX_BYTES
+		request.timeout = _AVATAR_TIMEOUT_SEC
 		add_child(request)
 		_request_pool.append(request)
 
@@ -54,6 +72,8 @@ func request_image(
 	if _downloading.has(player_id):
 		return
 	if url.is_empty():
+		return
+	if not is_allowed_avatar_url(url):
 		return
 	_queue.append([player_id, url])
 	_process_queue()
@@ -161,3 +181,17 @@ func _load_image_from_buffer(
 		return OK
 	error = image.load_webp_from_buffer(data)
 	return error
+
+## Whether an avatar URL may be fetched: https on an
+## allowlisted provider CDN host (or a subdomain of one).
+static func is_allowed_avatar_url(url: String) -> bool:
+	if not url.begins_with("https://"):
+		return false
+	var rest := url.trim_prefix("https://")
+	var host := rest.split("/")[0].split(":")[0].to_lower()
+	if host.is_empty():
+		return false
+	for suffix in _ALLOWED_AVATAR_HOST_SUFFIXES:
+		if host == suffix or host.ends_with("." + suffix):
+			return true
+	return false
