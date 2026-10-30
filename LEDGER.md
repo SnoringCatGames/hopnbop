@@ -74,9 +74,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   (SP35). Still blocked on fixes outside this run: settings-echo
   (H67), declare-validation (H17), port-leak Go test (SP26),
   account PI-2 and SO-1 (H15), verify scenarios (H72 held).
-- **H65** · Tests for the sign-out router's party reset and avatar-cache
-  clear. acct (no test). `sign_out_router.gd:103,111`. Fix: two GUT
-  tests (S; batch 6; `docs/design/H37_systems_audit.md` 3.1 coverage)
 - **H74** · `scripts/dev-stack.ps1` from exec-b's `stack.ps1`, with seed
   and restart steps (S; batch 6; `docs/design/H37_systems_audit.md` 1.2
   gaps, section 4 step 3)
@@ -205,6 +202,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H65** · Tests for the sign-out router's party reset and avatar-cache clear. acct (no test). Done in 7e17dce (2026-10-29).
 - **H81** · `local-smoke-test.ps1` rewrites the checkout it runs in; "several runs at once" holds only per worktree (S; batch 6; `docs/design/H37_systems_audit.md` 3.5). Done in 1dd09ce (2026-10-29).
 - **H55** · One absent member stalls the party. Done in acd5bcb (2026-10-29).
 - **H53** · Party client races: a follower cannot abort matchmaking; two Start presses split the party (M; batch 4; `docs/design/H37_systems_audit.md` 3.2). Done in 7483f45 (2026-10-29).
