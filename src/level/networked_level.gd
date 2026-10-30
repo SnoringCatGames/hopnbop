@@ -487,6 +487,11 @@ func _server_init_snails() -> void:
 func _server_send_snail_states_to_peer(
 	peer_id: int,
 ) -> void:
+	# Local mode declares its own peer, whose snails were initialized
+	# in place; _rpc_init is call_remote, so sending it to itself
+	# only logs an error.
+	if peer_id == multiplayer.get_unique_id():
+		return
 	for snail in _snails:
 		if snail == null:
 			continue
