@@ -498,3 +498,27 @@ Append one dated entry each time you stop: done (IDs and SHAs), shelved
   passing on adjacent commits; judged a flake, HEAD is green.
   `assets/images/levels/Screenshot 2026-03-15 135643.png` is
   unreferenced but was left (not in H80's named set).
+- 2026-10-29, claude 0cfd9cf1 (checked run 1 against the commits, CI
+  logs and ledgers): H103 is closed; run 2 is H109
+  (`docs/design/H109_muse_run2.md`).
+  - SP81 and SP82 reopened (platform `bb2224f`). fa96d0b checked
+    `runtime/go.mod`, but SP81 names
+    `infra/pulumi/snoringcat-platform/go.mod`, where all seven pins
+    still stand, and SP82 asks why no alert lists them, so "no alerts"
+    is its symptom, not its answer.
+  - SP59 and SP36 hold against 0.56.0's SDK (platform `9139b38`) on a
+    reading of the code; H108 turns that into a test.
+  - HG1 moved to hex-grid's own ledger (hex-grid `0c2f349`, with HG2
+    for showdown's advisories). It waits on Levi adding hex-grid to
+    `~/.config/muse/trust.json`.
+  - The two Compliance Matrix failures ran on ledger-only commits
+    (46208794, 42800786), not on H19's code, and each had a cause:
+    H107. Platform Client SDK CI 40949563430 failed on e9c98f8's empty
+    `${{ env.HOME }}`; 6d53fcb fixed it a minute later.
+  - Leads for H104: 0.56.0 reads party rows directly
+    (`party_api_client.gd:202-245`), so check H55, SP33 and SP34
+    against those reads; `update_account_async`
+    (`auth_api_client.gd:1567`) against SP42's 32-rune cap. SP34 is
+    not re-verified.
+  - The SHAs b9385d3 and 4a8b24c in Muse's chat report exist in no
+    repo here.

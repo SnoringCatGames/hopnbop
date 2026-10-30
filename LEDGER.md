@@ -22,19 +22,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Waiting on Levi
 
-- **H103** · The Muse backlog run (H37 batches 2 to 7, platform
-  inbox, Pulumi pins, HG1) is complete for everything Muse-owned:
-  Tiers 2 to 6 landed 2026-10-29 (see `docs/design/
-  H103_muse_backlog.md` section 5). What remains is held for Claude,
-  Levi's hands, or a decision (brief section 4).
-  - owner: waiting on Levi
-  - next: Levi: trust hex-grid for HG1; T14 (`foobar.png`); H92's
-    play session. Claude, later: the section 4 held items.
-- **HG1** · hex-grid: drop the 9 stale Express-era runtime
-  dependencies. Blocked here: hex-grid is not in
-  `~/.config/muse/trust.json` and is outside this repo's writable
-  root. Levi to trust it; the item lives in hex-grid's LEDGER.md.
-
 - **H92** · One 2-client networked session with Levi (T02 to T07, T16,
   T25, T27, T29) (S; batch 7; `docs/design/H37_systems_audit.md` section
   5 row 3, section 7 row 9)
@@ -44,12 +31,26 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## In progress
 
+- **H109** · Muse run 2: the follow-ups from checking run 1 (H103), then
+  most of what H103 held for Claude, released by Levi 2026-10-29
+  (`docs/design/H109_muse_run2.md`).
+  - owner: muse (it adds its session id in its first commit), launched
+    through Paseo by claude 0cfd9cf1 on 2026-10-29
+  - branch: mainline (hopnbop, platform, netcode); last commit: none
+    yet, see `git log --grep H109`
+  - evidence: `.claude/probes/<ID>/` per item; the brief's section 5
+  - next: Tier A, SP82 first
+  - brief: `docs/design/H109_muse_run2.md`
+
 
 ## Next
 
-- **H104** · Claude reviews Muse's H103 commits after the weekly reset,
-  security first (SP32, SP33, SP36, SP41 to SP44, SP47, SP59, H60):
-  `git log --grep Muse-Session` here and in both submodules.
+- **H104** · Claude reviews Muse's commits from H103 and H109, security
+  first (SP32, SP33, SP36, SP41 to SP44, SP47, SP59, H60, then H109's
+  Tier C), plus H109's Tier D design docs: `git log --grep
+  Muse-Session` here and in both submodules. Leads
+  from a first check: `docs/design/H103_muse_backlog.md` section 5,
+  Claude's 2026-10-29 entry.
 - **H54** · The notification poll is frozen on the oldest 50 rows
   (client half; SP40 is the server half) (M; batch 4;
   `docs/design/H37_systems_audit.md` 3.2)
@@ -95,6 +96,12 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 - **H98** · Finish T43; verify, then fix, T19 (M; batch 7;
   `docs/design/H37_systems_audit.md` section 5)
+- **H108** · Nothing in CI runs a released client's SDK against a new
+  runtime: Compliance Matrix runs only HEAD's suite, so H103's 0.56.0
+  claims rest on reading code. Run 0.56.0's compliance suite (platform
+  9139b38) against HEAD's runtime in the local stack, sort each failure
+  into intended change or break, then consider a released-SDK axis in
+  `compliance-matrix.yml`.
 
 ## Residuals (known, not fixed)
 
@@ -143,6 +150,15 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H106** · Local mode also logs "RPC on yourself is not allowed" for
   `_rpc_server_update_critter_stats` (seen in an offline-move-jump log,
   2026-10-29; not one of H27's named pair). Same fix shape when touched.
+- **H107** · Compliance Matrix failed twice at platform pin 51696ac0,
+  on ledger-only commits 46208794 and 42800786, while three other runs
+  at that pin passed. Run 40957663588: PSGallery found no
+  powershell-yaml, and `sync-game-config.ps1:78-83` doesn't retry. Run
+  40956932238: every authenticate went out without `vars.game_id`,
+  because the compliance helper's `_resolve_game_id()` found no
+  initialized Platform and no `PLATFORM_GAME_ID`. Why Platform
+  initializes only sometimes under GUT is open. Fix plan:
+  `docs/design/H109_muse_run2.md` Tier A.
 
 ## Ideas (not scheduled)
 
@@ -158,6 +174,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H103** · The Muse backlog run (`docs/design/H103_muse_backlog.md`): Tiers 0 to 6 landed except SP32's runtime half, SP59's Caddy zone and HG1 (now in hex-grid's ledger); the review is H104. Done in 9fc089ef (2026-10-29).
 - **H80** · Textures orphaned by b998107d, plus orphan `.import` files including `level_4_combined*.png.import`. Done in 141e2fe (2026-10-29).
 - **H97** · Finish T12; delete the 9 Stale notes (with SP53). Done in eb80b83, platform 1caaf04 (2026-10-29).
 - **H96** · Alt+Enter fullscreen (T10). Done in 850c5ac (2026-10-29).
