@@ -34,9 +34,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H103** · Muse works the agreed backlog tier by tier (H37 batches 2 to
   7, platform inbox, Pulumi pins, HG1) while Claude is near its limit.
   - owner: muse 01a1896a (took over 2026-10-29 after 01a188af was cancelled mid-turn)
-  - branch: mainline in every repo; last commit: b5f6446 (H66)
+  - branch: mainline in every repo; last commit: 6c5974b (H29)
   - evidence: `git log --grep Muse-Session` here and in both submodules; shelved patches in `.claude/probes/<ID>/wip.patch`
-  - next: Tier 5: H29, then H95
+  - next: Tier 5: H95, then H96
   - brief: `docs/design/H103_muse_backlog.md` (section 5 is the handoff log)
 
 ## Next
@@ -124,9 +124,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H28** · About half of lobby runs log an `AudioStreamWAV`
   (`pause_menu.wav`) leak warning at exit, before and after the
   PerfTracker fix; noted in CLAUDE.md; see H86 (CR6).
-- **H29** · Unused code: `BinaryToggle`, and `fetch_player_stats`,
-  `fetch_match_history` and their signals in `backend_api_client.gd`
-  since the leaderboard and My Stats rewrite (f77828e8).
+
 - **H32** · Anonymous players only get a session once they go online, so
   an offline-only player's crash reports expire unsent after 7 days.
   (Crash agent a1d23375.) H37 (10-14): still true.
@@ -158,6 +156,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H29** · Unused code: `BinaryToggle`, and `fetch_player_stats`, `fetch_match_history` and their signals. Done in 6c5974b (2026-10-29).
 - **H66** · V17: 22 broken format strings, 17 here; RN7 and SP49 held the rest. Done in b5f6446, netcode a7b001d, platform 6987291 (2026-10-29).
 - **H18** · Raw SDK error text reached players in party, delete, export and friends toasts. Done in 9da8a21 (2026-10-29).
 - **H31** · The credits screen's labels lacked translation keys, so other locales showed English. Done in 9da8a21 (2026-10-29).
