@@ -34,12 +34,12 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H109** · Muse run 2: the follow-ups from checking run 1 (H103), then
   most of what H103 held for Claude, released by Levi 2026-10-29
   (`docs/design/H109_muse_run2.md`).
-  - owner: muse 01a189f7, launched through Paseo by claude 0cfd9cf1
+  - owner: nobody since 2026-10-29 19:35 PT (Tiers A and B done; was muse 01a189f7, launched through Paseo by claude 0cfd9cf1
     on 2026-10-29 (session 01a189f7-97c5-7eb0-98b6-164cb9977b39)
   - branch: mainline (hopnbop, platform, netcode); last commit:
-    Tier A batch 2026-10-29, see `git log --grep Muse-Session`
+    3b084aa, see `git log --grep Muse-Session`
   - evidence: `.claude/probes/<ID>/` per item; the brief's section 5
-  - next: Tier B, H24 first
+  - next: Tier C, H54 with SP40 first (server half, H108 check before the push), then H90, H86 with SP61, then Tier D
   - brief: `docs/design/H109_muse_run2.md`
 
 

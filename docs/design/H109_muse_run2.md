@@ -207,3 +207,21 @@ since <time> (<why>)` and its `next:`, then commit and push.
 
 Append one dated entry each time you stop: done (IDs and SHAs), shelved
 (patch paths), in flight, next, anything odd.
+
+- 2026-10-29, muse 01a189f7 (session
+  01a189f7-97c5-7eb0-98b6-164cb9977b39): Tiers A and B done.
+  Tier A: SP82 diagnosed (platform ledger cc44d97; alerts on, no
+  Pulumi coverage, dependabot.yml proposed to Levi), SP81 pins
+  (platform a369f6c, tidy/build/vet green, `pulumi preview` to
+  Levi), H107 (73159cd; smoke 80/80, both CI causes fixed, not
+  flakes), H108 (c11191e, 51d7eb8; released suite 76/80, all 4
+  intended, `compliance-released` green in run 40989056339),
+  screenshot deleted (d52a9ba). Tier B: H24 fc90a3c, H6 1f1ff5d,
+  H8 005e823, RN8 netcode 8256603 (+036b023 ledger, plugin
+  1.1.3), H9 49143fb, H88 3acabe8, H22 85fa622, H89 b42c94d,
+  H61 93b1951, H5 b1c1149, H26 02e1d75; each with a regression
+  test that failed first, harness runs green (offline-move-jump,
+  match-2-clients, log-out-sign-in-cycles). Shelved: none. In
+  flight: none. Next: Tier C, H54 with SP40 first. Odd: Levi's
+  standing commit-and-push grant for Claude-launched brief runs
+  is now in `feedback_commit_and_push.md`; no more asking.
