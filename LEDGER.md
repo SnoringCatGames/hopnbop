@@ -51,9 +51,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   Muse-Session` here and in both submodules. Leads
   from a first check: `docs/design/H103_muse_backlog.md` section 5,
   Claude's 2026-10-29 entry.
-- **H54** · The notification poll is frozen on the oldest 50 rows
-  (client half; SP40 is the server half) (M; batch 4;
-  `docs/design/H37_systems_audit.md` 3.2)
 - **H56** · Controller players cannot enter codes (M; batch 4;
   `docs/design/H37_systems_audit.md` 3.2)
 - **H86** · Script and engine errors that do not crash are never
@@ -134,6 +131,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H54** · The notification poll froze on the oldest 50 rows; cursor poll, socket-down only, persisted dedup, server prune (SP40). Done in c0d07f1, platform 078d9b8 (2026-10-29).
 - **H26** · Respawned levels got auto-generated names and replication errors; spawns now get unique names. Done in 02e1d75 (2026-10-29).
 - **H5** · Podium bunnies never animated: a stopped animator swallowed the delayed replay, and the paused tree froze the rest. Done in b1c1149 (2026-10-29).
 - **H61** · Avatars from an earlier match showed on the wrong players; the cache now binds images to their URL. Done in 93b1951 (2026-10-29).
