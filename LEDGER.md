@@ -34,9 +34,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H103** · Muse works the agreed backlog tier by tier (H37 batches 2 to
   7, platform inbox, Pulumi pins, HG1) while Claude is near its limit.
   - owner: muse 01a1896a (took over 2026-10-29 after 01a188af was cancelled mid-turn)
-  - branch: mainline in every repo; last commit: f5f2268 (H27)
+  - branch: mainline in every repo; last commit: 3600938 (H63)
   - evidence: `git log --grep Muse-Session` here and in both submodules; shelved patches in `.claude/probes/<ID>/wip.patch`
-  - next: Tier 4: H63, then H21
+  - next: Tier 4: H21, then H19
   - brief: `docs/design/H103_muse_backlog.md` (section 5 is the handoff log)
 
 ## Next
@@ -49,9 +49,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   `docs/design/H37_systems_audit.md` 3.2)
 - **H61** · Avatars from an earlier match show on the wrong players
   (PI-2) (S; batch 4; `docs/design/H37_systems_audit.md` 3.1)
-- **H63** · The Log Out row is hidden when the access token has expired
-  (AP-1, DEL-1). Fix: always offer it; clear locally when the server
-  call fails (S; batch 4; `docs/design/H37_systems_audit.md` 3.1 list)
 - **H56** · Controller players cannot enter codes (M; batch 4;
   `docs/design/H37_systems_audit.md` 3.2)
 - **H86** · Script and engine errors that do not crash are never
@@ -174,6 +171,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H63** · The Log Out row was hidden when the access token had expired. Done in 3600938 (2026-10-29).
 - **H27** · Local mode logged "RPC on yourself is not allowed" for `_server_rpc_ping` and `_rpc_init`. Done in netcode d13ec20, f5f2268 (2026-10-29).
 - **H20** · Cancelling matchmaking, or a fatal matchmaking failure, returned to a lobby without the player's bunny. Done in d1dafc5 (2026-10-29).
 - **H75** · Harness sign-in plus `publish` and `wait_shared` steps; a fake `Platform.party` for GUT. Done in ed00d83 (2026-10-29).
