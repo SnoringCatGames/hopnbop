@@ -667,7 +667,7 @@ func _apply_settings_overrides() -> String:
 		)
 
 	if (settings.preview_connect_to_remote_server
-			and not _is_network_allowed):
+			and not _is_network_allowed and _backend.is_empty()):
 		return (
 			"preview_connect_to_remote_server needs run-game.ps1"
 			+ " -AllowNetwork"
@@ -998,6 +998,9 @@ func _step_screenshot(step: Dictionary) -> String:
 		return ""
 	await RenderingServer.frame_post_draw
 	var target := str(step.get("target", "window"))
+	# A screenshot right after a screen change can catch the
+	# fade-from-black (about 0.7 s); _capture_with_retry waits
+	# it out.
 	var texture: Texture2D = null
 	match target:
 		"window":
@@ -1011,7 +1014,7 @@ func _step_screenshot(step: Dictionary) -> String:
 		_:
 			return "unknown screenshot target '%s'; use window or game" % (
 				target)
-	var image := texture.get_image()
+	var image := await _capture_with_retry(texture)
 	if image == null or image.is_empty():
 		return "captured an empty image"
 	var path := _out_dir.path_join(shot_name + ".png")
@@ -1025,6 +1028,33 @@ func _step_screenshot(step: Dictionary) -> String:
 		image.get_height(),
 	])
 	return ""
+
+
+## Captures the texture, retrying for up to a second while the
+## frame is still (nearly) all black, as it is during the fade
+## after a screen change.
+func _capture_with_retry(texture: Texture2D) -> Image:
+	var image := texture.get_image()
+	for attempt in 20:
+		if image == null or not _is_mostly_black(image):
+			break
+		await RenderingServer.frame_post_draw
+		image = texture.get_image()
+	return image
+
+
+func _is_mostly_black(image: Image) -> bool:
+	var step_x := maxi(1, image.get_width() / 16)
+	var step_y := maxi(1, image.get_height() / 16)
+	var sampled := 0
+	var dark := 0
+	for y in range(0, image.get_height(), step_y):
+		for x in range(0, image.get_width(), step_x):
+			sampled += 1
+			var c := image.get_pixel(x, y)
+			if c.r + c.g + c.b < 0.05:
+				dark += 1
+	return sampled > 0 and dark * 20 >= sampled * 19
 
 
 func _step_state(step: Dictionary) -> String:

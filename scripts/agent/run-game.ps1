@@ -257,7 +257,8 @@ if ($Backend) {
     if (-not [Uri]::TryCreate($Backend, [UriKind]::Absolute, [ref]$backendUri) -or
         $backendUri.Scheme -notin @('http', 'https') -or
         -not $backendUri.IsLoopback -or
-        $backendUri.AbsolutePath -ne '/') {
+        $backendUri.AbsolutePath -ne '/' -or
+        $Backend -notmatch ':\\d+/?$') {
         throw "-Backend must be http(s)://<loopback host>:<port>, not $Backend."
     }
     $Backend = $backendUri.GetLeftPart([UriPartial]::Authority)
@@ -435,7 +436,9 @@ function Start-GameProcess([string]$Name, [int]$WindowIndex) {
 Write-Info ("hopnbop agent run '{0}' (mode={1}, seed={2}, settings={3}{4})" -f `
     $scenarioName, $mode, $seedText, $settingsSource, $(if ($runPort) { ", port=$runPort" } else { '' }))
 Write-Info "run dir: $runDir"
-if ($AllowNetwork) { Write-Warning '-AllowNetwork: this run may talk to production.' }
+if ($AllowNetwork -and -not $Backend) {
+    Write-Warning '-AllowNetwork: this run may talk to production.'
+}
 if ($Backend) { Write-Info "backend: $Backend (local Nakama; other backend URLs blackholed)" }
 
 $started = Get-Date
@@ -451,7 +454,9 @@ try {
         # Clients dial once at boot, so the server must be listening
         # first. Each client also connects before the next one starts:
         # the server hands out player ids in connection order, so client
-        # N is always player N.
+        # N is always player N. Without a server process (lobby and
+        # backend runs) there is nothing to dial, so don't wait.
+        if ($processNames -notcontains 'server') { continue }
         $pattern = if ($name -eq 'server') { $ServerReadyPattern } else { $ClientConnectedPattern }
         $readyBy = (Get-Date).AddSeconds($ServerReadyTimeoutSec)
         while ((Get-Date) -lt $readyBy -and -not $entry.Launched.Process.HasExited) {
