@@ -15,6 +15,10 @@ var _outline_color := Color.WHITE
 
 
 func _ready() -> void:
+	# Portrayals live in paused contexts: the podium sits in
+	# the level under the game-over screen, which pauses the
+	# tree (H5). Always process so the bunny keeps animating.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_animator = %Animator
 
 

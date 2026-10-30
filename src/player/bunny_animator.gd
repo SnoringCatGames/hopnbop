@@ -230,6 +230,10 @@ func _play_on_all_layers(
 
 
 func stop() -> void:
+	# A full stop ends the Rest/Eat cycle too (H5): a later
+	# play("Rest") is a fresh trigger, not an interruption.
+	_rest_eat_active = false
+	_is_eating = false
 	animated_sprite.stop()
 	if is_instance_valid(_costume_overlay):
 		_costume_overlay.stop()
