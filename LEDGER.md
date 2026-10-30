@@ -120,9 +120,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H22** · Log-out first tells the server the player went offline, so
   with no connection the consent screen appears only after that times
   out (about 9 s measured).
-- **H24** · `Player._enter_tree` registers the player before its id is
-  set, leaving a stale `players_by_id[0]` entry on the server (the code
-  comment says the id is set first). Low.
 - **H26** · After a preview server hot-reload, levels get auto-generated
   names (`@Node2D@39`), so each client logs about 35 replication errors;
   it reaches players (H37 3.3, verified).
@@ -161,6 +158,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H24** · Server registered players under id 0 before assigning the real id; registration now waits for the id. Done in fc90a3c (2026-10-29).
 - **H108** · Released client's suite against HEAD's runtime, locally and as the `compliance-released` CI job (76/80; 4 intended failures). Done in c11191e8, 51d7eb8b (2026-10-29).
 - **H107** · Compliance Matrix's two failures: PSGallery retry and deterministic `PLATFORM_GAME_ID` (detail in `docs/ledger_notes.md`). Done in 73159cda (2026-10-29).
 - **H103** · The Muse backlog run (`docs/design/H103_muse_backlog.md`): Tiers 0 to 6 landed except SP32's runtime half, SP59's Caddy zone and HG1 (now in hex-grid's ledger); the review is H104. Done in 9fc089ef (2026-10-29).
