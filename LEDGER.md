@@ -54,8 +54,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H54** · The notification poll is frozen on the oldest 50 rows
   (client half; SP40 is the server half) (M; batch 4;
   `docs/design/H37_systems_audit.md` 3.2)
-- **H61** · Avatars from an earlier match show on the wrong players
-  (PI-2) (S; batch 4; `docs/design/H37_systems_audit.md` 3.1)
 - **H56** · Controller players cannot enter codes (M; batch 4;
   `docs/design/H37_systems_audit.md` 3.2)
 - **H86** · Script and engine errors that do not crash are never
@@ -64,8 +62,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H87** · A dedicated server's fatal error or engine crash is never
   reported (CR1, CR7) (M; batch 5; `docs/design/H37_systems_audit.md`
   3.4)
-- **H89** · The final match stats ride one unreliable RPC (S11) (S;
-  batch 5; `docs/design/H37_systems_audit.md` 3.4)
 - **H90** · Failed cloud saves are dropped (ST2, ST3) (M; batch 5;
   `docs/design/H37_systems_audit.md` 3.4)
 - **H77** · Land the H37 probes as tests, each with its fix (XS each;
@@ -97,17 +93,12 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Residuals (known, not fixed)
 
-- **H5** · Podium bunnies never animate. (Session 530145bc, 2026-10-11
-  12:00 "Noticed, not fixed".)
 - **H7** · The check that keeps new spawns off other players can't see
   bunnies that are still blinking, so a respawn can land on one. Left
   alone as a player-versus-player rule.
 - **H10** · Android: run the game on the Pixel. Export preset done in
   4c04e908 (`--export-debug "Android" build/android/hopnbop.apk`
   builds). Left: install over USB, then a touch-input pass.
-- **H26** · After a preview server hot-reload, levels get auto-generated
-  names (`@Node2D@39`), so each client logs about 35 replication errors;
-  it reaches players (H37 3.3, verified).
 - **H28** · About half of lobby runs log an `AudioStreamWAV`
   (`pause_menu.wav`) leak warning at exit, before and after the
   PerfTracker fix; noted in CLAUDE.md; see H86 (CR6).
@@ -143,6 +134,10 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H26** · Respawned levels got auto-generated names and replication errors; spawns now get unique names. Done in 02e1d75 (2026-10-29).
+- **H5** · Podium bunnies never animated: a stopped animator swallowed the delayed replay, and the paused tree froze the rest. Done in b1c1149 (2026-10-29).
+- **H61** · Avatars from an earlier match showed on the wrong players; the cache now binds images to their URL. Done in 93b1951 (2026-10-29).
+- **H89** · The final match stats rode one unreliable RPC; the final snapshot has a reliable twin. Done in b42c94d (2026-10-29).
 - **H22** · Log-out waited out the offline notice on dead connections; it no longer waits. Done in 85fa622 (2026-10-29).
 - **H88** · Nightly smoke left a new account every run; it reuses one probe account now. Done in 3acabe8 (2026-10-29).
 - **H9** · The no-op GDScript formatter CI job is deleted; no formatter is vendored. Done in 49143fb (2026-10-29).
