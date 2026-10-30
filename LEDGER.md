@@ -34,12 +34,12 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H109** · Muse run 2: the follow-ups from checking run 1 (H103), then
   most of what H103 held for Claude, released by Levi 2026-10-29
   (`docs/design/H109_muse_run2.md`).
-  - owner: muse (it adds its session id in its first commit), launched
-    through Paseo by claude 0cfd9cf1 on 2026-10-29
-  - branch: mainline (hopnbop, platform, netcode); last commit: none
-    yet, see `git log --grep H109`
+  - owner: muse 01a189f7, launched through Paseo by claude 0cfd9cf1
+    on 2026-10-29 (session 01a189f7-97c5-7eb0-98b6-164cb9977b39)
+  - branch: mainline (hopnbop, platform, netcode); last commit:
+    Tier A batch 2026-10-29, see `git log --grep Muse-Session`
   - evidence: `.claude/probes/<ID>/` per item; the brief's section 5
-  - next: Tier A, SP82 first
+  - next: Tier B, H24 first
   - brief: `docs/design/H109_muse_run2.md`
 
 
@@ -96,12 +96,11 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 - **H98** · Finish T43; verify, then fix, T19 (M; batch 7;
   `docs/design/H37_systems_audit.md` section 5)
-- **H108** · Nothing in CI runs a released client's SDK against a new
-  runtime: Compliance Matrix runs only HEAD's suite, so H103's 0.56.0
-  claims rest on reading code. Run 0.56.0's compliance suite (platform
-  9139b38) against HEAD's runtime in the local stack, sort each failure
-  into intended change or break, then consider a released-SDK axis in
-  `compliance-matrix.yml`.
+- **H108** · Released-client axis: 0.56.0's suite ran against HEAD's
+  runtime 2026-10-29 (76/80; the 4 failures are intended changes, see
+  `docs/design/H108_compat.md`) and `compliance-matrix.yml` gained a
+  `compliance-released` job. Closes when that job runs green; rerun
+  the released suite before every Tier C runtime push (H109).
 
 ## Residuals (known, not fixed)
 
@@ -150,15 +149,11 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H106** · Local mode also logs "RPC on yourself is not allowed" for
   `_rpc_server_update_critter_stats` (seen in an offline-move-jump log,
   2026-10-29; not one of H27's named pair). Same fix shape when touched.
-- **H107** · Compliance Matrix failed twice at platform pin 51696ac0,
-  on ledger-only commits 46208794 and 42800786, while three other runs
-  at that pin passed. Run 40957663588: PSGallery found no
-  powershell-yaml, and `sync-game-config.ps1:78-83` doesn't retry. Run
-  40956932238: every authenticate went out without `vars.game_id`,
-  because the compliance helper's `_resolve_game_id()` found no
-  initialized Platform and no `PLATFORM_GAME_ID`. Why Platform
-  initializes only sometimes under GUT is open. Fix plan:
-  `docs/design/H109_muse_run2.md` Tier A.
+- **H107** · Compliance Matrix's two failures are diagnosed (detail in
+  `docs/ledger_notes.md`): a PSGallery miss with no retry, and a lost
+  `Platform` init when `settings.tres` failed to load. Fixes (retry;
+  smoke sets `PLATFORM_GAME_ID` from `game.yaml`) await local-smoke
+  exit 0 and the next green matrix and SDK CI runs.
 
 ## Ideas (not scheduled)
 

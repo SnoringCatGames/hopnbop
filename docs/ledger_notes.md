@@ -237,3 +237,26 @@ item short and this file keeps the rest. New entries go at the bottom.
   4434/TCP, a GameLift fleet paragraph. mm (read).
   `.claude/rules/transport.md`. Fix: correct all three (XS; batch 7;
   `docs/design/H37_systems_audit.md` 3.3 list)
+
+## H107 (2026-10-29, muse 01a189f7)
+
+Diagnosis from the full failed logs (gh run view --log), not flakes.
+Run 40957663588: Install-Package found no powershell-yaml on PSGallery
+and scripts/sync-game-config.ps1 did not retry, so registration died.
+Run 40956932238: every authenticate lacked vars.game_id. Under GUT the
+Platform autoload is initialized by G (src/core/global.gd _enter_tree,
+line 127) with game_id hopnbop, and the compliance helper reads that.
+In this run res://settings.tres failed to load (Parse Error at
+settings.tres:64: ext_resource referenced non-existent
+res://assets/images/level_thumbnails/level_0.png; the background.png
+errors are the same incomplete-import class), so G.settings was null,
+settings.apply_release_overrides() errored at global.gd:108, _enter_tree
+aborted before Platform.initialize, and _resolve_game_id() fell back to
+a PLATFORM_GAME_ID that local-smoke-test.ps1 never set. With a game
+registered, the runtime (runtime/auth.go validateGameIDInVars) rejects
+an empty id. Fixes: sync script retries the install 3 times; the smoke
+script sets PLATFORM_GAME_ID from game.yaml's game_id for the suite.
+No helper fail-fast: the platform SDK CI (run.sh) already sets
+PLATFORM_GAME_ID=sdkci for its throwaway game, and the runtime accepts
+an empty id when no game is registered, so an empty-id push_error
+would break that bootstrap path for no determinism gain.
