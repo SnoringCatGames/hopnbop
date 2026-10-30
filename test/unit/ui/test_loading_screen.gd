@@ -62,6 +62,14 @@ func test_connecting_wins_over_the_matchmaking_phase() -> void:
 		_label_text(), tr("LOADING.CONNECTING") + " (0s)")
 
 
+func test_failure_offers_a_way_back_to_the_lobby() -> void:
+	_screen.show_matchmaking_failure("LOADING.NO_MATCH_FOUND")
+	var retry: Button = _screen.get_node("%RetryButton")
+	var cancel: Button = _screen.get_node("%CancelButton")
+	assert_true(retry.visible, "retry offered")
+	assert_true(cancel.visible, "cancel leaves for the lobby (H19)")
+
+
 func test_failure_overrides_the_connection_phase() -> void:
 	_screen.start_phase(
 		LoadingScreen.ConnectionPhase.CONNECTING, 2)

@@ -225,14 +225,13 @@ func show_matchmaking_timeout() -> void:
 ## Called by GamePanel for any recoverable matchmaking
 ## failure (timeout, allocation failure, socket drop).
 ## Pins the status text to failure_text_key and shows
-## the retry button. The Cancel button is hidden — the
-## flow is "retry on this screen, or hit Back on the
-## controller to bail out."
+## the retry button. Cancel stays as the way back to the
+## lobby (H19): retry used to be the only way out.
 func show_matchmaking_failure(failure_text_key: String) -> void:
 	_has_recoverable_failure = true
 	_failure_text_key = failure_text_key
 	if is_instance_valid(%CancelButton):
-		%CancelButton.visible = false
+		%CancelButton.visible = true
 	if is_instance_valid(%RetryButton):
 		%RetryButton.visible = true
 		%RetryButton.grab_focus()
@@ -260,10 +259,10 @@ func _update_action_buttons() -> void:
 	if not is_instance_valid(%CancelButton):
 		return
 	# Cancel is only meaningful while a matchmaker
-	# ticket is live: we're past auth, not yet
-	# connected to a game server, and no failure is
-	# being retried. Hidden during fleet warmup (no
-	# ticket exists yet).
+	# ticket is live: we're past auth and not yet
+	# connected to a game server. Hidden during fleet
+	# warmup (no ticket exists yet). On a recoverable
+	# failure it stays as the way back to the lobby.
 	#
 	# Stage 7.2: "placing" is now cancelable too —
 	# the runtime tracks in-flight Edgegap allocations
@@ -278,8 +277,7 @@ func _update_action_buttons() -> void:
 		or _matchmaking_phase == "placing"
 	)
 	var should_show := (
-		phase_active
-		and not _has_recoverable_failure
+		(phase_active or _has_recoverable_failure)
 		and not Netcode.connector
 			.is_connected_to_server
 	)
