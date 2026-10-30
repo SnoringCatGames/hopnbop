@@ -1,0 +1,36 @@
+{
+  "name": "backend-party-invite",
+  "mode": "lobby",
+  "clients": 2,
+  "timeout_sec": 180,
+  "comment": "Two signed-in guests form a party by invite code against a local stack (H75). Needs: pwsh scripts/dev-stack.ps1, then run-game.ps1 -Scenario backend-party-invite -Backend <stack URL>.",
+  "steps": [],
+  "processes": {
+    "client1": {
+      "steps": [
+        {"do": "sign_in", "timeout_sec": 30},
+        {"do": "wait_until", "expr": "screen() == 'LOBBY'", "timeout_sec": 30},
+        {"do": "eval", "expr": "Platform.party.create_party()"},
+        {"do": "wait_until", "expr": "G.party_manager.is_in_party()", "timeout_sec": 20},
+        {"do": "eval", "expr": "driver.capture_invite_code()"},
+        {"do": "eval", "expr": "G.party_manager.request_invite_code()"},
+        {"do": "wait_until", "expr": "not str(shared.get('invite_code', '')).is_empty()", "timeout_sec": 20},
+        {"do": "publish", "name": "invite_code", "expr": "str(shared.get('invite_code', ''))"},
+        {"do": "wait_shared", "name": "joined", "timeout_sec": 90},
+        {"do": "wait_until", "expr": "G.party_manager.current_party.get('members', []).size() == 2", "timeout_sec": 100, "comment": "the leader sees both members once the 60s catch-up poll lands; the wait must outlast that interval"},
+        {"do": "assert", "expr": "G.party_manager.current_party.get('members', []).size() == 2", "message": "party of two on the leader"}
+      ]
+    },
+    "client2": {
+      "steps": [
+        {"do": "sign_in", "timeout_sec": 30},
+        {"do": "wait_until", "expr": "screen() == 'LOBBY'", "timeout_sec": 30},
+        {"do": "wait_shared", "name": "invite_code", "timeout_sec": 60},
+        {"do": "eval", "expr": "G.party_manager.join_party_by_code(str(shared.get('invite_code', '')))"},
+        {"do": "wait_until", "expr": "G.party_manager.is_in_party()", "timeout_sec": 30},
+        {"do": "assert", "expr": "not G.party_manager.get_party_id().is_empty()", "message": "client2 joined a party by code"},
+        {"do": "publish", "name": "joined", "expr": "'1'"}
+      ]
+    }
+  }
+}

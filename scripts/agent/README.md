@@ -69,10 +69,14 @@ unless it is an `assert` or sets `"fatal": false`.
   (`name`: players, match, HUD labels, screen, level, frame).
 - `eval` (`expr`, `name`), `call` (`node`, `method`, `args`),
   `assert` (`expr`, `message`), `log`, `quit`.
+- `sign_in` (guest sign-in against `-Backend`; each process gets its
+  own account), `publish` (`name`, `expr`) and `wait_shared` (`name`)
+  pass values between the run's processes through `<run>/shared/`;
+  expressions read them as `shared.<name>`.
 
 Expressions are Godot `Expression`s with `G`, `Netcode`, `Platform`,
-`level`, `match_state`, `snapshots`, `driver`, `OS`, `Engine`,
-`Input`, and `Time` in scope, plus the driver's helpers: `players()`,
+`level`, `match_state`, `snapshots`, `driver`, `shared`, `OS`,
+`Engine`, `Input`, and `Time` in scope, plus the driver's helpers: `players()`,
 `player(id)`, `local_player(i)`, `player_count()`, `peer_count()`,
 `screen()`, `level_id()`, `snap(name)`, `ui_labels(path)`. For
 example:
@@ -100,6 +104,8 @@ at a local stack, such as one `scripts/local-smoke-test.ps1
 production. OAuth and the token broker stay blackholed.
 `scenarios/leaderboard-local-backend.json` opens the in-game
 leaderboard against such a stack and needs recorded scores in it.
+`scenarios/backend-party-invite.json` signs two guests in and forms
+a party by invite code (two-client lobby mode, no server process).
 
 **Pass/fail and exit codes.** Judge by the `AGENT_RESULT {...}` line,
 as the wrapper does. A process fails on a missing result line, a

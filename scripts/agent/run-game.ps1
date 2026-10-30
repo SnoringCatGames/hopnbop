@@ -258,7 +258,7 @@ if ($Backend) {
         $backendUri.Scheme -notin @('http', 'https') -or
         -not $backendUri.IsLoopback -or
         $backendUri.AbsolutePath -ne '/' -or
-        $Backend -notmatch ':\\d+/?$') {
+        $Backend -notmatch ':\d+/?$') {
         throw "-Backend must be http(s)://<loopback host>:<port>, not $Backend."
     }
     $Backend = $backendUri.GetLeftPart([UriPartial]::Authority)
@@ -315,6 +315,12 @@ if ($mode -eq 'match') {
     $clientCount = [int](Get-Prop $spec 'clients' 2)
     if ($clientCount -lt 1 -or $clientCount -gt 2) { throw "Match mode supports 1 or 2 clients, not $clientCount." }
     $processNames = @('server') + (1..$clientCount | ForEach-Object { "client$_" })
+} elseif ($mode -eq 'lobby') {
+    # Lobby runs may need a second signed-in client (party flows,
+    # H75); they still have no server process.
+    $clientCount = [int](Get-Prop $spec 'clients' 1)
+    if ($clientCount -lt 1 -or $clientCount -gt 2) { throw "Lobby mode supports 1 or 2 clients, not $clientCount." }
+    $processNames = @(1..$clientCount | ForEach-Object { "client$_" })
 } else {
     $processNames = @('client1')
 }

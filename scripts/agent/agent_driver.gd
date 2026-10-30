@@ -72,6 +72,9 @@ const _STEP_KEYS := {
 	"state": ["name"],
 	"eval": ["expr", "name"],
 	"call": ["node", "method", "args", "name"],
+	"sign_in": ["timeout_sec"],
+	"publish": ["name", "expr"],
+	"wait_shared": ["name", "timeout_sec"],
 	"assert": ["expr", "message"],
 	"log": ["message"],
 	"quit": [],
@@ -91,6 +94,7 @@ const _EXPRESSION_INPUTS: Array[String] = [
 	"Engine",
 	"Input",
 	"Time",
+	"shared",
 ]
 
 var _scenario_path := ""
@@ -132,6 +136,9 @@ var _screenshots: Array[String] = []
 var _state_paths: Array[String] = []
 var _snapshots: Dictionary = {}
 var _evals: Dictionary = {}
+## Values published by this or another process (publish /
+## wait_shared steps), readable from expressions as `shared`.
+var _shared: Dictionary = {}
 ## Dictionary<Key, int>: each held key and the physics frame it was
 ## last sent on.
 var _held_keys: Dictionary = {}
@@ -633,7 +640,7 @@ func _apply_settings_overrides() -> String:
 	settings.start_in_game = _mode != "lobby" and not is_server
 	settings.prefer_offline_mode = _mode != "match"
 	settings.preview_run_multiple_clients = (
-		_mode == "match" and _client_count > 1)
+		_client_count > 1 and _mode in ["match", "lobby"])
 	if _port > 0:
 		settings.server_port = _port
 
@@ -833,6 +840,12 @@ func _run_step(index: int, step: Dictionary) -> bool:
 			error = _step_call(step)
 		"assert":
 			error = _step_assert(step)
+		"sign_in":
+			error = await _step_sign_in(step)
+		"publish":
+			error = _step_publish(step)
+		"wait_shared":
+			error = await _step_wait_shared(step)
 		"log":
 			_print(str(step.get("message", "")))
 		"quit":
@@ -1104,6 +1117,111 @@ func _step_call(step: Dictionary) -> String:
 	return ""
 
 
+## Signs in as a guest against the -Backend stack, so backend
+## scenarios can act as a real signed-in player (H75). Each
+## process has its own sandbox, so each gets its own account.
+## Accepts the consent screen if it follows.
+func _step_sign_in(step: Dictionary) -> String:
+	if _backend.is_empty():
+		return "sign_in needs run-game.ps1 -Backend <local stack>"
+	var timeout := float(step.get(
+		"timeout_sec", _DEFAULT_WAIT_TIMEOUT_SEC))
+	if Platform.token_store.is_token_valid():
+		_print("sign_in: already signed in")
+		return ""
+	# A fresh sandbox shows the consent screen before sign-in;
+	# accepting it lands on the auth screen, ready to sign in.
+	if screen() == "CONSENT" and is_instance_valid(G.consent_screen):
+		G.consent_screen._on_continue_pressed()
+		await _wait_for(
+			func() -> bool: return screen() != "CONSENT",
+			10.0, "the auth screen after consent")
+	# login_anonymous is a local-only identity; the Nakama
+	# session (which party and matchmaking calls need) comes
+	# from get_guest_jwt's device auth.
+	var outcome: Array = []
+	var on_jwt := func(success: bool, error: String) -> void:
+		outcome.append([success, error])
+	Platform.auth.guest_jwt_obtained.connect(
+		on_jwt, CONNECT_ONE_SHOT)
+	Platform.auth.login_anonymous()
+	Platform.auth.get_guest_jwt()
+	var wait_error := await _wait_for(
+		func() -> bool: return not outcome.is_empty(),
+		timeout, "guest sign-in")
+	if not wait_error.is_empty():
+		return wait_error
+	if not outcome[0][0]:
+		return "sign-in failed: %s" % outcome[0][1]
+	_print("sign_in: signed in as %s" %
+		Platform.token_store.player_id)
+	if screen() == "CONSENT" and is_instance_valid(G.consent_screen):
+		G.consent_screen._on_continue_pressed()
+	return ""
+
+
+## Connects the party invite-code signal into shared.invite_code,
+## for scenarios: eval driver.capture_invite_code(), request the
+## code, then publish shared.invite_code. Expression steps cannot
+## declare lambdas, so the connection lives here.
+func capture_invite_code() -> void:
+	Platform.party.party_invite_code_received.connect(
+		func(data: Dictionary) -> void:
+			_shared["invite_code"] = str(data.get("code", "")),
+		CONNECT_ONE_SHOT)
+
+
+## The directory every process in the run shares (publish /
+## wait_shared), next to the per-process output dirs.
+func _shared_dir() -> String:
+	return _out_dir.get_base_dir().path_join("shared")
+
+
+## Publishes the string form of an expression's value for the
+## other processes in the run (an invite code, a match id).
+func _step_publish(step: Dictionary) -> String:
+	var name := _sanitize_name(str(step.get("name", "")))
+	if name.is_empty():
+		return "publish needs a 'name'"
+	var text := str(step.get("expr", ""))
+	var parsed := _parse_expression(text)
+	if parsed[0] == null:
+		return parsed[1]
+	var outcome := _execute(parsed[0], text)
+	if not outcome[0]:
+		return outcome[1]
+	var value := str(outcome[1])
+	DirAccess.make_dir_recursive_absolute(_shared_dir())
+	var path := _shared_dir().path_join(name + ".txt")
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return "cannot publish to %s" % path
+	file.store_string(value)
+	file.close()
+	_shared[name] = value
+	_print("published %s = %s" % [name, value])
+	return ""
+
+
+## Waits for another process to publish a name, then exposes
+## the value to expressions as shared.<name>.
+func _step_wait_shared(step: Dictionary) -> String:
+	var name := _sanitize_name(str(step.get("name", "")))
+	if name.is_empty():
+		return "wait_shared needs a 'name'"
+	var path := _shared_dir().path_join(name + ".txt")
+	var wait_error := await _wait_for(
+		func() -> bool: return FileAccess.file_exists(path),
+		float(step.get("timeout_sec", _DEFAULT_WAIT_TIMEOUT_SEC)),
+		"shared value '%s'" % name)
+	if not wait_error.is_empty():
+		return wait_error
+	_shared[name] = FileAccess.get_file_as_string(
+		path).strip_edges()
+	_print("shared %s = %s" % [name, _shared[name]])
+	return ""
+
+
 func _step_assert(step: Dictionary) -> String:
 	var text := str(step.get("expr", ""))
 	var parsed := _parse_expression(text)
@@ -1161,6 +1279,7 @@ func _execute(expression: Expression, text: String) -> Array:
 			Engine,
 			Input,
 			Time,
+			_shared,
 		],
 		self,
 		false,
