@@ -3,9 +3,8 @@ extends MenuRow
 ## Row showing a level name and tri-toggle
 ## aggregate button (X / checkmark / heart).
 ##
-## One of two row classes whose Left and Right have
-## distinct semantics (the other is the standalone
-## `BinaryToggle`). `consumes_horizontal_input()`
+## A row class whose Left and Right have distinct
+## semantics. `consumes_horizontal_input()`
 ## returns true so the SidePanel does NOT route Left
 ## to its back action while a LevelPrefRow is focused.
 ## `on_trigger()` is aliased to `on_right()` so the

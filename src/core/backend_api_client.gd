@@ -25,9 +25,7 @@ signal my_stats_received(data: Dictionary)
 ## Emitted when fetch_my_stats() fails: NOT_SIGNED_IN without a
 ## session, otherwise a reason for logs.
 signal my_stats_failed(reason: String)
-signal player_stats_received(data: Dictionary)
 signal profile_received(data: Dictionary)
-signal match_history_received(data: Dictionary)
 signal request_failed(error: String)
 
 ## The board the leaderboards show: game.yaml's `ffa`, each player's
@@ -293,27 +291,6 @@ func build_my_stats(stats: Variant, history: Variant) -> Dictionary:
 	return result
 
 
-func fetch_player_stats(player_id: String = "") -> void:
-	var session := await _ensure_session()
-	if session == null:
-		return
-	var pid := player_id if player_id else session.user_id
-	var rpc_result = await Platform.get_nakama_client().rpc_async(
-		session, "get_player_stats",
-		JSON.stringify({"player_id": pid}))
-	if rpc_result.is_exception():
-		# Pre-RPC deploys return method-not-found; surface as empty
-		# stats so the UI doesn't error.
-		player_stats_received.emit(
-			{"player_id": pid, "rating": 1500, "matches": 0})
-		return
-	var data: Variant = JSON.parse_string(rpc_result.payload)
-	if data is Dictionary:
-		player_stats_received.emit(data)
-	else:
-		player_stats_received.emit({"player_id": pid})
-
-
 # --------------------------------------------------------------
 # Profile
 # --------------------------------------------------------------
@@ -347,28 +324,6 @@ func fetch_player_profile() -> void:
 				_account_linked_providers(account)),
 		},
 	})
-
-
-# --------------------------------------------------------------
-# Match history (custom RPC backed by Nakama Storage / leaderboard
-# joins on the runtime side)
-# --------------------------------------------------------------
-
-func fetch_match_history() -> void:
-	var session := await _ensure_session()
-	if session == null:
-		return
-	var rpc_result = await Platform.get_nakama_client().rpc_async(
-		session, "get_match_history", "{}")
-	if rpc_result.is_exception():
-		# Pre-RPC deploys: return empty.
-		match_history_received.emit({"matches": []})
-		return
-	var data: Variant = JSON.parse_string(rpc_result.payload)
-	if data is Dictionary:
-		match_history_received.emit(data)
-	else:
-		match_history_received.emit({"matches": []})
 
 
 # --------------------------------------------------------------

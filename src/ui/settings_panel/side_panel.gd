@@ -9,7 +9,7 @@ extends Control
 ##     → focused row's `on_trigger()`.
 ##   - Right input → focused row's `on_trigger()`
 ##     UNLESS the row consumes horizontal input
-##     (LevelPrefRow, BinaryToggle), in which case
+##     (LevelPrefRow), in which case
 ##     `on_right()` is called instead.
 ##   - Left input → `manager.pop_panel()` UNLESS
 ##     the row consumes horizontal input, in which

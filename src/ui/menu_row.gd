@@ -84,13 +84,13 @@ func on_trigger() -> void:
 
 
 ## Used by horizontal-selector subclasses
-## (LevelPrefRow, BinaryToggle). Default no-op.
+## (LevelPrefRow). Default no-op.
 func on_left() -> void:
 	pass
 
 
 ## Used by horizontal-selector subclasses
-## (LevelPrefRow, BinaryToggle). Default no-op.
+## (LevelPrefRow). Default no-op.
 func on_right() -> void:
 	pass
 
@@ -123,9 +123,8 @@ func _gui_input(event: InputEvent) -> void:
 			triggered.emit()
 			# Horizontal-selector rows have their own
 			# sub-button click handlers (e.g., the three
-			# X / check / heart buttons of LevelPrefRow,
-			# the two side-by-side buttons of
-			# BinaryToggle). Clicking the row background
+			# X / check / heart buttons of LevelPrefRow).
+			# Clicking the row background
 			# itself should only set focus, not cycle the
 			# state — the sub-buttons own activation.
 			if not consumes_horizontal_input():
