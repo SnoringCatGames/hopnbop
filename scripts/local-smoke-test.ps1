@@ -302,6 +302,11 @@ Write-Host "Godot:   $script:GodotBin"
 Write-Host "Logs:    $LogDir"
 Write-Host "Project: $script:Project"
 
+# H81: the run must not silently rewrite tracked files in the
+# checkout. Snapshot git status now and report any path the
+# run dirtied, at the end.
+$gitStatusBefore = & git -C $RepoRoot status --porcelain
+
 try {
     # --- Refresh the platform addon copy --------------------
     # The suite runs from addons/snoringcat_platform_client/, a
@@ -516,6 +521,19 @@ try {
     }
 } finally {
     Restore-Env
+    # H81: report (loudly) any tracked file the run rewrote.
+    if ($null -ne $gitStatusBefore) {
+        $gitStatusAfter = & git -C $RepoRoot status --porcelain
+        $newlyDirtied = @($gitStatusAfter | Where-Object {
+            $gitStatusBefore -notcontains $_ })
+        if ($newlyDirtied.Count -gt 0) {
+            Write-Host "" 
+            Write-Host ("WARNING: this run changed tracked " +
+                "files in the checkout (H81):") -ForegroundColor Yellow
+            $newlyDirtied | ForEach-Object {
+                Write-Host "  $_" -ForegroundColor Yellow }
+        }
+    }
     if ($stackStarted) {
         if ($KeepStack) {
             Write-Host ""

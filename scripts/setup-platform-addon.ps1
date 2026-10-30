@@ -40,6 +40,33 @@ if (-not (Test-Path $Source)) {
     exit 1
 }
 
+# H81: skip the delete-and-copy when the destination already
+# matches the source, so callers that refresh on every run
+# (local-smoke-test.ps1) do not rewrite the checkout or race a
+# second run in the same checkout.
+function Test-AddonCopyCurrent {
+    param([string]$Src, [string]$Dst)
+    if (-not (Test-Path $Dst)) { return $false }
+    $srcFiles = @(Get-ChildItem -LiteralPath $Src -Recurse -File)
+    $dstFiles = @(Get-ChildItem -LiteralPath $Dst -Recurse -File)
+    if ($srcFiles.Count -ne $dstFiles.Count) { return $false }
+    foreach ($f in $srcFiles) {
+        $rel = $f.FullName.Substring($Src.Length)
+        $peer = Join-Path $Dst $rel
+        if (-not (Test-Path -LiteralPath $peer)) { return $false }
+        if ((Get-FileHash -LiteralPath $f.FullName).Hash -ne
+            (Get-FileHash -LiteralPath $peer).Hash) { return $false }
+    }
+    return $true
+}
+
+if (-not $Force -and
+    (Test-AddonCopyCurrent `
+        (Resolve-Path $Source).Path (Join-Path (Get-Location) $Dest))) {
+    Write-Host "Addon copy already current; skipping."
+    exit 0
+}
+
 if (Test-Path $Dest) {
     Write-Host "Removing existing $Dest..." -ForegroundColor Yellow
     if ($IsWin) {
