@@ -80,9 +80,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H72** · Exported-build runs for the harness (custom 4.7.2 template);
   H38's release check waits on it (M; batch 6;
   `docs/design/H37_systems_audit.md` section 4 step 4)
-- **H68** · Legal parity is checked only by pr-validate, which never
-  runs on push (C2); `edgegap_app_version` is not in the sync's
-  mustSurvive (C3) (S; batch 6; `docs/design/H37_systems_audit.md` 3.4)
 - **H83** · `release.yml` has never run and no `v*` tag exists. Waits on
   Levi (report section 7 row 13) (S; batch 6;
   `docs/design/H37_systems_audit.md` 1.1)
@@ -185,6 +182,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H68** · Legal parity is checked only by pr-validate, which never runs on push (C2); `edgegap_app_version` is not in the sync's mustSurvive (C3) (S; batch 6; `docs/design/H37_systems_audit.md` 3.4). Done in e5c92fb (2026-10-29).
 - **H30** · `scripts/agent/run-game.ps1 -Backend` accepts a URL with no port; the driver then refuses it with exit 3. Done in 32de8a0 (2026-10-29).
 - **H73** · Harness friction: loopback runs warn of production; client 2 starts 30 s late; screenshots go black 0.7 s after a screen change (S; batch 6; `docs/design/H37_systems_audit.md` 1.2, 4 step 3). Done in 32de8a0 (2026-10-29).
 - **H74** · `scripts/dev-stack.ps1` from exec-b's `stack.ps1`, with seed and restart steps (S; batch 6; `docs/design/H37_systems_audit.md` 1.2 gaps, section 4 step 3). Done in 6020cac (2026-10-29).
