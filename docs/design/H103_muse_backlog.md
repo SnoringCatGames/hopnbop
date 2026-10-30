@@ -461,3 +461,19 @@ start at item 1 and switch to the party set when he answers.
 
 Append one dated entry each time you stop: done (IDs and SHAs), shelved
 (patch paths), in flight, next, anything odd.
+
+- 2026-10-29, muse 01a1896a (pickup after 01a188af was cancelled
+  mid-turn at 13:47, session_end incomplete): Tier 3 complete.
+  01a188af landed through SP50 (hopnbop `adace59f`) and RN3
+  (`bc8788c2`) before the cancel and left H75 half-done in the tree.
+  H75 finished here in `ed00d83`: harness `sign_in` /
+  `publish` / `wait_shared` steps, two-client lobby mode,
+  `FakePartyApiClient` + `test_party_manager_with_fake.gd` (4/4;
+  `test_party_manager.gd` still 32/32), and
+  `backend-party-invite.json` green against the `dev-stack.ps1`
+  stack (leader's member list settles via the 60s catch-up poll;
+  the scenario syncs on client2's `joined` publish and outlasts
+  the poll interval). Shelved: none. In flight: none. Next:
+  Tier 4, H20 first, then H27 (netcode first). Odd: the dead
+  session never appended here; its dev stack (Nakama on
+  127.0.0.1:62217) was still up and was reused for the scenario.

@@ -33,10 +33,10 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 - **H103** · Muse works the agreed backlog tier by tier (H37 batches 2 to
   7, platform inbox, Pulumi pins, HG1) while Claude is near its limit.
-  - owner: muse 01a188af-3ed2-72f1-8241-348fdaf97e78
-  - branch: mainline in every repo; last commit: platform 3e2bc1d (SP28)
+  - owner: muse 01a1896a (took over 2026-10-29 after 01a188af was cancelled mid-turn)
+  - branch: mainline in every repo; last commit: ed00d83 (H75; Tier 3 complete)
   - evidence: `git log --grep Muse-Session` here and in both submodules; shelved patches in `.claude/probes/<ID>/wip.patch`
-  - next: Tier 2: SP71, then SP58
+  - next: Tier 4: H20, then H27 (netcode first)
   - brief: `docs/design/H103_muse_backlog.md` (section 5 is the handoff log)
 
 ## Next
@@ -74,9 +74,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   (SP35). Still blocked on fixes outside this run: settings-echo
   (H67), declare-validation (H17), port-leak Go test (SP26),
   account PI-2 and SO-1 (H15), verify scenarios (H72 held).
-- **H75** · Harness sign-in plus `publish` and `wait_shared` steps; a
-  fake `Platform.party` for GUT (M; batch 6;
-  `docs/design/H37_systems_audit.md` 1.2, 1.3, section 4 step 3)
 - **H72** · Exported-build runs for the harness (custom 4.7.2 template);
   H38's release check waits on it (M; batch 6;
   `docs/design/H37_systems_audit.md` section 4 step 4)
@@ -180,6 +177,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H75** · Harness sign-in plus `publish` and `wait_shared` steps; a fake `Platform.party` for GUT. Done in ed00d83 (2026-10-29).
 - **H99** · Finish T48 (M; batch 7; `docs/design/H37_systems_audit.md` section 5). Done in f10044e (2026-10-29).
 - **H68** · Legal parity is checked only by pr-validate, which never runs on push (C2); `edgegap_app_version` is not in the sync's mustSurvive (C3) (S; batch 6; `docs/design/H37_systems_audit.md` 3.4). Done in e5c92fb (2026-10-29).
 - **H30** · `scripts/agent/run-game.ps1 -Backend` accepts a URL with no port; the driver then refuses it with exit 3. Done in 32de8a0 (2026-10-29).
