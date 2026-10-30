@@ -1326,8 +1326,8 @@ func _reconcile_spring_interaction(
 
 	if Netcode.log.is_verbose:
 		Netcode.verbose(
-			"Spring interaction at frame %d, "
-			+"queuing rollback (%s)" % [
+			"Spring interaction at frame %d, queuing rollback (%s)"
+			% [
 				p_frame_index,
 				name,
 			],

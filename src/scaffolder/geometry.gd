@@ -773,9 +773,11 @@ static func do_shapes_match(a: Shape2D, b: Shape2D) -> bool:
 	else:
 		Netcode.ensure(
 			false,
-            "Invalid Shape2D provided: %s. The "
-			+"supported shapes are: CircleShape2D, CapsuleShape2D, "
-			+"RectangleShape2D." % a,
+			(
+				"Invalid Shape2D provided: %s. The supported "
+				+ "shapes are: CircleShape2D, CapsuleShape2D, "
+				+ "RectangleShape2D."
+			) % a,
 		)
 		return false
 

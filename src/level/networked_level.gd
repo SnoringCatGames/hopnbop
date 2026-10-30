@@ -235,8 +235,8 @@ func _client_on_player_spawned(
 	var player: Player = p_player
 	if Netcode.log.is_verbose:
 		Netcode.verbose(
-			"Player spawned: %s"
-			+ " (current player_id=%d)" % [
+			"Player spawned: %s (current player_id=%d)"
+			% [
 				player.get_string(),
 				player.player_id],
 			NetworkLogger.CATEGORY_CONNECTIONS,

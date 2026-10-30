@@ -150,6 +150,16 @@ jobs:
       - name: Run release guards (H99)
         run: python3 scripts/checks/release_guards.py
 
+  format-strings:
+    name: Broken format strings (V17)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Run format-string scan (H66)
+        run: python3 scripts/checks/format_string_scan.py
+
   godot-tests:
     name: GUT unit + integration
     runs-on: ubuntu-latest

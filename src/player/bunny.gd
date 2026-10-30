@@ -255,9 +255,11 @@ func _process_movement_and_actions() -> void:
 
 	if applied_bounce and Netcode.log.is_verbose:
 		Netcode.verbose(
-			"Player %d bounce applied (%s): "
-			+"vel=%s, pos=%s, surfaces=%d, "
-			+"launch_frame=%d, resim=%s" % [
+			(
+				"Player %d bounce applied (%s): "
+				+ "vel=%s, pos=%s, surfaces=%d, "
+				+ "launch_frame=%d, resim=%s"
+			) % [
 				player_id,
 				bounce_source,
 				bounce_vel,
@@ -278,11 +280,13 @@ func _process_movement_and_actions() -> void:
 		# diagnose cases where a bounce was applied
 		# recently and we're verifying continuity.
 		Netcode.verbose(
-			"Player %d in launch cooldown "
-			+"(no bounce this frame): "
-			+"vel=%s, pos=%s, surfaces=%d, "
-			+"launch_frame=%d, on_floor=%s, "
-			+"attaching_floor=%s" % [
+			(
+				"Player %d in launch cooldown "
+				+ "(no bounce this frame): "
+				+ "vel=%s, pos=%s, surfaces=%d, "
+				+ "launch_frame=%d, on_floor=%s, "
+				+ "attaching_floor=%s"
+			) % [
 				player_id,
 				velocity,
 				global_position,

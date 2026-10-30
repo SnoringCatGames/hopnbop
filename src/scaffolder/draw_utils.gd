@@ -45,9 +45,12 @@ static func draw_shape_outline(
 		)
 	else:
 		Netcode.fatal(
-			"Invalid Shape2D provided for draw_shape_outline: %s. The "
-			+ "supported shapes are: CircleShape2D, CapsuleShape2D, "
-			+ "RectangleShape2D." % shape,
+			(
+				"Invalid Shape2D provided for "
+				+ "draw_shape_outline: %s. The supported shapes "
+				+ "are: CircleShape2D, CapsuleShape2D, "
+				+ "RectangleShape2D."
+			) % shape,
 		)
 
 

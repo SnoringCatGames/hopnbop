@@ -141,8 +141,8 @@ func _pack_networked_state() -> void:
 			FrameAuthority.keys()[frame_authority]
 		)
 		Netcode.log.verbose(
-			"%s F:%d Packed input state (%s) "
-			+"with %d redundant frames" % [
+			"%s F:%d Packed input state (%s) with %d redundant frames"
+			% [
 				name,
 				Netcode.server_frame_index,
 				authority_string,

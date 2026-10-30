@@ -86,12 +86,13 @@ func _process(delta: float) -> void:
 				native_xform
 			):
 				print(
-					"LABEL XFORM MISMATCH:"
-					+ " old_origin=%s"
-					+ " native_origin=%s"
-					+ " old_x=%s native_x=%s"
-					+ " old_y=%s native_y=%s"
-					% [
+					(
+						"LABEL XFORM MISMATCH:"
+						+ " old_origin=%s"
+						+ " native_origin=%s"
+						+ " old_x=%s native_x=%s"
+						+ " old_y=%s native_y=%s"
+					) % [
 						old_xform.origin,
 						native_xform.origin,
 						old_xform.x,

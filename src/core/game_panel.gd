@@ -1846,8 +1846,8 @@ func _server_validate_pause_request(
 	# Block pauses after match has ended.
 	if G.match_state.is_match_ended:
 		Netcode.print(
-			"Client %d pause rejected:"
-			+" match has ended" % peer_id,
+			"Client %d pause rejected: match has ended"
+			% peer_id,
 			NetworkLogger.CATEGORY_NETWORK_SYNC,
 		)
 		return {"allowed": false}
@@ -1860,9 +1860,8 @@ func _server_validate_pause_request(
 			.get(peer_id, 0))
 	if used >= max_pauses:
 		Netcode.print(
-			"Client %d pause rejected:"
-			+" limit reached (%d/%d)" % [
-				peer_id, used, max_pauses],
+			"Client %d pause rejected: limit reached (%d/%d)"
+			% [peer_id, used, max_pauses],
 			NetworkLogger.CATEGORY_NETWORK_SYNC,
 		)
 		return {"allowed": false}
@@ -2308,8 +2307,8 @@ func _server_get_selected_level_scene() -> PackedScene:
 			return level_info.scene
 		else:
 			Netcode.warning(
-				"Selected level '%s' not found"
-				+" in registry" % level_id,
+				"Selected level '%s' not found in registry"
+				% level_id,
 				NetworkLogger
 					.CATEGORY_GAME_STATE,
 			)
@@ -2510,8 +2509,8 @@ func _validate_player_attributes(
 				% DynamicAdjectiveConfig
 					.NAMES.size())
 			Netcode.warning(
-				"Peer %d: Invalid name_index,"
-				+" assigned random: %d" % [
+				"Peer %d: Invalid name_index, assigned random: %d"
+				% [
 					peer_id,
 					attr["name_index"]],
 				NetworkLogger
@@ -2541,8 +2540,8 @@ func _validate_player_attributes(
 			attr["adj_index"] = (
 				randi() % adj_list.size())
 			Netcode.warning(
-				"Peer %d: Invalid adj_list_id,"
-				+" assigned random" % peer_id,
+				"Peer %d: Invalid adj_list_id, assigned random"
+				% peer_id,
 				NetworkLogger
 					.CATEGORY_CONNECTIONS,
 			)
@@ -2555,8 +2554,8 @@ func _validate_player_attributes(
 			attr["adj_index"] = (
 				randi() % adj_list.size())
 			Netcode.warning(
-				"Peer %d: Invalid adj_index,"
-				+" assigned random" % peer_id,
+				"Peer %d: Invalid adj_index, assigned random"
+				% peer_id,
 				NetworkLogger
 					.CATEGORY_CONNECTIONS,
 			)
@@ -2571,8 +2570,7 @@ func _validate_player_attributes(
 					>= G.settings
 						.body_types.size()):
 			Netcode.warning(
-				"Peer %d: body_type_index %d"
-				+" out of range, assigned 0"
+				"Peer %d: body_type_index %d out of range, assigned 0"
 				% [peer_id, body_type_idx],
 				NetworkLogger
 					.CATEGORY_CONNECTIONS,
@@ -2587,8 +2585,7 @@ func _validate_player_attributes(
 					>= G.settings
 						.costumes.size()):
 			Netcode.warning(
-				"Peer %d: costume_index %d"
-				+" out of range, assigned 0"
+				"Peer %d: costume_index %d out of range, assigned 0"
 				% [peer_id, costume_idx],
 				NetworkLogger
 					.CATEGORY_CONNECTIONS,

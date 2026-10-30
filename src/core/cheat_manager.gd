@@ -126,8 +126,7 @@ func _activate_cheat(cheat_name: String) -> void:
 		G.get("settings").get("are_cheats_enabled"))
 	if not are_cheats_enabled:
 		Netcode.print(
-			"Cheat '%s' denied:"
-			+ " cheats not enabled"
+			"Cheat '%s' denied: cheats not enabled"
 			% cheat_name,
 		)
 		return
