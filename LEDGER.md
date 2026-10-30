@@ -34,12 +34,13 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H109** · Muse run 2: the follow-ups from checking run 1 (H103), then
   most of what H103 held for Claude, released by Levi 2026-10-29
   (`docs/design/H109_muse_run2.md`).
-  - owner: nobody since 2026-10-29 19:35 PT (Tiers A and B done; was muse 01a189f7, launched through Paseo by claude 0cfd9cf1
+  - owner: nobody since 2026-10-29 21:30 PT (run complete; was muse 01a189f7, launched through Paseo by claude 0cfd9cf1
     on 2026-10-29 (session 01a189f7-97c5-7eb0-98b6-164cb9977b39)
   - branch: mainline (hopnbop, platform, netcode); last commit:
-    3b084aa, see `git log --grep Muse-Session`
+    see `git log --grep Muse-Session` (head at close below)
   - evidence: `.claude/probes/<ID>/` per item; the brief's section 5
-  - next: Tier C, H54 with SP40 first (server half, H108 check before the push), then H90, H86 with SP61, then Tier D
+  - next: nothing in this brief; Tier D docs await Levi (H56
+    acceptance and icon, H87, H72, H98), H104 is Claude's review
   - brief: `docs/design/H109_muse_run2.md`
 
 
@@ -51,11 +52,13 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   Muse-Session` here and in both submodules. Leads
   from a first check: `docs/design/H103_muse_backlog.md` section 5,
   Claude's 2026-10-29 entry.
-- **H56** · Controller players cannot enter codes (M; batch 4;
-  `docs/design/H37_systems_audit.md` 3.2)
+- **H56** · Controller players cannot enter codes: design in
+  `docs/design/H56_code_entry.md`; the symbol keyboard is built
+  behind `is_code_keyboard_enabled` (off) for Levi's acceptance.
+  The Join-with-code icon is still to ask Levi for.
 - **H87** · A dedicated server's fatal error or engine crash is never
-  reported (CR1, CR7) (M; batch 5; `docs/design/H37_systems_audit.md`
-  3.4)
+  reported (CR1, CR7): design in
+  `docs/design/H87_server_crash_reporting.md`, awaiting Levi.
 - **H77** · Land the H37 probes as tests, each with its fix (XS each;
   batch 6; `docs/design/H37_systems_audit.md` section 4 step 2)
   Landed 2026-10-29: ghost-ticket probe (SP28), account probe
@@ -63,9 +66,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   (SP35). Still blocked on fixes outside this run: settings-echo
   (H67), declare-validation (H17), port-leak Go test (SP26),
   account PI-2 and SO-1 (H15), verify scenarios (H72 held).
-- **H72** · Exported-build runs for the harness (custom 4.7.2 template);
-  H38's release check waits on it (M; batch 6;
-  `docs/design/H37_systems_audit.md` section 4 step 4)
+- **H72** · Exported-build runs for the harness: design in
+  `docs/design/H72_exported_build_harness.md`, awaiting Levi.
+  H38's release check waits on it.
 - **H83** · `release.yml` has never run and no `v*` tag exists. Waits on
   Levi (report section 7 row 13) (S; batch 6;
   `docs/design/H37_systems_audit.md` 1.1)
@@ -79,8 +82,8 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 
 
-- **H98** · Finish T43; verify, then fix, T19 (M; batch 7;
-  `docs/design/H37_systems_audit.md` section 5)
+- **H98** · Finish T43; verify, then fix, T19: design in
+  `docs/design/H98_polish_and_player_list.md`, awaiting Levi.
 
 
 ## Residuals (known, not fixed)

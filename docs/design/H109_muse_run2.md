@@ -225,3 +225,19 @@ Append one dated entry each time you stop: done (IDs and SHAs), shelved
   flight: none. Next: Tier C, H54 with SP40 first. Odd: Levi's
   standing commit-and-push grant for Claude-launched brief runs
   is now in `feedback_commit_and_push.md`; no more asking.
+
+- 2026-10-29 (later), muse 01a189f7: Tiers C and D done, run
+  complete. Tier C: SP40 prune (platform 078d9b8, deployed,
+  H108 gate same 4 known failures) + H54 client (c0d07f1);
+  H90 (ad7de6a, guards fix c1590c7); SP61 (platform e5ae4e6,
+  deployed, H108 gate passed) + H86 (57c41d3). Tier D: H87
+  and H56 design docs (c3c7f2c), H56 keyboard built behind
+  an off-by-default setting (5d567db; probe scenario
+  .claude/probes/H56/code-keyboard.json passes, screenshot
+  in its run dir), H72 + H98 docs (2eaf61a). CI fixes after
+  the coordinator's catch: respawn splash 8bb5873, G.log
+  guards c1590c7, RN8 test 9c3c0b5 in netcode (pointer
+  8bcc261); full per-file GUT 89 files / 727 tests green,
+  PR Validate and Compliance Matrix green on head. Shelved:
+  none. In flight: none. Next: Levi's Tier D decisions;
+  H104 is Claude's review of runs 1 and 2.
