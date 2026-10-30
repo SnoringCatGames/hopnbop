@@ -34,9 +34,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H103** · Muse works the agreed backlog tier by tier (H37 batches 2 to
   7, platform inbox, Pulumi pins, HG1) while Claude is near its limit.
   - owner: muse 01a1896a (took over 2026-10-29 after 01a188af was cancelled mid-turn)
-  - branch: mainline in every repo; last commit: b02a99d (SP20+SP21)
+  - branch: mainline in every repo; last commit: 141e2fe (H80; Tier 5 complete)
   - evidence: `git log --grep Muse-Session` here and in both submodules; shelved patches in `.claude/probes/<ID>/wip.patch`
-  - next: Tier 5: H80, then Tier 6 (HG1, SP81/SP82)
+  - next: Tier 6: HG1 (hex-grid trust check), SP81/SP82 Pulumi pins
   - brief: `docs/design/H103_muse_backlog.md` (section 5 is the handoff log)
 
 ## Next
@@ -153,6 +153,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H80** · Textures orphaned by b998107d, plus orphan `.import` files including `level_4_combined*.png.import`. Done in 141e2fe (2026-10-29).
 - **H97** · Finish T12; delete the 9 Stale notes (with SP53). Done in eb80b83, platform 1caaf04 (2026-10-29).
 - **H96** · Alt+Enter fullscreen (T10). Done in 850c5ac (2026-10-29).
 - **H95** · A click sound on every MenuRow trigger (T42). Done in 97805e5 (2026-10-29).
