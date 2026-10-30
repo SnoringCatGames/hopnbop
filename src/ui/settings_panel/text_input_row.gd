@@ -54,8 +54,15 @@ func get_text() -> String:
 
 ## Replaces the field's text (H56's symbol keyboard types
 ## through here so the panel's text_changed path sees it).
+## Assigning LineEdit.text emits no text_changed in
+## Godot 4.7.2 and resets the caret to 0, so run the
+## change handler directly: uppercasing, the
+## text_changed signal and auto-advance then behave
+## exactly as they do for typed input (H111).
 func set_text(value: String) -> void:
 	_line_edit.text = value
+	_line_edit.caret_column = value.length()
+	_on_text_changed(value)
 
 
 ## Reset the field to empty. Used by the chat panel after a

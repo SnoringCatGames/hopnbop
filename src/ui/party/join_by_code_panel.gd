@@ -20,7 +20,7 @@ const _CODE_LENGTH := 6
 
 ## The party invite alphabet (runtime/party.go, 32
 ## symbols) in rows of four for the on-screen keyboard.
-const _KEYBOARD_ROWS: Array = [
+const _KEYBOARD_ROWS: Array[String] = [
 	"2345", "6789", "ABCD", "EFGH",
 	"JKLM", "NPQR", "STUV", "WXYZ",
 ]
