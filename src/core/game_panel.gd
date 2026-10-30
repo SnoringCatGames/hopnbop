@@ -9,6 +9,13 @@ signal lobby_players_updated
 
 var levels: Array[Level] = []
 
+## Spawn counts per level node name (H26): a respawned
+## level must never reuse the previous instance's name, or
+## peers that still hold the old node rename the new one to
+## an auto-generated @Node2D@ name and every replicated
+## node under it fails to resolve.
+var _level_name_serials: Dictionary = {}
+
 var is_level_fully_loaded := false
 
 var session_manager: GameSessionManager
@@ -1943,6 +1950,10 @@ func _server_preview_hot_reload() -> void:
 		if old_level.get_parent() != null:
 			(old_level.get_parent()
 				.remove_child(old_level))
+		# Free now, not at frame end (H26): the replacement
+		# spawns in this same call, and a lingering node is
+		# what forced the auto-generated names.
+		old_level.free()
 
 	# 5. Spawn new level with fresh preferences.
 	var level_scene := (
@@ -2409,6 +2420,19 @@ func _server_select_from_prefs(
 	return pick.scene
 
 
+## Returns the node name for the next spawn of a level
+## scene: the scene's own name first, then _2, _3, ...
+## (H26). The name replicates to peers, so a hot-reloaded
+## level never collides with its predecessor anywhere.
+func _next_level_node_name(base_name: String) -> String:
+	var serial: int = _level_name_serials.get(
+		base_name, 1)
+	_level_name_serials[base_name] = serial + 1
+	if serial == 1:
+		return base_name
+	return "%s_%d" % [base_name, serial]
+
+
 func _server_spawn_level(
 	level_scene: PackedScene,
 ) -> void:
@@ -2437,6 +2461,7 @@ func _server_spawn_level(
 	)
 
 	var level: Level = level_scene.instantiate()
+	level.name = _next_level_node_name(level.name)
 	levels.append(level)
 	%Levels.add_child(level)
 	G.level = level
