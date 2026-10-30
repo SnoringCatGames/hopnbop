@@ -243,10 +243,9 @@ if match_state.is_match_active:
 
 ## GDScript formatter
 
-The GDScript formatter addon is installed
-(`addons/gdscript_formatter`). Format code before committing.
-(H9: pr-validate's formatter job currently no-ops because the
-addon is not actually vendored; see the ledger.)
+No GDScript formatter is vendored in this repo (H9 deleted
+pr-validate's no-op formatter job). Follow the style rules
+above by hand; vendoring a formatter is Levi's call.
 
 ## Legacy code migration
 

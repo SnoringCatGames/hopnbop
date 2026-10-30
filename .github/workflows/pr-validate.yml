@@ -2,7 +2,6 @@ name: PR Validate
 
 # Phase G replacement for the legacy AWS-flavored test workflow.
 # Runs on every PR targeting main:
-#   - GDScript formatter check (addons/gdscript_formatter)
 #   - GUT unit + integration (per-file; no backend, see the job)
 #   - go test / go vet / staticcheck for the Nakama runtime
 #     modules in third_party/snoringcat-platform/runtime/
@@ -32,28 +31,6 @@ env:
   GODOT_VERSION: 4.7.2-stable
 
 jobs:
-  gdscript-format:
-    name: GDScript formatter
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - uses: chickensoft-games/setup-godot@v2
-        with:
-          version: ${{ env.GODOT_VERSION }}
-          use-dotnet: false
-      - name: Run gdscript_formatter --check
-        run: |
-          # The formatter addon is committed; running with --check
-          # produces a non-zero exit when formatting is off.
-          if [ -d addons/gdscript_formatter ]; then
-            godot --headless --path . \
-              --script addons/gdscript_formatter/cli.gd -- --check
-          else
-            echo "gdscript_formatter not vendored; skipping"
-          fi
-
   game-config-parity:
     name: game.yaml ↔ project.godot parity
     runs-on: ubuntu-latest
