@@ -167,8 +167,6 @@ a suggested order: `docs/design/H37_systems_audit.md`.
 #   - Is it sufficent to have them online only?
 #   - What if the user doesn't have an internet connection?
 
-# I believe AWS has a $100 free for new accounts deal. I believe they also mentioned an additional $100 if you meet some requirements. What are those requirements and what would we need to do? Check what I've already done in my AWS account.
-
 
 # Tasks to perform when releasing a new version.
 # - Carefully survey the entire codebase.
@@ -181,7 +179,6 @@ a suggested order: `docs/design/H37_systems_audit.md`.
 #   -
 
 
-# - Check whether there is a hard billing limit on AWS, or if it just alerts at the thresholds.
 
 
 # Ideally, if we have a large enough player pool to choose from, we'd try to pair players together into a match according to their relative skill/rank levels. Is that feasible to add?
@@ -199,15 +196,8 @@ a suggested order: `docs/design/H37_systems_audit.md`.
 # ---
 
 
-# All M3 code changes are complete. The remaining items are:
-# - Godot client test — Connect from the game client to the live fleet, play a match, verify match results post to backend
-# - Dockerfile WebSocket port — The plan mentioned adding port 4434/tcp, but this is deferred to M10 (web builds)
 
 
-# Remaining items for end-to-end testing:
-# - hopnbop/server-api-key secret needs to be set as a fleet environment variable if the server posts match results to the backend API
-# - Client-side testing - connect a client, trigger matchmaking, verify a game session is created and playable
-# - PlayerInputNetworkState class resolution error - non-blocking but should be investigated for the export/pck
 
 
 # Remaining notes:
@@ -225,7 +215,6 @@ a suggested order: `docs/design/H37_systems_audit.md`.
 # - Get in water. Die. Respawn with a splash somewhere.
 
 
-# - Look into the additional $100 from AWS.
 
 
 # - https://discord.com/channels/1478592423813845106/1478592423813845109
@@ -236,7 +225,6 @@ a suggested order: `docs/design/H37_systems_audit.md`.
 
 # ---
 
-# - Review gamelift GDScript, backend, python, audit all AWS activity and used systems, website pages, etc.
 
 # - Add tooltips, with localized text, with translations in all supported languages, to each button in the app.
 #   - Update Memory.md or Claude.md to mention including tooltips for all buttons.
@@ -244,23 +232,6 @@ a suggested order: `docs/design/H37_systems_audit.md`.
 # ---
 
 
-# - Work with Claud on the BIG final plans.
-# Milestones:
-# - M1: AWS Account & Infrastructure Foundation
-# - M2: Complete Auth Flow
-# - M3: GameLift Container Fleet Deployment
-# - M4: Legal & Compliance
-# - M5: Monitoring, Logging & Alerting
-# - M6: Matchmaking Enhancements
-# - M7: Database & Player Persistence
-# - M8: Leaderboards
-# - M9: Friends System
-# - M10: Web Build & Cross-Play
-# - M11: Offline Mode / Local Multiplayer
-# - M12: Mobile Builds
-# - M13: CI/CD & Deployment Automation
-# - M14: Website (hopnbop.net)
-# - M15: Client Polish & Remaining Items
 
 
 # ## Manual Setup Checklist (One-Time)
@@ -321,7 +292,6 @@ a suggested order: `docs/design/H37_systems_audit.md`.
 # Get CI working again.
 
 
-# Ask AI where auth fits into the current backend and GameLift logic. This was originally planned.
 
 # Web-client support:
 # - Ask if WebSockets or WebRTC make more sense for web.
@@ -504,7 +474,6 @@ a suggested order: `docs/design/H37_systems_audit.md`.
 
 # Publish to the AssetLibrary a GDExtension for GameLift integration?
 
-# **** Re-enable the `Build GDExtension` GitHub Actions Workflow
 
 # ---
 
