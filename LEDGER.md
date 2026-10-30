@@ -102,9 +102,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 - **H5** · Podium bunnies never animate. (Session 530145bc, 2026-10-11
   12:00 "Noticed, not fixed".)
-- **H6** · Networked splashes and skids fire twice. Water and landing
-  transitions compare against the frame two back, so they trigger on two
-  consecutive frames. (Session 530145bc, agent a6c0fbc6.)
 - **H7** · The check that keeps new spawns off other players can't see
   bunnies that are still blinking, so a respawn can land on one. Left
   alone as a player-versus-player rule.
@@ -158,6 +155,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H6** · Splashes and landing skids fired twice per transition; effects now consume each transition once. Done in 1f1ff5d (2026-10-29).
 - **H24** · Server registered players under id 0 before assigning the real id; registration now waits for the id. Done in fc90a3c (2026-10-29).
 - **H108** · Released client's suite against HEAD's runtime, locally and as the `compliance-released` CI job (76/80; 4 intended failures). Done in c11191e8, 51d7eb8b (2026-10-29).
 - **H107** · Compliance Matrix's two failures: PSGallery retry and deterministic `PLATFORM_GAME_ID` (detail in `docs/ledger_notes.md`). Done in 73159cda (2026-10-29).
