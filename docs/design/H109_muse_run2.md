@@ -260,3 +260,5 @@ Append one dated entry each time you stop: done (IDs and SHAs), shelved
   release guards ok, format scan ok; PR Validate and
   Compliance Matrix green on 4533cb4. H111 closed in
   LEDGER.md. Nothing in flight; Tier D still awaits Levi.
+
+- H112 follow-up (2026-10-29, muse 01a189f7): a complete code now focuses the Join row itself (SidePanel.focus_row, hopnbop 2506f61); before, focus_next_row stepped one row down from the focused row, landing on the next keyboard row for keyboard entry and the first keyboard row for typed entry. Tests and the H56 probe assert the focused row; PR Validate green.
