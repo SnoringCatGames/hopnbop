@@ -148,7 +148,7 @@ func _on_request_failed(scope: String, error: String) -> void:
 	# for the next explicit save instead of burning retries.
 	_set_save_dirty(scope, true)
 	if _is_permanent_save_error(error):
-		push_warning(
+		G.log.warning(
 			"SettingsCloudSync: cloud save for %s rejected "
 			% scope
 			+ "permanently (%s); keeping local settings"
@@ -156,7 +156,7 @@ func _on_request_failed(scope: String, error: String) -> void:
 		return
 	var attempts: int = _save_retry_counts.get(scope, 0)
 	if attempts >= _SAVE_RETRY_DELAYS_SEC.size():
-		push_warning(
+		G.log.warning(
 			"SettingsCloudSync: cloud save for %s failed "
 			% scope
 			+ "after retries (%s); keeping local settings"
