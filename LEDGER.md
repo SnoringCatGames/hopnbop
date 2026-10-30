@@ -53,14 +53,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   Claude's 2026-10-29 entry.
 - **H56** · Controller players cannot enter codes (M; batch 4;
   `docs/design/H37_systems_audit.md` 3.2)
-- **H86** · Script and engine errors that do not crash are never
-  reported (CR6) (S to M; batch 5; `docs/design/H37_systems_audit.md`
-  3.4)
 - **H87** · A dedicated server's fatal error or engine crash is never
   reported (CR1, CR7) (M; batch 5; `docs/design/H37_systems_audit.md`
   3.4)
-- **H90** · Failed cloud saves are dropped (ST2, ST3) (M; batch 5;
-  `docs/design/H37_systems_audit.md` 3.4)
 - **H77** · Land the H37 probes as tests, each with its fix (XS each;
   batch 6; `docs/design/H37_systems_audit.md` section 4 step 2)
   Landed 2026-10-29: ghost-ticket probe (SP28), account probe
@@ -131,6 +126,8 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H86** · Engine and script errors reach the crash reporter once per signature (warnings and exit noise skipped); SP61 split the server cap first. Done in 57c41d3, platform e5ae4e6 (2026-10-29).
+- **H90** · Failed cloud saves retry (permanent rejections do not) and settings merge per key. Done in ad7de6a (2026-10-29).
 - **H54** · The notification poll froze on the oldest 50 rows; cursor poll, socket-down only, persisted dedup, server prune (SP40). Done in c0d07f1, platform 078d9b8 (2026-10-29).
 - **H26** · Respawned levels got auto-generated names and replication errors; spawns now get unique names. Done in 02e1d75 (2026-10-29).
 - **H5** · Podium bunnies never animated: a stopped animator swallowed the delayed replay, and the paused tree froze the rest. Done in b1c1149 (2026-10-29).
