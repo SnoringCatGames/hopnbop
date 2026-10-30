@@ -27,6 +27,14 @@ const _AT_REST_VELOCITY_THRESHOLD := 50.0
 @export var _bunny_animator_scene: PackedScene
 
 var _was_floor_skid_condition := false
+# Water and floor states the splash and landing-skid effects
+# have already consumed (H6). surfaces.previous_bitmask lags
+# the current frame (it comes from the rollback buffer), so
+# the just_* getters can read true twice for one transition;
+# these local bits fire each transition exactly once, and a
+# resimulation (which returns early) never re-fires it.
+var _effects_was_in_water := false
+var _effects_was_on_floor := false
 var _suppress_landing_skid := false
 var _walk_sound_frame_counter := 0
 
@@ -362,6 +370,7 @@ func _update_splashes() -> void:
 		return
 
 	if state_from_server.is_dead:
+		_effects_was_in_water = surfaces.is_in_water
 		return
 
 	if (
@@ -372,7 +381,7 @@ func _update_splashes() -> void:
 		return
 
 	# Entering water.
-	if surfaces.just_entered_water:
+	if surfaces.is_in_water and not _effects_was_in_water:
 		G.level.splash_manager.spawn_splash(
 			Vector2(
 				global_position.x,
@@ -382,7 +391,7 @@ func _update_splashes() -> void:
 		play_sound("splash")
 
 	# Exiting water (including jumping out).
-	if surfaces.just_exited_water:
+	if not surfaces.is_in_water and _effects_was_in_water:
 		G.level.splash_manager.spawn_splash(
 			Vector2(
 				global_position.x,
@@ -390,6 +399,8 @@ func _update_splashes() -> void:
 			&"exit_water",
 		)
 		play_sound("splash")
+
+	_effects_was_in_water = surfaces.is_in_water
 
 
 func _update_walk_sounds() -> void:
@@ -434,11 +445,13 @@ func _update_skids() -> void:
 
 	if state_from_server.is_dead:
 		_was_floor_skid_condition = false
+		_effects_was_on_floor = surfaces.is_attaching_to_floor
 		return
 
 	if (Netcode.frame_driver
 			.is_match_start_countdown_active):
 		_was_floor_skid_condition = false
+		_effects_was_on_floor = surfaces.is_attaching_to_floor
 		return
 
 	if (
@@ -465,11 +478,14 @@ func _update_skids() -> void:
 		):
 			_suppress_landing_skid = false
 
-	# Landing skid (bidirectional).
-	if (
-		surfaces.just_left_air
-		and surfaces.is_attaching_to_floor
-	):
+	# Landing skid (bidirectional). Consumed once per
+	# landing (H6), like the splashes above.
+	var just_landed := (
+		surfaces.is_attaching_to_floor
+		and not _effects_was_on_floor
+	)
+	_effects_was_on_floor = surfaces.is_attaching_to_floor
+	if just_landed:
 		if not _suppress_landing_skid:
 			G.level.skid_manager.spawn_skid(
 				global_position,
