@@ -94,7 +94,10 @@ GUT (vendored at `addons/gut/`, **9.7.1**) with tests in
 `res://test/`. Run specific files rather than directories
 (directory runs sometimes miss tests), always with `-gexit`:
 `godot --headless -s --path . addons/gut/gut_cmdln.gd
--gtest=res://test/unit/<area>/test_<name>.gd -gexit`.
+-gtest=res://test/unit/<area>/test_<name>.gd -gexit`. On Windows,
+run `Godot_v4.7.2-stable_win64_console.exe` instead: the `godot.exe`
+on PATH is the GUI build, which prints nothing to PowerShell and
+exits 0.
 
 **GUT is version-matched to the engine; keep them in lockstep.** A
 mismatch does not fail loudly: GUT reports "Nothing was run" and
