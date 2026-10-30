@@ -188,14 +188,12 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   L; `docs/design/H37_systems_audit.md` section 4 step 7)
 - **H78** · Golden screenshots (build item 7) (M;
   `docs/design/H37_systems_audit.md` 2.2, section 4 step 7)
-- **H84** · Test fixtures log "no animation 'Rest'" 37 times per run.
-  exec-a (seen in every run). Fix: give the fixtures a `Rest` animation,
-  or stop playing it (XS; `docs/design/H37_systems_audit.md` 3.5 list)
 - **H100** · Level art (T15, T28, T14) (L each;
   `docs/design/H37_systems_audit.md` section 5)
 
 ## Done
 
+- **H84** · Test fixtures log "no animation 'Rest'" 37 times per run. exec-a (seen in every run). Done in 0e50353 (2026-10-29).
 - **H46** · `test_network_connector.gd` crashed on exit. mm: crashed in 1 of 3 runs. Closed without a fix 2026-10-29: 10 consecutive runs of the file pass with exit 0 and no crash; the exit-time leak lines (199 ObjectDB instances, 81 resources) are identical in unrelated suites, so they are engine headless noise, not something this test leaves behind. Done in 54c5859 (2026-10-29).
 - **H35** · `test_party_matchmaking_context.gd` fails 7 of 11 tests in a full `-gdir=res://test/unit -ginclude_subdirs` run, passes alone (state bleed); pr-validate's per-file loop doesn't hit it. Done in 8d2a7fe (2026-10-29).
 - **H65** · Tests for the sign-out router's party reset and avatar-cache clear. acct (no test). Done in 7e17dce (2026-10-29).
