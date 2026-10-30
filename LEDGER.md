@@ -34,9 +34,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H103** · Muse works the agreed backlog tier by tier (H37 batches 2 to
   7, platform inbox, Pulumi pins, HG1) while Claude is near its limit.
   - owner: muse 01a188af-3ed2-72f1-8241-348fdaf97e78
-  - branch: mainline in every repo; last commit: platform 22055ff (SP43), ledger 752c4d3
+  - branch: mainline in every repo; last commit: platform ac95413 (H23)
   - evidence: `git log --grep Muse-Session` here and in both submodules; shelved patches in `.claude/probes/<ID>/wip.patch`
-  - next: Tier 1 item 3 (H23)
+  - next: Tier 1 item 4 (SP47)
   - brief: `docs/design/H103_muse_backlog.md` (section 5 is the handoff log)
 
 ## Next
@@ -152,9 +152,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H22** · Log-out first tells the server the player went offline, so
   with no connection the consent screen appears only after that times
   out (about 9 s measured).
-- **H23** · The notification socket stops on any failed sign-in result,
-  transient refresh failures included, until the next successful
-  refresh; a failed `delete_account` (DEL-2, SP41) is one more trigger.
 - **H24** · `Player._enter_tree` registers the player before its id is
   set, leaving a stale `players_by_id[0]` entry on the server (the code
   comment says the id is set first). Low.
@@ -215,6 +212,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H23** · The notification socket stops on any failed sign-in result, transient refresh failures included, until the next successful refresh; a failed `delete_account` (DEL-2, SP41) is one more trigger. Done in ac95413 (2026-10-29).
 - **H41** · Session validation enforced: SP27 tokens + netcode gate + derived backend ids (closes H17, with H43). Done in 6b399d03, netcode 6ae6765, platform 886aa10 (2026-10-20).
 - **H43** · Reconnect stale-peer race: re-claim transfers ownership, stale peer disconnected deferred. Done in 6b399d03 (2026-10-20).
 - **H42** · Disconnected players demoted on every match end (G2.1). Done in 6b399d03 (2026-10-20).
