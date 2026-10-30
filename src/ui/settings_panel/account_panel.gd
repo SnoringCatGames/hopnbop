@@ -189,12 +189,10 @@ func _add_export_data_row() -> void:
 
 func _add_log_out_row() -> void:
 	# For a guest this is forget-this-device: log_out clears
-	# the local identity either way (H58).
-	if (
-		not Platform.token_store.is_token_valid()
-		and not Platform.token_store.is_anonymous
-	):
-		return
+	# the local identity either way (H58). Always offered, even
+	# with an expired token (H63): the player still has to be
+	# able to forget this device, and log_out clears locally
+	# when the server announce fails.
 	if PlatformAuthApiClient.get_platform_provider() >= 0:
 		return
 
