@@ -72,8 +72,12 @@ func log_out() -> void:
 	# Tell the platform we're going offline before dropping the token:
 	# announce_offline needs a live session to write the row as. Without
 	# it the player lingers on friends' lists until the runtime's
-	# staleness window expires.
-	await Platform.presence.announce_offline()
+	# staleness window expires. Start it but do not wait (H22): on a
+	# dead connection it completes only at the request timeout, and
+	# the consent screen must not sit behind that. The session is
+	# captured before the token clears, and the staleness TTL is
+	# the backstop if the notice never lands.
+	Platform.presence.announce_offline()
 	Platform.token_store.clear_tokens()
 	_forget_account(tr("TOAST.LOGGED_OUT"), ToastOverlay.Type.INFO)
 

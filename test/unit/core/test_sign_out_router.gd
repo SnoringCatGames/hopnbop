@@ -69,6 +69,21 @@ class FakeNakamaClient extends NakamaClient:
 		return NakamaAPI.ApiRpc.new()
 
 
+## A Nakama client whose RPC never answers, as on a dead
+## connection (H22).
+class HangingNakamaClient extends FakeNakamaClient:
+	signal _hang_forever
+
+	func rpc_async(
+		_p_session: NakamaSession,
+		p_id: String,
+		_p_payload = null,
+	):
+		rpc_ids.append(p_id)
+		await _hang_forever
+		return NakamaAPI.ApiRpc.new()
+
+
 var _router: SignOutRouter
 var _client: PlatformAuthApiClient
 var _nakama: FakeNakamaClient
@@ -277,6 +292,24 @@ func test_log_out_announces_offline_first() -> void:
 	await _router.log_out()
 
 	assert_eq(_nakama.rpc_ids, [_ANNOUNCE_OFFLINE_RPC])
+
+
+func test_log_out_does_not_wait_for_the_offline_notice() -> void:
+	var hanging := HangingNakamaClient.new()
+	Platform.nakama_client = hanging
+
+	_router.log_out()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	assert_eq(
+		hanging.rpc_ids, [_ANNOUNCE_OFFLINE_RPC],
+		"offline notice started",
+	)
+	assert_true(
+		_store.refresh_token.is_empty(),
+		"log-out finished without waiting for the notice",
+	)
 
 
 func test_log_out_stops_the_friends_poller_and_its_socket() -> void:
