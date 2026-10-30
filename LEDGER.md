@@ -100,8 +100,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   7; `docs/design/H37_systems_audit.md` section 5)
 - **H98** · Finish T43; verify, then fix, T19 (M; batch 7;
   `docs/design/H37_systems_audit.md` section 5)
-- **H99** · Finish T48 (M; batch 7; `docs/design/H37_systems_audit.md`
-  section 5)
 
 ## Residuals (known, not fixed)
 
@@ -182,6 +180,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H99** · Finish T48 (M; batch 7; `docs/design/H37_systems_audit.md` section 5). Done in f10044e (2026-10-29).
 - **H68** · Legal parity is checked only by pr-validate, which never runs on push (C2); `edgegap_app_version` is not in the sync's mustSurvive (C3) (S; batch 6; `docs/design/H37_systems_audit.md` 3.4). Done in e5c92fb (2026-10-29).
 - **H30** · `scripts/agent/run-game.ps1 -Backend` accepts a URL with no port; the driver then refuses it with exit 3. Done in 32de8a0 (2026-10-29).
 - **H73** · Harness friction: loopback runs warn of production; client 2 starts 30 s late; screenshots go black 0.7 s after a screen change (S; batch 6; `docs/design/H37_systems_audit.md` 1.2, 4 step 3). Done in 32de8a0 (2026-10-29).
