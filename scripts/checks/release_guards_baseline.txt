@@ -1,0 +1,21 @@
+# Known bare log calls in src/ (H99 baseline). One entry per call:
+# path + call kind. Shrink this file when you route one through
+# the logging utility; never grow it.
+src/core/crash_reporter.gd: print(
+src/core/level_registry.gd: push_warning(
+src/core/level_registry.gd: push_warning(
+src/core/local_settings.gd: push_warning(
+src/core/main.gd: push_warning(
+src/core/party_manager.gd: push_warning(
+src/core/session_provider.gd: push_error(
+src/core/session_provider.gd: push_error(
+src/core/session_provider.gd: push_error(
+src/core/session_provider.gd: push_error(
+src/core/settings.gd: print(
+src/objects/butterfly/butterfly.gd: push_warning(
+src/objects/butterfly/butterfly.gd: push_warning(
+src/objects/butterfly/butterfly.gd: push_warning(
+src/objects/gore/gore_manager.gd: push_warning(
+src/ui/hud/player_overhead_labels.gd: print(
+src/ui/screen_transition.gd: print(
+src/ui/settings_panel/link_account_row.gd: push_warning(

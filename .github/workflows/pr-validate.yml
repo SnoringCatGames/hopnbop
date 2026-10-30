@@ -140,6 +140,16 @@ jobs:
           fi
           echo "ok: legal_version matches ($yaml_v)"
 
+  release-guards:
+    name: Release guards (RPC channels, logging)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Run release guards (H99)
+        run: python3 scripts/checks/release_guards.py
+
   godot-tests:
     name: GUT unit + integration
     runs-on: ubuntu-latest
