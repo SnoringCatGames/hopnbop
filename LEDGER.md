@@ -34,9 +34,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H103** · Muse works the agreed backlog tier by tier (H37 batches 2 to
   7, platform inbox, Pulumi pins, HG1) while Claude is near its limit.
   - owner: muse 01a1896a (took over 2026-10-29 after 01a188af was cancelled mid-turn)
-  - branch: mainline in every repo; last commit: 9da8a21 (H18+H31)
+  - branch: mainline in every repo; last commit: b5f6446 (H66)
   - evidence: `git log --grep Muse-Session` here and in both submodules; shelved patches in `.claude/probes/<ID>/wip.patch`
-  - next: Tier 5: H66+RN7+SP49, then H29
+  - next: Tier 5: H29, then H95
   - brief: `docs/design/H103_muse_backlog.md` (section 5 is the handoff log)
 
 ## Next
@@ -77,9 +77,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H83** · `release.yml` has never run and no `v*` tag exists. Waits on
   Levi (report section 7 row 13) (S; batch 6;
   `docs/design/H37_systems_audit.md` 1.1)
-- **H66** · V17: 22 broken format strings, 17 here (one is the
-  refused-pause ERROR, `game_panel.gd:1854`); RN7 and SP49 hold the rest
-  (S-M; batch 7; `docs/design/H37_systems_audit.md` 5, 3.3)
+
 - **H93** · The overhead label offset (T29). After H92 (S to M; batch 7;
   `docs/design/H37_systems_audit.md` section 5 row 4)
 - **H91** · A short input grace on the game-over screen (T79). After H92
@@ -160,6 +158,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H66** · V17: 22 broken format strings, 17 here; RN7 and SP49 held the rest. Done in b5f6446, netcode a7b001d, platform 6987291 (2026-10-29).
 - **H18** · Raw SDK error text reached players in party, delete, export and friends toasts. Done in 9da8a21 (2026-10-29).
 - **H31** · The credits screen's labels lacked translation keys, so other locales showed English. Done in 9da8a21 (2026-10-29).
 - **H19** · After a recoverable matchmaking failure the loading screen offered only "Try Again", with no way back to the lobby. Done in 70f4742 (2026-10-29).
