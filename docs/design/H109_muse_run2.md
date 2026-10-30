@@ -241,3 +241,22 @@ Append one dated entry each time you stop: done (IDs and SHAs), shelved
   PR Validate and Compliance Matrix green on head. Shelved:
   none. In flight: none. Next: Levi's Tier D decisions;
   H104 is Claude's review of runs 1 and 2.
+
+- 2026-10-29 (stop), muse 01a189f7: H111 follow-up done.
+  The H56 keyboard could not enable Join: TextInputRow.set_text
+  assigned LineEdit.text, which emits no text_changed in
+  4.7.2 and resets the caret to 0. set_text now puts the
+  caret at the end and calls _on_text_changed (hopnbop
+  4533cb4); _KEYBOARD_ROWS is Array[String]. New panel test
+  test_join_by_code_keyboard.gd types 234567 through the
+  keyboard rows, asserts Join enables, deletes one symbol,
+  asserts it disables. The H56 probe now types the code
+  with direction taps and asserts Join is enabled (26/26
+  steps, screenshot code-typed.png shows the full code and
+  the enabled Join row). Netcode 7c58d2c put the unpause
+  doc line back above _server_execute_unpause and restored
+  test_frame_driver.gd's final newline; Parse check green.
+  Gates: full per-file GUT 90 files / 728 tests / 0 failed,
+  release guards ok, format scan ok; PR Validate and
+  Compliance Matrix green on 4533cb4. H111 closed in
+  LEDGER.md. Nothing in flight; Tier D still awaits Levi.

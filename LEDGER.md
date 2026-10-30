@@ -42,22 +42,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - next: nothing in this brief; Tier D docs await Levi (H56
     acceptance and icon, H87, H72, H98), H104 is Claude's review
   - brief: `docs/design/H109_muse_run2.md`
-- **H111** · H56's on-screen keyboard can't enable Join:
-  `TextInputRow.set_text` sets `LineEdit.text`, which emits no
-  `text_changed` in Godot 4.7.2, so `_on_code_changed` never runs and
-  Join stays disabled (the caret also resets to 0). Plus a doc comment
-  netcode 9c3c0b5 displaced.
-  - owner: muse 01a189f7 (run 2, paseo `18c92be`), sent by claude
-    0cfd9cf1 on 2026-10-29 21:50 PT
-  - branch: mainline (hopnbop, netcode); last commit: 8cec88a1
-  - evidence: `.claude/probes/H111/le_probe/` (`godot --headless
-    --path <dir> -s probe.gd` prints `text_changed fired=[]`,
-    `caret=0`); the H56 probe only takes a screenshot
-  - next: `set_text` moves the caret to the end and calls
-    `_on_text_changed`; a panel test types six symbols and checks
-    Join; the H56 probe types a code; netcode: the unpause doc line
-    goes back above `_server_execute_unpause`
-  - brief: this item; run context `docs/design/H109_muse_run2.md`
 
 
 ## Next
@@ -153,6 +137,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H111** · H56's keyboard could not enable Join: `set_text` assigned `LineEdit.text`, which emits no `text_changed`; it now runs `_on_text_changed` with the caret at the end. Panel test types a code and checks Join; the H56 probe types one with direction taps. Netcode half restored the unpause doc line and a final newline. Done in 4533cb4, netcode 7c58d2c (2026-10-29).
 - **H86** · Engine and script errors reach the crash reporter once per signature (warnings and exit noise skipped); SP61 split the server cap first. Done in 57c41d3, platform e5ae4e6 (2026-10-29).
 - **H90** · Failed cloud saves retry (permanent rejections do not) and settings merge per key. Done in ad7de6a, guards fix c1590c7 (2026-10-29).
 - **H54** · The notification poll froze on the oldest 50 rows; cursor poll, socket-down only, persisted dedup, server prune (SP40). Done in c0d07f1, platform 078d9b8 (2026-10-29).
