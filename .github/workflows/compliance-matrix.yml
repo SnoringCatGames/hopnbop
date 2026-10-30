@@ -76,3 +76,171 @@ jobs:
           Write-Host "(Containers were already torn down by the smoke script.)"
           Write-Host "Re-run with -KeepStack locally to inspect:"
           Write-Host "  pwsh scripts/local-smoke-test.ps1 -KeepStack"
+
+  # H108: the released client's suite against HEAD's runtime. The
+  # ephemeral job above only ever runs HEAD's suite, so a runtime
+  # change that breaks shipped players would otherwise land green.
+  compliance-released:
+    name: Released client against HEAD runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          # Full history: the released commit is derived below.
+          fetch-depth: 0
+
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+
+      - name: Verify Docker
+        run: docker version
+
+      - name: Derive the released commit
+        id: released
+        shell: pwsh
+        run: |
+          $line = git log --format="%H`t%s" | Where-Object {
+            ($_ -split "`t", 2)[1] -match '^Release \d+\.\d+\.\d+'
+          } | Select-Object -First 1
+          if (-not $line) {
+            Write-Error "No 'Release <x.y.z>' commit in history."
+            exit 1
+          }
+          $sha, $subject = $line -split "`t", 2
+          Write-Host "Released client: $subject ($sha)"
+          "sha=$sha" >> $env:GITHUB_OUTPUT
+
+      - name: Check out the released client
+        shell: pwsh
+        run: |
+          git worktree add --detach released-client `
+            ${{ steps.released.outputs.sha }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git -C released-client submodule update `
+            --init --recursive
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pwsh -NoProfile -File `
+            released-client/scripts/setup-platform-addon.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Start HEAD stack
+        id: stack
+        shell: pwsh
+        run: |
+          # -KeepStack also runs HEAD's suite; a red HEAD run
+          # fails here before the released suite starts.
+          $smoke = & pwsh scripts/local-smoke-test.ps1 `
+            -KeepStack 2>&1
+          $code = $LASTEXITCODE
+          $smoke | Out-File smoke-head.log
+          $smoke | Out-Host
+          if ($code -ne 0) { exit $code }
+          $text = $smoke -join "`n"
+          $url = [regex]::Match(
+            $text, 'Leaving the stack up .* at (\S+)\.').Groups[1].Value
+          $proj = [regex]::Match(
+            $text, 'docker compose -p (\S+)').Groups[1].Value
+          if (-not $url -or -not $proj) {
+            Write-Error "Could not parse the stack address."
+            exit 1
+          }
+          $console = (docker compose -p $proj `
+            -f infra/dev/docker-compose.dev.yml port nakama 7351)
+          $consolePort = ($console -split ':')[-1].Trim()
+          "url=$url" >> $env:GITHUB_OUTPUT
+          "project=$proj" >> $env:GITHUB_OUTPUT
+          "console=http://127.0.0.1:$consolePort" >> $env:GITHUB_OUTPUT
+
+      - name: Run the released suite
+        shell: pwsh
+        env:
+          PLATFORM_API_URL: ${{ steps.stack.outputs.url }}
+          NAKAMA_CONSOLE_URL: ${{ steps.stack.outputs.console }}
+        run: |
+          $released = "released-client"
+          $suiteDir = Join-Path $released `
+            "addons/snoringcat_platform_client/test/compliance"
+          $declared = (Get-ChildItem -LiteralPath $suiteDir `
+            -Filter "test_*.gd" | ForEach-Object {
+              (Select-String -LiteralPath $_.FullName `
+                -Pattern '^func test_').Count
+            } | Measure-Object -Sum).Sum
+          $gameId = (Select-String -LiteralPath game.yaml `
+            -Pattern '^game_id:\s*(\S+)' |
+            Select-Object -First 1).Matches[0].Groups[1].Value
+          $userData = Join-Path $env:RUNNER_TEMP "h108-userdata"
+          New-Item -ItemType Directory -Force $userData | Out-Null
+          $env:APPDATA = $userData
+          $env:XDG_DATA_HOME = $userData
+          $env:PLATFORM_GAME_ID = $gameId
+          $env:NAKAMA_SERVER_KEY = "defaultkey"
+          $env:NAKAMA_HTTP_KEY = "defaulthttpkey"
+          $env:GAME_ADMIN_KEY = "defaultadminkey"
+          $env:NAKAMA_CONSOLE_USERNAME = "admin"
+          $env:NAKAMA_CONSOLE_PASSWORD = "devadmin"
+          $env:PLATFORM_COMPLIANCE_MODE = "live"
+          Remove-Item Env:ALLOW_PROD_COMPLIANCE `
+            -ErrorAction SilentlyContinue
+          godot --headless --path $released --import |
+            Out-File released-import.log
+          $cache = Join-Path $released `
+            ".godot/global_script_class_cache.cfg"
+          if (-not (Select-String -LiteralPath $cache `
+                -Pattern '"GutTest"' -Quiet)) {
+            Get-Content released-import.log | Out-Host
+            Write-Error "Released import registered no GutTest."
+            exit 1
+          }
+          $junit = Join-Path $env:RUNNER_TEMP "h108-results.xml"
+          $gut = & godot --headless -s --path $released `
+            addons/gut/gut_cmdln.gd `
+            -gdir=res://addons/snoringcat_platform_client/test/compliance `
+            -gexit -gdisable_colors "-gjunit_xml_file=$junit" `
+            -gpost_run_script=res://test/hooks/fail_on_nakama_traffic.gd 2>&1
+          $gut | Out-File released-gut.log
+          $gut | Select-Object -Last 12 | Out-Host
+          [xml]$xml = Get-Content -LiteralPath $junit
+          $cases = @($xml.SelectNodes("//testcase"))
+          $failed = @($xml.SelectNodes("//testcase[failure]") |
+            ForEach-Object { "$($_.classname)::$($_.name)" })
+          Write-Host ("Released suite: $declared declared, " +
+            "$($cases.Count) reported, $($failed.Count) failing.")
+          if ($cases.Count -ne $declared) {
+            Write-Error "Reported count differs from declared."
+            exit 1
+          }
+          $known = @(Get-Content `
+            .github/compliance/released-known-failures.txt |
+            Where-Object { $_ -and -not $_.StartsWith("#") } |
+            ForEach-Object { $_.Trim() })
+          $unexpected = @($failed | Where-Object {
+            $known -notcontains $_ })
+          $stale = @($known | Where-Object {
+            $failed -notcontains $_ })
+          foreach ($id in $stale) {
+            Write-Warning ("Allowlist entry no longer fails " +
+              "(drop it from released-known-failures.txt): $id")
+          }
+          if ($unexpected.Count -gt 0) {
+            foreach ($id in $unexpected) {
+              Write-Host "UNEXPECTED FAILURE: $id"
+            }
+            Write-Error ("$($unexpected.Count) released-client " +
+              "failure(s) are not classified in H108_compat.md.")
+            exit 1
+          }
+          Write-Host "Released suite: no unclassified failures."
+
+      - name: Tear down the stack
+        if: always()
+        shell: pwsh
+        run: |
+          $proj = "${{ steps.stack.outputs.project }}"
+          if ($proj) {
+            docker compose -p $proj `
+              -f infra/dev/docker-compose.dev.yml down -v
+          }

@@ -1,0 +1,8 @@
+# Released-client compliance failures that are intended changes,
+# one test id per line (file::test). Classified in
+# docs/design/H108_compat.md (H108). The compliance-released job
+# fails on any failure not listed here.
+addons/snoringcat_platform_client/test/compliance/test_account_delete.gd::test_delete_clears_identifying_data_at_once
+addons/snoringcat_platform_client/test/compliance/test_account_delete_cascade_surfaces.gd::test_delete_account_clears_all_state_surfaces
+addons/snoringcat_platform_client/test/compliance/test_data_export.gd::test_export_includes_every_category
+addons/snoringcat_platform_client/test/compliance/test_party_to_matchmaking.gd::test_party_pair_matched_into_same_mock_deploy
