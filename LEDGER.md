@@ -34,9 +34,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H103** · Muse works the agreed backlog tier by tier (H37 batches 2 to
   7, platform inbox, Pulumi pins, HG1) while Claude is near its limit.
   - owner: muse 01a1896a (took over 2026-10-29 after 01a188af was cancelled mid-turn)
-  - branch: mainline in every repo; last commit: 3600938 (H63)
+  - branch: mainline in every repo; last commit: 9368b7a (H21)
   - evidence: `git log --grep Muse-Session` here and in both submodules; shelved patches in `.claude/probes/<ID>/wip.patch`
-  - next: Tier 4: H21, then H19
+  - next: Tier 4: H19, then H18+H31
   - brief: `docs/design/H103_muse_backlog.md` (section 5 is the handoff log)
 
 ## Next
@@ -120,8 +120,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H19** · After a recoverable matchmaking failure the loading screen
   offers only "Try Again", with no way back to the lobby. (Agent
   abdbfdf9.) H37 (10-14): still true.
-- **H21** · A party follower whose join fails gets two toasts for it.
-  (Agent abdbfdf9.) H37 (10-14): still true.
 - **H22** · Log-out first tells the server the player went offline, so
   with no connection the consent screen appears only after that times
   out (about 9 s measured).
@@ -171,6 +169,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H21** · A party follower whose join failed got two toasts for it. Done in 9368b7a (2026-10-29).
 - **H63** · The Log Out row was hidden when the access token had expired. Done in 3600938 (2026-10-29).
 - **H27** · Local mode logged "RPC on yourself is not allowed" for `_server_rpc_ping` and `_rpc_init`. Done in netcode d13ec20, f5f2268 (2026-10-29).
 - **H20** · Cancelling matchmaking, or a fatal matchmaking failure, returned to a lobby without the player's bunny. Done in d1dafc5 (2026-10-29).
