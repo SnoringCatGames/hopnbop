@@ -42,6 +42,20 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - next: nothing in this brief; Tier D docs await Levi (H56
     acceptance and icon, H87, H72, H98), H104 is Claude's review
   - brief: `docs/design/H109_muse_run2.md`
+- **H112** · H111 follow-up: with the H56 keyboard on, a complete code
+  moves focus to the next row instead of Join. `input_complete` calls
+  `SidePanel.focus_next_row()`, which steps down from the focused row:
+  keyboard entry lands on the ABCD row (H56 probe screenshot after
+  4533cb4), typed entry on the first keyboard row (inferred).
+  - owner: muse 01a189f7 (paseo `18c92be`), sent by claude 0cfd9cf1 on
+    2026-10-29 22:20 PT
+  - branch: mainline; last commit: 2822b3a8
+  - evidence: `.claude/probes/H112/code-typed.png` (focus box on
+    `[A] B C D` after typing 234567); probe
+    `.claude/probes/H56/code-keyboard.json`
+  - next: focus `_join_row` on `input_complete`; the panel test and the
+    H56 probe assert the focused row after keyboard and typed entry
+  - brief: this item; run context `docs/design/H109_muse_run2.md`
 
 
 ## Next
