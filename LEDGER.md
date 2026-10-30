@@ -128,9 +128,8 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H52** · Inert `game.yaml` `matchmaker_rules` fields
   (`ticket_expiry_seconds`, `cross_play`, `rules`): delete or wire them,
   fix the comment (XS; batch 3; `docs/design/H37_systems_audit.md` 3.3)
-- **H80** · Textures orphaned by b998107d, `foobar.png` once T14 is
-  answered, orphan `.import` files (XS; `docs/design/H37_systems_audit.md`
-  2.2, section 5, and V15 at row 709)
+- **H80** · `foobar.png` once T14 is answered (the orphaned textures
+  and `.import` files landed in 141e2fe)
 - **H105** · Nothing prunes superseded game-server images on the prod
   host: disk +1.72 GB on 10-20 (v30, v31 pulled by `sync-game-config.ps1`),
   +0.86 GB on 10-13. Run `docker system df` there, then add a prune
