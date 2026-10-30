@@ -44,6 +44,11 @@ class TestForwardingLogic:
 
 	func after_each():
 		ArrayPool.clear_all_pools()
+		# setup_mock_level installed mocks in the G autoload
+		# (level, match_state, client_session, game_panel);
+		# leaving them behind breaks later suites that read
+		# G.game_panel as "not ready yet" (H35).
+		TestEnvironmentMock.cleanup_mock_level()
 
 
 	func test_caches_forwarded_input_on_ready():
