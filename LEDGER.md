@@ -64,9 +64,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H87** · A dedicated server's fatal error or engine crash is never
   reported (CR1, CR7) (M; batch 5; `docs/design/H37_systems_audit.md`
   3.4)
-- **H88** · Nightly smoke makes a new account each run, and player
-  metrics count them (OP3; the workflow half) (S; batch 5;
-  `docs/design/H37_systems_audit.md` 3.5)
 - **H89** · The final match stats ride one unreliable RPC (S11) (S;
   batch 5; `docs/design/H37_systems_audit.md` 3.4)
 - **H90** · Failed cloud saves are dropped (ST2, ST3) (M; batch 5;
@@ -105,15 +102,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H7** · The check that keeps new spawns off other players can't see
   bunnies that are still blinking, so a respawn can land on one. Left
   alone as a player-versus-player rule.
-- **H9** · pr-validate's "GDScript formatter" job is a no-op: it logs
-  "not vendored; skipping" because `addons/gdscript_formatter` isn't in
-  the repo, though CLAUDE.md says it is.
 - **H10** · Android: run the game on the Pixel. Export preset done in
   4c04e908 (`--export-debug "Android" build/android/hopnbop.apk`
   builds). Left: install over USB, then a touch-input pass.
-- **H22** · Log-out first tells the server the player went offline, so
-  with no connection the consent screen appears only after that times
-  out (about 9 s measured).
 - **H26** · After a preview server hot-reload, levels get auto-generated
   names (`@Node2D@39`), so each client logs about 35 replication errors;
   it reaches players (H37 3.3, verified).
@@ -152,6 +143,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H22** · Log-out waited out the offline notice on dead connections; it no longer waits. Done in 85fa622 (2026-10-29).
+- **H88** · Nightly smoke left a new account every run; it reuses one probe account now. Done in 3acabe8 (2026-10-29).
+- **H9** · The no-op GDScript formatter CI job is deleted; no formatter is vendored. Done in 49143fb (2026-10-29).
 - **H8** · Spawned players entered the tree at the origin for one tick; they are positioned before `add_child` now. Done in 005e823 (2026-10-29).
 - **H6** · Splashes and landing skids fired twice per transition; effects now consume each transition once. Done in 1f1ff5d (2026-10-29).
 - **H24** · Server registered players under id 0 before assigning the real id; registration now waits for the id. Done in fc90a3c (2026-10-29).
