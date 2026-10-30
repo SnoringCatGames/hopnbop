@@ -154,6 +154,26 @@ static func redact(
 	return result
 
 
+## Exit-time engine noise (H28): leak and allocator lines
+## Godot prints while tearing down. They are not errors a
+## report could act on, and H86's engine logger must skip
+## them.
+const _EXIT_NOISE_MARKERS: Array[String] = [
+	"leaked at exit",
+	"still in use at exit",
+	"Pages in use exist at exit",
+	"instances were leaked at exit",
+	"RID allocations of type",
+]
+
+
+static func is_exit_noise(line: String) -> bool:
+	for marker in _EXIT_NOISE_MARKERS:
+		if marker in line:
+			return true
+	return false
+
+
 ## Returns the first non-empty line of text, trimmed.
 static func first_line(text: String) -> String:
 	for line in text.split("\n", false):

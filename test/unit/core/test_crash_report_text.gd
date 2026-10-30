@@ -369,3 +369,14 @@ func _base64url(text: String) -> String:
 		.replace("/", "_")
 		.replace("=", "")
 	)
+
+
+func test_exit_noise_is_recognized() -> void:
+	assert_true(CrashReportText.is_exit_noise(
+		"ERROR: 2 RID allocations of type 'PN13Renderer' leaked"))
+	assert_true(CrashReportText.is_exit_noise(
+		"ERROR: 82 resources still in use at exit"))
+	assert_true(CrashReportText.is_exit_noise(
+		"ERROR: Pages in use exist at exit in PagedAllocator"))
+	assert_false(CrashReportText.is_exit_noise(
+		"SCRIPT ERROR: Invalid call in lobby"))

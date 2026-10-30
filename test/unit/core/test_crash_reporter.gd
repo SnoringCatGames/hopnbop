@@ -715,3 +715,50 @@ func _remove_fixture_dir() -> void:
 			DirAccess.remove_absolute(path.path_join(file_name))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(_LOG_DIR))
 	DirAccess.remove_absolute(root)
+
+
+# ------------------------------------------------------------------
+# H86: the engine logger
+# ------------------------------------------------------------------
+
+
+func test_engine_logger_reports_an_error_once() -> void:
+	var logger := EngineErrorLogger.new(_reporter)
+	logger._log_error(
+		"", "res://src/lobby.gd", 12,
+		"SCRIPT ERROR: Invalid call", "",
+		false, Logger.ERROR_TYPE_ERROR, [])
+	logger._log_error(
+		"", "res://src/lobby.gd", 12,
+		"SCRIPT ERROR: Invalid call", "",
+		false, Logger.ERROR_TYPE_ERROR, [])
+
+	assert_eq(
+		_reporter.get_queued_entries().size(), 1,
+		"the same signature is queued once per run",
+	)
+
+
+func test_engine_logger_skips_warnings_and_exit_noise() -> void:
+	var logger := EngineErrorLogger.new(_reporter)
+	logger._log_error(
+		"", "res://src/lobby.gd", 12,
+		"WARNING: something mild", "",
+		false, Logger.ERROR_TYPE_WARNING, [])
+	logger._log_error(
+		"", "", 0,
+		"ERROR: 82 resources still in use at exit", "",
+		false, Logger.ERROR_TYPE_ERROR, [])
+
+	assert_eq(_reporter.get_queued_entries().size(), 0)
+
+
+func test_engine_logger_stops_when_the_reporter_exits() -> void:
+	_reporter.is_exiting = true
+	var logger := EngineErrorLogger.new(_reporter)
+	logger._log_error(
+		"", "res://src/lobby.gd", 12,
+		"SCRIPT ERROR: Invalid call", "",
+		false, Logger.ERROR_TYPE_ERROR, [])
+
+	assert_eq(_reporter.get_queued_entries().size(), 0)

@@ -96,6 +96,13 @@ var forced_role := ""
 ## read it.
 var send_attempt_count := 0
 
+## Set when this node leaves the tree: the engine logger
+## (H86) stops forwarding, so exit-time leak lines are
+## never reported.
+var is_exiting := false
+
+var _engine_logger: EngineErrorLogger
+
 var _entries: Array[Dictionary] = []
 var _handled_logs: Array[String] = []
 var _is_loaded := false
@@ -116,12 +123,23 @@ func _init() -> void:
 		_EDITOR_QUEUE_PATH if build_kind == _BUILD_EDITOR else _QUEUE_PATH)
 
 
+func _exit_tree() -> void:
+	is_exiting = true
+	if _engine_logger != null:
+		OS.remove_logger(_engine_logger)
+		_engine_logger = null
+
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	# GUT tests build their own reporters with fixture paths. This
 	# boot-time one must not read the test process's logs.
 	if TestEnvironmentDetector.is_running_in_test_env(self):
 		return
+	# Engine and script errors reach the reporter too
+	# (H86), not just G.log.error.
+	_engine_logger = EngineErrorLogger.new(self)
+	OS.add_logger(_engine_logger)
 	print(CrashReportText.format_build_marker(
 		build_kind, _get_game_version(), _get_protocol_version()))
 	var auth: PlatformAuthApiClient = Platform.auth
