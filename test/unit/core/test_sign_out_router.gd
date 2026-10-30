@@ -114,6 +114,9 @@ func before_each() -> void:
 
 
 func after_each() -> void:
+	G.party_manager.current_party = {}
+	G.party_manager.pending_invites.clear()
+	G.profile_image_cache.clear()
 	Platform.register_subsystem("auth", _original_auth)
 	_original_auth.set_process(_was_original_auth_processing)
 	_client.free()
@@ -292,6 +295,29 @@ func test_log_out_clears_the_old_session_caches() -> void:
 
 	assert_true(Platform.friends.cached_friends.is_empty())
 	assert_true(Platform.presence.cached_online_ids.is_empty())
+
+
+func test_log_out_resets_the_party() -> void:
+	G.party_manager.current_party = {
+		"party_id": "party-1", "leader_id": _TEST_PLAYER_ID,
+	}
+	G.party_manager.pending_invites.append({"party_id": "party-2"})
+
+	await _router.log_out()
+
+	assert_true(G.party_manager.current_party.is_empty(),
+		"party forgotten")
+	assert_true(G.party_manager.pending_invites.is_empty(),
+		"invites forgotten")
+
+
+func test_log_out_clears_the_avatar_cache() -> void:
+	G.profile_image_cache._textures[42] = Texture2D.new()
+
+	await _router.log_out()
+
+	assert_true(G.profile_image_cache._textures.is_empty(),
+		"cached avatars forgotten")
 
 
 func test_account_deletion_stops_the_friends_poller_and_its_socket() -> void:
