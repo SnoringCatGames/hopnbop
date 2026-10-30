@@ -96,11 +96,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 - **H98** · Finish T43; verify, then fix, T19 (M; batch 7;
   `docs/design/H37_systems_audit.md` section 5)
-- **H108** · Released-client axis: 0.56.0's suite ran against HEAD's
-  runtime 2026-10-29 (76/80; the 4 failures are intended changes, see
-  `docs/design/H108_compat.md`) and `compliance-matrix.yml` gained a
-  `compliance-released` job. Closes when that job runs green; rerun
-  the released suite before every Tier C runtime push (H109).
+
 
 ## Residuals (known, not fixed)
 
@@ -149,11 +145,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H106** · Local mode also logs "RPC on yourself is not allowed" for
   `_rpc_server_update_critter_stats` (seen in an offline-move-jump log,
   2026-10-29; not one of H27's named pair). Same fix shape when touched.
-- **H107** · Compliance Matrix's two failures are diagnosed (detail in
-  `docs/ledger_notes.md`): a PSGallery miss with no retry, and a lost
-  `Platform` init when `settings.tres` failed to load. Fixes (retry;
-  smoke sets `PLATFORM_GAME_ID` from `game.yaml`) await local-smoke
-  exit 0 and the next green matrix and SDK CI runs.
+
 
 ## Ideas (not scheduled)
 
@@ -169,6 +161,8 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H108** · Released client's suite against HEAD's runtime, locally and as the `compliance-released` CI job (76/80; 4 intended failures). Done in c11191e8, 51d7eb8b (2026-10-29).
+- **H107** · Compliance Matrix's two failures: PSGallery retry and deterministic `PLATFORM_GAME_ID` (detail in `docs/ledger_notes.md`). Done in 73159cda (2026-10-29).
 - **H103** · The Muse backlog run (`docs/design/H103_muse_backlog.md`): Tiers 0 to 6 landed except SP32's runtime half, SP59's Caddy zone and HG1 (now in hex-grid's ledger); the review is H104. Done in 9fc089ef (2026-10-29).
 - **H80** · Textures orphaned by b998107d, plus orphan `.import` files including `level_4_combined*.png.import`. Done in 141e2fe (2026-10-29).
 - **H97** · Finish T12; delete the 9 Stale notes (with SP53). Done in eb80b83, platform 1caaf04 (2026-10-29).
