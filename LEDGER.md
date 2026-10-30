@@ -74,9 +74,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   (SP35). Still blocked on fixes outside this run: settings-echo
   (H67), declare-validation (H17), port-leak Go test (SP26),
   account PI-2 and SO-1 (H15), verify scenarios (H72 held).
-- **H73** · Harness friction: loopback runs warn of production; client 2
-  starts 30 s late; screenshots go black 0.7 s after a screen change (S;
-  batch 6; `docs/design/H37_systems_audit.md` 1.2, 4 step 3)
 - **H75** · Harness sign-in plus `publish` and `wait_shared` steps; a
   fake `Platform.party` for GUT (M; batch 6;
   `docs/design/H37_systems_audit.md` 1.2, 1.3, section 4 step 3)
@@ -157,8 +154,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H29** · Unused code: `BinaryToggle`, and `fetch_player_stats`,
   `fetch_match_history` and their signals in `backend_api_client.gd`
   since the leaderboard and My Stats rewrite (f77828e8).
-- **H30** · `scripts/agent/run-game.ps1 -Backend` accepts a URL with no
-  port; the driver then refuses it with exit 3. (Agent abbaef7c.)
 - **H31** · The credits screen's labels ("Made by", "Sound", "Credits",
   "Thanks for playing!") lack translation keys, so other locales show
   English (`credits_screen.tscn:40,55,70,85,114`).
@@ -190,6 +185,8 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H30** · `scripts/agent/run-game.ps1 -Backend` accepts a URL with no port; the driver then refuses it with exit 3. Done in 32de8a0 (2026-10-29).
+- **H73** · Harness friction: loopback runs warn of production; client 2 starts 30 s late; screenshots go black 0.7 s after a screen change (S; batch 6; `docs/design/H37_systems_audit.md` 1.2, 4 step 3). Done in 32de8a0 (2026-10-29).
 - **H74** · `scripts/dev-stack.ps1` from exec-b's `stack.ps1`, with seed and restart steps (S; batch 6; `docs/design/H37_systems_audit.md` 1.2 gaps, section 4 step 3). Done in 6020cac (2026-10-29).
 - **H84** · Test fixtures log "no animation 'Rest'" 37 times per run. exec-a (seen in every run). Done in 0e50353 (2026-10-29).
 - **H46** · `test_network_connector.gd` crashed on exit. mm: crashed in 1 of 3 runs. Closed without a fix 2026-10-29: 10 consecutive runs of the file pass with exit 0 and no crash; the exit-time leak lines (199 ObjectDB instances, 81 resources) are identical in unrelated suites, so they are engine headless noise, not something this test leaves behind. Done in 54c5859 (2026-10-29).
