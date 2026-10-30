@@ -208,10 +208,15 @@ func _request_party_session_ids(
 
 	if not is_rt_leader:
 		if not await client.join_rt_party(rt_party_id):
-			# join_rt_party already emitted the detail; this is the
-			# session-level surface the game listens on.
-			session_request_failed.emit(
-				tr("PARTY.JOIN_MATCHMAKING_FAILED"))
+			# join_rt_party already emitted matchmaking_failed,
+			# which _on_matchmaking_failed forwards as
+			# session_request_failed; emitting here too showed
+			# the follower two toasts for one failure (H21). An
+			# empty party id is the one path that emits nothing,
+			# so surface that one here.
+			if rt_party_id.is_empty():
+				session_request_failed.emit(
+					tr("PARTY.JOIN_MATCHMAKING_FAILED"))
 			return
 		await client.begin_rt_party_wait(player_count)
 		return
