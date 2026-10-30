@@ -34,9 +34,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H103** · Muse works the agreed backlog tier by tier (H37 batches 2 to
   7, platform inbox, Pulumi pins, HG1) while Claude is near its limit.
   - owner: muse 01a1896a (took over 2026-10-29 after 01a188af was cancelled mid-turn)
-  - branch: mainline in every repo; last commit: ed00d83 (H75; Tier 3 complete)
+  - branch: mainline in every repo; last commit: d1dafc5 (H20)
   - evidence: `git log --grep Muse-Session` here and in both submodules; shelved patches in `.claude/probes/<ID>/wip.patch`
-  - next: Tier 4: H20, then H27 (netcode first)
+  - next: Tier 4: H27 (netcode first), then H63
   - brief: `docs/design/H103_muse_backlog.md` (section 5 is the handoff log)
 
 ## Next
@@ -123,9 +123,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H19** · After a recoverable matchmaking failure the loading screen
   offers only "Try Again", with no way back to the lobby. (Agent
   abdbfdf9.) H37 (10-14): still true.
-- **H20** · Cancelling matchmaking, or a fatal matchmaking failure,
-  returns to a lobby without the player's bunny. Fix:
-  `copy_latest_state` at `game_panel.gd:673` and `779`, as at 694.
 - **H21** · A party follower whose join fails gets two toasts for it.
   (Agent abdbfdf9.) H37 (10-14): still true.
 - **H22** · Log-out first tells the server the player went offline, so
@@ -177,6 +174,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H20** · Cancelling matchmaking, or a fatal matchmaking failure, returned to a lobby without the player's bunny. Done in d1dafc5 (2026-10-29).
 - **H75** · Harness sign-in plus `publish` and `wait_shared` steps; a fake `Platform.party` for GUT. Done in ed00d83 (2026-10-29).
 - **H99** · Finish T48 (M; batch 7; `docs/design/H37_systems_audit.md` section 5). Done in f10044e (2026-10-29).
 - **H68** · Legal parity is checked only by pr-validate, which never runs on push (C2); `edgegap_app_version` is not in the sync's mustSurvive (C3) (S; batch 6; `docs/design/H37_systems_audit.md` 3.4). Done in e5c92fb (2026-10-29).
