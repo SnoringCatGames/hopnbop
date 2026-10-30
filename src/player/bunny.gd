@@ -35,6 +35,8 @@ var _was_floor_skid_condition := false
 # resimulation (which returns early) never re-fires it.
 var _effects_was_in_water := false
 var _effects_was_on_floor := false
+var _effects_was_dead := false
+var _effects_last_spawn_frame := -1
 var _suppress_landing_skid := false
 var _walk_sound_frame_counter := 0
 
@@ -369,8 +371,48 @@ func _update_splashes() -> void:
 	if Netcode.frame_driver.is_resimulating:
 		return
 
-	if state_from_server.is_dead:
+	# DIE covers both the cooldown (is_dead) and the wait
+	# for the respawn timer after it, when the bunny already
+	# sits at the dry spawn point: no transitions either way.
+	if (
+		state_from_server.is_dead
+		or state_from_server.last_interaction_type
+			== CharacterStateFromServer
+				.ServerInteractionType.DIE
+	):
+		_effects_was_dead = true
 		_effects_was_in_water = surfaces.is_in_water
+		return
+
+	# A (re)spawn teleports the bunny: the frame its SPAWN
+	# interaction lands is not a water exit or entry, so
+	# resync the consumed bits instead of firing. (Dead
+	# frames may never reach this update, so key on the
+	# interaction, not on having seen the death.)
+	if (
+		state_from_server.last_interaction_type
+			== CharacterStateFromServer
+				.ServerInteractionType.SPAWN
+		and state_from_server
+			.last_interaction_frame_index
+			!= _effects_last_spawn_frame
+	):
+		_effects_last_spawn_frame = (
+			state_from_server
+				.last_interaction_frame_index)
+		_effects_was_dead = false
+		_effects_was_in_water = surfaces.is_in_water
+		_effects_was_on_floor = (
+			surfaces.is_attaching_to_floor)
+		return
+
+	# The first frame back from a respawn is not a water
+	# exit (death in water, respawn on land): resync the
+	# consumed bits instead of firing.
+	if _effects_was_dead:
+		_effects_was_dead = false
+		_effects_was_in_water = surfaces.is_in_water
+		_effects_was_on_floor = surfaces.is_attaching_to_floor
 		return
 
 	if (
@@ -477,6 +519,11 @@ func _update_skids() -> void:
 				>= _landing_skid_grace_frames()
 		):
 			_suppress_landing_skid = false
+
+	# A respawn is not a landing either: resync the floor
+	# bit (the splash update clears _effects_was_dead).
+	if _effects_was_dead:
+		_effects_was_on_floor = surfaces.is_attaching_to_floor
 
 	# Landing skid (bidirectional). Consumed once per
 	# landing (H6), like the splashes above.

@@ -118,6 +118,21 @@ func test_resimulation_does_not_refire_splash() -> void:
 	)
 
 
+func test_respawn_after_water_death_splashes_nothing() -> void:
+	# Died in the water, respawned on land: the first alive
+	# frame is not a water exit.
+	_set_water(true)
+	_bunny._update_splashes()
+	_bunny._effects_was_dead = true
+	_set_water(false)
+	_bunny._update_splashes()
+
+	assert_eq(
+		_splashes.animations, [&"enter_water"],
+		"no exit splash on respawn",
+	)
+
+
 func test_landing_skid_fires_once_over_two_frames() -> void:
 	_bunny.surfaces.is_attaching_to_floor = false
 	_bunny.surfaces.previous_bitmask = _bunny.surfaces.bitmask
