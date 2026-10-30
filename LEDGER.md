@@ -85,6 +85,11 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Residuals (known, not fixed)
 
+- **H110** · The Compliance Matrix run on H26 (02e1d75a, run
+  40991959543) failed when Docker Hub returned 502 Bad Gateway
+  pulling `heroiclabs/nakama` during `docker compose up` in the
+  local smoke step. That pull has no retry (H107 added one for
+  PSGallery, not here). The run passed on the next commit.
 - **H7** · The check that keeps new spawns off other players can't see
   bunnies that are still blinking, so a respawn can land on one. Left
   alone as a player-versus-player rule.
@@ -127,7 +132,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 ## Done
 
 - **H86** · Engine and script errors reach the crash reporter once per signature (warnings and exit noise skipped); SP61 split the server cap first. Done in 57c41d3, platform e5ae4e6 (2026-10-29).
-- **H90** · Failed cloud saves retry (permanent rejections do not) and settings merge per key. Done in ad7de6a (2026-10-29).
+- **H90** · Failed cloud saves retry (permanent rejections do not) and settings merge per key. Done in ad7de6a, guards fix c1590c7 (2026-10-29).
 - **H54** · The notification poll froze on the oldest 50 rows; cursor poll, socket-down only, persisted dedup, server prune (SP40). Done in c0d07f1, platform 078d9b8 (2026-10-29).
 - **H26** · Respawned levels got auto-generated names and replication errors; spawns now get unique names. Done in 02e1d75 (2026-10-29).
 - **H5** · Podium bunnies never animated: a stopped animator swallowed the delayed replay, and the paused tree froze the rest. Done in b1c1149 (2026-10-29).
