@@ -31,29 +31,24 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## In progress
 
-- **H109** · Muse run 2: the follow-ups from checking run 1 (H103), then
-  most of what H103 held for Claude, released by Levi 2026-10-29
-  (`docs/design/H109_muse_run2.md`).
-  - owner: nobody since 2026-10-29 21:30 PT (run complete; was muse 01a189f7, launched through Paseo by claude 0cfd9cf1
-    on 2026-10-29 (session 01a189f7-97c5-7eb0-98b6-164cb9977b39)
-  - branch: mainline (hopnbop, platform, netcode); last commit:
-    see `git log --grep Muse-Session` (head at close below)
-  - evidence: `.claude/probes/<ID>/` per item; the brief's section 5
-  - next: nothing in this brief; Tier D docs await Levi (H56
-    acceptance and icon, H87, H72, H98), H104 is Claude's review
-  - brief: `docs/design/H109_muse_run2.md`
-
+- **H104** · Claude reviews Muse's commits from H103 and H109 in three
+  stages: security (SP32, SP33, SP36, SP41 to SP44, SP47, SP59, H60),
+  then H109's Tier C, then its Tier D design docs. Reviewed 2026-10-29:
+  the CI fixes (8bb5873, c1590c7, netcode 9c3c0b5) and H56's keyboard
+  (H111, H112).
+  - owner: claude 0cfd9cf1 (two read-only review agents, stage 1 parts
+    A and B, started 2026-10-30 07:15 PT)
+  - branch: mainline, read-only (the review makes no commits); the
+    brief was committed with this entry
+  - evidence: `.claude/probes/H104/stage1-A.md` and `stage1-B.md`
+    (untracked, written as the agents go)
+  - next: once both reports are in, file the findings in each repo's
+    ledger and send the fixes to Muse; stages 2 and 3 only if weekly
+    usage allows (89% at 07:17; pause at 95%)
+  - brief: `docs/design/H104_review.md`
 
 ## Next
 
-- **H104** · Claude reviews Muse's commits from H103 and H109, security
-  first (SP32, SP33, SP36, SP41 to SP44, SP47, SP59, H60, then H109's
-  Tier C), plus H109's Tier D design docs: `git log --grep
-  Muse-Session` here and in both submodules. Leads
-  from a first check: `docs/design/H103_muse_backlog.md` section 5,
-  Claude's 2026-10-29 entry. Reviewed 2026-10-29: the CI fixes
-  (8bb5873, c1590c7, netcode 9c3c0b5) and H56's keyboard (H111,
-  H112).
 - **H56** · Controller players cannot enter codes: design in
   `docs/design/H56_code_entry.md`; the symbol keyboard is built
   behind `is_code_keyboard_enabled` (off) for Levi's acceptance.
@@ -136,6 +131,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H109** · Muse run 2 (H103's follow-ups, then the Tier C and D work Levi released) is complete. Its leftovers have their own items: H56, H72, H87 and H98 for Levi, and H104 for Claude's review. Done in 9f74eaf (2026-10-29).
 - **H112** · A complete code focused one row down instead of Join; the panel now focuses `_join_row` on `input_complete` via `SidePanel.focus_row`. Panel tests cover keyboard and field entry, keyboard on and off; the H56 probe asserts focus after the last symbol. Done in 2506f61 (2026-10-29).
 - **H111** · H56's keyboard could not enable Join: `set_text` assigned `LineEdit.text`, which emits no `text_changed`; it now runs `_on_text_changed` with the caret at the end. Panel test types a code and checks Join; the H56 probe types one with direction taps. Netcode half restored the unpause doc line and a final newline. Done in 4533cb4, netcode 7c58d2c (2026-10-29).
 - **H86** · Engine and script errors reach the crash reporter once per signature (warnings and exit noise skipped); SP61 split the server cap first. Done in 57c41d3, platform e5ae4e6 (2026-10-29).
