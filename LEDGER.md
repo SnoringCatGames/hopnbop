@@ -34,9 +34,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H103** · Muse works the agreed backlog tier by tier (H37 batches 2 to
   7, platform inbox, Pulumi pins, HG1) while Claude is near its limit.
   - owner: muse 01a188af-3ed2-72f1-8241-348fdaf97e78
-  - branch: mainline in every repo; last commit: platform 0499a41 (SP33 gate), SP32 held
+  - branch: mainline in every repo; last commit: hopnbop 7483f45 (H53)
   - evidence: `git log --grep Muse-Session` here and in both submodules; shelved patches in `.claude/probes/<ID>/wip.patch`
-  - next: Tier 1 party set: H53, then H55
+  - next: Tier 1 party set: H55, then SP44
   - brief: `docs/design/H103_muse_backlog.md` (section 5 is the handoff log)
 
 ## Next
@@ -55,9 +55,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H63** · The Log Out row is hidden when the access token has expired
   (AP-1, DEL-1). Fix: always offer it; clear locally when the server
   call fails (S; batch 4; `docs/design/H37_systems_audit.md` 3.1 list)
-- **H53** · Party client races: a follower cannot abort matchmaking; two
-  Start presses split the party (M; batch 4;
-  `docs/design/H37_systems_audit.md` 3.2)
 - **H56** · Controller players cannot enter codes (M; batch 4;
   `docs/design/H37_systems_audit.md` 3.2)
 - **H86** · Script and engine errors that do not crash are never
@@ -209,6 +206,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H53** · Party client races: a follower cannot abort matchmaking; two Start presses split the party (M; batch 4; `docs/design/H37_systems_audit.md` 3.2). Done in 7483f45 (2026-10-29).
 - **H60** · Names and avatar URLs are never validated; any avatar URL is fetched (PI-1, DN-2; client half) (M; batch 4; `docs/design/H37_systems_audit.md` 3.1). Done in afe43e2 (2026-10-29).
 - **H23** · The notification socket stops on any failed sign-in result, transient refresh failures included, until the next successful refresh; a failed `delete_account` (DEL-2, SP41) is one more trigger. Done in ac95413 (2026-10-29).
 - **H41** · Session validation enforced: SP27 tokens + netcode gate + derived backend ids (closes H17, with H43). Done in 6b399d03, netcode 6ae6765, platform 886aa10 (2026-10-20).
