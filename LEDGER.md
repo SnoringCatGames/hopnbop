@@ -69,6 +69,11 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   `docs/design/H37_systems_audit.md` 3.4)
 - **H77** · Land the H37 probes as tests, each with its fix (XS each;
   batch 6; `docs/design/H37_systems_audit.md` section 4 step 2)
+  Landed 2026-10-29: ghost-ticket probe (SP28), account probe
+  DEL-2 (SP41) and LK-1 (SP43), account PI-1 (H60), social probe
+  (SP35). Still blocked on fixes outside this run: settings-echo
+  (H67), declare-validation (H17), port-leak Go test (SP26),
+  account PI-2 and SO-1 (H15), verify scenarios (H72 held).
 - **H65** · Tests for the sign-out router's party reset and avatar-cache
   clear. acct (no test). `sign_out_router.gd:103,111`. Fix: two GUT
   tests (S; batch 6; `docs/design/H37_systems_audit.md` 3.1 coverage)
