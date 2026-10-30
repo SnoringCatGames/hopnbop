@@ -52,8 +52,12 @@ func _enter_tree() -> void:
 			CONNECT_ONE_SHOT,
 		)
 	else:
-		# Server sets player_id before adding to tree, so add immediately.
-		G.level.register_player(self )
+		# The server assigns player_id after add_child (see
+		# server_initialize_player_id), so registering here would
+		# file the player under the default id 0 (H24). Local
+		# spawns set the id before adding to the tree.
+		if player_id != 0:
+			G.level.register_player(self)
 
 
 func _client_on_player_id_replicated(new_player_id: int) -> void:
@@ -141,6 +145,11 @@ func server_initialize_player_id(p_player_id: int) -> void:
 	# to input_from_client and forwarded_input_from_server.
 	player_id = p_player_id
 	update_authority()
+
+	# Register only now that the id is set (H24): _enter_tree ran
+	# before this, with the default id 0.
+	if is_instance_valid(G.level):
+		G.level.register_player(self)
 
 	# If match state was created before this player node
 	# was spawned (typical on the server, where
