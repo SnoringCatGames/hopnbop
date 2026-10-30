@@ -563,7 +563,8 @@ func _on_friend_action_failed(
 		return
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
-			error, G.toast_overlay.Type.ERROR)
+			ToastOverlay.player_error_text(error),
+			G.toast_overlay.Type.ERROR)
 
 
 func _on_friends_data_refreshed(

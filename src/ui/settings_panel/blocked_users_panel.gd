@@ -122,14 +122,20 @@ func _on_user_unblocked(_data: Dictionary) -> void:
 func _on_request_failed(error: String) -> void:
 	if is_queued_for_deletion():
 		return
+	var was_loading := _is_loading
 	_is_loading = false
 	if is_instance_valid(_loading_spinner):
 		_loading_spinner.visible = false
 	if error == "Request in progress":
 		return
+	# Background poll failures reach every friends panel;
+	# only this panel's own load may toast, mapped (H18).
+	if not was_loading:
+		return
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
-			error, G.toast_overlay.Type.ERROR)
+			ToastOverlay.player_error_text(error),
+			G.toast_overlay.Type.ERROR)
 
 
 func _populate(entries: Array) -> void:

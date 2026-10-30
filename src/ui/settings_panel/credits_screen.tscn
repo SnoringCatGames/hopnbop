@@ -37,7 +37,7 @@ layout_mode = 2
 [node name="Credits" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
-text = "Credits"
+text = "CREDITS.TITLE"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -52,7 +52,7 @@ layout_mode = 2
 [node name="Label" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Made by"
+text = "CREDITS.MADE_BY"
 
 [node name="LinkButton" type="LinkButton" parent="OuterVBox/CenterContainer/VBoxContainer/HBoxContainer"]
 layout_mode = 2
@@ -67,7 +67,7 @@ layout_mode = 2
 [node name="Label" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer/HBoxContainer2"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Sound"
+text = "CREDITS.SOUND"
 
 [node name="LinkButton" type="LinkButton" parent="OuterVBox/CenterContainer/VBoxContainer/HBoxContainer2"]
 layout_mode = 2
@@ -82,7 +82,7 @@ layout_mode = 2
 [node name="Label" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer/HBoxContainer3"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Project management"
+text = "CREDITS.PROJECT_MANAGEMENT"
 
 [node name="LinkButton" type="LinkButton" parent="OuterVBox/CenterContainer/VBoxContainer/HBoxContainer3"]
 layout_mode = 2
@@ -111,7 +111,7 @@ layout_mode = 2
 visible = false
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
-text = "Playtesters"
+text = "CREDITS.PLAYTESTERS"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -152,7 +152,7 @@ layout_mode = 2
 [node name="Thanks" type="Label" parent="OuterVBox/CenterContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
-text = "Thanks for playing!"
+text = "CREDITS.THANKS"
 horizontal_alignment = 1
 vertical_alignment = 1
 

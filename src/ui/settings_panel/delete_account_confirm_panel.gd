@@ -162,6 +162,6 @@ func _on_delete_completed(
 			"Account deletion failed: %s" % error)
 		if is_instance_valid(G.toast_overlay):
 			G.toast_overlay.show_toast(
-				tr("TOAST.DELETE_FAILED") % error,
+				tr("TOAST.DELETE_FAILED"),
 				ToastOverlay.Type.ERROR,
 			)

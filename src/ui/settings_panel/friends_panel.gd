@@ -342,6 +342,7 @@ func _on_friends_received(
 func _on_request_failed(error: String) -> void:
 	if is_queued_for_deletion():
 		return
+	var was_loading := _is_loading
 	_is_loading = false
 	if is_instance_valid(_loading_spinner):
 		_loading_spinner.visible = false
@@ -349,9 +350,15 @@ func _on_request_failed(error: String) -> void:
 	# rapid panel navigation and not actionable.
 	if error == "Request in progress":
 		return
+	# The notification poller's background fetches fail here
+	# too; only a failure of this panel's own load may toast,
+	# and never with the raw SDK text (H18).
+	if not was_loading:
+		return
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
-			error, G.toast_overlay.Type.ERROR)
+			ToastOverlay.player_error_text(error),
+			G.toast_overlay.Type.ERROR)
 
 
 func _on_presence_received(

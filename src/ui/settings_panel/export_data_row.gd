@@ -95,7 +95,7 @@ func _on_export_completed(
 		)
 		if is_instance_valid(G.toast_overlay):
 			G.toast_overlay.show_toast(
-				tr("TOAST.EXPORT_FAILED") % error,
+				tr("TOAST.EXPORT_FAILED"),
 				ToastOverlay.Type.ERROR,
 			)
 		return

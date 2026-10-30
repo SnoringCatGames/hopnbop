@@ -25,6 +25,16 @@ const _COLORS := {
 }
 
 
+## Maps an SDK failure string to text a player may see. SDK
+## errors are English diagnostics (H18): the known shapes get
+## their translated line, everything else the generic one. The
+## raw string goes to the log, never to a toast.
+static func player_error_text(error: String) -> String:
+	if error.begins_with("Not authenticated"):
+		return TranslationServer.translate("TOAST.SIGNED_OUT")
+	return TranslationServer.translate("TOAST.OPERATION_FAILED")
+
+
 func _enter_tree() -> void:
 	G.toast_overlay = self
 

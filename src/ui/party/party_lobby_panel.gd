@@ -653,7 +653,8 @@ func _on_request_failed(error: String) -> void:
 		return
 	if is_instance_valid(G.toast_overlay):
 		G.toast_overlay.show_toast(
-			error, G.toast_overlay.Type.ERROR)
+			ToastOverlay.player_error_text(error),
+			G.toast_overlay.Type.ERROR)
 
 
 # --- Actions ---
