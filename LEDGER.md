@@ -22,6 +22,19 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Waiting on Levi
 
+- **H103** · The Muse backlog run (H37 batches 2 to 7, platform
+  inbox, Pulumi pins, HG1) is complete for everything Muse-owned:
+  Tiers 2 to 6 landed 2026-10-29 (see `docs/design/
+  H103_muse_backlog.md` section 5). What remains is held for Claude,
+  Levi's hands, or a decision (brief section 4).
+  - owner: waiting on Levi
+  - next: Levi: trust hex-grid for HG1; T14 (`foobar.png`); H92's
+    play session. Claude, later: the section 4 held items.
+- **HG1** · hex-grid: drop the 9 stale Express-era runtime
+  dependencies. Blocked here: hex-grid is not in
+  `~/.config/muse/trust.json` and is outside this repo's writable
+  root. Levi to trust it; the item lives in hex-grid's LEDGER.md.
+
 - **H92** · One 2-client networked session with Levi (T02 to T07, T16,
   T25, T27, T29) (S; batch 7; `docs/design/H37_systems_audit.md` section
   5 row 3, section 7 row 9)
@@ -31,13 +44,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## In progress
 
-- **H103** · Muse works the agreed backlog tier by tier (H37 batches 2 to
-  7, platform inbox, Pulumi pins, HG1) while Claude is near its limit.
-  - owner: muse 01a1896a (took over 2026-10-29 after 01a188af was cancelled mid-turn)
-  - branch: mainline in every repo; last commit: 141e2fe (H80; Tier 5 complete)
-  - evidence: `git log --grep Muse-Session` here and in both submodules; shelved patches in `.claude/probes/<ID>/wip.patch`
-  - next: Tier 6: HG1 (hex-grid trust check), SP81/SP82 Pulumi pins
-  - brief: `docs/design/H103_muse_backlog.md` (section 5 is the handoff log)
 
 ## Next
 
