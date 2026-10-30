@@ -231,6 +231,17 @@ func focus_next_row() -> void:
 	_move_focus(1, false)
 
 
+## Move focus to a specific row. Used when a completed
+## input must hand focus to a known row (e.g. the Join
+## row under a code field) rather than one row down,
+## which lands on whatever sits between the two.
+func focus_row(row: MenuRow) -> void:
+	var index := _rows.find(row)
+	if index < 0:
+		return
+	_set_focus(index)
+
+
 func _ensure_focused_visible() -> void:
 	if _rows.is_empty():
 		return

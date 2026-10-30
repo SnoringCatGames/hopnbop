@@ -73,7 +73,7 @@ func build_ui() -> void:
 	_code_input.submitted.connect(
 		_on_join_pressed)
 	# When the code hits its full length, hand focus to the Join row.
-	_code_input.input_complete.connect(focus_next_row)
+	_code_input.input_complete.connect(_on_code_complete)
 	_row_container.add_child(_code_input)
 	_connect_row_clicked(_code_input)
 
@@ -140,6 +140,16 @@ func _exit_tree() -> void:
 			_on_request_failed):
 		client.request_failed.disconnect(
 			_on_request_failed)
+
+
+## A complete code hands focus to the Join row itself:
+## one row down from the field is the first keyboard
+## row when the H56 keyboard is on, and one row down
+## from a keyboard row is the next keyboard row.
+func _on_code_complete() -> void:
+	if not is_instance_valid(_join_row):
+		return
+	focus_row(_join_row)
 
 
 func _on_keyboard_symbol(symbol: String) -> void:
