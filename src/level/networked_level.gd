@@ -334,9 +334,14 @@ func _server_register_players_for_peer(
 		peer_to_player_ids[peer_id].append(
 			player_id)
 
+		# Position before add_child (H8): entering the tree
+		# snapshots the transform as the physics-interpolation
+		# start, so a player added at (0, 0) and moved after
+		# renders sliding out of the origin for one tick.
+		var spawn_position := _get_player_spawn_position()
+		player.global_position = spawn_position
 		players_node.add_child(player)
-		player.global_position = (
-			_get_player_spawn_position())
+		player.global_position = spawn_position
 
 		# Initialize player_id and update
 		# authority after add_child. This ensures
