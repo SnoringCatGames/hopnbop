@@ -77,8 +77,27 @@ if (-not (Test-Path $GameYamlPath)) {
 # without a prereq install step.
 if (-not (Get-Module -ListAvailable -Name powershell-yaml)) {
     Write-Host "Installing powershell-yaml module (CurrentUser scope)..."
-    Install-Module -Name powershell-yaml `
-        -Scope CurrentUser -Force -AllowClobber | Out-Null
+    # One PSGallery miss must not fail the run (H107): retry a few
+    # times with a short wait before giving up.
+    $installed = $false
+    for ($attempt = 1; $attempt -le 3 -and -not $installed; $attempt++) {
+        try {
+            Install-Module -Name powershell-yaml `
+                -Scope CurrentUser -Force -AllowClobber `
+                -ErrorAction Stop | Out-Null
+            $installed = $true
+        } catch {
+            Write-Warning ("powershell-yaml install attempt $attempt " +
+                "failed: $($_.Exception.Message)")
+            if ($attempt -lt 3) {
+                Start-Sleep -Seconds 5
+            }
+        }
+    }
+    if (-not $installed) {
+        Write-Error "Could not install powershell-yaml after 3 attempts."
+        exit 2
+    }
 }
 Import-Module powershell-yaml -ErrorAction Stop
 

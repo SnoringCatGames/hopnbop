@@ -435,6 +435,18 @@ try {
         ForEach-Object { (Select-String -LiteralPath $_.FullName -Pattern '^func test_').Count } |
         Measure-Object -Sum).Sum
 
+    # The suite authenticates with this game_id (H107). It used to
+    # rely on the Platform autoload being initialized by G's
+    # _enter_tree, which one CI run lost when settings.tres failed
+    # to load; the env value makes every run deterministic. Read
+    # game.yaml, never edit it.
+    $gameIdLine = Select-String -LiteralPath `
+        (Join-Path $RepoRoot "game.yaml") -Pattern '^game_id:\s*(\S+)' |
+        Select-Object -First 1
+    if (-not $gameIdLine) {
+        Stop-Run 2 "Could not read game_id from game.yaml."
+    }
+    Set-ScopedEnv "PLATFORM_GAME_ID" $gameIdLine.Matches[0].Groups[1].Value
     Set-ScopedEnv "PLATFORM_API_URL" $nakamaUrl
     Set-ScopedEnv "NAKAMA_SERVER_KEY" $ServerKey
     Set-ScopedEnv "NAKAMA_HTTP_KEY" $HttpKey
