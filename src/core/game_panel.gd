@@ -680,6 +680,9 @@ func _on_matchmaking_failed(reason: String) -> void:
 			ToastOverlay.Type.INFO,
 		)
 
+	# The lobby brings its players back from the latest_* copies, which
+	# client_load_game cleared and no match has refilled.
+	G.client_session.copy_latest_state(G.match_state)
 	G.screens.client_open_screen(
 		ScreensMain.ScreenType.LOBBY)
 
@@ -786,6 +789,9 @@ func client_cancel_matchmaking() -> void:
 			and session_manager.session_provider
 				.has_method("clear_session")):
 		session_manager.session_provider.clear_session()
+	# The lobby brings its players back from the latest_* copies, which
+	# client_load_game cleared and no match has refilled.
+	G.client_session.copy_latest_state(G.match_state)
 	G.screens.client_open_screen(
 		ScreensMain.ScreenType.LOBBY)
 
