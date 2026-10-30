@@ -2178,7 +2178,7 @@ func _server_initiate_match_end() -> void:
 	# Send final stats to all clients so they
 	# have complete data for the game over screen.
 	(match_state_synchronizer
-		._server_send_stats_to_clients())
+		._server_send_stats_to_clients(true))
 
 	# Send backend player ID mapping to clients
 	# so they can friend-add post-match.

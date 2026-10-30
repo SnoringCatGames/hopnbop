@@ -386,7 +386,9 @@ func _physics_process(_delta: float) -> void:
 			_server_send_stats_to_clients()
 
 
-func _server_send_stats_to_clients() -> void:
+func _server_send_stats_to_clients(
+	is_final: bool = false,
+) -> void:
 	var packed := []
 	for player_id in state._stats_by_player_id:
 		var stats: PlayerMatchStats = (
@@ -394,14 +396,33 @@ func _server_send_stats_to_clients() -> void:
 		packed.append(player_id)
 		packed.append_array(
 			stats.to_packed_array())
-	Netcode.call_client_rpc_with_local_support(
-		_rpc_client_update_stats.bind(packed))
+	if is_final:
+		# The final snapshot feeds the game-over screen and
+		# must not ride the lossy channel (H89).
+		Netcode.call_client_rpc_with_local_support(
+			_rpc_client_update_stats_final.bind(packed))
+	else:
+		Netcode.call_client_rpc_with_local_support(
+			_rpc_client_update_stats.bind(packed))
 
 
 @rpc("authority", "call_remote", "unreliable", NetworkConnector.RPC_CHANNEL_STATS)
 func _rpc_client_update_stats(
 	packed_data: Array,
 ) -> void:
+	_client_apply_stats(packed_data)
+
+
+## Reliable twin of _rpc_client_update_stats for the final
+## snapshot at match end (H89).
+@rpc("authority", "call_remote", "reliable", NetworkConnector.RPC_CHANNEL_STATS)
+func _rpc_client_update_stats_final(
+	packed_data: Array,
+) -> void:
+	_client_apply_stats(packed_data)
+
+
+func _client_apply_stats(packed_data: Array) -> void:
 	# Each entry is 1 player_id + 18 stat values
 	# = 19 stride.
 	var stride := 19
