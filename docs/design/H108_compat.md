@@ -91,3 +91,30 @@ fixtures).
 Before each Tier C runtime push in H109, rerun this released
 suite against the candidate runtime (the local procedure above,
 or the CI job's latest run). A new failure blocks the push.
+
+## 0.57.0 release (2026-10-30)
+
+Client 0.57.0 shipped from `7fd873fd` ("Release 0.57.0") by the
+local client-only deploy (`scripts/deploy-cf-pages.ps1`), then
+`scripts/sync-game-config.ps1` posted the per-game config.
+Game server stayed v32; protocol stayed 2.
+
+- Live checks: `version_check?game_id=hopnbop` answers
+  `game_version: "0.57.0"`, `protocol_version: 2`,
+  `is_compatible: true`; hopnbop.net serves `version.json`
+  0.57.0 and the blog carries the v0.57.0 notes. The export
+  artifact was verified on disk (fresh `index.pck`/`index.wasm`)
+  rather than by Godot's exit code.
+- Compliance Matrix on `7fd873fd` (run 41154547444): both jobs
+  success. With 0.57.0 now the newest `Release` commit, the
+  released job ran the 0.57.0 suite against the HEAD runtime:
+  HEAD pre-check 94/94, released suite 94 declared, 94
+  reported, 0 failing, no unclassified failures.
+- Every entry in `.github/compliance/released-known-failures.txt`
+  classified a 0.56.0 fixture; all now pass (the job warned on
+  each non-timing entry, and the timing entries' own text said
+  they come out with this release). The file is header-only
+  again: any released-suite failure is unclassified.
+- H83's Facebook-avatar post-release check is not covered here:
+  it needs a player signed in with Facebook, so it stays open
+  in the ledger.

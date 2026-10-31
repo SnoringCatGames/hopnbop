@@ -2,29 +2,3 @@
 # one test id per line (file::test). Classified in
 # docs/design/H108_compat.md (H108). The compliance-released job
 # fails on any failure not listed here.
-addons/snoringcat_platform_client/test/compliance/test_account_delete.gd::test_delete_clears_identifying_data_at_once
-addons/snoringcat_platform_client/test/compliance/test_account_delete_cascade_surfaces.gd::test_delete_account_clears_all_state_surfaces
-addons/snoringcat_platform_client/test/compliance/test_data_export.gd::test_export_includes_every_category
-addons/snoringcat_platform_client/test/compliance/test_party_to_matchmaking.gd::test_party_pair_matched_into_same_mock_deploy
-# SP87 (platform ledger): the released settings fixture writes
-# under a key the client storage allowlist refuses; the shipped
-# client writes only global and game/<id>. Comes out with the
-# next client release, whose fixture uses global.
-addons/snoringcat_platform_client/test/compliance/test_settings.gd::test_storage_write_read_roundtrip
-# SP87 (platform ledger): the released recent-players fixture
-# seeds its rows through the client storage endpoint; those rows
-# are written by the runtime when a match ends, never by a
-# client. Comes out with the next client release, whose fixture
-# seeds through the console.
-addons/snoringcat_platform_client/test/compliance/test_recent_players.gd::test_list_recent_players_sorts_by_matched_at_desc_and_caps
-addons/snoringcat_platform_client/test/compliance/test_friends_account_delete_cascade.gd::test_delete_account_removes_deleter_from_other_friend_lists
-# SP95 timing (platform ledger): the timing: entries below name released fixtures that keep
-# using the session that delete_account ends; whether the old
-# token still answers depends on the issue second, so a pass
-# or a fail are both accepted. They come out with the next
-# client release, whose fixtures sign in again after a delete.
-# The stale-entry warning skips timing: entries, so dropping
-# these lines is part of that release, not a CI prompt.
-timing: addons/snoringcat_platform_client/test/compliance/test_public_leaderboard.gd::test_lists_ranked_scores_without_credentials
-timing: addons/snoringcat_platform_client/test/compliance/test_account_delete.gd::test_soft_delete_then_cancel_keeps_account_without_profile
-timing: addons/snoringcat_platform_client/test/compliance/test_account_delete.gd::test_cancel_clears_marker_on_account_without_display_name
