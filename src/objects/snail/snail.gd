@@ -317,12 +317,17 @@ func _spawn_crunch_remnant() -> void:
 	remnant.texture_filter = (
 		CanvasItem.TEXTURE_FILTER_NEAREST)
 
-	# The remnant belongs with the characters, behind
-	# the level's foreground art (H118).
+	# The remnant stays in the snail's own draw layer,
+	# right where its sprite sorted.
 	if is_instance_valid(G.level):
-		G.level.add_sprite_at_character_depth(remnant)
+		G.level.add_sprite_at_character_depth(
+			remnant, self, _sprite)
 	else:
+		remnant.z_index = _sprite.z_index
+		remnant.z_as_relative = _sprite.z_as_relative
 		get_parent().add_child(remnant)
+		get_parent().move_child(
+			remnant, get_index() + 1)
 
 	remnant.global_rotation = (
 		_sprite.global_rotation)

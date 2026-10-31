@@ -782,9 +782,19 @@ func _spawn_squish_sprite() -> void:
 	# interpolation start, so a sprite added at its
 	# default (0, 0) and moved afterwards renders
 	# sliding out of the level origin for one tick.
-	sprite.position = G.level.to_local(
-		death_pos + animator.position)
-	G.level.add_sprite_at_character_depth(sprite)
+	# The sprite takes the animated sprite's place in
+	# the draw order, so position it in the parent's
+	# space (the same conversion the level applied
+	# before, against the node that will hold it).
+	var draw_parent := get_parent() as Node2D
+	if draw_parent != null:
+		sprite.position = draw_parent.to_local(
+			death_pos + animator.position)
+	else:
+		sprite.position = G.level.to_local(
+			death_pos + animator.position)
+	G.level.add_sprite_at_character_depth(
+		sprite, self, anim_sprite)
 
 	# After the squish duration, remove the
 	# sprite and spawn gore + camera shake.

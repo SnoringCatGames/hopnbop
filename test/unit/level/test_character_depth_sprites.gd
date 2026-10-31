@@ -1,13 +1,16 @@
 extends GutTest
-## H118: detached world sprites (the player squish, the
-## snail crunch remnant) draw in the characters' band,
-## immediately before the players node. The scenes put
-## their foreground art at Level.FOREGROUND_Z_INDEX and
-## the lobby landmarks one step above it, so no gameplay
-## effect (gore is the highest, at z 2) can paint over
-## the art. The scene tests below load the real scenes:
-## a foreground node added or renamed without its
-## z_index in the scene fails them.
+## H118/H122: detached world sprites (the player squish,
+## the snail crunch remnant) draw in the layer of the
+## character they came from: same parent, right after
+## the character, with the character sprite's own z
+## settings. The scenes put their foreground art at
+## Level.FOREGROUND_Z_INDEX and the lobby landmarks one
+## step above it, so no gameplay effect (gore is the
+## highest, at z 2) can paint over the art, while the
+## match-end confetti draws over both. The scene tests
+## below load the real scenes: a foreground node added
+## or renamed without its z_index in the scene fails
+## them.
 
 const _LEVEL_SCENES: Array[String] = [
 	"res://src/level/lobby_level.tscn",
@@ -54,29 +57,50 @@ func after_each() -> void:
 	_level.free()
 
 
-func test_sprite_lands_immediately_before_players() -> void:
+func test_sprite_takes_the_characters_layer() -> void:
+	var character := Node2D.new()
+	_players.add_child(character)
+	var character_sprite := Sprite2D.new()
+	character_sprite.z_index = 3
+	character_sprite.z_as_relative = false
 	var sprite := Sprite2D.new()
 
-	_level.add_sprite_at_character_depth(sprite)
+	_level.add_sprite_at_character_depth(
+		sprite, character, character_sprite)
+
+	assert_same(sprite.get_parent(), _players,
+		"sprite joins the character's parent")
+	assert_eq(sprite.get_index(), character.get_index() + 1,
+		"sprite sits right after the character")
+	assert_eq(sprite.z_index, character_sprite.z_index,
+		"sprite takes the character sprite's z_index")
+	assert_eq(sprite.z_as_relative,
+		character_sprite.z_as_relative,
+		"sprite takes the character sprite's z_as_relative")
+
+
+func test_sprite_without_parent_joins_the_level() -> void:
+	var character := Node2D.new()
+	var character_sprite := Sprite2D.new()
+	var sprite := Sprite2D.new()
+
+	_level.add_sprite_at_character_depth(
+		sprite, character, character_sprite)
 
 	assert_same(sprite.get_parent(), _level)
-	assert_eq(sprite.get_index(), _players.get_index() - 1,
-		"sprite sits immediately before the players node")
-	assert_true(sprite.get_index() < _foreground.get_index(),
-		"foreground art still draws over the sprite")
+	character.free()
+	character_sprite.free()
 
 
-func test_two_sprites_keep_spawn_order() -> void:
-	var first := Sprite2D.new()
-	var second := Sprite2D.new()
+func test_confetti_sorts_above_the_landmarks() -> void:
+	var emitter := ConfettiEmitter.new()
 
-	_level.add_sprite_at_character_depth(first)
-	_level.add_sprite_at_character_depth(second)
-
-	assert_true(first.get_index() < second.get_index(),
-		"later sprites draw over earlier ones in the band")
-	assert_true(second.get_index() < _players.get_index(),
-		"both stay behind the players")
+	assert_eq(emitter.z_index, Level.CELEBRATION_Z_INDEX,
+		"confetti draws at the celebration depth")
+	assert_gt(Level.CELEBRATION_Z_INDEX,
+		Level.FOREGROUND_UI_Z_INDEX,
+		"celebration depth sorts above the landmarks")
+	emitter.free()
 
 
 ## Every world-drawing root child after Players in the

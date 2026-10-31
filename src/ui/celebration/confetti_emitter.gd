@@ -3,6 +3,13 @@ extends Node2D
 ## Spawns colorful confetti particles at a world
 ## position with an upward burst. Each particle is
 ## a small colored rectangle affected by gravity.
+##
+## The emitter draws at Level.CELEBRATION_Z_INDEX, over
+## the level's foreground art and landmarks.
+
+
+func _init() -> void:
+	z_index = Level.CELEBRATION_Z_INDEX
 
 
 const _GRAVITY := 400.0

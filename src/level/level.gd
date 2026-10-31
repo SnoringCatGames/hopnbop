@@ -72,6 +72,11 @@ const FOREGROUND_Z_INDEX := 10
 ## Their scenes set this z_index directly, like the art.
 const FOREGROUND_UI_Z_INDEX := 11
 
+## Match-end confetti draws over the foreground art and
+## the lobby landmarks, as it did before the art carried
+## an explicit depth of its own.
+const CELEBRATION_Z_INDEX := FOREGROUND_UI_Z_INDEX + 1
+
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
@@ -113,17 +118,27 @@ func _ready() -> void:
 
 
 ## Adds a detached world sprite (a squish remnant) in
-## the characters' draw band: immediately before the
-## players node, where the gore, skid and splash
-## managers already sit. Foreground art that sits
-## after the players (the lobby's occlusion tiles,
-## level_0's occlusion art) then draws over it, just
-## as it draws over the characters themselves. The
-## caller positions the sprite before calling this.
-func add_sprite_at_character_depth(sprite: Node) -> void:
-	add_child(sprite)
-	if is_instance_valid(players_node):
-		move_child(sprite, players_node.get_index())
+## the draw layer of the character it came from: the
+## sprite becomes a child of the character's parent,
+## right after the character, and takes the character
+## sprite's own z settings, so it sorts exactly where
+## the character's sprite sorts. The caller positions
+## the sprite (in the new parent's local space) before
+## calling this.
+func add_sprite_at_character_depth(
+		sprite: CanvasItem,
+		character: Node,
+		character_sprite: CanvasItem,
+) -> void:
+	var parent := character.get_parent()
+	if parent == null:
+		add_child(sprite)
+		return
+	sprite.z_index = character_sprite.z_index
+	sprite.z_as_relative = character_sprite.z_as_relative
+	parent.add_child(sprite)
+	parent.move_child(
+		sprite, character.get_index() + 1)
 
 
 func _get_spawn_points() -> Array[SpawnPoint]:
