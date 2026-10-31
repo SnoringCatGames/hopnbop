@@ -56,7 +56,7 @@ edgegap_app_slug: hopnbop-server
 # the CI wiring adds an auto-bump step, this value must be
 # updated by hand in lockstep with the dashboard's "active
 # version" pin.
-edgegap_app_version: v31
+edgegap_app_version: v32
 
 # Fleet-allocator backend (see runtime/allocator.go for the full
 # set). Cost-reduction work (June 2026) added "local" and
@@ -77,7 +77,7 @@ allocator_mode: hybrid
 # allocator_mode is "local" or "hybrid". See
 # .github/workflows/game-server.yml for the CI step that
 # publishes this tag alongside the Edgegap registry push.
-local_image_ref: "ghcr.io/snoringcatgames/hopnbop-server:v31"
+local_image_ref: "ghcr.io/snoringcatgames/hopnbop-server:v32"
 
 # protocol_version and display_version are intentionally absent.
 # sync-game-config.ps1 injects them from project.godot at sync
