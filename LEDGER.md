@@ -59,14 +59,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - evidence: `.claude/probes/H104/stage1-A.md` and `stage1-B.md` (untracked, on the desktop only)
   - next: review H120's commits as they land; stages 2 and 3 after the weekly usage reset (2026-11-02)
   - brief: `docs/design/H104_review.md`
-- **H123** · Muse run 4: coordinator follow-ups to run 3 (the H119
-  trace fix, platform SP102 to SP105, a logging check on H115's
-  delete-panel change).
-  - owner: muse 01a1908a-62f5-7b30-ae6f-faac7563ff6c (run by claude 0cfd9cf1 through paseo)
-  - branch: mainline; last commit: `fbf940d0`
-  - evidence: `.claude/probes/H119/` (harness runs); the brief's section 6 handoff log
-  - next: Muse: brief section 2.3, SP105 Go line endings
-  - brief: `docs/design/H123_muse_run4.md`
+
 
 
 ## Next
@@ -169,6 +162,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H123** · Muse run 4 (coordinator follow-ups to run 3): the H119 trace fix, platform SP102 to SP105, and the H115 logging check. Handoff log in `docs/design/H123_muse_run4.md` section 6. Done 2026-10-30.
 - **H120** · Muse run 3 (H104 stage-1 fixes and Levi's 2026-10-30 playtest): SP83-SP91, H113-H116, H118, H119, H122, the v32 game server and the 0.57.0 client. Handoff log in `docs/design/H120_muse_run3.md` section 6. Done 2026-10-30.
 - **H115** · SP41 client follow-ups: an expected delete failure logs a warning instead of an error (no crash report); the no-session delete case is covered; the verify2 panel probe is a suite test (busy clears, retry sends). Done in 4405cd3b (2026-10-30).
 - **H116** · `test_auth_store_migration.gd` has the three SP44 cases: the legacy retry with a key file present, a lost key leaving the file in place, and an unreadable file moved aside for a new guest. Done in 73aa04fd (2026-10-30).

@@ -177,3 +177,107 @@ H120's section 4, with H123 for H120 and section 6 here for the log.
 ## 6. Handoff log
 
 Append one dated entry each time you stop.
+
+### 2026-10-30, muse 01a1908a (run 4, section 2 complete)
+
+Done, in landing order (platform SHAs are that repo's):
+
+- 2.1 H119 (hopnbop `fbf940d0`). The trace records in
+  `_input`, dumps as H119TRACE through the default log
+  category (visible on stock settings), dumps on an echo
+  for a key Input reports as up and on a move_left release
+  whose last A event is still a press, and the ring notes
+  app/window focus, text capture and the poll path.
+  One dump per hold is kept. Tests: 28/28 in the file
+  (19/28 on the old code, the new trigger tests among
+  the 9 failing). Proof for (a): harness run
+  `20261030-230605-h119-trace-stock` on committed
+  settings forced a dump after an echo hold; the
+  `H119TRACE` line and `path=WASD` ring notes are in its
+  `client1/process.log`. Full per-file GUT green and
+  both CI runs green on the commit.
+- 2.1c inventory. Only `move_left` binds physical A
+  (InputMap physical 65; the WASD partition reads it
+  through InputDeviceManager). Other readers poll the
+  move_left action read-only: PlayerActionSource,
+  SidePanel and ConfirmOverlay navigation, the SDK's
+  AnyDeviceInputPoller; the lobby registers players on
+  move_up/move_down only. Handlers near A: a focused
+  LineEdit consumes key events and sets
+  `is_text_input_captured` (the one real consumer;
+  the trace now notes it), CheatManager reads unicode
+  without consuming, InputHandler's toggle actions
+  bind no A key, WindowManager takes Alt+Enter,
+  MenuRow takes mouse only. None of them writes Input
+  state or can release A. Verdict: nothing else in the
+  game can release or consume A; the remaining suspects
+  are outside the game's input handlers, which is what
+  the new triggers and ring notes capture.
+- 2.2 SP102 (platform `cd982de`, ledger `09f8d63`;
+  hopnbop bump `7778d34a`, SDK 0.7.2). `save_tokens()`
+  moves an unreadable auth file aside first, with a
+  unique aside name, and writes nothing when the move
+  fails; `login_anonymous()` keeps only its status
+  message; the two stray `_is_refreshing` clears in
+  `_do_anon_auth` are gone. The consent-save-then
+  guest-sign-in test keeps the original bytes in the
+  aside and loads the new file; it and the unique-name
+  test fail on the old SDK (7/9) and pass with the fix
+  (9/9). Local smoke exits 0, the full 93-file GUT
+  suite passes, and Client SDK CI, PR Validate and
+  Compliance Matrix are green.
+- 2.3 SP105 (platform `7540b74`, ledger `8c92924`).
+  `*.go text eol=lf` is in `.gitattributes`, the
+  checkout's Go files are LF on disk (w/lf), and
+  `gofmt -l runtime` lists nothing with a clean
+  `git status`. No code changed, no deploy. Note:
+  `infra/remote/`'s two Go files still trip gofmt for
+  doc-comment style (not line endings); outside 2.3's
+  runtime scope, left alone.
+- 2.4 SP103 (platform `f2d0698`, deploy run
+  41177744993 green). The clamp's kept output always
+  passes `validateDisplayName` (control characters
+  drop too); when nothing valid remains, the after-auth
+  hook stores a generated name. SP104 (platform
+  `81974cc`, deploy run 41178135519 green). ZWNJ and
+  ZWJ are kept between letters or marks (ZWJ also
+  between emoji) and refused or dropped elsewhere;
+  the locales include Hindi, so they are needed, not
+  a known limit. Both items: vet, test, staticcheck
+  and `gofmt -l runtime` pass; new tests fail on the
+  old code and pass with the fix; smoke 95/95; the
+  0.57.0 suite 94/94 against each candidate runtime.
+  One runtime item per push, each watched through its
+  deploy.
+- 2.5 H115 check, no change. The runtime's
+  `delete_account` RPC logs every failure it returns
+  at error level (`account.go`: queue write, session
+  revoke, socket disconnect, each `logger.Error` with
+  code 13), so prod-health-check's error scan sees a
+  server-side delete failure even though the client
+  now warns. The best-effort cascade steps log Warn
+  but the RPC still succeeds; the unauthenticated and
+  game-id rejections are the expected expired-session
+  cases, and an offline attempt never reaches the
+  server. The client's warning level stands.
+
+Not done, with owners:
+
+- H119 waits on Levi's next playtest: hold A until it
+  stalls and send the H119TRACE block (steps in H119's
+  ledger entry). The trace is removed once diagnosed.
+- Two 0.56.0 compliance failures need Claude's
+  classification: `test_recent_players` sorts/caps and
+  `test_settings` storage roundtrip fail identically
+  on the unmodified HEAD runtime and on both 2.4
+  candidates (storage key refused by the client-write
+  allowlist; recent-players seed rows refused), so
+  they are pre-existing fixture drift, not a 2.4
+  regression. A third, the friends-delete cascade,
+  flips with Nakama's issue-second revocation
+  boundary, as H108 and SP95 already record.
+
+Questions for Claude: classify the two 0.56.0 fixture
+drifts above. No release and no prod actions were
+taken; both runtime deploys were the sanctioned
+per-push ones, watched green.
