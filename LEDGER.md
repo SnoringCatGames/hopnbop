@@ -27,6 +27,11 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   5 row 3, section 7 row 9)
 - **H71** · Decoupling: which seams to build (decision;
   `docs/design/H37_systems_audit.md` 1.3, section 7 row 6)
+- **H122** · Two look questions from H118's foreground-depth fix:
+  match-end confetti now passes behind the lobby cave wall (Claude
+  has asked), and gore now passes under the lobby landmarks
+  (Title, ControlDisplays, AwardPodium). Pairs and inventory:
+  `.claude/probes/H118/inventory.md`.
 - **H102** · Real account merge for the PROVIDER_CONFLICT case: since H62 the game tells the player instead. Merging two accounts' stats/friends/boards is a platform feature; needs Levi's call on whether 'tell' is enough. (L)
 
 ## In progress
@@ -85,11 +90,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 - **H98** · Finish T43; verify, then fix, T19: design in
   `docs/design/H98_polish_and_player_list.md`, awaiting Levi.
-- **H113** · Avatar URLs: the game server relays in-match avatar URLs
-  unchecked, and the client host check can be bypassed. Parse strictly,
-  match hosts exactly (as the runtime will), no redirects, cap decoded
-  image size. Reopens H60; reaches players with the next client and
-  server release (H104 1B F1, F2, F3 client half, F7, F8).
 - **H114** · Followers act on any party start message: check it names
   their current party and that they are ready
   (`src/core/party_manager.gd:794`) (H104 1A SP33-G).
@@ -166,6 +166,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H113** · Avatar URLs are parsed strictly and matched to exact provider hosts on the client, and the game server drops a declared URL that fails the same check instead of relaying it; redirects are off and declared image dimensions are capped. Done in f4420f8 (2026-10-30).
 - **H118** · Squish sprites (and gore at z 2) drew in front of the foreground art. Squish remnants now sit in the characters' draw band, and the scenes carry the foreground depth themselves (art z 10, lobby landmarks z 11), so effects pass under the art. Done in 1bf5612, af62e37 (2026-10-30).
 - **H109** · Muse run 2 (H103's follow-ups, then the Tier C and D work Levi released) is complete. Its leftovers have their own items: H56, H72, H87 and H98 for Levi, and H104 for Claude's review. Done in 9f74eaf (2026-10-29).
 - **H112** · A complete code focused one row down instead of Join; the panel now focuses `_join_row` on `input_complete` via `SidePanel.focus_row`. Panel tests cover keyboard and field entry, keyboard on and off; the H56 probe asserts focus after the last symbol. Done in 2506f61 (2026-10-29).
