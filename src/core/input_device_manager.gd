@@ -55,6 +55,50 @@ var player_device_map := {}
 ## focus in/out.
 var is_text_input_captured := false
 
+## H119 key trace: a ring of recent movement-key events
+## and move-action changes. PlayerActionSource dumps it
+## when leftward movement stops while A is still held,
+## so a playtest captures what the input layer saw.
+const _KEY_TRACE_MAX := 160
+
+var _key_trace: Array[String] = []
+
+
+## Records one movement-key event in the trace ring.
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not event is InputEventKey:
+		return
+	var key_event := event as InputEventKey
+	if key_event.keycode not in [
+		KEY_A, KEY_D, KEY_LEFT, KEY_RIGHT
+	] and key_event.physical_keycode not in [
+		KEY_A, KEY_D, KEY_LEFT, KEY_RIGHT
+	]:
+		return
+	key_trace_note(
+		"key code=%d phys=%d pressed=%s echo=%s unicode=%d"
+		% [
+			key_event.keycode,
+			key_event.physical_keycode,
+			str(key_event.pressed),
+			str(key_event.echo),
+			key_event.unicode,
+		]
+	)
+
+
+## Appends one timestamped line to the trace ring.
+func key_trace_note(text: String) -> void:
+	_key_trace.append(
+		"%d %s" % [Time.get_ticks_msec(), text])
+	if _key_trace.size() > _KEY_TRACE_MAX:
+		_key_trace.remove_at(0)
+
+
+## The trace ring, oldest first.
+func get_key_trace() -> Array[String]:
+	return _key_trace.duplicate()
+
 
 func _ready() -> void:
 	G.log.log_system_ready("InputDeviceManager")

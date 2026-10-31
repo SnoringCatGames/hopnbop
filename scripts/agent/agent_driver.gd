@@ -68,6 +68,7 @@ const _STEP_KEYS := {
 	"press": ["key", "keys", "player"],
 	"release": ["key", "keys", "player"],
 	"tap": ["key", "keys", "player", "hold_sec", "hold_frames"],
+	"echo_hold": ["key", "keys", "player", "duration_sec"],
 	"screenshot": ["name", "target"],
 	"state": ["name"],
 	"eval": ["expr", "name"],
@@ -830,6 +831,8 @@ func _run_step(index: int, step: Dictionary) -> bool:
 			error = _step_press(step, false)
 		"tap":
 			error = await _step_tap(step)
+		"echo_hold":
+			error = await _step_echo_hold(step)
 		"screenshot":
 			error = await _step_screenshot(step)
 		"state":
@@ -954,6 +957,53 @@ func _step_tap(step: Dictionary) -> String:
 	return _step_press(step, false)
 
 
+## Holds one key the way a real keyboard does: one press,
+## then autorepeat echo events every 33 ms from 500 ms
+## until duration_sec has passed, then the release. The
+## echo events carry the key's unicode, as a real key
+## event does.
+func _step_echo_hold(step: Dictionary) -> String:
+	var resolved := _resolve_keys(step)
+	if not str(resolved[1]).is_empty():
+		return str(resolved[1])
+	var keys: Array = resolved[0]
+	if keys.size() != 1:
+		return "echo_hold takes exactly one key"
+	var key: Key = keys[0]
+	_send_key(key, true)
+	var duration := float(step.get("duration_sec", 2.0))
+	var elapsed := 0.0
+	var next_echo := 0.5
+	var snap_index := 0
+	var next_snap := 0.25
+	while elapsed < duration:
+		await get_tree().create_timer(0.033).timeout
+		elapsed += 0.033
+		if elapsed >= next_echo:
+			next_echo += 0.033
+			var event := InputEventKey.new()
+			event.keycode = key
+			event.physical_keycode = key
+			event.pressed = true
+			event.echo = true
+			event.unicode = _unicode_for_key(key)
+			Input.parse_input_event(event)
+		if elapsed >= next_snap:
+			next_snap += 0.25
+			snap_index += 1
+			_take_snapshot("hold_%d" % snap_index)
+	_send_key(key, false)
+	return ""
+
+
+## The unicode a plain (unshifted) press of the key
+## produces, for letter keys; 0 for anything else.
+static func _unicode_for_key(key: Key) -> int:
+	if key >= KEY_A and key <= KEY_Z:
+		return int(key) + 32
+	return 0
+
+
 ## Maps step "key"/"keys" to keycodes. Movement names (move_left, left,
 ## jump, ...) use the keyboard partition of step "player" (1 = WASD +
 ## Space, 2 = IJKL + Shift, 3 = arrows + Enter, 4 = numpad). Anything
@@ -1073,6 +1123,12 @@ func _is_mostly_black(image: Image) -> bool:
 func _step_state(step: Dictionary) -> String:
 	var state_name := _sanitize_name(
 		str(step.get("name", "state_%d" % (_current_step_index + 1))))
+	return _take_snapshot(state_name)
+
+
+## Records a named snapshot and writes it beside the
+## run's other state files. Returns an error string.
+func _take_snapshot(state_name: String) -> String:
 	var snapshot := build_snapshot(state_name)
 	_snapshots[state_name] = snapshot
 	var path := _out_dir.path_join("state-%s.json" % state_name)

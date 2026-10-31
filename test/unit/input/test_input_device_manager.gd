@@ -190,3 +190,43 @@ class TestDeviceManagerEdgeCases:
 		)
 		manager.assign_device_to_player(999, config)
 		assert_true(manager.has_device_for_player(999))
+
+
+class TestKeyTrace:
+	extends GutTest
+	var manager: InputDeviceManager
+
+	func before_each():
+		manager = InputDeviceManager.new()
+
+	func _key_event(
+		keycode: Key, pressed: bool, echo: bool = false
+	) -> InputEventKey:
+		var event := InputEventKey.new()
+		event.keycode = keycode
+		event.physical_keycode = keycode
+		event.pressed = pressed
+		event.echo = echo
+		return event
+
+	func test_records_movement_key_events():
+		manager._unhandled_key_input(_key_event(KEY_A, true))
+		manager._unhandled_key_input(
+			_key_event(KEY_A, true, true))
+		var trace := manager.get_key_trace()
+		assert_eq(trace.size(), 2)
+		assert_true(trace[0].contains("pressed=true"))
+		assert_true(trace[1].contains("echo=true"))
+
+	func test_ignores_other_keys():
+		manager._unhandled_key_input(_key_event(KEY_B, true))
+		manager._unhandled_key_input(
+			_key_event(KEY_SPACE, true))
+		assert_eq(manager.get_key_trace().size(), 0)
+
+	func test_ring_drops_the_oldest_lines():
+		for i in InputDeviceManager._KEY_TRACE_MAX + 5:
+			manager.key_trace_note("note %d" % i)
+		var trace := manager.get_key_trace()
+		assert_eq(trace.size(), InputDeviceManager._KEY_TRACE_MAX)
+		assert_true(trace[0].contains("note 5"))
