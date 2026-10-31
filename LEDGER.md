@@ -45,8 +45,8 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H120** · Muse run 3: the fixes from H104's stage 1 review and Levi's
   2026-10-30 playtest (SP83's patch, H119, H118, SP84, H113, SP85, SP86
   with H114, SP87, SP88, SP89 with H115, H116 and SP90, then SP91).
-  - owner: muse, launched by claude 0cfd9cf1 through Paseo on 2026-10-30 (Muse puts its session id here in its first commit)
-  - branch: mainline; last commit: none yet
+  - owner: muse 01a189f7-97c5-7eb0-98b6-164cb9977b39, launched by claude 0cfd9cf1 through Paseo on 2026-10-30
+  - branch: mainline; last commit: this one
   - evidence: `.claude/probes/H104/` (the stage 1 reports, untracked; SP83's patch goes in `F18/`), and `.claude/probes/<ID>/` per item
   - next: SP83's patch, then H119
   - brief: `docs/design/H120_muse_run3.md`
