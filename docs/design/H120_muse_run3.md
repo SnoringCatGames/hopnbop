@@ -215,10 +215,12 @@ Not done, with owners:
   echo-faithful replay did not reproduce it on native; web
   was not replayed.
 - Local note: `~/.hopnbop-migration/credentials.env`'s
-  NAKAMA_HTTP_KEY and GAME_ADMIN_KEY no longer match prod
-  (both syncs this run read the host's values over SSH
-  instead, printing neither). Levi may want to refresh that
-  file; nothing in the repos records the values.
+  NAKAMA_HTTP_KEY no longer matched prod (both syncs this run
+  read the host's values over SSH instead, printing neither).
+  Corrected by the coordinator: GAME_ADMIN_KEY always matched,
+  and the file was refreshed from its encrypted backup on
+  2026-10-30 (claude-config CC31), so both match again.
+  Nothing in the repos records the values.
 - The platform ledger has one cosmetic double blank line in
   Next (left by SP90's move); harmless, tidied next time the
   file is edited.
