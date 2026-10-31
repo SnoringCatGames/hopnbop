@@ -40,6 +40,7 @@ code changed.
    ones; the custom collection and the direct presence read are
    test-only seeding. Intended.
 
+
 4. `test_party_to_matchmaking.gd::test_party_pair_matched_into_same_mock_deploy`:
    `party_start_matchmaking` returns 400 "not all party members
    are ready" (SP33's server gate, platform `0499a41`). The gate
@@ -49,6 +50,18 @@ code changed.
    old test simply started without readying because the server
    never checked. HEAD's suite readies both members. Intended.
 
+5. `test_friends_account_delete_cascade.gd::test_delete_account_removes_deleter_from_other_friend_lists`
+   (added 2026-10-30, SP84): step 6 asserts the deleter's
+   pre-delete access token still authorizes reads ("A's session
+   token from pre-delete still works"). SP84 (platform
+   `5d0adce`) ends every session at delete time, which is the
+   intended behavior; a fresh sign-in works, and the released
+   client was driven through delete + grace-window cancel
+   against that runtime with no player-visible problem (shots:
+   `.claude/probes/SP84/`). Whether the released fixture fails
+   on a given run depends on Nakama's issue-second revocation
+   boundary, so it is listed even though it passes when sign-in
+   and delete land in the same second. Intended.
 ## CI axis
 
 `compliance-matrix.yml` gains a `compliance-released` job that
@@ -57,7 +70,7 @@ from history (the newest commit whose subject starts with
 `Release <x.y.z>`, so it follows the next release with no hand
 edit), checks that commit out as a worktree with its own
 platform pin, starts HEAD's stack via the smoke script, and runs
-the released suite against it. The four failures above are the
+the released suite against it. The failures above are the
 allowlist in `.github/compliance/released-known-failures.txt`;
 the job fails on any other failure, and warns when an allowlist
 entry stops failing (the next release's suite carries the fixed
