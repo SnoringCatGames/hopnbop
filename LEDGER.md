@@ -65,7 +65,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - owner: muse 01a1908a (runs 4 and 5's session, continued; run by claude 0cfd9cf1 through paseo)
   - branch: mainline; last commit: `bb269e1f`
   - evidence: the brief's section 3 handoff log; platform `runtime/` tests
-  - next: Muse: brief section 2, SP107 first
+  - next: Muse: brief section 2.2, SP108 nameless healing
   - brief: `docs/design/H125_muse_run6.md`
 
 
