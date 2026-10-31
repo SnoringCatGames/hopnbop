@@ -20,15 +20,15 @@ const _MAX_CONCURRENT_DOWNLOADS := 3
 const _AVATAR_MAX_BYTES := 2 * 1024 * 1024
 const _AVATAR_TIMEOUT_SEC := 10.0
 
+## A small body can still declare huge dimensions; anything
+## over this is not decoded at all.
+const _AVATAR_MAX_DIMENSION := 1024
+
 ## Only provider CDN hosts are fetched (H60). Any other URL
 ## would leak the viewer's IP to whoever set it and is never
-## queued. Suffixes match the host or any subdomain.
-const _ALLOWED_AVATAR_HOST_SUFFIXES: Array[String] = [
-	"googleusercontent.com",
-	"fbcdn.net",
-	"fbsbx.com",
-	"steamstatic.com",
-]
+## queued. Hosts match exactly (H113): a suffix match would
+## also admit customer-run subdomains of the same parents.
+## Mirrors the runtime's list (SP88 keeps the two in step).
 
 ## Anonymous fallback icon loaded once on ready.
 var _anonymous_texture: Texture2D
@@ -62,6 +62,9 @@ func _ready() -> void:
 		request.use_threads = true
 		request.body_size_limit = _AVATAR_MAX_BYTES
 		request.timeout = _AVATAR_TIMEOUT_SEC
+		# Provider avatar URLs are direct; a redirect would
+		# send the viewer to an unlisted host (H113).
+		request.max_redirects = 0
 		add_child(request)
 		_request_pool.append(request)
 
@@ -199,10 +202,16 @@ func _on_request_completed(
 
 
 ## Try loading image data as PNG, then JPEG, then
-## WebP.
+## WebP. Declared dimensions over the cap are refused
+## before decoding (H113): a small flat PNG can declare
+## tens of thousands of pixels per side.
 func _load_image_from_buffer(
 	image: Image, data: PackedByteArray,
 ) -> Error:
+	var dimensions := _declared_dimensions(data)
+	if (dimensions.x > _AVATAR_MAX_DIMENSION
+			or dimensions.y > _AVATAR_MAX_DIMENSION):
+		return ERR_INVALID_DATA
 	var error := image.load_png_from_buffer(data)
 	if error == OK:
 		return OK
@@ -213,15 +222,141 @@ func _load_image_from_buffer(
 	return error
 
 ## Whether an avatar URL may be fetched: https on an
-## allowlisted provider CDN host (or a subdomain of one).
+## exact provider CDN host, parsed strictly (H113).
+## Anything the fetch would read differently than this
+## check ? a fragment, a query or userinfo in the
+## authority, a port, an encoded host ? is refused.
 static func is_allowed_avatar_url(url: String) -> bool:
 	if not url.begins_with("https://"):
 		return false
-	var rest := url.trim_prefix("https://")
-	var host := rest.split("/")[0].split(":")[0].to_lower()
-	if host.is_empty():
+	if url.contains("#") or url.contains("\\"):
 		return false
-	for suffix in _ALLOWED_AVATAR_HOST_SUFFIXES:
-		if host == suffix or host.ends_with("." + suffix):
-			return true
+	var rest := url.trim_prefix("https://")
+	var slash := rest.find("/")
+	var authority := (
+		rest if slash == -1 else rest.left(slash))
+	if authority.is_empty():
+		return false
+	for bad_char in ["@", "?", "%", ":", " ", "\t"]:
+		if authority.contains(bad_char):
+			return false
+	return _is_allowed_avatar_host(authority.to_lower())
+
+
+## The provider hosts avatar URLs are fetched from:
+## Google's `lh<n>` image servers, Facebook's lookaside
+## and `scontent` CDNs, Steam's avatar CDNs. Nothing
+## else under those parents is fetched (H113).
+static func _is_allowed_avatar_host(host: String) -> bool:
+	if (host == "platform-lookaside.fbsbx.com"
+			or host == "avatars.steamstatic.com"
+			or host == "avatars.akamai.steamstatic.com"):
+		return true
+	if host.ends_with(".googleusercontent.com"):
+		var label := host.trim_suffix(
+			".googleusercontent.com")
+		if not label.begins_with("lh"):
+			return false
+		var digits := label.substr(2)
+		if digits.is_empty():
+			return false
+		return digits.lstrip("0123456789").is_empty()
+	if host.ends_with(".fbcdn.net"):
+		var head := host.trim_suffix(".fbcdn.net")
+		return (head == "scontent"
+			or head.begins_with("scontent.")
+			or head.begins_with("scontent-"))
 	return false
+
+
+## Width and height an encoded image declares, or
+## (-1, -1) when the header is not PNG, JPEG or WebP.
+static func _declared_dimensions(
+	data: PackedByteArray,
+) -> Vector2i:
+	if (data.size() >= 24
+			and data[0] == 0x89 and data[1] == 0x50
+			and data[2] == 0x4E and data[3] == 0x47):
+		return Vector2i(
+			_read_be32(data, 16), _read_be32(data, 20))
+	if (data.size() >= 4
+			and data[0] == 0xFF and data[1] == 0xD8):
+		return _jpeg_dimensions(data)
+	if (data.size() >= 30
+			and data.slice(0, 4).get_string_from_ascii() == "RIFF"
+			and data.slice(8, 4).get_string_from_ascii() == "WEBP"):
+		return _webp_dimensions(data)
+	return Vector2i(-1, -1)
+
+
+static func _jpeg_dimensions(
+	data: PackedByteArray,
+) -> Vector2i:
+	var pos := 2
+	while pos + 9 < data.size():
+		if data[pos] != 0xFF:
+			break
+		var marker := data[pos + 1]
+		if (marker >= 0xC0 and marker <= 0xCF
+				and marker != 0xC4 and marker != 0xC8
+				and marker != 0xCC):
+			return Vector2i(
+				_read_be16(data, pos + 7),
+				_read_be16(data, pos + 5))
+		if (marker == 0xD8 or marker == 0xD9
+				or marker == 0x01
+				or (marker >= 0xD0 and marker <= 0xD7)):
+			pos += 2
+		else:
+			pos += 2 + _read_be16(data, pos + 2)
+	return Vector2i(-1, -1)
+
+
+static func _webp_dimensions(
+	data: PackedByteArray,
+) -> Vector2i:
+	var chunk := data.slice(12, 4).get_string_from_ascii()
+	if chunk == "VP8X" and data.size() >= 30:
+		return Vector2i(
+			_read_le24(data, 24) + 1,
+			_read_le24(data, 27) + 1)
+	if chunk == "VP8L" and data.size() >= 25:
+		var b1 := data[22]
+		var b2 := data[23]
+		var b3 := data[24]
+		return Vector2i(
+			1 + (((b1 & 0x3F) << 8) | data[21]),
+			1 + (((b3 & 0x0F) << 10) | (b2 << 2)
+				| ((b1 & 0xC0) >> 6)))
+	if chunk == "VP8 " and data.size() >= 30:
+		return Vector2i(
+			_read_le16(data, 26) & 0x3FFF,
+			_read_le16(data, 28) & 0x3FFF)
+	return Vector2i(-1, -1)
+
+
+static func _read_be32(
+	data: PackedByteArray, offset: int,
+) -> int:
+	return ((data[offset] << 24) | (data[offset + 1] << 16)
+		| (data[offset + 2] << 8) | data[offset + 3])
+
+
+static func _read_be16(
+	data: PackedByteArray, offset: int,
+) -> int:
+	return (data[offset] << 8) | data[offset + 1]
+
+
+static func _read_le16(
+	data: PackedByteArray, offset: int,
+) -> int:
+	return data[offset] | (data[offset + 1] << 8)
+
+
+static func _read_le24(
+	data: PackedByteArray, offset: int,
+) -> int:
+	return (data[offset] | (data[offset + 1] << 8)
+		| (data[offset + 2] << 16))
+

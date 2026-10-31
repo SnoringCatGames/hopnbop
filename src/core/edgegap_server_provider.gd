@@ -491,6 +491,14 @@ func _store_profile_image_urls(
 ) -> void:
 	if profile_image_url.is_empty():
 		return
+	# The declared URL is relayed to every client in the
+	# match; only provider CDN URLs are forwarded (H113).
+	# Anything else is dropped, so the player shows as
+	# anonymous instead of sending viewers to an
+	# unlisted host.
+	if not ProfileImageCache.is_allowed_avatar_url(
+			profile_image_url):
+		return
 	for player_id in player_ids:
 		_player_to_profile_image_url[player_id] = (
 			profile_image_url)
