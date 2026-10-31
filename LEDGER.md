@@ -105,6 +105,12 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   foreground level layer; check what else does (Levi, playtest
   2026-10-30).
 - **H119** · Holding A starts left movement for an instant, then it
+  Harness diagnosis 2026-10-30 (`.claude/probes/H119/`): not
+  reproduced. Holding A moves at full speed until level geometry
+  stops it: offline level, lobby after the join panel opened and
+  closed, and lobby after typing a code on the H56 keyboard and
+  closing. Back to Levi via Claude: does it happen with kanata
+  off, and with the Left arrow?
   stops (Levi, playtest 2026-10-30).
 
 
