@@ -6,6 +6,17 @@ addons/snoringcat_platform_client/test/compliance/test_account_delete.gd::test_d
 addons/snoringcat_platform_client/test/compliance/test_account_delete_cascade_surfaces.gd::test_delete_account_clears_all_state_surfaces
 addons/snoringcat_platform_client/test/compliance/test_data_export.gd::test_export_includes_every_category
 addons/snoringcat_platform_client/test/compliance/test_party_to_matchmaking.gd::test_party_pair_matched_into_same_mock_deploy
+# SP87 (platform ledger): the released settings fixture writes
+# under a key the client storage allowlist refuses; the shipped
+# client writes only global and game/<id>. Comes out with the
+# next client release, whose fixture uses global.
+addons/snoringcat_platform_client/test/compliance/test_settings.gd::test_storage_write_read_roundtrip
+# SP87 (platform ledger): the released recent-players fixture
+# seeds its rows through the client storage endpoint; those rows
+# are written by the runtime when a match ends, never by a
+# client. Comes out with the next client release, whose fixture
+# seeds through the console.
+addons/snoringcat_platform_client/test/compliance/test_recent_players.gd::test_list_recent_players_sorts_by_matched_at_desc_and_caps
 addons/snoringcat_platform_client/test/compliance/test_friends_account_delete_cascade.gd::test_delete_account_removes_deleter_from_other_friend_lists
 # SP95 timing (platform ledger): the timing: entries below name released fixtures that keep
 # using the session that delete_account ends; whether the old
