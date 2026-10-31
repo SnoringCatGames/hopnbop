@@ -95,9 +95,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 - **H98** · Finish T43; verify, then fix, T19: design in
   `docs/design/H98_polish_and_player_list.md`, awaiting Levi.
-- **H114** · Followers act on any party start message: check it names
-  their current party and that they are ready
-  (`src/core/party_manager.gd:794`) (H104 1A SP33-G).
 - **H115** · SP41 client follow-ups: an expected delete failure logs
   through `G.log.error`, which files a crash report each time (log a
   warning); add the no-session case; make the verify2 panel probe a test
@@ -171,6 +168,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H114** · Followers act on any party start message: check it names their current party and that they are ready (`src/core/party_manager.gd:794`) (H104 1A SP33-G). Done in 3238dfd3 (2026-10-30).
 - **H113** · Avatar URLs are parsed strictly and matched to exact provider hosts on the client, and the game server drops a declared URL that fails the same check instead of relaying it; redirects follow one checked hop and declared image dimensions are capped. Done in f4420f8, 3495f67e, 1d359bda, platform bade4f3, 10af8b1, 7e20229 (2026-10-30).
 - **H118** · Squish sprites (and gore at z 2) drew in front of the foreground art. Squish remnants now sit in the characters' draw band, and the scenes carry the foreground depth themselves (art z 10, lobby landmarks z 11), so effects pass under the art. Done in 1bf5612, af62e37 (2026-10-30).
 - **H109** · Muse run 2 (H103's follow-ups, then the Tier C and D work Levi released) is complete. Its leftovers have their own items: H56, H72, H87 and H98 for Levi, and H104 for Claude's review. Done in 9f74eaf (2026-10-29).
