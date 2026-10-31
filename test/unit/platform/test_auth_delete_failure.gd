@@ -119,6 +119,28 @@ func test_failed_delete_reports_delete_completed() -> void:
 	assert_false(_store.jwt_token.is_empty(), "still signed in")
 
 
+func test_delete_without_session_reports_delete_completed() -> void:
+	# No stored session at all: the failure still belongs
+	# to the delete flow, and nothing is sent.
+	_store.clear_tokens()
+
+	_client.delete_account()
+	for _i in 60:
+		if not _delete_results.is_empty():
+			break
+		await get_tree().process_frame
+
+	assert_eq(_delete_results.size(), 1, "failure reported")
+	if _delete_results.is_empty():
+		return
+	assert_false(_delete_results[0][0], "delete failed")
+	assert_eq(
+		_delete_results[0][1], "Not authenticated", "error text")
+	assert_true(_auth_results.is_empty(), "not a sign-in failure")
+	assert_false(_client._is_deleting, "delete state cleared")
+	assert_true(_nakama.rpc_ids.is_empty(), "no delete sent")
+
+
 func test_delete_refused_while_link_pending() -> void:
 	# A delete started while a link waits for its result
 	# would share the failure routing. It refuses up front

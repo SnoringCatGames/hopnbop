@@ -158,7 +158,11 @@ func _on_delete_completed(
 		# on this device inherits nothing from the deleted account.
 		G.screens.sign_out_router.finish_account_deletion()
 	else:
-		G.log.error(
+		# An expected failure (offline, a server error, an
+		# expired session): the toast tells the player, and a
+		# warning keeps it out of the crash reports an error
+		# would file.
+		G.log.warning(
 			"Account deletion failed: %s" % error)
 		if is_instance_valid(G.toast_overlay):
 			G.toast_overlay.show_toast(
