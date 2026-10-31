@@ -61,7 +61,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - owner: muse 01a189f7-97c5-7eb0-98b6-164cb9977b39, launched by claude 0cfd9cf1 through Paseo on 2026-10-30
   - branch: mainline; last commit: this one
   - evidence: `.claude/probes/H104/` (the stage 1 reports, untracked; SP83's patch goes in `F18/`), and `.claude/probes/<ID>/` per item
-  - next: Client release waits on Claude's word on the H122 shots (.claude/probes/H122/). Done so far: SP87 (d4e12c9) + SP101 follow-ups, SP96 (2cf7a55) + SP99 follow-ups, SP83 live 2026-10-30 23:32 UTC (e17586f), SP93 closed, game server v32 live (4f6fde1d), H122 (f0f39d4), H119 key trace (2d28d3cc). After the release: SP88 rest, SP89, H115, H116, SP90, SP91, handoff.
+  - next: Client 0.57.0 released 2026-10-30 (7fd873fd; local client-only deploy, config synced, game server still v32). Compliance Matrix 41154547444: released suite 94/94, allowlist emptied (d6cf88f5). H83's Facebook-avatar post-release check still open (needs a Facebook sign-in). Done so far: SP87 (d4e12c9) + SP101 follow-ups, SP96 (2cf7a55) + SP99 follow-ups, SP83 live 2026-10-30 23:32 UTC (e17586f), SP93 closed, game server v32 live (4f6fde1d), H122 (f0f39d4), H119 key trace (2d28d3cc). Next: SP88 rest, SP89, H115, H116, SP90, SP91, handoff.
   - brief: `docs/design/H120_muse_run3.md`
 
 ## Next
@@ -90,6 +90,8 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   post-release check: a player signed in with Facebook sees
   their avatar load (confirms the provider's picture URL
   serves the image to this client, possibly over one redirect);
+  0.57.0 shipped 2026-10-30 (7fd873fd) with H113's checks
+  live, so this check is now runnable and still to run;
   `docs/design/H37_systems_audit.md` 1.1)
 
 - **H93** · The overhead label offset (T29). After H92 (S to M; batch 7;
