@@ -101,7 +101,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   SP44-5).
 - **H117** · SP32 client half, for when the consent change ships: show
   pending invites, accept and decline (H104 1A SP32-3).
-  2026-10-30).
 - **H119** · Holding A starts left movement for an instant, then it
   stops (Levi, playtest 2026-10-30).
   Harness diagnosis 2026-10-30 (`.claude/probes/H119/`): not
@@ -110,7 +109,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   closed, and lobby after typing a code on the H56 keyboard and
   closing. Back to Levi via Claude: does it happen with kanata
   off, and with the Left arrow?
-  stops (Levi, playtest 2026-10-30).
 
 
 ## Residuals (known, not fixed)
