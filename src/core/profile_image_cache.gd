@@ -45,6 +45,11 @@ var _downloading: Dictionary = {}
 ## Dictionary<int, String>
 var _requested_urls: Dictionary = {}
 
+## Player ids whose download already used its one
+## redirect hop.
+## Dictionary<int, bool>
+var _redirect_used: Dictionary = {}
+
 ## Queued downloads waiting for a free slot.
 ## Array of [player_id, url].
 var _queue: Array = []
@@ -62,8 +67,8 @@ func _ready() -> void:
 		request.use_threads = true
 		request.body_size_limit = _AVATAR_MAX_BYTES
 		request.timeout = _AVATAR_TIMEOUT_SEC
-		# Provider avatar URLs are direct; a redirect would
-		# send the viewer to an unlisted host (H113).
+		# Redirects are followed manually, one hop, after
+		# the target passes the same check (H113).
 		request.max_redirects = 0
 		add_child(request)
 		_request_pool.append(request)
@@ -117,6 +122,7 @@ func clear() -> void:
 	_textures.clear()
 	_downloading.clear()
 	_requested_urls.clear()
+	_redirect_used.clear()
 	_queue.clear()
 
 
@@ -164,12 +170,27 @@ func _start_download(
 func _on_request_completed(
 	result: int,
 	response_code: int,
-	_headers: PackedStringArray,
+	headers: PackedStringArray,
 	body: PackedByteArray,
 	request: HTTPRequest,
 	player_id: int,
 	url: String = "",
 ) -> void:
+	# One redirect hop, and only to a URL that passes
+	# the same check (some provider endpoints answer
+	# with a redirect to their CDN).
+	var target := _redirect_target(response_code, headers)
+	if not target.is_empty() and not _redirect_used.has(player_id):
+		_redirect_used[player_id] = true
+		request.request_completed.connect(
+			_on_request_completed.bind(
+				request, player_id, url),
+			CONNECT_ONE_SHOT)
+		if request.request(target) == OK:
+			return
+		request.request_completed.disconnect(
+			_on_request_completed)
+	_redirect_used.erase(player_id)
 	_downloading.erase(player_id)
 
 	# A newer URL for this id superseded this download
@@ -209,7 +230,12 @@ func _load_image_from_buffer(
 	image: Image, data: PackedByteArray,
 ) -> Error:
 	var dimensions := _declared_dimensions(data)
-	if (dimensions.x > _AVATAR_MAX_DIMENSION
+	if dimensions == Vector2i(-1, -1):
+		# A recognized format whose dimensions cannot be
+		# read is refused rather than decoded uncapped.
+		if _has_known_signature(data):
+			return ERR_INVALID_DATA
+	elif (dimensions.x > _AVATAR_MAX_DIMENSION
 			or dimensions.y > _AVATAR_MAX_DIMENSION):
 		return ERR_INVALID_DATA
 	var error := image.load_png_from_buffer(data)
@@ -243,6 +269,27 @@ static func is_allowed_avatar_url(url: String) -> bool:
 	return _is_allowed_avatar_host(authority.to_lower())
 
 
+## Where a response redirects to, or "" when it is not
+## a redirect or the target does not pass the same
+## check as the original URL.
+static func _redirect_target(
+	response_code: int, headers: PackedStringArray,
+) -> String:
+	if response_code not in [301, 302, 303, 307, 308]:
+		return ""
+	for header in headers:
+		var colon := header.find(":")
+		if colon == -1:
+			continue
+		if header.left(colon).strip_edges().to_lower() != "location":
+			continue
+		var location := header.substr(colon + 1).strip_edges()
+		if is_allowed_avatar_url(location):
+			return location
+		return ""
+	return ""
+
+
 ## The provider hosts avatar URLs are fetched from:
 ## Google's `lh<n>` image servers, Facebook's lookaside
 ## and `scontent` CDNs, Steam's avatar CDNs. Nothing
@@ -250,7 +297,9 @@ static func is_allowed_avatar_url(url: String) -> bool:
 static func _is_allowed_avatar_host(host: String) -> bool:
 	if (host == "platform-lookaside.fbsbx.com"
 			or host == "avatars.steamstatic.com"
-			or host == "avatars.akamai.steamstatic.com"):
+			or host == "avatars.akamai.steamstatic.com"
+			or host == "avatars.fastly.steamstatic.com"
+			or host == "avatars.cloudflare.steamstatic.com"):
 		return true
 	if host.ends_with(".googleusercontent.com"):
 		var label := host.trim_suffix(
@@ -266,6 +315,25 @@ static func _is_allowed_avatar_host(host: String) -> bool:
 		return (head == "scontent"
 			or head.begins_with("scontent.")
 			or head.begins_with("scontent-"))
+	return false
+
+
+## Whether the data starts with a PNG, JPEG or WebP
+## signature, whether or not its dimensions parse.
+static func _has_known_signature(
+	data: PackedByteArray,
+) -> bool:
+	if (data.size() >= 4
+			and data[0] == 0x89 and data[1] == 0x50
+			and data[2] == 0x4E and data[3] == 0x47):
+		return true
+	if (data.size() >= 2
+			and data[0] == 0xFF and data[1] == 0xD8):
+		return true
+	if (data.size() >= 12
+			and data.slice(0, 4).get_string_from_ascii() == "RIFF"
+			and data.slice(8, 4).get_string_from_ascii() == "WEBP"):
+		return true
 	return false
 
 

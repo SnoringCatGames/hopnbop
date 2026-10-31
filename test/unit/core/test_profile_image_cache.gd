@@ -66,7 +66,7 @@ func test_pool_requests_carry_size_and_time_limits() -> void:
 			"timeout set")
 		assert_eq(
 			request.max_redirects, 0,
-			"redirects are not followed (H113)")
+			"redirects are only followed manually (H113)")
 
 
 func test_allowed_url_shapes() -> void:
@@ -89,32 +89,52 @@ func test_allowed_url_shapes() -> void:
 	assert_false(ProfileImageCache.is_allowed_avatar_url(""))
 
 
-func test_allowed_url_shapes_attacker_controlled() -> void:
-	# Shapes where the string check and the engine's URL
-	# handling disagree, and customer-run subdomains of
-	# the provider parents (H113).
+func test_refused_url_shapes() -> void:
+	# Shapes the strict parse refuses: an authority that
+	# is not exactly a provider host (H113).
 	var refused: Array[String] = [
-		"https://127.0.0.1#.googleusercontent.com/a.png",
-		"https://evil.invalid#.googleusercontent.com",
-		"https://evil.invalid?x.googleusercontent.com/a.png",
+		"https://198.51.100.9#.googleusercontent.com/a.png",
+		"https://tracker.example.invalid#.googleusercontent.com",
+		"https://tracker.example.invalid?x.googleusercontent.com/a.png",
 		"https://user@lh3.googleusercontent.com/a.png",
 		"https://lh3.googleusercontent.com:8443/a.png",
 		"https://lh3%2egoogleusercontent.com/a.png",
 		"https://lh3.googleusercontent.com\\a.png",
-		"https://4.3.2.1.bc.googleusercontent.com/a.png",
-		"https://storage.googleapis.com/a.png",
-		"https://storage.googleusercontent.com/a.png",
+		"https://cdn.googleusercontent.com/a.png",
 		"https://lhx.googleusercontent.com/a.png",
 		"https://lh-3.googleusercontent.com/a.png",
 		"https://lh3.googleusercontent.com./a.png",
-		"https://graph.facebook.com/a.png",
-		"https://cdn.steamstatic.com/a.png",
-		"https://avatars.fastly.steamstatic.com/a.png",
+		"https://www.facebook.com/a.png",
+		"https://steamstatic.com/a.png",
 	]
 	for url in refused:
 		assert_false(
 			ProfileImageCache.is_allowed_avatar_url(url),
 			"refused: %s" % url)
+
+
+func test_steam_avatar_hosts() -> void:
+	assert_true(ProfileImageCache.is_allowed_avatar_url(
+		"https://avatars.fastly.steamstatic.com/a.jpg"))
+	assert_true(ProfileImageCache.is_allowed_avatar_url(
+		"https://avatars.cloudflare.steamstatic.com/a.jpg"))
+
+
+func test_redirect_target_must_pass_the_same_check() -> void:
+	var allowed: PackedStringArray = [
+		"Location: https://scontent.xx.fbcdn.net/a.png"]
+	assert_eq(
+		ProfileImageCache._redirect_target(302, allowed),
+		"https://scontent.xx.fbcdn.net/a.png",
+		"a redirect to a provider CDN is followed")
+	var unlisted: PackedStringArray = [
+		"Location: https://tracker.example.invalid/a.png"]
+	assert_eq(
+		ProfileImageCache._redirect_target(302, unlisted),
+		"", "a redirect anywhere else is not followed")
+	assert_eq(
+		ProfileImageCache._redirect_target(200, allowed),
+		"", "a non-redirect response has no target")
 
 
 func test_oversized_declared_dimensions_are_not_decoded(
@@ -147,4 +167,21 @@ func test_oversized_declared_dimensions_are_not_decoded(
 	assert_eq(
 		cache._load_image_from_buffer(Image.new(), bytes),
 		OK, "a small PNG decodes")
+	cache.free()
+
+
+func test_unreadable_dimensions_are_refused() -> void:
+	var cache := ProfileImageCache.new()
+	# JPEG signature and a partial first segment: the
+	# dimensions never become readable.
+	var data := PackedByteArray()
+	data.resize(8)
+	data[0] = 0xFF
+	data[1] = 0xD8
+	data[2] = 0xFF
+	data[3] = 0xE0
+	assert_eq(
+		cache._load_image_from_buffer(Image.new(), data),
+		ERR_INVALID_DATA,
+		"a header with unreadable dimensions is refused")
 	cache.free()
