@@ -61,7 +61,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - owner: muse 01a189f7-97c5-7eb0-98b6-164cb9977b39, launched by claude 0cfd9cf1 through Paseo on 2026-10-30
   - branch: mainline; last commit: this one
   - evidence: `.claude/probes/H104/` (the stage 1 reports, untracked; SP83's patch goes in `F18/`), and `.claude/probes/<ID>/` per item
-  - next: Client 0.57.0 released 2026-10-30 (7fd873fd; local client-only deploy, config synced, game server still v32). Compliance Matrix 41154547444: released suite 94/94, allowlist emptied (d6cf88f5). H83's Facebook-avatar post-release check still open (needs a Facebook sign-in). Done so far: SP87 (d4e12c9) + SP101 follow-ups, SP96 (2cf7a55) + SP99 follow-ups, SP83 live 2026-10-30 23:32 UTC (e17586f), SP93 closed, game server v32 live (4f6fde1d), H122 (f0f39d4), H119 key trace (2d28d3cc). Next: SP88 rest, SP89, H115, H116, SP90, SP91, handoff.
+  - next: Client 0.57.0 released 2026-10-30 (7fd873fd; local client-only deploy, config synced, game server still v32). Compliance Matrix 41154547444: released suite 94/94, allowlist emptied (d6cf88f5). H83's Facebook-avatar post-release check still open (needs a Facebook sign-in). Done so far: SP87 (d4e12c9) + SP101 follow-ups, SP96 (2cf7a55) + SP99 follow-ups, SP83 live 2026-10-30 23:32 UTC (e17586f), SP93 closed, game server v32 live (4f6fde1d), H122 (f0f39d4), H119 key trace (2d28d3cc), SP88 (platform 03884fa), SP89 (platform 7d39613), H115 (4405cd3b), SP90 (platform 8832a3b), H116 (73aa04fd). Next: SP91, handoff.
   - brief: `docs/design/H120_muse_run3.md`
 
 ## Next
@@ -105,12 +105,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 - **H98** · Finish T43; verify, then fix, T19: design in
   `docs/design/H98_polish_and_player_list.md`, awaiting Levi.
-- **H115** · SP41 client follow-ups: an expected delete failure logs
-  through `G.log.error`, which files a crash report each time (log a
-  warning); add the no-session case; make the verify2 panel probe a test
-  (H104 1A SP41-1, SP41-4).
-- **H116** · `test_auth_store_migration.gd` lacks three cases (H104 1A
-  SP44-5).
 - **H117** · SP32 client half, for when the consent change ships: show
   pending invites, accept and decline (H104 1A SP32-3).
 
@@ -170,6 +164,8 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H115** · SP41 client follow-ups: an expected delete failure logs a warning instead of an error (no crash report); the no-session delete case is covered; the verify2 panel probe is a suite test (busy clears, retry sends). Done in 4405cd3b (2026-10-30).
+- **H116** · `test_auth_store_migration.gd` has the three SP44 cases: the legacy retry with a key file present, a lost key leaving the file in place, and an unreadable file moved aside for a new guest. Done in 73aa04fd (2026-10-30).
 - **H122** · Two look questions from H118's foreground-depth fix. Levi answered 2026-10-30: confetti in front of the walls and the lobby landmarks (done: ConfettiEmitter draws at Level.CELEBRATION_Z_INDEX); gore unchanged, still behind the key indicators, title and podium as H118 left them; the bunny squish sprite takes the animated bunny sprite's layer (done: the squish and the snail remnant join their character's parent, right after the character, with the character sprite's own z settings). Pairs and crops: .claude/probes/H122/. Done in f0f39d4 (2026-10-30).
 - **H114** · Followers act on any party start message: check it names their current party and that they are ready (`src/core/party_manager.gd:794`) (H104 1A SP33-G). Done in 3238dfd3 (2026-10-30).
 - **H113** · Avatar URLs are parsed strictly and matched to exact provider hosts on the client, and the game server drops a declared URL that fails the same check instead of relaying it; redirects follow one checked hop and declared image dimensions are capped. Done in f4420f8, 3495f67e, 1d359bda, platform bade4f3, 10af8b1, 7e20229 (2026-10-30).
