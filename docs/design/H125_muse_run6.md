@@ -80,3 +80,48 @@ commits. Then append your handoff entry to section 3, set H125's
 ## 3. Handoff log
 
 Append one dated entry each time you stop.
+
+### 2026-10-31, muse 01a1908a (run 6, SP107-SP109 complete)
+
+Done, one runtime push each, every deploy watched green
+(platform SHAs are that repo's; hopnbop bumps follow):
+
+- SP107 (platform `29e01f9`, ledger `525d045`; hopnbop
+  `3eb31ce0`; deploy 41183479787). Steam does all three
+  after-sign-in behaviors again, so a created Steam
+  account gets a generated name. The created-Steam test
+  fails on the old code (no name written) and passes
+  with the fix.
+- SP108 (platform `c48ab05`, ledger `32e515e`; hopnbop
+  `62eee887`; deploy 41184907191). An existing account
+  whose stored display name is empty gets a generated
+  one at sign-in (Apple, device and custom here; the
+  clamp already did this for Google, Facebook and
+  Steam) and inside the after-session-refresh function
+  privacy already registers, so a resumed session heals
+  too. A stored name is never replaced; the
+  delete-then-sign-in compliance case still ends with
+  the `[deleted]` marker, which is the candidate-stack
+  check for the pending-deletion case. Both healing
+  tests fail on the old code and pass with the fix, so
+  the nameless accounts from the SP106 window heal at
+  their next sign-in or refresh with no prod script.
+- SP109 (platform `457bd23`, ledger `66fd4fc`; hopnbop
+  `c2fa0aa0`; deploy 41186305806). `InitModule` calls
+  one `registerHooks`; `TestNoHookRegisteredTwice`
+  calls that same function, so no registrar can be
+  added to production without the duplicate check
+  seeing it. No behavior change.
+
+Gates per item: Go vet, test, staticcheck and
+`gofmt -l runtime` pass; smoke green; the 0.57.0 suite
+shows only the two SP106 allowlist entries; the
+0.56.0 suite shows its classified set (the SP95
+friends-delete timing case flipped once, as
+documented). Full per-file GUT passes on each hopnbop
+bump and every hopnbop CI run is green. No client
+release and no prod actions beyond the three
+sanctioned runtime deploys.
+
+Not done: nothing in section 2. H119 still waits on
+Levi's playtest log (H123 handoff), unchanged.

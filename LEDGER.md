@@ -59,14 +59,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - evidence: `.claude/probes/H104/stage1-A.md` and `stage1-B.md` (untracked, on the desktop only)
   - next: review H120's commits as they land; stages 2 and 3 after the weekly usage reset (2026-11-02)
   - brief: `docs/design/H104_review.md`
-- **H125** · Muse run 6: platform SP107-SP109, the SP106 follow-ups
-  (Steam's generated name, naming empty-named accounts at sign-in, one
-  hook registration list).
-  - owner: muse 01a1908a (runs 4 and 5's session, continued; run by claude 0cfd9cf1 through paseo)
-  - branch: mainline; last commit: `bb269e1f`
-  - evidence: the brief's section 3 handoff log; platform `runtime/` tests
-  - next: Muse: brief section 2.3, SP109 one registration list
-  - brief: `docs/design/H125_muse_run6.md`
+
 
 
 
@@ -171,6 +164,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H125** · Muse run 6 (SP107-SP109, the SP106 follow-ups). Handoff log in `docs/design/H125_muse_run6.md` section 3. Done 2026-10-31.
 - **H124** · Muse run 5 (SP106, the after-authenticate hook collision). Handoff log in `docs/design/H124_muse_run5.md` section 4. Done 2026-10-31.
 - **H123** · Muse run 4 (coordinator follow-ups to run 3): the H119 trace fix, platform SP102 to SP105, and the H115 logging check. Handoff log in `docs/design/H123_muse_run4.md` section 6. Done 2026-10-30.
 - **H120** · Muse run 3 (H104 stage-1 fixes and Levi's 2026-10-30 playtest): SP83-SP91, H113-H116, H118, H119, H122, the v32 game server and the 0.57.0 client. Handoff log in `docs/design/H120_muse_run3.md` section 6. Done 2026-10-30.
