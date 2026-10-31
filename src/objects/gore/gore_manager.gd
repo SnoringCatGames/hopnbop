@@ -65,13 +65,19 @@ const SNAIL_GOO_UPWARD_BIAS := -40.0
 # as +/- around the base gore_fade_delay_sec.
 const GORE_FADE_DELAY_VARIANCE_SEC := 1.0
 
+# Draw depth of the gore that flies in front of the
+# players: particles, kickables and the front
+# accumulation buffer all share it. The level test
+# compares the foreground art against this value.
+const FRONT_Z_INDEX := 2
+
 # Behind-player accumulation buffer (z_index = -1).
 var _behind_image: Image
 var _behind_texture: ImageTexture
 var _behind_sprite: Sprite2D
 var _is_behind_dirty := false
 
-# In-front-of-player accumulation buffer (z_index = 0).
+# In-front-of-player accumulation buffer (z_index = 2).
 var _front_image: Image
 var _front_texture: ImageTexture
 var _front_sprite: Sprite2D
@@ -252,7 +258,7 @@ func _spawn_poop_particle(
 		POOP_FADE_DELAY_MAX_SEC)
 
 	if not is_behind:
-		particle.z_index = 2
+		particle.z_index = FRONT_Z_INDEX
 
 	# Set texture to white_pixel modulated to
 	# dark brown.
@@ -334,7 +340,7 @@ func _spawn_snail_goo_particle(
 		SNAIL_GOO_FADE_DELAY_MAX_SEC)
 
 	if not is_behind:
-		particle.z_index = 2
+		particle.z_index = FRONT_Z_INDEX
 
 	# Set texture to white_pixel modulated to
 	# a random snail goo color.
@@ -411,7 +417,7 @@ func _spawn_kickable(
 	kickable.type_index = type_index
 	kickable.position = pos
 	kickable.velocity = vel
-	kickable.z_index = 2
+	kickable.z_index = FRONT_Z_INDEX
 
 	# Set texture from shared pool.
 	var sprite: Sprite2D = (
@@ -472,7 +478,7 @@ func _spawn_particle(
 				GORE_FADE_DELAY_VARIANCE_SEC))
 
 	if not is_behind:
-		particle.z_index = 2
+		particle.z_index = FRONT_Z_INDEX
 
 	# Set texture.
 	var sprite: Sprite2D = (
@@ -767,5 +773,5 @@ func _init_accumulation_buffer() -> void:
 	_front_sprite.position = _buffer_origin
 	_front_sprite.texture_filter = (
 		CanvasItem.TEXTURE_FILTER_NEAREST)
-	_front_sprite.z_index = 2
+	_front_sprite.z_index = FRONT_Z_INDEX
 	add_child(_front_sprite)

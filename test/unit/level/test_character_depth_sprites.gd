@@ -26,8 +26,8 @@ const _AFTER_PLAYERS_EXEMPT: Array[StringName] = [
 	&"Objects", &"SpawnPoints", &"SettingsBook",
 ]
 
-## GoreManager's highest z_index (particles front buffer).
-const _GORE_MAX_Z := 2
+## The art must sort above GoreManager.FRONT_Z_INDEX,
+## read from GoreManager so the two cannot drift.
 
 var _level: Level
 var _players: Node2D
@@ -107,7 +107,7 @@ func test_scenes_carry_the_foreground_depths() -> void:
 		"lobby landmarks")
 	lobby.free()
 
-	assert_gt(Level.FOREGROUND_Z_INDEX, _GORE_MAX_Z,
+	assert_gt(Level.FOREGROUND_Z_INDEX, GoreManager.FRONT_Z_INDEX,
 		"foreground art sorts above gore's z")
 	assert_gt(Level.FOREGROUND_UI_Z_INDEX,
 		Level.FOREGROUND_Z_INDEX,
@@ -144,7 +144,7 @@ func _check_after_players(scene: Node) -> int:
 		if not (child is CanvasItem):
 			continue
 		checked += 1
-		assert_gt((child as CanvasItem).z_index, _GORE_MAX_Z,
+		assert_gt((child as CanvasItem).z_index, GoreManager.FRONT_Z_INDEX,
 			"%s/%s sorts above gore's z" % [
 				scene.name, child.name])
 	return checked
