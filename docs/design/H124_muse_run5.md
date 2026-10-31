@@ -69,3 +69,61 @@ Fix:
 ## 4. Handoff log
 
 Append one dated entry each time you stop.
+
+### 2026-10-31, muse 01a1908a (run 5, SP106 complete)
+
+Done (platform SHAs are that repo's):
+
+- SP106 (platform `8363d0c`, ledger `82adcbf`; hopnbop
+  bump `0c62694a`). One after-authenticate function per
+  provider now runs all three behaviors:
+  `registerAfterAuthenticateHooks` assigns a generated
+  name to a created account, clamps an existing
+  Google/Facebook/Steam account's name, and runs
+  sign-in privacy on every sign-in.
+  `registerDisplayNameHooks` and `registerAuthNameClamp`
+  are gone; `registerPrivacyHooks` keeps its link,
+  refresh and delete hooks. The runtime deploy
+  (run 41180324301) and both hopnbop CI runs on the
+  bump (PR Validate 41181122235, Compliance Matrix
+  41181122244) are green.
+- One correction to section 2's account of the bug: a
+  counting probe against the old code shows three
+  registrars, not two. Privacy is called after the
+  clamp in `InitModule`, so its hooks were the actual
+  survivors (Google, Facebook and Steam registered
+  three times each, Apple and Device twice, Custom
+  once). Generated names at creation and the clamp
+  were shadowed for every provider privacy covers,
+  not only Google and Facebook. The fix therefore
+  merges privacy's sign-in work too, which the brief's
+  outcome for Steam ("the clamp alone") requires to
+  be registered anywhere at all. A live probe against
+  the candidate stack confirms the restored behavior:
+  a fresh device account came back with the generated
+  name `LuckyStoat_5159`.
+- Tests: `TestNoHookRegisteredTwice` runs every hook
+  registration `InitModule` makes through one capturing
+  initializer and fails on any duplicate; outcome tests
+  assert a created Google account ends with a
+  generated name and an existing one ends clamped.
+  Go vet, test, staticcheck and `gofmt -l runtime`
+  pass. Smoke is 95/95: the two fixtures that modeled
+  a nameless account now clear the generated name
+  through the console. The 0.57.0 suite reports 94
+  with only the two released-fixture failures, which
+  earned dated allowlist entries in hopnbop (they come
+  out with the next client release). The 0.56.0 suite
+  shows its classified set: the four documented
+  intended failures, the two SP87 fixture drifts from
+  section 3, and the same two SP106 fixture failures.
+  Full per-file GUT passes on the hopnbop bump.
+- Production: no account was created between the SP88
+  deploy and this fix (the coordinator's count), so
+  no existing account carries a provider name and no
+  retroactive rename or migration is needed; the fix
+  covers new sign-ups only. No client release and no
+  prod actions beyond the sanctioned runtime deploy.
+
+Not done: nothing in section 2. H119 still waits on
+Levi's playtest log (H123 handoff), unchanged.

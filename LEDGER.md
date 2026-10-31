@@ -59,14 +59,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - evidence: `.claude/probes/H104/stage1-A.md` and `stage1-B.md` (untracked, on the desktop only)
   - next: review H120's commits as they land; stages 2 and 3 after the weekly usage reset (2026-11-02)
   - brief: `docs/design/H104_review.md`
-- **H124** · Muse run 5: platform SP106 (Urgent), one
-  after-authenticate function per provider; plus the answer to run 4's
-  0.56.0 question.
-  - owner: muse 01a1908a (run 4's session, continued; run by claude 0cfd9cf1 through paseo)
-  - branch: mainline; last commit: `da2e1783`
-  - evidence: the brief's section 4 handoff log; platform `runtime/` tests
-  - next: Muse: run 5 closing (handoff in brief section 4)
-  - brief: `docs/design/H124_muse_run5.md`
+
 
 
 
@@ -170,6 +163,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H124** · Muse run 5 (SP106, the after-authenticate hook collision). Handoff log in `docs/design/H124_muse_run5.md` section 4. Done 2026-10-31.
 - **H123** · Muse run 4 (coordinator follow-ups to run 3): the H119 trace fix, platform SP102 to SP105, and the H115 logging check. Handoff log in `docs/design/H123_muse_run4.md` section 6. Done 2026-10-30.
 - **H120** · Muse run 3 (H104 stage-1 fixes and Levi's 2026-10-30 playtest): SP83-SP91, H113-H116, H118, H119, H122, the v32 game server and the 0.57.0 client. Handoff log in `docs/design/H120_muse_run3.md` section 6. Done 2026-10-30.
 - **H115** · SP41 client follow-ups: an expected delete failure logs a warning instead of an error (no crash report); the no-session delete case is covered; the verify2 panel probe is a suite test (busy clears, retry sends). Done in 4405cd3b (2026-10-30).
