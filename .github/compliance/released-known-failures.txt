@@ -2,3 +2,11 @@
 # one test id per line (file::test). Classified in
 # docs/design/H108_compat.md (H108). The compliance-released job
 # fails on any failure not listed here.
+# SP106 (platform ledger): the released fixtures assume a fresh
+# anonymous account has no display name; since SP106 a created
+# account gets a generated name at creation (H59), so the two
+# fixtures that model a nameless account fail. Comes out with
+# the next client release, whose fixtures clear the name
+# through the console.
+addons/snoringcat_platform_client/test/compliance/test_account_delete.gd::test_cancel_clears_marker_on_account_without_display_name
+addons/snoringcat_platform_client/test/compliance/test_public_leaderboard.gd::test_lists_ranked_scores_without_credentials
