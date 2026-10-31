@@ -79,6 +79,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   Levi (report section 7 row 13) (S; batch 6;
   H113's avatar checks reach players with this release
   (client and game-server image);
+  post-release check: a player signed in with Facebook sees
+  their avatar load (confirms the provider's picture URL
+  serves the image to this client, possibly over one redirect);
   `docs/design/H37_systems_audit.md` 1.1)
 
 - **H93** · The overhead label offset (T29). After H92 (S to M; batch 7;
