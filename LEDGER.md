@@ -168,7 +168,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
-- **H113** · Avatar URLs are parsed strictly and matched to exact provider hosts on the client, and the game server drops a declared URL that fails the same check instead of relaying it; redirects follow one checked hop and declared image dimensions are capped. Done in f4420f8, 3495f67e, platform bade4f3, 10af8b1, 7e20229 (2026-10-30).
+- **H113** · Avatar URLs are parsed strictly and matched to exact provider hosts on the client, and the game server drops a declared URL that fails the same check instead of relaying it; redirects follow one checked hop and declared image dimensions are capped. Done in f4420f8, 3495f67e, 1d359bda, platform bade4f3, 10af8b1, 7e20229 (2026-10-30).
 - **H118** · Squish sprites (and gore at z 2) drew in front of the foreground art. Squish remnants now sit in the characters' draw band, and the scenes carry the foreground depth themselves (art z 10, lobby landmarks z 11), so effects pass under the art. Done in 1bf5612, af62e37 (2026-10-30).
 - **H109** · Muse run 2 (H103's follow-ups, then the Tier C and D work Levi released) is complete. Its leftovers have their own items: H56, H72, H87 and H98 for Levi, and H104 for Claude's review. Done in 9f74eaf (2026-10-29).
 - **H112** · A complete code focused one row down instead of Join; the panel now focuses `_join_row` on `input_complete` via `SidePanel.focus_row`. Panel tests cover keyboard and field entry, keyboard on and off; the H56 probe asserts focus after the last symbol. Done in 2506f61 (2026-10-29).
