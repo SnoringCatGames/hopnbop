@@ -58,6 +58,21 @@ var splash_manager: SplashManager
 var start_frame_index := -1
 
 
+## Draw depth of a level's foreground art (the lobby's
+## occlusion tiles, level_0's occlusion layer). The
+## scenes set this z_index on their foreground nodes
+## directly, so the editor preview matches the game.
+## Gameplay draws at z 0-2 (gore is the highest) and
+## the wrap-bounds overlay at 100; foreground art sits
+## between them, so no world effect can paint over it.
+const FOREGROUND_Z_INDEX := 10
+
+## Lobby landmarks that stay visible over the foreground
+## art: the title, the control prompts and the podium.
+## Their scenes set this z_index directly, like the art.
+const FOREGROUND_UI_Z_INDEX := 11
+
+
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return

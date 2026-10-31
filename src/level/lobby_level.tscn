@@ -40,6 +40,7 @@ metadata/_edit_lock_ = true
 position = Vector2(-176, 16)
 
 [node name="OcclusionTiles" type="TileMapLayer" parent="."]
+z_index = 10
 tile_map_data = PackedByteArray("AADy//z/AgASAAMAAADy//v/AgASAAMAAADy//n/AgASAAMAAADx//v/AgASAAMAAADx//z/AgASAAMAAADx//n/AgASAAMAAADx//r/AgASAAMAAADz//n/AgASAAMAAADz//v/AgASAAMAAADz//z/AgASAAMAAAAEAPr/AgABAAMAAAAFAPr/AgABAAMAAAACAPr/AgABAAMAAAADAPr/AgABAAMAAAAAAPr/AgABAAMAAAABAPr/AgABAAMAAAD+//r/AgABAAMAAAD///r/AgABAAMAAAD8//r/AgABAAMAAAD9//r/AgABAAMAAAD6//r/AgABAAMAAAD7//r/AgABAAMAAAD4//r/AgABAAMAAAD5//r/AgABAAMAAAD2//r/AgABAAMAAAD3//r/AgABAAMAAAD0//r/AgASAAMAAAD1//r/AgABAAIAAAD0//n/AgASAAMAAAD2//n/AgASAAMAAAD3//n/AgASAAMAAAD4//n/AgASAAMAAAD5//n/AgASAAMAAAD6//n/AgASAAMAAAD7//n/AgASAAMAAAD8//n/AgASAAMAAAD9//n/AgASAAMAAAD+//n/AgASAAMAAAD///n/AgASAAMAAAAAAPn/AgASAAMAAAABAPn/AgASAAMAAAACAPn/AgASAAMAAAADAPn/AgASAAMAAAAEAPn/AgASAAMAAAAFAPn/AgASAAMAAAD1//n/AgASAAMAAADy//r/AgASAAMAAADz//r/AgASAAMAAAAEAAEAAgASAAMAAAAEAAIAAgASAAMAAAAEAAMAAgASAAMAAAADAAEAAgASAAMAAAADAAIAAgASAAMAAAADAAMAAgASAAMAAAACAAMAAgASAAMAAAAFAAMAAgASAAMAAAAFAAQAAgASAAMAAAACAAQAAgASAAMAAAADAAQAAgASAAMAAAAEAAQAAgASAAMAAAAFAAIAAgASAAMAAAACAAIAAgASAAMAAAAFAAEAAgAAAAEAAAACAAEAAgACAAEAAAD0//v/AgASAAMAAAD0//z/AgASAAMAAAD1//v/AgACAAIAAAD1//z/AgACAAIAAAAGAPn/AgASAAMAAAAHAPn/AgASAAMAAAAGAPr/AgABAAIAAAD0//3/AgASAAMAAADz//3/AgASAAMAAADy//3/AgASAAMAAADx//3/AgASAAMAAAD1//3/AgACAAIAAAA=")
 tile_set = ExtResource("2_nipfv")
 collision_enabled = false
@@ -47,6 +48,7 @@ navigation_enabled = false
 metadata/_edit_lock_ = true
 
 [node name="HideSettingsTiles" type="TileMapLayer" parent="."]
+z_index = 10
 unique_name_in_owner = true
 tile_map_data = PackedByteArray("AAD1/wAAAgACAAIAAAD1////AgACAAIAAAD1//7/AgACAAIAAAD1//3/AgACAAIAAAD0/wAAAgASAAMAAAD0////AgASAAMAAAD0//7/AgASAAMAAAD0//3/AgASAAMAAAD0/wIAAgASAAMAAAD1/wEAAgABAAIAAAD0/wEAAgASAAMAAADz/wEAAgASAAMAAADz/wIAAgASAAMAAADy/wIAAgASAAMAAADy/wEAAgASAAMAAADz/wAAAgASAAMAAADz////AgASAAMAAADy////AgASAAMAAADy/wAAAgASAAMAAADz//7/AgASAAMAAADy//7/AgASAAMAAADz//3/AgASAAMAAADy//3/AgASAAMAAAA=")
 tile_set = ExtResource("2_nipfv")
@@ -84,15 +86,18 @@ script = ExtResource("3_lkfoy")
 metadata/_custom_type_script = "uid://1roi8ff6ow47"
 
 [node name="Title" type="Sprite2D" parent="."]
+z_index = 11
 unique_name_in_owner = true
 position = Vector2(-161, -137)
 texture = ExtResource("4_s5vci")
 
 [node name="ControlDisplays" parent="." instance=ExtResource("5_ctrls")]
+z_index = 11
 unique_name_in_owner = true
 position = Vector2(-33, -127)
 
 [node name="AwardPodium" parent="." instance=ExtResource("7_podium")]
+z_index = 11
 unique_name_in_owner = true
 position = Vector2(101, -127)
 

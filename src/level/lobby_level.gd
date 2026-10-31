@@ -37,6 +37,7 @@ func _ready() -> void:
 		G.local_settings.get_rounds_played()
 		== 0)
 
+
 func _physics_process(_delta: float) -> void:
 	if Engine.is_editor_hint():
 		return

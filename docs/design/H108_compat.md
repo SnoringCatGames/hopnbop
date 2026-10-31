@@ -40,7 +40,6 @@ code changed.
    ones; the custom collection and the direct presence read are
    test-only seeding. Intended.
 
-
 4. `test_party_to_matchmaking.gd::test_party_pair_matched_into_same_mock_deploy`:
    `party_start_matchmaking` returns 400 "not all party members
    are ready" (SP33's server gate, platform `0499a41`). The gate
@@ -62,6 +61,7 @@ code changed.
    on a given run depends on Nakama's issue-second revocation
    boundary, so it is listed even though it passes when sign-in
    and delete land in the same second. Intended.
+
 ## CI axis
 
 `compliance-matrix.yml` gains a `compliance-released` job that

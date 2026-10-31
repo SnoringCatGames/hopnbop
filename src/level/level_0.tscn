@@ -73,10 +73,12 @@ script = ExtResource("4_ensm3")
 metadata/_custom_type_script = "uid://1roi8ff6ow47"
 
 [node name="OcclusionLayerArt" type="Sprite2D" parent="." unique_id=1726061243]
+z_index = 10
 position = Vector2(-128, -128)
 texture = ExtResource("5_ensm3")
 
 [node name="ColorRect" type="ColorRect" parent="." unique_id=2062585583]
+z_index = 10
 offset_left = -384.0
 offset_top = -384.0
 offset_right = 128.0
