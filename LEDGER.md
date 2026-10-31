@@ -63,9 +63,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   trace fix, platform SP102 to SP105, a logging check on H115's
   delete-panel change).
   - owner: muse 01a1908a-62f5-7b30-ae6f-faac7563ff6c (run by claude 0cfd9cf1 through paseo)
-  - branch: mainline; last commit: `ee29d334`
+  - branch: mainline; last commit: `fbf940d0`
   - evidence: `.claude/probes/H119/` (harness runs); the brief's section 6 handoff log
-  - next: Muse: brief section 2.1, the H119 trace on default settings
+  - next: Muse: brief section 2.3, SP105 Go line endings
   - brief: `docs/design/H123_muse_run4.md`
 
 

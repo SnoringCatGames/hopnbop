@@ -18,6 +18,10 @@ func after_each() -> void:
 	DirAccess.remove_absolute(
 		ProjectSettings.globalize_path(
 			_TEST_AUTH_FILE + ".unreadable"))
+	for n in range(2, 6):
+		DirAccess.remove_absolute(
+			ProjectSettings.globalize_path(
+				"%s.unreadable.%d" % [_TEST_AUTH_FILE, n]))
 
 
 func test_old_passphrase_file_still_loads() -> void:
@@ -128,6 +132,68 @@ func test_unreadable_file_is_moved_aside_for_a_new_guest() -> void:
 		store.has_auth_file(), "fresh auth file written")
 
 
+func test_consent_save_then_guest_sign_in_keeps_original() -> void:
+	# Startup runs splash, then consent, then sign-in: the
+	# consent save must not write over an unreadable file
+	# before guest sign-in can protect it (SP102).
+	_write_damaged("not an encrypted store")
+	var store := PlatformAuthTokenStore.new(_TEST_AUTH_FILE)
+	assert_true(store.load_failed, "failed load recorded")
+	assert_engine_error("magic != 0x43454447")
+
+	# The consent screen's save: stamp consent, then save.
+	store.consent_accepted_at = 1700000000
+	store.consent_legal_version = "test-v1"
+	store.save_tokens()
+
+	var aside := FileAccess.open(
+		_TEST_AUTH_FILE + ".unreadable", FileAccess.READ)
+	assert_not_null(aside, "unreadable file kept aside")
+	assert_eq(
+		aside.get_as_text(), "not an encrypted store",
+		"aside holds the original bytes")
+
+	var original_store = Platform.token_store
+	Platform.token_store = store
+	var client := PlatformAuthApiClient.new()
+	client.login_anonymous()
+	client.free()
+	Platform.token_store = original_store
+
+	var reloaded := PlatformAuthTokenStore.new(_TEST_AUTH_FILE)
+	assert_false(reloaded.load_failed, "new auth file loads")
+	assert_ne(
+		reloaded.local_player_id, "", "new guest identity minted")
+	assert_eq(reloaded.consent_accepted_at, 1700000000)
+	assert_eq(reloaded.consent_legal_version, "test-v1")
+
+
+func test_second_unreadable_file_gets_a_new_aside_name() -> void:
+	_write_damaged("first damaged")
+	var first := PlatformAuthTokenStore.new(_TEST_AUTH_FILE)
+	assert_true(first.load_failed)
+	assert_engine_error("magic != 0x43454447")
+	first.save_tokens()
+
+	_write_damaged("second damaged")
+	var second := PlatformAuthTokenStore.new(_TEST_AUTH_FILE)
+	assert_true(second.load_failed)
+	# Two attempts now: the install key the first save
+	# created, then the legacy fallback.
+	assert_engine_error("magic != 0x43454447")
+	assert_engine_error("magic != 0x43454447")
+	second.save_tokens()
+
+	var first_aside := FileAccess.open(
+		_TEST_AUTH_FILE + ".unreadable", FileAccess.READ)
+	assert_not_null(first_aside)
+	assert_eq(first_aside.get_as_text(), "first damaged")
+	var second_aside := FileAccess.open(
+		_TEST_AUTH_FILE + ".unreadable.2", FileAccess.READ)
+	assert_not_null(second_aside, "second aside kept too")
+	assert_eq(second_aside.get_as_text(), "second damaged")
+
+
 func test_state_nonce_shape() -> void:
 	var client := PlatformAuthApiClient.new()
 	var first := client._generate_state_nonce()
@@ -135,6 +201,15 @@ func test_state_nonce_shape() -> void:
 	assert_eq(first.length(), 32, "16 bytes hex-encoded")
 	assert_ne(first, second, "nonces differ")
 	client.free()
+
+
+## Write damaged (unreadable) bytes where the auth file
+## should be.
+func _write_damaged(text: String) -> void:
+	var damaged := FileAccess.open(
+		_TEST_AUTH_FILE, FileAccess.WRITE)
+	damaged.store_string(text)
+	damaged.close()
 
 
 ## Write a store file exactly as pre-SP44 code did: encrypted
