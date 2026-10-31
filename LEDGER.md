@@ -27,11 +27,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   5 row 3, section 7 row 9)
 - **H71** · Decoupling: which seams to build (decision;
   `docs/design/H37_systems_audit.md` 1.3, section 7 row 6)
-- **H122** · Two look questions from H118's foreground-depth fix:
-  match-end confetti now passes behind the lobby cave wall (Claude
-  has asked), and gore now passes under the lobby landmarks
-  (Title, ControlDisplays, AwardPodium). Pairs and inventory:
-  `.claude/probes/H118/inventory.md`.
 - **H102** · Real account merge for the PROVIDER_CONFLICT case: since H62 the game tells the player instead. Merging two accounts' stats/friends/boards is a platform feature; needs Levi's call on whether 'tell' is enough. (L)
 
 ## In progress
@@ -168,6 +163,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H122** · Two look questions from H118's foreground-depth fix. Levi answered 2026-10-30: confetti in front of the walls and the lobby landmarks (done: ConfettiEmitter draws at Level.CELEBRATION_Z_INDEX); gore unchanged, still behind the key indicators, title and podium as H118 left them; the bunny squish sprite takes the animated bunny sprite's layer (done: the squish and the snail remnant join their character's parent, right after the character, with the character sprite's own z settings). Pairs and crops: .claude/probes/H122/. Done in f0f39d4 (2026-10-30).
 - **H114** · Followers act on any party start message: check it names their current party and that they are ready (`src/core/party_manager.gd:794`) (H104 1A SP33-G). Done in 3238dfd3 (2026-10-30).
 - **H113** · Avatar URLs are parsed strictly and matched to exact provider hosts on the client, and the game server drops a declared URL that fails the same check instead of relaying it; redirects follow one checked hop and declared image dimensions are capped. Done in f4420f8, 3495f67e, 1d359bda, platform bade4f3, 10af8b1, 7e20229 (2026-10-30).
 - **H118** · Squish sprites (and gore at z 2) drew in front of the foreground art. Squish remnants now sit in the characters' draw band, and the scenes carry the foreground depth themselves (art z 10, lobby landmarks z 11), so effects pass under the art. Done in 1bf5612, af62e37 (2026-10-30).
