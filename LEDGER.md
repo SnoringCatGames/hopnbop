@@ -59,6 +59,14 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - evidence: `.claude/probes/H104/stage1-A.md` and `stage1-B.md` (untracked, on the desktop only)
   - next: review H120's commits as they land; stages 2 and 3 after the weekly usage reset (2026-11-02)
   - brief: `docs/design/H104_review.md`
+- **H125** · Muse run 6: platform SP107-SP109, the SP106 follow-ups
+  (Steam's generated name, naming empty-named accounts at sign-in, one
+  hook registration list).
+  - owner: muse 01a1908a (runs 4 and 5's session, continued; run by claude 0cfd9cf1 through paseo)
+  - branch: mainline; last commit: `acbd0daa`
+  - evidence: the brief's section 3 handoff log; platform `runtime/` tests
+  - next: Muse: brief section 2, SP107 first
+  - brief: `docs/design/H125_muse_run6.md`
 
 
 
