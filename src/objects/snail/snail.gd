@@ -317,7 +317,12 @@ func _spawn_crunch_remnant() -> void:
 	remnant.texture_filter = (
 		CanvasItem.TEXTURE_FILTER_NEAREST)
 
-	get_parent().add_child(remnant)
+	# The remnant belongs with the characters, behind
+	# the level's foreground art (H118).
+	if is_instance_valid(G.level):
+		G.level.add_sprite_at_character_depth(remnant)
+	else:
+		get_parent().add_child(remnant)
 
 	remnant.global_rotation = (
 		_sprite.global_rotation)

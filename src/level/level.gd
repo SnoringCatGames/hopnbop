@@ -97,6 +97,20 @@ func _ready() -> void:
 			players_node.get_index())
 
 
+## Adds a detached world sprite (a squish remnant) in
+## the characters' draw band: immediately before the
+## players node, where the gore, skid and splash
+## managers already sit. Foreground art that sits
+## after the players (the lobby's occlusion tiles,
+## level_0's occlusion art) then draws over it, just
+## as it draws over the characters themselves. The
+## caller positions the sprite before calling this.
+func add_sprite_at_character_depth(sprite: Node) -> void:
+	add_child(sprite)
+	if is_instance_valid(players_node):
+		move_child(sprite, players_node.get_index())
+
+
 func _get_spawn_points() -> Array[SpawnPoint]:
 	var available_spawn_points: Array[SpawnPoint] = []
 	for child in spawn_points.get_children():

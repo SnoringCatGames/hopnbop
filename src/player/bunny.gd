@@ -784,7 +784,7 @@ func _spawn_squish_sprite() -> void:
 	# sliding out of the level origin for one tick.
 	sprite.position = G.level.to_local(
 		death_pos + animator.position)
-	G.level.add_child(sprite)
+	G.level.add_sprite_at_character_depth(sprite)
 
 	# After the squish duration, remove the
 	# sprite and spawn gore + camera shake.
