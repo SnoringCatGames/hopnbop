@@ -179,3 +179,49 @@ H103's section 2 and 1.4 are the gates. On top of them:
 ## 6. Handoff log
 
 Append one dated entry each time you stop.
+
+### 2026-10-30, muse 01a189f7 (run complete)
+
+Done, in landing order (platform SHAs are that repo's):
+
+- SP83 live on prod 2026-10-30 23:32:41 UTC (`e17586f`); v32 game
+  server live (`4f6fde1d`); H122 looks (`f0f39d46`, confirmed by
+  the coordinator); H119 key trace (`2d28d3cc`).
+- Client 0.57.0 released 2026-10-30 (`7fd873fd`) by the local
+  client-only deploy; web artifacts `f11d194b`; config synced
+  (display 0.57.0, protocol 2, server still v32). Compliance
+  Matrix 41154547444: released suite 94/94, no unclassified
+  failures; the released allowlist is header-only again
+  (`d6cf88f5`); H108_compat.md records the release.
+- SP96 follow-ups (platform `2cf7a55`, follow-ups `b8e20d5`),
+  SP87 (`d4e12c9`) + SP101 follow-ups (`4bef255`), SP88
+  (`03884fa`), SP89 (`7d39613`), H115 (`4405cd3b`), SP90
+  (`8832a3b`), H116 (`73aa04fd`), SP91 (`4d534b6`, prod deploy
+  41161376621 green, version route 200). Every runtime push
+  was one item, deployed, and checked against the version
+  route before the next.
+- SP93 closed (read-only prod count, nothing to clean).
+  SP92's report is drafted; Levi sends it. SP98, SP99, SP100,
+  SP101 filed along the way.
+
+Not done, with owners:
+
+- H83's Facebook-avatar post-release check: still not run. It
+  needs a player signed in with Facebook; the lookaside
+  redirect is still unconfirmed first-hand. Levi, at a
+  browser, is the shortest path (same shape as SP17).
+- H119 waits on Levi's next playtest: hold A, and if movement
+  stalls, the log's `H119TRACE` dump is the evidence. The
+  echo-faithful replay did not reproduce it on native; web
+  was not replayed.
+- Local note: `~/.hopnbop-migration/credentials.env`'s
+  NAKAMA_HTTP_KEY and GAME_ADMIN_KEY no longer match prod
+  (both syncs this run read the host's values over SSH
+  instead, printing neither). Levi may want to refresh that
+  file; nothing in the repos records the values.
+- The platform ledger has one cosmetic double blank line in
+  Next (left by SP90's move); harmless, tidied next time the
+  file is edited.
+
+Questions for Claude: none open. The coordinator's H122
+confirmation arrived and the release followed it.

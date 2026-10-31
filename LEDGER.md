@@ -55,14 +55,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - evidence: `.claude/probes/H104/stage1-A.md` and `stage1-B.md` (untracked, on the desktop only)
   - next: review H120's commits as they land; stages 2 and 3 after the weekly usage reset (2026-11-02)
   - brief: `docs/design/H104_review.md`
-- **H120** · Muse run 3: the fixes from H104's stage 1 review and Levi's
-  2026-10-30 playtest (SP83's patch, H119, H118, SP84, H113, SP85, SP86
-  with H114, SP87, SP88, SP89 with H115, H116 and SP90, then SP91).
-  - owner: muse 01a189f7-97c5-7eb0-98b6-164cb9977b39, launched by claude 0cfd9cf1 through Paseo on 2026-10-30
-  - branch: mainline; last commit: this one
-  - evidence: `.claude/probes/H104/` (the stage 1 reports, untracked; SP83's patch goes in `F18/`), and `.claude/probes/<ID>/` per item
-  - next: Client 0.57.0 released 2026-10-30 (7fd873fd; local client-only deploy, config synced, game server still v32). Compliance Matrix 41154547444: released suite 94/94, allowlist emptied (d6cf88f5). H83's Facebook-avatar post-release check still open (needs a Facebook sign-in). Done so far: SP87 (d4e12c9) + SP101 follow-ups, SP96 (2cf7a55) + SP99 follow-ups, SP83 live 2026-10-30 23:32 UTC (e17586f), SP93 closed, game server v32 live (4f6fde1d), H122 (f0f39d4), H119 key trace (2d28d3cc), SP88 (platform 03884fa), SP89 (platform 7d39613), H115 (4405cd3b), SP90 (platform 8832a3b), H116 (73aa04fd). Next: SP91, handoff.
-  - brief: `docs/design/H120_muse_run3.md`
+
 
 ## Next
 
@@ -164,6 +157,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H120** · Muse run 3 (H104 stage-1 fixes and Levi's 2026-10-30 playtest): SP83-SP91, H113-H116, H118, H119, H122, the v32 game server and the 0.57.0 client. Handoff log in `docs/design/H120_muse_run3.md` section 6. Done 2026-10-30.
 - **H115** · SP41 client follow-ups: an expected delete failure logs a warning instead of an error (no crash report); the no-session delete case is covered; the verify2 panel probe is a suite test (busy clears, retry sends). Done in 4405cd3b (2026-10-30).
 - **H116** · `test_auth_store_migration.gd` has the three SP44 cases: the legacy retry with a key file present, a lost key leaving the file in place, and an unreadable file moved aside for a new guest. Done in 73aa04fd (2026-10-30).
 - **H122** · Two look questions from H118's foreground-depth fix. Levi answered 2026-10-30: confetti in front of the walls and the lobby landmarks (done: ConfettiEmitter draws at Level.CELEBRATION_Z_INDEX); gore unchanged, still behind the key indicators, title and podium as H118 left them; the bunny squish sprite takes the animated bunny sprite's layer (done: the squish and the snail remnant join their character's parent, right after the character, with the character sprite's own z settings). Pairs and crops: .claude/probes/H122/. Done in f0f39d4 (2026-10-30).
