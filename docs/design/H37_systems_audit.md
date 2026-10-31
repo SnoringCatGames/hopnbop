@@ -918,7 +918,7 @@ Items that appear only in a one-line list carry those cells here.
 | SP41 | Next | A failed `delete_account` is reported as a failed sign-in (DEL-2); root cause `sdk:core/auth_api_client.gd:890,896` | S | 3.1 |
 | SP42 | Next | Server-side validation of names and avatar URLs (PI-1, DN-2) | M | 3.1 |
 | SP43 | Next | A refresh during a pending link is taken as the link's success (LK-1) | S | 3.1 |
-| SP44 | Next | The guest device id is not crypto-random (SI-1); the token store passphrase is weak (TS-1) | S | 3.1 list. acct: SI-1 Suspect, low-medium; TS-1 Believed, low. Fix: a random 128-bit device id; a real key per platform |
+| SP44 | Next | The guest device id is not crypto-random (SI-1); the token store passphrase is weak (TS-1) | S | 3.1 list. acct: SI-1 Suspect, low-medium; TS-1 Believed, low. Fix: a random 128-bit device id; a real key per platform. TS-1 accepted as obfuscation only (2026-10-30): the per-install key sits beside the file, so it resists casual inspection, not a copied user folder; no OS keystore. |
 | SP45 | Next | Every hourly refresh emits the same `auth_completed(true, "")` as a sign-in, so subscribers redo sign-in work (SL-1) | S | 3.1 list. acct: Believed, low-medium. `_handle_auth_success` (1282) emits it; `global.gd:388-392` then refetches and merges cloud settings, and four more listeners react. Fix: a separate `session_refreshed` signal that sign-in listeners ignore |
 | SP46 | Next | An expected export failure files a crash report (DX-1) | XS | 3.1 list. acct; exec-b's offline export run |
 | SP47 | Next | Sessions are not revoked on account delete (DEL-3) | S | 3.1 list. acct |

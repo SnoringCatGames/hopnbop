@@ -119,6 +119,27 @@ func _session(uid: String) -> NakamaSession:
 	return NakamaSession.new(_fake_jwt(uid), false, _fake_jwt(uid))
 
 
+func test_guest_without_saved_id_mints_one() -> void:
+	# A saved file that loaded but holds no guest id has no
+	# account to orphan: the guest mints a device id and
+	# authenticates with it instead of failing every call.
+	_store.local_player_id = ""
+
+	_client.get_guest_jwt()
+	for i in 60:
+		if not _nakama.device_auth_ids.is_empty():
+			break
+		await get_tree().process_frame
+
+	assert_eq(_nakama.device_auth_ids.size(), 1, "device auth ran")
+	if _nakama.device_auth_ids.is_empty():
+		return
+	assert_ne(_nakama.device_auth_ids[0], "", "fresh id minted")
+	assert_eq(
+		_store.local_player_id, _nakama.device_auth_ids[0],
+		"minted id kept")
+
+
 func test_guest_export_starts_a_session_then_exports() -> void:
 	_client.export_player_data()
 	for i in 60:

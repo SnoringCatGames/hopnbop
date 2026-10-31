@@ -15,6 +15,9 @@ func after_each() -> void:
 	DirAccess.remove_absolute(
 		ProjectSettings.globalize_path(
 			_TEST_AUTH_FILE.get_basename() + "_key.cfg"))
+	DirAccess.remove_absolute(
+		ProjectSettings.globalize_path(
+			_TEST_AUTH_FILE + ".unreadable"))
 
 
 func test_old_passphrase_file_still_loads() -> void:
@@ -55,6 +58,74 @@ func test_save_rekeys_and_reloads() -> void:
 	var reloaded := PlatformAuthTokenStore.new(_TEST_AUTH_FILE)
 	reloaded.load_tokens()
 	assert_eq(reloaded.local_player_id, _LEGACY_GUEST_ID)
+
+
+func test_legacy_file_loads_with_key_file_present() -> void:
+	# The legacy retry: an install key exists beside the
+	# file, but the file predates it and only opens with
+	# the device passphrase.
+	_write_legacy_file()
+	var key_config := ConfigFile.new()
+	key_config.set_value("auth", "install_key", "0123abcd")
+	assert_eq(
+		key_config.save(
+			_TEST_AUTH_FILE.get_basename() + "_key.cfg"),
+		OK)
+	# The constructor's load tries the install key first
+	# (one expected decryption error), then the legacy
+	# passphrase.
+	var store := PlatformAuthTokenStore.new(_TEST_AUTH_FILE)
+	assert_eq(
+		store.local_player_id, _LEGACY_GUEST_ID,
+		"legacy guest identity kept via the retry")
+	assert_false(store.load_failed)
+	assert_engine_error("MD5 sum of the decrypted file")
+
+
+func test_lost_key_leaves_the_file_in_place() -> void:
+	var store := PlatformAuthTokenStore.new(_TEST_AUTH_FILE)
+	store.is_anonymous = true
+	store.local_player_id = _LEGACY_GUEST_ID
+	store.save_tokens()
+	var key_path := _TEST_AUTH_FILE.get_basename() + "_key.cfg"
+	assert_true(
+		FileAccess.file_exists(key_path), "install key written")
+	DirAccess.remove_absolute(
+		ProjectSettings.globalize_path(key_path))
+
+	var reloaded := PlatformAuthTokenStore.new(_TEST_AUTH_FILE)
+	assert_eq(
+		reloaded.local_player_id, "", "identity unreadable")
+	assert_true(reloaded.load_failed, "failed load recorded")
+	assert_true(
+		reloaded.has_auth_file(), "file left in place")
+	assert_engine_error("MD5 sum of the decrypted file")
+
+
+func test_unreadable_file_is_moved_aside_for_a_new_guest() -> void:
+	# Damaged bytes where the auth file should be.
+	var damaged := FileAccess.open(
+		_TEST_AUTH_FILE, FileAccess.WRITE)
+	damaged.store_string("not an encrypted store")
+	damaged.close()
+	var store := PlatformAuthTokenStore.new(_TEST_AUTH_FILE)
+	assert_true(store.load_failed, "failed load recorded")
+	assert_engine_error("magic != 0x43454447")
+
+	var original_store = Platform.token_store
+	Platform.token_store = store
+	var client := PlatformAuthApiClient.new()
+	client.login_anonymous()
+	client.free()
+	Platform.token_store = original_store
+
+	assert_true(
+		FileAccess.file_exists(_TEST_AUTH_FILE + ".unreadable"),
+		"unreadable file kept aside")
+	assert_ne(
+		store.local_player_id, "", "new guest identity minted")
+	assert_true(
+		store.has_auth_file(), "fresh auth file written")
 
 
 func test_state_nonce_shape() -> void:
