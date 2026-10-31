@@ -59,6 +59,14 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - evidence: `.claude/probes/H104/stage1-A.md` and `stage1-B.md` (untracked, on the desktop only)
   - next: review H120's commits as they land; stages 2 and 3 after the weekly usage reset (2026-11-02)
   - brief: `docs/design/H104_review.md`
+- **H124** · Muse run 5: platform SP106 (Urgent), one
+  after-authenticate function per provider; plus the answer to run 4's
+  0.56.0 question.
+  - owner: muse 01a1908a (run 4's session, continued; run by claude 0cfd9cf1 through paseo)
+  - branch: mainline; last commit: `28b1402c`
+  - evidence: the brief's section 4 handoff log; platform `runtime/` tests
+  - next: Muse: brief section 2, SP106
+  - brief: `docs/design/H124_muse_run5.md`
 
 
 
