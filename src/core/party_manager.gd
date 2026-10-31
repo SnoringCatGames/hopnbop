@@ -50,6 +50,10 @@ const _PARTY_MATCHMAKING_ABORT_SUBJECT := "party_matchmaking_abort"
 ## fits.
 const _RT_PARTY_MAX_SIZE := 4
 
+## How long a start that may have raced our own join waits
+## for one party refresh before it is decided on.
+const _START_REFRESH_WAIT_SEC := 2.0
+
 var current_party: Dictionary = {}
 var pending_invites: Array = []
 
@@ -788,16 +792,58 @@ func _on_matchmaking_started(
 func on_party_matchmaking_notification(
 	content: Dictionary,
 ) -> void:
-	# Ignore starts for a party we are not in (H53): a stale
-	# notification must not pull us into someone else's load.
+	# Follow a start only when it names our current party
+	# and we were in the roster that passed the ready gate
+	# (H114): a stale notification must not pull us into
+	# someone else's load, and an unready member is not
+	# pulled into a match they did not agree to. The
+	# server clears every ready row before it notifies, so
+	# readiness fetched now always reads unready; the
+	# notification's own member_ids are the roster to
+	# check. Older runtimes send no member_ids, so fall
+	# back to our ready flag there. When we have no party
+	# yet, the start may have raced our own join, so
+	# refresh once and decide on the fresh state.
 	var start_party_id: String = content.get("party_id", "")
-	if (not start_party_id.is_empty()
-			and not current_party.is_empty()
-			and start_party_id != get_party_id()):
+	if start_party_id.is_empty():
+		return
+	if current_party.is_empty():
+		await _refresh_party_status()
+	if start_party_id != get_party_id():
+		return
+	if content.has("member_ids"):
+		var member_ids: Array = content.get("member_ids", [])
+		if not member_ids.has(Platform.token_store.player_id):
+			return
+	elif not is_self_ready():
 		return
 	_start_party_matchmaking(content, false, 0)
-	matchmaking_started.emit(
-		content.get("party_id", ""))
+	matchmaking_started.emit(start_party_id)
+
+
+## Asks for one party refresh and waits for it, at most
+## _START_REFRESH_WAIT_SEC, so a start that raced our own
+## join is decided on fresh state.
+func _refresh_party_status() -> void:
+	if Platform.party.is_busy():
+		return
+	var refreshed := {"done": false}
+	var mark_refreshed := func(_data: Dictionary) -> void:
+		refreshed["done"] = true
+	Platform.party.party_status_received.connect(
+		mark_refreshed, CONNECT_ONE_SHOT)
+	Platform.party.fetch_party_status()
+	var deadline := (
+		Time.get_ticks_msec()
+		+ int(_START_REFRESH_WAIT_SEC * 1000.0))
+	while not bool(refreshed["done"]):
+		if Time.get_ticks_msec() >= deadline:
+			break
+		await Engine.get_main_loop().process_frame
+	if (Platform.party.party_status_received
+			.is_connected(mark_refreshed)):
+		Platform.party.party_status_received.disconnect(
+			mark_refreshed)
 
 
 ## Shared kickoff for both leader and follower. Stores the party

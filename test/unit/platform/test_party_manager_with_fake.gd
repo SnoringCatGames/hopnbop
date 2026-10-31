@@ -60,6 +60,102 @@ func test_leave_clears_the_party() -> void:
 	assert_false(_manager.is_in_party())
 
 
+## H114: a start that arrived while we had no party yet
+## (it raced our join) is followed once a refresh shows
+## us in that party, marked ready.
+func test_start_racing_our_join_is_followed_after_refresh() -> void:
+	_fake.party = {
+		"party_id": "party-A",
+		"leader_id": "other-id",
+		"members": [
+			{"user_id": "viewer-id", "ready": true},
+		],
+	}
+	await _manager.on_party_matchmaking_notification({
+		"party_id": "party-A",
+		"rt_party_id": "rt-party-1",
+		"game_mode": "ffa",
+	})
+	assert_true(
+		_fake.calls.has("fetch_party_status"),
+		"the start asked for one party refresh")
+	assert_eq(
+		_manager.pending_party_match_context.get(
+			"rt_party_id", ""),
+		"rt-party-1",
+		"the raced start is followed after the refresh")
+
+
+## H114: the same raced start is ignored when the refresh
+## shows a different party.
+func test_start_racing_our_join_is_ignored_for_other_party(
+) -> void:
+	_fake.party = {
+		"party_id": "party-B",
+		"leader_id": "other-id",
+		"members": [
+			{"user_id": "viewer-id", "ready": true},
+		],
+	}
+	await _manager.on_party_matchmaking_notification({
+		"party_id": "party-A",
+		"rt_party_id": "rt-party-1",
+		"game_mode": "ffa",
+	})
+	assert_true(
+		_manager.pending_party_match_context.is_empty(),
+		"a start for a party the refresh does not show is"
+		+ " ignored")
+
+
+## H114: the refresh after a start shows us unready (the
+## server spent the party's readiness before notifying),
+## but the start's own roster names us, so we follow.
+func test_start_followed_when_in_member_ids_despite_unready(
+) -> void:
+	_fake.party = {
+		"party_id": "party-A",
+		"leader_id": "other-id",
+		"members": [
+			{"user_id": "viewer-id", "ready": false},
+		],
+	}
+	await _manager.on_party_matchmaking_notification({
+		"party_id": "party-A",
+		"rt_party_id": "rt-party-1",
+		"game_mode": "ffa",
+		"member_ids": ["other-id", "viewer-id"],
+	})
+	assert_eq(
+		_manager.pending_party_match_context.get(
+			"rt_party_id", ""),
+		"rt-party-1",
+		"a follower in the start's roster follows it even"
+		+ " though the refresh reads unready")
+
+
+## H114: we are absent from the start's roster, so we
+## ignore it even though the refresh reads us ready (a
+## roster from a later attempt must not pull us in).
+func test_start_ignored_when_not_in_member_ids() -> void:
+	_fake.party = {
+		"party_id": "party-A",
+		"leader_id": "other-id",
+		"members": [
+			{"user_id": "viewer-id", "ready": true},
+		],
+	}
+	await _manager.on_party_matchmaking_notification({
+		"party_id": "party-A",
+		"rt_party_id": "rt-party-1",
+		"game_mode": "ffa",
+		"member_ids": ["other-id", "third-id"],
+	})
+	assert_true(
+		_manager.pending_party_match_context.is_empty(),
+		"a follower outside the start's roster ignores it")
+
+
 func test_failed_call_surfaces_and_changes_nothing() -> void:
 	_fake.fail_next = "party is full"
 

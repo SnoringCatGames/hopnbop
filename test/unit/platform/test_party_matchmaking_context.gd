@@ -51,6 +51,18 @@ func _leader_rpc_response(
 	}
 
 
+## Puts the manager in party-A with the viewer marked
+## ready, the state a follower is in when a start arrives.
+func _be_ready_member() -> void:
+	_manager.current_party = {
+		"party_id": "party-A",
+		"members": [
+			{"user_id": Platform.token_store.player_id,
+				"ready": true},
+		],
+	}
+
+
 ## The transient notification a follower receives. Note it carries
 ## no member_ids — only the leader waits on the roster.
 func _follower_notification() -> Dictionary:
@@ -122,6 +134,7 @@ func test_empty_roster_does_not_produce_negative_expectation() -> void:
 
 
 func test_follower_context_is_not_flagged_leader() -> void:
+	_be_ready_member()
 	_manager.on_party_matchmaking_notification(
 		_follower_notification())
 	var context := _manager.pending_party_match_context
@@ -141,6 +154,7 @@ func test_follower_context_is_not_flagged_leader() -> void:
 ## Degrading to a solo ticket would silently reintroduce the split-
 ## party bug, so the kickoff is refused outright.
 func test_start_without_rt_party_id_is_refused() -> void:
+	_be_ready_member()
 	var payload := _follower_notification()
 	payload.erase("rt_party_id")
 	_manager.on_party_matchmaking_notification(payload)
@@ -155,6 +169,7 @@ func test_start_without_rt_party_id_is_refused() -> void:
 ## G.client_session is an autoload field that bootstrap populates;
 ## it's null here, so stand a real one up and put it back after.
 func test_start_is_skipped_while_a_match_is_already_loading() -> void:
+	_be_ready_member()
 	var previous: ClientSession = G.client_session
 	var stub := ClientSession.new()
 	stub.is_game_loading = true
@@ -169,6 +184,7 @@ func test_start_is_skipped_while_a_match_is_already_loading() -> void:
 
 
 func test_start_is_skipped_while_a_match_is_active() -> void:
+	_be_ready_member()
 	var previous: ClientSession = G.client_session
 	var stub := ClientSession.new()
 	stub.is_game_active = true
@@ -180,16 +196,53 @@ func test_start_is_skipped_while_a_match_is_active() -> void:
 		_manager.pending_party_match_context.is_empty())
 
 
+## H114: a start naming another party is not followed,
+## even when we are ready in our own.
+func test_start_for_another_party_is_ignored() -> void:
+	_be_ready_member()
+	var payload := _follower_notification()
+	payload["party_id"] = "party-OTHER"
+	_manager.on_party_matchmaking_notification(payload)
+	assert_true(
+		_manager.pending_party_match_context.is_empty(),
+		"a start for another party must not stash context")
+
+
+## H114: a start for our party is not followed while we
+## are not marked ready.
+func test_start_while_not_ready_is_ignored() -> void:
+	_manager.current_party = {
+		"party_id": "party-A",
+		"members": [
+			{"user_id": Platform.token_store.player_id,
+				"ready": false},
+		],
+	}
+	_manager.on_party_matchmaking_notification(
+		_follower_notification())
+	assert_true(
+		_manager.pending_party_match_context.is_empty(),
+		"an unready member must not be pulled into a match")
+
+
+## H114: a start naming no party is not followed.
+func test_start_without_a_party_id_is_ignored() -> void:
+	_be_ready_member()
+	var payload := _follower_notification()
+	payload.erase("party_id")
+	_manager.on_party_matchmaking_notification(payload)
+	assert_true(
+		_manager.pending_party_match_context.is_empty(),
+		"a start without a party id must not stash context")
+
+
 # ------------------------------------------------------------------
 # Abort
 # ------------------------------------------------------------------
 
 
 func test_abort_for_a_different_party_is_ignored() -> void:
-	_manager.current_party = {
-		"party_id": "party-A",
-		"members": [],
-	}
+	_be_ready_member()
 	_manager.on_party_matchmaking_notification(
 		_follower_notification())
 	assert_false(_manager.pending_party_match_context.is_empty())
@@ -205,10 +258,7 @@ func test_abort_for_a_different_party_is_ignored() -> void:
 
 
 func test_abort_for_our_party_clears_context() -> void:
-	_manager.current_party = {
-		"party_id": "party-A",
-		"members": [],
-	}
+	_be_ready_member()
 	_manager.on_party_matchmaking_notification(
 		_follower_notification())
 	assert_false(_manager.pending_party_match_context.is_empty())
