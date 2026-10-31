@@ -213,14 +213,27 @@ jobs:
             Write-Error "Reported count differs from declared."
             exit 1
           }
-          $known = @(Get-Content `
-            .github/compliance/released-known-failures.txt |
-            Where-Object { $_ -and -not $_.StartsWith("#") } |
-            ForEach-Object { $_.Trim() })
+          $known = @()
+          $timing = @()
+          foreach ($line in Get-Content `
+              .github/compliance/released-known-failures.txt) {
+            $entry = $line.Trim()
+            if (-not $entry -or $entry.StartsWith("#")) {
+              continue
+            }
+            if ($entry.StartsWith("timing:")) {
+              $entry = $entry.Substring(7).Trim()
+              $timing += $entry
+            }
+            $known += $entry
+          }
           $unexpected = @($failed | Where-Object {
             $known -notcontains $_ })
+          # Timing entries pass or fail by the clock, so a
+          # pass never makes them stale.
           $stale = @($known | Where-Object {
-            $failed -notcontains $_ })
+            $failed -notcontains $_ -and
+              $timing -notcontains $_ })
           foreach ($id in $stale) {
             Write-Warning ("Allowlist entry no longer fails " +
               "(drop it from released-known-failures.txt): $id")

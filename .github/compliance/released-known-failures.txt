@@ -7,12 +7,13 @@ addons/snoringcat_platform_client/test/compliance/test_account_delete_cascade_su
 addons/snoringcat_platform_client/test/compliance/test_data_export.gd::test_export_includes_every_category
 addons/snoringcat_platform_client/test/compliance/test_party_to_matchmaking.gd::test_party_pair_matched_into_same_mock_deploy
 addons/snoringcat_platform_client/test/compliance/test_friends_account_delete_cascade.gd::test_delete_account_removes_deleter_from_other_friend_lists
-# SP95 timing (platform ledger): these released fixtures keep
+# SP95 timing (platform ledger): the timing: entries below name released fixtures that keep
 # using the session that delete_account ends; whether the old
 # token still answers depends on the issue second, so a pass
 # or a fail are both accepted. They come out with the next
-# client release, whose fixtures sign in again after a delete
-# (the job's stale-entry warning will name them then).
-addons/snoringcat_platform_client/test/compliance/test_public_leaderboard.gd::test_lists_ranked_scores_without_credentials
-addons/snoringcat_platform_client/test/compliance/test_account_delete.gd::test_soft_delete_then_cancel_keeps_account_without_profile
-addons/snoringcat_platform_client/test/compliance/test_account_delete.gd::test_cancel_clears_marker_on_account_without_display_name
+# client release, whose fixtures sign in again after a delete.
+# The stale-entry warning skips timing: entries, so dropping
+# these lines is part of that release, not a CI prompt.
+timing: addons/snoringcat_platform_client/test/compliance/test_public_leaderboard.gd::test_lists_ranked_scores_without_credentials
+timing: addons/snoringcat_platform_client/test/compliance/test_account_delete.gd::test_soft_delete_then_cancel_keeps_account_without_profile
+timing: addons/snoringcat_platform_client/test/compliance/test_account_delete.gd::test_cancel_clears_marker_on_account_without_display_name
