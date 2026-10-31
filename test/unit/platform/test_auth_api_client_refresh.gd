@@ -81,6 +81,8 @@ var _client: PlatformAuthApiClient
 var _nakama: FakeNakamaClient
 var _store: PlatformAuthTokenStore
 var _completions: Array = []
+var _completion_errors: Array = []
+var _link_results: Array = []
 ## auth_completed and signed_out, in the order they fired.
 var _signals: Array = []
 var _jwt_serial := 0
@@ -111,9 +113,12 @@ func before_each() -> void:
 
 	_client = PlatformAuthApiClient.new()
 	_completions = []
+	_completion_errors = []
+	_link_results = []
 	_signals = []
 	_client.auth_completed.connect(_on_auth_completed)
 	_client.signed_out.connect(_on_signed_out)
+	_client.link_completed.connect(_on_link_completed)
 
 
 func after_each() -> void:
@@ -416,6 +421,104 @@ func test_store_from_response_keeps_its_own_list() -> void:
 
 
 # ------------------------------------------------------------------
+# Refresh results take their own route (SP89)
+# ------------------------------------------------------------------
+
+
+func test_explicit_refresh_is_not_the_link_result() -> void:
+	# A link waits for its browser flow while matchmaking asks
+	# for a refresh. The refresh result belongs to the refresh:
+	# it is stored and reported as auth, and the link stays
+	# pending for its own result.
+	var fresh := _success()
+	_nakama.next_result = fresh
+	_client._is_linking = true
+	_client._link_provider_name = "google"
+
+	_client.refresh_token()
+
+	assert_eq(_nakama.refresh_calls, 1)
+	assert_eq(_completions, [true], "refresh reported as auth")
+	assert_true(_link_results.is_empty(), "link not completed")
+	assert_true(_client._is_linking, "link still pending")
+	assert_eq(
+		_store.refresh_token, fresh.refresh_token,
+		"refreshed session stored")
+
+
+func test_in_flight_refresh_is_not_the_link_result() -> void:
+	# The link starts while the refresh request is in flight
+	# (the fake begins the link from inside the request).
+	# The landing refresh is still the refresh's result.
+	var fresh := _success()
+	_nakama.on_refresh = func() -> void:
+		_client._is_linking = true
+		_client._link_provider_name = "google"
+	_nakama.next_result = fresh
+
+	_client.refresh_token()
+
+	assert_eq(_completions, [true], "refresh reported as auth")
+	assert_true(_link_results.is_empty(), "link not completed")
+	assert_true(_client._is_linking, "link still pending")
+	assert_eq(_store.refresh_token, fresh.refresh_token)
+
+
+func test_refresh_landing_after_delete_is_dropped() -> void:
+	# The delete clears the store while the refresh is in
+	# flight. The refresh result must not write the session
+	# back: the store stays cleared and the waiting callers
+	# are told the result was superseded.
+	_nakama.on_refresh = func() -> void:
+		_store.clear_tokens()
+	_nakama.next_result = _success()
+
+	_client.refresh_token()
+
+	assert_true(_store.jwt_token.is_empty(), "no session restored")
+	assert_true(
+		_store.refresh_token.is_empty(), "no refresh token restored")
+	assert_eq(_completions, [false], "reported as not completed")
+	assert_eq(_completion_errors, ["superseded"])
+
+
+func test_refresh_landing_after_sign_out_is_dropped() -> void:
+	# Signing out clears the session (consent kept) while the
+	# refresh is in flight; the landing refresh must not sign
+	# the player back in.
+	_nakama.on_refresh = func() -> void:
+		_store.clear_session()
+	_nakama.next_result = _success()
+
+	_client.refresh_token()
+
+	assert_true(_store.jwt_token.is_empty(), "still signed out")
+	assert_eq(_completions, [false])
+	assert_eq(_completion_errors, ["superseded"])
+
+
+func test_refresh_landing_after_new_sign_in_is_dropped() -> void:
+	# A different account's sign-in lands while the refresh is
+	# in flight. The old account's refresh result must not
+	# replace the new session.
+	var other_refresh := _fake_jwt(
+		int(Time.get_unix_time_from_system())
+		+ _REFRESH_TOKEN_LIFETIME_SEC)
+	var other_jwt := _store.jwt_token
+	_nakama.on_refresh = func() -> void:
+		_store.refresh_token = other_refresh
+	_nakama.next_result = _success()
+
+	_client.refresh_token()
+
+	assert_eq(
+		_store.refresh_token, other_refresh, "new session kept")
+	assert_eq(_store.jwt_token, other_jwt, "new session kept")
+	assert_eq(_completions, [false])
+	assert_eq(_completion_errors, ["superseded"])
+
+
+# ------------------------------------------------------------------
 # _is_refresh_token_rejected
 # ------------------------------------------------------------------
 
@@ -474,9 +577,16 @@ func test_other_failures_are_transient() -> void:
 # ------------------------------------------------------------------
 
 
-func _on_auth_completed(success: bool, _error: String) -> void:
+func _on_auth_completed(success: bool, error: String) -> void:
 	_completions.append(success)
+	_completion_errors.append(error)
 	_signals.append("auth_completed")
+
+
+func _on_link_completed(
+	success: bool, error: String, provider: String,
+) -> void:
+	_link_results.append([success, error, provider])
 
 
 func _on_signed_out(_error: String) -> void:

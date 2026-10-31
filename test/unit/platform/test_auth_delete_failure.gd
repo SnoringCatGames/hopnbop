@@ -119,6 +119,63 @@ func test_failed_delete_reports_delete_completed() -> void:
 	assert_false(_store.jwt_token.is_empty(), "still signed in")
 
 
+func test_delete_refused_while_link_pending() -> void:
+	# A delete started while a link waits for its result
+	# would share the failure routing. It refuses up front
+	# through delete_completed and sends nothing.
+	_client._is_linking = true
+
+	_client.delete_account()
+
+	assert_eq(_delete_results.size(), 1, "refusal reported")
+	if _delete_results.is_empty():
+		return
+	assert_false(_delete_results[0][0], "delete refused")
+	assert_ne(_delete_results[0][1], "", "error text present")
+	assert_false(_client._is_deleting, "delete never started")
+	assert_true(_nakama.rpc_ids.is_empty(), "no delete sent")
+	assert_true(_client._is_linking, "link left pending")
+
+
+func test_delete_refused_while_unlink_pending() -> void:
+	_client._is_unlinking = true
+
+	_client.delete_account()
+
+	assert_eq(_delete_results.size(), 1, "refusal reported")
+	if _delete_results.is_empty():
+		return
+	assert_false(_delete_results[0][0], "delete refused")
+	assert_false(_client._is_deleting, "delete never started")
+	assert_true(_nakama.rpc_ids.is_empty(), "no delete sent")
+
+
+func test_delete_waits_for_in_flight_refresh() -> void:
+	# The delete waits out a refresh already in flight, so
+	# the refresh result cannot land after the delete clears
+	# the store. delete_account runs to its wait
+	# synchronously, so no frames need pumping here.
+	_client._is_refreshing = true
+
+	_client.delete_account()
+
+	assert_false(
+		_nakama.rpc_ids.has("delete_account"),
+		"delete held for the refresh")
+	assert_true(_client._is_deleting, "delete still pending")
+	assert_true(_delete_results.is_empty(), "nothing reported yet")
+
+	_client._is_refreshing = false
+	_client.auth_completed.emit(true, "")
+
+	assert_has(_nakama.rpc_ids, "delete_account")
+	assert_eq(_delete_results.size(), 1)
+	if _delete_results.is_empty():
+		return
+	assert_true(_delete_results[0][0], "delete completed")
+	assert_true(_store.jwt_token.is_empty(), "session cleared")
+
+
 ## A JWT-shaped string that NakamaSession can parse. Unsigned,
 ## and unique per call so stored tokens can be told apart.
 func _fake_jwt(expires_at: int) -> String:
