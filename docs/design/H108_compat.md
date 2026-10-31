@@ -62,6 +62,16 @@ code changed.
    boundary, so it is listed even though it passes when sign-in
    and delete land in the same second. Intended.
 
+6. Three more released fixtures share the same clock dependence
+   (SP95 in the platform ledger): `test_public_leaderboard.gd`'s
+   data test and `test_account_delete.gd`'s two cancel tests keep
+   using the session that `delete_account` ends, so they pass
+   only when sign-in and delete land in the same second. HEAD's
+   fixtures sign in again after the delete; the released ones
+   cannot change, so the allowlist accepts either outcome for
+   exactly these three until the next client release ships the
+   fixed fixtures.
+
 ## CI axis
 
 `compliance-matrix.yml` gains a `compliance-released` job that
