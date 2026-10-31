@@ -159,7 +159,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
-- **H118** · Squish sprites drew in front of the foreground art; they now sit in the characters' draw band (`Level.add_sprite_at_character_depth`). Done in 1bf5612 (2026-10-30).
+- **H118** · Squish sprites (and gore at z 2) drew in front of the foreground art. Squish remnants now sit in the characters' draw band, and the scenes carry the foreground depth themselves (art z 10, lobby landmarks z 11), so effects pass under the art. Done in 1bf5612, af62e37 (2026-10-30).
 - **H109** · Muse run 2 (H103's follow-ups, then the Tier C and D work Levi released) is complete. Its leftovers have their own items: H56, H72, H87 and H98 for Levi, and H104 for Claude's review. Done in 9f74eaf (2026-10-29).
 - **H112** · A complete code focused one row down instead of Join; the panel now focuses `_join_row` on `input_complete` via `SidePanel.focus_row`. Panel tests cover keyboard and field entry, keyboard on and off; the H56 probe asserts focus after the last symbol. Done in 2506f61 (2026-10-29).
 - **H111** · H56's keyboard could not enable Join: `set_text` assigned `LineEdit.text`, which emits no `text_changed`; it now runs `_on_text_changed` with the caret at the end. Panel test types a code and checks Join; the H56 probe types one with direction taps. Netcode half restored the unpause doc line and a final newline. Done in 4533cb4, netcode 7c58d2c (2026-10-29).
