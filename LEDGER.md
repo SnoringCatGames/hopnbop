@@ -113,6 +113,13 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Residuals (known, not fixed)
 
+- **H121** · The pending-deletion prompt (ConfirmOverlay from
+  `AccountDeletionPrompt`) renders without a panel: its message
+  wraps two to four words per line and runs over the lobby's key
+  hints. Seen in the released client during SP84's check
+  (`.claude/probes/SP84/06-cancel-prompt.png`) and confirmed at
+  HEAD 2026-10-30 (`.claude/probes/SP84/head-cancel-prompt.png`).
+  Not fixed in run 3.
 - **H110** · The Compliance Matrix run on H26 (02e1d75a, run
   40991959543) failed when Docker Hub returned 502 Bad Gateway
   pulling `heroiclabs/nakama` during `docker compose up` in the
