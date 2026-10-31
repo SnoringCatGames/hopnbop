@@ -63,7 +63,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   after-authenticate function per provider; plus the answer to run 4's
   0.56.0 question.
   - owner: muse 01a1908a (run 4's session, continued; run by claude 0cfd9cf1 through paseo)
-  - branch: mainline; last commit: `28b1402c`
+  - branch: mainline; last commit: `da2e1783`
   - evidence: the brief's section 4 handoff log; platform `runtime/` tests
   - next: Muse: brief section 2, SP106
   - brief: `docs/design/H124_muse_run5.md`
