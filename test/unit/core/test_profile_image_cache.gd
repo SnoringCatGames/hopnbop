@@ -113,6 +113,34 @@ func test_refused_url_shapes() -> void:
 			"refused: %s" % url)
 
 
+func test_non_ascii_host_characters_are_refused() -> void:
+	# U+212A (Kelvin sign) folds to 'k' when lowercased;
+	# the character check runs first, so it is refused.
+	assert_false(ProfileImageCache.is_allowed_avatar_url(
+		"https://avatars.a\u212aamai.steamstatic.com/a.jpg"),
+		"non-ASCII host characters are refused")
+
+
+func test_redirect_hop_is_spent_after_one_follow() -> void:
+	# A download that already used its hop ends on a
+	# second redirect response instead of following it.
+	var cache := ProfileImageCache.new()
+	var request := HTTPRequest.new()
+	cache._downloading[7] = true
+	cache._on_request_completed(
+		HTTPRequest.RESULT_SUCCESS, 302,
+		PackedStringArray([
+			"Location: https://scontent.fbcdn.net/a.png"]),
+		PackedByteArray(), request, 7, "", true)
+	assert_false(
+		cache._downloading.has(7),
+		"the second redirect is not followed")
+	assert_null(
+		cache.get_texture(7), "no texture from a redirect")
+	request.free()
+	cache.free()
+
+
 func test_steam_avatar_hosts() -> void:
 	assert_true(ProfileImageCache.is_allowed_avatar_url(
 		"https://avatars.fastly.steamstatic.com/a.jpg"))

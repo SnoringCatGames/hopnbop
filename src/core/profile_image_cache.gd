@@ -45,11 +45,6 @@ var _downloading: Dictionary = {}
 ## Dictionary<int, String>
 var _requested_urls: Dictionary = {}
 
-## Player ids whose download already used its one
-## redirect hop.
-## Dictionary<int, bool>
-var _redirect_used: Dictionary = {}
-
 ## Queued downloads waiting for a free slot.
 ## Array of [player_id, url].
 var _queue: Array = []
@@ -122,7 +117,6 @@ func clear() -> void:
 	_textures.clear()
 	_downloading.clear()
 	_requested_urls.clear()
-	_redirect_used.clear()
 	_queue.clear()
 
 
@@ -156,7 +150,7 @@ func _start_download(
 	_downloading[player_id] = true
 	request.request_completed.connect(
 		_on_request_completed.bind(
-			request, player_id, url),
+			request, player_id, url, false),
 		CONNECT_ONE_SHOT,
 	)
 	var error := request.request(url)
@@ -175,22 +169,23 @@ func _on_request_completed(
 	request: HTTPRequest,
 	player_id: int,
 	url: String = "",
+	redirected: bool = false,
 ) -> void:
 	# One redirect hop, and only to a URL that passes
 	# the same check (some provider endpoints answer
-	# with a redirect to their CDN).
+	# with a redirect to their CDN). The hop travels in
+	# the bound arguments, so two downloads for a reused
+	# player id never share hop state.
 	var target := _redirect_target(response_code, headers)
-	if not target.is_empty() and not _redirect_used.has(player_id):
-		_redirect_used[player_id] = true
+	if not target.is_empty() and not redirected:
 		request.request_completed.connect(
 			_on_request_completed.bind(
-				request, player_id, url),
+				request, player_id, url, true),
 			CONNECT_ONE_SHOT)
 		if request.request(target) == OK:
 			return
 		request.request_completed.disconnect(
 			_on_request_completed)
-	_redirect_used.erase(player_id)
 	_downloading.erase(player_id)
 
 	# A newer URL for this id superseded this download
@@ -248,10 +243,9 @@ func _load_image_from_buffer(
 	return error
 
 ## Whether an avatar URL may be fetched: https on an
-## exact provider CDN host, parsed strictly (H113).
-## Anything the fetch would read differently than this
-## check ? a fragment, a query or userinfo in the
-## authority, a port, an encoded host ? is refused.
+## exact provider CDN host (H113). The host is the text
+## before the first '/'; it may contain only ASCII
+## hostname characters, checked before lowercasing.
 static func is_allowed_avatar_url(url: String) -> bool:
 	if not url.begins_with("https://"):
 		return false
@@ -263,8 +257,12 @@ static func is_allowed_avatar_url(url: String) -> bool:
 		rest if slash == -1 else rest.left(slash))
 	if authority.is_empty():
 		return false
-	for bad_char in ["@", "?", "%", ":", " ", "\t"]:
-		if authority.contains(bad_char):
+	for i in authority.length():
+		var code := authority.unicode_at(i)
+		if not ((code >= 97 and code <= 122)
+				or (code >= 65 and code <= 90)
+				or (code >= 48 and code <= 57)
+				or code == 46 or code == 45):
 			return false
 	return _is_allowed_avatar_host(authority.to_lower())
 
