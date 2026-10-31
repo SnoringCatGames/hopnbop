@@ -8,7 +8,9 @@ the right ledger and sends the fixes to Muse.
 
 ## Stages
 
-1. **Security** (started 2026-10-30, two agents in parallel):
+1. **Security** (2026-10-30, two agents in parallel; done at 08:02,
+   its findings filed as SP83 to SP94 and H113 to H117, and fixed in
+   H120):
    - **A:** SP32, SP33 and SP44 (they share hopnbop c5a189c8 and
      e65cb159), then SP36 and SP41.
    - **B:** SP42 with H60 (they share hopnbop 49a329be), then SP43,

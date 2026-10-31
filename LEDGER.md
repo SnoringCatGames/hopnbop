@@ -36,16 +36,20 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   then H109's Tier C, then its Tier D design docs. Reviewed 2026-10-29:
   the CI fixes (8bb5873, c1590c7, netcode 9c3c0b5) and H56's keyboard
   (H111, H112).
-  - owner: claude 0cfd9cf1 (two read-only review agents, stage 1 parts
-    A and B, started 2026-10-30 07:15 PT)
+  - owner: claude 0cfd9cf1 (stage 1 done 2026-10-30 08:02; its findings are SP83-SP94 and H113-H117, and the fixes run as H120)
   - branch: mainline, read-only (the review makes no commits); the
     brief was committed with this entry
-  - evidence: `.claude/probes/H104/stage1-A.md` and `stage1-B.md`
-    (untracked, written as the agents go)
-  - next: once both reports are in, file the findings in each repo's
-    ledger and send the fixes to Muse; stages 2 and 3 only if weekly
-    usage allows (89% at 07:17; pause at 95%)
+  - evidence: `.claude/probes/H104/stage1-A.md` and `stage1-B.md` (untracked, on the desktop only)
+  - next: review H120's commits as they land; stages 2 and 3 after the weekly usage reset (2026-11-02)
   - brief: `docs/design/H104_review.md`
+- **H120** · Muse run 3: the fixes from H104's stage 1 review and Levi's
+  2026-10-30 playtest (SP83's patch, H119, H118, SP84, H113, SP85, SP86
+  with H114, SP87, SP88, SP89 with H115, H116 and SP90, then SP91).
+  - owner: muse, launched by claude 0cfd9cf1 through Paseo on 2026-10-30 (Muse puts its session id here in its first commit)
+  - branch: mainline; last commit: none yet
+  - evidence: `.claude/probes/H104/` (the stage 1 reports, untracked; SP83's patch goes in `F18/`), and `.claude/probes/<ID>/` per item
+  - next: SP83's patch, then H119
+  - brief: `docs/design/H120_muse_run3.md`
 
 ## Next
 
@@ -81,6 +85,27 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 - **H98** · Finish T43; verify, then fix, T19: design in
   `docs/design/H98_polish_and_player_list.md`, awaiting Levi.
+- **H113** · Avatar URLs: the game server relays in-match avatar URLs
+  unchecked, and the client host check can be bypassed. Parse strictly,
+  match hosts exactly (as the runtime will), no redirects, cap decoded
+  image size. Reopens H60; reaches players with the next client and
+  server release (H104 1B F1, F2, F3 client half, F7, F8).
+- **H114** · Followers act on any party start message: check it names
+  their current party and that they are ready
+  (`src/core/party_manager.gd:794`) (H104 1A SP33-G).
+- **H115** · SP41 client follow-ups: an expected delete failure logs
+  through `G.log.error`, which files a crash report each time (log a
+  warning); add the no-session case; make the verify2 panel probe a test
+  (H104 1A SP41-1, SP41-4).
+- **H116** · `test_auth_store_migration.gd` lacks three cases (H104 1A
+  SP44-5).
+- **H117** · SP32 client half, for when the consent change ships: show
+  pending invites, accept and decline (H104 1A SP32-3).
+- **H118** · Squish sprites (player and snail) draw in front of the
+  foreground level layer; check what else does (Levi, playtest
+  2026-10-30).
+- **H119** · Holding A starts left movement for an instant, then it
+  stops (Levi, playtest 2026-10-30).
 
 
 ## Residuals (known, not fixed)
