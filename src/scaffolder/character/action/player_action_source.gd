@@ -19,7 +19,6 @@ var device_config: DeviceConfig = null
 ## H119 trace state (see InputDeviceManager.key_trace_note).
 var _trace_ml_was := false
 var _trace_still_since := -1
-var _trace_dumped := false
 
 
 func _init(
@@ -39,6 +38,9 @@ func update(actions: CharacterActionState, time_scaled: float) -> void:
 	# Use device-specific input polling if device_config is set.
 	# Otherwise fall back to global input for backward compatibility.
 	var ml_pressed := false
+	var poll_path := &"InputMap"
+	if device_config != null:
+		poll_path = device_config.name
 	for action in ACTIONS_TO_INPUT_KEYS:
 		var input_key: StringName = ACTIONS_TO_INPUT_KEYS[action]
 		var is_pressed: bool
@@ -60,52 +62,49 @@ func update(actions: CharacterActionState, time_scaled: float) -> void:
 				time_scaled,
 				is_additive,
 			)
-	_update_key_trace(ml_pressed)
+	_update_key_trace(ml_pressed, poll_path)
 
 
-## H119: watches for leftward movement stopping while A
-## is physically held, and dumps the key trace when it
-## happens (the action letting go, or the body stalling
-## with the input held). Once per hold.
-func _update_key_trace(ml_pressed: bool) -> void:
+## H119: watches for leftward movement stopping during
+## an A hold, and dumps the key trace when it happens
+## (the action letting go with no key-up behind it, the
+## action letting go while A is still held, or the body
+## stalling with the input held). Once per hold;
+## InputDeviceManager.dump_key_trace holds the guard.
+func _update_key_trace(
+		ml_pressed: bool,
+		poll_path: StringName,
+) -> void:
+	var manager := G.input_device_manager
 	var phys_a := Input.is_physical_key_pressed(KEY_A)
 	if ml_pressed != _trace_ml_was:
-		G.input_device_manager.key_trace_note(
-			"ml=%s physA=%s vx=%.0f" % [
+		manager.key_trace_note(
+			"ml=%s physA=%s vx=%.0f path=%s text_capture=%s"
+			% [
 				str(ml_pressed), str(phys_a),
 				character.velocity.x,
+				str(poll_path),
+				str(manager.is_text_input_captured),
 			])
-	if not phys_a:
-		_trace_ml_was = ml_pressed
-		_trace_still_since = -1
-		_trace_dumped = false
-		return
-	if _trace_dumped:
-		_trace_ml_was = ml_pressed
-		return
-	var reason := ""
-	if _trace_ml_was and not ml_pressed:
+	var reason := manager.get_move_left_release_reason(
+		ml_pressed, _trace_ml_was)
+	if (reason.is_empty() and phys_a
+			and _trace_ml_was and not ml_pressed):
 		reason = "move_left released while A held"
-	elif ml_pressed:
-		if character.is_on_floor() \
-				and character.velocity.x > -10.0:
+	if phys_a and ml_pressed:
+		if (character.is_on_floor()
+				and character.velocity.x > -10.0):
 			if _trace_still_since < 0:
 				_trace_still_since = Time.get_ticks_msec()
-			elif Time.get_ticks_msec() \
-					- _trace_still_since > 750:
+			elif (Time.get_ticks_msec()
+					- _trace_still_since > 750):
 				reason = "A held, move_left held, not moving"
 		else:
 			_trace_still_since = -1
+	else:
+		_trace_still_since = -1
 	if not reason.is_empty():
-		_trace_dumped = true
-		Netcode.print(
-			"H119TRACE %s\n%s" % [
-				reason,
-				"\n".join(
-					G.input_device_manager.get_key_trace()),
-			],
-			NetworkLogger.CATEGORY_PLAYER_ACTIONS,
-		)
+		manager.dump_key_trace(reason)
 	_trace_ml_was = ml_pressed
 
 

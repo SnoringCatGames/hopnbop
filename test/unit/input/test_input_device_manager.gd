@@ -209,19 +209,29 @@ class TestKeyTrace:
 		event.echo = echo
 		return event
 
+	func _trace_has(substr: String) -> bool:
+		for line in manager.get_key_trace():
+			if line.contains(substr):
+				return true
+		return false
+
 	func test_records_movement_key_events():
-		manager._unhandled_key_input(_key_event(KEY_A, true))
-		manager._unhandled_key_input(
-			_key_event(KEY_A, true, true))
+		manager.handle_traced_key_event(
+			_key_event(KEY_A, true), true)
+		manager.handle_traced_key_event(
+			_key_event(KEY_A, true, true), true)
 		var trace := manager.get_key_trace()
 		assert_eq(trace.size(), 2)
 		assert_true(trace[0].contains("pressed=true"))
 		assert_true(trace[1].contains("echo=true"))
 
+	func test_input_records_movement_key_events():
+		manager._input(_key_event(KEY_A, true))
+		assert_eq(manager.get_key_trace().size(), 1)
+
 	func test_ignores_other_keys():
-		manager._unhandled_key_input(_key_event(KEY_B, true))
-		manager._unhandled_key_input(
-			_key_event(KEY_SPACE, true))
+		manager._input(_key_event(KEY_B, true))
+		manager._input(_key_event(KEY_SPACE, true))
 		assert_eq(manager.get_key_trace().size(), 0)
 
 	func test_ring_drops_the_oldest_lines():
@@ -230,3 +240,60 @@ class TestKeyTrace:
 		var trace := manager.get_key_trace()
 		assert_eq(trace.size(), InputDeviceManager._KEY_TRACE_MAX)
 		assert_true(trace[0].contains("note 5"))
+
+	func test_echo_while_input_up_dumps_once_per_hold():
+		manager.handle_traced_key_event(
+			_key_event(KEY_A, true), true)
+		manager.handle_traced_key_event(
+			_key_event(KEY_A, true, true), false)
+		assert_eq(manager.key_trace_dump_count, 1)
+		manager.handle_traced_key_event(
+			_key_event(KEY_A, true, true), false)
+		assert_eq(manager.key_trace_dump_count, 1)
+		manager.handle_traced_key_event(
+			_key_event(KEY_A, false), false)
+		manager.handle_traced_key_event(
+			_key_event(KEY_A, true, true), false)
+		assert_eq(manager.key_trace_dump_count, 2)
+
+	func test_echo_while_input_down_does_not_dump():
+		manager.handle_traced_key_event(
+			_key_event(KEY_A, true), true)
+		manager.handle_traced_key_event(
+			_key_event(KEY_A, true, true), true)
+		assert_eq(manager.key_trace_dump_count, 0)
+
+	func test_move_left_release_without_key_up():
+		manager.handle_traced_key_event(
+			_key_event(KEY_A, true), true)
+		var reason: String = manager.get_move_left_release_reason(
+			false, true)
+		assert_false(reason.is_empty())
+		assert_eq(
+			manager.get_move_left_release_reason(
+				true, true),
+			"")
+
+	func test_move_left_release_after_key_up_is_quiet():
+		manager.handle_traced_key_event(
+			_key_event(KEY_A, true), true)
+		manager.handle_traced_key_event(
+			_key_event(KEY_A, false), false)
+		assert_eq(
+			manager.get_move_left_release_reason(
+				false, true),
+			"")
+
+	func test_text_capture_changes_are_noted():
+		manager.is_text_input_captured = true
+		assert_true(_trace_has("text_capture=true"))
+		manager.is_text_input_captured = false
+		assert_true(_trace_has("text_capture=false"))
+
+	func test_focus_changes_are_noted():
+		manager._notification(
+			NOTIFICATION_APPLICATION_FOCUS_OUT)
+		manager._notification(
+			NOTIFICATION_WM_WINDOW_FOCUS_IN)
+		assert_true(_trace_has("app_focus_out"))
+		assert_true(_trace_has("window_focus_in"))

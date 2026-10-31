@@ -29,22 +29,22 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   `docs/design/H37_systems_audit.md` 1.3, section 7 row 6)
 - **H102** · Real account merge for the PROVIDER_CONFLICT case: since H62 the game tells the player instead. Merging two accounts' stats/friends/boards is a platform feature; needs Levi's call on whether 'tell' is enough. (L)
 - **H119** · Holding A starts left movement for an instant, then it
-  stops (Levi, playtest 2026-10-30).
-  Levi's answers 2026-10-30: it happens with kanata off,
-  holding D keeps moving right, the Left arrow is fine,
-  and it happens in the lobby and in a match. Echo-faithful
-  replay (harness echo_hold: echo events with unicode from
-  500 ms) does not reproduce it in an offline match or the
-  lobby (`.claude/probes/H119/echo-hold-*.json` pass), so
-  the client ships a key trace (2d28d3cc): a ring of
-  movement-key events and move-action changes, dumped as
-  H119TRACE when leftward movement stops while A is still
-  held. As committed it prints nothing on default settings
-  (its log category is filtered) and misses a release with
-  no key-up event; H123 2.1 fixes both. Next: H123 2.1,
-  then Levi captures a log (steps here once it lands).
-  Also asked of Levi: does holding A in Notepad keep
-  repeating?
+  stops (Levi, playtest 2026-10-30; kanata off too, D and the
+  Left arrow fine, lobby and match alike). Echo replay does not
+  reproduce it, so the client ships a key trace, fixed in
+  H123 2.1: it records in `_input`, dumps as H119TRACE on the
+  default log category (visible on stock settings), dumps on
+  an echo for a key Input reports as up and on a move_left
+  release with no A key-up, and the ring notes focus changes,
+  text capture and the poll path. Find the log: local run,
+  reproduce then quit and search `H119TRACE` in
+  `user://logs/godot.log` (Windows:
+  `%APPDATA%\Godot\app_userdata\Hop 'n Bop\logs\godot.log`;
+  the editor Output panel shows it live). Released build:
+  the same file; on web, the browser console. The trace is
+  removed once H119 is diagnosed. Next: Levi holds A until
+  it stalls and sends the H119TRACE block (also: does
+  holding A in Notepad keep repeating?).
 
 ## In progress
 
@@ -62,7 +62,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H123** · Muse run 4: coordinator follow-ups to run 3 (the H119
   trace fix, platform SP102 to SP105, a logging check on H115's
   delete-panel change).
-  - owner: muse 01a189f7-97c5-7eb0-98b6-164cb9977b39 (run by claude 0cfd9cf1 through paseo)
+  - owner: muse 01a1908a-62f5-7b30-ae6f-faac7563ff6c (run by claude 0cfd9cf1 through paseo)
   - branch: mainline; last commit: `ee29d334`
   - evidence: `.claude/probes/H119/` (harness runs); the brief's section 6 handoff log
   - next: Muse: brief section 2.1, the H119 trace on default settings

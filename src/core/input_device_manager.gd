@@ -52,29 +52,69 @@ var player_device_map := {}
 ## keyboard action as pressed, so typing can't leak into character
 ## control or side-panel navigation. Gamepad input is unaffected, so
 ## other local players keep playing. TextInputRow toggles this on
-## focus in/out.
-var is_text_input_captured := false
+## focus in/out. Changes are noted in the H119 key trace.
+var is_text_input_captured := false:
+	set(value):
+		if is_text_input_captured == value:
+			return
+		is_text_input_captured = value
+		key_trace_note("text_capture=%s" % str(value))
 
 ## H119 key trace: a ring of recent movement-key events
 ## and move-action changes. PlayerActionSource dumps it
-## when leftward movement stops while A is still held,
-## so a playtest captures what the input layer saw.
+## when leftward movement stops during an A hold, so a
+## playtest captures what the input layer saw.
 const _KEY_TRACE_MAX := 160
+
+## Physical keys the trace records.
+const _TRACED_PHYSICAL_KEYS: Array[int] = [
+	KEY_A, KEY_D, KEY_LEFT, KEY_RIGHT,
+]
 
 var _key_trace: Array[String] = []
 
+## Dictionary<int, bool>: whether the last recorded event
+## for a traced key was a press (true) or a release (false).
+var _last_key_is_press := {}
+
+## How many traces have been dumped. Tests read this
+## because the log itself does not print in test runs.
+var key_trace_dump_count := 0
+
+var _trace_dumped := false
+
 
 ## Records one movement-key event in the trace ring.
-func _unhandled_key_input(event: InputEvent) -> void:
+## Runs in _input so events a Control consumes (a
+## focused LineEdit typing the key, say) still show.
+func _input(event: InputEvent) -> void:
 	if not event is InputEventKey:
 		return
 	var key_event := event as InputEventKey
-	if key_event.keycode not in [
-		KEY_A, KEY_D, KEY_LEFT, KEY_RIGHT
-	] and key_event.physical_keycode not in [
-		KEY_A, KEY_D, KEY_LEFT, KEY_RIGHT
-	]:
+	var physical := key_event.physical_keycode
+	if physical == 0:
+		physical = key_event.keycode
+	if (key_event.keycode not in _TRACED_PHYSICAL_KEYS
+			and physical not in _TRACED_PHYSICAL_KEYS):
 		return
+	handle_traced_key_event(
+		key_event,
+		Input.is_physical_key_pressed(physical),
+	)
+
+
+## Records one traced key event in the ring, and dumps
+## the trace when an echo arrives for a key Input
+## reports as up (the OS still repeats a key Godot
+## believes is released). is_input_pressed is a
+## parameter so tests can drive both halves.
+func handle_traced_key_event(
+		key_event: InputEventKey,
+		is_input_pressed: bool,
+) -> void:
+	var physical := key_event.physical_keycode
+	if physical == 0:
+		physical = key_event.keycode
 	key_trace_note(
 		"key code=%d phys=%d pressed=%s echo=%s unicode=%d"
 		% [
@@ -85,6 +125,58 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			key_event.unicode,
 		]
 	)
+	_last_key_is_press[physical] = key_event.pressed
+	if not key_event.pressed and not key_event.echo:
+		# A real release ends the hold. The next
+		# press may dump again.
+		_trace_dumped = false
+	if (key_event.pressed and key_event.echo
+			and not is_input_pressed):
+		dump_key_trace(
+			"echo for key %d while Input reports it up"
+			% physical,
+		)
+
+
+## Dumps the trace ring once per hold. The dump uses
+## the default log category, which default settings do
+## not filter out, so a playtest on stock settings
+## captures it (PlayerActions is filtered by default).
+func dump_key_trace(reason: String) -> bool:
+	if _trace_dumped:
+		return false
+	_trace_dumped = true
+	key_trace_dump_count += 1
+	Netcode.print(
+		"H119TRACE %s\n%s" % [
+			reason,
+			"\n".join(get_key_trace()),
+		],
+		NetworkLogger.CATEGORY_DEFAULT,
+	)
+	return true
+
+
+## True when the last recorded event for the key was
+## a press, so no key-up has been seen for it.
+func get_last_key_is_press(physical: int) -> bool:
+	return bool(_last_key_is_press.get(physical, false))
+
+
+## The dump reason when move_left just went false
+## while the last A event is still a press: the
+## release had no key-up event behind it. Returns an
+## empty string when this frame is not that case.
+func get_move_left_release_reason(
+		ml_pressed: bool,
+		ml_was: bool,
+) -> String:
+	if (ml_was and not ml_pressed
+			and get_last_key_is_press(KEY_A)):
+		return (
+			"move_left released with no A key-up"
+			+ " (last A event is a press)")
+	return ""
 
 
 ## Appends one timestamped line to the trace ring.
@@ -102,6 +194,21 @@ func get_key_trace() -> Array[String]:
 
 func _ready() -> void:
 	G.log.log_system_ready("InputDeviceManager")
+
+
+## App and window focus changes go in the ring: a
+## focus loss can clear the pressed keys with no key
+## event, which is one way a hold can end early.
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_FOCUS_OUT:
+			key_trace_note("app_focus_out")
+		NOTIFICATION_APPLICATION_FOCUS_IN:
+			key_trace_note("app_focus_in")
+		NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+			key_trace_note("window_focus_out")
+		NOTIFICATION_WM_WINDOW_FOCUS_IN:
+			key_trace_note("window_focus_in")
 
 
 ## Assigns a device configuration to a local player index.
