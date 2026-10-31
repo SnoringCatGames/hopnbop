@@ -28,6 +28,19 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H71** · Decoupling: which seams to build (decision;
   `docs/design/H37_systems_audit.md` 1.3, section 7 row 6)
 - **H102** · Real account merge for the PROVIDER_CONFLICT case: since H62 the game tells the player instead. Merging two accounts' stats/friends/boards is a platform feature; needs Levi's call on whether 'tell' is enough. (L)
+- **H119** · Holding A starts left movement for an instant, then it
+  stops (Levi, playtest 2026-10-30).
+  Levi's answers 2026-10-30: it happens with kanata off,
+  holding D keeps moving right, the Left arrow is fine,
+  and it happens in the lobby and in a match. Echo-faithful
+  replay (harness echo_hold: echo events with unicode from
+  500 ms) does not reproduce it in an offline match or the
+  lobby (`.claude/probes/H119/echo-hold-*.json` pass), so
+  the client ships a key trace (2d28d3cc): a ring of
+  movement-key events and move-action changes, dumped as
+  H119TRACE when leftward movement stops while A is still
+  held. Next: Levi's playtest on the client release
+  captures the dump; search the game log for H119TRACE.
 
 ## In progress
 
@@ -98,14 +111,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   SP44-5).
 - **H117** · SP32 client half, for when the consent change ships: show
   pending invites, accept and decline (H104 1A SP32-3).
-- **H119** · Holding A starts left movement for an instant, then it
-  stops (Levi, playtest 2026-10-30).
-  Harness diagnosis 2026-10-30 (`.claude/probes/H119/`): not
-  reproduced. Holding A moves at full speed until level geometry
-  stops it: offline level, lobby after the join panel opened and
-  closed, and lobby after typing a code on the H56 keyboard and
-  closing. Back to Levi via Claude: does it happen with kanata
-  off, and with the Left arrow?
 
 
 ## Residuals (known, not fixed)
