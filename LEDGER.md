@@ -56,6 +56,14 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - evidence: .claude/probes/H126/ (Muse run), .claude/probes/H126/review/ (Claude: checks, mutation proofs, smoke 95/95)
   - next: Levi OKs the deploy; push the three platform commits one at a time (watch each nakama-runtime run), bump the pointer with the two allowlist lines, close SP110, SP111, SP113
   - brief: `docs/design/H126_muse_run7.md`
+- **H142** · Muse run 9: the H104 stage 3 doc rewrites (H127 for H87,
+  H128 for H72, H129 for H98) and the adjective-reveal fix (H130); order
+  H127, H128, H130, H129.
+  - owner: claude session 0cfd9cf1-a258-4dc9-912d-e29423bc99b2 (Muse run 9 launching; Muse puts its own session id here in its first commit)
+  - branch: mainline; last commit: `9458b622`
+  - evidence: .claude/probes/H104/stage3.md (untracked), .claude/probes/H130/ (untracked)
+  - next: Muse works the brief in order H127, H128, H130, H129. Then Claude reviews the diffs, views the H130 crops, files Levi questions, closes H142.
+  - brief: `docs/design/H142_muse_run9.md`
 
 ## Next
 
@@ -115,6 +123,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H135** · Settings cloud sync deletes keys a stale device lacks,
   wiping another device's new settings (settings_cloud_sync.gd:339-358;
   medium, live in 0.57.0): tombstones and OCC (stage 2, H90-1 to H90-4).
+- **H143** · H98 captures for Levi's two looks (T43 surfaces; T19
+  candidates at four and eight displays), then Waiting on Levi
+  (H98-12; after H129; docs/ledger_notes.md, H143).
 
 ## Residuals (known, not fixed)
 

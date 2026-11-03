@@ -287,3 +287,12 @@ The engine-logger findings rest on the Godot 4.4-beta source on disk, which pred
 - H86-3 · low · `src/core/engine_error_logger.gd:3-6`, `.claude/rules/crash-reporting.md` · release templates never print script errors, so the script half of the audit item H86 was filed for (CR6) stays open; document the limit.
 - H86-4 · low (conditional) · `src/core/crash_reporter.gd:165-177`, `:389` · an engine error raised inside `report_crash` (a malformed stored JWT) re-enters it before dedup; add a guard.
 - The reporter's own docs (`crash_reporter.gd:6-8`, `:158`) name two sources, not the engine logger: folded into H131.
+
+## H143 (2026-11-02, claude session 0cfd9cf1)
+
+Agent work that Levi's two looks wait on (H98-12 of the H104 stage 3 review; H129 ends the H98 doc with the two questions, and Muse run 9 does not capture them). Both are looks with pictures, not technical variants, so Levi sees what is on screen and the agent decides the rest by the checks.
+
+1. T43: harness captures of each T43 surface (toasts, game over, friends, auth; `docs/design/H37/h37-triage.md:441`), with the question "anything here to fix?".
+2. T19: once the H98-4 sizes are measured (H129), before-and-after pictures of the candidates at four and eight displays, with the question "which reads best mid-match: smaller full displays or compact chips?". Option 1's numbers are settled by the H98-9 layout test, not by Levi.
+
+When the pictures exist, move the item to Waiting on Levi with the paths. Report: `.claude/probes/H104/stage3.md`.
