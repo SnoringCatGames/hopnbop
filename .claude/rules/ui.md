@@ -214,3 +214,19 @@ teardown/setup). `_last_camera` must be set before calling
 level camera is used for everything, including the
 end-of-match celebration (which tweens the level camera's
 `offset` to follow the winner).
+
+## HUD state outlives the match
+
+The HUD is instantiated once in `main.tscn` and lives for the whole
+app session, so its `PlayerList`s and their `PlayerDisplay` nodes
+survive Play Again. A display is freed only when its player id leaves
+the list. Anything a match sets on a display (the reveal's
+`is_adjective_frozen` and `is_adjective_hidden`, popups) has to be
+undone in `MatchEndCelebration.reset()`, or the next match starts
+with it still set (H130: the visible list lost its adjective after
+the first match). The harness scenario `adjective-reveal-play-again`
+plays two matches to guard this. At aspect 1.3 or more the HUD shows
+the vertical list and hides the horizontal one, so code that touches
+displays uses `Hud.get_player_lists()` (all) or
+`get_visible_player_list()` (the one on screen), never
+`G.hud.player_list` alone.

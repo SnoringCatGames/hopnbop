@@ -45,6 +45,15 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H132** · Deploy OK for the three local platform commits (SP110,
   SP111, SP113; H126): each push restarts the live Nakama for a few
   seconds.
+- **H144** · Ship server crash reports (rerun mode plus restart counter,
+  M) with the next game-server image? Recommend yes
+  (`docs/design/H87_server_crash_reporting.md`).
+- **H145** · Build and keep a 4.7.2 template with path overrides (an
+  engine build per Godot upgrade) so the harness can run release builds?
+  Recommend yes (`docs/design/H72_exported_build_harness.md`).
+- **H146** · Run the web boot check on every push (2 to 3 CI minutes
+  each, with a step timeout)? Recommend yes
+  (`docs/design/H72_exported_build_harness.md`).
 
 ## In progress
 
@@ -56,14 +65,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - evidence: .claude/probes/H126/ (Muse run), .claude/probes/H126/review/ (Claude: checks, mutation proofs, smoke 95/95)
   - next: Levi OKs the deploy; push the three platform commits one at a time (watch each nakama-runtime run), bump the pointer with the two allowlist lines, close SP110, SP111, SP113
   - brief: `docs/design/H126_muse_run7.md`
-- **H142** · Muse run 9: the H104 stage 3 doc rewrites (H127 for H87,
-  H128 for H72, H129 for H98) and the adjective-reveal fix (H130); order
-  H127, H128, H130, H129.
-  - owner: nobody since 2026-11-02 20:50 PT (run 9 complete; all four items landed)
-  - branch: mainline; last commit: `9b6715573b5179e28ef6cbd52b824d88d2b57a80`
-  - evidence: .claude/probes/H104/stage3.md (untracked), .claude/probes/H130/ (untracked), .claude/probes/H129/ (untracked)
-  - next: Claude reviews the diffs, views the H130 crops, files Levi questions, closes H142.
-  - brief: `docs/design/H142_muse_run9.md`
 
 ## Next
 
@@ -108,7 +109,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   `docs/design/H98_polish_and_player_list.md`, awaiting H129, then Levi.
 - **H117** · SP32 client half, for when the consent change ships: show
   pending invites, accept and decline (H104 1A SP32-3).
-
 - **H135** · Settings cloud sync deletes keys a stale device lacks,
   wiping another device's new settings (settings_cloud_sync.gd:339-358;
   medium, live in 0.57.0): tombstones and OCC (stage 2, H90-1 to H90-4).
@@ -177,11 +177,18 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H141** · H86-2: crash-report dedup is per process, so a recurring
   error is queued again on every launch; dedupe across runs needs a
   runtime change (docs/ledger_notes.md, H86-2).
+- **H147** · CR7 web: a browser engine crash leaves no log. A JS
+  `window.onerror` writing to localStorage could report it next boot
+  (inferred; `docs/design/H87_server_crash_reporting.md`).
+- **H148** · CR7 Android: a native crash leaves no log file, so the boot
+  scan finds nothing. Needs engine-side work
+  (docs/design/H87_server_crash_reporting.md).
 
 ## Done
 
+- **H142** · Muse run 9 (H127, H128, H130, H129) reviewed: the three docs match the H104 stage 3 findings; H130 left the player-list flags frozen and hidden across Play Again, fixed with a reset hook, unit tests and the adjective-reveal-play-again scenario. Done in fa950697 (2026-11-02).
 - **H129** · H98 sizes redone with the measured 204x173 display (four stacked 752 px), option 3 premise fixed, reveal per option, two look questions. Done in 9b671557 (2026-11-02).
-- **H130** · Adjective reveal freezes every list and pops over the visible one. The 1360x765 probe showed the hidden list frozen before. The new test failed unfixed. Done in ab01550e (2026-11-02).
+- **H130** · Adjective reveal freezes every list and pops over the visible one. The 1360x765 probe showed the hidden list frozen before. The new test failed unfixed. Done in ab01550e (2026-11-02); the flags were never reset, so Play Again started frozen and hidden, fixed in fa950697.
 - **H128** · Path-override template is the H72 plan. Release clients for H38, per-push web boot check, Docker server step, size M and two questions. Done in 282fd855 (2026-11-02).
 - **H127** · H87 recommendation conditional on the restart check. Rerun mode, marker-only posts, re-register counter, size M and the one question. Done in 0e741dec (2026-11-02).
 - **H133** · Four orphaned hopnbop-smoke-20261030-* stacks removed; the leak itself is H138. Done in a manual docker compose down -v (2026-11-02).
