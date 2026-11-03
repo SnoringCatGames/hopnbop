@@ -59,7 +59,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H142** · Muse run 9: the H104 stage 3 doc rewrites (H127 for H87,
   H128 for H72, H129 for H98) and the adjective-reveal fix (H130); order
   H127, H128, H130, H129.
-  - owner: claude session 0cfd9cf1-a258-4dc9-912d-e29423bc99b2 (Muse run 9 launching; Muse puts its own session id here in its first commit)
+  - owner: muse session 01a19fb1-f4de-7ab1-b838-f5cd08f5e0e9 (run 9 started 2026-11-02)
   - branch: mainline; last commit: `9458b622`
   - evidence: .claude/probes/H104/stage3.md (untracked), .claude/probes/H130/ (untracked)
   - next: Muse works the brief in order H127, H128, H130, H129. Then Claude reviews the diffs, views the H130 crops, files Levi questions, closes H142.
