@@ -59,16 +59,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - evidence: .claude/probes/H126/ (Muse run), .claude/probes/H126/review/ (Claude: checks, mutation proofs, smoke 95/95)
   - next: Levi OKs the deploy; push the three platform commits one at a time (watch each nakama-runtime run), bump the pointer with the two allowlist lines, close SP110, SP111, SP113
   - brief: `docs/design/H126_muse_run7.md`
-- **H104** · Claude reviews Muse's commits from H103 and H109 in three
-  stages: security (SP32, SP33, SP36, SP41 to SP44, SP47, SP59, H60),
-  then H109's Tier C, then its Tier D design docs. Reviewed 2026-10-29:
-  the CI fixes (8bb5873, c1590c7, netcode 9c3c0b5) and H56's keyboard
-  (H111, H112).
-  - owner: claude session 0cfd9cf1-a258-4dc9-912d-e29423bc99b2 (stage 1 done 2026-10-30 08:02; stages 2 and 3 run as two subagents since 2026-11-02)
-  - branch: mainline, read-only (the review makes no commits); last commit: `e68e052d96ad48dafe9b344a6dfd98f648fbf4a8`
-  - evidence: .claude/probes/H104/ (stage1-A.md, stage1-B.md, stage2.md, stage3.md; untracked, on the desktop only)
-  - next: stage 3 filed as H127-H131; file the stage 2 report (.claude/probes/H104/stage2.md) when its agent finishes, then close H104
-  - brief: `docs/design/H104_review.md`
 
 
 
@@ -200,6 +190,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H104** · Claude review of Muse H103 and H109 work in three stages; stage 2 and 3 findings are H127 to H136, SP115 and SP116. Done in d00b9d2f (2026-11-02).
 - **H125** · Muse run 6 (SP107-SP109, the SP106 follow-ups). Handoff log in `docs/design/H125_muse_run6.md` section 3. Done 2026-10-31.
 - **H124** · Muse run 5 (SP106, the after-authenticate hook collision). Handoff log in `docs/design/H124_muse_run5.md` section 4. Done 2026-10-31.
 - **H123** · Muse run 4 (coordinator follow-ups to run 3): the H119 trace fix, platform SP102 to SP105, and the H115 logging check. Handoff log in `docs/design/H123_muse_run4.md` section 6. Done 2026-10-30.
