@@ -440,6 +440,53 @@ func test_full_page_lists_the_next_page_until_a_short_one() -> void:
 	assert_eq(_poller._notification_cursor, "page-3")
 
 
+func test_full_page_with_a_repeated_cursor_stops_paging() -> void:
+	var first_page := _full_notification_page("a")
+	var second_page := _full_notification_page("b")
+	_friends.canned_pages.assign([
+		{"notifications": first_page, "cacheable_cursor": "same"},
+		{"notifications": second_page, "cacheable_cursor": "same"},
+	])
+
+	_sign_in_with_provider()
+
+	assert_eq(
+		_friends.notification_fetches, 2,
+		"a repeated cursor ends the drain instead of paging forever")
+	assert_eq(
+		_friends.fetched_cursors,
+		["", "same"] as Array[String])
+
+
+func test_paging_stops_after_the_page_cap_for_one_poll() -> void:
+	var pages: Array[Dictionary] = []
+	for page_index in range(15):
+		pages.append({
+			"notifications": _full_notification_page(
+				"p%d" % page_index),
+			"cacheable_cursor": "cursor-%d" % (page_index + 1),
+		})
+	_friends.canned_pages.assign(pages)
+
+	_sign_in_with_provider()
+
+	assert_eq(
+		_friends.notification_fetches, 10,
+		"one poll drains at most the page cap")
+	assert_eq(_poller._notification_cursor, "cursor-10")
+
+
+func _full_notification_page(prefix: String) -> Array:
+	var page: Array = []
+	for index in FriendsNotificationPoller._NOTIFICATION_PAGE_SIZE:
+		page.append({
+			"id": "%s-%d" % [prefix, index],
+			"code": 0,
+			"sender_id": _SENDER_ID,
+		})
+	return page
+
+
 func test_late_list_response_keeps_the_new_sessions_cursor() -> void:
 	_sign_in_with_provider()
 	_sign_out()

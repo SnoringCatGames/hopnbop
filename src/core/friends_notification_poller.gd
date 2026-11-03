@@ -47,6 +47,11 @@ var _known_friend_event_ids: Dictionary = {}
 var seen_toasts_path := "user://notification_toasts_seen.cfg"
 const _SEEN_TOASTS_CAP := 200
 const _NOTIFICATION_PAGE_SIZE := 50
+## Most pages one poll or drain pages through before it
+## stops and lets the next poll continue from the cursor.
+## It bounds a drain whose cursors cycle without repeating
+## the previous one right away.
+const _MAX_NOTIFICATION_PAGES_PER_POLL := 10
 ## Order _known_friend_event_ids were first seen in, oldest
 ## first; caps the persisted store.
 var _seen_toast_order: Array = []
@@ -60,6 +65,9 @@ var _notification_cursor := ""
 ## instead of handing the old account's cursor to the new
 ## session. -1 means no fetch has been sent yet.
 var _notification_fetch_generation := -1
+## Full pages handled since the current poll or drain
+## started. A short page or a fresh fetch resets it.
+var _notification_pages_this_poll := 0
 ## Player ids whose pending friend request the user has already
 ## looked at. Subtracted from the pending-request count to produce
 ## `unseen_count`. In-memory only: on a fresh launch a still-
@@ -248,6 +256,7 @@ func reset() -> void:
 	_is_first_poll = true
 	_is_first_presence_poll = true
 	_notification_cursor = ""
+	_notification_pages_this_poll = 0
 	_known_online_ids.clear()
 	_known_party_match_start_ids.clear()
 	# _known_friend_event_ids survives reset (H54): it is the
@@ -282,6 +291,7 @@ func _on_notifications_received(
 	# no-opped.
 	# Advance the poll cursor (H54) so the next list starts
 	# past these rows instead of replaying the oldest 50.
+	var cursor_before := _notification_cursor
 	var next_cursor: String = data.get(
 		"cacheable_cursor", "")
 	if not next_cursor.is_empty():
@@ -296,9 +306,25 @@ func _on_notifications_received(
 		if _queue_friend_toast(n):
 			queued += 1
 	# A full page means more rows are waiting. Keep
-	# draining until a short page ends the backlog.
+	# draining until a short page ends the backlog. A page
+	# that hands back the cursor it was fetched with (or
+	# none) would page forever, and any longer cycle stops
+	# at the page cap. The next poll resumes from here.
 	if notifications.size() >= _NOTIFICATION_PAGE_SIZE:
-		_fetch_notification_list()
+		_notification_pages_this_poll += 1
+		var is_cursor_repeated := (
+			next_cursor.is_empty()
+			or next_cursor == cursor_before)
+		if (
+			not is_cursor_repeated
+			and _notification_pages_this_poll
+				< _MAX_NOTIFICATION_PAGES_PER_POLL
+		):
+			_fetch_notification_list(true)
+		else:
+			_notification_pages_this_poll = 0
+	else:
+		_notification_pages_this_poll = 0
 	if queued == 0:
 		return
 	# Refresh the durable friend state. This both recomputes the
@@ -373,8 +399,14 @@ func _friend_toast_key(code: int) -> String:
 
 
 ## Sends one notification-list fetch and records the
-## session it belongs to (H54-2).
-func _fetch_notification_list() -> void:
+## session it belongs to (H54-2). A next-page fetch keeps
+## the page count of the poll or drain it belongs to. A
+## fresh one starts a new count.
+func _fetch_notification_list(
+	is_next_page: bool = false,
+) -> void:
+	if not is_next_page:
+		_notification_pages_this_poll = 0
 	_notification_fetch_generation = _session_generation
 	Platform.friends.fetch_notifications(
 		_NOTIFICATION_PAGE_SIZE, _notification_cursor)
