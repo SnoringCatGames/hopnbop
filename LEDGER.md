@@ -59,10 +59,10 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H142** · Muse run 9: the H104 stage 3 doc rewrites (H127 for H87,
   H128 for H72, H129 for H98) and the adjective-reveal fix (H130); order
   H127, H128, H130, H129.
-  - owner: muse session 01a19fb1-f4de-7ab1-b838-f5cd08f5e0e9 (run 9 started 2026-11-02)
-  - branch: mainline; last commit: `9458b622`
-  - evidence: .claude/probes/H104/stage3.md (untracked), .claude/probes/H130/ (untracked)
-  - next: Muse works the brief in order H127, H128, H130, H129. Then Claude reviews the diffs, views the H130 crops, files Levi questions, closes H142.
+  - owner: nobody since 2026-11-02 20:50 PT (run 9 complete; all four items landed)
+  - branch: mainline; last commit: `9b6715573b5179e28ef6cbd52b824d88d2b57a80`
+  - evidence: .claude/probes/H104/stage3.md (untracked), .claude/probes/H130/ (untracked), .claude/probes/H129/ (untracked)
+  - next: Claude reviews the diffs, views the H130 crops, files Levi questions, closes H142.
   - brief: `docs/design/H142_muse_run9.md`
 
 ## Next
@@ -108,18 +108,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   `docs/design/H98_polish_and_player_list.md`, awaiting H129, then Levi.
 - **H117** · SP32 client half, for when the consent change ships: show
   pending invites, accept and decline (H104 1A SP32-3).
-- **H127** · H87 doc edits before Levi decides (H87-1 to H87-12;
-  Edgegap restarts a crashed server in the same container, so the
-  premise is wrong): .claude/probes/H104/stage3.md
-- **H128** · H72 doc rewrite (H72-1 to H72-8): stock 4.7.2 templates
-  refuse --path and ignore -s, so the path-override template is the
-  main option: .claude/probes/H104/stage3.md
-- **H129** · H98 doc edits (H98-1, -2, -4, -12 required): redo the
-  sizes with the rendered display (about 203x171), then two look
-  questions for Levi: .claude/probes/H104/stage3.md
-- **H130** · Match-end adjective reveal runs on the hidden horizontal
-  list at aspect 1.3+ (match_end_celebration.gd:408-420; inferred, in
-  0.56.0 and 0.57.0 too): capture, then fix (H98-3).
+
 - **H135** · Settings cloud sync deletes keys a stale device lacks,
   wiping another device's new settings (settings_cloud_sync.gd:339-358;
   medium, live in 0.57.0): tombstones and OCC (stage 2, H90-1 to H90-4).
@@ -191,6 +180,10 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H129** · H98 sizes redone with the measured 204x173 display (four stacked 752 px), option 3 premise fixed, reveal per option, two look questions. Done in 9b671557 (2026-11-02).
+- **H130** · Adjective reveal freezes every list and pops over the visible one. The 1360x765 probe showed the hidden list frozen before. The new test failed unfixed. Done in ab01550e (2026-11-02).
+- **H128** · Path-override template is the H72 plan. Release clients for H38, per-push web boot check, Docker server step, size M and two questions. Done in 282fd855 (2026-11-02).
+- **H127** · H87 recommendation conditional on the restart check. Rerun mode, marker-only posts, re-register counter, size M and the one question. Done in 0e741dec (2026-11-02).
 - **H133** · Four orphaned hopnbop-smoke-20261030-* stacks removed; the leak itself is H138. Done in a manual docker compose down -v (2026-11-02).
 - **H137** · Muse run 8 (H106, H134, H136, H131) reviewed: code correct, CI green. Reverting each hunk found three uncovered (H106 reporter, H106 handler guard, H134 paging), now covered by the offline-error-reporting scenario and two stronger tests. Done in 95e096ac (2026-11-02).
 - **H131** · Reporter docs name the engine logger as the third source, with the pre-_ready and release-template limits (H86-3). Done in f33c3c5c (2026-11-02).

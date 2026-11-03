@@ -210,3 +210,84 @@ push.
 ## 3. Handoff log
 
 Append one dated entry each time you stop.
+
+- 2026-11-02, muse 01a19fb1-f4de-7ab1-b838-f5cd08f5e0e9 (run 9
+  complete, 20:36 to 20:50 PT): all four items landed on main.
+  H127 in 0e741dec: the H87 recommendation is conditional on
+  the Before deciding check (whether an Edgegap restart keeps
+  the writable layer, the request id and the connection
+  info). Option 2 is the report-only rerun. Posts only on a
+  marker or crash signal. Option 3 counts the re-register.
+  Ends with size M and the one question. The crash reporting
+  rules residual is already fixed, so it was skipped. H128
+  in 282fd855: the path-override template is the H72 plan.
+  Release clients are what H38 needs. The web boot check
+  runs on every push. The server runs as its Docker image.
+  Ends with size M and the two questions. H130 in ab01550e:
+  Hud exposes every list and the visible one. The
+  celebration freezes them all and parents each popup to
+  the visible display at spawn time. H129 in 9b671557: the
+  H98 sizes use the measured display (see below). The
+  layout test is the first step in the doc, not written.
+  Shelved: none.
+  H130 probe (offline, level_4, 10 s match, scenario in
+  .claude/probes/H130/probe-default.json). At 1360x765
+  before the fix: horizontal hidden, vertical visible.
+  Before the end both unfrozen. At freeze (0.3 s after
+  the end) the hidden list was frozen (h_frozen true,
+  v_frozen false, both 1 child). At the reveal (1.8 s
+  later) the popup was on the hidden list (h_hidden true,
+  h_children 2, v_hidden false, v_children 1, screen
+  GAME). At 1100x900 before the fix the horizontal list
+  was visible and correct (h frozen, popup on h). After
+  the fix at 1360x765 both lists froze and the popup
+  moved to the vertical list (v_hidden true, v_children
+  2, h 1 child). At 1100x900 after the fix both froze
+  and the popup stayed on the horizontal list. The new
+  GUT test failed unfixed on both counts (1/6 asserts)
+  and passes 2/2 after. test_player_display passes
+  14/14.
+  H98 measured table source runs: offline harness runs
+  of .claude/probes/H129/measure.json, logs in
+  .claude/probes/H129/measure-*.txt, run dirs
+  20261102-204821-h129-measure (1280x720),
+  20261102-204835-h129-measure (1360x765),
+  20261102-204853-h129-measure (1920x1080) and
+  20261102-204907-h129-measure (2560x1440) under the
+  agent runs temp dir. Each eval gave the visible
+  (vertical) list and one display at 204x173, list at
+  (window width minus 220, 16), separation 20. Four
+  stacked (752 px) and eight (1524 px) are derived.
+  Screenshots in .claude/probes/H130/ (untracked). What
+  each should show, at the reveal the adjective popup
+  is the new adjective over a display label:
+  before-fix-1360x765-before-reveal.png: just before
+  the reveal, vertical list at the right, no popup
+  yet. before-fix-1360x765-during-reveal.png: during
+  the reveal, no popup over the vertical display at
+  the right. The popup is over the hidden bottom list.
+  before-fix-1100x900-before-reveal.png: just before,
+  horizontal list at the bottom, no popup yet.
+  before-fix-1100x900-during-reveal.png: during, popup
+  over the bottom display (correct, and unchanged).
+  after-fix-1360x765-before-reveal.png: just before,
+  vertical list at the right, no popup yet.
+  after-fix-1360x765-during-reveal.png: during, popup
+  over the vertical display at the right.
+  after-fix-1100x900-before-reveal.png: just before,
+  horizontal list at the bottom, no popup yet.
+  after-fix-1100x900-during-reveal.png: during, popup
+  over the bottom display.
+  Questions for Levi, one line each:
+  Ship server crash reports (rerun mode plus restart counter, about M) with the next game-server image?
+  Build and keep a 4.7.2 template with path overrides (an engine build per Godot upgrade) so the harness can run release builds?
+  Run the web boot check on every push (about 2 to 3 CI minutes per push)?
+  Anything here to fix? (T43 captures of toasts, game over, friends and auth, still to capture in H143.)
+  Which reads best mid-match: smaller full displays or compact chips? (T19 captures at four and eight displays, side by side, still to capture in H143.)
+  For Claude to file: CR7 as two items (web JS
+  window.onerror to localStorage, inferred; Android
+  engine work). The H87 doc drops CR7 from its title
+  and names them, but no ledger IDs were assigned in
+  this run. No client release was done. The H130 fix
+  reaches players with the next client release, which
+  needs Levi's OK.
