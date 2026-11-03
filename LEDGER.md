@@ -68,8 +68,8 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H150** · Muse run 10: the poller fixes (H140, H139), the H135
   settings-sync design doc and the H143 pictures (brief:
   docs/design/H150_muse_run10.md).
-  - owner: claude session 0cfd9cf1-a258-4dc9-912d-e29423bc99b2 (launching muse run 10)
-  - branch: mainline; last commit: `35a883cd`
+  - owner: muse session 01a19fe1-3736-7912-979b-324d3ce8ceab (run 10, launched 21:28 PT by claude session 0cfd9cf1)
+  - branch: mainline; last commit: `a4d6660b`
   - evidence: .claude/probes/H143/ (index.md and run directories, untracked)
   - next: Muse works the brief in order; review the poller tests with a mutation check, the H135 doc, the H143 pictures (view crops); file its questions for Levi
   - brief: `docs/design/H150_muse_run10.md`
