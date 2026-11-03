@@ -59,6 +59,14 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - evidence: .claude/probes/H126/ (Muse run), .claude/probes/H126/review/ (Claude: checks, mutation proofs, smoke 95/95)
   - next: Levi OKs the deploy; push the three platform commits one at a time (watch each nakama-runtime run), bump the pointer with the two allowlist lines, close SP110, SP111, SP113
   - brief: `docs/design/H126_muse_run7.md`
+- **H137** · Muse run 8, hopnbop only: H106 (offline RPC on yourself
+  queues a crash report), H134 (offline friend events never toast), H136
+  (reports sent twice; probe first), H131 (docs).
+  - owner: claude session 0cfd9cf1-a258-4dc9-912d-e29423bc99b2 (brief written 2026-11-02; Muse launches next)
+  - branch: mainline; last commit: pending (brief not yet committed)
+  - evidence: .claude/probes/H137/ (Muse probes), .claude/probes/H104/stage2.md (findings)
+  - next: launch Muse, review each commit as it lands
+  - brief: `docs/design/H137_muse_run8.md`
 
 
 
