@@ -213,3 +213,110 @@ and push.
 ## 3. Handoff log
 
 Append one dated entry each time you stop.
+
+- 2026-11-02, muse 01a19fe1-3736-7912-979b-324d3ce8ceab
+  (started 21:28 PT, inside the 2 hour stop rule): all
+  four jobs done. Nothing shelved. CI green on every
+  push so far (PR Validate and Compliance Matrix).
+  - H140, done in ae717e377e6827f4d1508eda40c26383b2145878
+    (paging) and a7eeea15f1b6054e4bcd963fc277d4384773d822
+    (drain). Paging design: an immediate-repeat check plus
+    a per-poll page cap. A full page that hands back the
+    cursor it was fetched with, or no cursor, ends the
+    drain, and `_MAX_NOTIFICATION_PAGES_PER_POLL` (10)
+    bounds any longer cycle. The next poll resumes from
+    the stored cursor. Drain design: a pending flag
+    retried from `_process`, not a session generation or
+    a timer. A generation already guards the stale
+    response (H54-2) and cannot make the addon fetch
+    while busy, and `_process` already owns the poll
+    cadence. `reset()` clears the flag. Failing tests
+    first: a repeated cursor fetched 3 times unfixed
+    (2 after), the cap case fetched 16 times (10 after),
+    and a drain blocked by a stale fetch never ran
+    unfixed (1 fetch after it cleared). After the fix,
+    `test_friends_poller_lifecycle.gd` passes 21/21.
+  - H139, done in 602a5bfd39242cb80bce2a10b4efefdc0720ac49.
+    Timing design: an id is marked seen right after
+    `show_toast` returns, in the same synchronous call,
+    before the next event. Queueing records it only in
+    memory, so a quit while a toast waits leaves it to
+    toast on a later launch. A toast whose sender name
+    does not resolve is unqueued unmarked, so a later
+    delivery can show it. Account design: the same file
+    now holds one list per account under an `accounts`
+    dictionary. An account with no list starts from the
+    legacy device-wide `seen_ids`, which is never updated
+    again. That seeds every account from the old list.
+    It is the anti-flood choice: pre-upgrade ids stay
+    shared, and only ids shown after the upgrade are
+    private. An older client still finds `seen_ids` and
+    ignores the dictionary. Failing tests first: a queued
+    id was already persisted unfixed, a second account
+    got no toast (1 picture toast instead of 2), and a
+    name miss lost the toast for good. After the fix,
+    `test_friends_notification_poller.gd` passes 32/32,
+    the lifecycle file 24/24 and
+    `test_friends_notification_contract.gd` 4/4. The
+    contract tests now use a throwaway dedup file. They
+    used to write the real profile, which the per-account
+    load then read back as a legacy seed.
+  - H135 stage 1, done in
+    f9f418509ebc930e923dc9b06d79d8296b3af27f. The doc is
+    `docs/design/H135_settings_sync_merge.md`. It
+    recommends tombstones and a Nakama version
+    precondition together in one client release, gated
+    on a local check of what a failed conditional write
+    returns. It folds in H90-2 and H90-3, and H90-4 in
+    part (untimed keys, the dead error substring, the
+    test path). It leaves the per-device dirty flag as a
+    follow-up. Its open questions are in Questions for
+    Levi below.
+  - H143, done, no code committed. The index is
+    `.claude/probes/H143/index.md` (untracked, this
+    machine), with the eight run directories beside it.
+    T43 at 1360x765: toasts over the lobby (state
+    `LOBBY`; two friend toasts naming the sender), game
+    over (state `GAME_OVER`; results row plus Play again
+    and Return to Lobby), friends (state `LOBBY` with the
+    panel open; the shell an offline player sees, with a
+    signed out toast), and auth (state `AUTH`; the three
+    sign-in rows). T19 before pictures: four and eight
+    displays at 1360x765, where four already run past the
+    bottom and eight show only the first four, and at
+    1100x900, where four across the bottom run off the
+    bottom edge and eight run off both sides. The index
+    says what each picture should show. Displays were
+    added as `GamePlayerState` rows in `match_state`,
+    the way the H129 source runs' list builds them. All
+    eight runs passed and every picture was opened.
+  - Prototype capture, for Claude to decide: build the
+    H98 options only in a throwaway worktree
+    (`git worktree add` outside this checkout). A fresh
+    worktree has empty submodule directories, so it
+    needs `git submodule update --init --recursive`
+    inside it (or copies of `addons/rollback_netcode`
+    and the platform submodule), then
+    `scripts/setup-platform-addon.ps1` run there to make
+    its addon copy, then one Godot import there to build
+    its `.godot` cache. That is some minutes of setup
+    and a few hundred MB. Run the same four T19
+    scenarios from that tree with `-OutDir` pointing at
+    a probes folder, capture four and eight at both
+    window sizes per option, then remove the worktree.
+    This checkout stays untouched throughout.
+  - Questions for Levi:
+  - OK to ship the H140 and H139 poller fixes with the next client release?
+  - Ship the tombstone merge and the version precondition together in the next client release?
+  - Must resetting a setting to its default on one device reset it on the player's other devices too?
+  - If a reset must travel, must resetting the language to English on one device also reset it on the others?
+  - Anything here to fix in the T43 pictures?
+  - Which reads best mid-match: smaller full displays or compact chips?
+  - For Claude to file: the six questions above, into
+    Waiting on Levi. The H90-4 remainder (the per-device
+    dirty flag and sync-at after an account switch) as a
+    follow-up item, if it is not already tracked. A
+    populated friends panel look still needs a signed-in
+    run against a local backend on loopback. The H98
+    prototype decision in the paragraph above. H135,
+    H143, H149 and H150 were left alone, as instructed.

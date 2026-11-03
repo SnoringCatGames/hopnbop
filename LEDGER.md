@@ -167,14 +167,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H138** · scripts/local-smoke-test.ps1 leaks its dev stack when
   killed before its finally (four leaked on 2026-10-30, removed by hand;
   cause inferred): sweep stale hopnbop-smoke-* projects at start.
-- **H139** · H54-3 rest: a toast id is marked seen before the toast
-  shows, so a quit in between drops it, and the dedup file is
-  device-wide, not per account (docs/ledger_notes.md, H54-3).
-- **H140** · H134 poller edges: a full page with a repeated cursor would
-  page forever, and a stale in-flight fetch makes is_poll_busy() skip
-  the sign-in drain of the new session until the next socket connect.
-
-
 ## Ideas (not scheduled)
 
 - **H33** · An optional `occurred_at` on crash reports, clamped
@@ -198,6 +190,8 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H140** · Poller paging stops on a repeated or empty cursor and after 10 pages in one poll, and a sign-in drain skipped for a stale in-flight fetch runs once that fetch clears. Done in ae717e37, a7eeea15 (2026-11-02).
+- **H139** · A toast id is marked seen only when its toast shows, in the same synchronous call, and the dedup file holds one list per account seeded from the legacy device-wide list. Done in 602a5bfd (2026-11-02).
 - **H142** · Muse run 9 (H127, H128, H130, H129) reviewed: the three docs match the H104 stage 3 findings; H130 left the player-list flags frozen and hidden across Play Again, fixed with a reset hook, unit tests and the adjective-reveal-play-again scenario. Done in fa950697 (2026-11-02).
 - **H129** · H98 sizes redone with the measured 204x173 display (four stacked 752 px), option 3 premise fixed, reveal per option, two look questions. Done in 9b671557 (2026-11-02).
 - **H130** · Adjective reveal freezes every list and pops over the visible one. The 1360x765 probe showed the hidden list frozen before. The new test failed unfixed. Done in ab01550e (2026-11-02); the flags were never reset, so Play Again started frozen and hidden, fixed in fa950697.
