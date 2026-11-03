@@ -159,3 +159,63 @@ those counts against the numbers, and where they disagree, say so.
 ## 3. Handoff log
 
 Append one dated entry each time you stop.
+
+- 2026-11-02, muse 01a1a007 (run 11, started 22:10:03 -08:00,
+  stopped 22:28 -08:00). Done. Both T19 candidates are built,
+  pictured and patched. Nothing from the prototypes is on main.
+  Setup took about 3 minutes of the 30 minute cap: worktree
+  `C:\Users\lsl\wt\h156` on branch `h156-prototypes`, submodule
+  init, `scripts/setup-platform-addon.ps1`, then two imports.
+  The first import logged transient parse errors before the
+  class cache existed. The second was clean. The existing
+  four display before scenario then passed from the worktree
+  and its picture matched
+  `20261102-214313-h143-t19-players-4/client1/players-4.png`.
+  Both scripts resolve their paths from their own location,
+  so neither reached into the main checkout. Index:
+  `.claude/probes/H143/index.md`, new section T19 candidates,
+  with all ten pictures, their engine numbers from
+  `result.json` `.evals.measure`, and what each picture
+  shows. Patches: `.claude/probes/H143/prototypes/option1.patch`
+  and `option3.patch`. Each passed `git apply --check` against
+  main, then each was applied alone in the worktree and
+  reproduced its four display wide numbers exactly (Option 1:
+  0.388 of height, 75x69, 6 px. Option 3: 0.298, 128x42,
+  16 px). The worktree and branch are removed. `git status`
+  here again shows only the platform pointer and
+  `addons/rollback_netcode`, as at the start.
+  Option 1 in a sentence: full displays shrink to the cap at
+  two, three and four players and stay readable, but at eight
+  the text floors at 5 px, reads as texture, and the vertical
+  list still misses the cap at 0.467 of height.
+  Option 3 in a sentence: chips keep avatar, name and score
+  readable at 16 px at every count and free most of the edge,
+  but eight across at 1100x900 overflow at 1.009 of width and
+  clip the end chips.
+  Numbers and pictures: they agreed in all ten. Fully,
+  partly and off counts in the index come from the pictures
+  and match the measured rects, including the 5 px clips on
+  the Option 3 eight narrow end chips.
+  Adjective reveal under Option 3: chips are not
+  `PlayerDisplay` nodes, hold no `%Adjective` label and are
+  not in `PlayerList._player_displays`, so
+  `MatchEndCelebration.reveal_adjectives` would find nothing
+  to freeze or pop over. It would need a new home: an
+  adjective anchor on the chip with the popup over the chip,
+  an expanding winner chip, or a move to the game over rows.
+  For Claude to file:
+  - Option 1 cannot fit eight vertical displays in 40 percent
+    without dropping content. Three text lines plus the avatar
+    row floor near 42 px each. The real build needs the H98
+    hybrid rule or a content drop past small counts.
+  - Option 3 chips neither shrink nor wrap. Eight across a
+    narrow window overflow. The real build needs a chip shrink,
+    wrap or smaller font rule for high counts.
+  - Prototype chips poll score directly in
+    `PlayerList._process`. No count up animation, no score
+    popups, no leader crown and no bunny on chips. The real
+    build has to decide each.
+  - The brief says `git worktree list` must show only this
+    checkout after closing. Three probe worktrees from H108
+    and H118 were already there at the start and are still
+    there. Only `h156` was removed.
