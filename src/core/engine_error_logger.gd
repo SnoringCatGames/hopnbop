@@ -5,7 +5,11 @@ extends Logger
 ## error that no game code logged (a broken format string,
 ## say) was never reported. Warnings are not forwarded, and
 ## exit-time leak lines are noise (CrashReportText.
-## is_exit_noise), not errors.
+## is_exit_noise), not errors. Release templates never
+## print script errors, so in shipped builds only engine
+## errors and push_error lines arrive here (H86-3). To
+## catch a specific script error there, put G.log.check
+## at its call site.
 ##
 ## Godot calls _log_error on whatever thread hit the error;
 ## CrashReporter.report_crash re-dispatches to the main

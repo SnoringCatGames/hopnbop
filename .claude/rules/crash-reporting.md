@@ -17,13 +17,18 @@ the platform runtime's `crash_report` RPC; the text helpers
 reports".
 
 - **Sources:** `G.log.error`, and so `G.log.ensure` and
-  `G.log.check`; plus a Godot crash found at boot in the previous
-  session's log. Godot 4 copies the last `godot.log` to
-  `godot<local time>.log` (e.g. `godot2026-10-11T13.25.20.log`), and
-  the crash text is `CrashHandlerException: Program crashed with
-  signal N` on Windows, `handle_crash: Program crashed ...` on Linux
-  and macOS. Both were checked against a real 4.7.2 crash
-  (`OS.crash`). Plain engine `ERROR:` lines are not reported.
+  `G.log.check`; engine and script errors forwarded by
+  `EngineErrorLogger` (H86; installed in `CrashReporter._ready`,
+  so errors raised before then are not seen); plus a Godot crash
+  found at boot in the previous session's log. Godot 4 copies the
+  last `godot.log` to `godot<local time>.log` (e.g.
+  `godot2026-10-11T13.25.20.log`), and the crash text is
+  `CrashHandlerException: Program crashed with signal N` on
+  Windows, `handle_crash: Program crashed ...` on Linux and macOS.
+  Both were checked against a real 4.7.2 crash (`OS.crash`).
+  Release templates never print script errors, so a broken format
+  string in a shipped build stays unreported (H86-3); to catch a
+  specific one, put `G.log.check` at its call site.
 - **Queue:** every report is redacted (tokens, account values,
   UUIDs, device ids, signaling-URL tokens, emails, IPs,
   home-directory user names) and

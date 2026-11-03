@@ -3,9 +3,14 @@ extends Node
 ## Sends crash and error reports to the snoringcat-platform
 ## runtime's `crash_report` RPC (runtime/crash_report.go).
 ##
-## Two sources feed it: errors logged through G.log.error (which
-## G.log.ensure and G.log.check route through), and a Godot crash
-## found in the previous session's log at boot. Each report is
+## Three sources feed it: errors logged through G.log.error
+## (which G.log.ensure and G.log.check route through), engine
+## and script errors forwarded by EngineErrorLogger (H86),
+## and a Godot crash found in the previous session's log at
+## boot. The logger is installed in _ready, so errors raised
+## before then are not seen. Release templates never print
+## script errors, so in shipped builds only engine errors
+## and push_error lines arrive that way. Each report is
 ## redacted, given a signature (a hash of its first error lines),
 ## and written to a small queue file in user:// before any send is
 ## tried. The queue is flushed whenever this process can
@@ -162,9 +167,10 @@ func _ready() -> void:
 	_start.call_deferred()
 
 
-## Queues a report for an error logged through G.log.error, then
-## tries to send it. Never logs through G.log itself, which would
-## loop back here.
+## Queues a report for an error, then tries to send it. Called
+## by G.log.error for its own lines and by EngineErrorLogger
+## for engine and script errors (H86). Never logs through
+## G.log itself, which would loop back here.
 func report_crash(error_message: String, is_fatal := false) -> void:
 	if OS.get_thread_caller_id() != OS.get_main_thread_id():
 		report_crash.call_deferred(error_message, is_fatal)
