@@ -42,8 +42,11 @@ var _known_party_match_start_ids: Dictionary = {}
 ## later launch doesn't toast all over again.
 var _known_friend_event_ids: Dictionary = {}
 
-const _SEEN_TOASTS_PATH := "user://notification_toasts_seen.cfg"
+## Where the toast dedup persists. A var so tests can
+## point it at a throwaway file (H54-3).
+var seen_toasts_path := "user://notification_toasts_seen.cfg"
 const _SEEN_TOASTS_CAP := 200
+const _NOTIFICATION_PAGE_SIZE := 50
 ## Order _known_friend_event_ids were first seen in, oldest
 ## first; caps the persisted store.
 var _seen_toast_order: Array = []
@@ -52,6 +55,11 @@ var _seen_toast_order: Array = []
 ## and passed back on the next poll so the list advances past
 ## rows already delivered instead of replaying the oldest 50.
 var _notification_cursor := ""
+## Session generation the latest list fetch belongs to
+## (H54-2). A response from before a sign-out is dropped
+## instead of handing the old account's cursor to the new
+## session. -1 means no fetch has been sent yet.
+var _notification_fetch_generation := -1
 ## Player ids whose pending friend request the user has already
 ## looked at. Subtracted from the pending-request count to produce
 ## `unseen_count`. In-memory only: on a fresh launch a still-
@@ -98,12 +106,20 @@ func _ready() -> void:
 	Platform.auth.auth_completed.connect(
 		_on_auth_completed)
 	# Stage 5.4: party_matchmaking_start arrives over the long-lived
-	# notification socket near-instantly. The 10 s HTTP poll below
-	# stays as a fallback for socket-down windows; dedup by
-	# Nakama notification id makes duplicate deliveries idempotent.
+	# notification socket near-instantly. The stored list is
+	# drained at sign-in and on every socket connect (H134);
+	# the 10 s HTTP poll below stays as a fallback for
+	# socket-down windows. Dedup by Nakama notification id
+	# makes duplicate deliveries idempotent.
 	Platform.notification_socket\
 		.notification_received.connect(
 			_on_socket_notification)
+	# The socket pushes only events created while it is
+	# connected, so each connect first drains the stored
+	# list or offline events never toast (H134).
+	Platform.notification_socket\
+		.socket_connected.connect(
+			_on_socket_connected)
 	# Track lobby/match transitions to feed the
 	# rich-presence string sent on each heartbeat.
 	# match_state may not exist yet on first ready
@@ -168,8 +184,7 @@ func _process(delta: float) -> void:
 				.is_socket_connected()
 			and not Platform.friends.is_poll_busy()
 		):
-			Platform.friends.fetch_notifications(
-				50, _notification_cursor)
+			_fetch_notification_list()
 
 	_presence_poll_timer += delta
 	if _presence_poll_timer >= _PRESENCE_POLL_INTERVAL_SEC:
@@ -187,7 +202,7 @@ func _process(delta: float) -> void:
 ## once, as before.
 func _load_seen_toasts() -> void:
 	var config := ConfigFile.new()
-	if config.load(_SEEN_TOASTS_PATH) != OK:
+	if config.load(seen_toasts_path) != OK:
 		return
 	var ids: Array = config.get_value(
 		"toasts", "seen_ids", [])
@@ -203,7 +218,7 @@ func _save_seen_toasts() -> void:
 	var config := ConfigFile.new()
 	config.set_value(
 		"toasts", "seen_ids", _seen_toast_order)
-	config.save(_SEEN_TOASTS_PATH)
+	config.save(seen_toasts_path)
 
 
 ## Start polling for friend notifications and
@@ -249,6 +264,16 @@ func _on_notifications_received(
 ) -> void:
 	if not _is_polling:
 		return
+	# A response to a fetch sent before a sign-out belongs
+	# to the old account (H54-2). Dropping it keeps its
+	# cursor out of this session.
+	if (
+		_notification_fetch_generation >= 0
+		and _notification_fetch_generation
+			!= _session_generation
+	):
+		_notification_fetch_generation = -1
+		return
 	# PlatformFriendsApiClient.fetch_notifications emits the raw
 	# Nakama notification list under the `notifications` key, and
 	# nothing else — this handler previously read `incoming_requests`
@@ -270,6 +295,10 @@ func _on_notifications_received(
 		_dispatch_notification(n)
 		if _queue_friend_toast(n):
 			queued += 1
+	# A full page means more rows are waiting. Keep
+	# draining until a short page ends the backlog.
+	if notifications.size() >= _NOTIFICATION_PAGE_SIZE:
+		_fetch_notification_list()
 	if queued == 0:
 		return
 	# Refresh the durable friend state. This both recomputes the
@@ -341,6 +370,36 @@ func _friend_toast_key(code: int) -> String:
 			return "FRIENDS.REQUEST_ACCEPTED"
 		_:
 			return ""
+
+
+## Sends one notification-list fetch and records the
+## session it belongs to (H54-2).
+func _fetch_notification_list() -> void:
+	_notification_fetch_generation = _session_generation
+	Platform.friends.fetch_notifications(
+		_NOTIFICATION_PAGE_SIZE, _notification_cursor)
+
+
+## Lists the stored notifications once. The socket only
+## pushes events created while it is connected, so the
+## backlog from offline time has to be listed at sign-in
+## and on every connect or it never toasts (H134). The
+## persisted dedup keeps a row seen on either path from
+## toasting twice.
+func _drain_notifications() -> void:
+	if not _is_polling:
+		return
+	if not Platform.token_store.is_token_valid():
+		return
+	if Platform.token_store.is_anonymous:
+		return
+	if Platform.friends.is_poll_busy():
+		return
+	_fetch_notification_list()
+
+
+func _on_socket_connected() -> void:
+	_drain_notifications()
 
 
 ## Push from the long-lived notification socket. The socket emits
@@ -525,6 +584,10 @@ func _on_auth_completed(
 		return
 	if Platform.token_store.is_anonymous:
 		return
+	# Toast what arrived while this player was offline
+	# (H134). The socket_connected drain covers later
+	# reconnects.
+	_drain_notifications()
 	if Platform.friends.is_busy():
 		return
 	Platform.friends.fetch_friends()

@@ -11,12 +11,18 @@ extends GutTest
 ## does not fire.
 
 
+const _TEST_SEEN_PATH := (
+	"user://test_notification_poller_seen.cfg")
+
 var _poller: FriendsNotificationPoller
 var _emitted_counts: Array[int]
 
 
 func before_each() -> void:
+	DirAccess.remove_absolute(
+		ProjectSettings.globalize_path(_TEST_SEEN_PATH))
 	_poller = FriendsNotificationPoller.new()
+	_poller.seen_toasts_path = _TEST_SEEN_PATH
 	# G starts its poller at boot. A stopped one drops what arrives.
 	_poller.start_polling()
 	_emitted_counts = []
@@ -421,8 +427,7 @@ func test_poll_cursor_advances_and_resets() -> void:
 
 
 func test_toast_dedup_survives_a_new_poller() -> void:
-	var path := ProjectSettings.globalize_path(
-		"user://notification_toasts_seen.cfg")
+	var path := ProjectSettings.globalize_path(_TEST_SEEN_PATH)
 	DirAccess.remove_absolute(path)
 
 	var notification := {
@@ -435,6 +440,7 @@ func test_toast_dedup_survives_a_new_poller() -> void:
 	_poller.reset()
 
 	var fresh := FriendsNotificationPoller.new()
+	fresh.seen_toasts_path = _TEST_SEEN_PATH
 	fresh._load_seen_toasts()
 	assert_false(
 		fresh._queue_friend_toast(notification),

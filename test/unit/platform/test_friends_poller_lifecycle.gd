@@ -29,15 +29,24 @@ const _SENDER_NAME := "Requester"
 
 
 ## Stands in for Platform.friends: counts requests, sends none.
+## With is_emitting_canned set, a fetch answers at once with
+## canned_notifications, as a stored backlog would.
 class FakeFriends extends PlatformFriendsApiClient:
 	var notification_fetches := 0
 	var friends_fetches := 0
+	var canned_notifications: Array = []
+	var is_emitting_canned := false
 
 	func fetch_notifications(
 		_limit: int = 50,
 		_cacheable_cursor: String = "",
 	) -> void:
 		notification_fetches += 1
+		if is_emitting_canned:
+			notifications_received.emit({
+				"notifications": canned_notifications.duplicate(),
+				"cacheable_cursor": "",
+			})
 
 	func fetch_friends() -> void:
 		friends_fetches += 1
@@ -64,6 +73,15 @@ class FakePresence extends PlatformPresenceApiClient:
 		return false
 
 
+## Stands in for Platform.notification_socket: reports the
+## connection state a test chooses.
+class FakeSocket extends PlatformNotificationSocketClient:
+	var is_connected_fake := false
+
+	func is_socket_connected() -> bool:
+		return is_connected_fake
+
+
 ## Stands in for G.toast_overlay: records toasts instead of showing
 ## them.
 class FakeToastOverlay extends ToastOverlay:
@@ -73,11 +91,14 @@ class FakeToastOverlay extends ToastOverlay:
 		messages.append(message)
 
 
+const _TEST_SEEN_PATH := (
+	"user://test_friends_poller_lifecycle_seen.cfg")
+
 var _poller: FriendsNotificationPoller
 var _client: PlatformAuthApiClient
 var _friends: FakeFriends
 var _presence: FakePresence
-var _socket: PlatformNotificationSocketClient
+var _socket: FakeSocket
 var _toasts: FakeToastOverlay
 var _store: PlatformAuthTokenStore
 var _original_auth
@@ -112,12 +133,15 @@ func before_each() -> void:
 	Platform.register_subsystem("friends", _friends)
 	_presence = FakePresence.new()
 	Platform.register_subsystem("presence", _presence)
-	_socket = PlatformNotificationSocketClient.new()
+	_socket = FakeSocket.new()
 	Platform.register_subsystem("notification_socket", _socket)
 	_toasts = FakeToastOverlay.new()
 	G.toast_overlay = _toasts
 
+	DirAccess.remove_absolute(
+		ProjectSettings.globalize_path(_TEST_SEEN_PATH))
 	_poller = FriendsNotificationPoller.new()
+	_poller.seen_toasts_path = _TEST_SEEN_PATH
 	add_child_autofree(_poller)
 	_poller.set_process(false)
 	# What G does at boot.
@@ -140,6 +164,8 @@ func after_each() -> void:
 	_toasts.free()
 	# Deletes the test auth file if a test saved one.
 	_store.clear_tokens()
+	DirAccess.remove_absolute(
+		ProjectSettings.globalize_path(_TEST_SEEN_PATH))
 
 
 # ------------------------------------------------------------------
@@ -152,7 +178,8 @@ func test_polls_a_signed_in_player() -> void:
 
 	_tick(_POLL_INTERVAL_SEC)
 
-	assert_eq(_friends.notification_fetches, 1)
+	# The sign-in drain (H134) plus one tick poll.
+	assert_eq(_friends.notification_fetches, 2)
 	assert_eq(_presence.presence_fetches, 1, "heartbeat on the first tick")
 
 
@@ -166,7 +193,8 @@ func test_sign_out_stops_polling() -> void:
 	_tick(_POLL_INTERVAL_SEC)
 
 	assert_false(_poller._is_polling)
-	assert_eq(_friends.notification_fetches, 0)
+	# Only the drain from the sign-in before the sign-out.
+	assert_eq(_friends.notification_fetches, 1)
 	assert_eq(_presence.presence_fetches, 0)
 
 
@@ -178,7 +206,8 @@ func test_provider_sign_in_after_log_out_polls_again() -> void:
 	_tick(_POLL_INTERVAL_SEC)
 
 	assert_true(_poller._is_polling)
-	assert_eq(_friends.notification_fetches, 1)
+	# A drain at each sign-in (H134) plus one tick poll.
+	assert_eq(_friends.notification_fetches, 3)
 	assert_eq(_presence.presence_fetches, 1, "heartbeat on the first tick")
 	assert_eq(_friends.friends_fetches, 2, "friends prefetched per sign-in")
 
@@ -186,6 +215,8 @@ func test_provider_sign_in_after_log_out_polls_again() -> void:
 func test_guest_sign_in_after_log_out_restarts_the_poller() -> void:
 	_sign_in_with_provider()
 	_sign_out()
+	# Count only what the guest phase does.
+	_friends.notification_fetches = 0
 
 	_sign_in_as_guest()
 	_tick(_POLL_INTERVAL_SEC)
@@ -198,7 +229,8 @@ func test_guest_sign_in_after_log_out_restarts_the_poller() -> void:
 	_sign_in_with_provider()
 	_tick(_POLL_INTERVAL_SEC)
 
-	assert_eq(_friends.notification_fetches, 1)
+	# The provider sign-in drain (H134) plus one tick poll.
+	assert_eq(_friends.notification_fetches, 2)
 	assert_eq(_presence.presence_fetches, 1)
 
 
@@ -224,7 +256,9 @@ func test_token_refresh_keeps_the_schedule() -> void:
 	assert_eq(
 		_poller._presence_poll_timer, presence_timer, "heartbeat timer kept")
 	_tick(1.0)
-	assert_eq(_friends.notification_fetches, 1, "one poll per interval")
+	# Drains at sign-in and at the refresh (H134), plus
+	# the one tick poll.
+	assert_eq(_friends.notification_fetches, 3, "one poll per interval")
 
 
 func test_repeated_cycles_neither_double_nor_leak() -> void:
@@ -238,7 +272,9 @@ func test_repeated_cycles_neither_double_nor_leak() -> void:
 
 	_tick(_POLL_INTERVAL_SEC)
 
-	assert_eq(_friends.notification_fetches, 1, "one poll per interval")
+	# Provider sign-in drains (H134; two in the cycles,
+	# one at the end) plus one tick poll.
+	assert_eq(_friends.notification_fetches, 4, "one poll per interval")
 	assert_eq(_presence.presence_fetches, 1, "one heartbeat")
 	assert_eq(
 		_count_connections(_client.auth_completed), 1, "one sign-in hook")
@@ -322,6 +358,70 @@ func test_sign_out_drops_a_waiting_toast_batch() -> void:
 
 
 # ------------------------------------------------------------------
+# Offline backlog drains (H134) and stale responses (H54-2)
+# ------------------------------------------------------------------
+
+
+func test_sign_in_drains_the_backlog_with_a_healthy_socket() -> void:
+	_socket.is_connected_fake = true
+	_cache_the_sender()
+	_friends.canned_notifications = [_friend_request("n1")]
+	_friends.is_emitting_canned = true
+
+	_sign_in_with_provider()
+	await _flush_the_queued_toasts()
+
+	assert_gt(
+		_friends.notification_fetches, 0, "sign-in listed the backlog")
+	assert_eq(_toasts.messages.size(), 1)
+	assert_string_contains(_toasts.messages[0], _SENDER_NAME)
+
+
+func test_reconnect_drains_the_backlog() -> void:
+	_sign_in_with_provider()
+	var fetches_at_sign_in := _friends.notification_fetches
+	_cache_the_sender()
+	_friends.canned_notifications = [_friend_request("n1")]
+	_friends.is_emitting_canned = true
+
+	_socket.socket_connected.emit()
+	await _flush_the_queued_toasts()
+
+	assert_gt(
+		_friends.notification_fetches,
+		fetches_at_sign_in,
+		"the reconnect listed the backlog",
+	)
+	assert_eq(_toasts.messages.size(), 1)
+
+
+func test_backlog_event_toasts_once_across_list_and_socket() -> void:
+	_cache_the_sender()
+	_friends.canned_notifications = [_friend_request("n1")]
+	_friends.is_emitting_canned = true
+
+	_sign_in_with_provider()
+	_socket.notification_received.emit(_friend_request("n1"))
+	await _flush_the_queued_toasts()
+
+	assert_eq(_toasts.messages.size(), 1, "one toast for one event")
+
+
+func test_late_list_response_keeps_the_new_sessions_cursor() -> void:
+	_sign_in_with_provider()
+	_sign_out()
+	_store_provider_session()
+	_poller.start_polling()
+
+	_friends.notifications_received.emit({
+		"notifications": [],
+		"cacheable_cursor": "old-account-cursor",
+	})
+
+	assert_eq(_poller._notification_cursor, "")
+
+
+# ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
 
@@ -357,6 +457,24 @@ func _store_provider_session() -> void:
 
 func _tick(delta: float) -> void:
 	_poller._process(delta)
+
+
+## Caches the toast sender so its display name resolves.
+func _cache_the_sender() -> void:
+	_friends.cached_incoming_requests.assign([{
+		"player_id": _SENDER_ID,
+		"display_name": _SENDER_NAME,
+	}])
+
+
+## Delivers the friend list that flushes queued toasts, then
+## waits out the first batch's delay.
+func _flush_the_queued_toasts() -> void:
+	_friends.friends_received.emit({
+		"incoming_requests": [{"player_id": _SENDER_ID}],
+	})
+	await get_tree().create_timer(
+		_FIRST_TOAST_DELAY_SEC + _TOAST_DELAY_SLACK_SEC).timeout
 
 
 ## A friend request arrives and the friend list that resolves its
