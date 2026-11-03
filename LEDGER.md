@@ -17,9 +17,6 @@ one line, `- **H<n>** · <what>. Done in <commit> (<date>).` Shortened
 items keep their full text in `docs/ledger_notes.md`, and older Done
 entries move to `docs/ledger_done.md`; the next ID counts both files.
 
-## Urgent
-
-
 ## Waiting on Levi
 
 - **H92** · One 2-client networked session with Levi (T02 to T07, T16,
@@ -59,18 +56,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - evidence: .claude/probes/H126/ (Muse run), .claude/probes/H126/review/ (Claude: checks, mutation proofs, smoke 95/95)
   - next: Levi OKs the deploy; push the three platform commits one at a time (watch each nakama-runtime run), bump the pointer with the two allowlist lines, close SP110, SP111, SP113
   - brief: `docs/design/H126_muse_run7.md`
-- **H137** · Muse run 8, hopnbop only: H106 (offline RPC on yourself
-  queues a crash report), H134 (offline friend events never toast), H136
-  (reports sent twice; probe first), H131 (docs).
-  - owner: nobody since 2026-11-02 19:58 PT (run 8 complete; all four items landed)
-  - branch: mainline; last commit: f33c3c5cd621ed4766d3f442fd9d8425ef21999d
-  - evidence: .claude/probes/H136/ (probe scenario), .claude/probes/H104/stage2.md (findings)
-  - next: Claude reviews the four commits; no client release without Levi's OK
-  - brief: `docs/design/H137_muse_run8.md`
-
-
-
-
 
 ## Next
 
@@ -130,6 +115,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H135** · Settings cloud sync deletes keys a stale device lacks,
   wiping another device's new settings (settings_cloud_sync.gd:339-358;
   medium, live in 0.57.0): tombstones and OCC (stage 2, H90-1 to H90-4).
+
 ## Residuals (known, not fixed)
 
 - **H121** · The pending-deletion prompt (ConfirmOverlay from
@@ -166,9 +152,15 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   host: disk +1.72 GB on 10-20 (v30, v31 pulled by `sync-game-config.ps1`),
   +0.86 GB on 10-13. Run `docker system df` there, then add a prune
   (weekly-cost-review 2026-10-21).
-- **H133** · Four orphaned hopnbop-smoke-20261030-* Postgres containers
-  still run (Nakama exited 3 days ago): docker compose -p <name> down
-  -v each; find why those runs skipped teardown.
+- **H138** · scripts/local-smoke-test.ps1 leaks its dev stack when
+  killed before its finally (four leaked on 2026-10-30, removed by hand;
+  cause inferred): sweep stale hopnbop-smoke-* projects at start.
+- **H139** · H54-3 rest: a toast id is marked seen before the toast
+  shows, so a quit in between drops it, and the dedup file is
+  device-wide, not per account (docs/ledger_notes.md, H54-3).
+- **H140** · H134 poller edges: a full page with a repeated cursor would
+  page forever, and a stale in-flight fetch makes is_poll_busy() skip
+  the sign-in drain of the new session until the next socket connect.
 
 
 ## Ideas (not scheduled)
@@ -182,9 +174,14 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   `docs/design/H37_systems_audit.md` 2.2, section 4 step 7)
 - **H100** · Level art (T15, T28, T14) (L each;
   `docs/design/H37_systems_audit.md` section 5)
+- **H141** · H86-2: crash-report dedup is per process, so a recurring
+  error is queued again on every launch; dedupe across runs needs a
+  runtime change (docs/ledger_notes.md, H86-2).
 
 ## Done
 
+- **H133** · Four orphaned hopnbop-smoke-20261030-* stacks removed; the leak itself is H138. Done in a manual docker compose down -v (2026-11-02).
+- **H137** · Muse run 8 (H106, H134, H136, H131) reviewed: code correct, CI green. Reverting each hunk found three uncovered (H106 reporter, H106 handler guard, H134 paging), now covered by the offline-error-reporting scenario and two stronger tests. Done in 95e096ac (2026-11-02).
 - **H131** · Reporter docs name the engine logger as the third source, with the pre-_ready and release-template limits (H86-3). Done in f33c3c5c (2026-11-02).
 - **H136** · A G.log.error is reported once (flagged push_error; probe on 4.7.2 queued 2 entries before, 1 after), a fatal sends nothing before the quit, and report_crash drops re-entrant calls (H86-4). Done in 71d936f0 (2026-11-02).
 - **H134** · Stored friend notifications drain at sign-in and on every socket_connected (paging, persisted dedup), a stale list response keeps its cursor out of the new session (H54-2), and poller tests use a throwaway dedup file (H54-3). Done in 22069959 (2026-11-02).
