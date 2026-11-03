@@ -56,9 +56,33 @@ recommendation below depends on it.
   policy, so local Docker never restarts (verified).
 
 Levi, or whoever runs the dev deployment, can run this
-check. Where Edgegap's public documentation answers the
-restart semantics, cite the page and mark the claim
-documented, not verified.
+check. Edgegap's public documentation answers part of it
+(read 2026-11-02, so documented, not verified):
+
+- The restart is a per-version setting, Process Restart
+  Policy (Apps and Versions page, Safety Guardrails).
+  Always Restart is the default and restarts on exit 0 and
+  on any error exit. Never Restart is Edgegap's
+  recommendation and stops the deployment on either. Restart
+  On Crash restarts on error exits only. This repo does not
+  record the hopnbop version's value, and the first bullet
+  above rests on a code comment, so read the value from the
+  dashboard before relying on it. Under Never Restart a
+  crash would stop the deployment, with no re-register, no
+  boot scan and no idle cancel.
+- The Deployments page says a crashed server process is
+  restarted automatically. Its WSS note says an uncaught
+  exception restarts "the deployment's container" and that
+  server state may be lost, and the Persistence page says
+  crash handling depends on the policy. No page says
+  whether the writable layer, the request id or the
+  connection info survive, so those three stay open.
+- Edgegap's container logs are a dashboard view, deleted
+  when the deployment stops unless the version has external
+  log storage (Deployments page, Container Logs). They are
+  no fallback for a crash report, which favors option 2.
+- Not read: the API reference. Whether an endpoint reports
+  a restart count or an exit code is unchecked.
 
 ## Options
 

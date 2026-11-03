@@ -74,7 +74,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   The Join-with-code and delete-key icons are still to ask Levi for.
 - **H87** · A dedicated server's fatal error or engine crash is never
   reported (CR1, CR7): design in
-  `docs/design/H87_server_crash_reporting.md`, awaiting H127, then Levi.
+  `docs/design/H87_server_crash_reporting.md`; waits on Levi (H144).
 - **H77** · Land the H37 probes as tests, each with its fix (XS each;
   batch 6; `docs/design/H37_systems_audit.md` section 4 step 2)
   Landed 2026-10-29: ghost-ticket probe (SP28), account probe
@@ -83,8 +83,8 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   (H67), declare-validation (H17), port-leak Go test (SP26),
   account PI-2 and SO-1 (H15), verify scenarios (H72 held).
 - **H72** · Exported-build runs for the harness: design in
-  `docs/design/H72_exported_build_harness.md`, awaiting H128, then Levi.
-  H38's release check waits on it.
+  `docs/design/H72_exported_build_harness.md`; waits on Levi (H145,
+  H146). H38's release check waits on it.
 - **H83** · `release.yml` has never run and no `v*` tag exists. Waits on
   Levi (report section 7 row 13) (S; batch 6;
   H113's avatar checks reach players with this release
@@ -106,7 +106,8 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 
 - **H98** · Finish T43; verify, then fix, T19: design in
-  `docs/design/H98_polish_and_player_list.md`, awaiting H129, then Levi.
+  `docs/design/H98_polish_and_player_list.md`; waits on H143's
+  captures, then Levi.
 - **H117** · SP32 client half, for when the consent change ships: show
   pending invites, accept and decline (H104 1A SP32-3).
 - **H135** · Settings cloud sync deletes keys a stale device lacks,
@@ -115,6 +116,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H143** · H98 captures for Levi's two looks (T43 surfaces; T19
   candidates at four and eight displays), then Waiting on Levi
   (H98-12; after H129; docs/ledger_notes.md, H143).
+- **H149** · Read the Process Restart Policy of the hopnbop Edgegap app
+  version (dashboard, or one read-only API GET) and record it in the H87
+  doc (XS; its Before deciding section).
 
 ## Residuals (known, not fixed)
 
