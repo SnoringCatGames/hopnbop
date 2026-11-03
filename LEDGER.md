@@ -54,6 +54,15 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H146** · Run the web boot check on every push (2 to 3 CI minutes
   each, with a step timeout)? Recommend yes
   (`docs/design/H72_exported_build_harness.md`).
+- **H151** · T43 look: anything to fix in the four T43 pictures (toasts,
+  game over, friends, sign-in)? Sent in the session; also
+  `.claude/probes/H143/index.md`. Friends shows the empty shell only.
+- **H152** · Settings sync (H135): must a reset to default on one device
+  also reset your other devices, and does picking English (the default
+  language) count as one? Recommend yes to both (docs/ledger_notes.md, H152).
+- **H153** · Release the client with what is on main since 0.57.0 (H106,
+  H119 trace, H130, H134, H136, H139, H140)? Recommend yes now, with
+  H135 in the next release (docs/ledger_notes.md, H153).
 
 ## In progress
 
@@ -65,14 +74,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - evidence: .claude/probes/H126/ (Muse run), .claude/probes/H126/review/ (Claude: checks, mutation proofs, smoke 95/95)
   - next: Levi OKs the deploy; push the three platform commits one at a time (watch each nakama-runtime run), bump the pointer with the two allowlist lines, close SP110, SP111, SP113
   - brief: `docs/design/H126_muse_run7.md`
-- **H150** · Muse run 10: the poller fixes (H140, H139), the H135
-  settings-sync design doc and the H143 pictures (brief:
-  docs/design/H150_muse_run10.md).
-  - owner: muse session 01a19fe1-3736-7912-979b-324d3ce8ceab (run 10, launched 21:28 PT by claude session 0cfd9cf1)
-  - branch: mainline; last commit: `a4d6660b`
-  - evidence: .claude/probes/H143/ (index.md and run directories, untracked)
-  - next: Muse works the brief in order; review the poller tests with a mutation check, the H135 doc, the H143 pictures (view crops); file its questions for Levi
-  - brief: `docs/design/H150_muse_run10.md`
 
 ## Next
 
@@ -118,12 +119,12 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   captures, then Levi.
 - **H117** · SP32 client half, for when the consent change ships: show
   pending invites, accept and decline (H104 1A SP32-3).
-- **H135** · Settings cloud sync deletes keys a stale device lacks,
-  wiping another device's new settings (settings_cloud_sync.gd:339-358;
-  medium, live in 0.57.0): tombstones and OCC (stage 2, H90-1 to H90-4).
-- **H143** · H98 captures for Levi's two looks (T43 surfaces; T19
-  candidates at four and eight displays), then Waiting on Levi
-  (H98-12; after H129; docs/ledger_notes.md, H143).
+- **H135** · Settings cloud sync deletes keys a stale device lacks, wiping
+  another device's new settings (medium, live in 0.57.0). Design done in
+  f9f41850 (`docs/design/H135_settings_sync_merge.md`); the build (M) waits on H152.
+- **H143** · H98 captures for Levi's two looks: T43 and the T19 before
+  pictures are done (run 10; H151 asks); left: T19 candidates at four and
+  eight displays, from a throwaway worktree (docs/ledger_notes.md, H143).
 - **H149** · Read the Process Restart Policy of the hopnbop Edgegap app
   version (dashboard, or one read-only API GET) and record it in the H87
   doc (XS; its Before deciding section).
@@ -167,6 +168,13 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H138** · scripts/local-smoke-test.ps1 leaks its dev stack when
   killed before its finally (four leaked on 2026-10-30, removed by hand;
   cause inferred): sweep stale hopnbop-smoke-* projects at start.
+- **H154** · Settings sync: the dirty flag is per device, so an account
+  switch mid-retry may save one account's settings under another
+  (H90-4 remainder; docs/design/H135_settings_sync_merge.md section 5).
+- **H155** · Poller nits (run 10 review): a toast overlay freed mid-await
+  is not caught; a nameless sender re-queues its toast every launch,
+  harmlessly (docs/ledger_notes.md, H155).
+
 ## Ideas (not scheduled)
 
 - **H33** · An optional `occurred_at` on crash reports, clamped
@@ -190,6 +198,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H150** · Muse run 10 reviewed and closed: the H140 and H139 poller fixes (their new tests fail on the pre-fix file and pass at HEAD: 24/24, 32/32, 4/4), the H135 design doc (f9f41850) and the H143 pictures (index corrected; T43 sent to Levi). Questions are H151 to H153. Done in 9816229e (2026-11-02).
 - **H140** · Poller paging stops on a repeated or empty cursor and after 10 pages in one poll, and a sign-in drain skipped for a stale in-flight fetch runs once that fetch clears. Done in ae717e37, a7eeea15 (2026-11-02).
 - **H139** · A toast id is marked seen only when its toast shows, in the same synchronous call, and the dedup file holds one list per account seeded from the legacy device-wide list. Done in 602a5bfd (2026-11-02).
 - **H142** · Muse run 9 (H127, H128, H130, H129) reviewed: the three docs match the H104 stage 3 findings; H130 left the player-list flags frozen and hidden across Play Again, fixed with a reset hook, unit tests and the adjective-reveal-play-again scenario. Done in fa950697 (2026-11-02).

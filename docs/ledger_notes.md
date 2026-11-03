@@ -296,3 +296,19 @@ Agent work that Levi's two looks wait on (H98-12 of the H104 stage 3 review; H12
 2. T19: once the H98-4 sizes are measured (H129), before-and-after pictures of the candidates at four and eight displays, with the question "which reads best mid-match: smaller full displays or compact chips?". Option 1's numbers are settled by the H98-9 layout test, not by Levi.
 
 When the pictures exist, move the item to Waiting on Levi with the paths. Report: `.claude/probes/H104/stage3.md`.
+
+## H151 (2026-11-02, claude session 0cfd9cf1)
+
+The T43 look from H143, for Levi: "anything here to fix?" over the four T43 surfaces at 1360x765: friend toasts over the lobby, game over, the friends panel and the sign-in screen. The pictures were sent to Levi in the session and sit on the desktop under `.claude/probes/H143/` (untracked; `index.md` says what each shows). The friends picture is the shell an offline player sees (close row, a friend code still loading, Add Friend, Recent Players, Blocked Users); no friend data was faked. A populated panel needs a signed-in run against a local backend on loopback; if Levi wants that look, it goes to H143.
+
+## H152 (2026-11-02, claude session 0cfd9cf1)
+
+From the H135 design (`docs/design/H135_settings_sync_merge.md` section 7). A device that resets a setting to its default clears the override, which the cloud row reads as absence. Tombstones let a reset travel to the player's other devices; the never-delete fallback (section 3.4) cannot, so a reset on one device comes back from another. Two plain questions: must a reset to default on one device reset the others too, and, if so, must picking English (the default language) on one device switch the others to English? The language rides in the global row with no change time, and choosing `en` removes it from the blob, so a language reset that travels needs a stored change time first. Recommend yes to both: the last change wins everywhere, as it does for the other keys. The answer picks the build: yes means tombstones plus the version precondition (section 5), no means section 3.4.
+
+## H153 (2026-11-02, claude session 0cfd9cf1)
+
+Changes on main since 0.57.0 (`7fd873fd`), none released: H106 (local mode applies critter stat deltas in place), H119 (the key trace dumps on default log settings), H130 (the adjective reveal ends when the celebration resets), H134 (stored friend notifications drain at sign-in and socket connect), H136 (a `G.log.error` reports once), H139 (toast ids marked seen at show time, per account), H140 (notification paging stops on a repeated cursor or the page cap; the sign-in drain waits out a stale fetch), and the delete panel logging expected failures as warnings (`4405cd3b`). Recommend releasing these now and H135 in its own release, which needs H152 first. A release also puts the H119 key trace in a build Levi plays (the trace is not in 0.57.0). Mechanics: `.claude/rules/deploy.md` (version bump, patch notes in `web/blog/index.html`, `scripts/deploy-cf-pages.ps1`).
+
+## H155 (2026-11-02, claude session 0cfd9cf1)
+
+Two nits from reviewing Muse run 10's poller changes (`src/core/friends_notification_poller.gd`), neither worth its own fix. (1) H139 moved the `is_instance_valid(G.toast_overlay)` check from after the name await to before it, so an overlay freed during the await is not caught (very unlikely; inferred to log a script error, not crash). (2) A toast whose sender name never resolves is erased from the queue without being marked seen, so it queues again every launch because the notification cursor is not persisted; harmless, since it never shows.
