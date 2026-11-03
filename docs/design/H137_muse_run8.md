@@ -184,3 +184,41 @@ commit and push.
 ## 3. Handoff log
 
 Append one dated entry each time you stop.
+
+- 2026-11-02, muse 01a19f7e-156d-7921-b3c4-f6a27e924c42 (run 8
+  complete, 19:40 to 19:58 PT): all four items landed on main.
+  H106 in a87d5d41: local mode applies the critter deltas in
+  place (they feed the match-end stats local play shows); the
+  handler's guard is runs_server_logic and a direct call
+  validates as the local peer. New
+  test_critter_stats_local_mode.gd fails unfixed, passes 2/2.
+  Harness offline-move-jump: before, errors=1 with one queued
+  RPC report (signature 6c3f471ec54dc498); after, errors=0 and
+  no queue file. match-2-clients passes. H134 in 22069959:
+  drain at sign-in and on every socket_connected, paging on
+  full pages, H54-2 generation guard (a response landing
+  after the new session's own fetch cannot be told apart;
+  that window stays), H54-3 test-path redirect only (the
+  seen-mark timing and the device-wide file are unchanged).
+  Lifecycle 16/16 and poller 29/29; the sign-in and reconnect
+  tests fail on the unfixed poller. Six lifecycle fetch counts
+  rose by the sign-in drains and say so. H136 in 71d936f0:
+  probe first (scenario kept in .claude/probes/H136/). One
+  G.log.error queued 2 entries before the fix, the logger
+  copy `ERROR  : h136 probe (core/variant/
+  variant_utility.cpp:1023)` (e8d5ec1efadb27ec) and the
+  direct copy (62ffe2ce3c396e21), and 1 entry after, the
+  direct copy. So H86-1 reproduces on 4.7.2. The fix flags
+  the push in ScaffolderLog.error; report_crash also drops
+  re-entrant calls (H86-4, with a test whose log read errors
+  back into the reporter); the logger header now scopes its
+  cap claim to one run (H86-2). Three new tests fail
+  unfixed; test_crash_reporter.gd passes 35/35. H131 in
+  f33c3c5c: the rules file, the reporter header and
+  report_crash doc, and the logger header name the engine
+  logger and both limits. Shelved: none. For Claude to
+  file: the rest of H54-3 (mark a toast id seen only once
+  the toast shows; key the dedup file per account), and
+  H86-2's cross-run dedupe, which needs the runtime change
+  the brief reserves. The platform pointer was never
+  staged; no release, version bump, or prod contact.

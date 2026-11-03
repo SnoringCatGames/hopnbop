@@ -62,10 +62,10 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H137** · Muse run 8, hopnbop only: H106 (offline RPC on yourself
   queues a crash report), H134 (offline friend events never toast), H136
   (reports sent twice; probe first), H131 (docs).
-  - owner: muse session 01a19f7e-156d-7921-b3c4-f6a27e924c42 (run 8 started 2026-11-02)
-  - branch: mainline; last commit: pending (brief not yet committed)
-  - evidence: .claude/probes/H137/ (Muse probes), .claude/probes/H104/stage2.md (findings)
-  - next: launch Muse, review each commit as it lands
+  - owner: nobody since 2026-11-02 19:58 PT (run 8 complete; all four items landed)
+  - branch: mainline; last commit: f33c3c5cd621ed4766d3f442fd9d8425ef21999d
+  - evidence: .claude/probes/H136/ (probe scenario), .claude/probes/H104/stage2.md (findings)
+  - next: Claude reviews the four commits; no client release without Levi's OK
   - brief: `docs/design/H137_muse_run8.md`
 
 
@@ -74,9 +74,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Next
 
-- **H106** · Local mode logs "RPC on yourself is not allowed" for
-  `_rpc_server_update_critter_stats` (2026-10-29), fix shaped like H27's;
-  since H86 (0.57.0) every offline critter run queues a crash report.
 - **H56** · Controller players cannot enter codes: design in
   `docs/design/H56_code_entry.md`; the symbol keyboard is built
   behind `is_code_keyboard_enabled` (off) for Levi's acceptance.
@@ -130,17 +127,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H130** · Match-end adjective reveal runs on the hidden horizontal
   list at aspect 1.3+ (match_end_celebration.gd:408-420; inferred, in
   0.56.0 and 0.57.0 too): capture, then fix (H98-3).
-- **H134** · Offline friend events never toast: a healthy socket skips
-  the list (friends_notification_poller.gd:166; medium, live in 0.57.0);
-  drain on sign-in and on socket_connected (stage 2, H54-1 to H54-3).
 - **H135** · Settings cloud sync deletes keys a stale device lacks,
   wiping another device's new settings (settings_cloud_sync.gd:339-358;
   medium, live in 0.57.0): tombstones and OCC (stage 2, H90-1 to H90-4).
-- **H136** · Every G.log.error is reported twice, and a fatal one
-  flushes just before the quit (scaffolder_log.gd:157, :164-165; medium,
-  inferred from 4.4 source, in 0.57.0): verify on 4.7.2; lows H86-2 to -4.
-
-
 ## Residuals (known, not fixed)
 
 - **H121** · The pending-deletion prompt (ConfirmOverlay from
@@ -177,8 +166,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   host: disk +1.72 GB on 10-20 (v30, v31 pulled by `sync-game-config.ps1`),
   +0.86 GB on 10-13. Run `docker system df` there, then add a prune
   (weekly-cost-review 2026-10-21).
-- **H131** · .claude/rules/crash-reporting.md:26 and the reporter's own
-  docs (crash_reporter.gd:6-8, :158) are stale since H86 (H104 reviews).
 - **H133** · Four orphaned hopnbop-smoke-20261030-* Postgres containers
   still run (Nakama exited 3 days ago): docker compose -p <name> down
   -v each; find why those runs skipped teardown.
@@ -198,6 +185,10 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H131** · Reporter docs name the engine logger as the third source, with the pre-_ready and release-template limits (H86-3). Done in f33c3c5c (2026-11-02).
+- **H136** · A G.log.error is reported once (flagged push_error; probe on 4.7.2 queued 2 entries before, 1 after), a fatal sends nothing before the quit, and report_crash drops re-entrant calls (H86-4). Done in 71d936f0 (2026-11-02).
+- **H134** · Stored friend notifications drain at sign-in and on every socket_connected (paging, persisted dedup), a stale list response keeps its cursor out of the new session (H54-2), and poller tests use a throwaway dedup file (H54-3). Done in 22069959 (2026-11-02).
+- **H106** · Local mode applies critter stat deltas in place instead of RPCing itself, so offline runs queue no crash report; the handler validates as the local peer under runs_server_logic. Done in a87d5d41 (2026-11-02).
 - **H104** · Claude review of Muse H103 and H109 work in three stages; stage 2 and 3 findings are H127 to H136, SP115 and SP116. Done in d00b9d2f (2026-11-02).
 - **H125** · Muse run 6 (SP107-SP109, the SP106 follow-ups). Handoff log in `docs/design/H125_muse_run6.md` section 3. Done 2026-10-31.
 - **H124** · Muse run 5 (SP106, the after-authenticate hook collision). Handoff log in `docs/design/H124_muse_run5.md` section 4. Done 2026-10-31.
