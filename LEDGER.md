@@ -74,6 +74,14 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - evidence: .claude/probes/H126/ (Muse run), .claude/probes/H126/review/ (Claude: checks, mutation proofs, smoke 95/95)
   - next: Levi OKs the deploy; push the three platform commits one at a time (watch each nakama-runtime run), bump the pointer with the two allowlist lines, close SP110, SP111, SP113
   - brief: `docs/design/H126_muse_run7.md`
+- **H156** · Muse run 11: pictures of the two T19 candidates (smaller
+  full displays, compact chips) for the T19 look, built in a throwaway
+  worktree (brief: docs/design/H156_muse_run11.md).
+  - owner: claude session 0cfd9cf1-a258-4dc9-912d-e29423bc99b2 (launching muse run 11)
+  - branch: mainline; last commit: `ebf3897b`
+  - evidence: .claude/probes/H143/ (index.md, scenarios, pictures; untracked)
+  - next: Muse sets up a throwaway worktree, builds both candidates and captures ten pictures with engine-measured numbers; review: view every picture, check the numbers, confirm the worktree is gone and main untouched; send Levi the pictures
+  - brief: `docs/design/H156_muse_run11.md`
 
 ## Next
 
