@@ -368,6 +368,71 @@ func test_sign_out_drops_a_waiting_toast_batch() -> void:
 	assert_eq(_toasts.messages.size(), 0, "\n".join(_toasts.messages))
 
 
+func test_toast_id_is_persisted_only_after_the_toast_shows() -> void:
+	_sign_in_with_provider()
+	_queue_friend_request_toast()
+
+	assert_true(
+		_a_fresh_poller_can_queue("n1"),
+		"queued but not yet shown is not persisted as seen")
+
+	await get_tree().create_timer(
+		_FIRST_TOAST_DELAY_SEC + _TOAST_DELAY_SLACK_SEC).timeout
+
+	assert_eq(_toasts.messages.size(), 1)
+	assert_false(
+		_a_fresh_poller_can_queue("n1"),
+		"shown is persisted as seen for the next launch")
+
+
+func test_the_same_toast_can_show_for_another_account() -> void:
+	_sign_in_with_provider("account-a")
+	_queue_friend_request_toast()
+	await get_tree().create_timer(
+		_FIRST_TOAST_DELAY_SEC + _TOAST_DELAY_SLACK_SEC).timeout
+	assert_eq(_toasts.messages.size(), 1)
+
+	_sign_out()
+	_sign_in_with_provider("account-b")
+	_queue_friend_request_toast()
+	await get_tree().create_timer(
+		_FIRST_TOAST_DELAY_SEC + _TOAST_DELAY_SLACK_SEC).timeout
+
+	assert_eq(
+		_toasts.messages.size(), 2,
+		"account A's seen ids do not hide account B's toast")
+
+
+func test_a_toast_whose_sender_name_misses_can_show_later() -> void:
+	_sign_in_with_provider()
+	# The sender is in no cache, so the first flush drops it.
+	_friends.notifications_received.emit(
+		{"notifications": [_friend_request("n1")]})
+	_friends.friends_received.emit({"incoming_requests": []})
+	await get_tree().create_timer(
+		_FIRST_TOAST_DELAY_SEC + _TOAST_DELAY_SLACK_SEC).timeout
+	assert_eq(_toasts.messages.size(), 0)
+
+	_cache_the_sender()
+	_socket.notification_received.emit(_friend_request("n1"))
+	_friends.friends_received.emit({
+		"incoming_requests": [{"player_id": _SENDER_ID}],
+	})
+	await get_tree().create_timer(0.2).timeout
+
+	assert_eq(_toasts.messages.size(), 1)
+
+
+func _a_fresh_poller_can_queue(notification_id: String) -> bool:
+	var fresh := FriendsNotificationPoller.new()
+	fresh.seen_toasts_path = _TEST_SEEN_PATH
+	fresh._load_seen_toasts()
+	var can_queue := fresh._queue_friend_toast(
+		_friend_request(notification_id))
+	fresh.free()
+	return can_queue
+
+
 # ------------------------------------------------------------------
 # Offline backlog drains (H134) and stale responses (H54-2)
 # ------------------------------------------------------------------
@@ -543,8 +608,10 @@ func _sign_out() -> void:
 	_store.clear_tokens()
 
 
-func _sign_in_with_provider() -> void:
-	_store_provider_session()
+func _sign_in_with_provider(
+	player_id: String = "test-player",
+) -> void:
+	_store_provider_session(player_id)
 	_client.auth_completed.emit(true, "")
 
 
@@ -554,10 +621,12 @@ func _sign_in_as_guest() -> void:
 	_client.auth_completed.emit(true, "")
 
 
-func _store_provider_session() -> void:
+func _store_provider_session(
+	player_id: String = "test-player",
+) -> void:
 	_store.is_anonymous = false
 	_store.provider = "google"
-	_store.player_id = "test-player"
+	_store.player_id = player_id
 	_store.jwt_token = "test-access-token"
 	_store.refresh_token = "test-refresh-token"
 	_store.expires_at = (

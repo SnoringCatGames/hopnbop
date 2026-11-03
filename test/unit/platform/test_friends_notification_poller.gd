@@ -426,6 +426,75 @@ func test_poll_cursor_advances_and_resets() -> void:
 	assert_eq(_poller._notification_cursor, "")
 
 
+func test_queued_toast_is_not_persisted_until_it_shows() -> void:
+	var notification := {
+		"id": "h139-note-1",
+		"code": PlatformFriendsApiClient
+			.CODE_FRIEND_REQUEST_RECEIVED,
+		"sender_id": "someone-else",
+	}
+	assert_true(_poller._queue_friend_toast(notification))
+
+	var fresh := FriendsNotificationPoller.new()
+	fresh.seen_toasts_path = _TEST_SEEN_PATH
+	fresh._load_seen_toasts()
+	assert_true(
+		fresh._queue_friend_toast(notification),
+		"a quit before the toast shows does not lose it",
+	)
+	fresh.free()
+
+
+func test_legacy_seen_ids_still_dedup_for_a_new_account() -> void:
+	var config := ConfigFile.new()
+	config.set_value("toasts", "seen_ids", ["legacy-1"])
+	config.save(_TEST_SEEN_PATH)
+	var previous_id: String = Platform.token_store.player_id
+	Platform.token_store.player_id = "account-a"
+	_poller._load_seen_toasts()
+	Platform.token_store.player_id = previous_id
+	assert_false(
+		_poller._queue_friend_toast({
+			"id": "legacy-1",
+			"code": PlatformFriendsApiClient
+				.CODE_FRIEND_REQUEST_RECEIVED,
+			"sender_id": "someone-else",
+		}),
+		"the device-wide list still dedups after the upgrade",
+	)
+
+
+func test_seen_toasts_are_loaded_per_account() -> void:
+	var previous_id: String = Platform.token_store.player_id
+	var notification := {
+		"id": "shared-note",
+		"code": PlatformFriendsApiClient
+			.CODE_FRIEND_REQUEST_RECEIVED,
+		"sender_id": "someone-else",
+	}
+	Platform.token_store.player_id = "account-a"
+	_poller._load_seen_toasts()
+	assert_true(_poller._queue_friend_toast(notification))
+	_poller._mark_toast_seen("shared-note")
+
+	Platform.token_store.player_id = "account-b"
+	_poller._load_seen_toasts()
+	var queued_for_b := _poller._queue_friend_toast(notification)
+
+	Platform.token_store.player_id = "account-a"
+	_poller._load_seen_toasts()
+	var queued_for_a_again := _poller._queue_friend_toast(
+		notification)
+	Platform.token_store.player_id = previous_id
+
+	assert_true(
+		queued_for_b,
+		"one account's seen ids do not hide another's toasts")
+	assert_false(
+		queued_for_a_again,
+		"the same account still dedups its shown toasts")
+
+
 func test_toast_dedup_survives_a_new_poller() -> void:
 	var path := ProjectSettings.globalize_path(_TEST_SEEN_PATH)
 	DirAccess.remove_absolute(path)
@@ -437,6 +506,7 @@ func test_toast_dedup_survives_a_new_poller() -> void:
 		"sender_id": "someone-else",
 	}
 	assert_true(_poller._queue_friend_toast(notification))
+	_poller._mark_toast_seen("h54-note-1")
 	_poller.reset()
 
 	var fresh := FriendsNotificationPoller.new()

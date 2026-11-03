@@ -11,12 +11,18 @@ extends GutTest
 ## assert the badge / toast side effects the UI depends on.
 
 
+const _TEST_SEEN_PATH := (
+	"user://test_notification_contract_seen.cfg")
+
 var _poller: FriendsNotificationPoller
 var _emitted_counts: Array[int]
 
 
 func before_each() -> void:
+	DirAccess.remove_absolute(
+		ProjectSettings.globalize_path(_TEST_SEEN_PATH))
 	_poller = FriendsNotificationPoller.new()
+	_poller.seen_toasts_path = _TEST_SEEN_PATH
 	# G starts its poller at boot. A stopped one drops what arrives.
 	_poller.start_polling()
 	_emitted_counts = []
@@ -28,6 +34,8 @@ func before_each() -> void:
 func after_each() -> void:
 	if is_instance_valid(_poller):
 		_poller.free()
+	DirAccess.remove_absolute(
+		ProjectSettings.globalize_path(_TEST_SEEN_PATH))
 
 
 # ------------------------------------------------------------------
@@ -110,5 +118,8 @@ func test_notifications_real_shape_dedups_by_id() -> void:
 	_poller._on_notifications_received(
 		_real_notifications_payload())
 	assert_eq(
-		_poller._known_friend_event_ids.size(), 1,
+		_poller._pending_friend_toasts.size(), 1,
 		"re-polling the same notification must not double-count")
+	assert_eq(
+		_poller._known_friend_event_ids.size(), 0,
+		"an unshown toast is not marked seen yet")

@@ -38,9 +38,19 @@ var _known_online_ids: Dictionary = {}
 var _known_party_match_start_ids: Dictionary = {}
 ## Dedupe friend-event toasts across poll cycles and across the
 ## socket/HTTP delivery paths. Keyed by Nakama notification id.
-## Persisted to disk (H54) so a backlog the cursor replays on a
-## later launch doesn't toast all over again.
+## Holds only toasts that have shown. It is persisted per
+## account to disk (H54, H139) so a backlog the cursor replays
+## on a later launch doesn't toast all over again.
 var _known_friend_event_ids: Dictionary = {}
+## Friend events queued for a toast but not shown yet. Keyed
+## by Nakama notification id. In memory only, so a quit before
+## the toast shows leaves the event to toast on a later launch.
+var _queued_friend_event_ids: Dictionary = {}
+## Account the loaded seen list belongs to, and whether one
+## has been loaded at all. The list is reloaded when the
+## signed-in account changes.
+var _seen_toasts_account_id := ""
+var _has_loaded_seen_toasts := false
 
 ## Where the toast dedup persists. A var so tests can
 ## point it at a throwaway file (H54-3).
@@ -217,15 +227,36 @@ func _process(delta: float) -> void:
 			)
 
 
-## Loads the persisted toast dedup (H54). A missing or
-## unreadable file just means every backlog row toasts
-## once, as before.
+## Loads the persisted toast dedup for the signed-in
+## account (H54, H139). A missing or unreadable file just
+## means every backlog row toasts once, as before.
+##
+## The file holds one list per account under the
+## `accounts` dictionary, plus the device-wide `seen_ids`
+## list older clients wrote. An account with no list of its
+## own starts from that legacy list, so the upgrade does
+## not replay a backlog the device already showed. The
+## legacy list is never updated again. An older client
+## reading the file still finds its own key and ignores
+## the dictionary.
 func _load_seen_toasts() -> void:
+	_known_friend_event_ids.clear()
+	_seen_toast_order.clear()
+	_seen_toasts_account_id = Platform.token_store.player_id
+	_has_loaded_seen_toasts = true
 	var config := ConfigFile.new()
 	if config.load(seen_toasts_path) != OK:
 		return
-	var ids: Array = config.get_value(
-		"toasts", "seen_ids", [])
+	var accounts: Dictionary = config.get_value(
+		"toasts", "accounts", {})
+	var ids: Array = []
+	if accounts.has(_seen_toasts_account_id):
+		var stored: Variant = accounts[
+			_seen_toasts_account_id]
+		if stored is Array:
+			ids = stored
+	else:
+		ids = config.get_value("toasts", "seen_ids", [])
 	for id in ids:
 		var nid := str(id)
 		if nid.is_empty():
@@ -234,11 +265,46 @@ func _load_seen_toasts() -> void:
 		_seen_toast_order.append(nid)
 
 
+## Loads the seen list when the signed-in account has
+## changed since the last load.
+func _ensure_seen_toasts_loaded() -> void:
+	if (
+		_has_loaded_seen_toasts
+		and _seen_toasts_account_id
+			== Platform.token_store.player_id
+	):
+		return
+	_load_seen_toasts()
+
+
 func _save_seen_toasts() -> void:
 	var config := ConfigFile.new()
-	config.set_value(
-		"toasts", "seen_ids", _seen_toast_order)
+	# Keep the legacy list and the other accounts' lists.
+	config.load(seen_toasts_path)
+	var accounts: Dictionary = config.get_value(
+		"toasts", "accounts", {})
+	accounts[_seen_toasts_account_id] = (
+		_seen_toast_order.duplicate())
+	config.set_value("toasts", "accounts", accounts)
 	config.save(seen_toasts_path)
+
+
+## Records a toast as seen now that it has shown, and
+## persists it under the signed-in account. Marking at
+## show time, in the same synchronous call as the toast,
+## means a quit while a toast waits to show leaves it to
+## toast on a later launch instead of dropping it.
+func _mark_toast_seen(notification_id: String) -> void:
+	_queued_friend_event_ids.erase(notification_id)
+	_ensure_seen_toasts_loaded()
+	if _known_friend_event_ids.has(notification_id):
+		return
+	_known_friend_event_ids[notification_id] = true
+	_seen_toast_order.append(notification_id)
+	while _seen_toast_order.size() > _SEEN_TOASTS_CAP:
+		_known_friend_event_ids.erase(
+			_seen_toast_order.pop_front())
+	_save_seen_toasts()
 
 
 ## Start polling for friend notifications and
@@ -274,6 +340,8 @@ func reset() -> void:
 	_known_party_match_start_ids.clear()
 	# _known_friend_event_ids survives reset (H54): it is the
 	# toast dedup persisted across launches, not session state.
+	# The queued set and the waiting toasts are session state.
+	_queued_friend_event_ids.clear()
 	_seen_request_ids.clear()
 	_pending_friend_toasts.clear()
 	_current_rich_presence = ""
@@ -381,18 +449,19 @@ func _queue_friend_toast(n: Dictionary) -> bool:
 	# caused on another device is not news here.
 	if str(n.get("sender_id", "")) == Platform.token_store.player_id:
 		return false
+	_ensure_seen_toasts_loaded()
 	if _known_friend_event_ids.has(nid):
+		return false
+	if _queued_friend_event_ids.has(nid):
 		return false
 	var key := _friend_toast_key(int(n.get("code", 0)))
 	if key.is_empty():
 		return false
-	_known_friend_event_ids[nid] = true
-	_seen_toast_order.append(nid)
-	while _seen_toast_order.size() > _SEEN_TOASTS_CAP:
-		_known_friend_event_ids.erase(
-			_seen_toast_order.pop_front())
-	_save_seen_toasts()
+	# Queue only. The id is marked seen when its toast
+	# shows (H139), so a quit in between does not drop it.
+	_queued_friend_event_ids[nid] = true
 	_pending_friend_toasts.append({
+		"id": nid,
 		"sender_id": str(n.get("sender_id", "")),
 		"key": key,
 	})
@@ -558,10 +627,14 @@ func _set_unseen_count(count: int) -> void:
 ## than inline, because the sender of a brand-new incoming request
 ## is in no local cache until the fetch_friends that this flush
 ## follows. An event whose name still won't resolve is dropped
-## (a nameless "someone sent you a request" is noise), but its
-## badge contribution survives via `_recompute_unseen`.
+## for now (a nameless "someone sent you a request" is noise),
+## but it is not marked seen, so a later delivery can show it
+## once the name resolves. Its badge contribution survives via
+## `_recompute_unseen`.
 func _flush_pending_friend_toasts() -> void:
 	if _pending_friend_toasts.is_empty():
+		return
+	if not is_instance_valid(G.toast_overlay):
 		return
 	# Take the queue before any await so a second friends_received
 	# arriving mid-flush can't double-render the same batch.
@@ -578,16 +651,22 @@ func _flush_pending_friend_toasts() -> void:
 		# from. Showing them now would credit them to whoever signs
 		# in next.
 		if generation != _session_generation:
+			for event in events:
+				_queued_friend_event_ids.erase(
+					event.get("id", ""))
 			return
-	if not is_instance_valid(G.toast_overlay):
-		return
 	for event in events:
 		var display_name := _resolve_sender_display_name(
 			event.get("sender_id", ""))
 		if display_name.is_empty():
+			_queued_friend_event_ids.erase(
+				event.get("id", ""))
 			continue
 		G.toast_overlay.show_toast(
 			tr(event.get("key", "")) % display_name)
+		# The toast has shown. Mark it seen in the same
+		# synchronous call, before the next event.
+		_mark_toast_seen(event.get("id", ""))
 
 
 ## Resolve a notification sender to something worth showing a user.
@@ -632,6 +711,7 @@ func _on_auth_completed(
 	if not success:
 		return
 	start_polling()
+	_load_seen_toasts()
 	if not Platform.token_store.is_token_valid():
 		return
 	if Platform.token_store.is_anonymous:
