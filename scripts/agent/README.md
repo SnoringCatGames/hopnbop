@@ -115,6 +115,11 @@ the result) but do not fail a run, because local mode and preview
 matches log known RPC and replication errors today. About half of all
 lobby runs also end with an `AudioStreamWAV` (`pause_menu.wav`) leak
 warning at exit; that is known teardown noise.
+`scenarios/offline-error-reporting.json` guards what those `ERROR:`
+lines hide. It asserts on the crash reporter's queue
+(`G.crash_reporter.get_queued_entries()`; an editor build queues and
+never sends), so an offline critter run that reports a crash (H106)
+or a `G.log.error` that reports twice (H136) fails the run.
 Exit codes are real: 0 pass, 1 fail, 2 bad scenario, 3 refused. Every
 preview process, harness or not, used to exit 0xC0000005 because
 rollback_netcode's `PerfTracker` never removed its lambda-backed

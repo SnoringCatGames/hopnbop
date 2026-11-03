@@ -1,0 +1,21 @@
+{
+  "name": "offline-error-reporting",
+  "mode": "offline",
+  "level": "level_4",
+  "seed": 2,
+  "settings": {"match_duration_sec": 60},
+  "timeout_sec": 45,
+  "steps": [
+    {"do": "wait_ready"},
+    {"do": "wait_match_start"},
+    {"do": "assert", "expr": "G.crash_reporter.get_queued_entries().size() == 0", "message": "no crash report is queued before the checks"},
+    {"do": "eval", "name": "poop", "expr": "G.level.get_node('ClientStatReporter').record_poop(local_player().player_id)", "comment": "H106: the reporter sends a poop delta at its next 2 s tick. Local mode applies it in place; it used to RPC this process, which Godot refuses, and since H86 each refusal was queued as a crash report"},
+    {"do": "wait_until", "expr": "G.level.get_node('ClientStatReporter')._last_sent_poop.get(local_player().player_id, 0) == 1", "timeout_sec": 10, "comment": "the delta was packed and sent"},
+    {"do": "assert", "expr": "G.match_state.get_player_stats(local_player().player_id) != null", "message": "the delta was applied in place (H106)"},
+    {"do": "assert", "expr": "G.match_state.get_player_stats(local_player().player_id).poop_count == 1", "message": "the poop was counted (H106)"},
+    {"do": "assert", "expr": "G.crash_reporter.get_queued_entries().size() == 0", "message": "sending stats in local mode queued no crash report (H106)"},
+    {"do": "eval", "name": "probe", "expr": "G.log.error('offline-error-reporting probe')", "comment": "H136: G.log.error pushes the error to the engine log and reports it itself. The engine logger must skip the push, or one error queues twice under two texts"},
+    {"do": "wait", "sec": 0.5},
+    {"do": "assert", "expr": "G.crash_reporter.get_queued_entries().size() == 1", "message": "one G.log.error queued exactly one crash report (H136)"}
+  ]
+}

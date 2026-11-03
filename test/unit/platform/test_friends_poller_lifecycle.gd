@@ -30,19 +30,29 @@ const _SENDER_NAME := "Requester"
 
 ## Stands in for Platform.friends: counts requests, sends none.
 ## With is_emitting_canned set, a fetch answers at once with
-## canned_notifications, as a stored backlog would.
+## canned_notifications, as a stored backlog would. With
+## canned_pages set, each fetch answers with the next page
+## instead, so a backlog can span pages without the fake
+## answering a full page forever.
 class FakeFriends extends PlatformFriendsApiClient:
 	var notification_fetches := 0
 	var friends_fetches := 0
 	var canned_notifications: Array = []
 	var is_emitting_canned := false
+	## Each entry is one notifications_received payload.
+	var canned_pages: Array[Dictionary] = []
+	## The cursor each notification fetch asked for.
+	var fetched_cursors: Array[String] = []
 
 	func fetch_notifications(
 		_limit: int = 50,
-		_cacheable_cursor: String = "",
+		cacheable_cursor: String = "",
 	) -> void:
 		notification_fetches += 1
-		if is_emitting_canned:
+		fetched_cursors.append(cacheable_cursor)
+		if not canned_pages.is_empty():
+			notifications_received.emit(canned_pages.pop_front())
+		elif is_emitting_canned:
 			notifications_received.emit({
 				"notifications": canned_notifications.duplicate(),
 				"cacheable_cursor": "",
@@ -405,6 +415,29 @@ func test_backlog_event_toasts_once_across_list_and_socket() -> void:
 	await _flush_the_queued_toasts()
 
 	assert_eq(_toasts.messages.size(), 1, "one toast for one event")
+
+
+func test_full_page_lists_the_next_page_until_a_short_one() -> void:
+	_cache_the_sender()
+	var full_page: Array = []
+	for index in FriendsNotificationPoller._NOTIFICATION_PAGE_SIZE:
+		full_page.append(_friend_request("n%d" % index))
+	_friends.canned_pages.assign([
+		{"notifications": full_page, "cacheable_cursor": "page-2"},
+		{
+			"notifications": [_friend_request("last")],
+			"cacheable_cursor": "page-3",
+		},
+	])
+
+	_sign_in_with_provider()
+
+	assert_eq(
+		_friends.fetched_cursors,
+		["", "page-2"] as Array[String],
+		"a full page lists the next one, and a short page stops",
+	)
+	assert_eq(_poller._notification_cursor, "page-3")
 
 
 func test_late_list_response_keeps_the_new_sessions_cursor() -> void:
