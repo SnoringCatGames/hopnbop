@@ -48,6 +48,14 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## In progress
 
+- **H126** · Muse run 7: platform SP110 (pending-deletion sign-in
+  test), SP111 (matchmaker hook into the hook list), SP113 (name on a
+  cancelled deletion). Commits stay local until Levi OKs the deploy.
+  - owner: claude 0cfd9cf1 (brief written, launching Muse run 7)
+  - branch: mainline (platform commits stay local, unpushed); last commit: `3af1382e`
+  - evidence: `.claude/probes/H126/`
+  - next: launch Muse on the brief; review its three local platform commits; ask Levi for the deploy OK
+  - brief: `docs/design/H126_muse_run7.md`
 - **H104** · Claude reviews Muse's commits from H103 and H109 in three
   stages: security (SP32, SP33, SP36, SP41 to SP44, SP47, SP59, H60),
   then H109's Tier C, then its Tier D design docs. Reviewed 2026-10-29:
