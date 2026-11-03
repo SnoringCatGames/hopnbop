@@ -75,6 +75,28 @@ func start_match_countdown() -> void:
 	match_start_countdown.start_countdown()
 
 
+## Every player list that exists. The celebration freezes
+## them all, so a resize during the reveal cannot show an
+## unfrozen list.
+func get_player_lists() -> Array[PlayerList]:
+	var lists: Array[PlayerList] = []
+	if is_instance_valid(player_list):
+		lists.append(player_list)
+	if is_instance_valid(_player_list_vertical):
+		lists.append(_player_list_vertical)
+	return lists
+
+
+## The player list that is on screen now.
+func get_visible_player_list() -> PlayerList:
+	if (
+		is_instance_valid(_player_list_vertical)
+		and _player_list_vertical.visible
+	):
+		return _player_list_vertical
+	return player_list
+
+
 func _on_window_resized() -> void:
 	_apply_layout()
 

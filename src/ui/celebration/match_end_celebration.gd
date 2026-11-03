@@ -405,19 +405,20 @@ func reveal_adjectives(
 	if not is_instance_valid(G.hud):
 		return
 
-	var player_list: PlayerList = (
-		G.hud.player_list)
-	if not is_instance_valid(player_list):
+	if G.hud.get_player_lists().is_empty():
 		return
 
 	# Freeze adjective labels immediately so
-	# replication doesn't spoil the reveal.
-	for player_id in adjective_map:
-		var display: PlayerDisplay = (
-			player_list._player_displays
-				.get(player_id))
-		if is_instance_valid(display):
-			display.is_adjective_frozen = true
+	# replication does not spoil the reveal. Every list
+	# is frozen, so a resize during the reveal cannot
+	# show an unfrozen list.
+	for list in G.hud.get_player_lists():
+		for player_id in adjective_map:
+			var display: PlayerDisplay = (
+				list._player_displays
+					.get(player_id))
+			if is_instance_valid(display):
+				display.is_adjective_frozen = true
 
 	# Delay reveal until after "WINNER" text
 	# settles (~1.1s), with a small extra gap.
@@ -425,9 +426,15 @@ func reveal_adjectives(
 		_ADJECTIVE_REVEAL_DELAY,
 		true, false, true)
 	timer.timeout.connect(func():
+		if not is_instance_valid(G.hud):
+			return
+		var visible_list: PlayerList = (
+			G.hud.get_visible_player_list())
+		if not is_instance_valid(visible_list):
+			return
 		for player_id in adjective_map:
 			var display: PlayerDisplay = (
-				player_list._player_displays
+				visible_list._player_displays
 					.get(player_id))
 			if not is_instance_valid(display):
 				continue
