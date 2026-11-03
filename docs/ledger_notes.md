@@ -312,3 +312,20 @@ Changes on main since 0.57.0 (`7fd873fd`), none released: H106 (local mode appli
 ## H155 (2026-11-02, claude session 0cfd9cf1)
 
 Two nits from reviewing Muse run 10's poller changes (`src/core/friends_notification_poller.gd`), neither worth its own fix. (1) H139 moved the `is_instance_valid(G.toast_overlay)` check from after the name await to before it, so an overlay freed during the await is not caught (very unlikely; inferred to log a script error, not crash). (2) A toast whose sender name never resolves is erased from the queue without being marked seen, so it queues again every launch because the notification cursor is not persisted; harmless, since it never shows.
+
+## H157 (2026-11-02, claude session 0cfd9cf1)
+
+The T19 look question, from Muse run 11 (H156; reviewed by claude session 0cfd9cf1, handoff bc75d707). Levi sees three boards (sent in the session; also `.claude/probes/H143/h156-boards/`). The ten full pictures and their engine numbers are in `.claude/probes/H143/index.md`, section "T19 candidates"; the measured table and findings are in `docs/design/H98_polish_and_player_list.md`, section "Prototype results".
+
+Question: mid-match, which reads best?
+- (a) Smaller full displays at every count (Option 1).
+- (b) Compact chips at every count (Option 3).
+- (c) Full displays while their smallest text stays at 8 px or more, chips past that.
+
+Recommendation: (c). Option 1 alone fails at eight (5 px text, and the 40 percent cap is still missed at 0.467). Chips alone drop the adjective mid-match and leave the H130 reveal no home. The switch is invisible to players, since the count is fixed once a match starts. If Levi wants one look at every count, chips (b).
+
+After the answer the build is M, and its first step is the layout test in the H98 doc. What the real build still has to decide (Muse run 11, "for Claude to file"):
+- Option 1 cannot fit eight vertical displays in 40 percent without dropping content: three text lines plus the avatar row floor near 42 px each. Needs the (c) rule or a content drop.
+- Chips neither shrink nor wrap, so eight across 1100x900 overflow by 1 percent. Needs a chip shrink, wrap or smaller font rule at high counts.
+- The prototype chips poll score in `PlayerList._process`: no count-up animation, score popups, leader crown or bunny. Decide each.
+- The adjective reveal needs a home under chips: an adjective anchor on the chip, an expanding winner chip, or the game-over rows.

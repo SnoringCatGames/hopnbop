@@ -63,6 +63,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H153** · Release the client with what is on main since 0.57.0 (H106,
   H119 trace, H130, H134, H136, H139, H140)? Recommend yes now, with
   H135 in the next release (docs/ledger_notes.md, H153).
+- **H157** · T19 look: which reads best mid-match: smaller full
+  displays, compact chips, or full displays at 2-3 players and chips
+  from 4? Recommend the last (docs/ledger_notes.md, H157).
 
 ## In progress
 
@@ -74,14 +77,6 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - evidence: .claude/probes/H126/ (Muse run), .claude/probes/H126/review/ (Claude: checks, mutation proofs, smoke 95/95)
   - next: Levi OKs the deploy; push the three platform commits one at a time (watch each nakama-runtime run), bump the pointer with the two allowlist lines, close SP110, SP111, SP113
   - brief: `docs/design/H126_muse_run7.md`
-- **H156** · Muse run 11: pictures of the two T19 candidates (smaller
-  full displays, compact chips) for the T19 look, built in a throwaway
-  worktree (brief: docs/design/H156_muse_run11.md).
-  - owner: muse session 01a1a007-5b86-79e2-b967-207d13b5addb (run 11, launched 22:10 PT by claude session 0cfd9cf1)
-  - branch: mainline; last commit: `f0abeca7`
-  - evidence: .claude/probes/H143/ (index.md, scenarios, pictures; untracked)
-  - next: Muse sets up a throwaway worktree, builds both candidates and captures ten pictures with engine-measured numbers; review: view every picture, check the numbers, confirm the worktree is gone and main untouched; send Levi the pictures
-  - brief: `docs/design/H156_muse_run11.md`
 
 ## Next
 
@@ -123,16 +118,13 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 
 - **H98** · Finish T43; verify, then fix, T19: design in
-  `docs/design/H98_polish_and_player_list.md`; waits on H143's
-  captures, then Levi.
+  `docs/design/H98_polish_and_player_list.md`; waits on Levi's
+  looks (H151 for T43, H157 for T19).
 - **H117** · SP32 client half, for when the consent change ships: show
   pending invites, accept and decline (H104 1A SP32-3).
 - **H135** · Settings cloud sync deletes keys a stale device lacks, wiping
   another device's new settings (medium, live in 0.57.0). Design done in
   f9f41850 (`docs/design/H135_settings_sync_merge.md`); the build (M) waits on H152.
-- **H143** · H98 captures for Levi's two looks: T43 and the T19 before
-  pictures are done (run 10; H151 asks); left: T19 candidates at four and
-  eight displays, from a throwaway worktree (docs/ledger_notes.md, H143).
 - **H149** · Read the Process Restart Policy of the hopnbop Edgegap app
   version (dashboard, or one read-only API GET) and record it in the H87
   doc (XS; its Before deciding section).
@@ -206,6 +198,8 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Done
 
+- **H143** · H98 captures for Levi's two looks are done: the T43 pictures (run 10; H151 asks) and the T19 candidates (run 11; H157 asks). Done in bc75d707 (2026-11-02).
+- **H156** · Muse run 11 reviewed and closed: both T19 candidates (smaller full displays, compact chips) built in a throwaway worktree and pictured at 2, 3, 4 and 8 players; the engine numbers match the pictures and both patches apply to main. The look question is H157. Done in bc75d707 (2026-11-02).
 - **H150** · Muse run 10 reviewed and closed: the H140 and H139 poller fixes (their new tests fail on the pre-fix file and pass at HEAD: 24/24, 32/32, 4/4), the H135 design doc (f9f41850) and the H143 pictures (index corrected; T43 sent to Levi). Questions are H151 to H153. Done in 9816229e (2026-11-02).
 - **H140** · Poller paging stops on a repeated or empty cursor and after 10 pages in one poll, and a sign-in drain skipped for a stale in-flight fetch runs once that fetch clears. Done in ae717e37, a7eeea15 (2026-11-02).
 - **H139** · A toast id is marked seen only when its toast shows, in the same synchronous call, and the dedup file holds one list per account seeded from the legacy device-wide list. Done in 602a5bfd (2026-11-02).

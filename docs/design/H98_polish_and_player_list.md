@@ -177,3 +177,63 @@ over, friends and auth.)
 Which reads best mid-match: smaller full displays or
 compact chips? (T19 before-and-after captures at four
 and eight displays, side by side.)
+
+## Prototype results (H156, 2026-11-02)
+
+Muse built both candidates in a throwaway worktree and
+captured them (run 11; the code never reached main).
+Pictures, engine numbers and the two patches are in
+`.claude/probes/H143/` on the desktop: `index.md`
+(section "T19 candidates") and `prototypes/option1.patch`
+and `option3.patch`, which apply to main. Rects are the
+visible list's, measured by the engine, not read off a
+picture.
+
+| Look | Count | Window | List rect, share of axis | Smallest text |
+|---|---|---|---|---|
+| Option 1 | 2 | 1360x765 | 166x306, 0.400 of height | 13 px |
+| Option 1 | 3 | 1360x765 | 105x293, 0.383 | 8 px |
+| Option 1 | 4 | 1360x765 | 75x297, 0.388 | 6 px |
+| Option 1 | 8 | 1360x765 | 36x357, 0.467 (cap missed) | 5 px |
+| Option 1 | 4 | 1100x900 | 426x88, 0.387 of width | 8 px |
+| Option 1 | 8 | 1100x900 | 388x43, 0.353 | 5 px |
+| Option 3 | 4 | 1360x765 | 128x228, 0.298 of height | 16 px |
+| Option 3 | 8 | 1360x765 | 161x476, 0.622 | 16 px |
+| Option 3 | 4 | 1100x900 | 512x42, 0.465 of width | 16 px |
+| Option 3 | 8 | 1100x900 | 1110x42, 1.009 (end chips clip 5 px) | 16 px |
+
+What the pictures show (all ten viewed, and they match
+the numbers):
+
+- Option 1 reads at two and three displays. At four the
+  names just read and the adjectives and scores are
+  cramped (6 px). At eight the text is unreadable at 1x
+  and the cap is missed: three text lines plus the avatar
+  row floor near 42 px per display, so eight vertical
+  need 357 px against the 306 cap. No shrink rule meets
+  the cap at eight without dropping content.
+- Option 3 chips (avatar, name, score) read at 16 px at
+  every count and use less of the edge at four (0.298).
+  At eight vertical they take 0.622 of the height but
+  stay 161 px wide. Chips neither shrink nor wrap, so
+  eight across at 1100x900 overflow the width by 1
+  percent.
+- The adjective reveal (H130) has no home under Option 3.
+  Chips are not `PlayerDisplay` nodes, hold no
+  `%Adjective` label and are not in
+  `PlayerList._player_displays`, so
+  `MatchEndCelebration.reveal_adjectives` finds nothing
+  to freeze or pop over. A build needs an adjective
+  anchor on the chip, an expanding winner chip, or a move
+  of the reveal to the game-over rows.
+- The prototype chips poll score in `PlayerList._process`
+  and have no count-up animation, score popups, leader
+  crown or bunny. The build decides each.
+
+Recommendation, now measured: full displays, shrunk to
+fit, while their smallest text stays at 8 px or more
+(two or three vertical, four along the bottom at
+1100x900), and chips past that. Make the switch a text
+size floor and not a count (inferred from four displays
+at 6 px wide and 8 px narrow). Levi's look question is
+H157.
