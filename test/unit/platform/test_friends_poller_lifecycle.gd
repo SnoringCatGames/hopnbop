@@ -39,6 +39,7 @@ class FakeFriends extends PlatformFriendsApiClient:
 	var friends_fetches := 0
 	var canned_notifications: Array = []
 	var is_emitting_canned := false
+	var is_poll_busy_fake := false
 	## Each entry is one notifications_received payload.
 	var canned_pages: Array[Dictionary] = []
 	## The cursor each notification fetch asked for.
@@ -65,7 +66,7 @@ class FakeFriends extends PlatformFriendsApiClient:
 		return false
 
 	func is_poll_busy() -> bool:
-		return false
+		return is_poll_busy_fake
 
 
 ## Stands in for Platform.presence: counts heartbeats, sends none.
@@ -485,6 +486,34 @@ func _full_notification_page(prefix: String) -> Array:
 			"sender_id": _SENDER_ID,
 		})
 	return page
+
+
+func test_sign_in_drain_waits_out_a_stale_fetch_then_runs() -> void:
+	_friends.is_poll_busy_fake = true
+
+	_sign_in_with_provider()
+
+	assert_eq(
+		_friends.notification_fetches, 0,
+		"the stale fetch blocks the drain while it is in flight")
+
+	_friends.is_poll_busy_fake = false
+	_tick(0.1)
+
+	assert_eq(
+		_friends.notification_fetches, 1,
+		"the drain runs once the stale fetch clears")
+
+
+func test_a_pending_drain_does_not_run_after_sign_out() -> void:
+	_friends.is_poll_busy_fake = true
+	_sign_in_with_provider()
+	_sign_out()
+	_friends.is_poll_busy_fake = false
+
+	_tick(0.1)
+
+	assert_eq(_friends.notification_fetches, 0)
 
 
 func test_late_list_response_keeps_the_new_sessions_cursor() -> void:

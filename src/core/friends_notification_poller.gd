@@ -68,6 +68,11 @@ var _notification_fetch_generation := -1
 ## Full pages handled since the current poll or drain
 ## started. A short page or a fresh fetch resets it.
 var _notification_pages_this_poll := 0
+## A drain skipped because a fetch from the previous
+## session is still in flight. _process runs it once that
+## fetch clears, so the new session does not wait for the
+## next socket connect.
+var _is_drain_pending := false
 ## Player ids whose pending friend request the user has already
 ## looked at. Subtracted from the pending-request count to produce
 ## `unseen_count`. In-memory only: on a fresh launch a still-
@@ -181,6 +186,13 @@ func _process(delta: float) -> void:
 	if Platform.token_store.is_anonymous:
 		return
 
+	if (
+		_is_drain_pending
+		and not Platform.friends.is_poll_busy()
+	):
+		_is_drain_pending = false
+		_fetch_notification_list()
+
 	_poll_timer += delta
 	if _poll_timer >= _POLL_INTERVAL_SEC:
 		_poll_timer = 0.0
@@ -257,6 +269,7 @@ func reset() -> void:
 	_is_first_presence_poll = true
 	_notification_cursor = ""
 	_notification_pages_this_poll = 0
+	_is_drain_pending = false
 	_known_online_ids.clear()
 	_known_party_match_start_ids.clear()
 	# _known_friend_event_ids survives reset (H54): it is the
@@ -426,7 +439,14 @@ func _drain_notifications() -> void:
 	if Platform.token_store.is_anonymous:
 		return
 	if Platform.friends.is_poll_busy():
+		# A fetch from the previous session is still in
+		# flight and the addon drops a second one. Remember
+		# the drain instead of losing it until the next
+		# socket connect. _process runs it once that fetch
+		# clears.
+		_is_drain_pending = true
 		return
+	_is_drain_pending = false
 	_fetch_notification_list()
 
 
