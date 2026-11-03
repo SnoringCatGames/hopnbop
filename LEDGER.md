@@ -65,6 +65,14 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   - evidence: .claude/probes/H126/ (Muse run), .claude/probes/H126/review/ (Claude: checks, mutation proofs, smoke 95/95)
   - next: Levi OKs the deploy; push the three platform commits one at a time (watch each nakama-runtime run), bump the pointer with the two allowlist lines, close SP110, SP111, SP113
   - brief: `docs/design/H126_muse_run7.md`
+- **H150** · Muse run 10: the poller fixes (H140, H139), the H135
+  settings-sync design doc and the H143 pictures (brief:
+  docs/design/H150_muse_run10.md).
+  - owner: claude session 0cfd9cf1-a258-4dc9-912d-e29423bc99b2 (launching muse run 10)
+  - branch: mainline; last commit: `35a883cd`
+  - evidence: .claude/probes/H143/ (index.md and run directories, untracked)
+  - next: Muse works the brief in order; review the poller tests with a mutation check, the H135 doc, the H143 pictures (view crops); file its questions for Levi
+  - brief: `docs/design/H150_muse_run10.md`
 
 ## Next
 
