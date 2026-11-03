@@ -1,0 +1,28 @@
+{
+  "name": "adjective-reveal-play-again",
+  "mode": "offline",
+  "level": "level_4",
+  "seed": 1,
+  "settings": {"match_duration_sec": 10},
+  "timeout_sec": 120,
+  "comment": "H130: the match-end reveal freezes and hides the adjective on the player list that is on screen. The displays outlive the match, so Play Again must start the next match with the adjective shown and current.",
+  "steps": [
+    {"do": "wait_ready"},
+    {"do": "wait_match_start"},
+    {"do": "wait_until", "expr": "match_state.is_match_ended", "timeout_sec": 40, "comment": "the 10 s match ends"},
+    {"do": "wait_until", "expr": "G.hud.get_visible_player_list()._player_displays.values()[0].is_adjective_hidden", "timeout_sec": 10, "comment": "the popup opened over the visible list"},
+    {"do": "assert", "expr": "G.hud.get_visible_player_list()._player_displays.values()[0].is_adjective_frozen", "message": "the reveal froze the visible list"},
+    {"do": "wait_until", "expr": "screen() == 'GAME_OVER'", "timeout_sec": 30},
+    {"do": "wait", "sec": 1.0},
+    {"do": "eval", "expr": "G.game_panel.client_play_again()", "comment": "Play Again"},
+    {"do": "wait_until", "expr": "screen() != 'GAME_OVER'", "timeout_sec": 20},
+    {"do": "wait_ready"},
+    {"do": "wait_match_start"},
+    {"do": "wait", "sec": 1.0},
+    {"do": "assert", "expr": "not G.hud.get_visible_player_list()._player_displays.values()[0].is_adjective_frozen", "message": "the next match does not start frozen"},
+    {"do": "assert", "expr": "not G.hud.get_visible_player_list()._player_displays.values()[0].is_adjective_hidden", "message": "the next match does not start hidden"},
+    {"do": "assert", "expr": "G.hud.get_visible_player_list()._player_displays.values()[0].get_node('%Adjective').visible", "message": "the adjective label is showing"},
+    {"do": "assert", "expr": "G.hud.get_visible_player_list()._player_displays.values()[0].get_node('%Adjective').text == G.get_player_match_state(G.hud.get_visible_player_list()._player_displays.keys()[0]).adjective", "message": "the label shows the match state's adjective"},
+    {"do": "screenshot", "name": "next-match"}
+  ]
+}

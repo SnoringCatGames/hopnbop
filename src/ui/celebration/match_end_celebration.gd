@@ -36,6 +36,9 @@ var _original_camera_zoom := Vector2.ONE
 var _winner: Player
 var _is_updating_iris := false
 var _active_tweens: Array[Tween] = []
+# Bumped by every reveal and by reset(), so the timers of an
+# abandoned reveal do nothing.
+var _reveal_id := 0
 
 
 func _enter_tree() -> void:
@@ -420,13 +423,19 @@ func reveal_adjectives(
 			if is_instance_valid(display):
 				display.is_adjective_frozen = true
 
+	_reveal_id += 1
+	var reveal_id := _reveal_id
+
 	# Delay reveal until after "WINNER" text
 	# settles (~1.1s), with a small extra gap.
 	var timer := get_tree().create_timer(
 		_ADJECTIVE_REVEAL_DELAY,
 		true, false, true)
 	timer.timeout.connect(func():
-		if not is_instance_valid(G.hud):
+		if (
+			reveal_id != _reveal_id
+			or not is_instance_valid(G.hud)
+		):
 			return
 		var visible_list: PlayerList = (
 			G.hud.get_visible_player_list())
@@ -451,6 +460,7 @@ func reveal_adjectives(
 				_spawn_adjective_popup.bind(
 					display,
 					adjective_map[player_id],
+					reveal_id,
 				)
 			)
 	)
@@ -459,8 +469,9 @@ func reveal_adjectives(
 func _spawn_adjective_popup(
 	display: PlayerDisplay,
 	adjective: String,
+	reveal_id: int,
 ) -> void:
-	if not is_instance_valid(display):
+	if reveal_id != _reveal_id or not is_instance_valid(display):
 		return
 
 	var ps := G.get_player_match_state(
@@ -495,6 +506,19 @@ func _spawn_adjective_popup(
 		adjective, label_color, outline_color)
 
 
+## Shows the live adjectives again. The reveal froze and hid
+## them, and the displays outlive the match, so the next match
+## would otherwise start with stale or missing adjectives.
+func _end_adjective_reveal() -> void:
+	if not is_instance_valid(G.hud):
+		return
+	for list in G.hud.get_player_lists():
+		for display: PlayerDisplay in list._player_displays.values():
+			if is_instance_valid(display):
+				display.is_adjective_frozen = false
+				display.is_adjective_hidden = false
+
+
 ## Returns the winner's bunny name. Account names are
 ## never shown (H59).
 func _winner_name(ps: GamePlayerState) -> String:
@@ -503,6 +527,11 @@ func _winner_name(ps: GamePlayerState) -> String:
 
 func reset() -> void:
 	_is_updating_iris = false
+
+	# Abandon a reveal that is still waiting on a timer, and
+	# show the live adjectives again.
+	_reveal_id += 1
+	_end_adjective_reveal()
 
 	# Kill any in-progress celebration tweens.
 	for tween in _active_tweens:

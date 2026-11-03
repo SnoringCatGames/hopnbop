@@ -65,21 +65,67 @@ func test_reveal_freezes_both_lists() -> void:
 
 
 func test_reveal_popup_opens_on_visible_list() -> void:
+	await _assert_popup_opens_on_visible_list(true)
+
+
+func test_reveal_popup_opens_on_visible_list_when_narrow() -> void:
+	await _assert_popup_opens_on_visible_list(false)
+
+
+## The displays outlive the match, so the next match would
+## start with frozen, hidden adjectives if nothing reset them.
+func test_reset_shows_the_live_adjectives_again() -> void:
 	var displays := await _set_up_reveal(true)
+	_celebration.reveal_adjectives({_PLAYER_ID: "Swift"})
+	for display: PlayerDisplay in displays:
+		display.is_adjective_hidden = true
+	_celebration.reset()
+	for display: PlayerDisplay in displays:
+		assert_false(
+			display.is_adjective_frozen,
+			"the adjective is no longer frozen")
+		assert_false(
+			display.is_adjective_hidden,
+			"the adjective is no longer hidden")
+
+
+func test_reset_abandons_a_reveal_that_is_waiting() -> void:
+	var displays := await _set_up_reveal(true)
+	_celebration.reveal_adjectives({_PLAYER_ID: "Swift"})
+	_celebration.reset()
+	await get_tree().create_timer(
+		2.2, true, false, true).timeout
+	for display: PlayerDisplay in displays:
+		assert_false(
+			display.is_adjective_hidden,
+			"no popup hides the adjective after the reset")
+		assert_false(
+			_has_reveal_popup(display),
+			"no popup opens after the reset")
+
+
+func _assert_popup_opens_on_visible_list(
+	use_vertical: bool,
+) -> void:
+	var displays := await _set_up_reveal(use_vertical)
+	var visible_display: PlayerDisplay = (
+		displays[1] if use_vertical else displays[0])
+	var hidden_display: PlayerDisplay = (
+		displays[0] if use_vertical else displays[1])
 	_celebration.reveal_adjectives({_PLAYER_ID: "Swift"})
 	await get_tree().create_timer(
 		2.2, true, false, true).timeout
 	assert_false(
-		displays[0].is_adjective_hidden,
+		hidden_display.is_adjective_hidden,
 		"no popup opens on the hidden list")
 	assert_true(
-		displays[1].is_adjective_hidden,
+		visible_display.is_adjective_hidden,
 		"the popup opens on the visible list")
 	assert_true(
-		_has_reveal_popup(displays[1]),
+		_has_reveal_popup(visible_display),
 		"the popup is parented to the visible display")
 	assert_false(
-		_has_reveal_popup(displays[0]),
+		_has_reveal_popup(hidden_display),
 		"the popup is not parented to the hidden display")
 
 

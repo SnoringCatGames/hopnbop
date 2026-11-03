@@ -120,6 +120,12 @@ lines hide. It asserts on the crash reporter's queue
 (`G.crash_reporter.get_queued_entries()`; an editor build queues and
 never sends), so an offline critter run that reports a crash (H106)
 or a `G.log.error` that reports twice (H136) fails the run.
+`scenarios/adjective-reveal-play-again.json` guards the match-end
+adjective reveal (H130). It asserts that the reveal froze and hid the
+adjective on the list that is on screen, then that Play Again starts
+the next match with the adjective shown and current: the player
+displays outlive the match, so `MatchEndCelebration.reset()` has to
+undo the reveal.
 Exit codes are real: 0 pass, 1 fail, 2 bad scenario, 3 refused. Every
 preview process, harness or not, used to exit 0xC0000005 because
 rollback_netcode's `PerfTracker` never removed its lambda-backed
