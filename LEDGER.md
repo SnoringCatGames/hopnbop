@@ -45,27 +45,29 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   removed once H119 is diagnosed. Next: Levi holds A until
   it stalls and sends the H119TRACE block (also: does
   holding A in Notepad keep repeating?).
+- **H132** · Deploy OK for the three local platform commits (SP110,
+  SP111, SP113; H126): each push restarts the live Nakama for a few
+  seconds.
 
 ## In progress
 
 - **H126** · Muse run 7: platform SP110 (pending-deletion sign-in
   test), SP111 (matchmaker hook into the hook list), SP113 (name on a
   cancelled deletion). Commits stay local until Levi OKs the deploy.
-  - owner: nobody since 2026-11-02 18:56 (run 7 stopped; three local platform commits await review)
+  - owner: claude session 0cfd9cf1-a258-4dc9-912d-e29423bc99b2 (review done 2026-11-02 19:20; waits on Levi's deploy OK)
   - branch: mainline (platform commits stay local, unpushed); last commit: `59d10a4cfc898f34025f3b0f0c2f0f2d4b14ae81`
-  - evidence: `.claude/probes/H126/`
-  - next: Claude reviews the local platform commits
+  - evidence: .claude/probes/H126/ (Muse run), .claude/probes/H126/review/ (Claude: checks, mutation proofs, smoke 95/95)
+  - next: Levi OKs the deploy; push the three platform commits one at a time (watch each nakama-runtime run), bump the pointer with the two allowlist lines, close SP110, SP111, SP113
   - brief: `docs/design/H126_muse_run7.md`
 - **H104** · Claude reviews Muse's commits from H103 and H109 in three
   stages: security (SP32, SP33, SP36, SP41 to SP44, SP47, SP59, H60),
   then H109's Tier C, then its Tier D design docs. Reviewed 2026-10-29:
   the CI fixes (8bb5873, c1590c7, netcode 9c3c0b5) and H56's keyboard
   (H111, H112).
-  - owner: claude 0cfd9cf1 (stage 1 done 2026-10-30 08:02; its findings are SP83-SP94 and H113-H117, and the fixes run as H120)
-  - branch: mainline, read-only (the review makes no commits); the
-    brief was committed with this entry
-  - evidence: `.claude/probes/H104/stage1-A.md` and `stage1-B.md` (untracked, on the desktop only)
-  - next: review H120's commits as they land; stages 2 and 3 after the weekly usage reset (2026-11-02)
+  - owner: claude session 0cfd9cf1-a258-4dc9-912d-e29423bc99b2 (stage 1 done 2026-10-30 08:02; stages 2 and 3 run as two subagents since 2026-11-02)
+  - branch: mainline, read-only (the review makes no commits); last commit: `e68e052d96ad48dafe9b344a6dfd98f648fbf4a8`
+  - evidence: .claude/probes/H104/ (stage1-A.md, stage1-B.md, stage2.md, stage3.md; untracked, on the desktop only)
+  - next: stage 3 filed as H127-H131; file the stage 2 report (.claude/probes/H104/stage2.md) when its agent finishes, then close H104
   - brief: `docs/design/H104_review.md`
 
 
@@ -80,7 +82,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   The Join-with-code and delete-key icons are still to ask Levi for.
 - **H87** · A dedicated server's fatal error or engine crash is never
   reported (CR1, CR7): design in
-  `docs/design/H87_server_crash_reporting.md`, awaiting Levi.
+  `docs/design/H87_server_crash_reporting.md`, awaiting H127, then Levi.
 - **H77** · Land the H37 probes as tests, each with its fix (XS each;
   batch 6; `docs/design/H37_systems_audit.md` section 4 step 2)
   Landed 2026-10-29: ghost-ticket probe (SP28), account probe
@@ -89,7 +91,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   (H67), declare-validation (H17), port-leak Go test (SP26),
   account PI-2 and SO-1 (H15), verify scenarios (H72 held).
 - **H72** · Exported-build runs for the harness: design in
-  `docs/design/H72_exported_build_harness.md`, awaiting Levi.
+  `docs/design/H72_exported_build_harness.md`, awaiting H128, then Levi.
   H38's release check waits on it.
 - **H83** · `release.yml` has never run and no `v*` tag exists. Waits on
   Levi (report section 7 row 13) (S; batch 6;
@@ -112,9 +114,21 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 
 - **H98** · Finish T43; verify, then fix, T19: design in
-  `docs/design/H98_polish_and_player_list.md`, awaiting Levi.
+  `docs/design/H98_polish_and_player_list.md`, awaiting H129, then Levi.
 - **H117** · SP32 client half, for when the consent change ships: show
   pending invites, accept and decline (H104 1A SP32-3).
+- **H127** · H87 doc edits before Levi decides (H87-1 to H87-12;
+  Edgegap restarts a crashed server in the same container, so the
+  premise is wrong): .claude/probes/H104/stage3.md
+- **H128** · H72 doc rewrite (H72-1 to H72-8): stock 4.7.2 templates
+  refuse --path and ignore -s, so the path-override template is the
+  main option: .claude/probes/H104/stage3.md
+- **H129** · H98 doc edits (H98-1, -2, -4, -12 required): redo the
+  sizes with the rendered display (about 203x171), then two look
+  questions for Levi: .claude/probes/H104/stage3.md
+- **H130** · Match-end adjective reveal runs on the hidden horizontal
+  list at aspect 1.3+ (match_end_celebration.gd:408-420; inferred, in
+  0.56.0 and 0.57.0 too): capture, then fix (H98-3).
 
 
 ## Residuals (known, not fixed)
@@ -156,6 +170,11 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H106** · Local mode also logs "RPC on yourself is not allowed" for
   `_rpc_server_update_critter_stats` (seen in an offline-move-jump log,
   2026-10-29; not one of H27's named pair). Same fix shape when touched.
+- **H131** · .claude/rules/crash-reporting.md:26 has been stale since
+  H86 (H104 stage 3 review).
+- **H133** · Four orphaned hopnbop-smoke-20261030-* Postgres containers
+  still run (Nakama exited 3 days ago): docker compose -p <name> down
+  -v each; find why those runs skipped teardown.
 
 
 ## Ideas (not scheduled)
