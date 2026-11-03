@@ -77,8 +77,8 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H156** · Muse run 11: pictures of the two T19 candidates (smaller
   full displays, compact chips) for the T19 look, built in a throwaway
   worktree (brief: docs/design/H156_muse_run11.md).
-  - owner: claude session 0cfd9cf1-a258-4dc9-912d-e29423bc99b2 (launching muse run 11)
-  - branch: mainline; last commit: `ebf3897b`
+  - owner: muse session 01a1a007-5b86-79e2-b967-207d13b5addb (run 11, launched 22:10 PT by claude session 0cfd9cf1)
+  - branch: mainline; last commit: `f0abeca7`
   - evidence: .claude/probes/H143/ (index.md, scenarios, pictures; untracked)
   - next: Muse sets up a throwaway worktree, builds both candidates and captures ten pictures with engine-measured numbers; review: view every picture, check the numbers, confirm the worktree is gone and main untouched; send Levi the pictures
   - brief: `docs/design/H156_muse_run11.md`
