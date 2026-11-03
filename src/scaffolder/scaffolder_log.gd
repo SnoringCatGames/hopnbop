@@ -154,7 +154,18 @@ func error(
 	if should_crash:
 		formatted_message = "FATAL %s" % formatted_message
 
+	# The push reaches the engine logger, which would
+	# report this line a second time (H136). Flag it so
+	# the logger skips it; the direct report below is the
+	# one that counts.
+	var has_reporter := (
+		is_instance_valid(G)
+		and is_instance_valid(G.crash_reporter))
+	if has_reporter:
+		G.crash_reporter.is_in_log_error = true
 	push_error(formatted_message)
+	if has_reporter:
+		G.crash_reporter.is_in_log_error = false
 	_print_internal(formatted_message, category)
 
 	if (

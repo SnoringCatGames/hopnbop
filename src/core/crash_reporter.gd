@@ -101,6 +101,12 @@ var send_attempt_count := 0
 ## never reported.
 var is_exiting := false
 
+## True while ScaffolderLog.error has a push_error in
+## flight. That push reaches the engine logger, and
+## error() reports the same line itself, so the logger
+## skips it or every error is reported twice (H136).
+var is_in_log_error := false
+
 var _engine_logger: EngineErrorLogger
 
 var _entries: Array[Dictionary] = []
@@ -109,6 +115,7 @@ var _is_loaded := false
 var _reports_this_run := 0
 var _signatures_this_run := {}
 var _is_flushing := false
+var _is_reporting := false
 var _paused_until_msec := 0
 
 
@@ -162,6 +169,18 @@ func report_crash(error_message: String, is_fatal := false) -> void:
 	if OS.get_thread_caller_id() != OS.get_main_thread_id():
 		report_crash.call_deferred(error_message, is_fatal)
 		return
+	# Building a report can itself raise an engine error
+	# (a malformed stored session, say), which the engine
+	# logger would feed straight back here (H86-4). Drop
+	# the re-entrant call instead of recursing.
+	if _is_reporting:
+		return
+	_is_reporting = true
+	_queue_report(error_message, is_fatal)
+	_is_reporting = false
+
+
+func _queue_report(error_message: String, is_fatal: bool) -> void:
 	_ensure_loaded()
 	if not _can_queue() or _reports_this_run >= _MAX_REPORTS_PER_RUN:
 		return

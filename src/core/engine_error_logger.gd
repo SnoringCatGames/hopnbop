@@ -10,7 +10,8 @@ extends Logger
 ## Godot calls _log_error on whatever thread hit the error;
 ## CrashReporter.report_crash re-dispatches to the main
 ## thread itself. Each signature is reported at most once
-## per run, so an error loop can't spend the daily cap.
+## per run, so an error loop can't spend the daily cap in
+## a single run (H86-2).
 
 
 var _reporter: CrashReporter
@@ -33,6 +34,10 @@ func _log_error(
 	if error_type == Logger.ERROR_TYPE_WARNING:
 		return
 	if _reporter == null or _reporter.is_exiting:
+		return
+	# ScaffolderLog.error reports its own push_error lines
+	# itself (H136).
+	if _reporter.is_in_log_error:
 		return
 	var message := code
 	if not rationale.is_empty() and rationale != code:

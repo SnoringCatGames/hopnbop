@@ -92,6 +92,22 @@ class FakeNakamaClient extends NakamaClient:
 		return next_results.pop_front()
 
 
+## A reporter whose log read raises an engine error back
+## into itself, as a malformed stored session can (H86-4).
+class ReentrantReporter extends CrashReporter:
+	var logger: EngineErrorLogger
+	var hook_calls := 0
+
+	func _read_current_log_tail() -> String:
+		hook_calls += 1
+		if hook_calls == 1 and logger != null:
+			logger._log_error(
+				"", "res://src/inner.gd", 1,
+				"inner error while reporting", "",
+				false, Logger.ERROR_TYPE_ERROR, [])
+		return ""
+
+
 var _reporter: CrashReporter
 var _nakama: FakeNakamaClient
 var _store: PlatformAuthTokenStore
@@ -762,3 +778,63 @@ func test_engine_logger_stops_when_the_reporter_exits() -> void:
 		false, Logger.ERROR_TYPE_ERROR, [])
 
 	assert_eq(_reporter.get_queued_entries().size(), 0)
+
+
+# ------------------------------------------------------------------
+# H136: a G.log.error reaches the reporter once
+# ------------------------------------------------------------------
+
+
+## Feeds the engine logger what push_error hands it for a
+## G.log line on 4.7.2 (run 8's harness probe): the code is
+## the formatted message, and the file and line are the
+## engine's own push_error site. ScaffolderLog.error flags
+## the push, so this copy is skipped and its own direct
+## report is the one that queues.
+func _feed_log_line_to_logger(
+	logger: EngineErrorLogger,
+	formatted_message: String,
+) -> void:
+	_reporter.is_in_log_error = true
+	logger._log_error(
+		"", "core/variant/variant_utility.cpp", 1023,
+		formatted_message, "",
+		false, Logger.ERROR_TYPE_ERROR, [])
+	_reporter.is_in_log_error = false
+
+
+func test_g_log_error_is_reported_once() -> void:
+	var logger := EngineErrorLogger.new(_reporter)
+	_feed_log_line_to_logger(logger, "ERROR  : probe failure")
+	_reporter.report_crash("ERROR  : probe failure")
+
+	assert_eq(_reporter.get_queued_entries().size(), 1)
+
+
+func test_g_log_fatal_is_queued_once_and_not_sent() -> void:
+	_give_session()
+	var logger := EngineErrorLogger.new(_reporter)
+	_feed_log_line_to_logger(
+		logger, "FATAL ERROR  : probe failure")
+	_reporter.report_crash("FATAL ERROR  : probe failure", true)
+
+	assert_eq(_reporter.get_queued_entries().size(), 1)
+	assert_eq(
+		_nakama.session_calls.size(), 0,
+		"a fatal error sends nothing before the quit",
+	)
+
+
+func test_report_crash_drops_a_reentrant_call() -> void:
+	var reporter := ReentrantReporter.new()
+	reporter.queue_path = _QUEUE_PATH
+	reporter.log_directory = _LOG_DIR
+	reporter.forced_role = "client"
+	reporter.build_kind = "export"
+	reporter.is_sending_allowed = true
+	reporter.logger = EngineErrorLogger.new(reporter)
+
+	reporter.report_crash("ERROR  : outer failure")
+
+	assert_eq(reporter.get_queued_entries().size(), 1)
+	reporter.free()
