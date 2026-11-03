@@ -228,3 +228,95 @@ SHA, the checks you ran and what they printed (vet, test, staticcheck,
 gofmt, smoke, the 0.57.0 and 0.56.0 failure lists), anything shelved with
 its patch path, the SP113 allowlist lines, and anything new for the
 ledger.
+
+### 2026-11-02, muse 01a19f43 (run 7, SP110, SP111 and SP113 local)
+
+Done, three local platform commits in order. Nothing pushed in
+the platform (its `main` is 3 ahead of `origin/main`), no prod
+action and no release. Started 18:35, stopped 18:56.
+
+- SP110 (platform `b4d44cbc9979e30d2af0d57a4798d2a9e985a8c7`,
+  test only). A new `pending_deletion_signin_test.go` pins an
+  existing pending-deletion Google, Facebook and Steam account
+  ending with `[deleted]`, through a stateful fake module and
+  a tiny standard-library fake database driver. With
+  `enforceSignInPrivacy` temporarily skipped, all three cases
+  failed (stored `[deleted`, want `[deleted]`) and the control
+  still passed. The restored checks printed: `gofmt -l .`
+  nothing, `go vet ./...` ok, `go test ./...` ok and
+  `staticcheck ./...` ok. No smoke or released gate, as the
+  brief allows for a test-only change. One wording note: the
+  brief's control says the non-pending account ends with a
+  generated name, but `clampDisplayName("[deleted]")` returns
+  the shortened `[deleted`, so the control pins that real
+  outcome (not the marker, and not empty) instead.
+- SP111 (platform `fc9cb4b6fbfd0dee11bae13f24c0bccd85c84c7e`).
+  Preferred option: `InitModule` builds the fleet allocator
+  before `registerHooks` and passes it in, nil when allocation
+  is disabled; `registerHooks` registers `MatchmakerMatched`
+  itself. The cancel RPC stays beside the allocator and every
+  aborting error still aborts. A temporary second matchmaker
+  registration made `TestNoHookRegisteredTwice` fail with a
+  count of 2, then was removed. Checks: `gofmt -l .` nothing,
+  vet, test and staticcheck ok. Smoke (HEAD candidate) 95/95.
+  The 0.57.0 suite (94 reported) failed only the two known
+  SP106 entries:
+  `test_account_delete.gd::test_cancel_clears_marker_on_account_without_display_name`
+  and
+  `test_public_leaderboard.gd::test_lists_ranked_scores_without_credentials`.
+  The 0.56.0 suite (80 reported) failed its classified set of
+  7: `test_account_delete.gd::test_cancel_clears_marker_on_account_without_display_name`,
+  `test_account_delete.gd::test_delete_clears_identifying_data_at_once`,
+  `test_account_delete_cascade_surfaces.gd::test_delete_account_clears_all_state_surfaces`,
+  `test_data_export.gd::test_export_includes_every_category`,
+  `test_party_to_matchmaking.gd::test_party_pair_matched_into_same_mock_deploy`,
+  `test_recent_players.gd::test_list_recent_players_sorts_by_matched_at_desc_and_caps`
+  and `test_settings.gd::test_storage_write_read_roundtrip`.
+- SP113 (platform `59d10a4cfc898f34025f3b0f0c2f0f2d4b14ae81`).
+  `cancelPendingDeletion` assigns `generatedDisplayName()` in
+  the same `UPDATE`, keeping the marker guard. A generation
+  failure logs and falls back to `NULL`, so the cancel still
+  completes. The SP110 fake driver extends to the cancel
+  transaction for Go tests. Checks: `gofmt -l .` nothing, vet,
+  test and staticcheck ok. With the new compliance assertions
+  against the unfixed runtime, the single-file smoke failed 3
+  cases on the post-cancel name (the two the brief names plus
+  `test_delete_clears_identifying_data_at_once`, whose
+  post-cancel loop also asserted an empty name, so its HEAD
+  assertion and its released line are included here). With
+  the fix, the HEAD smoke is 95/95. The 0.57.0 suite (94
+  reported) failed 4: the same two known SP106 entries above
+  plus `test_account_delete.gd::test_soft_delete_then_cancel_keeps_account_without_profile`
+  and `test_account_delete.gd::test_delete_clears_identifying_data_at_once`.
+  The 0.56.0 suite (80 reported) failed 8: its SP111
+  classified set of 7 plus
+  `test_account_delete.gd::test_soft_delete_then_cancel_keeps_account_without_profile`.
+  Gate conditions hold: (a) every new failing assertion is a
+  post-cancel display-name check (the already-known fresh-name
+  assertion in the cancel-marker case is unchanged from the
+  SP111 baseline), (b) no other test in either suite failed
+  beyond the known sets above, and (c) in both released SDKs
+  `cancel_account_deletion` applies only the provider picture
+  (the claims profile carries no display name, so the name
+  argument is null and the server name stands), then copies
+  the server profile's display name into the token store. No
+  released client code depends on an empty name after a
+  cancel.
+
+SP113 allowlist lines for
+`.github/compliance/released-known-failures.txt`, also in
+`.claude/probes/H126/allowlist-lines.txt`. Do not add the
+cancel-marker line again: it is already in the file (SP106).
+
+```text
+# 2026-11-02 SP113: released fixture asserts an empty display name after
+# cancel_account_deletion; the fixed runtime assigns a generated name.
+addons/snoringcat_platform_client/test/compliance/test_account_delete.gd::test_soft_delete_then_cancel_keeps_account_without_profile
+# 2026-11-02 SP113: released fixture asserts an empty display name after
+# cancel_account_deletion; the fixed runtime assigns a generated name.
+addons/snoringcat_platform_client/test/compliance/test_account_delete.gd::test_delete_clears_identifying_data_at_once
+```
+
+Shelved: nothing. New for the ledger: nothing created (per
+the brief). For Claude to file if wanted: the SP110 control
+wording above, and SP113's third compliance case.

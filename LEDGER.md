@@ -51,10 +51,10 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H126** · Muse run 7: platform SP110 (pending-deletion sign-in
   test), SP111 (matchmaker hook into the hook list), SP113 (name on a
   cancelled deletion). Commits stay local until Levi OKs the deploy.
-  - owner: muse 01a19f43 (Paseo agent 3d1651f1, launched by claude 0cfd9cf1 at 2026-11-02 18:35, 2 h cap ~20:35)
-  - branch: mainline (platform commits stay local, unpushed); last commit: `0aae56d6`
+  - owner: nobody since 2026-11-02 18:56 (run 7 stopped; three local platform commits await review)
+  - branch: mainline (platform commits stay local, unpushed); last commit: `59d10a4cfc898f34025f3b0f0c2f0f2d4b14ae81`
   - evidence: `.claude/probes/H126/`
-  - next: when Muse stops, review its three local platform commits against the code; ask Levi once for the deploy OK; push one at a time; bump the pointer with the allowlist lines
+  - next: Claude reviews the local platform commits
   - brief: `docs/design/H126_muse_run7.md`
 - **H104** · Claude reviews Muse's commits from H103 and H109 in three
   stages: security (SP32, SP33, SP36, SP41 to SP44, SP47, SP59, H60),
