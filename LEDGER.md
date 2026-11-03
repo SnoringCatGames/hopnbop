@@ -76,6 +76,9 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 
 ## Next
 
+- **H106** · Local mode logs "RPC on yourself is not allowed" for
+  `_rpc_server_update_critter_stats` (2026-10-29), fix shaped like H27's;
+  since H86 (0.57.0) every offline critter run queues a crash report.
 - **H56** · Controller players cannot enter codes: design in
   `docs/design/H56_code_entry.md`; the symbol keyboard is built
   behind `is_code_keyboard_enabled` (off) for Levi's acceptance.
@@ -129,6 +132,15 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H130** · Match-end adjective reveal runs on the hidden horizontal
   list at aspect 1.3+ (match_end_celebration.gd:408-420; inferred, in
   0.56.0 and 0.57.0 too): capture, then fix (H98-3).
+- **H134** · Offline friend events never toast: a healthy socket skips
+  the list (friends_notification_poller.gd:166; medium, live in 0.57.0);
+  drain on sign-in and on socket_connected (stage 2, H54-1 to H54-3).
+- **H135** · Settings cloud sync deletes keys a stale device lacks,
+  wiping another device's new settings (settings_cloud_sync.gd:339-358;
+  medium, live in 0.57.0): tombstones and OCC (stage 2, H90-1 to H90-4).
+- **H136** · Every G.log.error is reported twice, and a fatal one
+  flushes just before the quit (scaffolder_log.gd:157, :164-165; medium,
+  inferred from 4.4 source, in 0.57.0): verify on 4.7.2; lows H86-2 to -4.
 
 
 ## Residuals (known, not fixed)
@@ -167,11 +179,8 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
   host: disk +1.72 GB on 10-20 (v30, v31 pulled by `sync-game-config.ps1`),
   +0.86 GB on 10-13. Run `docker system df` there, then add a prune
   (weekly-cost-review 2026-10-21).
-- **H106** · Local mode also logs "RPC on yourself is not allowed" for
-  `_rpc_server_update_critter_stats` (seen in an offline-move-jump log,
-  2026-10-29; not one of H27's named pair). Same fix shape when touched.
-- **H131** · .claude/rules/crash-reporting.md:26 has been stale since
-  H86 (H104 stage 3 review).
+- **H131** · .claude/rules/crash-reporting.md:26 and the reporter's own
+  docs (crash_reporter.gd:6-8, :158) are stale since H86 (H104 reviews).
 - **H133** · Four orphaned hopnbop-smoke-20261030-* Postgres containers
   still run (Nakama exited 3 days ago): docker compose -p <name> down
   -v each; find why those runs skipped teardown.

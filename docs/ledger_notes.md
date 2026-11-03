@@ -260,3 +260,30 @@ No helper fail-fast: the platform SDK CI (run.sh) already sets
 PLATFORM_GAME_ID=sdkci for its throwaway game, and the runtime accepts
 an empty id when no game is registered, so an empty-id push_error
 would break that bootstrap path for no determinism gain.
+
+## H134 (2026-11-02, claude review agent, H104 stage 2 of H54)
+
+Read from the code, not run. The full report is `.claude/probes/H104/stage2.md` (untracked, desktop only). The code shipped in client 0.57.0 (`7fd873fd`).
+
+- H54-1 · medium · `src/core/friends_notification_poller.gd:166` · a healthy socket skips the list, so offline friend events never toast; drain on sign-in and on `socket_connected`.
+- H54-2 · nit · `src/core/friends_notification_poller.gd:258-263` · a late poll response can hand the old account's cursor to the next session.
+- H54-3 · nit · `src/core/friends_notification_poller.gd:321-326`, `:45` · ids are marked seen before the toast shows; the dedup file is device-wide; the tests write the real profile.
+
+## H135 (2026-11-02, claude review agent, H104 stage 2 of H90)
+
+Read from the code, not run. Report: `.claude/probes/H104/stage2.md`. Shipped in 0.57.0.
+
+- H90-1 · medium · `src/core/settings_cloud_sync.gd:339-358`, `:80-82` · key absence is read as deletion under whole-blob saves, so a stale device's save deletes another device's new settings; add tombstones and OCC.
+- H90-2 · low · `src/core/settings_cloud_sync.gd:137-143` · a save failure during a pending fetch is taken for the fetch's, so the merge is skipped and the save not retried.
+- H90-3 · low · `src/core/local_settings.gd:210-215` · a propagated clear neither updates the live `Settings` nor emits, so it applies only after a restart.
+- H90-4 · nit · `src/core/settings_cloud_sync.gd:322-335`, `:128-134`, `:191-203`, `:354` · untimed keys always win, the "exceeds" match is dead, the dirty flag is per device, a style slip, and the tests write the real `local_settings.cfg`.
+
+## H136 (2026-11-02, claude review agent, H104 stage 2 of H86 with SP61)
+
+The engine-logger findings rest on the Godot 4.4-beta source on disk, which predates the `Logger` class, so how 4.7.2 behaves is inferred, and so is whether errors raised inside a script logger are dropped (that decides H86-4). Check on 4.7.2 with the agent harness before fixing. Production showed zero crash reports from 2026-10-31 through 2026-11-02. Report: `.claude/probes/H104/stage2.md`. Shipped in 0.57.0.
+
+- H86-1 · medium · `src/scaffolder/scaffolder_log.gd:157`, `:164-165`, with `src/core/engine_error_logger.gd:40-44` · every `G.log.error` is reported twice (its `push_error` reaches the engine logger), and a fatal one flushes before the quit.
+- H86-2 · low · `src/core/engine_error_logger.gd:12-13`, `src/core/crash_reporter.gd:166-177` · dedup is per process, so H106's RPC error is queued in every offline level run (seen in the harness run directories); dedupe across runs.
+- H86-3 · low · `src/core/engine_error_logger.gd:3-6`, `.claude/rules/crash-reporting.md` · release templates never print script errors, so the script half of the audit item H86 was filed for (CR6) stays open; document the limit.
+- H86-4 · low (conditional) · `src/core/crash_reporter.gd:165-177`, `:389` · an engine error raised inside `report_crash` (a malformed stored JWT) re-enters it before dedup; add a guard.
+- The reporter's own docs (`crash_reporter.gd:6-8`, `:158`) name two sources, not the engine logger: folded into H131.
