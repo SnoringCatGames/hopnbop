@@ -447,11 +447,18 @@ func _client_apply_stats(packed_data: Array) -> void:
 func _rpc_server_update_critter_stats(
 	packed_data: Array,
 ) -> void:
-	if not Netcode.is_server:
+	if not Netcode.runs_server_logic:
 		return
 
 	var sender_peer := (
 		multiplayer.get_remote_sender_id())
+	if Netcode.is_local_mode:
+		# Called in place in local mode (H106), not over
+		# an RPC, so there is no remote sender. The
+		# server is this process and the sender is the
+		# local peer.
+		sender_peer = multiplayer.get_unique_id()
+
 	var level: NetworkedLevel = (
 		G.level as NetworkedLevel)
 	if not is_instance_valid(level):

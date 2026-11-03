@@ -129,10 +129,20 @@ func _send_stats_to_server() -> void:
 
 	var synchronizer: MatchStateSynchronizer = (
 		G.game_panel.match_state_synchronizer)
-	if is_instance_valid(synchronizer):
-		(synchronizer
-			._rpc_server_update_critter_stats
-			.rpc_id(
-				NetworkConnector.SERVER_ID,
-				packed,
-			))
+	if not is_instance_valid(synchronizer):
+		return
+	if Netcode.is_local_mode:
+		# The server is this process, so an RPC to it is
+		# refused and, since H86, queued as a crash report
+		# (H106). The deltas feed the match-end stats,
+		# which local play shows, so apply them in place
+		# instead of dropping them.
+		synchronizer._rpc_server_update_critter_stats(
+			packed)
+		return
+	(synchronizer
+		._rpc_server_update_critter_stats
+		.rpc_id(
+			NetworkConnector.SERVER_ID,
+			packed,
+		))

@@ -62,7 +62,7 @@ entries move to `docs/ledger_done.md`; the next ID counts both files.
 - **H137** · Muse run 8, hopnbop only: H106 (offline RPC on yourself
   queues a crash report), H134 (offline friend events never toast), H136
   (reports sent twice; probe first), H131 (docs).
-  - owner: claude session 0cfd9cf1-a258-4dc9-912d-e29423bc99b2 (brief written 2026-11-02; Muse launches next)
+  - owner: muse session 01a19f7e-156d-7921-b3c4-f6a27e924c42 (run 8 started 2026-11-02)
   - branch: mainline; last commit: pending (brief not yet committed)
   - evidence: .claude/probes/H137/ (Muse probes), .claude/probes/H104/stage2.md (findings)
   - next: launch Muse, review each commit as it lands
